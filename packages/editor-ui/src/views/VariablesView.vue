@@ -229,17 +229,17 @@ onBeforeUnmount(() => {
 
 <template>
 	<ResourcesListLayout
-		class="variables-view"
 		ref="layoutRef"
+		class="variables-view"
 		resource-key="variables"
 		:disabled="!isFeatureEnabled"
 		:resources="allVariables"
 		:initialize="initialize"
 		:shareable="false"
-		:displayName="displayName"
-		:sortFns="sortFns"
-		:sortOptions="['nameAsc', 'nameDesc']"
-		:showFiltersDropdown="false"
+		:display-name="displayName"
+		:sort-fns="sortFns"
+		:sort-options="['nameAsc', 'nameDesc']"
+		:show-filters-dropdown="false"
 		type="datatable"
 		:type-props="{ columns: datatableColumns }"
 		@sort="resetNewVariablesList"
@@ -252,8 +252,8 @@ onBeforeUnmount(() => {
 						size="large"
 						block
 						:disabled="!canCreateVariables"
-						@click="addTemporaryVariable"
 						data-test-id="resources-list-add"
+						@click="addTemporaryVariable"
 					>
 						{{ $locale.baseText(`variables.add`) }}
 					</n8n-button>
@@ -275,8 +275,8 @@ onBeforeUnmount(() => {
 				:description="
 					$locale.baseText(contextBasedTranslationKeys.variables.unavailable.description)
 				"
-				:buttonText="$locale.baseText(contextBasedTranslationKeys.variables.unavailable.button)"
-				buttonType="secondary"
+				:button-text="$locale.baseText(contextBasedTranslationKeys.variables.unavailable.button)"
+				button-type="secondary"
 				@click:button="goToUpgrade"
 			/>
 		</template>
@@ -289,8 +289,8 @@ onBeforeUnmount(() => {
 				:description="
 					$locale.baseText(contextBasedTranslationKeys.variables.unavailable.description)
 				"
-				:buttonText="$locale.baseText(contextBasedTranslationKeys.variables.unavailable.button)"
-				buttonType="secondary"
+				:button-text="$locale.baseText(contextBasedTranslationKeys.variables.unavailable.button)"
+				button-type="secondary"
 				@click:button="goToUpgrade"
 			/>
 			<n8n-action-box

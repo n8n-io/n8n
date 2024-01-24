@@ -19,7 +19,7 @@ type Props = {
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 const NodeCreator = defineAsyncComponent(
-	async () => import('@/components/Node/NodeCreator/NodeCreator.vue'),
+	async () => await import('@/components/Node/NodeCreator/NodeCreator.vue'),
 );
 
 const props = withDefaults(defineProps<Props>(), {
@@ -106,7 +106,7 @@ function nodeTypeSelected(nodeTypes: string[]) {
 			@mouseenter="onCreateMenuHoverIn"
 		>
 			<div :class="$style.nodeCreatorButton" data-test-id="node-creator-plus-button">
-				<keyboard-shortcut-tooltip
+				<KeyboardShortcutTooltip
 					:label="$locale.baseText('nodeView.openNodesPanel')"
 					:shortcut="{ keys: ['Tab'] }"
 					placement="left"
@@ -118,19 +118,19 @@ function nodeTypeSelected(nodeTypes: string[]) {
 						:class="$style.nodeCreatorPlus"
 						@click="openNodeCreator"
 					/>
-				</keyboard-shortcut-tooltip>
+				</KeyboardShortcutTooltip>
 				<div
 					:class="[$style.addStickyButton, state.showStickyButton ? $style.visibleButton : '']"
-					@click="addStickyNote"
 					data-test-id="add-sticky-button"
+					@click="addStickyNote"
 				>
-					<keyboard-shortcut-tooltip
+					<KeyboardShortcutTooltip
 						:label="$locale.baseText('nodeView.addStickyHint')"
 						:shortcut="{ keys: ['s'], shiftKey: true }"
 						placement="left"
 					>
 						<n8n-icon-button type="tertiary" :icon="['far', 'note-sticky']" />
-					</keyboard-shortcut-tooltip>
+					</KeyboardShortcutTooltip>
 				</div>
 			</div>
 		</div>
@@ -173,8 +173,8 @@ function nodeTypeSelected(nodeTypes: string[]) {
 .nodeCreatorButton {
 	position: absolute;
 	text-align: center;
-	top: var(--spacing-s);
-	right: var(--spacing-s);
+	top: var(--spacing-l);
+	right: var(--spacing-l);
 	pointer-events: all !important;
 
 	button {

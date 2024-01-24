@@ -29,6 +29,19 @@ export const conversationalAgentProperties: INodeProperties[] = [
 		default: '={{ $json.chat_input }}',
 	},
 	{
+		displayName: 'Text',
+		name: 'text',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				agent: ['conversationalAgent'],
+				'@version': [1.2],
+			},
+		},
+		default: '={{ $json.chatInput }}',
+	},
+	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
@@ -66,6 +79,13 @@ export const conversationalAgentProperties: INodeProperties[] = [
 				type: 'number',
 				default: 10,
 				description: 'The maximum number of iterations the agent will run before stopping',
+			},
+			{
+				displayName: 'Return Intermediate Steps',
+				name: 'returnIntermediateSteps',
+				type: 'boolean',
+				default: false,
+				description: 'Whether or not the output should include intermediate steps the agent took',
 			},
 		],
 	},

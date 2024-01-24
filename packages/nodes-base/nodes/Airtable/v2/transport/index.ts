@@ -7,7 +7,9 @@ import type {
 	IPollFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
+	IPairedItemData,
 } from 'n8n-workflow';
+import { ApplicationError } from 'n8n-workflow';
 import type { IAttachment, IRecord } from '../helpers/interfaces';
 import { flattenOutput } from '../helpers/utils';
 
@@ -45,7 +47,7 @@ export async function apiRequest(
 	}
 
 	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
-	return this.helpers.requestWithAuthentication.call(this, authenticationMethod, options);
+	return await this.helpers.requestWithAuthentication.call(this, authenticationMethod, options);
 }
 
 /**
@@ -86,16 +88,22 @@ export async function downloadRecordAttachments(
 	this: IExecuteFunctions | IPollFunctions,
 	records: IRecord[],
 	fieldNames: string | string[],
+	pairedItem?: IPairedItemData[],
 ): Promise<INodeExecutionData[]> {
 	if (typeof fieldNames === 'string') {
 		fieldNames = fieldNames.split(',').map((item) => item.trim());
 	}
 	if (!fieldNames.length) {
-		throw new Error("Specify field to download in 'Download Attachments' option");
+		throw new ApplicationError("Specify field to download in 'Download Attachments' option", {
+			level: 'warning',
+		});
 	}
 	const elements: INodeExecutionData[] = [];
 	for (const record of records) {
 		const element: INodeExecutionData = { json: {}, binary: {} };
+		if (pairedItem) {
+			element.pairedItem = pairedItem;
+		}
 		element.json = flattenOutput(record as unknown as IDataObject);
 		for (const fieldName of fieldNames) {
 			if (record.fields[fieldName] !== undefined) {

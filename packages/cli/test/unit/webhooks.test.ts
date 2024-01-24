@@ -4,11 +4,12 @@ import { mock } from 'jest-mock-extended';
 
 import config from '@/config';
 import { AbstractServer } from '@/AbstractServer';
-import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import { ActiveWebhooks } from '@/ActiveWebhooks';
 import { ExternalHooks } from '@/ExternalHooks';
 import { InternalHooks } from '@/InternalHooks';
 import { TestWebhooks } from '@/TestWebhooks';
 import { WaitingWebhooks } from '@/WaitingWebhooks';
+import { WaitingForms } from '@/WaitingForms';
 import type { IResponseCallbackData } from '@/Interfaces';
 
 import { mockInstance } from '../shared/mocking';
@@ -21,9 +22,10 @@ describe('WebhookServer', () => {
 
 	describe('CORS', () => {
 		const corsOrigin = 'https://example.com';
-		const activeWorkflowRunner = mockInstance(ActiveWorkflowRunner);
+		const activeWebhooks = mockInstance(ActiveWebhooks);
 		const testWebhooks = mockInstance(TestWebhooks);
 		mockInstance(WaitingWebhooks);
+		mockInstance(WaitingForms);
 
 		beforeAll(async () => {
 			const server = new (class extends AbstractServer {
@@ -34,10 +36,11 @@ describe('WebhookServer', () => {
 		});
 
 		const tests = [
-			['webhook', activeWorkflowRunner],
+			['webhook', activeWebhooks],
 			['webhookTest', testWebhooks],
-			// TODO: enable webhookWaiting after CORS support is added
+			// TODO: enable webhookWaiting & waitingForms after CORS support is added
 			// ['webhookWaiting', waitingWebhooks],
+			// ['formWaiting', waitingForms],
 		] as const;
 
 		for (const [key, manager] of tests) {

@@ -12,7 +12,7 @@ export const GlobalComponentsPlugin: Plugin<{}> = {
 	install(app) {
 		const messageService = useMessage();
 
-		app.component('enterprise-edition', EnterpriseEdition);
+		app.component('EnterpriseEdition', EnterpriseEdition);
 		app.component('RBAC', RBAC);
 
 		app.use(ElementPlus);

@@ -29,6 +29,7 @@ import {
 } from './GenericFunctions';
 
 import { optionsDescription } from './OptionsDescription';
+import { generatePairedItemData } from '../../../utils/utilities';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Merge',
@@ -37,7 +38,7 @@ const versionDescription: INodeTypeDescription = {
 	group: ['transform'],
 	version: [2, 2.1, 2.2],
 	subtitle: '={{$parameter["mode"]}}',
-	description: 'Merges data of multiple streams once data from both is available',
+	description: 'Merge data of two inputs once data from both is available',
 	defaults: {
 		name: 'Merge',
 		color: '#00bbcc',
@@ -599,7 +600,8 @@ export class MergeV2 implements INodeType {
 					returnData.push.apply(returnData, this.getInputData(1));
 				}
 				if (output === 'empty') {
-					returnData.push({ json: {} });
+					const itemData = generatePairedItemData(this.getInputData(0).length);
+					returnData.push({ json: {}, pairedItem: itemData });
 				}
 			}
 		}

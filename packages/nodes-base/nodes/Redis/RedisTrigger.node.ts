@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-loop-func */
 import type {
 	ITriggerFunctions,
 	IDataObject,
@@ -7,7 +8,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import redis from 'redis';
+import { redisConnectionTest, setupRedisClient } from './utils';
 
 export class RedisTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -26,6 +27,7 @@ export class RedisTrigger implements INodeType {
 			{
 				name: 'redis',
 				required: true,
+				testedBy: 'redisConnectionTest',
 			},
 		],
 		properties: [
@@ -64,36 +66,29 @@ export class RedisTrigger implements INodeType {
 		],
 	};
 
+	methods = {
+		credentialTest: { redisConnectionTest },
+	};
+
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
 		const credentials = await this.getCredentials('redis');
 
-		const redisOptions: redis.ClientOpts = {
-			host: credentials.host as string,
-			port: credentials.port as number,
-			db: credentials.database as number,
-		};
-
-		if (credentials.password) {
-			redisOptions.password = credentials.password as string;
-		}
-
 		const channels = (this.getNodeParameter('channels') as string).split(',');
-
 		const options = this.getNodeParameter('options') as IDataObject;
 
 		if (!channels) {
 			throw new NodeOperationError(this.getNode(), 'Channels are mandatory!');
 		}
 
-		const client = redis.createClient(redisOptions);
+		const client = setupRedisClient(credentials);
 
 		const manualTriggerFunction = async () => {
-			await new Promise((resolve, reject) => {
-				client.on('connect', () => {
-					for (const channel of channels) {
-						client.psubscribe(channel);
-					}
-					client.on('pmessage', (pattern: string, channel: string, message: string) => {
+			await client.connect();
+			await client.ping();
+
+			try {
+				for (const channel of channels) {
+					await client.pSubscribe(channel, (message) => {
 						if (options.jsonParseBody) {
 							try {
 								message = JSON.parse(message);
@@ -102,27 +97,23 @@ export class RedisTrigger implements INodeType {
 
 						if (options.onlyMessage) {
 							this.emit([this.helpers.returnJsonArray({ message })]);
-							resolve(true);
 							return;
 						}
 
 						this.emit([this.helpers.returnJsonArray({ channel, message })]);
-						resolve(true);
 					});
-				});
-
-				client.on('error', (error) => {
-					reject(error);
-				});
-			});
+				}
+			} catch (error) {
+				throw new NodeOperationError(this.getNode(), error);
+			}
 		};
 
 		if (this.getMode() === 'trigger') {
-			await manualTriggerFunction();
+			void manualTriggerFunction();
 		}
 
 		async function closeFunction() {
-			client.quit();
+			await client.quit();
 		}
 
 		return {

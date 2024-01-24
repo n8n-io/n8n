@@ -64,7 +64,7 @@ export class OpenAiAssistant implements INodeType {
 				default: 'existing',
 				options: [
 					{
-						name: 'Create New Assistant',
+						name: 'Use New Assistant',
 						value: 'new',
 					},
 					{
@@ -94,7 +94,6 @@ export class OpenAiAssistant implements INodeType {
 				typeOptions: {
 					rows: 5,
 				},
-				required: true,
 				displayOptions: {
 					show: {
 						'/mode': ['new'],
@@ -225,6 +224,23 @@ export class OpenAiAssistant implements INodeType {
 				type: 'string',
 				required: true,
 				default: '={{ $json.chat_input }}',
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
+			},
+			{
+				displayName: 'Text',
+				name: 'text',
+				type: 'string',
+				required: true,
+				default: '={{ $json.chatInput }}',
+				displayOptions: {
+					show: {
+						'@version': [1.1],
+					},
+				},
 			},
 			{
 				displayName: 'OpenAI Tools',
@@ -237,10 +253,27 @@ export class OpenAiAssistant implements INodeType {
 						value: 'code_interpreter',
 					},
 					{
-						name: 'Retrieval',
+						name: 'Knowledge Retrieval',
 						value: 'retrieval',
 					},
 				],
+			},
+			{
+				displayName: 'Connect your own custom tools to this node on the canvas',
+				name: 'noticeTools',
+				type: 'notice',
+				default: '',
+			},
+			{
+				displayName:
+					'Upload files for retrieval using the <a href="https://platform.openai.com/playground" target="_blank">OpenAI website<a/>',
+				name: 'noticeTools',
+				type: 'notice',
+				typeOptions: {
+					noticeTheme: 'info',
+				},
+				displayOptions: { show: { '/nativeTools': ['retrieval'] } },
+				default: '',
 			},
 			{
 				displayName: 'Options',
@@ -347,6 +380,6 @@ export class OpenAiAssistant implements INodeType {
 			returnData.push({ json: response });
 		}
 
-		return this.prepareOutputData(returnData);
+		return await this.prepareOutputData(returnData);
 	}
 }

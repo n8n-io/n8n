@@ -7,7 +7,7 @@ import type {
 	IHttpRequestOptions,
 	INodeExecutionData,
 } from 'n8n-workflow';
-import { deepCopy } from 'n8n-workflow';
+import { ApplicationError, deepCopy } from 'n8n-workflow';
 
 import type { IRequestBody } from './types';
 
@@ -43,13 +43,13 @@ export async function awsApiRequest(
 
 		if (statusCode === 403) {
 			if (errorMessage === 'The security token included in the request is invalid.') {
-				throw new Error('The AWS credentials are not valid!');
+				throw new ApplicationError('The AWS credentials are not valid!', { level: 'warning' });
 			} else if (
 				errorMessage.startsWith(
 					'The request signature we calculated does not match the signature you provided',
 				)
 			) {
-				throw new Error('The AWS credentials are not valid!');
+				throw new ApplicationError('The AWS credentials are not valid!', { level: 'warning' });
 			}
 		}
 
@@ -59,7 +59,9 @@ export async function awsApiRequest(
 			} catch (ex) {}
 		}
 
-		throw new Error(`AWS error response [${statusCode}]: ${errorMessage}`);
+		throw new ApplicationError(`AWS error response [${statusCode}]: ${errorMessage}`, {
+			level: 'warning',
+		});
 	}
 }
 

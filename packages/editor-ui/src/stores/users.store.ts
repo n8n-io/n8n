@@ -1,3 +1,4 @@
+import type { UpdateGlobalRolePayload } from '@/api/users';
 import {
 	changePassword,
 	deleteUser,
@@ -15,7 +16,7 @@ import {
 	updateOtherUserSettings,
 	validatePasswordToken,
 	validateSignupToken,
-	updateRole,
+	updateGlobalRole,
 } from '@/api/users';
 import { PERSONALIZATION_MODAL_KEY, STORES } from '@/constants';
 import type {
@@ -28,6 +29,7 @@ import type {
 	IUserResponse,
 	IUsersState,
 	CurrentUserResponse,
+	InvitableRoleName,
 } from '@/Interface';
 import { getCredentialPermissions } from '@/permissions';
 import { getPersonalizedNodeTypes, ROLE } from '@/utils/userUtils';
@@ -40,7 +42,7 @@ import { useCloudPlanStore } from './cloudPlan.store';
 import { disableMfa, enableMfa, getMfaQR, verifyMfaToken } from '@/api/mfa';
 import { confirmEmail, getCloudUserInfo } from '@/api/cloudPlans';
 import { useRBACStore } from '@/stores/rbac.store';
-import type { Scope, ScopeLevel } from '@n8n/permissions';
+import type { Scope } from '@n8n/permissions';
 import { inviteUsers, acceptInvitation } from '@/api/invitation';
 
 const isPendingUser = (user: IUserResponse | null) => !!user?.isPending;
@@ -213,7 +215,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			inviterId: string;
 		}): Promise<{ inviter: { firstName: string; lastName: string } }> {
 			const rootStore = useRootStore();
-			return validateSignupToken(rootStore.getRestApiContext, params);
+			return await validateSignupToken(rootStore.getRestApiContext, params);
 		},
 		async acceptInvitation(params: {
 			inviteeId: string;
@@ -301,24 +303,30 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			const users = await getUsers(rootStore.getRestApiContext);
 			this.addUsers(users);
 		},
-		async inviteUsers(params: Array<{ email: string }>): Promise<IInviteResponse[]> {
+		async inviteUsers(
+			params: Array<{ email: string; role: InvitableRoleName }>,
+		): Promise<IInviteResponse[]> {
 			const rootStore = useRootStore();
 			const users = await inviteUsers(rootStore.getRestApiContext, params);
-			this.addUsers(users.map(({ user }) => ({ isPending: true, ...user })));
+			this.addUsers(
+				users.map(({ user }, index) => ({
+					isPending: true,
+					globalRole: { name: params[index].role },
+					...user,
+				})),
+			);
 			return users;
 		},
-		async reinviteUser(params: { email: string }): Promise<void> {
+		async reinviteUser({ email, role }: { email: string; role: InvitableRoleName }): Promise<void> {
 			const rootStore = useRootStore();
-			const invitationResponse = await inviteUsers(rootStore.getRestApiContext, [
-				{ email: params.email },
-			]);
+			const invitationResponse = await inviteUsers(rootStore.getRestApiContext, [{ email, role }]);
 			if (!invitationResponse[0].user.emailSent) {
 				throw Error(invitationResponse[0].error);
 			}
 		},
 		async getUserPasswordResetLink(params: { id: string }): Promise<{ link: string }> {
 			const rootStore = useRootStore();
-			return getPasswordResetLink(rootStore.getRestApiContext, params);
+			return await getPasswordResetLink(rootStore.getRestApiContext, params);
 		},
 		async submitPersonalizationSurvey(results: IPersonalizationLatestVersion): Promise<void> {
 			const rootStore = useRootStore();
@@ -336,11 +344,11 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		},
 		async getMfaQR(): Promise<{ qrCode: string; secret: string; recoveryCodes: string[] }> {
 			const rootStore = useRootStore();
-			return getMfaQR(rootStore.getRestApiContext);
+			return await getMfaQR(rootStore.getRestApiContext);
 		},
 		async verifyMfaToken(data: { token: string }): Promise<void> {
 			const rootStore = useRootStore();
-			return verifyMfaToken(rootStore.getRestApiContext, data);
+			return await verifyMfaToken(rootStore.getRestApiContext, data);
 		},
 		async enableMfa(data: { token: string }) {
 			const rootStore = useRootStore();
@@ -373,9 +381,9 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			await confirmEmail(useRootStore().getRestApiContext);
 		},
 
-		async updateRole({ id, role }: { id: string; role: { scope: ScopeLevel; name: IRole } }) {
+		async updateGlobalRole({ id, newRoleName }: UpdateGlobalRolePayload) {
 			const rootStore = useRootStore();
-			await updateRole(rootStore.getRestApiContext, { id, role });
+			await updateGlobalRole(rootStore.getRestApiContext, { id, newRoleName });
 			await this.fetchUsers();
 		},
 	},

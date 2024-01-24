@@ -1,12 +1,10 @@
 import { Authorized, Get, Post, RestController, RequireGlobalScope } from '@/decorators';
 import { ExternalSecretsRequest } from '@/requests';
 import { Response } from 'express';
-import { Service } from 'typedi';
 import { ExternalSecretsService } from './ExternalSecrets.service.ee';
 import { ExternalSecretsProviderNotFoundError } from '@/errors/external-secrets-provider-not-found.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-@Service()
 @Authorized()
 @RestController('/external-secrets')
 export class ExternalSecretsController {
@@ -15,7 +13,7 @@ export class ExternalSecretsController {
 	@Get('/providers')
 	@RequireGlobalScope('externalSecretsProvider:list')
 	async getProviders() {
-		return this.secretsService.getProviders();
+		return await this.secretsService.getProviders();
 	}
 
 	@Get('/providers/:provider')

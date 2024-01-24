@@ -59,7 +59,7 @@ export function subcategorizeItems(items: SimplifiedNodeType[]) {
 
 export function sortNodeCreateElements(nodes: INodeCreateElement[]) {
 	return nodes.sort((a, b) => {
-		if (a.type !== 'node' || b.type !== 'node') return -1;
+		if (a.type !== 'node' || b.type !== 'node') return 0;
 		const displayNameA = a.properties?.displayName?.toLowerCase() || a.key;
 		const displayNameB = b.properties?.displayName?.toLowerCase() || b.key;
 
@@ -101,16 +101,16 @@ export function groupItemsInSections(
 				type: 'section',
 				key: section.key,
 				title: section.title,
-				children: itemsBySection[section.key],
+				children: sortNodeCreateElements(itemsBySection[section.key] ?? []),
 			}),
 		)
 		.concat({
 			type: 'section',
 			key: 'other',
 			title: i18n.baseText('nodeCreator.sectionNames.other'),
-			children: itemsBySection.other,
+			children: sortNodeCreateElements(itemsBySection.other ?? []),
 		})
-		.filter((section) => section.children);
+		.filter((section) => section.children.length > 0);
 
 	if (result.length <= 1) {
 		return items;

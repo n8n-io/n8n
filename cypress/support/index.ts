@@ -23,6 +23,7 @@ declare global {
 			findChildByTestId(childTestId: string): Chainable<JQuery<HTMLElement>>;
 			createFixtureWorkflow(fixtureKey: string, workflowName: string): void;
 			signin(payload: SigninPayload): void;
+			signinAsOwner(): void;
 			signout(): void;
 			interceptREST(method: string, url: string): Chainable<Interception>;
 			enableFeature(feature: string): void;
@@ -41,6 +42,14 @@ declare global {
 			draganddrop(draggableSelector: string, droppableSelector: string): void;
 			push(type: string, data: unknown): void;
 			shouldNotHaveConsoleErrors(): void;
+			window(): Chainable<
+				AUTWindow & {
+					featureFlags: {
+						override: (feature: string, value: any) => void;
+					};
+				}
+			>;
+			resetDatabase(): void;
 		}
 	}
 }

@@ -38,7 +38,7 @@ export class VectorStoreSupabaseInsert implements INodeType {
 			resources: {
 				primaryDocumentation: [
 					{
-						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstoresupabaseinsert/',
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstoresupabase/',
 					},
 				],
 			},
@@ -122,6 +122,6 @@ export class VectorStoreSupabaseInsert implements INodeType {
 			queryName,
 		});
 
-		return this.prepareOutputData(serializedDocuments);
+		return await this.prepareOutputData(serializedDocuments);
 	}
 }

@@ -385,6 +385,10 @@
 						</svg>
 					</a>
 				</div>
+				{{#if redirectUrl}}
+					<a id='redirectUrl' href='{{redirectUrl}}' style='display: none;'></a>
+				{{/if}}
+				<input id="useResponseData" style="display: none;" value={{useResponseData}} />
 			</section>
 		</div>
 		<script>
@@ -483,19 +487,42 @@
 					document.querySelector('#submit-btn').disabled = true;
 					document.querySelector('#submit-btn').style.cursor = 'not-allowed';
 					document.querySelector('#submit-btn span').style.display = 'inline-block';
-					fetch('#', {
+					fetch('', {
 						method: 'POST',
 						body: formData,
 					})
 						.then(async function (response) {
-							const data = await response.json();
-							data.status = response.status;
-							return data;
-						})
-						.then(function (data) {
-							if (data.status === 200) {
-								form.style.display = 'none';
-								document.querySelector('#submitted-form').style.display = 'block';
+							const useResponseData = document.getElementById("useResponseData").value;
+
+							if (useResponseData === "true") {
+								const text = await response.text();
+								let json;
+
+								try{
+									json = JSON.parse(text);
+								} catch (e) {}
+
+								if (json?.redirectURL) {
+									const url = json.redirectURL.includes("://") ? json.redirectURL : "https://" + json.redirectURL;
+									window.location.replace(url);
+								} else if (json?.formSubmittedText) {
+									form.style.display = 'none';
+									document.querySelector('#submitted-form').style.display = 'block';
+									document.querySelector('#submitted-content').textContent = json.formSubmittedText;
+								} else {
+									document.body.innerHTML = text;
+								}
+								return;
+							}
+
+							if (response.status === 200) {
+								const redirectUrl = document.getElementById("redirectUrl");
+								if (redirectUrl) {
+									window.location.replace(redirectUrl.href);
+								} else {
+									form.style.display = 'none';
+									document.querySelector('#submitted-form').style.display = 'block';
+								}
 							} else {
 								form.style.display = 'none';
 								document.querySelector('#submitted-form').style.display = 'block';
@@ -503,6 +530,8 @@
 								document.querySelector('#submitted-content').textContent =
 									'An error occurred in the workflow handling this form';
 							}
+
+							return;
 						})
 						.catch(function (error) {
 							console.error('Error:', error);

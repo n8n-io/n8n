@@ -153,6 +153,9 @@ const config = (module.exports = {
 		 */
 		'@typescript-eslint/array-type': ['error', { default: 'array-simple' }],
 
+		/** https://typescript-eslint.io/rules/await-thenable/ */
+		'@typescript-eslint/await-thenable': 'error',
+
 		/**
 		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/ban-ts-comment.md
 		 */
@@ -330,8 +333,13 @@ const config = (module.exports = {
 			{
 				selector: 'import',
 				format: ['camelCase', 'PascalCase'],
-			}
+			},
 		],
+
+		/**
+		 * https://github.com/typescript-eslint/typescript-eslint/blob/main/packages/eslint-plugin/docs/rules/return-await.md
+		 */
+		'@typescript-eslint/return-await': ['error', 'always'],
 
 		// ----------------------------------
 		//       eslint-plugin-import
@@ -360,6 +368,7 @@ const config = (module.exports = {
 		// ----------------------------------
 		//   eslint-plugin-n8n-local-rules
 		// ----------------------------------
+
 		'n8n-local-rules/no-uncaught-json-parse': 'error',
 
 		'n8n-local-rules/no-json-parse-json-stringify': 'error',
@@ -369,6 +378,8 @@ const config = (module.exports = {
 		'n8n-local-rules/no-interpolation-in-regular-string': 'error',
 
 		'n8n-local-rules/no-unused-param-in-catch-clause': 'error',
+
+		'n8n-local-rules/no-plain-errors': 'error',
 
 		// ******************************************************************
 		//                    overrides to base ruleset
@@ -467,13 +478,13 @@ const config = (module.exports = {
 			},
 		},
 		{
-			files: ['test/**/*.ts', 'src/__tests__/*.ts'],
+			files: ['test/**/*.ts', '**/__tests__/*.ts'],
 			rules: {
+				'n8n-local-rules/no-plain-errors': 'off',
 				'n8n-local-rules/no-skipped-tests':
 					process.env.NODE_ENV === 'development' ? 'warn' : 'error',
 
 				// TODO: Remove these
-				'@typescript-eslint/await-thenable': 'off',
 				'@typescript-eslint/ban-ts-comment': 'off',
 				'@typescript-eslint/naming-convention': 'off',
 				'import/no-duplicates': 'off',

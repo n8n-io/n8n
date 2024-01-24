@@ -9,18 +9,18 @@ import type {
 	JsonObject,
 	IDataObject,
 	IStatusCodeMessages,
-	Severity,
 	Functionality,
 } from '../Interfaces';
 import { NodeError } from './abstract/node.error';
 import { removeCircularRefs } from '../utils';
+import type { ReportingOptions } from './application.error';
 
 export interface NodeOperationErrorOptions {
 	message?: string;
 	description?: string;
 	runIndex?: number;
 	itemIndex?: number;
-	severity?: Severity;
+	level?: ReportingOptions['level'];
 	messageMapping?: { [key: string]: string }; // allows to pass custom mapping for error messages scoped to a node
 	functionality?: Functionality;
 }
@@ -120,7 +120,7 @@ export class NodeApiError extends NodeError {
 			parseXml,
 			runIndex,
 			itemIndex,
-			severity,
+			level,
 			functionality,
 			messageMapping,
 		}: NodeApiErrorOptions = {},
@@ -174,10 +174,10 @@ export class NodeApiError extends NodeError {
 				this.findProperty(errorResponse, ERROR_STATUS_PROPERTIES, ERROR_NESTING_PROPERTIES) ?? null;
 		}
 
-		if (severity) {
-			this.severity = severity;
+		if (level) {
+			this.level = level;
 		} else if (this.httpCode?.charAt(0) !== '5') {
-			this.severity = 'warning';
+			this.level = 'warning';
 		}
 
 		// set description of this error

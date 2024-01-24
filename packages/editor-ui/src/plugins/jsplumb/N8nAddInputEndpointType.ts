@@ -33,11 +33,6 @@ export class N8nAddInputEndpoint extends EndpointRepresentation<ComputedN8nAddIn
 
 	type = N8nAddInputEndpoint.type;
 
-	setupOverlays() {
-		this.endpoint.instance.setSuspendDrawing(true);
-		this.endpoint.instance.setSuspendDrawing(false);
-	}
-
 	bindEvents() {
 		this.instance.bind(EVENT_ENDPOINT_CLICK, this.fireClickEvent);
 	}

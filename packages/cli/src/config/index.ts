@@ -14,7 +14,6 @@ if (inE2ETests) {
 	process.env.N8N_AI_ENABLED = 'true';
 } else if (inTest) {
 	process.env.N8N_LOG_LEVEL = 'silent';
-	process.env.N8N_ENCRYPTION_KEY = 'test-encryption-key';
 	process.env.N8N_PUBLIC_API_DISABLED = 'true';
 	process.env.SKIP_STATISTICS_EVENTS = 'true';
 } else {
@@ -63,9 +62,18 @@ if (!inE2ETests && !inTest) {
 	});
 }
 
+// Validate Configuration
 config.validate({
 	allowed: 'strict',
 });
+const userManagement = config.get('userManagement');
+if (userManagement.jwtRefreshTimeoutHours >= userManagement.jwtSessionDurationHours) {
+	console.warn(
+		'N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS needs to smaller than N8N_USER_MANAGEMENT_JWT_DURATION_HOURS. Setting N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS to 0 for now.',
+	);
+
+	config.set('userManagement.jwtRefreshTimeoutHours', 0);
+}
 
 setGlobalState({
 	defaultTimezone: config.getEnv('generic.timezone'),
@@ -73,4 +81,3 @@ setGlobalState({
 
 // eslint-disable-next-line import/no-default-export
 export default config;
-export type Config = typeof config;

@@ -1,3 +1,4 @@
+import { META_KEY } from '../constants';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 import { getPopper } from '../utils';
 import { Interception } from 'cypress/types/net-stubbing';
@@ -34,6 +35,14 @@ describe('Canvas Actions', () => {
 		workflowPage.actions.deselectAll();
 		workflowPage.actions.addStickyFromContextMenu();
 		workflowPage.actions.hitAddStickyShortcut();
+
+		workflowPage.getters.stickies().should('have.length', 3);
+
+		// Should not add a sticky for ctrl+shift+s
+		cy.get('body')
+			.type(META_KEY, { delay: 500, release: false })
+			.type('{shift}', { release: false })
+			.type('s');
 
 		workflowPage.getters.stickies().should('have.length', 3);
 		workflowPage.getters

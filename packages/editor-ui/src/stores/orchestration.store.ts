@@ -7,6 +7,7 @@ export const WORKER_HISTORY_LENGTH = 100;
 const STALE_SECONDS = 120 * 1000;
 
 export interface IOrchestrationStoreState {
+	initialStatusReceived: boolean;
 	workers: { [id: string]: IPushDataWorkerStatusPayload };
 	workersHistory: {
 		[id: string]: IWorkerHistoryItem[];
@@ -22,6 +23,7 @@ export interface IWorkerHistoryItem {
 
 export const useOrchestrationStore = defineStore('orchestrationManager', {
 	state: (): IOrchestrationStoreState => ({
+		initialStatusReceived: false,
 		workers: {},
 		workersHistory: {},
 		workersLastUpdated: {},
@@ -38,6 +40,8 @@ export const useOrchestrationStore = defineStore('orchestrationManager', {
 				this.workersHistory[data.workerId].shift();
 			}
 			this.workersLastUpdated[data.workerId] = Date.now();
+
+			this.initialStatusReceived = true;
 		},
 		removeStaleWorkers() {
 			for (const id in this.workersLastUpdated) {

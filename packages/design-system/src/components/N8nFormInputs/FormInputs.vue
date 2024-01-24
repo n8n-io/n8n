@@ -8,8 +8,8 @@
 					:class="{ [`mt-${verticalSpacing}`]: verticalSpacing && index > 0 }"
 				>
 					<n8n-text
-						color="text-base"
 						v-if="input.properties.type === 'info'"
+						color="text-base"
 						tag="div"
 						:size="input.properties.labelSize"
 						:align="input.properties.labelAlignment"
@@ -17,16 +17,16 @@
 					>
 						{{ input.properties.label }}
 					</n8n-text>
-					<n8n-form-input
+					<N8nFormInput
 						v-else
 						v-bind="input.properties"
 						:name="input.name"
 						:label="input.properties.label || ''"
-						:modelValue="values[input.name]"
+						:model-value="values[input.name]"
 						:data-test-id="input.name"
-						:showValidationWarnings="showValidationWarnings"
+						:show-validation-warnings="showValidationWarnings"
 						:teleported="teleported"
-						:tagSize="tagSize"
+						:tag-size="tagSize"
 						@update:modelValue="(value) => onUpdateModelValue(input.name, value)"
 						@validate="(value) => onValidate(input.name, value)"
 						@enter="onSubmit"
@@ -47,7 +47,7 @@ import type { EventBus } from '../../utils';
 import { createEventBus } from '../../utils';
 
 export default defineComponent({
-	name: 'n8n-form-inputs',
+	name: 'N8nFormInputs',
 	components: {
 		N8nFormInput,
 		ResizeObserver,
@@ -87,20 +87,6 @@ export default defineComponent({
 			validity: {} as { [key: string]: boolean },
 		};
 	},
-	mounted() {
-		this.inputs.forEach((input) => {
-			if (input.hasOwnProperty('initialValue')) {
-				this.values = {
-					...this.values,
-					[input.name]: input.initialValue,
-				};
-			}
-		});
-
-		if (this.eventBus) {
-			this.eventBus.on('submit', () => this.onSubmit());
-		}
-	},
 	computed: {
 		filteredInputs(): IFormInput[] {
 			return this.inputs.filter((input) =>
@@ -117,6 +103,25 @@ export default defineComponent({
 			return true;
 		},
 	},
+	watch: {
+		isReadyToSubmit(ready: boolean) {
+			this.$emit('ready', ready);
+		},
+	},
+	mounted() {
+		this.inputs.forEach((input) => {
+			if (input.hasOwnProperty('initialValue')) {
+				this.values = {
+					...this.values,
+					[input.name]: input.initialValue,
+				};
+			}
+		});
+
+		if (this.eventBus) {
+			this.eventBus.on('submit', () => this.onSubmit());
+		}
+	},
 	methods: {
 		onUpdateModelValue(name: string, value: unknown) {
 			this.values = {
@@ -124,6 +129,7 @@ export default defineComponent({
 				[name]: value,
 			};
 			this.$emit('update', { name, value });
+			this.$emit('update:modelValue', this.values);
 		},
 		onValidate(name: string, valid: boolean) {
 			this.validity = {
@@ -143,11 +149,6 @@ export default defineComponent({
 				}, {});
 				this.$emit('submit', toSubmit);
 			}
-		},
-	},
-	watch: {
-		isReadyToSubmit(ready: boolean) {
-			this.$emit('ready', ready);
 		},
 	},
 });

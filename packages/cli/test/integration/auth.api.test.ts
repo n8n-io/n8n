@@ -12,6 +12,7 @@ import * as utils from './shared/utils/';
 import { getGlobalMemberRole, getGlobalOwnerRole } from './shared/db/roles';
 import { createUser, createUserShell } from './shared/db/users';
 import { UserRepository } from '@db/repositories/user.repository';
+import { MfaService } from '@/Mfa/mfa.service';
 
 let globalOwnerRole: Role;
 let globalMemberRole: Role;
@@ -22,9 +23,12 @@ const ownerPassword = randomValidPassword();
 const testServer = utils.setupTestServer({ endpointGroups: ['auth'] });
 const license = testServer.license;
 
+let mfaService: MfaService;
+
 beforeAll(async () => {
 	globalOwnerRole = await getGlobalOwnerRole();
 	globalMemberRole = await getGlobalMemberRole();
+	mfaService = Container.get(MfaService);
 });
 
 beforeEach(async () => {
@@ -59,6 +63,8 @@ describe('POST /login', () => {
 			globalRole,
 			apiKey,
 			globalScopes,
+			mfaSecret,
+			mfaRecoveryCodes,
 		} = response.body.data;
 
 		expect(validator.isUUID(id)).toBe(true);
@@ -73,6 +79,53 @@ describe('POST /login', () => {
 		expect(globalRole.scope).toBe('global');
 		expect(apiKey).toBeUndefined();
 		expect(globalScopes).toBeDefined();
+		expect(mfaRecoveryCodes).toBeUndefined();
+		expect(mfaSecret).toBeUndefined();
+
+		const authToken = utils.getAuthToken(response);
+		expect(authToken).toBeDefined();
+	});
+
+	test('should log user with MFA enabled', async () => {
+		const secret = 'test';
+		const recoveryCodes = ['1'];
+		await mfaService.saveSecretAndRecoveryCodes(owner.id, secret, recoveryCodes);
+		await mfaService.enableMfa(owner.id);
+
+		const response = await testServer.authlessAgent.post('/login').send({
+			email: owner.email,
+			password: ownerPassword,
+			mfaToken: mfaService.totp.generateTOTP(secret),
+		});
+
+		expect(response.statusCode).toBe(200);
+
+		const {
+			id,
+			email,
+			firstName,
+			lastName,
+			password,
+			personalizationAnswers,
+			globalRole,
+			apiKey,
+			mfaRecoveryCodes,
+			mfaSecret,
+		} = response.body.data;
+
+		expect(validator.isUUID(id)).toBe(true);
+		expect(email).toBe(owner.email);
+		expect(firstName).toBe(owner.firstName);
+		expect(lastName).toBe(owner.lastName);
+		expect(password).toBeUndefined();
+		expect(personalizationAnswers).toBeNull();
+		expect(password).toBeUndefined();
+		expect(globalRole).toBeDefined();
+		expect(globalRole.name).toBe('owner');
+		expect(globalRole.scope).toBe('global');
+		expect(apiKey).toBeUndefined();
+		expect(mfaRecoveryCodes).toBeUndefined();
+		expect(mfaSecret).toBeUndefined();
 
 		const authToken = utils.getAuthToken(response);
 		expect(authToken).toBeDefined();

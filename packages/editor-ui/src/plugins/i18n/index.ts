@@ -23,6 +23,8 @@ export const i18nInstance = createI18n({
 });
 
 export class I18nClass {
+	private baseTextCache = new Map<string, string>();
+
 	private get i18n() {
 		return i18nInstance.global;
 	}
@@ -50,11 +52,25 @@ export class I18nClass {
 		key: BaseTextKey,
 		options?: { adjustToNumber?: number; interpolate?: { [key: string]: string } },
 	): string {
-		if (options?.adjustToNumber !== undefined) {
-			return this.i18n.tc(key, options.adjustToNumber, options?.interpolate).toString();
+		// Create a unique cache key
+		const cacheKey = `${key}-${JSON.stringify(options)}`;
+
+		// Check if the result is already cached
+		if (this.baseTextCache.has(cacheKey)) {
+			return this.baseTextCache.get(cacheKey) ?? key;
 		}
 
-		return this.i18n.t(key, options?.interpolate).toString();
+		let result: string;
+		if (options?.adjustToNumber !== undefined) {
+			result = this.i18n.tc(key, options.adjustToNumber, options?.interpolate ?? {}).toString();
+		} else {
+			result = this.i18n.t(key, options?.interpolate ?? {}).toString();
+		}
+
+		// Store the result in the cache
+		this.baseTextCache.set(cacheKey, result);
+
+		return result;
 	}
 
 	/**
@@ -62,6 +78,22 @@ export class I18nClass {
 	 */
 	private dynamicRender({ key, fallback }: { key: string; fallback?: string }) {
 		return this.i18n.te(key) ? this.i18n.t(key).toString() : fallback ?? '';
+	}
+
+	displayTimer(msPassed: number, showMs = false): string {
+		if (msPassed < 60000) {
+			if (!showMs) {
+				return `${Math.floor(msPassed / 1000)}${this.baseText('genericHelpers.secShort')}`;
+			}
+
+			return `${msPassed / 1000}${this.baseText('genericHelpers.secShort')}`;
+		}
+
+		const secondsPassed = Math.floor(msPassed / 1000);
+		const minutesPassed = Math.floor(secondsPassed / 60);
+		const secondsLeft = (secondsPassed - minutesPassed * 60).toString().padStart(2, '0');
+
+		return `${minutesPassed}:${secondsLeft}${this.baseText('genericHelpers.minShort')}`;
 	}
 
 	/**
@@ -366,6 +398,7 @@ export class I18nClass {
 		'$execution.id': this.baseText('codeNodeEditor.completer.$workflow.id'),
 		'$execution.mode': this.baseText('codeNodeEditor.completer.$execution.mode'),
 		'$execution.resumeUrl': this.baseText('codeNodeEditor.completer.$execution.resumeUrl'),
+		'$execution.resumeFormUrl': this.baseText('codeNodeEditor.completer.$execution.resumeFormUrl'),
 
 		'$workflow.active': this.baseText('codeNodeEditor.completer.$workflow.active'),
 		'$workflow.id': this.baseText('codeNodeEditor.completer.$workflow.id'),
@@ -526,11 +559,11 @@ export async function loadLanguage(language?: string) {
 	if (!language) return;
 
 	if (i18nInstance.global.locale === language) {
-		return setLanguage(language);
+		return await setLanguage(language);
 	}
 
 	if (loadedLanguages.includes(language)) {
-		return setLanguage(language);
+		return await setLanguage(language);
 	}
 
 	const { numberFormats, ...rest } = (await import(`./locales/${language}.json`)).default;
@@ -543,7 +576,7 @@ export async function loadLanguage(language?: string) {
 
 	loadedLanguages.push(language);
 
-	return setLanguage(language);
+	return await setLanguage(language);
 }
 
 /**

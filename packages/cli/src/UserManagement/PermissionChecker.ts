@@ -1,25 +1,33 @@
+import { Service } from 'typedi';
 import type { INode, Workflow } from 'n8n-workflow';
-import { NodeOperationError, SubworkflowOperationError } from 'n8n-workflow';
-import type { FindOptionsWhere } from 'typeorm';
-import { In } from 'typeorm';
+import { NodeOperationError, WorkflowOperationError } from 'n8n-workflow';
+
 import config from '@/config';
-import type { SharedCredentials } from '@db/entities/SharedCredentials';
-import { isSharingEnabled } from './UserManagementHelper';
+import { License } from '@/License';
 import { OwnershipService } from '@/services/ownership.service';
-import Container from 'typedi';
 import { RoleService } from '@/services/role.service';
 import { UserRepository } from '@db/repositories/user.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 
+@Service()
 export class PermissionChecker {
+	constructor(
+		private readonly userRepository: UserRepository,
+		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly roleService: RoleService,
+		private readonly ownershipService: OwnershipService,
+		private readonly license: License,
+	) {}
+
 	/**
 	 * Check if a user is permitted to execute a workflow.
 	 */
-	static async check(workflow: Workflow, userId: string) {
+	async check(workflow: Workflow, userId: string) {
 		// allow if no nodes in this workflow use creds
 
-		const credIdsToNodes = PermissionChecker.mapCredIdsToNodes(workflow);
+		const credIdsToNodes = this.mapCredIdsToNodes(workflow);
 
 		const workflowCredIds = Object.keys(credIdsToNodes);
 
@@ -27,20 +35,20 @@ export class PermissionChecker {
 
 		// allow if requesting user is instance owner
 
-		const user = await Container.get(UserRepository).findOneOrFail({
+		const user = await this.userRepository.findOneOrFail({
 			where: { id: userId },
 			relations: ['globalRole'],
 		});
 
-		if (await user.hasGlobalScope('workflow:execute')) return;
+		if (user.hasGlobalScope('workflow:execute')) return;
 
 		// allow if all creds used in this workflow are a subset of
 		// all creds accessible to users who have access to this workflow
 
 		let workflowUserIds = [userId];
 
-		if (workflow.id && isSharingEnabled()) {
-			const workflowSharings = await Container.get(SharedWorkflowRepository).find({
+		if (workflow.id && this.license.isSharingEnabled()) {
+			const workflowSharings = await this.sharedWorkflowRepository.find({
 				relations: ['workflow'],
 				where: { workflowId: workflow.id },
 				select: ['userId'],
@@ -48,17 +56,12 @@ export class PermissionChecker {
 			workflowUserIds = workflowSharings.map((s) => s.userId);
 		}
 
-		const credentialsWhere: FindOptionsWhere<SharedCredentials> = { userId: In(workflowUserIds) };
+		const roleId = await this.roleService.findCredentialOwnerRoleId();
 
-		if (!isSharingEnabled()) {
-			const role = await Container.get(RoleService).findCredentialOwnerRole();
-			// If credential sharing is not enabled, get only credentials owned by this user
-			credentialsWhere.roleId = role.id;
-		}
-
-		const credentialSharings = await Container.get(SharedCredentialsRepository).find({
-			where: credentialsWhere,
-		});
+		const credentialSharings = await this.sharedCredentialsRepository.findSharings(
+			workflowUserIds,
+			roleId,
+		);
 
 		const accessibleCredIds = credentialSharings.map((s) => s.credentialsId);
 
@@ -72,14 +75,14 @@ export class PermissionChecker {
 
 		throw new NodeOperationError(nodeToFlag, 'Node has no access to credential', {
 			description: 'Please recreate the credential or ask its owner to share it with you.',
-			severity: 'warning',
+			level: 'warning',
 		});
 	}
 
-	static async checkSubworkflowExecutePolicy(
+	async checkSubworkflowExecutePolicy(
 		subworkflow: Workflow,
-		userId: string,
-		parentWorkflowId?: string,
+		parentWorkflowId: string,
+		node?: INode,
 	) {
 		/**
 		 * Important considerations: both the current workflow and the parent can have empty IDs.
@@ -96,20 +99,25 @@ export class PermissionChecker {
 		let policy =
 			subworkflow.settings?.callerPolicy ?? config.getEnv('workflows.callerPolicyDefaultOption');
 
-		if (!isSharingEnabled()) {
+		if (!this.license.isSharingEnabled()) {
 			// Community version allows only same owner workflows
 			policy = 'workflowsFromSameOwner';
 		}
 
-		const subworkflowOwner = await Container.get(OwnershipService).getWorkflowOwnerCached(
-			subworkflow.id,
-		);
+		const parentWorkflowOwner =
+			await this.ownershipService.getWorkflowOwnerCached(parentWorkflowId);
 
-		const errorToThrow = new SubworkflowOperationError(
-			`Target workflow ID ${subworkflow.id ?? ''} may not be called`,
-			subworkflowOwner.id === userId
+		const subworkflowOwner = await this.ownershipService.getWorkflowOwnerCached(subworkflow.id);
+
+		const description =
+			subworkflowOwner.id === parentWorkflowOwner.id
 				? 'Change the settings of the sub-workflow so it can be called by this one.'
-				: `${subworkflowOwner.firstName} (${subworkflowOwner.email}) can make this change. You may need to tell them the ID of this workflow, which is ${subworkflow.id}`,
+				: `${subworkflowOwner.firstName} (${subworkflowOwner.email}) can make this change. You may need to tell them the ID of the sub-workflow, which is ${subworkflow.id}`;
+
+		const errorToThrow = new WorkflowOperationError(
+			`Target workflow ID ${subworkflow.id} may not be called`,
+			node,
+			description,
 		);
 
 		if (policy === 'none') {
@@ -130,14 +138,12 @@ export class PermissionChecker {
 			}
 		}
 
-		if (policy === 'workflowsFromSameOwner') {
-			if (subworkflowOwner?.id !== userId) {
-				throw errorToThrow;
-			}
+		if (policy === 'workflowsFromSameOwner' && subworkflowOwner?.id !== parentWorkflowOwner.id) {
+			throw errorToThrow;
 		}
 	}
 
-	private static mapCredIdsToNodes(workflow: Workflow) {
+	private mapCredIdsToNodes(workflow: Workflow) {
 		return Object.values(workflow.nodes).reduce<{ [credentialId: string]: INode[] }>(
 			(map, node) => {
 				if (node.disabled || !node.credentials) return map;
@@ -146,7 +152,7 @@ export class PermissionChecker {
 					if (!cred.id) {
 						throw new NodeOperationError(node, 'Node uses invalid credential', {
 							description: 'Please recreate the credential.',
-							severity: 'warning',
+							level: 'warning',
 						});
 					}
 

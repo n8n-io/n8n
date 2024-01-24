@@ -141,7 +141,7 @@ const openPricingPage = () => {
 			:class="$style.actionBox"
 			:heading="locale.baseText('settings.usageAndPlan.desktop.title')"
 			:description="locale.baseText('settings.usageAndPlan.desktop.description')"
-			:buttonText="locale.baseText('settings.usageAndPlan.button.plans')"
+			:button-text="locale.baseText('settings.usageAndPlan.button.plans')"
 			@click:button="openPricingPage"
 		/>
 		<div v-if="!usageStore.isDesktop && !usageStore.isLoading">
@@ -190,20 +190,20 @@ const openPricingPage = () => {
 
 			<div :class="$style.buttons">
 				<n8n-button
-					:class="$style.buttonTertiary"
-					@click="onAddActivationKey"
 					v-if="canUserActivateLicense"
+					:class="$style.buttonTertiary"
 					type="tertiary"
 					size="large"
+					@click="onAddActivationKey"
 				>
 					<span>{{ locale.baseText('settings.usageAndPlan.button.activation') }}</span>
 				</n8n-button>
-				<n8n-button v-if="usageStore.managementToken" @click="onManagePlan" size="large">
+				<n8n-button v-if="usageStore.managementToken" size="large" @click="onManagePlan">
 					<a :href="managePlanUrl" target="_blank">{{
 						locale.baseText('settings.usageAndPlan.button.manage')
 					}}</a>
 				</n8n-button>
-				<n8n-button v-else @click.prevent="onViewPlans" size="large">
+				<n8n-button v-else size="large" @click.prevent="onViewPlans">
 					<a :href="viewPlansUrl" target="_blank">{{
 						locale.baseText('settings.usageAndPlan.button.plans')
 					}}</a>
@@ -211,13 +211,13 @@ const openPricingPage = () => {
 			</div>
 
 			<el-dialog
+				v-model="activationKeyModal"
 				width="480px"
 				top="0"
-				@closed="onDialogClosed"
-				@opened="onDialogOpened"
-				v-model="activationKeyModal"
 				:title="locale.baseText('settings.usageAndPlan.dialog.activation.title')"
 				:modal-class="$style.center"
+				@closed="onDialogClosed"
+				@opened="onDialogOpened"
 			>
 				<template #default>
 					<n8n-input
@@ -227,7 +227,7 @@ const openPricingPage = () => {
 					/>
 				</template>
 				<template #footer>
-					<n8n-button @click="activationKeyModal = false" type="secondary">
+					<n8n-button type="secondary" @click="activationKeyModal = false">
 						{{ locale.baseText('settings.usageAndPlan.dialog.activation.cancel') }}
 					</n8n-button>
 					<n8n-button @click="onLicenseActivation">
@@ -240,7 +240,7 @@ const openPricingPage = () => {
 </template>
 
 <style lang="scss" module>
-@import '@/styles/css-animation-helpers.scss';
+@import '@/styles/variables';
 
 .center > div {
 	justify-content: center;

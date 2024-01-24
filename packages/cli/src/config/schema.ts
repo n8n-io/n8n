@@ -439,7 +439,7 @@ export const schema = {
 				env: 'QUEUE_RECOVERY_INTERVAL',
 			},
 			gracefulShutdownTimeout: {
-				doc: 'How long should n8n wait for running executions before exiting worker process',
+				doc: '[DEPRECATED] (Use N8N_GRACEFUL_SHUTDOWN_TIMEOUT instead) How long should n8n wait for running executions before exiting worker process (seconds)',
 				format: Number,
 				default: 30,
 				env: 'QUEUE_WORKER_TIMEOUT',
@@ -496,6 +496,13 @@ export const schema = {
 			format: ['stable', 'beta', 'nightly', 'dev'] as const,
 			default: 'dev',
 			env: 'N8N_RELEASE_TYPE',
+		},
+
+		gracefulShutdownTimeout: {
+			doc: 'How long should n8n process wait for components to shut down before exiting the process (seconds)',
+			format: Number,
+			default: 30,
+			env: 'N8N_GRACEFUL_SHUTDOWN_TIMEOUT',
 		},
 	},
 
@@ -668,6 +675,24 @@ export const schema = {
 			env: 'N8N_ENDPOINT_REST',
 			doc: 'Path for rest endpoint',
 		},
+		form: {
+			format: String,
+			default: 'form',
+			env: 'N8N_ENDPOINT_FORM',
+			doc: 'Path for form endpoint',
+		},
+		formTest: {
+			format: String,
+			default: 'form-test',
+			env: 'N8N_ENDPOINT_FORM_TEST',
+			doc: 'Path for test form endpoint',
+		},
+		formWaiting: {
+			format: String,
+			default: 'form-waiting',
+			env: 'N8N_ENDPOINT_FORM_WAIT',
+			doc: 'Path for waiting form endpoint',
+		},
 		webhook: {
 			format: String,
 			default: 'webhook',
@@ -736,6 +761,18 @@ export const schema = {
 			format: String,
 			default: '',
 			env: 'N8N_USER_MANAGEMENT_JWT_SECRET',
+		},
+		jwtSessionDurationHours: {
+			doc: 'Set a specific expiration date for the JWTs in hours.',
+			format: Number,
+			default: 168,
+			env: 'N8N_USER_MANAGEMENT_JWT_DURATION_HOURS',
+		},
+		jwtRefreshTimeoutHours: {
+			doc: 'How long before the JWT expires to automatically refresh it. 0 means 25% of N8N_USER_MANAGEMENT_JWT_DURATION_HOURS. -1 means it will never refresh, which forces users to login again after the defined period in N8N_USER_MANAGEMENT_JWT_DURATION_HOURS.',
+			format: Number,
+			default: 0,
+			env: 'N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS',
 		},
 		isInstanceOwnerSetUp: {
 			// n8n loads this setting from DB on startup
@@ -814,6 +851,18 @@ export const schema = {
 					format: String,
 					default: '',
 					env: 'N8N_UM_EMAIL_TEMPLATES_PWRESET',
+				},
+				workflowShared: {
+					doc: 'Overrides default HTML template for notifying that a workflow was shared (use full path)',
+					format: String,
+					default: '',
+					env: 'N8N_UM_EMAIL_TEMPLATES_WORKFLOW_SHARED',
+				},
+				credentialsShared: {
+					doc: 'Overrides default HTML template for notifying that credentials were shared (use full path)',
+					format: String,
+					default: '',
+					env: 'N8N_UM_EMAIL_TEMPLATES_CREDENTIALS_SHARED',
 				},
 			},
 		},
@@ -1007,6 +1056,21 @@ export const schema = {
 		},
 	},
 
+	externalSecrets: {
+		updateInterval: {
+			format: Number,
+			default: 300,
+			env: 'N8N_EXTERNAL_SECRETS_UPDATE_INTERVAL',
+			doc: 'How often (in seconds) to check for secret updates.',
+		},
+		preferGet: {
+			format: Boolean,
+			default: false,
+			env: 'N8N_EXTERNAL_SECRETS_PREFER_GET',
+			doc: 'Whether to prefer GET over LIST when fetching secrets from Hashicorp Vault.',
+		},
+	},
+
 	deployment: {
 		type: {
 			format: String,
@@ -1096,12 +1160,6 @@ export const schema = {
 					format: String,
 					default: 'https://ph.n8n.io',
 					env: 'N8N_DIAGNOSTICS_POSTHOG_API_HOST',
-				},
-				disableSessionRecording: {
-					doc: 'Disable posthog session recording',
-					format: Boolean,
-					default: true,
-					env: 'N8N_DIAGNOSTICS_POSTHOG_DISABLE_RECORDING',
 				},
 			},
 			sentry: {
@@ -1239,12 +1297,6 @@ export const schema = {
 	},
 
 	cache: {
-		enabled: {
-			doc: 'Whether caching is enabled',
-			format: Boolean,
-			default: true,
-			env: 'N8N_CACHE_ENABLED',
-		},
 		backend: {
 			doc: 'Backend to use for caching',
 			format: ['memory', 'redis', 'auto'] as const,

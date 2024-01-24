@@ -32,6 +32,7 @@ import type {
 	IRunExecutionData,
 	IWorkflowExecuteAdditionalData,
 	WorkflowExecuteMode,
+	CloseFunction,
 } from 'n8n-workflow';
 import {
 	LoggerProxy as Logger,
@@ -307,7 +308,7 @@ export class WorkflowExecute {
 			return;
 		}
 
-		return this.additionalData.hooks.executeHookFunctions(hookName, parameters);
+		return await this.additionalData.hooks.executeHookFunctions(hookName, parameters);
 	}
 
 	moveNodeMetadata(): void {
@@ -1074,7 +1075,7 @@ export class WorkflowExecute {
 
 									const errorItems: INodeExecutionData[] = [];
 									const successItems: INodeExecutionData[] = [];
-
+									const closeFunctions: CloseFunction[] = [];
 									// Create a WorkflowDataProxy instance that we can get the data of the
 									// item which did error
 									const executeFunctions = NodeExecuteFunctions.getExecuteFunctions(
@@ -1087,6 +1088,7 @@ export class WorkflowExecute {
 										this.additionalData,
 										executionData,
 										this.mode,
+										closeFunctions,
 										this.abortController.signal,
 									);
 									const dataProxy = executeFunctions.getWorkflowDataProxy(0);
@@ -1111,6 +1113,12 @@ export class WorkflowExecute {
 												errorData = item.error;
 												item.error = undefined;
 											} else if (item.json.error && Object.keys(item.json).length === 1) {
+												errorData = item.json.error;
+											} else if (
+												item.json.error &&
+												item.json.message &&
+												Object.keys(item.json).length === 2
+											) {
 												errorData = item.json.error;
 											}
 
@@ -1655,14 +1663,19 @@ export class WorkflowExecute {
 			})()
 				.then(async () => {
 					if (this.status === 'canceled' && executionError === undefined) {
-						return this.processSuccessExecution(
+						return await this.processSuccessExecution(
 							startedAt,
 							workflow,
 							new WorkflowOperationError('Workflow has been canceled or timed out!'),
 							closeFunction,
 						);
 					}
-					return this.processSuccessExecution(startedAt, workflow, executionError, closeFunction);
+					return await this.processSuccessExecution(
+						startedAt,
+						workflow,
+						executionError,
+						closeFunction,
+					);
 				})
 				.catch(async (error) => {
 					const fullRunData = this.getFullRunData(startedAt);
@@ -1706,7 +1719,7 @@ export class WorkflowExecute {
 					return fullRunData;
 				});
 
-			return returnPromise.then(resolve);
+			return await returnPromise.then(resolve);
 		});
 	}
 

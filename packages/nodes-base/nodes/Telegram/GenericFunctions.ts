@@ -235,3 +235,9 @@ export function getImageBySize(photos: IDataObject[], size: string): IDataObject
 export function getPropertyName(operation: string) {
 	return operation.replace('send', '').toLowerCase();
 }
+
+export function getSecretToken(this: IHookFunctions | IWebhookFunctions) {
+	// Only characters A-Z, a-z, 0-9, _ and - are allowed.
+	const secret_token = `${this.getWorkflow().id}_${this.getNode().id}`;
+	return secret_token.replace(/[^a-zA-Z0-9\_\-]+/g, '');
+}

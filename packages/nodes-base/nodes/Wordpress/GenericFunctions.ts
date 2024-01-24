@@ -30,6 +30,7 @@ export async function wordpressApiRequest(
 		qs,
 		body,
 		uri: uri || `${credentials.url}/wp-json/wp/v2${resource}`,
+		rejectUnauthorized: !credentials.allowUnauthorizedCerts,
 		json: true,
 	};
 	options = Object.assign({}, options, option);

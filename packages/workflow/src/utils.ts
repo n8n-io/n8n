@@ -89,7 +89,7 @@ type JSONStringifyOptions = {
 	replaceCircularRefs?: boolean;
 };
 
-const replaceCircularReferences = <T>(value: T, knownObjects = new WeakSet()): T => {
+export const replaceCircularReferences = <T>(value: T, knownObjects = new WeakSet()): T => {
 	if (typeof value !== 'object' || value === null || value instanceof RegExp) return value;
 	if ('toJSON' in value && typeof value.toJSON === 'function') return value.toJSON() as T;
 	if (knownObjects.has(value)) return '[Circular Reference]' as T;
@@ -107,7 +107,7 @@ export const jsonStringify = (obj: unknown, options: JSONStringifyOptions = {}):
 };
 
 export const sleep = async (ms: number): Promise<void> =>
-	new Promise((resolve) => {
+	await new Promise((resolve) => {
 		setTimeout(resolve, ms);
 	});
 

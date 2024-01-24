@@ -2,7 +2,6 @@ import { Container } from 'typedi';
 
 import { NodeApiError, NodeOperationError, Workflow } from 'n8n-workflow';
 import type { IWebhookData, WorkflowActivateMode } from 'n8n-workflow';
-import { ActiveWorkflows } from 'n8n-core';
 
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
@@ -18,21 +17,25 @@ import type { User } from '@db/entities/User';
 import type { WebhookEntity } from '@db/entities/WebhookEntity';
 import { NodeTypes } from '@/NodeTypes';
 import { chooseRandomly } from './shared/random';
-import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
+import { OrchestrationService } from '@/services/orchestration.service';
 import { mockInstance } from '../shared/mocking';
 import { setSchedulerAsLoadedNode } from './shared/utils';
 import * as testDb from './shared/testDb';
 import { createOwner } from './shared/db/users';
 import { createWorkflow } from './shared/db/workflows';
+import { ExecutionService } from '@/executions/execution.service';
+import { WorkflowService } from '@/workflows/workflow.service';
+import { ActiveWorkflowsService } from '@/services/activeWorkflows.service';
 
 mockInstance(ActiveExecutions);
-mockInstance(ActiveWorkflows);
 mockInstance(Push);
 mockInstance(SecretsHelper);
+mockInstance(ExecutionService);
+mockInstance(WorkflowService);
 
 const webhookService = mockInstance(WebhookService);
-const multiMainSetup = mockInstance(MultiMainSetup, {
-	isEnabled: false,
+const orchestrationService = mockInstance(OrchestrationService, {
+	isMultiMainSetupEnabled: false,
 	isLeader: false,
 	isFollower: false,
 });
@@ -41,6 +44,7 @@ setSchedulerAsLoadedNode();
 
 const externalHooks = mockInstance(ExternalHooks);
 
+let activeWorkflowsService: ActiveWorkflowsService;
 let activeWorkflowRunner: ActiveWorkflowRunner;
 let owner: User;
 
@@ -55,6 +59,7 @@ const NON_LEADERSHIP_CHANGE_MODES: WorkflowActivateMode[] = [
 beforeAll(async () => {
 	await testDb.init();
 
+	activeWorkflowsService = Container.get(ActiveWorkflowsService);
 	activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
 	owner = await createOwner();
 });
@@ -86,8 +91,8 @@ describe('init()', () => {
 	test('should start with no active workflows', async () => {
 		await activeWorkflowRunner.init();
 
-		const inStorage = activeWorkflowRunner.allActiveInStorage();
-		await expect(inStorage).resolves.toHaveLength(0);
+		const inStorage = await activeWorkflowsService.getAllActiveIdsInStorage();
+		expect(inStorage).toHaveLength(0);
 
 		const inMemory = activeWorkflowRunner.allActiveInMemory();
 		expect(inMemory).toHaveLength(0);
@@ -98,8 +103,8 @@ describe('init()', () => {
 
 		await activeWorkflowRunner.init();
 
-		const inStorage = activeWorkflowRunner.allActiveInStorage();
-		await expect(inStorage).resolves.toHaveLength(1);
+		const inStorage = await activeWorkflowsService.getAllActiveIdsInStorage();
+		expect(inStorage).toHaveLength(1);
 
 		const inMemory = activeWorkflowRunner.allActiveInMemory();
 		expect(inMemory).toHaveLength(1);
@@ -111,8 +116,8 @@ describe('init()', () => {
 
 		await activeWorkflowRunner.init();
 
-		const inStorage = activeWorkflowRunner.allActiveInStorage();
-		await expect(inStorage).resolves.toHaveLength(2);
+		const inStorage = await activeWorkflowsService.getAllActiveIdsInStorage();
+		expect(inStorage).toHaveLength(2);
 
 		const inMemory = activeWorkflowRunner.allActiveInMemory();
 		expect(inMemory).toHaveLength(2);
@@ -261,8 +266,8 @@ describe('add()', () => {
 
 					const workflow = await createWorkflow({ active: true }, owner);
 
-					jest.replaceProperty(multiMainSetup, 'isEnabled', true);
-					jest.replaceProperty(multiMainSetup, 'isLeader', true);
+					jest.replaceProperty(orchestrationService, 'isMultiMainSetupEnabled', true);
+					jest.replaceProperty(orchestrationService, 'isLeader', true);
 
 					const addWebhooksSpy = jest.spyOn(activeWorkflowRunner, 'addWebhooks');
 					const addTriggersAndPollersSpy = jest.spyOn(
@@ -285,8 +290,8 @@ describe('add()', () => {
 				test('should add triggers and pollers only', async () => {
 					const mode = 'leadershipChange';
 
-					jest.replaceProperty(multiMainSetup, 'isEnabled', true);
-					jest.replaceProperty(multiMainSetup, 'isLeader', true);
+					jest.replaceProperty(orchestrationService, 'isMultiMainSetupEnabled', true);
+					jest.replaceProperty(orchestrationService, 'isLeader', true);
 
 					const workflow = await createWorkflow({ active: true }, owner);
 
@@ -313,8 +318,8 @@ describe('add()', () => {
 				test('should not add webhooks, triggers or pollers', async () => {
 					const mode = chooseRandomly(NON_LEADERSHIP_CHANGE_MODES);
 
-					jest.replaceProperty(multiMainSetup, 'isEnabled', true);
-					jest.replaceProperty(multiMainSetup, 'isLeader', false);
+					jest.replaceProperty(orchestrationService, 'isMultiMainSetupEnabled', true);
+					jest.replaceProperty(orchestrationService, 'isLeader', false);
 
 					const workflow = await createWorkflow({ active: true }, owner);
 

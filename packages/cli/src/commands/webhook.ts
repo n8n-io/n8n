@@ -1,12 +1,13 @@
-import { flags } from '@oclif/command';
+import { Container } from 'typedi';
+import { Flags, type Config } from '@oclif/core';
 import { sleep } from 'n8n-workflow';
+
 import config from '@/config';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { WebhookServer } from '@/WebhookServer';
 import { Queue } from '@/Queue';
 import { BaseCommand } from './BaseCommand';
-import { Container } from 'typedi';
-import type { IConfig } from '@oclif/config';
+
 import { OrchestrationWebhookService } from '@/services/orchestration/webhook/orchestration.webhook.service';
 import { OrchestrationHandlerWebhookService } from '@/services/orchestration/webhook/orchestration.handler.webhook.service';
 
@@ -16,12 +17,12 @@ export class Webhook extends BaseCommand {
 	static examples = ['$ n8n webhook'];
 
 	static flags = {
-		help: flags.help({ char: 'h' }),
+		help: Flags.help({ char: 'h' }),
 	};
 
-	protected server = new WebhookServer();
+	protected server = Container.get(WebhookServer);
 
-	constructor(argv: string[], cmdConfig: IConfig) {
+	constructor(argv: string[], cmdConfig: Config) {
 		super(argv, cmdConfig);
 		this.setInstanceType('webhook');
 		if (this.queueModeId) {
@@ -39,13 +40,7 @@ export class Webhook extends BaseCommand {
 		this.logger.info('\nStopping n8n...');
 
 		try {
-			await this.externalHooks.run('n8n.stop', []);
-
-			setTimeout(async () => {
-				// In case that something goes wrong with shutdown we
-				// kill after max. 30 seconds no matter what
-				await this.exitSuccessFully();
-			}, 30000);
+			await this.externalHooks?.run('n8n.stop', []);
 
 			// Wait for active workflow executions to finish
 			const activeExecutionsInstance = Container.get(ActiveExecutions);

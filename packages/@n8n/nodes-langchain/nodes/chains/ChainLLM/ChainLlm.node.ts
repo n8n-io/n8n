@@ -1,4 +1,4 @@
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { ApplicationError, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type {
 	IBinaryData,
 	IDataObject,
@@ -105,7 +105,9 @@ async function getChainPromptTemplate(
 
 				if (!messageClass) {
 					// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
-					throw new Error(`Invalid message type "${message.type}"`);
+					throw new ApplicationError('Invalid message type', {
+						extra: { messageType: message.type },
+					});
 				}
 
 				if (messageClass === HumanMessagePromptTemplate && message.messageType !== 'text') {
@@ -164,7 +166,7 @@ async function getChain(
 
 	// If there are no output parsers, create a simple LLM chain and execute the query
 	if (!outputParsers.length) {
-		return createSimpleLLMChain(context, llm, query, chatTemplate);
+		return await createSimpleLLMChain(context, llm, query, chatTemplate);
 	}
 
 	// If there's only one output parser, use it; otherwise, create a combined output parser
@@ -189,13 +191,33 @@ async function getChain(
 	return Array.isArray(response) ? response : [response];
 }
 
+function getInputs(parameters: IDataObject) {
+	const hasOutputParser = parameters?.hasOutputParser;
+	const inputs = [
+		{ displayName: '', type: NodeConnectionType.Main },
+		{
+			displayName: 'Model',
+			maxConnections: 1,
+			type: NodeConnectionType.AiLanguageModel,
+			required: true,
+		},
+	];
+
+	// If `hasOutputParser` is undefined it must be version 1.1 or earlier so we
+	// always add the output parser input
+	if (hasOutputParser === undefined || hasOutputParser === true) {
+		inputs.push({ displayName: 'Output Parser', type: NodeConnectionType.AiOutputParser });
+	}
+	return inputs;
+}
+
 export class ChainLlm implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Basic LLM Chain',
 		name: 'chainLlm',
 		icon: 'fa:link',
 		group: ['transform'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2, 1.3],
 		description: 'A simple chain to prompt a large language model',
 		defaults: {
 			name: 'Basic LLM Chain',
@@ -215,25 +237,11 @@ export class ChainLlm implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
-		inputs: [
-			NodeConnectionType.Main,
-			{
-				displayName: 'Model',
-				maxConnections: 1,
-				type: NodeConnectionType.AiLanguageModel,
-				required: true,
-			},
-			{
-				displayName: 'Output Parser',
-				type: NodeConnectionType.AiOutputParser,
-				required: false,
-			},
-		],
+		inputs: `={{ ((parameter) => { ${getInputs.toString()}; return getInputs(parameter) })($parameter) }}`,
 		outputs: [NodeConnectionType.Main],
 		credentials: [],
 		properties: [
-			getTemplateNoticeField(1951),
+			getTemplateNoticeField(1978),
 			{
 				displayName: 'Prompt',
 				name: 'prompt',
@@ -254,7 +262,19 @@ export class ChainLlm implements INodeType {
 				default: '={{ $json.chat_input }}',
 				displayOptions: {
 					show: {
-						'@version': [1.1],
+						'@version': [1.1, 1.2],
+					},
+				},
+			},
+			{
+				displayName: 'Prompt',
+				name: 'prompt',
+				type: 'string',
+				required: true,
+				default: '={{ $json.chatInput }}',
+				displayOptions: {
+					show: {
+						'@version': [1.3],
 					},
 				},
 			},
@@ -398,6 +418,28 @@ export class ChainLlm implements INodeType {
 					},
 				],
 			},
+			{
+				displayName: 'Require Specific Output Format',
+				name: 'hasOutputParser',
+				type: 'boolean',
+				default: false,
+				displayOptions: {
+					show: {
+						'@version': [1.2],
+					},
+				},
+			},
+			{
+				displayName: `Connect an <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='${NodeConnectionType.AiOutputParser}'>output parser</a> on the canvas to specify the output format you require`,
+				name: 'notice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						hasOutputParser: [true],
+					},
+				},
+			},
 		],
 	};
 
@@ -411,10 +453,14 @@ export class ChainLlm implements INodeType {
 			0,
 		)) as BaseLanguageModel;
 
-		const outputParsers = (await this.getInputConnectionData(
-			NodeConnectionType.AiOutputParser,
-			0,
-		)) as BaseOutputParser[];
+		let outputParsers: BaseOutputParser[] = [];
+
+		if (this.getNodeParameter('hasOutputParser', 0, true) === true) {
+			outputParsers = (await this.getInputConnectionData(
+				NodeConnectionType.AiOutputParser,
+				0,
+			)) as BaseOutputParser[];
+		}
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			const prompt = this.getNodeParameter('prompt', itemIndex) as string;

@@ -1024,7 +1024,7 @@ export class AwsS3V2 implements INodeType {
 								);
 							}
 							const executionData = this.helpers.constructExecutionMetaData(
-								this.helpers.returnJsonArray(responseData as IDataObject),
+								this.helpers.returnJsonArray(responseData ?? { success: true }),
 								{ itemData: { item: i } },
 							);
 							returnData.push(...executionData);

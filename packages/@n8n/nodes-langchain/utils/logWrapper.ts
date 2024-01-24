@@ -48,6 +48,8 @@ export async function callMethodAsync<T>(
 	try {
 		return await parameters.method.call(this, ...parameters.arguments);
 	} catch (e) {
+		// Propagate errors from sub-nodes
+		if (e.functionality === 'configuration-node') throw e;
 		const connectedNode = parameters.executeFunctions.getNode();
 
 		const error = new NodeOperationError(connectedNode, e, {
@@ -89,6 +91,8 @@ export function callMethodSync<T>(
 	try {
 		return parameters.method.call(this, ...parameters.arguments);
 	} catch (e) {
+		// Propagate errors from sub-nodes
+		if (e.functionality === 'configuration-node') throw e;
 		const connectedNode = parameters.executeFunctions.getNode();
 		const error = new NodeOperationError(connectedNode, e);
 		parameters.executeFunctions.addOutputData(

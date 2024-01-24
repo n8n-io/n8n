@@ -1,5 +1,4 @@
-import { Service } from 'typedi';
-import type { ClientOAuth2Options } from '@n8n/client-oauth2';
+import type { ClientOAuth2Options, OAuth2CredentialData } from '@n8n/client-oauth2';
 import { ClientOAuth2 } from '@n8n/client-oauth2';
 import Csrf from 'csrf';
 import { Response } from 'express';
@@ -8,30 +7,16 @@ import * as qs from 'querystring';
 import omit from 'lodash/omit';
 import set from 'lodash/set';
 import split from 'lodash/split';
-import type { OAuth2GrantType } from 'n8n-workflow';
 import { ApplicationError, jsonParse, jsonStringify } from 'n8n-workflow';
 import { Authorized, Get, RestController } from '@/decorators';
 import { OAuthRequest } from '@/requests';
 import { AbstractOAuthController } from './abstractOAuth.controller';
-
-interface OAuth2CredentialData {
-	clientId: string;
-	clientSecret?: string;
-	accessTokenUrl?: string;
-	authUrl?: string;
-	scope?: string;
-	authQueryParameters?: string;
-	authentication?: 'header' | 'body';
-	grantType: OAuth2GrantType;
-	ignoreSSLIssues?: boolean;
-}
 
 interface CsrfStateParam {
 	cid: string;
 	token: string;
 }
 
-@Service()
 @Authorized()
 @RestController('/oauth2-credential')
 export class OAuth2CredentialController extends AbstractOAuthController {
@@ -228,6 +213,7 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 			clientSecret: credential.clientSecret ?? '',
 			accessTokenUri: credential.accessTokenUrl ?? '',
 			authorizationUri: credential.authUrl ?? '',
+			authentication: credential.authentication ?? 'header',
 			redirectUri: `${this.baseUrl}/callback`,
 			scopes: split(credential.scope ?? 'openid', ','),
 			scopesSeparator: credential.scope?.includes(',') ? ',' : ' ',

@@ -11,8 +11,10 @@ export async function createManyWorkflows(
 	attributes: Partial<WorkflowEntity> = {},
 	user?: User,
 ) {
-	const workflowRequests = [...Array(amount)].map(async (_) => createWorkflow(attributes, user));
-	return Promise.all(workflowRequests);
+	const workflowRequests = [...Array(amount)].map(
+		async (_) => await createWorkflow(attributes, user),
+	);
+	return await Promise.all(workflowRequests);
 }
 
 /**
@@ -60,11 +62,11 @@ export async function shareWorkflowWithUsers(workflow: WorkflowEntity, users: Us
 		workflow,
 		role,
 	}));
-	return Container.get(SharedWorkflowRepository).save(sharedWorkflows);
+	return await Container.get(SharedWorkflowRepository).save(sharedWorkflows);
 }
 
 export async function getWorkflowSharing(workflow: WorkflowEntity) {
-	return Container.get(SharedWorkflowRepository).findBy({
+	return await Container.get(SharedWorkflowRepository).findBy({
 		workflowId: workflow.id,
 	});
 }
@@ -115,8 +117,8 @@ export async function createWorkflowWithTrigger(
 }
 
 export async function getAllWorkflows() {
-	return Container.get(WorkflowRepository).find();
+	return await Container.get(WorkflowRepository).find();
 }
 
 export const getWorkflowById = async (id: string) =>
-	Container.get(WorkflowRepository).findOneBy({ id });
+	await Container.get(WorkflowRepository).findOneBy({ id });

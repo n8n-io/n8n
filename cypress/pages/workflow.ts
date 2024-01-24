@@ -49,6 +49,7 @@ export class WorkflowPage extends BasePage {
 		successToast: () => cy.get('.el-notification:has(.el-notification--success)'),
 		warningToast: () => cy.get('.el-notification:has(.el-notification--warning)'),
 		errorToast: () => cy.get('.el-notification:has(.el-notification--error)'),
+		infoToast: () => cy.get('.el-notification:has(.el-notification--info)'),
 		activatorSwitch: () => cy.getByTestId('workflow-activate-switch'),
 		workflowMenu: () => cy.getByTestId('workflow-menu'),
 		firstStepButton: () => cy.getByTestId('canvas-add-button'),
@@ -173,14 +174,15 @@ export class WorkflowPage extends BasePage {
 
 			this.getters.nodeCreatorSearchBar().type(nodeDisplayName);
 			this.getters.nodeCreatorSearchBar().type('{enter}');
-			cy.wait(500);
 			cy.get('body').then((body) => {
 				if (body.find('[data-test-id=node-creator]').length > 0) {
 					if (action) {
 						cy.contains(action).click();
 					} else {
 						// Select the first action
-						cy.get('[data-keyboard-nav-type="action"]').eq(0).click();
+						if (body.find('[data-keyboard-nav-type="action"]').length > 0) {
+							cy.get('[data-keyboard-nav-type="action"]').eq(0).click();
+						}
 					}
 				}
 			});
@@ -349,9 +351,6 @@ export class WorkflowPage extends BasePage {
 		},
 		hitCopy: () => {
 			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('c');
-		},
-		hitPaste: () => {
-			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('P');
 		},
 		hitPinNodeShortcut: () => {
 			cy.get('body').type('p');

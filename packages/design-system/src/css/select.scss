@@ -80,6 +80,14 @@
 		&.is-focus .el-input__inner {
 			border-color: var.$select-input-focus-border-color;
 		}
+
+		&__prefix {
+			left: var(--spacing-2xs);
+		}
+
+		&--prefix .el-input__inner {
+			padding-left: 26px;
+		}
 	}
 
 	> .el-input {

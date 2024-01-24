@@ -3,9 +3,9 @@
 import IconChat from 'virtual:icons/mdi/chat';
 // eslint-disable-next-line import/no-unresolved
 import IconChevronDown from 'virtual:icons/mdi/chevron-down';
-import Chat from '@/components/Chat.vue';
 import { nextTick, ref } from 'vue';
-import { chatEventBus } from '@/event-buses';
+import Chat from '@n8n/chat/components/Chat.vue';
+import { chatEventBus } from '@n8n/chat/event-buses';
 
 const isOpen = ref(false);
 
@@ -23,7 +23,7 @@ function toggle() {
 <template>
 	<div class="chat-window-wrapper">
 		<Transition name="chat-window-transition">
-			<div class="chat-window" v-show="isOpen">
+			<div v-show="isOpen" class="chat-window">
 				<Chat />
 			</div>
 		</Transition>

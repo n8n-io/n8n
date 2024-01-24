@@ -2,21 +2,14 @@ import userEvent from '@testing-library/user-event';
 import { createPinia, setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
 import RunDataSearch from '@/components/RunDataSearch.vue';
-import { useSettingsStore } from '@/stores/settings.store';
-import { useUIStore } from '@/stores/ui.store';
 
 const renderComponent = createComponentRenderer(RunDataSearch);
 let pinia: ReturnType<typeof createPinia>;
-let uiStore: ReturnType<typeof useUIStore>;
-let settingsStore: ReturnType<typeof useSettingsStore>;
 
 describe('RunDataSearch', () => {
 	beforeEach(() => {
 		pinia = createPinia();
 		setActivePinia(pinia);
-
-		uiStore = useUIStore();
-		settingsStore = useSettingsStore();
 	});
 
 	it('should not be focused on keyboard shortcut when area is not active', async () => {
@@ -66,7 +59,6 @@ describe('RunDataSearch', () => {
 	});
 
 	it('should select all text when focused', async () => {
-		vi.spyOn(settingsStore, 'isEnterpriseFeatureEnabled', 'get').mockReturnValue(() => true);
 		const { getByRole, emitted } = renderComponent({
 			pinia,
 			props: {
@@ -90,5 +82,42 @@ describe('RunDataSearch', () => {
 		const isSelected = selectionStart === 0 && selectionEnd === input.value.length;
 
 		expect(isSelected).toBe(true);
+	});
+
+	it('should not be focused on keyboard shortcut when a contenetEditable element is active', async () => {
+		const { getByTestId } = createComponentRenderer({
+			components: {
+				RunDataSearch,
+			},
+			template: `
+				<div>
+					<div data-test-id="mock-contenteditable" contenteditable="true"></div>
+					<RunDataSearch
+						v-model="modelValue"
+						:isAreaActive="isAreaActive"
+					/>
+				</div>
+			`,
+			props: {
+				modelValue: {
+					type: String,
+					default: '',
+				},
+				isAreaActive: {
+					type: Boolean,
+					default: true,
+				},
+			},
+		})({
+			pinia,
+		});
+
+		const user = userEvent.setup();
+		const contentEditableElement = getByTestId('mock-contenteditable');
+		await user.click(contentEditableElement);
+		expect(document.activeElement).toBe(contentEditableElement);
+		await user.type(contentEditableElement, '/');
+		expect(contentEditableElement.textContent).toBe('/');
+		expect(getByTestId('ndv-search')).not.toHaveFocus();
 	});
 });

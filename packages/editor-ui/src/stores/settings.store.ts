@@ -263,6 +263,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 
 			rootStore.setUrlBaseWebhook(settings.urlBaseWebhook);
 			rootStore.setUrlBaseEditor(settings.urlBaseEditor);
+			rootStore.setEndpointForm(settings.endpointForm);
+			rootStore.setEndpointFormTest(settings.endpointFormTest);
+			rootStore.setEndpointFormWaiting(settings.endpointFormWaiting);
 			rootStore.setEndpointWebhook(settings.endpointWebhook);
 			rootStore.setEndpointWebhookTest(settings.endpointWebhookTest);
 			rootStore.setTimezone(settings.timezone);
@@ -360,23 +363,23 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		},
 		async getLdapConfig() {
 			const rootStore = useRootStore();
-			return getLdapConfig(rootStore.getRestApiContext);
+			return await getLdapConfig(rootStore.getRestApiContext);
 		},
 		async getLdapSynchronizations(pagination: { page: number }) {
 			const rootStore = useRootStore();
-			return getLdapSynchronizations(rootStore.getRestApiContext, pagination);
+			return await getLdapSynchronizations(rootStore.getRestApiContext, pagination);
 		},
 		async testLdapConnection() {
 			const rootStore = useRootStore();
-			return testLdapConnection(rootStore.getRestApiContext);
+			return await testLdapConnection(rootStore.getRestApiContext);
 		},
 		async updateLdapConfig(ldapConfig: ILdapConfig) {
 			const rootStore = useRootStore();
-			return updateLdapConfig(rootStore.getRestApiContext, ldapConfig);
+			return await updateLdapConfig(rootStore.getRestApiContext, ldapConfig);
 		},
 		async runLdapSync(data: IDataObject) {
 			const rootStore = useRootStore();
-			return runLdapSync(rootStore.getRestApiContext, data);
+			return await runLdapSync(rootStore.getRestApiContext, data);
 		},
 		setSaveDataErrorExecution(newValue: string) {
 			this.saveDataErrorExecution = newValue;
@@ -389,7 +392,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		},
 		async getTimezones(): Promise<IDataObject> {
 			const rootStore = useRootStore();
-			return makeRestApiRequest(rootStore.getRestApiContext, 'GET', '/options/timezones');
+			return await makeRestApiRequest(rootStore.getRestApiContext, 'GET', '/options/timezones');
 		},
 	},
 });

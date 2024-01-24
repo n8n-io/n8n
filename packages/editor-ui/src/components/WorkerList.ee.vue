@@ -4,14 +4,14 @@
 		<div :class="$style.workerListHeader">
 			<n8n-heading tag="h1" size="2xlarge">{{ pageTitle }}</n8n-heading>
 		</div>
-		<div v-if="isMounting">
-			<n8n-loading :class="$style.tableLoader" variant="custom" />
+		<div v-if="!initialStatusReceived">
+			<n8n-spinner />
 		</div>
 		<div v-else>
 			<div v-if="workerIds.length === 0">{{ $locale.baseText('workerList.empty') }}</div>
 			<div v-else>
 				<div v-for="workerId in workerIds" :key="workerId" :class="$style.card">
-					<WorkerCard :workerId="workerId" data-test-id="worker-card" />
+					<WorkerCard :worker-id="workerId" data-test-id="worker-card" />
 				</div>
 			</div>
 		</div>
@@ -21,9 +21,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import { externalHooks } from '@/mixins/externalHooks';
 import PushConnectionTracker from '@/components/PushConnectionTracker.vue';
-import { genericHelpers } from '@/mixins/genericHelpers';
 import { executionHelpers } from '@/mixins/executionsHelpers';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
@@ -38,30 +36,30 @@ import WorkerCard from './Workers/WorkerCard.ee.vue';
 // eslint-disable-next-line import/no-default-export
 export default defineComponent({
 	name: 'WorkerList',
-	mixins: [pushConnection, externalHooks, genericHelpers, executionHelpers],
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/naming-convention
 	components: { PushConnectionTracker, WorkerCard },
+	mixins: [pushConnection, executionHelpers],
 	props: {
 		autoRefreshEnabled: {
 			type: Boolean,
 			default: true,
 		},
 	},
-	setup() {
+	setup(props, ctx) {
 		const i18n = useI18n();
 		return {
 			i18n,
 			...useToast(),
-		};
-	},
-	data() {
-		return {
-			isMounting: true,
+			// eslint-disable-next-line @typescript-eslint/no-misused-promises
+			...pushConnection.setup?.(props, ctx),
 		};
 	},
 	mounted() {
 		setPageTitle(`n8n - ${this.pageTitle}`);
-		this.isMounting = false;
+
+		this.$telemetry.track('User viewed worker view', {
+			instance_id: this.rootStore.instanceId,
+		});
 	},
 	beforeMount() {
 		if (window.Cypress !== undefined) {
@@ -85,6 +83,9 @@ export default defineComponent({
 				returnData.push(this.orchestrationManagerStore.workers[workerId]);
 			}
 			return returnData;
+		},
+		initialStatusReceived(): boolean {
+			return this.orchestrationManagerStore.initialStatusReceived;
 		},
 		workerIds(): string[] {
 			return Object.keys(this.orchestrationManagerStore.workers);

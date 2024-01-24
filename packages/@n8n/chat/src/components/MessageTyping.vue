@@ -1,8 +1,8 @@
 <script lang="ts" setup>
-import type { ChatMessage } from '@/types';
-import { Message } from './index';
 import type { PropType } from 'vue';
 import { computed } from 'vue';
+import { Message } from './index';
+import type { ChatMessage } from '@n8n/chat/types';
 
 const props = defineProps({
 	animation: {

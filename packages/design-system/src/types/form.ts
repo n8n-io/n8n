@@ -44,7 +44,7 @@ export type IFormInput = {
 		validateOnBlur?: boolean;
 		infoText?: string;
 		placeholder?: string;
-		options?: Array<{ label: string; value: string }>;
+		options?: Array<{ label: string; value: string; disabled?: boolean }>;
 		autocomplete?:
 			| 'off'
 			| 'new-password'

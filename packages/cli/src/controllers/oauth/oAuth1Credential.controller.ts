@@ -1,4 +1,3 @@
-import { Service } from 'typedi';
 import { Response } from 'express';
 import type { AxiosRequestConfig } from 'axios';
 import axios from 'axios';
@@ -30,7 +29,6 @@ const algorithmMap = {
 	/* eslint-enable */
 } as const;
 
-@Service()
 @Authorized()
 @RestController('/oauth1-credential')
 export class OAuth1CredentialController extends AbstractOAuthController {

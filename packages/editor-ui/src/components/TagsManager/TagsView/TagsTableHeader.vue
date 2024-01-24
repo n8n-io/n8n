@@ -3,7 +3,7 @@
 		<el-col :span="10">
 			<n8n-input
 				:placeholder="$locale.baseText('tagsTableHeader.searchTags')"
-				:modelValue="search"
+				:model-value="search"
 				:disabled="disabled"
 				:maxlength="maxLength"
 				clearable
@@ -16,12 +16,12 @@
 		</el-col>
 		<el-col :span="14">
 			<n8n-button
-				@click="onAddNew"
 				:disabled="disabled"
 				icon="plus"
 				:label="$locale.baseText('tagsTableHeader.addNew')"
 				size="large"
 				float="right"
+				@click="onAddNew"
 			/>
 		</el-col>
 	</el-row>

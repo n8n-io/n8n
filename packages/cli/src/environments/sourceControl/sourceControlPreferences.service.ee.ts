@@ -108,7 +108,7 @@ export class SourceControlPreferencesService {
 				});
 				await fsWriteFile(this.sshKeyName, keyPair.privateKey, { encoding: 'utf8', mode: 0o600 });
 			} catch (error) {
-				throw Error(`Failed to save key pair: ${(error as Error).message}`);
+				throw new ApplicationError('Failed to save key pair', { cause: error });
 			}
 		}
 		// update preferences only after generating key pair to prevent endless loop

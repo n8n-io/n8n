@@ -107,6 +107,7 @@ export class MessageEventBusDestinationWebhook
 				foundCredential[1],
 				foundCredential[0],
 				'internal',
+				undefined,
 				true,
 			);
 			return credentialsDecrypted;
@@ -324,9 +325,15 @@ export class MessageEventBusDestinationWebhook
 				password: httpBasicAuth.password as string,
 			};
 		} else if (httpHeaderAuth) {
-			this.axiosRequestOptions.headers[httpHeaderAuth.name as string] = httpHeaderAuth.value;
+			this.axiosRequestOptions.headers = {
+				...this.axiosRequestOptions.headers,
+				[httpHeaderAuth.name as string]: httpHeaderAuth.value as string,
+			};
 		} else if (httpQueryAuth) {
-			this.axiosRequestOptions.params[httpQueryAuth.name as string] = httpQueryAuth.value;
+			this.axiosRequestOptions.params = {
+				...this.axiosRequestOptions.params,
+				[httpQueryAuth.name as string]: httpQueryAuth.value as string,
+			};
 		} else if (httpDigestAuth) {
 			this.axiosRequestOptions.auth = {
 				username: httpDigestAuth.user as string,

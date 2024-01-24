@@ -13,8 +13,12 @@ import type { INodeUi } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
+import { useTelemetry } from './useTelemetry';
+import { useRootStore } from '@/stores/n8nRoot.store';
 
 export const useExecutionDebugging = () => {
+	const telemetry = useTelemetry();
+
 	const router = useRouter();
 	const i18n = useI18n();
 	const message = useMessage();
@@ -92,17 +96,22 @@ export const useExecutionDebugging = () => {
 		workflowsStore.setWorkflowExecutionData(execution);
 
 		// Pin data of all nodes which do not have a parent node
-		workflowNodes
-			.filter((node: INodeUi) => !workflow.getParentNodes(node.name).length)
-			.forEach((node: INodeUi) => {
-				const nodeData = runData[node.name]?.[0].data?.main[0];
-				if (nodeData) {
-					workflowsStore.pinData({
-						node,
-						data: nodeData,
-					});
-				}
-			});
+		const pinnableNodes = workflowNodes.filter(
+			(node: INodeUi) => !workflow.getParentNodes(node.name).length,
+		);
+
+		let pinnings = 0;
+
+		pinnableNodes.forEach((node: INodeUi) => {
+			const nodeData = runData[node.name]?.[0].data?.main[0];
+			if (nodeData) {
+				pinnings++;
+				workflowsStore.pinData({
+					node,
+					data: nodeData,
+				});
+			}
+		});
 
 		toast.showToast({
 			title: i18n.baseText('nodeView.showMessage.debug.title'),
@@ -119,6 +128,13 @@ export const useExecutionDebugging = () => {
 				type: 'warning',
 			});
 		}
+
+		telemetry.track('User clicked debug execution button', {
+			instance_id: useRootStore().instanceId,
+			exec_status: execution.status,
+			override_pinned_data: pinnableNodes.length === pinnings,
+			all_exec_data_imported: missingNodeNames.length === 0,
+		});
 	};
 
 	const handleDebugLinkClick = (event: Event): void => {

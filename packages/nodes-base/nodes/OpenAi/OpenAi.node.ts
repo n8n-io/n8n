@@ -9,7 +9,7 @@ export class OpenAi implements INodeType {
 		name: 'openAi',
 		icon: 'file:openAi.svg',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Open AI',
 		defaults: {
@@ -28,6 +28,13 @@ export class OpenAi implements INodeType {
 			baseURL: 'https://api.openai.com',
 		},
 		properties: [
+			{
+				displayName:
+					'For more advanced uses, consider using an <a data-action="openSelectiveNodeCreator" data-action-parameter-creatorview="AI">advanced AI</a> node',
+				name: 'noticeAdvanceAi',
+				type: 'notice',
+				default: '',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',

@@ -43,12 +43,28 @@ class ResponseError extends Error {
 	}
 }
 
-async function request(config: {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const legacyParamSerializer = (params: Record<string, any>) =>
+	Object.keys(params)
+		.filter((key) => params[key] !== undefined)
+		.map((key) => {
+			if (Array.isArray(params[key])) {
+				return params[key].map((v) => `${key}[]=${encodeURIComponent(v)}`).join('&');
+			}
+			if (typeof params[key] === 'object') {
+				params[key] = JSON.stringify(params[key]);
+			}
+			return `${key}=${encodeURIComponent(params[key])}`;
+		})
+		.join('&');
+
+export async function request(config: {
 	method: Method;
 	baseURL: string;
 	endpoint: string;
 	headers?: IDataObject;
-	data?: IDataObject;
+	data?: IDataObject | IDataObject[];
+	withCredentials?: boolean;
 }) {
 	const { method, baseURL, endpoint, headers, data } = config;
 	const options: AxiosRequestConfig = {
@@ -62,12 +78,13 @@ async function request(config: {
 		!baseURL.includes('api.n8n.io') &&
 		!baseURL.includes('n8n.cloud')
 	) {
-		options.withCredentials = true;
+		options.withCredentials = options.withCredentials ?? true;
 	}
 	if (['POST', 'PATCH', 'PUT'].includes(method)) {
 		options.data = data;
-	} else {
+	} else if (data) {
 		options.params = data;
+		options.paramsSerializer = legacyParamSerializer;
 	}
 
 	try {
@@ -102,7 +119,7 @@ export async function makeRestApiRequest<T>(
 	context: IRestApiContext,
 	method: Method,
 	endpoint: string,
-	data?: IDataObject,
+	data?: IDataObject | IDataObject[],
 ) {
 	const response = await request({
 		method,
@@ -122,7 +139,7 @@ export async function get(
 	params?: IDataObject,
 	headers?: IDataObject,
 ) {
-	return request({ method: 'GET', baseURL, endpoint, headers, data: params });
+	return await request({ method: 'GET', baseURL, endpoint, headers, data: params });
 }
 
 export async function post(
@@ -131,7 +148,7 @@ export async function post(
 	params?: IDataObject,
 	headers?: IDataObject,
 ) {
-	return request({ method: 'POST', baseURL, endpoint, headers, data: params });
+	return await request({ method: 'POST', baseURL, endpoint, headers, data: params });
 }
 
 /**

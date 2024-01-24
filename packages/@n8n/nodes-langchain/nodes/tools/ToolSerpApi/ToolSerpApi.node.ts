@@ -97,7 +97,7 @@ export class ToolSerpApi implements INodeType {
 						type: 'string',
 						default: 'google.com',
 						description:
-							'Defines the country to use for search. Head to <a href="https://serpapi.com/google-countries">Google countries page</a> for a full list of supported countries.',
+							'Defines the domain to use for search. Head to <a href="https://serpapi.com/google-domains">Google domains page</a> for a full list of supported domains.',
 					},
 					{
 						displayName: 'Language',

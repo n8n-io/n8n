@@ -3,7 +3,7 @@ export const WAIT_TIME_UNLIMITED = '3000-01-01T00:00:00.000Z';
 
 export const LOG_LEVELS = ['silent', 'error', 'warn', 'info', 'debug', 'verbose'] as const;
 
-export const CODE_LANGUAGES = ['javaScript', 'json', 'python'] as const;
+export const CODE_LANGUAGES = ['javaScript', 'python'] as const;
 export const CODE_EXECUTION_MODES = ['runOnceForAllItems', 'runOnceForEachItem'] as const;
 
 /**

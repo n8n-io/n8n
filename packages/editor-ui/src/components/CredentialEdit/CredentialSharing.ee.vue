@@ -12,7 +12,7 @@
 						uiStore.contextBasedTranslationKeys.credentials.sharing.unavailable.description,
 					)
 				"
-				:buttonText="
+				:button-text="
 					$locale.baseText(
 						uiStore.contextBasedTranslationKeys.credentials.sharing.unavailable.button,
 					)
@@ -26,7 +26,7 @@
 				:description="
 					$locale.baseText('credentialEdit.credentialSharing.isDefaultUser.description')
 				"
-				:buttonText="$locale.baseText('credentialEdit.credentialSharing.isDefaultUser.button')"
+				:button-text="$locale.baseText('credentialEdit.credentialSharing.isDefaultUser.button')"
 				@click:button="goToUsersSettings"
 			/>
 		</div>
@@ -34,22 +34,34 @@
 			<n8n-info-tip v-if="credentialPermissions.isOwner" :bold="false" class="mb-s">
 				{{ $locale.baseText('credentialEdit.credentialSharing.info.owner') }}
 			</n8n-info-tip>
-			<n8n-info-tip v-if="!credentialPermissions.updateSharing" :bold="false" class="mb-s">
+			<n8n-info-tip v-if="!credentialPermissions.share" :bold="false" class="mb-s">
 				{{
 					$locale.baseText('credentialEdit.credentialSharing.info.sharee', {
 						interpolate: { credentialOwnerName },
 					})
 				}}
 			</n8n-info-tip>
-			<n8n-info-tip v-if="credentialPermissions.read" class="mb-s" :bold="false">
-				{{ $locale.baseText('credentialEdit.credentialSharing.info.reader') }}
+			<n8n-info-tip
+				v-if="
+					credentialPermissions.read &&
+					credentialPermissions.share &&
+					!credentialPermissions.isOwner
+				"
+				class="mb-s"
+				:bold="false"
+			>
+				<i18n-t keypath="credentialEdit.credentialSharing.info.reader">
+					<template v-if="!isCredentialSharedWithCurrentUser" #notShared>
+						{{ $locale.baseText('credentialEdit.credentialSharing.info.notShared') }}
+					</template>
+				</i18n-t>
 			</n8n-info-tip>
 			<n8n-user-select
-				v-if="credentialPermissions.updateSharing"
+				v-if="credentialPermissions.share"
 				class="mb-s"
 				size="large"
 				:users="usersList"
-				:currentUserId="usersStore.currentUser.id"
+				:current-user-id="usersStore.currentUser.id"
 				:placeholder="$locale.baseText('credentialEdit.credentialSharing.select.placeholder')"
 				data-test-id="credential-sharing-modal-users-select"
 				@update:modelValue="onAddSharee"
@@ -61,8 +73,8 @@
 			<n8n-users-list
 				:actions="usersListActions"
 				:users="sharedWithList"
-				:currentUserId="usersStore.currentUser.id"
-				:readonly="!credentialPermissions.updateSharing"
+				:current-user-id="usersStore.currentUser.id"
+				:readonly="!credentialPermissions.share"
 				@delete="onRemoveSharee"
 			/>
 		</div>
@@ -114,13 +126,12 @@ export default defineComponent({
 		},
 		usersList(): IUser[] {
 			return this.usersStore.allUsers.filter((user: IUser) => {
-				const isCurrentUser = user.id === this.usersStore.currentUser?.id;
 				const isAlreadySharedWithUser = (this.credentialData.sharedWith || []).find(
 					(sharee: IUser) => sharee.id === user.id,
 				);
-				const isOwner = this.credentialData.ownedBy.id === user.id;
+				const isOwner = this.credentialData.ownedBy?.id === user.id;
 
-				return !isCurrentUser && !isAlreadySharedWithUser && !isOwner;
+				return !isAlreadySharedWithUser && !isOwner;
 			});
 		},
 		sharedWithList(): IUser[] {
@@ -134,6 +145,14 @@ export default defineComponent({
 		credentialOwnerName(): string {
 			return this.credentialsStore.getCredentialOwnerNameById(`${this.credentialId}`);
 		},
+		isCredentialSharedWithCurrentUser(): boolean {
+			return (this.credentialData.sharedWith || []).some((sharee: IUser) => {
+				return sharee.id === this.usersStore.currentUser?.id;
+			});
+		},
+	},
+	mounted() {
+		void this.loadUsers();
 	},
 	methods: {
 		async onAddSharee(userId: string) {
@@ -179,9 +198,6 @@ export default defineComponent({
 		goToUpgrade() {
 			void this.uiStore.goToUpgrade('credential_sharing', 'upgrade-credentials-sharing');
 		},
-	},
-	mounted() {
-		void this.loadUsers();
 	},
 });
 </script>

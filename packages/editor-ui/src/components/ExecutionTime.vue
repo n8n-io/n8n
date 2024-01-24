@@ -6,26 +6,24 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import { genericHelpers } from '@/mixins/genericHelpers';
 
 export default defineComponent({
 	name: 'ExecutionTime',
-	mixins: [genericHelpers],
 	props: ['startTime'],
+	data() {
+		return {
+			nowTime: -1,
+			intervalTimer: null as null | NodeJS.Timeout,
+		};
+	},
 	computed: {
 		time(): string {
 			if (!this.startTime) {
 				return '...';
 			}
 			const msPassed = this.nowTime - new Date(this.startTime).getTime();
-			return this.displayTimer(msPassed);
+			return this.$locale.displayTimer(msPassed);
 		},
-	},
-	data() {
-		return {
-			nowTime: -1,
-			intervalTimer: null as null | NodeJS.Timeout,
-		};
 	},
 	mounted() {
 		this.setNow();
@@ -46,9 +44,3 @@ export default defineComponent({
 	},
 });
 </script>
-
-<style lang="scss">
-// .data-display-wrapper {
-
-// }
-</style>

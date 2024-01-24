@@ -8,17 +8,20 @@ import { useSettingsStore } from '@/stores/settings.store';
 import type { FeatureFlags, IDataObject } from 'n8n-workflow';
 import { EXPERIMENTS_TO_TRACK, LOCAL_STORAGE_EXPERIMENT_OVERRIDES } from '@/constants';
 import { useTelemetryStore } from './telemetry.store';
-import { debounce } from 'lodash-es';
+import { useDebounce } from '@/composables/useDebounce';
 
 const EVENTS = {
 	IS_PART_OF_EXPERIMENT: 'User is part of experiment',
 };
+
+export type PosthogStore = ReturnType<typeof usePostHog>;
 
 export const usePostHog = defineStore('posthog', () => {
 	const usersStore = useUsersStore();
 	const settingsStore = useSettingsStore();
 	const telemetryStore = useTelemetryStore();
 	const rootStore = useRootStore();
+	const { debounce } = useDebounce();
 
 	const featureFlags: Ref<FeatureFlags | null> = ref(null);
 	const trackedDemoExp: Ref<FeatureFlags> = ref({});
@@ -32,11 +35,18 @@ export const usePostHog = defineStore('posthog', () => {
 	};
 
 	const getVariant = (experiment: keyof FeatureFlags): FeatureFlags[keyof FeatureFlags] => {
-		return featureFlags.value?.[experiment];
+		return overrides.value[experiment] ?? featureFlags.value?.[experiment];
 	};
 
 	const isVariantEnabled = (experiment: string, variant: string) => {
 		return getVariant(experiment) === variant;
+	};
+
+	/**
+	 * Checks if the given feature flag is enabled. Should only be used for boolean flags
+	 */
+	const isFeatureEnabled = (experiment: keyof FeatureFlags) => {
+		return getVariant(experiment) === true;
 	};
 
 	if (!window.featureFlags) {
@@ -45,7 +55,10 @@ export const usePostHog = defineStore('posthog', () => {
 		if (cachedOverrides) {
 			try {
 				console.log('Overriding feature flags', cachedOverrides);
-				overrides.value = JSON.parse(cachedOverrides);
+				const parsedOverrides = JSON.parse(cachedOverrides);
+				if (typeof parsedOverrides === 'object') {
+					overrides.value = JSON.parse(cachedOverrides);
+				}
 			} catch (e) {
 				console.log('Could not override experiment', e);
 			}
@@ -55,17 +68,13 @@ export const usePostHog = defineStore('posthog', () => {
 			// since features are evaluated serverside, regular posthog mechanism to override clientside does not work
 			override: (name: string, value: string | boolean) => {
 				overrides.value[name] = value;
-				featureFlags.value = {
-					...featureFlags.value,
-					[name]: value,
-				};
 				try {
 					useStorage(LOCAL_STORAGE_EXPERIMENT_OVERRIDES).value = JSON.stringify(overrides.value);
 				} catch (e) {}
 			},
 
 			getVariant,
-			getAll: () => featureFlags.value || {},
+			getAll: () => featureFlags.value ?? {},
 		};
 	}
 
@@ -83,12 +92,26 @@ export const usePostHog = defineStore('posthog', () => {
 		window.posthog?.identify?.(id, traits);
 	};
 
-	const addExperimentOverrides = () => {
-		featureFlags.value = {
-			...featureFlags.value,
-			...overrides.value,
-		};
+	const trackExperiment = (featFlags: FeatureFlags, name: string) => {
+		const variant = featFlags[name];
+		if (!variant || trackedDemoExp.value[name] === variant) {
+			return;
+		}
+
+		telemetryStore.track(EVENTS.IS_PART_OF_EXPERIMENT, {
+			name,
+			variant,
+		});
+
+		trackedDemoExp.value[name] = variant;
 	};
+
+	const trackExperiments = (featFlags: FeatureFlags) => {
+		EXPERIMENTS_TO_TRACK.forEach((name) => trackExperiment(featFlags, name));
+	};
+	const trackExperimentsDebounced = debounce(trackExperiments, {
+		debounceTime: 2000,
+	});
 
 	const init = (evaluatedFeatureFlags?: FeatureFlags) => {
 		if (!window.posthog) {
@@ -129,37 +152,16 @@ export const usePostHog = defineStore('posthog', () => {
 			};
 
 			// does not need to be debounced really, but tracking does not fire without delay on page load
-			addExperimentOverrides();
 			trackExperimentsDebounced(featureFlags.value);
 		} else {
 			// depend on client side evaluation if serverside evaluation fails
 			window.posthog?.onFeatureFlags?.((keys: string[], map: FeatureFlags) => {
 				featureFlags.value = map;
-				addExperimentOverrides();
 
 				// must be debounced because it is called multiple times by posthog
 				trackExperimentsDebounced(featureFlags.value);
 			});
 		}
-	};
-
-	const trackExperiments = (featureFlags: FeatureFlags) => {
-		EXPERIMENTS_TO_TRACK.forEach((name) => trackExperiment(featureFlags, name));
-	};
-	const trackExperimentsDebounced = debounce(trackExperiments, 2000);
-
-	const trackExperiment = (featureFlags: FeatureFlags, name: string) => {
-		const variant = featureFlags[name];
-		if (!variant || trackedDemoExp.value[name] === variant) {
-			return;
-		}
-
-		telemetryStore.track(EVENTS.IS_PART_OF_EXPERIMENT, {
-			name,
-			variant,
-		});
-
-		trackedDemoExp.value[name] = variant;
 	};
 
 	const capture = (event: string, properties: IDataObject) => {
@@ -181,6 +183,7 @@ export const usePostHog = defineStore('posthog', () => {
 
 	return {
 		init,
+		isFeatureEnabled,
 		isVariantEnabled,
 		getVariant,
 		reset,

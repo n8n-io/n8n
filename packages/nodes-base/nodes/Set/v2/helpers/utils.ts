@@ -5,7 +5,13 @@ import type {
 	INode,
 	INodeExecutionData,
 } from 'n8n-workflow';
-import { deepCopy, NodeOperationError, jsonParse, validateFieldType } from 'n8n-workflow';
+import {
+	deepCopy,
+	NodeOperationError,
+	jsonParse,
+	validateFieldType,
+	ApplicationError,
+} from 'n8n-workflow';
 
 import set from 'lodash/set';
 import get from 'lodash/get';
@@ -29,15 +35,28 @@ const configureFieldHelper = (dotNotation?: boolean) => {
 			},
 		};
 	} else {
+		const sanitazeKey = (item: IDataObject, key: string) => {
+			if (item[key] !== undefined) {
+				return key;
+			}
+
+			if (key.startsWith("['") && key.endsWith("']")) {
+				key = key.slice(2, -2);
+				if (item[key] !== undefined) {
+					return key;
+				}
+			}
+			return key;
+		};
 		return {
 			set: (item: IDataObject, key: string, value: IDataObject) => {
-				item[key] = value;
+				item[sanitazeKey(item, key)] = value;
 			},
 			get: (item: IDataObject, key: string) => {
-				return item[key];
+				return item[sanitazeKey(item, key)];
 			},
 			unset: (item: IDataObject, key: string) => {
-				delete item[key];
+				delete item[sanitazeKey(item, key)];
 			},
 		};
 	}
@@ -101,7 +120,9 @@ export function composeReturnItem(
 		case INCLUDE.NONE:
 			break;
 		default:
-			throw new Error(`The include option "${options.include}" is not known!`);
+			throw new ApplicationError(`The include option "${options.include}" is not known!`, {
+				level: 'warning',
+			});
 	}
 
 	for (const key of Object.keys(newFields)) {

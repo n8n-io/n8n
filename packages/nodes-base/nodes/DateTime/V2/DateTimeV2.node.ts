@@ -31,6 +31,7 @@ export class DateTimeV2 implements INodeType {
 			},
 			inputs: ['main'],
 			outputs: ['main'],
+			description: 'Manipulate date and time values',
 			properties: [
 				{
 					displayName: 'Operation',

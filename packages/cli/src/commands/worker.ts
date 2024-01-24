@@ -1,11 +1,9 @@
+import { Container } from 'typedi';
+import { Flags, type Config } from '@oclif/core';
 import express from 'express';
 import http from 'http';
 import type PCancelable from 'p-cancelable';
-import { Container } from 'typedi';
-
-import { flags } from '@oclif/command';
 import { WorkflowExecute } from 'n8n-core';
-
 import type {
 	ExecutionError,
 	ExecutionStatus,
@@ -20,13 +18,11 @@ import * as ResponseHelper from '@/ResponseHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
-
 import config from '@/config';
 import type { Job, JobId, JobResponse, WebhookResponse } from '@/Queue';
 import { Queue } from '@/Queue';
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { N8N_VERSION } from '@/constants';
-import { BaseCommand } from './BaseCommand';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { OwnershipService } from '@/services/ownership.service';
@@ -36,11 +32,11 @@ import { rawBodyReader, bodyParser } from '@/middlewares';
 import { eventBus } from '@/eventbus';
 import type { RedisServicePubSubSubscriber } from '@/services/redis/RedisServicePubSubSubscriber';
 import { EventMessageGeneric } from '@/eventbus/EventMessageClasses/EventMessageGeneric';
-import type { IConfig } from '@oclif/config';
 import { OrchestrationHandlerWorkerService } from '@/services/orchestration/worker/orchestration.handler.worker.service';
 import { OrchestrationWorkerService } from '@/services/orchestration/worker/orchestration.worker.service';
-import type { WorkerJobStatusSummary } from '../services/orchestration/worker/types';
+import type { WorkerJobStatusSummary } from '@/services/orchestration/worker/types';
 import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
+import { BaseCommand } from './BaseCommand';
 
 export class Worker extends BaseCommand {
 	static description = '\nStarts a n8n worker';
@@ -48,8 +44,8 @@ export class Worker extends BaseCommand {
 	static examples = ['$ n8n worker --concurrency=5'];
 
 	static flags = {
-		help: flags.help({ char: 'h' }),
-		concurrency: flags.integer({
+		help: Flags.help({ char: 'h' }),
+		concurrency: Flags.integer({
 			default: 10,
 			description: 'How many jobs can run in parallel.',
 		}),
@@ -79,23 +75,15 @@ export class Worker extends BaseCommand {
 		await Worker.jobQueue.pause(true);
 
 		try {
-			await this.externalHooks.run('n8n.stop', []);
+			await this.externalHooks?.run('n8n.stop', []);
 
-			const maxStopTime = config.getEnv('queue.bull.gracefulShutdownTimeout') * 1000;
-
-			const stopTime = new Date().getTime() + maxStopTime;
-
-			setTimeout(async () => {
-				// In case that something goes wrong with shutdown we
-				// kill after max. 30 seconds no matter what
-				await this.exitSuccessFully();
-			}, maxStopTime);
+			const hardStopTime = Date.now() + this.gracefulShutdownTimeoutInS;
 
 			// Wait for active workflow executions to finish
 			let count = 0;
 			while (Object.keys(Worker.runningJobs).length !== 0) {
 				if (count++ % 4 === 0) {
-					const waitLeft = Math.ceil((stopTime - new Date().getTime()) / 1000);
+					const waitLeft = Math.ceil((hardStopTime - Date.now()) / 1000);
 					this.logger.info(
 						`Waiting for ${
 							Object.keys(Worker.runningJobs).length
@@ -130,7 +118,8 @@ export class Worker extends BaseCommand {
 				{ extra: { executionId } },
 			);
 		}
-		const workflowId = fullExecutionData.workflowData.id!;
+		const workflowId = fullExecutionData.workflowData.id;
+
 		this.logger.info(
 			`Start job: ${job.id} (Workflow ID: ${workflowId} | Execution: ${executionId})`,
 		);
@@ -192,7 +181,7 @@ export class Worker extends BaseCommand {
 		);
 
 		try {
-			await PermissionChecker.check(workflow, workflowOwner.id);
+			await Container.get(PermissionChecker).check(workflow, workflowOwner.id);
 		} catch (error) {
 			if (error instanceof NodeOperationError) {
 				const failedExecution = generateFailedExecutionFromError(
@@ -264,13 +253,27 @@ export class Worker extends BaseCommand {
 		};
 	}
 
-	constructor(argv: string[], cmdConfig: IConfig) {
+	constructor(argv: string[], cmdConfig: Config) {
 		super(argv, cmdConfig);
+
+		if (!process.env.N8N_ENCRYPTION_KEY) {
+			throw new ApplicationError(
+				'Missing encryption key. Worker started without the required N8N_ENCRYPTION_KEY env var. More information: https://docs.n8n.io/hosting/environment-variables/configuration-methods/#encryption-key',
+			);
+		}
+
 		this.setInstanceType('worker');
 		this.setInstanceQueueModeId();
 	}
 
 	async init() {
+		const configuredShutdownTimeout = config.getEnv('queue.bull.gracefulShutdownTimeout');
+		if (configuredShutdownTimeout) {
+			this.gracefulShutdownTimeoutInS = configuredShutdownTimeout;
+			this.logger.warn(
+				'QUEUE_WORKER_TIMEOUT has been deprecated. Rename it to N8N_GRACEFUL_SHUTDOWN_TIMEOUT.',
+			);
+		}
 		await this.initCrashJournal();
 
 		this.logger.debug('Starting n8n worker...');
@@ -292,7 +295,6 @@ export class Worker extends BaseCommand {
 		this.logger.debug('Queue init complete');
 		await this.initOrchestration();
 		this.logger.debug('Orchestration init complete');
-		await this.initQueue();
 
 		await Container.get(OrchestrationWorkerService).publishToEventLog(
 			new EventMessageGeneric({
@@ -327,8 +329,7 @@ export class Worker extends BaseCommand {
 	}
 
 	async initQueue() {
-		// eslint-disable-next-line @typescript-eslint/no-shadow
-		const { flags } = this.parse(Worker);
+		const { flags } = await this.parse(Worker);
 
 		const redisConnectionTimeoutLimit = config.getEnv('queue.bull.redis.timeoutThreshold');
 
@@ -339,8 +340,9 @@ export class Worker extends BaseCommand {
 		Worker.jobQueue = Container.get(Queue);
 		await Worker.jobQueue.init();
 		this.logger.debug('Queue singleton ready');
-		void Worker.jobQueue.process(flags.concurrency, async (job) =>
-			this.runJob(job, this.nodeTypes),
+		void Worker.jobQueue.process(
+			flags.concurrency,
+			async (job) => await this.runJob(job, this.nodeTypes),
 		);
 
 		Worker.jobQueue.getBullObjectInstance().on('global:progress', (jobId: JobId, progress) => {
@@ -483,13 +485,12 @@ export class Worker extends BaseCommand {
 		});
 
 		await new Promise<void>((resolve) => server.listen(port, () => resolve()));
-		await this.externalHooks.run('worker.ready');
+		await this.externalHooks?.run('worker.ready');
 		this.logger.info(`\nn8n worker health check via, port ${port}`);
 	}
 
 	async run() {
-		// eslint-disable-next-line @typescript-eslint/no-shadow
-		const { flags } = this.parse(Worker);
+		const { flags } = await this.parse(Worker);
 
 		this.logger.info('\nn8n worker is now ready');
 		this.logger.info(` * Version: ${N8N_VERSION}`);

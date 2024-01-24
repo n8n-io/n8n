@@ -5,8 +5,7 @@ import type {
 	IPushDataExecutionFinished,
 } from '@/Interface';
 
-import { externalHooks } from '@/mixins/externalHooks';
-import { nodeHelpers } from '@/mixins/nodeHelpers';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useTitleChange } from '@/composables/useTitleChange';
 import { useToast } from '@/composables/useToast';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
@@ -39,25 +38,33 @@ import { defineComponent } from 'vue';
 import { useOrchestrationStore } from '@/stores/orchestration.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useCollaborationStore } from '@/stores/collaboration.store';
+import { useExternalHooks } from '@/composables/useExternalHooks';
 
 export const pushConnection = defineComponent({
+	mixins: [workflowHelpers],
 	setup() {
 		return {
 			...useTitleChange(),
 			...useToast(),
+			nodeHelpers: useNodeHelpers(),
 		};
 	},
-	created() {
-		this.pushStore.addEventListener((message) => {
-			void this.pushMessageReceived(message);
-		});
-	},
-	mixins: [externalHooks, nodeHelpers, workflowHelpers],
 	data() {
 		return {
 			retryTimeout: null as NodeJS.Timeout | null,
 			pushMessageQueue: [] as Array<{ message: IPushData; retriesLeft: number }>,
+			removeEventListener: null as (() => void) | null,
 		};
+	},
+	created() {
+		this.removeEventListener = this.pushStore.addEventListener((message) => {
+			void this.pushMessageReceived(message);
+		});
+	},
+	unmounted() {
+		if (typeof this.removeEventListener === 'function') {
+			this.removeEventListener();
+		}
 	},
 	computed: {
 		...mapStores(
@@ -504,7 +511,7 @@ export const pushConnection = defineComponent({
 
 				// Set the node execution issues on all the nodes which produced an error so that
 				// it can be displayed in the node-view
-				this.updateNodesExecutionIssues();
+				this.nodeHelpers.updateNodesExecutionIssues();
 
 				const lastNodeExecuted: string | undefined =
 					runDataExecuted.data.resultData.lastNodeExecuted;
@@ -518,7 +525,7 @@ export const pushConnection = defineComponent({
 						runDataExecuted.data.resultData.runData[lastNodeExecuted][0].data!.main[0]!.length;
 				}
 
-				void this.$externalHooks().run('pushConnection.executionFinished', {
+				void useExternalHooks().run('pushConnection.executionFinished', {
 					itemsCount,
 					nodeName: runDataExecuted.data.resultData.lastNodeExecuted,
 					errorMessage: runDataExecutedErrorMessage,

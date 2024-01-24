@@ -19,15 +19,15 @@
 			</div>
 			<template v-if="storeHasItems()">
 				<el-row
-					:gutter="10"
 					v-for="item in sortedItemKeysByLabel"
 					:key="item.key"
+					:gutter="10"
 					:class="$style.destinationItem"
 				>
 					<el-col v-if="logStreamingStore.items[item.key]?.destination">
-						<event-destination-card
+						<EventDestinationCard
 							:destination="logStreamingStore.items[item.key]?.destination"
-							:eventBus="eventBus"
+							:event-bus="eventBus"
 							:readonly="!canManageLogStreaming"
 							@remove="onRemove(logStreamingStore.items[item.key]?.destination?.id)"
 							@edit="onEdit(logStreamingStore.items[item.key]?.destination?.id)"
@@ -42,7 +42,7 @@
 			</template>
 			<div v-else data-test-id="action-box-licensed">
 				<n8n-action-box
-					:buttonText="$locale.baseText(`settings.log-streaming.add`)"
+					:button-text="$locale.baseText(`settings.log-streaming.add`)"
 					@click:button="addDestination"
 				>
 					<template #heading>
@@ -60,7 +60,7 @@
 			<div data-test-id="action-box-unlicensed">
 				<n8n-action-box
 					:description="$locale.baseText('settings.log-streaming.actionBox.description')"
-					:buttonText="$locale.baseText('settings.log-streaming.actionBox.button')"
+					:button-text="$locale.baseText('settings.log-streaming.actionBox.button')"
 					@click:button="goToUpgrade"
 				>
 					<template #heading>
@@ -90,10 +90,10 @@ import { createEventBus } from 'n8n-design-system/utils';
 
 export default defineComponent({
 	name: 'SettingsLogStreamingView',
-	props: {},
 	components: {
 		EventDestinationCard,
 	},
+	props: {},
 	data() {
 		return {
 			eventBus: createEventBus(),

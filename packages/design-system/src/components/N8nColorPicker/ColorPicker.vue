@@ -64,21 +64,21 @@ const onActiveChange = (value: string) => {
 </script>
 <template>
 	<span :class="['n8n-color-picker', $style.component]">
-		<el-color-picker
+		<ElColorPicker
 			v-model="model"
 			v-bind="colorPickerProps"
 			@change="onChange"
 			@active-change="onActiveChange"
 		/>
-		<n8n-input
+		<N8nInput
 			v-if="showInput"
 			:class="$style.input"
 			:disabled="props.disabled"
 			:size="props.size"
-			:modelValue="color"
+			:model-value="color"
 			:name="name"
-			@update:modelValue="onInput"
 			type="text"
+			@update:modelValue="onInput"
 		/>
 	</span>
 </template>

@@ -38,40 +38,49 @@ export default defineComponent({
 			return;
 		}
 
-		const unsortedBreakpoints = [...(this.breakpoints || [])] as Array<{
-			width: number;
-			bp: string;
-		}>;
+		const root = this.$refs.root as HTMLDivElement;
 
-		const bps = unsortedBreakpoints.sort((a, b) => a.width - b.width);
+		if (!root) {
+			return;
+		}
+
+		this.bp = this.getBreakpointFromWidth(root.offsetWidth);
 
 		const observer = new ResizeObserver((entries) => {
 			entries.forEach((entry) => {
 				// We wrap it in requestAnimationFrame to avoid this error - ResizeObserver loop limit exceeded
 				requestAnimationFrame(() => {
-					const newWidth = entry.contentRect.width;
-					let newBP = 'default';
-					for (let i = 0; i < bps.length; i++) {
-						if (newWidth < bps[i].width) {
-							newBP = bps[i].bp;
-							break;
-						}
-					}
-					this.bp = newBP;
+					this.bp = this.getBreakpointFromWidth(entry.contentRect.width);
 				});
 			});
 		});
 
 		this.observer = observer;
-
-		if (this.$refs.root) {
-			observer.observe(this.$refs.root as HTMLDivElement);
-		}
+		observer.observe(root);
 	},
 	beforeUnmount() {
 		if (this.enabled) {
 			this.observer?.disconnect();
 		}
+	},
+	methods: {
+		getBreakpointFromWidth(width: number): string {
+			let newBP = 'default';
+			const unsortedBreakpoints = [...(this.breakpoints || [])] as Array<{
+				width: number;
+				bp: string;
+			}>;
+
+			const bps = unsortedBreakpoints.sort((a, b) => a.width - b.width);
+			for (let i = 0; i < bps.length; i++) {
+				if (width < bps[i].width) {
+					newBP = bps[i].bp;
+					break;
+				}
+			}
+
+			return newBP;
+		},
 	},
 });
 </script>

@@ -1,24 +1,26 @@
+import get from 'lodash/get';
 import type {
+	IDataObject,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
-	IDataObject,
-	IPollFunctions,
 	INode,
+	IPollFunctions,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { ApplicationError, NodeOperationError } from 'n8n-workflow';
 import { utils as xlsxUtils } from 'xlsx';
-import get from 'lodash/get';
 import { apiRequest } from '../transport';
 import type {
 	ILookupValues,
 	ISheetUpdateData,
+	ResourceLocator,
 	SheetCellDecoded,
 	SheetRangeData,
 	SheetRangeDecoded,
+	SpreadSheetResponse,
 	ValueInputOption,
 	ValueRenderOption,
 } from './GoogleSheets.types';
-import { removeEmptyColumns } from './GoogleSheets.utils';
+import { getSheetId, removeEmptyColumns } from './GoogleSheets.utils';
 
 export class GoogleSheet {
 	id: string;
@@ -116,32 +118,35 @@ export class GoogleSheet {
 	}
 
 	/**
-	 *  Returns the name of a sheet from a sheet id
+	 *  Returns the sheet within a spreadsheet based on name or ID
 	 */
-	async spreadsheetGetSheetNameById(node: INode, sheetId: string) {
+	async spreadsheetGetSheet(node: INode, mode: ResourceLocator, value: string) {
 		const query = {
 			fields: 'sheets.properties',
 		};
 
-		const response = await apiRequest.call(
+		const response = (await apiRequest.call(
 			this.executeFunctions,
 			'GET',
 			`/v4/spreadsheets/${this.id}`,
 			{},
 			query,
-		);
+		)) as SpreadSheetResponse;
 
-		const foundItem = response.sheets.find(
-			(item: { properties: { sheetId: number } }) => item.properties.sheetId === +sheetId,
-		);
+		const foundItem = response.sheets.find((item) => {
+			if (mode === 'name') return item.properties.title === value;
+			return item.properties.sheetId === getSheetId(value);
+		});
 
 		if (!foundItem?.properties?.title) {
-			throw new NodeOperationError(node, `Sheet with ID ${sheetId} not found`, {
-				severity: 'warning',
-			});
+			throw new NodeOperationError(
+				node,
+				`Sheet with ${mode === 'name' ? 'name' : 'ID'} ${value} not found`,
+				{ level: 'warning' },
+			);
 		}
 
-		return foundItem.properties.title;
+		return foundItem.properties;
 	}
 
 	/**
@@ -226,7 +231,9 @@ export class GoogleSheet {
 		}
 
 		if (requests.length === 0) {
-			throw new Error('Must specify at least one column or row to add');
+			throw new ApplicationError('Must specify at least one column or row to add', {
+				level: 'warning',
+			});
 		}
 
 		const response = await apiRequest.call(
@@ -394,7 +401,7 @@ export class GoogleSheet {
 			columnNamesList,
 			useAppend ? null : '',
 		);
-		return this.appendData(range, data, valueInputMode, lastRow, useAppend);
+		return await this.appendData(range, data, valueInputMode, lastRow, useAppend);
 	}
 
 	getColumnWithOffset(startColumn: string, offset: number): string {

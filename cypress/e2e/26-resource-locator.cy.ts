@@ -1,5 +1,5 @@
 import { WorkflowPage, NDV, CredentialsModal } from '../pages';
-import { getPopper, getVisiblePopper, getVisibleSelect } from '../utils';
+import { getVisiblePopper, getVisibleSelect } from '../utils';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
@@ -16,7 +16,7 @@ describe('Resource Locator', () => {
 
 	it('should render both RLC components in google sheets', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Manual');
-		workflowPage.actions.addNodeToCanvas('Google Sheets', true, true);
+		workflowPage.actions.addNodeToCanvas('Google Sheets', true, true, 'Update row in sheet');
 		ndv.getters.resourceLocator('documentId').should('be.visible');
 		ndv.getters.resourceLocator('sheetName').should('be.visible');
 		ndv.getters
@@ -31,7 +31,7 @@ describe('Resource Locator', () => {
 
 	it('should show appropriate error when credentials are not set', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Manual');
-		workflowPage.actions.addNodeToCanvas('Google Sheets', true, true);
+		workflowPage.actions.addNodeToCanvas('Google Sheets', true, true, 'Update row in sheet');
 		ndv.getters.resourceLocator('documentId').should('be.visible');
 		ndv.getters.resourceLocatorInput('documentId').click();
 		ndv.getters.resourceLocatorErrorMessage().should('contain', NO_CREDENTIALS_MESSAGE);
@@ -39,7 +39,7 @@ describe('Resource Locator', () => {
 
 	it('should show appropriate error when credentials are not valid', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Manual');
-		workflowPage.actions.addNodeToCanvas('Google Sheets', true, true);
+		workflowPage.actions.addNodeToCanvas('Google Sheets', true, true, 'Update row in sheet');
 		workflowPage.getters.nodeCredentialsSelect().click();
 		// Add oAuth credentials
 		getVisibleSelect().find('li').last().click();
@@ -54,7 +54,7 @@ describe('Resource Locator', () => {
 
 	it('should reset resource locator when dependent field is changed', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Manual');
-		workflowPage.actions.addNodeToCanvas('Google Sheets', true, true);
+		workflowPage.actions.addNodeToCanvas('Google Sheets', true, true, 'Update row in sheet');
 		ndv.actions.setRLCValue('documentId', '123');
 		ndv.actions.setRLCValue('sheetName', '123');
 		ndv.actions.setRLCValue('documentId', '321');
@@ -66,6 +66,8 @@ describe('Resource Locator', () => {
 		workflowPage.actions.addInitialNodeToCanvas('E2e Test', { action: 'Resource Locator' });
 
 		ndv.getters.resourceLocatorInput('rlc').click();
+
+		cy.getByTestId('rlc-item').should('exist');
 		getVisiblePopper()
 			.should('have.length', 1)
 			.findChildByTestId('rlc-item')
@@ -73,9 +75,11 @@ describe('Resource Locator', () => {
 
 		ndv.actions.setInvalidExpression({ fieldName: 'fieldId' });
 
-		ndv.getters.container().click(); // remove focus from input, hide expression preview
+		ndv.getters.nodeParameters().click(); // remove focus from input, hide expression preview
 
 		ndv.getters.resourceLocatorInput('rlc').click();
+
+		cy.getByTestId('rlc-item').should('exist');
 		getVisiblePopper()
 			.should('have.length', 1)
 			.findChildByTestId('rlc-item')

@@ -1,10 +1,11 @@
-import type { INode, Severity } from '../Interfaces';
+import type { INode } from '../Interfaces';
 import { ExecutionBaseError } from './abstract/execution-base.error';
+import type { ApplicationError } from './application.error';
 
 interface WorkflowActivationErrorOptions {
 	cause?: Error;
 	node?: INode;
-	severity?: Severity;
+	level?: ApplicationError['level'];
 	workflowId?: string;
 }
 
@@ -18,7 +19,7 @@ export class WorkflowActivationError extends ExecutionBaseError {
 
 	constructor(
 		message: string,
-		{ cause, node, severity, workflowId }: WorkflowActivationErrorOptions = {},
+		{ cause, node, level, workflowId }: WorkflowActivationErrorOptions = {},
 	) {
 		let error = cause as Error;
 		if (cause instanceof ExecutionBaseError) {
@@ -31,6 +32,6 @@ export class WorkflowActivationError extends ExecutionBaseError {
 		this.node = node;
 		this.workflowId = workflowId;
 		this.message = message;
-		if (severity) this.severity = severity;
+		if (level) this.level = level;
 	}
 }

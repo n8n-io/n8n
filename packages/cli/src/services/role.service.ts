@@ -1,9 +1,10 @@
 import { Service } from 'typedi';
 import { RoleRepository } from '@db/repositories/role.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
-import { CacheService } from './cache.service';
+import { CacheService } from '@/services/cache/cache.service';
 import type { RoleNames, RoleScopes } from '@db/entities/Role';
 import { InvalidRoleError } from '@/errors/invalid-role.error';
+import { License } from '@/License';
 
 @Service()
 export class RoleService {
@@ -11,6 +12,7 @@ export class RoleService {
 		private roleRepository: RoleRepository,
 		private sharedWorkflowRepository: SharedWorkflowRepository,
 		private cacheService: CacheService,
+		private readonly license: License,
 	) {
 		void this.populateCache();
 	}
@@ -65,39 +67,43 @@ export class RoleService {
 	}
 
 	async findGlobalOwnerRole() {
-		return this.findCached('global', 'owner');
+		return await this.findCached('global', 'owner');
 	}
 
 	async findGlobalMemberRole() {
-		return this.findCached('global', 'member');
+		return await this.findCached('global', 'member');
 	}
 
 	async findGlobalAdminRole() {
-		return this.findCached('global', 'admin');
+		return await this.findCached('global', 'admin');
 	}
 
 	async findWorkflowOwnerRole() {
-		return this.findCached('workflow', 'owner');
+		return await this.findCached('workflow', 'owner');
 	}
 
 	async findWorkflowEditorRole() {
-		return this.findCached('workflow', 'editor');
+		return await this.findCached('workflow', 'editor');
 	}
 
 	async findCredentialOwnerRole() {
-		return this.findCached('credential', 'owner');
+		return await this.findCached('credential', 'owner');
 	}
 
 	async findCredentialUserRole() {
-		return this.findCached('credential', 'user');
+		return await this.findCached('credential', 'user');
 	}
 
 	async findRoleByUserAndWorkflow(userId: string, workflowId: string) {
-		return this.sharedWorkflowRepository
+		return await this.sharedWorkflowRepository
 			.findOne({
 				where: { workflowId, userId },
 				relations: ['role'],
 			})
 			.then((shared) => shared?.role);
+	}
+
+	async findCredentialOwnerRoleId() {
+		return this.license.isSharingEnabled() ? undefined : (await this.findCredentialOwnerRole()).id;
 	}
 }

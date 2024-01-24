@@ -1,7 +1,7 @@
 <template>
-	<div :class="[$style.wrapper, !this.uiStore.sidebarMenuCollapsed && $style.expandedSidebar]">
+	<div :class="[$style.wrapper, !uiStore.sidebarMenuCollapsed && $style.expandedSidebar]">
 		<div :class="$style.container">
-			<aside :class="$style.aside" v-if="$slots.aside">
+			<aside v-if="$slots.aside" :class="$style.aside">
 				<slot name="aside" />
 			</aside>
 			<main :class="$style.content">

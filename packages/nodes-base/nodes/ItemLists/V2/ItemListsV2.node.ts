@@ -598,7 +598,7 @@ export class ItemListsV2 implements INodeType {
 					type: 'string',
 					typeOptions: {
 						alwaysOpenEditWindow: true,
-						editor: 'code',
+						editor: 'jsEditor',
 						rows: 10,
 					},
 					default: `// The two items to compare are in the variables a and b
@@ -1431,7 +1431,7 @@ return 0;`,
 				}
 				return [newItems];
 			} else if (operation === 'summarize') {
-				return summarize.execute.call(this, items);
+				return await summarize.execute.call(this, items);
 			} else {
 				throw new NodeOperationError(this.getNode(), `Operation '${operation}' is not recognized`);
 			}

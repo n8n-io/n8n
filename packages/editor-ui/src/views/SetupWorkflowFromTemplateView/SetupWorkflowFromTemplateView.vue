@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, watch } from 'vue';
+import { computed, onBeforeMount, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useSetupTemplateStore } from './setupTemplate.store';
 import N8nHeading from 'n8n-design-system/components/N8nHeading';
@@ -7,20 +7,18 @@ import N8nLink from 'n8n-design-system/components/N8nLink';
 import AppsRequiringCredsNotice from './AppsRequiringCredsNotice.vue';
 import SetupTemplateFormStep from './SetupTemplateFormStep.vue';
 import TemplatesView from '../TemplatesView.vue';
-import { VIEWS } from '@/constants';
-import { useExternalHooks } from '@/composables/useExternalHooks';
+import { TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT, VIEWS } from '@/constants';
 import { useI18n } from '@/composables/useI18n';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { usePostHog } from '@/stores/posthog.store';
 
 // Store
 const setupTemplateStore = useSetupTemplateStore();
 const i18n = useI18n();
-const $telemetry = useTelemetry();
-const $externalHooks = useExternalHooks();
+const posthogStore = usePostHog();
 
 // Router
 const route = useRoute();
-const $router = useRouter();
+const router = useRouter();
 
 //#region Computed
 
@@ -31,7 +29,7 @@ const title = computed(() => setupTemplateStore.template?.name ?? 'unknown');
 const isReady = computed(() => !setupTemplateStore.isLoading);
 
 const skipSetupUrl = computed(() => {
-	const resolvedRoute = $router.resolve({
+	const resolvedRoute = router.resolve({
 		name: VIEWS.TEMPLATE_IMPORT,
 		params: { id: templateId.value },
 	});
@@ -55,25 +53,24 @@ const onSkipSetup = async (event: MouseEvent) => {
 	event.preventDefault();
 
 	await setupTemplateStore.skipSetup({
-		$externalHooks,
-		$telemetry,
-		$router,
+		router,
 	});
 };
 
 const skipIfTemplateHasNoCreds = async () => {
 	const isTemplateLoaded = !!setupTemplateStore.template;
 	if (!isTemplateLoaded) {
-		return;
+		return false;
 	}
 
 	if (setupTemplateStore.credentialUsages.length === 0) {
 		await setupTemplateStore.skipSetup({
-			$externalHooks,
-			$telemetry,
-			$router,
+			router,
 		});
+		return true;
 	}
+
+	return false;
 };
 
 //#endregion Methods
@@ -81,6 +78,15 @@ const skipIfTemplateHasNoCreds = async () => {
 //#region Lifecycle hooks
 
 setupTemplateStore.setTemplateId(templateId.value);
+
+onBeforeMount(async () => {
+	if (!posthogStore.isFeatureEnabled(TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT)) {
+		void router.replace({
+			name: VIEWS.TEMPLATE_IMPORT,
+			params: { id: templateId.value },
+		});
+	}
+});
 
 onMounted(async () => {
 	await setupTemplateStore.init();
@@ -91,54 +97,74 @@ onMounted(async () => {
 </script>
 
 <template>
-	<TemplatesView :goBackEnabled="true">
+	<TemplatesView :go-back-enabled="true">
 		<template #header>
-			<n8n-heading v-if="isReady" tag="h1" size="2xlarge"
-				>{{ $locale.baseText('templateSetup.title', { interpolate: { name: title } }) }}
-			</n8n-heading>
+			<N8nHeading v-if="isReady" tag="h1" size="2xlarge"
+				>{{ i18n.baseText('templateSetup.title', { interpolate: { name: title } }) }}
+			</N8nHeading>
 			<n8n-loading v-else variant="h1" />
 		</template>
 
 		<template #content>
 			<div :class="$style.grid">
-				<div :class="$style.gridContent">
-					<div :class="$style.notice" data-test-id="info-callout">
-						<AppsRequiringCredsNotice v-if="isReady" />
-						<n8n-loading v-else variant="p" />
-					</div>
+				<div :class="$style.notice" data-test-id="info-callout">
+					<AppsRequiringCredsNotice
+						v-if="isReady"
+						:app-credentials="setupTemplateStore.appCredentials"
+					/>
+					<n8n-loading v-else variant="p" />
+				</div>
 
-					<div>
-						<ol v-if="isReady" :class="$style.appCredentialsContainer">
-							<SetupTemplateFormStep
-								:class="$style.appCredential"
-								:key="credentials.key"
-								v-for="(credentials, index) in setupTemplateStore.credentialUsages"
-								:order="index + 1"
-								:credentials="credentials"
-							/>
-						</ol>
-						<div v-else :class="$style.appCredentialsContainer">
-							<n8n-loading :class="$style.appCredential" variant="p" :rows="3" />
-							<n8n-loading :class="$style.appCredential" variant="p" :rows="3" />
-						</div>
-					</div>
-
-					<div :class="$style.actions">
-						<n8n-link :href="skipSetupUrl" :newWindow="false" @click="onSkipSetup($event)">{{
-							$locale.baseText('templateSetup.skip')
-						}}</n8n-link>
-
-						<n8n-button
-							v-if="isReady"
-							size="large"
-							:label="$locale.baseText('templateSetup.continue.button')"
-							:disabled="setupTemplateStore.isSaving"
-							@click="setupTemplateStore.createWorkflow($router)"
-							data-test-id="continue-button"
+				<div>
+					<ol v-if="isReady" :class="$style.appCredentialsContainer">
+						<SetupTemplateFormStep
+							v-for="(credentials, index) in setupTemplateStore.credentialUsages"
+							:key="credentials.key"
+							:class="$style.appCredential"
+							:order="index + 1"
+							:credentials="credentials"
+							:selected-credential-id="
+								setupTemplateStore.selectedCredentialIdByKey[credentials.key]
+							"
+							@credential-selected="
+								setupTemplateStore.setSelectedCredentialId(
+									$event.credentialUsageKey,
+									$event.credentialId,
+								)
+							"
+							@credential-deselected="
+								setupTemplateStore.unsetSelectedCredential($event.credentialUsageKey)
+							"
 						/>
-						<div v-else>
-							<n8n-loading variant="button" />
-						</div>
+					</ol>
+					<div v-else :class="$style.appCredentialsContainer">
+						<n8n-loading :class="$style.appCredential" variant="p" :rows="3" />
+						<n8n-loading :class="$style.appCredential" variant="p" :rows="3" />
+					</div>
+				</div>
+
+				<div :class="$style.actions">
+					<N8nLink :href="skipSetupUrl" :new-window="false" @click="onSkipSetup($event)">{{
+						i18n.baseText('templateSetup.skip')
+					}}</N8nLink>
+
+					<n8n-tooltip
+						v-if="isReady"
+						:content="i18n.baseText('templateSetup.continue.button.fillRemaining')"
+						:disabled="setupTemplateStore.numFilledCredentials > 0"
+					>
+						<n8n-button
+							size="large"
+							:label="i18n.baseText('templateSetup.continue.button')"
+							:disabled="
+								setupTemplateStore.isSaving || setupTemplateStore.numFilledCredentials === 0
+							"
+							data-test-id="continue-button"
+							@click="setupTemplateStore.createWorkflow({ router })"
+						/>
+					</n8n-tooltip>
+					<div v-else>
+						<n8n-loading variant="button" />
 					</div>
 				</div>
 			</div>
@@ -148,22 +174,11 @@ onMounted(async () => {
 
 <style lang="scss" module>
 .grid {
-	display: grid;
-	grid-template-columns: repeat(12, 1fr);
-	padding: 0 var(--spacing-l);
+	margin: 0 auto;
+	display: flex;
+	flex-direction: column;
 	justify-content: center;
-}
-
-.gridContent {
-	grid-column: 3 / span 8;
-
-	@media (max-width: 800px) {
-		grid-column: 3 / span 8;
-	}
-
-	@media (max-width: 640px) {
-		grid-column: 2 / span 10;
-	}
+	max-width: 768px;
 }
 
 .notice {

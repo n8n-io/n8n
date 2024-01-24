@@ -1,27 +1,27 @@
 <template>
 	<div :class="['action-dropdown-container', $style.actionDropdownContainer]">
-		<el-dropdown
+		<ElDropdown
+			ref="elementDropdown"
 			:placement="placement"
 			:trigger="trigger"
-			@command="onSelect"
 			:popper-class="{ [$style.shadow]: true, [$style.hideArrow]: hideArrow }"
+			@command="onSelect"
 			@visible-change="onVisibleChange"
-			ref="elementDropdown"
 		>
 			<slot v-if="$slots.activator" name="activator" />
 			<n8n-icon-button
 				v-else
-				@blur="onButtonBlur"
 				type="tertiary"
 				text
 				:class="$style.activator"
 				:size="activatorSize"
 				:icon="activatorIcon"
+				@blur="onButtonBlur"
 			/>
 
 			<template #dropdown>
-				<el-dropdown-menu :class="$style.userActionsMenu">
-					<el-dropdown-item
+				<ElDropdownMenu :class="$style.userActionsMenu">
+					<ElDropdownItem
 						v-for="item in items"
 						:key="item.id"
 						:command="item.id"
@@ -31,22 +31,22 @@
 					>
 						<div :class="getItemClasses(item)" :data-test-id="`${testIdPrefix}-item-${item.id}`">
 							<span v-if="item.icon" :class="$style.icon">
-								<n8n-icon :icon="item.icon" :size="iconSize" />
+								<N8nIcon :icon="item.icon" :size="iconSize" />
 							</span>
 							<span :class="$style.label">
 								{{ item.label }}
 							</span>
-							<n8n-keyboard-shortcut
+							<N8nKeyboardShortcut
 								v-if="item.shortcut"
 								v-bind="item.shortcut"
 								:class="$style.shortcut"
 							>
-							</n8n-keyboard-shortcut>
+							</N8nKeyboardShortcut>
 						</div>
-					</el-dropdown-item>
-				</el-dropdown-menu>
+					</ElDropdownItem>
+				</ElDropdownMenu>
 			</template>
-		</el-dropdown>
+		</ElDropdown>
 	</div>
 </template>
 
@@ -75,17 +75,13 @@ export interface IActionDropdownItem {
 // It can be used in different parts of editor UI while ActionToggle
 // is designed to be used in card components.
 export default defineComponent({
-	name: 'n8n-action-dropdown',
+	name: 'N8nActionDropdown',
 	components: {
 		ElDropdown,
 		ElDropdownMenu,
 		ElDropdownItem,
 		N8nIcon,
 		N8nKeyboardShortcut,
-	},
-	data() {
-		const testIdPrefix = this.$attrs['data-test-id'];
-		return { testIdPrefix };
 	},
 	props: {
 		items: {
@@ -120,6 +116,10 @@ export default defineComponent({
 			type: Boolean,
 			default: false,
 		},
+	},
+	data() {
+		const testIdPrefix = this.$attrs['data-test-id'];
+		return { testIdPrefix };
 	},
 	methods: {
 		getItemClasses(item: IActionDropdownItem): Record<string, boolean> {

@@ -34,6 +34,7 @@ export async function reActAgentAgentExecute(
 		suffix?: string;
 		suffixChat?: string;
 		humanMessageTemplate?: string;
+		returnIntermediateSteps?: boolean;
 	};
 	let agent: ChatAgent | ZeroShotAgent;
 
@@ -50,7 +51,11 @@ export async function reActAgentAgentExecute(
 		});
 	}
 
-	const agentExecutor = AgentExecutor.fromAgentAndTools({ agent, tools });
+	const agentExecutor = AgentExecutor.fromAgentAndTools({
+		agent,
+		tools,
+		returnIntermediateSteps: options?.returnIntermediateSteps === true,
+	});
 
 	const returnData: INodeExecutionData[] = [];
 
@@ -89,5 +94,5 @@ export async function reActAgentAgentExecute(
 		returnData.push({ json: response });
 	}
 
-	return this.prepareOutputData(returnData);
+	return await this.prepareOutputData(returnData);
 }

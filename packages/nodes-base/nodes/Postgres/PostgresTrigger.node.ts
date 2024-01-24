@@ -307,7 +307,7 @@ export class PostgresTrigger implements INodeType {
 							})(),
 						),
 					);
-				}, 30000);
+				}, 60000);
 				connection.client.on('notification', async (data: IDataObject) => {
 					if (data.payload) {
 						try {

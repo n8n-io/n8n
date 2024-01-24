@@ -4,21 +4,9 @@ import {
 	WorkflowOperationError,
 } from 'n8n-workflow';
 import { Container, Service } from 'typedi';
-import type { FindManyOptions, ObjectLiteral } from 'typeorm';
-import { Not, LessThanOrEqual } from 'typeorm';
-import { DateUtils } from 'typeorm/util/DateUtils';
-
-import config from '@/config';
-import * as ResponseHelper from '@/ResponseHelper';
-import type {
-	IExecutionResponse,
-	IExecutionsStopData,
-	IWorkflowExecutionDataProcess,
-} from '@/Interfaces';
+import type { IExecutionsStopData, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { WorkflowRunner } from '@/WorkflowRunner';
-import { recoverExecutionDataFromEventLogMessages } from './eventbus/MessageEventBus/recoverEvents';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
-import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
 import { OwnershipService } from './services/ownership.service';
 import { Logger } from '@/Logger';
 
@@ -48,28 +36,8 @@ export class WaitTracker {
 
 	async getWaitingExecutions() {
 		this.logger.debug('Wait tracker querying database for waiting executions');
-		// Find all the executions which should be triggered in the next 70 seconds
-		const findQuery: FindManyOptions<ExecutionEntity> = {
-			select: ['id', 'waitTill'],
-			where: {
-				waitTill: LessThanOrEqual(new Date(Date.now() + 70000)),
-				status: Not('crashed'),
-			},
-			order: {
-				waitTill: 'ASC',
-			},
-		};
 
-		const dbType = config.getEnv('database.type');
-		if (dbType === 'sqlite') {
-			// This is needed because of issue in TypeORM <> SQLite:
-			// https://github.com/typeorm/typeorm/issues/2286
-			(findQuery.where! as ObjectLiteral).waitTill = LessThanOrEqual(
-				DateUtils.mixedDateToUtcDatetimeString(new Date(Date.now() + 70000)),
-			);
-		}
-
-		const executions = await this.executionRepository.findMultipleExecutions(findQuery);
+		const executions = await this.executionRepository.getWaitingExecutions();
 
 		if (executions.length === 0) {
 			return;
@@ -85,6 +53,21 @@ export class WaitTracker {
 		for (const execution of executions) {
 			const executionId = execution.id;
 			if (this.waitingExecutions[executionId] === undefined) {
+				if (!(execution.waitTill instanceof Date)) {
+					// n8n expects waitTill to be a date object
+					// but for some reason it's not being converted
+					// we are handling this like this since it seems to address the issue
+					// for some users, as reported by Jon when using a custom image.
+					// Once we figure out why this it not a Date object, we can remove this.
+					ErrorReporter.error('Wait Till is not a date object', {
+						extra: {
+							variableType: typeof execution.waitTill,
+						},
+					});
+					if (typeof execution.waitTill === 'string') {
+						execution.waitTill = new Date(execution.waitTill);
+					}
+				}
 				const triggerTime = execution.waitTill!.getTime() - new Date().getTime();
 				this.waitingExecutions[executionId] = {
 					executionId,
@@ -105,41 +88,21 @@ export class WaitTracker {
 		}
 
 		// Also check in database
-		const execution = await this.executionRepository.findSingleExecution(executionId, {
+		const fullExecutionData = await this.executionRepository.findSingleExecution(executionId, {
 			includeData: true,
+			unflattenData: true,
 		});
 
-		if (!execution) {
+		if (!fullExecutionData) {
 			throw new ApplicationError('Execution not found.', {
 				extra: { executionId },
 			});
 		}
 
-		if (!['new', 'unknown', 'waiting', 'running'].includes(execution.status)) {
+		if (!['new', 'unknown', 'waiting', 'running'].includes(fullExecutionData.status)) {
 			throw new WorkflowOperationError(
-				`Only running or waiting executions can be stopped and ${executionId} is currently ${execution.status}.`,
+				`Only running or waiting executions can be stopped and ${executionId} is currently ${fullExecutionData.status}.`,
 			);
-		}
-		let fullExecutionData: IExecutionResponse;
-		try {
-			fullExecutionData = ResponseHelper.unflattenExecutionData(execution);
-		} catch (error) {
-			// if the execution ended in an unforseen, non-cancelable state, try to recover it
-			await recoverExecutionDataFromEventLogMessages(executionId, [], true);
-			// find recovered data
-			const restoredExecution = await Container.get(ExecutionRepository).findSingleExecution(
-				executionId,
-				{
-					includeData: true,
-					unflattenData: true,
-				},
-			);
-			if (!restoredExecution) {
-				throw new ApplicationError('Execution could not be recovered or canceled.', {
-					extra: { executionId },
-				});
-			}
-			fullExecutionData = restoredExecution;
 		}
 		// Set in execution in DB as failed and remove waitTill time
 		const error = new WorkflowOperationError('Workflow-Execution has been canceled!');
@@ -208,6 +171,13 @@ export class WaitTracker {
 				`There was a problem starting the waiting execution with id "${executionId}": "${error.message}"`,
 				{ executionId },
 			);
+		});
+	}
+
+	shutdown() {
+		clearInterval(this.mainTimer);
+		Object.keys(this.waitingExecutions).forEach((executionId) => {
+			clearTimeout(this.waitingExecutions[executionId].timer);
 		});
 	}
 }

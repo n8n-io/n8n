@@ -6,52 +6,52 @@ import type {
 	TRIGGER_NODE_CREATOR_VIEW,
 	REGULAR_NODE_CREATOR_VIEW,
 	AI_OTHERS_NODE_CREATOR_VIEW,
+	VIEWS,
 } from './constants';
 import type { IMenuItem } from 'n8n-design-system';
-import type {
-	GenericValue,
-	IConnections,
-	ICredentialsDecrypted,
-	ICredentialsEncrypted,
-	ICredentialType,
-	IDataObject,
-	INode,
-	INodeIssues,
-	INodeParameters,
-	INodeTypeDescription,
-	IPinData,
-	IRunExecutionData,
-	IRun,
-	IRunData,
-	ITaskData,
-	IWorkflowSettings as IWorkflowSettingsWorkflow,
-	WorkflowExecuteMode,
-	PublicInstalledPackage,
-	INodeTypeNameVersion,
-	ILoadOptions,
-	INodeCredentials,
-	INodeListSearchItems,
-	NodeParameterValueType,
-	IDisplayOptions,
-	IExecutionsSummary,
-	FeatureFlags,
-	ExecutionStatus,
-	ITelemetryTrackProperties,
-	IUserManagementSettings,
-	WorkflowSettings,
-	IUserSettings,
-	IN8nUISettings,
-	BannerName,
-	INodeExecutionData,
-	INodeProperties,
-	NodeConnectionType,
-	INodeCredentialsDetails,
+import {
+	type GenericValue,
+	type IConnections,
+	type ICredentialsDecrypted,
+	type ICredentialsEncrypted,
+	type ICredentialType,
+	type IDataObject,
+	type INode,
+	type INodeIssues,
+	type INodeParameters,
+	type INodeTypeDescription,
+	type IPinData,
+	type IRunExecutionData,
+	type IRun,
+	type IRunData,
+	type ITaskData,
+	type IWorkflowSettings as IWorkflowSettingsWorkflow,
+	type WorkflowExecuteMode,
+	type PublicInstalledPackage,
+	type INodeTypeNameVersion,
+	type ILoadOptions,
+	type INodeCredentials,
+	type INodeListSearchItems,
+	type NodeParameterValueType,
+	type IDisplayOptions,
+	type IExecutionsSummary,
+	type FeatureFlags,
+	type ExecutionStatus,
+	type ITelemetryTrackProperties,
+	type IUserManagementSettings,
+	type WorkflowSettings,
+	type IUserSettings,
+	type IN8nUISettings,
+	type BannerName,
+	type INodeExecutionData,
+	type INodeProperties,
+	type NodeConnectionType,
+	type INodeCredentialsDetails,
 } from 'n8n-workflow';
 import type { BulkCommand, Undoable } from '@/models/history';
 import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
 import type { Component } from 'vue';
 import type { Scope } from '@n8n/permissions';
-import type { runExternalHook } from '@/utils/externalHooks';
 
 export * from 'n8n-design-system/types';
 
@@ -105,6 +105,9 @@ declare global {
 		};
 		// eslint-disable-next-line @typescript-eslint/naming-convention
 		Cypress: unknown;
+		Appcues?: {
+			track(event: string, properties?: ITelemetryTrackProperties): void;
+		};
 	}
 }
 
@@ -159,10 +162,6 @@ export interface INodeTypesMaxCount {
 		max: number;
 		nodeNames: string[];
 	};
-}
-
-export interface IExternalHooks {
-	run: typeof runExternalHook;
 }
 
 export interface INodeTranslationHeaders {
@@ -228,6 +227,7 @@ export interface IWorkflowData {
 	tags?: string[];
 	pinData?: IPinData;
 	versionId?: string;
+	meta?: WorkflowMetadata;
 }
 
 export interface IWorkflowDataUpdate {
@@ -244,9 +244,7 @@ export interface IWorkflowDataUpdate {
 }
 
 export interface IWorkflowToShare extends IWorkflowDataUpdate {
-	meta?: {
-		instanceId: string;
-	};
+	meta?: WorkflowMetadata;
 }
 
 export interface IWorkflowTemplateNode
@@ -274,6 +272,9 @@ export interface INewWorkflowData {
 
 export interface WorkflowMetadata {
 	onboardingId?: string;
+	templateId?: string;
+	instanceId?: string;
+	templateCredsSetupCompleted?: boolean;
 }
 
 // Almost identical to cli.Interfaces.ts
@@ -375,6 +376,7 @@ export interface IExecutionPushResponse {
 
 export interface IExecutionResponse extends IExecutionBase {
 	id: string;
+	status: string;
 	data?: IRunExecutionData;
 	workflowData: IWorkflowDb;
 	executedNode?: string;
@@ -685,6 +687,8 @@ export type IPersonalizationSurveyVersions =
 
 export type IRole = 'default' | 'owner' | 'member' | 'admin';
 
+export type InvitableRoleName = 'member' | 'admin';
+
 export interface IUserResponse {
 	id: string;
 	firstName?: string;
@@ -826,6 +830,19 @@ export interface ITemplatesWorkflowInfo {
 	};
 }
 
+export type TemplateSearchFacet = {
+	field_name: string;
+	sampled: boolean;
+	stats: {
+		total_values: number;
+	};
+	counts: Array<{
+		count: number;
+		highlighted: string;
+		value: string;
+	}>;
+};
+
 export interface ITemplatesWorkflowResponse extends ITemplatesWorkflow, IWorkflowTemplate {
 	description: string | null;
 	image: ITemplatesImage[];
@@ -841,7 +858,7 @@ export interface ITemplatesWorkflowFull extends ITemplatesWorkflowResponse {
 }
 
 export interface ITemplatesQuery {
-	categories: number[];
+	categories: string[];
 	search: string;
 }
 
@@ -908,6 +925,7 @@ export interface ViewItemProps {
 	title: string;
 	description: string;
 	icon: string;
+	tag?: string;
 }
 export interface LabelItemProps {
 	key: string;
@@ -1070,6 +1088,9 @@ export interface RootState {
 	baseUrl: string;
 	restEndpoint: string;
 	defaultLocale: string;
+	endpointForm: string;
+	endpointFormTest: string;
+	endpointFormWaiting: string;
 	endpointWebhook: string;
 	endpointWebhookTest: string;
 	pushConnectionActive: boolean;
@@ -1098,6 +1119,9 @@ export interface IRootState {
 	activeCredentialType: string | null;
 	baseUrl: string;
 	defaultLocale: string;
+	endpointForm: string;
+	endpointFormTest: string;
+	endpointFormWaiting: string;
 	endpointWebhook: string;
 	endpointWebhookTest: string;
 	executionId: string | null;
@@ -1216,7 +1240,7 @@ export interface NDVState {
 		isDragging: boolean;
 		type: string;
 		data: string;
-		canDrop: boolean;
+		activeTargetId: string | null;
 		stickyPosition: null | XYPosition;
 	};
 	isMappingOnboarded: boolean;
@@ -1246,13 +1270,16 @@ export interface UIState {
 	nodeViewOffsetPosition: XYPosition;
 	nodeViewMoveInProgress: boolean;
 	selectedNodes: INodeUi[];
-	sidebarMenuItems: IMenuItem[];
 	nodeViewInitialized: boolean;
 	addFirstStepOnLoad: boolean;
 	executionSidebarAutoRefresh: boolean;
 	bannersHeight: number;
 	bannerStack: BannerName[];
 	theme: ThemeOption;
+	suggestedTemplates?: SuggestedTemplates;
+	pendingNotificationsForViews: {
+		[key in VIEWS]?: NotificationOptions[];
+	};
 }
 
 export type IFakeDoor = {
@@ -1342,7 +1369,7 @@ export interface INodeTypesState {
 }
 
 export interface ITemplateState {
-	categories: { [id: string]: ITemplatesCategory };
+	categories: ITemplatesCategory[];
 	collections: { [id: string]: ITemplatesCollection };
 	workflows: { [id: string]: ITemplatesWorkflow | ITemplatesWorkflowFull };
 	workflowSearches: {
@@ -1350,6 +1377,7 @@ export interface ITemplateState {
 			workflowIds: string[];
 			totalWorkflows: number;
 			loadingMore?: boolean;
+			categories?: ITemplatesCategory[];
 		};
 	};
 	collectionSearches: {
@@ -1761,6 +1789,7 @@ export interface ExternalSecretsProviderWithProperties extends ExternalSecretsPr
 }
 
 export type CloudUpdateLinkSourceType =
+	| 'advanced-permissions'
 	| 'canvas-nav'
 	| 'custom-data-filter'
 	| 'workflow_sharing'
@@ -1775,7 +1804,8 @@ export type CloudUpdateLinkSourceType =
 	| 'settings-users'
 	| 'variables'
 	| 'community-nodes'
-	| 'workflow-history';
+	| 'workflow-history'
+	| 'worker-view';
 
 export type UTMCampaign =
 	| 'upgrade-custom-data-filter'
@@ -1792,7 +1822,9 @@ export type UTMCampaign =
 	| 'upgrade-users'
 	| 'upgrade-variables'
 	| 'upgrade-community-nodes'
-	| 'upgrade-workflow-history';
+	| 'upgrade-workflow-history'
+	| 'upgrade-advanced-permissions'
+	| 'upgrade-worker-view';
 
 export type N8nBanners = {
 	[key in BannerName]: {
@@ -1827,3 +1859,21 @@ export type ToggleNodeCreatorOptions = {
 
 export type AppliedThemeOption = 'light' | 'dark';
 export type ThemeOption = AppliedThemeOption | 'system';
+
+export type SuggestedTemplates = {
+	sections: SuggestedTemplatesSection[];
+};
+
+export type SuggestedTemplatesSection = {
+	name: string;
+	title: string;
+	description: string;
+	workflows: SuggestedTemplatesWorkflowPreview[];
+};
+
+export type SuggestedTemplatesWorkflowPreview = {
+	title: string;
+	description: string;
+	preview: IWorkflowData;
+	nodes: Array<Pick<ITemplatesNode, 'id' | 'displayName' | 'icon' | 'defaults' | 'iconData'>>;
+};

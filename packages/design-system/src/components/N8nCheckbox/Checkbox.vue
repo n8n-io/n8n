@@ -1,23 +1,23 @@
 <template>
-	<el-checkbox
+	<ElCheckbox
 		v-bind="$props"
 		ref="checkbox"
 		:class="['n8n-checkbox', $style.n8nCheckbox]"
 		:disabled="disabled"
 		:indeterminate="indeterminate"
-		:modelValue="modelValue"
+		:model-value="modelValue"
 		@update:modelValue="onUpdateModelValue"
 	>
 		<slot></slot>
-		<n8n-input-label
+		<N8nInputLabel
 			v-if="label"
 			:label="label"
-			:tooltipText="tooltipText"
+			:tooltip-text="tooltipText"
 			:bold="false"
 			:size="labelSize"
 			@click.prevent="onLabelClick"
 		/>
-	</el-checkbox>
+	</ElCheckbox>
 </template>
 
 <script lang="ts">
@@ -26,7 +26,7 @@ import { ElCheckbox } from 'element-plus';
 import N8nInputLabel from '../N8nInputLabel';
 
 export default defineComponent({
-	name: 'n8n-checkbox',
+	name: 'N8nCheckbox',
 	components: {
 		ElCheckbox,
 		N8nInputLabel,

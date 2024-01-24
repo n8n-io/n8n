@@ -184,7 +184,7 @@ export class FacebookGraphApi implements INodeType {
 				description: 'Whether to connect even if SSL certificate validation is not possible',
 			},
 			{
-				displayName: 'Send Binary Data',
+				displayName: 'Send Binary File',
 				name: 'sendBinaryData',
 				type: 'boolean',
 				displayOptions: {
@@ -197,7 +197,7 @@ export class FacebookGraphApi implements INodeType {
 				description: 'Whether binary data should be sent as body',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'Input Binary Field',
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: '',
@@ -210,8 +210,9 @@ export class FacebookGraphApi implements INodeType {
 						httpRequestMethod: ['POST', 'PUT'],
 					},
 				},
+				hint: 'The name of the input binary field containing the file to be uploaded',
 				description:
-					'Name of the binary property which contains the data for the file to be uploaded. For Form-Data Multipart, they can be provided in the format: <code>"sendKey1:binaryProperty1,sendKey2:binaryProperty2</code>',
+					'For Form-Data Multipart, they can be provided in the format: <code>"sendKey1:binaryProperty1,sendKey2:binaryProperty2</code>',
 			},
 			{
 				displayName: 'Options',

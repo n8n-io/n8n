@@ -5,10 +5,6 @@ on:
     branches:
       - master
 
-concurrency:
-  group: master
-  cancel-in-progress: true
-
 jobs:
   install-and-build:
     runs-on: ubuntu-latest

@@ -235,11 +235,8 @@ describe('Data mapping', () => {
 
 		ndv.actions.close();
 
-		workflowPage.actions.addNodeToCanvas('Item Lists');
-		workflowPage.actions.openNode('Item Lists');
-
-		ndv.getters.parameterInput('operation').click();
-		getVisibleSelect().find('li').contains('Sort').click();
+		workflowPage.actions.addNodeToCanvas('Sort');
+		workflowPage.actions.openNode('Sort');
 
 		ndv.getters.nodeParameters().find('button').contains('Add Field To Sort By').click();
 

@@ -49,6 +49,7 @@ export class ActiveExecutions {
 				startedAt: new Date(),
 				workflowData: executionData.workflowData,
 				status: executionStatus,
+				workflowId: executionData.workflowData.id,
 			};
 
 			if (executionData.retryOf !== undefined) {
@@ -60,9 +61,7 @@ export class ActiveExecutions {
 				fullExecutionData.workflowId = workflowId;
 			}
 
-			const executionResult =
-				await Container.get(ExecutionRepository).createNewExecution(fullExecutionData);
-			executionId = executionResult.id;
+			executionId = await Container.get(ExecutionRepository).createNewExecution(fullExecutionData);
 			if (executionId === undefined) {
 				throw new ApplicationError('There was an issue assigning an execution id to the execution');
 			}
@@ -179,7 +178,7 @@ export class ActiveExecutions {
 			this.activeExecutions[executionId].workflowExecution!.cancel();
 		}
 
-		return this.getPostExecutePromise(executionId);
+		return await this.getPostExecutePromise(executionId);
 	}
 
 	/**
@@ -198,7 +197,7 @@ export class ActiveExecutions {
 
 		this.activeExecutions[executionId].postExecutePromises.push(waitPromise);
 
-		return waitPromise.promise();
+		return await waitPromise.promise();
 	}
 
 	/**

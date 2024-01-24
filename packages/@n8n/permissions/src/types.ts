@@ -8,6 +8,7 @@ export type Resource =
 	| 'eventBusEvent'
 	| 'eventBusDestination'
 	| 'ldap'
+	| 'license'
 	| 'logStreaming'
 	| 'orchestration'
 	| 'sourceControl'
@@ -15,6 +16,7 @@ export type Resource =
 	| 'tag'
 	| 'user'
 	| 'variable'
+	| 'workersView'
 	| 'workflow';
 
 export type ResourceScope<
@@ -41,6 +43,7 @@ export type EventBusDestinationScope = ResourceScope<
 >;
 export type EventBusEventScope = ResourceScope<'eventBusEvent', DefaultOperations | 'query'>;
 export type LdapScope = ResourceScope<'ldap', 'manage' | 'sync'>;
+export type LicenseScope = ResourceScope<'license', 'manage'>;
 export type LogStreamingScope = ResourceScope<'logStreaming', 'manage'>;
 export type OrchestrationScope = ResourceScope<'orchestration', 'read' | 'list'>;
 export type SamlScope = ResourceScope<'saml', 'manage'>;
@@ -48,6 +51,7 @@ export type SourceControlScope = ResourceScope<'sourceControl', 'pull' | 'push' 
 export type TagScope = ResourceScope<'tag'>;
 export type UserScope = ResourceScope<'user', DefaultOperations | 'resetPassword' | 'changeRole'>;
 export type VariableScope = ResourceScope<'variable'>;
+export type WorkersViewScope = ResourceScope<'workersView', 'manage'>;
 export type WorkflowScope = ResourceScope<'workflow', DefaultOperations | 'share' | 'execute'>;
 
 export type Scope =
@@ -59,6 +63,7 @@ export type Scope =
 	| EventBusEventScope
 	| EventBusDestinationScope
 	| LdapScope
+	| LicenseScope
 	| LogStreamingScope
 	| OrchestrationScope
 	| SamlScope
@@ -66,6 +71,7 @@ export type Scope =
 	| TagScope
 	| UserScope
 	| VariableScope
+	| WorkersViewScope
 	| WorkflowScope;
 
 export type ScopeLevel = 'global' | 'project' | 'resource';

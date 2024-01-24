@@ -99,7 +99,7 @@ onMounted(() => {
 			[$style.actionsVisible]: actionsVisible,
 		}"
 	>
-		<slot :formattedCreatedAt="formattedCreatedAt">
+		<slot :formatted-created-at="formattedCreatedAt">
 			<p @click="onItemClick">
 				<time :datetime="item.createdAt">{{ formattedCreatedAt }}</time>
 				<n8n-tooltip

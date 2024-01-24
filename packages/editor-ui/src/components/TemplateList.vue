@@ -1,8 +1,9 @@
 <template>
-	<div :class="$style.list" v-if="loading || workflows.length">
-		<div :class="$style.header" v-if="!simpleView">
+	<div v-if="loading || workflows.length" :class="$style.list">
+		<div v-if="!simpleView" :class="$style.header">
 			<n8n-heading :bold="true" size="medium" color="text-light">
 				{{ $locale.baseText('templates.workflows') }}
+				<span v-if="totalCount > 0" data-test-id="template-count-label">({{ totalCount }})</span>
 				<span v-if="!loading && totalWorkflows" v-text="`(${totalWorkflows})`" />
 			</n8n-heading>
 		</div>
@@ -11,21 +12,21 @@
 				v-for="(workflow, index) in workflows"
 				:key="workflow.id"
 				:workflow="workflow"
-				:firstItem="index === 0"
+				:first-item="index === 0"
 				:simple-view="simpleView"
-				:lastItem="index === workflows.length - 1 && !loading"
-				:useWorkflowButton="useWorkflowButton"
+				:last-item="index === workflows.length - 1 && !loading"
+				:use-workflow-button="useWorkflowButton"
 				@click="(e) => onCardClick(e, workflow.id)"
 				@useWorkflow="(e) => onUseWorkflow(e, workflow.id)"
 			/>
 			<div v-if="infiniteScrollEnabled" ref="loader" />
-			<div v-if="loading">
+			<div v-if="loading" data-test-id="templates-loading-container">
 				<TemplateCard
 					v-for="n in 4"
 					:key="'index-' + n"
 					:loading="true"
-					:firstItem="workflows.length === 0 && n === 1"
-					:lastItem="n === 4"
+					:first-item="workflows.length === 0 && n === 1"
+					:last-item="n === 4"
 				/>
 			</div>
 		</div>
@@ -34,12 +35,13 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import { genericHelpers } from '@/mixins/genericHelpers';
 import TemplateCard from './TemplateCard.vue';
 
 export default defineComponent({
 	name: 'TemplateList',
-	mixins: [genericHelpers],
+	components: {
+		TemplateCard,
+	},
 	props: {
 		infiniteScrollEnabled: {
 			type: Boolean,
@@ -54,13 +56,19 @@ export default defineComponent({
 		},
 		workflows: {
 			type: Array,
+			default: () => [],
 		},
 		totalWorkflows: {
 			type: Number,
+			default: 0,
 		},
 		simpleView: {
 			type: Boolean,
 			default: false,
+		},
+		totalCount: {
+			type: Number,
+			default: 0,
 		},
 	},
 	mounted() {
@@ -76,9 +84,6 @@ export default defineComponent({
 		if (content) {
 			content.removeEventListener('scroll', this.onScroll);
 		}
-	},
-	components: {
-		TemplateCard,
 	},
 	methods: {
 		onScroll() {

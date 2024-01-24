@@ -46,7 +46,7 @@ export const description: SheetProperties = [
 	},
 	{
 		displayName:
-			"In this mode, make sure the incoming data is named the same as the columns in your Sheet. (Use a 'set' node before this node to change it if required.)",
+			"In this mode, make sure the incoming data is named the same as the columns in your Sheet. (Use an 'Edit Fields' node before this node to change it if required.)",
 		name: 'autoMapNotice',
 		type: 'notice',
 		default: '',

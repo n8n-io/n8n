@@ -55,7 +55,7 @@ export class OutputParserItemList implements INodeType {
 						type: 'number',
 						default: -1,
 						description:
-							'Defines many many items should be returned maximally. If set to -1, there is no limit.',
+							'Defines how many items should be returned maximally. If set to -1, there is no limit.',
 					},
 					// For that to be easily possible the metadata would have to be returned and be able to be read.
 					// Would also be possible with a wrapper but that would be even more hacky and the output types

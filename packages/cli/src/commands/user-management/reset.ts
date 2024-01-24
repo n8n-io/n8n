@@ -1,5 +1,4 @@
 import { Container } from 'typedi';
-import { Not } from 'typeorm';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { User } from '@db/entities/User';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
@@ -25,20 +24,16 @@ export class Reset extends BaseCommand {
 	async run(): Promise<void> {
 		const owner = await this.getInstanceOwner();
 
-		const ownerWorkflowRole = await Container.get(RoleService).findWorkflowOwnerRole();
-		const ownerCredentialRole = await Container.get(RoleService).findCredentialOwnerRole();
+		const workflowOwnerRole = await Container.get(RoleService).findWorkflowOwnerRole();
+		const credentialOwnerRole = await Container.get(RoleService).findCredentialOwnerRole();
 
-		await Container.get(SharedWorkflowRepository).update(
-			{ userId: Not(owner.id), roleId: ownerWorkflowRole.id },
-			{ user: owner },
+		await Container.get(SharedWorkflowRepository).makeOwnerOfAllWorkflows(owner, workflowOwnerRole);
+		await Container.get(SharedCredentialsRepository).makeOwnerOfAllCredentials(
+			owner,
+			credentialOwnerRole,
 		);
 
-		await Container.get(SharedCredentialsRepository).update(
-			{ userId: Not(owner.id), roleId: ownerCredentialRole.id },
-			{ user: owner },
-		);
-
-		await Container.get(UserRepository).delete({ id: Not(owner.id) });
+		await Container.get(UserRepository).deleteAllExcept(owner);
 		await Container.get(UserRepository).save(Object.assign(owner, defaultUserProps));
 
 		const danglingCredentials: CredentialsEntity[] = await Container.get(CredentialsRepository)
@@ -50,7 +45,7 @@ export class Reset extends BaseCommand {
 			Container.get(SharedCredentialsRepository).create({
 				credentials,
 				user: owner,
-				role: ownerCredentialRole,
+				role: credentialOwnerRole,
 			}),
 		);
 		await Container.get(SharedCredentialsRepository).save(newSharedCredentials);
@@ -76,7 +71,7 @@ export class Reset extends BaseCommand {
 
 		await Container.get(UserRepository).save(user);
 
-		return Container.get(UserRepository).findOneByOrFail({ globalRoleId: globalRole.id });
+		return await Container.get(UserRepository).findOneByOrFail({ globalRoleId: globalRole.id });
 	}
 
 	async catch(error: Error): Promise<void> {

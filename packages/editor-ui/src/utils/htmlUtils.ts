@@ -57,15 +57,9 @@ export const capitalizeFirstLetter = (text: string): string => {
 };
 
 export const getBannerRowHeight = async (): Promise<number> => {
-	return new Promise((resolve) => {
+	return await new Promise((resolve) => {
 		setTimeout(() => {
 			resolve(document.getElementById('banners')?.clientHeight ?? 0);
 		}, 0);
 	});
-};
-
-export const highlightText = (text: string, search = ''): string => {
-	const pattern = search.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, '\\$&');
-	const regex = new RegExp(`(${pattern})`, 'gi');
-	return search ? text?.replace(regex, '<mark class="highlight">$1</mark>') : text;
 };
