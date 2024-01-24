@@ -759,7 +759,7 @@ export class ActiveWorkflowRunner {
 	async remove(workflowId: string) {
 		// Remove all the webhooks of the workflow
 		try {
-			await this.clearWebhooks(workflowId);
+			if (this.orchestrationService.isLeader) await this.clearWebhooks(workflowId);
 		} catch (error) {
 			ErrorReporter.error(error);
 			this.logger.error(
