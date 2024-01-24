@@ -14,11 +14,25 @@ export const versionDescription: INodeTypeDescription = {
 	name: 'openAi',
 	icon: 'file:openAi.svg',
 	group: ['transform'],
-	version: 2,
+	version: 1,
 	subtitle: `={{(${prettifyOperation})($parameter.operation)}}`,
 	description: 'Consume Open AI',
 	defaults: {
 		name: 'OpenAI',
+	},
+	codex: {
+		alias: ['LangChain'],
+		categories: ['AI'],
+		subcategories: {
+			AI: ['Agents', 'Miscellaneous'],
+		},
+		resources: {
+			primaryDocumentation: [
+				{
+					url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.openai/',
+				},
+			],
+		},
 	},
 	inputs: ['main'],
 	outputs: ['main'],

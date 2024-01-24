@@ -4,7 +4,7 @@ import type {
 	IExecuteFunctions,
 	INodeExecutionData,
 } from 'n8n-workflow';
-import { updateDisplayOptions } from '../../../../../utils/utilities';
+import { updateDisplayOptions } from 'n8n-workflow';
 
 import { apiRequest } from '../../transport';
 

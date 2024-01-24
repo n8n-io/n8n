@@ -1,10 +1,10 @@
 import type {
 	INodeProperties,
 	IExecuteFunctions,
-	IDataObject,
 	INodeExecutionData,
+	IDataObject,
 } from 'n8n-workflow';
-import { updateDisplayOptions } from '../../../../../utils/utilities';
+import { updateDisplayOptions } from 'n8n-workflow';
 import { apiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [

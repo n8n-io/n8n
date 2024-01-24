@@ -1,26 +1,66 @@
-import type { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow';
-import { VersionedNodeType } from 'n8n-workflow';
+import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+import { imageFields, imageOperations } from './ImageDescription';
+import { textFields, textOperations } from './TextDescription';
+import { chatFields, chatOperations } from './ChatDescription';
+import { oldVersionNotice } from '../../utils/descriptions';
 
-import { OpenAiV1 } from './v1/OpenAiV1.node';
-import { OpenAiV2 } from './v2/OpenAiV2.node';
+export class OpenAi implements INodeType {
+	description: INodeTypeDescription = {
+		displayName: 'OpenAI',
+		name: 'openAi',
+		hidden: true,
+		icon: 'file:openAi.svg',
+		group: ['transform'],
+		version: [1, 1.1],
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
+		description: 'Consume Open AI',
+		defaults: {
+			name: 'OpenAI',
+		},
+		inputs: ['main'],
+		outputs: ['main'],
+		credentials: [
+			{
+				name: 'openAiApi',
+				required: true,
+			},
+		],
+		requestDefaults: {
+			ignoreHttpStatusErrors: true,
+			baseURL: 'https://api.openai.com',
+		},
+		properties: [
+			oldVersionNotice,
+			{
+				displayName: 'Resource',
+				name: 'resource',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Chat',
+						value: 'chat',
+					},
+					{
+						name: 'Image',
+						value: 'image',
+					},
+					{
+						name: 'Text',
+						value: 'text',
+					},
+				],
+				default: 'text',
+			},
 
-export class OpenAi extends VersionedNodeType {
-	constructor() {
-		const baseDescription: INodeTypeBaseDescription = {
-			displayName: 'OpenAI',
-			name: 'openAi',
-			icon: 'file:openAi.svg',
-			group: ['transform'],
-			description: 'Consume Open AI',
-			defaultVersion: 2,
-		};
+			...chatOperations,
+			...chatFields,
 
-		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
-			1: new OpenAiV1(baseDescription),
-			1.1: new OpenAiV1(baseDescription),
-			2: new OpenAiV2(baseDescription),
-		};
+			...imageOperations,
+			...imageFields,
 
-		super(nodeVersions, baseDescription);
-	}
+			...textOperations,
+			...textFields,
+		],
+	};
 }

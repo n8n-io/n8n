@@ -5,8 +5,8 @@ import type {
 	IDataObject,
 	IHttpRequestOptions,
 } from 'n8n-workflow';
-import { jsonParse } from 'n8n-workflow';
-import { updateDisplayOptions } from '../../../../../utils/utilities';
+import { jsonParse, updateDisplayOptions } from 'n8n-workflow';
+
 import { apiRequest } from '../../transport';
 import type { ChatCompletion, ExternalApiCallOptions } from '../../helpers/interfaces';
 

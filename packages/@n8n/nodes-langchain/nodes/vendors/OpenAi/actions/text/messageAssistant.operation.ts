@@ -4,8 +4,7 @@ import type {
 	INodeExecutionData,
 	IDataObject,
 } from 'n8n-workflow';
-import { sleep, NodeOperationError, jsonParse } from 'n8n-workflow';
-import { updateDisplayOptions } from '../../../../../utils/utilities';
+import { sleep, NodeOperationError, jsonParse, updateDisplayOptions } from 'n8n-workflow';
 import { apiRequest } from '../../transport';
 import type { ThreadMessage } from '../../helpers/interfaces';
 
