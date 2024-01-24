@@ -4,7 +4,6 @@ import axios from 'axios';
 import syslog from 'syslog-client';
 import { v4 as uuid } from 'uuid';
 import type { SuperAgentTest } from 'supertest';
-import type { User } from '@db/entities/User';
 import type {
 	MessageEventBusDestinationSentryOptions,
 	MessageEventBusDestinationSyslogOptions,
@@ -15,6 +14,8 @@ import {
 	defaultMessageEventBusDestinationSyslogOptions,
 	defaultMessageEventBusDestinationWebhookOptions,
 } from 'n8n-workflow';
+
+import type { User } from '@db/entities/User';
 import { MessageEventBus } from '@/eventbus';
 import { EventMessageGeneric } from '@/eventbus/EventMessageClasses/EventMessageGeneric';
 import type { MessageEventBusDestinationSyslog } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationSyslog.ee';
@@ -24,9 +25,11 @@ import { EventMessageAudit } from '@/eventbus/EventMessageClasses/EventMessageAu
 import type { EventNamesTypes } from '@/eventbus/EventMessageClasses';
 import { EventMessageWorkflow } from '@/eventbus/EventMessageClasses/EventMessageWorkflow';
 import { EventMessageNode } from '@/eventbus/EventMessageClasses/EventMessageNode';
+import { ExecutionDataRecoveryService } from '@/eventbus/executionDataRecovery.service';
 
 import * as utils from './shared/utils';
 import { createUser } from './shared/db/users';
+import { mockInstance } from '../shared/mocking';
 
 jest.unmock('@/eventbus/MessageEventBus/MessageEventBus');
 jest.mock('axios');
@@ -65,7 +68,7 @@ const testSentryDestination: MessageEventBusDestinationSentryOptions = {
 	subscribedEvents: ['n8n.test.message', 'n8n.audit.user.updated'],
 };
 
-const eventBus = Container.get(MessageEventBus);
+let eventBus: MessageEventBus;
 
 async function confirmIdInAll(id: string) {
 	const sent = await eventBus.getEventsAll();
@@ -79,6 +82,7 @@ async function confirmIdSent(id: string) {
 	expect(sent.find((msg) => msg.id === id)).toBeTruthy();
 }
 
+mockInstance(ExecutionDataRecoveryService);
 const testServer = utils.setupTestServer({
 	endpointGroups: ['eventBus'],
 	enabledFeatures: ['feat:logStreaming'],
@@ -93,12 +97,13 @@ beforeAll(async () => {
 	config.set('eventBus.logWriter.logBaseName', 'n8n-test-logwriter');
 	config.set('eventBus.logWriter.keepLogCount', 1);
 
-	await eventBus.initialize({});
+	eventBus = Container.get(MessageEventBus);
+	await eventBus.initialize();
 });
 
 afterAll(async () => {
 	jest.mock('@/eventbus/MessageEventBus/MessageEventBus');
-	await eventBus.close();
+	await eventBus?.close();
 });
 
 test('should have a running logwriter process', () => {

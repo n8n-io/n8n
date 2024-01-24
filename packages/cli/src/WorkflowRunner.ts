@@ -130,14 +130,12 @@ export class WorkflowRunner {
 			const eventLogMessages = await eventBus.getEventsByExecutionId(executionId);
 			// Attempt to recover more better runData from these messages (but don't update the execution db entry yet)
 			if (eventLogMessages.length > 0) {
-				const { recoverExecutionDataFromEventLogMessages } = await import(
-					'./eventbus/MessageEventBus/recoverEvents'
+				const { ExecutionDataRecoveryService } = await import(
+					'@/eventbus/executionDataRecovery.service'
 				);
-				const eventLogExecutionData = await recoverExecutionDataFromEventLogMessages(
-					executionId,
-					eventLogMessages,
-					false,
-				);
+				const eventLogExecutionData = await Container.get(
+					ExecutionDataRecoveryService,
+				).recoverExecutionData(executionId, eventLogMessages, false);
 				if (eventLogExecutionData) {
 					fullRunData.data.resultData.runData = eventLogExecutionData.resultData.runData;
 					fullRunData.status = 'crashed';

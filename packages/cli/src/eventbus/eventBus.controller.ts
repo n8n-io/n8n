@@ -17,7 +17,7 @@ import type { EventMessageAuditOptions } from './EventMessageClasses/EventMessag
 import { EventMessageAudit } from './EventMessageClasses/EventMessageAudit';
 import type { EventMessageNodeOptions } from './EventMessageClasses/EventMessageNode';
 import { EventMessageNode } from './EventMessageClasses/EventMessageNode';
-import { recoverExecutionDataFromEventLogMessages } from './MessageEventBus/recoverEvents';
+import { ExecutionDataRecoveryService } from './executionDataRecovery.service';
 
 // ----------------------------------------
 // TypeGuards
@@ -36,7 +36,10 @@ const isWithQueryString = (candidate: unknown): candidate is { query: string } =
 @Authorized()
 @RestController('/eventbus')
 export class EventBusController {
-	constructor(private readonly eventBus: MessageEventBus) {}
+	constructor(
+		private readonly eventBus: MessageEventBus,
+		private readonly recoveryService: ExecutionDataRecoveryService,
+	) {}
 
 	// ----------------------------------------
 	// Events
@@ -92,7 +95,7 @@ export class EventBusController {
 			const applyToDb = req.query.applyToDb !== undefined ? !!req.query.applyToDb : true;
 			const messages = await this.eventBus.getEventsByExecutionId(id, logHistory);
 			if (messages.length > 0) {
-				return await recoverExecutionDataFromEventLogMessages(id, messages, applyToDb);
+				return await this.recoveryService.recoverExecutionData(id, messages, applyToDb);
 			}
 		}
 		return;

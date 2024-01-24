@@ -36,7 +36,7 @@ import {
 import { METRICS_EVENT_NAME } from '../MessageEventBusDestination/Helpers.ee';
 import type { AbstractEventMessageOptions } from '../EventMessageClasses/AbstractEventMessageOptions';
 import { getEventMessageObjectByType } from '../EventMessageClasses/Helpers';
-import { recoverExecutionDataFromEventLogMessages } from './recoverEvents';
+import { ExecutionDataRecoveryService } from '../executionDataRecovery.service';
 
 export type EventMessageReturnMode = 'sent' | 'unsent' | 'all' | 'unfinished';
 
@@ -68,6 +68,7 @@ export class MessageEventBus extends EventEmitter {
 		private readonly eventDestinationsRepository: EventDestinationsRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly orchestrationService: OrchestrationService,
+		private readonly recoveryService: ExecutionDataRecoveryService,
 	) {
 		super();
 	}
@@ -183,7 +184,7 @@ export class MessageEventBus extends EventEmitter {
 							);
 							await this.executionRepository.markAsCrashed([executionId]);
 						} else {
-							await recoverExecutionDataFromEventLogMessages(
+							await this.recoveryService.recoverExecutionData(
 								executionId,
 								unsentAndUnfinished.unfinishedExecutions[executionId],
 								true,
@@ -377,7 +378,7 @@ export class MessageEventBus extends EventEmitter {
 				.slice(-amount);
 
 			for (const execution of filteredExecutionIds) {
-				const data = await recoverExecutionDataFromEventLogMessages(
+				const data = await this.recoveryService.recoverExecutionData(
 					execution.executionId,
 					queryResult,
 					false,
