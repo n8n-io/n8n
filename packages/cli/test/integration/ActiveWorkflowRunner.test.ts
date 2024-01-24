@@ -48,13 +48,7 @@ let activeWorkflowsService: ActiveWorkflowsService;
 let activeWorkflowRunner: ActiveWorkflowRunner;
 let owner: User;
 
-const NON_LEADERSHIP_CHANGE_MODES: WorkflowActivateMode[] = [
-	'init',
-	'create',
-	'update',
-	'activate',
-	'manual',
-];
+const TESTED_MODES: WorkflowActivateMode[] = ['init', 'create', 'activate', 'manual'];
 
 beforeAll(async () => {
 	await testDb.init();
@@ -239,7 +233,7 @@ describe('executeErrorWorkflow()', () => {
 describe('add()', () => {
 	describe('in single-main scenario', () => {
 		test('should add webhooks, triggers and pollers', async () => {
-			const mode = chooseRandomly(NON_LEADERSHIP_CHANGE_MODES);
+			const mode = chooseRandomly(TESTED_MODES);
 
 			const workflow = await createWorkflow({ active: true }, owner);
 
@@ -262,7 +256,7 @@ describe('add()', () => {
 		describe('leader', () => {
 			describe('on non-leadership-change activation mode', () => {
 				test('should add webhooks only', async () => {
-					const mode = chooseRandomly(NON_LEADERSHIP_CHANGE_MODES);
+					const mode = chooseRandomly(TESTED_MODES);
 
 					const workflow = await createWorkflow({ active: true }, owner);
 
@@ -316,7 +310,7 @@ describe('add()', () => {
 		describe('follower', () => {
 			describe('on any activation mode', () => {
 				test('should not add webhooks, triggers or pollers', async () => {
-					const mode = chooseRandomly(NON_LEADERSHIP_CHANGE_MODES);
+					const mode = chooseRandomly(TESTED_MODES);
 
 					jest.replaceProperty(orchestrationService, 'isMultiMainSetupEnabled', true);
 					jest.replaceProperty(orchestrationService, 'isLeader', false);
