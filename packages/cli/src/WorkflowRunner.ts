@@ -125,7 +125,8 @@ export class WorkflowRunner {
 		// does contain those messages.
 		try {
 			// Search for messages for this executionId in event logs
-			const { eventBus } = await import('./eventbus');
+			const { MessageEventBus } = await import('./eventbus');
+			const eventBus = Container.get(MessageEventBus);
 			const eventLogMessages = await eventBus.getEventsByExecutionId(executionId);
 			// Attempt to recover more better runData from these messages (but don't update the execution db entry yet)
 			if (eventLogMessages.length > 0) {
