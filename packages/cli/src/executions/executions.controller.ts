@@ -4,17 +4,14 @@ import { Authorized, Get, Post, RequireGlobalScope, RestController } from '@/dec
 import { EnterpriseExecutionsService } from './execution.service.ee';
 import { isSharingEnabled } from '@/UserManagement/UserManagementHelper';
 import { WorkflowSharingService } from '@/workflows/workflowSharing.service';
-import type { User } from '@/databases/entities/User';
-import config from '@/config';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { License } from '@/License';
 import { parseRangeQuery } from './parse-range-query.middleware';
+import type { User } from '@/databases/entities/User';
 
 @Authorized()
 @RestController('/executions')
 export class ExecutionsController {
-	private readonly isQueueMode = config.getEnv('executions.mode') === 'queue';
-
 	constructor(
 		private readonly executionService: ExecutionService,
 		private readonly enterpriseExecutionService: EnterpriseExecutionsService,

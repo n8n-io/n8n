@@ -319,8 +319,6 @@ export class ExecutionService {
 
 	private readonly isRegularMode = config.getEnv('executions.mode') === 'regular';
 
-	private readonly isQueueMode = config.getEnv('executions.mode') === 'queue';
-
 	/**
 	 * Find the `n` most recent executions with a status of `success` or `error`.
 	 */

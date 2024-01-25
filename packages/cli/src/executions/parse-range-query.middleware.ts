@@ -2,7 +2,7 @@ import * as ResponseHelper from '@/ResponseHelper';
 import type { NextFunction, Response } from 'express';
 import type { ExecutionRequest } from './execution.types';
 import type { JsonObject } from 'n8n-workflow';
-import { jsonParse } from 'n8n-workflow';
+import { ApplicationError, jsonParse } from 'n8n-workflow';
 import {
 	allowedExecutionsQueryFilterFields as ALLOWED_FILTER_FIELDS,
 	schemaGetExecutionsQueryFilter as SCHEMA,
@@ -32,20 +32,25 @@ export const parseRangeQuery = (
 		if (lastId) req.rangeQuery.range.lastId = lastId;
 
 		if (req.query.filter) {
-			const jsonFilter = jsonParse<JsonObject>(req.query.filter);
+			const jsonFilter = jsonParse<JsonObject>(req.query.filter, {
+				errorMessage: 'Failed to parse query string',
+			});
 
 			for (const key of Object.keys(jsonFilter)) {
 				if (!ALLOWED_FILTER_FIELDS.includes(key)) delete jsonFilter[key];
 			}
 
-			if (!isValid(jsonFilter)) next();
+			if (jsonFilter.waitTill) jsonFilter.waitTill = Boolean(jsonFilter.waitTill);
+
+			if (!isValid(jsonFilter)) throw new ApplicationError('Invalid schema');
 
 			req.rangeQuery = { ...req.rangeQuery, ...jsonFilter };
 		}
 
 		next();
-	} catch {
-		const error = new BadRequestError(`Failed to parse query string: ${JSON.stringify(req.query)}`);
-		ResponseHelper.sendErrorResponse(res, error);
+	} catch (error) {
+		if (error instanceof Error) {
+			ResponseHelper.sendErrorResponse(res, new BadRequestError(error.message));
+		}
 	}
 };

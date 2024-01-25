@@ -654,7 +654,16 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	async findManyByRangeQuery(query: FindMany.RangeQuery): Promise<ExecutionSummary[]> {
-		return await this.toQueryBuilder(query).getMany();
+		if (query?.accessibleWorkflowIds?.length === 0) {
+			throw new ApplicationError('Expected accessible workflow IDs');
+		}
+
+		const summaries: ExecutionSummary[] = await this.toQueryBuilder(query).getRawMany();
+
+		return summaries.map((row) => {
+			row.id = row.id.toString();
+			return row;
+		});
 	}
 
 	async fetchCount(query: FindMany.CountQuery) {
@@ -692,8 +701,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		} = query;
 
 		const fields = Object.keys(this.summaryFields)
-			.concat(['waitTill', 'retrySuccessId']) // @TODO: Needed?
-			.map((key) => `execution.${key}`)
+			.concat(['waitTill', 'retrySuccessId'])
+			.map((key) => `execution.${key} AS ${key}`)
 			.concat('workflow.name AS workflowName');
 
 		const qb = this.createQueryBuilder('execution')
