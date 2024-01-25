@@ -55,7 +55,7 @@ export class ExecutionsController {
 
 		if (!this.license.isAdvancedExecutionFiltersEnabled()) delete query.metadata;
 
-		return await this.executionService.findManyWithCount(query);
+		return await this.executionService.findRangeWithCount(query);
 	}
 
 	@Post('/stop/:id')

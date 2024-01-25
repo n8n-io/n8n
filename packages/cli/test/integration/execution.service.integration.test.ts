@@ -29,7 +29,7 @@ describe('ExecutionService', () => {
 	});
 
 	afterEach(async () => {
-		await testDb.truncate(['Workflow', 'Execution']);
+		await testDb.truncate(['Execution']);
 	});
 
 	afterAll(async () => {
@@ -91,7 +91,7 @@ describe('ExecutionService', () => {
 		});
 	});
 
-	describe('findManyWithCount', () => {
+	describe('findRangeWithCount', () => {
 		test('should return execution summaries', async () => {
 			const workflow = await createWorkflow();
 
@@ -107,7 +107,7 @@ describe('ExecutionService', () => {
 				accessibleWorkflowIds: [workflow.id],
 			};
 
-			const output = await executionService.findManyWithCount(query);
+			const output = await executionService.findRangeWithCount(query);
 
 			const summaryShape = {
 				id: expect.any(String),
@@ -143,7 +143,7 @@ describe('ExecutionService', () => {
 				accessibleWorkflowIds: [workflow.id],
 			};
 
-			const output = await executionService.findManyWithCount(query);
+			const output = await executionService.findRangeWithCount(query);
 
 			expect(output.count).toBe(3);
 			expect(output.estimated).toBe(false);
@@ -168,7 +168,7 @@ describe('ExecutionService', () => {
 				accessibleWorkflowIds: [workflow.id],
 			};
 
-			const output = await executionService.findManyWithCount(query);
+			const output = await executionService.findRangeWithCount(query);
 
 			expect(output.count).toBe(4);
 			expect(output.estimated).toBe(false);
@@ -193,7 +193,7 @@ describe('ExecutionService', () => {
 				accessibleWorkflowIds: [workflow.id],
 			};
 
-			const output = await executionService.findManyWithCount(query);
+			const output = await executionService.findRangeWithCount(query);
 
 			expect(output.count).toBe(4);
 			expect(output.estimated).toBe(false);
@@ -221,7 +221,7 @@ describe('ExecutionService', () => {
 				accessibleWorkflowIds: [workflow.id],
 			};
 
-			const output = await executionService.findManyWithCount(query);
+			const output = await executionService.findRangeWithCount(query);
 
 			expect(output.count).toBe(2);
 			expect(output.estimated).toBe(false);
@@ -246,10 +246,10 @@ describe('ExecutionService', () => {
 				kind: 'range',
 				range: { limit: 20 },
 				workflowId: firstWorkflow.id,
-				accessibleWorkflowIds: [firstWorkflow.id],
+				accessibleWorkflowIds: [firstWorkflow.id, secondWorkflow.id],
 			};
 
-			const output = await executionService.findManyWithCount(query);
+			const output = await executionService.findRangeWithCount(query);
 
 			expect(output.count).toBe(1);
 			expect(output.estimated).toBe(false);
@@ -273,7 +273,7 @@ describe('ExecutionService', () => {
 				accessibleWorkflowIds: [workflow.id],
 			};
 
-			const output = await executionService.findManyWithCount(query);
+			const output = await executionService.findRangeWithCount(query);
 
 			expect(output.count).toBe(1);
 			expect(output.estimated).toBe(false);
@@ -297,13 +297,38 @@ describe('ExecutionService', () => {
 				accessibleWorkflowIds: [workflow.id],
 			};
 
-			const output = await executionService.findManyWithCount(query);
+			const output = await executionService.findRangeWithCount(query);
 
 			expect(output.count).toBe(1);
 			expect(output.estimated).toBe(false);
 			expect(output.results).toEqual([
 				expect.objectContaining({ startedAt: '2020-12-31 00:00:00.000' }),
 			]);
+		});
+
+		test('should exclude executions by inaccessible `workflowId`', async () => {
+			const accessibleWorkflow = await createWorkflow();
+			const inaccessibleWorkflow = await createWorkflow();
+
+			await Promise.all([
+				createExecution({ status: 'success' }, accessibleWorkflow),
+				createExecution({ status: 'success' }, inaccessibleWorkflow),
+				createExecution({ status: 'success' }, inaccessibleWorkflow),
+				createExecution({ status: 'success' }, inaccessibleWorkflow),
+			]);
+
+			const query: FindMany.RangeQuery = {
+				kind: 'range',
+				range: { limit: 20 },
+				workflowId: inaccessibleWorkflow.id,
+				accessibleWorkflowIds: [accessibleWorkflow.id],
+			};
+
+			const output = await executionService.findRangeWithCount(query);
+
+			expect(output.count).toBe(0);
+			expect(output.estimated).toBe(false);
+			expect(output.results).toEqual([]);
 		});
 	});
 });

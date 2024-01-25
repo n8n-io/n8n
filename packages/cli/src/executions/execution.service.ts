@@ -314,7 +314,7 @@ export class ExecutionService {
 	}
 
 	// ----------------------------------
-	//            new API
+	//             new API
 	// ----------------------------------
 
 	private readonly isRegularMode = config.getEnv('executions.mode') === 'regular';
@@ -337,7 +337,7 @@ export class ExecutionService {
 	 * Find a range of executions that satisfy a query, along with the count of
 	 * all existing executions that satisfy the query.
 	 */
-	async findManyWithCount(query: FindMany.RangeQuery) {
+	async findRangeWithCount(query: FindMany.RangeQuery) {
 		const executions = await this.executionRepository.findManyByRangeQuery(query);
 
 		if (config.getEnv('database.type') === 'postgresdb') {
@@ -358,6 +358,9 @@ export class ExecutionService {
 		return { count, estimated: false, results: executions };
 	}
 
+	/**
+	 * Stop an active execution.
+	 */
 	async stop(executionId: string) {
 		const execution = await this.executionRepository.findOneBy({ id: executionId });
 
