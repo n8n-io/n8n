@@ -285,7 +285,11 @@ export class SetV2 implements INodeType {
 			const options = this.getNodeParameter('options', i, {});
 			const node = this.getNode();
 
-			options.include = includeOtherFields ? include : 'none';
+			if (node.typeVersion >= 3.3) {
+				options.include = includeOtherFields ? include : 'none';
+			} else {
+				options.include = include;
+			}
 
 			const newItem = await setNode[mode].execute.call(
 				this,
