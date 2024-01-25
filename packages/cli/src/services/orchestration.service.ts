@@ -6,6 +6,8 @@ import type { RedisServiceBaseCommand, RedisServiceCommand } from './redis/Redis
 
 import { RedisService } from './redis.service';
 import { MultiMainSetup } from './orchestration/main/MultiMainSetup.ee';
+import type { WorkflowActivateMode } from 'n8n-workflow';
+import { ApplicationError } from 'n8n-workflow';
 
 @Service()
 export class OrchestrationService {
@@ -30,6 +32,10 @@ export class OrchestrationService {
 			config.getEnv('generic.instanceType') === 'main' &&
 			this.isMultiMainSetupLicensed
 		);
+	}
+
+	get isSingleMainEnabled() {
+		return !this.isMultiMainSetupEnabled;
 	}
 
 	redisPublisher: RedisServicePubSubPublisher;
@@ -117,5 +123,47 @@ export class OrchestrationService {
 		this.logger.debug(`Sending "${command}" to command channel`);
 
 		await this.redisPublisher.publishToCommandChannel({ command });
+	}
+
+	// ----------------------------------
+	//           activations
+	// ----------------------------------
+
+	/**
+	 * Webhooks are added to the `webhook_entity` table on certain events.
+	 *
+	 * In single-main setup, the single main instance adds webhooks.
+	 *
+	 * In multi-main setup, any of leader and follower may add webhooks on
+	 * workflow activation or update, but only the leader may add webhooks on
+	 * init, so that followers do not add already added webhooks. On leadership
+	 * change, none of the leader and follower may add webhooks because these
+	 * are already in the `webhook_entity` table.
+	 */
+	shouldAddWebhooks(activationMode: WorkflowActivateMode) {
+		if (this.isSingleMainEnabled) return true;
+
+		if (['activate', 'update'].includes(activationMode)) return true;
+
+		if (activationMode === 'leadershipChange') return false;
+
+		if (activationMode === 'init') return this.isLeader;
+
+		throw new ApplicationError(`Unexpected activation mode: ${activationMode}`);
+	}
+
+	/**
+	 * Triggers and pollers are removed from instance memory on certain events.
+	 *
+	 * In single-main setup, the single main instance removes triggers and pollers.
+	 *
+	 * In multi-main setup, only the leader may remove triggers and pollers in all cases.
+	 * More generally, only the leader may manage triggers and pollers - they are only
+	 * ever running in the leader.
+	 */
+	shouldAddTriggersAndPollers() {
+		if (this.isSingleMainEnabled) return true;
+
+		return this.isLeader;
 	}
 }

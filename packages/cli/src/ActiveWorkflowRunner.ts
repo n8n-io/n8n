@@ -554,30 +554,8 @@ export class ActiveWorkflowRunner {
 	) {
 		let workflow: Workflow;
 
-		let shouldAddWebhooks = true;
-		let shouldAddTriggersAndPollers = true;
-
-		/**
-		 * In a multi-main scenario, webhooks are stored in the database, while triggers
-		 * and pollers are run only by the leader main instance.
-		 *
-		 * - During a regular workflow activation (i.e. not leadership change), only the
-		 * leader should add webhooks to prevent duplicate insertions, and only the leader
-		 * should handle triggers and pollers to prevent duplicate work.
-		 *
-		 * - During a leadership change, webhooks remain in storage and so need not be added
-		 * again, and the new leader should take over the triggers and pollers that stopped
-		 * running when the former leader became unresponsive.
-		 */
-		if (this.orchestrationService.isMultiMainSetupEnabled) {
-			if (activationMode !== 'leadershipChange') {
-				shouldAddWebhooks = this.orchestrationService.isLeader;
-				shouldAddTriggersAndPollers = this.orchestrationService.isLeader;
-			} else {
-				shouldAddWebhooks = false;
-				shouldAddTriggersAndPollers = this.orchestrationService.isLeader;
-			}
-		}
+		const shouldAddWebhooks = this.orchestrationService.shouldAddWebhooks(activationMode);
+		const shouldAddTriggersAndPollers = this.orchestrationService.shouldAddTriggersAndPollers();
 
 		const shouldActivate = shouldAddWebhooks || shouldAddTriggersAndPollers;
 

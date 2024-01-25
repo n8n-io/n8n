@@ -1985,10 +1985,10 @@ export type WorkflowExecuteMode =
 
 export type WorkflowActivateMode =
 	| 'init'
-	| 'create'
+	| 'create' // unused
 	| 'update'
 	| 'activate'
-	| 'manual'
+	| 'manual' // unused
 	| 'leadershipChange';
 
 export interface IWorkflowHooksOptionalParameters {
