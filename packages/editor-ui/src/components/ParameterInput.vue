@@ -1318,7 +1318,11 @@ export default defineComponent({
 					(!this.modelValue || this.modelValue === '[Object: null]')
 				) {
 					this.valueChanged('={{ 0 }}');
-				} else if (this.parameter.type === 'number' || this.parameter.type === 'boolean') {
+				} else if (
+					this.parameter.type === 'number' ||
+					this.parameter.type === 'boolean' ||
+					typeof this.modelValue !== 'string'
+				) {
 					this.valueChanged(`={{ ${this.modelValue} }}`);
 				} else {
 					this.valueChanged(`=${this.modelValue}`);
@@ -1349,7 +1353,6 @@ export default defineComponent({
 						// Strip the '=' from the beginning
 						newValue = this.modelValue ? this.modelValue.toString().substring(1) : null;
 					}
-
 					this.valueChanged(newValue);
 				}
 			} else if (command === 'refreshOptions') {

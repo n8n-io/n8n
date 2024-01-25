@@ -59,15 +59,24 @@ const operatorId = computed<FilterOperatorId>(() => {
 });
 const operator = computed(() => OPERATORS_BY_ID[operatorId.value] as FilterOperator);
 
-const operatorTypeToNodePropType = (operatorType: FilterOperatorType): NodePropertyTypes => {
+const operatorTypeToNodeProperty = (
+	operatorType: FilterOperatorType,
+): Pick<INodeProperties, 'type' | 'options'> => {
 	switch (operatorType) {
+		case 'boolean':
+			return {
+				type: 'options',
+				options: [
+					{ name: 'true', value: true },
+					{ name: 'false', value: false },
+				],
+			};
 		case 'array':
 		case 'object':
-		case 'boolean':
 		case 'any':
-			return 'string';
+			return { type: 'string' };
 		default:
-			return operatorType;
+			return { type: operatorType };
 	}
 };
 
@@ -120,7 +129,7 @@ const leftParameter = computed<INodeProperties>(() => ({
 		operator.value.type === 'dateTime'
 			? now.value
 			: i18n.baseText('filter.condition.placeholderLeft'),
-	type: operatorTypeToNodePropType(operator.value.type),
+	...operatorTypeToNodeProperty(operator.value.type),
 }));
 
 const rightParameter = computed<INodeProperties>(() => ({
@@ -131,7 +140,7 @@ const rightParameter = computed<INodeProperties>(() => ({
 		operator.value.type === 'dateTime'
 			? now.value
 			: i18n.baseText('filter.condition.placeholderRight'),
-	type: operatorTypeToNodePropType(operator.value.rightType ?? operator.value.type),
+	...operatorTypeToNodeProperty(operator.value.type),
 }));
 
 const onLeftValueChange = (update: IUpdateInformation): void => {
@@ -145,9 +154,11 @@ const onRightValueChange = (update: IUpdateInformation): void => {
 const convertToType = (value: unknown, type: FilterOperatorType): unknown => {
 	if (type === 'any') return value;
 
+	const fallback = type === 'boolean' ? false : value;
+
 	return (
 		validateFieldType('filter', condition.value.leftValue, type, { parseStrings: true }).newValue ??
-		value
+		fallback
 	);
 };
 
@@ -211,6 +222,7 @@ const onBlur = (): void => {
 					display-options
 					hide-label
 					hide-hint
+					hide-issues
 					is-single-line
 					:is-read-only="readOnly"
 					:parameter="leftParameter"
@@ -236,6 +248,7 @@ const onBlur = (): void => {
 					display-options
 					hide-label
 					hide-hint
+					hide-issues
 					is-single-line
 					:is-read-only="readOnly"
 					:options-position="breakpoint === 'default' ? 'top' : 'bottom'"

@@ -2299,7 +2299,7 @@ export type AssignmentCollectionValue = {
 export type AssignmentValue = {
 	id: string;
 	name: string;
-	value: string;
+	value: NodeParameterValue;
 	type?: string;
 };
 
@@ -2479,3 +2479,5 @@ export type BannerName =
 	| 'EMAIL_CONFIRMATION';
 
 export type Functionality = 'regular' | 'configuration-node';
+
+export type Result<T, E> = { ok: true; result: T } | { ok: false; error: E };

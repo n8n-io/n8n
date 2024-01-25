@@ -9,6 +9,7 @@ import { computed, ref } from 'vue';
 import TypeSelect from './TypeSelect.vue';
 import { resolveParameter } from '@/mixins/workflowHelpers';
 import { isObject } from '@jsplumb/util';
+import { isExpression } from '@/utils/expressions';
 
 interface Props {
 	path: string;
@@ -28,15 +29,25 @@ const emit = defineEmits<{
 	(event: 'remove'): void;
 }>();
 
-const assignmentTypeToNodePropType = (type: string): NodePropertyTypes => {
+const assignmentTypeToNodeProperty = (
+	type: string,
+): Partial<INodeProperties> & Pick<INodeProperties, 'type'> => {
 	switch (type) {
+		case 'boolean':
+			return {
+				type: 'options',
+				default: false,
+				options: [
+					{ name: 'false', value: false },
+					{ name: 'true', value: true },
+				],
+			};
 		case 'array':
 		case 'object':
-		case 'boolean':
 		case 'any':
-			return 'string';
+			return { type: 'string' };
 		default:
-			return type as NodePropertyTypes;
+			return { type } as INodeProperties;
 	}
 };
 
@@ -49,21 +60,24 @@ const nameParameter = computed<INodeProperties>(() => ({
 	type: 'string',
 }));
 
-const valueParameter = computed<INodeProperties>(() => ({
-	name: '',
-	displayName: '',
-	default: '',
-	placeholder: 'value',
-	type: assignmentTypeToNodePropType((assignment.value.type as NodePropertyTypes) ?? 'string'),
-}));
+const valueParameter = computed<INodeProperties>(() => {
+	return {
+		name: '',
+		displayName: '',
+		default: '',
+		placeholder: 'value',
+		...assignmentTypeToNodeProperty(assignment.value.type ?? 'string'),
+	};
+});
 
 const hint = computed(() => {
-	if (!assignment.value.value.startsWith('=')) {
+	const { value } = assignment.value;
+	if (typeof value !== 'string' || !value.startsWith('=')) {
 		return '';
 	}
 
 	try {
-		const resolvedValue = resolveParameter(assignment.value.value) as unknown;
+		const resolvedValue = resolveParameter(value) as unknown;
 
 		if (isObject(resolvedValue)) {
 			return JSON.stringify(resolvedValue);
@@ -78,12 +92,22 @@ const hint = computed(() => {
 	}
 });
 
+const valueIsExpression = computed(() => {
+	const { value } = assignment.value;
+
+	return typeof value === 'string' && isExpression(value);
+});
+
 const onAssignmentNameChange = (update: IUpdateInformation): void => {
 	assignment.value.name = update.value as string;
 };
 
 const onAssignmentTypeChange = (update: string): void => {
 	assignment.value.type = update;
+
+	if (update === 'boolean' && !valueIsExpression.value) {
+		assignment.value.value = false;
+	}
 };
 
 const onAssignmentValueChange = (update: IUpdateInformation): void => {
@@ -150,6 +174,7 @@ const onBlur = (): void => {
 						:key="valueParameter.type"
 						display-options
 						hide-label
+						hide-issues
 						hide-hint
 						is-single-line
 						is-assignment

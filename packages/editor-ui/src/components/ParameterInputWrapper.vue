@@ -16,7 +16,7 @@
 			:error-highlight="errorHighlight"
 			:is-for-credential="isForCredential"
 			:event-source="eventSource"
-			:expression-evaluated="expressionValueComputed"
+			:expression-evaluated="evaluatedExpressionValue"
 			:additional-expression-data="resolvedAdditionalExpressionData"
 			:label="label"
 			:is-single-line="isSingleLine"
@@ -59,6 +59,7 @@ import type {
 	IParameterLabel,
 	NodeParameterValue,
 	NodeParameterValueType,
+	Result,
 } from 'n8n-workflow';
 import { isResourceLocatorValue } from 'n8n-workflow';
 import type { INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
@@ -70,6 +71,7 @@ import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 
 import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
+import { get } from 'lodash-es';
 
 export default defineComponent({
 	name: 'ParameterInputWrapper',
@@ -187,15 +189,14 @@ export default defineComponent({
 		isInputParentOfActiveNode(): boolean {
 			return this.ndvStore.isInputParentOfActiveNode;
 		},
-		expressionValueComputed(): string | null {
+		evaluatedExpression(): Result<unknown, unknown> {
 			const value = isResourceLocatorValue(this.modelValue)
 				? this.modelValue.value
 				: this.modelValue;
 			if (!this.activeNode || !this.isValueExpression || typeof value !== 'string') {
-				return null;
+				return { ok: false, error: '' };
 			}
 
-			let computedValue: NodeParameterValue;
 			try {
 				let opts;
 				if (this.ndvStore.isInputParentOfActiveNode) {
@@ -208,24 +209,39 @@ export default defineComponent({
 					};
 				}
 
-				computedValue = this.resolveExpression(value, undefined, opts);
-
-				if (computedValue === null) {
-					return null;
-				}
-
-				if (typeof computedValue === 'string' && computedValue.length === 0) {
-					return this.$locale.baseText('parameterInput.emptyString');
-				}
+				return { ok: true, result: this.resolveExpression(value, undefined, opts) };
 			} catch (error) {
-				computedValue = `[${this.$locale.baseText('parameterInput.error')}: ${error.message}]`;
+				return { ok: false, error };
+			}
+		},
+		evaluatedExpressionValue(): unknown {
+			const evaluated = this.evaluatedExpression;
+			return evaluated.ok ? evaluated.result : null;
+		},
+		evaluatedExpressionString(): string | null {
+			const evaluated = this.evaluatedExpression;
+
+			if (!evaluated.ok) {
+				return `[${this.$locale.baseText('parameterInput.error')}: ${get(
+					evaluated.error,
+					'message',
+				)}]`;
 			}
 
-			return typeof computedValue === 'string' ? computedValue : JSON.stringify(computedValue);
+			if (evaluated.result === null) {
+				return null;
+			}
+
+			if (typeof evaluated.result === 'string' && evaluated.result.length === 0) {
+				return this.$locale.baseText('parameterInput.emptyString');
+			}
+			return typeof evaluated.result === 'string'
+				? evaluated.result
+				: JSON.stringify(evaluated.result);
 		},
 		expressionOutput(): string | null {
-			if (this.isValueExpression && this.expressionValueComputed) {
-				return this.expressionValueComputed;
+			if (this.isValueExpression && this.evaluatedExpressionString) {
+				return this.evaluatedExpressionString;
 			}
 
 			return null;

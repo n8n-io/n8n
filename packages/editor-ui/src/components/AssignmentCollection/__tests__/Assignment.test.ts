@@ -37,10 +37,10 @@ describe('Assignment.vue', () => {
 		await userEvent.type(nameField, 'New name');
 		await userEvent.type(valueField, 'New value');
 
-		await userEvent.click(baseElement.querySelectorAll('.option')[2]);
+		await userEvent.click(baseElement.querySelectorAll('.option')[3]);
 
 		expect(emitted('update:model-value')[0]).toEqual([
-			{ name: 'New name', type: 'boolean', value: 'New value' },
+			{ name: 'New name', type: 'array', value: 'New value' },
 		]);
 	});
 

@@ -5,12 +5,11 @@ import type {
 	FilterOptionsValue,
 	FilterValue,
 	INodeProperties,
+	Result,
 	ValidationResult,
 } from '../Interfaces';
 import { validateFieldType } from '../TypeValidation';
 import * as LoggerProxy from '../LoggerProxy';
-
-type Result<T, E> = { ok: true; result: T } | { ok: false; error: E };
 
 type FilterConditionMetadata = {
 	index: number;
