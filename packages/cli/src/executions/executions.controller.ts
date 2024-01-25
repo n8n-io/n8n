@@ -58,7 +58,7 @@ export class ExecutionsController {
 		return await this.executionService.findRangeWithCount(query);
 	}
 
-	@Post('/stop/:id')
+	@Post('/:id/stop')
 	async stop(req: ExecutionRequest.Stop) {
 		const workflowIds = await this.getAccessibleWorkflowIds(req.user);
 

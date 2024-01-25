@@ -330,5 +330,26 @@ describe('ExecutionService', () => {
 			expect(output.estimated).toBe(false);
 			expect(output.results).toEqual([]);
 		});
+
+		test('should support advanced filters', async () => {
+			const workflow = await createWorkflow();
+
+			await Promise.all([createExecution({}, workflow), createExecution({}, workflow)]);
+
+			const query: FindMany.RangeQuery = {
+				kind: 'range',
+				range: { limit: 20 },
+				metadata: [{ key: 'foo', value: 'bar' }],
+				accessibleWorkflowIds: [workflow.id],
+			};
+
+			const output = await executionService.findRangeWithCount(query);
+
+			expect(output.count).toBe(1);
+			expect(output.estimated).toBe(false);
+			expect(output.results).toEqual([
+				expect.objectContaining({ startedAt: '2020-12-31 00:00:00.000' }),
+			]);
+		});
 	});
 });
