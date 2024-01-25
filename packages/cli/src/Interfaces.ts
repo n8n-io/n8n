@@ -18,7 +18,7 @@ import type {
 	Workflow,
 	WorkflowExecuteMode,
 	ExecutionStatus,
-	IExecutionsSummary,
+	ExecutionSummary,
 	FeatureFlags,
 	INodeProperties,
 	IUserSettings,
@@ -35,10 +35,9 @@ import type { ChildProcess } from 'child_process';
 
 import type { DatabaseType } from '@db/types';
 import type { AuthProviderType } from '@db/entities/AuthIdentity';
-import type { Role } from '@db/entities/Role';
 import type { SharedCredentials } from '@db/entities/SharedCredentials';
 import type { TagEntity } from '@db/entities/TagEntity';
-import type { User } from '@db/entities/User';
+import type { GlobalRole, User } from '@db/entities/User';
 import type { CredentialsRepository } from '@db/repositories/credentials.repository';
 import type { SettingsRepository } from '@db/repositories/settings.repository';
 import type { UserRepository } from '@db/repositories/user.repository';
@@ -170,8 +169,7 @@ export interface IExecutionFlattedResponse extends IExecutionFlatted {
 
 export interface IExecutionsListResponse {
 	count: number;
-	// results: IExecutionShortResponse[];
-	results: IExecutionsSummary[];
+	results: ExecutionSummary[];
 	estimated: boolean;
 }
 
@@ -190,12 +188,6 @@ export interface IExecutionsCurrentSummary {
 	mode: WorkflowExecuteMode;
 	workflowId: string;
 	status?: ExecutionStatus;
-}
-
-export interface IExecutionDeleteFilter {
-	deleteBefore?: Date;
-	filters?: IDataObject;
-	ids?: string[];
 }
 
 export interface IExecutingWorkflowData {
@@ -667,6 +659,7 @@ export interface ILicensePostResponse extends ILicenseReadResponse {
 
 export interface JwtToken {
 	token: string;
+	/** The amount of seconds after which the JWT will expire. **/
 	expiresIn: number;
 }
 
@@ -687,7 +680,7 @@ export interface PublicUser {
 	createdAt: Date;
 	isPending: boolean;
 	hasRecoveryCodesLeft: boolean;
-	globalRole?: Role;
+	role?: GlobalRole;
 	globalScopes?: Scope[];
 	signInType: AuthProviderType;
 	disabled: boolean;

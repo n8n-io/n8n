@@ -2,7 +2,6 @@ import validator from 'validator';
 import type { SuperAgentTest } from 'supertest';
 
 import config from '@/config';
-import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 import {
 	randomEmail,
@@ -12,23 +11,17 @@ import {
 } from './shared/random';
 import * as testDb from './shared/testDb';
 import * as utils from './shared/utils/';
-import { getGlobalOwnerRole } from './shared/db/roles';
 import { createUserShell } from './shared/db/users';
 import { UserRepository } from '@db/repositories/user.repository';
 import Container from 'typedi';
 
 const testServer = utils.setupTestServer({ endpointGroups: ['owner'] });
 
-let globalOwnerRole: Role;
 let ownerShell: User;
 let authOwnerShellAgent: SuperAgentTest;
 
-beforeAll(async () => {
-	globalOwnerRole = await getGlobalOwnerRole();
-});
-
 beforeEach(async () => {
-	ownerShell = await createUserShell(globalOwnerRole);
+	ownerShell = await createUserShell('global:owner');
 	authOwnerShellAgent = testServer.authAgentFor(ownerShell);
 	config.set('userManagement.isInstanceOwnerSetUp', false);
 });
@@ -56,7 +49,7 @@ describe('POST /owner/setup', () => {
 			firstName,
 			lastName,
 			personalizationAnswers,
-			globalRole,
+			role,
 			password,
 			isPending,
 			apiKey,
@@ -70,8 +63,7 @@ describe('POST /owner/setup', () => {
 		expect(personalizationAnswers).toBeNull();
 		expect(password).toBeUndefined();
 		expect(isPending).toBe(false);
-		expect(globalRole.name).toBe('owner');
-		expect(globalRole.scope).toBe('global');
+		expect(role).toBe('global:owner');
 		expect(apiKey).toBeUndefined();
 		expect(globalScopes).not.toHaveLength(0);
 

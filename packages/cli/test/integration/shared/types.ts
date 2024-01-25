@@ -31,7 +31,6 @@ type EndpointGroup =
 	| 'executions'
 	| 'workflowHistory'
 	| 'binaryData'
-	| 'role'
 	| 'invitations'
 	| 'debug';
 

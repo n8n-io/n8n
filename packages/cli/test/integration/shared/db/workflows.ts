@@ -1,10 +1,12 @@
 import Container from 'typedi';
+import type { DeepPartial } from 'typeorm';
 import { v4 as uuid } from 'uuid';
+
 import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import { getWorkflowEditorRole, getWorkflowOwnerRole } from './roles';
+import type { SharedWorkflow } from '@db/entities/SharedWorkflow';
 
 export async function createManyWorkflows(
 	amount: number,
@@ -49,18 +51,17 @@ export async function createWorkflow(attributes: Partial<WorkflowEntity> = {}, u
 		await Container.get(SharedWorkflowRepository).save({
 			user,
 			workflow,
-			role: await getWorkflowOwnerRole(),
+			role: 'workflow:owner',
 		});
 	}
 	return workflow;
 }
 
 export async function shareWorkflowWithUsers(workflow: WorkflowEntity, users: User[]) {
-	const role = await getWorkflowEditorRole();
-	const sharedWorkflows = users.map((user) => ({
-		user,
-		workflow,
-		role,
+	const sharedWorkflows: Array<DeepPartial<SharedWorkflow>> = users.map((user) => ({
+		userId: user.id,
+		workflowId: workflow.id,
+		role: 'workflow:editor',
 	}));
 	return await Container.get(SharedWorkflowRepository).save(sharedWorkflows);
 }

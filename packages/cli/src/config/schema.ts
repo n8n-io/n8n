@@ -762,11 +762,17 @@ export const schema = {
 			default: '',
 			env: 'N8N_USER_MANAGEMENT_JWT_SECRET',
 		},
-		jwtDuration: {
-			doc: 'Set a specific JWT secret (optional - n8n can generate one)', // Generated @ start.ts
+		jwtSessionDurationHours: {
+			doc: 'Set a specific expiration date for the JWTs in hours.',
 			format: Number,
 			default: 168,
-			env: 'N8N_USER_MANAGEMENT_JWT_DURATION',
+			env: 'N8N_USER_MANAGEMENT_JWT_DURATION_HOURS',
+		},
+		jwtRefreshTimeoutHours: {
+			doc: 'How long before the JWT expires to automatically refresh it. 0 means 25% of N8N_USER_MANAGEMENT_JWT_DURATION_HOURS. -1 means it will never refresh, which forces users to login again after the defined period in N8N_USER_MANAGEMENT_JWT_DURATION_HOURS.',
+			format: Number,
+			default: 0,
+			env: 'N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS',
 		},
 		isInstanceOwnerSetUp: {
 			// n8n loads this setting from DB on startup
@@ -845,6 +851,18 @@ export const schema = {
 					format: String,
 					default: '',
 					env: 'N8N_UM_EMAIL_TEMPLATES_PWRESET',
+				},
+				workflowShared: {
+					doc: 'Overrides default HTML template for notifying that a workflow was shared (use full path)',
+					format: String,
+					default: '',
+					env: 'N8N_UM_EMAIL_TEMPLATES_WORKFLOW_SHARED',
+				},
+				credentialsShared: {
+					doc: 'Overrides default HTML template for notifying that credentials were shared (use full path)',
+					format: String,
+					default: '',
+					env: 'N8N_UM_EMAIL_TEMPLATES_CREDENTIALS_SHARED',
 				},
 			},
 		},

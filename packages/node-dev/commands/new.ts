@@ -2,10 +2,10 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import { Command } from '@oclif/core';
 import * as changeCase from 'change-case';
 import * as fs from 'fs';
 import * as inquirer from 'inquirer';
-import { Command } from '@oclif/command';
 import { join } from 'path';
 
 import { createTemplate } from '../src';

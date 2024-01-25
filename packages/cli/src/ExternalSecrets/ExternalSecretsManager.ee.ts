@@ -16,7 +16,7 @@ import { License } from '@/License';
 import { InternalHooks } from '@/InternalHooks';
 import { updateIntervalTime } from './externalSecretsHelper.ee';
 import { ExternalSecretsProviders } from './ExternalSecretsProviders.ee';
-import { SingleMainSetup } from '@/services/orchestration/main/SingleMainSetup';
+import { OrchestrationService } from '@/services/orchestration.service';
 
 @Service()
 export class ExternalSecretsManager {
@@ -79,7 +79,7 @@ export class ExternalSecretsManager {
 	}
 
 	async broadcastReloadExternalSecretsProviders() {
-		await Container.get(SingleMainSetup).broadcastReloadExternalSecretsProviders();
+		await Container.get(OrchestrationService).publish('reloadExternalSecretsProviders');
 	}
 
 	private decryptSecretsSettings(value: string): ExternalSecretsSettings {
