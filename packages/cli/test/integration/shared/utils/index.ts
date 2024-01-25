@@ -29,8 +29,8 @@ export { setupTestServer } from './testServer';
 /**
  * Initialize node types.
  */
-export async function initActiveWorkflowRunner() {
-	mockInstance(OrchestrationService);
+export async function initActiveWorkflowRunner(mockOrchestrationService = true) {
+	if (mockOrchestrationService) mockInstance(OrchestrationService);
 
 	mockInstance(ExecutionService);
 	const { ActiveWorkflowRunner } = await import('@/ActiveWorkflowRunner');
