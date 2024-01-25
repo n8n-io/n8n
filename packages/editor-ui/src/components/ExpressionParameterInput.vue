@@ -32,6 +32,7 @@
 		<InlineExpressionEditorOutput
 			:segments="segments"
 			:is-read-only="isReadOnly"
+			:no-input-data="noInputData"
 			:visible="isFocused"
 			:hovering-item-number="hoveringItemNumber"
 		/>
@@ -99,6 +100,9 @@ export default defineComponent({
 		},
 		isDragging(): boolean {
 			return this.ndvStore.isDraggableDragging;
+		},
+		noInputData(): boolean {
+			return this.ndvStore.ndvInputData.length === 0;
 		},
 	},
 	methods: {
