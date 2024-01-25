@@ -685,9 +685,9 @@ export type IPersonalizationSurveyVersions =
 	| IPersonalizationSurveyAnswersV2
 	| IPersonalizationSurveyAnswersV3;
 
-export type IRole = 'default' | 'owner' | 'member' | 'admin';
+export type IRole = 'default' | 'global:owner' | 'global:member' | 'global:admin';
 
-export type InvitableRoleName = 'member' | 'admin';
+export type InvitableRoleName = 'global:member' | 'global:admin';
 
 export interface IUserResponse {
 	id: string;
@@ -695,11 +695,7 @@ export interface IUserResponse {
 	lastName?: string;
 	email?: string;
 	createdAt?: string;
-	globalRole?: {
-		name: IRole;
-		id: string;
-		createdAt: Date;
-	};
+	role?: IRole;
 	globalScopes?: Scope[];
 	personalizationAnswers?: IPersonalizationSurveyVersions | null;
 	isPending: boolean;
@@ -720,7 +716,6 @@ export interface IUser extends IUserResponse {
 	fullName?: string;
 	createdAt?: string;
 	mfaEnabled: boolean;
-	globalRoleId?: number;
 }
 
 export interface IVersionNotificationSettings {

@@ -4,7 +4,6 @@ import type { WorkflowSettings } from 'n8n-workflow';
 import { SubworkflowOperationError, Workflow } from 'n8n-workflow';
 
 import config from '@/config';
-import type { Role } from '@db/entities/Role';
 import { User } from '@db/entities/User';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
@@ -27,7 +26,6 @@ import * as testDb from '../integration/shared/testDb';
 import type { SaveCredentialFunction } from '../integration/shared/types';
 import { mockNodeTypesData } from './Helpers';
 import { affixRoleToSaveCredential } from '../integration/shared/db/credentials';
-import { getCredentialOwnerRole, getWorkflowOwnerRole } from '../integration/shared/db/roles';
 import { createOwner, createUser } from '../integration/shared/db/users';
 
 export const toTargetCallErrorMsg = (subworkflowId: string) =>
@@ -71,8 +69,6 @@ export function createSubworkflow({
 	});
 }
 
-let credentialOwnerRole: Role;
-let workflowOwnerRole: Role;
 let saveCredential: SaveCredentialFunction;
 
 const mockNodeTypes = mockInstance(NodeTypes);
@@ -85,10 +81,7 @@ let permissionChecker: PermissionChecker;
 beforeAll(async () => {
 	await testDb.init();
 
-	credentialOwnerRole = await getCredentialOwnerRole();
-	workflowOwnerRole = await getWorkflowOwnerRole();
-
-	saveCredential = affixRoleToSaveCredential(credentialOwnerRole);
+	saveCredential = affixRoleToSaveCredential('credential:owner');
 
 	permissionChecker = Container.get(PermissionChecker);
 });
@@ -251,7 +244,7 @@ describe('check()', () => {
 		await Container.get(SharedWorkflowRepository).save({
 			workflow: workflowEntity,
 			user: member,
-			role: workflowOwnerRole,
+			role: 'workflow:owner',
 		});
 
 		const workflow = new Workflow(workflowDetails);

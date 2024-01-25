@@ -195,6 +195,7 @@
       "dist/credentials/LinearOAuth2Api.credentials.js",
       "dist/credentials/LineNotifyOAuth2Api.credentials.js",
       "dist/credentials/LingvaNexApi.credentials.js",
+      "dist/credentials/LinkedInCommunityManagementOAuth2Api.credentials.js",
       "dist/credentials/LinkedInOAuth2Api.credentials.js",
       "dist/credentials/LoneScaleApi.credentials.js",
       "dist/credentials/Magento2Api.credentials.js",

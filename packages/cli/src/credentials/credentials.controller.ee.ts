@@ -5,7 +5,7 @@ import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
 
 import type { CredentialRequest } from '@/requests';
-import { isSharingEnabled } from '@/UserManagement/UserManagementHelper';
+import { License } from '@/License';
 import { EECredentialsService as EECredentials } from './credentials.service.ee';
 import { OwnershipService } from '@/services/ownership.service';
 import { Container } from 'typedi';
@@ -15,11 +15,16 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import * as utils from '@/utils';
+import { UserRepository } from '@/databases/repositories/user.repository';
+import { UserManagementMailer } from '@/UserManagement/email';
+import { UrlService } from '@/services/url.service';
+import { Logger } from '@/Logger';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 
 export const EECredentialsController = express.Router();
 
 EECredentialsController.use((req, res, next) => {
-	if (!isSharingEnabled()) {
+	if (!Container.get(License).isSharingEnabled()) {
 		// skip ee router and use free one
 		next('router');
 		return;
@@ -40,7 +45,7 @@ EECredentialsController.get(
 
 		let credential = await Container.get(CredentialsRepository).findOne({
 			where: { id: credentialId },
-			relations: ['shared', 'shared.role', 'shared.user'],
+			relations: ['shared', 'shared.user'],
 		});
 
 		if (!credential) {
@@ -57,7 +62,7 @@ EECredentialsController.get(
 
 		credential = Container.get(OwnershipService).addOwnedByAndSharedWith(credential);
 
-		if (!includeDecryptedData || !userSharing || userSharing.role.name !== 'owner') {
+		if (!includeDecryptedData || !userSharing || userSharing.role !== 'credential:owner') {
 			const { data: _, ...rest } = credential;
 			return { ...rest };
 		}
@@ -146,10 +151,9 @@ EECredentialsController.put(
 		const ownerIds = (
 			await EECredentials.getSharings(Db.getConnection().createEntityManager(), credentialId, [
 				'shared',
-				'shared.role',
 			])
 		)
-			.filter((e) => e.role.name === 'owner')
+			.filter((e) => e.role === 'credential:owner')
 			.map((e) => e.userId);
 
 		let amountRemoved: number | null = null;
@@ -184,6 +188,38 @@ EECredentialsController.put(
 			user_id_sharer: req.user.id,
 			user_ids_sharees_added: newShareeIds,
 			sharees_removed: amountRemoved,
+		});
+
+		const recipients = await Container.get(UserRepository).getEmailsByIds(newShareeIds);
+
+		if (recipients.length === 0) return;
+
+		try {
+			await Container.get(UserManagementMailer).notifyCredentialsShared({
+				sharerFirstName: req.user.firstName,
+				credentialsName: credential.name,
+				recipientEmails: recipients.map(({ email }) => email),
+				baseUrl: Container.get(UrlService).getInstanceBaseUrl(),
+			});
+		} catch (error) {
+			void Container.get(InternalHooks).onEmailFailed({
+				user: req.user,
+				message_type: 'Credentials shared',
+				public_api: false,
+			});
+			if (error instanceof Error) {
+				throw new InternalServerError(`Please contact your administrator: ${error.message}`);
+			}
+		}
+
+		Container.get(Logger).info('Sent credentials shared email successfully', {
+			sharerId: req.user.id,
+		});
+
+		void Container.get(InternalHooks).onUserTransactionalEmail({
+			user_id: req.user.id,
+			message_type: 'Credentials shared',
+			public_api: false,
 		});
 	}),
 );

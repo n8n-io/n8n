@@ -36,5 +36,7 @@ properties:
     description: Last time the user was updated.
     format: date-time
     readOnly: true
-  globalRole:
-    $ref: './role.yml'
+  role:
+    type: string
+    example: owner
+    readOnly: true

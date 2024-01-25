@@ -1166,7 +1166,31 @@ export type AssignmentTypeOptions = Partial<{
 	hideType?: boolean; // visible by default
 }>;
 
+export type DisplayCondition =
+	| { _cnd: { eq: NodeParameterValue } }
+	| { _cnd: { not: NodeParameterValue } }
+	| { _cnd: { gte: number | string } }
+	| { _cnd: { lte: number | string } }
+	| { _cnd: { gt: number | string } }
+	| { _cnd: { lt: number | string } }
+	| { _cnd: { between: { from: number | string; to: number | string } } }
+	| { _cnd: { startsWith: string } }
+	| { _cnd: { endsWith: string } }
+	| { _cnd: { includes: string } }
+	| { _cnd: { regex: string } };
+
 export interface IDisplayOptions {
+	hide?: {
+		[key: string]: Array<NodeParameterValue | DisplayCondition> | undefined;
+	};
+	show?: {
+		'@version'?: Array<number | DisplayCondition>;
+		[key: string]: Array<NodeParameterValue | DisplayCondition> | undefined;
+	};
+
+	hideOnCloud?: boolean;
+}
+export interface ICredentialsDisplayOptions {
 	hide?: {
 		[key: string]: NodeParameterValue[] | undefined;
 	};
@@ -1408,7 +1432,7 @@ export interface INodeCredentialTestRequest {
 export interface INodeCredentialDescription {
 	name: string;
 	required?: boolean;
-	displayOptions?: IDisplayOptions;
+	displayOptions?: ICredentialsDisplayOptions;
 	testedBy?: ICredentialTestRequest | string; // Name of a function inside `loadOptions.credentialTest`
 }
 
@@ -2164,7 +2188,7 @@ export interface NodeExecutionWithMetadata extends INodeExecutionData {
 	pairedItem: IPairedItemData | IPairedItemData[];
 }
 
-export interface IExecutionsSummary {
+export interface ExecutionSummary {
 	id: string;
 	finished?: boolean;
 	mode: WorkflowExecuteMode;
