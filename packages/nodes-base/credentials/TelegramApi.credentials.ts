@@ -29,7 +29,7 @@ export class TelegramApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: '={{$credentials.baseUrl}}{{$credentials.accessToken}}',
+			baseURL: '={{$credentials.baseUrl}}/bot{{$credentials.accessToken}}',
 			url: '/getMe',
 		},
 	};
