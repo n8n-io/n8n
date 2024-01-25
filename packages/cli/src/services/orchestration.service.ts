@@ -150,13 +150,13 @@ export class OrchestrationService {
 	}
 
 	/**
-	 * Triggers and pollers are removed from instance memory on certain events.
+	 * Triggers and pollers are added to memory on certain events.
 	 *
-	 * In single-main setup, the single main instance removes triggers and pollers.
+	 * In single-main setup, the single main instance adds triggers and pollers.
 	 *
-	 * In multi-main setup, only the leader may remove triggers and pollers in all cases.
-	 * More generally, only the leader may manage triggers and pollers - they are only
-	 * ever running in the leader.
+	 * In multi-main setup, only the leader may add triggers and pollers in all cases.
+	 * This is in line with only the leader being entitled to manage triggers and pollers,
+	 * which are only ever running in the leader.
 	 */
 	shouldAddTriggersAndPollers() {
 		if (this.isSingleMainEnabled) return true;
