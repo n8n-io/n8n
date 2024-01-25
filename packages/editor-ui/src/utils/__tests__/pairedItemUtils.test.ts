@@ -320,7 +320,7 @@ describe('pairedItemUtils', () => {
 		});
 
 		it('should skip mapping if execution has more than max items overall', () => {
-			const mockExecution: IExecutionResponse = {
+			const mockExecution: Partial<IExecutionResponse> = {
 				data: {
 					startData: {},
 					resultData: {
@@ -367,14 +367,14 @@ describe('pairedItemUtils', () => {
 			};
 
 			for (let i = 0; i < MAX_ITEM_COUNT_FOR_PAIRING / 2; i++) {
-				mockExecution?.data?.resultData?.runData?.Start?.[0]?.data?.main?.[0]?.push({
+				mockExecution.data?.resultData.runData.Start[0].data?.main[0]?.push({
 					json: {},
 					pairedItem: { item: 0 },
 				});
 			}
 
 			for (let i = 0; i < MAX_ITEM_COUNT_FOR_PAIRING / 2; i++) {
-				mockExecution?.data?.resultData?.runData?.DebugHelper?.[0]?.data?.main?.[0]?.push({
+				mockExecution.data?.resultData.runData.DebugHelper[0]?.data?.main[0]?.push({
 					json: {
 						uid: '3d3ee69e-f013-478c-8f5b-7723f508c02b',
 						email: 'Jeffery_Wehner@yahoo.com',
@@ -389,7 +389,7 @@ describe('pairedItemUtils', () => {
 			const actual = getPairedItemsMapping(mockExecution);
 			expect(Object.keys(actual).length).toEqual(MAX_ITEM_COUNT_FOR_PAIRING / 2 + 1);
 
-			mockExecution?.data?.resultData?.runData?.Start?.[0]?.data?.main?.[0]?.push({
+			mockExecution.data?.resultData.runData.Start[0].data?.main?.[0]?.push({
 				json: {},
 				pairedItem: { item: 0 },
 			});
