@@ -2,6 +2,7 @@
 	"compilerOptions": {
 		"types": ["node"],
 		"noEmit": false,
+		"noUnusedLocals": false,
 		"declaration": true
 	},
 	"tsc-alias": {
