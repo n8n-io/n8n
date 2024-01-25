@@ -9,6 +9,14 @@ export class TelegramApi implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
+			displayName: 'Base URL',
+			name: 'baseUrl',
+			type: 'string',
+			default: 'https://api.telegram.org/bot',
+			description:
+				'Base URL for Telegram Bot API',
+		},
+		{
 			displayName: 'Access Token',
 			name: 'accessToken',
 			type: 'string',
@@ -21,7 +29,7 @@ export class TelegramApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: '=https://api.telegram.org/bot{{$credentials.accessToken}}',
+			baseURL: '={{$credentials.baseUrl}}{{$credentials.accessToken}}',
 			url: '/getMe',
 		},
 	};
