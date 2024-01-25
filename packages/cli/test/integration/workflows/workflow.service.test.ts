@@ -85,7 +85,7 @@ describe('update()', () => {
 		expect(addSpy).not.toHaveBeenCalled();
 	});
 
-	test('should broadcast active workflow state change if state changed', async () => {
+	test('should publish to inter-main channel on workflow activation', async () => {
 		const owner = await createOwner();
 		const workflow = await createWorkflow({ active: true }, owner);
 
@@ -94,9 +94,8 @@ describe('update()', () => {
 		workflow.active = false;
 		await workflowService.update(owner, workflow, workflow.id);
 
-		expect(publishSpy).toHaveBeenCalledTimes(1);
 		expect(publishSpy).toHaveBeenCalledWith(
-			'workflowActiveStateChanged',
+			'workflow-updated',
 			expect.objectContaining({
 				newState: false,
 				oldState: true,
@@ -105,7 +104,7 @@ describe('update()', () => {
 		);
 	});
 
-	test('should not broadcast active workflow state change if state did not change', async () => {
+	test('should publish to inter-main channel on workflow update', async () => {
 		const owner = await createOwner();
 		const workflow = await createWorkflow({ active: true }, owner);
 
@@ -113,6 +112,13 @@ describe('update()', () => {
 
 		await workflowService.update(owner, workflow, workflow.id);
 
-		expect(publishSpy).not.toHaveBeenCalled();
+		expect(publishSpy).toHaveBeenCalledWith(
+			'workflow-updated',
+			expect.objectContaining({
+				newState: true,
+				oldState: true,
+				workflowId: workflow.id,
+			}),
+		);
 	});
 });
