@@ -63,7 +63,7 @@ describe('WorkflowsView', () => {
 		server.shutdown();
 	});
 
-	it('should render loading state', async () => {
+	it('should filter workflows by tags', async () => {
 		const { container, getByTestId, getAllByTestId, queryByTestId } = renderComponent({
 			pinia,
 		});
