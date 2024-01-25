@@ -229,7 +229,7 @@ export class Start extends BaseCommand {
 		if (!orchestrationService.isMultiMainSetupEnabled) return;
 
 		orchestrationService.multiMainSetup
-			.addListener('leadershipChange', async () => {
+			.on('leadershipChange', async () => {
 				if (orchestrationService.isLeader) {
 					await this.activeWorkflowRunner.clearAllActivationErrors();
 					await this.activeWorkflowRunner.addAllTriggerAndPollerBasedWorkflows();
@@ -237,7 +237,7 @@ export class Start extends BaseCommand {
 					await this.activeWorkflowRunner.removeAllTriggerAndPollerBasedWorkflows();
 				}
 			})
-			.addListener('leadershipVacant', async () => {
+			.on('leadershipVacant', async () => {
 				await this.activeWorkflowRunner.removeAllTriggerAndPollerBasedWorkflows();
 			});
 	}
@@ -358,14 +358,14 @@ export class Start extends BaseCommand {
 		if (!orchestrationService.isMultiMainSetupEnabled) return;
 
 		orchestrationService.multiMainSetup
-			.addListener('leadershipChange', async () => {
+			.on('leadershipChange', async () => {
 				if (orchestrationService.isLeader) {
 					this.pruningService.startPruning();
 				} else {
 					this.pruningService.stopPruning();
 				}
 			})
-			.addListener('leadershipVacant', () => {
+			.on('leadershipVacant', () => {
 				this.pruningService.stopPruning();
 			});
 	}
