@@ -232,9 +232,6 @@ export class WorkflowService {
 
 		const newState = updatedWorkflow.active;
 
-		/**
-		 * @TODO Ensure we send a message only if a trigger-poller changed, not webhook
-		 */
 		if (this.orchestrationService.isMultiMainSetupEnabled && this.orchestrationService.isFollower) {
 			await this.orchestrationService.publish('workflow-updated', {
 				workflowId,

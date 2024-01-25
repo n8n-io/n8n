@@ -134,20 +134,17 @@ export class OrchestrationService {
 	 *
 	 * In single-main setup, the single main instance adds webhooks.
 	 *
-	 * In multi-main setup, any of leader and follower may add webhooks on
-	 * workflow activation or update, but only the leader may add webhooks on
-	 * init, so that followers do not add already added webhooks. On leadership
-	 * change, none of the leader and follower may add webhooks because these
-	 * are already in the `webhook_entity` table.
+	 * In multi-main setup, only the leader may add webhooks on `init` or `activate`
+	 * or `update`, so that we have always the same instance handling webhooks.
+	 * On leadership change, neither the leader nor the follower may add webhooks
+	 * because these are already in the `webhook_entity` table.
 	 */
 	shouldAddWebhooks(activationMode: WorkflowActivateMode) {
 		if (this.isSingleMainEnabled) return true;
 
-		if (['activate', 'update'].includes(activationMode)) return true;
+		if (['activate', 'update', 'init'].includes(activationMode)) return this.isLeader;
 
 		if (activationMode === 'leadershipChange') return false;
-
-		if (activationMode === 'init') return this.isLeader;
 
 		throw new ApplicationError(`Unexpected activation mode: ${activationMode}`);
 	}

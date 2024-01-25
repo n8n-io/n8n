@@ -185,20 +185,20 @@ describe('Orchestration Service', () => {
 				expect(orchestrationService.shouldAddWebhooks('init')).toBe(false);
 			});
 
-			test('on `update`, should return true regardless of leader or follower', () => {
+			test('on `update`, should return true if follower', () => {
 				isLeaderSpy.mockReturnValue(true);
 				expect(orchestrationService.shouldAddWebhooks('activate')).toBe(true);
 
 				isLeaderSpy.mockReturnValue(false);
-				expect(orchestrationService.shouldAddWebhooks('activate')).toBe(true);
+				expect(orchestrationService.shouldAddWebhooks('activate')).toBe(false);
 			});
 
-			test('on `activate`, should return true regardless of leader or follower', () => {
+			test('on `activate`, should return true if leader', () => {
 				isLeaderSpy.mockReturnValue(true);
 				expect(orchestrationService.shouldAddWebhooks('activate')).toBe(true);
 
 				isLeaderSpy.mockReturnValue(false);
-				expect(orchestrationService.shouldAddWebhooks('activate')).toBe(true);
+				expect(orchestrationService.shouldAddWebhooks('activate')).toBe(false);
 			});
 
 			test('on `leadershipChange`, should return false regardless of leader or follower', () => {
