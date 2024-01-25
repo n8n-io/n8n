@@ -69,7 +69,7 @@ import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 
 import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
-import { isNoExecDataExpressionError } from '../utils/expressions';
+import { getResolvableState } from '@/utils/expressions';
 
 export default defineComponent({
 	name: 'ParameterInputWrapper',
@@ -215,7 +215,7 @@ export default defineComponent({
 					return this.$locale.baseText('parameterInput.emptyString');
 				}
 			} catch (error) {
-				if (isNoExecDataExpressionError(error)) {
+				if (getResolvableState(error) !== 'invalid') {
 					return null;
 				}
 

@@ -1080,7 +1080,6 @@ export class WorkflowDataProxy {
 				},
 				get(target, property, receiver) {
 					if (property === 'isProxy') return true;
-					console.log(that.connectionInputData);
 
 					if (property === 'item') {
 						if (that.connectionInputData.length === 0) {
