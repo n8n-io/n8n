@@ -137,17 +137,17 @@ describe('ExecutionService', () => {
 			expect(output.results).toHaveLength(2);
 		});
 
-		test('should retrieve range between `firstId` and `lastId`, excluding them', async () => {
+		test('should retrieve executions before `lastId`, excluding it', async () => {
 			const workflow = await createWorkflow();
 
 			await Promise.all([manyExecutions(4, 'success', workflow)]);
 
 			const storedExecutions = await Container.get(ExecutionRepository).find({ select: ['id'] });
-			const [firstId, secondId, thirdId] = storedExecutions.map((execution) => execution.id);
+			const [firstId, secondId] = storedExecutions.map((execution) => execution.id);
 
 			const query: FindMany.RangeQuery = {
 				kind: 'range',
-				range: { limit: 20, firstId, lastId: thirdId },
+				range: { limit: 20, lastId: secondId },
 				accessibleWorkflowIds: [workflow.id],
 			};
 
@@ -155,7 +155,34 @@ describe('ExecutionService', () => {
 
 			expect(output.count).toBe(4);
 			expect(output.estimated).toBe(false);
-			expect(output.results).toEqual([expect.objectContaining({ id: secondId })]);
+			expect(output.results).toEqual([expect.objectContaining({ id: firstId })]);
+		});
+
+		test('should retrieve executions after `firstId`, excluding it', async () => {
+			const workflow = await createWorkflow();
+
+			await Promise.all([manyExecutions(4, 'success', workflow)]);
+
+			const storedExecutions = await Container.get(ExecutionRepository).find({ select: ['id'] });
+			const [firstId, secondId, thirdId, fourthId] = storedExecutions.map(
+				(execution) => execution.id,
+			);
+
+			const query: FindMany.RangeQuery = {
+				kind: 'range',
+				range: { limit: 20, firstId },
+				accessibleWorkflowIds: [workflow.id],
+			};
+
+			const output = await executionService.findManyWithCount(query);
+
+			expect(output.count).toBe(4);
+			expect(output.estimated).toBe(false);
+			expect(output.results).toEqual([
+				expect.objectContaining({ id: fourthId }),
+				expect.objectContaining({ id: thirdId }),
+				expect.objectContaining({ id: secondId }),
+			]);
 		});
 
 		test('should filter executions by `status`', async () => {
