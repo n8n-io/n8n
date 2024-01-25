@@ -64,9 +64,7 @@ export class MultiMainSetup extends EventEmitter {
 
 				this.emit('leadershipChange'); // stop triggers, pollers, pruning
 
-				EventReporter.report('[Multi-main setup] Leader failed to renew leader key', {
-					level: 'info',
-				});
+				EventReporter.info('[Multi-main setup] Leader failed to renew leader key');
 			}
 
 			return;
