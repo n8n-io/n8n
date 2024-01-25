@@ -59,7 +59,7 @@ import type {
 	NodeParameterValue,
 	NodeParameterValueType,
 } from 'n8n-workflow';
-import { isResourceLocatorValue } from 'n8n-workflow';
+import { ExpressionError, isResourceLocatorValue } from 'n8n-workflow';
 import type { INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { isValueExpression, parseResourceMapperFieldName } from '@/utils/nodeTypesUtils';
@@ -69,6 +69,7 @@ import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 
 import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
+import { isNoExecDataExpressionError } from '../utils/expressions';
 
 export default defineComponent({
 	name: 'ParameterInputWrapper',
@@ -214,6 +215,10 @@ export default defineComponent({
 					return this.$locale.baseText('parameterInput.emptyString');
 				}
 			} catch (error) {
+				if (isNoExecDataExpressionError(error)) {
+					return null;
+				}
+
 				computedValue = `[${this.$locale.baseText('parameterInput.error')}: ${error.message}]`;
 			}
 

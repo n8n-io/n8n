@@ -662,6 +662,7 @@
 	"expressionModalInput.empty": "[empty]",
 	"expressionModalInput.undefined": "[undefined]",
 	"expressionModalInput.null": "null",
+	"expressionModalInput.noExecutionData": "[Execute previous nodes for preview]",
 	"fakeDoor.settings.environments.name": "Environments",
 	"fakeDoor.settings.sso.name": "Single Sign-On",
 	"fakeDoor.settings.sso.actionBox.title": "We’re working on this (as a paid feature)",
