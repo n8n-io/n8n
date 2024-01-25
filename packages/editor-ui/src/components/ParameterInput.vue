@@ -34,7 +34,7 @@
 				:node="node"
 				:path="path"
 				:event-bus="eventBus"
-				@update:model-value="valueChanged"
+				@update:model-value="valueChangedDebounced"
 				@modalOpenerClick="openExpressionEditorModal"
 				@focus="setFocus"
 				@blur="onBlur"
@@ -258,7 +258,7 @@
 					:disabled="isReadOnly"
 					:title="displayTitle"
 					:placeholder="getPlaceholder()"
-					@update:model-value="valueChanged($event) && onUpdateTextInput($event)"
+					@update:model-value="valueChangedDebounced($event) && onUpdateTextInput($event)"
 					@keydown.stop
 					@focus="setFocus"
 					@blur="onBlur"
@@ -291,7 +291,7 @@
 					:show-alpha="getArgument('showAlpha')"
 					@focus="setFocus"
 					@blur="onBlur"
-					@update:model-value="valueChanged"
+					@update:model-value="valueChangedDebounced"
 				/>
 				<n8n-input
 					v-model="tempValue"
@@ -299,7 +299,7 @@
 					type="text"
 					:disabled="isReadOnly"
 					:title="displayTitle"
-					@update:model-value="valueChanged"
+					@update:model-value="valueChangedDebounced"
 					@keydown.stop
 					@focus="setFocus"
 					@blur="onBlur"
@@ -323,7 +323,7 @@
 				"
 				:picker-options="dateTimePickerOptions"
 				:class="{ 'ph-no-capture': shouldRedactValue }"
-				@update:model-value="valueChanged"
+				@update:model-value="valueChangedDebounced"
 				@focus="setFocus"
 				@blur="onBlur"
 				@keydown.stop
@@ -359,7 +359,7 @@
 				:is-read-only="isReadOnly"
 				:display-title="displayTitle"
 				@credentialSelected="credentialSelected"
-				@update:model-value="valueChanged"
+				@update:model-value="valueChangedDebounced"
 				@setFocus="setFocus"
 				@onBlur="onBlur"
 			>
@@ -380,7 +380,7 @@
 				:loading="remoteParameterOptionsLoading"
 				:disabled="isReadOnly || remoteParameterOptionsLoading"
 				:title="displayTitle"
-				@update:model-value="valueChanged"
+				@update:model-value="valueChangedDebounced"
 				@keydown.stop
 				@focus="setFocus"
 				@blur="onBlur"
@@ -418,7 +418,7 @@
 				:disabled="isReadOnly || remoteParameterOptionsLoading"
 				:title="displayTitle"
 				:placeholder="i18n.baseText('parameterInput.select')"
-				@update:model-value="valueChanged"
+				@update:model-value="valueChangedDebounced"
 				@keydown.stop
 				@focus="setFocus"
 				@blur="onBlur"
@@ -455,7 +455,7 @@
 				active-color="#13ce66"
 				:model-value="displayValue"
 				:disabled="isReadOnly"
-				@update:model-value="valueChanged"
+				@update:model-value="valueChangedDebounced"
 			/>
 		</div>
 
@@ -1245,7 +1245,7 @@ export default defineComponent({
 			this.$emit('textInput', parameterData);
 		},
 		valueChangedDebounced(value: NodeParameterValueType | {} | Date) {
-			void this.callDebounced(this.valueChanged, { debounceTime: 100 }, value);
+			void this.callDebounced(this.valueChanged, { debounceTime: 300 }, value);
 		},
 		onUpdateTextInput(value: string) {
 			this.valueChanged(value);
