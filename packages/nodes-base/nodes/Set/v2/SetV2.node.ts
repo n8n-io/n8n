@@ -126,7 +126,7 @@ const versionDescription: INodeTypeDescription = {
 		},
 		{
 			displayName: 'Include Other Input Fields',
-			name: 'keepOnlySetFields',
+			name: 'includeOtherFields',
 			type: 'boolean',
 			default: false,
 			description:
@@ -146,7 +146,7 @@ const versionDescription: INodeTypeDescription = {
 			displayOptions: {
 				hide: {
 					'@version': [3, 3.1, 3.2],
-					'/keepOnlySetFields': [false],
+					'/includeOtherFields': [false],
 				},
 			},
 			options: [
@@ -280,12 +280,12 @@ export class SetV2 implements INodeType {
 		}
 
 		for (let i = 0; i < items.length; i++) {
-			const keepOnlySetFields = this.getNodeParameter('keepOnlySetFields', i, false) as boolean;
+			const includeOtherFields = this.getNodeParameter('includeOtherFields', i, false) as boolean;
 			const include = this.getNodeParameter('include', i, 'all') as IncludeMods;
 			const options = this.getNodeParameter('options', i, {});
 			const node = this.getNode();
 
-			options.include = keepOnlySetFields ? 'none' : include;
+			options.include = includeOtherFields ? include : 'none';
 
 			const newItem = await setNode[mode].execute.call(
 				this,
