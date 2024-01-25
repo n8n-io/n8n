@@ -125,12 +125,12 @@ const versionDescription: INodeTypeDescription = {
 			],
 		},
 		{
-			displayName: 'Exclude Other Input Fields',
+			displayName: 'Include Other Input Fields',
 			name: 'keepOnlySetFields',
 			type: 'boolean',
 			default: false,
 			description:
-				"Whether to pass to the output only the fields set in 'Fields to Set' (and discard all the other input fields)",
+				"Whether to pass to the output all the input fields (along with the fields set in 'Fields to Set')",
 			displayOptions: {
 				hide: {
 					'@version': [3, 3.1, 3.2],
@@ -146,7 +146,7 @@ const versionDescription: INodeTypeDescription = {
 			displayOptions: {
 				hide: {
 					'@version': [3, 3.1, 3.2],
-					'/keepOnlySetFields': [true],
+					'/keepOnlySetFields': [false],
 				},
 			},
 			options: [
