@@ -40,4 +40,8 @@ export const workflows = [
 			{ id: '3', name: 'tag3' },
 		],
 	},
-].map((wf) => ({ ...wf, createdAt: faker.date.recent().toISOString() })) as IWorkflowDb[];
+].map((wf, idx) => ({
+	...wf,
+	createdAt: faker.date.recent().toISOString(),
+	updatedAt: new Date(`2024-1-${idx + 1}`).toISOString(),
+})) as IWorkflowDb[];
