@@ -1,26 +1,25 @@
 <script setup lang="ts">
 import type { IUpdateInformation } from '@/Interface';
+import InputTriple from '@/components/InputTriple/InputTriple.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
-import InputTriple from '@/components/InputTriple/InputTriple.vue';
 import { useI18n } from '@/composables/useI18n';
+import { resolveParameter } from '@/mixins/workflowHelpers';
 import { DateTime } from 'luxon';
 import {
+	FilterError,
 	executeFilterCondition,
-	type FilterOptionsValue,
+	validateFieldType,
 	type FilterConditionValue,
 	type FilterOperatorType,
+	type FilterOptionsValue,
 	type INodeProperties,
 	type NodeParameterValue,
-	type NodePropertyTypes,
-	FilterError,
-	validateFieldType,
 } from 'n8n-workflow';
 import { computed, ref } from 'vue';
 import OperatorSelect from './OperatorSelect.vue';
 import { OPERATORS_BY_ID, type FilterOperatorId } from './constants';
 import type { FilterOperator } from './types';
-import { resolveParameter } from '@/mixins/workflowHelpers';
 type ConditionResult =
 	| { status: 'resolve_error' }
 	| { status: 'validation_error'; error: string }

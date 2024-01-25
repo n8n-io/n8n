@@ -46,32 +46,31 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
-import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
 
+import type { INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
 import ParameterInput from '@/components/ParameterInput.vue';
 import InputHint from '@/components/ParameterInputHint.vue';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
+import { useEnvironmentsStore } from '@/stores/environments.ee.store';
+import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { isValueExpression, parseResourceMapperFieldName } from '@/utils/nodeTypesUtils';
 import type {
 	IDataObject,
 	INodeProperties,
 	INodePropertyMode,
 	IParameterLabel,
-	NodeParameterValue,
 	NodeParameterValueType,
 	Result,
 } from 'n8n-workflow';
 import { isResourceLocatorValue } from 'n8n-workflow';
-import type { INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { isValueExpression, parseResourceMapperFieldName } from '@/utils/nodeTypesUtils';
-import { useNDVStore } from '@/stores/ndv.store';
-import { useEnvironmentsStore } from '@/stores/environments.ee.store';
-import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 
+import { get } from 'lodash-es';
 import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
-import { get } from 'lodash-es';
 
 export default defineComponent({
 	name: 'ParameterInputWrapper',

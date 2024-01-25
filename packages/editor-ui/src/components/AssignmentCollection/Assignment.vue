@@ -2,14 +2,14 @@
 import type { IUpdateInformation } from '@/Interface';
 import InputTriple from '@/components/InputTriple/InputTriple.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
-import ParameterIssues from '@/components/ParameterIssues.vue';
 import ParameterInputHint from '@/components/ParameterInputHint.vue';
-import type { AssignmentValue, INodeProperties, NodePropertyTypes } from 'n8n-workflow';
+import ParameterIssues from '@/components/ParameterIssues.vue';
+import { resolveParameter } from '@/mixins/workflowHelpers';
+import { isExpression } from '@/utils/expressions';
+import { isObject } from '@jsplumb/util';
+import type { AssignmentValue, INodeProperties } from 'n8n-workflow';
 import { computed, ref } from 'vue';
 import TypeSelect from './TypeSelect.vue';
-import { resolveParameter } from '@/mixins/workflowHelpers';
-import { isObject } from '@jsplumb/util';
-import { isExpression } from '@/utils/expressions';
 
 interface Props {
 	path: string;
