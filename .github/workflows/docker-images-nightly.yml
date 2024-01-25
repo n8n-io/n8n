@@ -84,7 +84,7 @@ jobs:
           platforms: ${{ github.event.inputs.include-arm64 == 'true' && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
           provenance: false
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/n8n:${{ github.event.inputs.tag || 'nightly' }}
+          tags: ${{ secrets.DOCKER_USERNAME }}/n8n:${{ github.event.inputs.tag || 'master' }}
           no-cache: true
 
       - name: Call Success URL - optionally
