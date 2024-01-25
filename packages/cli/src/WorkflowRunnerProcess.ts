@@ -212,7 +212,6 @@ class WorkflowRunnerProcess {
 				workflowData,
 				additionalData.userId,
 				options?.inputData,
-				options?.parentWorkflowId,
 			);
 			await sendToParentProcess('startExecution', { runData });
 			const executionId: string = await new Promise((resolve) => {
