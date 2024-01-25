@@ -13,6 +13,7 @@ import { Logger } from '@/Logger';
 import { Push } from '@/push';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { mockInstance } from '../../shared/mocking';
+import { mock } from 'jest-mock-extended';
 
 const os = Container.get(OrchestrationService);
 const handler = Container.get(OrchestrationHandlerMainService);
@@ -148,5 +149,93 @@ describe('Orchestration Service', () => {
 		expect(helpers.debounceMessageReceiver).toHaveBeenCalledTimes(2);
 		expect(res1!.payload).toBeUndefined();
 		expect(res2!.payload!.result).toEqual('debounced');
+	});
+
+	describe('shouldAddWebhooks', () => {
+		const orchestrationService = new OrchestrationService(mock(), mock(), mock());
+
+		describe('single-main setup', () => {
+			jest.spyOn(orchestrationService, 'isSingleMainEnabled', 'get').mockReturnValue(true);
+			jest.spyOn(orchestrationService, 'isMultiMainSetupEnabled', 'get').mockReturnValue(false);
+
+			test('on init, should return true', () => {
+				expect(orchestrationService.shouldAddWebhooks('init')).toBe(true);
+			});
+
+			test('on activate, should return true', () => {
+				expect(orchestrationService.shouldAddWebhooks('init')).toBe(true);
+			});
+
+			test('on update, should return true', () => {
+				expect(orchestrationService.shouldAddWebhooks('init')).toBe(true);
+			});
+		});
+
+		describe('multi-main setup', () => {
+			jest.spyOn(orchestrationService, 'isSingleMainEnabled', 'get').mockReturnValue(false);
+			jest.spyOn(orchestrationService, 'isMultiMainSetupEnabled', 'get').mockReturnValue(true);
+
+			const isLeaderSpy = jest.spyOn(orchestrationService, 'isLeader', 'get');
+
+			test('on `init`, should return true only if leader', () => {
+				isLeaderSpy.mockReturnValue(true);
+				expect(orchestrationService.shouldAddWebhooks('init')).toBe(true);
+
+				isLeaderSpy.mockReturnValue(false);
+				expect(orchestrationService.shouldAddWebhooks('init')).toBe(false);
+			});
+
+			test('on `update`, should return true regardless of leader or follower', () => {
+				isLeaderSpy.mockReturnValue(true);
+				expect(orchestrationService.shouldAddWebhooks('activate')).toBe(true);
+
+				isLeaderSpy.mockReturnValue(false);
+				expect(orchestrationService.shouldAddWebhooks('activate')).toBe(true);
+			});
+
+			test('on `activate`, should return true regardless of leader or follower', () => {
+				isLeaderSpy.mockReturnValue(true);
+				expect(orchestrationService.shouldAddWebhooks('activate')).toBe(true);
+
+				isLeaderSpy.mockReturnValue(false);
+				expect(orchestrationService.shouldAddWebhooks('activate')).toBe(true);
+			});
+
+			test('on `leadershipChange`, should return false regardless of leader or follower', () => {
+				isLeaderSpy.mockReturnValue(true);
+				expect(orchestrationService.shouldAddWebhooks('leadershipChange')).toBe(false);
+
+				isLeaderSpy.mockReturnValue(false);
+				expect(orchestrationService.shouldAddWebhooks('leadershipChange')).toBe(false);
+			});
+		});
+	});
+
+	describe('shouldAddTriggersAndPollers', () => {
+		const orchestrationService = new OrchestrationService(mock(), mock(), mock());
+
+		describe('single-main setup', () => {
+			jest.spyOn(orchestrationService, 'isSingleMainEnabled', 'get').mockReturnValue(true);
+			jest.spyOn(orchestrationService, 'isMultiMainSetupEnabled', 'get').mockReturnValue(false);
+
+			test('should return true', () => {
+				expect(orchestrationService.shouldAddTriggersAndPollers()).toBe(true);
+			});
+		});
+
+		describe('multi-main setup', () => {
+			jest.spyOn(orchestrationService, 'isSingleMainEnabled', 'get').mockReturnValue(false);
+			jest.spyOn(orchestrationService, 'isMultiMainSetupEnabled', 'get').mockReturnValue(true);
+
+			const isLeaderSpy = jest.spyOn(orchestrationService, 'isLeader', 'get');
+
+			test('should return true only if leader', () => {
+				isLeaderSpy.mockReturnValue(true);
+				expect(orchestrationService.shouldAddWebhooks('init')).toBe(true);
+
+				isLeaderSpy.mockReturnValue(false);
+				expect(orchestrationService.shouldAddWebhooks('init')).toBe(false);
+			});
+		});
 	});
 });
