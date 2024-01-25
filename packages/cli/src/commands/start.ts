@@ -231,28 +231,13 @@ export class Start extends BaseCommand {
 		orchestrationService.multiMainSetup
 			.addListener('leadershipChange', async () => {
 				if (orchestrationService.isLeader) {
-					this.logger.debug('[Leadership change] Clearing all activation errors...');
-
 					await this.activeWorkflowRunner.clearAllActivationErrors();
-
-					this.logger.debug(
-						'[Leadership change] Adding all trigger- and poller-based workflows...',
-					);
-
 					await this.activeWorkflowRunner.addAllTriggerAndPollerBasedWorkflows();
 				} else {
-					this.logger.debug(
-						'[Leadership change] Removing all trigger- and poller-based workflows...',
-					);
-
 					await this.activeWorkflowRunner.removeAllTriggerAndPollerBasedWorkflows();
 				}
 			})
 			.addListener('leadershipVacant', async () => {
-				this.logger.debug(
-					'[Leadership vacant] Removing all trigger- and poller-based workflows...',
-				);
-
 				await this.activeWorkflowRunner.removeAllTriggerAndPollerBasedWorkflows();
 			});
 	}

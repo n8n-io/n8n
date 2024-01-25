@@ -516,15 +516,21 @@ export class ActiveWorkflowRunner {
 	}
 
 	async clearAllActivationErrors() {
+		this.logger.debug('Clearing all activation errors');
+
 		await this.activationErrorsService.clearAll();
 	}
 
 	async addAllTriggerAndPollerBasedWorkflows() {
+		this.logger.debug('Adding all trigger- and poller-based workflows');
+
 		await this.addActiveWorkflows('leadershipChange');
 	}
 
 	@OnShutdown()
 	async removeAllTriggerAndPollerBasedWorkflows() {
+		this.logger.debug('Removing all trigger- and poller-based workflows');
+
 		await this.activeWorkflows.removeAllTriggerAndPollerBasedWorkflows();
 	}
 
