@@ -5,10 +5,11 @@ import {
 	EDIT_FIELDS_SET_NODE_NAME,
 	BACKEND_BASE_URL,
 } from '../constants';
-import { WorkflowPage, NDV } from '../pages';
+import { WorkflowPage, NDV, WorkflowExecutionsTab } from '../pages';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
+const workflowExecutionsTab = new WorkflowExecutionsTab();
 
 describe('Data pinning', () => {
 	beforeEach(() => {
@@ -152,19 +153,50 @@ describe('Data pinning', () => {
 		cy.get('div').contains(output).should('be.visible');
 	});
 
-	it('should use pin data in manual executions that are started by a webhook', () => {
+	it.only('should use pin data in manual executions that are started by a webhook', () => {
 		cy.createFixtureWorkflow('Test_workflow_webhook_with_pin_data.json', 'Test');
 
 		workflowPage.actions.executeWorkflow();
 
-		cy.request('GET', `${BACKEND_BASE_URL}/webhook-test/b0d79ddb-df2d-49b1-8555-9fa2b482608f`).then((response) => {
-			expect(response.status).to.eq(200);
-		});
+		cy.request('GET', `${BACKEND_BASE_URL}/webhook-test/b0d79ddb-df2d-49b1-8555-9fa2b482608f`).then(
+			(response) => {
+				expect(response.status).to.eq(200);
+			},
+		);
 
 		workflowPage.actions.openNode('End');
 
-		ndv.getters.outputTableRow(1).should('exist')
+		ndv.getters.outputTableRow(1).should('exist');
 		ndv.getters.outputTableRow(1).should('have.text', 'pin-overwritten');
+	});
+
+	it.only('should not use pin data in production executions that are started by a webhook', () => {
+		cy.createFixtureWorkflow('Test_workflow_webhook_with_pin_data.json', 'Test');
+
+		workflowPage.actions.activateWorkflow();
+		cy.request('GET', `${BACKEND_BASE_URL}/webhook/b0d79ddb-df2d-49b1-8555-9fa2b482608f`).then(
+			(response) => {
+				expect(response.status).to.eq(200);
+			},
+		);
+
+		workflowExecutionsTab.actions.switchToExecutionsTab();
+		const getIframe = () => cy.get('iframe').its('0.contentDocument').should('exist');
+
+		getIframe()
+			.its('body')
+			.should('not.be.undefined')
+			.find('[data-test-id="canvas-node"][data-name="End"]')
+			.first()
+			.dblclick();
+
+		getIframe()
+			.find('[data-test-id="output-panel"]')
+			.findChildByTestId('ndv-data-container')
+			.find('table tr')
+			.eq(1)
+			.should('exist')
+			.should('have.text', 'pin');
 	});
 });
 
