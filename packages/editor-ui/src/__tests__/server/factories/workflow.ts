@@ -12,4 +12,7 @@ export const workflowFactory = Factory.extend<IWorkflowDb>({
 	createdAt() {
 		return faker.date.recent().toISOString();
 	},
+	tags() {
+		return faker.lorem.words(2.5).split(' ');
+	},
 });

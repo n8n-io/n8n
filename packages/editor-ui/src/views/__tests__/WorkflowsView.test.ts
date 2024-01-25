@@ -1,11 +1,17 @@
 import { afterAll, beforeAll } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { waitFor } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 import { setupServer } from '@/__tests__/server';
 import WorkflowsView from '@/views/WorkflowsView.vue';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { createComponentRenderer } from '@/__tests__/render';
+
+const originalOffsetHeight = Object.getOwnPropertyDescriptor(
+	HTMLElement.prototype,
+	'offsetHeight',
+) as PropertyDescriptor;
 
 describe('WorkflowsView', () => {
 	let server: ReturnType<typeof setupServer>;
@@ -27,7 +33,19 @@ describe('WorkflowsView', () => {
 	});
 
 	beforeAll(() => {
+		Object.defineProperties(HTMLElement.prototype, {
+			offsetHeight: {
+				get() {
+					return this.getAttribute('data-test-id') === 'resources-list' ? 1000 : 100;
+				},
+			},
+		});
+
 		server = setupServer();
+	});
+
+	afterAll(() => {
+		Object.defineProperty(HTMLElement.prototype, 'offsetHeight', originalOffsetHeight);
 	});
 
 	beforeEach(async () => {
@@ -46,16 +64,36 @@ describe('WorkflowsView', () => {
 	});
 
 	it('should render loading state', async () => {
-		server.createList('workflow', 5);
-
-		const { container, getAllByTestId, queryByTestId } = renderComponent({ pinia });
+		const { container, getByTestId, getAllByTestId, queryByTestId } = renderComponent({
+			pinia,
+		});
 
 		expect(container.querySelectorAll('.n8n-loading')).toHaveLength(3);
 		expect(queryByTestId('resources-list')).not.toBeInTheDocument();
 
 		await waitFor(() => {
 			expect(container.querySelectorAll('.n8n-loading')).toHaveLength(0);
+			// There are 5 workflows defined in server fixtures
 			expect(getAllByTestId('resources-list-item')).toHaveLength(5);
+		});
+
+		await userEvent.click(
+			getAllByTestId('resources-list-item')[0].querySelector('.n8n-tag') as HTMLElement,
+		);
+		await waitFor(() => {
+			expect(getAllByTestId('resources-list-item').length).toBeLessThan(5);
+		});
+
+		await userEvent.click(getByTestId('workflows-filter-reset'));
+		await waitFor(() => {
+			expect(getAllByTestId('resources-list-item')).toHaveLength(5);
+		});
+
+		await userEvent.click(
+			getAllByTestId('resources-list-item')[3].querySelector('.n8n-tag') as HTMLElement,
+		);
+		await waitFor(() => {
+			expect(getAllByTestId('resources-list-item').length).toBeLessThan(5);
 		});
 	});
 });
