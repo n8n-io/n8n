@@ -12,7 +12,7 @@ export class TelegramApi implements ICredentialType {
 			displayName: 'Base URL',
 			name: 'baseUrl',
 			type: 'string',
-			default: 'https://api.telegram.org/bot',
+			default: 'https://api.telegram.org',
 			description:
 				'Base URL for Telegram Bot API',
 		},

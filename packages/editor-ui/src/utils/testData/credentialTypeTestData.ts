@@ -29,7 +29,7 @@ export const credentialTypeTelegram = {
 	],
 	test: {
 		request: {
-			baseURL: '=https://api.telegram.org/bot{{$credentials.accessToken}}',
+			baseURL: '={{$credentials.baseUrl}}/bot{{$credentials.accessToken}}',
 			url: '/getMe',
 		},
 	},

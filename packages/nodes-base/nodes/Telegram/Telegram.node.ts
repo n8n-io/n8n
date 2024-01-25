@@ -2066,7 +2066,7 @@ export class Telegram implements INodeType {
 							{
 								json: false,
 								encoding: null,
-								uri: `${credentials.baseUrl}${credentials.accessToken}/${filePath}`,
+								uri: `${credentials.baseUrl}/bot${credentials.accessToken}/${filePath}`,
 								resolveWithFullResponse: true,
 								useStream: true,
 							},
