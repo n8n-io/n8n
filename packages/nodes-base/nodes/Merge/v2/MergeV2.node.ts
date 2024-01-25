@@ -485,6 +485,9 @@ export class MergeV2 implements INodeType {
 				}
 
 				if (input1.length === 0 || input2.length === 0) {
+					if (!input1.length && joinMode === 'keepNonMatches') return [returnData];
+					if (!input2.length && joinMode === 'keepNonMatches') return [returnData];
+
 					if (joinMode === 'keepMatches') {
 						// Stop the execution
 						return [[]];
