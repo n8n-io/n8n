@@ -106,6 +106,7 @@ export class WorkflowDataProxy {
 				{
 					runIndex: that.runIndex,
 					itemIndex: that.itemIndex,
+					type: 'no_execution_data',
 				},
 			);
 		}
@@ -281,6 +282,7 @@ export class WorkflowDataProxy {
 					throw new ExpressionError(`no data, execute "${nodeName}" node first`, {
 						runIndex: that.runIndex,
 						itemIndex: that.itemIndex,
+						type: 'no_node_execution_data',
 					});
 				}
 				throw new ExpressionError(`"${nodeName}" node doesn't exist`, {
@@ -934,7 +936,9 @@ export class WorkflowDataProxy {
 				}
 
 				if (!that?.runExecutionData?.resultData?.runData.hasOwnProperty(nodeName)) {
-					throw createExpressionError(`no data, execute "${nodeName}" node first`);
+					throw createExpressionError(`no data, execute "${nodeName}" node first`, {
+						type: 'no_node_execution_data',
+					});
 				}
 
 				return new Proxy(
@@ -1076,14 +1080,31 @@ export class WorkflowDataProxy {
 				},
 				get(target, property, receiver) {
 					if (property === 'isProxy') return true;
+					console.log(that.connectionInputData);
 
 					if (property === 'item') {
+						if (that.connectionInputData.length === 0) {
+							throw createExpressionError('No execution data available', {
+								runIndex: that.runIndex,
+								itemIndex: that.itemIndex,
+								type: 'no_execution_data',
+							});
+						}
+
 						return that.connectionInputData[that.itemIndex];
 					}
 					if (property === 'first') {
 						return (...args: unknown[]) => {
 							if (args.length) {
 								throw createExpressionError('$input.first() should have no arguments');
+							}
+
+							if (that.connectionInputData.length === 0) {
+								throw createExpressionError('No execution data available', {
+									runIndex: that.runIndex,
+									itemIndex: that.itemIndex,
+									type: 'no_execution_data',
+								});
 							}
 
 							const result = that.connectionInputData;
@@ -1095,6 +1116,14 @@ export class WorkflowDataProxy {
 					}
 					if (property === 'last') {
 						return (...args: unknown[]) => {
+							if (that.connectionInputData.length === 0) {
+								throw createExpressionError('No execution data available', {
+									runIndex: that.runIndex,
+									itemIndex: that.itemIndex,
+									type: 'no_execution_data',
+								});
+							}
+
 							if (args.length) {
 								throw createExpressionError('$input.last() should have no arguments');
 							}

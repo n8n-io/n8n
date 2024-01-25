@@ -16,10 +16,14 @@ export const isNoExecDataExpressionError = (error: unknown): boolean => {
 	return error instanceof ExpressionError && error.context.type === 'no_execution_data';
 };
 
+export const isNoNodeExecDataExpressionError = (error: unknown): boolean => {
+	return error instanceof ExpressionError && error.context.type === 'no_node_execution_data';
+};
+
 export const getResolvableState = (error: unknown): ResolvableState => {
 	if (!error) return 'valid';
 
-	if (isNoExecDataExpressionError(error)) {
+	if (isNoExecDataExpressionError(error) || isNoNodeExecDataExpressionError(error)) {
 		return 'pending';
 	}
 
