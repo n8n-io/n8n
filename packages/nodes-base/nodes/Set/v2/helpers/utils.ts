@@ -229,10 +229,6 @@ export const validateEntry = (
 	};
 };
 
-export const mapToAssignmentItem = (field: SetField): AssignmentSetField => {
-	return { name: field.name, type: field.type, value: field[field.type] };
-};
-
 export function resolveRawData(this: IExecuteFunctions, rawData: string, i: number) {
 	const resolvables = getResolvables(rawData);
 	let returnData: string = rawData;
