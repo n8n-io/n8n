@@ -172,18 +172,22 @@ function getMapping(paths: { [item: string]: string[][] }): { [item: string]: Se
 
 function getItemsCount(runData: IRunData) {
 	let itemsCount = 0;
-	Object.keys(runData).forEach((node) => {
-		runData[node].forEach((taskData) => {
-			const data = taskData.data ?? {};
-			Object.keys(data).forEach((key) => {
-				data[key].forEach((run) => {
-					if (run) {
-						itemsCount += run?.length;
-					}
-				});
-			});
-		});
-	});
+
+	for (const node in runData) {
+		// eslint-disable-next-line @typescript-eslint/no-for-in-array
+		for (const taskData in runData[node]) {
+			const data = runData[node][taskData].data;
+			if (!data) continue;
+
+			for (const connectionType in data) {
+				const runsCount = data[connectionType].reduce((sum: number, run) => {
+					return run ? sum + run.length : sum;
+				}, 0);
+
+				itemsCount += runsCount;
+			}
+		}
+	}
 
 	return itemsCount;
 }
