@@ -2,7 +2,6 @@
 /* eslint-disable @typescript-eslint/no-use-before-define */
 /* eslint-disable id-denylist */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { WorkflowExecute } from 'n8n-core';
 
@@ -305,11 +304,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 			},
 		],
 		workflowExecuteAfter: [
-			async function (
-				this: WorkflowHooks,
-				fullRunData: IRun,
-				newStaticData: IDataObject,
-			): Promise<void> {
+			async function (this: WorkflowHooks, fullRunData: IRun): Promise<void> {
 				const { sessionId, executionId, retryOf } = this;
 				const { id: workflowId } = this.workflowData;
 				logger.debug('Executing hook (hookFunctionsPush)', {
@@ -360,8 +355,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 	};
 }
 
-export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowExecuteHooks {
-	const logger = Container.get(Logger);
+export function hookFunctionsPreExecute(): IWorkflowExecuteHooks {
 	const externalHooks = Container.get(ExternalHooks);
 	return {
 		workflowExecuteBefore: [
@@ -556,7 +550,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 			},
 		],
 		workflowExecuteBefore: [
-			async function (workflow: Workflow, data: IRunExecutionData): Promise<void> {
+			async function (): Promise<void> {
 				void internalHooks.onWorkflowBeforeExecute(this.executionId, this.workflowData);
 			},
 		],
@@ -625,15 +619,11 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 					eventsService.emit('workflowExecutionCompleted', this.workflowData, fullRunData);
 				}
 			},
-			async function (
-				this: WorkflowHooks,
-				fullRunData: IRun,
-				newStaticData: IDataObject,
-			): Promise<void> {
+			async function (this: WorkflowHooks, fullRunData: IRun): Promise<void> {
 				// send tracking and event log events, but don't wait for them
 				void internalHooks.onWorkflowPostExecute(this.executionId, this.workflowData, fullRunData);
 			},
-			async function (this: WorkflowHooks, fullRunData: IRun, newStaticData: IDataObject) {
+			async function (this: WorkflowHooks, fullRunData: IRun) {
 				const externalHooks = Container.get(ExternalHooks);
 				if (externalHooks.exists('workflow.postExecute')) {
 					try {
@@ -661,7 +651,6 @@ export async function getRunData(
 	workflowData: IWorkflowBase,
 	userId: string,
 	inputData?: INodeExecutionData[],
-	parentWorkflowId?: string,
 ): Promise<IWorkflowExecutionDataProcess> {
 	const mode = 'integrated';
 
@@ -1012,7 +1001,7 @@ function getWorkflowHooksIntegrated(
 ): WorkflowHooks {
 	optionalParameters = optionalParameters || {};
 	const hookFunctions = hookFunctionsSave(optionalParameters.parentProcessMode);
-	const preExecuteFunctions = hookFunctionsPreExecute(optionalParameters.parentProcessMode);
+	const preExecuteFunctions = hookFunctionsPreExecute();
 	for (const key of Object.keys(preExecuteFunctions)) {
 		if (hookFunctions[key] === undefined) {
 			hookFunctions[key] = [];
@@ -1034,7 +1023,7 @@ export function getWorkflowHooksWorkerExecuter(
 ): WorkflowHooks {
 	optionalParameters = optionalParameters || {};
 	const hookFunctions = hookFunctionsSaveWorker();
-	const preExecuteFunctions = hookFunctionsPreExecute(optionalParameters.parentProcessMode);
+	const preExecuteFunctions = hookFunctionsPreExecute();
 	for (const key of Object.keys(preExecuteFunctions)) {
 		if (hookFunctions[key] === undefined) {
 			hookFunctions[key] = [];
@@ -1055,7 +1044,7 @@ export function getWorkflowHooksWorkerMain(
 	optionalParameters?: IWorkflowHooksOptionalParameters,
 ): WorkflowHooks {
 	optionalParameters = optionalParameters || {};
-	const hookFunctions = hookFunctionsPreExecute(optionalParameters.parentProcessMode);
+	const hookFunctions = hookFunctionsPreExecute();
 
 	// TODO: why are workers pushing to frontend?
 	// TODO: simplifying this for now to just leave the bare minimum hooks
@@ -1075,11 +1064,7 @@ export function getWorkflowHooksWorkerMain(
 	hookFunctions.nodeExecuteBefore = [];
 	hookFunctions.nodeExecuteAfter = [];
 	hookFunctions.workflowExecuteAfter = [
-		async function (
-			this: WorkflowHooks,
-			fullRunData: IRun,
-			newStaticData: IDataObject,
-		): Promise<void> {
+		async function (this: WorkflowHooks, fullRunData: IRun): Promise<void> {
 			const executionStatus = determineFinalExecutionStatus(fullRunData);
 			const saveSettings = toSaveSettings(this.workflowData.settings);
 
