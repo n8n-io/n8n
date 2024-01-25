@@ -232,8 +232,8 @@ export class WorkflowService {
 
 		const newState = updatedWorkflow.active;
 
-		if (this.orchestrationService.isMultiMainSetupEnabled && oldState !== newState) {
-			await this.orchestrationService.publish('workflowActiveStateChanged', {
+		if (this.orchestrationService.isMultiMainSetupEnabled) {
+			await this.orchestrationService.publish('workflow-updated', {
 				workflowId,
 				oldState,
 				newState,

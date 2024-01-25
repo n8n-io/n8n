@@ -7,8 +7,8 @@ export type RedisServiceCommand =
 	| 'stopWorker'
 	| 'reloadLicense'
 	| 'reloadExternalSecretsProviders'
-	| 'workflowActiveStateChanged' // multi-main only
-	| 'workflowFailedToActivate' // multi-main only
+	| 'workflow-updated' // multi-main only
+	| 'workflow-failed-to-activate' // multi-main only
 	| 'relay-execution-lifecycle-event' // multi-main only
 	| 'clear-test-webhooks'; // multi-main only
 

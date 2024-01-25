@@ -5,18 +5,15 @@ import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
 import { License } from '@/License';
 import { Logger } from '@/Logger';
-import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { Push } from '@/push';
-import { OrchestrationService } from '@/services/orchestration.service';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { TestWebhooks } from '@/TestWebhooks';
+import { handleWorkflowUpdated } from './handle-workflow-updated';
 
 export async function handleCommandMessageMain(messageString: string) {
 	const queueModeId = config.getEnv('redis.queueModeId');
 	const isMainInstance = config.getEnv('generic.instanceType') === 'main';
 	const message = messageToRedisServiceCommandObject(messageString);
 	const logger = Container.get(Logger);
-	const activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
 
 	if (message) {
 		logger.debug(
@@ -71,52 +68,18 @@ export async function handleCommandMessageMain(messageString: string) {
 				await Container.get(ExternalSecretsManager).reloadAllProviders();
 				break;
 
-			case 'workflowActiveStateChanged': {
+			case 'workflow-updated': {
 				if (!debounceMessageReceiver(message, 100)) {
 					message.payload = { result: 'debounced' };
 					return message;
 				}
 
-				const { workflowId, oldState, newState, versionId } = message.payload ?? {};
+				await handleWorkflowUpdated(message.payload);
 
-				if (
-					typeof workflowId !== 'string' ||
-					typeof oldState !== 'boolean' ||
-					typeof newState !== 'boolean' ||
-					typeof versionId !== 'string'
-				) {
-					break;
-				}
-
-				if (!oldState && newState) {
-					try {
-						await activeWorkflowRunner.add(workflowId, 'activate');
-						push.broadcast('workflowActivated', { workflowId });
-					} catch (e) {
-						const error = e instanceof Error ? e : new Error(`${e}`);
-
-						await Container.get(WorkflowRepository).update(workflowId, {
-							active: false,
-							versionId,
-						});
-
-						await Container.get(OrchestrationService).publish('workflowFailedToActivate', {
-							workflowId,
-							errorMessage: error.message,
-						});
-					}
-				} else if (oldState && !newState) {
-					await activeWorkflowRunner.remove(workflowId);
-					push.broadcast('workflowDeactivated', { workflowId });
-				} else {
-					await activeWorkflowRunner.remove(workflowId);
-					await activeWorkflowRunner.add(workflowId, 'update');
-				}
-
-				await activeWorkflowRunner.removeActivationError(workflowId);
+				break;
 			}
 
-			case 'workflowFailedToActivate': {
+			case 'workflow-failed-to-activate': {
 				if (!debounceMessageReceiver(message, 100)) {
 					message.payload = { result: 'debounced' };
 					return message;
