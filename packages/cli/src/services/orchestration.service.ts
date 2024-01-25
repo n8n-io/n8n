@@ -126,7 +126,7 @@ export class OrchestrationService {
 	}
 
 	// ----------------------------------
-	//           activations
+	//     handling active workflows
 	// ----------------------------------
 
 	/**
