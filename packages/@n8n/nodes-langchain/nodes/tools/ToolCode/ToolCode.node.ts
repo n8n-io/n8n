@@ -47,6 +47,13 @@ export class ToolCode implements INodeType {
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionType.AiAgent]),
 			{
+				displayName:
+					'See an example of a conversational agent with custom tool written in JavaScript <a href="/templates/1963" target="_blank">here</a>.',
+				name: 'noticeTemplateExample',
+				type: 'notice',
+				default: '',
+			},
+			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
