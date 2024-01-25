@@ -737,4 +737,10 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		return qb;
 	}
+
+	async getAllIds() {
+		const executions = await this.find({ select: ['id'] });
+
+		return executions.map(({ id }) => id);
+	}
 }

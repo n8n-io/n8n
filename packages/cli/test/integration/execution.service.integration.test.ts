@@ -3,30 +3,25 @@ import { ExecutionService } from '@/executions/execution.service';
 import { mock } from 'jest-mock-extended';
 import Container from 'typedi';
 import { createWorkflow } from './shared/db/workflows';
-import { createExecution, createManyExecutions } from './shared/db/executions';
+import { createExecution } from './shared/db/executions';
 import * as testDb from './shared/testDb';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
-import type { ExecutionStatus } from 'n8n-workflow';
 import type { FindMany } from '@/executions/execution.types';
-
-const manyExecutions = async (n: number, status: ExecutionStatus, workflow: WorkflowEntity) => {
-	return await createManyExecutions(n, workflow, async () => {
-		return await createExecution({ status }, workflow);
-	});
-};
 
 describe('ExecutionService', () => {
 	let executionService: ExecutionService;
+	let executionRepository: ExecutionRepository;
 
 	beforeAll(async () => {
 		await testDb.init();
+
+		executionRepository = Container.get(ExecutionRepository);
 
 		executionService = new ExecutionService(
 			mock(),
 			mock(),
 			mock(),
-			Container.get(ExecutionRepository),
+			executionRepository,
 			Container.get(WorkflowRepository),
 			mock(),
 			mock(),
@@ -34,7 +29,7 @@ describe('ExecutionService', () => {
 	});
 
 	afterEach(async () => {
-		await testDb.truncate(['Workflow', 'Execution', 'ExecutionData']);
+		await testDb.truncate(['Workflow', 'Execution']);
 	});
 
 	afterAll(async () => {
@@ -46,9 +41,15 @@ describe('ExecutionService', () => {
 			const workflow = await createWorkflow();
 
 			await Promise.all([
-				manyExecutions(3, 'success', workflow),
-				manyExecutions(3, 'unknown', workflow),
-				manyExecutions(3, 'error', workflow),
+				createExecution({ status: 'success' }, workflow),
+				createExecution({ status: 'success' }, workflow),
+				createExecution({ status: 'success' }, workflow),
+				createExecution({ status: 'unknown' }, workflow),
+				createExecution({ status: 'unknown' }, workflow),
+				createExecution({ status: 'unknown' }, workflow),
+				createExecution({ status: 'error' }, workflow),
+				createExecution({ status: 'error' }, workflow),
+				createExecution({ status: 'error' }, workflow),
 			]);
 
 			const executions = await executionService.findLatestFinished(6);
@@ -67,11 +68,16 @@ describe('ExecutionService', () => {
 			const workflow = await createWorkflow();
 
 			await Promise.all([
-				manyExecutions(2, 'new', workflow),
-				manyExecutions(2, 'unknown', workflow),
-				manyExecutions(2, 'running', workflow),
-				manyExecutions(2, 'success', workflow),
-				manyExecutions(2, 'waiting', workflow),
+				createExecution({ status: 'new' }, workflow),
+				createExecution({ status: 'new' }, workflow),
+				createExecution({ status: 'unknown' }, workflow),
+				createExecution({ status: 'unknown' }, workflow),
+				createExecution({ status: 'running' }, workflow),
+				createExecution({ status: 'running' }, workflow),
+				createExecution({ status: 'success' }, workflow),
+				createExecution({ status: 'success' }, workflow),
+				createExecution({ status: 'waiting' }, workflow),
+				createExecution({ status: 'waiting' }, workflow),
 			]);
 
 			const executions = await executionService.findAllActive();
@@ -89,7 +95,10 @@ describe('ExecutionService', () => {
 		test('should return execution summaries', async () => {
 			const workflow = await createWorkflow();
 
-			await Promise.all([manyExecutions(2, 'success', workflow)]);
+			await Promise.all([
+				createExecution({ status: 'success' }, workflow),
+				createExecution({ status: 'success' }, workflow),
+			]);
 
 			const query: FindMany.RangeQuery = {
 				kind: 'range',
@@ -121,7 +130,11 @@ describe('ExecutionService', () => {
 		test('should limit executions', async () => {
 			const workflow = await createWorkflow();
 
-			await Promise.all([manyExecutions(3, 'success', workflow)]);
+			await Promise.all([
+				createExecution({ status: 'success' }, workflow),
+				createExecution({ status: 'success' }, workflow),
+				createExecution({ status: 'success' }, workflow),
+			]);
 
 			const query: FindMany.RangeQuery = {
 				kind: 'range',
@@ -140,10 +153,14 @@ describe('ExecutionService', () => {
 		test('should retrieve executions before `lastId`, excluding it', async () => {
 			const workflow = await createWorkflow();
 
-			await Promise.all([manyExecutions(4, 'success', workflow)]);
+			await Promise.all([
+				createExecution({ status: 'success' }, workflow),
+				createExecution({ status: 'success' }, workflow),
+				createExecution({ status: 'success' }, workflow),
+				createExecution({ status: 'success' }, workflow),
+			]);
 
-			const storedExecutions = await Container.get(ExecutionRepository).find({ select: ['id'] });
-			const [firstId, secondId] = storedExecutions.map((execution) => execution.id);
+			const [firstId, secondId] = await executionRepository.getAllIds();
 
 			const query: FindMany.RangeQuery = {
 				kind: 'range',
@@ -161,12 +178,14 @@ describe('ExecutionService', () => {
 		test('should retrieve executions after `firstId`, excluding it', async () => {
 			const workflow = await createWorkflow();
 
-			await Promise.all([manyExecutions(4, 'success', workflow)]);
+			await Promise.all([
+				createExecution({ status: 'success' }, workflow),
+				createExecution({ status: 'success' }, workflow),
+				createExecution({ status: 'success' }, workflow),
+				createExecution({ status: 'success' }, workflow),
+			]);
 
-			const storedExecutions = await Container.get(ExecutionRepository).find({ select: ['id'] });
-			const [firstId, secondId, thirdId, fourthId] = storedExecutions.map(
-				(execution) => execution.id,
-			);
+			const [firstId, secondId, thirdId, fourthId] = await executionRepository.getAllIds();
 
 			const query: FindMany.RangeQuery = {
 				kind: 'range',
@@ -189,8 +208,10 @@ describe('ExecutionService', () => {
 			const workflow = await createWorkflow();
 
 			await Promise.all([
-				manyExecutions(2, 'success', workflow),
-				manyExecutions(2, 'waiting', workflow),
+				createExecution({ status: 'success' }, workflow),
+				createExecution({ status: 'success' }, workflow),
+				createExecution({ status: 'waiting' }, workflow),
+				createExecution({ status: 'waiting' }, workflow),
 			]);
 
 			const query: FindMany.RangeQuery = {
@@ -215,8 +236,10 @@ describe('ExecutionService', () => {
 			const secondWorkflow = await createWorkflow();
 
 			await Promise.all([
-				manyExecutions(1, 'success', firstWorkflow),
-				manyExecutions(3, 'success', secondWorkflow),
+				createExecution({ status: 'success' }, firstWorkflow),
+				createExecution({ status: 'success' }, secondWorkflow),
+				createExecution({ status: 'success' }, secondWorkflow),
+				createExecution({ status: 'success' }, secondWorkflow),
 			]);
 
 			const query: FindMany.RangeQuery = {
