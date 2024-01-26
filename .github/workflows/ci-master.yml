@@ -16,12 +16,12 @@ jobs:
         node-version: [18.x, 20.x]
 
     steps:
-      - uses: actions/checkout@v3.5.3
+      - uses: actions/checkout@v4.1.1
 
       - uses: pnpm/action-setup@v2.4.0
 
       - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3.7.0
+        uses: actions/setup-node@v4.0.1
         with:
           node-version: ${{ matrix.node-version }}
           cache: pnpm
@@ -33,7 +33,7 @@ jobs:
         run: pnpm build
 
       - name: Cache build artifacts
-        uses: actions/cache/save@v3.3.1
+        uses: actions/cache/save@v4.0.0
         with:
           path: ./packages/**/dist
           key: ${{ github.sha }}-base:${{ matrix.node-version }}-test-lint
@@ -59,7 +59,7 @@ jobs:
       matrix:
         node-version: [18.x, 20.x]
     steps:
-      - uses: actions/checkout@v3.5.3
+      - uses: actions/checkout@v4.1.1
         with:
           repository: n8n-io/n8n
           ref: ${{ inputs.branch }}
@@ -67,7 +67,7 @@ jobs:
       - uses: pnpm/action-setup@v2.4.0
 
       - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3.7.0
+        uses: actions/setup-node@v4.0.1
         with:
           node-version: ${{ matrix.node-version }}
           cache: pnpm
@@ -76,7 +76,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Restore cached build artifacts
-        uses: actions/cache/restore@v3.3.1
+        uses: actions/cache/restore@v4.0.0
         with:
           path: ./packages/**/dist
           key: ${{ github.sha }}-base:${{ matrix.node-version }}-test-lint
