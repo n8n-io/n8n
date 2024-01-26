@@ -6,7 +6,6 @@
 		"target": "esnext",
 		"module": "esnext",
 		"importHelpers": true,
-		"skipLibCheck": true,
 		"allowJs": true,
 		"incremental": false,
 		"allowSyntheticDefaultImports": true,

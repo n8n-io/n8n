@@ -1,9 +1,9 @@
 import type { OptionsWithUri } from 'request';
 
+import { ApplicationError } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
 	IPollFunctions,
 } from 'n8n-workflow';
@@ -11,7 +11,7 @@ import type {
 import get from 'lodash/get';
 
 export async function venafiApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: string,
 	resource: string,
 	body: IDataObject = {},
@@ -51,7 +51,10 @@ export async function venafiApiRequest(
 
 			errors = errors.map((e: IDataObject) => e.message);
 			// Try to return the error prettier
-			throw new Error(`Venafi error response [${error.statusCode}]: ${errors.join('|')}`);
+			throw new ApplicationError(
+				`Venafi error response [${error.statusCode}]: ${errors.join('|')}`,
+				{ level: 'warning' },
+			);
 		}
 		throw error;
 	}

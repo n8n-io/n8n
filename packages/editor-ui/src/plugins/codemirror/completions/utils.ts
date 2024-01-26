@@ -1,8 +1,9 @@
 import { NODE_TYPES_EXCLUDED_FROM_AUTOCOMPLETION } from '@/components/CodeNodeEditor/constants';
-import { SPLIT_IN_BATCHES_NODE_TYPE } from '@/constants';
+import { CREDENTIAL_EDIT_MODAL_KEY, SPLIT_IN_BATCHES_NODE_TYPE } from '@/constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { resolveParameter } from '@/mixins/workflowHelpers';
 import { useNDVStore } from '@/stores/ndv.store';
+import { useUIStore } from '@/stores/ui.store';
 import type { Completion, CompletionContext } from '@codemirror/autocomplete';
 
 // String literal expression is everything enclosed in single, double or tick quotes following a dot
@@ -33,7 +34,7 @@ export function longestCommonPrefix(...strings: string[]) {
 		}
 
 		return acc.slice(0, i);
-	});
+	}, '');
 }
 
 // Process user input if expressions are used as part of complex expression
@@ -42,9 +43,8 @@ export function longestCommonPrefix(...strings: string[]) {
 // suggestions can be matched based on it.
 function extractSubExpression(userInput: string): string {
 	const dollarSignIndex = userInput.indexOf('$');
-	// If it's not a dollar sign expression just strip parentheses
 	if (dollarSignIndex === -1) {
-		userInput = userInput.replace(/^.+(\(|\[|{)/, '');
+		return userInput;
 	} else if (!stringLiteralRegex.test(userInput)) {
 		// If there is a dollar sign in the input and input is not a string literal,
 		// extract part of following the last $
@@ -98,11 +98,21 @@ export const isAllowedInDotNotation = (str: string) => {
 // ----------------------------------
 
 export function receivesNoBinaryData() {
-	return resolveParameter('={{ $binary }}')?.data === undefined;
+	try {
+		return resolveParameter('={{ $binary }}')?.data === undefined;
+	} catch {
+		return true;
+	}
 }
 
 export function hasNoParams(toResolve: string) {
-	const params = resolveParameter(`={{ ${toResolve}.params }}`);
+	let params;
+
+	try {
+		params = resolveParameter(`={{ ${toResolve}.params }}`);
+	} catch {
+		return true;
+	}
 
 	if (!params) return true;
 
@@ -114,6 +124,8 @@ export function hasNoParams(toResolve: string) {
 // ----------------------------------
 //        state-based utils
 // ----------------------------------
+
+export const isCredentialsModalOpen = () => useUIStore().modals[CREDENTIAL_EDIT_MODAL_KEY].open;
 
 export const hasActiveNode = () => useNDVStore().activeNode?.name !== undefined;
 

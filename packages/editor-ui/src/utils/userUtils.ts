@@ -61,7 +61,6 @@ import {
 	CODE_NODE_TYPE,
 } from '@/constants';
 import type {
-	IPermissions,
 	IPersonalizationSurveyAnswersV1,
 	IPersonalizationSurveyAnswersV2,
 	IPersonalizationSurveyAnswersV3,
@@ -70,7 +69,6 @@ import type {
 	IUser,
 	ILogInStatus,
 	IRole,
-	IUserPermissions,
 } from '@/Interface';
 
 /*
@@ -86,9 +84,11 @@ function isPersonalizationSurveyV2OrLater(
 	return 'version' in data;
 }
 
-export const ROLE: { Owner: IRole; Member: IRole; Default: IRole } = {
+export type Roles = { [R in IRole as Capitalize<R>]: R };
+export const ROLE: Roles = {
 	Owner: 'owner',
 	Member: 'member',
+	Admin: 'admin',
 	Default: 'default', // default user with no email when setting up instance
 };
 
@@ -97,6 +97,7 @@ export const LOGIN_STATUS: { LoggedIn: ILogInStatus; LoggedOut: ILogInStatus } =
 	LoggedOut: 'LoggedOut', // Can only be logged out if UM has been setup
 };
 
+<<<<<<< HEAD
 export const PERMISSIONS: IUserPermissions = {
 	TAGS: {
 		CAN_DELETE_TAGS: {
@@ -180,6 +181,8 @@ export const isAuthorized = (permissions: IPermissions, currentUser: IUser | nul
 	return false;
 };
 
+=======
+>>>>>>> n8n@1.25.1
 export function getPersonalizedNodeTypes(
 	answers:
 		| IPersonalizationSurveyAnswersV1
@@ -228,7 +231,7 @@ function getPersonalizationSurveyV2OrLater(
 
 	let codingSkill = null;
 	if (CODING_SKILL_KEY in answers && answers[CODING_SKILL_KEY]) {
-		codingSkill = parseInt(answers[CODING_SKILL_KEY] as string, 10);
+		codingSkill = parseInt(answers[CODING_SKILL_KEY], 10);
 		codingSkill = isNaN(codingSkill) ? 0 : codingSkill;
 	}
 
@@ -369,7 +372,7 @@ function getPersonalizationSurveyV1(answers: IPersonalizationSurveyAnswersV1) {
 
 	let codingSkill = null;
 	if (answers[CODING_SKILL_KEY]) {
-		codingSkill = parseInt(answers[CODING_SKILL_KEY] as string, 10);
+		codingSkill = parseInt(answers[CODING_SKILL_KEY], 10);
 		codingSkill = isNaN(codingSkill) ? 0 : codingSkill;
 	}
 

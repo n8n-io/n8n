@@ -1,10 +1,10 @@
 <template>
 	<div :class="$style.container">
 		<transition name="fade" mode="out-in">
-			<div key="empty" v-if="hasIssues"></div>
-			<div key="listening" v-else-if="isListeningForEvents">
+			<div v-if="hasIssues || hideContent" key="empty"></div>
+			<div v-else-if="isListeningForEvents" key="listening">
 				<n8n-pulse>
-					<NodeIcon :nodeType="nodeType" :size="40"></NodeIcon>
+					<NodeIcon :node-type="nodeType" :size="40"></NodeIcon>
 				</n8n-pulse>
 				<div v-if="isWebhookNode">
 					<n8n-text tag="div" size="large" color="text-dark" class="mb-2xs" bold>{{
@@ -14,14 +14,14 @@
 						<n8n-text>
 							{{
 								$locale.baseText('ndv.trigger.webhookNode.requestHint', {
-									interpolate: { type: this.webhookHttpMethod },
+									interpolate: { type: webhookHttpMethod },
 								})
 							}}
 						</n8n-text>
 					</div>
 					<CopyInput
 						:value="webhookTestUrl"
-						:toastTitle="$locale.baseText('ndv.trigger.copiedTestUrl')"
+						:toast-title="$locale.baseText('ndv.trigger.copiedTestUrl')"
 						class="mb-2xl"
 						size="medium"
 						:collapse="true"
@@ -29,35 +29,39 @@
 						@copy="onTestLinkCopied"
 					></CopyInput>
 					<NodeExecuteButton
-						:nodeName="nodeName"
-						@execute="onNodeExecute"
+						data-test-id="trigger-execute-button"
+						:node-name="nodeName"
 						size="medium"
-						telemetrySource="inputs"
+						telemetry-source="inputs"
+						@execute="onNodeExecute"
 					/>
 				</div>
 				<div v-else>
 					<n8n-text tag="div" size="large" color="text-dark" class="mb-2xs" bold>{{
-						$locale.baseText('ndv.trigger.webhookBasedNode.listening')
+						listeningTitle
 					}}</n8n-text>
 					<div :class="[$style.shake, 'mb-xs']">
 						<n8n-text tag="div">
-							{{
-								$locale.baseText('ndv.trigger.webhookBasedNode.serviceHint', {
-									interpolate: { service: serviceName },
-								})
-							}}
+							{{ listeningHint }}
 						</n8n-text>
 					</div>
+					<div v-if="displayChatButton">
+						<n8n-button @click="openWebhookUrl()" class="mb-xl">
+							{{ $locale.baseText('ndv.trigger.chatTrigger.openChat') }}
+						</n8n-button>
+					</div>
+
 					<NodeExecuteButton
-						:nodeName="nodeName"
-						@execute="onNodeExecute"
+						data-test-id="trigger-execute-button"
+						:node-name="nodeName"
 						size="medium"
-						telemetrySource="inputs"
+						telemetry-source="inputs"
+						@execute="onNodeExecute"
 					/>
 				</div>
 			</div>
-			<div key="default" v-else>
-				<div class="mb-xl" v-if="isActivelyPolling">
+			<div v-else key="default">
+				<div v-if="isActivelyPolling" class="mb-xl">
 					<n8n-spinner type="ring" />
 				</div>
 
@@ -72,29 +76,31 @@
 					</div>
 
 					<NodeExecuteButton
-						:nodeName="nodeName"
-						@execute="onNodeExecute"
+						data-test-id="trigger-execute-button"
+						:node-name="nodeName"
 						size="medium"
-						telemetrySource="inputs"
+						telemetry-source="inputs"
+						@execute="onNodeExecute"
 					/>
 				</div>
 
-				<n8n-text size="small" @click="onLinkClick" v-if="activationHint">
+				<n8n-text v-if="activationHint" size="small" @click="onLinkClick">
 					<span v-html="activationHint"></span>&nbsp;
 				</n8n-text>
 				<n8n-link
-					size="small"
 					v-if="activationHint && executionsHelp"
+					size="small"
 					@click="expandExecutionHelp"
 					>{{ $locale.baseText('ndv.trigger.moreInfo') }}</n8n-link
 				>
 				<n8n-info-accordion
-					ref="help"
 					v-if="executionsHelp"
+					ref="help"
 					:class="$style.accordion"
 					:title="$locale.baseText('ndv.trigger.executionsHint.question')"
 					:description="executionsHelp"
-					@click="onLinkClick"
+					:event-bus="executionsHelpEventBus"
+					@click:body="onLinkClick"
 				></n8n-info-accordion>
 			</div>
 		</transition>
@@ -104,31 +110,34 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import { EXECUTIONS_MODAL_KEY, WEBHOOK_NODE_TYPE, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
+import {
+	CHAT_TRIGGER_NODE_TYPE,
+	VIEWS,
+	WEBHOOK_NODE_TYPE,
+	WORKFLOW_SETTINGS_MODAL_KEY,
+	FORM_TRIGGER_NODE_TYPE,
+} from '@/constants';
 import type { INodeUi } from '@/Interface';
 import type { INodeTypeDescription } from 'n8n-workflow';
-import { getTriggerNodeServiceName } from '@/utils';
+import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
 import NodeExecuteButton from '@/components/NodeExecuteButton.vue';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import CopyInput from '@/components/CopyInput.vue';
 import NodeIcon from '@/components/NodeIcon.vue';
-import { copyPaste } from '@/mixins/copyPaste';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import type { N8nInfoAccordion } from 'n8n-design-system';
-
-type HelpRef = InstanceType<typeof N8nInfoAccordion>;
+import { createEventBus } from 'n8n-design-system/utils';
 
 export default defineComponent({
 	name: 'TriggerPanel',
-	mixins: [workflowHelpers, copyPaste],
 	components: {
 		NodeExecuteButton,
 		CopyInput,
 		NodeIcon,
 	},
+	mixins: [workflowHelpers],
 	props: {
 		nodeName: {
 			type: String,
@@ -137,10 +146,15 @@ export default defineComponent({
 			type: String,
 		},
 	},
+	data: () => {
+		return {
+			executionsHelpEventBus: createEventBus(),
+		};
+	},
 	computed: {
 		...mapStores(useNodeTypesStore, useNDVStore, useUIStore, useWorkflowsStore),
 		node(): INodeUi | null {
-			return this.workflowsStore.getNodeByName(this.nodeName);
+			return this.workflowsStore.getNodeByName(this.nodeName as string);
 		},
 		nodeType(): INodeTypeDescription | null {
 			if (this.node) {
@@ -149,11 +163,39 @@ export default defineComponent({
 
 			return null;
 		},
+		hideContent(): boolean {
+			if (!this.nodeType?.triggerPanel) {
+				return false;
+			}
+
+			if (
+				this.nodeType?.triggerPanel &&
+				this.nodeType?.triggerPanel.hasOwnProperty('hideContent')
+			) {
+				const hideContent = this.nodeType?.triggerPanel.hideContent;
+				if (typeof hideContent === 'boolean') {
+					return hideContent;
+				}
+
+				if (this.node) {
+					const hideContentValue = this.getCurrentWorkflow().expression.getSimpleParameterValue(
+						this.node,
+						hideContent,
+						'internal',
+						{},
+					);
+
+					if (typeof hideContentValue === 'boolean') {
+						return hideContentValue;
+					}
+				}
+			}
+
+			return false;
+		},
 		hasIssues(): boolean {
 			return Boolean(
-				this.node &&
-					this.node.issues &&
-					(this.node.issues.parameters || this.node.issues.credentials),
+				this.node?.issues && (this.node.issues.parameters || this.node.issues.credentials),
 			);
 		},
 		serviceName(): string {
@@ -163,42 +205,39 @@ export default defineComponent({
 
 			return '';
 		},
+		displayChatButton(): boolean {
+			return Boolean(
+				this.node &&
+					this.node.type === CHAT_TRIGGER_NODE_TYPE &&
+					this.node.parameters.mode !== 'webhook',
+			);
+		},
 		isWebhookNode(): boolean {
 			return Boolean(this.node && this.node.type === WEBHOOK_NODE_TYPE);
 		},
 		webhookHttpMethod(): string | undefined {
-			if (
-				!this.node ||
-				!this.nodeType ||
-				!this.nodeType.webhooks ||
-				!this.nodeType.webhooks.length
-			) {
+			if (!this.node || !this.nodeType?.webhooks?.length) {
 				return undefined;
 			}
 
 			return this.getWebhookExpressionValue(this.nodeType.webhooks[0], 'httpMethod');
 		},
 		webhookTestUrl(): string | undefined {
-			if (
-				!this.node ||
-				!this.nodeType ||
-				!this.nodeType.webhooks ||
-				!this.nodeType.webhooks.length
-			) {
+			if (!this.node || !this.nodeType?.webhooks?.length) {
 				return undefined;
 			}
 
 			return this.getWebhookUrl(this.nodeType.webhooks[0], this.node, 'test');
 		},
 		isWebhookBasedNode(): boolean {
-			return Boolean(this.nodeType && this.nodeType.webhooks && this.nodeType.webhooks.length);
+			return Boolean(this.nodeType?.webhooks?.length);
 		},
 		isPollingNode(): boolean {
-			return Boolean(this.nodeType && this.nodeType.polling);
+			return Boolean(this.nodeType?.polling);
 		},
 		isListeningForEvents(): boolean {
-			const waitingOnWebhook = this.workflowsStore.executionWaitingForWebhook as boolean;
-			const executedNode = this.workflowsStore.executedNode as string | undefined;
+			const waitingOnWebhook = this.workflowsStore.executionWaitingForWebhook;
+			const executedNode = this.workflowsStore.executedNode;
 			return (
 				!!this.node &&
 				!this.node.disabled &&
@@ -218,6 +257,23 @@ export default defineComponent({
 		isWorkflowActive(): boolean {
 			return this.workflowsStore.isWorkflowActive;
 		},
+		listeningTitle(): string {
+			return this.nodeType?.name === FORM_TRIGGER_NODE_TYPE
+				? this.$locale.baseText('ndv.trigger.webhookNode.formTrigger.listening')
+				: this.$locale.baseText('ndv.trigger.webhookNode.listening');
+		},
+		listeningHint(): string {
+			switch (this.nodeType?.name) {
+				case CHAT_TRIGGER_NODE_TYPE:
+					return this.$locale.baseText('ndv.trigger.webhookBasedNode.chatTrigger.serviceHint');
+				case FORM_TRIGGER_NODE_TYPE:
+					return this.$locale.baseText('ndv.trigger.webhookBasedNode.formTrigger.serviceHint');
+				default:
+					return this.$locale.baseText('ndv.trigger.webhookBasedNode.serviceHint', {
+						interpolate: { service: this.serviceName },
+					});
+			}
+		},
 		header(): string {
 			const serviceName = this.nodeType ? getTriggerNodeServiceName(this.nodeType) : '';
 
@@ -225,11 +281,7 @@ export default defineComponent({
 				return this.$locale.baseText('ndv.trigger.pollingNode.fetchingEvent');
 			}
 
-			if (
-				this.nodeType &&
-				this.nodeType.triggerPanel &&
-				typeof this.nodeType.triggerPanel.header === 'string'
-			) {
+			if (this.nodeType?.triggerPanel && typeof this.nodeType.triggerPanel.header === 'string') {
 				return this.nodeType.triggerPanel.header;
 			}
 
@@ -252,11 +304,7 @@ export default defineComponent({
 			return '';
 		},
 		executionsHelp(): string {
-			if (
-				this.nodeType &&
-				this.nodeType.triggerPanel &&
-				this.nodeType.triggerPanel.executionsHelp !== undefined
-			) {
+			if (this.nodeType?.triggerPanel?.executionsHelp !== undefined) {
 				if (typeof this.nodeType.triggerPanel.executionsHelp === 'string') {
 					return this.nodeType.triggerPanel.executionsHelp;
 				}
@@ -299,11 +347,7 @@ export default defineComponent({
 				return '';
 			}
 
-			if (
-				this.nodeType &&
-				this.nodeType.triggerPanel &&
-				this.nodeType.triggerPanel.activationHint
-			) {
+			if (this.nodeType?.triggerPanel?.activationHint) {
 				if (typeof this.nodeType.triggerPanel.activationHint === 'string') {
 					return this.nodeType.triggerPanel.activationHint;
 				}
@@ -351,8 +395,17 @@ export default defineComponent({
 	methods: {
 		expandExecutionHelp() {
 			if (this.$refs.help) {
-				(this.$refs.help as HelpRef).$emit('expand');
+				this.executionsHelpEventBus.emit('expand');
 			}
+		},
+		openWebhookUrl() {
+			this.$telemetry.track('User clicked ndv link', {
+				workflow_id: this.workflowsStore.workflowId,
+				session_id: this.sessionId,
+				pane: 'input',
+				type: 'open-chat',
+			});
+			window.open(this.webhookTestUrl, '_blank', 'noreferrer');
 		},
 		onLinkClick(e: MouseEvent) {
 			if (!e.target) {
@@ -361,7 +414,7 @@ export default defineComponent({
 			const target = e.target as HTMLElement;
 			if (target.localName !== 'a') return;
 
-			if (target.dataset && target.dataset.key) {
+			if (target.dataset?.key) {
 				e.stopPropagation();
 				e.preventDefault();
 
@@ -375,7 +428,9 @@ export default defineComponent({
 						type: 'open-executions-log',
 					});
 					this.ndvStore.activeNodeName = null;
-					this.uiStore.openModal(EXECUTIONS_MODAL_KEY);
+					void this.$router.push({
+						name: VIEWS.EXECUTIONS,
+					});
 				} else if (target.dataset.key === 'settings') {
 					this.uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 				}

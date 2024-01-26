@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { reactive, ref } from 'vue';
-import { useRouter } from 'vue-router/composables';
-import { Notification } from 'element-ui';
+import { useRouter } from 'vue-router';
+import { ElNotification as Notification } from 'element-plus';
 import type { IFormBoxConfig } from 'n8n-design-system';
 import AuthView from '@/views/AuthView.vue';
 import { i18n as locale } from '@/plugins/i18n';
@@ -57,5 +57,5 @@ const onSubmit = async (values: { firstName: string; lastName: string }) => {
 </script>
 
 <template>
-	<AuthView :form="FORM_CONFIG" :formLoading="loading" @submit="onSubmit" />
+	<AuthView :form="FORM_CONFIG" :form-loading="loading" @submit="onSubmit" />
 </template>

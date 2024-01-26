@@ -21,10 +21,10 @@ if (process.argv.length === 2) {
 const nodeVersion = process.versions.node;
 const nodeVersionMajor = require('semver').major(nodeVersion);
 
-if (![16, 18].includes(nodeVersionMajor)) {
+if (![18, 20].includes(nodeVersionMajor)) {
 	console.log(`
 	Your Node.js version (${nodeVersion}) is currently not supported by n8n.
-	Please use Node.js v16 (recommended), or v18 instead!
+	Please use Node.js v18 (recommended), or v20 instead!
 	`);
 	process.exit(1);
 }
@@ -32,9 +32,17 @@ if (![16, 18].includes(nodeVersionMajor)) {
 // Prevent oclif from loading ts-node and typescript
 process.env.OCLIF_TS_NODE = '0';
 
+// Disable nodejs custom inspection across the app
+const { inspect } = require('util');
+inspect.defaultOptions.customInspect = false;
+
 require('express-async-errors');
 require('source-map-support').install();
 require('reflect-metadata');
+
+if (process.env.NODEJS_PREFER_IPV4 === 'true') {
+	require('dns').setDefaultResultOrder('ipv4first');
+}
 
 require('@oclif/command')
 	.run()

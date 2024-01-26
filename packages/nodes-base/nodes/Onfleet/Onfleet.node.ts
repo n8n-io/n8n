@@ -9,6 +9,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import type { OptionsWithUri } from 'request';
 import { taskFields, taskOperations } from './descriptions/TaskDescription';
 
 import { destinationFields, destinationOperations } from './descriptions/DestinationDescription';
@@ -33,8 +34,6 @@ import { workerFields, workerOperations } from './descriptions/WorkerDescription
 import { containerFields, containerOperations } from './descriptions/ContainerDescription';
 
 import { teamFields, teamOperations } from './descriptions/TeamDescription';
-
-import type { OptionsWithUri } from 'request';
 
 import { Onfleet as OnfleetMethods } from './Onfleet';
 export class Onfleet implements INodeType {

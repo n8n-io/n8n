@@ -1,4 +1,5 @@
 import { BasePage } from '../base';
+import { getVisibleSelect } from '../../utils';
 
 export class CredentialsModal extends BasePage {
 	getters = {
@@ -20,7 +21,7 @@ export class CredentialsModal extends BasePage {
 		credentialsEditModal: () => cy.getByTestId('credential-edit-dialog'),
 		credentialsAuthTypeSelector: () => cy.getByTestId('node-auth-type-selector'),
 		credentialAuthTypeRadioButtons: () =>
-			this.getters.credentialsAuthTypeSelector().find('label[role=radio]'),
+			this.getters.credentialsAuthTypeSelector().find('label.el-radio'),
 		credentialInputs: () => cy.getByTestId('credential-connection-parameter'),
 		menu: () => this.getters.editCredentialModal().get('.menu-container'),
 		menuItem: (name: string) => this.getters.menu().get('.n8n-menu-item').contains(name),
@@ -30,11 +31,7 @@ export class CredentialsModal extends BasePage {
 	actions = {
 		addUser: (email: string) => {
 			this.getters.usersSelect().click();
-			this.getters
-				.usersSelect()
-				.get('.el-select-dropdown__item')
-				.contains(email.toLowerCase())
-				.click();
+			getVisibleSelect().contains(email.toLowerCase()).click();
 		},
 		setName: (name: string) => {
 			this.getters.name().click();
@@ -42,10 +39,16 @@ export class CredentialsModal extends BasePage {
 		},
 		save: (test = false) => {
 			cy.intercept('POST', '/rest/credentials').as('saveCredential');
-			this.getters.saveButton().click();
+			this.getters.saveButton().click({ force: true });
 
 			cy.wait('@saveCredential');
 			if (test) cy.wait('@testCredential');
+			this.getters.saveButton().should('contain.text', 'Saved');
+		},
+		saveSharing: (test = false) => {
+			cy.intercept('PUT', '/rest/credentials/*/share').as('shareCredential');
+			this.getters.saveButton().click({ force: true });
+			cy.wait('@shareCredential');
 			this.getters.saveButton().should('contain.text', 'Saved');
 		},
 		close: () => {

@@ -10,9 +10,8 @@ import type {
 	INodePropertyOptions,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
-
-import type { Address, Filter, FilterGroup, ProductAttribute, Search } from './Types';
+import { ApplicationError, NodeApiError } from 'n8n-workflow';
+import type { Filter, Address, Search, FilterGroup, ProductAttribute } from './types';
 
 export async function magentoApiRequest(
 	this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
@@ -481,7 +480,7 @@ export function getFilterQuery(data: {
 	sort: [{ direction: string; field: string }];
 }): Search {
 	if (!data.hasOwnProperty('conditions') || data.conditions?.length === 0) {
-		throw new Error('At least one filter has to be set');
+		throw new ApplicationError('At least one filter has to be set', { level: 'warning' });
 	}
 
 	if (data.matchType === 'anyFilter') {

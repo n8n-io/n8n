@@ -1,58 +1,52 @@
-import type { Application } from 'express';
 import type { SuperAgentTest } from 'supertest';
-import { UserSettings } from 'n8n-core';
 
-import * as Db from '@/Db';
 import config from '@/config';
-import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
-import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
+import type { ListQuery } from '@/requests';
 import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
+
 import { randomCredentialPayload, randomName, randomString } from './shared/random';
 import * as testDb from './shared/testDb';
-import type { AuthAgent, SaveCredentialFunction } from './shared/types';
-import * as utils from './shared/utils';
+import type { SaveCredentialFunction } from './shared/types';
+import * as utils from './shared/utils/';
+import { affixRoleToSaveCredential, shareCredentialWithUsers } from './shared/db/credentials';
+import { getCredentialOwnerRole, getGlobalMemberRole, getGlobalOwnerRole } from './shared/db/roles';
+import { createManyUsers, createUser } from './shared/db/users';
+import { CredentialsRepository } from '@db/repositories/credentials.repository';
+import Container from 'typedi';
+import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 
 // mock that credentialsSharing is not enabled
-const mockIsCredentialsSharingEnabled = jest.spyOn(UserManagementHelpers, 'isSharingEnabled');
-mockIsCredentialsSharingEnabled.mockReturnValue(false);
+jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(false);
+const testServer = utils.setupTestServer({ endpointGroups: ['credentials'] });
 
-let app: Application;
 let globalOwnerRole: Role;
 let globalMemberRole: Role;
 let owner: User;
 let member: User;
+let secondMember: User;
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
 let saveCredential: SaveCredentialFunction;
-let authAgent: AuthAgent;
 
 beforeAll(async () => {
-	app = await utils.initTestServer({ endpointGroups: ['credentials'] });
+	globalOwnerRole = await getGlobalOwnerRole();
+	globalMemberRole = await getGlobalMemberRole();
+	const credentialOwnerRole = await getCredentialOwnerRole();
 
-	await utils.initConfigFile();
+	owner = await createUser({ globalRole: globalOwnerRole });
+	member = await createUser({ globalRole: globalMemberRole });
+	secondMember = await createUser({ globalRole: globalMemberRole });
 
-	globalOwnerRole = await testDb.getGlobalOwnerRole();
-	globalMemberRole = await testDb.getGlobalMemberRole();
-	const credentialOwnerRole = await testDb.getCredentialOwnerRole();
+	saveCredential = affixRoleToSaveCredential(credentialOwnerRole);
 
-	owner = await testDb.createUser({ globalRole: globalOwnerRole });
-	member = await testDb.createUser({ globalRole: globalMemberRole });
-
-	saveCredential = testDb.affixRoleToSaveCredential(credentialOwnerRole);
-
-	authAgent = utils.createAuthAgent(app);
-	authOwnerAgent = authAgent(owner);
-	authMemberAgent = authAgent(member);
+	authOwnerAgent = testServer.authAgentFor(owner);
+	authMemberAgent = testServer.authAgentFor(member);
 });
 
 beforeEach(async () => {
 	await testDb.truncate(['SharedCredentials', 'Credentials']);
-});
-
-afterAll(async () => {
-	await testDb.terminate();
 });
 
 // ----------------------------------------
@@ -71,15 +65,15 @@ describe('GET /credentials', () => {
 		expect(response.body.data.length).toBe(2); // owner retrieved owner cred and member cred
 
 		const savedCredentialsIds = [savedOwnerCredentialId, savedMemberCredentialId];
-		response.body.data.forEach((credential: CredentialsEntity) => {
+		response.body.data.forEach((credential: ListQuery.Credentials.WithOwnedByAndSharedWith) => {
 			validateMainCredentialData(credential);
-			expect(credential.data).toBeUndefined();
+			expect('data' in credential).toBe(false);
 			expect(savedCredentialsIds).toContain(credential.id);
 		});
 	});
 
 	test('should return only own creds for member', async () => {
-		const [member1, member2] = await testDb.createManyUsers(2, {
+		const [member1, member2] = await createManyUsers(2, {
 			globalRole: globalMemberRole,
 		});
 
@@ -88,7 +82,7 @@ describe('GET /credentials', () => {
 			saveCredential(randomCredentialPayload(), { user: member2 }),
 		]);
 
-		const response = await authAgent(member1).get('/credentials');
+		const response = await testServer.authAgentFor(member1).get('/credentials');
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.length).toBe(1); // member retrieved only own cred
@@ -119,14 +113,14 @@ describe('POST /credentials', () => {
 		expect(nodesAccess[0].nodeType).toBe(payload.nodesAccess[0].nodeType);
 		expect(encryptedData).not.toBe(payload.data);
 
-		const credential = await Db.collections.Credentials.findOneByOrFail({ id });
+		const credential = await Container.get(CredentialsRepository).findOneByOrFail({ id });
 
 		expect(credential.name).toBe(payload.name);
 		expect(credential.type).toBe(payload.type);
 		expect(credential.nodesAccess[0].nodeType).toBe(payload.nodesAccess[0].nodeType);
 		expect(credential.data).not.toBe(payload.data);
 
-		const sharedCredential = await Db.collections.SharedCredentials.findOneOrFail({
+		const sharedCredential = await Container.get(SharedCredentialsRepository).findOneOrFail({
 			relations: ['user', 'credentials'],
 			where: { credentialsId: credential.id },
 		});
@@ -136,23 +130,10 @@ describe('POST /credentials', () => {
 	});
 
 	test('should fail with invalid inputs', async () => {
-		await Promise.all(
-			INVALID_PAYLOADS.map(async (invalidPayload) => {
-				const response = await authOwnerAgent.post('/credentials').send(invalidPayload);
-				expect(response.statusCode).toBe(400);
-			}),
-		);
-	});
-
-	test('should fail with missing encryption key', async () => {
-		const mock = jest.spyOn(UserSettings, 'getEncryptionKey');
-		mock.mockRejectedValue(new Error(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY));
-
-		const response = await authOwnerAgent.post('/credentials').send(randomCredentialPayload());
-
-		expect(response.statusCode).toBe(500);
-
-		mock.mockRestore();
+		for (const invalidPayload of INVALID_PAYLOADS) {
+			const response = await authOwnerAgent.post('/credentials').send(invalidPayload);
+			expect(response.statusCode).toBe(400);
+		}
 	});
 
 	test('should ignore ID in payload', async () => {
@@ -179,13 +160,13 @@ describe('DELETE /credentials/:id', () => {
 		expect(response.statusCode).toBe(200);
 		expect(response.body).toEqual({ data: true });
 
-		const deletedCredential = await Db.collections.Credentials.findOneBy({
+		const deletedCredential = await Container.get(CredentialsRepository).findOneBy({
 			id: savedCredential.id,
 		});
 
 		expect(deletedCredential).toBeNull(); // deleted
 
-		const deletedSharedCredential = await Db.collections.SharedCredentials.findOneBy({});
+		const deletedSharedCredential = await Container.get(SharedCredentialsRepository).findOneBy({});
 
 		expect(deletedSharedCredential).toBeNull(); // deleted
 	});
@@ -198,13 +179,13 @@ describe('DELETE /credentials/:id', () => {
 		expect(response.statusCode).toBe(200);
 		expect(response.body).toEqual({ data: true });
 
-		const deletedCredential = await Db.collections.Credentials.findOneBy({
+		const deletedCredential = await Container.get(CredentialsRepository).findOneBy({
 			id: savedCredential.id,
 		});
 
 		expect(deletedCredential).toBeNull(); // deleted
 
-		const deletedSharedCredential = await Db.collections.SharedCredentials.findOneBy({});
+		const deletedSharedCredential = await Container.get(SharedCredentialsRepository).findOneBy({});
 
 		expect(deletedSharedCredential).toBeNull(); // deleted
 	});
@@ -217,13 +198,13 @@ describe('DELETE /credentials/:id', () => {
 		expect(response.statusCode).toBe(200);
 		expect(response.body).toEqual({ data: true });
 
-		const deletedCredential = await Db.collections.Credentials.findOneBy({
+		const deletedCredential = await Container.get(CredentialsRepository).findOneBy({
 			id: savedCredential.id,
 		});
 
 		expect(deletedCredential).toBeNull(); // deleted
 
-		const deletedSharedCredential = await Db.collections.SharedCredentials.findOneBy({});
+		const deletedSharedCredential = await Container.get(SharedCredentialsRepository).findOneBy({});
 
 		expect(deletedSharedCredential).toBeNull(); // deleted
 	});
@@ -235,11 +216,33 @@ describe('DELETE /credentials/:id', () => {
 
 		expect(response.statusCode).toBe(404);
 
-		const shellCredential = await Db.collections.Credentials.findOneBy({ id: savedCredential.id });
+		const shellCredential = await Container.get(CredentialsRepository).findOneBy({
+			id: savedCredential.id,
+		});
 
 		expect(shellCredential).toBeDefined(); // not deleted
 
-		const deletedSharedCredential = await Db.collections.SharedCredentials.findOneBy({});
+		const deletedSharedCredential = await Container.get(SharedCredentialsRepository).findOneBy({});
+
+		expect(deletedSharedCredential).toBeDefined(); // not deleted
+	});
+
+	test('should not delete non-owned but shared cred for member', async () => {
+		const savedCredential = await saveCredential(randomCredentialPayload(), { user: secondMember });
+
+		await shareCredentialWithUsers(savedCredential, [member]);
+
+		const response = await authMemberAgent.delete(`/credentials/${savedCredential.id}`);
+
+		expect(response.statusCode).toBe(404);
+
+		const shellCredential = await Container.get(CredentialsRepository).findOneBy({
+			id: savedCredential.id,
+		});
+
+		expect(shellCredential).toBeDefined(); // not deleted
+
+		const deletedSharedCredential = await Container.get(SharedCredentialsRepository).findOneBy({});
 
 		expect(deletedSharedCredential).toBeDefined(); // not deleted
 	});
@@ -273,14 +276,14 @@ describe('PATCH /credentials/:id', () => {
 
 		expect(encryptedData).not.toBe(patchPayload.data);
 
-		const credential = await Db.collections.Credentials.findOneByOrFail({ id });
+		const credential = await Container.get(CredentialsRepository).findOneByOrFail({ id });
 
 		expect(credential.name).toBe(patchPayload.name);
 		expect(credential.type).toBe(patchPayload.type);
 		expect(credential.nodesAccess[0].nodeType).toBe(patchPayload.nodesAccess[0].nodeType);
 		expect(credential.data).not.toBe(patchPayload.data);
 
-		const sharedCredential = await Db.collections.SharedCredentials.findOneOrFail({
+		const sharedCredential = await Container.get(SharedCredentialsRepository).findOneOrFail({
 			relations: ['credentials'],
 			where: { credentialsId: credential.id },
 		});
@@ -288,7 +291,7 @@ describe('PATCH /credentials/:id', () => {
 		expect(sharedCredential.credentials.name).toBe(patchPayload.name); // updated
 	});
 
-	test('should update non-owned cred for owner', async () => {
+	test('should not update non-owned cred for owner', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
 		const patchPayload = randomCredentialPayload();
 
@@ -296,33 +299,22 @@ describe('PATCH /credentials/:id', () => {
 			.patch(`/credentials/${savedCredential.id}`)
 			.send(patchPayload);
 
-		expect(response.statusCode).toBe(200);
+		expect(response.statusCode).toBe(404);
 
-		const { id, name, type, nodesAccess, data: encryptedData } = response.body.data;
+		const credential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: savedCredential.id,
+		});
 
-		expect(name).toBe(patchPayload.name);
-		expect(type).toBe(patchPayload.type);
-
-		if (!patchPayload.nodesAccess) {
-			fail('Payload did not contain a nodesAccess array');
-		}
-		expect(nodesAccess[0].nodeType).toBe(patchPayload.nodesAccess[0].nodeType);
-
-		expect(encryptedData).not.toBe(patchPayload.data);
-
-		const credential = await Db.collections.Credentials.findOneByOrFail({ id });
-
-		expect(credential.name).toBe(patchPayload.name);
-		expect(credential.type).toBe(patchPayload.type);
-		expect(credential.nodesAccess[0].nodeType).toBe(patchPayload.nodesAccess[0].nodeType);
+		expect(credential.name).not.toBe(patchPayload.name);
+		expect(credential.type).not.toBe(patchPayload.type);
 		expect(credential.data).not.toBe(patchPayload.data);
 
-		const sharedCredential = await Db.collections.SharedCredentials.findOneOrFail({
+		const sharedCredential = await Container.get(SharedCredentialsRepository).findOneOrFail({
 			relations: ['credentials'],
 			where: { credentialsId: credential.id },
 		});
 
-		expect(sharedCredential.credentials.name).toBe(patchPayload.name); // updated
+		expect(sharedCredential.credentials.name).not.toBe(patchPayload.name); // updated
 	});
 
 	test('should update owned cred for member', async () => {
@@ -347,14 +339,14 @@ describe('PATCH /credentials/:id', () => {
 
 		expect(encryptedData).not.toBe(patchPayload.data);
 
-		const credential = await Db.collections.Credentials.findOneByOrFail({ id });
+		const credential = await Container.get(CredentialsRepository).findOneByOrFail({ id });
 
 		expect(credential.name).toBe(patchPayload.name);
 		expect(credential.type).toBe(patchPayload.type);
 		expect(credential.nodesAccess[0].nodeType).toBe(patchPayload.nodesAccess[0].nodeType);
 		expect(credential.data).not.toBe(patchPayload.data);
 
-		const sharedCredential = await Db.collections.SharedCredentials.findOneOrFail({
+		const sharedCredential = await Container.get(SharedCredentialsRepository).findOneOrFail({
 			relations: ['credentials'],
 			where: { credentialsId: credential.id },
 		});
@@ -372,7 +364,43 @@ describe('PATCH /credentials/:id', () => {
 
 		expect(response.statusCode).toBe(404);
 
-		const shellCredential = await Db.collections.Credentials.findOneByOrFail({
+		const shellCredential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: savedCredential.id,
+		});
+
+		expect(shellCredential.name).not.toBe(patchPayload.name); // not updated
+	});
+
+	test('should not update non-owned but shared cred for member', async () => {
+		const savedCredential = await saveCredential(randomCredentialPayload(), { user: secondMember });
+		await shareCredentialWithUsers(savedCredential, [member]);
+		const patchPayload = randomCredentialPayload();
+
+		const response = await authMemberAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(patchPayload);
+
+		expect(response.statusCode).toBe(404);
+
+		const shellCredential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: savedCredential.id,
+		});
+
+		expect(shellCredential.name).not.toBe(patchPayload.name); // not updated
+	});
+
+	test('should not update non-owned but shared cred for instance owner', async () => {
+		const savedCredential = await saveCredential(randomCredentialPayload(), { user: secondMember });
+		await shareCredentialWithUsers(savedCredential, [owner]);
+		const patchPayload = randomCredentialPayload();
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(patchPayload);
+
+		expect(response.statusCode).toBe(404);
+
+		const shellCredential = await Container.get(CredentialsRepository).findOneByOrFail({
 			id: savedCredential.id,
 		});
 
@@ -382,35 +410,22 @@ describe('PATCH /credentials/:id', () => {
 	test('should fail with invalid inputs', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 
-		await Promise.all(
-			INVALID_PAYLOADS.map(async (invalidPayload) => {
-				const response = await authOwnerAgent
-					.patch(`/credentials/${savedCredential.id}`)
-					.send(invalidPayload);
+		for (const invalidPayload of INVALID_PAYLOADS) {
+			const response = await authOwnerAgent
+				.patch(`/credentials/${savedCredential.id}`)
+				.send(invalidPayload);
 
-				if (response.statusCode === 500) {
-					console.log(response.statusCode, response.body);
-				}
-				expect(response.statusCode).toBe(400);
-			}),
-		);
+			if (response.statusCode === 500) {
+				console.log(response.statusCode, response.body);
+			}
+			expect(response.statusCode).toBe(400);
+		}
 	});
 
 	test('should fail if cred not found', async () => {
 		const response = await authOwnerAgent.patch('/credentials/123').send(randomCredentialPayload());
 
 		expect(response.statusCode).toBe(404);
-	});
-
-	test('should fail with missing encryption key', async () => {
-		const mock = jest.spyOn(UserSettings, 'getEncryptionKey');
-		mock.mockRejectedValue(new Error(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY));
-
-		const response = await authOwnerAgent.post('/credentials').send(randomCredentialPayload());
-
-		expect(response.statusCode).toBe(500);
-
-		mock.mockRestore();
 	});
 });
 
@@ -520,21 +535,6 @@ describe('GET /credentials/:id', () => {
 		expect(response.body.data).toBeUndefined(); // owner's cred not returned
 	});
 
-	test('should fail with missing encryption key', async () => {
-		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
-
-		const mock = jest.spyOn(UserSettings, 'getEncryptionKey');
-		mock.mockRejectedValue(new Error(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY));
-
-		const response = await authOwnerAgent
-			.get(`/credentials/${savedCredential.id}`)
-			.query({ includeData: true });
-
-		expect(response.statusCode).toBe(500);
-
-		mock.mockRestore();
-	});
-
 	test('should return 404 if cred not found', async () => {
 		const response = await authOwnerAgent.get('/credentials/789');
 		expect(response.statusCode).toBe(404);
@@ -544,14 +544,25 @@ describe('GET /credentials/:id', () => {
 	});
 });
 
-function validateMainCredentialData(credential: CredentialsEntity) {
-	expect(typeof credential.name).toBe('string');
-	expect(typeof credential.type).toBe('string');
-	expect(typeof credential.nodesAccess[0].nodeType).toBe('string');
-	// @ts-ignore
-	expect(credential.ownedBy).toBeUndefined();
-	// @ts-ignore
-	expect(credential.sharedWith).toBeUndefined();
+function validateMainCredentialData(credential: ListQuery.Credentials.WithOwnedByAndSharedWith) {
+	const { name, type, nodesAccess, sharedWith, ownedBy } = credential;
+
+	expect(typeof name).toBe('string');
+	expect(typeof type).toBe('string');
+	expect(typeof nodesAccess?.[0].nodeType).toBe('string');
+
+	if (sharedWith) {
+		expect(Array.isArray(sharedWith)).toBe(true);
+	}
+
+	if (ownedBy) {
+		const { id, email, firstName, lastName } = ownedBy;
+
+		expect(typeof id).toBe('string');
+		expect(typeof email).toBe('string');
+		expect(typeof firstName).toBe('string');
+		expect(typeof lastName).toBe('string');
+	}
 }
 
 const INVALID_PAYLOADS = [

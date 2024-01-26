@@ -1,14 +1,13 @@
-import { readFile as fsReadFile } from 'fs/promises';
-
+import { NodeOperationError } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
-	IExecuteWorkflowInfo,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	IWorkflowBase,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+
+import { generatePairedItemData } from '../../utils/utilities';
+import { getWorkflowInfo } from './GenericFunctions';
 
 export class ExecuteWorkflow implements INodeType {
 	description: INodeTypeDescription = {
@@ -83,7 +82,9 @@ export class ExecuteWorkflow implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'The workflow to execute',
+				hint: 'Can be found in the URL of the workflow',
+				description:
+					"Note on using an expression here: if this node is set to run once with all items, they will all be sent to the <em>same</em> workflow. That workflow's ID will be calculated by evaluating the expression for the <strong>first input item</strong>.",
 			},
 
 			// ----------------------------------
@@ -110,9 +111,8 @@ export class ExecuteWorkflow implements INodeType {
 			{
 				displayName: 'Workflow JSON',
 				name: 'workflowJson',
-				type: 'string',
+				type: 'json',
 				typeOptions: {
-					editor: 'json',
 					rows: 10,
 				},
 				displayOptions: {
@@ -149,69 +149,93 @@ export class ExecuteWorkflow implements INodeType {
 				type: 'notice',
 				default: '',
 			},
+			{
+				displayName: 'Mode',
+				name: 'mode',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'Run once with all items',
+						value: 'once',
+						description: 'Pass all items into a single execution of the sub-workflow',
+					},
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'Run once for each item',
+						value: 'each',
+						description: 'Call the sub-workflow individually for each item',
+					},
+				],
+				default: 'once',
+			},
 		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const items = this.getInputData();
 		const source = this.getNodeParameter('source', 0) as string;
+		const mode = this.getNodeParameter('mode', 0, false) as string;
+		const items = this.getInputData();
 
-		const workflowInfo: IExecuteWorkflowInfo = {};
+		if (mode === 'each') {
+			const returnData: INodeExecutionData[][] = [];
 
-		try {
-			if (source === 'database') {
-				// Read workflow from database
-				workflowInfo.id = this.getNodeParameter('workflowId', 0) as string;
-			} else if (source === 'localFile') {
-				// Read workflow from filesystem
-				const workflowPath = this.getNodeParameter('workflowPath', 0) as string;
-
-				let workflowJson;
+			for (let i = 0; i < items.length; i++) {
 				try {
-					workflowJson = await fsReadFile(workflowPath, { encoding: 'utf8' });
-				} catch (error) {
-					if (error.code === 'ENOENT') {
-						throw new NodeOperationError(
-							this.getNode(),
-							`The file "${workflowPath}" could not be found.`,
-						);
-					}
+					const workflowInfo = await getWorkflowInfo.call(this, source, i);
+					const workflowResult: INodeExecutionData[][] = await this.executeWorkflow(workflowInfo, [
+						items[i],
+					]);
 
-					throw error;
+					for (const [outputIndex, outputData] of workflowResult.entries()) {
+						for (const item of outputData) {
+							item.pairedItem = { item: i };
+						}
+
+						if (returnData[outputIndex] === undefined) {
+							returnData[outputIndex] = [];
+						}
+
+						returnData[outputIndex].push(...outputData);
+					}
+				} catch (error) {
+					if (this.continueOnFail()) {
+						return [[{ json: { error: error.message }, pairedItem: { item: i } }]];
+					}
+					throw new NodeOperationError(this.getNode(), error, {
+						message: `Error executing workflow with item at index ${i}`,
+						description: error.message,
+						itemIndex: i,
+					});
+				}
+			}
+
+			return returnData;
+		} else {
+			try {
+				const workflowInfo = await getWorkflowInfo.call(this, source);
+				const workflowResult: INodeExecutionData[][] = await this.executeWorkflow(
+					workflowInfo,
+					items,
+				);
+
+				const pairedItem = generatePairedItemData(items.length);
+
+				for (const output of workflowResult) {
+					for (const item of output) {
+						item.pairedItem = pairedItem;
+					}
 				}
 
-				workflowInfo.code = JSON.parse(workflowJson) as IWorkflowBase;
-			} else if (source === 'parameter') {
-				// Read workflow from parameter
-				const workflowJson = this.getNodeParameter('workflowJson', 0) as string;
-				workflowInfo.code = JSON.parse(workflowJson) as IWorkflowBase;
-			} else if (source === 'url') {
-				// Read workflow from url
-				const workflowUrl = this.getNodeParameter('workflowUrl', 0) as string;
-
-				const requestOptions = {
-					headers: {
-						accept: 'application/json,text/*;q=0.99',
-					},
-					method: 'GET',
-					uri: workflowUrl,
-					json: true,
-					gzip: true,
-				};
-
-				const response = await this.helpers.request(requestOptions);
-				workflowInfo.code = response;
+				return workflowResult;
+			} catch (error) {
+				const pairedItem = generatePairedItemData(items.length);
+				if (this.continueOnFail()) {
+					return [[{ json: { error: error.message }, pairedItem }]];
+				}
+				throw error;
 			}
-
-			const receivedData = await this.executeWorkflow(workflowInfo, items);
-
-			return receivedData;
-		} catch (error) {
-			if (this.continueOnFail()) {
-				return this.prepareOutputData([{ json: { error: error.message } }]);
-			}
-
-			throw error;
 		}
 	}
 }

@@ -1,12 +1,12 @@
 <template>
 	<div :class="classes" role="alert">
 		<div :class="$style.messageSection">
-			<div :class="$style.icon" v-if="!iconless">
-				<n8n-icon :icon="getIcon" :size="theme === 'secondary' ? 'medium' : 'large'" />
+			<div v-if="!iconless" :class="$style.icon">
+				<N8nIcon :icon="getIcon" :size="getIconSize" />
 			</div>
-			<n8n-text size="small">
+			<N8nText size="small">
 				<slot />
-			</n8n-text>
+			</N8nText>
 			&nbsp;
 			<slot name="actions" />
 		</div>
@@ -24,11 +24,11 @@ const CALLOUT_DEFAULT_ICONS: { [key: string]: string } = {
 	info: 'info-circle',
 	success: 'check-circle',
 	warning: 'exclamation-triangle',
-	danger: 'times-circle',
+	danger: 'exclamation-triangle',
 };
 
 export default defineComponent({
-	name: 'n8n-callout',
+	name: 'N8nCallout',
 	components: {
 		N8nText,
 		N8nIcon,
@@ -42,13 +42,20 @@ export default defineComponent({
 		},
 		icon: {
 			type: String,
-			default: 'info-circle',
+		},
+		iconSize: {
+			type: String,
+			default: 'medium',
 		},
 		iconless: {
 			type: Boolean,
 		},
 		slim: {
 			type: Boolean,
+		},
+		roundCorners: {
+			type: Boolean,
+			default: true,
 		},
 	},
 	computed: {
@@ -58,14 +65,20 @@ export default defineComponent({
 				this.$style.callout,
 				this.$style[this.theme],
 				this.slim ? this.$style.slim : '',
+				this.roundCorners ? this.$style.round : '',
 			];
 		},
 		getIcon(): string {
-			if (Object.keys(CALLOUT_DEFAULT_ICONS).includes(this.theme)) {
-				return CALLOUT_DEFAULT_ICONS[this.theme];
+			return this.icon ?? CALLOUT_DEFAULT_ICONS?.[this.theme] ?? CALLOUT_DEFAULT_ICONS.info;
+		},
+		getIconSize(): string {
+			if (this.iconSize) {
+				return this.iconSize;
 			}
-
-			return this.icon;
+			if (this.theme === 'secondary') {
+				return 'medium';
+			}
+			return 'large';
 		},
 	},
 });
@@ -78,14 +91,20 @@ export default defineComponent({
 	font-size: var(--font-size-2xs);
 	padding: var(--spacing-xs);
 	border: var(--border-width-base) var(--border-style-base);
-	border-radius: var(--border-radius-base);
 	align-items: center;
 	line-height: var(--font-line-height-loose);
+	border-color: var(--color-callout-info-border);
+	background-color: var(--color-callout-info-background);
+	color: var(--color-callout-info-font);
 
 	&.slim {
 		line-height: var(--font-line-height-loose);
 		padding: var(--spacing-3xs) var(--spacing-2xs);
 	}
+}
+
+.round {
+	border-radius: var(--border-radius-base);
 }
 
 .messageSection {
@@ -95,38 +114,59 @@ export default defineComponent({
 
 .info,
 .custom {
-	border-color: var(--color-foreground-base);
-	background-color: var(--color-background-light);
-	color: var(--color-info);
-}
+	border-color: var(--color-callout-info-border);
+	background-color: var(--color-callout-info-background);
+	color: var(--color-callout-info-font);
 
-.warning {
-	border-color: var(--color-warning-tint-1);
-	background-color: var(--color-warning-tint-2);
-	color: var(--color-warning);
+	.icon {
+		color: var(--color-callout-info-icon);
+	}
 }
 
 .success {
-	border-color: var(--color-success-tint-1);
-	background-color: var(--color-success-tint-2);
-	color: var(--color-success);
+	border-color: var(--color-callout-success-border);
+	background-color: var(--color-callout-success-background);
+	color: var(--color-callout-success-font);
+
+	.icon {
+		color: var(--color-callout-success-icon);
+	}
+}
+
+.warning {
+	border-color: var(--color-callout-warning-border);
+	background-color: var(--color-callout-warning-background);
+	color: var(--color-callout-warning-font);
+
+	.icon {
+		color: var(--color-callout-warning-icon);
+	}
 }
 
 .danger {
-	border-color: var(--color-danger-tint-1);
-	background-color: var(--color-danger-tint-2);
-	color: var(--color-danger);
+	border-color: var(--color-callout-danger-border);
+	background-color: var(--color-callout-danger-background);
+	color: var(--color-callout-danger-font);
+
+	.icon {
+		color: var(--color-callout-danger-icon);
+	}
 }
 
 .icon {
-	margin-right: var(--spacing-xs);
+	line-height: 1;
+	margin-right: var(--spacing-2xs);
 }
 
 .secondary {
 	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-bold);
-	color: var(--color-secondary);
-	background-color: var(--color-secondary-tint-3);
-	border-color: var(--color-secondary-tint-1);
+	border-color: var(--color-callout-secondary-border);
+	background-color: var(--color-callout-secondary-background);
+	color: var(--color-callout-secondary-font);
+
+	.icon {
+		color: var(--color-callout-secondary-icon);
+	}
 }
 </style>

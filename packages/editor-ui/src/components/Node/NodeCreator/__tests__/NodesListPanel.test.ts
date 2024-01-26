@@ -1,56 +1,35 @@
-import Vue, { defineComponent, watch } from 'vue';
+import { defineComponent, nextTick, watch } from 'vue';
 import type { PropType } from 'vue';
-import { PiniaVuePlugin, createPinia } from 'pinia';
-import { render, screen, fireEvent } from '@testing-library/vue';
+import { createPinia } from 'pinia';
+import { screen, fireEvent } from '@testing-library/vue';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { mockSimplifiedNodeType } from './utils';
 import NodesListPanel from '../Panel/NodesListPanel.vue';
 import { REGULAR_NODE_CREATOR_VIEW } from '@/constants';
 import type { NodeFilterType } from '@/Interface';
-
-function TelemetryPlugin(vue: typeof Vue): void {
-	Object.defineProperty(vue, '$telemetry', {
-		get() {
-			return {
-				trackNodesPanel: () => {},
-			};
-		},
-	});
-	Object.defineProperty(vue.prototype, '$telemetry', {
-		get() {
-			return {
-				trackNodesPanel: () => {},
-			};
-		},
-	});
-}
+import { createComponentRenderer } from '@/__tests__/render';
 
 function getWrapperComponent(setup: () => void) {
 	const wrapperComponent = defineComponent({
+		components: {
+			NodesListPanel,
+		},
 		props: {
 			nodeTypes: {
 				type: Array as PropType<INodeTypeDescription[]>,
 				required: false,
 			},
 		},
-		components: {
-			NodesListPanel,
-		},
 		setup,
 		template: '<NodesListPanel @nodeTypeSelected="e => $emit(\'nodeTypeSelected\', e)" />',
 	});
 
-	return render(
-		wrapperComponent,
-		{
-			pinia: createPinia(),
+	return createComponentRenderer(wrapperComponent, {
+		global: {
+			plugins: [createPinia()],
 		},
-		(vue) => {
-			vue.use(PiniaVuePlugin);
-			vue.use(TelemetryPlugin);
-		},
-	);
+	})();
 }
 
 describe('NodesListPanel', () => {
@@ -78,11 +57,11 @@ describe('NodesListPanel', () => {
 				return {};
 			});
 
-			await Vue.nextTick();
-			expect(screen.getByText('Select a trigger')).toBeInTheDocument();
+			await nextTick();
+			expect(screen.getByText('What triggers this workflow?')).toBeInTheDocument();
 			expect(screen.queryByTestId('node-creator-search-bar')).toBeInTheDocument();
 			screen.getByText('On app event').click();
-			await Vue.nextTick();
+			await nextTick();
 			expect(screen.queryByTestId('node-creator-search-bar')).not.toBeInTheDocument();
 			mockedTriggerNodes.forEach((n) => {
 				expect(screen.queryByText(n.name)).toBeInTheDocument();
@@ -95,9 +74,9 @@ describe('NodesListPanel', () => {
 			expect(container.querySelector('.backButton')).toBeInTheDocument();
 
 			await fireEvent.click(container.querySelector('.backButton')!);
-			await Vue.nextTick();
+			await nextTick();
 
-			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(6);
+			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(7);
 		});
 
 		it('should render regular nodes', async () => {
@@ -110,6 +89,9 @@ describe('NodesListPanel', () => {
 			);
 
 			const wrapperComponent = defineComponent({
+				components: {
+					NodesListPanel,
+				},
 				props: {
 					nodeTypes: {
 						type: Array as PropType<INodeTypeDescription[]>,
@@ -120,9 +102,6 @@ describe('NodesListPanel', () => {
 						default: REGULAR_NODE_CREATOR_VIEW,
 						required: false,
 					},
-				},
-				components: {
-					NodesListPanel,
 				},
 				setup(props) {
 					const { setActions, setMergeNodes, setSelectedView } = useNodeCreatorStore();
@@ -145,27 +124,22 @@ describe('NodesListPanel', () => {
 				template: '<NodesListPanel @nodeTypeSelected="e => $emit(\'nodeTypeSelected\', e)" />',
 			});
 
-			render(
-				wrapperComponent,
-				{
-					pinia: createPinia(),
-					props: {
-						nodeTypes: mockedNodes,
-						selectedView: REGULAR_NODE_CREATOR_VIEW,
-					},
-				},
-				(vue) => {
-					vue.use(PiniaVuePlugin);
-					vue.use(TelemetryPlugin);
-				},
-			);
+			const renderComponent = createComponentRenderer(wrapperComponent);
 
-			await Vue.nextTick();
+			renderComponent({
+				pinia: createPinia(),
+				props: {
+					nodeTypes: mockedNodes,
+					selectedView: REGULAR_NODE_CREATOR_VIEW,
+				},
+			});
+
+			await nextTick();
 			expect(screen.getByText('What happens next?')).toBeInTheDocument();
 			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(6);
 
 			screen.getByText('Action in an app').click();
-			await Vue.nextTick();
+			await nextTick();
 			mockedNodes.forEach((n) => {
 				expect(screen.queryByText(n.displayName)).toBeInTheDocument();
 			});
@@ -182,14 +156,14 @@ describe('NodesListPanel', () => {
 		);
 
 		const wrapperComponent = defineComponent({
+			components: {
+				NodesListPanel,
+			},
 			props: {
 				nodeTypes: {
 					type: Array as PropType<INodeTypeDescription[]>,
 					required: true,
 				},
-			},
-			components: {
-				NodesListPanel,
 			},
 			setup(props) {
 				const { setMergeNodes } = useNodeCreatorStore();
@@ -205,40 +179,31 @@ describe('NodesListPanel', () => {
 			template: '<NodesListPanel @nodeTypeSelected="e => $emit(\'nodeTypeSelected\', e)" />',
 		});
 
-		function renderComponent() {
-			return render(
-				wrapperComponent,
-				{
-					pinia: createPinia(),
-					props: {
-						nodeTypes: mockedNodes,
-					},
-				},
-				(vue) => {
-					vue.use(PiniaVuePlugin);
-					vue.use(TelemetryPlugin);
-				},
-			);
-		}
+		const renderComponent = createComponentRenderer(wrapperComponent, {
+			pinia: createPinia(),
+			props: {
+				nodeTypes: mockedNodes,
+			},
+		});
 
 		it('should be visible in the root view', async () => {
 			renderComponent();
-			await Vue.nextTick();
+			await nextTick();
 
 			expect(screen.queryByTestId('node-creator-search-bar')).toBeInTheDocument();
 		});
 		it('should not be visible if subcategory contains less than 9 items', async () => {
 			renderComponent();
-			await Vue.nextTick();
+			await nextTick();
 
 			screen.getByText('On app event').click();
-			await Vue.nextTick();
+			await nextTick();
 			expect(screen.queryByTestId('node-creator-search-bar')).not.toBeInTheDocument();
 			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(8);
 		});
 		it('should be visible if subcategory contains 9 or more items', async () => {
-			const { updateProps } = renderComponent();
-			await Vue.nextTick();
+			const { rerender } = renderComponent();
+			await nextTick();
 
 			mockedNodes.push(
 				mockSimplifiedNodeType({
@@ -248,11 +213,11 @@ describe('NodesListPanel', () => {
 				}),
 			);
 
-			await updateProps({ nodeTypes: [...mockedNodes] });
-			await Vue.nextTick();
+			await rerender({ nodeTypes: [...mockedNodes] });
+			await nextTick();
 
 			screen.getByText('On app event').click();
-			await Vue.nextTick();
+			await nextTick();
 
 			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(9);
 			expect(screen.queryByTestId('node-creator-search-bar')).toBeInTheDocument();
@@ -260,26 +225,26 @@ describe('NodesListPanel', () => {
 
 		it('should correctly handle search', async () => {
 			const { container } = renderComponent();
-			await Vue.nextTick();
+			await nextTick();
 
 			screen.getByText('On app event').click();
-			await Vue.nextTick();
+			await nextTick();
 
 			await fireEvent.input(screen.getByTestId('node-creator-search-bar'), {
 				target: { value: 'Ninth' },
 			});
-			await Vue.nextTick();
+			await nextTick();
 			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(1);
 
 			await fireEvent.input(screen.getByTestId('node-creator-search-bar'), {
 				target: { value: 'Non sense' },
 			});
-			await Vue.nextTick();
+			await nextTick();
 			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(0);
 			expect(screen.queryByText("We didn't make that... yet")).toBeInTheDocument();
 
 			await fireEvent.click(container.querySelector('.clear')!);
-			await Vue.nextTick();
+			await nextTick();
 			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(9);
 		});
 	});

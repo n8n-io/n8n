@@ -3,22 +3,21 @@
 		placement="bottom"
 		:width="width"
 		:popper-class="$style.popover"
-		:value="show"
+		:visible="show"
 		trigger="manual"
 		data-test-id="resource-locator-dropdown"
-		v-click-outside="onClickOutside"
 	>
-		<div :class="$style.messageContainer" v-if="errorView">
+		<div v-if="errorView" :class="$style.messageContainer">
 			<slot name="error"></slot>
 		</div>
-		<div :class="$style.searchInput" v-if="filterable && !errorView" @keydown="onKeyDown">
+		<div v-if="filterable && !errorView" :class="$style.searchInput" @keydown="onKeyDown">
 			<n8n-input
-				size="medium"
-				:value="filter"
-				:clearable="true"
-				@input="onFilterInput"
 				ref="search"
+				:model-value="filter"
+				:clearable="true"
 				:placeholder="$locale.baseText('resourceLocator.search.placeholder')"
+				data-test-id="rlc-search"
+				@update:modelValue="onFilterInput"
 			>
 				<template #prefix>
 					<font-awesome-icon :class="$style.searchIcon" icon="search" />
@@ -29,8 +28,8 @@
 			{{ $locale.baseText('resourceLocator.mode.list.searchRequired') }}
 		</div>
 		<div
-			:class="$style.messageContainer"
 			v-else-if="!errorView && sortedResources.length === 0 && !loading"
+			:class="$style.messageContainer"
 		>
 			{{ $locale.baseText('resourceLocator.mode.list.noResults') }}
 		</div>
@@ -43,16 +42,16 @@
 			<div
 				v-for="(result, i) in sortedResources"
 				:key="result.value"
+				:ref="`item-${i}`"
 				:class="{
 					[$style.resourceItem]: true,
-					[$style.selected]: result.value === value,
+					[$style.selected]: result.value === modelValue,
 					[$style.hovering]: hoverIndex === i,
 				}"
-				class="ph-no-capture"
+				data-test-id="rlc-item"
 				@click="() => onItemClick(result.value)"
 				@mouseenter="() => onItemHover(i)"
 				@mouseleave="() => onItemHoverLeave()"
-				:ref="`item-${i}`"
 			>
 				<div :class="$style.resourceNameContainer">
 					<span>{{ result.name }}</span>
@@ -89,9 +88,9 @@ const SEARCH_BAR_HEIGHT_PX = 40;
 const SCROLL_MARGIN_PX = 10;
 
 export default defineComponent({
-	name: 'resource-locator-dropdown',
+	name: 'ResourceLocatorDropdown',
 	props: {
-		value: {
+		modelValue: {
 			type: [String, Number],
 		},
 		show: {
@@ -133,12 +132,6 @@ export default defineComponent({
 			showHoverUrl: false,
 		};
 	},
-	mounted() {
-		this.eventBus.on('keyDown', this.onKeyDown);
-	},
-	beforeDestroy() {
-		this.eventBus.off('keyDown', this.onKeyDown);
-	},
 	computed: {
 		sortedResources(): IResourceLocatorResultExpanded[] {
 			const seen = new Set();
@@ -149,7 +142,7 @@ export default defineComponent({
 					}
 					seen.add(item.value);
 
-					if (this.value && item.value === this.value) {
+					if (this.modelValue && item.value === this.modelValue) {
 						acc.selected = item;
 					} else {
 						acc.notSelected.push(item);
@@ -169,6 +162,29 @@ export default defineComponent({
 
 			return notSelected;
 		},
+	},
+	watch: {
+		show(value) {
+			if (value) {
+				this.hoverIndex = 0;
+				this.showHoverUrl = false;
+
+				setTimeout(() => {
+					if (value && this.filterable && this.$refs.search) {
+						(this.$refs.search as HTMLElement).focus();
+					}
+				}, 0);
+			}
+		},
+		loading() {
+			setTimeout(() => this.onResultsEnd(), 0); // in case of filtering
+		},
+	},
+	mounted() {
+		this.eventBus.on('keyDown', this.onKeyDown);
+	},
+	beforeUnmount() {
+		this.eventBus.off('keyDown', this.onKeyDown);
 	},
 	methods: {
 		openUrl(event: MouseEvent, url: string) {
@@ -210,17 +226,14 @@ export default defineComponent({
 					}
 				}
 			} else if (e.key === 'Enter') {
-				this.$emit('input', this.sortedResources[this.hoverIndex].value);
+				this.$emit('update:modelValue', this.sortedResources[this.hoverIndex].value);
 			}
 		},
 		onFilterInput(value: string) {
 			this.$emit('filter', value);
 		},
-		onClickOutside() {
-			this.$emit('hide');
-		},
 		onItemClick(selected: string) {
-			this.$emit('input', selected);
+			this.$emit('update:modelValue', selected);
 		},
 		onItemHover(index: number) {
 			this.hoverIndex = index;
@@ -249,29 +262,13 @@ export default defineComponent({
 			}
 		},
 	},
-	watch: {
-		show(toShow) {
-			if (toShow) {
-				this.hoverIndex = 0;
-				this.showHoverUrl = false;
-			}
-			setTimeout(() => {
-				if (toShow && this.filterable && this.$refs.search) {
-					(this.$refs.search as HTMLElement).focus();
-				}
-			}, 0);
-		},
-		loading() {
-			setTimeout(this.onResultsEnd, 0); // in case of filtering
-		},
-	},
 });
 </script>
 
 <style lang="scss" module>
 :root .popover {
 	--content-height: 236px;
-	padding: 0;
+	padding: 0 !important;
 	border: var(--border-base);
 	display: flex;
 	max-height: calc(var(--content-height) + var(--spacing-xl));

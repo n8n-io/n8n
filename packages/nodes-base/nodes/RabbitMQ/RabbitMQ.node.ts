@@ -14,10 +14,10 @@ import type {
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { rabbitmqConnectExchange, rabbitmqConnectQueue } from './GenericFunctions';
+import { formatPrivateKey } from '@utils/utilities';
 
 export class RabbitMQ implements INodeType {
 	description: INodeTypeDescription = {
-		// eslint-disable-next-line
 		displayName: 'RabbitMQ',
 		name: 'rabbitmq',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
@@ -376,12 +376,18 @@ export class RabbitMQ implements INodeType {
 						credentialData.protocol = 'amqps';
 
 						optsData.ca =
-							credentials.ca === '' ? undefined : [Buffer.from(credentials.ca as string)];
+							credentials.ca === ''
+								? undefined
+								: [Buffer.from(formatPrivateKey(credentials.ca as string))];
 						if (credentials.passwordless === true) {
 							optsData.cert =
-								credentials.cert === '' ? undefined : Buffer.from(credentials.cert as string);
+								credentials.cert === ''
+									? undefined
+									: Buffer.from(formatPrivateKey(credentials.cert as string));
 							optsData.key =
-								credentials.key === '' ? undefined : Buffer.from(credentials.key as string);
+								credentials.key === ''
+									? undefined
+									: Buffer.from(formatPrivateKey(credentials.key as string));
 							optsData.passphrase =
 								credentials.passphrase === '' ? undefined : credentials.passphrase;
 							optsData.credentials = amqplib.credentials.external();
@@ -410,7 +416,7 @@ export class RabbitMQ implements INodeType {
 			const operation = this.getNodeParameter('operation', 0);
 			if (operation === 'deleteMessage') {
 				this.sendResponse(items[0].json);
-				return await this.prepareOutputData(items);
+				return [items];
 			}
 			const mode = (this.getNodeParameter('mode', 0) as string) || 'queue';
 			const returnItems: INodeExecutionData[] = [];
@@ -550,7 +556,7 @@ export class RabbitMQ implements INodeType {
 				throw new NodeOperationError(this.getNode(), `The operation "${mode}" is not known!`);
 			}
 
-			return await this.prepareOutputData(returnItems);
+			return [returnItems];
 		} catch (error) {
 			if (channel) {
 				await channel.close();

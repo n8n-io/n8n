@@ -1,4 +1,5 @@
 import { BasePage } from './base';
+import { getVisibleSelect } from '../utils';
 
 export class SettingsLogStreamingPage extends BasePage {
 	url = '/settings/log-streaming';
@@ -6,11 +7,9 @@ export class SettingsLogStreamingPage extends BasePage {
 		getActionBoxUnlicensed: () => cy.getByTestId('action-box-unlicensed'),
 		getActionBoxLicensed: () => cy.getByTestId('action-box-licensed'),
 		getDestinationModal: () => cy.getByTestId('destination-modal'),
-		getDestinationModalDialog: () => this.getters.getDestinationModal().find('.el-dialog'),
 		getSelectDestinationType: () => cy.getByTestId('select-destination-type'),
 		getDestinationNameInput: () => cy.getByTestId('subtitle-showing-type'),
-		getSelectDestinationTypeItems: () =>
-			this.getters.getSelectDestinationType().find('.el-select-dropdown__item'),
+		getSelectDestinationTypeItems: () => getVisibleSelect().find('.el-select-dropdown__item'),
 		getSelectDestinationButton: () => cy.getByTestId('select-destination-button'),
 		getContactUsButton: () => this.getters.getActionBoxUnlicensed().find('button'),
 		getAddFirstDestinationButton: () => this.getters.getActionBoxLicensed().find('button'),

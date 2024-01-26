@@ -1,5 +1,5 @@
 <template>
-	<resources-list-layout
+	<ResourcesListLayout
 		ref="layout"
 		resource-key="credentials"
 		:resources="allCredentials"
@@ -11,7 +11,7 @@
 		@update:filters="filters = $event"
 	>
 		<template #default="{ data }">
-			<credential-card data-test-id="resources-list-item" class="mb-2xs" :data="data" />
+			<CredentialCard data-test-id="resources-list-item" class="mb-2xs" :data="data" />
 		</template>
 		<template #filters="{ setKeyValue }">
 			<div class="mb-s">
@@ -23,13 +23,13 @@
 					class="mb-3xs"
 				/>
 				<n8n-select
-					:value="filters.type"
+					ref="typeInput"
+					:model-value="filters.type"
 					size="medium"
 					multiple
 					filterable
-					ref="typeInput"
 					:class="$style['type-input']"
-					@input="setKeyValue('type', $event)"
+					@update:modelValue="setKeyValue('type', $event)"
 				>
 					<n8n-option
 						v-for="credentialType in allCredentialTypes"
@@ -40,7 +40,7 @@
 				</n8n-select>
 			</div>
 		</template>
-	</resources-list-layout>
+	</ResourcesListLayout>
 </template>
 
 <script lang="ts">
@@ -51,15 +51,15 @@ import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import CredentialCard from '@/components/CredentialCard.vue';
 import type { ICredentialType } from 'n8n-workflow';
 import { CREDENTIAL_SELECT_MODAL_KEY } from '@/constants';
-import type Vue from 'vue';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
+import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 
-type IResourcesListLayoutInstance = Vue & { sendFiltersTelemetry: (source: string) => void };
+type IResourcesListLayoutInstance = InstanceType<typeof ResourcesListLayout>;
 
 export default defineComponent({
 	name: 'CredentialsView',
@@ -85,6 +85,7 @@ export default defineComponent({
 			useUIStore,
 			useUsersStore,
 			useSourceControlStore,
+			useExternalSecretsStore,
 		),
 		allCredentials(): ICredentialsResponse[] {
 			return this.credentialsStore.allCredentials;
@@ -95,6 +96,23 @@ export default defineComponent({
 		credentialTypesById(): ICredentialTypeMap {
 			return this.credentialsStore.credentialTypesById;
 		},
+	},
+	watch: {
+		'filters.type'() {
+			this.sendFiltersTelemetry('type');
+		},
+	},
+	mounted() {
+		this.sourceControlStoreUnsubscribe = this.sourceControlStore.$onAction(({ name, after }) => {
+			if (name === 'pullWorkfolder' && after) {
+				after(() => {
+					void this.initialize();
+				});
+			}
+		});
+	},
+	beforeUnmount() {
+		this.sourceControlStoreUnsubscribe();
 	},
 	methods: {
 		addCredential() {
@@ -108,11 +126,9 @@ export default defineComponent({
 			const loadPromises = [
 				this.credentialsStore.fetchAllCredentials(),
 				this.credentialsStore.fetchCredentialTypes(false),
+				this.externalSecretsStore.fetchAllSecrets(),
+				this.nodeTypesStore.loadNodeTypesIfNotLoaded(),
 			];
-
-			if (this.nodeTypesStore.allNodeTypes.length === 0) {
-				loadPromises.push(this.nodeTypesStore.getNodeTypes());
-			}
 
 			await Promise.all(loadPromises);
 
@@ -143,23 +159,6 @@ export default defineComponent({
 		sendFiltersTelemetry(source: string) {
 			(this.$refs.layout as IResourcesListLayoutInstance).sendFiltersTelemetry(source);
 		},
-	},
-	watch: {
-		'filters.type'() {
-			this.sendFiltersTelemetry('type');
-		},
-	},
-	mounted() {
-		this.sourceControlStoreUnsubscribe = this.sourceControlStore.$onAction(({ name, after }) => {
-			if (name === 'pullWorkfolder' && after) {
-				after(() => {
-					void this.initialize();
-				});
-			}
-		});
-	},
-	beforeUnmount() {
-		this.sourceControlStoreUnsubscribe();
 	},
 });
 </script>

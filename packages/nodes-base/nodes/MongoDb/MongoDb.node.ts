@@ -9,16 +9,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
-
-import { nodeDescription } from './MongoDbDescription';
-
-import {
-	buildParameterizedConnString,
-	prepareFields,
-	prepareItems,
-	validateAndResolveMongoCredentials,
-} from './GenericFunctions';
+import { ApplicationError, NodeOperationError } from 'n8n-workflow';
 
 import type {
 	FindOneAndReplaceOptions,
@@ -26,12 +17,43 @@ import type {
 	UpdateOptions,
 	Sort,
 } from 'mongodb';
-import { MongoClient, ObjectId } from 'mongodb';
+import { ObjectId } from 'mongodb';
+import { generatePairedItemData } from '../../utils/utilities';
+import { nodeProperties } from './MongoDbProperties';
+
+import {
+	buildParameterizedConnString,
+	connectMongoClient,
+	prepareFields,
+	prepareItems,
+	stringifyObjectIDs,
+	validateAndResolveMongoCredentials,
+} from './GenericFunctions';
 
 import type { IMongoParametricCredentials } from './mongoDb.types';
 
 export class MongoDb implements INodeType {
-	description: INodeTypeDescription = nodeDescription;
+	description: INodeTypeDescription = {
+		displayName: 'MongoDB',
+		name: 'mongoDb',
+		icon: 'file:mongodb.svg',
+		group: ['input'],
+		version: 1,
+		description: 'Find, insert and update documents in MongoDB',
+		defaults: {
+			name: 'MongoDB',
+		},
+		inputs: ['main'],
+		outputs: ['main'],
+		credentials: [
+			{
+				name: 'mongoDb',
+				required: true,
+				testedBy: 'mongoDbCredentialTest',
+			},
+		],
+		properties: nodeProperties,
+	};
 
 	methods = {
 		credentialTest: {
@@ -53,19 +75,21 @@ export class MongoDb implements INodeType {
 						);
 					}
 
-					const client: MongoClient = await MongoClient.connect(connectionString);
+					const client = await connectMongoClient(connectionString, credentials);
 
 					const { databases } = await client.db().admin().listDatabases();
 
 					if (!(databases as IDataObject[]).map((db) => db.name).includes(database)) {
 						// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
-						throw new Error(`Database "${database}" does not exist`);
+						throw new ApplicationError(`Database "${database}" does not exist`, {
+							level: 'warning',
+						});
 					}
 					await client.close();
 				} catch (error) {
 					return {
 						status: 'Error',
-						message: error.message,
+						message: (error as Error).message,
 					};
 				}
 				return {
@@ -77,12 +101,10 @@ export class MongoDb implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const { database, connectionString } = validateAndResolveMongoCredentials(
-			this,
-			await this.getCredentials('mongoDb'),
-		);
+		const credentials = await this.getCredentials('mongoDb');
+		const { database, connectionString } = validateAndResolveMongoCredentials(this, credentials);
 
-		const client: MongoClient = await MongoClient.connect(connectionString);
+		const client = await connectMongoClient(connectionString, credentials);
 
 		const mdb = client.db(database);
 
@@ -98,15 +120,17 @@ export class MongoDb implements INodeType {
 			// ----------------------------------
 
 			try {
-				const queryParameter = JSON.parse(this.getNodeParameter('query', 0) as string);
+				const queryParameter = JSON.parse(
+					this.getNodeParameter('query', 0) as string,
+				) as IDataObject;
 
 				if (queryParameter._id && typeof queryParameter._id === 'string') {
-					queryParameter._id = new ObjectId(queryParameter._id as string);
+					queryParameter._id = new ObjectId(queryParameter._id);
 				}
 
 				const query = mdb
 					.collection(this.getNodeParameter('collection', 0) as string)
-					.aggregate(queryParameter as Document[]);
+					.aggregate(queryParameter as unknown as Document[]);
 
 				responseData = await query.toArray();
 			} catch (error) {
@@ -140,20 +164,22 @@ export class MongoDb implements INodeType {
 			// ----------------------------------
 
 			try {
-				const queryParameter = JSON.parse(this.getNodeParameter('query', 0) as string);
+				const queryParameter = JSON.parse(
+					this.getNodeParameter('query', 0) as string,
+				) as IDataObject;
 
 				if (queryParameter._id && typeof queryParameter._id === 'string') {
-					queryParameter._id = new ObjectId(queryParameter._id as string);
+					queryParameter._id = new ObjectId(queryParameter._id);
 				}
 
 				let query = mdb
 					.collection(this.getNodeParameter('collection', 0) as string)
-					.find(queryParameter as Document);
+					.find(queryParameter as unknown as Document);
 
 				const options = this.getNodeParameter('options', 0);
 				const limit = options.limit as number;
 				const skip = options.skip as number;
-				const sort: Sort = options.sort && JSON.parse(options.sort as string);
+				const sort = options.sort && (JSON.parse(options.sort as string) as Sort);
 				if (skip > 0) {
 					query = query.skip(skip);
 				}
@@ -339,13 +365,17 @@ export class MongoDb implements INodeType {
 
 		await client.close();
 
+		stringifyObjectIDs(responseData);
+
+		const itemData = generatePairedItemData(items.length);
+
 		const executionData = this.helpers.constructExecutionMetaData(
 			this.helpers.returnJsonArray(responseData),
-			{ itemData: { item: 0 } },
+			{ itemData },
 		);
 
 		returnItems.push(...executionData);
 
-		return this.prepareOutputData(returnItems);
+		return [returnItems];
 	}
 }

@@ -1,6 +1,6 @@
 import N8nActionBox from './ActionBox.vue';
 import { action } from '@storybook/addon-actions';
-import type { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue3';
 
 export default {
 	title: 'Atoms/ActionBox',
@@ -9,8 +9,8 @@ export default {
 		calloutTheme: {
 			control: {
 				type: 'select',
-				options: ['info', 'success', 'warning', 'danger', 'custom'],
 			},
+			options: ['info', 'success', 'warning', 'danger', 'custom'],
 		},
 	},
 	parameters: {
@@ -23,11 +23,12 @@ const methods = {
 };
 
 const Template: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
 	props: Object.keys(argTypes),
 	components: {
 		N8nActionBox,
 	},
-	template: '<n8n-action-box v-bind="$props" @click="onClick" />',
+	template: '<n8n-action-box v-bind="args" @click="onClick" />',
 	methods,
 });
 

@@ -1,5 +1,5 @@
 import type { IDataObject, DocMetadata, NativeDoc } from 'n8n-workflow';
-import { ExpressionExtensions, NativeMethods } from 'n8n-workflow';
+import { Expression, ExpressionExtensions, NativeMethods } from 'n8n-workflow';
 import { DateTime } from 'luxon';
 import { i18n } from '@/plugins/i18n';
 import { resolveParameter } from '@/mixins/workflowHelpers';
@@ -13,14 +13,16 @@ import {
 	splitBaseTail,
 	isPseudoParam,
 	stripExcessParens,
+	isCredentialsModalOpen,
 } from './utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import type { AutocompleteOptionType, ExtensionTypeName, FnToDoc, Resolved } from './types';
-import { sanitizeHtml } from '@/utils';
+import { sanitizeHtml } from '@/utils/htmlUtils';
 import { isFunctionOption } from './typeGuards';
 import { luxonInstanceDocs } from './nativesAutocompleteDocs/luxon.instance.docs';
 import { luxonStaticDocs } from './nativesAutocompleteDocs/luxon.static.docs';
-import { useEnvironmentsStore } from '@/stores';
+import { useEnvironmentsStore } from '@/stores/environments.ee.store';
+import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 
 /**
  * Resolution-based completions offered according to datatype.
@@ -37,12 +39,18 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 
 	let options: Completion[] = [];
 
+	const isCredential = isCredentialsModalOpen();
+
 	if (base === 'DateTime') {
 		options = luxonStaticOptions().map(stripExcessParens(context));
 	} else if (base === 'Object') {
 		options = objectGlobalOptions().map(stripExcessParens(context));
 	} else if (base === '$vars') {
 		options = variablesOptions();
+	} else if (/\$secrets\./.test(base) && isCredential) {
+		options = secretOptions(base).map(stripExcessParens(context));
+	} else if (base === '$secrets' && isCredential) {
+		options = secretProvidersOptions();
 	} else {
 		let resolved: Resolved;
 
@@ -188,7 +196,7 @@ const createCompletionOption = (
 				const descriptionLink = document.createElement('a');
 				descriptionLink.setAttribute('target', '_blank');
 				descriptionLink.setAttribute('href', docInfo.doc.docURL);
-				descriptionLink.innerText = i18n.autocompleteUIValues['docLinkLabel'] || 'Learn more';
+				descriptionLink.innerText = i18n.autocompleteUIValues.docLinkLabel || 'Learn more';
 				descriptionLink.addEventListener('mousedown', (event: MouseEvent) => {
 					// This will prevent documentation popup closing before click
 					// event gets to links
@@ -351,6 +359,54 @@ export const variablesOptions = () => {
 	);
 };
 
+export const secretOptions = (base: string) => {
+	const externalSecretsStore = useExternalSecretsStore();
+	let resolved: Resolved;
+
+	try {
+		resolved = Expression.resolveWithoutWorkflow(`{{ ${base} }}`, {
+			$secrets: externalSecretsStore.secretsAsObject,
+		});
+	} catch {
+		return [];
+	}
+
+	if (resolved === null) return [];
+
+	try {
+		if (typeof resolved !== 'object') {
+			return [];
+		}
+		return Object.entries(resolved).map(([secret, value]) =>
+			createCompletionOption('Object', secret, 'keyword', {
+				doc: {
+					name: secret,
+					returnType: typeof value,
+					description: i18n.baseText('codeNodeEditor.completer.$secrets.provider.varName'),
+					docURL: i18n.baseText('settings.externalSecrets.docs'),
+				},
+			}),
+		);
+	} catch {
+		return [];
+	}
+};
+
+export const secretProvidersOptions = () => {
+	const externalSecretsStore = useExternalSecretsStore();
+
+	return Object.keys(externalSecretsStore.secretsAsObject).map((provider) =>
+		createCompletionOption('Object', provider, 'keyword', {
+			doc: {
+				name: provider,
+				returnType: 'object',
+				description: i18n.baseText('codeNodeEditor.completer.$secrets.provider'),
+				docURL: i18n.baseText('settings.externalSecrets.docs'),
+			},
+		}),
+	);
+};
+
 /**
  * Methods and fields defined on a Luxon `DateTime` class instance.
  */
@@ -447,6 +503,7 @@ const regexes = {
 	doubleQuoteStringLiteral: /(".+")\.([^"{\s])*/, // "abc".
 	dateLiteral: /\(?new Date\(\(?.*?\)\)?\.([^{\s])*/, // new Date(). or (new Date()).
 	arrayLiteral: /(\[.+\])\.([^{\s])*/, // [1, 2, 3].
+	indexedAccess: /([^{\s]+\[.+\])\.([^{\s])*/, // 'abc'[0]. or 'abc'.split('')[0] or similar ones
 	objectLiteral: /\(\{.*\}\)\.([^{\s])*/, // ({}).
 
 	mathGlobal: /Math\.([^{\s])*/, // Math.

@@ -2,9 +2,10 @@ import { computed, reactive } from 'vue';
 import { defineStore } from 'pinia';
 import { EnterpriseEditionFeature } from '@/constants';
 import { useSettingsStore } from '@/stores/settings.store';
-import * as vcApi from '@/api/sourceControl';
 import { useRootStore } from '@/stores/n8nRoot.store';
-import type { SourceControlPreferences } from '@/Interface';
+import * as vcApi from '@/api/sourceControl';
+import type { SourceControlPreferences, SshKeyTypes } from '@/Interface';
+import type { TupleToUnion } from '@/utils/typeHelpers';
 
 export const useSourceControlStore = defineStore('sourceControl', () => {
 	const rootStore = useRootStore();
@@ -14,16 +15,20 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 		settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.SourceControl),
 	);
 
+	const sshKeyTypes: SshKeyTypes = ['ed25519', 'rsa'];
+	const sshKeyTypesWithLabel = reactive(
+		sshKeyTypes.map((value) => ({ value, label: value.toUpperCase() })),
+	);
+
 	const preferences = reactive<SourceControlPreferences>({
 		branchName: '',
 		branches: [],
-		authorName: '',
-		authorEmail: '',
 		repositoryUrl: '',
 		branchReadOnly: false,
-		branchColor: '#F4A6DC',
+		branchColor: '#5296D6',
 		connected: false,
 		publicKey: '',
+		keyGeneratorType: 'ed25519',
 	});
 
 	const state = reactive<{
@@ -32,16 +37,30 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 		commitMessage: 'commit message',
 	});
 
-	const pushWorkfolder = async (data: { commitMessage: string; fileNames?: string[] }) => {
+	const pushWorkfolder = async (data: {
+		commitMessage: string;
+		fileNames?: Array<{
+			conflict: boolean;
+			file: string;
+			id: string;
+			location: string;
+			name: string;
+			status: string;
+			type: string;
+			updatedAt?: string | undefined;
+		}>;
+		force: boolean;
+	}) => {
 		state.commitMessage = data.commitMessage;
 		await vcApi.pushWorkfolder(rootStore.getRestApiContext, {
+			force: data.force,
 			message: data.commitMessage,
 			...(data.fileNames ? { fileNames: data.fileNames } : {}),
 		});
 	};
 
 	const pullWorkfolder = async (force: boolean) => {
-		await vcApi.pullWorkfolder(rootStore.getRestApiContext, { force });
+		return vcApi.pullWorkfolder(rootStore.getRestApiContext, { force });
 	};
 
 	const setPreferences = (data: Partial<SourceControlPreferences>) => {
@@ -49,7 +68,7 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 	};
 
 	const makePreferencesAction =
-		(action: typeof vcApi.savePreferences | typeof vcApi.updatePreferences) =>
+		(action: typeof vcApi.savePreferences) =>
 		async (preferences: Partial<SourceControlPreferences>) => {
 			const data = await action(rootStore.getRestApiContext, preferences);
 			setPreferences(data);
@@ -74,8 +93,8 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 		setPreferences({ connected: false, branches: [] });
 	};
 
-	const generateKeyPair = async () => {
-		await vcApi.generateKeyPair(rootStore.getRestApiContext);
+	const generateKeyPair = async (keyGeneratorType?: TupleToUnion<SshKeyTypes>) => {
+		await vcApi.generateKeyPair(rootStore.getRestApiContext, keyGeneratorType);
 		const data = await vcApi.getPreferences(rootStore.getRestApiContext); // To be removed once the API is updated
 
 		preferences.publicKey = data.publicKey;
@@ -106,5 +125,6 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 		disconnect,
 		getStatus,
 		getAggregatedStatus,
+		sshKeyTypesWithLabel,
 	};
 });

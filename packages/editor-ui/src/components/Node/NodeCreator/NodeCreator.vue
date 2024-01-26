@@ -1,26 +1,26 @@
 <template>
 	<div>
 		<aside :class="{ [$style.nodeCreatorScrim]: true, [$style.active]: showScrim }" />
-		<slide-transition>
+		<SlideTransition>
 			<div
 				v-if="active"
-				:class="$style.nodeCreator"
 				ref="nodeCreator"
-				v-click-outside="onClickOutside"
+				:class="$style.nodeCreator"
+				:style="nodeCreatorInlineStyle"
+				data-test-id="node-creator"
 				@dragover="onDragOver"
 				@drop="onDrop"
 				@mousedown="onMouseDown"
 				@mouseup="onMouseUp"
-				data-test-id="node-creator"
 			>
-				<NodesListPanel @nodeTypeSelected="$listeners.nodeTypeSelected" />
+				<NodesListPanel @nodeTypeSelected="onNodeTypeSelected" />
 			</div>
-		</slide-transition>
+		</SlideTransition>
 	</div>
 </template>
 
 <script setup lang="ts">
-import { watch, reactive, toRefs, computed } from 'vue';
+import { watch, reactive, toRefs, computed, onBeforeUnmount } from 'vue';
 
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
@@ -30,9 +30,13 @@ import { useViewStacks } from './composables/useViewStacks';
 import { useKeyboardNavigation } from './composables/useKeyboardNavigation';
 import { useActionsGenerator } from './composables/useActionsGeneration';
 import NodesListPanel from './Panel/NodesListPanel.vue';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { useUIStore } from '@/stores/ui.store';
+import { DRAG_EVENT_DATA_KEY } from '@/constants';
 
 export interface Props {
 	active?: boolean;
+	onNodeTypeSelected?: (nodeType: string[]) => void;
 }
 
 const props = defineProps<Props>();
@@ -42,6 +46,7 @@ const emit = defineEmits<{
 	(event: 'closeNodeCreator'): void;
 	(event: 'nodeTypeSelected', value: string[]): void;
 }>();
+const uiStore = useUIStore();
 
 const { setShowScrim, setActions, setMergeNodes } = useNodeCreatorStore();
 const { generateMergedNodesAndActions } = useActionsGenerator();
@@ -55,12 +60,10 @@ const showScrim = computed(() => useNodeCreatorStore().showScrim);
 
 const viewStacksLength = computed(() => useViewStacks().viewStacks.length);
 
-function onClickOutside(event: Event) {
-	// We need to prevent cases where user would click inside the node creator
-	// and try to drag non-draggable element. In that case the click event would
-	// be fired and the node creator would be closed. So we stop that if we detect
-	// that the click event originated from inside the node creator. And fire click even on the
-	// original target.
+const nodeCreatorInlineStyle = computed(() => {
+	return { top: `${uiStore.bannersHeight + uiStore.headerHeight}px` };
+});
+function onMouseUpOutside() {
 	if (state.mousedownInsideEvent) {
 		const clickEvent = new MouseEvent('click', {
 			bubbles: true,
@@ -68,18 +71,21 @@ function onClickOutside(event: Event) {
 		});
 		state.mousedownInsideEvent.target?.dispatchEvent(clickEvent);
 		state.mousedownInsideEvent = null;
-		return;
+		unBindOnMouseUpOutside();
 	}
-
-	if (event.type === 'click') {
-		emit('closeNodeCreator');
-	}
+}
+function unBindOnMouseUpOutside() {
+	document.removeEventListener('mouseup', onMouseUpOutside);
+	document.removeEventListener('touchstart', onMouseUpOutside);
 }
 function onMouseUp() {
 	state.mousedownInsideEvent = null;
+	unBindOnMouseUpOutside();
 }
 function onMouseDown(event: MouseEvent) {
 	state.mousedownInsideEvent = event;
+	document.addEventListener('mouseup', onMouseUpOutside);
+	document.addEventListener('touchstart', onMouseUpOutside);
 }
 function onDragOver(event: DragEvent) {
 	event.preventDefault();
@@ -89,12 +95,12 @@ function onDrop(event: DragEvent) {
 		return;
 	}
 
-	const nodeTypeName = event.dataTransfer.getData('nodeTypeName');
+	const dragData = event.dataTransfer.getData(DRAG_EVENT_DATA_KEY);
 	const nodeCreatorBoundingRect = (state.nodeCreator as Element).getBoundingClientRect();
 
 	// Abort drag end event propagation if dropped inside nodes panel
 	if (
-		nodeTypeName &&
+		dragData &&
 		event.pageX >= nodeCreatorBoundingRect.x &&
 		event.pageY >= nodeCreatorBoundingRect.y
 	) {
@@ -105,7 +111,7 @@ function onDrop(event: DragEvent) {
 watch(
 	() => props.active,
 	(isActive) => {
-		if (isActive === false) {
+		if (!isActive) {
 			setShowScrim(false);
 			resetViewStacks();
 		}
@@ -130,9 +136,12 @@ registerKeyHook('NodeCreatorCloseTab', {
 });
 
 watch(
-	() => useNodeTypesStore().visibleNodeTypes,
-	(nodeTypes) => {
-		const { actions, mergedNodes } = generateMergedNodesAndActions(nodeTypes);
+	() => ({
+		httpOnlyCredentials: useCredentialsStore().httpOnlyCredentialTypes,
+		nodeTypes: useNodeTypesStore().visibleNodeTypes,
+	}),
+	({ nodeTypes, httpOnlyCredentials }) => {
+		const { actions, mergedNodes } = generateMergedNodesAndActions(nodeTypes, httpOnlyCredentials);
 
 		setActions(actions);
 		setMergeNodes(mergedNodes);
@@ -140,6 +149,10 @@ watch(
 	{ immediate: true },
 );
 const { nodeCreator } = toRefs(state);
+
+onBeforeUnmount(() => {
+	unBindOnMouseUpOutside();
+});
 </script>
 
 <style module lang="scss">
@@ -165,7 +178,7 @@ const { nodeCreator } = toRefs(state);
 	left: $sidebar-width;
 	opacity: 0;
 	z-index: 1;
-	background: var(--color-background-dark);
+	background: var(--color-dialog-overlay-background);
 	pointer-events: none;
 	transition: opacity 200ms ease-in-out;
 

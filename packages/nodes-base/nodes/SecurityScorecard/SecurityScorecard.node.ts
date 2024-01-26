@@ -6,6 +6,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
 import { companyFields, companyOperations } from './descriptions/CompanyDescription';
 
 import { industryFields, industryOperations } from './descriptions/IndustryDescription';
@@ -22,8 +23,6 @@ import {
 import { reportFields, reportOperations } from './descriptions/ReportDescription';
 
 import { scorecardApiRequest, simplify } from './GenericFunctions';
-
-import moment from 'moment';
 
 export class SecurityScorecard implements INodeType {
 	description: INodeTypeDescription = {
@@ -520,7 +519,7 @@ export class SecurityScorecard implements INodeType {
 		}
 		// Handle file download output data differently
 		if (resource === 'report' && operation === 'download') {
-			return this.prepareOutputData(items);
+			return [items];
 		}
 		return [this.helpers.returnJsonArray(returnData)];
 	}

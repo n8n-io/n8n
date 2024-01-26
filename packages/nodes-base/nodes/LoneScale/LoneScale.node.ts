@@ -378,7 +378,6 @@ export class LoneScale implements INodeType {
 
 						responseData = await lonescaleApiRequest.call(this, 'POST', '/lists', body);
 						const executionData = this.helpers.constructExecutionMetaData(
-							// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 							this.helpers.returnJsonArray(responseData),
 							{ itemData: { item: i } },
 						);
@@ -459,7 +458,6 @@ export class LoneScale implements INodeType {
 							body,
 						);
 						const executionData = this.helpers.constructExecutionMetaData(
-							// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 							this.helpers.returnJsonArray(responseData),
 							{ itemData: { item: i } },
 						);
@@ -478,6 +476,6 @@ export class LoneScale implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

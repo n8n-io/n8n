@@ -163,7 +163,7 @@ describe('Test Google Sheets, removeEmptyColumns', () => {
 		expect(result).toBeDefined();
 		expect(result).toEqual([
 			['id', 'col1', 'col3'],
-			['', 'A', 'C'], // TODO:should be [0, 'A', 'C'] ?
+			[0, 'A', 'C'],
 			[1, 'a', 'c'],
 			[2, 'd', 'f'],
 			[3, 'g', 'i'],

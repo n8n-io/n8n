@@ -9,6 +9,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
 import {
 	createDatapoint,
 	deleteDatapoint,
@@ -17,8 +18,6 @@ import {
 } from './Beeminder.node.functions';
 
 import { beeminderApiRequest } from './GenericFunctions';
-
-import moment from 'moment-timezone';
 
 export class Beeminder implements INodeType {
 	description: INodeTypeDescription = {
@@ -379,6 +378,6 @@ export class Beeminder implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

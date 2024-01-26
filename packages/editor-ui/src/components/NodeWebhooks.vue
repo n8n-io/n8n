@@ -1,51 +1,45 @@
 <template>
-	<div v-if="webhooksNode.length" class="webhooks">
+	<div v-if="webhooksNode.length && visibleWebhookUrls.length > 0" class="webhooks">
 		<div
 			class="clickable headline"
 			:class="{ expanded: !isMinimized }"
+			:title="isMinimized ? baseText.clickToDisplay : baseText.clickToHide"
 			@click="isMinimized = !isMinimized"
-			:title="
-				isMinimized
-					? $locale.baseText('nodeWebhooks.clickToDisplayWebhookUrls')
-					: $locale.baseText('nodeWebhooks.clickToHideWebhookUrls')
-			"
 		>
-			<font-awesome-icon icon="angle-down" class="minimize-button minimize-icon" />
-			{{ $locale.baseText('nodeWebhooks.webhookUrls') }}
+			<font-awesome-icon icon="angle-right" class="minimize-button minimize-icon" />
+			{{ baseText.toggleTitle }}
 		</div>
 		<el-collapse-transition>
-			<div class="node-webhooks" v-if="!isMinimized">
-				<div class="url-selection">
+			<div v-if="!isMinimized" class="node-webhooks">
+				<div v-if="!isProductionOnly" class="url-selection">
 					<el-row>
 						<el-col :span="24">
-							<n8n-radio-buttons
-								v-model="showUrlFor"
-								:options="[
-									{ label: this.$locale.baseText('nodeWebhooks.testUrl'), value: 'test' },
-									{
-										label: this.$locale.baseText('nodeWebhooks.productionUrl'),
-										value: 'production',
-									},
-								]"
-							/>
+							<n8n-radio-buttons v-model="showUrlFor" :options="urlOptions" />
 						</el-col>
 					</el-row>
 				</div>
 
 				<n8n-tooltip
-					v-for="(webhook, index) in webhooksNode"
+					v-for="(webhook, index) in visibleWebhookUrls"
 					:key="index"
 					class="item"
-					:content="$locale.baseText('nodeWebhooks.clickToCopyWebhookUrls')"
+					:content="baseText.clickToCopy"
 					placement="left"
 				>
-					<div class="webhook-wrapper">
+					<div v-if="isWebhookMethodVisible(webhook)" class="webhook-wrapper">
 						<div class="http-field">
 							<div class="http-method">
 								{{ getWebhookExpressionValue(webhook, 'httpMethod') }}<br />
 							</div>
 						</div>
 						<div class="url-field">
+							<div class="webhook-url left-ellipsis clickable" @click="copyWebhookUrl(webhook)">
+								{{ getWebhookUrlDisplay(webhook) }}<br />
+							</div>
+						</div>
+					</div>
+					<div v-else class="webhook-wrapper">
+						<div class="url-field-full-width">
 							<div class="webhook-url left-ellipsis clickable" @click="copyWebhookUrl(webhook)">
 								{{ getWebhookUrlDisplay(webhook) }}<br />
 							</div>
@@ -58,33 +52,62 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
 import type { INodeTypeDescription, IWebhookDescription } from 'n8n-workflow';
+import { defineComponent } from 'vue';
 
-import { WEBHOOK_NODE_TYPE } from '@/constants';
-import { copyPaste } from '@/mixins/copyPaste';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
+import {
+	CHAT_TRIGGER_NODE_TYPE,
+	FORM_TRIGGER_NODE_TYPE,
+	OPEN_URL_PANEL_TRIGGER_NODE_TYPES,
+	PRODUCTION_ONLY_TRIGGER_NODE_TYPES,
+} from '@/constants';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
+import { useClipboard } from '@/composables/useClipboard';
 
 export default defineComponent({
 	name: 'NodeWebhooks',
-	mixins: [copyPaste, workflowHelpers],
+	mixins: [workflowHelpers],
 	props: [
 		'node', // NodeUi
 		'nodeType', // INodeTypeDescription
 	],
 	setup() {
+		const clipboard = useClipboard();
+
 		return {
+			clipboard,
 			...useToast(),
 		};
 	},
 	data() {
 		return {
-			isMinimized: this.nodeType && this.nodeType.name !== WEBHOOK_NODE_TYPE,
+			isMinimized: this.nodeType && !OPEN_URL_PANEL_TRIGGER_NODE_TYPES.includes(this.nodeType.name),
 			showUrlFor: 'test',
 		};
 	},
 	computed: {
+		isProductionOnly(): boolean {
+			return this.nodeType && PRODUCTION_ONLY_TRIGGER_NODE_TYPES.includes(this.nodeType.name);
+		},
+		urlOptions(): Array<{ label: string; value: string }> {
+			return [
+				...(this.isProductionOnly ? [] : [{ label: this.baseText.testUrl, value: 'test' }]),
+				{
+					label: this.baseText.productionUrl,
+					value: 'production',
+				},
+			];
+		},
+		visibleWebhookUrls(): IWebhookDescription[] {
+			return this.webhooksNode.filter((webhook) => {
+				if (typeof webhook.ndvHideUrl === 'string') {
+					return !this.getWebhookExpressionValue(webhook, 'ndvHideUrl');
+				}
+
+				return !webhook.ndvHideUrl;
+			});
+		},
 		webhooksNode(): IWebhookDescription[] {
 			if (this.nodeType === null || this.nodeType.webhooks === undefined) {
 				return [];
@@ -94,14 +117,64 @@ export default defineComponent({
 				(webhookData) => webhookData.restartWebhook !== true,
 			);
 		},
+		baseText() {
+			const nodeType = this.nodeType.name;
+			switch (nodeType) {
+				case CHAT_TRIGGER_NODE_TYPE:
+					return {
+						toggleTitle: this.$locale.baseText('nodeWebhooks.webhookUrls.chatTrigger'),
+						clickToDisplay: this.$locale.baseText(
+							'nodeWebhooks.clickToDisplayWebhookUrls.formTrigger',
+						),
+						clickToHide: this.$locale.baseText('nodeWebhooks.clickToHideWebhookUrls.chatTrigger'),
+						clickToCopy: this.$locale.baseText('nodeWebhooks.clickToCopyWebhookUrls.chatTrigger'),
+						testUrl: this.$locale.baseText('nodeWebhooks.testUrl'),
+						productionUrl: this.$locale.baseText('nodeWebhooks.productionUrl'),
+						copyTitle: this.$locale.baseText('nodeWebhooks.showMessage.title.chatTrigger'),
+						copyMessage: this.$locale.baseText('nodeWebhooks.showMessage.message.chatTrigger'),
+					};
+
+				case FORM_TRIGGER_NODE_TYPE:
+					return {
+						toggleTitle: this.$locale.baseText('nodeWebhooks.webhookUrls.formTrigger'),
+						clickToDisplay: this.$locale.baseText(
+							'nodeWebhooks.clickToDisplayWebhookUrls.formTrigger',
+						),
+						clickToHide: this.$locale.baseText('nodeWebhooks.clickToHideWebhookUrls.formTrigger'),
+						clickToCopy: this.$locale.baseText('nodeWebhooks.clickToCopyWebhookUrls.formTrigger'),
+						testUrl: this.$locale.baseText('nodeWebhooks.testUrl'),
+						productionUrl: this.$locale.baseText('nodeWebhooks.productionUrl'),
+						copyTitle: this.$locale.baseText('nodeWebhooks.showMessage.title.formTrigger'),
+						copyMessage: this.$locale.baseText('nodeWebhooks.showMessage.message.formTrigger'),
+					};
+
+				default:
+					return {
+						toggleTitle: this.$locale.baseText('nodeWebhooks.webhookUrls'),
+						clickToDisplay: this.$locale.baseText('nodeWebhooks.clickToDisplayWebhookUrls'),
+						clickToHide: this.$locale.baseText('nodeWebhooks.clickToHideWebhookUrls'),
+						clickToCopy: this.$locale.baseText('nodeWebhooks.clickToCopyWebhookUrls'),
+						testUrl: this.$locale.baseText('nodeWebhooks.testUrl'),
+						productionUrl: this.$locale.baseText('nodeWebhooks.productionUrl'),
+						copyTitle: this.$locale.baseText('nodeWebhooks.showMessage.title'),
+						copyMessage: undefined,
+					};
+			}
+		},
+	},
+	watch: {
+		node() {
+			this.isMinimized = !OPEN_URL_PANEL_TRIGGER_NODE_TYPES.includes(this.nodeType.name);
+		},
 	},
 	methods: {
 		copyWebhookUrl(webhookData: IWebhookDescription): void {
 			const webhookUrl = this.getWebhookUrlDisplay(webhookData);
-			this.copyToClipboard(webhookUrl);
+			void this.clipboard.copy(webhookUrl);
 
 			this.showMessage({
-				title: this.$locale.baseText('nodeWebhooks.showMessage.title'),
+				title: this.baseText.copyTitle,
+				message: this.baseText.copyMessage,
 				type: 'success',
 			});
 			this.$telemetry.track('User copied webhook URL', {
@@ -111,14 +184,20 @@ export default defineComponent({
 		},
 		getWebhookUrlDisplay(webhookData: IWebhookDescription): string {
 			if (this.node) {
-				return this.getWebhookUrl(webhookData, this.node, this.showUrlFor);
+				return this.getWebhookUrl(
+					webhookData,
+					this.node,
+					this.isProductionOnly ? 'production' : this.showUrlFor,
+				);
 			}
 			return '';
 		},
-	},
-	watch: {
-		node() {
-			this.isMinimized = this.nodeType.name !== WEBHOOK_NODE_TYPE;
+		isWebhookMethodVisible(webhook: IWebhookDescription): boolean {
+			if (typeof webhook.ndvHideMethod === 'string') {
+				return !this.getWebhookExpressionValue(webhook, 'ndvHideMethod');
+			}
+
+			return !webhook.ndvHideMethod;
 		},
 	},
 });
@@ -175,6 +254,10 @@ export default defineComponent({
 	width: calc(100% - 60px);
 	margin-left: 55px;
 }
+.url-field-full-width {
+	display: inline-block;
+	margin: 5px 10px;
+}
 
 .url-selection {
 	margin-top: var(--spacing-xs);
@@ -193,10 +276,10 @@ export default defineComponent({
 	transition-property: transform;
 }
 .expanded .minimize-button {
-	-webkit-transform: rotate(180deg);
-	-moz-transform: rotate(180deg);
-	-o-transform: rotate(180deg);
-	transform: rotate(180deg);
+	-webkit-transform: rotate(90deg);
+	-moz-transform: rotate(90deg);
+	-o-transform: rotate(90deg);
+	transform: rotate(90deg);
 }
 
 .webhook-url {

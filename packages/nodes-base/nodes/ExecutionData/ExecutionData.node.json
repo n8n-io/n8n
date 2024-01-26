@@ -13,5 +13,5 @@
 			}
 		]
 	},
-	"alias": ["Filter", "Set", "Data"]
+	"alias": ["Filter", "_Set", "Data"]
 }

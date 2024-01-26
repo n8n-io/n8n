@@ -8,11 +8,10 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
 import { getresponseApiRequest, getResponseApiRequestAllItems } from './GenericFunctions';
 
 import { contactFields, contactOperations } from './ContactDescription';
-
-import moment from 'moment-timezone';
 
 export class GetResponse implements INodeType {
 	description: INodeTypeDescription = {
@@ -308,6 +307,6 @@ export class GetResponse implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

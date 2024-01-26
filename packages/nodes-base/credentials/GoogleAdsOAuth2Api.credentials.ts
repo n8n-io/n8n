@@ -16,6 +16,7 @@ export class GoogleAdsOAuth2Api implements ICredentialType {
 			displayName: 'Developer Token',
 			name: 'developerToken',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 			required: true,
 		},

@@ -1,39 +1,45 @@
 <template>
-	<el-tooltip v-bind="$attrs">
-		<template v-for="(_, slotName) in $slots" #[slotName]>
-			<slot :name="slotName" />
+	<ElTooltip v-bind="{ ...$props, ...$attrs }" :popper-class="$props.popperClass ?? 'n8n-tooltip'">
+		<slot />
+		<template #content>
+			<slot name="content">
+				<div v-html="content"></div>
+			</slot>
 			<div
-				:key="slotName"
-				v-if="slotName === 'content' && buttons.length"
+				v-if="buttons.length"
 				:class="$style.buttons"
 				:style="{ justifyContent: justifyButtons }"
 			>
-				<n8n-button
+				<N8nButton
 					v-for="button in buttons"
 					:key="button.attrs.label"
-					v-bind="button.attrs"
-					v-on="button.listeners"
+					v-bind="{ ...button.attrs, ...button.listeners }"
 				/>
 			</div>
 		</template>
-	</el-tooltip>
+	</ElTooltip>
 </template>
 
 <script lang="ts">
 import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
-import { Tooltip as ElTooltip } from 'element-ui';
+import { ElTooltip } from 'element-plus';
 import type { IN8nButton } from '@/types';
 import N8nButton from '../N8nButton';
 
 export default defineComponent({
-	name: 'n8n-tooltip',
-	inheritAttrs: false,
+	name: 'N8nTooltip',
 	components: {
 		ElTooltip,
 		N8nButton,
 	},
+	inheritAttrs: false,
 	props: {
+		...ElTooltip.props,
+		content: {
+			type: String,
+			default: '',
+		},
 		justifyButtons: {
 			type: String,
 			default: 'flex-end',
@@ -64,5 +70,6 @@ export default defineComponent({
 	display: flex;
 	align-items: center;
 	margin-top: var(--spacing-s);
+	gap: var(--spacing-2xs);
 }
 </style>

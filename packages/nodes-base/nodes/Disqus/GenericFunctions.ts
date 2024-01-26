@@ -2,7 +2,6 @@ import type { OptionsWithUri } from 'request';
 import type {
 	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	JsonObject,
@@ -10,7 +9,7 @@ import type {
 import { NodeApiError } from 'n8n-workflow';
 
 export async function disqusApiRequest(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	qs: IDataObject = {},
 	uri?: string,
@@ -55,7 +54,7 @@ export async function disqusApiRequest(
  * and return all results
  */
 export async function disqusApiRequestAllItems(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	qs: IDataObject = {},
 	uri?: string,

@@ -7,18 +7,16 @@
 		</div>
 		<div v-if="featureInfo.infoText" class="mb-l">
 			<n8n-info-tip theme="info" type="note">
-				<template>
-					<span v-html="$locale.baseText(featureInfo.infoText)"></span>
-				</template>
+				<span v-html="$locale.baseText(featureInfo.infoText)"></span>
 			</n8n-info-tip>
 		</div>
 		<div :class="$style.actionBoxContainer">
 			<n8n-action-box
 				:description="$locale.baseText(featureInfo.actionBoxDescription)"
-				:buttonText="
+				:button-text="
 					$locale.baseText(featureInfo.actionBoxButtonLabel || 'fakeDoor.actionBox.button.label')
 				"
-				@click="openLinkPage"
+				@click:button="openLinkPage"
 			>
 				<template #heading>
 					<span v-html="$locale.baseText(featureInfo.actionBoxTitle)" />

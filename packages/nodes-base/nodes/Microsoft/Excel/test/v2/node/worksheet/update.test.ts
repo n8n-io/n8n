@@ -1,9 +1,5 @@
-import { equalityTest, setup, workflowToTests } from '../../../../../../../test/nodes/Helpers';
-
-// eslint-disable-next-line unused-imports/no-unused-imports
-import * as _transport from '../../../../v2/transport';
-
 import nock from 'nock';
+import { equalityTest, setup, workflowToTests } from '@test/nodes/Helpers';
 
 jest.mock('../../../../v2/transport', () => {
 	const originalModule = jest.requireActual('../../../../v2/transport');

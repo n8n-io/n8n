@@ -1,22 +1,22 @@
 /* eslint-disable @typescript-eslint/naming-convention */
+import { Container } from 'typedi';
 import type { Router } from 'express';
 import express from 'express';
 import fs from 'fs/promises';
 import path from 'path';
 
 import validator from 'validator';
-import { middleware as openapiValidatorMiddleware } from 'express-openapi-validator';
 import YAML from 'yamljs';
 import type { HttpError } from 'express-openapi-validator/dist/framework/types';
 import type { OpenAPIV3 } from 'openapi-types';
 import type { JsonObject } from 'swagger-ui-express';
 
 import config from '@/config';
-import * as Db from '@/Db';
-import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
-import { Container } from 'typedi';
+
 import { InternalHooks } from '@/InternalHooks';
 import { License } from '@/License';
+import { UserRepository } from '@db/repositories/user.repository';
+import { UrlService } from '@/services/url.service';
 
 async function createApiRouter(
 	version: string,
@@ -30,7 +30,7 @@ async function createApiRouter(
 	// from the Swagger UI
 	swaggerDocument.server = [
 		{
-			url: `${getInstanceBaseUrl()}/${publicApiEndpoint}/${version}}`,
+			url: `${Container.get(UrlService).getInstanceBaseUrl()}/${publicApiEndpoint}/${version}}`,
 		},
 	];
 	const apiController = express.Router();
@@ -55,10 +55,11 @@ async function createApiRouter(
 		res.sendFile(openApiSpecPath);
 	});
 
+	const { middleware: openApiValidatorMiddleware } = await import('express-openapi-validator');
 	apiController.use(
 		`/${publicApiEndpoint}/${version}`,
 		express.json(),
-		openapiValidatorMiddleware({
+		openApiValidatorMiddleware({
 			apiSpec: openApiSpecPath,
 			operationHandlers: handlersDirectory,
 			validateRequests: true,
@@ -95,7 +96,7 @@ async function createApiRouter(
 						schema: OpenAPIV3.ApiKeySecurityScheme,
 					): Promise<boolean> => {
 						const apiKey = req.headers[schema.name.toLowerCase()] as string;
-						const user = await Db.collections.User.findOne({
+						const user = await Container.get(UserRepository).findOne({
 							where: { apiKey },
 							relations: ['globalRole'],
 						});
@@ -147,9 +148,11 @@ export const loadPublicApiVersions = async (
 		}),
 	);
 
+	const version = versions.pop()?.charAt(1);
+
 	return {
 		apiRouters,
-		apiLatestVersion: Number(versions.pop()?.charAt(1)) ?? 1,
+		apiLatestVersion: version ? Number(version) : 1,
 	};
 };
 

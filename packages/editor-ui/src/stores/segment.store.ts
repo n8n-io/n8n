@@ -7,13 +7,14 @@ import {
 	WEBHOOK_NODE_TYPE,
 } from '@/constants';
 import { defineStore } from 'pinia';
+
 import { useSettingsStore } from '@/stores/settings.store';
 import type { INodeTypeDescription, IRun, ITelemetryTrackProperties } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useUsersStore } from '@/stores/users.store';
 
 const EVENTS = {
-	SHOW_CHECKLIST: 'Show checklist',
 	ADDED_MANUAL_TRIGGER: 'User added manual trigger',
 	ADDED_SCHEDULE_TRIGGER: 'User added schedule trigger',
 	ADDED_DATA_TRIGGER: 'User added data trigger',
@@ -28,6 +29,7 @@ export const useSegment = defineStore('segment', () => {
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowsStore = useWorkflowsStore();
 	const settingsStore = useSettingsStore();
+	const usersStore = useUsersStore();
 
 	const track = (eventName: string, properties?: ITelemetryTrackProperties) => {
 		if (settingsStore.telemetry.enabled) {
@@ -35,13 +37,18 @@ export const useSegment = defineStore('segment', () => {
 		}
 	};
 
-	const showAppCuesChecklist = () => {
-		const isInIframe = window.location !== window.parent.location;
-		if (isInIframe) {
-			return;
+	const page = (category: string, name: string, properties?: ITelemetryTrackProperties) => {
+		if (settingsStore.telemetry.enabled) {
+			window.analytics?.page(category, name, properties);
 		}
+	};
 
-		track(EVENTS.SHOW_CHECKLIST);
+	const identify = () => {
+		const userId = usersStore.currentUserId;
+
+		if (settingsStore.telemetry.enabled && userId) {
+			window.analytics?.identify(userId);
+		}
 	};
 
 	const trackAddedTrigger = (nodeTypeName: string) => {
@@ -67,7 +74,10 @@ export const useSegment = defineStore('segment', () => {
 			const nodeRunData = runData.data.resultData.runData[nodeName];
 			const node = workflowsStore.getNodeByName(nodeName);
 			const nodeTypeName = node ? node.type : 'unknown';
-			if (nodeRunData[0].data && nodeRunData[0].data.main.some((out) => out && out?.length > 1)) {
+			if (
+				nodeRunData[0].data?.main &&
+				nodeRunData[0].data.main.some((out) => out && out?.length > 1)
+			) {
 				multipleOutputNodes.add(nodeTypeName);
 			}
 			if (node && !node.disabled) {
@@ -123,10 +133,11 @@ export const useSegment = defineStore('segment', () => {
 	};
 
 	return {
-		showAppCuesChecklist,
 		track,
 		trackAddedTrigger,
 		trackSuccessfulWorkflowExecution,
+		identify,
+		page,
 		EVENTS,
 	};
 });

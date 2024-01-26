@@ -1,74 +1,32 @@
 import validator from 'validator';
-import { validateEntity } from '@/GenericHelpers';
-import { Authorized, Get, Post, RestController } from '@/decorators';
-import { BadRequestError } from '@/ResponseHelper';
-import {
-	hashPassword,
-	sanitizeUser,
-	validatePassword,
-} from '@/UserManagement/UserManagementHelper';
-import { issueCookie } from '@/auth/jwt';
 import { Response } from 'express';
-import type { ILogger } from 'n8n-workflow';
-import type { Config } from '@/config';
+
+import config from '@/config';
+import { validateEntity } from '@/GenericHelpers';
+import { Authorized, Post, RestController } from '@/decorators';
+import { PasswordUtility } from '@/services/password.utility';
+import { issueCookie } from '@/auth/jwt';
 import { OwnerRequest } from '@/requests';
-import type { IDatabaseCollections, IInternalHooksClass } from '@/Interfaces';
-import type {
-	CredentialsRepository,
-	SettingsRepository,
-	UserRepository,
-	WorkflowRepository,
-} from '@db/repositories';
+import { SettingsRepository } from '@db/repositories/settings.repository';
+import { PostHogClient } from '@/posthog';
+import { UserService } from '@/services/user.service';
+import { Logger } from '@/Logger';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { InternalHooks } from '@/InternalHooks';
+import { UserRepository } from '@/databases/repositories/user.repository';
 
 @Authorized(['global', 'owner'])
 @RestController('/owner')
 export class OwnerController {
-	private readonly config: Config;
-
-	private readonly logger: ILogger;
-
-	private readonly internalHooks: IInternalHooksClass;
-
-	private readonly userRepository: UserRepository;
-
-	private readonly settingsRepository: SettingsRepository;
-
-	private readonly credentialsRepository: CredentialsRepository;
-
-	private readonly workflowsRepository: WorkflowRepository;
-
-	constructor({
-		config,
-		logger,
-		internalHooks,
-		repositories,
-	}: {
-		config: Config;
-		logger: ILogger;
-		internalHooks: IInternalHooksClass;
-		repositories: Pick<IDatabaseCollections, 'User' | 'Settings' | 'Credentials' | 'Workflow'>;
-	}) {
-		this.config = config;
-		this.logger = logger;
-		this.internalHooks = internalHooks;
-		this.userRepository = repositories.User;
-		this.settingsRepository = repositories.Settings;
-		this.credentialsRepository = repositories.Credentials;
-		this.workflowsRepository = repositories.Workflow;
-	}
-
-	@Get('/pre-setup')
-	async preSetup(): Promise<{ credentials: number; workflows: number }> {
-		if (this.config.getEnv('userManagement.isInstanceOwnerSetUp')) {
-			throw new BadRequestError('Instance owner already setup');
-		}
-
-		const [credentials, workflows] = await Promise.all([
-			this.credentialsRepository.countBy({}),
-			this.workflowsRepository.countBy({}),
-		]);
-		return { credentials, workflows };
-	}
+	constructor(
+		private readonly logger: Logger,
+		private readonly internalHooks: InternalHooks,
+		private readonly settingsRepository: SettingsRepository,
+		private readonly userService: UserService,
+		private readonly passwordUtility: PasswordUtility,
+		private readonly postHog: PostHogClient,
+		private readonly userRepository: UserRepository,
+	) {}
 
 	/**
 	 * Promote a shell into the owner of the n8n instance,
@@ -79,7 +37,7 @@ export class OwnerController {
 		const { email, firstName, lastName, password } = req.body;
 		const { id: userId, globalRole } = req.user;
 
-		if (this.config.getEnv('userManagement.isInstanceOwnerSetUp')) {
+		if (config.getEnv('userManagement.isInstanceOwnerSetUp')) {
 			this.logger.debug(
 				'Request to claim instance ownership failed because instance owner already exists',
 				{
@@ -97,7 +55,7 @@ export class OwnerController {
 			throw new BadRequestError('Invalid email address');
 		}
 
-		const validPassword = validatePassword(password);
+		const validPassword = this.passwordUtility.validate(password);
 
 		if (!firstName || !lastName) {
 			this.logger.debug(
@@ -124,7 +82,7 @@ export class OwnerController {
 			email,
 			firstName,
 			lastName,
-			password: await hashPassword(validPassword),
+			password: await this.passwordUtility.hash(validPassword),
 		});
 
 		await validateEntity(owner);
@@ -138,7 +96,7 @@ export class OwnerController {
 			{ value: JSON.stringify(true) },
 		);
 
-		this.config.set('userManagement.isInstanceOwnerSetUp', true);
+		config.set('userManagement.isInstanceOwnerSetUp', true);
 
 		this.logger.debug('Setting isInstanceOwnerSetUp updated successfully', { userId });
 
@@ -146,21 +104,13 @@ export class OwnerController {
 
 		void this.internalHooks.onInstanceOwnerSetup({ user_id: userId });
 
-		return sanitizeUser(owner);
+		return this.userService.toPublic(owner, { posthog: this.postHog, withScopes: true });
 	}
 
-	/**
-	 * Persist that the instance owner setup has been skipped
-	 */
-	@Post('/skip-setup')
-	async skipSetup() {
-		await this.settingsRepository.update(
-			{ key: 'userManagement.skipInstanceOwnerSetup' },
-			{ value: JSON.stringify(true) },
-		);
-
-		this.config.set('userManagement.skipInstanceOwnerSetup', true);
-
-		return { success: true };
+	@Post('/dismiss-banner')
+	async dismissBanner(req: OwnerRequest.DismissBanner) {
+		const bannerName = 'banner' in req.body ? (req.body.banner as string) : '';
+		const response = await this.settingsRepository.dismissBanner({ bannerName });
+		return response;
 	}
 }

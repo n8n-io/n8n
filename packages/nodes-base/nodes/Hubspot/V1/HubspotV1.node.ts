@@ -1,10 +1,9 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeCredentialTestResult,
 	INodeExecutionData,
@@ -16,6 +15,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import { snakeCase } from 'change-case';
 import {
 	clean,
 	getAssociations,
@@ -45,8 +45,6 @@ import { ticketFields, ticketOperations } from './TicketDescription';
 import type { IForm } from './FormInterface';
 
 import type { IAssociation, IDeal } from './DealInterface';
-
-import { snakeCase } from 'change-case';
 
 export class HubspotV1 implements INodeType {
 	description: INodeTypeDescription;
@@ -2734,6 +2732,6 @@ export class HubspotV1 implements INodeType {
 				}
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

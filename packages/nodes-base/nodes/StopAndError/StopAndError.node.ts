@@ -3,6 +3,7 @@ import type {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 } from 'n8n-workflow';
 import { jsonParse, NodeOperationError } from 'n8n-workflow';
 
@@ -81,14 +82,14 @@ export class StopAndError implements INodeType {
 		const errorType = this.getNodeParameter('errorType', 0) as 'errorMessage' | 'errorObject';
 		const { id: workflowId, name: workflowName } = this.getWorkflow();
 
-		let toThrow: string | { name: string; message: string; [otherKey: string]: unknown };
+		let toThrow: string | JsonObject;
 
 		if (errorType === 'errorMessage') {
 			toThrow = this.getNodeParameter('errorMessage', 0) as string;
 		} else {
 			const json = this.getNodeParameter('errorObject', 0) as string;
 
-			const errorObject = jsonParse<any>(json);
+			const errorObject = jsonParse<JsonObject>(json);
 
 			toThrow = {
 				name: 'User-thrown error',

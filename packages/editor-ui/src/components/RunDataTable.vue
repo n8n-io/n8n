@@ -1,6 +1,6 @@
 <template>
 	<div :class="$style.dataDisplay">
-		<table :class="$style.table" v-if="tableData.columns && tableData.columns.length === 0">
+		<table v-if="tableData.columns && tableData.columns.length === 0" :class="$style.table">
 			<tr>
 				<th :class="$style.emptyCell"></th>
 				<th :class="$style.tableRightMargin"></th>
@@ -21,18 +21,18 @@
 				<td :class="$style.tableRightMargin"></td>
 			</tr>
 		</table>
-		<table :class="$style.table" v-else>
+		<table v-else :class="$style.table">
 			<thead>
 				<tr>
 					<th v-for="(column, i) in tableData.columns || []" :key="column">
-						<n8n-tooltip placement="bottom-start" :disabled="!mappingEnabled" :open-delay="1000">
+						<n8n-tooltip placement="bottom-start" :disabled="!mappingEnabled" :show-after="1000">
 							<template #content>
 								<div>
 									<img src="/static/data-mapping-gif.gif" />
 									{{ $locale.baseText('dataMapping.dragColumnToFieldHint') }}
 								</div>
 							</template>
-							<draggable
+							<Draggable
 								type="mapping"
 								:data="getExpression(column)"
 								:disabled="!mappingEnabled"
@@ -52,27 +52,30 @@
 											[$style.draggingHeader]: isDragging,
 										}"
 									>
-										<span>{{ column || '&nbsp;' }}</span>
+										<TextWithHighlights
+											:content="getValueToRender(column || '')"
+											:search="search"
+										/>
 										<div :class="$style.dragButton">
 											<font-awesome-icon icon="grip-vertical" />
 										</div>
 									</div>
 								</template>
-							</draggable>
+							</Draggable>
 						</n8n-tooltip>
 					</th>
 					<th v-if="columnLimitExceeded" :class="$style.header">
 						<n8n-tooltip placement="bottom-end">
 							<template #content>
 								<div>
-									<i18n path="dataMapping.tableView.tableColumnsExceeded.tooltip">
+									<i18n-t tag="span" keypath="dataMapping.tableView.tableColumnsExceeded.tooltip">
 										<template #columnLimit>{{ columnLimit }}</template>
 										<template #link>
 											<a @click="switchToJsonView">{{
 												$locale.baseText('dataMapping.tableView.tableColumnsExceeded.tooltip.link')
 											}}</a>
 										</template>
-									</i18n>
+									</i18n-t>
 								</div>
 							</template>
 							<span>
@@ -87,14 +90,14 @@
 					<th :class="$style.tableRightMargin"></th>
 				</tr>
 			</thead>
-			<draggable
+			<Draggable
+				ref="draggable"
 				tag="tbody"
 				type="mapping"
-				targetDataKey="mappable"
+				target-data-key="mappable"
 				:disabled="!mappingEnabled"
 				@dragstart="onCellDragStart"
 				@dragend="onCellDragEnd"
-				ref="draggable"
 			>
 				<template #preview="{ canDrop, el }">
 					<MappingPill
@@ -102,88 +105,85 @@
 						:can-drop="canDrop"
 					/>
 				</template>
-				<template>
-					<tr
-						v-for="(row, index1) in tableData.data"
-						:key="index1"
-						:class="{ [$style.hoveringRow]: isHoveringRow(index1) }"
-						:data-test-id="isHoveringRow(index1) ? 'hovering-item' : undefined"
+				<tr
+					v-for="(row, index1) in tableData.data"
+					:key="index1"
+					:class="{ [$style.hoveringRow]: isHoveringRow(index1) }"
+					:data-test-id="isHoveringRow(index1) ? 'hovering-item' : undefined"
+				>
+					<td
+						v-for="(data, index2) in row"
+						:key="index2"
+						:data-row="index1"
+						:data-col="index2"
+						:class="hasJsonInColumn(index2) ? $style.minColWidth : $style.limitColWidth"
+						@mouseenter="onMouseEnterCell"
+						@mouseleave="onMouseLeaveCell"
 					>
-						<td
-							v-for="(data, index2) in row"
-							:key="index2"
-							:data-row="index1"
-							:data-col="index2"
-							@mouseenter="onMouseEnterCell"
-							@mouseleave="onMouseLeaveCell"
-							:class="hasJsonInColumn(index2) ? $style.minColWidth : $style.limitColWidth"
-						>
-							<span
-								v-if="isSimple(data)"
-								:class="{ [$style.value]: true, [$style.empty]: isEmpty(data) }"
-								class="ph-no-capture"
-								>{{ getValueToRender(data) }}</span
-							>
-							<n8n-tree :nodeClass="$style.nodeClass" v-else :value="data">
-								<template #label="{ label, path }">
-									<span
-										@mouseenter="() => onMouseEnterKey(path, index2)"
-										@mouseleave="onMouseLeaveKey"
-										:class="{
-											[$style.hoveringKey]: mappingEnabled && isHovering(path, index2),
-											[$style.draggingKey]: isDraggingKey(path, index2),
-											[$style.dataKey]: true,
-											[$style.mappable]: mappingEnabled,
-										}"
-										data-target="mappable"
-										:data-name="getCellPathName(path, index2)"
-										:data-value="getCellExpression(path, index2)"
-										:data-depth="path.length"
-										>{{ label || $locale.baseText('runData.unnamedField') }}</span
-									>
-								</template>
-								<template #value="{ value }">
-									<span
-										:class="{ [$style.nestedValue]: true, [$style.empty]: isEmpty(value) }"
-										class="ph-no-capture"
-										>{{ getValueToRender(value) }}</span
-									>
-								</template>
-							</n8n-tree>
-						</td>
-						<td v-if="columnLimitExceeded"></td>
-						<td :class="$style.tableRightMargin"></td>
-					</tr>
-				</template>
-			</draggable>
+						<TextWithHighlights
+							v-if="isSimple(data)"
+							:content="getValueToRender(data)"
+							:search="search"
+							:class="{ [$style.value]: true, [$style.empty]: isEmpty(data) }"
+						/>
+						<n8n-tree v-else :node-class="$style.nodeClass" :value="data">
+							<template #label="{ label, path }">
+								<span
+									:class="{
+										[$style.hoveringKey]: mappingEnabled && isHovering(path, index2),
+										[$style.draggingKey]: isDraggingKey(path, index2),
+										[$style.dataKey]: true,
+										[$style.mappable]: mappingEnabled,
+									}"
+									data-target="mappable"
+									:data-name="getCellPathName(path, index2)"
+									:data-value="getCellExpression(path, index2)"
+									:data-depth="path.length"
+									@mouseenter="() => onMouseEnterKey(path, index2)"
+									@mouseleave="onMouseLeaveKey"
+									>{{ label || $locale.baseText('runData.unnamedField') }}</span
+								>
+							</template>
+							<template #value="{ value }">
+								<TextWithHighlights
+									:content="getValueToRender(value)"
+									:search="search"
+									:class="{ [$style.nestedValue]: true, [$style.empty]: isEmpty(value) }"
+								/>
+							</template>
+						</n8n-tree>
+					</td>
+					<td v-if="columnLimitExceeded"></td>
+					<td :class="$style.tableRightMargin"></td>
+				</tr>
+			</Draggable>
 		</table>
 	</div>
 </template>
 
 <script lang="ts">
-/* eslint-disable prefer-spread */
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 import type { INodeUi, ITableData, NDVState } from '@/Interface';
-import { getPairedItemId } from '@/utils';
+import { shorten } from '@/utils/typesUtils';
+import { getPairedItemId } from '@/utils/pairedItemUtils';
 import type { GenericValue, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import Draggable from './Draggable.vue';
-import { shorten } from '@/utils';
-import { externalHooks } from '@/mixins/externalHooks';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import MappingPill from './MappingPill.vue';
 import { getMappedExpression } from '@/utils/mappingUtils';
+import { useExternalHooks } from '@/composables/useExternalHooks';
+import TextWithHighlights from './TextWithHighlights.vue';
 
 const MAX_COLUMNS_LIMIT = 40;
 
 type DraggableRef = InstanceType<typeof Draggable>;
 
 export default defineComponent({
-	name: 'run-data-table',
-	mixins: [externalHooks],
-	components: { Draggable, MappingPill },
+	name: 'RunDataTable',
+	components: { Draggable, MappingPill, TextWithHighlights },
 	props: {
 		node: {
 			type: Object as PropType<INodeUi>,
@@ -212,6 +212,15 @@ export default defineComponent({
 		hasDefaultHoverState: {
 			type: Boolean,
 		},
+		search: {
+			type: String,
+		},
+	},
+	setup() {
+		const externalHooks = useExternalHooks();
+		return {
+			externalHooks,
+		};
 	},
 	data() {
 		return {
@@ -367,7 +376,7 @@ export default defineComponent({
 				value === undefined
 			);
 		},
-		getValueToRender(value: unknown) {
+		getValueToRender(value: unknown): string {
 			if (value === '') {
 				return this.$locale.baseText('runData.emptyString');
 			}
@@ -383,6 +392,9 @@ export default defineComponent({
 			if (value === null || value === undefined) {
 				return `[${value}]`;
 			}
+			if (value === true || value === false || typeof value === 'number') {
+				return value.toString();
+			}
 			return value;
 		},
 		onDragStart() {
@@ -390,7 +402,7 @@ export default defineComponent({
 			this.ndvStore.resetMappingTelemetry();
 		},
 		onCellDragStart(el: HTMLElement) {
-			if (el && el.dataset.value) {
+			if (el?.dataset.value) {
 				this.draggingPath = el.dataset.value;
 			}
 
@@ -424,7 +436,7 @@ export default defineComponent({
 					...mappingTelemetry,
 				};
 
-				void this.$externalHooks().run('runDataTable.onDragEnd', telemetryPayload);
+				void this.externalHooks.run('runDataTable.onDragEnd', telemetryPayload);
 
 				this.$telemetry.track('User dragged data for mapping', telemetryPayload);
 			}, 1000); // ensure dest data gets set if drop

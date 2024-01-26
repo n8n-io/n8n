@@ -1,4 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
+import type { INodeTypeDescription } from 'n8n-workflow';
 import { databaseFields, databaseOperations } from '../DatabaseDescription';
 
 import { userFields, userOperations } from '../UserDescription';
@@ -9,14 +10,12 @@ import { blockFields, blockOperations } from '../BlockDescription';
 
 import { databasePageFields, databasePageOperations } from '../DatabasePageDescription';
 
-import type { INodeTypeDescription } from 'n8n-workflow';
-
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'Notion',
 	name: 'notion',
 	icon: 'file:notion.svg',
 	group: ['output'],
-	version: 2,
+	version: [2, 2.1],
 	subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 	description: 'Consume Notion API',
 	defaults: {
@@ -74,10 +73,10 @@ export const versionDescription: INodeTypeDescription = {
 			default: '',
 		},
 		{
-			displayName: 'Version',
-			name: 'version',
-			type: 'hidden',
-			default: 2,
+			displayName: '',
+			name: 'Credentials',
+			type: 'credentials',
+			default: '',
 		},
 		{
 			displayName: 'Resource',

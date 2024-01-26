@@ -15,7 +15,7 @@ export class NotionApi implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
-			displayName: 'API Key',
+			displayName: 'Internal Integration Secret',
 			name: 'apiKey',
 			type: 'string',
 			typeOptions: { password: true },

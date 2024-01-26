@@ -1,29 +1,37 @@
 <script lang="ts" setup>
-import { computed, reactive, onBeforeMount, ref } from 'vue';
+import { computed, reactive, ref, onMounted } from 'vue';
 import type { Rule, RuleGroup } from 'n8n-design-system/types';
-import { MODAL_CONFIRM, VALID_EMAIL_REGEX } from '@/constants';
-import { useUIStore, useSourceControlStore } from '@/stores';
-import { useToast, useMessage, useLoadingService, useI18n } from '@/composables';
+import { MODAL_CONFIRM } from '@/constants';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useToast } from '@/composables/useToast';
+import { useLoadingService } from '@/composables/useLoadingService';
+import { useI18n } from '@/composables/useI18n';
+import { useMessage } from '@/composables/useMessage';
 import CopyInput from '@/components/CopyInput.vue';
+import type { TupleToUnion } from '@/utils/typeHelpers';
+import type { SshKeyTypes } from '@/Interface';
 
-const { i18n: locale } = useI18n();
+const locale = useI18n();
 const sourceControlStore = useSourceControlStore();
 const uiStore = useUIStore();
 const toast = useToast();
 const message = useMessage();
 const loadingService = useLoadingService();
 
-const sourceControlDocsSetupUrl = computed(() =>
-	locale.baseText('settings.sourceControl.docs.setup.url'),
-);
 const isConnected = ref(false);
+const branchNameOptions = computed(() =>
+	sourceControlStore.preferences.branches.map((branch) => ({
+		value: branch,
+		label: branch,
+	})),
+);
 
 const onConnect = async () => {
 	loadingService.startLoading();
+	loadingService.setLoadingText(locale.baseText('settings.sourceControl.loading.connecting'));
 	try {
 		await sourceControlStore.savePreferences({
-			authorName: sourceControlStore.preferences.authorName,
-			authorEmail: sourceControlStore.preferences.authorEmail,
 			repositoryUrl: sourceControlStore.preferences.repositoryUrl,
 		});
 		await sourceControlStore.getBranches();
@@ -92,20 +100,24 @@ const onSelect = async (b: string) => {
 };
 
 const goToUpgrade = () => {
-	uiStore.goToUpgrade('source-control', 'upgrade-source-control');
+	void uiStore.goToUpgrade('source-control', 'upgrade-source-control');
 };
 
-onBeforeMount(() => {
+const initialize = async () => {
+	await sourceControlStore.getPreferences();
 	if (sourceControlStore.preferences.connected) {
 		isConnected.value = true;
 		void sourceControlStore.getBranches();
 	}
+};
+
+onMounted(async () => {
+	await initialize();
 });
 
 const formValidationStatus = reactive<Record<string, boolean>>({
 	repoUrl: false,
-	authorName: false,
-	authorEmail: false,
+	keyGeneratorType: false,
 });
 
 function onValidate(key: string, value: boolean) {
@@ -117,31 +129,17 @@ const repoUrlValidationRules: Array<Rule | RuleGroup> = [
 	{
 		name: 'MATCH_REGEX',
 		config: {
-			regex: /^(?!https?:\/\/)(?:git|ssh|git@[-\w.]+):(\/\/)?(.*?)(\.git)(\/?|\#[-\d\w._]+?)$/,
+			regex:
+				/^(ssh:\/\/)?git@(?:\[[0-9a-fA-F:]+\]|(?:[a-zA-Z0-9-]+\.)*[a-zA-Z0-9-]+)(?::[0-9]+)*:(?:v[0-9]+\/)?[a-zA-Z0-9_.\-\/]+(\.git)?(?:\/[a-zA-Z0-9_.\-\/]+)*$/,
 			message: locale.baseText('settings.sourceControl.repoUrlInvalid'),
 		},
 	},
 ];
 
-const authorNameValidationRules: Array<Rule | RuleGroup> = [{ name: 'REQUIRED' }];
+const keyGeneratorTypeValidationRules: Array<Rule | RuleGroup> = [{ name: 'REQUIRED' }];
 
-const authorEmailValidationRules: Array<Rule | RuleGroup> = [
-	{ name: 'REQUIRED' },
-	{
-		name: 'MATCH_REGEX',
-		config: {
-			regex: VALID_EMAIL_REGEX,
-			message: locale.baseText('settings.sourceControl.authorEmailInvalid'),
-		},
-	},
-];
-
-const validForConnection = computed(
-	() =>
-		formValidationStatus.repoUrl &&
-		formValidationStatus.authorName &&
-		formValidationStatus.authorEmail,
-);
+const validForConnection = computed(() => formValidationStatus.repoUrl);
+const branchNameValidationRules: Array<Rule | RuleGroup> = [{ name: 'REQUIRED' }];
 
 async function refreshSshKey() {
 	try {
@@ -155,7 +153,7 @@ async function refreshSshKey() {
 		);
 
 		if (confirmation === MODAL_CONFIRM) {
-			await sourceControlStore.generateKeyPair();
+			await sourceControlStore.generateKeyPair(sourceControlStore.preferences.keyGeneratorType);
 			toast.showMessage({
 				title: locale.baseText('settings.sourceControl.refreshSshKey.successful.title'),
 				type: 'success',
@@ -177,6 +175,13 @@ const refreshBranches = async () => {
 		toast.showError(error, locale.baseText('settings.sourceControl.refreshBranches.error'));
 	}
 };
+
+const onSelectSshKeyType = async (sshKeyType: TupleToUnion<SshKeyTypes>) => {
+	if (sshKeyType === sourceControlStore.preferences.keyGeneratorType) {
+		return;
+	}
+	sourceControlStore.preferences.keyGeneratorType = sshKeyType;
+};
 </script>
 
 <template>
@@ -189,13 +194,13 @@ const refreshBranches = async () => {
 			data-test-id="source-control-content-licensed"
 		>
 			<n8n-callout theme="secondary" icon="info-circle" class="mt-2xl mb-l">
-				<i18n path="settings.sourceControl.description">
+				<i18n-t keypath="settings.sourceControl.description" tag="span">
 					<template #link>
-						<a :href="sourceControlDocsSetupUrl" target="_blank">
+						<a :href="locale.baseText('settings.sourceControl.docs.url')" target="_blank">
 							{{ locale.baseText('settings.sourceControl.description.link') }}
 						</a>
 					</template>
-				</i18n>
+				</i18n-t>
 			</n8n-callout>
 			<n8n-heading size="xlarge" tag="h2" class="mb-s">{{
 				locale.baseText('settings.sourceControl.gitConfig')
@@ -204,63 +209,49 @@ const refreshBranches = async () => {
 				<label for="repoUrl">{{ locale.baseText('settings.sourceControl.repoUrl') }}</label>
 				<div :class="$style.groupFlex">
 					<n8n-form-input
+						id="repoUrl"
+						v-model="sourceControlStore.preferences.repositoryUrl"
 						label
 						class="ml-0"
-						id="repoUrl"
 						name="repoUrl"
-						validateOnBlur
-						:validationRules="repoUrlValidationRules"
+						validate-on-blur
+						:validation-rules="repoUrlValidationRules"
 						:disabled="isConnected"
 						:placeholder="locale.baseText('settings.sourceControl.repoUrlPlaceholder')"
-						v-model="sourceControlStore.preferences.repositoryUrl"
 						@validate="(value) => onValidate('repoUrl', value)"
 					/>
 					<n8n-button
-						class="ml-2xs"
-						type="tertiary"
 						v-if="isConnected"
-						@click="onDisconnect"
+						:class="$style.disconnectButton"
+						type="tertiary"
 						size="large"
 						icon="trash"
 						data-test-id="source-control-disconnect-button"
+						@click="onDisconnect"
 						>{{ locale.baseText('settings.sourceControl.button.disconnect') }}</n8n-button
 					>
-				</div>
-				<small>{{ locale.baseText('settings.sourceControl.repoUrlDescription') }}</small>
-			</div>
-			<div :class="[$style.group, $style.groupFlex]">
-				<div>
-					<label for="authorName">{{ locale.baseText('settings.sourceControl.authorName') }}</label>
-					<n8n-form-input
-						label
-						id="authorName"
-						name="authorName"
-						validateOnBlur
-						:validationRules="authorNameValidationRules"
-						v-model="sourceControlStore.preferences.authorName"
-						@validate="(value) => onValidate('authorName', value)"
-					/>
-				</div>
-				<div>
-					<label for="authorEmail">{{
-						locale.baseText('settings.sourceControl.authorEmail')
-					}}</label>
-					<n8n-form-input
-						label
-						type="email"
-						id="authorEmail"
-						name="authorEmail"
-						validateOnBlur
-						:validationRules="authorEmailValidationRules"
-						v-model="sourceControlStore.preferences.authorEmail"
-						@validate="(value) => onValidate('authorEmail', value)"
-					/>
 				</div>
 			</div>
 			<div v-if="sourceControlStore.preferences.publicKey" :class="$style.group">
 				<label>{{ locale.baseText('settings.sourceControl.sshKey') }}</label>
 				<div :class="{ [$style.sshInput]: !isConnected }">
+					<n8n-form-input
+						v-if="!isConnected"
+						id="keyGeneratorType"
+						:class="$style.sshKeyTypeSelect"
+						label
+						type="select"
+						name="keyGeneratorType"
+						data-test-id="source-control-ssh-key-type-select"
+						validate-on-blur
+						:validation-rules="keyGeneratorTypeValidationRules"
+						:options="sourceControlStore.sshKeyTypesWithLabel"
+						:model-value="sourceControlStore.preferences.keyGeneratorType"
+						@validate="(value) => onValidate('keyGeneratorType', value)"
+						@update:modelValue="onSelectSshKeyType"
+					/>
 					<CopyInput
+						:class="$style.copyInput"
 						collapse
 						size="medium"
 						:value="sourceControlStore.preferences.publicKey"
@@ -271,29 +262,31 @@ const refreshBranches = async () => {
 						size="large"
 						type="tertiary"
 						icon="sync"
-						class="ml-s"
+						data-test-id="source-control-refresh-ssh-key-button"
 						@click="refreshSshKey"
 					>
 						{{ locale.baseText('settings.sourceControl.refreshSshKey') }}
 					</n8n-button>
 				</div>
 				<n8n-notice type="info" class="mt-s">
-					<i18n path="settings.sourceControl.sshKeyDescription">
+					<i18n-t keypath="settings.sourceControl.sshKeyDescription" tag="span">
 						<template #link>
-							<a :href="sourceControlDocsSetupUrl" target="_blank">{{
-								locale.baseText('settings.sourceControl.sshKeyDescriptionLink')
-							}}</a>
+							<a
+								:href="locale.baseText('settings.sourceControl.docs.setup.ssh.url')"
+								target="_blank"
+								>{{ locale.baseText('settings.sourceControl.sshKeyDescriptionLink') }}</a
+							>
 						</template>
-					</i18n>
+					</i18n-t>
 				</n8n-notice>
 			</div>
 			<n8n-button
 				v-if="!isConnected"
-				@click="onConnect"
 				size="large"
 				:disabled="!validForConnection"
 				:class="$style.connect"
 				data-test-id="source-control-connect-button"
+				@click="onConnect"
 				>{{ locale.baseText('settings.sourceControl.button.connect') }}</n8n-button
 			>
 			<div v-if="isConnected" data-test-id="source-control-connected-content">
@@ -304,21 +297,20 @@ const refreshBranches = async () => {
 					}}</n8n-heading>
 					<label>{{ locale.baseText('settings.sourceControl.branches') }}</label>
 					<div :class="$style.branchSelection">
-						<n8n-select
-							:value="sourceControlStore.preferences.branchName"
+						<n8n-form-input
+							id="branchName"
+							label
+							type="select"
+							name="branchName"
 							class="mb-s"
-							size="medium"
-							filterable
-							@input="onSelect"
 							data-test-id="source-control-branch-select"
-						>
-							<n8n-option
-								v-for="b in sourceControlStore.preferences.branches"
-								:key="b"
-								:value="b"
-								:label="b"
-							/>
-						</n8n-select>
+							validate-on-blur
+							:validation-rules="branchNameValidationRules"
+							:options="branchNameOptions"
+							:model-value="sourceControlStore.preferences.branchName"
+							@validate="(value) => onValidate('branchName', value)"
+							@update:modelValue="onSelect"
+						/>
 						<n8n-tooltip placement="top">
 							<template #content>
 								<span>
@@ -331,8 +323,8 @@ const refreshBranches = async () => {
 								icon="sync"
 								square
 								:class="$style.refreshBranches"
-								@click="refreshBranches"
 								data-test-id="source-control-refresh-branches-button"
+								@click="refreshBranches"
 							/>
 						</n8n-tooltip>
 					</div>
@@ -340,30 +332,25 @@ const refreshBranches = async () => {
 						v-model="sourceControlStore.preferences.branchReadOnly"
 						:class="$style.readOnly"
 					>
-						<i18n path="settings.sourceControl.readonly">
+						<i18n-t keypath="settings.sourceControl.protected" tag="span">
 							<template #bold>
-								<strong>{{ locale.baseText('settings.sourceControl.readonly.bold') }}</strong>
+								<strong>{{ locale.baseText('settings.sourceControl.protected.bold') }}</strong>
 							</template>
-							<template #link>
-								<a :href="sourceControlDocsSetupUrl" target="_blank">
-									{{ locale.baseText('settings.sourceControl.readonly.link') }}
-								</a>
-							</template>
-						</i18n>
+						</i18n-t>
 					</n8n-checkbox>
 				</div>
 				<div :class="$style.group">
 					<label>{{ locale.baseText('settings.sourceControl.color') }}</label>
 					<div>
-						<n8n-color-picker size="small" v-model="sourceControlStore.preferences.branchColor" />
+						<n8n-color-picker v-model="sourceControlStore.preferences.branchColor" size="small" />
 					</div>
 				</div>
 				<div :class="[$style.group, 'pt-s']">
 					<n8n-button
-						@click="onSave"
 						size="large"
 						:disabled="!sourceControlStore.preferences.branchName"
 						data-test-id="source-control-save-settings-button"
+						@click="onSave"
 						>{{ locale.baseText('settings.sourceControl.button.save') }}</n8n-button
 					>
 				</div>
@@ -374,11 +361,17 @@ const refreshBranches = async () => {
 			data-test-id="source-control-content-unlicensed"
 			:class="$style.actionBox"
 			:description="locale.baseText('settings.sourceControl.actionBox.description')"
-			:buttonText="locale.baseText('settings.sourceControl.actionBox.buttonText')"
-			@click="goToUpgrade"
+			:button-text="locale.baseText('settings.sourceControl.actionBox.buttonText')"
+			@click:button="goToUpgrade"
 		>
 			<template #heading>
 				<span>{{ locale.baseText('settings.sourceControl.actionBox.title') }}</span>
+			</template>
+			<template #description>
+				{{ locale.baseText('settings.sourceControl.actionBox.description') }}
+				<a :href="locale.baseText('settings.sourceControl.docs.url')" target="_blank">
+					{{ locale.baseText('settings.sourceControl.actionBox.description.link') }}
+				</a>
 			</template>
 		</n8n-action-box>
 	</div>
@@ -436,6 +429,11 @@ const refreshBranches = async () => {
 	margin: calc(var(--spacing-2xs) * -1) 0 var(--spacing-2xs);
 }
 
+.disconnectButton {
+	margin: 0 0 0 var(--spacing-2xs);
+	height: 40px;
+}
+
 .actionBox {
 	margin: var(--spacing-2xl) 0 0;
 }
@@ -446,16 +444,36 @@ const refreshBranches = async () => {
 	align-items: center;
 
 	> div {
-		width: calc(100% - 144px - var(--spacing-s));
+		flex: 1 1 auto;
 	}
 
 	> button {
 		height: 42px;
 	}
+
+	.copyInput {
+		margin: 0 var(--spacing-2xs);
+	}
+}
+
+.sshKeyTypeSelect {
+	min-width: 120px;
+}
+
+.copyInput {
+	overflow: auto;
 }
 
 .branchSelection {
 	display: flex;
+
+	> div:first-child {
+		flex: 1;
+
+		input {
+			height: 36px;
+		}
+	}
 
 	button.refreshBranches {
 		height: 36px;

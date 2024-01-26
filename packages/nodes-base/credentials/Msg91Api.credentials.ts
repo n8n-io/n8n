@@ -13,6 +13,7 @@ export class Msg91Api implements ICredentialType {
 			displayName: 'Authentication Key',
 			name: 'authkey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];

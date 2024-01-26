@@ -1,9 +1,7 @@
-import type { Application } from 'express';
 import validator from 'validator';
 import type { SuperAgentTest } from 'supertest';
 
 import config from '@/config';
-import * as Db from '@/Db';
 import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 import {
@@ -13,30 +11,30 @@ import {
 	randomValidPassword,
 } from './shared/random';
 import * as testDb from './shared/testDb';
-import * as utils from './shared/utils';
+import * as utils from './shared/utils/';
+import { getGlobalOwnerRole } from './shared/db/roles';
+import { createUserShell } from './shared/db/users';
+import { UserRepository } from '@db/repositories/user.repository';
+import Container from 'typedi';
 
-let app: Application;
+const testServer = utils.setupTestServer({ endpointGroups: ['owner'] });
+
 let globalOwnerRole: Role;
 let ownerShell: User;
 let authOwnerShellAgent: SuperAgentTest;
 
 beforeAll(async () => {
-	app = await utils.initTestServer({ endpointGroups: ['owner'] });
-	globalOwnerRole = await testDb.getGlobalOwnerRole();
+	globalOwnerRole = await getGlobalOwnerRole();
 });
 
 beforeEach(async () => {
+	ownerShell = await createUserShell(globalOwnerRole);
+	authOwnerShellAgent = testServer.authAgentFor(ownerShell);
 	config.set('userManagement.isInstanceOwnerSetUp', false);
-	ownerShell = await testDb.createUserShell(globalOwnerRole);
-	authOwnerShellAgent = utils.createAuthAgent(app)(ownerShell);
 });
 
 afterEach(async () => {
 	await testDb.truncate(['User']);
-});
-
-afterAll(async () => {
-	await testDb.terminate();
 });
 
 describe('POST /owner/setup', () => {
@@ -60,9 +58,9 @@ describe('POST /owner/setup', () => {
 			personalizationAnswers,
 			globalRole,
 			password,
-			resetPasswordToken,
 			isPending,
 			apiKey,
+			globalScopes,
 		} = response.body.data;
 
 		expect(validator.isUUID(id)).toBe(true);
@@ -72,12 +70,12 @@ describe('POST /owner/setup', () => {
 		expect(personalizationAnswers).toBeNull();
 		expect(password).toBeUndefined();
 		expect(isPending).toBe(false);
-		expect(resetPasswordToken).toBeUndefined();
 		expect(globalRole.name).toBe('owner');
 		expect(globalRole.scope).toBe('global');
 		expect(apiKey).toBeUndefined();
+		expect(globalScopes).not.toHaveLength(0);
 
-		const storedOwner = await Db.collections.User.findOneByOrFail({ id });
+		const storedOwner = await Container.get(UserRepository).findOneByOrFail({ id });
 		expect(storedOwner.password).not.toBe(newOwnerData.password);
 		expect(storedOwner.email).toBe(newOwnerData.email);
 		expect(storedOwner.firstName).toBe(newOwnerData.firstName);
@@ -107,7 +105,7 @@ describe('POST /owner/setup', () => {
 		expect(id).toBe(ownerShell.id);
 		expect(email).toBe(newOwnerData.email.toLowerCase());
 
-		const storedOwner = await Db.collections.User.findOneByOrFail({ id });
+		const storedOwner = await Container.get(UserRepository).findOneByOrFail({ id });
 		expect(storedOwner.email).toBe(newOwnerData.email.toLowerCase());
 	});
 
@@ -159,29 +157,9 @@ describe('POST /owner/setup', () => {
 	];
 
 	test('should fail with invalid inputs', async () => {
-		const authOwnerAgent = authOwnerShellAgent;
-
-		await Promise.all(
-			INVALID_POST_OWNER_PAYLOADS.map(async (invalidPayload) => {
-				const response = await authOwnerAgent.post('/owner/setup').send(invalidPayload);
-				expect(response.statusCode).toBe(400);
-			}),
-		);
-	});
-});
-
-describe('POST /owner/skip-setup', () => {
-	test('should persist skipping setup to the DB', async () => {
-		const response = await authOwnerShellAgent.post('/owner/skip-setup').send();
-
-		expect(response.statusCode).toBe(200);
-
-		const skipConfig = config.getEnv('userManagement.skipInstanceOwnerSetup');
-		expect(skipConfig).toBe(true);
-
-		const { value } = await Db.collections.Settings.findOneByOrFail({
-			key: 'userManagement.skipInstanceOwnerSetup',
-		});
-		expect(value).toBe('true');
+		for (const invalidPayload of INVALID_POST_OWNER_PAYLOADS) {
+			const response = await authOwnerShellAgent.post('/owner/setup').send(invalidPayload);
+			expect(response.statusCode).toBe(400);
+		}
 	});
 });

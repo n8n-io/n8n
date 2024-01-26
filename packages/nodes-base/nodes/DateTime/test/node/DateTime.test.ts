@@ -1,5 +1,5 @@
-import moment from 'moment';
-import { testWorkflows, getWorkflowFilenames } from '../../../../test/nodes/Helpers';
+import moment from 'moment-timezone';
+import { testWorkflows, getWorkflowFilenames } from '@test/nodes/Helpers';
 
 const workflows = getWorkflowFilenames(__dirname);
 

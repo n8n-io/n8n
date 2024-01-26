@@ -9,7 +9,7 @@ export class LicenseInfoCommand extends BaseCommand {
 
 	async run() {
 		const license = Container.get(License);
-		await license.init(this.instanceId);
+		await license.init();
 
 		this.logger.info('Printing license information:\n' + license.getInfo());
 	}

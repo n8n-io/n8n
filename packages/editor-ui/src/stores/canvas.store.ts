@@ -1,16 +1,20 @@
 import { computed, ref, watch } from 'vue';
 import { defineStore } from 'pinia';
 import { v4 as uuid } from 'uuid';
-import normalizeWheel from 'normalize-wheel';
-import {
-	useWorkflowsStore,
-	useNodeTypesStore,
-	useUIStore,
-	useHistoryStore,
-	useSourceControlStore,
-} from '@/stores';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useHistoryStore } from '@/stores/history.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
 import type { INodeUi, XYPosition } from '@/Interface';
-import { scaleBigger, scaleReset, scaleSmaller } from '@/utils';
+import {
+	applyScale,
+	getScaleFromWheelEventDelta,
+	normalizeWheelEventDelta,
+	scaleBigger,
+	scaleReset,
+	scaleSmaller,
+} from '@/utils/canvasUtils';
 import { START_NODE_TYPE } from '@/constants';
 import type {
 	BeforeStartEventParams,
@@ -18,11 +22,7 @@ import type {
 	DragStopEventParams,
 } from '@jsplumb/browser-ui';
 import { newInstance } from '@jsplumb/browser-ui';
-import { N8nPlusEndpointHandler } from '@/plugins/endpoints/N8nPlusEndpointType';
-import * as N8nPlusEndpointRenderer from '@/plugins/endpoints/N8nPlusEndpointRenderer';
-import { N8nConnector } from '@/plugins/connectors/N8nCustomConnector';
 import type { Connection } from '@jsplumb/core';
-import { EndpointFactory, Connectors } from '@jsplumb/core';
 import { MoveNodeCommand } from '@/models/history';
 import {
 	DEFAULT_PLACEHOLDER_TRIGGER_BUTTON,
@@ -35,8 +35,12 @@ import {
 	CONNECTOR_PAINT_STYLE_DEFAULT,
 	CONNECTOR_PAINT_STYLE_PRIMARY,
 	CONNECTOR_ARROW_OVERLAYS,
+	getMousePosition,
+	SIDEBAR_WIDTH,
+	SIDEBAR_WIDTH_EXPANDED,
 } from '@/utils/nodeViewUtils';
 import type { PointXY } from '@jsplumb/util';
+import { useLoadingService } from '@/composables/useLoadingService';
 
 export const useCanvasStore = defineStore('canvas', () => {
 	const workflowStore = useWorkflowsStore();
@@ -44,6 +48,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 	const uiStore = useUIStore();
 	const historyStore = useHistoryStore();
 	const sourceControlStore = useSourceControlStore();
+	const loadingService = useLoadingService();
 
 	const jsPlumbInstanceRef = ref<BrowserJsPlumbInstance>();
 	const isDragging = ref<boolean>(false);
@@ -67,12 +72,8 @@ export const useCanvasStore = defineStore('canvas', () => {
 		}
 	});
 
-	Connectors.register(N8nConnector.type, N8nConnector);
-	N8nPlusEndpointRenderer.register();
-	EndpointFactory.registerHandler(N8nPlusEndpointHandler);
-
 	const setRecenteredCanvasAddButtonPosition = (offset?: XYPosition) => {
-		const position = getMidCanvasPosition(nodeViewScale.value, offset || [0, 0]);
+		const position = getMidCanvasPosition(nodeViewScale.value, offset ?? [0, 0]);
 
 		position[0] -= PLACEHOLDER_TRIGGER_NODE_SIZE / 2;
 		position[1] -= PLACEHOLDER_TRIGGER_NODE_SIZE / 2;
@@ -93,6 +94,21 @@ export const useCanvasStore = defineStore('canvas', () => {
 	const getNodesWithPlaceholderNode = (): INodeUi[] =>
 		triggerNodes.value.length > 0 ? nodes.value : [getPlaceholderTriggerNodeUI(), ...nodes.value];
 
+	const canvasPositionFromPagePosition = (position: XYPosition): XYPosition => {
+		const sidebarWidth = isDemo.value
+			? 0
+			: uiStore.sidebarMenuCollapsed
+			  ? SIDEBAR_WIDTH
+			  : SIDEBAR_WIDTH_EXPANDED;
+
+		const relativeX = position[0] - sidebarWidth;
+		const relativeY = isDemo.value
+			? position[1]
+			: position[1] - uiStore.bannersHeight - uiStore.headerHeight;
+
+		return [relativeX, relativeY];
+	};
+
 	const setZoomLevel = (zoomLevel: number, offset: XYPosition) => {
 		nodeViewScale.value = zoomLevel;
 		jsPlumbInstanceRef.value?.setZoom(zoomLevel);
@@ -103,6 +119,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 		const { scale, offset } = scaleReset({
 			scale: nodeViewScale.value,
 			offset: uiStore.nodeViewOffsetPosition,
+			origin: canvasPositionFromPagePosition([window.innerWidth / 2, window.innerHeight / 2]),
 		});
 		setZoomLevel(scale, offset);
 	};
@@ -111,6 +128,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 		const { scale, offset } = scaleBigger({
 			scale: nodeViewScale.value,
 			offset: uiStore.nodeViewOffsetPosition,
+			origin: canvasPositionFromPagePosition([window.innerWidth / 2, window.innerHeight / 2]),
 		});
 		setZoomLevel(scale, offset);
 	};
@@ -119,6 +137,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 		const { scale, offset } = scaleSmaller({
 			scale: nodeViewScale.value,
 			offset: uiStore.nodeViewOffsetPosition,
+			origin: canvasPositionFromPagePosition([window.innerWidth / 2, window.innerHeight / 2]),
 		});
 		setZoomLevel(scale, offset);
 	};
@@ -133,29 +152,30 @@ export const useCanvasStore = defineStore('canvas', () => {
 		setZoomLevel(zoomLevel, offset);
 	};
 
-	const wheelMoveWorkflow = (e: WheelEvent) => {
-		const normalized = normalizeWheel(e);
+	const wheelMoveWorkflow = (deltaX: number, deltaY: number, shiftKeyPressed = false) => {
 		const offsetPosition = uiStore.nodeViewOffsetPosition;
-		const nodeViewOffsetPositionX =
-			offsetPosition[0] - (e.shiftKey ? normalized.pixelY : normalized.pixelX);
-		const nodeViewOffsetPositionY =
-			offsetPosition[1] - (e.shiftKey ? normalized.pixelX : normalized.pixelY);
+		const nodeViewOffsetPositionX = offsetPosition[0] - (shiftKeyPressed ? deltaY : deltaX);
+		const nodeViewOffsetPositionY = offsetPosition[1] - (shiftKeyPressed ? deltaX : deltaY);
 		uiStore.nodeViewOffsetPosition = [nodeViewOffsetPositionX, nodeViewOffsetPositionY];
 	};
 
 	const wheelScroll = (e: WheelEvent) => {
-		//* Control + scroll zoom
-		if (e.ctrlKey) {
-			if (e.deltaY > 0) {
-				zoomOut();
-			} else {
-				zoomIn();
-			}
+		// Prevent browser back/forward gesture, default pinch to zoom etc.
+		e.preventDefault();
 
-			e.preventDefault();
+		const { deltaX, deltaY } = normalizeWheelEventDelta(e);
+
+		if (e.ctrlKey || e.metaKey) {
+			const scaleFactor = getScaleFromWheelEventDelta(deltaY);
+			const { scale, offset } = applyScale(scaleFactor)({
+				scale: nodeViewScale.value,
+				offset: uiStore.nodeViewOffsetPosition,
+				origin: canvasPositionFromPagePosition(getMousePosition(e)),
+			});
+			setZoomLevel(scale, offset);
 			return;
 		}
-		wheelMoveWorkflow(e);
+		wheelMoveWorkflow(deltaX, deltaY, e.shiftKey);
 	};
 
 	function initInstance(container: Element) {
@@ -230,8 +250,8 @@ export const useCanvasStore = defineStore('canvas', () => {
 							}
 
 							newNodePosition = [
-								parseInt(element.style.left!.slice(0, -2), 10),
-								parseInt(element.style.top!.slice(0, -2), 10),
+								parseInt(element.style.left.slice(0, -2), 10),
+								parseInt(element.style.top.slice(0, -2), 10),
 							];
 
 							const updateInformation = {
@@ -250,6 +270,9 @@ export const useCanvasStore = defineStore('canvas', () => {
 						});
 						if (moveNodes.length > 1) {
 							historyStore.stopRecordingUndo();
+						}
+						if (uiStore.isActionActive('dragActive')) {
+							uiStore.removeActiveAction('dragActive');
 						}
 					}
 				},
@@ -274,8 +297,13 @@ export const useCanvasStore = defineStore('canvas', () => {
 		lastSelectedConnection,
 		newNodeInsertPosition,
 		jsPlumbInstance,
+		isLoading: loadingService.isLoading,
+		startLoading: loadingService.startLoading,
+		setLoadingText: loadingService.setLoadingText,
+		stopLoading: loadingService.stopLoading,
 		setRecenteredCanvasAddButtonPosition,
 		getNodesWithPlaceholderNode,
+		canvasPositionFromPagePosition,
 		setZoomLevel,
 		resetZoom,
 		zoomIn,

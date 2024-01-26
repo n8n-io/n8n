@@ -1,12 +1,11 @@
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import { addVarType, escape } from '../utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
-import type { CodeNodeEditorMixin } from '../types';
 
-export const executionCompletions = (Vue as CodeNodeEditorMixin).extend({
+export const executionCompletions = defineComponent({
 	methods: {
 		/**
-		 * Complete `$execution.` to `.id .mode .resumeUrl`
+		 * Complete `$execution.` to `.id .mode .resumeUrl .resumeFormUrl`
 		 */
 		executionCompletions(
 			context: CompletionContext,
@@ -39,6 +38,10 @@ export const executionCompletions = (Vue as CodeNodeEditorMixin).extend({
 				{
 					label: `${matcher}.resumeUrl`,
 					info: this.$locale.baseText('codeNodeEditor.completer.$execution.resumeUrl'),
+				},
+				{
+					label: `${matcher}.resumeFormUrl`,
+					info: this.$locale.baseText('codeNodeEditor.completer.$execution.resumeFormUrl'),
 				},
 				{
 					label: `${matcher}.customData.set("key", "value")`,

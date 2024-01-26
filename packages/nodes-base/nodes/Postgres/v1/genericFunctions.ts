@@ -1,6 +1,8 @@
+import { ApplicationError } from 'n8n-workflow';
 import type { IExecuteFunctions, IDataObject, INodeExecutionData, JsonObject } from 'n8n-workflow';
 import type pgPromise from 'pg-promise';
 import type pg from 'pg-promise/typescript/pg-subset';
+import { getResolvables } from '@utils/utilities';
 
 /**
  * Returns of a shallow copy of the items which only contains the json data and
@@ -159,7 +161,9 @@ export async function pgQuery(
 			return result;
 		});
 	}
-	throw new Error('multiple, independently or transaction are valid options');
+	throw new ApplicationError('multiple, independently or transaction are valid options', {
+		level: 'warning',
+	});
 }
 
 export async function pgQueryV2(
@@ -168,7 +172,10 @@ export async function pgQueryV2(
 	db: pgPromise.IDatabase<{}, pg.IClient>,
 	items: INodeExecutionData[],
 	continueOnFail: boolean,
-	overrideMode?: string,
+	options?: {
+		overrideMode?: string;
+		resolveExpression?: boolean;
+	},
 ): Promise<IDataObject[]> {
 	const additionalFields = this.getNodeParameter('additionalFields', 0);
 
@@ -183,13 +190,22 @@ export async function pgQueryV2(
 	type QueryWithValues = { query: string; values?: string[] };
 	const allQueries = new Array<QueryWithValues>();
 	for (let i = 0; i < items.length; i++) {
-		const query = this.getNodeParameter('query', i) as string;
+		let query = this.getNodeParameter('query', i) as string;
+
+		if (options?.resolveExpression) {
+			for (const resolvable of getResolvables(query)) {
+				query = query.replace(resolvable, this.evaluateExpression(resolvable, i) as string);
+			}
+		}
+
 		const values = valuesArray[i];
 		const queryFormat = { query, values };
 		allQueries.push(queryFormat);
 	}
 
-	const mode = overrideMode ? overrideMode : ((additionalFields.mode ?? 'multiple') as string);
+	const mode = options?.overrideMode
+		? options.overrideMode
+		: ((additionalFields.mode ?? 'multiple') as string);
 	if (mode === 'multiple') {
 		return (await db.multi(pgp.helpers.concat(allQueries)))
 			.map((result, i) => {
@@ -246,7 +262,9 @@ export async function pgQueryV2(
 			return result;
 		});
 	}
-	throw new Error('multiple, independently or transaction are valid options');
+	throw new ApplicationError('multiple, independently or transaction are valid options', {
+		level: 'warning',
+	});
 }
 
 /**
@@ -335,7 +353,9 @@ export async function pgInsert(
 		});
 	}
 
-	throw new Error('multiple, independently or transaction are valid options');
+	throw new ApplicationError('multiple, independently or transaction are valid options', {
+		level: 'warning',
+	});
 }
 
 /**
@@ -443,7 +463,9 @@ export async function pgInsertV2(
 		});
 	}
 
-	throw new Error('multiple, independently or transaction are valid options');
+	throw new ApplicationError('multiple, independently or transaction are valid options', {
+		level: 'warning',
+	});
 }
 
 /**
@@ -569,7 +591,9 @@ export async function pgUpdate(
 			});
 		}
 	}
-	throw new Error('multiple, independently or transaction are valid options');
+	throw new ApplicationError('multiple, independently or transaction are valid options', {
+		level: 'warning',
+	});
 }
 
 /**
@@ -700,5 +724,7 @@ export async function pgUpdateV2(
 			});
 		}
 	}
-	throw new Error('multiple, independently or transaction are valid options');
+	throw new ApplicationError('multiple, independently or transaction are valid options', {
+		level: 'warning',
+	});
 }

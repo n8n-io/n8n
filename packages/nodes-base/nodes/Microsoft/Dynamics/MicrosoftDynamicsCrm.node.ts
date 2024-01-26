@@ -293,6 +293,6 @@ export class MicrosoftDynamicsCrm implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

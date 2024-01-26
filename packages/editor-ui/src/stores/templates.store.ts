@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { STORES } from '@/constants';
 import type {
+	INodeUi,
 	ITemplatesCategory,
 	ITemplatesCollection,
 	ITemplatesCollectionFull,
@@ -19,16 +20,19 @@ import {
 	getWorkflows,
 	getWorkflowTemplate,
 } from '@/api/templates';
+import { getFixedNodesList } from '@/utils/nodeViewUtils';
 
-const TEMPLATES_PAGE_SIZE = 10;
+const TEMPLATES_PAGE_SIZE = 20;
 
 function getSearchKey(query: ITemplatesQuery): string {
 	return JSON.stringify([query.search || '', [...query.categories].sort()]);
 }
 
+export type TemplatesStore = ReturnType<typeof useTemplatesStore>;
+
 export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 	state: (): ITemplateState => ({
-		categories: {},
+		categories: [],
 		collections: {},
 		workflows: {},
 		collectionSearches: {},
@@ -44,6 +48,12 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 		},
 		getTemplateById() {
 			return (id: string): null | ITemplatesWorkflow => this.workflows[id];
+		},
+		getFullTemplateById() {
+			return (id: string): null | ITemplatesWorkflowFull => {
+				const template = this.workflows[id];
+				return template && 'full' in template && template.full ? template : null;
+			};
 		},
 		getCollectionById() {
 			return (id: string): null | ITemplatesCollection => this.collections[id];
@@ -141,7 +151,7 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 			collections: ITemplatesCollection[];
 			query: ITemplatesQuery;
 		}): void {
-			const collectionIds = data.collections.map((collection) => collection.id);
+			const collectionIds = data.collections.map((collection) => String(collection.id));
 			const searchKey = getSearchKey(data.query);
 
 			this.collectionSearches = {
@@ -165,6 +175,7 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 					[searchKey]: {
 						workflowIds: workflowIds as unknown as string[],
 						totalWorkflows: data.totalWorkflows,
+						categories: this.categories,
 					},
 				};
 
@@ -176,6 +187,7 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 				[searchKey]: {
 					workflowIds: [...cachedResults.workflowIds, ...workflowIds] as string[],
 					totalWorkflows: data.totalWorkflows,
+					categories: this.categories,
 				},
 			};
 		},
@@ -212,9 +224,7 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 				this.currentSessionId = `templates-${Date.now()}`;
 			}
 		},
-		async fetchTemplateById(
-			templateId: string,
-		): Promise<ITemplatesWorkflow | ITemplatesWorkflowFull> {
+		async fetchTemplateById(templateId: string): Promise<ITemplatesWorkflowFull> {
 			const settingsStore = useSettingsStore();
 			const apiEndpoint: string = settingsStore.templatesHost;
 			const versionCli: string = settingsStore.versionCli;
@@ -283,6 +293,7 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 		async getWorkflows(query: ITemplatesQuery): Promise<ITemplatesWorkflow[]> {
 			const cachedResults = this.getSearchedWorkflows(query);
 			if (cachedResults) {
+				this.categories = this.workflowSearches[getSearchKey(query)].categories ?? [];
 				return cachedResults;
 			}
 
@@ -292,7 +303,7 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 
 			const payload = await getWorkflows(
 				apiEndpoint,
-				{ ...query, skip: 0, limit: TEMPLATES_PAGE_SIZE },
+				{ ...query, page: 1, limit: TEMPLATES_PAGE_SIZE },
 				{ 'n8n-version': versionCli },
 			);
 
@@ -312,7 +323,7 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 			try {
 				const payload = await getWorkflows(apiEndpoint, {
 					...query,
-					skip: cachedResults.length,
+					page: cachedResults.length / TEMPLATES_PAGE_SIZE + 1,
 					limit: TEMPLATES_PAGE_SIZE,
 				});
 
@@ -331,6 +342,20 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 			const apiEndpoint: string = settingsStore.templatesHost;
 			const versionCli: string = settingsStore.versionCli;
 			return getWorkflowTemplate(apiEndpoint, templateId, { 'n8n-version': versionCli });
+		},
+
+		async getFixedWorkflowTemplate(templateId: string): Promise<IWorkflowTemplate | undefined> {
+			const template = await this.getWorkflowTemplate(templateId);
+			if (template?.workflow?.nodes) {
+				template.workflow.nodes = getFixedNodesList(template.workflow.nodes) as INodeUi[];
+				template.workflow.nodes?.forEach((node) => {
+					if (node.credentials) {
+						delete node.credentials;
+					}
+				});
+			}
+
+			return template;
 		},
 	},
 });

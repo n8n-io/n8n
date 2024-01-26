@@ -1,12 +1,12 @@
 <template>
-	<div ref="root" class="ph-no-capture" @keydown.stop></div>
+	<div ref="root" @keydown.stop></div>
 </template>
 
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { EditorView, keymap } from '@codemirror/view';
 import { EditorState, Prec } from '@codemirror/state';
-import { history, redo } from '@codemirror/commands';
+import { history, redo, undo } from '@codemirror/commands';
 
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { expressionManager } from '@/mixins/expressionManager';
@@ -24,14 +24,17 @@ export default defineComponent({
 	name: 'ExpressionEditorModalInput',
 	mixins: [expressionManager, completionManager, workflowHelpers],
 	props: {
-		value: {
+		modelValue: {
 			type: String,
+			required: true,
 		},
 		path: {
 			type: String,
+			required: true,
 		},
 		isReadOnly: {
 			type: Boolean,
+			default: false,
 		},
 	},
 	data() {
@@ -56,6 +59,7 @@ export default defineComponent({
 							return false;
 						},
 					},
+					{ key: 'Mod-z', run: undo },
 					{ key: 'Mod-Shift-z', run: redo },
 				]),
 			),
@@ -68,6 +72,8 @@ export default defineComponent({
 			EditorView.domEventHandlers({ scroll: forceParse }),
 			EditorView.updateListener.of((viewUpdate) => {
 				if (!this.editor || !viewUpdate.docChanged) return;
+
+				this.editorState = this.editor.state;
 
 				highlighter.removeColor(this.editor, this.plaintextSegments);
 				highlighter.addColor(this.editor, this.resolvableSegments);
@@ -89,11 +95,12 @@ export default defineComponent({
 		this.editor = new EditorView({
 			parent: this.$refs.root as HTMLDivElement,
 			state: EditorState.create({
-				doc: this.value.startsWith('=') ? this.value.slice(1) : this.value,
+				doc: this.modelValue.startsWith('=') ? this.modelValue.slice(1) : this.modelValue,
 				extensions,
 			}),
 		});
 
+		this.editorState = this.editor.state;
 		this.editor.focus();
 
 		highlighter.addColor(this.editor, this.resolvableSegments);
@@ -107,7 +114,7 @@ export default defineComponent({
 			segments: this.displayableSegments,
 		});
 	},
-	destroyed() {
+	beforeUnmount() {
 		this.editor?.destroy();
 	},
 	methods: {

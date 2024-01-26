@@ -6,10 +6,11 @@
 	"resources": {
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.ical/"
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.converttofile/"
 			}
 		]
 	},
+	"alias": ["ics", ".ics"],
 	"subcategories": {
 		"Core Nodes": ["Files"]
 	}

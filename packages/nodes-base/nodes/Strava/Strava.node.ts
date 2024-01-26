@@ -6,11 +6,10 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
 import { stravaApiRequest, stravaApiRequestAllItems } from './GenericFunctions';
 
 import { activityFields, activityOperations } from './ActivityDescription';
-
-import moment from 'moment';
 
 export class Strava implements INodeType {
 	description: INodeTypeDescription = {
@@ -161,14 +160,6 @@ export class Strava implements INodeType {
 
 						const updateFields = this.getNodeParameter('updateFields', i);
 
-						if (updateFields.trainer === true) {
-							updateFields.trainer = 1;
-						}
-
-						if (updateFields.commute === true) {
-							updateFields.commute = 1;
-						}
-
 						const body: IDataObject = {};
 
 						Object.assign(body, updateFields);
@@ -201,6 +192,6 @@ export class Strava implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

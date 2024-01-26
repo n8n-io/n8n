@@ -1,22 +1,26 @@
 import type express from 'express';
 import type {
-	IConnections,
+	BannerName,
 	ICredentialDataDecryptedObject,
 	ICredentialNodeAccess,
-	INode,
+	IDataObject,
 	INodeCredentialTestRequest,
-	IPinData,
-	IRunData,
-	IWorkflowSettings,
+	INodeCredentials,
+	INodeParameters,
+	INodeTypeNameVersion,
+	IUser,
 } from 'n8n-workflow';
 
-import { IsBoolean, IsEmail, IsOptional, IsString, Length } from 'class-validator';
+import { IsBoolean, IsEmail, IsIn, IsOptional, IsString, Length } from 'class-validator';
 import { NoXss } from '@db/utils/customValidators';
-import type { PublicUser, IExecutionDeleteFilter, IWorkflowDb } from '@/Interfaces';
-import type { Role } from '@db/entities/Role';
+import type { PublicUser, SecretsProvider, SecretsProviderState } from '@/Interfaces';
+import type { Role, RoleNames } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 import type { UserManagementMailer } from '@/UserManagement/email';
 import type { Variables } from '@db/entities/Variables';
+import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
+import type { WorkflowHistory } from '@db/entities/WorkflowHistory';
 
 export class UserUpdatePayload implements Pick<User, 'email' | 'firstName' | 'lastName'> {
 	@IsEmail()
@@ -32,6 +36,7 @@ export class UserUpdatePayload implements Pick<User, 'email' | 'firstName' | 'la
 	@Length(1, 32, { message: 'Last name must be $constraint1 to $constraint2 characters long.' })
 	lastName: string;
 }
+
 export class UserSettingsUpdatePayload {
 	@IsBoolean({ message: 'userActivated should be a boolean' })
 	@IsOptional()
@@ -40,6 +45,11 @@ export class UserSettingsUpdatePayload {
 	@IsBoolean({ message: 'allowSSOManualLogin should be a boolean' })
 	@IsOptional()
 	allowSSOManualLogin?: boolean;
+}
+
+export class UserRoleChangePayload {
+	@IsIn(['member', 'admin'])
+	newRoleName: Exclude<RoleNames, 'user' | 'editor' | 'owner'>;
 }
 
 export type AuthlessRequest<
@@ -61,53 +71,69 @@ export type AuthenticatedRequest<
 };
 
 // ----------------------------------
-//           /workflows
+//            list query
 // ----------------------------------
 
-export declare namespace WorkflowRequest {
-	type CreateUpdatePayload = Partial<{
-		id: string; // delete if sent
-		name: string;
-		nodes: INode[];
-		connections: IConnections;
-		settings: IWorkflowSettings;
-		active: boolean;
-		tags: string[];
-		hash: string;
-	}>;
-
-	type ManualRunPayload = {
-		workflowData: IWorkflowDb;
-		runData: IRunData;
-		pinData: IPinData;
-		startNodes?: string[];
-		destinationNode?: string;
+export namespace ListQuery {
+	export type Request = AuthenticatedRequest<{}, {}, {}, Params> & {
+		listQueryOptions?: Options;
 	};
 
-	type Create = AuthenticatedRequest<{}, {}, CreateUpdatePayload>;
+	export type Params = {
+		filter?: string;
+		skip?: string;
+		take?: string;
+		select?: string;
+	};
 
-	type Get = AuthenticatedRequest<{ id: string }>;
+	export type Options = {
+		filter?: Record<string, unknown>;
+		select?: Record<string, true>;
+		skip?: number;
+		take?: number;
+	};
 
-	type Delete = Get;
+	/**
+	 * Slim workflow returned from a list query operation.
+	 */
+	export namespace Workflow {
+		type OptionalBaseFields = 'name' | 'active' | 'versionId' | 'createdAt' | 'updatedAt' | 'tags';
 
-	type Update = AuthenticatedRequest<
-		{ id: string },
-		{},
-		CreateUpdatePayload,
-		{ forceSave?: string }
-	>;
+		type BaseFields = Pick<WorkflowEntity, 'id'> &
+			Partial<Pick<WorkflowEntity, OptionalBaseFields>>;
 
-	type NewName = AuthenticatedRequest<{}, {}, {}, { name?: string }>;
+		type SharedField = Partial<Pick<WorkflowEntity, 'shared'>>;
 
-	type GetAll = AuthenticatedRequest<{}, {}, {}, { filter: string }>;
+		type OwnedByField = { ownedBy: SlimUser | null };
 
-	type GetAllActive = AuthenticatedRequest;
+		export type Plain = BaseFields;
 
-	type GetAllActivationErrors = Get;
+		export type WithSharing = BaseFields & SharedField;
 
-	type ManualRun = AuthenticatedRequest<{}, {}, ManualRunPayload>;
+		export type WithOwnership = BaseFields & OwnedByField;
 
-	type Share = AuthenticatedRequest<{ workflowId: string }, {}, { shareWithIds: string[] }>;
+		type SharedWithField = { sharedWith: SlimUser[] };
+
+		export type WithOwnedByAndSharedWith = BaseFields & OwnedByField & SharedWithField;
+	}
+
+	export namespace Credentials {
+		type OwnedByField = { ownedBy: SlimUser | null };
+
+		type SharedWithField = { sharedWith: SlimUser[] };
+
+		export type WithSharing = CredentialsEntity & Partial<Pick<CredentialsEntity, 'shared'>>;
+
+		export type WithOwnedByAndSharedWith = CredentialsEntity & OwnedByField & SharedWithField;
+	}
+}
+
+type SlimUser = Pick<IUser, 'id' | 'email' | 'firstName' | 'lastName'>;
+
+export function hasSharing(
+	workflows: ListQuery.Workflow.Plain[] | ListQuery.Workflow.WithSharing[],
+): workflows is ListQuery.Workflow.WithSharing[] {
+	return workflows.some((w) => 'shared' in w);
 }
 
 // ----------------------------------
@@ -133,37 +159,11 @@ export declare namespace CredentialRequest {
 
 	type Update = AuthenticatedRequest<{ id: string }, {}, CredentialProperties>;
 
-	type NewName = WorkflowRequest.NewName;
+	type NewName = AuthenticatedRequest<{}, {}, {}, { name?: string }>;
 
 	type Test = AuthenticatedRequest<{}, {}, INodeCredentialTestRequest>;
 
 	type Share = AuthenticatedRequest<{ credentialId: string }, {}, { shareWithIds: string[] }>;
-}
-
-// ----------------------------------
-//           /executions
-// ----------------------------------
-
-export declare namespace ExecutionRequest {
-	namespace QueryParam {
-		type GetAll = {
-			filter: string; // '{ waitTill: string; finished: boolean, [other: string]: string }'
-			limit: string;
-			lastId: string;
-			firstId: string;
-		};
-
-		type GetAllCurrent = {
-			filter: string; // '{ workflowId: string }'
-		};
-	}
-
-	type GetAll = AuthenticatedRequest<{}, {}, {}, QueryParam.GetAll>;
-	type Get = AuthenticatedRequest<{ id: string }, {}, {}, { unflattedResponse: 'true' | 'false' }>;
-	type Delete = AuthenticatedRequest<{}, {}, IExecutionDeleteFilter>;
-	type Retry = AuthenticatedRequest<{ id: string }, {}, { loadWorkflow: boolean }, {}>;
-	type Stop = AuthenticatedRequest<{ id: string }>;
-	type GetAllCurrent = AuthenticatedRequest<{}, {}, {}, QueryParam.GetAllCurrent>;
 }
 
 // ----------------------------------
@@ -176,9 +176,19 @@ export declare namespace MeRequest {
 	export type Password = AuthenticatedRequest<
 		{},
 		{},
-		{ currentPassword: string; newPassword: string }
+		{ currentPassword: string; newPassword: string; token?: string }
 	>;
 	export type SurveyAnswers = AuthenticatedRequest<{}, {}, Record<string, string> | {}>;
+}
+
+export interface UserSetupPayload {
+	email: string;
+	password: string;
+	firstName: string;
+	lastName: string;
+	mfaEnabled?: boolean;
+	mfaSecret?: string;
+	mfaRecoveryCodes?: string[];
 }
 
 // ----------------------------------
@@ -186,17 +196,9 @@ export declare namespace MeRequest {
 // ----------------------------------
 
 export declare namespace OwnerRequest {
-	type Post = AuthenticatedRequest<
-		{},
-		{},
-		Partial<{
-			email: string;
-			password: string;
-			firstName: string;
-			lastName: string;
-		}>,
-		{}
-	>;
+	type Post = AuthenticatedRequest<{}, {}, UserSetupPayload, {}>;
+
+	type DismissBanner = AuthenticatedRequest<{}, {}, Partial<{ bannerName: BannerName }>, {}>;
 }
 
 // ----------------------------------
@@ -211,7 +213,7 @@ export declare namespace PasswordResetRequest {
 	export type NewPassword = AuthlessRequest<
 		{},
 		{},
-		Pick<PublicUser, 'password'> & { token?: string; userId?: string }
+		Pick<PublicUser, 'password'> & { token?: string; userId?: string; mfaToken?: string }
 	>;
 }
 
@@ -220,9 +222,16 @@ export declare namespace PasswordResetRequest {
 // ----------------------------------
 
 export declare namespace UserRequest {
-	export type List = AuthenticatedRequest;
+	export type Invite = AuthenticatedRequest<
+		{},
+		{},
+		Array<{ email: string; role?: 'member' | 'admin' }>
+	>;
 
-	export type Invite = AuthenticatedRequest<{}, {}, Array<{ email: string }>>;
+	export type InviteResponse = {
+		user: { id: string; email: string; inviteAcceptUrl?: string; emailSent: boolean };
+		error?: string;
+	};
 
 	export type ResolveSignUp = AuthlessRequest<
 		{},
@@ -242,6 +251,8 @@ export declare namespace UserRequest {
 		{},
 		{ transferId?: string; includeRole: boolean }
 	>;
+
+	export type ChangeRole = AuthenticatedRequest<{ id: string }, {}, UserRoleChangePayload, {}>;
 
 	export type Get = AuthenticatedRequest<
 		{ id: string; email: string; identifier: string },
@@ -282,8 +293,26 @@ export type LoginRequest = AuthlessRequest<
 	{
 		email: string;
 		password: string;
+		mfaToken?: string;
+		mfaRecoveryCode?: string;
 	}
 >;
+
+// ----------------------------------
+//          MFA endpoints
+// ----------------------------------
+
+export declare namespace MFA {
+	type Verify = AuthenticatedRequest<{}, {}, { token: string }, {}>;
+	type Activate = AuthenticatedRequest<{}, {}, { token: string }, {}>;
+	type Config = AuthenticatedRequest<{}, {}, { login: { enabled: boolean } }, {}>;
+	type ValidateRecoveryCode = AuthenticatedRequest<
+		{},
+		{},
+		{ recoveryCode: { enabled: boolean } },
+		{}
+	>;
+}
 
 // ----------------------------------
 //          oauth endpoints
@@ -303,63 +332,49 @@ export declare namespace OAuthRequest {
 	}
 
 	namespace OAuth2Credential {
-		type Auth = OAuth1Credential.Auth;
+		type Auth = AuthenticatedRequest<{}, {}, {}, { id: string }>;
 		type Callback = AuthenticatedRequest<{}, {}, {}, { code: string; state: string }>;
 	}
 }
 
 // ----------------------------------
-//      /node-parameter-options
+//      /dynamic-node-parameters
 // ----------------------------------
+export declare namespace DynamicNodeParametersRequest {
+	type BaseRequest<QueryParams = {}> = AuthenticatedRequest<
+		{
+			nodeTypeAndVersion: INodeTypeNameVersion;
+			currentNodeParameters: INodeParameters;
+			credentials?: INodeCredentials;
+		},
+		{},
+		{},
+		{
+			path: string;
+			nodeTypeAndVersion: string;
+			currentNodeParameters: string;
+			methodName?: string;
+			credentials?: string;
+		} & QueryParams
+	>;
 
-export type NodeParameterOptionsRequest = AuthenticatedRequest<
-	{},
-	{},
-	{},
-	{
-		nodeTypeAndVersion: string;
+	/** GET /dynamic-node-parameters/options */
+	type Options = BaseRequest<{
+		loadOptions?: string;
+	}>;
+
+	/** GET /dynamic-node-parameters/resource-locator-results */
+	type ResourceLocatorResults = BaseRequest<{
 		methodName: string;
-		path: string;
-		currentNodeParameters: string;
-		credentials: string;
-	}
->;
-
-// ----------------------------------
-//        /node-list-search
-// ----------------------------------
-
-export type NodeListSearchRequest = AuthenticatedRequest<
-	{},
-	{},
-	{},
-	{
-		nodeTypeAndVersion: string;
-		methodName: string;
-		path: string;
-		currentNodeParameters: string;
-		credentials: string;
 		filter?: string;
 		paginationToken?: string;
-	}
->;
+	}>;
 
-// ----------------------------------
-//        /get-mapping-fields
-// ----------------------------------
-
-export type ResourceMapperRequest = AuthenticatedRequest<
-	{},
-	{},
-	{},
-	{
-		nodeTypeAndVersion: string;
+	/** GET dynamic-node-parameters/resource-mapper-fields */
+	type ResourceMapperFields = BaseRequest<{
 		methodName: string;
-		path: string;
-		currentNodeParameters: string;
-		credentials: string;
-	}
->;
+	}>;
+}
 
 // ----------------------------------
 //             /tags
@@ -403,11 +418,12 @@ export declare namespace LicenseRequest {
 }
 
 export type BinaryDataRequest = AuthenticatedRequest<
-	{ path: string },
+	{},
 	{},
 	{},
 	{
-		mode: 'view' | 'download';
+		id: string;
+		action: 'view' | 'download';
 		fileName?: string;
 		mimeType?: string;
 	}
@@ -425,4 +441,62 @@ export declare namespace VariablesRequest {
 	type Create = AuthenticatedRequest<{}, {}, CreateUpdatePayload, {}>;
 	type Update = AuthenticatedRequest<{ id: string }, {}, CreateUpdatePayload, {}>;
 	type Delete = Get;
+}
+
+export declare namespace ExternalSecretsRequest {
+	type GetProviderResponse = Pick<SecretsProvider, 'displayName' | 'name' | 'properties'> & {
+		icon: string;
+		connected: boolean;
+		connectedAt: Date | null;
+		state: SecretsProviderState;
+		data: IDataObject;
+	};
+
+	type GetProviders = AuthenticatedRequest;
+	type GetProvider = AuthenticatedRequest<{ provider: string }, GetProviderResponse>;
+	type SetProviderSettings = AuthenticatedRequest<{ provider: string }, {}, IDataObject>;
+	type TestProviderSettings = SetProviderSettings;
+	type SetProviderConnected = AuthenticatedRequest<
+		{ provider: string },
+		{},
+		{ connected: boolean }
+	>;
+
+	type UpdateProvider = AuthenticatedRequest<{ provider: string }>;
+}
+
+// ----------------------------------
+//           /orchestration
+// ----------------------------------
+//
+export declare namespace OrchestrationRequest {
+	type GetAll = AuthenticatedRequest;
+	type Get = AuthenticatedRequest<{ id: string }, {}, {}, {}>;
+}
+
+// ----------------------------------
+//           /workflow-history
+// ----------------------------------
+
+export declare namespace WorkflowHistoryRequest {
+	type GetList = AuthenticatedRequest<
+		{ workflowId: string },
+		Array<Omit<WorkflowHistory, 'nodes' | 'connections'>>,
+		{},
+		ListQuery.Options
+	>;
+	type GetVersion = AuthenticatedRequest<
+		{ workflowId: string; versionId: string },
+		WorkflowHistory
+	>;
+}
+
+// ----------------------------------
+//        /active-workflows
+// ----------------------------------
+
+export declare namespace ActiveWorkflowRequest {
+	type GetAllActive = AuthenticatedRequest;
+
+	type GetActivationError = AuthenticatedRequest<{ id: string }>;
 }

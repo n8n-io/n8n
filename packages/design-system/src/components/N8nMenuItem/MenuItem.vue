@@ -1,7 +1,7 @@
 <template>
 	<div :class="['n8n-menu-item', $style.item]">
-		<el-submenu
-			v-if="item.children && item.children.length > 0"
+		<ElSubMenu
+			v-if="item.children?.length"
 			:id="item.id"
 			:class="{
 				[$style.submenu]: true,
@@ -9,11 +9,11 @@
 				[$style.active]: mode === 'router' && isItemActive(item),
 			}"
 			:index="item.id"
-			popper-append-to-body
-			:popper-class="`${$style.submenuPopper} ${popperClass}`"
+			teleported
+			:popper-class="submenuPopperClass"
 		>
 			<template #title>
-				<n8n-icon
+				<N8nIcon
 					v-if="item.icon"
 					:class="$style.icon"
 					:icon="item.icon"
@@ -21,76 +21,83 @@
 				/>
 				<span :class="$style.label">{{ item.label }}</span>
 			</template>
-			<el-menu-item
+			<n8n-menu-item
 				v-for="child in availableChildren"
 				:key="child.id"
-				:id="child.id"
-				:class="{
-					[$style.menuItem]: true,
-					[$style.disableActiveStyle]: !isItemActive(child),
-					[$style.active]: isItemActive(child),
-				}"
-				data-test-id="menu-item"
-				:index="child.id"
-				@click="onItemClick(child, $event)"
-			>
-				<n8n-icon v-if="child.icon" :class="$style.icon" :icon="child.icon" />
-				<span :class="$style.label">{{ child.label }}</span>
-				<span v-if="child.secondaryIcon" :class="$style.secondaryIcon">
-					<n8n-icon :icon="child.secondaryIcon.name" :size="child.secondaryIcon.size || 'small'" />
-				</span>
-			</el-menu-item>
-		</el-submenu>
-		<n8n-tooltip
+				:item="child"
+				:compact="false"
+				:tooltip-delay="tooltipDelay"
+				:popper-class="popperClass"
+				:mode="mode"
+				:active-tab="activeTab"
+				:handle-select="handleSelect"
+			/>
+		</ElSubMenu>
+		<N8nTooltip
 			v-else
 			placement="right"
 			:content="item.label"
 			:disabled="!compact"
-			:open-delay="tooltipDelay"
+			:show-after="tooltipDelay"
 		>
-			<el-menu-item
-				:id="item.id"
-				:class="{
-					[$style.menuItem]: true,
-					[$style.item]: true,
-					[$style.disableActiveStyle]: !isItemActive(item),
-					[$style.active]: isItemActive(item),
-					[$style.compact]: compact,
-				}"
-				data-test-id="menu-item"
-				:index="item.id"
-				@click="onItemClick(item, $event)"
-			>
-				<n8n-icon
-					v-if="item.icon"
-					:class="$style.icon"
-					:icon="item.icon"
-					:size="item.customIconSize || 'large'"
-				/>
-				<span :class="$style.label">{{ item.label }}</span>
-				<span v-if="item.secondaryIcon" :class="$style.secondaryIcon">
-					<n8n-icon :icon="item.secondaryIcon.name" :size="item.secondaryIcon.size || 'small'" />
-				</span>
-			</el-menu-item>
-		</n8n-tooltip>
+			<ConditionalRouterLink v-bind="item.route ?? item.link">
+				<ElMenuItem
+					:id="item.id"
+					:class="{
+						[$style.menuItem]: true,
+						[$style.item]: true,
+						[$style.disableActiveStyle]: !isItemActive(item),
+						[$style.active]: isItemActive(item),
+						[$style.compact]: compact,
+					}"
+					data-test-id="menu-item"
+					:index="item.id"
+					@click="handleSelect(item)"
+				>
+					<N8nIcon
+						v-if="item.icon"
+						:class="$style.icon"
+						:icon="item.icon"
+						:size="item.customIconSize || 'large'"
+					/>
+					<span :class="$style.label">{{ item.label }}</span>
+					<N8nTooltip
+						v-if="item.secondaryIcon"
+						:placement="item.secondaryIcon?.tooltip?.placement || 'right'"
+						:content="item.secondaryIcon?.tooltip?.content"
+						:disabled="compact || !item.secondaryIcon?.tooltip?.content"
+						:show-after="tooltipDelay"
+					>
+						<N8nIcon
+							:class="$style.secondaryIcon"
+							:icon="item.secondaryIcon.name"
+							:size="item.secondaryIcon.size || 'small'"
+						/>
+					</N8nTooltip>
+				</ElMenuItem>
+			</ConditionalRouterLink>
+		</N8nTooltip>
 	</div>
 </template>
 
 <script lang="ts">
-import { Submenu as ElSubmenu, MenuItem as ElMenuItem } from 'element-ui';
+import { ElSubMenu, ElMenuItem } from 'element-plus';
 import N8nTooltip from '../N8nTooltip';
 import N8nIcon from '../N8nIcon';
 import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
+import ConditionalRouterLink from '../ConditionalRouterLink';
 import type { IMenuItem, RouteObject } from '../../types';
+import { doesMenuItemMatchCurrentRoute } from './routerUtil';
 
 export default defineComponent({
-	name: 'n8n-menu-item',
+	name: 'N8nMenuItem',
 	components: {
-		ElSubmenu,
+		ElSubMenu,
 		ElMenuItem,
 		N8nIcon,
 		N8nTooltip,
+		ConditionalRouterLink,
 	},
 	props: {
 		item: {
@@ -116,6 +123,11 @@ export default defineComponent({
 		},
 		activeTab: {
 			type: String,
+			default: undefined,
+		},
+		handleSelect: {
+			type: Function as PropType<(item: IMenuItem) => void>,
+			default: undefined,
 		},
 	},
 	computed: {
@@ -132,6 +144,13 @@ export default defineComponent({
 				}
 			);
 		},
+		submenuPopperClass(): string {
+			const popperClass = [this.$style.submenuPopper, this.popperClass];
+			if (this.compact) {
+				popperClass.push(this.$style.compact);
+			}
+			return popperClass.join(' ');
+		},
 	},
 	methods: {
 		isItemActive(item: IMenuItem): boolean {
@@ -142,36 +161,10 @@ export default defineComponent({
 		},
 		isActive(item: IMenuItem): boolean {
 			if (this.mode === 'router') {
-				if (item.activateOnRoutePaths) {
-					return (
-						Array.isArray(item.activateOnRoutePaths) &&
-						item.activateOnRoutePaths.includes(this.currentRoute.path)
-					);
-				} else if (item.activateOnRouteNames) {
-					return (
-						Array.isArray(item.activateOnRouteNames) &&
-						item.activateOnRouteNames.includes(this.currentRoute.name || '')
-					);
-				}
-				return false;
+				return doesMenuItemMatchCurrentRoute(item, this.currentRoute);
 			} else {
 				return item.id === this.activeTab;
 			}
-		},
-		onItemClick(item: IMenuItem, event: MouseEvent) {
-			if (item && item.type === 'link' && item.properties) {
-				const href: string = item.properties.href;
-				if (!href) {
-					return;
-				}
-
-				if (item.properties.newWindow) {
-					window.open(href);
-				} else {
-					window.location.assign(item.properties.href);
-				}
-			}
-			this.$emit('click', event, item.id);
 		},
 	},
 });
@@ -180,26 +173,26 @@ export default defineComponent({
 <style module lang="scss">
 // Element menu-item overrides
 :global(.el-menu-item),
-:global(.el-submenu__title) {
+:global(.el-sub-menu__title) {
 	--menu-font-color: var(--color-text-base);
 	--menu-item-active-background-color: var(--color-foreground-base);
 	--menu-item-active-font-color: var(--color-text-dark);
 	--menu-item-hover-fill: var(--color-foreground-base);
 	--menu-item-hover-font-color: var(--color-text-dark);
 	--menu-item-height: 35px;
-	--submenu-item-height: 27px;
+	--sub-menu-item-height: 27px;
 }
 
 .submenu {
 	background: none !important;
 
-	&.compact :global(.el-submenu__title) {
+	&.compact :global(.el-sub-menu__title) {
 		i {
 			display: none;
 		}
 	}
 
-	:global(.el-submenu__title) {
+	:global(.el-sub-menu__title) {
 		display: flex;
 		align-items: center;
 		border-radius: var(--border-radius-base) !important;
@@ -221,7 +214,7 @@ export default defineComponent({
 	}
 
 	.menuItem {
-		height: var(--submenu-item-height) !important;
+		height: var(--sub-menu-item-height) !important;
 		min-width: auto !important;
 		margin: var(--spacing-2xs) 0 !important;
 		padding-left: var(--spacing-l) !important;
@@ -248,7 +241,7 @@ export default defineComponent({
 		svg {
 			color: var(--color-text-dark) !important;
 		}
-		&:global(.el-submenu) {
+		&:global(.el-sub-menu) {
 			background-color: unset !important;
 		}
 	}
@@ -256,7 +249,7 @@ export default defineComponent({
 
 .active {
 	&,
-	& :global(.el-submenu__title) {
+	& :global(.el-sub-menu__title) {
 		background-color: var(--color-foreground-base);
 		border-radius: var(--border-radius-base);
 		.icon {
@@ -284,6 +277,7 @@ export default defineComponent({
 	align-items: center;
 	justify-content: flex-end;
 	flex: 1;
+	margin-left: 20px;
 }
 
 .label {
@@ -297,7 +291,6 @@ export default defineComponent({
 }
 
 .compact {
-	width: 40px;
 	.icon {
 		margin: 0;
 		overflow: visible !important;
@@ -329,8 +322,10 @@ export default defineComponent({
 		margin-right: var(--spacing-xs);
 	}
 
-	.label {
-		display: block;
+	&.compact {
+		.label {
+			display: inline-block;
+		}
 	}
 }
 </style>

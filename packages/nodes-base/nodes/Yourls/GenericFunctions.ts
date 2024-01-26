@@ -2,7 +2,6 @@ import type { OptionsWithUri } from 'request';
 
 import type {
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
 	IDataObject,
 	JsonObject,
@@ -10,7 +9,7 @@ import type {
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 export async function yourlsApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 
 	body: any = {},
@@ -35,6 +34,16 @@ export async function yourlsApiRequest(
 			throw new NodeOperationError(
 				this.getNode(),
 				`Yourls error response [400]: ${response.message}`,
+			);
+		}
+
+		if (typeof response === 'string' && response.includes('<b>Fatal error</b>')) {
+			throw new NodeOperationError(
+				this.getNode(),
+				"Yourls responded with a 'Fatal error', check description for more details",
+				{
+					description: `Server response:\n${response}`,
+				},
 			);
 		}
 

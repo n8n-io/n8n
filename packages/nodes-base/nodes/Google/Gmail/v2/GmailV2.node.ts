@@ -39,7 +39,7 @@ const versionDescription: INodeTypeDescription = {
 	name: 'gmail',
 	icon: 'file:gmail.svg',
 	group: ['transform'],
-	version: 2,
+	version: [2, 2.1],
 	subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 	description: 'Consume the Gmail API',
 	defaults: {
@@ -205,6 +205,8 @@ export class GmailV2 implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
+		const nodeVersion = this.getNode().typeVersion;
+		const instanceId = this.getInstanceId();
 
 		let responseData;
 
@@ -323,6 +325,11 @@ export class GmailV2 implements INodeType {
 							from = `${options.senderName as string} <${emailAddress}>`;
 						}
 
+						let appendAttribution = options.appendAttribution;
+						if (appendAttribution === undefined) {
+							appendAttribution = nodeVersion >= 2.1;
+						}
+
 						const email: IEmail = {
 							from,
 							to,
@@ -330,7 +337,7 @@ export class GmailV2 implements INodeType {
 							bcc,
 							replyTo,
 							subject: this.getNodeParameter('subject', i) as string,
-							...prepareEmailBody.call(this, i),
+							...prepareEmailBody.call(this, i, appendAttribution as boolean, instanceId),
 							attachments,
 						};
 
@@ -819,8 +826,8 @@ export class GmailV2 implements INodeType {
 			['draft', 'message', 'thread'].includes(resource) &&
 			['get', 'getAll'].includes(operation)
 		) {
-			return this.prepareOutputData(unescapeSnippets(returnData));
+			return [unescapeSnippets(returnData)];
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

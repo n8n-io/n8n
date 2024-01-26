@@ -7,8 +7,10 @@ import {
 	prefixMatch,
 	stripExcessParens,
 	hasActiveNode,
+	isCredentialsModalOpen,
 } from './utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
+import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 
 /**
  * Completions offered at the dollar position: `$|`
@@ -45,9 +47,26 @@ export function dollarCompletions(context: CompletionContext): CompletionResult 
 export function dollarOptions() {
 	const rank = setRank(['$json', '$input']);
 	const SKIP = new Set();
-	const DOLLAR_FUNCTIONS = ['$jmespath'];
+	const DOLLAR_FUNCTIONS = ['$jmespath', '$ifEmpty'];
 
-	if (!hasActiveNode()) return []; // e.g. credential modal
+	if (isCredentialsModalOpen()) {
+		return useExternalSecretsStore().isEnterpriseExternalSecretsEnabled
+			? [
+					{
+						label: '$secrets',
+						type: 'keyword',
+					},
+					{
+						label: '$vars',
+						type: 'keyword',
+					},
+			  ]
+			: [];
+	}
+
+	if (!hasActiveNode()) {
+		return [];
+	}
 
 	if (receivesNoBinaryData()) SKIP.add('$binary');
 

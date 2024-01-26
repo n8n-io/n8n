@@ -10,7 +10,9 @@ describe('N8nInfoTip', () => {
 	it('should render correctly as note', () => {
 		const wrapper = render(N8nInfoTip, {
 			slots,
-			stubs,
+			global: {
+				stubs,
+			},
 		});
 		expect(wrapper.html()).toMatchSnapshot();
 	});
@@ -18,9 +20,11 @@ describe('N8nInfoTip', () => {
 	it('should render correctly as tooltip', () => {
 		const wrapper = render(N8nInfoTip, {
 			slots,
-			stubs,
 			props: {
 				type: 'tooltip',
+			},
+			global: {
+				stubs,
 			},
 		});
 		expect(wrapper.html()).toMatchSnapshot();

@@ -1,23 +1,24 @@
 <template>
-	<div @keydown.stop class="variable-selector-wrapper">
+	<div class="variable-selector-wrapper" @keydown.stop>
 		<div class="input-wrapper">
 			<n8n-input
-				:placeholder="$locale.baseText('variableSelector.variableFilter')"
-				v-model="variableFilter"
 				ref="inputField"
+				v-model="variableFilter"
+				:placeholder="$locale.baseText('variableSelector.variableFilter')"
 				size="small"
 				type="text"
 			></n8n-input>
 		</div>
 
 		<div class="result-wrapper">
-			<variable-selector-item
-				:item="option"
+			<VariableSelectorItem
 				v-for="option in currentResults"
 				:key="option.key"
-				:extendAll="extendAll"
+				:item="option"
+				:extend-all="extendAll"
+				:redact-values="redactValues"
 				@itemSelected="forwardItemSelected"
-			></variable-selector-item>
+			></VariableSelectorItem>
 		</div>
 	</div>
 </template>
@@ -39,7 +40,7 @@ import type {
 	IWorkflowDataProxyAdditionalKeys,
 	Workflow,
 } from 'n8n-workflow';
-import { WorkflowDataProxy } from 'n8n-workflow';
+import { NodeConnectionType, WorkflowDataProxy } from 'n8n-workflow';
 
 import VariableSelectorItem from '@/components/VariableSelectorItem.vue';
 import type { INodeUi, IVariableItemSelected, IVariableSelectorOption } from '@/Interface';
@@ -55,11 +56,11 @@ const SKIPPED_NODE_TYPES = [STICKY_NODE_TYPE];
 
 export default defineComponent({
 	name: 'VariableSelector',
-	mixins: [workflowHelpers],
 	components: {
 		VariableSelectorItem,
 	},
-	props: ['path'],
+	mixins: [workflowHelpers],
+	props: ['path', 'redactValues'],
 	data() {
 		return {
 			variableFilter: '',
@@ -68,6 +69,13 @@ export default defineComponent({
 	},
 	computed: {
 		...mapStores(useNDVStore, useRootStore, useWorkflowsStore),
+		activeNode(): INodeUi | null {
+			const activeNode = this.ndvStore.activeNode!;
+			if (!activeNode) {
+				return null;
+			}
+			return this.getParentMainInputNode(this.getCurrentWorkflow(), activeNode);
+		},
 		extendAll(): boolean {
 			if (this.variableFilter) {
 				return true;
@@ -127,7 +135,7 @@ export default defineComponent({
 				return newItems;
 			}
 
-			if (inputData && inputData.options) {
+			if (inputData?.options) {
 				const newOptions = this.removeEmptyEntries(inputData.options);
 				if (Array.isArray(newOptions) && newOptions.length) {
 					// Has still options left so return
@@ -289,7 +297,7 @@ export default defineComponent({
 		 * @param {string} filterText Filter text for parameters
 		 * @param {number} [itemIndex=0] The index of the item
 		 * @param {number} [runIndex=0] The index of the run
-		 * @param {string} [inputName='main'] The name of the input
+		 * @param {string} [inputName=NodeConnectionType.Main] The name of the input
 		 * @param {number} [outputIndex=0] The index of the output
 		 * @param {boolean} [useShort=false] Use short notation $json vs. $('NodeName').json
 		 */
@@ -299,7 +307,7 @@ export default defineComponent({
 			filterText: string,
 			itemIndex = 0,
 			runIndex = 0,
-			inputName = 'main',
+			inputName = NodeConnectionType.Main,
 			outputIndex = 0,
 			useShort = false,
 		): IVariableSelectorOption[] | null {
@@ -360,7 +368,7 @@ export default defineComponent({
 			filterText: string,
 			useShort = false,
 		): IVariableSelectorOption[] | null {
-			const outputData = pinData.map((data) => ({ json: data } as INodeExecutionData))[0];
+			const outputData = pinData.map((data) => ({ json: data }) as INodeExecutionData)[0];
 
 			return this.getNodeOutput(nodeName, outputData, filterText, useShort);
 		},
@@ -383,7 +391,7 @@ export default defineComponent({
 
 			// Get json data
 			if (outputData.hasOwnProperty('json')) {
-				const jsonPropertyPrefix = useShort === true ? '$json' : `$('${nodeName}').item.json`;
+				const jsonPropertyPrefix = useShort ? '$json' : `$('${nodeName}').item.json`;
 
 				const jsonDataOptions: IVariableSelectorOption[] = [];
 				for (const propertyName of Object.keys(outputData.json)) {
@@ -408,7 +416,7 @@ export default defineComponent({
 
 			// Get binary data
 			if (outputData.hasOwnProperty('binary')) {
-				const binaryPropertyPrefix = useShort === true ? '$binary' : `$('${nodeName}').item.binary`;
+				const binaryPropertyPrefix = useShort ? '$binary' : `$('${nodeName}').item.binary`;
 
 				const binaryData = [];
 				let binaryPropertyData = [];
@@ -461,20 +469,18 @@ export default defineComponent({
 			filterText: string,
 		): IVariableSelectorOption[] | null {
 			const itemIndex = 0;
-			const inputName = 'main';
+			const inputName = NodeConnectionType.Main;
 			const runIndex = 0;
 			const returnData: IVariableSelectorOption[] = [];
 
-			const activeNode: INodeUi | null = this.ndvStore.activeNode;
-
-			if (activeNode === null) {
+			if (this.activeNode === null) {
 				return returnData;
 			}
 
 			const nodeConnection = this.workflow.getNodeConnectionIndexes(
-				activeNode.name,
+				this.activeNode.name,
 				parentNode[0],
-				'main',
+				inputName,
 			);
 			const connectionInputData = this.connectionInputData(
 				parentNode,
@@ -493,6 +499,7 @@ export default defineComponent({
 					id: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 					mode: 'test',
 					resumeUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+					resumeFormUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 				},
 
 				// deprecated
@@ -509,7 +516,6 @@ export default defineComponent({
 				connectionInputData,
 				{},
 				'manual',
-				this.rootStore.timezone,
 				additionalKeys,
 			);
 			const proxy = dataProxy.getDataProxy();
@@ -580,16 +586,14 @@ export default defineComponent({
 			return returnParameters;
 		},
 		getFilterResults(filterText: string, itemIndex: number): IVariableSelectorOption[] {
-			const inputName = 'main';
+			const inputName = NodeConnectionType.Main;
 
-			const activeNode: INodeUi | null = this.ndvStore.activeNode;
-
-			if (activeNode === null) {
+			if (this.activeNode === null) {
 				return [];
 			}
 
 			const executionData = this.workflowsStore.getWorkflowExecution;
-			let parentNode = this.workflow.getParentNodes(activeNode.name, inputName, 1);
+			let parentNode = this.workflow.getParentNodes(this.activeNode.name, inputName, 1);
 			let runData = this.workflowsStore.getWorkflowRunData;
 
 			if (runData === null) {
@@ -606,14 +610,14 @@ export default defineComponent({
 
 			let tempOptions: IVariableSelectorOption[];
 
-			if (executionData !== null && executionData.data !== undefined) {
+			if (executionData?.data !== undefined) {
 				const runExecutionData: IRunExecutionData = executionData.data;
 
 				tempOptions = this.getNodeContext(
 					this.workflow,
 					runExecutionData,
 					parentNode,
-					activeNode.name,
+					this.activeNode.name,
 					filterText,
 				) as IVariableSelectorOption[];
 				if (tempOptions.length) {
@@ -629,17 +633,23 @@ export default defineComponent({
 			if (parentNode.length) {
 				// If the node has an input node add the input data
 
-				const activeInputParentNode = parentNode.find(
-					(node) => node === this.ndvStore.ndvInputNodeName,
-				)!;
+				let ndvInputNodeName = this.ndvStore.ndvInputNodeName;
+				if (!ndvInputNodeName) {
+					// If no input node is set use the first parent one
+					// this is imporant for config-nodes which do not have
+					// a main input
+					ndvInputNodeName = parentNode[0];
+				}
+
+				const activeInputParentNode = parentNode.find((node) => node === ndvInputNodeName)!;
 
 				// Check from which output to read the data.
 				// Depends on how the nodes are connected.
 				// (example "IF" node. If node is connected to "true" or to "false" output)
 				const nodeConnection = this.workflow.getNodeConnectionIndexes(
-					activeNode.name,
+					this.activeNode.name,
 					activeInputParentNode,
-					'main',
+					inputName,
 				);
 				const outputIndex = nodeConnection === undefined ? 0 : nodeConnection.sourceIndex;
 
@@ -649,7 +659,7 @@ export default defineComponent({
 					filterText,
 					itemIndex,
 					0,
-					'main',
+					inputName,
 					outputIndex,
 					true,
 				) as IVariableSelectorOption[];
@@ -730,7 +740,7 @@ export default defineComponent({
 				name: this.$locale.baseText('variableSelector.parameters'),
 				options: this.sortOptions(
 					this.getNodeParameters(
-						activeNode.name,
+						this.activeNode.name,
 						initialPath,
 						skipParameter,
 						filterText,
@@ -750,7 +760,7 @@ export default defineComponent({
 			// -----------------------------------------
 			const allNodesData: IVariableSelectorOption[] = [];
 			let nodeOptions: IVariableSelectorOption[];
-			const upstreamNodes = this.workflow.getParentNodes(activeNode.name, inputName);
+			const upstreamNodes = this.workflow.getParentNodes(this.activeNode.name, inputName);
 
 			const workflowNodes = Object.entries(this.workflow.nodes);
 
@@ -763,7 +773,7 @@ export default defineComponent({
 				// Add the parameters of all nodes
 				// TODO: Later have to make sure that no parameters can be referenced which have expression which use input-data (for nodes which are not parent nodes)
 
-				if (nodeName === activeNode.name) {
+				if (nodeName === this.activeNode.name) {
 					// Skip the current node as this one get added separately
 					continue;
 				}
@@ -781,7 +791,7 @@ export default defineComponent({
 					} as IVariableSelectorOption,
 				];
 
-				if (executionData !== null && executionData.data !== undefined) {
+				if (executionData?.data !== undefined) {
 					const runExecutionData: IRunExecutionData = executionData.data;
 
 					parentNode = this.workflow.getParentNodes(nodeName, inputName, 1);

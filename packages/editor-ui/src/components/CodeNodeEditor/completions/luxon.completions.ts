@@ -1,9 +1,8 @@
-import Vue from 'vue';
 import { escape } from '../utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
-import type { CodeNodeEditorMixin } from '../types';
+import { defineComponent } from 'vue';
 
-export const luxonCompletions = (Vue as CodeNodeEditorMixin).extend({
+export const luxonCompletions = defineComponent({
 	methods: {
 		/**
 		 * Complete `$today.` with luxon `DateTime` instance methods.

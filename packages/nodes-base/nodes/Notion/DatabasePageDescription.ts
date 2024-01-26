@@ -14,8 +14,10 @@ export const databasePageOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				version: [2],
 				resource: ['databasePage'],
+			},
+			hide: {
+				'@version': [1],
 			},
 		},
 		options: [
@@ -53,7 +55,7 @@ export const databasePageOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				version: [1],
+				'@version': [1],
 				resource: ['databasePage'],
 			},
 		},
@@ -161,9 +163,11 @@ export const databasePageFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				version: [2],
 				resource: ['databasePage'],
 				operation: ['create'],
+			},
+			hide: {
+				'@version': [1],
 			},
 		},
 		description: 'Page title. Appears at the top of the page and can be found via Quick Find.',
@@ -502,8 +506,10 @@ export const databasePageFields: INodeProperties[] = [
 						},
 						displayOptions: {
 							show: {
-								'/version': [2],
 								type: ['files'],
+							},
+							hide: {
+								'@version': [1],
 							},
 						},
 						default: {},
@@ -969,8 +975,10 @@ export const databasePageFields: INodeProperties[] = [
 						},
 						displayOptions: {
 							show: {
-								'/version': [2],
 								type: ['files'],
+							},
+							hide: {
+								'@version': [1],
 							},
 						},
 						default: {},
@@ -1000,6 +1008,48 @@ export const databasePageFields: INodeProperties[] = [
 			},
 		],
 	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		displayOptions: {
+			show: {
+				resource: ['databasePage'],
+				operation: ['update'],
+			},
+		},
+		default: {},
+		placeholder: 'Add Option',
+		options: [
+			{
+				displayName: 'Icon Type',
+				name: 'iconType',
+				type: 'options',
+				options: [
+					{
+						name: 'Emoji',
+						value: 'emoji',
+						description: 'Use an Emoji for the icon',
+					},
+					{
+						name: 'File',
+						value: 'file',
+						description: 'Use a file for the icon',
+					},
+				],
+				default: 'emoji',
+				description: 'The icon type for the database page, Either a URL or an Emoji',
+			},
+			{
+				displayName: 'Icon',
+				name: 'icon',
+				type: 'string',
+				default: '',
+				description: 'Emoji or File URL to use as the icon',
+			},
+		],
+	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                databasePage:get                            */
 	/* -------------------------------------------------------------------------- */
@@ -1055,9 +1105,11 @@ export const databasePageFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				version: [2],
 				resource: ['databasePage'],
 				operation: ['get'],
+			},
+			hide: {
+				'@version': [1],
 			},
 		},
 		description: 'The Notion Database Page to get',
@@ -1068,9 +1120,11 @@ export const databasePageFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				version: [2],
 				resource: ['databasePage'],
 				operation: ['get'],
+			},
+			hide: {
+				'@version': [1],
 			},
 		},
 		default: true,
@@ -1212,9 +1266,11 @@ export const databasePageFields: INodeProperties[] = [
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						'/version': [2],
 						'/resource': ['databasePage'],
 						'/operation': ['getAll'],
+					},
+					hide: {
+						'@version': [1],
 					},
 				},
 				default: false,
@@ -1230,7 +1286,7 @@ export const databasePageFields: INodeProperties[] = [
 				},
 				displayOptions: {
 					show: {
-						'/version': [1],
+						'@version': [1],
 					},
 				},
 				default: {},

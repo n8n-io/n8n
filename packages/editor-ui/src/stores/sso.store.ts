@@ -4,9 +4,8 @@ import { EnterpriseEditionFeature } from '@/constants';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import * as ssoApi from '@/api/sso';
-import type { SamlPreferences } from '@/Interface';
+import type { SamlPreferences, SamlPreferencesExtractedData } from '@/Interface';
 import { updateCurrentUser } from '@/api/users';
-import type { SamlPreferencesExtractedData } from '@/Interface';
 import { useUsersStore } from '@/stores/users.store';
 
 export const useSSOStore = defineStore('sso', () => {

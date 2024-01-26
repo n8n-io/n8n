@@ -6,13 +6,12 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
 import { ouraApiRequest } from './GenericFunctions';
 
 import { profileOperations } from './ProfileDescription';
 
 import { summaryFields, summaryOperations } from './SummaryDescription';
-
-import moment from 'moment';
 
 export class Oura implements INodeType {
 	description: INodeTypeDescription = {

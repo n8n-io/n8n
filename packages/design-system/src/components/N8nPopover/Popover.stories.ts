@@ -1,4 +1,4 @@
-import type { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue3';
 import N8nPopover from './Popover.vue';
 
 export default {
@@ -36,12 +36,19 @@ export default {
 };
 
 const Template: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
 	props: Object.keys(argTypes),
 	components: {
 		N8nPopover,
 	},
-	template:
-		'<n8n-Popover v-bind="$props"><div style="margin:50px; display: inline-block;"><span>yo</span></div></n8n-Popover>',
+	template: `<n8n-popover v-bind="args">
+			<div style="margin:50px; display: inline-block;">
+				<span>yo</span>
+			</div>
+			<template #content>
+				Popover
+			</template>
+		</n8n-popover>`,
 });
 
 export const Popover = Template.bind({});

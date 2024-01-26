@@ -20,6 +20,11 @@
 		background-color: var.$input-background-color;
 		background-image: none;
 		border-radius: var.$input-border-radius;
+		border-top-left-radius: var.$input-border-top-left-radius;
+		border-top-right-radius: var.$input-border-top-right-radius;
+		border-bottom-left-radius: var.$input-border-bottom-left-radius;
+		border-bottom-right-radius: var.$input-border-bottom-right-radius;
+
 		transition: var.$border-transition-base;
 
 		&,
@@ -108,12 +113,19 @@
 		background-color: var.$input-background-color;
 		background-image: none;
 		border-radius: var.$input-border-radius;
+		border-top-left-radius: var.$input-border-top-left-radius;
+		border-top-right-radius: var.$input-border-top-right-radius;
+		border-bottom-left-radius: var.$input-border-bottom-left-radius;
+		border-bottom-right-radius: var.$input-border-bottom-right-radius;
 		border: var.$input-border;
+		border-right-color: var.$input-border-right-color;
+		border-bottom-color: var.$input-border-bottom-color;
 		box-sizing: border-box;
 		color: var.$input-font-color;
 		display: inline-block;
 		font-size: inherit;
 		height: var.$input-height;
+		min-height: var.$input-height;
 		line-height: var.$input-height;
 		outline: none;
 		padding: 0 0 0 var(--spacing-2xs);
@@ -144,6 +156,7 @@
 	}
 
 	@include mixins.e(suffix-inner) {
+		display: inline-flex;
 		pointer-events: all;
 	}
 
@@ -231,6 +244,7 @@
 
 		@include mixins.e(inner) {
 			height: var.$input-medium-height;
+			min-height: var.$input-medium-height;
 			line-height: var.$input-medium-height;
 		}
 
@@ -243,6 +257,7 @@
 
 		@include mixins.e(inner) {
 			height: var.$input-small-height;
+			min-height: var.$input-small-height;
 			line-height: var.$input-small-height;
 		}
 
@@ -255,6 +270,7 @@
 
 		@include mixins.e(inner) {
 			height: var.$input-mini-height;
+			min-height: var.$input-mini-height;
 			line-height: var.$input-mini-height;
 		}
 
@@ -282,8 +298,14 @@
 		vertical-align: middle;
 		display: table-cell;
 		position: relative;
-		border: var(--border-base);
+		border: var.$input-border;
 		border-radius: var.$input-border-radius;
+		border-top-left-radius: var.$input-border-top-left-radius;
+		border-top-right-radius: var.$input-border-top-right-radius;
+		border-bottom-left-radius: var.$input-border-bottom-left-radius;
+		border-bottom-right-radius: var.$input-border-bottom-right-radius;
+		border-right-color: var.$input-border-right-color;
+		border-bottom-color: var.$input-border-bottom-color;
 		padding: 0 10px;
 		width: 1px;
 		white-space: nowrap;

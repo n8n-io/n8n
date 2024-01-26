@@ -5,7 +5,7 @@ import {
 } from '@/api/workflow-webhooks';
 import {
 	ABOUT_MODAL_KEY,
-	ASK_AI_MODAL_KEY,
+	CHAT_EMBED_MODAL_KEY,
 	CHANGE_PASSWORD_MODAL_KEY,
 	COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
 	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
@@ -15,11 +15,11 @@ import {
 	CREDENTIAL_SELECT_MODAL_KEY,
 	DELETE_USER_MODAL_KEY,
 	DUPLICATE_MODAL_KEY,
-	EXECUTIONS_MODAL_KEY,
 	FAKE_DOOR_FEATURES,
 	IMPORT_CURL_MODAL_KEY,
 	INVITE_USER_MODAL_KEY,
 	LOG_STREAM_MODAL_KEY,
+	MFA_SETUP_MODAL_KEY,
 	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 	PERSONALIZATION_MODAL_KEY,
 	STORES,
@@ -28,90 +28,102 @@ import {
 	VERSIONS_MODAL_KEY,
 	VIEWS,
 	WORKFLOW_ACTIVE_MODAL_KEY,
+	WORKFLOW_LM_CHAT_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
+	EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
+	SOURCE_CONTROL_PULL_MODAL_KEY,
+	DEBUG_PAYWALL_MODAL_KEY,
+	N8N_PRICING_PAGE_URL,
+	WORKFLOW_HISTORY_VERSION_RESTORE,
+	SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY,
+	SETUP_CREDENTIALS_MODAL_KEY,
 } from '@/constants';
 import type {
+	CloudUpdateLinkSourceType,
 	CurlToJSONResponse,
 	IFakeDoorLocation,
-	IMenuItem,
 	INodeUi,
 	IOnboardingCallPrompt,
 	IUser,
 	UIState,
+	UTMCampaign,
 	XYPosition,
+	Modals,
+	NewCredentialsModal,
+	ThemeOption,
+	AppliedThemeOption,
+	SuggestedTemplates,
 } from '@/Interface';
 import { defineStore } from 'pinia';
-import { useRootStore } from './n8nRoot.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
 import { getCurlToJson } from '@/api/curlHelper';
-import { useWorkflowsStore } from './workflows.store';
-import { useSettingsStore } from './settings.store';
-import { useCloudPlanStore } from './cloudPlan.store';
-import type { BaseTextKey } from '@/plugins/i18n';
-import { i18n as locale } from '@/plugins/i18n';
-import type { Modals, NewCredentialsModal } from '@/Interface';
+import { useCloudPlanStore } from '@/stores/cloudPlan.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { hasPermission } from '@/rbac/permissions';
 import { useTelemetryStore } from '@/stores/telemetry.store';
+import { dismissBannerPermanently } from '@/api/ui';
+import type { BannerName } from 'n8n-workflow';
+import {
+	addThemeToBody,
+	getPreferredTheme,
+	getThemeOverride,
+	isValidTheme,
+	updateTheme,
+} from './ui.utils';
+import { useUsersStore } from './users.store';
+
+let savedTheme: ThemeOption = 'system';
+try {
+	const value = getThemeOverride();
+	if (isValidTheme(value)) {
+		savedTheme = value;
+		addThemeToBody(value);
+	}
+} catch (e) {}
+
+export type UiStore = ReturnType<typeof useUIStore>;
 
 export const useUIStore = defineStore(STORES.UI, {
 	state: (): UIState => ({
 		activeActions: [],
 		activeCredentialType: null,
+		theme: savedTheme,
 		modals: {
-			[ABOUT_MODAL_KEY]: {
-				open: false,
-			},
-			[ASK_AI_MODAL_KEY]: {
-				open: false,
-			},
-			[CHANGE_PASSWORD_MODAL_KEY]: {
-				open: false,
-			},
-			[CONTACT_PROMPT_MODAL_KEY]: {
-				open: false,
-			},
-			[CREDENTIAL_SELECT_MODAL_KEY]: {
-				open: false,
-			},
+			...Object.fromEntries(
+				[
+					ABOUT_MODAL_KEY,
+					CHAT_EMBED_MODAL_KEY,
+					CHANGE_PASSWORD_MODAL_KEY,
+					CONTACT_PROMPT_MODAL_KEY,
+					CREDENTIAL_SELECT_MODAL_KEY,
+					DUPLICATE_MODAL_KEY,
+					ONBOARDING_CALL_SIGNUP_MODAL_KEY,
+					PERSONALIZATION_MODAL_KEY,
+					INVITE_USER_MODAL_KEY,
+					TAGS_MANAGER_MODAL_KEY,
+					VALUE_SURVEY_MODAL_KEY,
+					VERSIONS_MODAL_KEY,
+					WORKFLOW_LM_CHAT_MODAL_KEY,
+					WORKFLOW_SETTINGS_MODAL_KEY,
+					WORKFLOW_SHARE_MODAL_KEY,
+					WORKFLOW_ACTIVE_MODAL_KEY,
+					COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
+					MFA_SETUP_MODAL_KEY,
+					SOURCE_CONTROL_PUSH_MODAL_KEY,
+					SOURCE_CONTROL_PULL_MODAL_KEY,
+					EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
+					DEBUG_PAYWALL_MODAL_KEY,
+					WORKFLOW_HISTORY_VERSION_RESTORE,
+					SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY,
+					SETUP_CREDENTIALS_MODAL_KEY,
+				].map((modalKey) => [modalKey, { open: false }]),
+			),
 			[DELETE_USER_MODAL_KEY]: {
 				open: false,
 				activeId: null,
-			},
-			[DUPLICATE_MODAL_KEY]: {
-				open: false,
-			},
-			[ONBOARDING_CALL_SIGNUP_MODAL_KEY]: {
-				open: false,
-			},
-			[PERSONALIZATION_MODAL_KEY]: {
-				open: false,
-			},
-			[INVITE_USER_MODAL_KEY]: {
-				open: false,
-			},
-			[TAGS_MANAGER_MODAL_KEY]: {
-				open: false,
-			},
-			[VALUE_SURVEY_MODAL_KEY]: {
-				open: false,
-			},
-			[VERSIONS_MODAL_KEY]: {
-				open: false,
-			},
-			[WORKFLOW_SETTINGS_MODAL_KEY]: {
-				open: false,
-			},
-			[EXECUTIONS_MODAL_KEY]: {
-				open: false,
-			},
-			[WORKFLOW_SHARE_MODAL_KEY]: {
-				open: false,
-			},
-			[WORKFLOW_ACTIVE_MODAL_KEY]: {
-				open: false,
-			},
-			[COMMUNITY_PACKAGE_INSTALL_MODAL_KEY]: {
-				open: false,
 			},
 			[COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY]: {
 				open: false,
@@ -133,9 +145,6 @@ export const useUIStore = defineStore(STORES.UI, {
 				activeId: null,
 				showAuthSelector: false,
 			},
-			[SOURCE_CONTROL_PUSH_MODAL_KEY]: {
-				open: false,
-			},
 		},
 		modalStack: [],
 		sidebarMenuCollapsed: true,
@@ -143,16 +152,6 @@ export const useUIStore = defineStore(STORES.UI, {
 		currentView: '',
 		mainPanelPosition: 0.5,
 		fakeDoorFeatures: [
-			{
-				id: FAKE_DOOR_FEATURES.ENVIRONMENTS,
-				featureName: 'fakeDoor.settings.environments.name',
-				icon: 'server',
-				infoText: 'fakeDoor.settings.environments.infoText',
-				actionBoxTitle: 'fakeDoor.settings.environments.actionBox.title',
-				actionBoxDescription: 'fakeDoor.settings.environments.actionBox.description',
-				linkURL: 'https://n8n-community.typeform.com/to/l7QOrERN#f=environments',
-				uiLocations: ['settings'],
-			},
 			{
 				id: FAKE_DOOR_FEATURES.SSO,
 				featureName: 'fakeDoor.settings.sso.name',
@@ -176,12 +175,29 @@ export const useUIStore = defineStore(STORES.UI, {
 		nodeViewOffsetPosition: [0, 0],
 		nodeViewMoveInProgress: false,
 		selectedNodes: [],
-		sidebarMenuItems: [],
 		nodeViewInitialized: false,
 		addFirstStepOnLoad: false,
 		executionSidebarAutoRefresh: true,
+		bannersHeight: 0,
+		bannerStack: [],
+		suggestedTemplates: undefined,
+		// Notifications that should show when a view is initialized
+		// This enables us to set a queue of notifications form outside (another component)
+		// and then show them when the view is initialized
+		pendingNotificationsForViews: {},
 	}),
 	getters: {
+		appliedTheme(): AppliedThemeOption {
+			return this.theme === 'system' ? getPreferredTheme() : this.theme;
+		},
+		logo(): string {
+			const { releaseChannel } = useSettingsStore().settings;
+			const type = this.appliedTheme === 'dark' ? '-dark-mode.svg' : '.svg';
+
+			return releaseChannel === 'stable'
+				? `n8n-logo-expanded${type}`
+				: `n8n-${releaseChannel}-logo${type}`;
+		},
 		contextBasedTranslationKeys() {
 			const settingsStore = useSettingsStore();
 			const deploymentType = settingsStore.deploymentType;
@@ -194,7 +210,11 @@ export const useUIStore = defineStore(STORES.UI, {
 			}
 
 			return {
-				upgradeLinkUrl: `contextual.upgradeLinkUrl${contextKey}`,
+				feature: {
+					unavailable: {
+						title: `contextual.feature.unavailable.title${contextKey}`,
+					},
+				},
 				credentials: {
 					sharing: {
 						unavailable: {
@@ -281,7 +301,9 @@ export const useUIStore = defineStore(STORES.UI, {
 				this.fakeDoorFeatures.find((fakeDoor) => fakeDoor.id.toString() === id);
 		},
 		isReadOnlyView(): boolean {
-			return ![VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW].includes(this.currentView as VIEWS);
+			return ![VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG].includes(
+				this.currentView as VIEWS,
+			);
 		},
 		isNodeView(): boolean {
 			return [
@@ -316,22 +338,45 @@ export const useUIStore = defineStore(STORES.UI, {
 			};
 		},
 		upgradeLinkUrl() {
-			return (source: string, utm_campaign: string): string => {
-				const linkUrlTranslationKey = this.contextBasedTranslationKeys
-					.upgradeLinkUrl as BaseTextKey;
-				let linkUrl = locale.baseText(linkUrlTranslationKey);
+			return async (source: string, utm_campaign: string, deploymentType: string) => {
+				let linkUrl = '';
 
-				if (linkUrlTranslationKey.endsWith('.upgradeLinkUrl')) {
-					linkUrl = `${linkUrl}?ref=${source}`;
-				} else if (linkUrlTranslationKey.endsWith('.desktop')) {
-					linkUrl = `${linkUrl}&utm_campaign=${utm_campaign || source}`;
+				const searchParams = new URLSearchParams();
+				const { isInstanceOwner } = useUsersStore();
+
+				if (deploymentType === 'cloud' && hasPermission(['instanceOwner'])) {
+					const adminPanelHost = new URL(window.location.href).host.split('.').slice(1).join('.');
+					const { code } = await useCloudPlanStore().getAutoLoginCode();
+					linkUrl = `https://${adminPanelHost}/login`;
+					searchParams.set('code', code);
+					searchParams.set('returnPath', '/account/change-plan');
+				} else {
+					linkUrl = N8N_PRICING_PAGE_URL;
 				}
 
-				return linkUrl;
+				if (utm_campaign) {
+					searchParams.set('utm_campaign', utm_campaign);
+				}
+
+				if (source) {
+					searchParams.set('source', source);
+				}
+				return `${linkUrl}?${searchParams.toString()}`;
 			};
+		},
+		headerHeight() {
+			const style = getComputedStyle(document.body);
+			return Number(style.getPropertyValue('--header-height'));
+		},
+		isAnyModalOpen(): boolean {
+			return this.modalStack.length > 0;
 		},
 	},
 	actions: {
+		setTheme(theme: ThemeOption): void {
+			this.theme = theme;
+			updateTheme(theme);
+		},
 		setMode(name: keyof Modals, mode: string): void {
 			this.modals[name] = {
 				...this.modals[name],
@@ -375,17 +420,6 @@ export const useUIStore = defineStore(STORES.UI, {
 			this.modalStack = this.modalStack.filter((openModalName: string) => {
 				return name !== openModalName;
 			});
-		},
-		closeAllModals(): void {
-			Object.keys(this.modals).forEach((name) => {
-				if (this.modals[name].open) {
-					this.modals[name] = {
-						...this.modals[name],
-						open: false,
-					};
-				}
-			});
-			this.modalStack = [];
 		},
 		draggableStartDragging(type: string, data: string): void {
 			this.draggable = {
@@ -475,7 +509,10 @@ export const useUIStore = defineStore(STORES.UI, {
 			}
 		},
 		addSelectedNode(node: INodeUi): void {
-			this.selectedNodes.push(node);
+			const isAlreadySelected = this.selectedNodes.some((n) => n.name === node.name);
+			if (!isAlreadySelected) {
+				this.selectedNodes.push(node);
+			}
 		},
 		removeNodeFromSelection(node: INodeUi): void {
 			let index;
@@ -488,10 +525,6 @@ export const useUIStore = defineStore(STORES.UI, {
 		},
 		resetSelectedNodes(): void {
 			this.selectedNodes = [];
-		},
-		addSidebarMenuItems(menuItems: IMenuItem[]) {
-			const updated = this.sidebarMenuItems.concat(menuItems);
-			this.sidebarMenuItems = updated;
 		},
 		setCurlCommand(payload: { name: string; command: string }): void {
 			this.modals[payload.name] = {
@@ -512,22 +545,114 @@ export const useUIStore = defineStore(STORES.UI, {
 			const rootStore = useRootStore();
 			return getCurlToJson(rootStore.getRestApiContext, curlCommand);
 		},
-		goToUpgrade(source: string, utm_campaign: string, mode: 'open' | 'redirect' = 'open'): void {
+		async goToUpgrade(
+			source: CloudUpdateLinkSourceType,
+			utm_campaign: UTMCampaign,
+			mode: 'open' | 'redirect' = 'open',
+		): Promise<void> {
 			const { usageLeft, trialDaysLeft, userIsTrialing } = useCloudPlanStore();
 			const { executionsLeft, workflowsLeft } = usageLeft;
+			const deploymentType = useSettingsStore().deploymentType;
+
 			useTelemetryStore().track('User clicked upgrade CTA', {
 				source,
 				isTrial: userIsTrialing,
-				deploymentType: useSettingsStore().deploymentType,
+				deploymentType,
 				trialDaysLeft,
 				executionsLeft,
 				workflowsLeft,
 			});
+
+			const upgradeLink = await this.upgradeLinkUrl(source, utm_campaign, deploymentType);
+
 			if (mode === 'open') {
-				window.open(this.upgradeLinkUrl(source, utm_campaign), '_blank');
+				window.open(upgradeLink, '_blank');
 			} else {
-				location.href = this.upgradeLinkUrl(source, utm_campaign);
+				location.href = upgradeLink;
 			}
+		},
+		async dismissBanner(
+			name: BannerName,
+			type: 'temporary' | 'permanent' = 'temporary',
+		): Promise<void> {
+			if (type === 'permanent') {
+				await dismissBannerPermanently(useRootStore().getRestApiContext, {
+					bannerName: name,
+					dismissedBanners: useSettingsStore().permanentlyDismissedBanners,
+				});
+				this.removeBannerFromStack(name);
+				return;
+			}
+			this.removeBannerFromStack(name);
+		},
+		updateBannersHeight(newHeight: number): void {
+			this.bannersHeight = newHeight;
+		},
+		pushBannerToStack(name: BannerName) {
+			if (this.bannerStack.includes(name)) return;
+			this.bannerStack.push(name);
+		},
+		removeBannerFromStack(name: BannerName) {
+			this.bannerStack = this.bannerStack.filter((bannerName) => bannerName !== name);
+		},
+		clearBannerStack() {
+			this.bannerStack = [];
+		},
+		setSuggestedTemplates(templates: SuggestedTemplates) {
+			this.suggestedTemplates = templates;
+		},
+		deleteSuggestedTemplates() {
+			this.suggestedTemplates = undefined;
+		},
+		getNotificationsForView(view: VIEWS): NotificationOptions[] {
+			return this.pendingNotificationsForViews[view] ?? [];
+		},
+		setNotificationsForView(view: VIEWS, notifications: NotificationOptions[]) {
+			this.pendingNotificationsForViews[view] = notifications;
+		},
+		deleteNotificationsForView(view: VIEWS) {
+			delete this.pendingNotificationsForViews[view];
 		},
 	},
 });
+
+/**
+ * Helper function for listening to credential changes in the store
+ */
+export const listenForModalChanges = (opts: {
+	store: UiStore;
+	onModalOpened?: (name: keyof Modals) => void;
+	onModalClosed?: (name: keyof Modals) => void;
+}) => {
+	const { store, onModalClosed, onModalOpened } = opts;
+	const listeningForActions = ['openModal', 'openModalWithData', 'closeModal'];
+
+	return store.$onAction((result) => {
+		const { name, after, args } = result;
+		after(async () => {
+			if (!listeningForActions.includes(name)) {
+				return;
+			}
+
+			switch (name) {
+				case 'openModal': {
+					const modalName = args[0];
+					onModalOpened?.(modalName);
+					break;
+				}
+
+				case 'openModalWithData': {
+					const { name: modalName } = args[0] ?? {};
+					onModalOpened?.(modalName);
+					break;
+				}
+
+				case 'closeModal': {
+					const modalName = args[0];
+					onModalClosed?.(modalName);
+					break;
+				}
+			}
+		});
+	});
+};

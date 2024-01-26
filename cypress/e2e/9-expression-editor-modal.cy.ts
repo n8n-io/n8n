@@ -3,16 +3,14 @@ import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 const WorkflowPage = new WorkflowPageClass();
 
 describe('Expression editor modal', () => {
-	before(() => {
-		cy.skipSetup();
-	});
-
 	beforeEach(() => {
 		WorkflowPage.actions.visit();
 		WorkflowPage.actions.addInitialNodeToCanvas('Manual');
 		WorkflowPage.actions.addNodeToCanvas('Hacker News');
 		WorkflowPage.actions.openNode('Hacker News');
 		WorkflowPage.actions.openExpressionEditorModal();
+
+		cy.on('uncaught:exception', (err) => err.name !== 'ExpressionError');
 	});
 
 	it('should resolve primitive resolvables', () => {
@@ -59,6 +57,6 @@ describe('Expression editor modal', () => {
 	it('should resolve $parameter[]', () => {
 		WorkflowPage.getters.expressionModalInput().clear();
 		WorkflowPage.getters.expressionModalInput().type('{{ $parameter["operation"]');
-		WorkflowPage.getters.expressionModalOutput().contains(/^get$/);
+		WorkflowPage.getters.expressionModalOutput().should('have.text', 'getAll');
 	});
 });

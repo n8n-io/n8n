@@ -4,7 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
 
-const prettier = path.resolve('node_modules', 'prettier', 'bin-prettier.js');
+const prettier = path.resolve('node_modules', '.bin', 'prettier');
 
 if (!fs.existsSync(prettier)) {
 	throw new Error(

@@ -9,6 +9,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
+import { capitalCase } from 'change-case';
 import {
 	adjustAddresses,
 	getFilterQuery,
@@ -35,9 +36,7 @@ import type {
 	NewCustomer,
 	NewProduct,
 	Search,
-} from './Types';
-
-import { capitalCase } from 'change-case';
+} from './types';
 
 export class Magento2 implements INodeType {
 	description: INodeTypeDescription = {
@@ -810,6 +809,6 @@ export class Magento2 implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

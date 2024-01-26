@@ -1,8 +1,13 @@
-import type { IDataObject, IExecuteFunctions, IGetNodeParameterOptions, INode } from 'n8n-workflow';
-
-import type { ColumnInfo, PgpDatabase, QueriesRunner } from '../../v2/helpers/interfaces';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	IGetNodeParameterOptions,
+	INode,
+	INodeParameters,
+} from 'n8n-workflow';
 
 import { get } from 'lodash';
+import type { ColumnInfo, PgpDatabase, QueriesRunner } from '../../v2/helpers/interfaces';
 
 import * as deleteTable from '../../v2/actions/database/deleteTable.operation';
 import * as executeQuery from '../../v2/actions/database/executeQuery.operation';
@@ -38,6 +43,7 @@ const createMockExecuteFunction = (nodeParameters: IDataObject) => {
 			return get(nodeParameters, parameter, fallbackValue);
 		},
 		getNode() {
+			node.parameters = { ...node.parameters, ...(nodeParameters as INodeParameters) };
 			return node;
 		},
 	} as unknown as IExecuteFunctions;
@@ -82,7 +88,7 @@ describe('Test PostgresV2, deleteTable operation', () => {
 					},
 				],
 			},
-			options: {},
+			options: { nodeVersion: 2.1 },
 		};
 		const nodeOptions = nodeParameters.options as IDataObject;
 
@@ -161,7 +167,7 @@ describe('Test PostgresV2, deleteTable operation', () => {
 				cachedResultName: 'my_table',
 			},
 			deleteCommand: 'drop',
-			options: {},
+			options: { nodeVersion: 2.1 },
 		};
 		const nodeOptions = nodeParameters.options as IDataObject;
 
@@ -249,12 +255,12 @@ describe('Test PostgresV2, insert operation', () => {
 					},
 				],
 			},
-			options: {},
+			options: { nodeVersion: 2.1 },
 		};
 		const columnsInfo: ColumnInfo[] = [
-			{ column_name: 'id', data_type: 'integer', is_nullable: 'NO' },
-			{ column_name: 'json', data_type: 'json', is_nullable: 'NO' },
-			{ column_name: 'foo', data_type: 'text', is_nullable: 'NO' },
+			{ column_name: 'id', data_type: 'integer', is_nullable: 'NO', udt_name: '' },
+			{ column_name: 'json', data_type: 'json', is_nullable: 'NO', udt_name: '' },
+			{ column_name: 'foo', data_type: 'text', is_nullable: 'NO', udt_name: '' },
 		];
 
 		const nodeOptions = nodeParameters.options as IDataObject;
@@ -292,12 +298,12 @@ describe('Test PostgresV2, insert operation', () => {
 				mode: 'list',
 			},
 			dataMode: 'autoMapInputData',
-			options: {},
+			options: { nodeVersion: 2.1 },
 		};
 		const columnsInfo: ColumnInfo[] = [
-			{ column_name: 'id', data_type: 'integer', is_nullable: 'NO' },
-			{ column_name: 'json', data_type: 'json', is_nullable: 'NO' },
-			{ column_name: 'foo', data_type: 'text', is_nullable: 'NO' },
+			{ column_name: 'id', data_type: 'integer', is_nullable: 'NO', udt_name: '' },
+			{ column_name: 'json', data_type: 'json', is_nullable: 'NO', udt_name: '' },
+			{ column_name: 'foo', data_type: 'text', is_nullable: 'NO', udt_name: '' },
 		];
 
 		const inputItems = [
@@ -502,12 +508,13 @@ describe('Test PostgresV2, update operation', () => {
 			},
 			options: {
 				outputColumns: ['json', 'foo'],
+				nodeVersion: 2.1,
 			},
 		};
 		const columnsInfo: ColumnInfo[] = [
-			{ column_name: 'id', data_type: 'integer', is_nullable: 'NO' },
-			{ column_name: 'json', data_type: 'json', is_nullable: 'NO' },
-			{ column_name: 'foo', data_type: 'text', is_nullable: 'NO' },
+			{ column_name: 'id', data_type: 'integer', is_nullable: 'NO', udt_name: '' },
+			{ column_name: 'json', data_type: 'json', is_nullable: 'NO', udt_name: '' },
+			{ column_name: 'foo', data_type: 'text', is_nullable: 'NO', udt_name: '' },
 		];
 
 		const nodeOptions = nodeParameters.options as IDataObject;
@@ -558,12 +565,12 @@ describe('Test PostgresV2, update operation', () => {
 			},
 			dataMode: 'autoMapInputData',
 			columnToMatchOn: 'id',
-			options: {},
+			options: { nodeVersion: 2.1 },
 		};
 		const columnsInfo: ColumnInfo[] = [
-			{ column_name: 'id', data_type: 'integer', is_nullable: 'NO' },
-			{ column_name: 'json', data_type: 'json', is_nullable: 'NO' },
-			{ column_name: 'foo', data_type: 'text', is_nullable: 'NO' },
+			{ column_name: 'id', data_type: 'integer', is_nullable: 'NO', udt_name: '' },
+			{ column_name: 'json', data_type: 'json', is_nullable: 'NO', udt_name: '' },
+			{ column_name: 'foo', data_type: 'text', is_nullable: 'NO', udt_name: '' },
 		];
 
 		const inputItems = [
@@ -661,12 +668,13 @@ describe('Test PostgresV2, upsert operation', () => {
 			},
 			options: {
 				outputColumns: ['json'],
+				nodeVersion: 2.1,
 			},
 		};
 		const columnsInfo: ColumnInfo[] = [
-			{ column_name: 'id', data_type: 'integer', is_nullable: 'NO' },
-			{ column_name: 'json', data_type: 'json', is_nullable: 'NO' },
-			{ column_name: 'foo', data_type: 'text', is_nullable: 'NO' },
+			{ column_name: 'id', data_type: 'integer', is_nullable: 'NO', udt_name: '' },
+			{ column_name: 'json', data_type: 'json', is_nullable: 'NO', udt_name: '' },
+			{ column_name: 'foo', data_type: 'text', is_nullable: 'NO', udt_name: '' },
 		];
 
 		const nodeOptions = nodeParameters.options as IDataObject;
@@ -717,12 +725,12 @@ describe('Test PostgresV2, upsert operation', () => {
 			},
 			dataMode: 'autoMapInputData',
 			columnToMatchOn: 'id',
-			options: {},
+			options: { nodeVersion: 2.1 },
 		};
 		const columnsInfo: ColumnInfo[] = [
-			{ column_name: 'id', data_type: 'integer', is_nullable: 'NO' },
-			{ column_name: 'json', data_type: 'json', is_nullable: 'NO' },
-			{ column_name: 'foo', data_type: 'text', is_nullable: 'NO' },
+			{ column_name: 'id', data_type: 'integer', is_nullable: 'NO', udt_name: '' },
+			{ column_name: 'json', data_type: 'json', is_nullable: 'NO', udt_name: '' },
+			{ column_name: 'foo', data_type: 'text', is_nullable: 'NO', udt_name: '' },
 		];
 
 		const inputItems = [
