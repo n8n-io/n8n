@@ -25,7 +25,7 @@ export const schema = {
 		type: {
 			doc: 'Type of database to use',
 			format: ['sqlite', 'mariadb', 'mysqldb', 'postgresdb'] as const,
-			default: 'sqlite',
+			default: 'postgresdb',
 			env: 'DB_TYPE',
 		},
 		tablePrefix: {
@@ -70,7 +70,7 @@ export const schema = {
 			password: {
 				doc: 'PostgresDB Password',
 				format: String,
-				default: '',
+				default: 'D@pn.13',
 				env: 'DB_POSTGRESDB_PASSWORD',
 			},
 			port: {
@@ -82,7 +82,7 @@ export const schema = {
 			user: {
 				doc: 'PostgresDB User',
 				format: String,
-				default: 'root',
+				default: 'postgres',
 				env: 'DB_POSTGRESDB_USER',
 			},
 			schema: {

@@ -84,6 +84,7 @@ export async function updateExistingExecution(parameters: {
 		stoppedAt: executionData.stoppedAt,
 	});
 
+	// Include running instance information as part of the parameters
 	await Container.get(ExecutionRepository).updateExistingExecution(executionId, executionData);
 
 	try {
