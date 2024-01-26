@@ -16,6 +16,7 @@
   "types": "dist/index.d.ts",
   "oclif": {
     "commands": "./dist/commands",
+    "helpClass": "./dist/help",
     "bin": "n8n"
   },
   "scripts": {
