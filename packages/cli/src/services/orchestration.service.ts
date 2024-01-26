@@ -7,7 +7,6 @@ import type { RedisServiceBaseCommand, RedisServiceCommand } from './redis/Redis
 import { RedisService } from './redis.service';
 import { MultiMainSetup } from './orchestration/main/MultiMainSetup.ee';
 import type { WorkflowActivateMode } from 'n8n-workflow';
-import { ApplicationError } from 'n8n-workflow';
 
 @Service()
 export class OrchestrationService {
@@ -126,41 +125,34 @@ export class OrchestrationService {
 	}
 
 	// ----------------------------------
-	//     handling active workflows
+	//           activations
 	// ----------------------------------
 
 	/**
-	 * Webhooks are added to the `webhook_entity` table on certain events.
+	 * Whether this instance may add webhooks to the `webhook_entity` table.
 	 *
-	 * In single-main setup, the single main instance adds webhooks.
+	 * In both single- and multi-main setup, only the leader is allowed to manage
+	 * webhooks in the database. Webhooks do not require in-memory state, so we could
+	 * have also allowed the follower to add webhooks, but it makes the implementation
+	 * simpler to have the leader to manage webhooks and to have all followers
+	 * proxy to the leader when webhooks need to be managed.
 	 *
-	 * In multi-main setup, only the leader may add webhooks on `init` or `activate`
-	 * or `update`, so that we have always the same instance handling webhooks.
-	 * On leadership change, neither the leader nor the follower may add webhooks
-	 * because these are already in the `webhook_entity` table.
+	 * On leadership change in multi-main setup, neither the leader nor the follower
+	 * may add webhooks because these are already in the database.
 	 */
 	shouldAddWebhooks(activationMode: WorkflowActivateMode) {
-		if (this.isSingleMainEnabled) return true;
-
-		if (['activate', 'update', 'init'].includes(activationMode)) return this.isLeader;
-
 		if (activationMode === 'leadershipChange') return false;
 
-		throw new ApplicationError(`Unexpected activation mode: ${activationMode}`);
+		return this.isLeader;
 	}
 
 	/**
-	 * Triggers and pollers are added to memory on certain events.
+	 * Whether this instance may add triggers and pollers to memory.
 	 *
-	 * In single-main setup, the single main instance adds triggers and pollers.
-	 *
-	 * In multi-main setup, only the leader may add triggers and pollers in all cases.
-	 * This is in line with only the leader being entitled to manage triggers and pollers,
-	 * which are only ever running in the leader.
+	 * In both single- and multi-main setup, only the leader is allowed to manage
+	 * triggers and pollers in memory, to ensure they are not duplicated.
 	 */
 	shouldAddTriggersAndPollers() {
-		if (this.isSingleMainEnabled) return true;
-
 		return this.isLeader;
 	}
 }

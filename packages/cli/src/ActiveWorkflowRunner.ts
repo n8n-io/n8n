@@ -741,7 +741,7 @@ export class ActiveWorkflowRunner {
 	 */
 	// TODO: this should happen in a transaction
 	async remove(workflowId: string) {
-		if (this.orchestrationService.isFollower) return;
+		if (!this.orchestrationService.isLeader) return;
 		// Remove all the webhooks of the workflow
 		try {
 			await this.clearWebhooks(workflowId);
