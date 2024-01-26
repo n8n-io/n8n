@@ -50,7 +50,7 @@
   "dependencies": {
     "@n8n/client-oauth2": "workspace:*",
     "aws4": "1.11.0",
-    "axios": "1.6.5",
+    "axios": "1.6.7",
     "concat-stream": "2.0.0",
     "cron": "1.7.2",
     "fast-glob": "3.2.12",
