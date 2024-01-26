@@ -901,7 +901,7 @@
 	"nodeCreator.subcategoryNames.dataTransformation": "Data transformation",
 	"nodeCreator.subcategoryNames.files": "Files",
 	"nodeCreator.subcategoryNames.flow": "Flow",
-	"nodeCreator.subcategoryNames.helpers": "Advanced",
+	"nodeCreator.subcategoryNames.helpers": "Core",
 	"nodeCreator.subcategoryNames.otherTriggerNodes": "Other ways...",
 	"nodeCreator.subcategoryNames.agents": "Agents",
 	"nodeCreator.subcategoryNames.chains": "Chains",
