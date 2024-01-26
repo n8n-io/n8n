@@ -13,7 +13,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 const isValid = (arg: JsonObject) => validate(arg, SCHEMA).valid;
 
 /**
- * Middleware to parse the query string in a request to retrieve many executions.
+ * Middleware to parse the query string in a request to retrieve a range of executions.
  */
 export const parseRangeQuery = (
 	req: ExecutionRequest.GetMany,

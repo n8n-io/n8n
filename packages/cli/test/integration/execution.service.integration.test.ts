@@ -7,6 +7,7 @@ import { createExecution } from './shared/db/executions';
 import * as testDb from './shared/testDb';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import type { FindMany } from '@/executions/execution.types';
+import { ExecutionMetadataRepository } from '@/databases/repositories/executionMetadata.repository';
 
 describe('ExecutionService', () => {
 	let executionService: ExecutionService;
@@ -336,10 +337,26 @@ describe('ExecutionService', () => {
 
 			await Promise.all([createExecution({}, workflow), createExecution({}, workflow)]);
 
+			const [firstId, secondId] = await executionRepository.getAllIds();
+
+			const executionMetadataRepository = Container.get(ExecutionMetadataRepository);
+
+			await executionMetadataRepository.save({
+				key: 'key1',
+				value: 'value1',
+				execution: { id: firstId },
+			});
+
+			await executionMetadataRepository.save({
+				key: 'key2',
+				value: 'value2',
+				execution: { id: secondId },
+			});
+
 			const query: FindMany.RangeQuery = {
 				kind: 'range',
 				range: { limit: 20 },
-				metadata: [{ key: 'foo', value: 'bar' }],
+				metadata: [{ key: 'key1', value: 'value1' }],
 				accessibleWorkflowIds: [workflow.id],
 			};
 
@@ -347,9 +364,7 @@ describe('ExecutionService', () => {
 
 			expect(output.count).toBe(1);
 			expect(output.estimated).toBe(false);
-			expect(output.results).toEqual([
-				expect.objectContaining({ startedAt: '2020-12-31 00:00:00.000' }),
-			]);
+			expect(output.results).toEqual([expect.objectContaining({ id: firstId })]);
 		});
 	});
 });

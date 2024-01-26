@@ -23,8 +23,3 @@ export function isAdvancedExecutionFiltersEnabled(): boolean {
 	const license = Container.get(License);
 	return license.isAdvancedExecutionFiltersEnabled();
 }
-
-export function isDebugInEditorLicensed(): boolean {
-	const license = Container.get(License);
-	return license.isDebugInEditorLicensed();
-}

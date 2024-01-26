@@ -1248,7 +1248,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			return await makeRestApiRequest(rootStore.getRestApiContext, 'GET', '/executions', sendData);
 		},
 
-		async getActiveExecutions(filter: IDataObject): Promise<IExecutionsCurrentSummaryExtended[]> {
+		async getActiveExecutions(
+			filter: IDataObject,
+		): Promise<{ results: IExecutionsCurrentSummaryExtended[] }> {
 			let sendData = {};
 			if (filter) {
 				sendData = {
@@ -1256,12 +1258,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				};
 			}
 			const rootStore = useRootStore();
-			return await makeRestApiRequest(
-				rootStore.getRestApiContext,
-				'GET',
-				'/executions/active',
-				sendData,
-			);
+			return await makeRestApiRequest(rootStore.getRestApiContext, 'GET', '/executions', sendData);
 		},
 
 		async getExecution(id: string): Promise<IExecutionResponse | undefined> {
@@ -1332,9 +1329,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			try {
 				const rootStore = useRootStore();
 				if ((!requestFilter.status || !requestFilter.finished) && isEmpty(requestFilter.metadata)) {
-					activeExecutions = await getActiveExecutions(rootStore.getRestApiContext, {
+					const output = await getActiveExecutions(rootStore.getRestApiContext, {
 						workflowId: requestFilter.workflowId,
 					});
+					activeExecutions = output?.results || [];
 				}
 				const finishedExecutions = await getExecutions(rootStore.getRestApiContext, requestFilter);
 				this.finishedExecutionsCount = finishedExecutions.count;

@@ -58,15 +58,6 @@ export class ExecutionsController {
 		return await this.executionService.findRangeWithCount(query);
 	}
 
-	@Post('/:id/stop')
-	async stop(req: ExecutionRequest.Stop) {
-		const workflowIds = await this.getAccessibleWorkflowIds(req.user);
-
-		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
-
-		return await this.executionService.stop(req.params.id);
-	}
-
 	@Get('/:id')
 	async getOne(req: ExecutionRequest.GetOne) {
 		const workflowIds = await this.getAccessibleWorkflowIds(req.user);
@@ -76,6 +67,15 @@ export class ExecutionsController {
 		return isSharingEnabled()
 			? await this.enterpriseExecutionService.findOne(req, workflowIds)
 			: await this.executionService.findOne(req, workflowIds);
+	}
+
+	@Post('/:id/stop')
+	async stop(req: ExecutionRequest.Stop) {
+		const workflowIds = await this.getAccessibleWorkflowIds(req.user);
+
+		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
+
+		return await this.executionService.stop(req.params.id);
 	}
 
 	@Post('/:id/retry')
