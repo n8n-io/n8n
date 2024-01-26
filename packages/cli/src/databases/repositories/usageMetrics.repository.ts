@@ -60,8 +60,13 @@ export class UsageMetricsRepository extends Repository<UsageMetrics> {
 				(SELECT SUM(count) FROM ${workflowStatsTable} WHERE name IN ('manual_success', 'manual_error')) AS manual_executions_count;
 		`)) as Row[];
 
-		const toNumber = (value: string | number) =>
-			typeof value === 'number' ? value : parseInt(value, 10);
+		const toNumber = (value: string | number) => {
+			const num = typeof value === 'number' ? value : parseInt(value, 10);
+
+			if (isNaN(num)) return 0;
+
+			return num;
+		};
 
 		return {
 			enabledUsers: toNumber(enabledUsers),
