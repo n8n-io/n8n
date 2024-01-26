@@ -1663,11 +1663,8 @@ export class HttpRequestV3 implements INodeType {
 				if (pagination.paginationMode === 'updateAParameterInEachRequest') {
 					// Iterate over all parameters and add them to the request
 					paginationData.request = {};
-					if (
-						pagination.parameters.parameters.length === 1 &&
-						pagination.parameters.parameters[0].name === '' &&
-						pagination.parameters.parameters[0].value === ''
-					) {
+                    const { parameters } = pagination.parameters;
+					if (parameters.length === 1 && parameters[0].name === '' && parameters[0].value === '') {
 						throw new NodeOperationError(
 							this.getNode(),
 							"At least one entry with 'Name' and 'Value' filled must be included in 'Parameters' to use 'Update a Parameter in Each Request' mode ",
