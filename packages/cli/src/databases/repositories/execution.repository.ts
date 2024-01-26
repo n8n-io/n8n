@@ -627,9 +627,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			throw new ApplicationError('Expected accessible workflow IDs');
 		}
 
-		const summaries: ExecutionSummary[] = await this.toQueryBuilder(query).getRawMany();
+		const executions = await this.toQueryBuilder(query).getRawMany();
 
-		return summaries.map((row) => this.toSummary(row));
+		return executions.map((execution) => this.toSummary(execution));
 	}
 
 	// @tech_debt: These transformations should not be needed
