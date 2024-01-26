@@ -16,7 +16,7 @@ import { ActiveExecutions } from '@/ActiveExecutions';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { Server } from '@/Server';
 import { EDITOR_UI_DIST_DIR, LICENSE_FEATURES } from '@/constants';
-import { eventBus } from '@/eventbus';
+import { MessageEventBus } from '@/eventbus';
 import { InternalHooks } from '@/InternalHooks';
 import { License } from '@/License';
 import { OrchestrationService } from '@/services/orchestration.service';
@@ -127,7 +127,7 @@ export class Start extends BaseCommand {
 			}
 
 			// Finally shut down Event Bus
-			await eventBus.close();
+			await Container.get(MessageEventBus).close();
 		} catch (error) {
 			await this.exitWithCrash('There was an error shutting down n8n.', error);
 		}
