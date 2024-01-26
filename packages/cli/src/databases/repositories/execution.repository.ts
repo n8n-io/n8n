@@ -41,7 +41,7 @@ import { ExecutionEntity } from '../entities/ExecutionEntity';
 import { ExecutionMetadata } from '../entities/ExecutionMetadata';
 import { ExecutionDataRepository } from './executionData.repository';
 import { Logger } from '@/Logger';
-import type { GetManyActiveFilter, FindMany } from '@/executions/execution.types';
+import type { FindMany } from '@/executions/execution.types';
 import { PostgresLiveRowsRetrievalError } from '@/errors/postgres-live-rows-retrieval.error';
 
 export interface IGetExecutionsQueryFilter {
@@ -577,41 +577,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	async findIfAccessible(executionId: string, accessibleWorkflowIds: string[]) {
 		return await this.findSingleExecution(executionId, {
 			where: { workflowId: In(accessibleWorkflowIds) },
-		});
-	}
-
-	async getManyActive(
-		activeExecutionIds: string[],
-		accessibleWorkflowIds: string[],
-		filter?: GetManyActiveFilter,
-	) {
-		const where: FindOptionsWhere<ExecutionEntity> = {
-			id: In(activeExecutionIds),
-			status: Not(In(['finished', 'stopped', 'failed', 'crashed'] as ExecutionStatus[])),
-		};
-
-		if (filter) {
-			const { workflowId, status, finished } = filter;
-			if (workflowId && accessibleWorkflowIds.includes(workflowId)) {
-				where.workflowId = workflowId;
-			} else {
-				where.workflowId = In(accessibleWorkflowIds);
-			}
-			if (status) {
-				// @ts-ignore
-				where.status = In(status);
-			}
-			if (finished !== undefined) {
-				where.finished = finished;
-			}
-		} else {
-			where.workflowId = In(accessibleWorkflowIds);
-		}
-
-		return await this.findMultipleExecutions({
-			select: ['id', 'workflowId', 'mode', 'retryOf', 'startedAt', 'stoppedAt', 'status'],
-			order: { id: 'DESC' },
-			where,
 		});
 	}
 

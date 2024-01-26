@@ -41,42 +41,36 @@ export declare namespace ExecutionRequest {
 	type Stop = AuthenticatedRequest<RouteParams.ExecutionId>;
 }
 
-export type GetManyActiveFilter = {
-	workflowId?: string;
-	status?: ExecutionStatus;
-	finished?: boolean;
-};
-
-type FilterFields = Partial<{
-	id: string;
-	finished: boolean;
-	mode: string;
-	retryOf: string;
-	retrySuccessId: string;
-	status: ExecutionStatus[];
-	workflowId: string;
-	waitTill: boolean;
-	metadata: Array<{ key: string; value: string }>;
-	startedAfter: string;
-	startedBefore: string;
-}>;
-
-type RangeFields = {
-	range: {
-		limit: number;
-		firstId?: string;
-		lastId?: string;
-	};
-};
-
-type AccessFields = {
-	accessibleWorkflowIds?: string[];
-};
-
 export namespace FindMany {
 	export type Query = RangeQuery | CountQuery;
 
 	export type RangeQuery = { kind: 'range' } & FilterFields & AccessFields & RangeFields;
 
 	export type CountQuery = { kind: 'count' } & FilterFields & AccessFields;
+
+	type FilterFields = Partial<{
+		id: string;
+		finished: boolean;
+		mode: string;
+		retryOf: string;
+		retrySuccessId: string;
+		status: ExecutionStatus[];
+		workflowId: string;
+		waitTill: boolean;
+		metadata: Array<{ key: string; value: string }>;
+		startedAfter: string;
+		startedBefore: string;
+	}>;
+
+	type AccessFields = {
+		accessibleWorkflowIds?: string[];
+	};
+
+	type RangeFields = {
+		range: {
+			limit: number;
+			firstId?: string;
+			lastId?: string;
+		};
+	};
 }
