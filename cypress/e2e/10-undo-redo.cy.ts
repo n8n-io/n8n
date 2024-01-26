@@ -258,11 +258,11 @@ describe('Undo/Redo', () => {
 		cy.fixture('Test_workflow-actions_paste-data.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
 			WorkflowPage.actions.zoomToFit();
-			WorkflowPage.getters.canvasNodes().should('have.have.length', 3);
+			WorkflowPage.getters.canvasNodes().should('have.have.length', 5);
 			WorkflowPage.actions.hitUndo();
 			WorkflowPage.getters.canvasNodes().should('have.have.length', 0);
 			WorkflowPage.actions.hitRedo();
-			WorkflowPage.getters.canvasNodes().should('have.have.length', 3);
+			WorkflowPage.getters.canvasNodes().should('have.have.length', 5);
 		});
 	});
 

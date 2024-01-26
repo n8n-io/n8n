@@ -124,8 +124,8 @@ describe('Workflow Actions', () => {
 		cy.fixture('Test_workflow-actions_paste-data.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
 			WorkflowPage.actions.zoomToFit();
-			WorkflowPage.getters.canvasNodes().should('have.length', 3);
-			WorkflowPage.getters.nodeConnections().should('have.length', 2);
+			WorkflowPage.getters.canvasNodes().should('have.length', 5);
+			WorkflowPage.getters.nodeConnections().should('have.length', 5);
 		});
 	});
 
@@ -149,8 +149,8 @@ describe('Workflow Actions', () => {
 			.selectFile('cypress/fixtures/Test_workflow-actions_paste-data.json', { force: true });
 		cy.waitForLoad(false);
 		WorkflowPage.actions.zoomToFit();
-		WorkflowPage.getters.canvasNodes().should('have.length', 3);
-		WorkflowPage.getters.nodeConnections().should('have.length', 2);
+		WorkflowPage.getters.canvasNodes().should('have.length', 5);
+		WorkflowPage.getters.nodeConnections().should('have.length', 5);
 	});
 
 	it('should update workflow settings', () => {
