@@ -7,19 +7,19 @@ import type {
 	ValidationResult,
 } from 'n8n-workflow';
 import {
-	deepCopy,
+	ApplicationError,
 	NodeOperationError,
+	deepCopy,
 	jsonParse,
 	validateFieldType,
-	ApplicationError,
 } from 'n8n-workflow';
 
-import set from 'lodash/set';
 import get from 'lodash/get';
+import set from 'lodash/set';
 import unset from 'lodash/unset';
 
 import { getResolvables } from '../../../../utils/utilities';
-import type { SetNodeOptions, SetField, AssignmentSetField } from './interfaces';
+import type { SetNodeOptions } from './interfaces';
 import { INCLUDE } from './interfaces';
 
 const configureFieldHelper = (dotNotation?: boolean) => {
