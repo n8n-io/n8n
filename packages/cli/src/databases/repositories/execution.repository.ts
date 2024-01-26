@@ -627,7 +627,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			throw new ApplicationError('Expected accessible workflow IDs');
 		}
 
-		const executions = await this.toQueryBuilder(query).getRawMany();
+		const executions: ExecutionSummary[] = await this.toQueryBuilder(query).getRawMany();
 
 		return executions.map((execution) => this.toSummary(execution));
 	}
@@ -641,9 +641,23 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}): ExecutionSummary {
 		execution.id = execution.id.toString();
 
-		if (execution.startedAt) execution.startedAt = execution.startedAt.toString();
-		if (execution.waitTill) execution.waitTill = execution.waitTill.toString();
-		if (execution.stoppedAt) execution.stoppedAt = execution.stoppedAt.toString();
+		if (execution.startedAt)
+			execution.startedAt =
+				execution.startedAt instanceof Date
+					? execution.startedAt.toISOString()
+					: execution.startedAt;
+
+		if (execution.waitTill)
+			execution.waitTill =
+				execution.stoppedAt instanceof Date
+					? execution.stoppedAt.toISOString()
+					: execution.waitTill;
+
+		if (execution.stoppedAt)
+			execution.stoppedAt =
+				execution.stoppedAt instanceof Date
+					? execution.stoppedAt.toISOString()
+					: execution.stoppedAt;
 
 		return execution as ExecutionSummary;
 	}
