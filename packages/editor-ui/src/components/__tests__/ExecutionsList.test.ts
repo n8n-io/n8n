@@ -111,7 +111,7 @@ describe('ExecutionsList.vue', () => {
 		workflowsStore = useWorkflowsStore();
 
 		vi.spyOn(workflowsStore, 'fetchAllWorkflows').mockResolvedValue(workflowsData);
-		vi.spyOn(workflowsStore, 'getActiveExecutions').mockResolvedValue([]);
+		vi.spyOn(workflowsStore, 'getActiveExecutions').mockResolvedValue({ results: [] });
 	});
 
 	it('should render empty list', async () => {
