@@ -17,9 +17,9 @@ jobs:
     name: Install & Build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3.5.3
+      - uses: actions/checkout@v4.1.1
       - uses: pnpm/action-setup@v2.4.0
-      - uses: actions/setup-node@v3.7.0
+      - uses: actions/setup-node@v4.0.1
         with:
           node-version: 18.x
           cache: 'pnpm'
@@ -29,7 +29,7 @@ jobs:
         run: pnpm build:backend
 
       - name: Cache build artifacts
-        uses: actions/cache/save@v3.3.1
+        uses: actions/cache/save@v4.0.0
         with:
           path: ./packages/**/dist
           key: ${{ github.sha }}:db-tests
@@ -42,16 +42,16 @@ jobs:
     env:
       DB_MYSQLDB_PASSWORD: password
     steps:
-      - uses: actions/checkout@v3.5.3
+      - uses: actions/checkout@v4.1.1
       - uses: pnpm/action-setup@v2.4.0
-      - uses: actions/setup-node@v3.7.0
+      - uses: actions/setup-node@v4.0.1
         with:
           node-version: 18.x
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
 
       - name: Restore cached build artifacts
-        uses: actions/cache/restore@v3.3.1
+        uses: actions/cache/restore@v4.0.0
         with:
           path: ./packages/**/dist
           key: ${{ github.sha }}:db-tests
@@ -75,16 +75,16 @@ jobs:
     env:
       DB_POSTGRESDB_PASSWORD: password
     steps:
-      - uses: actions/checkout@v3.5.3
+      - uses: actions/checkout@v4.1.1
       - uses: pnpm/action-setup@v2.4.0
-      - uses: actions/setup-node@v3.7.0
+      - uses: actions/setup-node@v4.0.1
         with:
           node-version: 18.x
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
 
       - name: Restore cached build artifacts
-        uses: actions/cache/restore@v3.3.1
+        uses: actions/cache/restore@v4.0.0
         with:
           path: ./packages/**/dist
           key: ${{ github.sha }}:db-tests
