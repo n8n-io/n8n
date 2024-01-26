@@ -171,7 +171,7 @@ importers:
     dependencies:
       axios:
         specifier: 1.6.5
-        version: 1.6.5(debug@3.2.7)
+        version: 1.6.5(debug@4.3.4)
 
   packages/@n8n/nodes-langchain:
     dependencies:
@@ -390,7 +390,7 @@ importers:
         version: 7.87.0
       axios:
         specifier: 1.6.5
-        version: 1.6.5(debug@3.2.7)
+        version: 1.6.5(debug@4.3.4)
       basic-auth:
         specifier: 2.0.1
         version: 2.0.1
@@ -736,7 +736,7 @@ importers:
         version: 1.11.0
       axios:
         specifier: 1.6.5
-        version: 1.6.5(debug@3.2.7)
+        version: 1.6.5(debug@4.3.4)
       concat-stream:
         specifier: 2.0.0
         version: 2.0.0
@@ -1041,7 +1041,7 @@ importers:
         version: 10.5.0(vue@3.3.4)
       axios:
         specifier: 1.6.5
-        version: 1.6.5(debug@3.2.7)
+        version: 1.6.5(debug@4.3.4)
       chart.js:
         specifier: ^4.4.0
         version: 4.4.0
@@ -1359,6 +1359,9 @@ importers:
       rhea:
         specifier: 1.0.24
         version: 1.0.24
+      rrule:
+        specifier: ^2.8.1
+        version: 2.8.1
       rss-parser:
         specifier: 3.12.0
         version: 3.12.0
@@ -12069,7 +12072,7 @@ packages:
   /axios@0.21.4:
     resolution: {integrity: sha512-ut5vewkiu8jjGBdqpM44XxjuCjq9LAKeHVmoVfHVzy8eHgxxq8SbAVQNovDA8mVi05kP0Ea/n/UzcSHcTJQfNg==}
     dependencies:
-      follow-redirects: 1.15.5(debug@3.2.7)
+      follow-redirects: 1.15.5(debug@4.3.4)
     transitivePeerDependencies:
       - debug
     dev: false
@@ -12087,7 +12090,7 @@ packages:
   /axios@1.6.5:
     resolution: {integrity: sha512-Ii012v05KEVuUoFWmMW/UQv9aRIc3ZwkWDcM+h5Il8izZCtRVpDUfwpoFf7eOtajT3QiGR4yDUx7lPqHJULgbg==}
     dependencies:
-      follow-redirects: 1.15.5(debug@3.2.7)
+      follow-redirects: 1.15.5(debug@4.3.4)
       form-data: 4.0.0
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
@@ -12112,7 +12115,6 @@ packages:
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
       - debug
-    dev: true
 
   /babel-core@7.0.0-bridge.0(@babel/core@7.22.9):
     resolution: {integrity: sha512-poPX9mZH/5CSanm50Q+1toVci6pv5KSRv/5TWCwtzQS5XEwn40BcCrgIeMFWP9CKKIniKXNxoIOnOq4VVlGXhg==}
@@ -23466,6 +23468,12 @@ packages:
   /route-recognizer@0.3.4:
     resolution: {integrity: sha512-2+MhsfPhvauN1O8KaXpXAOfR/fwe8dnUXVM+xw7yt40lJRfPVQxV6yryZm0cgRvAj5fMF/mdRZbL2ptwbs5i2g==}
     dev: true
+
+  /rrule@2.8.1:
+    resolution: {integrity: sha512-hM3dHSBMeaJ0Ktp7W38BJZ7O1zOgaFEsn41PDk+yHoEtfLV+PoJt9E9xAlZiWgf/iqEqionN0ebHFZIDAp+iGw==}
+    dependencies:
+      tslib: 2.6.1
+    dev: false
 
   /rrweb-cssom@0.6.0:
     resolution: {integrity: sha512-APM0Gt1KoXBz0iIkkdB/kfvGOwC4UuJFeG/c+yV7wSc7q96cG/kJ0HiYCnzivD9SB53cLV1MlHFNfOuPaadYSw==}
