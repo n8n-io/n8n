@@ -626,7 +626,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		const summaries: ExecutionSummary[] = await this.toQueryBuilder(query).getRawMany();
 
 		return summaries.map((row) => {
-			row.id = row.id.toString();
+			row.id = row.id.toString(); // @TODO: Can we have this in the query builder?
 			return row;
 		});
 	}
