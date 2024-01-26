@@ -179,6 +179,10 @@ export function executeFilterCondition(
 			const right = (rightValue ?? '') as string;
 
 			switch (condition.operator.operation) {
+				case 'empty':
+					return left.length === 0;
+				case 'notEmpty':
+					return left.length !== 0;
 				case 'equals':
 					return left === right;
 				case 'notEquals':

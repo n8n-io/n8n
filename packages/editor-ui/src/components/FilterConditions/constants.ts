@@ -23,6 +23,18 @@ export const OPERATORS_BY_ID = {
 		name: 'filter.operator.notExists',
 		singleValue: true,
 	},
+	'string:empty': {
+		type: 'string',
+		operation: 'empty',
+		name: 'filter.operator.empty',
+		singleValue: true,
+	},
+	'string:notEmpty': {
+		type: 'string',
+		operation: 'notEmpty',
+		name: 'filter.operator.notEmpty',
+		singleValue: true,
+	},
 	'string:equals': { type: 'string', operation: 'equals', name: 'filter.operator.equals' },
 	'string:notEquals': { type: 'string', operation: 'notEquals', name: 'filter.operator.notEquals' },
 	'string:contains': { type: 'string', operation: 'contains', name: 'filter.operator.contains' },
