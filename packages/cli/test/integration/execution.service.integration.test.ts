@@ -279,7 +279,7 @@ describe('ExecutionService', () => {
 			expect(output.count).toBe(1);
 			expect(output.estimated).toBe(false);
 			expect(output.results).toEqual([
-				expect.objectContaining({ startedAt: '2020-06-01 00:00:00.000' }),
+				expect.objectContaining({ startedAt: '2020-06-01T00:00:00.000Z' }),
 			]);
 		});
 
@@ -303,7 +303,7 @@ describe('ExecutionService', () => {
 			expect(output.count).toBe(1);
 			expect(output.estimated).toBe(false);
 			expect(output.results).toEqual([
-				expect.objectContaining({ startedAt: '2020-12-31 00:00:00.000' }),
+				expect.objectContaining({ startedAt: '2020-12-31T00:00:00.000Z' }),
 			]);
 		});
 

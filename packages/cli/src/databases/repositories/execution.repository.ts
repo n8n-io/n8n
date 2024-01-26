@@ -641,21 +641,31 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}): ExecutionSummary {
 		execution.id = execution.id.toString();
 
-		if (execution.startedAt)
+		const normalizeDateString = (date: string) => {
+			if (date.includes(' ')) return date.replace(' ', 'T') + 'Z';
+			return date;
+		};
+
+		if (execution.startedAt) {
 			execution.startedAt =
 				execution.startedAt instanceof Date
 					? execution.startedAt.toISOString()
-					: execution.startedAt;
+					: normalizeDateString(execution.startedAt);
+		}
 
-		if (execution.waitTill)
+		if (execution.waitTill) {
 			execution.waitTill =
-				execution.waitTill instanceof Date ? execution.waitTill.toISOString() : execution.waitTill;
+				execution.waitTill instanceof Date
+					? execution.waitTill.toISOString()
+					: normalizeDateString(execution.waitTill);
+		}
 
-		if (execution.stoppedAt)
+		if (execution.stoppedAt) {
 			execution.stoppedAt =
 				execution.stoppedAt instanceof Date
 					? execution.stoppedAt.toISOString()
-					: execution.stoppedAt;
+					: normalizeDateString(execution.stoppedAt);
+		}
 
 		return execution as ExecutionSummary;
 	}
@@ -665,17 +675,18 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	async getLiveExecutionRowsOnPostgres() {
-		const pgSql =
-			"SELECT n_live_tup as estimate FROM pg_stat_all_tables WHERE relname = 'execution_entity';";
+		const tableName = `${config.getEnv('database.tablePrefix')}execution_entity`;
+
+		const pgSql = `SELECT n_live_tup as result FROM pg_stat_all_tables WHERE relname = '${tableName}';`;
 
 		try {
-			const rows = (await this.query(pgSql)) as Array<{ estimate: string }>;
+			const rows = (await this.query(pgSql)) as Array<{ result: string }>;
 
 			if (rows.length !== 1) throw new PostgresLiveRowsRetrievalError(rows);
 
 			const [row] = rows;
 
-			return parseInt(row.estimate, 10);
+			return parseInt(row.result, 10);
 		} catch (error) {
 			if (error instanceof Error) this.logger.error(error.message, { error });
 
@@ -696,8 +707,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		const fields = Object.keys(this.summaryFields)
 			.concat(['waitTill', 'retrySuccessId'])
-			.map((key) => `execution.${key} AS ${key}`)
-			.concat('workflow.name AS workflowName');
+			.map((key) => `execution.${key} AS "${key}"`)
+			.concat('workflow.name AS "workflowName"');
 
 		const qb = this.createQueryBuilder('execution')
 			.select(fields)
