@@ -632,17 +632,20 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return summaries.map((row) => this.toSummary(row));
 	}
 
-	// @tech_debt: Refactor as typeorm transformer?
-	private toSummary(row: {
+	// @tech_debt: These transformations should not be needed
+	private toSummary(execution: {
 		id: number | string;
 		startedAt: Date | string;
 		stoppedAt?: Date | string;
+		waitTill?: Date | null;
 	}): ExecutionSummary {
-		row.id = row.id.toString();
-		row.startedAt = row.startedAt.toString();
-		if (row.stoppedAt) row.stoppedAt = row.stoppedAt.toString();
+		execution.id = execution.id.toString();
+		execution.startedAt = execution.startedAt.toString();
+		execution.waitTill = execution.waitTill ?? undefined;
 
-		return row as ExecutionSummary;
+		if (execution.stoppedAt) execution.stoppedAt = execution.stoppedAt.toString();
+
+		return execution as ExecutionSummary;
 	}
 
 	async fetchCount(query: ExecutionSummaries.CountQuery) {
