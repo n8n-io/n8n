@@ -46,7 +46,7 @@
     "@ngneat/falso": "^6.4.0",
     "@types/jest": "^29.5.3",
     "@types/supertest": "^2.0.12",
-    "@vitest/coverage-v8": "^1.1.0",
+    "@vitest/coverage-v8": "^1.2.1",
     "cross-env": "^7.0.3",
     "cypress": "^13.6.2",
     "cypress-otp": "^1.0.3",
@@ -68,9 +68,9 @@
     "tsc-watch": "^6.0.4",
     "turbo": "1.10.12",
     "typescript": "*",
-    "vite": "^5.0.10",
-    "vitest": "^1.1.0",
-    "vue-tsc": "^1.8.25"
+    "vite": "^5.0.12",
+    "vitest": "^1.2.1",
+    "vue-tsc": "^1.8.27"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
