@@ -25,6 +25,7 @@ export class WaitTracker {
 		private readonly logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly ownershipService: OwnershipService,
+		private readonly workflowRunner: WorkflowRunner,
 	) {
 		// Poll every 60 seconds a list of upcoming executions
 		this.mainTimer = setInterval(() => {
@@ -163,8 +164,7 @@ export class WaitTracker {
 			};
 
 			// Start the execution again
-			const workflowRunner = new WorkflowRunner();
-			await workflowRunner.run(data, false, false, executionId);
+			await this.workflowRunner.run(data, false, false, executionId);
 		})().catch((error: Error) => {
 			ErrorReporter.error(error);
 			this.logger.error(

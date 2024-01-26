@@ -1,11 +1,9 @@
+import Container from 'typedi';
+import { WorkflowHooks, type ExecutionError, type IWorkflowExecuteHooks } from 'n8n-workflow';
 import type { User } from '@db/entities/User';
 import { WorkflowRunner } from '@/WorkflowRunner';
-import { WorkflowHooks, type ExecutionError, type IWorkflowExecuteHooks } from 'n8n-workflow';
-import { Push } from '@/push';
-import Container from 'typedi';
 import config from '@/config';
 
-import { mockInstance } from '../shared/mocking';
 import * as testDb from '../integration/shared/testDb';
 import { setupTestServer } from '../integration/shared/utils';
 import { createUser } from '../integration/shared/db/users';
@@ -26,10 +24,7 @@ const watchedWorkflowExecuteAfter = jest.spyOn(watchers, 'workflowExecuteAfter')
 beforeAll(async () => {
 	owner = await createUser({ role: 'global:owner' });
 
-	mockInstance(Push);
-	Container.set(Push, new Push());
-
-	runner = new WorkflowRunner();
+	runner = Container.get(WorkflowRunner);
 
 	hookFunctions = {
 		workflowExecuteAfter: [watchers.workflowExecuteAfter],
