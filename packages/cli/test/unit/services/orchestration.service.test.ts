@@ -231,10 +231,10 @@ describe('Orchestration Service', () => {
 
 			test('should return true only if leader', () => {
 				isLeaderSpy.mockReturnValue(true);
-				expect(orchestrationService.shouldAddWebhooks('init')).toBe(true);
+				expect(orchestrationService.shouldAddTriggersAndPollers()).toBe(true);
 
 				isLeaderSpy.mockReturnValue(false);
-				expect(orchestrationService.shouldAddWebhooks('init')).toBe(false);
+				expect(orchestrationService.shouldAddTriggersAndPollers()).toBe(false);
 			});
 		});
 	});
