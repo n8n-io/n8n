@@ -10,6 +10,7 @@ import { ApplicationError } from 'n8n-workflow';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { InternalHooks } from '@/InternalHooks';
 import { Logger } from '@/Logger';
+import { UrlService } from '@/services/url.service';
 
 type Template = HandlebarsTemplateDelegate<unknown>;
 type TemplateName = 'invite' | 'passwordReset' | 'workflowShared' | 'credentialsShared';
@@ -46,6 +47,7 @@ export class UserManagementMailer {
 		private readonly userRepository: UserRepository,
 		private readonly logger: Logger,
 		private readonly internalHooks: InternalHooks,
+		private readonly urlService: UrlService,
 	) {
 		this.isEmailSetUp =
 			config.getEnv('userManagement.emails.mode') === 'smtp' &&
@@ -90,15 +92,17 @@ export class UserManagementMailer {
 	}
 
 	async notifyWorkflowShared({
-		sharer,
+		sharerId,
+		sharerFirstName,
 		newShareeIds,
-		workflow,
-		baseUrl,
+		workflowId,
+		workflowName,
 	}: {
-		sharer: { id: string; firstName: string };
+		sharerId: string;
+		sharerFirstName: string;
 		newShareeIds: string[];
-		workflow: { id: string; name: string };
-		baseUrl: string;
+		workflowId: string;
+		workflowName: string;
 	}) {
 		if (this.isEmailSetUp) return;
 
@@ -110,21 +114,23 @@ export class UserManagementMailer {
 
 		const populateTemplate = await getTemplate('workflowShared', 'workflowShared.html');
 
+		const baseUrl = this.urlService.getInstanceBaseUrl();
+
 		const result = await this.mailer?.sendMail({
 			emailRecipients,
-			subject: `${sharer.firstName} has shared an n8n workflow with you`,
+			subject: `${sharerFirstName} has shared an n8n workflow with you`,
 			body: populateTemplate({
-				workflowName: workflow.name,
-				workflowUrl: `${baseUrl}/workflow/${workflow.id}`,
+				workflowName,
+				workflowUrl: `${baseUrl}/workflow/${workflowId}`,
 			}),
 		});
 
 		if (!result) return { emailSent: false };
 
-		this.logger.info('Sent workflow shared email successfully', { sharerId: sharer.id });
+		this.logger.info('Sent workflow shared email successfully', { sharerId });
 
 		void this.internalHooks.onUserTransactionalEmail({
-			user_id: sharer.id,
+			user_id: sharerId,
 			message_type: 'Workflow shared',
 			public_api: false,
 		});
@@ -133,15 +139,15 @@ export class UserManagementMailer {
 	}
 
 	async notifyCredentialsShared({
-		sharer,
+		sharerId,
+		sharerFirstName,
 		newShareeIds,
 		credentialsName,
-		baseUrl,
 	}: {
-		sharer: { id: string; firstName: string };
+		sharerId: string;
+		sharerFirstName: string;
 		newShareeIds: string[];
 		credentialsName: string;
-		baseUrl: string;
 	}) {
 		if (this.isEmailSetUp) return;
 
@@ -153,18 +159,20 @@ export class UserManagementMailer {
 
 		const populateTemplate = await getTemplate('credentialsShared', 'credentialsShared.html');
 
+		const baseUrl = this.urlService.getInstanceBaseUrl();
+
 		const result = await this.mailer?.sendMail({
 			emailRecipients,
-			subject: `${sharer.firstName} has shared an n8n credential with you`,
+			subject: `${sharerFirstName} has shared an n8n credential with you`,
 			body: populateTemplate({ credentialsName, credentialsListUrl: `${baseUrl}/credentials` }),
 		});
 
 		if (!result) return { emailSent: false };
 
-		this.logger.info('Sent credentials shared email successfully', { sharerId: sharer.id });
+		this.logger.info('Sent credentials shared email successfully', { sharerId });
 
 		void this.internalHooks.onUserTransactionalEmail({
-			user_id: sharer.id,
+			user_id: sharerId,
 			message_type: 'Credentials shared',
 			public_api: false,
 		});

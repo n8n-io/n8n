@@ -17,7 +17,6 @@ import { CredentialsRepository } from '@/databases/repositories/credentials.repo
 import * as utils from '@/utils';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { UserManagementMailer } from '@/UserManagement/email';
-import { UrlService } from '@/services/url.service';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import config from '@/config';
 
@@ -200,10 +199,10 @@ EECredentialsController.put(
 
 		try {
 			await Container.get(UserManagementMailer).notifyCredentialsShared({
-				sharer: { id: req.user.id, firstName: req.user.firstName },
+				sharerId: req.user.id,
+				sharerFirstName: req.user.firstName,
 				newShareeIds,
 				credentialsName: credential.name,
-				baseUrl: Container.get(UrlService).getInstanceBaseUrl(),
 			});
 		} catch (error) {
 			void Container.get(InternalHooks).onEmailFailed({

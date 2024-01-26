@@ -405,10 +405,11 @@ export class WorkflowsController {
 
 		try {
 			await this.mailer.notifyWorkflowShared({
-				sharer: { id: req.user.id, firstName: req.user.firstName },
+				sharerId: req.user.id,
+				sharerFirstName: req.user.firstName,
 				newShareeIds,
-				workflow: { id: workflowId, name: workflow.name },
-				baseUrl: this.urlService.getInstanceBaseUrl(),
+				workflowId,
+				workflowName: workflow.name,
 			});
 		} catch (error) {
 			void this.internalHooks.onEmailFailed({
