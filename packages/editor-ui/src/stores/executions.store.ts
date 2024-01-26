@@ -185,7 +185,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 	async function fetchCurrentExecutions(filter = currentExecutionsFilters.value) {
 		loading.value = true;
 		try {
-			const data = await makeRestApiRequest<{ results: IExecutionsSummary[] }>(
+			const data = await makeRestApiRequest<{ results: ExecutionSummary[] }>(
 				rootStore.getRestApiContext,
 				'GET',
 				'/executions',
@@ -248,7 +248,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 	}
 
 	async function stopCurrentExecution(executionId: string): Promise<IExecutionsStopData> {
-		return makeRestApiRequest(
+		return await makeRestApiRequest(
 			rootStore.getRestApiContext,
 			'POST',
 			`/executions/${executionId}/stop`,
@@ -256,7 +256,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 	}
 
 	async function retryExecution(id: string, loadWorkflow?: boolean): Promise<boolean> {
-		return makeRestApiRequest(
+		return await makeRestApiRequest(
 			rootStore.getRestApiContext,
 			'POST',
 			`/executions/${id}/retry`,
