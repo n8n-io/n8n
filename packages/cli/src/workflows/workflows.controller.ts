@@ -403,20 +403,11 @@ export class WorkflowsController {
 
 		void this.internalHooks.onWorkflowSharingUpdate(workflowId, req.user.id, shareWithIds);
 
-		const isEmailingEnabled = config.getEnv('userManagement.emails.mode') === 'smtp';
-
-		if (!isEmailingEnabled) return;
-
-		const recipients = await this.userRepository.getEmailsByIds(newShareeIds);
-
-		if (recipients.length === 0) return;
-
 		try {
 			await this.mailer.notifyWorkflowShared({
-				recipientEmails: recipients.map(({ email }) => email),
-				workflowName: workflow.name,
-				workflowId,
-				sharerFirstName: req.user.firstName,
+				sharer: { id: req.user.id, firstName: req.user.firstName },
+				newShareeIds,
+				workflow: { id: workflowId, name: workflow.name },
 				baseUrl: this.urlService.getInstanceBaseUrl(),
 			});
 		} catch (error) {
@@ -429,13 +420,5 @@ export class WorkflowsController {
 				throw new InternalServerError(`Please contact your administrator: ${error.message}`);
 			}
 		}
-
-		this.logger.info('Sent workflow shared email successfully', { sharerId: req.user.id });
-
-		void this.internalHooks.onUserTransactionalEmail({
-			user_id: req.user.id,
-			message_type: 'Workflow shared',
-			public_api: false,
-		});
 	}
 }

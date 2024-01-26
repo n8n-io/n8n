@@ -17,7 +17,6 @@ import { createManyUsers, createUser, createUserShell } from './shared/db/users'
 import { UserManagementMailer } from '@/UserManagement/email';
 
 import { mockInstance } from '../shared/mocking';
-import { InternalHooks } from '@/InternalHooks';
 import config from '@/config';
 
 const sharingSpy = jest.spyOn(License.prototype, 'isSharingEnabled').mockReturnValue(true);
@@ -331,9 +330,6 @@ describe('GET /credentials/:id', () => {
 // idempotent share/unshare
 // ----------------------------------------
 describe('PUT /credentials/:id/share', () => {
-	const internalHooks = Container.get(InternalHooks);
-	const internalHooksHandlerSpy = jest.spyOn(internalHooks, 'onUserTransactionalEmail');
-
 	test('should share the credential with the provided userIds and unshare it for missing ones', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 
@@ -368,7 +364,6 @@ describe('PUT /credentials/:id/share', () => {
 		});
 
 		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(1);
-		expect(internalHooksHandlerSpy).toHaveBeenCalledTimes(1);
 	});
 
 	test('should share the credential with the provided userIds', async () => {
@@ -403,7 +398,6 @@ describe('PUT /credentials/:id/share', () => {
 
 		expect(ownerSharedCredential.role).toBe('credential:owner');
 		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(1);
-		expect(internalHooksHandlerSpy).toHaveBeenCalledTimes(1);
 	});
 
 	test('should respond 403 for non-existing credentials', async () => {
@@ -413,7 +407,6 @@ describe('PUT /credentials/:id/share', () => {
 
 		expect(response.statusCode).toBe(403);
 		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(0);
-		expect(internalHooksHandlerSpy).toHaveBeenCalledTimes(0);
 	});
 
 	test('should respond 403 for non-owned credentials for shared members', async () => {
@@ -431,7 +424,6 @@ describe('PUT /credentials/:id/share', () => {
 		});
 		expect(sharedCredentials).toHaveLength(2);
 		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(0);
-		expect(internalHooksHandlerSpy).toHaveBeenCalledTimes(0);
 	});
 
 	test('should respond 403 for non-owned credentials for non-shared members sharing with self', async () => {
@@ -448,7 +440,6 @@ describe('PUT /credentials/:id/share', () => {
 		});
 		expect(sharedCredentials).toHaveLength(1);
 		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(0);
-		expect(internalHooksHandlerSpy).toHaveBeenCalledTimes(0);
 	});
 
 	test('should respond 403 for non-owned credentials for non-shared members sharing', async () => {
@@ -466,7 +457,6 @@ describe('PUT /credentials/:id/share', () => {
 		});
 		expect(sharedCredentials).toHaveLength(1);
 		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(0);
-		expect(internalHooksHandlerSpy).toHaveBeenCalledTimes(0);
 	});
 
 	test('should respond 200 for non-owned credentials for owners', async () => {
@@ -482,7 +472,6 @@ describe('PUT /credentials/:id/share', () => {
 		});
 		expect(sharedCredentials).toHaveLength(2);
 		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(1);
-		expect(internalHooksHandlerSpy).toHaveBeenCalledTimes(1);
 	});
 
 	test('should ignore pending sharee', async () => {
@@ -501,7 +490,6 @@ describe('PUT /credentials/:id/share', () => {
 
 		expect(sharedCredentials).toHaveLength(1);
 		expect(sharedCredentials[0].userId).toBe(owner.id);
-		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(0);
 	});
 
 	test('should ignore non-existing sharee', async () => {
@@ -520,7 +508,6 @@ describe('PUT /credentials/:id/share', () => {
 		expect(sharedCredentials).toHaveLength(1);
 		expect(sharedCredentials[0].userId).toBe(owner.id);
 		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(0);
-		expect(internalHooksHandlerSpy).toHaveBeenCalledTimes(0);
 	});
 
 	test('should respond 400 if invalid payload is provided', async () => {
@@ -533,7 +520,6 @@ describe('PUT /credentials/:id/share', () => {
 
 		responses.forEach((response) => expect(response.statusCode).toBe(400));
 		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(0);
-		expect(internalHooksHandlerSpy).toHaveBeenCalledTimes(0);
 	});
 	test('should unshare the credential', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
@@ -557,7 +543,6 @@ describe('PUT /credentials/:id/share', () => {
 		expect(sharedCredentials).toHaveLength(1);
 		expect(sharedCredentials[0].userId).toBe(owner.id);
 		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(0);
-		expect(internalHooksHandlerSpy).toHaveBeenCalledTimes(0);
 	});
 
 	test('should not call internal hooks listener for email sent if emailing is disabled', async () => {
@@ -576,8 +561,6 @@ describe('PUT /credentials/:id/share', () => {
 			.send({ shareWithIds: [] });
 
 		expect(response.statusCode).toBe(200);
-
-		expect(internalHooksHandlerSpy).toHaveBeenCalledTimes(0);
 
 		config.set('userManagement.emails.mode', 'smtp');
 	});

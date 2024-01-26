@@ -18,7 +18,6 @@ import * as utils from '@/utils';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { UserManagementMailer } from '@/UserManagement/email';
 import { UrlService } from '@/services/url.service';
-import { Logger } from '@/Logger';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import config from '@/config';
 
@@ -201,9 +200,9 @@ EECredentialsController.put(
 
 		try {
 			await Container.get(UserManagementMailer).notifyCredentialsShared({
-				sharerFirstName: req.user.firstName,
+				sharer: { id: req.user.id, firstName: req.user.firstName },
+				newShareeIds,
 				credentialsName: credential.name,
-				recipientEmails: recipients.map(({ email }) => email),
 				baseUrl: Container.get(UrlService).getInstanceBaseUrl(),
 			});
 		} catch (error) {
@@ -212,19 +211,10 @@ EECredentialsController.put(
 				message_type: 'Credentials shared',
 				public_api: false,
 			});
+
 			if (error instanceof Error) {
 				throw new InternalServerError(`Please contact your administrator: ${error.message}`);
 			}
 		}
-
-		Container.get(Logger).info('Sent credentials shared email successfully', {
-			sharerId: req.user.id,
-		});
-
-		void Container.get(InternalHooks).onUserTransactionalEmail({
-			user_id: req.user.id,
-			message_type: 'Credentials shared',
-			public_api: false,
-		});
 	}),
 );
