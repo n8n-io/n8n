@@ -45,9 +45,12 @@ export const executionHelpers = defineComponent({
 				status.label = this.$locale.baseText('executionsList.waiting');
 			} else if (execution.status === 'canceled') {
 				status.label = this.$locale.baseText('executionsList.canceled');
-			} else if (execution.status === 'running' || execution.status === 'new') {
+			} else if (execution.status === 'running') {
 				status.name = 'running';
 				status.label = this.$locale.baseText('executionsList.running');
+			} else if (execution.status === 'new') {
+				status.name = 'enqueued';
+				status.label = this.$locale.baseText('executionsList.enqueued');
 			} else if (execution.status === 'success') {
 				status.name = 'success';
 				status.label = this.$locale.baseText('executionsList.succeeded');

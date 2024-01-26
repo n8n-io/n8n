@@ -26,6 +26,7 @@ import { SettingsRepository } from '@db/repositories/settings.repository';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { WaitTracker } from '@/WaitTracker';
+import { WorkflowRunner } from '@/WorkflowRunner';
 import { BaseCommand } from './BaseCommand';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
@@ -285,6 +286,8 @@ export class Start extends BaseCommand {
 
 		// Start to get active workflows and run their triggers
 		await this.activeWorkflowRunner.init();
+
+		await Container.get(WorkflowRunner).init();
 
 		const editorUrl = Container.get(UrlService).baseUrl;
 		this.log(`\nEditor is now accessible via:\n${editorUrl}`);

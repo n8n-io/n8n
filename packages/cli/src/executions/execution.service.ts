@@ -304,6 +304,7 @@ export class ExecutionService {
 			}
 		}
 
+		// TODO: remove executions from the concurrency queue
 		return await this.executionRepository.deleteExecutionsByFilter(
 			requestFilters,
 			sharedWorkflowIds,

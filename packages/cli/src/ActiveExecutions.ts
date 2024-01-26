@@ -5,9 +5,12 @@ import type {
 	IExecuteResponsePromiseData,
 	IRun,
 	ExecutionStatus,
+	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import { ApplicationError, createDeferredPromise, sleep } from 'n8n-workflow';
 
+import config from '@/config';
+import { ConcurrencyQueue } from '@/ConcurrencyQueue';
 import type {
 	ExecutionPayload,
 	IExecutingWorkflowData,
@@ -21,6 +24,11 @@ import { Logger } from '@/Logger';
 
 @Service()
 export class ActiveExecutions {
+	private queues = {
+		manual: new ConcurrencyQueue(config.getEnv('executions.manualConcurrency')),
+		others: new ConcurrencyQueue(config.getEnv('executions.concurrency')),
+	};
+
 	private activeExecutions: {
 		[executionId: string]: IExecutingWorkflowData;
 	} = {};
@@ -34,10 +42,10 @@ export class ActiveExecutions {
 	 * Add a new active execution
 	 */
 	async add(executionData: IWorkflowExecutionDataProcess, executionId?: string): Promise<string> {
-		let executionStatus: ExecutionStatus = executionId ? 'running' : 'new';
+		let executionStatus: ExecutionStatus;
 		if (executionId === undefined) {
 			// Is a new execution so save in DB
-
+			executionStatus = 'new';
 			const fullExecutionData: ExecutionPayload = {
 				data: executionData.executionData!,
 				mode: executionData.executionMode,
@@ -61,10 +69,10 @@ export class ActiveExecutions {
 			if (executionId === undefined) {
 				throw new ApplicationError('There was an issue assigning an execution id to the execution');
 			}
-			executionStatus = 'running';
 		} else {
+			// TODO: updating the status should happen after the concurrency check
 			// Is an existing execution we want to finish so update in DB
-
+			executionStatus = 'running';
 			const execution: Pick<IExecutionDb, 'id' | 'data' | 'waitTill' | 'status'> = {
 				id: executionId,
 				data: executionData.executionData!,
@@ -74,6 +82,17 @@ export class ActiveExecutions {
 
 			await this.executionRepository.updateExistingExecution(executionId, execution);
 		}
+
+		return await this.enqueue(executionId, executionData, executionStatus);
+	}
+
+	async enqueue(
+		executionId: string,
+		executionData: IWorkflowExecutionDataProcess,
+		executionStatus: ExecutionStatus,
+	) {
+		// Wait here in-case execution concurrency limit is reached
+		await this.getQueue(executionData.executionMode).enqueue(executionId);
 
 		this.activeExecutions[executionId] = {
 			executionData,
@@ -88,7 +107,6 @@ export class ActiveExecutions {
 	/**
 	 * Attaches an execution
 	 */
-
 	attachWorkflowExecution(executionId: string, workflowExecution: PCancelable<IRun>) {
 		this.getExecution(executionId).workflowExecution = workflowExecution;
 	}
@@ -110,13 +128,15 @@ export class ActiveExecutions {
 	}
 
 	/**
-	 * Remove an active execution
+	 * Remove an execution after it has finished or failed
 	 */
 	remove(executionId: string, fullRunData?: IRun): void {
 		const execution = this.activeExecutions[executionId];
 		if (execution === undefined) {
 			return;
 		}
+
+		this.getQueue(execution.executionData.executionMode).dequeue();
 
 		// Resolve all the waiting promises
 		for (const promise of execution.postExecutePromises) {
@@ -134,6 +154,12 @@ export class ActiveExecutions {
 		const execution = this.activeExecutions[executionId];
 		if (execution === undefined) {
 			// There is no execution running with that id
+			return;
+		}
+
+		if (execution.status === 'new') {
+			await this.executionRepository.updateStatus(executionId, 'canceled');
+			this.getQueue(execution.executionData.executionMode).remove(executionId);
 			return;
 		}
 
@@ -175,6 +201,11 @@ export class ActiveExecutions {
 		return returnData;
 	}
 
+	getRunningExecutionIds() {
+		const executions = Object.entries(this.activeExecutions);
+		return executions.filter(([, value]) => value.status === 'running').map(([id]) => id);
+	}
+
 	setStatus(executionId: string, status: ExecutionStatus) {
 		this.getExecution(executionId).status = status;
 	}
@@ -195,6 +226,8 @@ export class ActiveExecutions {
 			await Promise.allSettled(stopPromises);
 		}
 
+		// TODO: cancel all `new` executions if they have any postExecutePromises/responsePromise
+
 		let count = 0;
 		while (executionIds.length !== 0) {
 			if (count++ % 4 === 0) {
@@ -212,5 +245,9 @@ export class ActiveExecutions {
 			throw new ApplicationError('No active execution found', { extra: { executionId } });
 		}
 		return execution;
+	}
+
+	private getQueue(mode: WorkflowExecuteMode) {
+		return this.queues[mode === 'manual' ? 'manual' : 'others'];
 	}
 }

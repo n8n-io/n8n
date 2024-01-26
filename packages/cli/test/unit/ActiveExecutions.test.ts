@@ -111,6 +111,7 @@ describe('ActiveExecutions', () => {
 	test('Should call function to cancel execution when asked to stop', async () => {
 		const newExecution = mockExecutionData();
 		const executionId = await activeExecutions.add(newExecution);
+		activeExecutions.setStatus(executionId, 'running');
 		const cancelExecution = jest.fn();
 		const cancellablePromise = mockCancelablePromise();
 		cancellablePromise.cancel = cancelExecution;
