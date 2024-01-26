@@ -28,6 +28,8 @@ import { fork } from 'child_process';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import config from '@/config';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
+import { MessageEventBus } from '@/eventbus';
+import { ExecutionDataRecoveryService } from '@/eventbus/executionDataRecovery.service';
 import { ExternalHooks } from '@/ExternalHooks';
 import type {
 	IExecutionResponse,
@@ -125,18 +127,13 @@ export class WorkflowRunner {
 		// does contain those messages.
 		try {
 			// Search for messages for this executionId in event logs
-			const { eventBus } = await import('./eventbus');
+			const eventBus = Container.get(MessageEventBus);
 			const eventLogMessages = await eventBus.getEventsByExecutionId(executionId);
 			// Attempt to recover more better runData from these messages (but don't update the execution db entry yet)
 			if (eventLogMessages.length > 0) {
-				const { recoverExecutionDataFromEventLogMessages } = await import(
-					'./eventbus/MessageEventBus/recoverEvents'
-				);
-				const eventLogExecutionData = await recoverExecutionDataFromEventLogMessages(
-					executionId,
-					eventLogMessages,
-					false,
-				);
+				const eventLogExecutionData = await Container.get(
+					ExecutionDataRecoveryService,
+				).recoverExecutionData(executionId, eventLogMessages, false);
 				if (eventLogExecutionData) {
 					fullRunData.data.resultData.runData = eventLogExecutionData.resultData.runData;
 					fullRunData.status = 'crashed';
