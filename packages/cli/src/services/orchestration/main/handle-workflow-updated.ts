@@ -41,10 +41,6 @@ export async function handleWorkflowUpdated(payload?: Record<string, unknown>) {
 
 	await activeWorkflowRunner.removeActivationError(workflowId);
 
-	/**
-	 * Leader reacts to workflow activation by adding triggers and pollers
-	 * and informing frontend about the activation.
-	 */
 	if (!oldState && newState) {
 		try {
 			await activeWorkflowRunner.add(workflowId, 'activate');
@@ -65,10 +61,6 @@ export async function handleWorkflowUpdated(payload?: Record<string, unknown>) {
 		}
 	}
 
-	/**
-	 * Leader reacts to workflow deactivation by removing triggers and pollers
-	 * and informing frontend about the deactivation.
-	 */
 	if (oldState && !newState) {
 		await activeWorkflowRunner.remove(workflowId);
 		push.broadcast('workflowDeactivated', { workflowId });
@@ -76,11 +68,6 @@ export async function handleWorkflowUpdated(payload?: Record<string, unknown>) {
 		return;
 	}
 
-	/**
-	 * Leader reacts to workflow update that did not change active state
-	 * by removing and re-adding triggers and pollers so that the new value
-	 * takes effect.
-	 */
 	await activeWorkflowRunner.remove(workflowId);
 	await activeWorkflowRunner.add(workflowId, 'update');
 }
