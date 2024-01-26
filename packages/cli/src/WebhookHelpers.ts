@@ -590,8 +590,7 @@ export async function executeWebhook(
 		}
 
 		// Start now to run the workflow
-		const workflowRunner = new WorkflowRunner();
-		executionId = await workflowRunner.run(
+		executionId = await Container.get(WorkflowRunner).run(
 			runData,
 			true,
 			!didSendResponse,

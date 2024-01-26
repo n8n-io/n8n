@@ -6,7 +6,6 @@ import type { INode } from 'n8n-workflow';
 import type { User } from '@db/entities/User';
 import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
-import { Push } from '@/push';
 import { WorkflowSharingService } from '@/workflows/workflowSharing.service';
 
 import { mockInstance } from '../../shared/mocking';
@@ -30,7 +29,6 @@ let authAnotherMemberAgent: SuperAgentTest;
 let saveCredential: SaveCredentialFunction;
 
 const activeWorkflowRunner = mockInstance(ActiveWorkflowRunner);
-mockInstance(Push);
 
 const sharingSpy = jest.spyOn(License.prototype, 'isSharingEnabled').mockReturnValue(true);
 const testServer = utils.setupTestServer({

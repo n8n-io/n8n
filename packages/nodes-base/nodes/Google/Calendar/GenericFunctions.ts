@@ -12,12 +12,12 @@ import type {
 import { NodeApiError } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
+import { RRule } from 'rrule';
 
 export async function googleApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: string,
 	resource: string,
-
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
@@ -127,4 +127,55 @@ export async function getTimezones(
 				c.value?.toString() === filter,
 		);
 	return { results };
+}
+
+type RecurentEvent = {
+	start: {
+		dateTime: string;
+		timeZone: string;
+	};
+	end: {
+		dateTime: string;
+		timeZone: string;
+	};
+	recurrence: string[];
+	nextOccurrence?: {
+		start: {
+			dateTime: string;
+			timeZone: string;
+		};
+		end: {
+			dateTime: string;
+			timeZone: string;
+		};
+	};
+};
+
+export function addNextOccurrence(items: RecurentEvent[]) {
+	for (const item of items) {
+		if (item.recurrence) {
+			const rrule = RRule.fromString(item.recurrence[0]);
+			const until = rrule.options?.until;
+
+			const now = new Date();
+			if (until && until < now) {
+				continue;
+			}
+
+			const nextOccurrence = rrule.after(new Date());
+			item.nextOccurrence = {
+				start: {
+					dateTime: moment(nextOccurrence).format(),
+					timeZone: item.start.timeZone,
+				},
+				end: {
+					dateTime: moment(nextOccurrence)
+						.add(moment(item.end.dateTime).diff(moment(item.start.dateTime)))
+						.format(),
+					timeZone: item.end.timeZone,
+				},
+			};
+		}
+	}
+	return items;
 }
