@@ -419,19 +419,9 @@ const config = (module.exports = {
 		 */
 		'prefer-spread': 'error',
 
-		/**
-		 * https://github.com/typescript-eslint/typescript-eslint/blob/main/packages/eslint-plugin/docs/rules/no-unused-vars.md
-		 */
+		// These are tuned off since we use `noUnusedLocals` and `noUnusedParameters` now
 		'no-unused-vars': 'off',
-		'@typescript-eslint/no-unused-vars': [
-			process.env.CI_LINT_MASTER ? 'warn' : 'error',
-			{
-				argsIgnorePattern: '^_',
-				destructuredArrayIgnorePattern: '^_',
-				varsIgnorePattern: '^_',
-				ignoreRestSiblings: true,
-			},
-		],
+		'@typescript-eslint/no-unused-vars': 'off',
 
 		/**
 		 * https://www.typescriptlang.org/docs/handbook/enums.html#const-enums
@@ -472,12 +462,6 @@ const config = (module.exports = {
 
 	overrides: [
 		{
-			files: ['**/*.d.ts'],
-			rules: {
-				'@typescript-eslint/no-unused-vars': 'off',
-			},
-		},
-		{
 			files: ['test/**/*.ts', '**/__tests__/*.ts'],
 			rules: {
 				'n8n-local-rules/no-plain-errors': 'off',
@@ -499,7 +483,6 @@ const config = (module.exports = {
 				'@typescript-eslint/no-unsafe-member-access': 'off',
 				'@typescript-eslint/no-unsafe-return': 'off',
 				'@typescript-eslint/no-unused-expressions': 'off',
-				'@typescript-eslint/no-unused-vars': 'off',
 				'@typescript-eslint/no-use-before-define': 'off',
 				'@typescript-eslint/no-var-requires': 'off',
 				'@typescript-eslint/prefer-nullish-coalescing': 'off',
