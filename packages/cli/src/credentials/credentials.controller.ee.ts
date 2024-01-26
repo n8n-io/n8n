@@ -188,14 +188,6 @@ EECredentialsController.put(
 			sharees_removed: amountRemoved,
 		});
 
-		const isEmailingEnabled = config.getEnv('userManagement.emails.mode') === 'smtp';
-
-		if (!isEmailingEnabled) return;
-
-		const recipients = await Container.get(UserRepository).getEmailsByIds(newShareeIds);
-
-		if (recipients.length === 0) return;
-
 		await Container.get(UserManagementMailer).notifyCredentialsShared({
 			sharer: req.user,
 			newShareeIds,
