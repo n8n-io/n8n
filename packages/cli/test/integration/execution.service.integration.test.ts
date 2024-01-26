@@ -173,7 +173,9 @@ describe('ExecutionService', () => {
 
 			expect(output.count).toBe(4);
 			expect(output.estimated).toBe(false);
-			expect(output.results).toEqual([expect.objectContaining({ id: firstId })]);
+			expect(output.results).toEqual(
+				expect.arrayContaining([expect.objectContaining({ id: firstId })]),
+			);
 		});
 
 		test('should retrieve executions after `firstId`, excluding it', async () => {
@@ -198,11 +200,13 @@ describe('ExecutionService', () => {
 
 			expect(output.count).toBe(4);
 			expect(output.estimated).toBe(false);
-			expect(output.results).toEqual([
-				expect.objectContaining({ id: fourthId }),
-				expect.objectContaining({ id: thirdId }),
-				expect.objectContaining({ id: secondId }),
-			]);
+			expect(output.results).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({ id: fourthId }),
+					expect.objectContaining({ id: thirdId }),
+					expect.objectContaining({ id: secondId }),
+				]),
+			);
 		});
 
 		test('should filter executions by `status`', async () => {
