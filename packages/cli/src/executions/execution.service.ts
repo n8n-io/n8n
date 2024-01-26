@@ -18,7 +18,7 @@ import type {
 } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
 import { Queue } from '@/Queue';
-import type { ExecutionRequest, FindMany } from './execution.types';
+import type { ExecutionRequest, ExecutionSummaries } from './execution.types';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import { getStatusUsingPreviousExecutionStatusMethod } from './executionHelpers';
 import type { IGetExecutionsQueryFilter } from '@db/repositories/execution.repository';
@@ -334,10 +334,11 @@ export class ExecutionService {
 	}
 
 	/**
-	 * Find a range of executions that satisfy a query, along with the count of
-	 * all existing executions that satisfy the query.
+	 * Find a range of summaries of executions that satisfy a query, along with the
+	 * total count of all existing executions that satisfy the query, and whether
+	 * the total is an estimate or not.
 	 */
-	async findRangeWithCount(query: FindMany.RangeQuery) {
+	async findRangeWithCount(query: ExecutionSummaries.RangeQuery) {
 		const executions = await this.executionRepository.findManyByRangeQuery(query);
 
 		if (config.getEnv('database.type') === 'postgresdb') {

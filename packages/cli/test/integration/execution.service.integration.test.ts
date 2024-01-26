@@ -6,7 +6,7 @@ import { createWorkflow } from './shared/db/workflows';
 import { createExecution } from './shared/db/executions';
 import * as testDb from './shared/testDb';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import type { FindMany } from '@/executions/execution.types';
+import type { ExecutionSummaries } from '@/executions/execution.types';
 import { ExecutionMetadataRepository } from '@/databases/repositories/executionMetadata.repository';
 
 describe('ExecutionService', () => {
@@ -101,7 +101,7 @@ describe('ExecutionService', () => {
 				createExecution({ status: 'success' }, workflow),
 			]);
 
-			const query: FindMany.RangeQuery = {
+			const query: ExecutionSummaries.RangeQuery = {
 				kind: 'range',
 				status: ['success'],
 				range: { limit: 20 },
@@ -137,7 +137,7 @@ describe('ExecutionService', () => {
 				createExecution({ status: 'success' }, workflow),
 			]);
 
-			const query: FindMany.RangeQuery = {
+			const query: ExecutionSummaries.RangeQuery = {
 				kind: 'range',
 				status: ['success'],
 				range: { limit: 2 },
@@ -163,7 +163,7 @@ describe('ExecutionService', () => {
 
 			const [firstId, secondId] = await executionRepository.getAllIds();
 
-			const query: FindMany.RangeQuery = {
+			const query: ExecutionSummaries.RangeQuery = {
 				kind: 'range',
 				range: { limit: 20, lastId: secondId },
 				accessibleWorkflowIds: [workflow.id],
@@ -188,7 +188,7 @@ describe('ExecutionService', () => {
 
 			const [firstId, secondId, thirdId, fourthId] = await executionRepository.getAllIds();
 
-			const query: FindMany.RangeQuery = {
+			const query: ExecutionSummaries.RangeQuery = {
 				kind: 'range',
 				range: { limit: 20, firstId },
 				accessibleWorkflowIds: [workflow.id],
@@ -215,7 +215,7 @@ describe('ExecutionService', () => {
 				createExecution({ status: 'waiting' }, workflow),
 			]);
 
-			const query: FindMany.RangeQuery = {
+			const query: ExecutionSummaries.RangeQuery = {
 				kind: 'range',
 				status: ['success'],
 				range: { limit: 20 },
@@ -243,7 +243,7 @@ describe('ExecutionService', () => {
 				createExecution({ status: 'success' }, secondWorkflow),
 			]);
 
-			const query: FindMany.RangeQuery = {
+			const query: ExecutionSummaries.RangeQuery = {
 				kind: 'range',
 				range: { limit: 20 },
 				workflowId: firstWorkflow.id,
@@ -267,7 +267,7 @@ describe('ExecutionService', () => {
 				createExecution({ startedAt: new Date('2020-12-31') }, workflow),
 			]);
 
-			const query: FindMany.RangeQuery = {
+			const query: ExecutionSummaries.RangeQuery = {
 				kind: 'range',
 				range: { limit: 20 },
 				startedBefore: '2020-07-01',
@@ -291,7 +291,7 @@ describe('ExecutionService', () => {
 				createExecution({ startedAt: new Date('2020-12-31') }, workflow),
 			]);
 
-			const query: FindMany.RangeQuery = {
+			const query: ExecutionSummaries.RangeQuery = {
 				kind: 'range',
 				range: { limit: 20 },
 				startedAfter: '2020-07-01',
@@ -318,7 +318,7 @@ describe('ExecutionService', () => {
 				createExecution({ status: 'success' }, inaccessibleWorkflow),
 			]);
 
-			const query: FindMany.RangeQuery = {
+			const query: ExecutionSummaries.RangeQuery = {
 				kind: 'range',
 				range: { limit: 20 },
 				workflowId: inaccessibleWorkflow.id,
@@ -353,7 +353,7 @@ describe('ExecutionService', () => {
 				execution: { id: secondId },
 			});
 
-			const query: FindMany.RangeQuery = {
+			const query: ExecutionSummaries.RangeQuery = {
 				kind: 'range',
 				range: { limit: 20 },
 				metadata: [{ key: 'key1', value: 'value1' }],

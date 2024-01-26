@@ -41,7 +41,7 @@ import { ExecutionEntity } from '../entities/ExecutionEntity';
 import { ExecutionMetadata } from '../entities/ExecutionMetadata';
 import { ExecutionDataRepository } from './executionData.repository';
 import { Logger } from '@/Logger';
-import type { FindMany } from '@/executions/execution.types';
+import type { ExecutionSummaries } from '@/executions/execution.types';
 import { PostgresLiveRowsRetrievalError } from '@/errors/postgres-live-rows-retrieval.error';
 
 export interface IGetExecutionsQueryFilter {
@@ -618,7 +618,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return await this.find(findManyOptions);
 	}
 
-	async findManyByRangeQuery(query: FindMany.RangeQuery): Promise<ExecutionSummary[]> {
+	async findManyByRangeQuery(query: ExecutionSummaries.RangeQuery): Promise<ExecutionSummary[]> {
 		if (query?.accessibleWorkflowIds?.length === 0) {
 			throw new ApplicationError('Expected accessible workflow IDs');
 		}
@@ -631,7 +631,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		});
 	}
 
-	async fetchCount(query: FindMany.CountQuery) {
+	async fetchCount(query: ExecutionSummaries.CountQuery) {
 		return await this.toQueryBuilder(query).getCount();
 	}
 
@@ -654,7 +654,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		}
 	}
 
-	private toQueryBuilder(query: FindMany.Query) {
+	private toQueryBuilder(query: ExecutionSummaries.Query) {
 		const {
 			accessibleWorkflowIds,
 			status,

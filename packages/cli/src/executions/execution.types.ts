@@ -29,7 +29,7 @@ export declare namespace ExecutionRequest {
 	}
 
 	type GetMany = AuthenticatedRequest<{}, {}, {}, QueryParams.GetMany> & {
-		rangeQuery: FindMany.RangeQuery; // parsed from query params
+		rangeQuery: ExecutionSummaries.RangeQuery; // parsed from query params
 	};
 
 	type GetOne = AuthenticatedRequest<RouteParams.ExecutionId, {}, {}, QueryParams.GetOne>;
@@ -41,7 +41,7 @@ export declare namespace ExecutionRequest {
 	type Stop = AuthenticatedRequest<RouteParams.ExecutionId>;
 }
 
-export namespace FindMany {
+export namespace ExecutionSummaries {
 	export type Query = RangeQuery | CountQuery;
 
 	export type RangeQuery = { kind: 'range' } & FilterFields & AccessFields & RangeFields;
