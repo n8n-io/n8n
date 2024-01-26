@@ -104,7 +104,7 @@ export class UserManagementMailer {
 		workflowId: string;
 		workflowName: string;
 	}) {
-		if (this.isEmailSetUp) return;
+		if (!this.mailer) return;
 
 		const recipients = await this.userRepository.getEmailsByIds(newShareeIds);
 
@@ -116,7 +116,7 @@ export class UserManagementMailer {
 
 		const baseUrl = this.urlService.getInstanceBaseUrl();
 
-		const result = await this.mailer?.sendMail({
+		const result = await this.mailer.sendMail({
 			emailRecipients,
 			subject: `${sharerFirstName} has shared an n8n workflow with you`,
 			body: populateTemplate({
@@ -149,7 +149,7 @@ export class UserManagementMailer {
 		newShareeIds: string[];
 		credentialsName: string;
 	}) {
-		if (this.isEmailSetUp) return;
+		if (!this.mailer) return;
 
 		const recipients = await this.userRepository.getEmailsByIds(newShareeIds);
 
@@ -161,7 +161,7 @@ export class UserManagementMailer {
 
 		const baseUrl = this.urlService.getInstanceBaseUrl();
 
-		const result = await this.mailer?.sendMail({
+		const result = await this.mailer.sendMail({
 			emailRecipients,
 			subject: `${sharerFirstName} has shared an n8n credential with you`,
 			body: populateTemplate({ credentialsName, credentialsListUrl: `${baseUrl}/credentials` }),
