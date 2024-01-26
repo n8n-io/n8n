@@ -1,13 +1,13 @@
 {
-  "name": "n8n",
+  "name": "n8n-monorepo",
   "version": "1.26.0",
   "private": true,
   "homepage": "https://n8n.io",
   "engines": {
     "node": ">=18.10",
-    "pnpm": ">=8.9"
+    "pnpm": ">=8.14"
   },
-  "packageManager": "pnpm@8.9.0",
+  "packageManager": "pnpm@8.14.3",
   "scripts": {
     "preinstall": "node scripts/block-npm-install.js",
     "build": "turbo run build",
