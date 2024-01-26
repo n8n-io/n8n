@@ -18,6 +18,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { middleware } from '@/rbac/middleware';
 import type { RouteConfig, RouterMiddleware } from '@/types/router';
 import { initializeCore } from '@/init';
+import { ROLE } from '@/utils/userUtils';
 
 const ChangePasswordView = async () => import('./views/ChangePasswordView.vue');
 const ErrorView = async () => import('./views/ErrorView.vue');
@@ -476,7 +477,10 @@ export const routes = [
 					settingsView: SettingsPersonalView,
 				},
 				meta: {
-					middleware: ['authenticated'],
+					middleware: ['authenticated', 'role'],
+					middlewareOptions: {
+						role: [ROLE.Owner]
+					},
 					telemetry: {
 						pageCategory: 'settings',
 						getProperties(route: RouteLocation) {
@@ -485,17 +489,6 @@ export const routes = [
 							};
 						},
 					},
-<<<<<<< HEAD
-					permissions: {
-						allow: {
-							role: [ROLE.Owner],
-						},
-						deny: {
-							role: [ROLE.Default],
-						},
-					},
-=======
->>>>>>> n8n@1.25.1
 				},
 			},
 			{
@@ -528,7 +521,10 @@ export const routes = [
 					settingsView: SettingsApiView,
 				},
 				meta: {
-					middleware: ['authenticated'],
+					middleware: ['authenticated', 'role'],
+					middlewareOptions: {
+						role: [ROLE.Owner]
+					},
 					telemetry: {
 						pageCategory: 'settings',
 						getProperties(route: RouteLocation) {
@@ -537,20 +533,6 @@ export const routes = [
 							};
 						},
 					},
-<<<<<<< HEAD
-					permissions: {
-						allow: {
-							role: [ROLE.Owner],
-						},
-						deny: {
-							shouldDeny: () => {
-								const settingsStore = useSettingsStore();
-								return settingsStore.isPublicApiEnabled === false;
-							},
-						},
-					},
-=======
->>>>>>> n8n@1.25.1
 				},
 			},
 			{
@@ -683,7 +665,10 @@ export const routes = [
 					settingsView: SettingsFakeDoorView,
 				},
 				meta: {
-					middleware: ['authenticated'],
+					middleware: ['authenticated', 'role'],
+					middlewareOptions: {
+						role: [ROLE.Owner]
+					},
 					telemetry: {
 						pageCategory: 'settings',
 						getProperties(route: RouteLocation) {
@@ -692,14 +677,6 @@ export const routes = [
 							};
 						},
 					},
-<<<<<<< HEAD
-					permissions: {
-						allow: {
-							role: [ROLE.Owner],
-						},
-					},
-=======
->>>>>>> n8n@1.25.1
 				},
 			},
 			{

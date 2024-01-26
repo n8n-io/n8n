@@ -86,12 +86,6 @@ import {
 } from './sso/ssoHelpers';
 import { SourceControlService } from '@/environments/sourceControl/sourceControl.service.ee';
 import { SourceControlController } from '@/environments/sourceControl/sourceControl.controller.ee';
-<<<<<<< HEAD
-import { SourceControlPreferencesService } from './environments/sourceControl/sourceControlPreferences.service.ee';
-import { ExecutionRepository } from './databases/repositories';
-import type { ExecutionEntity } from './databases/entities/ExecutionEntity';
-import { QuickplayController } from './controllers/quickplay.controller';
-=======
 
 import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
@@ -109,7 +103,8 @@ import { BadRequestError } from './errors/response-errors/bad-request.error';
 import { NotFoundError } from './errors/response-errors/not-found.error';
 import { MultiMainSetup } from './services/orchestration/main/MultiMainSetup.ee';
 import { WorkflowSharingService } from './workflows/workflowSharing.service';
->>>>>>> n8n@1.25.1
+import { QuickplayController } from './controllers/quickplay.controller';
+import { setupExternalJWTAuth } from './middlewares/externalJWTAuth';
 
 const exec = promisify(callbackExec);
 
@@ -227,85 +222,6 @@ export class Server extends AbstractServer {
 		const { app } = this;
 		setupAuthMiddlewares(app, ignoredEndpoints, this.restEndpoint);
 
-<<<<<<< HEAD
-		// refresh enterprise status
-		Object.assign(this.frontendSettings.enterprise, {
-			sharing: isSharingEnabled(),
-			logStreaming: isLogStreamingEnabled(),
-			ldap: isLdapEnabled(),
-			saml: isSamlLicensed(),
-			advancedExecutionFilters: isAdvancedExecutionFiltersEnabled(),
-			variables: isVariablesEnabled(),
-			sourceControl: isSourceControlLicensed(),
-		});
-
-		if (isLdapEnabled()) {
-			Object.assign(this.frontendSettings.sso.ldap, {
-				loginLabel: getLdapLoginLabel(),
-				loginEnabled: isLdapLoginEnabled(),
-			});
-		}
-
-		if (isSamlLicensed()) {
-			Object.assign(this.frontendSettings.sso.saml, {
-				loginLabel: getSamlLoginLabel(),
-				loginEnabled: isSamlLoginEnabled(),
-			});
-		}
-
-		if (isVariablesEnabled()) {
-			this.frontendSettings.variables.limit = getVariablesLimit();
-		}
-
-		if (config.get('nodes.packagesMissing').length > 0) {
-			this.frontendSettings.missingPackages = true;
-		}
-		return this.frontendSettings;
-	}
-
-	private registerControllers(ignoredEndpoints: Readonly<string[]>) {
-		const { app, externalHooks, activeWorkflowRunner, nodeTypes } = this;
-		const repositories = Db.collections;
-		setupAuthMiddlewares(app, ignoredEndpoints, this.restEndpoint, repositories.User);
-
-		const logger = LoggerProxy;
-		const internalHooks = Container.get(InternalHooks);
-		const mailer = Container.get(UserManagementMailer);
-		const postHog = this.postHog;
-		const samlService = Container.get(SamlService);
-		const sourceControlService = Container.get(SourceControlService);
-		const sourceControlPreferencesService = Container.get(SourceControlPreferencesService);
-
-		const controllers: object[] = [
-			new EventBusController(),
-			new AuthController({ config, internalHooks, repositories, logger, postHog }),
-			new OwnerController({ config, internalHooks, repositories, logger }),
-			new MeController({ externalHooks, internalHooks, repositories, logger }),
-			new NodeTypesController({ config, nodeTypes }),
-			new PasswordResetController({
-				config,
-				externalHooks,
-				internalHooks,
-				mailer,
-				repositories,
-				logger,
-			}),
-			new TagsController({ config, repositories, externalHooks }),
-			new TranslationController(config, this.credentialTypes),
-			new UsersController({
-				config,
-				mailer,
-				externalHooks,
-				internalHooks,
-				repositories,
-				activeWorkflowRunner,
-				logger,
-				postHog,
-			}),
-			new SamlController(samlService),
-			new SourceControlController(sourceControlService, sourceControlPreferencesService),
-			new QuickplayController({ repositories, postHog }),
-=======
 		const controllers: Array<Class<object>> = [
 			EventBusController,
 			EventBusControllerEE,
@@ -335,7 +251,7 @@ export class Server extends AbstractServer {
 			ActiveWorkflowsController,
 			WorkflowsController,
 			ExecutionsController,
->>>>>>> n8n@1.25.1
+			QuickplayController,
 		];
 
 		if (process.env.NODE_ENV !== 'production' && Container.get(MultiMainSetup).isEnabled) {
@@ -406,6 +322,15 @@ export class Server extends AbstractServer {
 			!ignoredEndpoints.includes(this.restEndpoint),
 			`REST endpoint cannot be set to any of these values: ${ignoredEndpoints.join()} `,
 		);
+
+		// eslint-disable-next-line no-useless-escape
+		const authIgnoreRegex = new RegExp(`^\/(${ignoredEndpoints.join('|')})\/?.*$`);
+
+
+		// Check for and validate JWT if configured
+		if (config.getEnv('security.jwtAuth.active')) {
+			setupExternalJWTAuth(this.app, authIgnoreRegex);
+		}
 
 		// ----------------------------------------
 		// Public API

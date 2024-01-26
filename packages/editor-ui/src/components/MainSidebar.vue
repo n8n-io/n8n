@@ -17,17 +17,8 @@
 		</div>
 		<n8n-menu :items="mainMenuItems" :collapsed="isCollapsed" @select="handleSelect">
 			<template #header>
-<<<<<<< HEAD
 				<div v-if="false" :class="$style.logo">
-					<img
-						:src="basePath + (isCollapsed ? 'n8n-logo-collapsed.svg' : 'n8n-logo-expanded.svg')"
-						:class="$style.icon"
-						alt="n8n"
-					/>
-=======
-				<div :class="$style.logo">
 					<img :src="logoPath" data-test-id="n8n-logo" :class="$style.icon" alt="n8n" />
->>>>>>> n8n@1.25.1
 				</div>
 			</template>
 
@@ -131,6 +122,7 @@ import MainSidebarSourceControl from '@/components/MainSidebarSourceControl.vue'
 import { hasPermission } from '@/rbac/permissions';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useDebounce } from '@/composables/useDebounce';
+import { ROLE } from '@/utils/userUtils';
 
 export default defineComponent({
 	name: 'MainSidebar',
@@ -167,13 +159,9 @@ export default defineComponent({
 			useCloudPlanStore,
 			useSourceControlStore,
 		),
-<<<<<<< HEAD
 		isOwner(): boolean {
 			return this.usersStore.globalRoleName === 'owner';
 		},
-		hasVersionUpdates(): boolean {
-			return this.versionsStore.hasVersionUpdates && this.isOwner;
-=======
 		logoPath(): string {
 			if (this.isCollapsed) return this.basePath + 'n8n-logo-collapsed.svg';
 
@@ -182,9 +170,8 @@ export default defineComponent({
 		hasVersionUpdates(): boolean {
 			return (
 				this.settingsStore.settings.releaseChannel === 'stable' &&
-				this.versionsStore.hasVersionUpdates
+				this.versionsStore.hasVersionUpdates && this.isOwner
 			);
->>>>>>> n8n@1.25.1
 		},
 		nextVersions(): IVersion[] {
 			return this.versionsStore.nextVersions;
@@ -197,7 +184,9 @@ export default defineComponent({
 			return accessibleRoute !== null;
 		},
 		showUserArea(): boolean {
-			return hasPermission(['authenticated']);
+			return hasPermission(['role'], {
+				role: [ROLE.Owner],
+			});
 		},
 		workflowExecution(): IExecutionResponse | null {
 			return this.workflowsStore.getWorkflowExecution;

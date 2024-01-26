@@ -59,24 +59,11 @@
 		linear,
 		left top,
 		right top,
-<<<<<<< HEAD
 		rgb(226 226 226 / 75%),
 		rgb(226 226 226),
 		rgb(226 226 226 / 75%)
 	);
 	background: linear-gradient(90deg, rgb(226 226 226 / 75%), rgb(226 226 226), rgb(226 226 226 / 75%));
-=======
-		color-stop(25%, var(--color-background-base)),
-		color-stop(37%, var(--color-background-medium)),
-		color-stop(63%, var(--color-background-base))
-	);
-	background: linear-gradient(
-		90deg,
-		var(--color-background-base) 25%,
-		var(--color-background-medium) 37%,
-		var(--color-background-base) 63%
-	);
->>>>>>> n8n@1.25.1
 	background-size: 400% 100%;
 	-webkit-animation: el-skeleton-loading 1.4s ease infinite;
 	animation: el-skeleton-loading 1.4s ease infinite;

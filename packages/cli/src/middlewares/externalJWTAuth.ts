@@ -1,10 +1,14 @@
-import type { Request, Application } from 'express';
+import config from '@/config';
+import type { Request, Response, Application } from 'express';
 import jwt from 'jsonwebtoken';
 import jwks from 'jwks-rsa';
-import type { Config } from '@/config';
-import { jwtAuthAuthorizationError } from '@/ResponseHelper';
 
-export interface QpJwt {
+function jwtAuthAuthorizationError(resp: Response, message?: string) {
+	resp.statusCode = 403;
+	resp.json({ code: resp.statusCode, message });
+}
+
+interface QpJwt {
 	gcip: {
 		x_qp_entitlements: {
 			allowed_products: Array<{
@@ -28,7 +32,7 @@ export interface QpJwtRequest<
 	jwt: QpJwt;
 }
 
-export const setupExternalJWTAuth = (app: Application, config: Config, authIgnoreRegex: RegExp) => {
+export const setupExternalJWTAuth = (app: Application, authIgnoreRegex: RegExp) => {
 	const jwtAuthHeader = config.getEnv('security.jwtAuth.jwtHeader');
 	if (jwtAuthHeader === '') {
 		throw new Error('JWT auth is activated but no request header was defined. Please set one!');
