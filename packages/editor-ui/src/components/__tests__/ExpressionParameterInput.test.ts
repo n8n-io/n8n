@@ -19,18 +19,14 @@ describe('ExpressionParameterInput', () => {
 		ndvStore = useNDVStore();
 	});
 
-	test.each([
-		[true, 'not readonly', expect.anything()],
-		[false, 'readonly', undefined],
-	])('emitting open expression editor modal should be %s when %s', async (allowed, _, expected) => {
+	it('should emitting open extended expression editor', async () => {
 		const { getByTestId, emitted } = renderComponent({
 			props: {
 				modelValue: '',
-				isReadOnly: !allowed,
 			},
 		});
 
 		await userEvent.click(getByTestId('expander'));
-		expect(emitted().modalOpenerClick).toEqual(expected);
+		expect(emitted().modalOpenerClick).toEqual(expect.anything());
 	});
 });

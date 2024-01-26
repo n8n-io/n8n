@@ -28,7 +28,6 @@
 				icon="external-link-alt"
 				size="xsmall"
 				:class="$style['expression-editor-modal-opener']"
-				:disabled="isReadOnly"
 				data-test-id="expander"
 				@click="$emit('modalOpenerClick')"
 			/>
