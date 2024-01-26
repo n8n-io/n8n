@@ -67,7 +67,7 @@ import { setupAuthMiddlewares } from './middlewares';
 import { isLdapEnabled } from './Ldap/helpers';
 import { AbstractServer } from './AbstractServer';
 import { PostHogClient } from './posthog';
-import { eventBus } from './eventbus';
+import { MessageEventBus } from '@/eventbus';
 import { InternalHooks } from './InternalHooks';
 import { License } from './License';
 import { SamlController } from './sso/saml/routes/saml.controller.ee';
@@ -416,10 +416,8 @@ export class Server extends AbstractServer {
 		// ----------------------------------------
 		// EventBus Setup
 		// ----------------------------------------
-
-		if (!eventBus.isInitialized) {
-			await eventBus.initialize();
-		}
+		const eventBus = Container.get(MessageEventBus);
+		await eventBus.initialize();
 
 		if (this.endpointPresetCredentials !== '') {
 			// POST endpoint to set preset credentials
