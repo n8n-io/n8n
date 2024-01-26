@@ -649,9 +649,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		if (execution.waitTill)
 			execution.waitTill =
-				execution.stoppedAt instanceof Date
-					? execution.stoppedAt.toISOString()
-					: execution.waitTill;
+				execution.waitTill instanceof Date ? execution.waitTill.toISOString() : execution.waitTill;
 
 		if (execution.stoppedAt)
 			execution.stoppedAt =
