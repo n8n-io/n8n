@@ -100,7 +100,6 @@ export class UserManagementMailer {
 		workflow: { id: string; name: string };
 		baseUrl: string;
 	}) {
-		console.log('this.isEmailSetUp', this.isEmailSetUp);
 		if (this.isEmailSetUp) return;
 
 		const recipients = await this.userRepository.getEmailsByIds(newShareeIds);
