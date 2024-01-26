@@ -82,7 +82,7 @@ export const schema = {
 			user: {
 				doc: 'PostgresDB User',
 				format: String,
-				default: 'root',
+				default: 'postgres',
 				env: 'DB_POSTGRESDB_USER',
 			},
 			schema: {

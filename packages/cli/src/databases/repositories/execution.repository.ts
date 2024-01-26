@@ -635,14 +635,14 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	// @tech_debt: These transformations should not be needed
 	private toSummary(execution: {
 		id: number | string;
-		startedAt: Date | string;
+		startedAt?: Date | string;
 		stoppedAt?: Date | string;
-		waitTill?: Date | null;
+		waitTill?: Date | string | null;
 	}): ExecutionSummary {
 		execution.id = execution.id.toString();
-		execution.startedAt = execution.startedAt.toString();
-		execution.waitTill = execution.waitTill ?? undefined;
 
+		if (execution.startedAt) execution.startedAt = execution.startedAt.toString();
+		if (execution.waitTill) execution.waitTill = execution.waitTill.toString();
 		if (execution.stoppedAt) execution.stoppedAt = execution.stoppedAt.toString();
 
 		return execution as ExecutionSummary;
