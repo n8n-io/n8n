@@ -20,6 +20,7 @@ import { UserManagementMailer } from '@/UserManagement/email';
 import { UrlService } from '@/services/url.service';
 import { Logger } from '@/Logger';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import config from '@/config';
 
 export const EECredentialsController = express.Router();
 
@@ -189,6 +190,10 @@ EECredentialsController.put(
 			user_ids_sharees_added: newShareeIds,
 			sharees_removed: amountRemoved,
 		});
+
+		const isEmailingEnabled = config.getEnv('userManagement.emails.mode') === 'smtp';
+
+		if (!isEmailingEnabled) return;
 
 		const recipients = await Container.get(UserRepository).getEmailsByIds(newShareeIds);
 

@@ -403,6 +403,10 @@ export class WorkflowsController {
 
 		void this.internalHooks.onWorkflowSharingUpdate(workflowId, req.user.id, shareWithIds);
 
+		const isEmailingEnabled = config.getEnv('userManagement.emails.mode') === 'smtp';
+
+		if (!isEmailingEnabled) return;
+
 		const recipients = await this.userRepository.getEmailsByIds(newShareeIds);
 
 		if (recipients.length === 0) return;
