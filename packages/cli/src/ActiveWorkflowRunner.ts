@@ -7,16 +7,14 @@ import { ActiveWorkflows, NodeExecuteFunctions } from 'n8n-core';
 import type {
 	ExecutionError,
 	IDeferredPromise,
-	IExecuteData,
 	IExecuteResponsePromiseData,
 	IGetExecutePollFunctions,
 	IGetExecuteTriggerFunctions,
 	INode,
 	INodeExecutionData,
 	IRun,
-	IRunExecutionData,
 	IWorkflowBase,
-	IWorkflowExecuteAdditionalData as IWorkflowExecuteAdditionalDataWorkflow,
+	IWorkflowExecuteAdditionalData,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 	INodeType,
@@ -29,7 +27,7 @@ import {
 	ApplicationError,
 } from 'n8n-workflow';
 
-import type { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
+import type { IWorkflowDb } from '@/Interfaces';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 
@@ -42,7 +40,6 @@ import {
 	WORKFLOW_REACTIVATE_MAX_TIMEOUT,
 } from '@/constants';
 import { NodeTypes } from '@/NodeTypes';
-import { WorkflowRunner } from '@/WorkflowRunner';
 import { ExternalHooks } from '@/ExternalHooks';
 import { WebhookService } from './services/webhook.service';
 import { Logger } from './Logger';
@@ -50,6 +47,7 @@ import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { ActivationErrorsService } from '@/ActivationErrors.service';
 import { ActiveWorkflowsService } from '@/services/activeWorkflows.service';
+import { WorkflowExecutionService } from '@/workflows/workflowExecution.service';
 import { WorkflowStaticDataService } from '@/workflows/workflowStaticData.service';
 import { OnShutdown } from '@/decorators/OnShutdown';
 
@@ -77,6 +75,7 @@ export class ActiveWorkflowRunner {
 		private readonly executionService: ExecutionService,
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
 		private readonly activeWorkflowsService: ActiveWorkflowsService,
+		private readonly workflowExecutionService: WorkflowExecutionService,
 	) {}
 
 	async init() {
@@ -141,7 +140,7 @@ export class ActiveWorkflowRunner {
 	 */
 	async addWebhooks(
 		workflow: Workflow,
-		additionalData: IWorkflowExecuteAdditionalDataWorkflow,
+		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
 		activation: WorkflowActivateMode,
 	) {
@@ -264,57 +263,13 @@ export class ActiveWorkflowRunner {
 		await this.webhookService.deleteWorkflowWebhooks(workflowId);
 	}
 
-	async runWorkflow(
-		workflowData: IWorkflowDb,
-		node: INode,
-		data: INodeExecutionData[][],
-		additionalData: IWorkflowExecuteAdditionalDataWorkflow,
-		mode: WorkflowExecuteMode,
-		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
-	) {
-		const nodeExecutionStack: IExecuteData[] = [
-			{
-				node,
-				data: {
-					main: data,
-				},
-				source: null,
-			},
-		];
-
-		const executionData: IRunExecutionData = {
-			startData: {},
-			resultData: {
-				runData: {},
-			},
-			executionData: {
-				contextData: {},
-				metadata: {},
-				nodeExecutionStack,
-				waitingExecution: {},
-				waitingExecutionSource: {},
-			},
-		};
-
-		// Start the workflow
-		const runData: IWorkflowExecutionDataProcess = {
-			userId: additionalData.userId,
-			executionMode: mode,
-			executionData,
-			workflowData,
-		};
-
-		const workflowRunner = new WorkflowRunner();
-		return await workflowRunner.run(runData, true, undefined, undefined, responsePromise);
-	}
-
 	/**
 	 * Return poll function which gets the global functions from n8n-core
 	 * and overwrites the emit to be able to start it in subprocess
 	 */
 	getExecutePollFunctions(
 		workflowData: IWorkflowDb,
-		additionalData: IWorkflowExecuteAdditionalDataWorkflow,
+		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
 		activation: WorkflowActivateMode,
 	): IGetExecutePollFunctions {
@@ -333,7 +288,7 @@ export class ActiveWorkflowRunner {
 			): void => {
 				this.logger.debug(`Received event to trigger execution for workflow "${workflow.name}"`);
 				void this.workflowStaticDataService.saveStaticData(workflow);
-				const executePromise = this.runWorkflow(
+				const executePromise = this.workflowExecutionService.runWorkflow(
 					workflowData,
 					node,
 					data,
@@ -371,7 +326,7 @@ export class ActiveWorkflowRunner {
 	 */
 	getExecuteTriggerFunctions(
 		workflowData: IWorkflowDb,
-		additionalData: IWorkflowExecuteAdditionalDataWorkflow,
+		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
 		activation: WorkflowActivateMode,
 	): IGetExecuteTriggerFunctions {
@@ -391,7 +346,7 @@ export class ActiveWorkflowRunner {
 				this.logger.debug(`Received trigger for workflow "${workflow.name}"`);
 				void this.workflowStaticDataService.saveStaticData(workflow);
 
-				const executePromise = this.runWorkflow(
+				const executePromise = this.workflowExecutionService.runWorkflow(
 					workflowData,
 					node,
 					data,
@@ -659,10 +614,7 @@ export class ActiveWorkflowRunner {
 	/**
 	 * Count all triggers in the workflow, excluding Manual Trigger.
 	 */
-	private countTriggers(
-		workflow: Workflow,
-		additionalData: IWorkflowExecuteAdditionalDataWorkflow,
-	) {
+	private countTriggers(workflow: Workflow, additionalData: IWorkflowExecuteAdditionalData) {
 		const triggerFilter = (nodeType: INodeType) =>
 			!!nodeType.trigger && !nodeType.description.name.includes('manualTrigger');
 
@@ -796,7 +748,7 @@ export class ActiveWorkflowRunner {
 		}: {
 			activationMode: WorkflowActivateMode;
 			executionMode: WorkflowExecuteMode;
-			additionalData: IWorkflowExecuteAdditionalDataWorkflow;
+			additionalData: IWorkflowExecuteAdditionalData;
 		},
 	) {
 		const getTriggerFunctions = this.getExecuteTriggerFunctions(

@@ -76,6 +76,7 @@ export class ExecutionService {
 		private readonly executionRepository: ExecutionRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly nodeTypes: NodeTypes,
+		private readonly workflowRunner: WorkflowRunner,
 	) {}
 
 	async findMany(req: ExecutionRequest.GetMany, sharedWorkflowIds: string[]) {
@@ -276,8 +277,7 @@ export class ExecutionService {
 			}
 		}
 
-		const workflowRunner = new WorkflowRunner();
-		const retriedExecutionId = await workflowRunner.run(data);
+		const retriedExecutionId = await this.workflowRunner.run(data);
 
 		const executionData = await this.activeExecutions.getPostExecutePromise(retriedExecutionId);
 
