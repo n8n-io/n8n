@@ -42,7 +42,7 @@ export const parseRangeQuery = (
 
 			if (jsonFilter.waitTill) jsonFilter.waitTill = Boolean(jsonFilter.waitTill);
 
-			if (!isValid(jsonFilter)) throw new ApplicationError('Invalid schema');
+			if (!isValid(jsonFilter)) throw new ApplicationError('Query does not match schema');
 
 			req.rangeQuery = { ...req.rangeQuery, ...jsonFilter };
 		}

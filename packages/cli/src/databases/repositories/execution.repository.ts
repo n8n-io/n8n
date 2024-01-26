@@ -605,7 +605,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			take: n,
 		};
 
-		return await this.find(findManyOptions);
+		const executions = await this.find(findManyOptions);
+
+		return executions.map((execution) => this.toSummary(execution));
 	}
 
 	async findAllActive(): Promise<ExecutionSummary[]> {
@@ -615,7 +617,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			order: { stoppedAt: 'DESC' },
 		};
 
-		return await this.find(findManyOptions);
+		const executions = await this.find(findManyOptions);
+
+		return executions.map((execution) => this.toSummary(execution));
 	}
 
 	async findManyByRangeQuery(query: ExecutionSummaries.RangeQuery): Promise<ExecutionSummary[]> {
@@ -625,10 +629,20 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		const summaries: ExecutionSummary[] = await this.toQueryBuilder(query).getRawMany();
 
-		return summaries.map((row) => {
-			row.id = row.id.toString(); // @TODO: Can we have this in the query builder?
-			return row;
-		});
+		return summaries.map((row) => this.toSummary(row));
+	}
+
+	// @tech_debt: Refactor as typeorm transformer?
+	private toSummary(row: {
+		id: number | string;
+		startedAt: Date | string;
+		stoppedAt?: Date | string;
+	}): ExecutionSummary {
+		row.id = row.id.toString();
+		row.startedAt = row.startedAt.toString();
+		if (row.stoppedAt) row.stoppedAt = row.stoppedAt.toString();
+
+		return row as ExecutionSummary;
 	}
 
 	async fetchCount(query: ExecutionSummaries.CountQuery) {

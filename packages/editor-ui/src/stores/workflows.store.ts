@@ -1332,7 +1332,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 					const output = await getActiveExecutions(rootStore.getRestApiContext, {
 						workflowId: requestFilter.workflowId,
 					});
-					activeExecutions = output?.results || [];
+					activeExecutions = output?.results ?? [];
 				}
 				const finishedExecutions = await getExecutions(rootStore.getRestApiContext, requestFilter);
 				this.finishedExecutionsCount = finishedExecutions.count;
