@@ -1,11 +1,10 @@
 import { ActiveExecutions } from '@/ActiveExecutions';
 import PCancelable from 'p-cancelable';
 import { v4 as uuid } from 'uuid';
-import { Container } from 'typedi';
 import type { IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
 import { createDeferredPromise } from 'n8n-workflow';
 import type { IWorkflowExecutionDataProcess } from '@/Interfaces';
-import { ExecutionRepository } from '@db/repositories/execution.repository';
+import type { ExecutionRepository } from '@db/repositories/execution.repository';
 import { mock } from 'jest-mock-extended';
 
 const FAKE_EXECUTION_ID = '15';
@@ -14,7 +13,7 @@ const FAKE_SECOND_EXECUTION_ID = '20';
 const updateExistingExecution = jest.fn();
 const createNewExecution = jest.fn(async () => FAKE_EXECUTION_ID);
 
-Container.set(ExecutionRepository, {
+const executionRepository = mock<ExecutionRepository>({
 	updateExistingExecution,
 	createNewExecution,
 });
@@ -23,7 +22,7 @@ describe('ActiveExecutions', () => {
 	let activeExecutions: ActiveExecutions;
 
 	beforeEach(() => {
-		activeExecutions = new ActiveExecutions(mock());
+		activeExecutions = new ActiveExecutions(mock(), executionRepository);
 	});
 
 	afterEach(() => {

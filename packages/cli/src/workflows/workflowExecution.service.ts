@@ -1,5 +1,15 @@
 import { Service } from 'typedi';
-import type { IExecuteData, INode, IPinData, IRunExecutionData } from 'n8n-workflow';
+import type {
+	IDeferredPromise,
+	IExecuteData,
+	IExecuteResponsePromiseData,
+	INode,
+	INodeExecutionData,
+	IPinData,
+	IRunExecutionData,
+	IWorkflowExecuteAdditionalData,
+	WorkflowExecuteMode,
+} from 'n8n-workflow';
 import {
 	SubworkflowOperationError,
 	Workflow,
@@ -34,7 +44,51 @@ export class WorkflowExecutionService {
 		private readonly nodeTypes: NodeTypes,
 		private readonly testWebhooks: TestWebhooks,
 		private readonly permissionChecker: PermissionChecker,
+		private readonly workflowRunner: WorkflowRunner,
 	) {}
+
+	async runWorkflow(
+		workflowData: IWorkflowDb,
+		node: INode,
+		data: INodeExecutionData[][],
+		additionalData: IWorkflowExecuteAdditionalData,
+		mode: WorkflowExecuteMode,
+		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+	) {
+		const nodeExecutionStack: IExecuteData[] = [
+			{
+				node,
+				data: {
+					main: data,
+				},
+				source: null,
+			},
+		];
+
+		const executionData: IRunExecutionData = {
+			startData: {},
+			resultData: {
+				runData: {},
+			},
+			executionData: {
+				contextData: {},
+				metadata: {},
+				nodeExecutionStack,
+				waitingExecution: {},
+				waitingExecutionSource: {},
+			},
+		};
+
+		// Start the workflow
+		const runData: IWorkflowExecutionDataProcess = {
+			userId: additionalData.userId,
+			executionMode: mode,
+			executionData,
+			workflowData,
+		};
+
+		return await this.workflowRunner.run(runData, true, undefined, undefined, responsePromise);
+	}
 
 	async executeManually(
 		{
@@ -92,8 +146,7 @@ export class WorkflowExecutionService {
 			data.startNodes = [pinnedTrigger.name];
 		}
 
-		const workflowRunner = new WorkflowRunner();
-		const executionId = await workflowRunner.run(data);
+		const executionId = await this.workflowRunner.run(data);
 
 		return {
 			executionId,
@@ -230,8 +283,7 @@ export class WorkflowExecutionService {
 				userId: runningUser.id,
 			};
 
-			const workflowRunner = new WorkflowRunner();
-			await workflowRunner.run(runData);
+			await this.workflowRunner.run(runData);
 		} catch (error) {
 			ErrorReporter.error(error);
 			this.logger.error(
