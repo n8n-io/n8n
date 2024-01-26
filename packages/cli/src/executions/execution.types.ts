@@ -39,8 +39,6 @@ export declare namespace ExecutionRequest {
 	type Retry = AuthenticatedRequest<RouteParams.ExecutionId, {}, { loadWorkflow: boolean }, {}>;
 
 	type Stop = AuthenticatedRequest<RouteParams.ExecutionId>;
-
-	type GetManyActive = AuthenticatedRequest<{}, {}, {}, { filter?: string }>;
 }
 
 export type GetManyActiveFilter = {
