@@ -11,6 +11,9 @@ import { UserRepository } from '@/databases/repositories/user.repository';
 import { InternalHooks } from '@/InternalHooks';
 import { Logger } from '@/Logger';
 import { UrlService } from '@/services/url.service';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import type { User } from '@/databases/entities/User';
+import { toError } from '@/utils';
 
 type Template = HandlebarsTemplateDelegate<unknown>;
 type TemplateName = 'invite' | 'passwordReset' | 'workflowShared' | 'credentialsShared';
@@ -92,14 +95,12 @@ export class UserManagementMailer {
 	}
 
 	async notifyWorkflowShared({
-		sharerId,
-		sharerFirstName,
+		sharer,
 		newShareeIds,
 		workflowId,
 		workflowName,
 	}: {
-		sharerId: string;
-		sharerFirstName: string;
+		sharer: User;
 		newShareeIds: string[];
 		workflowId: string;
 		workflowName: string;
@@ -116,36 +117,46 @@ export class UserManagementMailer {
 
 		const baseUrl = this.urlService.getInstanceBaseUrl();
 
-		const result = await this.mailer.sendMail({
-			emailRecipients,
-			subject: `${sharerFirstName} has shared an n8n workflow with you`,
-			body: populateTemplate({
-				workflowName,
-				workflowUrl: `${baseUrl}/workflow/${workflowId}`,
-			}),
-		});
+		try {
+			const result = await this.mailer.sendMail({
+				emailRecipients,
+				subject: `${sharer.firstName} has shared an n8n workflow with you`,
+				body: populateTemplate({
+					workflowName,
+					workflowUrl: `${baseUrl}/workflow/${workflowId}`,
+				}),
+			});
 
-		if (!result) return { emailSent: false };
+			if (!result) return { emailSent: false };
 
-		this.logger.info('Sent workflow shared email successfully', { sharerId });
+			this.logger.info('Sent workflow shared email successfully', { sharerId: sharer.id });
 
-		void this.internalHooks.onUserTransactionalEmail({
-			user_id: sharerId,
-			message_type: 'Workflow shared',
-			public_api: false,
-		});
+			void this.internalHooks.onUserTransactionalEmail({
+				user_id: sharer.id,
+				message_type: 'Workflow shared',
+				public_api: false,
+			});
 
-		return result;
+			return result;
+		} catch (e) {
+			void this.internalHooks.onEmailFailed({
+				user: sharer,
+				message_type: 'Workflow shared',
+				public_api: false,
+			});
+
+			const error = toError(e);
+
+			throw new InternalServerError(`Please contact your administrator: ${error.message}`);
+		}
 	}
 
 	async notifyCredentialsShared({
-		sharerId,
-		sharerFirstName,
+		sharer,
 		newShareeIds,
 		credentialsName,
 	}: {
-		sharerId: string;
-		sharerFirstName: string;
+		sharer: User;
 		newShareeIds: string[];
 		credentialsName: string;
 	}) {
@@ -161,22 +172,34 @@ export class UserManagementMailer {
 
 		const baseUrl = this.urlService.getInstanceBaseUrl();
 
-		const result = await this.mailer.sendMail({
-			emailRecipients,
-			subject: `${sharerFirstName} has shared an n8n credential with you`,
-			body: populateTemplate({ credentialsName, credentialsListUrl: `${baseUrl}/credentials` }),
-		});
+		try {
+			const result = await this.mailer.sendMail({
+				emailRecipients,
+				subject: `${sharer.firstName} has shared an n8n credential with you`,
+				body: populateTemplate({ credentialsName, credentialsListUrl: `${baseUrl}/credentials` }),
+			});
 
-		if (!result) return { emailSent: false };
+			if (!result) return { emailSent: false };
 
-		this.logger.info('Sent credentials shared email successfully', { sharerId });
+			this.logger.info('Sent credentials shared email successfully', { sharerId: sharer.id });
 
-		void this.internalHooks.onUserTransactionalEmail({
-			user_id: sharerId,
-			message_type: 'Credentials shared',
-			public_api: false,
-		});
+			void this.internalHooks.onUserTransactionalEmail({
+				user_id: sharer.id,
+				message_type: 'Credentials shared',
+				public_api: false,
+			});
 
-		return result;
+			return result;
+		} catch (e) {
+			void this.internalHooks.onEmailFailed({
+				user: sharer,
+				message_type: 'Credentials shared',
+				public_api: false,
+			});
+
+			const error = toError(e);
+
+			throw new InternalServerError(`Please contact your administrator: ${error.message}`);
+		}
 	}
 }

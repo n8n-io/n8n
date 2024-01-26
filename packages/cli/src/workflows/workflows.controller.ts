@@ -403,23 +403,11 @@ export class WorkflowsController {
 
 		void this.internalHooks.onWorkflowSharingUpdate(workflowId, req.user.id, shareWithIds);
 
-		try {
-			await this.mailer.notifyWorkflowShared({
-				sharerId: req.user.id,
-				sharerFirstName: req.user.firstName,
-				newShareeIds,
-				workflowId,
-				workflowName: workflow.name,
-			});
-		} catch (error) {
-			void this.internalHooks.onEmailFailed({
-				user: req.user,
-				message_type: 'Workflow shared',
-				public_api: false,
-			});
-			if (error instanceof Error) {
-				throw new InternalServerError(`Please contact your administrator: ${error.message}`);
-			}
-		}
+		await this.mailer.notifyWorkflowShared({
+			sharer: req.user,
+			newShareeIds,
+			workflowId,
+			workflowName: workflow.name,
+		});
 	}
 }

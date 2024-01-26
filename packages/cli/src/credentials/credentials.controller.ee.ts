@@ -17,7 +17,6 @@ import { CredentialsRepository } from '@/databases/repositories/credentials.repo
 import * as utils from '@/utils';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { UserManagementMailer } from '@/UserManagement/email';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import config from '@/config';
 
 export const EECredentialsController = express.Router();
@@ -197,23 +196,10 @@ EECredentialsController.put(
 
 		if (recipients.length === 0) return;
 
-		try {
-			await Container.get(UserManagementMailer).notifyCredentialsShared({
-				sharerId: req.user.id,
-				sharerFirstName: req.user.firstName,
-				newShareeIds,
-				credentialsName: credential.name,
-			});
-		} catch (error) {
-			void Container.get(InternalHooks).onEmailFailed({
-				user: req.user,
-				message_type: 'Credentials shared',
-				public_api: false,
-			});
-
-			if (error instanceof Error) {
-				throw new InternalServerError(`Please contact your administrator: ${error.message}`);
-			}
-		}
+		await Container.get(UserManagementMailer).notifyCredentialsShared({
+			sharer: req.user,
+			newShareeIds,
+			credentialsName: credential.name,
+		});
 	}),
 );
