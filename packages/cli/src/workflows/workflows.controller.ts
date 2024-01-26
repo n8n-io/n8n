@@ -406,8 +406,7 @@ export class WorkflowsController {
 		await this.mailer.notifyWorkflowShared({
 			sharer: req.user,
 			newShareeIds,
-			workflowId,
-			workflowName: workflow.name,
+			workflow,
 		});
 	}
 }

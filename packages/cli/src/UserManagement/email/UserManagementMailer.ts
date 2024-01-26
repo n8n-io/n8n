@@ -14,6 +14,7 @@ import { UrlService } from '@/services/url.service';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import type { User } from '@/databases/entities/User';
 import { toError } from '@/utils';
+import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
 
 type Template = HandlebarsTemplateDelegate<unknown>;
 type TemplateName = 'invite' | 'passwordReset' | 'workflowShared' | 'credentialsShared';
@@ -97,13 +98,11 @@ export class UserManagementMailer {
 	async notifyWorkflowShared({
 		sharer,
 		newShareeIds,
-		workflowId,
-		workflowName,
+		workflow,
 	}: {
 		sharer: User;
 		newShareeIds: string[];
-		workflowId: string;
-		workflowName: string;
+		workflow: WorkflowEntity;
 	}) {
 		if (!this.mailer) return;
 
@@ -122,8 +121,8 @@ export class UserManagementMailer {
 				emailRecipients,
 				subject: `${sharer.firstName} has shared an n8n workflow with you`,
 				body: populateTemplate({
-					workflowName,
-					workflowUrl: `${baseUrl}/workflow/${workflowId}`,
+					workflowName: workflow.name,
+					workflowUrl: `${baseUrl}/workflow/${workflow.id}`,
 				}),
 			});
 
