@@ -19,12 +19,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3.5.3
+        uses: actions/checkout@v4.1.1
         with:
           fetch-depth: 0
 
       - uses: pnpm/action-setup@v2.4.0
-      - uses: actions/setup-node@v3.7.0
+      - uses: actions/setup-node@v4.0.1
         with:
           node-version: 18.x
           cache: 'pnpm'
