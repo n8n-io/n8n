@@ -97,6 +97,16 @@ export function getConnectionOptions(dbType: DatabaseType): ConnectionOptions {
 	}
 }
 
+export async function setSchema(conn: Connection) {
+	const schema = config.getEnv('database.postgresdb.schema');
+	const searchPath = ['public'];
+	if (schema !== 'public') {
+		await conn.query(`CREATE SCHEMA IF NOT EXISTS ${schema}`);
+		searchPath.unshift(schema);
+	}
+	await conn.query(`SET search_path TO ${searchPath.join(',')};`);
+}
+
 export async function init(testConnectionOptions?: ConnectionOptions): Promise<void> {
 	if (connectionState.connected) return;
 
@@ -130,13 +140,7 @@ export async function init(testConnectionOptions?: ConnectionOptions): Promise<v
 	await connection.initialize();
 
 	if (dbType === 'postgresdb') {
-		const schema = config.getEnv('database.postgresdb.schema');
-		const searchPath = ['public'];
-		if (schema !== 'public') {
-			await connection.query(`CREATE SCHEMA IF NOT EXISTS ${schema}`);
-			searchPath.unshift(schema);
-		}
-		await connection.query(`SET search_path TO ${searchPath.join(',')};`);
+		await setSchema(connection);
 	}
 
 	connectionState.connected = true;

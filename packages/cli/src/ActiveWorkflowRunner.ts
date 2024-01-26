@@ -229,7 +229,7 @@ export class ActiveWorkflowRunner {
 	async clearWebhooks(workflowId: string) {
 		const workflowData = await this.workflowRepository.findOne({
 			where: { id: workflowId },
-			relations: ['shared', 'shared.user', 'shared.user.globalRole'],
+			relations: ['shared', 'shared.user'],
 		});
 
 		if (workflowData === null) {
@@ -615,7 +615,7 @@ export class ActiveWorkflowRunner {
 				);
 			}
 
-			const sharing = dbWorkflow.shared.find((shared) => shared.role.name === 'owner');
+			const sharing = dbWorkflow.shared.find((shared) => shared.role === 'workflow:owner');
 
 			if (!sharing) {
 				throw new WorkflowActivationError(`Workflow ${dbWorkflow.display()} has no owner`);

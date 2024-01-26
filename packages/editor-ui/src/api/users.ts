@@ -157,7 +157,7 @@ export async function submitPersonalizationSurvey(
 
 export interface UpdateGlobalRolePayload {
 	id: string;
-	newRoleName: Exclude<IRole, 'default' | 'owner'>;
+	newRoleName: Exclude<IRole, 'default' | 'global:owner'>;
 }
 
 export async function updateGlobalRole(

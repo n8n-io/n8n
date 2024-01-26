@@ -3,9 +3,8 @@ import type { INode, Workflow } from 'n8n-workflow';
 import { NodeOperationError, WorkflowOperationError } from 'n8n-workflow';
 
 import config from '@/config';
-import { isSharingEnabled } from './UserManagementHelper';
+import { License } from '@/License';
 import { OwnershipService } from '@/services/ownership.service';
-import { RoleService } from '@/services/role.service';
 import { UserRepository } from '@db/repositories/user.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
@@ -16,8 +15,8 @@ export class PermissionChecker {
 		private readonly userRepository: UserRepository,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
-		private readonly roleService: RoleService,
 		private readonly ownershipService: OwnershipService,
+		private readonly license: License,
 	) {}
 
 	/**
@@ -36,7 +35,6 @@ export class PermissionChecker {
 
 		const user = await this.userRepository.findOneOrFail({
 			where: { id: userId },
-			relations: ['globalRole'],
 		});
 
 		if (user.hasGlobalScope('workflow:execute')) return;
@@ -46,7 +44,7 @@ export class PermissionChecker {
 
 		let workflowUserIds = [userId];
 
-		if (workflow.id && isSharingEnabled()) {
+		if (workflow.id && this.license.isSharingEnabled()) {
 			const workflowSharings = await this.sharedWorkflowRepository.find({
 				relations: ['workflow'],
 				where: { workflowId: workflow.id },
@@ -55,12 +53,8 @@ export class PermissionChecker {
 			workflowUserIds = workflowSharings.map((s) => s.userId);
 		}
 
-		const roleId = await this.roleService.findCredentialOwnerRoleId();
-
-		const credentialSharings = await this.sharedCredentialsRepository.findSharings(
-			workflowUserIds,
-			roleId,
-		);
+		const credentialSharings =
+			await this.sharedCredentialsRepository.findOwnedSharings(workflowUserIds);
 
 		const accessibleCredIds = credentialSharings.map((s) => s.credentialsId);
 
@@ -98,7 +92,7 @@ export class PermissionChecker {
 		let policy =
 			subworkflow.settings?.callerPolicy ?? config.getEnv('workflows.callerPolicyDefaultOption');
 
-		if (!isSharingEnabled()) {
+		if (!this.license.isSharingEnabled()) {
 			// Community version allows only same owner workflows
 			policy = 'workflowsFromSameOwner';
 		}

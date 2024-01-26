@@ -83,21 +83,20 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import type { IExecutionsSummary } from '@/Interface';
 import type { IExecutionUIData } from '@/mixins/executionsHelpers';
-import { executionHelpers } from '@/mixins/executionsHelpers';
 import { VIEWS } from '@/constants';
 import ExecutionTime from '@/components/ExecutionTime.vue';
+import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
+import type { ExecutionSummary } from 'n8n-workflow';
 
 export default defineComponent({
 	name: 'ExecutionCard',
 	components: {
 		ExecutionTime,
 	},
-	mixins: [executionHelpers],
 	props: {
 		execution: {
-			type: Object as () => IExecutionsSummary,
+			type: Object as () => ExecutionSummary,
 			required: true,
 		},
 		highlight: {
@@ -109,8 +108,11 @@ export default defineComponent({
 			default: false,
 		},
 	},
-	data() {
+	setup() {
+		const executionHelpers = useExecutionHelpers();
+
 		return {
+			executionHelpers,
 			VIEWS,
 		};
 	},
@@ -128,7 +130,7 @@ export default defineComponent({
 			];
 		},
 		executionUIDetails(): IExecutionUIData {
-			return this.getExecutionUIDetails(this.execution);
+			return this.executionHelpers.getUIDetails(this.execution);
 		},
 		isActive(): boolean {
 			return this.execution.id === this.$route.params.executionId;

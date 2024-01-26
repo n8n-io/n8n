@@ -10,8 +10,7 @@ import * as WorkflowHelpers from '@/WorkflowHelpers';
 import type { IWorkflowResponse } from '@/Interfaces';
 import config from '@/config';
 import { Authorized, Delete, Get, Patch, Post, Put, RestController } from '@/decorators';
-import type { RoleNames } from '@db/entities/Role';
-import { SharedWorkflow } from '@db/entities/SharedWorkflow';
+import { SharedWorkflow, type WorkflowSharingRole } from '@db/entities/SharedWorkflow';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { TagRepository } from '@db/repositories/tag.repository';
@@ -21,9 +20,8 @@ import { validateEntity } from '@/GenericHelpers';
 import { ExternalHooks } from '@/ExternalHooks';
 import { ListQuery } from '@/requests';
 import { WorkflowService } from './workflow.service';
-import { isSharingEnabled } from '@/UserManagement/UserManagementHelper';
+import { License } from '@/License';
 import { InternalHooks } from '@/InternalHooks';
-import { RoleService } from '@/services/role.service';
 import * as utils from '@/utils';
 import { listQueryMiddleware } from '@/middlewares';
 import { TagService } from '@/services/tag.service';
@@ -53,7 +51,6 @@ export class WorkflowsController {
 		private readonly externalHooks: ExternalHooks,
 		private readonly tagRepository: TagRepository,
 		private readonly enterpriseWorkflowService: EnterpriseWorkflowService,
-		private readonly roleService: RoleService,
 		private readonly workflowHistoryService: WorkflowHistoryService,
 		private readonly tagService: TagService,
 		private readonly namingService: NamingService,
@@ -64,6 +61,7 @@ export class WorkflowsController {
 		private readonly workflowSharingService: WorkflowSharingService,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly userRepository: UserRepository,
+		private readonly license: License,
 		private readonly mailer: UserManagementMailer,
 		private readonly urlService: UrlService,
 	) {}
@@ -92,7 +90,7 @@ export class WorkflowsController {
 
 		WorkflowHelpers.addNodeIds(newWorkflow);
 
-		if (isSharingEnabled()) {
+		if (this.license.isSharingEnabled()) {
 			// This is a new workflow, so we simply check if the user has access to
 			// all used workflows
 
@@ -115,12 +113,10 @@ export class WorkflowsController {
 		await Db.transaction(async (transactionManager) => {
 			savedWorkflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
 
-			const role = await this.roleService.findWorkflowOwnerRole();
-
 			const newSharedWorkflow = new SharedWorkflow();
 
 			Object.assign(newSharedWorkflow, {
-				role,
+				role: 'workflow:owner',
 				user: req.user,
 				workflow: savedWorkflow,
 			});
@@ -150,7 +146,9 @@ export class WorkflowsController {
 	@Get('/', { middlewares: listQueryMiddleware })
 	async getAll(req: ListQuery.Request, res: express.Response) {
 		try {
-			const roles: RoleNames[] = isSharingEnabled() ? [] : ['owner'];
+			const roles: WorkflowSharingRole[] = this.license.isSharingEnabled()
+				? []
+				: ['workflow:owner'];
 			const sharedWorkflowIds = await this.workflowSharingService.getSharedWorkflowIds(
 				req.user,
 				roles,
@@ -221,8 +219,8 @@ export class WorkflowsController {
 	async getWorkflow(req: WorkflowRequest.Get) {
 		const { id: workflowId } = req.params;
 
-		if (isSharingEnabled()) {
-			const relations = ['shared', 'shared.user', 'shared.role'];
+		if (this.license.isSharingEnabled()) {
+			const relations = ['shared', 'shared.user'];
 			if (!config.getEnv('workflowTagsDisabled')) {
 				relations.push('tags');
 			}
@@ -280,7 +278,8 @@ export class WorkflowsController {
 		const { tags, ...rest } = req.body;
 		Object.assign(updateData, rest);
 
-		if (isSharingEnabled()) {
+		const isSharingEnabled = this.license.isSharingEnabled();
+		if (isSharingEnabled) {
 			updateData = await this.enterpriseWorkflowService.preventTampering(
 				updateData,
 				workflowId,
@@ -293,8 +292,8 @@ export class WorkflowsController {
 			updateData,
 			workflowId,
 			tags,
-			isSharingEnabled() ? forceSave : true,
-			isSharingEnabled() ? undefined : ['owner'],
+			isSharingEnabled ? forceSave : true,
+			isSharingEnabled ? undefined : ['workflow:owner'],
 		);
 
 		return updatedWorkflow;
@@ -320,7 +319,7 @@ export class WorkflowsController {
 
 	@Post('/run')
 	async runManually(req: WorkflowRequest.ManualRun) {
-		if (isSharingEnabled()) {
+		if (this.license.isSharingEnabled()) {
 			const workflow = this.workflowRepository.create(req.body.workflowData);
 
 			if (req.body.workflowData.id !== undefined) {
@@ -342,7 +341,7 @@ export class WorkflowsController {
 
 	@Put('/:workflowId/share')
 	async share(req: WorkflowRequest.Share) {
-		if (!isSharingEnabled()) throw new NotFoundError('Route not found');
+		if (!this.license.isSharingEnabled()) throw new NotFoundError('Route not found');
 
 		const { workflowId } = req.params;
 		const { shareWithIds } = req.body;
@@ -377,10 +376,10 @@ export class WorkflowsController {
 			await this.workflowRepository.getSharings(
 				Db.getConnection().createEntityManager(),
 				workflowId,
-				['shared', 'shared.role'],
+				['shared'],
 			)
 		)
-			.filter((e) => e.role.name === 'owner')
+			.filter((e) => e.role === 'workflow:owner')
 			.map((e) => e.userId);
 
 		let newShareeIds: string[] = [];
@@ -398,9 +397,7 @@ export class WorkflowsController {
 
 			if (newShareeIds.length) {
 				const users = await this.userRepository.getByIds(trx, newShareeIds);
-				const role = await this.roleService.findWorkflowEditorRole();
-
-				await this.sharedWorkflowRepository.share(trx, workflow!, users, role.id);
+				await this.sharedWorkflowRepository.share(trx, workflow!, users);
 			}
 		});
 

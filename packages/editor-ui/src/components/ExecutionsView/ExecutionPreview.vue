@@ -156,8 +156,11 @@ import { useExecutionDebugging } from '@/composables/useExecutionDebugging';
 import { useMessage } from '@/composables/useMessage';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
 import type { IExecutionUIData } from '@/mixins/executionsHelpers';
-import { executionHelpers } from '@/mixins/executionsHelpers';
 import { MODAL_CONFIRM, VIEWS } from '@/constants';
+import type { ExecutionSummary } from 'n8n-workflow';
+import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { mapStores } from 'pinia';
 
 type RetryDropdownRef = InstanceType<typeof ElDropdown> & { hide: () => void };
 
@@ -167,21 +170,26 @@ export default defineComponent({
 		ElDropdown,
 		WorkflowPreview,
 	},
-	mixins: [executionHelpers],
 	setup() {
+		const executionHelpers = useExecutionHelpers();
+
 		return {
+			VIEWS,
+			executionHelpers,
 			...useMessage(),
 			...useExecutionDebugging(),
 		};
 	},
-	data() {
-		return {
-			VIEWS,
-		};
-	},
 	computed: {
+		...mapStores([useWorkflowsStore]),
+		executionId(): string {
+			return this.$route.params.executionId as string;
+		},
+		activeExecution(): ExecutionSummary | null {
+			return this.workflowsStore.activeWorkflowExecution;
+		},
 		executionUIDetails(): IExecutionUIData | null {
-			return this.activeExecution ? this.getExecutionUIDetails(this.activeExecution) : null;
+			return this.activeExecution ? this.executionHelpers.getUIDetails(this.activeExecution) : null;
 		},
 		executionMode(): string {
 			return this.activeExecution?.mode || '';

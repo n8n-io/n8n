@@ -6,7 +6,6 @@ import { SettingsRepository } from '@db/repositories/settings.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { UserRepository } from '@db/repositories/user.repository';
-import { RoleService } from '@/services/role.service';
 import { BaseCommand } from '../BaseCommand';
 
 const defaultUserProps = {
@@ -14,6 +13,7 @@ const defaultUserProps = {
 	lastName: null,
 	email: null,
 	password: null,
+	role: 'global:owner',
 };
 
 export class Reset extends BaseCommand {
@@ -24,14 +24,8 @@ export class Reset extends BaseCommand {
 	async run(): Promise<void> {
 		const owner = await this.getInstanceOwner();
 
-		const workflowOwnerRole = await Container.get(RoleService).findWorkflowOwnerRole();
-		const credentialOwnerRole = await Container.get(RoleService).findCredentialOwnerRole();
-
-		await Container.get(SharedWorkflowRepository).makeOwnerOfAllWorkflows(owner, workflowOwnerRole);
-		await Container.get(SharedCredentialsRepository).makeOwnerOfAllCredentials(
-			owner,
-			credentialOwnerRole,
-		);
+		await Container.get(SharedWorkflowRepository).makeOwnerOfAllWorkflows(owner);
+		await Container.get(SharedCredentialsRepository).makeOwnerOfAllCredentials(owner);
 
 		await Container.get(UserRepository).deleteAllExcept(owner);
 		await Container.get(UserRepository).save(Object.assign(owner, defaultUserProps));
@@ -45,7 +39,7 @@ export class Reset extends BaseCommand {
 			Container.get(SharedCredentialsRepository).create({
 				credentials,
 				user: owner,
-				role: credentialOwnerRole,
+				role: 'credential:owner',
 			}),
 		);
 		await Container.get(SharedCredentialsRepository).save(newSharedCredentials);
@@ -59,19 +53,17 @@ export class Reset extends BaseCommand {
 	}
 
 	async getInstanceOwner(): Promise<User> {
-		const globalRole = await Container.get(RoleService).findGlobalOwnerRole();
-
-		const owner = await Container.get(UserRepository).findOneBy({ globalRoleId: globalRole.id });
+		const owner = await Container.get(UserRepository).findOneBy({ role: 'global:owner' });
 
 		if (owner) return owner;
 
 		const user = new User();
 
-		Object.assign(user, { ...defaultUserProps, globalRole });
+		Object.assign(user, defaultUserProps);
 
 		await Container.get(UserRepository).save(user);
 
-		return await Container.get(UserRepository).findOneByOrFail({ globalRoleId: globalRole.id });
+		return await Container.get(UserRepository).findOneByOrFail({ role: 'global:owner' });
 	}
 
 	async catch(error: Error): Promise<void> {

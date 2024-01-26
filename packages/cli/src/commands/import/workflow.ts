@@ -11,7 +11,6 @@ import { generateNanoId } from '@db/utils/generators';
 import { UserRepository } from '@db/repositories/user.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import type { IWorkflowToImport } from '@/Interfaces';
-import { RoleService } from '@/services/role.service';
 import { ImportService } from '@/services/import.service';
 import { BaseCommand } from '../BaseCommand';
 
@@ -138,12 +137,7 @@ export class ImportWorkflowsCommand extends BaseCommand {
 	}
 
 	private async getOwner() {
-		const ownerGlobalRole = await Container.get(RoleService).findGlobalOwnerRole();
-
-		const owner =
-			ownerGlobalRole &&
-			(await Container.get(UserRepository).findOneBy({ globalRoleId: ownerGlobalRole?.id }));
-
+		const owner = await Container.get(UserRepository).findOneBy({ role: 'global:owner' });
 		if (!owner) {
 			throw new ApplicationError(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
 		}
