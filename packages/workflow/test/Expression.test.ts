@@ -202,12 +202,18 @@ for (const evaluator of ['tmpl', 'tournament'] as const) {
 					continue;
 				}
 				test(t.expression, () => {
-					for (const test of t.tests.filter(
+					const evaluationTests = t.tests.filter(
 						(test) => test.type === 'evaluation',
-					) as ExpressionTestEvaluation[]) {
-						expect(
-							evaluate(t.expression, test.input.map((d) => ({ json: d })) as any),
-						).toStrictEqual(test.output);
+					) as ExpressionTestEvaluation[];
+
+					for (const test of evaluationTests) {
+						const input = test.input.map((d) => ({ json: d })) as any;
+
+						if (test.output instanceof ExpressionError) {
+							expect(() => evaluate(t.expression, input)).toThrowError(test.output);
+						} else {
+							expect(evaluate(t.expression, input)).toStrictEqual(test.output);
+						}
 					}
 				});
 			}

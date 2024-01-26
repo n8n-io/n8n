@@ -59,7 +59,7 @@ import type {
 	NodeParameterValue,
 	NodeParameterValueType,
 } from 'n8n-workflow';
-import { ExpressionError, isResourceLocatorValue } from 'n8n-workflow';
+import { isResourceLocatorValue } from 'n8n-workflow';
 import type { INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { isValueExpression, parseResourceMapperFieldName } from '@/utils/nodeTypesUtils';

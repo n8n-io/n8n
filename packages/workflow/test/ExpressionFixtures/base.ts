@@ -1,4 +1,5 @@
 import type { GenericValue, IDataObject } from '@/Interfaces';
+import { ExpressionError } from '@/errors/expression.error';
 
 export interface ExpressionTestBase {
 	type: string;
@@ -7,7 +8,7 @@ export interface ExpressionTestBase {
 export interface ExpressionTestEvaluation extends ExpressionTestBase {
 	type: 'evaluation';
 	input: Array<IDataObject | GenericValue>;
-	output: IDataObject | GenericValue;
+	output: IDataObject | GenericValue | ExpressionError;
 }
 
 export interface ExpressionTestTransform extends ExpressionTestBase {
@@ -265,7 +266,11 @@ export const baseFixtures: ExpressionTestFixture[] = [
 			{
 				type: 'evaluation',
 				input: [],
-				output: undefined,
+				output: new ExpressionError('No execution data available', {
+					runIndex: 0,
+					itemIndex: 0,
+					type: 'no_execution_data',
+				}),
 			},
 			{ type: 'transform' },
 			{ type: 'transform', forceTransform: true },
