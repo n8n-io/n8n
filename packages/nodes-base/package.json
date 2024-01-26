@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "1.25.0",
+  "version": "1.26.0",
   "description": "Base nodes of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -195,6 +195,7 @@
       "dist/credentials/LinearOAuth2Api.credentials.js",
       "dist/credentials/LineNotifyOAuth2Api.credentials.js",
       "dist/credentials/LingvaNexApi.credentials.js",
+      "dist/credentials/LinkedInCommunityManagementOAuth2Api.credentials.js",
       "dist/credentials/LinkedInOAuth2Api.credentials.js",
       "dist/credentials/LoneScaleApi.credentials.js",
       "dist/credentials/Magento2Api.credentials.js",

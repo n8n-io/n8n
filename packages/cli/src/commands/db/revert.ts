@@ -1,9 +1,9 @@
-import { Command, flags } from '@oclif/command';
+import { Command, Flags } from '@oclif/core';
 import type { DataSourceOptions as ConnectionOptions } from 'typeorm';
 import { DataSource as Connection } from 'typeorm';
 import { Container } from 'typedi';
 import { Logger } from '@/Logger';
-import { getConnectionOptions } from '@/Db';
+import { getConnectionOptions, setSchema } from '@/Db';
 import type { Migration } from '@db/types';
 import { wrapMigration } from '@db/utils/migrationHelpers';
 import config from '@/config';
@@ -14,7 +14,7 @@ export class DbRevertMigrationCommand extends Command {
 	static examples = ['$ n8n db:revert'];
 
 	static flags = {
-		help: flags.help({ char: 'h' }),
+		help: Flags.help({ char: 'h' }),
 	};
 
 	protected logger = Container.get(Logger);
@@ -22,7 +22,7 @@ export class DbRevertMigrationCommand extends Command {
 	private connection: Connection;
 
 	async init() {
-		this.parse(DbRevertMigrationCommand);
+		await this.parse(DbRevertMigrationCommand);
 	}
 
 	async run() {
@@ -40,6 +40,7 @@ export class DbRevertMigrationCommand extends Command {
 
 		this.connection = new Connection(connectionOptions);
 		await this.connection.initialize();
+		if (dbType === 'postgresdb') await setSchema(this.connection);
 		await this.connection.undoLastMigration();
 		await this.connection.destroy();
 	}

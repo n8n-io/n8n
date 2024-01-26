@@ -23,7 +23,6 @@ import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { UserRepository } from '@db/repositories/user.repository';
 import { plainToInstance } from 'class-transformer';
-import { RoleService } from '@/services/role.service';
 import { UserService } from '@/services/user.service';
 import { listQueryMiddleware } from '@/middlewares';
 import { Logger } from '@/Logger';
@@ -45,7 +44,6 @@ export class UsersController {
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly userRepository: UserRepository,
 		private readonly activeWorkflowRunner: ActiveWorkflowRunner,
-		private readonly roleService: RoleService,
 		private readonly userService: UserService,
 	) {}
 
@@ -70,7 +68,7 @@ export class UsersController {
 		}
 
 		if (filter?.isOwner) {
-			for (const user of publicUsers) delete user.globalRole;
+			for (const user of publicUsers) delete user.role;
 		}
 
 		// remove computed fields (unselectable)
@@ -92,12 +90,7 @@ export class UsersController {
 	async listUsers(req: ListQuery.Request) {
 		const { listQueryOptions } = req;
 
-		const globalOwner = await this.roleService.findGlobalOwnerRole();
-
-		const findManyOptions = await this.userRepository.toFindManyOptions(
-			listQueryOptions,
-			globalOwner.id,
-		);
+		const findManyOptions = await this.userRepository.toFindManyOptions(listQueryOptions);
 
 		const users = await this.userRepository.find(findManyOptions);
 
@@ -118,7 +111,6 @@ export class UsersController {
 	async getUserPasswordResetLink(req: UserRequest.PasswordResetLink) {
 		const user = await this.userRepository.findOneOrFail({
 			where: { id: req.params.id },
-			relations: ['globalRole'],
 		});
 		if (!user) {
 			throw new NotFoundError('User not found');
@@ -140,7 +132,6 @@ export class UsersController {
 		const user = await this.userRepository.findOneOrFail({
 			select: ['settings'],
 			where: { id },
-			relations: ['globalRole'],
 		});
 
 		return user.settings;
@@ -172,7 +163,7 @@ export class UsersController {
 
 		const userIds = transferId ? [transferId, idToDelete] : [idToDelete];
 
-		const users = await this.userRepository.findManybyIds(userIds);
+		const users = await this.userRepository.findManyByIds(userIds);
 
 		if (!users.length || (transferId && users.length !== 2)) {
 			throw new NotFoundError(
@@ -194,11 +185,6 @@ export class UsersController {
 			telemetryData.migration_user_id = transferId;
 		}
 
-		const [workflowOwnerRole, credentialOwnerRole] = await Promise.all([
-			this.roleService.findWorkflowOwnerRole(),
-			this.roleService.findCredentialOwnerRole(),
-		]);
-
 		if (transferId) {
 			const transferee = users.find((user) => user.id === transferId);
 
@@ -208,7 +194,7 @@ export class UsersController {
 					.getRepository(SharedWorkflow)
 					.find({
 						select: ['workflowId'],
-						where: { userId: userToDelete.id, roleId: workflowOwnerRole?.id },
+						where: { userId: userToDelete.id, role: 'workflow:owner' },
 					})
 					.then((sharedWorkflows) => sharedWorkflows.map(({ workflowId }) => workflowId));
 
@@ -223,7 +209,7 @@ export class UsersController {
 				// Transfer ownership of owned workflows
 				await transactionManager.update(
 					SharedWorkflow,
-					{ user: userToDelete, role: workflowOwnerRole },
+					{ user: userToDelete, role: 'workflow:owner' },
 					{ user: transferee },
 				);
 
@@ -234,7 +220,7 @@ export class UsersController {
 					.getRepository(SharedCredentials)
 					.find({
 						select: ['credentialsId'],
-						where: { userId: userToDelete.id, roleId: credentialOwnerRole?.id },
+						where: { userId: userToDelete.id, role: 'credential:owner' },
 					})
 					.then((sharedCredentials) => sharedCredentials.map(({ credentialsId }) => credentialsId));
 
@@ -249,7 +235,7 @@ export class UsersController {
 				// Transfer ownership of owned credentials
 				await transactionManager.update(
 					SharedCredentials,
-					{ user: userToDelete, role: credentialOwnerRole },
+					{ user: userToDelete, role: 'credential:owner' },
 					{ user: transferee },
 				);
 
@@ -271,11 +257,11 @@ export class UsersController {
 		const [ownedSharedWorkflows, ownedSharedCredentials] = await Promise.all([
 			this.sharedWorkflowRepository.find({
 				relations: ['workflow'],
-				where: { userId: userToDelete.id, roleId: workflowOwnerRole?.id },
+				where: { userId: userToDelete.id, role: 'workflow:owner' },
 			}),
 			this.sharedCredentialsRepository.find({
 				relations: ['credentials'],
-				where: { userId: userToDelete.id, roleId: credentialOwnerRole?.id },
+				where: { userId: userToDelete.id, role: 'credential:owner' },
 			}),
 		]);
 
@@ -318,23 +304,20 @@ export class UsersController {
 
 		const targetUser = await this.userRepository.findOne({
 			where: { id: req.params.id },
-			relations: ['globalRole'],
 		});
 		if (targetUser === null) {
 			throw new NotFoundError(NO_USER);
 		}
 
-		if (req.user.globalRole.name === 'admin' && targetUser.globalRole.name === 'owner') {
+		if (req.user.role === 'global:admin' && targetUser.role === 'global:owner') {
 			throw new UnauthorizedError(NO_ADMIN_ON_OWNER);
 		}
 
-		if (req.user.globalRole.name === 'owner' && targetUser.globalRole.name === 'owner') {
+		if (req.user.role === 'global:owner' && targetUser.role === 'global:owner') {
 			throw new UnauthorizedError(NO_OWNER_ON_OWNER);
 		}
 
-		const roleToSet = await this.roleService.findCached('global', payload.newRoleName);
-
-		await this.userService.update(targetUser.id, { globalRoleId: roleToSet.id });
+		await this.userService.update(targetUser.id, { role: payload.newRoleName });
 
 		void this.internalHooks.onUserRoleChange({
 			user: req.user,

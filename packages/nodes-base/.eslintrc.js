@@ -33,7 +33,6 @@ module.exports = {
 		'@typescript-eslint/prefer-nullish-coalescing': 'warn',
 		'@typescript-eslint/no-base-to-string': 'warn',
 		'@typescript-eslint/no-redundant-type-constituents': 'warn',
-		'@typescript-eslint/no-unused-vars': 'warn',
 		'@typescript-eslint/no-unsafe-argument': 'warn',
 		'@typescript-eslint/prefer-optional-chain': 'warn',
 		'@typescript-eslint/restrict-plus-operands': 'warn',

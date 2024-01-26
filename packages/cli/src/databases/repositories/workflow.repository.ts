@@ -35,7 +35,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	async getAllActive() {
 		return await this.find({
 			where: { active: true },
-			relations: ['shared', 'shared.user', 'shared.user.globalRole', 'shared.role'],
+			relations: ['shared', 'shared.user'],
 		});
 	}
 
@@ -50,7 +50,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	async findById(workflowId: string) {
 		return await this.findOne({
 			where: { id: workflowId },
-			relations: ['shared', 'shared.user', 'shared.user.globalRole', 'shared.role'],
+			relations: ['shared', 'shared.user'],
 		});
 	}
 
@@ -135,7 +135,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 					createdAt: true,
 					updatedAt: true,
 					versionId: true,
-					shared: { userId: true, roleId: true },
+					shared: { userId: true, role: true },
 			  };
 
 		delete select?.ownedBy; // remove non-entity field, handled after query
@@ -152,7 +152,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			select.tags = { id: true, name: true };
 		}
 
-		if (isOwnedByIncluded) relations.push('shared', 'shared.role', 'shared.user');
+		if (isOwnedByIncluded) relations.push('shared', 'shared.user');
 
 		if (typeof where.name === 'string' && where.name !== '') {
 			where.name = Like(`%${where.name}%`);
@@ -211,6 +211,10 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 
 	async deactivateAll() {
 		return await this.update({ active: true }, { active: false });
+	}
+
+	async activateAll() {
+		return await this.update({ active: false }, { active: true });
 	}
 
 	async findByActiveState(activeState: boolean) {

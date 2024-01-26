@@ -8,6 +8,7 @@ import { BinaryDataService } from 'n8n-core';
 import config from '@/config';
 import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import type { WorkflowSharingRole } from '@db/entities/SharedWorkflow';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowTagMappingRepository } from '@db/repositories/workflowTagMapping.repository';
@@ -22,7 +23,7 @@ import { InternalHooks } from '@/InternalHooks';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowHistoryService } from './workflowHistory/workflowHistory.service.ee';
 import { Logger } from '@/Logger';
-import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
+import { OrchestrationService } from '@/services/orchestration.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
@@ -38,7 +39,7 @@ export class WorkflowService {
 		private readonly ownershipService: OwnershipService,
 		private readonly tagService: TagService,
 		private readonly workflowHistoryService: WorkflowHistoryService,
-		private readonly multiMainSetup: MultiMainSetup,
+		private readonly orchestrationService: OrchestrationService,
 		private readonly externalHooks: ExternalHooks,
 		private readonly activeWorkflowRunner: ActiveWorkflowRunner,
 	) {}
@@ -60,7 +61,7 @@ export class WorkflowService {
 		workflowId: string,
 		tagIds?: string[],
 		forceSave?: boolean,
-		roles?: string[],
+		roles?: WorkflowSharingRole[],
 	): Promise<WorkflowEntity> {
 		const shared = await this.sharedWorkflowRepository.findSharing(
 			workflowId,
@@ -227,12 +228,12 @@ export class WorkflowService {
 			}
 		}
 
-		await this.multiMainSetup.init();
+		await this.orchestrationService.init();
 
 		const newState = updatedWorkflow.active;
 
-		if (this.multiMainSetup.isEnabled && oldState !== newState) {
-			await this.multiMainSetup.publish('workflowActiveStateChanged', {
+		if (this.orchestrationService.isMultiMainSetupEnabled && oldState !== newState) {
+			await this.orchestrationService.publish('workflowActiveStateChanged', {
 				workflowId,
 				oldState,
 				newState,
@@ -250,7 +251,7 @@ export class WorkflowService {
 			workflowId,
 			user,
 			'workflow:delete',
-			{ roles: ['owner'] },
+			{ roles: ['workflow:owner'] },
 		);
 
 		if (!sharedWorkflow) {

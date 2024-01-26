@@ -98,7 +98,6 @@ async function createApiRouter(
 						const apiKey = req.headers[schema.name.toLowerCase()] as string;
 						const user = await Container.get(UserRepository).findOne({
 							where: { apiKey },
-							relations: ['globalRole'],
 						});
 
 						if (!user) return false;

@@ -1,5 +1,5 @@
 import { Container, Service } from 'typedi';
-import { User } from '@db/entities/User';
+import { type AssignableRole, User } from '@db/entities/User';
 import type { IUserSettings } from 'n8n-workflow';
 import { UserRepository } from '@db/repositories/user.repository';
 import type { PublicUser } from '@/Interfaces';
@@ -10,7 +10,6 @@ import { Logger } from '@/Logger';
 import { createPasswordSha } from '@/auth/jwt';
 import { UserManagementMailer } from '@/UserManagement/email';
 import { InternalHooks } from '@/InternalHooks';
-import { RoleService } from '@/services/role.service';
 import { UrlService } from '@/services/url.service';
 import { ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 import type { UserRequest } from '@/requests';
@@ -23,7 +22,6 @@ export class UserService {
 		private readonly userRepository: UserRepository,
 		private readonly jwtService: JwtService,
 		private readonly mailer: UserManagementMailer,
-		private readonly roleService: RoleService,
 		private readonly urlService: UrlService,
 	) {}
 
@@ -73,7 +71,7 @@ export class UserService {
 
 		const user = await this.userRepository.findOne({
 			where: { id: decodedToken.sub },
-			relations: ['authIdentities', 'globalRole'],
+			relations: ['authIdentities'],
 		});
 
 		if (!user) {
@@ -162,7 +160,7 @@ export class UserService {
 	private async sendEmails(
 		owner: User,
 		toInviteUsers: { [key: string]: string },
-		role: 'member' | 'admin',
+		role: AssignableRole,
 	) {
 		const domain = this.urlService.getInstanceBaseUrl();
 
@@ -224,9 +222,7 @@ export class UserService {
 		);
 	}
 
-	async inviteUsers(owner: User, attributes: Array<{ email: string; role: 'member' | 'admin' }>) {
-		const memberRole = await this.roleService.findGlobalMemberRole();
-		const adminRole = await this.roleService.findGlobalAdminRole();
+	async inviteUsers(owner: User, attributes: Array<{ email: string; role: AssignableRole }>) {
 		const emails = attributes.map(({ email }) => email);
 
 		const existingUsers = await this.userRepository.findManyByEmail(emails);
@@ -250,10 +246,7 @@ export class UserService {
 				async (transactionManager) =>
 					await Promise.all(
 						toCreateUsers.map(async ({ email, role }) => {
-							const newUser = Object.assign(new User(), {
-								email,
-								globalRole: role === 'member' ? memberRole : adminRole,
-							});
+							const newUser = transactionManager.create(User, { email, role });
 							const savedUser = await transactionManager.save<User>(newUser);
 							createdUsers.set(email, savedUser.id);
 							return savedUser;

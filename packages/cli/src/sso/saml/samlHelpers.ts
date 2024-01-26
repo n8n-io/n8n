@@ -17,7 +17,6 @@ import {
 } from '../ssoHelpers';
 import { getServiceProviderConfigTestReturnUrl } from './serviceProvider.ee';
 import type { SamlConfiguration } from './types/requests';
-import { RoleService } from '@/services/role.service';
 import { UserRepository } from '@db/repositories/user.repository';
 import { AuthIdentityRepository } from '@db/repositories/authIdentity.repository';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
@@ -104,7 +103,7 @@ export async function createUserFromSamlAttributes(attributes: SamlUserAttribute
 	user.email = lowerCasedEmail;
 	user.firstName = attributes.firstName;
 	user.lastName = attributes.lastName;
-	user.globalRole = await Container.get(RoleService).findGlobalMemberRole();
+	user.role = 'global:member';
 	// generates a password that is not used or known to the user
 	user.password = await Container.get(PasswordUtility).hash(generatePassword());
 	authIdentity.providerId = attributes.userPrincipalName;

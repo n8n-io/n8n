@@ -1,5 +1,4 @@
 import type { SuperAgentTest } from 'supertest';
-import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 
 import { randomApiKey, randomName, randomString } from '../shared/random';
@@ -7,14 +6,11 @@ import * as utils from '../shared/utils/';
 import type { CredentialPayload, SaveCredentialFunction } from '../shared/types';
 import * as testDb from '../shared/testDb';
 import { affixRoleToSaveCredential } from '../shared/db/credentials';
-import { getAllRoles } from '../shared/db/roles';
 import { addApiKey, createUser, createUserShell } from '../shared/db/users';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import Container from 'typedi';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 
-let globalMemberRole: Role;
-let credentialOwnerRole: Role;
 let owner: User;
 let member: User;
 let authOwnerAgent: SuperAgentTest;
@@ -25,19 +21,13 @@ let saveCredential: SaveCredentialFunction;
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 
 beforeAll(async () => {
-	const [globalOwnerRole, fetchedGlobalMemberRole, _, fetchedCredentialOwnerRole] =
-		await getAllRoles();
-
-	globalMemberRole = fetchedGlobalMemberRole;
-	credentialOwnerRole = fetchedCredentialOwnerRole;
-
-	owner = await addApiKey(await createUserShell(globalOwnerRole));
-	member = await createUser({ globalRole: globalMemberRole, apiKey: randomApiKey() });
+	owner = await addApiKey(await createUserShell('global:owner'));
+	member = await createUser({ role: 'global:member', apiKey: randomApiKey() });
 
 	authOwnerAgent = testServer.publicApiAgentFor(owner);
 	authMemberAgent = testServer.publicApiAgentFor(member);
 
-	saveCredential = affixRoleToSaveCredential(credentialOwnerRole);
+	saveCredential = affixRoleToSaveCredential('credential:owner');
 
 	await utils.initCredentialsTypes();
 });
@@ -73,11 +63,11 @@ describe('POST /credentials', () => {
 		expect(credential.data).not.toBe(payload.data);
 
 		const sharedCredential = await Container.get(SharedCredentialsRepository).findOneOrFail({
-			relations: ['user', 'credentials', 'role'],
+			relations: ['user', 'credentials'],
 			where: { credentialsId: credential.id, userId: owner.id },
 		});
 
-		expect(sharedCredential.role).toEqual(credentialOwnerRole);
+		expect(sharedCredential.role).toEqual('credential:owner');
 		expect(sharedCredential.credentials.name).toBe(payload.name);
 	});
 
@@ -156,7 +146,7 @@ describe('DELETE /credentials/:id', () => {
 
 	test('should delete owned cred for member but leave others untouched', async () => {
 		const anotherMember = await createUser({
-			globalRole: globalMemberRole,
+			role: 'global:member',
 			apiKey: randomApiKey(),
 		});
 

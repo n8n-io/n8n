@@ -2,25 +2,22 @@ import type { SuperAgentTest } from 'supertest';
 import Container from 'typedi';
 import type { INode } from 'n8n-workflow';
 import { STARTING_NODES } from '@/constants';
-import type { Role } from '@db/entities/Role';
 import type { TagEntity } from '@db/entities/TagEntity';
 import type { User } from '@db/entities/User';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import { Push } from '@/push';
+import { ExecutionService } from '@/executions/execution.service';
 
 import { randomApiKey } from '../shared/random';
 import * as utils from '../shared/utils/';
 import * as testDb from '../shared/testDb';
-import { getAllRoles } from '../shared/db/roles';
 import { createUser } from '../shared/db/users';
 import { createWorkflow, createWorkflowWithTrigger } from '../shared/db/workflows';
 import { createTag } from '../shared/db/tags';
 import { mockInstance } from '../../shared/mocking';
-import { Push } from '@/push';
-import { ExecutionService } from '@/executions/execution.service';
 
-let workflowOwnerRole: Role;
 let owner: User;
 let member: User;
 let authOwnerAgent: SuperAgentTest;
@@ -34,17 +31,13 @@ mockInstance(Push);
 mockInstance(ExecutionService);
 
 beforeAll(async () => {
-	const [globalOwnerRole, globalMemberRole, fetchedWorkflowOwnerRole] = await getAllRoles();
-
-	workflowOwnerRole = fetchedWorkflowOwnerRole;
-
 	owner = await createUser({
-		globalRole: globalOwnerRole,
+		role: 'global:owner',
 		apiKey: randomApiKey(),
 	});
 
 	member = await createUser({
-		globalRole: globalMemberRole,
+		role: 'global:member',
 		apiKey: randomApiKey(),
 	});
 
@@ -693,12 +686,12 @@ describe('POST /workflows', () => {
 				userId: member.id,
 				workflowId: response.body.id,
 			},
-			relations: ['workflow', 'role'],
+			relations: ['workflow'],
 		});
 
 		expect(sharedWorkflow?.workflow.name).toBe(name);
 		expect(sharedWorkflow?.workflow.createdAt.toISOString()).toBe(createdAt);
-		expect(sharedWorkflow?.role).toEqual(workflowOwnerRole);
+		expect(sharedWorkflow?.role).toEqual('workflow:owner');
 	});
 
 	test('should create workflow history version when licensed', async () => {
@@ -1110,13 +1103,13 @@ describe('PUT /workflows/:id', () => {
 				userId: member.id,
 				workflowId: response.body.id,
 			},
-			relations: ['workflow', 'role'],
+			relations: ['workflow'],
 		});
 
 		expect(sharedWorkflow?.workflow.name).toBe(payload.name);
 		expect(sharedWorkflow?.workflow.updatedAt.getTime()).toBeGreaterThan(
 			workflow.updatedAt.getTime(),
 		);
-		expect(sharedWorkflow?.role).toEqual(workflowOwnerRole);
+		expect(sharedWorkflow?.role).toEqual('workflow:owner');
 	});
 });

@@ -209,8 +209,13 @@ export class ActiveWorkflows {
 
 		const w = this.activeWorkflows[workflowId];
 
-		w.triggerResponses?.forEach(async (r) => await this.close(r, workflowId, 'trigger'));
-		w.pollResponses?.forEach(async (r) => await this.close(r, workflowId, 'poller'));
+		for (const r of w.triggerResponses ?? []) {
+			await this.close(r, workflowId, 'trigger');
+		}
+
+		for (const r of w.pollResponses ?? []) {
+			await this.close(r, workflowId, 'poller');
+		}
 
 		delete this.activeWorkflows[workflowId];
 
@@ -219,10 +224,7 @@ export class ActiveWorkflows {
 
 	async removeAllTriggerAndPollerBasedWorkflows() {
 		for (const workflowId of Object.keys(this.activeWorkflows)) {
-			const w = this.activeWorkflows[workflowId];
-
-			w.triggerResponses?.forEach(async (r) => await this.close(r, workflowId, 'trigger'));
-			w.pollResponses?.forEach(async (r) => await this.close(r, workflowId, 'poller'));
+			await this.remove(workflowId);
 		}
 	}
 
