@@ -104,7 +104,7 @@ describe('update()', () => {
 		);
 	});
 
-	test('should publish to inter-main channel on workflow update', async () => {
+	test('should publish to inter-main channel on workflow update not involving activation', async () => {
 		const owner = await createOwner();
 		const workflow = await createWorkflow({ active: true }, owner);
 
