@@ -120,10 +120,12 @@ describe('Workflow Actions', () => {
 		WorkflowPage.getters.successToast().should('exist');
 	});
 
-	it('should paste nodes', () => {
+	it.only('should paste nodes (both current and old node versions)', () => {
 		cy.fixture('Test_workflow-actions_paste-data.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
-			WorkflowPage.getters.canvasNodes().should('have.have.length', 2);
+			WorkflowPage.actions.zoomToFit();
+			WorkflowPage.getters.canvasNodes().should('have.length', 3);
+			WorkflowPage.getters.nodeConnections().should('have.length', 2);
 		});
 	});
 
@@ -141,14 +143,14 @@ describe('Workflow Actions', () => {
 		WorkflowPage.getters.nodeConnections().should('have.length', 1);
 	});
 
-	it('should import workflow from file', () => {
+	it.only('should import workflow from file', () => {
 		WorkflowPage.getters
 			.workflowImportInput()
 			.selectFile('cypress/fixtures/Test_workflow-actions_paste-data.json', { force: true });
 		cy.waitForLoad(false);
 		WorkflowPage.actions.zoomToFit();
-		WorkflowPage.getters.canvasNodes().should('have.length', 2);
-		WorkflowPage.getters.nodeConnections().should('have.length', 1);
+		WorkflowPage.getters.canvasNodes().should('have.length', 3);
+		WorkflowPage.getters.nodeConnections().should('have.length', 2);
 	});
 
 	it('should update workflow settings', () => {

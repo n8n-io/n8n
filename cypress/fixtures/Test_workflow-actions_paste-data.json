@@ -1,6 +1,6 @@
 {
 	"meta": {
-		"instanceId": "1a30c82b98a30444ad25bce513655a5e02be772d361403542c23172be6062f04"
+		"instanceId": "27cc9b56542ad45b38725555722c50a1c3fee1670bbb67980558314ee08517c4"
 	},
 	"nodes": [
 		{
@@ -9,21 +9,37 @@
 					"interval": [{}]
 				}
 			},
-			"id": "a898563b-d2a4-4b15-a979-366872e801b0",
+			"id": "45baa683-0bb8-41d7-b523-1f2a1c60b64a",
 			"name": "Schedule Trigger",
 			"type": "n8n-nodes-base.scheduleTrigger",
 			"typeVersion": 1,
-			"position": [420, 260]
+			"position": [2340, 340]
 		},
 		{
 			"parameters": {
 				"options": {}
 			},
-			"id": "b9a13e3d-bfa5-4873-959f-fd3d67e380d9",
+			"id": "9cdc6303-8c74-4f91-9fb5-68d83bbf87d8",
 			"name": "Set",
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 1,
-			"position": [640, 260]
+			"position": [2560, 240]
+		},
+		{
+			"parameters": {
+				"rules": {
+					"rules": [
+						{
+							"outputKey": "a"
+						}
+					]
+				}
+			},
+			"id": "7e0597b2-db2a-4d2f-8c46-377af0c10c9f",
+			"name": "Old version Switch Node",
+			"type": "n8n-nodes-base.switch",
+			"typeVersion": 2,
+			"position": [2560, 460]
 		}
 	],
 	"connections": {
@@ -34,9 +50,15 @@
 						"node": "Set",
 						"type": "main",
 						"index": 0
+					},
+					{
+						"node": "Old version Switch Node",
+						"type": "main",
+						"index": 0
 					}
 				]
 			]
 		}
-	}
+	},
+	"pinData": {}
 }

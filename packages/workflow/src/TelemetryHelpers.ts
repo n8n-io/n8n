@@ -184,7 +184,7 @@ export function generateNodesGraph(
 			webhookNodeNames.push(node.name);
 		} else {
 			try {
-				const nodeType = nodeTypes.getByNameAndVersion(node.type);
+				const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 				if (nodeType) {
 					const nodeParameters = getNodeParameters(
 						nodeType.description.properties,
