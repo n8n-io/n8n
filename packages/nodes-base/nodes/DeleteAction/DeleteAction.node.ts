@@ -48,7 +48,7 @@ export class DeleteAction implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 
-		// Physical deletion or Logical deletion
+		// Delete Execution Record
 		const mode = this.getNodeParameter('mode', 0) as string;
 
 		let itemIndex = 0;

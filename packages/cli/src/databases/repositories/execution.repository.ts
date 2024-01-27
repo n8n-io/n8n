@@ -268,7 +268,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		// are resumed after waiting for some time, as a new startedAt is set)
 		const { id, data, workflowId, workflowData, startedAt, ...executionInformation } = execution;
 
-		// Node 'Delete Action'
+		// Node 'DeleteAction'
 		let deleteFlag: Boolean = false;
 		// Retrieve resultData and avoid modifying parameter types to cause extensive changes
 		const tempJson = JSON.parse(JSON.stringify(execution));
