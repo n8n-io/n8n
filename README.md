@@ -15,7 +15,7 @@ The `Execution` executed this time will not be retained.
 <br>
 ![Demo](./assets/g2.jpg)
 
-# Code Description
+# Summary
 - The 'execute' function of this node does not perform any operations and is only used as a marker.
 - The original code will insert an `Execution` message into the database that does not include the end time and execution status when starting to execute `WorkFlow`, After the execution of `WorkFlow`, the code will update the information of the execution in the database.
 - I have added some code in the project to check whether the node has been executed before updating information. If the node has been executed, the `Execution` of this row will be directly deleted from the database.
