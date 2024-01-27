@@ -174,9 +174,8 @@ function getItemsCount(runData: IRunData) {
 	let itemsCount = 0;
 
 	for (const node in runData) {
-		// eslint-disable-next-line @typescript-eslint/no-for-in-array
-		for (const taskData in runData[node]) {
-			const data = runData[node][taskData].data;
+		for (const taskData of runData[node]) {
+			const data = taskData.data;
 			if (!data) continue;
 
 			for (const connectionType in data) {
