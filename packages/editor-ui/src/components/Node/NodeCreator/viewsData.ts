@@ -52,6 +52,7 @@ import {
 	EMAIL_SEND_NODE_TYPE,
 	EDIT_IMAGE_NODE_TYPE,
 	COMPRESSION_NODE_TYPE,
+	DELETE_ACTION_NODE_TYPE
 } from '@/constants';
 import { useI18n } from '@/composables/useI18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -407,6 +408,7 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 								CONVERT_TO_FILE_NODE_TYPE,
 								COMPRESSION_NODE_TYPE,
 								EDIT_IMAGE_NODE_TYPE,
+								DELETE_ACTION_NODE_TYPE
 							],
 						},
 					],

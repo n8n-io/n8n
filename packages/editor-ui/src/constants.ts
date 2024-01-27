@@ -174,6 +174,7 @@ export const AGGREGATE_NODE_TYPE = 'n8n-nodes-base.aggregate';
 export const MERGE_NODE_TYPE = 'n8n-nodes-base.merge';
 export const MARKDOWN_NODE_TYPE = 'n8n-nodes-base.markdown';
 export const XML_NODE_TYPE = 'n8n-nodes-base.xml';
+export const DELETE_ACTION_NODE_TYPE = 'n8n-nodes-base.delete-action';
 export const CRYPTO_NODE_TYPE = 'n8n-nodes-base.crypto';
 export const RSS_READ_NODE_TYPE = 'n8n-nodes-base.rssFeedRead';
 export const COMPRESSION_NODE_TYPE = 'n8n-nodes-base.compression';
