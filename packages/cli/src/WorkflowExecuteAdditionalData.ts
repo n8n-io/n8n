@@ -499,6 +499,16 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 							this.retryOf,
 						);
 					}
+
+					// DeleteAction logic. (After executeErrorWorkflow)
+					let lastNodeExecuted = fullExecutionData?.data?.resultData?.lastNodeExecuted;
+					if(lastNodeExecuted != undefined && lastNodeExecuted.startsWith('DeleteAction')) {
+						await Container.get(ExecutionRepository).hardDelete({
+							workflowId: this.workflowData.id,
+							executionId: this.executionId,
+						});
+					}
+					
 				} catch (error) {
 					ErrorReporter.error(error);
 					logger.error(`Failed saving execution data to DB on execution ID ${this.executionId}`, {
