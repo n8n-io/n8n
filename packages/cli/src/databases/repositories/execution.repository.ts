@@ -267,6 +267,32 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		// So we prevent updating it, if it's sent (it usually is and causes problems to executions that
 		// are resumed after waiting for some time, as a new startedAt is set)
 		const { id, data, workflowId, workflowData, startedAt, ...executionInformation } = execution;
+
+		// Node 'DeleteAction'
+		let deleteFlag: Boolean = false;
+		// Retrieve resultData and avoid modifying parameter types to cause extensive changes
+		const tempJson = JSON.parse(JSON.stringify(execution));
+		// RunData only contains name information, not type information
+		if(tempJson?.data?.resultData != undefined
+			// Determine if lastNodeExecuted is DeleteAction, 
+			&& tempJson?.data?.resultData.lastNodeExecuted.startsWith('DeleteAction')
+		) {
+			const runData = tempJson?.data?.resultData?.runData;
+			for (const name in runData) {
+				// Determine if DeleteAction is being executed
+				if(name != undefined && name.startsWith('DeleteAction')) {
+					deleteFlag = true;
+				}
+			}
+		}
+
+		// delete & return
+		if(deleteFlag) {
+			this.deleteByIds([executionId]);
+			this.executionDataRepository.delete([executionId]);
+			return;
+		}
+
 		if (Object.keys(executionInformation).length > 0) {
 			await this.update({ id: executionId }, executionInformation);
 		}
