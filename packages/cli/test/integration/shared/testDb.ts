@@ -135,7 +135,7 @@ export async function truncate(names: Array<(typeof repositories)[number]>) {
 const getSqliteOptions = ({ name }: { name: string }): ConnectionOptions => {
 	return {
 		name,
-		type: 'sqlite',
+		type: process.env.DB_SQLITE_USE_LIBSQL === 'true' ? 'libsql' : 'sqlite',
 		database: ':memory:',
 		entityPrefix: config.getEnv('database.tablePrefix'),
 		dropSchema: true,

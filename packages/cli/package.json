@@ -34,6 +34,7 @@
     "start:default": "cd bin && ./n8n",
     "start:windows": "cd bin && n8n",
     "test": "pnpm test:sqlite",
+    "test:libsql": "N8N_LOG_LEVEL=silent DB_TYPE=sqlite DB_SQLITE_USE_LIBSQL=true jest --no-coverage",
     "test:sqlite": "N8N_LOG_LEVEL=silent DB_TYPE=sqlite jest",
     "test:postgres": "N8N_LOG_LEVEL=silent DB_TYPE=postgresdb DB_POSTGRESDB_SCHEMA=alt_schema DB_TABLE_PREFIX=test_ jest --no-coverage",
     "test:mysql": "N8N_LOG_LEVEL=silent DB_TYPE=mysqldb DB_TABLE_PREFIX=test_ jest --no-coverage",
@@ -93,6 +94,7 @@
     "ts-essentials": "^7.0.3"
   },
   "dependencies": {
+    "@libsql/client": "0.4.3",
     "@n8n/client-oauth2": "workspace:*",
     "@n8n/localtunnel": "2.1.0",
     "@n8n/n8n-nodes-langchain": "workspace:*",

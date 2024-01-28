@@ -1,5 +1,6 @@
 import path from 'path';
 import { Container } from 'typedi';
+import type { LibSqlConnectionOptions } from '@n8n/typeorm/driver/libsql/LibSqlConnectionOptions';
 import type { SqliteConnectionOptions } from '@n8n/typeorm/driver/sqlite/SqliteConnectionOptions';
 import type { PostgresConnectionOptions } from '@n8n/typeorm/driver/postgres/PostgresConnectionOptions';
 import type { MysqlConnectionOptions } from '@n8n/typeorm/driver/mysql/MysqlConnectionOptions';
@@ -51,8 +52,10 @@ export const getOptionOverrides = (dbType: 'postgresdb' | 'mysqldb') => ({
 	password: config.getEnv(`database.${dbType}.password`),
 });
 
-export const getSqliteConnectionOptions = (): SqliteConnectionOptions => ({
-	type: 'sqlite',
+export const getSqliteConnectionOptions = ():
+	| SqliteConnectionOptions
+	| LibSqlConnectionOptions => ({
+	type: process.env.DB_SQLITE_USE_LIBSQL === 'true' ? 'libsql' : 'sqlite',
 	...getDBConnectionOptions('sqlite'),
 	migrations: sqliteMigrations,
 });
