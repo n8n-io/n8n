@@ -242,10 +242,15 @@ export default defineComponent({
 
 		// This will catch errors in async components
 		onErrorCaptured((e) => {
-			console.error(e);
 			asyncLoadingError.value = true;
+			console.error(e);
+			window?.Sentry?.captureException(e, {
+				tags: {
+					asyncLoadingError: true,
+				},
+			});
 			// Don't propagate the error further
-			return true;
+			return false;
 		});
 
 		return {
