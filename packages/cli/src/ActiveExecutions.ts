@@ -203,7 +203,7 @@ export class ActiveExecutions {
 		return returnData;
 	}
 
-	async setStatus(executionId: string, status: ExecutionStatus): Promise<void> {
+	setStatus(executionId: string, status: ExecutionStatus) {
 		const execution = this.activeExecutions[executionId];
 		if (execution === undefined) {
 			this.logger.debug(
