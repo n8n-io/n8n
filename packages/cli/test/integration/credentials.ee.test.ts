@@ -17,6 +17,7 @@ import { createManyUsers, createUser, createUserShell } from './shared/db/users'
 import { UserManagementMailer } from '@/UserManagement/email';
 
 import { mockInstance } from '../shared/mocking';
+import config from '@/config';
 
 const sharingSpy = jest.spyOn(License.prototype, 'isSharingEnabled').mockReturnValue(true);
 const testServer = utils.setupTestServer({ endpointGroups: ['credentials'] });
@@ -489,7 +490,6 @@ describe('PUT /credentials/:id/share', () => {
 
 		expect(sharedCredentials).toHaveLength(1);
 		expect(sharedCredentials[0].userId).toBe(owner.id);
-		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(0);
 	});
 
 	test('should ignore non-existing sharee', async () => {
@@ -507,7 +507,7 @@ describe('PUT /credentials/:id/share', () => {
 
 		expect(sharedCredentials).toHaveLength(1);
 		expect(sharedCredentials[0].userId).toBe(owner.id);
-		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(0);
+		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(1);
 	});
 
 	test('should respond 400 if invalid payload is provided', async () => {
@@ -542,7 +542,27 @@ describe('PUT /credentials/:id/share', () => {
 
 		expect(sharedCredentials).toHaveLength(1);
 		expect(sharedCredentials[0].userId).toBe(owner.id);
-		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(0);
+		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(1);
+	});
+
+	test('should not call internal hooks listener for email sent if emailing is disabled', async () => {
+		config.set('userManagement.emails.mode', '');
+
+		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
+
+		const [member1, member2] = await createManyUsers(2, {
+			role: 'global:member',
+		});
+
+		await shareCredentialWithUsers(savedCredential, [member1, member2]);
+
+		const response = await authOwnerAgent
+			.put(`/credentials/${savedCredential.id}/share`)
+			.send({ shareWithIds: [] });
+
+		expect(response.statusCode).toBe(200);
+
+		config.set('userManagement.emails.mode', 'smtp');
 	});
 });
 
