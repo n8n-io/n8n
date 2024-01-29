@@ -22,7 +22,7 @@ describe('ActiveExecutions', () => {
 	let activeExecutions: ActiveExecutions;
 
 	beforeEach(() => {
-		activeExecutions = new ActiveExecutions(mock(), executionRepository);
+		activeExecutions = new ActiveExecutions(executionRepository);
 	});
 
 	afterEach(() => {
