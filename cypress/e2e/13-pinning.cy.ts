@@ -169,13 +169,15 @@ describe('Data pinning', () => {
 		ndv.getters.outputTableRow(1).should('have.text', 'pin-overwritten');
 	});
 
-	it.only('should not use pin data in production executions that are started by a webhook', () => {
+	it('should not use pin data in production executions that are started by a webhook', () => {
 		cy.createFixtureWorkflow('Test_workflow_webhook_with_pin_data.json', 'Test');
 
 		workflowPage.actions.activateWorkflow();
 		cy.request('GET', `${BACKEND_BASE_URL}/webhook/b0d79ddb-df2d-49b1-8555-9fa2b482608f`).then(
 			(response) => {
 				expect(response.status).to.eq(200);
+				// Assert that we get the data hard coded in the edit fields node,
+				// instead of the data pinned in said node.
 				expect(response.body).to.deep.equal({
 					nodeData: 'pin',
 				});
