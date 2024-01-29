@@ -9,7 +9,6 @@ import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { ListQuery } from '@/requests';
 import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
-import { Push } from '@/push';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 import { mockInstance } from '../../shared/mocking';
@@ -34,7 +33,6 @@ const license = testServer.license;
 const { objectContaining, arrayContaining, any } = expect;
 
 const activeWorkflowRunnerLike = mockInstance(ActiveWorkflowRunner);
-mockInstance(Push);
 
 beforeAll(async () => {
 	owner = await createOwner();

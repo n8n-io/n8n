@@ -12,7 +12,7 @@ let telemetry: Telemetry;
 describe('InternalHooks', () => {
 	beforeAll(() => {
 		telemetry = mockInstance(Telemetry);
-		internalHooks = new InternalHooks(telemetry, mock(), mock(), mock(), mock());
+		internalHooks = new InternalHooks(telemetry, mock(), mock(), mock(), mock(), mock());
 	});
 
 	it('Should be defined', () => {

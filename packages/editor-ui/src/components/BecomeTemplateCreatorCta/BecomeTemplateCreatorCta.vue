@@ -1,9 +1,15 @@
 <script setup lang="ts">
+import { useTelemetry } from '@/composables/useTelemetry';
 import { useBecomeTemplateCreatorStore } from './becomeTemplateCreatorStore';
 import { useI18n } from '@/composables/useI18n';
 
 const i18n = useI18n();
 const store = useBecomeTemplateCreatorStore();
+const telemetry = useTelemetry();
+
+const onClick = () => {
+	telemetry.track('User clicked become creator CTA');
+};
 </script>
 
 <template>
@@ -34,6 +40,7 @@ const store = useBecomeTemplateCreatorStore();
 			element="a"
 			href="https://creators.n8n.io/hub"
 			target="_blank"
+			@click="onClick"
 		/>
 	</div>
 </template>
