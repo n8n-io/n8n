@@ -179,10 +179,10 @@ export class ExecutionService {
 
 	async retry(req: ExecutionRequest.Retry, sharedWorkflowIds: string[]) {
 		const { id: executionId } = req.params;
-		const execution = (await this.executionRepository.findIfShared(
+		const execution = await this.executionRepository.findWithUnflattenedData(
 			executionId,
 			sharedWorkflowIds,
-		)) as unknown as IExecutionResponse;
+		);
 
 		if (!execution) {
 			this.logger.info(
