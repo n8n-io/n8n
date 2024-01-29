@@ -1,20 +1,22 @@
+import { Container, Service } from 'typedi';
 import { existsSync } from 'fs';
 import { readFile } from 'fs/promises';
 import Handlebars from 'handlebars';
 import { join as pathJoin } from 'path';
-import { Container, Service } from 'typedi';
-import config from '@/config';
-import type { InviteEmailData, PasswordResetData, SendEmailResult } from './Interfaces';
-import { NodeMailer } from './NodeMailer';
 import { ApplicationError } from 'n8n-workflow';
-import { UserRepository } from '@/databases/repositories/user.repository';
+
+import config from '@/config';
+import type { User } from '@db/entities/User';
+import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import { UserRepository } from '@db/repositories/user.repository';
 import { InternalHooks } from '@/InternalHooks';
 import { Logger } from '@/Logger';
 import { UrlService } from '@/services/url.service';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import type { User } from '@/databases/entities/User';
 import { toError } from '@/utils';
-import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
+
+import type { InviteEmailData, PasswordResetData, SendEmailResult } from './Interfaces';
+import { NodeMailer } from './NodeMailer';
 
 type Template = HandlebarsTemplateDelegate<unknown>;
 type TemplateName = 'invite' | 'passwordReset' | 'workflowShared' | 'credentialsShared';
@@ -50,7 +52,6 @@ export class UserManagementMailer {
 	constructor(
 		private readonly userRepository: UserRepository,
 		private readonly logger: Logger,
-		private readonly internalHooks: InternalHooks,
 		private readonly urlService: UrlService,
 	) {
 		this.isEmailSetUp =
@@ -130,7 +131,7 @@ export class UserManagementMailer {
 
 			this.logger.info('Sent workflow shared email successfully', { sharerId: sharer.id });
 
-			void this.internalHooks.onUserTransactionalEmail({
+			void Container.get(InternalHooks).onUserTransactionalEmail({
 				user_id: sharer.id,
 				message_type: 'Workflow shared',
 				public_api: false,
@@ -138,7 +139,7 @@ export class UserManagementMailer {
 
 			return result;
 		} catch (e) {
-			void this.internalHooks.onEmailFailed({
+			void Container.get(InternalHooks).onEmailFailed({
 				user: sharer,
 				message_type: 'Workflow shared',
 				public_api: false,
@@ -182,7 +183,7 @@ export class UserManagementMailer {
 
 			this.logger.info('Sent credentials shared email successfully', { sharerId: sharer.id });
 
-			void this.internalHooks.onUserTransactionalEmail({
+			void Container.get(InternalHooks).onUserTransactionalEmail({
 				user_id: sharer.id,
 				message_type: 'Credentials shared',
 				public_api: false,
@@ -190,7 +191,7 @@ export class UserManagementMailer {
 
 			return result;
 		} catch (e) {
-			void this.internalHooks.onEmailFailed({
+			void Container.get(InternalHooks).onEmailFailed({
 				user: sharer,
 				message_type: 'Credentials shared',
 				public_api: false,
