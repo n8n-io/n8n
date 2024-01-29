@@ -152,6 +152,7 @@ import {
 	WORKFLOW_MENU_ACTIONS,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
+	WORKFLOW_WITH_VERSION_MODAL_KEY,
 } from '@/constants';
 
 import ShortenName from '@/components/ShortenName.vue';
@@ -351,6 +352,15 @@ export default defineComponent({
 					divided: true,
 				});
 			}
+
+			if (!this.readOnly) {
+				actions.push({
+					id: WORKFLOW_MENU_ACTIONS.VIEW_WORKFLOW_VERSIONS,
+					label: this.$locale.baseText('menuActions.viewWorkflowVersions'),
+					disabled: !this.onWorkflowPage || this.onExecutionsTab,
+				});
+			}
+
 
 			return actions;
 		},
@@ -653,6 +663,13 @@ export default defineComponent({
 					await this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 					break;
 				}
+
+				case WORKFLOW_MENU_ACTIONS.VIEW_WORKFLOW_VERSIONS: {
+					// const workflowData = await this.getWorkflowWithVersion(this.currentWorkflowId);
+					this.uiStore.openModal(WORKFLOW_WITH_VERSION_MODAL_KEY);
+					break;
+				}
+
 				default:
 					break;
 			}

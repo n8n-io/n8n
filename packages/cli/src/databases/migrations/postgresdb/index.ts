@@ -38,6 +38,7 @@ import { CreateVariables1677501636754 } from './1677501636754-CreateVariables';
 import { AddUserActivatedProperty1681134145996 } from './1681134145996-AddUserActivatedProperty';
 import { MigrateIntegerKeysToString1690000000000 } from './1690000000000-MigrateIntegerKeysToString';
 import { SeparateExecutionData1690000000020 } from './1690000000020-SeparateExecutionData';
+import { AddWorkflowEntityWithVersion1690000000040 } from './1690000000040-AddWorkflowEntityWithVersion';
 import { RemoveSkipOwnerSetup1681134145997 } from './1681134145997-RemoveSkipOwnerSetup';
 import { RemoveResetPasswordColumns1690000000030 } from '../common/1690000000030-RemoveResetPasswordColumns';
 import { AddMissingPrimaryKeyOnExecutionData1690787606731 } from './1690787606731-AddMissingPrimaryKeyOnExecutionData';
@@ -90,6 +91,7 @@ export const postgresMigrations: Migration[] = [
 	CreateExecutionMetadataTable1679416281778,
 	CreateVariables1677501636754,
 	AddUserActivatedProperty1681134145996,
+	AddWorkflowEntityWithVersion1690000000040,
 	MigrateIntegerKeysToString1690000000000,
 	SeparateExecutionData1690000000020,
 	RemoveSkipOwnerSetup1681134145997,
