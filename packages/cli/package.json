@@ -16,6 +16,7 @@
   "types": "dist/index.d.ts",
   "oclif": {
     "commands": "./dist/commands",
+    "helpClass": "./dist/help",
     "bin": "n8n"
   },
   "scripts": {
@@ -98,10 +99,10 @@
     "@n8n/permissions": "workspace:*",
     "@n8n_io/license-sdk": "2.9.1",
     "@oclif/core": "3.18.1",
-    "@rudderstack/rudder-sdk-node": "1.0.6",
+    "@rudderstack/rudder-sdk-node": "2.0.6",
     "@sentry/integrations": "7.87.0",
     "@sentry/node": "7.87.0",
-    "axios": "1.6.5",
+    "axios": "1.6.7",
     "basic-auth": "2.0.1",
     "bcryptjs": "2.4.3",
     "bull": "4.12.1",

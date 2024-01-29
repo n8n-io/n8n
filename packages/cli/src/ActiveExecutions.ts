@@ -1,6 +1,6 @@
-/* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
-
-import { Container, Service } from 'typedi';
+import { Service } from 'typedi';
+import type { ChildProcess } from 'child_process';
+import type PCancelable from 'p-cancelable';
 import type {
 	IDeferredPromise,
 	IExecuteResponsePromiseData,
@@ -9,8 +9,6 @@ import type {
 } from 'n8n-workflow';
 import { ApplicationError, WorkflowOperationError, createDeferredPromise } from 'n8n-workflow';
 
-import type { ChildProcess } from 'child_process';
-import type PCancelable from 'p-cancelable';
 import type {
 	ExecutionPayload,
 	IExecutingWorkflowData,
@@ -28,7 +26,10 @@ export class ActiveExecutions {
 		[index: string]: IExecutingWorkflowData;
 	} = {};
 
-	constructor(private readonly logger: Logger) {}
+	constructor(
+		private readonly logger: Logger,
+		private readonly executionRepository: ExecutionRepository,
+	) {}
 
 	/**
 	 * Add a new active execution
@@ -61,7 +62,7 @@ export class ActiveExecutions {
 				fullExecutionData.workflowId = workflowId;
 			}
 
-			executionId = await Container.get(ExecutionRepository).createNewExecution(fullExecutionData);
+			executionId = await this.executionRepository.createNewExecution(fullExecutionData);
 			if (executionId === undefined) {
 				throw new ApplicationError('There was an issue assigning an execution id to the execution');
 			}
@@ -76,7 +77,7 @@ export class ActiveExecutions {
 				status: executionStatus,
 			};
 
-			await Container.get(ExecutionRepository).updateExistingExecution(executionId, execution);
+			await this.executionRepository.updateExistingExecution(executionId, execution);
 		}
 
 		this.activeExecutions[executionId] = {
@@ -96,34 +97,33 @@ export class ActiveExecutions {
 	 */
 
 	attachWorkflowExecution(executionId: string, workflowExecution: PCancelable<IRun>) {
-		if (this.activeExecutions[executionId] === undefined) {
+		const execution = this.activeExecutions[executionId];
+		if (execution === undefined) {
 			throw new ApplicationError('No active execution found to attach to workflow execution to', {
 				extra: { executionId },
 			});
 		}
 
-		this.activeExecutions[executionId].workflowExecution = workflowExecution;
+		execution.workflowExecution = workflowExecution;
 	}
 
 	attachResponsePromise(
 		executionId: string,
 		responsePromise: IDeferredPromise<IExecuteResponsePromiseData>,
 	): void {
-		if (this.activeExecutions[executionId] === undefined) {
+		const execution = this.activeExecutions[executionId];
+		if (execution === undefined) {
 			throw new ApplicationError('No active execution found to attach to workflow execution to', {
 				extra: { executionId },
 			});
 		}
 
-		this.activeExecutions[executionId].responsePromise = responsePromise;
+		execution.responsePromise = responsePromise;
 	}
 
 	resolveResponsePromise(executionId: string, response: IExecuteResponsePromiseData): void {
-		if (this.activeExecutions[executionId] === undefined) {
-			return;
-		}
-
-		this.activeExecutions[executionId].responsePromise?.resolve(response);
+		const execution = this.activeExecutions[executionId];
+		execution?.responsePromise?.resolve(response);
 	}
 
 	getPostExecutePromiseCount(executionId: string): number {
@@ -135,13 +135,14 @@ export class ActiveExecutions {
 	 *
 	 */
 	remove(executionId: string, fullRunData?: IRun): void {
-		if (this.activeExecutions[executionId] === undefined) {
+		const execution = this.activeExecutions[executionId];
+		if (execution === undefined) {
 			return;
 		}
 
 		// Resolve all the waiting promises
 
-		for (const promise of this.activeExecutions[executionId].postExecutePromises) {
+		for (const promise of execution.postExecutePromises) {
 			promise.resolve(fullRunData);
 		}
 
@@ -156,26 +157,27 @@ export class ActiveExecutions {
 	 * @param {string} timeout String 'timeout' given if stop due to timeout
 	 */
 	async stopExecution(executionId: string, timeout?: string): Promise<IRun | undefined> {
-		if (this.activeExecutions[executionId] === undefined) {
+		const execution = this.activeExecutions[executionId];
+		if (execution === undefined) {
 			// There is no execution running with that id
 			return;
 		}
 
 		// In case something goes wrong make sure that promise gets first
 		// returned that it gets then also resolved correctly.
-		if (this.activeExecutions[executionId].process !== undefined) {
+		if (execution.process !== undefined) {
 			// Workflow is running in subprocess
-			if (this.activeExecutions[executionId].process!.connected) {
+			if (execution.process.connected) {
 				setTimeout(() => {
 					// execute on next event loop tick;
-					this.activeExecutions[executionId].process!.send({
+					execution.process!.send({
 						type: timeout || 'stopExecution',
 					});
 				}, 1);
 			}
 		} else {
 			// Workflow is running in current process
-			this.activeExecutions[executionId].workflowExecution!.cancel();
+			execution.workflowExecution!.cancel();
 		}
 
 		return await this.getPostExecutePromise(executionId);
@@ -188,14 +190,15 @@ export class ActiveExecutions {
 	 * @param {string} executionId The id of the execution to wait for
 	 */
 	async getPostExecutePromise(executionId: string): Promise<IRun | undefined> {
-		if (this.activeExecutions[executionId] === undefined) {
+		const execution = this.activeExecutions[executionId];
+		if (execution === undefined) {
 			throw new WorkflowOperationError(`There is no active execution with id "${executionId}".`);
 		}
 
 		// Create the promise which will be resolved when the execution finished
 		const waitPromise = await createDeferredPromise<IRun | undefined>();
 
-		this.activeExecutions[executionId].postExecutePromises.push(waitPromise);
+		execution.postExecutePromises.push(waitPromise);
 
 		return await waitPromise.promise();
 	}
@@ -213,10 +216,10 @@ export class ActiveExecutions {
 			data = this.activeExecutions[id];
 			returnData.push({
 				id,
-				retryOf: data.executionData.retryOf as string | undefined,
+				retryOf: data.executionData.retryOf,
 				startedAt: data.startedAt,
 				mode: data.executionData.executionMode,
-				workflowId: data.executionData.workflowData.id! as string,
+				workflowId: data.executionData.workflowData.id,
 				status: data.status,
 			});
 		}
@@ -225,21 +228,19 @@ export class ActiveExecutions {
 	}
 
 	async setStatus(executionId: string, status: ExecutionStatus): Promise<void> {
-		if (this.activeExecutions[executionId] === undefined) {
+		const execution = this.activeExecutions[executionId];
+		if (execution === undefined) {
 			this.logger.debug(
 				`There is no active execution with id "${executionId}", can't update status to ${status}.`,
 			);
 			return;
 		}
 
-		this.activeExecutions[executionId].status = status;
+		execution.status = status;
 	}
 
 	getStatus(executionId: string): ExecutionStatus {
-		if (this.activeExecutions[executionId] === undefined) {
-			return 'unknown';
-		}
-
-		return this.activeExecutions[executionId].status;
+		const execution = this.activeExecutions[executionId];
+		return execution?.status ?? 'unknown';
 	}
 }

@@ -47,7 +47,7 @@
     "@n8n/permissions": "workspace:*",
     "@vueuse/components": "^10.5.0",
     "@vueuse/core": "^10.5.0",
-    "axios": "1.6.5",
+    "axios": "1.6.7",
     "chart.js": "^4.4.0",
     "codemirror-lang-html-n8n": "^1.0.0",
     "codemirror-lang-n8n-expression": "^0.2.0",
@@ -91,7 +91,7 @@
     "@types/lodash-es": "^4.17.6",
     "@types/luxon": "^3.2.0",
     "@types/uuid": "^8.3.2",
-    "miragejs": "^0.1.47",
+    "miragejs": "^0.1.48",
     "unplugin-icons": "^0.17.0"
   },
   "peerDependencies": {
