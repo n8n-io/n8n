@@ -153,21 +153,21 @@ export class WorkflowRunner {
 		data: IWorkflowExecutionDataProcess,
 		loadStaticData?: boolean,
 		realtime?: boolean,
-		executionId?: string,
+		restartExecutionId?: string,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 	): Promise<string> {
+		// Register a new execution
+		const executionId = await this.activeExecutions.add(data, restartExecutionId);
+		if (responsePromise) {
+			this.activeExecutions.attachResponsePromise(executionId, responsePromise);
+		}
+
 		if (this.executionsMode === 'queue' && data.executionMode !== 'manual') {
 			// Do not run "manual" executions in bull because sending events to the
 			// frontend would not be possible
-			executionId = await this.enqueueExecution(
-				data,
-				loadStaticData,
-				realtime,
-				executionId,
-				responsePromise,
-			);
+			await this.enqueueExecution(executionId, data, loadStaticData, realtime);
 		} else {
-			executionId = await this.runMainProcess(data, loadStaticData, executionId, responsePromise);
+			await this.runMainProcess(executionId, data, loadStaticData, executionId);
 			void Container.get(InternalHooks).onWorkflowBeforeExecute(executionId, data);
 		}
 
@@ -182,7 +182,7 @@ export class WorkflowRunner {
 			postExecutePromise
 				.then(async (executionData) => {
 					void Container.get(InternalHooks).onWorkflowPostExecute(
-						executionId!,
+						executionId,
 						data.workflowData,
 						executionData,
 						data.userId,
@@ -211,11 +211,11 @@ export class WorkflowRunner {
 
 	/** Run the workflow in current process */
 	private async runMainProcess(
+		executionId: string,
 		data: IWorkflowExecutionDataProcess,
 		loadStaticData?: boolean,
 		restartExecutionId?: string,
-		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
-	): Promise<string> {
+	): Promise<void> {
 		const workflowId = data.workflowData.id;
 		if (loadStaticData === true && workflowId) {
 			data.workflowData.staticData =
@@ -254,10 +254,9 @@ export class WorkflowRunner {
 			undefined,
 			workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000,
 		);
+		// TODO: set this in queue mode as well
 		additionalData.restartExecutionId = restartExecutionId;
 
-		// Register the active execution
-		const executionId = await this.activeExecutions.add(data, restartExecutionId);
 		additionalData.executionId = executionId;
 
 		this.logger.verbose(
@@ -287,14 +286,12 @@ export class WorkflowRunner {
 				);
 				await additionalData.hooks.executeHookFunctions('workflowExecuteAfter', [failedExecution]);
 				this.activeExecutions.remove(executionId, failedExecution);
-				return executionId;
+				return;
 			}
 
 			additionalData.hooks.hookFunctions.sendResponse = [
 				async (response: IExecuteResponsePromiseData): Promise<void> => {
-					if (responsePromise) {
-						responsePromise.resolve(response);
-					}
+					this.activeExecutions.resolveResponsePromise(executionId, response);
 				},
 			];
 
@@ -388,25 +385,14 @@ export class WorkflowRunner {
 
 			throw error;
 		}
-
-		return executionId;
 	}
 
 	private async enqueueExecution(
+		executionId: string,
 		data: IWorkflowExecutionDataProcess,
 		loadStaticData?: boolean,
 		realtime?: boolean,
-		restartExecutionId?: string,
-		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
-	): Promise<string> {
-		// TODO: If "loadStaticData" is set to true it has to load data new on worker
-
-		// Register the active execution
-		const executionId = await this.activeExecutions.add(data, restartExecutionId);
-		if (responsePromise) {
-			this.activeExecutions.attachResponsePromise(executionId, responsePromise);
-		}
-
+	): Promise<void> {
 		const jobData: JobData = {
 			executionId,
 			loadStaticData: !!loadStaticData,
@@ -598,6 +584,5 @@ export class WorkflowRunner {
 		});
 
 		this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
-		return executionId;
 	}
 }
