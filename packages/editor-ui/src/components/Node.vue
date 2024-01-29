@@ -127,7 +127,7 @@
 					type="tertiary"
 					text
 					size="small"
-					:icon="nodeDisabledIcon"
+					icon="power-off"
 					:title="nodeDisabledTitle"
 					@click="toggleDisableNode"
 				/>
@@ -461,9 +461,6 @@ export default defineComponent({
 				issues.push(...NodeHelpers.nodeIssuesToString(this.data.issues, this.data));
 			}
 			return issues;
-		},
-		nodeDisabledIcon(): string {
-			return this.data.disabled ? 'check-circle' : 'pause';
 		},
 		nodeDisabledTitle(): string {
 			return this.data.disabled
