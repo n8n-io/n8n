@@ -594,9 +594,8 @@ export default defineComponent({
 	}
 
 	.collection-notice {
-		padding-left: var(--spacing-2xs);
-		padding-top: var(--spacing-2xs);
-
+		padding-top: var(--spacing-xs);
+		padding-left: var(--spacing-m);
 		&.error {
 			color: var(--color-danger);
 		}
