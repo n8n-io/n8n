@@ -25,17 +25,13 @@ export class InvitationController {
 	constructor(
 		private readonly logger: Logger,
 		private readonly internalHooks: InternalHooks,
-		private externalHooks: ExternalHooks,
+		private readonly externalHooks: ExternalHooks,
 		private readonly userService: UserService,
 		private readonly license: License,
 		private readonly passwordUtility: PasswordUtility,
 		private readonly userRepository: UserRepository,
 		private readonly postHog: PostHogClient,
 	) {}
-
-	setExternalHooks(hooks: ExternalHooks) {
-		this.externalHooks = hooks;
-	}
 
 	/**
 	 * Send email invite(s) to one or multiple users and create user shell(s).

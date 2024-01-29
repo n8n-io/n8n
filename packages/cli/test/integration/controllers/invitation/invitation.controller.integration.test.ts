@@ -2,13 +2,11 @@ import { mocked } from 'jest-mock';
 import Container from 'typedi';
 import { Not } from 'typeorm';
 
-import { InvitationController } from '@/controllers/invitation.controller';
 import { InternalHooks } from '@/InternalHooks';
 import { ExternalHooks } from '@/ExternalHooks';
 import { UserManagementMailer } from '@/UserManagement/email';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { PasswordUtility } from '@/services/password.utility';
-import { UserService } from '@/services/user.service';
 
 import {
 	randomEmail,
@@ -30,30 +28,22 @@ import type { User } from '@/databases/entities/User';
 import type { UserInvitationResult } from '../../shared/utils/users';
 
 describe('InvitationController', () => {
+	const mailer = mockInstance(UserManagementMailer);
+	const externalHooks = mockInstance(ExternalHooks);
+	const internalHooks = mockInstance(InternalHooks);
+
 	const testServer = utils.setupTestServer({ endpointGroups: ['invitations'] });
 
 	let instanceOwner: User;
 	let userRepository: UserRepository;
-	let externalHooks: jest.Mocked<ExternalHooks>;
-	let internalHooks: jest.Mocked<InternalHooks>;
-	let mailer: jest.Mocked<UserManagementMailer>;
 
 	beforeAll(async () => {
-		mailer = mockInstance(UserManagementMailer);
-		externalHooks = mockInstance(ExternalHooks);
-		internalHooks = mockInstance(InternalHooks);
-
 		userRepository = Container.get(UserRepository);
-
 		instanceOwner = await createOwner();
-
-		// selectively patch mocked dependencies into real services
-
-		Container.get(UserService).setMailer(mailer);
-		Container.get(InvitationController).setExternalHooks(externalHooks);
 	});
 
 	beforeEach(async () => {
+		jest.clearAllMocks();
 		await userRepository.delete({ role: Not('global:owner') });
 	});
 

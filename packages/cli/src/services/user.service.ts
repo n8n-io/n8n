@@ -1,4 +1,4 @@
-import { Service } from 'typedi';
+import { Container, Service } from 'typedi';
 import { type AssignableRole, User } from '@db/entities/User';
 import type { IUserSettings } from 'n8n-workflow';
 import { UserRepository } from '@db/repositories/user.repository';
@@ -21,14 +21,9 @@ export class UserService {
 		private readonly logger: Logger,
 		private readonly userRepository: UserRepository,
 		private readonly jwtService: JwtService,
-		private mailer: UserManagementMailer,
+		private readonly mailer: UserManagementMailer,
 		private readonly urlService: UrlService,
-		private readonly internalHooks: InternalHooks,
 	) {}
-
-	setMailer(mailer: UserManagementMailer) {
-		this.mailer = mailer;
-	}
 
 	async update(userId: string, data: Partial<User>) {
 		return await this.userRepository.update(userId, data);
@@ -191,14 +186,14 @@ export class UserService {
 					if (result.emailSent) {
 						invitedUser.user.emailSent = true;
 						delete invitedUser.user?.inviteAcceptUrl;
-						void this.internalHooks.onUserTransactionalEmail({
+						void Container.get(InternalHooks).onUserTransactionalEmail({
 							user_id: id,
 							message_type: 'New user invite',
 							public_api: false,
 						});
 					}
 
-					void this.internalHooks.onUserInvite({
+					void Container.get(InternalHooks).onUserInvite({
 						user: owner,
 						target_user_id: Object.values(toInviteUsers),
 						public_api: false,
@@ -207,7 +202,7 @@ export class UserService {
 					});
 				} catch (e) {
 					if (e instanceof Error) {
-						void this.internalHooks.onEmailFailed({
+						void Container.get(InternalHooks).onEmailFailed({
 							user: owner,
 							message_type: 'New user invite',
 							public_api: false,
