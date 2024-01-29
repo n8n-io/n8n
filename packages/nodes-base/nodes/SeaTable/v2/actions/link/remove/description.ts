@@ -17,8 +17,7 @@ export const linkRemoveDescription: LinkProperties = [
 			},
 		},
 		default: '',
-		description:
-			'The name of SeaTable table to access. Choose from the list, or specify a name using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description: 'If you use an expression, provide it in the way "<table_name>:::<table_id>".',
 	},
 	{
 		displayName: 'Link column',
@@ -36,7 +35,7 @@ export const linkRemoveDescription: LinkProperties = [
 		},
 		required: true,
 		default: '',
-		description: 'Select the column to create a link.',
+		description: 'If you use an expression, provide it in the way "<column_name>:::<link_id>:::<other_table_id>".',
 	},
 	{
 		displayName: 'Row ID from the source table',

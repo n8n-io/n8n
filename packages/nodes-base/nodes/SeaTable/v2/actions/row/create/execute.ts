@@ -19,6 +19,7 @@ export async function create(
 	const fieldsToSend = this.getNodeParameter('fieldsToSend', index) as
 		| 'defineBelow'
 		| 'autoMapInputData';
+	const bigdata = this.getNodeParameter('bigdata', index) as string;
 
 	const body = {
 		table_name: tableName,
@@ -48,15 +49,29 @@ export async function create(
 	// string to array: multi-select and collaborators
 	rowInput = splitStringColumnsToArrays(rowInput, tableColumns);
 
-	body.row = rowInput;
+	// save to big data backend
+	if (bigdata) {
+		body.rows = [rowInput];
+		const responseData = await seaTableApiRequest.call(
+			this,
+			{},
+			'POST',
+			'/dtable-db/api/v1/insert-rows/{{dtable_uuid}}/',
+			body,
+		);
+		return this.helpers.returnJsonArray(responseData as IDataObject[]);
+	}
+	// save to normal backend
+	else {
+		body.row = rowInput;
 
-	const responseData = await seaTableApiRequest.call(
-		this,
-		{},
-		'POST',
-		'/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/',
-		body,
-	);
-
-	return this.helpers.returnJsonArray(responseData as IDataObject[]);
+		const responseData = await seaTableApiRequest.call(
+			this,
+			{},
+			'POST',
+			'/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/',
+			body,
+		);
+		return this.helpers.returnJsonArray(responseData as IDataObject[]);
+	}
 }

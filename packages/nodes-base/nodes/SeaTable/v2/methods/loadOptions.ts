@@ -37,7 +37,7 @@ export async function getTableNameAndId(
 	for (const table of tables) {
 		returnData.push({
 			name: table.name,
-			value: table.name + ':::' + table._id,
+			value: table.name + ':::' + table['_id'],
 		});
 	}
 	return returnData;
@@ -80,9 +80,11 @@ export async function getSearchableColumns(
 
 export async function getLinkColumns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const returnData: INodePropertyOptions[] = [];
-	let tableName = this.getCurrentNodeParameter('tableName') as string;
-	tableName = tableName.split(':::')[0];
-	//const tableId = (tableName.split(':::')[1] ? tableName.split(':::')[1] : "");
+	const table = this.getCurrentNodeParameter('tableName') as string;
+
+	const tableName = table.split(':::')[0];
+	const tableId = table.split(':::')[1];
+
 	if (tableName) {
 		const columns = await seaTableApiRequest.call(
 			this,
@@ -94,9 +96,13 @@ export async function getLinkColumns(this: ILoadOptionsFunctions): Promise<INode
 		);
 		for (const col of columns.columns) {
 			if (col.type === 'link') {
+				// make sure that the "other table id" is returned and not the same table id again.
+				const otid =
+					tableId !== col.data.other_table_id ? col.data.other_table_id : col.data.table_id;
+
 				returnData.push({
 					name: col.name,
-					value: col.name + ':::' + col.data.link_id + ':::' + col.data.other_table_id,
+					value: col.name + ':::' + col.data.link_id + ':::' + otid,
 				});
 			}
 		}

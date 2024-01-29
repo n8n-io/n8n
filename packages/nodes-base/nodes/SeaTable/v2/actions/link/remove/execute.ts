@@ -10,18 +10,21 @@ export async function remove(
 	const linkColumnSourceId = this.getNodeParameter('linkColumnSourceId', index) as string;
 	const linkColumnTargetId = this.getNodeParameter('linkColumnTargetId', index) as string;
 
+	const body = {
+		link_id: linkColumn.split(':::')[1],
+		table_id: tableName.split(':::')[1],
+		other_table_id: linkColumn.split(':::')[2],
+		other_rows_ids_map: {
+			[linkColumnSourceId]: [linkColumnTargetId],
+		},
+	};
+
 	const responseData = await seaTableApiRequest.call(
 		this,
 		{},
 		'DELETE',
-		'/dtable-server/api/v1/dtables/{{dtable_uuid}}/links/',
-		{
-			link_id: linkColumn.split(':::')[1],
-			table_id: tableName.split(':::')[1],
-			table_row_id: linkColumnSourceId,
-			other_table_id: linkColumn.split(':::')[2],
-			other_table_row_id: linkColumnTargetId,
-		},
+		'/dtable-db/api/v1/base/{{dtable_uuid}}/links/',
+		body,
 	);
 
 	return this.helpers.returnJsonArray(responseData as IDataObject[]);

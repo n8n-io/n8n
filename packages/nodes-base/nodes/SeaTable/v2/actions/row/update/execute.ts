@@ -21,10 +21,6 @@ export async function update(
 		| 'autoMapInputData';
 	const rowId = this.getNodeParameter('rowId', index) as string;
 
-	const body = {
-		table_name: tableName,
-		row_id: rowId,
-	} as IDataObject;
 	let rowInput = {} as IRowObject;
 
 	// get rowInput, an object of key:value pairs like { Name: 'Promo Action 1', Status: "Draft" }.
@@ -49,13 +45,21 @@ export async function update(
 	// string to array: multi-select and collaborators
 	rowInput = splitStringColumnsToArrays(rowInput, tableColumns);
 
-	body.row = rowInput;
+	const body = {
+		table_name: tableName,
+		updates: [
+			{
+				row_id: rowId,
+				row: rowInput,
+			},
+		],
+	} as IDataObject;
 
 	const responseData = await seaTableApiRequest.call(
 		this,
 		{},
 		'PUT',
-		'/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/',
+		'/dtable-db/api/v1/update-rows/{{dtable_uuid}}/',
 		body,
 	);
 

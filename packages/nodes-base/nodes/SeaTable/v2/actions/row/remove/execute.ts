@@ -10,14 +10,14 @@ export async function remove(
 
 	const requestBody: IDataObject = {
 		table_name: tableName,
-		row_id: rowId,
+		row_ids: [rowId],
 	};
 
 	const responseData = await seaTableApiRequest.call(
 		this,
 		{},
 		'DELETE',
-		'/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/',
+		'/dtable-db/api/v1/delete-rows/{{dtable_uuid}}/',
 		requestBody,
 	);
 

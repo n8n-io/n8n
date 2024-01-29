@@ -29,6 +29,9 @@ import type {
 	IFile,
 } from './actions/Interfaces';
 
+// for date transformations
+import moment from 'moment';
+
 // remove last backslash
 const userBaseUri = (uri?: string) => {
 	if (uri === undefined) return uri;
@@ -308,6 +311,33 @@ export function splitStringColumnsToArrays(
 			if (typeof row[column.name] === 'string') {
 				const input = row[column.name] as string;
 				row[column.name] = input.split(',').map((item) => item.trim());
+			}
+		}
+		if (column.type == 'number') {
+			if (typeof row[column.name] === 'string') {
+				const input = row[column.name] as string;
+				row[column.name] = parseFloat(input);
+			}
+		}
+		if (column.type == 'rate' || column.type == 'duration') {
+			if (typeof row[column.name] === 'string') {
+				const input = row[column.name] as string;
+				row[column.name] = parseInt(input);
+			}
+		}
+		if (column.type == 'checkbox') {
+			if (typeof row[column.name] === 'string') {
+				const input = row[column.name] as string;
+				row[column.name] = false;
+				if (input === 'true' || input === 'on' || input === '1') {
+					row[column.name] = true;
+				}
+			}
+		}
+		if (column.type == 'date') {
+			if (typeof row[column.name] === 'string') {
+				const input = row[column.name] as string;
+				row[column.name] = moment(input, 'YYYY-mm-dd', true);
 			}
 		}
 	});

@@ -26,7 +26,7 @@ export const rowUpdateDescription: RowProperties = [
 		type: 'options',
 		required: true,
 		typeOptions: {
-                        loadOptionsDependsOn: ['tableName'],
+			loadOptionsDependsOn: ['tableName'],
 			loadOptionsMethod: 'getRowIds',
 		},
 		displayOptions: {
@@ -97,7 +97,7 @@ export const rowUpdateDescription: RowProperties = [
 						name: 'columnName',
 						type: 'options',
 						description:
-							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+							'Choose from the list, or specify the column name using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsDependsOn: ['tableName'],
 							loadOptionsMethod: 'getTableUpdateAbleColumns',
@@ -121,7 +121,8 @@ export const rowUpdateDescription: RowProperties = [
 			},
 		},
 		default: {},
-		description: 'Add destination column with its value',
+		description:
+			'Add destination column with its value. Provide the value in this way:<br>Date: YYYY-MM-DD or YYYY-MM-DD hh:mm<br>Duration: time in seconds<br>Checkbox: true, on or 1<br>Multi-Select: comma separated list',
 	},
 	{
 		displayName: 'Hint: Link, files, images or digital signatures have to be added separately.',

@@ -36,5 +36,6 @@ export const rowRemoveDescription: RowProperties = [
 			},
 		},
 		default: '',
+		description: 'Remove any row from the normal or big data backend based on its unique row ID.',
 	},
 ];
