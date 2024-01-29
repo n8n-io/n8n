@@ -65,26 +65,36 @@
 					:underline="true"
 					color="text-dark"
 				/>
-				<Suspense>
-					<CollectionParameter
-						v-if="parameter.type === 'collection'"
-						:parameter="parameter"
-						:values="nodeHelpers.getParameterValue(nodeValues, parameter.name, path)"
-						:node-values="nodeValues"
-						:path="getPath(parameter.name)"
-						:is-read-only="isReadOnly"
-						@valueChanged="valueChanged"
-					/>
-					<FixedCollectionParameter
-						v-else-if="parameter.type === 'fixedCollection'"
-						:parameter="parameter"
-						:values="nodeHelpers.getParameterValue(nodeValues, parameter.name, path)"
-						:node-values="nodeValues"
-						:path="getPath(parameter.name)"
-						:is-read-only="isReadOnly"
-						@valueChanged="valueChanged"
-					/>
+				<Suspense v-if="!asyncLoadingError">
+					<template #default>
+						<CollectionParameter
+							v-if="parameter.type === 'collection'"
+							:parameter="parameter"
+							:values="nodeHelpers.getParameterValue(nodeValues, parameter.name, path)"
+							:node-values="nodeValues"
+							:path="getPath(parameter.name)"
+							:is-read-only="isReadOnly"
+							@valueChanged="valueChanged"
+						/>
+						<FixedCollectionParameter
+							v-else-if="parameter.type === 'fixedCollection'"
+							:parameter="parameter"
+							:values="nodeHelpers.getParameterValue(nodeValues, parameter.name, path)"
+							:node-values="nodeValues"
+							:path="getPath(parameter.name)"
+							:is-read-only="isReadOnly"
+							@valueChanged="valueChanged"
+						/>
+					</template>
+					<template #fallback>
+						<n8n-text size="small" class="collection-notice">
+							{{ $locale.baseText('parameterInputList.loadingFields') }}
+						</n8n-text>
+					</template>
 				</Suspense>
+				<n8n-text v-else size="small" class="collection-notice error">
+					{{ $locale.baseText('parameterInputList.loadingError') }}
+				</n8n-text>
 			</div>
 			<ResourceMapper
 				v-else-if="parameter.type === 'resourceMapper'"
@@ -150,7 +160,7 @@ import type {
 import { deepCopy } from 'n8n-workflow';
 import { mapStores } from 'pinia';
 import type { PropType } from 'vue';
-import { defineAsyncComponent, defineComponent } from 'vue';
+import { defineAsyncComponent, defineComponent, onErrorCaptured, ref } from 'vue';
 
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 
@@ -226,9 +236,19 @@ export default defineComponent({
 	},
 	setup() {
 		const nodeHelpers = useNodeHelpers();
+		const asyncLoadingError = ref(false);
+
+		// This will catch errors in async components
+		onErrorCaptured((e) => {
+      console.error(e);
+			asyncLoadingError.value = true;
+			// Don't propagate the error further
+      return true;
+    });
 
 		return {
 			nodeHelpers,
+			asyncLoadingError,
 		};
 	},
 	computed: {
@@ -570,6 +590,15 @@ export default defineComponent({
 
 		a {
 			font-weight: var(--font-weight-bold);
+		}
+	}
+
+	.collection-notice {
+		padding-left: var(--spacing-2xs);
+		padding-top: var(--spacing-2xs);
+
+		&.error {
+			color: var(--color-danger);
 		}
 	}
 }
