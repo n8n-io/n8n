@@ -3414,6 +3414,15 @@ export function getExecuteFunctions(
 					return output;
 				});
 			},
+			getParentNodes(
+				type: ConnectionTypes | 'ALL' | 'ALL_NON_MAIN' = 'main',
+				depth = -1,
+			): string[] {
+				return workflow.getParentNodes(node.name, type, depth);
+			},
+			getChildNodes(type: ConnectionTypes | 'ALL' | 'ALL_NON_MAIN' = 'main', depth = -1): string[] {
+				return workflow.getChildNodes(node.name, type, depth);
+			},
 			getInputData: (inputIndex = 0, inputName = 'main') => {
 				if (!inputData.hasOwnProperty(inputName)) {
 					// Return empty array because else it would throw error when nothing is connected to input

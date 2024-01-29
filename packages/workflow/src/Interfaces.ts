@@ -802,6 +802,8 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		): Promise<unknown>;
 		getInputData(inputIndex?: number, inputName?: string): INodeExecutionData[];
 		getNodeOutputs(): INodeOutputConfiguration[];
+		getParentNodes(type?: ConnectionTypes | 'ALL' | 'ALL_NON_MAIN', depth?: number): string[];
+		getChildNodes(type?: ConnectionTypes | 'ALL' | 'ALL_NON_MAIN', depth?: number): string[];
 		putExecutionToWait(waitTill: Date): Promise<void>;
 		sendMessageToUI(message: any): void;
 		sendResponse(response: IExecuteResponsePromiseData): void;
