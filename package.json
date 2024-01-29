@@ -4,7 +4,7 @@
   "private": true,
   "homepage": "https://n8n.io",
   "engines": {
-    "node": ">=18.10",
+    "node": ">=20.0.0",
     "pnpm": ">=8.14"
   },
   "packageManager": "pnpm@8.14.3",
@@ -39,6 +39,10 @@
     "test:e2e:all": "scripts/run-e2e.js all"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.363.0",
+    "api": "5.0.7",
+    "moment": "~2.29.2",
+    "moment-timezone": "^0.5.28",
     "n8n": "workspace:*"
   },
   "devDependencies": {

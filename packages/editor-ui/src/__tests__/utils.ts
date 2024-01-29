@@ -70,8 +70,8 @@ export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
 		saveDataSuccessExecution: 'all',
 		saveManualExecutions: false,
 		sso: {
-			ldap: { loginEnabled: false, loginLabel: '' },
-			saml: { loginEnabled: false, loginLabel: '' },
+			ldap: { loginEnabled: true, loginLabel: '' },
+			saml: { loginEnabled: true, loginLabel: '' },
 		},
 		telemetry: { enabled: false },
 		templates: { enabled: false, host: '' },
@@ -134,11 +134,11 @@ export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
 	},
 	ldap: {
 		loginLabel: '',
-		loginEnabled: false,
+		loginEnabled: true,
 	},
 	saml: {
 		loginLabel: '',
-		loginEnabled: false,
+		loginEnabled: true,
 	},
 	onboardingCallPromptEnabled: false,
 	saveDataErrorExecution: 'all',

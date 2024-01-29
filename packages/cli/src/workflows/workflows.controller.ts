@@ -276,7 +276,7 @@ export class WorkflowsController {
 		const { tags, ...rest } = req.body;
 		Object.assign(updateData, rest);
 
-		const isSharingEnabled = this.license.isSharingEnabled();
+		const isSharingEnabled = true;
 		if (isSharingEnabled) {
 			updateData = await this.enterpriseWorkflowService.preventTampering(
 				updateData,

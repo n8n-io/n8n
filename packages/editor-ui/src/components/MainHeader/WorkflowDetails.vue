@@ -321,11 +321,6 @@ export default defineComponent({
 						label: this.$locale.baseText('menuActions.importFromUrl'),
 						disabled: !this.onWorkflowPage || this.onExecutionsTab,
 					},
-					{
-						id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_FILE,
-						label: this.$locale.baseText('menuActions.importFromFile'),
-						disabled: !this.onWorkflowPage || this.onExecutionsTab,
-					},
 				);
 			}
 

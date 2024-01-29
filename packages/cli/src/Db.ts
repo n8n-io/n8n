@@ -18,6 +18,7 @@ import {
 import { inTest } from '@/constants';
 import { wrapMigration } from '@db/utils/migrationHelpers';
 import type { DatabaseType, Migration } from '@db/types';
+import { parsePostgresUrl } from './ParserHelper';
 
 let connection: Connection;
 
@@ -60,19 +61,22 @@ export async function transaction<T>(fn: (entityManager: EntityManager) => Promi
 export function getConnectionOptions(dbType: DatabaseType): ConnectionOptions {
 	switch (dbType) {
 		case 'postgresdb':
-			const sslCa = config.getEnv('database.postgresdb.ssl.ca');
-			const sslCert = config.getEnv('database.postgresdb.ssl.cert');
-			const sslKey = config.getEnv('database.postgresdb.ssl.key');
-			const sslRejectUnauthorized = config.getEnv('database.postgresdb.ssl.rejectUnauthorized');
-
 			let ssl: TlsOptions | boolean = config.getEnv('database.postgresdb.ssl.enabled');
-			if (sslCa !== '' || sslCert !== '' || sslKey !== '' || !sslRejectUnauthorized) {
-				ssl = {
-					ca: sslCa || undefined,
-					cert: sslCert || undefined,
-					key: sslKey || undefined,
-					rejectUnauthorized: sslRejectUnauthorized,
-				};
+
+			if (!isPostgresRunningLocally()) {
+				const sslCa = config.getEnv('database.postgresdb.ssl.ca');
+				const sslCert = config.getEnv('database.postgresdb.ssl.cert');
+				const sslKey = config.getEnv('database.postgresdb.ssl.key');
+				const sslRejectUnauthorized = config.getEnv('database.postgresdb.ssl.rejectUnauthorized');
+
+				if (sslCa !== '' || sslCert !== '' || sslKey !== '' || !sslRejectUnauthorized) {
+					ssl = {
+						ca: sslCa || undefined,
+						cert: sslCert || undefined,
+						key: sslKey || undefined,
+						rejectUnauthorized: sslRejectUnauthorized,
+					};
+				}
 			}
 
 			return {
@@ -160,3 +164,14 @@ export const close = async () => {
 
 	if (connection.isInitialized) await connection.destroy();
 };
+
+function isPostgresRunningLocally(): Boolean {
+	let host: String | undefined;
+	const postgresConfig = parsePostgresUrl();
+	if (postgresConfig != null) {
+		host = postgresConfig.host;
+	} else {
+		host = config.getEnv('database.postgresdb.host');
+	}
+	return host === ('localhost' || '127.0.0.1');
+}
