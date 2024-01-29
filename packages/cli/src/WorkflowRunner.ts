@@ -259,12 +259,10 @@ export class WorkflowRunner {
 			workflowTimeout = Math.min(workflowTimeout, config.getEnv('executions.maxTimeout'));
 		}
 
-		// TODO: both tests pass even if this is disabled.
-		// This change comes from the PR that added the initial test: https://github.com/n8n-io/n8n/commit/ea7e76fa3b3dc1f37b0415e14ea5ff90b8017b9a#diff-f1214419cabb6abb8ec771d5f35be7d8059f52cae9dd610562119fa452490e3f
-		// let pinData: IPinData | undefined;
-		// if (data.executionMode === 'manual') {
-		// 	pinData = data.pinData ?? data.workflowData.pinData;
-		// }
+		let pinData: IPinData | undefined;
+		if (data.executionMode === 'manual') {
+			pinData = data.pinData ?? data.workflowData.pinData;
+		}
 
 		const workflow = new Workflow({
 			id: workflowId,
@@ -275,9 +273,7 @@ export class WorkflowRunner {
 			nodeTypes: this.nodeTypes,
 			staticData: data.workflowData.staticData,
 			settings: workflowSettings,
-			// TODO: both tests pass even if this is disabled.
-			// This change comes from the PR that added the initial test: https://github.com/n8n-io/n8n/commit/ea7e76fa3b3dc1f37b0415e14ea5ff90b8017b9a#diff-f1214419cabb6abb8ec771d5f35be7d8059f52cae9dd610562119fa452490e3f
-			// pinData,
+			pinData,
 		});
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
 			data.userId,
