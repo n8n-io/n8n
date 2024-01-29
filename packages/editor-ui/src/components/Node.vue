@@ -106,19 +106,44 @@
 				/>
 			</div>
 
-			<div v-if="!isReadOnly" v-show="!hideActions" class="node-options no-select-on-click">
+			<div
+				v-if="!isReadOnly"
+				v-show="!hideActions"
+				class="node-options no-select-on-click"
+				@contextmenu.stop
+			>
 				<n8n-icon-button
 					data-test-id="execute-node-button"
 					type="tertiary"
 					text
+					size="small"
 					icon="play"
 					:disabled="workflowRunning || isConfigNode"
 					:title="$locale.baseText('node.testStep')"
 					@click="executeNode"
 				/>
 				<n8n-icon-button
+					data-test-id="disable-node-button"
+					type="tertiary"
+					text
+					size="small"
+					:icon="nodeDisabledIcon"
+					:title="nodeDisabledTitle"
+					@click="toggleDisableNode"
+				/>
+				<n8n-icon-button
+					data-test-id="delete-node-button"
+					type="tertiary"
+					size="small"
+					text
+					icon="trash"
+					:title="$locale.baseText('node.delete')"
+					@click="deleteNode"
+				/>
+				<n8n-icon-button
 					data-test-id="overflow-node-button"
 					type="tertiary"
+					size="small"
 					text
 					icon="ellipsis-h"
 					@click="(e: MouseEvent) => openContextMenu(e, 'node-button')"
@@ -438,11 +463,12 @@ export default defineComponent({
 			return issues;
 		},
 		nodeDisabledIcon(): string {
-			if (this.data.disabled === false) {
-				return 'pause';
-			} else {
-				return 'play';
-			}
+			return this.data.disabled ? 'check-circle' : 'pause';
+		},
+		nodeDisabledTitle(): string {
+			return this.data.disabled
+				? this.$locale.baseText('node.enable')
+				: this.$locale.baseText('node.disable');
 		},
 		position(): XYPosition {
 			return this.node ? this.node.position : [0, 0];
@@ -680,6 +706,7 @@ export default defineComponent({
 				});
 			}
 		},
+
 		executeNode() {
 			this.$emit('runWorkflow', this.data.name, 'Node.executeNode');
 			this.$telemetry.track('User clicked node hover button', {
@@ -687,6 +714,25 @@ export default defineComponent({
 				button_name: 'execute',
 				workflow_id: this.workflowsStore.workflowId,
 			});
+		},
+
+		deleteNode() {
+			this.$telemetry.track('User clicked node hover button', {
+				node_type: this.data.type,
+				button_name: 'delete',
+				workflow_id: this.workflowsStore.workflowId,
+			});
+
+			this.$emit('removeNode', this.data.name);
+		},
+
+		toggleDisableNode() {
+			this.$telemetry.track('User clicked node hover button', {
+				node_type: this.data.type,
+				button_name: 'disable',
+				workflow_id: this.workflowsStore.workflowId,
+			});
+			this.$emit('toggleDisableNode', this.data);
 		},
 
 		onClick(event: MouseEvent) {
@@ -877,8 +923,7 @@ export default defineComponent({
 			position: absolute;
 			display: flex;
 			align-items: center;
-			justify-content: space-between;
-			gap: var(--spacing-2xs);
+			justify-content: space-evenly;
 			transition: opacity 100ms ease-in;
 			opacity: 0;
 			pointer-events: none;
