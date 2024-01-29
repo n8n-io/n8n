@@ -54,7 +54,11 @@ export class WorkflowRunner {
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
 		private readonly nodeTypes: NodeTypes,
 		private readonly permissionChecker: PermissionChecker,
-	) {}
+	) {
+		if (this.executionsMode === 'queue') {
+			this.jobQueue = Container.get(Queue);
+		}
+	}
 
 	/** The process did error */
 	async processError(
@@ -152,10 +156,6 @@ export class WorkflowRunner {
 		executionId?: string,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 	): Promise<string> {
-		if (this.executionsMode === 'queue') {
-			this.jobQueue = Container.get(Queue);
-		}
-
 		if (this.executionsMode === 'queue' && data.executionMode !== 'manual') {
 			// Do not run "manual" executions in bull because sending events to the
 			// frontend would not be possible
