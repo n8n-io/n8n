@@ -15,9 +15,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import * as utils from '@/utils';
-import { UserRepository } from '@/databases/repositories/user.repository';
 import { UserManagementMailer } from '@/UserManagement/email';
-import config from '@/config';
 
 export const EECredentialsController = express.Router();
 

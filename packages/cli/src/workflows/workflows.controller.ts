@@ -39,7 +39,6 @@ import { EnterpriseWorkflowService } from './workflow.service.ee';
 import { WorkflowExecutionService } from './workflowExecution.service';
 import { WorkflowSharingService } from './workflowSharing.service';
 import { UserManagementMailer } from '@/UserManagement/email';
-import { UrlService } from '@/services/url.service';
 
 @Service()
 @Authorized()
@@ -63,7 +62,6 @@ export class WorkflowsController {
 		private readonly userRepository: UserRepository,
 		private readonly license: License,
 		private readonly mailer: UserManagementMailer,
-		private readonly urlService: UrlService,
 	) {}
 
 	@Post('/')

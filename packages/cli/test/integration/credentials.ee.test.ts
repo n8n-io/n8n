@@ -507,7 +507,7 @@ describe('PUT /credentials/:id/share', () => {
 
 		expect(sharedCredentials).toHaveLength(1);
 		expect(sharedCredentials[0].userId).toBe(owner.id);
-		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(0);
+		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(1);
 	});
 
 	test('should respond 400 if invalid payload is provided', async () => {
@@ -542,7 +542,7 @@ describe('PUT /credentials/:id/share', () => {
 
 		expect(sharedCredentials).toHaveLength(1);
 		expect(sharedCredentials[0].userId).toBe(owner.id);
-		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(0);
+		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(1);
 	});
 
 	test('should not call internal hooks listener for email sent if emailing is disabled', async () => {
