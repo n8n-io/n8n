@@ -87,12 +87,14 @@
 						/>
 					</template>
 					<template #fallback>
-						<n8n-text size="small" class="collection-notice">
+						<n8n-text size="small">
+							<n8n-icon icon="sync-alt" size="xsmall" :spin="true" />
 							{{ $locale.baseText('parameterInputList.loadingFields') }}
 						</n8n-text>
 					</template>
 				</Suspense>
-				<n8n-text v-else size="small" class="collection-notice error">
+				<n8n-text v-else size="small" color="danger">
+					<n8n-icon icon="exclamation-triangle" size="xsmall" />
 					{{ $locale.baseText('parameterInputList.loadingError') }}
 				</n8n-text>
 			</div>
@@ -590,14 +592,6 @@ export default defineComponent({
 
 		a {
 			font-weight: var(--font-weight-bold);
-		}
-	}
-
-	.collection-notice {
-		padding-top: var(--spacing-xs);
-		padding-left: var(--spacing-m);
-		&.error {
-			color: var(--color-danger);
 		}
 	}
 }
