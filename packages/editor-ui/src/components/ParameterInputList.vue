@@ -240,11 +240,11 @@ export default defineComponent({
 
 		// This will catch errors in async components
 		onErrorCaptured((e) => {
-      console.error(e);
+			console.error(e);
 			asyncLoadingError.value = true;
 			// Don't propagate the error further
-      return true;
-    });
+			return true;
+		});
 
 		return {
 			nodeHelpers,
