@@ -25,7 +25,7 @@ export const parseRangeQuery = (
 	try {
 		req.rangeQuery = {
 			kind: 'range',
-			range: { limit: limit ? parseInt(limit, 10) : 20 },
+			range: { limit: limit ? Math.min(parseInt(limit, 10), 100) : 20 },
 		};
 
 		if (firstId) req.rangeQuery.range.firstId = firstId;
