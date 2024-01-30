@@ -20,8 +20,11 @@
 				@blur="onBlur"
 				@change="onChange"
 			/>
-			<n8n-icon
+			<n8n-button
 				v-if="!isDragging"
+				square
+				outline
+				type="tertiary"
 				icon="external-link-alt"
 				size="xsmall"
 				:class="$style['expression-editor-modal-opener']"
@@ -185,27 +188,21 @@ export default defineComponent({
 	background-color: var(--color-code-background);
 	padding: 3px;
 	line-height: 9px;
-	border: var(--border-base);
-	border-top-left-radius: var(--border-radius-base);
-	border-bottom-right-radius: var(--input-border-bottom-right-radius, var(--border-radius-base));
-	border-right-color: var(
-		--input-border-right-color,
-		var(--input-border-color, var(--border-color-base))
-	);
-	border-bottom-color: var(
-		--input-border-bottom-color,
-		var(--input-border-color, var(--border-color-base))
-	);
+	border: var(--input-border-color, var(--border-color-base))
+		var(--input-border-style, var(--border-style-base))
+		var(--input-border-width, var(--border-width-base));
 	cursor: pointer;
+
+	&:hover {
+		border: var(--input-border-color, var(--border-color-base))
+			var(--input-border-style, var(--border-style-base))
+			var(--input-border-width, var(--border-width-base));
+	}
 
 	svg {
 		width: 9px !important;
 		height: 9px;
 		transform: rotate(270deg);
-
-		&:hover {
-			color: var(--color-primary);
-		}
 	}
 }
 

@@ -3,7 +3,6 @@
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Container, Service } from 'typedi';
-import type { IProcessMessage } from 'n8n-core';
 import { WorkflowExecute } from 'n8n-core';
 
 import type {
@@ -22,8 +21,6 @@ import {
 } from 'n8n-workflow';
 
 import PCancelable from 'p-cancelable';
-import { join as pathJoin } from 'path';
-import { fork } from 'child_process';
 
 import { ActiveExecutions } from '@/ActiveExecutions';
 import config from '@/config';
@@ -31,16 +28,10 @@ import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { MessageEventBus } from '@/eventbus';
 import { ExecutionDataRecoveryService } from '@/eventbus/executionDataRecovery.service';
 import { ExternalHooks } from '@/ExternalHooks';
-import type {
-	IExecutionResponse,
-	IProcessMessageDataHook,
-	IWorkflowExecutionDataProcess,
-	IWorkflowExecutionDataProcessWithExecution,
-} from '@/Interfaces';
+import type { IExecutionResponse, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
 import type { Job, JobData, JobResponse } from '@/Queue';
 import { Queue } from '@/Queue';
-import { decodeWebhookResponse } from '@/helpers/decodeWebhookResponse';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
@@ -56,8 +47,6 @@ export class WorkflowRunner {
 
 	private executionsMode = config.getEnv('executions.mode');
 
-	private executionsProcess = config.getEnv('executions.process');
-
 	constructor(
 		private readonly logger: Logger,
 		private readonly activeExecutions: ActiveExecutions,
@@ -67,14 +56,6 @@ export class WorkflowRunner {
 		private readonly nodeTypes: NodeTypes,
 		private readonly permissionChecker: PermissionChecker,
 	) {}
-
-	/** The process did send a hook message so execute the appropriate hook */
-	private async processHookMessage(
-		workflowHooks: WorkflowHooks,
-		hookData: IProcessMessageDataHook,
-	) {
-		await workflowHooks.executeHookFunctions(hookData.hook, hookData.parameters);
-	}
 
 	/** The process did error */
 	async processError(
@@ -189,11 +170,7 @@ export class WorkflowRunner {
 				responsePromise,
 			);
 		} else {
-			if (this.executionsProcess === 'main') {
-				executionId = await this.runMainProcess(data, loadStaticData, executionId, responsePromise);
-			} else {
-				executionId = await this.runSubprocess(data, loadStaticData, executionId, responsePromise);
-			}
+			executionId = await this.runMainProcess(data, loadStaticData, executionId, responsePromise);
 			void Container.get(InternalHooks).onWorkflowBeforeExecute(executionId, data);
 		}
 
@@ -283,7 +260,7 @@ export class WorkflowRunner {
 		additionalData.restartExecutionId = restartExecutionId;
 
 		// Register the active execution
-		const executionId = await this.activeExecutions.add(data, undefined, restartExecutionId);
+		const executionId = await this.activeExecutions.add(data, restartExecutionId);
 		additionalData.executionId = executionId;
 
 		this.logger.verbose(
@@ -380,7 +357,7 @@ export class WorkflowRunner {
 			if (workflowTimeout > 0) {
 				const timeout = Math.min(workflowTimeout, config.getEnv('executions.maxTimeout')) * 1000; // as seconds
 				executionTimeout = setTimeout(() => {
-					void this.activeExecutions.stopExecution(executionId, 'timeout');
+					void this.activeExecutions.stopExecution(executionId);
 				}, timeout);
 			}
 
@@ -428,7 +405,7 @@ export class WorkflowRunner {
 		// TODO: If "loadStaticData" is set to true it has to load data new on worker
 
 		// Register the active execution
-		const executionId = await this.activeExecutions.add(data, undefined, restartExecutionId);
+		const executionId = await this.activeExecutions.add(data, restartExecutionId);
 		if (responsePromise) {
 			this.activeExecutions.attachResponsePromise(executionId, responsePromise);
 		}
@@ -624,190 +601,6 @@ export class WorkflowRunner {
 		});
 
 		this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
-		return executionId;
-	}
-
-	/** Run the workflow in a child-process */
-	private async runSubprocess(
-		data: IWorkflowExecutionDataProcess,
-		loadStaticData?: boolean,
-		restartExecutionId?: string,
-		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
-	): Promise<string> {
-		const workflowId = data.workflowData.id;
-		let startedAt = new Date();
-		const subprocess = fork(pathJoin(__dirname, 'WorkflowRunnerProcess.js'));
-
-		if (loadStaticData === true && workflowId) {
-			data.workflowData.staticData =
-				await this.workflowStaticDataService.getStaticDataById(workflowId);
-		}
-
-		data.restartExecutionId = restartExecutionId;
-
-		// Register the active execution
-		const executionId = await this.activeExecutions.add(data, subprocess, restartExecutionId);
-
-		(data as unknown as IWorkflowExecutionDataProcessWithExecution).executionId = executionId;
-		await this.executionRepository.updateStatus(executionId, 'running');
-
-		const workflowHooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId);
-
-		try {
-			// Send all data to subprocess it needs to run the workflow
-			subprocess.send({ type: 'startWorkflow', data } as IProcessMessage);
-		} catch (error) {
-			await this.processError(error, new Date(), data.executionMode, executionId, workflowHooks);
-			return executionId;
-		}
-
-		// Start timeout for the execution
-		let executionTimeout: NodeJS.Timeout;
-
-		const workflowSettings = data.workflowData.settings ?? {};
-		let workflowTimeout = workflowSettings.executionTimeout ?? config.getEnv('executions.timeout'); // initialize with default
-
-		const processTimeoutFunction = (timeout: number) => {
-			void this.activeExecutions.stopExecution(executionId, 'timeout');
-			executionTimeout = setTimeout(() => subprocess.kill(), Math.max(timeout * 0.2, 5000)); // minimum 5 seconds
-		};
-
-		if (workflowTimeout > 0) {
-			workflowTimeout = Math.min(workflowTimeout, config.getEnv('executions.maxTimeout')) * 1000; // as seconds
-			// Start timeout already now but give process at least 5 seconds to start.
-			// Without it could would it be possible that the workflow executions times out before it even got started if
-			// the timeout time is very short as the process start time can be quite long.
-			executionTimeout = setTimeout(
-				processTimeoutFunction,
-				Math.max(5000, workflowTimeout),
-				workflowTimeout,
-			);
-		}
-
-		// Create a list of child spawned executions
-		// If after the child process exits we have
-		// outstanding executions, we remove them
-		const childExecutionIds: string[] = [];
-
-		// Listen to data from the subprocess
-		subprocess.on('message', async (message: IProcessMessage) => {
-			this.logger.debug(
-				`Received child process message of type ${message.type} for execution ID ${executionId}.`,
-				{ executionId },
-			);
-			if (message.type === 'start') {
-				// Now that the execution actually started set the timeout again so that does not time out to early.
-				startedAt = new Date();
-				if (workflowTimeout > 0) {
-					clearTimeout(executionTimeout);
-					executionTimeout = setTimeout(processTimeoutFunction, workflowTimeout, workflowTimeout);
-				}
-			} else if (message.type === 'end') {
-				clearTimeout(executionTimeout);
-				this.activeExecutions.remove(executionId, message.data.runData);
-			} else if (message.type === 'sendResponse') {
-				if (responsePromise) {
-					responsePromise.resolve(decodeWebhookResponse(message.data.response));
-				}
-			} else if (message.type === 'sendDataToUI') {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-				WorkflowExecuteAdditionalData.sendDataToUI.bind({ sessionId: data.sessionId })(
-					message.data.type,
-					message.data.data,
-				);
-			} else if (message.type === 'processError') {
-				clearTimeout(executionTimeout);
-				const executionError = message.data.executionError as ExecutionError;
-				await this.processError(
-					executionError,
-					startedAt,
-					data.executionMode,
-					executionId,
-					workflowHooks,
-				);
-			} else if (message.type === 'processHook') {
-				await this.processHookMessage(workflowHooks, message.data as IProcessMessageDataHook);
-			} else if (message.type === 'timeout') {
-				// Execution timed out and its process has been terminated
-				const timeoutError = new WorkflowOperationError('Workflow execution timed out!');
-
-				// No need to add hook here as the subprocess takes care of calling the hooks
-				await this.processError(timeoutError, startedAt, data.executionMode, executionId);
-			} else if (message.type === 'startExecution') {
-				const executionId = await this.activeExecutions.add(message.data.runData);
-				childExecutionIds.push(executionId);
-				subprocess.send({ type: 'executionId', data: { executionId } } as IProcessMessage);
-			} else if (message.type === 'finishExecution') {
-				const executionIdIndex = childExecutionIds.indexOf(message.data.executionId);
-				if (executionIdIndex !== -1) {
-					childExecutionIds.splice(executionIdIndex, 1);
-				}
-
-				if (message.data.result === undefined) {
-					const noDataError = new WorkflowOperationError('Workflow finished with no result data');
-					const subWorkflowHooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(
-						data,
-						message.data.executionId,
-					);
-					await this.processError(
-						noDataError,
-						startedAt,
-						data.executionMode,
-						message.data?.executionId,
-						subWorkflowHooks,
-					);
-				} else {
-					this.activeExecutions.remove(message.data.executionId, message.data.result);
-				}
-			}
-		});
-
-		// Also get informed when the processes does exit especially when it did crash or timed out
-		subprocess.on('exit', async (code, signal) => {
-			if (signal === 'SIGTERM') {
-				this.logger.debug(`Subprocess for execution ID ${executionId} timed out.`, { executionId });
-				// Execution timed out and its process has been terminated
-				const timeoutError = new WorkflowOperationError('Workflow execution timed out!');
-
-				await this.processError(
-					timeoutError,
-					startedAt,
-					data.executionMode,
-					executionId,
-					workflowHooks,
-				);
-			} else if (code !== 0) {
-				this.logger.debug(
-					`Subprocess for execution ID ${executionId} finished with error code ${code}.`,
-					{ executionId },
-				);
-				// Process did exit with error code, so something went wrong.
-				const executionError = new WorkflowOperationError(
-					'Workflow execution process crashed for an unknown reason!',
-				);
-
-				await this.processError(
-					executionError,
-					startedAt,
-					data.executionMode,
-					executionId,
-					workflowHooks,
-				);
-			}
-
-			for (const executionId of childExecutionIds) {
-				// When the child process exits, if we still have
-				// pending child executions, we mark them as finished
-				// They will display as unknown to the user
-				// Instead of pending forever as executing when it
-				// actually isn't anymore.
-
-				this.activeExecutions.remove(executionId);
-			}
-
-			clearTimeout(executionTimeout);
-		});
-
 		return executionId;
 	}
 }
