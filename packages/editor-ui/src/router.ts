@@ -208,6 +208,17 @@ export const routes = [
 		},
 	},
 	{
+		path: '/projects/:projectId/workflows',
+		name: VIEWS.PROJECT_WORKFLOWS,
+		components: {
+			default: WorkflowsView,
+			sidebar: MainSidebar,
+		},
+		meta: {
+			middleware: ['authenticated'],
+		},
+	},
+	{
 		path: '/workflows',
 		name: VIEWS.WORKFLOWS,
 		components: {
