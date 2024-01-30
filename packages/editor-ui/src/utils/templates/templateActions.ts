@@ -106,7 +106,7 @@ async function openTemplateWorkflowOnNodeView(opts: {
 	};
 	const telemetryPayload = {
 		source: 'workflow',
-		template_id: templateId,
+		template_id: isNaN(+templateId) ? templateId : +templateId,
 		wf_template_repo_session_id: templatesStore.currentSessionId,
 	};
 

@@ -200,7 +200,7 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 				'User inserted workflow template',
 				{
 					source: 'workflow',
-					template_id: templateId.value,
+					template_id: isNaN(+templateId.value) ? templateId.value : +templateId.value,
 					wf_template_repo_session_id: templatesStore.currentSessionId,
 				},
 				{ withPostHog: true },

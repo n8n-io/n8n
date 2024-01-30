@@ -120,7 +120,7 @@ export const routes = [
 				getProperties(route: RouteLocation) {
 					const templatesStore = useTemplatesStore();
 					return {
-						template_id: route.params.id,
+						template_id: isNaN(+route.params.id) ? route.params.id : +route.params.id,
 						wf_template_repo_session_id: templatesStore.currentSessionId,
 					};
 				},
@@ -142,7 +142,7 @@ export const routes = [
 				getProperties(route: RouteLocation) {
 					const templatesStore = useTemplatesStore();
 					return {
-						template_id: route.params.id,
+						template_id: isNaN(+route.params.id) ? route.params.id : +route.params.id,
 						wf_template_repo_session_id: templatesStore.currentSessionId,
 					};
 				},

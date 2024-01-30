@@ -1327,7 +1327,7 @@ export default defineComponent({
 				'User inserted workflow template',
 				{
 					source: 'workflow',
-					template_id: templateId,
+					template_id: isNaN(+templateId) ? templateId : +templateId,
 					wf_template_repo_session_id: this.templatesStore.previousSessionId,
 				},
 				{
