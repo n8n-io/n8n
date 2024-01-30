@@ -6,7 +6,6 @@ import { inTest, inE2ETests } from '@/constants';
 
 if (inE2ETests) {
 	// Skip loading config from env variables in end-to-end tests
-	process.env.EXECUTIONS_PROCESS = 'main';
 	process.env.N8N_DIAGNOSTICS_ENABLED = 'false';
 	process.env.N8N_PUBLIC_API_DISABLED = 'true';
 	process.env.EXTERNAL_FRONTEND_HOOKS_URLS = '';
