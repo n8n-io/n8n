@@ -20,6 +20,14 @@
 				<div :class="$style.logo">
 					<img :src="logoPath" data-test-id="n8n-logo" :class="$style.icon" alt="n8n" />
 				</div>
+				<div :class="$style.projects">
+					<hr class="mt-m mb-m" />
+					<RouterLink to="/projects/abc123/workflows">
+						<n8n-button block type="secondary"> Home </n8n-button>
+					</RouterLink>
+					<n8n-button class="m-m" type="primary" icon="plus"> Add project </n8n-button>
+					<hr class="mt-m mb-m" />
+				</div>
 			</template>
 
 			<template #beforeLowerMenu>
@@ -204,55 +212,29 @@ export default defineComponent({
 		},
 		mainMenuItems(): IMenuItem[] {
 			const items: IMenuItem[] = [];
-
-			const workflows: IMenuItem = {
-				id: 'workflows',
-				icon: 'network-wired',
-				label: this.$locale.baseText('mainSidebar.workflows'),
-				position: 'top',
-				route: { to: { name: VIEWS.WORKFLOWS } },
-				secondaryIcon: this.sourceControlStore.preferences.branchReadOnly
-					? {
-							name: 'lock',
-							tooltip: {
-								content: this.$locale.baseText('mainSidebar.workflows.readOnlyEnv.tooltip'),
-							},
-					  }
-					: undefined,
-			};
-
 			const defaultSettingsRoute = this.findFirstAccessibleSettingsRoute();
 			const regularItems: IMenuItem[] = [
-				workflows,
 				{
 					id: 'templates',
 					icon: 'box-open',
 					label: this.$locale.baseText('mainSidebar.templates'),
-					position: 'top',
+					position: 'bottom',
 					available: this.settingsStore.isTemplatesEnabled,
 					route: { to: { name: VIEWS.TEMPLATES } },
-				},
-				{
-					id: 'credentials',
-					icon: 'key',
-					label: this.$locale.baseText('mainSidebar.credentials'),
-					customIconSize: 'medium',
-					position: 'top',
-					route: { to: { name: VIEWS.CREDENTIALS } },
 				},
 				{
 					id: 'variables',
 					icon: 'variable',
 					label: this.$locale.baseText('mainSidebar.variables'),
 					customIconSize: 'medium',
-					position: 'top',
+					position: 'bottom',
 					route: { to: { name: VIEWS.VARIABLES } },
 				},
 				{
 					id: 'executions',
 					icon: 'tasks',
 					label: this.$locale.baseText('mainSidebar.executions'),
-					position: 'top',
+					position: 'bottom',
 					route: { to: { name: VIEWS.EXECUTIONS } },
 				},
 				{
@@ -569,5 +551,13 @@ export default defineComponent({
 	:global(#help) {
 		display: none;
 	}
+}
+
+.projects {
+	display: grid;
+	h100: 100%;
+}
+
+.projectLink {
 }
 </style>

@@ -6,6 +6,8 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
+import { useI18n } from '@/composables/useI18n';
+import { VIEWS } from '@/constants';
 
 type Props = {
 	activeTab: string;
@@ -13,10 +15,22 @@ type Props = {
 
 const props = defineProps<Props>();
 
+const locale = useI18n();
+
 const selectedTab = ref('');
 const options = ref([
-	{ label: 'Workflows', value: 'workflows', icon: 'network-wired' },
-	{ label: 'Credentials', value: 'credentials', icon: 'key' },
+	{
+		label: locale.baseText('mainSidebar.workflows'),
+		value: VIEWS.WORKFLOWS,
+		icon: 'network-wired',
+		to: { name: VIEWS.WORKFLOWS },
+	},
+	{
+		label: locale.baseText('mainSidebar.credentials'),
+		value: VIEWS.CREDENTIALS,
+		icon: 'key',
+		to: { name: VIEWS.CREDENTIALS },
+	},
 ]);
 
 const onUpdateModelValue = (value: string) => {

@@ -31,7 +31,17 @@
 							/></span>
 						</div>
 					</a>
-
+					<RouterLink
+						v-else-if="option.to"
+						:to="option.to"
+						:class="[
+							$style.tab,
+							{ [$style.activeTab]: doesMenuItemMatchCurrentRoute(option.value) },
+						]"
+					>
+						<N8nIcon v-if="option.icon" :icon="option.icon" size="medium" />
+						<span v-if="option.label">{{ option.label }}</span>
+					</RouterLink>
 					<div
 						v-else
 						:class="{ [$style.tab]: true, [$style.activeTab]: modelValue === option.value }"
@@ -51,6 +61,7 @@
 import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
 import N8nIcon from '../N8nIcon';
+import type { RouteObject } from '@/types';
 
 export interface N8nTabOptions {
 	value: string;
@@ -59,6 +70,7 @@ export interface N8nTabOptions {
 	href?: string;
 	tooltip?: string;
 	align?: 'left' | 'right';
+	to?: string | RouteObject;
 }
 
 export default defineComponent({
@@ -132,6 +144,9 @@ export default defineComponent({
 				container.scrollBy({ left, top: 0, behavior: 'smooth' });
 			}
 		},
+		doesMenuItemMatchCurrentRoute(tab: string) {
+			return this.$route.name === tab;
+		},
 	},
 });
 
@@ -175,6 +190,7 @@ type ScrollByFunction = (arg: {
 	font-size: var(--font-size-s);
 	cursor: pointer;
 	white-space: nowrap;
+	color: var(--color-text-base);
 	&:hover {
 		color: var(--color-primary);
 	}
