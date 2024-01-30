@@ -10,6 +10,9 @@
 		@click:add="addCredential"
 		@update:filters="filters = $event"
 	>
+		<template #tabnav>
+			<ProjectTabs :active-tab="'credentials'" />
+		</template>
 		<template #default="{ data }">
 			<CredentialCard data-test-id="resources-list-item" class="mb-2xs" :data="data" />
 		</template>
@@ -49,6 +52,7 @@ import { defineComponent } from 'vue';
 
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import CredentialCard from '@/components/CredentialCard.vue';
+import ProjectTabs from '@/components/ProjectTabs.vue';
 import type { ICredentialType } from 'n8n-workflow';
 import { CREDENTIAL_SELECT_MODAL_KEY } from '@/constants';
 import { mapStores } from 'pinia';
@@ -66,6 +70,7 @@ export default defineComponent({
 	components: {
 		ResourcesListLayout,
 		CredentialCard,
+		ProjectTabs,
 	},
 	data() {
 		return {
