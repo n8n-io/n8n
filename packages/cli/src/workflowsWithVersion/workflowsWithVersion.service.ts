@@ -22,9 +22,6 @@ export class WorkflowsWithVersionService {
 		id: string,
 		versionId: string,
 	): Promise<WorkflowEntityWithVersion[]> {
-		// return collections.WorkflowWithVersion.find({
-		// 	where: { id, versionId },
-		// });
         return await Container.get(WorkflowWithVersionRepository).find({
             where: { id, versionId},
         });

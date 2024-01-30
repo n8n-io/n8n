@@ -9,12 +9,12 @@ import * as ResponseHelper from '@/ResponseHelper';
 import type { WorkflowWithVersionRequest } from '@/requests';
 import { WorkflowsWithVersionService } from '@/workflowsWithVersion/workflowsWithVersion.service';
 
-export const workflowsWithVersionController = express.Router();
+export const WorkflowsWithVersionController = express.Router();
 
 /**
  * Initialize Logger if needed
  */
-workflowsWithVersionController.use((req, res, next) => {
+WorkflowsWithVersionController.use((req, res, next) => {
     // TODO: Find out if we need to get the LoggerProxy Instance
 	// try {
 	// 	LoggerProxy.getInstance();
@@ -27,7 +27,7 @@ workflowsWithVersionController.use((req, res, next) => {
 /**
  * GET /workflows-with-version
  */
-workflowsWithVersionController.get(
+WorkflowsWithVersionController.get(
 	'/',
 	ResponseHelper.send(async () => {
 		return WorkflowsWithVersionService.getAll();
@@ -37,7 +37,7 @@ workflowsWithVersionController.get(
 /**
  * GET /workflows-with-version/:id
  */
-workflowsWithVersionController.get(
+WorkflowsWithVersionController.get(
 	'/:id(\\w+)',
 	ResponseHelper.send(async (req: WorkflowWithVersionRequest.Get) => {
 		const { id } = req.params;

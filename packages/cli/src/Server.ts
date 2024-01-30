@@ -27,6 +27,7 @@ import config from '@/config';
 import { Queue } from '@/Queue';
 
 import { WorkflowsController } from '@/workflows/workflows.controller';
+import { WorkflowsWithVersionController } from './workflowsWithVersion/workflowsWithVersion.controller';
 import {
 	EDITOR_UI_DIST_DIR,
 	inDevelopment,
@@ -349,6 +350,12 @@ export class Server extends AbstractServer {
 		await this.registerControllers(ignoredEndpoints);
 
 		this.app.use(`/${this.restEndpoint}/credentials`, credentialsController);
+
+		// ----------------------------------------
+		// Workflow with versions
+		// --------------------------------
+
+		this.app.use(`/${this.restEndpoint}/workflows-with-versions`, WorkflowsWithVersionController);
 
 		// ----------------------------------------
 		// SAML
