@@ -28,11 +28,7 @@ import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { MessageEventBus } from '@/eventbus';
 import { ExecutionDataRecoveryService } from '@/eventbus/executionDataRecovery.service';
 import { ExternalHooks } from '@/ExternalHooks';
-import type {
-	IExecutionResponse,
-	IProcessMessageDataHook,
-	IWorkflowExecutionDataProcess,
-} from '@/Interfaces';
+import type { IExecutionResponse, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
 import type { Job, JobData, JobResponse } from '@/Queue';
 import { Queue } from '@/Queue';
@@ -60,14 +56,6 @@ export class WorkflowRunner {
 		private readonly nodeTypes: NodeTypes,
 		private readonly permissionChecker: PermissionChecker,
 	) {}
-
-	/** The process did send a hook message so execute the appropriate hook */
-	private async processHookMessage(
-		workflowHooks: WorkflowHooks,
-		hookData: IProcessMessageDataHook,
-	) {
-		await workflowHooks.executeHookFunctions(hookData.hook, hookData.parameters);
-	}
 
 	/** The process did error */
 	async processError(

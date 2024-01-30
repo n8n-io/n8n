@@ -555,11 +555,6 @@ export interface IWorkflowErrorData {
 	};
 }
 
-export interface IProcessMessageDataHook {
-	hook: string;
-	parameters: any[];
-}
-
 export interface IWorkflowExecutionDataProcess {
 	destinationNode?: string;
 	restartExecutionId?: string;
