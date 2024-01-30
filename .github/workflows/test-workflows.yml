@@ -13,21 +13,21 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3.5.3
+        uses: actions/checkout@v4.1.1
         with:
           path: n8n
 
       - name: Checkout workflows repo
-        uses: actions/checkout@v3.5.3
+        uses: actions/checkout@v4.1.1
         with:
           repository: n8n-io/test-workflows
           path: test-workflows
 
       - uses: pnpm/action-setup@v2.4.0
         with:
-          version: 8.9.0
+          package_json_file: n8n/package.json
 
-      - uses: actions/setup-node@v3.7.0
+      - uses: actions/setup-node@v4.0.1
         with:
           node-version: 18.x
           cache: 'pnpm'

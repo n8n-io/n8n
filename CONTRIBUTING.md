@@ -203,6 +203,8 @@ tests of all packages.
 
 #### E2E tests
 
+⚠️ You have to run `pnpm cypress:install` to install cypress before running the tests for the first time and to update cypress.
+
 E2E tests can be started via one of the following commands:
 
 - `pnpm test:e2e:ui`: Start n8n and run e2e tests interactively using built UI code. Does not react to code changes (i.e. runs `pnpm start` and `cypress open`)
