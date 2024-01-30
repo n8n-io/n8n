@@ -35,6 +35,7 @@ export default defineComponent({
 	width: 100%;
 	max-width: 1280px;
 	box-sizing: border-box;
+	align-content: start;
 	padding: var(--spacing-2xl) var(--spacing-2xl) 0;
 }
 
