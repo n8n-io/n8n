@@ -94,7 +94,7 @@ export const properties: INodeProperties[] = [
 
 const displayOptions = {
 	show: {
-		operation: ['binaryToPropery', 'fromJson', 'text', 'fromIcs', 'xml'],
+		operation: ['binaryToProperty', 'fromJson', 'text', 'fromIcs', 'xml'],
 	},
 };
 
@@ -130,7 +130,7 @@ export async function execute(
 			}
 
 			let convertedValue: string | IDataObject;
-			if (operation !== 'binaryToPropery') {
+			if (operation !== 'binaryToProperty') {
 				convertedValue = iconv.decode(buffer, encoding, {
 					stripBOM: options.stripBOM as boolean,
 				});
