@@ -241,7 +241,10 @@ export default defineComponent({
 		const asyncLoadingError = ref(false);
 
 		// This will catch errors in async components
-		onErrorCaptured((e) => {
+		onErrorCaptured((e, component) => {
+			if (!component._.type.name in ['FixedCollectionParameter', 'CollectionParameter']) {
+				return;
+			}
 			asyncLoadingError.value = true;
 			console.error(e);
 			window?.Sentry?.captureException(e, {
