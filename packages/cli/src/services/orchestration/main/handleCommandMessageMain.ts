@@ -7,7 +7,9 @@ import { License } from '@/License';
 import { Logger } from '@/Logger';
 import { Push } from '@/push';
 import { TestWebhooks } from '@/TestWebhooks';
-import { handleWorkflowUpdated } from './handle-workflow-updated';
+import { OrchestrationService } from '@/services/orchestration.service';
+import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 
 export async function handleCommandMessageMain(messageString: string) {
 	const queueModeId = config.getEnv('redis.queueModeId');
@@ -68,13 +70,65 @@ export async function handleCommandMessageMain(messageString: string) {
 				await Container.get(ExternalSecretsManager).reloadAllProviders();
 				break;
 
-			case 'workflow-updated': {
+			case 'add-webhooks-triggers-and-pollers': {
 				if (!debounceMessageReceiver(message, 100)) {
 					message.payload = { result: 'debounced' };
 					return message;
 				}
 
-				await handleWorkflowUpdated(message.payload);
+				if (Container.get(OrchestrationService).isFollower) break;
+
+				if (
+					typeof message.payload?.workflowId !== 'string' ||
+					typeof message.payload?.versionId !== 'string'
+				) {
+					break;
+				}
+
+				const activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
+				const workflowRepository = Container.get(WorkflowRepository);
+				const orchestrationService = Container.get(OrchestrationService);
+
+				const { workflowId, versionId } = message.payload;
+
+				try {
+					await activeWorkflowRunner.add(workflowId, 'activate', undefined, {
+						publishingEnabled: false,
+					});
+
+					push.broadcast('workflowActivated', { workflowId });
+
+					return;
+				} catch (error) {
+					if (error instanceof Error) {
+						await workflowRepository.update(workflowId, { active: false, versionId });
+
+						await orchestrationService.publish('workflow-failed-to-activate', {
+							workflowId,
+							errorMessage: error.message,
+						});
+					}
+
+					return;
+				}
+			}
+
+			case 'remove-triggers-and-pollers': {
+				if (!debounceMessageReceiver(message, 100)) {
+					message.payload = { result: 'debounced' };
+					return message;
+				}
+
+				if (Container.get(OrchestrationService).isFollower) break;
+
+				if (typeof message.payload?.workflowId !== 'string') break;
+
+				const { workflowId } = message.payload;
+
+				const activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
+
+				await activeWorkflowRunner.removeActivationError(workflowId);
+				await activeWorkflowRunner.removeWorkflowTriggersAndPollers(workflowId);
 
 				break;
 			}

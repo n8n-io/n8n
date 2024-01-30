@@ -224,7 +224,8 @@ export class ActiveWorkflowRunner {
 	}
 
 	/**
-	 * Clear workflow-defined webhooks from the `webhook_entity` table.
+	 * Remove all webhooks of a workflow from the database, and
+	 * deregister those webhooks from external services.
 	 */
 	async clearWebhooks(workflowId: string) {
 		const workflowData = await this.workflowRepository.findOne({
@@ -557,7 +558,14 @@ export class ActiveWorkflowRunner {
 		workflowId: string,
 		activationMode: WorkflowActivateMode,
 		existingWorkflow?: WorkflowEntity,
+		{ publishingEnabled } = { publishingEnabled: true },
 	) {
+		if (this.orchestrationService.isMultiMainSetupEnabled && publishingEnabled) {
+			await this.orchestrationService.publish('add-webhooks-triggers-and-pollers', { workflowId });
+
+			return;
+		}
+
 		let workflow: Workflow;
 
 		const shouldAddWebhooks = this.orchestrationService.shouldAddWebhooks(activationMode);
@@ -741,8 +749,21 @@ export class ActiveWorkflowRunner {
 	 */
 	// TODO: this should happen in a transaction
 	async remove(workflowId: string) {
-		if (!this.orchestrationService.isLeader) return;
-		// Remove all the webhooks of the workflow
+		if (this.orchestrationService.isMultiMainSetupEnabled) {
+			try {
+				await this.clearWebhooks(workflowId);
+			} catch (error) {
+				ErrorReporter.error(error);
+				this.logger.error(
+					`Could not remove webhooks of workflow "${workflowId}" because of error: "${error.message}"`,
+				);
+			}
+
+			await this.orchestrationService.publish('remove-triggers-and-pollers', { workflowId });
+
+			return;
+		}
+
 		try {
 			await this.clearWebhooks(workflowId);
 		} catch (error) {
@@ -765,6 +786,21 @@ export class ActiveWorkflowRunner {
 			if (removalSuccess) {
 				this.logger.verbose(`Successfully deactivated workflow "${workflowId}"`, { workflowId });
 			}
+		}
+	}
+
+	/**
+	 * Stop running active triggers and pollers for a workflow.
+	 */
+	async removeWorkflowTriggersAndPollers(workflowId: string) {
+		if (!this.activeWorkflows.isActive(workflowId)) return;
+
+		const wasRemoved = await this.activeWorkflows.remove(workflowId);
+
+		if (wasRemoved) {
+			this.logger.verbose(`Removed triggers and pollers for workflow "${workflowId}"`, {
+				workflowId,
+			});
 		}
 	}
 
