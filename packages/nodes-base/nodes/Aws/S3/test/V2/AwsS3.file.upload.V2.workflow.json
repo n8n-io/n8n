@@ -23,7 +23,7 @@
 		{
 			"parameters": {
 				"operation": "upload",
-				"bucketName": "bucket",
+				"bucketName": "buc.ket",
 				"fileName": "binary.json",
 				"additionalFields": {}
 			},
