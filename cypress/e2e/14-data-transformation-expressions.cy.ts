@@ -105,7 +105,6 @@ describe('Data transformation expressions', () => {
 
 const addEditFields = () => {
 	wf.actions.addNodeToCanvas('Edit Fields', true, true);
-	ndv.getters.parameterInput('keepOnlySetFields').click();
 	ndv.getters.assignmentCollectionAdd('assignments').click();
 	ndv.getters.assignmentValue('assignments').contains('Expression').invoke('show').click();
 };
