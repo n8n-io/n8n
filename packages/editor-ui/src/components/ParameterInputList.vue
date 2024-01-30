@@ -244,7 +244,7 @@ export default defineComponent({
 		onErrorCaptured((e, component) => {
 			if (
 				!['FixedCollectionParameter', 'CollectionParameter'].includes(
-					component._.type.name as string,
+					component?.$options.name as string,
 				)
 			) {
 				return;
