@@ -6,7 +6,6 @@ import type { IUser } from 'n8n-workflow';
 import type { ListQuery } from '@/requests';
 import type { User } from '@db/entities/User';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
-import { License } from '@/License';
 
 import { randomCredentialPayload } from './shared/random';
 import * as testDb from './shared/testDb';
@@ -19,8 +18,10 @@ import { UserManagementMailer } from '@/UserManagement/email';
 import { mockInstance } from '../shared/mocking';
 import config from '@/config';
 
-const sharingSpy = jest.spyOn(License.prototype, 'isSharingEnabled').mockReturnValue(true);
-const testServer = utils.setupTestServer({ endpointGroups: ['credentials'] });
+const testServer = utils.setupTestServer({
+	endpointGroups: ['credentials'],
+	enabledFeatures: ['feat:sharing'],
+});
 
 let owner: User;
 let member: User;
@@ -298,8 +299,6 @@ describe('GET /credentials/:id', () => {
 // idempotent share/unshare
 // ----------------------------------------
 describe('PUT /credentials/:id/share', () => {
-	testServer.license.setDefaults({ features: ['feat:sharing'] });
-
 	test('should share the credential with the provided userIds and unshare it for missing ones', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 
@@ -491,6 +490,7 @@ describe('PUT /credentials/:id/share', () => {
 		responses.forEach((response) => expect(response.statusCode).toBe(400));
 		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(0);
 	});
+
 	test('should unshare the credential', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 

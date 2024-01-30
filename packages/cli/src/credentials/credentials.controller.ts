@@ -296,7 +296,7 @@ export class CredentialsController {
 	@Licensed('feat:sharing')
 	@Put('/:id/share')
 	async shareCredentials(req: CredentialRequest.Share) {
-		const { credentialId } = req.params;
+		const { id: credentialId } = req.params;
 		const { shareWithIds } = req.body;
 
 		if (
