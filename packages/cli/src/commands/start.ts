@@ -5,9 +5,8 @@ import { Flags, type Config } from '@oclif/core';
 import path from 'path';
 import { mkdir } from 'fs/promises';
 import { createReadStream, createWriteStream, existsSync } from 'fs';
-import stream from 'stream';
+import { pipeline } from 'stream/promises';
 import replaceStream from 'replacestream';
-import { promisify } from 'util';
 import glob from 'fast-glob';
 import { sleep, jsonParse } from 'n8n-workflow';
 
@@ -31,7 +30,6 @@ import { BaseCommand } from './BaseCommand';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
-const pipeline = promisify(stream.pipeline);
 
 export class Start extends BaseCommand {
 	static description = 'Starts n8n. Makes Web-UI available and starts active workflows';
