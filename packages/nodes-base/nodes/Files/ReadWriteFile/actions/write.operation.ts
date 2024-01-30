@@ -100,14 +100,14 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 
 			returnData.push(newItem);
 		} catch (error) {
-			const nodeOperatioinError = errorMapper.call(this, error, itemIndex, {
+			const nodeOperationError = errorMapper.call(this, error, itemIndex, {
 				filePath: fileName,
 				operation: 'write',
 			});
 			if (this.continueOnFail()) {
 				returnData.push({
 					json: {
-						error: nodeOperatioinError.message,
+						error: nodeOperationError.message,
 					},
 					pairedItem: {
 						item: itemIndex,
@@ -115,7 +115,7 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 				});
 				continue;
 			}
-			throw nodeOperatioinError;
+			throw nodeOperationError;
 		}
 	}
 
