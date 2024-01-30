@@ -87,13 +87,13 @@
 						/>
 					</template>
 					<template #fallback>
-						<n8n-text size="small">
+						<n8n-text size="small" class="async-notice">
 							<n8n-icon icon="sync-alt" size="xsmall" :spin="true" />
 							{{ $locale.baseText('parameterInputList.loadingFields') }}
 						</n8n-text>
 					</template>
 				</Suspense>
-				<n8n-text v-else size="small" color="danger">
+				<n8n-text v-else size="small" color="danger" class="async-notice">
 					<n8n-icon icon="exclamation-triangle" size="xsmall" />
 					{{ $locale.baseText('parameterInputList.loadingError') }}
 				</n8n-text>
@@ -242,7 +242,11 @@ export default defineComponent({
 
 		// This will catch errors in async components
 		onErrorCaptured((e, component) => {
-			if (!component._.type.name in ['FixedCollectionParameter', 'CollectionParameter']) {
+			if (
+				!['FixedCollectionParameter', 'CollectionParameter'].includes(
+					component._.type.name as string,
+				)
+			) {
 				return;
 			}
 			asyncLoadingError.value = true;
@@ -601,6 +605,11 @@ export default defineComponent({
 		a {
 			font-weight: var(--font-weight-bold);
 		}
+	}
+
+	.async-notice {
+		display: block;
+		padding: var(--spacing-3xs) 0;
 	}
 }
 </style>
