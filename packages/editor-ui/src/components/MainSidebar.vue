@@ -25,7 +25,9 @@
 					<RouterLink to="/projects/abc123/workflows">
 						<n8n-button block type="secondary"> Home </n8n-button>
 					</RouterLink>
-					<n8n-button class="m-m" type="primary" icon="plus"> Add project </n8n-button>
+					<n8n-button :class="$style.addProject" type="primary" size="medium" icon="plus">
+						{{ isCollapsed ? '' : 'Add project' }}
+					</n8n-button>
 					<hr class="mt-m mb-m" />
 				</div>
 			</template>
@@ -466,6 +468,19 @@ export default defineComponent({
 		.logo img {
 			left: 0;
 		}
+
+		.projects {
+			overflow: hidden;
+			hr,
+			button {
+				width: auto;
+			}
+
+			.addProject {
+				margin-right: var(--spacing-2xs);
+				margin-left: var(--spacing-2xs);
+			}
+		}
 	}
 }
 
@@ -555,9 +570,10 @@ export default defineComponent({
 
 .projects {
 	display: grid;
-	h100: 100%;
-}
+	width: 100%;
 
-.projectLink {
+	.addProject {
+		margin: var(--spacing-m);
+	}
 }
 </style>
