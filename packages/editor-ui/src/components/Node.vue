@@ -112,42 +112,47 @@
 				class="node-options no-select-on-click"
 				@contextmenu.stop
 			>
-				<n8n-icon-button
-					data-test-id="execute-node-button"
-					type="tertiary"
-					text
-					size="small"
-					icon="play"
-					:disabled="workflowRunning || isConfigNode"
-					:title="$locale.baseText('node.testStep')"
-					@click="executeNode"
-				/>
-				<n8n-icon-button
-					data-test-id="disable-node-button"
-					type="tertiary"
-					text
-					size="small"
-					icon="power-off"
-					:title="nodeDisabledTitle"
-					@click="toggleDisableNode"
-				/>
-				<n8n-icon-button
-					data-test-id="delete-node-button"
-					type="tertiary"
-					size="small"
-					text
-					icon="trash"
-					:title="$locale.baseText('node.delete')"
-					@click="deleteNode"
-				/>
-				<n8n-icon-button
-					data-test-id="overflow-node-button"
-					type="tertiary"
-					size="small"
-					text
-					icon="ellipsis-h"
-					@click="(e: MouseEvent) => openContextMenu(e, 'node-button')"
-				/>
+				<div class="node-options-inner">
+					<div class="node-options-actions">
+						<n8n-icon-button
+							v-if="!isConfigNode"
+							data-test-id="execute-node-button"
+							type="tertiary"
+							text
+							size="small"
+							icon="play"
+							:disabled="workflowRunning"
+							:title="$locale.baseText('node.testStep')"
+							@click="executeNode"
+						/>
+						<n8n-icon-button
+							data-test-id="disable-node-button"
+							type="tertiary"
+							text
+							size="small"
+							icon="power-off"
+							:title="nodeDisabledTitle"
+							@click="toggleDisableNode"
+						/>
+						<n8n-icon-button
+							data-test-id="delete-node-button"
+							type="tertiary"
+							size="small"
+							text
+							icon="trash"
+							:title="$locale.baseText('node.delete')"
+							@click="deleteNode"
+						/>
+					</div>
+					<n8n-icon-button
+						data-test-id="overflow-node-button"
+						type="tertiary"
+						size="small"
+						text
+						icon="ellipsis-h"
+						@click="(e: MouseEvent) => openContextMenu(e, 'node-button')"
+					/>
+				</div>
 			</div>
 			<div
 				v-if="showDisabledLinethrough"
@@ -850,7 +855,6 @@ export default defineComponent({
 		&:hover,
 		&.menu-open {
 			.node-options {
-				pointer-events: all;
 				opacity: 1;
 			}
 		}
@@ -913,24 +917,37 @@ export default defineComponent({
 		}
 
 		.node-options {
-			--node-options-height: 26px;
 			:deep(.button) {
 				--button-font-color: var(--color-text-light);
 			}
 			position: absolute;
+			top: -36px;
+			z-index: 11;
+			min-width: 100%;
 			display: flex;
+			left: calc(-1 * var(--spacing-4xs));
+			right: calc(-1 * var(--spacing-4xs));
+			justify-content: center;
 			align-items: center;
-			justify-content: space-evenly;
-			transition: opacity 100ms ease-in;
-			opacity: 0;
-			pointer-events: none;
-			top: calc(-1 * (var(--node-options-height) + var(--spacing-4xs)));
-			left: 0;
-			width: var(--node-width);
-			height: var(--node-options-height);
+			padding: var(--spacing-4xs);
 			font-size: var(--font-size-s);
-			z-index: 10;
-			text-align: center;
+			opacity: 0;
+			transition: opacity 100ms ease-in;
+
+			button {
+				background-color: var(--color-canvas-background);
+			}
+
+			&-inner {
+				display: flex;
+				align-items: center;
+				border-radius: var(--border-radius-base);
+			}
+
+			&-actions {
+				display: flex;
+				align-items: center;
+			}
 
 			.option {
 				display: inline-block;
@@ -962,9 +979,6 @@ export default defineComponent({
 		}
 
 		&.is-touch-device .node-options {
-			left: -25px;
-			width: 150px;
-
 			.option.touch {
 				display: initial;
 			}
@@ -977,20 +991,12 @@ export default defineComponent({
 		--node-height: 75px;
 
 		.node-default {
-			.node-options {
-				background: color-mix(in srgb, var(--color-canvas-background) 80%, transparent);
-				height: 25px;
-			}
-
 			.node-icon {
 				scale: 0.75;
 			}
-		}
 
-		.node-default {
 			.node-box {
 				border: 2px solid var(--color-foreground-xdark);
-				//background-color: $node-background-type-other;
 				border-radius: 50px;
 
 				&.executing {
@@ -1029,6 +1035,12 @@ export default defineComponent({
 			.node-info-icon {
 				bottom: 1px !important;
 				right: 1px !important;
+			}
+
+			.node-default .node-options-inner {
+				padding: 0 var(--spacing-xs);
+				width: auto;
+				justify-content: center;
 			}
 		}
 	}
@@ -1069,13 +1081,13 @@ export default defineComponent({
 				left: var(--configurable-node-icon-offset);
 			}
 
-			.node-options {
-				left: 0;
-				height: 25px;
-			}
-
 			.node-executing-info {
 				left: -67px;
+			}
+
+			.node-options-inner {
+				width: 100%;
+				justify-content: space-between;
 			}
 		}
 
@@ -1212,10 +1224,6 @@ export default defineComponent({
 
 .connection-actions {
 	z-index: 100;
-}
-
-.node-options {
-	z-index: 10;
 }
 
 .drop-add-node-label {
