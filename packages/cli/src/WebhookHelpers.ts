@@ -9,8 +9,7 @@
 import type express from 'express';
 import { Container } from 'typedi';
 import get from 'lodash/get';
-import stream from 'stream';
-import { promisify } from 'util';
+import { pipeline } from 'stream/promises';
 import formidable from 'formidable';
 
 import { BinaryDataService, NodeExecuteFunctions } from 'n8n-core';
@@ -64,8 +63,6 @@ import { Logger } from './Logger';
 import { NotFoundError } from './errors/response-errors/not-found.error';
 import { InternalServerError } from './errors/response-errors/internal-server.error';
 import { UnprocessableRequestError } from './errors/response-errors/unprocessable.error';
-
-const pipeline = promisify(stream.pipeline);
 
 export const WEBHOOK_METHODS: IHttpRequestMethods[] = [
 	'DELETE',
