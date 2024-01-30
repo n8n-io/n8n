@@ -1094,7 +1094,7 @@ export const workflowHelpers = defineComponent({
 				const templateId = this.$route.query.templateId;
 				if (templateId) {
 					this.$telemetry.track('User saved new workflow from template', {
-						template_id: templateId,
+						template_id: isNaN(+templateId) ? templateId : +templateId,
 						workflow_id: workflowData.id,
 						wf_template_repo_session_id: this.templatesStore.previousSessionId,
 					});
