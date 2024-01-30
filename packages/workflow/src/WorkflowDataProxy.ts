@@ -1081,29 +1081,21 @@ export class WorkflowDataProxy {
 				get(target, property, receiver) {
 					if (property === 'isProxy') return true;
 
-					if (property === 'item') {
-						if (that.connectionInputData.length === 0) {
-							throw createExpressionError('No execution data available', {
-								runIndex: that.runIndex,
-								itemIndex: that.itemIndex,
-								type: 'no_execution_data',
-							});
-						}
+					if (that.connectionInputData.length === 0) {
+						throw createExpressionError('No execution data available', {
+							runIndex: that.runIndex,
+							itemIndex: that.itemIndex,
+							type: 'no_execution_data',
+						});
+					}
 
+					if (property === 'item') {
 						return that.connectionInputData[that.itemIndex];
 					}
 					if (property === 'first') {
 						return (...args: unknown[]) => {
 							if (args.length) {
 								throw createExpressionError('$input.first() should have no arguments');
-							}
-
-							if (that.connectionInputData.length === 0) {
-								throw createExpressionError('No execution data available', {
-									runIndex: that.runIndex,
-									itemIndex: that.itemIndex,
-									type: 'no_execution_data',
-								});
 							}
 
 							const result = that.connectionInputData;
@@ -1115,14 +1107,6 @@ export class WorkflowDataProxy {
 					}
 					if (property === 'last') {
 						return (...args: unknown[]) => {
-							if (that.connectionInputData.length === 0) {
-								throw createExpressionError('No execution data available', {
-									runIndex: that.runIndex,
-									itemIndex: that.itemIndex,
-									type: 'no_execution_data',
-								});
-							}
-
 							if (args.length) {
 								throw createExpressionError('$input.last() should have no arguments');
 							}
