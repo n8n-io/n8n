@@ -389,7 +389,7 @@ export class ActiveWorkflowRunner {
 				responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 				donePromise?: IDeferredPromise<IRun | undefined>,
 			): void => {
-				this.logger.debug(`Received trigger for workflow "${workflow.name}"`);
+				this.logger.warn(`Received trigger for workflow "${workflow.name}"`);
 				void this.workflowStaticDataService.saveStaticData(workflow);
 
 				const executePromise = this.runWorkflow(
@@ -558,10 +558,12 @@ export class ActiveWorkflowRunner {
 		workflowId: string,
 		activationMode: WorkflowActivateMode,
 		existingWorkflow?: WorkflowEntity,
-		{ publishingEnabled } = { publishingEnabled: true },
+		{ shouldPublish } = { shouldPublish: true },
 	) {
-		if (this.orchestrationService.isMultiMainSetupEnabled && publishingEnabled) {
-			await this.orchestrationService.publish('add-webhooks-triggers-and-pollers', { workflowId });
+		if (this.orchestrationService.isMultiMainSetupEnabled && shouldPublish) {
+			await this.orchestrationService.publish('add-webhooks-triggers-and-pollers', {
+				workflowId,
+			});
 
 			return;
 		}
@@ -798,7 +800,7 @@ export class ActiveWorkflowRunner {
 		const wasRemoved = await this.activeWorkflows.remove(workflowId);
 
 		if (wasRemoved) {
-			this.logger.verbose(`Removed triggers and pollers for workflow "${workflowId}"`, {
+			this.logger.warn(`Removed triggers and pollers for workflow "${workflowId}"`, {
 				workflowId,
 			});
 		}
@@ -835,7 +837,7 @@ export class ActiveWorkflowRunner {
 		);
 
 		if (workflow.getTriggerNodes().length !== 0 || workflow.getPollNodes().length !== 0) {
-			this.logger.debug(`Adding triggers and pollers for workflow ${dbWorkflow.display()}`);
+			this.logger.warn(`Adding triggers and pollers for workflow ${dbWorkflow.display()}`);
 
 			await this.activeWorkflows.add(
 				workflow.id,

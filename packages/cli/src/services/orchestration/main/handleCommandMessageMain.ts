@@ -21,9 +21,16 @@ export async function handleCommandMessageMain(messageString: string) {
 		logger.debug(
 			`RedisCommandHandler(main): Received command message ${message.command} from ${message.senderId}`,
 		);
+
+		const selfSendingAllowed = [
+			'add-webhooks-triggers-and-pollers',
+			'remove-triggers-and-pollers',
+		].includes(message.command);
+
 		if (
-			message.senderId === queueModeId ||
-			(message.targets && !message.targets.includes(queueModeId))
+			!selfSendingAllowed &&
+			(message.senderId === queueModeId ||
+				(message.targets && !message.targets.includes(queueModeId)))
 		) {
 			// Skipping command message because it's not for this instance
 			logger.debug(
@@ -78,39 +85,28 @@ export async function handleCommandMessageMain(messageString: string) {
 
 				if (Container.get(OrchestrationService).isFollower) break;
 
-				if (
-					typeof message.payload?.workflowId !== 'string' ||
-					typeof message.payload?.versionId !== 'string'
-				) {
-					break;
-				}
+				if (typeof message.payload?.workflowId !== 'string') break;
 
-				const activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
-				const workflowRepository = Container.get(WorkflowRepository);
-				const orchestrationService = Container.get(OrchestrationService);
-
-				const { workflowId, versionId } = message.payload;
+				const { workflowId } = message.payload;
 
 				try {
-					await activeWorkflowRunner.add(workflowId, 'activate', undefined, {
-						publishingEnabled: false,
+					await Container.get(ActiveWorkflowRunner).add(workflowId, 'activate', undefined, {
+						shouldPublish: false, // prevent leader re-publishing message
 					});
 
 					push.broadcast('workflowActivated', { workflowId });
-
-					return;
 				} catch (error) {
 					if (error instanceof Error) {
-						await workflowRepository.update(workflowId, { active: false, versionId });
+						await Container.get(WorkflowRepository).update(workflowId, { active: false });
 
-						await orchestrationService.publish('workflow-failed-to-activate', {
+						await Container.get(OrchestrationService).publish('workflow-failed-to-activate', {
 							workflowId,
 							errorMessage: error.message,
 						});
 					}
-
-					return;
 				}
+
+				break;
 			}
 
 			case 'remove-triggers-and-pollers': {
