@@ -9,10 +9,10 @@ const projectRelationTable = 'project_relation';
 
 type Table = 'shared_workflow' | 'shared_credentials';
 
-const resourceIdColumns: Record<Table, string> = {
-	shared_credentials: 'credentialsId',
-	shared_workflow: 'workflowId',
-};
+// const resourceIdColumns: Record<Table, string> = {
+// 	shared_credentials: 'credentialsId',
+// 	shared_workflow: 'workflowId',
+// };
 
 export class CreateProject1705928727784 implements IrreversibleMigration {
 	async setupTables({ schemaBuilder: { createTable, column } }: MigrationContext) {
@@ -52,7 +52,7 @@ export class CreateProject1705928727784 implements IrreversibleMigration {
 		}: MigrationContext,
 	) {
 		// Add projectId column, this is set to a blank string by default because it's a primary key
-		const projectIdColumn = column('projectId').varchar(36).primary.default("''");
+		const projectIdColumn = column('projectId').varchar(36).primary.nullable.default('NULL');
 		const projectIdColumnName = escape.columnName('projectId');
 		const userIdColumnName = escape.columnName('userId');
 		await addColumns(table, [projectIdColumn]);
@@ -60,7 +60,7 @@ export class CreateProject1705928727784 implements IrreversibleMigration {
 		const tableName = escape.tableName(table);
 		const projectName = escape.tableName(projectTable);
 		const relationTableName = escape.tableName(projectRelationTable);
-		const resourceIdColumn = resourceIdColumns[table];
+		// const resourceIdColumn = resourceIdColumns[table];
 
 		// Populate projectId
 		const subQuery = `
@@ -89,7 +89,7 @@ export class CreateProject1705928727784 implements IrreversibleMigration {
 		await createIndex(table, ['projectId']);
 
 		// Set up new composite unique index
-		await createIndex(table, ['projectId', resourceIdColumn], true);
+		// await createIndex(table, ['projectId', resourceIdColumn], true);
 	}
 
 	async createUserPersonalProjects({ runQuery, runInBatches, escape }: MigrationContext) {

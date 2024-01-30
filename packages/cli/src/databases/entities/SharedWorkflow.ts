@@ -2,6 +2,7 @@ import { Column, Entity, ManyToOne, PrimaryColumn } from 'typeorm';
 import { WorkflowEntity } from './WorkflowEntity';
 import { User } from './User';
 import { WithTimestamps } from './AbstractEntity';
+import type { Project } from './Project';
 
 export type WorkflowSharingRole = 'workflow:owner' | 'workflow:editor' | 'workflow:user';
 
@@ -21,4 +22,12 @@ export class SharedWorkflow extends WithTimestamps {
 
 	@PrimaryColumn()
 	workflowId: string;
+
+	@ManyToOne('Project', 'sharedWorkflows', { nullable: true })
+	project: Project | null;
+
+	// We're lying to typeorm that this isn't a primary key for now
+	// because it can't handle nullable primary keys.
+	@Column({ nullable: true })
+	projectId: string | null;
 }
