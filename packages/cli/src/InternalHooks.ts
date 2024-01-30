@@ -301,6 +301,11 @@ export class InternalHooks {
 			return;
 		}
 
+		if (runData?.status === 'waiting') {
+			// No need to send telemetry or logs when the workflow hasn't finished yet.
+			return;
+		}
+
 		const promises = [];
 
 		const telemetryProperties: IExecutionTrackProperties = {
@@ -439,7 +444,7 @@ export class InternalHooks {
 				? this.eventBus.sendWorkflowEvent({
 						eventName: 'n8n.workflow.success',
 						payload: sharedEventPayload,
-				  })
+					})
 				: this.eventBus.sendWorkflowEvent({
 						eventName: 'n8n.workflow.failed',
 						payload: {
@@ -449,7 +454,7 @@ export class InternalHooks {
 							errorNodeId: telemetryProperties.error_node_id?.toString(),
 							errorMessage: telemetryProperties.error_message?.toString(),
 						},
-				  }),
+					}),
 		);
 
 		void Promise.all([...promises, this.telemetry.trackWorkflowExecution(telemetryProperties)]);
