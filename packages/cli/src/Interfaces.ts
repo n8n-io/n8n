@@ -31,8 +31,6 @@ import type { WorkflowExecute } from 'n8n-core';
 
 import type PCancelable from 'p-cancelable';
 
-import type { ChildProcess } from 'child_process';
-
 import type { DatabaseType } from '@db/types';
 import type { AuthProviderType } from '@db/entities/AuthIdentity';
 import type { SharedCredentials } from '@db/entities/SharedCredentials';
@@ -192,7 +190,6 @@ export interface IExecutionsCurrentSummary {
 
 export interface IExecutingWorkflowData {
 	executionData: IWorkflowExecutionDataProcess;
-	process?: ChildProcess;
 	startedAt: Date;
 	postExecutePromises: Array<IDeferredPromise<IRun | undefined>>;
 	responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>;
@@ -558,11 +555,6 @@ export interface IWorkflowErrorData {
 	};
 }
 
-export interface IProcessMessageDataHook {
-	hook: string;
-	parameters: any[];
-}
-
 export interface IWorkflowExecutionDataProcess {
 	destinationNode?: string;
 	restartExecutionId?: string;
@@ -574,11 +566,6 @@ export interface IWorkflowExecutionDataProcess {
 	sessionId?: string;
 	startNodes?: string[];
 	workflowData: IWorkflowBase;
-	userId: string;
-}
-
-export interface IWorkflowExecutionDataProcessWithExecution extends IWorkflowExecutionDataProcess {
-	executionId: string;
 	userId: string;
 }
 
