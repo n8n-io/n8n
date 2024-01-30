@@ -52,7 +52,7 @@ export class CreateProject1705928727784 implements IrreversibleMigration {
 		}: MigrationContext,
 	) {
 		// Add projectId column, this is set to a blank string by default because it's a primary key
-		const projectIdColumn = column('projectId').varchar(36).primary.nullable.default('NULL');
+		const projectIdColumn = column('projectId').varchar(36).default('NULL');
 		const projectIdColumnName = escape.columnName('projectId');
 		const userIdColumnName = escape.columnName('userId');
 		await addColumns(table, [projectIdColumn]);

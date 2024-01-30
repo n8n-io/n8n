@@ -26,8 +26,6 @@ export class SharedWorkflow extends WithTimestamps {
 	@ManyToOne('Project', 'sharedWorkflows', { nullable: true })
 	project: Project | null;
 
-	// We're lying to typeorm that this isn't a primary key for now
-	// because it can't handle nullable primary keys.
 	@Column({ nullable: true })
 	projectId: string | null;
 }

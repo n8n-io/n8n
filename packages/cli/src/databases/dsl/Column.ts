@@ -7,8 +7,6 @@ export class Column {
 
 	private isNullable = true;
 
-	private explicitIsNullable = false;
-
 	private isPrimary = false;
 
 	private length: number | 'auto';
@@ -64,12 +62,6 @@ export class Column {
 		return this;
 	}
 
-	get nullable() {
-		this.isNullable = true;
-		this.explicitIsNullable = true;
-		return this;
-	}
-
 	default(value: unknown) {
 		this.defaultValue = value;
 		return this;
@@ -117,7 +109,7 @@ export class Column {
 			options.generationStrategy = type === 'uuid' ? 'uuid' : 'increment';
 		}
 
-		if ((isPrimary || isGenerated) && !this.explicitIsNullable) {
+		if (isPrimary || isGenerated) {
 			options.isNullable = false;
 		}
 
