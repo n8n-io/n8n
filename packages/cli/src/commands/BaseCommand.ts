@@ -84,8 +84,8 @@ export abstract class BaseCommand extends Command {
 			);
 		}
 		if (process.env.EXECUTIONS_PROCESS === 'own') {
-			this.logger.warn(
-				'Own mode has been deprecated and will be removed in a future version of n8n. If you need the isolation and performance gains, please consider using queue mode.',
+			throw new ApplicationError(
+				'Own mode has been removed. If you need the isolation and performance gains, please consider using queue mode.',
 			);
 		}
 
