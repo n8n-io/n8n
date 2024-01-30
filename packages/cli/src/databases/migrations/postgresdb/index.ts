@@ -52,7 +52,6 @@ import { ModifyWorkflowHistoryNodesAndConnections1695829275184 } from '../common
 import { AddGlobalAdminRole1700571993961 } from '../common/1700571993961-AddGlobalAdminRole';
 import { CreateProject1705928727784 } from '../common/1705928727784-CreateProject';
 import { DropRoleMapping1705429061930 } from '../common/1705429061930-DropRoleMapping';
-import { MigrateToProjects1706072166570 } from '../common/1706072166570-MigrateToProjects';
 
 export const postgresMigrations: Migration[] = [
 	InitialMigration1587669153312,
@@ -108,5 +107,4 @@ export const postgresMigrations: Migration[] = [
 	AddGlobalAdminRole1700571993961,
 	CreateProject1705928727784,
 	DropRoleMapping1705429061930,
-	MigrateToProjects1706072166570,
 ];
