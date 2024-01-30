@@ -50,38 +50,6 @@ afterEach(() => {
 });
 
 // ----------------------------------------
-// dynamic router switching
-// ----------------------------------------
-describe('router should switch based on flag', () => {
-	let savedCredentialId: string;
-
-	beforeEach(async () => {
-		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
-		savedCredentialId = savedCredential.id;
-	});
-
-	test('when sharing is disabled', async () => {
-		sharingSpy.mockReturnValueOnce(false);
-
-		await authOwnerAgent
-			.put(`/credentials/${savedCredentialId}/share`)
-			.send({ shareWithIds: [member.id] })
-			.expect(404);
-
-		await authOwnerAgent.get(`/credentials/${savedCredentialId}`).send().expect(200);
-	});
-
-	test('when sharing is enabled', async () => {
-		await authOwnerAgent
-			.put(`/credentials/${savedCredentialId}/share`)
-			.send({ shareWithIds: [member.id] })
-			.expect(200);
-
-		await authOwnerAgent.get(`/credentials/${savedCredentialId}`).send().expect(200);
-	});
-});
-
-// ----------------------------------------
 // GET /credentials - fetch all credentials
 // ----------------------------------------
 describe('GET /credentials', () => {
@@ -330,6 +298,8 @@ describe('GET /credentials/:id', () => {
 // idempotent share/unshare
 // ----------------------------------------
 describe('PUT /credentials/:id/share', () => {
+	testServer.license.setDefaults({ features: ['feat:sharing'] });
+
 	test('should share the credential with the provided userIds and unshare it for missing ones', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 

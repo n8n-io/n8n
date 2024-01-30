@@ -34,7 +34,7 @@ import {
 	N8N_VERSION,
 	TEMPLATES_DIR,
 } from '@/constants';
-import { credentialsController } from '@/credentials/credentials.controller';
+import { CredentialsController } from '@/credentials/credentials.controller';
 import type { CurlHelper } from '@/requests';
 import { registerController } from '@/decorators';
 import { AuthController } from '@/controllers/auth.controller';
@@ -230,6 +230,7 @@ export class Server extends AbstractServer {
 			ActiveWorkflowsController,
 			WorkflowsController,
 			ExecutionsController,
+			CredentialsController,
 		];
 
 		if (
@@ -347,8 +348,6 @@ export class Server extends AbstractServer {
 		await handleMfaDisable();
 
 		await this.registerControllers(ignoredEndpoints);
-
-		this.app.use(`/${this.restEndpoint}/credentials`, credentialsController);
 
 		// ----------------------------------------
 		// SAML
