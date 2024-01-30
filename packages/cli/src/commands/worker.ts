@@ -29,7 +29,7 @@ import { OwnershipService } from '@/services/ownership.service';
 import type { ICredentialsOverwrite } from '@/Interfaces';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { rawBodyReader, bodyParser } from '@/middlewares';
-import { eventBus } from '@/eventbus';
+import { MessageEventBus } from '@/eventbus';
 import type { RedisServicePubSubSubscriber } from '@/services/redis/RedisServicePubSubSubscriber';
 import { EventMessageGeneric } from '@/eventbus/EventMessageClasses/EventMessageGeneric';
 import { OrchestrationHandlerWorkerService } from '@/services/orchestration/worker/orchestration.handler.worker.service';
@@ -307,7 +307,7 @@ export class Worker extends BaseCommand {
 	}
 
 	async initEventBus() {
-		await eventBus.initialize({
+		await Container.get(MessageEventBus).initialize({
 			workerId: this.queueModeId,
 		});
 	}

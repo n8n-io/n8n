@@ -207,7 +207,7 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 			);
 
 			telemetry.track('User saved new workflow from template', {
-				template_id: templateId.value,
+				template_id: isNaN(+templateId.value) ? templateId : +templateId.value,
 				workflow_id: createdWorkflow.id,
 				wf_template_repo_session_id: templatesStore.currentSessionId,
 			});

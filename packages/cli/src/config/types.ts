@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 
 import type { BinaryData } from 'n8n-core';
 import type { schema } from './schema';
