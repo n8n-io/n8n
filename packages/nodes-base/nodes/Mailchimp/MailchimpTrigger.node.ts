@@ -268,6 +268,8 @@ export class MailchimpTrigger implements INodeType {
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const webhookData = this.getWorkflowStaticData('node');
+		const events = this.getNodeParameter('events', []) as string[];
+		const sources = this.getNodeParameter('sources', []) as string[];
 		const webhookName = this.getWebhookName();
 		if (webhookName === 'setup') {
 			// Is a create webhook confirmation request
@@ -282,12 +284,7 @@ export class MailchimpTrigger implements INodeType {
 			return {};
 		}
 
-		if (
-			// @ts-ignore
-			!webhookData.events.includes(req.body.type) &&
-			// @ts-ignore
-			!webhookData.sources.includes(req.body.type)
-		) {
+		if (!events.includes(req.body.type) && !sources.includes(req.body.type)) {
 			return {};
 		}
 		return {
