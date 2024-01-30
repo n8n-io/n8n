@@ -458,6 +458,9 @@ const config = (module.exports = {
 
 		/** https://github.com/sindresorhus/eslint-plugin-unicorn/blob/main/docs/rules/no-useless-promise-resolve-reject.md */
 		'unicorn/no-useless-promise-resolve-reject': 'error',
+
+		/** https://github.com/sindresorhus/eslint-plugin-unicorn/blob/main/docs/rules/no-abusive-eslint-disable.md */
+		'unicorn/no-abusive-eslint-disable': 'error',
 	},
 
 	overrides: [
