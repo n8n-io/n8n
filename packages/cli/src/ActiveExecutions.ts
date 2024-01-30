@@ -6,7 +6,7 @@ import type {
 	IRun,
 	ExecutionStatus,
 } from 'n8n-workflow';
-import { ApplicationError, createDeferredPromise } from 'n8n-workflow';
+import { ApplicationError, createDeferredPromise, sleep } from 'n8n-workflow';
 
 import type {
 	ExecutionPayload,
@@ -17,6 +17,7 @@ import type {
 } from '@/Interfaces';
 import { isWorkflowIdValid } from '@/utils';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
+import { Logger } from '@/Logger';
 
 @Service()
 export class ActiveExecutions {
@@ -24,7 +25,10 @@ export class ActiveExecutions {
 		[executionId: string]: IExecutingWorkflowData;
 	} = {};
 
-	constructor(private readonly executionRepository: ExecutionRepository) {}
+	constructor(
+		private readonly logger: Logger,
+		private readonly executionRepository: ExecutionRepository,
+	) {}
 
 	/**
 	 * Add a new active execution
@@ -177,6 +181,29 @@ export class ActiveExecutions {
 
 	getStatus(executionId: string): ExecutionStatus {
 		return this.getExecution(executionId).status;
+	}
+
+	/** Wait for all active executions to finish */
+	async shutdown(cancelAll = false) {
+		let executionIds = Object.keys(this.activeExecutions);
+
+		if (cancelAll) {
+			const stopPromises = executionIds.map(
+				async (executionId) => await this.stopExecution(executionId),
+			);
+
+			await Promise.allSettled(stopPromises);
+		}
+
+		let count = 0;
+		while (executionIds.length !== 0) {
+			if (count++ % 4 === 0) {
+				this.logger.info(`Waiting for ${executionIds.length} active executions to finish...`);
+			}
+
+			await sleep(500);
+			executionIds = Object.keys(this.activeExecutions);
+		}
 	}
 
 	private getExecution(executionId: string): IExecutingWorkflowData {
