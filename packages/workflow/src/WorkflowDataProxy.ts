@@ -283,6 +283,7 @@ export class WorkflowDataProxy {
 						runIndex: that.runIndex,
 						itemIndex: that.itemIndex,
 						type: 'no_node_execution_data',
+						nodeCause: nodeName,
 					});
 				}
 				throw new ExpressionError(`"${nodeName}" node doesn't exist`, {
@@ -938,6 +939,7 @@ export class WorkflowDataProxy {
 				if (!that?.runExecutionData?.resultData?.runData.hasOwnProperty(nodeName)) {
 					throw createExpressionError(`no data, execute "${nodeName}" node first`, {
 						type: 'no_node_execution_data',
+						nodeCause: nodeName,
 					});
 				}
 

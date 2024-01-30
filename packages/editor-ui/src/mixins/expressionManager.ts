@@ -13,7 +13,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import type { TargetItem } from '@/Interface';
 import type { Html, Plaintext, RawSegment, Resolvable, Segment } from '@/types/expressions';
 import type { EditorView } from '@codemirror/view';
-import { getResolvableState, isNoExecDataExpressionError } from '../utils/expressions';
+import { getExpressionErrorMessage, getResolvableState } from '../utils/expressions';
 
 export const expressionManager = defineComponent({
 	mixins: [workflowHelpers],
@@ -215,9 +215,7 @@ export const expressionManager = defineComponent({
 					result.resolved = this.resolveExpression('=' + resolvable, undefined, opts);
 				}
 			} catch (error) {
-				result.resolved = isNoExecDataExpressionError(error)
-					? this.$locale.baseText('expressionModalInput.noExecutionData')
-					: `[${error.message}]`;
+				result.resolved = getExpressionErrorMessage(error);
 				result.error = true;
 				result.fullError = error;
 			}
