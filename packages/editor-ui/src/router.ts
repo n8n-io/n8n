@@ -177,7 +177,7 @@ export const routes = [
 		},
 	},
 	{
-		path: '/credentials',
+		path: '/projects/:projectId/credentials',
 		name: VIEWS.CREDENTIALS,
 		components: {
 			default: CredentialsView,
@@ -209,17 +209,6 @@ export const routes = [
 	},
 	{
 		path: '/projects/:projectId/workflows',
-		name: VIEWS.PROJECT_WORKFLOWS,
-		components: {
-			default: WorkflowsView,
-			sidebar: MainSidebar,
-		},
-		meta: {
-			middleware: ['authenticated'],
-		},
-	},
-	{
-		path: '/workflows',
 		name: VIEWS.WORKFLOWS,
 		components: {
 			default: WorkflowsView,

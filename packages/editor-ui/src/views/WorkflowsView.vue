@@ -13,6 +13,9 @@
 		@click:add="addWorkflow"
 		@update:filters="filters = $event"
 	>
+		<template #tabnav>
+			<ProjectTabs :active-tab="'workflows'" />
+		</template>
 		<template #add-button="{ disabled }">
 			<n8n-tooltip :disabled="!readOnlyEnv">
 				<div>
@@ -144,6 +147,7 @@ import type { ITag, IUser, IWorkflowDb } from '@/Interface';
 import TagsDropdown from '@/components/TagsDropdown.vue';
 import SuggestedTemplatesPage from '@/components/SuggestedTemplates/SuggestedTemplatesPage.vue';
 import SuggestedTemplatesSection from '@/components/SuggestedTemplates/SuggestedTemplatesSection.vue';
+import ProjectTabs from '@/components/ProjectTabs.vue';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -169,6 +173,7 @@ const WorkflowsView = defineComponent({
 		TagsDropdown,
 		SuggestedTemplatesPage,
 		SuggestedTemplatesSection,
+		ProjectTabs,
 	},
 	data() {
 		return {
@@ -320,7 +325,7 @@ const WorkflowsView = defineComponent({
 			}
 
 			void this.$router.replace({
-				name: VIEWS.WORKFLOWS,
+				name: this.$route.name,
 				query,
 			});
 		},
