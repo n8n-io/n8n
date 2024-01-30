@@ -18,7 +18,7 @@ describe('Test HTTP Request Node', () => {
 		await initBinaryDataService();
 		nock.disableNetConnect();
 
-		function getPaginationReturnData(this: nock.ReplyFnContext, limit=10, skip = 0) {
+		function getPaginationReturnData(this: nock.ReplyFnContext, limit = 10, skip = 0) {
 			const nextUrl = `${baseUrl}/users?skip=${skip + limit}&limit=${limit}`;
 
 			const response = [];
@@ -162,7 +162,7 @@ describe('Test HTTP Request Node', () => {
 				const data = parseUrl(uri, true);
 				const limit = parseInt((data.query.limit as string) || '10', 10);
 				const skip = parseInt((data.query.skip as string) || '0', 10);
-				return getPaginationReturnData.call(this,limit, skip)
+				return getPaginationReturnData.call(this, limit, skip);
 			});
 
 		// Pagination - POST
@@ -175,14 +175,14 @@ describe('Test HTTP Request Node', () => {
 
 				if (typeof body === 'string') {
 					// Form data
-					skip = parseInt(body.split('name="skip"')[1].split('---')[0] ?? '0', 10)
-					limit = parseInt(body.split('name="limit"')[1].split('---')[0] ?? '0', 10)
+					skip = parseInt(body.split('name="skip"')[1].split('---')[0] ?? '0', 10);
+					limit = parseInt(body.split('name="limit"')[1].split('---')[0] ?? '0', 10);
 				} else {
-					skip = parseInt(body.skip ?? '0', 10)
-					limit = parseInt(body.limit ?? '10', 10)
+					skip = parseInt(body.skip ?? '0', 10);
+					limit = parseInt(body.limit ?? '10', 10);
 				}
 
-				return getPaginationReturnData.call(this,limit, skip)
+				return getPaginationReturnData.call(this, limit, skip);
 			});
 	});
 
