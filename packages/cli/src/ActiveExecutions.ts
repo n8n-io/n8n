@@ -1,5 +1,4 @@
 import { Service } from 'typedi';
-import type { ChildProcess } from 'child_process';
 import type PCancelable from 'p-cancelable';
 import type {
 	IDeferredPromise,
@@ -34,11 +33,7 @@ export class ActiveExecutions {
 	/**
 	 * Add a new active execution
 	 */
-	async add(
-		executionData: IWorkflowExecutionDataProcess,
-		process?: ChildProcess,
-		executionId?: string,
-	): Promise<string> {
+	async add(executionData: IWorkflowExecutionDataProcess, executionId?: string): Promise<string> {
 		let executionStatus: ExecutionStatus = executionId ? 'running' : 'new';
 		if (executionId === undefined) {
 			// Is a new execution so save in DB
@@ -82,7 +77,6 @@ export class ActiveExecutions {
 
 		this.activeExecutions[executionId] = {
 			executionData,
-			process,
 			startedAt: new Date(),
 			postExecutePromises: [],
 			status: executionStatus,
@@ -152,33 +146,15 @@ export class ActiveExecutions {
 
 	/**
 	 * Forces an execution to stop
-	 *
-	 * @param {string} executionId The id of the execution to stop
-	 * @param {string} timeout String 'timeout' given if stop due to timeout
 	 */
-	async stopExecution(executionId: string, timeout?: string): Promise<IRun | undefined> {
+	async stopExecution(executionId: string): Promise<IRun | undefined> {
 		const execution = this.activeExecutions[executionId];
 		if (execution === undefined) {
 			// There is no execution running with that id
 			return;
 		}
 
-		// In case something goes wrong make sure that promise gets first
-		// returned that it gets then also resolved correctly.
-		if (execution.process !== undefined) {
-			// Workflow is running in subprocess
-			if (execution.process.connected) {
-				setTimeout(() => {
-					// execute on next event loop tick;
-					execution.process!.send({
-						type: timeout || 'stopExecution',
-					});
-				}, 1);
-			}
-		} else {
-			// Workflow is running in current process
-			execution.workflowExecution!.cancel();
-		}
+		execution.workflowExecution!.cancel();
 
 		return await this.getPostExecutePromise(executionId);
 	}
