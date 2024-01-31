@@ -610,7 +610,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	async findLatestFinished(n: number): Promise<ExecutionSummary[]> {
 		const findManyOptions: FindManyOptions<ExecutionEntity> = {
 			select: this.summaryFields,
-			where: { status: In(['success', 'error']) }, // @TODO: Failed?
+			where: { status: In(['success', 'error', 'failed']) },
 			order: { stoppedAt: 'DESC' },
 			take: n,
 		};
