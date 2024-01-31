@@ -34,7 +34,7 @@ import {
 	N8N_VERSION,
 	TEMPLATES_DIR,
 } from '@/constants';
-import { credentialsController } from '@/credentials/credentials.controller';
+import { CredentialsController } from '@/credentials/credentials.controller';
 import type { CurlHelper } from '@/requests';
 import { registerController } from '@/decorators';
 import { AuthController } from '@/controllers/auth.controller';
@@ -67,7 +67,7 @@ import { setupAuthMiddlewares } from './middlewares';
 import { isLdapEnabled } from './Ldap/helpers';
 import { AbstractServer } from './AbstractServer';
 import { PostHogClient } from './posthog';
-import { eventBus } from './eventbus';
+import { MessageEventBus } from '@/eventbus';
 import { InternalHooks } from './InternalHooks';
 import { License } from './License';
 import { SamlController } from './sso/saml/routes/saml.controller.ee';
@@ -156,7 +156,6 @@ export class Server extends AbstractServer {
 				},
 			},
 			executionVariables: {
-				executions_process: config.getEnv('executions.process'),
 				executions_mode: config.getEnv('executions.mode'),
 				executions_timeout: config.getEnv('executions.timeout'),
 				executions_timeout_max: config.getEnv('executions.maxTimeout'),
@@ -230,6 +229,7 @@ export class Server extends AbstractServer {
 			ActiveWorkflowsController,
 			WorkflowsController,
 			ExecutionsController,
+			CredentialsController,
 		];
 
 		if (
@@ -348,8 +348,6 @@ export class Server extends AbstractServer {
 
 		await this.registerControllers(ignoredEndpoints);
 
-		this.app.use(`/${this.restEndpoint}/credentials`, credentialsController);
-
 		// ----------------------------------------
 		// SAML
 		// ----------------------------------------
@@ -416,10 +414,8 @@ export class Server extends AbstractServer {
 		// ----------------------------------------
 		// EventBus Setup
 		// ----------------------------------------
-
-		if (!eventBus.isInitialized) {
-			await eventBus.initialize();
-		}
+		const eventBus = Container.get(MessageEventBus);
+		await eventBus.initialize();
 
 		if (this.endpointPresetCredentials !== '') {
 			// POST endpoint to set preset credentials

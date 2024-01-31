@@ -3,15 +3,11 @@ import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialType,
-	INodeCredentialTestResult,
 	INodeProperties,
 } from 'n8n-workflow';
 import { CREDENTIAL_EMPTY_VALUE, deepCopy, NodeHelpers } from 'n8n-workflow';
-import { Container } from 'typedi';
 import type { FindOptionsWhere } from 'typeorm';
-
 import type { Scope } from '@n8n/permissions';
-
 import * as Db from '@/Db';
 import type { ICredentialsDb } from '@/Interfaces';
 import { CredentialsHelper, createCredentialsFromCredentialsEntity } from '@/CredentialsHelper';
@@ -27,20 +23,32 @@ import { OwnershipService } from '@/services/ownership.service';
 import { Logger } from '@/Logger';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+import { Service } from 'typedi';
 
 export type CredentialsGetSharedOptions =
 	| { allowGlobalScope: true; globalScope: Scope }
 	| { allowGlobalScope: false };
 
+@Service()
 export class CredentialsService {
-	static async get(where: FindOptionsWhere<ICredentialsDb>, options?: { relations: string[] }) {
-		return await Container.get(CredentialsRepository).findOne({
+	constructor(
+		private readonly credentialsRepository: CredentialsRepository,
+		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
+		private readonly ownershipService: OwnershipService,
+		private readonly logger: Logger,
+		private readonly credenntialsHelper: CredentialsHelper,
+		private readonly externalHooks: ExternalHooks,
+		private readonly credentialTypes: CredentialTypes,
+	) {}
+
+	async get(where: FindOptionsWhere<ICredentialsDb>, options?: { relations: string[] }) {
+		return await this.credentialsRepository.findOne({
 			relations: options?.relations,
 			where,
 		});
 	}
 
-	static async getMany(
+	async getMany(
 		user: User,
 		options: { listQueryOptions?: ListQuery.Options; onlyOwn?: boolean } = {},
 	) {
@@ -48,31 +56,29 @@ export class CredentialsService {
 		const isDefaultSelect = !options.listQueryOptions?.select;
 
 		if (returnAll) {
-			const credentials = await Container.get(CredentialsRepository).findMany(
-				options.listQueryOptions,
-			);
+			const credentials = await this.credentialsRepository.findMany(options.listQueryOptions);
 
 			return isDefaultSelect
-				? credentials.map((c) => Container.get(OwnershipService).addOwnedByAndSharedWith(c))
+				? credentials.map((c) => this.ownershipService.addOwnedByAndSharedWith(c))
 				: credentials;
 		}
 
-		const ids = await Container.get(SharedCredentialsRepository).getAccessibleCredentials(user.id);
+		const ids = await this.sharedCredentialsRepository.getAccessibleCredentials(user.id);
 
-		const credentials = await Container.get(CredentialsRepository).findMany(
+		const credentials = await this.credentialsRepository.findMany(
 			options.listQueryOptions,
 			ids, // only accessible credentials
 		);
 
 		return isDefaultSelect
-			? credentials.map((c) => Container.get(OwnershipService).addOwnedByAndSharedWith(c))
+			? credentials.map((c) => this.ownershipService.addOwnedByAndSharedWith(c))
 			: credentials;
 	}
 
 	/**
 	 * Retrieve the sharing that matches a user and a credential.
 	 */
-	static async getSharing(
+	async getSharing(
 		user: User,
 		credentialId: string,
 		options: CredentialsGetSharedOptions,
@@ -88,17 +94,17 @@ export class CredentialsService {
 			where.role = 'credential:owner';
 		}
 
-		return await Container.get(SharedCredentialsRepository).findOne({ where, relations });
+		return await this.sharedCredentialsRepository.findOne({ where, relations });
 	}
 
-	static async prepareCreateData(
+	async prepareCreateData(
 		data: CredentialRequest.CredentialProperties,
 	): Promise<CredentialsEntity> {
 		const { id, ...rest } = data;
 
 		// This saves us a merge but requires some type casting. These
 		// types are compatible for this case.
-		const newCredentials = Container.get(CredentialsRepository).create(rest as ICredentialsDb);
+		const newCredentials = this.credentialsRepository.create(rest as ICredentialsDb);
 
 		await validateEntity(newCredentials);
 
@@ -110,7 +116,7 @@ export class CredentialsService {
 		return newCredentials;
 	}
 
-	static async prepareUpdateData(
+	async prepareUpdateData(
 		data: CredentialRequest.CredentialProperties,
 		decryptedData: ICredentialDataDecryptedObject,
 	): Promise<CredentialsEntity> {
@@ -121,7 +127,7 @@ export class CredentialsService {
 
 		// This saves us a merge but requires some type casting. These
 		// types are compatible for this case.
-		const updateData = Container.get(CredentialsRepository).create(mergedData as ICredentialsDb);
+		const updateData = this.credentialsRepository.create(mergedData as ICredentialsDb);
 
 		await validateEntity(updateData);
 
@@ -141,7 +147,7 @@ export class CredentialsService {
 		return updateData;
 	}
 
-	static createEncryptedData(credentialId: string | null, data: CredentialsEntity): ICredentialsDb {
+	createEncryptedData(credentialId: string | null, data: CredentialsEntity): ICredentialsDb {
 		const credentials = new Credentials(
 			{ id: credentialId, name: data.name },
 			data.type,
@@ -158,35 +164,28 @@ export class CredentialsService {
 		return newCredentialData;
 	}
 
-	static decrypt(credential: CredentialsEntity): ICredentialDataDecryptedObject {
+	decrypt(credential: CredentialsEntity) {
 		const coreCredential = createCredentialsFromCredentialsEntity(credential);
 		return coreCredential.getData();
 	}
 
-	static async update(
-		credentialId: string,
-		newCredentialData: ICredentialsDb,
-	): Promise<ICredentialsDb | null> {
-		await Container.get(ExternalHooks).run('credentials.update', [newCredentialData]);
+	async update(credentialId: string, newCredentialData: ICredentialsDb) {
+		await this.externalHooks.run('credentials.update', [newCredentialData]);
 
 		// Update the credentials in DB
-		await Container.get(CredentialsRepository).update(credentialId, newCredentialData);
+		await this.credentialsRepository.update(credentialId, newCredentialData);
 
 		// We sadly get nothing back from "update". Neither if it updated a record
 		// nor the new value. So query now the updated entry.
-		return await Container.get(CredentialsRepository).findOneBy({ id: credentialId });
+		return await this.credentialsRepository.findOneBy({ id: credentialId });
 	}
 
-	static async save(
-		credential: CredentialsEntity,
-		encryptedData: ICredentialsDb,
-		user: User,
-	): Promise<CredentialsEntity> {
+	async save(credential: CredentialsEntity, encryptedData: ICredentialsDb, user: User) {
 		// To avoid side effects
 		const newCredential = new CredentialsEntity();
 		Object.assign(newCredential, credential, encryptedData);
 
-		await Container.get(ExternalHooks).run('credentials.create', [encryptedData]);
+		await this.externalHooks.run('credentials.create', [encryptedData]);
 
 		const result = await Db.transaction(async (transactionManager) => {
 			const savedCredential = await transactionManager.save<CredentialsEntity>(newCredential);
@@ -205,39 +204,31 @@ export class CredentialsService {
 
 			return savedCredential;
 		});
-		Container.get(Logger).verbose('New credential created', {
+		this.logger.verbose('New credential created', {
 			credentialId: newCredential.id,
 			ownerId: user.id,
 		});
 		return result;
 	}
 
-	static async delete(credentials: CredentialsEntity): Promise<void> {
-		await Container.get(ExternalHooks).run('credentials.delete', [credentials.id]);
+	async delete(credentials: CredentialsEntity) {
+		await this.externalHooks.run('credentials.delete', [credentials.id]);
 
-		await Container.get(CredentialsRepository).remove(credentials);
+		await this.credentialsRepository.remove(credentials);
 	}
 
-	static async test(
-		user: User,
-		credentials: ICredentialsDecrypted,
-	): Promise<INodeCredentialTestResult> {
-		const helper = Container.get(CredentialsHelper);
-		return await helper.testCredentials(user, credentials.type, credentials);
+	async test(user: User, credentials: ICredentialsDecrypted) {
+		return await this.credenntialsHelper.testCredentials(user, credentials.type, credentials);
 	}
 
 	// Take data and replace all sensitive values with a sentinel value.
 	// This will replace password fields and oauth data.
-	static redact(
-		data: ICredentialDataDecryptedObject,
-		credential: CredentialsEntity,
-	): ICredentialDataDecryptedObject {
+	redact(data: ICredentialDataDecryptedObject, credential: CredentialsEntity) {
 		const copiedData = deepCopy(data);
 
-		const credTypes = Container.get(CredentialTypes);
 		let credType: ICredentialType;
 		try {
-			credType = credTypes.getByName(credential.type);
+			credType = this.credentialTypes.getByName(credential.type);
 		} catch {
 			// This _should_ only happen when testing. If it does happen in
 			// production it means it's either a mangled credential or a
@@ -249,7 +240,7 @@ export class CredentialsService {
 		const getExtendedProps = (type: ICredentialType) => {
 			const props: INodeProperties[] = [];
 			for (const e of type.extends ?? []) {
-				const extendsType = credTypes.getByName(e);
+				const extendsType = this.credentialTypes.getByName(e);
 				const extendedProps = getExtendedProps(extendsType);
 				NodeHelpers.mergeNodeProperties(props, extendedProps);
 			}
@@ -287,7 +278,7 @@ export class CredentialsService {
 		return copiedData;
 	}
 
-	private static unredactRestoreValues(unmerged: any, replacement: any) {
+	private unredactRestoreValues(unmerged: any, replacement: any) {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 		for (const [key, value] of Object.entries(unmerged)) {
 			if (value === CREDENTIAL_BLANKING_VALUE || value === CREDENTIAL_EMPTY_VALUE) {
@@ -310,10 +301,10 @@ export class CredentialsService {
 
 	// Take unredacted data (probably from the DB) and merge it with
 	// redacted data to create an unredacted version.
-	static unredact(
+	unredact(
 		redactedData: ICredentialDataDecryptedObject,
 		savedData: ICredentialDataDecryptedObject,
-	): ICredentialDataDecryptedObject {
+	) {
 		// Replace any blank sentinel values with their saved version
 		const mergedData = deepCopy(redactedData);
 		this.unredactRestoreValues(mergedData, savedData);

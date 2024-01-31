@@ -24,6 +24,7 @@ export class EnterpriseWorkflowService {
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly credentialsRepository: CredentialsRepository,
+		private readonly credentialsService: CredentialsService,
 	) {}
 
 	async isOwned(
@@ -70,7 +71,7 @@ export class EnterpriseWorkflowService {
 		currentUser: User,
 	): Promise<void> {
 		workflow.usedCredentials = [];
-		const userCredentials = await CredentialsService.getMany(currentUser, { onlyOwn: true });
+		const userCredentials = await this.credentialsService.getMany(currentUser, { onlyOwn: true });
 		const credentialIdsUsedByWorkflow = new Set<string>();
 		workflow.nodes.forEach((node) => {
 			if (!node.credentials) {
@@ -139,7 +140,7 @@ export class EnterpriseWorkflowService {
 			throw new NotFoundError('Workflow not found');
 		}
 
-		const allCredentials = await CredentialsService.getMany(user);
+		const allCredentials = await this.credentialsService.getMany(user);
 
 		try {
 			return this.validateWorkflowCredentialUsage(workflow, previousVersion, allCredentials);
