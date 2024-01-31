@@ -1274,7 +1274,7 @@ export class HttpRequestV3 implements INodeType {
 					oAuth2Api = await this.getCredentials('oAuth2Api', itemIndex);
 				}
 			} else if (authentication === 'predefinedCredentialType') {
-				nodeCredentialType = this.getNodeParameter('nodeCredentialType', 0) as string;
+				nodeCredentialType = this.getNodeParameter('nodeCredentialType', itemIndex) as string;
 			}
 
 			const requestMethod = this.getNodeParameter('method', itemIndex) as string;
@@ -1714,6 +1714,7 @@ export class HttpRequestV3 implements INodeType {
 					nodeCredentialType,
 					requestOptions,
 					additionalOAuth2Options && { oauth2: additionalOAuth2Options },
+					itemIndex,
 				);
 				requestWithAuthentication.catch(() => {});
 				requestPromises.push(requestWithAuthentication);

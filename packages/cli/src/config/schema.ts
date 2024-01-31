@@ -234,15 +234,6 @@ export const schema = {
 	},
 
 	executions: {
-		// By default workflows get always executed in the main process.
-		// TODO: remove this and all usage of `executions.process` when `own` mode is deleted
-		process: {
-			doc: 'In what process workflows should be executed.',
-			format: ['main', 'own'] as const,
-			default: 'main',
-			env: 'EXECUTIONS_PROCESS',
-		},
-
 		mode: {
 			doc: 'If it should run executions directly or via queue',
 			format: ['regular', 'queue'] as const,
@@ -1179,7 +1170,7 @@ export const schema = {
 			backend: {
 				doc: 'Diagnostics config for backend.',
 				format: String,
-				default: '1zPn7YoGC3ZXE9zLeTKLuQCB4F6;https://telemetry.n8n.io/v1/batch',
+				default: '1zPn7YoGC3ZXE9zLeTKLuQCB4F6;https://telemetry.n8n.io',
 				env: 'N8N_DIAGNOSTICS_CONFIG_BACKEND',
 			},
 		},

@@ -11,6 +11,7 @@
 		"noImplicitAny": true,
 		"noImplicitReturns": true,
 		"noUnusedLocals": true,
+		"noUnusedParameters": true,
 		"strictNullChecks": true,
 		"preserveConstEnums": true,
 		"esModuleInterop": true,

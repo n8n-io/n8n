@@ -1,3 +1,4 @@
+import axios from 'axios';
 import type RudderStack from '@rudderstack/rudder-sdk-node';
 import { PostHogClient } from '@/posthog';
 import { Container, Service } from 'typedi';
@@ -40,8 +41,8 @@ export class Telemetry {
 
 	constructor(
 		private readonly logger: Logger,
-		private postHog: PostHogClient,
-		private license: License,
+		private readonly postHog: PostHogClient,
+		private readonly license: License,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly workflowRepository: WorkflowRepository,
 	) {}
@@ -50,9 +51,9 @@ export class Telemetry {
 		const enabled = config.getEnv('diagnostics.enabled');
 		if (enabled) {
 			const conf = config.getEnv('diagnostics.config.backend');
-			const [key, url] = conf.split(';');
+			const [key, dataPlaneUrl] = conf.split(';');
 
-			if (!key || !url) {
+			if (!key || !dataPlaneUrl) {
 				this.logger.warn('Diagnostics backend config is invalid');
 				return;
 			}
@@ -60,7 +61,17 @@ export class Telemetry {
 			const logLevel = config.getEnv('logs.level');
 
 			const { default: RudderStack } = await import('@rudderstack/rudder-sdk-node');
-			this.rudderStack = new RudderStack(key, url, { logLevel });
+			const axiosInstance = axios.create();
+			axiosInstance.interceptors.request.use((cfg) => {
+				cfg.headers.setContentType('application/json', false);
+				return cfg;
+			});
+			this.rudderStack = new RudderStack(key, {
+				axiosInstance,
+				logLevel,
+				dataPlaneUrl,
+				gzip: false,
+			});
 
 			this.startPulse();
 		}
@@ -154,16 +165,8 @@ export class Telemetry {
 
 	async trackN8nStop(): Promise<void> {
 		clearInterval(this.pulseIntervalReference);
-		void this.track('User instance stopped');
-		return await new Promise<void>(async (resolve) => {
-			await this.postHog.stop();
-
-			if (this.rudderStack) {
-				this.rudderStack.flush(resolve);
-			} else {
-				resolve();
-			}
-		});
+		await this.track('User instance stopped');
+		void Promise.all([this.postHog.stop(), this.rudderStack?.flush()]);
 	}
 
 	async identify(traits?: {
@@ -194,7 +197,7 @@ export class Telemetry {
 		return await new Promise<void>((resolve) => {
 			if (this.rudderStack) {
 				const { user_id } = properties;
-				const updatedProperties: ITelemetryTrackProperties = {
+				const updatedProperties = {
 					...properties,
 					instance_id: instanceId,
 					version_cli: N8N_VERSION,

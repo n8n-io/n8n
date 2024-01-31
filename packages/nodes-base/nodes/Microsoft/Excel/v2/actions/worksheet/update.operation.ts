@@ -6,7 +6,12 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import type { ExcelResponse, UpdateSummary } from '../../helpers/interfaces';
-import { prepareOutput, updateByAutoMaping, updateByDefinedValues } from '../../helpers/utils';
+import {
+	checkRange,
+	prepareOutput,
+	updateByAutoMaping,
+	updateByDefinedValues,
+} from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
 import { workbookRLC, worksheetRLC } from '../common.descriptions';
 import { generatePairedItemData, processJsonInput, updateDisplayOptions } from '@utils/utilities';
@@ -33,7 +38,7 @@ const properties: INodeProperties[] = [
 		placeholder: 'e.g. A1:B2',
 		default: '',
 		description:
-			'The sheet range to read the data from specified using a A1-style notation. Leave blank to use whole used range in the sheet.',
+			'The sheet range to read the data from specified using a A1-style notation, has to be specific e.g A1:B5, generic ranges like A:B are not supported. Leave blank to use whole used range in the sheet.',
 		hint: 'First row must contain column names',
 	},
 	{
@@ -254,6 +259,8 @@ export async function execute(
 		}) as string;
 
 		let range = this.getNodeParameter('range', 0, '') as string;
+		checkRange(this.getNode(), range);
+
 		const dataMode = this.getNodeParameter('dataMode', 0) as string;
 
 		let worksheetData: IDataObject = {};

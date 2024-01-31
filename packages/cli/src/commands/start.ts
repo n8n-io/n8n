@@ -5,9 +5,8 @@ import { Flags, type Config } from '@oclif/core';
 import path from 'path';
 import { mkdir } from 'fs/promises';
 import { createReadStream, createWriteStream, existsSync } from 'fs';
-import stream from 'stream';
+import { pipeline } from 'stream/promises';
 import replaceStream from 'replacestream';
-import { promisify } from 'util';
 import glob from 'fast-glob';
 import { sleep, jsonParse } from 'n8n-workflow';
 
@@ -16,7 +15,7 @@ import { ActiveExecutions } from '@/ActiveExecutions';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { Server } from '@/Server';
 import { EDITOR_UI_DIST_DIR, LICENSE_FEATURES } from '@/constants';
-import { eventBus } from '@/eventbus';
+import { MessageEventBus } from '@/eventbus';
 import { InternalHooks } from '@/InternalHooks';
 import { License } from '@/License';
 import { OrchestrationService } from '@/services/orchestration.service';
@@ -31,7 +30,6 @@ import { BaseCommand } from './BaseCommand';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
-const pipeline = promisify(stream.pipeline);
 
 export class Start extends BaseCommand {
 	static description = 'Starts n8n. Makes Web-UI available and starts active workflows';
@@ -77,8 +75,7 @@ export class Start extends BaseCommand {
 	private openBrowser() {
 		const editorUrl = Container.get(UrlService).baseUrl;
 
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		open(editorUrl, { wait: true }).catch((error: Error) => {
+		open(editorUrl, { wait: true }).catch(() => {
 			console.log(
 				`\nWas not able to open URL in browser. Please open manually by visiting:\n${editorUrl}\n`,
 			);
@@ -128,7 +125,7 @@ export class Start extends BaseCommand {
 			}
 
 			// Finally shut down Event Bus
-			await eventBus.close();
+			await Container.get(MessageEventBus).close();
 		} catch (error) {
 			await this.exitWithCrash('There was an error shutting down n8n.', error);
 		}

@@ -3,6 +3,7 @@ import { mock } from 'jest-mock-extended';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import { MessageEventBus } from '@/eventbus';
 import { Telemetry } from '@/telemetry';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -13,15 +14,13 @@ import { createOwner } from '../shared/db/users';
 import { createWorkflow } from '../shared/db/workflows';
 
 let workflowService: WorkflowService;
-let activeWorkflowRunner: ActiveWorkflowRunner;
-let orchestrationService: OrchestrationService;
+const activeWorkflowRunner = mockInstance(ActiveWorkflowRunner);
+const orchestrationService = mockInstance(OrchestrationService);
+mockInstance(MessageEventBus);
+mockInstance(Telemetry);
 
 beforeAll(async () => {
 	await testDb.init();
-
-	activeWorkflowRunner = mockInstance(ActiveWorkflowRunner);
-	orchestrationService = mockInstance(OrchestrationService);
-	mockInstance(Telemetry);
 
 	workflowService = new WorkflowService(
 		mock(),
