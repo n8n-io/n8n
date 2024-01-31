@@ -30,7 +30,7 @@ jobs:
     env:
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }}
     steps:
-      - uses: actions/checkout@v3.5.3
+      - uses: actions/checkout@v4.1.1
         with:
           repository: n8n-io/n8n
           ref: ${{ inputs.ref }}
@@ -38,7 +38,7 @@ jobs:
       - uses: pnpm/action-setup@v2.4.0
 
       - name: Use Node.js ${{ inputs.nodeVersion }}
-        uses: actions/setup-node@v3.7.0
+        uses: actions/setup-node@v4.0.1
         with:
           node-version: ${{ inputs.nodeVersion }}
           cache: pnpm
@@ -52,7 +52,7 @@ jobs:
 
       - name: Restore cached build artifacts
         if: ${{ inputs.cacheKey != '' }}
-        uses: actions/cache/restore@v3.3.1
+        uses: actions/cache/restore@v4.0.0
         with:
           path: ./packages/**/dist
           key: ${{ inputs.cacheKey }}

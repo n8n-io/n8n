@@ -1,16 +1,17 @@
 import type { User } from '@db/entities/User';
-import { Push } from '@/push';
+import { EnterpriseExecutionsService } from '@/executions/execution.service.ee';
+import { WaitTracker } from '@/WaitTracker';
+
 import { createSuccessfulExecution, getAllExecutions } from './shared/db/executions';
 import { createOwner } from './shared/db/users';
 import { createWorkflow } from './shared/db/workflows';
 import * as testDb from './shared/testDb';
 import { setupTestServer } from './shared/utils';
 import { mockInstance } from '../shared/mocking';
-import { EnterpriseExecutionsService } from '@/executions/execution.service.ee';
 
 mockInstance(EnterpriseExecutionsService);
+mockInstance(WaitTracker);
 
-mockInstance(Push);
 let testServer = setupTestServer({ endpointGroups: ['executions'] });
 
 let owner: User;

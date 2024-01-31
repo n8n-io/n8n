@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 /* eslint-disable @typescript-eslint/naming-convention */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
@@ -452,6 +451,15 @@ async function parseRequestObject(requestObject: IDataObject) {
 	) {
 		axiosConfig.maxRedirects = 0;
 	}
+
+	axiosConfig.beforeRedirect = (redirectedRequest) => {
+		if (axiosConfig.headers?.Authorization) {
+			redirectedRequest.headers.Authorization = axiosConfig.headers.Authorization;
+		}
+		if (axiosConfig.auth) {
+			redirectedRequest.auth = `${axiosConfig.auth.username}:${axiosConfig.auth.password}`;
+		}
+	};
 
 	if (requestObject.rejectUnauthorized === false) {
 		axiosConfig.httpsAgent = new Agent({
@@ -1715,6 +1723,7 @@ export async function requestWithAuthentication(
 	node: INode,
 	additionalData: IWorkflowExecuteAdditionalData,
 	additionalCredentialOptions?: IAdditionalCredentialOptions,
+	itemIndex?: number,
 ) {
 	let credentialsDecrypted: ICredentialDataDecryptedObject | undefined;
 
@@ -1739,7 +1748,7 @@ export async function requestWithAuthentication(
 		if (additionalCredentialOptions?.credentialsDecrypted) {
 			credentialsDecrypted = additionalCredentialOptions.credentialsDecrypted.data;
 		} else {
-			credentialsDecrypted = await this.getCredentials(credentialsType);
+			credentialsDecrypted = await this.getCredentials(credentialsType, itemIndex);
 		}
 
 		if (credentialsDecrypted === undefined) {
@@ -2527,8 +2536,6 @@ async function getInputConnectionData(
 	closeFunctions: CloseFunction[],
 	inputName: ConnectionTypes,
 	itemIndex: number,
-	// TODO: Not implemented yet, and maybe also not needed
-	inputIndex?: number,
 ): Promise<unknown> {
 	const node = this.getNode();
 	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
@@ -3003,6 +3010,7 @@ const getRequestHelperFunctions = (
 			credentialsType,
 			requestOptions,
 			additionalCredentialOptions,
+			itemIndex,
 		): Promise<any> {
 			return await requestWithAuthentication.call(
 				this,
@@ -3012,6 +3020,7 @@ const getRequestHelperFunctions = (
 				node,
 				additionalData,
 				additionalCredentialOptions,
+				itemIndex,
 			);
 		},
 
@@ -3201,12 +3210,12 @@ export function getExecutePollFunctions(
 	return ((workflow: Workflow, node: INode) => {
 		return {
 			...getCommonWorkflowFunctions(workflow, node, additionalData),
-			__emit: (data: INodeExecutionData[][]): void => {
+			__emit: (): void => {
 				throw new ApplicationError(
 					'Overwrite NodeExecuteFunctions.getExecutePollFunctions.__emit function!',
 				);
 			},
-			__emitError(error: Error) {
+			__emitError() {
 				throw new ApplicationError(
 					'Overwrite NodeExecuteFunctions.getExecutePollFunctions.__emitError function!',
 				);
@@ -3264,12 +3273,12 @@ export function getExecuteTriggerFunctions(
 	return ((workflow: Workflow, node: INode) => {
 		return {
 			...getCommonWorkflowFunctions(workflow, node, additionalData),
-			emit: (data: INodeExecutionData[][]): void => {
+			emit: (): void => {
 				throw new ApplicationError(
 					'Overwrite NodeExecuteFunctions.getExecuteTriggerFunctions.emit function!',
 				);
 			},
-			emitError: (error: Error): void => {
+			emitError: (): void => {
 				throw new ApplicationError(
 					'Overwrite NodeExecuteFunctions.getExecuteTriggerFunctions.emit function!',
 				);
@@ -3390,8 +3399,6 @@ export function getExecuteFunctions(
 			async getInputConnectionData(
 				inputName: ConnectionTypes,
 				itemIndex: number,
-				// TODO: Not implemented yet, and maybe also not needed
-				inputIndex?: number,
 			): Promise<unknown> {
 				return await getInputConnectionData.call(
 					this,
@@ -3405,7 +3412,6 @@ export function getExecuteFunctions(
 					closeFunctions,
 					inputName,
 					itemIndex,
-					inputIndex,
 				);
 			},
 
@@ -3919,8 +3925,6 @@ export function getExecuteWebhookFunctions(
 			async getInputConnectionData(
 				inputName: ConnectionTypes,
 				itemIndex: number,
-				// TODO: Not implemented yet, and maybe also not needed
-				inputIndex?: number,
 			): Promise<unknown> {
 				// To be able to use expressions like "$json.sessionId" set the
 				// body data the webhook received to what is normally used for
@@ -3954,7 +3958,6 @@ export function getExecuteWebhookFunctions(
 					closeFunctions,
 					inputName,
 					itemIndex,
-					inputIndex,
 				);
 			},
 			getMode: () => mode,

@@ -184,7 +184,7 @@ export function generateNodesGraph(
 			webhookNodeNames.push(node.name);
 		} else {
 			try {
-				const nodeType = nodeTypes.getByNameAndVersion(node.type);
+				const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 				if (nodeType) {
 					const nodeParameters = getNodeParameters(
 						nodeType.description.properties,
@@ -230,7 +230,7 @@ export function generateNodesGraph(
 
 		Object.keys(connections).forEach((key) => {
 			connections[key].forEach((element) => {
-				element.forEach((element2) => {
+				(element ?? []).forEach((element2) => {
 					nodeGraph.node_connections.push(getGraphConnectionItem(nodeName, element2));
 				});
 			});

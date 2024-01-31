@@ -104,7 +104,7 @@ export class ActiveExecutionService {
 			};
 		}
 
-		if (!this.isRegularMode) return await this.waitTracker.stopExecution(execution.id);
+		if (this.isRegularMode) return await this.waitTracker.stopExecution(execution.id);
 
 		// queue mode
 
