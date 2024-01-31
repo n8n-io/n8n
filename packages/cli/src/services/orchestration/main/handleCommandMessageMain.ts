@@ -7,7 +7,9 @@ import { License } from '@/License';
 import { Logger } from '@/Logger';
 import { Push } from '@/push';
 import { TestWebhooks } from '@/TestWebhooks';
-import { handleWorkflowUpdated } from './handle-workflow-updated';
+import { OrchestrationService } from '@/services/orchestration.service';
+import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 
 export async function handleCommandMessageMain(messageString: string) {
 	const queueModeId = config.getEnv('redis.queueModeId');
@@ -19,9 +21,16 @@ export async function handleCommandMessageMain(messageString: string) {
 		logger.debug(
 			`RedisCommandHandler(main): Received command message ${message.command} from ${message.senderId}`,
 		);
+
+		const selfSendingAllowed = [
+			'add-webhooks-triggers-and-pollers',
+			'remove-triggers-and-pollers',
+		].includes(message.command);
+
 		if (
-			message.senderId === queueModeId ||
-			(message.targets && !message.targets.includes(queueModeId))
+			!selfSendingAllowed &&
+			(message.senderId === queueModeId ||
+				(message.targets && !message.targets.includes(queueModeId)))
 		) {
 			// Skipping command message because it's not for this instance
 			logger.debug(
@@ -68,13 +77,54 @@ export async function handleCommandMessageMain(messageString: string) {
 				await Container.get(ExternalSecretsManager).reloadAllProviders();
 				break;
 
-			case 'workflow-updated': {
+			case 'add-webhooks-triggers-and-pollers': {
 				if (!debounceMessageReceiver(message, 100)) {
 					message.payload = { result: 'debounced' };
 					return message;
 				}
 
-				await handleWorkflowUpdated(message.payload);
+				if (Container.get(OrchestrationService).isFollower) break;
+
+				if (typeof message.payload?.workflowId !== 'string') break;
+
+				const { workflowId } = message.payload;
+
+				try {
+					await Container.get(ActiveWorkflowRunner).add(workflowId, 'activate', undefined, {
+						shouldPublish: false, // prevent leader re-publishing message
+					});
+
+					push.broadcast('workflowActivated', { workflowId });
+				} catch (error) {
+					if (error instanceof Error) {
+						await Container.get(WorkflowRepository).update(workflowId, { active: false });
+
+						await Container.get(OrchestrationService).publish('workflow-failed-to-activate', {
+							workflowId,
+							errorMessage: error.message,
+						});
+					}
+				}
+
+				break;
+			}
+
+			case 'remove-triggers-and-pollers': {
+				if (!debounceMessageReceiver(message, 100)) {
+					message.payload = { result: 'debounced' };
+					return message;
+				}
+
+				if (Container.get(OrchestrationService).isFollower) break;
+
+				if (typeof message.payload?.workflowId !== 'string') break;
+
+				const { workflowId } = message.payload;
+
+				const activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
+
+				await activeWorkflowRunner.removeActivationError(workflowId);
+				await activeWorkflowRunner.removeWorkflowTriggersAndPollers(workflowId);
 
 				break;
 			}

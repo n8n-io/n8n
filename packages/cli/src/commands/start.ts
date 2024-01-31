@@ -229,16 +229,11 @@ export class Start extends BaseCommand {
 		if (!orchestrationService.isMultiMainSetupEnabled) return;
 
 		orchestrationService.multiMainSetup
-			.on('leadershipChange', async () => {
-				if (orchestrationService.isLeader) {
-					await this.activeWorkflowRunner.clearAllActivationErrors();
-					await this.activeWorkflowRunner.addAllTriggerAndPollerBasedWorkflows();
-				} else {
-					await this.activeWorkflowRunner.removeAllTriggerAndPollerBasedWorkflows();
-				}
-			})
-			.on('leadershipVacant', async () => {
+			.on('leader-stepdown', async () => {
 				await this.activeWorkflowRunner.removeAllTriggerAndPollerBasedWorkflows();
+			})
+			.on('leader-takeover', async () => {
+				await this.activeWorkflowRunner.addAllTriggerAndPollerBasedWorkflows();
 			});
 	}
 
@@ -358,16 +353,8 @@ export class Start extends BaseCommand {
 		if (!orchestrationService.isMultiMainSetupEnabled) return;
 
 		orchestrationService.multiMainSetup
-			.on('leadershipChange', async () => {
-				if (orchestrationService.isLeader) {
-					this.pruningService.startPruning();
-				} else {
-					this.pruningService.stopPruning();
-				}
-			})
-			.on('leadershipVacant', () => {
-				this.pruningService.stopPruning();
-			});
+			.on('leader-stepdown', () => this.pruningService.stopPruning())
+			.on('leader-takeover', () => this.pruningService.startPruning());
 	}
 
 	async catch(error: Error) {

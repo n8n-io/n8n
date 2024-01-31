@@ -84,41 +84,4 @@ describe('update()', () => {
 
 		expect(addSpy).not.toHaveBeenCalled();
 	});
-
-	test('should publish to inter-main channel on workflow activation', async () => {
-		const owner = await createOwner();
-		const workflow = await createWorkflow({ active: true }, owner);
-
-		const publishSpy = jest.spyOn(orchestrationService, 'publish');
-
-		workflow.active = false;
-		await workflowService.update(owner, workflow, workflow.id);
-
-		expect(publishSpy).toHaveBeenCalledWith(
-			'workflow-updated',
-			expect.objectContaining({
-				newState: false,
-				oldState: true,
-				workflowId: workflow.id,
-			}),
-		);
-	});
-
-	test('should publish to inter-main channel on workflow update not involving activation', async () => {
-		const owner = await createOwner();
-		const workflow = await createWorkflow({ active: true }, owner);
-
-		const publishSpy = jest.spyOn(orchestrationService, 'publish');
-
-		await workflowService.update(owner, workflow, workflow.id);
-
-		expect(publishSpy).toHaveBeenCalledWith(
-			'workflow-updated',
-			expect.objectContaining({
-				newState: true,
-				oldState: true,
-				workflowId: workflow.id,
-			}),
-		);
-	});
 });

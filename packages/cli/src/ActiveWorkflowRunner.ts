@@ -224,7 +224,8 @@ export class ActiveWorkflowRunner {
 	}
 
 	/**
-	 * Clear workflow-defined webhooks from the `webhook_entity` table.
+	 * Remove all webhooks of a workflow from the database, and
+	 * deregister those webhooks from external services.
 	 */
 	async clearWebhooks(workflowId: string) {
 		const workflowData = await this.workflowRepository.findOne({
@@ -388,7 +389,7 @@ export class ActiveWorkflowRunner {
 				responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 				donePromise?: IDeferredPromise<IRun | undefined>,
 			): void => {
-				this.logger.debug(`Received trigger for workflow "${workflow.name}"`);
+				this.logger.warn(`Received trigger for workflow "${workflow.name}"`);
 				void this.workflowStaticDataService.saveStaticData(workflow);
 
 				const executePromise = this.runWorkflow(
@@ -557,7 +558,16 @@ export class ActiveWorkflowRunner {
 		workflowId: string,
 		activationMode: WorkflowActivateMode,
 		existingWorkflow?: WorkflowEntity,
+		{ shouldPublish } = { shouldPublish: true },
 	) {
+		if (this.orchestrationService.isMultiMainSetupEnabled && shouldPublish) {
+			await this.orchestrationService.publish('add-webhooks-triggers-and-pollers', {
+				workflowId,
+			});
+
+			return;
+		}
+
 		let workflow: Workflow;
 
 		const shouldAddWebhooks = this.orchestrationService.shouldAddWebhooks(activationMode);
@@ -741,8 +751,21 @@ export class ActiveWorkflowRunner {
 	 */
 	// TODO: this should happen in a transaction
 	async remove(workflowId: string) {
-		if (!this.orchestrationService.isLeader) return;
-		// Remove all the webhooks of the workflow
+		if (this.orchestrationService.isMultiMainSetupEnabled) {
+			try {
+				await this.clearWebhooks(workflowId);
+			} catch (error) {
+				ErrorReporter.error(error);
+				this.logger.error(
+					`Could not remove webhooks of workflow "${workflowId}" because of error: "${error.message}"`,
+				);
+			}
+
+			await this.orchestrationService.publish('remove-triggers-and-pollers', { workflowId });
+
+			return;
+		}
+
 		try {
 			await this.clearWebhooks(workflowId);
 		} catch (error) {
@@ -760,11 +783,21 @@ export class ActiveWorkflowRunner {
 
 		// if it's active in memory then it's a trigger
 		// so remove from list of actives workflows
-		if (this.activeWorkflows.isActive(workflowId)) {
-			const removalSuccess = await this.activeWorkflows.remove(workflowId);
-			if (removalSuccess) {
-				this.logger.verbose(`Successfully deactivated workflow "${workflowId}"`, { workflowId });
-			}
+		await this.removeWorkflowTriggersAndPollers(workflowId);
+	}
+
+	/**
+	 * Stop running active triggers and pollers for a workflow.
+	 */
+	async removeWorkflowTriggersAndPollers(workflowId: string) {
+		if (!this.activeWorkflows.isActive(workflowId)) return;
+
+		const wasRemoved = await this.activeWorkflows.remove(workflowId);
+
+		if (wasRemoved) {
+			this.logger.warn(`Removed triggers and pollers for workflow "${workflowId}"`, {
+				workflowId,
+			});
 		}
 	}
 
@@ -799,7 +832,7 @@ export class ActiveWorkflowRunner {
 		);
 
 		if (workflow.getTriggerNodes().length !== 0 || workflow.getPollNodes().length !== 0) {
-			this.logger.debug(`Adding triggers and pollers for workflow ${dbWorkflow.display()}`);
+			this.logger.warn(`Adding triggers and pollers for workflow ${dbWorkflow.display()}`);
 
 			await this.activeWorkflows.add(
 				workflow.id,

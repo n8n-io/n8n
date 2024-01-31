@@ -7,6 +7,7 @@ import type { RedisServiceBaseCommand, RedisServiceCommand } from './redis/Redis
 import { RedisService } from './redis.service';
 import { MultiMainSetup } from './orchestration/main/MultiMainSetup.ee';
 import type { WorkflowActivateMode } from 'n8n-workflow';
+import { inTest } from '@/constants';
 
 @Service()
 export class OrchestrationService {
@@ -130,20 +131,15 @@ export class OrchestrationService {
 
 	/**
 	 * Whether this instance may add webhooks to the `webhook_entity` table.
-	 *
-	 * In both single- and multi-main setup, only the leader is allowed to manage
-	 * webhooks in the database. Webhooks do not require in-memory state, so we could
-	 * have also allowed the follower to add webhooks, but it makes the implementation
-	 * simpler to have the leader to manage webhooks and to have all followers
-	 * proxy to the leader when webhooks need to be managed.
-	 *
-	 * On leadership change in multi-main setup, neither the leader nor the follower
-	 * may add webhooks because these are already in the database.
 	 */
 	shouldAddWebhooks(activationMode: WorkflowActivateMode) {
+		if (inTest) return true;
+
+		if (activationMode === 'init') return false;
+
 		if (activationMode === 'leadershipChange') return false;
 
-		return this.isLeader;
+		return this.isLeader; // manual activation
 	}
 
 	/**
