@@ -454,15 +454,11 @@ async function parseRequestObject(requestObject: IDataObject) {
 
 	if (axiosConfig.maxRedirects !== 0) {
 		axiosConfig.beforeRedirect = (redirectedRequest) => {
-			const originalDomain = new URL(axiosConfig.url as string, axiosConfig.baseURL).hostname;
-			const redirectedDomain = new URL(redirectedRequest.href as string).hostname;
-			if (originalDomain === redirectedDomain) {
-				if (axiosConfig.headers?.Authorization) {
-					redirectedRequest.headers.Authorization = axiosConfig.headers.Authorization;
-				}
-				if (axiosConfig.auth) {
-					redirectedRequest.auth = `${axiosConfig.auth.username}:${axiosConfig.auth.password}`;
-				}
+			if (axiosConfig.headers?.Authorization) {
+				redirectedRequest.headers.Authorization = axiosConfig.headers.Authorization;
+			}
+			if (axiosConfig.auth) {
+				redirectedRequest.auth = `${axiosConfig.auth.username}:${axiosConfig.auth.password}`;
 			}
 		};
 	}

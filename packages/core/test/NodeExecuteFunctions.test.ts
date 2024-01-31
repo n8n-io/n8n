@@ -297,64 +297,30 @@ describe('NodeExecuteFunctions', () => {
 		});
 
 		describe('redirects', () => {
-			describe('when redirect is on same domain', () => {
-				test('should forward authorization header', async () => {
-					nock(baseUrl)
-						.get('/redirect')
-						.reply(301, '', { Location: `${baseUrl}/test` });
-					nock(baseUrl)
-						.get('/test')
-						.reply(200, function () {
-							return this.req.headers;
-						});
-
-					const response = await proxyRequestToAxios(workflow, additionalData, node, {
-						url: `${baseUrl}/redirect`,
-						auth: {
-							username: 'testuser',
-							password: 'testpassword',
-						},
-						headers: {
-							'X-Other-Header': 'otherHeaderContent',
-						},
-						resolveWithFullResponse: true,
+			test('should forward authorization header', async () => {
+				nock(baseUrl).get('/redirect').reply(301, '', { Location: 'https://otherdomain.com/test' });
+				nock('https://otherdomain.com')
+					.get('/test')
+					.reply(200, function () {
+						return this.req.headers;
 					});
 
-					expect(response.statusCode).toBe(200);
-					const forwardedHeaders = JSON.parse(response.body);
-					expect(forwardedHeaders.authorization).toEqual('Basic dGVzdHVzZXI6dGVzdHBhc3N3b3Jk');
-					expect(forwardedHeaders['x-other-header']).toBe('otherHeaderContent');
+				const response = await proxyRequestToAxios(workflow, additionalData, node, {
+					url: `${baseUrl}/redirect`,
+					auth: {
+						username: 'testuser',
+						password: 'testpassword',
+					},
+					headers: {
+						'X-Other-Header': 'otherHeaderContent',
+					},
+					resolveWithFullResponse: true,
 				});
-			});
 
-			describe('when redirect is not on same domain', () => {
-				test('should not forward authorization header', async () => {
-					nock(baseUrl)
-						.get('/redirect')
-						.reply(301, '', { Location: 'https://otherdomain.com/test' });
-					nock('https://otherdomain.com')
-						.get('/test')
-						.reply(200, function () {
-							return this.req.headers;
-						});
-
-					const response = await proxyRequestToAxios(workflow, additionalData, node, {
-						url: `${baseUrl}/redirect`,
-						auth: {
-							username: 'testuser',
-							password: 'testpassword',
-						},
-						headers: {
-							'X-Other-Header': 'otherHeaderContent',
-						},
-						resolveWithFullResponse: true,
-					});
-
-					expect(response.statusCode).toBe(200);
-					const forwardedHeaders = JSON.parse(response.body);
-					expect(forwardedHeaders.authorization).toBeUndefined();
-					expect(forwardedHeaders['x-other-header']).toBe('otherHeaderContent');
-				});
+				expect(response.statusCode).toBe(200);
+				const forwardedHeaders = JSON.parse(response.body);
+				expect(forwardedHeaders.authorization).toBe('Basic dGVzdHVzZXI6dGVzdHBhc3N3b3Jk');
+				expect(forwardedHeaders['x-other-header']).toBe('otherHeaderContent');
 			});
 
 			test('should follow redirects by default', async () => {
