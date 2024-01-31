@@ -1,4 +1,5 @@
 import { mock } from 'jest-mock-extended';
+import config from '@/config';
 import { N8N_VERSION } from '@/constants';
 import { InternalHooks } from '@/InternalHooks';
 import type { License } from '@/License';
@@ -40,7 +41,7 @@ describe('InternalHooks', () => {
 
 		expect(telemetry.identify).toHaveBeenCalledWith({
 			version_cli: N8N_VERSION,
-			db_type: 'sqlite',
+			db_type: config.get('database.type'),
 			n8n_version_notifications_enabled: true,
 			n8n_disable_production_main_process: false,
 			system_info: {
