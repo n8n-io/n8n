@@ -34,14 +34,13 @@ import { generatePairedItemData } from '../../../utils/utilities';
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Merge',
 	name: 'merge',
-	icon: 'fa:code-branch',
+	icon: 'file:merge.svg',
 	group: ['transform'],
 	version: [2, 2.1, 2.2],
 	subtitle: '={{$parameter["mode"]}}',
 	description: 'Merge data of two inputs once data from both is available',
 	defaults: {
 		name: 'Merge',
-		color: '#00bbcc',
 	},
 	// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 	inputs: ['main', 'main'],
