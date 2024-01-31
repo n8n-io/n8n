@@ -123,8 +123,8 @@ export const setupTestServer = ({
 			for (const group of endpointGroups) {
 				switch (group) {
 					case 'credentials':
-						const { credentialsController } = await import('@/credentials/credentials.controller');
-						app.use(`/${REST_PATH_SEGMENT}/credentials`, credentialsController);
+						const { CredentialsController } = await import('@/credentials/credentials.controller');
+						registerController(app, CredentialsController);
 						break;
 
 					case 'workflows':
