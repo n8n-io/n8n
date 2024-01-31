@@ -74,6 +74,7 @@ export class DropRoleMapping1705429061930 implements ReversibleMigration {
             FROM (${subQuery}) as mapping
             WHERE ${tableName}.${idColumn} = mapping.id${table !== 'user' ? ` AND ${tableName}.${uidColumn} = mapping.uid` : ''}`;
 
+
 		await runQuery(swQuery);
 
 		await addNotNull(table, 'role');
