@@ -452,6 +452,15 @@ async function parseRequestObject(requestObject: IDataObject) {
 		axiosConfig.maxRedirects = 0;
 	}
 
+	axiosConfig.beforeRedirect = (redirectedRequest) => {
+		if (axiosConfig.headers?.Authorization) {
+			redirectedRequest.headers.Authorization = axiosConfig.headers.Authorization;
+		}
+		if (axiosConfig.auth) {
+			redirectedRequest.auth = `${axiosConfig.auth.username}:${axiosConfig.auth.password}`;
+		}
+	};
+
 	if (requestObject.rejectUnauthorized === false) {
 		axiosConfig.httpsAgent = new Agent({
 			rejectUnauthorized: false,
