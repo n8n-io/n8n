@@ -19,7 +19,7 @@
 				:model-value="modelValue"
 				:is-read-only="isReadOnly"
 				:target-item="hoveringItem"
-				:is-single-line="isSingleLine"
+				:rows="rows"
 				:additional-data="additionalExpressionData"
 				:path="path"
 				@focus="onFocus"
@@ -83,9 +83,9 @@ export default defineComponent({
 			type: Boolean,
 			default: false,
 		},
-		isSingleLine: {
-			type: Boolean,
-			default: false,
+		rows: {
+			type: Number,
+			default: 5,
 		},
 		isAssignment: {
 			type: Boolean,

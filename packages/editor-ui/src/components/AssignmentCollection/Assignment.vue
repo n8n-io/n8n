@@ -150,7 +150,7 @@ const onBlur = (): void => {
 						display-options
 						hide-label
 						hide-hint
-						is-single-line
+						:rows="3"
 						:is-read-only="isReadOnly"
 						:parameter="nameParameter"
 						:value="assignment.name"
@@ -176,7 +176,7 @@ const onBlur = (): void => {
 						hide-label
 						hide-issues
 						hide-hint
-						is-single-line
+						:rows="3"
 						is-assignment
 						:is-read-only="isReadOnly"
 						:options-position="breakpoint === 'default' ? 'top' : 'bottom'"

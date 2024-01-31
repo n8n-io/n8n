@@ -9,16 +9,18 @@ withDefaults(defineProps<Props>(), { middleWidth: '160px' });
 	<n8n-resize-observer
 		:class="{ [$style.observer]: true }"
 		:breakpoints="[
-			{ bp: 'stacked', width: 340 },
-			{ bp: 'medium', width: 520 },
+			{ bp: 'stacked', width: 400 },
+			{ bp: 'medium', width: 680 },
 		]"
 	>
 		<template #default="{ bp }">
+			<div :class="$style.background"></div>
 			<div
 				:class="{
 					[$style.triple]: true,
 					[$style.stacked]: bp === 'stacked',
 					[$style.medium]: bp === 'medium',
+					[$style.default]: bp === 'default',
 					[$style.noRightSlot]: !$slots.right,
 					[$style.noMiddleSlot]: !$slots.middle,
 				}"
@@ -45,23 +47,41 @@ withDefaults(defineProps<Props>(), { middleWidth: '160px' });
 .triple {
 	display: flex;
 	flex-wrap: nowrap;
-	align-items: flex-end;
+	align-items: flex-start;
 }
 
 .observer {
+	--parameter-input-options-height: 22px;
 	width: 100%;
+	position: relative;
+}
+
+.background {
+	position: absolute;
+	background-color: var(--color-background-light);
+	top: var(--parameter-input-options-height);
+	bottom: 0;
+	left: 0;
+	right: 0;
+	border: 1px solid var(--border-color-base);
+	border-radius: var(--border-radius-base);
 }
 
 .item {
 	flex-shrink: 0;
-	flex-basis: 160px;
+	flex-basis: 240px;
 	flex-grow: 1;
 	--input-border-radius: 0;
-	--input-border-right-color: transparent;
+}
 
-	&.middle {
-		flex-grow: 0;
-	}
+.default .item:not(:first-child):not(:focus-within + .item) {
+	margin-left: -1px;
+}
+
+.middle {
+	flex-grow: 0;
+	flex-basis: 160px;
+	padding-top: var(--parameter-input-options-height);
 }
 
 .item:first-of-type {
@@ -69,7 +89,6 @@ withDefaults(defineProps<Props>(), { middleWidth: '160px' });
 	--input-border-bottom-left-radius: var(--border-radius-base);
 	--input-border-top-right-radius: 0;
 	--input-border-bottom-right-radius: 0;
-	--input-border-right-color: transparent;
 }
 
 .item:last-of-type {
@@ -77,7 +96,6 @@ withDefaults(defineProps<Props>(), { middleWidth: '160px' });
 	--input-border-bottom-left-radius: 0;
 	--input-border-top-right-radius: var(--border-radius-base);
 	--input-border-bottom-right-radius: var(--border-radius-base);
-	--input-border-right-color: var(--input-border-color-base);
 }
 
 .medium:not(.noRightSlot) {
@@ -86,44 +104,53 @@ withDefaults(defineProps<Props>(), { middleWidth: '160px' });
 	.middle {
 		--input-border-top-right-radius: var(--border-radius-base);
 		--input-border-bottom-right-radius: 0;
-		--input-border-bottom-color: transparent;
-		--input-border-right-color: var(--input-border-color-base);
+
+		&:not(:focus-within + .item) {
+			margin-left: -1px;
+		}
 	}
 
 	.item:first-of-type {
 		--input-border-top-left-radius: var(--border-radius-base);
 		--input-border-top-right-radius: 0;
 		--input-border-bottom-left-radius: 0;
-		--input-border-right-color: transparent;
-		--input-border-bottom-color: transparent;
 	}
 
 	.item:last-of-type {
-		flex-basis: 340px;
+		flex-basis: 400px;
+
 		--input-border-top-left-radius: 0;
 		--input-border-top-right-radius: 0;
 		--input-border-bottom-left-radius: var(--border-radius-base);
 		--input-border-bottom-right-radius: var(--border-radius-base);
+
+		&:not(:focus-within ~ .item) {
+			margin-top: -1px;
+		}
 	}
 }
 
 .stacked {
 	display: block;
 
+	.middle {
+		padding-top: 0;
+	}
+
 	.middle:not(.item:last-of-type) {
 		width: 100%;
-		--input-border-right-color: var(--input-border-color-base);
-		--input-border-bottom-color: transparent;
 		--input-border-radius: 0;
 	}
 
 	.item:first-of-type {
-		--input-border-right-color: var(--input-border-color-base);
-		--input-border-bottom-color: transparent;
 		--input-border-top-left-radius: var(--border-radius-base);
 		--input-border-top-right-radius: var(--border-radius-base);
 		--input-border-bottom-left-radius: 0;
 		--input-border-bottom-right-radius: 0;
+	}
+
+	.item:not(:first-of-type):not(:focus-within + .item) {
+		margin-top: -1px;
 	}
 
 	.item:last-of-type {
@@ -131,7 +158,6 @@ withDefaults(defineProps<Props>(), { middleWidth: '160px' });
 		--input-border-top-right-radius: 0;
 		--input-border-bottom-left-radius: var(--border-radius-base);
 		--input-border-bottom-right-radius: var(--border-radius-base);
-		--input-border-right-color: var(--input-border-color-base);
 	}
 }
 </style>

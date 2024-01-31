@@ -46,7 +46,7 @@
 				:model-value="expressionDisplayValue"
 				:title="displayTitle"
 				:is-read-only="isReadOnly"
-				:is-single-line="isSingleLine"
+				:rows="rows"
 				:is-assignment="isAssignment"
 				:path="path"
 				:additional-expression-data="additionalExpressionData"
@@ -550,8 +550,9 @@ export default defineComponent({
 		isReadOnly: {
 			type: Boolean,
 		},
-		isSingleLine: {
-			type: Boolean,
+		rows: {
+			type: Number,
+			default: 5,
 		},
 		isAssignment: {
 			type: Boolean,

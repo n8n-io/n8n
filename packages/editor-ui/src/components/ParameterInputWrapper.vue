@@ -19,7 +19,7 @@
 			:expression-evaluated="evaluatedExpressionValue"
 			:additional-expression-data="resolvedAdditionalExpressionData"
 			:label="label"
-			:is-single-line="isSingleLine"
+			:rows="rows"
 			:data-test-id="`parameter-input-${parsedParameterName}`"
 			:event-bus="eventBus"
 			@focus="onFocus"
@@ -87,8 +87,9 @@ export default defineComponent({
 		isReadOnly: {
 			type: Boolean,
 		},
-		isSingleLine: {
-			type: Boolean,
+		rows: {
+			type: Number,
+			default: 5,
 		},
 		isAssignment: {
 			type: Boolean,

@@ -222,7 +222,7 @@ const onBlur = (): void => {
 					hide-label
 					hide-hint
 					hide-issues
-					is-single-line
+					:rows="3"
 					:is-read-only="readOnly"
 					:parameter="leftParameter"
 					:value="condition.leftValue"
@@ -235,7 +235,6 @@ const onBlur = (): void => {
 			</template>
 			<template #middle>
 				<OperatorSelect
-					:class="$style.select"
 					:selected="`${operator.type}:${operator.operation}`"
 					:read-only="readOnly"
 					@operatorChange="onOperatorChange"
@@ -248,7 +247,7 @@ const onBlur = (): void => {
 					hide-label
 					hide-hint
 					hide-issues
-					is-single-line
+					:rows="3"
 					:is-read-only="readOnly"
 					:options-position="breakpoint === 'default' ? 'top' : 'bottom'"
 					:parameter="rightParameter"
