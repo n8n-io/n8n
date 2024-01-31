@@ -805,13 +805,15 @@ export default defineComponent({
 		this.clipboard.onPaste.value = this.onClipboardPasteEvent;
 
 		this.canvasStore.startLoading();
-		const loadPromises = [
-			this.loadActiveWorkflows(),
-			this.loadCredentials(),
-			this.loadCredentialTypes(),
-			this.loadVariables(),
-			this.loadSecrets(),
-		];
+		const loadPromises = this.isDemo
+			? []
+			: [
+					this.loadActiveWorkflows(),
+					this.loadCredentials(),
+					this.loadCredentialTypes(),
+					this.loadVariables(),
+					this.loadSecrets(),
+			  ];
 
 		if (this.nodeTypesStore.allNodeTypes.length === 0) {
 			loadPromises.push(this.loadNodeTypes());
