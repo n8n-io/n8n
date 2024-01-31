@@ -1502,6 +1502,9 @@ importers:
       ast-types:
         specifier: 0.15.2
         version: 0.15.2
+      axios:
+        specifier: 1.6.7
+        version: 1.6.7(debug@3.2.7)
       callsites:
         specifier: 3.1.0
         version: 3.1.0
