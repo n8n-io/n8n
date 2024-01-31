@@ -783,12 +783,7 @@ export class ActiveWorkflowRunner {
 
 		// if it's active in memory then it's a trigger
 		// so remove from list of actives workflows
-		if (this.activeWorkflows.isActive(workflowId)) {
-			const removalSuccess = await this.activeWorkflows.remove(workflowId);
-			if (removalSuccess) {
-				this.logger.verbose(`Successfully deactivated workflow "${workflowId}"`, { workflowId });
-			}
-		}
+		await this.removeWorkflowTriggersAndPollers(workflowId);
 	}
 
 	/**
