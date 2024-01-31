@@ -314,12 +314,16 @@ describe('NodeExecuteFunctions', () => {
 							username: 'testuser',
 							password: 'testpassword',
 						},
+						headers: {
+							'X-Other-Header': 'otherHeaderContent',
+						},
 						resolveWithFullResponse: true,
 					});
 
 					expect(response.statusCode).toBe(200);
 					const forwardedHeaders = JSON.parse(response.body);
 					expect(forwardedHeaders.authorization).toEqual('Basic dGVzdHVzZXI6dGVzdHBhc3N3b3Jk');
+					expect(forwardedHeaders['x-other-header']).toBe('otherHeaderContent');
 				});
 			});
 
@@ -340,12 +344,16 @@ describe('NodeExecuteFunctions', () => {
 							username: 'testuser',
 							password: 'testpassword',
 						},
+						headers: {
+							'X-Other-Header': 'otherHeaderContent',
+						},
 						resolveWithFullResponse: true,
 					});
 
 					expect(response.statusCode).toBe(200);
 					const forwardedHeaders = JSON.parse(response.body);
 					expect(forwardedHeaders.authorization).toBeUndefined();
+					expect(forwardedHeaders['x-other-header']).toBe('otherHeaderContent');
 				});
 			});
 
