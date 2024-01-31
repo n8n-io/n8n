@@ -301,6 +301,11 @@ export class InternalHooks {
 			return;
 		}
 
+		if (runData?.status === 'waiting') {
+			// No need to send telemetry or logs when the workflow hasn't finished yet.
+			return;
+		}
+
 		const promises = [];
 
 		const telemetryProperties: IExecutionTrackProperties = {
