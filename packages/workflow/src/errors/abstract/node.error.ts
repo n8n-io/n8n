@@ -39,12 +39,15 @@ export abstract class NodeError extends ExecutionBaseError {
 		readonly node: INode,
 		error: Error | JsonObject,
 	) {
-		if (error instanceof NodeError) return error;
-
 		const isError = error instanceof Error;
 		const message = isError ? error.message : '';
 		const options = isError ? { cause: error } : { errorResponse: error };
 		super(message, options);
+
+		if (error instanceof NodeError) {
+			this.level = 'error';
+			this.message = `[RE-WRAPPED]: ${message}`;
+		}
 	}
 
 	/**
