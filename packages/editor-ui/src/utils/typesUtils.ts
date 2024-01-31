@@ -162,6 +162,6 @@ export const getObjectKeys = <T extends object, K extends keyof T>(o: T): K[] =>
  * For a string to be converted to a number it has to contain only digits.
  * @param value The value to convert to a number
  */
-export const stringToNumber = (value: string): number | string => {
+export const tryToParseNumber = (value: string): number | string => {
 	return isNaN(+value) ? value : +value;
 };
