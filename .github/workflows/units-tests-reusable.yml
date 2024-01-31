@@ -35,8 +35,7 @@ jobs:
           repository: n8n-io/n8n
           ref: ${{ inputs.ref }}
 
-      - uses: pnpm/action-setup@v2.4.0
-
+      - run: corepack enable
       - name: Use Node.js ${{ inputs.nodeVersion }}
         uses: actions/setup-node@v4.0.1
         with:

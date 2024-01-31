@@ -23,9 +23,8 @@ jobs:
           repository: n8n-io/test-workflows
           path: test-workflows
 
-      - uses: pnpm/action-setup@v2.4.0
-        with:
-          package_json_file: n8n/package.json
+      - run: corepack enable
+        working-directory: n8n
 
       - uses: actions/setup-node@v4.0.1
         with:
