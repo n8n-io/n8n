@@ -31,7 +31,6 @@ import type { WorkflowExecute } from 'n8n-core';
 
 import type PCancelable from 'p-cancelable';
 
-import type { DatabaseType } from '@db/types';
 import type { AuthProviderType } from '@db/entities/AuthIdentity';
 import type { SharedCredentials } from '@db/entities/SharedCredentials';
 import type { TagEntity } from '@db/entities/TagEntity';
@@ -265,37 +264,6 @@ export interface IWebhookManager {
 	) => Promise<WebhookAccessControlOptions | undefined>;
 
 	executeWebhook(req: WebhookRequest, res: Response): Promise<IResponseCallbackData>;
-}
-
-export interface IDiagnosticInfo {
-	versionCli: string;
-	databaseType: DatabaseType;
-	notificationsEnabled: boolean;
-	disableProductionWebhooksOnMainProcess: boolean;
-	systemInfo: {
-		os: {
-			type?: string;
-			version?: string;
-		};
-		memory?: number;
-		cpus: {
-			count?: number;
-			model?: string;
-			speed?: number;
-		};
-	};
-	executionVariables: {
-		[key: string]: string | number | boolean | undefined;
-	};
-	deploymentType: string;
-	binaryDataMode: string;
-	smtp_set_up: boolean;
-	ldap_allowed: boolean;
-	saml_enabled: boolean;
-	binary_data_s3: boolean;
-	multi_main_setup_enabled: boolean;
-	licensePlanName?: string;
-	licenseTenantId?: number;
 }
 
 export interface ITelemetryUserDeletionData {
