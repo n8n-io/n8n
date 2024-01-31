@@ -33,7 +33,6 @@ export { setupTestServer } from './testServer';
 export async function initActiveWorkflowRunner(mockOrchestrationService = true) {
 	if (mockOrchestrationService) mockInstance(OrchestrationService);
 	mockInstance(Push);
-	mockInstance(OrchestrationService);
 	mockInstance(ExecutionService);
 	const { ActiveWorkflowRunner } = await import('@/ActiveWorkflowRunner');
 	const workflowRunner = Container.get(ActiveWorkflowRunner);
