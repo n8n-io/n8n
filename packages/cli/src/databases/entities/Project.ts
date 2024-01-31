@@ -1,6 +1,8 @@
 import { Column, Entity, OneToMany } from 'typeorm';
 import { WithTimestampsAndStringId } from './AbstractEntity';
 import type { ProjectRelation } from './ProjectRelation';
+import type { SharedCredentials } from './SharedCredentials';
+import type { SharedWorkflow } from './SharedWorkflow';
 
 export type ProjectType = 'personal' | 'team' | 'public';
 
@@ -14,4 +16,10 @@ export class Project extends WithTimestampsAndStringId {
 
 	@OneToMany('ProjectRelation', 'project')
 	projectRelations: ProjectRelation[];
+
+	@OneToMany('SharedCredentials', 'project')
+	sharedCredentials: SharedCredentials[];
+
+	@OneToMany('SharedWorkflow', 'project')
+	sharedWorkflows: SharedWorkflow[];
 }
