@@ -50,23 +50,17 @@ describe('WorkflowTagMappingRepository', () => {
 				newTags.map((t) => t.id),
 			);
 
-			const taggings = await taggingRepository.find({
-				where: { workflowId: workflow.id },
-				order: { tagId: 'ASC' },
-			});
+			const taggings = await taggingRepository.findBy({ workflowId: workflow.id });
 
 			expect(taggings).toHaveLength(2);
 
-			const [firstNewTag, secondNewTag] = newTags.sort((a, b) => a.id.localeCompare(b.id));
+			const [firstNewTag, secondNewTag] = newTags;
 
-			const [firstTagging, secondTagging] = taggings;
-
-			expect(firstTagging).toEqual(
-				expect.objectContaining({ tagId: firstNewTag.id, workflowId: workflow.id }),
-			);
-
-			expect(secondTagging).toEqual(
-				expect.objectContaining({ tagId: secondNewTag.id, workflowId: workflow.id }),
+			expect(taggings).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({ tagId: firstNewTag.id, workflowId: workflow.id }),
+					expect.objectContaining({ tagId: secondNewTag.id, workflowId: workflow.id }),
+				]),
 			);
 		});
 
