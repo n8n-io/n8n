@@ -358,9 +358,15 @@ export const routes = [
 			default: NodeView,
 		},
 		meta: {
-			...(import.meta.env.VUE_APP_PUBLIC_WORKFLOWS_DEMO_ROUTE
-				? {}
-				: { middleware: ['authenticated'] }),
+			middleware: ['authenticated'],
+			middelwareOptions: {
+				authenticated: {
+					bypass: () => {
+						const settingsStore = useSettingsStore();
+						return settingsStore.isPreviewMode;
+					},
+				},
+			},
 		},
 	},
 	{

@@ -806,7 +806,7 @@ export default defineComponent({
 
 		this.canvasStore.startLoading();
 		const loadPromises =
-			import.meta.env.VUE_APP_PUBLIC_WORKFLOWS_DEMO_ROUTE && this.isDemo
+			this.settingsStore.isPreviewMode && this.isDemo
 				? []
 				: [
 						this.loadActiveWorkflows(),

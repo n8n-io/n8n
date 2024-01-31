@@ -14,7 +14,6 @@ declare global {
 			NODE_ENV: 'development' | 'production';
 			VUE_APP_URL_BASE_API: string;
 			VUE_APP_MAX_PINNED_DATA_SIZE: string;
-			VUE_APP_PUBLIC_WORKFLOWS_DEMO_ROUTE: boolean;
 		};
 	}
 
