@@ -267,9 +267,10 @@ export class Worker extends BaseCommand {
 	}
 
 	async init() {
-		const shutdownTimeoutFromDeprecatedEnv = config.getEnv('queue.bull.gracefulShutdownTimeout');
-		if (shutdownTimeoutFromDeprecatedEnv !== config.default('queue.bull.gracefulShutdownTimeout')) {
-			this.gracefulShutdownTimeoutInS = shutdownTimeoutFromDeprecatedEnv;
+		const { QUEUE_WORKER_TIMEOUT } = process.env;
+		if (QUEUE_WORKER_TIMEOUT) {
+			this.gracefulShutdownTimeoutInS =
+				parseInt(QUEUE_WORKER_TIMEOUT, 10) || config.default('queue.bull.gracefulShutdownTimeout');
 			this.logger.warn(
 				'QUEUE_WORKER_TIMEOUT has been deprecated. Rename it to N8N_GRACEFUL_SHUTDOWN_TIMEOUT.',
 			);
