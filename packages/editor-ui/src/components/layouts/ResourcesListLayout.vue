@@ -454,6 +454,7 @@ export default defineComponent({
 
 			this.resettingFilters = true;
 			this.sendFiltersTelemetry('reset');
+			this.$emit('update:filters', this.filtersModel);
 		},
 		focusSearchInput() {
 			if (this.$refs.search) {

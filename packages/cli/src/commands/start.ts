@@ -77,8 +77,7 @@ export class Start extends BaseCommand {
 	private openBrowser() {
 		const editorUrl = Container.get(UrlService).baseUrl;
 
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		open(editorUrl, { wait: true }).catch((error: Error) => {
+		open(editorUrl, { wait: true }).catch(() => {
 			console.log(
 				`\nWas not able to open URL in browser. Please open manually by visiting:\n${editorUrl}\n`,
 			);

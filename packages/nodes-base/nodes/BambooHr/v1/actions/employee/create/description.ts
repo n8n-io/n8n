@@ -44,7 +44,7 @@ export const employeeCreateDescription: EmployeeProperties = [
 		},
 		default: '',
 	},
-	...createEmployeeSharedDescription(true),
+	...(createEmployeeSharedDescription(true) as EmployeeProperties),
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
