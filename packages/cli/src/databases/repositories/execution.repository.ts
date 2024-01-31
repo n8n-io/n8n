@@ -608,9 +608,11 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	};
 
 	async findLatestFinished(n: number): Promise<ExecutionSummary[]> {
+		const finished: ExecutionStatus[] = ['success', 'error', 'failed'];
+
 		const findManyOptions: FindManyOptions<ExecutionEntity> = {
 			select: this.summaryFields,
-			where: { status: In(['success', 'error', 'failed']) },
+			where: { status: In(finished) },
 			order: { stoppedAt: 'DESC' },
 			take: n,
 		};
