@@ -2,7 +2,7 @@
 	<div
 		:class="{
 			['execution-card']: true,
-			[$style.executionCard]: true,
+			[$style.WorkflowExecutionsCard]: true,
 			[$style.active]: isActive,
 			[$style[executionUIDetails.name]]: true,
 			[$style.highlight]: highlight,
@@ -37,7 +37,7 @@
 						size="small"
 					>
 						{{ $locale.baseText('executionDetails.runningTimeRunning') }}
-						<ExecutionTime :start-time="execution.startedAt" />
+						<ExecutionsTime :start-time="execution.startedAt" />
 					</n8n-text>
 					<n8n-text
 						v-else-if="executionUIDetails.runningTime !== ''"
@@ -85,14 +85,16 @@
 import { defineComponent } from 'vue';
 import type { IExecutionUIData } from '@/mixins/executionsHelpers';
 import { VIEWS } from '@/constants';
-import ExecutionTime from '@/components/ExecutionTime.vue';
+import ExecutionsTime from '@/components/executions/ExecutionsTime.vue';
 import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
 import type { ExecutionSummary } from 'n8n-workflow';
+import { mapStores } from 'pinia';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 export default defineComponent({
-	name: 'ExecutionCard',
+	name: 'WorkflowExecutionsCard',
 	components: {
-		ExecutionTime,
+		ExecutionsTime,
 	},
 	props: {
 		execution: {
@@ -117,6 +119,10 @@ export default defineComponent({
 		};
 	},
 	computed: {
+		...mapStores(useWorkflowsStore),
+		currentWorkflow(): string {
+			return (this.$route.params.name as string) || this.workflowsStore.workflowId;
+		},
 		retryExecutionActions(): object[] {
 			return [
 				{
@@ -145,7 +151,7 @@ export default defineComponent({
 </script>
 
 <style module lang="scss">
-.executionCard {
+.WorkflowExecutionsCard {
 	display: flex;
 	flex-direction: column;
 	padding-right: var(--spacing-m);

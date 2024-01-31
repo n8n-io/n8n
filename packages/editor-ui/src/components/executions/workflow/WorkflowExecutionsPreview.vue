@@ -165,7 +165,7 @@ import { mapStores } from 'pinia';
 type RetryDropdownRef = InstanceType<typeof ElDropdown> & { hide: () => void };
 
 export default defineComponent({
-	name: 'ExecutionPreview',
+	name: 'WorkflowExecutionsPreview',
 	components: {
 		ElDropdown,
 		WorkflowPreview,
@@ -181,7 +181,7 @@ export default defineComponent({
 		};
 	},
 	computed: {
-		...mapStores([useWorkflowsStore]),
+		...mapStores(useWorkflowsStore),
 		executionId(): string {
 			return this.$route.params.executionId as string;
 		},

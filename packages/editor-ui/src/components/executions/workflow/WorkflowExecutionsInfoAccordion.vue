@@ -54,7 +54,7 @@ interface IWorkflowSaveSettings {
 }
 
 export default defineComponent({
-	name: 'ExecutionsInfoAccordion',
+	name: 'WorkflowExecutionsInfoAccordion',
 	mixins: [workflowHelpers],
 	props: {
 		initiallyExpanded: {

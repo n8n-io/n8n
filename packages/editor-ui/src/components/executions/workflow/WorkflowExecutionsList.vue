@@ -1,6 +1,6 @@
 <template>
 	<div :class="$style.container">
-		<ExecutionsSidebar
+		<WorkflowExecutionsSidebar
 			:executions="executions"
 			:loading="loading && !executions.length"
 			:loading-more="loadingMore"
@@ -27,7 +27,7 @@
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 
-import ExecutionsSidebar from '@/components/ExecutionsView/ExecutionsSidebar.vue';
+import WorkflowExecutionsSidebar from '@/components/executions/workflow/WorkflowExecutionsSidebar.vue';
 import {
 	MAIN_HEADER_TABS,
 	MODAL_CANCEL,
@@ -78,7 +78,7 @@ const LOAD_MORE_PAGE_SIZE = 100;
 export default defineComponent({
 	name: 'ExecutionsList',
 	components: {
-		ExecutionsSidebar,
+		WorkflowExecutionsSidebar,
 	},
 	mixins: [workflowHelpers],
 	setup() {

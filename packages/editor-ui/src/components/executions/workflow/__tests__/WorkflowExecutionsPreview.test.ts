@@ -7,7 +7,7 @@ import { createPinia, PiniaVuePlugin, setActivePinia } from 'pinia';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import ExecutionPreview from '@/components/ExecutionsView/ExecutionPreview.vue';
+import WorkflowExecutionsPreview from '@/components/executions/workflow/WorkflowExecutionsPreview.vue';
 import { VIEWS } from '@/constants';
 import { i18nInstance, I18nPlugin } from '@/plugins/i18n';
 import { FontAwesomePlugin } from '@/plugins/icons';
@@ -62,7 +62,7 @@ const executionDataFactory = (): ExecutionSummary => ({
 	retrySuccessId: generateUndefinedNullOrString(),
 });
 
-describe('ExecutionPreview.vue', () => {
+describe('WorkflowExecutionsPreview.vue', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let settingsStore: ReturnType<typeof useSettingsStore>;
 	const executionData: ExecutionSummary = executionDataFactory();
@@ -88,7 +88,7 @@ describe('ExecutionPreview.vue', () => {
 			);
 
 			// Not using createComponentRenderer helper here because this component should not stub `router-link`
-			const { getByTestId } = render(ExecutionPreview, {
+			const { getByTestId } = render(WorkflowExecutionsPreview, {
 				global: {
 					plugins: [
 						I18nPlugin,

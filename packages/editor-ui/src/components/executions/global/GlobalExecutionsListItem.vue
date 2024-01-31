@@ -7,7 +7,7 @@ import { VIEWS, WAIT_TIME_UNLIMITED } from '@/constants';
 import { useRouter } from 'vue-router';
 import { convertToDisplayDate } from '@/utils/formatters/dateFormatter';
 import { i18n as locale } from '@/plugins/i18n';
-import ExecutionTime from '@/components/ExecutionTime.vue';
+import ExecutionsTime from '@/components/executions/ExecutionsTime.vue';
 
 const emit = defineEmits(['stop', 'select', 'retrySaved', 'retryOriginal', 'delete']);
 
@@ -159,7 +159,7 @@ async function handleActionItemClick(commandData: 'retrySaved' | 'retryOriginal'
 <template>
 	<tr :class="classes">
 		<td>
-			<el-checkbox
+			<ElCheckbox
 				v-if="execution.stoppedAt !== undefined && execution.id"
 				:model-value="selected"
 				label=""
@@ -178,9 +178,14 @@ async function handleActionItemClick(commandData: 'retrySaved' | 'retryOriginal'
 		<td>
 			<div :class="$style.statusColumn">
 				<span v-if="isRunning" :class="$style.spinner">
-					<font-awesome-icon icon="spinner" spin />
+					<FontAwesomeIcon icon="spinner" spin />
 				</span>
-				<i18n-t v-if="!isWaitTillIndefinite" tag="span" :keypath="statusTextTranslationPath">
+				<i18n-t
+					v-if="!isWaitTillIndefinite"
+					data-test-id="execution-status"
+					tag="span"
+					:keypath="statusTextTranslationPath"
+				>
 					<template #status>
 						<span :class="$style.status">{{ statusText }}</span>
 					</template>
@@ -189,15 +194,15 @@ async function handleActionItemClick(commandData: 'retrySaved' | 'retryOriginal'
 						<span v-else-if="execution.stoppedAt !== null && execution.stoppedAt !== undefined">
 							{{ formattedStoppedAtDate }}
 						</span>
-						<ExecutionTime v-else :start-time="execution.startedAt" />
+						<ExecutionsTime v-else :start-time="execution.startedAt" />
 					</template>
 				</i18n-t>
-				<n8n-tooltip v-else placement="top">
+				<N8nTooltip v-else placement="top">
 					<template #content>
 						<span>{{ statusTooltipText }}</span>
 					</template>
 					<span :class="$style.status">{{ statusText }}</span>
-				</n8n-tooltip>
+				</N8nTooltip>
 			</div>
 		</td>
 		<td>
@@ -214,16 +219,16 @@ async function handleActionItemClick(commandData: 'retrySaved' | 'retryOriginal'
 			</span>
 		</td>
 		<td>
-			<n8n-tooltip v-if="execution.mode === 'manual'" placement="top">
+			<N8nTooltip v-if="execution.mode === 'manual'" placement="top">
 				<template #content>
 					<span>{{ i18n.baseText('executionsList.test') }}</span>
 				</template>
-				<font-awesome-icon icon="flask" />
-			</n8n-tooltip>
+				<FontAwesomeIcon icon="flask" />
+			</N8nTooltip>
 		</td>
 		<td>
 			<div :class="$style.buttonCell">
-				<n8n-button
+				<N8nButton
 					v-if="execution.stoppedAt !== undefined && execution.id"
 					size="small"
 					outline
@@ -234,8 +239,9 @@ async function handleActionItemClick(commandData: 'retrySaved' | 'retryOriginal'
 		</td>
 		<td>
 			<div :class="$style.buttonCell">
-				<n8n-button
+				<N8nButton
 					v-if="execution.stoppedAt === undefined || execution.waitTill"
+					data-test-id="stop-execution-button"
 					size="small"
 					outline
 					:label="i18n.baseText('executionsList.stop')"
@@ -245,43 +251,41 @@ async function handleActionItemClick(commandData: 'retrySaved' | 'retryOriginal'
 			</div>
 		</td>
 		<td>
-			<el-dropdown v-if="!isRunning" trigger="click" @command="handleActionItemClick">
-				<span class="retry-button">
-					<n8n-icon-button
-						text
-						type="tertiary"
-						size="mini"
-						:title="i18n.baseText('executionsList.retryExecution')"
-						icon="ellipsis-v"
-					/>
-				</span>
+			<ElDropdown v-if="!isRunning" trigger="click" @command="handleActionItemClick">
+				<N8nIconButton text type="tertiary" size="mini" icon="ellipsis-v" />
 				<template #dropdown>
-					<el-dropdown-menu
+					<ElDropdownMenu
 						:class="{
 							[$style.actions]: true,
 							[$style.deleteOnly]: !isExecutionRetriable,
 						}"
 					>
-						<el-dropdown-item
+						<ElDropdownItem
 							v-if="isExecutionRetriable"
+							data-test-id="execution-retry-saved-dropdown-item"
 							:class="$style.retryAction"
 							command="retrySaved"
 						>
 							{{ i18n.baseText('executionsList.retryWithCurrentlySavedWorkflow') }}
-						</el-dropdown-item>
-						<el-dropdown-item
+						</ElDropdownItem>
+						<ElDropdownItem
 							v-if="isExecutionRetriable"
+							data-test-id="execution-retry-original-dropdown-item"
 							:class="$style.retryAction"
 							command="retryOriginal"
 						>
 							{{ i18n.baseText('executionsList.retryWithOriginalWorkflow') }}
-						</el-dropdown-item>
-						<el-dropdown-item :class="$style.deleteAction" command="delete">
+						</ElDropdownItem>
+						<ElDropdownItem
+							data-test-id="execution-delete-dropdown-item"
+							:class="$style.deleteAction"
+							command="delete"
+						>
 							{{ i18n.baseText('generic.delete') }}
-						</el-dropdown-item>
-					</el-dropdown-menu>
+						</ElDropdownItem>
+					</ElDropdownMenu>
 				</template>
-			</el-dropdown>
+			</ElDropdown>
 		</td>
 	</tr>
 </template>

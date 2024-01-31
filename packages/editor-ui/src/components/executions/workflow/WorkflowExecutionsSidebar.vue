@@ -17,7 +17,7 @@
 			>
 				{{ $locale.baseText('executionsList.autoRefresh') }}
 			</el-checkbox>
-			<ExecutionFilter popover-placement="left-start" @filterChanged="onFilterChanged" />
+			<ExecutionsFilter popover-placement="left-start" @filterChanged="onFilterChanged" />
 		</div>
 		<div
 			ref="executionList"
@@ -33,7 +33,7 @@
 					{{ $locale.baseText('executionsLandingPage.noResults') }}
 				</n8n-text>
 			</div>
-			<ExecutionCard
+			<WorkflowExecutionsCard
 				v-else-if="temporaryExecution"
 				:ref="`execution-${temporaryExecution.id}`"
 				:execution="temporaryExecution"
@@ -41,7 +41,7 @@
 				:show-gap="true"
 				@retryExecution="onRetryExecution"
 			/>
-			<ExecutionCard
+			<WorkflowExecutionsCard
 				v-for="execution in executions"
 				:key="execution.id"
 				:ref="`execution-${execution.id}`"
@@ -54,15 +54,15 @@
 			</div>
 		</div>
 		<div :class="$style.infoAccordion">
-			<ExecutionsInfoAccordion :initially-expanded="false" />
+			<WorkflowExecutionsInfoAccordion :initially-expanded="false" />
 		</div>
 	</div>
 </template>
 
 <script lang="ts">
-import ExecutionCard from '@/components/ExecutionsView/ExecutionCard.vue';
-import ExecutionsInfoAccordion from '@/components/ExecutionsView/ExecutionsInfoAccordion.vue';
-import ExecutionFilter from '@/components/ExecutionFilter.vue';
+import WorkflowExecutionsCard from '@/components/executions/workflow/WorkflowExecutionsCard.vue';
+import WorkflowExecutionsInfoAccordion from '@/components/executions/workflow/WorkflowExecutionsInfoAccordion.vue';
+import ExecutionsFilter from '@/components/executions/ExecutionsFilter.vue';
 import { VIEWS } from '@/constants';
 import type { ExecutionSummary } from 'n8n-workflow';
 import type { Route } from 'vue-router';
@@ -73,14 +73,14 @@ import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { ExecutionFilterType } from '@/Interface';
 
-type ExecutionCardRef = InstanceType<typeof ExecutionCard>;
+type WorkflowExecutionsCardRef = InstanceType<typeof WorkflowExecutionsCard>;
 
 export default defineComponent({
-	name: 'ExecutionsSidebar',
+	name: 'WorkflowExecutionsSidebar',
 	components: {
-		ExecutionCard,
-		ExecutionsInfoAccordion,
-		ExecutionFilter,
+		WorkflowExecutionsCard,
+		WorkflowExecutionsInfoAccordion,
+		ExecutionsFilter,
 	},
 	props: {
 		autoRefresh: {
@@ -155,14 +155,14 @@ export default defineComponent({
 		},
 		checkListSize(): void {
 			const sidebarContainerRef = this.$refs.container as HTMLElement | undefined;
-			const currentExecutionCardRefs = this.$refs[
+			const currentWorkflowExecutionsCardRefs = this.$refs[
 				`execution-${this.workflowsStore.activeWorkflowExecution?.id}`
-			] as ExecutionCardRef[] | undefined;
+			] as WorkflowExecutionsCardRef[] | undefined;
 
 			// Find out how many execution card can fit into list
 			// and load more if needed
-			if (sidebarContainerRef && currentExecutionCardRefs?.length) {
-				const cardElement = currentExecutionCardRefs[0].$el as HTMLElement;
+			if (sidebarContainerRef && currentWorkflowExecutionsCardRefs?.length) {
+				const cardElement = currentWorkflowExecutionsCardRefs[0].$el as HTMLElement;
 				const listCapacity = Math.ceil(sidebarContainerRef.clientHeight / cardElement.clientHeight);
 
 				if (listCapacity > this.executions.length) {
@@ -172,16 +172,16 @@ export default defineComponent({
 		},
 		scrollToActiveCard(): void {
 			const executionsListRef = this.$refs.executionList as HTMLElement | undefined;
-			const currentExecutionCardRefs = this.$refs[
+			const currentWorkflowExecutionsCardRefs = this.$refs[
 				`execution-${this.workflowsStore.activeWorkflowExecution?.id}`
-			] as ExecutionCardRef[] | undefined;
+			] as WorkflowExecutionsCardRef[] | undefined;
 
 			if (
 				executionsListRef &&
-				currentExecutionCardRefs?.length &&
+				currentWorkflowExecutionsCardRefs?.length &&
 				this.workflowsStore.activeWorkflowExecution
 			) {
-				const cardElement = currentExecutionCardRefs[0].$el as HTMLElement;
+				const cardElement = currentWorkflowExecutionsCardRefs[0].$el as HTMLElement;
 				const cardRect = cardElement.getBoundingClientRect();
 				const LIST_HEADER_OFFSET = 200;
 				if (cardRect.top > executionsListRef.offsetHeight) {

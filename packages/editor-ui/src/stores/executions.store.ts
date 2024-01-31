@@ -58,23 +58,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 	});
 
 	const filteredExecutions = computed(() => {
-		return [...currentExecutions.value, ...executions.value].filter((execution) => {
-			let matches = true;
-
-			if (filters.value.workflowId === 'all') {
-				matches = matches && true;
-			} else {
-				matches = matches && execution.workflowId === filters.value.workflowId;
-			}
-
-			if (filters.value.status === 'all') {
-				matches = matches && true;
-			} else {
-				matches = matches && filters.value.status.includes(execution.status as string);
-			}
-
-			return matches;
-		});
+		return filterExecutions([...currentExecutions.value, ...executions.value], filters.value);
 	});
 
 	const executionsByWorkflowId = computed(() =>
@@ -290,6 +274,26 @@ export const useExecutionsStore = defineStore('executions', () => {
 		}
 	}
 
+	function filterExecutions(data: ExecutionSummary[], filter: ExecutionFilterType) {
+		return data.filter((execution) => {
+			let matches = true;
+
+			if (filter.workflowId === 'all') {
+				matches = matches && true;
+			} else {
+				matches = matches && execution.workflowId === filter.workflowId;
+			}
+
+			if (filter.status === 'all') {
+				matches = matches && true;
+			} else {
+				matches = matches && filter.status.includes(execution.status as string);
+			}
+
+			return matches;
+		});
+	}
+
 	return {
 		loading,
 		executionsById,
@@ -316,5 +320,6 @@ export const useExecutionsStore = defineStore('executions', () => {
 		stopCurrentExecution,
 		retryExecution,
 		deleteExecutions,
+		filterExecutions,
 	};
 });

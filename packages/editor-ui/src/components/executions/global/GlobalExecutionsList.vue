@@ -1,7 +1,7 @@
 <script lang="ts" setup>
-import { computed, onBeforeMount, onBeforeUnmount, onMounted, ref } from 'vue';
-import ExecutionFilter from '@/components/ExecutionFilter.vue';
-import ExecutionsGlobalListItem from '@/components/executions/global/ListItem.vue';
+import { computed, PropType, ref } from 'vue';
+import ExecutionsFilter from '@/components/executions/ExecutionsFilter.vue';
+import GlobalExecutionsListItem from '@/components/executions/global/GlobalExecutionsListItem.vue';
 import { MODAL_CONFIRM } from '@/constants';
 import { useToast } from '@/composables/useToast';
 import { useMessage } from '@/composables/useMessage';
@@ -11,17 +11,35 @@ import type { ExecutionFilterType, IWorkflowDb } from '@/Interface';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { isEmpty } from '@/utils/typesUtils';
-import { setPageTitle } from '@/utils/htmlUtils';
-import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useExecutionsStore } from '@/stores/executions.store';
+
+const props = defineProps({
+	data: {
+		type: Array as PropType<ExecutionSummary[]>,
+		required: true,
+	},
+	filters: {
+		type: Object as PropType<ExecutionFilterType>,
+		default: () => ({}),
+	},
+	total: {
+		type: Number,
+		default: 0,
+	},
+	estimated: {
+		type: Boolean,
+		default: false,
+	},
+});
 
 const emit = defineEmits(['closeModal']);
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
-const externalHooks = useExternalHooks();
 const workflowsStore = useWorkflowsStore();
 const executionsStore = useExecutionsStore();
+
+const filteredData = computed(() => executionsStore.filterExecutions(props.data, props.filters));
 
 const isMounted = ref(false);
 const allVisibleSelected = ref(false);
@@ -33,14 +51,10 @@ const toast = useToast();
 
 const selectedCount = computed(() => {
 	if (allExistingSelected.value) {
-		return executionsStore.executionsCount;
+		return props.total;
 	}
 
 	return Object.keys(selectedItems.value).length;
-});
-
-const pageTitle = computed(() => {
-	return i18n.baseText('executionsList.workflowExecutions');
 });
 
 const workflows = computed<IWorkflowDb[]>(() => {
@@ -51,27 +65,6 @@ const workflows = computed<IWorkflowDb[]>(() => {
 		} as IWorkflowDb,
 		...workflowsStore.allWorkflows,
 	];
-});
-
-onBeforeMount(async () => {
-	await loadWorkflows();
-
-	void externalHooks.run('executionsList.openDialog');
-	telemetry.track('User opened Executions log', {
-		workflow_id: workflowsStore.workflowId,
-	});
-});
-
-onMounted(() => {
-	setPageTitle(`n8n - ${pageTitle.value}`);
-
-	void executionsStore.initialize();
-	document.addEventListener('visibilitychange', onDocumentVisibilityChange);
-});
-
-onBeforeUnmount(() => {
-	executionsStore.terminate();
-	document.removeEventListener('visibilitychange', onDocumentVisibilityChange);
 });
 
 async function handleAutoRefreshToggle(value: boolean) {
@@ -109,10 +102,8 @@ function toggleSelectExecution(execution: ExecutionSummary) {
 			[executionId]: true,
 		};
 	}
-	allVisibleSelected.value =
-		Object.keys(selectedItems.value).length === executionsStore.filteredExecutions.length;
-	allExistingSelected.value =
-		Object.keys(selectedItems.value).length === executionsStore.executionsCount;
+	allVisibleSelected.value = Object.keys(selectedItems.value).length === filteredData.value.length;
+	allExistingSelected.value = Object.keys(selectedItems.value).length === props.total;
 }
 
 async function handleDeleteSelected() {
@@ -136,7 +127,7 @@ async function handleDeleteSelected() {
 		await executionsStore.deleteExecutions({
 			filters: executionsStore.executionsFilters,
 			...(allExistingSelected.value
-				? { deleteBefore: executionsStore.executions[0].startedAt as Date }
+				? { deleteBefore: props.data[0].startedAt as Date }
 				: {
 						ids: Object.keys(selectedItems.value),
 				  }),
@@ -190,7 +181,7 @@ async function loadFinishedExecutions(): Promise<void> {
 
 	await executionsStore.fetchPastExecutions();
 
-	if (executionsStore.executions.length === 0) {
+	if (props.data.length === 0) {
 		handleClearSelection();
 	}
 }
@@ -201,8 +192,8 @@ async function loadMore() {
 	}
 
 	let lastId: string | undefined;
-	if (executionsStore.executions.length !== 0) {
-		const lastItem = executionsStore.executions.slice(-1)[0];
+	if (props.data.length !== 0) {
+		const lastItem = props.data.slice(-1)[0];
 		lastId = lastItem.id;
 	}
 
@@ -217,7 +208,7 @@ async function loadMore() {
 }
 
 function selectAllVisibleExecutions() {
-	executionsStore.filteredExecutions.forEach((execution: ExecutionSummary) => {
+	filteredData.value.forEach((execution: ExecutionSummary) => {
 		selectedItems.value[execution.id] = true;
 	});
 }
@@ -226,14 +217,6 @@ function adjustSelectionAfterMoreItemsLoaded() {
 	if (allExistingSelected.value) {
 		allVisibleSelected.value = true;
 		selectAllVisibleExecutions();
-	}
-}
-
-async function loadWorkflows() {
-	try {
-		await workflowsStore.fetchAllWorkflows();
-	} catch (error) {
-		toast.showError(error, i18n.baseText('executionsList.showError.loadWorkflows.title'));
 	}
 }
 
@@ -309,24 +292,18 @@ async function deleteExecution(execution: ExecutionSummary) {
 		toast.showError(error, i18n.baseText('executionsList.showError.handleDeleteSelected.title'));
 	}
 }
-
-function onDocumentVisibilityChange() {
-	if (document.visibilityState === 'hidden') {
-		executionsStore.stopAutoRefreshInterval();
-	} else {
-		void executionsStore.startAutoRefreshInterval();
-	}
-}
 </script>
 
 <template>
 	<div :class="['executions-list', $style.execListWrapper]">
 		<div :class="$style.execList">
 			<div :class="$style.execListHeader">
-				<n8n-heading tag="h1" size="2xlarge">{{ pageTitle }}</n8n-heading>
+				<N8nHeading tag="h1" size="2xlarge">
+					{{ i18n.baseText('executionsList.workflowExecutions') }}
+				</N8nHeading>
 				<div :class="$style.execListHeaderControls">
-					<n8n-loading v-if="!isMounted" :class="$style.filterLoader" variant="custom" />
-					<el-checkbox
+					<N8nLoading v-if="!isMounted" :class="$style.filterLoader" variant="custom" />
+					<ElCheckbox
 						v-else
 						:model-value="executionsStore.autoRefresh"
 						class="mr-xl"
@@ -334,8 +311,8 @@ function onDocumentVisibilityChange() {
 						@update:model-value="handleAutoRefreshToggle"
 					>
 						{{ i18n.baseText('executionsList.autoRefresh') }}
-					</el-checkbox>
-					<ExecutionFilter
+					</ElCheckbox>
+					<ExecutionsFilter
 						v-show="isMounted"
 						:workflows="workflows"
 						@filter-changed="onFilterChanged"
@@ -343,13 +320,13 @@ function onDocumentVisibilityChange() {
 				</div>
 			</div>
 
-			<el-checkbox
-				v-if="allVisibleSelected && executionsStore.executionsCount > 0"
+			<ElCheckbox
+				v-if="allVisibleSelected && total > 0"
 				:class="$style.selectAll"
 				:label="
 					i18n.baseText('executionsList.selectAll', {
-						adjustToNumber: executionsStore.executionsCount,
-						interpolate: { executionNum: `${executionsStore.executionsCount}` },
+						adjustToNumber: total,
+						interpolate: { executionNum: `${total}` },
 					})
 				"
 				:model-value="allExistingSelected"
@@ -358,9 +335,9 @@ function onDocumentVisibilityChange() {
 			/>
 
 			<div v-if="!isMounted">
-				<n8n-loading :class="$style.tableLoader" variant="custom" />
-				<n8n-loading :class="$style.tableLoader" variant="custom" />
-				<n8n-loading :class="$style.tableLoader" variant="custom" />
+				<N8nLoading :class="$style.tableLoader" variant="custom" />
+				<N8nLoading :class="$style.tableLoader" variant="custom" />
+				<N8nLoading :class="$style.tableLoader" variant="custom" />
 			</div>
 			<table v-else :class="$style.execTable">
 				<thead>
@@ -368,7 +345,7 @@ function onDocumentVisibilityChange() {
 						<th>
 							<el-checkbox
 								:model-value="allVisibleSelected"
-								:disabled="executionsStore.executionsCount < 1"
+								:disabled="total < 1"
 								label=""
 								data-test-id="select-visible-executions-checkbox"
 								@update:model-value="handleCheckAllVisibleChange"
@@ -385,8 +362,8 @@ function onDocumentVisibilityChange() {
 					</tr>
 				</thead>
 				<TransitionGroup tag="tbody" name="executions-list">
-					<ExecutionsGlobalListItem
-						v-for="execution in executionsStore.filteredExecutions"
+					<GlobalExecutionsListItem
+						v-for="execution in filteredData"
 						:key="execution.id"
 						:execution="execution"
 						:workflow-name="getExecutionWorkflowName(execution)"
@@ -401,20 +378,14 @@ function onDocumentVisibilityChange() {
 			</table>
 
 			<div
-				v-if="!executionsStore.filteredExecutions.length && isMounted && !executionsStore.loading"
+				v-if="!filteredData.length && isMounted && !executionsStore.loading"
 				:class="$style.loadedAll"
 				data-test-id="execution-list-empty"
 			>
 				{{ i18n.baseText('executionsList.empty') }}
 			</div>
-			<div
-				v-else-if="
-					executionsStore.executionsCount > executionsStore.executions.length ||
-					executionsStore.executionsCountEstimated
-				"
-				:class="$style.loadMore"
-			>
-				<n8n-button
+			<div v-else-if="total > data.length || estimated" :class="$style.loadMore">
+				<N8nButton
 					icon="sync"
 					:title="i18n.baseText('executionsList.loadMore')"
 					:label="i18n.baseText('executionsList.loadMore')"
@@ -444,13 +415,13 @@ function onDocumentVisibilityChange() {
 					})
 				}}
 			</span>
-			<n8n-button
+			<N8nButton
 				:label="i18n.baseText('generic.delete')"
 				type="tertiary"
 				data-test-id="delete-selected-button"
 				@click="handleDeleteSelected"
 			/>
-			<n8n-button
+			<N8nButton
 				:label="i18n.baseText('executionsList.clearSelection')"
 				type="tertiary"
 				data-test-id="clear-selection-button"
