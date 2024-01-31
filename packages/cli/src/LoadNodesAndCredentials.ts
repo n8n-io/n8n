@@ -299,7 +299,9 @@ export class LoadNodesAndCredentials {
 					sourcePath: path.join(directory, sourcePath),
 					supportedNodes:
 						loader instanceof PackageDirectoryLoader
-							? supportedNodes?.map((nodeName) => `${loader.packageName}.${nodeName}`)
+							? Object.keys(loader.nodeTypes).length > 0
+								? Object.keys(loader.nodeTypes)
+								: supportedNodes?.map((nodeName) => `${loader.packageName}.${nodeName}`)
 							: undefined,
 					extends: extendsArr,
 				};
