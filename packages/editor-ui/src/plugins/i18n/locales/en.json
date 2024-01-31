@@ -1181,6 +1181,8 @@
 	"parameterInputList.delete": "Delete",
 	"parameterInputList.deleteParameter": "Delete Parameter",
 	"parameterInputList.parameterOptions": "Parameter Options",
+	"parameterInputList.loadingFields": "Loading fields...",
+	"parameterInputList.loadingError": "Error loading fields. Refresh you page and try again.",
 	"personalizationModal.businessOwner": "Business Owner",
 	"personalizationModal.continue": "Continue",
 	"personalizationModal.cicd": "CI/CD",
