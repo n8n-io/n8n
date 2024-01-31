@@ -583,7 +583,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 
 					const workflowStatusFinal = determineFinalExecutionStatus(fullRunData);
 
-					if (workflowStatusFinal !== 'success') {
+					if (workflowStatusFinal !== 'success' && workflowStatusFinal !== 'waiting') {
 						executeErrorWorkflow(
 							this.workflowData,
 							fullRunData,
