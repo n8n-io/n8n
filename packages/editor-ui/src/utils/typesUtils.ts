@@ -156,3 +156,12 @@ export const isValidDate = (input: string | number | Date): boolean => {
 
 export const getObjectKeys = <T extends object, K extends keyof T>(o: T): K[] =>
 	Object.keys(o) as K[];
+
+/**
+ * Converts a string to a number if possible. If not it returns the original string.
+ * For a string to be converted to a number it has to only contain numbers.
+ * @param value The value to convert to a number
+ */
+export const stringToNumber = (value: string): number | string => {
+	return isNaN(+value) ? value : +value;
+};
