@@ -10,7 +10,7 @@ export class AzureOpenAiApi implements ICredentialType {
 
 	displayName = 'Azure Open AI';
 
-	documentationUrl = 'azureOpenAi';
+	documentationUrl = 'azureopenai';
 
 	properties: INodeProperties[] = [
 		{

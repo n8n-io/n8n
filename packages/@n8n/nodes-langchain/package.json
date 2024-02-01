@@ -54,6 +54,7 @@
       "dist/nodes/document_loaders/DocumentJSONInputLoader/DocumentJsonInputLoader.node.js",
       "dist/nodes/embeddings/EmbeddingsCohere/EmbeddingsCohere.node.js",
       "dist/nodes/embeddings/EmbeddingsAwsBedrock/EmbeddingsAwsBedrock.node.js",
+      "dist/nodes/embeddings/EmbeddingsAzureOpenAI/EmbeddingsAzureOpenAI.node.js",
       "dist/nodes/embeddings/EmbeddingsGooglePalm/EmbeddingsGooglePalm.node.js",
       "dist/nodes/embeddings/EmbeddingsHuggingFaceInference/EmbeddingsHuggingFaceInference.node.js",
       "dist/nodes/embeddings/EmbeddingsMistralCloud/EmbeddingsMistralCloud.node.js",

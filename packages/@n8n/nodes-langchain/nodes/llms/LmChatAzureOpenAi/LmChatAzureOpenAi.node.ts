@@ -50,59 +50,6 @@ export class LmChatAzureOpenAi implements INodeType {
 		],
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
-			// {
-			// 	displayName: 'Model',
-			// 	name: 'model',
-			// 	type: 'options',
-			// 	description:
-			// 		'The model which will generate the completion. <a href="https://beta.openai.com/docs/models/overview">Learn more</a>.',
-			// 	typeOptions: {
-			// 		loadOptions: {
-			// 			routing: {
-			// 				request: {
-			// 					method: 'GET',
-			// 					url: '={{ $parameter.options?.baseURL?.split("/").slice(-1).pop() || "v1"  }}/models',
-			// 				},
-			// 				output: {
-			// 					postReceive: [
-			// 						{
-			// 							type: 'rootProperty',
-			// 							properties: {
-			// 								property: 'data',
-			// 							},
-			// 						},
-			// 						{
-			// 							type: 'filter',
-			// 							properties: {
-			// 								pass: "={{ $responseItem.id.startsWith('gpt-') && !$responseItem.id.includes('instruct') }}",
-			// 							},
-			// 						},
-			// 						{
-			// 							type: 'setKeyValue',
-			// 							properties: {
-			// 								name: '={{$responseItem.id}}',
-			// 								value: '={{$responseItem.id}}',
-			// 							},
-			// 						},
-			// 						{
-			// 							type: 'sort',
-			// 							properties: {
-			// 								key: 'name',
-			// 							},
-			// 						},
-			// 					],
-			// 				},
-			// 			},
-			// 		},
-			// 	},
-			// 	routing: {
-			// 		send: {
-			// 			type: 'body',
-			// 			property: 'model',
-			// 		},
-			// 	},
-			// 	default: 'gpt-3.5-turbo',
-			// },
 			{
 				displayName: 'Model (Deployment) Name',
 				name: 'model',
@@ -193,7 +140,6 @@ export class LmChatAzureOpenAi implements INodeType {
 
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
-			baseURL?: string;
 			frequencyPenalty?: number;
 			maxTokens?: number;
 			maxRetries: number;
@@ -204,9 +150,6 @@ export class LmChatAzureOpenAi implements INodeType {
 		};
 
 		const configuration: ClientOptions = {};
-		if (options.baseURL) {
-			configuration.baseURL = options.baseURL;
-		}
 
 		const model = new ChatOpenAI({
 			azureOpenAIApiDeploymentName: modelName,
