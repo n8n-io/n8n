@@ -6,7 +6,9 @@ import {
 } from 'n8n-workflow';
 
 import { initializeAgentExecutorWithOptions } from 'langchain/agents';
-import { BaseChatModel } from 'langchain/chat_models/base';
+import {
+  BaseChatModel,
+} from "@langchain/core/language_models/chat_models";
 import type { Tool } from 'langchain/tools';
 import type { BaseChatMemory } from 'langchain/memory';
 import type { BaseOutputParser } from 'langchain/schema/output_parser';
