@@ -132,7 +132,7 @@ export class LmChatAzureOpenAi implements INodeType {
 	};
 
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = await this.getCredentials('azureOpenAiApi') as {
+		const credentials = (await this.getCredentials('azureOpenAiApi')) as {
 			apiKey: string;
 			resourceName: string;
 			apiVersion: string;
@@ -154,7 +154,7 @@ export class LmChatAzureOpenAi implements INodeType {
 		const model = new ChatOpenAI({
 			azureOpenAIApiDeploymentName: modelName,
 			azureOpenAIApiInstanceName: credentials.resourceName,
-			azureOpenAIApiKey: credentials.apiKey as string,
+			azureOpenAIApiKey: credentials.apiKey,
 			azureOpenAIApiVersion: credentials.apiVersion,
 			...options,
 			timeout: options.timeout ?? 60000,

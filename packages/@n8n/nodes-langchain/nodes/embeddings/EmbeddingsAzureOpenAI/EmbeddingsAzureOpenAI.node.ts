@@ -11,7 +11,7 @@ import { OpenAIEmbeddings } from 'langchain/embeddings/openai';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
-export class EmbeddingsAzureOpenAI implements INodeType {
+export class EmbeddingsAzureOpenAi implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Embeddings Azure OpenAI',
 		name: 'embeddingsAzureOpenAi',
@@ -94,7 +94,7 @@ export class EmbeddingsAzureOpenAI implements INodeType {
 
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
 		this.logger.verbose('Supply data for embeddings');
-		const credentials = await this.getCredentials('azureOpenAiApi') as {
+		const credentials = (await this.getCredentials('azureOpenAiApi')) as {
 			apiKey: string;
 			resourceName: string;
 			apiVersion: string;
@@ -111,15 +111,13 @@ export class EmbeddingsAzureOpenAI implements INodeType {
 			options.timeout = undefined;
 		}
 
-		const embeddings = new OpenAIEmbeddings(
-			{
-				azureOpenAIApiDeploymentName: modelName,
-				azureOpenAIApiInstanceName: credentials.resourceName,
-				azureOpenAIApiKey: credentials.apiKey as string,
-				azureOpenAIApiVersion: credentials.apiVersion,
-				...options,
-			},
-		);
+		const embeddings = new OpenAIEmbeddings({
+			azureOpenAIApiDeploymentName: modelName,
+			azureOpenAIApiInstanceName: credentials.resourceName,
+			azureOpenAIApiKey: credentials.apiKey,
+			azureOpenAIApiVersion: credentials.apiVersion,
+			...options,
+		});
 
 		return {
 			response: logWrapper(embeddings, this),
