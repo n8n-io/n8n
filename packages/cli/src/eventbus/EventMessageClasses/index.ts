@@ -1,3 +1,4 @@
+import type { EventMessageAiNode } from './EventMessageAiNode';
 import type { EventMessageAudit } from './EventMessageAudit';
 import type { EventMessageGeneric } from './EventMessageGeneric';
 import type { EventMessageNode } from './EventMessageNode';
@@ -62,7 +63,8 @@ export type EventMessageTypes =
 	| EventMessageGeneric
 	| EventMessageWorkflow
 	| EventMessageAudit
-	| EventMessageNode;
+	| EventMessageNode
+	| EventMessageAiNode;
 
 export interface FailedEventSummary {
 	lastNodeExecuted: string;
