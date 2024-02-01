@@ -81,6 +81,8 @@ export class Workflow {
 	// ids of registered webhooks of nodes
 	staticData: IDataObject;
 
+	testStaticData: IDataObject | undefined;
+
 	pinData?: IPinData;
 
 	// constructor(id: string | undefined, nodes: INode[], connections: IConnections, active: boolean, nodeTypes: INodeTypes, staticData?: IDataObject, settings?: IWorkflowSettings) {
@@ -328,6 +330,8 @@ export class Workflow {
 			});
 		}
 
+		if (this.testStaticData?.[key]) return this.testStaticData[key] as IDataObject;
+
 		if (this.staticData[key] === undefined) {
 			// Create it as ObservableObject that we can easily check if the data changed
 			// to know if the workflow with its data has to be saved afterwards or not.
@@ -335,6 +339,10 @@ export class Workflow {
 		}
 
 		return this.staticData[key] as IDataObject;
+	}
+
+	setTestStaticData(testStaticData: IDataObject) {
+		this.testStaticData = testStaticData;
 	}
 
 	/**
