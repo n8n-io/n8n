@@ -68,6 +68,9 @@ components:
       type: apiKey
       in: header
       name: X-N8N-API-KEY
+    HBAuth:
+      type: http
+      scheme: basic
 
 security:
-  - ApiKeyAuth: []
+  - HBAuth: []

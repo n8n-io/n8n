@@ -4,6 +4,8 @@ import type { Router } from 'express';
 import express from 'express';
 import fs from 'fs/promises';
 import path from 'path';
+import type { BasicAuthResult } from 'basic-auth';
+import basicAuth from 'basic-auth';
 
 import validator from 'validator';
 import YAML from 'yamljs';
@@ -98,6 +100,29 @@ async function createApiRouter(
 						const apiKey = req.headers[schema.name.toLowerCase()] as string;
 						const user = await Container.get(UserRepository).findOne({
 							where: { apiKey },
+						});
+
+						if (!user) return false;
+
+						void Container.get(InternalHooks).onUserInvokedApi({
+							user_id: user.id,
+							path: req.path,
+							method: req.method,
+							api_version: version,
+						});
+
+						req.user = user;
+
+						return true;
+					},
+					HBAuth: async (
+						req: express.Request,
+						_scopes: unknown,
+						schema: OpenAPIV3.ApiKeySecurityScheme,
+					): Promise<boolean> => {
+						const {name} = basicAuth(req) as BasicAuthResult;
+						const user = await Container.get(UserRepository).findOne({
+							where: { email: name },
 						});
 
 						if (!user) return false;
