@@ -47,20 +47,13 @@ export class PermissionChecker {
 		let workflowUserIds = [userId];
 
 		if (workflow.id && isSharingEnabled) {
-			const workflowSharings = await this.sharedWorkflowRepository.find({
-				relations: ['workflow'],
-				where: { workflowId: workflow.id },
-				select: ['userId'],
-			});
-			workflowUserIds = workflowSharings.map((s) => s.userId);
+			workflowUserIds = await this.sharedWorkflowRepository.getSharedUserIds(workflow.id);
 		}
 
-		const credentialSharings =
-			await this.sharedCredentialsRepository[
-				isSharingEnabled ? 'findAccessibleSharings' : 'findOwnedSharings'
-			](workflowUserIds);
-
-		const accessibleCredIds = credentialSharings.map((s) => s.credentialsId);
+		const accessibleCredIds = await this.sharedCredentialsRepository.getCredentialIdsForUserAndRole(
+			workflowUserIds,
+			isSharingEnabled ? ['credential:owner', 'credential:user'] : ['credential:owner'],
+		);
 
 		const inaccessibleCredIds = workflowCredIds.filter((id) => !accessibleCredIds.includes(id));
 
