@@ -1,6 +1,7 @@
 import { executeFilter } from '@/NodeParameters/FilterParameter';
 import type { FilterConditionValue, FilterValue } from '@/Interfaces';
 import merge from 'lodash/merge';
+import { DateTime } from 'luxon';
 
 type DeepPartial<T> = {
 	[P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
@@ -676,6 +677,12 @@ describe('FilterParameter', () => {
 					{ left: '2023-11-15T17:10:49.113Z', right: '2023-11-15T17:10:49.113Z', expected: false },
 					{ left: '2023-11-15T17:10:49.113Z', right: '2023-11-15T17:12:49.113Z', expected: false },
 					{ left: '2023-11-15T17:10:49.113Z', right: '2023-01-01T00:00:00.000Z', expected: true },
+					{ left: '2024-01-01', right: new Date('2023-01-01T00:00:00.000Z'), expected: true },
+					{
+						left: DateTime.fromFormat('2024-01-01', 'yyyy-MM-dd'),
+						right: '1-Feb-2024',
+						expected: false,
+					},
 				])('dateTime:after("$left", "$right") === $expected', ({ left, right, expected }) => {
 					const result = executeFilter(
 						filterFactory({
