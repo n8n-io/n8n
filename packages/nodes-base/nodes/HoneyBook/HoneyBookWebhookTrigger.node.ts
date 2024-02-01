@@ -76,7 +76,7 @@ export class HoneyBookWebhookTrigger implements INodeType {
 				return true;
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
-
+				console.log('=== DELETE WEBHOOK ===');
 				return true;
 			},
 		},
