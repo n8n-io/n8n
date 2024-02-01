@@ -107,54 +107,6 @@
 			</div>
 
 			<div
-				v-if="!isReadOnly"
-				v-show="!hideActions"
-				class="node-options no-select-on-click"
-				@contextmenu.stop
-			>
-				<div class="node-options-inner">
-					<div class="node-options-actions">
-						<n8n-icon-button
-							v-if="!isConfigNode"
-							data-test-id="execute-node-button"
-							type="tertiary"
-							text
-							size="small"
-							icon="play"
-							:disabled="workflowRunning"
-							:title="$locale.baseText('node.testStep')"
-							@click="executeNode"
-						/>
-						<n8n-icon-button
-							data-test-id="disable-node-button"
-							type="tertiary"
-							text
-							size="small"
-							icon="power-off"
-							:title="nodeDisabledTitle"
-							@click="toggleDisableNode"
-						/>
-						<n8n-icon-button
-							data-test-id="delete-node-button"
-							type="tertiary"
-							size="small"
-							text
-							icon="trash"
-							:title="$locale.baseText('node.delete')"
-							@click="deleteNode"
-						/>
-					</div>
-					<n8n-icon-button
-						data-test-id="overflow-node-button"
-						type="tertiary"
-						size="small"
-						text
-						icon="ellipsis-h"
-						@click="(e: MouseEvent) => openContextMenu(e, 'node-button')"
-					/>
-				</div>
-			</div>
-			<div
 				v-if="showDisabledLinethrough"
 				:class="{
 					'disabled-linethrough': true,
@@ -171,6 +123,54 @@
 			</div>
 			<div v-if="nodeSubtitle !== undefined" class="node-subtitle" :title="nodeSubtitle">
 				{{ nodeSubtitle }}
+			</div>
+		</div>
+
+		<div
+			v-if="!isReadOnly"
+			v-show="!hideActions"
+			class="node-options no-select-on-click"
+			@contextmenu.stop
+			@mousedown.stop
+		>
+			<div class="node-options-inner">
+				<n8n-icon-button
+					v-if="!isConfigNode"
+					data-test-id="execute-node-button"
+					type="tertiary"
+					text
+					size="small"
+					icon="play"
+					:disabled="workflowRunning"
+					:title="$locale.baseText('node.testStep')"
+					@click="executeNode"
+				/>
+				<n8n-icon-button
+					data-test-id="disable-node-button"
+					type="tertiary"
+					text
+					size="small"
+					icon="power-off"
+					:title="nodeDisabledTitle"
+					@click="toggleDisableNode"
+				/>
+				<n8n-icon-button
+					data-test-id="delete-node-button"
+					type="tertiary"
+					size="small"
+					text
+					icon="trash"
+					:title="$locale.baseText('node.delete')"
+					@click="deleteNode"
+				/>
+				<n8n-icon-button
+					data-test-id="overflow-node-button"
+					type="tertiary"
+					size="small"
+					text
+					icon="ellipsis-h"
+					@click="(e: MouseEvent) => openContextMenu(e, 'node-button')"
+				/>
 			</div>
 		</div>
 	</div>
@@ -826,6 +826,45 @@ export default defineComponent({
 		}
 	}
 
+	&.touch-active,
+	&:hover,
+	&.menu-open {
+		.node-options {
+			opacity: 1;
+		}
+	}
+
+	.node-options {
+		:deep(.button) {
+			--button-font-color: var(--color-text-light);
+			--button-border-radius: 0;
+		}
+		cursor: default;
+		position: absolute;
+		top: -34px;
+		z-index: 11;
+		min-width: 100%;
+		display: flex;
+		left: calc(-1 * var(--spacing-4xs));
+		right: calc(-1 * var(--spacing-4xs));
+		justify-content: center;
+		align-items: center;
+		padding-bottom: var(--spacing-2xs);
+		font-size: var(--font-size-s);
+		opacity: 0;
+		transition: opacity 100ms ease-in;
+
+		button {
+			background-color: var(--color-canvas-background);
+		}
+
+		&-inner {
+			display: flex;
+			align-items: center;
+			border-radius: var(--border-radius-base);
+		}
+	}
+
 	.node-default {
 		position: absolute;
 		width: 100%;
@@ -848,14 +887,6 @@ export default defineComponent({
 				.node-executing-info {
 					display: inline-block;
 				}
-			}
-		}
-
-		&.touch-active,
-		&:hover,
-		&.menu-open {
-			.node-options {
-				opacity: 1;
 			}
 		}
 
@@ -915,74 +946,6 @@ export default defineComponent({
 		.waiting {
 			color: var(--color-secondary);
 		}
-
-		.node-options {
-			:deep(.button) {
-				--button-font-color: var(--color-text-light);
-			}
-			position: absolute;
-			top: -36px;
-			z-index: 11;
-			min-width: 100%;
-			display: flex;
-			left: calc(-1 * var(--spacing-4xs));
-			right: calc(-1 * var(--spacing-4xs));
-			justify-content: center;
-			align-items: center;
-			padding: var(--spacing-4xs);
-			font-size: var(--font-size-s);
-			opacity: 0;
-			transition: opacity 100ms ease-in;
-
-			button {
-				background-color: var(--color-canvas-background);
-			}
-
-			&-inner {
-				display: flex;
-				align-items: center;
-				border-radius: var(--border-radius-base);
-			}
-
-			&-actions {
-				display: flex;
-				align-items: center;
-			}
-
-			.option {
-				display: inline-block;
-
-				&.touch {
-					display: none;
-				}
-
-				&:hover {
-					color: $color-primary;
-				}
-
-				.execute-icon {
-					position: relative;
-					font-size: var(----font-size-xl);
-				}
-			}
-
-			&:after {
-				content: '';
-				display: block;
-				position: absolute;
-				left: 0;
-				right: 0;
-				top: -1rem;
-				bottom: -1rem;
-				z-index: -1;
-			}
-		}
-
-		&.is-touch-device .node-options {
-			.option.touch {
-				display: initial;
-			}
-		}
 	}
 
 	&--config {
@@ -1036,12 +999,6 @@ export default defineComponent({
 				bottom: 1px !important;
 				right: 1px !important;
 			}
-
-			.node-default .node-options-inner {
-				padding: 0 var(--spacing-xs);
-				width: auto;
-				justify-content: center;
-			}
 		}
 	}
 
@@ -1083,11 +1040,6 @@ export default defineComponent({
 
 			.node-executing-info {
 				left: -67px;
-			}
-
-			.node-options-inner {
-				width: 100%;
-				justify-content: space-between;
 			}
 		}
 
