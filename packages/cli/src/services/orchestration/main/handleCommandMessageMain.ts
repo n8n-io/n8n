@@ -99,6 +99,11 @@ export async function handleCommandMessageMain(messageString: string) {
 					if (error instanceof Error) {
 						await Container.get(WorkflowRepository).update(workflowId, { active: false });
 
+						Container.get(Push).broadcast('workflowFailedToActivate', {
+							workflowId,
+							errorMessage: error.message,
+						});
+
 						await Container.get(OrchestrationService).publish('workflow-failed-to-activate', {
 							workflowId,
 							errorMessage: error.message,
