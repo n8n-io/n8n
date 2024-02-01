@@ -139,6 +139,19 @@ const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
+				displayName: 'Append After Selected Range',
+				name: 'appendAfterSelectedRange',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to append data after the selected range or used range',
+				displayOptions: {
+					show: {
+						'/dataMode': ['autoMap', 'define'],
+						'/useRange': [true],
+					},
+				},
+			},
+			{
 				displayName: 'RAW Data',
 				name: 'rawData',
 				type: 'boolean',
@@ -185,6 +198,7 @@ export async function execute(
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
+	const nodeVersion = this.getNode().typeVersion;
 
 	try {
 		const workbookId = this.getNodeParameter('workbook', 0, undefined, {
@@ -287,6 +301,27 @@ export async function execute(
 			);
 		}
 
+		const appendAfterSelectedRange = this.getNodeParameter(
+			'options.appendAfterSelectedRange',
+			0,
+			false,
+		) as boolean;
+
+		//remove empty rows from the end
+		if (nodeVersion > 2 && !appendAfterSelectedRange && updateSummary.updatedData.length) {
+			for (let i = updateSummary.updatedData.length - 1; i >= 0; i--) {
+				if (
+					updateSummary.updatedData[i].every(
+						(item) => item === '' || item === undefined || item === null,
+					)
+				) {
+					updateSummary.updatedData.pop();
+				} else {
+					break;
+				}
+			}
+		}
+
 		if (updateSummary.appendData.length) {
 			const appendValues: string[][] = [];
 			const columnsRow = (worksheetData.values as string[][])[0];
@@ -304,9 +339,24 @@ export async function execute(
 
 			updateSummary.updatedData = updateSummary.updatedData.concat(appendValues);
 			const [rangeFrom, rangeTo] = range.split(':');
-			const cellDataTo = rangeTo.match(/([a-zA-Z]{1,10})([0-9]{0,10})/) || [];
 
-			range = `${rangeFrom}:${cellDataTo[1]}${Number(cellDataTo[2]) + appendValues.length}`;
+			const cellDataTo = rangeTo.match(/([a-zA-Z]{1,10})([0-9]{0,10})/) || [];
+			let lastRow = cellDataTo[2];
+
+			if (nodeVersion > 2 && !appendAfterSelectedRange) {
+				const { address } = await microsoftApiRequest.call(
+					this,
+					'GET',
+					`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/usedRange`,
+					undefined,
+					{ select: 'address' },
+				);
+
+				const addressTo = (address as string).split('!')[1].split(':')[1];
+				lastRow = addressTo.match(/([a-zA-Z]{1,10})([0-9]{0,10})/)![2];
+			}
+
+			range = `${rangeFrom}:${cellDataTo[1]}${Number(lastRow) + appendValues.length}`;
 		}
 
 		responseData = await microsoftApiRequest.call(
