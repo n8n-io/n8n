@@ -61,7 +61,7 @@ export class ActiveWebhooks implements IWebhookManager {
 		const httpMethod = request.method;
 		const path = request.params.path;
 
-		this.logger.warn(`Received webhook "${httpMethod}" for path "${path}"`);
+		this.logger.warn(`Received webhook "${httpMethod}" for path "${path}"`); // @pending: restore debug
 
 		// Reset request parameters
 		request.params = {} as WebhookRequest['params'];

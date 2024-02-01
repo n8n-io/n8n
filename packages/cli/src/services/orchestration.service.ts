@@ -34,10 +34,6 @@ export class OrchestrationService {
 		);
 	}
 
-	get isSingleMainEnabled() {
-		return !this.isMultiMainSetupEnabled;
-	}
-
 	redisPublisher: RedisServicePubSubPublisher;
 
 	get instanceId() {
@@ -133,13 +129,13 @@ export class OrchestrationService {
 	 * Whether this instance may add webhooks to the `webhook_entity` table.
 	 */
 	shouldAddWebhooks(activationMode: WorkflowActivateMode) {
-		if (inTest) return true;
+		if (inTest) return true; // @pending: remove this
 
 		if (activationMode === 'init') return false;
 
 		if (activationMode === 'leadershipChange') return false;
 
-		return this.isLeader; // manual activation
+		return this.isLeader; // 'update' or 'activate'
 	}
 
 	/**

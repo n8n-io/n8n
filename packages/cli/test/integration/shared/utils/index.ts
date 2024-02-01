@@ -31,6 +31,7 @@ export { setupTestServer } from './testServer';
  * Initialize node types.
  */
 export async function initActiveWorkflowRunner(mockOrchestrationService = true) {
+	// @pending: remove arg
 	if (mockOrchestrationService) mockInstance(OrchestrationService);
 	mockInstance(Push);
 	mockInstance(ExecutionService);
