@@ -34,17 +34,20 @@ export const eventNamesAudit = [
 	'n8n.audit.workflow.deleted',
 	'n8n.audit.workflow.updated',
 ] as const;
+export const eventNamesAiNodes = ['n8n.ai.nodeSuppliedData', 'n8n.ai.vectorStorePopulated'];
 
 export type EventNamesWorkflowType = (typeof eventNamesWorkflow)[number];
 export type EventNamesAuditType = (typeof eventNamesAudit)[number];
 export type EventNamesNodeType = (typeof eventNamesNode)[number];
 export type EventNamesGenericType = (typeof eventNamesGeneric)[number];
+export type EventNamesAiNodesType = (typeof eventNamesAiNodes)[number];
 
 export type EventNamesTypes =
 	| EventNamesAuditType
 	| EventNamesWorkflowType
 	| EventNamesNodeType
 	| EventNamesGenericType
+	| EventNamesAiNodesType
 	| 'n8n.destination.test';
 
 export const eventNamesAll = [
@@ -52,6 +55,7 @@ export const eventNamesAll = [
 	...eventNamesWorkflow,
 	...eventNamesNode,
 	...eventNamesGeneric,
+	...eventNamesAiNodes,
 ];
 
 export type EventMessageTypes =
