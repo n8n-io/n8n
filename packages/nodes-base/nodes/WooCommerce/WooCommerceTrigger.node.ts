@@ -105,12 +105,11 @@ export class WooCommerceTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
 				const currentEvent = this.getNodeParameter('event') as string;
-				const endpoint = '/webhooks';
 
 				const webhooks = await woocommerceApiRequest.call(
 					this,
 					'GET',
-					endpoint,
+					'/webhooks',
 					{},
 					{ status: 'active', per_page: 100 },
 				);
@@ -133,22 +132,27 @@ export class WooCommerceTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				const event = this.getNodeParameter('event') as string;
 				const secret = getAutomaticSecret(credentials);
-				const endpoint = '/webhooks';
 				const body: IDataObject = {
 					delivery_url: webhookUrl,
 					topic: event,
 					secret,
 				};
-				const { id } = await woocommerceApiRequest.call(this, 'POST', endpoint, body);
+				const { id } = await woocommerceApiRequest.call(this, 'POST', '/webhooks', body);
 				webhookData.webhookId = id;
 				webhookData.secret = secret;
 				return true;
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
-				const endpoint = `/webhooks/${webhookData.webhookId}`;
+
 				try {
-					await woocommerceApiRequest.call(this, 'DELETE', endpoint, {}, { force: true });
+					await woocommerceApiRequest.call(
+						this,
+						'DELETE',
+						`/webhooks/${webhookData.webhookId}`,
+						{},
+						{ force: true },
+					);
 				} catch (error) {
 					return false;
 				}
@@ -165,6 +169,10 @@ export class WooCommerceTrigger implements INodeType {
 		const webhookData = this.getWorkflowStaticData('node');
 		if (headerData['x-wc-webhook-id'] === undefined) {
 			return {};
+		}
+
+		if (webhookData.secret === undefined) {
+			webhookData.secret = getAutomaticSecret(await this.getCredentials('wooCommerceApi'));
 		}
 
 		const computedSignature = createHmac('sha256', webhookData.secret as string)
