@@ -787,6 +787,7 @@ type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
 	getInputSourceData(inputIndex?: number, inputName?: string): ISourceData;
 	getExecutionCancelSignal(): AbortSignal | undefined;
 	onExecutionCancellation(handler: () => unknown): void;
+	logAiEvent(eventName: string, msg?: string | undefined): Promise<void>;
 };
 
 // TODO: Create later own type only for Config-Nodes
