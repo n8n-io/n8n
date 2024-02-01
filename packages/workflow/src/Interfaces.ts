@@ -1939,6 +1939,9 @@ export interface IWorkflowExecuteHooks {
 	sendResponse?: Array<(response: IExecuteResponsePromiseData) => Promise<void>>;
 }
 
+export const eventNamesAiNodes = ['n8n.ai.node.supplied.data', 'n8n.ai.vector.store.populated'];
+export type EventNamesAiNodesType = (typeof eventNamesAiNodes)[number];
+
 export interface IWorkflowExecuteAdditionalData {
 	credentialsHelper: ICredentialsHelper;
 	executeWorkflow: (
@@ -1972,6 +1975,17 @@ export interface IWorkflowExecuteAdditionalData {
 	userId: string;
 	variables: IDataObject;
 	secretsHelpers: SecretsHelpersBase;
+	logAiEvent: (
+		eventName: EventNamesAiNodesType,
+		payload: {
+			msg?: string;
+			executionId: string;
+			nodeName: string;
+			workflowId?: string;
+			workflowName: string;
+			nodeType?: string;
+		},
+	) => Promise<void>;
 }
 
 export type WorkflowExecuteMode =

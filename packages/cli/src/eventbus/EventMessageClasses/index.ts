@@ -3,6 +3,7 @@ import type { EventMessageAudit } from './EventMessageAudit';
 import type { EventMessageGeneric } from './EventMessageGeneric';
 import type { EventMessageNode } from './EventMessageNode';
 import type { EventMessageWorkflow } from './EventMessageWorkflow';
+import { eventNamesAiNodes, type EventNamesAiNodesType } from 'n8n-workflow';
 
 export const eventNamesWorkflow = [
 	'n8n.workflow.started',
@@ -35,13 +36,11 @@ export const eventNamesAudit = [
 	'n8n.audit.workflow.deleted',
 	'n8n.audit.workflow.updated',
 ] as const;
-export const eventNamesAiNodes = ['n8n.ai.node.supplied.data', 'n8n.ai.vector.store.populated'];
 
 export type EventNamesWorkflowType = (typeof eventNamesWorkflow)[number];
 export type EventNamesAuditType = (typeof eventNamesAudit)[number];
 export type EventNamesNodeType = (typeof eventNamesNode)[number];
 export type EventNamesGenericType = (typeof eventNamesGeneric)[number];
-export type EventNamesAiNodesType = (typeof eventNamesAiNodes)[number];
 
 export type EventNamesTypes =
 	| EventNamesAuditType
