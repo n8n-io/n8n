@@ -50,12 +50,16 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 		return sharings.map((s) => s.credentialsId);
 	}
 
+	async findAccessibleSharings(userIds: string[]) {
+		return await this.findBy({
+			userId: In(userIds),
+		});
+	}
+
 	async findOwnedSharings(userIds: string[]) {
-		return await this.find({
-			where: {
-				userId: In(userIds),
-				role: 'credential:owner',
-			},
+		return await this.findBy({
+			userId: In(userIds),
+			role: 'credential:owner',
 		});
 	}
 
