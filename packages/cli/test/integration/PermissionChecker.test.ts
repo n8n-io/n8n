@@ -24,7 +24,7 @@ import {
 import { LicenseMocker } from '../integration/shared/license';
 import * as testDb from '../integration/shared/testDb';
 import type { SaveCredentialFunction } from '../integration/shared/types';
-import { mockNodeTypesData } from './Helpers';
+import { mockNodeTypesData } from '../unit/Helpers';
 import { affixRoleToSaveCredential } from '../integration/shared/db/credentials';
 import { createOwner, createUser } from '../integration/shared/db/users';
 
