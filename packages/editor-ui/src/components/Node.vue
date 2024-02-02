@@ -841,7 +841,7 @@ export default defineComponent({
 		}
 		cursor: default;
 		position: absolute;
-		top: -34px;
+		bottom: 100%;
 		z-index: 11;
 		min-width: 100%;
 		display: flex;
@@ -854,13 +854,10 @@ export default defineComponent({
 		opacity: 0;
 		transition: opacity 100ms ease-in;
 
-		button {
-			background-color: var(--color-canvas-background);
-		}
-
 		&-inner {
 			display: flex;
 			align-items: center;
+			background-color: var(--color-canvas-background);
 			border-radius: var(--border-radius-base);
 		}
 	}
