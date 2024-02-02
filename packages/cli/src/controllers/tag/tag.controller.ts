@@ -10,13 +10,13 @@ import {
 	RestController,
 	RequireGlobalScope,
 } from '@/decorators';
-import { TagService } from '@/services/tag.service';
+import { TagService } from '@/services/tag/tag.service';
 import { TagsRequest } from '@/requests';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 @Authorized()
 @RestController('/tags')
-export class TagsController {
+export class TagController {
 	private config = config;
 
 	constructor(private readonly tagService: TagService) {}

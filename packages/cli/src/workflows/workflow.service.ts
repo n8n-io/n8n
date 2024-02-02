@@ -18,7 +18,7 @@ import * as WorkflowHelpers from '@/WorkflowHelpers';
 import { validateEntity } from '@/GenericHelpers';
 import { ExternalHooks } from '@/ExternalHooks';
 import { hasSharing, type ListQuery } from '@/requests';
-import { TagService } from '@/services/tag.service';
+import { TagService } from '@/services/tag/tag.service';
 import { InternalHooks } from '@/InternalHooks';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowHistoryService } from './workflowHistory/workflowHistory.service.ee';

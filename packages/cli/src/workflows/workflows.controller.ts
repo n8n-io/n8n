@@ -23,7 +23,7 @@ import { License } from '@/License';
 import { InternalHooks } from '@/InternalHooks';
 import * as utils from '@/utils';
 import { listQueryMiddleware } from '@/middlewares';
-import { TagService } from '@/services/tag.service';
+import { TagService } from '@/services/tag/tag.service';
 import { WorkflowHistoryService } from './workflowHistory/workflowHistory.service.ee';
 import { Logger } from '@/Logger';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';

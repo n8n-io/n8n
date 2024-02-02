@@ -228,8 +228,8 @@ export const setupTestServer = ({
 						break;
 
 					case 'tags':
-						const { TagsController } = await import('@/controllers/tags.controller');
-						registerController(app, TagsController);
+						const { TagController } = await import('@/controllers/tag/tag.controller');
+						registerController(app, TagController);
 						break;
 
 					case 'externalSecrets':
