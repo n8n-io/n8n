@@ -344,7 +344,7 @@ export class ActiveWorkflowRunner {
 				responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 				donePromise?: IDeferredPromise<IRun | undefined>,
 			): void => {
-				this.logger.warn(`Received trigger for workflow "${workflow.name}"`);
+				this.logger.debug(`Received trigger for workflow "${workflow.name}"`);
 				void this.workflowStaticDataService.saveStaticData(workflow);
 
 				const executePromise = this.workflowExecutionService.runWorkflow(
