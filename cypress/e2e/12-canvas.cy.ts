@@ -307,7 +307,7 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		WorkflowPage.getters.disabledNodes().should('have.length', 0);
 	});
 
-	it.only('should disable multiple nodes (context menu or shortcut)', () => {
+	it('should disable multiple nodes (context menu or shortcut)', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		WorkflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
