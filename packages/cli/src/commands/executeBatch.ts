@@ -644,8 +644,7 @@ export class ExecuteBatch extends BaseCommand {
 					userId: ExecuteBatch.instanceOwner.id,
 				};
 
-				const workflowRunner = new WorkflowRunner();
-				const executionId = await workflowRunner.run(runData);
+				const executionId = await Container.get(WorkflowRunner).run(runData);
 
 				const activeExecutions = Container.get(ActiveExecutions);
 				const data = await activeExecutions.getPostExecutePromise(executionId);

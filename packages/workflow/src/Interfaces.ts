@@ -721,6 +721,7 @@ export interface RequestHelperFunctions {
 		credentialsType: string,
 		requestOptions: OptionsWithUri | RequestPromiseOptions,
 		additionalCredentialOptions?: IAdditionalCredentialOptions,
+		itemIndex?: number,
 	): Promise<any>;
 
 	httpRequest(requestOptions: IHttpRequestOptions): Promise<any>;

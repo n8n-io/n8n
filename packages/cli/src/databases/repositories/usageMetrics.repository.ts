@@ -61,7 +61,7 @@ export class UsageMetricsRepository extends Repository<UsageMetrics> {
 		`)) as Row[];
 
 		const toNumber = (value: string | number) =>
-			typeof value === 'number' ? value : parseInt(value, 10);
+			(typeof value === 'number' ? value : parseInt(value, 10)) || 0;
 
 		return {
 			enabledUsers: toNumber(enabledUsers),

@@ -10,7 +10,7 @@ export const versionDescription: INodeTypeDescription = {
 	name: 'microsoftExcel',
 	icon: 'file:excel.svg',
 	group: ['input'],
-	version: 2,
+	version: [2, 2.1],
 	subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 	description: 'Consume Microsoft Excel API',
 	defaults: {
