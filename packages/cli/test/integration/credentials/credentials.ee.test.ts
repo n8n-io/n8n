@@ -7,15 +7,15 @@ import type { ListQuery } from '@/requests';
 import type { User } from '@db/entities/User';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 
-import { randomCredentialPayload } from './shared/random';
-import * as testDb from './shared/testDb';
-import type { SaveCredentialFunction } from './shared/types';
-import * as utils from './shared/utils/';
-import { affixRoleToSaveCredential, shareCredentialWithUsers } from './shared/db/credentials';
-import { createManyUsers, createUser, createUserShell } from './shared/db/users';
+import { randomCredentialPayload } from '../shared/random';
+import * as testDb from '../shared/testDb';
+import type { SaveCredentialFunction } from '../shared/types';
+import * as utils from '../shared/utils/';
+import { affixRoleToSaveCredential, shareCredentialWithUsers } from '../shared/db/credentials';
+import { createManyUsers, createUser, createUserShell } from '../shared/db/users';
 import { UserManagementMailer } from '@/UserManagement/email';
 
-import { mockInstance } from '../shared/mocking';
+import { mockInstance } from '../../shared/mocking';
 import config from '@/config';
 
 const testServer = utils.setupTestServer({

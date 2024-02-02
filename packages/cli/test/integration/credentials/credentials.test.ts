@@ -8,12 +8,12 @@ import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { License } from '@/License';
 
-import { randomCredentialPayload, randomName, randomString } from './shared/random';
-import * as testDb from './shared/testDb';
-import type { SaveCredentialFunction } from './shared/types';
-import * as utils from './shared/utils/';
-import { affixRoleToSaveCredential, shareCredentialWithUsers } from './shared/db/credentials';
-import { createManyUsers, createUser } from './shared/db/users';
+import { randomCredentialPayload, randomName, randomString } from '../shared/random';
+import * as testDb from '../shared/testDb';
+import type { SaveCredentialFunction } from '../shared/types';
+import * as utils from '../shared/utils/';
+import { affixRoleToSaveCredential, shareCredentialWithUsers } from '../shared/db/credentials';
+import { createManyUsers, createUser } from '../shared/db/users';
 
 // mock that credentialsSharing is not enabled
 jest.spyOn(License.prototype, 'isSharingEnabled').mockReturnValue(false);
