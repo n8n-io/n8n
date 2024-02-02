@@ -19,21 +19,28 @@ export function filterExecutions(data: ExecutionSummary[], filter: ExecutionFilt
 			matches = matches && (queryFilter.status ?? []).includes(execution.status as ExecutionStatus);
 		}
 
-		const startDate = new Date(filter.startDate);
-		if (filter.startDate === '') {
+		if (!filter.startDate) {
 			matches = matches && true;
 		} else {
+			const startDate = new Date(filter.startDate);
 			matches = matches && new Date(execution.startedAt) >= startDate;
 		}
 
-		const endDate = new Date(filter.endDate);
-		if (filter.endDate === '') {
+		if (!filter.endDate) {
 			matches = matches && true;
 		} else {
+			const endDate = new Date(filter.endDate);
 			matches = matches && new Date(execution.startedAt) <= endDate;
 		}
 
-		// @TODO IMPLEMENT CUSTOM DATA FILTER
+		// @TODO How do I retrieve execution metadata ???
+		// if (filter.metadata && filter.metadata.length > 0) {
+		// 	matches =
+		// 		matches &&
+		// 		filter.metadata.every((metadata) => {
+		// 			return execution.metadata?.[metadata.key] === metadata.value;
+		// 		});
+		// }
 
 		return matches;
 	});
