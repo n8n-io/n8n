@@ -14,6 +14,7 @@ import type {
 import { NodeError } from './abstract/node.error';
 import { removeCircularRefs } from '../utils';
 import type { ReportingOptions } from './application.error';
+import { AxiosError } from 'axios';
 
 export interface NodeOperationErrorOptions {
 	message?: string;
@@ -126,6 +127,10 @@ export class NodeApiError extends NodeError {
 		}: NodeApiErrorOptions = {},
 	) {
 		super(node, errorResponse);
+
+		if (!httpCode && errorResponse instanceof AxiosError) {
+			httpCode = errorResponse.response?.status?.toString();
+		}
 
 		// only for request library error
 		if (errorResponse.error) {
