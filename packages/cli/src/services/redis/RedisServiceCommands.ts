@@ -7,6 +7,8 @@ export type RedisServiceCommand =
 	| 'stopWorker'
 	| 'reloadLicense'
 	| 'reloadExternalSecretsProviders'
+	| 'display-workflow-activation' // multi-main only
+	| 'display-workflow-deactivation' // multi-main only
 	| 'add-webhooks-triggers-and-pollers' // multi-main only
 	| 'remove-triggers-and-pollers' // multi-main only
 	| 'workflow-failed-to-activate' // multi-main only

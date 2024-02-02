@@ -83,7 +83,9 @@ export async function handleCommandMessageMain(messageString: string) {
 					return message;
 				}
 
-				if (Container.get(OrchestrationService).isFollower) break;
+				const orchestrationService = Container.get(OrchestrationService);
+
+				if (orchestrationService.isFollower) break;
 
 				if (typeof message.payload?.workflowId !== 'string') break;
 
@@ -95,6 +97,9 @@ export async function handleCommandMessageMain(messageString: string) {
 					});
 
 					push.broadcast('workflowActivated', { workflowId });
+
+					// instruct followers to show deactivation in UI
+					await orchestrationService.publish('display-workflow-activation', { workflowId });
 				} catch (error) {
 					if (error instanceof Error) {
 						await Container.get(WorkflowRepository).update(workflowId, { active: false });
@@ -120,7 +125,9 @@ export async function handleCommandMessageMain(messageString: string) {
 					return message;
 				}
 
-				if (Container.get(OrchestrationService).isFollower) break;
+				const orchestrationService = Container.get(OrchestrationService);
+
+				if (orchestrationService.isFollower) break;
 
 				if (typeof message.payload?.workflowId !== 'string') break;
 
@@ -130,6 +137,41 @@ export async function handleCommandMessageMain(messageString: string) {
 
 				await activeWorkflowRunner.removeActivationError(workflowId);
 				await activeWorkflowRunner.removeWorkflowTriggersAndPollers(workflowId);
+
+				push.broadcast('workflowDeactivated', { workflowId });
+
+				// instruct followers to show workflow deactivation in UI
+				await orchestrationService.publish('display-workflow-deactivation', { workflowId });
+
+				break;
+			}
+
+			case 'display-workflow-activation': {
+				if (!debounceMessageReceiver(message, 100)) {
+					message.payload = { result: 'debounced' };
+					return message;
+				}
+
+				const { workflowId } = message.payload ?? {};
+
+				if (typeof workflowId !== 'string') break;
+
+				push.broadcast('workflowActivated', { workflowId });
+
+				break;
+			}
+
+			case 'display-workflow-deactivation': {
+				if (!debounceMessageReceiver(message, 100)) {
+					message.payload = { result: 'debounced' };
+					return message;
+				}
+
+				const { workflowId } = message.payload ?? {};
+
+				if (typeof workflowId !== 'string') break;
+
+				push.broadcast('workflowDeactivated', { workflowId });
 
 				break;
 			}
