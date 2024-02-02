@@ -39,24 +39,20 @@ export class PermissionChecker {
 
 		if (user.hasGlobalScope('workflow:execute')) return;
 
+		const isSharingEnabled = this.license.isSharingEnabled();
+
 		// allow if all creds used in this workflow are a subset of
 		// all creds accessible to users who have access to this workflow
 
 		let workflowUserIds = [userId];
 
-		if (workflow.id && this.license.isSharingEnabled()) {
-			const workflowSharings = await this.sharedWorkflowRepository.find({
-				relations: ['workflow'],
-				where: { workflowId: workflow.id },
-				select: ['userId'],
-			});
-			workflowUserIds = workflowSharings.map((s) => s.userId);
+		if (workflow.id && isSharingEnabled) {
+			workflowUserIds = await this.sharedWorkflowRepository.getSharedUserIds(workflow.id);
 		}
 
-		const credentialSharings =
-			await this.sharedCredentialsRepository.findOwnedSharings(workflowUserIds);
-
-		const accessibleCredIds = credentialSharings.map((s) => s.credentialsId);
+		const accessibleCredIds = isSharingEnabled
+			? await this.sharedCredentialsRepository.getAccessibleCredentialIds(workflowUserIds)
+			: await this.sharedCredentialsRepository.getOwnedCredentialIds(workflowUserIds);
 
 		const inaccessibleCredIds = workflowCredIds.filter((id) => !accessibleCredIds.includes(id));
 
