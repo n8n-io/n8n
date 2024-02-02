@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4.1.1
-      - uses: pnpm/action-setup@v2.4.0
+      - run: corepack enable
       - uses: actions/setup-node@v4.0.1
         with:
           node-version: 18.x
@@ -43,7 +43,7 @@ jobs:
       DB_MYSQLDB_PASSWORD: password
     steps:
       - uses: actions/checkout@v4.1.1
-      - uses: pnpm/action-setup@v2.4.0
+      - run: corepack enable
       - uses: actions/setup-node@v4.0.1
         with:
           node-version: 18.x
@@ -76,7 +76,7 @@ jobs:
       DB_POSTGRESDB_PASSWORD: password
     steps:
       - uses: actions/checkout@v4.1.1
-      - uses: pnpm/action-setup@v2.4.0
+      - run: corepack enable
       - uses: actions/setup-node@v4.0.1
         with:
           node-version: 18.x
