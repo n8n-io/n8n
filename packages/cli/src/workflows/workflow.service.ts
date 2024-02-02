@@ -166,10 +166,7 @@ export class WorkflowService {
 		);
 
 		if (tagIds && !config.getEnv('workflowTagsDisabled')) {
-			await this.workflowTagMappingRepository.delete({ workflowId });
-			await this.workflowTagMappingRepository.insert(
-				tagIds.map((tagId) => ({ tagId, workflowId })),
-			);
+			await this.workflowTagMappingRepository.overwriteTaggings(workflowId, tagIds);
 		}
 
 		if (workflow.versionId !== shared.workflow.versionId) {
