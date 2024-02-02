@@ -13,7 +13,7 @@ describe('Current Workflow Executions', () => {
 		cy.createFixtureWorkflow('Test_workflow_4_executions_view.json', `My test workflow`);
 	});
 
-	it.only('should render executions tab correctly', () => {
+	it('should render executions tab correctly', () => {
 		createMockExecutions();
 		cy.intercept('GET', '/rest/executions?filter=*').as('getExecutions');
 		cy.intercept('GET', '/rest/executions/active?filter=*').as('getActiveExecutions');
