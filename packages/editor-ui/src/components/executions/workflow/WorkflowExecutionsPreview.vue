@@ -12,7 +12,7 @@
 	</div>
 	<div v-else :class="$style.previewContainer">
 		<div
-			v-if="activeExecution"
+			v-if="execution"
 			:class="$style.executionDetails"
 			:data-test-id="`execution-preview-details-${executionId}`"
 		>
@@ -40,7 +40,7 @@
 							interpolate: { time: executionUIDetails?.runningTime },
 						})
 					}}
-					| ID#{{ activeExecution.id }}
+					| ID#{{ execution.id }}
 				</n8n-text>
 				<n8n-text
 					v-else-if="executionUIDetails.name !== 'waiting'"
@@ -53,28 +53,28 @@
 							interpolate: { time: executionUIDetails?.runningTime ?? 'unknown' },
 						})
 					}}
-					| ID#{{ activeExecution.id }}
+					| ID#{{ execution.id }}
 				</n8n-text>
 				<n8n-text
 					v-else-if="executionUIDetails?.name === 'waiting'"
 					color="text-base"
 					size="medium"
 				>
-					| ID#{{ activeExecution.id }}
+					| ID#{{ execution.id }}
 				</n8n-text>
-				<br /><n8n-text v-if="activeExecution.mode === 'retry'" color="text-base" size="medium">
+				<br /><n8n-text v-if="execution.mode === 'retry'" color="text-base" size="medium">
 					{{ $locale.baseText('executionDetails.retry') }}
 					<router-link
 						:class="$style.executionLink"
 						:to="{
 							name: VIEWS.EXECUTION_PREVIEW,
 							params: {
-								workflowId: activeExecution.workflowId,
-								executionId: activeExecution.retryOf,
+								workflowId: execution.workflowId,
+								executionId: execution.retryOf,
 							},
 						}"
 					>
-						#{{ activeExecution.retryOf }}
+						#{{ execution.retryOf }}
 					</router-link>
 				</n8n-text>
 			</div>
@@ -91,8 +91,8 @@
 						:to="{
 							name: VIEWS.EXECUTION_DEBUG,
 							params: {
-								name: activeExecution.workflowId,
-								executionId: activeExecution.id,
+								name: execution.workflowId,
+								executionId: execution.id,
 							},
 						}"
 					>
@@ -155,9 +155,9 @@ import { ElDropdown } from 'element-plus';
 import { useExecutionDebugging } from '@/composables/useExecutionDebugging';
 import { useMessage } from '@/composables/useMessage';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
-import type { IExecutionUIData } from '@/mixins/executionsHelpers';
 import { MODAL_CONFIRM, VIEWS } from '@/constants';
 import type { ExecutionSummary } from 'n8n-workflow';
+import type { IExecutionUIData } from '@/composables/useExecutionHelpers';
 import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { mapStores } from 'pinia';
@@ -169,6 +169,12 @@ export default defineComponent({
 	components: {
 		ElDropdown,
 		WorkflowPreview,
+	},
+	props: {
+		execution: {
+			type: Object as () => ExecutionSummary | null,
+			required: true,
+		},
 	},
 	setup() {
 		const executionHelpers = useExecutionHelpers();
@@ -185,17 +191,14 @@ export default defineComponent({
 		executionId(): string {
 			return this.$route.params.executionId as string;
 		},
-		activeExecution(): ExecutionSummary | null {
-			return this.workflowsStore.activeWorkflowExecution;
-		},
 		executionUIDetails(): IExecutionUIData | null {
-			return this.activeExecution ? this.executionHelpers.getUIDetails(this.activeExecution) : null;
+			return this.execution ? this.executionHelpers.getUIDetails(this.execution) : null;
 		},
 		executionMode(): string {
-			return this.activeExecution?.mode || '';
+			return this.execution?.mode || '';
 		},
 		debugButtonData(): Record<string, string> {
-			return this.activeExecution?.status === 'success'
+			return this.execution?.status === 'success'
 				? {
 						text: this.$locale.baseText('executionsList.debug.button.copyToEditor'),
 						type: 'secondary',
@@ -225,7 +228,7 @@ export default defineComponent({
 			this.$emit('deleteCurrentExecution');
 		},
 		handleRetryClick(command: string): void {
-			this.$emit('retryExecution', { execution: this.activeExecution, command });
+			this.$emit('retryExecution', { execution: this.execution, command });
 		},
 		handleStopClick(): void {
 			this.$emit('stopExecution');

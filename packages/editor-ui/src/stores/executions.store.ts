@@ -13,7 +13,11 @@ import type {
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { makeRestApiRequest, unflattenExecutionData } from '@/utils/apiUtils';
 import { isEmpty } from '@/utils/typesUtils';
-import { executionFilterToQueryFilter } from '@/utils/executionUtils';
+import {
+	executionFilterToQueryFilter,
+	filterExecutions,
+	getDefaultExecutionFilters,
+} from '@/utils/executionUtils';
 
 export const useExecutionsStore = defineStore('executions', () => {
 	const rootStore = useRootStore();
@@ -21,7 +25,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 	const loading = ref(false);
 	const itemsPerPage = ref(10);
 
-	const filters = ref<ExecutionFilterType>(getDefaultFilters());
+	const filters = ref<ExecutionFilterType>(getDefaultExecutionFilters());
 	const executionsFilters = computed<ExecutionsQueryFilter>(() =>
 		executionFilterToQueryFilter(filters.value),
 	);
@@ -35,6 +39,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 
 	const executionsById = ref<Record<string, ExecutionSummary>>({});
 	const executionsCount = ref(0);
+	const executionsCountByWorkflowId = ref<Record<string, number>>({});
 	const executionsCountEstimated = ref(false);
 	const executions = computed(() => {
 		const data = Object.values(executionsById.value);
@@ -44,21 +49,6 @@ export const useExecutionsStore = defineStore('executions', () => {
 		});
 
 		return data;
-	});
-
-	const currentExecutionsById = ref<Record<string, ExecutionSummary>>({});
-	const currentExecutions = computed(() => {
-		const data = Object.values(currentExecutionsById.value);
-
-		data.sort((a, b) => {
-			return new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime();
-		});
-
-		return data;
-	});
-
-	const filteredExecutions = computed(() => {
-		return filterExecutions([...currentExecutions.value, ...executions.value], filters.value);
 	});
 
 	const executionsByWorkflowId = computed(() =>
@@ -71,16 +61,30 @@ export const useExecutionsStore = defineStore('executions', () => {
 		}, {}),
 	);
 
-	function getDefaultFilters(): ExecutionFilterType {
-		return {
-			workflowId: 'all',
-			status: 'all',
-			startDate: '',
-			endDate: '',
-			tags: [],
-			metadata: [],
-		};
-	}
+	const currentExecutionsById = ref<Record<string, ExecutionSummary>>({});
+	const currentExecutions = computed(() => {
+		const data = Object.values(currentExecutionsById.value);
+
+		data.sort((a, b) => {
+			return new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime();
+		});
+
+		return data;
+	});
+
+	const currentExecutionsByWorkflowId = computed(() =>
+		currentExecutions.value.reduce<Record<string, ExecutionSummary[]>>((acc, execution) => {
+			if (!acc[execution.workflowId]) {
+				acc[execution.workflowId] = [];
+			}
+			acc[execution.workflowId].push(execution);
+			return acc;
+		}, {}),
+	);
+
+	const filteredExecutions = computed(() => {
+		return filterExecutions([...currentExecutions.value, ...executions.value], filters.value);
+	});
 
 	function addExecution(execution: ExecutionSummary) {
 		executionsById.value[execution.id] = {
@@ -107,11 +111,9 @@ export const useExecutionsStore = defineStore('executions', () => {
 		filters.value = value;
 	}
 
-	async function initialize() {
-		filters.value = getDefaultFilters();
-		setTimeout(async () => {
-			await startAutoRefreshInterval();
-		}, autoRefreshDelay.value);
+	async function initialize(workflowId?: string) {
+		filters.value = getDefaultExecutionFilters();
+		await startAutoRefreshInterval(workflowId);
 	}
 
 	function terminate() {
@@ -197,15 +199,25 @@ export const useExecutionsStore = defineStore('executions', () => {
 		return response ? unflattenExecutionData(response) : undefined;
 	}
 
-	async function loadAutoRefresh(): Promise<void> {
+	async function loadAutoRefresh(workflowId?: string): Promise<void> {
+		const autoRefreshExecutionFilters = {
+			...executionsFilters.value,
+			...(workflowId ? { workflowId } : {}),
+		};
+
 		// We cannot use firstId here as some executions finish out of order. Let's say
 		// You have execution ids 500 to 505 running.
 		// Suppose 504 finishes before 500, 501, 502 and 503.
 		// iF you use firstId, filtering id >= 504 you won't
 		// ever get ids 500, 501, 502 and 503 when they finish
-		const promises = [fetchPastExecutions(executionsFilters.value)];
-		if (isEmpty(executionsFilters.value.metadata)) {
-			promises.push(fetchCurrentExecutions({}));
+		const promises = [fetchPastExecutions(autoRefreshExecutionFilters)];
+		if (isEmpty(autoRefreshExecutionFilters.metadata)) {
+			promises.push(
+				fetchCurrentExecutions({
+					...currentExecutionsFilters.value,
+					...(workflowId ? { workflowId } : {}),
+				}),
+			);
 		}
 		await Promise.all(promises);
 
@@ -214,14 +226,15 @@ export const useExecutionsStore = defineStore('executions', () => {
 
 		autoRefreshTimeout.value = setTimeout(() => {
 			if (autoRefresh.value) {
-				void startAutoRefreshInterval();
+				void startAutoRefreshInterval(workflowId);
 			}
 		}, autoRefreshDelay.value);
 	}
 
-	async function startAutoRefreshInterval() {
+	async function startAutoRefreshInterval(workflowId?: string) {
 		autoRefresh.value = true;
-		await loadAutoRefresh();
+		stopAutoRefreshInterval();
+		await loadAutoRefresh(workflowId);
 	}
 
 	function stopAutoRefreshInterval() {
@@ -232,7 +245,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 	}
 
 	async function stopCurrentExecution(executionId: string): Promise<IExecutionsStopData> {
-		return makeRestApiRequest(
+		return await makeRestApiRequest(
 			rootStore.getRestApiContext,
 			'POST',
 			`/executions/active/${executionId}/stop`,
@@ -240,7 +253,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 	}
 
 	async function retryExecution(id: string, loadWorkflow?: boolean): Promise<boolean> {
-		return makeRestApiRequest(
+		return await makeRestApiRequest(
 			rootStore.getRestApiContext,
 			'POST',
 			`/executions/${id}/retry`,
@@ -253,7 +266,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 	}
 
 	async function deleteExecutions(sendData: IExecutionDeleteFilter): Promise<void> {
-		await makeRestApiRequest(
+		await await makeRestApiRequest(
 			rootStore.getRestApiContext,
 			'POST',
 			'/executions/delete',
@@ -274,26 +287,6 @@ export const useExecutionsStore = defineStore('executions', () => {
 		}
 	}
 
-	function filterExecutions(data: ExecutionSummary[], filter: ExecutionFilterType) {
-		return data.filter((execution) => {
-			let matches = true;
-
-			if (filter.workflowId === 'all') {
-				matches = matches && true;
-			} else {
-				matches = matches && execution.workflowId === filter.workflowId;
-			}
-
-			if (filter.status === 'all') {
-				matches = matches && true;
-			} else {
-				matches = matches && filter.status.includes(execution.status as string);
-			}
-
-			return matches;
-		});
-	}
-
 	return {
 		loading,
 		executionsById,
@@ -302,6 +295,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 		executionsCountEstimated,
 		executionsByWorkflowId,
 		currentExecutions,
+		currentExecutionsByWorkflowId,
 		fetchPastExecutions,
 		fetchCurrentExecutions,
 		fetchExecution,
@@ -320,6 +314,5 @@ export const useExecutionsStore = defineStore('executions', () => {
 		stopCurrentExecution,
 		retryExecution,
 		deleteExecutions,
-		filterExecutions,
 	};
 });

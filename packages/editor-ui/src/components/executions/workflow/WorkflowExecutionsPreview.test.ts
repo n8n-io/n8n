@@ -63,7 +63,6 @@ const executionDataFactory = (): ExecutionSummary => ({
 });
 
 describe('WorkflowExecutionsPreview.vue', () => {
-	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let settingsStore: ReturnType<typeof useSettingsStore>;
 	const executionData: ExecutionSummary = executionDataFactory();
 
@@ -71,10 +70,7 @@ describe('WorkflowExecutionsPreview.vue', () => {
 		pinia = createPinia();
 		setActivePinia(pinia);
 
-		workflowsStore = useWorkflowsStore();
 		settingsStore = useSettingsStore();
-
-		vi.spyOn(workflowsStore, 'activeWorkflowExecution', 'get').mockReturnValue(executionData);
 	});
 
 	test.each([
@@ -89,6 +85,9 @@ describe('WorkflowExecutionsPreview.vue', () => {
 
 			// Not using createComponentRenderer helper here because this component should not stub `router-link`
 			const { getByTestId } = render(WorkflowExecutionsPreview, {
+				props: {
+					execution: executionData,
+				},
 				global: {
 					plugins: [
 						I18nPlugin,

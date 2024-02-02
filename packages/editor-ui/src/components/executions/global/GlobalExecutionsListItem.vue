@@ -292,31 +292,22 @@ async function handleActionItemClick(commandData: 'retrySaved' | 'retryOriginal'
 
 <style lang="scss" module>
 @import '@/styles/variables';
-
-@keyframes execution-item-animation {
-	0% {
-		background-color: var(--color-table-row-background);
-	}
-	25% {
-		background-color: var(--color-table-row-highlight-background);
-	}
-	100% {
-		background-color: var(--color-table-row-background);
-	}
-}
+@import '@/styles/keyframes';
 
 .executionListItem {
+	--execution-list-item-background: var(--color-table-row-background);
+	--execution-list-item-highlight-background: var(--color-table-row-highlight-background);
 	color: var(--color-text-base);
 
 	td {
 		transition: background 0.3s ease;
 		animation: execution-item-animation $executions-list-item-animation-duration ease-out;
 		animation-delay: $executions-list-item-animation-delay;
-		background: var(--color-table-row-background);
+		background: var(--execution-list-item-background);
 	}
 
 	&:nth-child(even) td {
-		--color-table-row-background: var(--color-table-row-even-background);
+		--execution-list-item-background: var(--color-table-row-even-background);
 	}
 
 	&:hover td {

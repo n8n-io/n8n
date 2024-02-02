@@ -1,0 +1,11 @@
+@keyframes execution-item-animation {
+	0% {
+		background-color: var(--execution-list-item-background);
+	}
+	25% {
+		background-color: var(--execution-list-item-highlight-background);
+	}
+	100% {
+		background-color: var(--execution-list-item-background);
+	}
+}

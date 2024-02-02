@@ -9,6 +9,8 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useExecutionsStore } from '@/stores/executions.store';
 import { useToast } from '@/composables/useToast';
 import { storeToRefs } from 'pinia';
+import { isEmpty } from '@/utils/typesUtils';
+import { filterExecutions } from '@/utils/executionUtils';
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
@@ -18,10 +20,14 @@ const executionsStore = useExecutionsStore();
 
 const toast = useToast();
 
-const { executions, currentExecutions, executionsCount, executionsCountEstimated, filters } =
-	storeToRefs(executionsStore);
+const { executionsCount, executionsCountEstimated, filters } = storeToRefs(executionsStore);
 
-const data = computed(() => [...executions.value, ...currentExecutions.value]);
+const executions = computed(() => [
+	...executionsStore.currentExecutions,
+	...executionsStore.executions,
+]);
+
+const filteredExecutions = computed(() => filterExecutions(executions.value, filters.value));
 
 onBeforeMount(async () => {
 	await loadWorkflows();
@@ -59,12 +65,54 @@ function onDocumentVisibilityChange() {
 		void executionsStore.startAutoRefreshInterval();
 	}
 }
+
+async function onAutoRefreshToggle(value: boolean) {
+	if (value) {
+		await executionsStore.startAutoRefreshInterval();
+	} else {
+		executionsStore.stopAutoRefreshInterval();
+	}
+}
+
+async function loadCurrentExecutions(): Promise<void> {
+	if (isEmpty(executionsStore.currentExecutionsFilters.metadata)) {
+		await executionsStore.fetchCurrentExecutions();
+	}
+}
+
+async function loadFinishedExecutions(): Promise<void> {
+	if (executionsStore.filters.status === 'running') {
+		return;
+	}
+
+	await executionsStore.fetchPastExecutions();
+}
+
+async function onRefreshData() {
+	try {
+		await Promise.all([loadCurrentExecutions(), loadFinishedExecutions()]);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('executionsList.showError.refreshData.title'));
+	}
+}
+
+async function onUpdateFilters() {
+	await onRefreshData();
+}
+
+async function onExecutionStop() {
+	await onRefreshData();
+}
 </script>
 <template>
 	<GlobalExecutionsList
-		:data="data"
+		:executions="executions"
+		:filtered-executions="filteredExecutions"
 		:filters="filters"
 		:total="executionsCount"
 		:estimated-total="executionsCountEstimated"
+		@execution:stop="onExecutionStop"
+		@update:filters="onUpdateFilters"
+		@update:auto-refresh="onAutoRefreshToggle"
 	/>
 </template>

@@ -1,29 +1,31 @@
 <template>
 	<div :class="$style.container">
 		<WorkflowExecutionsSidebar
-			:executions="executions"
-			:loading="loading && !executions.length"
+			:executions="filteredExecutions"
+			:loading="loading && !filteredExecutions.length"
 			:loading-more="loadingMore"
 			:temporary-execution="temporaryExecution"
-			:auto-refresh="autoRefresh"
-			@update:autoRefresh="onAutoRefreshToggle"
-			@reloadExecutions="setExecutions"
-			@filterUpdated="onFilterUpdated"
-			@loadMore="onLoadMore"
-			@retryExecution="onRetryExecution"
+			:auto-refresh="uiStore.executionSidebarAutoRefresh"
+			@update:auto-refresh="$emit('update:auto-refresh', $event)"
+			@reload-executions="$emit('reload')"
+			@filter-updated="$emit('update:filters', $event)"
+			@load-more="$emit('load-more')"
+			@retry-execution="onRetryExecution"
 		/>
 		<div v-if="!hidePreview" :class="$style.content">
 			<router-view
 				name="executionPreview"
-				@deleteCurrentExecution="onDeleteCurrentExecution"
-				@retryExecution="onRetryExecution"
-				@stopExecution="onStopExecution"
+				:execution="execution"
+				@delete-current-execution="onDeleteCurrentExecution"
+				@retry-execution="onRetryExecution"
+				@stop-execution="onStopExecution"
 			/>
 		</div>
 	</div>
 </template>
 
 <script lang="ts">
+import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 
@@ -34,33 +36,13 @@ import {
 	MODAL_CONFIRM,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	VIEWS,
-	WEBHOOK_NODE_TYPE,
 } from '@/constants';
-import type {
-	ExecutionFilterType,
-	IExecutionsListResponse,
-	INodeUi,
-	ITag,
-	IWorkflowDb,
-} from '@/Interface';
-import type {
-	ExecutionSummary,
-	IConnection,
-	IConnections,
-	IDataObject,
-	INodeTypeDescription,
-	INodeTypeNameVersion,
-} from 'n8n-workflow';
-import { NodeHelpers } from 'n8n-workflow';
+import type { ExecutionFilterType, IWorkflowDb } from '@/Interface';
+import type { ExecutionSummary, IDataObject } from 'n8n-workflow';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
-import { v4 as uuid } from 'uuid';
-import type { Route } from 'vue-router';
-import { range as _range } from 'lodash-es';
-import { NO_NETWORK_ERROR_CODE } from '@/utils/apiUtils';
 import { getNodeViewTab } from '@/utils/canvasUtils';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -68,12 +50,6 @@ import { useTagsStore } from '@/stores/tags.store';
 import { executionFilterToQueryFilter } from '@/utils/executionUtils';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useDebounce } from '@/composables/useDebounce';
-import { useExecutionsStore } from '@/stores/executions.store';
-
-// Number of execution pages that are fetched before temporary execution card is shown
-const MAX_LOADING_ATTEMPTS = 5;
-// Number of executions fetched on each page
-const LOAD_MORE_PAGE_SIZE = 100;
 
 export default defineComponent({
 	name: 'ExecutionsList',
@@ -81,88 +57,7 @@ export default defineComponent({
 		WorkflowExecutionsSidebar,
 	},
 	mixins: [workflowHelpers],
-	setup() {
-		const externalHooks = useExternalHooks();
-		const { callDebounced } = useDebounce();
-
-		return {
-			externalHooks,
-			callDebounced,
-			...useToast(),
-			...useMessage(),
-		};
-	},
-	data() {
-		return {
-			loading: false,
-			loadingMore: false,
-			filter: {} as ExecutionFilterType,
-			temporaryExecution: null as ExecutionSummary | null,
-			autoRefresh: false,
-			autoRefreshTimeout: undefined as undefined | NodeJS.Timer,
-		};
-	},
-	computed: {
-		...mapStores(
-			useTagsStore,
-			useNodeTypesStore,
-			useSettingsStore,
-			useUIStore,
-			useWorkflowsStore,
-			useExecutionsStore,
-		),
-		currentWorkflow(): string {
-			return (this.$route.params.name as string) || this.workflowsStore.workflowId;
-		},
-		executions(): ExecutionSummary[] {
-			return this.workflowsStore.currentWorkflowExecutions;
-		},
-		activeExecution(): ExecutionSummary | null {
-			return this.workflowsStore.activeWorkflowExecution;
-		},
-		hidePreview(): boolean {
-			const activeNotPresent =
-				this.filterApplied && !this.executions.find((ex) => ex.id === this.activeExecution?.id);
-			return this.loading || !this.executions.length || activeNotPresent;
-		},
-		filterApplied(): boolean {
-			return this.filter.status !== 'all';
-		},
-		workflowDataNotLoaded(): boolean {
-			return (
-				this.workflowsStore.workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID &&
-				this.workflowsStore.workflowName === ''
-			);
-		},
-		loadedFinishedExecutionsCount(): number {
-			return this.workflowsStore.getAllLoadedFinishedExecutions.length;
-		},
-		totalFinishedExecutionsCount(): number {
-			return this.workflowsStore.getTotalFinishedExecutionsCount;
-		},
-		requestFilter(): IDataObject {
-			return executionFilterToQueryFilter({
-				...this.filter,
-				workflowId: this.currentWorkflow,
-			});
-		},
-	},
-	watch: {
-		$route(to: Route, from: Route) {
-			if (to.params.name) {
-				const workflowChanged = from.params.name !== to.params.name;
-				void this.initView(workflowChanged);
-			}
-
-			if (to.params.executionId) {
-				const execution = this.workflowsStore.getExecutionDataById(to.params.executionId);
-				if (execution) {
-					this.workflowsStore.activeWorkflowExecution = execution;
-				}
-			}
-		},
-	},
-	async beforeRouteLeave(to, from, next) {
+	async beforeRouteLeave(to, _, next) {
 		if (getNodeViewTab(to) === MAIN_HEADER_TABS.WORKFLOW) {
 			next();
 			return;
@@ -198,578 +93,106 @@ export default defineComponent({
 			next();
 		}
 	},
-	created() {
-		this.autoRefresh = this.uiStore.executionSidebarAutoRefresh;
+	props: {
+		loading: {
+			type: Boolean,
+			default: false,
+		},
+		workflow: {
+			type: Object as PropType<IWorkflowDb>,
+			required: true,
+		},
+		executions: {
+			type: Array as PropType<ExecutionSummary[]>,
+			default: () => [],
+		},
+		filteredExecutions: {
+			type: Array as PropType<ExecutionSummary[]>,
+			default: () => [],
+		},
+		filters: {
+			type: Object as PropType<ExecutionFilterType>,
+			default: () => ({}),
+		},
+		execution: {
+			type: Object as PropType<ExecutionSummary>,
+			default: null,
+		},
+		loadingMore: {
+			type: Boolean,
+			default: false,
+		},
 	},
-	async mounted() {
-		this.loading = true;
-		const workflowUpdated = this.$route.params.name !== this.workflowsStore.workflowId;
-		const onNewWorkflow =
-			this.$route.params.name === 'new' &&
-			this.workflowsStore.workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID;
-		const shouldUpdate = workflowUpdated && !onNewWorkflow;
-		await this.initView(shouldUpdate);
-		if (!shouldUpdate) {
-			if (this.workflowsStore.currentWorkflowExecutions.length > 0) {
-				const workflowExecutions = await this.loadExecutions();
-				this.workflowsStore.addToCurrentExecutions(workflowExecutions);
-				await this.setActiveExecution();
-			} else {
-				await this.setExecutions();
-			}
-		}
-		void this.startAutoRefreshInterval();
-		document.addEventListener('visibilitychange', this.onDocumentVisibilityChange);
+	emits: [
+		'execution:delete',
+		'execution:stop',
+		'execution:retry',
+		'update:auto-refresh',
+		'update:filters',
+		'load-more',
+		'reload',
+	],
+	setup() {
+		const externalHooks = useExternalHooks();
+		const { callDebounced } = useDebounce();
 
-		this.loading = false;
+		return {
+			externalHooks,
+			callDebounced,
+			...useToast(),
+			...useMessage(),
+		};
 	},
-	beforeUnmount() {
-		document.removeEventListener('visibilitychange', this.onDocumentVisibilityChange);
-		this.autoRefresh = false;
-		this.stopAutoRefreshInterval();
+	computed: {
+		...mapStores(useTagsStore, useNodeTypesStore, useSettingsStore, useUIStore),
+		temporaryExecution(): ExecutionSummary | undefined {
+			const isTemporary = !this.executions.find((execution) => execution.id === this.execution?.id);
+			return isTemporary ? this.execution : undefined;
+		},
+		hidePreview(): boolean {
+			return this.loading || !this.execution;
+		},
+		filterApplied(): boolean {
+			return this.filters.status !== 'all';
+		},
+		workflowDataNotLoaded(): boolean {
+			return this.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID && this.workflow.name === '';
+		},
+		requestFilter(): IDataObject {
+			return executionFilterToQueryFilter({
+				...this.filters,
+				workflowId: this.workflow.id,
+			});
+		},
+	},
+	watch: {
+		execution(value: ExecutionSummary) {
+			if (!value) {
+				return;
+			}
+
+			this.$router
+				.push({
+					name: VIEWS.EXECUTION_PREVIEW,
+					params: { name: this.workflow.id, executionId: value.id },
+				})
+				.catch(() => {});
+		},
 	},
 	methods: {
-		async initView(loadWorkflow: boolean): Promise<void> {
-			if (loadWorkflow) {
-				await this.nodeTypesStore.loadNodeTypesIfNotLoaded();
-				await this.openWorkflow(this.$route.params.name);
-				this.uiStore.nodeViewInitialized = false;
-				if (this.workflowsStore.currentWorkflowExecutions.length === 0) {
-					await this.setExecutions();
-				}
-				if (this.activeExecution) {
-					this.$router
-						.push({
-							name: VIEWS.EXECUTION_PREVIEW,
-							params: { name: this.currentWorkflow, executionId: this.activeExecution.id },
-						})
-						.catch(() => {});
-				}
-			}
-		},
-		async onLoadMore(): Promise<void> {
-			if (!this.loadingMore) {
-				await this.callDebounced(this.loadMore, { debounceTime: 1000 });
-			}
-		},
-		async loadMore(limit = 20): Promise<void> {
-			if (
-				this.filter.status === 'running' ||
-				this.loadedFinishedExecutionsCount >= this.totalFinishedExecutionsCount
-			) {
-				return;
-			}
-			this.loadingMore = true;
-
-			let lastId: string | undefined;
-			if (this.executions.length !== 0) {
-				const lastItem = this.executions.slice(-1)[0];
-				lastId = lastItem.id;
-			}
-
-			let data: IExecutionsListResponse;
-			try {
-				data = await this.workflowsStore.getPastExecutions(this.requestFilter, limit, lastId);
-			} catch (error) {
-				this.loadingMore = false;
-				this.showError(error, this.$locale.baseText('executionsList.showError.loadMore.title'));
-				return;
-			}
-
-			data.results = data.results.map((execution) => {
-				// @ts-ignore
-				return { ...execution, mode: execution.mode };
-			});
-			const currentExecutions = [...this.executions];
-			for (const newExecution of data.results) {
-				if (currentExecutions.find((ex) => ex.id === newExecution.id) === undefined) {
-					currentExecutions.push(newExecution);
-				}
-				// If we loaded temp execution, put it into it's place and remove from top of the list
-				if (newExecution.id === this.temporaryExecution?.id) {
-					this.temporaryExecution = null;
-				}
-			}
-			this.workflowsStore.currentWorkflowExecutions = currentExecutions;
-			this.loadingMore = false;
-		},
 		async onDeleteCurrentExecution(): Promise<void> {
-			this.loading = true;
-			try {
-				const executionIndex = this.executions.findIndex(
-					(execution: ExecutionSummary) => execution.id === this.$route.params.executionId,
-				);
-				const nextExecution =
-					this.executions[executionIndex + 1] ||
-					this.executions[executionIndex - 1] ||
-					this.executions[0];
-
-				await this.executionsStore.deleteExecutions({ ids: [this.$route.params.executionId] });
-				this.workflowsStore.deleteExecution(this.executions[executionIndex]);
-				if (this.temporaryExecution?.id === this.$route.params.executionId) {
-					this.temporaryExecution = null;
-				}
-				if (this.executions.length > 0) {
-					await this.$router
-						.replace({
-							name: VIEWS.EXECUTION_PREVIEW,
-							params: { name: this.currentWorkflow, executionId: nextExecution.id },
-						})
-						.catch(() => {});
-					this.workflowsStore.activeWorkflowExecution = nextExecution;
-					await this.setExecutions();
-				} else {
-					// If there are no executions left, show empty state and clear active execution from the store
-					this.workflowsStore.activeWorkflowExecution = null;
-					await this.$router.replace({
-						name: VIEWS.EXECUTION_HOME,
-						params: { name: this.currentWorkflow },
-					});
-				}
-			} catch (error) {
-				this.loading = false;
-				this.showError(
-					error,
-					this.$locale.baseText('executionsList.showError.handleDeleteSelected.title'),
-				);
-				return;
-			}
-			this.loading = false;
-
-			this.showMessage({
-				title: this.$locale.baseText('executionsList.showMessage.handleDeleteSelected.title'),
-				type: 'success',
-			});
+			this.$emit('execution:delete', this.execution.id);
 		},
 		async onStopExecution(): Promise<void> {
-			const activeExecutionId = this.$route.params.executionId as string;
-
-			try {
-				await this.executionsStore.stopCurrentExecution(activeExecutionId);
-
-				this.showMessage({
-					title: this.$locale.baseText('executionsList.showMessage.stopExecution.title'),
-					message: this.$locale.baseText('executionsList.showMessage.stopExecution.message', {
-						interpolate: { activeExecutionId },
-					}),
-					type: 'success',
-				});
-
-				await this.loadAutoRefresh();
-			} catch (error) {
-				this.showError(
-					error,
-					this.$locale.baseText('executionsList.showError.stopExecution.title'),
-				);
-			}
-		},
-		async onFilterUpdated(filter: ExecutionFilterType) {
-			this.filter = filter;
-			await this.setExecutions();
-		},
-		async setExecutions(): Promise<void> {
-			this.workflowsStore.currentWorkflowExecutions = await this.loadExecutions();
-			await this.setActiveExecution();
-		},
-
-		async startAutoRefreshInterval() {
-			if (this.autoRefresh) {
-				await this.loadAutoRefresh();
-				this.stopAutoRefreshInterval();
-				this.autoRefreshTimeout = setTimeout(() => {
-					void this.startAutoRefreshInterval();
-				}, 4000);
-			}
-		},
-		stopAutoRefreshInterval() {
-			clearTimeout(this.autoRefreshTimeout);
-			this.autoRefreshTimeout = undefined;
-		},
-		onAutoRefreshToggle(value: boolean): void {
-			this.autoRefresh = value;
-			this.uiStore.executionSidebarAutoRefresh = this.autoRefresh;
-
-			this.stopAutoRefreshInterval(); // Clear any previously existing intervals (if any - there shouldn't)
-			void this.startAutoRefreshInterval();
-		},
-		onDocumentVisibilityChange() {
-			if (document.visibilityState === 'hidden') {
-				void this.stopAutoRefreshInterval();
-			} else {
-				void this.startAutoRefreshInterval();
-			}
-		},
-		async loadAutoRefresh(): Promise<void> {
-			// Most of the auto-refresh logic is taken from the `ExecutionsList` component
-			const fetchedExecutions: ExecutionSummary[] = await this.loadExecutions();
-			let existingExecutions: ExecutionSummary[] = [...this.executions];
-			const alreadyPresentExecutionIds = existingExecutions.map((exec) => parseInt(exec.id, 10));
-			let lastId = 0;
-			const gaps = [] as number[];
-			let updatedActiveExecution = null;
-
-			for (let i = fetchedExecutions.length - 1; i >= 0; i--) {
-				const currentItem = fetchedExecutions[i];
-				const currentId = parseInt(currentItem.id, 10);
-				if (lastId !== 0 && !isNaN(currentId)) {
-					if (currentId - lastId > 1) {
-						const range = _range(lastId + 1, currentId);
-						gaps.push(...range);
-					}
-				}
-				lastId = parseInt(currentItem.id, 10) || 0;
-
-				const executionIndex = alreadyPresentExecutionIds.indexOf(currentId);
-				if (executionIndex !== -1) {
-					const existingExecution = existingExecutions.find((ex) => ex.id === currentItem.id);
-					const existingStillRunning =
-						(existingExecution && existingExecution.finished === false) ||
-						existingExecution?.stoppedAt === undefined;
-					const currentFinished =
-						currentItem.finished === true || currentItem.stoppedAt !== undefined;
-
-					if (existingStillRunning && currentFinished) {
-						existingExecutions[executionIndex] = currentItem;
-						if (currentItem.id === this.activeExecution?.id) {
-							updatedActiveExecution = currentItem;
-						}
-					}
-					continue;
-				}
-
-				let j;
-				for (j = existingExecutions.length - 1; j >= 0; j--) {
-					if (currentId < parseInt(existingExecutions[j].id, 10)) {
-						existingExecutions.splice(j + 1, 0, currentItem);
-						break;
-					}
-				}
-				if (j === -1) {
-					existingExecutions.unshift(currentItem);
-				}
-			}
-
-			existingExecutions = existingExecutions.filter(
-				(execution) =>
-					!gaps.includes(parseInt(execution.id, 10)) && lastId >= parseInt(execution.id, 10),
-			);
-			this.workflowsStore.currentWorkflowExecutions = existingExecutions;
-			if (updatedActiveExecution !== null) {
-				this.workflowsStore.activeWorkflowExecution = updatedActiveExecution;
-			} else {
-				const activeInList = existingExecutions.some((ex) => ex.id === this.activeExecution?.id);
-				if (!activeInList && this.executions.length > 0 && !this.temporaryExecution) {
-					this.$router
-						.push({
-							name: VIEWS.EXECUTION_PREVIEW,
-							params: { name: this.currentWorkflow, executionId: this.executions[0].id },
-						})
-						.catch(() => {});
-				} else if (this.executions.length === 0 && this.$route.name === VIEWS.EXECUTION_PREVIEW) {
-					this.$router
-						.push({
-							name: VIEWS.EXECUTION_HOME,
-							params: {
-								name: this.currentWorkflow,
-							},
-						})
-						.catch(() => {});
-					this.workflowsStore.activeWorkflowExecution = null;
-				}
-			}
-		},
-		async loadExecutions(): Promise<ExecutionSummary[]> {
-			if (!this.currentWorkflow) {
-				return [];
-			}
-			try {
-				return await this.workflowsStore.loadCurrentWorkflowExecutions(this.requestFilter);
-			} catch (error) {
-				if (error.errorCode === NO_NETWORK_ERROR_CODE) {
-					this.showMessage(
-						{
-							title: this.$locale.baseText('executionsList.showError.refreshData.title'),
-							message: error.message,
-							type: 'error',
-							duration: 3500,
-						},
-						false,
-					);
-				} else {
-					this.showError(
-						error,
-						this.$locale.baseText('executionsList.showError.refreshData.title'),
-					);
-				}
-				return [];
-			}
-		},
-		async setActiveExecution(): Promise<void> {
-			const activeExecutionId = this.$route.params.executionId;
-			if (activeExecutionId) {
-				const execution = this.workflowsStore.getExecutionDataById(activeExecutionId);
-				if (execution) {
-					this.workflowsStore.activeWorkflowExecution = execution;
-				} else {
-					await this.tryToFindExecution(activeExecutionId);
-				}
-			}
-
-			// If there is no execution in the route, select the first one
-			if (
-				this.workflowsStore.activeWorkflowExecution === null &&
-				this.executions.length > 0 &&
-				!this.temporaryExecution
-			) {
-				this.workflowsStore.activeWorkflowExecution = this.executions[0];
-
-				if (this.$route.name === VIEWS.EXECUTION_HOME) {
-					this.$router
-						.push({
-							name: VIEWS.EXECUTION_PREVIEW,
-							params: { name: this.currentWorkflow, executionId: this.executions[0].id },
-						})
-						.catch(() => {});
-				}
-			}
-		},
-		async tryToFindExecution(executionId: string, attemptCount = 0): Promise<void> {
-			// First check if executions exists in the DB at all
-			if (attemptCount === 0) {
-				const existingExecution = await this.workflowsStore.fetchExecutionDataById(executionId);
-				if (!existingExecution) {
-					this.workflowsStore.activeWorkflowExecution = null;
-					this.showError(
-						new Error(
-							this.$locale.baseText('executionView.notFound.message', {
-								interpolate: { executionId },
-							}),
-						),
-						this.$locale.baseText('nodeView.showError.openExecution.title'),
-					);
-					return;
-				} else {
-					this.temporaryExecution = existingExecution as ExecutionSummary;
-				}
-			}
-			// stop if the execution wasn't found in the first 1000 lookups
-			if (attemptCount >= MAX_LOADING_ATTEMPTS) {
-				if (this.temporaryExecution) {
-					this.workflowsStore.activeWorkflowExecution = this.temporaryExecution;
-					return;
-				}
-				this.workflowsStore.activeWorkflowExecution = null;
-				return;
-			}
-			// Fetch next batch of executions
-			await this.loadMore(LOAD_MORE_PAGE_SIZE);
-			const execution = this.workflowsStore.getExecutionDataById(executionId);
-			if (!execution) {
-				// If it's not there load next until found
-				await this.$nextTick();
-				// But skip fetching execution data since we at this point know it exists
-				await this.tryToFindExecution(executionId, attemptCount + 1);
-			} else {
-				// When found set execution as active
-				this.workflowsStore.activeWorkflowExecution = execution;
-				this.temporaryExecution = null;
-				return;
-			}
-		},
-		async openWorkflow(workflowId: string): Promise<void> {
-			await this.loadActiveWorkflows();
-
-			let data: IWorkflowDb | undefined;
-			try {
-				data = await this.workflowsStore.fetchWorkflow(workflowId);
-			} catch (error) {
-				this.showError(error, this.$locale.baseText('nodeView.showError.openWorkflow.title'));
-				return;
-			}
-			if (data === undefined) {
-				throw new Error(
-					this.$locale.baseText('nodeView.workflowWithIdCouldNotBeFound', {
-						interpolate: { workflowId },
-					}),
-				);
-			}
-			await this.addNodes(data.nodes, data.connections);
-
-			this.workflowsStore.setActive(data.active || false);
-			this.workflowsStore.setWorkflowId(workflowId);
-			this.workflowsStore.setWorkflowName({ newName: data.name, setStateDirty: false });
-			this.workflowsStore.setWorkflowSettings(data.settings || {});
-			this.workflowsStore.setWorkflowPinData(data.pinData || {});
-			const tags = (data.tags || []) as ITag[];
-			const tagIds = tags.map((tag) => tag.id);
-			this.workflowsStore.setWorkflowTagIds(tagIds || []);
-			this.workflowsStore.setWorkflowVersionId(data.versionId);
-
-			this.tagsStore.upsertTags(tags);
-
-			void this.externalHooks.run('workflow.open', { workflowId, workflowName: data.name });
-			this.uiStore.stateIsDirty = false;
-		},
-		async addNodes(nodes: INodeUi[], connections?: IConnections) {
-			if (!nodes?.length) {
-				return;
-			}
-
-			await this.loadNodesProperties(
-				nodes.map((node) => ({ name: node.type, version: node.typeVersion })),
-			);
-
-			let nodeType: INodeTypeDescription | null;
-			nodes.forEach((node) => {
-				if (!node.id) {
-					node.id = uuid();
-				}
-
-				nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
-
-				// Make sure that some properties always exist
-				if (!node.hasOwnProperty('disabled')) {
-					node.disabled = false;
-				}
-
-				if (!node.hasOwnProperty('parameters')) {
-					node.parameters = {};
-				}
-
-				// Load the defaul parameter values because only values which differ
-				// from the defaults get saved
-				if (nodeType !== null) {
-					let nodeParameters = null;
-					try {
-						nodeParameters = NodeHelpers.getNodeParameters(
-							nodeType.properties,
-							node.parameters,
-							true,
-							false,
-							node,
-						);
-					} catch (e) {
-						console.error(
-							this.$locale.baseText('nodeView.thereWasAProblemLoadingTheNodeParametersOfNode') +
-								`: "${node.name}"`,
-						);
-						console.error(e);
-					}
-					node.parameters = nodeParameters !== null ? nodeParameters : {};
-
-					// if it's a webhook and the path is empty set the UUID as the default path
-					if (node.type === WEBHOOK_NODE_TYPE && node.parameters.path === '') {
-						node.parameters.path = node.webhookId as string;
-					}
-				}
-
-				this.workflowsStore.addNode(node);
-			});
-
-			// Load the connections
-			if (connections !== undefined) {
-				let connectionData;
-				for (const sourceNode of Object.keys(connections)) {
-					for (const type of Object.keys(connections[sourceNode])) {
-						for (
-							let sourceIndex = 0;
-							sourceIndex < connections[sourceNode][type].length;
-							sourceIndex++
-						) {
-							const outwardConnections = connections[sourceNode][type][sourceIndex];
-							if (!outwardConnections) {
-								continue;
-							}
-							outwardConnections.forEach((targetData) => {
-								connectionData = [
-									{
-										node: sourceNode,
-										type,
-										index: sourceIndex,
-									},
-									{
-										node: targetData.node,
-										type: targetData.type,
-										index: targetData.index,
-									},
-								] as [IConnection, IConnection];
-
-								this.workflowsStore.addConnection({
-									connection: connectionData,
-									setStateDirty: false,
-								});
-							});
-						}
-					}
-				}
-			}
-		},
-		async loadNodesProperties(nodeInfos: INodeTypeNameVersion[]): Promise<void> {
-			const allNodes: INodeTypeDescription[] = this.nodeTypesStore.allNodeTypes;
-
-			const nodesToBeFetched: INodeTypeNameVersion[] = [];
-			allNodes.forEach((node) => {
-				const nodeVersions = Array.isArray(node.version) ? node.version : [node.version];
-				if (
-					!!nodeInfos.find((n) => n.name === node.name && nodeVersions.includes(n.version)) &&
-					!node.hasOwnProperty('properties')
-				) {
-					nodesToBeFetched.push({
-						name: node.name,
-						version: Array.isArray(node.version) ? node.version.slice(-1)[0] : node.version,
-					});
-				}
-			});
-
-			if (nodesToBeFetched.length > 0) {
-				// Only call API if node information is actually missing
-				await this.nodeTypesStore.getNodesInformation(nodesToBeFetched);
-			}
-		},
-		async loadActiveWorkflows(): Promise<void> {
-			await this.workflowsStore.fetchActiveWorkflows();
+			this.$emit('execution:stop', this.execution.id);
 		},
 		async onRetryExecution(payload: { execution: ExecutionSummary; command: string }) {
 			const loadWorkflow = payload.command === 'current-workflow';
 
-			this.showMessage({
-				title: this.$locale.baseText('executionDetails.runningMessage'),
-				type: 'info',
-				duration: 2000,
+			this.$emit('execution:retry', {
+				id: payload.execution.id,
+				loadWorkflow,
 			});
-			await this.retryExecution(payload.execution, loadWorkflow);
-			await this.loadAutoRefresh();
-
-			this.$telemetry.track('User clicked retry execution button', {
-				workflow_id: this.workflowsStore.workflowId,
-				execution_id: payload.execution.id,
-				retry_type: loadWorkflow ? 'current' : 'original',
-			});
-		},
-		async retryExecution(execution: ExecutionSummary, loadWorkflow?: boolean) {
-			try {
-				const retrySuccessful = await this.executionsStore.retryExecution(
-					execution.id,
-					loadWorkflow,
-				);
-
-				if (retrySuccessful) {
-					this.showMessage({
-						title: this.$locale.baseText('executionsList.showMessage.retrySuccessfulTrue.title'),
-						type: 'success',
-					});
-				} else {
-					this.showMessage({
-						title: this.$locale.baseText('executionsList.showMessage.retrySuccessfulFalse.title'),
-						type: 'error',
-					});
-				}
-			} catch (error) {
-				this.showError(
-					error,
-					this.$locale.baseText('executionsList.showError.retryExecution.title'),
-				);
-			}
 		},
 	},
 });
