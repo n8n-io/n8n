@@ -30,9 +30,12 @@ export { setupTestServer } from './testServer';
 /**
  * Initialize node types.
  */
-export async function initActiveWorkflowRunner(mockOrchestrationService = true) {
-	// @pending: remove arg
-	if (mockOrchestrationService) mockInstance(OrchestrationService);
+export async function initActiveWorkflowRunner() {
+	mockInstance(OrchestrationService, {
+		isMultiMainSetupEnabled: false,
+		shouldAddWebhooks: jest.fn().mockReturnValue(true),
+	});
+
 	mockInstance(Push);
 	mockInstance(ExecutionService);
 	const { ActiveWorkflowRunner } = await import('@/ActiveWorkflowRunner');

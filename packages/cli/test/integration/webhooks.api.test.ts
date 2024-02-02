@@ -41,7 +41,7 @@ describe('Webhook API', () => {
 			nodeTypes.getByName.mockReturnValue(node);
 			nodeTypes.getByNameAndVersion.mockReturnValue(node);
 
-			await initActiveWorkflowRunner(false);
+			await initActiveWorkflowRunner();
 
 			const server = new (class extends AbstractServer {})();
 			await server.start();

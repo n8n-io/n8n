@@ -419,9 +419,10 @@ export class ActiveWorkflowRunner {
 	}
 
 	/**
-	 * Register as active in memory all workflows stored as `active`.
+	 * Register as active in memory all workflows stored as `active`,
+	 * only on instance init or (in multi-main setup) on leadership change.
 	 */
-	async addActiveWorkflows(activationMode: WorkflowActivateMode) {
+	async addActiveWorkflows(activationMode: 'init' | 'leadershipChange') {
 		const dbWorkflows = await this.workflowRepository.getAllActive();
 
 		if (dbWorkflows.length === 0) return;
@@ -434,7 +435,9 @@ export class ActiveWorkflowRunner {
 
 		for (const dbWorkflow of dbWorkflows) {
 			try {
-				const wasActivated = await this.add(dbWorkflow.id, activationMode, dbWorkflow);
+				const wasActivated = await this.add(dbWorkflow.id, activationMode, dbWorkflow, {
+					shouldPublish: false,
+				});
 
 				if (wasActivated) {
 					this.logger.verbose(`Successfully started workflow ${dbWorkflow.display()}`, {
