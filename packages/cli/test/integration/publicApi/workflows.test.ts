@@ -7,7 +7,6 @@ import type { User } from '@db/entities/User';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
-import { Push } from '@/push';
 import { ExecutionService } from '@/executions/execution.service';
 
 import { randomApiKey } from '../shared/random';
@@ -27,7 +26,6 @@ let workflowRunner: ActiveWorkflowRunner;
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 const license = testServer.license;
 
-mockInstance(Push);
 mockInstance(ExecutionService);
 
 beforeAll(async () => {

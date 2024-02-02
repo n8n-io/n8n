@@ -13,6 +13,7 @@ import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import moment from 'moment-timezone';
 import { v4 as uuid } from 'uuid';
 import {
+	addNextOccurrence,
 	encodeURIComponentOnce,
 	getCalendars,
 	getTimezones,
@@ -376,6 +377,10 @@ export class GoogleCalendar implements INodeType {
 							{},
 							qs,
 						);
+
+						if (responseData) {
+							responseData = addNextOccurrence([responseData]);
+						}
 					}
 					//https://developers.google.com/calendar/v3/reference/events/list
 					if (operation === 'getAll') {
@@ -439,6 +444,10 @@ export class GoogleCalendar implements INodeType {
 								qs,
 							);
 							responseData = responseData.items;
+						}
+
+						if (responseData) {
+							responseData = addNextOccurrence(responseData);
 						}
 					}
 					//https://developers.google.com/calendar/v3/reference/events/patch

@@ -1,5 +1,5 @@
 <template>
-	<div ref="root" data-test-id="inline-expression-editor-input"></div>
+	<div ref="root" :class="$style.editor" data-test-id="inline-expression-editor-input"></div>
 </template>
 
 <script lang="ts">
@@ -169,4 +169,18 @@ export default defineComponent({
 });
 </script>
 
-<style lang="scss"></style>
+<style lang="scss" module>
+.editor div[contenteditable='false'] {
+	background-color: var(--disabled-fill, var(--color-background-light));
+	cursor: not-allowed;
+}
+</style>
+
+<style lang="scss" scoped>
+:deep(.cm-editor) {
+	padding-left: 0;
+}
+:deep(.cm-content) {
+	padding-left: var(--spacing-2xs);
+}
+</style>

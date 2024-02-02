@@ -11,7 +11,7 @@
 		:initialize="initialize"
 		:disabled="readOnlyEnv"
 		@click:add="addWorkflow"
-		@update:filters="filters = $event"
+		@update:filters="onFiltersUpdated"
 	>
 		<template #add-button="{ disabled }">
 			<n8n-tooltip :disabled="!readOnlyEnv">
@@ -155,6 +155,14 @@ import { useTagsStore } from '@/stores/tags.store';
 
 type IResourcesListLayoutInstance = InstanceType<typeof ResourcesListLayout>;
 
+interface Filters {
+	search: string;
+	ownedBy: string;
+	sharedWith: string;
+	status: string | boolean;
+	tags: string[];
+}
+
 const StatusFilter = {
 	ACTIVE: true,
 	DEACTIVATED: false,
@@ -246,6 +254,10 @@ const WorkflowsView = defineComponent({
 		this.sourceControlStoreUnsubscribe();
 	},
 	methods: {
+		onFiltersUpdated(filters: Filters) {
+			this.filters = filters;
+			this.saveFiltersOnQueryString();
+		},
 		addWorkflow() {
 			this.uiStore.nodeViewInitialized = false;
 			void this.$router.push({ name: VIEWS.NEW_WORKFLOW });
@@ -272,8 +284,6 @@ const WorkflowsView = defineComponent({
 			filters: { tags: string[]; search: string; status: string | boolean },
 			matches: boolean,
 		): boolean {
-			this.saveFiltersOnQueryString();
-
 			if (this.settingsStore.areTagsEnabled && filters.tags.length > 0) {
 				matches =
 					matches &&
@@ -320,8 +330,7 @@ const WorkflowsView = defineComponent({
 			}
 
 			void this.$router.replace({
-				name: VIEWS.WORKFLOWS,
-				query,
+				query: Object.keys(query).length ? query : undefined,
 			});
 		},
 		isValidUserId(userId: string) {

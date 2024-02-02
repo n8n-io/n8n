@@ -4,16 +4,11 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Command } from '@oclif/core';
 import * as changeCase from 'change-case';
-import * as fs from 'fs';
+import { access } from 'fs/promises';
 import * as inquirer from 'inquirer';
 import { join } from 'path';
 
 import { createTemplate } from '../src';
-
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const { promisify } = require('util');
-
-const fsAccess = promisify(fs.access);
 
 export class New extends Command {
 	static description = 'Create new credentials/node';
@@ -113,7 +108,7 @@ export class New extends Command {
 			// Check if node with the same name already exists in target folder
 			// to not overwrite it by accident
 			try {
-				await fsAccess(destinationFilePath);
+				await access(destinationFilePath);
 
 				// File does already exist. So ask if it should be overwritten.
 				const overwriteQuestion: inquirer.QuestionCollection = [

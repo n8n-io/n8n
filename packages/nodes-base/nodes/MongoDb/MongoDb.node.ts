@@ -108,7 +108,6 @@ export class MongoDb implements INodeType {
 
 		const mdb = client.db(database);
 
-		const returnItems: INodeExecutionData[] = [];
 		let responseData: IDataObject | IDataObject[] = [];
 
 		const items = this.getInputData();
@@ -369,12 +368,10 @@ export class MongoDb implements INodeType {
 
 		const itemData = generatePairedItemData(items.length);
 
-		const executionData = this.helpers.constructExecutionMetaData(
+		const returnItems = this.helpers.constructExecutionMetaData(
 			this.helpers.returnJsonArray(responseData),
 			{ itemData },
 		);
-
-		returnItems.push(...executionData);
 
 		return [returnItems];
 	}

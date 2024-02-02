@@ -326,3 +326,20 @@ export function preparePairedItemDataArray(
 	if (Array.isArray(pairedItem)) return pairedItem;
 	return [pairedItem];
 }
+
+export const sanitazeDataPathKey = (item: IDataObject, key: string) => {
+	if (item[key] !== undefined) {
+		return key;
+	}
+
+	if (
+		(key.startsWith("['") && key.endsWith("']")) ||
+		(key.startsWith('["') && key.endsWith('"]'))
+	) {
+		key = key.slice(2, -2);
+		if (item[key] !== undefined) {
+			return key;
+		}
+	}
+	return key;
+};

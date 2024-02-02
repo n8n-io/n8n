@@ -1,7 +1,18 @@
-import { jsonParse } from 'n8n-workflow';
-import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
+import { Service } from 'typedi';
 import type { DeleteResult } from 'typeorm';
 import { In } from 'typeorm';
+import EventEmitter from 'events';
+import uniqby from 'lodash/uniqBy';
+import { jsonParse } from 'n8n-workflow';
+import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
+
+import config from '@/config';
+import { EventDestinationsRepository } from '@db/repositories/eventDestinations.repository';
+import { ExecutionRepository } from '@db/repositories/execution.repository';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import { OrchestrationService } from '@/services/orchestration.service';
+import { Logger } from '@/Logger';
+
 import type {
 	EventMessageTypes,
 	EventNamesTypes,
@@ -9,10 +20,7 @@ import type {
 } from '../EventMessageClasses/';
 import type { MessageEventBusDestination } from '../MessageEventBusDestination/MessageEventBusDestination.ee';
 import { MessageEventBusLogWriter } from '../MessageEventBusWriter/MessageEventBusLogWriter';
-import EventEmitter from 'events';
-import config from '@/config';
 import { messageEventBusDestinationFromDb } from '../MessageEventBusDestination/MessageEventBusDestinationFromDb';
-import uniqby from 'lodash/uniqBy';
 import type { EventMessageConfirmSource } from '../EventMessageClasses/EventMessageConfirm';
 import type { EventMessageAuditOptions } from '../EventMessageClasses/EventMessageAudit';
 import { EventMessageAudit } from '../EventMessageClasses/EventMessageAudit';
@@ -25,16 +33,10 @@ import {
 	EventMessageGeneric,
 	eventMessageGenericDestinationTestEvent,
 } from '../EventMessageClasses/EventMessageGeneric';
-import { recoverExecutionDataFromEventLogMessages } from './recoverEvents';
 import { METRICS_EVENT_NAME } from '../MessageEventBusDestination/Helpers.ee';
-import { Container, Service } from 'typedi';
-import { ExecutionRepository } from '@db/repositories/execution.repository';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import type { AbstractEventMessageOptions } from '../EventMessageClasses/AbstractEventMessageOptions';
 import { getEventMessageObjectByType } from '../EventMessageClasses/Helpers';
-import { OrchestrationService } from '@/services/orchestration.service';
-import { Logger } from '@/Logger';
-import { EventDestinationsRepository } from '@db/repositories/eventDestinations.repository';
+import { ExecutionDataRecoveryService } from '../executionDataRecovery.service';
 
 export type EventMessageReturnMode = 'sent' | 'unsent' | 'all' | 'unfinished';
 
@@ -50,7 +52,7 @@ export interface MessageEventBusInitializeOptions {
 
 @Service()
 export class MessageEventBus extends EventEmitter {
-	isInitialized: boolean;
+	private isInitialized = false;
 
 	logWriter: MessageEventBusLogWriter;
 
@@ -60,9 +62,15 @@ export class MessageEventBus extends EventEmitter {
 
 	private pushIntervalTimer: NodeJS.Timer;
 
-	constructor(private readonly logger: Logger) {
+	constructor(
+		private readonly logger: Logger,
+		private readonly executionRepository: ExecutionRepository,
+		private readonly eventDestinationsRepository: EventDestinationsRepository,
+		private readonly workflowRepository: WorkflowRepository,
+		private readonly orchestrationService: OrchestrationService,
+		private readonly recoveryService: ExecutionDataRecoveryService,
+	) {
 		super();
-		this.isInitialized = false;
 	}
 
 	/**
@@ -80,7 +88,7 @@ export class MessageEventBus extends EventEmitter {
 
 		this.logger.debug('Initializing event bus...');
 
-		const savedEventDestinations = await Container.get(EventDestinationsRepository).find({});
+		const savedEventDestinations = await this.eventDestinationsRepository.find({});
 		if (savedEventDestinations.length > 0) {
 			for (const destinationData of savedEventDestinations) {
 				try {
@@ -132,7 +140,7 @@ export class MessageEventBus extends EventEmitter {
 			// crashing, so we can't just mark them as crashed
 			if (config.get('executions.mode') !== 'queue') {
 				const dbUnfinishedExecutionIds = (
-					await Container.get(ExecutionRepository).find({
+					await this.executionRepository.find({
 						where: {
 							status: In(['running', 'new', 'unknown']),
 						},
@@ -147,7 +155,7 @@ export class MessageEventBus extends EventEmitter {
 			if (unfinishedExecutionIds.length > 0) {
 				this.logger.warn(`Found unfinished executions: ${unfinishedExecutionIds.join(', ')}`);
 				this.logger.info('This could be due to a crash of an active workflow or a restart of n8n.');
-				const activeWorkflows = await Container.get(WorkflowRepository).find({
+				const activeWorkflows = await this.workflowRepository.find({
 					where: { active: true },
 					select: ['id', 'name'],
 				});
@@ -159,7 +167,7 @@ export class MessageEventBus extends EventEmitter {
 				}
 				const recoveryAlreadyAttempted = this.logWriter?.isRecoveryProcessRunning();
 				if (recoveryAlreadyAttempted || config.getEnv('eventBus.crashRecoveryMode') === 'simple') {
-					await Container.get(ExecutionRepository).markAsCrashed(unfinishedExecutionIds);
+					await this.executionRepository.markAsCrashed(unfinishedExecutionIds);
 					// if we end up here, it means that the previous recovery process did not finish
 					// a possible reason would be that recreating the workflow data itself caused e.g an OOM error
 					// in that case, we do not want to retry the recovery process, but rather mark the executions as crashed
@@ -174,9 +182,9 @@ export class MessageEventBus extends EventEmitter {
 							this.logger.debug(
 								`No event messages found, marking execution ${executionId} as 'crashed'`,
 							);
-							await Container.get(ExecutionRepository).markAsCrashed([executionId]);
+							await this.executionRepository.markAsCrashed([executionId]);
 						} else {
-							await recoverExecutionDataFromEventLogMessages(
+							await this.recoveryService.recoverExecutionData(
 								executionId,
 								unsentAndUnfinished.unfinishedExecutions[executionId],
 								true,
@@ -207,7 +215,7 @@ export class MessageEventBus extends EventEmitter {
 		this.destinations[destination.getId()] = destination;
 		this.destinations[destination.getId()].startListening();
 		if (notifyWorkers) {
-			await Container.get(OrchestrationService).publish('restartEventBus');
+			await this.orchestrationService.publish('restartEventBus');
 		}
 		return destination;
 	}
@@ -233,7 +241,7 @@ export class MessageEventBus extends EventEmitter {
 			delete this.destinations[id];
 		}
 		if (notifyWorkers) {
-			await Container.get(OrchestrationService).publish('restartEventBus');
+			await this.orchestrationService.publish('restartEventBus');
 		}
 		return result;
 	}
@@ -243,7 +251,7 @@ export class MessageEventBus extends EventEmitter {
 		if (eventData) {
 			const eventMessage = getEventMessageObjectByType(eventData);
 			if (eventMessage) {
-				await Container.get(MessageEventBus).send(eventMessage);
+				await this.send(eventMessage);
 			}
 		}
 		return eventData;
@@ -370,7 +378,7 @@ export class MessageEventBus extends EventEmitter {
 				.slice(-amount);
 
 			for (const execution of filteredExecutionIds) {
-				const data = await recoverExecutionDataFromEventLogMessages(
+				const data = await this.recoveryService.recoverExecutionData(
 					execution.executionId,
 					queryResult,
 					false,
@@ -450,5 +458,3 @@ export class MessageEventBus extends EventEmitter {
 		await this.send(new EventMessageNode(options));
 	}
 }
-
-export const eventBus = Container.get(MessageEventBus);

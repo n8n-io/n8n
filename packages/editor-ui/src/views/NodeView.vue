@@ -379,6 +379,7 @@ import { useDeviceSupport } from 'n8n-design-system';
 import { useDebounce } from '@/composables/useDebounce';
 import { useExecutionsStore } from '@/stores/executions.store';
 import { useCanvasPanning } from '@/composables/useCanvasPanning';
+import { tryToParseNumber } from '@/utils/typesUtils';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -1329,7 +1330,7 @@ export default defineComponent({
 				'User inserted workflow template',
 				{
 					source: 'workflow',
-					template_id: templateId,
+					template_id: tryToParseNumber(templateId),
 					wf_template_repo_session_id: this.templatesStore.previousSessionId,
 				},
 				{
