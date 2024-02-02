@@ -22,6 +22,202 @@ beforeEach(async () => {
 
 type GetAllResponse = { body: { data: ListQuery.Credentials.WithOwnedByAndSharedWith[] } };
 
+describe('POST /credentials', () => {
+	const testPayload = {
+		name: 'test',
+		type: 'test',
+		data: { super: 'secret' },
+		nodesAccess: [],
+	};
+
+	describe('as unauthorized user', () => {
+		it('return 401', async () => {
+			await testServer.authlessAgent.post('/credentials').send(testPayload).expect(401);
+		});
+	});
+
+	describe('as member', () => {
+		it('persists the credential', async () => {
+			//
+			// ACT
+			//
+			const postResponse = await testServer
+				.authAgentFor(member)
+				.post('/credentials')
+				.send(testPayload)
+				.expect(200);
+
+			//
+			// ASSERT
+			//
+			expect(postResponse.body.data).toMatchObject({
+				name: 'test',
+				data: expect.any(String),
+				type: 'test',
+				nodesAccess: [],
+				id: expect.any(String),
+				updatedAt: expect.any(String),
+				createdAt: expect.any(String),
+			});
+
+			const getResponse = await testServer
+				.authAgentFor(member)
+				.get(`/credentials/${postResponse.body.data.id}`)
+				.query({ includeData: true })
+				.expect(200);
+
+			expect(getResponse.body.data).toMatchObject({
+				...postResponse.body.data,
+				// match against decryped data
+				data: testPayload.data,
+			});
+		});
+	});
+
+	describe('as owner', () => {
+		it('persists the credential', async () => {
+			//
+			// ACT
+			//
+			const postResponse = await testServer
+				.authAgentFor(owner)
+				.post('/credentials')
+				.send(testPayload)
+				.expect(200);
+
+			//
+			// ASSERT
+			//
+			expect(postResponse.body.data).toMatchObject({
+				name: 'test',
+				data: expect.any(String),
+				type: 'test',
+				nodesAccess: [],
+				id: expect.any(String),
+				updatedAt: expect.any(String),
+				createdAt: expect.any(String),
+			});
+
+			const getResponse = await testServer
+				.authAgentFor(owner)
+				.get(`/credentials/${postResponse.body.data.id}`)
+				.query({ includeData: true })
+				.expect(200);
+
+			expect(getResponse.body.data).toMatchObject({
+				...postResponse.body.data,
+				// match against decryped data
+				data: testPayload.data,
+			});
+		});
+	});
+});
+
+describe('GET /credentials/:id', () => {
+	const testPayload = {
+		name: 'test',
+		type: 'test',
+		data: { super: 'secret' },
+		nodesAccess: [],
+	};
+
+	describe('as unauthorized user', () => {
+		it('does not return the credential', async () => {
+			//
+			// ARRANGE
+			//
+			const postResponse = await testServer
+				.authAgentFor(member)
+				.post('/credentials')
+				.send(testPayload)
+				.expect(200);
+
+			//
+			// ACT & ASSERT
+			//
+			await testServer.authlessAgent.get(`/credentials/${postResponse.body.data.id}`).expect(401);
+		});
+	});
+
+	describe('as member user', () => {
+		it('does not return decrypted data by default', async () => {
+			//
+			// ARRANGE
+			//
+			const postResponse = await testServer
+				.authAgentFor(member)
+				.post('/credentials')
+				.send(testPayload)
+				.expect(200);
+
+			//
+			// ACT
+			//
+			const getResponse = await testServer
+				.authAgentFor(member)
+				.get(`/credentials/${postResponse.body.data.id}`)
+				.expect(200);
+
+			//
+			// ASSERT
+			//
+			console.log(getResponse.body);
+			expect(getResponse.body.data.data).toBeUndefined();
+		});
+
+		it("does not return anothers user's credentials", async () => {
+			//
+			// ARRANGE
+			//
+			const postResponse = await testServer
+				.authAgentFor(owner)
+				.post('/credentials')
+				.send(testPayload)
+				.expect(200);
+
+			//
+			// ACT & ASSERT
+			//
+			await testServer
+				.authAgentFor(member)
+				.get(`/credentials/${postResponse.body.data.id}`)
+				.expect(404);
+		});
+	});
+
+	describe('as owner user', () => {
+		it("returns another user's credential", async () => {
+			//
+			// ARRANGE
+			//
+			const postResponse = await testServer
+				.authAgentFor(member)
+				.post('/credentials')
+				.send(testPayload)
+				.expect(200);
+
+			//
+			// ACT
+			//
+			const getAllResponse = await testServer
+				.authAgentFor(owner)
+				.get(`/credentials/${postResponse.body.data.id}`)
+				.query({ includeData: true })
+				.expect(200);
+
+			//
+			// ASSERT
+			//
+
+			expect(getAllResponse.body.data).toMatchObject({
+				...postResponse.body.data,
+				// match against decryped data
+				data: testPayload.data,
+			});
+		});
+	});
+});
+
 describe('GET /credentials', () => {
 	describe('should return', () => {
 		test('all credentials for owner', async () => {
