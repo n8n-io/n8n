@@ -39,7 +39,7 @@ export class ExecutionsController {
 			return { count: 0, estimated: false, results: [] };
 		}
 
-		if (query.status?.length === 0) {
+		if (!query.status || query.status?.length === 0) {
 			const [active, latestFinished] = await Promise.all([
 				this.executionService.findAllActive(),
 				this.executionService.findLatestFinished(20),

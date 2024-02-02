@@ -27,7 +27,23 @@ describe('ExecutionsController', () => {
 			executionService.findLatestFinished.mockResolvedValue([]);
 
 			const req = mock<ExecutionRequest.GetMany>({
-				rangeQuery: { kind: 'range', workflowId: undefined },
+				rangeQuery: { kind: 'range', workflowId: undefined, status: undefined },
+			});
+
+			await executionsController.getMany(req);
+
+			expect(executionService.findAllActive).toHaveBeenCalled();
+			expect(executionService.findLatestFinished).toHaveBeenCalledWith(20);
+			expect(executionService.findRangeWithCount).not.toHaveBeenCalled();
+		});
+
+		it('if status provided as empty array, should look for all active plus latest 20 finished executions', async () => {
+			workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['123']);
+			executionService.findAllActive.mockResolvedValue([]);
+			executionService.findLatestFinished.mockResolvedValue([]);
+
+			const req = mock<ExecutionRequest.GetMany>({
+				rangeQuery: { kind: 'range', workflowId: undefined, status: [] },
 			});
 
 			await executionsController.getMany(req);
