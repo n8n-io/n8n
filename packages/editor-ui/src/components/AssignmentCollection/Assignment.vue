@@ -128,6 +128,7 @@ const onBlur = (): void => {
 		:class="{
 			[$style.wrapper]: true,
 			[$style.hasIssues]: issues.length > 0,
+			[$style.hasHint]: !!hint,
 		}"
 		data-test-id="assignment"
 	>
@@ -170,26 +171,28 @@ const onBlur = (): void => {
 					</TypeSelect>
 				</template>
 				<template #right="{ breakpoint }">
-					<ParameterInputFull
-						:key="valueParameter.type"
-						display-options
-						hide-label
-						hide-issues
-						hide-hint
-						:rows="3"
-						is-assignment
-						:is-read-only="isReadOnly"
-						:options-position="breakpoint === 'default' ? 'top' : 'bottom'"
-						:parameter="valueParameter"
-						:value="assignment.value"
-						:path="`${path}.value`"
-						data-test-id="assignment-value"
-						@update="onAssignmentValueChange"
-						@blur="onBlur"
-					/>
+					<div :class="$style.value">
+						<ParameterInputFull
+							:key="valueParameter.type"
+							display-options
+							hide-label
+							hide-issues
+							hide-hint
+							:rows="3"
+							is-assignment
+							:is-read-only="isReadOnly"
+							:options-position="breakpoint === 'default' ? 'top' : 'bottom'"
+							:parameter="valueParameter"
+							:value="assignment.value"
+							:path="`${path}.value`"
+							data-test-id="assignment-value"
+							@update="onAssignmentValueChange"
+							@blur="onBlur"
+						/>
+						<ParameterInputHint :class="$style.hint" :hint="hint" single-line />
+					</div>
 				</template>
 			</InputTriple>
-			<ParameterInputHint :class="$style.hint" :hint="hint" single-line />
 		</div>
 
 		<div :class="$style.status">
@@ -209,6 +212,10 @@ const onBlur = (): void => {
 		--input-border-color: var(--color-danger);
 	}
 
+	&.hasHint {
+		padding-bottom: var(--spacing-s);
+	}
+
 	&:hover {
 		.remove {
 			opacity: 1;
@@ -220,14 +227,22 @@ const onBlur = (): void => {
 	display: flex;
 	flex-direction: column;
 	flex-grow: 1;
+	min-width: 0;
 
 	> div {
 		flex-grow: 1;
 	}
 }
 
-.hint {
-	padding-left: var(--spacing-4xs);
+.value {
+	position: relative;
+
+	.hint {
+		position: absolute;
+		bottom: calc(var(--spacing-s) * -1);
+		left: 0;
+		right: 0;
+	}
 }
 
 .remove {

@@ -176,8 +176,6 @@ export default defineComponent({
 
 	.all-sections {
 		height: 30px;
-		display: flex;
-		flex-direction: row;
 		display: inline-table;
 		width: 100%;
 	}
@@ -190,8 +188,11 @@ export default defineComponent({
 	}
 }
 
-.assignment .prepend-section {
-	padding-top: 0;
+.assignment {
+	.prepend-section {
+		vertical-align: top;
+		padding-top: 4px;
+	}
 }
 
 .expression-editor-modal-opener {
@@ -205,6 +206,8 @@ export default defineComponent({
 		var(--input-border-style, var(--border-style-base))
 		var(--input-border-width, var(--border-width-base));
 	cursor: pointer;
+	border-radius: 0;
+	border-top-left-radius: var(--border-radius-base);
 
 	&:hover {
 		border: var(--input-border-color, var(--border-color-base))
