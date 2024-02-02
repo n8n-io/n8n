@@ -1,10 +1,10 @@
 import type { ListQuery } from '@/requests';
 import type { User } from '@db/entities/User';
-import * as testDb from './shared/testDb';
-import { setupTestServer } from './shared/utils/';
-import { randomCredentialPayload as payload } from './shared/random';
-import { saveCredential } from './shared/db/credentials';
-import { createMember, createOwner } from './shared/db/users';
+import * as testDb from '../shared/testDb';
+import { setupTestServer } from '../shared/utils/';
+import { randomCredentialPayload as payload } from '../shared/random';
+import { saveCredential } from '../shared/db/credentials';
+import { createMember, createOwner } from '../shared/db/users';
 
 const { any } = expect;
 
