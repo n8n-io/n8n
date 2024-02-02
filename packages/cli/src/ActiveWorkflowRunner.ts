@@ -531,7 +531,9 @@ export class ActiveWorkflowRunner {
 		const shouldAddWebhooks = this.orchestrationService.shouldAddWebhooks(activationMode);
 		const shouldAddTriggersAndPollers = this.orchestrationService.shouldAddTriggersAndPollers();
 
-		const shouldActivate = shouldAddWebhooks || shouldAddTriggersAndPollers;
+		const shouldActivate =
+			(shouldAddWebhooks || shouldAddTriggersAndPollers) &&
+			['init', 'leadershipChange'].includes(activationMode);
 
 		try {
 			const dbWorkflow = existingWorkflow ?? (await this.workflowRepository.findById(workflowId));
