@@ -103,6 +103,11 @@ export class EmbeddingsOpenAi implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 		outputs: [NodeConnectionType.AiEmbedding],
 		outputNames: ['Embeddings'],
+		requestDefaults: {
+			ignoreHttpStatusErrors: true,
+			baseURL:
+				'={{ $parameter.options?.baseURL?.split("/").slice(0,-1).join("/") || "https://api.openai.com" }}',
+		},
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionType.AiVectorStore]),
 			{
