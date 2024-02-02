@@ -787,7 +787,7 @@ export class ActiveWorkflowRunner {
 		);
 
 		if (workflow.getTriggerNodes().length !== 0 || workflow.getPollNodes().length !== 0) {
-			this.logger.warn(`Adding triggers and pollers for workflow ${dbWorkflow.display()}`); // @pending: restore debug
+			this.logger.debug(`Adding triggers and pollers for workflow ${dbWorkflow.display()}`);
 
 			await this.activeWorkflows.add(
 				workflow.id,
