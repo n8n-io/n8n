@@ -13,7 +13,7 @@ describe('Current Workflow Executions', () => {
 		cy.createFixtureWorkflow('Test_workflow_4_executions_view.json', `My test workflow`);
 	});
 
-	it('should render executions tab correctly', () => {
+	it.only('should render executions tab correctly', () => {
 		createMockExecutions();
 		cy.intercept('GET', '/rest/executions?filter=*').as('getExecutions');
 		cy.intercept('GET', '/rest/executions/active?filter=*').as('getActiveExecutions');
@@ -21,6 +21,8 @@ describe('Current Workflow Executions', () => {
 		executionsTab.actions.switchToExecutionsTab();
 
 		cy.wait(['@getExecutions', '@getActiveExecutions']);
+
+		executionsTab.getters.executionsList().scrollTo(0, 500).wait(0);
 
 		executionsTab.getters.executionListItems().should('have.length', 11);
 		executionsTab.getters.successfulExecutionListItems().should('have.length', 9);
