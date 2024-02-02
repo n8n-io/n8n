@@ -531,7 +531,7 @@ export class ActiveWorkflowRunner {
 		const shouldAddWebhooks = this.orchestrationService.shouldAddWebhooks(activationMode);
 		const shouldAddTriggersAndPollers = this.orchestrationService.shouldAddTriggersAndPollers();
 
-		const shouldActivate =
+		const shouldDisplayActivationMessage =
 			(shouldAddWebhooks || shouldAddTriggersAndPollers) &&
 			['init', 'leadershipChange'].includes(activationMode);
 
@@ -542,7 +542,7 @@ export class ActiveWorkflowRunner {
 				throw new WorkflowActivationError(`Failed to find workflow with ID "${workflowId}"`);
 			}
 
-			if (shouldActivate) {
+			if (shouldDisplayActivationMessage) {
 				this.logger.info(`   - ${dbWorkflow.display()}`);
 				this.logger.debug(`Initializing active workflow ${dbWorkflow.display()} (startup)`, {
 					workflowName: dbWorkflow.name,
@@ -607,7 +607,7 @@ export class ActiveWorkflowRunner {
 		// id of them in the static data. So make sure that data gets persisted.
 		await this.workflowStaticDataService.saveStaticData(workflow);
 
-		return shouldActivate;
+		return shouldDisplayActivationMessage;
 	}
 
 	/**
