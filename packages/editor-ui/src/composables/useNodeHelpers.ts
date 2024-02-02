@@ -617,13 +617,18 @@ export function useNodeHelpers() {
 		if (trackHistory) {
 			historyStore.startRecordingUndo();
 		}
+
+		const newDisabledState = nodes.some((node) => !node.disabled);
 		for (const node of nodes) {
-			const oldState = node.disabled;
+			if (newDisabledState === node.disabled) {
+				continue;
+			}
+
 			// Toggle disabled flag
 			const updateInformation = {
 				name: node.name,
 				properties: {
-					disabled: !oldState,
+					disabled: newDisabledState,
 				} as IDataObject,
 			} as INodeUpdatePropertiesInformation;
 
@@ -640,7 +645,7 @@ export function useNodeHelpers() {
 			updateNodesInputIssues();
 			if (trackHistory) {
 				historyStore.pushCommandToUndo(
-					new EnableNodeToggleCommand(node.name, oldState === true, node.disabled === true),
+					new EnableNodeToggleCommand(node.name, node.disabled === true, newDisabledState),
 				);
 			}
 		}
