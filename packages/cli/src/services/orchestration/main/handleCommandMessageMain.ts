@@ -98,7 +98,7 @@ export async function handleCommandMessageMain(messageString: string) {
 
 					push.broadcast('workflowActivated', { workflowId });
 
-					// instruct followers to show deactivation in UI
+					// instruct followers to show activation in UI
 					await orchestrationService.publish('display-workflow-activation', { workflowId });
 				} catch (error) {
 					if (error instanceof Error) {
