@@ -51,6 +51,7 @@
     "@n8n/tournament": "1.0.2",
     "@n8n_io/riot-tmpl": "4.0.0",
     "ast-types": "0.15.2",
+    "axios": "1.6.7",
     "callsites": "3.1.0",
     "deep-equal": "2.2.0",
     "esprima-next": "5.8.4",
