@@ -146,7 +146,7 @@
     "n8n-nodes-base": "workspace:*",
     "n8n-workflow": "workspace:*",
     "nanoid": "3.3.6",
-    "nodemailer": "6.8.0",
+    "nodemailer": "6.9.9",
     "oauth-1.0a": "2.2.6",
     "open": "7.4.2",
     "openapi-types": "10.0.0",

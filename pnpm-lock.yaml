@@ -522,8 +522,8 @@ importers:
         specifier: 3.3.6
         version: 3.3.6
       nodemailer:
-        specifier: 6.8.0
-        version: 6.8.0
+        specifier: 6.9.9
+        version: 6.9.9
       oauth-1.0a:
         specifier: 2.2.6
         version: 2.2.6
@@ -1328,8 +1328,8 @@ importers:
         specifier: 12.0.5
         version: 12.0.5
       nodemailer:
-        specifier: 6.8.0
-        version: 6.8.0
+        specifier: 6.9.9
+        version: 6.9.9
       otpauth:
         specifier: 9.1.1
         version: 9.1.1
@@ -1452,8 +1452,8 @@ importers:
         specifier: ^7.0.1
         version: 7.0.1
       '@types/nodemailer':
-        specifier: ^6.4.0
-        version: 6.4.6
+        specifier: ^6.4.14
+        version: 6.4.14
       '@types/promise-ftp':
         specifier: ^1.3.4
         version: 1.3.4
@@ -10345,8 +10345,8 @@ packages:
   /@types/node@18.16.16:
     resolution: {integrity: sha512-NpaM49IGQQAUlBhHMF82QH80J08os4ZmyF9MkpCzWAGuOHqE4gTEbhzd7L3l5LmWuZ6E0OiC1FweQ4tsiW35+g==}
 
-  /@types/nodemailer@6.4.6:
-    resolution: {integrity: sha512-pD6fL5GQtUKvD2WnPmg5bC2e8kWCAPDwMPmHe/ohQbW+Dy0EcHgZ2oCSuPlWNqk74LS5BVMig1SymQbFMPPK3w==}
+  /@types/nodemailer@6.4.14:
+    resolution: {integrity: sha512-fUWthHO9k9DSdPCSPRqcu6TWhYyxTBg382vlNIttSe9M7XfsT06y0f24KHXtbnijPGGRIcVvdKHTNikOI6qiHA==}
     dependencies:
       '@types/node': 18.16.16
     dev: true
@@ -20560,8 +20560,8 @@ packages:
     engines: {node: '>=6.0.0'}
     dev: false
 
-  /nodemailer@6.8.0:
-    resolution: {integrity: sha512-EjYvSmHzekz6VNkNd12aUqAco+bOkRe3Of5jVhltqKhEsjw/y0PYPJfp83+s9Wzh1dspYAkUW/YNQ350NATbSQ==}
+  /nodemailer@6.9.9:
+    resolution: {integrity: sha512-dexTll8zqQoVJEZPwQAKzxxtFn0qTnjdQTchoU6Re9BUUGBJiOy3YMn/0ShTW6J5M0dfQ1NeDeRTTl4oIWgQMA==}
     engines: {node: '>=6.0.0'}
     dev: false
 
