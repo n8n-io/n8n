@@ -106,7 +106,7 @@ describe('POST /credentials', () => {
 
 			expect(getResponse.body.data).toMatchObject({
 				...postResponse.body.data,
-				// match against decryped data
+				// match against decrypted data
 				data: testPayload.data,
 			});
 		});
@@ -164,7 +164,7 @@ describe('GET /credentials/:id', () => {
 			expect(getResponse.body.data.data).toBeUndefined();
 		});
 
-		it("does not return anothers user's credentials", async () => {
+		it("does not return another user's credentials", async () => {
 			//
 			// ARRANGE
 			//
