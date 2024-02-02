@@ -150,33 +150,16 @@ async function onAutoRefreshToggle(value: boolean) {
 	uiStore.executionSidebarAutoRefresh = value;
 }
 
-async function loadCurrentExecutions(): Promise<void> {
-	if (isEmpty(executionsStore.currentExecutionsFilters.metadata)) {
-		await executionsStore.fetchCurrentExecutions({
-			...executionsStore.currentExecutionsFilters,
-			workflowId: workflowId.value,
-		});
-	}
-}
-
-async function loadFinishedExecutions(): Promise<void> {
-	if (executionsStore.filters.status === 'running') {
-		return;
-	}
-
-	await executionsStore.fetchPastExecutions({
-		...executionsStore.executionsFilters,
-		workflowId: workflowId.value,
-	});
-}
-
 async function onRefreshData() {
 	if (!workflowId.value) {
 		return;
 	}
 
 	try {
-		await Promise.all([loadFinishedExecutions(), loadCurrentExecutions()]);
+		await executionsStore.fetchExecutions({
+			...executionsStore.executionsFilters,
+			workflowId: workflowId.value,
+		});
 	} catch (error) {
 		if (error.errorCode === NO_NETWORK_ERROR_CODE) {
 			toast.showMessage(
@@ -323,7 +306,7 @@ async function loadMore(): Promise<void> {
 	}
 
 	try {
-		await executionsStore.fetchPastExecutions(executionsStore.executionsFilters, lastId);
+		await executionsStore.fetchExecutions(executionsStore.executionsFilters, lastId);
 	} catch (error) {
 		loadingMore.value = false;
 		toast.showError(error, i18n.baseText('executionsList.showError.loadMore.title'));

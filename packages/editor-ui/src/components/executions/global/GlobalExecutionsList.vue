@@ -184,7 +184,7 @@ async function loadMore() {
 	}
 
 	try {
-		await executionsStore.fetchPastExecutions(executionsStore.executionsFilters, lastId);
+		await executionsStore.fetchExecutions(executionsStore.executionsFilters, lastId);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('executionsList.showError.loadMore.title'));
 		return;

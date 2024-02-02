@@ -94,7 +94,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 		};
 	}
 
-	function addRunningExecution(execution: ExecutionSummary) {
+	function addCurrentExecution(execution: ExecutionSummary) {
 		currentExecutionsById.value[execution.id] = {
 			...execution,
 			status: execution.status ?? getExecutionStatus(execution),
@@ -138,7 +138,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 		}
 	}
 
-	async function fetchPastExecutions(
+	async function fetchExecutions(
 		filter = executionsFilters.value,
 		lastId?: string,
 		firstId?: string,
@@ -157,31 +157,17 @@ export const useExecutionsStore = defineStore('executions', () => {
 				},
 			);
 
-			data.results.forEach(addExecution);
+			currentExecutionsById.value = {};
+			data.results.forEach((execution) => {
+				if (['new', 'waiting', 'running'].includes(execution.status as string)) {
+					addCurrentExecution(execution);
+				} else {
+					addExecution(execution);
+				}
+			});
 
 			executionsCount.value = data.count;
 			executionsCountEstimated.value = data.estimated;
-		} catch (e) {
-			throw e;
-		} finally {
-			loading.value = false;
-		}
-	}
-
-	async function fetchCurrentExecutions(filter = currentExecutionsFilters.value) {
-		loading.value = true;
-		try {
-			const data = await makeRestApiRequest<{ results: ExecutionSummary[] }>(
-				rootStore.getRestApiContext,
-				'GET',
-				'/executions',
-				{
-					...(filter ? { filter } : {}),
-				},
-			);
-
-			currentExecutionsById.value = {};
-			data.results.forEach(addRunningExecution);
 		} catch (e) {
 			throw e;
 		} finally {
@@ -210,16 +196,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 		// Suppose 504 finishes before 500, 501, 502 and 503.
 		// iF you use firstId, filtering id >= 504 you won't
 		// ever get ids 500, 501, 502 and 503 when they finish
-		const promises = [fetchPastExecutions(autoRefreshExecutionFilters)];
-		if (isEmpty(autoRefreshExecutionFilters.metadata)) {
-			promises.push(
-				fetchCurrentExecutions({
-					...currentExecutionsFilters.value,
-					...(workflowId ? { workflowId } : {}),
-				}),
-			);
-		}
-		await Promise.all(promises);
+		await fetchExecutions(autoRefreshExecutionFilters);
 
 		// @TODO
 		// this.adjustSelectionAfterMoreItemsLoaded();
@@ -296,8 +273,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 		executionsByWorkflowId,
 		currentExecutions,
 		currentExecutionsByWorkflowId,
-		fetchPastExecutions,
-		fetchCurrentExecutions,
+		fetchExecutions,
 		fetchExecution,
 		getExecutionStatus,
 		autoRefresh,

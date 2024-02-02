@@ -74,23 +74,9 @@ async function onAutoRefreshToggle(value: boolean) {
 	}
 }
 
-async function loadCurrentExecutions(): Promise<void> {
-	if (isEmpty(executionsStore.currentExecutionsFilters.metadata)) {
-		await executionsStore.fetchCurrentExecutions();
-	}
-}
-
-async function loadFinishedExecutions(): Promise<void> {
-	if (executionsStore.filters.status === 'running') {
-		return;
-	}
-
-	await executionsStore.fetchPastExecutions();
-}
-
 async function onRefreshData() {
 	try {
-		await Promise.all([loadCurrentExecutions(), loadFinishedExecutions()]);
+		await executionsStore.fetchExecutions();
 	} catch (error) {
 		toast.showError(error, i18n.baseText('executionsList.showError.refreshData.title'));
 	}
