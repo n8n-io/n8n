@@ -35,6 +35,7 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event.inputs.base-branch }}
 
+      - run: corepack enable
       - uses: actions/setup-node@v4.0.1
         with:
           node-version: 18.x
