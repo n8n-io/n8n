@@ -5,10 +5,10 @@ import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
 import { License } from '@/License';
 import { Logger } from '@/Logger';
+import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { Push } from '@/push';
 import { TestWebhooks } from '@/TestWebhooks';
 import { OrchestrationService } from '@/services/orchestration.service';
-import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 
 export async function handleCommandMessageMain(messageString: string) {
