@@ -2,16 +2,13 @@ import { Service } from 'typedi';
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import type {
 	IWorkflowBase,
-	JsonObject,
 	ExecutionError,
 	INode,
 	IRunExecutionData,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { ApplicationError, jsonParse, Workflow, WorkflowOperationError } from 'n8n-workflow';
-
+import { ApplicationError, Workflow, WorkflowOperationError } from 'n8n-workflow';
 import { ActiveExecutions } from '@/ActiveExecutions';
-import config from '@/config';
 import type {
 	ExecutionPayload,
 	IExecutionFlattedResponse,
@@ -21,9 +18,8 @@ import type {
 } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
 import { Queue } from '@/Queue';
-import type { ExecutionRequest } from './execution.types';
+import type { ExecutionRequest, ExecutionSummaries } from './execution.types';
 import { WorkflowRunner } from '@/WorkflowRunner';
-import * as GenericHelpers from '@/GenericHelpers';
 import { getStatusUsingPreviousExecutionStatusMethod } from './executionHelpers';
 import type { IGetExecutionsQueryFilter } from '@db/repositories/execution.repository';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
@@ -31,8 +27,11 @@ import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { Logger } from '@/Logger';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import config from '@/config';
+import { WaitTracker } from '@/WaitTracker';
+import type { ExecutionEntity } from '@/databases/entities/ExecutionEntity';
 
-const schemaGetExecutionsQueryFilter = {
+export const schemaGetExecutionsQueryFilter = {
 	$id: '/IGetExecutionsQueryFilter',
 	type: 'object',
 	properties: {
@@ -65,7 +64,9 @@ const schemaGetExecutionsQueryFilter = {
 	},
 };
 
-const allowedExecutionsQueryFilterFields = Object.keys(schemaGetExecutionsQueryFilter.properties);
+export const allowedExecutionsQueryFilterFields = Object.keys(
+	schemaGetExecutionsQueryFilter.properties,
+);
 
 @Service()
 export class ExecutionService {
@@ -76,81 +77,8 @@ export class ExecutionService {
 		private readonly executionRepository: ExecutionRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly nodeTypes: NodeTypes,
+		private readonly waitTracker: WaitTracker,
 	) {}
-
-	async findMany(req: ExecutionRequest.GetMany, sharedWorkflowIds: string[]) {
-		// parse incoming filter object and remove non-valid fields
-		let filter: IGetExecutionsQueryFilter | undefined = undefined;
-		if (req.query.filter) {
-			try {
-				const filterJson: JsonObject = jsonParse(req.query.filter);
-				if (filterJson) {
-					Object.keys(filterJson).map((key) => {
-						if (!allowedExecutionsQueryFilterFields.includes(key)) delete filterJson[key];
-					});
-					if (jsonSchemaValidate(filterJson, schemaGetExecutionsQueryFilter).valid) {
-						filter = filterJson as IGetExecutionsQueryFilter;
-					}
-				}
-			} catch (error) {
-				this.logger.error('Failed to parse filter', {
-					userId: req.user.id,
-					filter: req.query.filter,
-				});
-				throw new InternalServerError('Parameter "filter" contained invalid JSON string.');
-			}
-		}
-
-		// safeguard against querying workflowIds not shared with the user
-		const workflowId = filter?.workflowId?.toString();
-		if (workflowId !== undefined && !sharedWorkflowIds.includes(workflowId)) {
-			this.logger.verbose(
-				`User ${req.user.id} attempted to query non-shared workflow ${workflowId}`,
-			);
-			return {
-				count: 0,
-				estimated: false,
-				results: [],
-			};
-		}
-
-		const limit = req.query.limit
-			? parseInt(req.query.limit, 10)
-			: GenericHelpers.DEFAULT_EXECUTIONS_GET_ALL_LIMIT;
-
-		const executingWorkflowIds: string[] = [];
-
-		if (config.getEnv('executions.mode') === 'queue') {
-			const currentJobs = await this.queue.getJobs(['active', 'waiting']);
-			executingWorkflowIds.push(...currentJobs.map(({ data }) => data.executionId));
-		}
-
-		// We may have manual executions even with queue so we must account for these.
-		executingWorkflowIds.push(...this.activeExecutions.getActiveExecutions().map(({ id }) => id));
-
-		const { count, estimated } = await this.executionRepository.countExecutions(
-			filter,
-			sharedWorkflowIds,
-			executingWorkflowIds,
-			req.user.hasGlobalScope('workflow:list'),
-		);
-
-		const formattedExecutions = await this.executionRepository.searchExecutions(
-			filter,
-			limit,
-			executingWorkflowIds,
-			sharedWorkflowIds,
-			{
-				lastId: req.query.lastId,
-				firstId: req.query.firstId,
-			},
-		);
-		return {
-			count,
-			results: formattedExecutions,
-			estimated,
-		};
-	}
 
 	async findOne(
 		req: ExecutionRequest.GetOne,
@@ -178,10 +106,10 @@ export class ExecutionService {
 
 	async retry(req: ExecutionRequest.Retry, sharedWorkflowIds: string[]) {
 		const { id: executionId } = req.params;
-		const execution = (await this.executionRepository.findIfShared(
+		const execution = await this.executionRepository.findWithUnflattenedData(
 			executionId,
 			sharedWorkflowIds,
-		)) as unknown as IExecutionResponse;
+		);
 
 		if (!execution) {
 			this.logger.info(
@@ -383,5 +311,97 @@ export class ExecutionService {
 		};
 
 		await this.executionRepository.createNewExecution(fullExecutionData);
+	}
+
+	// ----------------------------------
+	//             new API
+	// ----------------------------------
+
+	private readonly isRegularMode = config.getEnv('executions.mode') === 'regular';
+
+	/**
+	 * Find the `n` most recent executions with a status of `success` or `error`.
+	 */
+	async findLatestFinished(n: number) {
+		return await this.executionRepository.findLatestFinished(n);
+	}
+
+	/**
+	 * Find all executions with a status of `new`, `running`, and `waiting`.
+	 */
+	async findAllActive() {
+		return await this.executionRepository.findAllActive();
+	}
+
+	/**
+	 * Find a range of summaries of executions that satisfy a query, along with the
+	 * total count of all existing executions that satisfy the query, and whether
+	 * the total is an estimate or not.
+	 */
+	async findRangeWithCount(query: ExecutionSummaries.RangeQuery) {
+		const executions = await this.executionRepository.findManyByRangeQuery(query);
+
+		if (config.getEnv('database.type') === 'postgresdb') {
+			const liveRows = await this.executionRepository.getLiveExecutionRowsOnPostgres();
+
+			if (liveRows === -1) return { count: -1, estimated: false, results: executions };
+
+			if (liveRows > 100_000) {
+				// likely too high to fetch exact count fast
+				return { count: liveRows, estimated: true, results: executions };
+			}
+		}
+
+		const { range: _, ...countQuery } = query;
+
+		const count = await this.executionRepository.fetchCount({ ...countQuery, kind: 'count' });
+
+		return { count, estimated: false, results: executions };
+	}
+
+	/**
+	 * Stop an active execution.
+	 */
+	async stop(executionId: string) {
+		const execution = await this.executionRepository.findOneBy({ id: executionId });
+
+		if (!execution) throw new NotFoundError('Execution not found');
+
+		const stopResult = await this.activeExecutions.stopExecution(execution.id);
+
+		if (stopResult) return this.toExecutionStopResult(execution);
+
+		if (this.isRegularMode) {
+			return await this.waitTracker.stopExecution(execution.id);
+		}
+
+		// queue mode
+
+		try {
+			return await this.waitTracker.stopExecution(execution.id);
+		} catch {
+			// @TODO: Why are we swallowing this error in queue mode?
+		}
+
+		const activeJobs = await this.queue.getJobs(['active', 'waiting']);
+		const job = activeJobs.find(({ data }) => data.executionId === execution.id);
+
+		if (job) {
+			await this.queue.stopJob(job);
+		} else {
+			this.logger.debug('Job to stop no longer in queue', { jobId: execution.id });
+		}
+
+		return this.toExecutionStopResult(execution);
+	}
+
+	private toExecutionStopResult(execution: ExecutionEntity) {
+		return {
+			mode: execution.mode,
+			startedAt: new Date(execution.startedAt),
+			stoppedAt: execution.stoppedAt ? new Date(execution.stoppedAt) : undefined,
+			finished: execution.finished,
+			status: execution.status,
+		};
 	}
 }

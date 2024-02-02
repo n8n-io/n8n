@@ -10,12 +10,10 @@ import {
 } from '@/constants';
 import type {
 	ExecutionsQueryFilter,
-	IExecutionDeleteFilter,
 	IExecutionPushResponse,
 	IExecutionResponse,
 	IExecutionsCurrentSummaryExtended,
 	IExecutionsListResponse,
-	IExecutionsStopData,
 	INewWorkflowData,
 	INodeMetadata,
 	INodeUi,
@@ -1256,12 +1254,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				};
 			}
 			const rootStore = useRootStore();
-			return await makeRestApiRequest(
+			const output = await makeRestApiRequest(
 				rootStore.getRestApiContext,
 				'GET',
-				'/executions/active',
+				'/executions',
 				sendData,
 			);
+
+			return output.results;
 		},
 
 		async getExecution(id: string): Promise<IExecutionResponse | undefined> {

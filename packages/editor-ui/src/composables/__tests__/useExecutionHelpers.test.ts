@@ -1,6 +1,3 @@
-import { render } from '@testing-library/vue';
-import { defineComponent, h } from 'vue';
-import type { PropType } from 'vue';
 import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { i18n } from '@/plugins/i18n';

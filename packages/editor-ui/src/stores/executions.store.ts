@@ -171,17 +171,17 @@ export const useExecutionsStore = defineStore('executions', () => {
 	async function fetchCurrentExecutions(filter = currentExecutionsFilters.value) {
 		loading.value = true;
 		try {
-			const data = await makeRestApiRequest<ExecutionSummary[]>(
+			const data = await makeRestApiRequest<{ results: ExecutionSummary[] }>(
 				rootStore.getRestApiContext,
 				'GET',
-				'/executions/active',
+				'/executions',
 				{
 					...(filter ? { filter } : {}),
 				},
 			);
 
 			currentExecutionsById.value = {};
-			data.forEach(addRunningExecution);
+			data.results.forEach(addRunningExecution);
 		} catch (e) {
 			throw e;
 		} finally {
@@ -248,7 +248,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 		return await makeRestApiRequest(
 			rootStore.getRestApiContext,
 			'POST',
-			`/executions/active/${executionId}/stop`,
+			`/executions/${executionId}/stop`,
 		);
 	}
 
