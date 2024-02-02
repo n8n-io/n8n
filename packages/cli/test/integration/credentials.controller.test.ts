@@ -31,12 +31,12 @@ describe('POST /credentials', () => {
 	};
 
 	describe('as unauthorized user', () => {
-		it('return 401', async () => {
+		it('returns 401', async () => {
 			await testServer.authlessAgent.post('/credentials').send(testPayload).expect(401);
 		});
 	});
 
-	describe('as member', () => {
+	describe('as a member', () => {
 		it('persists the credential', async () => {
 			//
 			// ACT
@@ -74,7 +74,7 @@ describe('POST /credentials', () => {
 		});
 	});
 
-	describe('as owner', () => {
+	describe('as an owner', () => {
 		it('persists the credential', async () => {
 			//
 			// ACT
@@ -139,7 +139,7 @@ describe('GET /credentials/:id', () => {
 		});
 	});
 
-	describe('as member user', () => {
+	describe('as a member', () => {
 		it('does not return decrypted data by default', async () => {
 			//
 			// ARRANGE
@@ -161,7 +161,6 @@ describe('GET /credentials/:id', () => {
 			//
 			// ASSERT
 			//
-			console.log(getResponse.body);
 			expect(getResponse.body.data.data).toBeUndefined();
 		});
 
@@ -185,7 +184,7 @@ describe('GET /credentials/:id', () => {
 		});
 	});
 
-	describe('as owner user', () => {
+	describe('as an owner', () => {
 		it("returns another user's credential", async () => {
 			//
 			// ARRANGE
