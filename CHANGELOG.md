@@ -1,3 +1,25 @@
+## [1.27.2](https://github.com/n8n-io/n8n/compare/n8n@1.27.1...n8n@1.27.2) (2024-02-02)
+
+
+### Bug Fixes
+
+* Allow Date/Luxon objects and additional formats in DateTime validation ([#8525](https://github.com/n8n-io/n8n/issues/8525)) ([98ea7d4](https://github.com/n8n-io/n8n/commit/98ea7d4f2ad71d58be62d5d07a1e31847d10263b))
+* **core:** Ensure AxiosError status always gets copied over to NodeApiError ([#8509](https://github.com/n8n-io/n8n/issues/8509)) ([91881c8](https://github.com/n8n-io/n8n/commit/91881c804a0da19591eeeaad850d516e4a57aa8b))
+* **core:** Fix DropRoleMapping migration ([#8521](https://github.com/n8n-io/n8n/issues/8521)) ([731b305](https://github.com/n8n-io/n8n/commit/731b3058602fe51358c6a0f502278441d2e3d0ad))
+* **core:** Fix new graceful shutdown env being always overridden by deprecated env ([#8503](https://github.com/n8n-io/n8n/issues/8503)) ([31e4cd8](https://github.com/n8n-io/n8n/commit/31e4cd8e01794a060743943e1e226f0a014fd2cf))
+* **core:** Fix PermissionChecker.check, and add additional unit tests ([#8528](https://github.com/n8n-io/n8n/issues/8528)) ([6385fb2](https://github.com/n8n-io/n8n/commit/6385fb2e4239db3b43158b4bc30eb5132a43a065))
+* **core:** Fix test runs of triggers that rely on static data ([#8524](https://github.com/n8n-io/n8n/issues/8524)) ([b4f10e5](https://github.com/n8n-io/n8n/commit/b4f10e5ee2e9985b3004338a181ced770191f4e0))
+* **core:** Fix workflow tagging failure due to unique constraint check ([#8505](https://github.com/n8n-io/n8n/issues/8505)) ([d4597ca](https://github.com/n8n-io/n8n/commit/d4597cab91f26c62ba34314d1b8b7111eb454a46))
+* **editor:** Prune values that are not in the schema in the ResourceMapper component ([#8478](https://github.com/n8n-io/n8n/issues/8478)) ([d0e94b0](https://github.com/n8n-io/n8n/commit/d0e94b0471df3bda1e163c0f876aedfc02242fc5))
+* **Embeddings OpenAI Node:** Fix dynamic models fetching ([#8533](https://github.com/n8n-io/n8n/issues/8533)) ([f256c6d](https://github.com/n8n-io/n8n/commit/f256c6df247ebdb4f616718a9263de9d6e282e8e))
+* **HTTP Request Node:** Require parameter with filled name and value to avoid infinite loop ([#8454](https://github.com/n8n-io/n8n/issues/8454)) ([0fd3470](https://github.com/n8n-io/n8n/commit/0fd3470b73812119fb18c3e9e9289d25b6cadd6c))
+* **HTTP Request Node:** Support form data when using pagination ([#8497](https://github.com/n8n-io/n8n/issues/8497)) ([af929ba](https://github.com/n8n-io/n8n/commit/af929ba78faa1dfe3cdc9681514cac8102977572))
+* **Microsoft Excel 365 Node:** Upsert append new rows at the end of used range, option to append at the end of selected range ([#8461](https://github.com/n8n-io/n8n/issues/8461)) ([0aa23d5](https://github.com/n8n-io/n8n/commit/0aa23d557d7c12a9e500e09876340cc122aa906c))
+* **MongoDB Node:** Fix "Maximum call stack size exceeded" error on too many rows ([#8530](https://github.com/n8n-io/n8n/issues/8530)) ([00f5549](https://github.com/n8n-io/n8n/commit/00f5549b5c92e50d7055e780cbdb2497f8a74435))
+* **Slack Node:** Attachments fix ([#8471](https://github.com/n8n-io/n8n/issues/8471)) ([6883610](https://github.com/n8n-io/n8n/commit/6883610c9fc9760b046c0cbcd2736551b3e03607))
+
+
+
 ## [1.27.1](https://github.com/n8n-io/n8n/compare/n8n@1.27.0...n8n@1.27.1) (2024-01-31)
 
 
