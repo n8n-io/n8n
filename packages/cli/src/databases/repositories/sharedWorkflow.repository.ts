@@ -22,6 +22,7 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 		return await this.exist({ where });
 	}
 
+	/** Get the IDs of all users this workflow is shared with */
 	async getSharedUserIds(workflowId: string) {
 		const sharedWorkflows = await this.find({
 			select: ['userId'],

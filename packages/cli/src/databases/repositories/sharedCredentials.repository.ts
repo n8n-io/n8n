@@ -36,16 +36,20 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 		return await this.update({ userId: Not(user.id), role: 'credential:owner' }, { user });
 	}
 
+	/** Get the IDs of all credentials owned by a user */
+	async getOwnedCredentialIds(userIds: string[]) {
+		return await this.getCredentialIdsByUserAndRole(userIds, ['credential:owner']);
+	}
+
 	/** Get the IDs of all credentials owned by or shared with a user */
-	async getAccessibleCredentialIds(userIds: string | string[]) {
-		return await this.getCredentialIdsForUserAndRole(userIds, [
+	async getAccessibleCredentialIds(userIds: string[]) {
+		return await this.getCredentialIdsByUserAndRole(userIds, [
 			'credential:owner',
 			'credential:user',
 		]);
 	}
 
-	async getCredentialIdsForUserAndRole(userIds: string | string[], roles: CredentialSharingRole[]) {
-		if (!Array.isArray(userIds)) userIds = [userIds];
+	private async getCredentialIdsByUserAndRole(userIds: string[], roles: CredentialSharingRole[]) {
 		const sharings = await this.find({
 			where: {
 				userId: In(userIds),
