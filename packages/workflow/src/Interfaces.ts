@@ -2461,4 +2461,4 @@ export type BannerName =
 	| 'NON_PRODUCTION_LICENSE'
 	| 'EMAIL_CONFIRMATION';
 
-export type Functionality = 'regular' | 'configuration-node';
+export type Functionality = 'regular' | 'configuration-node' | 'pairedItem';

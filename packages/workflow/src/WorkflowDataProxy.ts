@@ -745,7 +745,7 @@ export class WorkflowDataProxy {
 						}points to an input item on node ‘<strong>${
 							sourceData.previousNode
 						}</strong>‘ that doesn’t exist.`,
-						type: 'invalid pairing info',
+						type: 'paired_item_invalid_info',
 						moreInfoLink: true,
 					});
 				}
@@ -763,7 +763,7 @@ export class WorkflowDataProxy {
 						nodeCause: sourceData.previousNode,
 						description: `To fetch the data from other nodes that this expression needs, more information is needed from the node ‘<strong>${sourceData.previousNode}</strong>’`,
 						causeDetailed: `Missing pairedItem data (node ‘${sourceData.previousNode}’ probably didn’t supply it)`,
-						type: 'no pairing info',
+						type: 'paired_item_no_info',
 						moreInfoLink: true,
 					});
 				}
@@ -805,7 +805,7 @@ export class WorkflowDataProxy {
 								message: 'Invalid code',
 							},
 							description: `The expression uses data in the node ‘<strong>${destinationNodeName}</strong>’ but there is more than one matching item in that node`,
-							type: 'multiple matches',
+							type: 'paired_item_multiple_matches',
 						});
 					}
 
@@ -835,7 +835,7 @@ export class WorkflowDataProxy {
 								message: 'Invalid code',
 							},
 							description: `The expression uses data in the node ‘<strong>${destinationNodeName}</strong>’ but there is no path back to it. Please check this node is connected to it (there can be other nodes in between).`,
-							type: 'no connection',
+							type: 'paired_item_no_connection',
 							moreInfoLink: true,
 						});
 					}
@@ -853,7 +853,7 @@ export class WorkflowDataProxy {
 								? `of run ${(sourceData.previousNodeRun || 0).toString()} `
 								: ''
 						}points to a branch that doesn’t exist.`,
-						type: 'invalid pairing info',
+						type: 'paired_item_invalid_info',
 					});
 				}
 
@@ -874,7 +874,7 @@ export class WorkflowDataProxy {
 					},
 					nodeCause: nodeBeforeLast,
 					description: 'Could not resolve, probably no pairedItem exists',
-					type: 'no pairing info',
+					type: 'paired_item_no_info',
 					moreInfoLink: true,
 				});
 			}
@@ -894,7 +894,7 @@ export class WorkflowDataProxy {
 					},
 					description: 'Item points to a node output which does not exist',
 					causeDetailed: `The sourceData points to a node output ‘${previousNodeOutput}‘ which does not exist on node ‘${sourceData.previousNode}‘ (output node did probably supply a wrong one)`,
-					type: 'invalid pairing info',
+					type: 'invalid_pairing_info',
 				});
 			}
 
@@ -915,7 +915,7 @@ export class WorkflowDataProxy {
 					}points to an input item on node ‘<strong>${
 						sourceData.previousNode
 					}</strong>‘ that doesn’t exist.`,
-					type: 'invalid pairing info',
+					type: 'invalid_pairing info',
 					moreInfoLink: true,
 				});
 			}
@@ -972,11 +972,26 @@ export class WorkflowDataProxy {
 									}
 
 									const executionData = that.connectionInputData;
+									const input = executionData[itemIndex];
+									if (!input) {
+										throw createExpressionError('Can’t get data for expression', {
+											messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’ field',
+											functionality: 'pairedItem',
+											functionOverrides: {
+												description: `Some intermediate nodes between ‘<strong>${nodeName}</strong>‘ and  ‘<strong>${that.activeNodeName}</strong>‘ have not executed yet.`,
+												message: 'Can’t get data',
+											},
+											description: `Some intermediate nodes between ‘<strong>${nodeName}</strong>‘ and  ‘<strong>${that.activeNodeName}</strong>‘ have not executed yet.`,
+											causeDetailed: `pairedItem can\'t be found when intermediate nodes between ‘<strong>${nodeName}</strong>‘ and  ‘<strong>${that.activeNodeName}</strong> have not executed yet.`,
+											itemIndex,
+											type: 'paired_item_intermediate_nodes',
+										});
+									}
 
 									// As we operate on the incoming item we can be sure that pairedItem is not an
 									// array. After all can it only come from exactly one previous node via a certain
 									// input. For that reason do we not have to consider the array case.
-									const pairedItem = executionData[itemIndex].pairedItem as IPairedItemData;
+									const pairedItem = input.pairedItem as IPairedItemData;
 
 									if (pairedItem === undefined) {
 										throw createExpressionError('Can’t get data for expression', {
@@ -1019,6 +1034,8 @@ export class WorkflowDataProxy {
 											},
 											description: `The expression uses data in the node <strong>‘${nodeName}’</strong> but there is no path back to it. Please check this node is connected to it (there can be other nodes in between).`,
 											itemIndex,
+											nodeCause: nodeName,
+											type: 'paired_item_no_connection',
 										});
 									}
 

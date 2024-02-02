@@ -105,7 +105,7 @@ export default defineComponent({
 			return this.ndvStore.isDraggableDragging;
 		},
 		noInputData(): boolean {
-			return this.ndvStore.ndvInputData.length === 0;
+			return !this.ndvStore.hasInputData;
 		},
 	},
 	methods: {

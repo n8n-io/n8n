@@ -13,7 +13,17 @@ import { useNDVStore } from '@/stores/ndv.store';
 import type { TargetItem } from '@/Interface';
 import type { Html, Plaintext, RawSegment, Resolvable, Segment } from '@/types/expressions';
 import type { EditorView } from '@codemirror/view';
-import { getExpressionErrorMessage, getResolvableState } from '../utils/expressions';
+import {
+	getResolvableState,
+	isAnyPairedItemError,
+	isInvalidPairedItemError,
+	isNoExecDataExpressionError,
+	isNoNodeExecDataExpressionError,
+	isPairedItemIntermediateNodesError,
+	isPairedItemNoConnectionError,
+} from '../utils/expressions';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { i18n } from '@/plugins/i18n';
 
 export const expressionManager = defineComponent({
 	mixins: [workflowHelpers],
@@ -34,7 +44,7 @@ export const expressionManager = defineComponent({
 		};
 	},
 	computed: {
-		...mapStores(useNDVStore),
+		...mapStores(useNDVStore, useWorkflowsStore),
 
 		unresolvedExpression(): string {
 			return this.segments.reduce((acc, segment) => {
@@ -215,7 +225,7 @@ export const expressionManager = defineComponent({
 					result.resolved = this.resolveExpression('=' + resolvable, undefined, opts);
 				}
 			} catch (error) {
-				result.resolved = getExpressionErrorMessage(error);
+				result.resolved = this.getExpressionErrorMessage(error);
 				result.error = true;
 				result.fullError = error;
 			}
@@ -251,6 +261,37 @@ export const expressionManager = defineComponent({
 				.pop();
 
 			return end !== undefined && this.expressionExtensionNames.has(end);
+		},
+
+		getExpressionErrorMessage(error: Error): string {
+			if (
+				isNoExecDataExpressionError(error) ||
+				isNoNodeExecDataExpressionError(error) ||
+				isPairedItemIntermediateNodesError(error)
+			) {
+				return i18n.baseText('expressionModalInput.noExecutionData');
+			}
+
+			if (isPairedItemNoConnectionError(error)) {
+				return i18n.baseText('expressionModalInput.pairedItemConnectionError');
+			}
+
+			if (isInvalidPairedItemError(error)) {
+				const nodeCause = error.context.nodeCause as string;
+				const isPinned = !!this.workflowsStore.pinDataByNodeName(nodeCause);
+
+				if (isPinned) {
+					return i18n.baseText('expressionModalInput.pairedItemInvalidPinnedError', {
+						interpolate: { node: nodeCause },
+					});
+				}
+			}
+
+			if (isAnyPairedItemError(error)) {
+				return i18n.baseText('expressionModalInput.pairedItemError');
+			}
+
+			return `[${error.message}]`;
 		},
 	},
 });
