@@ -7,14 +7,13 @@ import { Server as WSServer } from 'ws';
 import { parse as parseUrl } from 'url';
 import { Container, Service } from 'typedi';
 import config from '@/config';
-import { resolveJwt } from '@/auth/jwt';
-import { AUTH_COOKIE_NAME } from '@/constants';
 import { SSEPush } from './sse.push';
 import { WebSocketPush } from './websocket.push';
 import type { PushResponse, SSEPushRequest, WebSocketPushRequest } from './types';
 import type { IPushDataType } from '@/Interfaces';
 import type { User } from '@db/entities/User';
 import { OnShutdown } from '@/decorators/OnShutdown';
+import { AuthService } from '@/auth/auth.service';
 
 const useWebSockets = config.getEnv('push.backend') === 'websocket';
 
@@ -120,27 +119,15 @@ export const setupPushHandler = (restEndpoint: string, app: Application) => {
 			}
 			return;
 		}
-		try {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-			const authCookie: string = req.cookies?.[AUTH_COOKIE_NAME] ?? '';
-			const user = await resolveJwt(authCookie);
-			req.userId = user.id;
-		} catch (error) {
-			if (ws) {
-				ws.send(`Unauthorized: ${(error as Error).message}`);
-				ws.close(1008);
-			} else {
-				res.status(401).send('Unauthorized');
-			}
-			return;
-		}
 
 		next();
 	};
 
 	const push = Container.get(Push);
+	const authService = Container.get(AuthService);
 	app.use(
 		endpoint,
+		authService.createAuthMiddleware('any'),
 		pushValidationMiddleware,
 		(req: SSEPushRequest | WebSocketPushRequest, res: PushResponse) => push.handleRequest(req, res),
 	);

@@ -1,9 +1,9 @@
 import { Response } from 'express';
 import validator from 'validator';
 
+import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
 import { Authorized, NoAuthRequired, Post, RequireGlobalScope, RestController } from '@/decorators';
-import { issueCookie } from '@/auth/jwt';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { UserRequest } from '@/requests';
 import { License } from '@/License';
@@ -26,6 +26,7 @@ export class InvitationController {
 		private readonly logger: Logger,
 		private readonly internalHooks: InternalHooks,
 		private readonly externalHooks: ExternalHooks,
+		private readonly authService: AuthService,
 		private readonly userService: UserService,
 		private readonly license: License,
 		private readonly passwordUtility: PasswordUtility,
@@ -165,7 +166,7 @@ export class InvitationController {
 
 		const updatedUser = await this.userRepository.save(invitee, { transaction: false });
 
-		await issueCookie(res, updatedUser);
+		this.authService.issueCookie(res, updatedUser);
 
 		void this.internalHooks.onUserSignup(updatedUser, {
 			user_type: 'email',
