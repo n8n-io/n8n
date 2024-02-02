@@ -7,7 +7,7 @@ import type {
 	ILoadOptionsFunctions,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, ErrorReporterProxy } from 'n8n-workflow';
 
 import flow from 'lodash/flow';
 import sortBy from 'lodash/sortBy';
@@ -27,17 +27,6 @@ import type {
 	SnakeCaseResource,
 	ZohoOAuth2ApiCredentials,
 } from './types';
-
-export function throwOnErrorStatus(
-	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,
-	responseData: {
-		data?: Array<{ status: string; message: string }>;
-	},
-) {
-	if (responseData?.data?.[0].status === 'error') {
-		throw new NodeOperationError(this.getNode(), responseData as Error);
-	}
-}
 
 export async function zohoApiRequest(
 	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,
@@ -72,14 +61,25 @@ export async function zohoApiRequest(
 	try {
 		const responseData = await this.helpers.requestOAuth2?.call(this, 'zohoOAuth2Api', options);
 		if (responseData === undefined) return [];
-		throwOnErrorStatus.call(this, responseData as IDataObject);
+
+		if (responseData?.data?.[0].status === 'error') {
+			throw new NodeApiError(this.getNode(), responseData);
+		}
 
 		return responseData;
 	} catch (error) {
-		const args = error.cause?.data
+		try {
+			console.log(error.cause, JSON.stringify(error.errorResponse));
+			ErrorReporterProxy.report(error, { level: 'error', extra: error.errorResponse });
+		} catch {}
+
+		if (error instanceof NodeApiError) throw error;
+
+		const data = error.cause?.data;
+		const args = data
 			? {
-					message: error.cause.data.message || 'The Zoho API returned an error.',
-					description: JSON.stringify(error.cause.data, null, 2),
+					message: data.message || 'The Zoho API returned an error.',
+					description: JSON.stringify(data, null, 2),
 			  }
 			: undefined;
 		throw new NodeApiError(this.getNode(), error as JsonObject, args);
