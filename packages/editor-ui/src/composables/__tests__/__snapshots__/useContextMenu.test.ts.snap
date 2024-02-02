@@ -4,7 +4,7 @@ exports[`useContextMenu > Read-only mode > should return the correct actions whe
 [
   {
     "id": "open",
-    "label": "Open node...",
+    "label": "Open...",
     "shortcut": {
       "keys": [
         "↵",
@@ -14,12 +14,12 @@ exports[`useContextMenu > Read-only mode > should return the correct actions whe
   {
     "disabled": true,
     "id": "execute",
-    "label": "Test node",
+    "label": "Test step",
   },
   {
     "disabled": true,
     "id": "rename",
-    "label": "Rename node",
+    "label": "Rename",
     "shortcut": {
       "keys": [
         "F2",
@@ -29,7 +29,7 @@ exports[`useContextMenu > Read-only mode > should return the correct actions whe
   {
     "disabled": true,
     "id": "toggle_activation",
-    "label": "Deactivate node",
+    "label": "Deactivate",
     "shortcut": {
       "keys": [
         "D",
@@ -39,7 +39,7 @@ exports[`useContextMenu > Read-only mode > should return the correct actions whe
   {
     "disabled": true,
     "id": "toggle_pin",
-    "label": "Pin node",
+    "label": "Pin",
     "shortcut": {
       "keys": [
         "p",
@@ -48,7 +48,7 @@ exports[`useContextMenu > Read-only mode > should return the correct actions whe
   },
   {
     "id": "copy",
-    "label": "Copy node",
+    "label": "Copy",
     "shortcut": {
       "keys": [
         "C",
@@ -59,7 +59,7 @@ exports[`useContextMenu > Read-only mode > should return the correct actions whe
   {
     "disabled": true,
     "id": "duplicate",
-    "label": "Duplicate node",
+    "label": "Duplicate",
     "shortcut": {
       "keys": [
         "D",
@@ -88,7 +88,7 @@ exports[`useContextMenu > Read-only mode > should return the correct actions whe
     "disabled": true,
     "divided": true,
     "id": "delete",
-    "label": "Delete node",
+    "label": "Delete",
     "shortcut": {
       "keys": [
         "Del",
@@ -117,7 +117,7 @@ exports[`useContextMenu > Read-only mode > should return the correct actions whe
   },
   {
     "id": "copy",
-    "label": "Copy sticky note",
+    "label": "Copy",
     "shortcut": {
       "keys": [
         "C",
@@ -128,7 +128,7 @@ exports[`useContextMenu > Read-only mode > should return the correct actions whe
   {
     "disabled": true,
     "id": "duplicate",
-    "label": "Duplicate sticky note",
+    "label": "Duplicate",
     "shortcut": {
       "keys": [
         "D",
@@ -157,7 +157,7 @@ exports[`useContextMenu > Read-only mode > should return the correct actions whe
     "disabled": true,
     "divided": true,
     "id": "delete",
-    "label": "Delete sticky note",
+    "label": "Delete",
     "shortcut": {
       "keys": [
         "Del",
@@ -171,7 +171,7 @@ exports[`useContextMenu > should return the correct actions opening the menu fro
 [
   {
     "id": "open",
-    "label": "Open node...",
+    "label": "Open...",
     "shortcut": {
       "keys": [
         "↵",
@@ -181,12 +181,12 @@ exports[`useContextMenu > should return the correct actions opening the menu fro
   {
     "disabled": false,
     "id": "execute",
-    "label": "Test node",
+    "label": "Test step",
   },
   {
     "disabled": false,
     "id": "rename",
-    "label": "Rename node",
+    "label": "Rename",
     "shortcut": {
       "keys": [
         "F2",
@@ -196,7 +196,7 @@ exports[`useContextMenu > should return the correct actions opening the menu fro
   {
     "disabled": false,
     "id": "toggle_activation",
-    "label": "Deactivate node",
+    "label": "Deactivate",
     "shortcut": {
       "keys": [
         "D",
@@ -206,7 +206,7 @@ exports[`useContextMenu > should return the correct actions opening the menu fro
   {
     "disabled": true,
     "id": "toggle_pin",
-    "label": "Pin node",
+    "label": "Pin",
     "shortcut": {
       "keys": [
         "p",
@@ -215,7 +215,7 @@ exports[`useContextMenu > should return the correct actions opening the menu fro
   },
   {
     "id": "copy",
-    "label": "Copy node",
+    "label": "Copy",
     "shortcut": {
       "keys": [
         "C",
@@ -226,7 +226,7 @@ exports[`useContextMenu > should return the correct actions opening the menu fro
   {
     "disabled": true,
     "id": "duplicate",
-    "label": "Duplicate node",
+    "label": "Duplicate",
     "shortcut": {
       "keys": [
         "D",
@@ -255,7 +255,7 @@ exports[`useContextMenu > should return the correct actions opening the menu fro
     "disabled": false,
     "divided": true,
     "id": "delete",
-    "label": "Delete node",
+    "label": "Delete",
     "shortcut": {
       "keys": [
         "Del",
@@ -269,7 +269,7 @@ exports[`useContextMenu > should return the correct actions when right clicking 
 [
   {
     "id": "open",
-    "label": "Open node...",
+    "label": "Open...",
     "shortcut": {
       "keys": [
         "↵",
@@ -279,12 +279,12 @@ exports[`useContextMenu > should return the correct actions when right clicking 
   {
     "disabled": false,
     "id": "execute",
-    "label": "Test node",
+    "label": "Test step",
   },
   {
     "disabled": false,
     "id": "rename",
-    "label": "Rename node",
+    "label": "Rename",
     "shortcut": {
       "keys": [
         "F2",
@@ -294,7 +294,7 @@ exports[`useContextMenu > should return the correct actions when right clicking 
   {
     "disabled": false,
     "id": "toggle_activation",
-    "label": "Deactivate node",
+    "label": "Deactivate",
     "shortcut": {
       "keys": [
         "D",
@@ -304,7 +304,7 @@ exports[`useContextMenu > should return the correct actions when right clicking 
   {
     "disabled": true,
     "id": "toggle_pin",
-    "label": "Pin node",
+    "label": "Pin",
     "shortcut": {
       "keys": [
         "p",
@@ -313,7 +313,7 @@ exports[`useContextMenu > should return the correct actions when right clicking 
   },
   {
     "id": "copy",
-    "label": "Copy node",
+    "label": "Copy",
     "shortcut": {
       "keys": [
         "C",
@@ -324,7 +324,7 @@ exports[`useContextMenu > should return the correct actions when right clicking 
   {
     "disabled": true,
     "id": "duplicate",
-    "label": "Duplicate node",
+    "label": "Duplicate",
     "shortcut": {
       "keys": [
         "D",
@@ -353,7 +353,7 @@ exports[`useContextMenu > should return the correct actions when right clicking 
     "disabled": false,
     "divided": true,
     "id": "delete",
-    "label": "Delete node",
+    "label": "Delete",
     "shortcut": {
       "keys": [
         "Del",
@@ -382,7 +382,7 @@ exports[`useContextMenu > should return the correct actions when right clicking 
   },
   {
     "id": "copy",
-    "label": "Copy sticky note",
+    "label": "Copy",
     "shortcut": {
       "keys": [
         "C",
@@ -393,7 +393,7 @@ exports[`useContextMenu > should return the correct actions when right clicking 
   {
     "disabled": true,
     "id": "duplicate",
-    "label": "Duplicate sticky note",
+    "label": "Duplicate",
     "shortcut": {
       "keys": [
         "D",
@@ -422,7 +422,7 @@ exports[`useContextMenu > should return the correct actions when right clicking 
     "disabled": false,
     "divided": true,
     "id": "delete",
-    "label": "Delete sticky note",
+    "label": "Delete",
     "shortcut": {
       "keys": [
         "Del",
