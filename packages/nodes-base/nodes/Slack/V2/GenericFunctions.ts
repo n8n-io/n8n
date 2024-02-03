@@ -174,7 +174,21 @@ export function getMessageContent(
 			}
 			break;
 		case 'attachment':
-			content = { attachments: this.getNodeParameter('attachments', i) } as IDataObject;
+			const attachmentsUI = this.getNodeParameter('attachments', i) as IDataObject[];
+
+			const attachments: IDataObject[] = [];
+
+			for (const attachment of attachmentsUI) {
+				if (attachment.fields !== undefined) {
+					if ((attachment?.fields as IDataObject)?.item) {
+						attachment.fields = (attachment?.fields as IDataObject)?.item as IDataObject[];
+					}
+				}
+				attachments.push(attachment);
+			}
+
+			content = { attachments } as IDataObject;
+
 			if (includeLinkToWorkflow && Array.isArray(content.attachments)) {
 				content.attachments.push({
 					text: automatedMessage,

@@ -61,6 +61,8 @@
 						@runWorkflow="onRunNode"
 						@moved="onNodeMoved"
 						@run="onNodeRun"
+						@removeNode="(name) => removeNode(name, true)"
+						@toggleDisableNode="(node) => toggleActivationNodes([node])"
 					>
 						<template #custom-tooltip>
 							<span

@@ -23,7 +23,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: pnpm/action-setup@v2.4.0
+      - run: corepack enable
       - uses: actions/setup-node@v4.0.1
         with:
           node-version: 18.x
