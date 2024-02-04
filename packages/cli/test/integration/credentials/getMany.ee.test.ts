@@ -37,7 +37,7 @@ afterEach(() => {
 });
 
 describe('GET /credentials', () => {
-	test('should return all creds for owner', async () => {
+	test('should return all credentials for owner', async () => {
 		const [member1, member2, member3] = await createManyUsers(3, {
 			role: 'global:member',
 		});
@@ -81,8 +81,8 @@ describe('GET /credentials', () => {
 		);
 		const orderedSharedWith = [...sharedWith].sort((a, b) => (a.email < b.email ? -1 : 1));
 
-		ownerCredentialsSharedWithOrdered.forEach((sharee: IUser, idx: number) => {
-			expect(sharee).toMatchObject({
+		ownerCredentialsSharedWithOrdered.forEach((recipient: IUser, idx: number) => {
+			expect(recipient).toMatchObject({
 				id: orderedSharedWith[idx].id,
 				email: orderedSharedWith[idx].email,
 				firstName: orderedSharedWith[idx].firstName,
@@ -101,7 +101,7 @@ describe('GET /credentials', () => {
 		expect(memberCredential.sharedWith).toHaveLength(0);
 	});
 
-	test('should return only relevant creds for member', async () => {
+	test('should return only relevant credentials for member', async () => {
 		const [member1, member2] = await createManyUsers(2, {
 			role: 'global:member',
 		});
@@ -133,9 +133,9 @@ describe('GET /credentials', () => {
 		expect(Array.isArray(member1Credential.sharedWith)).toBe(true);
 		expect(member1Credential.sharedWith).toHaveLength(1);
 
-		const [sharee] = member1Credential.sharedWith;
+		const [recipient] = member1Credential.sharedWith;
 
-		expect(sharee).toMatchObject({
+		expect(recipient).toMatchObject({
 			id: member2.id,
 			email: member2.email,
 			firstName: member2.firstName,

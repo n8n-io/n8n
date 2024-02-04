@@ -129,8 +129,8 @@ describe('GET /credentials/:id', () => {
 			lastName: member1.lastName,
 		});
 		expect(firstCredential.sharedWith).toHaveLength(2);
-		firstCredential.sharedWith.forEach((sharee: IUser, idx: number) => {
-			expect([member2.id, member3.id]).toContain(sharee.id);
+		firstCredential.sharedWith.forEach((recipient: IUser, _idx: number) => {
+			expect([member2.id, member3.id]).toContain(recipient.id);
 		});
 
 		const secondResponse = await authMemberAgent

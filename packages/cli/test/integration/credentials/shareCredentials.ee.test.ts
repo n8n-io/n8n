@@ -196,7 +196,7 @@ describe('PUT /credentials/:id/share', () => {
 		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(1);
 	});
 
-	test('should ignore pending sharee', async () => {
+	test('should ignore pending recipient', async () => {
 		const memberShell = await createUserShell('global:member');
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 
@@ -214,7 +214,7 @@ describe('PUT /credentials/:id/share', () => {
 		expect(sharedCredentials[0].userId).toBe(owner.id);
 	});
 
-	test('should ignore non-existing sharee', async () => {
+	test('should ignore non-existing recipient', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 
 		const response = await authOwnerAgent
