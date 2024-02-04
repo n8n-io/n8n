@@ -44,7 +44,7 @@ describe('GET /credentials', () => {
 
 			expect(response.body.data).toHaveLength(2);
 
-			response.body.data.forEach(validateCredential2);
+			response.body.data.forEach(validateCredential);
 
 			const savedIds = [id1, id2].sort();
 			const returnedIds = response.body.data.map((c) => c.id).sort();
@@ -68,7 +68,7 @@ describe('GET /credentials', () => {
 
 			const [firstMemberCred] = response.body.data;
 
-			validateCredential2(firstMemberCred);
+			validateCredential(firstMemberCred);
 			expect(firstMemberCred.id).toBe(c1.id);
 			expect(firstMemberCred.id).not.toBe(c2.id);
 		});
@@ -236,7 +236,7 @@ describe('GET /credentials', () => {
 
 			expect(response.body.data).toHaveLength(2);
 
-			response.body.data.forEach(validateCredential2);
+			response.body.data.forEach(validateCredential);
 
 			const _response = await testServer
 				.authAgentFor(owner)
@@ -246,7 +246,7 @@ describe('GET /credentials', () => {
 
 			expect(_response.body.data).toHaveLength(1);
 
-			_response.body.data.forEach(validateCredential2);
+			_response.body.data.forEach(validateCredential);
 		});
 
 		test('should return n credentials or less, with skip', async () => {
@@ -261,13 +261,12 @@ describe('GET /credentials', () => {
 
 			expect(response.body.data).toHaveLength(1);
 
-			response.body.data.forEach(validateCredential2);
+			response.body.data.forEach(validateCredential);
 		});
 	});
 });
 
-// TODO: merge with other validateCredential
-function validateCredential2(credential: ListQuery.Credentials.WithOwnedByAndSharedWith) {
+function validateCredential(credential: ListQuery.Credentials.WithOwnedByAndSharedWith) {
 	const { name, type, nodesAccess, sharedWith, ownedBy } = credential;
 
 	expect(typeof name).toBe('string');
