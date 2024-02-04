@@ -2,6 +2,7 @@ import type { SuperAgentTest } from 'supertest';
 
 import type { User } from '@db/entities/User';
 import { License } from '@/License';
+import type { ListQuery } from '@/requests';
 
 import { randomCredentialPayload } from '../shared/random';
 import * as testDb from '../shared/testDb';
@@ -9,7 +10,6 @@ import type { SaveCredentialFunction } from '../shared/types';
 import * as utils from '../shared/utils/';
 import { affixRoleToSaveCredential } from '../shared/db/credentials';
 import { createUser } from '../shared/db/users';
-import { validateMainCredentialData } from './shared';
 
 // mock that credentialsSharing is not enabled
 jest.spyOn(License.prototype, 'isSharingEnabled').mockReturnValue(false);
@@ -111,3 +111,26 @@ describe('GET /credentials/:id', () => {
 		expect(responseAbc.statusCode).toBe(404);
 	});
 });
+
+export function validateMainCredentialData(
+	credential: ListQuery.Credentials.WithOwnedByAndSharedWith,
+) {
+	const { name, type, nodesAccess, sharedWith, ownedBy } = credential;
+
+	expect(typeof name).toBe('string');
+	expect(typeof type).toBe('string');
+	expect(typeof nodesAccess?.[0].nodeType).toBe('string');
+
+	if (sharedWith) {
+		expect(Array.isArray(sharedWith)).toBe(true);
+	}
+
+	if (ownedBy) {
+		const { id, email, firstName, lastName } = ownedBy;
+
+		expect(typeof id).toBe('string');
+		expect(typeof email).toBe('string');
+		expect(typeof firstName).toBe('string');
+		expect(typeof lastName).toBe('string');
+	}
+}
