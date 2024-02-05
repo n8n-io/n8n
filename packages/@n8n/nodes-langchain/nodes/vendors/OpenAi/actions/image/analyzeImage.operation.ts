@@ -60,11 +60,12 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Input Binary Field(s)',
+		displayName: 'Input Data Field Name',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
 		placeholder: 'e.g. data',
+		hint: 'The name of the input field containing the binary file data to be processed',
 		description: 'Name of the binary property which contains the image(s)',
 		displayOptions: {
 			show: {
@@ -73,7 +74,7 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Simplify',
+		displayName: 'Simplify Output',
 		name: 'simplify',
 		type: 'boolean',
 		default: true,

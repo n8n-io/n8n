@@ -129,7 +129,7 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'OpenAI Tools',
+		displayName: 'Tools',
 		name: 'nativeTools',
 		type: 'multiOptions',
 		default: [],
@@ -156,8 +156,7 @@ const properties: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName:
-			'Upload files for retrieval using the <a href="https://platform.openai.com/playground" target="_blank">OpenAI website<a/>',
+		displayName: "Add files to retrieve from using the 'Upload a File' operation",
 		name: 'noticeTools',
 		type: 'notice',
 		typeOptions: {

@@ -163,6 +163,18 @@ const properties: INodeProperties[] = [
 				default: false,
 				description: 'Whether to return image URL(s) instead of binary file(s)',
 			},
+			{
+				displayName: 'Put Output in Field',
+				name: 'binaryPropertyOutput',
+				type: 'string',
+				default: 'data',
+				hint: 'The name of the output field to put the binary file data in',
+				displayOptions: {
+					show: {
+						returnImageUrls: [false],
+					},
+				},
+			},
 		],
 	},
 ];
@@ -181,9 +193,15 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const prompt = this.getNodeParameter('prompt', i) as string;
 	const options = this.getNodeParameter('options', i, {});
 	let response_format = 'b64_json';
+	let binaryPropertyOutput = 'data';
 
 	if (options.returnImageUrls) {
 		response_format = 'url';
+	}
+
+	if (options.binaryPropertyOutput) {
+		binaryPropertyOutput = options.binaryPropertyOutput as string;
+		delete options.binaryPropertyOutput;
 	}
 
 	delete options.returnImageUrls;
@@ -215,7 +233,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 					data: undefined,
 				}),
 				binary: {
-					data: binaryData,
+					[binaryPropertyOutput]: binaryData,
 				},
 				pairedItem: { item: i },
 			});

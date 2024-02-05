@@ -15,7 +15,7 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Simplify',
+		displayName: 'Simplify Output',
 		name: 'simplify',
 		type: 'boolean',
 		default: false,

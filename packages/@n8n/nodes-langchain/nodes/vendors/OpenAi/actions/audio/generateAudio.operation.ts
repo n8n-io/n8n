@@ -111,11 +111,11 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Put Output File in Field',
+				displayName: 'Put Output in Field',
 				name: 'binaryPropertyOutput',
 				type: 'string',
 				default: 'data',
-				hint: 'The name of the output binary field to put the file in',
+				hint: 'The name of the output field to put the binary file data in',
 			},
 		],
 	},

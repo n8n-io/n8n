@@ -18,11 +18,12 @@ const properties: INodeProperties[] = [
 	// 	],
 	// },
 	{
-		displayName: 'Input Binary Field',
+		displayName: 'Input Data Field Name',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
 		placeholder: 'e.g. data',
+		hint: 'The name of the input field containing the binary file data to be processed',
 		description:
 			'Name of the binary property which contains the audio file in one of these formats: flac, mp3, mp4, mpeg, mpga, m4a, ogg, wav, or webm',
 	},

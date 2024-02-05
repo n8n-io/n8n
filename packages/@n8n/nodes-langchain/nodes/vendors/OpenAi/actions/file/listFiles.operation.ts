@@ -20,9 +20,13 @@ const properties: INodeProperties[] = [
 				displayName: 'Purpose',
 				name: 'purpose',
 				type: 'options',
-				default: 'assistants',
+				default: 'any',
 				description: 'Only return files with the given purpose',
 				options: [
+					{
+						name: 'Any [Default]',
+						value: 'any',
+					},
 					{
 						name: 'Assistants',
 						value: 'assistants',
@@ -50,7 +54,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const options = this.getNodeParameter('options', i, {});
 	const qs: IDataObject = {};
 
-	if (options.purpose) {
+	if (options.purpose && options.purpose !== 'any') {
 		qs.purpose = options.purpose as string;
 	}
 

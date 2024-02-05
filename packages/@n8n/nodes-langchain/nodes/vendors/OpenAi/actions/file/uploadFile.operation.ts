@@ -5,10 +5,11 @@ import { apiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Input Binary Field',
+		displayName: 'Input Data Field Name',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
+		hint: 'The name of the input field containing the binary file data to be processed',
 		placeholder: 'e.g. data',
 		description:
 			'Name of the binary property which contains the file. The size of individual files can be a maximum of 512 MB or 2 million tokens for Assistants.',

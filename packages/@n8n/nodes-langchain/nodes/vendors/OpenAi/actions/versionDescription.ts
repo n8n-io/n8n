@@ -55,7 +55,7 @@ export const versionDescription: INodeTypeDescription = {
 	group: ['transform'],
 	version: 1,
 	subtitle: `={{(${prettifyOperation})($parameter.operation)}}`,
-	description: 'Consume Open AI',
+	description: 'E.g. message an assistant. (The other AI nodes can also use OpenAI models)',
 	defaults: {
 		name: 'OpenAI',
 	},
@@ -89,20 +89,20 @@ export const versionDescription: INodeTypeDescription = {
 			noDataExpression: true,
 			options: [
 				{
-					name: 'Audio',
-					value: 'audio',
-				},
-				{
-					name: 'File',
-					value: 'file',
+					name: 'Text',
+					value: 'text',
 				},
 				{
 					name: 'Image',
 					value: 'image',
 				},
 				{
-					name: 'Text',
-					value: 'text',
+					name: 'Audio',
+					value: 'audio',
+				},
+				{
+					name: 'File',
+					value: 'file',
 				},
 			],
 			default: 'text',

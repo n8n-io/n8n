@@ -14,12 +14,6 @@ export const description: INodeProperties[] = [
 		noDataExpression: true,
 		options: [
 			{
-				name: 'Classify Text for Violations',
-				value: 'createModeration',
-				action: 'Classify text for violations',
-				description: 'Check whether content complies with usage policies',
-			},
-			{
 				name: 'Message a Model',
 				value: 'messageModel',
 				action: 'Message a model',
@@ -31,6 +25,12 @@ export const description: INodeProperties[] = [
 				value: 'messageAssistant',
 				action: 'Message an assistant',
 				description: 'Send messages to an assistant',
+			},
+			{
+				name: 'Classify Text for Violations',
+				value: 'createModeration',
+				action: 'Classify text for violations',
+				description: 'Check whether content complies with usage policies',
 			},
 		],
 		default: 'messageModel',

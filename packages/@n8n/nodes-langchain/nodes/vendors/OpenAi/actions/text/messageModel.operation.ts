@@ -15,7 +15,7 @@ const properties: INodeProperties[] = [
 		displayName: 'Model',
 		name: 'modelId',
 		type: 'resourceLocator',
-		default: { mode: 'list', value: 'gpt-3.5-turbo-1106', cachedResultName: 'GPT-3.5-TURBO-1106' },
+		default: { mode: 'list', value: '' },
 		required: true,
 		modes: [
 			{
@@ -274,7 +274,7 @@ const properties: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Simplify',
+		displayName: 'Simplify Output',
 		name: 'simplify',
 		type: 'boolean',
 		default: true,
