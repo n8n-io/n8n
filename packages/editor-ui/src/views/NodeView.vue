@@ -61,6 +61,8 @@
 						@runWorkflow="onRunNode"
 						@moved="onNodeMoved"
 						@run="onNodeRun"
+						@removeNode="(name) => removeNode(name, true)"
+						@toggleDisableNode="(node) => toggleActivationNodes([node])"
 					>
 						<template #custom-tooltip>
 							<span
@@ -378,6 +380,7 @@ import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useDeviceSupport } from 'n8n-design-system';
 import { useDebounce } from '@/composables/useDebounce';
 import { useCanvasPanning } from '@/composables/useCanvasPanning';
+import { tryToParseNumber } from '@/utils/typesUtils';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -1327,7 +1330,7 @@ export default defineComponent({
 				'User inserted workflow template',
 				{
 					source: 'workflow',
-					template_id: templateId,
+					template_id: tryToParseNumber(templateId),
 					wf_template_repo_session_id: this.templatesStore.previousSessionId,
 				},
 				{

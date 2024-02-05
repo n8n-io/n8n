@@ -1044,12 +1044,14 @@ export class HttpRequestV3 implements INodeType {
 															name: 'name',
 															type: 'string',
 															default: '',
+															placeholder: 'e.g page',
 														},
 														{
 															displayName: 'Value',
 															name: 'value',
 															type: 'string',
 															default: '',
+															hint: 'Use expression mode and $response to access response data',
 														},
 													],
 												},
@@ -1274,7 +1276,7 @@ export class HttpRequestV3 implements INodeType {
 					oAuth2Api = await this.getCredentials('oAuth2Api', itemIndex);
 				}
 			} else if (authentication === 'predefinedCredentialType') {
-				nodeCredentialType = this.getNodeParameter('nodeCredentialType', 0) as string;
+				nodeCredentialType = this.getNodeParameter('nodeCredentialType', itemIndex) as string;
 			}
 
 			const requestMethod = this.getNodeParameter('method', itemIndex) as string;
@@ -1661,11 +1663,34 @@ export class HttpRequestV3 implements INodeType {
 				if (pagination.paginationMode === 'updateAParameterInEachRequest') {
 					// Iterate over all parameters and add them to the request
 					paginationData.request = {};
-					pagination.parameters.parameters.forEach((parameter) => {
+					const { parameters } = pagination.parameters;
+					if (parameters.length === 1 && parameters[0].name === '' && parameters[0].value === '') {
+						throw new NodeOperationError(
+							this.getNode(),
+							"At least one entry with 'Name' and 'Value' filled must be included in 'Parameters' to use 'Update a Parameter in Each Request' mode ",
+						);
+					}
+					pagination.parameters.parameters.forEach((parameter, index) => {
 						if (!paginationData.request[parameter.type]) {
 							paginationData.request[parameter.type] = {};
 						}
-						paginationData.request[parameter.type]![parameter.name] = parameter.value;
+						const parameterName = parameter.name;
+						if (parameterName === '') {
+							throw new NodeOperationError(
+								this.getNode(),
+								`Parameter name must be set for parameter [${index + 1}] in pagination settings`,
+							);
+						}
+						const parameterValue = parameter.value;
+						if (parameterValue === '') {
+							throw new NodeOperationError(
+								this.getNode(),
+								`Some value must be provided for parameter [${
+									index + 1
+								}] in pagination settings, omitting it will result in an infinite loop`,
+							);
+						}
+						paginationData.request[parameter.type]![parameterName] = parameterValue;
 					});
 				} else if (pagination.paginationMode === 'responseContainsNextURL') {
 					paginationData.request.url = pagination.nextURL;
@@ -1714,6 +1739,7 @@ export class HttpRequestV3 implements INodeType {
 					nodeCredentialType,
 					requestOptions,
 					additionalOAuth2Options && { oauth2: additionalOAuth2Options },
+					itemIndex,
 				);
 				requestWithAuthentication.catch(() => {});
 				requestPromises.push(requestWithAuthentication);

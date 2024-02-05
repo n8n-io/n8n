@@ -721,6 +721,7 @@ export interface RequestHelperFunctions {
 		credentialsType: string,
 		requestOptions: OptionsWithUri | RequestPromiseOptions,
 		additionalCredentialOptions?: IAdditionalCredentialOptions,
+		itemIndex?: number,
 	): Promise<any>;
 
 	httpRequest(requestOptions: IHttpRequestOptions): Promise<any>;
@@ -1985,10 +1986,10 @@ export type WorkflowExecuteMode =
 
 export type WorkflowActivateMode =
 	| 'init'
-	| 'create'
+	| 'create' // unused
 	| 'update'
 	| 'activate'
-	| 'manual'
+	| 'manual' // unused
 	| 'leadershipChange';
 
 export interface IWorkflowHooksOptionalParameters {

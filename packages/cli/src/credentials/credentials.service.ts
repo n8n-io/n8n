@@ -63,7 +63,7 @@ export class CredentialsService {
 				: credentials;
 		}
 
-		const ids = await this.sharedCredentialsRepository.getAccessibleCredentials(user.id);
+		const ids = await this.sharedCredentialsRepository.getAccessibleCredentialIds([user.id]);
 
 		const credentials = await this.credentialsRepository.findMany(
 			options.listQueryOptions,

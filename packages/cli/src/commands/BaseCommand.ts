@@ -44,7 +44,7 @@ export abstract class BaseCommand extends Command {
 	/**
 	 * How long to wait for graceful shutdown before force killing the process.
 	 */
-	protected gracefulShutdownTimeoutInS: number = config.getEnv('generic.gracefulShutdownTimeout');
+	protected gracefulShutdownTimeoutInS = config.getEnv('generic.gracefulShutdownTimeout');
 
 	async init(): Promise<void> {
 		await initErrorHandling();
