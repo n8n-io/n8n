@@ -92,6 +92,21 @@ const properties: INodeProperties[] = [
 		],
 	},
 	{
+		displayName: 'Use Custom Tools',
+		name: 'useCustomTools',
+		type: 'boolean',
+		description:
+			'Whether to connect some custom tools to this node on the canvas, model may use them to generate the response',
+		default: false,
+	},
+	{
+		displayName: 'Connect your own custom tools to this node on the canvas',
+		name: 'noticeTools',
+		type: 'notice',
+		displayOptions: { show: { useCustomTools: [true] } },
+		default: '',
+	},
+	{
 		displayName: 'Simplify Output',
 		name: 'simplify',
 		type: 'boolean',
@@ -110,19 +125,6 @@ const properties: INodeProperties[] = [
 				modelId: ['gpt-3.5-turbo-1106', 'gpt-4-1106-preview'],
 			},
 		},
-	},
-	{
-		displayName: 'Use Custom Tools',
-		name: 'useCustomTools',
-		type: 'boolean',
-		default: false,
-	},
-	{
-		displayName: 'Connect your own custom tools to this node on the canvas',
-		name: 'noticeTools',
-		type: 'notice',
-		displayOptions: { show: { useCustomTools: [true] } },
-		default: '',
 	},
 	{
 		displayName: 'Options',
@@ -169,21 +171,21 @@ const properties: INodeProperties[] = [
 				type: 'number',
 			},
 			{
-				displayName: 'Sampling Temperature',
+				displayName: 'Output Randomness (Temperature)',
 				name: 'temperature',
 				default: 1,
 				typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 1 },
 				description:
-					'Controls randomness: Lowering results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive.',
+					'Controls randomness: Lowering results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. We generally recommend altering this or temperature but not both.',
 				type: 'number',
 			},
 			{
-				displayName: 'Top P',
+				displayName: 'Output Randomness (Top P)',
 				name: 'topP',
 				default: 1,
 				typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 1 },
 				description:
-					'Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered. We generally recommend altering this or temperature but not both.',
+					'An alternative to sampling with temperature, controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered. We generally recommend altering this or temperature but not both.',
 				type: 'number',
 			},
 		],
