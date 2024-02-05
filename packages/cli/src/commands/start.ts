@@ -226,31 +226,11 @@ export class Start extends BaseCommand {
 		if (!orchestrationService.isMultiMainSetupEnabled) return;
 
 		orchestrationService.multiMainSetup
-			.addListener('leadershipChange', async () => {
-				if (orchestrationService.isLeader) {
-					this.logger.debug('[Leadership change] Clearing all activation errors...');
-
-					await this.activeWorkflowRunner.clearAllActivationErrors();
-
-					this.logger.debug(
-						'[Leadership change] Adding all trigger- and poller-based workflows...',
-					);
-
-					await this.activeWorkflowRunner.addAllTriggerAndPollerBasedWorkflows();
-				} else {
-					this.logger.debug(
-						'[Leadership change] Removing all trigger- and poller-based workflows...',
-					);
-
-					await this.activeWorkflowRunner.removeAllTriggerAndPollerBasedWorkflows();
-				}
-			})
-			.addListener('leadershipVacant', async () => {
-				this.logger.debug(
-					'[Leadership vacant] Removing all trigger- and poller-based workflows...',
-				);
-
+			.on('leader-stepdown', async () => {
 				await this.activeWorkflowRunner.removeAllTriggerAndPollerBasedWorkflows();
+			})
+			.on('leader-takeover', async () => {
+				await this.activeWorkflowRunner.addAllTriggerAndPollerBasedWorkflows();
 			});
 	}
 
@@ -370,16 +350,8 @@ export class Start extends BaseCommand {
 		if (!orchestrationService.isMultiMainSetupEnabled) return;
 
 		orchestrationService.multiMainSetup
-			.addListener('leadershipChange', async () => {
-				if (orchestrationService.isLeader) {
-					this.pruningService.startPruning();
-				} else {
-					this.pruningService.stopPruning();
-				}
-			})
-			.addListener('leadershipVacant', () => {
-				this.pruningService.stopPruning();
-			});
+			.on('leader-stepdown', () => this.pruningService.stopPruning())
+			.on('leader-takeover', () => this.pruningService.startPruning());
 	}
 
 	async catch(error: Error) {
