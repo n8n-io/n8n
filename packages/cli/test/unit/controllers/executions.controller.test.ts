@@ -34,6 +34,7 @@ describe('ExecutionsController', () => {
 
 			expect(executionService.findAllActive).toHaveBeenCalled();
 			expect(executionService.findLatestFinished).toHaveBeenCalledWith(20);
+			expect(executionService.countAll).toHaveBeenCalled();
 			expect(executionService.findRangeWithCount).not.toHaveBeenCalled();
 		});
 
@@ -50,6 +51,7 @@ describe('ExecutionsController', () => {
 
 			expect(executionService.findAllActive).toHaveBeenCalled();
 			expect(executionService.findLatestFinished).toHaveBeenCalledWith(20);
+			expect(executionService.countAll).toHaveBeenCalled();
 			expect(executionService.findRangeWithCount).not.toHaveBeenCalled();
 		});
 

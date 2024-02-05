@@ -327,6 +327,28 @@ export class ExecutionService {
 	}
 
 	/**
+	 * Count the totality of executions on the database and whether it is an estimate.
+	 *
+	 * On Postgres, if the count is >100,000, return an estimated count.
+	 */
+	async countAll() {
+		if (config.getEnv('database.type') === 'postgresdb') {
+			const liveRows = await this.executionRepository.getLiveExecutionRowsOnPostgres();
+
+			if (liveRows === -1) return { count: -1, estimated: false };
+
+			if (liveRows > 100_000) {
+				// likely too high to fetch exact count fast
+				return { count: liveRows, estimated: true };
+			}
+		}
+
+		const count = await this.executionRepository.count();
+
+		return { count, estimated: false };
+	}
+
+	/**
 	 * Find all executions with a status of `new`, `running`, and `waiting`.
 	 */
 	async findAllActive() {

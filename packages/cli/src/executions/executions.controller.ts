@@ -47,7 +47,9 @@ export class ExecutionsController {
 
 			const results = active.concat(latestFinished);
 
-			return { count: results.length, estimated: false, results };
+			const { count, estimated } = await this.executionService.countAll();
+
+			return { count, estimated, results };
 		}
 
 		query.accessibleWorkflowIds = accessibleWorkflowIds;
