@@ -25,6 +25,7 @@ describe('ExecutionsController', () => {
 			workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['123']);
 			executionService.findAllActive.mockResolvedValue([]);
 			executionService.findLatestFinished.mockResolvedValue([]);
+			executionService.countAll.mockResolvedValue({ count: 10, estimated: false });
 
 			const req = mock<ExecutionRequest.GetMany>({
 				rangeQuery: { kind: 'range', workflowId: undefined, status: undefined },
@@ -42,6 +43,7 @@ describe('ExecutionsController', () => {
 			workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['123']);
 			executionService.findAllActive.mockResolvedValue([]);
 			executionService.findLatestFinished.mockResolvedValue([]);
+			executionService.countAll.mockResolvedValue({ count: 10, estimated: false });
 
 			const req = mock<ExecutionRequest.GetMany>({
 				rangeQuery: { kind: 'range', workflowId: undefined, status: [] },
