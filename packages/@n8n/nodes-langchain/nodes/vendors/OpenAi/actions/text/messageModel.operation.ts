@@ -3,12 +3,13 @@ import type {
 	IExecuteFunctions,
 	INodeExecutionData,
 	IDataObject,
-	IHttpRequestOptions,
 } from 'n8n-workflow';
-import { jsonParse, updateDisplayOptions } from 'n8n-workflow';
+import { NodeConnectionType, updateDisplayOptions } from 'n8n-workflow';
 
 import { apiRequest } from '../../transport';
-import type { ChatCompletion, ExternalApiCallOptions } from '../../helpers/interfaces';
+import type { ChatCompletion } from '../../helpers/interfaces';
+import type { Tool } from 'langchain/tools';
+import { formatToOpenAIAssistantTool } from '../../helpers/utils';
 
 const properties: INodeProperties[] = [
 	{
@@ -91,189 +92,6 @@ const properties: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Tools',
-		name: 'tools',
-		type: 'fixedCollection',
-		description:
-			'A list of tools(functions) the model may call to receive additional data or to do some processing',
-		typeOptions: {
-			sortable: true,
-			multipleValues: true,
-		},
-		placeholder: 'Add Tool',
-		default: {},
-		options: [
-			{
-				displayName: 'Values',
-				name: 'values',
-				values: [
-					{
-						displayName: 'Name',
-						name: 'name',
-						type: 'string',
-						default: '',
-						placeholder: 'e.g. get_current_weather',
-					},
-					{
-						displayName: 'Description',
-						name: 'description',
-						type: 'string',
-						default: '',
-						placeholder: 'e.g. Get the current weather in a given location',
-					},
-					{
-						displayName: 'Parameters (Properties)',
-						name: 'properties',
-						type: 'json',
-						typeOptions: {
-							rows: 5,
-						},
-						description:
-							'The parameters that the function accepts, refer to <a href="https://platform.openai.com/docs/guides/function-calling?lang=node.js" target="_blank">the documentation</a> for more information',
-						default:
-							'{\n  "location": {\n    "type": "string",\n     "description": "The city or state"\n},\n  "unit": { \n    "type": "string", \n    "enum": ["celsius", "fahrenheit"] \n  }\n}',
-						validateType: 'object',
-					},
-					{
-						displayName: 'Type',
-						name: 'type',
-						type: 'options',
-						options: [
-							{
-								name: 'Function',
-								value: 'function',
-								description: 'Provide a javaScript function to be called',
-							},
-							{
-								name: 'External API Call',
-								value: 'api',
-								description: 'Call an external API to get the response',
-							},
-						],
-						default: 'function',
-					},
-					{
-						displayName: 'Code (JavaScript)',
-						name: 'jsCode',
-						type: 'string',
-						description:
-							"Specify function that accepts a single parameter of type object with properties matching tool's Parameters",
-						typeOptions: {
-							editor: 'codeNodeEditor',
-							editorLanguage: 'javaScript',
-						},
-						default:
-							'(parameters) => {\n  const {location, unit} = parameters;\n  if (location === \'tokyo\') {\n    return { location: "Tokyo", temperature: "10", unit };\n  } else {\n    return { location, temperature: "unknown" };\n  }\n}',
-						noDataExpression: true,
-						displayOptions: {
-							show: {
-								type: ['function'],
-							},
-						},
-					},
-					{
-						displayName: 'Method',
-						name: 'method',
-						type: 'options',
-						options: [
-							{
-								name: 'GET',
-								value: 'GET',
-							},
-							{
-								name: 'POST',
-								value: 'POST',
-							},
-							{
-								name: 'PUT',
-								value: 'PUT',
-							},
-							{
-								name: 'PATCH',
-								value: 'PATCH',
-							},
-						],
-						default: 'GET',
-						displayOptions: {
-							show: {
-								type: ['api'],
-							},
-						},
-					},
-					{
-						displayName: 'URL',
-						name: 'url',
-						type: 'string',
-						default: '',
-						placeholder: 'e.g. https://wikipedia.org/api',
-						validateType: 'url',
-						displayOptions: {
-							show: {
-								type: ['api'],
-							},
-						},
-					},
-					{
-						displayName: 'Send Parameters in...',
-						name: 'sendParametersIn',
-						type: 'options',
-						options: [
-							{
-								name: 'Body',
-								value: 'body',
-							},
-							{
-								name: 'Query String',
-								value: 'qs',
-							},
-							{
-								name: 'Path',
-								value: 'path',
-							},
-						],
-						default: 'qs',
-						displayOptions: {
-							show: {
-								type: ['api'],
-							},
-						},
-					},
-					{
-						displayName: 'Path',
-						name: 'path',
-						type: 'string',
-						default: '',
-						placeholder: 'e.g. /weather/{latitude}/{longitude}',
-						hint: "Use {parameter_name} to indicate where the parameter's value should be inserted",
-						displayOptions: {
-							show: {
-								type: ['api'],
-								sendParametersIn: ['path'],
-							},
-						},
-					},
-					{
-						displayName: 'Additional Request Options',
-						name: 'requestOptions',
-						type: 'json',
-						typeOptions: {
-							rows: 5,
-						},
-						default: '{\n  "headers": {},\n  "qs": {},\n  "body": {}\n}',
-						description:
-							'Use this if you need to set additional options for the request like authorization headers',
-						validateType: 'object',
-						displayOptions: {
-							show: {
-								type: ['api'],
-							},
-						},
-					},
-				],
-			},
-		],
-	},
-	{
 		displayName: 'Simplify Output',
 		name: 'simplify',
 		type: 'boolean',
@@ -292,6 +110,19 @@ const properties: INodeProperties[] = [
 				modelId: ['gpt-3.5-turbo-1106', 'gpt-4-1106-preview'],
 			},
 		},
+	},
+	{
+		displayName: 'Use Custom Tools',
+		name: 'useCustomTools',
+		type: 'boolean',
+		default: false,
+	},
+	{
+		displayName: 'Connect your own custom tools to this node on the canvas',
+		name: 'noticeTools',
+		type: 'notice',
+		displayOptions: { show: { useCustomTools: [true] } },
+		default: '',
 	},
 	{
 		displayName: 'Options',
@@ -371,9 +202,9 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const model = this.getNodeParameter('modelId', i, '', { extractValue: true });
 	let messages = this.getNodeParameter('messages.values', i, []) as IDataObject[];
-	const toolsValues = this.getNodeParameter('tools.values', i, []) as IDataObject[];
 	const options = this.getNodeParameter('options', i, {});
 	const jsonOutput = this.getNodeParameter('jsonOutput', i, false) as boolean;
+	const useCustomTools = this.getNodeParameter('useCustomTools', i, false) as boolean;
 
 	let response_format;
 	if (jsonOutput) {
@@ -387,48 +218,12 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		];
 	}
 
+	let externalTools;
 	let tools;
-	const toolFunctions: { [key: string]: string | ExternalApiCallOptions } = {};
-	if (toolsValues.length) {
-		tools = [];
 
-		for (const tool of toolsValues) {
-			toolFunctions[tool.name as string] = tool.jsCode as string;
-
-			if (tool.type === 'api') {
-				toolFunctions[tool.name as string] = {
-					callExternalApi: true,
-					url: tool.url as string,
-					path: tool.path as string,
-					method: tool.method as string,
-					requestOptions:
-						typeof tool.requestOptions === 'string'
-							? jsonParse(tool.requestOptions)
-							: (tool.requestOptions as IDataObject),
-					sendParametersIn: tool.sendParametersIn as string,
-				};
-			} else {
-				toolFunctions[tool.name as string] = tool.jsCode as string;
-			}
-
-			const toolProperties: IDataObject =
-				typeof tool.properties === 'string'
-					? jsonParse(tool.properties)
-					: (tool.properties as IDataObject);
-
-			tools.push({
-				type: 'function',
-				function: {
-					name: tool.name,
-					description: tool.description,
-					parameters: {
-						type: 'object',
-						properties: toolProperties,
-						required: Object.keys(toolProperties),
-					},
-				},
-			});
-		}
+	if (useCustomTools) {
+		externalTools = (await this.getInputConnectionData(NodeConnectionType.AiTool, 0)) as Tool[];
+		tools = externalTools.length ? externalTools?.map(formatToOpenAIAssistantTool) : undefined;
 	}
 
 	const body: IDataObject = {
@@ -452,57 +247,11 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			const functionName = toolCall.function.name;
 			const functionArgs = toolCall.function.arguments;
 
-			const functionToCall = toolFunctions[functionName];
-
 			let functionResponse;
-			if (typeof functionToCall === 'object' && functionToCall.callExternalApi) {
-				const { url, method, sendParametersIn, path } = functionToCall;
-				const requestOptions =
-					typeof functionToCall.requestOptions === 'string'
-						? jsonParse<IDataObject>(functionToCall.requestOptions)
-						: functionToCall.requestOptions;
-
-				const externalRequestOptions: IHttpRequestOptions = {
-					url,
-					method: method as 'GET' | 'POST',
-				};
-
-				if (requestOptions.headers && Object.keys(requestOptions.headers).length) {
-					externalRequestOptions.headers = requestOptions.headers as IDataObject;
+			for (const tool of externalTools ?? []) {
+				if (tool.name === functionName) {
+					functionResponse = await tool.invoke(functionArgs);
 				}
-
-				if (requestOptions.qs && Object.keys(requestOptions.qs).length) {
-					externalRequestOptions.qs = requestOptions.qs as IDataObject;
-				}
-
-				if (requestOptions.body && Object.keys(requestOptions.body).length) {
-					externalRequestOptions.body = requestOptions.body as IDataObject;
-				}
-
-				if (sendParametersIn === 'body') {
-					externalRequestOptions.body = {
-						...((externalRequestOptions.body as IDataObject) || {}),
-						...jsonParse<IDataObject>(functionArgs),
-					};
-				} else if (sendParametersIn === 'qs') {
-					externalRequestOptions.qs = {
-						...((externalRequestOptions.qs as IDataObject) || {}),
-						...jsonParse<IDataObject>(functionArgs),
-					};
-				} else {
-					const functionArgsObject = jsonParse<IDataObject>(functionArgs);
-					let parsedPath = path;
-
-					for (const [key, value] of Object.entries(functionArgsObject)) {
-						parsedPath = parsedPath.replace(`{${key}}`, String(value));
-					}
-
-					externalRequestOptions.url = `${url}${encodeURI(parsedPath)}`;
-				}
-
-				functionResponse = await this.helpers.httpRequest(externalRequestOptions);
-			} else {
-				functionResponse = this.evaluateExpression(`{{(${functionToCall})(${functionArgs})}}`, i);
 			}
 
 			if (typeof functionResponse === 'object') {

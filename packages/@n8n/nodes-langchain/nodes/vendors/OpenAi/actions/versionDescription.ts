@@ -36,8 +36,11 @@ const prettifyOperation = (operation: string) => {
 	}
 };
 
-const configureNodeInputs = (operation: string, nativeTools: string[]) => {
-	if (operation === 'messageAssistant' && nativeTools.includes('customTools')) {
+const configureNodeInputs = (operation: string, nativeTools: string[], useCustomTools: boolean) => {
+	if (
+		(operation === 'messageAssistant' && nativeTools.includes('customTools')) ||
+		(operation === 'messageModel' && useCustomTools)
+	) {
 		return [
 			{ type: NodeConnectionType.Main },
 			{ type: NodeConnectionType.AiTool, displayName: 'Tools' },
@@ -73,7 +76,7 @@ export const versionDescription: INodeTypeDescription = {
 			],
 		},
 	},
-	inputs: `={{(${configureNodeInputs})($parameter.operation, $parameter.nativeTools)}}`,
+	inputs: `={{(${configureNodeInputs})($parameter.operation, $parameter.nativeTools, $parameter.useCustomTools)}}`,
 	outputs: ['main'],
 	credentials: [
 		{
