@@ -69,6 +69,13 @@ export async function handleCommandMessageWebhook(messageString: string) {
 				}
 				await Container.get(ExternalSecretsManager).reloadAllProviders();
 				break;
+
+			default:
+				break;
 		}
+
+		return message;
 	}
+
+	return;
 }
