@@ -38,7 +38,7 @@
     "test:postgres": "N8N_LOG_LEVEL=silent DB_TYPE=postgresdb DB_POSTGRESDB_SCHEMA=alt_schema DB_TABLE_PREFIX=test_ jest --no-coverage",
     "test:mysql": "N8N_LOG_LEVEL=silent DB_TYPE=mysqldb DB_TABLE_PREFIX=test_ jest --no-coverage",
     "watch": "concurrently \"tsc -w -p tsconfig.build.json\" \"tsc-alias -w -p tsconfig.build.json\"",
-    "typeorm": "ts-node -T ../../node_modules/typeorm/cli.js"
+    "typeorm": "node ../../node_modules/typeorm/cli.js"
   },
   "bin": {
     "n8n": "./bin/n8n"
