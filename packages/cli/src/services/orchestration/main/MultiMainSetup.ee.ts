@@ -64,7 +64,6 @@ export class MultiMainSetup extends EventEmitter {
 
 				this.emit('leader-stepdown'); // lost leadership - stop triggers, pollers, pruning
 
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 				EventReporter.info('[Multi-main setup] Leader failed to renew leader key');
 			}
 
