@@ -1,5 +1,5 @@
 <template>
-	<div ref="root" @keydown.stop></div>
+	<div ref="root" :class="$style.editor" @keydown.stop></div>
 </template>
 
 <script lang="ts">
@@ -67,6 +67,7 @@ export default defineComponent({
 			history(),
 			expressionInputHandler(),
 			EditorView.lineWrapping,
+			EditorView.editable.of(!this.isReadOnly),
 			EditorState.readOnly.of(this.isReadOnly),
 			EditorView.contentAttributes.of({ 'data-gramm': 'false' }), // disable grammarly
 			EditorView.domEventHandlers({ scroll: forceParse }),
@@ -146,4 +147,14 @@ export default defineComponent({
 });
 </script>
 
-<style lang="scss"></style>
+<style lang="scss" module>
+.editor div[contenteditable='false'] {
+	background-color: var(--disabled-fill, var(--color-background-light));
+	cursor: not-allowed;
+}
+</style>
+<style lang="scss" scoped>
+:deep(.cm-content) {
+	border-radius: var(--border-radius-base);
+}
+</style>

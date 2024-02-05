@@ -430,15 +430,17 @@ function emitValueChanged(): void {
 }
 
 function pruneParamValues(): void {
-	if (!state.paramValue.value) {
+	const { value, schema } = state.paramValue;
+	if (!value) {
 		return;
 	}
-	const valueKeys = Object.keys(state.paramValue.value);
-	valueKeys.forEach((key) => {
-		if (state.paramValue.value && state.paramValue.value[key] === null) {
-			delete state.paramValue.value[key];
+
+	const schemaKeys = new Set(schema.map((s) => s.id));
+	for (const key of Object.keys(value)) {
+		if (value[key] === null || !schemaKeys.has(key)) {
+			delete value[key];
 		}
-	});
+	}
 }
 
 defineExpose({

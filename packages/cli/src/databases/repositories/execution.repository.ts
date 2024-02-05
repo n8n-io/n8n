@@ -649,6 +649,16 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		});
 	}
 
+	async findWithUnflattenedData(executionId: string, accessibleWorkflowIds: string[]) {
+		return await this.findSingleExecution(executionId, {
+			where: {
+				workflowId: In(accessibleWorkflowIds),
+			},
+			includeData: true,
+			unflattenData: true,
+		});
+	}
+
 	async findIfShared(executionId: string, sharedWorkflowIds: string[]) {
 		return await this.findSingleExecution(executionId, {
 			where: {

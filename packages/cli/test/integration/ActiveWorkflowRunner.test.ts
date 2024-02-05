@@ -1,5 +1,4 @@
 import { Container } from 'typedi';
-
 import { NodeApiError, NodeOperationError, Workflow } from 'n8n-workflow';
 import type { IWebhookData, WorkflowActivateMode } from 'n8n-workflow';
 
@@ -12,20 +11,20 @@ import { SecretsHelper } from '@/SecretsHelpers';
 import { WebhookService } from '@/services/webhook.service';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as AdditionalData from '@/WorkflowExecuteAdditionalData';
-import { WorkflowRunner } from '@/WorkflowRunner';
 import type { User } from '@db/entities/User';
 import type { WebhookEntity } from '@db/entities/WebhookEntity';
 import { NodeTypes } from '@/NodeTypes';
-import { chooseRandomly } from './shared/random';
 import { OrchestrationService } from '@/services/orchestration.service';
+import { ExecutionService } from '@/executions/execution.service';
+import { WorkflowService } from '@/workflows/workflow.service';
+import { ActiveWorkflowsService } from '@/services/activeWorkflows.service';
+
 import { mockInstance } from '../shared/mocking';
+import { chooseRandomly } from './shared/random';
 import { setSchedulerAsLoadedNode } from './shared/utils';
 import * as testDb from './shared/testDb';
 import { createOwner } from './shared/db/users';
 import { createWorkflow } from './shared/db/workflows';
-import { ExecutionService } from '@/executions/execution.service';
-import { WorkflowService } from '@/workflows/workflow.service';
-import { ActiveWorkflowsService } from '@/services/activeWorkflows.service';
 
 mockInstance(ActiveExecutions);
 mockInstance(Push);
@@ -179,26 +178,6 @@ describe('isActive()', () => {
 
 		const isActiveInStorage = activeWorkflowRunner.isActive(workflow.id);
 		await expect(isActiveInStorage).resolves.toBe(false);
-	});
-});
-
-describe('runWorkflow()', () => {
-	test('should call `WorkflowRunner.run()`', async () => {
-		const workflow = await createWorkflow({ active: true }, owner);
-
-		await activeWorkflowRunner.init();
-
-		const additionalData = await AdditionalData.getBase('fake-user-id');
-
-		const runSpy = jest
-			.spyOn(WorkflowRunner.prototype, 'run')
-			.mockResolvedValue('fake-execution-id');
-
-		const [node] = workflow.nodes;
-
-		await activeWorkflowRunner.runWorkflow(workflow, node, [[]], additionalData, 'trigger');
-
-		expect(runSpy).toHaveBeenCalledTimes(1);
 	});
 });
 
