@@ -14,6 +14,8 @@ import { UrlService } from '@/services/url.service';
 import { ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 import type { UserRequest } from '@/requests';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { Project } from '@/databases/entities/Project';
+import { ProjectRelation } from '@/databases/entities/ProjectRelation';
 
 @Service()
 export class UserService {
@@ -249,6 +251,18 @@ export class UserService {
 							const newUser = transactionManager.create(User, { email, role });
 							const savedUser = await transactionManager.save<User>(newUser);
 							createdUsers.set(email, savedUser.id);
+							const savedProject = await transactionManager.save<Project>(
+								transactionManager.create(Project, {
+									type: 'personal',
+								}),
+							);
+							await transactionManager.save<ProjectRelation>(
+								transactionManager.create(ProjectRelation, {
+									projectId: savedProject.id,
+									userId: savedUser.id,
+									role: 'project:admin',
+								}),
+							);
 							return savedUser;
 						}),
 					),
