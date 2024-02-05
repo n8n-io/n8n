@@ -20,7 +20,7 @@ import type { IPersonalizationSurveyAnswers } from '@/Interfaces';
 import type { AuthIdentity } from './AuthIdentity';
 import { ownerPermissions, memberPermissions, adminPermissions } from '@/permissions/roles';
 import { hasScope, type ScopeOptions, type Scope } from '@n8n/permissions';
-import type { ProjectRelation } from './ProjectRelation';
+import type { ProjectRelation, ProjectRole } from './ProjectRelation';
 
 export type GlobalRole = 'global:owner' | 'global:admin' | 'global:member';
 export type AssignableRole = Exclude<GlobalRole, 'global:owner'>;
@@ -144,6 +144,19 @@ export class User extends WithTimestamps implements IUser {
 			},
 			undefined,
 			scopeOptions,
+		);
+	}
+
+	hasScope(scope: Scope | Scope[], projectRole: ProjectRole) {
+		scope = Array.isArray(scope) ? scope : [scope];
+
+		return hasScope(
+			scope,
+			{
+				global: this.globalScopes,
+				project: ['credential:read'], // @TODO: Pending `STATIC_PROJECT_SCOPE_MAP[projectRole] ?? []`
+			},
+			{ sharing: scope },
 		);
 	}
 }

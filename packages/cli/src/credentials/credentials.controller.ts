@@ -5,7 +5,7 @@ import { CredentialRequest, ListQuery } from '@/requests';
 import { InternalHooks } from '@/InternalHooks';
 import { Logger } from '@/Logger';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NamingService } from '@/services/naming.service';
 import { License } from '@/License';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
@@ -69,7 +69,7 @@ export class CredentialsController {
 			const userSharing = credential.shared?.find((shared) => shared.user.id === req.user.id);
 
 			if (!userSharing && !req.user.hasGlobalScope('credential:read')) {
-				throw new UnauthorizedError('Forbidden.');
+				throw new ForbiddenError();
 			}
 
 			credential = this.ownershipService.addOwnedByAndSharedWith(credential);
@@ -138,7 +138,7 @@ export class CredentialsController {
 			});
 			if (!ownsCredential) {
 				if (!sharing) {
-					throw new UnauthorizedError('Forbidden');
+					throw new ForbiddenError();
 				}
 
 				const decryptedData = this.credentialsService.decrypt(sharing.credentials);
@@ -225,7 +225,7 @@ export class CredentialsController {
 				credentialId,
 				userId: req.user.id,
 			});
-			throw new UnauthorizedError('You can only update credentials owned by you');
+			throw new ForbiddenError('You can only update credentials owned by you');
 		}
 
 		const { credentials: credential } = sharing;
@@ -283,7 +283,7 @@ export class CredentialsController {
 				credentialId,
 				userId: req.user.id,
 			});
-			throw new UnauthorizedError('You can only remove credentials owned by you');
+			throw new ForbiddenError('You can only remove credentials owned by you');
 		}
 
 		const { credentials: credential } = sharing;
@@ -324,7 +324,7 @@ export class CredentialsController {
 				credential = sharedRes?.credentials;
 			}
 			if (!credential) {
-				throw new UnauthorizedError('Forbidden');
+				throw new ForbiddenError();
 			}
 		}
 

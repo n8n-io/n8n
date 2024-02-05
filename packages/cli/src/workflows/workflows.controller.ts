@@ -29,7 +29,7 @@ import { Logger } from '@/Logger';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NamingService } from '@/services/naming.service';
 import { UserOnboardingService } from '@/services/userOnboarding.service';
 import { CredentialsService } from '../credentials/credentials.service';
@@ -230,7 +230,7 @@ export class WorkflowsController {
 
 			const userSharing = workflow.shared?.find((shared) => shared.user.id === req.user.id);
 			if (!userSharing && !req.user.hasGlobalScope('workflow:read')) {
-				throw new UnauthorizedError(
+				throw new ForbiddenError(
 					'You do not have permission to access this workflow. Ask the owner to share it with you',
 				);
 			}
@@ -365,7 +365,7 @@ export class WorkflowsController {
 				workflow = sharedRes?.workflow;
 			}
 			if (!workflow) {
-				throw new UnauthorizedError('Forbidden');
+				throw new ForbiddenError();
 			}
 		}
 

@@ -1,4 +1,4 @@
-import { Authorized, Get, Post, RequireGlobalScope, RestController } from '@/decorators';
+import { Authorized, Get, Post, RestController, Scoped } from '@/decorators';
 import { LicenseRequest } from '@/requests';
 import { LicenseService } from './license.service';
 
@@ -13,7 +13,7 @@ export class LicenseController {
 	}
 
 	@Post('/activate')
-	@RequireGlobalScope('license:manage')
+	@Scoped('license:manage', { globalOnly: true })
 	async activateLicense(req: LicenseRequest.Activate) {
 		const { activationKey } = req.body;
 		await this.licenseService.activateLicense(activationKey);
@@ -21,7 +21,7 @@ export class LicenseController {
 	}
 
 	@Post('/renew')
-	@RequireGlobalScope('license:manage')
+	@Scoped('license:manage', { globalOnly: true })
 	async renewLicense() {
 		await this.licenseService.renewLicense();
 		return await this.getTokenAndData();

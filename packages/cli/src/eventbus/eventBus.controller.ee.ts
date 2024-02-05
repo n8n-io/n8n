@@ -5,7 +5,7 @@ import type {
 } from 'n8n-workflow';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 
-import { RestController, Get, Post, Delete, Authorized, RequireGlobalScope } from '@/decorators';
+import { RestController, Get, Post, Delete, Authorized, Scoped } from '@/decorators';
 import { AuthenticatedRequest } from '@/requests';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
@@ -62,7 +62,7 @@ export class EventBusControllerEE {
 	// ----------------------------------------
 
 	@Get('/destination', { middlewares: [logStreamingLicensedMiddleware] })
-	@RequireGlobalScope('eventBusDestination:list')
+	@Scoped('eventBusDestination:list', { globalOnly: true })
 	async getDestination(req: express.Request): Promise<MessageEventBusDestinationOptions[]> {
 		if (isWithIdString(req.query)) {
 			return await this.eventBus.findDestination(req.query.id);
@@ -72,7 +72,7 @@ export class EventBusControllerEE {
 	}
 
 	@Post('/destination', { middlewares: [logStreamingLicensedMiddleware] })
-	@RequireGlobalScope('eventBusDestination:create')
+	@Scoped('eventBusDestination:create', { globalOnly: true })
 	async postDestination(req: AuthenticatedRequest): Promise<any> {
 		let result: MessageEventBusDestination | undefined;
 		if (isMessageEventBusDestinationOptions(req.body)) {
@@ -116,7 +116,7 @@ export class EventBusControllerEE {
 	}
 
 	@Get('/testmessage', { middlewares: [logStreamingLicensedMiddleware] })
-	@RequireGlobalScope('eventBusDestination:test')
+	@Scoped('eventBusDestination:test', { globalOnly: true })
 	async sendTestMessage(req: express.Request): Promise<boolean> {
 		if (isWithIdString(req.query)) {
 			return await this.eventBus.testDestination(req.query.id);
@@ -125,7 +125,7 @@ export class EventBusControllerEE {
 	}
 
 	@Delete('/destination', { middlewares: [logStreamingLicensedMiddleware] })
-	@RequireGlobalScope('eventBusDestination:delete')
+	@Scoped('eventBusDestination:delete', { globalOnly: true })
 	async deleteDestination(req: AuthenticatedRequest) {
 		if (isWithIdString(req.query)) {
 			return await this.eventBus.removeDestination(req.query.id);

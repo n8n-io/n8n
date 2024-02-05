@@ -1,5 +1,5 @@
 import pick from 'lodash/pick';
-import { Authorized, Get, Post, Put, RestController, RequireGlobalScope } from '@/decorators';
+import { Authorized, Get, Post, Put, RestController, Scoped } from '@/decorators';
 import { InternalHooks } from '@/InternalHooks';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
@@ -17,13 +17,13 @@ export class LdapController {
 	) {}
 
 	@Get('/config')
-	@RequireGlobalScope('ldap:manage')
+	@Scoped('ldap:manage', { globalOnly: true })
 	async getConfig() {
 		return await this.ldapService.loadConfig();
 	}
 
 	@Post('/test-connection')
-	@RequireGlobalScope('ldap:manage')
+	@Scoped('ldap:manage', { globalOnly: true })
 	async testConnection() {
 		try {
 			await this.ldapService.testConnection();
@@ -33,7 +33,7 @@ export class LdapController {
 	}
 
 	@Put('/config')
-	@RequireGlobalScope('ldap:manage')
+	@Scoped('ldap:manage', { globalOnly: true })
 	async updateConfig(req: LdapConfiguration.Update) {
 		try {
 			await this.ldapService.updateConfig(req.body);
@@ -52,14 +52,14 @@ export class LdapController {
 	}
 
 	@Get('/sync')
-	@RequireGlobalScope('ldap:sync')
+	@Scoped('ldap:sync', { globalOnly: true })
 	async getLdapSync(req: LdapConfiguration.GetSync) {
 		const { page = '0', perPage = '20' } = req.query;
 		return await getLdapSynchronizations(parseInt(page, 10), parseInt(perPage, 10));
 	}
 
 	@Post('/sync')
-	@RequireGlobalScope('ldap:sync')
+	@Scoped('ldap:sync', { globalOnly: true })
 	async syncLdap(req: LdapConfiguration.Sync) {
 		try {
 			await this.ldapService.runSync(req.body.type);

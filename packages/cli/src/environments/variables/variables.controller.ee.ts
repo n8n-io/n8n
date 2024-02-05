@@ -6,8 +6,8 @@ import {
 	Licensed,
 	Patch,
 	Post,
-	RequireGlobalScope,
 	RestController,
+	Scoped,
 } from '@/decorators';
 import { VariablesService } from './variables.service.ee';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -21,14 +21,14 @@ export class VariablesController {
 	constructor(private readonly variablesService: VariablesService) {}
 
 	@Get('/')
-	@RequireGlobalScope('variable:list')
+	@Scoped('variable:list', { globalOnly: true })
 	async getVariables() {
 		return await this.variablesService.getAllCached();
 	}
 
 	@Post('/')
 	@Licensed('feat:variables')
-	@RequireGlobalScope('variable:create')
+	@Scoped('variable:create', { globalOnly: true })
 	async createVariable(req: VariablesRequest.Create) {
 		const variable = req.body;
 		delete variable.id;
@@ -45,7 +45,7 @@ export class VariablesController {
 	}
 
 	@Get('/:id')
-	@RequireGlobalScope('variable:read')
+	@Scoped('variable:read', { globalOnly: true })
 	async getVariable(req: VariablesRequest.Get) {
 		const id = req.params.id;
 		const variable = await this.variablesService.getCached(id);
@@ -57,7 +57,7 @@ export class VariablesController {
 
 	@Patch('/:id')
 	@Licensed('feat:variables')
-	@RequireGlobalScope('variable:update')
+	@Scoped('variable:update', { globalOnly: true })
 	async updateVariable(req: VariablesRequest.Update) {
 		const id = req.params.id;
 		const variable = req.body;
@@ -75,7 +75,7 @@ export class VariablesController {
 	}
 
 	@Delete('/:id(\\w+)')
-	@RequireGlobalScope('variable:delete')
+	@Scoped('variable:delete', { globalOnly: true })
 	async deleteVariable(req: VariablesRequest.Delete) {
 		const id = req.params.id;
 		await this.variablesService.delete(id);
