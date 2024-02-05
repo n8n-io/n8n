@@ -260,7 +260,7 @@ export class UserService {
 								transactionManager.create(ProjectRelation, {
 									projectId: savedProject.id,
 									userId: savedUser.id,
-									role: 'project:admin',
+									role: 'project:personalOwner',
 								}),
 							);
 							return savedUser;

@@ -3,7 +3,7 @@ import type { ProjectRole } from '@/databases/entities/ProjectRelation';
 import type { User } from '@/databases/entities/User';
 import { generateNanoId } from '@/databases/utils/generators';
 
-const projectAdminRole: ProjectRole = 'project:admin';
+const projectAdminRole: ProjectRole = 'project:personalOwner';
 const projectTable = 'project';
 const projectRelationTable = 'project_relation';
 

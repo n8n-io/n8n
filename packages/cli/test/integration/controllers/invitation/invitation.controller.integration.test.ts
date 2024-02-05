@@ -297,7 +297,7 @@ describe('InvitationController', () => {
 			const projectRelation = await projectRelationRepository.findOneOrFail({
 				where: {
 					userId: storedUser.id,
-					role: 'project:admin',
+					role: 'project:personalOwner',
 					project: {
 						type: 'personal',
 					},
