@@ -39,15 +39,20 @@ export class ExecutionsController {
 			return { count: 0, estimated: false, results: [] };
 		}
 
-		if (!query.status || query.status?.length === 0) {
-			const [active, latestFinished] = await Promise.all([
+		const noStatus = !query.status || query.status.length === 0;
+		const noRange = !query.range.lastId || !query.range.firstId;
+
+		if (noStatus || noRange) {
+			const [active, latestFinishedWithCount] = await Promise.all([
 				this.executionService.findAllActive(),
-				this.executionService.findLatestFinished(20),
+				this.executionService.findLatestFinishedWithCount(20),
 			]);
+
+			const { results: latestFinished, count } = latestFinishedWithCount;
 
 			const results = active.concat(latestFinished);
 
-			return { count: results.length, estimated: false, results };
+			return { results, count, estimated: false };
 		}
 
 		query.accessibleWorkflowIds = accessibleWorkflowIds;

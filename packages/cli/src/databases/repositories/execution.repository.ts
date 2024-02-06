@@ -607,7 +607,13 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		stoppedAt: true,
 	};
 
-	async findLatestFinished(n: number): Promise<ExecutionSummary[]> {
+	async countFinished() {
+		const finished: ExecutionStatus[] = ['success', 'error', 'failed'];
+
+		return await this.count({ where: { status: In(finished) } });
+	}
+
+	async findLatestFinished(n: number) {
 		const finished: ExecutionStatus[] = ['success', 'error', 'failed'];
 
 		const findManyOptions: FindManyOptions<ExecutionEntity> = {

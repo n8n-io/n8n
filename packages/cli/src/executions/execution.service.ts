@@ -319,11 +319,34 @@ export class ExecutionService {
 
 	private readonly isRegularMode = config.getEnv('executions.mode') === 'regular';
 
+	private async countPostgres() {
+		const liveRows = await this.executionRepository.getLiveExecutionRowsOnPostgres();
+
+		if (liveRows === -1) return { count: -1, estimated: false };
+
+		// likely too high to fetch exact count fast
+		if (liveRows > 100_000) return { count: liveRows, estimated: true };
+
+		return { count: liveRows, estimated: false };
+	}
+
 	/**
-	 * Find the `n` most recent executions with a status of `success` or `error`.
+	 * Find the `n` most recent executions with a status of `success` or `error`,
+	 * or `failed`, along with the total count of all existing executions with
+	 * a status of `success` or `error` or `failed`.
 	 */
-	async findLatestFinished(n: number) {
-		return await this.executionRepository.findLatestFinished(n);
+	async findLatestFinishedWithCount(n: number) {
+		const results = await this.executionRepository.findLatestFinished(n);
+
+		if (config.getEnv('database.type') === 'postgresdb') {
+			const { count, estimated } = await this.countPostgres();
+
+			return { results, count, estimated };
+		}
+
+		const count = await this.executionRepository.countFinished();
+
+		return { count, estimated: false, results };
 	}
 
 	/**
@@ -339,24 +362,19 @@ export class ExecutionService {
 	 * the total is an estimate or not.
 	 */
 	async findRangeWithCount(query: ExecutionSummaries.RangeQuery) {
-		const executions = await this.executionRepository.findManyByRangeQuery(query);
+		const results = await this.executionRepository.findManyByRangeQuery(query);
 
 		if (config.getEnv('database.type') === 'postgresdb') {
-			const liveRows = await this.executionRepository.getLiveExecutionRowsOnPostgres();
+			const { count, estimated } = await this.countPostgres();
 
-			if (liveRows === -1) return { count: -1, estimated: false, results: executions };
-
-			if (liveRows > 100_000) {
-				// likely too high to fetch exact count fast
-				return { count: liveRows, estimated: true, results: executions };
-			}
+			return { results, count, estimated };
 		}
 
 		const { range: _, ...countQuery } = query;
 
 		const count = await this.executionRepository.fetchCount({ ...countQuery, kind: 'count' });
 
-		return { count, estimated: false, results: executions };
+		return { count, estimated: false, results };
 	}
 
 	/**

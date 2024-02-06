@@ -26,6 +26,7 @@ describe('ExecutionService', () => {
 			Container.get(WorkflowRepository),
 			mock(),
 			mock(),
+			mock(),
 		);
 	});
 
@@ -53,11 +54,11 @@ describe('ExecutionService', () => {
 				createExecution({ status: 'error' }, workflow),
 			]);
 
-			const executions = await executionService.findLatestFinished(6);
+			const { results } = await executionService.findLatestFinishedWithCount(6);
 
-			expect(executions).toHaveLength(6);
+			expect(results).toHaveLength(6);
 
-			executions.forEach((execution) => {
+			results.forEach((execution) => {
 				if (!execution.status) fail('Expected status');
 				expect(['success', 'error'].includes(execution.status)).toBe(true);
 			});
