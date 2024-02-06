@@ -21,7 +21,8 @@ import type { GlobalRole, User } from '@db/entities/User';
 import type { ExecutionMetadata } from '@db/entities/ExecutionMetadata';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import { MessageEventBus, type EventPayloadWorkflow } from '@/eventbus';
+import type { EventPayloadWorkflow } from '@/eventbus';
+import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { determineFinalExecutionStatus } from '@/executionLifecycleHooks/shared/sharedHookFunctions';
 import type {
 	ITelemetryUserDeletionData,
