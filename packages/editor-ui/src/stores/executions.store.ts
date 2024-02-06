@@ -12,7 +12,6 @@ import type {
 } from '@/Interface';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { makeRestApiRequest, unflattenExecutionData } from '@/utils/apiUtils';
-import { isEmpty } from '@/utils/typesUtils';
 import {
 	executionFilterToQueryFilter,
 	filterExecutions,
@@ -39,7 +38,6 @@ export const useExecutionsStore = defineStore('executions', () => {
 
 	const executionsById = ref<Record<string, ExecutionSummary>>({});
 	const executionsCount = ref(0);
-	const executionsCountByWorkflowId = ref<Record<string, number>>({});
 	const executionsCountEstimated = ref(false);
 	const executions = computed(() => {
 		const data = Object.values(executionsById.value);
@@ -191,18 +189,9 @@ export const useExecutionsStore = defineStore('executions', () => {
 			...(workflowId ? { workflowId } : {}),
 		};
 
-		// We cannot use firstId here as some executions finish out of order. Let's say
-		// You have execution ids 500 to 505 running.
-		// Suppose 504 finishes before 500, 501, 502 and 503.
-		// iF you use firstId, filtering id >= 504 you won't
-		// ever get ids 500, 501, 502 and 503 when they finish
-		await fetchExecutions(autoRefreshExecutionFilters);
-
-		// @TODO
-		// this.adjustSelectionAfterMoreItemsLoaded();
-
-		autoRefreshTimeout.value = setTimeout(() => {
+		autoRefreshTimeout.value = setTimeout(async () => {
 			if (autoRefresh.value) {
+				await fetchExecutions(autoRefreshExecutionFilters);
 				void startAutoRefreshInterval(workflowId);
 			}
 		}, autoRefreshDelay.value);
@@ -243,7 +232,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 	}
 
 	async function deleteExecutions(sendData: IExecutionDeleteFilter): Promise<void> {
-		await await makeRestApiRequest(
+		await makeRestApiRequest(
 			rootStore.getRestApiContext,
 			'POST',
 			'/executions/delete',

@@ -9,7 +9,6 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useExecutionsStore } from '@/stores/executions.store';
 import { useToast } from '@/composables/useToast';
 import { storeToRefs } from 'pinia';
-import { isEmpty } from '@/utils/typesUtils';
 import { filterExecutions } from '@/utils/executionUtils';
 
 const i18n = useI18n();

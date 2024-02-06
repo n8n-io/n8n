@@ -78,6 +78,13 @@ watch(
 	},
 );
 
+watch(
+	() => props.filteredExecutions,
+	() => {
+		adjustSelectionAfterMoreItemsLoaded();
+	},
+);
+
 function handleCheckAllExistingChange() {
 	allExistingSelected.value = !allExistingSelected.value;
 	allVisibleSelected.value = !allExistingSelected.value;
@@ -189,8 +196,6 @@ async function loadMore() {
 		toast.showError(error, i18n.baseText('executionsList.showError.loadMore.title'));
 		return;
 	}
-
-	adjustSelectionAfterMoreItemsLoaded();
 }
 
 function selectAllVisibleExecutions() {

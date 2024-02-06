@@ -6,7 +6,6 @@ import { createRouter, createWebHistory } from 'vue-router';
 import { createPinia, PiniaVuePlugin, setActivePinia } from 'pinia';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
 import WorkflowExecutionsPreview from '@/components/executions/workflow/WorkflowExecutionsPreview.vue';
 import { VIEWS } from '@/constants';
 import { i18nInstance, I18nPlugin } from '@/plugins/i18n';
