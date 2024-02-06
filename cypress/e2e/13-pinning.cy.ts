@@ -188,9 +188,9 @@ describe('Data pinning', () => {
 
 function setExpressionOnStringValueInSet(expression: string) {
 	cy.get('button').contains('Test step').click();
-	cy.get('.fixed-collection-parameter > :nth-child(2) > .button > span').click();
 
-	ndv.getters.nthParam(4).contains('Expression').invoke('show').click();
+	ndv.getters.assignmentCollectionAdd('assignments').click();
+	ndv.getters.assignmentValue('assignments').contains('Expression').invoke('show').click();
 
 	ndv.getters
 		.inlineExpressionEditorInput()
