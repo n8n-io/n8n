@@ -175,6 +175,8 @@ export const workflowRun = defineComponent({
 
 				const runData = this.workflowsStore.getWorkflowRunData;
 
+				const workflowData = await this.getWorkflowDataToSave();
+
 				let newRunData: IRunData | undefined;
 
 				const startNodes: string[] = [];
@@ -194,14 +196,19 @@ export const workflowRun = defineComponent({
 						parentNodes.push(directParentNode);
 
 						for (const parentNode of parentNodes) {
-							if (runData[parentNode] === undefined || runData[parentNode].length === 0) {
+							if (
+								(runData[parentNode] === undefined || runData[parentNode].length === 0) &&
+								workflowData.pinData?.[parentNode].length === 0
+							) {
 								// When we hit a node which has no data we stop and set it
 								// as a start node the execution from and then go on with other
 								// direct input nodes
 								startNodes.push(parentNode);
 								break;
 							}
-							newRunData[parentNode] = runData[parentNode].slice(0, 1);
+							if (runData[parentNode] !== undefined) {
+								newRunData[parentNode] = runData[parentNode]?.slice(0, 1);
+							}
 						}
 					}
 
@@ -233,8 +240,6 @@ export const workflowRun = defineComponent({
 				if (this.workflowsStore.isNewWorkflow) {
 					await this.saveCurrentWorkflow();
 				}
-
-				const workflowData = await this.getWorkflowDataToSave();
 
 				const startRunData: IStartRunData = {
 					workflowData,
