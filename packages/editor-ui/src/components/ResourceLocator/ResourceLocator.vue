@@ -93,7 +93,7 @@
 									ref="input"
 									:model-value="expressionDisplayValue"
 									:path="path"
-									is-single-line
+									:rows="1"
 									@update:modelValue="onInputChange"
 									@modalOpenerClick="$emit('modalOpenerClick')"
 								/>

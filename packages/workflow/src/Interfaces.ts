@@ -1083,6 +1083,7 @@ export type NodePropertyTypes =
 	| 'curlImport'
 	| 'resourceMapper'
 	| 'filter'
+	| 'assignmentCollection'
 	| 'credentials';
 
 export type CodeAutocompleteTypes = 'function' | 'functionItem';
@@ -1130,6 +1131,7 @@ export interface INodePropertyTypeOptions {
 	expirable?: boolean; // Supported by: hidden (only in the credentials)
 	resourceMapper?: ResourceMapperTypeOptions;
 	filter?: FilterTypeOptions;
+	assignment?: AssignmentTypeOptions;
 	[key: string]: any;
 }
 
@@ -1159,6 +1161,10 @@ export type FilterTypeOptions = Partial<{
 	allowedCombinators: NonEmptyArray<FilterTypeCombinator>; // default = ['and', 'or']
 	maxConditions: number; // default = 10
 	typeValidation: 'strict' | 'loose' | {}; // default = strict, `| {}` is a TypeScript trick to allow custom strings, but still give autocomplete
+}>;
+
+export type AssignmentTypeOptions = Partial<{
+	hideType?: boolean; // visible by default
 }>;
 
 export type DisplayCondition =
@@ -2287,6 +2293,17 @@ export type FilterValue = {
 	combinator: FilterTypeCombinator;
 };
 
+export type AssignmentCollectionValue = {
+	assignments: AssignmentValue[];
+};
+
+export type AssignmentValue = {
+	id: string;
+	name: string;
+	value: NodeParameterValue;
+	type?: string;
+};
+
 export interface ExecutionOptions {
 	limit?: number;
 }
@@ -2463,3 +2480,5 @@ export type BannerName =
 	| 'EMAIL_CONFIRMATION';
 
 export type Functionality = 'regular' | 'configuration-node';
+
+export type Result<T, E> = { ok: true; result: T } | { ok: false; error: E };
