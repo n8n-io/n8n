@@ -10,32 +10,10 @@ import { apiRequest } from '../../transport';
 import type { ChatCompletion } from '../../helpers/interfaces';
 import type { Tool } from 'langchain/tools';
 import { formatToOpenAIAssistantTool } from '../../helpers/utils';
+import { modelRLC } from '../descriptions';
 
 const properties: INodeProperties[] = [
-	{
-		displayName: 'Model',
-		name: 'modelId',
-		type: 'resourceLocator',
-		default: { mode: 'list', value: '' },
-		required: true,
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'modelCompletionSearch',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'ID',
-				name: 'id',
-				type: 'string',
-				placeholder: 'e.g. gpt-4',
-			},
-		],
-	},
+	modelRLC,
 	{
 		displayName: 'Messages',
 		name: 'messages',

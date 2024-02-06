@@ -2,6 +2,7 @@
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 
+import * as assistant from './assistant';
 import * as audio from './audio';
 import * as file from './file';
 import * as image from './image';
@@ -11,6 +12,8 @@ const prettifyOperation = (operation: string) => {
 	switch (operation) {
 		case 'messageModel':
 			return 'Message Model';
+		case 'createAssistant':
+			return 'Create Assistant';
 		case 'messageAssistant':
 			return 'Message Assistant';
 		case 'uploadFile':
@@ -90,7 +93,12 @@ export const versionDescription: INodeTypeDescription = {
 			name: 'resource',
 			type: 'options',
 			noDataExpression: true,
+			// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 			options: [
+				{
+					name: 'Assistant',
+					value: 'assistant',
+				},
 				{
 					name: 'Text',
 					value: 'text',
@@ -110,6 +118,7 @@ export const versionDescription: INodeTypeDescription = {
 			],
 			default: 'text',
 		},
+		...assistant.description,
 		...audio.description,
 		...file.description,
 		...image.description,

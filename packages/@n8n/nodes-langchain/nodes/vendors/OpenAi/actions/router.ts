@@ -1,5 +1,6 @@
 import { NodeOperationError, type IExecuteFunctions, type INodeExecutionData } from 'n8n-workflow';
 
+import * as assistant from './assistant';
 import * as audio from './audio';
 import * as file from './file';
 import * as image from './image';
@@ -21,6 +22,9 @@ export async function router(this: IExecuteFunctions) {
 
 	let execute;
 	switch (openAiTypeData.resource) {
+		case 'assistant':
+			execute = assistant[openAiTypeData.operation].execute;
+			break;
 		case 'audio':
 			execute = audio[openAiTypeData.operation].execute;
 			break;

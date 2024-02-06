@@ -38,11 +38,12 @@ export async function fileSearch(
 	}
 }
 
-export async function modelCompletionSearch(
+export async function modelSearch(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
 	let { data } = await apiRequest.call(this, 'GET', '/models');
+
 	data = data?.filter((model: IDataObject) => (model.id as string).startsWith('gpt-'));
 
 	let results: INodeListSearchItems[] = [];

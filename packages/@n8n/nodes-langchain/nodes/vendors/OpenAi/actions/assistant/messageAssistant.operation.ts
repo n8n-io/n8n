@@ -9,6 +9,7 @@ import { NodeConnectionType, NodeOperationError, updateDisplayOptions } from 'n8
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
 import { formatToOpenAIAssistantTool } from '../../helpers/utils';
+import { assistantRLC, modelRLC } from '../descriptions';
 
 const properties: INodeProperties[] = [
 	{
@@ -58,64 +59,20 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Model',
-		name: 'modelId',
-		type: 'resourceLocator',
-		default: { mode: 'list', value: 'gpt-3.5-turbo-1106', cachedResultName: 'GPT-3.5-TURBO-1106' },
-		required: true,
+		...modelRLC,
 		displayOptions: {
 			show: {
 				mode: ['new'],
 			},
 		},
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'modelCompletionSearch',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'ID',
-				name: 'id',
-				type: 'string',
-				placeholder: 'e.g. gpt-4',
-			},
-		],
 	},
 	{
-		displayName: 'Assistant',
-		name: 'assistantId',
-		type: 'resourceLocator',
-		description:
-			'Assistant to respond to the message. You can add, modify or remove assistants in the <a href="https://platform.openai.com/playground?mode=assistant" target="_blank">playground</a>.',
-		default: { mode: 'list', value: '' },
-		required: true,
+		...assistantRLC,
 		displayOptions: {
 			show: {
 				mode: ['existing'],
 			},
 		},
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				typeOptions: {
-					searchListMethod: 'assistantSearch',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'ID',
-				name: 'id',
-				type: 'string',
-				placeholder: 'e.g. asst_abc123',
-			},
-		],
 	},
 	{
 		displayName: 'Text',
@@ -201,7 +158,7 @@ const properties: INodeProperties[] = [
 const displayOptions = {
 	show: {
 		operation: ['messageAssistant'],
-		resource: ['text'],
+		resource: ['assistant'],
 	},
 };
 
