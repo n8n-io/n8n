@@ -332,9 +332,10 @@ export class ExecutionService {
 	}
 
 	/**
-	 * Find a range of summaries of executions that satisfy a query, along with the
-	 * total count of all existing executions that satisfy the query, and whether
-	 * the total is an estimate or not.
+	 * Find summaries of executions that satisfy a query.
+	 *
+	 * Return also the total count of all executions that satisfy the query,
+	 * and whether the total is an estimate or not.
 	 */
 	async findRangeWithCount(query: ExecutionSummaries.RangeQuery) {
 		const results = await this.executionRepository.findManyByRangeQuery(query);
@@ -352,7 +353,14 @@ export class ExecutionService {
 		return { count, estimated: false, results };
 	}
 
-	async findAllActiveAndLatestTwentyFinished(query: ExecutionSummaries.RangeQuery) {
+	/**
+	 * Find summaries of active and finished executions that satisfy a query.
+	 *
+	 * Return also the total count of all finished executions that satisfy the query,
+	 * and whether the total is an estimate or not. Active executions are excluded
+	 * from the total and count for pagination purposes.
+	 */
+	async findAllActiveAndLatestFinished(query: ExecutionSummaries.RangeQuery) {
 		const active: ExecutionStatus[] = ['new', 'running', 'waiting'];
 		const finished: ExecutionStatus[] = ['success', 'error', 'failed'];
 
@@ -361,15 +369,14 @@ export class ExecutionService {
 			this.findRangeWithCount({
 				...query,
 				status: finished,
-				range: { limit: 20 },
 				order: { stoppedAt: 'DESC' },
 			}),
 		]);
 
 		return {
 			results: activeResult.results.concat(finishedResult.results),
-			count: finishedResult.count, // exclude active executions
-			estimated: finishedResult.estimated, // from pagination properties
+			count: finishedResult.count,
+			estimated: finishedResult.estimated,
 		};
 	}
 
