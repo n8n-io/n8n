@@ -158,7 +158,7 @@ export class User extends WithTimestamps implements IUser {
 			scope,
 			{
 				global: this.globalScopes,
-				project: ['credential:read'], // @TODO: Pending `STATIC_PROJECT_SCOPE_MAP[projectRole] ?? []`
+				project: ['credential:read'], // @TODO: Gather scopes for all project roles
 			},
 			{ sharing: scope },
 		);
