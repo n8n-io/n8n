@@ -1,7 +1,12 @@
 import type { AllEntities } from 'n8n-workflow';
 
 type NodeMap = {
-	assistant: 'messageAssistant' | 'createAssistant';
+	assistant:
+		| 'messageAssistant'
+		| 'createAssistant'
+		| 'deleteAssistant'
+		| 'listAssistants'
+		| 'updateAssistant';
 	audio: 'generateAudio' | 'transcribeRecording' | 'translateRecording';
 	file: 'uploadFile' | 'deleteFile' | 'listFiles';
 	image: 'generateImage' | 'analyzeImage';

@@ -16,6 +16,12 @@ const prettifyOperation = (operation: string) => {
 			return 'Create Assistant';
 		case 'messageAssistant':
 			return 'Message Assistant';
+		case 'deleteAssistant':
+			return 'Delete Assistant';
+		case 'listAssistants':
+			return 'List Assistants';
+		case 'updateAssistant':
+			return 'Update Assistant';
 		case 'uploadFile':
 			return 'Upload File';
 		case 'listFiles':
@@ -39,11 +45,8 @@ const prettifyOperation = (operation: string) => {
 	}
 };
 
-const configureNodeInputs = (operation: string, nativeTools: string[], useCustomTools: boolean) => {
-	if (
-		(operation === 'messageAssistant' && nativeTools.includes('customTools')) ||
-		(operation === 'messageModel' && useCustomTools)
-	) {
+const configureNodeInputs = (useCustomTools: boolean) => {
+	if (useCustomTools) {
 		return [
 			{ type: NodeConnectionType.Main },
 			{ type: NodeConnectionType.AiTool, displayName: 'Tools' },
@@ -79,7 +82,7 @@ export const versionDescription: INodeTypeDescription = {
 			],
 		},
 	},
-	inputs: `={{(${configureNodeInputs})($parameter.operation, $parameter.nativeTools, $parameter.useCustomTools)}}`,
+	inputs: `={{(${configureNodeInputs})($parameter.useCustomTools)}}`,
 	outputs: ['main'],
 	credentials: [
 		{

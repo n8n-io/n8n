@@ -74,12 +74,23 @@ export async function modelSearch(
 export async function assistantSearch(
 	this: ILoadOptionsFunctions,
 	filter?: string,
+	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	const { data } = await apiRequest.call(this, 'GET', '/assistants', {
+	const { data, has_more, last_id } = await apiRequest.call(this, 'GET', '/assistants', {
 		headers: {
 			'OpenAI-Beta': 'assistants=v1',
 		},
+		qs: {
+			limit: 100,
+			after: paginationToken,
+		},
 	});
+
+	if (has_more === true) {
+		paginationToken = last_id;
+	} else {
+		paginationToken = undefined;
+	}
 
 	if (filter) {
 		const results: INodeListSearchItems[] = [];
@@ -102,6 +113,7 @@ export async function assistantSearch(
 				name: assistant.name as string,
 				value: assistant.id as string,
 			})),
+			paginationToken,
 		};
 	}
 }

@@ -2,78 +2,16 @@ import { AgentExecutor } from 'langchain/agents';
 import type { Tool } from 'langchain/tools';
 import { OpenAIAssistantRunnable } from 'langchain/experimental/openai_assistant';
 import type { OpenAIToolType } from 'langchain/dist/experimental/openai_assistant/schema';
-
 import { OpenAI as OpenAIClient } from 'openai';
 
 import { NodeConnectionType, NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
 import { formatToOpenAIAssistantTool } from '../../helpers/utils';
-import { assistantRLC, modelRLC } from '../descriptions';
+import { assistantRLC } from '../descriptions';
 
 const properties: INodeProperties[] = [
-	{
-		displayName: 'Mode',
-		name: 'mode',
-		type: 'options',
-		noDataExpression: true,
-		default: 'existing',
-		options: [
-			{
-				name: 'Use New Assistant',
-				value: 'new',
-			},
-			{
-				name: 'Use Existing Assistant',
-				value: 'existing',
-			},
-		],
-	},
-	{
-		displayName: 'Name',
-		name: 'name',
-		type: 'string',
-		default: '',
-		description: 'The name of the assistant. The maximum length is 256 characters.',
-		placeholder: 'e.g. My Assistant',
-		required: true,
-		displayOptions: {
-			show: {
-				mode: ['new'],
-			},
-		},
-	},
-	{
-		displayName: 'Instructions',
-		name: 'instructions',
-		type: 'string',
-		description: 'How the Assistant and model should behave or respond',
-		default: '',
-		typeOptions: {
-			rows: 5,
-		},
-		displayOptions: {
-			show: {
-				mode: ['new'],
-			},
-		},
-	},
-	{
-		...modelRLC,
-		displayOptions: {
-			show: {
-				mode: ['new'],
-			},
-		},
-	},
-	{
-		...assistantRLC,
-		displayOptions: {
-			show: {
-				mode: ['existing'],
-			},
-		},
-	},
+	assistantRLC,
 	{
 		displayName: 'Text',
 		name: 'text',
@@ -86,40 +24,18 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Tools',
-		name: 'nativeTools',
-		type: 'multiOptions',
-		default: [],
-		options: [
-			{
-				name: 'Code Interpreter',
-				value: 'code_interpreter',
-			},
-			{
-				name: 'Custom Tools',
-				value: 'customTools',
-			},
-			{
-				name: 'Knowledge Retrieval',
-				value: 'retrieval',
-			},
-		],
+		displayName: 'Use Custom Tools',
+		name: 'useCustomTools',
+		type: 'boolean',
+		description:
+			'Whether to connect some custom tools to this node on the canvas, model may use them to generate the response',
+		default: false,
 	},
 	{
 		displayName: 'Connect your own custom tools to this node on the canvas',
 		name: 'noticeTools',
 		type: 'notice',
-		displayOptions: { show: { nativeTools: ['customTools'] } },
-		default: '',
-	},
-	{
-		displayName: "Add files to retrieve from using the 'Upload a File' operation",
-		name: 'noticeTools',
-		type: 'notice',
-		typeOptions: {
-			noticeTheme: 'info',
-		},
-		displayOptions: { show: { nativeTools: ['retrieval'] } },
+		displayOptions: { show: { useCustomTools: [true] } },
 		default: '',
 	},
 	{
@@ -166,10 +82,10 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const credentials = await this.getCredentials('openAiApi');
-	const nativeTools = this.getNodeParameter('nativeTools', i, []) as string[];
 
 	const input = this.getNodeParameter('text', i) as string;
 	const assistantId = this.getNodeParameter('assistantId', i, '', { extractValue: true }) as string;
+	const useCustomTools = this.getNodeParameter('useCustomTools', i, false) as boolean;
 
 	const options = this.getNodeParameter('options', i, {}) as {
 		baseURL?: string;
@@ -187,44 +103,34 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		timeout: options.timeout ?? 10000,
 		baseURL: options.baseURL,
 	});
-	let agent;
 
-	const nativeToolsParsed: OpenAIToolType = [];
+	const agent = new OpenAIAssistantRunnable({ assistantId, client, asAgent: true });
+
 	let tools;
 
-	for (const tool of nativeTools) {
-		if (['code_interpreter', 'retrieval'].includes(tool)) {
-			nativeToolsParsed.push({ type: tool as 'code_interpreter' | 'retrieval' });
-		}
-		if (tool === 'customTools') {
-			tools = (await this.getInputConnectionData(NodeConnectionType.AiTool, 0)) as Tool[];
-		}
-	}
+	if (useCustomTools) {
+		tools = (await this.getInputConnectionData(NodeConnectionType.AiTool, 0)) as Tool[];
+		const transformedConnectedTools = tools?.map(formatToOpenAIAssistantTool) ?? [];
+		const nativeToolsParsed: OpenAIToolType = [];
 
-	const transformedConnectedTools = tools?.map(formatToOpenAIAssistantTool) ?? [];
-	const newTools = [...transformedConnectedTools, ...nativeToolsParsed];
+		const assistant = await client.beta.assistants.retrieve(assistantId);
 
-	// Existing agent, update tools with currently assigned
-	if (assistantId) {
-		agent = new OpenAIAssistantRunnable({ assistantId, client, asAgent: true });
+		const useCodeInterpreter = assistant.tools.some((tool) => tool.type === 'code_interpreter');
+		if (useCodeInterpreter) {
+			nativeToolsParsed.push({
+				type: 'code_interpreter',
+			});
+		}
+
+		const useRetrieval = assistant.tools.some((tool) => tool.type === 'retrieval');
+		if (useRetrieval) {
+			nativeToolsParsed.push({
+				type: 'retrieval',
+			});
+		}
 
 		await client.beta.assistants.update(assistantId, {
-			tools: newTools,
-		});
-	} else {
-		const name = this.getNodeParameter('name', i, '') as string;
-		const instructions = this.getNodeParameter('instructions', i, '') as string;
-		const model = this.getNodeParameter('model', i, 'gpt-3.5-turbo-1106', {
-			extractValue: true,
-		}) as string;
-
-		agent = await OpenAIAssistantRunnable.createAssistant({
-			model,
-			client,
-			instructions,
-			name,
-			tools: newTools,
-			asAgent: true,
+			tools: [...nativeToolsParsed, ...transformedConnectedTools],
 		});
 	}
 
