@@ -320,17 +320,6 @@ export class ExecutionService {
 
 	private readonly isRegularMode = config.getEnv('executions.mode') === 'regular';
 
-	private async countPostgres() {
-		const liveRows = await this.executionRepository.getLiveExecutionRowsOnPostgres();
-
-		if (liveRows === -1) return { count: -1, estimated: false };
-
-		// likely too high to fetch exact count fast
-		if (liveRows > 100_000) return { count: liveRows, estimated: true };
-
-		return { count: liveRows, estimated: false };
-	}
-
 	/**
 	 * Find summaries of executions that satisfy a query.
 	 *
@@ -341,9 +330,12 @@ export class ExecutionService {
 		const results = await this.executionRepository.findManyByRangeQuery(query);
 
 		if (config.getEnv('database.type') === 'postgresdb') {
-			const { count, estimated } = await this.countPostgres();
+			const liveRows = await this.executionRepository.getLiveExecutionRowsOnPostgres();
 
-			return { results, count, estimated };
+			if (liveRows === -1) return { count: -1, estimated: false };
+
+			// likely too high to fetch exact count fast
+			if (liveRows > 100_000) return { count: liveRows, estimated: true };
 		}
 
 		const { range: _, ...countQuery } = query;
