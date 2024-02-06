@@ -79,7 +79,7 @@ export namespace ExecutionSummaries {
 
 	type OrderFields = {
 		order?: {
-			stoppedAt: 'ASC' | 'DESC';
+			stoppedAt: 'DESC';
 		};
 	};
 }
