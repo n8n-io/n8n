@@ -21,6 +21,7 @@ import type { Telemetry } from '@/plugins/telemetry';
 import type { useExternalHooks } from '@/composables/useExternalHooks';
 import { assert } from '@/utils/assert';
 import { doesNodeHaveCredentialsToFill } from '@/utils/nodes/nodeTransforms';
+import { tryToParseNumber } from '@/utils/typesUtils';
 
 type ExternalHooks = ReturnType<typeof useExternalHooks>;
 
@@ -106,7 +107,7 @@ async function openTemplateWorkflowOnNodeView(opts: {
 	};
 	const telemetryPayload = {
 		source: 'workflow',
-		template_id: templateId,
+		template_id: tryToParseNumber(templateId),
 		wf_template_repo_session_id: templatesStore.currentSessionId,
 	};
 

@@ -295,6 +295,67 @@ describe('NodeExecuteFunctions', () => {
 				node,
 			]);
 		});
+
+		describe('redirects', () => {
+			test('should forward authorization header', async () => {
+				nock(baseUrl).get('/redirect').reply(301, '', { Location: 'https://otherdomain.com/test' });
+				nock('https://otherdomain.com')
+					.get('/test')
+					.reply(200, function () {
+						return this.req.headers;
+					});
+
+				const response = await proxyRequestToAxios(workflow, additionalData, node, {
+					url: `${baseUrl}/redirect`,
+					auth: {
+						username: 'testuser',
+						password: 'testpassword',
+					},
+					headers: {
+						'X-Other-Header': 'otherHeaderContent',
+					},
+					resolveWithFullResponse: true,
+				});
+
+				expect(response.statusCode).toBe(200);
+				const forwardedHeaders = JSON.parse(response.body);
+				expect(forwardedHeaders.authorization).toBe('Basic dGVzdHVzZXI6dGVzdHBhc3N3b3Jk');
+				expect(forwardedHeaders['x-other-header']).toBe('otherHeaderContent');
+			});
+
+			test('should follow redirects by default', async () => {
+				nock(baseUrl)
+					.get('/redirect')
+					.reply(301, '', { Location: `${baseUrl}/test` });
+				nock(baseUrl).get('/test').reply(200, 'Redirected');
+
+				const response = await proxyRequestToAxios(workflow, additionalData, node, {
+					url: `${baseUrl}/redirect`,
+					resolveWithFullResponse: true,
+				});
+
+				expect(response).toMatchObject({
+					body: 'Redirected',
+					headers: {},
+					statusCode: 200,
+				});
+			});
+
+			test('should not follow redirects when configured', async () => {
+				nock(baseUrl)
+					.get('/redirect')
+					.reply(301, '', { Location: `${baseUrl}/test` });
+				nock(baseUrl).get('/test').reply(200, 'Redirected');
+
+				await expect(
+					proxyRequestToAxios(workflow, additionalData, node, {
+						url: `${baseUrl}/redirect`,
+						resolveWithFullResponse: true,
+						followRedirect: false,
+					}),
+				).rejects.toThrowError(expect.objectContaining({ statusCode: 301 }));
+			});
+		});
 	});
 
 	describe('copyInputItems', () => {

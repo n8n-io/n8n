@@ -6,11 +6,17 @@ import { NodeOperationError } from '@/errors/node-operation.error';
 describe('NodeError', () => {
 	const node = mock<INode>();
 
-	it('should prevent errors from being re-wrapped', () => {
+	it('should update re-wrapped error level and message', () => {
 		const apiError = new NodeApiError(node, mock({ message: 'Some error happened', code: 500 }));
-		const opsError = new NodeOperationError(node, mock());
+		const opsError = new NodeOperationError(node, mock(), { message: 'Some operation failed' });
+		const wrapped1 = new NodeOperationError(node, apiError);
+		const wrapped2 = new NodeOperationError(node, opsError);
 
-		expect(new NodeOperationError(node, apiError)).toEqual(apiError);
-		expect(new NodeOperationError(node, opsError)).toEqual(opsError);
+		expect(wrapped1.level).toEqual('error');
+		expect(wrapped1.message).toEqual(
+			'[RE-WRAPPED]: The service was not able to process your request',
+		);
+		expect(wrapped2.level).toEqual('error');
+		expect(wrapped2.message).toEqual('[RE-WRAPPED]: Some operation failed');
 	});
 });

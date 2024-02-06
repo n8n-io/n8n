@@ -8,7 +8,7 @@ import {
 	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
 } from './constants';
 import glob from 'fast-glob';
-import { ApplicationError, jsonParse } from 'n8n-workflow';
+import { ApplicationError, jsonParse, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 import { readFile as fsReadFile } from 'fs/promises';
 import { Credentials, InstanceSettings } from 'n8n-core';
 import type { IWorkflowToImport } from '@/Interfaces';
@@ -87,14 +87,28 @@ export class SourceControlImportService {
 		const localWorkflows = await Container.get(WorkflowRepository).find({
 			select: ['id', 'name', 'versionId', 'updatedAt'],
 		});
-		return localWorkflows.map((local) => ({
-			id: local.id,
-			versionId: local.versionId,
-			name: local.name,
-			localId: local.id,
-			filename: getWorkflowExportPath(local.id, this.workflowExportFolder),
-			updatedAt: local.updatedAt.toISOString(),
-		})) as SourceControlWorkflowVersionId[];
+		return localWorkflows.map((local) => {
+			let updatedAt: Date;
+			if (local.updatedAt instanceof Date) {
+				updatedAt = local.updatedAt;
+			} else {
+				ErrorReporter.warn('updatedAt is not a Date', {
+					extra: {
+						type: typeof local.updatedAt,
+						value: local.updatedAt,
+					},
+				});
+				updatedAt = isNaN(Date.parse(local.updatedAt)) ? new Date() : new Date(local.updatedAt);
+			}
+			return {
+				id: local.id,
+				versionId: local.versionId,
+				name: local.name,
+				localId: local.id,
+				filename: getWorkflowExportPath(local.id, this.workflowExportFolder),
+				updatedAt: updatedAt.toISOString(),
+			};
+		}) as SourceControlWorkflowVersionId[];
 	}
 
 	public async getRemoteCredentialsFromFiles(): Promise<
