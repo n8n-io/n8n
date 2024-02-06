@@ -368,10 +368,8 @@ export class ExecutionService {
 
 		return {
 			results: activeResult.results.concat(finishedResult.results),
-
-			// exclude active executions from pagination properties
-			count: finishedResult.count,
-			estimated: finishedResult.estimated,
+			count: finishedResult.count, // exclude active executions
+			estimated: finishedResult.estimated, // from pagination properties
 		};
 	}
 
