@@ -18,7 +18,11 @@ import { objectRetriever, lowerCaser } from '../utils/transformers';
 import { WithTimestamps, jsonColumnType } from './AbstractEntity';
 import type { IPersonalizationSurveyAnswers } from '@/Interfaces';
 import type { AuthIdentity } from './AuthIdentity';
-import { ownerPermissions, memberPermissions, adminPermissions } from '@/permissions/roles';
+import {
+	GLOBAL_OWNER_SCOPES,
+	GLOBAL_MEMBER_SCOPES,
+	GLOBAL_ADMIN_SCOPES,
+} from '@/permissions/global-roles';
 import { hasScope, type ScopeOptions, type Scope } from '@n8n/permissions';
 import type { ProjectRelation, ProjectRole } from './ProjectRelation';
 
@@ -26,9 +30,9 @@ export type GlobalRole = 'global:owner' | 'global:admin' | 'global:member';
 export type AssignableRole = Exclude<GlobalRole, 'global:owner'>;
 
 const STATIC_SCOPE_MAP: Record<GlobalRole, Scope[]> = {
-	'global:owner': ownerPermissions,
-	'global:member': memberPermissions,
-	'global:admin': adminPermissions,
+	'global:owner': GLOBAL_OWNER_SCOPES,
+	'global:member': GLOBAL_MEMBER_SCOPES,
+	'global:admin': GLOBAL_ADMIN_SCOPES,
 };
 
 @Entity()

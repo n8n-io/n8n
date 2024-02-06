@@ -6,6 +6,10 @@ import { Project } from './Project';
 export type ProjectRole =
 	| 'project:admin'
 	| 'project:editor'
+
+	/**
+	 * This might not exist?
+	 */
 	| 'project:workflowEditor'
 	| 'project:viewer';
 
