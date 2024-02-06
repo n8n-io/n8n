@@ -332,10 +332,10 @@ export class ExecutionService {
 		if (config.getEnv('database.type') === 'postgresdb') {
 			const liveRows = await this.executionRepository.getLiveExecutionRowsOnPostgres();
 
-			if (liveRows === -1) return { count: -1, estimated: false };
+			if (liveRows === -1) return { results: [], count: -1, estimated: false };
 
 			// likely too high to fetch exact count fast
-			if (liveRows > 100_000) return { count: liveRows, estimated: true };
+			if (liveRows > 100_000) return { results, count: liveRows, estimated: true };
 		}
 
 		const { range: _, ...countQuery } = query;
