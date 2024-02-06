@@ -660,8 +660,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	async getLiveExecutionRowsOnPostgres() {
-		const tablePrefix = config.getEnv('database.tablePrefix');
-		const tableName = `${tablePrefix}execution_entity`;
+		const tableName = `${config.getEnv('database.tablePrefix')}execution_entity`;
 
 		const pgSql = `SELECT n_live_tup as result FROM pg_stat_all_tables WHERE relname = '${tableName}';`;
 
