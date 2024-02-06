@@ -499,7 +499,6 @@ export async function parseRequestObject(requestObject: RequestObject) {
 		axiosConfig.maxRedirects = 0;
 	}
 
-<<<<<<< Updated upstream
 	axiosConfig.beforeRedirect = (redirectedRequest) => {
 		if (axiosConfig.headers?.Authorization) {
 			redirectedRequest.headers.Authorization = axiosConfig.headers.Authorization;
@@ -514,12 +513,12 @@ export async function parseRequestObject(requestObject: RequestObject) {
 			rejectUnauthorized: false,
 			secureOptions: crypto.constants.SSL_OP_LEGACY_SERVER_CONNECT,
 		});
-=======
+	}
+
 	const host = getHostFromRequestObject(requestObject);
 	const agentOptions: AgentOptions = {};
 	if (host) {
 		agentOptions.servername = host;
->>>>>>> Stashed changes
 	}
 	if (requestObject.rejectUnauthorized === false) {
 		agentOptions.rejectUnauthorized = false;
