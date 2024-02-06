@@ -5,13 +5,6 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'credential:create',
 	'credential:read',
 	'credential:delete',
-
-	/**
-	 * Nobody should have this scope. This scope does not exist at the global level **currently**.
-	 * This scope might be added at the global level in future.
-	 */
-	// 'credential:update',
-
 	'credential:list',
 	'credential:share',
 	'communityPackage:install',

@@ -3,15 +3,7 @@ import { User } from './User';
 import { WithTimestamps } from './AbstractEntity';
 import { Project } from './Project';
 
-export type ProjectRole =
-	| 'project:admin'
-	| 'project:editor'
-
-	/**
-	 * This might not exist?
-	 */
-	| 'project:workflowEditor'
-	| 'project:viewer';
+export type ProjectRole = 'project:admin' | 'project:editor' | 'project:viewer';
 
 @Entity()
 export class ProjectRelation extends WithTimestamps {
