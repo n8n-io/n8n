@@ -63,13 +63,14 @@ export class ExecutionsController {
 				...query,
 				status: finished,
 				range: { limit: 20 },
-				stoppedAt: 'DESC',
+				order: { stoppedAt: 'DESC' },
 			}),
 		]);
 
 		return {
 			results: activeResult.results.concat(finishedResult.results),
-			// exclude active executions from count and estimate
+
+			// active executions not considered in pagination
 			count: finishedResult.count,
 			estimated: finishedResult.estimated,
 		};

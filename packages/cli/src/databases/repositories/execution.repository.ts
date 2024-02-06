@@ -709,6 +709,10 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 			if (firstId) qb.andWhere('execution.id > :firstId', { firstId });
 			if (lastId) qb.andWhere('execution.id < :lastId', { lastId });
+
+			const { order } = query;
+
+			if (order) qb.orderBy(order);
 		}
 
 		if (status) qb.andWhere('execution.status IN (:...status)', { status });

@@ -44,7 +44,10 @@ export declare namespace ExecutionRequest {
 export namespace ExecutionSummaries {
 	export type Query = RangeQuery | CountQuery;
 
-	export type RangeQuery = { kind: 'range' } & FilterFields & AccessFields & RangeFields;
+	export type RangeQuery = { kind: 'range' } & FilterFields &
+		AccessFields &
+		RangeFields &
+		OrderFields;
 
 	export type CountQuery = { kind: 'count' } & FilterFields & AccessFields;
 
@@ -58,7 +61,6 @@ export namespace ExecutionSummaries {
 		workflowId: string;
 		waitTill: boolean;
 		metadata: Array<{ key: string; value: string }>;
-		stoppedAt: string;
 		startedAfter: string;
 		startedBefore: string;
 	}>;
@@ -72,6 +74,12 @@ export namespace ExecutionSummaries {
 			limit: number;
 			firstId?: string;
 			lastId?: string;
+		};
+	};
+
+	type OrderFields = {
+		order: {
+			stoppedAt?: 'ASC' | 'DESC';
 		};
 	};
 }
