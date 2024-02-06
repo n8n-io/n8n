@@ -8,9 +8,7 @@ import ExecutionsList from '@/components/executions/global/GlobalExecutionsList.
 import type { IWorkflowDb } from '@/Interface';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { retry, SETTINGS_STORE_DEFAULT_STATE, waitAllPromises } from '@/__tests__/utils';
-import type { useWorkflowsStore } from '@/stores/workflows.store';
 import { createComponentRenderer } from '@/__tests__/render';
-import { useExecutionsStore } from '@/stores/executions.store';
 import { waitFor } from '@testing-library/vue';
 
 vi.mock('vue-router', () => ({

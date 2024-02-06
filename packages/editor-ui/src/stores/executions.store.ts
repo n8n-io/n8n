@@ -12,7 +12,6 @@ import type {
 } from '@/Interface';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { makeRestApiRequest, unflattenExecutionData } from '@/utils/apiUtils';
-import { isEmpty } from '@/utils/typesUtils';
 import {
 	executionFilterToQueryFilter,
 	filterExecutions,
@@ -39,7 +38,6 @@ export const useExecutionsStore = defineStore('executions', () => {
 
 	const executionsById = ref<Record<string, ExecutionSummary>>({});
 	const executionsCount = ref(0);
-	const executionsCountByWorkflowId = ref<Record<string, number>>({});
 	const executionsCountEstimated = ref(false);
 	const executions = computed(() => {
 		const data = Object.values(executionsById.value);
@@ -243,7 +241,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 	}
 
 	async function deleteExecutions(sendData: IExecutionDeleteFilter): Promise<void> {
-		await await makeRestApiRequest(
+		await makeRestApiRequest(
 			rootStore.getRestApiContext,
 			'POST',
 			'/executions/delete',
