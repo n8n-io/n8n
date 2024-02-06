@@ -3,7 +3,7 @@ import { mock } from 'jest-mock-extended';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import { MessageEventBus } from '@/eventbus';
+import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { Telemetry } from '@/telemetry';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { WorkflowService } from '@/workflows/workflow.service';
