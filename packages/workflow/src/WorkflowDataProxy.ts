@@ -894,7 +894,7 @@ export class WorkflowDataProxy {
 					},
 					description: 'Item points to a node output which does not exist',
 					causeDetailed: `The sourceData points to a node output ‘${previousNodeOutput}‘ which does not exist on node ‘${sourceData.previousNode}‘ (output node did probably supply a wrong one)`,
-					type: 'invalid_pairing_info',
+					type: 'paired_item_invalid_info',
 				});
 			}
 
@@ -915,7 +915,7 @@ export class WorkflowDataProxy {
 					}points to an input item on node ‘<strong>${
 						sourceData.previousNode
 					}</strong>‘ that doesn’t exist.`,
-					type: 'invalid_pairing info',
+					type: 'paired_item_invalid_info',
 					moreInfoLink: true,
 				});
 			}
