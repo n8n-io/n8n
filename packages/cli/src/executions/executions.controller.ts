@@ -7,8 +7,6 @@ import { WorkflowSharingService } from '@/workflows/workflowSharing.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { parseRangeQuery } from './parse-range-query.middleware';
 import type { User } from '@/databases/entities/User';
-import type { ExecutionSummaries } from './execution.types';
-import type { ExecutionStatus } from 'n8n-workflow';
 
 @Authorized()
 @RestController('/executions')
@@ -48,32 +46,11 @@ export class ExecutionsController {
 		const noStatus = !query.status || query.status.length === 0;
 		const noRange = !query.range.lastId || !query.range.firstId;
 
-		if (noStatus && noRange) return await this.allActiveAndLatestTwentyFinished(query);
+		if (noStatus && noRange) {
+			return await this.executionService.findAllActiveAndLatestTwentyFinished(query);
+		}
 
 		return await this.executionService.findRangeWithCount(query);
-	}
-
-	async allActiveAndLatestTwentyFinished(query: ExecutionSummaries.RangeQuery) {
-		const active: ExecutionStatus[] = ['new', 'running', 'waiting'];
-		const finished: ExecutionStatus[] = ['success', 'error', 'failed'];
-
-		const [activeResult, finishedResult] = await Promise.all([
-			this.executionService.findRangeWithCount({ ...query, status: active }),
-			this.executionService.findRangeWithCount({
-				...query,
-				status: finished,
-				range: { limit: 20 },
-				order: { stoppedAt: 'DESC' },
-			}),
-		]);
-
-		return {
-			results: activeResult.results.concat(finishedResult.results),
-
-			// active executions not considered in pagination
-			count: finishedResult.count,
-			estimated: finishedResult.estimated,
-		};
 	}
 
 	@Get('/:id')

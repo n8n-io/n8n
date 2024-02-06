@@ -6,6 +6,7 @@ import type {
 	INode,
 	IRunExecutionData,
 	WorkflowExecuteMode,
+	ExecutionStatus,
 } from 'n8n-workflow';
 import { ApplicationError, Workflow, WorkflowOperationError } from 'n8n-workflow';
 import { ActiveExecutions } from '@/ActiveExecutions';
@@ -349,6 +350,29 @@ export class ExecutionService {
 		const count = await this.executionRepository.fetchCount({ ...countQuery, kind: 'count' });
 
 		return { count, estimated: false, results };
+	}
+
+	async findAllActiveAndLatestTwentyFinished(query: ExecutionSummaries.RangeQuery) {
+		const active: ExecutionStatus[] = ['new', 'running', 'waiting'];
+		const finished: ExecutionStatus[] = ['success', 'error', 'failed'];
+
+		const [activeResult, finishedResult] = await Promise.all([
+			this.findRangeWithCount({ ...query, status: active }),
+			this.findRangeWithCount({
+				...query,
+				status: finished,
+				range: { limit: 20 },
+				order: { stoppedAt: 'DESC' },
+			}),
+		]);
+
+		return {
+			results: activeResult.results.concat(finishedResult.results),
+
+			// exclude active executions from pagination properties
+			count: finishedResult.count,
+			estimated: finishedResult.estimated,
+		};
 	}
 
 	/**
