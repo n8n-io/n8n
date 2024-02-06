@@ -1,6 +1,6 @@
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
 import { License } from '@/License';
-import { MessageEventBus } from '@/eventbus';
+import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import Container from 'typedi';
 import { Logger } from 'winston';
 import { messageToRedisServiceCommandObject, debounceMessageReceiver } from '../helpers';
