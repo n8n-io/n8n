@@ -23,12 +23,13 @@ describe('ExecutionsController', () => {
 	describe('getMany', () => {
 		it('if no status provided, should look for all active plus latest 20 finished executions', async () => {
 			workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['123']);
-			executionService.findAllActive.mockResolvedValue([]);
-			executionService.findLatestFinishedWithCount.mockResolvedValue({
-				results: [],
-				count: 0,
-				estimated: false,
-			});
+			const allActiveAndLatestTwentyFinishedSpy = jest
+				.spyOn(executionsController, 'allActiveAndLatestTwentyFinished')
+				.mockResolvedValue({
+					results: [],
+					count: 0,
+					estimated: false,
+				});
 
 			const req = mock<ExecutionRequest.GetMany>({
 				rangeQuery: { kind: 'range', workflowId: undefined, status: undefined },
@@ -36,19 +37,19 @@ describe('ExecutionsController', () => {
 
 			await executionsController.getMany(req);
 
-			expect(executionService.findAllActive).toHaveBeenCalled();
-			expect(executionService.findLatestFinishedWithCount).toHaveBeenCalledWith(20);
+			expect(allActiveAndLatestTwentyFinishedSpy).toHaveBeenCalled();
 			expect(executionService.findRangeWithCount).not.toHaveBeenCalled();
 		});
 
 		it('if status provided as empty array, should look for all active plus latest 20 finished executions', async () => {
 			workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['123']);
-			executionService.findAllActive.mockResolvedValue([]);
-			executionService.findLatestFinishedWithCount.mockResolvedValue({
-				results: [],
-				count: 0,
-				estimated: false,
-			});
+			const allActiveAndLatestTwentyFinishedSpy = jest
+				.spyOn(executionsController, 'allActiveAndLatestTwentyFinished')
+				.mockResolvedValue({
+					results: [],
+					count: 0,
+					estimated: false,
+				});
 
 			const req = mock<ExecutionRequest.GetMany>({
 				rangeQuery: { kind: 'range', workflowId: undefined, status: [] },
@@ -56,13 +57,19 @@ describe('ExecutionsController', () => {
 
 			await executionsController.getMany(req);
 
-			expect(executionService.findAllActive).toHaveBeenCalled();
-			expect(executionService.findLatestFinishedWithCount).toHaveBeenCalledWith(20);
+			expect(allActiveAndLatestTwentyFinishedSpy).toHaveBeenCalled();
 			expect(executionService.findRangeWithCount).not.toHaveBeenCalled();
 		});
 
 		it('if status provided, should look for a range of executions based on the query', async () => {
 			workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['123']);
+			const allActiveAndLatestTwentyFinishedSpy = jest
+				.spyOn(executionsController, 'allActiveAndLatestTwentyFinished')
+				.mockResolvedValue({
+					results: [],
+					count: 0,
+					estimated: false,
+				});
 
 			const req = mock<ExecutionRequest.GetMany>({
 				rangeQuery: { kind: 'range', workflowId: undefined, status: ['success'] },
@@ -70,8 +77,7 @@ describe('ExecutionsController', () => {
 
 			await executionsController.getMany(req);
 
-			expect(executionService.findAllActive).not.toHaveBeenCalled();
-			expect(executionService.findLatestFinishedWithCount).not.toHaveBeenCalled();
+			expect(allActiveAndLatestTwentyFinishedSpy).not.toHaveBeenCalled();
 			expect(executionService.findRangeWithCount).toHaveBeenCalledWith(req.rangeQuery);
 		});
 	});

@@ -41,19 +41,19 @@ export class ExecutionsController {
 			return { count: 0, estimated: false, results: [] };
 		}
 
-		const noStatus = !query.status || query.status.length === 0;
-		const noRange = !query.range.lastId || !query.range.firstId;
-
 		query.accessibleWorkflowIds = accessibleWorkflowIds;
 
 		if (!this.license.isAdvancedExecutionFiltersEnabled()) delete query.metadata;
 
-		if (noStatus || noRange) return await this.allActiveAndLatestTwentyFinished(query);
+		const noStatus = !query.status || query.status.length === 0;
+		const noRange = !query.range.lastId || !query.range.firstId;
+
+		if (noStatus && noRange) return await this.allActiveAndLatestTwentyFinished(query);
 
 		return await this.executionService.findRangeWithCount(query);
 	}
 
-	private async allActiveAndLatestTwentyFinished(query: ExecutionSummaries.RangeQuery) {
+	async allActiveAndLatestTwentyFinished(query: ExecutionSummaries.RangeQuery) {
 		const active: ExecutionStatus[] = ['new', 'running', 'waiting'];
 		const finished: ExecutionStatus[] = ['success', 'error', 'failed'];
 
@@ -69,8 +69,9 @@ export class ExecutionsController {
 
 		return {
 			results: activeResult.results.concat(finishedResult.results),
-			count: activeResult.count + finishedResult.count,
-			estimated: activeResult.estimated && finishedResult.estimated,
+			// exclude active executions from count and estimate
+			count: finishedResult.count,
+			estimated: finishedResult.estimated,
 		};
 	}
 
