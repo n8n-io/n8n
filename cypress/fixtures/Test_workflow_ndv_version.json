@@ -37,7 +37,7 @@
 		"id": "93aaadac-55fe-4618-b1eb-f63e61d1446a",
 		"name": "Edit Fields (latest)",
 		"type": "n8n-nodes-base.set",
-		"typeVersion": 3.2,
+		"typeVersion": 3.3,
 		"position": [
 		  1720,
 		  780
