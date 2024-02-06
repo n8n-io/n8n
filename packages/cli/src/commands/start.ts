@@ -8,7 +8,7 @@ import { createReadStream, createWriteStream, existsSync } from 'fs';
 import { pipeline } from 'stream/promises';
 import replaceStream from 'replacestream';
 import glob from 'fast-glob';
-import { sleep, jsonParse } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 
 import config from '@/config';
 import { ActiveExecutions } from '@/ActiveExecutions';
@@ -106,23 +106,7 @@ export class Start extends BaseCommand {
 
 			await Container.get(InternalHooks).onN8nStop();
 
-			// Wait for active workflow executions to finish
-			const activeExecutionsInstance = Container.get(ActiveExecutions);
-			let executingWorkflows = activeExecutionsInstance.getActiveExecutions();
-
-			let count = 0;
-			while (executingWorkflows.length !== 0) {
-				if (count++ % 4 === 0) {
-					console.log(`Waiting for ${executingWorkflows.length} active executions to finish...`);
-
-					executingWorkflows.map((execution) => {
-						console.log(` - Execution ID ${execution.id}, workflow ID: ${execution.workflowId}`);
-					});
-				}
-
-				await sleep(500);
-				executingWorkflows = activeExecutionsInstance.getActiveExecutions();
-			}
+			await Container.get(ActiveExecutions).shutdown();
 
 			// Finally shut down Event Bus
 			await Container.get(MessageEventBus).close();
