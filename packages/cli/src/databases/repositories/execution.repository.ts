@@ -607,39 +607,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		stoppedAt: true,
 	};
 
-	async countFinished() {
-		const finished: ExecutionStatus[] = ['success', 'error', 'failed'];
-
-		return await this.count({ where: { status: In(finished) } });
-	}
-
-	async findLatestFinished(n: number) {
-		const finished: ExecutionStatus[] = ['success', 'error', 'failed'];
-
-		const findManyOptions: FindManyOptions<ExecutionEntity> = {
-			select: this.summaryFields,
-			where: { status: In(finished) },
-			order: { stoppedAt: 'DESC' },
-			take: n,
-		};
-
-		const executions = await this.find(findManyOptions);
-
-		return executions.map((execution) => this.toSummary(execution));
-	}
-
-	async findAllActive(): Promise<ExecutionSummary[]> {
-		const findManyOptions: FindManyOptions<ExecutionEntity> = {
-			select: this.summaryFields,
-			where: { status: In(['new', 'running', 'waiting']) },
-			order: { stoppedAt: 'DESC' },
-		};
-
-		const executions = await this.find(findManyOptions);
-
-		return executions.map((execution) => this.toSummary(execution));
-	}
-
 	async findManyByRangeQuery(query: ExecutionSummaries.RangeQuery): Promise<ExecutionSummary[]> {
 		if (query?.accessibleWorkflowIds?.length === 0) {
 			throw new ApplicationError('Expected accessible workflow IDs');

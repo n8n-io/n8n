@@ -331,32 +331,6 @@ export class ExecutionService {
 	}
 
 	/**
-	 * Find the `n` most recent executions with a status of `success` or `error`,
-	 * or `failed`, along with the total count of all existing executions with
-	 * a status of `success` or `error` or `failed`.
-	 */
-	async findLatestFinishedWithCount(n: number) {
-		const results = await this.executionRepository.findLatestFinished(n);
-
-		if (config.getEnv('database.type') === 'postgresdb') {
-			const { count, estimated } = await this.countPostgres();
-
-			return { results, count, estimated };
-		}
-
-		const count = await this.executionRepository.countFinished();
-
-		return { count, estimated: false, results };
-	}
-
-	/**
-	 * Find all executions with a status of `new`, `running`, and `waiting`.
-	 */
-	async findAllActive() {
-		return await this.executionRepository.findAllActive();
-	}
-
-	/**
 	 * Find a range of summaries of executions that satisfy a query, along with the
 	 * total count of all existing executions that satisfy the query, and whether
 	 * the total is an estimate or not.

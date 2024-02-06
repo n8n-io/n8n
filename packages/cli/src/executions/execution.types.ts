@@ -58,6 +58,7 @@ export namespace ExecutionSummaries {
 		workflowId: string;
 		waitTill: boolean;
 		metadata: Array<{ key: string; value: string }>;
+		stoppedAt: string;
 		startedAfter: string;
 		startedBefore: string;
 	}>;

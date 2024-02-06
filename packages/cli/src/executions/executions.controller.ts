@@ -7,6 +7,8 @@ import { WorkflowSharingService } from '@/workflows/workflowSharing.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { parseRangeQuery } from './parse-range-query.middleware';
 import type { User } from '@/databases/entities/User';
+import type { ExecutionSummaries } from './execution.types';
+import type { ExecutionStatus } from 'n8n-workflow';
 
 @Authorized()
 @RestController('/executions')
@@ -42,24 +44,34 @@ export class ExecutionsController {
 		const noStatus = !query.status || query.status.length === 0;
 		const noRange = !query.range.lastId || !query.range.firstId;
 
-		if (noStatus || noRange) {
-			const [active, latestFinishedWithCount] = await Promise.all([
-				this.executionService.findAllActive(),
-				this.executionService.findLatestFinishedWithCount(20),
-			]);
-
-			const { results: latestFinished, count } = latestFinishedWithCount;
-
-			const results = active.concat(latestFinished);
-
-			return { results, count, estimated: false };
-		}
-
 		query.accessibleWorkflowIds = accessibleWorkflowIds;
 
 		if (!this.license.isAdvancedExecutionFiltersEnabled()) delete query.metadata;
 
+		if (noStatus || noRange) return await this.allActiveAndLatestTwentyFinished(query);
+
 		return await this.executionService.findRangeWithCount(query);
+	}
+
+	private async allActiveAndLatestTwentyFinished(query: ExecutionSummaries.RangeQuery) {
+		const active: ExecutionStatus[] = ['new', 'running', 'waiting'];
+		const finished: ExecutionStatus[] = ['success', 'error', 'failed'];
+
+		const [activeResult, finishedResult] = await Promise.all([
+			this.executionService.findRangeWithCount({ ...query, status: active }),
+			this.executionService.findRangeWithCount({
+				...query,
+				status: finished,
+				range: { limit: 20 },
+				stoppedAt: 'DESC',
+			}),
+		]);
+
+		return {
+			results: activeResult.results.concat(finishedResult.results),
+			count: activeResult.count + finishedResult.count,
+			estimated: activeResult.estimated && finishedResult.estimated,
+		};
 	}
 
 	@Get('/:id')

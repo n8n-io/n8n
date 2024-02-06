@@ -38,61 +38,6 @@ describe('ExecutionService', () => {
 		await testDb.terminate();
 	});
 
-	describe('findLatestFinished', () => {
-		it('should return the n most recent success and error executions', async () => {
-			const workflow = await createWorkflow();
-
-			await Promise.all([
-				createExecution({ status: 'success' }, workflow),
-				createExecution({ status: 'success' }, workflow),
-				createExecution({ status: 'success' }, workflow),
-				createExecution({ status: 'unknown' }, workflow),
-				createExecution({ status: 'unknown' }, workflow),
-				createExecution({ status: 'unknown' }, workflow),
-				createExecution({ status: 'error' }, workflow),
-				createExecution({ status: 'error' }, workflow),
-				createExecution({ status: 'error' }, workflow),
-			]);
-
-			const { results } = await executionService.findLatestFinishedWithCount(6);
-
-			expect(results).toHaveLength(6);
-
-			results.forEach((execution) => {
-				if (!execution.status) fail('Expected status');
-				expect(['success', 'error'].includes(execution.status)).toBe(true);
-			});
-		});
-	});
-
-	describe('findAllActive', () => {
-		it('should return all new, running, and waiting executions', async () => {
-			const workflow = await createWorkflow();
-
-			await Promise.all([
-				createExecution({ status: 'new' }, workflow),
-				createExecution({ status: 'new' }, workflow),
-				createExecution({ status: 'unknown' }, workflow),
-				createExecution({ status: 'unknown' }, workflow),
-				createExecution({ status: 'running' }, workflow),
-				createExecution({ status: 'running' }, workflow),
-				createExecution({ status: 'success' }, workflow),
-				createExecution({ status: 'success' }, workflow),
-				createExecution({ status: 'waiting' }, workflow),
-				createExecution({ status: 'waiting' }, workflow),
-			]);
-
-			const executions = await executionService.findAllActive();
-
-			expect(executions).toHaveLength(6);
-
-			executions.forEach((execution) => {
-				if (!execution.status) fail('Expected status');
-				expect(['new', 'running', 'waiting'].includes(execution.status)).toBe(true);
-			});
-		});
-	});
-
 	describe('findRangeWithCount', () => {
 		test('should return execution summaries', async () => {
 			const workflow = await createWorkflow();
