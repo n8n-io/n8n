@@ -30,7 +30,6 @@ const versionDescription: INodeTypeDescription = {
 	},
 	inputs: ['main'],
 	outputs: ['main'],
-	parameterPane: 'wide',
 	properties: [
 		{
 			displayName: 'Mode',
