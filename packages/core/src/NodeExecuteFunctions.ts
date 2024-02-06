@@ -229,7 +229,39 @@ async function generateContentLengthHeader(config: AxiosRequestConfig) {
 	}
 }
 
-async function parseRequestObject(requestObject: IDataObject) {
+type RequestObject = Partial<{
+	baseURL: string;
+	uri: string;
+	url: string;
+	method: Method;
+	qs: Record<string, unknown>;
+	qsStringifyOptions: { arrayFormat: 'repeat' | 'brackets' };
+	useQuerystring: boolean;
+	headers: Record<string, string>;
+	auth: Partial<{
+		sendImmediately: boolean;
+		bearer: string;
+		user: string;
+		username: string;
+		password: string;
+		pass: string;
+	}>;
+	body: unknown;
+	formData: FormData;
+	form: FormData;
+	json: boolean;
+	useStream: boolean;
+	encoding: string;
+	followRedirect: boolean;
+	followAllRedirects: boolean;
+	timeout: number;
+	rejectUnauthorized: boolean;
+	proxy: string | AxiosProxyConfig;
+	simple: boolean;
+	resolveWithFullResponse: boolean;
+}>;
+
+async function parseRequestObject(requestObject: RequestObject) {
 	// This function is a temporary implementation
 	// That translates all http requests done via
 	// the request library to axios directly
@@ -343,28 +375,28 @@ async function parseRequestObject(requestObject: IDataObject) {
 	}
 
 	if (requestObject.uri !== undefined) {
-		axiosConfig.url = requestObject.uri?.toString() as string;
+		axiosConfig.url = requestObject.uri?.toString();
 	}
 
 	if (requestObject.url !== undefined) {
-		axiosConfig.url = requestObject.url?.toString() as string;
+		axiosConfig.url = requestObject.url?.toString();
 	}
 
 	if (requestObject.baseURL !== undefined) {
-		axiosConfig.baseURL = requestObject.baseURL?.toString() as string;
+		axiosConfig.baseURL = requestObject.baseURL?.toString();
 	}
 
 	if (requestObject.method !== undefined) {
-		axiosConfig.method = requestObject.method as Method;
+		axiosConfig.method = requestObject.method;
 	}
 
 	if (requestObject.qs !== undefined && Object.keys(requestObject.qs as object).length > 0) {
-		axiosConfig.params = requestObject.qs as IDataObject;
+		axiosConfig.params = requestObject.qs;
 	}
 
 	function hasArrayFormatOptions(
-		arg: IDataObject,
-	): arg is IDataObject & { qsStringifyOptions: { arrayFormat: 'repeat' | 'brackets' } } {
+		arg: RequestObject,
+	): arg is RequestObject & { qsStringifyOptions: { arrayFormat: 'repeat' | 'brackets' } } {
 		if (
 			typeof arg.qsStringifyOptions === 'object' &&
 			arg.qsStringifyOptions !== null &&
@@ -402,13 +434,13 @@ async function parseRequestObject(requestObject: IDataObject) {
 
 	if (requestObject.auth !== undefined) {
 		// Check support for sendImmediately
-		if ((requestObject.auth as IDataObject).bearer !== undefined) {
+		if (requestObject.auth.bearer !== undefined) {
 			axiosConfig.headers = Object.assign(axiosConfig.headers || {}, {
 				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-				Authorization: `Bearer ${(requestObject.auth as IDataObject).bearer}`,
+				Authorization: `Bearer ${requestObject.auth.bearer}`,
 			});
 		} else {
-			const authObj = requestObject.auth as IDataObject;
+			const authObj = requestObject.auth;
 			// Request accepts both user/username and pass/password
 			axiosConfig.auth = {
 				username: (authObj.user || authObj.username) as string,
@@ -469,7 +501,7 @@ async function parseRequestObject(requestObject: IDataObject) {
 	}
 
 	if (requestObject.timeout !== undefined) {
-		axiosConfig.timeout = requestObject.timeout as number;
+		axiosConfig.timeout = requestObject.timeout;
 	}
 
 	if (requestObject.proxy !== undefined) {
@@ -528,7 +560,7 @@ async function parseRequestObject(requestObject: IDataObject) {
 				}
 			}
 		} else {
-			axiosConfig.proxy = requestObject.proxy as AxiosProxyConfig;
+			axiosConfig.proxy = requestObject.proxy;
 		}
 	}
 
@@ -627,12 +659,6 @@ function digestAuthAxiosConfig(
 	return axiosConfig;
 }
 
-type ConfigObject = {
-	auth?: { sendImmediately: boolean };
-	resolveWithFullResponse?: boolean;
-	simple?: boolean;
-};
-
 interface IContentType {
 	type: string;
 	parameters: {
@@ -725,14 +751,14 @@ export async function proxyRequestToAxios(
 	workflow: Workflow | undefined,
 	additionalData: IWorkflowExecuteAdditionalData | undefined,
 	node: INode | undefined,
-	uriOrObject: string | object,
-	options?: object,
+	uriOrObject: string | RequestObject,
+	options?: RequestObject,
 ): Promise<any> {
 	let axiosConfig: AxiosRequestConfig = {
 		maxBodyLength: Infinity,
 		maxContentLength: Infinity,
 	};
-	let configObject: ConfigObject;
+	let configObject: RequestObject;
 	if (uriOrObject !== undefined && typeof uriOrObject === 'string') {
 		axiosConfig.url = uriOrObject;
 	}
@@ -1797,7 +1823,12 @@ export async function requestWithAuthentication(
 			workflow,
 			node,
 		);
-		return await proxyRequestToAxios(workflow, additionalData, node, requestOptions as IDataObject);
+		return await proxyRequestToAxios(
+			workflow,
+			additionalData,
+			node,
+			requestOptions as RequestObject,
+		);
 	} catch (error) {
 		try {
 			if (credentialsDecrypted !== undefined) {
@@ -1826,7 +1857,7 @@ export async function requestWithAuthentication(
 						workflow,
 						additionalData,
 						node,
-						requestOptions as IDataObject,
+						requestOptions as RequestObject,
 					);
 				}
 			}
