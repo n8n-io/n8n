@@ -1,25 +1,25 @@
 <script setup lang="ts">
 import type { IUpdateInformation } from '@/Interface';
+import InputTriple from '@/components/InputTriple/InputTriple.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import { useI18n } from '@/composables/useI18n';
+import { resolveParameter } from '@/mixins/workflowHelpers';
 import { DateTime } from 'luxon';
 import {
+	FilterError,
 	executeFilterCondition,
-	type FilterOptionsValue,
+	validateFieldType,
 	type FilterConditionValue,
 	type FilterOperatorType,
+	type FilterOptionsValue,
 	type INodeProperties,
 	type NodeParameterValue,
-	type NodePropertyTypes,
-	FilterError,
-	validateFieldType,
 } from 'n8n-workflow';
 import { computed, ref } from 'vue';
 import OperatorSelect from './OperatorSelect.vue';
 import { OPERATORS_BY_ID, type FilterOperatorId } from './constants';
 import type { FilterOperator } from './types';
-import { resolveParameter } from '@/mixins/workflowHelpers';
 type ConditionResult =
 	| { status: 'resolve_error' }
 	| { status: 'validation_error'; error: string }
@@ -58,15 +58,24 @@ const operatorId = computed<FilterOperatorId>(() => {
 });
 const operator = computed(() => OPERATORS_BY_ID[operatorId.value] as FilterOperator);
 
-const operatorTypeToNodePropType = (operatorType: FilterOperatorType): NodePropertyTypes => {
+const operatorTypeToNodeProperty = (
+	operatorType: FilterOperatorType,
+): Pick<INodeProperties, 'type' | 'options'> => {
 	switch (operatorType) {
+		case 'boolean':
+			return {
+				type: 'options',
+				options: [
+					{ name: 'true', value: true },
+					{ name: 'false', value: false },
+				],
+			};
 		case 'array':
 		case 'object':
-		case 'boolean':
 		case 'any':
-			return 'string';
+			return { type: 'string' };
 		default:
-			return operatorType;
+			return { type: operatorType };
 	}
 };
 
@@ -119,7 +128,7 @@ const leftParameter = computed<INodeProperties>(() => ({
 		operator.value.type === 'dateTime'
 			? now.value
 			: i18n.baseText('filter.condition.placeholderLeft'),
-	type: operatorTypeToNodePropType(operator.value.type),
+	...operatorTypeToNodeProperty(operator.value.type),
 }));
 
 const rightParameter = computed<INodeProperties>(() => ({
@@ -130,7 +139,7 @@ const rightParameter = computed<INodeProperties>(() => ({
 		operator.value.type === 'dateTime'
 			? now.value
 			: i18n.baseText('filter.condition.placeholderRight'),
-	type: operatorTypeToNodePropType(operator.value.rightType ?? operator.value.type),
+	...operatorTypeToNodeProperty(operator.value.type),
 }));
 
 const onLeftValueChange = (update: IUpdateInformation): void => {
@@ -144,9 +153,11 @@ const onRightValueChange = (update: IUpdateInformation): void => {
 const convertToType = (value: unknown, type: FilterOperatorType): unknown => {
 	if (type === 'any') return value;
 
+	const fallback = type === 'boolean' ? false : value;
+
 	return (
 		validateFieldType('filter', condition.value.leftValue, type, { parseStrings: true }).newValue ??
-		value
+		fallback
 	);
 };
 
@@ -202,64 +213,53 @@ const onBlur = (): void => {
 			:class="$style.remove"
 			@click="onRemove"
 		></n8n-icon-button>
-		<n8n-resize-observer
-			:class="$style.observer"
-			:breakpoints="[
-				{ bp: 'stacked', width: 340 },
-				{ bp: 'medium', width: 520 },
-			]"
-		>
-			<template #default="{ bp }">
-				<div
-					:class="{
-						[$style.condition]: true,
-						[$style.hideRightInput]: operator.singleValue,
-						[$style.stacked]: bp === 'stacked',
-						[$style.medium]: bp === 'medium',
-					}"
-				>
-					<ParameterInputFull
-						v-if="!fixedLeftValue"
-						:key="leftParameter.type"
-						display-options
-						hide-label
-						hide-hint
-						is-single-line
-						:parameter="leftParameter"
-						:value="condition.leftValue"
-						:path="`${path}.left`"
-						:class="[$style.input, $style.inputLeft]"
-						:is-read-only="readOnly"
-						data-test-id="filter-condition-left"
-						@update="onLeftValueChange"
-						@blur="onBlur"
-					/>
-					<OperatorSelect
-						:class="$style.select"
-						:selected="`${operator.type}:${operator.operation}`"
-						:read-only="readOnly"
-						@operatorChange="onOperatorChange"
-					></OperatorSelect>
-					<ParameterInputFull
-						v-if="!operator.singleValue"
-						:key="rightParameter.type"
-						display-options
-						hide-label
-						hide-hint
-						is-single-line
-						:options-position="bp === 'default' ? 'top' : 'bottom'"
-						:parameter="rightParameter"
-						:value="condition.rightValue"
-						:path="`${path}.right`"
-						:class="[$style.input, $style.inputRight]"
-						:is-read-only="readOnly"
-						data-test-id="filter-condition-right"
-						@update="onRightValueChange"
-						@blur="onBlur"
-					/>
-				</div>
+		<InputTriple>
+			<template #left>
+				<ParameterInputFull
+					v-if="!fixedLeftValue"
+					:key="leftParameter.type"
+					display-options
+					hide-label
+					hide-hint
+					hide-issues
+					:rows="3"
+					:is-read-only="readOnly"
+					:parameter="leftParameter"
+					:value="condition.leftValue"
+					:path="`${path}.left`"
+					:class="[$style.input, $style.inputLeft]"
+					data-test-id="filter-condition-left"
+					@update="onLeftValueChange"
+					@blur="onBlur"
+				/>
 			</template>
-		</n8n-resize-observer>
+			<template #middle>
+				<OperatorSelect
+					:selected="`${operator.type}:${operator.operation}`"
+					:read-only="readOnly"
+					@operatorChange="onOperatorChange"
+				></OperatorSelect>
+			</template>
+			<template #right="{ breakpoint }" v-if="!operator.singleValue">
+				<ParameterInputFull
+					:key="rightParameter.type"
+					display-options
+					hide-label
+					hide-hint
+					hide-issues
+					:rows="3"
+					:is-read-only="readOnly"
+					:options-position="breakpoint === 'default' ? 'top' : 'bottom'"
+					:parameter="rightParameter"
+					:value="condition.rightValue"
+					:path="`${path}.right`"
+					:class="[$style.input, $style.inputRight]"
+					data-test-id="filter-condition-right"
+					@update="onRightValueChange"
+					@blur="onBlur"
+				/>
+			</template>
+		</InputTriple>
 
 		<div :class="$style.status">
 			<ParameterIssues v-if="allIssues.length > 0" :issues="allIssues" />
@@ -305,16 +305,6 @@ const onBlur = (): void => {
 	}
 }
 
-.condition {
-	display: flex;
-	flex-wrap: nowrap;
-	align-items: flex-end;
-}
-
-.observer {
-	width: 100%;
-}
-
 .status {
 	align-self: flex-start;
 	padding-top: 28px;
@@ -324,131 +314,11 @@ const onBlur = (): void => {
 	padding-left: var(--spacing-4xs);
 }
 
-.select {
-	flex-shrink: 0;
-	flex-grow: 0;
-	flex-basis: 160px;
-	--input-border-radius: 0;
-	--input-border-right-color: transparent;
-}
-
-.input {
-	flex-shrink: 0;
-	flex-basis: 160px;
-	flex-grow: 1;
-}
-
-.inputLeft {
-	--input-border-top-right-radius: 0;
-	--input-border-bottom-right-radius: 0;
-	--input-border-right-color: transparent;
-}
-
-.inputRight {
-	--input-border-top-left-radius: 0;
-	--input-border-bottom-left-radius: 0;
-}
-
-.hideRightInput {
-	.select {
-		--input-border-top-right-radius: var(--border-radius-base);
-		--input-border-bottom-right-radius: var(--border-radius-base);
-		--input-border-right-color: var(--input-border-color-base);
-	}
-}
-
 .remove {
 	position: absolute;
 	left: 0;
 	top: var(--spacing-l);
 	opacity: 0;
 	transition: opacity 100ms ease-in;
-}
-
-.medium {
-	flex-wrap: wrap;
-
-	.select {
-		--input-border-top-right-radius: var(--border-radius-base);
-		--input-border-bottom-right-radius: 0;
-		--input-border-bottom-color: transparent;
-		--input-border-right-color: var(--input-border-color-base);
-	}
-
-	.inputLeft {
-		--input-border-top-right-radius: 0;
-		--input-border-bottom-left-radius: 0;
-		--input-border-right-color: transparent;
-		--input-border-bottom-color: transparent;
-	}
-
-	.inputRight {
-		flex-basis: 340px;
-		flex-shrink: 1;
-		--input-border-top-right-radius: 0;
-		--input-border-bottom-left-radius: var(--border-radius-base);
-	}
-
-	&.hideRightInput {
-		.select {
-			--input-border-bottom-color: var(--input-border-color-base);
-			--input-border-top-left-radius: 0;
-			--input-border-bottom-left-radius: 0;
-			--input-border-top-right-radius: var(--border-radius-base);
-			--input-border-bottom-right-radius: var(--border-radius-base);
-		}
-
-		.inputLeft {
-			--input-border-top-right-radius: 0;
-			--input-border-bottom-left-radius: var(--border-radius-base);
-			--input-border-bottom-right-radius: 0;
-			--input-border-bottom-color: var(--input-border-color-base);
-		}
-	}
-}
-
-.stacked {
-	display: block;
-
-	.select {
-		width: 100%;
-		--input-border-right-color: var(--input-border-color-base);
-		--input-border-bottom-color: transparent;
-		--input-border-radius: 0;
-	}
-
-	.inputLeft {
-		--input-border-right-color: var(--input-border-color-base);
-		--input-border-bottom-color: transparent;
-		--input-border-top-left-radius: var(--border-radius-base);
-		--input-border-top-right-radius: var(--border-radius-base);
-		--input-border-bottom-left-radius: 0;
-		--input-border-bottom-right-radius: 0;
-	}
-
-	.inputRight {
-		--input-border-top-left-radius: 0;
-		--input-border-top-right-radius: 0;
-		--input-border-bottom-left-radius: var(--border-radius-base);
-		--input-border-bottom-right-radius: var(--border-radius-base);
-	}
-
-	&.hideRightInput {
-		.select {
-			--input-border-bottom-color: var(--input-border-color-base);
-			--input-border-top-left-radius: 0;
-			--input-border-top-right-radius: 0;
-			--input-border-bottom-left-radius: var(--border-radius-base);
-			--input-border-bottom-right-radius: var(--border-radius-base);
-		}
-
-		.inputLeft {
-			--input-border-top-left-radius: var(--border-radius-base);
-			--input-border-top-right-radius: var(--border-radius-base);
-			--input-border-bottom-left-radius: 0;
-			--input-border-bottom-right-radius: 0;
-			--input-border-bottom-color: transparent;
-		}
-	}
 }
 </style>
