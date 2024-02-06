@@ -660,7 +660,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	async getLiveExecutionRowsOnPostgres() {
-		const tableName = `${config.getEnv('database.tablePrefix')}execution_entity`;
+		const tablePrefix = config.getEnv('database.tablePrefix');
+		const tableName = `${tablePrefix}execution_entity`;
 
 		const pgSql = `SELECT n_live_tup as result FROM pg_stat_all_tables WHERE relname = '${tableName}';`;
 
@@ -701,8 +702,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			.where('execution.workflowId IN (:...accessibleWorkflowIds)', { accessibleWorkflowIds });
 
 		if (query.kind === 'range') {
-			qb.orderBy({ 'execution.id': 'DESC' });
-
 			const { limit, firstId, lastId } = query.range;
 
 			qb.limit(limit);
@@ -710,9 +709,11 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			if (firstId) qb.andWhere('execution.id > :firstId', { firstId });
 			if (lastId) qb.andWhere('execution.id < :lastId', { lastId });
 
-			const { order } = query;
-
-			if (order) qb.orderBy(order);
+			if (query.order?.stoppedAt === 'DESC') {
+				qb.orderBy({ 'execution.stoppedAt': 'DESC' });
+			} else {
+				qb.orderBy({ 'execution.id': 'DESC' });
+			}
 		}
 
 		if (status) qb.andWhere('execution.status IN (:...status)', { status });

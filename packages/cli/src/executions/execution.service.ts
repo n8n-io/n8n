@@ -350,7 +350,7 @@ export class ExecutionService {
 
 		const count = await this.executionRepository.fetchCount({ ...countQuery, kind: 'count' });
 
-		return { count, estimated: false, results };
+		return { results, count, estimated: false };
 	}
 
 	/**
