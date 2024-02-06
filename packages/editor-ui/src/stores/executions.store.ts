@@ -189,18 +189,9 @@ export const useExecutionsStore = defineStore('executions', () => {
 			...(workflowId ? { workflowId } : {}),
 		};
 
-		// We cannot use firstId here as some executions finish out of order. Let's say
-		// You have execution ids 500 to 505 running.
-		// Suppose 504 finishes before 500, 501, 502 and 503.
-		// iF you use firstId, filtering id >= 504 you won't
-		// ever get ids 500, 501, 502 and 503 when they finish
-		await fetchExecutions(autoRefreshExecutionFilters);
-
-		// @TODO
-		// this.adjustSelectionAfterMoreItemsLoaded();
-
-		autoRefreshTimeout.value = setTimeout(() => {
+		autoRefreshTimeout.value = setTimeout(async () => {
 			if (autoRefresh.value) {
+				await fetchExecutions(autoRefreshExecutionFilters);
 				void startAutoRefreshInterval(workflowId);
 			}
 		}, autoRefreshDelay.value);
