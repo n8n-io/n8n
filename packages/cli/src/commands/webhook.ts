@@ -1,6 +1,6 @@
 import { Container } from 'typedi';
 import { Flags, type Config } from '@oclif/core';
-import { sleep } from 'n8n-workflow';
+import { ApplicationError, sleep } from 'n8n-workflow';
 
 import config from '@/config';
 import { ActiveExecutions } from '@/ActiveExecutions';
@@ -102,6 +102,12 @@ export class Webhook extends BaseCommand {
 	}
 
 	async run() {
+		if (config.getEnv('multiMainSetup.enabled')) {
+			throw new ApplicationError(
+				'Webhook process cannot be started when multi-main setup is enabled.',
+			);
+		}
+
 		await Container.get(Queue).init();
 		await this.server.start();
 		this.logger.debug(`Webhook listener ID: ${this.server.uniqueInstanceId}`);
