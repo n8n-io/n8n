@@ -39,16 +39,16 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Enable Code Interpreter',
-		name: 'enableCodeInterpreter',
+		displayName: 'Code Interpreter',
+		name: 'codeInterpreter',
 		type: 'boolean',
 		default: false,
 		description:
 			'Whether to enable the code interpreter that allows the ssistants to write and run Python code in a sandboxed execution environment, find more <a href="https://platform.openai.com/docs/assistants/tools/code-interpreter" target="_blank">here</a>',
 	},
 	{
-		displayName: 'Enable Knowledge Retrieval',
-		name: 'enableKnowledgeRetrieval',
+		displayName: 'Knowledge Retrieval',
+		name: 'knowledgeRetrieval',
 		type: 'boolean',
 		default: false,
 		description:
@@ -84,8 +84,8 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const name = this.getNodeParameter('name', i) as string;
 	const assistantDescription = this.getNodeParameter('description', i) as string;
 	const instructions = this.getNodeParameter('instructions', i) as string;
-	const enableCodeInterpreter = this.getNodeParameter('enableCodeInterpreter', i) as boolean;
-	const enableKnowledgeRetrieval = this.getNodeParameter('enableKnowledgeRetrieval', i) as boolean;
+	const codeInterpreter = this.getNodeParameter('codeInterpreter', i) as boolean;
+	const knowledgeRetrieval = this.getNodeParameter('knowledgeRetrieval', i) as boolean;
 	const file_ids = this.getNodeParameter('file_ids', i, []) as string[];
 
 	if (file_ids.length > 20) {
@@ -106,13 +106,13 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	const tools = [];
 
-	if (enableCodeInterpreter) {
+	if (codeInterpreter) {
 		tools.push({
 			type: 'code_interpreter',
 		});
 	}
 
-	if (enableKnowledgeRetrieval) {
+	if (knowledgeRetrieval) {
 		tools.push({
 			type: 'retrieval',
 		});
