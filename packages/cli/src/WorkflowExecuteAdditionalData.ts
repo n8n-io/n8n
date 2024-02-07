@@ -23,6 +23,7 @@ import type {
 	WorkflowExecuteMode,
 	ExecutionStatus,
 	ExecutionError,
+	EventNamesAiNodesType,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
@@ -988,7 +989,7 @@ export async function getBase(
 		variables,
 		secretsHelpers: Container.get(SecretsHelper),
 		logAiEvent: async (
-			eventName: string,
+			eventName: EventNamesAiNodesType,
 			payload: {
 				msg?: string | undefined;
 				executionId: string;
@@ -1000,7 +1001,7 @@ export async function getBase(
 		) => {
 			return await Container.get(MessageEventBus).sendAiNodeEvent({
 				eventName,
-				...payload,
+				payload,
 			});
 		},
 	};
