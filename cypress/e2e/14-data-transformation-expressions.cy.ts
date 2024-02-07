@@ -1,4 +1,5 @@
 import { WorkflowPage, NDV } from '../pages';
+import { getVisibleSelect } from '../utils';
 
 const wf = new WorkflowPage();
 const ndv = new NDV();
@@ -104,8 +105,6 @@ describe('Data transformation expressions', () => {
 
 const addEditFields = () => {
 	wf.actions.addNodeToCanvas('Edit Fields', true, true);
-	cy.get('.fixed-collection-parameter > :nth-child(2) > .button > span').click();
-	ndv.getters.parameterInput('include').click(); // shorten output
-	cy.get('div').contains('No Input Fields').click();
-	ndv.getters.nthParam(4).contains('Expression').invoke('show').click();
+	ndv.getters.assignmentCollectionAdd('assignments').click();
+	ndv.getters.assignmentValue('assignments').contains('Expression').invoke('show').click();
 };
