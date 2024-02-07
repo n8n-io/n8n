@@ -12,7 +12,7 @@ import type { BaseOutputParser } from 'langchain/schema/output_parser';
 import { PromptTemplate } from 'langchain/prompts';
 import { CombiningOutputParser } from 'langchain/output_parsers';
 import type { BaseChatModel } from 'langchain/chat_models/base';
-import { isChatInstance } from '../../../../../utils/helpers';
+import { getOptionalOutputParsers, isChatInstance } from '../../../../../utils/helpers';
 
 export async function reActAgentAgentExecute(
 	this: IExecuteFunctions,
@@ -25,10 +25,7 @@ export async function reActAgentAgentExecute(
 
 	const tools = (await this.getInputConnectionData(NodeConnectionType.AiTool, 0)) as Tool[];
 
-	const outputParsers = (await this.getInputConnectionData(
-		NodeConnectionType.AiOutputParser,
-		0,
-	)) as BaseOutputParser[];
+	const outputParsers = await getOptionalOutputParsers(this);
 
 	const options = this.getNodeParameter('options', 0, {}) as {
 		prefix?: string;

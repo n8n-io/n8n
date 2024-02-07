@@ -24,6 +24,7 @@ import { sqlAgentAgentExecute } from './agents/SqlAgent/execute';
 // display based on the agent type
 function getInputs(
 	agent: 'conversationalAgent' | 'openAiFunctionsAgent' | 'reActAgent' | 'sqlAgent',
+	hasOutputParser?: boolean,
 ): Array<ConnectionTypes | INodeInputConfiguration> {
 	interface SpecialInput {
 		type: ConnectionTypes;
@@ -136,6 +137,11 @@ function getInputs(
 		];
 	}
 
+	if (hasOutputParser === false) {
+		specialInputs = specialInputs.filter(
+			(input) => input.type !== NodeConnectionType.AiOutputParser,
+		);
+	}
 	return [NodeConnectionType.Main, ...getInputData(specialInputs)];
 }
 
@@ -145,7 +151,7 @@ export class Agent implements INodeType {
 		name: 'agent',
 		icon: 'fa:robot',
 		group: ['transform'],
-		version: [1, 1.1, 1.2],
+		version: [1, 1.1, 1.2, 1.3],
 		description: 'Generates an action plan and executes it. Can use external tools.',
 		subtitle:
 			"={{ {	conversationalAgent: 'Conversational Agent', openAiFunctionsAgent: 'OpenAI Functions Agent', reactAgent: 'ReAct Agent', sqlAgent: 'SQL Agent' }[$parameter.agent] }}",
@@ -167,7 +173,12 @@ export class Agent implements INodeType {
 				],
 			},
 		},
-		inputs: `={{ ((agent) => { ${getInputs.toString()}; return getInputs(agent) })($parameter.agent) }}`,
+		inputs: `={{
+			((agent, hasOutputParser) => {
+				${getInputs.toString()};
+				return getInputs(agent, hasOutputParser)
+			})($parameter.agent, $parameter.hasOutputParser === undefined || $parameter.hasOutputParser === true)
+		}}`,
 		outputs: [NodeConnectionType.Main],
 		credentials: [
 			{
@@ -238,6 +249,30 @@ export class Agent implements INodeType {
 					},
 				],
 				default: 'conversationalAgent',
+			},
+
+			{
+				displayName: 'Require Specific Output Format',
+				name: 'hasOutputParser',
+				type: 'boolean',
+				default: false,
+				displayOptions: {
+					hide: {
+						'@version': [1, 1.1, 1.2],
+						agent: ['sqlAgent'],
+					},
+				},
+			},
+			{
+				displayName: `Connect an <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='${NodeConnectionType.AiOutputParser}'>output parser</a> on the canvas to specify the output format you require`,
+				name: 'notice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						hasOutputParser: [true],
+					},
+				},
 			},
 
 			...conversationalAgentProperties,

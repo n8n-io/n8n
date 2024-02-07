@@ -36,7 +36,9 @@ export const openAiFunctionsAgentProperties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				agent: ['openAiFunctionsAgent'],
-				'@version': [1.2],
+			},
+			hide: {
+				'@version': [1, 1.1],
 			},
 		},
 		default: '={{ $json.chatInput }}',

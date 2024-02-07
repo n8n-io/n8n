@@ -22,7 +22,7 @@ import { LLMChain } from 'langchain/chains';
 import type { BaseChatModel } from 'langchain/chat_models/base';
 import { HumanMessage } from 'langchain/schema';
 import { getTemplateNoticeField } from '../../../utils/sharedFields';
-import { isChatInstance } from '../../../utils/helpers';
+import { getOptionalOutputParsers, isChatInstance } from '../../../utils/helpers';
 
 interface MessagesTemplate {
 	type: string;
@@ -204,7 +204,7 @@ function getInputs(parameters: IDataObject) {
 		},
 	];
 
-	// If `hasOutputParser` is undefined it must be version 1.1 or earlier so we
+	// If `hasOutputParser` is undefined it must be version 1.3 or earlier so we
 	// always add the output parser input
 	if (hasOutputParser === undefined || hasOutputParser === true) {
 		inputs.push({ displayName: 'Output Parser', type: NodeConnectionType.AiOutputParser });
@@ -218,7 +218,7 @@ export class ChainLlm implements INodeType {
 		name: 'chainLlm',
 		icon: 'fa:link',
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3],
+		version: [1, 1.1, 1.2, 1.3, 1.4],
 		description: 'A simple chain to prompt a large language model',
 		defaults: {
 			name: 'Basic LLM Chain',
@@ -274,8 +274,8 @@ export class ChainLlm implements INodeType {
 				required: true,
 				default: '={{ $json.chatInput }}',
 				displayOptions: {
-					show: {
-						'@version': [1.3],
+					hide: {
+						'@version': [1, 1.1, 1.2],
 					},
 				},
 			},
@@ -425,8 +425,8 @@ export class ChainLlm implements INodeType {
 				type: 'boolean',
 				default: false,
 				displayOptions: {
-					show: {
-						'@version': [1.2],
+					hide: {
+						'@version': [1, 1.1, 1.3],
 					},
 				},
 			},
@@ -454,14 +454,7 @@ export class ChainLlm implements INodeType {
 			0,
 		)) as BaseLanguageModel;
 
-		let outputParsers: BaseOutputParser[] = [];
-
-		if (this.getNodeParameter('hasOutputParser', 0, true) === true) {
-			outputParsers = (await this.getInputConnectionData(
-				NodeConnectionType.AiOutputParser,
-				0,
-			)) as BaseOutputParser[];
-		}
+		const outputParsers = await getOptionalOutputParsers(this);
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			const prompt = this.getNodeParameter('prompt', itemIndex) as string;
