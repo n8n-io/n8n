@@ -154,7 +154,7 @@
     "redis": "4.6.12",
     "sqlite3": "5.1.7",
     "temp": "0.9.4",
-    "typeorm": "0.3.17",
+    "typeorm": "0.3.20",
     "zod": "3.22.4",
     "zod-to-json-schema": "3.22.0"
   }
