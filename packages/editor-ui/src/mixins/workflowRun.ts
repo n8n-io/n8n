@@ -40,8 +40,6 @@ export const consolidateRunDataAndStartNodes = (
 	let newRunData: IRunData  = {};
 
 	if (runData !== null && Object.keys(runData).length !== 0) {
-		newRunData = {};
-
 		// Go over the direct parents of the node
 		for (const directParentNode of directParentNodes) {
 			// Go over the parents of that node so that we can get a start
