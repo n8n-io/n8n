@@ -247,37 +247,37 @@ export const DEFAULT_OPERATOR_VALUE: FilterConditionValue['operator'] =
 export const OPERATOR_GROUPS: FilterOperatorGroup[] = [
 	{
 		id: 'string',
-		name: 'filter.operatorGroup.string',
+		name: 'type.string',
 		icon: 'font',
 		children: OPERATORS.filter((operator) => operator.type === 'string'),
 	},
 	{
 		id: 'number',
-		name: 'filter.operatorGroup.number',
+		name: 'type.number',
 		icon: 'hashtag',
 		children: OPERATORS.filter((operator) => operator.type === 'number'),
 	},
 	{
 		id: 'dateTime',
-		name: 'filter.operatorGroup.date',
+		name: 'type.dateTime',
 		icon: 'calendar',
 		children: OPERATORS.filter((operator) => operator.type === 'dateTime'),
 	},
 	{
 		id: 'boolean',
-		name: 'filter.operatorGroup.boolean',
+		name: 'type.boolean',
 		icon: 'check-square',
 		children: OPERATORS.filter((operator) => operator.type === 'boolean'),
 	},
 	{
 		id: 'array',
-		name: 'filter.operatorGroup.array',
+		name: 'type.array',
 		icon: 'list',
 		children: OPERATORS.filter((operator) => operator.type === 'array'),
 	},
 	{
 		id: 'object',
-		name: 'filter.operatorGroup.object',
+		name: 'type.object',
 		icon: 'cube',
 		children: OPERATORS.filter((operator) => operator.type === 'object'),
 	},

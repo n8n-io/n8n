@@ -117,6 +117,15 @@
 				:read-only="isReadOnly"
 				@valueChanged="valueChanged"
 			/>
+			<AssignmentCollection
+				v-else-if="parameter.type === 'assignmentCollection'"
+				:parameter="parameter"
+				:value="nodeHelpers.getParameterValue(nodeValues, parameter.name, path)"
+				:path="getPath(parameter.name)"
+				:node="node"
+				:is-read-only="isReadOnly"
+				@valueChanged="valueChanged"
+			/>
 			<div
 				v-else-if="displayNodeParameter(parameter) && credentialsParameterIndex !== index"
 				class="parameter-item"
@@ -170,7 +179,8 @@ import ImportParameter from '@/components/ImportParameter.vue';
 import MultipleParameter from '@/components/MultipleParameter.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
-import Conditions from '@/components/FilterConditions/FilterConditions.vue';
+import FilterConditions from '@/components/FilterConditions/FilterConditions.vue';
+import AssignmentCollection from '@/components/AssignmentCollection/AssignmentCollection.vue';
 import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -199,7 +209,8 @@ export default defineComponent({
 		CollectionParameter,
 		ImportParameter,
 		ResourceMapper,
-		FilterConditions: Conditions,
+		FilterConditions,
+		AssignmentCollection,
 	},
 	mixins: [workflowHelpers],
 	props: {
