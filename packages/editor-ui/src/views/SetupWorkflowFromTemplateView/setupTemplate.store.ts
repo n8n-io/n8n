@@ -4,16 +4,17 @@ import type { Router } from 'vue-router';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
-import { useTemplatesStore } from '@/stores/templates.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useSettingsStore } from '@/stores/settings.store';
 import type { INodeTypeDescription } from 'n8n-workflow';
-import type { INodeUi } from '@/Interface';
+import type { INodeUi, ITemplatesWorkflowFull } from '@/Interface';
 import { VIEWS } from '@/constants';
 import { createWorkflowFromTemplate } from '@/utils/templates/templateActions';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useCredentialSetupState } from '@/views/SetupWorkflowFromTemplateView/useCredentialSetupState';
 import { tryToParseNumber } from '@/utils/typesUtils';
+import { getTemplateById } from '@/api/templates';
 
 export type NodeAndType = {
 	node: INodeUi;
@@ -38,22 +39,21 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 	//#region State
 
 	const templateId = ref<string>('');
+	const template = ref<ITemplatesWorkflowFull | null>(null);
 	const isLoading = ref(true);
 	const isSaving = ref(false);
+	const currentSessionId = ref('');
+	const previousSessionId = ref('');
 
 	//#endregion State
 
-	const templatesStore = useTemplatesStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const credentialsStore = useCredentialsStore();
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
+	const settingsStore = useSettingsStore();
 
 	//#region Getters
-
-	const template = computed(() => {
-		return templateId.value ? templatesStore.getFullTemplateById(templateId.value) : null;
-	});
 
 	const templateNodes = computed(() => {
 		return template.value?.workflow.nodes ?? [];
@@ -115,7 +115,7 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 			return;
 		}
 
-		await templatesStore.fetchTemplateById(templateId.value);
+		template.value = await fetchTemplateById(templateId.value);
 
 		setInitialCredentialSelection();
 	};
@@ -139,6 +139,24 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 		} finally {
 			isLoading.value = false;
 		}
+	};
+
+	/**
+	 * Fetches the template from the server.
+	 */
+	const fetchTemplateById = async (id: string): Promise<ITemplatesWorkflowFull> => {
+		const apiEndpoint: string = settingsStore.templatesHost;
+		const versionCli: string = settingsStore.versionCli;
+		const response = await getTemplateById(apiEndpoint, id, {
+			'n8n-version': versionCli,
+		});
+
+		const fetchedTemplate: ITemplatesWorkflowFull = {
+			...response.workflow,
+			full: true,
+		};
+
+		return fetchedTemplate;
 	};
 
 	/**
@@ -196,7 +214,7 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 				{
 					source: 'workflow',
 					template_id: tryToParseNumber(templateId.value),
-					wf_template_repo_session_id: templatesStore.currentSessionId,
+					wf_template_repo_session_id: currentSessionId.value,
 				},
 				{ withPostHog: true },
 			);
@@ -204,7 +222,7 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 			telemetry.track('User saved new workflow from template', {
 				template_id: tryToParseNumber(templateId.value),
 				workflow_id: createdWorkflow.id,
-				wf_template_repo_session_id: templatesStore.currentSessionId,
+				wf_template_repo_session_id: currentSessionId.value,
 			});
 
 			// Replace the URL so back button doesn't come back to this setup view
@@ -214,9 +232,26 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 			});
 		} finally {
 			isSaving.value = false;
+			template.value = null;
 		}
 	};
 
+	/**
+	 * Resets the session id.
+	 */
+	const resetSessionId = () => {
+		previousSessionId.value = currentSessionId.value;
+		currentSessionId.value = '';
+	};
+
+	/**
+	 * Sets the session id if it hasn't been set yet.
+	 */
+	const setSessionId = () => {
+		if (!currentSessionId.value) {
+			currentSessionId.value = `templates-${Date.now()}`;
+		}
+	};
 	//#endregion Actions
 
 	return {
@@ -238,5 +273,8 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 		setTemplateId,
 		setSelectedCredentialId,
 		unsetSelectedCredential,
+		resetSessionId,
+		setSessionId,
+		currentSessionId,
 	};
 });

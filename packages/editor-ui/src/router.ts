@@ -10,7 +10,7 @@ import type {
 import { createRouter, createWebHistory, isNavigationFailure } from 'vue-router';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useTemplatesStore } from '@/stores/templates.store';
+import { useSetupTemplateStore } from '@/views/SetupWorkflowFromTemplateView/setupTemplate.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSSOStore } from '@/stores/sso.store';
 import {
@@ -776,7 +776,7 @@ router.afterEach((to, from) => {
 	try {
 		const telemetry = useTelemetry();
 		const uiStore = useUIStore();
-		const templatesStore = useTemplatesStore();
+		const setupTemplateStore = useSetupTemplateStore();
 
 		/**
 		 * Run external hooks
@@ -790,9 +790,9 @@ router.afterEach((to, from) => {
 
 		uiStore.currentView = (to.name as string) ?? '';
 		if (to.meta?.templatesEnabled) {
-			templatesStore.setSessionId();
+			setupTemplateStore.setSessionId();
 		} else {
-			templatesStore.resetSessionId(); // reset telemetry session id when user leaves template pages
+			setupTemplateStore.resetSessionId(); // reset telemetry session id when user leaves template pages
 		}
 		telemetry.page(to);
 	} catch (failure) {
