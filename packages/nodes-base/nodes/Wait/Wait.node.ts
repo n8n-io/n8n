@@ -1,3 +1,4 @@
+import { DateTime } from 'luxon';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -29,7 +30,6 @@ import {
 } from '../Form/common.descriptions';
 import { formWebhook } from '../Form/utils';
 import { updateDisplayOptions } from '../../utils/utilities';
-
 import { Webhook } from '../Webhook/Webhook.node';
 
 const waitTimeProperties: INodeProperties[] = [
@@ -420,12 +420,16 @@ export class Wait extends Webhook {
 
 			waitAmount *= 1000;
 
-			waitTill = new Date(new Date().getTime() + waitAmount);
+			waitTill = DateTime.now()
+				.setZone(context.getTimezone())
+				.plus({ milliseconds: waitAmount })
+				.toUTC()
+				.toJSDate();
 		} else {
-			// resume: dateTime
-			const dateTime = context.getNodeParameter('dateTime', 0) as string;
-
-			waitTill = new Date(dateTime);
+			const dateTimeStr = context.getNodeParameter('dateTime', 0) as string;
+			const FORMAT = "yyyy-MM-dd'T'HH:mm:ss";
+			const tz = { zone: context.getTimezone() };
+			waitTill = DateTime.fromFormat(dateTimeStr, FORMAT, tz).toUTC().toJSDate();
 		}
 
 		const waitValue = Math.max(waitTill.getTime() - new Date().getTime(), 0);
