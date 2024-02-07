@@ -106,7 +106,7 @@ import type { CloudPlanAndUsageData, IExecutionResponse, IMenuItem, IVersion } f
 import GiftNotificationIcon from './GiftNotificationIcon.vue';
 
 import { useMessage } from '@/composables/useMessage';
-import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS } from '@/constants';
+import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS, WEBSITE_TEMPLATES_URL } from '@/constants';
 import { userHelpers } from '@/mixins/userHelpers';
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
@@ -231,7 +231,7 @@ export default defineComponent({
 					position: 'top',
 					available: this.settingsStore.isTemplatesEnabled,
 					link: {
-						href: 'https://n8n.io/workflows/?utm_source=n8n_app&utm_medium=template_library',
+						href: WEBSITE_TEMPLATES_URL,
 						target: '_blank',
 					},
 				},

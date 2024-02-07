@@ -735,3 +735,6 @@ export const MOUSE_EVENT_BUTTONS = {
 	BROWSER_BACK: 8,
 	BROWSER_FORWARD: 16,
 } as const;
+
+export const WEBSITE_TEMPLATES_URL =
+	'https://n8n.io/workflows/?utm_source=n8n_app&utm_medium=template_library';
