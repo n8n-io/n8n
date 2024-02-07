@@ -607,33 +607,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		stoppedAt: true,
 	};
 
-	async findLatestFinished(n: number): Promise<ExecutionSummary[]> {
-		const finished: ExecutionStatus[] = ['success', 'error', 'failed'];
-
-		const findManyOptions: FindManyOptions<ExecutionEntity> = {
-			select: this.summaryFields,
-			where: { status: In(finished) },
-			order: { stoppedAt: 'DESC' },
-			take: n,
-		};
-
-		const executions = await this.find(findManyOptions);
-
-		return executions.map((execution) => this.toSummary(execution));
-	}
-
-	async findAllActive(): Promise<ExecutionSummary[]> {
-		const findManyOptions: FindManyOptions<ExecutionEntity> = {
-			select: this.summaryFields,
-			where: { status: In(['new', 'running', 'waiting']) },
-			order: { stoppedAt: 'DESC' },
-		};
-
-		const executions = await this.find(findManyOptions);
-
-		return executions.map((execution) => this.toSummary(execution));
-	}
-
 	async findManyByRangeQuery(query: ExecutionSummaries.RangeQuery): Promise<ExecutionSummary[]> {
 		if (query?.accessibleWorkflowIds?.length === 0) {
 			throw new ApplicationError('Expected accessible workflow IDs');
@@ -728,14 +701,18 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			.where('execution.workflowId IN (:...accessibleWorkflowIds)', { accessibleWorkflowIds });
 
 		if (query.kind === 'range') {
-			qb.orderBy({ 'execution.id': 'DESC' });
-
 			const { limit, firstId, lastId } = query.range;
 
 			qb.limit(limit);
 
 			if (firstId) qb.andWhere('execution.id > :firstId', { firstId });
 			if (lastId) qb.andWhere('execution.id < :lastId', { lastId });
+
+			if (query.order?.stoppedAt === 'DESC') {
+				qb.orderBy({ 'execution.stoppedAt': 'DESC' });
+			} else {
+				qb.orderBy({ 'execution.id': 'DESC' });
+			}
 		}
 
 		if (status) qb.andWhere('execution.status IN (:...status)', { status });

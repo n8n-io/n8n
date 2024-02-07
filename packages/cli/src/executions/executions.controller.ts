@@ -39,20 +39,16 @@ export class ExecutionsController {
 			return { count: 0, estimated: false, results: [] };
 		}
 
-		if (!query.status || query.status?.length === 0) {
-			const [active, latestFinished] = await Promise.all([
-				this.executionService.findAllActive(),
-				this.executionService.findLatestFinished(20),
-			]);
-
-			const results = active.concat(latestFinished);
-
-			return { count: results.length, estimated: false, results };
-		}
-
 		query.accessibleWorkflowIds = accessibleWorkflowIds;
 
 		if (!this.license.isAdvancedExecutionFiltersEnabled()) delete query.metadata;
+
+		const noStatus = !query.status || query.status.length === 0;
+		const noRange = !query.range.lastId || !query.range.firstId;
+
+		if (noStatus || noRange) {
+			return await this.executionService.findAllActiveAndLatestFinished(query);
+		}
 
 		return await this.executionService.findRangeWithCount(query);
 	}

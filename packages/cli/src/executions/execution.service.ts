@@ -6,6 +6,7 @@ import type {
 	INode,
 	IRunExecutionData,
 	WorkflowExecuteMode,
+	ExecutionStatus,
 } from 'n8n-workflow';
 import { ApplicationError, Workflow, WorkflowOperationError } from 'n8n-workflow';
 import { ActiveExecutions } from '@/ActiveExecutions';
@@ -320,35 +321,22 @@ export class ExecutionService {
 	private readonly isRegularMode = config.getEnv('executions.mode') === 'regular';
 
 	/**
-	 * Find the `n` most recent executions with a status of `success` or `error`.
-	 */
-	async findLatestFinished(n: number) {
-		return await this.executionRepository.findLatestFinished(n);
-	}
-
-	/**
-	 * Find all executions with a status of `new`, `running`, and `waiting`.
-	 */
-	async findAllActive() {
-		return await this.executionRepository.findAllActive();
-	}
-
-	/**
-	 * Find a range of summaries of executions that satisfy a query, along with the
-	 * total count of all existing executions that satisfy the query, and whether
-	 * the total is an estimate or not.
+	 * Find summaries of executions that satisfy a query.
+	 *
+	 * Return also the total count of all executions that satisfy the query,
+	 * and whether the total is an estimate or not.
 	 */
 	async findRangeWithCount(query: ExecutionSummaries.RangeQuery) {
-		const executions = await this.executionRepository.findManyByRangeQuery(query);
+		const results = await this.executionRepository.findManyByRangeQuery(query);
 
 		if (config.getEnv('database.type') === 'postgresdb') {
 			const liveRows = await this.executionRepository.getLiveExecutionRowsOnPostgres();
 
-			if (liveRows === -1) return { count: -1, estimated: false, results: executions };
+			if (liveRows === -1) return { count: -1, estimated: false, results };
 
 			if (liveRows > 100_000) {
 				// likely too high to fetch exact count fast
-				return { count: liveRows, estimated: true, results: executions };
+				return { count: liveRows, estimated: true, results };
 			}
 		}
 
@@ -356,7 +344,34 @@ export class ExecutionService {
 
 		const count = await this.executionRepository.fetchCount({ ...countQuery, kind: 'count' });
 
-		return { count, estimated: false, results: executions };
+		return { results, count, estimated: false };
+	}
+
+	/**
+	 * Find summaries of active and finished executions that satisfy a query.
+	 *
+	 * Return also the total count of all finished executions that satisfy the query,
+	 * and whether the total is an estimate or not. Active executions are excluded
+	 * from the total and count for pagination purposes.
+	 */
+	async findAllActiveAndLatestFinished(query: ExecutionSummaries.RangeQuery) {
+		const active: ExecutionStatus[] = ['new', 'running', 'waiting'];
+		const finished: ExecutionStatus[] = ['success', 'error', 'failed'];
+
+		const [activeResult, finishedResult] = await Promise.all([
+			this.findRangeWithCount({ ...query, status: active }),
+			this.findRangeWithCount({
+				...query,
+				status: finished,
+				order: { stoppedAt: 'DESC' },
+			}),
+		]);
+
+		return {
+			results: activeResult.results.concat(finishedResult.results),
+			count: finishedResult.count,
+			estimated: finishedResult.estimated,
+		};
 	}
 
 	/**

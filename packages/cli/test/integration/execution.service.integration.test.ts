@@ -26,6 +26,7 @@ describe('ExecutionService', () => {
 			Container.get(WorkflowRepository),
 			mock(),
 			mock(),
+			mock(),
 		);
 	});
 
@@ -35,61 +36,6 @@ describe('ExecutionService', () => {
 
 	afterAll(async () => {
 		await testDb.terminate();
-	});
-
-	describe('findLatestFinished', () => {
-		it('should return the n most recent success and error executions', async () => {
-			const workflow = await createWorkflow();
-
-			await Promise.all([
-				createExecution({ status: 'success' }, workflow),
-				createExecution({ status: 'success' }, workflow),
-				createExecution({ status: 'success' }, workflow),
-				createExecution({ status: 'unknown' }, workflow),
-				createExecution({ status: 'unknown' }, workflow),
-				createExecution({ status: 'unknown' }, workflow),
-				createExecution({ status: 'error' }, workflow),
-				createExecution({ status: 'error' }, workflow),
-				createExecution({ status: 'error' }, workflow),
-			]);
-
-			const executions = await executionService.findLatestFinished(6);
-
-			expect(executions).toHaveLength(6);
-
-			executions.forEach((execution) => {
-				if (!execution.status) fail('Expected status');
-				expect(['success', 'error'].includes(execution.status)).toBe(true);
-			});
-		});
-	});
-
-	describe('findAllActive', () => {
-		it('should return all new, running, and waiting executions', async () => {
-			const workflow = await createWorkflow();
-
-			await Promise.all([
-				createExecution({ status: 'new' }, workflow),
-				createExecution({ status: 'new' }, workflow),
-				createExecution({ status: 'unknown' }, workflow),
-				createExecution({ status: 'unknown' }, workflow),
-				createExecution({ status: 'running' }, workflow),
-				createExecution({ status: 'running' }, workflow),
-				createExecution({ status: 'success' }, workflow),
-				createExecution({ status: 'success' }, workflow),
-				createExecution({ status: 'waiting' }, workflow),
-				createExecution({ status: 'waiting' }, workflow),
-			]);
-
-			const executions = await executionService.findAllActive();
-
-			expect(executions).toHaveLength(6);
-
-			executions.forEach((execution) => {
-				if (!execution.status) fail('Expected status');
-				expect(['new', 'running', 'waiting'].includes(execution.status)).toBe(true);
-			});
-		});
 	});
 
 	describe('findRangeWithCount', () => {
@@ -369,6 +315,97 @@ describe('ExecutionService', () => {
 			expect(output.count).toBe(1);
 			expect(output.estimated).toBe(false);
 			expect(output.results).toEqual([expect.objectContaining({ id: firstId })]);
+		});
+	});
+
+	describe('findAllActiveAndLatestFinished', () => {
+		test('should return all active and latest 20 finished executions', async () => {
+			const workflow = await createWorkflow();
+
+			const totalFinished = 21;
+
+			await Promise.all([
+				createExecution({ status: 'waiting' }, workflow),
+				createExecution({ status: 'waiting' }, workflow),
+				createExecution({ status: 'waiting' }, workflow),
+				...new Array(totalFinished)
+					.fill(null)
+					.map(async () => await createExecution({ status: 'success' }, workflow)),
+			]);
+
+			const query: ExecutionSummaries.RangeQuery = {
+				kind: 'range',
+				range: { limit: 20 },
+				accessibleWorkflowIds: [workflow.id],
+			};
+
+			const output = await executionService.findAllActiveAndLatestFinished(query);
+
+			expect(output.results).toHaveLength(23); // 3 active + 20 finished (excludes 21st)
+			expect(output.count).toBe(totalFinished); // 21 finished, excludes active
+			expect(output.estimated).toBe(false);
+		});
+
+		test('should handle zero active executions', async () => {
+			const workflow = await createWorkflow();
+
+			const totalFinished = 5;
+
+			await Promise.all(
+				new Array(totalFinished)
+					.fill(null)
+					.map(async () => await createExecution({ status: 'success' }, workflow)),
+			);
+
+			const query: ExecutionSummaries.RangeQuery = {
+				kind: 'range',
+				range: { limit: 20 },
+				accessibleWorkflowIds: [workflow.id],
+			};
+
+			const output = await executionService.findAllActiveAndLatestFinished(query);
+
+			expect(output.results).toHaveLength(totalFinished); // 5 finished
+			expect(output.count).toBe(totalFinished); // 5 finished, excludes active
+			expect(output.estimated).toBe(false);
+		});
+
+		test('should handle zero finished executions', async () => {
+			const workflow = await createWorkflow();
+
+			await Promise.all([
+				createExecution({ status: 'waiting' }, workflow),
+				createExecution({ status: 'waiting' }, workflow),
+				createExecution({ status: 'waiting' }, workflow),
+			]);
+
+			const query: ExecutionSummaries.RangeQuery = {
+				kind: 'range',
+				range: { limit: 20 },
+				accessibleWorkflowIds: [workflow.id],
+			};
+
+			const output = await executionService.findAllActiveAndLatestFinished(query);
+
+			expect(output.results).toHaveLength(3); // 3 finished
+			expect(output.count).toBe(0); // 0 finished, excludes active
+			expect(output.estimated).toBe(false);
+		});
+
+		test('should handle zero executions', async () => {
+			const workflow = await createWorkflow();
+
+			const query: ExecutionSummaries.RangeQuery = {
+				kind: 'range',
+				range: { limit: 20 },
+				accessibleWorkflowIds: [workflow.id],
+			};
+
+			const output = await executionService.findAllActiveAndLatestFinished(query);
+
+			expect(output.results).toHaveLength(0);
+			expect(output.count).toBe(0);
+			expect(output.estimated).toBe(false);
 		});
 	});
 });
