@@ -2,6 +2,16 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 1.25.0
+
+### What changed?
+
+If the `N8N_ENCRYPTION_KEY` environment variable on a main instance does not match the `encryptionKey` in the config file, the main instance will not initialize. If the `N8N_ENCRYPTION_KEY` environment variable is missing on a worker, the worker will not initialize.
+
+### When is action necessary?
+
+If passing an `N8N_ENCRYPTION_KEY` environment variable to the main instance, make sure it matches the `encryptionKey` in the config file. If you are using workers, pass the `N8N_ENCRYPTION_KEY` environment variable to them.
+
 ## 1.24.0
 
 ### What changed?
