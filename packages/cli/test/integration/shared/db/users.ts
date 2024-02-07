@@ -19,7 +19,7 @@ export async function createUser(attributes: Partial<User> = {}): Promise<User> 
 	const { email, password, firstName, lastName, role, ...rest } = attributes;
 	const user = Container.get(UserRepository).create({
 		email: email ?? randomEmail(),
-		password: password ? await hash(password, 10) : passwordHash,
+		password: password ? await hash(password, 1) : passwordHash,
 		firstName: firstName ?? randomName(),
 		lastName: lastName ?? randomName(),
 		role: role ?? 'global:member',
@@ -104,7 +104,7 @@ export async function createManyUsers(
 		[...Array(amount)].map(async () =>
 			Container.get(UserRepository).create({
 				email: email ?? randomEmail(),
-				password: password ? await hash(password, 10) : passwordHash,
+				password: password ? await hash(password, 1) : passwordHash,
 				firstName: firstName ?? randomName(),
 				lastName: lastName ?? randomName(),
 				role: role ?? 'global:member',
