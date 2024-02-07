@@ -1,6 +1,12 @@
-import type { IExecutionPushResponse, IExecutionResponse, IStartRunData } from '@/Interface';
+import type {
+	IExecutionPushResponse,
+	IExecutionResponse,
+	IStartRunData,
+	StartNodeData,
+} from '@/Interface';
 import { mapStores } from 'pinia';
 import { defineComponent } from 'vue';
+import { get } from 'lodash-es';
 
 import type {
 	IDataObject,
@@ -236,11 +242,25 @@ export const workflowRun = defineComponent({
 
 				const workflowData = await this.getWorkflowDataToSave();
 
+				const startNodesData: StartNodeData[] = startNodes.map((name) => {
+					// Find for each start node the source data
+					let sourceData = get(runData, [name, 0, 'source', 0], null);
+					if (sourceData === null) {
+						const parentNodes = workflow.getParentNodes(name, NodeConnectionType.Main, 1);
+						const executeData = this.executeData(parentNodes, name, NodeConnectionType.Main, 0);
+						sourceData = get(executeData, ['source', NodeConnectionType.Main, 0], null);
+					}
+					return {
+						name,
+						sourceData,
+					};
+				});
+
 				const startRunData: IStartRunData = {
 					workflowData,
 					runData: newRunData,
 					pinData: workflowData.pinData,
-					startNodes,
+					startNodes: startNodesData,
 				};
 				if ('destinationNode' in options) {
 					startRunData.destinationNode = options.destinationNode;
@@ -261,7 +281,6 @@ export const workflowRun = defineComponent({
 						resultData: {
 							runData: newRunData || {},
 							pinData: workflowData.pinData,
-							startNodes,
 							workflowData,
 						},
 					} as IRunExecutionData,

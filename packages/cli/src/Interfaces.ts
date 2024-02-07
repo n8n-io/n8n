@@ -27,7 +27,7 @@ import type {
 
 import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 
-import type { WorkflowExecute } from 'n8n-core';
+import type { StartNodeData, WorkflowExecute } from 'n8n-core';
 
 import type PCancelable from 'p-cancelable';
 
@@ -532,7 +532,7 @@ export interface IWorkflowExecutionDataProcess {
 	pinData?: IPinData;
 	retryOf?: string;
 	sessionId?: string;
-	startNodes?: string[];
+	startNodes?: StartNodeData[];
 	workflowData: IWorkflowBase;
 	userId: string;
 }
