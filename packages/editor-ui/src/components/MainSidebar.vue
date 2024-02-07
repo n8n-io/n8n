@@ -230,7 +230,10 @@ export default defineComponent({
 					label: this.$locale.baseText('mainSidebar.templates'),
 					position: 'top',
 					available: this.settingsStore.isTemplatesEnabled,
-					route: { to: { name: VIEWS.TEMPLATES } },
+					link: {
+						href: 'https://n8n.io/workflows/?utm_source=n8n_app&utm_medium=template_library',
+						target: '_blank',
+					},
 				},
 				{
 					id: 'credentials',
