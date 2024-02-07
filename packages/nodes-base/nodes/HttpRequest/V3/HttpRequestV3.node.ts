@@ -988,7 +988,7 @@ export class HttpRequestV3 implements INodeType {
 											},
 											default: '',
 											description:
-												'Should evaluate to true when pagination is complete. More info.',
+												'Should evaluate to the URL of the next page. <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/#pagination" target="_blank">More info</a>.',
 										},
 										{
 											displayName: 'Parameters',
@@ -1112,7 +1112,7 @@ export class HttpRequestV3 implements INodeType {
 											},
 											default: '',
 											description:
-												'Should evaluate to true when pagination is complete. More info.',
+												'Should evaluate to true when pagination is complete. <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/#pagination" target="_blank">More info</a>.',
 										},
 										{
 											displayName: 'Limit Pages Fetched',
@@ -1704,13 +1704,25 @@ export class HttpRequestV3 implements INodeType {
 					paginationData.binaryResult = true;
 				}
 
-				const requestPromise = this.helpers.requestWithAuthenticationPaginated.call(
-					this,
-					requestOptions,
-					itemIndex,
-					paginationData,
-					nodeCredentialType ?? genericCredentialType,
-				);
+				const requestPromise = this.helpers.requestWithAuthenticationPaginated
+					.call(
+						this,
+						requestOptions,
+						itemIndex,
+						paginationData,
+						nodeCredentialType ?? genericCredentialType,
+					)
+					.catch((error) => {
+						if (error instanceof NodeOperationError && error.type === 'invalid_url') {
+							const urlParameterName =
+								pagination.paginationMode === 'responseContainsNextURL' ? 'Next URL' : 'URL';
+							throw new NodeOperationError(this.getNode(), error.message, {
+								description: `Make sure the "${urlParameterName}" parameter evaluates to a valid URL.`,
+							});
+						}
+
+						throw error;
+					});
 				requestPromises.push(requestPromise);
 			} else if (authentication === 'genericCredentialType' || authentication === 'none') {
 				if (oAuth1Api) {

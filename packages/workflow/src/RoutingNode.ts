@@ -223,7 +223,7 @@ export class RoutingNode {
 				returnData.push(...responseData);
 			} catch (error) {
 				if (thisArgs !== undefined && thisArgs.continueOnFail()) {
-					returnData.push({ json: {}, error: error as NodeError });
+					returnData.push({ json: {}, error: error as NodeApiError });
 					continue;
 				}
 
