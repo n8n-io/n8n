@@ -52,6 +52,7 @@ export class SeaTableApi implements ICredentialType {
 			displayName: 'API Token (of a Base)',
 			name: 'token',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 		{

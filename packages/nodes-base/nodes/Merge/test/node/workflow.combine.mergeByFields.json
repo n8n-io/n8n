@@ -278,8 +278,8 @@
 			{
 				"json": {
 					"id": 1,
-					"data": "c",
-					"input": 2,
+					"data": "a",
+					"input": 1,
 					"text": "foo",
 					"tag": "second"
 				}
@@ -287,8 +287,8 @@
 			{
 				"json": {
 					"id": 2,
-					"data": "d",
-					"input": 2,
+					"data": "b",
+					"input": 1,
 					"text": "foo",
 					"tag": "second"
 				}

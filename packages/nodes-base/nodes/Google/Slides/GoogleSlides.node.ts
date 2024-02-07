@@ -341,12 +341,12 @@ export class GoogleSlides implements INodeType {
 				description: 'Name of the binary property to which to write the data of the read page',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'Put Output File in Field',
 				name: 'binaryProperty',
 				type: 'string',
 				required: true,
 				default: 'data',
-				description: 'Name of the binary property to which to write to',
+				hint: 'The name of the output binary field to put the file in',
 				displayOptions: {
 					show: {
 						resource: ['page'],
@@ -591,6 +591,6 @@ export class GoogleSlides implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

@@ -33,11 +33,6 @@ export function sanitizeHtml(dirtyHtml: string) {
 	return sanitizedHtml;
 }
 
-export function getStyleTokenValue(name: string): string {
-	const style = getComputedStyle(document.body);
-	return style.getPropertyValue(name);
-}
-
 export function setPageTitle(title: string) {
 	window.document.title = title;
 }
@@ -59,4 +54,12 @@ export function isChildOf(parent: Element, child: Element): boolean {
 
 export const capitalizeFirstLetter = (text: string): string => {
 	return text.charAt(0).toUpperCase() + text.slice(1);
+};
+
+export const getBannerRowHeight = async (): Promise<number> => {
+	return new Promise((resolve) => {
+		setTimeout(() => {
+			resolve(document.getElementById('banners')?.clientHeight ?? 0);
+		}, 0);
+	});
 };

@@ -1,10 +1,14 @@
-import type { IExecuteFunctions } from 'n8n-core';
-import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { processJsonInput, updateDisplayOptions } from '../../../../../../utils/utilities';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeProperties,
+} from 'n8n-workflow';
 import type { ExcelResponse } from '../../helpers/interfaces';
 import { prepareOutput } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
 import { workbookRLC, worksheetRLC } from '../common.descriptions';
+import { processJsonInput, updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	workbookRLC,
@@ -220,7 +224,11 @@ export async function execute(
 	const dataProperty = this.getNodeParameter('options.dataProperty', 0, 'data') as string;
 
 	returnData.push(
-		...prepareOutput(this.getNode(), responseData, { columnsRow, dataProperty, rawData }),
+		...prepareOutput.call(this, this.getNode(), responseData, {
+			columnsRow,
+			dataProperty,
+			rawData,
+		}),
 	);
 
 	return returnData;

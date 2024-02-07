@@ -43,6 +43,7 @@ export class ShopifyApi implements ICredentialType {
 			displayName: 'Shared Secret',
 			name: 'sharedSecret',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];

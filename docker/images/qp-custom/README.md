@@ -2,13 +2,20 @@
 
 Dockerfile which allows to package up Qickplay patched n8n code into a docker image.
 
-## Usage
+## Build an image and run
 
-Execute the following in the n8n root folder:
+To build an image and run, execute the following commands in the n8n root folder:
 
+Build:
 ```bash
 docker build -t n8n-custom -f docker/images/qp-custom/Dockerfile .
 ```
+
+Run from image:
+```bash
+docker run -it --rm -p 5678:5678 n8n-custom
+```
+
 
 ## Development
 

@@ -4,6 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeListSearchItems,
 	INodePropertyOptions,
+	INode,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import type { GoogleSheet } from './GoogleSheet';
@@ -18,10 +19,16 @@ import { ResourceLocatorUiNames, ROW_NUMBER } from './GoogleSheets.types';
 export const untilSheetSelected = { sheetName: [''] };
 
 // Used to extract the ID from the URL
-export function getSpreadsheetId(documentIdType: ResourceLocator, value: string): string {
+export function getSpreadsheetId(
+	node: INode,
+	documentIdType: ResourceLocator,
+	value: string,
+): string {
 	if (!value) {
-		throw new Error(
+		throw new NodeOperationError(
+			node,
 			`Can not get sheet '${ResourceLocatorUiNames[documentIdType]}' with a value of '${value}'`,
+			{ level: 'warning' },
 		);
 	}
 	if (documentIdType === 'url') {
@@ -36,6 +43,11 @@ export function getSpreadsheetId(documentIdType: ResourceLocator, value: string)
 	}
 	// If it is byID or byList we can just return
 	return value;
+}
+
+export function getSheetId(value: string): number {
+	if (value === 'gid=0') return 0;
+	return parseInt(value);
 }
 
 // Convert number to Sheets / Excel column name
@@ -66,7 +78,6 @@ export function hexToRgb(hex: string) {
 	// Expand shorthand form (e.g. "03F") to full form (e.g. "0033FF")
 	const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
 	hex = hex.replace(shorthandRegex, (m, r, g, b) => {
-		// eslint-disable-next-line @typescript-eslint/restrict-plus-operands
 		return r + r + g + g + b + b;
 	});
 
@@ -102,7 +113,9 @@ export function trimToFirstEmptyRow(data: SheetRangeData, includesRowNumber = tr
 export function removeEmptyRows(data: SheetRangeData, includesRowNumber = true) {
 	const baseLength = includesRowNumber ? 1 : 0;
 	const notEmptyRows = data.filter((row) =>
-		row.slice(baseLength).some((cell) => cell || typeof cell === 'number'),
+		row
+			.slice(baseLength)
+			.some((cell) => cell || typeof cell === 'number' || typeof cell === 'boolean'),
 	);
 	if (includesRowNumber) {
 		notEmptyRows[0][0] = ROW_NUMBER;
@@ -143,7 +156,9 @@ export function removeEmptyColumns(data: SheetRangeData) {
 			returnData.push(column);
 		}
 	}
-	return (returnData[0] || []).map((_, i) => returnData.map((row) => row[i] || ''));
+	return (returnData[0] || []).map((_, i) =>
+		returnData.map((row) => (row[i] === undefined ? '' : row[i])),
+	);
 }
 
 export function prepareSheetData(
@@ -311,4 +326,11 @@ export function sortLoadOptions(data: INodePropertyOptions[] | INodeListSearchIt
 	});
 
 	return returnData;
+}
+
+export function cellFormatDefault(nodeVersion: number) {
+	if (nodeVersion < 4.1) {
+		return 'RAW';
+	}
+	return 'USER_ENTERED';
 }

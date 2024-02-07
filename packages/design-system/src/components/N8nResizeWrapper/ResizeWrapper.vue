@@ -12,7 +12,6 @@
 </template>
 
 <script lang="ts">
-/* eslint-disable @typescript-eslint/unbound-method */
 import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
 
@@ -48,7 +47,7 @@ const directionsCursorMaps: { [key: string]: string } = {
 };
 
 export default defineComponent({
-	name: 'n8n-resize',
+	name: 'N8nResize',
 	props: {
 		isResizingEnabled: {
 			type: Boolean,

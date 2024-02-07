@@ -8,6 +8,8 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import { capitalCase, pascalCase } from 'change-case';
+import moment from 'moment-timezone';
 import { keapApiRequest, keapApiRequestAllItems, keysToSnakeCase } from './GenericFunctions';
 
 import { contactFields, contactOperations } from './ContactDescription';
@@ -46,10 +48,6 @@ import type { IEcommerceProduct } from './EcommerceProductInterface';
 import type { IFile } from './FileInterface';
 
 import type { ICompany } from './CompanyInterface';
-
-import { capitalCase, pascalCase } from 'change-case';
-
-import moment from 'moment-timezone';
 
 export class Keap implements INodeType {
 	description: INodeTypeDescription = {
@@ -830,6 +828,6 @@ export class Keap implements INodeType {
 			returnData.push(...executionData);
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

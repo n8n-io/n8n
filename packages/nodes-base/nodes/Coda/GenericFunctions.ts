@@ -2,14 +2,13 @@ import type { OptionsWithUri } from 'request';
 import type {
 	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function codaApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
 
@@ -21,7 +20,10 @@ export async function codaApiRequest(
 	const credentials = await this.getCredentials('codaApi');
 
 	let options: OptionsWithUri = {
-		headers: { Authorization: `Bearer ${credentials.accessToken}` },
+		headers: {
+			Authorization: `Bearer ${credentials.accessToken}`,
+			'User-Agent': 'n8n',
+		},
 		method,
 		qs,
 		body,

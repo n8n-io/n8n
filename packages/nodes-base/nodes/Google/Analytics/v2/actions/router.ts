@@ -47,5 +47,5 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			throw error;
 		}
 	}
-	return this.prepareOutputData(returnData);
+	return [returnData];
 }

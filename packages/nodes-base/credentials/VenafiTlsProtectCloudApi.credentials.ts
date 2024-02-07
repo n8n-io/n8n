@@ -2,7 +2,7 @@ import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 export class VenafiTlsProtectCloudApi implements ICredentialType {
@@ -12,11 +12,28 @@ export class VenafiTlsProtectCloudApi implements ICredentialType {
 
 	documentationUrl = 'venafitlsprotectcloud';
 
-	properties = [
+	properties: INodeProperties[] = [
+		{
+			displayName: 'Region',
+			name: 'region',
+			type: 'options',
+			options: [
+				{
+					name: 'US',
+					value: 'cloud',
+				},
+				{
+					name: 'EU',
+					value: 'eu',
+				},
+			],
+			default: 'cloud',
+		},
 		{
 			displayName: 'API Key',
 			name: 'apiKey',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];
@@ -32,7 +49,7 @@ export class VenafiTlsProtectCloudApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: 'https://api.venafi.cloud',
+			baseURL: '=https://api.venafi.{{$credentials.region ?? "cloud"}}',
 			url: '/v1/preferences',
 		},
 	};

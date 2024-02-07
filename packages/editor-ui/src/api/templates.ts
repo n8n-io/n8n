@@ -6,6 +6,7 @@ import type {
 	ITemplatesCollectionResponse,
 	ITemplatesWorkflowResponse,
 	IWorkflowTemplate,
+	TemplateSearchFacet,
 } from '@/Interface';
 import type { IDataObject } from 'n8n-workflow';
 import { get } from '@/utils/apiUtils';
@@ -40,14 +41,18 @@ export async function getCollections(
 
 export async function getWorkflows(
 	apiEndpoint: string,
-	query: { skip: number; limit: number; categories: number[]; search: string },
+	query: { page: number; limit: number; categories: number[]; search: string },
 	headers?: IDataObject,
-): Promise<{ totalWorkflows: number; workflows: ITemplatesWorkflow[] }> {
+): Promise<{
+	totalWorkflows: number;
+	workflows: ITemplatesWorkflow[];
+	filters: TemplateSearchFacet[];
+}> {
 	return get(
 		apiEndpoint,
-		'/templates/workflows',
+		'/templates/search',
 		{
-			skip: query.skip,
+			page: query.page,
 			rows: query.limit,
 			category: stringifyArray(query.categories),
 			search: query.search,

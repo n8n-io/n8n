@@ -1,6 +1,6 @@
 <template>
 	<span>
-		<slot v-bind:bp="bp" v-bind:value="value" />
+		<slot :bp="bp" :value="value" />
 	</span>
 </template>
 
@@ -17,67 +17,57 @@ import { BREAKPOINT_SM, BREAKPOINT_MD, BREAKPOINT_LG, BREAKPOINT_XL } from '@/co
  * xl >= 1920
  */
 
-import { genericHelpers } from '@/mixins/genericHelpers';
-import { debounceHelper } from '@/mixins/debounce';
+import { useUIStore } from '@/stores/ui.store';
+import { getBannerRowHeight } from '@/utils/htmlUtils';
+import { useDebounce } from '@/composables/useDebounce';
 
 export default defineComponent({
 	name: 'BreakpointsObserver',
-	mixins: [genericHelpers, debounceHelper],
 	props: ['valueXS', 'valueXL', 'valueLG', 'valueMD', 'valueSM', 'valueDefault'],
+	setup() {
+		const { callDebounced } = useDebounce();
+		return { callDebounced };
+	},
 	data() {
 		return {
 			width: window.innerWidth,
 		};
 	},
-	created() {
-		window.addEventListener('resize', this.onResize);
-	},
-	beforeDestroy() {
-		window.removeEventListener('resize', this.onResize);
-	},
-	methods: {
-		onResize() {
-			void this.callDebounced('onResizeEnd', { debounceTime: 50 });
-		},
-		onResizeEnd() {
-			this.$data.width = window.innerWidth;
-		},
-	},
 	computed: {
 		bp(): string {
-			if (this.$data.width < BREAKPOINT_SM) {
+			if (this.width < BREAKPOINT_SM) {
 				return 'XS';
 			}
 
-			if (this.$data.width >= BREAKPOINT_XL) {
+			if (this.width >= BREAKPOINT_XL) {
 				return 'XL';
 			}
 
-			if (this.$data.width >= BREAKPOINT_LG) {
+			if (this.width >= BREAKPOINT_LG) {
 				return 'LG';
 			}
 
-			if (this.$data.width >= BREAKPOINT_MD) {
+			if (this.width >= BREAKPOINT_MD) {
 				return 'MD';
 			}
 
 			return 'SM';
 		},
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		value(): any | undefined {
-			if (this.valueXS !== undefined && this.$data.width < BREAKPOINT_SM) {
+
+		value(): number | undefined {
+			if (this.valueXS !== undefined && this.width < BREAKPOINT_SM) {
 				return this.valueXS;
 			}
 
-			if (this.valueXL !== undefined && this.$data.width >= BREAKPOINT_XL) {
+			if (this.valueXL !== undefined && this.width >= BREAKPOINT_XL) {
 				return this.valueXL;
 			}
 
-			if (this.valueLG !== undefined && this.$data.width >= BREAKPOINT_LG) {
+			if (this.valueLG !== undefined && this.width >= BREAKPOINT_LG) {
 				return this.valueLG;
 			}
 
-			if (this.valueMD !== undefined && this.$data.width >= BREAKPOINT_MD) {
+			if (this.valueMD !== undefined && this.width >= BREAKPOINT_MD) {
 				return this.valueMD;
 			}
 
@@ -86,6 +76,24 @@ export default defineComponent({
 			}
 
 			return this.valueDefault;
+		},
+	},
+	created() {
+		window.addEventListener('resize', this.onResize);
+	},
+	beforeUnmount() {
+		window.removeEventListener('resize', this.onResize);
+	},
+	methods: {
+		onResize() {
+			void this.callDebounced(this.onResizeEnd, { debounceTime: 50 });
+		},
+		async onResizeEnd() {
+			this.width = window.innerWidth;
+			await this.$nextTick();
+
+			const bannerHeight = await getBannerRowHeight();
+			useUIStore().updateBannersHeight(bannerHeight);
 		},
 	},
 });

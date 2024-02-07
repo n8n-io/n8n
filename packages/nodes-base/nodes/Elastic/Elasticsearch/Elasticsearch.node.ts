@@ -7,13 +7,12 @@ import type {
 } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 
+import omit from 'lodash/omit';
 import { elasticsearchApiRequest, elasticsearchApiRequestAllItems } from './GenericFunctions';
 
 import { documentFields, documentOperations, indexFields, indexOperations } from './descriptions';
 
 import type { DocumentGetAllOptions, FieldsUiValues } from './types';
-
-import omit from 'lodash/omit';
 
 export class Elasticsearch implements INodeType {
 	description: INodeTypeDescription = {
@@ -349,6 +348,6 @@ export class Elasticsearch implements INodeType {
 			returnData.push(...executionData);
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

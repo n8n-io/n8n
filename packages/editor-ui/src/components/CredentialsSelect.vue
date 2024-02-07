@@ -2,25 +2,25 @@
 	<div>
 		<div :class="$style['parameter-value-container']">
 			<n8n-select
+				ref="innerSelect"
 				:size="inputSize"
 				filterable
-				:value="displayValue"
+				:model-value="displayValue"
 				:placeholder="
 					parameter.placeholder ? getPlaceholder() : $locale.baseText('parameterInput.select')
 				"
 				:title="displayTitle"
 				:disabled="isReadOnly"
-				ref="innerSelect"
-				@change="(value) => $emit('valueChanged', value)"
+				data-test-id="credential-select"
+				@update:modelValue="(value) => $emit('update:modelValue', value)"
 				@keydown.stop
 				@focus="$emit('setFocus')"
 				@blur="$emit('onBlur')"
-				data-test-id="credential-select"
 			>
 				<n8n-option
 					v-for="credType in supportedCredentialTypes"
-					:value="credType.name"
 					:key="credType.name"
+					:value="credType.name"
 					:label="credType.displayName"
 					data-test-id="credential-select-option"
 				>
@@ -39,15 +39,15 @@
 			<slot name="issues-and-options" />
 		</div>
 
-		<scopes-notice
+		<ScopesNotice
 			v-if="scopes.length > 0"
-			:activeCredentialType="activeCredentialType"
+			:active-credential-type="activeCredentialType"
 			:scopes="scopes"
 		/>
 		<div>
-			<node-credentials
+			<NodeCredentials
 				:node="node"
-				:overrideCredType="node.parameters[parameter.name]"
+				:override-cred-type="node.parameters[parameter.name]"
 				@credentialSelected="(updateInformation) => $emit('credentialSelected', updateInformation)"
 			/>
 		</div>
@@ -109,6 +109,7 @@ export default defineComponent({
 			const supported = this.getSupportedSets(this.parameter.credentialTypes);
 
 			const checkedCredType = this.credentialsStore.getCredentialTypeByName(name);
+			if (!checkedCredType) return false;
 
 			for (const property of supported.has) {
 				if (checkedCredType[property as keyof ICredentialType] !== undefined) {

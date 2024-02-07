@@ -1,30 +1,32 @@
 <template>
-	<n8n-card :class="$style['card-link']" @click="onClick">
+	<n8n-card :class="$style.cardLink" @click="onClick">
 		<template #prepend>
-			<credential-icon :credential-type-name="credentialType ? credentialType.name : ''" />
+			<CredentialIcon :credential-type-name="credentialType ? credentialType.name : ''" />
 		</template>
 		<template #header>
-			<n8n-heading tag="h2" bold class="ph-no-capture" :class="$style['card-heading']">
+			<n8n-heading tag="h2" bold :class="$style.cardHeading">
 				{{ data.name }}
 			</n8n-heading>
 		</template>
-		<n8n-text color="text-light" size="small">
-			<span v-if="credentialType">{{ credentialType.displayName }} | </span>
-			<span v-show="data"
-				>{{ $locale.baseText('credentials.item.updated') }} <time-ago :date="data.updatedAt" /> |
-			</span>
-			<span v-show="data"
-				>{{ $locale.baseText('credentials.item.created') }} {{ formattedCreatedAtDate }}
-			</span>
-		</n8n-text>
+		<div :class="$style.cardDescription">
+			<n8n-text color="text-light" size="small">
+				<span v-if="credentialType">{{ credentialType.displayName }} | </span>
+				<span v-show="data"
+					>{{ $locale.baseText('credentials.item.updated') }} <TimeAgo :date="data.updatedAt" /> |
+				</span>
+				<span v-show="data"
+					>{{ $locale.baseText('credentials.item.created') }} {{ formattedCreatedAtDate }}
+				</span>
+			</n8n-text>
+		</div>
 		<template #append>
-			<div :class="$style['card-actions']">
+			<div ref="cardActions" :class="$style.cardActions">
 				<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
 					<n8n-badge v-if="credentialPermissions.isOwner" class="mr-xs" theme="tertiary" bold>
 						{{ $locale.baseText('credentials.item.owner') }}
 					</n8n-badge>
 				</enterprise-edition>
-				<n8n-action-toggle :actions="actions" theme="dark" @action="onAction" />
+				<n8n-action-toggle :actions="actions" theme="dark" @action="onAction" @click.stop />
 			</div>
 		</template>
 	</n8n-card>
@@ -35,7 +37,7 @@ import { defineComponent } from 'vue';
 import type { ICredentialsResponse, IUser } from '@/Interface';
 import type { ICredentialType } from 'n8n-workflow';
 import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
-import { useMessage } from '@/composables';
+import { useMessage } from '@/composables/useMessage';
 import CredentialIcon from '@/components/CredentialIcon.vue';
 import type { IPermissions } from '@/permissions';
 import { getCredentialPermissions } from '@/permissions';
@@ -52,16 +54,6 @@ export const CREDENTIAL_LIST_ITEM_ACTIONS = {
 };
 
 export default defineComponent({
-	data() {
-		return {
-			EnterpriseEditionFeature,
-		};
-	},
-	setup() {
-		return {
-			...useMessage(),
-		};
-	},
 	components: {
 		TimeAgo,
 		CredentialIcon,
@@ -86,12 +78,22 @@ export default defineComponent({
 			default: false,
 		},
 	},
+	setup() {
+		return {
+			...useMessage(),
+		};
+	},
+	data() {
+		return {
+			EnterpriseEditionFeature,
+		};
+	},
 	computed: {
 		...mapStores(useCredentialsStore, useUIStore, useUsersStore),
 		currentUser(): IUser | null {
 			return this.usersStore.currentUser;
 		},
-		credentialType(): ICredentialType {
+		credentialType(): ICredentialType | undefined {
 			return this.credentialsStore.getCredentialTypeByName(this.data.type);
 		},
 		credentialPermissions(): IPermissions | null {
@@ -128,12 +130,19 @@ export default defineComponent({
 		},
 	},
 	methods: {
-		async onClick() {
+		async onClick(event: Event) {
+			if (
+				this.$refs.cardActions === event.target ||
+				this.$refs.cardActions?.contains(event.target)
+			) {
+				return;
+			}
+
 			this.uiStore.openExistingCredential(this.data.id);
 		},
 		async onAction(action: string) {
 			if (action === CREDENTIAL_LIST_ITEM_ACTIONS.OPEN) {
-				await this.onClick();
+				await this.onClick(new Event('click'));
 			} else if (action === CREDENTIAL_LIST_ITEM_ACTIONS.DELETE) {
 				const deleteConfirmed = await this.confirm(
 					this.$locale.baseText(
@@ -162,23 +171,36 @@ export default defineComponent({
 </script>
 
 <style lang="scss" module>
-.card-link {
+.cardLink {
 	transition: box-shadow 0.3s ease;
 	cursor: pointer;
+	padding: 0 0 0 var(--spacing-s);
+	align-items: stretch;
 
 	&:hover {
 		box-shadow: 0 2px 8px rgba(#441c17, 0.1);
 	}
 }
 
-.card-heading {
+.cardHeading {
 	font-size: var(--font-size-s);
+	padding: var(--spacing-s) 0 0;
 }
 
-.card-actions {
+.cardDescription {
+	min-height: 19px;
+	display: flex;
+	align-items: center;
+	padding: 0 0 var(--spacing-s);
+}
+
+.cardActions {
 	display: flex;
 	flex-direction: row;
 	justify-content: center;
 	align-items: center;
+	align-self: stretch;
+	padding: 0 var(--spacing-s) 0 0;
+	cursor: default;
 }
 </style>

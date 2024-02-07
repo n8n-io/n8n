@@ -1160,9 +1160,9 @@ export class ServiceNow implements INodeType {
 
 		if (resource === 'attachment') {
 			if (operation === 'get' || operation === 'getAll') {
-				return this.prepareOutputData(returnData);
+				return [returnData];
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

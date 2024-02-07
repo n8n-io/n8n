@@ -1,20 +1,19 @@
 import type express from 'express';
-import { Service } from 'typedi';
-import * as Db from '@/Db';
+import Container, { Service } from 'typedi';
 import type { User } from '@db/entities/User';
-import { jsonParse, LoggerProxy } from 'n8n-workflow';
-import { AuthError, BadRequestError } from '@/ResponseHelper';
+import { ApplicationError, jsonParse } from 'n8n-workflow';
 import { getServiceProviderInstance } from './serviceProvider.ee';
 import type { SamlUserAttributes } from './types/samlUserAttributes';
 import { isSsoJustInTimeProvisioningEnabled } from '../ssoHelpers';
 import type { SamlPreferences } from './types/samlPreferences';
 import { SAML_PREFERENCES_DB_KEY } from './constants';
 import type { IdentityProviderInstance, ServiceProviderInstance } from 'samlify';
-import { IdentityProvider, setSchemaValidator } from 'samlify';
+import type { BindingContext, PostBindingContext } from 'samlify/types/src/entity';
 import {
 	createUserFromSamlAttributes,
 	getMappedSamlAttributesFromFlowResult,
 	getSamlLoginLabel,
+	isSamlLicensedAndEnabled,
 	isSamlLoginEnabled,
 	setSamlLoginEnabled,
 	setSamlLoginLabel,
@@ -24,13 +23,20 @@ import type { Settings } from '@db/entities/Settings';
 import axios from 'axios';
 import https from 'https';
 import type { SamlLoginBinding } from './types';
-import type { BindingContext, PostBindingContext } from 'samlify/types/src/entity';
 import { validateMetadata, validateResponse } from './samlValidator';
-import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
+import { Logger } from '@/Logger';
+import { UserRepository } from '@db/repositories/user.repository';
+import { SettingsRepository } from '@db/repositories/settings.repository';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { AuthError } from '@/errors/response-errors/auth.error';
+import { UrlService } from '@/services/url.service';
 
 @Service()
 export class SamlService {
 	private identityProviderInstance: IdentityProviderInstance | undefined;
+
+	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+	private samlify: typeof import('samlify') | undefined;
 
 	private _samlPreferences: SamlPreferences = {
 		mapping: {
@@ -49,7 +55,7 @@ export class SamlService {
 		loginLabel: 'SAML',
 		wantAssertionsSigned: true,
 		wantMessageSigned: true,
-		relayState: getInstanceBaseUrl(),
+		relayState: this.urlService.getInstanceBaseUrl(),
 		signatureConfig: {
 			prefix: 'ds',
 			location: {
@@ -67,21 +73,41 @@ export class SamlService {
 		};
 	}
 
+	constructor(
+		private readonly logger: Logger,
+		private readonly urlService: UrlService,
+	) {}
+
 	async init(): Promise<void> {
-		await this.loadFromDbAndApplySamlPreferences();
-		setSchemaValidator({
+		// load preferences first but do not apply so as to not load samlify unnecessarily
+		await this.loadFromDbAndApplySamlPreferences(false);
+		if (isSamlLicensedAndEnabled()) {
+			await this.loadSamlify();
+			await this.loadFromDbAndApplySamlPreferences(true);
+		}
+	}
+
+	async loadSamlify() {
+		if (this.samlify === undefined) {
+			this.logger.debug('Loading samlify library into memory');
+			this.samlify = await import('samlify');
+		}
+		this.samlify.setSchemaValidator({
 			validate: async (response: string) => {
 				const valid = await validateResponse(response);
 				if (!valid) {
-					throw new Error('Invalid SAML response');
+					throw new ApplicationError('Invalid SAML response');
 				}
 			},
 		});
 	}
 
 	getIdentityProviderInstance(forceRecreate = false): IdentityProviderInstance {
+		if (this.samlify === undefined) {
+			throw new ApplicationError('Samlify is not initialized');
+		}
 		if (this.identityProviderInstance === undefined || forceRecreate) {
-			this.identityProviderInstance = IdentityProvider({
+			this.identityProviderInstance = this.samlify.IdentityProvider({
 				metadata: this._samlPreferences.metadata,
 			});
 		}
@@ -90,16 +116,20 @@ export class SamlService {
 	}
 
 	getServiceProviderInstance(): ServiceProviderInstance {
-		return getServiceProviderInstance(this._samlPreferences);
+		if (this.samlify === undefined) {
+			throw new ApplicationError('Samlify is not initialized');
+		}
+		return getServiceProviderInstance(this._samlPreferences, this.samlify);
 	}
 
-	getLoginRequestUrl(
+	async getLoginRequestUrl(
 		relayState?: string,
 		binding?: SamlLoginBinding,
-	): {
+	): Promise<{
 		binding: SamlLoginBinding;
 		context: BindingContext | PostBindingContext;
-	} {
+	}> {
+		await this.loadSamlify();
 		if (binding === undefined) binding = this._samlPreferences.loginBinding ?? 'redirect';
 		if (binding === 'post') {
 			return {
@@ -116,22 +146,18 @@ export class SamlService {
 
 	private getRedirectLoginRequestUrl(relayState?: string): BindingContext {
 		const sp = this.getServiceProviderInstance();
-		sp.entitySetting.relayState = relayState ?? getInstanceBaseUrl();
+		sp.entitySetting.relayState = relayState ?? this.urlService.getInstanceBaseUrl();
 		const loginRequest = sp.createLoginRequest(this.getIdentityProviderInstance(), 'redirect');
-		//TODO:SAML: debug logging
-		LoggerProxy.debug(loginRequest.context);
 		return loginRequest;
 	}
 
 	private getPostLoginRequestUrl(relayState?: string): PostBindingContext {
 		const sp = this.getServiceProviderInstance();
-		sp.entitySetting.relayState = relayState ?? getInstanceBaseUrl();
+		sp.entitySetting.relayState = relayState ?? this.urlService.getInstanceBaseUrl();
 		const loginRequest = sp.createLoginRequest(
 			this.getIdentityProviderInstance(),
 			'post',
 		) as PostBindingContext;
-		//TODO:SAML: debug logging
-		LoggerProxy.debug(loginRequest.context);
 		return loginRequest;
 	}
 
@@ -145,8 +171,9 @@ export class SamlService {
 	}> {
 		const attributes = await this.getAttributesFromLoginResponse(req, binding);
 		if (attributes.email) {
-			const user = await Db.collections.User.findOne({
-				where: { email: attributes.email },
+			const lowerCasedEmail = attributes.email.toLowerCase();
+			const user = await Container.get(UserRepository).findOne({
+				where: { email: lowerCasedEmail },
 				relations: ['globalRole', 'authIdentities'],
 			});
 			if (user) {
@@ -191,6 +218,25 @@ export class SamlService {
 	}
 
 	async setSamlPreferences(prefs: SamlPreferences): Promise<SamlPreferences | undefined> {
+		await this.loadSamlify();
+		await this.loadPreferencesWithoutValidation(prefs);
+		if (prefs.metadataUrl) {
+			const fetchedMetadata = await this.fetchMetadataFromUrl();
+			if (fetchedMetadata) {
+				this._samlPreferences.metadata = fetchedMetadata;
+			}
+		} else if (prefs.metadata) {
+			const validationResult = await validateMetadata(prefs.metadata);
+			if (!validationResult) {
+				throw new ApplicationError('Invalid SAML metadata');
+			}
+		}
+		this.getIdentityProviderInstance(true);
+		const result = await this.saveSamlPreferencesToDb();
+		return result;
+	}
+
+	async loadPreferencesWithoutValidation(prefs: SamlPreferences) {
 		this._samlPreferences.loginBinding = prefs.loginBinding ?? this._samlPreferences.loginBinding;
 		this._samlPreferences.metadata = prefs.metadata ?? this._samlPreferences.metadata;
 		this._samlPreferences.mapping = prefs.mapping ?? this._samlPreferences.mapping;
@@ -206,34 +252,27 @@ export class SamlService {
 			prefs.wantMessageSigned ?? this._samlPreferences.wantMessageSigned;
 		if (prefs.metadataUrl) {
 			this._samlPreferences.metadataUrl = prefs.metadataUrl;
-			const fetchedMetadata = await this.fetchMetadataFromUrl();
-			if (fetchedMetadata) {
-				this._samlPreferences.metadata = fetchedMetadata;
-			}
 		} else if (prefs.metadata) {
 			// remove metadataUrl if metadata is set directly
 			this._samlPreferences.metadataUrl = undefined;
-			const validationResult = await validateMetadata(prefs.metadata);
-			if (!validationResult) {
-				throw new Error('Invalid SAML metadata');
-			}
 			this._samlPreferences.metadata = prefs.metadata;
 		}
 		await setSamlLoginEnabled(prefs.loginEnabled ?? isSamlLoginEnabled());
 		setSamlLoginLabel(prefs.loginLabel ?? getSamlLoginLabel());
-		this.getIdentityProviderInstance(true);
-		const result = await this.saveSamlPreferencesToDb();
-		return result;
 	}
 
-	async loadFromDbAndApplySamlPreferences(): Promise<SamlPreferences | undefined> {
-		const samlPreferences = await Db.collections.Settings.findOne({
+	async loadFromDbAndApplySamlPreferences(apply = true): Promise<SamlPreferences | undefined> {
+		const samlPreferences = await Container.get(SettingsRepository).findOne({
 			where: { key: SAML_PREFERENCES_DB_KEY },
 		});
 		if (samlPreferences) {
 			const prefs = jsonParse<SamlPreferences>(samlPreferences.value);
 			if (prefs) {
-				await this.setSamlPreferences(prefs);
+				if (apply) {
+					await this.setSamlPreferences(prefs);
+				} else {
+					await this.loadPreferencesWithoutValidation(prefs);
+				}
 				return prefs;
 			}
 		}
@@ -241,16 +280,16 @@ export class SamlService {
 	}
 
 	async saveSamlPreferencesToDb(): Promise<SamlPreferences | undefined> {
-		const samlPreferences = await Db.collections.Settings.findOne({
+		const samlPreferences = await Container.get(SettingsRepository).findOne({
 			where: { key: SAML_PREFERENCES_DB_KEY },
 		});
 		const settingsValue = JSON.stringify(this.samlPreferences);
 		let result: Settings;
 		if (samlPreferences) {
 			samlPreferences.value = settingsValue;
-			result = await Db.collections.Settings.save(samlPreferences);
+			result = await Container.get(SettingsRepository).save(samlPreferences);
 		} else {
-			result = await Db.collections.Settings.save({
+			result = await Container.get(SettingsRepository).save({
 				key: SAML_PREFERENCES_DB_KEY,
 				value: settingsValue,
 				loadOnStartup: true,
@@ -261,6 +300,7 @@ export class SamlService {
 	}
 
 	async fetchMetadataFromUrl(): Promise<string | undefined> {
+		await this.loadSamlify();
 		if (!this._samlPreferences.metadataUrl)
 			throw new BadRequestError('Error fetching SAML Metadata, no Metadata URL set');
 		try {
@@ -281,7 +321,6 @@ export class SamlService {
 			}
 		} catch (error) {
 			throw new BadRequestError(
-				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 				`Error fetching SAML Metadata from ${this._samlPreferences.metadataUrl}: ${error}`,
 			);
 		}
@@ -296,6 +335,7 @@ export class SamlService {
 		if (!this._samlPreferences.mapping)
 			throw new BadRequestError('Error fetching SAML Attributes, no Attribute mapping set');
 		try {
+			await this.loadSamlify();
 			parsedSamlResponse = await this.getServiceProviderInstance().parseLoginResponse(
 				this.getIdentityProviderInstance(),
 				binding,
@@ -322,47 +362,5 @@ export class SamlService {
 			);
 		}
 		return attributes;
-	}
-
-	async testSamlConnection(): Promise<boolean> {
-		try {
-			// TODO:SAML: this will not work once axios is upgraded to > 1.2.0 (see checkServerIdentity)
-			const agent = new https.Agent({
-				rejectUnauthorized: !this._samlPreferences.ignoreSSL,
-			});
-			const requestContext = this.getLoginRequestUrl();
-			if (!requestContext) return false;
-			if (requestContext.binding === 'redirect') {
-				const fetchResult = await axios.get(requestContext.context.context, { httpsAgent: agent });
-				if (fetchResult.status !== 200) {
-					LoggerProxy.debug('SAML: Error while testing SAML connection.');
-					return false;
-				}
-			} else if (requestContext.binding === 'post') {
-				const context = requestContext.context as PostBindingContext;
-				const endpoint = context.entityEndpoint;
-				const params = new URLSearchParams();
-				params.append(context.type, context.context);
-				if (context.relayState) {
-					params.append('RelayState', context.relayState);
-				}
-				const fetchResult = await axios.post(endpoint, params, {
-					headers: {
-						// eslint-disable-next-line @typescript-eslint/naming-convention
-						'Content-type': 'application/x-www-form-urlencoded',
-					},
-					httpsAgent: agent,
-				});
-				if (fetchResult.status !== 200) {
-					LoggerProxy.debug('SAML: Error while testing SAML connection.');
-					return false;
-				}
-			}
-			return true;
-		} catch (error) {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-			LoggerProxy.debug('SAML: Error while testing SAML connection: ', error);
-		}
-		return false;
 	}
 }

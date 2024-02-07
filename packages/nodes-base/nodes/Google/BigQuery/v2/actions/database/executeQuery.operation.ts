@@ -1,19 +1,23 @@
-import type { IExecuteFunctions } from 'n8n-core';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeProperties,
+} from 'n8n-workflow';
 
-import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-
-import { NodeOperationError, sleep } from 'n8n-workflow';
-import { updateDisplayOptions } from '../../../../../../utils/utilities';
-import type { JobInsertResponse } from '../../helpers/interfaces';
+import { ApplicationError, NodeOperationError, sleep } from 'n8n-workflow';
+import type { ResponseWithJobReference } from '../../helpers/interfaces';
 
 import { prepareOutput } from '../../helpers/utils';
 import { googleApiRequest } from '../../transport';
+import { getResolvables, updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	{
 		displayName: 'SQL Query',
 		name: 'sqlQuery',
 		type: 'string',
+		noDataExpression: true,
 		typeOptions: {
 			editor: 'sqlEditor',
 		},
@@ -31,6 +35,7 @@ const properties: INodeProperties[] = [
 		displayName: 'SQL Query',
 		name: 'sqlQuery',
 		type: 'string',
+		noDataExpression: true,
 		typeOptions: {
 			editor: 'sqlEditor',
 		},
@@ -86,7 +91,7 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Location',
+				displayName: 'Location (Region)',
 				name: 'location',
 				type: 'string',
 				default: '',
@@ -160,11 +165,15 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 	for (let i = 0; i < length; i++) {
 		try {
-			const sqlQuery = this.getNodeParameter('sqlQuery', i) as string;
+			let sqlQuery = this.getNodeParameter('sqlQuery', i) as string;
 			const options = this.getNodeParameter('options', i);
 			const projectId = this.getNodeParameter('projectId', i, undefined, {
 				extractValue: true,
 			});
+
+			for (const resolvable of getResolvables(sqlQuery)) {
+				sqlQuery = sqlQuery.replace(resolvable, this.evaluateExpression(resolvable, i) as string);
+			}
 
 			let rawOutput = false;
 			let includeSchema = false;
@@ -194,7 +203,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				body.useLegacySql = false;
 			}
 
-			const response: JobInsertResponse = await googleApiRequest.call(
+			const response: ResponseWithJobReference = await googleApiRequest.call(
 				this,
 				'POST',
 				`/v2/projects/${projectId}/jobs`,
@@ -214,9 +223,10 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 			const jobId = response?.jobReference?.jobId;
 			const raw = rawOutput || (options.dryRun as boolean) || false;
+			const location = options.location || response.jobReference.location;
 
 			if (response.status?.state === 'DONE') {
-				const qs = options.location ? { location: options.location } : {};
+				const qs = { location };
 
 				const queryResponse: IDataObject = await googleApiRequest.call(
 					this,
@@ -226,9 +236,9 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 					qs,
 				);
 
-				returnData.push(...prepareOutput(queryResponse, i, raw, includeSchema));
+				returnData.push(...prepareOutput.call(this, queryResponse, i, raw, includeSchema));
 			} else {
-				jobs.push({ jobId, projectId, i, raw, includeSchema, location: options.location });
+				jobs.push({ jobId, projectId, i, raw, includeSchema, location });
 			}
 		} catch (error) {
 			if (this.continueOnFail()) {
@@ -239,9 +249,13 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				returnData.push(...executionErrorData);
 				continue;
 			}
-			throw new NodeOperationError(this.getNode(), error.message as string, {
+			if ((error.message as string).includes('location')) {
+				error.description =
+					"Are you sure your table is in that region? You can specify the region using the 'Location' parameter from options.";
+			}
+			throw new NodeOperationError(this.getNode(), error as Error, {
 				itemIndex: i,
-				description: error?.description,
+				description: error.description,
 			});
 		}
 	}
@@ -265,14 +279,15 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				if (response.jobComplete) {
 					completedJobs.push(job.jobId);
 
-					returnData.push(...prepareOutput(response, job.i, job.raw, job.includeSchema));
+					returnData.push(...prepareOutput.call(this, response, job.i, job.raw, job.includeSchema));
 				}
 				if ((response?.errors as IDataObject[])?.length) {
 					const errorMessages = (response.errors as IDataObject[]).map((error) => error.message);
-					throw new Error(
+					throw new ApplicationError(
 						`Error(s) ocurring while executing query from item ${job.i.toString()}: ${errorMessages.join(
 							', ',
 						)}`,
+						{ level: 'warning' },
 					);
 				}
 			} catch (error) {
@@ -284,9 +299,9 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 					returnData.push(...executionErrorData);
 					continue;
 				}
-				throw new NodeOperationError(this.getNode(), error.message as string, {
+				throw new NodeOperationError(this.getNode(), error as Error, {
 					itemIndex: job.i,
-					description: error?.description,
+					description: error.description,
 				});
 			}
 		}

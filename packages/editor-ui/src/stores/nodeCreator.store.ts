@@ -7,7 +7,8 @@ import type {
 	ActionsRecord,
 } from '@/Interface';
 
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
+import { transformNodeType } from '@/components/Node/NodeCreator/utils';
 
 export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	const selectedView = ref<NodeFilterType>(TRIGGER_NODE_CREATOR_VIEW);
@@ -16,6 +17,10 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 
 	const showScrim = ref(false);
 	const openSource = ref<NodeCreatorOpenSource>('');
+
+	const allNodeCreatorNodes = computed(() =>
+		Object.values(mergedNodes.value).map((i) => transformNodeType(i)),
+	);
 
 	function setMergeNodes(nodes: SimplifiedNodeType[]) {
 		mergedNodes.value = nodes;
@@ -48,5 +53,6 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		setOpenSource,
 		setActions,
 		setMergeNodes,
+		allNodeCreatorNodes,
 	};
 });

@@ -13,7 +13,6 @@ import type {
 	INode,
 	INodeCredentialsDetails,
 	INodeType,
-	INodeTypeData,
 	INodeTypes,
 	IRun,
 	ITaskData,
@@ -22,9 +21,10 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	NodeLoadingDetails,
 	WorkflowTestData,
+	INodeTypeData,
 } from 'n8n-workflow';
 
-import { ICredentialsHelper, NodeHelpers, WorkflowHooks } from 'n8n-workflow';
+import { ApplicationError, ICredentialsHelper, NodeHelpers, WorkflowHooks } from 'n8n-workflow';
 import { Credentials } from '@/Credentials';
 
 import { predefinedNodesTypes } from './constants';
@@ -53,6 +53,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 	}
 
 	async getDecrypted(
+		additionalData: IWorkflowExecuteAdditionalData,
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 	): Promise<ICredentialDataDecryptedObject> {
@@ -129,16 +130,12 @@ export function WorkflowExecuteAdditionalData(
 		connections: {},
 	};
 
-	// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-	// @ts-ignore
 	return {
-		credentialsHelper: new CredentialsHelper(''),
+		credentialsHelper: new CredentialsHelper(),
 		hooks: new WorkflowHooks(hookFunctions, 'trigger', '1', workflowData),
 		executeWorkflow: async (workflowInfo: IExecuteWorkflowInfo) => {},
-		sendMessageToUI: (message: string) => {},
+		sendDataToUI: (message: string) => {},
 		restApiUrl: '',
-		encryptionKey: 'test',
-		timezone: 'America/New_York',
 		webhookBaseUrl: 'webhook',
 		webhookWaitingBaseUrl: 'webhook-waiting',
 		webhookTestBaseUrl: 'webhook-test',
@@ -180,11 +177,11 @@ export function getNodeTypes(testData: WorkflowTestData[] | WorkflowTestData) {
 
 	for (const nodeName of nodeNames) {
 		if (!nodeName.startsWith('n8n-nodes-base.')) {
-			throw new Error(`Unknown node type: ${nodeName}`);
+			throw new ApplicationError('Unknown node type', { tags: { nodeType: nodeName } });
 		}
 		const loadInfo = knownNodes[nodeName.replace('n8n-nodes-base.', '')];
 		if (!loadInfo) {
-			throw new Error(`Unknown node type: ${nodeName}`);
+			throw new ApplicationError('Unknown node type', { tags: { nodeType: nodeName } });
 		}
 		const sourcePath = loadInfo.sourcePath.replace(/^dist\//, './').replace(/\.js$/, '.ts');
 		const nodeSourcePath = path.join(BASE_DIR, 'nodes-base', sourcePath);
@@ -221,7 +218,7 @@ export const workflowToTests = (dirname: string, testFolder = 'workflows') => {
 		const description = filePath.replace('.json', '');
 		const workflowData = readJsonFileSync<IWorkflowBase>(filePath);
 		if (workflowData.pinData === undefined) {
-			throw new Error('Workflow data does not contain pinData');
+			throw new ApplicationError('Workflow data does not contain pinData');
 		}
 
 		const nodeData = preparePinData(workflowData.pinData);

@@ -8,14 +8,13 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
 import {
 	campaignFieldsMetadata,
 	mailchimpApiRequest,
 	mailchimpApiRequestAllItems,
 	validateJSON,
 } from './GenericFunctions';
-
-import moment from 'moment';
 
 const enum Status {
 	subscribe = 'subscribe',
@@ -2197,6 +2196,6 @@ export class Mailchimp implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

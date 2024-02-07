@@ -5,7 +5,7 @@ export class TwitterOAuth1Api implements ICredentialType {
 
 	extends = ['oAuth1Api'];
 
-	displayName = 'Twitter OAuth API';
+	displayName = 'X OAuth API';
 
 	documentationUrl = 'twitter';
 
@@ -33,6 +33,13 @@ export class TwitterOAuth1Api implements ICredentialType {
 			name: 'signatureMethod',
 			type: 'hidden',
 			default: 'HMAC-SHA1',
+		},
+		{
+			displayName:
+				'Some operations requires a Basic or a Pro API for more informations see <a href="https://developer.twitter.com/en/products/twitter-api" target="_blank">X API Docs</a>',
+			name: 'apiPermissioms',
+			type: 'notice',
+			default: '',
 		},
 	];
 }

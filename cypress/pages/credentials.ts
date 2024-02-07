@@ -5,7 +5,7 @@ export class CredentialsPage extends BasePage {
 	getters = {
 		emptyListCreateCredentialButton: () => cy.getByTestId('empty-resources-list').find('button'),
 		createCredentialButton: () => cy.getByTestId('resources-list-add'),
-		searchInput: () => cy.getByTestId('resources-list-search').find('input'),
+		searchInput: () => cy.getByTestId('resources-list-search'),
 		emptyList: () => cy.getByTestId('resources-list-empty'),
 		credentialCards: () => cy.getByTestId('resources-list-item'),
 		credentialCard: (credentialName: string) =>
@@ -17,8 +17,9 @@ export class CredentialsPage extends BasePage {
 			this.getters.credentialCard(credentialName).findChildByTestId('credential-card-actions'),
 		credentialDeleteButton: () =>
 			cy.getByTestId('action-toggle-dropdown').filter(':visible').contains('Delete'),
-		sort: () => cy.getByTestId('resources-list-sort'),
-		sortOption: (label: string) => this.getters.sort().contains(label).first(),
+		sort: () => cy.getByTestId('resources-list-sort').first(),
+		sortOption: (label: string) =>
+			cy.getByTestId('resources-list-sort-item').contains(label).first(),
 		filtersTrigger: () => cy.getByTestId('resources-list-filters-trigger'),
 		filtersDropdown: () => cy.getByTestId('resources-list-filters-dropdown'),
 	};

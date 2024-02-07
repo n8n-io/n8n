@@ -1,12 +1,12 @@
 import { Column, Entity, ManyToOne, PrimaryColumn, Unique } from 'typeorm';
-import { AbstractEntity } from './AbstractEntity';
+import { WithTimestamps } from './AbstractEntity';
 import { User } from './User';
 
 export type AuthProviderType = 'ldap' | 'email' | 'saml'; // | 'google';
 
 @Entity()
 @Unique(['providerId', 'providerType'])
-export class AuthIdentity extends AbstractEntity {
+export class AuthIdentity extends WithTimestamps {
 	@Column()
 	userId: string;
 

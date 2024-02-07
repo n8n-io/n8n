@@ -1,13 +1,18 @@
 import { createHash } from 'crypto';
 import config from '@/config';
-import { ErrorReporterProxy, NodeError } from 'n8n-workflow';
+import { ErrorReporterProxy, ApplicationError } from 'n8n-workflow';
 
 let initialized = false;
 
 export const initErrorHandling = async () => {
 	if (initialized) return;
 
-	if (!config.getEnv('diagnostics.enabled')) {
+	process.on('uncaughtException', (error) => {
+		ErrorReporterProxy.error(error);
+	});
+
+	const dsn = config.getEnv('diagnostics.config.sentry.dsn');
+	if (!dsn) {
 		initialized = true;
 		return;
 	}
@@ -15,38 +20,64 @@ export const initErrorHandling = async () => {
 	// Collect longer stacktraces
 	Error.stackTraceLimit = 50;
 
-	const dsn = config.getEnv('diagnostics.config.sentry.dsn');
-	const { N8N_VERSION: release, ENVIRONMENT: environment } = process.env;
+	const {
+		N8N_VERSION: release,
+		ENVIRONMENT: environment,
+		DEPLOYMENT_NAME: serverName,
+	} = process.env;
 
-	const { init, captureException, addGlobalEventProcessor } = await import('@sentry/node');
-	// eslint-disable-next-line @typescript-eslint/naming-convention
+	const { init, captureException, addEventProcessor } = await import('@sentry/node');
+
 	const { RewriteFrames } = await import('@sentry/integrations');
+	const { Integrations } = await import('@sentry/node');
 
+	const enabledIntegrations = [
+		'InboundFilters',
+		'FunctionToString',
+		'LinkedErrors',
+		'OnUnhandledRejection',
+		'ContextLines',
+	];
 	init({
 		dsn,
 		release,
 		environment,
-		integrations: (integrations) => {
-			integrations = integrations.filter(({ name }) => name !== 'OnUncaughtException');
-			integrations.push(new RewriteFrames({ root: process.cwd() }));
-			return integrations;
-		},
+		enableTracing: false,
+		serverName,
+		beforeBreadcrumb: () => null,
+		integrations: (integrations) => [
+			...integrations.filter(({ name }) => enabledIntegrations.includes(name)),
+			new RewriteFrames({ root: process.cwd() }),
+			new Integrations.RequestData({
+				include: {
+					cookies: false,
+					data: false,
+					headers: false,
+					query_string: false,
+					url: true,
+					user: false,
+				},
+			}),
+		],
 	});
 
 	const seenErrors = new Set<string>();
-	addGlobalEventProcessor((event, { originalException }) => {
-		if (originalException instanceof NodeError && originalException.severity === 'warning')
-			return null;
-		if (!event.exception) return null;
-		const eventHash = createHash('sha1').update(JSON.stringify(event.exception)).digest('base64');
+	addEventProcessor((event, { originalException }) => {
+		if (!originalException) return null;
+
+		if (originalException instanceof ApplicationError) {
+			const { level, extra, tags } = originalException;
+			if (level === 'warning') return null;
+			event.level = level;
+			if (extra) event.extra = { ...event.extra, ...extra };
+			if (tags) event.tags = { ...event.tags, ...tags };
+		}
+
+		const eventHash = createHash('sha1').update(JSON.stringify(originalException)).digest('base64');
 		if (seenErrors.has(eventHash)) return null;
 		seenErrors.add(eventHash);
-		return event;
-	});
 
-	process.on('uncaughtException', (error) => {
-		ErrorReporterProxy.error(error);
-		if (error.constructor?.name !== 'AxiosError') throw error;
+		return event;
 	});
 
 	ErrorReporterProxy.init({

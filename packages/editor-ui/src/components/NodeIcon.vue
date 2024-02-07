@@ -7,8 +7,10 @@
 		:disabled="disabled"
 		:size="size"
 		:circle="circle"
-		:nodeTypeName="nodeType ? nodeType.displayName : ''"
-		:showTooltip="showTooltip"
+		:node-type-name="nodeName ?? nodeType?.displayName ?? ''"
+		:show-tooltip="showTooltip"
+		:tooltip-position="tooltipPosition"
+		:badge="badge"
 		@click="(e) => $emit('click')"
 	></n8n-node-icon>
 </template>
@@ -18,7 +20,7 @@ import type { IVersionNode } from '@/Interface';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { mapStores } from 'pinia';
-import { defineComponent } from 'vue';
+import { defineComponent, type PropType } from 'vue';
 
 interface NodeIconSource {
 	path?: string;
@@ -29,7 +31,9 @@ interface NodeIconSource {
 export default defineComponent({
 	name: 'NodeIcon',
 	props: {
-		nodeType: {},
+		nodeType: {
+			type: Object as PropType<INodeTypeDescription | IVersionNode | null>,
+		},
 		size: {
 			type: Number,
 			required: false,
@@ -42,15 +46,27 @@ export default defineComponent({
 			type: Boolean,
 			default: false,
 		},
+		colorDefault: {
+			type: String,
+			required: false,
+		},
 		showTooltip: {
 			type: Boolean,
 			default: false,
+		},
+		tooltipPosition: {
+			type: String,
+			default: 'top',
+		},
+		nodeName: {
+			type: String,
+			required: false,
 		},
 	},
 	computed: {
 		...mapStores(useRootStore),
 		type(): string {
-			const nodeType = this.nodeType as INodeTypeDescription | IVersionNode | null;
+			const nodeType = this.nodeType;
 			let iconType = 'unknown';
 			if (nodeType) {
 				if (nodeType.iconUrl) return 'file';
@@ -63,14 +79,17 @@ export default defineComponent({
 			return iconType;
 		},
 		color(): string {
-			const nodeType = this.nodeType as INodeTypeDescription | IVersionNode | null;
-			if (nodeType && nodeType.defaults && nodeType.defaults.color) {
+			const nodeType = this.nodeType;
+			if (nodeType?.defaults?.color) {
 				return nodeType.defaults.color.toString();
+			}
+			if (this.colorDefault) {
+				return this.colorDefault;
 			}
 			return '';
 		},
 		iconSource(): NodeIconSource {
-			const nodeType = this.nodeType as INodeTypeDescription | IVersionNode | null;
+			const nodeType = this.nodeType;
 			const baseUrl = this.rootStore.getBaseUrl;
 			const iconSource = {} as NodeIconSource;
 
@@ -96,6 +115,14 @@ export default defineComponent({
 				}
 			}
 			return iconSource;
+		},
+		badge(): { src: string; type: string } | undefined {
+			const nodeType = this.nodeType as INodeTypeDescription;
+			if (nodeType && 'badgeIconUrl' in nodeType && nodeType.badgeIconUrl) {
+				return { type: 'file', src: this.rootStore.getBaseUrl + nodeType.badgeIconUrl };
+			}
+
+			return undefined;
 		},
 	},
 });

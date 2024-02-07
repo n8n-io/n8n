@@ -8,25 +8,14 @@ interface SigninPayload {
 	password: string;
 }
 
-interface SetupPayload {
-	email: string;
-	password: string;
-	firstName: string;
-	lastName: string;
-}
-
-interface SignupPayload extends SetupPayload {
-	url: string;
-}
-
-interface InviteUsersPayload {
-	instanceOwner: SigninPayload;
-	users: SetupPayload[];
-}
-
 declare global {
 	namespace Cypress {
+		interface SuiteConfigOverrides {
+			disableAutoLogin: boolean;
+		}
+
 		interface Chainable {
+			config(key: keyof SuiteConfigOverrides): boolean;
 			getByTestId(
 				selector: string,
 				...args: (Partial<Loggable & Timeoutable & Withinable & Shadow> | undefined)[]
@@ -34,22 +23,33 @@ declare global {
 			findChildByTestId(childTestId: string): Chainable<JQuery<HTMLElement>>;
 			createFixtureWorkflow(fixtureKey: string, workflowName: string): void;
 			signin(payload: SigninPayload): void;
+			signinAsOwner(): void;
 			signout(): void;
-			signup(payload: SignupPayload): void;
-			setup(payload: SetupPayload, skipIntercept?: boolean): void;
-			setupOwner(payload: SetupPayload): void;
-			inviteUsers(payload: InviteUsersPayload): void;
 			interceptREST(method: string, url: string): Chainable<Interception>;
-			skipSetup(): void;
-			resetAll(): void;
 			enableFeature(feature: string): void;
 			disableFeature(feature: string): void;
+			enableQueueMode(): void;
+			disableQueueMode(): void;
 			waitForLoad(waitForIntercepts?: boolean): void;
 			grantBrowserPermissions(...permissions: string[]): void;
 			readClipboard(): Chainable<string>;
 			paste(pastePayload: string): void;
-			drag(selector: string, target: [number, number], options?: {abs?: true, index?: number}): void;
+			drag(
+				selector: string | Cypress.Chainable<JQuery<HTMLElement>>,
+				target: [number, number],
+				options?: { abs?: boolean; index?: number; realMouse?: boolean; clickToFinish?: boolean },
+			): void;
 			draganddrop(draggableSelector: string, droppableSelector: string): void;
+			push(type: string, data: unknown): void;
+			shouldNotHaveConsoleErrors(): void;
+			window(): Chainable<
+				AUTWindow & {
+					featureFlags: {
+						override: (feature: string, value: any) => void;
+					};
+				}
+			>;
+			resetDatabase(): void;
 		}
 	}
 }

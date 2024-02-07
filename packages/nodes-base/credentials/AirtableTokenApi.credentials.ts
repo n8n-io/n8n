@@ -20,6 +20,16 @@ export class AirtableTokenApi implements ICredentialType {
 			typeOptions: { password: true },
 			default: '',
 		},
+		{
+			displayName: `Make sure you enabled the following scopes for your token:<br>
+				<code>data.records:read</code><br>
+				<code>data.records:write</code><br>
+				<code>schema.bases:read</code><br>
+				`,
+			name: 'notice',
+			type: 'notice',
+			default: '',
+		},
 	];
 
 	authenticate: IAuthenticateGeneric = {

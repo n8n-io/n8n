@@ -23,6 +23,7 @@ export async function linearApiRequest(
 	option: IDataObject = {},
 ): Promise<any> {
 	const endpoint = 'https://api.linear.app/graphql';
+	const authenticationMethod = this.getNodeParameter('authentication', 0, 'apiToken') as string;
 
 	let options: OptionsWithUri = {
 		headers: {
@@ -35,7 +36,11 @@ export async function linearApiRequest(
 	};
 	options = Object.assign({}, options, option);
 	try {
-		return await this.helpers.requestWithAuthentication.call(this, 'linearApi', options);
+		return await this.helpers.requestWithAuthentication.call(
+			this,
+			authenticationMethod === 'apiToken' ? 'linearApi' : 'linearOAuth2Api',
+			options,
+		);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}

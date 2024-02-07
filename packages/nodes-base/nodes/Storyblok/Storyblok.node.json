@@ -2,7 +2,7 @@
 	"node": "n8n-nodes-base.storyblok",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": ["Data & Storage", "Marketing & Content"],
+	"categories": ["Data & Storage", "Marketing"],
 	"resources": {
 		"credentialDocumentation": [
 			{

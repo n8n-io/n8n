@@ -1,5 +1,9 @@
-import type { IExecuteFunctions } from 'n8n-core';
-import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeProperties,
+} from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import type {
@@ -9,15 +13,14 @@ import type {
 	WhereClause,
 } from '../../helpers/interfaces';
 
-import { updateDisplayOptions } from '../../../../../utils/utilities';
-
-import { addWhereClauses } from '../../helpers/utils';
+import { addWhereClauses, escapeSqlIdentifier } from '../../helpers/utils';
 
 import {
 	optionsCollection,
 	selectRowsFixedCollection,
 	combineConditionsCollection,
 } from '../common.descriptions';
+import { updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	{
@@ -95,11 +98,11 @@ export async function execute(
 		let values: QueryValues = [];
 
 		if (deleteCommand === 'drop') {
-			query = `DROP TABLE IF EXISTS \`${table}\``;
+			query = `DROP TABLE IF EXISTS ${escapeSqlIdentifier(table)}`;
 		}
 
 		if (deleteCommand === 'truncate') {
-			query = `TRUNCATE TABLE \`${table}\``;
+			query = `TRUNCATE TABLE ${escapeSqlIdentifier(table)}`;
 		}
 
 		if (deleteCommand === 'delete') {
@@ -111,7 +114,7 @@ export async function execute(
 			[query, values] = addWhereClauses(
 				this.getNode(),
 				i,
-				`DELETE FROM \`${table}\``,
+				`DELETE FROM ${escapeSqlIdentifier(table)}`,
 				whereClauses,
 				values,
 				combineConditions,

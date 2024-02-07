@@ -3,14 +3,13 @@ import type { OptionsWithUri } from 'request';
 import type {
 	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function contentfulApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
 
@@ -44,7 +43,7 @@ export async function contentfulApiRequest(
 	}
 }
 
-export async function contenfulApiRequestAllItems(
+export async function contentfulApiRequestAllItems(
 	this: ILoadOptionsFunctions | IExecuteFunctions,
 	propertyName: string,
 	method: string,

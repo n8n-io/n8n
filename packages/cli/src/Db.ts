@@ -1,15 +1,9 @@
-/* eslint-disable import/no-mutable-exports */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
-/* eslint-disable no-case-declarations */
-/* eslint-disable @typescript-eslint/naming-convention */
 import { Container } from 'typedi';
 import type { DataSourceOptions as ConnectionOptions, EntityManager, LoggerOptions } from 'typeorm';
 import { DataSource as Connection } from 'typeorm';
 import type { TlsOptions } from 'tls';
-import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
-
-import type { IDatabaseCollections } from '@/Interfaces';
+import { ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 
 import config from '@/config';
 
@@ -24,30 +18,6 @@ import {
 import { inTest } from '@/constants';
 import { wrapMigration } from '@db/utils/migrationHelpers';
 import type { DatabaseType, Migration } from '@db/types';
-import {
-	AuthIdentityRepository,
-	AuthProviderSyncHistoryRepository,
-	CredentialsRepository,
-	EventDestinationsRepository,
-	ExecutionDataRepository,
-	ExecutionMetadataRepository,
-	ExecutionRepository,
-	InstalledNodesRepository,
-	InstalledPackagesRepository,
-	RoleRepository,
-	SettingsRepository,
-	SharedCredentialsRepository,
-	SharedWorkflowRepository,
-	TagRepository,
-	UserRepository,
-	VariablesRepository,
-	WebhookRepository,
-	WorkflowRepository,
-	WorkflowStatisticsRepository,
-	WorkflowTagMappingRepository,
-} from '@db/repositories';
-
-export const collections = {} as IDatabaseCollections;
 
 let connection: Connection;
 
@@ -95,7 +65,7 @@ export function getConnectionOptions(dbType: DatabaseType): ConnectionOptions {
 			const sslKey = config.getEnv('database.postgresdb.ssl.key');
 			const sslRejectUnauthorized = config.getEnv('database.postgresdb.ssl.rejectUnauthorized');
 
-			let ssl: TlsOptions | undefined;
+			let ssl: TlsOptions | boolean = config.getEnv('database.postgresdb.ssl.enabled');
 			if (sslCa !== '' || sslCert !== '' || sslKey !== '' || !sslRejectUnauthorized) {
 				ssl = {
 					ca: sslCa || undefined,
@@ -123,7 +93,7 @@ export function getConnectionOptions(dbType: DatabaseType): ConnectionOptions {
 			return getSqliteConnectionOptions();
 
 		default:
-			throw new Error(`The database "${dbType}" is currently not supported!`);
+			throw new ApplicationError('Database type currently not supported', { extra: { dbType } });
 	}
 }
 
@@ -170,27 +140,6 @@ export async function init(testConnectionOptions?: ConnectionOptions): Promise<v
 	}
 
 	connectionState.connected = true;
-
-	collections.AuthIdentity = Container.get(AuthIdentityRepository);
-	collections.AuthProviderSyncHistory = Container.get(AuthProviderSyncHistoryRepository);
-	collections.Credentials = Container.get(CredentialsRepository);
-	collections.EventDestinations = Container.get(EventDestinationsRepository);
-	collections.Execution = Container.get(ExecutionRepository);
-	collections.ExecutionData = Container.get(ExecutionDataRepository);
-	collections.ExecutionMetadata = Container.get(ExecutionMetadataRepository);
-	collections.InstalledNodes = Container.get(InstalledNodesRepository);
-	collections.InstalledPackages = Container.get(InstalledPackagesRepository);
-	collections.Role = Container.get(RoleRepository);
-	collections.Settings = Container.get(SettingsRepository);
-	collections.SharedCredentials = Container.get(SharedCredentialsRepository);
-	collections.SharedWorkflow = Container.get(SharedWorkflowRepository);
-	collections.Tag = Container.get(TagRepository);
-	collections.User = Container.get(UserRepository);
-	collections.Variables = Container.get(VariablesRepository);
-	collections.Webhook = Container.get(WebhookRepository);
-	collections.Workflow = Container.get(WorkflowRepository);
-	collections.WorkflowStatistics = Container.get(WorkflowStatisticsRepository);
-	collections.WorkflowTagMapping = Container.get(WorkflowTagMappingRepository);
 }
 
 export async function migrate() {

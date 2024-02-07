@@ -1,6 +1,7 @@
 import type { OptionsWithUri } from 'request';
 
 import type {
+	ICredentialDataDecryptedObject,
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
@@ -26,7 +27,14 @@ export async function strapiApiRequest(
 	uri?: string,
 	headers: IDataObject = {},
 ) {
-	const credentials = await this.getCredentials('strapiApi');
+	const authenticationMethod = this.getNodeParameter('authentication', 0);
+	let credentials: ICredentialDataDecryptedObject;
+
+	if (authenticationMethod === 'password') {
+		credentials = await this.getCredentials('strapiApi');
+	} else {
+		credentials = await this.getCredentials('strapiTokenApi');
+	}
 
 	const url = removeTrailingSlash(credentials.url as string);
 
@@ -49,7 +57,11 @@ export async function strapiApiRequest(
 			delete options.body;
 		}
 
-		return await this.helpers?.request(options);
+		return await this.helpers.requestWithAuthentication.call(
+			this,
+			authenticationMethod === 'password' ? 'strapiApi' : 'strapiTokenApi',
+			options,
+		);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
@@ -57,7 +69,7 @@ export async function strapiApiRequest(
 
 export async function getToken(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions,
-): Promise<any> {
+): Promise<{ jwt: string }> {
 	const credentials = await this.getCredentials('strapiApi');
 
 	const url = removeTrailingSlash(credentials.url as string);
@@ -75,7 +87,7 @@ export async function getToken(
 		uri: credentials.apiVersion === 'v4' ? `${url}/api/auth/local` : `${url}/auth/local`,
 		json: true,
 	};
-	return this.helpers.request(options);
+	return this.helpers.request(options) as Promise<{ jwt: string }>;
 }
 
 export async function strapiApiRequestAllItems(
@@ -85,14 +97,14 @@ export async function strapiApiRequestAllItems(
 	body: IDataObject = {},
 	query: IDataObject = {},
 	headers: IDataObject = {},
+	apiVersion: string = 'v3',
 ) {
 	const returnData: IDataObject[] = [];
-	const { apiVersion } = await this.getCredentials('strapiApi');
 
 	let responseData;
 	if (apiVersion === 'v4') {
 		query['pagination[pageSize]'] = 20;
-		query['pagination[page]'] = 0;
+		query['pagination[page]'] = 1;
 		do {
 			({ data: responseData } = await strapiApiRequest.call(
 				this,
@@ -103,7 +115,7 @@ export async function strapiApiRequestAllItems(
 				undefined,
 				headers,
 			));
-			query['pagination[page]'] += query['pagination[pageSize]'];
+			query['pagination[page]']++;
 			returnData.push.apply(returnData, responseData as IDataObject[]);
 		} while (responseData.length !== 0);
 	} else {

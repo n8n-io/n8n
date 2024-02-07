@@ -2,7 +2,6 @@ import type { OptionsWithUri } from 'request';
 
 import type {
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
 	IDataObject,
 	IHookFunctions,
@@ -15,7 +14,7 @@ import get from 'lodash/get';
 import * as nacl_factory from 'js-nacl';
 
 export async function venafiApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IHookFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
 	method: string,
 	resource: string,
 	body = {},
@@ -24,6 +23,9 @@ export async function venafiApiRequest(
 	option: IDataObject = {},
 ): Promise<any> {
 	const operation = this.getNodeParameter('operation', 0);
+	const credentials = await this.getCredentials('venafiTlsProtectCloudApi');
+
+	const region = credentials.region ?? 'cloud';
 
 	const options: OptionsWithUri = {
 		headers: {
@@ -33,7 +35,7 @@ export async function venafiApiRequest(
 		method,
 		body,
 		qs,
-		uri: `https://api.venafi.cloud${resource}`,
+		uri: `https://api.venafi.${region}${resource}`,
 		json: true,
 	};
 

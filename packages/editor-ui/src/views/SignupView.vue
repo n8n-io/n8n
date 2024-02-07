@@ -1,7 +1,7 @@
 <template>
 	<AuthView
 		:form="FORM_CONFIG"
-		:formLoading="loading"
+		:form-loading="loading"
 		:subtitle="inviteMessage"
 		@submit="onSubmit"
 	/>
@@ -9,7 +9,7 @@
 
 <script lang="ts">
 import AuthView from '@/views/AuthView.vue';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 
 import { defineComponent } from 'vue';
 import type { IFormBoxConfig } from '@/Interface';
@@ -83,14 +83,8 @@ export default defineComponent({
 		};
 	},
 	async mounted() {
-		const inviterId =
-			!this.$route.query.inviterId || typeof this.$route.query.inviterId !== 'string'
-				? null
-				: this.$route.query.inviterId;
-		const inviteeId =
-			!this.$route.query.inviteeId || typeof this.$route.query.inviteeId !== 'string'
-				? null
-				: this.$route.query.inviteeId;
+		const inviterId = this.getQueryParameter('inviterId');
+		const inviteeId = this.getQueryParameter('inviteeId');
 		try {
 			if (!inviterId || !inviteeId) {
 				throw new Error(this.$locale.baseText('auth.signup.missingTokenError'));
@@ -121,7 +115,7 @@ export default defineComponent({
 		async onSubmit(values: { [key: string]: string | boolean }) {
 			if (!this.inviterId || !this.inviteeId) {
 				this.showError(
-					new Error(this.$locale.baseText('auth.changePassword.tokenValidationError')),
+					new Error(this.$locale.baseText('auth.signup.tokenValidationError')),
 					this.$locale.baseText('auth.signup.setupYourAccountError'),
 				);
 				return;
@@ -129,7 +123,7 @@ export default defineComponent({
 
 			try {
 				this.loading = true;
-				await this.usersStore.signup({
+				await this.usersStore.acceptInvitation({
 					...values,
 					inviterId: this.inviterId,
 					inviteeId: this.inviteeId,
@@ -152,6 +146,11 @@ export default defineComponent({
 				this.showError(error, this.$locale.baseText('auth.signup.setupYourAccountError'));
 			}
 			this.loading = false;
+		},
+		getQueryParameter(key: 'inviterId' | 'inviteeId'): string | null {
+			return !this.$route.query[key] || typeof this.$route.query[key] !== 'string'
+				? null
+				: (this.$route.query[key] as string);
 		},
 	},
 });

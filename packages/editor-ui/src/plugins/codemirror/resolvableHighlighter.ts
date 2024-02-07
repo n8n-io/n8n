@@ -4,7 +4,7 @@ import { StateField, StateEffect } from '@codemirror/state';
 import { tags } from '@lezer/highlight';
 import { syntaxHighlighting, HighlightStyle } from '@codemirror/language';
 
-import type { ColoringStateEffect, Plaintext, Resolvable, Resolved } from '@/types/expressions';
+import type { ColoringStateEffect, Plaintext, Resolvable } from '@/types/expressions';
 
 const cssClasses = {
 	validResolvable: 'cm-valid-resolvable',
@@ -80,7 +80,7 @@ const coloringStateField = StateField.define<DecorationSet>({
 	},
 });
 
-function addColor(view: EditorView, segments: Array<Resolvable | Resolved>) {
+function addColor(view: EditorView, segments: Resolvable[]) {
 	const effects: Array<StateEffect<unknown>> = segments.map(({ from, to, kind, error }) =>
 		coloringStateEffects.addColorEffect.of({ from, to, kind, error }),
 	);

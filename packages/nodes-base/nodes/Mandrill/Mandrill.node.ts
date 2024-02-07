@@ -10,6 +10,10 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
+
+import map from 'lodash/map';
+import isEmpty from 'lodash/isEmpty';
 import {
 	getGoogleAnalyticsDomainsArray,
 	getTags,
@@ -17,11 +21,6 @@ import {
 	mandrillApiRequest,
 	validateJSON,
 } from './GenericFunctions';
-
-import moment from 'moment';
-
-import map from 'lodash/map';
-import isEmpty from 'lodash/isEmpty';
 
 interface Attachments {
 	type: string;
@@ -903,6 +902,6 @@ export class Mandrill implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

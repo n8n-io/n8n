@@ -6,14 +6,14 @@
 		<n8n-text :class="$style.runningMessage" color="text-light">
 			{{ $locale.baseText('executionDetails.runningMessage') }}
 		</n8n-text>
-		<n8n-button class="mt-l" type="tertiary" size="medium" @click="handleStopClick">
+		<n8n-button class="mt-l" type="tertiary" @click="handleStopClick">
 			{{ $locale.baseText('executionsList.stopExecution') }}
 		</n8n-button>
 	</div>
 	<div v-else :class="$style.previewContainer">
 		<div
-			:class="{ [$style.executionDetails]: true, [$style.sidebarCollapsed]: sidebarCollapsed }"
 			v-if="activeExecution"
+			:class="$style.executionDetails"
 			:data-test-id="`execution-preview-details-${executionId}`"
 		>
 			<div>
@@ -33,6 +33,7 @@
 				>
 					{{ executionUIDetails.label }}
 				</n8n-text>
+				{{ ' ' }}
 				<n8n-text v-if="executionUIDetails.name === 'running'" color="text-base" size="medium">
 					{{
 						$locale.baseText('executionDetails.runningTimeRunning', {
@@ -78,16 +79,39 @@
 				</n8n-text>
 			</div>
 			<div>
-				<el-dropdown
+				<n8n-button
+					size="medium"
+					:type="debugButtonData.type"
+					:class="{
+						[$style.debugLink]: true,
+						[$style.secondary]: debugButtonData.type === 'secondary',
+					}"
+				>
+					<router-link
+						:to="{
+							name: VIEWS.EXECUTION_DEBUG,
+							params: {
+								name: activeExecution.workflowId,
+								executionId: activeExecution.id,
+							},
+						}"
+					>
+						<span data-test-id="execution-debug-button" @click="handleDebugLinkClick">{{
+							debugButtonData.text
+						}}</span>
+					</router-link>
+				</n8n-button>
+
+				<ElDropdown
 					v-if="executionUIDetails?.name === 'error'"
+					ref="retryDropdown"
 					trigger="click"
 					class="mr-xs"
 					@command="handleRetryClick"
-					ref="retryDropdown"
 				>
 					<span class="retry-button">
 						<n8n-icon-button
-							size="large"
+							size="medium"
 							type="tertiary"
 							:title="$locale.baseText('executionsList.retryExecution')"
 							icon="redo"
@@ -105,67 +129,73 @@
 							</el-dropdown-item>
 						</el-dropdown-menu>
 					</template>
-				</el-dropdown>
+				</ElDropdown>
 				<n8n-icon-button
 					:title="$locale.baseText('executionDetails.deleteExecution')"
 					icon="trash"
-					size="large"
+					size="medium"
 					type="tertiary"
 					data-test-id="execution-preview-delete-button"
 					@click="onDeleteExecution"
 				/>
 			</div>
 		</div>
-		<workflow-preview
+		<WorkflowPreview
 			mode="execution"
-			loaderType="spinner"
-			:executionId="executionId"
-			:executionMode="executionMode"
+			loader-type="spinner"
+			:execution-id="executionId"
+			:execution-mode="executionMode"
 		/>
 	</div>
 </template>
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import { mapStores } from 'pinia';
-
-import { useMessage } from '@/composables';
+import { ElDropdown } from 'element-plus';
+import { useExecutionDebugging } from '@/composables/useExecutionDebugging';
+import { useMessage } from '@/composables/useMessage';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
 import type { IExecutionUIData } from '@/mixins/executionsHelpers';
 import { executionHelpers } from '@/mixins/executionsHelpers';
 import { MODAL_CONFIRM, VIEWS } from '@/constants';
-import { useUIStore } from '@/stores/ui.store';
-import { Dropdown as ElDropdown } from 'element-ui';
 
 type RetryDropdownRef = InstanceType<typeof ElDropdown> & { hide: () => void };
 
 export default defineComponent({
-	name: 'execution-preview',
-	mixins: [executionHelpers],
+	name: 'ExecutionPreview',
 	components: {
 		ElDropdown,
 		WorkflowPreview,
+	},
+	mixins: [executionHelpers],
+	setup() {
+		return {
+			...useMessage(),
+			...useExecutionDebugging(),
+		};
 	},
 	data() {
 		return {
 			VIEWS,
 		};
 	},
-	setup() {
-		return {
-			...useMessage(),
-		};
-	},
 	computed: {
-		...mapStores(useUIStore),
 		executionUIDetails(): IExecutionUIData | null {
 			return this.activeExecution ? this.getExecutionUIDetails(this.activeExecution) : null;
 		},
-		sidebarCollapsed(): boolean {
-			return this.uiStore.sidebarMenuCollapsed;
-		},
 		executionMode(): string {
 			return this.activeExecution?.mode || '';
+		},
+		debugButtonData(): Record<string, string> {
+			return this.activeExecution?.status === 'success'
+				? {
+						text: this.$locale.baseText('executionsList.debug.button.copyToEditor'),
+						type: 'secondary',
+				  }
+				: {
+						text: this.$locale.baseText('executionsList.debug.button.debugInEditor'),
+						type: 'primary',
+				  };
 		},
 	},
 	methods: {
@@ -196,7 +226,7 @@ export default defineComponent({
 			// Hide dropdown when clicking outside of current document
 			const retryDropdownRef = this.$refs.retryDropdown as RetryDropdownRef | undefined;
 			if (retryDropdownRef && event.relatedTarget === null) {
-				retryDropdownRef.hide();
+				retryDropdownRef.handleClose();
 			}
 		},
 	},
@@ -205,7 +235,8 @@ export default defineComponent({
 
 <style module lang="scss">
 .previewContainer {
-	height: calc(100% - $header-height);
+	position: relative;
+	height: 100%;
 	overflow: hidden;
 }
 
@@ -213,18 +244,20 @@ export default defineComponent({
 	position: absolute;
 	padding: var(--spacing-m);
 	padding-right: var(--spacing-xl);
-	width: calc(100% - 510px);
+	width: 100%;
 	display: flex;
 	justify-content: space-between;
+	align-items: center;
 	transition: all 150ms ease-in-out;
 	pointer-events: none;
 
-	& * {
-		pointer-events: all;
+	> div:last-child {
+		display: flex;
+		align-items: center;
 	}
 
-	&.sidebarCollapsed {
-		width: calc(100% - 375px);
+	& * {
+		pointer-events: all;
 	}
 }
 
@@ -261,5 +294,10 @@ export default defineComponent({
 	width: 200px;
 	margin-top: var(--spacing-l);
 	text-align: center;
+}
+
+.debugLink {
+	height: 42px;
+	margin-right: var(--spacing-xs);
 }
 </style>

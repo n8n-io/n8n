@@ -122,7 +122,7 @@ export const maintenanceWindowFields: INodeProperties[] = [
 				type: [3],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
+
 		options: [
 			{
 				name: 'Monday',
@@ -354,7 +354,7 @@ export const maintenanceWindowFields: INodeProperties[] = [
 						type: [3],
 					},
 				},
-				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
+
 				options: [
 					{
 						name: 'Monday',

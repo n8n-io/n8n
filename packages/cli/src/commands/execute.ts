@@ -2,17 +2,16 @@ import { promises as fs } from 'fs';
 import { flags } from '@oclif/command';
 import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
-import { ExecutionBaseError } from 'n8n-workflow';
+import { ApplicationError, ExecutionBaseError } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/ActiveExecutions';
-import * as Db from '@/Db';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import type { IWorkflowExecutionDataProcess } from '@/Interfaces';
-import { getInstanceOwner } from '@/UserManagement/UserManagementHelper';
 import { findCliWorkflowStart, isWorkflowIdValid } from '@/utils';
-import { initEvents } from '@/events';
 import { BaseCommand } from './BaseCommand';
 import { Container } from 'typedi';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import { OwnershipService } from '@/services/ownership.service';
 
 export class Execute extends BaseCommand {
 	static description = '\nExecutes a given workflow';
@@ -34,11 +33,8 @@ export class Execute extends BaseCommand {
 
 	async init() {
 		await super.init();
-		await this.initBinaryManager();
+		await this.initBinaryDataService();
 		await this.initExternalHooks();
-
-		// Add event handlers
-		initEvents();
 	}
 
 	async run() {
@@ -74,11 +70,7 @@ export class Execute extends BaseCommand {
 
 			// Do a basic check if the data in the file looks right
 			// TODO: Later check with the help of TypeScript data if it is valid or not
-			if (
-				workflowData === null ||
-				workflowData.nodes === undefined ||
-				workflowData.connections === undefined
-			) {
+			if (workflowData?.nodes === undefined || workflowData.connections === undefined) {
 				this.logger.info(`The file "${flags.file}" does not contain valid workflow data.`);
 				return;
 			}
@@ -89,7 +81,7 @@ export class Execute extends BaseCommand {
 		if (flags.id) {
 			// Id of workflow is given
 			workflowId = flags.id;
-			workflowData = await Db.collections.Workflow.findOneBy({ id: workflowId });
+			workflowData = await Container.get(WorkflowRepository).findOneBy({ id: workflowId });
 			if (workflowData === null) {
 				this.logger.info(`The workflow with the id "${workflowId}" does not exist.`);
 				process.exit(1);
@@ -97,7 +89,7 @@ export class Execute extends BaseCommand {
 		}
 
 		if (!workflowData) {
-			throw new Error('Failed to retrieve workflow data for requested workflow');
+			throw new ApplicationError('Failed to retrieve workflow data for requested workflow');
 		}
 
 		if (!isWorkflowIdValid(workflowId)) {
@@ -106,7 +98,7 @@ export class Execute extends BaseCommand {
 
 		const startingNode = findCliWorkflowStart(workflowData.nodes);
 
-		const user = await getInstanceOwner();
+		const user = await Container.get(OwnershipService).getInstanceOwner();
 		const runData: IWorkflowExecutionDataProcess = {
 			executionMode: 'cli',
 			startNodes: [startingNode.name],
@@ -121,7 +113,7 @@ export class Execute extends BaseCommand {
 		const data = await activeExecutions.getPostExecutePromise(executionId);
 
 		if (data === undefined) {
-			throw new Error('Workflow did not return any data!');
+			throw new ApplicationError('Workflow did not return any data');
 		}
 
 		if (data.data.resultData.error) {

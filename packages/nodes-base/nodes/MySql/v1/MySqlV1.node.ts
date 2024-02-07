@@ -4,6 +4,7 @@ import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
+	IExecuteFunctions,
 	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
@@ -14,10 +15,10 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import type mysql2 from 'mysql2/promise';
 
-import { copyInputItems, createConnection, searchTables } from './GenericFunctions';
-import type { IExecuteFunctions } from 'n8n-core';
+import { createConnection, searchTables } from './GenericFunctions';
 
-import { oldVersionNotice } from '../../../utils/descriptions';
+import { oldVersionNotice } from '@utils/descriptions';
+import { getResolvables } from '@utils/utilities';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'MySQL',
@@ -75,9 +76,10 @@ const versionDescription: INodeTypeDescription = {
 			displayName: 'Query',
 			name: 'query',
 			type: 'string',
+			noDataExpression: true,
 			typeOptions: {
 				editor: 'sqlEditor',
-				sqlDialect: 'mysql',
+				sqlDialect: 'MySQL',
 			},
 			displayOptions: {
 				show: {
@@ -304,8 +306,15 @@ export class MySqlV1 implements INodeType {
 			// ----------------------------------
 
 			try {
-				const queryQueue = items.map(async (item, index) => {
-					const rawQuery = this.getNodeParameter('query', index) as string;
+				const queryQueue = items.map(async (_, index) => {
+					let rawQuery = (this.getNodeParameter('query', index) as string).trim();
+
+					for (const resolvable of getResolvables(rawQuery)) {
+						rawQuery = rawQuery.replace(
+							resolvable,
+							this.evaluateExpression(resolvable, index) as string,
+						);
+					}
 
 					return connection.query(rawQuery);
 				});
@@ -342,7 +351,7 @@ export class MySqlV1 implements INodeType {
 				const table = this.getNodeParameter('table', 0, '', { extractValue: true }) as string;
 				const columnString = this.getNodeParameter('columns', 0) as string;
 				const columns = columnString.split(',').map((column) => column.trim());
-				const insertItems = copyInputItems(items, columns);
+				const insertItems = this.helpers.copyInputItems(items, columns);
 				const insertPlaceholder = `(${columns.map((_column) => '?').join(',')})`;
 				const options = this.getNodeParameter('options', 0);
 				const insertIgnore = options.ignore as boolean;
@@ -385,7 +394,7 @@ export class MySqlV1 implements INodeType {
 					columns.unshift(updateKey);
 				}
 
-				const updateItems = copyInputItems(items, columns);
+				const updateItems = this.helpers.copyInputItems(items, columns);
 				const updateSQL = `UPDATE ${table} SET ${columns
 					.map((column) => `${column} = ?`)
 					.join(',')} WHERE ${updateKey} = ?;`;
@@ -420,6 +429,6 @@ export class MySqlV1 implements INodeType {
 
 		await connection.end();
 
-		return this.prepareOutputData(returnItems);
+		return [returnItems];
 	}
 }

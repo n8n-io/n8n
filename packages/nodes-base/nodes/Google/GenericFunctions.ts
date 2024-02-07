@@ -1,9 +1,16 @@
-import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-import type { ICredentialTestFunctions, IDataObject, IPollFunctions } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	ICredentialTestFunctions,
+	IDataObject,
+	IPollFunctions,
+} from 'n8n-workflow';
 
 import type { OptionsWithUri } from 'request';
 import moment from 'moment-timezone';
 import * as jwt from 'jsonwebtoken';
+
+import { formatPrivateKey } from '@utils/utilities';
 
 const googleServiceAccountScopes = {
 	bigquery: ['https://www.googleapis.com/auth/bigquery'],
@@ -50,12 +57,7 @@ const googleServiceAccountScopes = {
 type GoogleServiceAccount = keyof typeof googleServiceAccountScopes;
 
 export async function getGoogleAccessToken(
-	this:
-		| IExecuteFunctions
-		| IExecuteSingleFunctions
-		| ILoadOptionsFunctions
-		| ICredentialTestFunctions
-		| IPollFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions | ICredentialTestFunctions | IPollFunctions,
 	credentials: IDataObject,
 	service: GoogleServiceAccount,
 ): Promise<IDataObject> {
@@ -63,7 +65,7 @@ export async function getGoogleAccessToken(
 
 	const scopes = googleServiceAccountScopes[service];
 
-	const privateKey = (credentials.privateKey as string).replace(/\\n/g, '\n').trim();
+	const privateKey = formatPrivateKey(credentials.privateKey as string);
 	credentials.email = ((credentials.email as string) || '').trim();
 
 	const now = moment().unix();

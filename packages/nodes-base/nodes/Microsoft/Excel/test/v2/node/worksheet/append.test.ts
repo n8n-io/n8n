@@ -1,25 +1,11 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-import type { IDataObject } from 'n8n-workflow';
-
-import { equalityTest, setup, workflowToTests } from '../../../../../../../test/nodes/Helpers';
-
-// eslint-disable-next-line unused-imports/no-unused-imports
-import * as transport from '../../../../v2/transport';
-
 import nock from 'nock';
+import { equalityTest, setup, workflowToTests } from '@test/nodes/Helpers';
 
 jest.mock('../../../../v2/transport', () => {
 	const originalModule = jest.requireActual('../../../../v2/transport');
 	return {
 		...originalModule,
-		microsoftApiRequest: jest.fn(async function (
-			method: string,
-			resource: string,
-			body?: IDataObject,
-			qs?: IDataObject,
-			uri?: string,
-			headers?: IDataObject,
-		) {
+		microsoftApiRequest: jest.fn(async function (method: string, resource: string) {
 			if (method === 'GET' && resource.includes('usedRange')) {
 				return {
 					address: 'Sheet4!A1:D6',

@@ -78,7 +78,7 @@ export class HtmlExtract implements INodeType {
 				description: 'If HTML should be read from binary or JSON data',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'Input Binary Field',
 				name: 'dataPropertyName',
 				type: 'string',
 				displayOptions: {
@@ -88,8 +88,7 @@ export class HtmlExtract implements INodeType {
 				},
 				default: 'data',
 				required: true,
-				description:
-					'Name of the binary property in which the HTML to extract the data from can be found',
+				hint: 'The name of the input binary field containing the file to be extracted',
 			},
 			{
 				displayName: 'JSON Property',
@@ -299,6 +298,6 @@ export class HtmlExtract implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

@@ -1,12 +1,9 @@
 import { Container } from 'typedi';
 import config from '@/config';
-import * as Db from '@/Db';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
 import { User } from '@db/entities/User';
-import { RoleRepository } from '@db/repositories';
 import { License } from '@/License';
-import { AuthError, InternalServerError } from '@/ResponseHelper';
-import { hashPassword, isUserManagementEnabled } from '@/UserManagement/UserManagementHelper';
+import { PasswordUtility } from '@/services/password.utility';
 import type { SamlPreferences } from './types/samlPreferences';
 import type { SamlUserAttributes } from './types/samlUserAttributes';
 import type { FlowResult } from 'samlify/types/src/flow';
@@ -20,6 +17,12 @@ import {
 } from '../ssoHelpers';
 import { getServiceProviderConfigTestReturnUrl } from './serviceProvider.ee';
 import type { SamlConfiguration } from './types/requests';
+import { RoleService } from '@/services/role.service';
+import { UserRepository } from '@db/repositories/user.repository';
+import { AuthIdentityRepository } from '@db/repositories/authIdentity.repository';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { AuthError } from '@/errors/response-errors/auth.error';
+
 /**
  *  Check whether the SAML feature is licensed and enabled in the instance
  */
@@ -53,8 +56,7 @@ export function setSamlLoginLabel(label: string): void {
 }
 
 export function isSamlLicensed(): boolean {
-	const license = Container.get(License);
-	return isUserManagementEnabled() && license.isSamlEnabled();
+	return Container.get(License).isSamlEnabled();
 }
 
 export function isSamlLicensedAndEnabled(): boolean {
@@ -98,19 +100,20 @@ export function generatePassword(): string {
 export async function createUserFromSamlAttributes(attributes: SamlUserAttributes): Promise<User> {
 	const user = new User();
 	const authIdentity = new AuthIdentity();
-	user.email = attributes.email;
+	const lowerCasedEmail = attributes.email?.toLowerCase() ?? '';
+	user.email = lowerCasedEmail;
 	user.firstName = attributes.firstName;
 	user.lastName = attributes.lastName;
-	user.globalRole = await Container.get(RoleRepository).findGlobalMemberRoleOrFail();
+	user.globalRole = await Container.get(RoleService).findGlobalMemberRole();
 	// generates a password that is not used or known to the user
-	user.password = await hashPassword(generatePassword());
+	user.password = await Container.get(PasswordUtility).hash(generatePassword());
 	authIdentity.providerId = attributes.userPrincipalName;
 	authIdentity.providerType = 'saml';
 	authIdentity.user = user;
-	const resultAuthIdentity = await Db.collections.AuthIdentity.save(authIdentity);
+	const resultAuthIdentity = await Container.get(AuthIdentityRepository).save(authIdentity);
 	if (!resultAuthIdentity) throw new AuthError('Could not create AuthIdentity');
 	user.authIdentities = [authIdentity];
-	const resultUser = await Db.collections.User.save(user);
+	const resultUser = await Container.get(UserRepository).save(user);
 	if (!resultUser) throw new AuthError('Could not create User');
 	return resultUser;
 }
@@ -131,10 +134,10 @@ export async function updateUserFromSamlAttributes(
 	} else {
 		samlAuthIdentity.providerId = attributes.userPrincipalName;
 	}
-	await Db.collections.AuthIdentity.save(samlAuthIdentity);
+	await Container.get(AuthIdentityRepository).save(samlAuthIdentity);
 	user.firstName = attributes.firstName;
 	user.lastName = attributes.lastName;
-	const resultUser = await Db.collections.User.save(user);
+	const resultUser = await Container.get(UserRepository).save(user);
 	if (!resultUser) throw new AuthError('Could not create User');
 	return resultUser;
 }

@@ -140,7 +140,6 @@ export const timeEntryFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
 				displayName: 'Tag Names or IDs',
 				name: 'tagIds',
 				type: 'multiOptions',
@@ -328,7 +327,6 @@ export const timeEntryFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
 				displayName: 'Tag Names or IDs',
 				name: 'tagIds',
 				type: 'multiOptions',

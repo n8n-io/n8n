@@ -1,5 +1,5 @@
 import { createTestingPinia } from '@pinia/testing';
-import { setActivePinia } from 'pinia';
+import { createPinia, setActivePinia } from 'pinia';
 import { DateTime } from 'luxon';
 
 import * as workflowHelpers from '@/mixins/workflowHelpers';
@@ -17,12 +17,38 @@ import type { CompletionSource, CompletionResult } from '@codemirror/autocomplet
 import { CompletionContext } from '@codemirror/autocomplete';
 import { EditorState } from '@codemirror/state';
 import { n8nLang } from '@/plugins/codemirror/n8nLang';
+import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { CREDENTIAL_EDIT_MODAL_KEY, EnterpriseEditionFeature } from '@/constants';
+import { setupServer } from '@/__tests__/server';
 
-beforeEach(() => {
-	setActivePinia(createTestingPinia());
+let externalSecretsStore: ReturnType<typeof useExternalSecretsStore>;
+let uiStore: ReturnType<typeof useUIStore>;
+let settingsStore: ReturnType<typeof useSettingsStore>;
+
+let server: ReturnType<typeof setupServer>;
+
+beforeAll(() => {
+	server = setupServer();
+});
+
+beforeEach(async () => {
+	setActivePinia(createPinia());
+
+	externalSecretsStore = useExternalSecretsStore();
+	uiStore = useUIStore();
+	settingsStore = useSettingsStore();
+
 	vi.spyOn(utils, 'receivesNoBinaryData').mockReturnValue(true); // hide $binary
 	vi.spyOn(utils, 'isSplitInBatchesAbsent').mockReturnValue(false); // show context
 	vi.spyOn(utils, 'hasActiveNode').mockReturnValue(true);
+
+	await settingsStore.getSettings();
+});
+
+afterAll(() => {
+	server.shutdown();
 });
 
 describe('No completions', () => {
@@ -171,6 +197,17 @@ describe('Resolution-based completions', () => {
 		});
 	});
 
+	describe('indexed access completions', () => {
+		test('should return string completions for indexed access that resolves to string literal: {{ "abc"[0].| }}', () => {
+			// @ts-expect-error Spied function is mistyped
+			resolveParameterSpy.mockReturnValueOnce('a');
+
+			expect(completions('{{ "abc"[0].| }}')).toHaveLength(
+				natives('string').length + extensions('string').length,
+			);
+		});
+	});
+
 	describe('complex expression completions', () => {
 		const resolveParameterSpy = vi.spyOn(workflowHelpers, 'resolveParameter');
 		const { $input } = mockProxy;
@@ -261,6 +298,62 @@ describe('Resolution-based completions', () => {
 
 			expect(found).toHaveLength(extensions('array').length + natives('array').length);
 			expect(found.map((c) => c.label).every((l) => !l.endsWith('()')));
+		});
+	});
+
+	describe('secrets', () => {
+		const resolveParameterSpy = vi.spyOn(workflowHelpers, 'resolveParameter');
+		const { $input, $ } = mockProxy;
+
+		test('should return completions for: {{ $secrets.| }}', () => {
+			const provider = 'infisical';
+			const secrets = ['SECRET'];
+
+			resolveParameterSpy.mockReturnValue($input);
+
+			uiStore.modals[CREDENTIAL_EDIT_MODAL_KEY].open = true;
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.ExternalSecrets] = true;
+			externalSecretsStore.state.secrets = {
+				[provider]: secrets,
+			};
+
+			const result = completions('{{ $secrets.| }}');
+
+			expect(result).toEqual([
+				{
+					info: expect.any(Function),
+					label: provider,
+					type: 'keyword',
+				},
+			]);
+		});
+
+		test('should return completions for: {{ $secrets.provider.| }}', () => {
+			const provider = 'infisical';
+			const secrets = ['SECRET1', 'SECRET2'];
+
+			resolveParameterSpy.mockReturnValue($input);
+
+			uiStore.modals[CREDENTIAL_EDIT_MODAL_KEY].open = true;
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.ExternalSecrets] = true;
+			externalSecretsStore.state.secrets = {
+				[provider]: secrets,
+			};
+
+			const result = completions(`{{ $secrets.${provider}.| }}`);
+
+			expect(result).toEqual([
+				{
+					info: expect.any(Function),
+					label: secrets[0],
+					type: 'keyword',
+				},
+				{
+					info: expect.any(Function),
+					label: secrets[1],
+					type: 'keyword',
+				},
+			]);
 		});
 	});
 

@@ -8,7 +8,11 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { microsoftApiRequest, microsoftApiRequestAllItems } from './GenericFunctions';
+import {
+	microsoftApiRequest,
+	microsoftApiRequestAllItems,
+	prepareMessage,
+} from './GenericFunctions';
 
 import { channelFields, channelOperations } from './ChannelDescription';
 
@@ -24,7 +28,7 @@ export class MicrosoftTeams implements INodeType {
 		name: 'microsoftTeams',
 		icon: 'file:teams.svg',
 		group: ['input'],
-		version: 1,
+		version: [1, 1.1],
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Microsoft Teams API',
 		defaults: {
@@ -266,6 +270,9 @@ export class MicrosoftTeams implements INodeType {
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
+		const nodeVersion = this.getNode().typeVersion;
+		const instanceId = this.getInstanceId();
+
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'channel') {
@@ -365,12 +372,18 @@ export class MicrosoftTeams implements INodeType {
 						const message = this.getNodeParameter('message', i) as string;
 						const options = this.getNodeParameter('options', i);
 
-						const body: IDataObject = {
-							body: {
-								contentType: messageType,
-								content: message,
-							},
-						};
+						let includeLinkToWorkflow = options.includeLinkToWorkflow;
+						if (includeLinkToWorkflow === undefined) {
+							includeLinkToWorkflow = nodeVersion >= 1.1;
+						}
+
+						const body: IDataObject = prepareMessage.call(
+							this,
+							message,
+							messageType,
+							includeLinkToWorkflow as boolean,
+							instanceId,
+						);
 
 						if (options.makeReply) {
 							const replyToId = options.makeReply as string;
@@ -420,12 +433,19 @@ export class MicrosoftTeams implements INodeType {
 						const chatId = this.getNodeParameter('chatId', i) as string;
 						const messageType = this.getNodeParameter('messageType', i) as string;
 						const message = this.getNodeParameter('message', i) as string;
-						const body: IDataObject = {
-							body: {
-								contentType: messageType,
-								content: message,
-							},
-						};
+						const options = this.getNodeParameter('options', i, {});
+
+						const includeLinkToWorkflow =
+							options.includeLinkToWorkflow !== false && nodeVersion >= 1.1;
+
+						const body: IDataObject = prepareMessage.call(
+							this,
+							message,
+							messageType,
+							includeLinkToWorkflow,
+							instanceId,
+						);
+
 						responseData = await microsoftApiRequest.call(
 							this,
 							'POST',
@@ -645,6 +665,6 @@ export class MicrosoftTeams implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

@@ -13,7 +13,7 @@
 			:class="$style.executionLink"
 			:to="{
 				name: VIEWS.EXECUTION_PREVIEW,
-				params: { workflowId: currentWorkflow, executionId: execution.id },
+				params: { name: currentWorkflow, executionId: execution.id },
 			}"
 			:data-test-execution-status="executionUIDetails.name"
 		>
@@ -30,13 +30,14 @@
 					<n8n-text :class="$style.statusLabel" size="small">{{
 						executionUIDetails.label
 					}}</n8n-text>
+					{{ ' ' }}
 					<n8n-text
 						v-if="executionUIDetails.name === 'running'"
 						:color="isActive ? 'text-dark' : 'text-base'"
 						size="small"
 					>
 						{{ $locale.baseText('executionDetails.runningTimeRunning') }}
-						<execution-time :start-time="execution.startedAt" />
+						<ExecutionTime :start-time="execution.startedAt" />
 					</n8n-text>
 					<n8n-text
 						v-else-if="executionUIDetails.runningTime !== ''"
@@ -61,7 +62,7 @@
 					v-if="executionUIDetails.name === 'error'"
 					:class="[$style.icon, $style.retry]"
 					:items="retryExecutionActions"
-					activatorIcon="redo"
+					activator-icon="redo"
 					data-test-id="retry-execution-button"
 					@select="onRetryMenuItemSelect"
 				/>
@@ -89,16 +90,11 @@ import { VIEWS } from '@/constants';
 import ExecutionTime from '@/components/ExecutionTime.vue';
 
 export default defineComponent({
-	name: 'execution-card',
-	mixins: [executionHelpers],
+	name: 'ExecutionCard',
 	components: {
 		ExecutionTime,
 	},
-	data() {
-		return {
-			VIEWS,
-		};
-	},
+	mixins: [executionHelpers],
 	props: {
 		execution: {
 			type: Object as () => IExecutionsSummary,
@@ -112,6 +108,11 @@ export default defineComponent({
 			type: Boolean,
 			default: false,
 		},
+	},
+	data() {
+		return {
+			VIEWS,
+		};
 	},
 	computed: {
 		retryExecutionActions(): object[] {
@@ -169,7 +170,7 @@ export default defineComponent({
 		}
 		&,
 		& .executionLink {
-			border-left: var(--spacing-4xs) var(--border-style-base) hsl(var(--color-warning-h), 94%, 80%);
+			border-left: var(--spacing-4xs) var(--border-style-base) var(--execution-card-border-running);
 		}
 		.statusLabel,
 		.spinner {
@@ -180,15 +181,14 @@ export default defineComponent({
 	&.success {
 		&,
 		& .executionLink {
-			border-left: var(--spacing-4xs) var(--border-style-base) hsl(var(--color-success-h), 60%, 70%);
+			border-left: var(--spacing-4xs) var(--border-style-base) var(--execution-card-border-success);
 		}
 	}
 
 	&.waiting {
 		&,
 		& .executionLink {
-			border-left: var(--spacing-4xs) var(--border-style-base)
-				hsl(var(--color-secondary-h), 94%, 80%);
+			border-left: var(--spacing-4xs) var(--border-style-base) var(--execution-card-border-waiting);
 		}
 		.statusLabel {
 			color: var(--color-secondary);
@@ -198,7 +198,7 @@ export default defineComponent({
 	&.error {
 		&,
 		& .executionLink {
-			border-left: var(--spacing-4xs) var(--border-style-base) hsl(var(--color-danger-h), 94%, 80%);
+			border-left: var(--spacing-4xs) var(--border-style-base) var(--execution-card-border-error);
 		}
 		.statusLabel {
 			color: var(--color-danger);
@@ -208,7 +208,7 @@ export default defineComponent({
 	&.unknown {
 		&,
 		& .executionLink {
-			border-left: var(--spacing-4xs) var(--border-style-base) var(--color-text-light);
+			border-left: var(--spacing-4xs) var(--border-style-base) var(--execution-card-border-unknown);
 		}
 	}
 }
@@ -237,7 +237,7 @@ export default defineComponent({
 
 .icons {
 	display: flex;
-	align-items: baseline;
+	align-items: center;
 }
 
 .icon {

@@ -8,6 +8,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
 import {
 	allFields,
 	cleanData,
@@ -16,8 +17,6 @@ import {
 } from './GenericFunctions';
 
 import { contactFields, contactOperations } from './ContactDescription';
-
-import moment from 'moment';
 
 export class GoogleContacts implements INodeType {
 	description: INodeTypeDescription = {
@@ -521,6 +520,6 @@ export class GoogleContacts implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

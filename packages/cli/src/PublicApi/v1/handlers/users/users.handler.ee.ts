@@ -1,4 +1,5 @@
 import type express from 'express';
+import { Container } from 'typedi';
 
 import { clean, getAllUsersAndCount, getUser } from './users.service.ee';
 
@@ -10,12 +11,11 @@ import {
 } from '../../shared/middlewares/global.middleware';
 import type { UserRequest } from '@/requests';
 import { InternalHooks } from '@/InternalHooks';
-import Container from 'typedi';
 
 export = {
 	getUser: [
 		validLicenseWithUserQuota,
-		authorize(['owner']),
+		authorize(['owner', 'admin']),
 		async (req: UserRequest.Get, res: express.Response) => {
 			const { includeRole = false } = req.query;
 			const { id } = req.params;
@@ -41,7 +41,7 @@ export = {
 	getUsers: [
 		validLicenseWithUserQuota,
 		validCursor,
-		authorize(['owner']),
+		authorize(['owner', 'admin']),
 		async (req: UserRequest.Get, res: express.Response) => {
 			const { offset = 0, limit = 100, includeRole = false } = req.query;
 

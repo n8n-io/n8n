@@ -5,6 +5,8 @@ export type SourceControlledFileStatus =
 	| 'created'
 	| 'renamed'
 	| 'conflicted'
+	| 'ignored'
+	| 'staged'
 	| 'unknown';
 export type SourceControlledFileLocation = 'local' | 'remote';
 export type SourceControlledFileType = 'credential' | 'workflow' | 'tags' | 'variables' | 'file';
@@ -16,4 +18,6 @@ export type SourceControlledFile = {
 	status: SourceControlledFileStatus;
 	location: SourceControlledFileLocation;
 	conflict: boolean;
+	updatedAt: string;
+	pushed?: boolean;
 };

@@ -2,7 +2,6 @@ import type { OptionsWithUri } from 'request';
 
 import type {
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
 	IDataObject,
 	JsonObject,
@@ -10,7 +9,7 @@ import type {
 import { NodeApiError } from 'n8n-workflow';
 
 export async function microsoftApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
 
@@ -89,4 +88,28 @@ export async function microsoftApiRequestAllItemsSkip(
 	} while (responseData.value.length !== 0);
 
 	return returnData;
+}
+
+export function prepareMessage(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	message: string,
+	messageType: string,
+	includeLinkToWorkflow: boolean,
+	instanceId?: string,
+) {
+	if (includeLinkToWorkflow) {
+		const { id } = this.getWorkflow();
+		const link = `${this.getInstanceBaseUrl()}workflow/${id}?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=${encodeURIComponent(
+			'n8n-nodes-base.microsoftTeams',
+		)}${instanceId ? '_' + instanceId : ''}`;
+		messageType = 'html';
+		message = `${message}<br><br><em> Powered by <a href="${link}">this n8n workflow</a> </em>`;
+	}
+
+	return {
+		body: {
+			contentType: messageType,
+			content: message,
+		},
+	};
 }

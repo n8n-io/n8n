@@ -39,7 +39,7 @@ export const fileFields: INodeProperties[] = [
 	/*                                file:upload                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Binary Data',
+		displayName: 'Binary File',
 		name: 'binaryData',
 		type: 'boolean',
 		default: false,
@@ -66,7 +66,7 @@ export const fileFields: INodeProperties[] = [
 		placeholder: '',
 	},
 	{
-		displayName: 'Binary Property',
+		displayName: 'File Property',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',

@@ -1,10 +1,10 @@
 <template>
 	<Draggable
 		type="panel-resize"
+		:class="$style.dragContainer"
 		@drag="onDrag"
 		@dragstart="onDragStart"
 		@dragend="onDragEnd"
-		:class="$style.dragContainer"
 	>
 		<template #default="{ isDragging }">
 			<div :class="{ [$style.dragButton]: true }">

@@ -1,0 +1,171 @@
+{
+  "name": "My workflow 109",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "7ae16f96-5c2c-44a3-9f96-167e426336f9",
+      "name": "When clicking \"Execute Workflow\"",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        620,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  \"output\": \"third\",\n  \"text\": \"third output text\"\n}, {\n  \"output\": \"fourth\",\n  \"text\": \"fourth output text\"\n}, {\n  \"output\": \"first\",\n  \"text\": \"first output text\"\n}, {\n  \"output\": \"second\",\n  \"text\": \"second output text\"\n}]"
+      },
+      "id": "31e9aada-7aa2-4c62-8e15-0cecb91788e4",
+      "name": "Code",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        840,
+        720
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "cf10b4c7-16a6-4c16-a17c-7b83f954f7b9",
+      "name": "No Operation, do nothing",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1380,
+        560
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "3e7e7f4a-bff9-4ce1-a5e5-58505853260f",
+      "name": "No Operation, do nothing1",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1380,
+        720
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "205f59d6-52f5-4412-9511-b680a91d0be2",
+      "name": "No Operation, do nothing2",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1380,
+        880
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "expression",
+        "output": "={{ Math.max(0, ['first', 'second', 'third'].indexOf( $json.output)) }}",
+        "outputsAmount": 3
+      },
+      "id": "9c3dc163-0103-45c2-8455-e6ab3e84679c",
+      "name": "Switch1",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        720
+      ]
+    }
+  ],
+  "pinData": {
+    "No Operation, do nothing2": [
+      {
+        "json": {
+          "output": "third",
+          "text": "third output text"
+        }
+      }
+    ],
+    "No Operation, do nothing1": [
+      {
+        "json": {
+          "output": "second",
+          "text": "second output text"
+        }
+
+      }
+    ],
+    "No Operation, do nothing": [
+      {
+        "json": {
+          "output": "fourth",
+          "text": "fourth output text"
+        }
+
+      },
+      {
+        "json": {
+          "output": "first",
+          "text": "first output text"
+        }
+
+      }
+    ]
+  },
+  "connections": {
+    "When clicking \"Execute Workflow\"": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Switch1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch1": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Operation, do nothing1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Operation, do nothing2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "cca0f0b9-d01e-435b-9125-9616007f4aea",
+  "id": "xjPY8ZYJK53G6nQ1",
+  "meta": {
+    "instanceId": "ec7a5f4ffdb34436e59d23eaccb5015b5238de2a877e205b28572bf1ffecfe04"
+  },
+  "tags": []
+}

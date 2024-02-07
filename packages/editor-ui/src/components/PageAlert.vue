@@ -4,9 +4,9 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import type { ElNotificationComponent } from 'element-ui/types/notification';
-import { sanitizeHtml } from '@/utils';
-import { useToast } from '@/composables';
+import type { NotificationInstance } from 'element-plus';
+import { sanitizeHtml } from '@/utils/htmlUtils';
+import { useToast } from '@/composables/useToast';
 
 export default defineComponent({
 	name: 'PageAlert',
@@ -26,7 +26,7 @@ export default defineComponent({
 	},
 	data() {
 		return {
-			alert: null as null | ElNotificationComponent,
+			alert: null as null | NotificationInstance,
 		};
 	},
 	mounted() {
@@ -40,7 +40,7 @@ export default defineComponent({
 			customClass: this.popupClass || '',
 		});
 	},
-	beforeDestroy() {
+	beforeUnmount() {
 		if (this.alert) {
 			this.alert.close();
 		}

@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/naming-convention */
 import type { ClientOAuth2, ClientOAuth2Options, ClientOAuth2RequestObject } from './ClientOAuth2';
 import { auth, expects, getRequestOptions } from './utils';
@@ -24,7 +22,10 @@ export class ClientOAuth2Token {
 
 	private expires: Date;
 
-	constructor(readonly client: ClientOAuth2, readonly data: ClientOAuth2TokenData) {
+	constructor(
+		readonly client: ClientOAuth2,
+		readonly data: ClientOAuth2TokenData,
+	) {
 		this.tokenType = data.token_type?.toLowerCase() ?? 'bearer';
 		this.accessToken = data.access_token;
 		this.refreshToken = data.refresh_token;

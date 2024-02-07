@@ -1,7 +1,7 @@
 <template>
 	<div v-if="dialogVisible">
 		<el-dialog
-			:visible="dialogVisible"
+			:model-value="dialogVisible"
 			append-to-body
 			width="80%"
 			:title="`${$locale.baseText('textEdit.edit')} ${$locale
@@ -13,14 +13,13 @@
 				<n8n-input-label :label="$locale.nodeText().inputLabelDisplayName(parameter, path)">
 					<div @keydown.stop @keydown.esc="onKeyDownEsc()">
 						<n8n-input
+							ref="inputField"
 							v-model="tempValue"
 							type="textarea"
-							ref="inputField"
-							:value="value"
 							:placeholder="$locale.nodeText().placeholder(parameter, path)"
-							:readOnly="isReadOnly"
-							@change="valueChanged"
+							:read-only="isReadOnly"
 							:rows="15"
+							@update:modelValue="valueChanged"
 						/>
 					</div>
 				</n8n-input-label>
@@ -34,20 +33,34 @@ import { nextTick, defineComponent } from 'vue';
 
 export default defineComponent({
 	name: 'TextEdit',
-	props: ['dialogVisible', 'parameter', 'path', 'value', 'isReadOnly'],
+	props: ['dialogVisible', 'parameter', 'path', 'modelValue', 'isReadOnly'],
 	data() {
 		return {
 			tempValue: '', // el-input does not seem to work without v-model so add one
 		};
 	},
+	watch: {
+		async dialogVisible() {
+			if (this.dialogVisible === true) {
+				await nextTick();
+				(this.$refs.inputField as HTMLInputElement).focus();
+			}
+		},
+		modelValue(value: string) {
+			this.tempValue = value;
+		},
+	},
+	mounted() {
+		this.tempValue = this.modelValue as string;
+	},
 	methods: {
 		valueChanged(value: string) {
-			this.$emit('valueChanged', value);
+			this.$emit('update:modelValue', value);
 		},
 
 		onKeyDownEsc() {
 			// Resetting input value when closing the dialog, required when closing it using the `Esc` key
-			this.tempValue = this.value;
+			this.tempValue = this.modelValue;
 
 			this.closeDialog();
 		},
@@ -57,21 +70,6 @@ export default defineComponent({
 			// and is so not allowed to be changed here.
 			this.$emit('closeDialog');
 			return false;
-		},
-	},
-	mounted() {
-		this.tempValue = this.value as string;
-	},
-	watch: {
-		dialogVisible() {
-			if (this.dialogVisible === true) {
-				nextTick(() => {
-					(this.$refs.inputField as HTMLInputElement).focus();
-				});
-			}
-		},
-		value() {
-			this.tempValue = this.value as string;
 		},
 	},
 });

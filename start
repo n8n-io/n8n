@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+source .env/embed.env
+source .env/jwt.env
+source .env/telemetry.env
+
+npx n8n start
+# npx n8n start --tunnel
