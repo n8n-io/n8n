@@ -44,11 +44,8 @@ const SettingsFakeDoorView = async () => await import('./views/SettingsFakeDoorV
 const SetupView = async () => await import('./views/SetupView.vue');
 const SigninView = async () => await import('./views/SigninView.vue');
 const SignupView = async () => await import('./views/SignupView.vue');
-const TemplatesCollectionView = async () => await import('@/views/TemplatesCollectionView.vue');
-const TemplatesWorkflowView = async () => await import('@/views/TemplatesWorkflowView.vue');
 const SetupWorkflowFromTemplateView = async () =>
 	await import('@/views/SetupWorkflowFromTemplateView/SetupWorkflowFromTemplateView.vue');
-const TemplatesSearchView = async () => await import('@/views/TemplatesSearchView.vue');
 const CredentialsView = async () => await import('@/views/CredentialsView.vue');
 const ExecutionsView = async () => await import('@/views/ExecutionsView.vue');
 const WorkflowsView = async () => await import('@/views/WorkflowsView.vue');
@@ -86,52 +83,6 @@ export const routes = [
 		},
 	},
 	{
-		path: '/collections/:id',
-		name: VIEWS.COLLECTION,
-		components: {
-			default: TemplatesCollectionView,
-			sidebar: MainSidebar,
-		},
-		meta: {
-			templatesEnabled: true,
-			telemetry: {
-				getProperties(route: RouteLocation) {
-					const templatesStore = useTemplatesStore();
-					return {
-						collection_id: route.params.id,
-						wf_template_repo_session_id: templatesStore.currentSessionId,
-					};
-				},
-			},
-			getRedirect: getTemplatesRedirect,
-			middleware: ['authenticated'],
-		},
-	},
-	{
-		path: '/templates/:id',
-		name: VIEWS.TEMPLATE,
-		components: {
-			default: TemplatesWorkflowView,
-			sidebar: MainSidebar,
-		},
-		meta: {
-			templatesEnabled: true,
-			getRedirect: getTemplatesRedirect,
-			telemetry: {
-				getProperties(route: RouteLocation) {
-					const templatesStore = useTemplatesStore();
-					return {
-						template_id: tryToParseNumber(
-							Array.isArray(route.params.id) ? route.params.id[0] : route.params.id,
-						),
-						wf_template_repo_session_id: templatesStore.currentSessionId,
-					};
-				},
-			},
-			middleware: ['authenticated'],
-		},
-	},
-	{
 		path: '/templates/:id/setup',
 		name: VIEWS.TEMPLATE_SETUP,
 		components: {
@@ -151,32 +102,6 @@ export const routes = [
 						wf_template_repo_session_id: templatesStore.currentSessionId,
 					};
 				},
-			},
-			middleware: ['authenticated'],
-		},
-	},
-	{
-		path: '/templates/',
-		name: VIEWS.TEMPLATES,
-		components: {
-			default: TemplatesSearchView,
-			sidebar: MainSidebar,
-		},
-		meta: {
-			templatesEnabled: true,
-			getRedirect: getTemplatesRedirect,
-			// Templates view remembers it's scroll position on back
-			scrollOffset: 0,
-			telemetry: {
-				getProperties(route: RouteLocation) {
-					const templatesStore = useTemplatesStore();
-					return {
-						wf_template_repo_session_id: templatesStore.currentSessionId,
-					};
-				},
-			},
-			setScrollPosition(pos: number) {
-				this.scrollOffset = pos;
 			},
 			middleware: ['authenticated'],
 		},
@@ -778,13 +703,6 @@ function withCanvasReadOnlyMeta(route: RouteRecordRaw) {
 
 const router = createRouter({
 	history: createWebHistory(import.meta.env.DEV ? '/' : window.BASE_PATH ?? '/'),
-	scrollBehavior(to: RouteLocationNormalized & RouteConfig, from, savedPosition) {
-		// saved position == null means the page is NOT visited from history (back button)
-		if (savedPosition === null && to.name === VIEWS.TEMPLATES && to.meta?.setScrollPosition) {
-			// for templates view, reset scroll position in this case
-			to.meta.setScrollPosition(0);
-		}
-	},
 	routes: routes.map(withCanvasReadOnlyMeta),
 });
 

@@ -111,8 +111,6 @@ async function openTemplateWorkflowOnNodeView(opts: {
 		wf_template_repo_session_id: templatesStore.currentSessionId,
 	};
 
-	await externalHooks.run('templatesWorkflowView.openWorkflow', telemetryPayload);
-
 	if (inNewBrowserTab) {
 		const route = router.resolve(routeLocation);
 		window.open(route.href, '_blank');

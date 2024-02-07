@@ -255,12 +255,6 @@ export interface ExternalHooks {
 	settingsCommunityNodesView: {
 		openInstallModal: Array<ExternalHooksMethod<ITelemetryTrackProperties>>;
 	};
-	templatesWorkflowView: {
-		openWorkflow: Array<ExternalHooksMethod<ITelemetryTrackProperties>>;
-	};
-	templatesCollectionView: {
-		onUseWorkflow: Array<ExternalHooksMethod<ITelemetryTrackProperties>>;
-	};
 	template: {
 		requested: Array<ExternalHooksMethod<{ templateId: string }>>;
 		open: Array<
