@@ -7,7 +7,9 @@ import type {
 	IRunData,
 	IRunExecutionData,
 	ITaskData,
+	IPinData
 	IWorkflowBase,
+	Workflow,
 } from 'n8n-workflow';
 import {
 	NodeHelpers,
@@ -27,6 +29,56 @@ import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { openPopUpWindow } from '@/utils/executionUtils';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+
+export const consolidateRunDataAndStartNodes = (
+	directParentNodes: string[],
+	runData: IRunData,
+	pinData: IPinData,
+	workflow: Workflow,
+): { runData: IRunData; startNodes: string[] } => {
+	const startNodes: string[] = [];
+	let newRunData: IRunData  = {};
+
+	if (runData !== null && Object.keys(runData).length !== 0) {
+		newRunData = {};
+
+		// Go over the direct parents of the node
+		for (const directParentNode of directParentNodes) {
+			// Go over the parents of that node so that we can get a start
+			// node for each of the branches
+			const parentNodes = workflow.getParentNodes(directParentNode, NodeConnectionType.Main);
+
+			// Add also the enabled direct parent to be checked
+			if (workflow.nodes[directParentNode].disabled) continue;
+
+			parentNodes.push(directParentNode);
+
+			for (const parentNode of parentNodes) {
+				if (
+					(runData[parentNode] === undefined || runData[parentNode].length === 0) &&
+					pinData?.[parentNode].length === 0
+				) {
+					// When we hit a node which has no data we stop and set it
+					// as a start node the execution from and then go on with other
+					// direct input nodes
+					startNodes.push(parentNode);
+					break;
+				}
+				if (runData[parentNode] !== undefined) {
+					newRunData[parentNode] = runData[parentNode]?.slice(0, 1);
+				}
+			}
+		}
+
+		if (Object.keys(newRunData).length === 0) {
+			// If there is no data for any of the parent nodes make sure
+			// that run data is empty that it runs regularly
+			newRunData = undefined;
+		}
+	}
+
+	return { runData: newRunData, startNodes };
+};
 
 export const workflowRun = defineComponent({
 	mixins: [workflowHelpers],
@@ -177,47 +229,7 @@ export const workflowRun = defineComponent({
 
 				const workflowData = await this.getWorkflowDataToSave();
 
-				let newRunData: IRunData | undefined;
-
-				const startNodes: string[] = [];
-
-				if (runData !== null && Object.keys(runData).length !== 0) {
-					newRunData = {};
-
-					// Go over the direct parents of the node
-					for (const directParentNode of directParentNodes) {
-						// Go over the parents of that node so that we can get a start
-						// node for each of the branches
-						const parentNodes = workflow.getParentNodes(directParentNode, NodeConnectionType.Main);
-
-						// Add also the enabled direct parent to be checked
-						if (workflow.nodes[directParentNode].disabled) continue;
-
-						parentNodes.push(directParentNode);
-
-						for (const parentNode of parentNodes) {
-							if (
-								(runData[parentNode] === undefined || runData[parentNode].length === 0) &&
-								workflowData.pinData?.[parentNode].length === 0
-							) {
-								// When we hit a node which has no data we stop and set it
-								// as a start node the execution from and then go on with other
-								// direct input nodes
-								startNodes.push(parentNode);
-								break;
-							}
-							if (runData[parentNode] !== undefined) {
-								newRunData[parentNode] = runData[parentNode]?.slice(0, 1);
-							}
-						}
-					}
-
-					if (Object.keys(newRunData).length === 0) {
-						// If there is no data for any of the parent nodes make sure
-						// that run data is empty that it runs regularly
-						newRunData = undefined;
-					}
-				}
+				const { runData: newRunData, startNodes } = consolidateRunDataAndStartNodes(directParentNodes, runData, workflowData.pinData, workflow);
 
 				let executedNode: string | undefined;
 				if (
