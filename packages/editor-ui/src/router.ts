@@ -99,12 +99,12 @@ export const routes = [
 			getRedirect: getTemplatesRedirect,
 			telemetry: {
 				getProperties(route: RouteLocation) {
-					const templatesStore = useTemplatesStore();
+					const setupTemplateStore = useSetupTemplateStore();
 					return {
 						template_id: tryToParseNumber(
 							Array.isArray(route.params.id) ? route.params.id[0] : route.params.id,
 						),
-						wf_template_repo_session_id: templatesStore.currentSessionId,
+						wf_template_repo_session_id: setupTemplateStore.currentSessionId,
 					};
 				},
 			},
