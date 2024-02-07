@@ -79,6 +79,7 @@ export function getConnectionOptions(dbType: DatabaseType): ConnectionOptions {
 				...getPostgresConnectionOptions(),
 				...getOptionOverrides('postgresdb'),
 				ssl,
+				useUTC: true,
 			};
 
 		case 'mariadb':
