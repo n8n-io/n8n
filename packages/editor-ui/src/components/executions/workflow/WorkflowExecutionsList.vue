@@ -5,7 +5,6 @@
 			:loading="loading && !filteredExecutions.length"
 			:loading-more="loadingMore"
 			:temporary-execution="temporaryExecution"
-			:auto-refresh="uiStore.executionSidebarAutoRefresh"
 			@update:auto-refresh="$emit('update:auto-refresh', $event)"
 			@reload-executions="$emit('reload')"
 			@filter-updated="$emit('update:filters', $event)"

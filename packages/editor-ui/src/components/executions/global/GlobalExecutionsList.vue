@@ -275,6 +275,14 @@ async function deleteExecution(execution: ExecutionSummary) {
 		toast.showError(error, i18n.baseText('executionsList.showError.handleDeleteSelected.title'));
 	}
 }
+
+async function onAutoRefreshToggle(value: boolean) {
+	if (value) {
+		await executionsStore.startAutoRefreshInterval();
+	} else {
+		executionsStore.stopAutoRefreshInterval();
+	}
+}
 </script>
 
 <template>
@@ -288,10 +296,10 @@ async function deleteExecution(execution: ExecutionSummary) {
 					<N8nLoading v-if="!isMounted" :class="$style.filterLoader" variant="custom" />
 					<ElCheckbox
 						v-else
-						:model-value="executionsStore.autoRefresh"
+						v-model="executionsStore.autoRefresh"
 						class="mr-xl"
 						data-test-id="execution-auto-refresh-checkbox"
-						@update:model-value="emit('update:autoRefresh', $event)"
+						@update:model-value="onAutoRefreshToggle($event)"
 					>
 						{{ i18n.baseText('executionsList.autoRefresh') }}
 					</ElCheckbox>

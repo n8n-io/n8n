@@ -198,7 +198,6 @@ export const useExecutionsStore = defineStore('executions', () => {
 	}
 
 	async function startAutoRefreshInterval(workflowId?: string) {
-		autoRefresh.value = true;
 		stopAutoRefreshInterval();
 		await loadAutoRefresh(workflowId);
 	}

@@ -9,7 +9,6 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useExecutionsStore } from '@/stores/executions.store';
 import { useToast } from '@/composables/useToast';
 import { storeToRefs } from 'pinia';
-import { filterExecutions } from '@/utils/executionUtils';
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
@@ -25,8 +24,6 @@ const executions = computed(() => [
 	...executionsStore.currentExecutions,
 	...executionsStore.executions,
 ]);
-
-const filteredExecutions = computed(() => filterExecutions(executions.value, filters.value));
 
 onBeforeMount(async () => {
 	await loadWorkflows();
@@ -65,14 +62,6 @@ function onDocumentVisibilityChange() {
 	}
 }
 
-async function onAutoRefreshToggle(value: boolean) {
-	if (value) {
-		await executionsStore.startAutoRefreshInterval();
-	} else {
-		executionsStore.stopAutoRefreshInterval();
-	}
-}
-
 async function onRefreshData() {
 	try {
 		await executionsStore.fetchExecutions();
@@ -92,12 +81,11 @@ async function onExecutionStop() {
 <template>
 	<GlobalExecutionsList
 		:executions="executions"
-		:filtered-executions="filteredExecutions"
+		:filtered-executions="executionsStore.filteredExecutions"
 		:filters="filters"
 		:total="executionsCount"
 		:estimated-total="executionsCountEstimated"
 		@execution:stop="onExecutionStop"
 		@update:filters="onUpdateFilters"
-		@update:auto-refresh="onAutoRefreshToggle"
 	/>
 </template>

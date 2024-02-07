@@ -1267,7 +1267,6 @@ export interface UIState {
 	selectedNodes: INodeUi[];
 	nodeViewInitialized: boolean;
 	addFirstStepOnLoad: boolean;
-	executionSidebarAutoRefresh: boolean;
 	bannersHeight: number;
 	bannerStack: BannerName[];
 	theme: ThemeOption;

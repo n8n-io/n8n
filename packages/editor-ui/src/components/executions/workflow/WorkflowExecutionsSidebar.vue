@@ -11,7 +11,7 @@
 		</div>
 		<div :class="$style.controls">
 			<el-checkbox
-				:model-value="autoRefresh"
+				v-model="executionsStore.autoRefresh"
 				data-test-id="auto-refresh-checkbox"
 				@update:modelValue="$emit('update:autoRefresh', $event)"
 			>
@@ -75,7 +75,7 @@ import type { Route } from 'vue-router';
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui.store';
+import { useExecutionsStore } from '@/stores/executions.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { ExecutionFilterType } from '@/Interface';
 
@@ -89,10 +89,6 @@ export default defineComponent({
 		ExecutionsFilter,
 	},
 	props: {
-		autoRefresh: {
-			type: Boolean,
-			default: false,
-		},
 		executions: {
 			type: Array as PropType<ExecutionSummary[]>,
 			required: true,
@@ -117,7 +113,7 @@ export default defineComponent({
 		};
 	},
 	computed: {
-		...mapStores(useUIStore, useWorkflowsStore),
+		...mapStores(useExecutionsStore, useWorkflowsStore),
 	},
 	watch: {
 		$route(to: Route, from: Route) {

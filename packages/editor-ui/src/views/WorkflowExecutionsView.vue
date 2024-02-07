@@ -5,7 +5,6 @@ import { useExecutionsStore } from '@/stores/executions.store';
 import { useI18n } from '@/composables/useI18n';
 import type { ExecutionFilterType, IWorkflowDb } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useUIStore } from '@/stores/ui.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { NO_NETWORK_ERROR_CODE } from '@/utils/apiUtils';
 import { useToast } from '@/composables/useToast';
@@ -20,7 +19,6 @@ import { useTelemetry } from '@/composables/useTelemetry';
 const executionsStore = useExecutionsStore();
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
-const uiStore = useUIStore();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const route = useRoute();
@@ -145,8 +143,6 @@ async function onAutoRefreshToggle(value: boolean) {
 	} else {
 		executionsStore.stopAutoRefreshInterval();
 	}
-
-	uiStore.executionSidebarAutoRefresh = value;
 }
 
 async function onRefreshData() {
