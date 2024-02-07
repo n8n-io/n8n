@@ -13,7 +13,12 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSSOStore } from '@/stores/sso.store';
-import { EnterpriseEditionFeature, VIEWS, EDITABLE_CANVAS_VIEWS } from '@/constants';
+import {
+	EnterpriseEditionFeature,
+	VIEWS,
+	EDITABLE_CANVAS_VIEWS,
+	WEBSITE_TEMPLATES_URL,
+} from '@/constants';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { middleware } from '@/rbac/middleware';
 import type { RouteConfig, RouterMiddleware } from '@/types/router';
@@ -218,6 +223,13 @@ export const routes = [
 					feature: [EnterpriseEditionFeature.WorkflowHistory],
 				},
 			},
+		},
+	},
+	{
+		path: '/templates',
+		alias: '/templates/:id',
+		redirect: () => {
+			window.location.href = WEBSITE_TEMPLATES_URL;
 		},
 	},
 	{
