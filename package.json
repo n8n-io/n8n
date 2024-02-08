@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "1.26.0",
+  "version": "1.28.0",
   "private": true,
   "homepage": "https://n8n.io",
   "engines": {
@@ -86,7 +86,6 @@
       "tough-cookie": "^4.1.3",
       "tslib": "^2.6.1",
       "tsconfig-paths": "^4.2.0",
-      "ts-node": "^10.9.1",
       "typescript": "^5.3.0",
       "xml2js": "^0.5.0",
       "cpy@8>globby": "^11.1.0",

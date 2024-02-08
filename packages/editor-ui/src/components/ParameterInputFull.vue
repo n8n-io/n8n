@@ -49,7 +49,8 @@
 						:model-value="value"
 						:path="path"
 						:is-read-only="isReadOnly"
-						:is-single-line="isSingleLine"
+						:is-assignment="isAssignment"
+						:rows="rows"
 						:droppable="droppable"
 						:active-drop="activeDrop"
 						:force-show-expression="forceShowExpression"
@@ -140,7 +141,11 @@ export default defineComponent({
 			type: Boolean,
 			default: false,
 		},
-		isSingleLine: {
+		rows: {
+			type: Number,
+			default: 5,
+		},
+		isAssignment: {
 			type: Boolean,
 			default: false,
 		},
@@ -387,6 +392,7 @@ export default defineComponent({
 	position: absolute;
 	bottom: -22px;
 	right: 0;
+	z-index: 1;
 	opacity: 0;
 	transition: opacity 100ms ease-in;
 

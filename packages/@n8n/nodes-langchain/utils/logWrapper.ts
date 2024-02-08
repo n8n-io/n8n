@@ -27,6 +27,7 @@ import { BaseOutputParser } from 'langchain/schema/output_parser';
 import { isObject } from 'lodash';
 import { N8nJsonLoader } from './N8nJsonLoader';
 import { N8nBinaryLoader } from './N8nBinaryLoader';
+import { isChatInstance } from './helpers';
 
 const errorsMap: { [key: string]: { message: string; description: string } } = {
 	'You exceeded your current quota, please check your plan and billing details.': {
@@ -225,7 +226,7 @@ export function logWrapper(
 			}
 
 			// ========== BaseChatModel ==========
-			if (originalInstance instanceof BaseLLM || originalInstance instanceof BaseChatModel) {
+			if (originalInstance instanceof BaseLLM || isChatInstance(originalInstance)) {
 				if (prop === '_generate' && '_generate' in target) {
 					return async (
 						messages: BaseMessage[] & string[],

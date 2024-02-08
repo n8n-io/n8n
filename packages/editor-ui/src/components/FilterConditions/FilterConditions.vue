@@ -138,6 +138,7 @@ function getIssues(index: number): string[] {
 			:underline="true"
 			:show-options="true"
 			:show-expression-selector="false"
+			size="small"
 			color="text-dark"
 		>
 		</n8n-input-label>

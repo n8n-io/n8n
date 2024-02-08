@@ -47,7 +47,7 @@ const testServer = utils.setupTestServer({
 });
 
 beforeAll(async () => {
-	owner = await createUser({ role: 'global:owner', password: 'password' });
+	owner = await createUser({ role: 'global:owner' });
 	authOwnerAgent = testServer.authAgentFor(owner);
 
 	defaultLdapConfig.bindingAdminPassword = Container.get(Cipher).encrypt(

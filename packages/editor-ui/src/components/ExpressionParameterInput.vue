@@ -4,16 +4,22 @@
 		:class="$style['expression-parameter-input']"
 		@keydown.tab="onBlur"
 	>
-		<div :class="[$style['all-sections'], { [$style['focused']]: isFocused }]">
+		<div
+			:class="[
+				$style['all-sections'],
+				{ [$style.focused]: isFocused, [$style.assignment]: isAssignment },
+			]"
+		>
 			<div :class="[$style['prepend-section'], 'el-input-group__prepend']">
-				<ExpressionFunctionIcon />
+				<span v-if="isAssignment">=</span>
+				<ExpressionFunctionIcon v-else />
 			</div>
 			<InlineExpressionEditorInput
 				ref="inlineInput"
 				:model-value="modelValue"
 				:is-read-only="isReadOnly"
 				:target-item="hoveringItem"
-				:is-single-line="isSingleLine"
+				:rows="rows"
 				:additional-data="additionalExpressionData"
 				:path="path"
 				@focus="onFocus"
@@ -78,7 +84,11 @@ export default defineComponent({
 			type: Boolean,
 			default: false,
 		},
-		isSingleLine: {
+		rows: {
+			type: Number,
+			default: 5,
+		},
+		isAssignment: {
 			type: Boolean,
 			default: false,
 		},
@@ -149,10 +159,9 @@ export default defineComponent({
 			}
 		},
 		onChange({ value, segments }: { value: string; segments: Segment[] }) {
-			if (this.isDragging) return;
-
 			this.segments = segments;
 
+			if (this.isDragging) return;
 			if (value === '=' + this.modelValue) return; // prevent report on change of target item
 
 			this.$emit('update:modelValue', value);
@@ -171,8 +180,6 @@ export default defineComponent({
 
 	.all-sections {
 		height: 30px;
-		display: flex;
-		flex-direction: row;
 		display: inline-table;
 		width: 100%;
 	}
@@ -182,6 +189,13 @@ export default defineComponent({
 		padding-top: 2px;
 		width: 22px;
 		text-align: center;
+	}
+}
+
+.assignment {
+	.prepend-section {
+		vertical-align: top;
+		padding-top: 4px;
 	}
 }
 
@@ -196,6 +210,8 @@ export default defineComponent({
 		var(--input-border-style, var(--border-style-base))
 		var(--input-border-width, var(--border-width-base));
 	cursor: pointer;
+	border-radius: 0;
+	border-top-left-radius: var(--border-radius-base);
 
 	&:hover {
 		border: var(--input-border-color, var(--border-color-base))

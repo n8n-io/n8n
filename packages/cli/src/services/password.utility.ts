@@ -1,18 +1,17 @@
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { Service as Utility } from 'typedi';
-import { compare, genSaltSync, hash } from 'bcryptjs';
+import { compare, hash } from 'bcryptjs';
 import {
 	MAX_PASSWORD_CHAR_LENGTH as maxLength,
 	MIN_PASSWORD_CHAR_LENGTH as minLength,
 } from '@/constants';
 
+const SALT_ROUNDS = 10;
+
 @Utility()
 export class PasswordUtility {
 	async hash(plaintext: string) {
-		const SALT_ROUNDS = 10;
-		const salt = genSaltSync(SALT_ROUNDS);
-
-		return await hash(plaintext, salt);
+		return await hash(plaintext, SALT_ROUNDS);
 	}
 
 	async compare(plaintext: string, hashed: string) {

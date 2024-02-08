@@ -106,14 +106,19 @@ export function addSupplementalNodeToParent(
 	nodeName: string,
 	endpointType: EndpointType,
 	parentNodeName: string,
+	exactMatch = false,
 ) {
 	getAddInputEndpointByType(parentNodeName, endpointType).click({ force: true });
-	getNodeCreatorItems().contains(nodeName).click();
+	if (exactMatch) {
+		getNodeCreatorItems().contains(new RegExp("^" + nodeName + "$", "g")).click();
+	} else {
+		getNodeCreatorItems().contains(nodeName).click();
+	}
 	getConnectionBySourceAndTarget(parentNodeName, nodeName).should('exist');
 }
 
-export function addLanguageModelNodeToParent(nodeName: string, parentNodeName: string) {
-	addSupplementalNodeToParent(nodeName, 'ai_languageModel', parentNodeName);
+export function addLanguageModelNodeToParent(nodeName: string, parentNodeName: string, exactMatch = false) {
+	addSupplementalNodeToParent(nodeName, 'ai_languageModel', parentNodeName, exactMatch);
 }
 
 export function addMemoryNodeToParent(nodeName: string, parentNodeName: string) {

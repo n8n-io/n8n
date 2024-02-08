@@ -7,7 +7,6 @@ import { Container, Service } from 'typedi';
 import assert from 'assert';
 import { exec as callbackExec } from 'child_process';
 import { access as fsAccess } from 'fs/promises';
-import os from 'os';
 import { join as pathJoin } from 'path';
 import { promisify } from 'util';
 import cookieParser from 'cookie-parser';
@@ -34,7 +33,7 @@ import {
 	N8N_VERSION,
 	TEMPLATES_DIR,
 } from '@/constants';
-import { credentialsController } from '@/credentials/credentials.controller';
+import { CredentialsController } from '@/credentials/credentials.controller';
 import type { CurlHelper } from '@/requests';
 import { registerController } from '@/decorators';
 import { AuthController } from '@/controllers/auth.controller';
@@ -54,7 +53,7 @@ import { WorkflowStatisticsController } from '@/controllers/workflowStatistics.c
 import { ExternalSecretsController } from '@/ExternalSecrets/ExternalSecrets.controller.ee';
 import { ExecutionsController } from '@/executions/executions.controller';
 import { isApiEnabled, loadPublicApiVersions } from '@/PublicApi';
-import type { ICredentialsOverwrite, IDiagnosticInfo } from '@/Interfaces';
+import type { ICredentialsOverwrite } from '@/Interfaces';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import * as ResponseHelper from '@/ResponseHelper';
@@ -67,20 +66,13 @@ import { setupAuthMiddlewares } from './middlewares';
 import { isLdapEnabled } from './Ldap/helpers';
 import { AbstractServer } from './AbstractServer';
 import { PostHogClient } from './posthog';
-import { MessageEventBus } from '@/eventbus';
+import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { InternalHooks } from './InternalHooks';
-import { License } from './License';
 import { SamlController } from './sso/saml/routes/saml.controller.ee';
 import { SamlService } from './sso/saml/saml.service.ee';
 import { VariablesController } from './environments/variables/variables.controller.ee';
-import {
-	isLdapCurrentAuthenticationMethod,
-	isSamlCurrentAuthenticationMethod,
-} from './sso/ssoHelpers';
 import { SourceControlService } from '@/environments/sourceControl/sourceControl.service.ee';
 import { SourceControlController } from '@/environments/sourceControl/sourceControl.controller.ee';
-
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
 
 import { handleMfaDisable, isMfaFeatureEnabled } from './Mfa/helpers';
 import type { FrontendService } from './services/frontend.service';
@@ -129,72 +121,11 @@ export class Server extends AbstractServer {
 		await super.start();
 		this.logger.debug(`Server ID: ${this.uniqueInstanceId}`);
 
-		const cpus = os.cpus();
-		const binaryDataConfig = config.getEnv('binaryDataManager');
-
-		const isS3Selected = config.getEnv('binaryDataManager.mode') === 's3';
-		const isS3Available = config.getEnv('binaryDataManager.availableModes').includes('s3');
-		const isS3Licensed = Container.get(License).isBinaryDataS3Licensed();
-
-		const diagnosticInfo: IDiagnosticInfo = {
-			databaseType: config.getEnv('database.type'),
-			disableProductionWebhooksOnMainProcess: config.getEnv(
-				'endpoints.disableProductionWebhooksOnMainProcess',
-			),
-			notificationsEnabled: config.getEnv('versionNotifications.enabled'),
-			versionCli: N8N_VERSION,
-			systemInfo: {
-				os: {
-					type: os.type(),
-					version: os.version(),
-				},
-				memory: os.totalmem() / 1024,
-				cpus: {
-					count: cpus.length,
-					model: cpus[0].model,
-					speed: cpus[0].speed,
-				},
-			},
-			executionVariables: {
-				executions_process: config.getEnv('executions.process'),
-				executions_mode: config.getEnv('executions.mode'),
-				executions_timeout: config.getEnv('executions.timeout'),
-				executions_timeout_max: config.getEnv('executions.maxTimeout'),
-				executions_data_save_on_error: config.getEnv('executions.saveDataOnError'),
-				executions_data_save_on_success: config.getEnv('executions.saveDataOnSuccess'),
-				executions_data_save_on_progress: config.getEnv('executions.saveExecutionProgress'),
-				executions_data_save_manual_executions: config.getEnv(
-					'executions.saveDataManualExecutions',
-				),
-				executions_data_prune: config.getEnv('executions.pruneData'),
-				executions_data_max_age: config.getEnv('executions.pruneDataMaxAge'),
-			},
-			deploymentType: config.getEnv('deployment.type'),
-			binaryDataMode: binaryDataConfig.mode,
-			smtp_set_up: config.getEnv('userManagement.emails.mode') === 'smtp',
-			ldap_allowed: isLdapCurrentAuthenticationMethod(),
-			saml_enabled: isSamlCurrentAuthenticationMethod(),
-			binary_data_s3: isS3Available && isS3Selected && isS3Licensed,
-			multi_main_setup_enabled: config.getEnv('multiMainSetup.enabled'),
-			licensePlanName: Container.get(License).getPlanName(),
-			licenseTenantId: config.getEnv('license.tenantId'),
-		};
-
 		if (inDevelopment && process.env.N8N_DEV_RELOAD === 'true') {
 			void this.loadNodesAndCredentials.setupHotReload();
 		}
 
-		void Container.get(WorkflowRepository)
-			.findOne({
-				select: ['createdAt'],
-				order: { createdAt: 'ASC' },
-				where: {},
-			})
-			.then(
-				async (workflow) =>
-					await Container.get(InternalHooks).onServerStarted(diagnosticInfo, workflow?.createdAt),
-			);
-
+		void Container.get(InternalHooks).onServerStarted();
 		Container.get(CollaborationService);
 	}
 
@@ -230,6 +161,7 @@ export class Server extends AbstractServer {
 			ActiveWorkflowsController,
 			WorkflowsController,
 			ExecutionsController,
+			CredentialsController,
 		];
 
 		if (
@@ -347,8 +279,6 @@ export class Server extends AbstractServer {
 		await handleMfaDisable();
 
 		await this.registerControllers(ignoredEndpoints);
-
-		this.app.use(`/${this.restEndpoint}/credentials`, credentialsController);
 
 		// ----------------------------------------
 		// SAML

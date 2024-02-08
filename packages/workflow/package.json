@@ -1,6 +1,6 @@
 {
   "name": "n8n-workflow",
-  "version": "1.26.0",
+  "version": "1.28.0",
   "description": "Workflow base code of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -51,6 +51,7 @@
     "@n8n/tournament": "1.0.2",
     "@n8n_io/riot-tmpl": "4.0.0",
     "ast-types": "0.15.2",
+    "axios": "1.6.7",
     "callsites": "3.1.0",
     "deep-equal": "2.2.0",
     "esprima-next": "5.8.4",
