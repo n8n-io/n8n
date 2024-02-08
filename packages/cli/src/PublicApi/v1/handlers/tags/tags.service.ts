@@ -8,10 +8,6 @@ export async function getTags(options: FindManyOptions<TagEntity>): Promise<TagE
 	return await Container.get(TagRepository).find(options);
 }
 
-export async function getTagsCount(options: FindManyOptions<TagEntity>): Promise<number> {
-	return await Container.get(TagRepository).count(options);
-}
-
 export async function getTagById(id: string): Promise<TagEntity | null> {
 	return await Container.get(TagRepository).findOne({
 		where: { id },
