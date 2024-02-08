@@ -7,14 +7,15 @@ import { useRootStore } from '@/stores/n8nRoot.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import type { INodeTypeDescription } from 'n8n-workflow';
-import type { INodeUi, ITemplatesWorkflowFull } from '@/Interface';
+import type { INodeUi, ITemplatesWorkflowFull, IWorkflowTemplate } from '@/Interface';
 import { VIEWS } from '@/constants';
 import { createWorkflowFromTemplate } from '@/utils/templates/templateActions';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useCredentialSetupState } from '@/views/SetupWorkflowFromTemplateView/useCredentialSetupState';
 import { tryToParseNumber } from '@/utils/typesUtils';
-import { getTemplateById } from '@/api/templates';
+import { getTemplateById, getWorkflowTemplate } from '@/api/templates';
+import { getFixedNodesList } from '@/utils/nodeViewUtils';
 
 export type NodeAndType = {
 	node: INodeUi;
@@ -237,6 +238,32 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 	};
 
 	/**
+	 * Fetches the workflow template from the server.
+	 */
+	const fetchWorkflowTemplate = async (id: string): Promise<IWorkflowTemplate> => {
+		const apiEndpoint: string = settingsStore.templatesHost;
+		const versionCli: string = settingsStore.versionCli;
+		return await getWorkflowTemplate(apiEndpoint, id, { 'n8n-version': versionCli });
+	};
+
+	/**
+	 * Fetches the workflow template from the server and fixes the nodes list by removing credentials.
+	 */
+	const getFixedWorkflowTemplate = async (id: string): Promise<IWorkflowTemplate | undefined> => {
+		const fetchedTemplate = await fetchWorkflowTemplate(id);
+		if (fetchedTemplate?.workflow?.nodes) {
+			fetchedTemplate.workflow.nodes = getFixedNodesList(fetchedTemplate.workflow.nodes);
+			fetchedTemplate.workflow.nodes?.forEach((node) => {
+				if (node.credentials) {
+					delete node.credentials;
+				}
+			});
+		}
+
+		return fetchedTemplate;
+	};
+
+	/**
 	 * Resets the session id.
 	 */
 	const resetSessionId = () => {
@@ -273,6 +300,7 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 		setTemplateId,
 		setSelectedCredentialId,
 		unsetSelectedCredential,
+		getFixedWorkflowTemplate,
 		resetSessionId,
 		setSessionId,
 		currentSessionId,

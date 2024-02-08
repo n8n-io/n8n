@@ -332,7 +332,7 @@ import { useRootStore } from '@/stores/n8nRoot.store';
 import { useSegment } from '@/stores/segment.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useTagsStore } from '@/stores/tags.store';
-import { useTemplatesStore } from '@/stores/templates.store';
+import { useSetupTemplateStore } from '@/views/SetupWorkflowFromTemplateView/setupTemplate.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
@@ -590,7 +590,7 @@ export default defineComponent({
 			useNDVStore,
 			useRootStore,
 			useSettingsStore,
-			useTemplatesStore,
+			useSetupTemplateStore,
 			useUIStore,
 			useWorkflowsStore,
 			useUsersStore,
@@ -1311,7 +1311,7 @@ export default defineComponent({
 			let data: IWorkflowTemplate | undefined;
 			try {
 				void this.externalHooks.run('template.requested', { templateId });
-				data = await this.templatesStore.getFixedWorkflowTemplate(templateId);
+				data = await this.setupTemplateStore.getFixedWorkflowTemplate(templateId);
 
 				if (!data) {
 					throw new Error(
@@ -1331,7 +1331,7 @@ export default defineComponent({
 				{
 					source: 'workflow',
 					template_id: tryToParseNumber(templateId),
-					wf_template_repo_session_id: this.templatesStore.previousSessionId,
+					wf_template_repo_session_id: this.setupTemplateStore.previousSessionId,
 				},
 				{
 					withPostHog: true,

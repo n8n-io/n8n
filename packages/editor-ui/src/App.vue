@@ -52,7 +52,6 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
-import { useTemplatesStore } from '@/stores/templates.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsageStore } from '@/stores/usage.store';
 import { useUsersStore } from '@/stores/users.store';
@@ -82,7 +81,6 @@ export default defineComponent({
 			useNodeTypesStore,
 			useRootStore,
 			useSettingsStore,
-			useTemplatesStore,
 			useUIStore,
 			useUsersStore,
 			useSourceControlStore,

@@ -2,13 +2,13 @@
 import { useLoadingService } from '@/composables/useLoadingService';
 import { useI18n } from '@/composables/useI18n';
 import { VIEWS } from '@/constants';
-import { useTemplatesStore } from '@/stores/templates.store';
+import { useSetupTemplateStore } from '@/views/SetupWorkflowFromTemplateView/setupTemplate.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 const loadingService = useLoadingService();
-const templateStore = useTemplatesStore();
+const setupTemplateStore = useSetupTemplateStore();
 const workfowStore = useWorkflowsStore();
 const router = useRouter();
 const route = useRoute();
@@ -17,7 +17,7 @@ const i18n = useI18n();
 const openWorkflowTemplate = async (templateId: string) => {
 	try {
 		loadingService.startLoading();
-		const template = await templateStore.getFixedWorkflowTemplate(templateId);
+		const template = await setupTemplateStore.getFixedWorkflowTemplate(templateId);
 		if (!template) {
 			throw new Error();
 		}
