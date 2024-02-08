@@ -112,7 +112,7 @@ export class UserRepository extends Repository<User> {
 		transactionManager?: EntityManager,
 	): Promise<User> {
 		const createInner = async (entityManager: EntityManager) => {
-			const newUser = entityManager.create(User, user) as User;
+			const newUser = entityManager.create(User, user);
 			const savedUser = await entityManager.save<User>(newUser);
 			const savedProject = await entityManager.save<Project>(
 				entityManager.create(Project, {
