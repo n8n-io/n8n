@@ -1,4 +1,4 @@
-import { Service } from 'typedi';
+import Container, { Service } from 'typedi';
 import { v4 as uuid } from 'uuid';
 import { type INode, type INodeCredentialsDetails } from 'n8n-workflow';
 
@@ -12,6 +12,7 @@ import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { WorkflowTagMapping } from '@db/entities/WorkflowTagMapping';
 import type { TagEntity } from '@db/entities/TagEntity';
 import type { ICredentialsDb } from '@/Interfaces';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
 
 @Service()
 export class ImportService {
@@ -57,10 +58,14 @@ export class ImportService {
 
 				const workflowId = upsertResult.identifiers.at(0)?.id as string;
 
-				await tx.upsert(SharedWorkflow, { workflowId, userId, role: 'workflow:owner' }, [
-					'workflowId',
-					'userId',
-				]);
+				const personalProject =
+					await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(userId);
+
+				await tx.upsert(
+					SharedWorkflow,
+					{ workflowId, userId, projectId: personalProject.id, role: 'workflow:owner' },
+					['workflowId', 'userId'],
+				);
 
 				if (!workflow.tags?.length) continue;
 

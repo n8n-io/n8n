@@ -27,6 +27,7 @@ import type { SaveCredentialFunction } from '../integration/shared/types';
 import { mockNodeTypesData } from '../unit/Helpers';
 import { affixRoleToSaveCredential } from '../integration/shared/db/credentials';
 import { createOwner, createUser } from '../integration/shared/db/users';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
 
 export const toTargetCallErrorMsg = (subworkflowId: string) =>
 	`Target workflow ID ${subworkflowId} may not be called`;
@@ -240,10 +241,14 @@ describe('check()', () => {
 		};
 
 		const workflowEntity = await Container.get(WorkflowRepository).save(workflowDetails);
+		const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			member.id,
+		);
 
 		await Container.get(SharedWorkflowRepository).save({
 			workflow: workflowEntity,
 			user: member,
+			project,
 			role: 'workflow:owner',
 		});
 

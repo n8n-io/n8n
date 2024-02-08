@@ -7,6 +7,7 @@ import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import type { SharedWorkflow } from '@db/entities/SharedWorkflow';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
 
 export async function createManyWorkflows(
 	amount: number,
@@ -48,8 +49,10 @@ export async function createWorkflow(attributes: Partial<WorkflowEntity> = {}, u
 	const workflow = await Container.get(WorkflowRepository).save(workflowEntity);
 
 	if (user) {
+		const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(user.id);
 		await Container.get(SharedWorkflowRepository).save({
 			user,
+			project,
 			workflow,
 			role: 'workflow:owner',
 		});
@@ -58,11 +61,19 @@ export async function createWorkflow(attributes: Partial<WorkflowEntity> = {}, u
 }
 
 export async function shareWorkflowWithUsers(workflow: WorkflowEntity, users: User[]) {
-	const sharedWorkflows: Array<DeepPartial<SharedWorkflow>> = users.map((user) => ({
-		userId: user.id,
-		workflowId: workflow.id,
-		role: 'workflow:editor',
-	}));
+	const sharedWorkflows: Array<DeepPartial<SharedWorkflow>> = await Promise.all(
+		users.map(async (user) => {
+			const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+				user.id,
+			);
+			return {
+				userId: user.id,
+				projectId: project.id,
+				workflowId: workflow.id,
+				role: 'workflow:editor',
+			};
+		}),
+	);
 	return await Container.get(SharedWorkflowRepository).save(sharedWorkflows);
 }
 
