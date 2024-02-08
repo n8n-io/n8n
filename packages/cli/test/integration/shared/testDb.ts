@@ -99,6 +99,8 @@ const repositories = [
 	'InstalledNodes',
 	'InstalledPackages',
 	'Role',
+	'Project',
+	'ProjectRelation',
 	'Settings',
 	'SharedCredentials',
 	'SharedWorkflow',
