@@ -5,6 +5,7 @@ import { type CredentialsGetSharedOptions } from './credentials.service';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { CredentialsEntity } from '@/databases/entities/CredentialsEntity';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { Service } from 'typedi';
 
 @Service()
@@ -12,6 +13,7 @@ export class EnterpriseCredentialsService {
 	constructor(
 		private readonly userRepository: UserRepository,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
+		private readonly projectRepository: ProjectRepository,
 	) {}
 
 	async isOwned(user: User, credentialId: string) {
@@ -62,15 +64,22 @@ export class EnterpriseCredentialsService {
 	async share(transaction: EntityManager, credential: CredentialsEntity, shareWithIds: string[]) {
 		const users = await this.userRepository.getByIds(transaction, shareWithIds);
 
-		const newSharedCredentials = users
-			.filter((user) => !user.isPending)
-			.map((user) =>
-				this.sharedCredentialsRepository.create({
-					credentialsId: credential.id,
-					userId: user.id,
-					role: 'credential:user',
+		const newSharedCredentials = await Promise.all(
+			users
+				.filter((user) => !user.isPending)
+				.map(async (user) => {
+					const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(
+						user.id,
+					);
+
+					return this.sharedCredentialsRepository.create({
+						credentialsId: credential.id,
+						userId: user.id,
+						role: 'credential:user',
+						project: personalProject,
+					});
 				}),
-			);
+		);
 
 		return await transaction.save(newSharedCredentials);
 	}

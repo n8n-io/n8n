@@ -87,7 +87,7 @@ export async function createUserShell(role: GlobalRole): Promise<User> {
 		shell.email = randomEmail();
 	}
 
-	return await Container.get(UserRepository).save(shell);
+	return await Container.get(UserRepository).createUserWithProject(shell);
 }
 
 /**
