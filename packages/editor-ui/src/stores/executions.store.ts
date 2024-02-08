@@ -114,10 +114,6 @@ export const useExecutionsStore = defineStore('executions', () => {
 		await startAutoRefreshInterval(workflowId);
 	}
 
-	function terminate() {
-		stopAutoRefreshInterval();
-	}
-
 	function getExecutionStatus(execution: ExecutionSummary): ExecutionStatus {
 		if (execution.status) {
 			return execution.status;
@@ -260,7 +256,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 		currentExecutionsById.value = {};
 		executionsCount.value = 0;
 		executionsCountEstimated.value = false;
-		terminate();
+		stopAutoRefreshInterval();
 	}
 
 	return {
@@ -280,7 +276,6 @@ export const useExecutionsStore = defineStore('executions', () => {
 		startAutoRefreshInterval,
 		stopAutoRefreshInterval,
 		initialize,
-		terminate,
 		filters,
 		setFilters,
 		executionsFilters,
