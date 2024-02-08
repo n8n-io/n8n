@@ -59,8 +59,7 @@ body:
   - type: dropdown
     id: db
     attributes:
-      label: Node.js Version
-      description: n8n uses SQLite as default
+      label: Database
       options:
         - SQLite (default)
         - PostgreSQL
