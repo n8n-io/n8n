@@ -52,7 +52,7 @@ export = {
 			req: CredentialRequest.Delete,
 			res: express.Response,
 		): Promise<express.Response<Partial<CredentialsEntity>>> => {
-			const { id: credentialId } = req.params;
+			const { credentialId } = req.params;
 			let credential: CredentialsEntity | undefined;
 
 			if (!['global:owner', 'global:admin'].includes(req.user.role)) {

@@ -8,7 +8,7 @@ import * as ResponseHelper from '@/ResponseHelper';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import type { IWorkflowResponse } from '@/Interfaces';
 import config from '@/config';
-import { Authorized, Delete, Get, Patch, Post, Put, RestController } from '@/decorators';
+import { Authorized, Delete, Get, Patch, Post, Put, RestController, Scoped } from '@/decorators';
 import { SharedWorkflow, type WorkflowSharingRole } from '@db/entities/SharedWorkflow';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
@@ -212,9 +212,10 @@ export class WorkflowsController {
 		return workflowData;
 	}
 
-	@Get('/:id')
+	@Get('/:workflowId')
+	@Scoped('workflow:read')
 	async getWorkflow(req: WorkflowRequest.Get) {
-		const { id: workflowId } = req.params;
+		const { workflowId } = req.params;
 
 		if (this.license.isSharingEnabled()) {
 			const relations = ['shared', 'shared.user'];
@@ -266,9 +267,10 @@ export class WorkflowsController {
 		return shared.workflow;
 	}
 
-	@Patch('/:id')
+	@Patch('/:workflowId')
+	@Scoped('workflow:update')
 	async update(req: WorkflowRequest.Update) {
-		const { id: workflowId } = req.params;
+		const { workflowId } = req.params;
 		const forceSave = req.query.forceSave === 'true';
 
 		let updateData = new WorkflowEntity();
@@ -296,9 +298,10 @@ export class WorkflowsController {
 		return updatedWorkflow;
 	}
 
-	@Delete('/:id')
+	@Delete('/:workflowId')
+	@Scoped('workflow:delete')
 	async delete(req: WorkflowRequest.Delete) {
-		const { id: workflowId } = req.params;
+		const { workflowId } = req.params;
 
 		const workflow = await this.workflowService.delete(req.user, workflowId);
 		if (!workflow) {
@@ -337,6 +340,7 @@ export class WorkflowsController {
 	}
 
 	@Put('/:workflowId/share')
+	@Scoped('workflow:share')
 	async share(req: WorkflowRequest.Share) {
 		if (!this.license.isSharingEnabled()) throw new NotFoundError('Route not found');
 

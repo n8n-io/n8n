@@ -27,9 +27,13 @@ import type { BooleanLicenseFeature } from '@/Interfaces';
 
 import { License } from '@/License';
 import { ApplicationError } from 'n8n-workflow';
-import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
 import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
+import { RoleService } from '@/services/role.service';
+import { SharedCredentialsRepository } from '@/databases/repositories/sharedCredentials.repository';
+import { In } from 'typeorm';
+import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
 
 export const createAuthMiddleware =
 	(authRole: AuthRole): RequestHandler =>
@@ -64,22 +68,24 @@ export const createLicenseMiddleware =
 
 export const createScopedMiddleware =
 	(routeScopeMetadata: RouteScopeMetadata[string]): RequestHandler =>
-	async (req: AuthenticatedRequest<{ projectId?: string }>, res, next) => {
+	async (req: AuthenticatedRequest<{ credentialId?: string; workflowId?: string }>, res, next) => {
 		if (!req.user) throw new UnauthenticatedError();
 
 		const { scopes, globalOnly } = routeScopeMetadata;
 
 		if (scopes.length === 0) return next();
 
-		if (globalOnly) {
-			if (!req.user.hasGlobalScope(scopes)) {
-				return res.status(403).json({
-					status: 'error',
-					message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE,
-				});
-			}
-
+		// Short circuit here since a global role will always
+		if (req.user.hasGlobalScope(scopes)) {
 			return next();
+		}
+
+		if (globalOnly) {
+			// The above check already failed so return an auth error
+			return res.status(403).json({
+				status: 'error',
+				message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE,
+			});
 		}
 
 		/**
@@ -95,35 +101,59 @@ export const createScopedMiddleware =
 		 * 4. Check if any of those roles contains the scope that allows the action.
 		 */
 
-		const { projectId } = req.params;
+		const { credentialId, workflowId } = req.params;
 
-		if (!projectId) {
-			return res.status(400).json({
-				status: 'error',
-				message: 'Missing `projectId` route parameter',
+		const roleService = Container.get(RoleService);
+		const projectRoles = roleService.rolesWithScope('project', scopes);
+		const userProjectIds = (
+			await Container.get(ProjectRepository).find({
+				where: {
+					projectRelations: {
+						userId: req.user.id,
+						role: In(projectRoles),
+					},
+				},
+				select: ['id'],
+			})
+		).map((p) => p.id);
+
+		if (credentialId) {
+			const exists = await Container.get(SharedCredentialsRepository).find({
+				where: {
+					projectId: In(projectRoles),
+					credentialsId: credentialId,
+					role: In(roleService.rolesWithScope('credential', scopes)),
+				},
 			});
+			if (!exists.length) {
+				return res.status(403).json({
+					status: 'error',
+					message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE,
+				});
+			}
+			return next();
 		}
 
-		const projectRole = await Container.get(ProjectRelationRepository).findProjectRole({
-			userId: req.user.id,
-			projectId,
-		});
-
-		if (!projectRole) {
-			return res.status(404).json({
-				status: 'error',
-				message: 'User not found in project',
+		if (workflowId) {
+			const exists = await Container.get(SharedWorkflowRepository).find({
+				where: {
+					projectId: In(projectRoles),
+					workflowId,
+					role: In(roleService.rolesWithScope('workflow', scopes)),
+				},
 			});
+			if (!exists.length) {
+				return res.status(403).json({
+					status: 'error',
+					message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE,
+				});
+			}
+			return next();
 		}
 
-		if (!req.user.hasScope(scopes, projectRole)) {
-			return res.status(403).json({
-				status: 'error',
-				message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE,
-			});
-		}
-
-		return next();
+		throw new ApplicationError(
+			"@Scoped decorator was used without globalOnly but does not have a credentialId or workflowId in it's URL parameters. This is likely an implementation error. If you're a developer, please check you're URL is correct or that this should be globalOnly.",
+		);
 	};
 
 const authFreeRoutes: string[] = [];

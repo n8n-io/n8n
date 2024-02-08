@@ -11,7 +11,17 @@ import { License } from '@/License';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { OwnershipService } from '@/services/ownership.service';
 import { EnterpriseCredentialsService } from './credentials.service.ee';
-import { Authorized, Delete, Get, Licensed, Patch, Post, Put, RestController } from '@/decorators';
+import {
+	Authorized,
+	Delete,
+	Get,
+	Licensed,
+	Patch,
+	Post,
+	Put,
+	RestController,
+	Scoped,
+} from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { UserManagementMailer } from '@/UserManagement/email';
 import * as Db from '@/Db';
@@ -49,10 +59,11 @@ export class CredentialsController {
 		};
 	}
 
-	@Get('/:id')
+	@Get('/:credentialId')
+	@Scoped('credential:read')
 	async getOne(req: CredentialRequest.Get) {
 		if (this.license.isSharingEnabled()) {
-			const { id: credentialId } = req.params;
+			const { credentialId } = req.params;
 			const includeDecryptedData = req.query.includeData === 'true';
 
 			let credential = await this.credentialsRepository.findOne({
@@ -91,7 +102,7 @@ export class CredentialsController {
 
 		// non-enterprise
 
-		const { id: credentialId } = req.params;
+		const { credentialId } = req.params;
 		const includeDecryptedData = req.query.includeData === 'true';
 
 		const sharing = await this.credentialsService.getSharing(
@@ -196,9 +207,10 @@ export class CredentialsController {
 		return credential;
 	}
 
-	@Patch('/:id')
+	@Patch('/:credentialId')
+	@Scoped('credential:update')
 	async updateCredentials(req: CredentialRequest.Update) {
-		const { id: credentialId } = req.params;
+		const { credentialId } = req.params;
 
 		const sharing = await this.credentialsService.getSharing(
 			req.user,
@@ -254,9 +266,10 @@ export class CredentialsController {
 		return { ...rest };
 	}
 
-	@Delete('/:id')
+	@Delete('/:credentialId')
+	@Scoped('credential:delete')
 	async deleteCredentials(req: CredentialRequest.Delete) {
-		const { id: credentialId } = req.params;
+		const { credentialId } = req.params;
 
 		const sharing = await this.credentialsService.getSharing(
 			req.user,
@@ -294,9 +307,10 @@ export class CredentialsController {
 	}
 
 	@Licensed('feat:sharing')
-	@Put('/:id/share')
+	@Put('/:credentialId/share')
+	@Scoped('credential:share')
 	async shareCredentials(req: CredentialRequest.Share) {
-		const { id: credentialId } = req.params;
+		const { credentialId } = req.params;
 		const { shareWithIds } = req.body;
 
 		if (

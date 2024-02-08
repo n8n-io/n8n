@@ -25,12 +25,12 @@ export declare namespace WorkflowRequest {
 
 	type Create = AuthenticatedRequest<{}, {}, CreateUpdatePayload>;
 
-	type Get = AuthenticatedRequest<{ id: string }>;
+	type Get = AuthenticatedRequest<{ workflowId: string }>;
 
 	type Delete = Get;
 
 	type Update = AuthenticatedRequest<
-		{ id: string },
+		{ workflowId: string },
 		{},
 		CreateUpdatePayload,
 		{ forceSave?: string }
