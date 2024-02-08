@@ -420,16 +420,22 @@ export class Wait extends Webhook {
 
 			waitAmount *= 1000;
 
-			waitTill = DateTime.now()
-				.setZone(context.getTimezone())
+			const original = new Date(new Date().getTime() + waitAmount);
+
+			waitTill = DateTime.fromISO(original.toISOString().slice(0, -1), {
+				zone: context.getTimezone(),
+			})
 				.plus({ milliseconds: waitAmount })
 				.toUTC()
 				.toJSDate();
 		} else {
 			const dateTimeStr = context.getNodeParameter('dateTime', 0) as string;
-			const FORMAT = "yyyy-MM-dd'T'HH:mm:ss";
-			const tz = { zone: context.getTimezone() };
-			waitTill = DateTime.fromFormat(dateTimeStr, FORMAT, tz).toUTC().toJSDate();
+
+			waitTill = DateTime.fromFormat(dateTimeStr, "yyyy-MM-dd'T'HH:mm:ss", {
+				zone: context.getTimezone(),
+			})
+				.toUTC()
+				.toJSDate();
 		}
 
 		const waitValue = Math.max(waitTill.getTime() - new Date().getTime(), 0);
