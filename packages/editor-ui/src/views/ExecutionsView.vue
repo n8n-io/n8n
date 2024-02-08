@@ -42,7 +42,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-	executionsStore.terminate();
+	executionsStore.reset();
 	document.removeEventListener('visibilitychange', onDocumentVisibilityChange);
 });
 

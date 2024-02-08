@@ -252,6 +252,17 @@ export const useExecutionsStore = defineStore('executions', () => {
 		}
 	}
 
+	function reset() {
+		itemsPerPage.value = 10;
+		filters.value = getDefaultExecutionFilters();
+		autoRefresh.value = true;
+		executionsById.value = {};
+		currentExecutionsById.value = {};
+		executionsCount.value = 0;
+		executionsCountEstimated.value = false;
+		terminate();
+	}
+
 	return {
 		loading,
 		executionsById,
@@ -278,5 +289,6 @@ export const useExecutionsStore = defineStore('executions', () => {
 		stopCurrentExecution,
 		retryExecution,
 		deleteExecutions,
+		reset,
 	};
 });
