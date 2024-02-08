@@ -340,6 +340,9 @@ importers:
       eslint-plugin-import:
         specifier: ^2.29.0
         version: 2.29.0(@typescript-eslint/parser@6.12.0)(eslint-import-resolver-typescript@3.6.1)(eslint@8.54.0)
+      eslint-plugin-lodash:
+        specifier: ^7.4.0
+        version: 7.4.0(eslint@8.54.0)
       eslint-plugin-n8n-local-rules:
         specifier: ^1.0.0
         version: 1.0.0
@@ -15026,6 +15029,16 @@ packages:
       - eslint-import-resolver-typescript
       - eslint-import-resolver-webpack
       - supports-color
+    dev: true
+
+  /eslint-plugin-lodash@7.4.0(eslint@8.54.0):
+    resolution: {integrity: sha512-Tl83UwVXqe1OVeBRKUeWcfg6/pCW1GTRObbdnbEJgYwjxp5Q92MEWQaH9+dmzbRt6kvYU1Mp893E79nJiCSM8A==}
+    engines: {node: '>=10'}
+    peerDependencies:
+      eslint: '>=2'
+    dependencies:
+      eslint: 8.54.0
+      lodash: 4.17.21
     dev: true
 
   /eslint-plugin-n8n-local-rules@1.0.0:

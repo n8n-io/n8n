@@ -527,7 +527,7 @@ export class Crypto implements INodeType {
 					newItem.binary = item.binary;
 				}
 
-				set(newItem, `json.${dataPropertyName}`, newValue);
+				set(newItem, ['json', dataPropertyName], newValue);
 
 				returnData.push(newItem);
 			} catch (error) {
