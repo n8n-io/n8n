@@ -112,7 +112,7 @@ export class UserRepository extends Repository<User> {
 		transactionManager?: EntityManager,
 	): Promise<User> {
 		const createInner = async (transactionManager: EntityManager) => {
-			const newUser = transactionManager.create(User, user);
+			const newUser = transactionManager.create(User, user) as User;
 			const savedUser = await transactionManager.save<User>(newUser);
 			const savedProject = await transactionManager.save<Project>(
 				transactionManager.create(Project, {
@@ -131,6 +131,8 @@ export class UserRepository extends Repository<User> {
 		if (transactionManager) {
 			return await createInner(transactionManager);
 		}
-		return await this.manager.transaction(createInner);
+		// TODO: use a transactions
+		// This is blocked by TypeORM having concurrency issues with transactions
+		return await createInner(this.manager);
 	}
 }
