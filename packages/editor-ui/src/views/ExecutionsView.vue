@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onBeforeMount, onBeforeUnmount, onMounted } from 'vue';
+import { onBeforeMount, onBeforeUnmount, onMounted } from 'vue';
 import GlobalExecutionsList from '@/components/executions/global/GlobalExecutionsList.vue';
 import { setPageTitle } from '@/utils/htmlUtils';
 import { useI18n } from '@/composables/useI18n';
@@ -9,6 +9,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useExecutionsStore } from '@/stores/executions.store';
 import { useToast } from '@/composables/useToast';
 import { storeToRefs } from 'pinia';
+import type { ExecutionFilterType } from '@/Interface';
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
@@ -18,12 +19,8 @@ const executionsStore = useExecutionsStore();
 
 const toast = useToast();
 
-const { executionsCount, executionsCountEstimated, filters } = storeToRefs(executionsStore);
-
-const executions = computed(() => [
-	...executionsStore.currentExecutions,
-	...executionsStore.executions,
-]);
+const { executionsCount, executionsCountEstimated, filters, allExecutions } =
+	storeToRefs(executionsStore);
 
 onBeforeMount(async () => {
 	await loadWorkflows();
@@ -70,7 +67,9 @@ async function onRefreshData() {
 	}
 }
 
-async function onUpdateFilters() {
+async function onUpdateFilters(newFilters: ExecutionFilterType) {
+	executionsStore.resetData();
+	executionsStore.setFilters(newFilters);
 	await onRefreshData();
 }
 
@@ -80,8 +79,7 @@ async function onExecutionStop() {
 </script>
 <template>
 	<GlobalExecutionsList
-		:executions="executions"
-		:filtered-executions="executionsStore.filteredExecutions"
+		:executions="allExecutions"
 		:filters="filters"
 		:total="executionsCount"
 		:estimated-total="executionsCountEstimated"

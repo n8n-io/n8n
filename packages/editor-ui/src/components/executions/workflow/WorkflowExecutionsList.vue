@@ -1,8 +1,8 @@
 <template>
 	<div :class="$style.container">
 		<WorkflowExecutionsSidebar
-			:executions="filteredExecutions"
-			:loading="loading && !filteredExecutions.length"
+			:executions="executions"
+			:loading="loading && !executions.length"
 			:loading-more="loadingMore"
 			:temporary-execution="temporaryExecution"
 			@update:auto-refresh="$emit('update:auto-refresh', $event)"
@@ -102,10 +102,6 @@ export default defineComponent({
 			required: true,
 		},
 		executions: {
-			type: Array as PropType<ExecutionSummary[]>,
-			default: () => [],
-		},
-		filteredExecutions: {
 			type: Array as PropType<ExecutionSummary[]>,
 			default: () => [],
 		},

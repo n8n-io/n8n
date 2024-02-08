@@ -13,7 +13,6 @@ import { useRoute, useRouter } from 'vue-router';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useDebounce } from '@/composables/useDebounce';
 import { storeToRefs } from 'pinia';
-import { filterExecutions } from '@/utils/executionUtils';
 import { useTelemetry } from '@/composables/useTelemetry';
 
 const executionsStore = useExecutionsStore();
@@ -43,8 +42,6 @@ const executions = computed(() => [
 	...(executionsStore.currentExecutionsByWorkflowId[workflowId.value] ?? []),
 	...(executionsStore.executionsByWorkflowId[workflowId.value] ?? []),
 ]);
-
-const filteredExecutions = computed(() => filterExecutions(executions.value, filters.value));
 
 const execution = computed(() => {
 	return executions.value.find((e) => e.id === executionId.value) ?? currentExecution.value;
@@ -173,8 +170,8 @@ async function onRefreshData() {
 }
 
 async function onUpdateFilters(newFilters: ExecutionFilterType) {
+	executionsStore.resetData();
 	executionsStore.setFilters(newFilters);
-
 	await onRefreshData();
 }
 
@@ -199,19 +196,19 @@ async function onExecutionStop(id: string) {
 async function onExecutionDelete(id: string) {
 	loading.value = true;
 	try {
-		const executionIndex = filteredExecutions.value.findIndex((e: ExecutionSummary) => e.id === id);
+		const executionIndex = executions.value.findIndex((e: ExecutionSummary) => e.id === id);
 
 		const nextExecution =
-			filteredExecutions.value[executionIndex + 1] ||
-			filteredExecutions.value[executionIndex - 1] ||
-			filteredExecutions.value[0];
+			executions.value[executionIndex + 1] ||
+			executions.value[executionIndex - 1] ||
+			executions.value[0];
 
 		await executionsStore.deleteExecutions({
 			ids: [id],
 		});
 
 		if (workflow.value) {
-			if (filteredExecutions.value.length > 0) {
+			if (executions.value.length > 0) {
 				await router
 					.replace({
 						name: VIEWS.EXECUTION_PREVIEW,
@@ -313,7 +310,6 @@ async function loadMore(): Promise<void> {
 	<WorkflowExecutionsList
 		v-if="workflow"
 		:executions="executions"
-		:filtered-executions="filteredExecutions"
 		:execution="execution"
 		:filters="filters"
 		:workflow="workflow"

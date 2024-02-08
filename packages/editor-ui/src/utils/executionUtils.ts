@@ -1,52 +1,6 @@
-import type { ExecutionStatus, ExecutionSummary, IDataObject, JsonObject } from 'n8n-workflow';
+import type { ExecutionStatus, IDataObject } from 'n8n-workflow';
 import type { ExecutionFilterType, ExecutionsQueryFilter } from '@/Interface';
 import { isEmpty } from '@/utils/typesUtils';
-
-export function filterExecutions(
-	data: Array<ExecutionSummary & { metadata: JsonObject }>,
-	filter: ExecutionFilterType,
-) {
-	const queryFilter = executionFilterToQueryFilter(filter);
-	return data.filter((execution) => {
-		let matches = true;
-
-		if (filter.workflowId === 'all') {
-			matches = matches && true;
-		} else {
-			matches = matches && execution.workflowId === filter.workflowId;
-		}
-
-		if (filter.status === 'all') {
-			matches = matches && true;
-		} else {
-			matches = matches && (queryFilter.status ?? []).includes(execution.status as ExecutionStatus);
-		}
-
-		if (!filter.startDate) {
-			matches = matches && true;
-		} else {
-			const startDate = new Date(filter.startDate);
-			matches = matches && new Date(execution.startedAt) >= startDate;
-		}
-
-		if (!filter.endDate) {
-			matches = matches && true;
-		} else {
-			const endDate = new Date(filter.endDate);
-			matches = matches && new Date(execution.startedAt) <= endDate;
-		}
-
-		if (filter.metadata.length > 0) {
-			matches =
-				matches &&
-				filter.metadata.every((metadata) => {
-					return execution.metadata?.[metadata.key] === metadata.value;
-				});
-		}
-
-		return matches;
-	});
-}
 
 export function getDefaultExecutionFilters(): ExecutionFilterType {
 	return {

@@ -12,11 +12,7 @@ import type {
 } from '@/Interface';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { makeRestApiRequest, unflattenExecutionData } from '@/utils/apiUtils';
-import {
-	executionFilterToQueryFilter,
-	filterExecutions,
-	getDefaultExecutionFilters,
-} from '@/utils/executionUtils';
+import { executionFilterToQueryFilter, getDefaultExecutionFilters } from '@/utils/executionUtils';
 
 export const useExecutionsStore = defineStore('executions', () => {
 	const rootStore = useRootStore();
@@ -80,9 +76,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 		}, {}),
 	);
 
-	const filteredExecutions = computed(() => {
-		return filterExecutions([...currentExecutions.value, ...executions.value], filters.value);
-	});
+	const allExecutions = computed(() => [...currentExecutions.value, ...executions.value]);
 
 	function addExecution(execution: ExecutionSummary) {
 		executionsById.value[execution.id] = {
@@ -240,7 +234,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 
 		if (sendData.deleteBefore) {
 			const deleteBefore = new Date(sendData.deleteBefore);
-			filteredExecutions.value.forEach((execution) => {
+			allExecutions.value.forEach((execution) => {
 				if (new Date(execution.startedAt) < deleteBefore) {
 					removeExecution(execution.id);
 				}
@@ -248,14 +242,18 @@ export const useExecutionsStore = defineStore('executions', () => {
 		}
 	}
 
-	function reset() {
-		itemsPerPage.value = 10;
-		filters.value = getDefaultExecutionFilters();
-		autoRefresh.value = true;
+	function resetData() {
 		executionsById.value = {};
 		currentExecutionsById.value = {};
 		executionsCount.value = 0;
 		executionsCountEstimated.value = false;
+	}
+
+	function reset() {
+		itemsPerPage.value = 10;
+		filters.value = getDefaultExecutionFilters();
+		autoRefresh.value = true;
+		resetData();
 		stopAutoRefreshInterval();
 	}
 
@@ -280,10 +278,11 @@ export const useExecutionsStore = defineStore('executions', () => {
 		setFilters,
 		executionsFilters,
 		currentExecutionsFilters,
-		filteredExecutions,
+		allExecutions,
 		stopCurrentExecution,
 		retryExecution,
 		deleteExecutions,
+		resetData,
 		reset,
 	};
 });

@@ -18,10 +18,6 @@ const props = defineProps({
 		type: Array as PropType<ExecutionSummary[]>,
 		default: () => [],
 	},
-	filteredExecutions: {
-		type: Array as PropType<ExecutionSummary[]>,
-		default: () => [],
-	},
 	filters: {
 		type: Object as PropType<ExecutionFilterType>,
 		default: () => ({}),
@@ -75,12 +71,6 @@ watch(
 		if (props.executions.length === 0) {
 			handleClearSelection();
 		}
-	},
-);
-
-watch(
-	() => props.filteredExecutions,
-	() => {
 		adjustSelectionAfterMoreItemsLoaded();
 	},
 );
@@ -112,8 +102,7 @@ function toggleSelectExecution(execution: ExecutionSummary) {
 			[executionId]: true,
 		};
 	}
-	allVisibleSelected.value =
-		Object.keys(selectedItems.value).length === props.filteredExecutions.length;
+	allVisibleSelected.value = Object.keys(selectedItems.value).length === props.executions.length;
 	allExistingSelected.value = Object.keys(selectedItems.value).length === props.total;
 }
 
@@ -163,7 +152,6 @@ function handleClearSelection() {
 }
 
 async function onFilterChanged(filters: ExecutionFilterType) {
-	executionsStore.setFilters(filters);
 	emit('update:filters', filters);
 	handleClearSelection();
 	isMounted.value = true;
@@ -199,7 +187,7 @@ async function loadMore() {
 }
 
 function selectAllVisibleExecutions() {
-	props.filteredExecutions.forEach((execution: ExecutionSummary) => {
+	props.executions.forEach((execution: ExecutionSummary) => {
 		selectedItems.value[execution.id] = true;
 	});
 }
@@ -354,7 +342,7 @@ async function onAutoRefreshToggle(value: boolean) {
 				</thead>
 				<TransitionGroup tag="tbody" name="executions-list">
 					<GlobalExecutionsListItem
-						v-for="execution in filteredExecutions"
+						v-for="execution in executions"
 						:key="execution.id"
 						:execution="execution"
 						:workflow-name="getExecutionWorkflowName(execution)"
@@ -369,7 +357,7 @@ async function onAutoRefreshToggle(value: boolean) {
 			</table>
 
 			<div
-				v-if="!filteredExecutions.length && isMounted && !executionsStore.loading"
+				v-if="!executions.length && isMounted && !executionsStore.loading"
 				:class="$style.loadedAll"
 				data-test-id="execution-list-empty"
 			>
