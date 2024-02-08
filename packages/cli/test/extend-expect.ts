@@ -22,7 +22,7 @@ expect.extend({
 	},
 
 	toBeSetContaining(this: jest.MatcherContext, actual: unknown, ...expectedElements: string[]) {
-		const pass = actual instanceof Set && expectedElements.every((i) => actual.has(i));
+		const pass = actual instanceof Set && expectedElements.every((e) => actual.has(e));
 
 		return {
 			pass,
