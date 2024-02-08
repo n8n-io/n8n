@@ -1,5 +1,5 @@
 import { Service } from 'typedi';
-import { In, type FindOptionsWhere } from 'typeorm';
+import { In, type FindOptionsWhere } from '@n8n/typeorm';
 
 import type { SharedWorkflow, WorkflowSharingRole } from '@db/entities/SharedWorkflow';
 import type { User } from '@db/entities/User';

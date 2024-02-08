@@ -1,6 +1,6 @@
 import { Service } from 'typedi';
-import type { DeleteResult } from 'typeorm';
-import { In } from 'typeorm';
+import type { DeleteResult } from '@n8n/typeorm';
+import { In } from '@n8n/typeorm';
 import EventEmitter from 'events';
 import uniqby from 'lodash/uniqBy';
 import { jsonParse } from 'n8n-workflow';

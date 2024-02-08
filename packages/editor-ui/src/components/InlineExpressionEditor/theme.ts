@@ -15,11 +15,12 @@ const commonThemeProps = {
 	},
 };
 
-export const inputTheme = ({ isSingleLine } = { isSingleLine: false }) => {
+export const inputTheme = ({ rows } = { rows: 5 }) => {
+	const maxHeight = Math.max(rows * 22 + 8);
 	const theme = EditorView.theme({
 		...commonThemeProps,
 		'&': {
-			maxHeight: isSingleLine ? '30px' : '112px',
+			maxHeight: `${maxHeight}px`,
 			minHeight: '30px',
 			width: '100%',
 			fontSize: 'var(--font-size-2xs)',

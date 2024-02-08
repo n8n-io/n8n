@@ -1,3 +1,38 @@
+# [1.28.0](https://github.com/n8n-io/n8n/compare/n8n@1.27.0...n8n@1.28.0) (2024-02-07)
+
+
+### Bug Fixes
+
+* Allow Date/Luxon objects and additional formats in DateTime validation ([#8525](https://github.com/n8n-io/n8n/issues/8525)) ([c419c85](https://github.com/n8n-io/n8n/commit/c419c8592f16a002d9f460c555db5f8bc04d95b8))
+* **core:** Ensure AxiosError status always gets copied over to NodeApiError ([#8509](https://github.com/n8n-io/n8n/issues/8509)) ([76c5a62](https://github.com/n8n-io/n8n/commit/76c5a62f521fbd79a47d47f419fd90dcc6ca0275))
+* **core:** Fix DropRoleMapping migration ([#8521](https://github.com/n8n-io/n8n/issues/8521)) ([4fed68e](https://github.com/n8n-io/n8n/commit/4fed68ee34c239ed3cae8541d5d4e7f86cf28d13))
+* **core:** Fix new graceful shutdown env being always overridden by deprecated env ([#8503](https://github.com/n8n-io/n8n/issues/8503)) ([cc41fc7](https://github.com/n8n-io/n8n/commit/cc41fc7c801ecb1b0de4b7c5af5a03b3f30fdce8))
+* **core:** Fix PermissionChecker.check, and add additional unit tests ([#8528](https://github.com/n8n-io/n8n/issues/8528)) ([5832d3c](https://github.com/n8n-io/n8n/commit/5832d3ca4695ec812e028e40b41811ca2215c0e2))
+* **core:** Fix test runs of triggers that rely on static data ([#8524](https://github.com/n8n-io/n8n/issues/8524)) ([528c071](https://github.com/n8n-io/n8n/commit/528c07134a6705c8c7a5378f15f5e4a4b93234a9))
+* **core:** Fix workflow tagging failure due to unique constraint check ([#8505](https://github.com/n8n-io/n8n/issues/8505)) ([92f939f](https://github.com/n8n-io/n8n/commit/92f939f82799975a5f9b859e7f342f3440961320))
+* **core:** Upgrade nodemailer to address an exploit ([#8535](https://github.com/n8n-io/n8n/issues/8535)) ([ee5e422](https://github.com/n8n-io/n8n/commit/ee5e4220945fde5baaec9ad66ff08b8728912aa3))
+* **core:** Use hostname from URL instead of Host header for SNI ([#8562](https://github.com/n8n-io/n8n/issues/8562)) ([7531f34](https://github.com/n8n-io/n8n/commit/7531f343861d91df075b8f3220f5bce8858b117f))
+* **core:** Use trx manager instead of repository for tags overwrite ([#8557](https://github.com/n8n-io/n8n/issues/8557)) ([abddbb6](https://github.com/n8n-io/n8n/commit/abddbb622798bdc4a2b11347a09f10aaf03a4639))
+* **editor:** Prune values that are not in the schema in the ResourceMapper component ([#8478](https://github.com/n8n-io/n8n/issues/8478)) ([612771e](https://github.com/n8n-io/n8n/commit/612771e0328f7e565d5f075cc20ad86bd1f13bce))
+* **Embeddings OpenAI Node:** Fix dynamic models fetching ([#8533](https://github.com/n8n-io/n8n/issues/8533)) ([cccdfc7](https://github.com/n8n-io/n8n/commit/cccdfc73d6c13a37e395fdc2612f2ebf458a4f52))
+* **HTTP Request Node:** Require parameter with filled name and value to avoid infinite loop ([#8454](https://github.com/n8n-io/n8n/issues/8454)) ([3128dca](https://github.com/n8n-io/n8n/commit/3128dca1faeff85d77a28640b7dfe8fbcd85db4f))
+* **HTTP Request Node:** Support form data when using pagination ([#8497](https://github.com/n8n-io/n8n/issues/8497)) ([ca75744](https://github.com/n8n-io/n8n/commit/ca75744c7f93db827ece5bf3b17b82f07d4cffb1))
+* **Microsoft Excel 365 Node:** Upsert append new rows at the end of used range, option to append at the end of selected range ([#8461](https://github.com/n8n-io/n8n/issues/8461)) ([1e02d73](https://github.com/n8n-io/n8n/commit/1e02d73ad782fb21cdd9b7350e34beb731a677c5))
+* **MongoDB Node:** Fix "Maximum call stack size exceeded" error on too many rows ([#8530](https://github.com/n8n-io/n8n/issues/8530)) ([76cdf75](https://github.com/n8n-io/n8n/commit/76cdf75fb96fb55b4a6e7a1a9edc7c9674806391))
+* **Slack Node:** Attachments fix ([#8471](https://github.com/n8n-io/n8n/issues/8471)) ([254700a](https://github.com/n8n-io/n8n/commit/254700a059a48a66dea8b9d80e61c8250e09d5b5))
+* Update BaseChatModel import checks for MistralAI compatibility ([#8527](https://github.com/n8n-io/n8n/issues/8527)) ([c8b8379](https://github.com/n8n-io/n8n/commit/c8b83790150b9974d6d99f6a2b6b5b7be6fb8c53))
+
+
+### Features
+
+* Add assignment component with drag and drop to Set node ([#8283](https://github.com/n8n-io/n8n/issues/8283)) ([2799de4](https://github.com/n8n-io/n8n/commit/2799de491b753e6fb00f73b61393392b6fc8ad18))
+* Azure Open AI chat model & embeddings ([#8522](https://github.com/n8n-io/n8n/issues/8522)) ([934d0d3](https://github.com/n8n-io/n8n/commit/934d0d35b1814c0a39595d61a30fb9c2e05fd995))
+* **editor:** Add delete and disable button to nodes on hover ([#8482](https://github.com/n8n-io/n8n/issues/8482)) ([994754b](https://github.com/n8n-io/n8n/commit/994754bf39976c5bb33fd1c30a0eb82cc518850b))
+* **Email Trigger (IMAP) Node:** Upgrade mailparser ([#8539](https://github.com/n8n-io/n8n/issues/8539)) ([da1fe44](https://github.com/n8n-io/n8n/commit/da1fe44d5246848e2ba7bb8bc5f4577685fbcee0))
+* **RabbitMQ Trigger Node:** Add options to configure assert of exchanges and queues ([#8430](https://github.com/n8n-io/n8n/issues/8430)) ([4b3659f](https://github.com/n8n-io/n8n/commit/4b3659f04f84ef774d31cf2341c5dbb500a73afe))
+
+
+
 # [1.27.0](https://github.com/n8n-io/n8n/compare/n8n@1.26.0...n8n@1.27.0) (2024-01-31)
 
 
