@@ -1,6 +1,6 @@
 import { Service } from 'typedi';
-import type { EntityManager } from 'typeorm';
-import { DataSource, In, Repository } from 'typeorm';
+import type { EntityManager } from '@n8n/typeorm';
+import { DataSource, In, Repository } from '@n8n/typeorm';
 import { TagEntity } from '../entities/TagEntity';
 import type { WorkflowEntity } from '../entities/WorkflowEntity';
 import intersection from 'lodash/intersection';

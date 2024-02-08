@@ -1,6 +1,6 @@
 import { Service } from 'typedi';
-import type { EntityManager } from 'typeorm';
-import { DataSource, In, Not, Repository } from 'typeorm';
+import type { EntityManager } from '@n8n/typeorm';
+import { DataSource, In, Not, Repository } from '@n8n/typeorm';
 import { type CredentialSharingRole, SharedCredentials } from '../entities/SharedCredentials';
 import type { User } from '../entities/User';
 

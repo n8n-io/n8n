@@ -1,5 +1,5 @@
 import { Service } from 'typedi';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, Repository } from '@n8n/typeorm';
 import { InstalledPackages } from '../entities/InstalledPackages';
 import { InstalledNodesRepository } from './installedNodes.repository';
 import type { PackageDirectoryLoader } from 'n8n-core';
