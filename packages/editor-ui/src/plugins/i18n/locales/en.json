@@ -946,7 +946,7 @@
 	"nodeCreator.aiPanel.newTag": "New",
 	"nodeCreator.aiPanel.langchainAiNodes": "Advanced AI",
 	"nodeCreator.aiPanel.title": "When should this workflow run?",
-	"nodeCreator.aiPanel.infoBox": "Check out our <a href=\"/collections/8\" target=\"_blank\">templates</a> for workflow examples and inspiration.",
+	"nodeCreator.aiPanel.infoBox": "Check out our <a href=\"{link}\" target=\"_blank\">templates</a> for workflow examples and inspiration.",
 	"nodeCreator.aiPanel.scheduleTriggerDisplayName": "On a schedule",
 	"nodeCreator.aiPanel.scheduleTriggerDescription": "Runs the flow every day, hour, or custom interval",
 	"nodeCreator.aiPanel.webhookTriggerDisplayName": "On webhook call",

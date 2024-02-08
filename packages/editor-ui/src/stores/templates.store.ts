@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { STORES } from '@/constants';
+import { STORES, TEMPLATES_URLS } from '@/constants';
 import type {
 	INodeUi,
 	ITemplatesCategory,
@@ -107,6 +107,35 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 				return Boolean(
 					search && !search.loadingMore && search.totalWorkflows === search.workflowIds.length,
 				);
+			};
+		},
+		hasCustomTemplatesHost(): boolean {
+			const settingsStore = useSettingsStore();
+			return settingsStore.templatesHost !== TEMPLATES_URLS.DEFAULT_API_HOST;
+		},
+		/**
+		 * Construct the URL for the template repository on the website
+		 * @returns {string}
+		 */
+		getWebsiteTemplateRepositoryURL(): string {
+			return `${TEMPLATES_URLS.BASE_WEBSITE_URL}?${TEMPLATES_URLS.UTM_QUERY}`;
+		},
+		/**
+		 * Construct the URL for the template page on the website for a given template id
+		 * @returns {function(string): string}
+		 */
+		getWebsiteTemplatePageURL() {
+			return (id: string) => {
+				return `${TEMPLATES_URLS.BASE_WEBSITE_URL}/${id}?${TEMPLATES_URLS.UTM_QUERY}`;
+			};
+		},
+		/**
+		 * Construct the URL for the template category page on the website for a given category id
+		 * @returns {function(string): string}
+		 */
+		getWebsiteCategoryURL() {
+			return (id: string) => {
+				return `${TEMPLATES_URLS.BASE_WEBSITE_URL}/?categories=${id}&${TEMPLATES_URLS.UTM_QUERY}`;
 			};
 		},
 	},
