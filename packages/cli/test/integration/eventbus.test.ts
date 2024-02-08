@@ -1,7 +1,7 @@
 import type { SuperAgentTest } from 'supertest';
 
 import type { User } from '@db/entities/User';
-import { MessageEventBus } from '@/eventbus';
+import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { ExecutionDataRecoveryService } from '@/eventbus/executionDataRecovery.service';
 
 import * as utils from './shared/utils/';

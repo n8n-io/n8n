@@ -930,11 +930,7 @@ export function setExecutionStatus(status: ExecutionStatus) {
 		return;
 	}
 	logger.debug(`Setting execution status for ${this.executionId} to "${status}"`);
-	Container.get(ActiveExecutions)
-		.setStatus(this.executionId, status)
-		.catch((error) => {
-			logger.debug(`Setting execution status "${status}" failed: ${error.message}`);
-		});
+	Container.get(ActiveExecutions).setStatus(this.executionId, status);
 }
 
 export function sendDataToUI(type: string, data: IDataObject | IDataObject[]) {

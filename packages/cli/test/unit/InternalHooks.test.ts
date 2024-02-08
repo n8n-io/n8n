@@ -5,7 +5,6 @@ import { InternalHooks } from '@/InternalHooks';
 import type { License } from '@/License';
 import type { Telemetry } from '@/telemetry';
 
-jest.mock('@/eventbus');
 jest.mock('node:os', () => ({
 	tmpdir: () => '',
 	cpus: () => [{ model: 'MIPS R3000', speed: 40_000_000 }],

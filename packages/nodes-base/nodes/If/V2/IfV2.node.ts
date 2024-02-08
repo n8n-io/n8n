@@ -21,6 +21,7 @@ export class IfV2 implements INodeType {
 			inputs: ['main'],
 			outputs: ['main', 'main'],
 			outputNames: ['true', 'false'],
+			parameterPane: 'wide',
 			properties: [
 				{
 					displayName: 'Conditions',
