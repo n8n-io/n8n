@@ -5,10 +5,14 @@ import { SharedWorkflow, type WorkflowSharingRole } from '../entities/SharedWork
 import { type User } from '../entities/User';
 import type { Scope } from '@n8n/permissions';
 import type { WorkflowEntity } from '../entities/WorkflowEntity';
+import { ProjectRepository } from './project.repository';
 
 @Service()
 export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
-	constructor(dataSource: DataSource) {
+	constructor(
+		dataSource: DataSource,
+		private readonly projectRepository: ProjectRepository,
+	) {
 		super(SharedWorkflow, dataSource.manager);
 	}
 
@@ -125,18 +129,22 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 	}
 
 	async share(transaction: EntityManager, workflow: WorkflowEntity, users: User[]) {
-		const newSharedWorkflows = users.reduce<SharedWorkflow[]>((acc, user) => {
+		const newSharedWorkflows = [];
+
+		for (const user of users) {
 			if (user.isPending) {
-				return acc;
+				continue;
 			}
+
+			const project = await this.projectRepository.getPersonalProjectForUserOrFail(user.id);
 			const entity: Partial<SharedWorkflow> = {
 				workflowId: workflow.id,
 				userId: user.id,
+				projectId: project.id,
 				role: 'workflow:editor',
 			};
-			acc.push(this.create(entity));
-			return acc;
-		}, []);
+			newSharedWorkflows.push(this.create(entity));
+		}
 
 		return await transaction.save(newSharedWorkflows);
 	}
