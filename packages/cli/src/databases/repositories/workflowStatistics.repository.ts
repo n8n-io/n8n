@@ -1,5 +1,5 @@
 import { Service } from 'typedi';
-import { DataSource, QueryFailedError, Repository } from 'typeorm';
+import { DataSource, QueryFailedError, Repository } from '@n8n/typeorm';
 import config from '@/config';
 import { StatisticsNames, WorkflowStatistics } from '../entities/WorkflowStatistics';
 import type { User } from '@/databases/entities/User';
