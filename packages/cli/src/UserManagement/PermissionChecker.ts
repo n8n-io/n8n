@@ -30,8 +30,8 @@ export class PermissionChecker {
 	 * - if user has global scope `workflow:execute`, OR
 	 * - if user has project scope `workflow:execute` in any of their roles
 	 * in any of the projects where the workflow is accessible, AND if every
-	 * credential used in the workflow is accessible by any of the projects
-	 * where the workflow is accessible.
+	 * credential used by nodes in the workflow is accessible by any of the
+	 * projects where the workflow is accessible.
 	 */
 	async check(workflow: Workflow, userId: string) {
 		const user = await this.userRepository.findOneByOrFail({ id: userId });
