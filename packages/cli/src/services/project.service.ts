@@ -15,6 +15,8 @@ export class ProjectService {
 	async findRolesInProjects(workflowId: string, userId: string) {
 		const projectIds = await this.sharedWorkflowRepository.findProjectIds(workflowId);
 
+		if (projectIds.length === 0) return new Set<string>();
+
 		const roles = await this.projectRelationRepository.findRoles(userId, projectIds);
 
 		return new Set(roles);
