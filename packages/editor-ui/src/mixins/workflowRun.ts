@@ -32,8 +32,8 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 
 export const consolidateRunDataAndStartNodes = (
 	directParentNodes: string[],
-	runData: IRunData,
-	pinData: IPinData,
+	runData: IRunData | null,
+	pinData: IPinData | undefined,
 	workflow: Workflow,
 ): { runData: IRunData | undefined; startNodes: string[] } => {
 	const startNodes: string[] = [];
@@ -227,13 +227,15 @@ export const workflowRun = defineComponent({
 
 				const workflowData = await this.getWorkflowDataToSave();
 
-				const { runData: newRunData, startNodes } = consolidateRunDataAndStartNodes(
+				const consolidatedData = consolidateRunDataAndStartNodes(
 					directParentNodes,
 					runData,
 					workflowData.pinData,
 					workflow,
 				);
 
+				const { startNodes } = consolidatedData;
+				let { runData: newRunData } = consolidatedData;
 				let executedNode: string | undefined;
 				if (
 					startNodes.length === 0 &&
