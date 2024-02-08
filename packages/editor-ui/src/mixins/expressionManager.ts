@@ -18,7 +18,9 @@ import {
 	isAnyPairedItemError,
 	isInvalidPairedItemError,
 	isNoExecDataExpressionError,
+	isNoInputConnectionError,
 	isNoNodeExecDataExpressionError,
+	isNoPairedItemError,
 	isPairedItemIntermediateNodesError,
 	isPairedItemNoConnectionError,
 } from '../utils/expressions';
@@ -225,7 +227,7 @@ export const expressionManager = defineComponent({
 					result.resolved = this.resolveExpression('=' + resolvable, undefined, opts);
 				}
 			} catch (error) {
-				result.resolved = this.getExpressionErrorMessage(error);
+				result.resolved = `[${this.getExpressionErrorMessage(error)}]`;
 				result.error = true;
 				result.fullError = error;
 			}
@@ -264,19 +266,25 @@ export const expressionManager = defineComponent({
 		},
 
 		getExpressionErrorMessage(error: Error): string {
-			if (
-				isNoExecDataExpressionError(error) ||
-				isNoNodeExecDataExpressionError(error) ||
-				isPairedItemIntermediateNodesError(error)
-			) {
+			if (isNoExecDataExpressionError(error) || isPairedItemIntermediateNodesError(error)) {
 				return i18n.baseText('expressionModalInput.noExecutionData');
+			}
+
+			if (isNoNodeExecDataExpressionError(error)) {
+				const nodeCause = error.context.nodeCause as string;
+				return i18n.baseText('expressionModalInput.noNodeExecutionData', {
+					interpolate: { node: nodeCause },
+				});
+			}
+			if (isNoInputConnectionError(error)) {
+				return i18n.baseText('expressionModalInput.noInputConnection');
 			}
 
 			if (isPairedItemNoConnectionError(error)) {
 				return i18n.baseText('expressionModalInput.pairedItemConnectionError');
 			}
 
-			if (isInvalidPairedItemError(error)) {
+			if (isInvalidPairedItemError(error) || isNoPairedItemError(error)) {
 				const nodeCause = error.context.nodeCause as string;
 				const isPinned = !!this.workflowsStore.pinDataByNodeName(nodeCause);
 
@@ -291,7 +299,7 @@ export const expressionManager = defineComponent({
 				return i18n.baseText('expressionModalInput.pairedItemError');
 			}
 
-			return `[${error.message}]`;
+			return error.message;
 		},
 	},
 });

@@ -68,10 +68,10 @@ import type {
 } from 'n8n-workflow';
 import { isResourceLocatorValue } from 'n8n-workflow';
 
-import { get } from 'lodash-es';
 import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
 import { getResolvableState } from '@/utils/expressions';
+import { expressionManager } from '@/mixins/expressionManager';
 
 export default defineComponent({
 	name: 'ParameterInputWrapper',
@@ -79,7 +79,7 @@ export default defineComponent({
 		ParameterInput,
 		InputHint,
 	},
-	mixins: [workflowHelpers],
+	mixins: [workflowHelpers, expressionManager],
 	props: {
 		additionalExpressionData: {
 			type: Object as PropType<IDataObject>,
@@ -227,9 +227,8 @@ export default defineComponent({
 					return null;
 				}
 
-				return `[${this.$locale.baseText('parameterInput.error')}: ${get(
-					evaluated.error,
-					'message',
+				return `[${this.$locale.baseText('parameterInput.error')}: ${this.getExpressionErrorMessage(
+					evaluated.error as Error,
 				)}]`;
 			}
 

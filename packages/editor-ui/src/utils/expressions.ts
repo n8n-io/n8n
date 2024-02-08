@@ -34,8 +34,16 @@ export const isInvalidPairedItemError = (error: unknown): error is ExpressionErr
 	return error instanceof ExpressionError && error.context.type === 'paired_item_invalid_info';
 };
 
+export const isNoPairedItemError = (error: unknown): error is ExpressionError => {
+	return error instanceof ExpressionError && error.context.type === 'paired_item_no_info';
+};
+
+export const isNoInputConnectionError = (error: unknown): error is ExpressionError => {
+	return error instanceof ExpressionError && error.context.type === 'no_input_connection';
+};
+
 export const isAnyPairedItemError = (error: unknown): error is ExpressionError => {
-	return error instanceof ExpressionError && error.functionality === 'pairedItem';
+	return error instanceof ExpressionError && error.context.functionality === 'pairedItem';
 };
 
 export const getResolvableState = (error: unknown): ResolvableState => {
