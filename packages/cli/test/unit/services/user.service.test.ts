@@ -8,6 +8,8 @@ import { UserService } from '@/services/user.service';
 import { mockInstance } from '../../shared/mocking';
 import { v4 as uuid } from 'uuid';
 import { InternalHooks } from '@/InternalHooks';
+import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
 
 describe('UserService', () => {
 	config.set('userManagement.jwtSecret', 'random-secret');
@@ -16,6 +18,9 @@ describe('UserService', () => {
 	mockInstance(InternalHooks);
 
 	const userRepository = mockInstance(UserRepository);
+	mockInstance(ProjectRepository);
+	mockInstance(ProjectRelationRepository);
+
 	const userService = Container.get(UserService);
 
 	const commonMockUser = Object.assign(new User(), {
