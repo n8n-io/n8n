@@ -1,4 +1,4 @@
-import type { Driver, TableColumnOptions } from 'typeorm';
+import type { Driver, TableColumnOptions } from '@n8n/typeorm';
 
 export class Column {
 	private type: 'int' | 'boolean' | 'varchar' | 'text' | 'json' | 'timestamp' | 'uuid';
