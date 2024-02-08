@@ -422,12 +422,7 @@ export class Wait extends Webhook {
 
 			const original = new Date(new Date().getTime() + waitAmount);
 
-			waitTill = DateTime.fromISO(original.toISOString().slice(0, -1), {
-				zone: context.getTimezone(),
-			})
-				.plus({ milliseconds: waitAmount })
-				.toUTC()
-				.toJSDate();
+			waitTill = DateTime.fromISO(original.toISOString().slice(0, -1)).toUTC().toJSDate();
 		} else {
 			const dateTimeStr = context.getNodeParameter('dateTime', 0) as string;
 
