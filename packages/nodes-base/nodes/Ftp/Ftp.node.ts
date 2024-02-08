@@ -1,8 +1,10 @@
 import { createWriteStream } from 'fs';
 import { basename, dirname } from 'path';
 import type { Readable } from 'stream';
-import { pipeline } from 'stream';
-import { promisify } from 'util';
+import { pipeline } from 'stream/promises';
+import { file as tmpFile } from 'tmp-promise';
+import ftpClient from 'promise-ftp';
+import sftpClient from 'ssh2-sftp-client';
 import { BINARY_ENCODING, NodeApiError } from 'n8n-workflow';
 import type {
 	ICredentialDataDecryptedObject,
@@ -16,10 +18,6 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { file as tmpFile } from 'tmp-promise';
-
-import ftpClient from 'promise-ftp';
-import sftpClient from 'ssh2-sftp-client';
 import { formatPrivateKey } from '@utils/utilities';
 
 interface ReturnFtpItem {
@@ -39,8 +37,6 @@ interface ReturnFtpItem {
 	sticky?: boolean;
 	path: string;
 }
-
-const streamPipeline = promisify(pipeline);
 
 async function callRecursiveList(
 	path: string,
@@ -120,7 +116,7 @@ export class Ftp implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["protocol"] + ": " + $parameter["operation"]}}',
-		description: 'Transfers files via FTP or SFTP',
+		description: 'Transfer files via FTP or SFTP',
 		defaults: {
 			name: 'FTP',
 			color: '#303050',
@@ -223,6 +219,7 @@ export class Ftp implements INodeType {
 				type: 'string',
 				default: '',
 				description: 'The file path of the file to delete. Has to contain the full path.',
+				placeholder: 'e.g. /public/documents/file-to-delete.txt',
 				required: true,
 			},
 
@@ -273,12 +270,12 @@ export class Ftp implements INodeType {
 				name: 'path',
 				type: 'string',
 				default: '',
-				placeholder: '/documents/invoice.txt',
 				description: 'The file path of the file to download. Has to contain the full path.',
+				placeholder: 'e.g. /public/documents/file-to-download.txt',
 				required: true,
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'Put Output File in Field',
 				displayOptions: {
 					show: {
 						operation: ['download'],
@@ -287,7 +284,7 @@ export class Ftp implements INodeType {
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',
-				description: 'Object property name which holds binary data',
+				hint: 'The name of the output binary field to put the file in',
 				required: true,
 			},
 
@@ -304,6 +301,7 @@ export class Ftp implements INodeType {
 				name: 'oldPath',
 				type: 'string',
 				default: '',
+				placeholder: 'e.g. /public/documents/old-file.txt',
 				required: true,
 			},
 			{
@@ -316,6 +314,7 @@ export class Ftp implements INodeType {
 				name: 'newPath',
 				type: 'string',
 				default: '',
+				placeholder: 'e.g. /public/documents/new-file.txt',
 				required: true,
 			},
 			{
@@ -355,10 +354,11 @@ export class Ftp implements INodeType {
 				type: 'string',
 				default: '',
 				description: 'The file path of the file to upload. Has to contain the full path.',
+				placeholder: 'e.g. /public/documents/file-to-upload.txt',
 				required: true,
 			},
 			{
-				displayName: 'Binary Data',
+				displayName: 'Binary File',
 				displayOptions: {
 					show: {
 						operation: ['upload'],
@@ -371,7 +371,7 @@ export class Ftp implements INodeType {
 				description: 'The text content of the file to upload',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'Input Binary Field',
 				displayOptions: {
 					show: {
 						operation: ['upload'],
@@ -381,7 +381,7 @@ export class Ftp implements INodeType {
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',
-				description: 'Object property name which holds binary data',
+				hint: 'The name of the input binary field containing the file to be written',
 				required: true,
 			},
 			{
@@ -411,6 +411,7 @@ export class Ftp implements INodeType {
 				name: 'path',
 				type: 'string',
 				default: '/',
+				placeholder: 'e.g. /public/folder',
 				description: 'Path of directory to list contents of',
 				required: true,
 			},
@@ -469,6 +470,7 @@ export class Ftp implements INodeType {
 							host: credentials.host as string,
 							port: credentials.port as number,
 							username: credentials.username as string,
+							password: (credentials.password as string) || undefined,
 							privateKey: formatPrivateKey(credentials.privateKey as string),
 							passphrase: credentials.passphrase as string | undefined,
 						});
@@ -520,6 +522,7 @@ export class Ftp implements INodeType {
 						host: credentials.host as string,
 						port: credentials.port as number,
 						username: credentials.username as string,
+						password: (credentials.password as string) || undefined,
 						privateKey: formatPrivateKey(credentials.privateKey as string),
 						passphrase: credentials.passphrase as string | undefined,
 					});
@@ -715,7 +718,7 @@ export class Ftp implements INodeType {
 						const binaryFile = await tmpFile({ prefix: 'n8n-sftp-' });
 						try {
 							const stream = await ftp!.get(path);
-							await streamPipeline(stream, createWriteStream(binaryFile.path));
+							await pipeline(stream, createWriteStream(binaryFile.path));
 
 							const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 							const remoteFilePath = this.getNodeParameter('path', i) as string;

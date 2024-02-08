@@ -19,7 +19,7 @@ type Props = {
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 const NodeCreator = defineAsyncComponent(
-	async () => import('@/components/Node/NodeCreator/NodeCreator.vue'),
+	async () => await import('@/components/Node/NodeCreator/NodeCreator.vue'),
 );
 
 const props = withDefaults(defineProps<Props>(), {
@@ -173,8 +173,8 @@ function nodeTypeSelected(nodeTypes: string[]) {
 .nodeCreatorButton {
 	position: absolute;
 	text-align: center;
-	top: var(--spacing-s);
-	right: var(--spacing-s);
+	top: var(--spacing-l);
+	right: var(--spacing-l);
 	pointer-events: all !important;
 
 	button {

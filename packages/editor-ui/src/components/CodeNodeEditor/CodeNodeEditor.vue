@@ -17,7 +17,11 @@
 				name="code"
 				data-test-id="code-node-tab-code"
 			>
-				<div ref="codeNodeEditor" class="code-node-editor-input ph-no-capture code-editor-tabs" />
+				<div
+					ref="codeNodeEditor"
+					:class="['ph-no-capture', 'code-editor-tabs', $style.editorInput]"
+				/>
+				<slot name="suffix" />
 			</el-tab-pane>
 			<el-tab-pane
 				:label="$locale.baseText('codeNodeEditor.tabs.askAi')"
@@ -35,7 +39,10 @@
 			</el-tab-pane>
 		</el-tabs>
 		<!-- If AskAi not enabled, there's no point in rendering tabs -->
-		<div v-else ref="codeNodeEditor" class="code-node-editor-input ph-no-capture" />
+		<div v-else :class="$style.fillHeight">
+			<div ref="codeNodeEditor" :class="['ph-no-capture', $style.fillHeight]" />
+			<slot name="suffix" />
+		</div>
 	</div>
 </template>
 
@@ -79,6 +86,10 @@ export default defineComponent({
 	mixins: [linterExtension, completerExtension, workflowHelpers],
 	props: {
 		aiButtonEnabled: {
+			type: Boolean,
+			default: false,
+		},
+		fillParent: {
 			type: Boolean,
 			default: false,
 		},
@@ -193,7 +204,12 @@ export default defineComponent({
 			...readOnlyEditorExtensions,
 			EditorState.readOnly.of(isReadOnly),
 			EditorView.editable.of(!isReadOnly),
-			codeNodeEditorTheme({ isReadOnly, customMinHeight: this.rows }),
+			codeNodeEditorTheme({
+				isReadOnly,
+				maxHeight: this.fillParent ? '100%' : '40vh',
+				minHeight: '20vh',
+				rows: this.rows,
+			}),
 		];
 
 		if (!isReadOnly) {
@@ -384,15 +400,9 @@ export default defineComponent({
 <style lang="scss" module>
 .code-node-editor-container {
 	position: relative;
-
-	& > div {
-		height: 100%;
-	}
 }
 
-.ask-ai-button {
-	position: absolute;
-	top: var(--spacing-2xs);
-	right: var(--spacing-2xs);
+.fillHeight {
+	height: 100%;
 }
 </style>

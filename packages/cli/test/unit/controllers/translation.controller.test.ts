@@ -1,5 +1,4 @@
 import { mock } from 'jest-mock-extended';
-import type { ICredentialTypes } from 'n8n-workflow';
 import config from '@/config';
 import type { TranslationRequest } from '@/controllers/translation.controller';
 import {
@@ -7,10 +6,11 @@ import {
 	CREDENTIAL_TRANSLATIONS_DIR,
 } from '@/controllers/translation.controller';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import type { CredentialTypes } from '@/CredentialTypes';
 
 describe('TranslationController', () => {
 	const configGetSpy = jest.spyOn(config, 'getEnv');
-	const credentialTypes = mock<ICredentialTypes>();
+	const credentialTypes = mock<CredentialTypes>();
 	const controller = new TranslationController(credentialTypes);
 
 	describe('getCredentialTranslation', () => {

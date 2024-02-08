@@ -50,7 +50,7 @@
 							<ExpressionEditorModalInput
 								ref="inputFieldExpression"
 								:model-value="modelValue"
-								:is-read-only="isReadOnlyRoute"
+								:is-read-only="isReadOnly"
 								:path="path"
 								:class="{ 'ph-no-capture': redactValues }"
 								data-test-id="expression-modal-input"
@@ -87,15 +87,13 @@ import VariableSelector from '@/components/VariableSelector.vue';
 
 import type { IVariableItemSelected } from '@/Interface';
 
-import { genericHelpers } from '@/mixins/genericHelpers';
-
 import { EXPRESSIONS_DOCS_URL } from '@/constants';
 
-import { debounceHelper } from '@/mixins/debounce';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { createExpressionTelemetryPayload } from '@/utils/telemetryUtils';
+import { useDebounce } from '@/composables/useDebounce';
 
 import type { Segment } from '@/types/expressions';
 
@@ -106,11 +104,42 @@ export default defineComponent({
 		ExpressionEditorModalOutput,
 		VariableSelector,
 	},
-	mixins: [genericHelpers, debounceHelper],
-	props: ['dialogVisible', 'parameter', 'path', 'modelValue', 'eventSource', 'redactValues'],
+	props: {
+		dialogVisible: {
+			type: Boolean,
+			default: false,
+		},
+		parameter: {
+			type: Object,
+			default: () => ({}),
+		},
+		path: {
+			type: String,
+			default: '',
+		},
+		modelValue: {
+			type: String,
+			default: '',
+		},
+		eventSource: {
+			type: String,
+			default: '',
+		},
+		redactValues: {
+			type: Boolean,
+			default: false,
+		},
+		isReadOnly: {
+			type: Boolean,
+			default: false,
+		},
+	},
 	setup() {
 		const externalHooks = useExternalHooks();
+		const { callDebounced } = useDebounce();
+
 		return {
+			callDebounced,
 			externalHooks,
 		};
 	},
@@ -166,7 +195,9 @@ export default defineComponent({
 				this.updateDisplayValue();
 				this.$emit('update:modelValue', this.latestValue);
 			} else {
-				void this.callDebounced('updateDisplayValue', { debounceTime: 500 });
+				void this.callDebounced(this.updateDisplayValue, {
+					debounceTime: 500,
+				});
 			}
 		},
 

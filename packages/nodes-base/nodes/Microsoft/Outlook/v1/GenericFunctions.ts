@@ -229,7 +229,7 @@ export async function binaryToAttachments(
 	items: INodeExecutionData[],
 	i: number,
 ) {
-	return Promise.all(
+	return await Promise.all(
 		attachments.map(async (attachment) => {
 			const binaryPropertyName = attachment.binaryPropertyName as string;
 			const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);

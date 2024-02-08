@@ -1,9 +1,8 @@
 import { Service } from 'typedi';
-import type { FindOptionsWhere } from 'typeorm';
+import type { EntityManager } from 'typeorm';
 import { DataSource, In, Not, Repository } from 'typeorm';
-import { SharedCredentials } from '../entities/SharedCredentials';
+import { type CredentialSharingRole, SharedCredentials } from '../entities/SharedCredentials';
 import type { User } from '../entities/User';
-import type { Role } from '../entities/Role';
 
 @Service()
 export class SharedCredentialsRepository extends Repository<SharedCredentials> {
@@ -25,39 +24,45 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 	}
 
 	async findByCredentialIds(credentialIds: string[]) {
-		return this.find({
-			relations: ['credentials', 'role', 'user'],
+		return await this.find({
+			relations: ['credentials', 'user'],
 			where: {
 				credentialsId: In(credentialIds),
 			},
 		});
 	}
 
-	async makeOwnerOfAllCredentials(user: User, role: Role) {
-		return this.update({ userId: Not(user.id), roleId: role.id }, { user });
+	async makeOwnerOfAllCredentials(user: User) {
+		return await this.update({ userId: Not(user.id), role: 'credential:owner' }, { user });
 	}
 
-	/**
-	 * Get the IDs of all credentials owned by or shared with a user.
-	 */
-	async getAccessibleCredentials(userId: string) {
+	/** Get the IDs of all credentials owned by a user */
+	async getOwnedCredentialIds(userIds: string[]) {
+		return await this.getCredentialIdsByUserAndRole(userIds, ['credential:owner']);
+	}
+
+	/** Get the IDs of all credentials owned by or shared with a user */
+	async getAccessibleCredentialIds(userIds: string[]) {
+		return await this.getCredentialIdsByUserAndRole(userIds, [
+			'credential:owner',
+			'credential:user',
+		]);
+	}
+
+	private async getCredentialIdsByUserAndRole(userIds: string[], roles: CredentialSharingRole[]) {
 		const sharings = await this.find({
-			relations: ['role'],
 			where: {
-				userId,
-				role: { name: In(['owner', 'user']), scope: 'credential' },
+				userId: In(userIds),
+				role: In(roles),
 			},
 		});
-
 		return sharings.map((s) => s.credentialsId);
 	}
 
-	async findSharings(userIds: string[], roleId?: string) {
-		const where: FindOptionsWhere<SharedCredentials> = { userId: In(userIds) };
-
-		// If credential sharing is not enabled, get only credentials owned by this user
-		if (roleId) where.roleId = roleId;
-
-		return this.find({ where });
+	async deleteByIds(transaction: EntityManager, sharedCredentialsIds: string[], user?: User) {
+		return await transaction.delete(SharedCredentials, {
+			user,
+			credentialsId: In(sharedCredentialsIds),
+		});
 	}
 }

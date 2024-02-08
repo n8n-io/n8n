@@ -6,14 +6,14 @@ import { User } from '@db/entities/User';
 import { UserRepository } from '@db/repositories/user.repository';
 import { UserService } from '@/services/user.service';
 import { mockInstance } from '../../shared/mocking';
-import { RoleService } from '@/services/role.service';
 import { v4 as uuid } from 'uuid';
+import { InternalHooks } from '@/InternalHooks';
 
 describe('UserService', () => {
 	config.set('userManagement.jwtSecret', 'random-secret');
 
 	mockInstance(Logger);
-	mockInstance(RoleService);
+	mockInstance(InternalHooks);
 
 	const userRepository = mockInstance(UserRepository);
 	const userService = Container.get(UserService);

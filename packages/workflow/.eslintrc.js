@@ -16,5 +16,9 @@ module.exports = {
 		'@typescript-eslint/no-redundant-type-constituents': 'warn',
 		'@typescript-eslint/prefer-nullish-coalescing': 'warn',
 		'@typescript-eslint/prefer-optional-chain': 'warn',
+		/**
+		 * https://github.com/typescript-eslint/typescript-eslint/blob/main/packages/eslint-plugin/docs/rules/return-await.md
+		 */
+		'@typescript-eslint/return-await': ['error', 'always'],
 	},
 };

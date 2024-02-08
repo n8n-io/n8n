@@ -90,7 +90,7 @@ export function formatSearch(responseData: SplunkSearchResponse) {
 // ----------------------------------------
 
 export async function parseXml(xml: string) {
-	return new Promise((resolve, reject) => {
+	return await new Promise((resolve, reject) => {
 		parseString(xml, { explicitArray: false }, (error, result) => {
 			error ? reject(error) : resolve(result);
 		});

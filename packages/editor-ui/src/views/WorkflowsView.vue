@@ -11,7 +11,7 @@
 		:initialize="initialize"
 		:disabled="readOnlyEnv"
 		@click:add="addWorkflow"
-		@update:filters="filters = $event"
+		@update:filters="onFiltersUpdated"
 	>
 		<template #add-button="{ disabled }">
 			<n8n-tooltip :disabled="!readOnlyEnv">
@@ -151,10 +151,17 @@ import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
-import { genericHelpers } from '@/mixins/genericHelpers';
 import { useTagsStore } from '@/stores/tags.store';
 
 type IResourcesListLayoutInstance = InstanceType<typeof ResourcesListLayout>;
+
+interface Filters {
+	search: string;
+	ownedBy: string;
+	sharedWith: string;
+	status: string | boolean;
+	tags: string[];
+}
 
 const StatusFilter = {
 	ACTIVE: true,
@@ -171,7 +178,6 @@ const WorkflowsView = defineComponent({
 		SuggestedTemplatesPage,
 		SuggestedTemplatesSection,
 	},
-	mixins: [genericHelpers],
 	data() {
 		return {
 			filters: {
@@ -194,6 +200,9 @@ const WorkflowsView = defineComponent({
 			useSourceControlStore,
 			useTagsStore,
 		),
+		readOnlyEnv(): boolean {
+			return this.sourceControlStore.preferences.branchReadOnly;
+		},
 		currentUser(): IUser {
 			return this.usersStore.currentUser || ({} as IUser);
 		},
@@ -245,6 +254,10 @@ const WorkflowsView = defineComponent({
 		this.sourceControlStoreUnsubscribe();
 	},
 	methods: {
+		onFiltersUpdated(filters: Filters) {
+			this.filters = filters;
+			this.saveFiltersOnQueryString();
+		},
 		addWorkflow() {
 			this.uiStore.nodeViewInitialized = false;
 			void this.$router.push({ name: VIEWS.NEW_WORKFLOW });
@@ -271,8 +284,6 @@ const WorkflowsView = defineComponent({
 			filters: { tags: string[]; search: string; status: string | boolean },
 			matches: boolean,
 		): boolean {
-			this.saveFiltersOnQueryString();
-
 			if (this.settingsStore.areTagsEnabled && filters.tags.length > 0) {
 				matches =
 					matches &&
@@ -319,8 +330,7 @@ const WorkflowsView = defineComponent({
 			}
 
 			void this.$router.replace({
-				name: VIEWS.WORKFLOWS,
-				query,
+				query: Object.keys(query).length ? query : undefined,
 			});
 		},
 		isValidUserId(userId: string) {

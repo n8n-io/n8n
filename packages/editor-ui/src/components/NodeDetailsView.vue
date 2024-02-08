@@ -135,7 +135,7 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import { mapStores } from 'pinia';
+import { mapStores, storeToRefs } from 'pinia';
 import { createEventBus } from 'n8n-design-system/utils';
 import type {
 	INodeConnections,
@@ -163,17 +163,17 @@ import {
 	STICKY_NODE_TYPE,
 } from '@/constants';
 import { workflowActivate } from '@/mixins/workflowActivate';
-import { pinData } from '@/mixins/pinData';
 import { dataPinningEventBus } from '@/event-bus';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useDeviceSupport } from 'n8n-design-system/composables/useDeviceSupport';
+import { useDeviceSupport } from 'n8n-design-system';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useMessage } from '@/composables/useMessage';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { usePinnedData } from '@/composables/usePinnedData';
 
 export default defineComponent({
 	name: 'NodeDetailsView',
@@ -184,7 +184,7 @@ export default defineComponent({
 		NDVDraggablePanels,
 		TriggerPanel,
 	},
-	mixins: [workflowHelpers, workflowActivate, pinData],
+	mixins: [workflowHelpers, workflowActivate],
 	props: {
 		readOnly: {
 			type: Boolean,
@@ -198,12 +198,16 @@ export default defineComponent({
 		},
 	},
 	setup(props, ctx) {
+		const ndvStore = useNDVStore();
 		const externalHooks = useExternalHooks();
 		const nodeHelpers = useNodeHelpers();
+		const { activeNode } = storeToRefs(ndvStore);
+		const pinnedData = usePinnedData(activeNode);
 
 		return {
 			externalHooks,
 			nodeHelpers,
+			pinnedData,
 			...useDeviceSupport(),
 			...useMessage(),
 			// eslint-disable-next-line @typescript-eslint/no-misused-promises
@@ -272,9 +276,14 @@ export default defineComponent({
 			return null;
 		},
 		showTriggerPanel(): boolean {
+			const override = !!this.activeNodeType?.triggerPanel;
+			if (typeof this.activeNodeType?.triggerPanel === 'boolean') {
+				return override;
+			}
+
 			const isWebhookBasedNode = !!this.activeNodeType?.webhooks?.length;
 			const isPollingNode = this.activeNodeType?.polling;
-			const override = !!this.activeNodeType?.triggerPanel;
+
 			return (
 				!this.readOnly && this.isTriggerNode && (isWebhookBasedNode || isPollingNode || override)
 			);
@@ -301,12 +310,10 @@ export default defineComponent({
 			return [];
 		},
 		parentNode(): string | undefined {
-			const pinData = this.workflowsStore.getPinData;
-
 			// Return the first parent node that contains data
 			for (const parentNodeName of this.parentNodes) {
 				// Check first for pinned data
-				if (pinData[parentNodeName]) {
+				if (this.workflowsStore.pinnedWorkflowData[parentNodeName]) {
 					return parentNodeName;
 				}
 
@@ -689,7 +696,7 @@ export default defineComponent({
 				if (shouldPinDataBeforeClosing === MODAL_CONFIRM) {
 					const { value } = this.outputPanelEditMode;
 					try {
-						this.setPinData(this.activeNode, jsonParse(value), 'on-ndv-close-modal');
+						this.pinnedData.setData(jsonParse(value), 'on-ndv-close-modal');
 					} catch (error) {
 						console.error(error);
 					}

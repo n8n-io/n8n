@@ -11,10 +11,7 @@ describe('n8n Form Trigger', () => {
 
 	it("add node by clicking on 'On form submission'", () => {
 		workflowPage.getters.canvasPlusButton().click();
-		cy.get('#node-view-root > div:nth-child(2) > div > div > aside ')
-			.find('span')
-			.contains('On form submission')
-			.click();
+		workflowPage.getters.nodeCreatorNodeItems().contains('On form submission').click();
 		ndv.getters.parameterInput('formTitle').type('Test Form');
 		ndv.getters.parameterInput('formDescription').type('Test Form Description');
 		ndv.getters.parameterInput('fieldLabel').type('Test Field 1');

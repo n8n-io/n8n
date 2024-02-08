@@ -196,7 +196,7 @@ export const optionsProperty: INodeProperties = {
 	default: {},
 	options: [
 		{
-			displayName: 'Binary Data',
+			displayName: 'Binary File',
 			name: 'binaryData',
 			type: 'boolean',
 			displayOptions: {
@@ -209,7 +209,7 @@ export const optionsProperty: INodeProperties = {
 			description: 'Whether the webhook will receive binary data',
 		},
 		{
-			displayName: 'Binary Property',
+			displayName: 'Put Output File in Field',
 			name: 'binaryPropertyName',
 			type: 'string',
 			default: 'data',
@@ -219,8 +219,9 @@ export const optionsProperty: INodeProperties = {
 					'@version': [1],
 				},
 			},
+			hint: 'The name of the output binary field to put the file in',
 			description:
-				'Name of the binary property to write the data of the received file to. If the data gets received via "Form-Data Multipart" it will be the prefix and a number starting with 0 will be attached to it.',
+				'If the data gets received via "Form-Data Multipart" it will be the prefix and a number starting with 0 will be attached to it',
 		},
 		{
 			displayName: 'Binary Property',

@@ -1,14 +1,6 @@
 import type express from 'express';
 
-import {
-	getTags,
-	getTagsCount,
-	createTag,
-	updateTag,
-	deleteTag,
-	getTagById,
-} from './tags.service';
-import config from '@/config';
+import { getTags, getTagsCount, createTag, updateTag, deleteTag, getTagById } from './tags.service';
 import { TagEntity } from '@db/entities/TagEntity';
 import { authorize, validCursor } from '../../shared/middlewares/global.middleware';
 import type { TagRequest } from '../../../types';
@@ -21,7 +13,7 @@ import type { FindManyOptions, FindOptionsWhere } from 'typeorm';
 
 export = {
 	createTag: [
-		authorize(['owner', 'member']),
+		authorize(['global:owner', 'global:admin', 'global:member']),
 		async (req: TagRequest.Create, res: express.Response): Promise<express.Response> => {
 			const { name } = req.body;
 
@@ -33,25 +25,25 @@ export = {
 			await validateEntity(newTag);
 
 			const where: FindOptionsWhere<TagEntity> = {
-				...(newTag.name !== undefined && { name: newTag.name })
+				...(newTag.name !== undefined && { name: newTag.name }),
 			};
 			const query: FindManyOptions<TagEntity> = {
 				where,
 			};
 
-			let tags = await getTags(query);
+			const tags = await getTags(query);
 			if (tags.length > 0) {
 				return res.status(409).json({ message: 'Tag already exists' });
 			}
-			let createdTag = await createTag(newTag);
-			
+			const createdTag = await createTag(newTag);
+
 			await Container.get(ExternalHooks).run('tag.afterCreate', [createdTag]);
 
 			return res.status(201).json(createdTag);
 		},
 	],
 	updateTag: [
-		authorize(['owner', 'member']),
+		authorize(['global:owner', 'global:admin', 'global:member']),
 		async (req: TagRequest.Update, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 			const { name } = req.body;
@@ -71,13 +63,13 @@ export = {
 			await validateEntity(newTag);
 
 			const where: FindOptionsWhere<TagEntity> = {
-				...(newTag.name !== undefined && { name: newTag.name })
+				...(newTag.name !== undefined && { name: newTag.name }),
 			};
 			const query: FindManyOptions<TagEntity> = {
 				where,
 			};
 
-			let tags = await getTags(query);
+			const tags = await getTags(query);
 			if (tags.length > 0) {
 				return res.status(409).json({ message: 'Tag already exists' });
 			}
@@ -91,18 +83,11 @@ export = {
 		},
 	],
 	deleteTag: [
-		authorize(['owner', 'member']),
+		authorize(['global:owner', 'global:admin']),
 		async (req: TagRequest.Delete, res: express.Response): Promise<express.Response> => {
-			if (
-				config.getEnv('userManagement.isInstanceOwnerSetUp') === true &&
-				req.user.globalRole.name !== 'owner'
-			) {
-				return res.status(403).json({ message: 'You are not allowed to perform this action. Only owners can remove tags' });
-			}
-			
 			const { id } = req.params;
 
-			let tag = await getTagById(id);
+			const tag = await getTagById(id);
 
 			if (tag === null) {
 				return res.status(404).json({ message: 'Not Found' });
@@ -118,24 +103,18 @@ export = {
 		},
 	],
 	getTags: [
-		authorize(['owner', 'member']),
+		authorize(['global:owner', 'global:admin', 'global:member']),
 		validCursor,
 		async (req: TagRequest.GetAll, res: express.Response): Promise<express.Response> => {
-			const {
-				offset = 0,
-				limit = 100,
-			} = req.query;
-
-			let tags: TagEntity[];
-			let count: number;
+			const { offset = 0, limit = 100 } = req.query;
 
 			const query: FindManyOptions<TagEntity> = {
 				skip: offset,
 				take: limit,
 			};
 
-			tags = await getTags(query);
-			count = await getTagsCount(query);
+			const tags = await getTags(query);
+			const count = await getTagsCount(query);
 
 			return res.json({
 				data: tags,
@@ -148,11 +127,11 @@ export = {
 		},
 	],
 	getTag: [
-		authorize(['owner', 'member']),
+		authorize(['global:owner', 'global:admin', 'global:member']),
 		async (req: TagRequest.Get, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 
-			let tag = await getTagById(id);
+			const tag = await getTagById(id);
 
 			if (tag === null) {
 				return res.status(404).json({ message: 'Not Found' });

@@ -174,14 +174,15 @@ export class WorkflowPage extends BasePage {
 
 			this.getters.nodeCreatorSearchBar().type(nodeDisplayName);
 			this.getters.nodeCreatorSearchBar().type('{enter}');
-			cy.wait(500);
 			cy.get('body').then((body) => {
 				if (body.find('[data-test-id=node-creator]').length > 0) {
 					if (action) {
 						cy.contains(action).click();
 					} else {
 						// Select the first action
-						cy.get('[data-keyboard-nav-type="action"]').eq(0).click();
+						if (body.find('[data-keyboard-nav-type="action"]').length > 0) {
+							cy.get('[data-keyboard-nav-type="action"]').eq(0).click();
+						}
 					}
 				}
 			});
