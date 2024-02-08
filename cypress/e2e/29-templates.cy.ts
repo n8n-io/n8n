@@ -1,5 +1,7 @@
 import { TemplatesPage } from '../pages/templates';
 import { WorkflowPage } from '../pages/workflow';
+import { WorkflowsPage } from '../pages/workflows';
+import { MainSidebar } from '../pages/sidebar/main-sidebar';
 
 import OnboardingWorkflow from '../fixtures/Onboarding_workflow.json';
 import WorkflowTemplate from '../fixtures/Workflow_template_write_http_query.json';
@@ -8,9 +10,43 @@ import { TemplateWorkflowPage } from '../pages/template-workflow';
 const templatesPage = new TemplatesPage();
 const workflowPage = new WorkflowPage();
 const templateWorkflowPage = new TemplateWorkflowPage();
+const workflowsPage = new WorkflowsPage();
+const mainSidebar = new MainSidebar();
 
-describe('Templates', () => {
+describe('Website templates repository', () => {
+	it('Opens website when clicking templates sidebar link', () => {
+		cy.visit(workflowsPage.url);
+		mainSidebar.getters.menuItem('Templates').should('be.visible');
+		// Templates should be a link to the website
+		mainSidebar.getters.templates().parent('a').should('have.attr', 'href').and('include', 'https://n8n.io/workflows');
+		mainSidebar.getters.templates().parent('a').should('have.attr', 'target', '_blank');
+	});
+
+	it('Redirects to website when visiting templates page directly', () => {
+		cy.visit(templatesPage.url);
+		cy.origin('https://n8n.io', () => {
+			cy.url().should('include', 'https://n8n.io/workflows');
+		})
+	});
+
+	it('Redirects to website when visiting template by id page directly', () => {
+		cy.visit(`${templatesPage.url}/1`);
+		cy.origin('https://n8n.io', () => {
+			cy.url().should('include', 'https://n8n.io/workflows/1');
+		})
+	});
+});
+
+describe('In-app templates repository', () => {
 	beforeEach(() => {
+		cy.intercept('GET', '/rest/settings', (req) => {
+			req.on('response', (res) => {
+				console.log('RESPONSE', res);
+				res.send({
+					data: { ...res.body.data, templates: { enabled: true, host: 'https://api-staging.n8n.io/api/' } },
+				});
+			});
+		}).as('loadSettings');
 		cy.intercept('GET', '**/api/templates/search?page=1&rows=20&category=&search=', { fixture: 'templates_search/all_templates_search_response.json' }).as('searchRequest');
 		cy.intercept('GET', '**/api/templates/search?page=1&rows=20&category=Sales*', { fixture: 'templates_search/sales_templates_search_response.json' }).as('categorySearchRequest');
 		cy.intercept('GET', '**/api/templates/workflows/*', { fixture: 'templates_search/test_template_preview.json' }).as('singleTemplateRequest');
@@ -18,9 +54,9 @@ describe('Templates', () => {
 	});
 
 	it('can open onboarding flow', () => {
-		templatesPage.actions.openOnboardingFlow(1234, OnboardingWorkflow.name, OnboardingWorkflow);
+		templatesPage.actions.openOnboardingFlow(1, OnboardingWorkflow.name, OnboardingWorkflow, 'https://api-staging.n8n.io');
 		cy.url().then(($url) => {
-			expect($url).to.match(/.*\/workflow\/.*?onboardingId=1234$/);
+			expect($url).to.match(/.*\/workflow\/.*?onboardingId=1$/);
 		})
 
 		workflowPage.actions.shouldHaveWorkflowName(`Demo: ${name}`);
@@ -31,10 +67,10 @@ describe('Templates', () => {
 	});
 
 	it('can import template', () => {
-		templatesPage.actions.importTemplate(1234, OnboardingWorkflow.name, OnboardingWorkflow);
+		templatesPage.actions.importTemplate(1, OnboardingWorkflow.name, OnboardingWorkflow, 'https://api-staging.n8n.io');
 
 		cy.url().then(($url) => {
-			expect($url).to.include('/workflow/new?templateId=1234');
+			expect($url).to.include('/workflow/new?templateId=1');
 		});
 
 		workflowPage.getters.canvasNodes().should('have.length', 4);
@@ -69,7 +105,7 @@ describe('Templates', () => {
 	});
 
 	it('can open template with images and hides workflow screenshots', () => {
-		templateWorkflowPage.actions.openTemplate(WorkflowTemplate);
+		templateWorkflowPage.actions.openTemplate(WorkflowTemplate, 'https://api-staging.n8n.io');
 
 		templateWorkflowPage.getters.description().find('img').should('have.length', 1);
 	});
@@ -86,7 +122,6 @@ describe('Templates', () => {
 	it('can filter templates by category', () => {
 		cy.visit(templatesPage.url);
 		templatesPage.getters.templatesLoadingContainer().should('not.exist');
-		templatesPage.getters.expandCategoriesButton().click();
 		templatesPage.getters.categoryFilter('sales').should('exist');
 		let initialTemplateCount = 0;
 		let initialCollectionCount = 0;
@@ -113,7 +148,6 @@ describe('Templates', () => {
 	it('should preserve search query in URL', () => {
 		cy.visit(templatesPage.url);
 		templatesPage.getters.templatesLoadingContainer().should('not.exist');
-		templatesPage.getters.expandCategoriesButton().click();
 		templatesPage.getters.categoryFilter('sales').should('exist');
 		templatesPage.getters.categoryFilter('sales').click();
 		templatesPage.getters.searchInput().type('auto');
