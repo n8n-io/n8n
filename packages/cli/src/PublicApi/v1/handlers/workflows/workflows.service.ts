@@ -91,11 +91,11 @@ export function parseTagNames(tags: string): string[] {
 }
 
 export async function getWorkflowTags(workflowId: string) {
-	return Container.get(TagRepository).find({
+	return await Container.get(TagRepository).find({
 		select: ['id', 'name', 'createdAt', 'updatedAt'],
 		where: {
 			workflowMappings: {
-				...(workflowId && { workflowId: workflowId }),
+				...(workflowId && { workflowId }),
 			},
 		},
 	});
@@ -104,7 +104,7 @@ export async function getWorkflowTags(workflowId: string) {
 export async function updateTags(workflowId: string, newTags: string[]): Promise<any> {
 	await Db.transaction(async (transactionManager) => {
 		const oldTags = await Container.get(WorkflowTagMappingRepository).findBy({
-			workflowId: workflowId,
+			workflowId,
 		});
 		if (oldTags.length > 0) {
 			await transactionManager.delete(WorkflowTagMapping, oldTags);

@@ -104,7 +104,7 @@ export declare namespace WorkflowRequest {
 	type Update = AuthenticatedRequest<{ id: string }, {}, WorkflowEntity, {}>;
 	type Activate = Get;
 	type GetTags = Get;
-	type UpdateTags = AuthenticatedRequest<{ id: string }, {}, Array<TagEntity>, {}>;
+	type UpdateTags = AuthenticatedRequest<{ id: string }, {}, TagEntity[], {}>;
 }
 
 export declare namespace UserRequest {

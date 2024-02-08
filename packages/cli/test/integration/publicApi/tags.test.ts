@@ -107,7 +107,7 @@ describe('GET /tags/:id', () => {
 	);
 
 	test('should fail due to non-existing tag', async () => {
-		const response = await authOwnerAgent.get(`/tags/gZqmqiGAuo1dHT7q`);
+		const response = await authOwnerAgent.get('/tags/gZqmqiGAuo1dHT7q');
 
 		expect(response.statusCode).toBe(404);
 	});
@@ -141,7 +141,7 @@ describe('DELETE /tags/:id', () => {
 	);
 
 	test('should fail due to non-existing tag', async () => {
-		const response = await authOwnerAgent.delete(`/tags/gZqmqiGAuo1dHT7q`);
+		const response = await authOwnerAgent.delete('/tags/gZqmqiGAuo1dHT7q');
 
 		expect(response.statusCode).toBe(404);
 	});
@@ -220,7 +220,7 @@ describe('POST /tags', () => {
 		// check if created tag in DB
 		const tag = await Container.get(TagRepository).findOne({
 			where: {
-				id: id,
+				id,
 			},
 		});
 
@@ -256,7 +256,7 @@ describe('PUT /tags/:id', () => {
 	);
 
 	test('should fail due to non-existing tag', async () => {
-		const response = await authOwnerAgent.put(`/tags/gZqmqiGAuo1dHT7q`).send({
+		const response = await authOwnerAgent.put('/tags/gZqmqiGAuo1dHT7q').send({
 			name: 'testing',
 		});
 
@@ -264,7 +264,7 @@ describe('PUT /tags/:id', () => {
 	});
 
 	test('should fail due to invalid body', async () => {
-		const response = await authOwnerAgent.put(`/tags/gZqmqiGAuo1dHT7q`).send({});
+		const response = await authOwnerAgent.put('/tags/gZqmqiGAuo1dHT7q').send({});
 
 		expect(response.statusCode).toBe(400);
 	});
@@ -290,7 +290,7 @@ describe('PUT /tags/:id', () => {
 		// check updated tag in DB
 		const dbTag = await Container.get(TagRepository).findOne({
 			where: {
-				id: id,
+				id,
 			},
 		});
 
