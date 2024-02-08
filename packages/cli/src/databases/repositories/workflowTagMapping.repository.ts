@@ -9,12 +9,12 @@ export class WorkflowTagMappingRepository extends Repository<WorkflowTagMapping>
 	}
 
 	async overwriteTaggings(workflowId: string, tagIds: string[]) {
-		return await this.manager.transaction(async () => {
-			await this.delete({ workflowId });
+		return await this.manager.transaction(async (tx) => {
+			await tx.delete(WorkflowTagMapping, { workflowId });
 
 			const taggings = tagIds.map((tagId) => this.create({ workflowId, tagId }));
 
-			return await this.insert(taggings);
+			return await tx.insert(WorkflowTagMapping, taggings);
 		});
 	}
 }
