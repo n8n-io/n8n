@@ -171,7 +171,7 @@ function combineItems(
 			entry.json[field] = match.json[field];
 		} else {
 			const value = get(match.json, field) || null;
-			set(entry, `json.${field}`, value);
+			set(entry, ['json', field], value);
 		}
 	});
 

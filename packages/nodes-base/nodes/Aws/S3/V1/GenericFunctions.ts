@@ -137,11 +137,11 @@ export async function awsApiRequestSOAPAllItems(
 		);
 
 		//https://forums.aws.amazon.com/thread.jspa?threadID=55746
-		if (get(responseData, `${propertyName.split('.')[0]}.NextContinuationToken`)) {
-			query['continuation-token'] = get(
-				responseData,
-				`${propertyName.split('.')[0]}.NextContinuationToken`,
-			);
+		if (get(responseData, [propertyName.split('.')[0], 'NextContinuationToken'])) {
+			query['continuation-token'] = get(responseData, [
+				propertyName.split('.')[0],
+				'NextContinuationToken',
+			]);
 		}
 		if (get(responseData, propertyName)) {
 			if (Array.isArray(get(responseData, propertyName))) {
@@ -155,8 +155,8 @@ export async function awsApiRequestSOAPAllItems(
 			return returnData;
 		}
 	} while (
-		get(responseData, `${propertyName.split('.')[0]}.IsTruncated`) !== undefined &&
-		get(responseData, `${propertyName.split('.')[0]}.IsTruncated`) !== 'false'
+		get(responseData, [propertyName.split('.')[0], 'IsTruncated']) !== undefined &&
+		get(responseData, [propertyName.split('.')[0], 'IsTruncated']) !== 'false'
 	);
 
 	return returnData;
