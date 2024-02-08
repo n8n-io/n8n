@@ -261,9 +261,10 @@ describe('DELETE /users/:id', () => {
 			where: { userId: member.id, role: 'workflow:owner' },
 		});
 
+		// FIXME: get shared credentials using the personal project
 		const sharedCredential = await Container.get(SharedCredentialsRepository).findOne({
 			relations: ['user'],
-			where: { userId: member.id, role: 'credential:owner' },
+			where: { deprecatedUserId: member.id, role: 'credential:owner' },
 		});
 
 		const workflow = await getWorkflowById(savedWorkflow.id);
@@ -301,6 +302,7 @@ describe('DELETE /users/:id', () => {
 
 		expect(response.statusCode).toBe(200);
 
+		// FIXME: get the sharedCredential using the projectRelations
 		const [user, sharedWorkflow, sharedCredential] = await Promise.all([
 			await Container.get(UserRepository).findOneBy({ id: member.id }),
 			await Container.get(SharedWorkflowRepository).findOneOrFail({
@@ -309,7 +311,7 @@ describe('DELETE /users/:id', () => {
 			}),
 			await Container.get(SharedCredentialsRepository).findOneOrFail({
 				relations: ['credentials'],
-				where: { userId: owner.id },
+				where: { deprecatedUserId: owner.id },
 			}),
 		]);
 

@@ -238,6 +238,8 @@ export class CredentialsHelper extends ICredentialsHelper {
 	/**
 	 * Returns the credentials instance
 	 */
+	// TODO: needs test
+	// FIXME: should use the projectRelations instead of the deprecatedUserId
 	async getCredentials(
 		nodeCredential: INodeCredentialsDetails,
 		type: string,
@@ -257,7 +259,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 				? await this.sharedCredentialsRepository
 						.findOneOrFail({
 							relations: ['credentials'],
-							where: { credentials: { id: nodeCredential.id, type }, userId },
+							where: { credentials: { id: nodeCredential.id, type }, deprecatedUserId: userId },
 						})
 						.then((shared) => shared.credentials)
 				: await this.credentialsRepository.findOneByOrFail({ id: nodeCredential.id, type });

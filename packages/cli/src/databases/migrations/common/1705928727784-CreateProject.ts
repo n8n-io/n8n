@@ -9,10 +9,10 @@ const projectRelationTable = 'project_relation';
 
 type Table = 'shared_workflow' | 'shared_credentials';
 
-const resourceIdColumns: Record<Table, string> = {
-	shared_credentials: 'credentialsId',
-	shared_workflow: 'workflowId',
-};
+// const resourceIdColumns: Record<Table, string> = {
+// 	shared_credentials: 'credentialsId',
+// 	shared_workflow: 'workflowId',
+// };
 
 export class CreateProject1705928727784 implements IrreversibleMigration {
 	async setupTables({ schemaBuilder: { createTable, column } }: MigrationContext) {

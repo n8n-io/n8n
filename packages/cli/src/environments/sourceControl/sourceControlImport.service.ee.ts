@@ -318,8 +318,10 @@ export class SourceControlImportService {
 			},
 			select: ['id', 'name', 'type', 'data'],
 		});
+		// TODO: needs test
+		// FIXME: use the projectRelations to get the user id
 		const existingSharedCredentials = await Container.get(SharedCredentialsRepository).find({
-			select: ['userId', 'credentialsId', 'role'],
+			select: ['credentialsId', 'role'],
 			where: {
 				credentialsId: In(candidateIds),
 				role: 'credential:owner',
@@ -354,7 +356,8 @@ export class SourceControlImportService {
 				if (!sharedOwner) {
 					const newSharedCredential = new SharedCredentials();
 					newSharedCredential.credentialsId = newCredentialObject.id as string;
-					newSharedCredential.userId = userId;
+					// FIXME: see above
+					// newSharedCredential.userId = userId;
 					newSharedCredential.role = 'credential:owner';
 
 					await Container.get(SharedCredentialsRepository).upsert({ ...newSharedCredential }, [

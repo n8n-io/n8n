@@ -36,8 +36,13 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 		});
 	}
 
+	// TODO: needs test
+	// FIXME: this should use the personal project instead of the deprecatedUserId
 	async makeOwnerOfAllCredentials(user: User) {
-		return await this.update({ userId: Not(user.id), role: 'credential:owner' }, { user });
+		return await this.update(
+			{ deprecatedUserId: Not(user.id), role: 'credential:owner' },
+			{ deprecatedUserId: user.id },
+		);
 	}
 
 	/** Get the IDs of all credentials owned by a user */
