@@ -1,5 +1,5 @@
 import { Container } from 'typedi';
-import { DataSource, EntityManager, type EntityMetadata } from 'typeorm';
+import { DataSource, EntityManager, type EntityMetadata } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import type { User } from '@db/entities/User';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';

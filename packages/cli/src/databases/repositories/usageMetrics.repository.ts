@@ -1,6 +1,6 @@
 import config from '@/config';
 import { Service } from 'typedi';
-import { DataSource, Repository, Entity } from 'typeorm';
+import { DataSource, Repository, Entity } from '@n8n/typeorm';
 
 @Entity()
 export class UsageMetrics {}
