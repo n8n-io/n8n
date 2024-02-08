@@ -9,7 +9,7 @@ import { ExternalHooks } from '@/ExternalHooks';
 import { validateEntity } from '@/GenericHelpers';
 
 import { Container } from 'typedi';
-import type { FindManyOptions, FindOptionsWhere } from 'typeorm';
+import type { FindManyOptions, FindOptionsWhere } from '@n8n/typeorm';
 
 export = {
 	createTag: [

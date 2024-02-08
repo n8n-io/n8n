@@ -1,4 +1,4 @@
-import type { DeleteResult, FindManyOptions, UpdateResult } from 'typeorm';
+import type { DeleteResult, FindManyOptions, UpdateResult } from '@n8n/typeorm';
 import type { TagEntity } from '@db/entities/TagEntity';
 
 import Container from 'typedi';
