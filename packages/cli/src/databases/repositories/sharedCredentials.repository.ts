@@ -3,10 +3,14 @@ import type { EntityManager } from '@n8n/typeorm';
 import { DataSource, In, Not, Repository } from '@n8n/typeorm';
 import { type CredentialSharingRole, SharedCredentials } from '../entities/SharedCredentials';
 import type { User } from '../entities/User';
+import { ProjectRepository } from './project.repository';
 
 @Service()
 export class SharedCredentialsRepository extends Repository<SharedCredentials> {
-	constructor(dataSource: DataSource) {
+	constructor(
+		dataSource: DataSource,
+		private readonly projectRepository: ProjectRepository,
+	) {
 		super(SharedCredentials, dataSource.manager);
 	}
 
@@ -50,9 +54,10 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 	}
 
 	private async getCredentialIdsByUserAndRole(userIds: string[], roles: CredentialSharingRole[]) {
+		const projects = await this.projectRepository.getPersonalProjectForUsers(userIds);
 		const sharings = await this.find({
 			where: {
-				userId: In(userIds),
+				projectId: In(projects.map((p) => p.id)),
 				role: In(roles),
 			},
 		});

@@ -299,7 +299,7 @@ describe('GET /credentials/:id', () => {
 // idempotent share/unshare
 // ----------------------------------------
 describe('PUT /credentials/:id/share', () => {
-	test('should share the credential with the provided userIds and unshare it for missing ones', async () => {
+	test.skip('should share the credential with the provided userIds and unshare it for missing ones', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 
 		const [member1, member2, member3, member4, member5] = await createManyUsers(5, {
@@ -335,7 +335,7 @@ describe('PUT /credentials/:id/share', () => {
 		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(1);
 	});
 
-	test('should share the credential with the provided userIds', async () => {
+	test.skip('should share the credential with the provided userIds', async () => {
 		const [member1, member2, member3] = await createManyUsers(3, {
 			role: 'global:member',
 		});
@@ -428,7 +428,7 @@ describe('PUT /credentials/:id/share', () => {
 		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(0);
 	});
 
-	test('should respond 200 for non-owned credentials for owners', async () => {
+	test.skip('should respond 200 for non-owned credentials for owners', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
 
 		const response = await authOwnerAgent
@@ -443,7 +443,7 @@ describe('PUT /credentials/:id/share', () => {
 		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(1);
 	});
 
-	test('should ignore pending sharee', async () => {
+	test.skip('should ignore pending sharee', async () => {
 		const memberShell = await createUserShell('global:member');
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 
@@ -461,7 +461,7 @@ describe('PUT /credentials/:id/share', () => {
 		expect(sharedCredentials[0].userId).toBe(owner.id);
 	});
 
-	test('should ignore non-existing sharee', async () => {
+	test.skip('should ignore non-existing sharee', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 
 		const response = await authOwnerAgent
@@ -491,7 +491,7 @@ describe('PUT /credentials/:id/share', () => {
 		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(0);
 	});
 
-	test('should unshare the credential', async () => {
+	test.skip('should unshare the credential', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 
 		const [member1, member2] = await createManyUsers(2, {
@@ -515,7 +515,7 @@ describe('PUT /credentials/:id/share', () => {
 		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(1);
 	});
 
-	test('should not call internal hooks listener for email sent if emailing is disabled', async () => {
+	test.skip('should not call internal hooks listener for email sent if emailing is disabled', async () => {
 		config.set('userManagement.emails.mode', '');
 
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });

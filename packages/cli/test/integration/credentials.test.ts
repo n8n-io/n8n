@@ -113,11 +113,11 @@ describe('POST /credentials', () => {
 		expect(credential.data).not.toBe(payload.data);
 
 		const sharedCredential = await Container.get(SharedCredentialsRepository).findOneOrFail({
-			relations: ['user', 'credentials'],
+			relations: ['credentials'],
 			where: { credentialsId: credential.id },
 		});
 
-		expect(sharedCredential.user.id).toBe(owner.id);
+		expect(sharedCredential.deprecatedUserId).toBe(owner.id);
 		expect(sharedCredential.credentials.name).toBe(payload.name);
 	});
 

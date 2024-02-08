@@ -1,6 +1,6 @@
 import { Service } from 'typedi';
 import type { EntityManager } from '@n8n/typeorm';
-import { DataSource, Repository } from '@n8n/typeorm';
+import { DataSource, In, Repository } from '@n8n/typeorm';
 import { Project } from '../entities/Project';
 
 @Service()
@@ -33,6 +33,15 @@ export class ProjectRepository extends Repository<Project> {
 					},
 				},
 			],
+		});
+	}
+
+	async getPersonalProjectForUsers(userIds: string[]) {
+		return await this.find({
+			where: {
+				type: 'personal',
+				projectRelations: { userId: In(userIds) },
+			},
 		});
 	}
 }

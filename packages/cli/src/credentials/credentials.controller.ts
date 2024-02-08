@@ -68,7 +68,7 @@ export class CredentialsController {
 
 			let credential = await this.credentialsRepository.findOne({
 				where: { id: credentialId },
-				relations: ['shared', 'shared.user'],
+				relations: ['shared.project.projectRelations.user'],
 			});
 
 			if (!credential) {
@@ -77,7 +77,8 @@ export class CredentialsController {
 				);
 			}
 
-			const userSharing = credential.shared?.find((shared) => shared.user.id === req.user.id);
+			// TODO: Do I need this change? It's permission checking...
+			const userSharing = this.credentialsRepository.shouldUserHaveAccess(credential, req.user);
 
 			if (!userSharing && !req.user.hasGlobalScope('credential:read')) {
 				throw new ForbiddenError();
@@ -85,7 +86,7 @@ export class CredentialsController {
 
 			credential = this.ownershipService.addOwnedByAndSharedWith(credential);
 
-			if (!includeDecryptedData || !userSharing || userSharing.role !== 'credential:owner') {
+			if (!includeDecryptedData || !userSharing || userSharing !== 'credential:owner') {
 				const { data: _, ...rest } = credential;
 				return { ...rest };
 			}
@@ -346,11 +347,25 @@ export class CredentialsController {
 			await this.enterpriseCredentialsService.getSharings(
 				Db.getConnection().createEntityManager(),
 				credentialId,
-				['shared'],
+				['shared.project.projectRelations.user'],
 			)
 		)
-			.filter((e) => e.role === 'credential:owner')
-			.map((e) => e.userId);
+			.flatMap((sharedCredential) => {
+				const result = [];
+				for (const projectRelation of sharedCredential.project.projectRelations) {
+					result.push({
+						user: projectRelation.user,
+						role: this.credentialsRepository.getRelationShipOfUserForCredential(
+							projectRelation.role,
+							sharedCredential.role,
+						),
+					});
+				}
+
+				return result;
+			})
+			.filter((sc) => sc.role === 'credential:owner')
+			.map((sc) => sc.user.id);
 
 		let amountRemoved: number | null = null;
 		let newShareeIds: string[] = [];
@@ -365,8 +380,9 @@ export class CredentialsController {
 			const sharings = await this.enterpriseCredentialsService.getSharings(trx, credentialId);
 
 			// extract the new sharings that need to be added
+			// FIXME: This should not depend on the deprecatedUserId, but instead should get the user IDs from the projectRelations
 			newShareeIds = utils.rightDiff(
-				[sharings, (sharing) => sharing.userId],
+				[sharings, (sharing) => sharing.deprecatedUserId],
 				[shareWithIds, (shareeId) => shareeId],
 			);
 

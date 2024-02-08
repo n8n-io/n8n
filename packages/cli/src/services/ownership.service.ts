@@ -51,15 +51,23 @@ export class OwnershipService {
 
 		Object.assign(entity, { ownedBy: null, sharedWith: [] });
 
-		shared?.forEach(({ user, role }) => {
-			const { id, email, firstName, lastName } = user;
+		if (shared === undefined) {
+			return entity;
+		}
 
-			if (role === 'credential:owner' || role === 'workflow:owner') {
-				entity.ownedBy = { id, email, firstName, lastName };
-			} else {
-				entity.sharedWith.push({ id, email, firstName, lastName });
+		for (const sharedCredential of shared) {
+			for (const projectRelation of sharedCredential.project.projectRelations) {
+				const role = projectRelation.role;
+
+				const { id, email, firstName, lastName } = projectRelation.user;
+
+				if (role === 'project:admin' && sharedCredential.role === 'credential:owner') {
+					entity.ownedBy = { id, email, firstName, lastName };
+				} else {
+					entity.sharedWith.push({ id, email, firstName, lastName });
+				}
 			}
-		});
+		}
 
 		return entity;
 	}

@@ -12,10 +12,10 @@ export class SharedCredentials extends WithTimestamps {
 	role: CredentialSharingRole;
 
 	@ManyToOne('User', 'sharedCredentials')
-	user: User;
+	deprecatedUser: User;
 
-	@PrimaryColumn()
-	userId: string;
+	@Column()
+	deprecatedUserId: string;
 
 	@ManyToOne('CredentialsEntity', 'shared')
 	credentials: CredentialsEntity;
@@ -26,6 +26,6 @@ export class SharedCredentials extends WithTimestamps {
 	@ManyToOne('Project', 'sharedCredentials')
 	project: Project;
 
-	@Column()
+	@PrimaryColumn()
 	projectId: string;
 }

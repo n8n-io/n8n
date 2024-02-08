@@ -2,8 +2,11 @@ import { Service } from 'typedi';
 import { DataSource, In, Not, Repository, Like } from '@n8n/typeorm';
 import type { FindManyOptions, DeleteResult, EntityManager, FindOptionsWhere } from '@n8n/typeorm';
 import { CredentialsEntity } from '../entities/CredentialsEntity';
+import type { CredentialSharingRole } from '../entities/SharedCredentials';
 import { SharedCredentials } from '../entities/SharedCredentials';
 import type { ListQuery } from '@/requests';
+import type { User } from '../entities/User';
+import type { ProjectRole } from '../entities/ProjectRelation';
 
 @Service()
 export class CredentialsRepository extends Repository<CredentialsEntity> {
@@ -11,6 +14,7 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 		super(CredentialsEntity, dataSource.manager);
 	}
 
+	// FIXME: Pruning does not work. Fix it.
 	async pruneSharings(
 		transaction: EntityManager,
 		credentialId: string,
@@ -18,7 +22,11 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 	): Promise<DeleteResult> {
 		const conditions: FindOptionsWhere<SharedCredentials> = {
 			credentialsId: credentialId,
-			userId: Not(In(userIds)),
+			project: {
+				projectRelations: {
+					userId: Not(In(userIds)),
+				},
+			},
 		};
 		return await transaction.delete(SharedCredentials, conditions);
 	}
@@ -45,7 +53,7 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 
 		type Select = Array<keyof CredentialsEntity>;
 
-		const defaultRelations = ['shared', 'shared.user'];
+		const defaultRelations = ['shared.project.projectRelations.user'];
 		const defaultSelect: Select = ['id', 'name', 'type', 'nodesAccess', 'createdAt', 'updatedAt'];
 
 		if (!listQueryOptions) return { select: defaultSelect, relations: defaultRelations };
@@ -86,4 +94,81 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 
 		return await this.find(findManyOptions);
 	}
+
+	getRelationShipOfUserForCredential(
+		roleUserToProject: ProjectRole,
+		roleProjectToCredential: CredentialSharingRole,
+	) {
+		// If the user is the admin of the project and the project owns the
+		// credential, then they own the credential.
+		if (roleUserToProject === 'project:admin' && roleProjectToCredential === 'credential:owner') {
+			return 'credential:owner';
+		}
+
+		// In all other cases, like the user not being the admin of the
+		// project that owns the credential or the project not owning the credential at all, then the user does not own the credential.
+		return 'credential:user';
+	}
+
+	shouldUserHaveAccess(credential: CredentialsEntity, user: User) {
+		const roles = {
+			'credential:owner': false,
+			'credential:user': false,
+		};
+		for (const sharedCredential of credential.shared) {
+			for (const projectRelation of sharedCredential.project.projectRelations) {
+				if (projectRelation.user.id === user.id) {
+					// If the user is the admin of the project and the project owns the
+					// credential, then they own the credential.
+					if (
+						projectRelation.role === 'project:admin' &&
+						sharedCredential.role === 'credential:owner'
+					) {
+						roles['credential:owner'] = true;
+					}
+
+					// In all other cases, like the user not being the admin of the
+					// project that owns the credential or the project not owning the credential at all, then the user does not own the credential.
+					roles['credential:user'] = true;
+				}
+			}
+		}
+
+		if (roles['credential:owner']) {
+			return 'credential:owner';
+		} else if (roles['credential:user']) {
+			return 'credential:user';
+		} else {
+			return false;
+		}
+	}
+
+	unfurl(credential: CredentialsEntity) {
+		// credential.shared[0].project.projectRelations[0].user
+		// to
+		// credential.shared[0].user
+
+		const shared = [];
+
+		for (const sharedCredential of credential.shared) {
+			for (const projectRelation of sharedCredential.project.projectRelations) {
+				// only unfurl personal projects
+				if (projectRelation.project.type !== 'personal') {
+					continue;
+				}
+
+				shared.push({
+					...sharedCredential,
+					user: projectRelation.user,
+				});
+			}
+		}
+
+		return {
+			...credential,
+			shared,
+		};
+	}
 }
+
+export type OldCredentials = ReturnType<CredentialsRepository['unfurl']>;

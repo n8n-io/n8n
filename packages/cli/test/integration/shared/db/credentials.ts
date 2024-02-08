@@ -67,10 +67,10 @@ export async function saveCredential(
 	);
 
 	await Container.get(SharedCredentialsRepository).save({
-		user,
 		credentials: savedCredential,
 		role,
 		project: personalProject,
+		deprecatedUser: user,
 	});
 
 	return savedCredential;
@@ -84,10 +84,10 @@ export async function shareCredentialWithUsers(credential: CredentialsEntity, us
 			).getPersonalProjectForUserOrFail(user.id);
 
 			return Container.get(SharedCredentialsRepository).create({
-				userId: user.id,
 				credentialsId: credential.id,
 				role: 'credential:user',
 				projectId: personalProject.id,
+				deprecatedUserId: user.id,
 			});
 		}),
 	);

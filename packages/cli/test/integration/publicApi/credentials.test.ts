@@ -63,8 +63,16 @@ describe('POST /credentials', () => {
 		expect(credential.data).not.toBe(payload.data);
 
 		const sharedCredential = await Container.get(SharedCredentialsRepository).findOneOrFail({
-			relations: ['user', 'credentials'],
-			where: { credentialsId: credential.id, userId: owner.id },
+			relations: ['credentials'],
+			where: {
+				credentialsId: credential.id,
+				project: {
+					type: 'personal',
+					projectRelations: {
+						userId: owner.id,
+					},
+				},
+			},
 		});
 
 		expect(sharedCredential.role).toEqual('credential:owner');

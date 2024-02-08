@@ -89,15 +89,31 @@ export class CredentialsService {
 	): Promise<SharedCredentials | null> {
 		const where: FindOptionsWhere<SharedCredentials> = { credentialsId: credentialId };
 
-		// Omit user from where if the requesting user has relevant
-		// global credential permissions. This allows the user to
-		// access credentials they don't own.
-		if (!options.allowGlobalScope || !user.hasGlobalScope(options.globalScope)) {
-			where.userId = user.id;
-			where.role = 'credential:owner';
-		}
+		const userHasGlobalAccess =
+			options.allowGlobalScope && user.hasGlobalScope(options.globalScope);
 
-		return await this.sharedCredentialsRepository.findOne({ where, relations });
+		return await this.sharedCredentialsRepository.findOne({
+			where: {
+				...where,
+				...(userHasGlobalAccess
+					? // Omit user from where if the requesting user has relevant
+					  // global credential permissions. This allows the user to
+					  // access credentials they don't own.
+					  null
+					: {
+							role: 'credential:owner',
+							project: {
+								projectRelations: {
+									// TODO: Do I still need this?
+									// role: 'project:admin',
+									userId: user.id,
+								},
+							},
+					  }),
+			},
+
+			relations,
+		});
 	}
 
 	async prepareCreateData(
@@ -201,9 +217,9 @@ export class CredentialsService {
 
 			Object.assign(newSharedCredential, {
 				role: 'credential:owner',
-				user,
 				credentials: savedCredential,
 				projectId: personalProject.id,
+				deprecatedUserId: user.id,
 			});
 
 			await transactionManager.save<SharedCredentials>(newSharedCredential);

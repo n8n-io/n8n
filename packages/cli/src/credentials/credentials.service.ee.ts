@@ -39,15 +39,25 @@ export class EnterpriseCredentialsService {
 	) {
 		const where: FindOptionsWhere<SharedCredentials> = { credentialsId: credentialId };
 
-		// Omit user from where if the requesting user has relevant
-		// global credential permissions. This allows the user to
-		// access credentials they don't own.
-		if (!options.allowGlobalScope || !user.hasGlobalScope(options.globalScope)) {
-			where.userId = user.id;
-		}
+		const userHasGlobalAccess =
+			options.allowGlobalScope && user.hasGlobalScope(options.globalScope);
 
 		return await this.sharedCredentialsRepository.findOne({
-			where,
+			where: {
+				...where,
+				...(userHasGlobalAccess
+					? // Omit user from where if the requesting user has relevant
+					  // global credential permissions. This allows the user to
+					  // access credentials they don't own.
+					  null
+					: {
+							project: {
+								projectRelations: {
+									userId: user.id,
+								},
+							},
+					  }),
+			},
 			relations,
 		});
 	}
@@ -74,9 +84,9 @@ export class EnterpriseCredentialsService {
 
 					return this.sharedCredentialsRepository.create({
 						credentialsId: credential.id,
-						userId: user.id,
 						role: 'credential:user',
 						project: personalProject,
+						deprecatedUserId: user.id,
 					});
 				}),
 		);
