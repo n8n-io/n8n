@@ -161,14 +161,16 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 	}
 
 	/**
-	 * Find the IDs of all the projects where a workflow is accessible.
+	 * Find the distinct IDs of all the projects where a workflow is accessible.
 	 */
 	async findProjectIds(workflowId: string) {
 		const rows = await this.find({ where: { workflowId }, select: ['projectId'] });
 
-		return rows.reduce<string[]>((acc, row) => {
+		const projectIds = rows.reduce<string[]>((acc, row) => {
 			if (row.projectId) acc.push(row.projectId);
 			return acc;
 		}, []);
+
+		return [...new Set(projectIds)];
 	}
 }
