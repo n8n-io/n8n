@@ -17,7 +17,7 @@ import {
 	EnterpriseEditionFeature,
 	VIEWS,
 	EDITABLE_CANVAS_VIEWS,
-	WEBSITE_TEMPLATES_URL,
+	WEBSITE_TEMPLATES_URLS,
 } from '@/constants';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { middleware } from '@/rbac/middleware';
@@ -227,9 +227,14 @@ export const routes = [
 	},
 	{
 		path: '/templates',
-		alias: '/templates/:id',
 		redirect: () => {
-			window.location.href = WEBSITE_TEMPLATES_URL;
+			window.location.href = `${WEBSITE_TEMPLATES_URLS.BASE_URL}?${WEBSITE_TEMPLATES_URLS.UTM_QUERY}`;
+		},
+	},
+	{
+		path: '/templates/:id',
+		redirect: (to) => {
+			window.location.href = `${WEBSITE_TEMPLATES_URLS.BASE_URL}/${to.params.id}?${WEBSITE_TEMPLATES_URLS.UTM_QUERY}`;
 		},
 	},
 	{

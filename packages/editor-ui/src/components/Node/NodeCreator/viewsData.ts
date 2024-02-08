@@ -52,7 +52,7 @@ import {
 	EMAIL_SEND_NODE_TYPE,
 	EDIT_IMAGE_NODE_TYPE,
 	COMPRESSION_NODE_TYPE,
-	TEMPLATES_AI_CATEGORY_URL,
+	WEBSITE_TEMPLATES_URLS,
 } from '@/constants';
 import { useI18n } from '@/composables/useI18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -126,7 +126,9 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 		title: i18n.baseText('nodeCreator.aiPanel.aiNodes'),
 		subtitle: i18n.baseText('nodeCreator.aiPanel.selectAiNode'),
 		info: i18n.baseText('nodeCreator.aiPanel.infoBox', {
-			interpolate: { link: TEMPLATES_AI_CATEGORY_URL },
+			interpolate: {
+				link: `${WEBSITE_TEMPLATES_URLS.BASE_URL}?${WEBSITE_TEMPLATES_URLS.AI_CATEGORY}&${WEBSITE_TEMPLATES_URLS.UTM_QUERY}`,
+			},
 		}),
 		items: [
 			...chainNodes,

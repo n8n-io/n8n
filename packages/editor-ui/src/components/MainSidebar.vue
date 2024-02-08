@@ -106,7 +106,7 @@ import type { CloudPlanAndUsageData, IExecutionResponse, IMenuItem, IVersion } f
 import GiftNotificationIcon from './GiftNotificationIcon.vue';
 
 import { useMessage } from '@/composables/useMessage';
-import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS, WEBSITE_TEMPLATES_URL } from '@/constants';
+import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS, WEBSITE_TEMPLATES_URLS } from '@/constants';
 import { userHelpers } from '@/mixins/userHelpers';
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
@@ -231,7 +231,7 @@ export default defineComponent({
 					position: 'top',
 					available: this.settingsStore.isTemplatesEnabled,
 					link: {
-						href: WEBSITE_TEMPLATES_URL,
+						href: `${WEBSITE_TEMPLATES_URLS.BASE_URL}?${WEBSITE_TEMPLATES_URLS.UTM_QUERY}`,
 						target: '_blank',
 					},
 				},
