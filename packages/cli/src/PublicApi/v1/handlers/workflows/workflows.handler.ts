@@ -1,7 +1,7 @@
 import type express from 'express';
 import { Container } from 'typedi';
-import type { FindOptionsWhere } from 'typeorm';
-import { In } from 'typeorm';
+import type { FindOptionsWhere } from '@n8n/typeorm';
+import { In } from '@n8n/typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';

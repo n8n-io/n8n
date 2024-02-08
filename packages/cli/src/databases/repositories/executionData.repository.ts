@@ -1,5 +1,5 @@
 import { Service } from 'typedi';
-import { DataSource, In, Repository } from 'typeorm';
+import { DataSource, In, Repository } from '@n8n/typeorm';
 import { ExecutionData } from '../entities/ExecutionData';
 
 @Service()
