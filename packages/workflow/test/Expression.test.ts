@@ -177,6 +177,14 @@ for (const evaluator of ['tmpl', 'tournament'] as const) {
 				id: '1',
 				nodes: [
 					{
+						name: 'previousNode',
+						typeVersion: 1,
+						type: 'test.set',
+						id: 'uuid-1235',
+						position: [200, 100],
+						parameters: {},
+					},
+					{
 						name: 'node',
 						typeVersion: 1,
 						type: 'test.set',
@@ -185,7 +193,11 @@ for (const evaluator of ['tmpl', 'tournament'] as const) {
 						parameters: {},
 					},
 				],
-				connections: {},
+				connections: {
+					previousNode: {
+						main: [[{ node: 'node', type: 'main', index: 0 }]],
+					},
+				},
 				active: false,
 				nodeTypes,
 			});
