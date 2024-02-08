@@ -45,6 +45,11 @@ export function getSpreadsheetId(
 	return value;
 }
 
+export function getSheetId(value: string): number {
+	if (value === 'gid=0') return 0;
+	return parseInt(value);
+}
+
 // Convert number to Sheets / Excel column name
 export function getColumnName(colNumber: number): string {
 	const baseChar = 'A'.charCodeAt(0);

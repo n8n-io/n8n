@@ -20,7 +20,6 @@ const properties: INodeProperties[] = [
 		noDataExpression: true,
 		typeOptions: {
 			editor: 'sqlEditor',
-			rows: 5,
 		},
 		displayOptions: {
 			hide: {
@@ -39,7 +38,6 @@ const properties: INodeProperties[] = [
 		noDataExpression: true,
 		typeOptions: {
 			editor: 'sqlEditor',
-			rows: 5,
 		},
 		displayOptions: {
 			show: {

@@ -3,8 +3,6 @@ import type { IDataObject, ExecutionStatus } from 'n8n-workflow';
 
 import type { User } from '@db/entities/User';
 
-import type { Role } from '@db/entities/Role';
-
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 
 import type { TagEntity } from '@db/entities/TagEntity';
@@ -27,7 +25,6 @@ export type AuthenticatedRequest<
 	RequestQuery = {},
 > = express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery> & {
 	user: User;
-	globalMemberRole?: Role;
 	mailer?: UserManagementMailer;
 };
 
@@ -107,7 +104,7 @@ export declare namespace WorkflowRequest {
 	type Update = AuthenticatedRequest<{ id: string }, {}, WorkflowEntity, {}>;
 	type Activate = Get;
 	type GetTags = Get;
-	type UpdateTags = AuthenticatedRequest<{ id: string }, {}, Array<TagEntity>, {}>;
+	type UpdateTags = AuthenticatedRequest<{ id: string }, {}, TagEntity[], {}>;
 }
 
 export declare namespace UserRequest {

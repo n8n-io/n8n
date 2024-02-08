@@ -219,7 +219,7 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 							},
 							{
 								id: 'execute',
-								label: i18n.baseText('contextMenu.execute'),
+								label: i18n.baseText('contextMenu.test'),
 								disabled: isReadOnly.value,
 							},
 							{

@@ -4,7 +4,7 @@ import {
 	type DataSource,
 	type EntityManager,
 	type EntityMetadata,
-} from 'typeorm';
+} from '@n8n/typeorm';
 import { mocked } from 'jest-mock';
 import { mock } from 'jest-mock-extended';
 
@@ -16,8 +16,6 @@ import { EventsService } from '@/services/events.service';
 import { UserService } from '@/services/user.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { mockInstance } from '../../shared/mocking';
-
-jest.mock('@/UserManagement/UserManagementHelper', () => ({ getWorkflowOwner: jest.fn() }));
 
 describe('EventsService', () => {
 	const dbType = config.getEnv('database.type');

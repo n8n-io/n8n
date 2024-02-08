@@ -1,20 +1,24 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import N8nNotice from 'n8n-design-system/components/N8nNotice';
-import type { AppCredentials } from '@/views/SetupWorkflowFromTemplateView/setupTemplate.store';
-import { useSetupTemplateStore } from '@/views/SetupWorkflowFromTemplateView/setupTemplate.store';
-import { storeToRefs } from 'pinia';
 import { formatList } from '@/utils/formatters/listFormatter';
 import { useI18n } from '@/composables/useI18n';
+import type {
+	AppCredentials,
+	BaseNode,
+} from '@/views/SetupWorkflowFromTemplateView/useCredentialSetupState';
 
 const i18n = useI18n();
-const store = useSetupTemplateStore();
-const { appCredentials } = storeToRefs(store);
 
-const formatApp = (app: AppCredentials) => `<b>${app.credentials.length}x ${app.appName}</b>`;
+const props = defineProps<{
+	appCredentials: Array<AppCredentials<BaseNode>>;
+}>();
+
+const formatApp = (app: AppCredentials<BaseNode>) =>
+	`<b>${app.credentials.length}x ${app.appName}</b>`;
 
 const appNodeCounts = computed(() => {
-	return formatList(appCredentials.value, {
+	return formatList(props.appCredentials, {
 		formatFn: formatApp,
 		i18n,
 	});

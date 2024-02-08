@@ -2,12 +2,15 @@ import { createServer } from 'miragejs';
 import { endpoints } from './endpoints';
 import { models } from './models';
 import { factories } from './factories';
+import { fixtures } from './fixtures';
 
 export function setupServer() {
 	const server = createServer({
 		models,
 		factories,
+		fixtures,
 		seeds(server) {
+			server.loadFixtures('tags', 'workflows');
 			server.createList('credentialType', 8);
 			server.create('user', {
 				firstName: 'Nathan',

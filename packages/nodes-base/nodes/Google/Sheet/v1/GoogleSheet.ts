@@ -281,7 +281,7 @@ export class GoogleSheet {
 			keyRowIndex,
 			usePathForKeyRow,
 		);
-		return this.appendData(range, data, valueInputMode);
+		return await this.appendData(range, data, valueInputMode);
 	}
 
 	getColumnWithOffset(startColumn: string, offset: number): string {
@@ -456,7 +456,7 @@ export class GoogleSheet {
 			}
 		}
 
-		return this.batchUpdate(updateData, valueInputMode);
+		return await this.batchUpdate(updateData, valueInputMode);
 	}
 
 	/**

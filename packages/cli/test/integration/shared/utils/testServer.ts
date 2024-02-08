@@ -12,6 +12,7 @@ import { issueJWT } from '@/auth/jwt';
 import { registerController } from '@/decorators';
 import { rawBodyReader, bodyParser, setupAuthMiddlewares } from '@/middlewares';
 import { PostHogClient } from '@/posthog';
+import { Push } from '@/push';
 import { License } from '@/License';
 import { Logger } from '@/Logger';
 import { InternalHooks } from '@/InternalHooks';
@@ -38,7 +39,7 @@ function prefix(pathSegment: string) {
 
 		url.pathname = pathSegment + url.pathname;
 		request.url = url.toString();
-		return request;
+		return await request;
 	};
 }
 
@@ -78,6 +79,7 @@ export const setupTestServer = ({
 	mockInstance(Logger);
 	mockInstance(InternalHooks);
 	mockInstance(PostHogClient);
+	mockInstance(Push);
 
 	const testServer: TestServer = {
 		app,
@@ -121,18 +123,18 @@ export const setupTestServer = ({
 			for (const group of endpointGroups) {
 				switch (group) {
 					case 'credentials':
-						const { credentialsController } = await import('@/credentials/credentials.controller');
-						app.use(`/${REST_PATH_SEGMENT}/credentials`, credentialsController);
+						const { CredentialsController } = await import('@/credentials/credentials.controller');
+						registerController(app, CredentialsController);
 						break;
 
 					case 'workflows':
-						const { workflowsController } = await import('@/workflows/workflows.controller');
-						app.use(`/${REST_PATH_SEGMENT}/workflows`, workflowsController);
+						const { WorkflowsController } = await import('@/workflows/workflows.controller');
+						registerController(app, WorkflowsController);
 						break;
 
 					case 'executions':
-						const { executionsController } = await import('@/executions/executions.controller');
-						app.use(`/${REST_PATH_SEGMENT}/executions`, executionsController);
+						const { ExecutionsController } = await import('@/executions/executions.controller');
+						registerController(app, ExecutionsController);
 						break;
 
 					case 'variables':
@@ -170,10 +172,10 @@ export const setupTestServer = ({
 						break;
 
 					case 'ldap':
-						const { handleLdapInit } = await import('@/Ldap/helpers');
-						const { LdapController } = await import('@/controllers/ldap.controller');
+						const { LdapService } = await import('@/Ldap/ldap.service');
+						const { LdapController } = await import('@/Ldap/ldap.controller');
 						testServer.license.enable('feat:ldap');
-						await handleLdapInit();
+						await Container.get(LdapService).init();
 						registerController(app, LdapController);
 						break;
 
@@ -247,11 +249,6 @@ export const setupTestServer = ({
 					case 'binaryData':
 						const { BinaryDataController } = await import('@/controllers/binaryData.controller');
 						registerController(app, BinaryDataController);
-						break;
-
-					case 'role':
-						const { RoleController } = await import('@/controllers/role.controller');
-						registerController(app, RoleController);
 						break;
 
 					case 'debug':

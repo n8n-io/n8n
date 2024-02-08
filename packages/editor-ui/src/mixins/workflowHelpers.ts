@@ -48,7 +48,6 @@ import type {
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { genericHelpers } from '@/mixins/genericHelpers';
 
 import { get, isEqual } from 'lodash-es';
 
@@ -68,6 +67,9 @@ import { v4 as uuid } from 'uuid';
 import { useSettingsStore } from '@/stores/settings.store';
 import { getCredentialTypeName, isCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useCanvasStore } from '@/stores/canvas.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { tryToParseNumber } from '@/utils/typesUtils';
 
 export function getParentMainInputNode(workflow: Workflow, node: INode): INode {
 	const nodeType = useNodeTypesStore().getNodeType(node.type);
@@ -166,6 +168,13 @@ export function resolveParameter(
 		runIndexParent,
 		nodeConnection,
 	);
+
+	if (_connectionInputData === null && contextNode && activeNode?.name !== contextNode.name) {
+		// For Sub-Nodes connected to Trigger-Nodes use the data of the root-node
+		// (Gets for example used by the Memory connected to the Chat-Trigger-Node)
+		const _executeData = executeData([contextNode.name], contextNode.name, inputName, 0);
+		_connectionInputData = get(_executeData, ['data', inputName, 0], null);
+	}
 
 	let runExecutionData: IRunExecutionData;
 	if (!executionData?.data) {
@@ -402,7 +411,7 @@ export function executeData(
 	// Find the parent node which has data
 	for (const parentNodeName of parentNodes) {
 		if (workflowsStore.shouldReplaceInputDataWithPinData) {
-			const parentPinData = workflowsStore.getPinData![parentNodeName];
+			const parentPinData = workflowsStore.pinnedWorkflowData![parentNodeName];
 
 			// populate `executeData` from `pinData`
 
@@ -475,9 +484,9 @@ export function executeData(
 }
 
 export const workflowHelpers = defineComponent({
-	mixins: [genericHelpers],
 	setup() {
 		const nodeHelpers = useNodeHelpers();
+
 		return {
 			...useToast(),
 			...useMessage(),
@@ -650,7 +659,7 @@ export const workflowHelpers = defineComponent({
 			const data: IWorkflowData = {
 				name: this.workflowsStore.workflowName,
 				nodes,
-				pinData: this.workflowsStore.getPinData,
+				pinData: this.workflowsStore.pinnedWorkflowData,
 				connections: workflowConnections,
 				active: this.workflowsStore.isWorkflowActive,
 				settings: this.workflowsStore.workflow.settings,
@@ -887,15 +896,16 @@ export const workflowHelpers = defineComponent({
 			redirect = true,
 			forceSave = false,
 		): Promise<boolean> {
-			if (this.readOnlyEnv) {
-				return;
+			const readOnlyEnv = useSourceControlStore().preferences.branchReadOnly;
+			if (readOnlyEnv) {
+				return false;
 			}
 
+			const isLoading = useCanvasStore().isLoading;
 			const currentWorkflow = id || this.$route.params.name;
-			const isLoading = this.loadingService !== null;
 
 			if (!currentWorkflow || ['new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(currentWorkflow)) {
-				return this.saveAsNewWorkflow({ name, tags }, redirect);
+				return await this.saveAsNewWorkflow({ name, tags }, redirect);
 			}
 
 			// Workflow exists already so update it
@@ -974,7 +984,7 @@ export const workflowHelpers = defineComponent({
 					);
 
 					if (overwrite === MODAL_CONFIRM) {
-						return this.saveCurrentWorkflow({ id, name, tags }, redirect, true);
+						return await this.saveCurrentWorkflow({ id, name, tags }, redirect, true);
 					}
 
 					return false;
@@ -1085,7 +1095,7 @@ export const workflowHelpers = defineComponent({
 				const templateId = this.$route.query.templateId;
 				if (templateId) {
 					this.$telemetry.track('User saved new workflow from template', {
-						template_id: templateId,
+						template_id: tryToParseNumber(String(templateId)),
 						workflow_id: workflowData.id,
 						wf_template_repo_session_id: this.templatesStore.previousSessionId,
 					});

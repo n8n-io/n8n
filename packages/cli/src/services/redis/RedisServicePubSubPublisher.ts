@@ -57,7 +57,7 @@ export class RedisServicePubSubPublisher extends RedisServiceBaseSender {
 	async get(key: string) {
 		if (!this.redisClient) await this.init();
 
-		return this.redisClient?.get(key);
+		return await this.redisClient?.get(key);
 	}
 
 	async clear(key: string) {

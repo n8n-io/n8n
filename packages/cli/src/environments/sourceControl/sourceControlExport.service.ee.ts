@@ -95,7 +95,7 @@ export class SourceControlExportService {
 					owner: owners[e.id],
 				};
 				this.logger.debug(`Writing workflow ${e.id} to ${fileName}`);
-				return fsWriteFile(fileName, JSON.stringify(sanitizedWorkflow, null, 2));
+				return await fsWriteFile(fileName, JSON.stringify(sanitizedWorkflow, null, 2));
 			}),
 		);
 	}
@@ -253,7 +253,7 @@ export class SourceControlExportService {
 						nodesAccess: sharedCredential.credentials.nodesAccess,
 					};
 					this.logger.debug(`Writing credential ${sharedCredential.credentials.id} to ${fileName}`);
-					return fsWriteFile(fileName, JSON.stringify(sanitizedCredential, null, 2));
+					return await fsWriteFile(fileName, JSON.stringify(sanitizedCredential, null, 2));
 				}),
 			);
 			return {

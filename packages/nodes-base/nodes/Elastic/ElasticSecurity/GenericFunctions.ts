@@ -97,7 +97,7 @@ export async function handleListing(
 	const returnAll = this.getNodeParameter('returnAll', 0);
 
 	if (returnAll) {
-		return elasticSecurityApiRequestAllItems.call(this, method, endpoint, body, qs);
+		return await elasticSecurityApiRequestAllItems.call(this, method, endpoint, body, qs);
 	}
 
 	const responseData = await elasticSecurityApiRequestAllItems.call(

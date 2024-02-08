@@ -72,6 +72,7 @@ function getInputs(
 						'@n8n/n8n-nodes-langchain.lmChatOllama',
 						'@n8n/n8n-nodes-langchain.lmChatOpenAi',
 						'@n8n/n8n-nodes-langchain.lmChatGooglePalm',
+						'@n8n/n8n-nodes-langchain.lmChatMistralCloud',
 					],
 				},
 			},
@@ -144,7 +145,7 @@ export class Agent implements INodeType {
 		name: 'agent',
 		icon: 'fa:robot',
 		group: ['transform'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		description: 'Generates an action plan and executes it. Can use external tools.',
 		subtitle:
 			"={{ {	conversationalAgent: 'Conversational Agent', openAiFunctionsAgent: 'OpenAI Functions Agent', reactAgent: 'ReAct Agent', sqlAgent: 'SQL Agent' }[$parameter.agent] }}",
@@ -251,15 +252,15 @@ export class Agent implements INodeType {
 		const agentType = this.getNodeParameter('agent', 0, '') as string;
 
 		if (agentType === 'conversationalAgent') {
-			return conversationalAgentExecute.call(this);
+			return await conversationalAgentExecute.call(this);
 		} else if (agentType === 'openAiFunctionsAgent') {
-			return openAiFunctionsAgentExecute.call(this);
+			return await openAiFunctionsAgentExecute.call(this);
 		} else if (agentType === 'reActAgent') {
-			return reActAgentAgentExecute.call(this);
+			return await reActAgentAgentExecute.call(this);
 		} else if (agentType === 'sqlAgent') {
-			return sqlAgentAgentExecute.call(this);
+			return await sqlAgentAgentExecute.call(this);
 		} else if (agentType === 'planAndExecuteAgent') {
-			return planAndExecuteAgentExecute.call(this);
+			return await planAndExecuteAgentExecute.call(this);
 		}
 
 		throw new NodeOperationError(this.getNode(), `The agent type "${agentType}" is not supported`);

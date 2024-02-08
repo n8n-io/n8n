@@ -183,8 +183,8 @@ import type { IPermissions } from '@/permissions';
 import { getWorkflowPermissions } from '@/permissions';
 import { createEventBus } from 'n8n-design-system/utils';
 import { nodeViewEventBus } from '@/event-bus';
-import { genericHelpers } from '@/mixins/genericHelpers';
 import { hasPermission } from '@/rbac/permissions';
+import { useCanvasStore } from '@/stores/canvas.store';
 
 const hasChanged = (prev: string[], curr: string[]) => {
 	if (prev.length !== curr.length) {
@@ -208,7 +208,7 @@ export default defineComponent({
 		BreakpointsObserver,
 		CollaborationPane,
 	},
-	mixins: [workflowHelpers, genericHelpers],
+	mixins: [workflowHelpers],
 	props: {
 		readOnly: {
 			type: Boolean,
@@ -244,6 +244,7 @@ export default defineComponent({
 			useWorkflowsStore,
 			useUsersStore,
 			useSourceControlStore,
+			useCanvasStore,
 		),
 		currentUser(): IUser | null {
 			return this.usersStore.currentUser;
@@ -586,7 +587,7 @@ export default defineComponent({
 					break;
 				}
 				case WORKFLOW_MENU_ACTIONS.PUSH: {
-					this.startLoading();
+					this.canvasStore.startLoading();
 					try {
 						await this.onSaveButtonClick();
 
@@ -610,7 +611,7 @@ export default defineComponent({
 								this.showError(error, this.$locale.baseText('error'));
 						}
 					} finally {
-						this.stopLoading();
+						this.canvasStore.stopLoading();
 					}
 
 					break;

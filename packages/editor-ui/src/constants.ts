@@ -57,6 +57,7 @@ export const DEBUG_PAYWALL_MODAL_KEY = 'debugPaywall';
 export const MFA_SETUP_MODAL_KEY = 'mfaSetup';
 export const WORKFLOW_HISTORY_VERSION_RESTORE = 'workflowHistoryVersionRestore';
 export const SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY = 'suggestedTemplatePreview';
+export const SETUP_CREDENTIALS_MODAL_KEY = 'setupCredentials';
 
 export const EXTERNAL_SECRETS_PROVIDER_MODAL_KEY = 'externalSecretsProvider';
 
@@ -127,6 +128,7 @@ export const JIRA_TRIGGER_NODE_TYPE = 'n8n-nodes-base.jiraTrigger';
 export const MICROSOFT_EXCEL_NODE_TYPE = 'n8n-nodes-base.microsoftExcel';
 export const MANUAL_TRIGGER_NODE_TYPE = 'n8n-nodes-base.manualTrigger';
 export const MANUAL_CHAT_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.manualChatTrigger';
+export const CHAT_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.chatTrigger';
 export const AGENT_NODE_TYPE = '@n8n/n8n-nodes-langchain.agent';
 export const OPEN_AI_ASSISTANT_NODE_TYPE = '@n8n/n8n-nodes-langchain.openAiAssistant';
 export const BASIC_CHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.chainLlm';
@@ -161,6 +163,8 @@ export const XERO_NODE_TYPE = 'n8n-nodes-base.xero';
 export const ZENDESK_NODE_TYPE = 'n8n-nodes-base.zendesk';
 export const ZENDESK_TRIGGER_NODE_TYPE = 'n8n-nodes-base.zendeskTrigger';
 export const DISCORD_NODE_TYPE = 'n8n-nodes-base.discord';
+export const EXTRACT_FROM_FILE_NODE_TYPE = 'n8n-nodes-base.extractFromFile';
+export const CONVERT_TO_FILE_NODE_TYPE = 'n8n-nodes-base.convertToFile';
 export const DATETIME_NODE_TYPE = 'n8n-nodes-base.dateTime';
 export const REMOVE_DUPLICATES_NODE_TYPE = 'n8n-nodes-base.removeDuplicates';
 export const SPLIT_OUT_NODE_TYPE = 'n8n-nodes-base.splitOut';
@@ -172,6 +176,8 @@ export const MARKDOWN_NODE_TYPE = 'n8n-nodes-base.markdown';
 export const XML_NODE_TYPE = 'n8n-nodes-base.xml';
 export const CRYPTO_NODE_TYPE = 'n8n-nodes-base.crypto';
 export const RSS_READ_NODE_TYPE = 'n8n-nodes-base.rssFeedRead';
+export const COMPRESSION_NODE_TYPE = 'n8n-nodes-base.compression';
+export const EDIT_IMAGE_NODE_TYPE = 'n8n-nodes-base.editImage';
 
 export const CREDENTIAL_ONLY_NODE_PREFIX = 'n8n-creds-base';
 export const CREDENTIAL_ONLY_HTTP_NODE_VERSION = 4.1;
@@ -195,7 +201,13 @@ export const NODES_USING_CODE_NODE_EDITOR = [CODE_NODE_TYPE, AI_CODE_NODE_TYPE];
 
 export const PIN_DATA_NODE_TYPES_DENYLIST = [SPLIT_IN_BATCHES_NODE_TYPE, STICKY_NODE_TYPE];
 
-export const OPEN_URL_PANEL_TRIGGER_NODE_TYPES = [WEBHOOK_NODE_TYPE, FORM_TRIGGER_NODE_TYPE];
+export const OPEN_URL_PANEL_TRIGGER_NODE_TYPES = [
+	WEBHOOK_NODE_TYPE,
+	FORM_TRIGGER_NODE_TYPE,
+	CHAT_TRIGGER_NODE_TYPE,
+];
+
+export const PRODUCTION_ONLY_TRIGGER_NODE_TYPES = [CHAT_TRIGGER_NODE_TYPE];
 
 // Node creator
 export const NODE_CREATOR_OPEN_SOURCES: Record<
@@ -454,6 +466,8 @@ export const enum VIEWS {
 	WORKER_VIEW = 'WorkerView',
 }
 
+export const EDITABLE_CANVAS_VIEWS = [VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG];
+
 export const enum FAKE_DOOR_FEATURES {
 	ENVIRONMENTS = 'environments',
 	LOGGING = 'logging',
@@ -589,6 +603,7 @@ export const enum STORES {
 	RBAC = 'rbac',
 	COLLABORATION = 'collaboration',
 	PUSH = 'push',
+	BECOME_TEMPLATE_CREATOR = 'becomeTemplateCreator',
 }
 
 export const enum SignInType {
@@ -607,6 +622,7 @@ export const KEEP_AUTH_IN_NDV_FOR_NODES = [
 	WEBHOOK_NODE_TYPE,
 	WAIT_NODE_TYPE,
 	DISCORD_NODE_TYPE,
+	CHAT_TRIGGER_NODE_TYPE,
 ];
 export const MAIN_AUTH_FIELD_NAME = 'authentication';
 export const NODE_RESOURCE_FIELD_NAME = 'resource';
@@ -618,7 +634,7 @@ export const ASK_AI_EXPERIMENT = {
 	gpt4: 'gpt4',
 };
 
-export const TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT = '016_template_credential_setup';
+export const TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT = '017_template_credential_setup_v2';
 
 export const EXPERIMENTS_TO_TRACK = [ASK_AI_EXPERIMENT.name, TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT];
 
@@ -687,3 +703,37 @@ export const TIME = {
 };
 
 export const SUGGESTED_TEMPLATES_FLAG = 'SHOW_N8N_SUGGESTED_TEMPLATES';
+
+/**
+ * Mouse button codes
+ */
+
+/**
+ * Mapping for the MouseEvent.button property that indicates which button was pressed
+ * on the mouse to trigger the event.
+ *
+ * @docs https://www.w3.org/TR/uievents/#dom-mouseevent-button
+ */
+export const MOUSE_EVENT_BUTTON = {
+	PRIMARY: 0,
+	MIDDLE: 1,
+	SECONDARY: 2,
+	BROWSER_BACK: 3,
+	BROWSER_FORWARD: 4,
+} as const;
+
+/**
+ * Mapping for the MouseEvent.buttons property that indicates which buttons are pressed
+ * on the mouse when a mouse event is triggered. If multiple buttons are pressed,
+ * the values are added together to produce a new number.
+ *
+ * @docs https://www.w3.org/TR/uievents/#dom-mouseevent-buttons
+ */
+export const MOUSE_EVENT_BUTTONS = {
+	NONE: 0,
+	PRIMARY: 1,
+	SECONDARY: 2,
+	MIDDLE: 4,
+	BROWSER_BACK: 8,
+	BROWSER_FORWARD: 16,
+} as const;

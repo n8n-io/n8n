@@ -65,26 +65,38 @@
 					:underline="true"
 					color="text-dark"
 				/>
-				<Suspense>
-					<CollectionParameter
-						v-if="parameter.type === 'collection'"
-						:parameter="parameter"
-						:values="nodeHelpers.getParameterValue(nodeValues, parameter.name, path)"
-						:node-values="nodeValues"
-						:path="getPath(parameter.name)"
-						:is-read-only="isReadOnly"
-						@valueChanged="valueChanged"
-					/>
-					<FixedCollectionParameter
-						v-else-if="parameter.type === 'fixedCollection'"
-						:parameter="parameter"
-						:values="nodeHelpers.getParameterValue(nodeValues, parameter.name, path)"
-						:node-values="nodeValues"
-						:path="getPath(parameter.name)"
-						:is-read-only="isReadOnly"
-						@valueChanged="valueChanged"
-					/>
+				<Suspense v-if="!asyncLoadingError">
+					<template #default>
+						<CollectionParameter
+							v-if="parameter.type === 'collection'"
+							:parameter="parameter"
+							:values="nodeHelpers.getParameterValue(nodeValues, parameter.name, path)"
+							:node-values="nodeValues"
+							:path="getPath(parameter.name)"
+							:is-read-only="isReadOnly"
+							@valueChanged="valueChanged"
+						/>
+						<FixedCollectionParameter
+							v-else-if="parameter.type === 'fixedCollection'"
+							:parameter="parameter"
+							:values="nodeHelpers.getParameterValue(nodeValues, parameter.name, path)"
+							:node-values="nodeValues"
+							:path="getPath(parameter.name)"
+							:is-read-only="isReadOnly"
+							@valueChanged="valueChanged"
+						/>
+					</template>
+					<template #fallback>
+						<n8n-text size="small" class="async-notice">
+							<n8n-icon icon="sync-alt" size="xsmall" :spin="true" />
+							{{ $locale.baseText('parameterInputList.loadingFields') }}
+						</n8n-text>
+					</template>
 				</Suspense>
+				<n8n-text v-else size="small" color="danger" class="async-notice">
+					<n8n-icon icon="exclamation-triangle" size="xsmall" />
+					{{ $locale.baseText('parameterInputList.loadingError') }}
+				</n8n-text>
 			</div>
 			<ResourceMapper
 				v-else-if="parameter.type === 'resourceMapper'"
@@ -102,6 +114,16 @@
 				:value="nodeHelpers.getParameterValue(nodeValues, parameter.name, path)"
 				:path="getPath(parameter.name)"
 				:node="node"
+				:read-only="isReadOnly"
+				@valueChanged="valueChanged"
+			/>
+			<AssignmentCollection
+				v-else-if="parameter.type === 'assignmentCollection'"
+				:parameter="parameter"
+				:value="nodeHelpers.getParameterValue(nodeValues, parameter.name, path)"
+				:path="getPath(parameter.name)"
+				:node="node"
+				:is-read-only="isReadOnly"
 				@valueChanged="valueChanged"
 			/>
 			<div
@@ -149,7 +171,7 @@ import type {
 import { deepCopy } from 'n8n-workflow';
 import { mapStores } from 'pinia';
 import type { PropType } from 'vue';
-import { defineAsyncComponent, defineComponent } from 'vue';
+import { defineAsyncComponent, defineComponent, onErrorCaptured, ref } from 'vue';
 
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 
@@ -157,7 +179,8 @@ import ImportParameter from '@/components/ImportParameter.vue';
 import MultipleParameter from '@/components/MultipleParameter.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
-import Conditions from '@/components/FilterConditions/FilterConditions.vue';
+import FilterConditions from '@/components/FilterConditions/FilterConditions.vue';
+import AssignmentCollection from '@/components/AssignmentCollection/AssignmentCollection.vue';
 import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -168,13 +191,14 @@ import {
 	isAuthRelatedParameter,
 } from '@/utils/nodeTypesUtils';
 import { get, set } from 'lodash-es';
-import { nodeViewEventBus } from '@/event-bus';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
 const FixedCollectionParameter = defineAsyncComponent(
-	async () => import('./FixedCollectionParameter.vue'),
+	async () => await import('./FixedCollectionParameter.vue'),
 );
-const CollectionParameter = defineAsyncComponent(async () => import('./CollectionParameter.vue'));
+const CollectionParameter = defineAsyncComponent(
+	async () => await import('./CollectionParameter.vue'),
+);
 
 export default defineComponent({
 	name: 'ParameterInputList',
@@ -185,7 +209,8 @@ export default defineComponent({
 		CollectionParameter,
 		ImportParameter,
 		ResourceMapper,
-		FilterConditions: Conditions,
+		FilterConditions,
+		AssignmentCollection,
 	},
 	mixins: [workflowHelpers],
 	props: {
@@ -217,12 +242,38 @@ export default defineComponent({
 			type: Array as PropType<string[]>,
 			default: () => [],
 		},
+		entryIndex: {
+			type: Number,
+			default: undefined,
+		},
 	},
 	setup() {
 		const nodeHelpers = useNodeHelpers();
+		const asyncLoadingError = ref(false);
+
+		// This will catch errors in async components
+		onErrorCaptured((e, component) => {
+			if (
+				!['FixedCollectionParameter', 'CollectionParameter'].includes(
+					component?.$options.name as string,
+				)
+			) {
+				return;
+			}
+			asyncLoadingError.value = true;
+			console.error(e);
+			window?.Sentry?.captureException(e, {
+				tags: {
+					asyncLoadingError: true,
+				},
+			});
+			// Don't propagate the error further
+			return false;
+		});
 
 		return {
 			nodeHelpers,
+			asyncLoadingError,
 		};
 	},
 	computed: {
@@ -472,14 +523,16 @@ export default defineComponent({
 				this.$emit('activate');
 			}
 		},
+		/**
+		 * Handles default node button parameter type actions
+		 * @param parameter
+		 */
 		onButtonAction(parameter: INodeProperties) {
 			const action: string | undefined = parameter.typeOptions?.action;
 
 			switch (action) {
-				case 'openChat':
-					this.ndvStore.setActiveNodeName(null);
-					nodeViewEventBus.emit('openChat');
-					break;
+				default:
+					return;
 			}
 		},
 		isNodeAuthField(name: string): boolean {
@@ -563,6 +616,11 @@ export default defineComponent({
 		a {
 			font-weight: var(--font-weight-bold);
 		}
+	}
+
+	.async-notice {
+		display: block;
+		padding: var(--spacing-3xs) 0;
 	}
 }
 </style>

@@ -48,7 +48,7 @@ describe('test GoogleDriveV2: file upload', () => {
 		jest.unmock('../../../../v2/helpers/utils');
 	});
 
-	it('shuold be called with', async () => {
+	it('should be called with', async () => {
 		const nodeParameters = {
 			name: 'newFile.txt',
 			folderId: {
@@ -75,7 +75,7 @@ describe('test GoogleDriveV2: file upload', () => {
 			undefined,
 			{ uploadType: 'resumable' },
 			undefined,
-			{ resolveWithFullResponse: true },
+			{ returnFullResponse: true },
 		);
 		expect(transport.googleApiRequest).toHaveBeenCalledWith(
 			'PATCH',
