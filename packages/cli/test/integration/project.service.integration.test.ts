@@ -55,7 +55,7 @@ describe('ProjectService', () => {
 					role: 'workflow:user',
 				});
 
-				const roles = await projectService.findRolesInProjects(workflow.id, user.id);
+				const roles = await projectService.findRolesInProjects(user.id, workflow.id);
 
 				expect(roles).toBeSetContaining('project:viewer', 'project:admin');
 			});
@@ -87,7 +87,7 @@ describe('ProjectService', () => {
 					role: 'workflow:user',
 				});
 
-				const roles = await projectService.findRolesInProjects(workflow.id, user.id);
+				const roles = await projectService.findRolesInProjects(user.id, workflow.id);
 
 				expect(roles).toBeEmptySet();
 			});
@@ -107,7 +107,7 @@ describe('ProjectService', () => {
 
 				// user not added to projects, but workflow not shared with projects
 
-				const roles = await projectService.findRolesInProjects(workflow.id, user.id);
+				const roles = await projectService.findRolesInProjects(user.id, workflow.id);
 
 				expect(roles).toBeEmptySet();
 			});

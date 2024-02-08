@@ -1,6 +1,6 @@
 import { Service } from 'typedi';
 import type { INode, Workflow } from 'n8n-workflow';
-import { NodeOperationError, WorkflowOperationError } from 'n8n-workflow';
+import { ApplicationError, NodeOperationError, WorkflowOperationError } from 'n8n-workflow';
 
 import config from '@/config';
 import { License } from '@/License';
@@ -8,6 +8,8 @@ import { OwnershipService } from '@/services/ownership.service';
 import { UserRepository } from '@db/repositories/user.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import { ProjectService } from '@/services/project.service';
+import { RoleService } from '@/services/role.service';
 
 @Service()
 export class PermissionChecker {
@@ -17,12 +19,35 @@ export class PermissionChecker {
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly ownershipService: OwnershipService,
 		private readonly license: License,
+		private readonly projectService: ProjectService,
+		private readonly roleService: RoleService,
 	) {}
 
 	/**
 	 * Check if a user is permitted to execute a workflow.
+	 *
+	 * Allow:
+	 * - if user has global scope `workflow:execute`, OR
+	 * - if user has project scope `workflow:execute` in any of their roles
+	 * in any of the projects where the workflow is accessible, AND if every
+	 * credential used in the workflow is accessible by any of the projects
+	 * where the workflow is accessible.
 	 */
 	async check(workflow: Workflow, userId: string) {
+		const user = await this.userRepository.findOneByOrFail({ id: userId });
+
+		if (user.hasGlobalScope('workflow:execute')) return;
+
+		const roles = await this.projectService.findRolesInProjects(userId, workflow.id);
+
+		const scopes = this.roleService.getScopesBy(roles);
+
+		if (!scopes.has('workflow:execute')) {
+			throw new ApplicationError('User is not allowed to execute this workflow', {
+				extra: { userId, workflowId: workflow.id },
+			});
+		}
+
 		// allow if no nodes in this workflow use creds
 
 		const credIdsToNodes = this.mapCredIdsToNodes(workflow);
@@ -31,13 +56,10 @@ export class PermissionChecker {
 
 		if (workflowCredIds.length === 0) return;
 
-		// allow if requesting user is instance owner
-
-		const user = await this.userRepository.findOneOrFail({
-			where: { id: userId },
-		});
-
-		if (user.hasGlobalScope('workflow:execute')) return;
+		/**
+		 * @TODO We still need to ensure that the workflow's credentials
+		 * are in the relevant project IDs.
+		 */
 
 		const isSharingEnabled = this.license.isSharingEnabled();
 
