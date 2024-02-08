@@ -76,9 +76,9 @@ export async function mediaUploadFromItem(
 	if (!requestOptions.body) {
 		requestOptions.body = {};
 	}
-	set(requestOptions.body as IDataObject, `${operation}.id`, result.id);
+	set(requestOptions.body as IDataObject, [operation, 'id'], result.id);
 	if (operation === 'document') {
-		set(requestOptions.body as IDataObject, `${operation}.filename`, uploadData.fileName);
+		set(requestOptions.body as IDataObject, [operation, 'filename'], uploadData.fileName);
 	}
 
 	return requestOptions;

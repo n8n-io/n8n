@@ -2548,7 +2548,7 @@ const addExecutionDataFunctions = async (
 			runExecutionData.executionData!.metadata = {};
 		}
 
-		let sourceTaskData = get(runExecutionData, `executionData.metadata[${sourceNodeName}]`);
+		let sourceTaskData = get(runExecutionData, ['executionData', 'metadata', sourceNodeName]);
 
 		if (!sourceTaskData) {
 			runExecutionData.executionData!.metadata[sourceNodeName] = [];
