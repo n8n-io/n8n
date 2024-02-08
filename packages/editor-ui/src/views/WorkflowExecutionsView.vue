@@ -246,8 +246,6 @@ async function onExecutionRetry(payload: { id: string; loadWorkflow: boolean }) 
 		duration: 2000,
 	});
 
-	console.log(payload);
-
 	await retryExecution(payload);
 	await onRefreshData();
 
