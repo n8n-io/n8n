@@ -7,7 +7,7 @@ import type {
 	IRunData,
 	IRunExecutionData,
 	ITaskData,
-	IPinData
+	IPinData,
 	IWorkflowBase,
 	Workflow,
 } from 'n8n-workflow';
@@ -37,7 +37,7 @@ export const consolidateRunDataAndStartNodes = (
 	workflow: Workflow,
 ): { runData: IRunData; startNodes: string[] } => {
 	const startNodes: string[] = [];
-	let newRunData: IRunData  = {};
+	let newRunData: IRunData = {};
 
 	if (runData !== null && Object.keys(runData).length !== 0) {
 		// Go over the direct parents of the node
@@ -227,7 +227,12 @@ export const workflowRun = defineComponent({
 
 				const workflowData = await this.getWorkflowDataToSave();
 
-				const { runData: newRunData, startNodes } = consolidateRunDataAndStartNodes(directParentNodes, runData, workflowData.pinData, workflow);
+				const { runData: newRunData, startNodes } = consolidateRunDataAndStartNodes(
+					directParentNodes,
+					runData,
+					workflowData.pinData,
+					workflow,
+				);
 
 				let executedNode: string | undefined;
 				if (
