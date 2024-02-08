@@ -1,9 +1,11 @@
 import { Service } from 'typedi';
-import type { EntityManager, FindManyOptions } from 'typeorm';
+import type { DeepPartial, EntityManager, FindManyOptions } from 'typeorm';
 import { DataSource, In, IsNull, Not, Repository } from 'typeorm';
 import type { ListQuery } from '@/requests';
 
 import { type GlobalRole, User } from '../entities/User';
+import { Project } from '../entities/Project';
+import { ProjectRelation } from '../entities/ProjectRelation';
 @Service()
 export class UserRepository extends Repository<User> {
 	constructor(dataSource: DataSource) {
@@ -103,5 +105,32 @@ export class UserRepository extends Repository<User> {
 			select: ['email'],
 			where: { id: In(userIds), password: Not(IsNull()) },
 		});
+	}
+
+	async createUserWithProject(
+		user: DeepPartial<User>,
+		transactionManager?: EntityManager,
+	): Promise<User> {
+		const createInner = async (transactionManager: EntityManager) => {
+			const newUser = transactionManager.create(User, user);
+			const savedUser = await transactionManager.save<User>(newUser);
+			const savedProject = await transactionManager.save<Project>(
+				transactionManager.create(Project, {
+					type: 'personal',
+				}),
+			);
+			await transactionManager.save<ProjectRelation>(
+				transactionManager.create(ProjectRelation, {
+					projectId: savedProject.id,
+					userId: savedUser.id,
+					role: 'project:personalOwner',
+				}),
+			);
+			return savedUser;
+		};
+		if (transactionManager) {
+			return await createInner(transactionManager);
+		}
+		return await this.manager.transaction(createInner);
 	}
 }
