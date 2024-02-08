@@ -2,6 +2,16 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 1.29.0
+
+### What changed?
+
+We are removing templates feature from the n8n app and pointing users to the templates repository on the n8n website.
+
+### When is action necessary?
+
+Users that use a custom templates repository by overriding the `N8N_TEMPLATES_HOST` environment variable will loose this functionality since in-app templates page is no longer accessible.
+
 ## 1.25.0
 
 ### What changed?
