@@ -15,7 +15,7 @@ import type { TemplateCredentialKey } from '@/utils/templates/templateTransforms
 import { replaceAllTemplateNodeCredentials } from '@/utils/templates/templateTransforms';
 import type { INodeCredentialsDetails } from 'n8n-workflow';
 import type { RouteLocationRaw, Router } from 'vue-router';
-import type { TemplatesStore } from '@/stores/templates.store';
+import type { SetupTemplatesStore } from '@/views/SetupWorkflowFromTemplateView/setupTemplate.store';
 import type { NodeTypesStore } from '@/stores/nodeTypes.store';
 import type { Telemetry } from '@/plugins/telemetry';
 import type { useExternalHooks } from '@/composables/useExternalHooks';
@@ -96,7 +96,7 @@ async function openTemplateCredentialSetup(opts: {
 async function openTemplateWorkflowOnNodeView(opts: {
 	externalHooks: ExternalHooks;
 	templateId: string;
-	templatesStore: TemplatesStore;
+	templatesStore: SetupTemplatesStore;
 	router: Router;
 	inNewBrowserTab?: boolean;
 }) {
@@ -128,14 +128,13 @@ function hasTemplateCredentials(
 	);
 }
 
-async function getFullTemplate(templatesStore: TemplatesStore, templateId: string) {
-	const template = templatesStore.getFullTemplateById(templateId);
-	if (template) {
+async function getFullTemplate(templatesStore: SetupTemplatesStore, templateId: string) {
+	const template = templatesStore.template;
+	if (String(template?.id) === templateId) {
 		return template;
 	}
 
-	await templatesStore.fetchTemplateById(templateId);
-	return templatesStore.getFullTemplateById(templateId);
+	return await templatesStore.getFixedWorkflowTemplate(templateId);
 }
 
 /**
@@ -147,7 +146,7 @@ export async function useTemplateWorkflow(opts: {
 	nodeTypesStore: NodeTypesStore;
 	posthogStore: PosthogStore;
 	templateId: string;
-	templatesStore: TemplatesStore;
+	templatesStore: SetupTemplatesStore;
 	router: Router;
 	inNewBrowserTab?: boolean;
 	telemetry: Telemetry;

@@ -33,6 +33,8 @@ export type AppCredentialCount = {
 	count: number;
 };
 
+export type SetupTemplatesStore = ReturnType<typeof useSetupTemplateStore>;
+
 /**
  * Store for managing the state of the SetupWorkflowFromTemplateView
  */
@@ -304,5 +306,6 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 		resetSessionId,
 		setSessionId,
 		currentSessionId,
+		previousSessionId,
 	};
 });

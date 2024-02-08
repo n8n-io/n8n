@@ -57,7 +57,7 @@ import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useTemplatesStore } from '@/stores/templates.store';
+import { useSetupTemplateStore } from '@/views/SetupWorkflowFromTemplateView/setupTemplate.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
@@ -498,7 +498,7 @@ export const workflowHelpers = defineComponent({
 			useNodeTypesStore,
 			useNDVStore,
 			useRootStore,
-			useTemplatesStore,
+			useSetupTemplateStore,
 			useWorkflowsStore,
 			useWorkflowsEEStore,
 			useUsersStore,
@@ -1097,7 +1097,7 @@ export const workflowHelpers = defineComponent({
 					this.$telemetry.track('User saved new workflow from template', {
 						template_id: tryToParseNumber(String(templateId)),
 						workflow_id: workflowData.id,
-						wf_template_repo_session_id: this.templatesStore.previousSessionId,
+						wf_template_repo_session_id: this.setupTemplateStore.previousSessionId,
 					});
 				}
 
