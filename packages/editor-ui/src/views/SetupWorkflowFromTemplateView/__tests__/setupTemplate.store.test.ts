@@ -1,4 +1,3 @@
-import { useTemplatesStore } from '@/stores/templates.store';
 import { keyFromCredentialTypeAndName } from '@/utils/templates/templateTransforms';
 import { useSetupTemplateStore } from '@/views/SetupWorkflowFromTemplateView/setupTemplate.store';
 import { setActivePinia } from 'pinia';
@@ -18,8 +17,10 @@ describe('SetupWorkflowFromTemplateView store', () => {
 
 			const credentialsStore = useCredentialsStore();
 			credentialsStore.setCredentialTypes([testData.credentialTypeTelegram]);
-			const templatesStore = useTemplatesStore();
-			templatesStore.addWorkflows([testData.fullShopifyTelegramTwitterTemplate]);
+			const setupTemplateStore = useSetupTemplateStore();
+			// @ts-expect-error template object satisfies the expected type
+			setupTemplateStore.setTemplate(testData.fullShopifyTelegramTwitterTemplate);
+
 			const nodeTypesStore = useNodeTypesStore();
 			nodeTypesStore.setNodeTypes([
 				testData.nodeTypeTelegramV1,
@@ -27,7 +28,6 @@ describe('SetupWorkflowFromTemplateView store', () => {
 				testData.nodeTypeShopifyTriggerV1,
 				testData.nodeTypeHttpRequestV1,
 			]);
-			const setupTemplateStore = useSetupTemplateStore();
 			setupTemplateStore.setTemplateId(testData.fullShopifyTelegramTwitterTemplate.id.toString());
 		});
 
@@ -91,7 +91,6 @@ describe('SetupWorkflowFromTemplateView store', () => {
 				}),
 			]);
 
-			const templatesStore = useTemplatesStore();
 			const workflow = testData.newFullOneNodeTemplate({
 				name: 'Test',
 				type: 'n8n-nodes-base.httpRequest',
@@ -104,9 +103,9 @@ describe('SetupWorkflowFromTemplateView store', () => {
 				},
 				position: [250, 300],
 			});
-			templatesStore.addWorkflows([workflow]);
 
 			const setupTemplateStore = useSetupTemplateStore();
+			setupTemplateStore.setTemplate(workflow);
 			setupTemplateStore.setTemplateId(workflow.id.toString());
 
 			// Execute
@@ -128,15 +127,15 @@ describe('SetupWorkflowFromTemplateView store', () => {
 			// Setup
 			const credentialsStore = useCredentialsStore();
 			credentialsStore.setCredentialTypes([testData.credentialTypeTelegram]);
-			const templatesStore = useTemplatesStore();
-			templatesStore.addWorkflows([testData.fullSaveEmailAttachmentsToNextCloudTemplate]);
+			const setupTemplateStore = useSetupTemplateStore();
+			setupTemplateStore.setTemplate(testData.fullSaveEmailAttachmentsToNextCloudTemplate);
+
 			const nodeTypesStore = useNodeTypesStore();
 			nodeTypesStore.setNodeTypes([
 				testData.nodeTypeReadImapV1,
 				testData.nodeTypeReadImapV2,
 				testData.nodeTypeNextCloudV1,
 			]);
-			const setupTemplateStore = useSetupTemplateStore();
 			setupTemplateStore.setTemplateId(
 				testData.fullSaveEmailAttachmentsToNextCloudTemplate.id.toString(),
 			);

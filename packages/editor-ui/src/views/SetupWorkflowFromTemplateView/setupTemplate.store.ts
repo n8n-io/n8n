@@ -281,6 +281,11 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 			currentSessionId.value = `templates-${Date.now()}`;
 		}
 	};
+
+	const setTemplate = (newTemplate: ITemplatesWorkflowFull) => {
+		templateId.value = newTemplate.id.toString();
+		template.value = newTemplate;
+	};
 	//#endregion Actions
 
 	return {
@@ -300,6 +305,7 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 		loadTemplateIfNeeded,
 		setInitialCredentialSelection,
 		setTemplateId,
+		setTemplate,
 		setSelectedCredentialId,
 		unsetSelectedCredential,
 		getFixedWorkflowTemplate,

@@ -4,8 +4,8 @@ import type { NodeTypesStore } from '@/stores/nodeTypes.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type { PosthogStore } from '@/stores/posthog.store';
 import { usePostHog } from '@/stores/posthog.store';
-import type { TemplatesStore } from '@/stores/templates.store';
-import { useTemplatesStore } from '@/stores/templates.store';
+import type { SetupTemplatesStore } from '@/views/SetupWorkflowFromTemplateView/setupTemplate.store';
+import { useSetupTemplateStore } from '@/views/SetupWorkflowFromTemplateView/setupTemplate.store';
 import { useTemplateWorkflow } from '@/utils/templates/templateActions';
 import {
 	nodeTypeRespondToWebhookV1,
@@ -37,7 +37,7 @@ describe('templateActions', () => {
 		} as unknown as Router;
 		let nodeTypesStore: NodeTypesStore;
 		let posthogStore: PosthogStore;
-		let templatesStore: TemplatesStore;
+		let templatesStore: SetupTemplatesStore;
 
 		beforeEach(() => {
 			vi.resetAllMocks();
@@ -50,7 +50,7 @@ describe('templateActions', () => {
 			vi.spyOn(telemetry, 'track').mockImplementation(() => {});
 			nodeTypesStore = useNodeTypesStore();
 			posthogStore = usePostHog();
-			templatesStore = useTemplatesStore();
+			templatesStore = useSetupTemplateStore();
 		});
 
 		describe('When feature flag is disabled', () => {
@@ -84,7 +84,8 @@ describe('templateActions', () => {
 
 			beforeEach(async () => {
 				posthogStore.isFeatureEnabled = vi.fn().mockReturnValue(true);
-				templatesStore.addWorkflows([fullShopifyTelegramTwitterTemplate]);
+				// @ts-expect-error template object satisfies the expected type
+				templatesStore.setTemplate(fullShopifyTelegramTwitterTemplate);
 				nodeTypesStore.setNodeTypes([
 					nodeTypeTelegramV1,
 					nodeTypeTwitterV1,
@@ -117,7 +118,8 @@ describe('templateActions', () => {
 
 			beforeEach(async () => {
 				posthogStore.isFeatureEnabled = vi.fn().mockReturnValue(true);
-				templatesStore.addWorkflows([fullCreateApiEndpointTemplate]);
+				// @ts-expect-error template object satisfies the expected type
+				templatesStore.setTemplate(fullCreateApiEndpointTemplate);
 				nodeTypesStore.setNodeTypes([
 					nodeTypeWebhookV1,
 					nodeTypeWebhookV1_1,
