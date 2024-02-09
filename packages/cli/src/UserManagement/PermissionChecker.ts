@@ -38,7 +38,10 @@ export class PermissionChecker {
 
 		if (user.hasGlobalScope('workflow:execute')) return;
 
-		const roles = await this.projectService.findRolesInProjects(userId, workflow.id);
+		const { roles, projectIds } = await this.projectService.findRolesAndProjects(
+			userId,
+			workflow.id,
+		);
 
 		const scopes = this.roleService.getScopesBy(roles);
 
@@ -47,8 +50,6 @@ export class PermissionChecker {
 				extra: { userId, workflowId: workflow.id },
 			});
 		}
-
-		// allow if no nodes in this workflow use creds
 
 		const credIdsToNodes = this.mapCredIdsToNodes(workflow);
 

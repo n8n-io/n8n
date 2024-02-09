@@ -55,8 +55,12 @@ describe('ProjectService', () => {
 					role: 'workflow:user',
 				});
 
-				const roles = await projectService.findRolesInProjects(user.id, workflow.id);
+				const { roles, projectIds } = await projectService.findRolesAndProjects(
+					user.id,
+					workflow.id,
+				);
 
+				expect(projectIds).toEqual(expect.arrayContaining([firstProject.id, secondProject.id]));
 				expect(roles).toBeSetContaining('project:viewer', 'project:admin');
 			});
 		});
@@ -87,8 +91,12 @@ describe('ProjectService', () => {
 					role: 'workflow:user',
 				});
 
-				const roles = await projectService.findRolesInProjects(user.id, workflow.id);
+				const { roles, projectIds } = await projectService.findRolesAndProjects(
+					user.id,
+					workflow.id,
+				);
 
+				expect(projectIds).toEqual(expect.arrayContaining([firstProject.id, secondProject.id]));
 				expect(roles).toBeEmptySet();
 			});
 		});
@@ -107,8 +115,12 @@ describe('ProjectService', () => {
 
 				// user not added to projects, but workflow not shared with projects
 
-				const roles = await projectService.findRolesInProjects(user.id, workflow.id);
+				const { roles, projectIds } = await projectService.findRolesAndProjects(
+					user.id,
+					workflow.id,
+				);
 
+				expect(projectIds).toHaveLength(0);
 				expect(roles).toBeEmptySet();
 			});
 		});

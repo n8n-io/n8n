@@ -11,15 +11,16 @@ export class ProjectService {
 	) {}
 
 	/**
-	 * Find the distinct roles of a user in all the projects where a workflow is accessible.
+	 * Find the roles of a user in all the projects where a workflow is accessible,
+	 * along with the IDs of those projects.
 	 */
-	async findRolesInProjects(userId: string, workflowId: string) {
+	async findRolesAndProjects(userId: string, workflowId: string) {
 		const projectIds = await this.sharedWorkflowRepository.findProjectIds(workflowId);
 
-		if (projectIds.length === 0) return new Set<ProjectRole>();
+		if (projectIds.length === 0) return { roles: new Set<ProjectRole>(), projectIds: [] };
 
 		const roles = await this.projectRelationRepository.findRoles(userId, projectIds);
 
-		return new Set(roles);
+		return { roles, projectIds };
 	}
 }

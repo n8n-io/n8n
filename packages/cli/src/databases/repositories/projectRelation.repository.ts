@@ -17,6 +17,6 @@ export class ProjectRelationRepository extends Repository<ProjectRelation> {
 			select: ['role'],
 		});
 
-		return rows.map((row) => row.role);
+		return new Set(rows.map((row) => row.role));
 	}
 }
