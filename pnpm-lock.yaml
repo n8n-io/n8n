@@ -380,8 +380,8 @@ importers:
         specifier: 0.3.20
         version: 0.3.20(ioredis@5.3.2)(mysql2@2.3.3)(pg@8.11.3)(sqlite3@5.1.7)
       '@n8n_io/license-sdk':
-        specifier: 2.9.1
-        version: 2.9.1
+        specifier: 2.10.0
+        version: 2.10.0
       '@oclif/core':
         specifier: 3.18.1
         version: 3.18.1
@@ -6303,8 +6303,8 @@ packages:
       acorn-walk: 8.2.0
     dev: false
 
-  /@n8n_io/license-sdk@2.9.1:
-    resolution: {integrity: sha512-e5S54zpFmHmQyC7cnt5YYWCRUgpCatx9kt/exUglNVjmghYSCeHrwgzKf21+D8JpjW9OHxHcStNVl9woba+cdw==}
+  /@n8n_io/license-sdk@2.10.0:
+    resolution: {integrity: sha512-o6jJSQJ80uGGgGCaSr0NPVGpJd3ePR+fGBQ7MtnNKxxQy3m4iX8reKGoLAphANNzQHnXVFHqo7U2zXlI8h4ZvA==}
     engines: {node: '>=18.12.1', npm: '>=8.19.2'}
     dependencies:
       crypto-js: 4.2.0
