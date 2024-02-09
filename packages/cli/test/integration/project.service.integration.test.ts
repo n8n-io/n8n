@@ -29,7 +29,7 @@ describe('ProjectService', () => {
 
 	describe('findRolesInProjects', () => {
 		describe('when user has roles in projects where workflow is accessible', () => {
-			it('should return roles', async () => {
+			it('should return roles and project IDs', async () => {
 				const user = await createUser();
 				const secondUser = await createUser(); // @TODO: Needed only to satisfy index in legacy column
 
@@ -60,13 +60,13 @@ describe('ProjectService', () => {
 					workflow.id,
 				);
 
-				expect(projectIds).toEqual(expect.arrayContaining([firstProject.id, secondProject.id]));
 				expect(roles).toBeSetContaining('project:viewer', 'project:admin');
+				expect(projectIds).toEqual(expect.arrayContaining([firstProject.id, secondProject.id]));
 			});
 		});
 
 		describe('when user has no roles in projects where workflow is accessible', () => {
-			it('should return no roles', async () => {
+			it('should return project IDs but no roles', async () => {
 				const user = await createUser();
 				const secondUser = await createUser(); // @TODO: Needed only to satisfy index in legacy column
 
@@ -96,13 +96,13 @@ describe('ProjectService', () => {
 					workflow.id,
 				);
 
-				expect(projectIds).toEqual(expect.arrayContaining([firstProject.id, secondProject.id]));
 				expect(roles).toBeEmptySet();
+				expect(projectIds).toEqual(expect.arrayContaining([firstProject.id, secondProject.id]));
 			});
 		});
 
 		describe('when user has roles in projects where workflow is inaccessible', () => {
-			it('should return no roles', async () => {
+			it('should return project IDs but no roles', async () => {
 				const user = await createUser();
 
 				const firstProject = await createTeamProject('Project 1');
@@ -120,8 +120,8 @@ describe('ProjectService', () => {
 					workflow.id,
 				);
 
-				expect(projectIds).toHaveLength(0);
 				expect(roles).toBeEmptySet();
+				expect(projectIds).toHaveLength(0);
 			});
 		});
 	});
