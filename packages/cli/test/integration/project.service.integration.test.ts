@@ -113,7 +113,7 @@ describe('ProjectService', () => {
 
 				const workflow = await createWorkflow();
 
-				// user not added to projects, but workflow not shared with projects
+				// user added to projects, but workflow not shared with projects
 
 				const { roles, projectIds } = await projectService.findRolesAndProjects(
 					user.id,
