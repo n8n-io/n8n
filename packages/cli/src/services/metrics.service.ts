@@ -8,12 +8,8 @@ import { Service } from 'typedi';
 import EventEmitter from 'events';
 
 import { CacheService } from '@/services/cache/cache.service';
-import {
-	MessageEventBus,
-	METRICS_EVENT_NAME,
-	getLabelsForEvent,
-	type EventMessageTypes,
-} from '@/eventbus';
+import { METRICS_EVENT_NAME, getLabelsForEvent, type EventMessageTypes } from '@/eventbus';
+import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { Logger } from '@/Logger';
 
 @Service()

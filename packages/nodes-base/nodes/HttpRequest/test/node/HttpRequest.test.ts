@@ -18,6 +18,40 @@ describe('Test HTTP Request Node', () => {
 		await initBinaryDataService();
 		nock.disableNetConnect();
 
+		function getPaginationReturnData(this: nock.ReplyFnContext, limit = 10, skip = 0) {
+			const nextUrl = `${baseUrl}/users?skip=${skip + limit}&limit=${limit}`;
+
+			const response = [];
+			for (let i = skip; i < skip + limit; i++) {
+				if (i > 14) {
+					break;
+				}
+				response.push({
+					id: i,
+				});
+			}
+
+			if (!response.length) {
+				return [
+					404,
+					response,
+					{
+						'next-url': nextUrl,
+						'content-type': this.req.headers['content-type'] || 'application/json',
+					},
+				];
+			}
+
+			return [
+				200,
+				response,
+				{
+					'next-url': nextUrl,
+					'content-type': this.req.headers['content-type'] || 'application/json',
+				},
+			];
+		}
+
 		//GET
 		nock(baseUrl).get('/todos/1').reply(200, {
 			id: 1,
@@ -119,46 +153,36 @@ describe('Test HTTP Request Node', () => {
 			deletedOn: '2023-02-09T05:37:31.720Z',
 		});
 
-		// Pagination - Data not identical to dummyjson.com
+		// Pagination - GET
 		nock(baseUrl)
 			.persist()
 			.get('/users')
 			.query(true)
 			.reply(function (uri) {
 				const data = parseUrl(uri, true);
-				const skip = parseInt((data.query.skip as string) || '0', 10);
 				const limit = parseInt((data.query.limit as string) || '10', 10);
-				const nextUrl = `${baseUrl}/users?skip=${skip + limit}&limit=${limit}`;
+				const skip = parseInt((data.query.skip as string) || '0', 10);
+				return getPaginationReturnData.call(this, limit, skip);
+			});
 
-				const response = [];
-				for (let i = skip; i < skip + limit; i++) {
-					if (i > 14) {
-						break;
-					}
-					response.push({
-						id: i,
-					});
+		// Pagination - POST
+		nock(baseUrl)
+			.persist()
+			.post('/users')
+			.reply(function (_uri, body) {
+				let skip = 0;
+				let limit = 10;
+
+				if (typeof body === 'string') {
+					// Form data
+					skip = parseInt(body.split('name="skip"')[1].split('---')[0] ?? '0', 10);
+					limit = parseInt(body.split('name="limit"')[1].split('---')[0] ?? '0', 10);
+				} else {
+					skip = parseInt(body.skip ?? '0', 10);
+					limit = parseInt(body.limit ?? '10', 10);
 				}
 
-				if (!response.length) {
-					return [
-						404,
-						response,
-						{
-							'next-url': nextUrl,
-							'content-type': this.req.headers['content-type'] || 'application/json',
-						},
-					];
-				}
-
-				return [
-					200,
-					response,
-					{
-						'next-url': nextUrl,
-						'content-type': this.req.headers['content-type'] || 'application/json',
-					},
-				];
+				return getPaginationReturnData.call(this, limit, skip);
 			});
 	});
 

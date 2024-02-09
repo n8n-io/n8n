@@ -19,9 +19,10 @@ import {
 import type { BaseOutputParser } from 'langchain/schema/output_parser';
 import { CombiningOutputParser } from 'langchain/output_parsers';
 import { LLMChain } from 'langchain/chains';
-import { BaseChatModel } from 'langchain/chat_models/base';
+import type { BaseChatModel } from 'langchain/chat_models/base';
 import { HumanMessage } from 'langchain/schema';
 import { getTemplateNoticeField } from '../../../utils/sharedFields';
+import { isChatInstance } from '../../../utils/helpers';
 
 interface MessagesTemplate {
 	type: string;
@@ -94,7 +95,7 @@ async function getChainPromptTemplate(
 		partialVariables: formatInstructions ? { formatInstructions } : undefined,
 	});
 
-	if (llm instanceof BaseChatModel) {
+	if (isChatInstance(llm)) {
 		const parsedMessages = await Promise.all(
 			(messages ?? []).map(async (message) => {
 				const messageClass = [

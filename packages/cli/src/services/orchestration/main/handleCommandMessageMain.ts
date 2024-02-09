@@ -7,24 +7,30 @@ import { License } from '@/License';
 import { Logger } from '@/Logger';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { Push } from '@/push';
+import { TestWebhooks } from '@/TestWebhooks';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { TestWebhooks } from '@/TestWebhooks';
 
 export async function handleCommandMessageMain(messageString: string) {
 	const queueModeId = config.getEnv('redis.queueModeId');
 	const isMainInstance = config.getEnv('generic.instanceType') === 'main';
 	const message = messageToRedisServiceCommandObject(messageString);
 	const logger = Container.get(Logger);
-	const activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
 
 	if (message) {
 		logger.debug(
 			`RedisCommandHandler(main): Received command message ${message.command} from ${message.senderId}`,
 		);
+
+		const selfSendingAllowed = [
+			'add-webhooks-triggers-and-pollers',
+			'remove-triggers-and-pollers',
+		].includes(message.command);
+
 		if (
-			message.senderId === queueModeId ||
-			(message.targets && !message.targets.includes(queueModeId))
+			!selfSendingAllowed &&
+			(message.senderId === queueModeId ||
+				(message.targets && !message.targets.includes(queueModeId)))
 		) {
 			// Skipping command message because it's not for this instance
 			logger.debug(
@@ -71,52 +77,106 @@ export async function handleCommandMessageMain(messageString: string) {
 				await Container.get(ExternalSecretsManager).reloadAllProviders();
 				break;
 
-			case 'workflowActiveStateChanged': {
+			case 'add-webhooks-triggers-and-pollers': {
 				if (!debounceMessageReceiver(message, 100)) {
 					message.payload = { result: 'debounced' };
 					return message;
 				}
 
-				const { workflowId, oldState, newState, versionId } = message.payload ?? {};
+				const orchestrationService = Container.get(OrchestrationService);
 
-				if (
-					typeof workflowId !== 'string' ||
-					typeof oldState !== 'boolean' ||
-					typeof newState !== 'boolean' ||
-					typeof versionId !== 'string'
-				) {
-					break;
-				}
+				if (orchestrationService.isFollower) break;
 
-				if (!oldState && newState) {
-					try {
-						await activeWorkflowRunner.add(workflowId, 'activate');
-						push.broadcast('workflowActivated', { workflowId });
-					} catch (e) {
-						const error = e instanceof Error ? e : new Error(`${e}`);
+				if (typeof message.payload?.workflowId !== 'string') break;
 
-						await Container.get(WorkflowRepository).update(workflowId, {
-							active: false,
-							versionId,
+				const { workflowId } = message.payload;
+
+				try {
+					await Container.get(ActiveWorkflowRunner).add(workflowId, 'activate', undefined, {
+						shouldPublish: false, // prevent leader re-publishing message
+					});
+
+					push.broadcast('workflowActivated', { workflowId });
+
+					// instruct followers to show activation in UI
+					await orchestrationService.publish('display-workflow-activation', { workflowId });
+				} catch (error) {
+					if (error instanceof Error) {
+						await Container.get(WorkflowRepository).update(workflowId, { active: false });
+
+						Container.get(Push).broadcast('workflowFailedToActivate', {
+							workflowId,
+							errorMessage: error.message,
 						});
 
-						await Container.get(OrchestrationService).publish('workflowFailedToActivate', {
+						await Container.get(OrchestrationService).publish('workflow-failed-to-activate', {
 							workflowId,
 							errorMessage: error.message,
 						});
 					}
-				} else if (oldState && !newState) {
-					await activeWorkflowRunner.remove(workflowId);
-					push.broadcast('workflowDeactivated', { workflowId });
-				} else {
-					await activeWorkflowRunner.remove(workflowId);
-					await activeWorkflowRunner.add(workflowId, 'update');
 				}
 
-				await activeWorkflowRunner.removeActivationError(workflowId);
+				break;
 			}
 
-			case 'workflowFailedToActivate': {
+			case 'remove-triggers-and-pollers': {
+				if (!debounceMessageReceiver(message, 100)) {
+					message.payload = { result: 'debounced' };
+					return message;
+				}
+
+				const orchestrationService = Container.get(OrchestrationService);
+
+				if (orchestrationService.isFollower) break;
+
+				if (typeof message.payload?.workflowId !== 'string') break;
+
+				const { workflowId } = message.payload;
+
+				const activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
+
+				await activeWorkflowRunner.removeActivationError(workflowId);
+				await activeWorkflowRunner.removeWorkflowTriggersAndPollers(workflowId);
+
+				push.broadcast('workflowDeactivated', { workflowId });
+
+				// instruct followers to show workflow deactivation in UI
+				await orchestrationService.publish('display-workflow-deactivation', { workflowId });
+
+				break;
+			}
+
+			case 'display-workflow-activation': {
+				if (!debounceMessageReceiver(message, 100)) {
+					message.payload = { result: 'debounced' };
+					return message;
+				}
+
+				const { workflowId } = message.payload ?? {};
+
+				if (typeof workflowId !== 'string') break;
+
+				push.broadcast('workflowActivated', { workflowId });
+
+				break;
+			}
+
+			case 'display-workflow-deactivation': {
+				if (!debounceMessageReceiver(message, 100)) {
+					message.payload = { result: 'debounced' };
+					return message;
+				}
+
+				const { workflowId } = message.payload ?? {};
+
+				if (typeof workflowId !== 'string') break;
+
+				push.broadcast('workflowDeactivated', { workflowId });
+
+				break;
+			}
+
+			case 'workflow-failed-to-activate': {
 				if (!debounceMessageReceiver(message, 100)) {
 					message.payload = { result: 'debounced' };
 					return message;

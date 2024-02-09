@@ -75,7 +75,11 @@ export async function rabbitmqConnectQueue(
 
 	return await new Promise(async (resolve, reject) => {
 		try {
-			await channel.assertQueue(queue, options);
+			if (options.assertQueue) {
+				await channel.assertQueue(queue, options);
+			} else {
+				await channel.checkQueue(queue);
+			}
 
 			if (options.binding && ((options.binding as IDataObject).bindings! as IDataObject[]).length) {
 				((options.binding as IDataObject).bindings as IDataObject[]).forEach(
@@ -106,7 +110,11 @@ export async function rabbitmqConnectExchange(
 
 	return await new Promise(async (resolve, reject) => {
 		try {
-			await channel.assertExchange(exchange, type, options);
+			if (options.assertExchange) {
+				await channel.assertExchange(exchange, type, options);
+			} else {
+				await channel.checkExchange(exchange);
+			}
 			resolve(channel);
 		} catch (error) {
 			reject(error);
