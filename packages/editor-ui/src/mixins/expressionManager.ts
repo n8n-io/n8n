@@ -12,7 +12,6 @@ import { EXPRESSION_EDITOR_PARSER_TIMEOUT } from '@/constants';
 import type { EditorView } from '@codemirror/view';
 import type { TargetItem } from '@/Interface';
 import type { Html, Plaintext, RawSegment, Resolvable, Segment } from '@/types/expressions';
-import { useRouter } from 'vue-router';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 
 export const expressionManager = defineComponent({
@@ -24,14 +23,6 @@ export const expressionManager = defineComponent({
 			type: Object as PropType<IDataObject>,
 			default: () => ({}),
 		},
-	},
-	setup() {
-		const router = useRouter();
-		const workflowHelpers = useWorkflowHelpers(router);
-
-		return {
-			workflowHelpers,
-		};
 	},
 	data() {
 		return {
@@ -205,6 +196,7 @@ export const expressionManager = defineComponent({
 
 			try {
 				const ndvStore = useNDVStore();
+				const workflowHelpers = useWorkflowHelpers(this.$router);
 				if (!ndvStore.activeNode) {
 					// e.g. credential modal
 					result.resolved = Expression.resolveWithoutWorkflow(resolvable, this.additionalData);
@@ -219,11 +211,7 @@ export const expressionManager = defineComponent({
 							additionalKeys: this.additionalData,
 						};
 					}
-					result.resolved = this.workflowHelpers.resolveExpression(
-						'=' + resolvable,
-						undefined,
-						opts,
-					);
+					result.resolved = workflowHelpers.resolveExpression('=' + resolvable, undefined, opts);
 				}
 			} catch (error) {
 				result.resolved = `[${error.message}]`;
