@@ -11,6 +11,7 @@ import type { INodeExecutionData } from '@/Interfaces';
 import { extendSyntax } from '@/Extensions/ExpressionExtension';
 import { ExpressionError } from '@/errors/expression.error';
 import { setDifferEnabled, setEvaluator } from '@/ExpressionEvaluatorProxy';
+import { workflow } from './ExpressionExtensions/Helpers';
 
 setDifferEnabled(true);
 
@@ -172,36 +173,6 @@ for (const evaluator of ['tmpl', 'tournament'] as const) {
 		});
 
 		describe('Test all expression value fixtures', () => {
-			const nodeTypes = Helpers.NodeTypes();
-			const workflow = new Workflow({
-				id: '1',
-				nodes: [
-					{
-						name: 'previousNode',
-						typeVersion: 1,
-						type: 'test.set',
-						id: 'uuid-1235',
-						position: [200, 100],
-						parameters: {},
-					},
-					{
-						name: 'node',
-						typeVersion: 1,
-						type: 'test.set',
-						id: 'uuid-1234',
-						position: [0, 0],
-						parameters: {},
-					},
-				],
-				connections: {
-					previousNode: {
-						main: [[{ node: 'node', type: 'main', index: 0 }]],
-					},
-				},
-				active: false,
-				nodeTypes,
-			});
-
 			const expression = workflow.expression;
 
 			const evaluate = (value: string, data: INodeExecutionData[]) => {
