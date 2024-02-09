@@ -23,18 +23,18 @@ describe('ExecutionsController', () => {
 	describe('getMany', () => {
 		const NO_EXECUTIONS = { count: 0, estimated: false, results: [] };
 
-		const NO_STATUS_OR_NO_RANGE_QUERIES: ExecutionSummaries.RangeQuery[] = [
+		const QUERIES_WITH_EITHER_STATUS_OR_RANGE: ExecutionSummaries.RangeQuery[] = [
 			{
 				kind: 'range',
 				workflowId: undefined,
 				status: undefined,
-				range: { lastId: undefined, firstId: undefined, limit: 20 },
+				range: { lastId: '999', firstId: '111', limit: 20 },
 			},
 			{
 				kind: 'range',
 				workflowId: undefined,
 				status: [],
-				range: { lastId: undefined, firstId: undefined, limit: 20 },
+				range: { lastId: '999', firstId: '111', limit: 20 },
 			},
 			{
 				kind: 'range',
@@ -45,20 +45,29 @@ describe('ExecutionsController', () => {
 			{
 				kind: 'range',
 				workflowId: undefined,
-				status: undefined,
-				range: { lastId: '999', firstId: '111', limit: 20 },
-			},
-			{
-				kind: 'range',
-				workflowId: undefined,
 				status: [],
 				range: { lastId: '999', firstId: '111', limit: 20 },
 			},
 		];
 
-		describe('if no status or no range provided', () => {
-			test.each(NO_STATUS_OR_NO_RANGE_QUERIES)(
-				'should fetch all active + latest finished executions per query',
+		const QUERIES_NEITHER_STATUS_NOR_RANGE_PROVIDED: ExecutionSummaries.RangeQuery[] = [
+			{
+				kind: 'range',
+				workflowId: undefined,
+				status: undefined,
+				range: { lastId: undefined, firstId: undefined, limit: 20 },
+			},
+			{
+				kind: 'range',
+				workflowId: undefined,
+				status: [],
+				range: { lastId: undefined, firstId: undefined, limit: 20 },
+			},
+		];
+
+		describe('if either status or range provided', () => {
+			test.each(QUERIES_WITH_EITHER_STATUS_OR_RANGE)(
+				'should fetch executions per query',
 				async (rangeQuery) => {
 					workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['123']);
 					executionService.findAllActiveAndLatestFinished.mockResolvedValue(NO_EXECUTIONS);
@@ -67,7 +76,24 @@ describe('ExecutionsController', () => {
 
 					await executionsController.getMany(req);
 
-					expect(executionService.findAllActiveAndLatestFinished).toHaveBeenCalledWith(rangeQuery);
+					expect(executionService.findAllActiveAndLatestFinished).not.toHaveBeenCalled();
+					expect(executionService.findRangeWithCount).toHaveBeenCalledWith(rangeQuery);
+				},
+			);
+		});
+
+		describe('if neither status nor range provided', () => {
+			test.each(QUERIES_NEITHER_STATUS_NOR_RANGE_PROVIDED)(
+				'should fetch executions per query',
+				async (rangeQuery) => {
+					workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['123']);
+					executionService.findAllActiveAndLatestFinished.mockResolvedValue(NO_EXECUTIONS);
+
+					const req = mock<ExecutionRequest.GetMany>({ rangeQuery });
+
+					await executionsController.getMany(req);
+
+					expect(executionService.findAllActiveAndLatestFinished).toHaveBeenCalled();
 					expect(executionService.findRangeWithCount).not.toHaveBeenCalled();
 				},
 			);
