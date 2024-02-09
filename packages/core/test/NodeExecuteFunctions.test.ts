@@ -2,6 +2,7 @@ import {
 	copyInputItems,
 	getBinaryDataBuffer,
 	parseIncomingMessage,
+	parseRequestObject,
 	proxyRequestToAxios,
 	setBinaryDataBuffer,
 } from '@/NodeExecuteFunctions';
@@ -21,6 +22,7 @@ import nock from 'nock';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import Container from 'typedi';
+import type { Agent } from 'https';
 
 const temporaryDir = mkdtempSync(join(tmpdir(), 'n8n'));
 
@@ -355,6 +357,16 @@ describe('NodeExecuteFunctions', () => {
 					}),
 				).rejects.toThrowError(expect.objectContaining({ statusCode: 301 }));
 			});
+		});
+	});
+
+	describe('parseRequestObject', () => {
+		test('should not use Host header for SNI', async () => {
+			const axiosOptions = await parseRequestObject({
+				url: 'https://example.de/foo/bar',
+				headers: { Host: 'other.host.com' },
+			});
+			expect((axiosOptions.httpsAgent as Agent).options.servername).toEqual('example.de');
 		});
 	});
 
