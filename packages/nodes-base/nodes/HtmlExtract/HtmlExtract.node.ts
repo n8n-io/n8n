@@ -10,8 +10,6 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import get from 'lodash/get';
 
-import { convert } from 'html-to-text';
-
 type Cheerio = ReturnType<typeof cheerio>;
 
 interface IValueData {
@@ -20,55 +18,29 @@ interface IValueData {
 	returnValue: string;
 	key: string;
 	returnArray: boolean;
-	skipSelectors?: string;
 }
 
 // The extraction functions
 const extractFunctions: {
-	[key: string]: ($: Cheerio, valueData: IValueData, nodeVersion: number) => string | undefined;
+	[key: string]: ($: Cheerio, valueData: IValueData) => string | undefined;
 } = {
 	attribute: ($: Cheerio, valueData: IValueData): string | undefined =>
 		$.attr(valueData.attribute!),
 	html: ($: Cheerio, _valueData: IValueData): string | undefined => $.html() || undefined,
-	text: ($: Cheerio, _valueData: IValueData, nodeVersion: number): string | undefined => {
-		if (nodeVersion === 1) return $.text() || undefined;
-		const html = $.html() || '';
-		let options;
-		if (_valueData.skipSelectors) {
-			options = {
-				selectors: _valueData.skipSelectors.split(',').map((s) => ({
-					selector: s.trim(),
-					format: 'skip',
-				})),
-			};
-		}
-		return convert(html, options);
-	},
+	text: ($: Cheerio, _valueData: IValueData): string | undefined => $.text(),
 	value: ($: Cheerio, _valueData: IValueData): string | undefined => $.val(),
 };
 
 /**
  * Simple helper function which applies options
  */
-function getValue($: Cheerio, valueData: IValueData, options: IDataObject, nodeVersion: number) {
-	let value = extractFunctions[valueData.returnValue]($, valueData, nodeVersion);
-
-	if (value === undefined) {
+function getValue($: Cheerio, valueData: IValueData, options: IDataObject) {
+	const value = extractFunctions[valueData.returnValue]($, valueData);
+	if (options.trimValues === false || value === undefined) {
 		return value;
 	}
 
-	if (options.trimValues) {
-		value = value.trim();
-	}
-
-	if (options.cleanUpText) {
-		value = value
-			.replace(/^\s+|\s+$/g, '')
-			.replace(/(\r\n|\n|\r)/gm, '')
-			.replace(/\s+/g, ' ');
-	}
-
-	return value;
+	return value.trim();
 }
 
 export class HtmlExtract implements INodeType {
@@ -77,7 +49,7 @@ export class HtmlExtract implements INodeType {
 		name: 'htmlExtract',
 		icon: 'fa:cut',
 		group: ['transform'],
-		version: [1, 1.1],
+		version: 1,
 		hidden: true,
 		subtitle: '={{$parameter["sourceData"] + ": " + $parameter["dataPropertyName"]}}',
 		description: 'Extracts data from HTML',
@@ -204,20 +176,6 @@ export class HtmlExtract implements INodeType {
 								description: 'The name of the attribute to return the value off',
 							},
 							{
-								displayName: 'Skip Selectors',
-								name: 'skipSelectors',
-								type: 'string',
-								displayOptions: {
-									show: {
-										returnValue: ['text'],
-										'@version': [{ _cnd: { gt: 1 } }],
-									},
-								},
-								default: '',
-								placeholder: 'e.g. img, .className, #ItemId',
-								description: 'Comma-separated list of selectors to skip in the text extraction',
-							},
-							{
 								displayName: 'Return Array',
 								name: 'returnArray',
 								type: 'boolean',
@@ -245,14 +203,6 @@ export class HtmlExtract implements INodeType {
 						description:
 							'Whether to remove automatically all spaces and newlines from the beginning and end of the values',
 					},
-					{
-						displayName: 'Clean Up Text',
-						name: 'cleanUpText',
-						type: 'boolean',
-						default: true,
-						description:
-							'Whether to remove remove leading and trailing whitespaces, line breaks (newlines) and condense multiple consecutive whitespaces into a single space',
-					},
 				],
 			},
 		],
@@ -260,7 +210,6 @@ export class HtmlExtract implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const nodeVersion = this.getNode().typeVersion;
 
 		const returnData: INodeExecutionData[] = [];
 
@@ -323,12 +272,12 @@ export class HtmlExtract implements INodeType {
 							newItem.json[valueData.key] = [];
 							htmlElement.each((_, el) => {
 								(newItem.json[valueData.key] as Array<string | undefined>).push(
-									getValue($(el), valueData, options, nodeVersion),
+									getValue($(el), valueData, options),
 								);
 							});
 						} else {
 							// One single value should be returned
-							newItem.json[valueData.key] = getValue(htmlElement, valueData, options, nodeVersion);
+							newItem.json[valueData.key] = getValue(htmlElement, valueData, options);
 						}
 					}
 					returnData.push(newItem);
