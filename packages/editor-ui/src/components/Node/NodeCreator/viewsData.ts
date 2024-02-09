@@ -127,7 +127,7 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 		title: i18n.baseText('nodeCreator.aiPanel.aiNodes'),
 		subtitle: i18n.baseText('nodeCreator.aiPanel.selectAiNode'),
 		info: i18n.baseText('nodeCreator.aiPanel.infoBox', {
-			interpolate: { link: templatesStore.getWebsiteCategoryURL('25') },
+			interpolate: { link: templatesStore.getWebsiteCategoryURL('ai') },
 		}),
 		items: [
 			...chainNodes,

@@ -142,7 +142,7 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 			const settingsStore = useSettingsStore();
 			const customPath = settingsStore.customN8nPath;
 			return `${window.location.host}${customPath}`;
-		}
+		},
 	},
 	actions: {
 		addCategories(categories: ITemplatesCategory[]): void {
