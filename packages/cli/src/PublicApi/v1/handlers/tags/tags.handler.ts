@@ -1,6 +1,6 @@
 import type express from 'express';
 
-import { getTags, getTagsCount, createTag, updateTag, deleteTag, getTagById } from './tags.service';
+import { getTags, createTag, updateTag, deleteTag, getTagById } from './tags.service';
 import { TagEntity } from '@db/entities/TagEntity';
 import { authorize, validCursor } from '../../shared/middlewares/global.middleware';
 import type { TagRequest } from '../../../types';
@@ -10,6 +10,7 @@ import { validateEntity } from '@/GenericHelpers';
 
 import { Container } from 'typedi';
 import type { FindManyOptions, FindOptionsWhere } from '@n8n/typeorm';
+import { TagRepository } from '@db/repositories/tag.repository';
 
 export = {
 	createTag: [
@@ -25,7 +26,7 @@ export = {
 			await validateEntity(newTag);
 
 			const where: FindOptionsWhere<TagEntity> = {
-				...(newTag.name !== undefined && { name: newTag.name }),
+				name: newTag.name
 			};
 			const query: FindManyOptions<TagEntity> = {
 				where,
@@ -63,7 +64,7 @@ export = {
 			await validateEntity(newTag);
 
 			const where: FindOptionsWhere<TagEntity> = {
-				...(newTag.name !== undefined && { name: newTag.name }),
+				name: newTag.name
 			};
 			const query: FindManyOptions<TagEntity> = {
 				where,
@@ -113,8 +114,7 @@ export = {
 				take: limit,
 			};
 
-			const tags = await getTags(query);
-			const count = await getTagsCount(query);
+			const [tags, count] = await Container.get(TagRepository).findAndCount(query);
 
 			return res.json({
 				data: tags,
