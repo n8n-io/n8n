@@ -110,7 +110,7 @@ export class UserRepository extends Repository<User> {
 	async createUserWithProject(
 		user: DeepPartial<User>,
 		transactionManager?: EntityManager,
-	): Promise<User> {
+	): Promise<{ user: User; project: Project }> {
 		const createInner = async (entityManager: EntityManager) => {
 			const newUser = entityManager.create(User, user);
 			const savedUser = await entityManager.save<User>(newUser);
@@ -126,7 +126,7 @@ export class UserRepository extends Repository<User> {
 					role: 'project:personalOwner',
 				}),
 			);
-			return savedUser;
+			return { user: savedUser, project: savedProject };
 		};
 		if (transactionManager) {
 			return await createInner(transactionManager);

@@ -160,7 +160,7 @@ export class E2EController {
 		members: UserSetupPayload[],
 		admin: UserSetupPayload,
 	) {
-		const instanceOwner = await this.userRepository.createUserWithProject({
+		const { user: instanceOwner } = await this.userRepository.createUserWithProject({
 			id: uuid(),
 			...owner,
 			password: await this.passwordUtility.hash(owner.password),

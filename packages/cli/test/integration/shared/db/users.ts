@@ -17,7 +17,7 @@ const passwordHash = '$2a$10$njedH7S6V5898mj6p0Jr..IGY9Ms.qNwR7RbSzzX9yubJocKfvG
  */
 export async function createUser(attributes: Partial<User> = {}): Promise<User> {
 	const { email, password, firstName, lastName, role, ...rest } = attributes;
-	const user = await Container.get(UserRepository).createUserWithProject({
+	const { user } = await Container.get(UserRepository).createUserWithProject({
 		email: email ?? randomEmail(),
 		password: password ? await hash(password, 1) : passwordHash,
 		firstName: firstName ?? randomName(),
@@ -87,7 +87,8 @@ export async function createUserShell(role: GlobalRole): Promise<User> {
 		shell.email = randomEmail();
 	}
 
-	return await Container.get(UserRepository).createUserWithProject(shell);
+	const { user } = await Container.get(UserRepository).createUserWithProject(shell);
+	return user;
 }
 
 /**
@@ -101,20 +102,20 @@ export async function createManyUsers(
 
 	return await Container.get(UserRepository).manager.transaction(async (transactionManager) => {
 		return await Promise.all(
-			[...Array(amount)].map(
-				async () =>
-					await Container.get(UserRepository).createUserWithProject(
-						{
-							email: email ?? randomEmail(),
-							password: password ? await hash(password, 1) : passwordHash,
-							firstName: firstName ?? randomName(),
-							lastName: lastName ?? randomName(),
-							role: role ?? 'global:member',
-							...rest,
-						},
-						transactionManager,
-					),
-			),
+			[...Array(amount)].map(async () => {
+				const { user } = await Container.get(UserRepository).createUserWithProject(
+					{
+						email: email ?? randomEmail(),
+						password: password ? await hash(password, 1) : passwordHash,
+						firstName: firstName ?? randomName(),
+						lastName: lastName ?? randomName(),
+						role: role ?? 'global:member',
+						...rest,
+					},
+					transactionManager,
+				);
+				return user;
+			}),
 		);
 	});
 }

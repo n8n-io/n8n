@@ -246,7 +246,7 @@ export class UserService {
 				async (transactionManager) =>
 					await Promise.all(
 						toCreateUsers.map(async ({ email, role }) => {
-							const savedUser = await this.userRepository.createUserWithProject(
+							const { user: savedUser } = await this.userRepository.createUserWithProject(
 								{ email, role },
 								transactionManager,
 							);

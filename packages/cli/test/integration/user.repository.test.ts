@@ -43,7 +43,7 @@ describe('UserRepository', () => {
 
 	describe('createUserWithProject()', () => {
 		test('should create personal project for a user', async () => {
-			const user = await userRepository.createUserWithProject({
+			const { user, project } = await userRepository.createUserWithProject({
 				email: randomEmail(),
 				role: 'global:member',
 			});
@@ -58,7 +58,7 @@ describe('UserRepository', () => {
 				relations: ['project'],
 			});
 
-			expect(projectRelation.project).not.toBeUndefined();
+			expect(projectRelation.project.id).toBe(project.id);
 		});
 	});
 });
