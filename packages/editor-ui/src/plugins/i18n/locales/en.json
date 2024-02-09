@@ -1519,6 +1519,7 @@
 	"settings.log-streaming.tab.events.title": "Select groups or single events to subscribe to:",
 	"settings.log-streaming.tab.events.anonymize": "Anonymize sensitive data",
 	"settings.log-streaming.tab.events.anonymize.info": "Fields containing personal information like name or email are anonymized",
+	"settings.log-streaming.eventGroup.n8n.ai": "AI node logs",
 	"settings.log-streaming.eventGroup.n8n.audit": "Audit Events",
 	"settings.log-streaming.eventGroup.n8n.audit.info": "Will send events when user details or other audit data changes",
 	"settings.log-streaming.eventGroup.n8n.workflow": "Workflow Events",
