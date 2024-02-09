@@ -46,7 +46,8 @@
 				:model-value="expressionDisplayValue"
 				:title="displayTitle"
 				:is-read-only="isReadOnly"
-				:is-single-line="isSingleLine"
+				:rows="rows"
+				:is-assignment="isAssignment"
 				:path="path"
 				:additional-expression-data="additionalExpressionData"
 				:class="{ 'ph-no-capture': shouldRedactValue }"
@@ -549,7 +550,11 @@ export default defineComponent({
 		isReadOnly: {
 			type: Boolean,
 		},
-		isSingleLine: {
+		rows: {
+			type: Number,
+			default: 5,
+		},
+		isAssignment: {
 			type: Boolean,
 		},
 		parameter: {
@@ -1314,7 +1319,11 @@ export default defineComponent({
 					(!this.modelValue || this.modelValue === '[Object: null]')
 				) {
 					this.valueChanged('={{ 0 }}');
-				} else if (this.parameter.type === 'number' || this.parameter.type === 'boolean') {
+				} else if (
+					this.parameter.type === 'number' ||
+					this.parameter.type === 'boolean' ||
+					typeof this.modelValue !== 'string'
+				) {
 					this.valueChanged(`={{ ${this.modelValue} }}`);
 				} else {
 					this.valueChanged(`=${this.modelValue}`);
@@ -1345,7 +1354,6 @@ export default defineComponent({
 						// Strip the '=' from the beginning
 						newValue = this.modelValue ? this.modelValue.toString().substring(1) : null;
 					}
-
 					this.valueChanged(newValue);
 				}
 			} else if (command === 'refreshOptions') {
@@ -1416,6 +1424,7 @@ export default defineComponent({
 
 .droppable {
 	--input-border-color: var(--color-ndv-droppable-parameter);
+	--input-border-right-color: var(--color-ndv-droppable-parameter);
 	--input-border-style: dashed;
 
 	textarea,
@@ -1427,6 +1436,7 @@ export default defineComponent({
 
 .activeDrop {
 	--input-border-color: var(--color-success);
+	--input-border-right-color: var(--color-success);
 	--input-background-color: var(--color-foreground-xlight);
 	--input-border-style: solid;
 

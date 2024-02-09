@@ -185,7 +185,6 @@ export default defineComponent({
 		multipleValues(): boolean {
 			return !!this.parameter.typeOptions?.multipleValues;
 		},
-
 		parameterOptions(): INodePropertyCollection[] {
 			if (this.multipleValues && isINodePropertyCollectionList(this.parameter.options)) {
 				return this.parameter.options;
@@ -298,7 +297,7 @@ export default defineComponent({
 					// Multiple values are allowed so append option to array
 					newParameterValue[optionParameter.name] = get(
 						this.nodeValues,
-						`${this.path}.${optionParameter.name}`,
+						[this.path, optionParameter.name],
 						[],
 					);
 					if (Array.isArray(optionParameter.default)) {

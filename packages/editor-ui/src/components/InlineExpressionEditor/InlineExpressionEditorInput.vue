@@ -35,9 +35,9 @@ export default defineComponent({
 			type: Boolean,
 			default: false,
 		},
-		isSingleLine: {
-			type: Boolean,
-			default: false,
+		rows: {
+			type: Number,
+			default: 5,
 		},
 		path: {
 			type: String,
@@ -92,7 +92,7 @@ export default defineComponent({
 	mounted() {
 		const extensions = [
 			n8nLang(),
-			inputTheme({ isSingleLine: this.isSingleLine }),
+			inputTheme({ rows: this.rows }),
 			Prec.highest(
 				keymap.of([
 					{ key: 'Tab', run: acceptCompletion },
