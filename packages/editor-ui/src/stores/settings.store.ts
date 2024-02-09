@@ -193,13 +193,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		isDevRelease(): boolean {
 			return this.settings.releaseChannel === 'dev';
 		},
-		/**
-		 * Returns custom path n8n is deployed at as set by the N8N_PATH environment variable.
-		 * If the path is set to the root, it returns an empty string.
-		 */
-		customN8nPath(): string {
-			return this.settings.n8nPath.path !== '/' ? this.settings.n8nPath.path : '';
-		},
 	},
 	actions: {
 		async initialize() {

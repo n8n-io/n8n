@@ -204,10 +204,6 @@ export class FrontendService {
 				pruneTime: -1,
 				licensePruneTime: -1,
 			},
-			n8nPath: {
-				path: config.getEnv('path'),
-				host: config.getEnv('host'),
-			},
 		};
 	}
 
