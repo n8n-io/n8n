@@ -1,9 +1,9 @@
-import * as utils from './shared/utils/';
-import * as testDb from './shared/testDb';
+import * as utils from '../../../../test/integration/shared/utils';
+import * as testDb from '../../../../test/integration/shared/testDb';
 import type { SuperAgentTest } from 'supertest';
 import { TagRepository } from '@db/repositories/tag.repository';
 import Container from 'typedi';
-import { createUserShell } from './shared/db/users';
+import { createUserShell } from '../../../../test/integration/shared/db/users';
 
 let authOwnerAgent: SuperAgentTest;
 const testServer = utils.setupTestServer({ endpointGroups: ['tags'] });

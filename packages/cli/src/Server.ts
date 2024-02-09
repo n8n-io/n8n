@@ -46,7 +46,7 @@ import { OAuth1CredentialController } from '@/controllers/oauth/oAuth1Credential
 import { OAuth2CredentialController } from '@/controllers/oauth/oAuth2Credential.controller';
 import { OwnerController } from '@/controllers/owner.controller';
 import { PasswordResetController } from '@/controllers/passwordReset.controller';
-import { TagsController } from '@/controllers/tags.controller';
+import { TagController } from '@/controllers/tag/tag.controller';
 import { TranslationController } from '@/controllers/translation.controller';
 import { UsersController } from '@/controllers/users.controller';
 import { WorkflowStatisticsController } from '@/controllers/workflowStatistics.controller';
@@ -145,7 +145,7 @@ export class Server extends AbstractServer {
 			DynamicNodeParametersController,
 			NodeTypesController,
 			PasswordResetController,
-			TagsController,
+			TagController,
 			TranslationController,
 			UsersController,
 			SamlController,
