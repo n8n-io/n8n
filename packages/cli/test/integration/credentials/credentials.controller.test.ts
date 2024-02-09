@@ -58,7 +58,7 @@ describe('GET /credentials', () => {
 
 			expect(response.body.data).toHaveLength(2);
 
-			response.body.data.forEach(validateCredential);
+			response.body.data.forEach((c) => validateCredential(c));
 
 			const savedIds = [id1, id2].sort();
 			const returnedIds = response.body.data.map((c) => c.id).sort();
@@ -242,7 +242,7 @@ describe('GET /credentials', () => {
 			await saveCredential(payload(), { user: owner, role: 'credential:owner' });
 			await saveCredential(payload(), { user: owner, role: 'credential:owner' });
 
-			const response = await testServer
+			const response: GetAllResponse = await testServer
 				.authAgentFor(owner)
 				.get('/credentials')
 				.query('take=2')
@@ -250,9 +250,9 @@ describe('GET /credentials', () => {
 
 			expect(response.body.data).toHaveLength(2);
 
-			response.body.data.forEach(validateCredential);
+			response.body.data.forEach((c) => validateCredential(c));
 
-			const _response = await testServer
+			const _response: GetAllResponse = await testServer
 				.authAgentFor(owner)
 				.get('/credentials')
 				.query('take=1')
@@ -260,14 +260,14 @@ describe('GET /credentials', () => {
 
 			expect(_response.body.data).toHaveLength(1);
 
-			_response.body.data.forEach(validateCredential);
+			_response.body.data.forEach((c) => validateCredential(c));
 		});
 
 		test('should return n credentials or less, with skip', async () => {
 			await saveCredential(payload(), { user: owner, role: 'credential:owner' });
 			await saveCredential(payload(), { user: owner, role: 'credential:owner' });
 
-			const response = await testServer
+			const response: GetAllResponse = await testServer
 				.authAgentFor(owner)
 				.get('/credentials')
 				.query('take=1&skip=1')
@@ -275,30 +275,10 @@ describe('GET /credentials', () => {
 
 			expect(response.body.data).toHaveLength(1);
 
-			response.body.data.forEach(validateCredential);
+			response.body.data.forEach((c) => validateCredential(c));
 		});
 	});
 });
-
-function validateCredential(credential: ListQuery.Credentials.WithOwnedByAndSharedWith) {
-	const { name, type, nodesAccess, sharedWith, ownedBy } = credential;
-
-	expect(typeof name).toBe('string');
-	expect(typeof type).toBe('string');
-	expect(typeof nodesAccess[0].nodeType).toBe('string');
-	expect('data' in credential).toBe(false);
-
-	if (sharedWith) expect(Array.isArray(sharedWith)).toBe(true);
-
-	if (ownedBy) {
-		const { id, email, firstName, lastName } = ownedBy;
-
-		expect(typeof id).toBe('string');
-		expect(typeof email).toBe('string');
-		expect(typeof firstName).toBe('string');
-		expect(typeof lastName).toBe('string');
-	}
-}
 
 describe('POST /credentials', () => {
 	test('should create cred', async () => {
@@ -725,15 +705,14 @@ describe('GET /credentials/:id', () => {
 
 		expect(firstResponse.statusCode).toBe(200);
 
-		validateMainCredentialData(firstResponse.body.data);
+		validateCredential(firstResponse.body.data);
 		expect(firstResponse.body.data.data).toBeUndefined();
 
 		const secondResponse = await authOwnerAgent
 			.get(`/credentials/${savedCredential.id}`)
 			.query({ includeData: true });
 
-		validateMainCredentialData(secondResponse.body.data);
-		expect(secondResponse.body.data.data).toBeDefined();
+		validateCredential(secondResponse.body.data, true);
 	});
 
 	test('should retrieve owned cred for member', async () => {
@@ -746,8 +725,7 @@ describe('GET /credentials/:id', () => {
 
 		expect(firstResponse.statusCode).toBe(200);
 
-		validateMainCredentialData(firstResponse.body.data);
-		expect(firstResponse.body.data.data).toBeUndefined();
+		validateCredential(firstResponse.body.data);
 
 		const secondResponse = await authMemberAgent
 			.get(`/credentials/${savedCredential.id}`)
@@ -755,8 +733,7 @@ describe('GET /credentials/:id', () => {
 
 		expect(secondResponse.statusCode).toBe(200);
 
-		validateMainCredentialData(secondResponse.body.data);
-		expect(secondResponse.body.data.data).toBeDefined();
+		validateCredential(secondResponse.body.data, true);
 	});
 
 	test('should retrieve non-owned cred for owner', async () => {
@@ -769,8 +746,7 @@ describe('GET /credentials/:id', () => {
 
 		expect(response1.statusCode).toBe(200);
 
-		validateMainCredentialData(response1.body.data);
-		expect(response1.body.data.data).toBeUndefined();
+		validateCredential(response1.body.data);
 
 		const response2 = await authOwnerAgent
 			.get(`/credentials/${savedCredential.id}`)
@@ -778,8 +754,7 @@ describe('GET /credentials/:id', () => {
 
 		expect(response2.statusCode).toBe(200);
 
-		validateMainCredentialData(response2.body.data);
-		expect(response2.body.data.data).toBeDefined();
+		validateCredential(response2.body.data, true);
 	});
 
 	test('should not retrieve non-owned cred for member', async () => {
@@ -803,12 +778,21 @@ describe('GET /credentials/:id', () => {
 	});
 });
 
-function validateMainCredentialData(credential: ListQuery.Credentials.WithOwnedByAndSharedWith) {
+function validateCredential(
+	credential: ListQuery.Credentials.WithOwnedByAndSharedWith,
+	shouldContainData = false,
+) {
 	const { name, type, nodesAccess, sharedWith, ownedBy } = credential;
 
 	expect(typeof name).toBe('string');
 	expect(typeof type).toBe('string');
-	expect(typeof nodesAccess?.[0].nodeType).toBe('string');
+	expect(typeof nodesAccess[0].nodeType).toBe('string');
+
+	if (shouldContainData) {
+		expect('data' in credential).toBe(true);
+	} else {
+		expect('data' in credential).toBe(false);
+	}
 
 	if (sharedWith) {
 		expect(Array.isArray(sharedWith)).toBe(true);
