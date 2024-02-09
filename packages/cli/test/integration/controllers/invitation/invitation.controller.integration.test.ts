@@ -307,7 +307,7 @@ describe('InvitationController', () => {
 
 			expect(projectRelation).not.toBeUndefined();
 			expect(projectRelation.project.name).toBeNull();
-			expect(projectRelation.project.type).toEqual('personal');
+			expect(projectRelation.project.type).toBe('personal');
 		});
 
 		test('should create admin shell when advanced permissions is licensed', async () => {
