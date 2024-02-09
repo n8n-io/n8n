@@ -118,7 +118,7 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 		 * @returns {string}
 		 */
 		getWebsiteTemplateRepositoryURL(): string {
-			return `${TEMPLATES_URLS.BASE_WEBSITE_URL}?${TEMPLATES_URLS.UTM_QUERY}`;
+			return `${TEMPLATES_URLS.BASE_WEBSITE_URL}?${TEMPLATES_URLS.UTM_QUERY}&utm_instance=${this.getCurrentN8nPath}`;
 		},
 		/**
 		 * Construct the URL for the template page on the website for a given template id
@@ -126,7 +126,7 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 		 */
 		getWebsiteTemplatePageURL() {
 			return (id: string) => {
-				return `${TEMPLATES_URLS.BASE_WEBSITE_URL}/${id}?${TEMPLATES_URLS.UTM_QUERY}`;
+				return `${TEMPLATES_URLS.BASE_WEBSITE_URL}/${id}?${TEMPLATES_URLS.UTM_QUERY}&utm_instance=${this.getCurrentN8nPath}`;
 			};
 		},
 		/**
@@ -135,9 +135,14 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 		 */
 		getWebsiteCategoryURL() {
 			return (id: string) => {
-				return `${TEMPLATES_URLS.BASE_WEBSITE_URL}/?categories=${id}&${TEMPLATES_URLS.UTM_QUERY}`;
+				return `${TEMPLATES_URLS.BASE_WEBSITE_URL}/?categories=${id}&${TEMPLATES_URLS.UTM_QUERY}&utm_instance=${this.getCurrentN8nPath}`;
 			};
 		},
+		getCurrentN8nPath(): string {
+			const settingsStore = useSettingsStore();
+			const customPath = settingsStore.customN8nPath;
+			return `${window.location.host}${customPath}`;
+		}
 	},
 	actions: {
 		addCategories(categories: ITemplatesCategory[]): void {

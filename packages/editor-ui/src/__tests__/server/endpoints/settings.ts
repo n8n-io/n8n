@@ -92,6 +92,10 @@ const defaultSettings: IN8nUISettings = {
 	banners: {
 		dismissed: [],
 	},
+	n8nPath: {
+		host: '',
+		path: '',
+	},
 };
 
 export function routesForSettings(server: Server) {

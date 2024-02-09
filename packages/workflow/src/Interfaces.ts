@@ -2459,6 +2459,10 @@ export interface IN8nUISettings {
 		pruneTime: number;
 		licensePruneTime: number;
 	};
+	n8nPath: {
+		host: string;
+		path: string;
+	};
 }
 
 export interface SecretsHelpersBase {
