@@ -39,7 +39,7 @@ import { getEventMessageObjectByType } from '../EventMessageClasses/Helpers';
 import { ExecutionDataRecoveryService } from '../executionDataRecovery.service';
 import {
 	EventMessageAiNode,
-	EventMessageAiNodeOptions,
+	type EventMessageAiNodeOptions,
 } from '../EventMessageClasses/EventMessageAiNode';
 
 export type EventMessageReturnMode = 'sent' | 'unsent' | 'all' | 'unfinished';
