@@ -18,10 +18,8 @@ import type {
 	AxiosError,
 	AxiosHeaders,
 	AxiosPromise,
-	AxiosProxyConfig,
 	AxiosRequestConfig,
 	AxiosResponse,
-	Method,
 } from 'axios';
 import axios from 'axios';
 import crypto, { createHmac } from 'crypto';
@@ -76,6 +74,7 @@ import type {
 	IOAuth2Options,
 	IPairedItemData,
 	IPollFunctions,
+	IRequestOptions,
 	IRunExecutionData,
 	ISourceData,
 	ITaskData,
@@ -120,8 +119,6 @@ import type { Token } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
 import path from 'path';
 import { stringify } from 'qs';
-import type { OptionsWithUrl } from 'request';
-import type { OptionsWithUri, RequestPromiseOptions } from 'request-promise-native';
 import { Readable } from 'stream';
 import url, { URL, URLSearchParams } from 'url';
 
@@ -229,39 +226,7 @@ async function generateContentLengthHeader(config: AxiosRequestConfig) {
 	}
 }
 
-type RequestObject = Partial<{
-	baseURL: string;
-	uri: string;
-	url: string;
-	method: Method;
-	qs: Record<string, unknown>;
-	qsStringifyOptions: { arrayFormat: 'repeat' | 'brackets' };
-	useQuerystring: boolean;
-	headers: Record<string, string>;
-	auth: Partial<{
-		sendImmediately: boolean;
-		bearer: string;
-		user: string;
-		username: string;
-		password: string;
-		pass: string;
-	}>;
-	body: unknown;
-	formData: FormData;
-	form: FormData;
-	json: boolean;
-	useStream: boolean;
-	encoding: string;
-	followRedirect: boolean;
-	followAllRedirects: boolean;
-	timeout: number;
-	rejectUnauthorized: boolean;
-	proxy: string | AxiosProxyConfig;
-	simple: boolean;
-	resolveWithFullResponse: boolean;
-}>;
-
-async function parseRequestObject(requestObject: RequestObject) {
+async function parseRequestObject(requestObject: IRequestOptions) {
 	// This function is a temporary implementation
 	// That translates all http requests done via
 	// the request library to axios directly
@@ -395,8 +360,8 @@ async function parseRequestObject(requestObject: RequestObject) {
 	}
 
 	function hasArrayFormatOptions(
-		arg: RequestObject,
-	): arg is RequestObject & { qsStringifyOptions: { arrayFormat: 'repeat' | 'brackets' } } {
+		arg: IRequestOptions,
+	): arg is Required<Pick<IRequestOptions, 'qsStringifyOptions'>> {
 		if (
 			typeof arg.qsStringifyOptions === 'object' &&
 			arg.qsStringifyOptions !== null &&
@@ -751,14 +716,14 @@ export async function proxyRequestToAxios(
 	workflow: Workflow | undefined,
 	additionalData: IWorkflowExecuteAdditionalData | undefined,
 	node: INode | undefined,
-	uriOrObject: string | RequestObject,
-	options?: RequestObject,
+	uriOrObject: string | IRequestOptions,
+	options?: IRequestOptions,
 ): Promise<any> {
 	let axiosConfig: AxiosRequestConfig = {
 		maxBodyLength: Infinity,
 		maxContentLength: Infinity,
 	};
-	let configObject: RequestObject;
+	let configObject: IRequestOptions;
 	if (uriOrObject !== undefined && typeof uriOrObject === 'string') {
 		axiosConfig.url = uriOrObject;
 	}
@@ -1235,10 +1200,10 @@ async function prepareBinaryData(
 }
 
 function applyPaginationRequestData(
-	requestData: OptionsWithUri,
+	requestData: IRequestOptions,
 	paginationRequestData: PaginationOptions['request'],
-): OptionsWithUri {
-	const preparedPaginationData: Partial<OptionsWithUri> = { ...paginationRequestData };
+): IRequestOptions {
+	const preparedPaginationData: Partial<IRequestOptions> = { ...paginationRequestData };
 
 	if ('formData' in requestData) {
 		preparedPaginationData.formData = paginationRequestData.body;
@@ -1254,13 +1219,13 @@ function applyPaginationRequestData(
 /**
  * Makes a request using OAuth data for authentication
  *
- * @param {(OptionsWithUri | RequestPromiseOptions)} requestOptions
+ * @param {(IHttpRequestOptions | IRequestOptions)} requestOptions
  *
  */
 export async function requestOAuth2(
 	this: IAllExecuteFunctions,
 	credentialsType: string,
-	requestOptions: OptionsWithUri | RequestPromiseOptions | IHttpRequestOptions,
+	requestOptions: IHttpRequestOptions | IRequestOptions,
 	node: INode,
 	additionalData: IWorkflowExecuteAdditionalData,
 	oAuth2Options?: IOAuth2Options,
@@ -1324,7 +1289,7 @@ export async function requestOAuth2(
 		oAuth2Options?.tokenType || oauthTokenData.tokenType,
 	);
 
-	(requestOptions as OptionsWithUri).rejectUnauthorized = !credentials.ignoreSSLIssues;
+	(requestOptions as IRequestOptions).rejectUnauthorized = !credentials.ignoreSSLIssues;
 
 	// Signs the request by adding authorization headers or query parameters depending
 	// on the token-type used.
@@ -1408,7 +1373,7 @@ export async function requestOAuth2(
 			: oAuth2Options?.tokenExpiredStatusCode;
 
 	return await this.helpers
-		.request(newRequestOptions)
+		.request(newRequestOptions as IRequestOptions)
 		.then((response) => {
 			const requestOptions = newRequestOptions as any;
 			if (
@@ -1484,7 +1449,7 @@ export async function requestOAuth2(
 					});
 				}
 
-				return await this.helpers.request(newRequestOptions);
+				return await this.helpers.request(newRequestOptions as IRequestOptions);
 			}
 
 			// Unknown error so simply throw it
@@ -1498,7 +1463,7 @@ export async function requestOAuth2(
 export async function requestOAuth1(
 	this: IAllExecuteFunctions,
 	credentialsType: string,
-	requestOptions: OptionsWithUrl | OptionsWithUri | RequestPromiseOptions | IHttpRequestOptions,
+	requestOptions: IHttpRequestOptions | IRequestOptions,
 	isN8nRequest = false,
 ) {
 	const credentials = await this.getCredentials(credentialsType);
@@ -1545,25 +1510,24 @@ export async function requestOAuth1(
 	requestOptions.data = { ...requestOptions.qs, ...requestOptions.form };
 
 	// Fixes issue that OAuth1 library only works with "url" property and not with "uri"
-	// @ts-expect-error @TECH_DEBT: Remove request library
-	if (requestOptions.uri && !requestOptions.url) {
-		// @ts-expect-error @TECH_DEBT: Remove request library
+	if ('uri' in requestOptions && !requestOptions.url) {
 		requestOptions.url = requestOptions.uri;
-		// @ts-expect-error @TECH_DEBT: Remove request library
 		delete requestOptions.uri;
 	}
 
 	requestOptions.headers = oauth.toHeader(
 		oauth.authorize(requestOptions as unknown as clientOAuth1.RequestOptions, token),
-	);
+	) as unknown as Record<string, string>;
 	if (isN8nRequest) {
 		return await this.helpers.httpRequest(requestOptions as IHttpRequestOptions);
 	}
 
-	return await this.helpers.request(requestOptions).catch(async (error: IResponseError) => {
-		// Unknown error so simply throw it
-		throw error;
-	});
+	return await this.helpers
+		.request(requestOptions as IRequestOptions)
+		.catch(async (error: IResponseError) => {
+			// Unknown error so simply throw it
+			throw error;
+		});
 }
 
 export async function httpRequestWithAuthentication(
@@ -1761,7 +1725,7 @@ export function normalizeItems(
 export async function requestWithAuthentication(
 	this: IAllExecuteFunctions,
 	credentialsType: string,
-	requestOptions: OptionsWithUri | RequestPromiseOptions,
+	requestOptions: IRequestOptions,
 	workflow: Workflow,
 	node: INode,
 	additionalData: IWorkflowExecuteAdditionalData,
@@ -1816,19 +1780,14 @@ export async function requestWithAuthentication(
 			Object.assign(credentialsDecrypted, data);
 		}
 
-		requestOptions = await additionalData.credentialsHelper.authenticate(
+		requestOptions = (await additionalData.credentialsHelper.authenticate(
 			credentialsDecrypted,
 			credentialsType,
 			requestOptions as IHttpRequestOptions,
 			workflow,
 			node,
-		);
-		return await proxyRequestToAxios(
-			workflow,
-			additionalData,
-			node,
-			requestOptions as RequestObject,
-		);
+		)) as IRequestOptions;
+		return await proxyRequestToAxios(workflow, additionalData, node, requestOptions);
 	} catch (error) {
 		try {
 			if (credentialsDecrypted !== undefined) {
@@ -1845,20 +1804,15 @@ export async function requestWithAuthentication(
 					// make the updated property in the credentials
 					// available to the authenticate method
 					Object.assign(credentialsDecrypted, data);
-					requestOptions = await additionalData.credentialsHelper.authenticate(
+					requestOptions = (await additionalData.credentialsHelper.authenticate(
 						credentialsDecrypted,
 						credentialsType,
 						requestOptions as IHttpRequestOptions,
 						workflow,
 						node,
-					);
+					)) as IRequestOptions;
 					// retry the request
-					return await proxyRequestToAxios(
-						workflow,
-						additionalData,
-						node,
-						requestOptions as RequestObject,
-					);
+					return await proxyRequestToAxios(workflow, additionalData, node, requestOptions);
 				}
 			}
 			throw error;
@@ -2839,7 +2793,7 @@ const getRequestHelperFunctions = (
 		httpRequest,
 		async requestWithAuthenticationPaginated(
 			this: IExecuteFunctions,
-			requestOptions: OptionsWithUri,
+			requestOptions: IRequestOptions,
 			itemIndex: number,
 			paginationOptions: PaginationOptions,
 			credentialsType?: string,
@@ -3075,7 +3029,7 @@ const getRequestHelperFunctions = (
 		async requestOAuth1(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
-			requestOptions: OptionsWithUrl | RequestPromiseOptions,
+			requestOptions: IRequestOptions,
 		): Promise<any> {
 			return await requestOAuth1.call(this, credentialsType, requestOptions);
 		},
@@ -3083,7 +3037,7 @@ const getRequestHelperFunctions = (
 		async requestOAuth2(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
-			requestOptions: OptionsWithUri | RequestPromiseOptions,
+			requestOptions: IRequestOptions,
 			oAuth2Options?: IOAuth2Options,
 		): Promise<any> {
 			return await requestOAuth2.call(
