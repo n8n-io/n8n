@@ -4,7 +4,7 @@ import type { IValueData, Cheerio } from './types';
 import { convert } from 'html-to-text';
 
 // The extraction functions
-export const extractFunctions: {
+const extractFunctions: {
 	[key: string]: ($: Cheerio, valueData: IValueData, nodeVersion: number) => string | undefined;
 } = {
 	attribute: ($: Cheerio, valueData: IValueData): string | undefined =>
