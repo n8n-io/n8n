@@ -37,6 +37,10 @@ import { METRICS_EVENT_NAME } from '../MessageEventBusDestination/Helpers.ee';
 import type { AbstractEventMessageOptions } from '../EventMessageClasses/AbstractEventMessageOptions';
 import { getEventMessageObjectByType } from '../EventMessageClasses/Helpers';
 import { ExecutionDataRecoveryService } from '../executionDataRecovery.service';
+import {
+	EventMessageAiNode,
+	type EventMessageAiNodeOptions,
+} from '../EventMessageClasses/EventMessageAiNode';
 
 export type EventMessageReturnMode = 'sent' | 'unsent' | 'all' | 'unfinished';
 
@@ -456,5 +460,9 @@ export class MessageEventBus extends EventEmitter {
 
 	async sendNodeEvent(options: EventMessageNodeOptions) {
 		await this.send(new EventMessageNode(options));
+	}
+
+	async sendAiNodeEvent(options: EventMessageAiNodeOptions) {
+		await this.send(new EventMessageAiNode(options));
 	}
 }
