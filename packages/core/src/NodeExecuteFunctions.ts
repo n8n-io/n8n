@@ -40,6 +40,7 @@ import type {
 	CloseFunction,
 	ConnectionTypes,
 	ContextType,
+	EventNamesAiNodesType,
 	FieldType,
 	FileSystemHelperFunctions,
 	FunctionsBase,
@@ -3641,6 +3642,16 @@ export function getExecuteFunctions(
 				constructExecutionMetaData,
 			},
 			nodeHelpers: getNodeHelperFunctions(additionalData, workflow.id),
+			logAiEvent: async (eventName: EventNamesAiNodesType, msg: string) => {
+				return await additionalData.logAiEvent(eventName, {
+					executionId: additionalData.executionId ?? 'unsaved-execution',
+					nodeName: node.name,
+					workflowName: workflow.name ?? 'Unnamed workflow',
+					nodeType: node.type,
+					workflowId: workflow.id ?? 'unsaved-workflow',
+					msg,
+				});
+			},
 		};
 	})(workflow, runExecutionData, connectionInputData, inputData, node) as IExecuteFunctions;
 }
@@ -3780,6 +3791,16 @@ export function getExecuteSingleFunctions(
 					assertBinaryData(inputData, node, itemIndex, propertyName, inputIndex),
 				getBinaryDataBuffer: async (propertyName, inputIndex = 0) =>
 					await getBinaryDataBuffer(inputData, itemIndex, propertyName, inputIndex),
+			},
+			logAiEvent: async (eventName: EventNamesAiNodesType, msg: string) => {
+				return await additionalData.logAiEvent(eventName, {
+					executionId: additionalData.executionId ?? 'unsaved-execution',
+					nodeName: node.name,
+					workflowName: workflow.name ?? 'Unnamed workflow',
+					nodeType: node.type,
+					workflowId: workflow.id ?? 'unsaved-workflow',
+					msg,
+				});
 			},
 		};
 	})(workflow, runExecutionData, connectionInputData, inputData, node, itemIndex);
