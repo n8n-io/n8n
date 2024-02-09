@@ -26,7 +26,7 @@ export = {
 			await validateEntity(newTag);
 
 			const where: FindOptionsWhere<TagEntity> = {
-				...(newTag.name !== undefined && { name: newTag.name }),
+				name: newTag.name
 			};
 			const query: FindManyOptions<TagEntity> = {
 				where,
@@ -64,7 +64,7 @@ export = {
 			await validateEntity(newTag);
 
 			const where: FindOptionsWhere<TagEntity> = {
-				...(newTag.name !== undefined && { name: newTag.name }),
+				name: newTag.name
 			};
 			const query: FindManyOptions<TagEntity> = {
 				where,
