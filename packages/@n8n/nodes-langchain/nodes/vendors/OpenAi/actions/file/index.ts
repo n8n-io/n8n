@@ -1,10 +1,10 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import * as uploadFile from './uploadFile.operation';
+import * as upload from './upload.operation';
 import * as deleteFile from './deleteFile.operation';
-import * as listFiles from './listFiles.operation';
+import * as list from './list.operation';
 
-export { uploadFile, deleteFile, listFiles };
+export { upload, deleteFile, list };
 
 export const description: INodeProperties[] = [
 	{
@@ -21,18 +21,18 @@ export const description: INodeProperties[] = [
 			},
 			{
 				name: 'List Files',
-				value: 'listFiles',
+				value: 'list',
 				action: 'List files',
 				description: "Returns a list of files that belong to the user's organization",
 			},
 			{
 				name: 'Upload a File',
-				value: 'uploadFile',
+				value: 'upload',
 				action: 'Upload a file',
 				description: 'Upload a file that can be used across various endpoints',
 			},
 		],
-		default: 'messageModel',
+		default: 'upload',
 		displayOptions: {
 			show: {
 				resource: ['file'],
@@ -40,7 +40,7 @@ export const description: INodeProperties[] = [
 		},
 	},
 
-	...uploadFile.description,
+	...upload.description,
 	...deleteFile.description,
-	...listFiles.description,
+	...list.description,
 ];

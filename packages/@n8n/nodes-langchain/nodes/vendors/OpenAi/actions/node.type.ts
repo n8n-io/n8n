@@ -1,16 +1,11 @@
 import type { AllEntities } from 'n8n-workflow';
 
 type NodeMap = {
-	assistant:
-		| 'messageAssistant'
-		| 'createAssistant'
-		| 'deleteAssistant'
-		| 'listAssistants'
-		| 'updateAssistant';
-	audio: 'generateAudio' | 'transcribeRecording' | 'translateRecording';
-	file: 'uploadFile' | 'deleteFile' | 'listFiles';
-	image: 'generateImage' | 'analyzeImage';
-	text: 'messageModel' | 'createModeration';
+	assistant: 'message' | 'create' | 'deleteAssistant' | 'list' | 'update';
+	audio: 'generate' | 'transcribe' | 'translate';
+	file: 'upload' | 'deleteFile' | 'list';
+	image: 'generate' | 'analyze';
+	text: 'message' | 'classify';
 };
 
 export type OpenAiType = AllEntities<NodeMap>;

@@ -1,9 +1,9 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import * as generateImage from './generateImage.operation';
-import * as analyzeImage from './analyzeImage.operation';
+import * as generate from './generate.operation';
+import * as analyze from './analyze.operation';
 
-export { generateImage, analyzeImage };
+export { generate, analyze };
 
 export const description: INodeProperties[] = [
 	{
@@ -14,24 +14,24 @@ export const description: INodeProperties[] = [
 		options: [
 			{
 				name: 'Analyze Image',
-				value: 'analyzeImage',
+				value: 'analyze',
 				action: 'Analyze image',
 				description: 'Take in images and answer questions about them',
 			},
 			{
 				name: 'Generate an Image',
-				value: 'generateImage',
+				value: 'generate',
 				action: 'Generate an image',
 				description: 'Creates an image from a text prompt',
 			},
 		],
-		default: 'messageModel',
+		default: 'generate',
 		displayOptions: {
 			show: {
 				resource: ['image'],
 			},
 		},
 	},
-	...generateImage.description,
-	...analyzeImage.description,
+	...generate.description,
+	...analyze.description,
 ];

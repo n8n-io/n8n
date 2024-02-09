@@ -8,45 +8,42 @@ import * as file from './file';
 import * as image from './image';
 import * as text from './text';
 
-const prettifyOperation = (operation: string) => {
-	switch (operation) {
-		case 'messageModel':
-			return 'Message Model';
-		case 'createAssistant':
-			return 'Create Assistant';
-		case 'messageAssistant':
-			return 'Message Assistant';
-		case 'deleteAssistant':
-			return 'Delete Assistant';
-		case 'listAssistants':
-			return 'List Assistants';
-		case 'updateAssistant':
-			return 'Update Assistant';
-		case 'uploadFile':
-			return 'Upload File';
-		case 'listFiles':
-			return 'List Files';
-		case 'deleteFile':
-			return 'Delete File';
-		case 'generateImage':
-			return 'Generate Image';
-		case 'generateAudio':
-			return 'Generate Audio';
-		case 'transcribeRecording':
-			return 'Transcribe Recording';
-		case 'translateRecording':
-			return 'Translate Recording';
-		case 'analyzeImage':
-			return 'Analyze Image';
-		case 'createModeration':
-			return 'Create Moderation';
-		default:
-			return operation;
+const prettifyOperation = (resource: string, operation: string) => {
+	if (operation === 'deleteAssistant') {
+		return 'Delete Assistant';
 	}
+
+	if (operation === 'deleteFile') {
+		return 'Delete File';
+	}
+
+	if (operation === 'classify') {
+		return 'Classify Text';
+	}
+
+	if (operation === 'message' && resource === 'text') {
+		return 'Message Model';
+	}
+
+	const capitalize = (str: string) => {
+		const chars = str.split('');
+		chars[0] = chars[0].toUpperCase();
+		return chars.join('');
+	};
+
+	if (['transcribe', 'translate'].includes(operation)) {
+		resource = 'recording';
+	}
+
+	if (operation === 'list') {
+		resource = resource + 's';
+	}
+
+	return `${capitalize(operation)} ${capitalize(resource)}`;
 };
 
-const configureNodeInputs = (useCustomTools: boolean) => {
-	if (useCustomTools) {
+const configureNodeInputs = (resource: string, operation: string) => {
+	if (['assistant', 'text'].includes(resource) && operation === 'message') {
 		return [
 			{ type: NodeConnectionType.Main },
 			{ type: NodeConnectionType.AiTool, displayName: 'Tools' },
@@ -63,8 +60,8 @@ export const versionDescription: INodeTypeDescription = {
 	icon: 'file:openAi.svg',
 	group: ['transform'],
 	version: 1,
-	subtitle: `={{(${prettifyOperation})($parameter.operation)}}`,
-	description: 'E.g. message an assistant. (The other AI nodes can also use OpenAI models)',
+	subtitle: `={{(${prettifyOperation})($parameter.resource, $parameter.operation)}}`,
+	description: 'Message an assistant or GPT, analyse images, generate audio, etc.',
 	defaults: {
 		name: 'OpenAI',
 	},
@@ -82,7 +79,7 @@ export const versionDescription: INodeTypeDescription = {
 			],
 		},
 	},
-	inputs: `={{(${configureNodeInputs})($parameter.useCustomTools)}}`,
+	inputs: `={{(${configureNodeInputs})($parameter.resource, $parameter.operation)}}`,
 	outputs: ['main'],
 	credentials: [
 		{

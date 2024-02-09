@@ -24,18 +24,9 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Use Custom Tools',
-		name: 'useCustomTools',
-		type: 'boolean',
-		description:
-			'Whether to connect some custom tools to this node on the canvas, model may use them to generate the response',
-		default: false,
-	},
-	{
-		displayName: 'Connect your own custom tools to this node on the canvas',
+		displayName: 'Connect your own custom n8n tools to this node on the canvas',
 		name: 'noticeTools',
 		type: 'notice',
-		displayOptions: { show: { useCustomTools: [true] } },
 		default: '',
 	},
 	{
@@ -73,7 +64,7 @@ const properties: INodeProperties[] = [
 
 const displayOptions = {
 	show: {
-		operation: ['messageAssistant'],
+		operation: ['message'],
 		resource: ['assistant'],
 	},
 };
@@ -85,7 +76,6 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	const input = this.getNodeParameter('text', i) as string;
 	const assistantId = this.getNodeParameter('assistantId', i, '', { extractValue: true }) as string;
-	const useCustomTools = this.getNodeParameter('useCustomTools', i, false) as boolean;
 
 	const options = this.getNodeParameter('options', i, {}) as {
 		baseURL?: string;
@@ -106,10 +96,9 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	const agent = new OpenAIAssistantRunnable({ assistantId, client, asAgent: true });
 
-	let tools;
+	const tools = ((await this.getInputConnectionData(NodeConnectionType.AiTool, 0)) as Tool[]) || [];
 
-	if (useCustomTools) {
-		tools = (await this.getInputConnectionData(NodeConnectionType.AiTool, 0)) as Tool[];
+	if (tools.length) {
 		const transformedConnectedTools = tools?.map(formatToOpenAIAssistantTool) ?? [];
 		const nativeToolsParsed: OpenAIToolType = [];
 

@@ -1,10 +1,10 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import * as generateAudio from './generateAudio.operation';
-import * as transcribeRecording from './transcribeRecording.operation';
-import * as translateRecording from './translateRecording.operation';
+import * as generate from './generate.operation';
+import * as transcribe from './transcribe.operation';
+import * as translate from './translate.operation';
 
-export { generateAudio, transcribeRecording, translateRecording };
+export { generate, transcribe, translate };
 
 export const description: INodeProperties[] = [
 	{
@@ -15,24 +15,24 @@ export const description: INodeProperties[] = [
 		options: [
 			{
 				name: 'Generate Audio',
-				value: 'generateAudio',
+				value: 'generate',
 				action: 'Generate audio',
 				description: 'Creates audio from a text prompt',
 			},
 			{
 				name: 'Transcribe a Recording',
-				value: 'transcribeRecording',
+				value: 'transcribe',
 				action: 'Transcribe a recording',
 				description: 'Transcribes audio into the text',
 			},
 			{
 				name: 'Translate a Recording',
-				value: 'translateRecording',
+				value: 'translate',
 				action: 'Translate a recording',
 				description: 'Translate audio into the text in the english language',
 			},
 		],
-		default: 'messageModel',
+		default: 'generate',
 		displayOptions: {
 			show: {
 				resource: ['audio'],
@@ -47,11 +47,11 @@ export const description: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['audio'],
-				operation: ['translateRecording', 'transcribeRecording'],
+				operation: ['translate', 'transcribe'],
 			},
 		},
 	},
-	...generateAudio.description,
-	...transcribeRecording.description,
-	...translateRecording.description,
+	...generate.description,
+	...transcribe.description,
+	...translate.description,
 ];

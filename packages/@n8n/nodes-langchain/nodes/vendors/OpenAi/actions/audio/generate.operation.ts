@@ -123,7 +123,7 @@ const properties: INodeProperties[] = [
 
 const displayOptions = {
 	show: {
-		operation: ['generateAudio'],
+		operation: ['generate'],
 		resource: ['audio'],
 	},
 };

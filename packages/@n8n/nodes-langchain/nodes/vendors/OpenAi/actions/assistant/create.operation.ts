@@ -54,6 +54,7 @@ const properties: INodeProperties[] = [
 		description:
 			'Whether to augments the assistant with knowledge from outside its model, such as proprietary product information or documents, find more <a href="https://platform.openai.com/docs/assistants/tools/knowledge-retrieval" target="_blank">here</a>',
 	},
+	//we want to display Files selector only when codeInterpreter true or knowledgeRetrieval true or both
 	{
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
 		displayName: 'Files',
@@ -67,12 +68,85 @@ const properties: INodeProperties[] = [
 		},
 		default: [],
 		hint: "Add more files by using the 'Upload a File' operation",
+		displayOptions: {
+			show: {
+				codeInterpreter: [true],
+			},
+			hide: {
+				knowledgeRetrieval: [true],
+			},
+		},
+	},
+	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
+		displayName: 'Files',
+		name: 'file_ids',
+		type: 'multiOptions',
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-multi-options
+		description:
+			'The files to be used by the assistant, there can be a maximum of 20 files attached to the assistant',
+		typeOptions: {
+			loadOptionsMethod: 'getFiles',
+		},
+		default: [],
+		hint: "Add more files by using the 'Upload a File' operation",
+		displayOptions: {
+			show: {
+				knowledgeRetrieval: [true],
+			},
+			hide: {
+				codeInterpreter: [true],
+			},
+		},
+	},
+	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
+		displayName: 'Files',
+		name: 'file_ids',
+		type: 'multiOptions',
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-multi-options
+		description:
+			'The files to be used by the assistant, there can be a maximum of 20 files attached to the assistant',
+		typeOptions: {
+			loadOptionsMethod: 'getFiles',
+		},
+		default: [],
+		hint: "Add more files by using the 'Upload a File' operation",
+		displayOptions: {
+			show: {
+				knowledgeRetrieval: [true],
+				codeInterpreter: [true],
+			},
+		},
+	},
+	{
+		displayName: "Add custom n8n tools when using the 'Message Assistant' operation",
+		name: 'noticeTools',
+		type: 'notice',
+		default: '',
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		placeholder: 'Add Option',
+		type: 'collection',
+		default: {},
+		options: [
+			{
+				displayName: 'Fail if Assistant Already Exists',
+				name: 'failIfExists',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to fail an operation if the assistant with the same name already exists',
+			},
+		],
 	},
 ];
 
 const displayOptions = {
 	show: {
-		operation: ['createAssistant'],
+		operation: ['create'],
 		resource: ['assistant'],
 	},
 };
@@ -87,6 +161,46 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const codeInterpreter = this.getNodeParameter('codeInterpreter', i) as boolean;
 	const knowledgeRetrieval = this.getNodeParameter('knowledgeRetrieval', i) as boolean;
 	const file_ids = this.getNodeParameter('file_ids', i, []) as string[];
+	const options = this.getNodeParameter('options', i, {});
+
+	if (options.failIfExists) {
+		const assistants: string[] = [];
+
+		let has_more = true;
+		let after: string | undefined;
+
+		do {
+			const response = await apiRequest.call(this, 'GET', '/assistants', {
+				headers: {
+					'OpenAI-Beta': 'assistants=v1',
+				},
+				qs: {
+					limit: 100,
+					after,
+				},
+			});
+
+			for (const assistant of response.data || []) {
+				assistants.push(assistant.name);
+			}
+
+			has_more = response.has_more;
+
+			if (has_more) {
+				after = response.last_id as string;
+			} else {
+				break;
+			}
+		} while (has_more);
+
+		if (assistants.includes(name)) {
+			throw new NodeOperationError(
+				this.getNode(),
+				`An assistant with the same name '${name}' already exists`,
+				{ itemIndex: i },
+			);
+		}
+	}
 
 	if (file_ids.length > 20) {
 		throw new NodeOperationError(

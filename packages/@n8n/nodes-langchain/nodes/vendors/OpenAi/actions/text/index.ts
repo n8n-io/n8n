@@ -1,9 +1,9 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import * as createModeration from './createModeration.operation';
-import * as messageModel from './messageModel.operation';
+import * as classify from './classify.operation';
+import * as message from './message.operation';
 
-export { createModeration, messageModel };
+export { classify, message };
 
 export const description: INodeProperties[] = [
 	{
@@ -14,19 +14,19 @@ export const description: INodeProperties[] = [
 		options: [
 			{
 				name: 'Message a Model',
-				value: 'messageModel',
+				value: 'message',
 				action: 'Message a model',
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-excess-final-period
 				description: 'Create a completion with GPT 3, 4, etc.',
 			},
 			{
 				name: 'Classify Text for Violations',
-				value: 'createModeration',
+				value: 'classify',
 				action: 'Classify text for violations',
 				description: 'Check whether content complies with usage policies',
 			},
 		],
-		default: 'messageModel',
+		default: 'message',
 		displayOptions: {
 			show: {
 				resource: ['text'],
@@ -34,6 +34,6 @@ export const description: INodeProperties[] = [
 		},
 	},
 
-	...createModeration.description,
-	...messageModel.description,
+	...classify.description,
+	...message.description,
 ];

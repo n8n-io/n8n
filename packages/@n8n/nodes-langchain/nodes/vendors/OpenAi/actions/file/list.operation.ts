@@ -43,7 +43,7 @@ const properties: INodeProperties[] = [
 
 const displayOptions = {
 	show: {
-		operation: ['listFiles'],
+		operation: ['list'],
 		resource: ['file'],
 	},
 };

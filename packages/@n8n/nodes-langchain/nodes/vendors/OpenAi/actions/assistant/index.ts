@@ -1,12 +1,12 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import * as createAssistant from './createAssistant.operation';
+import * as create from './create.operation';
 import * as deleteAssistant from './deleteAssistant.operation';
-import * as messageAssistant from './messageAssistant.operation';
-import * as listAssistants from './listAssistants.operation';
-import * as updateAssistant from './updateAssistant.operation';
+import * as message from './message.operation';
+import * as list from './list.operation';
+import * as update from './update.operation';
 
-export { createAssistant, deleteAssistant, messageAssistant, listAssistants, updateAssistant };
+export { create, deleteAssistant, message, list, update };
 
 export const description: INodeProperties[] = [
 	{
@@ -17,7 +17,7 @@ export const description: INodeProperties[] = [
 		options: [
 			{
 				name: 'Create an Assistant',
-				value: 'createAssistant',
+				value: 'create',
 				action: 'Create an assistant',
 				description: 'Create a new assistant',
 			},
@@ -29,24 +29,24 @@ export const description: INodeProperties[] = [
 			},
 			{
 				name: 'List Assistants',
-				value: 'listAssistants',
+				value: 'list',
 				action: 'List assistants',
 				description: 'List assistants in the organization',
 			},
 			{
 				name: 'Message an Assistant',
-				value: 'messageAssistant',
+				value: 'message',
 				action: 'Message an assistant',
 				description: 'Send messages to an assistant',
 			},
 			{
 				name: 'Update an Assistant',
-				value: 'updateAssistant',
+				value: 'update',
 				action: 'Update an assistant',
 				description: 'Update an existing assistant',
 			},
 		],
-		default: 'messageModel',
+		default: 'message',
 		displayOptions: {
 			show: {
 				resource: ['assistant'],
@@ -54,9 +54,9 @@ export const description: INodeProperties[] = [
 		},
 	},
 
-	...createAssistant.description,
+	...create.description,
 	...deleteAssistant.description,
-	...messageAssistant.description,
-	...listAssistants.description,
-	...updateAssistant.description,
+	...message.description,
+	...list.description,
+	...update.description,
 ];

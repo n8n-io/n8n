@@ -46,7 +46,7 @@ const properties: INodeProperties[] = [
 					loadOptionsMethod: 'getFiles',
 				},
 				default: [],
-				hint: "Add more files by using the 'Upload a File' operation",
+				hint: "Add more files by using the 'Upload a File' operation, any existing files not selected here will be removed.",
 			},
 			{
 				displayName: 'Instructions',
@@ -90,7 +90,7 @@ const properties: INodeProperties[] = [
 
 const displayOptions = {
 	show: {
-		operation: ['updateAssistant'],
+		operation: ['update'],
 		resource: ['assistant'],
 	},
 };

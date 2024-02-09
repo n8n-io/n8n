@@ -181,7 +181,7 @@ const properties: INodeProperties[] = [
 
 const displayOptions = {
 	show: {
-		operation: ['generateImage'],
+		operation: ['generate'],
 		resource: ['image'],
 	},
 };

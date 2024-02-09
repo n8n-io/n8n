@@ -14,7 +14,7 @@ const properties: INodeProperties[] = [
 
 const displayOptions = {
 	show: {
-		operation: ['listAssistants'],
+		operation: ['list'],
 		resource: ['assistant'],
 	},
 };
@@ -39,6 +39,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		});
 
 		for (const assistant of response.data || []) {
+			try {
+				assistant.created_at = new Date(assistant.created_at * 1000).toISOString();
+			} catch (error) {}
+
 			returnData.push({ json: assistant });
 		}
 

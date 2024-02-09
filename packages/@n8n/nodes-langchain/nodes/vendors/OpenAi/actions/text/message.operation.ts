@@ -70,21 +70,6 @@ const properties: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Use Custom Tools',
-		name: 'useCustomTools',
-		type: 'boolean',
-		description:
-			'Whether to connect some custom tools to this node on the canvas, model may use them to generate the response',
-		default: false,
-	},
-	{
-		displayName: 'Connect your own custom tools to this node on the canvas',
-		name: 'noticeTools',
-		type: 'notice',
-		displayOptions: { show: { useCustomTools: [true] } },
-		default: '',
-	},
-	{
 		displayName: 'Simplify Output',
 		name: 'simplify',
 		type: 'boolean',
@@ -103,6 +88,12 @@ const properties: INodeProperties[] = [
 				modelId: ['gpt-3.5-turbo-1106', 'gpt-4-1106-preview'],
 			},
 		},
+	},
+	{
+		displayName: 'Connect your own custom n8n tools to this node on the canvas',
+		name: 'noticeTools',
+		type: 'notice',
+		default: '',
 	},
 	{
 		displayName: 'Options',
@@ -172,7 +163,7 @@ const properties: INodeProperties[] = [
 
 const displayOptions = {
 	show: {
-		operation: ['messageModel'],
+		operation: ['message'],
 		resource: ['text'],
 	},
 };
@@ -184,7 +175,6 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	let messages = this.getNodeParameter('messages.values', i, []) as IDataObject[];
 	const options = this.getNodeParameter('options', i, {});
 	const jsonOutput = this.getNodeParameter('jsonOutput', i, false) as boolean;
-	const useCustomTools = this.getNodeParameter('useCustomTools', i, false) as boolean;
 
 	let response_format;
 	if (jsonOutput) {
@@ -198,11 +188,11 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		];
 	}
 
-	let externalTools;
+	const externalTools =
+		((await this.getInputConnectionData(NodeConnectionType.AiTool, 0)) as Tool[]) || [];
 	let tools;
 
-	if (useCustomTools) {
-		externalTools = (await this.getInputConnectionData(NodeConnectionType.AiTool, 0)) as Tool[];
+	if (externalTools.length) {
 		tools = externalTools.length ? externalTools?.map(formatToOpenAIAssistantTool) : undefined;
 	}
 
