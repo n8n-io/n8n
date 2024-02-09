@@ -1,9 +1,11 @@
 import { Service } from 'typedi';
-import type { EntityManager, FindManyOptions } from 'typeorm';
+import type { DeepPartial, EntityManager, FindManyOptions } from 'typeorm';
 import { DataSource, In, IsNull, Not, Repository } from 'typeorm';
 import type { ListQuery } from '@/requests';
 
 import { type GlobalRole, User } from '../entities/User';
+import { Project } from '../entities/Project';
+import { ProjectRelation } from '../entities/ProjectRelation';
 @Service()
 export class UserRepository extends Repository<User> {
 	constructor(dataSource: DataSource) {
@@ -103,5 +105,34 @@ export class UserRepository extends Repository<User> {
 			select: ['email'],
 			where: { id: In(userIds), password: Not(IsNull()) },
 		});
+	}
+
+	async createUserWithProject(
+		user: DeepPartial<User>,
+		transactionManager?: EntityManager,
+	): Promise<{ user: User; project: Project }> {
+		const createInner = async (entityManager: EntityManager) => {
+			const newUser = entityManager.create(User, user);
+			const savedUser = await entityManager.save<User>(newUser);
+			const savedProject = await entityManager.save<Project>(
+				entityManager.create(Project, {
+					type: 'personal',
+				}),
+			);
+			await entityManager.save<ProjectRelation>(
+				entityManager.create(ProjectRelation, {
+					projectId: savedProject.id,
+					userId: savedUser.id,
+					role: 'project:personalOwner',
+				}),
+			);
+			return { user: savedUser, project: savedProject };
+		};
+		if (transactionManager) {
+			return await createInner(transactionManager);
+		}
+		// TODO: use a transactions
+		// This is blocked by TypeORM having concurrency issues with transactions
+		return await createInner(this.manager);
 	}
 }

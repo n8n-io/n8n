@@ -1,5 +1,5 @@
 import { Container, Service } from 'typedi';
-import { type AssignableRole, User } from '@db/entities/User';
+import type { AssignableRole, User } from '@db/entities/User';
 import type { IUserSettings } from 'n8n-workflow';
 import { UserRepository } from '@db/repositories/user.repository';
 import type { PublicUser } from '@/Interfaces';
@@ -14,17 +14,12 @@ import { UrlService } from '@/services/url.service';
 import { ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 import type { UserRequest } from '@/requests';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import type { DeepPartial } from 'typeorm';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
-import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
 
 @Service()
 export class UserService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly userRepository: UserRepository,
-		private readonly projectRepository: ProjectRepository,
-		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly jwtService: JwtService,
 		private readonly mailer: UserManagementMailer,
 		private readonly urlService: UrlService,
@@ -251,8 +246,10 @@ export class UserService {
 				async (transactionManager) =>
 					await Promise.all(
 						toCreateUsers.map(async ({ email, role }) => {
-							const newUser = transactionManager.create(User, { email, role });
-							const savedUser = await transactionManager.save<User>(newUser);
+							const { user: savedUser } = await this.userRepository.createUserWithProject(
+								{ email, role },
+								transactionManager,
+							);
 							createdUsers.set(email, savedUser.id);
 							return savedUser;
 						}),
@@ -273,24 +270,5 @@ export class UserService {
 		);
 
 		return { usersInvited, usersCreated: toCreateUsers.map(({ email }) => email) };
-	}
-
-	async create(userDetails: DeepPartial<User>): Promise<User> {
-		const userEntity = this.userRepository.create(userDetails);
-		const user = await this.userRepository.save(userEntity);
-
-		const projectEntity = this.projectRepository.create({ type: 'personal' });
-		const project = await this.projectRepository.save(projectEntity);
-
-		const projectRelationEntity = this.projectRelationRepository.create({
-			user,
-			userId: user.id,
-			project,
-			projectId: project.id,
-			role: 'project:admin',
-		});
-		await this.projectRelationRepository.save(projectRelationEntity);
-
-		return user;
 	}
 }
