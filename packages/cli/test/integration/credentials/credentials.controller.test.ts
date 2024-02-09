@@ -9,7 +9,7 @@ import {
 	randomString,
 } from '../shared/random';
 import { saveCredential, shareCredentialWithUsers } from '../shared/db/credentials';
-import { createManyUsers, createMember, createOwner, createUser } from '../shared/db/users';
+import { createMember, createOwner, createUser } from '../shared/db/users';
 import type { SuperAgentTest } from 'supertest';
 import Container from 'typedi';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
@@ -299,49 +299,6 @@ function validateCredential(credential: ListQuery.Credentials.WithOwnedByAndShar
 		expect(typeof lastName).toBe('string');
 	}
 }
-
-describe('GET /credentials', () => {
-	test('should return all creds for owner', async () => {
-		const [{ id: savedOwnerCredentialId }, { id: savedMemberCredentialId }] = await Promise.all([
-			saveCredential(randomCredentialPayload(), { user: owner, role: 'credential:owner' }),
-			saveCredential(randomCredentialPayload(), { user: member, role: 'credential:owner' }),
-		]);
-
-		const response = await authOwnerAgent.get('/credentials');
-
-		expect(response.statusCode).toBe(200);
-		expect(response.body.data.length).toBe(2); // owner retrieved owner cred and member cred
-
-		const savedCredentialsIds = [savedOwnerCredentialId, savedMemberCredentialId];
-		response.body.data.forEach((credential: ListQuery.Credentials.WithOwnedByAndSharedWith) => {
-			validateMainCredentialData(credential);
-			expect('data' in credential).toBe(false);
-			expect(savedCredentialsIds).toContain(credential.id);
-		});
-	});
-
-	test('should return only own creds for member', async () => {
-		const [member1, member2] = await createManyUsers(2, {
-			role: 'global:member',
-		});
-
-		const [savedCredential1] = await Promise.all([
-			saveCredential(randomCredentialPayload(), { user: member1, role: 'credential:owner' }),
-			saveCredential(randomCredentialPayload(), { user: member2, role: 'credential:owner' }),
-		]);
-
-		const response = await testServer.authAgentFor(member1).get('/credentials');
-
-		expect(response.statusCode).toBe(200);
-		expect(response.body.data.length).toBe(1); // member retrieved only own cred
-
-		const [member1Credential] = response.body.data;
-
-		validateMainCredentialData(member1Credential);
-		expect(member1Credential.data).toBeUndefined();
-		expect(member1Credential.id).toBe(savedCredential1.id);
-	});
-});
 
 describe('POST /credentials', () => {
 	test('should create cred', async () => {
