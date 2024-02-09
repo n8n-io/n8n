@@ -380,20 +380,20 @@ export class WorkflowDataProxy {
 					if (['binary', 'data', 'json'].includes(name)) {
 						const executionData = that.getNodeExecutionData(nodeName, shortSyntax, undefined);
 
-						if (that.workflow.getParentNodes(nodeName).length === 0) {
-							throw new ExpressionError('Invalid expression', {
-								messageTemplate: 'Invalid expression under ‘%%PARAMETER%%’',
-								functionality: 'pairedItem',
-								description:
-									'This node has no input data. Please make sure this node is connected to another node.',
-								nodeCause: nodeName,
-								runIndex: that.runIndex,
-								itemIndex: that.itemIndex,
-								type: 'no_input_connection',
-							});
-						}
-
 						if (executionData.length === 0) {
+							if (that.workflow.getParentNodes(nodeName).length === 0) {
+								throw new ExpressionError('No execution data available', {
+									messageTemplate:
+										'No execution data available to expression under ‘%%PARAMETER%%’',
+									description:
+										'This node has no input data. Please make sure this node is connected to another node.',
+									nodeCause: nodeName,
+									runIndex: that.runIndex,
+									itemIndex: that.itemIndex,
+									type: 'no_input_connection',
+								});
+							}
+
 							throw new ExpressionError('No execution data available', {
 								runIndex: that.runIndex,
 								itemIndex: that.itemIndex,
@@ -959,10 +959,6 @@ export class WorkflowDataProxy {
 						!that?.runExecutionData?.resultData?.runData.hasOwnProperty(nodeName) &&
 						!that.workflow.getPinDataOfNode(nodeName)
 					) {
-						console.log(nodeName, {
-							pin: that.workflow.getPinDataOfNode(nodeName),
-							exec: that?.runExecutionData?.resultData?.runData,
-						});
 						throw createExpressionError(`no data, execute "${nodeName}" node first`, {
 							type: 'no_node_execution_data',
 							nodeCause: nodeName,
