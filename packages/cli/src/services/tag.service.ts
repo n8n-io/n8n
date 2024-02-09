@@ -64,6 +64,12 @@ export class TagService {
 		}) as Promise<GetAllResult<T>>);
 	}
 
+	async getById(id: string) {
+		return await this.tagRepository.findOneOrFail({
+			where: { id },
+		});
+	}
+
 	/**
 	 * Sort tags based on the order of the tag IDs in the request.
 	 */
