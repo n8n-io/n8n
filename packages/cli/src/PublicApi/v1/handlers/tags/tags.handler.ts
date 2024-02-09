@@ -1,6 +1,6 @@
 import type express from 'express';
 
-import { TagEntity } from '@db/entities/TagEntity';
+import type { TagEntity } from '@db/entities/TagEntity';
 import { authorize, validCursor } from '../../shared/middlewares/global.middleware';
 import type { TagRequest } from '../../../types';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
