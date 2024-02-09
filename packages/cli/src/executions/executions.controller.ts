@@ -46,7 +46,7 @@ export class ExecutionsController {
 		const noStatus = !query.status || query.status.length === 0;
 		const noRange = !query.range.lastId || !query.range.firstId;
 
-		if (noStatus || noRange) {
+		if (noStatus && noRange) {
 			return await this.executionService.findAllActiveAndLatestFinished(query);
 		}
 
