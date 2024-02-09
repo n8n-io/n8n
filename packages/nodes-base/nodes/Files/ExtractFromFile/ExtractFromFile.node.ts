@@ -44,16 +44,16 @@ export class ExtractFromFile implements INodeType {
 						description: 'Transform a table in an HTML file into output items',
 					},
 					{
-						name: 'Extract From JSON',
-						value: 'fromJson',
-						action: 'Extract from JSON',
-						description: 'Transform a JSON file into output items',
-					},
-					{
 						name: 'Extract From ICS',
 						value: 'fromIcs',
 						action: 'Extract from ICS',
 						description: 'Transform a ICS file into output items',
+					},
+					{
+						name: 'Extract From JSON',
+						value: 'fromJson',
+						action: 'Extract from JSON',
+						description: 'Transform a JSON file into output items',
 					},
 					{
 						name: 'Extract From ODS',
