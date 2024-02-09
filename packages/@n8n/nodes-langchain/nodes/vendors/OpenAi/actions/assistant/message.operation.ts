@@ -13,14 +13,39 @@ import { assistantRLC } from '../descriptions';
 const properties: INodeProperties[] = [
 	assistantRLC,
 	{
+		displayName: 'Prompt',
+		name: 'prompt',
+		type: 'options',
+		options: [
+			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+				name: 'Take from previous node automatically',
+				value: 'auto',
+				description: 'Looks for an input field called chatInput',
+			},
+			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+				name: 'Define below',
+				value: 'define',
+				description: 'Use an expression to reference data in previous nodes or enter static text',
+			},
+		],
+		default: 'auto',
+	},
+	{
 		displayName: 'Text',
 		name: 'text',
 		type: 'string',
 		required: true,
-		default: '={{ $json.chatInput }}',
+		default: '',
 		placeholder: 'e.g. Hello, how can you help me?',
 		typeOptions: {
 			rows: 2,
+		},
+		displayOptions: {
+			show: {
+				prompt: ['define'],
+			},
 		},
 	},
 	{
@@ -74,7 +99,22 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const credentials = await this.getCredentials('openAiApi');
 
-	const input = this.getNodeParameter('text', i) as string;
+	const prompt = this.getNodeParameter('prompt', i) as string;
+
+	let input;
+	if (prompt === 'auto') {
+		input = this.evaluateExpression('{{ $json["chatInput"] }}', i) as string;
+	} else {
+		input = this.getNodeParameter('text', i) as string;
+	}
+
+	if (input === undefined) {
+		throw new NodeOperationError(this.getNode(), 'No prompt specified', {
+			description:
+				"Expected to find the prompt in an input field called 'chatInput' (this is what the chat trigger node outputs). To use something else, change the 'Prompt' parameter",
+		});
+	}
+
 	const assistantId = this.getNodeParameter('assistantId', i, '', { extractValue: true }) as string;
 
 	const options = this.getNodeParameter('options', i, {}) as {
@@ -82,10 +122,6 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		maxRetries: number;
 		timeout: number;
 	};
-
-	if (input === undefined) {
-		throw new NodeOperationError(this.getNode(), "The 'text' parameter is empty.");
-	}
 
 	const client = new OpenAIClient({
 		apiKey: credentials.apiKey as string,
