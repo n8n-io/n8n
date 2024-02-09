@@ -80,6 +80,7 @@ describe('UsageMetricsRepository', () => {
 
 			expect(metrics).toStrictEqual({
 				enabledUsers: 1,
+				totalUsers: 1,
 				totalCredentials: 0,
 				totalWorkflows: 3,
 				activeWorkflows: 3,
