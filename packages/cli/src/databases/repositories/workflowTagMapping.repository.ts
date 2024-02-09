@@ -1,5 +1,5 @@
 import { Service } from 'typedi';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, Repository } from '@n8n/typeorm';
 import { WorkflowTagMapping } from '../entities/WorkflowTagMapping';
 
 @Service()
@@ -9,12 +9,12 @@ export class WorkflowTagMappingRepository extends Repository<WorkflowTagMapping>
 	}
 
 	async overwriteTaggings(workflowId: string, tagIds: string[]) {
-		return await this.manager.transaction(async () => {
-			await this.delete({ workflowId });
+		return await this.manager.transaction(async (tx) => {
+			await tx.delete(WorkflowTagMapping, { workflowId });
 
 			const taggings = tagIds.map((tagId) => this.create({ workflowId, tagId }));
 
-			return await this.insert(taggings);
+			return await tx.insert(WorkflowTagMapping, taggings);
 		});
 	}
 }

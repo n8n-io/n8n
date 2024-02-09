@@ -80,8 +80,6 @@ export class WorkflowService {
 			);
 		}
 
-		const oldState = shared.workflow.active;
-
 		if (
 			!forceSave &&
 			workflow.versionId !== '' &&
@@ -226,17 +224,6 @@ export class WorkflowService {
 		}
 
 		await this.orchestrationService.init();
-
-		const newState = updatedWorkflow.active;
-
-		if (this.orchestrationService.isMultiMainSetupEnabled && oldState !== newState) {
-			await this.orchestrationService.publish('workflowActiveStateChanged', {
-				workflowId,
-				oldState,
-				newState,
-				versionId: shared.workflow.versionId,
-			});
-		}
 
 		return updatedWorkflow;
 	}

@@ -21,6 +21,7 @@ export class FilterV2 implements INodeType {
 			inputs: ['main'],
 			outputs: ['main'],
 			outputNames: ['Kept', 'Discarded'],
+			parameterPane: 'wide',
 			properties: [
 				{
 					displayName: 'Conditions',

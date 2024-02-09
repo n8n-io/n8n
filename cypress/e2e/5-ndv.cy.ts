@@ -306,7 +306,7 @@ describe('NDV', () => {
 
 		ndv.getters.parameterInput('remoteOptions').click();
 
-		ndv.getters.parameterInputIssues('remoteOptions').realHover({ scrollBehavior: false});
+		ndv.getters.parameterInputIssues('remoteOptions').realHover({ scrollBehavior: false });
 		// Remote options dropdown should not be visible
 		ndv.getters.parameterInput('remoteOptions').find('.el-select').should('not.exist');
 	});
@@ -509,12 +509,12 @@ describe('NDV', () => {
 
 		workflowPage.actions.openNode('Edit Fields (old)');
 		ndv.actions.openSettings();
-		ndv.getters.nodeVersion().should('have.text', 'Set node version 2 (Latest version: 3.2)');
+		ndv.getters.nodeVersion().should('have.text', 'Set node version 2 (Latest version: 3.3)');
 		ndv.actions.close();
 
 		workflowPage.actions.openNode('Edit Fields (latest)');
 		ndv.actions.openSettings();
-		ndv.getters.nodeVersion().should('have.text', 'Edit Fields (Set) node version 3.2 (Latest)');
+		ndv.getters.nodeVersion().should('have.text', 'Edit Fields (Set) node version 3.3 (Latest)');
 		ndv.actions.close();
 
 		workflowPage.actions.openNode('Function');

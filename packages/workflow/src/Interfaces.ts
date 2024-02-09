@@ -787,6 +787,7 @@ type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
 	getInputSourceData(inputIndex?: number, inputName?: string): ISourceData;
 	getExecutionCancelSignal(): AbortSignal | undefined;
 	onExecutionCancellation(handler: () => unknown): void;
+	logAiEvent(eventName: EventNamesAiNodesType, msg?: string | undefined): Promise<void>;
 };
 
 // TODO: Create later own type only for Config-Nodes
@@ -1083,6 +1084,7 @@ export type NodePropertyTypes =
 	| 'curlImport'
 	| 'resourceMapper'
 	| 'filter'
+	| 'assignmentCollection'
 	| 'credentials';
 
 export type CodeAutocompleteTypes = 'function' | 'functionItem';
@@ -1130,6 +1132,7 @@ export interface INodePropertyTypeOptions {
 	expirable?: boolean; // Supported by: hidden (only in the credentials)
 	resourceMapper?: ResourceMapperTypeOptions;
 	filter?: FilterTypeOptions;
+	assignment?: AssignmentTypeOptions;
 	[key: string]: any;
 }
 
@@ -1159,6 +1162,10 @@ export type FilterTypeOptions = Partial<{
 	allowedCombinators: NonEmptyArray<FilterTypeCombinator>; // default = ['and', 'or']
 	maxConditions: number; // default = 10
 	typeValidation: 'strict' | 'loose' | {}; // default = strict, `| {}` is a TypeScript trick to allow custom strings, but still give autocomplete
+}>;
+
+export type AssignmentTypeOptions = Partial<{
+	hideType?: boolean; // visible by default
 }>;
 
 export type DisplayCondition =
@@ -1939,6 +1946,24 @@ export interface IWorkflowExecuteHooks {
 	sendResponse?: Array<(response: IExecuteResponsePromiseData) => Promise<void>>;
 }
 
+export const eventNamesAiNodes = [
+	'n8n.ai.memory.get.messages',
+	'n8n.ai.memory.added.message',
+	'n8n.ai.output.parser.get.instructions',
+	'n8n.ai.output.parser.parsed',
+	'n8n.ai.retriever.get.relevant.documents',
+	'n8n.ai.embeddings.embedded.document',
+	'n8n.ai.embeddings.embedded.query',
+	'n8n.ai.document.processed',
+	'n8n.ai.text.splitter.split',
+	'n8n.ai.tool.called',
+	'n8n.ai.vector.store.searched',
+	'n8n.ai.llm.generated',
+	'n8n.ai.vector.store.populated',
+] as const;
+
+export type EventNamesAiNodesType = (typeof eventNamesAiNodes)[number];
+
 export interface IWorkflowExecuteAdditionalData {
 	credentialsHelper: ICredentialsHelper;
 	executeWorkflow: (
@@ -1972,6 +1997,17 @@ export interface IWorkflowExecuteAdditionalData {
 	userId: string;
 	variables: IDataObject;
 	secretsHelpers: SecretsHelpersBase;
+	logAiEvent: (
+		eventName: EventNamesAiNodesType,
+		payload: {
+			msg?: string;
+			executionId: string;
+			nodeName: string;
+			workflowId?: string;
+			workflowName: string;
+			nodeType?: string;
+		},
+	) => Promise<void>;
 }
 
 export type WorkflowExecuteMode =
@@ -1986,10 +2022,10 @@ export type WorkflowExecuteMode =
 
 export type WorkflowActivateMode =
 	| 'init'
-	| 'create'
+	| 'create' // unused
 	| 'update'
 	| 'activate'
-	| 'manual'
+	| 'manual' // unused
 	| 'leadershipChange';
 
 export interface IWorkflowHooksOptionalParameters {
@@ -2287,6 +2323,17 @@ export type FilterValue = {
 	combinator: FilterTypeCombinator;
 };
 
+export type AssignmentCollectionValue = {
+	assignments: AssignmentValue[];
+};
+
+export type AssignmentValue = {
+	id: string;
+	name: string;
+	value: NodeParameterValue;
+	type?: string;
+};
+
 export interface ExecutionOptions {
 	limit?: number;
 }
@@ -2463,3 +2510,5 @@ export type BannerName =
 	| 'EMAIL_CONFIRMATION';
 
 export type Functionality = 'regular' | 'configuration-node';
+
+export type Result<T, E> = { ok: true; result: T } | { ok: false; error: E };

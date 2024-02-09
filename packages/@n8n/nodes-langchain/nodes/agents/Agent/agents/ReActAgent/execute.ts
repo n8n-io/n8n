@@ -11,7 +11,8 @@ import type { Tool } from 'langchain/tools';
 import type { BaseOutputParser } from 'langchain/schema/output_parser';
 import { PromptTemplate } from 'langchain/prompts';
 import { CombiningOutputParser } from 'langchain/output_parsers';
-import { BaseChatModel } from 'langchain/chat_models/base';
+import type { BaseChatModel } from 'langchain/chat_models/base';
+import { isChatInstance } from '../../../../../utils/helpers';
 
 export async function reActAgentAgentExecute(
 	this: IExecuteFunctions,
@@ -38,7 +39,7 @@ export async function reActAgentAgentExecute(
 	};
 	let agent: ChatAgent | ZeroShotAgent;
 
-	if (model instanceof BaseChatModel) {
+	if (isChatInstance(model)) {
 		agent = ChatAgent.fromLLMAndTools(model, tools, {
 			prefix: options.prefix,
 			suffix: options.suffixChat,

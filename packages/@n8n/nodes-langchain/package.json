@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "0.12.0",
+  "version": "0.13.0",
   "description": "",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -131,6 +131,7 @@
     "@huggingface/inference": "2.6.4",
     "@langchain/core": "0.1.8",
     "@langchain/mistralai": "0.0.6",
+    "@n8n/typeorm": "0.3.20",
     "@n8n/vm2": "3.9.20",
     "@pinecone-database/pinecone": "1.1.2",
     "@qdrant/js-client-rest": "1.7.0",
@@ -152,9 +153,8 @@
     "pdf-parse": "1.1.1",
     "pg": "8.11.3",
     "redis": "4.6.12",
-    "sqlite3": "5.1.6",
+    "sqlite3": "5.1.7",
     "temp": "0.9.4",
-    "typeorm": "0.3.17",
     "zod": "3.22.4",
     "zod-to-json-schema": "3.22.0"
   }

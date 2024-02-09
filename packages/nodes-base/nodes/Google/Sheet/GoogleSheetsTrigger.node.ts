@@ -473,7 +473,7 @@ export class GoogleSheetsTrigger implements INodeType {
 
 			const [from, to] = range.split(':');
 			let keyRange = `${from}${keyRow}:${to}${keyRow}`;
-			let rangeToCheck = `${from}${startIndex}:${to}`;
+			let rangeToCheck = `${from}${keyRow}:${to}`;
 
 			if (options.dataLocationOnSheet) {
 				const locationDefine = (options.dataLocationOnSheet as IDataObject).values as IDataObject;
@@ -503,7 +503,7 @@ export class GoogleSheetsTrigger implements INodeType {
 					rangeToCheck = `${cellDataFrom[1]}${+cellDataFrom[2] + 1}:${rangeTo}`;
 				} else {
 					keyRange = `${cellDataFrom[1]}${keyRow}:${cellDataTo[1]}${keyRow}`;
-					rangeToCheck = `${cellDataFrom[1]}${startIndex}:${rangeTo}`;
+					rangeToCheck = `${cellDataFrom[1]}${keyRow}:${rangeTo}`;
 				}
 			}
 

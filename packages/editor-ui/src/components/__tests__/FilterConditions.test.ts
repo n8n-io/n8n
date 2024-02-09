@@ -257,9 +257,7 @@ describe('FilterConditions.vue', () => {
 		let conditions = await findAllByTestId('filter-condition');
 		expect(conditions.length).toEqual(2);
 
-		const removeButton = conditions[0].querySelector('[data-test-id="filter-remove-condition"]');
-
-		await userEvent.click(removeButton as Element);
+		await userEvent.click(within(conditions[0]).getByTestId('filter-remove-condition'));
 
 		conditions = await findAllByTestId('filter-condition');
 		expect(conditions.length).toEqual(1);
