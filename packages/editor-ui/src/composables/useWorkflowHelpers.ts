@@ -7,8 +7,7 @@ import {
 	VIEWS,
 	WEBHOOK_NODE_TYPE,
 } from '@/constants';
-import { mapStores } from 'pinia';
-import { defineComponent } from 'vue';
+import { computed } from 'vue';
 
 import type {
 	IConnections,
@@ -70,9 +69,8 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { tryToParseNumber } from '@/utils/typesUtils';
-import { computed } from 'vue';
 import { useI18n } from '@/composables/useI18n';
-import { Router } from 'vue-router';
+import type { Router } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
 
 export function getParentMainInputNode(workflow: Workflow, node: INode): INode {
@@ -606,9 +604,7 @@ export function useWorkflowHelpers(router: Router) {
 					typeUnknown: true,
 				};
 			} else {
-				nodeIssues = nodeHelpers.getNodeIssues(nodeType.description, node, workflow, [
-					'execution',
-				]);
+				nodeIssues = nodeHelpers.getNodeIssues(nodeType.description, node, workflow, ['execution']);
 			}
 
 			if (nodeIssues !== null) {
@@ -726,14 +722,7 @@ export function useWorkflowHelpers(router: Router) {
 						continue;
 					}
 
-					if (
-						!nodeHelpers.displayParameter(
-							node.parameters,
-							credentialTypeDescription,
-							'',
-							node,
-						)
-					) {
+					if (!nodeHelpers.displayParameter(node.parameters, credentialTypeDescription, '', node)) {
 						// Credential should not be displayed so do also not save
 						continue;
 					}
@@ -784,7 +773,11 @@ export function useWorkflowHelpers(router: Router) {
 		}
 	}
 
-	function getWebhookUrl(webhookData: IWebhookDescription, node: INode, showUrlFor?: string): string {
+	function getWebhookUrl(
+		webhookData: IWebhookDescription,
+		node: INode,
+		showUrlFor?: string,
+	): string {
 		const { isForm, restartWebhook } = webhookData;
 		if (restartWebhook === true) {
 			return isForm ? '$execution.resumeFormUrl' : '$execution.resumeUrl';
@@ -882,7 +875,7 @@ export function useWorkflowHelpers(router: Router) {
 		}
 
 		const isLoading = useCanvasStore().isLoading;
-		const currentWorkflow = id || router.currentRoute.value.params.name as string;
+		const currentWorkflow = id || (router.currentRoute.value.params.name as string);
 
 		if (!currentWorkflow || ['new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(currentWorkflow)) {
 			return await saveAsNewWorkflow({ name, tags }, redirect);
@@ -978,7 +971,6 @@ export function useWorkflowHelpers(router: Router) {
 
 			return false;
 		}
-
 	}
 
 	async function saveAsNewWorkflow(
@@ -1002,8 +994,7 @@ export function useWorkflowHelpers(router: Router) {
 		try {
 			uiStore.addActiveAction('workflowSaving');
 
-			const workflowDataRequest: IWorkflowDataUpdate =
-				data || (await getWorkflowDataToSave());
+			const workflowDataRequest: IWorkflowDataUpdate = data || (await getWorkflowDataToSave());
 			const changedNodes = {} as IDataObject;
 
 			if (resetNodeIds) {
@@ -1106,7 +1097,6 @@ export function useWorkflowHelpers(router: Router) {
 
 			return false;
 		}
-
 	}
 
 	// Updates the position of all the nodes that the top-left node
