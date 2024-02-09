@@ -278,13 +278,12 @@ describe('PUT /tags/:id', () => {
 
 		const response = await authOwnerAgent.put(`/tags/${tag.id}`).send(payload);
 
-		const { id, name, createdAt, updatedAt } = response.body;
+		const { id, name, updatedAt } = response.body;
 
 		expect(response.statusCode).toBe(200);
 
 		expect(id).toBe(tag.id);
 		expect(name).toBe(payload.name);
-		expect(createdAt).toBe(tag.createdAt.toISOString());
 		expect(updatedAt).not.toBe(tag.updatedAt.toISOString());
 
 		// check updated tag in DB

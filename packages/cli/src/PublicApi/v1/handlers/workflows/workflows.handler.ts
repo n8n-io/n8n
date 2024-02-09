@@ -98,13 +98,7 @@ export = {
 		authorize(['global:owner', 'global:admin', 'global:member']),
 		validCursor,
 		async (req: WorkflowRequest.GetAll, res: express.Response): Promise<express.Response> => {
-			const {
-				offset = 0,
-				limit = 100,
-				active = undefined,
-				tags = undefined,
-				name = undefined,
-			} = req.query;
+			const { offset = 0, limit = 100, active, tags, name } = req.query;
 
 			const where: FindOptionsWhere<WorkflowEntity> = {
 				...(active !== undefined && { active }),

@@ -1,16 +1,14 @@
 import type express from 'express';
 
-import { getTags, createTag, updateTag, deleteTag, getTagById } from './tags.service';
 import { TagEntity } from '@db/entities/TagEntity';
 import { authorize, validCursor } from '../../shared/middlewares/global.middleware';
 import type { TagRequest } from '../../../types';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
-import { ExternalHooks } from '@/ExternalHooks';
-import { validateEntity } from '@/GenericHelpers';
 
 import { Container } from 'typedi';
-import type { FindManyOptions, FindOptionsWhere } from '@n8n/typeorm';
+import type { FindManyOptions } from '@n8n/typeorm';
 import { TagRepository } from '@db/repositories/tag.repository';
+import { TagService } from '@/services/tag.service';
 
 export = {
 	createTag: [
@@ -18,29 +16,14 @@ export = {
 		async (req: TagRequest.Create, res: express.Response): Promise<express.Response> => {
 			const { name } = req.body;
 
-			const newTag = new TagEntity();
-			newTag.name = name.trim();
+			const newTag = Container.get(TagService).toEntity({ name: name.trim() });
 
-			await Container.get(ExternalHooks).run('tag.beforeCreate', [newTag]);
-
-			await validateEntity(newTag);
-
-			const where: FindOptionsWhere<TagEntity> = {
-				name: newTag.name
-			};
-			const query: FindManyOptions<TagEntity> = {
-				where,
-			};
-
-			const tags = await getTags(query);
-			if (tags.length > 0) {
+			try {
+				const createdTag = await Container.get(TagService).save(newTag, 'create');
+				return res.status(201).json(createdTag);
+			} catch (error) {
 				return res.status(409).json({ message: 'Tag already exists' });
 			}
-			const createdTag = await createTag(newTag);
-
-			await Container.get(ExternalHooks).run('tag.afterCreate', [createdTag]);
-
-			return res.status(201).json(createdTag);
 		},
 	],
 	updateTag: [
@@ -49,38 +32,20 @@ export = {
 			const { id } = req.params;
 			const { name } = req.body;
 
-			let tag = await getTagById(id);
-
-			if (tag === null) {
+			try {
+				await Container.get(TagService).getById(id);
+			} catch (error) {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			const newTag = new TagEntity();
-			newTag.id = id;
-			newTag.name = name.trim();
+			const updateTag = Container.get(TagService).toEntity({ id, name: name.trim() });
 
-			await Container.get(ExternalHooks).run('tag.beforeUpdate', [newTag]);
-
-			await validateEntity(newTag);
-
-			const where: FindOptionsWhere<TagEntity> = {
-				name: newTag.name
-			};
-			const query: FindManyOptions<TagEntity> = {
-				where,
-			};
-
-			const tags = await getTags(query);
-			if (tags.length > 0) {
+			try {
+				const updatedTag = await Container.get(TagService).save(updateTag, 'update');
+				return res.json(updatedTag);
+			} catch (error) {
 				return res.status(409).json({ message: 'Tag already exists' });
 			}
-			await updateTag(id, newTag);
-
-			await Container.get(ExternalHooks).run('tag.afterUpdate', [tag]);
-
-			tag = await getTagById(id);
-
-			return res.json(tag);
 		},
 	],
 	deleteTag: [
@@ -88,18 +53,14 @@ export = {
 		async (req: TagRequest.Delete, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 
-			const tag = await getTagById(id);
-
-			if (tag === null) {
+			let tag;
+			try {
+				tag = await Container.get(TagService).getById(id);
+			} catch (error) {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			await Container.get(ExternalHooks).run('tag.beforeDelete', [id]);
-
-			await deleteTag(id);
-
-			await Container.get(ExternalHooks).run('tag.afterUpdate', [id]);
-
+			await Container.get(TagService).delete(id);
 			return res.json(tag);
 		},
 	],
@@ -131,13 +92,12 @@ export = {
 		async (req: TagRequest.Get, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 
-			const tag = await getTagById(id);
-
-			if (tag === null) {
+			try {
+				const tag = await Container.get(TagService).getById(id);
+				return res.json(tag);
+			} catch (error) {
 				return res.status(404).json({ message: 'Not Found' });
 			}
-
-			return res.json(tag);
 		},
 	],
 };

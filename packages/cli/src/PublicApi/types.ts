@@ -71,10 +71,10 @@ export declare namespace TagRequest {
 		}
 	>;
 
-	type Create = AuthenticatedRequest<{}, {}, TagEntity, {}>;
-	type Get = AuthenticatedRequest<{ id: string }, {}, {}, {}>;
+	type Create = AuthenticatedRequest<{}, {}, TagEntity>;
+	type Get = AuthenticatedRequest<{ id: string }>;
 	type Delete = Get;
-	type Update = AuthenticatedRequest<{ id: string }, {}, TagEntity, {}>;
+	type Update = AuthenticatedRequest<{ id: string }, {}, TagEntity>;
 }
 
 export declare namespace CredentialTypeRequest {
@@ -104,7 +104,7 @@ export declare namespace WorkflowRequest {
 	type Update = AuthenticatedRequest<{ id: string }, {}, WorkflowEntity, {}>;
 	type Activate = Get;
 	type GetTags = Get;
-	type UpdateTags = AuthenticatedRequest<{ id: string }, {}, TagEntity[], {}>;
+	type UpdateTags = AuthenticatedRequest<{ id: string }, {}, TagEntity[]>;
 }
 
 export declare namespace UserRequest {
