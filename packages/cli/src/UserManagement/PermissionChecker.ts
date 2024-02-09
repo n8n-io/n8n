@@ -7,7 +7,6 @@ import { License } from '@/License';
 import { OwnershipService } from '@/services/ownership.service';
 import { UserRepository } from '@db/repositories/user.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
-import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { ProjectService } from '@/services/project.service';
 import { RoleService } from '@/services/role.service';
 
@@ -16,7 +15,6 @@ export class PermissionChecker {
 	constructor(
 		private readonly userRepository: UserRepository,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
-		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly ownershipService: OwnershipService,
 		private readonly license: License,
 		private readonly projectService: ProjectService,
@@ -59,36 +57,24 @@ export class PermissionChecker {
 
 		/**
 		 * @TODO We still need to ensure that the workflow's credentials
-		 * are in the relevant project IDs.
+		 * are in the relevant project IDs. Optimize check.
 		 */
 
-		const isSharingEnabled = this.license.isSharingEnabled();
+		for (const credentialsId of workflowCredIds) {
+			const isAccessible = await this.sharedCredentialsRepository.isAccessible(
+				credentialsId,
+				projectIds,
+			);
 
-		// allow if all creds used in this workflow are a subset of
-		// all creds accessible to users who have access to this workflow
+			if (!isAccessible) {
+				const nodeToFlag = credIdsToNodes[credentialsId][0];
 
-		let workflowUserIds = [userId];
-
-		if (workflow.id && isSharingEnabled) {
-			workflowUserIds = await this.sharedWorkflowRepository.getSharedUserIds(workflow.id);
+				throw new NodeOperationError(nodeToFlag, 'Node has no access to credential', {
+					description: 'Please recreate the credential or ask its owner to share it with you.',
+					level: 'warning',
+				});
+			}
 		}
-
-		const accessibleCredIds = isSharingEnabled
-			? await this.sharedCredentialsRepository.getAccessibleCredentialIds(workflowUserIds)
-			: await this.sharedCredentialsRepository.getOwnedCredentialIds(workflowUserIds);
-
-		const inaccessibleCredIds = workflowCredIds.filter((id) => !accessibleCredIds.includes(id));
-
-		if (inaccessibleCredIds.length === 0) return;
-
-		// if disallowed, flag only first node using first inaccessible cred
-
-		const nodeToFlag = credIdsToNodes[inaccessibleCredIds[0]][0];
-
-		throw new NodeOperationError(nodeToFlag, 'Node has no access to credential', {
-			description: 'Please recreate the credential or ask its owner to share it with you.',
-			level: 'warning',
-		});
 	}
 
 	async checkSubworkflowExecutePolicy(
