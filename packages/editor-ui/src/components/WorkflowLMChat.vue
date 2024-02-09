@@ -480,15 +480,15 @@ export default defineComponent({
 
 					const nodeResponseDataArray = get(
 						this.workflowsStore.getWorkflowExecution?.data?.resultData.runData,
-						`[${lastNodeExecuted}]`,
+						lastNodeExecuted,
 					) as ITaskData[];
 
 					const nodeResponseData = nodeResponseDataArray[nodeResponseDataArray.length - 1];
 
 					let responseMessage: string;
 
-					if (get(nodeResponseData, ['error'])) {
-						responseMessage = '[ERROR: ' + get(nodeResponseData, ['error', 'message']) + ']';
+					if (get(nodeResponseData, 'error')) {
+						responseMessage = '[ERROR: ' + get(nodeResponseData, 'error.message') + ']';
 					} else {
 						const responseData = get(nodeResponseData, 'data.main[0][0].json');
 						responseMessage = this.extractResponseMessage(responseData);
