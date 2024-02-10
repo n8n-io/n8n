@@ -9,7 +9,7 @@ import { SqlDatabase } from 'langchain/sql_db';
 import type { SqlCreatePromptArgs } from 'langchain/agents/toolkits/sql';
 import { SqlToolkit, createSqlAgent } from 'langchain/agents/toolkits/sql';
 import type { BaseLanguageModel } from 'langchain/dist/base_language';
-import type { DataSource } from 'typeorm';
+import type { DataSource } from '@n8n/typeorm';
 
 import { getSqliteDataSource } from './other/handlers/sqlite';
 import { getPostgresDataSource } from './other/handlers/postgres';

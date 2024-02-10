@@ -181,9 +181,10 @@ describe('Webhook Trigger node', async () => {
 
 		workflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME);
 		workflowPage.actions.openNode(EDIT_FIELDS_SET_NODE_NAME);
-		cy.get('.fixed-collection-parameter > :nth-child(2) > .button > span').click();
-		ndv.getters.nthParam(2).type('data');
-		ndv.getters.nthParam(4).invoke('val', cowBase64).trigger('blur');
+		ndv.getters.assignmentCollectionAdd('assignments').click();
+		ndv.getters.assignmentName('assignments').type('data');
+		ndv.getters.assignmentType('assignments').click();
+		ndv.getters.assignmentValue('assignments').paste(cowBase64);
 
 		ndv.getters.backToCanvas().click();
 
@@ -311,9 +312,9 @@ describe('Webhook Trigger node', async () => {
 const addEditFields = () => {
 	workflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME);
 	workflowPage.actions.openNode(EDIT_FIELDS_SET_NODE_NAME);
-	cy.get('.fixed-collection-parameter > :nth-child(2) > .button > span').click();
-	ndv.getters.nthParam(2).type('MyValue');
-	ndv.getters.nthParam(3).click();
-	cy.get('div').contains('Number').click();
-	ndv.getters.nthParam(4).type('1234');
+	ndv.getters.assignmentCollectionAdd('assignments').click();
+	ndv.getters.assignmentName('assignments').type('MyValue');
+	ndv.getters.assignmentType('assignments').click();
+	getVisibleSelect().find('li').contains('Number').click();
+	ndv.getters.assignmentValue('assignments').type('1234');
 };

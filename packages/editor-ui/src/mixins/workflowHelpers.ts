@@ -69,6 +69,7 @@ import { getCredentialTypeName, isCredentialOnlyNodeType } from '@/utils/credent
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { tryToParseNumber } from '@/utils/typesUtils';
 
 export function getParentMainInputNode(workflow: Workflow, node: INode): INode {
 	const nodeType = useNodeTypesStore().getNodeType(node.type);
@@ -1094,7 +1095,7 @@ export const workflowHelpers = defineComponent({
 				const templateId = this.$route.query.templateId;
 				if (templateId) {
 					this.$telemetry.track('User saved new workflow from template', {
-						template_id: templateId,
+						template_id: tryToParseNumber(String(templateId)),
 						workflow_id: workflowData.id,
 						wf_template_repo_session_id: this.templatesStore.previousSessionId,
 					});

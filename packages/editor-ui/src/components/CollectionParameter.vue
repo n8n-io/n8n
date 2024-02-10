@@ -49,7 +49,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, defineAsyncComponent } from 'vue';
+import { ref, computed } from 'vue';
 import type { IUpdateInformation } from '@/Interface';
 
 import type {
@@ -65,9 +65,6 @@ import { get } from 'lodash-es';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useI18n } from '@/composables/useI18n';
-const ParameterInputList = defineAsyncComponent(
-	async () => await import('./ParameterInputList.vue'),
-);
 
 const selectedOption = ref<string | undefined>(undefined);
 export interface Props {
@@ -179,11 +176,11 @@ function optionSelected(optionName: string) {
 			// The "fixedCollection" entries are different as they save values
 			// in an object and then underneath there is an array. So initialize
 			// them differently.
-			const retrievedObjectValue = get(props.nodeValues, `${props.path}.${optionName}`, {});
+			const retrievedObjectValue = get(props.nodeValues, [props.path, optionName], {});
 			newValue = retrievedObjectValue;
 		} else {
 			// Everything else saves them directly as an array.
-			const retrievedArrayValue = get(props.nodeValues, `${props.path}.${optionName}`, []) as Array<
+			const retrievedArrayValue = get(props.nodeValues, [props.path, optionName], []) as Array<
 				typeof option.default
 			>;
 			if (Array.isArray(retrievedArrayValue)) {

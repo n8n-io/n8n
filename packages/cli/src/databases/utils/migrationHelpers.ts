@@ -1,8 +1,8 @@
 import { Container } from 'typedi';
 import { readFileSync, rmSync } from 'fs';
 import { InstanceSettings } from 'n8n-core';
-import type { ObjectLiteral } from 'typeorm';
-import type { QueryRunner } from 'typeorm/query-runner/QueryRunner';
+import type { ObjectLiteral } from '@n8n/typeorm';
+import type { QueryRunner } from '@n8n/typeorm/query-runner/QueryRunner';
 import { ApplicationError, jsonParse } from 'n8n-workflow';
 import config from '@/config';
 import { inTest } from '@/constants';

@@ -1,7 +1,7 @@
 import { IConnections } from 'n8n-workflow';
 import type { IDataObject, INode, IWorkflowSettings } from 'n8n-workflow';
 
-import { Column, Entity, PrimaryColumn } from 'typeorm';
+import { Column, Entity, PrimaryColumn } from '@n8n/typeorm';
 import { IsDate } from 'class-validator';
 
 import { WithTimestampsAndStringId, jsonColumnType } from './AbstractEntity';

@@ -1,5 +1,5 @@
 import { Service } from 'typedi';
-import { DataSource, QueryFailedError, Repository } from 'typeorm';
+import { DataSource, QueryFailedError, Repository } from '@n8n/typeorm';
 import config from '@/config';
 import { StatisticsNames, WorkflowStatistics } from '../entities/WorkflowStatistics';
 import type { User } from '@/databases/entities/User';
@@ -52,6 +52,7 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 		workflowId: string,
 	): Promise<StatisticsUpsertResult> {
 		const { tableName } = this.metadata;
+		const schemaPrefix = config.getEnv('database.postgresdb.schema');
 		try {
 			if (this.dbType === 'sqlite') {
 				await this.query(
@@ -74,7 +75,7 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 				return counter?.count === 1 ? 'insert' : 'failed';
 			} else if (this.dbType === 'postgresdb') {
 				const queryResult = (await this.query(
-					`INSERT INTO "${tableName}" ("count", "name", "workflowId", "latestEvent")
+					`INSERT INTO "${schemaPrefix}"."${tableName}" ("count", "name", "workflowId", "latestEvent")
 					VALUES (1, '${eventName}', '${workflowId}', CURRENT_TIMESTAMP)
 					ON CONFLICT ("name", "workflowId")
 					DO UPDATE SET "count" = "${tableName}"."count" + 1, "latestEvent" = CURRENT_TIMESTAMP

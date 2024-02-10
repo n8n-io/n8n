@@ -1,7 +1,7 @@
 import Container from 'typedi';
 import type { SuperAgentTest } from 'supertest';
 import type { Entry as LdapUser } from 'ldapts';
-import { Not } from 'typeorm';
+import { Not } from '@n8n/typeorm';
 import { jsonParse } from 'n8n-workflow';
 import { Cipher } from 'n8n-core';
 
@@ -47,7 +47,7 @@ const testServer = utils.setupTestServer({
 });
 
 beforeAll(async () => {
-	owner = await createUser({ role: 'global:owner', password: 'password' });
+	owner = await createUser({ role: 'global:owner' });
 	authOwnerAgent = testServer.authAgentFor(owner);
 
 	defaultLdapConfig.bindingAdminPassword = Container.get(Cipher).encrypt(

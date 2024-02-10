@@ -1,4 +1,3 @@
-import { Service } from 'typedi';
 import express from 'express';
 import { v4 as uuid } from 'uuid';
 import axios from 'axios';
@@ -40,7 +39,6 @@ import { WorkflowExecutionService } from './workflowExecution.service';
 import { WorkflowSharingService } from './workflowSharing.service';
 import { UserManagementMailer } from '@/UserManagement/email';
 
-@Service()
 @Authorized()
 @RestController('/workflows')
 export class WorkflowsController {
@@ -62,6 +60,7 @@ export class WorkflowsController {
 		private readonly userRepository: UserRepository,
 		private readonly license: License,
 		private readonly mailer: UserManagementMailer,
+		private readonly credentialsService: CredentialsService,
 	) {}
 
 	@Post('/')
@@ -92,7 +91,7 @@ export class WorkflowsController {
 			// This is a new workflow, so we simply check if the user has access to
 			// all used workflows
 
-			const allCredentials = await CredentialsService.getMany(req.user);
+			const allCredentials = await this.credentialsService.getMany(req.user);
 
 			try {
 				this.enterpriseWorkflowService.validateCredentialPermissionsToUser(

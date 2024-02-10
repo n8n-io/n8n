@@ -1,6 +1,6 @@
 import { Service } from 'typedi';
-import type { EntityManager, FindManyOptions } from 'typeorm';
-import { DataSource, In, IsNull, Not, Repository } from 'typeorm';
+import type { EntityManager, FindManyOptions } from '@n8n/typeorm';
+import { DataSource, In, IsNull, Not, Repository } from '@n8n/typeorm';
 import type { ListQuery } from '@/requests';
 
 import { type GlobalRole, User } from '../entities/User';

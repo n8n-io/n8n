@@ -18,8 +18,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4.1.1
 
-      - uses: pnpm/action-setup@v2.4.0
-
+      - run: corepack enable
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4.0.1
         with:
@@ -64,8 +63,7 @@ jobs:
           repository: n8n-io/n8n
           ref: ${{ inputs.branch }}
 
-      - uses: pnpm/action-setup@v2.4.0
-
+      - run: corepack enable
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4.0.1
         with:

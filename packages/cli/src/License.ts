@@ -229,7 +229,7 @@ export class License {
 	}
 
 	isAdvancedPermissionsLicensed() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.ADVANCED_PERMISSIONS);
+		return true;
 	}
 
 	isDebugInEditorLicensed() {
@@ -265,7 +265,7 @@ export class License {
 	}
 
 	isWorkerViewLicensed() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.WORKER_VIEW);
+		return true;
 	}
 
 	getCurrentEntitlements() {

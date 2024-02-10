@@ -1,7 +1,11 @@
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 import { Container } from 'typedi';
-import type { DataSourceOptions as ConnectionOptions, EntityManager, LoggerOptions } from 'typeorm';
-import { DataSource as Connection } from 'typeorm';
+import type {
+	DataSourceOptions as ConnectionOptions,
+	EntityManager,
+	LoggerOptions,
+} from '@n8n/typeorm';
+import { DataSource as Connection } from '@n8n/typeorm';
 import type { TlsOptions } from 'tls';
 import { ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 

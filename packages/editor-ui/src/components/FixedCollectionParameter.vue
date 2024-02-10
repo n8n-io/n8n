@@ -122,7 +122,7 @@
 </template>
 
 <script lang="ts">
-import { defineAsyncComponent, defineComponent } from 'vue';
+import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import type { IUpdateInformation } from '@/Interface';
 
@@ -136,15 +136,8 @@ import { deepCopy, isINodePropertyCollectionList } from 'n8n-workflow';
 
 import { get } from 'lodash-es';
 
-const ParameterInputList = defineAsyncComponent(
-	async () => await import('./ParameterInputList.vue'),
-);
-
 export default defineComponent({
 	name: 'FixedCollectionParameter',
-	components: {
-		ParameterInputList,
-	},
 	props: {
 		nodeValues: {
 			type: Object as PropType<Record<string, INodeParameters[]>>,
@@ -192,7 +185,6 @@ export default defineComponent({
 		multipleValues(): boolean {
 			return !!this.parameter.typeOptions?.multipleValues;
 		},
-
 		parameterOptions(): INodePropertyCollection[] {
 			if (this.multipleValues && isINodePropertyCollectionList(this.parameter.options)) {
 				return this.parameter.options;
@@ -305,7 +297,7 @@ export default defineComponent({
 					// Multiple values are allowed so append option to array
 					newParameterValue[optionParameter.name] = get(
 						this.nodeValues,
-						`${this.path}.${optionParameter.name}`,
+						[this.path, optionParameter.name],
 						[],
 					);
 					if (Array.isArray(optionParameter.default)) {
