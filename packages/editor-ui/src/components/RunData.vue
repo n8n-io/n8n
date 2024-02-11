@@ -152,6 +152,40 @@
 		</div>
 		<slot name="before-data" />
 
+		<div :class="$style.execution">
+			<n8n-button
+				v-if="subWorkflowData"
+				:label="
+					i18n.baseText('ndv.output.subworkflow.openExecution', {
+						interpolate: { executionId: subWorkflowData.executionId },
+					})
+				"
+				@click.stop="displayExecution(subWorkflowData.executionId, subWorkflowData.workflowId)"
+			/>
+
+			<div v-if="itemSubWorkflowData.length">
+				<n8n-select
+					size="small"
+					:model-value="i18n.baseText('ndv.output.subworkflow.selectExecution')"
+					@change="displayExecution($event.metadata.executionId, $event.metadata.workflowId)"
+				>
+					<n8n-option
+						v-for="subWorkflow in itemSubWorkflowData"
+						:key="subWorkflow.metadata.executionId"
+						:value="subWorkflow"
+						:label="
+							i18n.baseText('ndv.output.subworkflow.selectExecutionItem', {
+								interpolate: {
+									executionId: subWorkflow.metadata.executionId,
+									itemIndex: subWorkflow.itemIndex,
+								},
+							})
+						"
+					/>
+				</n8n-select>
+			</div>
+		</div>
+
 		<div
 			v-if="maxOutputIndex > 0 && branches.length > 1"
 			:class="$style.tabs"
@@ -543,6 +577,7 @@
 import { defineAsyncComponent, defineComponent, toRef } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
+import { useI18n } from '@/composables/useI18n';
 import { useStorage } from '@/composables/useStorage';
 import { saveAs } from 'file-saver';
 import type {
@@ -577,6 +612,7 @@ import {
 	MAX_DISPLAY_ITEMS_AUTO_ALL,
 	TEST_PIN_DATA,
 	HTML_NODE_TYPE,
+	VIEWS,
 } from '@/constants';
 
 import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
@@ -594,7 +630,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useToast } from '@/composables/useToast';
-import { isObject } from 'lodash-es';
+import { isObject, get } from 'lodash-es';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import RunDataPinButton from '@/components/RunDataPinButton.vue';
@@ -685,6 +721,7 @@ export default defineComponent({
 		},
 	},
 	setup(props) {
+		const i18n = useI18n();
 		const ndvStore = useNDVStore();
 		const nodeHelpers = useNodeHelpers();
 		const externalHooks = useExternalHooks();
@@ -696,6 +733,7 @@ export default defineComponent({
 
 		return {
 			...useToast(),
+			i18n,
 			externalHooks,
 			nodeHelpers,
 			pinnedData,
@@ -820,6 +858,38 @@ export default defineComponent({
 			}
 
 			return defaults;
+		},
+		subWorkflowData(): { executionId: string; workflowId?: string } | null {
+			if (!this.node) {
+				return null;
+			}
+
+			const metadata = get(this.workflowRunData, [this.node.name, this.runIndex, 'metadata'], null);
+
+			if (metadata?.executionId) {
+				return {
+					executionId: metadata?.executionId,
+					workflowId: metadata?.workflowId,
+				};
+			}
+
+			return null;
+		},
+		itemSubWorkflowData(): Array<{
+			metadata: { executionId: string; workflowId?: string };
+			itemIndex: number;
+		}> {
+			const items = this.getData(this.runIndex, this.currentOutputIndex);
+			return items
+				.map((item, itemIndex) => {
+					return {
+						metadata: item.metadata,
+						itemIndex,
+					};
+				})
+				.filter((item) => {
+					return !!item.metadata;
+				});
 		},
 		hasNodeRun(): boolean {
 			return Boolean(
@@ -1018,6 +1088,16 @@ export default defineComponent({
 				}
 			}
 			return [];
+		},
+		displayExecution(executionId: string, workflowId?: string) {
+			// TODO: See what to do here if we do nto have a workflowId.
+			//       As we have a bug in n8n right now do know how we handel that
+			//       case right now so return to it later.
+			const route = this.$router.resolve({
+				name: VIEWS.EXECUTION_PREVIEW,
+				params: { name: workflowId, executionId },
+			});
+			window.open(route.href, '_blank');
 		},
 		onItemHover(itemIndex: number | null) {
 			if (itemIndex === null) {
@@ -1316,6 +1396,15 @@ export default defineComponent({
 			this.currentPage = 1;
 			return inputData.filter(({ json }) => searchInObject(json, this.search));
 		},
+		getData(
+			runIndex: number,
+			outputIndex: number,
+			connectionType: ConnectionTypes = NodeConnectionType.Main,
+		) {
+			const rawInputData = this.getRawInputData(runIndex, outputIndex, connectionType);
+			const pinOrLiveData = this.getPinDataOrLiveData(rawInputData);
+			return this.getFilteredData(pinOrLiveData);
+		},
 		getDataCount(
 			runIndex: number,
 			outputIndex: number,
@@ -1329,9 +1418,7 @@ export default defineComponent({
 				return 1;
 			}
 
-			const rawInputData = this.getRawInputData(runIndex, outputIndex, connectionType);
-			const pinOrLiveData = this.getPinDataOrLiveData(rawInputData);
-			return this.getFilteredData(pinOrLiveData).length;
+			return this.getData(runIndex, outputIndex, connectionType).length;
 		},
 		init() {
 			// Reset the selected output index every time another node gets selected
@@ -1595,6 +1682,11 @@ export default defineComponent({
 	justify-content: space-between;
 	align-items: center;
 	margin-bottom: var(--spacing-s);
+}
+
+.execution {
+	display: flex;
+	margin-left: var(--spacing-s);
 }
 
 .itemsCount {

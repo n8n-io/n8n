@@ -33,6 +33,7 @@ import { access as fsAccess, writeFile as fsWriteFile } from 'fs/promises';
 import { IncomingMessage, type IncomingHttpHeaders } from 'http';
 import { Agent, type AgentOptions } from 'https';
 import get from 'lodash/get';
+import set from 'lodash/set';
 import pick from 'lodash/pick';
 import { extension, lookup } from 'mime-types';
 import type {
@@ -80,6 +81,7 @@ import type {
 	ISourceData,
 	ITaskData,
 	ITaskDataConnections,
+	ITaskMetadata,
 	ITriggerFunctions,
 	IWebhookData,
 	IWebhookDescription,
@@ -3366,6 +3368,13 @@ export function getExecuteTriggerFunctions(
 	})(workflow, node);
 }
 
+function setMetadata(executeData: IExecuteData, key: string, value: string) {
+	if (!executeData.metadata) {
+		executeData.metadata = {};
+	}
+	set(executeData.metadata, key, value);
+}
+
 /**
  * Returns the execute functions regular nodes have access to.
  */
@@ -3401,6 +3410,9 @@ export function getExecuteFunctions(
 					itemIndex,
 				),
 			getExecuteData: () => executeData,
+			setMetadata: (key: string, value: string): void => {
+				return setMetadata(executeData, key, value);
+			},
 			continueOnFail: () => continueOnFail(node),
 			evaluateExpression: (expression: string, itemIndex: number) => {
 				return workflow.expression.resolveSimpleParameterValue(
@@ -3419,9 +3431,14 @@ export function getExecuteFunctions(
 			async executeWorkflow(
 				workflowInfo: IExecuteWorkflowInfo,
 				inputData?: INodeExecutionData[],
+				options?: {
+					doNotWaitToFinish?: boolean;
+					startMetadata?: ITaskMetadata;
+				},
 			): Promise<any> {
 				return await additionalData
 					.executeWorkflow(workflowInfo, additionalData, {
+						...options,
 						parentWorkflowId: workflow.id?.toString(),
 						inputData,
 						parentWorkflowSettings: workflow.settings,
@@ -3770,6 +3787,9 @@ export function getExecuteSingleFunctions(
 					executeData,
 				);
 				return dataProxy.getDataProxy();
+			},
+			setMetadata: (key: string, value: string): void => {
+				return setMetadata(executeData, key, value);
 			},
 			helpers: {
 				createDeferredPromise,

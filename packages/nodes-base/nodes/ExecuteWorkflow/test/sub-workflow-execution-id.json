@@ -1,0 +1,289 @@
+{
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "021d3c82ba2d3bc090cbf4fc81c9312668bcc34297e022bb3438c5c88a43a5ff"
+  },
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "4b85019f-4dda-417e-b0a7-033bc447bae4",
+      "name": "When clicking \"Test workflow\"",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        800,
+        360
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "264f5097-6804-42a7-b273-b2d1b4ac74b7",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        800,
+        1080
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  {\n    item: 0,\n  },\n  {\n    item: 1,\n  },\n  {\n    item: 2,\n  }\n];"
+      },
+      "id": "7c3f01f5-2690-4e0b-9522-87f77d1a31d4",
+      "name": "Code",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1020,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "={{ $workflow.id }}",
+        "options": {}
+      },
+      "id": "cc32fea9-5ebb-4cdc-96d3-4f41099a8286",
+      "name": "Once for all",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        1520,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "={{ $workflow.id }}",
+        "mode": "each",
+        "options": {}
+      },
+      "id": "13233aec-ca7a-4270-a107-2e3c079f74d4",
+      "name": "Once for each",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        1520,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3cb43f17-ceea-4ede-9372-e4e7f166c8a2",
+              "name": "mainExecutionId",
+              "value": "={{ $execution.id }}",
+              "type": "number"
+            },
+            {
+              "id": "eeb3aa5f-894f-4f72-8db6-c9eed32d83d7",
+              "name": "mainItemIndex",
+              "value": "={{ $itemIndex }}",
+              "type": "number"
+            },
+            {
+              "id": "a55d965c-6600-4567-adf9-ea3495cdb928",
+              "name": "expectedExecutionId",
+              "value": "={{ parseInt($execution.id) + 2 + $itemIndex }}",
+              "type": "number"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "8cdfb495-8639-4b53-9b5f-47473eeeee20",
+      "name": "Prepare - Once for each",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        1300,
+        360
+      ],
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3cb43f17-ceea-4ede-9372-e4e7f166c8a2",
+              "name": "mainExecutionId",
+              "value": "={{ $execution.id }}",
+              "type": "number"
+            },
+            {
+              "id": "eeb3aa5f-894f-4f72-8db6-c9eed32d83d7",
+              "name": "mainItemIndex",
+              "value": "={{ $itemIndex }}",
+              "type": "number"
+            },
+            {
+              "id": "a55d965c-6600-4567-adf9-ea3495cdb928",
+              "name": "expectedExecutionId",
+              "value": "={{ parseInt($execution.id) + 1 }}",
+              "type": "number"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "29dd72c6-9903-479f-add2-8ab1faf88d64",
+      "name": "Prepare - Once for all",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        1300,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a85ef683-09c8-445c-9efd-ef19733e6e83",
+              "name": "executionIdCorrect",
+              "value": "={{ parseInt($execution.id) === $json.expectedExecutionId }}",
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a7caad0e-2080-4253-b7c4-c9957ad36a98",
+      "name": "Check Execution ID",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        1020,
+        1080
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "={{ $workflow.id }}",
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      },
+      "id": "b41d41ec-732b-45b8-8d1b-9f5a62ce5915",
+      "name": "Once for all - Not waiting",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        1520,
+        580
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "={{ $workflow.id }}",
+        "mode": "each",
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      },
+      "id": "83fbd01b-f3d0-4834-9b86-3a87d3362cea",
+      "name": "Once for each - Not waiting",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        1520,
+        780
+      ]
+    },
+    {
+      "parameters": {
+        "content": "Is not really checking properly\nthe execution ID yet",
+        "height": 442.70074678574184,
+        "width": 548.5687889752867
+      },
+      "id": "cda8560a-9bb1-4b60-89bb-8ebb27af74b8",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1220.771421972438,
+        540
+      ]
+    }
+  ],
+  "connections": {
+    "When clicking \"Test workflow\"": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Check Execution ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Prepare - Once for all",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Prepare - Once for each",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Once for all - Not waiting",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Once for each - Not waiting",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare - Once for each": {
+      "main": [
+        [
+          {
+            "node": "Once for each",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare - Once for all": {
+      "main": [
+        [
+          {
+            "node": "Once for all",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {}
+}
