@@ -82,6 +82,7 @@ export class LoadNodesAndCredentials {
 
 		for (const nodeModulesDir of basePathsToScan) {
 			await this.loadNodesFromNodeModules(nodeModulesDir, 'n8n-nodes-base');
+			await this.loadNodesFromNodeModules(nodeModulesDir, 'n8n-nodes-honeybook');
 			await this.loadNodesFromNodeModules(nodeModulesDir, '@n8n/n8n-nodes-langchain');
 		}
 
@@ -166,7 +167,7 @@ export class LoadNodesAndCredentials {
 			const customExtensionFolders = process.env[CUSTOM_EXTENSION_ENV].split(';');
 			customDirectories.push(...customExtensionFolders);
 		}
-
+		
 		return customDirectories;
 	}
 
