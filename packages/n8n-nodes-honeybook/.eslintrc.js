@@ -40,24 +40,6 @@ module.exports = {
 
 	overrides: [
 		{
-			files: ['./credentials/*.ts'],
-			plugins: ['eslint-plugin-n8n-nodes-base'],
-			rules: {
-				'n8n-nodes-base/cred-class-field-authenticate-type-assertion': 'error',
-				'n8n-nodes-base/cred-class-field-display-name-missing-oauth2': 'error',
-				'n8n-nodes-base/cred-class-field-display-name-miscased': 'error',
-				'n8n-nodes-base/cred-class-field-documentation-url-missing': 'error',
-				'n8n-nodes-base/cred-class-field-name-missing-oauth2': 'error',
-				'n8n-nodes-base/cred-class-field-name-unsuffixed': 'error',
-				'n8n-nodes-base/cred-class-field-name-uppercase-first-char': 'error',
-				'n8n-nodes-base/cred-class-field-properties-assertion': 'error',
-				'n8n-nodes-base/cred-class-field-type-options-password-missing': 'error',
-				'n8n-nodes-base/cred-class-name-missing-oauth2-suffix': 'error',
-				'n8n-nodes-base/cred-class-name-unsuffixed': 'error',
-				'n8n-nodes-base/cred-filename-against-convention': 'error',
-			},
-		},
-		{
 			files: ['./nodes/**/*.ts'],
 			plugins: ['eslint-plugin-n8n-nodes-base'],
 			rules: {
