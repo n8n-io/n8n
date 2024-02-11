@@ -65,7 +65,7 @@
 				<template #actions="{ user }">
 					<n8n-select
 						v-if="user.id !== usersStore.currentUserId"
-						:model-value="user?.globalRole?.name || 'member'"
+						:model-value="user?.role || 'global:member'"
 						:disabled="!canUpdateRole"
 						data-test-id="user-role-select"
 						@update:modelValue="onRoleChange(user, $event)"
@@ -89,7 +89,7 @@ import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import { EnterpriseEditionFeature, INVITE_USER_MODAL_KEY, VIEWS } from '@/constants';
 
-import type { IUser, IUserListAction } from '@/Interface';
+import type { IUser, IUserListAction, InvitableRoleName } from '@/Interface';
 import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -207,9 +207,15 @@ export default defineComponent({
 		},
 		async onReinvite(userId: string) {
 			const user = this.usersStore.getUserById(userId);
-			if (user?.email) {
+			if (user?.email && user?.role) {
+				if (!['global:admin', 'global:member'].includes(user.role)) {
+					throw new Error('Invalid role name on reinvite');
+				}
 				try {
-					await this.usersStore.reinviteUser({ email: user.email });
+					await this.usersStore.reinviteUser({
+						email: user.email,
+						role: user.role as InvitableRoleName,
+					});
 					this.showToast({
 						type: 'success',
 						title: this.$locale.baseText('settings.users.inviteResent'),

@@ -1,4 +1,4 @@
-import { flags } from '@oclif/command';
+import { Flags } from '@oclif/core';
 import fs from 'fs';
 import path from 'path';
 import { BaseCommand } from '../BaseCommand';
@@ -17,33 +17,32 @@ export class ExportWorkflowsCommand extends BaseCommand {
 	];
 
 	static flags = {
-		help: flags.help({ char: 'h' }),
-		all: flags.boolean({
+		help: Flags.help({ char: 'h' }),
+		all: Flags.boolean({
 			description: 'Export all workflows',
 		}),
-		backup: flags.boolean({
+		backup: Flags.boolean({
 			description:
 				'Sets --all --pretty --separate for simple backups. Only --output has to be set additionally.',
 		}),
-		id: flags.string({
+		id: Flags.string({
 			description: 'The ID of the workflow to export',
 		}),
-		output: flags.string({
+		output: Flags.string({
 			char: 'o',
 			description: 'Output file name or directory if using separate files',
 		}),
-		pretty: flags.boolean({
+		pretty: Flags.boolean({
 			description: 'Format the output in an easier to read fashion',
 		}),
-		separate: flags.boolean({
+		separate: Flags.boolean({
 			description:
 				'Exports one file per workflow (useful for versioning). Must inform a directory via --output.',
 		}),
 	};
 
 	async run() {
-		// eslint-disable-next-line @typescript-eslint/no-shadow
-		const { flags } = this.parse(ExportWorkflowsCommand);
+		const { flags } = await this.parse(ExportWorkflowsCommand);
 
 		if (flags.backup) {
 			flags.all = true;

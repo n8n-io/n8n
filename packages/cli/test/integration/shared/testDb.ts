@@ -1,5 +1,5 @@
-import type { DataSourceOptions as ConnectionOptions, Repository } from 'typeorm';
-import { DataSource as Connection } from 'typeorm';
+import type { DataSourceOptions as ConnectionOptions, Repository } from '@n8n/typeorm';
+import { DataSource as Connection } from '@n8n/typeorm';
 import { Container } from 'typedi';
 import type { Class } from 'n8n-core';
 

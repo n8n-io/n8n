@@ -191,13 +191,13 @@ import type { IUser } from '@/Interface';
 import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
 import PageViewLayoutList from '@/components/layouts/PageViewLayoutList.vue';
 import { EnterpriseEditionFeature } from '@/constants';
-import { debounceHelper } from '@/mixins/debounce';
 import ResourceOwnershipSelect from '@/components/forms/ResourceOwnershipSelect.ee.vue';
 import ResourceFiltersDropdown from '@/components/forms/ResourceFiltersDropdown.vue';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import type { N8nInput, DatatableColumn } from 'n8n-design-system';
 import { useI18n } from '@/composables/useI18n';
+import { useDebounce } from '@/composables/useDebounce';
 
 export interface IResource {
 	id: string;
@@ -227,7 +227,6 @@ export default defineComponent({
 		ResourceOwnershipSelect,
 		ResourceFiltersDropdown,
 	},
-	mixins: [debounceHelper],
 	props: {
 		resourceKey: {
 			type: String,
@@ -289,9 +288,11 @@ export default defineComponent({
 	},
 	setup() {
 		const i18n = useI18n();
+		const { callDebounced } = useDebounce();
 
 		return {
 			i18n,
+			callDebounced,
 		};
 	},
 	data() {
@@ -406,7 +407,7 @@ export default defineComponent({
 		},
 		'filtersModel.search'() {
 			void this.callDebounced(
-				'sendFiltersTelemetry',
+				this.sendFiltersTelemetry,
 				{ debounceTime: 1000, trailing: true },
 				'search',
 			);
@@ -453,6 +454,7 @@ export default defineComponent({
 
 			this.resettingFilters = true;
 			this.sendFiltersTelemetry('reset');
+			this.$emit('update:filters', this.filtersModel);
 		},
 		focusSearchInput() {
 			if (this.$refs.search) {

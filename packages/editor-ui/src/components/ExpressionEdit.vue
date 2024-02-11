@@ -89,11 +89,11 @@ import type { IVariableItemSelected } from '@/Interface';
 
 import { EXPRESSIONS_DOCS_URL } from '@/constants';
 
-import { debounceHelper } from '@/mixins/debounce';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { createExpressionTelemetryPayload } from '@/utils/telemetryUtils';
+import { useDebounce } from '@/composables/useDebounce';
 
 import type { Segment } from '@/types/expressions';
 
@@ -104,7 +104,6 @@ export default defineComponent({
 		ExpressionEditorModalOutput,
 		VariableSelector,
 	},
-	mixins: [debounceHelper],
 	props: {
 		dialogVisible: {
 			type: Boolean,
@@ -137,8 +136,10 @@ export default defineComponent({
 	},
 	setup() {
 		const externalHooks = useExternalHooks();
+		const { callDebounced } = useDebounce();
 
 		return {
+			callDebounced,
 			externalHooks,
 		};
 	},
@@ -194,7 +195,9 @@ export default defineComponent({
 				this.updateDisplayValue();
 				this.$emit('update:modelValue', this.latestValue);
 			} else {
-				void this.callDebounced('updateDisplayValue', { debounceTime: 500 });
+				void this.callDebounced(this.updateDisplayValue, {
+					debounceTime: 500,
+				});
 			}
 		},
 

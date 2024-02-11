@@ -5,7 +5,6 @@ import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { randomApiKey } from '../shared/random';
 import * as utils from '../shared/utils/';
 import * as testDb from '../shared/testDb';
-import { getGlobalMemberRole, getGlobalOwnerRole } from '../shared/db/roles';
 import { createUser } from '../shared/db/users';
 import {
 	createManyWorkflows,
@@ -30,11 +29,9 @@ let workflowRunner: ActiveWorkflowRunner;
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 
 beforeAll(async () => {
-	const globalOwnerRole = await getGlobalOwnerRole();
-	const globalUserRole = await getGlobalMemberRole();
-	owner = await createUser({ globalRole: globalOwnerRole, apiKey: randomApiKey() });
-	user1 = await createUser({ globalRole: globalUserRole, apiKey: randomApiKey() });
-	user2 = await createUser({ globalRole: globalUserRole, apiKey: randomApiKey() });
+	owner = await createUser({ role: 'global:owner', apiKey: randomApiKey() });
+	user1 = await createUser({ role: 'global:member', apiKey: randomApiKey() });
+	user2 = await createUser({ role: 'global:member', apiKey: randomApiKey() });
 
 	// TODO: mock BinaryDataService instead
 	await utils.initBinaryDataService();

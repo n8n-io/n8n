@@ -1,8 +1,10 @@
 import { createWriteStream } from 'fs';
 import { basename, dirname } from 'path';
 import type { Readable } from 'stream';
-import { pipeline } from 'stream';
-import { promisify } from 'util';
+import { pipeline } from 'stream/promises';
+import { file as tmpFile } from 'tmp-promise';
+import ftpClient from 'promise-ftp';
+import sftpClient from 'ssh2-sftp-client';
 import { BINARY_ENCODING, NodeApiError } from 'n8n-workflow';
 import type {
 	ICredentialDataDecryptedObject,
@@ -16,10 +18,6 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { file as tmpFile } from 'tmp-promise';
-
-import ftpClient from 'promise-ftp';
-import sftpClient from 'ssh2-sftp-client';
 import { formatPrivateKey } from '@utils/utilities';
 
 interface ReturnFtpItem {
@@ -39,8 +37,6 @@ interface ReturnFtpItem {
 	sticky?: boolean;
 	path: string;
 }
-
-const streamPipeline = promisify(pipeline);
 
 async function callRecursiveList(
 	path: string,
@@ -474,6 +470,7 @@ export class Ftp implements INodeType {
 							host: credentials.host as string,
 							port: credentials.port as number,
 							username: credentials.username as string,
+							password: (credentials.password as string) || undefined,
 							privateKey: formatPrivateKey(credentials.privateKey as string),
 							passphrase: credentials.passphrase as string | undefined,
 						});
@@ -525,6 +522,7 @@ export class Ftp implements INodeType {
 						host: credentials.host as string,
 						port: credentials.port as number,
 						username: credentials.username as string,
+						password: (credentials.password as string) || undefined,
 						privateKey: formatPrivateKey(credentials.privateKey as string),
 						passphrase: credentials.passphrase as string | undefined,
 					});
@@ -720,7 +718,7 @@ export class Ftp implements INodeType {
 						const binaryFile = await tmpFile({ prefix: 'n8n-sftp-' });
 						try {
 							const stream = await ftp!.get(path);
-							await streamPipeline(stream, createWriteStream(binaryFile.path));
+							await pipeline(stream, createWriteStream(binaryFile.path));
 
 							const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 							const remoteFilePath = this.getNodeParameter('path', i) as string;

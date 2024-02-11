@@ -1044,12 +1044,14 @@ export class HttpRequestV3 implements INodeType {
 															name: 'name',
 															type: 'string',
 															default: '',
+															placeholder: 'e.g page',
 														},
 														{
 															displayName: 'Value',
 															name: 'value',
 															type: 'string',
 															default: '',
+															hint: 'Use expression mode and $response to access response data',
 														},
 													],
 												},
@@ -1221,44 +1223,6 @@ export class HttpRequestV3 implements INodeType {
 		let nodeCredentialType: string | undefined;
 		let genericCredentialType: string | undefined;
 
-		if (authentication === 'genericCredentialType') {
-			genericCredentialType = this.getNodeParameter('genericAuthType', 0) as string;
-
-			if (genericCredentialType === 'httpBasicAuth') {
-				try {
-					httpBasicAuth = await this.getCredentials('httpBasicAuth');
-				} catch {}
-			} else if (genericCredentialType === 'httpDigestAuth') {
-				try {
-					httpDigestAuth = await this.getCredentials('httpDigestAuth');
-				} catch {}
-			} else if (genericCredentialType === 'httpHeaderAuth') {
-				try {
-					httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
-				} catch {}
-			} else if (genericCredentialType === 'httpQueryAuth') {
-				try {
-					httpQueryAuth = await this.getCredentials('httpQueryAuth');
-				} catch {}
-			} else if (genericCredentialType === 'httpCustomAuth') {
-				try {
-					httpCustomAuth = await this.getCredentials('httpCustomAuth');
-				} catch {}
-			} else if (genericCredentialType === 'oAuth1Api') {
-				try {
-					oAuth1Api = await this.getCredentials('oAuth1Api');
-				} catch {}
-			} else if (genericCredentialType === 'oAuth2Api') {
-				try {
-					oAuth2Api = await this.getCredentials('oAuth2Api');
-				} catch {}
-			}
-		} else if (authentication === 'predefinedCredentialType') {
-			try {
-				nodeCredentialType = this.getNodeParameter('nodeCredentialType', 0) as string;
-			} catch {}
-		}
-
 		type RequestOptions = OptionsWithUri & { useStream?: boolean };
 		let requestOptions: RequestOptions = {
 			uri: '',
@@ -1293,6 +1257,28 @@ export class HttpRequestV3 implements INodeType {
 		};
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+			if (authentication === 'genericCredentialType') {
+				genericCredentialType = this.getNodeParameter('genericAuthType', 0) as string;
+
+				if (genericCredentialType === 'httpBasicAuth') {
+					httpBasicAuth = await this.getCredentials('httpBasicAuth', itemIndex);
+				} else if (genericCredentialType === 'httpDigestAuth') {
+					httpDigestAuth = await this.getCredentials('httpDigestAuth', itemIndex);
+				} else if (genericCredentialType === 'httpHeaderAuth') {
+					httpHeaderAuth = await this.getCredentials('httpHeaderAuth', itemIndex);
+				} else if (genericCredentialType === 'httpQueryAuth') {
+					httpQueryAuth = await this.getCredentials('httpQueryAuth', itemIndex);
+				} else if (genericCredentialType === 'httpCustomAuth') {
+					httpCustomAuth = await this.getCredentials('httpCustomAuth', itemIndex);
+				} else if (genericCredentialType === 'oAuth1Api') {
+					oAuth1Api = await this.getCredentials('oAuth1Api', itemIndex);
+				} else if (genericCredentialType === 'oAuth2Api') {
+					oAuth2Api = await this.getCredentials('oAuth2Api', itemIndex);
+				}
+			} else if (authentication === 'predefinedCredentialType') {
+				nodeCredentialType = this.getNodeParameter('nodeCredentialType', itemIndex) as string;
+			}
+
 			const requestMethod = this.getNodeParameter('method', itemIndex) as string;
 
 			const sendQuery = this.getNodeParameter('sendQuery', itemIndex, false) as boolean;
@@ -1677,11 +1663,34 @@ export class HttpRequestV3 implements INodeType {
 				if (pagination.paginationMode === 'updateAParameterInEachRequest') {
 					// Iterate over all parameters and add them to the request
 					paginationData.request = {};
-					pagination.parameters.parameters.forEach((parameter) => {
+					const { parameters } = pagination.parameters;
+					if (parameters.length === 1 && parameters[0].name === '' && parameters[0].value === '') {
+						throw new NodeOperationError(
+							this.getNode(),
+							"At least one entry with 'Name' and 'Value' filled must be included in 'Parameters' to use 'Update a Parameter in Each Request' mode ",
+						);
+					}
+					pagination.parameters.parameters.forEach((parameter, index) => {
 						if (!paginationData.request[parameter.type]) {
 							paginationData.request[parameter.type] = {};
 						}
-						paginationData.request[parameter.type]![parameter.name] = parameter.value;
+						const parameterName = parameter.name;
+						if (parameterName === '') {
+							throw new NodeOperationError(
+								this.getNode(),
+								`Parameter name must be set for parameter [${index + 1}] in pagination settings`,
+							);
+						}
+						const parameterValue = parameter.value;
+						if (parameterValue === '') {
+							throw new NodeOperationError(
+								this.getNode(),
+								`Some value must be provided for parameter [${
+									index + 1
+								}] in pagination settings, omitting it will result in an infinite loop`,
+							);
+						}
+						paginationData.request[parameter.type]![parameterName] = parameterValue;
 					});
 				} else if (pagination.paginationMode === 'responseContainsNextURL') {
 					paginationData.request.url = pagination.nextURL;
@@ -1730,6 +1739,7 @@ export class HttpRequestV3 implements INodeType {
 					nodeCredentialType,
 					requestOptions,
 					additionalOAuth2Options && { oauth2: additionalOAuth2Options },
+					itemIndex,
 				);
 				requestWithAuthentication.catch(() => {});
 				requestPromises.push(requestWithAuthentication);
@@ -1786,7 +1796,8 @@ export class HttpRequestV3 implements INodeType {
 
 			// eslint-disable-next-line prefer-const
 			for (let [index, response] of Object.entries(responses)) {
-				delete response.request;
+				if (response?.request?.constructor.name === 'ClientRequest') delete response.request;
+
 				if (this.getMode() === 'manual' && index === '0') {
 					// For manual executions save the first response in the context
 					// so that we can use it in the frontend and so make it easier for
@@ -1799,8 +1810,8 @@ export class HttpRequestV3 implements INodeType {
 					}
 				}
 
+				const responseContentType = response.headers['content-type'] ?? '';
 				if (autoDetectResponseFormat) {
-					const responseContentType = response.headers['content-type'] ?? '';
 					if (responseContentType.includes('application/json')) {
 						responseFormat = 'json';
 						if (!response.__bodyResolved) {
@@ -1879,7 +1890,22 @@ export class HttpRequestV3 implements INodeType {
 						newItem.json = items[itemIndex].json;
 						binaryData = response;
 					}
-					newItem.binary![outputPropertyName] = await this.helpers.prepareBinaryData(binaryData);
+					const preparedBinaryData = await this.helpers.prepareBinaryData(
+						binaryData,
+						undefined,
+						responseContentType || undefined,
+					);
+
+					if (
+						!preparedBinaryData.fileName &&
+						preparedBinaryData.fileExtension &&
+						typeof requestOptions.uri === 'string' &&
+						requestOptions.uri.endsWith(preparedBinaryData.fileExtension)
+					) {
+						preparedBinaryData.fileName = requestOptions.uri.split('/').pop();
+					}
+
+					newItem.binary![outputPropertyName] = preparedBinaryData;
 
 					returnItems.push(newItem);
 				} else if (responseFormat === 'text') {

@@ -2,6 +2,8 @@ import type { IPairedItemData, IRunData, ITaskData } from 'n8n-workflow';
 import type { IExecutionResponse, TargetItem } from '@/Interface';
 import { isNotNull } from '@/utils/typeGuards';
 
+export const MAX_ITEM_COUNT_FOR_PAIRING = 1000;
+
 /*
 	Utility functions that provide shared functionalities used to add paired item support to nodes
 */
@@ -10,7 +12,10 @@ export function getPairedItemId(node: string, run: number, output: number, item:
 	return `${node}_r${run}_o${output}_i${item}`;
 }
 
-export function getSourceItems(data: IExecutionResponse, target: TargetItem): TargetItem[] {
+export function getSourceItems(
+	data: Partial<IExecutionResponse>,
+	target: TargetItem,
+): TargetItem[] {
 	if (!data?.data?.resultData?.runData) {
 		return [];
 	}
@@ -165,16 +170,42 @@ function getMapping(paths: { [item: string]: string[][] }): { [item: string]: Se
 	return mapping;
 }
 
-export function getPairedItemsMapping(executionResponse: IExecutionResponse | null): {
+function getItemsCount(runData: IRunData) {
+	let itemsCount = 0;
+
+	for (const node in runData) {
+		for (const taskData of runData[node]) {
+			const data = taskData.data;
+			if (!data) continue;
+
+			for (const connectionType in data) {
+				const runsCount = data[connectionType].reduce((sum: number, run) => {
+					return run ? sum + run.length : sum;
+				}, 0);
+
+				itemsCount += runsCount;
+			}
+		}
+	}
+
+	return itemsCount;
+}
+
+export function getPairedItemsMapping(executionResponse: Partial<IExecutionResponse> | null): {
 	[itemId: string]: Set<string>;
 } {
 	if (!executionResponse?.data?.resultData?.runData) {
 		return {};
 	}
 
-	const seen = new Set<string>();
 	const runData = executionResponse.data.resultData.runData;
 
+	const itemsCount = getItemsCount(runData);
+	if (itemsCount > MAX_ITEM_COUNT_FOR_PAIRING) {
+		return {};
+	}
+
+	const seen = new Set<string>();
 	const pinned = new Set(Object.keys(executionResponse.data.resultData.pinData || {}));
 
 	const paths: { [item: string]: string[][] } = {};

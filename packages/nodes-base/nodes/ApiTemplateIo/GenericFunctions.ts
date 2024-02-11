@@ -74,7 +74,7 @@ export function validateJSON(json: string | object | undefined): any {
 }
 
 export async function downloadImage(this: IExecuteFunctions, url: string) {
-	return this.helpers.request({
+	return await this.helpers.request({
 		uri: url,
 		method: 'GET',
 		json: false,

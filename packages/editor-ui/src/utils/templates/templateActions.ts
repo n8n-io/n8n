@@ -21,6 +21,7 @@ import type { Telemetry } from '@/plugins/telemetry';
 import type { useExternalHooks } from '@/composables/useExternalHooks';
 import { assert } from '@/utils/assert';
 import { doesNodeHaveCredentialsToFill } from '@/utils/nodes/nodeTransforms';
+import { tryToParseNumber } from '@/utils/typesUtils';
 
 type ExternalHooks = ReturnType<typeof useExternalHooks>;
 
@@ -68,8 +69,12 @@ async function openTemplateCredentialSetup(opts: {
 	templateId: string;
 	router: Router;
 	inNewBrowserTab?: boolean;
+	telemetry: Telemetry;
+	source: string;
 }) {
-	const { router, templateId, inNewBrowserTab = false } = opts;
+	const { router, templateId, inNewBrowserTab = false, telemetry, source } = opts;
+
+	telemetry.track('User opened cred setup', { source }, { withPostHog: true });
 
 	const routeLocation: RouteLocationRaw = {
 		name: VIEWS.TEMPLATE_SETUP,
@@ -94,22 +99,18 @@ async function openTemplateWorkflowOnNodeView(opts: {
 	templatesStore: TemplatesStore;
 	router: Router;
 	inNewBrowserTab?: boolean;
-	telemetry: Telemetry;
 }) {
-	const { externalHooks, templateId, templatesStore, telemetry, inNewBrowserTab, router } = opts;
+	const { externalHooks, templateId, templatesStore, inNewBrowserTab, router } = opts;
 	const routeLocation: RouteLocationRaw = {
 		name: VIEWS.TEMPLATE_IMPORT,
 		params: { id: templateId },
 	};
 	const telemetryPayload = {
 		source: 'workflow',
-		template_id: templateId,
+		template_id: tryToParseNumber(templateId),
 		wf_template_repo_session_id: templatesStore.currentSessionId,
 	};
 
-	telemetry.track('User inserted workflow template', telemetryPayload, {
-		withPostHog: true,
-	});
 	await externalHooks.run('templatesWorkflowView.openWorkflow', telemetryPayload);
 
 	if (inNewBrowserTab) {
@@ -152,6 +153,7 @@ export async function useTemplateWorkflow(opts: {
 	router: Router;
 	inNewBrowserTab?: boolean;
 	telemetry: Telemetry;
+	source: string;
 }) {
 	const { nodeTypesStore, posthogStore, templateId, templatesStore } = opts;
 

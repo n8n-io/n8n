@@ -83,6 +83,7 @@ describe('Langchain Integration', () => {
 		addLanguageModelNodeToParent(
 			AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME,
 			BASIC_LLM_CHAIN_NODE_NAME,
+			true
 		);
 
 		clickCreateNewCredential();
@@ -121,7 +122,7 @@ describe('Langchain Integration', () => {
 		addNodeToCanvas(MANUAL_CHAT_TRIGGER_NODE_NAME, true);
 		addNodeToCanvas(AGENT_NODE_NAME, true);
 
-		addLanguageModelNodeToParent(AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME, AGENT_NODE_NAME);
+		addLanguageModelNodeToParent(AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME, AGENT_NODE_NAME, true);
 
 		clickCreateNewCredential();
 		setCredentialValues({
@@ -159,7 +160,7 @@ describe('Langchain Integration', () => {
 		addNodeToCanvas(MANUAL_CHAT_TRIGGER_NODE_NAME, true);
 		addNodeToCanvas(AGENT_NODE_NAME, true);
 
-		addLanguageModelNodeToParent(AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME, AGENT_NODE_NAME);
+		addLanguageModelNodeToParent(AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME, AGENT_NODE_NAME, true);
 
 		clickCreateNewCredential();
 		setCredentialValues({

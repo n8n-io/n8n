@@ -21,7 +21,7 @@ export class MemoryRedisChat implements INodeType {
 		name: 'memoryRedisChat',
 		icon: 'file:redis.svg',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Stores the chat history in Redis.',
 		defaults: {
 			name: 'Redis Chat Memory',
@@ -58,6 +58,23 @@ export class MemoryRedisChat implements INodeType {
 				type: 'string',
 				default: 'chat_history',
 				description: 'The key to use to store the memory in the workflow data',
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
+			},
+			{
+				displayName: 'Session ID',
+				name: 'sessionKey',
+				type: 'string',
+				default: '={{ $json.sessionId }}',
+				description: 'The key to use to store the memory',
+				displayOptions: {
+					show: {
+						'@version': [1.1],
+					},
+				},
 			},
 			{
 				displayName: 'Session Time To Live',

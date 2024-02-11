@@ -1,6 +1,4 @@
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
-/* eslint-disable @typescript-eslint/no-unused-vars */
-
 /* eslint-disable @typescript-eslint/no-this-alias */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 
@@ -122,13 +120,13 @@ export class WorkflowDataProxy {
 
 					return Reflect.ownKeys(target);
 				},
-				getOwnPropertyDescriptor(k) {
+				getOwnPropertyDescriptor() {
 					return {
 						enumerable: true,
 						configurable: true,
 					};
 				},
-				get(target, name, receiver) {
+				get(_, name) {
 					if (name === 'isProxy') return true;
 
 					name = name.toString();
@@ -151,7 +149,7 @@ export class WorkflowDataProxy {
 					return Reflect.ownKeys(target);
 				},
 
-				get(target, name, receiver) {
+				get(_, name) {
 					if (name === 'isProxy') return true;
 					name = name.toString();
 					return that.selfData[name];
@@ -175,13 +173,13 @@ export class WorkflowDataProxy {
 			ownKeys(target) {
 				return Reflect.ownKeys(target);
 			},
-			getOwnPropertyDescriptor(k) {
+			getOwnPropertyDescriptor() {
 				return {
 					enumerable: true,
 					configurable: true,
 				};
 			},
-			get(target, name, receiver) {
+			get(target, name) {
 				if (name === 'isProxy') return true;
 				if (name === 'toJSON') return () => deepCopy(target);
 
@@ -439,7 +437,7 @@ export class WorkflowDataProxy {
 			{},
 			{
 				has: () => true,
-				get(target, name, receiver) {
+				get(_, name) {
 					if (name === 'isProxy') return true;
 
 					if (typeof process === 'undefined') {
@@ -470,10 +468,10 @@ export class WorkflowDataProxy {
 			{},
 			{
 				has: () => true,
-				ownKeys(target) {
+				ownKeys() {
 					return allowedValues;
 				},
-				getOwnPropertyDescriptor(k) {
+				getOwnPropertyDescriptor() {
 					return {
 						enumerable: true,
 						configurable: true,
@@ -518,10 +516,10 @@ export class WorkflowDataProxy {
 			{},
 			{
 				has: () => true,
-				ownKeys(target) {
+				ownKeys() {
 					return allowedValues;
 				},
-				getOwnPropertyDescriptor(k) {
+				getOwnPropertyDescriptor() {
 					return {
 						enumerable: true,
 						configurable: true,
@@ -561,7 +559,7 @@ export class WorkflowDataProxy {
 			{},
 			{
 				has: () => true,
-				get(target, name, receiver) {
+				get(_, name) {
 					if (name === 'isProxy') return true;
 
 					const nodeName = name.toString();
@@ -932,7 +930,7 @@ export class WorkflowDataProxy {
 					{},
 					{
 						has: () => true,
-						ownKeys(target) {
+						ownKeys() {
 							return [
 								'pairedItem',
 								'itemMatching',
@@ -1056,10 +1054,10 @@ export class WorkflowDataProxy {
 
 			$input: new Proxy({} as ProxyInput, {
 				has: () => true,
-				ownKeys(target) {
+				ownKeys() {
 					return ['all', 'context', 'first', 'item', 'last', 'params'];
 				},
-				getOwnPropertyDescriptor(k) {
+				getOwnPropertyDescriptor() {
 					return {
 						enumerable: true,
 						configurable: true,

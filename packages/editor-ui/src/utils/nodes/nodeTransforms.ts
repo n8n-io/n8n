@@ -32,6 +32,9 @@ export function getNodeTypeDisplayableCredentials(
 	return displayableCredentials;
 }
 
+/**
+ * Checks if the given node has credentials that can be filled.
+ */
 export function doesNodeHaveCredentialsToFill(
 	nodeTypeProvider: NodeTypeProvider,
 	node: Pick<INodeUi, 'parameters' | 'type' | 'typeVersion'>,
@@ -39,4 +42,32 @@ export function doesNodeHaveCredentialsToFill(
 	const requiredCredentials = getNodeTypeDisplayableCredentials(nodeTypeProvider, node);
 
 	return requiredCredentials.length > 0;
+}
+
+/**
+ * Does node has the given credential filled
+ *
+ * @param credentialName E.g. "telegramApi"
+ */
+export function hasNodeCredentialFilled(
+	node: Pick<INodeUi, 'credentials'>,
+	credentialName: string,
+): boolean {
+	if (!node.credentials) {
+		return false;
+	}
+
+	return !!node.credentials[credentialName];
+}
+
+/**
+ * Checks if the given node has all credentials filled.
+ */
+export function doesNodeHaveAllCredentialsFilled(
+	nodeTypeProvider: NodeTypeProvider,
+	node: Pick<INodeUi, 'parameters' | 'type' | 'typeVersion' | 'credentials'>,
+): boolean {
+	const requiredCredentials = getNodeTypeDisplayableCredentials(nodeTypeProvider, node);
+
+	return requiredCredentials.every((cred) => hasNodeCredentialFilled(node, cred.name));
 }

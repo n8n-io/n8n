@@ -35,7 +35,7 @@ describe('Node Creator', () => {
 		nodeCreatorFeature.actions.openNodeCreator();
 
 		nodeCreatorFeature.getters.searchBar().find('input').type('manual');
-		nodeCreatorFeature.getters.creatorItem().should('have.length', 3);
+		nodeCreatorFeature.getters.creatorItem().should('have.length', 2);
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('manual123');
 		nodeCreatorFeature.getters.creatorItem().should('have.length', 0);
 		nodeCreatorFeature.getters
@@ -308,7 +308,7 @@ describe('Node Creator', () => {
 			nodeCreatorFeature.getters.getCategoryItem('Actions').click();
 			nodeCreatorFeature.getters.getCreatorItem('Create a credential').click();
 			NDVModal.actions.close();
-			WorkflowPage.actions.deleteNode('When clicking "Test Workflow"');
+			WorkflowPage.actions.deleteNode('When clicking "Test workflow"');
 			WorkflowPage.getters.canvasNodePlusEndpointByName('n8n').click();
 			nodeCreatorFeature.getters.searchBar().find('input').clear().type('n8n');
 			nodeCreatorFeature.getters.getCreatorItem('n8n').click();

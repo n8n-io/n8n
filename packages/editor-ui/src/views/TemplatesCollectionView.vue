@@ -162,6 +162,7 @@ export default defineComponent({
 				externalHooks: this.externalHooks,
 				nodeTypesStore: useNodeTypesStore(),
 				telemetry: this.$telemetry,
+				source: 'template_list',
 			});
 		},
 		navigateTo(e: MouseEvent, page: string, id: string) {

@@ -58,7 +58,6 @@ import { v4 as uuid } from 'uuid';
 import type { Route } from 'vue-router';
 import { executionHelpers } from '@/mixins/executionsHelpers';
 import { range as _range } from 'lodash-es';
-import { debounceHelper } from '@/mixins/debounce';
 import { NO_NETWORK_ERROR_CODE } from '@/utils/apiUtils';
 import { getNodeViewTab } from '@/utils/canvasUtils';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
@@ -69,6 +68,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { executionFilterToQueryFilter } from '@/utils/executionUtils';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useDebounce } from '@/composables/useDebounce';
 
 // Number of execution pages that are fetched before temporary execution card is shown
 const MAX_LOADING_ATTEMPTS = 5;
@@ -80,12 +80,14 @@ export default defineComponent({
 	components: {
 		ExecutionsSidebar,
 	},
-	mixins: [executionHelpers, debounceHelper, workflowHelpers],
+	mixins: [executionHelpers, workflowHelpers],
 	setup() {
 		const externalHooks = useExternalHooks();
+		const { callDebounced } = useDebounce();
 
 		return {
 			externalHooks,
+			callDebounced,
 			...useToast(),
 			...useMessage(),
 		};
@@ -231,7 +233,7 @@ export default defineComponent({
 		},
 		async onLoadMore(): Promise<void> {
 			if (!this.loadingMore) {
-				await this.callDebounced('loadMore', { debounceTime: 1000 });
+				await this.callDebounced(this.loadMore, { debounceTime: 1000 });
 			}
 		},
 		async loadMore(limit = 20): Promise<void> {

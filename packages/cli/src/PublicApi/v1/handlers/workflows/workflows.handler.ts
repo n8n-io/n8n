@@ -1,7 +1,8 @@
 import type express from 'express';
+
 import { Container } from 'typedi';
-import type { FindOptionsWhere } from 'typeorm';
-import { In } from 'typeorm';
+import type { FindOptionsWhere } from '@n8n/typeorm';
+import { In, Like, QueryFailedError } from '@n8n/typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
@@ -20,10 +21,11 @@ import {
 	updateWorkflow,
 	createWorkflow,
 	parseTagNames,
+	getWorkflowTags,
+	updateTags,
 } from './workflows.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { InternalHooks } from '@/InternalHooks';
-import { RoleService } from '@/services/role.service';
 import { WorkflowHistoryService } from '@/workflows/workflowHistory/workflowHistory.service.ee';
 import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
 import { TagRepository } from '@/databases/repositories/tag.repository';
@@ -31,7 +33,7 @@ import { WorkflowRepository } from '@/databases/repositories/workflow.repository
 
 export = {
 	createWorkflow: [
-		authorize(['owner', 'admin', 'member']),
+		authorize(['global:owner', 'global:admin', 'global:member']),
 		async (req: WorkflowRequest.Create, res: express.Response): Promise<express.Response> => {
 			const workflow = req.body;
 
@@ -42,9 +44,7 @@ export = {
 
 			addNodeIds(workflow);
 
-			const role = await Container.get(RoleService).findWorkflowOwnerRole();
-
-			const createdWorkflow = await createWorkflow(workflow, req.user, role);
+			const createdWorkflow = await createWorkflow(workflow, req.user, 'workflow:owner');
 
 			await Container.get(WorkflowHistoryService).saveVersion(
 				req.user,
@@ -59,7 +59,7 @@ export = {
 		},
 	],
 	deleteWorkflow: [
-		authorize(['owner', 'admin', 'member']),
+		authorize(['global:owner', 'global:admin', 'global:member']),
 		async (req: WorkflowRequest.Get, res: express.Response): Promise<express.Response> => {
 			const { id: workflowId } = req.params;
 
@@ -74,7 +74,7 @@ export = {
 		},
 	],
 	getWorkflow: [
-		authorize(['owner', 'admin', 'member']),
+		authorize(['global:owner', 'global:admin', 'global:member']),
 		async (req: WorkflowRequest.Get, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 
@@ -95,16 +95,17 @@ export = {
 		},
 	],
 	getWorkflows: [
-		authorize(['owner', 'admin', 'member']),
+		authorize(['global:owner', 'global:admin', 'global:member']),
 		validCursor,
 		async (req: WorkflowRequest.GetAll, res: express.Response): Promise<express.Response> => {
-			const { offset = 0, limit = 100, active = undefined, tags = undefined } = req.query;
+			const { offset = 0, limit = 100, active, tags, name } = req.query;
 
 			const where: FindOptionsWhere<WorkflowEntity> = {
 				...(active !== undefined && { active }),
+				...(name !== undefined && { name: Like('%' + name.trim() + '%') }),
 			};
 
-			if (['owner', 'admin'].includes(req.user.globalRole.name)) {
+			if (['global:owner', 'global:admin'].includes(req.user.role)) {
 				if (tags) {
 					const workflowIds = await Container.get(TagRepository).getWorkflowIdsViaTags(
 						parseTagNames(tags),
@@ -159,7 +160,7 @@ export = {
 		},
 	],
 	updateWorkflow: [
-		authorize(['owner', 'admin', 'member']),
+		authorize(['global:owner', 'global:admin', 'global:member']),
 		async (req: WorkflowRequest.Update, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 			const updateData = new WorkflowEntity();
@@ -221,7 +222,7 @@ export = {
 		},
 	],
 	activateWorkflow: [
-		authorize(['owner', 'admin', 'member']),
+		authorize(['global:owner', 'global:admin', 'global:member']),
 		async (req: WorkflowRequest.Activate, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 
@@ -255,7 +256,7 @@ export = {
 		},
 	],
 	deactivateWorkflow: [
-		authorize(['owner', 'admin', 'member']),
+		authorize(['global:owner', 'global:admin', 'global:member']),
 		async (req: WorkflowRequest.Activate, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 
@@ -281,6 +282,61 @@ export = {
 
 			// nothing to do as the workflow is already inactive
 			return res.json(sharedWorkflow.workflow);
+		},
+	],
+	getWorkflowTags: [
+		authorize(['global:owner', 'global:admin', 'global:member']),
+		async (req: WorkflowRequest.GetTags, res: express.Response): Promise<express.Response> => {
+			const { id } = req.params;
+
+			if (config.getEnv('workflowTagsDisabled')) {
+				return res.status(400).json({ message: 'Workflow Tags Disabled' });
+			}
+
+			const sharedWorkflow = await getSharedWorkflow(req.user, id);
+
+			if (!sharedWorkflow) {
+				// user trying to access a workflow he does not own
+				// or workflow does not exist
+				return res.status(404).json({ message: 'Not Found' });
+			}
+
+			const tags = await getWorkflowTags(id);
+
+			return res.json(tags);
+		},
+	],
+	updateWorkflowTags: [
+		authorize(['global:owner', 'global:admin', 'global:member']),
+		async (req: WorkflowRequest.UpdateTags, res: express.Response): Promise<express.Response> => {
+			const { id } = req.params;
+			const newTags = req.body.map((newTag) => newTag.id);
+
+			if (config.getEnv('workflowTagsDisabled')) {
+				return res.status(400).json({ message: 'Workflow Tags Disabled' });
+			}
+
+			const sharedWorkflow = await getSharedWorkflow(req.user, id);
+
+			if (!sharedWorkflow) {
+				// user trying to access a workflow he does not own
+				// or workflow does not exist
+				return res.status(404).json({ message: 'Not Found' });
+			}
+
+			let tags;
+			try {
+				await updateTags(id, newTags);
+				tags = await getWorkflowTags(id);
+			} catch (error) {
+				if (error instanceof QueryFailedError && error.message.includes('SQLITE_CONSTRAINT')) {
+					return res.status(404).json({ message: 'Some tags not found' });
+				} else {
+					throw error;
+				}
+			}
+
+			return res.json(tags);
 		},
 	],
 };

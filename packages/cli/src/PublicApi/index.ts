@@ -98,7 +98,6 @@ async function createApiRouter(
 						const apiKey = req.headers[schema.name.toLowerCase()] as string;
 						const user = await Container.get(UserRepository).findOne({
 							where: { apiKey },
-							relations: ['globalRole'],
 						});
 
 						if (!user) return false;
@@ -144,7 +143,7 @@ export const loadPublicApiVersions = async (
 	const apiRouters = await Promise.all(
 		versions.map(async (version) => {
 			const openApiPath = path.join(__dirname, version, 'openapi.yml');
-			return createApiRouter(version, openApiPath, __dirname, publicApiEndpoint);
+			return await createApiRouter(version, openApiPath, __dirname, publicApiEndpoint);
 		}),
 	);
 

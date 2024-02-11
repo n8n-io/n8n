@@ -46,7 +46,8 @@
 				:model-value="expressionDisplayValue"
 				:title="displayTitle"
 				:is-read-only="isReadOnly"
-				:is-single-line="isSingleLine"
+				:rows="rows"
+				:is-assignment="isAssignment"
 				:path="path"
 				:additional-expression-data="additionalExpressionData"
 				:class="{ 'ph-no-capture': shouldRedactValue }"
@@ -508,7 +509,6 @@ import { isResourceLocatorValue } from '@/utils/typeGuards';
 import { CUSTOM_API_CALL_KEY, HTML_NODE_TYPE, NODES_USING_CODE_NODE_EDITOR } from '@/constants';
 
 import type { PropType } from 'vue';
-import { debounceHelper } from '@/mixins/debounce';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -522,6 +522,7 @@ import { useI18n } from '@/composables/useI18n';
 import type { N8nInput } from 'n8n-design-system';
 import { isCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useDebounce } from '@/composables/useDebounce';
 
 type Picker = { $emit: (arg0: string, arg1: Date) => void };
 
@@ -540,7 +541,7 @@ export default defineComponent({
 		ResourceLocator,
 		TextEdit,
 	},
-	mixins: [workflowHelpers, debounceHelper],
+	mixins: [workflowHelpers],
 	props: {
 		additionalExpressionData: {
 			type: Object as PropType<IDataObject>,
@@ -549,7 +550,11 @@ export default defineComponent({
 		isReadOnly: {
 			type: Boolean,
 		},
-		isSingleLine: {
+		rows: {
+			type: Number,
+			default: 5,
+		},
+		isAssignment: {
 			type: Boolean,
 		},
 		parameter: {
@@ -612,11 +617,13 @@ export default defineComponent({
 		const externalHooks = useExternalHooks();
 		const i18n = useI18n();
 		const nodeHelpers = useNodeHelpers();
+		const { callDebounced } = useDebounce();
 
 		return {
 			externalHooks,
 			i18n,
 			nodeHelpers,
+			callDebounced,
 		};
 	},
 	data() {
@@ -1243,7 +1250,7 @@ export default defineComponent({
 			this.$emit('textInput', parameterData);
 		},
 		valueChangedDebounced(value: NodeParameterValueType | {} | Date) {
-			void this.callDebounced('valueChanged', { debounceTime: 100 }, value);
+			void this.callDebounced(this.valueChanged, { debounceTime: 100 }, value);
 		},
 		onUpdateTextInput(value: string) {
 			this.valueChanged(value);
@@ -1312,7 +1319,11 @@ export default defineComponent({
 					(!this.modelValue || this.modelValue === '[Object: null]')
 				) {
 					this.valueChanged('={{ 0 }}');
-				} else if (this.parameter.type === 'number' || this.parameter.type === 'boolean') {
+				} else if (
+					this.parameter.type === 'number' ||
+					this.parameter.type === 'boolean' ||
+					typeof this.modelValue !== 'string'
+				) {
 					this.valueChanged(`={{ ${this.modelValue} }}`);
 				} else {
 					this.valueChanged(`=${this.modelValue}`);
@@ -1343,7 +1354,6 @@ export default defineComponent({
 						// Strip the '=' from the beginning
 						newValue = this.modelValue ? this.modelValue.toString().substring(1) : null;
 					}
-
 					this.valueChanged(newValue);
 				}
 			} else if (command === 'refreshOptions') {
@@ -1414,6 +1424,7 @@ export default defineComponent({
 
 .droppable {
 	--input-border-color: var(--color-ndv-droppable-parameter);
+	--input-border-right-color: var(--color-ndv-droppable-parameter);
 	--input-border-style: dashed;
 
 	textarea,
@@ -1425,6 +1436,7 @@ export default defineComponent({
 
 .activeDrop {
 	--input-border-color: var(--color-success);
+	--input-border-right-color: var(--color-success);
 	--input-background-color: var(--color-foreground-xlight);
 	--input-border-style: solid;
 

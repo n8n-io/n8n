@@ -5,6 +5,7 @@ import { STORES } from '@/constants';
 import { useNDVStore } from '@/stores/ndv.store';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
+import { within } from '@testing-library/vue';
 
 const DEFAULT_SETUP = {
 	pinia: createTestingPinia({
@@ -31,7 +32,7 @@ const DEFAULT_SETUP = {
 
 const renderComponent = createComponentRenderer(FilterConditions, DEFAULT_SETUP);
 
-describe('Filter.vue', () => {
+describe('FilterConditions.vue', () => {
 	afterEach(() => {
 		vi.clearAllMocks();
 	});
@@ -256,12 +257,51 @@ describe('Filter.vue', () => {
 		let conditions = await findAllByTestId('filter-condition');
 		expect(conditions.length).toEqual(2);
 
-		const removeButton = conditions[0].querySelector('[data-test-id="filter-remove-condition"]');
-
-		await userEvent.click(removeButton as Element);
+		await userEvent.click(within(conditions[0]).getByTestId('filter-remove-condition'));
 
 		conditions = await findAllByTestId('filter-condition');
 		expect(conditions.length).toEqual(1);
 		expect(conditions[0].querySelector('[data-test-id="filter-remove-condition"]')).toBeNull();
+	});
+
+	it('renders correctly in read only mode', async () => {
+		const { findAllByTestId, queryByTestId } = renderComponent({
+			props: {
+				...DEFAULT_SETUP.props,
+				value: {
+					conditions: [
+						{
+							leftValue: 'foo',
+							operator: { type: 'string', operation: 'equals' },
+							rightValue: 'bar',
+						},
+						{
+							leftValue: 'foo',
+							operator: { type: 'string', operation: 'equals' },
+							rightValue: 'bar',
+						},
+					],
+				},
+				readOnly: true,
+			},
+		});
+
+		expect(queryByTestId('filter-add-condition')).not.toBeInTheDocument();
+
+		const conditions = await findAllByTestId('filter-condition');
+
+		for (const condition of conditions) {
+			const removeButton = within(condition).queryByTestId('filter-remove-condition');
+			expect(removeButton).not.toBeInTheDocument();
+
+			const left = within(condition).getByTestId('filter-condition-left');
+			expect(left.querySelector('input')).toBeDisabled();
+
+			const right = within(condition).getByTestId('filter-condition-right');
+			expect(right.querySelector('input')).toBeDisabled();
+
+			const operatorSelect = within(condition).getByTestId('filter-operator-select');
+			expect(operatorSelect.querySelector('input')).toBeDisabled();
+		}
 	});
 });

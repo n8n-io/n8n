@@ -1,8 +1,8 @@
 import { Container } from 'typedi';
 import { readFileSync, rmSync } from 'fs';
 import { InstanceSettings } from 'n8n-core';
-import type { ObjectLiteral } from 'typeorm';
-import type { QueryRunner } from 'typeorm/query-runner/QueryRunner';
+import type { ObjectLiteral } from '@n8n/typeorm';
+import type { QueryRunner } from '@n8n/typeorm/query-runner/QueryRunner';
 import { ApplicationError, jsonParse } from 'n8n-workflow';
 import config from '@/config';
 import { inTest } from '@/constants';
@@ -118,9 +118,9 @@ const createContext = (queryRunner: QueryRunner, migration: Migration): Migratio
 				namedParameters,
 				{},
 			);
-			return queryRunner.query(query, parameters) as Promise<T>;
+			return await (queryRunner.query(query, parameters) as Promise<T>);
 		} else {
-			return queryRunner.query(sql) as Promise<T>;
+			return await (queryRunner.query(sql) as Promise<T>);
 		}
 	},
 	runInBatches: async <T>(
@@ -191,7 +191,7 @@ export const wrapMigration = (migration: Migration) => {
 			if (down) {
 				const context = createContext(queryRunner, migration);
 				if (this.transaction === false) {
-					await runDisablingForeignKeys(this, context, up);
+					await runDisablingForeignKeys(this, context, down);
 				} else {
 					await down.call(this, context);
 				}

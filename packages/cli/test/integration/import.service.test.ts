@@ -6,7 +6,6 @@ import type { INode } from 'n8n-workflow';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { TagRepository } from '@/databases/repositories/tag.repository';
 import { ImportService } from '@/services/import.service';
-import { RoleService } from '@/services/role.service';
 import { TagEntity } from '@/databases/entities/TagEntity';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
@@ -34,12 +33,7 @@ describe('ImportService', () => {
 
 		credentialsRepository.find.mockResolvedValue([]);
 
-		importService = new ImportService(
-			mock(),
-			credentialsRepository,
-			tagRepository,
-			Container.get(RoleService),
-		);
+		importService = new ImportService(mock(), credentialsRepository, tagRepository);
 	});
 
 	afterEach(async () => {
@@ -67,10 +61,8 @@ describe('ImportService', () => {
 
 		await importService.importWorkflows([workflowToImport], owner.id);
 
-		const workflowOwnerRole = await Container.get(RoleService).findWorkflowOwnerRole();
-
 		const dbSharing = await Container.get(SharedWorkflowRepository).findOneOrFail({
-			where: { workflowId: workflowToImport.id, userId: owner.id, roleId: workflowOwnerRole.id },
+			where: { workflowId: workflowToImport.id, userId: owner.id, role: 'workflow:owner' },
 		});
 
 		expect(dbSharing.userId).toBe(owner.id);

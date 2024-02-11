@@ -1,7 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { VectorStore } from 'langchain/vectorstores/base';
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError, jsonStringify } from 'n8n-workflow';
 import type {
 	INodeCredentialDescription,
 	INodeProperties,
@@ -237,9 +237,10 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 					});
 
 					resultData.push(...serializedDocs);
+					void this.logAiEvent('n8n.ai.vector.store.searched', jsonStringify({ query: prompt }));
 				}
 
-				return this.prepareOutputData(resultData);
+				return await this.prepareOutputData(resultData);
 			}
 
 			if (mode === 'insert') {
@@ -262,12 +263,14 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 
 					try {
 						await args.populateVectorStore(this, embeddings, processedDocuments, itemIndex);
+
+						void this.logAiEvent('n8n.ai.vector.store.populated');
 					} catch (error) {
 						throw error;
 					}
 				}
 
-				return this.prepareOutputData(resultData);
+				return await this.prepareOutputData(resultData);
 			}
 
 			throw new NodeOperationError(

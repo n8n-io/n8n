@@ -13,6 +13,7 @@ import { createWorkflowFromTemplate } from '@/utils/templates/templateActions';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useCredentialSetupState } from '@/views/SetupWorkflowFromTemplateView/useCredentialSetupState';
+import { tryToParseNumber } from '@/utils/typesUtils';
 
 export type NodeAndType = {
 	node: INodeUi;
@@ -196,14 +197,20 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 				workflow_id: createdWorkflow.id,
 			});
 
-			const telemetryPayload = {
-				source: 'workflow',
-				template_id: template.value.id,
-				wf_template_repo_session_id: templatesStore.currentSessionId,
-			};
+			telemetry.track(
+				'User inserted workflow template',
+				{
+					source: 'workflow',
+					template_id: tryToParseNumber(templateId.value),
+					wf_template_repo_session_id: templatesStore.currentSessionId,
+				},
+				{ withPostHog: true },
+			);
 
-			telemetry.track('User inserted workflow template', telemetryPayload, {
-				withPostHog: true,
+			telemetry.track('User saved new workflow from template', {
+				template_id: tryToParseNumber(templateId.value),
+				workflow_id: createdWorkflow.id,
+				wf_template_repo_session_id: templatesStore.currentSessionId,
 			});
 
 			// Replace the URL so back button doesn't come back to this setup view

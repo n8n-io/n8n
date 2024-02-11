@@ -994,7 +994,7 @@ export class HttpRequestV1 implements INodeType {
 			}
 
 			response = response.value;
-			delete response.request;
+			if (response?.request?.constructor.name === 'ClientRequest') delete response.request;
 
 			const options = this.getNodeParameter('options', itemIndex, {});
 

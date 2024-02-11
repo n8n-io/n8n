@@ -15,6 +15,7 @@ import type {
 	MaybeHash,
 	Hash,
 } from '@/services/cache/cache.types';
+import { TIME } from '@/constants';
 
 @Service()
 export class CacheService extends EventEmitter {
@@ -128,6 +129,21 @@ export class CacheService extends EventEmitter {
 		Object.assign(hashObject, hash);
 
 		await this.set(key, hashObject);
+	}
+
+	async expire(key: string, ttlMs: number) {
+		if (!this.cache) await this.init();
+
+		if (!key?.length) return;
+
+		if (this.cache.kind === 'memory') {
+			setTimeout(async () => {
+				await this.cache.store.del(key);
+			}, ttlMs);
+			return;
+		}
+
+		await this.cache.store.expire(key, ttlMs / TIME.SECOND);
 	}
 
 	// ----------------------------------
@@ -316,7 +332,7 @@ export class CacheService extends EventEmitter {
 
 		if (keys.length === 0) return;
 
-		return this.cache.store.mdel(...keys);
+		return await this.cache.store.mdel(...keys);
 	}
 
 	/**

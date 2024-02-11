@@ -46,6 +46,6 @@ describe('Test MicrosoftExcelV2, worksheet => readRows', () => {
 	const nodeTypes = setup(tests);
 
 	for (const testData of tests) {
-		test(testData.description, async () => equalityTest(testData, nodeTypes));
+		test(testData.description, async () => await equalityTest(testData, nodeTypes));
 	}
 });

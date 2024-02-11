@@ -160,3 +160,12 @@ export const getObjectKeys = <T extends object, K extends keyof T>(o: T): K[] =>
 export const isN8nBinaryProperty = (data: unknown): boolean => {
 	return !!data && typeof data === 'object' && '@type' in data && data['@type'] === 'binary';
 };
+
+/**
+ * Converts a string to a number if possible. If not it returns the original string.
+ * For a string to be converted to a number it has to contain only digits.
+ * @param value The value to convert to a number
+ */
+export const tryToParseNumber = (value: string): number | string => {
+	return isNaN(+value) ? value : +value;
+};

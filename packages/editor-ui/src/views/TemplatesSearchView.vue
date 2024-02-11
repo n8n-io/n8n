@@ -25,10 +25,10 @@
 					<TemplateFilters
 						:categories="templatesStore.allCategories"
 						:sort-on-populate="areCategoriesPrepopulated"
-						:loading="loadingCategories"
 						:selected="categories"
+						:loading="loadingCategories"
 						@clear="onCategoryUnselected"
-						@clearAll="onCategoriesCleared"
+						@clear-all="onCategoriesCleared"
 						@select="onCategorySelected"
 					/>
 				</div>
@@ -37,7 +37,8 @@
 						:model-value="search"
 						:placeholder="$locale.baseText('templates.searchPlaceholder')"
 						clearable
-						@update:modelValue="onSearchInput"
+						data-test-id="template-search-input"
+						@update:model-value="onSearchInput"
 						@blur="trackSearch"
 					>
 						<template #prefix>
@@ -48,22 +49,26 @@
 						<div :class="$style.header">
 							<n8n-heading :bold="true" size="medium" color="text-light">
 								{{ $locale.baseText('templates.collections') }}
-								<span v-if="!loadingCollections" v-text="`(${collections.length})`" />
+								<span
+									v-if="!loadingCollections"
+									data-test-id="collection-count-label"
+									v-text="`(${collections.length})`"
+								/>
 							</n8n-heading>
 						</div>
 						<TemplatesInfoCarousel
 							:collections="collections"
 							:loading="loadingCollections"
-							@openCollection="onOpenCollection"
+							@open-collection="onOpenCollection"
 						/>
 					</div>
 					<TemplateList
 						:infinite-scroll-enabled="true"
 						:loading="loadingWorkflows"
-						:total-workflows="totalWorkflows"
 						:workflows="workflows"
-						@loadMore="onLoadMore"
-						@openTemplate="onOpenTemplate"
+						:total-count="totalWorkflows"
+						@load-more="onLoadMore"
+						@open-template="onOpenTemplate"
 					/>
 					<div v-if="endOfSearchMessage" :class="$style.endText">
 						<n8n-text size="medium" color="text-base">
@@ -93,13 +98,13 @@ import type {
 import type { IDataObject } from 'n8n-workflow';
 import { setPageTitle } from '@/utils/htmlUtils';
 import { CREATOR_HUB_URL, VIEWS } from '@/constants';
-import { debounceHelper } from '@/mixins/debounce';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useToast } from '@/composables/useToast';
 import { usePostHog } from '@/stores/posthog.store';
+import { useDebounce } from '@/composables/useDebounce';
 
 interface ISearchEvent {
 	search_string: string;
@@ -117,16 +122,18 @@ export default defineComponent({
 		TemplateList,
 		TemplatesView,
 	},
-	mixins: [debounceHelper],
 	setup() {
+		const { callDebounced } = useDebounce();
+
 		return {
+			callDebounced,
 			...useToast(),
 		};
 	},
 	data() {
 		return {
 			areCategoriesPrepopulated: false,
-			categories: [] as number[],
+			categories: [] as ITemplatesCategory[],
 			loading: true,
 			loadingCategories: true,
 			loadingCollections: true,
@@ -140,13 +147,13 @@ export default defineComponent({
 	computed: {
 		...mapStores(useSettingsStore, useTemplatesStore, useUIStore, useUsersStore, usePostHog),
 		totalWorkflows(): number {
-			return this.templatesStore.getSearchedWorkflowsTotal(this.query);
+			return this.templatesStore.getSearchedWorkflowsTotal(this.createQueryObject('name'));
 		},
 		workflows(): ITemplatesWorkflow[] {
-			return this.templatesStore.getSearchedWorkflows(this.query) || [];
+			return this.templatesStore.getSearchedWorkflows(this.createQueryObject('name')) ?? [];
 		},
 		collections(): ITemplatesCollection[] {
-			return this.templatesStore.getSearchedCollections(this.query) || [];
+			return this.templatesStore.getSearchedCollections(this.createQueryObject('id')) ?? [];
 		},
 		endOfSearchMessage(): string | null {
 			if (this.loadingWorkflows) {
@@ -164,12 +171,6 @@ export default defineComponent({
 			}
 
 			return null;
-		},
-		query(): ITemplatesQuery {
-			return {
-				categories: this.categories,
-				search: this.search,
-			};
 		},
 		nothingFound(): boolean {
 			return (
@@ -189,9 +190,11 @@ export default defineComponent({
 	},
 	async mounted() {
 		setPageTitle('n8n - Templates');
-		void this.loadCategories();
+		await this.loadCategories();
 		void this.loadWorkflowsAndCollections(true);
 		void this.usersStore.showPersonalizationSurvey();
+
+		this.restoreSearchFromRoute();
 
 		setTimeout(() => {
 			// Check if there is scroll position saved in route and scroll to it
@@ -200,19 +203,35 @@ export default defineComponent({
 			}
 		}, 100);
 	},
-	async created() {
-		if (this.$route.query.search && typeof this.$route.query.search === 'string') {
-			this.search = this.$route.query.search;
-		}
-
-		if (typeof this.$route.query.categories === 'string' && this.$route.query.categories.length) {
-			this.categories = this.$route.query.categories
-				.split(',')
-				.map((categoryId) => parseInt(categoryId, 10));
-			this.areCategoriesPrepopulated = true;
-		}
-	},
 	methods: {
+		createQueryObject(categoryId: 'name' | 'id'): ITemplatesQuery {
+			// We are using category names for template search and ids for collection search
+			return {
+				categories: this.categories.map((category) =>
+					categoryId === 'name' ? category.name : String(category.id),
+				),
+				search: this.search,
+			};
+		},
+		restoreSearchFromRoute() {
+			let updateSearch = false;
+			if (this.$route.query.search && typeof this.$route.query.search === 'string') {
+				this.search = this.$route.query.search;
+				updateSearch = true;
+			}
+			if (typeof this.$route.query.categories === 'string' && this.$route.query.categories.length) {
+				const categoriesFromURL = this.$route.query.categories.split(',');
+				this.categories = this.templatesStore.allCategories.filter((category) =>
+					categoriesFromURL.includes(category.id.toString()),
+				);
+				updateSearch = true;
+			}
+			if (updateSearch) {
+				this.updateSearch();
+				this.trackCategories();
+				this.areCategoriesPrepopulated = true;
+			}
+		},
 		onOpenCollection({ event, id }: { event: MouseEvent; id: string }) {
 			this.navigateTo(event, VIEWS.COLLECTION, id);
 		},
@@ -229,7 +248,7 @@ export default defineComponent({
 			}
 		},
 		updateSearch() {
-			this.updateQueryParam(this.search, this.categories.join(','));
+			this.updateQueryParam(this.search, this.categories.map((category) => category.id).join(','));
 			void this.loadWorkflowsAndCollections(false);
 		},
 		updateSearchTracking(search: string, categories: number[]) {
@@ -263,19 +282,22 @@ export default defineComponent({
 			this.loadingWorkflows = true;
 			this.loadingCollections = true;
 			this.search = search;
-			void this.callDebounced('updateSearch', { debounceTime: 500, trailing: true });
+			void this.callDebounced(this.updateSearch, {
+				debounceTime: 500,
+				trailing: true,
+			});
 
 			if (search.length === 0) {
 				this.trackSearch();
 			}
 		},
-		onCategorySelected(selected: number) {
+		onCategorySelected(selected: ITemplatesCategory) {
 			this.categories = this.categories.concat(selected);
 			this.updateSearch();
 			this.trackCategories();
 		},
-		onCategoryUnselected(selected: number) {
-			this.categories = this.categories.filter((id) => id !== selected);
+		onCategoryUnselected(selected: ITemplatesCategory) {
+			this.categories = this.categories.filter((category) => category.id !== selected.id);
 			this.updateSearch();
 			this.trackCategories();
 		},
@@ -287,9 +309,7 @@ export default defineComponent({
 			if (this.categories.length) {
 				this.$telemetry.track('User changed template filters', {
 					search_string: this.search,
-					categories_applied: this.categories.map((categoryId: number) =>
-						this.templatesStore.getCollectionById(categoryId.toString()),
-					),
+					categories_applied: this.categories,
 					wf_template_repo_session_id: this.templatesStore.currentSessionId,
 				});
 			}
@@ -318,7 +338,7 @@ export default defineComponent({
 			try {
 				this.loadingWorkflows = true;
 				await this.templatesStore.getMoreWorkflows({
-					categories: this.categories,
+					categories: this.categories.map((category) => category.name),
 					search: this.search,
 				});
 			} catch (e) {
@@ -341,7 +361,7 @@ export default defineComponent({
 			try {
 				this.loadingCollections = true;
 				await this.templatesStore.getCollections({
-					categories: this.categories,
+					categories: this.categories.map((category) => String(category.id)),
 					search: this.search,
 				});
 			} catch (e) {}
@@ -353,7 +373,7 @@ export default defineComponent({
 				this.loadingWorkflows = true;
 				await this.templatesStore.getWorkflows({
 					search: this.search,
-					categories: this.categories,
+					categories: this.categories.map((category) => category.name),
 				});
 				this.errorLoadingWorkflows = false;
 			} catch (e) {
@@ -367,7 +387,10 @@ export default defineComponent({
 			const categories = [...this.categories];
 			await Promise.all([this.loadWorkflows(), this.loadCollections()]);
 			if (!initialLoad) {
-				this.updateSearchTracking(search, categories);
+				this.updateSearchTracking(
+					search,
+					categories.map((category) => category.id),
+				);
 			}
 		},
 		scrollTo(position: number, behavior: ScrollBehavior = 'smooth') {

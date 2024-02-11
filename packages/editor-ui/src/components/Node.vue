@@ -6,6 +6,7 @@
 		:style="nodeWrapperStyles"
 		data-test-id="canvas-node"
 		:data-name="data.name"
+		:data-node-type="nodeType?.name"
 		@contextmenu="(e: MouseEvent) => openContextMenu(e, 'node-right-click')"
 	>
 		<div v-show="isSelected" class="select-background"></div>
@@ -13,7 +14,7 @@
 			:class="{
 				'node-default': true,
 				'touch-active': isTouchActive,
-				'is-touch-device': isTouchDevice,
+				'is-touch-device': deviceSupport.isTouchDevice,
 				'menu-open': isContextMenuOpen,
 				'disable-pointer-events': disablePointerEvents,
 			}"
@@ -105,24 +106,6 @@
 				/>
 			</div>
 
-			<div v-if="!isReadOnly" v-show="!hideActions" class="node-options no-select-on-click">
-				<n8n-icon-button
-					data-test-id="execute-node-button"
-					type="tertiary"
-					text
-					icon="play"
-					:disabled="workflowRunning || isConfigNode"
-					:title="$locale.baseText('node.testStep')"
-					@click="executeNode"
-				/>
-				<n8n-icon-button
-					data-test-id="overflow-node-button"
-					type="tertiary"
-					text
-					icon="ellipsis-h"
-					@click="(e: MouseEvent) => openContextMenu(e, 'node-button')"
-				/>
-			</div>
 			<div
 				v-if="showDisabledLinethrough"
 				:class="{
@@ -140,6 +123,54 @@
 			</div>
 			<div v-if="nodeSubtitle !== undefined" class="node-subtitle" :title="nodeSubtitle">
 				{{ nodeSubtitle }}
+			</div>
+		</div>
+
+		<div
+			v-if="!isReadOnly"
+			v-show="!hideActions"
+			class="node-options no-select-on-click"
+			@contextmenu.stop
+			@mousedown.stop
+		>
+			<div class="node-options-inner">
+				<n8n-icon-button
+					v-if="!isConfigNode"
+					data-test-id="execute-node-button"
+					type="tertiary"
+					text
+					size="small"
+					icon="play"
+					:disabled="workflowRunning"
+					:title="$locale.baseText('node.testStep')"
+					@click="executeNode"
+				/>
+				<n8n-icon-button
+					data-test-id="disable-node-button"
+					type="tertiary"
+					text
+					size="small"
+					icon="power-off"
+					:title="nodeDisabledTitle"
+					@click="toggleDisableNode"
+				/>
+				<n8n-icon-button
+					data-test-id="delete-node-button"
+					type="tertiary"
+					size="small"
+					text
+					icon="trash"
+					:title="$locale.baseText('node.delete')"
+					@click="deleteNode"
+				/>
+				<n8n-icon-button
+					data-test-id="overflow-node-button"
+					type="tertiary"
+					size="small"
+					text
+					icon="ellipsis-h"
+					@click="(e: MouseEvent) => openContextMenu(e, 'node-button')"
+				/>
 			</div>
 		</div>
 	</div>
@@ -176,7 +207,6 @@ import TitledList from '@/components/TitledList.vue';
 import { get } from 'lodash-es';
 import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
 import type { INodeUi, XYPosition } from '@/Interface';
-import { debounceHelper } from '@/mixins/debounce';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -187,6 +217,8 @@ import { type ContextMenuTarget, useContextMenu } from '@/composables/useContext
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { usePinnedData } from '@/composables/usePinnedData';
+import { useDeviceSupport } from 'n8n-design-system';
+import { useDebounce } from '@/composables/useDebounce';
 
 export default defineComponent({
 	name: 'Node',
@@ -195,7 +227,7 @@ export default defineComponent({
 		FontAwesomeIcon,
 		NodeIcon,
 	},
-	mixins: [nodeBase, workflowHelpers, debounceHelper],
+	mixins: [nodeBase, workflowHelpers],
 	props: {
 		isProductionExecutionPreview: {
 			type: Boolean,
@@ -217,8 +249,17 @@ export default defineComponent({
 		const nodeHelpers = useNodeHelpers();
 		const node = workflowsStore.getNodeByName(props.name);
 		const pinnedData = usePinnedData(node);
+		const deviceSupport = useDeviceSupport();
+		const { callDebounced } = useDebounce();
 
-		return { contextMenu, externalHooks, nodeHelpers, pinnedData };
+		return {
+			contextMenu,
+			externalHooks,
+			nodeHelpers,
+			pinnedData,
+			deviceSupport,
+			callDebounced,
+		};
 	},
 	computed: {
 		...mapStores(useNodeTypesStore, useNDVStore, useUIStore, useWorkflowsStore),
@@ -426,12 +467,10 @@ export default defineComponent({
 			}
 			return issues;
 		},
-		nodeDisabledIcon(): string {
-			if (this.data.disabled === false) {
-				return 'pause';
-			} else {
-				return 'play';
-			}
+		nodeDisabledTitle(): string {
+			return this.data.disabled
+				? this.$locale.baseText('node.enable')
+				: this.$locale.baseText('node.disable');
 		},
 		position(): XYPosition {
 			return this.node ? this.node.position : [0, 0];
@@ -669,6 +708,7 @@ export default defineComponent({
 				});
 			}
 		},
+
 		executeNode() {
 			this.$emit('runWorkflow', this.data.name, 'Node.executeNode');
 			this.$telemetry.track('User clicked node hover button', {
@@ -678,8 +718,27 @@ export default defineComponent({
 			});
 		},
 
+		deleteNode() {
+			this.$telemetry.track('User clicked node hover button', {
+				node_type: this.data.type,
+				button_name: 'delete',
+				workflow_id: this.workflowsStore.workflowId,
+			});
+
+			this.$emit('removeNode', this.data.name);
+		},
+
+		toggleDisableNode() {
+			this.$telemetry.track('User clicked node hover button', {
+				node_type: this.data.type,
+				button_name: 'disable',
+				workflow_id: this.workflowsStore.workflowId,
+			});
+			this.$emit('toggleDisableNode', this.data);
+		},
+
 		onClick(event: MouseEvent) {
-			void this.callDebounced('onClickDebounced', { debounceTime: 50, trailing: true }, event);
+			void this.callDebounced(this.onClickDebounced, { debounceTime: 50, trailing: true }, event);
 		},
 
 		onClickDebounced(event: MouseEvent) {
@@ -696,7 +755,7 @@ export default defineComponent({
 			this.pinDataDiscoveryTooltipVisible = false;
 		},
 		touchStart() {
-			if (this.isTouchDevice === true && !this.isMacOs && !this.isTouchActive) {
+			if (this.deviceSupport.isTouchDevice && !this.deviceSupport.isMacOs && !this.isTouchActive) {
 				this.isTouchActive = true;
 				setTimeout(() => {
 					this.isTouchActive = false;
@@ -767,6 +826,42 @@ export default defineComponent({
 		}
 	}
 
+	&.touch-active,
+	&:hover,
+	&.menu-open {
+		.node-options {
+			opacity: 1;
+		}
+	}
+
+	.node-options {
+		:deep(.button) {
+			--button-font-color: var(--color-text-light);
+			--button-border-radius: 0;
+		}
+		cursor: default;
+		position: absolute;
+		bottom: 100%;
+		z-index: 11;
+		min-width: 100%;
+		display: flex;
+		left: calc(-1 * var(--spacing-4xs));
+		right: calc(-1 * var(--spacing-4xs));
+		justify-content: center;
+		align-items: center;
+		padding-bottom: var(--spacing-2xs);
+		font-size: var(--font-size-s);
+		opacity: 0;
+		transition: opacity 100ms ease-in;
+
+		&-inner {
+			display: flex;
+			align-items: center;
+			background-color: var(--color-canvas-background);
+			border-radius: var(--border-radius-base);
+		}
+	}
+
 	.node-default {
 		position: absolute;
 		width: 100%;
@@ -789,15 +884,6 @@ export default defineComponent({
 				.node-executing-info {
 					display: inline-block;
 				}
-			}
-		}
-
-		&.touch-active,
-		&:hover,
-		&.menu-open {
-			.node-options {
-				pointer-events: all;
-				opacity: 1;
 			}
 		}
 
@@ -857,65 +943,6 @@ export default defineComponent({
 		.waiting {
 			color: var(--color-secondary);
 		}
-
-		.node-options {
-			--node-options-height: 26px;
-			:deep(.button) {
-				--button-font-color: var(--color-text-light);
-			}
-			position: absolute;
-			display: flex;
-			align-items: center;
-			justify-content: space-between;
-			gap: var(--spacing-2xs);
-			transition: opacity 100ms ease-in;
-			opacity: 0;
-			pointer-events: none;
-			top: calc(-1 * (var(--node-options-height) + var(--spacing-4xs)));
-			left: 0;
-			width: var(--node-width);
-			height: var(--node-options-height);
-			font-size: var(--font-size-s);
-			z-index: 10;
-			text-align: center;
-
-			.option {
-				display: inline-block;
-
-				&.touch {
-					display: none;
-				}
-
-				&:hover {
-					color: $color-primary;
-				}
-
-				.execute-icon {
-					position: relative;
-					font-size: var(----font-size-xl);
-				}
-			}
-
-			&:after {
-				content: '';
-				display: block;
-				position: absolute;
-				left: 0;
-				right: 0;
-				top: -1rem;
-				bottom: -1rem;
-				z-index: -1;
-			}
-		}
-
-		&.is-touch-device .node-options {
-			left: -25px;
-			width: 150px;
-
-			.option.touch {
-				display: initial;
-			}
-		}
 	}
 
 	&--config {
@@ -924,20 +951,12 @@ export default defineComponent({
 		--node-height: 75px;
 
 		.node-default {
-			.node-options {
-				background: color-mix(in srgb, var(--color-canvas-background) 80%, transparent);
-				height: 25px;
-			}
-
 			.node-icon {
 				scale: 0.75;
 			}
-		}
 
-		.node-default {
 			.node-box {
 				border: 2px solid var(--color-foreground-xdark);
-				//background-color: $node-background-type-other;
 				border-radius: 50px;
 
 				&.executing {
@@ -1016,14 +1035,14 @@ export default defineComponent({
 				left: var(--configurable-node-icon-offset);
 			}
 
-			.node-options {
-				left: 0;
-				height: 25px;
-			}
-
 			.node-executing-info {
 				left: -67px;
 			}
+		}
+
+		&[data-node-type='@n8n/n8n-nodes-langchain.chatTrigger'] {
+			--configurable-node-min-input-count: 1;
+			--configurable-node-input-width: 176px;
 		}
 	}
 
@@ -1156,23 +1175,8 @@ export default defineComponent({
 	z-index: 100;
 }
 
-.node-options {
-	z-index: 10;
-}
-
 .drop-add-node-label {
 	z-index: 10;
-}
-
-.jtk-connector.success:not(.jtk-hover) {
-	path:not(.jtk-connector-outline) {
-		stroke: var(--color-success-light);
-	}
-	path[jtk-overlay-id='reverse-arrow'],
-	path[jtk-overlay-id='endpoint-arrow'],
-	path[jtk-overlay-id='midpoint-arrow'] {
-		fill: var(--color-success-light);
-	}
 }
 </style>
 
@@ -1246,7 +1250,6 @@ export default defineComponent({
 		white-space: nowrap;
 		font-size: var(--font-size-s);
 		font-weight: var(--font-weight-regular);
-		color: var(--color-success);
 		margin-top: -15px;
 
 		&.floating {

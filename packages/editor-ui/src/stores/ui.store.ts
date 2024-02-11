@@ -44,7 +44,6 @@ import type {
 	CloudUpdateLinkSourceType,
 	CurlToJSONResponse,
 	IFakeDoorLocation,
-	IMenuItem,
 	INodeUi,
 	IOnboardingCallPrompt,
 	IUser,
@@ -176,7 +175,6 @@ export const useUIStore = defineStore(STORES.UI, {
 		nodeViewOffsetPosition: [0, 0],
 		nodeViewMoveInProgress: false,
 		selectedNodes: [],
-		sidebarMenuItems: [],
 		nodeViewInitialized: false,
 		addFirstStepOnLoad: false,
 		executionSidebarAutoRefresh: true,
@@ -473,21 +471,21 @@ export const useUIStore = defineStore(STORES.UI, {
 			const instanceId = rootStore.instanceId;
 			// TODO: current USER
 			const currentUser = {} as IUser;
-			return fetchNextOnboardingPrompt(instanceId, currentUser);
+			return await fetchNextOnboardingPrompt(instanceId, currentUser);
 		},
 		async applyForOnboardingCall(email: string): Promise<string> {
 			const rootStore = useRootStore();
 			const instanceId = rootStore.instanceId;
 			// TODO: current USER
 			const currentUser = {} as IUser;
-			return applyForOnboardingCall(instanceId, currentUser, email);
+			return await applyForOnboardingCall(instanceId, currentUser, email);
 		},
 		async submitContactEmail(email: string, agree: boolean): Promise<string> {
 			const rootStore = useRootStore();
 			const instanceId = rootStore.instanceId;
 			// TODO: current USER
 			const currentUser = {} as IUser;
-			return submitEmailOnSignup(instanceId, currentUser, email || currentUser.email, agree);
+			return await submitEmailOnSignup(instanceId, currentUser, email || currentUser.email, agree);
 		},
 		openCommunityPackageUninstallConfirmModal(packageName: string) {
 			this.setActiveId(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, packageName);
@@ -528,10 +526,6 @@ export const useUIStore = defineStore(STORES.UI, {
 		resetSelectedNodes(): void {
 			this.selectedNodes = [];
 		},
-		addSidebarMenuItems(menuItems: IMenuItem[]) {
-			const updated = this.sidebarMenuItems.concat(menuItems);
-			this.sidebarMenuItems = updated;
-		},
 		setCurlCommand(payload: { name: string; command: string }): void {
 			this.modals[payload.name] = {
 				...this.modals[payload.name],
@@ -549,7 +543,7 @@ export const useUIStore = defineStore(STORES.UI, {
 		},
 		async getCurlToJson(curlCommand: string): Promise<CurlToJSONResponse> {
 			const rootStore = useRootStore();
-			return getCurlToJson(rootStore.getRestApiContext, curlCommand);
+			return await getCurlToJson(rootStore.getRestApiContext, curlCommand);
 		},
 		async goToUpgrade(
 			source: CloudUpdateLinkSourceType,
@@ -629,11 +623,11 @@ export const listenForModalChanges = (opts: {
 	store: UiStore;
 	onModalOpened?: (name: keyof Modals) => void;
 	onModalClosed?: (name: keyof Modals) => void;
-}): void => {
+}) => {
 	const { store, onModalClosed, onModalOpened } = opts;
 	const listeningForActions = ['openModal', 'openModalWithData', 'closeModal'];
 
-	store.$onAction((result) => {
+	return store.$onAction((result) => {
 		const { name, after, args } = result;
 		after(async () => {
 			if (!listeningForActions.includes(name)) {
