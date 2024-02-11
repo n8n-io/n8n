@@ -14,10 +14,9 @@ export class MovePipelineStageManager {
         const userRequest = this.executeContext.getNodeParameter('taskDescription', this.requestIndex) as string;
 		const requestParams = {
 			nodeExecutionContext: this.executeContext,
-			method: 'GET',
-            host: 'https://mocki.io',
-            resource: 'v1/96f209a6-1793-4398-9704-0ff9739d3cae',
-			//body: {userRequest},
+			method: 'POST',
+            resource: 'v2/n8n/action',
+			body: { userRequest },
 		};
 		
 		return await honeyBookApiRequest(requestParams);
