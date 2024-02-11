@@ -3579,7 +3579,6 @@ export default defineComponent({
 								},
 								{
 									withPostHog: true,
-									withAppCues: true,
 								},
 							);
 						}
