@@ -1,17 +1,21 @@
-![n8n.io - Workflow Automation](https://user-images.githubusercontent.com/65276001/173571060-9f2f6d7b-bac0-43b6-bdb2-001da9694058.png)
+# Package for HB nodes 
 
-# n8n-nodes-base
-
-The nodes which are included by default in n8n
-
+## Installation
+As a `turbo` package all the building & testing & running is taken care of.
+install with:
+`pnpm install` in base directory.
+## Usage
+To use this package and all its nodes to the local n8n instance you need to:
+```bash
+export N8N_CUSTOM_EXTENSIONS=<N8N_REPO_LOCATION_ON_LOCAL_COMPUTER>/packages/n8n-nodes-honeybook/dist
+export N8N_COMMUNITY_PACKAGES_ENABLED=true
+pnpm run dev # or pnpm run start if you already ran build
 ```
-npm install n8n-nodes-base -g
-```
 
-## License
+Note - This will already be baked in with our Dockerfile for the deployment side. 
 
-n8n is [fair-code](https://faircode.io) distributed under the [**Sustainable Use License**](https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md).
+### Adding packages
+add any node definition in the `nodes` directory:
 
-Proprietary licenses are available for enterprise customers. [Get in touch](mailto:license@n8n.io)
-
-Additional information about the license can be found in the [docs](https://docs.n8n.io/reference/license/).
+* `<name>.node.js` + `<name>.node.json` are required in a folder.
+* add the dist location of the nodes to the `package.json` file under `"n8n"` [here](https://github.com/HoneyBook/n8n/blob/ddbe13d8b894d39b1d4975799d632eddf444692a/packages/n8n-nodes-honeybook/package.json#L22)
