@@ -24,6 +24,7 @@ import type {
 	ExecutionStatus,
 	ExecutionError,
 	ExecuteWorkflowData,
+	EventNamesAiNodesType,
 	ITaskMetadata,
 } from 'n8n-workflow';
 import {
@@ -70,6 +71,7 @@ import { WorkflowStaticDataService } from './workflows/workflowStaticData.servic
 import { WorkflowRepository } from './databases/repositories/workflow.repository';
 import { UrlService } from './services/url.service';
 import { WorkflowExecutionService } from './workflows/workflowExecution.service';
+import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -1016,6 +1018,22 @@ export async function getBase(
 		setExecutionStatus,
 		variables,
 		secretsHelpers: Container.get(SecretsHelper),
+		logAiEvent: async (
+			eventName: EventNamesAiNodesType,
+			payload: {
+				msg?: string | undefined;
+				executionId: string;
+				nodeName: string;
+				workflowId?: string | undefined;
+				workflowName: string;
+				nodeType?: string | undefined;
+			},
+		) => {
+			return await Container.get(MessageEventBus).sendAiNodeEvent({
+				eventName,
+				payload,
+			});
+		},
 	};
 }
 

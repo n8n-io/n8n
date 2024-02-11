@@ -1,7 +1,9 @@
+import type { EventMessageAiNode } from './EventMessageAiNode';
 import type { EventMessageAudit } from './EventMessageAudit';
 import type { EventMessageGeneric } from './EventMessageGeneric';
 import type { EventMessageNode } from './EventMessageNode';
 import type { EventMessageWorkflow } from './EventMessageWorkflow';
+import { eventNamesAiNodes, type EventNamesAiNodesType } from 'n8n-workflow';
 
 export const eventNamesWorkflow = [
 	'n8n.workflow.started',
@@ -45,6 +47,7 @@ export type EventNamesTypes =
 	| EventNamesWorkflowType
 	| EventNamesNodeType
 	| EventNamesGenericType
+	| EventNamesAiNodesType
 	| 'n8n.destination.test';
 
 export const eventNamesAll = [
@@ -52,13 +55,15 @@ export const eventNamesAll = [
 	...eventNamesWorkflow,
 	...eventNamesNode,
 	...eventNamesGeneric,
+	...eventNamesAiNodes,
 ];
 
 export type EventMessageTypes =
 	| EventMessageGeneric
 	| EventMessageWorkflow
 	| EventMessageAudit
-	| EventMessageNode;
+	| EventMessageNode
+	| EventMessageAiNode;
 
 export interface FailedEventSummary {
 	lastNodeExecuted: string;

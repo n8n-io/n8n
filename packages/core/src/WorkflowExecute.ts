@@ -337,10 +337,13 @@ export class WorkflowExecute {
 	): boolean {
 		// for (const inputConnection of workflow.connectionsByDestinationNode[nodeToAdd].main[0]) {
 		for (const inputConnection of inputConnections) {
-			const nodeIncomingData = get(
-				runData,
-				`[${inputConnection.node}][${runIndex}].data.main[${inputConnection.index}]`,
-			);
+			const nodeIncomingData = get(runData, [
+				inputConnection.node,
+				runIndex,
+				'data',
+				'main',
+				inputConnection.index,
+			]);
 			if (nodeIncomingData !== undefined && (nodeIncomingData as object[]).length !== 0) {
 				return false;
 			}

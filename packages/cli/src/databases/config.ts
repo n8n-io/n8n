@@ -1,8 +1,8 @@
 import path from 'path';
 import { Container } from 'typedi';
-import type { SqliteConnectionOptions } from 'typeorm/driver/sqlite/SqliteConnectionOptions';
-import type { PostgresConnectionOptions } from 'typeorm/driver/postgres/PostgresConnectionOptions';
-import type { MysqlConnectionOptions } from 'typeorm/driver/mysql/MysqlConnectionOptions';
+import type { SqliteConnectionOptions } from '@n8n/typeorm/driver/sqlite/SqliteConnectionOptions';
+import type { PostgresConnectionOptions } from '@n8n/typeorm/driver/postgres/PostgresConnectionOptions';
+import type { MysqlConnectionOptions } from '@n8n/typeorm/driver/mysql/MysqlConnectionOptions';
 import { InstanceSettings } from 'n8n-core';
 
 import { entities } from './entities';

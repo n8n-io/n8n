@@ -118,6 +118,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useVersionsStore } from '@/stores/versions.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useTemplatesStore } from '@/stores/templates.store';
 import ExecutionsUsage from '@/components/ExecutionsUsage.vue';
 import BecomeTemplateCreatorCta from '@/components/BecomeTemplateCreatorCta/BecomeTemplateCreatorCta.vue';
 import MainSidebarSourceControl from '@/components/MainSidebarSourceControl.vue';
@@ -162,6 +163,7 @@ export default defineComponent({
 			useCloudPlanStore,
 			useSourceControlStore,
 			useBecomeTemplateCreatorStore,
+			useTemplatesStore,
 		),
 		logoPath(): string {
 			if (this.isCollapsed) return this.basePath + 'n8n-logo-collapsed.svg';
@@ -225,12 +227,27 @@ export default defineComponent({
 			const regularItems: IMenuItem[] = [
 				workflows,
 				{
+					// Link to in-app templates, available if custom templates are enabled
 					id: 'templates',
 					icon: 'box-open',
 					label: this.$locale.baseText('mainSidebar.templates'),
 					position: 'top',
-					available: this.settingsStore.isTemplatesEnabled,
+					available:
+						this.settingsStore.isTemplatesEnabled && this.templatesStore.hasCustomTemplatesHost,
 					route: { to: { name: VIEWS.TEMPLATES } },
+				},
+				{
+					// Link to website templates, available if custom templates are not enabled
+					id: 'templates',
+					icon: 'box-open',
+					label: this.$locale.baseText('mainSidebar.templates'),
+					position: 'top',
+					available:
+						this.settingsStore.isTemplatesEnabled && !this.templatesStore.hasCustomTemplatesHost,
+					link: {
+						href: this.templatesStore.getWebsiteTemplateRepositoryURL,
+						target: '_blank',
+					},
 				},
 				{
 					id: 'credentials',

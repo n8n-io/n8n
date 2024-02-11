@@ -58,6 +58,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type { SimplifiedNodeType } from '@/Interface';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
+import { useTemplatesStore } from '@/stores/templates.store';
 
 export interface NodeViewItemSection {
 	key: string;
@@ -116,6 +117,7 @@ function getAiNodesBySubcategory(nodes: INodeTypeDescription[], subcategory: str
 export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 	const i18n = useI18n();
 	const nodeTypesStore = useNodeTypesStore();
+	const templatesStore = useTemplatesStore();
 
 	const chainNodes = getAiNodesBySubcategory(nodeTypesStore.allLatestNodeTypes, AI_CATEGORY_CHAINS);
 	const agentNodes = getAiNodesBySubcategory(nodeTypesStore.allLatestNodeTypes, AI_CATEGORY_AGENTS);
@@ -124,7 +126,9 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 		value: AI_NODE_CREATOR_VIEW,
 		title: i18n.baseText('nodeCreator.aiPanel.aiNodes'),
 		subtitle: i18n.baseText('nodeCreator.aiPanel.selectAiNode'),
-		info: i18n.baseText('nodeCreator.aiPanel.infoBox'),
+		info: i18n.baseText('nodeCreator.aiPanel.infoBox', {
+			interpolate: { link: templatesStore.getWebsiteCategoryURL('ai') },
+		}),
 		items: [
 			...chainNodes,
 			...agentNodes,
