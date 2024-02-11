@@ -45,8 +45,7 @@
     "@types/xml2js": "^0.4.11"
   },
   "peerDependencies": {
-    "n8n-nodes-base": "workspace:*",
-    "n8n-nodes-honeybook": "workspace:*"
+    "n8n-nodes-base": "workspace:*"
   },
   "dependencies": {
     "@n8n/client-oauth2": "workspace:*",
