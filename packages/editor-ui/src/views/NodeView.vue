@@ -1,5 +1,5 @@
 <template>
-	<div :class="$style['content']" ref="nodeViewRootRef">
+	<div ref="nodeViewRootRef" :class="$style['content']">
 		<div
 			id="node-view-root"
 			class="node-view-root do-not-select"
@@ -258,7 +258,6 @@ import { useUniqueNodeName } from '@/composables/useUniqueNodeName';
 import { useI18n } from '@/composables/useI18n';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { workflowRun } from '@/mixins/workflowRun';
 
 import NodeDetailsView from '@/components/NodeDetailsView.vue';
@@ -316,7 +315,7 @@ import type {
 	ToggleNodeCreatorOptions,
 } from '@/Interface';
 
-import type { Route, RawLocation } from 'vue-router';
+import { type Route, type RawLocation, useRouter } from 'vue-router';
 import { dataPinningEventBus, nodeViewEventBus } from '@/event-bus';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useCollaborationStore } from '@/stores/collaboration.store';
@@ -382,6 +381,7 @@ import { useDebounce } from '@/composables/useDebounce';
 import { useExecutionsStore } from '@/stores/executions.store';
 import { useCanvasPanning } from '@/composables/useCanvasPanning';
 import { tryToParseNumber } from '@/utils/typesUtils';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -413,7 +413,7 @@ export default defineComponent({
 		ContextMenu,
 		SetupWorkflowCredentialsButton,
 	},
-	mixins: [workflowHelpers, workflowRun],
+	mixins: [workflowRun],
 	async beforeRouteLeave(to, from, next) {
 		if (
 			getNodeViewTab(to) === MAIN_HEADER_TABS.EXECUTIONS ||
@@ -441,7 +441,7 @@ export default defineComponent({
 			if (confirmModal === MODAL_CONFIRM) {
 				// Make sure workflow id is empty when leaving the editor
 				this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
-				const saved = await this.saveCurrentWorkflow({}, false);
+				const saved = await this.workflowHelpers.saveCurrentWorkflow({}, false);
 				if (saved) {
 					await this.settingsStore.fetchPromptsData();
 				}
@@ -478,6 +478,7 @@ export default defineComponent({
 		const nodeViewRootRef = ref(null);
 		const nodeViewRef = ref(null);
 		const onMouseMoveEnd = ref(null);
+		const router = useRouter();
 
 		const ndvStore = useNDVStore();
 		const externalHooks = useExternalHooks();
@@ -491,6 +492,7 @@ export default defineComponent({
 		const deviceSupport = useDeviceSupport();
 		const { callDebounced } = useDebounce();
 		const canvasPanning = useCanvasPanning(nodeViewRootRef, { onMouseMoveEnd });
+		const workflowHelpers = useWorkflowHelpers(router);
 
 		return {
 			locale,
@@ -505,6 +507,7 @@ export default defineComponent({
 			nodeViewRootRef,
 			nodeViewRef,
 			onMouseMoveEnd,
+			workflowHelpers,
 			callDebounced,
 			...useCanvasMouseSelect(),
 			...useGlobalLinkActions(),
@@ -1070,12 +1073,14 @@ export default defineComponent({
 			this.uiStore.openModal(WORKFLOW_LM_CHAT_MODAL_KEY);
 		},
 		async onRunWorkflow() {
-			void this.getWorkflowDataToSave().then((workflowData) => {
+			void this.workflowHelpers.getWorkflowDataToSave().then((workflowData) => {
 				const telemetryPayload = {
 					workflow_id: this.workflowsStore.workflowId,
 					node_graph_string: JSON.stringify(
-						TelemetryHelpers.generateNodesGraph(workflowData as IWorkflowBase, this.getNodeTypes())
-							.nodeGraph,
+						TelemetryHelpers.generateNodesGraph(
+							workflowData as IWorkflowBase,
+							this.workflowHelpers.getNodeTypes(),
+						).nodeGraph,
 					),
 				};
 				this.$telemetry.track('User clicked execute workflow button', telemetryPayload);
@@ -1152,7 +1157,7 @@ export default defineComponent({
 			this.nodeHelpers.updateNodesExecutionIssues();
 		},
 		async onSaveKeyboardShortcut(e: KeyboardEvent) {
-			let saved = await this.saveCurrentWorkflow();
+			let saved = await this.workflowHelpers.saveCurrentWorkflow();
 			if (saved) {
 				await this.settingsStore.fetchPromptsData();
 
@@ -1638,7 +1643,7 @@ export default defineComponent({
 					return;
 				}
 
-				const workflow = this.getCurrentWorkflow();
+				const workflow = this.workflowHelpers.getCurrentWorkflow();
 
 				if (!workflow.connectionsByDestinationNode.hasOwnProperty(lastSelectedNode.name)) {
 					return;
@@ -1666,7 +1671,7 @@ export default defineComponent({
 					return;
 				}
 
-				const workflow = this.getCurrentWorkflow();
+				const workflow = this.workflowHelpers.getCurrentWorkflow();
 
 				if (!workflow.connectionsByDestinationNode.hasOwnProperty(lastSelectedNode.name)) {
 					return;
@@ -1795,9 +1800,13 @@ export default defineComponent({
 			this.deselectAllNodes();
 
 			// Get all upstream nodes and select them
-			const workflow = this.getCurrentWorkflow();
+			const workflow = this.workflowHelpers.getCurrentWorkflow();
 
-			const checkNodes = this.getConnectedNodes('upstream', workflow, lastSelectedNode.name);
+			const checkNodes = this.workflowHelpers.getConnectedNodes(
+				'upstream',
+				workflow,
+				lastSelectedNode.name,
+			);
 			for (const nodeName of checkNodes) {
 				this.nodeSelectedByName(nodeName);
 			}
@@ -1814,9 +1823,13 @@ export default defineComponent({
 			this.deselectAllNodes();
 
 			// Get all downstream nodes and select them
-			const workflow = this.getCurrentWorkflow();
+			const workflow = this.workflowHelpers.getCurrentWorkflow();
 
-			const checkNodes = this.getConnectedNodes('downstream', workflow, lastSelectedNode.name);
+			const checkNodes = this.workflowHelpers.getConnectedNodes(
+				'downstream',
+				workflow,
+				lastSelectedNode.name,
+			);
 			for (const nodeName of checkNodes) {
 				this.nodeSelectedByName(nodeName);
 			}
@@ -1828,9 +1841,13 @@ export default defineComponent({
 		pushDownstreamNodes(sourceNodeName: string, margin: number, recordHistory = false) {
 			const sourceNode = this.workflowsStore.nodesByName[sourceNodeName];
 
-			const workflow = this.getCurrentWorkflow();
+			const workflow = this.workflowHelpers.getCurrentWorkflow();
 
-			const checkNodes = this.getConnectedNodes('downstream', workflow, sourceNodeName);
+			const checkNodes = this.workflowHelpers.getConnectedNodes(
+				'downstream',
+				workflow,
+				sourceNodeName,
+			);
 			for (const nodeName of checkNodes) {
 				const node = this.workflowsStore.nodesByName[nodeName];
 				const oldPosition = node.position;
@@ -1879,7 +1896,7 @@ export default defineComponent({
 					...data,
 				};
 
-				this.removeForeignCredentialsFromWorkflow(
+				this.workflowHelpers.removeForeignCredentialsFromWorkflow(
 					workflowToCopy,
 					this.credentialsStore.allCredentials,
 				);
@@ -1964,12 +1981,14 @@ export default defineComponent({
 			}
 			this.stopExecutionInProgress = false;
 
-			void this.getWorkflowDataToSave().then((workflowData) => {
+			void this.workflowHelpers.getWorkflowDataToSave().then((workflowData) => {
 				const trackProps = {
 					workflow_id: this.workflowsStore.workflowId,
 					node_graph_string: JSON.stringify(
-						TelemetryHelpers.generateNodesGraph(workflowData as IWorkflowBase, this.getNodeTypes())
-							.nodeGraph,
+						TelemetryHelpers.generateNodesGraph(
+							workflowData as IWorkflowBase,
+							this.workflowHelpers.getNodeTypes(),
+						).nodeGraph,
 					),
 				};
 
@@ -2092,9 +2111,9 @@ export default defineComponent({
 					workflowData.nodes.forEach((node: INode) => {
 						//generate new webhookId if workflow already contains a node with the same webhookId
 						if (node.webhookId && UPDATE_WEBHOOK_ID_NODE_TYPES.includes(node.type)) {
-							const isDuplicate = Object.values(this.getCurrentWorkflow().nodes).some(
-								(n) => n.webhookId === node.webhookId,
-							);
+							const isDuplicate = Object.values(
+								this.workflowHelpers.getCurrentWorkflow().nodes,
+							).some((n) => n.webhookId === node.webhookId);
 							if (isDuplicate) {
 								node.webhookId = uuid();
 							}
@@ -2116,13 +2135,17 @@ export default defineComponent({
 				const currInstanceId = this.rootStore.instanceId;
 
 				const nodeGraph = JSON.stringify(
-					TelemetryHelpers.generateNodesGraph(workflowData as IWorkflowBase, this.getNodeTypes(), {
-						nodeIdMap,
-						sourceInstanceId:
-							workflowData.meta && workflowData.meta.instanceId !== currInstanceId
-								? workflowData.meta.instanceId
-								: '',
-					}).nodeGraph,
+					TelemetryHelpers.generateNodesGraph(
+						workflowData as IWorkflowBase,
+						this.workflowHelpers.getNodeTypes(),
+						{
+							nodeIdMap,
+							sourceInstanceId:
+								workflowData.meta && workflowData.meta.instanceId !== currInstanceId
+									? workflowData.meta.instanceId
+									: '',
+						},
+					).nodeGraph,
 				);
 				if (source === 'paste') {
 					this.$telemetry.track('User pasted nodes', {
@@ -2149,7 +2172,7 @@ export default defineComponent({
 				// Fix the node position as it could be totally offscreen
 				// and the pasted nodes would so not be directly visible to
 				// the user
-				this.updateNodePositions(
+				this.workflowHelpers.updateNodePositions(
 					workflowData,
 					NodeViewUtils.getNewNodePosition(this.nodes, this.lastClickPosition),
 				);
@@ -2389,7 +2412,7 @@ export default defineComponent({
 
 			if (
 				nodeTypeData.maxNodes !== undefined &&
-				this.getNodeTypeCount(nodeTypeName) >= nodeTypeData.maxNodes
+				this.workflowHelpers.getNodeTypeCount(nodeTypeName) >= nodeTypeData.maxNodes
 			) {
 				this.showMaxNodeTypeError(nodeTypeData);
 				return;
@@ -2430,7 +2453,7 @@ export default defineComponent({
 					this.canvasStore.newNodeInsertPosition = null;
 				} else {
 					let yOffset = 0;
-					const workflow = this.getCurrentWorkflow();
+					const workflow = this.workflowHelpers.getCurrentWorkflow();
 
 					if (lastSelectedConnection) {
 						const sourceNodeType = this.nodeTypesStore.getNodeType(
@@ -2489,8 +2512,8 @@ export default defineComponent({
 						const lastSelectedNodeWorkflow = workflow.getNode(lastSelectedNode.name);
 						const lastSelectedInputs = NodeHelpers.getNodeInputs(
 							workflow,
-							lastSelectedNodeWorkflow!,
-							lastSelectedNodeType!,
+							lastSelectedNodeWorkflow,
+							lastSelectedNodeType,
 						);
 						const lastSelectedInputTypes = NodeHelpers.getConnectionTypes(lastSelectedInputs);
 
@@ -2514,7 +2537,7 @@ export default defineComponent({
 						const inputs = NodeHelpers.getNodeInputs(
 							workflow,
 							lastSelectedNode,
-							lastSelectedNodeType!,
+							lastSelectedNodeType,
 						);
 						const inputsTypes = NodeHelpers.getConnectionTypes(inputs);
 
@@ -2700,7 +2723,7 @@ export default defineComponent({
 				if (
 					lastSelectedEndpoint &&
 					this.checkNodeConnectionAllowed(
-						lastSelectedNode!,
+						lastSelectedNode,
 						newNodeData,
 						lastSelectedEndpoint.scope as NodeConnectionType,
 					)
@@ -2754,7 +2777,7 @@ export default defineComponent({
 		},
 		getNodeCreatorFilter(nodeName: string, outputType?: NodeConnectionType) {
 			let filter;
-			const workflow = this.getCurrentWorkflow();
+			const workflow = this.workflowHelpers.getCurrentWorkflow();
 			const workflowNode = workflow.getNode(nodeName);
 			if (!workflowNode) return { nodes: [] };
 
@@ -2886,11 +2909,11 @@ export default defineComponent({
 			);
 
 			if (targetNodeType?.inputs?.length) {
-				const workflow = this.getCurrentWorkflow();
+				const workflow = this.workflowHelpers.getCurrentWorkflow();
 				const workflowNode = workflow.getNode(targetNode.name);
 				let inputs: Array<ConnectionTypes | INodeInputConfiguration> = [];
 				if (targetNodeType) {
-					inputs = NodeHelpers.getNodeInputs(workflow, workflowNode!, targetNodeType);
+					inputs = NodeHelpers.getNodeInputs(workflow, workflowNode, targetNodeType);
 				}
 
 				for (const input of inputs || []) {
@@ -3545,7 +3568,7 @@ export default defineComponent({
 						},
 					);
 					if (confirmModal === MODAL_CONFIRM) {
-						const saved = await this.saveCurrentWorkflow();
+						const saved = await this.workflowHelpers.saveCurrentWorkflow();
 						if (saved) await this.settingsStore.fetchPromptsData();
 					} else if (confirmModal === MODAL_CLOSE) {
 						return;
@@ -3871,13 +3894,13 @@ export default defineComponent({
 			// connect nodes before/after deleted node
 			const nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 
-			const workflow = this.getCurrentWorkflow();
+			const workflow = this.workflowHelpers.getCurrentWorkflow();
 			const workflowNode = workflow.getNode(node.name);
 			let inputs: Array<ConnectionTypes | INodeInputConfiguration> = [];
 			let outputs: Array<ConnectionTypes | INodeOutputConfiguration> = [];
 			if (nodeType) {
-				inputs = NodeHelpers.getNodeInputs(workflow, workflowNode!, nodeType);
-				outputs = NodeHelpers.getNodeOutputs(workflow, workflowNode!, nodeType);
+				inputs = NodeHelpers.getNodeInputs(workflow, workflowNode, nodeType);
+				outputs = NodeHelpers.getNodeOutputs(workflow, workflowNode, nodeType);
 			}
 
 			if (outputs.length === 1 && inputs.length === 1) {
@@ -4002,7 +4025,7 @@ export default defineComponent({
 				this.historyStore.startRecordingUndo();
 			}
 
-			const activeNodeName = this.activeNode && this.activeNode.name;
+			const activeNodeName = this.activeNode?.name;
 			const isActive = activeNodeName === currentName;
 			if (isActive) {
 				this.renamingActive = true;
@@ -4011,7 +4034,7 @@ export default defineComponent({
 			newName = this.uniqueNodeName(newName);
 
 			// Rename the node and update the connections
-			const workflow = this.getCurrentWorkflow(true);
+			const workflow = this.workflowHelpers.getCurrentWorkflow(true);
 			workflow.renameNode(currentName, newName);
 
 			if (trackHistory) {
@@ -4251,7 +4274,7 @@ export default defineComponent({
 
 			// Get how many of the nodes of the types which have
 			// a max limit set already exist
-			const nodeTypesCount = this.getNodeTypesMaxCount();
+			const nodeTypesCount = this.workflowHelpers.getNodeTypesMaxCount();
 
 			let oldName: string;
 			let newName: string;
@@ -4336,7 +4359,7 @@ export default defineComponent({
 
 			// Create a workflow with the new nodes and connections that we can use
 			// the rename method
-			const tempWorkflow: Workflow = this.getWorkflow(createNodes, newConnections);
+			const tempWorkflow: Workflow = this.workflowHelpers.getWorkflow(createNodes, newConnections);
 
 			// Rename all the nodes of which the name changed
 			for (oldName in nodeNameTable) {
@@ -4400,7 +4423,7 @@ export default defineComponent({
 			const exportNodeNames: string[] = [];
 
 			for (const node of nodes) {
-				nodeData = this.getNodeDataToSave(node);
+				nodeData = this.workflowHelpers.getNodeDataToSave(node);
 				exportNodeNames.push(node.name);
 
 				data.nodes.push(nodeData);
@@ -4730,7 +4753,7 @@ export default defineComponent({
 			}
 
 			const lastAddedNode = this.nodes[this.nodes.length - 1];
-			const workflow = this.getCurrentWorkflow();
+			const workflow = this.workflowHelpers.getCurrentWorkflow();
 			const lastNodeInputs = workflow.getParentNodesByDepth(lastAddedNode.name, 1);
 
 			// If the last added node has multiple inputs, move them down
@@ -4750,7 +4773,7 @@ export default defineComponent({
 		},
 
 		async saveCurrentWorkflowExternal(callback: () => void) {
-			await this.saveCurrentWorkflow();
+			await this.workflowHelpers.saveCurrentWorkflow();
 			callback?.();
 		},
 		setSuspendRecordingDetachedConnections(suspend: boolean) {

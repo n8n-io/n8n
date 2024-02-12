@@ -29,7 +29,6 @@ import {
 	VIEWS,
 } from '@/constants';
 import type { INodeUi, ITabBarItem } from '@/Interface';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -40,13 +39,11 @@ export default defineComponent({
 		WorkflowDetails,
 		TabBar,
 	},
-	mixins: [pushConnection, workflowHelpers],
+	mixins: [pushConnection],
 	setup(props, ctx) {
 		return {
 			// eslint-disable-next-line @typescript-eslint/no-misused-promises
 			...pushConnection.setup?.(props, ctx),
-			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...workflowHelpers.setup?.(props, ctx),
 		};
 	},
 	data() {

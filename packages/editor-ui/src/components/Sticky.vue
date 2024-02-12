@@ -106,7 +106,6 @@ import { defineComponent, ref } from 'vue';
 import { mapStores } from 'pinia';
 
 import { nodeBase } from '@/mixins/nodeBase';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { isNumber, isString } from '@/utils/typeGuards';
 import type {
 	INodeUi,
@@ -126,7 +125,7 @@ import { useDeviceSupport } from 'n8n-design-system';
 
 export default defineComponent({
 	name: 'Sticky',
-	mixins: [nodeBase, workflowHelpers],
+	mixins: [nodeBase],
 	props: {
 		nodeViewScale: {
 			type: Number,
@@ -320,7 +319,7 @@ export default defineComponent({
 			this.workflowsStore.updateNodeProperties(updateInformation);
 		},
 		touchStart() {
-			if (this.deviceSupport.isTouchDevice === true && !this.isMacOs && !this.isTouchActive) {
+			if (this.deviceSupport.isTouchDevice && !this.isMacOs && !this.isTouchActive) {
 				this.isTouchActive = true;
 				setTimeout(() => {
 					this.isTouchActive = false;
