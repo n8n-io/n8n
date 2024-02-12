@@ -189,10 +189,9 @@ export class ToolCode implements INodeType {
 
 					if (typeof response !== 'string') {
 						// TODO: Do some more testing. Issues here should actually fail the workflow
-						executionError = new NodeOperationError(
-							this.getNode(),
-							`The code did not return a valid value. Instead of a string did a value of type '${typeof response}' get returned.`,
-						);
+						executionError = new NodeOperationError(this.getNode(), 'Wrong output type returned', {
+							description: `The response property should be a string, but it is an ${typeof response}`,
+						});
 						response = `There was an error: "${executionError.message}"`;
 					}
 
