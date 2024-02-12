@@ -12,7 +12,6 @@ import { history, redo, undo } from '@codemirror/commands';
 import { acceptCompletion, autocompletion, completionStatus } from '@codemirror/autocomplete';
 
 import { useNDVStore } from '@/stores/ndv.store';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { expressionManager } from '@/mixins/expressionManager';
 import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
@@ -25,7 +24,7 @@ const editableConf = new Compartment();
 
 export default defineComponent({
 	name: 'InlineExpressionEditorInput',
-	mixins: [completionManager, expressionManager, workflowHelpers],
+	mixins: [completionManager, expressionManager],
 	props: {
 		modelValue: {
 			type: String,

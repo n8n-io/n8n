@@ -8,7 +8,6 @@ import { EditorView, keymap } from '@codemirror/view';
 import { EditorState, Prec } from '@codemirror/state';
 import { history, redo, undo } from '@codemirror/commands';
 
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { expressionManager } from '@/mixins/expressionManager';
 import { completionManager } from '@/mixins/completionManager';
 import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
@@ -22,7 +21,7 @@ import type { IVariableItemSelected } from '@/Interface';
 
 export default defineComponent({
 	name: 'ExpressionEditorModalInput',
-	mixins: [expressionManager, completionManager, workflowHelpers],
+	mixins: [expressionManager, completionManager],
 	props: {
 		modelValue: {
 			type: String,
