@@ -63,6 +63,7 @@ describe('InternalHooks', () => {
 				executions_data_save_on_progress: false,
 				executions_data_save_on_success: 'all',
 				executions_mode: 'regular',
+				executions_process: 'main',
 				executions_timeout: -1,
 				executions_timeout_max: 3600,
 			},
