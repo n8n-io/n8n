@@ -489,4 +489,31 @@ describe('Execution', () => {
 				.should('have.class', 'has-run');
 		});
 	});
+
+	it.only('should send proper payload for node rerun', () => {
+		cy.createFixtureWorkflow(
+			'Multiple_trigger_node_rerun.json',
+			`Multiple trigger node rerun ${uuid()}`,
+		);
+
+		workflowPage.getters.zoomToFitButton().click();
+		workflowPage.getters.executeWorkflowButton().click();
+
+		workflowPage.getters.clearExecutionDataButton().should('be.visible');
+
+		cy.intercept('POST', '/rest/workflows/run').as('workflowRun');
+
+		workflowPage.getters
+			.canvasNodeByName('do something with them')
+			.findChildByTestId('execute-node-button')
+			.click({ force: true });
+
+		cy.wait('@workflowRun').then((interception) => {
+			expect(interception.request.body).to.have.property('runData').that.is.an('object');
+			expect(interception.request.body.runData).to.include.all.keys([
+				'When clicking "Test workflow"',
+				'fetch 5 random users',
+			]);
+		});
+	});
 });
