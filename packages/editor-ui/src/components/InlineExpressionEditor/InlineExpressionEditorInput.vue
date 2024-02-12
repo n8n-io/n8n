@@ -12,7 +12,6 @@ import { defineComponent } from 'vue';
 
 import { completionManager } from '@/mixins/completionManager';
 import { expressionManager } from '@/mixins/expressionManager';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
 import { n8nLang } from '@/plugins/codemirror/n8nLang';
 import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
@@ -24,7 +23,7 @@ const editableConf = new Compartment();
 
 export default defineComponent({
 	name: 'InlineExpressionEditorInput',
-	mixins: [completionManager, expressionManager, workflowHelpers],
+	mixins: [completionManager, expressionManager],
 	props: {
 		modelValue: {
 			type: String,

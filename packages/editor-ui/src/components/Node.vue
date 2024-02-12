@@ -189,7 +189,6 @@ import {
 	WAIT_TIME_UNLIMITED,
 } from '@/constants';
 import { nodeBase } from '@/mixins/nodeBase';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 import type {
 	ConnectionTypes,
 	IExecutionsSummary,
@@ -227,7 +226,7 @@ export default defineComponent({
 		FontAwesomeIcon,
 		NodeIcon,
 	},
-	mixins: [nodeBase, workflowHelpers],
+	mixins: [nodeBase],
 	props: {
 		isProductionExecutionPreview: {
 			type: Boolean,

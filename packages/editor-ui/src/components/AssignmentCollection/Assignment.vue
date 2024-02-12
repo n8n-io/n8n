@@ -4,7 +4,7 @@ import InputTriple from '@/components/InputTriple/InputTriple.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ParameterInputHint from '@/components/ParameterInputHint.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
-import { resolveParameter } from '@/mixins/workflowHelpers';
+import { resolveParameter } from '@/composables/useWorkflowHelpers';
 import { isExpression } from '@/utils/expressions';
 import { isObject } from '@jsplumb/util';
 import type { AssignmentValue, INodeProperties } from 'n8n-workflow';
