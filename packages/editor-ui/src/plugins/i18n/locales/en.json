@@ -666,7 +666,7 @@
 	"expressionModalInput.noNodeExecutionData": "Execute node ‘{node}’ for preview",
 	"expressionModalInput.noInputConnection": "No input connected",
 	"expressionModalInput.pairedItemConnectionError": "No path back to node",
-	"expressionModalInput.pairedItemInvalidPinnedError": "For preview, unpin node ‘{node}’ and execute",
+	"expressionModalInput.pairedItemInvalidPinnedError": "Unpin node ‘{node}’ and execute",
 	"expressionModalInput.pairedItemError": "Can’t determine which item to use",
 	"fakeDoor.settings.environments.name": "Environments",
 	"fakeDoor.settings.sso.name": "Single Sign-On",
