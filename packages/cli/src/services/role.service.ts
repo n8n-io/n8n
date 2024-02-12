@@ -8,6 +8,7 @@ import {
 	GLOBAL_OWNER_SCOPES,
 } from '@/permissions/global-roles';
 import {
+	PERSONAL_PROJECT_OWNER_SCOPES,
 	PROJECT_EDITOR_SCOPES,
 	PROJECT_VIEWER_SCOPES,
 	REGULAR_PROJECT_ADMIN_SCOPES,
@@ -31,6 +32,7 @@ const GLOBAL_SCOPE_MAP: Record<GlobalRole, Scope[]> = {
 
 const PROJECT_SCOPE_MAP: Record<ProjectRole, Scope[]> = {
 	'project:admin': REGULAR_PROJECT_ADMIN_SCOPES,
+	'project:personalOwner': PERSONAL_PROJECT_OWNER_SCOPES,
 	'project:editor': PROJECT_EDITOR_SCOPES,
 	'project:viewer': PROJECT_VIEWER_SCOPES,
 };

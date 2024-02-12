@@ -739,7 +739,7 @@ describe('PATCH /workflows/:id - validate credential permissions to user', () =>
 				},
 			],
 		});
-		expect(response.statusCode).toBe(400);
+		expect(response.statusCode).toBe(403);
 	});
 
 	it('Should succeed but prevent modifying node attributes other than position, name and disabled', async () => {

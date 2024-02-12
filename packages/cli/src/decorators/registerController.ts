@@ -120,34 +120,38 @@ export const createScopedMiddleware =
 		if (credentialId) {
 			const exists = await Container.get(SharedCredentialsRepository).find({
 				where: {
-					projectId: In(projectRoles),
+					projectId: In(userProjectIds),
 					credentialsId: credentialId,
 					role: In(roleService.rolesWithScope('credential', scopes)),
 				},
 			});
+
 			if (!exists.length) {
 				return res.status(403).json({
 					status: 'error',
 					message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE,
 				});
 			}
+
 			return next();
 		}
 
 		if (workflowId) {
 			const exists = await Container.get(SharedWorkflowRepository).find({
 				where: {
-					projectId: In(projectRoles),
+					projectId: In(userProjectIds),
 					workflowId,
 					role: In(roleService.rolesWithScope('workflow', scopes)),
 				},
 			});
+
 			if (!exists.length) {
 				return res.status(403).json({
 					status: 'error',
 					message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE,
 				});
 			}
+
 			return next();
 		}
 

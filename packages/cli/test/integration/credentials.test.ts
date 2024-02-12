@@ -206,7 +206,7 @@ describe('DELETE /credentials/:id', () => {
 
 		const response = await authMemberAgent.delete(`/credentials/${savedCredential.id}`);
 
-		expect(response.statusCode).toBe(404);
+		expect(response.statusCode).toBe(403);
 
 		const shellCredential = await Container.get(CredentialsRepository).findOneBy({
 			id: savedCredential.id,
@@ -226,7 +226,7 @@ describe('DELETE /credentials/:id', () => {
 
 		const response = await authMemberAgent.delete(`/credentials/${savedCredential.id}`);
 
-		expect(response.statusCode).toBe(404);
+		expect(response.statusCode).toBe(403);
 
 		const shellCredential = await Container.get(CredentialsRepository).findOneBy({
 			id: savedCredential.id,
@@ -291,7 +291,7 @@ describe('PATCH /credentials/:id', () => {
 			.patch(`/credentials/${savedCredential.id}`)
 			.send(patchPayload);
 
-		expect(response.statusCode).toBe(404);
+		expect(response.statusCode).toBe(403);
 
 		const credential = await Container.get(CredentialsRepository).findOneByOrFail({
 			id: savedCredential.id,
@@ -354,7 +354,7 @@ describe('PATCH /credentials/:id', () => {
 			.patch(`/credentials/${savedCredential.id}`)
 			.send(patchPayload);
 
-		expect(response.statusCode).toBe(404);
+		expect(response.statusCode).toBe(403);
 
 		const shellCredential = await Container.get(CredentialsRepository).findOneByOrFail({
 			id: savedCredential.id,
@@ -372,7 +372,7 @@ describe('PATCH /credentials/:id', () => {
 			.patch(`/credentials/${savedCredential.id}`)
 			.send(patchPayload);
 
-		expect(response.statusCode).toBe(404);
+		expect(response.statusCode).toBe(403);
 
 		const shellCredential = await Container.get(CredentialsRepository).findOneByOrFail({
 			id: savedCredential.id,
@@ -390,7 +390,7 @@ describe('PATCH /credentials/:id', () => {
 			.patch(`/credentials/${savedCredential.id}`)
 			.send(patchPayload);
 
-		expect(response.statusCode).toBe(404);
+		expect(response.statusCode).toBe(403);
 
 		const shellCredential = await Container.get(CredentialsRepository).findOneByOrFail({
 			id: savedCredential.id,
@@ -417,7 +417,7 @@ describe('PATCH /credentials/:id', () => {
 	test('should fail if cred not found', async () => {
 		const response = await authOwnerAgent.patch('/credentials/123').send(randomCredentialPayload());
 
-		expect(response.statusCode).toBe(404);
+		expect(response.statusCode).toBe(403);
 	});
 });
 
@@ -523,7 +523,7 @@ describe('GET /credentials/:id', () => {
 
 		const response = await authMemberAgent.get(`/credentials/${savedCredential.id}`);
 
-		expect(response.statusCode).toBe(404);
+		expect(response.statusCode).toBe(403);
 		expect(response.body.data).toBeUndefined(); // owner's cred not returned
 	});
 

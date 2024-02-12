@@ -1,5 +1,11 @@
 import type { Scope } from '@n8n/permissions';
 
+/**
+ * Diff between admin in personal project and admin in other projects:
+ * - You cannot rename your personal project.
+ * - You cannot invite people to your personal project.
+ */
+
 export const REGULAR_PROJECT_ADMIN_SCOPES: Scope[] = [
 	'workflow:create',
 	'workflow:read',
@@ -9,12 +15,12 @@ export const REGULAR_PROJECT_ADMIN_SCOPES: Scope[] = [
 	'workflow:execute',
 	'credential:create',
 	'credential:read',
+	'credential:update',
 	'credential:delete',
 	'credential:list',
 ];
 
-// TODO
-export const PERSONAL_PROJECT_ADMIN_SCOPES: Scope[] = [
+export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
 	'workflow:create',
 	'workflow:read',
 	'workflow:update',
@@ -24,6 +30,7 @@ export const PERSONAL_PROJECT_ADMIN_SCOPES: Scope[] = [
 	'workflow:share',
 	'credential:create',
 	'credential:read',
+	'credential:update',
 	'credential:delete',
 	'credential:list',
 	'credential:share',
@@ -38,6 +45,7 @@ export const PROJECT_EDITOR_SCOPES: Scope[] = [
 	'workflow:execute',
 	'credential:create',
 	'credential:read',
+	'credential:update',
 	'credential:delete',
 	'credential:list',
 ];
@@ -48,9 +56,3 @@ export const PROJECT_VIEWER_SCOPES: Scope[] = [
 	'credential:read',
 	'credential:list',
 ];
-
-/**
- * Diff between admin in personal project and admin in other projects:
- * - You cannot rename your personal project.
- * - You cannot invite people to your personal project.
- */
