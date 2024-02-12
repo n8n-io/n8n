@@ -43,6 +43,7 @@ import type {
 	NodeParameterValueType,
 	ConnectionTypes,
 	CloseFunction,
+	INodeOutputConfiguration,
 } from './Interfaces';
 import { Node, NodeConnectionType } from './Interfaces';
 import type { IDeferredPromise } from './DeferredPromise';
@@ -850,10 +851,18 @@ export class Workflow {
 			const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 			const outputs = NodeHelpers.getNodeOutputs(this, node, nodeType.description);
 
-			if (!!outputs.find((output) => (output?.type ?? output) !== NodeConnectionType.Main)) {
+			if (
+				!!outputs.find(
+					(output) =>
+						((output as INodeOutputConfiguration)?.type ?? output) !== NodeConnectionType.Main,
+				)
+			) {
 				// Get the first node which is connected to a non-main output
 				const nonMainNodesConnected = outputs?.reduce((acc, outputName) => {
-					const parentNodes = this.getChildNodes(node.name, outputName?.type ?? outputName);
+					const parentNodes = this.getChildNodes(
+						node.name,
+						(outputName as INodeOutputConfiguration)?.type ?? outputName,
+					);
 					if (parentNodes.length > 0) {
 						acc.push(...parentNodes);
 					}
