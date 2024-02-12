@@ -139,7 +139,6 @@ import {
 	REPORTED_SOURCE_OTHER_KEY,
 	VIEWS,
 } from '@/constants';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useToast } from '@/composables/useToast';
 import Modal from '@/components/Modal.vue';
 import type { IFormInputs, IPersonalizationLatestVersion, IUser } from '@/Interface';
@@ -160,7 +159,6 @@ const SURVEY_VERSION = 'v4';
 export default defineComponent({
 	name: 'PersonalizationModal',
 	components: { Modal },
-	mixins: [workflowHelpers],
 	props: {
 		teleported: {
 			type: Boolean,

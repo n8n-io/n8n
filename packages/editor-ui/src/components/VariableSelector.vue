@@ -45,11 +45,11 @@ import { NodeConnectionType, WorkflowDataProxy } from 'n8n-workflow';
 import VariableSelectorItem from '@/components/VariableSelectorItem.vue';
 import type { INodeUi, IVariableItemSelected, IVariableSelectorOption } from '@/Interface';
 
-import { workflowHelpers } from '@/mixins/workflowHelpers';
-
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useNDVStore } from '@/stores/ndv.store';
+import { useRouter } from 'vue-router';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 
 // Node types that should not be displayed in variable selector
 const SKIPPED_NODE_TYPES = [STICKY_NODE_TYPE];
@@ -59,8 +59,15 @@ export default defineComponent({
 	components: {
 		VariableSelectorItem,
 	},
-	mixins: [workflowHelpers],
 	props: ['path', 'redactValues'],
+	setup() {
+		const router = useRouter();
+		const workflowHelpers = useWorkflowHelpers(router);
+
+		return {
+			workflowHelpers,
+		};
+	},
 	data() {
 		return {
 			variableFilter: '',
@@ -74,7 +81,10 @@ export default defineComponent({
 			if (!activeNode) {
 				return null;
 			}
-			return this.getParentMainInputNode(this.getCurrentWorkflow(), activeNode);
+			return this.workflowHelpers.getParentMainInputNode(
+				this.workflowHelpers.getCurrentWorkflow(),
+				activeNode,
+			);
 		},
 		extendAll(): boolean {
 			if (this.variableFilter) {
@@ -87,7 +97,7 @@ export default defineComponent({
 			return this.getFilterResults(this.variableFilter.toLowerCase(), 0);
 		},
 		workflow(): Workflow {
-			return this.getCurrentWorkflow();
+			return this.workflowHelpers.getCurrentWorkflow();
 		},
 	},
 	methods: {
@@ -482,7 +492,7 @@ export default defineComponent({
 				parentNode[0],
 				inputName,
 			);
-			const connectionInputData = this.connectionInputData(
+			const connectionInputData = this.workflowHelpers.connectionInputData(
 				parentNode,
 				nodeName,
 				inputName,
