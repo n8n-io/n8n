@@ -8,7 +8,6 @@ import type {
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useTitleChange } from '@/composables/useTitleChange';
 import { useToast } from '@/composables/useToast';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 
 import type {
 	ExpressionError,
@@ -39,14 +38,19 @@ import { useOrchestrationStore } from '@/stores/orchestration.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useCollaborationStore } from '@/stores/collaboration.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useRouter } from 'vue-router';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 
 export const pushConnection = defineComponent({
-	mixins: [workflowHelpers],
 	setup() {
+		const router = useRouter();
+		const workflowHelpers = useWorkflowHelpers(router);
+		const nodeHelpers = useNodeHelpers();
 		return {
 			...useTitleChange(),
 			...useToast(),
-			nodeHelpers: useNodeHelpers(),
+			nodeHelpers,
+			workflowHelpers,
 		};
 	},
 	data() {
@@ -312,7 +316,7 @@ export const pushConnection = defineComponent({
 
 				codeNodeEditorEventBus.emit('error-line-number', lineNumber || 'final');
 
-				const workflow = this.getCurrentWorkflow();
+				const workflow = this.workflowHelpers.getCurrentWorkflow();
 				if (runDataExecuted.waitTill !== undefined) {
 					const activeExecutionId = this.workflowsStore.activeExecutionId;
 					const workflowSettings = this.workflowsStore.workflowSettings;
@@ -328,7 +332,8 @@ export const pushConnection = defineComponent({
 						globalLinkActionsEventBus.emit('registerGlobalLinkAction', {
 							key: 'open-settings',
 							action: async () => {
-								if (this.workflowsStore.isNewWorkflow) await this.saveAsNewWorkflow();
+								if (this.workflowsStore.isNewWorkflow)
+									await this.workflowHelpers.saveAsNewWorkflow();
 								this.uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 							},
 						});
@@ -357,7 +362,7 @@ export const pushConnection = defineComponent({
 					) {
 						const error = runDataExecuted.data.resultData.error as ExpressionError;
 
-						void this.getWorkflowDataToSave().then((workflowData) => {
+						void this.workflowHelpers.getWorkflowDataToSave().then((workflowData) => {
 							const eventData: IDataObject = {
 								caused_by_credential: false,
 								error_message: error.description,
@@ -366,7 +371,7 @@ export const pushConnection = defineComponent({
 								node_graph_string: JSON.stringify(
 									TelemetryHelpers.generateNodesGraph(
 										workflowData as IWorkflowBase,
-										this.getNodeTypes(),
+										this.workflowHelpers.getNodeTypes(),
 									).nodeGraph,
 								),
 								workflow_id: this.workflowsStore.workflowId,

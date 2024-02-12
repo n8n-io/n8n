@@ -175,7 +175,6 @@ import type {
 	Workflow,
 } from 'n8n-workflow';
 import RunData from './RunData.vue';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import WireMeUp from './WireMeUp.vue';
 import {
@@ -187,13 +186,13 @@ import {
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useUIStore } from '@/stores/ui.store';
 
 type MappingMode = 'debugging' | 'mapping';
 
 export default defineComponent({
 	name: 'InputPanel',
 	components: { RunData, NodeExecuteButton, WireMeUp },
-	mixins: [workflowHelpers],
 	props: {
 		currentNodeName: {
 			type: String,
@@ -237,7 +236,7 @@ export default defineComponent({
 		};
 	},
 	computed: {
-		...mapStores(useNodeTypesStore, useNDVStore, useWorkflowsStore),
+		...mapStores(useNodeTypesStore, useNDVStore, useWorkflowsStore, useUIStore),
 		focusedMappableInput(): string {
 			return this.ndvStore.focusedMappableInput;
 		},

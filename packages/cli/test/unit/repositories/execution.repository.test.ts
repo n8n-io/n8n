@@ -1,7 +1,7 @@
 import { mock } from 'jest-mock-extended';
 import Container from 'typedi';
-import type { EntityMetadata } from 'typeorm';
-import { EntityManager, DataSource, Not, LessThanOrEqual } from 'typeorm';
+import type { EntityMetadata } from '@n8n/typeorm';
+import { EntityManager, DataSource, Not, LessThanOrEqual } from '@n8n/typeorm';
 
 import config from '@/config';
 import { ExecutionEntity } from '@db/entities/ExecutionEntity';

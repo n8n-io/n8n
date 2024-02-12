@@ -64,6 +64,7 @@ describe('UsageMetricsRepository', () => {
 
 			expect(metrics).toStrictEqual({
 				enabledUsers: 4,
+				totalUsers: 5,
 				totalCredentials: 2,
 				totalWorkflows: 5,
 				activeWorkflows: 3,
@@ -79,6 +80,7 @@ describe('UsageMetricsRepository', () => {
 
 			expect(metrics).toStrictEqual({
 				enabledUsers: 1,
+				totalUsers: 1,
 				totalCredentials: 0,
 				totalWorkflows: 3,
 				activeWorkflows: 3,

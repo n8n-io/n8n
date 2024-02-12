@@ -1,5 +1,5 @@
 import type { ICredentialNodeAccess } from 'n8n-workflow';
-import { Column, Entity, Index, OneToMany } from 'typeorm';
+import { Column, Entity, Index, OneToMany } from '@n8n/typeorm';
 import { IsArray, IsObject, IsString, Length } from 'class-validator';
 import type { SharedCredentials } from './SharedCredentials';
 import { WithTimestampsAndStringId, jsonColumnType } from './AbstractEntity';

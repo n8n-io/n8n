@@ -53,7 +53,6 @@ import { defineComponent } from 'vue';
 import type { INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
 import ParameterInput from '@/components/ParameterInput.vue';
 import InputHint from '@/components/ParameterInputHint.vue';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -72,6 +71,8 @@ import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
 import { getResolvableState } from '@/utils/expressions';
 import { expressionManager } from '@/mixins/expressionManager';
+import { useRouter } from 'vue-router';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 
 export default defineComponent({
 	name: 'ParameterInputWrapper',
@@ -79,7 +80,7 @@ export default defineComponent({
 		ParameterInput,
 		InputHint,
 	},
-	mixins: [workflowHelpers, expressionManager],
+	mixins: [expressionManager],
 	props: {
 		additionalExpressionData: {
 			type: Object as PropType<IDataObject>,
@@ -150,6 +151,14 @@ export default defineComponent({
 			default: () => createEventBus(),
 		},
 	},
+	setup() {
+		const router = useRouter();
+		const workflowHelpers = useWorkflowHelpers(router);
+
+		return {
+			workflowHelpers,
+		};
+	},
 	computed: {
 		...mapStores(useNDVStore, useExternalSecretsStore, useEnvironmentsStore),
 		isValueExpression() {
@@ -210,7 +219,7 @@ export default defineComponent({
 					};
 				}
 
-				return { ok: true, result: this.resolveExpression(value, undefined, opts) };
+				return { ok: true, result: this.workflowHelpers.resolveExpression(value, undefined, opts) };
 			} catch (error) {
 				return { ok: false, error };
 			}
