@@ -141,39 +141,17 @@ describe('telemetry', () => {
 	});
 
 	describe('track function', () => {
-		it('should call Rudderstack track method with correct parameters and', () => {
+		it('should call Rudderstack track method with correct parameters', () => {
 			const trackFunction = vi.spyOn(window.rudderanalytics, 'track');
 
 			const event = 'testEvent';
 			const properties = { test: '1' };
-			const options = { withPostHog: false, withAppCues: false };
+			const options = { withPostHog: false };
 
 			telemetry.track(event, properties, options);
 
 			expect(trackFunction).toHaveBeenCalledTimes(1);
 			expect(trackFunction).toHaveBeenCalledWith(event, {
-				...properties,
-				version_cli: MOCK_VERSION_CLI,
-			});
-		});
-
-		it('should call Rudderstack track method with correct parameters and withAppCues option set to true', () => {
-			window.Appcues = { track: () => {} };
-			const trackFunction = vi.spyOn(window.rudderanalytics, 'track');
-			const appCuesTrackFunction = vi.spyOn(window.Appcues, 'track');
-
-			const event = 'testEvent';
-			const properties = { test: '1' };
-			const options = { withPostHog: false, withAppCues: true };
-
-			telemetry.track(event, properties, options);
-
-			expect(trackFunction).toHaveBeenCalledTimes(1);
-			expect(trackFunction).toHaveBeenCalledWith(event, {
-				...properties,
-				version_cli: MOCK_VERSION_CLI,
-			});
-			expect(appCuesTrackFunction).toHaveBeenCalledWith(event, {
 				...properties,
 				version_cli: MOCK_VERSION_CLI,
 			});

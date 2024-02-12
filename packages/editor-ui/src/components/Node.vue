@@ -189,7 +189,6 @@ import {
 	WAIT_TIME_UNLIMITED,
 } from '@/constants';
 import { nodeBase } from '@/mixins/nodeBase';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 import type {
 	ConnectionTypes,
 	IExecutionsSummary,
@@ -227,7 +226,7 @@ export default defineComponent({
 		FontAwesomeIcon,
 		NodeIcon,
 	},
-	mixins: [nodeBase, workflowHelpers],
+	mixins: [nodeBase],
 	props: {
 		isProductionExecutionPreview: {
 			type: Boolean,
@@ -728,7 +727,8 @@ export default defineComponent({
 			this.$emit('removeNode', this.data.name);
 		},
 
-		toggleDisableNode() {
+		toggleDisableNode(event: MouseEvent) {
+			(event.currentTarget as HTMLButtonElement).blur();
 			this.$telemetry.track('User clicked node hover button', {
 				node_type: this.data.type,
 				button_name: 'disable',

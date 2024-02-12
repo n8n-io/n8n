@@ -194,6 +194,17 @@ const createFormDataObject = (data: Record<string, unknown>) => {
 	return formData;
 };
 
+const validateUrl = (url?: string): boolean => {
+	if (!url) return false;
+
+	try {
+		new URL(url);
+		return true;
+	} catch (error) {
+		return false;
+	}
+};
+
 function searchForHeader(config: AxiosRequestConfig, headerName: string) {
 	if (config.headers === undefined) {
 		return undefined;
@@ -1231,7 +1242,10 @@ function applyPaginationRequestData(
 	requestData: IRequestOptions,
 	paginationRequestData: PaginationOptions['request'],
 ): IRequestOptions {
-	const preparedPaginationData: Partial<IRequestOptions> = { ...paginationRequestData };
+	const preparedPaginationData: Partial<IRequestOptions> = {
+		...paginationRequestData,
+		uri: paginationRequestData.url,
+	};
 
 	if ('formData' in requestData) {
 		preparedPaginationData.formData = paginationRequestData.body;
@@ -2869,6 +2883,14 @@ const getRequestHelperFunctions = (
 				) as object as PaginationOptions['request'];
 
 				const tempRequestOptions = applyPaginationRequestData(requestOptions, paginateRequestData);
+
+				if (!validateUrl(tempRequestOptions.uri as string)) {
+					throw new NodeOperationError(node, `'${paginateRequestData.url}' is not a valid URL.`, {
+						itemIndex,
+						runIndex,
+						type: 'invalid_url',
+					});
+				}
 
 				if (credentialsType) {
 					tempResponseData = await this.helpers.requestWithAuthentication.call(
