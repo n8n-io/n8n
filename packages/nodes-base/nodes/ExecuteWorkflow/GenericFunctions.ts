@@ -1,6 +1,11 @@
 import { readFile as fsReadFile } from 'fs/promises';
 import { NodeOperationError, jsonParse } from 'n8n-workflow';
-import type { IWorkflowBase, IExecuteFunctions, IExecuteWorkflowInfo } from 'n8n-workflow';
+import type {
+	IWorkflowBase,
+	IExecuteFunctions,
+	IExecuteWorkflowInfo,
+	IRequestOptions,
+} from 'n8n-workflow';
 
 export async function getWorkflowInfo(this: IExecuteFunctions, source: string, itemIndex = 0) {
 	const workflowInfo: IExecuteWorkflowInfo = {};
@@ -42,7 +47,7 @@ export async function getWorkflowInfo(this: IExecuteFunctions, source: string, i
 			uri: workflowUrl,
 			json: true,
 			gzip: true,
-		};
+		} satisfies IRequestOptions;
 
 		const response = await this.helpers.request(requestOptions);
 		workflowInfo.code = response;

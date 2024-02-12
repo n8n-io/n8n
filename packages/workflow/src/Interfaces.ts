@@ -546,9 +546,9 @@ export interface IRequestOptions {
 		password: string;
 		pass: string;
 	}>;
-	body?: unknown;
-	formData?: IDataObject;
-	form?: IDataObject;
+	body?: any;
+	formData?: IDataObject | FormData;
+	form?: IDataObject | FormData;
 	json?: boolean;
 	useStream?: boolean;
 	encoding?: string | null;
