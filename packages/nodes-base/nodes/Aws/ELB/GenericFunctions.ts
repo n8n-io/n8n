@@ -142,11 +142,8 @@ export async function awsApiRequestSOAPAllItems(
 			region,
 		);
 
-		if (get(responseData, `${propertyNameArray[0]}.${propertyNameArray[1]}.NextMarker`)) {
-			query.Marker = get(
-				responseData,
-				`${propertyNameArray[0]}.${propertyNameArray[1]}.NextMarker`,
-			);
+		if (get(responseData, [propertyNameArray[0], propertyNameArray[1], 'NextMarker'])) {
+			query.Marker = get(responseData, [propertyNameArray[0], propertyNameArray[1], 'NextMarker']);
 		}
 		if (get(responseData, propertyName)) {
 			if (Array.isArray(get(responseData, propertyName))) {
@@ -156,7 +153,7 @@ export async function awsApiRequestSOAPAllItems(
 			}
 		}
 	} while (
-		get(responseData, `${propertyNameArray[0]}.${propertyNameArray[1]}.NextMarker`) !== undefined
+		get(responseData, [propertyNameArray[0], propertyNameArray[1], 'NextMarker']) !== undefined
 	);
 
 	return returnData;

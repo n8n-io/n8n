@@ -14,8 +14,8 @@
 					:size="size"
 					:icon="!isListeningForEvents && 'flask'"
 					:transparent-background="transparent"
-					@click="onClick"
 					:title="!isTriggerNode ? $locale.baseText('ndv.execute.testNode.description') : ''"
+					@click="onClick"
 				/>
 			</div>
 		</n8n-tooltip>

@@ -20,7 +20,6 @@ import {
 
 import { useToast } from '@/composables/useToast';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 
 import { FORM_TRIGGER_NODE_TYPE, WAIT_NODE_TYPE } from '@/constants';
 import { useTitleChange } from '@/composables/useTitleChange';
@@ -29,6 +28,8 @@ import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { openPopUpWindow } from '@/utils/executionUtils';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useRouter } from 'vue-router';
 
 export const consolidateRunDataAndStartNodes = (
 	directParentNodes: string[],
@@ -79,14 +80,16 @@ export const consolidateRunDataAndStartNodes = (
 };
 
 export const workflowRun = defineComponent({
-	mixins: [workflowHelpers],
 	setup() {
 		const nodeHelpers = useNodeHelpers();
+		const router = useRouter();
+		const workflowHelpers = useWorkflowHelpers(router);
 
 		return {
 			...useTitleChange(),
 			...useToast(),
 			nodeHelpers,
+			workflowHelpers,
 		};
 	},
 	computed: {
@@ -131,7 +134,7 @@ export const workflowRun = defineComponent({
 				| { triggerNode: string; nodeData: ITaskData; source?: string }
 				| { source?: string },
 		): Promise<IExecutionPushResponse | undefined> {
-			const workflow = this.getCurrentWorkflow();
+			const workflow = this.workflowHelpers.getCurrentWorkflow();
 
 			if (this.uiStore.isActionActive('workflowRunning')) {
 				return;
@@ -147,7 +150,10 @@ export const workflowRun = defineComponent({
 				const issuesExist = this.workflowsStore.nodesIssuesExist;
 				if (issuesExist) {
 					// If issues exist get all of the issues of all nodes
-					const workflowIssues = this.checkReadyForExecution(workflow, options.destinationNode);
+					const workflowIssues = this.workflowHelpers.checkReadyForExecution(
+						workflow,
+						options.destinationNode,
+					);
 					if (workflowIssues !== null) {
 						const errorMessages = [];
 						let nodeIssues: string[];
@@ -193,7 +199,7 @@ export const workflowRun = defineComponent({
 							nodeName: options.destinationNode,
 						});
 
-						await this.getWorkflowDataToSave().then((workflowData) => {
+						await this.workflowHelpers.getWorkflowDataToSave().then((workflowData) => {
 							this.$telemetry.track('Workflow execution preflight failed', {
 								workflow_id: workflow.id,
 								workflow_name: workflow.name,
@@ -202,7 +208,7 @@ export const workflowRun = defineComponent({
 								node_graph_string: JSON.stringify(
 									TelemetryHelpers.generateNodesGraph(
 										workflowData as IWorkflowBase,
-										this.getNodeTypes(),
+										this.workflowHelpers.getNodeTypes(),
 									).nodeGraph,
 								),
 								error_node_types: JSON.stringify(trackErrorNodeTypes),
@@ -255,8 +261,10 @@ export const workflowRun = defineComponent({
 				}
 
 				if (this.workflowsStore.isNewWorkflow) {
-					await this.saveCurrentWorkflow();
+					await this.workflowHelpers.saveCurrentWorkflow();
 				}
+
+				const workflowData = await this.workflowHelpers.getWorkflowDataToSave();
 
 				const startRunData: IStartRunData = {
 					workflowData,

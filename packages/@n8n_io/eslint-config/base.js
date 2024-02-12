@@ -39,6 +39,9 @@ const config = (module.exports = {
 
 		/** https://github.com/sindresorhus/eslint-plugin-unicorn */
 		'eslint-plugin-unicorn',
+
+		/** https://github.com/wix-incubator/eslint-plugin-lodash */
+		'eslint-plugin-lodash',
 	],
 
 	extends: [
@@ -458,6 +461,8 @@ const config = (module.exports = {
 
 		/** https://github.com/sindresorhus/eslint-plugin-unicorn/blob/main/docs/rules/no-useless-promise-resolve-reject.md */
 		'unicorn/no-useless-promise-resolve-reject': 'error',
+
+		'lodash/path-style': ['error', 'as-needed'],
 	},
 
 	overrides: [
