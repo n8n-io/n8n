@@ -106,6 +106,7 @@ export class InternalHooks {
 				},
 			},
 			execution_variables: {
+				executions_process: config.getEnv('executions.process'),
 				executions_mode: config.getEnv('executions.mode'),
 				executions_timeout: config.getEnv('executions.timeout'),
 				executions_timeout_max: config.getEnv('executions.maxTimeout'),
