@@ -548,6 +548,7 @@ export class Ftp implements INodeType {
 				const newItem: INodeExecutionData = {
 					json: items[i].json,
 					binary: {},
+					pairedItem: items[i].pairedItem,
 				};
 
 				if (items[i].binary !== undefined && newItem.binary) {
@@ -814,6 +815,7 @@ export class Ftp implements INodeType {
 
 			throw error;
 		}
+
 		return [returnItems];
 	}
 }
