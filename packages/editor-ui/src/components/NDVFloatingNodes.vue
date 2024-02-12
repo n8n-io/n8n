@@ -42,7 +42,8 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { computed, onMounted, onBeforeUnmount } from 'vue';
 import NodeIcon from '@/components/NodeIcon.vue';
-import type { INodeTypeDescription } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
+import type { ConnectionTypes, INodeInputConfiguration, INodeTypeDescription } from 'n8n-workflow';
 
 interface Props {
 	rootNode: INodeUi;
@@ -58,6 +59,7 @@ const props = defineProps<Props>();
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
 const workflow = workflowsStore.getCurrentWorkflow();
+const nodeType = nodeTypesStore.getNodeType(props.rootNode.type, props.rootNode.typeVersion);
 const emit = defineEmits(['switchSelectedNode']);
 
 interface NodeConfig {
@@ -118,6 +120,17 @@ const connectedNodes = computed<
 	};
 });
 
+function getPossibleSubInputConnections() {
+	const inputs =
+		NodeHelpers.getNodeInputs(workflow, props.rootNode, nodeType!) ||
+		([] as Array<ConnectionTypes | INodeInputConfiguration>);
+	const inputTypes = NodeHelpers.getConnectionTypes(inputs);
+	console.log('🚀 ~ getPossibleSubInputConnections ~ inputTypes:', inputs);
+
+	return inputTypes;
+}
+getPossibleSubInputConnections();
+// console.log('🚀 ~ connectedNodes:', getPossibleSubInputConnections());
 const connectionGroups = [
 	FloatingNodePosition.top,
 	FloatingNodePosition.right,
