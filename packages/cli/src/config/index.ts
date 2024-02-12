@@ -73,6 +73,11 @@ if (userManagement.jwtRefreshTimeoutHours >= userManagement.jwtSessionDurationHo
 
 	config.set('userManagement.jwtRefreshTimeoutHours', 0);
 }
+if (config.getEnv('executions.process') !== 'IGNORED') {
+	console.warn(
+		"`executions.process` has been removed. Please remove it from your config. In future releases n8n won't start if it is set. If you need the isolation and performance gains, please consider using queue mode. N8n will start in main mode now unless `executions.mode` is queue mode.",
+	);
+}
 
 setGlobalState({
 	defaultTimezone: config.getEnv('generic.timezone'),
