@@ -4,7 +4,7 @@ import InputTriple from '@/components/InputTriple/InputTriple.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import { useI18n } from '@/composables/useI18n';
-import { resolveParameter } from '@/mixins/workflowHelpers';
+import { resolveParameter } from '@/composables/useWorkflowHelpers';
 import { DateTime } from 'luxon';
 import {
 	FilterError,
@@ -240,7 +240,7 @@ const onBlur = (): void => {
 					@operatorChange="onOperatorChange"
 				></OperatorSelect>
 			</template>
-			<template #right="{ breakpoint }" v-if="!operator.singleValue">
+			<template v-if="!operator.singleValue" #right="{ breakpoint }">
 				<ParameterInputFull
 					:key="rightParameter.type"
 					display-options
