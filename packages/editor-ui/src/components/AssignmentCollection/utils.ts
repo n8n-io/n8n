@@ -1,6 +1,6 @@
 import { isObject } from 'lodash-es';
 import type { AssignmentValue, IDataObject } from 'n8n-workflow';
-import { resolveParameter } from '@/mixins/workflowHelpers';
+import { resolveParameter } from '@/composables/useWorkflowHelpers';
 import { v4 as uuid } from 'uuid';
 
 export function nameFromExpression(expression: string): string {
