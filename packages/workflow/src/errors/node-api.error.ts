@@ -24,6 +24,7 @@ export interface NodeOperationErrorOptions {
 	level?: ReportingOptions['level'];
 	messageMapping?: { [key: string]: string }; // allows to pass custom mapping for error messages scoped to a node
 	functionality?: Functionality;
+	type?: string;
 }
 
 interface NodeApiErrorOptions extends NodeOperationErrorOptions {
