@@ -6,16 +6,15 @@ import type { IDataObject } from 'n8n-workflow';
 import { Expression, ExpressionExtensions } from 'n8n-workflow';
 import { ensureSyntaxTree } from '@codemirror/language';
 
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useNDVStore } from '@/stores/ndv.store';
 import { EXPRESSION_EDITOR_PARSER_TIMEOUT } from '@/constants';
 
 import type { EditorView } from '@codemirror/view';
 import type { TargetItem } from '@/Interface';
 import type { Html, Plaintext, RawSegment, Resolvable, Segment } from '@/types/expressions';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 
 export const expressionManager = defineComponent({
-	mixins: [workflowHelpers],
 	props: {
 		targetItem: {
 			type: Object as PropType<TargetItem | null>,
@@ -197,6 +196,7 @@ export const expressionManager = defineComponent({
 
 			try {
 				const ndvStore = useNDVStore();
+				const workflowHelpers = useWorkflowHelpers(this.$router);
 				if (!ndvStore.activeNode) {
 					// e.g. credential modal
 					result.resolved = Expression.resolveWithoutWorkflow(resolvable, this.additionalData);
@@ -211,7 +211,7 @@ export const expressionManager = defineComponent({
 							additionalKeys: this.additionalData,
 						};
 					}
-					result.resolved = this.resolveExpression('=' + resolvable, undefined, opts);
+					result.resolved = workflowHelpers.resolveExpression('=' + resolvable, undefined, opts);
 				}
 			} catch (error) {
 				result.resolved = `[${error.message}]`;
