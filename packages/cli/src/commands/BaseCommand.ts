@@ -84,8 +84,8 @@ export abstract class BaseCommand extends Command {
 			);
 		}
 		if (process.env.EXECUTIONS_PROCESS === 'own') {
-			throw new ApplicationError(
-				'Own mode has been removed. If you need the isolation and performance gains, please consider using queue mode.',
+			this.logger.warn(
+				'Own mode has been removed. If you need the isolation and performance gains, please consider using queue mode. Defaulting to main mode now.',
 			);
 		}
 
