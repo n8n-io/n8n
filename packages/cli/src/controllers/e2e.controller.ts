@@ -160,21 +160,21 @@ export class E2EController {
 		members: UserSetupPayload[],
 		admin: UserSetupPayload,
 	) {
-		const { user: instanceOwner } = await this.userRepository.createUserWithProject({
-			id: uuid(),
-			...owner,
-			password: await this.passwordUtility.hash(owner.password),
-			role: 'global:owner',
-		});
-
 		if (owner?.mfaSecret && owner.mfaRecoveryCodes?.length) {
 			const { encryptedRecoveryCodes, encryptedSecret } =
 				this.mfaService.encryptSecretAndRecoveryCodes(owner.mfaSecret, owner.mfaRecoveryCodes);
-			instanceOwner.mfaSecret = encryptedSecret;
-			instanceOwner.mfaRecoveryCodes = encryptedRecoveryCodes;
+			owner.mfaSecret = encryptedSecret;
+			owner.mfaRecoveryCodes = encryptedRecoveryCodes;
 		}
 
-		const userCreatePromises = [];
+		const userCreatePromises = [
+			this.userRepository.createUserWithProject({
+				id: uuid(),
+				...owner,
+				password: await this.passwordUtility.hash(owner.password),
+				role: 'global:owner',
+			}),
+		];
 
 		userCreatePromises.push(
 			this.userRepository.createUserWithProject({
