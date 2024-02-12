@@ -1,14 +1,13 @@
 import Container from 'typedi';
 import { hash } from 'bcryptjs';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
-import type { GlobalRole, User } from '@db/entities/User';
+import { type GlobalRole, type User } from '@db/entities/User';
 import { AuthIdentityRepository } from '@db/repositories/authIdentity.repository';
 import { UserRepository } from '@db/repositories/user.repository';
 import { TOTPService } from '@/Mfa/totp.service';
 import { MfaService } from '@/Mfa/mfa.service';
 
 import { randomApiKey, randomEmail, randomName, randomValidPassword } from '../random';
-import { UserService } from '@/services/user.service';
 
 // pre-computed bcrypt hash for the string 'password', using `await hash('password', 10)`
 const passwordHash = '$2a$10$njedH7S6V5898mj6p0Jr..IGY9Ms.qNwR7RbSzzX9yubJocKfvGGK';
@@ -18,7 +17,7 @@ const passwordHash = '$2a$10$njedH7S6V5898mj6p0Jr..IGY9Ms.qNwR7RbSzzX9yubJocKfvG
  */
 export async function createUser(attributes: Partial<User> = {}): Promise<User> {
 	const { email, password, firstName, lastName, role, ...rest } = attributes;
-	const user = await Container.get(UserService).create({
+	const { user } = await Container.get(UserRepository).createUserWithProject({
 		email: email ?? randomEmail(),
 		password: password ? await hash(password, 1) : passwordHash,
 		firstName: firstName ?? randomName(),
@@ -27,8 +26,7 @@ export async function createUser(attributes: Partial<User> = {}): Promise<User> 
 		...rest,
 	});
 	user.computeIsOwner();
-
-	return await Container.get(UserRepository).save(user);
+	return user;
 }
 
 export async function createLdapUser(attributes: Partial<User>, ldapId: string): Promise<User> {
@@ -89,7 +87,8 @@ export async function createUserShell(role: GlobalRole): Promise<User> {
 		shell.email = randomEmail();
 	}
 
-	return await Container.get(UserService).create(shell);
+	const { user } = await Container.get(UserRepository).createUserWithProject(shell);
+	return user;
 }
 
 /**
@@ -101,21 +100,24 @@ export async function createManyUsers(
 ): Promise<User[]> {
 	let { email, password, firstName, lastName, role, ...rest } = attributes;
 
-	const users = await Promise.all(
-		[...Array(amount)].map(
-			async () =>
-				await Container.get(UserService).create({
-					email: email ?? randomEmail(),
-					password: password ? await hash(password, 1) : passwordHash,
-					firstName: firstName ?? randomName(),
-					lastName: lastName ?? randomName(),
-					role: role ?? 'global:member',
-					...rest,
-				}),
-		),
-	);
-
-	return await Container.get(UserRepository).save(users);
+	return await Container.get(UserRepository).manager.transaction(async (transactionManager) => {
+		return await Promise.all(
+			[...Array(amount)].map(async () => {
+				const { user } = await Container.get(UserRepository).createUserWithProject(
+					{
+						email: email ?? randomEmail(),
+						password: password ? await hash(password, 1) : passwordHash,
+						firstName: firstName ?? randomName(),
+						lastName: lastName ?? randomName(),
+						role: role ?? 'global:member',
+						...rest,
+					},
+					transactionManager,
+				);
+				return user;
+			}),
+		);
+	});
 }
 
 export async function addApiKey(user: User): Promise<User> {

@@ -27,6 +27,7 @@ import { WorkflowHistoryService } from '@/workflows/workflowHistory/workflowHist
 import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
 import { TagRepository } from '@/databases/repositories/tag.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
 
 export = {
 	createWorkflow: [
@@ -41,7 +42,10 @@ export = {
 
 			addNodeIds(workflow);
 
-			const createdWorkflow = await createWorkflow(workflow, req.user, 'workflow:owner');
+			const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+				req.user.id,
+			);
+			const createdWorkflow = await createWorkflow(workflow, req.user, project, 'workflow:owner');
 
 			await Container.get(WorkflowHistoryService).saveVersion(
 				req.user,

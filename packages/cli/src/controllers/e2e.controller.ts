@@ -13,7 +13,7 @@ import { MfaService } from '@/Mfa/mfa.service';
 import { Push } from '@/push';
 import { CacheService } from '@/services/cache/cache.service';
 import { PasswordUtility } from '@/services/password.utility';
-import { UserService } from '@/services/user.service';
+import { UserRepository } from '@/databases/repositories/user.repository';
 
 if (!inE2ETests) {
 	console.error('E2E endpoints only allowed during E2E tests');
@@ -91,7 +91,7 @@ export class E2EController {
 		private readonly push: Push,
 		private readonly passwordUtility: PasswordUtility,
 		private readonly eventBus: MessageEventBus,
-		private readonly userService: UserService,
+		private readonly userRepository: UserRepository,
 	) {
 		license.isFeatureEnabled = (feature: BooleanLicenseFeature) =>
 			this.enabledFeatures[feature] ?? false;
@@ -160,7 +160,7 @@ export class E2EController {
 		members: UserSetupPayload[],
 		admin: UserSetupPayload,
 	) {
-		const instanceOwner = await this.userService.create({
+		const { user: instanceOwner } = await this.userRepository.createUserWithProject({
 			id: uuid(),
 			...owner,
 			password: await this.passwordUtility.hash(owner.password),
@@ -177,7 +177,7 @@ export class E2EController {
 		const userCreatePromises = [];
 
 		userCreatePromises.push(
-			this.userService.create({
+			this.userRepository.createUserWithProject({
 				id: uuid(),
 				...admin,
 				password: await this.passwordUtility.hash(admin.password),
@@ -187,7 +187,7 @@ export class E2EController {
 
 		for (const { password, ...payload } of members) {
 			userCreatePromises.push(
-				this.userService.create({
+				this.userRepository.createUserWithProject({
 					id: uuid(),
 					...payload,
 					password: await this.passwordUtility.hash(password),

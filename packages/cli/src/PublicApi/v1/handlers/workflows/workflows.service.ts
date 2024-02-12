@@ -6,6 +6,7 @@ import { SharedWorkflow, type WorkflowSharingRole } from '@db/entities/SharedWor
 import config from '@/config';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import type { Project } from '@/databases/entities/Project';
 
 function insertIf(condition: boolean, elements: string[]): string[] {
 	return condition ? elements : [];
@@ -42,6 +43,7 @@ export async function getWorkflowById(id: string): Promise<WorkflowEntity | null
 export async function createWorkflow(
 	workflow: WorkflowEntity,
 	user: User,
+	personalProject: Project,
 	role: WorkflowSharingRole,
 ): Promise<WorkflowEntity> {
 	return await Db.transaction(async (transactionManager) => {
@@ -53,6 +55,7 @@ export async function createWorkflow(
 		Object.assign(newSharedWorkflow, {
 			role,
 			user,
+			project: personalProject,
 			workflow: savedWorkflow,
 		});
 		await transactionManager.save<SharedWorkflow>(newSharedWorkflow);

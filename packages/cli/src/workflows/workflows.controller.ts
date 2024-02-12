@@ -38,6 +38,7 @@ import { EnterpriseWorkflowService } from './workflow.service.ee';
 import { WorkflowExecutionService } from './workflowExecution.service';
 import { WorkflowSharingService } from './workflowSharing.service';
 import { UserManagementMailer } from '@/UserManagement/email';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
 
 @Authorized()
 @RestController('/workflows')
@@ -61,6 +62,7 @@ export class WorkflowsController {
 		private readonly license: License,
 		private readonly mailer: UserManagementMailer,
 		private readonly credentialsService: CredentialsService,
+		private readonly projectRepository: ProjectRepository,
 	) {}
 
 	@Post('/')
@@ -110,11 +112,14 @@ export class WorkflowsController {
 		await Db.transaction(async (transactionManager) => {
 			savedWorkflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
 
+			const project = await this.projectRepository.getPersonalProjectForUserOrFail(req.user.id);
+
 			const newSharedWorkflow = new SharedWorkflow();
 
 			Object.assign(newSharedWorkflow, {
 				role: 'workflow:owner',
 				user: req.user,
+				project,
 				workflow: savedWorkflow,
 			});
 
