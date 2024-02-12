@@ -5,18 +5,6 @@ import FormData from 'form-data';
 import { apiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
-	// {
-	// 	displayName: 'Model',
-	// 	name: 'model',
-	// 	type: 'options',
-	// 	default: 'whisper-1',
-	// 	options: [
-	// 		{
-	// 			name: 'Whisper 1',
-	// 			value: 'whisper-1',
-	// 		},
-	// 	],
-	// },
 	{
 		displayName: 'Input Data Field Name',
 		name: 'binaryPropertyName',
@@ -67,7 +55,6 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
-	// const model = this.getNodeParameter('model', i) as string;
 	const model = 'whisper-1';
 	const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 	const options = this.getNodeParameter('options', i, {});

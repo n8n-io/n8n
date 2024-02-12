@@ -208,7 +208,9 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		body,
 	})) as ChatCompletion;
 
-	let toolCalls = response.choices[0].message.tool_calls;
+	if (!response) return [];
+
+	let toolCalls = response?.choices[0]?.message?.tool_calls;
 
 	while (toolCalls && toolCalls.length) {
 		messages.push(response.choices[0].message);
