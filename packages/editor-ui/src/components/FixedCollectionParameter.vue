@@ -297,7 +297,7 @@ export default defineComponent({
 					// Multiple values are allowed so append option to array
 					newParameterValue[optionParameter.name] = get(
 						this.nodeValues,
-						`${this.path}.${optionParameter.name}`,
+						[this.path, optionParameter.name],
 						[],
 					);
 					if (Array.isArray(optionParameter.default)) {

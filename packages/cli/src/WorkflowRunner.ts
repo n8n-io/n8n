@@ -303,6 +303,7 @@ export class WorkflowRunner {
 				sessionId: data.sessionId,
 			});
 
+			await additionalData.hooks.executeHookFunctions('workflowExecuteBefore', []);
 			if (data.executionData !== undefined) {
 				this.logger.debug(`Execution ID ${executionId} had Execution data. Running with payload.`, {
 					executionId,
