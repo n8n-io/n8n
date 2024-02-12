@@ -8,18 +8,6 @@ import { updateDisplayOptions, NodeOperationError } from 'n8n-workflow';
 import { apiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
-	// {
-	// 	displayName: 'Model',
-	// 	name: 'model',
-	// 	type: 'options',
-	// 	default: 'gpt-4-vision-preview',
-	// 	options: [
-	// 		{
-	// 			name: 'GPT-4 Vision Preview',
-	// 			value: 'gpt-4-vision-preview',
-	// 		},
-	// 	],
-	// },
 	{
 		displayName: 'Text Input',
 		name: 'text',
@@ -135,7 +123,6 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
-	// const model = this.getNodeParameter('model', i) as string;
 	const model = 'gpt-4-vision-preview';
 	const text = this.getNodeParameter('text', i, '') as string;
 	const inputType = this.getNodeParameter('inputType', i) as string;

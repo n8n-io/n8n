@@ -43,7 +43,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 				assistant.created_at = new Date(assistant.created_at * 1000).toISOString();
 			} catch (error) {}
 
-			returnData.push({ json: assistant });
+			returnData.push({ json: assistant, pairedItem: { item: i } });
 		}
 
 		has_more = response.has_more;
@@ -66,6 +66,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 					name,
 					model,
 				},
+				pairedItem: { item: i },
 			};
 		});
 	}
