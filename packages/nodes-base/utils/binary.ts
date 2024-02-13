@@ -26,6 +26,7 @@ export type JsonToBinaryOptions = {
 	mimeType?: string;
 	dataIsBase64?: boolean;
 	itemIndex?: number;
+	format?: boolean;
 };
 
 type PdfDocument = Awaited<ReturnType<Awaited<typeof readPDF>>['promise']>;
@@ -102,7 +103,11 @@ export async function createBinaryFromJson(
 
 		if (typeof value === 'object') {
 			options.mimeType = 'application/json';
-			valueAsString = JSON.stringify(value);
+			if (options.format) {
+				valueAsString = JSON.stringify(value, null, 2);
+			} else {
+				valueAsString = JSON.stringify(value);
+			}
 		}
 
 		buffer = iconv.encode(valueAsString, options.encoding || 'utf8', {
