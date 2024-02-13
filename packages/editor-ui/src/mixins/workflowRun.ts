@@ -231,6 +231,10 @@ export const workflowRun = defineComponent({
 
 				const runData = this.workflowsStore.getWorkflowRunData;
 
+				if (this.workflowsStore.isNewWorkflow) {
+					await this.workflowHelpers.saveCurrentWorkflow();
+				}
+
 				const workflowData = await this.workflowHelpers.getWorkflowDataToSave();
 
 				const consolidatedData = consolidateRunDataAndStartNodes(
@@ -258,10 +262,6 @@ export const workflowRun = defineComponent({
 						[options.triggerNode]: [options.nodeData],
 					};
 					executedNode = options.triggerNode;
-				}
-
-				if (this.workflowsStore.isNewWorkflow) {
-					await this.workflowHelpers.saveCurrentWorkflow();
 				}
 
 				const startRunData: IStartRunData = {
