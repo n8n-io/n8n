@@ -1,6 +1,6 @@
 <template>
 	<div>
-		<div v-for="size in sizes" class="spacing-group" :key="size">
+		<div v-for="size in sizes" :key="size" class="spacing-group">
 			<div class="spacing-example" :class="`${property[0]}${side ? side[0] : ''}-${size}`">
 				<div class="spacing-box" />
 				<div class="label">{{ property[0] }}{{ side ? side[0] : '' }}-{{ size }}</div>
@@ -8,10 +8,11 @@
 		</div>
 	</div>
 </template>
-<script lang="ts">
-import Vue from 'vue';
 
-export default Vue.extend({
+<script lang="ts">
+import { defineComponent } from 'vue';
+
+export default defineComponent({
 	name: 'SpacingPreview',
 	props: {
 		property: {

@@ -1,6 +1,4 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 
 import { apiRequest, apiRequestAllItems } from '../../../transport';
 
@@ -8,7 +6,7 @@ export async function getAll(
 	this: IExecuteFunctions,
 	index: number,
 ): Promise<INodeExecutionData[]> {
-	const returnAll = this.getNodeParameter('returnAll', index) as boolean;
+	const returnAll = this.getNodeParameter('returnAll', index);
 	const filters = this.getNodeParameter('filters', index);
 
 	let qs = {} as IDataObject;
@@ -26,7 +24,7 @@ export async function getAll(
 		}
 	}
 
-	if (returnAll === false) {
+	if (!returnAll) {
 		qs.per_page = this.getNodeParameter('limit', index);
 	}
 
@@ -36,6 +34,6 @@ export async function getAll(
 		return this.helpers.returnJsonArray(responseData);
 	} else {
 		responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
-		return this.helpers.returnJsonArray(responseData.customers);
+		return this.helpers.returnJsonArray(responseData.customers as IDataObject[]);
 	}
 }

@@ -1,16 +1,10 @@
-import {
-	CompressionTypes,
-	Kafka as apacheKafka,
-	KafkaConfig,
-	SASLOptions,
-	TopicMessages,
-} from 'kafkajs';
+import type { KafkaConfig, SASLOptions, TopicMessages } from 'kafkajs';
+import { CompressionTypes, Kafka as apacheKafka } from 'kafkajs';
 
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
 
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
@@ -19,8 +13,9 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { ApplicationError, NodeOperationError } from 'n8n-workflow';
+import { generatePairedItemData } from '../../utils/utilities';
 
 export class Kafka implements INodeType {
 	description: INodeTypeDescription = {
@@ -221,7 +216,7 @@ export class Kafka implements INodeType {
 				try {
 					const brokers = ((credentials.brokers as string) || '')
 						.split(',')
-						.map((item) => item.trim()) as string[];
+						.map((item) => item.trim());
 
 					const clientId = credentials.clientId as string;
 
@@ -234,7 +229,10 @@ export class Kafka implements INodeType {
 					};
 					if (credentials.authentication === true) {
 						if (!(credentials.username && credentials.password)) {
-							throw Error('Username and password are required for authentication');
+							// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
+							throw new ApplicationError('Username and password are required for authentication', {
+								level: 'warning',
+							});
 						}
 						config.sasl = {
 							username: credentials.username as string,
@@ -263,6 +261,7 @@ export class Kafka implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
+		const itemData = generatePairedItemData(items.length);
 
 		const length = items.length;
 
@@ -271,7 +270,7 @@ export class Kafka implements INodeType {
 		let responseData: IDataObject[];
 
 		try {
-			const options = this.getNodeParameter('options', 0) as IDataObject;
+			const options = this.getNodeParameter('options', 0);
 			const sendInputData = this.getNodeParameter('sendInputData', 0) as boolean;
 
 			const useSchemaRegistry = this.getNodeParameter('useSchemaRegistry', 0) as boolean;
@@ -288,9 +287,7 @@ export class Kafka implements INodeType {
 
 			const credentials = await this.getCredentials('kafka');
 
-			const brokers = ((credentials.brokers as string) || '')
-				.split(',')
-				.map((item) => item.trim()) as string[];
+			const brokers = ((credentials.brokers as string) || '').split(',').map((item) => item.trim());
 
 			const clientId = credentials.clientId as string;
 
@@ -325,7 +322,7 @@ export class Kafka implements INodeType {
 			let message: string | Buffer;
 
 			for (let i = 0; i < length; i++) {
-				if (sendInputData === true) {
+				if (sendInputData) {
 					message = JSON.stringify(items[i].json);
 				} else {
 					message = this.getNodeParameter('message', i) as string;
@@ -358,7 +355,7 @@ export class Kafka implements INodeType {
 
 				let headers;
 
-				if (jsonParameters === true) {
+				if (jsonParameters) {
 					headers = this.getNodeParameter('headerParametersJson', i) as string;
 					try {
 						headers = JSON.parse(headers);
@@ -404,10 +401,15 @@ export class Kafka implements INodeType {
 
 			await producer.disconnect();
 
-			return [this.helpers.returnJsonArray(responseData)];
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(responseData),
+				{ itemData },
+			);
+
+			return [executionData];
 		} catch (error) {
 			if (this.continueOnFail()) {
-				return [this.helpers.returnJsonArray({ error: error.message })];
+				return [[{ json: { error: error.message }, pairedItem: itemData }]];
 			} else {
 				throw error;
 			}

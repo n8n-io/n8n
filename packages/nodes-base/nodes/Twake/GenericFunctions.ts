@@ -1,6 +1,5 @@
-import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
+import type { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
 
 /**
  * Make an API request to Twake
@@ -30,5 +29,5 @@ export async function twakeApiRequest(
 	// 	options.uri = `${credentials!.hostUrl}/api/v1${resource}`;
 	// }
 
-	return this.helpers.requestWithAuthentication.call(this, 'twakeCloudApi', options);
+	return await this.helpers.requestWithAuthentication.call(this, 'twakeCloudApi', options);
 }

@@ -1,9 +1,8 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
 	IBinaryKeyData,
 	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -12,12 +11,13 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import isEmpty from 'lodash/isEmpty';
+import type { IEmail } from '../GenericFunctions';
 import {
 	encodeEmail,
 	extractEmail,
 	googleApiRequest,
 	googleApiRequestAllItems,
-	IEmail,
 	parseRawEmail,
 } from '../GenericFunctions';
 
@@ -29,7 +29,7 @@ import { labelFields, labelOperations } from './LabelDescription';
 
 import { draftFields, draftOperations } from './DraftDescription';
 
-import { isEmpty } from 'lodash';
+import { oldVersionNotice } from '@utils/descriptions';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Gmail',
@@ -65,6 +65,7 @@ const versionDescription: INodeTypeDescription = {
 		},
 	],
 	properties: [
+		oldVersionNotice,
 		{
 			displayName: 'Authentication',
 			name: 'authentication',
@@ -143,7 +144,7 @@ export class GmailV1 implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the labels to display them to user so that he can
+			// Get all the labels to display them to user so that they can
 			// select them easily
 			async getLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -175,8 +176,8 @@ export class GmailV1 implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let method = '';
 		let body: IDataObject = {};
@@ -231,7 +232,7 @@ export class GmailV1 implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'GET',
-							`/gmail/v1/users/me/labels`,
+							'/gmail/v1/users/me/labels',
 							{},
 							qs,
 						);
@@ -314,21 +315,18 @@ export class GmailV1 implements INodeType {
 									!isEmpty(attachmentsUi.attachmentsBinary) &&
 									items[i].binary
 								) {
-									// @ts-ignore
 									for (const { property } of attachmentsUi.attachmentsBinary as IDataObject[]) {
 										for (const binaryProperty of (property as string).split(',')) {
-											if (items[i].binary![binaryProperty] !== undefined) {
-												const binaryData = items[i].binary![binaryProperty];
-												const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
-													i,
-													binaryProperty,
-												);
-												attachmentsBinary.push({
-													name: binaryData.fileName || 'unknown',
-													content: binaryDataBuffer,
-													type: binaryData.mimeType,
-												});
-											}
+											const binaryData = this.helpers.assertBinaryData(i, binaryProperty);
+											const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
+												i,
+												binaryProperty,
+											);
+											attachmentsBinary.push({
+												name: binaryData.fileName || 'unknown',
+												content: binaryDataBuffer,
+												type: binaryData.mimeType,
+											});
 										}
 									}
 								}
@@ -351,7 +349,7 @@ export class GmailV1 implements INodeType {
 							attachments: attachmentsList,
 						};
 
-						if ((this.getNodeParameter('includeHtml', i, false) as boolean) === true) {
+						if (this.getNodeParameter('includeHtml', i, false) as boolean) {
 							email.htmlBody = this.getNodeParameter('htmlMessage', i) as string;
 						}
 
@@ -404,21 +402,18 @@ export class GmailV1 implements INodeType {
 									!isEmpty(attachmentsUi.attachmentsBinary) &&
 									items[i].binary
 								) {
-									// @ts-ignore
 									for (const { property } of attachmentsUi.attachmentsBinary as IDataObject[]) {
 										for (const binaryProperty of (property as string).split(',')) {
-											if (items[i].binary![binaryProperty] !== undefined) {
-												const binaryData = items[i].binary![binaryProperty];
-												const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
-													i,
-													binaryProperty,
-												);
-												attachmentsBinary.push({
-													name: binaryData.fileName || 'unknown',
-													content: binaryDataBuffer,
-													type: binaryData.mimeType,
-												});
-											}
+											const binaryData = this.helpers.assertBinaryData(i, binaryProperty);
+											const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
+												i,
+												binaryProperty,
+											);
+											attachmentsBinary.push({
+												name: binaryData.fileName || 'unknown',
+												content: binaryDataBuffer,
+												type: binaryData.mimeType,
+											});
 										}
 									}
 								}
@@ -465,7 +460,7 @@ export class GmailV1 implements INodeType {
 							attachments: attachmentsList,
 						};
 
-						if ((this.getNodeParameter('includeHtml', i, false) as boolean) === true) {
+						if (this.getNodeParameter('includeHtml', i, false) as boolean) {
 							email.htmlBody = this.getNodeParameter('htmlMessage', i) as string;
 						}
 
@@ -525,7 +520,6 @@ export class GmailV1 implements INodeType {
 						Object.assign(qs, additionalFields);
 
 						if (qs.labelIds) {
-							// tslint:disable-next-line: triple-equals
 							if (qs.labelIds == '') {
 								delete qs.labelIds;
 							} else {
@@ -538,7 +532,7 @@ export class GmailV1 implements INodeType {
 								this,
 								'messages',
 								'GET',
-								`/gmail/v1/users/me/messages`,
+								'/gmail/v1/users/me/messages',
 								{},
 								qs,
 							);
@@ -547,7 +541,7 @@ export class GmailV1 implements INodeType {
 							responseData = await googleApiRequest.call(
 								this,
 								'GET',
-								`/gmail/v1/users/me/messages`,
+								'/gmail/v1/users/me/messages',
 								{},
 								qs,
 							);
@@ -567,11 +561,11 @@ export class GmailV1 implements INodeType {
 								qs.format = format;
 							}
 
-							for (let i = 0; i < responseData.length; i++) {
-								responseData[i] = await googleApiRequest.call(
+							for (let index = 0; index < responseData.length; index++) {
+								responseData[index] = await googleApiRequest.call(
 									this,
 									'GET',
-									`/gmail/v1/users/me/messages/${responseData[i].id}`,
+									`/gmail/v1/users/me/messages/${responseData[index].id}`,
 									body,
 									qs,
 								);
@@ -580,9 +574,9 @@ export class GmailV1 implements INodeType {
 									const dataPropertyNameDownload =
 										(additionalFields.dataPropertyAttachmentsPrefixName as string) || 'attachment_';
 
-									responseData[i] = await parseRawEmail.call(
+									responseData[index] = await parseRawEmail.call(
 										this,
-										responseData[i],
+										responseData[index],
 										dataPropertyNameDownload,
 									);
 								}
@@ -590,7 +584,7 @@ export class GmailV1 implements INodeType {
 						}
 
 						if (format !== 'resolved') {
-							responseData = this.helpers.returnJsonArray(responseData);
+							responseData = this.helpers.returnJsonArray(responseData as IDataObject[]);
 						}
 					}
 					if (operation === 'delete') {
@@ -652,18 +646,16 @@ export class GmailV1 implements INodeType {
 									) {
 										for (const { property } of attachmentsUi.attachmentsBinary as IDataObject[]) {
 											for (const binaryProperty of (property as string).split(',')) {
-												if (items[i].binary![binaryProperty] !== undefined) {
-													const binaryData = items[i].binary![binaryProperty];
-													const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
-														i,
-														binaryProperty,
-													);
-													attachmentsBinary.push({
-														name: binaryData.fileName || 'unknown',
-														content: binaryDataBuffer,
-														type: binaryData.mimeType,
-													});
-												}
+												const binaryData = this.helpers.assertBinaryData(i, binaryProperty);
+												const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
+													i,
+													binaryProperty,
+												);
+												attachmentsBinary.push({
+													name: binaryData.fileName || 'unknown',
+													content: binaryDataBuffer,
+													type: binaryData.mimeType,
+												});
 											}
 										}
 									}
@@ -687,7 +679,7 @@ export class GmailV1 implements INodeType {
 							attachments: attachmentsList,
 						};
 
-						if ((this.getNodeParameter('includeHtml', i, false) as boolean) === true) {
+						if (this.getNodeParameter('includeHtml', i, false) as boolean) {
 							email.htmlBody = this.getNodeParameter('htmlMessage', i) as string;
 						}
 
@@ -766,7 +758,7 @@ export class GmailV1 implements INodeType {
 								this,
 								'drafts',
 								'GET',
-								`/gmail/v1/users/me/drafts`,
+								'/gmail/v1/users/me/drafts',
 								{},
 								qs,
 							);
@@ -775,7 +767,7 @@ export class GmailV1 implements INodeType {
 							responseData = await googleApiRequest.call(
 								this,
 								'GET',
-								`/gmail/v1/users/me/drafts`,
+								'/gmail/v1/users/me/drafts',
 								{},
 								qs,
 							);
@@ -795,11 +787,11 @@ export class GmailV1 implements INodeType {
 								qs.format = format;
 							}
 
-							for (let i = 0; i < responseData.length; i++) {
-								responseData[i] = await googleApiRequest.call(
+							for (let index = 0; index < responseData.length; index++) {
+								responseData[index] = await googleApiRequest.call(
 									this,
 									'GET',
-									`/gmail/v1/users/me/drafts/${responseData[i].id}`,
+									`/gmail/v1/users/me/drafts/${responseData[index].id}`,
 									body,
 									qs,
 								);
@@ -807,28 +799,28 @@ export class GmailV1 implements INodeType {
 								if (format === 'resolved') {
 									const dataPropertyNameDownload =
 										(additionalFields.dataPropertyAttachmentsPrefixName as string) || 'attachment_';
-									const id = responseData[i].id;
-									responseData[i] = await parseRawEmail.call(
+									const id = responseData[index].id;
+									responseData[index] = await parseRawEmail.call(
 										this,
-										responseData[i].message,
+										responseData[index].message,
 										dataPropertyNameDownload,
 									);
 
 									// Add the draft-id
-									responseData[i].json.messageId = responseData[i].json.id;
-									responseData[i].json.id = id;
+									responseData[index].json.messageId = responseData[index].json.id;
+									responseData[index].json.id = id;
 								}
 							}
 						}
 
 						if (format !== 'resolved') {
-							responseData = this.helpers.returnJsonArray(responseData);
+							responseData = this.helpers.returnJsonArray(responseData as IDataObject[]);
 						}
 					}
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 
@@ -841,6 +833,6 @@ export class GmailV1 implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

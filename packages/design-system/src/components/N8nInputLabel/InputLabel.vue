@@ -1,9 +1,10 @@
 <template>
-	<div :class="$style.container">
+	<div :class="$style.container" v-bind="$attrs" data-test-id="input-label">
 		<label
 			v-if="label || $slots.options"
 			:for="inputName"
 			:class="{
+				'n8n-input-label': true,
 				[$style.inputLabel]: true,
 				[$style.heading]: !!label,
 				[$style.underline]: underline,
@@ -11,28 +12,32 @@
 				[$style.overflow]: !!$slots.options,
 			}"
 		>
-			<div :class="$style.title" v-if="label">
-				<n8n-text :bold="bold" :size="size" :compact="!underline && !$slots.options" :color="color">
+			<div v-if="label" :class="$style.title">
+				<N8nText :bold="bold" :size="size" :compact="compact" :color="color">
 					{{ label }}
-					<n8n-text color="primary" :bold="bold" :size="size" v-if="required">*</n8n-text>
-				</n8n-text>
+					<N8nText v-if="required" color="primary" :bold="bold" :size="size">*</N8nText>
+				</N8nText>
 			</div>
 			<span
-				:class="[$style.infoIcon, showTooltip ? $style.visible : $style.hidden]"
 				v-if="tooltipText && label"
+				:class="[$style.infoIcon, showTooltip ? $style.visible : $style.hidden]"
 			>
-				<n8n-tooltip placement="top" :popper-class="$style.tooltipPopper">
-					<n8n-icon icon="question-circle" size="small" />
+				<N8nTooltip placement="top" :popper-class="$style.tooltipPopper">
+					<N8nIcon icon="question-circle" size="small" />
 					<template #content>
 						<div v-html="addTargetBlank(tooltipText)" />
 					</template>
-				</n8n-tooltip>
+				</N8nTooltip>
 			</span>
 			<div
 				v-if="$slots.options && label"
 				:class="{ [$style.overlay]: true, [$style.visible]: showOptions }"
 			/>
-			<div v-if="$slots.options" :class="{ [$style.options]: true, [$style.visible]: showOptions }">
+			<div
+				v-if="$slots.options"
+				:class="{ [$style.options]: true, [$style.visible]: showOptions }"
+				:data-test-id="`${inputName}-parameter-input-options-container`"
+			>
 				<slot name="options" />
 			</div>
 		</label>
@@ -47,16 +52,20 @@ import N8nIcon from '../N8nIcon';
 
 import { addTargetBlank } from '../utils/helpers';
 
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
-	name: 'n8n-input-label',
+export default defineComponent({
+	name: 'N8nInputLabel',
 	components: {
 		N8nText,
 		N8nIcon,
 		N8nTooltip,
 	},
 	props: {
+		compact: {
+			type: Boolean,
+			default: false,
+		},
 		color: {
 			type: String,
 		},
@@ -181,28 +190,27 @@ export default Vue.extend({
 	opacity: 1;
 }
 
-.heading {
-	display: flex;
-}
-
 .overflow {
 	overflow-x: hidden;
 	overflow-y: clip;
 }
 
-.small {
-	margin-bottom: var(--spacing-5xs);
-}
+.heading {
+	display: flex;
 
-.medium {
-	margin-bottom: var(--spacing-2xs);
+	&.small {
+		margin-bottom: var(--spacing-5xs);
+	}
+	&.medium {
+		margin-bottom: var(--spacing-2xs);
+	}
 }
 
 .underline {
 	border-bottom: var(--border-base);
 }
 
-.tooltipPopper {
+:root .tooltipPopper {
 	max-width: 400px;
 
 	li {

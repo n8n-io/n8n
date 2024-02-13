@@ -1,6 +1,9 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 export class N8nTrainingCustomerMessenger implements INodeType {
 	description: INodeTypeDescription = {
@@ -11,7 +14,7 @@ export class N8nTrainingCustomerMessenger implements INodeType {
 		version: 1,
 		description: 'Dummy node used for n8n training',
 		defaults: {
-			name: 'Customer Messenger',
+			name: 'Customer Messenger (n8n training)',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -38,7 +41,7 @@ export class N8nTrainingCustomerMessenger implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		let responseData;
 
@@ -48,9 +51,13 @@ export class N8nTrainingCustomerMessenger implements INodeType {
 			const message = this.getNodeParameter('message', i) as string;
 
 			responseData = { output: `Sent message to customer ${customerId}:  ${message}` };
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(responseData),
+				{ itemData: { item: i } },
+			);
 
-			returnData.push(responseData);
+			returnData.push(...executionData);
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return [returnData];
 	}
 }

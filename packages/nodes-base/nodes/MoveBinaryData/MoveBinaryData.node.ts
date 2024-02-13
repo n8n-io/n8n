@@ -1,28 +1,26 @@
-import { get, set, unset } from 'lodash';
+import get from 'lodash/get';
+import set from 'lodash/set';
+import unset from 'lodash/unset';
 
-import { BINARY_ENCODING } from 'n8n-core';
-
-import { IExecuteFunctions } from 'n8n-core';
-import {
-	deepCopy,
-	IBinaryData,
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	jsonParse,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { BINARY_ENCODING, deepCopy, jsonParse, NodeOperationError } from 'n8n-workflow';
 
 import iconv from 'iconv-lite';
+
 iconv.encodingExists('utf8');
 
 // Create options for bomAware and encoding
 const bomAware: string[] = [];
 const encodeDecodeOptions: INodePropertyOptions[] = [];
-const encodings = (iconv as any).encodings; // tslint:disable-line:no-any
-Object.keys(encodings).forEach((encoding) => {
+const encodings = (iconv as any).encodings;
+Object.keys(encodings as IDataObject).forEach((encoding) => {
 	if (!(encoding.startsWith('_') || typeof encodings[encoding] === 'string')) {
 		// only encodings without direct alias or internals
 		if (encodings[encoding].bomAware) {
@@ -44,15 +42,16 @@ encodeDecodeOptions.sort((a, b) => {
 
 export class MoveBinaryData implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Move Binary Data',
+		hidden: true,
+		displayName: 'Convert to/from binary data',
 		name: 'moveBinaryData',
 		icon: 'fa:exchange-alt',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
 		subtitle: '={{$parameter["mode"]==="binaryToJson" ? "Binary to JSON" : "JSON to Binary"}}',
 		description: 'Move data between binary and JSON properties',
 		defaults: {
-			name: 'Move Binary Data',
+			name: 'Convert to/from binary data',
 			color: '#7722CC',
 		},
 		inputs: ['main'],
@@ -182,6 +181,20 @@ export class MoveBinaryData implements INodeType {
 				default: {},
 				options: [
 					{
+						displayName: 'Add Byte Order Mark (BOM)',
+						name: 'addBOM',
+						description:
+							'Whether to add special marker at the start of your text file. This marker helps some programs understand how to read the file correctly.',
+						displayOptions: {
+							show: {
+								'/mode': ['jsonToBinary'],
+								encoding: bomAware,
+							},
+						},
+						type: 'boolean',
+						default: false,
+					},
+					{
 						displayName: 'Data Is Base64',
 						name: 'dataIsBase64',
 						type: 'boolean',
@@ -208,7 +221,7 @@ export class MoveBinaryData implements INodeType {
 							},
 						},
 						default: 'utf8',
-						description: 'Set the encoding of the data stream',
+						description: 'Choose the character set to use to encode the data',
 					},
 					{
 						displayName: 'Strip BOM',
@@ -221,18 +234,6 @@ export class MoveBinaryData implements INodeType {
 						},
 						type: 'boolean',
 						default: true,
-					},
-					{
-						displayName: 'Add BOM',
-						name: 'addBOM',
-						displayOptions: {
-							show: {
-								'/mode': ['jsonToBinary'],
-								encoding: bomAware,
-							},
-						},
-						type: 'boolean',
-						default: false,
 					},
 					{
 						displayName: 'File Name',
@@ -287,7 +288,7 @@ export class MoveBinaryData implements INodeType {
 						description: 'Whether to keep the binary data as base64 string',
 					},
 					{
-						displayName: 'Mime Type',
+						displayName: 'MIME Type',
 						name: 'mimeType',
 						type: 'string',
 						displayOptions: {
@@ -321,9 +322,7 @@ export class MoveBinaryData implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-
 		const mode = this.getNodeParameter('mode', 0) as string;
-
 		const returnData: INodeExecutionData[] = [];
 
 		let item: INodeExecutionData;
@@ -331,7 +330,7 @@ export class MoveBinaryData implements INodeType {
 		let options: IDataObject;
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			item = items[itemIndex];
-			options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
+			options = this.getNodeParameter('options', itemIndex, {});
 
 			// Copy the whole JSON data as data on any level can be renamed
 			newItem = {
@@ -358,7 +357,7 @@ export class MoveBinaryData implements INodeType {
 
 				let convertedValue: string;
 
-				if (setAllData === true) {
+				if (setAllData) {
 					// Set the full data
 					convertedValue = iconv.decode(buffer, encoding, {
 						stripBOM: options.stripBOM as boolean,
@@ -398,7 +397,7 @@ export class MoveBinaryData implements INodeType {
 
 				const encoding = (options.encoding as string) || 'utf8';
 				let value: IDataObject | string = item.json;
-				if (convertAllData === false) {
+				if (!convertAllData) {
 					const sourceKey = this.getNodeParameter('sourceKey', itemIndex) as string;
 					value = get(item.json, sourceKey) as IDataObject;
 				}
@@ -416,26 +415,42 @@ export class MoveBinaryData implements INodeType {
 					newItem.binary = {};
 				}
 
+				const nodeVersion = this.getNode().typeVersion;
+				let mimeType = options.mimeType as string;
+
+				let data: Buffer;
 				if (options.dataIsBase64 !== true) {
-					if (options.useRawData !== true) {
+					if (options.useRawData !== true || typeof value === 'object') {
 						value = JSON.stringify(value);
+
+						if (!mimeType) {
+							mimeType = 'application/json';
+						}
 					}
 
-					value = iconv
-						.encode(value as string, encoding, { addBOM: options.addBOM as boolean })
-						.toString(BINARY_ENCODING);
+					data = iconv.encode(value, encoding, { addBOM: options.addBOM as boolean });
+				} else {
+					data = Buffer.from(value as unknown as string, BINARY_ENCODING);
 				}
 
-				const convertedValue: IBinaryData = {
-					data: value as string,
-					mimeType: (options.mimeType as string) || 'application/json',
-				};
-
-				if (options.fileName) {
-					convertedValue.fileName = options.fileName as string;
+				if (!mimeType && nodeVersion === 1) {
+					mimeType = 'application/json';
 				}
 
-				set(newItem.binary!, destinationKey, convertedValue);
+				const convertedValue = await this.helpers.prepareBinaryData(
+					data,
+					options.fileName as string,
+					mimeType,
+				);
+
+				if (!convertedValue.fileName && nodeVersion > 1) {
+					const fileExtension = convertedValue.fileExtension
+						? `.${convertedValue.fileExtension}`
+						: '';
+					convertedValue.fileName = `file${fileExtension}`;
+				}
+
+				set(newItem.binary, destinationKey, convertedValue);
 
 				if (options.keepSource === true) {
 					// JSON data does not get touched so simply reference it
@@ -443,7 +458,7 @@ export class MoveBinaryData implements INodeType {
 				} else {
 					// JSON data will change so copy it
 
-					if (convertAllData === true) {
+					if (convertAllData) {
 						// Data should not be kept and all data got converted. So simply set new as empty
 						newItem.json = {};
 					} else {

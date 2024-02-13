@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const certificateRequestOperations: INodeProperties[] = [
 	{
@@ -85,24 +85,6 @@ export const certificateRequestFields: INodeProperties[] = [
 			},
 		},
 		default: false,
-	},
-	{
-		displayName: 'Application Server Type Name or ID',
-		name: 'applicationServerTypeId',
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		typeOptions: {
-			loadOptionsMethod: 'getApplicationServerTypes',
-		},
-		displayOptions: {
-			show: {
-				operation: ['create'],
-				resource: ['certificateRequest'],
-				generateCsr: [true],
-			},
-		},
-		default: '',
 	},
 	{
 		displayName: 'Common Name',
@@ -290,9 +272,6 @@ export const certificateRequestFields: INodeProperties[] = [
 		displayName: 'Certificate Signing Request',
 		name: 'certificateSigningRequest',
 		type: 'string',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		displayOptions: {
 			show: {
 				operation: ['create'],

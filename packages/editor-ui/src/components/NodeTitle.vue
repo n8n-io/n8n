@@ -1,26 +1,37 @@
 <template>
-	<span :class="$style.container" @click="onEdit">
-		<span :class="$style.iconWrapper"><NodeIcon :nodeType="nodeType" :size="18" /></span>
-		<n8n-popover placement="right" width="200" :value="editName" :disabled="readOnly">
+	<span :class="$style.container" data-test-id="node-title-container" @click="onEdit">
+		<span :class="$style.iconWrapper"><NodeIcon :node-type="nodeType" :size="18" /></span>
+		<n8n-popover placement="right" width="200" :visible="editName" :disabled="!editable">
 			<div
 				:class="$style.editContainer"
 				@keydown.enter="onRename"
 				@keydown.stop
 				@keydown.esc="editName = false"
 			>
-				<n8n-text :bold="true" color="text-base" tag="div"
-					>{{ $locale.baseText('ndv.title.renameNode') }}</n8n-text>
-				<n8n-input ref="input" size="small" v-model="newName" />
+				<n8n-text :bold="true" color="text-base" tag="div">{{
+					$locale.baseText('ndv.title.renameNode')
+				}}</n8n-text>
+				<n8n-input ref="input" v-model="newName" size="small" data-test-id="node-rename-input" />
 				<div :class="$style.editButtons">
-					<n8n-button type="secondary" size="small" @click="editName = false" :label="$locale.baseText('ndv.title.cancel')" />
-					<n8n-button type="primary" size="small" @click="onRename" :label="$locale.baseText('ndv.title.rename')" />
+					<n8n-button
+						type="secondary"
+						size="small"
+						:label="$locale.baseText('ndv.title.cancel')"
+						@click="editName = false"
+					/>
+					<n8n-button
+						type="primary"
+						size="small"
+						:label="$locale.baseText('ndv.title.rename')"
+						@click="onRename"
+					/>
 				</div>
 			</div>
 			<template #reference>
-				<div class="ph-no-capture" :class="{[$style.title]: true, [$style.hoverable]: !readOnly}">
-					{{ value }}
+				<div :class="{ [$style.title]: true, [$style.hoverable]: editable }">
+					{{ modelValue }}
 					<div :class="$style.editIconContainer">
-						<font-awesome-icon :class="$style.editIcon" icon="pencil-alt" v-if="!readOnly" />
+						<font-awesome-icon v-if="editable" :class="$style.editIcon" icon="pencil-alt" />
 					</div>
 				</div>
 			</template>
@@ -29,13 +40,18 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import NodeIcon from '@/components/NodeIcon.vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'NodeTitle',
+	components: {
+		NodeIcon,
+	},
 	props: {
-		value: {
+		modelValue: {
 			type: String,
+			default: '',
 		},
 		nodeType: {},
 		readOnly: {
@@ -49,20 +65,24 @@ export default Vue.extend({
 			newName: '',
 		};
 	},
+	computed: {
+		editable(): boolean {
+			return !this.readOnly && window === window.parent;
+		},
+	},
 	methods: {
-		onEdit() {
-			this.newName = this.value;
+		async onEdit() {
+			this.newName = this.modelValue;
 			this.editName = true;
-			this.$nextTick(() => {
-				const input = this.$refs.input;
-				if (input) {
-					(input as HTMLInputElement).focus();
-				}
-			});
+			await this.$nextTick();
+			const inputRef = this.$refs.input as HTMLInputElement | undefined;
+			if (inputRef) {
+				inputRef.focus();
+			}
 		},
 		onRename() {
 			if (this.newName.trim() !== '') {
-				this.$emit('input', this.newName.trim());
+				this.$emit('update:modelValue', this.newName.trim());
 			}
 
 			this.editName = false;

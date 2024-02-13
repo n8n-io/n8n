@@ -1,16 +1,17 @@
 <template>
-	<resources-list-layout
+	<ResourcesListLayout
 		ref="layout"
 		resource-key="credentials"
 		:resources="allCredentials"
 		:initialize="initialize"
 		:filters="filters"
 		:additional-filters-handler="onFilter"
+		:type-props="{ itemSize: 77 }"
 		@click:add="addCredential"
 		@update:filters="filters = $event"
 	>
 		<template #default="{ data }">
-			<credential-card :data="data"/>
+			<CredentialCard data-test-id="resources-list-item" class="mb-2xs" :data="data" />
 		</template>
 		<template #filters="{ setKeyValue }">
 			<div class="mb-s">
@@ -22,13 +23,13 @@
 					class="mb-3xs"
 				/>
 				<n8n-select
-					:value="filters.type"
-					size="small"
+					ref="typeInput"
+					:model-value="filters.type"
+					size="medium"
 					multiple
 					filterable
-					ref="typeInput"
 					:class="$style['type-input']"
-					@input="setKeyValue('type', $event)"
+					@update:modelValue="setKeyValue('type', $event)"
 				>
 					<n8n-option
 						v-for="credentialType in allCredentialTypes"
@@ -39,48 +40,32 @@
 				</n8n-select>
 			</div>
 		</template>
-	</resources-list-layout>
+	</ResourcesListLayout>
 </template>
 
 <script lang="ts">
-import {showMessage} from '@/mixins/showMessage';
-import {ICredentialsResponse, ICredentialTypeMap, IUser} from '@/Interface';
-import mixins from 'vue-typed-mixins';
+import type { ICredentialsResponse, ICredentialTypeMap } from '@/Interface';
+import { defineComponent } from 'vue';
 
-import SettingsView from './SettingsView.vue';
-import ResourcesListLayout from "@/components/layouts/ResourcesListLayout.vue";
-import PageViewLayout from "@/components/layouts/PageViewLayout.vue";
-import PageViewLayoutList from "@/components/layouts/PageViewLayoutList.vue";
-import CredentialCard from "@/components/CredentialCard.vue";
-import {ICredentialType} from "n8n-workflow";
-import TemplateCard from "@/components/TemplateCard.vue";
-import { debounceHelper } from '@/mixins/debounce';
-import ResourceOwnershipSelect from "@/components/forms/ResourceOwnershipSelect.ee.vue";
-import ResourceFiltersDropdown from "@/components/forms/ResourceFiltersDropdown.vue";
-import {CREDENTIAL_SELECT_MODAL_KEY} from '@/constants';
-import Vue from "vue";
+import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
+import CredentialCard from '@/components/CredentialCard.vue';
+import type { ICredentialType } from 'n8n-workflow';
+import { CREDENTIAL_SELECT_MODAL_KEY } from '@/constants';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useUsersStore } from '@/stores/users';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { useCredentialsStore } from '@/stores/credentials';
+import { useUIStore } from '@/stores/ui.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
 
-type IResourcesListLayoutInstance = Vue & { sendFiltersTelemetry: (source: string) => void };
+type IResourcesListLayoutInstance = InstanceType<typeof ResourcesListLayout>;
 
-export default mixins(
-	showMessage,
-	debounceHelper,
-).extend({
-	name: 'SettingsPersonalView',
+export default defineComponent({
+	name: 'CredentialsView',
 	components: {
 		ResourcesListLayout,
-		TemplateCard,
-		PageViewLayout,
-		PageViewLayoutList,
-		SettingsView,
 		CredentialCard,
-		ResourceOwnershipSelect,
-		ResourceFiltersDropdown,
 	},
 	data() {
 		return {
@@ -90,6 +75,7 @@ export default mixins(
 				sharedWith: '',
 				type: '',
 			},
+			sourceControlStoreUnsubscribe: () => {},
 		};
 	},
 	computed: {
@@ -98,6 +84,8 @@ export default mixins(
 			useNodeTypesStore,
 			useUIStore,
 			useUsersStore,
+			useSourceControlStore,
+			useExternalSecretsStore,
 		),
 		allCredentials(): ICredentialsResponse[] {
 			return this.credentialsStore.allCredentials;
@@ -109,6 +97,23 @@ export default mixins(
 			return this.credentialsStore.credentialTypesById;
 		},
 	},
+	watch: {
+		'filters.type'() {
+			this.sendFiltersTelemetry('type');
+		},
+	},
+	mounted() {
+		this.sourceControlStoreUnsubscribe = this.sourceControlStore.$onAction(({ name, after }) => {
+			if (name === 'pullWorkfolder' && after) {
+				after(() => {
+					void this.initialize();
+				});
+			}
+		});
+	},
+	beforeUnmount() {
+		this.sourceControlStoreUnsubscribe();
+	},
 	methods: {
 		addCredential() {
 			this.uiStore.openModal(CREDENTIAL_SELECT_MODAL_KEY);
@@ -118,21 +123,22 @@ export default mixins(
 			});
 		},
 		async initialize() {
-
 			const loadPromises = [
 				this.credentialsStore.fetchAllCredentials(),
 				this.credentialsStore.fetchCredentialTypes(false),
+				this.externalSecretsStore.fetchAllSecrets(),
+				this.nodeTypesStore.loadNodeTypesIfNotLoaded(),
 			];
-
-			if (this.nodeTypesStore.allNodeTypes.length === 0) {
-				loadPromises.push(this.nodeTypesStore.getNodeTypes());
-			}
 
 			await Promise.all(loadPromises);
 
-			this.usersStore.fetchUsers(); // Can be loaded in the background, used for filtering
+			await this.usersStore.fetchUsers(); // Can be loaded in the background, used for filtering
 		},
-		onFilter(resource: ICredentialsResponse, filters: { type: string[]; search: string; }, matches: boolean): boolean {
+		onFilter(
+			resource: ICredentialsResponse,
+			filters: { type: string[]; search: string },
+			matches: boolean,
+		): boolean {
 			if (filters.type.length > 0) {
 				matches = matches && filters.type.includes(resource.type);
 			}
@@ -140,20 +146,18 @@ export default mixins(
 			if (filters.search) {
 				const searchString = filters.search.toLowerCase();
 
-				matches = matches || (
-					this.credentialTypesById[resource.type] && this.credentialTypesById[resource.type].displayName.toLowerCase().includes(searchString)
-				);
+				matches =
+					matches ||
+					(this.credentialTypesById[resource.type] &&
+						this.credentialTypesById[resource.type].displayName
+							.toLowerCase()
+							.includes(searchString));
 			}
 
 			return matches;
 		},
 		sendFiltersTelemetry(source: string) {
 			(this.$refs.layout as IResourcesListLayoutInstance).sendFiltersTelemetry(source);
-		},
-	},
-	watch: {
-		'filters.type'() {
-			this.sendFiltersTelemetry('type');
 		},
 	},
 });
@@ -168,4 +172,3 @@ export default mixins(
 	padding: 0 !important;
 }
 </style>
-

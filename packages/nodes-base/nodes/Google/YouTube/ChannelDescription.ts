@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const channelOperations: INodeProperties[] = [
 	{
@@ -229,7 +229,7 @@ export const channelFields: INodeProperties[] = [
 				resource: ['channel'],
 			},
 		},
-		description: 'ID of the video',
+		description: 'ID of the channel',
 		default: '',
 	},
 	{
@@ -397,9 +397,6 @@ export const channelFields: INodeProperties[] = [
 										displayName: 'Keywords',
 										name: 'keywords',
 										type: 'string',
-										typeOptions: {
-											alwaysOpenEditWindow: true,
-										},
 										placeholder: 'tech,news',
 										description:
 											'Keywords associated with your channel. The value is a space-separated list of strings.',
@@ -548,10 +545,11 @@ export const channelFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Binary Property',
+		displayName: 'Input Binary Field',
 		name: 'binaryProperty',
 		type: 'string',
 		required: true,
+		hint: 'The name of the input binary field containing the file to be uploaded',
 		displayOptions: {
 			show: {
 				operation: ['uploadBanner'],

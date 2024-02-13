@@ -2,46 +2,98 @@
 
 const path = require('path');
 const glob = require('fast-glob');
-const { createContext, Script } = require('vm');
-const { LoggerProxy } = require('n8n-workflow');
+const uniq = require('lodash/uniq');
+const { LoggerProxy, getCredentialsForNode } = require('n8n-workflow');
 const { packageDir, writeJSON } = require('./common');
+const { loadClassInIsolation } = require('../dist/ClassLoader');
 
-LoggerProxy.init({
-	log: console.log.bind(console),
-	warn: console.warn.bind(console),
-});
+LoggerProxy.init(console);
 
-const context = Object.freeze(createContext({ require }));
 const loadClass = (sourcePath) => {
 	try {
 		const [className] = path.parse(sourcePath).name.split('.');
-		const absolutePath = path.resolve(packageDir, sourcePath);
-		const script = new Script(`new (require('${absolutePath}').${className})()`);
-		const instance = script.runInContext(context);
+		const filePath = path.resolve(packageDir, sourcePath);
+		const instance = loadClassInIsolation(filePath, className);
 		return { instance, sourcePath, className };
 	} catch (e) {
-		LoggerProxy.warn('Failed to load %s: %s', sourcePath, e.message);
+		LoggerProxy.warn(`Failed to load ${sourcePath}: ${e.message}`);
 	}
 };
 
-const generate = (kind) => {
-	const data = glob
-		.sync(`dist/${kind}/**/*.${kind === 'nodes' ? 'node' : kind}.js`, {
-			cwd: packageDir,
-		})
-		.filter((filePath) => !/[vV]\d.node\.js$/.test(filePath))
+const generateKnownNodes = async () => {
+	const nodeClasses = glob
+		.sync('dist/nodes/**/*.node.js', { cwd: packageDir })
 		.map(loadClass)
-		.filter((data) => !!data)
-		.reduce((obj, { className, sourcePath, instance }) => {
-			const name = kind === 'nodes' ? instance.description.name : instance.name;
-			if (name in obj) console.error('already loaded', kind, name, sourcePath);
-			else obj[name] = { className, sourcePath };
-			return obj;
-		}, {});
-	LoggerProxy.info(`Detected ${Object.keys(data).length} ${kind}`);
-	return writeJSON(`known/${kind}.json`, data);
+		// Ignore node versions
+		.filter((nodeClass) => nodeClass && !/[vV]\d.node\.js$/.test(nodeClass.sourcePath));
+
+	const nodes = {};
+	const nodesByCredential = {};
+
+	for (const { className, sourcePath, instance } of nodeClasses) {
+		const nodeName = instance.description.name;
+		nodes[nodeName] = { className, sourcePath };
+
+		for (const credential of getCredentialsForNode(instance)) {
+			if (!nodesByCredential[credential.name]) {
+				nodesByCredential[credential.name] = [];
+			}
+
+			nodesByCredential[credential.name].push(nodeName);
+		}
+	}
+
+	LoggerProxy.info(`Detected ${Object.keys(nodes).length} nodes`);
+	await writeJSON('known/nodes.json', nodes);
+	return { nodes, nodesByCredential };
+};
+
+const generateKnownCredentials = async (nodesByCredential) => {
+	const credentialClasses = glob
+		.sync(`dist/credentials/**/*.credentials.js`, { cwd: packageDir })
+		.map(loadClass)
+		.filter((data) => !!data);
+
+	for (const { instance } of credentialClasses) {
+		if (Array.isArray(instance.extends)) {
+			for (const extendedCredential of instance.extends) {
+				nodesByCredential[extendedCredential] = [
+					...(nodesByCredential[extendedCredential] ?? []),
+					...(nodesByCredential[instance.name] ?? []),
+				];
+			}
+		}
+	}
+
+	const credentials = credentialClasses.reduce(
+		(credentials, { className, sourcePath, instance }) => {
+			const credentialName = instance.name;
+			const credential = {
+				className,
+				sourcePath,
+			};
+
+			if (Array.isArray(instance.extends)) {
+				credential.extends = instance.extends;
+			}
+
+			if (nodesByCredential[credentialName]) {
+				credential.supportedNodes = Array.from(new Set(nodesByCredential[credentialName]));
+			}
+
+			credentials[credentialName] = credential;
+
+			return credentials;
+		},
+		{},
+	);
+
+	LoggerProxy.info(`Detected ${Object.keys(credentials).length} credentials`);
+	await writeJSON('known/credentials.json', credentials);
+	return credentials;
 };
 
 (async () => {
-	await Promise.all([generate('credentials'), generate('nodes')]);
+	const { nodesByCredential } = await generateKnownNodes();
+	await generateKnownCredentials(nodesByCredential);
 })();

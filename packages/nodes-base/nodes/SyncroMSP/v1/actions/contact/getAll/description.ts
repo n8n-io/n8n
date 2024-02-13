@@ -1,4 +1,4 @@
-import { ContactProperties } from '../../Interfaces';
+import type { ContactProperties } from '../../Interfaces';
 
 export const contactGetAllDescription: ContactProperties = [
 	{

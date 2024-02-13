@@ -1,8 +1,10 @@
-import {
+import type {
 	INodeProperties,
 	INodePropertyOptions,
 	INodePropertyCollection,
 	INodeParameterResourceLocator,
+	ResourceMapperValue,
+	FilterValue,
 } from './Interfaces';
 
 export const isINodeProperties = (
@@ -42,4 +44,20 @@ export const isValidResourceLocatorParameterValue = (
 	} else {
 		return !!value;
 	}
+};
+
+export const isResourceMapperValue = (value: unknown): value is ResourceMapperValue => {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'mappingMode' in value &&
+		'schema' in value &&
+		'value' in value
+	);
+};
+
+export const isFilterValue = (value: unknown): value is FilterValue => {
+	return (
+		typeof value === 'object' && value !== null && 'conditions' in value && 'combinator' in value
+	);
 };

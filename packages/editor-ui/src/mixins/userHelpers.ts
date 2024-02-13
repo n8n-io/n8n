@@ -1,30 +1,30 @@
-import { IPermissions, IUser } from '@/Interface';
-import { isAuthorized } from '@/utils';
-import { useUsersStore } from '@/stores/users';
-import Vue from 'vue';
-import { Route } from 'vue-router';
+import { defineComponent } from 'vue';
+import type { RouteLocation } from 'vue-router';
+import { hasPermission } from '@/rbac/permissions';
+import type { RouteConfig } from '@/types/router';
+import type { PermissionTypeOptions } from '@/types/rbac';
 
-export const userHelpers = Vue.extend({
+export const userHelpers = defineComponent({
 	methods: {
-		canUserAccessRouteByName(name: string): boolean {
-			const {route} = this.$router.resolve({name});
+		canUserAccessRouteByName(name: string) {
+			const route = this.$router.resolve({ name });
 
 			return this.canUserAccessRoute(route);
 		},
 
-		canUserAccessCurrentRoute(): boolean {
+		canUserAccessCurrentRoute() {
 			return this.canUserAccessRoute(this.$route);
 		},
 
-		canUserAccessRoute(route: Route): boolean {
-			const permissions: IPermissions = route.meta && route.meta.permissions;
-			const usersStore = useUsersStore();
-			const currentUser = usersStore.currentUser;
+		canUserAccessRoute(route: RouteLocation & RouteConfig) {
+			const middleware = route.meta?.middleware;
+			const middlewareOptions = route.meta?.middlewareOptions;
 
-			if (permissions && isAuthorized(permissions, currentUser)) {
+			if (!middleware) {
 				return true;
 			}
-			return false;
+
+			return hasPermission(middleware, middlewareOptions as PermissionTypeOptions | undefined);
 		},
 	},
 });

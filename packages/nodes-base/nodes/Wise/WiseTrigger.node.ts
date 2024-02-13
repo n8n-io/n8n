@@ -1,6 +1,7 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
-
-import {
+import { createVerify } from 'crypto';
+import type {
+	IHookFunctions,
+	IWebhookFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeType,
@@ -8,15 +9,8 @@ import {
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
-import {
-	getTriggerName,
-	livePublicKey,
-	Profile,
-	testPublicKey,
-	wiseApiRequest,
-} from './GenericFunctions';
-
-import { createVerify } from 'crypto';
+import type { Profile } from './GenericFunctions';
+import { getTriggerName, livePublicKey, testPublicKey, wiseApiRequest } from './GenericFunctions';
 
 export class WiseTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -97,7 +91,7 @@ export class WiseTrigger implements INodeType {
 			},
 		},
 	};
-	// @ts-ignore
+
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -130,7 +124,7 @@ export class WiseTrigger implements INodeType {
 				const event = this.getNodeParameter('event') as string;
 				const trigger = getTriggerName(event);
 				const body: IDataObject = {
-					name: `n8n Webhook`,
+					name: 'n8n Webhook',
 					trigger_on: trigger,
 					delivery: {
 						version: '2.0.0',
@@ -185,12 +179,12 @@ export class WiseTrigger implements INodeType {
 		const sig = createVerify('RSA-SHA1').update(req.rawBody);
 		const verified = sig.verify(publicKey, signature, 'base64');
 
-		if (verified === false) {
+		if (!verified) {
 			return {};
 		}
 
 		return {
-			workflowData: [this.helpers.returnJsonArray(req.body)],
+			workflowData: [this.helpers.returnJsonArray(req.body as IDataObject)],
 		};
 	}
 }

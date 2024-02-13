@@ -1,5 +1,10 @@
-import { ITriggerFunctions } from 'n8n-core';
-import { IDataObject, INodeType, INodeTypeDescription, ITriggerResponse } from 'n8n-workflow';
+import type {
+	ITriggerFunctions,
+	IDataObject,
+	INodeType,
+	INodeTypeDescription,
+	ITriggerResponse,
+} from 'n8n-workflow';
 
 import { watch } from 'chokidar';
 
@@ -16,6 +21,17 @@ export class LocalFileTrigger implements INodeType {
 		defaults: {
 			name: 'Local File Trigger',
 			color: '#404040',
+		},
+		triggerPanel: {
+			header: '',
+			executionsHelp: {
+				inactive:
+					"<b>While building your workflow</b>, click the 'listen' button, then make a change to your watched file or folder. This will trigger an execution, which will show up in this editor.<br /> <br /><b>Once you're happy with your workflow</b>, <a data-key='activate'>activate</a> it. Then every time a change is detected, the workflow will execute. These executions will show up in the <a data-key='executions'>executions list</a>, but not in the editor.",
+				active:
+					"<b>While building your workflow</b>, click the 'listen' button, then make a change to your watched file or folder. This will trigger an execution, which will show up in this editor.<br /> <br /><b>Your workflow will also execute automatically</b>, since it's activated. Every time a change is detected, this node will trigger an execution. These executions will show up in the <a data-key='executions'>executions list</a>, but not in the editor.",
+			},
+			activationHint:
+				"Once you’ve finished building your workflow, <a data-key='activate'>activate</a> it to have it also listen continuously (you just won’t see those executions here).",
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -110,6 +126,13 @@ export class LocalFileTrigger implements INodeType {
 				default: {},
 				options: [
 					{
+						displayName: 'Await Write Finish',
+						name: 'awaitWriteFinish',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to wait until files finished writing to avoid partially read',
+					},
+					{
 						displayName: 'Include Linked Files/Folders',
 						name: 'followSymlinks',
 						type: 'boolean',
@@ -126,7 +149,13 @@ export class LocalFileTrigger implements INodeType {
 						description:
 							'Files or paths to ignore. The whole path is tested, not just the filename. Supports <a href="https://github.com/micromatch/anymatch">Anymatch</a>- syntax.',
 					},
-					// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+					{
+						displayName: 'Ignore Existing Files/Folders',
+						name: 'ignoreInitial',
+						type: 'boolean',
+						default: true,
+						description: 'Whether to ignore existing files/folders to not trigger an event',
+					},
 					{
 						displayName: 'Max Folder Depth',
 						name: 'depth',
@@ -164,6 +193,14 @@ export class LocalFileTrigger implements INodeType {
 						default: -1,
 						description: 'How deep into the folder structure to watch for changes',
 					},
+					{
+						displayName: 'Use Polling',
+						name: 'usePolling',
+						type: 'boolean',
+						default: false,
+						description:
+							'Whether to use polling for watching. Typically necessary to successfully watch files over a network.',
+					},
 				],
 			},
 		],
@@ -182,26 +219,29 @@ export class LocalFileTrigger implements INodeType {
 		}
 
 		const watcher = watch(path, {
-			ignored: options.ignored,
+			ignored: options.ignored === '' ? undefined : options.ignored,
 			persistent: true,
-			ignoreInitial: true,
+			ignoreInitial:
+				options.ignoreInitial === undefined ? true : (options.ignoreInitial as boolean),
 			followSymlinks:
 				options.followSymlinks === undefined ? true : (options.followSymlinks as boolean),
 			depth: [-1, undefined].includes(options.depth as number)
 				? undefined
 				: (options.depth as number),
+			usePolling: options.usePolling as boolean,
+			awaitWriteFinish: options.awaitWriteFinish as boolean,
 		});
 
-		const executeTrigger = (event: string, path: string) => {
-			this.emit([this.helpers.returnJsonArray([{ event, path }])]);
+		const executeTrigger = (event: string, pathString: string) => {
+			this.emit([this.helpers.returnJsonArray([{ event, path: pathString }])]);
 		};
 
 		for (const eventName of events) {
-			watcher.on(eventName, (path) => executeTrigger(eventName, path));
+			watcher.on(eventName, (pathString) => executeTrigger(eventName, pathString as string));
 		}
 
-		function closeFunction() {
-			return watcher.close();
+		async function closeFunction() {
+			return await watcher.close();
 		}
 
 		return {

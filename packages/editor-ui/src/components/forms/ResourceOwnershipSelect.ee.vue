@@ -1,17 +1,19 @@
 <template>
+	<div class="resource-ownership-select">
 		<n8n-menu
 			:items="menuItems"
 			mode="tabs"
-			:value="value ? 'owner' : 'all'"
-			@input="onSelectOwner"
+			:model-value="value ? 'owner' : 'all'"
+			@update:modelValue="onSelectOwner"
 		/>
+	</div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import { IMenuItem } from 'n8n-design-system';
+import { defineComponent } from 'vue';
+import type { IMenuItem } from 'n8n-design-system';
 
-export default Vue.extend({
+export default defineComponent({
 	props: {
 		value: {
 			type: Boolean,
@@ -30,15 +32,15 @@ export default Vue.extend({
 		menuItems(): IMenuItem[] {
 			return [
 				{
-					id: 'owner',
-					icon: 'user',
-					label: this.myResourcesLabel,
-					position: 'top',
-				},
-				{
 					id: 'all',
 					icon: 'globe-americas',
 					label: this.allResourcesLabel,
+					position: 'top',
+				},
+				{
+					id: 'owner',
+					icon: 'user',
+					label: this.myResourcesLabel,
 					position: 'top',
 				},
 			];
@@ -46,7 +48,7 @@ export default Vue.extend({
 	},
 	methods: {
 		onSelectOwner(type: string) {
-			this.$emit('input', type === 'owner');
+			this.$emit('update:modelValue', type === 'owner');
 		},
 	},
 });
@@ -54,6 +56,7 @@ export default Vue.extend({
 
 <style lang="scss" scoped>
 .menu-container {
+	--menu-background: transparent;
 	--menu-padding: 0;
 }
 </style>

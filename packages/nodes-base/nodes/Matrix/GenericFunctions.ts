@@ -1,22 +1,24 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	JsonObject,
+} from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
-import _ from 'lodash';
 import { v4 as uuid } from 'uuid';
 
 export async function matrixApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
 	body: string | object = {},
 	query: object = {},
-	headers: {} | undefined = undefined,
-	option: {} = {},
-	// tslint:disable-next-line:no-any
-): Promise<any> {
+	headers: IDataObject | undefined = undefined,
+	option: IDataObject = {},
+) {
 	let options: OptionsWithUri = {
 		method,
 		headers: headers || {
@@ -35,8 +37,6 @@ export async function matrixApiRequest(
 		delete options.qs;
 	}
 	try {
-		let response: any; // tslint:disable-line:no-any
-
 		const credentials = await this.getCredentials('matrixApi');
 
 		options.uri = `${credentials.homeserverUrl}/_matrix/${
@@ -44,15 +44,14 @@ export async function matrixApiRequest(
 			option.overridePrefix || 'client'
 		}/r0${resource}`;
 		options.headers!.Authorization = `Bearer ${credentials.accessToken}`;
-		//@ts-ignore
-		response = await this.helpers.request(options);
+		const response = await this.helpers.request(options);
 
 		// When working with images, the request cannot be JSON (it's raw binary data)
 		// But the output is JSON so we have to parse it manually.
 		//@ts-ignore
-		return options.overridePrefix === 'media' ? JSON.parse(response) : response;
+		return options.overridePrefix === 'media' ? JSON.parse(response as string) : response;
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -62,7 +61,6 @@ export async function handleMatrixCall(
 	index: number,
 	resource: string,
 	operation: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	if (resource === 'account') {
 		if (operation === 'me') {
@@ -80,7 +78,7 @@ export async function handleMatrixCall(
 			if (roomAlias) {
 				body.room_alias_name = roomAlias;
 			}
-			return await matrixApiRequest.call(this, 'POST', `/createRoom`, body);
+			return await matrixApiRequest.call(this, 'POST', '/createRoom', body);
 		} else if (operation === 'join') {
 			const roomIdOrAlias = this.getNodeParameter('roomIdOrAlias', index) as string;
 			return await matrixApiRequest.call(this, 'POST', `/rooms/${roomIdOrAlias}/join`);
@@ -129,7 +127,7 @@ export async function handleMatrixCall(
 			);
 		} else if (operation === 'getAll') {
 			const roomId = this.getNodeParameter('roomId', index) as string;
-			const returnAll = this.getNodeParameter('returnAll', index) as boolean;
+			const returnAll = this.getNodeParameter('returnAll', index);
 			const otherOptions = this.getNodeParameter('otherOptions', index) as IDataObject;
 			const returnData: IDataObject[] = [];
 
@@ -153,7 +151,7 @@ export async function handleMatrixCall(
 						{},
 						qs,
 					);
-					returnData.push.apply(returnData, responseData.chunk);
+					returnData.push.apply(returnData, responseData.chunk as IDataObject[]);
 					from = responseData.end;
 				} while (responseData.chunk.length > 0);
 			} else {
@@ -174,7 +172,7 @@ export async function handleMatrixCall(
 					{},
 					qs,
 				);
-				returnData.push.apply(returnData, responseData.chunk);
+				returnData.push.apply(returnData, responseData.chunk as IDataObject[]);
 			}
 
 			return returnData;
@@ -189,38 +187,29 @@ export async function handleMatrixCall(
 		if (operation === 'upload') {
 			const roomId = this.getNodeParameter('roomId', index) as string;
 			const mediaType = this.getNodeParameter('mediaType', index) as string;
-			const binaryPropertyName = this.getNodeParameter('binaryPropertyName', index) as string;
+			const binaryPropertyName = this.getNodeParameter('binaryPropertyName', index);
+			const additionalFields = this.getNodeParameter('additionalFields', index);
 
 			let body;
 			const qs: IDataObject = {};
 			const headers: IDataObject = {};
-			let filename;
 
-			if (
-				item.binary === undefined ||
-				//@ts-ignore
-				item.binary[binaryPropertyName] === undefined
-			) {
-				throw new NodeOperationError(
-					this.getNode(),
-					`No binary data property "${binaryPropertyName}" does not exists on item!`,
-				);
+			const { fileName, mimeType } = this.helpers.assertBinaryData(index, binaryPropertyName);
+			body = await this.helpers.getBinaryDataBuffer(index, binaryPropertyName);
+
+			if (additionalFields.fileName) {
+				qs.filename = additionalFields.fileName as string;
+			} else {
+				qs.filename = fileName;
 			}
 
-			// @ts-ignore
-			qs.filename = item.binary[binaryPropertyName].fileName;
-			//@ts-ignore
-			filename = item.binary[binaryPropertyName].fileName;
-
-			body = await this.helpers.getBinaryDataBuffer(index, binaryPropertyName);
-			//@ts-ignore
-			headers['Content-Type'] = item.binary[binaryPropertyName].mimeType;
-			headers['accept'] = 'application/json,text/*;q=0.99';
+			headers['Content-Type'] = mimeType;
+			headers.accept = 'application/json,text/*;q=0.99';
 
 			const uploadRequestResult = await matrixApiRequest.call(
 				this,
 				'POST',
-				`/upload`,
+				'/upload',
 				body,
 				qs,
 				headers,
@@ -232,7 +221,7 @@ export async function handleMatrixCall(
 
 			body = {
 				msgtype: `m.${mediaType}`,
-				body: filename,
+				body: qs.filename,
 				url: uploadRequestResult.content_uri,
 			};
 			const messageId = uuid();

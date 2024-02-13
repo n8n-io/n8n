@@ -1,14 +1,14 @@
 <template>
-	<span :class="['n8n-tag', $style.tag]" v-on="$listeners">
+	<span :class="['n8n-tag', $style.tag]" v-bind="$attrs">
 		{{ text }}
 	</span>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
-	name: 'n8n-tag',
+export default defineComponent({
+	name: 'N8nTag',
 	props: {
 		text: {
 			type: String,
@@ -29,11 +29,7 @@ export default Vue.extend({
 	transition: background-color 0.3s ease;
 
 	&:hover {
-		background-color: hsl(
-			var(--color-background-base-h),
-			var(--color-background-base-s),
-			calc(var(--color-background-base-l) - 4%)
-		);
+		background-color: var(--color-background-medium);
 	}
 }
 </style>

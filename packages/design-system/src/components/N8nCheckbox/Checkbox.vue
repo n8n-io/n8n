@@ -1,36 +1,39 @@
 <template>
-	<el-checkbox
+	<ElCheckbox
 		v-bind="$props"
+		ref="checkbox"
 		:class="['n8n-checkbox', $style.n8nCheckbox]"
 		:disabled="disabled"
 		:indeterminate="indeterminate"
-		:value="value"
-		@change="onChange"
+		:model-value="modelValue"
+		@update:modelValue="onUpdateModelValue"
 	>
-		<n8n-input-label
+		<slot></slot>
+		<N8nInputLabel
+			v-if="label"
 			:label="label"
-			:tooltipText="tooltipText"
+			:tooltip-text="tooltipText"
 			:bold="false"
 			:size="labelSize"
-		></n8n-input-label>
-	</el-checkbox>
+			@click.prevent="onLabelClick"
+		/>
+	</ElCheckbox>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import ElCheckbox from 'element-ui/lib/checkbox';
+import { defineComponent } from 'vue';
+import { ElCheckbox } from 'element-plus';
 import N8nInputLabel from '../N8nInputLabel';
 
-export default Vue.extend({
-	name: 'n8n-checkbox',
+export default defineComponent({
+	name: 'N8nCheckbox',
 	components: {
-		ElCheckbox, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
+		ElCheckbox,
 		N8nInputLabel,
 	},
 	props: {
 		label: {
 			type: String,
-			required: true,
 		},
 		disabled: {
 			type: Boolean,
@@ -38,13 +41,12 @@ export default Vue.extend({
 		},
 		tooltipText: {
 			type: String,
-			required: false,
 		},
 		indeterminate: {
 			type: Boolean,
 			default: false,
 		},
-		value: {
+		modelValue: {
 			type: Boolean,
 			default: false,
 		},
@@ -55,8 +57,16 @@ export default Vue.extend({
 		},
 	},
 	methods: {
-		onChange(event: Event) {
-			this.$emit('input', event);
+		onUpdateModelValue(value: boolean) {
+			this.$emit('update:modelValue', value);
+		},
+		onLabelClick() {
+			const checkboxComponent = this.$refs.checkbox as ElCheckbox;
+			if (!checkboxComponent) {
+				return;
+			}
+
+			(checkboxComponent.$el as HTMLElement).click();
 		},
 	},
 });
@@ -66,9 +76,15 @@ export default Vue.extend({
 .n8nCheckbox {
 	display: flex !important;
 	white-space: normal !important;
+	margin-bottom: var(--spacing-2xs);
 
 	span {
 		white-space: normal;
+	}
+
+	label {
+		cursor: pointer;
+		margin-bottom: 0;
 	}
 }
 </style>

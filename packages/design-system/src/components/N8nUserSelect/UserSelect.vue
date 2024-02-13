@@ -1,22 +1,23 @@
 <template>
-	<n8n-select
-		:value="value"
+	<N8nSelect
+		data-test-id="user-select-trigger"
+		v-bind="$attrs"
+		:model-value="modelValue"
 		:filterable="true"
-		:filterMethod="setFilter"
+		:filter-method="setFilter"
 		:placeholder="placeholder"
 		:default-first-option="true"
-		:popper-append-to-body="true"
+		teleported
 		:popper-class="$style.limitPopperWidth"
-		:noDataText="t('nds.userSelect.noMatchingUsers')"
+		:no-data-text="t('nds.userSelect.noMatchingUsers')"
 		:size="size"
-		@change="onChange"
 		@blur="onBlur"
 		@focus="onFocus"
 	>
-		<template #prefix v-if="$slots.prefix">
+		<template v-if="$slots.prefix" #prefix>
 			<slot name="prefix" />
 		</template>
-		<n8n-option
+		<N8nOption
 			v-for="user in sortedUsers"
 			:key="user.id"
 			:value="user.id"
@@ -24,48 +25,46 @@
 			:label="getLabel(user)"
 			:disabled="user.disabled"
 		>
-			<n8n-user-info v-bind="user" :isCurrentUser="currentUserId === user.id" />
-		</n8n-option>
-	</n8n-select>
+			<N8nUserInfo v-bind="user" :is-current-user="currentUserId === user.id" />
+		</N8nOption>
+	</N8nSelect>
 </template>
 
 <script lang="ts">
-import 'vue';
 import N8nUserInfo from '../N8nUserInfo';
-import { IUser } from '../../types';
-import ElSelect from 'element-ui/lib/select';
-import ElOption from 'element-ui/lib/option';
+import N8nSelect from '../N8nSelect';
+import N8nOption from '../N8nOption';
+import type { IUser } from '../../types';
 import Locale from '../../mixins/locale';
-import mixins from 'vue-typed-mixins';
 import { t } from '../../locale';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
 
-export default mixins(Locale).extend({
-	name: 'n8n-user-select',
+export default defineComponent({
+	name: 'N8nUserSelect',
 	components: {
 		N8nUserInfo,
-		ElSelect, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
-		ElOption, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
+		N8nSelect,
+		N8nOption,
 	},
+	mixins: [Locale],
 	props: {
 		users: {
-			type: Array,
-			default() {
-				return [];
-			},
+			type: Array as PropType<IUser[]>,
+			default: () => [],
 		},
-		value: {
+		modelValue: {
 			type: String,
 			default: '',
 		},
 		ignoreIds: {
-			type: Array,
-			default() {
-				return [];
-			},
+			type: Array as PropType<string[]>,
+			default: () => [],
 			validator: (ids: string[]) => !ids.find((id) => typeof id !== 'string'),
 		},
 		currentUserId: {
 			type: String,
+			default: '',
 		},
 		placeholder: {
 			type: String,
@@ -73,7 +72,8 @@ export default mixins(Locale).extend({
 		},
 		size: {
 			type: String,
-			validator: (value: string): boolean => ['mini', 'small', 'large'].includes(value),
+			default: '',
+			validator: (value: string): boolean => ['mini', 'small', 'medium', 'large'].includes(value),
 		},
 	},
 	data() {
@@ -83,12 +83,12 @@ export default mixins(Locale).extend({
 	},
 	computed: {
 		filteredUsers(): IUser[] {
-			return (this.users as IUser[]).filter((user) => {
+			return this.users.filter((user) => {
 				if (user.isPendingUser || !user.email) {
 					return false;
 				}
 
-				if (this.ignoreIds && this.ignoreIds.includes(user.id)) {
+				if (this.ignoreIds.includes(user.id)) {
 					return false;
 				}
 
@@ -123,9 +123,6 @@ export default mixins(Locale).extend({
 		setFilter(value: string) {
 			this.filter = value;
 		},
-		onChange(value: string) {
-			this.$emit('input', value);
-		},
 		onBlur() {
 			this.$emit('blur');
 		},
@@ -137,7 +134,6 @@ export default mixins(Locale).extend({
 				return user.email;
 			}
 
-			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 			return `${user.fullName} (${user.email})`;
 		},
 	},
@@ -150,7 +146,7 @@ export default mixins(Locale).extend({
 	--select-option-line-height: 1;
 }
 
-.limitPopperWidth {
+:root .limitPopperWidth {
 	width: 0;
 
 	li > span {

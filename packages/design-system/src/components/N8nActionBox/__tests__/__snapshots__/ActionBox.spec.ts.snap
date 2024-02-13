@@ -1,15 +1,15 @@
-// Vitest Snapshot v1
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`N8NActionBox > should render correctly 1`] = `
-"<div class=\\"n8n-action-box _container_pvdcm_1\\">
-  <div class=\\"_emoji_pvdcm_16\\"> 😿 </div>
-  <div class=\\"_heading_pvdcm_20\\">
-    <n8n-heading-stub tag=\\"span\\" size=\\"xlarge\\" align=\\"center\\">Headline you need to know</n8n-heading-stub>
+"<div class="n8n-action-box container" data-test-id="action-box">
+  <div class="emoji">😿</div>
+  <div class="heading">
+    <n8n-heading-stub align="center" tag="span" bold="false" size="xlarge"></n8n-heading-stub>
   </div>
-  <div class=\\"_description_pvdcm_24\\">
-    <n8n-text-stub size=\\"medium\\" color=\\"text-base\\" tag=\\"span\\"><span>Long description that you should know something is the way it is because of how it is. </span></n8n-text-stub>
+  <div class="description">
+    <n8n-text-stub color="text-base" bold="false" size="medium" compact="false" tag="span"></n8n-text-stub>
   </div>
-  <n8n-button-stub label=\\"Do something\\" type=\\"primary\\" size=\\"large\\"></n8n-button-stub>
-  <!---->
+  <n8n-button-stub label="Do something" type="primary" size="large" loading="false" disabled="false" outline="false" text="false" block="false" active="false" square="false" element="button"></n8n-button-stub>
+  <!--v-if-->
 </div>"
 `;

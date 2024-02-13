@@ -1,20 +1,23 @@
 /* eslint-disable @typescript-eslint/no-invalid-void-type */
 
-import express from 'express';
+import type express from 'express';
+import { Container } from 'typedi';
 
-import { AuthenticatedRequest, PaginatatedRequest } from '../../../types';
+import type { AuthenticatedRequest, PaginatedRequest } from '../../../types';
 import { decodeCursor } from '../services/pagination.service';
+import { License } from '@/License';
+import type { GlobalRole } from '@db/entities/User';
+
+const UNLIMITED_USERS_QUOTA = -1;
 
 export const authorize =
-	(authorizedRoles: readonly string[]) =>
+	(authorizedRoles: readonly GlobalRole[]) =>
 	(
 		req: AuthenticatedRequest,
 		res: express.Response,
 		next: express.NextFunction,
 	): express.Response | void => {
-		const { name } = req.user.globalRole;
-
-		if (!authorizedRoles.includes(name)) {
+		if (!authorizedRoles.includes(req.user.role)) {
 			return res.status(403).json({ message: 'Forbidden' });
 		}
 
@@ -22,7 +25,7 @@ export const authorize =
 	};
 
 export const validCursor = (
-	req: PaginatatedRequest,
+	req: PaginatedRequest,
 	res: express.Response,
 	next: express.NextFunction,
 ): express.Response | void => {
@@ -42,6 +45,21 @@ export const validCursor = (
 				message: 'An invalid cursor was provided',
 			});
 		}
+	}
+
+	return next();
+};
+
+export const validLicenseWithUserQuota = (
+	req: express.Request,
+	res: express.Response,
+	next: express.NextFunction,
+): express.Response | void => {
+	const license = Container.get(License);
+	if (license.getUsersLimit() !== UNLIMITED_USERS_QUOTA) {
+		return res.status(403).json({
+			message: '/users path can only be used with a valid license. See https://n8n.io/pricing/',
+		});
 	}
 
 	return next();

@@ -11,14 +11,13 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
 import { IMPORT_CURL_MODAL_KEY } from '@/constants';
-import { useUIStore } from '@/stores/ui';
+import { useUIStore } from '@/stores/ui.store';
 import { mapStores } from 'pinia';
-import mixins from 'vue-typed-mixins';
-import { showMessage } from '@/mixins/showMessage';
 
-export default mixins(showMessage).extend({
-	name: 'import-parameter',
+export default defineComponent({
+	name: 'ImportParameter',
 	props: {
 		isReadOnly: {
 			type: Boolean,

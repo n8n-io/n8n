@@ -1,17 +1,16 @@
-import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
-
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestFunctions,
 	IDataObject,
-	IExecuteSingleFunctions,
+	IExecuteFunctions,
+	IHookFunctions,
 	ILoadOptionsFunctions,
 	IPollFunctions,
 	JsonObject,
-	NodeApiError,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 // Interfaces and Types -------------------------------------------------------------
 interface IHaloPSATokens {
@@ -21,6 +20,12 @@ interface IHaloPSATokens {
 	expires_in: number;
 	refresh_token: string;
 	id_token: string;
+}
+
+function getAuthUrl(credentials: IDataObject) {
+	return credentials.hostingType === 'on-premise'
+		? `${credentials.appUrl}/auth/token`
+		: `${credentials.authUrl}/token?tenant=${credentials.tenant}`;
 }
 
 // API Requests ---------------------------------------------------------------------
@@ -46,7 +51,7 @@ export async function getAccessTokens(
 	};
 
 	try {
-		const tokens = await this.helpers.request!(options);
+		const tokens = await this.helpers.request(options);
 		return tokens;
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
@@ -54,19 +59,13 @@ export async function getAccessTokens(
 }
 
 export async function haloPSAApiRequest(
-	this:
-		| IHookFunctions
-		| IExecuteFunctions
-		| IExecuteSingleFunctions
-		| ILoadOptionsFunctions
-		| IPollFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: string,
 	resource: string,
 	accessToken: string,
 	body: IDataObject | IDataObject[] = {},
 	qs: IDataObject = {},
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const resourceApiUrl = (await this.getCredentials('haloPSAApi')).resourceApiUrl as string;
 
@@ -90,14 +89,14 @@ export async function haloPSAApiRequest(
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
-		const result = await this.helpers.request!(options);
+		const result = await this.helpers.request(options);
 		if (method === 'DELETE' && result.id) {
 			return { success: true };
 		}
 		return result;
 	} catch (error) {
 		const message = (error as JsonObject).message as string;
-		if (method === 'DELETE' || 'GET' || ('UPDATE' && message)) {
+		if (method === 'DELETE' || method === 'GET' || (method === 'UPDATE' && message)) {
 			let newErrorMessage;
 			if (message.includes('400')) {
 				console.log(message);
@@ -107,11 +106,10 @@ export async function haloPSAApiRequest(
 				}`;
 			}
 			if (message.includes('403')) {
-				(
-					error as JsonObject
-				).message = `You don\'t have permissions to ${method.toLowerCase()} ${resource
-					.split('/')[1]
-					.toLowerCase()}.`;
+				(error as JsonObject).message =
+					`You don\'t have permissions to ${method.toLowerCase()} ${resource
+						.split('/')[1]
+						.toLowerCase()}.`;
 			}
 		}
 		throw new NodeApiError(this.getNode(), error as JsonObject);
@@ -122,7 +120,6 @@ export async function haloPSAApiRequest(
 // 	this:
 // 		| IHookFunctions
 // 		| IExecuteFunctions
-// 		| IExecuteSingleFunctions
 // 		| ILoadOptionsFunctions
 // 		| IPollFunctions,
 // 	clientId: string,
@@ -159,7 +156,6 @@ export async function haloPSAApiRequestAllItems(
 	accessToken: string,
 	body = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -186,11 +182,6 @@ export async function haloPSAApiRequestAllItems(
 }
 
 // Utilities ------------------------------------------------------------------------
-function getAuthUrl(credentials: IDataObject) {
-	return credentials.hostingType === 'on-premise'
-		? `${credentials.appUrl}/auth/token`
-		: `${credentials.authUrl}/token?tenant=${credentials.tenant}`;
-}
 
 export function simplifyHaloPSAGetOutput(
 	response: IDataObject[],
@@ -213,14 +204,14 @@ export function qsSetStatus(status: string) {
 	if (!status) return {};
 	const qs: IDataObject = {};
 	if (status === 'all') {
-		qs['includeinactive'] = true;
-		qs['includeactive'] = true;
+		qs.includeinactive = true;
+		qs.includeactive = true;
 	} else if (status === 'active') {
-		qs['includeinactive'] = false;
-		qs['includeactive'] = true;
+		qs.includeinactive = false;
+		qs.includeactive = true;
 	} else {
-		qs['includeinactive'] = true;
-		qs['includeactive'] = false;
+		qs.includeinactive = true;
+		qs.includeactive = false;
 	}
 	return qs;
 }
@@ -248,5 +239,5 @@ export async function validateCredentials(
 		json: true,
 	};
 
-	return (await this.helpers.request!(options)) as IHaloPSATokens;
+	return (await this.helpers.request(options)) as IHaloPSATokens;
 }

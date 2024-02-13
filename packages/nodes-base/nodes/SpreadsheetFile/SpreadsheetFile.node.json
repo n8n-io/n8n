@@ -6,7 +6,7 @@
 	"resources": {
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.spreadsheetfile/"
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.converttofile/"
 			}
 		],
 		"generic": [
@@ -17,7 +17,7 @@
 			}
 		]
 	},
-	"alias": ["CSV", "Spreadsheet"],
+	"alias": ["_Excel", "Excel", "CSV", "Sheet", "Spreadsheet", "xls", "xlsx", "ods"],
 	"subcategories": {
 		"Core Nodes": ["Files"]
 	}

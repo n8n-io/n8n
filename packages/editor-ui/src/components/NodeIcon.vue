@@ -7,29 +7,32 @@
 		:disabled="disabled"
 		:size="size"
 		:circle="circle"
-		:nodeTypeName="nodeType ? nodeType.displayName : ''"
-		:showTooltip="showTooltip"
+		:node-type-name="nodeName ?? nodeType?.displayName ?? ''"
+		:show-tooltip="showTooltip"
+		:tooltip-position="tooltipPosition"
+		:badge="badge"
 		@click="(e) => $emit('click')"
 	></n8n-node-icon>
 </template>
 
 <script lang="ts">
-import { IVersionNode } from '@/Interface';
-import { useRootStore } from '@/stores/n8nRootStore';
-import { INodeTypeDescription } from 'n8n-workflow';
+import type { IVersionNode } from '@/Interface';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import type { INodeTypeDescription } from 'n8n-workflow';
 import { mapStores } from 'pinia';
-import Vue from 'vue';
+import { defineComponent, type PropType } from 'vue';
 
 interface NodeIconSource {
-		path?: string;
-		fileBuffer?: string;
-		icon?: string;
+	path?: string;
+	fileBuffer?: string;
+	icon?: string;
 }
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'NodeIcon',
 	props: {
 		nodeType: {
+			type: Object as PropType<INodeTypeDescription | IVersionNode | null>,
 		},
 		size: {
 			type: Number,
@@ -43,17 +46,27 @@ export default Vue.extend({
 			type: Boolean,
 			default: false,
 		},
+		colorDefault: {
+			type: String,
+			required: false,
+		},
 		showTooltip: {
 			type: Boolean,
 			default: false,
 		},
+		tooltipPosition: {
+			type: String,
+			default: 'top',
+		},
+		nodeName: {
+			type: String,
+			required: false,
+		},
 	},
 	computed: {
-		...mapStores(
-			useRootStore,
-		),
-		type (): string {
-			const nodeType = this.nodeType as INodeTypeDescription | IVersionNode | null;
+		...mapStores(useRootStore),
+		type(): string {
+			const nodeType = this.nodeType;
 			let iconType = 'unknown';
 			if (nodeType) {
 				if (nodeType.iconUrl) return 'file';
@@ -65,15 +78,18 @@ export default Vue.extend({
 			}
 			return iconType;
 		},
-		color () : string {
-			const nodeType = this.nodeType as INodeTypeDescription | IVersionNode | null;
-			if (nodeType && nodeType.defaults && nodeType.defaults.color) {
+		color(): string {
+			const nodeType = this.nodeType;
+			if (nodeType?.defaults?.color) {
 				return nodeType.defaults.color.toString();
+			}
+			if (this.colorDefault) {
+				return this.colorDefault;
 			}
 			return '';
 		},
-		iconSource () : NodeIconSource {
-			const nodeType = this.nodeType as INodeTypeDescription | IVersionNode | null;
+		iconSource(): NodeIconSource {
+			const nodeType = this.nodeType;
 			const baseUrl = this.rootStore.getBaseUrl;
 			const iconSource = {} as NodeIconSource;
 
@@ -100,9 +116,16 @@ export default Vue.extend({
 			}
 			return iconSource;
 		},
+		badge(): { src: string; type: string } | undefined {
+			const nodeType = this.nodeType as INodeTypeDescription;
+			if (nodeType && 'badgeIconUrl' in nodeType && nodeType.badgeIconUrl) {
+				return { type: 'file', src: this.rootStore.getBaseUrl + nodeType.badgeIconUrl };
+			}
+
+			return undefined;
+		},
 	},
 });
 </script>
 
-<style lang="scss">
-</style>
+<style lang="scss"></style>

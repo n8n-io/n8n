@@ -1,7 +1,8 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import {
-	createDeferredPromise,
+import type {
 	IDataObject,
+	IDeferredPromise,
+	IExecuteResponsePromiseData,
 	INodeExecutionData,
 	INodeProperties,
 	INodeType,
@@ -9,9 +10,8 @@ import {
 	IRun,
 	ITriggerFunctions,
 	ITriggerResponse,
-	LoggerProxy as Logger,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { rabbitDefaultOptions } from './DefaultOptions';
 
@@ -26,8 +26,20 @@ export class RabbitMQTrigger implements INodeType {
 		group: ['trigger'],
 		version: 1,
 		description: 'Listens to RabbitMQ messages',
+		eventTriggerDescription: '',
 		defaults: {
 			name: 'RabbitMQ Trigger',
+		},
+		triggerPanel: {
+			header: '',
+			executionsHelp: {
+				inactive:
+					"<b>While building your workflow</b>, click the 'listen' button, then trigger a Rabbit MQ event. This will trigger an execution, which will show up in this editor.<br /> <br /><b>Once you're happy with your workflow</b>, <a data-key='activate'>activate</a> it. Then every time a change is detected, the workflow will execute. These executions will show up in the <a data-key='executions'>executions list</a>, but not in the editor.",
+				active:
+					"<b>While building your workflow</b>, click the 'listen' button, then trigger a Rabbit MQ event. This will trigger an execution, which will show up in this editor.<br /> <br /><b>Your workflow will also execute automatically</b>, since it's activated. Every time a change is detected, this node will trigger an execution. These executions will show up in the <a data-key='executions'>executions list</a>, but not in the editor.",
+			},
+			activationHint:
+				"Once you’ve finished building your workflow, <a data-key='activate'>activate</a> it to have it also listen continuously (you just won’t see those executions here).",
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -46,7 +58,6 @@ export class RabbitMQTrigger implements INodeType {
 				placeholder: 'queue-name',
 				description: 'The name of the queue to read from',
 			},
-
 			{
 				displayName: 'Options',
 				name: 'options',
@@ -82,6 +93,11 @@ export class RabbitMQTrigger implements INodeType {
 								value: 'immediately',
 								description: 'As soon as the message got received',
 							},
+							{
+								name: 'Specified Later in Workflow',
+								value: 'laterMessageNode',
+								description: 'Using a RabbitMQ node to remove the item from the queue',
+							},
 						],
 						default: 'immediately',
 						description: 'When to acknowledge the message',
@@ -110,7 +126,7 @@ export class RabbitMQTrigger implements INodeType {
 						default: false,
 						description: 'Whether to return only the content property',
 					},
-					// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+
 					{
 						displayName: 'Parallel Message Processing Limit',
 						name: 'parallelMessages',
@@ -122,6 +138,39 @@ export class RabbitMQTrigger implements INodeType {
 							},
 						},
 						description: 'Max number of executions at a time. Use -1 for no limit.',
+					},
+					{
+						displayName: 'Binding',
+						name: 'binding',
+						placeholder: 'Add Binding',
+						description: 'Add binding to queu',
+						type: 'fixedCollection',
+						typeOptions: {
+							multipleValues: true,
+						},
+						default: {},
+						options: [
+							{
+								name: 'bindings',
+								displayName: 'Binding',
+								values: [
+									{
+										displayName: 'Exchange',
+										name: 'exchange',
+										type: 'string',
+										default: '',
+										placeholder: 'exchange',
+									},
+									{
+										displayName: 'RoutingKey',
+										name: 'routingKey',
+										type: 'string',
+										default: '',
+										placeholder: 'routing-key',
+									},
+								],
+							},
+						],
 					},
 					...rabbitDefaultOptions,
 				].sort((a, b) => {
@@ -140,6 +189,18 @@ export class RabbitMQTrigger implements INodeType {
 					return 0;
 				}) as INodeProperties[],
 			},
+			{
+				displayName:
+					"To delete an item from the queue, insert a RabbitMQ node later in the workflow and use the 'Delete from queue' operation",
+				name: 'laterMessageNode',
+				type: 'notice',
+				displayOptions: {
+					show: {
+						'/options.acknowledge': ['laterMessageNode'],
+					},
+				},
+				default: '',
+			},
 		],
 	};
 
@@ -148,8 +209,6 @@ export class RabbitMQTrigger implements INodeType {
 		const options = this.getNodeParameter('options', {}) as IDataObject;
 
 		const channel = await rabbitmqConnectQueue.call(this, queue, options);
-
-		const self = this;
 
 		let parallelMessages =
 			options.parallelMessages !== undefined && options.parallelMessages !== -1
@@ -183,12 +242,12 @@ export class RabbitMQTrigger implements INodeType {
 
 		const startConsumer = async () => {
 			if (parallelMessages !== -1) {
-				channel.prefetch(parallelMessages);
+				await channel.prefetch(parallelMessages);
 			}
 
 			channel.on('close', () => {
 				if (!closeGotCalled) {
-					self.emitError(new Error('Connection got closed unexpectedly'));
+					this.emitError(new Error('Connection got closed unexpectedly'));
 				}
 			});
 
@@ -199,12 +258,11 @@ export class RabbitMQTrigger implements INodeType {
 							messageTracker.received(message);
 						}
 
-						let content: IDataObject | string = message!.content!.toString();
+						let content: IDataObject | string = message.content.toString();
 
 						const item: INodeExecutionData = {
 							json: {},
 						};
-
 						if (options.contentIsBinary === true) {
 							item.binary = {
 								data: await this.helpers.prepareBinaryData(message.content),
@@ -214,7 +272,7 @@ export class RabbitMQTrigger implements INodeType {
 							message.content = undefined as unknown as Buffer;
 						} else {
 							if (options.jsonParseBody === true) {
-								content = JSON.parse(content as string);
+								content = JSON.parse(content);
 							}
 							if (options.onlyContent === true) {
 								item.json = content as IDataObject;
@@ -224,14 +282,21 @@ export class RabbitMQTrigger implements INodeType {
 							}
 						}
 
-						let responsePromise = undefined;
-						if (acknowledgeMode !== 'immediately') {
-							responsePromise = await createDeferredPromise<IRun>();
+						let responsePromise: IDeferredPromise<IRun> | undefined = undefined;
+						let responsePromiseHook: IDeferredPromise<IExecuteResponsePromiseData> | undefined =
+							undefined;
+						if (acknowledgeMode !== 'immediately' && acknowledgeMode !== 'laterMessageNode') {
+							responsePromise = await this.helpers.createDeferredPromise();
+						} else if (acknowledgeMode === 'laterMessageNode') {
+							responsePromiseHook =
+								await this.helpers.createDeferredPromise<IExecuteResponsePromiseData>();
 						}
-
-						self.emit([[item]], undefined, responsePromise);
-
-						if (responsePromise) {
+						if (responsePromiseHook) {
+							this.emit([[item]], responsePromiseHook, undefined);
+						} else {
+							this.emit([[item]], undefined, responsePromise);
+						}
+						if (responsePromise && acknowledgeMode !== 'laterMessageNode') {
 							// Acknowledge message after the execution finished
 							await responsePromise.promise().then(async (data: IRun) => {
 								if (data.data.resultData.error) {
@@ -242,7 +307,11 @@ export class RabbitMQTrigger implements INodeType {
 										return;
 									}
 								}
-
+								channel.ack(message);
+								messageTracker.answered(message);
+							});
+						} else if (responsePromiseHook && acknowledgeMode === 'laterMessageNode') {
+							await responsePromiseHook.promise().then(() => {
 								channel.ack(message);
 								messageTracker.answered(message);
 							});
@@ -257,7 +326,7 @@ export class RabbitMQTrigger implements INodeType {
 							messageTracker.answered(message);
 						}
 
-						Logger.error(
+						this.logger.error(
 							`There was a problem with the RabbitMQ Trigger node "${node.name}" in workflow "${workflow.id}": "${error.message}"`,
 							{
 								node: node.name,
@@ -269,19 +338,18 @@ export class RabbitMQTrigger implements INodeType {
 			});
 			consumerTag = consumerInfo.consumerTag;
 		};
-
-		startConsumer();
+		await startConsumer();
 
 		// The "closeFunction" function gets called by n8n whenever
 		// the workflow gets deactivated and can so clean up.
-		async function closeFunction() {
+		const closeFunction = async () => {
 			closeGotCalled = true;
 			try {
-				return messageTracker.closeChannel(channel, consumerTag);
+				return await messageTracker.closeChannel(channel, consumerTag);
 			} catch (error) {
-				const workflow = self.getWorkflow();
-				const node = self.getNode();
-				Logger.error(
+				const workflow = this.getWorkflow();
+				const node = this.getNode();
+				this.logger.error(
 					`There was a problem closing the RabbitMQ Trigger node connection "${node.name}" in workflow "${workflow.id}": "${error.message}"`,
 					{
 						node: node.name,
@@ -289,7 +357,7 @@ export class RabbitMQTrigger implements INodeType {
 					},
 				);
 			}
-		}
+		};
 
 		return {
 			closeFunction,

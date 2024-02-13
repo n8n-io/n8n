@@ -16,32 +16,37 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
-	name: 'variable-table',
-	data() {
-		return {
-			observer: null as null | MutationObserver,
-			values: {},
-		};
-	},
+export default defineComponent({
+	name: 'VariableTable',
 	props: {
 		variables: {
-			type: Array,
+			type: Array as PropType<string[]>,
 			required: true,
 		},
 		attr: {
 			type: String,
+			default: '',
 		},
+	},
+	data() {
+		return {
+			observer: null as null | MutationObserver,
+			values: {} as Record<string, string>,
+		};
 	},
 	created() {
 		const setValues = () => {
-			(this.variables as string[]).forEach((variable: string) => {
+			this.variables.forEach((variable) => {
 				const style = getComputedStyle(document.body);
 				const value = style.getPropertyValue(variable);
 
-				Vue.set(this.values, variable, value);
+				this.values = {
+					...this.values,
+					[variable]: value,
+				};
 			});
 		};
 
@@ -60,7 +65,7 @@ export default Vue.extend({
 			this.observer.observe(body, { attributes: true });
 		}
 	},
-	destroyed() {
+	unmounted() {
 		if (this.observer) {
 			this.observer.disconnect();
 		}

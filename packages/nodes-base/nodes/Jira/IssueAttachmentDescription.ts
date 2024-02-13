@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const issueAttachmentOperations: INodeProperties[] = [
 	{
@@ -59,7 +59,7 @@ export const issueAttachmentFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Binary Property',
+		displayName: 'Input Binary Field',
 		displayOptions: {
 			show: {
 				resource: ['issueAttachment'],
@@ -69,7 +69,7 @@ export const issueAttachmentFields: INodeProperties[] = [
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
-		description: 'Object property name which holds binary data',
+		hint: 'The name of the input binary field containing the file to be written',
 		required: true,
 	},
 
@@ -104,7 +104,7 @@ export const issueAttachmentFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Binary Property',
+		displayName: 'Put Output File in Field',
 		name: 'binaryProperty',
 		type: 'string',
 		default: 'data',
@@ -115,7 +115,7 @@ export const issueAttachmentFields: INodeProperties[] = [
 				download: [true],
 			},
 		},
-		description: 'Object property name which holds binary data',
+		hint: 'The name of the output binary field to put the file in',
 		required: true,
 	},
 	/* -------------------------------------------------------------------------- */
@@ -179,7 +179,7 @@ export const issueAttachmentFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Binary Property',
+		displayName: 'Put Output File in Field',
 		name: 'binaryProperty',
 		type: 'string',
 		default: 'data',
@@ -190,7 +190,7 @@ export const issueAttachmentFields: INodeProperties[] = [
 				download: [true],
 			},
 		},
-		description: 'Object property name which holds binary data',
+		hint: 'The name of the output binary field to put the file in',
 		required: true,
 	},
 	/* -------------------------------------------------------------------------- */

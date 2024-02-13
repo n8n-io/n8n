@@ -1,8 +1,12 @@
-import { IPollFunctions } from 'n8n-core';
+import type {
+	IPollFunctions,
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
-
-import moment from 'moment';
+import moment from 'moment-timezone';
 
 import { venafiApiRequest } from './GenericFunctions';
 

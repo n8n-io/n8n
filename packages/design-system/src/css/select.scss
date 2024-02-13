@@ -28,10 +28,9 @@
 
 	.el-select__tags + .el-input {
 		input {
-			box-sizing: content-box;
-			padding: 0;
-			text-indent: var(--spacing-xs);
-			width: calc(100% - 2px);
+			box-sizing: border-box;
+			padding: 0 0 0 var(--spacing-2xs);
+			text-indent: 0;
 		}
 	}
 
@@ -48,11 +47,10 @@
 		& .el-select__caret {
 			font-size: var.$select-input-font-size;
 			transition: transform 0.3s;
-			transform: rotateZ(180deg);
 			cursor: pointer;
 
 			@include mixins.when(reverse) {
-				transform: rotateZ(0deg);
+				transform: rotateZ(180deg);
 			}
 
 			@include mixins.when(show-close) {
@@ -82,6 +80,14 @@
 		&.is-focus .el-input__inner {
 			border-color: var.$select-input-focus-border-color;
 		}
+
+		&__prefix {
+			left: var(--spacing-2xs);
+		}
+
+		&--prefix .el-input__inner {
+			padding-left: 26px;
+		}
 	}
 
 	> .el-input {
@@ -92,7 +98,7 @@
 		border: none;
 		outline: none;
 		padding: 0;
-		margin-left: 15px;
+		margin-left: var(--spacing-2xs);
 		color: var.$select-multiple-input-color;
 		font-size: var.$select-font-size;
 		appearance: none;
@@ -164,6 +170,11 @@
 	&--large {
 		.el-input__inner {
 			height: 42px;
+		}
+	}
+	&--default {
+		.el-tag {
+			padding: var(--spacing-5xs) var(--spacing-xs);
 		}
 	}
 }

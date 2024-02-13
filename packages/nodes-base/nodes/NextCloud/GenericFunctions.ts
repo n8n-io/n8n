@@ -1,6 +1,6 @@
-import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
+import { NodeOperationError, type IExecuteFunctions, type IHookFunctions } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 /**
  * Make an API request to NextCloud
@@ -52,5 +52,18 @@ export async function nextCloudApiRequest(
 
 	const credentialType =
 		authenticationMethod === 'accessToken' ? 'nextCloudApi' : 'nextCloudOAuth2Api';
-	return this.helpers.requestWithAuthentication.call(this, credentialType, options);
+
+	const response = await this.helpers.requestWithAuthentication.call(this, credentialType, options);
+
+	if (typeof response === 'string' && response.includes('<b>Fatal error</b>')) {
+		throw new NodeOperationError(
+			this.getNode(),
+			"NextCloud responded with a 'Fatal error', check description for more details",
+			{
+				description: `Server response:\n${response}`,
+			},
+		);
+	}
+
+	return response;
 }

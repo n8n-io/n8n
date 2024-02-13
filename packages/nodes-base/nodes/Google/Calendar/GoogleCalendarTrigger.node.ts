@@ -1,18 +1,20 @@
-import {
+import type {
 	IDataObject,
-	ILoadOptionsFunctions,
 	INodeExecutionData,
-	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	IPollFunctions,
-	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
+import moment from 'moment-timezone';
 
-import moment from 'moment';
+import {
+	encodeURIComponentOnce,
+	getCalendars,
+	googleApiRequest,
+	googleApiRequestAllItems,
+} from './GenericFunctions';
 
 export class GoogleCalendarTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -37,16 +39,45 @@ export class GoogleCalendarTrigger implements INodeType {
 		polling: true,
 		properties: [
 			{
-				displayName: 'Calendar Name or ID',
+				displayName: 'Calendar',
 				name: 'calendarId',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
 				required: true,
-				typeOptions: {
-					loadOptionsMethod: 'getCalendars',
-				},
-				default: '',
+				description: 'Google Calendar to operate on',
+				modes: [
+					{
+						displayName: 'Calendar',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a Calendar...',
+						typeOptions: {
+							searchListMethod: 'getCalendars',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									// calendar ids are emails. W3C email regex with optional trailing whitespace.
+									regex:
+										'(^[a-zA-Z0-9.!#$%&’*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\\.[a-zA-Z0-9-]+)*(?:[ \t]+)*$)',
+									errorMessage: 'Not a valid Google Calendar ID',
+								},
+							},
+						],
+						extractValue: {
+							type: 'regex',
+							regex: '(^[a-zA-Z0-9.!#$%&’*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\\.[a-zA-Z0-9-]+)*)',
+						},
+						placeholder: 'name@google.com',
+					},
+				],
 			},
 			{
 				displayName: 'Trigger On',
@@ -55,6 +86,10 @@ export class GoogleCalendarTrigger implements INodeType {
 				required: true,
 				default: '',
 				options: [
+					{
+						name: 'Event Cancelled',
+						value: 'eventCancelled',
+					},
 					{
 						name: 'Event Created',
 						value: 'eventCreated',
@@ -94,32 +129,17 @@ export class GoogleCalendarTrigger implements INodeType {
 	};
 
 	methods = {
-		loadOptions: {
-			// Get all the calendars to display them to user so that he can
-			// select them easily
-			async getCalendars(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const calendars = await googleApiRequestAllItems.call(
-					this,
-					'items',
-					'GET',
-					'/calendar/v3/users/me/calendarList',
-				);
-				for (const calendar of calendars) {
-					returnData.push({
-						name: calendar.summary,
-						value: calendar.id,
-					});
-				}
-				return returnData;
-			},
+		listSearch: {
+			getCalendars,
 		},
 	};
 
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
 		const poolTimes = this.getNodeParameter('pollTimes.item', []) as IDataObject[];
 		const triggerOn = this.getNodeParameter('triggerOn', '') as string;
-		const calendarId = this.getNodeParameter('calendarId') as string;
+		const calendarId = encodeURIComponentOnce(
+			this.getNodeParameter('calendarId', '', { extractValue: true }) as string,
+		);
 		const webhookData = this.getWorkflowStaticData('node');
 		const matchTerm = this.getNodeParameter('options.matchTerm', '') as string;
 
@@ -151,10 +171,15 @@ export class GoogleCalendarTrigger implements INodeType {
 
 		let events;
 
-		if (triggerOn === 'eventCreated' || triggerOn === 'eventUpdated') {
+		if (
+			triggerOn === 'eventCreated' ||
+			triggerOn === 'eventUpdated' ||
+			triggerOn === 'eventCancelled'
+		) {
 			Object.assign(qs, {
 				updatedMin: startDate,
 				orderBy: 'updated',
+				showDeleted: triggerOn === 'eventCancelled',
 			});
 		} else if (triggerOn === 'eventStarted' || triggerOn === 'eventEnded') {
 			Object.assign(qs, {
@@ -192,13 +217,16 @@ export class GoogleCalendarTrigger implements INodeType {
 				events = events.filter((event: { created: string }) =>
 					moment(event.created).isBetween(startDate, endDate),
 				);
-			} else if (triggerOn === 'eventUpdated') {
+			} else if (triggerOn === 'eventUpdated' || triggerOn === 'eventCancelled') {
 				events = events.filter(
 					(event: { created: string; updated: string }) =>
 						!moment(moment(event.created).format('YYYY-MM-DDTHH:mm:ss')).isSame(
 							moment(event.updated).format('YYYY-MM-DDTHH:mm:ss'),
 						),
 				);
+				if (triggerOn === 'eventCancelled') {
+					events = events.filter((event: { status: string }) => event.status === 'cancelled');
+				}
 			} else if (triggerOn === 'eventStarted') {
 				events = events.filter((event: { start: { dateTime: string } }) =>
 					moment(event.start.dateTime).isBetween(startDate, endDate, null, '[]'),

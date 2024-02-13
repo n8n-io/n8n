@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 import { TLP } from './AnalyzerInterface';
 
@@ -89,7 +89,7 @@ export const analyzerFields: INodeProperties[] = [
 		description: 'Enter the observable value',
 	},
 	{
-		displayName: 'Binary Property',
+		displayName: 'Put Output File in Field',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
@@ -101,7 +101,7 @@ export const analyzerFields: INodeProperties[] = [
 				operation: ['execute'],
 			},
 		},
-		description: 'Name of the binary property to which to write the data of the read file',
+		hint: 'The name of the output binary field to put the file in',
 	},
 	{
 		displayName: 'TLP',

@@ -1,147 +1,111 @@
-/* eslint-disable no-restricted-syntax */
-import { Credentials, UserSettings } from 'n8n-core';
-import {
+import { Credentials } from 'n8n-core';
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
-	INodeCredentialTestResult,
-	LoggerProxy,
+	ICredentialType,
+	INodeProperties,
 } from 'n8n-workflow';
-import { FindManyOptions, FindOneOptions, In } from 'typeorm';
-
+import { CREDENTIAL_EMPTY_VALUE, deepCopy, NodeHelpers } from 'n8n-workflow';
+import type { FindOptionsWhere } from '@n8n/typeorm';
+import type { Scope } from '@n8n/permissions';
 import * as Db from '@/Db';
-import * as ResponseHelper from '@/ResponseHelper';
-import { ICredentialsDb } from '@/Interfaces';
-import { CredentialsHelper, createCredentialsFromCredentialsEntity } from '@/CredentialsHelper';
-import { RESPONSE_ERROR_MESSAGES } from '@/constants';
+import type { ICredentialsDb } from '@/Interfaces';
+import { createCredentialsFromCredentialsEntity } from '@/CredentialsHelper';
+import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { validateEntity } from '@/GenericHelpers';
-import { externalHooks } from '../Server';
-
+import { ExternalHooks } from '@/ExternalHooks';
 import type { User } from '@db/entities/User';
-import type { CredentialRequest } from '@/requests';
+import type { CredentialRequest, ListQuery } from '@/requests';
+import { CredentialTypes } from '@/CredentialTypes';
+import { OwnershipService } from '@/services/ownership.service';
+import { Logger } from '@/Logger';
+import { CredentialsRepository } from '@db/repositories/credentials.repository';
+import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+import { Service } from 'typedi';
+import { CredentialsTester } from '@/services/credentials-tester.service';
 
+export type CredentialsGetSharedOptions =
+	| { allowGlobalScope: true; globalScope: Scope }
+	| { allowGlobalScope: false };
+
+@Service()
 export class CredentialsService {
-	static async get(
-		credential: Partial<ICredentialsDb>,
-		options?: { relations: string[] },
-	): Promise<ICredentialsDb | undefined> {
-		return Db.collections.Credentials.findOne(credential, {
+	constructor(
+		private readonly credentialsRepository: CredentialsRepository,
+		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
+		private readonly ownershipService: OwnershipService,
+		private readonly logger: Logger,
+		private readonly credentialsTester: CredentialsTester,
+		private readonly externalHooks: ExternalHooks,
+		private readonly credentialTypes: CredentialTypes,
+	) {}
+
+	async get(where: FindOptionsWhere<ICredentialsDb>, options?: { relations: string[] }) {
+		return await this.credentialsRepository.findOne({
 			relations: options?.relations,
+			where,
 		});
 	}
 
-	static async getAll(
+	async getMany(
 		user: User,
-		options?: { relations?: string[]; roles?: string[] },
-	): Promise<ICredentialsDb[]> {
-		const SELECT_FIELDS: Array<keyof ICredentialsDb> = [
-			'id',
-			'name',
-			'type',
-			'nodesAccess',
-			'createdAt',
-			'updatedAt',
-		];
+		options: { listQueryOptions?: ListQuery.Options; onlyOwn?: boolean } = {},
+	) {
+		const returnAll = user.hasGlobalScope('credential:list') && !options.onlyOwn;
+		const isDefaultSelect = !options.listQueryOptions?.select;
 
-		// if instance owner, return all credentials
+		if (returnAll) {
+			const credentials = await this.credentialsRepository.findMany(options.listQueryOptions);
 
-		if (user.globalRole.name === 'owner') {
-			return Db.collections.Credentials.find({
-				select: SELECT_FIELDS,
-				relations: options?.relations,
-			});
+			return isDefaultSelect
+				? credentials.map((c) => this.ownershipService.addOwnedByAndSharedWith(c))
+				: credentials;
 		}
 
-		// if member, return credentials owned by or shared with member
+		const ids = await this.sharedCredentialsRepository.getAccessibleCredentialIds([user.id]);
 
-		const whereConditions: FindManyOptions = {
-			where: {
-				user,
-			},
-		};
+		const credentials = await this.credentialsRepository.findMany(
+			options.listQueryOptions,
+			ids, // only accessible credentials
+		);
 
-		if (options?.roles?.length) {
-			whereConditions.where = {
-				...whereConditions.where,
-				role: { name: In(options.roles) },
-			} as FindManyOptions;
-			whereConditions.relations = ['role'];
-		}
-
-		const userSharings = await Db.collections.SharedCredentials.find(whereConditions);
-
-		return Db.collections.Credentials.find({
-			select: SELECT_FIELDS,
-			relations: options?.relations,
-			where: {
-				id: In(userSharings.map((x) => x.credentialId)),
-			},
-		});
-	}
-
-	static async getMany(filter: FindManyOptions<ICredentialsDb>): Promise<ICredentialsDb[]> {
-		return Db.collections.Credentials.find(filter);
+		return isDefaultSelect
+			? credentials.map((c) => this.ownershipService.addOwnedByAndSharedWith(c))
+			: credentials;
 	}
 
 	/**
 	 * Retrieve the sharing that matches a user and a credential.
 	 */
-	static async getSharing(
+	async getSharing(
 		user: User,
-		credentialId: number | string,
+		credentialId: string,
+		options: CredentialsGetSharedOptions,
 		relations: string[] = ['credentials'],
-		{ allowGlobalOwner } = { allowGlobalOwner: true },
-	): Promise<SharedCredentials | undefined> {
-		const options: FindOneOptions = {
-			where: {
-				credentials: { id: credentialId },
-			},
-		};
+	): Promise<SharedCredentials | null> {
+		const where: FindOptionsWhere<SharedCredentials> = { credentialsId: credentialId };
 
-		// Omit user from where if the requesting user is the global
-		// owner. This allows the global owner to view and delete
-		// credentials they don't own.
-		if (!allowGlobalOwner || user.globalRole.name !== 'owner') {
-			options.where = {
-				...options.where,
-				user: { id: user.id },
-				role: { name: 'owner' },
-			} as FindOneOptions;
-			if (!relations.includes('role')) {
-				relations.push('role');
-			}
+		// Omit user from where if the requesting user has relevant
+		// global credential permissions. This allows the user to
+		// access credentials they don't own.
+		if (!options.allowGlobalScope || !user.hasGlobalScope(options.globalScope)) {
+			where.userId = user.id;
+			where.role = 'credential:owner';
 		}
 
-		if (relations?.length) {
-			options.relations = relations;
-		}
-
-		return Db.collections.SharedCredentials.findOne(options);
+		return await this.sharedCredentialsRepository.findOne({ where, relations });
 	}
 
-	static createCredentialsFromCredentialsEntity(
-		credential: CredentialsEntity,
-		encrypt = false,
-	): Credentials {
-		const { id, name, type, nodesAccess, data } = credential;
-		if (encrypt) {
-			return new Credentials({ id: null, name }, type, nodesAccess);
-		}
-		return new Credentials({ id: id.toString(), name }, type, nodesAccess, data);
-	}
-
-	static async prepareCreateData(
+	async prepareCreateData(
 		data: CredentialRequest.CredentialProperties,
 	): Promise<CredentialsEntity> {
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		const { id, ...rest } = data;
 
 		// This saves us a merge but requires some type casting. These
-		// types are compatiable for this case.
-		const newCredentials = Db.collections.Credentials.create(
-			rest as ICredentialsDb,
-		) as CredentialsEntity;
+		// types are compatible for this case.
+		const newCredentials = this.credentialsRepository.create(rest as ICredentialsDb);
 
 		await validateEntity(newCredentials);
 
@@ -153,15 +117,18 @@ export class CredentialsService {
 		return newCredentials;
 	}
 
-	static async prepareUpdateData(
+	async prepareUpdateData(
 		data: CredentialRequest.CredentialProperties,
 		decryptedData: ICredentialDataDecryptedObject,
 	): Promise<CredentialsEntity> {
+		const mergedData = deepCopy(data);
+		if (mergedData.data) {
+			mergedData.data = this.unredact(mergedData.data, decryptedData);
+		}
+
 		// This saves us a merge but requires some type casting. These
-		// types are compatiable for this case.
-		const updateData = Db.collections.Credentials.create(
-			data as ICredentialsDb,
-		) as CredentialsEntity;
+		// types are compatible for this case.
+		const updateData = this.credentialsRepository.create(mergedData as ICredentialsDb);
 
 		await validateEntity(updateData);
 
@@ -181,18 +148,14 @@ export class CredentialsService {
 		return updateData;
 	}
 
-	static createEncryptedData(
-		encryptionKey: string,
-		credentialsId: string | null,
-		data: CredentialsEntity,
-	): ICredentialsDb {
+	createEncryptedData(credentialId: string | null, data: CredentialsEntity): ICredentialsDb {
 		const credentials = new Credentials(
-			{ id: credentialsId, name: data.name },
+			{ id: credentialId, name: data.name },
 			data.type,
 			data.nodesAccess,
 		);
 
-		credentials.setData(data.data as unknown as ICredentialDataDecryptedObject, encryptionKey);
+		credentials.setData(data.data as unknown as ICredentialDataDecryptedObject);
 
 		const newCredentialData = credentials.getDataToSave() as ICredentialsDb;
 
@@ -202,51 +165,28 @@ export class CredentialsService {
 		return newCredentialData;
 	}
 
-	static async getEncryptionKey(): Promise<string> {
-		try {
-			return await UserSettings.getEncryptionKey();
-		} catch (error) {
-			throw new ResponseHelper.InternalServerError(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY);
-		}
-	}
-
-	static async decrypt(
-		encryptionKey: string,
-		credential: CredentialsEntity,
-	): Promise<ICredentialDataDecryptedObject> {
+	decrypt(credential: CredentialsEntity) {
 		const coreCredential = createCredentialsFromCredentialsEntity(credential);
-		return coreCredential.getData(encryptionKey);
+		return coreCredential.getData();
 	}
 
-	static async update(
-		credentialId: string,
-		newCredentialData: ICredentialsDb,
-	): Promise<ICredentialsDb | undefined> {
-		await externalHooks.run('credentials.update', [newCredentialData]);
+	async update(credentialId: string, newCredentialData: ICredentialsDb) {
+		await this.externalHooks.run('credentials.update', [newCredentialData]);
 
 		// Update the credentials in DB
-		await Db.collections.Credentials.update(credentialId, newCredentialData);
+		await this.credentialsRepository.update(credentialId, newCredentialData);
 
 		// We sadly get nothing back from "update". Neither if it updated a record
 		// nor the new value. So query now the updated entry.
-		return Db.collections.Credentials.findOne(credentialId);
+		return await this.credentialsRepository.findOneBy({ id: credentialId });
 	}
 
-	static async save(
-		credential: CredentialsEntity,
-		encryptedData: ICredentialsDb,
-		user: User,
-	): Promise<CredentialsEntity> {
+	async save(credential: CredentialsEntity, encryptedData: ICredentialsDb, user: User) {
 		// To avoid side effects
 		const newCredential = new CredentialsEntity();
 		Object.assign(newCredential, credential, encryptedData);
 
-		await externalHooks.run('credentials.create', [encryptedData]);
-
-		const role = await Db.collections.Role.findOneOrFail({
-			name: 'owner',
-			scope: 'credential',
-		});
+		await this.externalHooks.run('credentials.create', [encryptedData]);
 
 		const result = await Db.transaction(async (transactionManager) => {
 			const savedCredential = await transactionManager.save<CredentialsEntity>(newCredential);
@@ -256,7 +196,7 @@ export class CredentialsService {
 			const newSharedCredential = new SharedCredentials();
 
 			Object.assign(newSharedCredential, {
-				role,
+				role: 'credential:owner',
 				user,
 				credentials: savedCredential,
 			});
@@ -265,27 +205,110 @@ export class CredentialsService {
 
 			return savedCredential;
 		});
-		LoggerProxy.verbose('New credential created', {
+		this.logger.verbose('New credential created', {
 			credentialId: newCredential.id,
 			ownerId: user.id,
 		});
 		return result;
 	}
 
-	static async delete(credentials: CredentialsEntity): Promise<void> {
-		await externalHooks.run('credentials.delete', [credentials.id]);
+	async delete(credentials: CredentialsEntity) {
+		await this.externalHooks.run('credentials.delete', [credentials.id]);
 
-		await Db.collections.Credentials.remove(credentials);
+		await this.credentialsRepository.remove(credentials);
 	}
 
-	static async test(
-		user: User,
-		encryptionKey: string,
-		credentials: ICredentialsDecrypted,
-		nodeToTestWith: string | undefined,
-	): Promise<INodeCredentialTestResult> {
-		const helper = new CredentialsHelper(encryptionKey);
+	async test(user: User, credentials: ICredentialsDecrypted) {
+		return await this.credentialsTester.testCredentials(user, credentials.type, credentials);
+	}
 
-		return helper.testCredentials(user, credentials.type, credentials, nodeToTestWith);
+	// Take data and replace all sensitive values with a sentinel value.
+	// This will replace password fields and oauth data.
+	redact(data: ICredentialDataDecryptedObject, credential: CredentialsEntity) {
+		const copiedData = deepCopy(data);
+
+		let credType: ICredentialType;
+		try {
+			credType = this.credentialTypes.getByName(credential.type);
+		} catch {
+			// This _should_ only happen when testing. If it does happen in
+			// production it means it's either a mangled credential or a
+			// credential for a removed community node. Either way, there's
+			// no way to know what to redact.
+			return data;
+		}
+
+		const getExtendedProps = (type: ICredentialType) => {
+			const props: INodeProperties[] = [];
+			for (const e of type.extends ?? []) {
+				const extendsType = this.credentialTypes.getByName(e);
+				const extendedProps = getExtendedProps(extendsType);
+				NodeHelpers.mergeNodeProperties(props, extendedProps);
+			}
+			NodeHelpers.mergeNodeProperties(props, type.properties);
+			return props;
+		};
+		const properties = getExtendedProps(credType);
+
+		for (const dataKey of Object.keys(copiedData)) {
+			// The frontend only cares that this value isn't falsy.
+			if (dataKey === 'oauthTokenData') {
+				if (copiedData[dataKey].toString().length > 0) {
+					copiedData[dataKey] = CREDENTIAL_BLANKING_VALUE;
+				} else {
+					copiedData[dataKey] = CREDENTIAL_EMPTY_VALUE;
+				}
+				continue;
+			}
+			const prop = properties.find((v) => v.name === dataKey);
+			if (!prop) {
+				continue;
+			}
+			if (
+				prop.typeOptions?.password &&
+				(!(copiedData[dataKey] as string).startsWith('={{') || prop.noDataExpression)
+			) {
+				if (copiedData[dataKey].toString().length > 0) {
+					copiedData[dataKey] = CREDENTIAL_BLANKING_VALUE;
+				} else {
+					copiedData[dataKey] = CREDENTIAL_EMPTY_VALUE;
+				}
+			}
+		}
+
+		return copiedData;
+	}
+
+	private unredactRestoreValues(unmerged: any, replacement: any) {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+		for (const [key, value] of Object.entries(unmerged)) {
+			if (value === CREDENTIAL_BLANKING_VALUE || value === CREDENTIAL_EMPTY_VALUE) {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+				unmerged[key] = replacement[key];
+			} else if (
+				typeof value === 'object' &&
+				value !== null &&
+				key in replacement &&
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+				typeof replacement[key] === 'object' &&
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+				replacement[key] !== null
+			) {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+				this.unredactRestoreValues(value, replacement[key]);
+			}
+		}
+	}
+
+	// Take unredacted data (probably from the DB) and merge it with
+	// redacted data to create an unredacted version.
+	unredact(
+		redactedData: ICredentialDataDecryptedObject,
+		savedData: ICredentialDataDecryptedObject,
+	) {
+		// Replace any blank sentinel values with their saved version
+		const mergedData = deepCopy(redactedData);
+		this.unredactRestoreValues(mergedData, savedData);
+		return mergedData;
 	}
 }

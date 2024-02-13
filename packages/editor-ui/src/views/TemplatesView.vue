@@ -2,7 +2,7 @@
 	<div :class="$style.template">
 		<div :class="$style.container">
 			<div :class="$style.header">
-				<div :class="$style.goBack" v-if="goBackEnabled">
+				<div v-if="goBackEnabled" :class="$style.goBack">
 					<GoBackButton />
 				</div>
 				<slot name="header"></slot>
@@ -15,10 +15,10 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import GoBackButton from '@/components/GoBackButton.vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'TemplatesView',
 	components: {
 		GoBackButton,
@@ -35,17 +35,17 @@ export default Vue.extend({
 <style lang="scss" module>
 .template {
 	display: flex;
-	padding: var(--spacing-3xl) var(--spacing-xl) var(--spacing-4xl) var(--spacing-xl);
+	width: 100%;
+	max-width: 1280px;
+	padding: var(--spacing-l) var(--spacing-l) 0;
+	justify-content: center;
+	@media (min-width: 1200px) {
+		padding: var(--spacing-2xl) var(--spacing-2xl) 0;
+	}
 }
 
 .container {
 	width: 100%;
-	max-width: 1024px;
-	margin: 0 auto;
-
-	@media (max-width: $breakpoint-md) {
-		width: 900px;
-	}
 }
 
 .header {

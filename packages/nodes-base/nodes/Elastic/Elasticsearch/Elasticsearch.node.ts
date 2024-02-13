@@ -1,20 +1,18 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	jsonParse,
 } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 
+import omit from 'lodash/omit';
 import { elasticsearchApiRequest, elasticsearchApiRequestAllItems } from './GenericFunctions';
 
 import { documentFields, documentOperations, indexFields, indexOperations } from './descriptions';
 
-import { DocumentGetAllOptions, FieldsUiValues } from './types';
-
-import { omit } from 'lodash';
+import type { DocumentGetAllOptions, FieldsUiValues } from './types';
 
 export class Elasticsearch implements INodeType {
 	description: INodeTypeDescription = {
@@ -66,7 +64,7 @@ export class Elasticsearch implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 
 		const resource = this.getNodeParameter('resource', 0) as 'document' | 'index';
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
 
@@ -184,7 +182,7 @@ export class Elasticsearch implements INodeType {
 						responseData = responseData.map((item: IDataObject) => {
 							return {
 								_id: item._id,
-								...(item._source as {}),
+								...(item._source as IDataObject),
 							};
 						});
 					}
@@ -331,7 +329,9 @@ export class Elasticsearch implements INodeType {
 					// https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-aliases.html
 
 					responseData = await elasticsearchApiRequest.call(this, 'GET', '/_aliases');
-					responseData = Object.keys(responseData).map((i) => ({ indexId: i }));
+					responseData = Object.keys(responseData as IDataObject).map((index) => ({
+						indexId: index,
+					}));
 
 					const returnAll = this.getNodeParameter('returnAll', i);
 
@@ -342,12 +342,12 @@ export class Elasticsearch implements INodeType {
 				}
 			}
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
+				this.helpers.returnJsonArray(responseData as IDataObject[]),
 				{ itemData: { item: i } },
 			);
 			returnData.push(...executionData);
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

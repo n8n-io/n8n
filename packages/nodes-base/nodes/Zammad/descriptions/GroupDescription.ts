@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const groupDescription: INodeProperties[] = [
 	// ----------------------------------
@@ -171,9 +171,6 @@ export const groupDescription: INodeProperties[] = [
 				name: 'note',
 				type: 'string',
 				default: '',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 			},
 		],
 	},
@@ -243,9 +240,6 @@ export const groupDescription: INodeProperties[] = [
 				name: 'note',
 				type: 'string',
 				default: '',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 			},
 		],
 	},

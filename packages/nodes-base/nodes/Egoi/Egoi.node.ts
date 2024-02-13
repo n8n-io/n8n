@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -9,11 +8,10 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
 import { egoiApiRequest, egoiApiRequestAllItems, simplify } from './GenericFunctions';
 
-import { ICreateMemberBody } from './Interfaces';
-
-import moment from 'moment-timezone';
+import type { ICreateMemberBody } from './Interfaces';
 
 export class Egoi implements INodeType {
 	description: INodeTypeDescription = {
@@ -541,8 +539,8 @@ export class Egoi implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		const items = this.getInputData();
 		const length = items.length;
-		const operation = this.getNodeParameter('operation', 0) as string;
-		const resource = this.getNodeParameter('resource', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
+		const resource = this.getNodeParameter('resource', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'contact') {
@@ -631,7 +629,7 @@ export class Egoi implements INodeType {
 							responseData = responseData.items;
 						}
 
-						if (simple === true) {
+						if (simple) {
 							const data = (await simplify.call(this, [responseData], listId))[0];
 
 							responseData = {
@@ -674,7 +672,7 @@ export class Egoi implements INodeType {
 							responseData = responseData.items;
 						}
 
-						if (simple === true) {
+						if (simple) {
 							responseData = await simplify.call(this, responseData, listId);
 						}
 					}
@@ -735,7 +733,7 @@ export class Egoi implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail() !== true) {
+				if (!this.continueOnFail()) {
 					throw error;
 				} else {
 					// Return the actual reason as error
@@ -749,11 +747,11 @@ export class Egoi implements INodeType {
 			}
 
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
+				this.helpers.returnJsonArray(responseData as IDataObject[]),
 				{ itemData: { item: i } },
 			);
 			returnData.push(...executionData);
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

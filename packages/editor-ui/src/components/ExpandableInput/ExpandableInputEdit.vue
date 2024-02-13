@@ -1,39 +1,47 @@
 <template>
-	<ExpandableInputBase :value="value" :placeholder="placeholder">
+	<ExpandableInputBase :model-value="modelValue" :placeholder="placeholder">
 		<input
+			ref="input"
+			v-on-click-outside="onClickOutside"
 			class="el-input__inner"
-			:value="value"
+			:value="modelValue"
 			:placeholder="placeholder"
 			:maxlength="maxlength"
+			size="4"
 			@input="onInput"
 			@keydown.enter="onEnter"
 			@keydown.esc="onEscape"
-			ref="input"
-			size="4"
-			v-click-outside="onClickOutside"
 		/>
 	</ExpandableInputBase>
 </template>
 
 <script lang="ts">
-import Vue from "vue";
-import ExpandableInputBase from "./ExpandableInputBase.vue";
+import { defineComponent } from 'vue';
+import ExpandableInputBase from './ExpandableInputBase.vue';
+import type { PropType } from 'vue';
+import type { EventBus } from 'n8n-design-system';
 
-export default Vue.extend({
+export default defineComponent({
+	name: 'ExpandableInputEdit',
 	components: { ExpandableInputBase },
-	name: "ExpandableInputEdit",
-	props: ['value', 'placeholder', 'maxlength', 'autofocus', 'eventBus'],
+	props: {
+		modelValue: {},
+		placeholder: {},
+		maxlength: {},
+		autofocus: {},
+		eventBus: {
+			type: Object as PropType<EventBus>,
+		},
+	},
 	mounted() {
 		// autofocus on input element is not reliable
-		if (this.$props.autofocus && this.$refs.input) {
+		if (this.autofocus && this.$refs.input) {
 			this.focus();
 		}
-
-		if (this.$props.eventBus) {
-			this.$props.eventBus.$on('focus', () => {
-				this.focus();
-			});
-		}
+		this.eventBus?.on('focus', this.focus);
+	},
+	beforeUnmount() {
+		this.eventBus?.off('focus', this.focus);
 	},
 	methods: {
 		focus() {
@@ -42,7 +50,7 @@ export default Vue.extend({
 			}
 		},
 		onInput() {
-			this.$emit('input', (this.$refs.input as HTMLInputElement).value);
+			this.$emit('update:modelValue', (this.$refs.input as HTMLInputElement).value);
 		},
 		onEnter() {
 			this.$emit('enter', (this.$refs.input as HTMLInputElement).value);

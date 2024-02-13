@@ -1,6 +1,5 @@
-import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
-
-import { IDataObject, JsonObject, NodeApiError } from 'n8n-workflow';
+import type { IExecuteFunctions, IHookFunctions, IDataObject, JsonObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 /**
  * Make an API request to Twilio
@@ -12,7 +11,6 @@ export async function moceanApiRequest(
 	endpoint: string,
 	body: IDataObject,
 	query?: IDataObject,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('moceanApi');
 

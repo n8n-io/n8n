@@ -1,24 +1,17 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
-	IBinaryKeyData,
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
+	IExecuteFunctions,
 	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	awsApiRequestREST,
-	IExpenseDocument,
-	simplify,
-	validateCredentials,
-} from './GenericFunctions';
+import type { IExpenseDocument } from './GenericFunctions';
+import { awsApiRequestREST, simplify, validateCredentials } from './GenericFunctions';
 
 export class AwsTextract implements INodeType {
 	description: INodeTypeDescription = {
@@ -115,33 +108,18 @@ export class AwsTextract implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		let responseData;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < items.length; i++) {
 			try {
 				//https://docs.aws.amazon.com/textract/latest/dg/API_AnalyzeExpense.html
 				if (operation === 'analyzeExpense') {
-					const binaryProperty = this.getNodeParameter('binaryPropertyName', i) as string;
 					const simple = this.getNodeParameter('simple', i) as boolean;
-
-					if (items[i].binary === undefined) {
-						throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-							itemIndex: i,
-						});
-					}
-
-					if ((items[i].binary as IBinaryKeyData)[binaryProperty] === undefined) {
-						throw new NodeOperationError(
-							this.getNode(),
-							`No binary data property "${binaryProperty}" does not exists on item!`,
-							{ itemIndex: i },
-						);
-					}
-
-					const binaryPropertyData = (items[i].binary as IBinaryKeyData)[binaryProperty];
+					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
+					const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 
 					const body: IDataObject = {
 						Document: {
-							Bytes: binaryPropertyData.data,
+							Bytes: binaryData.data,
 						},
 					};
 

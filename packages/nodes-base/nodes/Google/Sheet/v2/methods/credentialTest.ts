@@ -1,20 +1,17 @@
-import {
+import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	INodeCredentialTestResult,
 } from 'n8n-workflow';
 
-import { getAccessToken, IGoogleAuthCredentials } from '../transport';
+import { getGoogleAccessToken } from '../../../GenericFunctions';
 
 export async function googleApiCredentialTest(
 	this: ICredentialTestFunctions,
 	credential: ICredentialsDecrypted,
 ): Promise<INodeCredentialTestResult> {
 	try {
-		const tokenRequest = await getAccessToken.call(
-			this,
-			credential.data! as unknown as IGoogleAuthCredentials,
-		);
+		const tokenRequest = await getGoogleAccessToken.call(this, credential.data!, 'sheetV2');
 		if (!tokenRequest.access_token) {
 			return {
 				status: 'Error',

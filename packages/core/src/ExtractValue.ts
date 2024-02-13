@@ -1,14 +1,19 @@
+import get from 'lodash/get';
 import {
-	INode,
-	INodeParameters,
-	INodeProperties,
-	INodePropertyCollection,
-	INodePropertyOptions,
-	INodeType,
-	NodeOperationError,
-	NodeParameterValueType,
-	NodeHelpers,
+	ApplicationError,
 	LoggerProxy,
+	NodeHelpers,
+	NodeOperationError,
+	WorkflowOperationError,
+	executeFilter,
+	isFilterValue,
+	type INode,
+	type INodeParameters,
+	type INodeProperties,
+	type INodePropertyCollection,
+	type INodePropertyOptions,
+	type INodeType,
+	type NodeParameterValueType,
 } from 'n8n-workflow';
 
 function findPropertyFromParameterName(
@@ -32,7 +37,6 @@ function findPropertyFromParameterName(
 		);
 	};
 
-	// eslint-disable-next-line no-restricted-syntax
 	for (const p of paramParts) {
 		const param = p.split('[')[0];
 		if (!property) {
@@ -44,14 +48,14 @@ function findPropertyFromParameterName(
 			property = findProp(param, property.values);
 			currentParamPath += `.${param}`;
 		} else {
-			throw new Error(`Couldn't not find property "${parameterName}"`);
+			throw new ApplicationError('Could not find property', { extra: { parameterName } });
 		}
 		if (!property) {
-			throw new Error(`Couldn't not find property "${parameterName}"`);
+			throw new ApplicationError('Could not find property', { extra: { parameterName } });
 		}
 	}
 	if (!property) {
-		throw new Error(`Couldn't not find property "${parameterName}"`);
+		throw new ApplicationError('Could not find property', { extra: { parameterName } });
 	}
 
 	return property;
@@ -65,12 +69,12 @@ function executeRegexExtractValue(
 ): NodeParameterValueType | object {
 	const extracted = regex.exec(value);
 	if (!extracted) {
-		throw new Error(
+		throw new WorkflowOperationError(
 			`ERROR: ${parameterDisplayName} parameter's value is invalid. This is likely because the URL entered is incorrect`,
 		);
 	}
 	if (extracted.length < 2 || extracted.length > 2) {
-		throw new Error(
+		throw new WorkflowOperationError(
 			`Property "${parameterName}" has an invalid extractValue regex "${regex.source}". extractValue expects exactly one group to be returned.`,
 		);
 	}
@@ -104,21 +108,40 @@ function extractValueRLC(
 		LoggerProxy.error(
 			`Only strings can be passed to extractValue. Parameter "${parameterName}" passed "${typeName}"`,
 		);
-		throw new Error(
-			`ERROR: ${property.displayName} parameter's value is invalid. Please enter a valid ${modeProp.displayName}.`,
+		throw new ApplicationError(
+			"ERROR: This parameter's value is invalid. Please enter a valid mode.",
+			{ extra: { parameter: property.displayName, modeProp: modeProp.displayName } },
 		);
 	}
 
 	if (modeProp.extractValue.type !== 'regex') {
-		throw new Error(
-			`Property "${parameterName}" has an unknown extractValue type "${
-				modeProp.extractValue.type as string
-			}"`,
-		);
+		throw new ApplicationError('Property with unknown `extractValue`', {
+			extra: { parameter: parameterName, extractValueType: modeProp.extractValue.type },
+		});
 	}
 
 	const regex = new RegExp(modeProp.extractValue.regex);
 	return executeRegexExtractValue(value.value, regex, parameterName, property.displayName);
+}
+
+function extractValueFilter(
+	value: NodeParameterValueType | object,
+	property: INodeProperties,
+	parameterName: string,
+	itemIndex: number,
+): NodeParameterValueType | object {
+	if (!isFilterValue(value)) {
+		return value;
+	}
+
+	if (property.extractValue?.type) {
+		throw new ApplicationError(
+			`Property "${parameterName}" has an invalid extractValue type. Filter parameters only support extractValue: true`,
+			{ extra: { parameter: parameterName } },
+		);
+	}
+
+	return executeFilter(value, { itemIndex });
 }
 
 function extractValueOther(
@@ -140,17 +163,15 @@ function extractValueOther(
 		LoggerProxy.error(
 			`Only strings can be passed to extractValue. Parameter "${parameterName}" passed "${typeName}"`,
 		);
-		throw new Error(
-			`ERROR: ${property.displayName} parameter's value is invalid. Please enter a valid value.`,
-		);
+		throw new ApplicationError("This parameter's value is invalid", {
+			extra: { parameter: property.displayName },
+		});
 	}
 
 	if (property.extractValue.type !== 'regex') {
-		throw new Error(
-			`Property "${parameterName}" has an unknown extractValue type "${
-				property.extractValue.type as string
-			}"`,
-		);
+		throw new ApplicationError('Property with unknown `extractValue`', {
+			extra: { parameter: parameterName, extractValueType: property.extractValue.type },
+		});
 	}
 
 	const regex = new RegExp(property.extractValue.regex);
@@ -162,6 +183,7 @@ export function extractValue(
 	parameterName: string,
 	node: INode,
 	nodeType: INodeType,
+	itemIndex = 0,
 ): NodeParameterValueType | object {
 	let property: INodePropertyOptions | INodeProperties | INodePropertyCollection;
 	try {
@@ -174,10 +196,12 @@ export function extractValue(
 
 		if (property.type === 'resourceLocator') {
 			return extractValueRLC(value, property, parameterName);
+		} else if (property.type === 'filter') {
+			return extractValueFilter(value, property, parameterName, itemIndex);
 		}
 		return extractValueOther(value, property, parameterName);
 	} catch (error) {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-		throw new NodeOperationError(node, error);
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment
+		throw new NodeOperationError(node, error, { description: get(error, 'description') });
 	}
 }

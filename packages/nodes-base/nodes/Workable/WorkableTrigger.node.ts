@@ -1,6 +1,6 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
-
-import {
+import type {
+	IHookFunctions,
+	IWebhookFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
@@ -9,9 +9,8 @@ import {
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
-import { workableApiRequest } from './GenericFunctions';
-
 import { snakeCase } from 'change-case';
+import { workableApiRequest } from './GenericFunctions';
 
 export class WorkableTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -121,7 +120,6 @@ export class WorkableTrigger implements INodeType {
 		},
 	};
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -129,7 +127,7 @@ export class WorkableTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				// Check all the webhooks which exist already if it is identical to the
 				// one that is supposed to get created.
-				const { subscriptions } = await workableApiRequest.call(this, 'GET', `/subscriptions`);
+				const { subscriptions } = await workableApiRequest.call(this, 'GET', '/subscriptions');
 				for (const subscription of subscriptions) {
 					if (subscription.target === webhookUrl) {
 						webhookData.webhookId = subscription.id as string;
@@ -179,7 +177,7 @@ export class WorkableTrigger implements INodeType {
 						return false;
 					}
 					// Remove from the static workflow data so that it is clear
-					// that no webhooks are registred anymore
+					// that no webhooks are registered anymore
 					delete webhookData.webhookId;
 				}
 				return true;

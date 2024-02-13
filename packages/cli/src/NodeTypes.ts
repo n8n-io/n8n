@@ -1,28 +1,23 @@
 import { loadClassInIsolation } from 'n8n-core';
 import type {
-	INodesAndCredentials,
 	INodeType,
 	INodeTypeDescription,
 	INodeTypes,
 	IVersionedNodeType,
 	LoadedClass,
 } from 'n8n-workflow';
-import { NodeHelpers } from 'n8n-workflow';
-import { RESPONSE_ERROR_MESSAGES } from './constants';
+import { ApplicationError, NodeHelpers } from 'n8n-workflow';
+import { Service } from 'typedi';
+import { LoadNodesAndCredentials } from './LoadNodesAndCredentials';
+import { join, dirname } from 'path';
+import { readdir } from 'fs/promises';
+import type { Dirent } from 'fs';
+import { UnrecognizedNodeTypeError } from './errors/unrecognized-node-type.error';
 
-class NodeTypesClass implements INodeTypes {
-	constructor(private nodesAndCredentials: INodesAndCredentials) {
-		// Some nodeTypes need to get special parameters applied like the
-		// polling nodes the polling times
-		// eslint-disable-next-line no-restricted-syntax
-		for (const nodeTypeData of Object.values(this.loadedNodes)) {
-			const nodeType = NodeHelpers.getVersionedNodeType(nodeTypeData.type);
-			this.applySpecialNodeParameters(nodeType);
-		}
-	}
-
-	getAll(): Array<INodeType | IVersionedNodeType> {
-		return Object.values(this.loadedNodes).map(({ type }) => type);
+@Service()
+export class NodeTypes implements INodeTypes {
+	constructor(private loadNodesAndCredentials: LoadNodesAndCredentials) {
+		loadNodesAndCredentials.addPostProcessor(async () => this.applySpecialNodeParameters());
 	}
 
 	/**
@@ -35,7 +30,7 @@ class NodeTypesClass implements INodeTypes {
 		const nodeType = this.getNode(nodeTypeName);
 
 		if (!nodeType) {
-			throw new Error(`Unknown node type: ${nodeTypeName}`);
+			throw new ApplicationError('Unknown node type', { tags: { nodeTypeName } });
 		}
 
 		const { description } = NodeHelpers.getVersionedNodeType(nodeType.type, version);
@@ -43,54 +38,78 @@ class NodeTypesClass implements INodeTypes {
 		return { description: { ...description }, sourcePath: nodeType.sourcePath };
 	}
 
+	getByName(nodeType: string): INodeType | IVersionedNodeType {
+		return this.getNode(nodeType).type;
+	}
+
 	getByNameAndVersion(nodeType: string, version?: number): INodeType {
 		return NodeHelpers.getVersionedNodeType(this.getNode(nodeType).type, version);
 	}
 
+	/* Some nodeTypes need to get special parameters applied like the polling nodes the polling times */
+	applySpecialNodeParameters() {
+		for (const nodeTypeData of Object.values(this.loadNodesAndCredentials.loadedNodes)) {
+			const nodeType = NodeHelpers.getVersionedNodeType(nodeTypeData.type);
+			NodeHelpers.applySpecialNodeParameters(nodeType);
+		}
+	}
+
 	private getNode(type: string): LoadedClass<INodeType | IVersionedNodeType> {
-		const loadedNodes = this.loadedNodes;
+		const { loadedNodes, knownNodes } = this.loadNodesAndCredentials;
 		if (type in loadedNodes) {
 			return loadedNodes[type];
 		}
 
-		const knownNodes = this.knownNodes;
 		if (type in knownNodes) {
 			const { className, sourcePath } = knownNodes[type];
 			const loaded: INodeType = loadClassInIsolation(sourcePath, className);
-			this.applySpecialNodeParameters(loaded);
+			NodeHelpers.applySpecialNodeParameters(loaded);
 			loadedNodes[type] = { sourcePath, type: loaded };
 			return loadedNodes[type];
 		}
-		throw new Error(`${RESPONSE_ERROR_MESSAGES.NO_NODE}: ${type}`);
+
+		throw new UnrecognizedNodeTypeError(type);
 	}
 
-	private applySpecialNodeParameters(nodeType: INodeType) {
-		const applyParameters = NodeHelpers.getSpecialNodeParameters(nodeType);
-		if (applyParameters.length) {
-			nodeType.description.properties.unshift(...applyParameters);
-		}
+	async getNodeTranslationPath({
+		nodeSourcePath,
+		longNodeType,
+		locale,
+	}: {
+		nodeSourcePath: string;
+		longNodeType: string;
+		locale: string;
+	}) {
+		const nodeDir = dirname(nodeSourcePath);
+		const maxVersion = await this.getMaxVersion(nodeDir);
+		const nodeType = longNodeType.replace('n8n-nodes-base.', '');
+
+		return maxVersion
+			? join(nodeDir, `v${maxVersion}`, 'translations', locale, `${nodeType}.json`)
+			: join(nodeDir, 'translations', locale, `${nodeType}.json`);
 	}
 
-	private get loadedNodes() {
-		return this.nodesAndCredentials.loaded.nodes;
+	private async getMaxVersion(dir: string) {
+		const entries = await readdir(dir, { withFileTypes: true });
+
+		const dirnames = entries.reduce<string[]>((acc, cur) => {
+			if (this.isVersionedDirname(cur)) acc.push(cur.name);
+			return acc;
+		}, []);
+
+		if (!dirnames.length) return null;
+
+		return Math.max(...dirnames.map((d) => parseInt(d.charAt(1), 10)));
 	}
 
-	private get knownNodes() {
-		return this.nodesAndCredentials.known.nodes;
+	private isVersionedDirname(dirent: Dirent) {
+		if (!dirent.isDirectory()) return false;
+
+		const ALLOWED_VERSIONED_DIRNAME_LENGTH = [2, 3]; // e.g. v1, v10
+
+		return (
+			ALLOWED_VERSIONED_DIRNAME_LENGTH.includes(dirent.name.length) &&
+			dirent.name.toLowerCase().startsWith('v')
+		);
 	}
-}
-
-let nodeTypesInstance: NodeTypesClass | undefined;
-
-// eslint-disable-next-line @typescript-eslint/naming-convention
-export function NodeTypes(nodesAndCredentials?: INodesAndCredentials): NodeTypesClass {
-	if (!nodeTypesInstance) {
-		if (nodesAndCredentials) {
-			nodeTypesInstance = new NodeTypesClass(nodesAndCredentials);
-		} else {
-			throw new Error('NodeTypes not initialized yet');
-		}
-	}
-
-	return nodeTypesInstance;
 }

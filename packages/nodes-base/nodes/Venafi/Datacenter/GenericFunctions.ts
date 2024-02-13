@@ -1,25 +1,23 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import { ApplicationError } from 'n8n-workflow';
+import type {
+	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
 	IPollFunctions,
-} from 'n8n-core';
+} from 'n8n-workflow';
 
-import { IDataObject } from 'n8n-workflow';
-
-import { get } from 'lodash';
+import get from 'lodash/get';
 
 export async function venafiApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: string,
 	resource: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = (await this.getCredentials('venafiTlsProtectDatacenterApi')) as IDataObject;
 
@@ -48,12 +46,15 @@ export async function venafiApiRequest(
 			options,
 		);
 	} catch (error) {
-		if (error.response && error.response.body && error.response.body.error) {
+		if (error.response?.body?.error) {
 			let errors = error.response.body.error.errors;
 
 			errors = errors.map((e: IDataObject) => e.message);
 			// Try to return the error prettier
-			throw new Error(`Venafi error response [${error.statusCode}]: ${errors.join('|')}`);
+			throw new ApplicationError(
+				`Venafi error response [${error.statusCode}]: ${errors.join('|')}`,
+				{ level: 'warning' },
+			);
 		}
 		throw error;
 	}
@@ -66,7 +67,6 @@ export async function venafiApiRequestAllItems(
 	endpoint: string,
 	body: IDataObject = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -75,8 +75,8 @@ export async function venafiApiRequestAllItems(
 	do {
 		responseData = await venafiApiRequest.call(this, method, endpoint, body, query);
 		endpoint = get(responseData, '_links[0].Next');
-		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (responseData._links && responseData._links[0].Next);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+	} while (responseData._links?.[0].Next);
 
 	return returnData;
 }

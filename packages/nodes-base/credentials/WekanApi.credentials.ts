@@ -1,4 +1,4 @@
-import {
+import type {
 	IAuthenticateGeneric,
 	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
@@ -9,8 +9,11 @@ import {
 
 export class WekanApi implements ICredentialType {
 	name = 'wekanApi';
+
 	displayName = 'Wekan API';
+
 	documentationUrl = 'wekan';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Username',
@@ -38,6 +41,7 @@ export class WekanApi implements ICredentialType {
 			displayName: 'Session Token',
 			name: 'token',
 			type: 'hidden',
+
 			typeOptions: {
 				expirable: true,
 			},

@@ -1,23 +1,32 @@
 <template>
 	<span :class="$style.container" data-test-id="save-button">
-		<span :class="$style.saved" v-if="saved">{{ $locale.baseText('saveButton.saved') }}</span>
-		<n8n-button
+		<span v-if="saved" :class="$style.saved">{{ $locale.baseText('saveButton.saved') }}</span>
+		<KeyboardShortcutTooltip
 			v-else
-			:label="saveButtonLabel"
-			:loading="isSaving"
-			:disabled="disabled"
-			:class="$style.button"
-			:type="type"
-			@click="$emit('click')"
-		/>
+			:label="$locale.baseText('saveButton.hint')"
+			:shortcut="{ keys: ['s'], metaKey: true }"
+			placement="bottom"
+		>
+			<n8n-button
+				:label="saveButtonLabel"
+				:loading="isSaving"
+				:disabled="disabled"
+				:class="$style.button"
+				:type="type"
+			/>
+		</KeyboardShortcutTooltip>
 	</span>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
+import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 
-export default Vue.extend({
-	name: "SaveButton",
+export default defineComponent({
+	name: 'SaveButton',
+	components: {
+		KeyboardShortcutTooltip,
+	},
 	props: {
 		saved: {
 			type: Boolean,
@@ -70,6 +79,7 @@ export default Vue.extend({
 	font-weight: 600;
 	line-height: 12px;
 	text-align: center;
-	padding: var(--spacing-2xs) var(--spacing-xs);
+	padding: var(--spacing-2xs) var(--spacing-2xs);
+	min-width: 53px;
 }
 </style>

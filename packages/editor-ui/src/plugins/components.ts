@@ -1,80 +1,33 @@
-// @ts-nocheck
+import type { Plugin } from 'vue';
 
-import Vue from "vue";
-import Fragment from 'vue-fragment';
+import 'regenerator-runtime/runtime';
 
-import "regenerator-runtime/runtime";
+import ElementPlus, { ElLoading, ElMessageBox } from 'element-plus';
+import { N8nPlugin } from 'n8n-design-system';
+import { useMessage } from '@/composables/useMessage';
+import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
+import RBAC from '@/components/RBAC.vue';
+import ParameterInputList from '@/components/ParameterInputList.vue';
 
-import VueAgile from 'vue-agile';
+export const GlobalComponentsPlugin: Plugin<{}> = {
+	install(app) {
+		const messageService = useMessage();
 
-import {
-	Loading,
-	MessageBox,
-	Message,
-	Notification,
-	designSystemComponents,
-	elementUIComponents,
-} from 'n8n-design-system';
-import { ElMessageBoxOptions } from "element-ui/types/message-box";
-import EnterpriseEdition from "@/components/EnterpriseEdition.ee.vue";
+		app.component('EnterpriseEdition', EnterpriseEdition);
+		app.component('RBAC', RBAC);
+		app.component('ParameterInputList', ParameterInputList);
 
-Vue.use(Fragment.Plugin);
+		app.use(ElementPlus);
+		app.use(N8nPlugin);
 
-Vue.use(elementUIComponents);
-Vue.use(designSystemComponents);
+		// app.use(ElLoading);
+		// app.use(ElNotification);
 
-Vue.component('enterprise-edition', EnterpriseEdition);
-
-Vue.use(VueAgile);
-Vue.use(Loading.directive);
-
-Vue.prototype.$loading = Loading.service;
-Vue.prototype.$msgbox = MessageBox;
-
-Vue.prototype.$alert = async (message: string, configOrTitle: string | ElMessageBoxOptions | undefined, config: ElMessageBoxOptions | undefined) => {
-	let temp = config || (typeof configOrTitle === 'object' ? configOrTitle : {});
-	temp = {
-		...temp,
-		cancelButtonClass: 'btn--cancel',
-		confirmButtonClass: 'btn--confirm',
-	};
-
-	if (typeof configOrTitle === 'string') {
-		return await MessageBox.alert(message, configOrTitle, temp);
-	}
-	return await MessageBox.alert(message, temp);
+		app.config.globalProperties.$loading = ElLoading.service;
+		app.config.globalProperties.$msgbox = ElMessageBox;
+		app.config.globalProperties.$alert = messageService.alert;
+		app.config.globalProperties.$confirm = messageService.confirm;
+		app.config.globalProperties.$prompt = messageService.prompt;
+		app.config.globalProperties.$message = messageService.message;
+	},
 };
-
-Vue.prototype.$confirm = async (message: string, configOrTitle: string | ElMessageBoxOptions | undefined, config: ElMessageBoxOptions | undefined) => {
-	let temp = config || (typeof configOrTitle === 'object' ? configOrTitle : {});
-	temp = {
-		...temp,
-		cancelButtonClass: 'btn--cancel',
-		confirmButtonClass: 'btn--confirm',
-		distinguishCancelAndClose: true,
-		showClose: config.showClose || false,
-		closeOnClickModal: false,
-	};
-
-	if (typeof configOrTitle === 'string') {
-		return await MessageBox.confirm(message, configOrTitle, temp);
-	}
-	return await MessageBox.confirm(message, temp);
-};
-
-Vue.prototype.$prompt = async (message: string, configOrTitle: string | ElMessageBoxOptions | undefined, config: ElMessageBoxOptions | undefined) => {
-	let temp = config || (typeof configOrTitle === 'object' ? configOrTitle : {});
-	temp = {
-		...temp,
-		cancelButtonClass: 'btn--cancel',
-		confirmButtonClass: 'btn--confirm',
-	};
-
-	if (typeof configOrTitle === 'string') {
-		return await MessageBox.prompt(message, configOrTitle, temp);
-	}
-	return await MessageBox.prompt(message, temp);
-};
-
-Vue.prototype.$notify = Notification;
-Vue.prototype.$message = Message;

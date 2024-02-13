@@ -2,7 +2,7 @@
 	<Modal
 		width="700px"
 		:title="$locale.baseText('importCurlModal.title')"
-		:eventBus="modalBus"
+		:event-bus="modalBus"
 		:name="IMPORT_CURL_MODAL_KEY"
 		:center="true"
 	>
@@ -10,13 +10,13 @@
 			<div :class="$style.container">
 				<n8n-input-label :label="$locale.baseText('importCurlModal.input.label')" color="text-dark">
 					<n8n-input
-						:value="curlCommand"
+						ref="input"
+						:model-value="curlCommand"
 						type="textarea"
 						:rows="5"
 						:placeholder="$locale.baseText('importCurlModal.input.placeholder')"
-						@input="onInput"
+						@update:modelValue="onInput"
 						@focus="$event.target.select()"
-						ref="input"
 					/>
 				</n8n-input-label>
 			</div>
@@ -29,9 +29,9 @@
 				/>
 				<div>
 					<n8n-button
-						@click="importCurlCommand"
 						float="right"
 						:label="$locale.baseText('importCurlModal.button.label')"
+						@click="importCurlCommand"
 					/>
 				</div>
 			</div>
@@ -40,44 +40,52 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import Modal from './Modal.vue';
+import Modal from '@/components/Modal.vue';
 import {
 	IMPORT_CURL_MODAL_KEY,
 	CURL_IMPORT_NOT_SUPPORTED_PROTOCOLS,
 	CURL_IMPORT_NODES_PROTOCOLS,
-} from '../constants';
-import { showMessage } from '@/mixins/showMessage';
-import mixins from 'vue-typed-mixins';
-import { INodeUi } from '@/Interface';
+} from '@/constants';
+import { useToast } from '@/composables/useToast';
+import { defineComponent } from 'vue';
+import type { INodeUi } from '@/Interface';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useNDVStore } from '@/stores/ndv';
+import { useUIStore } from '@/stores/ui.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { createEventBus } from 'n8n-design-system/utils';
 
-export default mixins(showMessage).extend({
+export default defineComponent({
 	name: 'ImportCurlModal',
 	components: {
 		Modal,
+	},
+	setup() {
+		return {
+			...useToast(),
+		};
 	},
 	data() {
 		return {
 			IMPORT_CURL_MODAL_KEY,
 			curlCommand: '',
-			modalBus: new Vue(),
+			modalBus: createEventBus(),
 		};
 	},
 	computed: {
-		...mapStores(
-			useNDVStore,
-			useUIStore,
-		),
+		...mapStores(useNDVStore, useUIStore),
 		node(): INodeUi | null {
 			return this.ndvStore.activeNode;
 		},
 	},
+	mounted() {
+		this.curlCommand = this.uiStore.getCurlCommand || '';
+		setTimeout(() => {
+			(this.$refs.input as HTMLTextAreaElement).focus();
+		});
+	},
 	methods: {
 		closeDialog(): void {
-			this.modalBus.$emit('close');
+			this.modalBus.emit('close');
 		},
 		onInput(value: string): void {
 			this.curlCommand = value;
@@ -125,7 +133,7 @@ export default mixins(showMessage).extend({
 			}
 		},
 		showProtocolErrorWithSupportedNode(protocol: string, node: string): void {
-			this.$showToast({
+			this.showToast({
 				title: this.$locale.baseText('importParameter.showError.invalidProtocol1.title', {
 					interpolate: {
 						node,
@@ -141,7 +149,7 @@ export default mixins(showMessage).extend({
 			});
 		},
 		showProtocolError(protocol: string): void {
-			this.$showToast({
+			this.showToast({
 				title: this.$locale.baseText('importParameter.showError.invalidProtocol2.title'),
 				message: this.$locale.baseText('importParameter.showError.invalidProtocol.message', {
 					interpolate: {
@@ -153,7 +161,7 @@ export default mixins(showMessage).extend({
 			});
 		},
 		showInvalidcURLCommandError(): void {
-			this.$showToast({
+			this.showToast({
 				title: this.$locale.baseText('importParameter.showError.invalidCurlCommand.title'),
 				message: this.$locale.baseText('importParameter.showError.invalidCurlCommand.message'),
 				type: 'error',
@@ -173,12 +181,6 @@ export default mixins(showMessage).extend({
 				protocol: data.protocol,
 			});
 		},
-	},
-	mounted() {
-		this.curlCommand = this.uiStore.getCurlCommand || '';
-		setTimeout(() => {
-			(this.$refs.input as HTMLTextAreaElement).focus();
-		});
 	},
 });
 </script>

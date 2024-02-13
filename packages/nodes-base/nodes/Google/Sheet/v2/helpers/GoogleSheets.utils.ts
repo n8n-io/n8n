@@ -1,28 +1,34 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeListSearchItems,
 	INodePropertyOptions,
-	NodeOperationError,
+	INode,
 } from 'n8n-workflow';
-import { GoogleSheet } from './GoogleSheet';
-import {
+import { NodeOperationError } from 'n8n-workflow';
+import type { GoogleSheet } from './GoogleSheet';
+import type {
 	RangeDetectionOptions,
 	ResourceLocator,
-	ResourceLocatorUiNames,
-	ROW_NUMBER,
 	SheetRangeData,
 	ValueInputOption,
 } from './GoogleSheets.types';
+import { ResourceLocatorUiNames, ROW_NUMBER } from './GoogleSheets.types';
 
 export const untilSheetSelected = { sheetName: [''] };
 
 // Used to extract the ID from the URL
-export function getSpreadsheetId(documentIdType: ResourceLocator, value: string): string {
+export function getSpreadsheetId(
+	node: INode,
+	documentIdType: ResourceLocator,
+	value: string,
+): string {
 	if (!value) {
-		throw new Error(
+		throw new NodeOperationError(
+			node,
 			`Can not get sheet '${ResourceLocatorUiNames[documentIdType]}' with a value of '${value}'`,
+			{ level: 'warning' },
 		);
 	}
 	if (documentIdType === 'url') {
@@ -37,6 +43,11 @@ export function getSpreadsheetId(documentIdType: ResourceLocator, value: string)
 	}
 	// If it is byID or byList we can just return
 	return value;
+}
+
+export function getSheetId(value: string): number {
+	if (value === 'gid=0') return 0;
+	return parseInt(value);
 }
 
 // Convert number to Sheets / Excel column name
@@ -102,7 +113,9 @@ export function trimToFirstEmptyRow(data: SheetRangeData, includesRowNumber = tr
 export function removeEmptyRows(data: SheetRangeData, includesRowNumber = true) {
 	const baseLength = includesRowNumber ? 1 : 0;
 	const notEmptyRows = data.filter((row) =>
-		row.slice(baseLength).some((cell) => cell || typeof cell === 'number'),
+		row
+			.slice(baseLength)
+			.some((cell) => cell || typeof cell === 'number' || typeof cell === 'boolean'),
 	);
 	if (includesRowNumber) {
 		notEmptyRows[0][0] = ROW_NUMBER;
@@ -129,16 +142,23 @@ export function trimLeadingEmptyRows(
 }
 
 export function removeEmptyColumns(data: SheetRangeData) {
+	if (!data || data.length === 0) return [];
 	const returnData: SheetRangeData = [];
 	const longestRow = data.reduce((a, b) => (a.length > b.length ? a : b), []).length;
 	for (let col = 0; col < longestRow; col++) {
 		const column = data.map((row) => row[col]);
+		if (column[0] !== '') {
+			returnData.push(column);
+			continue;
+		}
 		const hasData = column.slice(1).some((cell) => cell || typeof cell === 'number');
 		if (hasData) {
 			returnData.push(column);
 		}
 	}
-	return returnData[0].map((_, i) => returnData.map((row) => row[i] || ''));
+	return (returnData[0] || []).map((_, i) =>
+		returnData.map((row) => (row[i] === undefined ? '' : row[i])),
+	);
 }
 
 export function prepareSheetData(
@@ -176,28 +196,38 @@ export function prepareSheetData(
 
 export function getRangeString(sheetName: string, options: RangeDetectionOptions) {
 	if (options.rangeDefinition === 'specifyRangeA1') {
-		return options.range ? `${sheetName}!${options.range as string}` : sheetName;
+		return options.range ? `${sheetName}!${options.range}` : sheetName;
 	}
 	return sheetName;
 }
 
 export async function getExistingSheetNames(sheet: GoogleSheet) {
 	const { sheets } = await sheet.spreadsheetGetSheets();
-	return ((sheets as IDataObject[]) || []).map(
-		(sheet) => ((sheet.properties as IDataObject) || {}).title,
-	);
+	return ((sheets as IDataObject[]) || []).map((entry) => (entry.properties as IDataObject)?.title);
 }
 
 export function mapFields(this: IExecuteFunctions, inputSize: number) {
 	const returnData: IDataObject[] = [];
 
 	for (let i = 0; i < inputSize; i++) {
-		const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as IDataObject[];
-		let dataToSend: IDataObject = {};
-		for (const field of fields) {
-			dataToSend = { ...dataToSend, [field.fieldId as string]: field.fieldValue };
+		const nodeVersion = this.getNode().typeVersion;
+		if (nodeVersion < 4) {
+			const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as IDataObject[];
+			let dataToSend: IDataObject = {};
+			for (const field of fields) {
+				dataToSend = { ...dataToSend, [field.fieldId as string]: field.fieldValue };
+			}
+			returnData.push(dataToSend);
+		} else {
+			const mappingValues = this.getNodeParameter('columns.value', i) as IDataObject;
+			if (Object.keys(mappingValues).length === 0) {
+				throw new NodeOperationError(
+					this.getNode(),
+					"At least one value has to be added under 'Values to Send'",
+				);
+			}
+			returnData.push(mappingValues);
 		}
-		returnData.push(dataToSend);
 	}
 
 	return returnData;
@@ -212,7 +242,7 @@ export async function autoMapInputData(
 ) {
 	const returnData: IDataObject[] = [];
 	const [sheetName, _sheetRange] = sheetNameWithRange.split('!');
-	const locationDefine = ((options.locationDefine as IDataObject) || {}).values as IDataObject;
+	const locationDefine = (options.locationDefine as IDataObject)?.values as IDataObject;
 	const handlingExtraData = (options.handlingExtraData as string) || 'insertInNewColumn';
 
 	let headerRow = 1;
@@ -241,7 +271,7 @@ export async function autoMapInputData(
 
 		items.forEach((item) => {
 			Object.keys(item.json).forEach((key) => {
-				if (key !== ROW_NUMBER && columnNames.includes(key) === false) {
+				if (key !== ROW_NUMBER && !columnNames.includes(key)) {
 					newColumns.add(key);
 				}
 			});
@@ -267,8 +297,8 @@ export async function autoMapInputData(
 	if (handlingExtraData === 'error') {
 		items.forEach((item, itemIndex) => {
 			Object.keys(item.json).forEach((key) => {
-				if (columnNames.includes(key) === false) {
-					throw new NodeOperationError(this.getNode(), `Unexpected fields in node input`, {
+				if (!columnNames.includes(key)) {
+					throw new NodeOperationError(this.getNode(), 'Unexpected fields in node input', {
 						itemIndex,
 						description: `The input field '${key}' doesn't match any column in the Sheet. You can ignore this by changing the 'Handling extra data' field, which you can find under 'Options'.`,
 					});
@@ -284,8 +314,8 @@ export async function autoMapInputData(
 export function sortLoadOptions(data: INodePropertyOptions[] | INodeListSearchItems[]) {
 	const returnData = [...data];
 	returnData.sort((a, b) => {
-		const aName = (a.name as string).toLowerCase();
-		const bName = (b.name as string).toLowerCase();
+		const aName = a.name.toLowerCase();
+		const bName = b.name.toLowerCase();
 		if (aName < bName) {
 			return -1;
 		}
@@ -296,4 +326,11 @@ export function sortLoadOptions(data: INodePropertyOptions[] | INodeListSearchIt
 	});
 
 	return returnData;
+}
+
+export function cellFormatDefault(nodeVersion: number) {
+	if (nodeVersion < 4.1) {
+		return 'RAW';
+	}
+	return 'USER_ENTERED';
 }

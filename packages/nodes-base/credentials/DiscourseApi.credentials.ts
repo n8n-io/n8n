@@ -1,4 +1,4 @@
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -8,8 +8,11 @@ import {
 
 export class DiscourseApi implements ICredentialType {
 	name = 'discourseApi';
+
 	displayName = 'Discourse API';
+
 	documentationUrl = 'discourse';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'URL',
@@ -54,7 +57,7 @@ export class DiscourseApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials.url}}',
-			url: '/admin/groups.json',
+			url: '/groups.json',
 			method: 'GET',
 		},
 	};

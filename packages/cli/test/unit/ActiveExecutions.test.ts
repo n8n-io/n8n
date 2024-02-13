@@ -1,35 +1,28 @@
-import * as Db from '@/Db';
 import { ActiveExecutions } from '@/ActiveExecutions';
-import { mocked } from 'jest-mock';
 import PCancelable from 'p-cancelable';
 import { v4 as uuid } from 'uuid';
-import {
-	createDeferredPromise,
-	IDeferredPromise,
-	IExecuteResponsePromiseData,
-	IRun,
-} from 'n8n-workflow';
-import { IWorkflowExecutionDataProcess } from '@/Interfaces';
+import type { IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
+import { createDeferredPromise } from 'n8n-workflow';
+import type { IWorkflowExecutionDataProcess } from '@/Interfaces';
+import type { ExecutionRepository } from '@db/repositories/execution.repository';
+import { mock } from 'jest-mock-extended';
 
 const FAKE_EXECUTION_ID = '15';
 const FAKE_SECOND_EXECUTION_ID = '20';
 
-jest.mock('@/Db', () => {
-	return {
-		collections: {
-			Execution: {
-				save: jest.fn(async () => Promise.resolve({ id: FAKE_EXECUTION_ID })),
-				update: jest.fn(),
-			},
-		},
-	};
+const updateExistingExecution = jest.fn();
+const createNewExecution = jest.fn(async () => FAKE_EXECUTION_ID);
+
+const executionRepository = mock<ExecutionRepository>({
+	updateExistingExecution,
+	createNewExecution,
 });
 
 describe('ActiveExecutions', () => {
 	let activeExecutions: ActiveExecutions;
 
 	beforeEach(() => {
-		activeExecutions = new ActiveExecutions();
+		activeExecutions = new ActiveExecutions(mock(), executionRepository);
 	});
 
 	afterEach(() => {
@@ -46,22 +39,18 @@ describe('ActiveExecutions', () => {
 
 		expect(executionId).toBe(FAKE_EXECUTION_ID);
 		expect(activeExecutions.getActiveExecutions().length).toBe(1);
-		expect(mocked(Db.collections.Execution.save)).toHaveBeenCalledTimes(1);
-		expect(mocked(Db.collections.Execution.update)).toHaveBeenCalledTimes(0);
+		expect(createNewExecution).toHaveBeenCalledTimes(1);
+		expect(updateExistingExecution).toHaveBeenCalledTimes(0);
 	});
 
 	test('Should update execution if add is called with execution ID', async () => {
 		const newExecution = mockExecutionData();
-		const executionId = await activeExecutions.add(
-			newExecution,
-			undefined,
-			FAKE_SECOND_EXECUTION_ID,
-		);
+		const executionId = await activeExecutions.add(newExecution, FAKE_SECOND_EXECUTION_ID);
 
 		expect(executionId).toBe(FAKE_SECOND_EXECUTION_ID);
 		expect(activeExecutions.getActiveExecutions().length).toBe(1);
-		expect(mocked(Db.collections.Execution.save)).toHaveBeenCalledTimes(0);
-		expect(mocked(Db.collections.Execution.update)).toHaveBeenCalledTimes(1);
+		expect(createNewExecution).toHaveBeenCalledTimes(0);
+		expect(updateExistingExecution).toHaveBeenCalledTimes(1);
 	});
 
 	test('Should fail attaching execution to invalid executionId', async () => {
@@ -74,7 +63,7 @@ describe('ActiveExecutions', () => {
 
 	test('Should successfully attach execution to valid executionId', async () => {
 		const newExecution = mockExecutionData();
-		await activeExecutions.add(newExecution, undefined, FAKE_EXECUTION_ID);
+		await activeExecutions.add(newExecution, FAKE_EXECUTION_ID);
 		const deferredPromise = mockCancelablePromise();
 
 		expect(() =>
@@ -84,13 +73,13 @@ describe('ActiveExecutions', () => {
 
 	test('Should attach and resolve response promise to existing execution', async () => {
 		const newExecution = mockExecutionData();
-		await activeExecutions.add(newExecution, undefined, FAKE_EXECUTION_ID);
+		await activeExecutions.add(newExecution, FAKE_EXECUTION_ID);
 		const deferredPromise = await mockDeferredPromise();
 		activeExecutions.attachResponsePromise(FAKE_EXECUTION_ID, deferredPromise);
 		const fakeResponse = { data: { resultData: { runData: {} } } };
 		activeExecutions.resolveResponsePromise(FAKE_EXECUTION_ID, fakeResponse);
 
-		expect(deferredPromise.promise()).resolves.toEqual(fakeResponse);
+		await expect(deferredPromise.promise()).resolves.toEqual(fakeResponse);
 	});
 
 	test('Should remove an existing execution', async () => {
@@ -112,11 +101,11 @@ describe('ActiveExecutions', () => {
 		const fakeOutput = mockFullRunData();
 		activeExecutions.remove(executionId, fakeOutput);
 
-		expect(postExecutePromise).resolves.toEqual(fakeOutput);
+		await expect(postExecutePromise).resolves.toEqual(fakeOutput);
 	});
 
 	test('Should throw error when trying to create a promise with invalid execution', async () => {
-		expect(activeExecutions.getPostExecutePromise(FAKE_EXECUTION_ID)).rejects.toThrow();
+		await expect(activeExecutions.getPostExecutePromise(FAKE_EXECUTION_ID)).rejects.toThrow();
 	});
 
 	test('Should call function to cancel execution when asked to stop', async () => {
@@ -126,7 +115,7 @@ describe('ActiveExecutions', () => {
 		const cancellablePromise = mockCancelablePromise();
 		cancellablePromise.cancel = cancelExecution;
 		activeExecutions.attachWorkflowExecution(executionId, cancellablePromise);
-		activeExecutions.stopExecution(executionId);
+		void activeExecutions.stopExecution(executionId);
 
 		expect(cancelExecution).toHaveBeenCalledTimes(1);
 	});
@@ -136,6 +125,7 @@ function mockExecutionData(): IWorkflowExecutionDataProcess {
 	return {
 		executionMode: 'manual',
 		workflowData: {
+			id: '123',
 			name: 'Test workflow 1',
 			active: false,
 			createdAt: new Date(),
@@ -156,15 +146,11 @@ function mockFullRunData(): IRun {
 		},
 		mode: 'manual',
 		startedAt: new Date(),
+		status: 'new',
 	};
 }
 
-function mockCancelablePromise(): PCancelable<IRun> {
-	return new PCancelable(async (resolve) => {
-		resolve();
-	});
-}
-
-function mockDeferredPromise(): Promise<IDeferredPromise<IExecuteResponsePromiseData>> {
-	return createDeferredPromise<IExecuteResponsePromiseData>();
-}
+// eslint-disable-next-line @typescript-eslint/promise-function-async
+const mockCancelablePromise = () => new PCancelable<IRun>((resolve) => resolve());
+// eslint-disable-next-line @typescript-eslint/promise-function-async
+const mockDeferredPromise = () => createDeferredPromise<IExecuteResponsePromiseData>();

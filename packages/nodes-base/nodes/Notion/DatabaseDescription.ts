@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const databaseOperations: INodeProperties[] = [
 	{
@@ -8,8 +8,10 @@ export const databaseOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				version: [2],
 				resource: ['database'],
+			},
+			hide: {
+				'@version': [1],
 			},
 		},
 		options: [
@@ -41,7 +43,7 @@ export const databaseOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				version: [1],
+				'@version': [1],
 				resource: ['database'],
 			},
 		},
@@ -142,19 +144,6 @@ export const databaseFields: INodeProperties[] = [
 	/*                                database:getAll                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName:
-			'In Notion, make sure you <a href="https://www.notion.so/help/add-and-manage-connections-with-the-api#add-connections-to-pages" target="_blank">share your database with your integration</a> . Otherwise it won\'t be accessible, or listed here.',
-		name: 'notionNotice',
-		type: 'notice',
-		default: '',
-		displayOptions: {
-			show: {
-				resource: ['database'],
-				operation: ['getAll'],
-			},
-		},
-	},
-	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
@@ -191,9 +180,11 @@ export const databaseFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				version: [2],
 				resource: ['database'],
 				operation: ['getAll', 'get'],
+			},
+			hide: {
+				'@version': [1],
 			},
 		},
 		default: true,

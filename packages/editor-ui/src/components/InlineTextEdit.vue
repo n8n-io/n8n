@@ -1,43 +1,72 @@
 <template>
-	<span @keydown.stop class="inline-edit" >
-		<span v-if="isEditEnabled">
+	<span class="inline-edit" @keydown.stop>
+		<span v-if="isEditEnabled && !isDisabled">
 			<ExpandableInputEdit
 				:placeholder="placeholder"
-				:value="newValue"
+				:model-value="newValue"
 				:maxlength="maxLength"
 				:autofocus="true"
-				:eventBus="inputBus"
-				@input="onInput"
+				:event-bus="inputBus"
+				@update:modelValue="onInput"
 				@esc="onEscape"
 				@blur="onBlur"
 				@enter="submit"
 			/>
 		</span>
 
-		<span @click="onClick" class="preview"  v-else>
-			<ExpandableInputPreview
-				:value="previewValue || value"
-			/>
+		<span v-else class="preview" @click="onClick">
+			<ExpandableInputPreview :model-value="previewValue || modelValue" />
 		</span>
 	</span>
 </template>
 
 <script lang="ts">
-import Vue from "vue";
-import ExpandableInputEdit from "@/components/ExpandableInput/ExpandableInputEdit.vue";
-import ExpandableInputPreview from "@/components/ExpandableInput/ExpandableInputPreview.vue";
+import { defineComponent } from 'vue';
+import ExpandableInputEdit from '@/components/ExpandableInput/ExpandableInputEdit.vue';
+import ExpandableInputPreview from '@/components/ExpandableInput/ExpandableInputPreview.vue';
+import { createEventBus } from 'n8n-design-system/utils';
 
-export default Vue.extend({
-	name: "InlineTextEdit",
+export default defineComponent({
+	name: 'InlineTextEdit',
 	components: { ExpandableInputEdit, ExpandableInputPreview },
-	props: ['isEditEnabled', 'value', 'placeholder', 'maxLength', 'previewValue'],
+	props: {
+		isEditEnabled: {
+			type: Boolean,
+			default: false,
+		},
+		modelValue: {
+			type: String,
+			default: '',
+		},
+		placeholder: {
+			type: String,
+			default: '',
+		},
+		maxLength: {
+			type: Number,
+			default: 0,
+		},
+		previewValue: {
+			type: String,
+			default: '',
+		},
+		disabled: {
+			type: Boolean,
+			default: false,
+		},
+	},
 	data() {
 		return {
+			isDisabled: this.disabled,
 			newValue: '',
 			escPressed: false,
-			disabled: false,
-			inputBus: new Vue(),
+			inputBus: createEventBus(),
 		};
+	},
+	watch: {
+		disabled(value) {
+			this.isDisabled = value;
+		},
 	},
 	methods: {
 		onInput(newValue: string) {
@@ -52,7 +81,7 @@ export default Vue.extend({
 				return;
 			}
 
-			this.$data.newValue = this.$props.value;
+			this.newValue = this.modelValue;
 			this.$emit('toggle');
 		},
 		onBlur() {
@@ -60,10 +89,10 @@ export default Vue.extend({
 				return;
 			}
 
-			if (!this.$data.escPressed) {
+			if (!this.escPressed) {
 				this.submit();
 			}
-			this.$data.escPressed = false;
+			this.escPressed = false;
 		},
 		submit() {
 			if (this.disabled) {
@@ -71,22 +100,22 @@ export default Vue.extend({
 			}
 
 			const onSubmit = (updated: boolean) => {
-				this.$data.disabled = false;
+				this.isDisabled = false;
 
 				if (!updated) {
-					this.$data.inputBus.$emit('focus');
+					this.inputBus.emit('focus');
 				}
 			};
 
-			this.$data.disabled = true;
-			this.$emit('submit', this.newValue, onSubmit);
+			this.isDisabled = true;
+			this.$emit('submit', { name: this.newValue, onSubmit });
 		},
 		onEscape() {
 			if (this.disabled) {
 				return;
 			}
 
-			this.$data.escPressed = true;
+			this.escPressed = true;
 			this.$emit('toggle');
 		},
 	},

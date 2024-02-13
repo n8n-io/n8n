@@ -1,23 +1,25 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type {
+	IExecuteFunctions,
+	IHookFunctions,
+	ILoadOptionsFunctions,
+	IDataObject,
+} from 'n8n-workflow';
+import { ApplicationError, jsonParse } from 'n8n-workflow';
 
-import { IDataObject, jsonParse } from 'n8n-workflow';
-
-import moment from 'moment';
+import moment from 'moment-timezone';
 import { Eq } from './QueryFunctions';
 
 export async function theHiveApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
-	body: any = {},
+	body: IDataObject = {},
 	query: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
-): Promise<any> {
+) {
 	const credentials = await this.getCredentials('theHiveApi');
 
 	let options: OptionsWithUri = {
@@ -25,7 +27,7 @@ export async function theHiveApiRequest(
 		qs: query,
 		uri: uri || `${credentials.url}/api${resource}`,
 		body,
-		rejectUnauthorized: !credentials.allowUnauthorizedCerts as boolean,
+		rejectUnauthorized: !credentials.allowUnauthorizedCerts,
 		json: true,
 	};
 
@@ -40,7 +42,7 @@ export async function theHiveApiRequest(
 	if (Object.keys(query).length === 0) {
 		delete options.qs;
 	}
-	return this.helpers.requestWithAuthentication.call(this, 'theHiveApi', options);
+	return await this.helpers.requestWithAuthentication.call(this, 'theHiveApi', options);
 }
 
 // Helpers functions
@@ -77,7 +79,7 @@ export function prepareOptional(optionals: IDataObject): IDataObject {
 				try {
 					response[key] = jsonParse(optionals[key] as string);
 				} catch (error) {
-					throw new Error('Invalid JSON for artifacts');
+					throw new ApplicationError('Invalid JSON for artifacts', { level: 'warning' });
 				}
 			} else if (key === 'tags') {
 				response[key] = splitTags(optionals[key] as string);
@@ -95,7 +97,7 @@ export async function prepareCustomFields(
 	jsonParameters = false,
 ): Promise<IDataObject | undefined> {
 	// Check if the additionalFields object contains customFields
-	if (jsonParameters === true) {
+	if (jsonParameters) {
 		let customFieldsJson = additionalFields.customFieldsJson;
 		// Delete from additionalFields as some operations (e.g. alert:update) do not run prepareOptional
 		// which would remove the extra fields
@@ -105,7 +107,7 @@ export async function prepareCustomFields(
 			try {
 				customFieldsJson = jsonParse(customFieldsJson);
 			} catch (error) {
-				throw new Error('Invalid JSON for customFields');
+				throw new ApplicationError('Invalid JSON for customFields', { level: 'warning' });
 			}
 		}
 
@@ -117,7 +119,7 @@ export async function prepareCustomFields(
 
 			return customFields;
 		} else if (customFieldsJson) {
-			throw Error('customFieldsJson value is invalid');
+			throw new ApplicationError('customFieldsJson value is invalid', { level: 'warning' });
 		}
 	} else if (additionalFields.customFieldsUi) {
 		// Get Custom Field Types from TheHive
@@ -132,7 +134,7 @@ export async function prepareCustomFields(
 		const hiveCustomFields =
 			version === 'v1'
 				? requestResult
-				: Object.keys(requestResult).map((key) => requestResult[key]);
+				: Object.keys(requestResult as IDataObject).map((key) => requestResult[key]);
 		// Build reference to type mapping object
 		const referenceTypeMapping = hiveCustomFields.reduce(
 			(acc: IDataObject, curr: IDataObject) => ((acc[curr.reference as string] = curr.type), acc),
@@ -182,9 +184,9 @@ export function prepareSortQuery(sort: string, body: { query: [IDataObject] }) {
 	}
 }
 
-export function prepareRangeQuery(range: string, body: { query: Array<{}> }) {
+export function prepareRangeQuery(range: string, body: { query: IDataObject[] }) {
 	if (range && range !== 'all') {
-		body['query'].push({
+		body.query.push({
 			_name: 'page',
 			from: parseInt(range.split('-')[0], 10),
 			to: parseInt(range.split('-')[1], 10),

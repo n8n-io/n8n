@@ -7,10 +7,10 @@
 			v-for="option in options"
 			:key="option.value"
 			v-bind="option"
-			:active="value === option.value"
+			:active="modelValue === option.value"
 			:size="size"
 			:disabled="disabled || option.disabled"
-			@click="(e) => onClick(option, e)"
+			@click.prevent.stop="onClick(option, $event)"
 		/>
 	</div>
 </template>
@@ -18,15 +18,28 @@
 <script lang="ts">
 import RadioButton from './RadioButton.vue';
 
-import Vue from 'vue';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
-	name: 'n8n-radio-buttons',
+export interface RadioOption {
+	label: string;
+	value: string;
+	disabled?: boolean;
+}
+
+export default defineComponent({
+	name: 'N8nRadioButtons',
+	components: {
+		RadioButton,
+	},
 	props: {
-		value: {
+		modelValue: {
 			type: String,
 		},
-		options: {},
+		options: {
+			type: Array as PropType<RadioOption[]>,
+			default: (): RadioOption[] => [],
+		},
 		size: {
 			type: String,
 		},
@@ -34,15 +47,13 @@ export default Vue.extend({
 			type: Boolean,
 		},
 	},
-	components: {
-		RadioButton,
-	},
+	emits: ['update:modelValue'],
 	methods: {
-		onClick(option: { label: string; value: string; disabled?: boolean }) {
+		onClick(option: { label: string; value: string; disabled?: boolean }, event: MouseEvent) {
 			if (this.disabled || option.disabled) {
 				return;
 			}
-			this.$emit('input', option.value);
+			this.$emit('update:modelValue', option.value, event);
 		},
 	},
 });

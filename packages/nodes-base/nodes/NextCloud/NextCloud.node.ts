@@ -1,18 +1,18 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { IBinaryKeyData, NodeApiError } from 'n8n-workflow';
-
-import {
+import { URLSearchParams } from 'url';
+import type {
+	IBinaryKeyData,
 	IDataObject,
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
+	JsonObject,
 } from 'n8n-workflow';
-
-import { URLSearchParams } from 'url';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { parseString } from 'xml2js';
 
+import { wrapData } from '../../utils/utilities';
 import { nextCloudApiRequest } from './GenericFunctions';
 
 export class NextCloud implements INodeType {
@@ -350,7 +350,7 @@ export class NextCloud implements INodeType {
 					'The file path of the file to download. Has to contain the full path. The path should start with "/".',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'Put Output File in Field',
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',
@@ -361,7 +361,7 @@ export class NextCloud implements INodeType {
 						resource: ['file'],
 					},
 				},
-				description: 'Name of the binary property to which to write the data of the read file',
+				hint: 'The name of the output binary field to put the file in',
 			},
 
 			// ----------------------------------
@@ -384,7 +384,7 @@ export class NextCloud implements INodeType {
 					'The absolute file path of the file to upload. Has to contain the full path. The parent folder has to exist. Existing files get overwritten.',
 			},
 			{
-				displayName: 'Binary Data',
+				displayName: 'Binary File',
 				name: 'binaryDataUpload',
 				type: 'boolean',
 				default: false,
@@ -412,7 +412,7 @@ export class NextCloud implements INodeType {
 				description: 'The text content of the file to upload',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'Input Binary Field',
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',
@@ -425,8 +425,7 @@ export class NextCloud implements INodeType {
 					},
 				},
 				placeholder: '',
-				description:
-					'Name of the binary property which contains the data for the file to be uploaded',
+				hint: 'The name of the input binary field containing the file to be uploaded',
 			},
 
 			// ----------------------------------
@@ -860,7 +859,7 @@ export class NextCloud implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData().slice();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 
 		const authenticationMethod = this.getNodeParameter('authentication', 0);
 		let credentials;
@@ -871,12 +870,12 @@ export class NextCloud implements INodeType {
 			credentials = await this.getCredentials('nextCloudOAuth2Api');
 		}
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let endpoint = '';
 		let requestMethod = '';
-		let responseData: any; // tslint:disable-line:no-any
+		let responseData: any;
 
 		let body: string | Buffer | IDataObject = '';
 		const headers: IDataObject = {};
@@ -901,26 +900,9 @@ export class NextCloud implements INodeType {
 						endpoint = this.getNodeParameter('path', i) as string;
 
 						if (this.getNodeParameter('binaryDataUpload', i) === true) {
-							// Is binary file to upload
-							const item = items[i];
-
-							if (item.binary === undefined) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-									itemIndex: i,
-								});
-							}
-
-							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
-
-							if (item.binary[propertyNameUpload] === undefined) {
-								throw new NodeOperationError(
-									this.getNode(),
-									`No binary data property "${propertyNameUpload}" does not exists on item!`,
-									{ itemIndex: i },
-								);
-							}
-
-							body = await this.helpers.getBinaryDataBuffer(i, propertyNameUpload);
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
+							this.helpers.assertBinaryData(i, binaryPropertyName);
+							body = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 						} else {
 							// Is text file
 							body = this.getNodeParameter('fileContent', i) as string;
@@ -1061,7 +1043,7 @@ export class NextCloud implements INodeType {
 						if (!returnAll) {
 							qs.limit = this.getNodeParameter('limit', i);
 						}
-						endpoint = `ocs/v1.php/cloud/users`;
+						endpoint = 'ocs/v1.php/cloud/users';
 
 						headers['OCS-APIRequest'] = true;
 						headers['Content-Type'] = 'application/x-www-form-urlencoded';
@@ -1076,9 +1058,7 @@ export class NextCloud implements INodeType {
 						const userid = this.getNodeParameter('userId', i) as string;
 						endpoint = `ocs/v1.php/cloud/users/${userid}`;
 
-						body = Object.entries(
-							(this.getNodeParameter('updateFields', i) as IDataObject).field as IDataObject,
-						)
+						body = Object.entries(this.getNodeParameter('updateFields', i).field as IDataObject)
 							.map((entry) => {
 								const [key, value] = entry;
 								return `${key}=${value}`;
@@ -1122,7 +1102,7 @@ export class NextCloud implements INodeType {
 						if (resource === 'file' && operation === 'download') {
 							items[i].json = { error: error.message };
 						} else {
-							returnData.push({ error: error.message });
+							returnData.push({ json: { error: error.message }, pairedItem: { item: i } });
 						}
 						continue;
 					}
@@ -1133,6 +1113,7 @@ export class NextCloud implements INodeType {
 				if (resource === 'file' && operation === 'download') {
 					const newItem: INodeExecutionData = {
 						json: items[i].json,
+						pairedItem: { item: i },
 						binary: {},
 					};
 
@@ -1145,22 +1126,26 @@ export class NextCloud implements INodeType {
 
 					items[i] = newItem;
 
-					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 
 					items[i].binary![binaryPropertyName] = await this.helpers.prepareBinaryData(
-						responseData,
+						responseData as Buffer,
 						endpoint,
 					);
 				} else if (['file', 'folder'].includes(resource) && operation === 'share') {
+					// eslint-disable-next-line @typescript-eslint/no-loop-func
 					const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
-						parseString(responseData, { explicitArray: false }, (err, data) => {
+						parseString(responseData as string, { explicitArray: false }, (err, data) => {
 							if (err) {
 								return reject(err);
 							}
 
 							if (data.ocs.meta.status !== 'ok') {
 								return reject(
-									new NodeApiError(this.getNode(), data.ocs.meta.message || data.ocs.meta.status),
+									new NodeApiError(
+										this.getNode(),
+										(data.ocs.meta.message as JsonObject) || (data.ocs.meta.status as JsonObject),
+									),
 								);
 							}
 
@@ -1168,18 +1153,27 @@ export class NextCloud implements INodeType {
 						});
 					});
 
-					returnData.push(jsonResponseData as IDataObject);
+					const executionData = this.helpers.constructExecutionMetaData(
+						wrapData(jsonResponseData),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionData);
 				} else if (resource === 'user') {
 					if (operation !== 'getAll') {
+						// eslint-disable-next-line @typescript-eslint/no-loop-func
 						const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
-							parseString(responseData, { explicitArray: false }, (err, data) => {
+							parseString(responseData as string, { explicitArray: false }, (err, data) => {
 								if (err) {
 									return reject(err);
 								}
 
 								if (data.ocs.meta.status !== 'ok') {
 									return reject(
-										new NodeApiError(this.getNode(), data.ocs.meta.message || data.ocs.meta.status),
+										new NodeApiError(
+											this.getNode(),
+											(data.ocs.meta.message || data.ocs.meta.status) as JsonObject,
+										),
 									);
 								}
 
@@ -1191,16 +1185,24 @@ export class NextCloud implements INodeType {
 							});
 						});
 
-						returnData.push(jsonResponseData as IDataObject);
+						const executionData = this.helpers.constructExecutionMetaData(
+							wrapData(jsonResponseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else {
+						// eslint-disable-next-line @typescript-eslint/no-loop-func
 						const jsonResponseData: IDataObject[] = await new Promise((resolve, reject) => {
-							parseString(responseData, { explicitArray: false }, (err, data) => {
+							parseString(responseData as string, { explicitArray: false }, (err, data) => {
 								if (err) {
 									return reject(err);
 								}
 
 								if (data.ocs.meta.status !== 'ok') {
-									return reject(new NodeApiError(this.getNode(), data.ocs.meta.message));
+									return reject(
+										new NodeApiError(this.getNode(), data.ocs.meta.message as JsonObject),
+									);
 								}
 
 								if (typeof data.ocs.data.users.element === 'string') {
@@ -1212,12 +1214,13 @@ export class NextCloud implements INodeType {
 						});
 
 						jsonResponseData.forEach((value) => {
-							returnData.push({ id: value } as IDataObject);
+							returnData.push({ json: { id: value }, pairedItem: { item: i } });
 						});
 					}
 				} else if (resource === 'folder' && operation === 'list') {
+					// eslint-disable-next-line @typescript-eslint/no-loop-func
 					const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
-						parseString(responseData, { explicitArray: false }, (err, data) => {
+						parseString(responseData as string, { explicitArray: false }, (err, data) => {
 							if (err) {
 								return reject(err);
 							}
@@ -1242,7 +1245,7 @@ export class NextCloud implements INodeType {
 						if (Array.isArray(jsonResponseData['d:multistatus']['d:response'])) {
 							// @ts-ignore
 							for (const item of jsonResponseData['d:multistatus']['d:response']) {
-								if (skippedFirst === false) {
+								if (!skippedFirst) {
 									skippedFirst = true;
 									continue;
 								}
@@ -1272,19 +1275,23 @@ export class NextCloud implements INodeType {
 								// @ts-ignore
 								newItem.eTag = props['d:getetag'].slice(1, -1);
 
-								returnData.push(newItem as IDataObject);
+								returnData.push({ json: newItem, pairedItem: { item: i } });
 							}
 						}
 					}
 				} else {
-					returnData.push(responseData as IDataObject);
+					const executionData = this.helpers.constructExecutionMetaData(wrapData(responseData), {
+						itemData: { item: i },
+					});
+
+					returnData.push(...executionData);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
 					if (resource === 'file' && operation === 'download') {
 						items[i].json = { error: error.message };
 					} else {
-						returnData.push({ error: error.message });
+						returnData.push({ json: { error: error.message }, pairedItem: { item: i } });
 					}
 					continue;
 				}
@@ -1294,10 +1301,10 @@ export class NextCloud implements INodeType {
 
 		if (resource === 'file' && operation === 'download') {
 			// For file downloads the files get attached to the existing items
-			return this.prepareOutputData(items);
+			return [items];
 		} else {
 			// For all other ones does the output get replaced
-			return [this.helpers.returnJsonArray(returnData)];
+			return [returnData];
 		}
 	}
 }

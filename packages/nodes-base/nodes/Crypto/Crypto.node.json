@@ -20,6 +20,6 @@
 	},
 	"alias": ["Encrypt", "SHA", "Hash"],
 	"subcategories": {
-		"Core Nodes": ["Helpers"]
+		"Core Nodes": ["Data Transformation"]
 	}
 }

@@ -1,6 +1,8 @@
-import { IPairedItemData, IRunData, ITaskData } from "n8n-workflow";
-import { IExecutionResponse, TargetItem } from "../Interface";
-import { isNotNull } from "@/utils";
+import type { IPairedItemData, IRunData, ITaskData } from 'n8n-workflow';
+import type { IExecutionResponse, TargetItem } from '@/Interface';
+import { isNotNull } from '@/utils/typeGuards';
+
+export const MAX_ITEM_COUNT_FOR_PAIRING = 1000;
 
 /*
 	Utility functions that provide shared functionalities used to add paired item support to nodes
@@ -10,7 +12,10 @@ export function getPairedItemId(node: string, run: number, output: number, item:
 	return `${node}_r${run}_o${output}_i${item}`;
 }
 
-export function getSourceItems(data: IExecutionResponse, target: TargetItem): TargetItem[] {
+export function getSourceItems(
+	data: Partial<IExecutionResponse>,
+	target: TargetItem,
+): TargetItem[] {
 	if (!data?.data?.resultData?.runData) {
 		return [];
 	}
@@ -23,11 +28,15 @@ export function getSourceItems(data: IExecutionResponse, target: TargetItem): Ta
 	}
 
 	const item = taskData?.data?.main?.[target.outputIndex]?.[target.itemIndex];
-	if (!item || item.pairedItem === undefined) {
+	if (item?.pairedItem === undefined) {
 		return [];
 	}
 
-	const pairedItem: IPairedItemData[] = Array.isArray(item.pairedItem) ? item.pairedItem : (typeof item.pairedItem === 'object' ? [item.pairedItem] : [{item: item.pairedItem}]);
+	const pairedItem: IPairedItemData[] = Array.isArray(item.pairedItem)
+		? item.pairedItem
+		: typeof item.pairedItem === 'object'
+		  ? [item.pairedItem]
+		  : [{ item: item.pairedItem }];
 	const sourceItems = pairedItem.map((item) => {
 		const input = item.input || 0;
 		return {
@@ -41,12 +50,18 @@ export function getSourceItems(data: IExecutionResponse, target: TargetItem): Ta
 	return sourceItems.filter((item): item is TargetItem => isNotNull(item));
 }
 
-function addPairing(paths: {[item: string]: string[][]}, pairedItemId: string, pairedItem: IPairedItemData, sources: ITaskData['source']) {
+function addPairing(
+	paths: { [item: string]: string[][] },
+	pairedItemId: string,
+	pairedItem: IPairedItemData,
+	sources: ITaskData['source'],
+) {
 	paths[pairedItemId] = paths[pairedItemId] || [];
 
 	const input = pairedItem.input || 0;
 	const sourceNode = sources[input]?.previousNode;
-	if (!sourceNode) { // trigger nodes for example
+	if (!sourceNode) {
+		// trigger nodes for example
 		paths[pairedItemId].push([pairedItemId]);
 		return;
 	}
@@ -62,7 +77,14 @@ function addPairing(paths: {[item: string]: string[][]}, pairedItemId: string, p
 	});
 }
 
-function addPairedItemIdsRec(node: string, runIndex: number, runData: IRunData, seen: Set<string>, paths: {[item: string]: string[][]}, pinned: Set<string>) {
+function addPairedItemIdsRec(
+	node: string,
+	runIndex: number,
+	runData: IRunData,
+	seen: Set<string>,
+	paths: { [item: string]: string[][] },
+	pinned: Set<string>,
+) {
 	const key = `${node}_r${runIndex}`;
 	if (seen.has(key)) {
 		return;
@@ -86,7 +108,14 @@ function addPairedItemIdsRec(node: string, runIndex: number, runData: IRunData, 
 	const sources = data.source || [];
 	sources.forEach((source) => {
 		if (source?.previousNode) {
-			addPairedItemIdsRec(source.previousNode, source.previousNodeRun ?? 0, runData, seen, paths, pinned);
+			addPairedItemIdsRec(
+				source.previousNode,
+				source.previousNodeRun ?? 0,
+				runData,
+				seen,
+				paths,
+				pinned,
+			);
 		}
 	});
 
@@ -116,13 +145,13 @@ function addPairedItemIdsRec(node: string, runIndex: number, runData: IRunData, 
 				return;
 			}
 
-			addPairing(paths, pairedItemId, {item: pairedItem}, sources);
+			addPairing(paths, pairedItemId, { item: pairedItem }, sources);
 		});
 	});
 }
 
-function getMapping(paths: {[item: string]: string[][]}): {[item: string]: Set<string>} {
-	const mapping: {[itemId: string]: Set<string>} = {};
+function getMapping(paths: { [item: string]: string[][] }): { [item: string]: Set<string> } {
+	const mapping: { [itemId: string]: Set<string> } = {};
 
 	Object.keys(paths).forEach((item) => {
 		paths?.[item]?.forEach((path) => {
@@ -141,17 +170,45 @@ function getMapping(paths: {[item: string]: string[][]}): {[item: string]: Set<s
 	return mapping;
 }
 
-export function getPairedItemsMapping(executionResponse: IExecutionResponse | null): {[itemId: string]: Set<string>} {
+function getItemsCount(runData: IRunData) {
+	let itemsCount = 0;
+
+	for (const node in runData) {
+		for (const taskData of runData[node]) {
+			const data = taskData.data;
+			if (!data) continue;
+
+			for (const connectionType in data) {
+				const runsCount = data[connectionType].reduce((sum: number, run) => {
+					return run ? sum + run.length : sum;
+				}, 0);
+
+				itemsCount += runsCount;
+			}
+		}
+	}
+
+	return itemsCount;
+}
+
+export function getPairedItemsMapping(executionResponse: Partial<IExecutionResponse> | null): {
+	[itemId: string]: Set<string>;
+} {
 	if (!executionResponse?.data?.resultData?.runData) {
 		return {};
 	}
 
-	const seen = new Set<string>();
 	const runData = executionResponse.data.resultData.runData;
 
+	const itemsCount = getItemsCount(runData);
+	if (itemsCount > MAX_ITEM_COUNT_FOR_PAIRING) {
+		return {};
+	}
+
+	const seen = new Set<string>();
 	const pinned = new Set(Object.keys(executionResponse.data.resultData.pinData || {}));
 
-	const paths: {[item: string]: string[][]} = {};
+	const paths: { [item: string]: string[][] } = {};
 	Object.keys(runData).forEach((node) => {
 		runData[node].forEach((_, runIndex: number) => {
 			addPairedItemIdsRec(node, runIndex, runData, seen, paths, pinned);

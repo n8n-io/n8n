@@ -1,81 +1,82 @@
-import {
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodePropertyOptions,
-	NodeOperationError,
-} from 'n8n-workflow';
+import type { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import { GoogleSheet } from '../helpers/GoogleSheet';
 import { getSpreadsheetId } from '../helpers/GoogleSheets.utils';
-import { ResourceLocator } from '../helpers/GoogleSheets.types';
+import type { ResourceLocator } from '../helpers/GoogleSheets.types';
 
 export async function getSheets(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	try {
-		const { mode, value } = this.getNodeParameter('documentId', 0) as IDataObject;
-		const spreadsheetId = getSpreadsheetId(mode as ResourceLocator, value as string);
+	const documentId = this.getNodeParameter('documentId', 0) as IDataObject | null;
 
-		const sheet = new GoogleSheet(spreadsheetId, this);
-		const responseData = await sheet.spreadsheetGetSheets();
+	if (!documentId) return [];
 
-		if (responseData === undefined) {
-			throw new NodeOperationError(this.getNode(), 'No data got returned');
-		}
+	const { mode, value } = documentId;
 
-		const returnData: INodePropertyOptions[] = [];
-		for (const sheet of responseData.sheets!) {
-			if (sheet.properties!.sheetType !== 'GRID') {
-				continue;
-			}
+	const spreadsheetId = getSpreadsheetId(this.getNode(), mode as ResourceLocator, value as string);
 
-			returnData.push({
-				name: sheet.properties!.title as string,
-				value: sheet.properties!.sheetId as unknown as string,
-			});
-		}
+	const sheet = new GoogleSheet(spreadsheetId, this);
+	const responseData = await sheet.spreadsheetGetSheets();
 
-		return returnData;
-	} catch (error) {
-		return [];
+	if (responseData === undefined) {
+		throw new NodeOperationError(this.getNode(), 'No data got returned');
 	}
+
+	const returnData: INodePropertyOptions[] = [];
+	for (const entry of responseData.sheets!) {
+		if (entry.properties!.sheetType !== 'GRID') {
+			continue;
+		}
+
+		returnData.push({
+			name: entry.properties!.title as string,
+			value: entry.properties!.sheetId as unknown as string,
+		});
+	}
+
+	return returnData;
 }
 
 export async function getSheetHeaderRow(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
-	try {
-		const { mode, value } = this.getNodeParameter('documentId', 0) as IDataObject;
-		const spreadsheetId = getSpreadsheetId(mode as ResourceLocator, value as string);
+	const documentId = this.getNodeParameter('documentId', 0) as IDataObject | null;
 
-		const sheet = new GoogleSheet(spreadsheetId, this);
-		let sheetWithinDocument = this.getNodeParameter('sheetName', undefined, {
-			extractValue: true,
-		}) as string;
+	if (!documentId) return [];
 
-		if (sheetWithinDocument === 'gid=0') {
-			sheetWithinDocument = '0';
-		}
+	const { mode, value } = documentId;
 
-		const sheetName = await sheet.spreadsheetGetSheetNameById(sheetWithinDocument);
-		const sheetData = await sheet.getData(`${sheetName}!1:1`, 'FORMATTED_VALUE');
+	const spreadsheetId = getSpreadsheetId(this.getNode(), mode as ResourceLocator, value as string);
 
-		if (sheetData === undefined) {
-			throw new NodeOperationError(this.getNode(), 'No data got returned');
-		}
+	const sheet = new GoogleSheet(spreadsheetId, this);
+	const sheetWithinDocument = this.getNodeParameter('sheetName', undefined, {
+		extractValue: true,
+	}) as string;
+	const { mode: sheetMode } = this.getNodeParameter('sheetName', 0) as {
+		mode: ResourceLocator;
+	};
 
-		const columns = sheet.testFilter(sheetData, 0, 0);
+	const { title: sheetName } = await sheet.spreadsheetGetSheet(
+		this.getNode(),
+		sheetMode,
+		sheetWithinDocument,
+	);
+	const sheetData = await sheet.getData(`${sheetName}!1:1`, 'FORMATTED_VALUE');
 
-		const returnData: INodePropertyOptions[] = [];
-
-		for (const column of columns) {
-			returnData.push({
-				name: column as unknown as string,
-				value: column as unknown as string,
-			});
-		}
-
-		return returnData;
-	} catch (error) {
-		return [];
+	if (sheetData === undefined) {
+		throw new NodeOperationError(this.getNode(), 'No data got returned');
 	}
+
+	const columns = sheet.testFilter(sheetData, 0, 0);
+
+	const returnData: INodePropertyOptions[] = [];
+
+	for (const column of columns) {
+		returnData.push({
+			name: column as unknown as string,
+			value: column as unknown as string,
+		});
+	}
+
+	return returnData;
 }
 
 export async function getSheetHeaderRowAndAddColumn(

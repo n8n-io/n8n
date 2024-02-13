@@ -1,6 +1,4 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
 
@@ -13,7 +11,7 @@ export async function getAll(
 	const endpoint = 'employees/directory';
 
 	//limit parameters
-	const returnAll = this.getNodeParameter('returnAll', 0, false) as boolean;
+	const returnAll = this.getNodeParameter('returnAll', 0, false);
 	const limit = this.getNodeParameter('limit', 0, 0);
 
 	//response
@@ -21,9 +19,9 @@ export async function getAll(
 
 	//return limited result
 	if (!returnAll && responseData.employees.length > limit) {
-		return this.helpers.returnJsonArray(responseData.employees.slice(0, limit));
+		return this.helpers.returnJsonArray(responseData.employees.slice(0, limit) as IDataObject[]);
 	}
 
 	//return all result
-	return this.helpers.returnJsonArray(responseData.employees);
+	return this.helpers.returnJsonArray(responseData.employees as IDataObject[]);
 }

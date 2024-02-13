@@ -1,9 +1,12 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class HarvestApi implements ICredentialType {
 	name = 'harvestApi';
+
 	displayName = 'Harvest API';
+
 	documentationUrl = 'harvest';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Access Token',

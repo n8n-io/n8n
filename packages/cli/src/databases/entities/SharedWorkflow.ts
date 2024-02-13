@@ -1,26 +1,24 @@
-import { Entity, ManyToOne, RelationId } from 'typeorm';
+import { Column, Entity, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
 import { WorkflowEntity } from './WorkflowEntity';
 import { User } from './User';
-import { Role } from './Role';
-import { AbstractEntity } from './AbstractEntity';
+import { WithTimestamps } from './AbstractEntity';
+
+export type WorkflowSharingRole = 'workflow:owner' | 'workflow:editor' | 'workflow:user';
 
 @Entity()
-export class SharedWorkflow extends AbstractEntity {
-	@ManyToOne(() => Role, (role) => role.sharedWorkflows, { nullable: false })
-	role: Role;
+export class SharedWorkflow extends WithTimestamps {
+	@Column()
+	role: WorkflowSharingRole;
 
-	@ManyToOne(() => User, (user) => user.sharedWorkflows, { primary: true })
+	@ManyToOne('User', 'sharedWorkflows')
 	user: User;
 
-	@RelationId((sharedWorkflow: SharedWorkflow) => sharedWorkflow.user)
+	@PrimaryColumn()
 	userId: string;
 
-	@ManyToOne(() => WorkflowEntity, (workflow) => workflow.shared, {
-		primary: true,
-		onDelete: 'CASCADE',
-	})
+	@ManyToOne('WorkflowEntity', 'shared')
 	workflow: WorkflowEntity;
 
-	@RelationId((sharedWorkflow: SharedWorkflow) => sharedWorkflow.workflow)
-	workflowId: number;
+	@PrimaryColumn()
+	workflowId: string;
 }

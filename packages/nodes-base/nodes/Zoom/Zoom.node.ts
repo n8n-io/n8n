@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -9,6 +8,7 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
 import { zoomApiRequest, zoomApiRequestAllItems } from './GenericFunctions';
 
 import { meetingFields, meetingOperations } from './MeetingDescription';
@@ -22,8 +22,6 @@ import { meetingFields, meetingOperations } from './MeetingDescription';
 // 	webinarOperations,
 // 	webinarFields,
 // } from './WebinarDescription';
-
-import moment from 'moment-timezone';
 
 interface Settings {
 	host_video?: boolean;
@@ -133,9 +131,10 @@ export class Zoom implements INodeType {
 			// 	...webinarFields,
 		],
 	};
+
 	methods = {
 		loadOptions: {
-			// Get all the timezones to display them to user so that he can select them easily
+			// Get all the timezones to display them to user so that they can select them easily
 			async getTimezones(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				for (const timezone of moment.tz.names()) {
@@ -156,8 +155,8 @@ export class Zoom implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		let qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < items.length; i++) {
 			try {
@@ -320,7 +319,7 @@ export class Zoom implements INodeType {
 							body.agenda = additionalFields.agenda as string;
 						}
 
-						responseData = await zoomApiRequest.call(this, 'POST', `/users/me/meetings`, body, qs);
+						responseData = await zoomApiRequest.call(this, 'POST', '/users/me/meetings', body, qs);
 					}
 					if (operation === 'update') {
 						//https://marketplace.zoom.us/docs/api-reference/zoom-api/meetings/meetingupdate
@@ -774,7 +773,7 @@ export class Zoom implements INodeType {
 				// 	}
 				// }
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);
@@ -792,6 +791,6 @@ export class Zoom implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

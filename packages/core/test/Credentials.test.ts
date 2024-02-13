@@ -1,23 +1,39 @@
+import { Container } from 'typedi';
+import { mock } from 'jest-mock-extended';
+import type { CredentialInformation } from 'n8n-workflow';
+import { Cipher } from '@/Cipher';
 import { Credentials } from '@/Credentials';
+import type { InstanceSettings } from '@/InstanceSettings';
 
 describe('Credentials', () => {
+	const cipher = new Cipher(mock<InstanceSettings>({ encryptionKey: 'password' }));
+	Container.set(Cipher, cipher);
+
+	const setDataKey = (credentials: Credentials, key: string, data: CredentialInformation) => {
+		let fullData;
+		try {
+			fullData = credentials.getData();
+		} catch (e) {
+			fullData = {};
+		}
+		fullData[key] = data;
+		return credentials.setData(fullData);
+	};
+
 	describe('without nodeType set', () => {
 		test('should be able to set and read key data without initial data set', () => {
 			const credentials = new Credentials({ id: null, name: 'testName' }, 'testType', []);
 
 			const key = 'key1';
-			const password = 'password';
-			// const nodeType = 'base.noOp';
 			const newData = 1234;
 
-			credentials.setDataKey(key, newData, password);
+			setDataKey(credentials, key, newData);
 
-			expect(credentials.getDataKey(key, password)).toEqual(newData);
+			expect(credentials.getData()[key]).toEqual(newData);
 		});
 
 		test('should be able to set and read key data with initial data set', () => {
 			const key = 'key2';
-			const password = 'password';
 
 			// Saved under "key1"
 			const initialData = 4321;
@@ -33,11 +49,11 @@ describe('Credentials', () => {
 			const newData = 1234;
 
 			// Set and read new data
-			credentials.setDataKey(key, newData, password);
-			expect(credentials.getDataKey(key, password)).toEqual(newData);
+			setDataKey(credentials, key, newData);
+			expect(credentials.getData()[key]).toEqual(newData);
 
 			// Read the data which got provided encrypted on init
-			expect(credentials.getDataKey('key1', password)).toEqual(initialData);
+			expect(credentials.getData().key1).toEqual(initialData);
 		});
 	});
 
@@ -54,24 +70,21 @@ describe('Credentials', () => {
 			const credentials = new Credentials({ id: null, name: 'testName' }, 'testType', nodeAccess);
 
 			const key = 'key1';
-			const password = 'password';
 			const nodeType = 'base.noOp';
 			const newData = 1234;
 
-			credentials.setDataKey(key, newData, password);
+			setDataKey(credentials, key, newData);
 
 			// Should be able to read with nodeType which has access
-			expect(credentials.getDataKey(key, password, nodeType)).toEqual(newData);
+			expect(credentials.getData(nodeType)[key]).toEqual(newData);
 
 			// Should not be able to read with nodeType which does NOT have access
-			// expect(credentials.getDataKey(key, password, 'base.otherNode')).toThrowError(Error);
+			// expect(credentials.getData('base.otherNode')[key]).toThrowError(Error);
 			try {
-				credentials.getDataKey(key, password, 'base.otherNode');
+				credentials.getData('base.otherNode');
 				expect(true).toBe(false);
 			} catch (e) {
-				expect(e.message).toBe(
-					'The node of type "base.otherNode" does not have access to credentials "testName" of type "testType".',
-				);
+				expect(e.message).toBe('Node does not have access to credential');
 			}
 
 			// Get the data which will be saved in database

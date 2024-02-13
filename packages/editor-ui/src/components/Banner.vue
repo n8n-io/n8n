@@ -1,37 +1,24 @@
 <template>
-	<el-tag
-		:type="theme"
-		size="medium"
-		:disable-transitions="true"
-		:class="$style.container"
-	>
+	<el-tag :type="theme" :disable-transitions="true" :class="$style.container">
 		<font-awesome-icon
-				:icon="theme === 'success' ? 'check-circle' : 'exclamation-triangle'"
-				:class="theme === 'success' ? $style.icon : $style.dangerIcon"
+			:icon="theme === 'success' ? 'check-circle' : 'exclamation-triangle'"
+			:class="theme === 'success' ? $style.icon : $style.dangerIcon"
 		/>
-		<div
-			:class="$style.banner"
-		>
+		<div :class="$style.banner">
 			<div :class="$style.content">
 				<div>
-					<span
-						:class="theme === 'success' ? $style.message : $style.dangerMessage"
-					>
+					<span :class="theme === 'success' ? $style.message : $style.dangerMessage">
 						{{ message }}&nbsp;
 					</span>
-					<n8n-link
-						v-if="details && !expanded"
-						:bold="true"
-						size="small"
-						@click="expand"
-					>
+					<n8n-link v-if="details && !expanded" :bold="true" size="small" @click="expand">
 						<span :class="$style.moreDetails">More details</span>
 					</n8n-link>
 				</div>
 			</div>
 
+			<slot v-if="$slots.button" name="button" />
 			<n8n-button
-				v-if="buttonLabel"
+				v-else-if="buttonLabel"
 				:label="buttonLoading && buttonLoadingLabel ? buttonLoadingLabel : buttonLabel"
 				:title="buttonTitle"
 				:type="theme"
@@ -43,26 +30,20 @@
 		</div>
 
 		<div v-if="expanded" :class="$style.details">
-			{{details}}
+			{{ details }}
 		</div>
 	</el-tag>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'Banner',
-	data() {
-		return {
-			expanded: false,
-		};
-	},
 	props: {
 		theme: {
 			type: String,
-			validator: (value: string): boolean =>
-				['success', 'danger'].indexOf(value) !== -1,
+			validator: (value: string): boolean => ['success', 'danger'].indexOf(value) !== -1,
 		},
 		message: {
 			type: String,
@@ -84,6 +65,11 @@ export default Vue.extend({
 			default: false,
 		},
 	},
+	data() {
+		return {
+			expanded: false,
+		};
+	},
 	methods: {
 		expand() {
 			this.expanded = true;
@@ -100,7 +86,9 @@ export default Vue.extend({
 .icon {
 	position: absolute;
 	left: 14px;
-	top: 18px;
+	top: 0;
+	bottom: 0;
+	margin: auto 0;
 }
 
 .dangerIcon {
@@ -124,7 +112,7 @@ export default Vue.extend({
 
 .dangerMessage {
 	composes: message;
-	color: var(--color-danger);
+	color: var(--color-callout-danger-font);
 }
 
 .banner {

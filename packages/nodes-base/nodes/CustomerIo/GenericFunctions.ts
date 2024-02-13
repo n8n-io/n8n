@@ -1,8 +1,13 @@
-import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type {
+	IExecuteFunctions,
+	IHookFunctions,
+	ILoadOptionsFunctions,
+	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
+} from 'n8n-workflow';
 
-import { IDataObject, IHttpRequestMethods, IHttpRequestOptions } from 'n8n-workflow';
-
-import { get } from 'lodash';
+import get from 'lodash/get';
 
 export async function customerIoApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
@@ -27,26 +32,29 @@ export async function customerIoApiRequest(
 		const region = credentials.region;
 		options.url = `https://${region}/api/v1${endpoint}`;
 	} else if (baseApi === 'api') {
-		options.url = `https://api.customer.io/v1/api${endpoint}`;
+		const region = credentials.region;
+		// Special handling for EU region
+		if (region === 'track-eu.customer.io') {
+			options.url = `https://api-eu.customer.io/v1/api${endpoint}`;
+		} else {
+			options.url = `https://api.customer.io/v1/api${endpoint}`;
+		}
 	} else if (baseApi === 'beta') {
 		options.url = `https://beta-api.customer.io/v1/api${endpoint}`;
 	}
 
-	return this.helpers.requestWithAuthentication.call(this, 'customerIoApi', options);
+	return await this.helpers.requestWithAuthentication.call(this, 'customerIoApi', options);
 }
 
 export function eventExists(currentEvents: string[], webhookEvents: IDataObject) {
 	for (const currentEvent of currentEvents) {
-		if (
-			get(webhookEvents, `${currentEvent.split('.')[0]}.${currentEvent.split('.')[1]}`) !== true
-		) {
+		if (get(webhookEvents, [currentEvent.split('.')[0], currentEvent.split('.')[1]]) !== true) {
 			return false;
 		}
 	}
 	return true;
 }
 
-// tslint:disable-next-line:no-any
 export function validateJSON(json: string | undefined): any {
 	let result;
 	try {

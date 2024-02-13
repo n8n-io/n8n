@@ -1,17 +1,24 @@
-import './font-awesome-icons';
+import { setup } from '@storybook/vue3';
+
 import './storybook.scss';
 
-import lang from 'element-ui/lib/locale/lang/en';
-import locale from 'element-ui/lib/locale';
+import { library } from '@fortawesome/fontawesome-svg-core';
+import { fas } from '@fortawesome/free-solid-svg-icons';
 
-import Vue from 'vue';
+import ElementPlus from 'element-plus';
+import lang from 'element-plus/lib/locale/lang/en';
 
-locale.use(lang);
+import { N8nPlugin } from '../src/plugin';
 
-// https://github.com/storybookjs/storybook/issues/6153
-Vue.prototype.toJSON = function () {
-	return this;
-};
+setup((app) => {
+	library.add(fas);
+
+	app.use(ElementPlus, {
+		locale: lang,
+	});
+
+	app.use(N8nPlugin);
+});
 
 export const parameters = {
 	actions: {
@@ -39,10 +46,6 @@ export const parameters = {
 				value: 'var(--color-background-light)',
 			},
 			{
-				name: '--color-background-lighter',
-				value: 'var(--color-background-lighter)',
-			},
-			{
 				name: '--color-background-xlight',
 				value: 'var(--color-background-xlight)',
 			},
@@ -52,14 +55,14 @@ export const parameters = {
 		list: [
 			{
 				name: 'dark',
-				class: 'theme-dark',
+				class: 'theme-dark-beta',
 				color: '#000',
 			},
 		],
 	},
 	options: {
 		storySort: {
-			order: ['Docs', 'Styleguide', 'Atoms', 'Modules'],
+			order: ['Docs', 'Styleguide', ['Colors Primitives', 'Colors Tokens', 'Font', 'Spacing', 'Border'], 'Atoms', 'Modules'],
 		},
 	},
 };

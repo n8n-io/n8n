@@ -1,27 +1,29 @@
-import { set } from 'lodash';
-
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
-	deepCopy,
-	ILoadOptionsFunctions,
+import type { BinaryToTextEncoding } from 'crypto';
+import { createHash, createHmac, createSign, getHashes, randomBytes } from 'crypto';
+import { pipeline } from 'stream/promises';
+import { v4 as uuid } from 'uuid';
+import set from 'lodash/set';
+import type {
+	IExecuteFunctions,
 	INodeExecutionData,
-	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
+import { deepCopy, BINARY_ENCODING } from 'n8n-workflow';
 
-import {
-	BinaryToTextEncoding,
-	createHash,
-	createHmac,
-	createSign,
-	getHashes,
-	randomBytes,
-} from 'crypto';
+const unsupportedAlgorithms = [
+	'RSA-MD4',
+	'RSA-MDC2',
+	'md4',
+	'md4WithRSAEncryption',
+	'mdc2',
+	'mdc2WithRSA',
+];
 
-import { v4 as uuid } from 'uuid';
+const supportedAlgorithms = getHashes()
+	.filter((algorithm) => !unsupportedAlgorithms.includes(algorithm))
+	.map((algorithm) => ({ name: algorithm, value: algorithm }));
 
 export class Crypto implements INodeType {
 	description: INodeTypeDescription = {
@@ -52,15 +54,15 @@ export class Crypto implements INodeType {
 					},
 					{
 						name: 'Hash',
-						description: 'Hash a text in a specified format',
+						description: 'Hash a text or file in a specified format',
 						value: 'hash',
-						action: 'Hash a text in a specified format',
+						action: 'Hash a text or file in a specified format',
 					},
 					{
 						name: 'Hmac',
-						description: 'Hmac a text in a specified format',
+						description: 'Hmac a text or file in a specified format',
 						value: 'hmac',
-						action: 'HMAC a text in a specified format',
+						action: 'HMAC a text or file in a specified format',
 					},
 					{
 						name: 'Sign',
@@ -115,11 +117,39 @@ export class Crypto implements INodeType {
 				required: true,
 			},
 			{
+				displayName: 'Binary File',
+				name: 'binaryData',
+				type: 'boolean',
+				default: false,
+				required: true,
+				displayOptions: {
+					show: {
+						action: ['hash', 'hmac'],
+					},
+				},
+				description: 'Whether the data to hashed should be taken from binary field',
+			},
+			{
+				displayName: 'Binary Property Name',
+				name: 'binaryPropertyName',
+				displayOptions: {
+					show: {
+						action: ['hash', 'hmac'],
+						binaryData: [true],
+					},
+				},
+				type: 'string',
+				default: 'data',
+				description: 'Name of the binary property which contains the input data',
+				required: true,
+			},
+			{
 				displayName: 'Value',
 				name: 'value',
 				displayOptions: {
 					show: {
 						action: ['hash'],
+						binaryData: [false],
 					},
 				},
 				type: 'string',
@@ -211,6 +241,7 @@ export class Crypto implements INodeType {
 				displayOptions: {
 					show: {
 						action: ['hmac'],
+						binaryData: [false],
 					},
 				},
 				type: 'string',
@@ -240,6 +271,7 @@ export class Crypto implements INodeType {
 					},
 				},
 				type: 'string',
+				typeOptions: { password: true },
 				default: '',
 				required: true,
 			},
@@ -302,9 +334,7 @@ export class Crypto implements INodeType {
 				type: 'options',
 				description:
 					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-				typeOptions: {
-					loadOptionsMethod: 'getHashes',
-				},
+				options: supportedAlgorithms,
 				default: '',
 				required: true,
 			},
@@ -339,9 +369,6 @@ export class Crypto implements INodeType {
 					},
 				},
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				description: 'Private key to use when signing the string',
 				default: '',
 				required: true,
@@ -406,26 +433,6 @@ export class Crypto implements INodeType {
 		],
 	};
 
-	methods = {
-		loadOptions: {
-			// Get all the hashes to display them to user so that he can
-			// select them easily
-			async getHashes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const hashes = getHashes();
-				for (const hash of hashes) {
-					const hashName = hash;
-					const hashId = hash;
-					returnData.push({
-						name: hashName,
-						value: hashId,
-					});
-				}
-				return returnData;
-			},
-		},
-	};
-
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
@@ -437,12 +444,13 @@ export class Crypto implements INodeType {
 		for (let i = 0; i < length; i++) {
 			try {
 				item = items[i];
-				const dataPropertyName = this.getNodeParameter('dataPropertyName', i) as string;
+				const dataPropertyName = this.getNodeParameter('dataPropertyName', i);
 				const value = this.getNodeParameter('value', i, '') as string;
 				let newValue;
+				let binaryProcessed = false;
 
 				if (action === 'generate') {
-					const encodingType = this.getNodeParameter('encodingType', i) as string;
+					const encodingType = this.getNodeParameter('encodingType', i);
 					if (encodingType === 'uuid') {
 						newValue = uuid();
 					} else {
@@ -459,23 +467,39 @@ export class Crypto implements INodeType {
 						}
 					}
 				}
-				if (action === 'hash') {
+
+				if (action === 'hash' || action === 'hmac') {
 					const type = this.getNodeParameter('type', i) as string;
 					const encoding = this.getNodeParameter('encoding', i) as BinaryToTextEncoding;
-					newValue = createHash(type).update(value).digest(encoding);
+					const hashOrHmac =
+						action === 'hash'
+							? createHash(type)
+							: createHmac(type, this.getNodeParameter('secret', i) as string);
+					if (this.getNodeParameter('binaryData', i)) {
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
+						const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
+						if (binaryData.id) {
+							const binaryStream = await this.helpers.getBinaryStream(binaryData.id);
+							hashOrHmac.setEncoding(encoding);
+							await pipeline(binaryStream, hashOrHmac);
+							newValue = hashOrHmac.read();
+						} else {
+							newValue = hashOrHmac
+								.update(Buffer.from(binaryData.data, BINARY_ENCODING))
+								.digest(encoding);
+						}
+						binaryProcessed = true;
+					} else {
+						newValue = hashOrHmac.update(value).digest(encoding);
+					}
 				}
-				if (action === 'hmac') {
-					const type = this.getNodeParameter('type', i) as string;
-					const secret = this.getNodeParameter('secret', i) as string;
-					const encoding = this.getNodeParameter('encoding', i) as BinaryToTextEncoding;
-					newValue = createHmac(type, secret).update(value).digest(encoding);
-				}
+
 				if (action === 'sign') {
 					const algorithm = this.getNodeParameter('algorithm', i) as string;
 					const encoding = this.getNodeParameter('encoding', i) as BinaryToTextEncoding;
 					const privateKey = this.getNodeParameter('privateKey', i) as string;
 					const sign = createSign(algorithm);
-					sign.write(value as string);
+					sign.write(value);
 					sign.end();
 					newValue = sign.sign(privateKey, encoding);
 				}
@@ -499,11 +523,11 @@ export class Crypto implements INodeType {
 					};
 				}
 
-				if (item.binary !== undefined) {
+				if (item.binary !== undefined && !binaryProcessed) {
 					newItem.binary = item.binary;
 				}
 
-				set(newItem, `json.${dataPropertyName}`, newValue);
+				set(newItem, ['json', dataPropertyName], newValue);
 
 				returnData.push(newItem);
 			} catch (error) {
@@ -521,6 +545,6 @@ export class Crypto implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

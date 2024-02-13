@@ -1,10 +1,8 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { get } from 'lodash';
+import get from 'lodash/get';
 
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
-	deepCopy,
+import type {
+	IExecuteFunctions,
 	GenericValue,
 	INodeExecutionData,
 	INodeType,
@@ -12,6 +10,10 @@ import {
 	INodeTypeDescription,
 	IPairedItemData,
 } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
+
+import { oldVersionNotice } from '@utils/descriptions';
+import { generatePairedItemData } from '../../../utils/utilities';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Merge',
@@ -30,6 +32,7 @@ const versionDescription: INodeTypeDescription = {
 	outputs: ['main'],
 	inputNames: ['Input 1', 'Input 2'],
 	properties: [
+		oldVersionNotice,
 		{
 			displayName: 'Mode',
 			name: 'mode',
@@ -475,7 +478,8 @@ export class MergeV1 implements INodeType {
 				returnData.push.apply(returnData, this.getInputData(1));
 			}
 		} else if (mode === 'wait') {
-			returnData.push({ json: {} });
+			const pairedItem = generatePairedItemData(this.getInputData(0).length);
+			returnData.push({ json: {}, pairedItem });
 		}
 
 		return [returnData];

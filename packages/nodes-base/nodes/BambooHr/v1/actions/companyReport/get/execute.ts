@@ -1,6 +1,4 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
 
@@ -13,9 +11,10 @@ export async function get(this: IExecuteFunctions, index: number) {
 	const reportId = this.getNodeParameter('reportId', index) as string;
 	const format = this.getNodeParameter('format', 0) as string;
 	const fd = this.getNodeParameter('options.fd', index, true) as boolean;
+	const onlyCurrent = this.getNodeParameter('options.onlyCurrent', index, true) as boolean;
 
 	//endpoint
-	const endpoint = `reports/${reportId}/?format=${format}&fd=${fd}`;
+	const endpoint = `reports/${reportId}/?format=${format}&fd=${fd}&onlyCurrent=${onlyCurrent}`;
 
 	if (format === 'JSON') {
 		const responseData = await apiRequest.call(
@@ -26,7 +25,7 @@ export async function get(this: IExecuteFunctions, index: number) {
 			{},
 			{ resolveWithFullResponse: true },
 		);
-		return this.helpers.returnJsonArray(responseData.body);
+		return this.helpers.returnJsonArray(responseData.body as IDataObject);
 	}
 
 	const output: string = this.getNodeParameter('output', index) as string;
@@ -40,7 +39,7 @@ export async function get(this: IExecuteFunctions, index: number) {
 	mimeType = mimeType ? mimeType.split(';').find((value) => value.includes('/')) : undefined;
 	const contentDisposition = response.headers['content-disposition'];
 	const fileNameRegex = /(?<=filename=").*\b/;
-	const match = fileNameRegex.exec(contentDisposition);
+	const match = fileNameRegex.exec(contentDisposition as string);
 	let fileName = '';
 
 	// file name was found
@@ -68,5 +67,5 @@ export async function get(this: IExecuteFunctions, index: number) {
 		),
 	};
 
-	return this.prepareOutputData(newItem as unknown as INodeExecutionData[]);
+	return [newItem as unknown as INodeExecutionData[]];
 }

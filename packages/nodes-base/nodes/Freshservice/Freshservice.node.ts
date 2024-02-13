@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -9,6 +8,7 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import { tz } from 'moment-timezone';
 import {
 	adjustAddress,
 	adjustAgentRoles,
@@ -56,9 +56,7 @@ import {
 	ticketOperations,
 } from './descriptions';
 
-import { AddressFixedCollection, LoadedResource, LoadedUser, RolesParameter } from './types';
-
-import { tz } from 'moment-timezone';
+import type { AddressFixedCollection, LoadedResource, LoadedUser, RolesParameter } from './types';
 
 export class Freshservice implements INodeType {
 	description: INodeTypeDescription = {
@@ -232,11 +230,12 @@ export class Freshservice implements INodeType {
 				)) as {
 					asset_type_fields: [{ fields: LoadedResource[] }];
 				};
-				// tslint:disable-next-line: no-any
+
 				let fields: any[] = [];
 				fields = fields
 					.concat(...asset_type_fields.map((data) => data.fields))
 					.map((data) => ({ name: data.label, id: data.name }));
+
 				return toOptions(fields);
 			},
 
@@ -271,8 +270,8 @@ export class Freshservice implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		const defaultTimezone = this.getTimezone();
 
@@ -1384,12 +1383,12 @@ export class Freshservice implements INodeType {
 			}
 
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
+				this.helpers.returnJsonArray(responseData as IDataObject[]),
 				{ itemData: { item: i } },
 			);
 			returnData.push(...executionData);
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

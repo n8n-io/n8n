@@ -1,5 +1,5 @@
 <template>
-	<el-skeleton
+	<ElSkeleton
 		:loading="loading"
 		:animated="animated"
 		:class="['n8n-loading', `n8n-loading-${variant}`]"
@@ -13,7 +13,7 @@
 						[$style.h1Last]: item === rows && rows > 1 && shrinkLast,
 					}"
 				>
-					<el-skeleton-item :variant="variant" />
+					<ElSkeletonItem :variant="variant" />
 				</div>
 			</div>
 			<div v-else-if="variant === 'p'">
@@ -24,28 +24,26 @@
 						[$style.pLast]: item === rows && rows > 1 && shrinkLast,
 					}"
 				>
-					<el-skeleton-item :variant="variant" />
+					<ElSkeletonItem :variant="variant" />
 				</div>
 			</div>
-			<div :class="$style.custom" v-else-if="variant === 'custom'">
-				<el-skeleton-item :variant="variant" />
+			<div v-else-if="variant === 'custom'" :class="$style.custom">
+				<ElSkeletonItem />
 			</div>
-			<el-skeleton-item v-else :variant="variant" />
+			<ElSkeletonItem v-else :variant="variant" />
 		</template>
-	</el-skeleton>
+	</ElSkeleton>
 </template>
 
 <script lang="ts">
-import ElSkeleton from 'element-ui/lib/skeleton';
-import ElSkeletonItem from 'element-ui/lib/skeleton-item';
+import { ElSkeleton, ElSkeletonItem } from 'element-plus';
+import { defineComponent } from 'vue';
 
-import Vue from 'vue';
-
-export default Vue.extend({
-	name: 'n8n-loading',
+export default defineComponent({
+	name: 'N8nLoading',
 	components: {
-		ElSkeleton, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
-		ElSkeletonItem, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
+		ElSkeleton,
+		ElSkeletonItem,
 	},
 	props: {
 		animated: {
@@ -100,7 +98,7 @@ export default Vue.extend({
 </style>
 
 <style lang="scss">
-.n8n-loading-custom .el-skeleton {
+.n8n-loading-custom.el-skeleton {
 	&,
 	.el-skeleton__item {
 		width: 100%;

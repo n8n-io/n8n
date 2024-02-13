@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const videoOperations: INodeProperties[] = [
 	{
@@ -107,10 +107,11 @@ export const videoFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Binary Property',
+		displayName: 'Input Binary Field',
 		name: 'binaryProperty',
 		type: 'string',
 		required: true,
+		hint: 'The name of the input binary field containing the file to be uploaded',
 		displayOptions: {
 			show: {
 				operation: ['upload'],

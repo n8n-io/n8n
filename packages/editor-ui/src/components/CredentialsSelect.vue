@@ -2,23 +2,25 @@
 	<div>
 		<div :class="$style['parameter-value-container']">
 			<n8n-select
+				ref="innerSelect"
 				:size="inputSize"
 				filterable
-				:value="displayValue"
-				:placeholder="parameter.placeholder ? getPlaceholder() : $locale.baseText('parameterInput.select')"
+				:model-value="displayValue"
+				:placeholder="
+					parameter.placeholder ? getPlaceholder() : $locale.baseText('parameterInput.select')
+				"
 				:title="displayTitle"
 				:disabled="isReadOnly"
-				ref="innerSelect"
-				@change="(value) => $emit('valueChanged', value)"
+				data-test-id="credential-select"
+				@update:modelValue="(value) => $emit('update:modelValue', value)"
 				@keydown.stop
 				@focus="$emit('setFocus')"
 				@blur="$emit('onBlur')"
-				data-test-id="credential-select"
 			>
 				<n8n-option
 					v-for="credType in supportedCredentialTypes"
-					:value="credType.name"
 					:key="credType.name"
+					:value="credType.name"
 					:label="credType.displayName"
 					data-test-id="credential-select-option"
 				>
@@ -37,15 +39,15 @@
 			<slot name="issues-and-options" />
 		</div>
 
-		<scopes-notice
+		<ScopesNotice
 			v-if="scopes.length > 0"
-			:activeCredentialType="activeCredentialType"
+			:active-credential-type="activeCredentialType"
 			:scopes="scopes"
 		/>
 		<div>
-			<node-credentials
+			<NodeCredentials
 				:node="node"
-				:overrideCredType="node.parameters[parameter.name]"
+				:override-cred-type="node.parameters[parameter.name]"
 				@credentialSelected="(updateInformation) => $emit('credentialSelected', updateInformation)"
 			/>
 		</div>
@@ -53,14 +55,17 @@
 </template>
 
 <script lang="ts">
-import { ICredentialType } from 'n8n-workflow';
-import Vue from 'vue';
+import type { ICredentialType } from 'n8n-workflow';
+import { defineComponent } from 'vue';
 import ScopesNotice from '@/components/ScopesNotice.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
 import { mapStores } from 'pinia';
-import { useCredentialsStore } from '@/stores/credentials';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import type { N8nSelect } from 'n8n-design-system';
 
-export default Vue.extend({
+type N8nSelectRef = InstanceType<typeof N8nSelect>;
+
+export default defineComponent({
 	name: 'CredentialsSelect',
 	components: {
 		ScopesNotice,
@@ -76,9 +81,7 @@ export default Vue.extend({
 		'displayTitle',
 	],
 	computed: {
-		...mapStores(
-			useCredentialsStore,
-		),
+		...mapStores(useCredentialsStore),
 		allCredentialTypes(): ICredentialType[] {
 			return this.credentialsStore.allCredentialTypes;
 		},
@@ -93,9 +96,9 @@ export default Vue.extend({
 	},
 	methods: {
 		focus() {
-			const select = this.$refs.innerSelect as Vue & HTMLElement | undefined;
-			if (select) {
-				select.focus();
+			const selectRef = this.$refs.innerSelect as N8nSelectRef | undefined;
+			if (selectRef) {
+				selectRef.focus();
 			}
 		},
 		/**
@@ -106,10 +109,10 @@ export default Vue.extend({
 			const supported = this.getSupportedSets(this.parameter.credentialTypes);
 
 			const checkedCredType = this.credentialsStore.getCredentialTypeByName(name);
+			if (!checkedCredType) return false;
 
 			for (const property of supported.has) {
 				if (checkedCredType[property as keyof ICredentialType] !== undefined) {
-
 					// edge case: `httpHeaderAuth` has `authenticate` auth but belongs to generic auth
 					if (name === 'httpHeaderAuth' && property === 'authenticate') continue;
 
@@ -119,9 +122,7 @@ export default Vue.extend({
 
 			if (
 				checkedCredType.extends &&
-				checkedCredType.extends.some(
-					(parentType: string) => supported.extends.includes(parentType),
-				)
+				checkedCredType.extends.some((parentType: string) => supported.extends.includes(parentType))
 			) {
 				return true;
 			}
@@ -138,23 +139,26 @@ export default Vue.extend({
 			return false;
 		},
 		getSupportedSets(credentialTypes: string[]) {
-			return credentialTypes.reduce<{ extends: string[]; has: string[] }>((acc, cur) => {
-				const _extends = cur.split('extends:');
+			return credentialTypes.reduce<{ extends: string[]; has: string[] }>(
+				(acc, cur) => {
+					const _extends = cur.split('extends:');
 
-				if (_extends.length === 2) {
-					acc.extends.push(_extends[1]);
+					if (_extends.length === 2) {
+						acc.extends.push(_extends[1]);
+						return acc;
+					}
+
+					const _has = cur.split('has:');
+
+					if (_has.length === 2) {
+						acc.has.push(_has[1]);
+						return acc;
+					}
+
 					return acc;
-				}
-
-				const _has = cur.split('has:');
-
-				if (_has.length === 2) {
-					acc.has.push(_has[1]);
-					return acc;
-				}
-
-				return acc;
-			}, { extends: [], has: [] });
+				},
+				{ extends: [], has: [] },
+			);
 		},
 	},
 });
@@ -165,5 +169,4 @@ export default Vue.extend({
 	display: flex;
 	align-items: center;
 }
-
 </style>

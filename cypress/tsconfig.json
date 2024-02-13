@@ -1,0 +1,11 @@
+{
+	"extends": "../tsconfig.json",
+	"compilerOptions": {
+		"sourceMap": false,
+		"declaration": false,
+		"lib": ["esnext", "dom"],
+		"types": ["cypress", "node"]
+	},
+	"include": ["**/*.ts"],
+	"exclude": ["**/dist/**/*", "**/node_modules/**/*"]
+}

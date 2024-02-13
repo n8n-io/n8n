@@ -1,21 +1,28 @@
-import { Request, sign } from 'aws4';
+import { URL } from 'url';
+import type { Request } from 'aws4';
+import { sign } from 'aws4';
 
-import { get } from 'lodash';
+import get from 'lodash/get';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 import { parseString } from 'xml2js';
 
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
+	JsonObject,
+} from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
-
-import { URL } from 'url';
+function queryToString(params: IDataObject) {
+	return Object.keys(params)
+		.map((key) => key + '=' + (params[key] as string))
+		.join('&');
+}
 
 export async function s3ApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
@@ -27,11 +34,8 @@ export async function s3ApiRequest(
 	headers?: object,
 	option: IDataObject = {},
 	region?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
-	let credentials;
-
-	credentials = await this.getCredentials('s3');
+	const credentials = await this.getCredentials('s3');
 
 	if (!(credentials.endpoint as string).startsWith('http')) {
 		throw new NodeOperationError(
@@ -85,9 +89,9 @@ export async function s3ApiRequest(
 		Object.assign(options, option);
 	}
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -101,7 +105,6 @@ export async function s3ApiRequestREST(
 	headers?: object,
 	options: IDataObject = {},
 	region?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const response = await s3ApiRequest.call(
 		this,
@@ -115,7 +118,7 @@ export async function s3ApiRequestREST(
 		region,
 	);
 	try {
-		return JSON.parse(response);
+		return JSON.parse(response as string);
 	} catch (error) {
 		return response;
 	}
@@ -131,7 +134,6 @@ export async function s3ApiRequestSOAP(
 	headers?: object,
 	option: IDataObject = {},
 	region?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const response = await s3ApiRequest.call(
 		this,
@@ -146,7 +148,7 @@ export async function s3ApiRequestSOAP(
 	);
 	try {
 		return await new Promise((resolve, reject) => {
-			parseString(response, { explicitArray: false }, (err, data) => {
+			parseString(response as string, { explicitArray: false }, (err, data) => {
 				if (err) {
 					return reject(err);
 				}
@@ -169,7 +171,6 @@ export async function s3ApiRequestSOAPAllItems(
 	headers: IDataObject = {},
 	option: IDataObject = {},
 	region?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -189,32 +190,27 @@ export async function s3ApiRequestSOAPAllItems(
 		);
 
 		//https://forums.aws.amazon.com/thread.jspa?threadID=55746
-		if (get(responseData, `${propertyName.split('.')[0]}.NextContinuationToken`)) {
-			query['continuation-token'] = get(
-				responseData,
-				`${propertyName.split('.')[0]}.NextContinuationToken`,
-			);
+		if (get(responseData, [propertyName.split('.')[0], 'NextContinuationToken'])) {
+			query['continuation-token'] = get(responseData, [
+				propertyName.split('.')[0],
+				'NextContinuationToken',
+			]);
 		}
 		if (get(responseData, propertyName)) {
 			if (Array.isArray(get(responseData, propertyName))) {
-				returnData.push.apply(returnData, get(responseData, propertyName));
+				returnData.push.apply(returnData, get(responseData, propertyName) as IDataObject[]);
 			} else {
-				returnData.push(get(responseData, propertyName));
+				returnData.push(get(responseData, propertyName) as IDataObject);
 			}
 		}
-		if (query.limit && query.limit <= returnData.length) {
+		const limit = query.limit as number | undefined;
+		if (limit && limit <= returnData.length) {
 			return returnData;
 		}
 	} while (
-		get(responseData, `${propertyName.split('.')[0]}.IsTruncated`) !== undefined &&
-		get(responseData, `${propertyName.split('.')[0]}.IsTruncated`) !== 'false'
+		get(responseData, [propertyName.split('.')[0], 'IsTruncated']) !== undefined &&
+		get(responseData, [propertyName.split('.')[0], 'IsTruncated']) !== 'false'
 	);
 
 	return returnData;
-}
-
-function queryToString(params: IDataObject) {
-	return Object.keys(params)
-		.map((key) => key + '=' + params[key])
-		.join('&');
 }

@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
@@ -11,6 +10,7 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import type { OptionsWithUri } from 'request';
 import {
 	formatFeed,
 	formatResults,
@@ -34,9 +34,7 @@ import {
 	userOperations,
 } from './descriptions';
 
-import { SplunkCredentials, SplunkFeedResponse } from './types';
-
-import { OptionsWithUri } from 'request';
+import type { SplunkCredentials, SplunkFeedResponse } from './types';
 
 export class Splunk implements INodeType {
 	description: INodeTypeDescription = {
@@ -159,8 +157,8 @@ export class Splunk implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
 
@@ -464,7 +462,7 @@ export class Splunk implements INodeType {
 			}
 
 			Array.isArray(responseData)
-				? returnData.push(...responseData)
+				? returnData.push(...(responseData as IDataObject[]))
 				: returnData.push(responseData as IDataObject);
 		}
 

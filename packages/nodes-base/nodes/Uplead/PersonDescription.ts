@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const personOperations: INodeProperties[] = [
 	{
@@ -41,7 +41,7 @@ export const personFields: INodeProperties[] = [
 		description: 'Email address (e.g – mbenioff@salesforce.com)',
 	},
 	{
-		displayName: 'Fist Name',
+		displayName: 'First Name',
 		name: 'firstname',
 		type: 'string',
 		default: '',

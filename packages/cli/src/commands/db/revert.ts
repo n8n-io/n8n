@@ -1,12 +1,12 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable no-console */
-import { Command, flags } from '@oclif/command';
-import { Connection, ConnectionOptions, createConnection } from 'typeorm';
-import { LoggerProxy } from 'n8n-workflow';
-
-import { getLogger } from '@/Logger';
-
-import * as Db from '@/Db';
+import { Command, Flags } from '@oclif/core';
+import type { DataSourceOptions as ConnectionOptions } from '@n8n/typeorm';
+import { DataSource as Connection } from '@n8n/typeorm';
+import { Container } from 'typedi';
+import { Logger } from '@/Logger';
+import { getConnectionOptions, setSchema } from '@/Db';
+import type { Migration } from '@db/types';
+import { wrapMigration } from '@db/utils/migrationHelpers';
+import config from '@/config';
 
 export class DbRevertMigrationCommand extends Command {
 	static description = 'Revert last database migration';
@@ -14,49 +14,45 @@ export class DbRevertMigrationCommand extends Command {
 	static examples = ['$ n8n db:revert'];
 
 	static flags = {
-		help: flags.help({ char: 'h' }),
+		help: Flags.help({ char: 'h' }),
 	};
 
-	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
+	protected logger = Container.get(Logger);
+
+	private connection: Connection;
+
+	async init() {
+		await this.parse(DbRevertMigrationCommand);
+	}
+
 	async run() {
-		const logger = getLogger();
-		LoggerProxy.init(logger);
+		const dbType = config.getEnv('database.type');
+		const connectionOptions: ConnectionOptions = {
+			...getConnectionOptions(dbType),
+			subscribers: [],
+			synchronize: false,
+			migrationsRun: false,
+			dropSchema: false,
+			logging: ['query', 'error', 'schema'],
+		};
 
-		// eslint-disable-next-line @typescript-eslint/no-shadow, @typescript-eslint/no-unused-vars
-		const { flags } = this.parse(DbRevertMigrationCommand);
+		(connectionOptions.migrations as Migration[]).forEach(wrapMigration);
 
-		let connection: Connection | undefined;
-		try {
-			await Db.init();
-			connection = Db.collections.Credentials.manager.connection;
+		this.connection = new Connection(connectionOptions);
+		await this.connection.initialize();
+		if (dbType === 'postgresdb') await setSchema(this.connection);
+		await this.connection.undoLastMigration();
+		await this.connection.destroy();
+	}
 
-			if (!connection) {
-				throw new Error(`No database connection available.`);
-			}
+	async catch(error: Error) {
+		this.logger.error('Error reverting last migration. See log messages for details.');
+		this.logger.error(error.message);
+	}
 
-			const connectionOptions: ConnectionOptions = Object.assign(connection.options, {
-				subscribers: [],
-				synchronize: false,
-				migrationsRun: false,
-				dropSchema: false,
-				logging: ['query', 'error', 'schema'],
-			});
+	protected async finally(error: Error | undefined) {
+		if (this.connection?.isInitialized) await this.connection.destroy();
 
-			// close connection in order to reconnect with updated options
-			await connection.close();
-			connection = await createConnection(connectionOptions);
-
-			await connection.undoLastMigration();
-			await connection.close();
-		} catch (error) {
-			if (connection) await connection.close();
-
-			console.error('Error reverting last migration. See log messages for details.');
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-			logger.error(error.message);
-			this.exit(1);
-		}
-
-		this.exit();
+		this.exit(error ? 1 : 0);
 	}
 }

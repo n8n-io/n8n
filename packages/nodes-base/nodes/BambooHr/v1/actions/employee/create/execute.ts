@@ -1,12 +1,9 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 
-import { IDataObject, INodeExecutionData } from 'n8n-workflow';
-
-import { apiRequest } from '../../../transport';
-
-import moment from 'moment';
+import moment from 'moment-timezone';
 
 import { capitalCase } from 'change-case';
+import { apiRequest } from '../../../transport';
 
 export async function create(
 	this: IExecuteFunctions,
@@ -100,7 +97,7 @@ export async function create(
 	);
 
 	//obtain employeeID
-	const rawEmployeeId = responseData.headers.location.lastIndexOf('/');
+	const rawEmployeeId: number = responseData.headers.location.lastIndexOf('/');
 	const employeeId = responseData.headers.location.substring(rawEmployeeId + 1);
 
 	//return

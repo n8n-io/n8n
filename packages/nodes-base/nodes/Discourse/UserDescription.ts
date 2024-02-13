@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const userOperations: INodeProperties[] = [
 	{
@@ -215,6 +215,10 @@ export const userFields: INodeProperties[] = [
 				name: 'Suspect',
 				value: 'suspect',
 			},
+			{
+				name: 'Suspended',
+				value: 'suspended',
+			},
 		],
 		displayOptions: {
 			show: {
@@ -255,5 +259,94 @@ export const userFields: INodeProperties[] = [
 		},
 		default: 50,
 		description: 'Max number of results to return',
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['getAll'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Ascending',
+				name: 'asc',
+				type: 'boolean',
+				default: true,
+				description: 'Whether to sort ascending',
+			},
+			{
+				displayName: 'Order',
+				name: 'order',
+				type: 'options',
+				options: [
+					{
+						name: 'Created',
+						value: 'created',
+					},
+					{
+						name: 'Days Visited',
+						value: 'days_visited',
+					},
+					{
+						name: 'Email',
+						value: 'email',
+					},
+					{
+						name: 'Last Emailed',
+						value: 'last_emailed',
+					},
+					{
+						name: 'Posts',
+						value: 'posts',
+					},
+					{
+						name: 'Posts Read',
+						value: 'posts_read',
+					},
+					{
+						name: 'Read Time',
+						value: 'read_time',
+					},
+					{
+						name: 'Seen',
+						value: 'seen',
+					},
+					{
+						name: 'Topics Viewed',
+						value: 'topics_viewed',
+					},
+					{
+						name: 'Trust Level',
+						value: 'trust_level',
+					},
+					{
+						name: 'Username',
+						value: 'username',
+					},
+				],
+				default: 'created',
+				description: 'What to order by',
+			},
+			{
+				displayName: 'Show Emails',
+				name: 'showEmails',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to include user email addresses',
+			},
+			{
+				displayName: 'Stats',
+				name: 'stats',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to return user stats',
+			},
+		],
 	},
 ];

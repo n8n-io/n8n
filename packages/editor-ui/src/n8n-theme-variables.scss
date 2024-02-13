@@ -11,20 +11,35 @@ $custom-font-light: var(--color-text-light);
 $custom-font-very-light: var(--color-text-light);
 
 $custom-expression-text: var(--color-secondary);
-$custom-expression-background: var(--color-background-lighter);
+$custom-expression-background: var(--color-background-light);
 
 // Badge
 $badge-danger-color: var(--color-danger);
 $badge-danger-background-color: var(--color-primary-tint-3);
 $badge-danger-border-color: var(--color-primary-tint-2);
-$badge-warning-background-color: hsla(var(--color-warning-h), var(--color-warning-s), var(--color-warning-l), .3);
-$badge-warning-color: hsla(var(--color-warning-h), var(--color-warning-s), var(--color-warning-l), .3);;
+$badge-warning-background-color: hsla(
+	var(--color-warning-h),
+	var(--color-warning-s),
+	var(--color-warning-l),
+	0.3
+);
+$badge-warning-color: hsla(
+	var(--color-warning-h),
+	var(--color-warning-s),
+	var(--color-warning-l),
+	0.3
+);
 $badge-warning-color: var(--color-text-dark);
 
 // Warning tooltip
 $warning-tooltip-color: var(--color-danger);
 
-$header-height: 65px;
+:root {
+	// Using native css variable enables us to use this value in JS
+	--header-height: 65;
+}
+// sass variable is used for scss files
+$header-height: calc(var(--header-height) * 1px);
 
 // sidebar
 $sidebar-width: 65px;
@@ -49,6 +64,13 @@ $tag-background-color: var(--color-foreground-base);
 $tag-text-color: var(--color-text-dark);
 $tag-close-background-color: var(--color-text-light);
 $tag-close-background-hover-color: var(--color-text-dark);
+
+// nodes
+$node-background-default: var(--color-background-xlight);
+$node-background-executing: var(--color-primary-tint-3);
+$node-background-executing-other: #ede9ff;
+// TODO: Define that differently
+$node-background-type-other: #ede9ff;
 
 // Node creator
 $node-creator-width: 385px;
@@ -78,7 +100,7 @@ $drawer-background-color: var(--color-background-xlight);
 // updates-panel
 $updates-panel-info-url-color: $color-primary;
 $updates-panel-border: var(--border-base);
-$updates-panel-dark-background-color: var(--color-background-lighter);
+$updates-panel-dark-background-color: var(--color-background-light);
 $updates-panel-description-text-color: var(--color-text-base);
 $updates-panel-text-color: var(--color-text-dark);
 
@@ -88,5 +110,13 @@ $version-card-background-color: var(--color-background-xlight);
 $version-card-border: var(--border-base);
 $version-card-description-text-color: var(--color-text-base);
 $version-card-release-date-text-color: var(--color-foreground-xdark);
-$version-card-box-shadow-color: hsla(var(--color-background-dark-h), var(--color-background-dark-s), var(--color-background-dark-l), .07);
+$version-card-box-shadow-color: hsla(
+	var(--color-background-dark-h),
+	var(--color-background-dark-s),
+	var(--color-background-dark-l),
+	0.07
+);
 
+// supplemental node types
+$supplemental-node-types: ai_chain ai_document ai_embedding ai_languageModel ai_memory
+	ai_outputParser ai_tool ai_retriever ai_textSplitter ai_vectorRetriever ai_vectorStore;

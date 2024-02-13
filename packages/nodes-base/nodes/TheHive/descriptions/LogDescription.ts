@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const logOperations: INodeProperties[] = [
 	{
@@ -206,11 +206,11 @@ export const logFields: INodeProperties[] = [
 						name: 'attachmentValues',
 						values: [
 							{
-								displayName: 'Binary Property',
+								displayName: 'Input Binary Field',
 								name: 'binaryProperty',
 								type: 'string',
 								default: 'data',
-								description: 'Object property name which holds binary data',
+								description: 'The name of the input binary field which holds binary data',
 							},
 						],
 					},

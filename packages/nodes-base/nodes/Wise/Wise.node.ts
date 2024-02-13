@@ -1,13 +1,16 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
+	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import omit from 'lodash/omit';
+import moment from 'moment-timezone';
+import { v4 as uuid } from 'uuid';
 import {
 	accountFields,
 	accountOperations,
@@ -23,21 +26,15 @@ import {
 	transferOperations,
 } from './descriptions';
 
-import {
+import type {
 	BorderlessAccount,
 	ExchangeRateAdditionalFields,
 	Profile,
 	Recipient,
 	StatementAdditionalFields,
 	TransferFilters,
-	wiseApiRequest,
 } from './GenericFunctions';
-
-import { omit } from 'lodash';
-
-import moment from 'moment-timezone';
-
-import { v4 as uuid } from 'uuid';
+import { wiseApiRequest } from './GenericFunctions';
 
 export class Wise implements INodeType {
 	description: INodeTypeDescription = {
@@ -167,8 +164,8 @@ export class Wise implements INodeType {
 	async execute(this: IExecuteFunctions) {
 		const items = this.getInputData();
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		const timezone = this.getTimezone();
 
@@ -252,11 +249,11 @@ export class Wise implements INodeType {
 							const data = await wiseApiRequest.call(this, 'GET', endpoint, {}, qs, {
 								encoding: 'arraybuffer',
 							});
-							const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
+							const binaryProperty = this.getNodeParameter('binaryProperty', i);
 
 							items[i].binary = items[i].binary ?? {};
 							items[i].binary![binaryProperty] = await this.helpers.prepareBinaryData(
-								data,
+								data as Buffer,
 								this.getNodeParameter('fileName', i) as string,
 							);
 
@@ -449,11 +446,15 @@ export class Wise implements INodeType {
 						const { environment } = await this.getCredentials('wiseApi');
 
 						if (environment === 'test') {
-							for (const endpoint of ['processing', 'funds_converted', 'outgoing_payment_sent']) {
+							for (const testEndpoint of [
+								'processing',
+								'funds_converted',
+								'outgoing_payment_sent',
+							]) {
 								await wiseApiRequest.call(
 									this,
 									'GET',
-									`v1/simulation/transfers/${transferId}/${endpoint}`,
+									`v1/simulation/transfers/${transferId}/${testEndpoint}`,
 								);
 							}
 						}
@@ -476,11 +477,11 @@ export class Wise implements INodeType {
 								{},
 								{ encoding: 'arraybuffer' },
 							);
-							const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
+							const binaryProperty = this.getNodeParameter('binaryProperty', i);
 
 							items[i].binary = items[i].binary ?? {};
 							items[i].binary![binaryProperty] = await this.helpers.prepareBinaryData(
-								data,
+								data as Buffer,
 								this.getNodeParameter('fileName', i) as string,
 							);
 
@@ -535,12 +536,12 @@ export class Wise implements INodeType {
 			}
 
 			Array.isArray(responseData)
-				? returnData.push(...responseData)
-				: returnData.push(responseData);
+				? returnData.push(...(responseData as IDataObject[]))
+				: returnData.push(responseData as IDataObject);
 		}
 
 		if (binaryOutput && responseData !== undefined) {
-			return this.prepareOutputData(responseData);
+			return [responseData as INodeExecutionData[]];
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];

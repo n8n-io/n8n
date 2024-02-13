@@ -1,26 +1,24 @@
-import { Entity, ManyToOne, RelationId } from 'typeorm';
+import { Column, Entity, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
 import { CredentialsEntity } from './CredentialsEntity';
 import { User } from './User';
-import { Role } from './Role';
-import { AbstractEntity } from './AbstractEntity';
+import { WithTimestamps } from './AbstractEntity';
+
+export type CredentialSharingRole = 'credential:owner' | 'credential:user';
 
 @Entity()
-export class SharedCredentials extends AbstractEntity {
-	@ManyToOne(() => Role, (role) => role.sharedCredentials, { nullable: false })
-	role: Role;
+export class SharedCredentials extends WithTimestamps {
+	@Column()
+	role: CredentialSharingRole;
 
-	@ManyToOne(() => User, (user) => user.sharedCredentials, { primary: true })
+	@ManyToOne('User', 'sharedCredentials')
 	user: User;
 
-	@RelationId((sharedCredential: SharedCredentials) => sharedCredential.user)
+	@PrimaryColumn()
 	userId: string;
 
-	@ManyToOne(() => CredentialsEntity, (credentials) => credentials.shared, {
-		primary: true,
-		onDelete: 'CASCADE',
-	})
+	@ManyToOne('CredentialsEntity', 'shared')
 	credentials: CredentialsEntity;
 
-	@RelationId((sharedCredential: SharedCredentials) => sharedCredential.credentials)
-	credentialId: number;
+	@PrimaryColumn()
+	credentialsId: string;
 }

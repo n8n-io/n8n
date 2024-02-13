@@ -1,57 +1,70 @@
 <template>
 	<div :class="['action-dropdown-container', $style.actionDropdownContainer]">
-		<el-dropdown
+		<ElDropdown
+			ref="elementDropdown"
 			:placement="placement"
 			:trigger="trigger"
+			:popper-class="{ [$style.shadow]: true, [$style.hideArrow]: hideArrow }"
 			@command="onSelect"
-			ref="elementDropdown"
+			@visible-change="onVisibleChange"
 		>
-			<div :class="$style.activator" @click.prevent @blur="onButtonBlur">
-				<n8n-icon :icon="activatorIcon" />
-			</div>
+			<slot v-if="$slots.activator" name="activator" />
+			<n8n-icon-button
+				v-else
+				type="tertiary"
+				text
+				:class="$style.activator"
+				:size="activatorSize"
+				:icon="activatorIcon"
+				@blur="onButtonBlur"
+			/>
+
 			<template #dropdown>
-				<el-dropdown-menu :class="$style.userActionsMenu">
-					<el-dropdown-item
+				<ElDropdownMenu :class="$style.userActionsMenu">
+					<ElDropdownItem
 						v-for="item in items"
 						:key="item.id"
 						:command="item.id"
 						:disabled="item.disabled"
 						:divided="item.divided"
+						:class="$style.elementItem"
 					>
-						<div
-							:class="{
-								[$style.itemContainer]: true,
-								[$style.hasCustomStyling]: item.customClass !== undefined,
-								[item.customClass]: item.customClass !== undefined,
-							}"
-						>
+						<div :class="getItemClasses(item)" :data-test-id="`${testIdPrefix}-item-${item.id}`">
 							<span v-if="item.icon" :class="$style.icon">
-								<n8n-icon :icon="item.icon" :size="item.iconSize" />
+								<N8nIcon :icon="item.icon" :size="iconSize" />
 							</span>
 							<span :class="$style.label">
 								{{ item.label }}
 							</span>
+							<N8nKeyboardShortcut
+								v-if="item.shortcut"
+								v-bind="item.shortcut"
+								:class="$style.shortcut"
+							>
+							</N8nKeyboardShortcut>
 						</div>
-					</el-dropdown-item>
-				</el-dropdown-menu>
+					</ElDropdownItem>
+				</ElDropdownMenu>
 			</template>
-		</el-dropdown>
+		</ElDropdown>
 	</div>
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from 'vue';
-import ElDropdown from 'element-ui/lib/dropdown';
-import ElDropdownMenu from 'element-ui/lib/dropdown-menu';
-import ElDropdownItem from 'element-ui/lib/dropdown-item';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
+import { ElDropdown, ElDropdownMenu, ElDropdownItem } from 'element-plus';
 import N8nIcon from '../N8nIcon';
+import { N8nKeyboardShortcut } from '../N8nKeyboardShortcut';
+import type { KeyboardShortcut } from '../../types';
 
-interface IActionDropdownItem {
+export interface IActionDropdownItem {
 	id: string;
 	label: string;
 	icon?: string;
 	divided?: boolean;
 	disabled?: boolean;
+	shortcut?: KeyboardShortcut;
 	customClass?: string;
 }
 
@@ -61,13 +74,14 @@ interface IActionDropdownItem {
 // by Element UI dropdown component).
 // It can be used in different parts of editor UI while ActionToggle
 // is designed to be used in card components.
-export default Vue.extend({
-	name: 'n8n-action-dropdown',
+export default defineComponent({
+	name: 'N8nActionDropdown',
 	components: {
-		ElDropdownMenu, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
-		ElDropdown, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
-		ElDropdownItem, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
+		ElDropdown,
+		ElDropdownMenu,
+		ElDropdownItem,
 		N8nIcon,
+		N8nKeyboardShortcut,
 	},
 	props: {
 		items: {
@@ -82,7 +96,11 @@ export default Vue.extend({
 		},
 		activatorIcon: {
 			type: String,
-			default: 'ellipsis-v',
+			default: 'ellipsis-h',
+		},
+		activatorSize: {
+			type: String,
+			default: 'medium',
 		},
 		iconSize: {
 			type: String,
@@ -94,44 +112,92 @@ export default Vue.extend({
 			default: 'click',
 			validator: (value: string): boolean => ['click', 'hover'].includes(value),
 		},
+		hideArrow: {
+			type: Boolean,
+			default: false,
+		},
+	},
+	data() {
+		const testIdPrefix = this.$attrs['data-test-id'];
+		return { testIdPrefix };
 	},
 	methods: {
+		getItemClasses(item: IActionDropdownItem): Record<string, boolean> {
+			return {
+				[this.$style.itemContainer]: true,
+				[this.$style.disabled]: item.disabled,
+				[this.$style.hasCustomStyling]: item.customClass !== undefined,
+				...(item.customClass !== undefined ? { [item.customClass]: true } : {}),
+			};
+		},
 		onSelect(action: string): void {
 			this.$emit('select', action);
 		},
+		onVisibleChange(open: boolean): void {
+			this.$emit('visibleChange', open);
+		},
 		onButtonBlur(event: FocusEvent): void {
-			const elementDropdown = this.$refs.elementDropdown as
-				| (Vue & { hide: () => void })
-				| undefined;
+			const elementDropdown = this.$refs.elementDropdown as InstanceType<typeof ElDropdown>;
+
 			// Hide dropdown when clicking outside of current document
-			if (elementDropdown && event.relatedTarget === null) {
-				elementDropdown.hide();
+			if (elementDropdown?.handleClose && event.relatedTarget === null) {
+				elementDropdown.handleClose();
 			}
+		},
+		open() {
+			const elementDropdown = this.$refs.elementDropdown as InstanceType<typeof ElDropdown>;
+			elementDropdown.handleOpen();
+		},
+		close() {
+			const elementDropdown = this.$refs.elementDropdown as InstanceType<typeof ElDropdown>;
+			elementDropdown.handleClose();
 		},
 	},
 });
 </script>
 
 <style lang="scss" module>
-.activator {
-	cursor: pointer;
-	padding: var(--spacing-2xs);
-	margin: 0;
-	border-radius: var(--border-radius-base);
-	line-height: normal !important;
-
-	svg {
-		position: static !important;
+:global(.el-dropdown__list) {
+	.userActionsMenu {
+		min-width: 160px;
+		padding: var(--spacing-4xs) 0;
 	}
 
+	.elementItem {
+		padding: 0;
+	}
+}
+
+:global(.el-popper).hideArrow {
+	:global(.el-popper__arrow) {
+		display: none;
+	}
+}
+
+.shadow {
+	box-shadow: var(--box-shadow-light);
+}
+
+.activator {
 	&:hover {
 		background-color: var(--color-background-base);
-		color: initial !important;
 	}
 }
 
 .itemContainer {
 	display: flex;
+	align-items: center;
+	gap: var(--spacing-s);
+	justify-content: space-between;
+	font-size: var(--font-size-2xs);
+	line-height: 18px;
+	padding: var(--spacing-3xs) var(--spacing-2xs);
+
+	&.disabled {
+		.shortcut {
+			opacity: 0.3;
+		}
+	}
 }
 
 .icon {
@@ -141,6 +207,10 @@ export default Vue.extend({
 	svg {
 		width: 1.2em !important;
 	}
+}
+
+.shortcut {
+	display: flex;
 }
 
 :global(li.is-disabled) {

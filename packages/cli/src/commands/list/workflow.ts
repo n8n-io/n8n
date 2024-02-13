@@ -1,12 +1,9 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable no-console */
-import { Command, flags } from '@oclif/command';
+import Container from 'typedi';
+import { Flags } from '@oclif/core';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import { BaseCommand } from '../BaseCommand';
 
-import { IDataObject } from 'n8n-workflow';
-
-import * as Db from '@/Db';
-
-export class ListWorkflowCommand extends Command {
+export class ListWorkflowCommand extends BaseCommand {
 	static description = '\nList workflows';
 
 	static examples = [
@@ -16,46 +13,40 @@ export class ListWorkflowCommand extends Command {
 	];
 
 	static flags = {
-		help: flags.help({ char: 'h' }),
-		active: flags.string({
+		help: Flags.help({ char: 'h' }),
+		active: Flags.string({
 			description: 'Filters workflows by active status. Can be true or false',
 		}),
-		onlyId: flags.boolean({
+		onlyId: Flags.boolean({
 			description: 'Outputs workflow IDs only, one per line.',
 		}),
 	};
 
-	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	async run() {
-		// eslint-disable-next-line @typescript-eslint/no-shadow
-		const { flags } = this.parse(ListWorkflowCommand);
+		const { flags } = await this.parse(ListWorkflowCommand);
 
 		if (flags.active !== undefined && !['true', 'false'].includes(flags.active)) {
 			this.error('The --active flag has to be passed using true or false');
 		}
 
-		try {
-			await Db.init();
+		const workflowRepository = Container.get(WorkflowRepository);
 
-			const findQuery: IDataObject = {};
-			if (flags.active !== undefined) {
-				findQuery.active = flags.active === 'true';
-			}
+		const workflows =
+			flags.active !== undefined
+				? await workflowRepository.findByActiveState(flags.active === 'true')
+				: await workflowRepository.find();
 
-			const workflows = await Db.collections.Workflow.find(findQuery);
-			if (flags.onlyId) {
-				workflows.forEach((workflow) => console.log(workflow.id));
-			} else {
-				workflows.forEach((workflow) => console.log(`${workflow.id}|${workflow.name}`));
-			}
-		} catch (e) {
-			console.error('\nGOT ERROR');
-			console.log('====================================');
-			console.error(e.message);
-			console.error(e.stack);
-			this.exit(1);
+		if (flags.onlyId) {
+			workflows.forEach((workflow) => this.logger.info(workflow.id));
+		} else {
+			workflows.forEach((workflow) => this.logger.info(`${workflow.id}|${workflow.name}`));
 		}
+	}
 
-		this.exit();
+	async catch(error: Error) {
+		this.logger.error('\nGOT ERROR');
+		this.logger.error('====================================');
+		this.logger.error(error.message);
+		this.logger.error(error.stack!);
 	}
 }

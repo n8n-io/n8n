@@ -3,7 +3,11 @@
 		<el-col class="notags" :span="16">
 			<div class="icon">🗄️</div>
 			<div>
-				<div class="headline">{{ $locale.baseText('noTagsView.readyToOrganizeYourWorkflows') }}</div>
+				<div class="mb-s">
+					<n8n-heading size="large">
+						{{ $locale.baseText('noTagsView.readyToOrganizeYourWorkflows') }}
+					</n8n-heading>
+				</div>
 				<div class="description">
 					{{ $locale.baseText('noTagsView.withWorkflowTagsYouReFree') }}
 				</div>
@@ -14,10 +18,9 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
 
-import Vue from 'vue';
-
-export default Vue.extend({
+export default defineComponent({
 	name: 'NoTagsView',
 });
 </script>
@@ -42,18 +45,12 @@ $--footer-spacing: 45px;
 }
 
 .icon {
-  font-size: 36px;
-  line-height: 14px;
-}
-
-.headline {
-  font-size: 17.6px;
-  color: black;
-  margin-bottom: 12px;
+	font-size: 36px;
+	line-height: 14px;
 }
 
 .description {
-  font-size: 14px;
-  line-height: 21px;
+	font-size: 14px;
+	line-height: 21px;
 }
 </style>

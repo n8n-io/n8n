@@ -1,10 +1,15 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
+import type {
+	IHookFunctions,
+	IWebhookFunctions,
+	IDataObject,
+	INodeType,
+	INodeTypeDescription,
+	IWebhookResponseData,
+} from 'n8n-workflow';
 
-import { IDataObject, INodeType, INodeTypeDescription, IWebhookResponseData } from 'n8n-workflow';
+import { apiRequest, getImageBySize, getSecretToken } from './GenericFunctions';
 
-import { apiRequest, getImageBySize } from './GenericFunctions';
-
-import { IEvent } from './IEvent';
+import type { IEvent } from './IEvent';
 
 export class TelegramTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -12,7 +17,8 @@ export class TelegramTrigger implements INodeType {
 		name: 'telegramTrigger',
 		icon: 'file:telegram.svg',
 		group: ['trigger'],
-		version: 1,
+		version: [1, 1.1],
+		defaultVersion: 1.1,
 		subtitle: '=Updates: {{$parameter["updates"].join(", ")}}',
 		description: 'Starts the workflow on a Telegram update',
 		defaults: {
@@ -36,7 +42,14 @@ export class TelegramTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Updates',
+				displayName:
+					'Due to Telegram API limitations, you can use just one Telegram trigger for each bot at a time',
+				name: 'telegramTriggerNotice',
+				type: 'notice',
+				default: '',
+			},
+			{
+				displayName: 'Trigger On',
 				name: 'updates',
 				type: 'multiOptions',
 				options: [
@@ -81,6 +94,7 @@ export class TelegramTrigger implements INodeType {
 					{
 						name: 'Poll',
 						value: 'poll',
+						action: 'On Poll Change',
 						description:
 							'Trigger on new poll state. Bots receive only updates about stopped polls and polls, which are sent by the bot.',
 					},
@@ -99,7 +113,6 @@ export class TelegramTrigger implements INodeType {
 				],
 				required: true,
 				default: [],
-				description: 'The update types to listen to',
 			},
 			{
 				displayName:
@@ -159,7 +172,6 @@ export class TelegramTrigger implements INodeType {
 		],
 	};
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -178,15 +190,18 @@ export class TelegramTrigger implements INodeType {
 
 				let allowedUpdates = this.getNodeParameter('updates') as string[];
 
-				if (allowedUpdates.includes('*')) {
+				if ((allowedUpdates || []).includes('*')) {
 					allowedUpdates = [];
 				}
 
 				const endpoint = 'setWebhook';
 
+				const secret_token = getSecretToken.call(this);
+
 				const body = {
 					url: webhookUrl,
 					allowed_updates: allowedUpdates,
+					secret_token,
 				};
 
 				await apiRequest.call(this, 'POST', endpoint, body);
@@ -212,6 +227,19 @@ export class TelegramTrigger implements INodeType {
 		const credentials = await this.getCredentials('telegramApi');
 
 		const bodyData = this.getBodyData() as IEvent;
+		const headerData = this.getHeaderData();
+
+		const nodeVersion = this.getNode().typeVersion;
+		if (nodeVersion > 1) {
+			const secret = getSecretToken.call(this);
+			if (secret !== headerData['x-telegram-bot-api-secret-token']) {
+				const res = this.getResponseObject();
+				res.status(403).json({ message: 'Provided secret is not valid' });
+				return {
+					noWebhookResponse: true,
+				};
+			}
+		}
 
 		const additionalFields = this.getNodeParameter('additionalFields') as IDataObject;
 
@@ -225,7 +253,7 @@ export class TelegramTrigger implements INodeType {
 			}
 
 			if (
-				(bodyData[key] && bodyData[key]?.photo && Array.isArray(bodyData[key]?.photo)) ||
+				(bodyData[key]?.photo && Array.isArray(bodyData[key]?.photo)) ||
 				bodyData[key]?.document
 			) {
 				if (additionalFields.imageSize) {
@@ -276,7 +304,7 @@ export class TelegramTrigger implements INodeType {
 
 				const binaryData = await this.helpers.prepareBinaryData(
 					data as unknown as Buffer,
-					fileName,
+					fileName as string,
 				);
 
 				return {

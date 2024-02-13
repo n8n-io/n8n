@@ -1,27 +1,23 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import { IDataObject } from 'n8n-workflow';
+} from 'n8n-workflow';
 
 export async function ghostApiRequest(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
 	uri?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const source = this.getNodeParameter('source', 0) as string;
 
-	let credentials;
 	let version;
 	let credentialType;
 
@@ -34,7 +30,7 @@ export async function ghostApiRequest(
 		credentialType = 'ghostAdminApi';
 	}
 
-	credentials = await this.getCredentials(credentialType);
+	const credentials = await this.getCredentials(credentialType);
 
 	const options: OptionsWithUri = {
 		method,
@@ -44,7 +40,7 @@ export async function ghostApiRequest(
 		json: true,
 	};
 
-	return this.helpers.requestWithAuthentication.call(this, credentialType, options);
+	return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 }
 
 export async function ghostApiRequestAllItems(
@@ -52,10 +48,9 @@ export async function ghostApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -67,12 +62,11 @@ export async function ghostApiRequestAllItems(
 	do {
 		responseData = await ghostApiRequest.call(this, method, endpoint, body, query);
 		query.page = responseData.meta.pagination.next;
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (query.page !== null);
 	return returnData;
 }
 
-// tslint:disable-next-line:no-any
 export function validateJSON(json: string | undefined): any {
 	let result;
 	try {

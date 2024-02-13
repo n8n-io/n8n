@@ -1,4 +1,4 @@
-import {
+import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -7,13 +7,17 @@ import {
 
 export class CloudflareApi implements ICredentialType {
 	name = 'cloudflareApi';
+
 	displayName = 'Cloudflare API';
+
 	documentationUrl = 'cloudflare';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Token',
 			name: 'apiToken',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];

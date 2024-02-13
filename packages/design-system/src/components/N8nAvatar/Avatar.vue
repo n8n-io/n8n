@@ -1,6 +1,6 @@
 <template>
-	<span :class="['n8n-avatar', $style.container]" v-on="$listeners">
-		<avatar
+	<span :class="['n8n-avatar', $style.container]" v-bind="$attrs">
+		<Avatar
 			v-if="firstName"
 			:size="getSize(size)"
 			:name="firstName + ' ' + lastName"
@@ -13,7 +13,7 @@
 </template>
 
 <script lang="ts">
-import Avatar from 'vue2-boring-avatars';
+import Avatar from 'vue-boring-avatars';
 
 const sizes: { [size: string]: number } = {
 	small: 28,
@@ -21,16 +21,21 @@ const sizes: { [size: string]: number } = {
 	medium: 40,
 };
 
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
-	name: 'n8n-avatar',
+export default defineComponent({
+	name: 'N8nAvatar',
+	components: {
+		Avatar,
+	},
 	props: {
 		firstName: {
 			type: String,
+			default: '',
 		},
 		lastName: {
 			type: String,
+			default: '',
 		},
 		size: {
 			type: String,
@@ -45,9 +50,6 @@ export default Vue.extend({
 				'--color-primary-tint-1',
 			],
 		},
-	},
-	components: {
-		Avatar, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
 	},
 	computed: {
 		initials() {
@@ -87,7 +89,7 @@ export default Vue.extend({
 	position: absolute;
 	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-bold);
-	color: var(--color-text-xlight);
+	color: var(--color-avatar-font);
 	text-shadow: 0px 1px 6px rgba(25, 11, 9, 0.3);
 }
 

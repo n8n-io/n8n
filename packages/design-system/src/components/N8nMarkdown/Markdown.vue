@@ -3,14 +3,13 @@
 		<div
 			v-if="!loading"
 			ref="editor"
-			class="ph-no-capture"
 			:class="$style[theme]"
-			v-html="htmlContent"
 			@click="onClick"
+			v-html="htmlContent"
 		/>
 		<div v-else :class="$style.markdown">
 			<div v-for="(block, index) in loadingBlocks" :key="index">
-				<n8n-loading :loading="loading" :rows="loadingRows" animated variant="p" />
+				<N8nLoading :loading="loading" :rows="loadingRows" animated variant="p" />
 				<div :class="$style.spacer" />
 			</div>
 		</div>
@@ -19,13 +18,15 @@
 
 <script lang="ts">
 import N8nLoading from '../N8nLoading';
+import type { PluginSimple } from 'markdown-it';
 import Markdown from 'markdown-it';
 
 import markdownLink from 'markdown-it-link-attributes';
 import markdownEmoji from 'markdown-it-emoji';
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
 import markdownTasklists from 'markdown-it-task-lists';
+
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
 
 import xss, { friendlyAttrValue } from 'xss';
 import { escapeMarkdown } from '../../utils/markdown';
@@ -49,36 +50,38 @@ const DEFAULT_OPTIONS_TASKLISTS = {
 	labelAfter: true,
 } as const;
 
-interface IImage {
+export interface IImage {
 	id: string;
 	url: string;
 }
 
-interface Options {
+export interface Options {
 	markdown: typeof DEFAULT_OPTIONS_MARKDOWN;
 	linkAttributes: typeof DEFAULT_OPTIONS_LINK_ATTRIBUTES;
 	tasklists: typeof DEFAULT_OPTIONS_TASKLISTS;
 }
 
-import Vue, { PropType } from 'vue';
-
-export default Vue.extend({
+export default defineComponent({
+	name: 'N8nMarkdown',
 	components: {
 		N8nLoading,
 	},
-	name: 'n8n-markdown',
 	props: {
 		content: {
 			type: String,
+			default: '',
 		},
 		withMultiBreaks: {
 			type: Boolean,
+			default: false,
 		},
 		images: {
-			type: Array<IImage>,
+			type: Array as PropType<IImage[]>,
+			default: () => [],
 		},
 		loading: {
 			type: Boolean,
+			default: false,
 		},
 		loadingBlocks: {
 			type: Number,
@@ -86,7 +89,7 @@ export default Vue.extend({
 		},
 		loadingRows: {
 			type: Number,
-			default: () => 3,
+			default: 3,
 		},
 		theme: {
 			type: String,
@@ -94,14 +97,20 @@ export default Vue.extend({
 		},
 		options: {
 			type: Object as PropType<Options>,
-			default() {
-				return {
-					markdown: DEFAULT_OPTIONS_MARKDOWN,
-					linkAttributes: DEFAULT_OPTIONS_LINK_ATTRIBUTES,
-					tasklists: DEFAULT_OPTIONS_TASKLISTS,
-				};
-			},
+			default: (): Options => ({
+				markdown: DEFAULT_OPTIONS_MARKDOWN,
+				linkAttributes: DEFAULT_OPTIONS_LINK_ATTRIBUTES,
+				tasklists: DEFAULT_OPTIONS_TASKLISTS,
+			}),
 		},
+	},
+	data(): { md: Markdown } {
+		return {
+			md: new Markdown(this.options.markdown)
+				.use(markdownLink, this.options.linkAttributes)
+				.use(markdownEmoji)
+				.use(markdownTasklists as PluginSimple, this.options.tasklists),
+		};
 	},
 	computed: {
 		htmlContent(): string {
@@ -132,7 +141,8 @@ export default Vue.extend({
 					if (tag === 'img' && name === 'src') {
 						if (value.match(fileIdRegex)) {
 							const id = value.split('fileId:')[1];
-							return `src=${friendlyAttrValue(imageUrls[id])}` || '';
+							const attributeValue = friendlyAttrValue(imageUrls[id]);
+							return attributeValue ? `src=${attributeValue}` : '';
 						}
 						// Only allow http requests to supported image files from the `static` directory
 						const isImageFile = value.split('#')[0].match(/\.(jpeg|jpg|gif|png|webp)$/) !== null;
@@ -144,7 +154,7 @@ export default Vue.extend({
 					// Return nothing, means keep the default handling measure
 				},
 				onTag(tag, code) {
-					if (tag === 'img' && code.includes(`alt="workflow-screenshot"`)) {
+					if (tag === 'img' && code.includes('alt="workflow-screenshot"')) {
 						return '';
 					}
 					// return nothing, keep tag
@@ -153,14 +163,6 @@ export default Vue.extend({
 
 			return safeHtml;
 		},
-	},
-	data() {
-		return {
-			md: new Markdown(this.options.markdown) // eslint-disable-line @typescript-eslint/no-unsafe-member-access
-				.use(markdownLink, this.options.linkAttributes) // eslint-disable-line @typescript-eslint/no-unsafe-member-access
-				.use(markdownEmoji)
-				.use(markdownTasklists, this.options.tasklists), // eslint-disable-line @typescript-eslint/no-unsafe-member-access
-		};
 	},
 	methods: {
 		onClick(event: MouseEvent) {
@@ -245,10 +247,7 @@ export default Vue.extend({
 	}
 
 	img {
-		width: 100%;
-		max-height: 90vh;
-		object-fit: cover;
-		border: var(--border-width-base) var(--color-foreground-base) var(--border-style-base);
+		max-width: 100%;
 		border-radius: var(--border-radius-large);
 	}
 
@@ -260,7 +259,16 @@ export default Vue.extend({
 }
 
 .sticky {
-	color: var(--color-text-dark);
+	color: var(--color-sticky-font);
+
+	h1,
+	h2,
+	h3,
+	h4,
+	h5,
+	h6 {
+		color: var(--color-sticky-font);
+	}
 
 	h1,
 	h2,
@@ -307,15 +315,15 @@ export default Vue.extend({
 	}
 
 	code {
-		background-color: var(--color-background-base);
+		background-color: var(--color-sticky-code-background);
 		padding: 0 var(--spacing-4xs);
-		color: var(--color-secondary);
+		color: var(--color-sticky-code-font);
 	}
 
 	pre > code,
 	li > code,
 	p > code {
-		color: var(--color-secondary);
+		color: var(--color-sticky-code-font);
 	}
 
 	a {
@@ -326,6 +334,8 @@ export default Vue.extend({
 
 	img {
 		object-fit: contain;
+		margin-top: var(--spacing-xs);
+		margin-bottom: var(--spacing-2xs);
 
 		&[src*='#full-width'] {
 			width: 100%;

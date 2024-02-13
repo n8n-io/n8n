@@ -2,16 +2,16 @@
 	<div class="titled-list">
 		<p v-text="title" />
 		<ul>
-			<li v-for="item in items" class="titled-list-item" :key="item" v-text="item" />
+			<li v-for="item in items" :key="item" class="titled-list-item" v-html="item" />
 		</ul>
 	</div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
-	name: "TitledList",
+export default defineComponent({
+	name: 'TitledList',
 	props: {
 		title: {
 			type: String,
@@ -32,7 +32,7 @@ export default Vue.extend({
 		list-style: none;
 		padding-left: var(--spacing-3xs);
 		&::before {
-			content: "- ";
+			content: '- ';
 		}
 	}
 }

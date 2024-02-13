@@ -1,22 +1,13 @@
-/* eslint-disable import/no-mutable-exports */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
-/* eslint-disable no-case-declarations */
-/* eslint-disable @typescript-eslint/naming-convention */
-import {
-	Connection,
-	ConnectionOptions,
-	createConnection,
+import { Container } from 'typedi';
+import type {
+	DataSourceOptions as ConnectionOptions,
 	EntityManager,
-	EntityTarget,
-	getRepository,
 	LoggerOptions,
-	ObjectLiteral,
-	Repository,
-} from 'typeorm';
-import { TlsOptions } from 'tls';
-import { DatabaseType, IDatabaseCollections } from '@/Interfaces';
-import * as GenericHelpers from '@/GenericHelpers';
+} from '@n8n/typeorm';
+import { DataSource as Connection } from '@n8n/typeorm';
+import type { TlsOptions } from 'tls';
+import { ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 
 import config from '@/config';
 
@@ -28,93 +19,108 @@ import {
 	getPostgresConnectionOptions,
 	getSqliteConnectionOptions,
 } from '@db/config';
-
-export let isInitialized = false;
-export const collections = {} as IDatabaseCollections;
+import { inTest } from '@/constants';
+import { wrapMigration } from '@db/utils/migrationHelpers';
+import type { DatabaseType, Migration } from '@db/types';
 
 let connection: Connection;
 
-export async function transaction<T>(fn: (entityManager: EntityManager) => Promise<T>): Promise<T> {
-	return connection.transaction(fn);
-}
+export const getConnection = () => connection!;
 
-export function linkRepository<Entity extends ObjectLiteral>(
-	entityClass: EntityTarget<Entity>,
-): Repository<Entity> {
-	return getRepository(entityClass, connection.name);
-}
+type ConnectionState = {
+	connected: boolean;
+	migrated: boolean;
+};
 
-export async function init(
-	testConnectionOptions?: ConnectionOptions,
-): Promise<IDatabaseCollections> {
-	if (isInitialized) return collections;
+export const connectionState: ConnectionState = {
+	connected: false,
+	migrated: false,
+};
 
-	const dbType = (await GenericHelpers.getConfigValue('database.type')) as DatabaseType;
-
-	let connectionOptions: ConnectionOptions;
-
-	const entityPrefix = config.getEnv('database.tablePrefix');
-
-	if (testConnectionOptions) {
-		connectionOptions = testConnectionOptions;
-	} else {
-		switch (dbType) {
-			case 'postgresdb':
-				const sslCa = (await GenericHelpers.getConfigValue('database.postgresdb.ssl.ca')) as string;
-				const sslCert = (await GenericHelpers.getConfigValue(
-					'database.postgresdb.ssl.cert',
-				)) as string;
-				const sslKey = (await GenericHelpers.getConfigValue(
-					'database.postgresdb.ssl.key',
-				)) as string;
-				const sslRejectUnauthorized = (await GenericHelpers.getConfigValue(
-					'database.postgresdb.ssl.rejectUnauthorized',
-				)) as boolean;
-
-				let ssl: TlsOptions | undefined;
-				if (sslCa !== '' || sslCert !== '' || sslKey !== '' || !sslRejectUnauthorized) {
-					ssl = {
-						ca: sslCa || undefined,
-						cert: sslCert || undefined,
-						key: sslKey || undefined,
-						rejectUnauthorized: sslRejectUnauthorized,
-					};
-				}
-
-				connectionOptions = {
-					...getPostgresConnectionOptions(),
-					...(await getOptionOverrides('postgresdb')),
-					ssl,
-				};
-
-				break;
-
-			case 'mariadb':
-			case 'mysqldb':
-				connectionOptions = {
-					...(dbType === 'mysqldb' ? getMysqlConnectionOptions() : getMariaDBConnectionOptions()),
-					...(await getOptionOverrides('mysqldb')),
-					timezone: 'Z', // set UTC as default
-				};
-				break;
-
-			case 'sqlite':
-				connectionOptions = getSqliteConnectionOptions();
-				break;
-
-			default:
-				throw new Error(`The database "${dbType}" is currently not supported!`);
+// Ping DB connection every 2 seconds
+let pingTimer: NodeJS.Timer | undefined;
+if (!inTest) {
+	const pingDBFn = async () => {
+		if (connection?.isInitialized) {
+			try {
+				await connection.query('SELECT 1');
+				connectionState.connected = true;
+				return;
+			} catch (error) {
+				ErrorReporter.error(error);
+			} finally {
+				pingTimer = setTimeout(pingDBFn, 2000);
+			}
 		}
-	}
+		connectionState.connected = false;
+	};
+	pingTimer = setTimeout(pingDBFn, 2000);
+}
 
-	let loggingOption: LoggerOptions = (await GenericHelpers.getConfigValue(
-		'database.logging.enabled',
-	)) as boolean;
+export async function transaction<T>(fn: (entityManager: EntityManager) => Promise<T>): Promise<T> {
+	return await connection.transaction(fn);
+}
+
+export function getConnectionOptions(dbType: DatabaseType): ConnectionOptions {
+	switch (dbType) {
+		case 'postgresdb':
+			const sslCa = config.getEnv('database.postgresdb.ssl.ca');
+			const sslCert = config.getEnv('database.postgresdb.ssl.cert');
+			const sslKey = config.getEnv('database.postgresdb.ssl.key');
+			const sslRejectUnauthorized = config.getEnv('database.postgresdb.ssl.rejectUnauthorized');
+
+			let ssl: TlsOptions | boolean = config.getEnv('database.postgresdb.ssl.enabled');
+			if (sslCa !== '' || sslCert !== '' || sslKey !== '' || !sslRejectUnauthorized) {
+				ssl = {
+					ca: sslCa || undefined,
+					cert: sslCert || undefined,
+					key: sslKey || undefined,
+					rejectUnauthorized: sslRejectUnauthorized,
+				};
+			}
+
+			return {
+				...getPostgresConnectionOptions(),
+				...getOptionOverrides('postgresdb'),
+				ssl,
+			};
+
+		case 'mariadb':
+		case 'mysqldb':
+			return {
+				...(dbType === 'mysqldb' ? getMysqlConnectionOptions() : getMariaDBConnectionOptions()),
+				...getOptionOverrides('mysqldb'),
+				timezone: 'Z', // set UTC as default
+			};
+
+		case 'sqlite':
+			return getSqliteConnectionOptions();
+
+		default:
+			throw new ApplicationError('Database type currently not supported', { extra: { dbType } });
+	}
+}
+
+export async function setSchema(conn: Connection) {
+	const schema = config.getEnv('database.postgresdb.schema');
+	const searchPath = ['public'];
+	if (schema !== 'public') {
+		await conn.query(`CREATE SCHEMA IF NOT EXISTS ${schema}`);
+		searchPath.unshift(schema);
+	}
+	await conn.query(`SET search_path TO ${searchPath.join(',')};`);
+}
+
+export async function init(testConnectionOptions?: ConnectionOptions): Promise<void> {
+	if (connectionState.connected) return;
+
+	const dbType = config.getEnv('database.type');
+	const connectionOptions = testConnectionOptions ?? getConnectionOptions(dbType);
+
+	let loggingOption: LoggerOptions = config.getEnv('database.logging.enabled');
 
 	if (loggingOption) {
-		const optionsString = (
-			(await GenericHelpers.getConfigValue('database.logging.options')) as string
-		).replace(/\s+/g, '');
+		const optionsString = config.getEnv('database.logging.options').replace(/\s+/g, '');
 
 		if (optionsString === 'all') {
 			loggingOption = optionsString;
@@ -123,63 +129,38 @@ export async function init(
 		}
 	}
 
-	const maxQueryExecutionTime = (await GenericHelpers.getConfigValue(
-		'database.logging.maxQueryExecutionTime',
-	)) as string;
+	const maxQueryExecutionTime = config.getEnv('database.logging.maxQueryExecutionTime');
 
 	Object.assign(connectionOptions, {
 		entities: Object.values(entities),
 		synchronize: false,
 		logging: loggingOption,
 		maxQueryExecutionTime,
+		migrationsRun: false,
 	});
 
-	connection = await createConnection(connectionOptions);
+	connection = new Connection(connectionOptions);
+	Container.set(Connection, connection);
+	await connection.initialize();
 
-	if (!testConnectionOptions && dbType === 'sqlite') {
-		// This specific migration changes database metadata.
-		// A field is now nullable. We need to reconnect so that
-		// n8n knows it has changed. Happens only on sqlite.
-		let migrations = [];
-		try {
-			migrations = await connection.query(
-				`SELECT id FROM ${entityPrefix}migrations where name = "MakeStoppedAtNullable1607431743769"`,
-			);
-		} catch (error) {
-			// Migration table does not exist yet - it will be created after migrations run for the first time.
-		}
-
-		// If you remove this call, remember to turn back on the
-		// setting to run migrations automatically above.
-		await connection.runMigrations({
-			transaction: 'none',
-		});
-
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-		if (migrations.length === 0) {
-			await connection.close();
-			connection = await createConnection(connectionOptions);
-		}
+	if (dbType === 'postgresdb') {
+		await setSchema(connection);
 	}
 
-	// @ts-ignore
-	collections.Credentials = linkRepository(entities.CredentialsEntity);
-	// @ts-ignore
-	collections.Execution = linkRepository(entities.ExecutionEntity);
-	collections.Workflow = linkRepository(entities.WorkflowEntity);
-	// @ts-ignore
-	collections.Webhook = linkRepository(entities.WebhookEntity);
-	collections.Tag = linkRepository(entities.TagEntity);
-
-	collections.Role = linkRepository(entities.Role);
-	collections.User = linkRepository(entities.User);
-	collections.SharedCredentials = linkRepository(entities.SharedCredentials);
-	collections.SharedWorkflow = linkRepository(entities.SharedWorkflow);
-	collections.Settings = linkRepository(entities.Settings);
-	collections.InstalledPackages = linkRepository(entities.InstalledPackages);
-	collections.InstalledNodes = linkRepository(entities.InstalledNodes);
-
-	isInitialized = true;
-
-	return collections;
+	connectionState.connected = true;
 }
+
+export async function migrate() {
+	(connection.options.migrations as Migration[]).forEach(wrapMigration);
+	await connection.runMigrations({ transaction: 'each' });
+	connectionState.migrated = true;
+}
+
+export const close = async () => {
+	if (pingTimer) {
+		clearTimeout(pingTimer);
+		pingTimer = undefined;
+	}
+
+	if (connection.isInitialized) await connection.destroy();
+};

@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const attachmentOperations: INodeProperties[] = [
 	{
@@ -86,7 +86,7 @@ export const attachmentFields: INodeProperties[] = [
 			'Required. Name of the attached file. Maximum size is 255 characters. Label is File Name.',
 	},
 	{
-		displayName: 'Binary Property',
+		displayName: 'Input Binary Field',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
@@ -98,7 +98,7 @@ export const attachmentFields: INodeProperties[] = [
 			},
 		},
 		placeholder: '',
-		description: 'Name of the binary property which contains the data for the file to be uploaded',
+		hint: 'The name of the input binary field containing the file to be uploaded',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -173,13 +173,12 @@ export const attachmentFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Binary Property',
+				displayName: 'Input Binary Field',
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',
 				placeholder: '',
-				description:
-					'Name of the binary property which contains the data for the file to be uploaded',
+				hint: 'The name of the input binary field containing the file to be uploaded',
 			},
 			{
 				displayName: 'Description',

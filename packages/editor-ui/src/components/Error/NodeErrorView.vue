@@ -1,18 +1,19 @@
 <template>
 	<div>
 		<div class="error-header">
-			<div class="error-message">{{ getErrorMessage() }}</div>
-			<div class="error-description" v-if="error.description" v-html="getErrorDescription()"></div>
+			<div class="error-message" v-text="getErrorMessage()" />
+			<div v-if="error.description" class="error-description" v-html="getErrorDescription()"></div>
 		</div>
 		<details>
 			<summary class="error-details__summary">
-				<font-awesome-icon class="error-details__icon" icon="angle-right" /> {{ $locale.baseText('nodeErrorView.details') }}
+				<font-awesome-icon class="error-details__icon" icon="angle-right" />
+				{{ $locale.baseText('nodeErrorView.details') }}
 			</summary>
 			<div class="error-details__content">
 				<div v-if="error.context && error.context.causeDetailed">
 					<el-card class="box-card" shadow="never">
 						<div>
-							{{error.context.causeDetailed}}
+							{{ error.context.causeDetailed }}
 						</div>
 					</el-card>
 				</div>
@@ -24,22 +25,33 @@
 							</div>
 						</template>
 						<div>
-							{{new Date(error.timestamp).toLocaleString()}}
+							{{ new Date(error.timestamp).toLocaleString() }}
 						</div>
 					</el-card>
 				</div>
-			<div v-if="error.context && error.context.itemIndex !== undefined" class="el-card box-card is-never-shadow el-card__body">
-				<span class="error-details__summary">{{ $locale.baseText('nodeErrorView.itemIndex') }}:</span>
-				{{error.context.itemIndex}}
-				<span v-if="error.context.runIndex">
-					| <span class="error-details__summary">{{ $locale.baseText('nodeErrorView.itemIndex') }}:</span>
-					{{error.context.runIndex}}
-				</span>
-				<span v-if="error.context.parameter">
-					| <span class="error-details__summary">{{ $locale.baseText('nodeErrorView.inParameter') }}:</span>
-					{{ parameterDisplayName(error.context.parameter) }}
-				</span>
-			</div>
+				<div
+					v-if="error.context && error.context.itemIndex !== undefined"
+					class="el-card box-card is-never-shadow el-card__body"
+				>
+					<span class="error-details__summary"
+						>{{ $locale.baseText('nodeErrorView.itemIndex') }}:</span
+					>
+					{{ error.context.itemIndex }}
+					<span v-if="error.context.runIndex">
+						|
+						<span class="error-details__summary"
+							>{{ $locale.baseText('nodeErrorView.itemIndex') }}:</span
+						>
+						{{ error.context.runIndex }}
+					</span>
+					<span v-if="error.context.parameter">
+						|
+						<span class="error-details__summary"
+							>{{ $locale.baseText('nodeErrorView.inParameter') }}:</span
+						>
+						{{ parameterDisplayName(error.context.parameter) }}
+					</span>
+				</div>
 				<div v-if="error.httpCode">
 					<el-card class="box-card" shadow="never">
 						<template #header>
@@ -48,7 +60,7 @@
 							</div>
 						</template>
 						<div>
-							{{error.httpCode}}
+							{{ error.httpCode }}
 						</div>
 					</el-card>
 				</div>
@@ -57,25 +69,33 @@
 						<template #header>
 							<div class="clearfix box-card__title">
 								<span>{{ $locale.baseText('nodeErrorView.cause') }}</span>
-								<br>
-								<span class="box-card__subtitle">{{ $locale.baseText('nodeErrorView.dataBelowMayContain') }}</span>
+								<br />
+								<span class="box-card__subtitle">{{
+									$locale.baseText('nodeErrorView.dataBelowMayContain')
+								}}</span>
 							</div>
-							</template>
+						</template>
 						<div>
-							<div class="copy-button" v-if="displayCause">
-								<n8n-icon-button @click="copyCause" :title="$locale.baseText('nodeErrorView.copyToClipboard')" icon="copy" />
+							<div v-if="displayCause" class="copy-button">
+								<n8n-icon-button
+									:title="$locale.baseText('nodeErrorView.copyToClipboard')"
+									icon="copy"
+									@click="copyCause"
+								/>
 							</div>
-							<vue-json-pretty
+							<VueJsonPretty
 								v-if="displayCause"
 								:data="error.cause"
 								:deep="3"
-								:showLength="true"
-								selectableType="single"
+								:show-length="true"
+								selectable-type="single"
 								path="error"
 								class="json-data"
 							/>
 							<span v-else>
-								<font-awesome-icon icon="info-circle" />{{ $locale.baseText('nodeErrorView.theErrorCauseIsTooLargeToBeDisplayed') }}
+								<font-awesome-icon icon="info-circle" />{{
+									$locale.baseText('nodeErrorView.theErrorCauseIsTooLargeToBeDisplayed')
+								}}
 							</span>
 						</div>
 					</el-card>
@@ -98,48 +118,43 @@
 </template>
 
 <script lang="ts">
-//@ts-ignore
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 import VueJsonPretty from 'vue-json-pretty';
-import { copyPaste } from '@/mixins/copyPaste';
-import { showMessage } from '@/mixins/showMessage';
-import mixins from 'vue-typed-mixins';
-import {
-	MAX_DISPLAY_DATA_SIZE,
-} from '@/constants';
-import {
-	INodeUi,
-} from '@/Interface';
+import { useToast } from '@/composables/useToast';
+import { MAX_DISPLAY_DATA_SIZE } from '@/constants';
 
-import {
+import type {
 	INodeProperties,
 	INodePropertyCollection,
 	INodePropertyOptions,
+	NodeOperationError,
 } from 'n8n-workflow';
-import { sanitizeHtml } from '@/utils';
-import { mapStores } from 'pinia';
-import { useNDVStore } from '@/stores/ndv';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { sanitizeHtml } from '@/utils/htmlUtils';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useClipboard } from '@/composables/useClipboard';
 
-export default mixins(
-	copyPaste,
-	showMessage,
-).extend({
+export default defineComponent({
 	name: 'NodeErrorView',
-	props: [
-		'error',
-	],
 	components: {
 		VueJsonPretty,
 	},
+	props: ['error'],
+	setup() {
+		const clipboard = useClipboard();
+
+		return {
+			clipboard,
+			...useToast(),
+		};
+	},
 	computed: {
-		...mapStores(
-			useNodeTypesStore,
-			useNDVStore,
-		),
+		...mapStores(useNodeTypesStore, useNDVStore),
 		displayCause(): boolean {
 			return JSON.stringify(this.error.cause).length < MAX_DISPLAY_DATA_SIZE;
 		},
-		parameters (): INodeProperties[] {
+		parameters(): INodeProperties[] {
 			const node = this.ndvStore.activeNode;
 			if (!node) {
 				return [];
@@ -154,29 +169,62 @@ export default mixins(
 		},
 	},
 	methods: {
-		replacePlaceholders (parameter: string, message: string): string {
+		replacePlaceholders(parameter: string, message: string): string {
 			const parameterName = this.parameterDisplayName(parameter, false);
 			const parameterFullName = this.parameterDisplayName(parameter, true);
-			return message.replace(/%%PARAMETER%%/g, parameterName).replace(/%%PARAMETER_FULL%%/g, parameterFullName);
+			return message
+				.replace(/%%PARAMETER%%/g, parameterName)
+				.replace(/%%PARAMETER_FULL%%/g, parameterFullName);
 		},
-		getErrorDescription (): string {
-			if (!this.error.context || !this.error.context.descriptionTemplate) {
+		getErrorDescription(): string {
+			const isSubNodeError =
+				this.error.name === 'NodeOperationError' &&
+				(this.error as NodeOperationError).functionality === 'configuration-node';
+
+			if (isSubNodeError) {
+				return sanitizeHtml(
+					this.error.description +
+						this.$locale.baseText('pushConnection.executionError.openNode', {
+							interpolate: { node: this.error.node.name },
+						}),
+				);
+			}
+			if (!this.error.context?.descriptionTemplate) {
 				return sanitizeHtml(this.error.description);
 			}
 
 			const parameterName = this.parameterDisplayName(this.error.context.parameter);
-			return sanitizeHtml(this.error.context.descriptionTemplate.replace(/%%PARAMETER%%/g, parameterName));
+			return sanitizeHtml(
+				this.error.context.descriptionTemplate.replace(/%%PARAMETER%%/g, parameterName),
+			);
 		},
-		getErrorMessage (): string {
+		getErrorMessage(): string {
 			const baseErrorMessage = this.$locale.baseText('nodeErrorView.error') + ': ';
 
-			if (!this.error.context || !this.error.context.messageTemplate) {
+			const isSubNodeError =
+				this.error.name === 'NodeOperationError' &&
+				(this.error as NodeOperationError).functionality === 'configuration-node';
+
+			if (isSubNodeError) {
+				const baseErrorMessageSubNode = this.$locale.baseText('nodeErrorView.errorSubNode', {
+					interpolate: { node: this.error.node.name },
+				});
+				return baseErrorMessageSubNode;
+			}
+
+			if (this.error.message === this.error.description) {
+				return baseErrorMessage;
+			}
+			if (!this.error.context?.messageTemplate) {
 				return baseErrorMessage + this.error.message;
 			}
 
 			const parameterName = this.parameterDisplayName(this.error.context.parameter);
 
-			return baseErrorMessage + this.error.context.messageTemplate.replace(/%%PARAMETER%%/g, parameterName);
+			return (
+				baseErrorMessage +
+				this.error.context.messageTemplate.replace(/%%PARAMETER%%/g, parameterName)
+			);
 		},
 		parameterDisplayName(path: string, fullPath = true) {
 			try {
@@ -185,15 +233,18 @@ export default mixins(
 					throw new Error();
 				}
 
-				if (fullPath === false) {
+				if (!fullPath) {
 					return parameters.pop()!.displayName;
 				}
-				return parameters.map(parameter => parameter.displayName).join(' > ');
+				return parameters.map((parameter) => parameter.displayName).join(' > ');
 			} catch (error) {
 				return `Could not find parameter "${path}"`;
 			}
 		},
-		parameterName(parameters: Array<(INodePropertyOptions | INodeProperties | INodePropertyCollection)>, pathParts: string[]): Array<(INodeProperties | INodePropertyCollection)> {
+		parameterName(
+			parameters: Array<INodePropertyOptions | INodeProperties | INodePropertyCollection>,
+			pathParts: string[],
+		): Array<INodeProperties | INodePropertyCollection> {
 			let currentParameterName = pathParts.shift();
 
 			if (currentParameterName === undefined) {
@@ -204,7 +255,9 @@ export default mixins(
 			if (arrayMatch !== null && arrayMatch.length > 0) {
 				currentParameterName = arrayMatch[1];
 			}
-			const currentParameter = parameters.find(parameter => parameter.name === currentParameterName) as unknown as INodeProperties | INodePropertyCollection;
+			const currentParameter = parameters.find(
+				(parameter) => parameter.name === currentParameterName,
+			) as unknown as INodeProperties | INodePropertyCollection;
 
 			if (currentParameter === undefined) {
 				throw new Error(`Could not find parameter "${currentParameterName}"`);
@@ -215,22 +268,28 @@ export default mixins(
 			}
 
 			if (currentParameter.hasOwnProperty('options')) {
-				return [currentParameter, ...this.parameterName((currentParameter as INodeProperties).options!, pathParts)];
+				return [
+					currentParameter,
+					...this.parameterName((currentParameter as INodeProperties).options!, pathParts),
+				];
 			}
 
 			if (currentParameter.hasOwnProperty('values')) {
-				return [currentParameter, ...this.parameterName((currentParameter as INodePropertyCollection).values, pathParts)];
+				return [
+					currentParameter,
+					...this.parameterName((currentParameter as INodePropertyCollection).values, pathParts),
+				];
 			}
 
 			// We can not resolve any deeper so lets stop here and at least return hopefully something useful
 			return [currentParameter];
 		},
 		copyCause() {
-			this.copyToClipboard(JSON.stringify(this.error.cause));
+			void this.clipboard.copy(JSON.stringify(this.error.cause));
 			this.copySuccess();
 		},
 		copySuccess() {
-			this.$showMessage({
+			this.showMessage({
 				title: this.$locale.baseText('nodeErrorView.showMessage.title'),
 				type: 'info',
 			});
@@ -240,13 +299,12 @@ export default mixins(
 </script>
 
 <style lang="scss">
-
 .error-header {
 	margin-bottom: 10px;
 }
 
 .error-message {
-	color: #ff0000;
+	color: var(--color-ndv-ouptut-error-font);
 	font-weight: bold;
 	font-size: 1.1rem;
 }
@@ -260,7 +318,7 @@ export default mixins(
 	font-weight: 600;
 	font-size: 16px;
 	cursor: pointer;
-	outline:none;
+	outline: none;
 }
 
 .error-details__icon {
@@ -268,15 +326,15 @@ export default mixins(
 }
 
 details > summary {
-    list-style-type: none;
+	list-style-type: none;
 }
 
 details > summary::-webkit-details-marker {
-    display: none;
+	display: none;
 }
 
 details[open] {
-  .error-details__icon {
+	.error-details__icon {
 		transform: rotate(90deg);
 	}
 }
@@ -309,5 +367,4 @@ details[open] {
 	right: 50px;
 	z-index: 1000;
 }
-
 </style>

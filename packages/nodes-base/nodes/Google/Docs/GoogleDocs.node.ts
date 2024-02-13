@@ -1,13 +1,14 @@
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import {
 	extractID,
@@ -19,7 +20,7 @@ import {
 
 import { documentFields, documentOperations } from './DocumentDescription';
 
-import { IUpdateBody, IUpdateFields } from './interfaces';
+import type { IUpdateBody, IUpdateFields } from './interfaces';
 
 export class GoogleDocs implements INodeType {
 	description: INodeTypeDescription = {
@@ -116,9 +117,10 @@ export class GoogleDocs implements INodeType {
 			...documentFields,
 		],
 	};
+
 	methods = {
 		loadOptions: {
-			// Get all the drives to display them to user so that he can
+			// Get all the drives to display them to user so that they can
 			// select them easily
 			async getDrives(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [
@@ -143,7 +145,9 @@ export class GoogleDocs implements INodeType {
 						'https://www.googleapis.com/drive/v3/drives',
 					);
 				} catch (error) {
-					throw new NodeApiError(this.getNode(), error, { message: 'Error in loading Drives' });
+					throw new NodeApiError(this.getNode(), error as JsonObject, {
+						message: 'Error in loading Drives',
+					});
 				}
 
 				for (const drive of drives) {
@@ -182,7 +186,9 @@ export class GoogleDocs implements INodeType {
 						'https://www.googleapis.com/drive/v3/files',
 					);
 				} catch (error) {
-					throw new NodeApiError(this.getNode(), error, { message: 'Error in loading Folders' });
+					throw new NodeApiError(this.getNode(), error as JsonObject, {
+						message: 'Error in loading Folders',
+					});
 				}
 
 				for (const folder of folders) {
@@ -195,6 +201,7 @@ export class GoogleDocs implements INodeType {
 			},
 		},
 	};
+
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
@@ -202,8 +209,8 @@ export class GoogleDocs implements INodeType {
 
 		let responseData;
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -241,11 +248,11 @@ export class GoogleDocs implements INodeType {
 						if (simple) {
 							const content = (responseData.body.content as IDataObject[])
 								.reduce((arr: string[], contentItem) => {
-									if (contentItem && contentItem.paragraph) {
+									if (contentItem?.paragraph) {
 										const texts = (
 											(contentItem.paragraph as IDataObject).elements as IDataObject[]
 										).map((element) => {
-											if (element && element.textRun) {
+											if (element?.textRun) {
 												return (element.textRun as IDataObject).content as string;
 											}
 										}) as string[];
@@ -491,9 +498,9 @@ export class GoogleDocs implements INodeType {
 							body,
 						);
 
-						if (simple === true) {
-							if (Object.keys(responseData.replies[0]).length !== 0) {
-								const key = Object.keys(responseData.replies[0])[0];
+						if (simple) {
+							if (Object.keys(responseData.replies[0] as IDataObject).length !== 0) {
+								const key = Object.keys(responseData.replies[0] as IDataObject)[0];
 								responseData = responseData.replies[0][key];
 							} else {
 								responseData = {};
@@ -515,12 +522,12 @@ export class GoogleDocs implements INodeType {
 			}
 
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
+				this.helpers.returnJsonArray(responseData as IDataObject[]),
 				{ itemData: { item: i } },
 			);
 			returnData.push(...executionData);
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

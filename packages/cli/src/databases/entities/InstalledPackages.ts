@@ -1,9 +1,9 @@
-import { Column, Entity, JoinColumn, OneToMany, PrimaryColumn } from 'typeorm';
-import { InstalledNodes } from './InstalledNodes';
-import { AbstractEntity } from './AbstractEntity';
+import { Column, Entity, JoinColumn, OneToMany, PrimaryColumn } from '@n8n/typeorm';
+import type { InstalledNodes } from './InstalledNodes';
+import { WithTimestamps } from './AbstractEntity';
 
 @Entity()
-export class InstalledPackages extends AbstractEntity {
+export class InstalledPackages extends WithTimestamps {
 	@PrimaryColumn()
 	packageName: string;
 
@@ -16,7 +16,7 @@ export class InstalledPackages extends AbstractEntity {
 	@Column()
 	authorEmail?: string;
 
-	@OneToMany(() => InstalledNodes, (installedNode) => installedNode.package)
+	@OneToMany('InstalledNodes', 'package')
 	@JoinColumn({ referencedColumnName: 'package' })
 	installedNodes: InstalledNodes[];
 }

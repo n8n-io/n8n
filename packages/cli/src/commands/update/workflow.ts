@@ -1,89 +1,78 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable no-console */
-import { Command, flags } from '@oclif/command';
+import { Container } from 'typedi';
+import { Flags } from '@oclif/core';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import { BaseCommand } from '../BaseCommand';
 
-import { IDataObject, LoggerProxy } from 'n8n-workflow';
-
-import * as Db from '@/Db';
-
-import { getLogger } from '@/Logger';
-
-export class UpdateWorkflowCommand extends Command {
+export class UpdateWorkflowCommand extends BaseCommand {
 	static description = 'Update workflows';
 
 	static examples = [
-		`$ n8n update:workflow --all --active=false`,
-		`$ n8n update:workflow --id=5 --active=true`,
+		'$ n8n update:workflow --all --active=false',
+		'$ n8n update:workflow --id=5 --active=true',
 	];
 
 	static flags = {
-		help: flags.help({ char: 'h' }),
-		active: flags.string({
+		help: Flags.help({ char: 'h' }),
+		active: Flags.string({
 			description: 'Active state the workflow/s should be set to',
 		}),
-		all: flags.boolean({
+		all: Flags.boolean({
 			description: 'Operate on all workflows',
 		}),
-		id: flags.string({
+		id: Flags.string({
 			description: 'The ID of the workflow to operate on',
 		}),
 	};
 
-	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	async run() {
-		const logger = getLogger();
-		LoggerProxy.init(logger);
-
-		// eslint-disable-next-line @typescript-eslint/no-shadow
-		const { flags } = this.parse(UpdateWorkflowCommand);
+		const { flags } = await this.parse(UpdateWorkflowCommand);
 
 		if (!flags.all && !flags.id) {
-			console.info(`Either option "--all" or "--id" have to be set!`);
+			console.info('Either option "--all" or "--id" have to be set!');
 			return;
 		}
 
 		if (flags.all && flags.id) {
 			console.info(
-				`Either something else on top should be "--all" or "--id" can be set never both!`,
+				'Either something else on top should be "--all" or "--id" can be set never both!',
 			);
 			return;
 		}
 
-		const updateQuery: IDataObject = {};
 		if (flags.active === undefined) {
-			console.info(`No update flag like "--active=true" has been set!`);
+			console.info('No update flag like "--active=true" has been set!');
 			return;
 		}
+
 		if (!['false', 'true'].includes(flags.active)) {
-			console.info(`Valid values for flag "--active" are only "false" or "true"!`);
+			console.info('Valid values for flag "--active" are only "false" or "true"!');
 			return;
 		}
-		updateQuery.active = flags.active === 'true';
 
-		try {
-			await Db.init();
+		const newState = flags.active === 'true';
+		const action = newState ? 'Activating' : 'Deactivating';
 
-			const findQuery: IDataObject = {};
-			if (flags.id) {
-				console.info(`Deactivating workflow with ID: ${flags.id}`);
-				findQuery.id = flags.id;
+		if (flags.id) {
+			this.logger.info(`${action} workflow with ID: ${flags.id}`);
+			await Container.get(WorkflowRepository).updateActiveState(flags.id, newState);
+		} else {
+			this.logger.info(`${action} all workflows`);
+			if (newState) {
+				await Container.get(WorkflowRepository).activateAll();
 			} else {
-				console.info('Deactivating all workflows');
-				findQuery.active = true;
+				await Container.get(WorkflowRepository).deactivateAll();
 			}
-
-			await Db.collections.Workflow.update(findQuery, updateQuery);
-			console.info('Done');
-		} catch (e) {
-			console.error('Error updating database. See log messages for details.');
-			logger.error('\nGOT ERROR');
-			logger.info('====================================');
-			logger.error(e.message);
-			logger.error(e.stack);
-			this.exit(1);
 		}
 
-		this.exit();
+		this.logger.info('Activation or deactivation will not take effect if n8n is running.');
+		this.logger.info('Please restart n8n for changes to take effect if n8n is currently running.');
+	}
+
+	async catch(error: Error) {
+		this.logger.error('Error updating database. See log messages for details.');
+		this.logger.error('\nGOT ERROR');
+		this.logger.error('====================================');
+		this.logger.error(error.message);
+		this.logger.error(error.stack!);
 	}
 }

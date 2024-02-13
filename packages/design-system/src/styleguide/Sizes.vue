@@ -18,33 +18,38 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
-	name: 'sizes',
-	data() {
-		return {
-			observer: null as null | MutationObserver,
-			sizes: {},
-		};
-	},
+export default defineComponent({
+	name: 'Sizes',
 	props: {
 		variables: {
-			type: Array,
+			type: Array as PropType<string[]>,
 			required: true,
 		},
 		attr: {
 			type: String,
+			default: '',
 		},
+	},
+	data() {
+		return {
+			observer: null as null | MutationObserver,
+			sizes: {} as Record<string, { rem: string; px: number }>,
+		};
 	},
 	created() {
 		const setSizes = () => {
-			(this.variables as string[]).forEach((variable: string) => {
+			this.variables.forEach((variable: string) => {
 				const style = getComputedStyle(document.body);
 				const rem = style.getPropertyValue(variable);
 				const px = parseFloat(rem.replace('rem', '')) * 16;
 
-				Vue.set(this.sizes, variable, { rem, px });
+				this.sizes = {
+					...this.sizes,
+					[variable]: { rem, px },
+				};
 			});
 		};
 
@@ -63,7 +68,7 @@ export default Vue.extend({
 			this.observer.observe(body, { attributes: true });
 		}
 	},
-	destroyed() {
+	unmounted() {
 		if (this.observer) {
 			this.observer.disconnect();
 		}

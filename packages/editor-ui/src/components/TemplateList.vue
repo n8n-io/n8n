@@ -1,8 +1,9 @@
 <template>
-	<div :class="$style.list" v-if="loading || workflows.length">
-		<div :class="$style.header">
+	<div v-if="loading || workflows.length" :class="$style.list">
+		<div v-if="!simpleView" :class="$style.header">
 			<n8n-heading :bold="true" size="medium" color="text-light">
 				{{ $locale.baseText('templates.workflows') }}
+				<span v-if="totalCount > 0" data-test-id="template-count-label">({{ totalCount }})</span>
 				<span v-if="!loading && totalWorkflows" v-text="`(${totalWorkflows})`" />
 			</n8n-heading>
 		</div>
@@ -11,20 +12,21 @@
 				v-for="(workflow, index) in workflows"
 				:key="workflow.id"
 				:workflow="workflow"
-				:firstItem="index === 0"
-				:lastItem="index === workflows.length - 1 && !loading"
-				:useWorkflowButton="useWorkflowButton"
+				:first-item="index === 0"
+				:simple-view="simpleView"
+				:last-item="index === workflows.length - 1 && !loading"
+				:use-workflow-button="useWorkflowButton"
 				@click="(e) => onCardClick(e, workflow.id)"
 				@useWorkflow="(e) => onUseWorkflow(e, workflow.id)"
 			/>
 			<div v-if="infiniteScrollEnabled" ref="loader" />
-			<div v-if="loading">
+			<div v-if="loading" data-test-id="templates-loading-container">
 				<TemplateCard
 					v-for="n in 4"
 					:key="'index-' + n"
 					:loading="true"
-					:firstItem="workflows.length === 0 && n === 1"
-					:lastItem="n === 4"
+					:first-item="workflows.length === 0 && n === 1"
+					:last-item="n === 4"
 				/>
 			</div>
 		</div>
@@ -32,12 +34,14 @@
 </template>
 
 <script lang="ts">
-import { genericHelpers } from '@/mixins/genericHelpers';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import TemplateCard from './TemplateCard.vue';
 
-export default mixins(genericHelpers).extend({
+export default defineComponent({
 	name: 'TemplateList',
+	components: {
+		TemplateCard,
+	},
 	props: {
 		infiniteScrollEnabled: {
 			type: Boolean,
@@ -52,9 +56,19 @@ export default mixins(genericHelpers).extend({
 		},
 		workflows: {
 			type: Array,
+			default: () => [],
 		},
 		totalWorkflows: {
 			type: Number,
+			default: 0,
+		},
+		simpleView: {
+			type: Boolean,
+			default: false,
+		},
+		totalCount: {
+			type: Number,
+			default: 0,
 		},
 	},
 	mounted() {
@@ -65,23 +79,20 @@ export default mixins(genericHelpers).extend({
 			}
 		}
 	},
-	destroyed() {
+	beforeUnmount() {
 		const content = document.getElementById('content');
 		if (content) {
 			content.removeEventListener('scroll', this.onScroll);
 		}
 	},
-	components: {
-		TemplateCard,
-	},
 	methods: {
 		onScroll() {
-			const el = this.$refs.loader;
-			if (!el || this.loading) {
+			const loaderRef = this.$refs.loader as HTMLElement | undefined;
+			if (!loaderRef || this.loading) {
 				return;
 			}
 
-			const rect = (el as Element).getBoundingClientRect();
+			const rect = loaderRef.getBoundingClientRect();
 			const inView =
 				rect.top >= 0 &&
 				rect.left >= 0 &&
@@ -93,10 +104,10 @@ export default mixins(genericHelpers).extend({
 			}
 		},
 		onCardClick(event: MouseEvent, id: string) {
-			this.$emit('openTemplate', {event, id});
+			this.$emit('openTemplate', { event, id });
 		},
 		onUseWorkflow(event: MouseEvent, id: string) {
-			this.$emit('useWorkflow', {event, id});
+			this.$emit('useWorkflow', { event, id });
 		},
 	},
 });
@@ -118,5 +129,4 @@ export default mixins(genericHelpers).extend({
 		}
 	}
 }
-
 </style>

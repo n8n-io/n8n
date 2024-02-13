@@ -1,210 +1,297 @@
 <template>
-	<div>
-		<parameter-input
-				ref="param"
-				:inputSize="inputSize"
-				:parameter="parameter"
-				:value="value"
-				:path="path"
-				:isReadOnly="isReadOnly"
-				:droppable="droppable"
-				:activeDrop="activeDrop"
-				:forceShowExpression="forceShowExpression"
-				:hideIssues="hideIssues"
-				:documentationUrl="documentationUrl"
-				:errorHighlight="errorHighlight"
-				:isForCredential="isForCredential"
-				:eventSource="eventSource"
-				:expressionEvaluated="expressionValueComputed"
-				@focus="onFocus"
-				@blur="onBlur"
-				@drop="onDrop"
-				@textInput="onTextInput"
-				@valueChanged="onValueChanged" />
-		<input-hint v-if="expressionOutput" :class="$style.hint" :highlight="!!(expressionOutput && targetItem)" :hint="expressionOutput" />
-		<input-hint v-else-if="parameterHint" :class="$style.hint" :renderHTML="true" :hint="parameterHint" />
+	<div :class="$style.parameterInput" data-test-id="parameter-input">
+		<ParameterInput
+			ref="param"
+			:input-size="inputSize"
+			:parameter="parameter"
+			:model-value="modelValue"
+			:path="path"
+			:is-read-only="isReadOnly"
+			:is-assignment="isAssignment"
+			:droppable="droppable"
+			:active-drop="activeDrop"
+			:force-show-expression="forceShowExpression"
+			:hide-issues="hideIssues"
+			:documentation-url="documentationUrl"
+			:error-highlight="errorHighlight"
+			:is-for-credential="isForCredential"
+			:event-source="eventSource"
+			:expression-evaluated="evaluatedExpressionValue"
+			:additional-expression-data="resolvedAdditionalExpressionData"
+			:label="label"
+			:rows="rows"
+			:data-test-id="`parameter-input-${parsedParameterName}`"
+			:event-bus="eventBus"
+			@focus="onFocus"
+			@blur="onBlur"
+			@drop="onDrop"
+			@textInput="onTextInput"
+			@update="onValueChanged"
+		/>
+		<div v-if="!hideHint && (expressionOutput || parameterHint)" :class="$style.hint">
+			<div>
+				<InputHint
+					v-if="expressionOutput"
+					:class="{ [$style.hint]: true, 'ph-no-capture': isForCredential }"
+					:data-test-id="`parameter-expression-preview-${parsedParameterName}`"
+					:highlight="!!(expressionOutput && targetItem) && isInputParentOfActiveNode"
+					:hint="expressionOutput"
+					:single-line="true"
+				/>
+				<InputHint v-else-if="parameterHint" :render-h-t-m-l="true" :hint="parameterHint" />
+			</div>
+			<slot v-if="$slots.options" name="options" />
+		</div>
 	</div>
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from 'vue';
-
-import ParameterInput from '@/components/ParameterInput.vue';
-import InputHint from './ParameterInputHint.vue';
-import mixins from 'vue-typed-mixins';
-import { showMessage } from '@/mixins/showMessage';
-import { INodeProperties, INodePropertyMode, IRunData, isResourceLocatorValue, NodeParameterValue, NodeParameterValueType } from 'n8n-workflow';
-import { INodeUi, IUiState, IUpdateInformation, TargetItem } from '@/Interface';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { isValueExpression } from '@/utils';
 import { mapStores } from 'pinia';
-import { useNDVStore } from '@/stores/ndv';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
 
-export default mixins(
-	showMessage,
-	workflowHelpers,
-)
-	.extend({
-		name: 'parameter-input-wrapper',
-		components: {
-			ParameterInput,
-			InputHint,
-		},
-		mounted() {
-			this.$on('optionSelected', this.optionSelected);
-		},
-		props: {
-			isReadOnly: {
-				type: Boolean,
-			},
-			parameter: {
-				type: Object as PropType<INodeProperties>,
-			},
-			path: {
-				type: String,
-			},
-			value: {
-				type: [String, Number, Boolean, Array, Object] as PropType<NodeParameterValueType>,
-			},
-			droppable: {
-				type: Boolean,
-			},
-			activeDrop: {
-				type: Boolean,
-			},
-			forceShowExpression: {
-				type: Boolean,
-			},
-			hint: {
-				type: String,
-				required: false,
-			},
-			inputSize: {
-				type: String,
-			},
-			hideIssues: {
-				type: Boolean,
-			},
-			documentationUrl: {
-				type: String as PropType<string | undefined>,
-			},
-			errorHighlight: {
-				type: Boolean,
-			},
-			isForCredential: {
-				type: Boolean,
-			},
-			eventSource: {
-				type: String,
-			},
-		},
-		computed: {
-			...mapStores(
-				useNDVStore,
-			),
-			isValueExpression () {
-				return isValueExpression(this.parameter, this.value);
-			},
-			activeNode(): INodeUi | null {
-				return this.ndvStore.activeNode;
-			},
-			selectedRLMode(): INodePropertyMode | undefined {
-				if (typeof this.value !== 'object' ||this.parameter.type !== 'resourceLocator' || !isResourceLocatorValue(this.value)) {
-					return undefined;
-				}
+import type { INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
+import ParameterInput from '@/components/ParameterInput.vue';
+import InputHint from '@/components/ParameterInputHint.vue';
+import { useEnvironmentsStore } from '@/stores/environments.ee.store';
+import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { isValueExpression, parseResourceMapperFieldName } from '@/utils/nodeTypesUtils';
+import type {
+	IDataObject,
+	INodeProperties,
+	INodePropertyMode,
+	IParameterLabel,
+	NodeParameterValueType,
+	Result,
+} from 'n8n-workflow';
+import { isResourceLocatorValue } from 'n8n-workflow';
 
-				const mode = this.value.mode;
-				if (mode) {
-					return this.parameter.modes?.find((m: INodePropertyMode) => m.name === mode);
-				}
+import { get } from 'lodash-es';
+import type { EventBus } from 'n8n-design-system/utils';
+import { createEventBus } from 'n8n-design-system/utils';
+import { useRouter } from 'vue-router';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 
+export default defineComponent({
+	name: 'ParameterInputWrapper',
+	components: {
+		ParameterInput,
+		InputHint,
+	},
+	props: {
+		additionalExpressionData: {
+			type: Object as PropType<IDataObject>,
+			default: () => ({}),
+		},
+		isReadOnly: {
+			type: Boolean,
+		},
+		rows: {
+			type: Number,
+			default: 5,
+		},
+		isAssignment: {
+			type: Boolean,
+		},
+		parameter: {
+			type: Object as PropType<INodeProperties>,
+		},
+		path: {
+			type: String,
+		},
+		modelValue: {
+			type: [String, Number, Boolean, Array, Object] as PropType<NodeParameterValueType>,
+		},
+		droppable: {
+			type: Boolean,
+		},
+		activeDrop: {
+			type: Boolean,
+		},
+		forceShowExpression: {
+			type: Boolean,
+		},
+		hint: {
+			type: String,
+			required: false,
+		},
+		hideHint: {
+			type: Boolean,
+			required: false,
+		},
+		inputSize: {
+			type: String,
+		},
+		hideIssues: {
+			type: Boolean,
+		},
+		documentationUrl: {
+			type: String as PropType<string | undefined>,
+		},
+		errorHighlight: {
+			type: Boolean,
+		},
+		isForCredential: {
+			type: Boolean,
+		},
+		eventSource: {
+			type: String,
+		},
+		label: {
+			type: Object as PropType<IParameterLabel>,
+			default: () => ({
+				size: 'small',
+			}),
+		},
+		eventBus: {
+			type: Object as PropType<EventBus>,
+			default: () => createEventBus(),
+		},
+	},
+	setup() {
+		const router = useRouter();
+		const workflowHelpers = useWorkflowHelpers(router);
+
+		return {
+			workflowHelpers,
+		};
+	},
+	computed: {
+		...mapStores(useNDVStore, useExternalSecretsStore, useEnvironmentsStore),
+		isValueExpression() {
+			return isValueExpression(this.parameter, this.modelValue);
+		},
+		activeNode(): INodeUi | null {
+			return this.ndvStore.activeNode;
+		},
+		selectedRLMode(): INodePropertyMode | undefined {
+			if (
+				typeof this.modelValue !== 'object' ||
+				this.parameter.type !== 'resourceLocator' ||
+				!isResourceLocatorValue(this.modelValue)
+			) {
 				return undefined;
-			},
-			parameterHint(): string | undefined {
-				if (this.isValueExpression) {
-					return undefined;
-				}
-				if (this.selectedRLMode && this.selectedRLMode.hint) {
-					return this.selectedRLMode.hint;
-				}
+			}
 
-				return this.hint;
-			},
-			targetItem(): TargetItem | null {
-				return this.ndvStore.hoveringItem;
-			},
-			expressionValueComputed (): string | null {
-				const inputNodeName: string | undefined = this.ndvStore.ndvInputNodeName;
-				const value = isResourceLocatorValue(this.value)? this.value.value: this.value;
-				if (this.activeNode === null || !this.isValueExpression || typeof value !== 'string') {
-					return null;
-				}
+			const mode = this.modelValue.mode;
+			if (mode) {
+				return this.parameter.modes?.find((m: INodePropertyMode) => m.name === mode);
+			}
 
-				const inputRunIndex: number | undefined = this.ndvStore.ndvInputRunIndex;
-				const inputBranchIndex: number | undefined = this.ndvStore.ndvInputBranchIndex;
+			return undefined;
+		},
+		parameterHint(): string | undefined {
+			if (this.isValueExpression) {
+				return undefined;
+			}
+			if (this.selectedRLMode?.hint) {
+				return this.selectedRLMode.hint;
+			}
 
-				let computedValue: NodeParameterValue;
-				try {
-					const targetItem = this.targetItem ?? undefined;
-					computedValue = this.resolveExpression(value, undefined, {targetItem, inputNodeName, inputRunIndex, inputBranchIndex});
-					if (computedValue === null) {
-						return null;
-					}
+			return this.hint;
+		},
+		targetItem(): TargetItem | null {
+			return this.ndvStore.hoveringItem;
+		},
+		isInputParentOfActiveNode(): boolean {
+			return this.ndvStore.isInputParentOfActiveNode;
+		},
+		evaluatedExpression(): Result<unknown, unknown> {
+			const value = isResourceLocatorValue(this.modelValue)
+				? this.modelValue.value
+				: this.modelValue;
+			if (!this.activeNode || !this.isValueExpression || typeof value !== 'string') {
+				return { ok: false, error: '' };
+			}
 
-					if (typeof computedValue === 'string' && computedValue.trim().length === 0) {
-						computedValue = this.$locale.baseText('parameterInput.emptyString');
-					}
-				} catch (error) {
-					computedValue = `[${this.$locale.baseText('parameterInput.error')}}: ${error.message}]`;
-				}
-
-				return typeof computedValue === 'string' ? computedValue : JSON.stringify(computedValue);
-			},
-			expressionOutput(): string | null {
-				if (this.isValueExpression && this.expressionValueComputed) {
-					const inputData = this.ndvStore.ndvInputData;
-					if (!inputData || (inputData && inputData.length <= 1)) {
-						return this.expressionValueComputed;
-					}
-
-					return this.$locale.baseText(`parameterInput.expressionResult`, {
-						interpolate: {
-							result: this.expressionValueComputed,
-						},
-					});
+			try {
+				let opts;
+				if (this.ndvStore.isInputParentOfActiveNode) {
+					opts = {
+						targetItem: this.targetItem ?? undefined,
+						inputNodeName: this.ndvStore.ndvInputNodeName,
+						inputRunIndex: this.ndvStore.ndvInputRunIndex,
+						inputBranchIndex: this.ndvStore.ndvInputBranchIndex,
+						additionalKeys: this.resolvedAdditionalExpressionData,
+					};
 				}
 
+				return { ok: true, result: this.workflowHelpers.resolveExpression(value, undefined, opts) };
+			} catch (error) {
+				return { ok: false, error };
+			}
+		},
+		evaluatedExpressionValue(): unknown {
+			const evaluated = this.evaluatedExpression;
+			return evaluated.ok ? evaluated.result : null;
+		},
+		evaluatedExpressionString(): string | null {
+			const evaluated = this.evaluatedExpression;
+
+			if (!evaluated.ok) {
+				return `[${this.$locale.baseText('parameterInput.error')}: ${get(
+					evaluated.error,
+					'message',
+				)}]`;
+			}
+
+			if (evaluated.result === null) {
 				return null;
-			},
+			}
+
+			if (typeof evaluated.result === 'string' && evaluated.result.length === 0) {
+				return this.$locale.baseText('parameterInput.emptyString');
+			}
+			return typeof evaluated.result === 'string'
+				? evaluated.result
+				: JSON.stringify(evaluated.result);
 		},
-		methods: {
-			onFocus() {
-				this.$emit('focus');
-			},
-			onBlur() {
-				this.$emit('blur');
-			},
-			onDrop(data: string) {
-				this.$emit('drop', data);
-			},
-			optionSelected(command: string) {
-				if (this.$refs.param) {
-					(this.$refs.param as Vue).$emit('optionSelected', command);
-				}
-			},
-			onValueChanged(parameterData: IUpdateInformation) {
-				this.$emit('valueChanged', parameterData);
-			},
-			onTextInput(parameterData: IUpdateInformation) {
-				this.$emit('textInput', parameterData);
-			},
+		expressionOutput(): string | null {
+			if (this.isValueExpression && this.evaluatedExpressionString) {
+				return this.evaluatedExpressionString;
+			}
+
+			return null;
 		},
-	});
+		resolvedAdditionalExpressionData() {
+			return {
+				$vars: this.environmentsStore.variablesAsObject,
+				...(this.externalSecretsStore.isEnterpriseExternalSecretsEnabled && this.isForCredential
+					? { $secrets: this.externalSecretsStore.secretsAsObject }
+					: {}),
+				...this.additionalExpressionData,
+			};
+		},
+		parsedParameterName() {
+			return parseResourceMapperFieldName(this.parameter?.name ?? '');
+		},
+	},
+	methods: {
+		onFocus() {
+			this.$emit('focus');
+		},
+		onBlur() {
+			this.$emit('blur');
+		},
+		onDrop(data: string) {
+			this.$emit('drop', data);
+		},
+		onValueChanged(parameterData: IUpdateInformation) {
+			this.$emit('update', parameterData);
+		},
+		onTextInput(parameterData: IUpdateInformation) {
+			this.$emit('textInput', parameterData);
+		},
+	},
+});
 </script>
 
 <style lang="scss" module>
-.hint {
-	margin-top: var(--spacing-4xs);
+.parameterInput {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-4xs);
 }
 
 .hovering {

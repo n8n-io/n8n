@@ -1,13 +1,12 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
-	NodeOperationError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { sendyApiRequest } from './GenericFunctions';
 
@@ -66,8 +65,8 @@ export class Sendy implements INodeType {
 		const returnData: IDataObject[] = [];
 		const length = items.length;
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			if (resource === 'campaign') {
 				if (operation === 'create') {
@@ -87,6 +86,11 @@ export class Sendy implements INodeType {
 
 					const additionalFields = this.getNodeParameter('additionalFields', i);
 
+					let brandId = null;
+					if (!sendCampaign) {
+						brandId = this.getNodeParameter('brandId', i) as string;
+					}
+
 					const body: IDataObject = {
 						from_name: fromName,
 						from_email: fromEmail,
@@ -96,6 +100,10 @@ export class Sendy implements INodeType {
 						send_campaign: sendCampaign ? 1 : 0,
 						html_text: htmlText,
 					};
+
+					if (brandId) {
+						body.brand_id = brandId;
+					}
 
 					if (additionalFields.plainText) {
 						body.plain_text = additionalFields.plainText;
@@ -115,10 +123,6 @@ export class Sendy implements INodeType {
 
 					if (additionalFields.excludeSegmentIds) {
 						body.exclude_segments_ids = additionalFields.excludeSegmentIds as string;
-					}
-
-					if (additionalFields.brandId) {
-						body.brand_id = additionalFields.brandId as string;
 					}
 
 					if (additionalFields.queryString) {
@@ -142,10 +146,10 @@ export class Sendy implements INodeType {
 
 					const success = ['Campaign created', 'Campaign created and now sending'];
 
-					if (success.includes(responseData)) {
+					if (success.includes(responseData as string)) {
 						responseData = { message: responseData };
 					} else {
-						throw new NodeApiError(this.getNode(), responseData, { httpCode: '400' });
+						throw new NodeApiError(this.getNode(), responseData as JsonObject, { httpCode: '400' });
 					}
 				}
 			}
@@ -200,7 +204,7 @@ export class Sendy implements INodeType {
 						'List does not exist',
 					];
 
-					if (!errors.includes(responseData)) {
+					if (!errors.includes(responseData as string)) {
 						responseData = { count: responseData };
 					} else {
 						throw new NodeOperationError(
@@ -288,7 +292,7 @@ export class Sendy implements INodeType {
 						'Complained',
 					];
 
-					if (status.includes(responseData)) {
+					if (status.includes(responseData as string)) {
 						responseData = { status: responseData };
 					} else {
 						throw new NodeOperationError(

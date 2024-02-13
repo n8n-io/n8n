@@ -1,11 +1,11 @@
 import { parsePermissionsTable } from '@/permissions';
-import { IUser } from "@/Interface";
+import type { IUser } from '@/Interface';
 
 describe('parsePermissionsTable()', () => {
 	const user: IUser = {
-		id: "1",
-		firstName: "John",
-		lastName: "Doe",
+		id: '1',
+		firstName: 'John',
+		lastName: 'Doe',
 		isDefaultUser: false,
 		isOwner: true,
 		isPending: false,
@@ -43,5 +43,15 @@ describe('parsePermissionsTable()', () => {
 		]);
 
 		expect(permissions.canRead).toBe(true);
+	});
+
+	it('should pass permission to test functions', () => {
+		const permissions = parsePermissionsTable(user, [
+			{ name: 'canRead', test: (p) => !!p.isInstanceOwner },
+			{ name: 'canUpdate', test: (p) => !!p.canRead },
+		]);
+
+		expect(permissions.canRead).toBe(true);
+		expect(permissions.canUpdate).toBe(true);
 	});
 });

@@ -1,14 +1,14 @@
 <template>
-	<component :is="tag" :class="['n8n-heading', ...classes]" v-on="$listeners">
+	<component :is="tag" :class="['n8n-heading', ...classes]" v-bind="$attrs">
 		<slot></slot>
 	</component>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
-	name: 'n8n-heading',
+export default defineComponent({
+	name: 'N8nHeading',
 	props: {
 		tag: {
 			type: String,
@@ -40,19 +40,17 @@ export default Vue.extend({
 		classes() {
 			const applied = [];
 			if (this.align) {
-				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 				applied.push(`align-${this.align}`);
 			}
 			if (this.color) {
 				applied.push(this.color);
 			}
 
-			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 			applied.push(`size-${this.size}`);
 
 			applied.push(this.bold ? 'bold' : 'regular');
 
-			return applied.map((c) => (this.$style as { [key: string]: string })[c]);
+			return applied.map((c) => this.$style[c]);
 		},
 	},
 });
