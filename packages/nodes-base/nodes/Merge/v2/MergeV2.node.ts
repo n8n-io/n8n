@@ -29,7 +29,7 @@ import {
 } from './GenericFunctions';
 
 import { optionsDescription } from './OptionsDescription';
-import { generatePairedItemData } from '../../../utils/utilities';
+import { preparePairedItemDataArray } from '@utils/utilities';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Merge',
@@ -605,8 +605,15 @@ export class MergeV2 implements INodeType {
 					returnData.push.apply(returnData, this.getInputData(1));
 				}
 				if (output === 'empty') {
-					const itemData = generatePairedItemData(this.getInputData(0).length);
-					returnData.push({ json: {}, pairedItem: itemData });
+					const pairedItem = [
+						...this.getInputData(0).map((inputData) => inputData.pairedItem),
+						...this.getInputData(1).map((inputData) => inputData.pairedItem),
+					].flatMap(preparePairedItemDataArray);
+
+					returnData.push({
+						json: {},
+						pairedItem,
+					});
 				}
 			}
 		}
