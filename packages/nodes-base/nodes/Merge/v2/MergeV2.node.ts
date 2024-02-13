@@ -29,6 +29,7 @@ import {
 } from './GenericFunctions';
 
 import { optionsDescription } from './OptionsDescription';
+import { preparePairedItemDataArray } from '@utils/utilities';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Merge',
@@ -604,31 +605,10 @@ export class MergeV2 implements INodeType {
 					returnData.push.apply(returnData, this.getInputData(1));
 				}
 				if (output === 'empty') {
-					// TODO: was necessary to satisfies types.
-					// I'm wondering if there is already a function that does exactly that? That turns
-					// Array<IPairedItemData | IPairedItemData[] | number | undefined> -> IPairedItemData[]
-					// or
-					// IPairedItemData | IPairedItemData[] | number | undefined -> IPairedItemData | undefined
-					function numberToPairedItem(
-						possiblyPairedItems: Array<INodeExecutionData['pairedItem']>,
-					): IPairedItemData[] {
-						return possiblyPairedItems.reduce((pairedItems: IPairedItemData[], pairedItem) => {
-							if (typeof pairedItem === 'number') {
-								pairedItems.push({ item: pairedItem });
-							} else if (Array.isArray(pairedItem)) {
-								pairedItems.push(...pairedItem);
-							} else if (pairedItem) {
-								pairedItems.push(pairedItem);
-							}
-
-							return pairedItems;
-						}, [] as IPairedItemData[]);
-					}
-
-					const pairedItem = numberToPairedItem([
+					const pairedItem = [
 						...this.getInputData(0).map((inputData) => inputData.pairedItem),
 						...this.getInputData(1).map((inputData) => inputData.pairedItem),
-					]);
+					].flatMap(preparePairedItemDataArray);
 
 					returnData.push({
 						json: {},
