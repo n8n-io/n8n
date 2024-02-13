@@ -238,12 +238,9 @@ export class CredentialsHelper extends ICredentialsHelper {
 	/**
 	 * Returns the credentials instance
 	 */
-	// TODO: needs test
-	// FIXME: should use the projectRelations instead of the deprecatedUserId
 	async getCredentials(
 		nodeCredential: INodeCredentialsDetails,
 		type: string,
-		userId?: string,
 	): Promise<Credentials> {
 		if (!nodeCredential.id) {
 			throw new ApplicationError('Found credential with no ID.', {
@@ -255,14 +252,10 @@ export class CredentialsHelper extends ICredentialsHelper {
 		let credential: CredentialsEntity;
 
 		try {
-			credential = userId
-				? await this.sharedCredentialsRepository
-						.findOneOrFail({
-							relations: ['credentials'],
-							where: { credentials: { id: nodeCredential.id, type }, deprecatedUserId: userId },
-						})
-						.then((shared) => shared.credentials)
-				: await this.credentialsRepository.findOneByOrFail({ id: nodeCredential.id, type });
+			credential = await this.credentialsRepository.findOneByOrFail({
+				id: nodeCredential.id,
+				type,
+			});
 		} catch (error) {
 			throw new CredentialNotFoundError(nodeCredential.id, type);
 		}
