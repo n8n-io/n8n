@@ -1260,6 +1260,9 @@ importers:
       gm:
         specifier: 1.25.0
         version: 1.25.0
+      html-to-text:
+        specifier: 9.0.5
+        version: 9.0.5
       iconv-lite:
         specifier: 0.6.3
         version: 0.6.3
@@ -1426,6 +1429,9 @@ importers:
       '@types/gm':
         specifier: ^1.25.0
         version: 1.25.0
+      '@types/html-to-text':
+        specifier: ^9.0.1
+        version: 9.0.4
       '@types/imap-simple':
         specifier: ^4.2.0
         version: 4.2.5

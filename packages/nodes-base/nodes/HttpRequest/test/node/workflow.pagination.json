@@ -35,13 +35,13 @@
           }
         }
       },
-      "id": "37742e68-f44e-457a-beb2-f698f4c0dbb5",
+      "id": "c42631bf-5122-4b84-86c7-00ad9dcdcdfb",
       "name": "Page Limit",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        2220,
-        1800
+        980,
+        1980
       ]
     },
     {
@@ -77,13 +77,13 @@
           }
         }
       },
-      "id": "07d9001f-5384-4b74-beca-e623467790a8",
+      "id": "337101b7-9815-466b-8920-b69529c90c73",
       "name": "Response Empty",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        2220,
-        1980
+        980,
+        2160
       ]
     },
     {
@@ -121,13 +121,13 @@
           }
         }
       },
-      "id": "c918b2be-575e-48df-b6bf-36eee64f12c0",
+      "id": "a2953ca3-e17c-4e83-8bf0-149587c14088",
       "name": "Receive Status Code",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        2220,
-        2140
+        980,
+        2320
       ]
     },
     {
@@ -165,13 +165,13 @@
           }
         }
       },
-      "id": "3ac6da0f-b931-4c0f-9f75-9818e03cb65b",
+      "id": "aad6795d-4156-445b-8b6c-968692ed3620",
       "name": "Complete Expression",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        2220,
-        2320
+        980,
+        2500
       ]
     },
     {
@@ -180,13 +180,13 @@
         "height": 223.6542431762359,
         "width": 365.5274479049966
       },
-      "id": "29478700-ec0e-4b88-b771-8c12cc17f6e5",
+      "id": "036cf1e4-0534-4422-9aea-36a9bb308e79",
       "name": "Sticky Note",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        2160,
-        2920
+        920,
+        3100
       ]
     },
     {
@@ -195,13 +195,13 @@
         "height": 1140.0832129820226,
         "width": 354.2110090941684
       },
-      "id": "cf67a13d-6204-4d1d-99c9-dea6eb882a17",
+      "id": "e36564a0-d1d9-4f15-9c78-b4713f75b13f",
       "name": "Sticky Note1",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        2167,
-        1721
+        927,
+        1901
       ]
     },
     {
@@ -233,13 +233,13 @@
           }
         }
       },
-      "id": "9c7e0300-e94c-4957-abac-0e6f3f98df94",
+      "id": "83ca19dd-f110-4b36-8c52-836c0b501a7e",
       "name": "Response Empty - Text",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        2220,
-        3240
+        980,
+        3420
       ]
     },
     {
@@ -270,13 +270,13 @@
           }
         }
       },
-      "id": "26d8b9ca-68ca-48c2-b603-93b0a2a9369c",
+      "id": "2b770b1b-0c66-4668-a037-f7b2986fd793",
       "name": "Response Empty Next with Max Pages",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        2220,
-        2980
+        980,
+        3160
       ]
     },
     {
@@ -285,13 +285,13 @@
         "height": 388.6542431762359,
         "width": 363.5274479049966
       },
-      "id": "7e71e5db-372b-49f4-a309-fafa8cfa6c42",
+      "id": "fee3b5a3-9af9-44d6-8814-a8334e29ed0e",
       "name": "Sticky Note2",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        2160,
-        3180
+        920,
+        3360
       ]
     },
     {
@@ -329,13 +329,13 @@
           }
         }
       },
-      "id": "63515259-3498-49f6-86b4-fd0386b61244",
+      "id": "d91beb91-8716-4817-a729-91114a8d4a63",
       "name": "Complete Expression - JSON",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        2220,
-        1520
+        980,
+        1700
       ]
     },
     {
@@ -344,13 +344,13 @@
         "height": 232.15942469988397,
         "width": 323.21100909416833
       },
-      "id": "8dbf7c42-1cbc-4b13-ae60-031f4d690cbd",
+      "id": "693b1adb-1be8-4e87-bad8-23936c685155",
       "name": "Sticky Note3",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        2160,
-        1452.366284408126
+        920,
+        1632.366284408126
       ]
     },
     {
@@ -383,13 +383,13 @@
           }
         }
       },
-      "id": "ca3ce84d-b32b-4f94-a51c-634b36d2553d",
+      "id": "72a3ce0d-f428-41cc-a93e-8692f5ed97f9",
       "name": "Response Empty - Include Full Response",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        2220,
-        3420
+        980,
+        3600
       ]
     },
     {
@@ -418,13 +418,13 @@
           }
         }
       },
-      "id": "de6858d8-8677-4e02-9617-24fa13005278",
+      "id": "b579b38a-ac67-40ab-ab82-b465dc6387dc",
       "name": "Pagination Off",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        2220,
-        3640
+        980,
+        3820
       ]
     },
     {
@@ -433,13 +433,13 @@
         "height": 373,
         "width": 363
       },
-      "id": "dfee3f26-25e8-4db8-82d7-c3d93a565a35",
+      "id": "601cef96-0ac0-4890-b1c3-8ca15fbc2571",
       "name": "Sticky Note4",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        2160,
-        3600
+        920,
+        3780
       ]
     },
     {
@@ -463,13 +463,13 @@
           }
         }
       },
-      "id": "1ef00909-5412-49c8-9de4-920ebb29999c",
+      "id": "bdd6cf22-746e-4fda-84b2-df178f5d3dab",
       "name": "Pagination Not Set",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        2220,
-        3820
+        980,
+        4000
       ]
     },
     {
@@ -478,13 +478,13 @@
         "height": 232.15942469988397,
         "width": 394.89100909416834
       },
-      "id": "f7b8a43e-c176-4b35-8d9f-1ce027a9a6eb",
+      "id": "1e7bfcfb-93d0-4ee2-8c0f-380ee2dd7fcb",
       "name": "Sticky Note5",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        2160,
-        4040
+        920,
+        4220
       ]
     },
     {
@@ -500,13 +500,13 @@
         "include": "none",
         "options": {}
       },
-      "id": "046aa51f-ad74-4213-ad52-16b7f6bf0ad6",
+      "id": "35a1f1f3-d701-4252-9dea-5b2b0ef7f32f",
       "name": "Edit Fields",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.2,
       "position": [
-        2400,
-        4120
+        1160,
+        4300
       ]
     },
     {
@@ -541,29 +541,29 @@
           }
         }
       },
-      "id": "a6eed8b6-0cd4-449f-a062-d2a6387fc327",
+      "id": "12f6310f-e88e-490f-9dd1-2012586bf9c9",
       "name": "Loop",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        2220,
-        4120
+        980,
+        4300
       ],
       "continueOnFail": true
     },
     {
       "parameters": {
         "content": "### Next URL\nResponse Format: Autodetect\nActual Response Format: JSON",
-        "height": 458.3224664750446,
+        "height": 650.4724697091658,
         "width": 323.21100909416833
       },
-      "id": "1ece8875-2a64-4a5c-9bb4-ea2aec1d3740",
+      "id": "0074b955-3217-4fc9-b7c4-58f11fc323c1",
       "name": "Sticky Note6",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        2140,
-        520
+        900,
+        507.8499967658788
       ]
     },
     {
@@ -571,13 +571,13 @@
         "content": "# Response Format: Autodetect\n",
         "width": 545.8929725020898
       },
-      "id": "96087f8a-f670-439f-a84d-24139fb82425",
+      "id": "e7b7440f-aad2-49df-9c10-695497aec7c5",
       "name": "Sticky Note7",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        1520,
-        528
+        280,
+        708
       ]
     },
     {
@@ -585,13 +585,13 @@
         "content": "# Response Format: set",
         "width": 545.8929725020898
       },
-      "id": "8c2c8849-bf67-480e-9d60-333d35b731af",
+      "id": "1ad4fad8-4c66-4afe-8893-2727c852ba44",
       "name": "Sticky Note8",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        1540,
-        1460
+        300,
+        1640
       ]
     },
     {
@@ -620,13 +620,13 @@
           }
         }
       },
-      "id": "dffe62af-48de-4f81-9dff-9449b8eaed47",
+      "id": "415e52cd-bdb4-42a8-af18-fec7eb9e6a1f",
       "name": "Complete Expression - JSON Autodetect set",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        2200,
-        608
+        960,
+        600
       ]
     },
     {
@@ -652,46 +652,46 @@
           }
         }
       },
-      "id": "029a965f-ffbb-463e-805a-9d799c1652ba",
+      "id": "a111a0a4-ae9c-4b27-af04-5ab9584798ae",
       "name": "Complete Expression - JSON unset",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        2200,
-        788
+        960,
+        780
       ]
     },
     {
       "parameters": {},
-      "id": "1d695252-948a-40de-bb8c-52c0a05e024a",
+      "id": "aaa4d56b-5d72-4ecb-bcc4-9ccdf0c7c139",
       "name": "No Operation, do nothing1",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        1740,
-        2320
+        500,
+        2500
       ]
     },
     {
       "parameters": {},
-      "id": "91eaf5ae-87dd-4eac-b144-e165ff55569d",
+      "id": "6fbde1fb-8f7d-4947-84f1-2695b919cc43",
       "name": "Data 2",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [
-        1440,
-        1800
+        200,
+        1980
       ]
     },
     {
       "parameters": {},
-      "id": "4279a32b-787d-4360-aee6-bbb95c3b0afa",
+      "id": "f13379f2-5867-46d9-9af1-48b9ff9524d0",
       "name": "Data 1",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        1760,
-        780
+        520,
+        960
       ]
     },
     {
@@ -731,13 +731,13 @@
           }
         }
       },
-      "id": "10a5e5bd-b0e0-4490-bb7f-0de29f717b77",
+      "id": "bcbb8fe5-1613-4dc6-a92c-89f1415c1821",
       "name": "Response Empty - Text1",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        2200,
-        1080
+        960,
+        1260
       ]
     },
     {
@@ -746,13 +746,13 @@
         "height": 437.60980047313967,
         "width": 323.31395441111135
       },
-      "id": "45e77316-f3cb-4515-a777-f921e10edce6",
+      "id": "4e73a489-5c9f-4b8f-a32f-ad6d91fc187a",
       "name": "Sticky Note9",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        2140,
-        993.7738085909444
+        900,
+        1173.7738085909446
       ]
     },
     {
@@ -793,13 +793,13 @@
           }
         }
       },
-      "id": "7f0491f2-cd1d-4dc8-9cb7-26fce638c9b8",
+      "id": "c02661c0-b6e7-45f8-8049-ef1a97f4b590",
       "name": "Response Empty - Include Full Response1",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        2200,
-        1260
+        960,
+        1440
       ]
     },
     {
@@ -843,13 +843,13 @@
           }
         }
       },
-      "id": "2d4217e3-4c0c-48d1-87e9-fd46b370be4e",
+      "id": "69569627-0e1b-45e0-a279-bf53c3f99c8f",
       "name": "POST Form Data",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        2220,
-        2680
+        980,
+        2860
       ]
     },
     {
@@ -892,14 +892,37 @@
           }
         }
       },
-      "id": "a428f414-d13e-40d5-b1cf-beaf53df5884",
+      "id": "c68c8649-298e-42fe-bc61-df4a4b9d5c39",
       "name": "POST JSON",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        2220,
-        2500
+        980,
+        2680
       ]
+    },
+    {
+      "parameters": {
+        "url": "https://dummyjson.com/users",
+        "options": {
+          "pagination": {
+            "pagination": {
+              "paginationMode": "responseContainsNextURL",
+              "limitPagesFetched": true,
+              "maxRequests": 2
+            }
+          }
+        }
+      },
+      "id": "c004d7eb-d755-4d65-b359-6e0ddab0406d",
+      "name": "Complete Expression - JSON unset1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        960,
+        980
+      ],
+      "onError": "continueRegularOutput"
     }
   ],
   "pinData": {
@@ -1686,6 +1709,18 @@
           "id": 8
         }
       }
+    ],
+    "Complete Expression - JSON unset1": [
+      {
+        "json": {
+          "error": {
+            "message": "'' is not a valid URL.",
+            "name": "NodeOperationError",
+            "description": "Make sure the \"Next URL\" parameter evaluates to a valid URL.",
+            "context": {}
+          }
+        }
+      }
     ]
   },
   "connections": {
@@ -1809,6 +1844,11 @@
             "node": "Response Empty - Include Full Response1",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Complete Expression - JSON unset1",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -1818,11 +1858,11 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "107ed80e-d232-412e-ad52-9e902b46b2a4",
+  "versionId": "5189ec73-b659-4740-83f5-d5bf3995f5df",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "27cc9b56542ad45b38725555722c50a1c3fee1670bbb67980558314ee08517c4"
   },
-  "id": "PZHNXWq2FzZp0F9A",
+  "id": "4WORX7JyBFP94dXM",
   "tags": []
 }
