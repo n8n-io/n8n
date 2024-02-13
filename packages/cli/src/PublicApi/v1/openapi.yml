@@ -74,4 +74,3 @@ components:
 
 security:
   - ApiKeyAuth: []
-  - HBAuth: []
