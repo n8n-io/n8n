@@ -29,6 +29,63 @@ import { TagRepository } from '@/databases/repositories/tag.repository';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 
 export = {
+	createInstance: [
+		authorize(['global:owner', 'global:admin', 'global:member']),
+		async (req: WorkflowRequest.Instance, res: express.Response): Promise<express.Response> => {
+			const { id } = req.params;
+
+			const sharedWorkflow = await getSharedWorkflow(req.user, id);
+
+			if (!sharedWorkflow) {
+				// user trying to access a workflow they do not own
+				// or workflow does not exist
+				return res.status(404).json({ message: 'Not Found' });
+			}
+
+			if (!sharedWorkflow.workflow.template) {
+				return res
+					.status(400)
+					.json({ message: 'Cannot create an instance from a non-template workflow' });
+			}
+
+			const newWorkflow = new WorkflowEntity();
+			Object.assign(newWorkflow, sharedWorkflow.workflow);
+			Object.assign(newWorkflow, {
+				id: undefined,
+				active: false,
+				template: false,
+				versionId: uuid(),
+			});
+
+			// copied from saveAsNewWorkflow which is used to duplicate a workflow in the editor ui
+			newWorkflow.nodes = newWorkflow.nodes.map((node) => {
+				node.id = uuid();
+
+				return node;
+			});
+
+			newWorkflow.nodes = newWorkflow.nodes.map((node) => {
+				if (node.webhookId) {
+					node.webhookId = uuid();
+				}
+				return node;
+			});
+
+			// copied from the createWorkflow handler in this file
+			const createdWorkflow = await createWorkflow(newWorkflow, req.user, 'workflow:owner');
+
+			await Container.get(WorkflowHistoryService).saveVersion(
+				req.user,
+				createdWorkflow,
+				createdWorkflow.id,
+			);
+
+			await Container.get(ExternalHooks).run('workflow.afterCreate', [createdWorkflow]);
+			void Container.get(InternalHooks).onWorkflowCreated(req.user, createdWorkflow, true);
+
+			return res.json(createdWorkflow);
+		},
+	],
 	createWorkflow: [
 		authorize(['global:owner', 'global:admin', 'global:member']),
 		async (req: WorkflowRequest.Create, res: express.Response): Promise<express.Response> => {
@@ -95,7 +152,13 @@ export = {
 		authorize(['global:owner', 'global:admin', 'global:member']),
 		validCursor,
 		async (req: WorkflowRequest.GetAll, res: express.Response): Promise<express.Response> => {
-			const { offset = 0, limit = 100, active = undefined, tags = undefined, template = undefined } = req.query;
+			const {
+				offset = 0,
+				limit = 100,
+				active = undefined,
+				tags = undefined,
+				template = undefined,
+			} = req.query;
 
 			const where: FindOptionsWhere<WorkflowEntity> = {
 				...(active !== undefined && { active }),

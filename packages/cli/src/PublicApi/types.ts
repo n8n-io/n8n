@@ -83,6 +83,7 @@ export declare namespace WorkflowRequest {
 	type Delete = Get;
 	type Update = AuthenticatedRequest<{ id: string }, {}, WorkflowEntity, {}>;
 	type Activate = Get;
+	type Instance = Get;
 }
 
 export declare namespace UserRequest {

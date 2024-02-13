@@ -1,0 +1,20 @@
+post:
+  x-eov-operation-id: createInstance
+  x-eov-operation-handler: v1/handlers/workflows/workflows.handler
+  tags:
+    - Workflow
+  summary: Creates a workflow instance from a template
+  description: Creates a workflow instance from a template.
+  parameters:
+    - $ref: '../schemas/parameters/workflowId.yml'
+  responses:
+    '200':
+      description: Workflow object
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/workflow.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'

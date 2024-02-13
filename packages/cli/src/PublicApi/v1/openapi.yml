@@ -50,6 +50,8 @@ paths:
     $ref: './handlers/workflows/spec/paths/workflows.id.activate.yml'
   /workflows/{id}/deactivate:
     $ref: './handlers/workflows/spec/paths/workflows.id.deactivate.yml'
+  /workflows/{id}/instance:
+    $ref: './handlers/workflows/spec/paths/workflows.id.instance.yml'
   /users:
     $ref: './handlers/users/spec/paths/users.yml'
   /users/{id}:
