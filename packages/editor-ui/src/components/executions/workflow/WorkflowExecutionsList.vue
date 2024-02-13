@@ -27,7 +27,7 @@
 import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-
+import { useRouter } from 'vue-router';
 import WorkflowExecutionsSidebar from '@/components/executions/workflow/WorkflowExecutionsSidebar.vue';
 import {
 	MAIN_HEADER_TABS,
@@ -41,7 +41,7 @@ import type { ExecutionSummary, IDataObject } from 'n8n-workflow';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { getNodeViewTab } from '@/utils/canvasUtils';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -51,11 +51,10 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useDebounce } from '@/composables/useDebounce';
 
 export default defineComponent({
-	name: 'ExecutionsList',
+	name: 'WorkflowExecutionsList',
 	components: {
 		WorkflowExecutionsSidebar,
 	},
-	mixins: [workflowHelpers],
 	async beforeRouteLeave(to, _, next) {
 		if (getNodeViewTab(to) === MAIN_HEADER_TABS.WORKFLOW) {
 			next();
@@ -78,7 +77,7 @@ export default defineComponent({
 			);
 
 			if (confirmModal === MODAL_CONFIRM) {
-				const saved = await this.saveCurrentWorkflow({}, false);
+				const saved = await this.workflowHelpers.saveCurrentWorkflow({}, false);
 				if (saved) {
 					await this.settingsStore.fetchPromptsData();
 				}
@@ -129,10 +128,13 @@ export default defineComponent({
 	],
 	setup() {
 		const externalHooks = useExternalHooks();
+		const router = useRouter();
+		const workflowHelpers = useWorkflowHelpers(router);
 		const { callDebounced } = useDebounce();
 
 		return {
 			externalHooks,
+			workflowHelpers,
 			callDebounced,
 			...useToast(),
 			...useMessage(),
