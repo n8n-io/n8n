@@ -31,6 +31,11 @@ get:
   summary: Retrieve all workflows
   description: Retrieve all workflows from your instance.
   parameters:
+    - name: template
+      in: query
+      schema:
+        type: boolean
+        example: true
     - name: active
       in: query
       schema:

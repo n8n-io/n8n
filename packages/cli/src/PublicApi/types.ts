@@ -74,6 +74,7 @@ export declare namespace WorkflowRequest {
 			offset?: number;
 			workflowId?: number;
 			active: boolean;
+			template: boolean;
 		}
 	>;
 

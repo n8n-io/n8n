@@ -1,7 +1,7 @@
 import {
 	IHookFunctions,
 	INodeType,
-	INodeTypeDescription, IWebhookFunctions, IWebhookResponseData,
+	INodeTypeDescription, IWebhookFunctions, IWebhookResponseData, NodeOperationError,
 } from 'n8n-workflow';
 import { honeyBookApiRequest } from './GenericFunctions';
 
@@ -133,9 +133,105 @@ export class HoneyBookWebhookTrigger implements INodeType {
 						value: 'after_session_end',
 						description: 'Triggered after a session ends',
 					},
+					{
+						name: 'Relative to date',
+						value: 'date_relative',
+						description: 'Triggered at a relative date',
+					},
 				],
 				default: [],
 				required: true,
+			},
+			{
+				displayName: 'Delay Amount',
+				name: 'amount',
+				type: 'number',
+				default: 0,
+				displayOptions: {
+					show: {
+						events: ['date_relative'],
+					},
+				},
+			},
+			{
+				displayName: 'Delay Unit',
+				name: 'unit',
+				type: 'options',
+				typeOptions: {
+					multipleValues: false,
+				},
+				options: [
+					{
+						name: 'Minutes',
+						value: 'minutes',
+					},
+					{
+						name: 'Hours',
+						value: 'hours',
+					},
+					{
+						name: 'Days',
+						value: 'days',
+					},
+					{
+						name: 'Weeks',
+						value: 'weeks',
+					},
+				],
+				default: 'minutes',
+				displayOptions: {
+					show: {
+						events: ['date_relative'],
+					},
+				},
+			},
+			{
+				displayName: 'Delay Preposition',
+				name: 'preposition',
+				type: 'options',
+				typeOptions: {
+					multipleValues: false,
+				},
+				options: [
+					{
+						name: 'Before',
+						value: 'before',
+					},
+					{
+						name: 'After',
+						value: 'after',
+					},
+				],
+				default: 'before',
+				displayOptions: {
+					show: {
+						events: ['date_relative'],
+					},
+				},
+			},
+			{
+				displayName: 'Date field',
+				name: 'field',
+				type: 'options',
+				typeOptions: {
+					multipleValues: false,
+				},
+				options: [
+					{
+						name: 'Project start',
+						value: 'project_date',
+					},
+					{
+						name: 'Project end',
+						value: 'project_end_date',
+					},
+				],
+				default: 'project_date',
+				displayOptions: {
+					show: {
+						events: ['date_relative'],
+					},
+				},
 			},
 		],
 	};
@@ -155,7 +251,34 @@ export class HoneyBookWebhookTrigger implements INodeType {
 				const events = this.getNodeParameter('events') as string;
 				const executionMode = this.getActivationMode();
 				console.log('------------------staticData', staticData);
-				const response = await honeyBookApiRequest.call(this, 'POST', '/n8n/webhook', { events, webhookUrl, executionMode, staticData });
+
+				const payload = {
+					events,
+					webhookUrl,
+					executionMode,
+					staticData,
+					options: {},
+				};
+
+				if (events.includes('date_relative')) {
+					payload.options = {
+						amount: this.getNodeParameter('amount'),
+						unit: this.getNodeParameter('unit'),
+						preposition: this.getNodeParameter('preposition'),
+						field: this.getNodeParameter('field'),
+					};
+				}
+
+				// if (!webhookData.projectId) {
+				// 	throw new NodeOperationError(
+				// 		this.getNode(),
+				// 		'No project ID found on honeybook webhook node',
+				// 	);
+				// }
+
+				const response = await honeyBookApiRequest.call(this, 'POST', '/n8n/webhook', payload);
+
+				workflowStaticData.webhookId = response.webhookId;
 
 				if (response._id) {
 					staticData.webhookId = response._id;

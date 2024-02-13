@@ -16,6 +16,8 @@ properties:
   active:
     type: boolean
     readOnly: true
+  template:
+    type: boolean
   createdAt:
     type: string
     format: date-time
