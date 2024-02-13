@@ -17,12 +17,13 @@ import type {
 	UpdateOptions,
 	Sort,
 } from 'mongodb';
-import { MongoClient, ObjectId } from 'mongodb';
+import { ObjectId } from 'mongodb';
 import { generatePairedItemData } from '../../utils/utilities';
 import { nodeProperties } from './MongoDbProperties';
 
 import {
 	buildParameterizedConnString,
+	connectMongoClient,
 	prepareFields,
 	prepareItems,
 	stringifyObjectIDs,
@@ -74,7 +75,7 @@ export class MongoDb implements INodeType {
 						);
 					}
 
-					const client: MongoClient = await MongoClient.connect(connectionString);
+					const client = await connectMongoClient(connectionString, credentials);
 
 					const { databases } = await client.db().admin().listDatabases();
 
@@ -100,16 +101,13 @@ export class MongoDb implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const { database, connectionString } = validateAndResolveMongoCredentials(
-			this,
-			await this.getCredentials('mongoDb'),
-		);
+		const credentials = await this.getCredentials('mongoDb');
+		const { database, connectionString } = validateAndResolveMongoCredentials(this, credentials);
 
-		const client: MongoClient = await MongoClient.connect(connectionString);
+		const client = await connectMongoClient(connectionString, credentials);
 
 		const mdb = client.db(database);
 
-		const returnItems: INodeExecutionData[] = [];
 		let responseData: IDataObject | IDataObject[] = [];
 
 		const items = this.getInputData();
@@ -370,12 +368,10 @@ export class MongoDb implements INodeType {
 
 		const itemData = generatePairedItemData(items.length);
 
-		const executionData = this.helpers.constructExecutionMetaData(
+		const returnItems = this.helpers.constructExecutionMetaData(
 			this.helpers.returnJsonArray(responseData),
 			{ itemData },
 		);
-
-		returnItems.push(...executionData);
 
 		return [returnItems];
 	}

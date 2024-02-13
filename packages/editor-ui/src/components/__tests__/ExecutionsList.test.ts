@@ -16,6 +16,7 @@ vi.mock('vue-router', () => ({
 	useRoute: vi.fn().mockReturnValue({
 		name: VIEWS.WORKFLOW_EXECUTIONS,
 	}),
+	RouterLink: vi.fn(),
 }));
 
 let pinia: ReturnType<typeof createTestingPinia>;
@@ -110,7 +111,7 @@ describe('ExecutionsList.vue', () => {
 		workflowsStore = useWorkflowsStore();
 
 		vi.spyOn(workflowsStore, 'fetchAllWorkflows').mockResolvedValue(workflowsData);
-		vi.spyOn(workflowsStore, 'getCurrentExecutions').mockResolvedValue([]);
+		vi.spyOn(workflowsStore, 'getActiveExecutions').mockResolvedValue([]);
 	});
 
 	it('should render empty list', async () => {

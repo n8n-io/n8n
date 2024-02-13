@@ -9,11 +9,12 @@ module.exports = {
 	...sharedOptions(__dirname, 'frontend'),
 
 	rules: {
+		'n8n-local-rules/dangerously-use-html-string-missing': 'error',
+
 		// TODO: Remove these
 		'id-denylist': 'warn',
 		'import/extensions': 'warn',
 		'import/no-default-export': 'warn',
-		'import/no-extraneous-dependencies': 'warn',
 		'import/order': 'off',
 		'import/no-cycle': 'warn',
 		'import/no-duplicates': 'warn',
@@ -32,7 +33,6 @@ module.exports = {
 		'@typescript-eslint/no-unnecessary-type-assertion': 'warn',
 		'@typescript-eslint/no-unused-expressions': 'warn',
 		'@typescript-eslint/no-unused-vars': 'warn',
-		'@typescript-eslint/no-use-before-define': 'warn',
 		'@typescript-eslint/no-var-requires': 'warn',
 		'@typescript-eslint/prefer-nullish-coalescing': 'warn',
 		'@typescript-eslint/prefer-optional-chain': 'warn',

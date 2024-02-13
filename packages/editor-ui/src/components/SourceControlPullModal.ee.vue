@@ -89,7 +89,7 @@ async function pullWorkfolder() {
 	<Modal
 		width="500px"
 		:title="i18n.baseText('settings.sourceControl.modals.pull.title')"
-		:eventBus="data.eventBus"
+		:event-bus="data.eventBus"
 		:name="SOURCE_CONTROL_PULL_MODAL_KEY"
 	>
 		<template #content>

@@ -7,7 +7,7 @@
 			[$style.menuCollapsed]: mainSidebarCollapsed,
 		}"
 	>
-		<n8n-radio-buttons :modelValue="activeTab" :options="items" @update:modelValue="onSelect" />
+		<n8n-radio-buttons :model-value="activeTab" :options="items" @update:modelValue="onSelect" />
 	</div>
 </template>
 
@@ -20,12 +20,7 @@ import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 
 export default defineComponent({
-	name: 'tab-bar',
-	data() {
-		return {
-			MAIN_HEADER_TABS,
-		};
-	},
+	name: 'TabBar',
 	props: {
 		items: {
 			type: Array as PropType<ITabBarItem[]>,
@@ -35,6 +30,11 @@ export default defineComponent({
 			type: String,
 			default: MAIN_HEADER_TABS.WORKFLOW,
 		},
+	},
+	data() {
+		return {
+			MAIN_HEADER_TABS,
+		};
 	},
 	computed: {
 		...mapStores(useUIStore),

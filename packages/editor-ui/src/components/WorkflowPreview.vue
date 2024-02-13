@@ -7,13 +7,13 @@
 			<n8n-spinner type="dots" />
 		</div>
 		<iframe
+			ref="iframeRef"
 			:class="{
 				[$style.workflow]: !nodeViewDetailsOpened,
 				[$style.executionPreview]: mode === 'execution',
 				[$style.openNDV]: nodeViewDetailsOpened,
 				[$style.show]: showPreview,
 			}"
-			ref="iframeRef"
 			:src="`${rootStore.baseUrl}workflows/demo`"
 			@mouseenter="onMouseEnter"
 			@mouseleave="onMouseLeave"
@@ -249,6 +249,10 @@ watch(
 
 .imageLoader {
 	width: 100%;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	height: 100%;
 }
 
 .executionPreview {

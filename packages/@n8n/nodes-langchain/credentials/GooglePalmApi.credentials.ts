@@ -10,7 +10,7 @@ export class GooglePalmApi implements ICredentialType {
 
 	displayName = 'GooglePaLMApi';
 
-	documentationUrl = 'googlePalm';
+	documentationUrl = 'google';
 
 	properties: INodeProperties[] = [
 		{

@@ -1,6 +1,6 @@
 <template>
 	<div :class="['n8n-menu-item', $style.item]">
-		<el-sub-menu
+		<ElSubMenu
 			v-if="item.children?.length"
 			:id="item.id"
 			:class="{
@@ -13,7 +13,7 @@
 			:popper-class="submenuPopperClass"
 		>
 			<template #title>
-				<n8n-icon
+				<N8nIcon
 					v-if="item.icon"
 					:class="$style.icon"
 					:icon="item.icon"
@@ -26,52 +26,57 @@
 				:key="child.id"
 				:item="child"
 				:compact="false"
-				:tooltipDelay="tooltipDelay"
-				:popperClass="popperClass"
+				:tooltip-delay="tooltipDelay"
+				:popper-class="popperClass"
 				:mode="mode"
-				:activeTab="activeTab"
+				:active-tab="activeTab"
 				:handle-select="handleSelect"
 			/>
-		</el-sub-menu>
-		<n8n-tooltip
+		</ElSubMenu>
+		<N8nTooltip
 			v-else
 			placement="right"
 			:content="item.label"
 			:disabled="!compact"
 			:show-after="tooltipDelay"
 		>
-			<el-menu-item
-				:id="item.id"
-				:class="{
-					[$style.menuItem]: true,
-					[$style.item]: true,
-					[$style.disableActiveStyle]: !isItemActive(item),
-					[$style.active]: isItemActive(item),
-					[$style.compact]: compact,
-				}"
-				data-test-id="menu-item"
-				:index="item.id"
-				@click="handleSelect(item)"
-			>
-				<n8n-icon
-					v-if="item.icon"
-					:class="$style.icon"
-					:icon="item.icon"
-					:size="item.customIconSize || 'large'"
-				/>
-				<span :class="$style.label">{{ item.label }}</span>
-				<n8n-tooltip
-					v-if="item.secondaryIcon"
-					:class="$style.secondaryIcon"
-					:placement="item.secondaryIcon?.tooltip?.placement || 'right'"
-					:content="item.secondaryIcon?.tooltip?.content"
-					:disabled="compact || !item.secondaryIcon?.tooltip?.content"
-					:show-after="tooltipDelay"
+			<ConditionalRouterLink v-bind="item.route ?? item.link">
+				<ElMenuItem
+					:id="item.id"
+					:class="{
+						[$style.menuItem]: true,
+						[$style.item]: true,
+						[$style.disableActiveStyle]: !isItemActive(item),
+						[$style.active]: isItemActive(item),
+						[$style.compact]: compact,
+					}"
+					data-test-id="menu-item"
+					:index="item.id"
+					@click="handleSelect(item)"
 				>
-					<n8n-icon :icon="item.secondaryIcon.name" :size="item.secondaryIcon.size || 'small'" />
-				</n8n-tooltip>
-			</el-menu-item>
-		</n8n-tooltip>
+					<N8nIcon
+						v-if="item.icon"
+						:class="$style.icon"
+						:icon="item.icon"
+						:size="item.customIconSize || 'large'"
+					/>
+					<span :class="$style.label">{{ item.label }}</span>
+					<N8nTooltip
+						v-if="item.secondaryIcon"
+						:placement="item.secondaryIcon?.tooltip?.placement || 'right'"
+						:content="item.secondaryIcon?.tooltip?.content"
+						:disabled="compact || !item.secondaryIcon?.tooltip?.content"
+						:show-after="tooltipDelay"
+					>
+						<N8nIcon
+							:class="$style.secondaryIcon"
+							:icon="item.secondaryIcon.name"
+							:size="item.secondaryIcon.size || 'small'"
+						/>
+					</N8nTooltip>
+				</ElMenuItem>
+			</ConditionalRouterLink>
+		</N8nTooltip>
 	</div>
 </template>
 
@@ -81,15 +86,18 @@ import N8nTooltip from '../N8nTooltip';
 import N8nIcon from '../N8nIcon';
 import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
+import ConditionalRouterLink from '../ConditionalRouterLink';
 import type { IMenuItem, RouteObject } from '../../types';
+import { doesMenuItemMatchCurrentRoute } from './routerUtil';
 
 export default defineComponent({
-	name: 'n8n-menu-item',
+	name: 'N8nMenuItem',
 	components: {
 		ElSubMenu,
 		ElMenuItem,
 		N8nIcon,
 		N8nTooltip,
+		ConditionalRouterLink,
 	},
 	props: {
 		item: {
@@ -115,9 +123,11 @@ export default defineComponent({
 		},
 		activeTab: {
 			type: String,
+			default: undefined,
 		},
 		handleSelect: {
 			type: Function as PropType<(item: IMenuItem) => void>,
+			default: undefined,
 		},
 	},
 	computed: {
@@ -151,18 +161,7 @@ export default defineComponent({
 		},
 		isActive(item: IMenuItem): boolean {
 			if (this.mode === 'router') {
-				if (item.activateOnRoutePaths) {
-					return (
-						Array.isArray(item.activateOnRoutePaths) &&
-						item.activateOnRoutePaths.includes(this.currentRoute.path)
-					);
-				} else if (item.activateOnRouteNames) {
-					return (
-						Array.isArray(item.activateOnRouteNames) &&
-						item.activateOnRouteNames.includes(this.currentRoute.name || '')
-					);
-				}
-				return false;
+				return doesMenuItemMatchCurrentRoute(item, this.currentRoute);
 			} else {
 				return item.id === this.activeTab;
 			}
@@ -278,6 +277,7 @@ export default defineComponent({
 	align-items: center;
 	justify-content: flex-end;
 	flex: 1;
+	margin-left: 20px;
 }
 
 .label {

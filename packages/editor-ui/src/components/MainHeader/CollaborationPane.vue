@@ -16,7 +16,7 @@ const activeUsersSorted = computed(() => {
 	const currentWorkflowUsers = (collaborationStore.getUsersForCurrentWorkflow ?? []).map(
 		(userInfo) => userInfo.user,
 	);
-	const owner = currentWorkflowUsers.find((user) => user.globalRoleId === 1);
+	const owner = currentWorkflowUsers.find((user) => user.role === 'global:owner');
 	return {
 		defaultGroup: owner
 			? [owner, ...currentWorkflowUsers.filter((user) => user.id !== owner.id)]
@@ -68,7 +68,7 @@ onBeforeUnmount(() => {
 		:class="`collaboration-pane-container ${$style.container}`"
 		data-test-id="collaboration-pane"
 	>
-		<n8n-user-stack :users="activeUsersSorted" :currentUserEmail="currentUserEmail" />
+		<n8n-user-stack :users="activeUsersSorted" :current-user-email="currentUserEmail" />
 	</div>
 </template>
 

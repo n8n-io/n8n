@@ -169,7 +169,7 @@ async function onBeforeClose() {
 		id="external-secrets-provider-modal"
 		width="812px"
 		:title="provider.displayName"
-		:eventBus="data.eventBus"
+		:event-bus="data.eventBus"
 		:name="EXTERNAL_SECRETS_PROVIDER_MODAL_KEY"
 		:before-close="onBeforeClose"
 	>
@@ -209,7 +209,7 @@ async function onBeforeClose() {
 		<template #content>
 			<div :class="$style.container">
 				<hr class="mb-l" />
-				<div class="mb-l" v-if="connectionState !== 'initializing'">
+				<div v-if="connectionState !== 'initializing'" class="mb-l">
 					<n8n-callout
 						v-if="connectionState === 'connected' || connectionState === 'tested'"
 						theme="success"
@@ -268,13 +268,13 @@ async function onBeforeClose() {
 					@submit.prevent
 				>
 					<n8n-notice v-if="property.type === 'notice'" :content="property.displayName" />
-					<parameter-input-expanded
+					<ParameterInputExpanded
 						v-else
 						class="mb-l"
 						:parameter="property"
 						:value="providerData[property.name]"
 						:label="labelSize"
-						eventSource="external-secrets-provider"
+						event-source="external-secrets-provider"
 						@update="onValueChange"
 					/>
 				</form>

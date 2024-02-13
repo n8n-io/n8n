@@ -1,19 +1,19 @@
 <template>
 	<div v-if="windowVisible" :class="['binary-data-window', binaryData?.fileType]">
 		<n8n-button
-			@click.stop="closeWindow"
 			size="small"
 			class="binary-data-window-back"
 			:title="$locale.baseText('binaryDataDisplay.backToOverviewPage')"
 			icon="arrow-left"
 			:label="$locale.baseText('binaryDataDisplay.backToList')"
+			@click.stop="closeWindow"
 		/>
 
 		<div class="binary-data-window-wrapper">
 			<div v-if="!binaryData">
 				{{ $locale.baseText('binaryDataDisplay.noDataFoundToDisplay') }}
 			</div>
-			<BinaryDataDisplayEmbed v-else :binaryData="binaryData" />
+			<BinaryDataDisplayEmbed v-else :binary-data="binaryData" />
 		</div>
 	</div>
 </template>
@@ -34,6 +34,10 @@ export default defineComponent({
 	components: {
 		BinaryDataDisplayEmbed,
 	},
+	props: [
+		'displayData', // IBinaryData
+		'windowVisible', // boolean
+	],
 	setup() {
 		const nodeHelpers = useNodeHelpers();
 
@@ -41,10 +45,6 @@ export default defineComponent({
 			nodeHelpers,
 		};
 	},
-	props: [
-		'displayData', // IBinaryData
-		'windowVisible', // boolean
-	],
 	computed: {
 		...mapStores(useWorkflowsStore),
 		binaryData(): IBinaryData | null {

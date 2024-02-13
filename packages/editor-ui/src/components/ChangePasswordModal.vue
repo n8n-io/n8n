@@ -1,17 +1,17 @@
 <template>
 	<Modal
 		:name="CHANGE_PASSWORD_MODAL_KEY"
-		@enter="onSubmit"
 		:title="$locale.baseText('auth.changePassword')"
 		:center="true"
 		width="460px"
-		:eventBus="modalBus"
+		:event-bus="modalBus"
+		@enter="onSubmit"
 	>
 		<template #content>
 			<n8n-form-inputs
 				:inputs="config"
-				:eventBus="formBus"
-				:columnView="true"
+				:event-bus="formBus"
+				:column-view="true"
 				@update="onInput"
 				@submit="onSubmit"
 			/>
@@ -20,9 +20,9 @@
 			<n8n-button
 				:loading="loading"
 				:label="$locale.baseText('auth.changePassword')"
-				@click="onSubmitClick"
 				float="right"
 				data-test-id="change-password-button"
+				@click="onSubmitClick"
 			/>
 		</template>
 	</Modal>

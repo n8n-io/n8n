@@ -1,9 +1,13 @@
+import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+
 import type { SuperAgentTest } from 'supertest';
 import * as utils from './shared/utils/';
-import { getGlobalMemberRole } from './shared/db/roles';
 import { createUser } from './shared/db/users';
+import { mockInstance } from '../shared/mocking';
 
 describe('Auth Middleware', () => {
+	mockInstance(ActiveWorkflowRunner);
+
 	const testServer = utils.setupTestServer({
 		endpointGroups: ['me', 'auth', 'owner', 'users', 'invitations'],
 	});
@@ -38,8 +42,7 @@ describe('Auth Middleware', () => {
 	describe('Routes requiring Authorization', () => {
 		let authMemberAgent: SuperAgentTest;
 		beforeAll(async () => {
-			const globalMemberRole = await getGlobalMemberRole();
-			const member = await createUser({ globalRole: globalMemberRole });
+			const member = await createUser({ role: 'global:member' });
 			authMemberAgent = testServer.authAgentFor(member);
 		});
 

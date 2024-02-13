@@ -1,10 +1,6 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 import { Service } from 'typedi';
-import type {
-	IExternalHooksClass,
-	IExternalHooksFileData,
-	IExternalHooksFunctions,
-} from '@/Interfaces';
+import type { IExternalHooksFileData, IExternalHooksFunctions } from '@/Interfaces';
 import config from '@/config';
 import { UserRepository } from '@db/repositories/user.repository';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
@@ -13,7 +9,7 @@ import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { ApplicationError } from 'n8n-workflow';
 
 @Service()
-export class ExternalHooks implements IExternalHooksClass {
+export class ExternalHooks {
 	externalHooks: {
 		[key: string]: Array<() => {}>;
 	} = {};

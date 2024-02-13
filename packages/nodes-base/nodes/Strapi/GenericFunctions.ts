@@ -87,7 +87,7 @@ export async function getToken(
 		uri: credentials.apiVersion === 'v4' ? `${url}/api/auth/local` : `${url}/auth/local`,
 		json: true,
 	};
-	return this.helpers.request(options) as Promise<{ jwt: string }>;
+	return await (this.helpers.request(options) as Promise<{ jwt: string }>);
 }
 
 export async function strapiApiRequestAllItems(

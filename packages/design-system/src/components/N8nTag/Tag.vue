@@ -8,7 +8,7 @@
 import { defineComponent } from 'vue';
 
 export default defineComponent({
-	name: 'n8n-tag',
+	name: 'N8nTag',
 	props: {
 		text: {
 			type: String,

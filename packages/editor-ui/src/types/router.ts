@@ -46,6 +46,7 @@ export interface RouteConfig {
 		};
 		scrollOffset?: number;
 		setScrollPosition?: (position: number) => void;
+		readOnlyCanvas?: boolean;
 	};
 }
 

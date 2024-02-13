@@ -1,10 +1,10 @@
 <template>
 	<div :class="$style.container">
-		<executions-sidebar
+		<ExecutionsSidebar
 			:executions="executions"
 			:loading="loading && !executions.length"
-			:loadingMore="loadingMore"
-			:temporaryExecution="temporaryExecution"
+			:loading-more="loadingMore"
+			:temporary-execution="temporaryExecution"
 			:auto-refresh="autoRefresh"
 			@update:autoRefresh="onAutoRefreshToggle"
 			@reloadExecutions="setExecutions"
@@ -12,7 +12,7 @@
 			@loadMore="onLoadMore"
 			@retryExecution="onRetryExecution"
 		/>
-		<div :class="$style.content" v-if="!hidePreview">
+		<div v-if="!hidePreview" :class="$style.content">
 			<router-view
 				name="executionPreview"
 				@deleteCurrentExecution="onDeleteCurrentExecution"
@@ -55,13 +55,11 @@ import { NodeHelpers } from 'n8n-workflow';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { v4 as uuid } from 'uuid';
-import type { Route } from 'vue-router';
+import { useRouter, type Route } from 'vue-router';
 import { executionHelpers } from '@/mixins/executionsHelpers';
 import { range as _range } from 'lodash-es';
-import { debounceHelper } from '@/mixins/debounce';
 import { NO_NETWORK_ERROR_CODE } from '@/utils/apiUtils';
 import { getNodeViewTab } from '@/utils/canvasUtils';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -69,6 +67,8 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { executionFilterToQueryFilter } from '@/utils/executionUtils';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useDebounce } from '@/composables/useDebounce';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 
 // Number of execution pages that are fetched before temporary execution card is shown
 const MAX_LOADING_ATTEMPTS = 5;
@@ -76,10 +76,24 @@ const MAX_LOADING_ATTEMPTS = 5;
 const LOAD_MORE_PAGE_SIZE = 100;
 
 export default defineComponent({
-	name: 'executions-list',
-	mixins: [executionHelpers, debounceHelper, workflowHelpers],
+	name: 'ExecutionsList',
 	components: {
 		ExecutionsSidebar,
+	},
+	mixins: [executionHelpers],
+	setup() {
+		const externalHooks = useExternalHooks();
+		const router = useRouter();
+		const workflowHelpers = useWorkflowHelpers(router);
+		const { callDebounced } = useDebounce();
+
+		return {
+			externalHooks,
+			workflowHelpers,
+			callDebounced,
+			...useToast(),
+			...useMessage(),
+		};
 	},
 	data() {
 		return {
@@ -89,15 +103,6 @@ export default defineComponent({
 			temporaryExecution: null as IExecutionsSummary | null,
 			autoRefresh: false,
 			autoRefreshTimeout: undefined as undefined | NodeJS.Timer,
-		};
-	},
-	setup() {
-		const externalHooks = useExternalHooks();
-
-		return {
-			externalHooks,
-			...useToast(),
-			...useMessage(),
 		};
 	},
 	computed: {
@@ -166,7 +171,7 @@ export default defineComponent({
 			);
 
 			if (confirmModal === MODAL_CONFIRM) {
-				const saved = await this.saveCurrentWorkflow({}, false);
+				const saved = await this.workflowHelpers.saveCurrentWorkflow({}, false);
 				if (saved) {
 					await this.settingsStore.fetchPromptsData();
 				}
@@ -231,7 +236,7 @@ export default defineComponent({
 		},
 		async onLoadMore(): Promise<void> {
 			if (!this.loadingMore) {
-				await this.callDebounced('loadMore', { debounceTime: 1000 });
+				await this.callDebounced(this.loadMore, { debounceTime: 1000 });
 			}
 		},
 		async loadMore(limit = 20): Promise<void> {

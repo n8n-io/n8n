@@ -1,24 +1,24 @@
 <template>
-	<div class="container" v-if="workflowName">
-		<BreakpointsObserver :valueXS="15" :valueSM="25" :valueMD="50" class="name-container">
+	<div v-if="workflowName" class="container">
+		<BreakpointsObserver :value-x-s="15" :value-s-m="25" :value-m-d="50" class="name-container">
 			<template #default="{ value }">
 				<ShortenName
 					:name="workflowName"
 					:limit="value"
 					:custom="true"
-					testId="workflow-name-input"
+					test-id="workflow-name-input"
 				>
 					<template #default="{ shortenedName }">
 						<InlineTextEdit
-							:modelValue="workflowName"
-							:previewValue="shortenedName"
-							:isEditEnabled="isNameEditEnabled"
-							:maxLength="MAX_WORKFLOW_NAME_LENGTH"
+							:model-value="workflowName"
+							:preview-value="shortenedName"
+							:is-edit-enabled="isNameEditEnabled"
+							:max-length="MAX_WORKFLOW_NAME_LENGTH"
 							:disabled="readOnly"
-							@toggle="onNameToggle"
-							@submit="onNameSubmit"
 							placeholder="Enter workflow name"
 							class="name"
+							@toggle="onNameToggle"
+							@submit="onNameSubmit"
 						/>
 					</template>
 				</ShortenName>
@@ -28,11 +28,11 @@
 		<span v-if="settingsStore.areTagsEnabled" class="tags" data-test-id="workflow-tags-container">
 			<TagsDropdown
 				v-if="isTagsEditEnabled && !readOnly"
-				v-model="appliedTagIds"
-				:createEnabled="true"
-				:eventBus="tagsEditBus"
-				:placeholder="$locale.baseText('workflowDetails.chooseOrCreateATag')"
 				ref="dropdown"
+				v-model="appliedTagIds"
+				:create-enabled="true"
+				:event-bus="tagsEditBus"
+				:placeholder="$locale.baseText('workflowDetails.chooseOrCreateATag')"
 				class="tags-edit"
 				data-test-id="workflow-tags-dropdown"
 				@blur="onTagsBlur"
@@ -45,12 +45,12 @@
 			</div>
 			<TagsContainer
 				v-else
-				:tagIds="currentWorkflowTagIds"
+				:key="currentWorkflowId"
+				:tag-ids="currentWorkflowTagIds"
 				:clickable="true"
 				:responsive="true"
-				:key="currentWorkflowId"
-				@click="onTagsEditEnable"
 				data-test-id="workflow-tags"
+				@click="onTagsEditEnable"
 			/>
 		</span>
 		<span v-else class="tags"></span>
@@ -61,11 +61,11 @@
 			</span>
 			<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
 				<div :class="$style.group">
-					<collaboration-pane />
+					<CollaborationPane />
 					<n8n-button
 						type="secondary"
-						@click="onShareButtonClick"
 						data-test-id="workflow-share-button"
+						@click="onShareButtonClick"
 					>
 						{{ $locale.baseText('workflowDetails.share') }}
 					</n8n-button>
@@ -99,7 +99,7 @@
 			<div :class="$style.group">
 				<SaveButton
 					type="primary"
-					:saved="!this.isDirty && !this.isNewWorkflow"
+					:saved="!isDirty && !isNewWorkflow"
 					:disabled="isWorkflowSaving || readOnly"
 					data-test-id="workflow-save-button"
 					@click="onSaveButtonClick"
@@ -121,9 +121,9 @@
 			</div>
 			<div :class="[$style.workflowMenuContainer, $style.group]">
 				<input
+					ref="importFile"
 					:class="$style.hiddenInput"
 					type="file"
-					ref="importFile"
 					data-test-id="workflow-import-input"
 					@change="handleFileImport()"
 				/>
@@ -158,7 +158,6 @@ import ShortenName from '@/components/ShortenName.vue';
 import TagsContainer from '@/components/TagsContainer.vue';
 import PushConnectionTracker from '@/components/PushConnectionTracker.vue';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 import SaveButton from '@/components/SaveButton.vue';
 import TagsDropdown from '@/components/TagsDropdown.vue';
 import InlineTextEdit from '@/components/InlineTextEdit.vue';
@@ -183,8 +182,10 @@ import type { IPermissions } from '@/permissions';
 import { getWorkflowPermissions } from '@/permissions';
 import { createEventBus } from 'n8n-design-system/utils';
 import { nodeViewEventBus } from '@/event-bus';
-import { genericHelpers } from '@/mixins/genericHelpers';
 import { hasPermission } from '@/rbac/permissions';
+import { useCanvasStore } from '@/stores/canvas.store';
+import { useRouter } from 'vue-router';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 
 const hasChanged = (prev: string[], curr: string[]) => {
 	if (prev.length !== curr.length) {
@@ -197,7 +198,6 @@ const hasChanged = (prev: string[], curr: string[]) => {
 
 export default defineComponent({
 	name: 'WorkflowDetails',
-	mixins: [workflowHelpers, genericHelpers],
 	components: {
 		TagsContainer,
 		PushConnectionTracker,
@@ -216,7 +216,11 @@ export default defineComponent({
 		},
 	},
 	setup() {
+		const router = useRouter();
+		const workflowHelpers = useWorkflowHelpers(router);
+
 		return {
+			workflowHelpers,
 			...useTitleChange(),
 			...useToast(),
 			...useMessage(),
@@ -244,6 +248,7 @@ export default defineComponent({
 			useWorkflowsStore,
 			useUsersStore,
 			useSourceControlStore,
+			useCanvasStore,
 		),
 		currentUser(): IUser | null {
 			return this.usersStore.currentUser;
@@ -375,6 +380,12 @@ export default defineComponent({
 			return this.workflowsStore.isNewWorkflow;
 		},
 	},
+	watch: {
+		currentWorkflowId() {
+			this.isTagsEditEnabled = false;
+			this.isNameEditEnabled = false;
+		},
+	},
 	methods: {
 		async onSaveButtonClick() {
 			let currentId = undefined;
@@ -383,7 +394,7 @@ export default defineComponent({
 			} else if (this.$route.params.name && this.$route.params.name !== 'new') {
 				currentId = this.$route.params.name;
 			}
-			const saved = await this.saveCurrentWorkflow({
+			const saved = await this.workflowHelpers.saveCurrentWorkflow({
 				id: currentId,
 				name: this.workflowName,
 				tags: this.currentWorkflowTagIds,
@@ -436,7 +447,7 @@ export default defineComponent({
 			}
 			this.tagsSaving = true;
 
-			const saved = await this.saveCurrentWorkflow({ tags });
+			const saved = await this.workflowHelpers.saveCurrentWorkflow({ tags });
 			this.$telemetry.track('User edited workflow tags', {
 				workflow_id: this.currentWorkflowId,
 				new_tag_count: tags.length,
@@ -487,7 +498,7 @@ export default defineComponent({
 				return;
 			}
 
-			const saved = await this.saveCurrentWorkflow({ name });
+			const saved = await this.workflowHelpers.saveCurrentWorkflow({ name });
 			if (saved) {
 				this.isNameEditEnabled = false;
 			}
@@ -532,11 +543,12 @@ export default defineComponent({
 					break;
 				}
 				case WORKFLOW_MENU_ACTIONS.DOWNLOAD: {
-					const workflowData = await this.getWorkflowDataToSave();
+					const workflowData = await this.workflowHelpers.getWorkflowDataToSave();
 					const { tags, ...data } = workflowData;
 					const exportData: IWorkflowToShare = {
 						...data,
 						meta: {
+							...(this.workflowsStore.workflow.meta || {}),
 							instanceId: this.rootStore.instanceId,
 						},
 						tags: (tags || []).map((tagId) => {
@@ -579,7 +591,7 @@ export default defineComponent({
 					break;
 				}
 				case WORKFLOW_MENU_ACTIONS.PUSH: {
-					this.startLoading();
+					this.canvasStore.startLoading();
 					try {
 						await this.onSaveButtonClick();
 
@@ -603,7 +615,7 @@ export default defineComponent({
 								this.showError(error, this.$locale.baseText('error'));
 						}
 					} finally {
-						this.stopLoading();
+						this.canvasStore.stopLoading();
 					}
 
 					break;
@@ -656,12 +668,6 @@ export default defineComponent({
 		},
 		goToUpgrade() {
 			void this.uiStore.goToUpgrade('workflow_sharing', 'upgrade-workflow-sharing');
-		},
-	},
-	watch: {
-		currentWorkflowId() {
-			this.isTagsEditEnabled = false;
-			this.isNameEditEnabled = false;
 		},
 	},
 });

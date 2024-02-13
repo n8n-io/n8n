@@ -152,19 +152,19 @@
 							</div>
 						</template>
 						<div>
-							<div class="copy-button" v-if="displayCause">
+							<div v-if="displayCause" class="copy-button">
 								<n8n-icon-button
-									@click="copyCause"
 									:title="$locale.baseText('nodeErrorView.copyToClipboard')"
 									icon="copy"
+									@click="copyCause"
 								/>
 							</div>
-							<vue-json-pretty
+							<VueJsonPretty
 								v-if="displayCause"
 								:data="error.cause"
 								:deep="3"
-								:showLength="true"
-								selectableType="single"
+								:show-length="true"
+								selectable-type="single"
 								path="error"
 								class="json-data"
 							/>
@@ -185,7 +185,6 @@
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import VueJsonPretty from 'vue-json-pretty';
-import { copyPaste } from '@/mixins/copyPaste';
 import { useToast } from '@/composables/useToast';
 import { MAX_DISPLAY_DATA_SIZE } from '@/constants';
 
@@ -198,16 +197,19 @@ import type {
 import { sanitizeHtml } from '@/utils/htmlUtils';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useClipboard } from '@/composables/useClipboard';
 
 export default defineComponent({
 	name: 'NodeErrorView',
-	mixins: [copyPaste],
-	props: ['error'],
 	components: {
 		VueJsonPretty,
 	},
+	props: ['error'],
 	setup() {
+		const clipboard = useClipboard();
+
 		return {
+			clipboard,
 			...useToast(),
 		};
 	},
@@ -347,7 +349,7 @@ export default defineComponent({
 			return [currentParameter];
 		},
 		copyCause() {
-			this.copyToClipboard(JSON.stringify(this.error.cause));
+			void this.clipboard.copy(JSON.stringify(this.error.cause));
 			this.copySuccess();
 		},
 		copySuccess() {

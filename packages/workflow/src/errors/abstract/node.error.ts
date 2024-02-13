@@ -35,16 +35,19 @@ const COMMON_ERRORS: IDataObject = {
  * a value recursively inside an error object.
  */
 export abstract class NodeError extends ExecutionBaseError {
-	node: INode;
+	constructor(
+		readonly node: INode,
+		error: Error | JsonObject,
+	) {
+		const isError = error instanceof Error;
+		const message = isError ? error.message : '';
+		const options = isError ? { cause: error } : { errorResponse: error };
+		super(message, options);
 
-	constructor(node: INode, error: Error | JsonObject) {
-		if (error instanceof Error) {
-			super(error.message, { cause: error });
-		} else {
-			super('', { errorResponse: error });
+		if (error instanceof NodeError) {
+			this.level = 'error';
+			this.message = `[RE-WRAPPED]: ${message}`;
 		}
-
-		this.node = node;
 	}
 
 	/**

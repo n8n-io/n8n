@@ -13,7 +13,7 @@
 		<div :class="$style.actionBoxContainer">
 			<n8n-action-box
 				:description="$locale.baseText(featureInfo.actionBoxDescription)"
-				:buttonText="
+				:button-text="
 					$locale.baseText(featureInfo.actionBoxButtonLabel || 'fakeDoor.actionBox.button.label')
 				"
 				@click:button="openLinkPage"

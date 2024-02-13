@@ -247,7 +247,7 @@ export class HttpRequestV2 implements INodeType {
 					description: 'Name of the property to which to write the response data',
 				},
 				{
-					displayName: 'Binary Property',
+					displayName: 'Put Output File in Field',
 					name: 'dataPropertyName',
 					type: 'string',
 					default: 'data',
@@ -257,7 +257,7 @@ export class HttpRequestV2 implements INodeType {
 							responseFormat: ['file'],
 						},
 					},
-					description: 'Name of the binary property to which to write the data of the read file',
+					hint: 'The name of the output binary field to put the file in',
 				},
 
 				{
@@ -412,7 +412,7 @@ export class HttpRequestV2 implements INodeType {
 
 				// Body Parameter
 				{
-					displayName: 'Send Binary Data',
+					displayName: 'Send Binary File',
 					name: 'sendBinaryData',
 					type: 'boolean',
 					displayOptions: {
@@ -429,7 +429,7 @@ export class HttpRequestV2 implements INodeType {
 					description: 'Whether binary data should be send as body',
 				},
 				{
-					displayName: 'Binary Property',
+					displayName: 'Input Binary Field',
 					name: 'binaryPropertyName',
 					type: 'string',
 					required: true,
@@ -443,8 +443,9 @@ export class HttpRequestV2 implements INodeType {
 							requestMethod: ['PATCH', 'POST', 'PUT'],
 						},
 					},
+					hint: 'The name of the input binary field containing the file to be uploaded',
 					description:
-						'Name of the binary property which contains the data for the file to be uploaded. For Form-Data Multipart, they can be provided in the format: <code>"sendKey1:binaryProperty1,sendKey2:binaryProperty2</code>',
+						'For Form-Data Multipart, they can be provided in the format: <code>"sendKey1:binaryProperty1,sendKey2:binaryProperty2</code>',
 				},
 				{
 					displayName: 'Body Parameters',
@@ -1046,7 +1047,7 @@ export class HttpRequestV2 implements INodeType {
 			}
 
 			response = response.value;
-			delete response.request;
+			if (response?.request?.constructor.name === 'ClientRequest') delete response.request;
 
 			const options = this.getNodeParameter('options', itemIndex, {});
 

@@ -63,7 +63,7 @@ export async function request(config: {
 	baseURL: string;
 	endpoint: string;
 	headers?: IDataObject;
-	data?: IDataObject;
+	data?: IDataObject | IDataObject[];
 	withCredentials?: boolean;
 }) {
 	const { method, baseURL, endpoint, headers, data } = config;
@@ -119,7 +119,7 @@ export async function makeRestApiRequest<T>(
 	context: IRestApiContext,
 	method: Method,
 	endpoint: string,
-	data?: IDataObject,
+	data?: IDataObject | IDataObject[],
 ) {
 	const response = await request({
 		method,
@@ -139,7 +139,7 @@ export async function get(
 	params?: IDataObject,
 	headers?: IDataObject,
 ) {
-	return request({ method: 'GET', baseURL, endpoint, headers, data: params });
+	return await request({ method: 'GET', baseURL, endpoint, headers, data: params });
 }
 
 export async function post(
@@ -148,7 +148,7 @@ export async function post(
 	params?: IDataObject,
 	headers?: IDataObject,
 ) {
-	return request({ method: 'POST', baseURL, endpoint, headers, data: params });
+	return await request({ method: 'POST', baseURL, endpoint, headers, data: params });
 }
 
 /**

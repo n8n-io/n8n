@@ -2,7 +2,7 @@ import type { IDataObject, DocMetadata, NativeDoc } from 'n8n-workflow';
 import { Expression, ExpressionExtensions, NativeMethods } from 'n8n-workflow';
 import { DateTime } from 'luxon';
 import { i18n } from '@/plugins/i18n';
-import { resolveParameter } from '@/mixins/workflowHelpers';
+import { resolveParameter } from '@/composables/useWorkflowHelpers';
 import {
 	setRank,
 	hasNoParams,
@@ -503,6 +503,7 @@ const regexes = {
 	doubleQuoteStringLiteral: /(".+")\.([^"{\s])*/, // "abc".
 	dateLiteral: /\(?new Date\(\(?.*?\)\)?\.([^{\s])*/, // new Date(). or (new Date()).
 	arrayLiteral: /(\[.+\])\.([^{\s])*/, // [1, 2, 3].
+	indexedAccess: /([^{\s]+\[.+\])\.([^{\s])*/, // 'abc'[0]. or 'abc'.split('')[0] or similar ones
 	objectLiteral: /\(\{.*\}\)\.([^{\s])*/, // ({}).
 
 	mathGlobal: /Math\.([^{\s])*/, // Math.

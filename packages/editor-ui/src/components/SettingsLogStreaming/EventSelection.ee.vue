@@ -6,12 +6,12 @@
 			shadow="never"
 		>
 			<!-- <template #header> -->
-			<checkbox
-				:modelValue="group.selected"
+			<Checkbox
+				:model-value="group.selected"
 				:indeterminate="!group.selected && group.indeterminate"
+				:disabled="readonly"
 				@update:modelValue="onInput"
 				@change="onCheckboxChecked(group.name, $event)"
-				:disabled="readonly"
 			>
 				<strong>{{ groupLabelName(group.name) }}</strong>
 				<n8n-tooltip
@@ -25,13 +25,13 @@
 						{{ groupLabelInfo(group.name) }}
 					</template>
 				</n8n-tooltip>
-			</checkbox>
-			<checkbox
+			</Checkbox>
+			<Checkbox
 				v-if="group.name === 'n8n.audit'"
-				:modelValue="logStreamingStore.items[destinationId]?.destination.anonymizeAuditMessages"
+				:model-value="logStreamingStore.items[destinationId]?.destination.anonymizeAuditMessages"
+				:disabled="readonly"
 				@update:modelValue="onInput"
 				@change="anonymizeAuditMessagesChanged"
-				:disabled="readonly"
 			>
 				{{ $locale.baseText('settings.log-streaming.tab.events.anonymize') }}
 				<n8n-tooltip placement="top" :popper-class="$style.tooltipPopper">
@@ -40,7 +40,7 @@
 						{{ $locale.baseText('settings.log-streaming.tab.events.anonymize.info') }}
 					</template>
 				</n8n-tooltip>
-			</checkbox>
+			</Checkbox>
 			<!-- </template> -->
 			<ul :class="$style.eventList">
 				<li
@@ -48,8 +48,8 @@
 					:key="event.name"
 					:class="`${$style.eventListItem} ${group.selected ? $style.eventListItemDisabled : ''}`"
 				>
-					<checkbox
-						:modelValue="event.selected || group.selected"
+					<Checkbox
+						:model-value="event.selected || group.selected"
 						:indeterminate="event.indeterminate"
 						:disabled="group.selected || readonly"
 						@update:modelValue="onInput"
@@ -61,7 +61,7 @@
 								{{ event.name }}
 							</template>
 						</n8n-tooltip>
-					</checkbox>
+					</Checkbox>
 				</li>
 			</ul>
 		</div>
@@ -75,16 +75,16 @@ import type { BaseTextKey } from '@/plugins/i18n';
 import { useLogStreamingStore } from '@/stores/logStreaming.store';
 
 export default {
-	name: 'event-selection',
+	name: 'EventSelection',
+	components: {
+		Checkbox,
+	},
 	props: {
 		destinationId: {
 			type: String,
 			default: 'defaultDestinationId',
 		},
 		readonly: Boolean,
-	},
-	components: {
-		Checkbox,
 	},
 	data() {
 		return {

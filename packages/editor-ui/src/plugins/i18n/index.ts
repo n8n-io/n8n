@@ -80,6 +80,22 @@ export class I18nClass {
 		return this.i18n.te(key) ? this.i18n.t(key).toString() : fallback ?? '';
 	}
 
+	displayTimer(msPassed: number, showMs = false): string {
+		if (msPassed < 60000) {
+			if (!showMs) {
+				return `${Math.floor(msPassed / 1000)}${this.baseText('genericHelpers.secShort')}`;
+			}
+
+			return `${msPassed / 1000}${this.baseText('genericHelpers.secShort')}`;
+		}
+
+		const secondsPassed = Math.floor(msPassed / 1000);
+		const minutesPassed = Math.floor(secondsPassed / 60);
+		const secondsLeft = (secondsPassed - minutesPassed * 60).toString().padStart(2, '0');
+
+		return `${minutesPassed}:${secondsLeft}${this.baseText('genericHelpers.minShort')}`;
+	}
+
 	/**
 	 * Render a string of header text (a node's name and description),
 	 * used variously in the nodes panel, under the node icon, etc.
@@ -543,11 +559,11 @@ export async function loadLanguage(language?: string) {
 	if (!language) return;
 
 	if (i18nInstance.global.locale === language) {
-		return setLanguage(language);
+		return await setLanguage(language);
 	}
 
 	if (loadedLanguages.includes(language)) {
-		return setLanguage(language);
+		return await setLanguage(language);
 	}
 
 	const { numberFormats, ...rest } = (await import(`./locales/${language}.json`)).default;
@@ -560,7 +576,7 @@ export async function loadLanguage(language?: string) {
 
 	loadedLanguages.push(language);
 
-	return setLanguage(language);
+	return await setLanguage(language);
 }
 
 /**

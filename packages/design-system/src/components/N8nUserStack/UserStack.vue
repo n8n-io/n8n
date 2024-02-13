@@ -76,11 +76,11 @@ const menuHeight = computed(() => {
 			popper-class="user-stack-popper"
 		>
 			<div :class="$style.avatars" data-test-id="user-stack-avatars">
-				<n8n-avatar
+				<N8nAvatar
 					v-for="user in flatUserList.slice(0, visibleAvatarCount)"
 					:key="user.id"
-					:firstName="user.firstName"
-					:lastName="user.lastName"
+					:first-name="user.firstName"
+					:last-name="user.lastName"
 					:class="$style.avatar"
 					:data-test-id="`user-stack-avatar-${user.id}`"
 					size="small"
@@ -101,9 +101,9 @@ const menuHeight = computed(() => {
 									:data-test-id="`user-stack-info-${user.id}`"
 									:class="$style.userInfoContainer"
 								>
-									<n8n-user-info
+									<N8nUserInfo
 										v-bind="user"
-										:isCurrentUser="user.email === props.currentUserEmail"
+										:is-current-user="user.email === props.currentUserEmail"
 									/>
 								</el-dropdown-item>
 							</div>

@@ -40,6 +40,7 @@ export async function openAiFunctionsAgentExecute(
 	const options = this.getNodeParameter('options', 0, {}) as {
 		systemMessage?: string;
 		maxIterations?: number;
+		returnIntermediateSteps?: boolean;
 	};
 
 	const agentConfig: AgentExecutorInput = {
@@ -49,6 +50,7 @@ export async function openAiFunctionsAgentExecute(
 		}),
 		tools,
 		maxIterations: options.maxIterations ?? 10,
+		returnIntermediateSteps: options?.returnIntermediateSteps === true,
 		memory:
 			memory ??
 			new BufferMemory({
@@ -99,5 +101,5 @@ export async function openAiFunctionsAgentExecute(
 		returnData.push({ json: response });
 	}
 
-	return this.prepareOutputData(returnData);
+	return await this.prepareOutputData(returnData);
 }

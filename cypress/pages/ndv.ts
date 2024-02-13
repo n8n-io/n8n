@@ -94,10 +94,29 @@ export class NDV extends BasePage {
 			this.getters.filterComponent(paramName).getByTestId('filter-remove-condition').eq(index),
 		filterConditionAdd: (paramName: string) =>
 			this.getters.filterComponent(paramName).getByTestId('filter-add-condition'),
+		assignmentCollection: (paramName: string) =>
+			cy.getByTestId(`assignment-collection-${paramName}`),
+		assignmentCollectionAdd: (paramName: string) =>
+			this.getters.assignmentCollection(paramName).getByTestId('assignment-collection-drop-area'),
+		assignment: (paramName: string, index = 0) =>
+			this.getters.assignmentCollection(paramName).getByTestId('assignment').eq(index),
+		assignmentRemove: (paramName: string, index = 0) =>
+			this.getters.assignment(paramName, index).getByTestId('assignment-remove'),
+		assignmentName: (paramName: string, index = 0) =>
+			this.getters.assignment(paramName, index).getByTestId('assignment-name'),
+		assignmentValue: (paramName: string, index = 0) =>
+			this.getters.assignment(paramName, index).getByTestId('assignment-value'),
+		assignmentType: (paramName: string, index = 0) =>
+			this.getters.assignment(paramName, index).getByTestId('assignment-type-select'),
 		searchInput: () => cy.getByTestId('ndv-search'),
 		pagination: () => cy.getByTestId('ndv-data-pagination'),
 		nodeVersion: () => cy.getByTestId('node-version'),
 		nodeSettingsTab: () => cy.getByTestId('tab-settings'),
+		codeEditorFullscreenButton: () => cy.getByTestId('code-editor-fullscreen-button'),
+		codeEditorDialog: () => cy.getByTestId('code-editor-fullscreen'),
+		codeEditorFullscreen: () => this.getters.codeEditorDialog().find('.cm-content'),
+		nodeRunSuccessIndicator: () => cy.getByTestId('node-run-info-success'),
+		nodeRunErrorIndicator: () => cy.getByTestId('node-run-info-danger'),
 	};
 
 	actions = {
@@ -230,6 +249,9 @@ export class NDV extends BasePage {
 		removeFilterCondition: (paramName: string, index: number) => {
 			this.getters.filterConditionRemove(paramName, index).click();
 		},
+		removeAssignment: (paramName: string, index: number) => {
+			this.getters.assignmentRemove(paramName, index).click();
+		},
 		setInvalidExpression: ({
 			fieldName,
 			invalidExpression,
@@ -246,9 +268,19 @@ export class NDV extends BasePage {
 			});
 			this.actions.validateExpressionPreview(fieldName, `node doesn't exist`);
 		},
-
 		openSettings: () => {
 			this.getters.nodeSettingsTab().click();
+		},
+
+		openCodeEditorFullscreen: () => {
+			this.getters.codeEditorFullscreenButton().click({ force: true });
+		},
+		changeNodeOperation: (operation: string) => {
+			this.getters.parameterInput('operation').click();
+			cy.get('.el-select-dropdown__item')
+				.contains(new RegExp(`^${operation}$`))
+				.click({ force: true });
+			this.getters.parameterInput('operation').find('input').should('have.value', operation);
 		},
 	};
 }

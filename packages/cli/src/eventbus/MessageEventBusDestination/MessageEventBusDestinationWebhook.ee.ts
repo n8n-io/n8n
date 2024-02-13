@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 
 import { MessageEventBusDestination } from './MessageEventBusDestination.ee';
 import axios from 'axios';
@@ -107,6 +106,7 @@ export class MessageEventBusDestinationWebhook
 				foundCredential[1],
 				foundCredential[0],
 				'internal',
+				undefined,
 				true,
 			);
 			return credentialsDecrypted;
@@ -132,7 +132,6 @@ export class MessageEventBusDestinationWebhook
 
 		const sendQuery = this.sendQuery;
 		const specifyQuery = this.specifyQuery;
-		const sendPayload = this.sendPayload;
 		const sendHeaders = this.sendHeaders;
 		const specifyHeaders = this.specifyHeaders;
 
@@ -286,8 +285,6 @@ export class MessageEventBusDestinationWebhook
 		let httpDigestAuth;
 		let httpHeaderAuth;
 		let httpQueryAuth;
-		let oAuth1Api;
-		let oAuth2Api;
 
 		if (this.authentication === 'genericCredentialType') {
 			if (this.genericAuthType === 'httpBasicAuth') {
@@ -305,14 +302,6 @@ export class MessageEventBusDestinationWebhook
 			} else if (this.genericAuthType === 'httpQueryAuth') {
 				try {
 					httpQueryAuth = await this.matchDecryptedCredentialType('httpQueryAuth');
-				} catch {}
-			} else if (this.genericAuthType === 'oAuth1Api') {
-				try {
-					oAuth1Api = await this.matchDecryptedCredentialType('oAuth1Api');
-				} catch {}
-			} else if (this.genericAuthType === 'oAuth2Api') {
-				try {
-					oAuth2Api = await this.matchDecryptedCredentialType('oAuth2Api');
 				} catch {}
 			}
 		}

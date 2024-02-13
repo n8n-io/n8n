@@ -1,21 +1,21 @@
 <template>
 	<div>
 		<aside :class="{ [$style.nodeCreatorScrim]: true, [$style.active]: showScrim }" />
-		<slide-transition>
+		<SlideTransition>
 			<div
 				v-if="active"
+				ref="nodeCreator"
 				:class="$style.nodeCreator"
 				:style="nodeCreatorInlineStyle"
-				ref="nodeCreator"
+				data-test-id="node-creator"
 				@dragover="onDragOver"
 				@drop="onDrop"
 				@mousedown="onMouseDown"
 				@mouseup="onMouseUp"
-				data-test-id="node-creator"
 			>
 				<NodesListPanel @nodeTypeSelected="onNodeTypeSelected" />
 			</div>
-		</slide-transition>
+		</SlideTransition>
 	</div>
 </template>
 

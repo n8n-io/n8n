@@ -55,14 +55,14 @@ const versionDescription: INodeTypeDescription = {
 					displayName: 'Allowed Mentions',
 					name: 'allowedMentions',
 					type: 'json',
-					typeOptions: { alwaysOpenEditWindow: true, editor: 'code' },
+					typeOptions: { alwaysOpenEditWindow: true },
 					default: '',
 				},
 				{
 					displayName: 'Attachments',
 					name: 'attachments',
 					type: 'json',
-					typeOptions: { alwaysOpenEditWindow: true, editor: 'code' },
+					typeOptions: { alwaysOpenEditWindow: true },
 					default: '',
 				},
 				{
@@ -75,14 +75,14 @@ const versionDescription: INodeTypeDescription = {
 					displayName: 'Components',
 					name: 'components',
 					type: 'json',
-					typeOptions: { alwaysOpenEditWindow: true, editor: 'code' },
+					typeOptions: { alwaysOpenEditWindow: true },
 					default: '',
 				},
 				{
 					displayName: 'Embeds',
 					name: 'embeds',
 					type: 'json',
-					typeOptions: { alwaysOpenEditWindow: true, editor: 'code' },
+					typeOptions: { alwaysOpenEditWindow: true },
 					default: '',
 				},
 				{
@@ -95,7 +95,7 @@ const versionDescription: INodeTypeDescription = {
 					displayName: 'JSON Payload',
 					name: 'payloadJson',
 					type: 'json',
-					typeOptions: { alwaysOpenEditWindow: true, editor: 'code' },
+					typeOptions: { alwaysOpenEditWindow: true },
 					default: '',
 				},
 				{

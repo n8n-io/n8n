@@ -1,20 +1,16 @@
 import { Service } from 'typedi';
 import { v4 as uuid } from 'uuid';
 import { type INode, type INodeCredentialsDetails } from 'n8n-workflow';
-import type { EntityManager } from 'typeorm';
 
 import { Logger } from '@/Logger';
 import * as Db from '@/Db';
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { TagRepository } from '@/databases/repositories/tag.repository';
-import { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
-import { RoleService } from '@/services/role.service';
+import { CredentialsRepository } from '@db/repositories/credentials.repository';
+import { TagRepository } from '@db/repositories/tag.repository';
+import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { replaceInvalidCredentials } from '@/WorkflowHelpers';
-import { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
-import { WorkflowTagMapping } from '@/databases/entities/WorkflowTagMapping';
-
-import type { TagEntity } from '@/databases/entities/TagEntity';
-import type { Role } from '@/databases/entities/Role';
+import { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import { WorkflowTagMapping } from '@db/entities/WorkflowTagMapping';
+import type { TagEntity } from '@db/entities/TagEntity';
 import type { ICredentialsDb } from '@/Interfaces';
 
 @Service()
@@ -23,19 +19,15 @@ export class ImportService {
 
 	private dbTags: TagEntity[] = [];
 
-	private workflowOwnerRole: Role;
-
 	constructor(
 		private readonly logger: Logger,
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly tagRepository: TagRepository,
-		private readonly roleService: RoleService,
 	) {}
 
 	async initRecords() {
 		this.dbCredentials = await this.credentialsRepository.find();
 		this.dbTags = await this.tagRepository.find();
-		this.workflowOwnerRole = await this.roleService.findWorkflowOwnerRole();
 	}
 
 	async importWorkflows(workflows: WorkflowEntity[], userId: string) {
@@ -65,14 +57,14 @@ export class ImportService {
 
 				const workflowId = upsertResult.identifiers.at(0)?.id as string;
 
-				await tx.upsert(SharedWorkflow, { workflowId, userId, roleId: this.workflowOwnerRole.id }, [
+				await tx.upsert(SharedWorkflow, { workflowId, userId, role: 'workflow:owner' }, [
 					'workflowId',
 					'userId',
 				]);
 
 				if (!workflow.tags?.length) continue;
 
-				await this.setTags(tx, workflow);
+				await this.tagRepository.setTags(tx, this.dbTags, workflow);
 
 				for (const tag of workflow.tags) {
 					await tx.upsert(WorkflowTagMapping, { tagId: tag.id, workflowId }, [
@@ -110,44 +102,6 @@ export class ImportService {
 			if (match) nodeCredential.id = match.id;
 
 			node.credentials[type] = nodeCredential;
-		}
-	}
-
-	/**
-	 * Set tags on workflow to import while ensuring all tags exist in the database,
-	 * either by matching incoming to existing tags or by creating them first.
-	 */
-	private async setTags(tx: EntityManager, workflow: WorkflowEntity) {
-		if (!workflow?.tags?.length) return;
-
-		for (let i = 0; i < workflow.tags.length; i++) {
-			const importTag = workflow.tags[i];
-
-			if (!importTag.name) continue;
-
-			const identicalMatch = this.dbTags.find(
-				(dbTag) =>
-					dbTag.id === importTag.id &&
-					dbTag.createdAt &&
-					importTag.createdAt &&
-					dbTag.createdAt.getTime() === new Date(importTag.createdAt).getTime(),
-			);
-
-			if (identicalMatch) {
-				workflow.tags[i] = identicalMatch;
-				continue;
-			}
-
-			const nameMatch = this.dbTags.find((dbTag) => dbTag.name === importTag.name);
-
-			if (nameMatch) {
-				workflow.tags[i] = nameMatch;
-				continue;
-			}
-
-			const tagEntity = this.tagRepository.create(importTag);
-
-			workflow.tags[i] = await tx.save<TagEntity>(tagEntity);
 		}
 	}
 }

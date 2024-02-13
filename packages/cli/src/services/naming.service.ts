@@ -1,5 +1,4 @@
 import { Service } from 'typedi';
-import { Like } from 'typeorm';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 
@@ -11,20 +10,17 @@ export class NamingService {
 	) {}
 
 	async getUniqueWorkflowName(requestedName: string) {
-		return this.getUniqueName(requestedName, 'workflow');
+		return await this.getUniqueName(requestedName, 'workflow');
 	}
 
 	async getUniqueCredentialName(requestedName: string) {
-		return this.getUniqueName(requestedName, 'credential');
+		return await this.getUniqueName(requestedName, 'credential');
 	}
 
 	private async getUniqueName(requestedName: string, entity: 'workflow' | 'credential') {
 		const repository = entity === 'workflow' ? this.workflowRepository : this.credentialsRepository;
 
-		const found: Array<{ name: string }> = await repository.find({
-			select: ['name'],
-			where: { name: Like(`${requestedName}%`) },
-		});
+		const found = await repository.findStartingWith(requestedName);
 
 		if (found.length === 0) return requestedName;
 

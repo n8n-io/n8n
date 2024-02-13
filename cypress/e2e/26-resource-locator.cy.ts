@@ -1,5 +1,5 @@
 import { WorkflowPage, NDV, CredentialsModal } from '../pages';
-import { getPopper, getVisiblePopper, getVisibleSelect } from '../utils';
+import { getVisiblePopper, getVisibleSelect } from '../utils';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
@@ -66,6 +66,8 @@ describe('Resource Locator', () => {
 		workflowPage.actions.addInitialNodeToCanvas('E2e Test', { action: 'Resource Locator' });
 
 		ndv.getters.resourceLocatorInput('rlc').click();
+
+		cy.getByTestId('rlc-item').should('exist');
 		getVisiblePopper()
 			.should('have.length', 1)
 			.findChildByTestId('rlc-item')
@@ -73,9 +75,11 @@ describe('Resource Locator', () => {
 
 		ndv.actions.setInvalidExpression({ fieldName: 'fieldId' });
 
-		ndv.getters.container().click(); // remove focus from input, hide expression preview
+		ndv.getters.nodeParameters().click(); // remove focus from input, hide expression preview
 
 		ndv.getters.resourceLocatorInput('rlc').click();
+
+		cy.getByTestId('rlc-item').should('exist');
 		getVisiblePopper()
 			.should('have.length', 1)
 			.findChildByTestId('rlc-item')

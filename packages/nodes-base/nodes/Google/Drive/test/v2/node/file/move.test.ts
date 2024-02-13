@@ -31,7 +31,7 @@ describe('test GoogleDriveV2: file move', () => {
 		jest.unmock('../../../../v2/transport');
 	});
 
-	it('shuold be called with', async () => {
+	it('should be called with', async () => {
 		const nodeParameters = {
 			operation: 'move',
 			fileId: {

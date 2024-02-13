@@ -6,24 +6,21 @@ import {
 } from 'n8n-workflow';
 
 import { initializeAgentExecutorWithOptions } from 'langchain/agents';
-import { BaseChatModel } from 'langchain/chat_models/base';
 import type { Tool } from 'langchain/tools';
 import type { BaseChatMemory } from 'langchain/memory';
 import type { BaseOutputParser } from 'langchain/schema/output_parser';
 import { PromptTemplate } from 'langchain/prompts';
 import { CombiningOutputParser } from 'langchain/output_parsers';
+import { isChatInstance } from '../../../../../utils/helpers';
 
 export async function conversationalAgentExecute(
 	this: IExecuteFunctions,
 ): Promise<INodeExecutionData[][]> {
 	this.logger.verbose('Executing Conversational Agent');
 
-	const model = (await this.getInputConnectionData(
-		NodeConnectionType.AiLanguageModel,
-		0,
-	)) as BaseChatModel;
+	const model = await this.getInputConnectionData(NodeConnectionType.AiLanguageModel, 0);
 
-	if (!(model instanceof BaseChatModel)) {
+	if (!isChatInstance(model)) {
 		throw new NodeOperationError(this.getNode(), 'Conversational Agent requires Chat Model');
 	}
 
@@ -41,6 +38,7 @@ export async function conversationalAgentExecute(
 		systemMessage?: string;
 		humanMessage?: string;
 		maxIterations?: number;
+		returnIntermediateSteps?: boolean;
 	};
 
 	const agentExecutor = await initializeAgentExecutorWithOptions(tools, model, {
@@ -50,6 +48,7 @@ export async function conversationalAgentExecute(
 		// memory option, but the memoryKey set on it must be "chat_history".
 		agentType: 'chat-conversational-react-description',
 		memory,
+		returnIntermediateSteps: options?.returnIntermediateSteps === true,
 		maxIterations: options.maxIterations ?? 10,
 		agentArgs: {
 			systemMessage: options.systemMessage,
@@ -100,5 +99,5 @@ export async function conversationalAgentExecute(
 		returnData.push({ json: response });
 	}
 
-	return this.prepareOutputData(returnData);
+	return await this.prepareOutputData(returnData);
 }

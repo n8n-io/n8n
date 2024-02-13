@@ -1,12 +1,13 @@
-import type { ColumnOptions } from 'typeorm';
+import type { ColumnOptions } from '@n8n/typeorm';
 import {
 	BeforeInsert,
 	BeforeUpdate,
 	CreateDateColumn,
 	PrimaryColumn,
 	UpdateDateColumn,
-} from 'typeorm';
+} from '@n8n/typeorm';
 import config from '@/config';
+import type { Class } from 'n8n-core';
 import { generateNanoId } from '../utils/generators';
 
 const dbType = config.getEnv('database.type');
@@ -27,9 +28,7 @@ const tsColumnOptions: ColumnOptions = {
 	type: datetimeColumnType,
 };
 
-type Constructor<T> = new (...args: any[]) => T;
-
-function mixinStringId<T extends Constructor<{}>>(base: T) {
+function mixinStringId<T extends Class<{}, any[]>>(base: T) {
 	class Derived extends base {
 		@PrimaryColumn('varchar')
 		id: string;
@@ -44,7 +43,7 @@ function mixinStringId<T extends Constructor<{}>>(base: T) {
 	return Derived;
 }
 
-function mixinTimestamps<T extends Constructor<{}>>(base: T) {
+function mixinTimestamps<T extends Class<{}, any[]>>(base: T) {
 	class Derived extends base {
 		@CreateDateColumn(tsColumnOptions)
 		createdAt: Date;

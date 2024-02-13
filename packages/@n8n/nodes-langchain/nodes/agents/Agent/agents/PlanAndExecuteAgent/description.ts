@@ -29,6 +29,19 @@ export const planAndExecuteAgentProperties: INodeProperties[] = [
 		default: '={{ $json.chat_input }}',
 	},
 	{
+		displayName: 'Text',
+		name: 'text',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				agent: ['planAndExecuteAgent'],
+				'@version': [1.2],
+			},
+		},
+		default: '={{ $json.chatInput } }',
+	},
+	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',

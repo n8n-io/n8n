@@ -1,7 +1,7 @@
 <template>
 	<n8n-card :class="$style.cardLink" @click="onClick">
 		<template #prepend>
-			<credential-icon :credential-type-name="credentialType ? credentialType.name : ''" />
+			<CredentialIcon :credential-type-name="credentialType ? credentialType.name : ''" />
 		</template>
 		<template #header>
 			<n8n-heading tag="h2" bold :class="$style.cardHeading">
@@ -12,7 +12,7 @@
 			<n8n-text color="text-light" size="small">
 				<span v-if="credentialType">{{ credentialType.displayName }} | </span>
 				<span v-show="data"
-					>{{ $locale.baseText('credentials.item.updated') }} <time-ago :date="data.updatedAt" /> |
+					>{{ $locale.baseText('credentials.item.updated') }} <TimeAgo :date="data.updatedAt" /> |
 				</span>
 				<span v-show="data"
 					>{{ $locale.baseText('credentials.item.created') }} {{ formattedCreatedAtDate }}
@@ -20,7 +20,7 @@
 			</n8n-text>
 		</div>
 		<template #append>
-			<div :class="$style.cardActions" ref="cardActions">
+			<div ref="cardActions" :class="$style.cardActions">
 				<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
 					<n8n-badge v-if="credentialPermissions.isOwner" class="mr-xs" theme="tertiary" bold>
 						{{ $locale.baseText('credentials.item.owner') }}
@@ -54,16 +54,6 @@ export const CREDENTIAL_LIST_ITEM_ACTIONS = {
 };
 
 export default defineComponent({
-	data() {
-		return {
-			EnterpriseEditionFeature,
-		};
-	},
-	setup() {
-		return {
-			...useMessage(),
-		};
-	},
 	components: {
 		TimeAgo,
 		CredentialIcon,
@@ -87,6 +77,16 @@ export default defineComponent({
 			type: Boolean,
 			default: false,
 		},
+	},
+	setup() {
+		return {
+			...useMessage(),
+		};
+	},
+	data() {
+		return {
+			EnterpriseEditionFeature,
+		};
 	},
 	computed: {
 		...mapStores(useCredentialsStore, useUIStore, useUsersStore),

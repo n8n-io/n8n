@@ -13,8 +13,7 @@
 		"feat:advancedExecutionFilters": true,
 		"quota:users": -1,
 		"quota:maxVariables": -1,
-		"feat:variables": true,
-		"feat:apiDisabled": true
+		"feat:variables": true
 	},
 	"metadata": {
 		"version": "v1",

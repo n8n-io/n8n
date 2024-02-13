@@ -209,15 +209,15 @@ registerKeyHook('MainViewArrowLeft', {
 <template>
 	<span>
 		<!-- Main Node Items -->
-		<ItemsRenderer :elements="activeViewStack.items" @selected="onSelected" :class="$style.items">
+		<ItemsRenderer :elements="activeViewStack.items" :class="$style.items" @selected="onSelected">
 			<template
-				#empty
 				v-if="(activeViewStack.items || []).length === 0 && globalSearchItemsDiff.length === 0"
+				#empty
 			>
 				<NoResults
-					:rootView="activeViewStack.rootView"
-					showIcon
-					showRequest
+					:root-view="activeViewStack.rootView"
+					show-icon
+					show-request
 					@addWebhookNode="selectNodeType([WEBHOOK_NODE_TYPE])"
 					@addHttpNode="selectNodeType([HTTP_REQUEST_NODE_TYPE])"
 				/>

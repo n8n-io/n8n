@@ -2,7 +2,7 @@
 	<Modal
 		:name="WORKFLOW_LM_CHAT_MODAL_KEY"
 		width="80%"
-		maxHeight="80%"
+		max-height="80%"
 		:title="
 			$locale.baseText('chat.window.title', {
 				interpolate: {
@@ -10,28 +10,28 @@
 				},
 			})
 		"
-		:eventBus="modalBus"
+		:event-bus="modalBus"
 		:scrollable="false"
 		@keydown.stop
 	>
 		<template #content>
-			<div v-loading="isLoading" class="workflow-lm-chat" data-test-id="workflow-lm-chat-dialog">
+			<div class="workflow-lm-chat" data-test-id="workflow-lm-chat-dialog">
 				<div class="messages ignore-key-press">
 					<div
 						v-for="message in messages"
 						:key="`${message.executionId}__${message.sender}`"
-						:class="['message', message.sender]"
 						ref="messageContainer"
+						:class="['message', message.sender]"
 					>
 						<div :class="['content', message.sender]">
 							{{ message.text }}
 
 							<div class="message-options no-select-on-click">
 								<n8n-info-tip
+									v-if="message.sender === 'bot'"
 									type="tooltip"
 									theme="info-light"
-									tooltipPlacement="right"
-									v-if="message.sender === 'bot'"
+									tooltip-placement="right"
 								>
 									<div v-if="message.executionId">
 										<n8n-text :bold="true" size="small">
@@ -44,33 +44,34 @@
 								</n8n-info-tip>
 
 								<div
-									@click="repostMessage(message)"
+									v-if="message.sender === 'user'"
 									class="option"
 									:title="$locale.baseText('chat.window.chat.chatMessageOptions.repostMessage')"
 									data-test-id="repost-message-button"
-									v-if="message.sender === 'user'"
+									@click="repostMessage(message)"
 								>
 									<font-awesome-icon icon="redo" />
 								</div>
 								<div
-									@click="reuseMessage(message)"
+									v-if="message.sender === 'user'"
 									class="option"
 									:title="$locale.baseText('chat.window.chat.chatMessageOptions.reuseMessage')"
 									data-test-id="reuse-message-button"
-									v-if="message.sender === 'user'"
+									@click="reuseMessage(message)"
 								>
 									<font-awesome-icon icon="copy" />
 								</div>
 							</div>
 						</div>
 					</div>
+					<MessageTyping v-if="isLoading" ref="messageContainer" />
 				</div>
 				<div v-if="node" class="logs-wrapper" data-test-id="lm-chat-logs">
 					<n8n-text class="logs-title" tag="p" size="large">{{
 						$locale.baseText('chat.window.logs')
 					}}</n8n-text>
 					<div class="logs">
-						<run-data-ai :node="node" hide-title slim :key="messages.length" />
+						<RunDataAi :key="messages.length" :node="node" hide-title slim />
 					</div>
 				</div>
 			</div>
@@ -78,11 +79,11 @@
 		<template #footer>
 			<div class="workflow-lm-chat-footer">
 				<n8n-input
+					ref="inputField"
 					v-model="currentMessage"
 					class="message-input"
 					type="textarea"
 					:minlength="1"
-					ref="inputField"
 					m
 					:placeholder="$locale.baseText('chat.window.chat.placeholder')"
 					data-test-id="workflow-chat-input"
@@ -90,7 +91,6 @@
 				/>
 				<n8n-tooltip :disabled="currentMessage.length > 0">
 					<n8n-button
-						@click.stop="sendChatMessage(currentMessage)"
 						class="send-button"
 						:disabled="currentMessage === ''"
 						:loading="isLoading"
@@ -99,6 +99,7 @@
 						icon="comment"
 						type="primary"
 						data-test-id="workflow-chat-send-button"
+						@click.stop="sendChatMessage(currentMessage)"
 					/>
 					<template #content>
 						{{ $locale.baseText('chat.window.chat.provideMessage') }}
@@ -128,6 +129,7 @@ import {
 	AI_CODE_NODE_TYPE,
 	AI_SUBCATEGORY,
 	CHAT_EMBED_MODAL_KEY,
+	CHAT_TRIGGER_NODE_TYPE,
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
 	VIEWS,
 	WORKFLOW_LM_CHAT_MODAL_KEY,
@@ -137,14 +139,23 @@ import { workflowRun } from '@/mixins/workflowRun';
 import { get, last } from 'lodash-es';
 
 import { useUIStore } from '@/stores/ui.store';
+import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createEventBus } from 'n8n-design-system/utils';
 import type { IDataObject, INodeType, INode, ITaskData } from 'n8n-workflow';
 import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
-import type { INodeUi } from '@/Interface';
+import type { INodeUi, IUser } from '@/Interface';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 
-const RunDataAi = defineAsyncComponent(async () => import('@/components/RunDataAi/RunDataAi.vue'));
+// eslint-disable-next-line import/no-unresolved
+import MessageTyping from '@n8n/chat/components/MessageTyping.vue';
+import { useRouter } from 'vue-router';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+
+const RunDataAi = defineAsyncComponent(
+	async () => await import('@/components/RunDataAi/RunDataAi.vue'),
+);
 
 interface ChatMessage {
 	text: string;
@@ -165,16 +176,20 @@ interface LangChainMessage {
 // - display errors better
 export default defineComponent({
 	name: 'WorkflowLMChat',
-	mixins: [workflowRun],
 	components: {
 		Modal,
+		MessageTyping,
 		RunDataAi,
 	},
+	mixins: [workflowRun],
 	setup(props, ctx) {
 		const externalHooks = useExternalHooks();
+		const router = useRouter();
+		const workflowHelpers = useWorkflowHelpers(router);
 
 		return {
 			externalHooks,
+			workflowHelpers,
 			...useToast(),
 			// eslint-disable-next-line @typescript-eslint/no-misused-promises
 			...workflowRun.setup?.(props, ctx),
@@ -192,7 +207,7 @@ export default defineComponent({
 	},
 
 	computed: {
-		...mapStores(useWorkflowsStore, useUIStore),
+		...mapStores(useWorkflowsStore, useUIStore, useNodeTypesStore),
 		isLoading(): boolean {
 			return this.uiStore.isActionActive('workflowRunning');
 		},
@@ -204,7 +219,7 @@ export default defineComponent({
 	},
 	methods: {
 		displayExecution(executionId: string) {
-			const workflow = this.getCurrentWorkflow();
+			const workflow = this.workflowHelpers.getCurrentWorkflow();
 			const route = this.$router.resolve({
 				name: VIEWS.EXECUTION_PREVIEW,
 				params: { name: workflow.id, executionId },
@@ -246,19 +261,18 @@ export default defineComponent({
 		},
 
 		setConnectedNode() {
-			const workflow = this.getCurrentWorkflow();
-			const triggerNode = workflow.queryNodes(
-				(nodeType: INodeType) => nodeType.description.name === MANUAL_CHAT_TRIGGER_NODE_TYPE,
-			);
+			const triggerNode = this.getTriggerNode();
 
-			if (!triggerNode.length) {
+			if (!triggerNode) {
 				this.showError(
 					new Error('Chat Trigger Node could not be found!'),
 					'Trigger Node not found',
 				);
 				return;
 			}
-			const chatNode = this.workflowsStore.getNodes().find((node: INodeUi): boolean => {
+			const workflow = this.workflowHelpers.getCurrentWorkflow();
+
+			const chatNode = this.workflowHelpers.getNodes().find((node: INodeUi): boolean => {
 				const nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 				if (!nodeType) return false;
 
@@ -288,7 +302,7 @@ export default defineComponent({
 
 				const parentNodes = workflow.getParentNodes(node.name);
 				const isChatChild = parentNodes.some(
-					(parentNodeName) => parentNodeName === triggerNode[0].name,
+					(parentNodeName) => parentNodeName === triggerNode.name,
 				);
 
 				return Boolean(isChatChild && (isAgent || isChain || isCustomChainOrAgent));
@@ -309,9 +323,9 @@ export default defineComponent({
 		getChatMessages(): ChatMessage[] {
 			if (!this.connectedNode) return [];
 
-			const workflow = this.getCurrentWorkflow();
+			const workflow = this.workflowHelpers.getCurrentWorkflow();
 			const connectedMemoryInputs =
-				workflow.connectionsByDestinationNode[this.connectedNode.name]?.memory;
+				workflow.connectionsByDestinationNode[this.connectedNode.name][NodeConnectionType.AiMemory];
 			if (!connectedMemoryInputs) return [];
 
 			const memoryConnection = (connectedMemoryInputs ?? []).find((i) => i.length > 0)?.[0];
@@ -330,9 +344,9 @@ export default defineComponent({
 						action: string;
 						chatHistory?: unknown[];
 						response?: {
-							chat_history?: unknown[];
+							sessionId?: unknown[];
 						};
-					} => get(data, 'data.memory.0.0.json')!,
+					} => get(data, ['data', NodeConnectionType.AiMemory, 0, 0, 'json'])!,
 				)
 				?.find((data) =>
 					['chatHistory', 'loadMemoryVariables'].includes(data?.action) ? data : undefined,
@@ -342,12 +356,12 @@ export default defineComponent({
 			if (memoryOutputData?.chatHistory) {
 				chatHistory = memoryOutputData?.chatHistory as LangChainMessage[];
 			} else if (memoryOutputData?.response) {
-				chatHistory = memoryOutputData?.response.chat_history as LangChainMessage[];
+				chatHistory = memoryOutputData?.response.sessionId as LangChainMessage[];
 			} else {
 				return [];
 			}
 
-			return chatHistory.map((message) => {
+			return (chatHistory || []).map((message) => {
 				return {
 					text: message.kwargs.content,
 					sender: last(message.id) === 'HumanMessage' ? 'user' : 'bot',
@@ -361,7 +375,7 @@ export default defineComponent({
 				return;
 			}
 
-			const workflow = this.getCurrentWorkflow();
+			const workflow = this.workflowHelpers.getCurrentWorkflow();
 			const childNodes = workflow.getChildNodes(triggerNode.name);
 
 			for (const childNode of childNodes) {
@@ -381,9 +395,9 @@ export default defineComponent({
 		},
 
 		getTriggerNode(): INode | null {
-			const workflow = this.getCurrentWorkflow();
-			const triggerNode = workflow.queryNodes(
-				(nodeType: INodeType) => nodeType.description.name === MANUAL_CHAT_TRIGGER_NODE_TYPE,
+			const workflow = this.workflowHelpers.getCurrentWorkflow();
+			const triggerNode = workflow.queryNodes((nodeType: INodeType) =>
+				[CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE].includes(nodeType.description.name),
 			);
 
 			if (!triggerNode.length) {
@@ -403,7 +417,16 @@ export default defineComponent({
 				return;
 			}
 
-			const inputKey = triggerNode.typeVersion < 1.1 ? 'input' : 'chat_input';
+			let inputKey = 'chatInput';
+			if (triggerNode.type === MANUAL_CHAT_TRIGGER_NODE_TYPE && triggerNode.typeVersion < 1.1) {
+				inputKey = 'input';
+			}
+			if (triggerNode.type === CHAT_TRIGGER_NODE_TYPE) {
+				inputKey = 'chatInput';
+			}
+
+			const usersStore = useUsersStore();
+			const currentUser = usersStore.currentUser ?? ({} as IUser);
 
 			const nodeData: ITaskData = {
 				startTime: new Date().getTime(),
@@ -414,6 +437,8 @@ export default defineComponent({
 						[
 							{
 								json: {
+									sessionId: `test-${currentUser.id || 'unknown'}`,
+									action: 'sendMessage',
 									[inputKey]: message,
 								},
 							},
@@ -461,15 +486,15 @@ export default defineComponent({
 
 					const nodeResponseDataArray = get(
 						this.workflowsStore.getWorkflowExecution?.data?.resultData.runData,
-						`[${lastNodeExecuted}]`,
+						lastNodeExecuted,
 					) as ITaskData[];
 
 					const nodeResponseData = nodeResponseDataArray[nodeResponseDataArray.length - 1];
 
 					let responseMessage: string;
 
-					if (get(nodeResponseData, ['error'])) {
-						responseMessage = '[ERROR: ' + get(nodeResponseData, ['error', 'message']) + ']';
+					if (get(nodeResponseData, 'error')) {
+						responseMessage = '[ERROR: ' + get(nodeResponseData, 'error.message') + ']';
 					} else {
 						const responseData = get(nodeResponseData, 'data.main[0][0].json');
 						responseMessage = this.extractResponseMessage(responseData);
@@ -549,13 +574,18 @@ export default defineComponent({
 		padding-top: 1.5em;
 		margin-right: 1em;
 
+		.chat-message {
+			float: left;
+			margin: var(--spacing-2xs) var(--spacing-s);
+		}
+
 		.message {
 			float: left;
 			position: relative;
 			width: 100%;
 
 			.content {
-				border-radius: var(--border-radius-large);
+				border-radius: var(--border-radius-base);
 				line-height: 1.5;
 				margin: var(--spacing-2xs) var(--spacing-s);
 				max-width: 75%;
@@ -565,8 +595,9 @@ export default defineComponent({
 
 				&.bot {
 					background-color: var(--color-lm-chat-bot-background);
-					border: 1px solid var(--color-lm-chat-bot-border);
+					color: var(--color-lm-chat-bot-color);
 					float: left;
+					border-bottom-left-radius: 0;
 
 					.message-options {
 						left: 1.5em;
@@ -575,9 +606,10 @@ export default defineComponent({
 
 				&.user {
 					background-color: var(--color-lm-chat-user-background);
-					border: 1px solid var(--color-lm-chat-user-border);
+					color: var(--color-lm-chat-user-color);
 					float: right;
 					text-align: right;
+					border-bottom-right-radius: 0;
 
 					.message-options {
 						right: 1.5em;

@@ -6,9 +6,10 @@ import type { FilterOperator } from './types';
 
 interface Props {
 	selected: string;
+	readOnly?: boolean;
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), { readOnly: false });
 
 const selected = ref(props.selected);
 const menuOpen = ref(false);
@@ -53,10 +54,11 @@ function onGroupSelect(group: string) {
 
 <template>
 	<n8n-select
+		:key="selectedGroupIcon"
 		data-test-id="filter-operator-select"
 		size="small"
-		:key="selectedGroupIcon"
-		:modelValue="selected"
+		:model-value="selected"
+		:disabled="readOnly"
 		@update:modelValue="onOperatorChange"
 		@visible-change="onSelectVisibleChange"
 		@mouseenter="shouldRenderItems = true"
@@ -69,8 +71,8 @@ function onGroupSelect(group: string) {
 				size="small"
 			/>
 		</template>
-		<div :class="$style.groups" v-if="shouldRenderItems">
-			<div :key="group.name" v-for="group of groups">
+		<div v-if="shouldRenderItems" :class="$style.groups">
+			<div v-for="group of groups" :key="group.name">
 				<n8n-popover
 					:visible="submenu === group.id"
 					placement="right-start"
@@ -81,9 +83,9 @@ function onGroupSelect(group: string) {
 				>
 					<template #reference>
 						<div
+							:class="$style.groupTitle"
 							@mouseenter="() => onGroupSelect(group.id)"
 							@click="() => onGroupSelect(group.id)"
-							:class="$style.groupTitle"
 						>
 							<n8n-icon v-if="group.icon" :icon="group.icon" color="text-light" size="small" />
 							<span>{{ i18n.baseText(group.name) }}</span>

@@ -105,13 +105,13 @@ const onItemMounted = ({
 </script>
 
 <template>
-	<ul :class="$style.list" ref="listElement" data-test-id="workflow-history-list">
-		<workflow-history-list-item
+	<ul ref="listElement" :class="$style.list" data-test-id="workflow-history-list">
+		<WorkflowHistoryListItem
 			v-for="(item, index) in props.items"
 			:key="item.versionId"
 			:index="index"
 			:item="item"
-			:isActive="item.versionId === props.activeItem?.versionId"
+			:is-active="item.versionId === props.activeItem?.versionId"
 			:actions="getActions(index)"
 			@action="onAction"
 			@preview="onPreview"

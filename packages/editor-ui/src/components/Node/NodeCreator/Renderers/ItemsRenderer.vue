@@ -125,46 +125,46 @@ watch(
 
 				<div
 					v-else
+					ref="iteratorItems"
 					:class="{
 						clickable: !disabled,
 						[$style.active]: activeItemId === item.uuid,
 						[$style.iteratorItem]: true,
 						[$style[item.type]]: true,
 					}"
-					ref="iteratorItems"
 					data-test-id="item-iterator-item"
 					:data-keyboard-nav-type="item.type !== 'label' ? item.type : undefined"
 					:data-keyboard-nav-id="item.uuid"
 					@click="wrappedEmit('selected', item)"
 				>
-					<label-item v-if="item.type === 'label'" :item="item" />
-					<subcategory-item v-if="item.type === 'subcategory'" :item="item.properties" />
+					<LabelItem v-if="item.type === 'label'" :item="item" />
+					<SubcategoryItem v-if="item.type === 'subcategory'" :item="item.properties" />
 
-					<node-item
+					<NodeItem
 						v-if="item.type === 'node'"
-						:nodeType="item.properties"
+						:node-type="item.properties"
 						:active="true"
 						:subcategory="item.subcategory"
 					/>
 
-					<action-item
+					<ActionItem
 						v-if="item.type === 'action'"
-						:nodeType="item.properties"
+						:node-type="item.properties"
 						:action="item.properties"
 						:active="true"
 					/>
 
-					<view-item
+					<ViewItem
 						v-else-if="item.type === 'view'"
 						:view="item.properties"
 						:class="$style.viewItem"
 					/>
 				</div>
 			</div>
-			<n8n-loading :loading="true" :rows="1" variant="p" :class="$style.itemSkeleton" v-else />
+			<n8n-loading v-else :loading="true" :rows="1" variant="p" :class="$style.itemSkeleton" />
 		</div>
 	</div>
-	<div :class="$style.empty" v-else>
+	<div v-else :class="$style.empty">
 		<slot name="empty" />
 	</div>
 </template>

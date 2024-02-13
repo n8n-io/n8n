@@ -1,11 +1,11 @@
 <template>
-	<n8n-route :to="to" :newWindow="newWindow" v-bind="$attrs" class="n8n-link">
+	<N8nRoute :to="to" :new-window="newWindow" v-bind="$attrs" class="n8n-link">
 		<span :class="$style[`${underline ? `${theme}-underline` : theme}`]">
-			<n8n-text :size="size" :bold="bold">
+			<N8nText :size="size" :bold="bold">
 				<slot></slot>
-			</n8n-text>
+			</N8nText>
 		</span>
-	</n8n-route>
+	</N8nRoute>
 </template>
 
 <script lang="ts">
@@ -14,7 +14,11 @@ import N8nText from '../N8nText';
 import N8nRoute from '../N8nRoute';
 
 export default defineComponent({
-	name: 'n8n-link',
+	name: 'N8nLink',
+	components: {
+		N8nText,
+		N8nRoute,
+	},
 	props: {
 		size: {
 			type: String,
@@ -40,10 +44,6 @@ export default defineComponent({
 			validator: (value: string): boolean =>
 				['primary', 'danger', 'text', 'secondary'].includes(value),
 		},
-	},
-	components: {
-		N8nText,
-		N8nRoute,
 	},
 });
 </script>

@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync, mkdtempSync } from 'fs';
 import path from 'path';
 import { tmpdir } from 'os';
+import nock from 'nock';
 import { isEmpty } from 'lodash';
 import { get } from 'lodash';
 import { BinaryDataService, Credentials, constructExecutionMetaData } from 'n8n-core';
@@ -103,7 +104,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 	): Promise<IHttpRequestOptions> {
 		const credentialType = this.credentialTypes.getByName(typeName);
 		if (typeof credentialType.authenticate === 'function') {
-			return credentialType.authenticate(credentials, requestParams);
+			return await credentialType.authenticate(credentials, requestParams);
 		}
 		return requestParams;
 	}
@@ -231,6 +232,16 @@ export function setup(testData: WorkflowTestData[] | WorkflowTestData) {
 		testData = [testData];
 	}
 
+	if (testData.some((t) => !!t.nock)) {
+		beforeAll(() => {
+			nock.disableNetConnect();
+		});
+
+		afterAll(() => {
+			nock.restore();
+		});
+	}
+
 	const nodeTypes = new NodeTypes();
 
 	const nodes = [...new Set(testData.flatMap((data) => data.input.workflowData.nodes))];
@@ -313,11 +324,18 @@ export const equalityTest = async (testData: WorkflowTestData, types: INodeTypes
 	resultNodeData.forEach(({ nodeName, resultData }) => {
 		const msg = `Equality failed for "${testData.description}" at node "${nodeName}"`;
 		resultData.forEach((item) => {
-			item?.forEach(({ binary }) => {
+			item?.forEach(({ binary, json }) => {
 				if (binary) {
 					// @ts-ignore
 					delete binary.data.data;
 					delete binary.data.directory;
+				}
+
+				// Convert errors to JSON so tests can compare
+				if (json.error instanceof Error) {
+					json.error = JSON.parse(
+						JSON.stringify(json.error, ['message', 'name', 'description', 'context']),
+					);
 				}
 			});
 		});
@@ -379,7 +397,7 @@ export const testWorkflows = (workflows: string[]) => {
 	const nodeTypes = setup(tests);
 
 	for (const testData of tests) {
-		test(testData.description, async () => equalityTest(testData, nodeTypes));
+		test(testData.description, async () => await equalityTest(testData, nodeTypes));
 	}
 };
 

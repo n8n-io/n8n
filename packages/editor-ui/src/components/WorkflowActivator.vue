@@ -21,8 +21,7 @@
 			</template>
 			<el-switch
 				v-loading="updatingWorkflowActivation"
-				:modelValue="workflowActive"
-				@update:modelValue="activeChanged"
+				:model-value="workflowActive"
 				:title="
 					workflowActive
 						? $locale.baseText('workflowActivator.deactivateWorkflow')
@@ -32,11 +31,12 @@
 				:active-color="getActiveColor"
 				inactive-color="#8899AA"
 				data-test-id="workflow-activate-switch"
+				@update:modelValue="activeChanged"
 			>
 			</el-switch>
 		</n8n-tooltip>
 
-		<div class="could-not-be-started" v-if="couldNotBeStarted">
+		<div v-if="couldNotBeStarted" class="could-not-be-started">
 			<n8n-tooltip placement="top">
 				<template #content>
 					<div
@@ -44,7 +44,7 @@
 						v-html="$locale.baseText('workflowActivator.theWorkflowIsSetToBeActiveBut')"
 					></div>
 				</template>
-				<font-awesome-icon @click="displayActivationError" icon="exclamation-triangle" />
+				<font-awesome-icon icon="exclamation-triangle" @click="displayActivationError" />
 			</n8n-tooltip>
 		</div>
 	</div>
@@ -61,8 +61,8 @@ import { getActivatableTriggerNodes } from '@/utils/nodeTypesUtils';
 
 export default defineComponent({
 	name: 'WorkflowActivator',
-	props: ['workflowActive', 'workflowId'],
 	mixins: [workflowActivate],
+	props: ['workflowActive', 'workflowId'],
 	setup(props, ctx) {
 		return {
 			...useToast(),
@@ -106,7 +106,7 @@ export default defineComponent({
 	},
 	methods: {
 		async activeChanged(newActiveState: boolean) {
-			return this.updateWorkflowActivation(this.workflowId, newActiveState);
+			return await this.updateWorkflowActivation(this.workflowId, newActiveState);
 		},
 		async displayActivationError() {
 			let errorMessage: string;

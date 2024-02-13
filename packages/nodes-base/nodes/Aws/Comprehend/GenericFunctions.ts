@@ -29,7 +29,7 @@ export async function awsApiRequest(
 		headers,
 		region: credentials?.region as string,
 	} as IHttpRequestOptions;
-	return this.helpers.requestWithAuthentication.call(this, 'aws', requestOptions);
+	return await this.helpers.requestWithAuthentication.call(this, 'aws', requestOptions);
 }
 
 export async function awsApiRequestREST(

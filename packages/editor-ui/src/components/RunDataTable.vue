@@ -1,6 +1,6 @@
 <template>
 	<div :class="$style.dataDisplay">
-		<table :class="$style.table" v-if="tableData.columns && tableData.columns.length === 0">
+		<table v-if="tableData.columns && tableData.columns.length === 0" :class="$style.table">
 			<tr>
 				<th :class="$style.emptyCell"></th>
 				<th :class="$style.tableRightMargin"></th>
@@ -21,7 +21,7 @@
 				<td :class="$style.tableRightMargin"></td>
 			</tr>
 		</table>
-		<table :class="$style.table" v-else>
+		<table v-else :class="$style.table">
 			<thead>
 				<tr>
 					<th v-for="(column, i) in tableData.columns || []" :key="column">
@@ -32,7 +32,7 @@
 									{{ $locale.baseText('dataMapping.dragColumnToFieldHint') }}
 								</div>
 							</template>
-							<draggable
+							<Draggable
 								type="mapping"
 								:data="getExpression(column)"
 								:disabled="!mappingEnabled"
@@ -52,13 +52,16 @@
 											[$style.draggingHeader]: isDragging,
 										}"
 									>
-										<span v-html="highlightSearchTerm(column || '')" />
+										<TextWithHighlights
+											:content="getValueToRender(column || '')"
+											:search="search"
+										/>
 										<div :class="$style.dragButton">
 											<font-awesome-icon icon="grip-vertical" />
 										</div>
 									</div>
 								</template>
-							</draggable>
+							</Draggable>
 						</n8n-tooltip>
 					</th>
 					<th v-if="columnLimitExceeded" :class="$style.header">
@@ -87,14 +90,14 @@
 					<th :class="$style.tableRightMargin"></th>
 				</tr>
 			</thead>
-			<draggable
+			<Draggable
+				ref="draggable"
 				tag="tbody"
 				type="mapping"
-				targetDataKey="mappable"
+				target-data-key="mappable"
 				:disabled="!mappingEnabled"
 				@dragstart="onCellDragStart"
 				@dragend="onCellDragEnd"
-				ref="draggable"
 			>
 				<template #preview="{ canDrop, el }">
 					<MappingPill
@@ -113,20 +116,19 @@
 						:key="index2"
 						:data-row="index1"
 						:data-col="index2"
+						:class="hasJsonInColumn(index2) ? $style.minColWidth : $style.limitColWidth"
 						@mouseenter="onMouseEnterCell"
 						@mouseleave="onMouseLeaveCell"
-						:class="hasJsonInColumn(index2) ? $style.minColWidth : $style.limitColWidth"
 					>
-						<span
+						<TextWithHighlights
 							v-if="isSimple(data)"
+							:content="getValueToRender(data)"
+							:search="search"
 							:class="{ [$style.value]: true, [$style.empty]: isEmpty(data) }"
-							v-html="highlightSearchTerm(data)"
 						/>
-						<n8n-tree :nodeClass="$style.nodeClass" v-else :value="data">
+						<n8n-tree v-else :node-class="$style.nodeClass" :value="data">
 							<template #label="{ label, path }">
 								<span
-									@mouseenter="() => onMouseEnterKey(path, index2)"
-									@mouseleave="onMouseLeaveKey"
 									:class="{
 										[$style.hoveringKey]: mappingEnabled && isHovering(path, index2),
 										[$style.draggingKey]: isDraggingKey(path, index2),
@@ -137,13 +139,16 @@
 									:data-name="getCellPathName(path, index2)"
 									:data-value="getCellExpression(path, index2)"
 									:data-depth="path.length"
+									@mouseenter="() => onMouseEnterKey(path, index2)"
+									@mouseleave="onMouseLeaveKey"
 									>{{ label || $locale.baseText('runData.unnamedField') }}</span
 								>
 							</template>
 							<template #value="{ value }">
-								<span
+								<TextWithHighlights
+									:content="getValueToRender(value)"
+									:search="search"
 									:class="{ [$style.nestedValue]: true, [$style.empty]: isEmpty(value) }"
-									v-html="highlightSearchTerm(value)"
 								/>
 							</template>
 						</n8n-tree>
@@ -151,7 +156,7 @@
 					<td v-if="columnLimitExceeded"></td>
 					<td :class="$style.tableRightMargin"></td>
 				</tr>
-			</draggable>
+			</Draggable>
 		</table>
 	</div>
 </template>
@@ -162,7 +167,6 @@ import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 import type { INodeUi, ITableData, NDVState } from '@/Interface';
 import { shorten } from '@/utils/typesUtils';
-import { highlightText, sanitizeHtml } from '@/utils/htmlUtils';
 import { getPairedItemId } from '@/utils/pairedItemUtils';
 import type { GenericValue, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import Draggable from './Draggable.vue';
@@ -171,14 +175,15 @@ import { useNDVStore } from '@/stores/ndv.store';
 import MappingPill from './MappingPill.vue';
 import { getMappedExpression } from '@/utils/mappingUtils';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import TextWithHighlights from './TextWithHighlights.vue';
 
 const MAX_COLUMNS_LIMIT = 40;
 
 type DraggableRef = InstanceType<typeof Draggable>;
 
 export default defineComponent({
-	name: 'run-data-table',
-	components: { Draggable, MappingPill },
+	name: 'RunDataTable',
+	components: { Draggable, MappingPill, TextWithHighlights },
 	props: {
 		node: {
 			type: Object as PropType<INodeUi>,
@@ -391,9 +396,6 @@ export default defineComponent({
 				return value.toString();
 			}
 			return value;
-		},
-		highlightSearchTerm(value: string): string {
-			return sanitizeHtml(highlightText(this.getValueToRender(value), this.search));
 		},
 		onDragStart() {
 			this.draggedColumn = true;

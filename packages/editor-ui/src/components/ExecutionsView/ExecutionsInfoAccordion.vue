@@ -3,8 +3,8 @@
 		:class="[$style.accordion, 'mt-2xl']"
 		:title="$locale.baseText('executionsLandingPage.emptyState.accordion.title')"
 		:items="accordionItems"
-		:initiallyExpanded="shouldExpandAccordion"
-		:headerIcon="accordionIcon"
+		:initially-expanded="shouldExpandAccordion"
+		:header-icon="accordionIcon"
 		@click:body="onAccordionClick"
 		@tooltipClick="onItemTooltipClick"
 	>
@@ -23,9 +23,9 @@
 						</div>
 					</template>
 					<n8n-link
-						@click.prevent="openWorkflowSettings"
 						:class="{ [$style.disabled]: isNewWorkflow }"
 						size="small"
+						@click.prevent="openWorkflowSettings"
 					>
 						{{ $locale.baseText('executionsLandingPage.emptyState.accordion.footer.settingsLink') }}
 					</n8n-link>
@@ -45,7 +45,8 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { PLACEHOLDER_EMPTY_WORKFLOW_ID, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 import type { IWorkflowSettings } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useRouter } from 'vue-router';
 
 interface IWorkflowSaveSettings {
 	saveFailedExecutions: boolean;
@@ -54,13 +55,20 @@ interface IWorkflowSaveSettings {
 }
 
 export default defineComponent({
-	name: 'executions-info-accordion',
-	mixins: [workflowHelpers],
+	name: 'ExecutionsInfoAccordion',
 	props: {
 		initiallyExpanded: {
 			type: Boolean,
 			default: false,
 		},
+	},
+	setup() {
+		const router = useRouter();
+		const workflowHelpers = useWorkflowHelpers(router);
+
+		return {
+			workflowHelpers,
+		};
 	},
 	data() {
 		return {
@@ -76,16 +84,16 @@ export default defineComponent({
 			} as IWorkflowSaveSettings,
 		};
 	},
+	watch: {
+		workflowSettings(newSettings: IWorkflowSettings) {
+			this.updateSettings(newSettings);
+		},
+	},
 	mounted() {
 		this.defaultValues.saveFailedExecutions = this.settingsStore.saveDataErrorExecution;
 		this.defaultValues.saveSuccessfulExecutions = this.settingsStore.saveDataSuccessExecution;
 		this.defaultValues.saveManualExecutions = this.settingsStore.saveManualExecutions;
 		this.updateSettings(this.workflowSettings);
-	},
-	watch: {
-		workflowSettings(newSettings: IWorkflowSettings) {
-			this.updateSettings(newSettings);
-		},
 	},
 	computed: {
 		...mapStores(useRootStore, useSettingsStore, useUIStore, useWorkflowsStore),
@@ -211,7 +219,7 @@ export default defineComponent({
 			} else if (this.$route.params.name && this.$route.params.name !== 'new') {
 				currentId = this.$route.params.name;
 			}
-			const saved = await this.saveCurrentWorkflow({
+			const saved = await this.workflowHelpers.saveCurrentWorkflow({
 				id: currentId,
 				name: this.workflowName,
 				tags: this.currentWorkflowTagIds,

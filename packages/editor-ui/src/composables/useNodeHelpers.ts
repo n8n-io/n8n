@@ -1,5 +1,9 @@
 import { useHistoryStore } from '@/stores/history.store';
-import { CUSTOM_API_CALL_KEY, PLACEHOLDER_FILLED_AT_EXECUTION_TIME } from '@/constants';
+import {
+	CUSTOM_API_CALL_KEY,
+	NODE_OUTPUT_DEFAULT_KEY,
+	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+} from '@/constants';
 
 import { NodeHelpers, NodeConnectionType, ExpressionEvaluatorProxy } from 'n8n-workflow';
 import type {
@@ -21,6 +25,7 @@ import type {
 	INodePropertyOptions,
 	INodeCredentialsDetails,
 	INodeParameters,
+	ITaskData,
 } from 'n8n-workflow';
 
 import type {
@@ -43,6 +48,9 @@ import { EnableNodeToggleCommand } from '@/models/history';
 import { useTelemetry } from './useTelemetry';
 import { getCredentialPermissions } from '@/permissions';
 import { hasPermission } from '@/rbac/permissions';
+import type { N8nPlusEndpoint } from '@/plugins/jsplumb/N8nPlusEndpointType';
+import * as NodeViewUtils from '@/utils/nodeViewUtils';
+import { useCanvasStore } from '@/stores/canvas.store';
 
 declare namespace HttpRequestNode {
 	namespace V2 {
@@ -60,6 +68,7 @@ export function useNodeHelpers() {
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowsStore = useWorkflowsStore();
 	const i18n = useI18n();
+	const canvasStore = useCanvasStore();
 
 	function hasProxyAuth(node: INodeUi): boolean {
 		return Object.keys(node.parameters).includes('nodeCredentialType');
@@ -113,7 +122,7 @@ export function useNodeHelpers() {
 		workflow: Workflow,
 		ignoreIssues?: string[],
 	): INodeIssues | null {
-		const pinDataNodeNames = Object.keys(workflowsStore.getPinData ?? {});
+		const pinDataNodeNames = Object.keys(workflowsStore.pinnedWorkflowData ?? {});
 
 		let nodeIssues: INodeIssues | null = null;
 		ignoreIssues = ignoreIssues ?? [];
@@ -544,8 +553,7 @@ export function useNodeHelpers() {
 			return [];
 		}
 
-		// TODO: Is this problematic?
-		let data: ITaskDataConnections | undefined = taskData.data!;
+		let data: ITaskDataConnections | undefined = taskData.data;
 		if (paneType === 'input' && taskData.inputOverride) {
 			data = taskData.inputOverride!;
 		}
@@ -609,13 +617,18 @@ export function useNodeHelpers() {
 		if (trackHistory) {
 			historyStore.startRecordingUndo();
 		}
+
+		const newDisabledState = nodes.some((node) => !node.disabled);
 		for (const node of nodes) {
-			const oldState = node.disabled;
+			if (newDisabledState === node.disabled) {
+				continue;
+			}
+
 			// Toggle disabled flag
 			const updateInformation = {
 				name: node.name,
 				properties: {
-					disabled: !oldState,
+					disabled: newDisabledState,
 				} as IDataObject,
 			} as INodeUpdatePropertiesInformation;
 
@@ -632,7 +645,7 @@ export function useNodeHelpers() {
 			updateNodesInputIssues();
 			if (trackHistory) {
 				historyStore.pushCommandToUndo(
-					new EnableNodeToggleCommand(node.name, oldState === true, node.disabled === true),
+					new EnableNodeToggleCommand(node.name, node.disabled === true, newDisabledState),
 				);
 			}
 		}
@@ -701,6 +714,73 @@ export function useNodeHelpers() {
 		return undefined;
 	}
 
+	function setSuccessOutput(data: ITaskData[], sourceNode: INodeUi | null) {
+		if (!sourceNode) {
+			throw new Error('Source node is null or not defined');
+		}
+
+		const allNodeConnections = workflowsStore.outgoingConnectionsByNodeName(sourceNode.name);
+
+		const connectionType = Object.keys(allNodeConnections)[0];
+		const nodeConnections = allNodeConnections[connectionType];
+		const outputMap = NodeViewUtils.getOutputSummary(
+			data,
+			nodeConnections || [],
+			(connectionType as ConnectionTypes) ?? NodeConnectionType.Main,
+		);
+		const sourceNodeType = nodeTypesStore.getNodeType(sourceNode.type, sourceNode.typeVersion);
+
+		Object.keys(outputMap).forEach((sourceOutputIndex: string) => {
+			Object.keys(outputMap[sourceOutputIndex]).forEach((targetNodeName: string) => {
+				Object.keys(outputMap[sourceOutputIndex][targetNodeName]).forEach(
+					(targetInputIndex: string) => {
+						if (targetNodeName) {
+							const targetNode = workflowsStore.getNodeByName(targetNodeName);
+							const connection = NodeViewUtils.getJSPlumbConnection(
+								sourceNode,
+								parseInt(sourceOutputIndex, 10),
+								targetNode,
+								parseInt(targetInputIndex, 10),
+								connectionType as ConnectionTypes,
+								sourceNodeType,
+								canvasStore.jsPlumbInstance,
+							);
+
+							if (connection) {
+								const output = outputMap[sourceOutputIndex][targetNodeName][targetInputIndex];
+
+								if (output.isArtificialRecoveredEventItem) {
+									NodeViewUtils.recoveredConnection(connection);
+								} else if (!output?.total && !output.isArtificialRecoveredEventItem) {
+									NodeViewUtils.resetConnection(connection);
+								} else {
+									NodeViewUtils.addConnectionOutputSuccess(connection, output);
+								}
+							}
+						}
+
+						const endpoint = NodeViewUtils.getPlusEndpoint(
+							sourceNode,
+							parseInt(sourceOutputIndex, 10),
+							canvasStore.jsPlumbInstance,
+						);
+						if (endpoint?.endpoint) {
+							const output = outputMap[sourceOutputIndex][NODE_OUTPUT_DEFAULT_KEY][0];
+
+							if (output && output.total > 0) {
+								(endpoint.endpoint as N8nPlusEndpoint).setSuccessOutput(
+									NodeViewUtils.getRunItemsLabel(output),
+								);
+							} else {
+								(endpoint.endpoint as N8nPlusEndpoint).clearSuccessOutput();
+							}
+						}
+					},
+				);
+			});
+		});
+	}
+
 	return {
 		hasProxyAuth,
 		isCustomApiCallSelected,
@@ -719,5 +799,6 @@ export function useNodeHelpers() {
 		getNodeSubtitle,
 		updateNodesCredentialsIssues,
 		getNodeInputData,
+		setSuccessOutput,
 	};
 }

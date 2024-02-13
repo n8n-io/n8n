@@ -42,6 +42,7 @@ import type {
 	IRunNodeResponse,
 	NodeParameterValueType,
 	ConnectionTypes,
+	CloseFunction,
 } from './Interfaces';
 import { Node } from './Interfaces';
 import type { IDeferredPromise } from './DeferredPromise';
@@ -79,6 +80,8 @@ export class Workflow {
 	// To save workflow specific static data like for example
 	// ids of registered webhooks of nodes
 	staticData: IDataObject;
+
+	testStaticData: IDataObject | undefined;
 
 	pinData?: IPinData;
 
@@ -327,6 +330,8 @@ export class Workflow {
 			});
 		}
 
+		if (this.testStaticData?.[key]) return this.testStaticData[key] as IDataObject;
+
 		if (this.staticData[key] === undefined) {
 			// Create it as ObservableObject that we can easily check if the data changed
 			// to know if the workflow with its data has to be saved afterwards or not.
@@ -334,6 +339,10 @@ export class Workflow {
 		}
 
 		return this.staticData[key] as IDataObject;
+	}
+
+	setTestStaticData(testStaticData: IDataObject) {
+		this.testStaticData = testStaticData;
 	}
 
 	/**
@@ -1009,7 +1018,6 @@ export class Workflow {
 		nodeExecuteFunctions: INodeExecuteFunctions,
 		mode: WorkflowExecuteMode,
 		activation: WorkflowActivateMode,
-		isTest?: boolean,
 	): Promise<void> {
 		const webhookExists = await this.runWebhookMethod(
 			'checkExists',
@@ -1017,18 +1025,10 @@ export class Workflow {
 			nodeExecuteFunctions,
 			mode,
 			activation,
-			isTest,
 		);
 		if (!webhookExists) {
 			// If webhook does not exist yet create it
-			await this.runWebhookMethod(
-				'create',
-				webhookData,
-				nodeExecuteFunctions,
-				mode,
-				activation,
-				isTest,
-			);
+			await this.runWebhookMethod('create', webhookData, nodeExecuteFunctions, mode, activation);
 		}
 	}
 
@@ -1037,16 +1037,8 @@ export class Workflow {
 		nodeExecuteFunctions: INodeExecuteFunctions,
 		mode: WorkflowExecuteMode,
 		activation: WorkflowActivateMode,
-		isTest?: boolean,
 	) {
-		await this.runWebhookMethod(
-			'delete',
-			webhookData,
-			nodeExecuteFunctions,
-			mode,
-			activation,
-			isTest,
-		);
+		await this.runWebhookMethod('delete', webhookData, nodeExecuteFunctions, mode, activation);
 	}
 
 	private async runWebhookMethod(
@@ -1055,7 +1047,6 @@ export class Workflow {
 		nodeExecuteFunctions: INodeExecuteFunctions,
 		mode: WorkflowExecuteMode,
 		activation: WorkflowActivateMode,
-		isTest?: boolean,
 	): Promise<boolean | undefined> {
 		const node = this.getNode(webhookData.node);
 
@@ -1072,11 +1063,10 @@ export class Workflow {
 			webhookData.workflowExecuteAdditionalData,
 			mode,
 			activation,
-			isTest,
 			webhookData,
 		);
 
-		return webhookFn.call(thisArgs);
+		return await webhookFn.call(thisArgs);
 	}
 
 	/**
@@ -1161,7 +1151,7 @@ export class Workflow {
 			return triggerResponse;
 		}
 		// In all other modes simply start the trigger
-		return nodeType.trigger.call(triggerFunctions);
+		return await nodeType.trigger.call(triggerFunctions);
 	}
 
 	/**
@@ -1190,7 +1180,7 @@ export class Workflow {
 			});
 		}
 
-		return nodeType.poll.call(pollFunctions);
+		return await nodeType.poll.call(pollFunctions);
 	}
 
 	/**
@@ -1216,14 +1206,19 @@ export class Workflow {
 			});
 		}
 
+		const closeFunctions: CloseFunction[] = [];
+
 		const context = nodeExecuteFunctions.getExecuteWebhookFunctions(
 			this,
 			node,
 			additionalData,
 			mode,
 			webhookData,
+			closeFunctions,
 		);
-		return nodeType instanceof Node ? nodeType.webhook(context) : nodeType.webhook.call(context);
+		return nodeType instanceof Node
+			? await nodeType.webhook(context)
+			: await nodeType.webhook.call(context);
 	}
 
 	/**
@@ -1317,6 +1312,7 @@ export class Workflow {
 		}
 
 		if (nodeType.execute) {
+			const closeFunctions: CloseFunction[] = [];
 			const context = nodeExecuteFunctions.getExecuteFunctions(
 				this,
 				runExecutionData,
@@ -1327,12 +1323,31 @@ export class Workflow {
 				additionalData,
 				executionData,
 				mode,
+				closeFunctions,
 				abortSignal,
 			);
 			const data =
 				nodeType instanceof Node
 					? await nodeType.execute(context)
 					: await nodeType.execute.call(context);
+
+			const closeFunctionsResults = await Promise.allSettled(
+				closeFunctions.map(async (fn) => await fn()),
+			);
+
+			const closingErrors = closeFunctionsResults
+				.filter((result): result is PromiseRejectedResult => result.status === 'rejected')
+				.map((result) => result.reason);
+
+			if (closingErrors.length > 0) {
+				if (closingErrors[0] instanceof Error) throw closingErrors[0];
+				throw new ApplicationError("Error on execution node's close function(s)", {
+					extra: { nodeName: node.name },
+					tags: { nodeType: node.type },
+					cause: closingErrors,
+				});
+			}
+
 			return { data };
 		} else if (nodeType.poll) {
 			if (mode === 'manual') {

@@ -11,6 +11,7 @@ export const enum EventMessageTypeNames {
 	confirm = '$$EventMessageConfirm',
 	workflow = '$$EventMessageWorkflow',
 	node = '$$EventMessageNode',
+	aiNode = '$$EventMessageAiNode',
 }
 
 export const enum MessageEventBusDestinationTypeNames {

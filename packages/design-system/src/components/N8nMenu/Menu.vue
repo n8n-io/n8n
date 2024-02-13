@@ -15,33 +15,33 @@
 				<div v-if="$slots.menuPrefix" :class="$style.menuPrefix">
 					<slot name="menuPrefix"></slot>
 				</div>
-				<el-menu :defaultActive="defaultActive" :collapse="collapsed">
-					<n8n-menu-item
+				<ElMenu :default-active="defaultActive" :collapse="collapsed">
+					<N8nMenuItem
 						v-for="item in upperMenuItems"
 						:key="item.id"
 						:item="item"
 						:compact="collapsed"
-						:tooltipDelay="tooltipDelay"
+						:tooltip-delay="tooltipDelay"
 						:mode="mode"
-						:activeTab="activeTab"
+						:active-tab="activeTab"
 						:handle-select="onSelect"
 					/>
-				</el-menu>
+				</ElMenu>
 			</div>
 			<div :class="[$style.lowerContent, 'pb-2xs']">
 				<slot name="beforeLowerMenu"></slot>
-				<el-menu :defaultActive="defaultActive" :collapse="collapsed">
-					<n8n-menu-item
+				<ElMenu :default-active="defaultActive" :collapse="collapsed">
+					<N8nMenuItem
 						v-for="item in lowerMenuItems"
 						:key="item.id"
 						:item="item"
 						:compact="collapsed"
-						:tooltipDelay="tooltipDelay"
+						:tooltip-delay="tooltipDelay"
 						:mode="mode"
-						:activeTab="activeTab"
+						:active-tab="activeTab"
 						:handle-select="onSelect"
 					/>
-				</el-menu>
+				</ElMenu>
 				<div v-if="$slots.menuSuffix" :class="$style.menuSuffix">
 					<slot name="menuSuffix"></slot>
 				</div>
@@ -59,17 +59,13 @@ import N8nMenuItem from '../N8nMenuItem';
 import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
 import type { IMenuItem, RouteObject } from '../../types';
+import { doesMenuItemMatchCurrentRoute } from '../N8nMenuItem/routerUtil';
 
 export default defineComponent({
-	name: 'n8n-menu',
+	name: 'N8nMenu',
 	components: {
 		ElMenu,
 		N8nMenuItem,
-	},
-	data() {
-		return {
-			activeTab: this.value,
-		};
 	},
 	props: {
 		type: {
@@ -106,22 +102,10 @@ export default defineComponent({
 			default: '',
 		},
 	},
-	mounted() {
-		if (this.mode === 'router') {
-			const found = this.items.find((item) => {
-				return (
-					(Array.isArray(item.activateOnRouteNames) &&
-						item.activateOnRouteNames.includes(this.currentRoute.name || '')) ||
-					(Array.isArray(item.activateOnRoutePaths) &&
-						item.activateOnRoutePaths.includes(this.currentRoute.path))
-				);
-			});
-			this.activeTab = found ? found.id : '';
-		} else {
-			this.activeTab = this.items.length > 0 ? this.items[0].id : '';
-		}
-
-		this.$emit('update:modelValue', this.activeTab);
+	data() {
+		return {
+			activeTab: this.value,
+		};
 	},
 	computed: {
 		upperMenuItems(): IMenuItem[] {
@@ -143,21 +127,21 @@ export default defineComponent({
 			);
 		},
 	},
+	mounted() {
+		if (this.mode === 'router') {
+			const found = this.items.find((item) =>
+				doesMenuItemMatchCurrentRoute(item, this.currentRoute),
+			);
+
+			this.activeTab = found ? found.id : '';
+		} else {
+			this.activeTab = this.items.length > 0 ? this.items[0].id : '';
+		}
+
+		this.$emit('update:modelValue', this.activeTab);
+	},
 	methods: {
 		onSelect(item: IMenuItem): void {
-			if (item && item.type === 'link' && item.properties) {
-				const href: string = item.properties.href;
-				if (!href) {
-					return;
-				}
-
-				if (item.properties.newWindow) {
-					window.open(href);
-				} else {
-					window.location.assign(item.properties.href);
-				}
-			}
-
 			if (this.mode === 'tabs') {
 				this.activeTab = item.id;
 			}

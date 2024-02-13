@@ -1,7 +1,11 @@
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 import { Container } from 'typedi';
-import type { DataSourceOptions as ConnectionOptions, EntityManager, LoggerOptions } from 'typeorm';
-import { DataSource as Connection } from 'typeorm';
+import type {
+	DataSourceOptions as ConnectionOptions,
+	EntityManager,
+	LoggerOptions,
+} from '@n8n/typeorm';
+import { DataSource as Connection } from '@n8n/typeorm';
 import type { TlsOptions } from 'tls';
 import { ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 
@@ -54,7 +58,7 @@ if (!inTest) {
 }
 
 export async function transaction<T>(fn: (entityManager: EntityManager) => Promise<T>): Promise<T> {
-	return connection.transaction(fn);
+	return await connection.transaction(fn);
 }
 
 export function getConnectionOptions(dbType: DatabaseType): ConnectionOptions {
@@ -97,6 +101,16 @@ export function getConnectionOptions(dbType: DatabaseType): ConnectionOptions {
 	}
 }
 
+export async function setSchema(conn: Connection) {
+	const schema = config.getEnv('database.postgresdb.schema');
+	const searchPath = ['public'];
+	if (schema !== 'public') {
+		await conn.query(`CREATE SCHEMA IF NOT EXISTS ${schema}`);
+		searchPath.unshift(schema);
+	}
+	await conn.query(`SET search_path TO ${searchPath.join(',')};`);
+}
+
 export async function init(testConnectionOptions?: ConnectionOptions): Promise<void> {
 	if (connectionState.connected) return;
 
@@ -130,13 +144,7 @@ export async function init(testConnectionOptions?: ConnectionOptions): Promise<v
 	await connection.initialize();
 
 	if (dbType === 'postgresdb') {
-		const schema = config.getEnv('database.postgresdb.schema');
-		const searchPath = ['public'];
-		if (schema !== 'public') {
-			await connection.query(`CREATE SCHEMA IF NOT EXISTS ${schema}`);
-			searchPath.unshift(schema);
-		}
-		await connection.query(`SET search_path TO ${searchPath.join(',')};`);
+		await setSchema(connection);
 	}
 
 	connectionState.connected = true;

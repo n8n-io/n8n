@@ -9,8 +9,7 @@
 import type express from 'express';
 import { Container } from 'typedi';
 import get from 'lodash/get';
-import stream from 'stream';
-import { promisify } from 'util';
+import { pipeline } from 'stream/promises';
 import formidable from 'formidable';
 
 import { BinaryDataService, NodeExecuteFunctions } from 'n8n-core';
@@ -25,6 +24,7 @@ import type {
 	IHttpRequestMethods,
 	IN8nHttpFullResponse,
 	INode,
+	IPinData,
 	IRunExecutionData,
 	IWebhookData,
 	IWebhookResponseData,
@@ -49,7 +49,6 @@ import type {
 	WebhookCORSRequest,
 	WebhookRequest,
 } from '@/Interfaces';
-import * as GenericHelpers from '@/GenericHelpers';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import { WorkflowRunner } from '@/WorkflowRunner';
@@ -60,13 +59,10 @@ import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { EventsService } from '@/services/events.service';
 import { OwnershipService } from './services/ownership.service';
 import { parseBody } from './middlewares';
-import { WorkflowService } from './workflows/workflow.service';
 import { Logger } from './Logger';
 import { NotFoundError } from './errors/response-errors/not-found.error';
 import { InternalServerError } from './errors/response-errors/internal-server.error';
 import { UnprocessableRequestError } from './errors/response-errors/unprocessable.error';
-
-const pipeline = promisify(stream.pipeline);
 
 export const WEBHOOK_METHODS: IHttpRequestMethods[] = [
 	'DELETE',
@@ -386,9 +382,6 @@ export async function executeWebhook(
 			};
 		}
 
-		// Save static data if it changed
-		await Container.get(WorkflowService).saveStaticData(workflow);
-
 		const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
 			$executionId: executionId,
 		};
@@ -519,11 +512,19 @@ export async function executeWebhook(
 			Object.assign(runExecutionData, runExecutionDataMerge);
 		}
 
+		let pinData: IPinData | undefined;
+		const usePinData = executionMode === 'manual';
+		if (usePinData) {
+			pinData = workflowData.pinData;
+			runExecutionData.resultData.pinData = pinData;
+		}
+
 		const runData: IWorkflowExecutionDataProcess = {
 			executionMode,
 			executionData: runExecutionData,
 			sessionId,
 			workflowData,
+			pinData,
 			userId: user.id,
 		};
 
@@ -586,8 +587,7 @@ export async function executeWebhook(
 		}
 
 		// Start now to run the workflow
-		const workflowRunner = new WorkflowRunner();
-		executionId = await workflowRunner.run(
+		executionId = await Container.get(WorkflowRunner).run(
 			runData,
 			true,
 			!didSendResponse,
@@ -620,8 +620,8 @@ export async function executeWebhook(
 						return undefined;
 					}
 
-					if (workflowData.pinData) {
-						data.data.resultData.pinData = workflowData.pinData;
+					if (usePinData) {
+						data.data.resultData.pinData = pinData;
 					}
 
 					const returnData = WorkflowHelpers.getDataLastExecutedNodeData(data);
@@ -823,15 +823,4 @@ export async function executeWebhook(
 		responseCallback(error, {});
 		return;
 	}
-}
-
-/**
- * Returns the base URL of the webhooks
- */
-export function getWebhookBaseUrl() {
-	let urlBaseWebhook = process.env.WEBHOOK_URL ?? GenericHelpers.getBaseUrl();
-	if (!urlBaseWebhook.endsWith('/')) {
-		urlBaseWebhook += '/';
-	}
-	return urlBaseWebhook;
 }

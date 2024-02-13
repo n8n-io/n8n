@@ -1,6 +1,9 @@
+import { Container } from 'typedi';
 import { Router } from 'express';
 import type { Application, Request, Response, RequestHandler } from 'express';
-import type { Config } from '@/config';
+import type { Class } from 'n8n-core';
+
+import config from '@/config';
 import type { AuthenticatedRequest } from '@/requests';
 import { send } from '@/ResponseHelper'; // TODO: move `ResponseHelper.send` to this file
 import {
@@ -21,7 +24,7 @@ import type {
 	ScopeMetadata,
 } from './types';
 import type { BooleanLicenseFeature } from '@/Interfaces';
-import Container from 'typedi';
+
 import { License } from '@/License';
 import type { Scope } from '@n8n/permissions';
 import { ApplicationError } from 'n8n-workflow';
@@ -33,9 +36,7 @@ export const createAuthMiddleware =
 
 		if (!user) return res.status(401).json({ status: 'error', message: 'Unauthorized' });
 
-		const { globalRole } = user;
-		if (authRole === 'any' || (globalRole.scope === authRole[0] && globalRole.name === authRole[1]))
-			return next();
+		if (authRole === 'any' || authRole === user.role) return next();
 
 		res.status(403).json({ status: 'error', message: 'Unauthorized' });
 	};
@@ -81,9 +82,8 @@ const authFreeRoutes: string[] = [];
 export const canSkipAuth = (method: string, path: string): boolean =>
 	authFreeRoutes.includes(`${method.toLowerCase()} ${path}`);
 
-export const registerController = (app: Application, config: Config, cObj: object) => {
-	const controller = cObj as Controller;
-	const controllerClass = controller.constructor;
+export const registerController = (app: Application, controllerClass: Class<object>) => {
+	const controller = Container.get(controllerClass as Class<Controller>);
 	const controllerBasePath = Reflect.getMetadata(CONTROLLER_BASE_PATH, controllerClass) as
 		| string
 		| undefined;
@@ -119,7 +119,8 @@ export const registerController = (app: Application, config: Config, cObj: objec
 				const authRole = authRoles?.[handlerName] ?? authRoles?.['*'];
 				const features = licenseFeatures?.[handlerName] ?? licenseFeatures?.['*'];
 				const scopes = requiredScopes?.[handlerName] ?? requiredScopes?.['*'];
-				const handler = async (req: Request, res: Response) => controller[handlerName](req, res);
+				const handler = async (req: Request, res: Response) =>
+					await controller[handlerName](req, res);
 				router[method](
 					path,
 					...(authRole ? [createAuthMiddleware(authRole)] : []),

@@ -6,7 +6,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import moment from 'moment';
+import moment from 'moment-timezone';
 import { spontitApiRequest } from './GenericFunctions';
 
 import { pushFields, pushOperations } from './PushDescription';

@@ -7,8 +7,7 @@ const { VUE_APP_URL_BASE_API } = import.meta.env;
 
 export const useRootStore = defineStore(STORES.ROOT, {
 	state: (): RootState => ({
-		baseUrl:
-			VUE_APP_URL_BASE_API ?? (window.BASE_PATH === '/{{BASE_PATH}}/' ? '/' : window.BASE_PATH),
+		baseUrl: VUE_APP_URL_BASE_API ?? window.BASE_PATH,
 		restEndpoint:
 			!window.REST_ENDPOINT || window.REST_ENDPOINT === '{{REST_ENDPOINT}}'
 				? 'rest'

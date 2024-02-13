@@ -6,3 +6,5 @@ BadRequest:
   $ref: './badRequest.yml'
 Conflict:
   $ref: './conflict.yml'
+Forbidden:
+  $ref: './forbidden.yml'

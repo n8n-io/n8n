@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
+import { Container } from 'typedi';
 import type { Router } from 'express';
 import express from 'express';
 import fs from 'fs/promises';
@@ -11,11 +12,11 @@ import type { OpenAPIV3 } from 'openapi-types';
 import type { JsonObject } from 'swagger-ui-express';
 
 import config from '@/config';
-import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
-import { Container } from 'typedi';
+
 import { InternalHooks } from '@/InternalHooks';
 import { License } from '@/License';
 import { UserRepository } from '@db/repositories/user.repository';
+import { UrlService } from '@/services/url.service';
 
 async function createApiRouter(
 	version: string,
@@ -29,7 +30,7 @@ async function createApiRouter(
 	// from the Swagger UI
 	swaggerDocument.server = [
 		{
-			url: `${getInstanceBaseUrl()}/${publicApiEndpoint}/${version}}`,
+			url: `${Container.get(UrlService).getInstanceBaseUrl()}/${publicApiEndpoint}/${version}}`,
 		},
 	];
 	const apiController = express.Router();
@@ -97,7 +98,6 @@ async function createApiRouter(
 						const apiKey = req.headers[schema.name.toLowerCase()] as string;
 						const user = await Container.get(UserRepository).findOne({
 							where: { apiKey },
-							relations: ['globalRole'],
 						});
 
 						if (!user) return false;
@@ -143,7 +143,7 @@ export const loadPublicApiVersions = async (
 	const apiRouters = await Promise.all(
 		versions.map(async (version) => {
 			const openApiPath = path.join(__dirname, version, 'openapi.yml');
-			return createApiRouter(version, openApiPath, __dirname, publicApiEndpoint);
+			return await createApiRouter(version, openApiPath, __dirname, publicApiEndpoint);
 		}),
 	);
 

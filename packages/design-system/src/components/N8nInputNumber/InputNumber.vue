@@ -4,15 +4,15 @@ import { defineComponent } from 'vue';
 
 export default defineComponent({
 	name: 'N8nInputNumber',
-	props: {
-		...ElInputNumber.props,
-	},
 	components: {
 		ElInputNumber,
+	},
+	props: {
+		...ElInputNumber.props,
 	},
 });
 </script>
 
 <template>
-	<el-input-number v-bind="{ ...$props, ...$attrs }" />
+	<ElInputNumber v-bind="{ ...$props, ...$attrs }" />
 </template>

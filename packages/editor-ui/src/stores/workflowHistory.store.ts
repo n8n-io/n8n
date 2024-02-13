@@ -30,13 +30,13 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 		workflowId: string,
 		queryParams: WorkflowHistoryRequestParams,
 	): Promise<WorkflowHistory[]> =>
-		whApi.getWorkflowHistory(rootStore.getRestApiContext, workflowId, queryParams);
+		await whApi.getWorkflowHistory(rootStore.getRestApiContext, workflowId, queryParams);
 
 	const getWorkflowVersion = async (
 		workflowId: string,
 		versionId: string,
 	): Promise<WorkflowVersion> =>
-		whApi.getWorkflowVersion(rootStore.getRestApiContext, workflowId, versionId);
+		await whApi.getWorkflowVersion(rootStore.getRestApiContext, workflowId, versionId);
 
 	const downloadVersion = async (
 		workflowId: string,
@@ -74,7 +74,7 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 			connections,
 			name: newWorkflow.name,
 		};
-		return workflowsStore.createNewWorkflow(newWorkflowData);
+		return await workflowsStore.createNewWorkflow(newWorkflowData);
 	};
 
 	const restoreWorkflow = async (
@@ -90,13 +90,15 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 			updateData.active = false;
 		}
 
-		return workflowsStore.updateWorkflow(workflowId, updateData, true).catch(async (error) => {
-			if (error.httpStatusCode === 400 && error.message.includes('can not be activated')) {
-				return workflowsStore.fetchWorkflow(workflowId);
-			} else {
-				throw new Error(error);
-			}
-		});
+		return await workflowsStore
+			.updateWorkflow(workflowId, updateData, true)
+			.catch(async (error) => {
+				if (error.httpStatusCode === 400 && error.message.includes('can not be activated')) {
+					return await workflowsStore.fetchWorkflow(workflowId);
+				} else {
+					throw new Error(error);
+				}
+			});
 	};
 
 	return {

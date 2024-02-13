@@ -63,7 +63,7 @@ You can then access n8n by opening:
 
 To be able to use webhooks which all triggers of external services like Github
 rely on n8n has to be reachable from the web. To make that easy n8n has a
-special tunnel service (uses this code: [https://github.com/localtunnel/localtunnel](https://github.com/localtunnel/localtunnel)) which redirects requests from our servers to your local
+special tunnel service (uses this code: [https://github.com/n8n-io/localtunnel](https://github.com/n8n-io/localtunnel)) which redirects requests from our servers to your local
 n8n instance.
 
 To use it simply start n8n with `--tunnel`
@@ -219,10 +219,10 @@ docker run -it --rm \
 ## Build Docker-Image
 
 ```bash
-docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 --build-arg N8N_VERSION=<VERSION> -t n8n:<VERSION> .
+docker buildx build --platform linux/amd64,linux/arm64 --build-arg N8N_VERSION=<VERSION> -t n8n:<VERSION> .
 
 # For example:
-docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 --build-arg N8N_VERSION=0.114.0 -t n8n:0.114.0 .
+docker buildx build --platform linux/amd64,linux/arm64 --build-arg N8N_VERSION=0.114.0 -t n8n:0.114.0 .
 ```
 
 ## What does n8n mean and how do you pronounce it?
