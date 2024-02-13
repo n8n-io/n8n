@@ -28,8 +28,8 @@ class N8nStructuredOutputParser<T extends z.ZodTypeAny> extends StructuredOutput
 			const parsed = (await super.parse(text)) as object;
 
 			return (
-				get(parsed, `${STRUCTURED_OUTPUT_KEY}.${STRUCTURED_OUTPUT_OBJECT_KEY}`) ??
-				get(parsed, `${STRUCTURED_OUTPUT_KEY}.${STRUCTURED_OUTPUT_ARRAY_KEY}`) ??
+				get(parsed, [STRUCTURED_OUTPUT_KEY, STRUCTURED_OUTPUT_OBJECT_KEY]) ??
+				get(parsed, [STRUCTURED_OUTPUT_KEY, STRUCTURED_OUTPUT_ARRAY_KEY]) ??
 				get(parsed, STRUCTURED_OUTPUT_KEY) ??
 				parsed
 			);

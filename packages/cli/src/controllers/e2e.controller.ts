@@ -2,7 +2,6 @@ import { Request } from 'express';
 import { v4 as uuid } from 'uuid';
 import config from '@/config';
 import { SettingsRepository } from '@db/repositories/settings.repository';
-import { UserRepository } from '@db/repositories/user.repository';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { License } from '@/License';
@@ -14,6 +13,7 @@ import { MfaService } from '@/Mfa/mfa.service';
 import { Push } from '@/push';
 import { CacheService } from '@/services/cache/cache.service';
 import { PasswordUtility } from '@/services/password.utility';
+import { UserRepository } from '@/databases/repositories/user.repository';
 
 if (!inE2ETests) {
 	console.error('E2E endpoints only allowed during E2E tests');
@@ -85,13 +85,13 @@ export class E2EController {
 	constructor(
 		license: License,
 		private readonly settingsRepo: SettingsRepository,
-		private readonly userRepo: UserRepository,
 		private readonly workflowRunner: ActiveWorkflowRunner,
 		private readonly mfaService: MfaService,
 		private readonly cacheService: CacheService,
 		private readonly push: Push,
 		private readonly passwordUtility: PasswordUtility,
 		private readonly eventBus: MessageEventBus,
+		private readonly userRepository: UserRepository,
 	) {
 		license.isFeatureEnabled = (feature: BooleanLicenseFeature) =>
 			this.enabledFeatures[feature] ?? false;
@@ -160,34 +160,34 @@ export class E2EController {
 		members: UserSetupPayload[],
 		admin: UserSetupPayload,
 	) {
-		const instanceOwner = this.userRepo.create({
-			id: uuid(),
-			...owner,
-			password: await this.passwordUtility.hash(owner.password),
-			role: 'global:owner',
-		});
-
 		if (owner?.mfaSecret && owner.mfaRecoveryCodes?.length) {
 			const { encryptedRecoveryCodes, encryptedSecret } =
 				this.mfaService.encryptSecretAndRecoveryCodes(owner.mfaSecret, owner.mfaRecoveryCodes);
-			instanceOwner.mfaSecret = encryptedSecret;
-			instanceOwner.mfaRecoveryCodes = encryptedRecoveryCodes;
+			owner.mfaSecret = encryptedSecret;
+			owner.mfaRecoveryCodes = encryptedRecoveryCodes;
 		}
 
-		const adminUser = this.userRepo.create({
-			id: uuid(),
-			...admin,
-			password: await this.passwordUtility.hash(admin.password),
-			role: 'global:admin',
-		});
+		const userCreatePromises = [
+			this.userRepository.createUserWithProject({
+				id: uuid(),
+				...owner,
+				password: await this.passwordUtility.hash(owner.password),
+				role: 'global:owner',
+			}),
+		];
 
-		const users = [];
-
-		users.push(instanceOwner, adminUser);
+		userCreatePromises.push(
+			this.userRepository.createUserWithProject({
+				id: uuid(),
+				...admin,
+				password: await this.passwordUtility.hash(admin.password),
+				role: 'global:admin',
+			}),
+		);
 
 		for (const { password, ...payload } of members) {
-			users.push(
-				this.userRepo.create({
+			userCreatePromises.push(
+				this.userRepository.createUserWithProject({
 					id: uuid(),
 					...payload,
 					password: await this.passwordUtility.hash(password),
@@ -196,7 +196,7 @@ export class E2EController {
 			);
 		}
 
-		await this.userRepo.insert(users);
+		await Promise.all(userCreatePromises);
 
 		await this.settingsRepo.update(
 			{ key: 'userManagement.isInstanceOwnerSetUp' },

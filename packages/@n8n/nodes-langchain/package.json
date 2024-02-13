@@ -131,6 +131,7 @@
     "@huggingface/inference": "2.6.4",
     "@langchain/core": "0.1.8",
     "@langchain/mistralai": "0.0.6",
+    "@n8n/typeorm": "0.3.20",
     "@n8n/vm2": "3.9.20",
     "@pinecone-database/pinecone": "1.1.2",
     "@qdrant/js-client-rest": "1.7.0",
@@ -154,7 +155,6 @@
     "redis": "4.6.12",
     "sqlite3": "5.1.7",
     "temp": "0.9.4",
-    "typeorm": "0.3.20",
     "zod": "3.22.4",
     "zod-to-json-schema": "3.22.0"
   }

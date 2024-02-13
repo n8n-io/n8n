@@ -3,7 +3,7 @@ import type { ProjectRole } from '@/databases/entities/ProjectRelation';
 import type { User } from '@/databases/entities/User';
 import { generateNanoId } from '@/databases/utils/generators';
 
-const projectAdminRole: ProjectRole = 'project:admin';
+const projectAdminRole: ProjectRole = 'project:personalOwner';
 const projectTable = 'project';
 const projectRelationTable = 'project_relation';
 
@@ -52,7 +52,7 @@ export class CreateProject1705928727784 implements IrreversibleMigration {
 		}: MigrationContext,
 	) {
 		// Add projectId column, this is set to a blank string by default because it's a primary key
-		const projectIdColumn = column('projectId').varchar(36).default('NULL');
+		const projectIdColumn = column('projectId').varchar(36).notNull;
 		const projectIdColumnName = escape.columnName('projectId');
 		const userIdColumnName = escape.columnName('userId');
 		await addColumns(table, [projectIdColumn]);

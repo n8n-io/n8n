@@ -6,7 +6,7 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import { CREDENTIAL_EMPTY_VALUE, deepCopy, NodeHelpers } from 'n8n-workflow';
-import type { FindOptionsWhere } from 'typeorm';
+import type { FindOptionsWhere } from '@n8n/typeorm';
 import type { Scope } from '@n8n/permissions';
 import * as Db from '@/Db';
 import type { ICredentialsDb } from '@/Interfaces';
@@ -25,6 +25,7 @@ import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { Service } from 'typedi';
 import { CredentialsTester } from '@/services/credentials-tester.service';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
 
 export type CredentialsGetSharedOptions =
 	| { allowGlobalScope: true; globalScope: Scope }
@@ -40,6 +41,7 @@ export class CredentialsService {
 		private readonly credentialsTester: CredentialsTester,
 		private readonly externalHooks: ExternalHooks,
 		private readonly credentialTypes: CredentialTypes,
+		private readonly projectRepository: ProjectRepository,
 	) {}
 
 	async get(where: FindOptionsWhere<ICredentialsDb>, options?: { relations: string[] }) {
@@ -193,12 +195,15 @@ export class CredentialsService {
 
 			savedCredential.data = newCredential.data;
 
+			const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(user.id);
+
 			const newSharedCredential = new SharedCredentials();
 
 			Object.assign(newSharedCredential, {
 				role: 'credential:owner',
 				user,
 				credentials: savedCredential,
+				projectId: personalProject.id,
 			});
 
 			await transactionManager.save<SharedCredentials>(newSharedCredential);

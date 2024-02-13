@@ -1,5 +1,5 @@
 import { Container, Service } from 'typedi';
-import { type AssignableRole, User } from '@db/entities/User';
+import type { AssignableRole, User } from '@db/entities/User';
 import type { IUserSettings } from 'n8n-workflow';
 import { UserRepository } from '@db/repositories/user.repository';
 import type { PublicUser } from '@/Interfaces';
@@ -246,8 +246,10 @@ export class UserService {
 				async (transactionManager) =>
 					await Promise.all(
 						toCreateUsers.map(async ({ email, role }) => {
-							const newUser = transactionManager.create(User, { email, role });
-							const savedUser = await transactionManager.save<User>(newUser);
+							const { user: savedUser } = await this.userRepository.createUserWithProject(
+								{ email, role },
+								transactionManager,
+							);
 							createdUsers.set(email, savedUser.id);
 							return savedUser;
 						}),

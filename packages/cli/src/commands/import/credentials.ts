@@ -3,7 +3,7 @@ import { Flags } from '@oclif/core';
 import { Cipher } from 'n8n-core';
 import fs from 'fs';
 import glob from 'fast-glob';
-import type { EntityManager } from 'typeorm';
+import type { EntityManager } from '@n8n/typeorm';
 
 import * as Db from '@/Db';
 import type { User } from '@db/entities/User';
@@ -15,6 +15,7 @@ import type { ICredentialsEncrypted } from 'n8n-workflow';
 import { ApplicationError, jsonParse } from 'n8n-workflow';
 import { UM_FIX_INSTRUCTION } from '@/constants';
 import { UserRepository } from '@db/repositories/user.repository';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
 
 export class ImportCredentialsCommand extends BaseCommand {
 	static description = 'Import credentials';
@@ -145,12 +146,16 @@ export class ImportCredentialsCommand extends BaseCommand {
 			credential.nodesAccess = [];
 		}
 		const result = await this.transactionManager.upsert(CredentialsEntity, credential, ['id']);
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			user.id,
+		);
 		await this.transactionManager.upsert(
 			SharedCredentials,
 			{
 				credentialsId: result.identifiers[0].id as string,
 				userId: user.id,
 				role: 'credential:owner',
+				project: personalProject,
 			},
 			['credentialsId', 'userId'],
 		);

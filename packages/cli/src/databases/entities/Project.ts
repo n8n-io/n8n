@@ -8,8 +8,8 @@ export type ProjectType = 'personal' | 'team' | 'public';
 
 @Entity()
 export class Project extends WithTimestampsAndStringId {
-	@Column({ length: 255 })
-	name: string;
+	@Column({ length: 255, nullable: true })
+	name?: string;
 
 	@Column({ length: 36 })
 	type: ProjectType;

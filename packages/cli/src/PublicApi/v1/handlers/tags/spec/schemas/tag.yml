@@ -1,8 +1,12 @@
 type: object
+additionalProperties: false
+required:
+  - name
 properties:
   id:
-    type: number
-    example: 12
+    type: string
+    readOnly: true
+    example: 2tUt1wbLX592XDdX
   name:
     type: string
     example: Production

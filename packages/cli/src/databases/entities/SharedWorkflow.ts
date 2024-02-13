@@ -1,8 +1,8 @@
-import { Column, Entity, ManyToOne, PrimaryColumn } from 'typeorm';
+import { Column, Entity, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
 import { WorkflowEntity } from './WorkflowEntity';
 import { User } from './User';
 import { WithTimestamps } from './AbstractEntity';
-import type { Project } from './Project';
+import { Project } from './Project';
 
 export type WorkflowSharingRole = 'workflow:owner' | 'workflow:editor' | 'workflow:user';
 
@@ -23,9 +23,9 @@ export class SharedWorkflow extends WithTimestamps {
 	@PrimaryColumn()
 	workflowId: string;
 
-	@ManyToOne('Project', 'sharedWorkflows', { nullable: true })
-	project: Project | null;
+	@ManyToOne('Project', 'sharedWorkflows')
+	project: Project;
 
-	@Column({ nullable: true })
-	projectId: string | null;
+	@Column()
+	projectId: string;
 }

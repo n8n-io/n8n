@@ -1,8 +1,8 @@
-import { Column, Entity, ManyToOne, PrimaryColumn } from 'typeorm';
+import { Column, Entity, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
 import { CredentialsEntity } from './CredentialsEntity';
 import { User } from './User';
 import { WithTimestamps } from './AbstractEntity';
-import type { Project } from './Project';
+import { Project } from './Project';
 
 export type CredentialSharingRole = 'credential:owner' | 'credential:user';
 
@@ -23,9 +23,9 @@ export class SharedCredentials extends WithTimestamps {
 	@PrimaryColumn()
 	credentialsId: string;
 
-	@ManyToOne('Project', 'sharedCredentials', { nullable: true })
-	project: Project | null;
+	@ManyToOne('Project', 'sharedCredentials')
+	project: Project;
 
-	@Column({ nullable: true })
-	projectId: string | null;
+	@Column()
+	projectId: string;
 }
