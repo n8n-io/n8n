@@ -43,6 +43,7 @@ import { enterKeyMap, tabKeyMap } from '../CodeNodeEditor/baseExtensions';
 import { codeNodeEditorTheme } from '../CodeNodeEditor/theme';
 import type { Range, Section } from './types';
 import { nonTakenRanges } from './utils';
+import { isEqual } from 'lodash-es';
 
 export default defineComponent({
 	name: 'HtmlEditor',
@@ -78,6 +79,16 @@ export default defineComponent({
 			editor: null as EditorView | null,
 			editorState: null as EditorState | null,
 		};
+	},
+	watch: {
+		displayableSegments(segments, newSegments) {
+			if (isEqual(segments, newSegments)) return;
+
+			highlighter.removeColor(this.editor, this.plaintextSegments);
+			highlighter.addColor(this.editor, this.resolvableSegments);
+
+			this.$emit('update:modelValue', this.editor?.state.doc.toString());
+		},
 	},
 	computed: {
 		doc(): string {
@@ -124,13 +135,10 @@ export default defineComponent({
 				EditorView.editable.of(!this.isReadOnly),
 				EditorState.readOnly.of(this.isReadOnly),
 				EditorView.updateListener.of((viewUpdate: ViewUpdate) => {
-					if (!viewUpdate.docChanged) return;
+					if (!this.editor || !viewUpdate.docChanged) return;
 
-					this.getHighlighter()?.removeColor(this.editor, this.htmlSegments);
-					this.getHighlighter()?.addColor(this.editor, this.resolvableSegments);
-
-					// eslint-disable-next-line @typescript-eslint/no-base-to-string
-					this.$emit('update:modelValue', this.editor?.state.doc.toString());
+					// Force segments value update by keeping track of editor state
+					this.editorState = this.editor.state;
 				}),
 			];
 		},
