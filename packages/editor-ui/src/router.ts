@@ -13,7 +13,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSSOStore } from '@/stores/sso.store';
-import { EnterpriseEditionFeature, VIEWS, EDITABLE_CANVAS_VIEWS } from '@/constants';
+import { VIEWS, EDITABLE_CANVAS_VIEWS } from '@/constants';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { middleware } from '@/rbac/middleware';
 import type { RouteConfig, RouterMiddleware } from '@/types/router';
@@ -27,12 +27,6 @@ const ForgotMyPasswordView = async () => await import('./views/ForgotMyPasswordV
 const MainHeader = async () => await import('@/components/MainHeader/MainHeader.vue');
 const MainSidebar = async () => await import('@/components/MainSidebar.vue');
 const NodeView = async () => await import('@/views/NodeView.vue');
-const WorkflowExecutionsList = async () =>
-	await import('@/components/ExecutionsView/ExecutionsList.vue');
-const ExecutionsLandingPage = async () =>
-	await import('@/components/ExecutionsView/ExecutionsLandingPage.vue');
-const ExecutionPreview = async () =>
-	await import('@/components/ExecutionsView/ExecutionPreview.vue');
 const SettingsView = async () => await import('./views/SettingsView.vue');
 const SettingsLdapView = async () => await import('./views/SettingsLdapView.vue');
 const SettingsPersonalView = async () => await import('./views/SettingsPersonalView.vue');
@@ -60,8 +54,9 @@ const SettingsSourceControl = async () => await import('./views/SettingsSourceCo
 const SettingsExternalSecrets = async () => await import('./views/SettingsExternalSecrets.vue');
 const SettingsAuditLogs = async () => await import('./views/SettingsAuditLogs.vue');
 const WorkerView = async () => await import('./views/WorkerView.vue');
-const WorkflowHistory = async () => await import('@/views/WorkflowHistory.vue');
 const WorkflowOnboardingView = async () => await import('@/views/WorkflowOnboardingView.vue');
+
+import { projectsRoutes } from '@/features/projects/projects-routes';
 
 function getTemplatesRedirect(defaultRedirect: VIEWS[keyof VIEWS]) {
 	const settingsStore = useSettingsStore();
@@ -210,78 +205,6 @@ export const routes = [
 		},
 	},
 	{
-		path: '/projects/:projectId/workflow/:name/debug/:executionId',
-		name: VIEWS.EXECUTION_DEBUG,
-		components: {
-			default: NodeView,
-			header: MainHeader,
-			sidebar: MainSidebar,
-		},
-		meta: {
-			nodeView: true,
-			keepWorkflowAlive: true,
-			middleware: ['authenticated', 'enterprise'],
-			middlewareOptions: {
-				enterprise: {
-					feature: [EnterpriseEditionFeature.DebugInEditor],
-				},
-			},
-		},
-	},
-	{
-		path: '/projects/:projectId/workflow/:name/executions',
-		name: VIEWS.WORKFLOW_EXECUTIONS,
-		components: {
-			default: WorkflowExecutionsList,
-			header: MainHeader,
-			sidebar: MainSidebar,
-		},
-		meta: {
-			keepWorkflowAlive: true,
-			middleware: ['authenticated'],
-		},
-		children: [
-			{
-				path: '',
-				name: VIEWS.EXECUTION_HOME,
-				components: {
-					executionPreview: ExecutionsLandingPage,
-				},
-				meta: {
-					keepWorkflowAlive: true,
-					middleware: ['authenticated'],
-				},
-			},
-			{
-				path: ':executionId',
-				name: VIEWS.EXECUTION_PREVIEW,
-				components: {
-					executionPreview: ExecutionPreview,
-				},
-				meta: {
-					keepWorkflowAlive: true,
-					middleware: ['authenticated'],
-				},
-			},
-		],
-	},
-	{
-		path: '/projects/:projectId/workflow/:workflowId/history/:versionId?',
-		name: VIEWS.WORKFLOW_HISTORY,
-		components: {
-			default: WorkflowHistory,
-			sidebar: MainSidebar,
-		},
-		meta: {
-			middleware: ['authenticated', 'enterprise'],
-			middlewareOptions: {
-				enterprise: {
-					feature: [EnterpriseEditionFeature.WorkflowHistory],
-				},
-			},
-		},
-	},
-	{
 		path: '/workflows/templates/:id',
 		name: VIEWS.TEMPLATE_IMPORT,
 		components: {
@@ -312,20 +235,6 @@ export const routes = [
 		},
 	},
 	{
-		path: '/projects/:projectId/workflow/new',
-		name: VIEWS.NEW_WORKFLOW,
-		components: {
-			default: NodeView,
-			header: MainHeader,
-			sidebar: MainSidebar,
-		},
-		meta: {
-			nodeView: true,
-			keepWorkflowAlive: true,
-			middleware: ['authenticated'],
-		},
-	},
-	{
 		path: '/workflows/demo',
 		name: VIEWS.DEMO,
 		components: {
@@ -342,24 +251,6 @@ export const routes = [
 				},
 			},
 		},
-	},
-	{
-		path: '/projects/:projectId/workflow/:name',
-		name: VIEWS.WORKFLOW,
-		components: {
-			default: NodeView,
-			header: MainHeader,
-			sidebar: MainSidebar,
-		},
-		meta: {
-			nodeView: true,
-			keepWorkflowAlive: true,
-			middleware: ['authenticated'],
-		},
-	},
-	{
-		path: '/projects/:projectId/workflow',
-		redirect: '/projects/:projectId/workflow/new',
 	},
 	{
 		path: '/signin',
