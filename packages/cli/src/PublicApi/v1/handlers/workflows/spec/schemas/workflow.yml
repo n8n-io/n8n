@@ -1,10 +1,5 @@
 type: object
 additionalProperties: false
-required:
-  - name
-  - nodes
-  - connections
-  - settings
 properties:
   id:
     type: string

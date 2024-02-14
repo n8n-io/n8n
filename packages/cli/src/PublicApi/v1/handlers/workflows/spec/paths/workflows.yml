@@ -10,7 +10,9 @@ post:
     content:
       application/json:
         schema:
-          $ref: '../schemas/workflow.yml'
+          allOf:
+            - $ref: '../schemas/workflow.yml'
+            - $ref: '../schemas/workflowRequiredProperties.yml'
     required: true
   responses:
     '200':
