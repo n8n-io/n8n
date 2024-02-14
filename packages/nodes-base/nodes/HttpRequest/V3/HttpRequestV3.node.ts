@@ -988,7 +988,7 @@ export class HttpRequestV3 implements INodeType {
 											},
 											default: '',
 											description:
-												'Should evaluate to true when pagination is complete. More info.',
+												'Should evaluate to the URL of the next page. <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/#pagination" target="_blank">More info</a>.',
 										},
 										{
 											displayName: 'Parameters',
@@ -1044,12 +1044,14 @@ export class HttpRequestV3 implements INodeType {
 															name: 'name',
 															type: 'string',
 															default: '',
+															placeholder: 'e.g page',
 														},
 														{
 															displayName: 'Value',
 															name: 'value',
 															type: 'string',
 															default: '',
+															hint: 'Use expression mode and $response to access response data',
 														},
 													],
 												},
@@ -1110,7 +1112,7 @@ export class HttpRequestV3 implements INodeType {
 											},
 											default: '',
 											description:
-												'Should evaluate to true when pagination is complete. More info.',
+												'Should evaluate to true when pagination is complete. <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/#pagination" target="_blank">More info</a>.',
 										},
 										{
 											displayName: 'Limit Pages Fetched',
@@ -1259,38 +1261,22 @@ export class HttpRequestV3 implements INodeType {
 				genericCredentialType = this.getNodeParameter('genericAuthType', 0) as string;
 
 				if (genericCredentialType === 'httpBasicAuth') {
-					try {
-						httpBasicAuth = await this.getCredentials('httpBasicAuth', itemIndex);
-					} catch {}
+					httpBasicAuth = await this.getCredentials('httpBasicAuth', itemIndex);
 				} else if (genericCredentialType === 'httpDigestAuth') {
-					try {
-						httpDigestAuth = await this.getCredentials('httpDigestAuth', itemIndex);
-					} catch {}
+					httpDigestAuth = await this.getCredentials('httpDigestAuth', itemIndex);
 				} else if (genericCredentialType === 'httpHeaderAuth') {
-					try {
-						httpHeaderAuth = await this.getCredentials('httpHeaderAuth', itemIndex);
-					} catch {}
+					httpHeaderAuth = await this.getCredentials('httpHeaderAuth', itemIndex);
 				} else if (genericCredentialType === 'httpQueryAuth') {
-					try {
-						httpQueryAuth = await this.getCredentials('httpQueryAuth', itemIndex);
-					} catch {}
+					httpQueryAuth = await this.getCredentials('httpQueryAuth', itemIndex);
 				} else if (genericCredentialType === 'httpCustomAuth') {
-					try {
-						httpCustomAuth = await this.getCredentials('httpCustomAuth', itemIndex);
-					} catch {}
+					httpCustomAuth = await this.getCredentials('httpCustomAuth', itemIndex);
 				} else if (genericCredentialType === 'oAuth1Api') {
-					try {
-						oAuth1Api = await this.getCredentials('oAuth1Api', itemIndex);
-					} catch {}
+					oAuth1Api = await this.getCredentials('oAuth1Api', itemIndex);
 				} else if (genericCredentialType === 'oAuth2Api') {
-					try {
-						oAuth2Api = await this.getCredentials('oAuth2Api', itemIndex);
-					} catch {}
+					oAuth2Api = await this.getCredentials('oAuth2Api', itemIndex);
 				}
 			} else if (authentication === 'predefinedCredentialType') {
-				try {
-					nodeCredentialType = this.getNodeParameter('nodeCredentialType', 0) as string;
-				} catch {}
+				nodeCredentialType = this.getNodeParameter('nodeCredentialType', itemIndex) as string;
 			}
 
 			const requestMethod = this.getNodeParameter('method', itemIndex) as string;
@@ -1677,11 +1663,34 @@ export class HttpRequestV3 implements INodeType {
 				if (pagination.paginationMode === 'updateAParameterInEachRequest') {
 					// Iterate over all parameters and add them to the request
 					paginationData.request = {};
-					pagination.parameters.parameters.forEach((parameter) => {
+					const { parameters } = pagination.parameters;
+					if (parameters.length === 1 && parameters[0].name === '' && parameters[0].value === '') {
+						throw new NodeOperationError(
+							this.getNode(),
+							"At least one entry with 'Name' and 'Value' filled must be included in 'Parameters' to use 'Update a Parameter in Each Request' mode ",
+						);
+					}
+					pagination.parameters.parameters.forEach((parameter, index) => {
 						if (!paginationData.request[parameter.type]) {
 							paginationData.request[parameter.type] = {};
 						}
-						paginationData.request[parameter.type]![parameter.name] = parameter.value;
+						const parameterName = parameter.name;
+						if (parameterName === '') {
+							throw new NodeOperationError(
+								this.getNode(),
+								`Parameter name must be set for parameter [${index + 1}] in pagination settings`,
+							);
+						}
+						const parameterValue = parameter.value;
+						if (parameterValue === '') {
+							throw new NodeOperationError(
+								this.getNode(),
+								`Some value must be provided for parameter [${
+									index + 1
+								}] in pagination settings, omitting it will result in an infinite loop`,
+							);
+						}
+						paginationData.request[parameter.type]![parameterName] = parameterValue;
 					});
 				} else if (pagination.paginationMode === 'responseContainsNextURL') {
 					paginationData.request.url = pagination.nextURL;
@@ -1695,13 +1704,25 @@ export class HttpRequestV3 implements INodeType {
 					paginationData.binaryResult = true;
 				}
 
-				const requestPromise = this.helpers.requestWithAuthenticationPaginated.call(
-					this,
-					requestOptions,
-					itemIndex,
-					paginationData,
-					nodeCredentialType ?? genericCredentialType,
-				);
+				const requestPromise = this.helpers.requestWithAuthenticationPaginated
+					.call(
+						this,
+						requestOptions,
+						itemIndex,
+						paginationData,
+						nodeCredentialType ?? genericCredentialType,
+					)
+					.catch((error) => {
+						if (error instanceof NodeOperationError && error.type === 'invalid_url') {
+							const urlParameterName =
+								pagination.paginationMode === 'responseContainsNextURL' ? 'Next URL' : 'URL';
+							throw new NodeOperationError(this.getNode(), error.message, {
+								description: `Make sure the "${urlParameterName}" parameter evaluates to a valid URL.`,
+							});
+						}
+
+						throw error;
+					});
 				requestPromises.push(requestPromise);
 			} else if (authentication === 'genericCredentialType' || authentication === 'none') {
 				if (oAuth1Api) {
@@ -1730,6 +1751,7 @@ export class HttpRequestV3 implements INodeType {
 					nodeCredentialType,
 					requestOptions,
 					additionalOAuth2Options && { oauth2: additionalOAuth2Options },
+					itemIndex,
 				);
 				requestWithAuthentication.catch(() => {});
 				requestPromises.push(requestWithAuthentication);
@@ -1800,8 +1822,8 @@ export class HttpRequestV3 implements INodeType {
 					}
 				}
 
+				const responseContentType = response.headers['content-type'] ?? '';
 				if (autoDetectResponseFormat) {
-					const responseContentType = response.headers['content-type'] ?? '';
 					if (responseContentType.includes('application/json')) {
 						responseFormat = 'json';
 						if (!response.__bodyResolved) {
@@ -1880,7 +1902,22 @@ export class HttpRequestV3 implements INodeType {
 						newItem.json = items[itemIndex].json;
 						binaryData = response;
 					}
-					newItem.binary![outputPropertyName] = await this.helpers.prepareBinaryData(binaryData);
+					const preparedBinaryData = await this.helpers.prepareBinaryData(
+						binaryData,
+						undefined,
+						responseContentType || undefined,
+					);
+
+					if (
+						!preparedBinaryData.fileName &&
+						preparedBinaryData.fileExtension &&
+						typeof requestOptions.uri === 'string' &&
+						requestOptions.uri.endsWith(preparedBinaryData.fileExtension)
+					) {
+						preparedBinaryData.fileName = requestOptions.uri.split('/').pop();
+					}
+
+					newItem.binary![outputPropertyName] = preparedBinaryData;
 
 					returnItems.push(newItem);
 				} else if (responseFormat === 'text') {

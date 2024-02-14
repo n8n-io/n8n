@@ -35,7 +35,7 @@ export const usePostHog = defineStore('posthog', () => {
 	};
 
 	const getVariant = (experiment: keyof FeatureFlags): FeatureFlags[keyof FeatureFlags] => {
-		return featureFlags.value?.[experiment];
+		return overrides.value[experiment] ?? featureFlags.value?.[experiment];
 	};
 
 	const isVariantEnabled = (experiment: string, variant: string) => {
@@ -46,7 +46,7 @@ export const usePostHog = defineStore('posthog', () => {
 	 * Checks if the given feature flag is enabled. Should only be used for boolean flags
 	 */
 	const isFeatureEnabled = (experiment: keyof FeatureFlags) => {
-		return featureFlags.value?.[experiment] === true;
+		return getVariant(experiment) === true;
 	};
 
 	if (!window.featureFlags) {
@@ -55,7 +55,10 @@ export const usePostHog = defineStore('posthog', () => {
 		if (cachedOverrides) {
 			try {
 				console.log('Overriding feature flags', cachedOverrides);
-				overrides.value = JSON.parse(cachedOverrides);
+				const parsedOverrides = JSON.parse(cachedOverrides);
+				if (typeof parsedOverrides === 'object') {
+					overrides.value = JSON.parse(cachedOverrides);
+				}
 			} catch (e) {
 				console.log('Could not override experiment', e);
 			}
@@ -65,10 +68,6 @@ export const usePostHog = defineStore('posthog', () => {
 			// since features are evaluated serverside, regular posthog mechanism to override clientside does not work
 			override: (name: string, value: string | boolean) => {
 				overrides.value[name] = value;
-				featureFlags.value = {
-					...featureFlags.value,
-					[name]: value,
-				};
 				try {
 					useStorage(LOCAL_STORAGE_EXPERIMENT_OVERRIDES).value = JSON.stringify(overrides.value);
 				} catch (e) {}
@@ -91,13 +90,6 @@ export const usePostHog = defineStore('posthog', () => {
 		// For PostHog, main ID _cannot_ be `undefined` as done for RudderStack.
 		const id = user ? `${instanceId}#${user.id}` : instanceId;
 		window.posthog?.identify?.(id, traits);
-	};
-
-	const addExperimentOverrides = () => {
-		featureFlags.value = {
-			...featureFlags.value,
-			...overrides.value,
-		};
 	};
 
 	const trackExperiment = (featFlags: FeatureFlags, name: string) => {
@@ -160,13 +152,11 @@ export const usePostHog = defineStore('posthog', () => {
 			};
 
 			// does not need to be debounced really, but tracking does not fire without delay on page load
-			addExperimentOverrides();
 			trackExperimentsDebounced(featureFlags.value);
 		} else {
 			// depend on client side evaluation if serverside evaluation fails
 			window.posthog?.onFeatureFlags?.((keys: string[], map: FeatureFlags) => {
 				featureFlags.value = map;
-				addExperimentOverrides();
 
 				// must be debounced because it is called multiple times by posthog
 				trackExperimentsDebounced(featureFlags.value);

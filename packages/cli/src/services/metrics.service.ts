@@ -8,12 +8,8 @@ import { Service } from 'typedi';
 import EventEmitter from 'events';
 
 import { CacheService } from '@/services/cache/cache.service';
-import type { EventMessageTypes } from '@/eventbus/EventMessageClasses';
-import {
-	METRICS_EVENT_NAME,
-	getLabelsForEvent,
-} from '@/eventbus/MessageEventBusDestination/Helpers.ee';
-import { eventBus } from '@/eventbus';
+import { METRICS_EVENT_NAME, getLabelsForEvent, type EventMessageTypes } from '@/eventbus';
+import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { Logger } from '@/Logger';
 
 @Service()
@@ -21,6 +17,7 @@ export class MetricsService extends EventEmitter {
 	constructor(
 		private readonly logger: Logger,
 		private readonly cacheService: CacheService,
+		private readonly eventBus: MessageEventBus,
 	) {
 		super();
 	}
@@ -151,7 +148,7 @@ export class MetricsService extends EventEmitter {
 		if (!config.getEnv('endpoints.metrics.includeMessageEventBusMetrics')) {
 			return;
 		}
-		eventBus.on(METRICS_EVENT_NAME, (event: EventMessageTypes) => {
+		this.eventBus.on(METRICS_EVENT_NAME, (event: EventMessageTypes) => {
 			const counter = this.getCounterForEvent(event);
 			if (!counter) return;
 			counter.inc(1);

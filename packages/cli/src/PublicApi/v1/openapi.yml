@@ -26,6 +26,8 @@ tags:
     description: Operations about workflows
   - name: Credential
     description: Operations about credentials
+  - name: Tags
+    description: Operations about tags
   - name: SourceControl
     description: Operations about source control
 
@@ -42,6 +44,10 @@ paths:
     $ref: './handlers/executions/spec/paths/executions.yml'
   /executions/{id}:
     $ref: './handlers/executions/spec/paths/executions.id.yml'
+  /tags:
+    $ref: './handlers/tags/spec/paths/tags.yml'
+  /tags/{id}:
+    $ref: './handlers/tags/spec/paths/tags.id.yml'
   /workflows:
     $ref: './handlers/workflows/spec/paths/workflows.yml'
   /workflows/{id}:
@@ -50,6 +56,8 @@ paths:
     $ref: './handlers/workflows/spec/paths/workflows.id.activate.yml'
   /workflows/{id}/deactivate:
     $ref: './handlers/workflows/spec/paths/workflows.id.deactivate.yml'
+  /workflows/{id}/tags:
+    $ref: './handlers/workflows/spec/paths/workflows.id.tags.yml'
   /users:
     $ref: './handlers/users/spec/paths/users.yml'
   /users/{id}:

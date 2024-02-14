@@ -54,6 +54,7 @@ export function prepareExecutionDataForDbUpdate(parameters: {
 		workflowData: pristineWorkflowData,
 		waitTill: runData.waitTill,
 		status: workflowStatusFinal,
+		workflowId: pristineWorkflowData.id,
 	};
 
 	if (retryOf !== undefined) {

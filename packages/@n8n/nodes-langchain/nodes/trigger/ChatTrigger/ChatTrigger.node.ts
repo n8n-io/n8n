@@ -352,10 +352,10 @@ export class ChatTrigger implements INodeType {
 				await validateAuth(this);
 			} catch (error) {
 				if (error) {
-					res.writeHead(error.responseCode as number, {
+					res.writeHead((error as IDataObject).responseCode as number, {
 						'www-authenticate': 'Basic realm="Webhook"',
 					});
-					res.end(error.message as string);
+					res.end((error as IDataObject).message as string);
 					return { noWebhookResponse: true };
 				}
 				throw error;
@@ -404,9 +404,9 @@ export class ChatTrigger implements INodeType {
 				const memory = (await this.getInputConnectionData(NodeConnectionType.AiMemory, 0)) as
 					| BaseChatMemory
 					| undefined;
-				const messages = ((await memory?.chatHistory.getMessages()) ?? []).map(
-					(message) => message?.toJSON(),
-				);
+				const messages = ((await memory?.chatHistory.getMessages()) ?? [])
+					.filter((message) => !message?.additional_kwargs?.hideFromUI)
+					.map((message) => message?.toJSON());
 				return {
 					webhookResponse: { data: messages },
 				};

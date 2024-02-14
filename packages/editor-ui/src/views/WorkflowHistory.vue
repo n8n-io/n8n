@@ -131,7 +131,7 @@ const openRestorationModal = async (
 	isWorkflowActivated: boolean,
 	formattedCreatedAt: string,
 ): Promise<WorkflowHistoryVersionRestoreModalActions> => {
-	return new Promise((resolve, reject) => {
+	return await new Promise((resolve, reject) => {
 		const buttons = [
 			{
 				text: i18n.baseText('workflowHistory.action.restore.modal.button.cancel'),

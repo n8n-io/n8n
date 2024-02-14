@@ -10,11 +10,11 @@ export class NamingService {
 	) {}
 
 	async getUniqueWorkflowName(requestedName: string) {
-		return this.getUniqueName(requestedName, 'workflow');
+		return await this.getUniqueName(requestedName, 'workflow');
 	}
 
 	async getUniqueCredentialName(requestedName: string) {
-		return this.getUniqueName(requestedName, 'credential');
+		return await this.getUniqueName(requestedName, 'credential');
 	}
 
 	private async getUniqueName(requestedName: string, entity: 'workflow' | 'credential') {

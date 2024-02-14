@@ -234,15 +234,13 @@ export const schema = {
 	},
 
 	executions: {
-		// By default workflows get always executed in the main process.
-		// TODO: remove this and all usage of `executions.process` when `own` mode is deleted
+		// TODO: remove this and all usage of `executions.process` when we're sure that nobody has this in their config file anymore.
 		process: {
-			doc: 'In what process workflows should be executed.',
-			format: ['main', 'own'] as const,
-			default: 'main',
+			doc: 'Deprecated key, that will be removed in the future. Please remove it from your configuration and environment variables to prevent issues in the future.',
+			format: String,
+			default: '',
 			env: 'EXECUTIONS_PROCESS',
 		},
-
 		mode: {
 			doc: 'If it should run executions directly or via queue',
 			format: ['regular', 'queue'] as const,
@@ -762,6 +760,18 @@ export const schema = {
 			default: '',
 			env: 'N8N_USER_MANAGEMENT_JWT_SECRET',
 		},
+		jwtSessionDurationHours: {
+			doc: 'Set a specific expiration date for the JWTs in hours.',
+			format: Number,
+			default: 168,
+			env: 'N8N_USER_MANAGEMENT_JWT_DURATION_HOURS',
+		},
+		jwtRefreshTimeoutHours: {
+			doc: 'How long before the JWT expires to automatically refresh it. 0 means 25% of N8N_USER_MANAGEMENT_JWT_DURATION_HOURS. -1 means it will never refresh, which forces users to login again after the defined period in N8N_USER_MANAGEMENT_JWT_DURATION_HOURS.',
+			format: Number,
+			default: 0,
+			env: 'N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS',
+		},
 		isInstanceOwnerSetUp: {
 			// n8n loads this setting from DB on startup
 			doc: "Whether the instance owner's account has been set up",
@@ -839,6 +849,18 @@ export const schema = {
 					format: String,
 					default: '',
 					env: 'N8N_UM_EMAIL_TEMPLATES_PWRESET',
+				},
+				workflowShared: {
+					doc: 'Overrides default HTML template for notifying that a workflow was shared (use full path)',
+					format: String,
+					default: '',
+					env: 'N8N_UM_EMAIL_TEMPLATES_WORKFLOW_SHARED',
+				},
+				credentialsShared: {
+					doc: 'Overrides default HTML template for notifying that credentials were shared (use full path)',
+					format: String,
+					default: '',
+					env: 'N8N_UM_EMAIL_TEMPLATES_CREDENTIALS_SHARED',
 				},
 			},
 		},
@@ -1137,12 +1159,6 @@ export const schema = {
 					default: 'https://ph.n8n.io',
 					env: 'N8N_DIAGNOSTICS_POSTHOG_API_HOST',
 				},
-				disableSessionRecording: {
-					doc: 'Disable posthog session recording',
-					format: Boolean,
-					default: true,
-					env: 'N8N_DIAGNOSTICS_POSTHOG_DISABLE_RECORDING',
-				},
 			},
 			sentry: {
 				dsn: {
@@ -1161,7 +1177,7 @@ export const schema = {
 			backend: {
 				doc: 'Diagnostics config for backend.',
 				format: String,
-				default: '1zPn7YoGC3ZXE9zLeTKLuQCB4F6;https://telemetry.n8n.io/v1/batch',
+				default: '1zPn7YoGC3ZXE9zLeTKLuQCB4F6;https://telemetry.n8n.io',
 				env: 'N8N_DIAGNOSTICS_CONFIG_BACKEND',
 			},
 		},

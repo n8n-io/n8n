@@ -76,7 +76,7 @@ export const VectorStoreSupabase = createVectorStoreNode({
 		const credentials = await context.getCredentials('supabaseApi');
 		const client = createClient(credentials.host as string, credentials.serviceRole as string);
 
-		return SupabaseVectorStore.fromExistingIndex(embeddings, {
+		return await SupabaseVectorStore.fromExistingIndex(embeddings, {
 			client,
 			tableName,
 			queryName: options.queryName ?? 'match_documents',

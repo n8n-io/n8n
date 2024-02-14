@@ -16,11 +16,11 @@ describe('Current Workflow Executions', () => {
 	it('should render executions tab correctly', () => {
 		createMockExecutions();
 		cy.intercept('GET', '/rest/executions?filter=*').as('getExecutions');
-		cy.intercept('GET', '/rest/executions-current?filter=*').as('getCurrentExecutions');
+		cy.intercept('GET', '/rest/executions/active?filter=*').as('getActiveExecutions');
 
 		executionsTab.actions.switchToExecutionsTab();
 
-		cy.wait(['@getExecutions', '@getCurrentExecutions']);
+		cy.wait(['@getExecutions', '@getActiveExecutions']);
 
 		executionsTab.getters.executionListItems().should('have.length', 11);
 		executionsTab.getters.successfulExecutionListItems().should('have.length', 9);
@@ -34,7 +34,7 @@ describe('Current Workflow Executions', () => {
 
 	it('should not redirect back to execution tab when request is not done before leaving the page', () => {
 		cy.intercept('GET', '/rest/executions?filter=*');
-		cy.intercept('GET', '/rest/executions-current?filter=*');
+		cy.intercept('GET', '/rest/executions/active?filter=*');
 
 		executionsTab.actions.switchToExecutionsTab();
 		executionsTab.actions.switchToEditorTab();
@@ -63,7 +63,7 @@ describe('Current Workflow Executions', () => {
 		};
 
 		cy.intercept('GET', '/rest/executions?filter=*', throttleResponse);
-		cy.intercept('GET', '/rest/executions-current?filter=*', throttleResponse);
+		cy.intercept('GET', '/rest/executions/active?filter=*', throttleResponse);
 
 		executionsTab.actions.switchToExecutionsTab();
 		executionsTab.actions.switchToEditorTab();

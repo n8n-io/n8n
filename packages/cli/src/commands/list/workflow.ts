@@ -1,7 +1,7 @@
-import { flags } from '@oclif/command';
-import { BaseCommand } from '../BaseCommand';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import Container from 'typedi';
+import { Flags } from '@oclif/core';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import { BaseCommand } from '../BaseCommand';
 
 export class ListWorkflowCommand extends BaseCommand {
 	static description = '\nList workflows';
@@ -13,18 +13,17 @@ export class ListWorkflowCommand extends BaseCommand {
 	];
 
 	static flags = {
-		help: flags.help({ char: 'h' }),
-		active: flags.string({
+		help: Flags.help({ char: 'h' }),
+		active: Flags.string({
 			description: 'Filters workflows by active status. Can be true or false',
 		}),
-		onlyId: flags.boolean({
+		onlyId: Flags.boolean({
 			description: 'Outputs workflow IDs only, one per line.',
 		}),
 	};
 
 	async run() {
-		// eslint-disable-next-line @typescript-eslint/no-shadow
-		const { flags } = this.parse(ListWorkflowCommand);
+		const { flags } = await this.parse(ListWorkflowCommand);
 
 		if (flags.active !== undefined && !['true', 'false'].includes(flags.active)) {
 			this.error('The --active flag has to be passed using true or false');

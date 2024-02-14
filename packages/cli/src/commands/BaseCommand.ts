@@ -1,7 +1,7 @@
 import 'reflect-metadata';
-import { Command } from '@oclif/command';
-import { ExitError } from '@oclif/errors';
 import { Container } from 'typedi';
+import { Command } from '@oclif/core';
+import { ExitError } from '@oclif/core/lib/errors';
 import { ApplicationError, ErrorReporterProxy as ErrorReporter, sleep } from 'n8n-workflow';
 import { BinaryDataService, InstanceSettings, ObjectStoreService } from 'n8n-core';
 import type { AbstractServer } from '@/AbstractServer';
@@ -44,7 +44,7 @@ export abstract class BaseCommand extends Command {
 	/**
 	 * How long to wait for graceful shutdown before force killing the process.
 	 */
-	protected gracefulShutdownTimeoutInS: number = config.getEnv('generic.gracefulShutdownTimeout');
+	protected gracefulShutdownTimeoutInS = config.getEnv('generic.gracefulShutdownTimeout');
 
 	async init(): Promise<void> {
 		await initErrorHandling();
@@ -59,8 +59,8 @@ export abstract class BaseCommand extends Command {
 		this.nodeTypes = Container.get(NodeTypes);
 		await Container.get(LoadNodesAndCredentials).init();
 
-		await Db.init().catch(async (error: Error) =>
-			this.exitWithCrash('There was an error initializing DB', error),
+		await Db.init().catch(
+			async (error: Error) => await this.exitWithCrash('There was an error initializing DB', error),
 		);
 
 		// This needs to happen after DB.init() or otherwise DB Connection is not
@@ -71,8 +71,9 @@ export abstract class BaseCommand extends Command {
 
 		await this.server?.init();
 
-		await Db.migrate().catch(async (error: Error) =>
-			this.exitWithCrash('There was an error running database migrations', error),
+		await Db.migrate().catch(
+			async (error: Error) =>
+				await this.exitWithCrash('There was an error running database migrations', error),
 		);
 
 		const dbType = config.getEnv('database.type');
@@ -80,11 +81,6 @@ export abstract class BaseCommand extends Command {
 		if (['mysqldb', 'mariadb'].includes(dbType)) {
 			this.logger.warn(
 				'Support for MySQL/MariaDB has been deprecated and will be removed with an upcoming version of n8n. Please migrate to PostgreSQL.',
-			);
-		}
-		if (process.env.EXECUTIONS_PROCESS === 'own') {
-			this.logger.warn(
-				'Own mode has been deprecated and will be removed in a future version of n8n. If you need the isolation and performance gains, please consider using queue mode.',
 			);
 		}
 

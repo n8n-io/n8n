@@ -1,4 +1,6 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
+import { BaseChatModel } from 'langchain/chat_models/base';
+import { BaseChatModel as BaseChatModelCore } from '@langchain/core/language_models/chat_models';
 
 export function getMetadataFiltersValues(
 	ctx: IExecuteFunctions,
@@ -13,4 +15,9 @@ export function getMetadataFiltersValues(
 	}
 
 	return undefined;
+}
+
+// TODO: Remove this function once langchain package is updated to 0.1.x
+export function isChatInstance(model: any): model is BaseChatModel | BaseChatModelCore {
+	return model instanceof BaseChatModel || model instanceof BaseChatModelCore;
 }

@@ -3,9 +3,9 @@ import type { IDataObject, ExecutionStatus } from 'n8n-workflow';
 
 import type { User } from '@db/entities/User';
 
-import type { Role } from '@db/entities/Role';
-
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
+
+import type { TagEntity } from '@db/entities/TagEntity';
 
 import type { UserManagementMailer } from '@/UserManagement/email';
 
@@ -25,7 +25,6 @@ export type AuthenticatedRequest<
 	RequestQuery = {},
 > = express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery> & {
 	user: User;
-	globalMemberRole?: Role;
 	mailer?: UserManagementMailer;
 };
 
@@ -60,6 +59,24 @@ export declare namespace ExecutionRequest {
 	type Delete = Get;
 }
 
+export declare namespace TagRequest {
+	type GetAll = AuthenticatedRequest<
+		{},
+		{},
+		{},
+		{
+			limit?: number;
+			cursor?: string;
+			offset?: number;
+		}
+	>;
+
+	type Create = AuthenticatedRequest<{}, {}, TagEntity>;
+	type Get = AuthenticatedRequest<{ id: string }>;
+	type Delete = Get;
+	type Update = AuthenticatedRequest<{ id: string }, {}, TagEntity>;
+}
+
 export declare namespace CredentialTypeRequest {
 	type Get = AuthenticatedRequest<{ credentialTypeName: string }, {}, {}, {}>;
 }
@@ -77,6 +94,7 @@ export declare namespace WorkflowRequest {
 			offset?: number;
 			workflowId?: number;
 			active: boolean;
+			name?: string;
 		}
 	>;
 
@@ -85,6 +103,8 @@ export declare namespace WorkflowRequest {
 	type Delete = Get;
 	type Update = AuthenticatedRequest<{ id: string }, {}, WorkflowEntity, {}>;
 	type Activate = Get;
+	type GetTags = Get;
+	type UpdateTags = AuthenticatedRequest<{ id: string }, {}, TagEntity[]>;
 }
 
 export declare namespace UserRequest {

@@ -19,9 +19,10 @@ import {
 import type { BaseOutputParser } from 'langchain/schema/output_parser';
 import { CombiningOutputParser } from 'langchain/output_parsers';
 import { LLMChain } from 'langchain/chains';
-import { BaseChatModel } from 'langchain/chat_models/base';
+import type { BaseChatModel } from 'langchain/chat_models/base';
 import { HumanMessage } from 'langchain/schema';
 import { getTemplateNoticeField } from '../../../utils/sharedFields';
+import { isChatInstance } from '../../../utils/helpers';
 
 interface MessagesTemplate {
 	type: string;
@@ -94,7 +95,7 @@ async function getChainPromptTemplate(
 		partialVariables: formatInstructions ? { formatInstructions } : undefined,
 	});
 
-	if (llm instanceof BaseChatModel) {
+	if (isChatInstance(llm)) {
 		const parsedMessages = await Promise.all(
 			(messages ?? []).map(async (message) => {
 				const messageClass = [
@@ -166,7 +167,7 @@ async function getChain(
 
 	// If there are no output parsers, create a simple LLM chain and execute the query
 	if (!outputParsers.length) {
-		return createSimpleLLMChain(context, llm, query, chatTemplate);
+		return await createSimpleLLMChain(context, llm, query, chatTemplate);
 	}
 
 	// If there's only one output parser, use it; otherwise, create a combined output parser

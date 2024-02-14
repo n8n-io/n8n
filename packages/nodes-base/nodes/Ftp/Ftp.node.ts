@@ -1,8 +1,10 @@
 import { createWriteStream } from 'fs';
 import { basename, dirname } from 'path';
 import type { Readable } from 'stream';
-import { pipeline } from 'stream';
-import { promisify } from 'util';
+import { pipeline } from 'stream/promises';
+import { file as tmpFile } from 'tmp-promise';
+import ftpClient from 'promise-ftp';
+import sftpClient from 'ssh2-sftp-client';
 import { BINARY_ENCODING, NodeApiError } from 'n8n-workflow';
 import type {
 	ICredentialDataDecryptedObject,
@@ -16,10 +18,6 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { file as tmpFile } from 'tmp-promise';
-
-import ftpClient from 'promise-ftp';
-import sftpClient from 'ssh2-sftp-client';
 import { formatPrivateKey } from '@utils/utilities';
 
 interface ReturnFtpItem {
@@ -39,8 +37,6 @@ interface ReturnFtpItem {
 	sticky?: boolean;
 	path: string;
 }
-
-const streamPipeline = promisify(pipeline);
 
 async function callRecursiveList(
 	path: string,
@@ -443,8 +439,8 @@ export class Ftp implements INodeType {
 				credential: ICredentialsDecrypted,
 			): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data as ICredentialDataDecryptedObject;
+				const ftp = new ftpClient();
 				try {
-					const ftp = new ftpClient();
 					await ftp.connect({
 						host: credentials.host as string,
 						port: credentials.port as number,
@@ -452,11 +448,13 @@ export class Ftp implements INodeType {
 						password: credentials.password as string,
 					});
 				} catch (error) {
+					await ftp.end();
 					return {
 						status: 'Error',
 						message: error.message,
 					};
 				}
+				await ftp.end();
 				return {
 					status: 'OK',
 					message: 'Connection successful!',
@@ -467,8 +465,8 @@ export class Ftp implements INodeType {
 				credential: ICredentialsDecrypted,
 			): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data as ICredentialDataDecryptedObject;
+				const sftp = new sftpClient();
 				try {
-					const sftp = new sftpClient();
 					if (credentials.privateKey) {
 						await sftp.connect({
 							host: credentials.host as string,
@@ -487,11 +485,13 @@ export class Ftp implements INodeType {
 						});
 					}
 				} catch (error) {
+					await sftp.end();
 					return {
 						status: 'Error',
 						message: error.message,
 					};
 				}
+				await sftp.end();
 				return {
 					status: 'OK',
 					message: 'Connection successful!',
@@ -515,10 +515,9 @@ export class Ftp implements INodeType {
 		} else {
 			credentials = await this.getCredentials('ftp');
 		}
+		let ftp: ftpClient;
+		let sftp: sftpClient;
 		try {
-			let ftp: ftpClient;
-			let sftp: sftpClient;
-
 			if (protocol === 'sftp') {
 				sftp = new sftpClient();
 				if (credentials.privateKey) {
@@ -552,6 +551,7 @@ export class Ftp implements INodeType {
 				const newItem: INodeExecutionData = {
 					json: items[i].json,
 					binary: {},
+					pairedItem: items[i].pairedItem,
 				};
 
 				if (items[i].binary !== undefined && newItem.binary) {
@@ -722,7 +722,7 @@ export class Ftp implements INodeType {
 						const binaryFile = await tmpFile({ prefix: 'n8n-sftp-' });
 						try {
 							const stream = await ftp!.get(path);
-							await streamPipeline(stream, createWriteStream(binaryFile.path));
+							await pipeline(stream, createWriteStream(binaryFile.path));
 
 							const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 							const remoteFilePath = this.getNodeParameter('path', i) as string;
@@ -812,12 +812,18 @@ export class Ftp implements INodeType {
 				await ftp!.end();
 			}
 		} catch (error) {
+			if (protocol === 'sftp') {
+				await sftp!.end();
+			} else {
+				await ftp!.end();
+			}
 			if (this.continueOnFail()) {
 				return [[{ json: { error: error.message } }]];
 			}
 
 			throw error;
 		}
+
 		return [returnItems];
 	}
 }

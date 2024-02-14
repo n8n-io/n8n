@@ -30,7 +30,7 @@ export class SecurityAuditService {
 			select: ['id', 'name', 'active', 'nodes', 'connections'],
 		});
 
-		const promises = categories.map(async (c) => this.reporters[c].report(workflows));
+		const promises = categories.map(async (c) => await this.reporters[c].report(workflows));
 
 		const reports = (await Promise.all(promises)).filter((r): r is Risk.Report => r !== null);
 

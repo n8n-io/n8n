@@ -3,7 +3,7 @@
 		<slot />
 		<template #content>
 			<slot name="content">
-				{{ content }}
+				<div v-html="content"></div>
 			</slot>
 			<div
 				v-if="buttons.length"

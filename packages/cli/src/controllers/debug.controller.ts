@@ -1,19 +1,19 @@
 import { Get, RestController } from '@/decorators';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
-import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
+import { OrchestrationService } from '@/services/orchestration.service';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 
 @RestController('/debug')
 export class DebugController {
 	constructor(
-		private readonly multiMainSetup: MultiMainSetup,
+		private readonly orchestrationService: OrchestrationService,
 		private readonly activeWorkflowRunner: ActiveWorkflowRunner,
 		private readonly workflowRepository: WorkflowRepository,
 	) {}
 
 	@Get('/multi-main-setup')
 	async getMultiMainSetupDetails() {
-		const leaderKey = await this.multiMainSetup.fetchLeaderKey();
+		const leaderKey = await this.orchestrationService.multiMainSetup.fetchLeaderKey();
 
 		const triggersAndPollers = await this.workflowRepository.findIn(
 			this.activeWorkflowRunner.allActiveInMemory(),
@@ -24,9 +24,9 @@ export class DebugController {
 		const activationErrors = await this.activeWorkflowRunner.getAllWorkflowActivationErrors();
 
 		return {
-			instanceId: this.multiMainSetup.instanceId,
+			instanceId: this.orchestrationService.instanceId,
 			leaderKey,
-			isLeader: this.multiMainSetup.isLeader,
+			isLeader: this.orchestrationService.isLeader,
 			activeWorkflows: {
 				webhooks, // webhook-based active workflows
 				triggersAndPollers, // poller- and trigger-based active workflows
