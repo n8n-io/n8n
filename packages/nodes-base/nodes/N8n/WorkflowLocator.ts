@@ -18,11 +18,13 @@ export async function searchWorkflows(
 	this: ILoadOptionsFunctions,
 	query?: string,
 ): Promise<INodeListSearchResult> {
+	const operation = this.getNodeParameter('operation', 0) as string;
 	const searchResults = (await apiRequestAllItems.call(
 		this,
 		'GET',
 		'workflows',
 		{},
+		{ template: operation === 'instance' },
 	)) as DataItemsResponse<PartialWorkflow>;
 
 	// Map the workflows list against a simple name/id filter, and sort

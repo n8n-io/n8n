@@ -73,6 +73,11 @@ export const workflowOperations: INodeProperties[] = [
 				value: 'update',
 				action: 'Update a workflow',
 			},
+			{
+				name: 'Instance',
+				value: 'instance',
+				action: 'Create an instance of a workflow',
+			},
 		],
 	},
 ];
@@ -94,6 +99,28 @@ const activateOperation: INodeProperties[] = [
 			request: {
 				method: 'POST',
 				url: '=/workflows/{{ $value }}/activate',
+			},
+		},
+	},
+];
+
+const instanceOperation: INodeProperties[] = [
+	{
+		...workflowIdLocator,
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['workflow'],
+				operation: ['instance'],
+			},
+		},
+		// The routing for resourceLocator-enabled properties currently needs to
+		// happen in the property block where the property itself is defined, or
+		// extractValue won't work when used with $parameter in routing.request.url.
+		routing: {
+			request: {
+				method: 'POST',
+				url: '=/workflows/{{ $value }}/instance',
 			},
 		},
 	},
@@ -313,6 +340,7 @@ const updateOperation: INodeProperties[] = [
 ];
 
 export const workflowFields: INodeProperties[] = [
+	...instanceOperation,
 	...activateOperation,
 	...createOperation,
 	...deactivateOperation,
