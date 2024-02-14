@@ -81,10 +81,7 @@ export default defineComponent({
 			if (!activeNode) {
 				return null;
 			}
-			return this.workflowHelpers.getParentMainInputNode(
-				this.workflowHelpers.getCurrentWorkflow(),
-				activeNode,
-			);
+			return this.workflow.getParentMainInputNode(activeNode);
 		},
 		extendAll(): boolean {
 			if (this.variableFilter) {
