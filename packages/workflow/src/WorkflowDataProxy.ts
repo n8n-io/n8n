@@ -993,7 +993,13 @@ export class WorkflowDataProxy {
 
 									// Before resolving the pairedItem make sure that the requested node comes in the
 									// graph before the current one
-									const parentNodes = that.workflow.getParentNodes(that.contextNodeName);
+									const activeNode = that.workflow.getNode(that.activeNodeName);
+									let contextNode = that.contextNodeName;
+									if (activeNode) {
+										const parentMainInputNode = that.workflow.getParentMainInputNode(activeNode);
+										contextNode = parentMainInputNode.name ?? contextNode;
+									}
+									const parentNodes = that.workflow.getParentNodes(contextNode);
 									if (!parentNodes.includes(nodeName)) {
 										throw createExpressionError('Invalid expression', {
 											messageTemplate: 'Invalid expression under ‘%%PARAMETER%%’',
