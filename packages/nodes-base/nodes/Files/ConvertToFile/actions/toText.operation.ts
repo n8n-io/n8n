@@ -9,7 +9,7 @@ import { updateDisplayOptions } from '@utils/utilities';
 
 export const properties: INodeProperties[] = [
 	{
-		displayName: 'Base64 Input Field',
+		displayName: 'Text Input Field',
 		name: 'sourceProperty',
 		type: 'string',
 		default: '',
@@ -17,7 +17,7 @@ export const properties: INodeProperties[] = [
 		placeholder: 'e.g data',
 		requiresDataPath: 'single',
 		description:
-			"The name of the input field that contains the base64 string to convert to a file. Use dot-notation for deep fields (e.g. 'level1.level2.currentKey').",
+			"The name of the input field that contains a string to convert to a file. Use dot-notation for deep fields (e.g. 'level1.level2.currentKey').",
 	},
 	{
 		displayName: 'Put Output File in Field',
@@ -49,30 +49,12 @@ export const properties: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Data Is Base64',
-				name: 'dataIsBase64',
-				type: 'boolean',
-				default: true,
-				description: 'Whether the data is already base64 encoded',
-				displayOptions: {
-					show: {
-						'@version': [1],
-					},
-				},
-			},
-			{
 				displayName: 'Encoding',
 				name: 'encoding',
 				type: 'options',
 				options: encodeDecodeOptions,
 				default: 'utf8',
 				description: 'Choose the character set to use to encode the data',
-				displayOptions: {
-					hide: {
-						dataIsBase64: [true],
-						'@version': [{ _cnd: { gt: 1 } }],
-					},
-				},
 			},
 			{
 				displayName: 'File Name',
@@ -82,22 +64,13 @@ export const properties: INodeProperties[] = [
 				placeholder: 'e.g. myFile',
 				description: 'Name of the output file',
 			},
-			{
-				displayName: 'MIME Type',
-				name: 'mimeType',
-				type: 'string',
-				default: '',
-				placeholder: 'e.g text/plain',
-				description:
-					'The MIME type of the output file. <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types" target="_blank">Common MIME types</a>.',
-			},
 		],
 	},
 ];
 
 const displayOptions = {
 	show: {
-		operation: ['toBinary'],
+		operation: ['toText'],
 	},
 };
 
@@ -106,24 +79,17 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(this: IExecuteFunctions, items: INodeExecutionData[]) {
 	const returnData: INodeExecutionData[] = [];
 
-	const nodeVersion = this.getNode().typeVersion;
-
 	for (let i = 0; i < items.length; i++) {
 		try {
 			const options = this.getNodeParameter('options', i, {});
 			const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i, 'data');
 			const sourceProperty = this.getNodeParameter('sourceProperty', i) as string;
 
-			let dataIsBase64 = true;
-			if (nodeVersion === 1) {
-				dataIsBase64 = options.dataIsBase64 !== false;
-			}
-
 			const jsonToBinaryOptions: JsonToBinaryOptions = {
 				sourceKey: sourceProperty,
-				fileName: options.fileName as string,
-				mimeType: options.mimeType as string,
-				dataIsBase64,
+				fileName: (options.fileName as string) || 'file.txt',
+				mimeType: 'text/plain',
+				dataIsBase64: false,
 				encoding: options.encoding as string,
 				addBOM: options.addBOM as boolean,
 				itemIndex: i,

@@ -307,7 +307,7 @@ export function formatBlocks(blocks: IDataObject[]) {
 				...(block.type === 'to_do' ? { checked: block.checked } : {}),
 				...(block.type === 'image' ? { type: 'external', external: { url: block.url } } : {}),
 				// prettier-ignore,
-				...(!['to_do', 'image'].includes(block.type as string) ? getTextBlocks(block) : {}),
+				...(!['image'].includes(block.type as string) ? getTextBlocks(block) : {}),
 			},
 		});
 	}

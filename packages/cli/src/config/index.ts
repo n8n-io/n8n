@@ -73,6 +73,11 @@ if (userManagement.jwtRefreshTimeoutHours >= userManagement.jwtSessionDurationHo
 
 	config.set('userManagement.jwtRefreshTimeoutHours', 0);
 }
+if (config.getEnv('executions.process') !== 'IGNORED') {
+	throw new ApplicationError(
+		'Own mode has been removed. If you need the isolation and performance gains, please consider using queue mode.',
+	);
+}
 
 setGlobalState({
 	defaultTimezone: config.getEnv('generic.timezone'),
