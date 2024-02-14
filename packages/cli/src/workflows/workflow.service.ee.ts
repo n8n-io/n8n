@@ -100,13 +100,18 @@ export class EnterpriseWorkflowService {
 				sharedWith: [],
 				ownedBy: null,
 			};
-			credential.shared?.forEach(({ user, role }) => {
-				const { id, email, firstName, lastName } = user;
-				if (role === 'credential:owner') {
-					workflowCredential.ownedBy = { id, email, firstName, lastName };
-				} else {
-					workflowCredential.sharedWith?.push({ id, email, firstName, lastName });
-				}
+			credential.shared?.forEach(({ role: projectCredentialRole, project }) => {
+				project.projectRelations.forEach(({ user, role: userProjectRole }) => {
+					const { id, email, firstName, lastName } = user;
+					if (
+						projectCredentialRole === 'credential:owner' &&
+						userProjectRole === 'project:personalOwner'
+					) {
+						workflowCredential.ownedBy = { id, email, firstName, lastName };
+					} else {
+						workflowCredential.sharedWith?.push({ id, email, firstName, lastName });
+					}
+				});
 			});
 			workflow.usedCredentials?.push(workflowCredential);
 		});

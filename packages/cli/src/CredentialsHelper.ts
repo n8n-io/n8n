@@ -457,8 +457,12 @@ export class CredentialsHelper extends ICredentialsHelper {
 		const credential = await this.sharedCredentialsRepository.findOne({
 			where: {
 				role: 'credential:owner',
-				user: {
-					role: 'global:owner',
+				project: {
+					projectRelations: {
+						user: {
+							role: 'global:owner',
+						},
+					},
 				},
 				credentials: {
 					id: nodeCredential.id,

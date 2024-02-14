@@ -78,6 +78,7 @@ export class CredentialsController {
 			}
 
 			// TODO: Do I need this change? It's permission checking...
+			// FIXME: redefine of what constitutes being an owner with the credentials being shared with the projects
 			const userSharing = this.credentialsRepository.shouldUserHaveAccess(credential, req.user);
 
 			if (!userSharing && !req.user.hasGlobalScope('credential:read')) {

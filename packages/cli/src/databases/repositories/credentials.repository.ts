@@ -89,7 +89,7 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 		const findManyOptions: FindManyOptions<CredentialsEntity> = { where: { id: In(ids) } };
 
 		if (withSharings) {
-			findManyOptions.relations = ['shared', 'shared.user'];
+			findManyOptions.relations = ['shared.project.projectRelations.user'];
 		}
 
 		return await this.find(findManyOptions);
@@ -121,7 +121,7 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 					// If the user is the admin of the project and the project owns the
 					// credential, then they own the credential.
 					if (
-						projectRelation.role === 'project:admin' &&
+						projectRelation.role === 'project:personalOwner' &&
 						sharedCredential.role === 'credential:owner'
 					) {
 						roles['credential:owner'] = true;

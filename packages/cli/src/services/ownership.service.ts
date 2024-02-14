@@ -55,13 +55,17 @@ export class OwnershipService {
 			return entity;
 		}
 
-		for (const sharedCredential of shared) {
-			for (const projectRelation of sharedCredential.project.projectRelations) {
+		for (const sharedEntity of shared) {
+			for (const projectRelation of sharedEntity.project.projectRelations) {
 				const role = projectRelation.role;
 
 				const { id, email, firstName, lastName } = projectRelation.user;
 
-				if (role === 'project:admin' && sharedCredential.role === 'credential:owner') {
+				if (
+					role === 'project:personalOwner' &&
+					(sharedEntity.role === 'credential:owner' || sharedEntity.role === 'workflow:owner')
+				) {
+					// FIXME: redefine what ownedBy means for team projects
 					entity.ownedBy = { id, email, firstName, lastName };
 				} else {
 					entity.sharedWith.push({ id, email, firstName, lastName });

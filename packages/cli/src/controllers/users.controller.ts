@@ -215,14 +215,23 @@ export class UsersController {
 
 				// Now do the same for creds
 
-				// Get all workflow ids belonging to user to delete
+				// Get all credentials ids belonging to user to delete
 				// TODO: needs a test
 				// FIXME: should use the user's personal project instead of the deprecatedUserId
 				const sharedCredentialIds = await transactionManager
 					.getRepository(SharedCredentials)
 					.find({
 						select: ['credentialsId'],
-						where: { deprecatedUserId: userToDelete.id, role: 'credential:owner' },
+						where: {
+							// project: {
+							// 	type: 'personal',
+							// 	projectRelations: {
+							// 		user: userToDelete.id,
+							// 	},
+							// },
+							// deprecatedUserId: userToDelete.id,
+							role: 'credential:owner',
+						},
 					})
 					.then((sharedCredentials) => sharedCredentials.map(({ credentialsId }) => credentialsId));
 
@@ -239,7 +248,7 @@ export class UsersController {
 				// FIXME: the credential need to be transferred to transferee's personal project
 				await transactionManager.update(
 					SharedCredentials,
-					{ user: userToDelete, role: 'credential:owner' },
+					{ deprecatedUserId: userToDelete, role: 'credential:owner' },
 					{ deprecatedUserId: transferee!.id },
 				);
 

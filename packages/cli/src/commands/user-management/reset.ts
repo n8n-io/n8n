@@ -38,7 +38,8 @@ export class Reset extends BaseCommand {
 		const newSharedCredentials = danglingCredentials.map((credentials) =>
 			Container.get(SharedCredentialsRepository).create({
 				credentials,
-				user: owner,
+				// FIXME: no idea how yet
+				// user: owner,
 				role: 'credential:owner',
 			}),
 		);

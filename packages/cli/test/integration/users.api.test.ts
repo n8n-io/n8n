@@ -261,9 +261,7 @@ describe('DELETE /users/:id', () => {
 			where: { userId: member.id, role: 'workflow:owner' },
 		});
 
-		// FIXME: get shared credentials using the personal project
 		const sharedCredential = await Container.get(SharedCredentialsRepository).findOne({
-			relations: ['user'],
 			where: { deprecatedUserId: member.id, role: 'credential:owner' },
 		});
 

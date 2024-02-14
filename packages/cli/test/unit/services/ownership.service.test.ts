@@ -51,8 +51,28 @@ describe('OwnershipService', () => {
 			const credential = mockCredential();
 
 			credential.shared = [
-				{ role: 'credential:owner', user: owner },
-				{ role: 'credential:editor', user: editor },
+				{
+					role: 'credential:owner',
+					project: {
+						projectRelations: [
+							{
+								role: 'project:personalOwner',
+								user: owner,
+							},
+						],
+					},
+				},
+				{
+					role: 'credential:editor',
+					project: {
+						projectRelations: [
+							{
+								role: 'project:personalOwner',
+								user: editor,
+							},
+						],
+					},
+				},
 			] as SharedCredentials[];
 
 			const { ownedBy, sharedWith } = ownershipService.addOwnedByAndSharedWith(credential);
@@ -81,8 +101,30 @@ describe('OwnershipService', () => {
 			const workflow = new WorkflowEntity();
 
 			workflow.shared = [
-				{ role: 'workflow:owner', user: owner },
-				{ role: 'workflow:editor', user: editor },
+				{
+					role: 'workflow:owner',
+					user: owner,
+					project: {
+						projectRelations: [
+							{
+								role: 'project:personalOwner',
+								user: owner,
+							},
+						],
+					},
+				},
+				{
+					role: 'workflow:editor',
+					user: editor,
+					project: {
+						projectRelations: [
+							{
+								role: 'project:personalOwner',
+								user: editor,
+							},
+						],
+					},
+				},
 			] as SharedWorkflow[];
 
 			const { ownedBy, sharedWith } = ownershipService.addOwnedByAndSharedWith(workflow);
@@ -109,7 +151,19 @@ describe('OwnershipService', () => {
 
 			const credential = mockCredential();
 
-			credential.shared = [{ role: 'credential:owner', user: owner }] as SharedCredentials[];
+			credential.shared = [
+				{
+					role: 'credential:owner',
+					project: {
+						projectRelations: [
+							{
+								role: 'project:personalOwner',
+								user: owner,
+							},
+						],
+					},
+				},
+			] as SharedCredentials[];
 
 			const { ownedBy, sharedWith } = ownershipService.addOwnedByAndSharedWith(credential);
 
