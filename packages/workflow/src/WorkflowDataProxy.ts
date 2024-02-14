@@ -988,7 +988,13 @@ export class WorkflowDataProxy {
 							if (['pairedItem', 'itemMatching', 'item'].includes(property as string)) {
 								// Before resolving the pairedItem make sure that the requested node comes in the
 								// graph before the current one
-								const parentNodes = that.workflow.getParentNodes(that.contextNodeName);
+								const activeNode = that.workflow.getNode(that.activeNodeName);
+								let contextNode = that.contextNodeName;
+								if (activeNode) {
+									const parentMainInputNode = that.workflow.getParentMainInputNode(activeNode);
+									contextNode = parentMainInputNode.name ?? contextNode;
+								}
+								const parentNodes = that.workflow.getParentNodes(contextNode);
 								if (!parentNodes.includes(nodeName)) {
 									throw createExpressionError('Invalid expression', {
 										messageTemplate: 'Invalid expression under ‘%%PARAMETER%%’',
@@ -998,8 +1004,6 @@ export class WorkflowDataProxy {
 											message: `No path back to node ‘${nodeName}’`,
 										},
 										description: `The expression uses data in the node <strong>‘${nodeName}’</strong> but there is no path back to it. Please check this node is connected to it (there can be other nodes in between).`,
-										nodeCause: nodeName,
-										type: 'paired_item_no_connection',
 									});
 								}
 
