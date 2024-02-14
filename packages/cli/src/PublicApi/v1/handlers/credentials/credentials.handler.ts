@@ -51,17 +51,17 @@ export = {
 			req: CredentialRequest.Delete,
 			res: express.Response,
 		): Promise<express.Response<Partial<CredentialsEntity>>> => {
-			const { id: credentialId } = req.params;
+			const { id } = req.params;
 			let credential: CredentialsEntity | undefined;
 
 			if (!['global:owner', 'global:admin'].includes(req.user.role)) {
-				const shared = await getSharedCredentials(req.user.id, credentialId);
+				const shared = await getSharedCredentials(req.user.id, id);
 
 				if (shared?.role === 'credential:owner') {
 					credential = shared.credentials;
 				}
 			} else {
-				credential = (await getCredentials(credentialId)) as CredentialsEntity;
+				credential = (await getCredentials(id)) as CredentialsEntity;
 			}
 
 			if (!credential) {
