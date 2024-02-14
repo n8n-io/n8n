@@ -117,7 +117,6 @@
     "@types/express": "^4.17.6",
     "@types/html-to-text": "^9.0.1",
     "@types/json-schema": "^7.0.12",
-    "@types/request-promise-native": "~1.0.15",
     "@types/temp": "^0.9.1",
     "eslint-plugin-n8n-nodes-base": "^1.16.0",
     "gulp": "^4.0.2",

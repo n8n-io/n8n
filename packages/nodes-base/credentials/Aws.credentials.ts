@@ -8,9 +8,9 @@ import type {
 	IDataObject,
 	IHttpRequestOptions,
 	INodeProperties,
+	IRequestOptions,
 } from 'n8n-workflow';
 import { isObjectEmpty } from 'n8n-workflow';
-import type { OptionsWithUri } from 'request';
 
 export const regions = [
 	{
@@ -286,16 +286,16 @@ export class Aws implements ICredentialType {
 		let body = requestOptions.body;
 		let region = credentials.region;
 		let query = requestOptions.qs?.query as IDataObject;
-		// ! Workaround as we still use the OptionsWithUri interface which uses uri instead of url
+		// ! Workaround as we still use the IRequestOptions interface which uses uri instead of url
 		// ! To change when we replace the interface with IHttpRequestOptions
-		const requestWithUri = requestOptions as unknown as OptionsWithUri;
+		const requestWithUri = requestOptions as unknown as IRequestOptions;
 		if (requestWithUri.uri) {
-			requestOptions.url = requestWithUri.uri as string;
+			requestOptions.url = requestWithUri.uri;
 			endpoint = new URL(requestOptions.url);
 			if (service === 'sts') {
 				try {
 					if (requestWithUri.qs?.Action !== 'GetCallerIdentity') {
-						query = requestWithUri.qs;
+						query = requestWithUri.qs as IDataObject;
 					} else {
 						endpoint.searchParams.set('Action', 'GetCallerIdentity');
 						endpoint.searchParams.set('Version', '2011-06-15');
