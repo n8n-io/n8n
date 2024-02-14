@@ -1,3 +1,18 @@
+## [1.27.3](https://github.com/n8n-io/n8n/compare/n8n@1.27.2...n8n@1.27.3) (2024-02-14)
+
+
+### Bug Fixes
+
+* **core:** Give better error message if `executions.process` is still used in the configs ([#8618](https://github.com/n8n-io/n8n/issues/8618)) ([a255cd3](https://github.com/n8n-io/n8n/commit/a255cd3d01f3c05a2db0a267a1f992732ce2b030))
+* **core:** Improve the startup error when EXECUTIONS_PROCESS is set ([#8630](https://github.com/n8n-io/n8n/issues/8630)) ([b70b42d](https://github.com/n8n-io/n8n/commit/b70b42db37246df40336ace08ab99e34e59913dc))
+* **core:** Upgrade nodemailer to address an exploit ([#8535](https://github.com/n8n-io/n8n/issues/8535)) ([7d39d61](https://github.com/n8n-io/n8n/commit/7d39d61ca1d99c87324509b4024424d4c6dbba30))
+* **core:** Upgrade rudderstack sdk to address npm postInstall issues ([#8568](https://github.com/n8n-io/n8n/issues/8568)) ([1704f4b](https://github.com/n8n-io/n8n/commit/1704f4bddce6bdfa594e489f4040c0efb954a42d))
+* **core:** Use hostname from URL instead of Host header for SNI ([#8562](https://github.com/n8n-io/n8n/issues/8562)) ([c7779de](https://github.com/n8n-io/n8n/commit/c7779deb3e0a42646ebf53d25ce5be032bdb6200))
+* **Execute Workflow Node:** Passing the workflow that is supposed to be executed as a paramter ([#8614](https://github.com/n8n-io/n8n/issues/8614)) ([4b91c46](https://github.com/n8n-io/n8n/commit/4b91c469eeb6242b08b3d03ce1cf3383658dd0cb))
+* **FTP Node:** Fix issue with connections not closing properly ([#8619](https://github.com/n8n-io/n8n/issues/8619)) ([ca5f003](https://github.com/n8n-io/n8n/commit/ca5f00344fd6fae89499f149243d7b74afff6f44))
+
+
+
 ## [1.27.2](https://github.com/n8n-io/n8n/compare/n8n@1.27.1...n8n@1.27.2) (2024-02-02)
 
 
