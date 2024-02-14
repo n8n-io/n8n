@@ -42,24 +42,21 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { computed, onMounted, onBeforeUnmount } from 'vue';
 import NodeIcon from '@/components/NodeIcon.vue';
-import { NodeHelpers } from 'n8n-workflow';
-import type { ConnectionTypes, INodeInputConfiguration, INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow';
 
 interface Props {
 	rootNode: INodeUi;
-	type: 'input' | 'sub-input' | 'sub-output' | 'output';
 }
 const enum FloatingNodePosition {
 	top = 'outputSub',
 	right = 'outputMain',
-	bottom = 'inputSub',
+	// bottom = 'inputSub',
 	left = 'inputMain',
 }
 const props = defineProps<Props>();
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
 const workflow = workflowsStore.getCurrentWorkflow();
-const nodeType = nodeTypesStore.getNodeType(props.rootNode.type, props.rootNode.typeVersion);
 const emit = defineEmits(['switchSelectedNode']);
 
 interface NodeConfig {
@@ -79,7 +76,7 @@ function onKeyDown(e: KeyboardEvent) {
 		const mapper = {
 			ArrowUp: FloatingNodePosition.top,
 			ArrowRight: FloatingNodePosition.right,
-			ArrowDown: FloatingNodePosition.bottom,
+			// ArrowDown: FloatingNodePosition.bottom,
 			ArrowLeft: FloatingNodePosition.left,
 		};
 		/* eslint-enable @typescript-eslint/naming-convention */
@@ -113,34 +110,23 @@ const connectedNodes = computed<
 			workflow.getChildNodes(rootName, 'ALL_NON_MAIN'),
 		),
 		[FloatingNodePosition.right]: getINodesFromNames(workflow.getChildNodes(rootName, 'main', 1)),
-		[FloatingNodePosition.bottom]: getINodesFromNames(
-			workflow.getParentNodes(rootName, 'ALL_NON_MAIN'),
-		),
+		// [FloatingNodePosition.bottom]: getINodesFromNames(
+		// 	workflow.getParentNodes(rootName, 'ALL_NON_MAIN'),
+		// ),
 		[FloatingNodePosition.left]: getINodesFromNames(workflow.getParentNodes(rootName, 'main', 1)),
 	};
 });
 
-function getPossibleSubInputConnections() {
-	const inputs =
-		NodeHelpers.getNodeInputs(workflow, props.rootNode, nodeType!) ||
-		([] as Array<ConnectionTypes | INodeInputConfiguration>);
-	const inputTypes = NodeHelpers.getConnectionTypes(inputs);
-	console.log('🚀 ~ getPossibleSubInputConnections ~ inputTypes:', inputs);
-
-	return inputTypes;
-}
-getPossibleSubInputConnections();
-// console.log('🚀 ~ connectedNodes:', getPossibleSubInputConnections());
 const connectionGroups = [
 	FloatingNodePosition.top,
 	FloatingNodePosition.right,
-	FloatingNodePosition.bottom,
+	// FloatingNodePosition.bottom,
 	FloatingNodePosition.left,
 ];
 const tooltipPositionMapper = {
 	[FloatingNodePosition.top]: 'bottom',
 	[FloatingNodePosition.right]: 'left',
-	[FloatingNodePosition.bottom]: 'top',
+	// [FloatingNodePosition.bottom]: 'top',
 	[FloatingNodePosition.left]: 'right',
 };
 
