@@ -1,13 +1,13 @@
 import { createHash } from 'crypto';
 
-import type { OptionsWithUri } from 'request';
-
 import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
+	IRequestOptions,
 	IWebhookFunctions,
 	JsonObject,
 } from 'n8n-workflow';
@@ -28,7 +28,7 @@ import type {
  */
 export async function copperApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
@@ -37,7 +37,7 @@ export async function copperApiRequest(
 ) {
 	const credentials = (await this.getCredentials('copperApi')) as { apiKey: string; email: string };
 
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		headers: {
 			'X-PW-AccessToken': credentials.apiKey,
 			'X-PW-Application': 'developer_api',
@@ -147,7 +147,7 @@ export const adjustTaskFields = flow(adjustLeadFields, adjustProjectIds);
  */
 export async function copperApiRequestAllItems(
 	this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
@@ -173,7 +173,7 @@ export async function copperApiRequestAllItems(
  */
 export async function handleListing(
 	this: IExecuteFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	qs: IDataObject = {},
 	body: IDataObject = {},

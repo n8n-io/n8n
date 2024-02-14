@@ -1,12 +1,12 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestFunctions,
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
+	IRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
@@ -15,7 +15,7 @@ import moment from 'moment-timezone';
 
 export async function hubspotApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 
 	body: any = {},
@@ -28,7 +28,7 @@ export async function hubspotApiRequest(
 		authenticationMethod = 'developerApi';
 	}
 
-	const options: OptionsWithUri = {
+	const options = {
 		method,
 		qs: query,
 		headers: {},
@@ -36,7 +36,7 @@ export async function hubspotApiRequest(
 		body,
 		json: true,
 		useQuerystring: true,
-	};
+	} satisfies IRequestOptions;
 
 	try {
 		if (authenticationMethod === 'apiKey' || authenticationMethod === 'appToken') {
@@ -71,7 +71,7 @@ export async function hubspotApiRequest(
 export async function hubspotApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 
 	body: any = {},
@@ -1991,7 +1991,7 @@ export async function validateCredentials(
 		apiKey: string;
 	};
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		method: 'GET',
 		headers: {},
 		uri: 'https://api.hubapi.com/deals/v1/deal/paged',

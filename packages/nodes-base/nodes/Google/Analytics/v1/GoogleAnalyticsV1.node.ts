@@ -8,6 +8,7 @@ import type {
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
@@ -153,7 +154,7 @@ export class GoogleAnalyticsV1 implements INodeType {
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
 
-		let method = '';
+		let method: IHttpRequestMethods = 'GET';
 		const qs: IDataObject = {};
 		let endpoint = '';
 		let responseData;

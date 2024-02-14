@@ -3,6 +3,7 @@ import type {
 	IBinaryKeyData,
 	IDataObject,
 	IExecuteFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -179,7 +180,7 @@ export class GmailV1 implements INodeType {
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
 
-		let method = '';
+		let method: IHttpRequestMethods = 'GET';
 		let body: IDataObject = {};
 		let qs: IDataObject = {};
 		let endpoint = '';

@@ -1,16 +1,16 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
+	IRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
 import { BINARY_ENCODING, NodeApiError } from 'n8n-workflow';
 
 export async function freshdeskApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 
 	body: any = {},
@@ -24,7 +24,7 @@ export async function freshdeskApiRequest(
 
 	const endpoint = 'freshdesk.com/api/v2';
 
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 			Authorization: `${Buffer.from(apiKey).toString(BINARY_ENCODING)}`,
@@ -51,7 +51,7 @@ export async function freshdeskApiRequest(
 
 export async function freshdeskApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 
 	body: any = {},
