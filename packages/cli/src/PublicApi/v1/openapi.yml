@@ -75,4 +75,5 @@ components:
       scheme: basic
 
 security:
+  - HBAuth: []
   - ApiKeyAuth: []

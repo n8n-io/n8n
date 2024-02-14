@@ -1,5 +1,4 @@
-import {IExecuteFunctions, INodeExecutionData, INodeType, INodeTypeDescription} from "n8n-workflow";
-import { HoneyBookApi } from "../../credentials/HoneyBookApi.credentials";
+import {IExecuteFunctions, ILoadOptionsFunctions, INodeExecutionData, INodePropertyOptions, INodeType, INodeTypeDescription} from "n8n-workflow";
 import { honeyBookApiRequest } from "./GenericFunctions";
 
 export class HoneyBook implements INodeType {
@@ -35,6 +34,12 @@ export class HoneyBook implements INodeType {
 						description: 'Create a task',
 						action: 'Create a task',
 					},
+					{
+						name: 'Move to pipeline stage',
+						value: 'movePipelineStage',
+						description: 'Move workspace to pipeline stage',
+						action: 'Move to pipeline stage',
+					},
 				],
 				default: 'createTask',
 			},
@@ -49,17 +54,43 @@ export class HoneyBook implements INodeType {
 				},
 				default: '',
 			},
+			{
+				displayName: 'Stage',
+				name: 'stage_id',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getPipelineStages',
+				},
+				displayOptions: {
+					show: {
+						action: ['movePipelineStage'],
+					},
+				},
+				default: '',
+			},
 		],
 	};
 
+	methods = {
+		loadOptions: {
+			async getPipelineStages(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const userPipelineStages = await honeyBookApiRequest.call(this, 'GET', '/n8n/pipeline_stages');
+				return userPipelineStages.map((stage: { _id: string, name: string }) => ({
+					name: stage.name,
+					value: stage._id,
+				}));
+			}
+		},
+	}
+
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const resource = this.getNodeParameter('action', 0);
-		const taskDescription = this.getNodeParameter('taskDescription', 0)
-		const nodeStaticData = this.getWorkflowStaticData('global');
+		const params = this.getNode().parameters;
 
+		const nodeStaticData = this.getWorkflowStaticData('global');
 		const body: any = {
 			resource,
-			taskDescription,
+			params,
 			staticData: nodeStaticData,
 		};
 
