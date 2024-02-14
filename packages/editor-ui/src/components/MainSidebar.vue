@@ -388,6 +388,9 @@ export default defineComponent({
 				workflow_id: this.workflowsStore.workflowId,
 			});
 		},
+		trackTemplatesClick() {
+			this.$telemetry.track('User clicked on templates', {});
+		},
 		async onUserActionToggle(action: string) {
 			switch (action) {
 				case 'logout':
@@ -419,6 +422,14 @@ export default defineComponent({
 		},
 		async handleSelect(key: string) {
 			switch (key) {
+				case 'templates':
+					if (
+						this.settingsStore.isTemplatesEnabled &&
+						!this.templatesStore.hasCustomTemplatesHost
+					) {
+						this.trackTemplatesClick();
+					}
+					break;
 				case 'about': {
 					this.trackHelpItemClick('about');
 					this.uiStore.openModal(ABOUT_MODAL_KEY);
