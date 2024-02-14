@@ -197,8 +197,8 @@ importers:
         specifier: 0.0.6
         version: 0.0.6
       '@n8n/typeorm':
-        specifier: 0.3.20
-        version: 0.3.20(mssql@9.1.1)(pg@8.11.3)(redis@4.6.12)(sqlite3@5.1.7)
+        specifier: 0.3.20-2
+        version: 0.3.20-2(mssql@9.1.1)(pg@8.11.3)(redis@4.6.12)(sqlite3@5.1.7)
       '@n8n/vm2':
         specifier: 3.9.20
         version: 3.9.20
@@ -377,8 +377,8 @@ importers:
         specifier: workspace:*
         version: link:../@n8n/permissions
       '@n8n/typeorm':
-        specifier: 0.3.20
-        version: 0.3.20(ioredis@5.3.2)(mysql2@2.3.3)(pg@8.11.3)(sqlite3@5.1.7)
+        specifier: 0.3.20-2
+        version: 0.3.20-2(ioredis@5.3.2)(mysql2@2.3.3)(pg@8.11.3)(sqlite3@5.1.7)
       '@n8n_io/license-sdk':
         specifier: 2.10.0
         version: 2.10.0
@@ -6140,12 +6140,13 @@ packages:
       recast: 0.22.0
     dev: false
 
-  /@n8n/typeorm@0.3.20(ioredis@5.3.2)(mysql2@2.3.3)(pg@8.11.3)(sqlite3@5.1.7):
-    resolution: {integrity: sha512-8UQOwlKPHchtgMaYnN09WzqIw8/E8g5ggLjM+9XFxWAmbSLhW9a9PoYaackNotdNpvTa3uU/LXT+4sp8Pn5d2w==}
+  /@n8n/typeorm@0.3.20-2(ioredis@5.3.2)(mysql2@2.3.3)(pg@8.11.3)(sqlite3@5.1.7):
+    resolution: {integrity: sha512-cmUTS1SDWGXNSNTEoeweamGtLkKQ6XHyscGDfsByOsxj4aG0CQTa/WrYC3iMR2fjJsyHAvC7/1rB9LWWIMu+CA==}
     engines: {node: '>=16.13.0'}
     hasBin: true
     peerDependencies:
       '@google-cloud/spanner': ^5.18.0
+      '@libsql/client': ^0.4.2
       '@sap/hana-client': ^2.12.25
       better-sqlite3: ^7.1.2 || ^8.0.0 || ^9.0.0
       hdb-pool: ^0.1.6
@@ -6164,6 +6165,8 @@ packages:
       typeorm-aurora-data-api-driver: ^2.0.0
     peerDependenciesMeta:
       '@google-cloud/spanner':
+        optional: true
+      '@libsql/client':
         optional: true
       '@sap/hana-client':
         optional: true
@@ -6220,12 +6223,13 @@ packages:
       - supports-color
     dev: false
 
-  /@n8n/typeorm@0.3.20(mssql@9.1.1)(pg@8.11.3)(redis@4.6.12)(sqlite3@5.1.7):
-    resolution: {integrity: sha512-8UQOwlKPHchtgMaYnN09WzqIw8/E8g5ggLjM+9XFxWAmbSLhW9a9PoYaackNotdNpvTa3uU/LXT+4sp8Pn5d2w==}
+  /@n8n/typeorm@0.3.20-2(mssql@9.1.1)(pg@8.11.3)(redis@4.6.12)(sqlite3@5.1.7):
+    resolution: {integrity: sha512-cmUTS1SDWGXNSNTEoeweamGtLkKQ6XHyscGDfsByOsxj4aG0CQTa/WrYC3iMR2fjJsyHAvC7/1rB9LWWIMu+CA==}
     engines: {node: '>=16.13.0'}
     hasBin: true
     peerDependencies:
       '@google-cloud/spanner': ^5.18.0
+      '@libsql/client': ^0.4.2
       '@sap/hana-client': ^2.12.25
       better-sqlite3: ^7.1.2 || ^8.0.0 || ^9.0.0
       hdb-pool: ^0.1.6
@@ -6244,6 +6248,8 @@ packages:
       typeorm-aurora-data-api-driver: ^2.0.0
     peerDependenciesMeta:
       '@google-cloud/spanner':
+        optional: true
+      '@libsql/client':
         optional: true
       '@sap/hana-client':
         optional: true
