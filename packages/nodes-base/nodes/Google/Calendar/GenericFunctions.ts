@@ -179,3 +179,7 @@ export function addNextOccurrence(items: RecurentEvent[]) {
 	}
 	return items;
 }
+
+export function addTimezoneToDate(date: string) {
+	return new Date(date).toISOString();
+}

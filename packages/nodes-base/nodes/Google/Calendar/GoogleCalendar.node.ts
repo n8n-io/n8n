@@ -14,6 +14,7 @@ import moment from 'moment-timezone';
 import { v4 as uuid } from 'uuid';
 import {
 	addNextOccurrence,
+	addTimezoneToDate,
 	encodeURIComponentOnce,
 	getCalendars,
 	getTimezones,
@@ -414,16 +415,16 @@ export class GoogleCalendar implements INodeType {
 							qs.singleEvents = options.singleEvents as boolean;
 						}
 						if (options.timeMax) {
-							qs.timeMax = new Date(options.timeMax as string).toISOString();
+							qs.timeMax = addTimezoneToDate(options.timeMax as string);
 						}
 						if (options.timeMin) {
-							qs.timeMin = new Date(options.timeMin as string).toISOString();
+							qs.timeMin = addTimezoneToDate(options.timeMin as string);
 						}
 						if (tz) {
 							qs.timeZone = tz;
 						}
 						if (options.updatedMin) {
-							qs.updatedMin = new Date(options.updatedMin as string).toISOString();
+							qs.updatedMin = addTimezoneToDate(options.updatedMin as string);
 						}
 						if (returnAll) {
 							responseData = await googleApiRequestAllItems.call(
