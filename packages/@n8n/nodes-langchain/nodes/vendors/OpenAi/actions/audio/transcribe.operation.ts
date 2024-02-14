@@ -47,7 +47,7 @@ const properties: INodeProperties[] = [
 
 const displayOptions = {
 	show: {
-		operation: ['transcribeRecording'],
+		operation: ['transcribe'],
 		resource: ['audio'],
 	},
 };
