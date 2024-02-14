@@ -234,12 +234,11 @@ export const schema = {
 	},
 
 	executions: {
-		// By default workflows get always executed in the main process.
 		// TODO: remove this and all usage of `executions.process` when we're sure that nobody has this in their config file anymore.
 		process: {
 			doc: 'Own mode has been removed and is only here for backwards compatibility of config files. N8n will use main mode for executions unless `executions.mode` is set to `queue`.',
-			format: ['main', 'own', 'IGNORED'] as const,
-			default: 'IGNORED',
+			format: String,
+			default: '',
 			env: 'EXECUTIONS_PROCESS',
 		},
 		mode: {

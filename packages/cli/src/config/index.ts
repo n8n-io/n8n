@@ -73,10 +73,25 @@ if (userManagement.jwtRefreshTimeoutHours >= userManagement.jwtSessionDurationHo
 
 	config.set('userManagement.jwtRefreshTimeoutHours', 0);
 }
-if (config.getEnv('executions.process') !== 'IGNORED') {
-	throw new ApplicationError(
-		'Own mode has been removed. If you need the isolation and performance gains, please consider using queue mode.',
+
+import colors from 'picocolors';
+const executionProcess = config.getEnv('executions.process');
+if (executionProcess) {
+	console.error(
+		colors.yellow('Please unset the deprecated env variable'),
+		colors.bold(colors.yellow('EXECUTIONS_PROCESS')),
 	);
+}
+if (executionProcess === 'own') {
+	console.error(
+		colors.bold(colors.red('Application failed to start because "Own" mode has been removed.')),
+	);
+	console.error(
+		colors.red(
+			'If you need the isolation and performance gains, please consider using queue mode instead.\n\n',
+		),
+	);
+	process.exit(-1);
 }
 
 setGlobalState({
