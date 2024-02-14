@@ -1004,6 +1004,8 @@ export class WorkflowDataProxy {
 											message: `No path back to node ‘${nodeName}’`,
 										},
 										description: `The expression uses data in the node <strong>‘${nodeName}’</strong> but there is no path back to it. Please check this node is connected to it (there can be other nodes in between).`,
+										nodeCause: nodeName,
+										type: 'paired_item_no_connection',
 									});
 								}
 
