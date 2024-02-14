@@ -88,19 +88,6 @@ export const createScopedMiddleware =
 			});
 		}
 
-		/**
-		 * @TODO: Refactor this to get rid of project ID route parameter. Instead:
-		 *
-		 * 1. Fetch all the **projects** that the resource has been shared with,
-		 * and the **roles** of those sharings.
-		 *
-		 * 2. Check if those fetched roles contain the scope that allows the action.
-		 *
-		 * 3. Find the user's roles in them in all those fetched projects.
-		 *
-		 * 4. Check if any of those roles contains the scope that allows the action.
-		 */
-
 		const { credentialId, workflowId } = req.params;
 
 		const roleService = Container.get(RoleService);
