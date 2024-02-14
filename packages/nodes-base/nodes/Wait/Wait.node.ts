@@ -420,9 +420,9 @@ export class Wait extends Webhook {
 
 			waitAmount *= 1000;
 
-			const original = new Date(new Date().getTime() + waitAmount);
-
-			waitTill = DateTime.fromISO(original.toISOString().slice(0, -1)).toUTC().toJSDate();
+			// Timezone does not change relative dates, since they are just
+			// a number of seconds added to the current timestamp
+			waitTill = new Date(new Date().getTime() + waitAmount);
 		} else {
 			const dateTimeStr = context.getNodeParameter('dateTime', 0) as string;
 
