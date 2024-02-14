@@ -45,8 +45,7 @@ export abstract class NodeError extends ExecutionBaseError {
 		super(message, options);
 
 		if (error instanceof NodeError) {
-			this.level = 'error';
-			this.message = `[RE-WRAPPED]: ${message}`;
+			this.tags.reWrapped = true;
 		}
 	}
 
