@@ -1,6 +1,6 @@
 import config from '@/config';
 import { Service } from 'typedi';
-import { DataSource, Repository, Entity } from 'typeorm';
+import { DataSource, Repository, Entity } from '@n8n/typeorm';
 
 @Entity()
 export class UsageMetrics {}
@@ -29,6 +29,7 @@ export class UsageMetricsRepository extends Repository<UsageMetrics> {
 	async getLicenseRenewalMetrics() {
 		type Row = {
 			enabled_user_count: string | number;
+			total_user_count: string | number;
 			active_workflow_count: string | number;
 			total_workflow_count: string | number;
 			total_credentials_count: string | number;
@@ -44,6 +45,7 @@ export class UsageMetricsRepository extends Repository<UsageMetrics> {
 		const [
 			{
 				enabled_user_count: enabledUsers,
+				total_user_count: totalUsers,
 				active_workflow_count: activeWorkflows,
 				total_workflow_count: totalWorkflows,
 				total_credentials_count: totalCredentials,
@@ -53,6 +55,7 @@ export class UsageMetricsRepository extends Repository<UsageMetrics> {
 		] = (await this.query(`
 			SELECT
 				(SELECT COUNT(*) FROM ${userTable} WHERE disabled = false) AS enabled_user_count,
+				(SELECT COUNT(*) FROM ${userTable}) AS total_user_count,
 				(SELECT COUNT(*) FROM ${workflowTable} WHERE active = true) AS active_workflow_count,
 				(SELECT COUNT(*) FROM ${workflowTable}) AS total_workflow_count,
 				(SELECT COUNT(*) FROM ${credentialTable}) AS total_credentials_count,
@@ -65,6 +68,7 @@ export class UsageMetricsRepository extends Repository<UsageMetrics> {
 
 		return {
 			enabledUsers: toNumber(enabledUsers),
+			totalUsers: toNumber(totalUsers),
 			activeWorkflows: toNumber(activeWorkflows),
 			totalWorkflows: toNumber(totalWorkflows),
 			totalCredentials: toNumber(totalCredentials),

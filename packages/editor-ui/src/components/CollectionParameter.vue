@@ -176,11 +176,11 @@ function optionSelected(optionName: string) {
 			// The "fixedCollection" entries are different as they save values
 			// in an object and then underneath there is an array. So initialize
 			// them differently.
-			const retrievedObjectValue = get(props.nodeValues, `${props.path}.${optionName}`, {});
+			const retrievedObjectValue = get(props.nodeValues, [props.path, optionName], {});
 			newValue = retrievedObjectValue;
 		} else {
 			// Everything else saves them directly as an array.
-			const retrievedArrayValue = get(props.nodeValues, `${props.path}.${optionName}`, []) as Array<
+			const retrievedArrayValue = get(props.nodeValues, [props.path, optionName], []) as Array<
 				typeof option.default
 			>;
 			if (Array.isArray(retrievedArrayValue)) {

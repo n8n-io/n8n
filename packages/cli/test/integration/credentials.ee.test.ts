@@ -1,6 +1,6 @@
 import { Container } from 'typedi';
 import type { SuperAgentTest } from 'supertest';
-import { In } from 'typeorm';
+import { In } from '@n8n/typeorm';
 import type { IUser } from 'n8n-workflow';
 
 import type { ListQuery } from '@/requests';

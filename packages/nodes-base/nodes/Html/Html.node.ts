@@ -96,6 +96,20 @@ const extractionValuesCollection: INodeProperties = {
 					description: 'The name of the attribute to return the value off',
 				},
 				{
+					displayName: 'Skip Selectors',
+					name: 'skipSelectors',
+					type: 'string',
+					displayOptions: {
+						show: {
+							returnValue: ['text'],
+							'@version': [{ _cnd: { gt: 1.1 } }],
+						},
+					},
+					default: '',
+					placeholder: 'e.g. img, .className, #ItemId',
+					description: 'Comma-separated list of selectors to skip in the text extraction',
+				},
+				{
 					displayName: 'Return Array',
 					name: 'returnArray',
 					type: 'boolean',
@@ -114,7 +128,7 @@ export class Html implements INodeType {
 		name: 'html',
 		icon: 'file:html.svg',
 		group: ['transform'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		subtitle: '={{ $parameter["operation"] }}',
 		description: 'Work with HTML',
 		defaults: {
@@ -276,6 +290,14 @@ export class Html implements INodeType {
 						default: true,
 						description:
 							'Whether to remove automatically all spaces and newlines from the beginning and end of the values',
+					},
+					{
+						displayName: 'Clean Up Text',
+						name: 'cleanUpText',
+						type: 'boolean',
+						default: true,
+						description:
+							'Whether to remove remove leading and trailing whitespaces, line breaks (newlines) and condense multiple consecutive whitespaces into a single space',
 					},
 				],
 			},
@@ -548,14 +570,19 @@ export class Html implements INodeType {
 								// An array should be returned so iterate over one
 								// value at a time
 								newItem.json[valueData.key] = [];
-								htmlElement.each((i, el) => {
+								htmlElement.each((_, el) => {
 									(newItem.json[valueData.key] as Array<string | undefined>).push(
-										getValue($(el), valueData, options),
+										getValue($(el), valueData, options, nodeVersion),
 									);
 								});
 							} else {
 								// One single value should be returned
-								newItem.json[valueData.key] = getValue(htmlElement, valueData, options);
+								newItem.json[valueData.key] = getValue(
+									htmlElement,
+									valueData,
+									options,
+									nodeVersion,
+								);
 							}
 						}
 						returnData.push(newItem);

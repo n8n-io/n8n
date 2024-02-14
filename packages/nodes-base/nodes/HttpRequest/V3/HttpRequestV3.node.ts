@@ -1810,8 +1810,8 @@ export class HttpRequestV3 implements INodeType {
 					}
 				}
 
+				const responseContentType = response.headers['content-type'] ?? '';
 				if (autoDetectResponseFormat) {
-					const responseContentType = response.headers['content-type'] ?? '';
 					if (responseContentType.includes('application/json')) {
 						responseFormat = 'json';
 						if (!response.__bodyResolved) {
@@ -1890,7 +1890,22 @@ export class HttpRequestV3 implements INodeType {
 						newItem.json = items[itemIndex].json;
 						binaryData = response;
 					}
-					newItem.binary![outputPropertyName] = await this.helpers.prepareBinaryData(binaryData);
+					const preparedBinaryData = await this.helpers.prepareBinaryData(
+						binaryData,
+						undefined,
+						responseContentType || undefined,
+					);
+
+					if (
+						!preparedBinaryData.fileName &&
+						preparedBinaryData.fileExtension &&
+						typeof requestOptions.uri === 'string' &&
+						requestOptions.uri.endsWith(preparedBinaryData.fileExtension)
+					) {
+						preparedBinaryData.fileName = requestOptions.uri.split('/').pop();
+					}
+
+					newItem.binary![outputPropertyName] = preparedBinaryData;
 
 					returnItems.push(newItem);
 				} else if (responseFormat === 'text') {

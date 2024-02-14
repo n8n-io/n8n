@@ -1,11 +1,11 @@
-import type { ColumnOptions } from 'typeorm';
+import type { ColumnOptions } from '@n8n/typeorm';
 import {
 	BeforeInsert,
 	BeforeUpdate,
 	CreateDateColumn,
 	PrimaryColumn,
 	UpdateDateColumn,
-} from 'typeorm';
+} from '@n8n/typeorm';
 import config from '@/config';
 import type { Class } from 'n8n-core';
 import { generateNanoId } from '../utils/generators';
