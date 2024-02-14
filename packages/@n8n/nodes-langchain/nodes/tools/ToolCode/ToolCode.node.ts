@@ -92,8 +92,7 @@ export class ToolCode implements INodeType {
 					},
 				},
 				typeOptions: {
-					editor: 'codeNodeEditor',
-					editorLanguage: 'javaScript',
+					editor: 'jsEditor',
 				},
 				default: '',
 				// TODO: Add proper text here later
@@ -112,7 +111,7 @@ export class ToolCode implements INodeType {
 					},
 				},
 				typeOptions: {
-					editor: 'codeNodeEditor',
+					editor: 'codeNodeEditor', // TODO: create a separate `pythonEditor` component
 					editorLanguage: 'python',
 				},
 				default: '',
