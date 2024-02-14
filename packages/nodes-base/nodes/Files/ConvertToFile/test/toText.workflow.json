@@ -1,0 +1,357 @@
+{
+  "name": "My workflow 2",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "59f5ae0f-52f7-4bc8-b325-29d2b0d810f8",
+      "name": "When clicking \"Test workflow\"",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        460,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "toText",
+        "sourceProperty": "notes",
+        "options": {}
+      },
+      "id": "add99ca3-7bd3-4561-a654-fac4b8ded285",
+      "name": "Convert to File",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1,
+      "position": [
+        940,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "toJson",
+        "options": {
+          "format": true
+        }
+      },
+      "id": "89498c96-f1a0-49ec-890d-79f12c5554e6",
+      "name": "Convert to File1",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        940,
+        580
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "toBinary",
+        "sourceProperty": "base64",
+        "options": {}
+      },
+      "id": "ae06c883-f2af-4d25-bc64-4f0ecad53c85",
+      "name": "Convert to File2",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        940,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return   {\n    \"id\": \"23423532\",\n    \"name\": \"Jay Gatsby\",\n    \"email\": \"gatsby@west-egg.com\",\n    \"notes\": \"Keeps asking about a green light??\",\n    \"country\": \"US\",\n    \"created\": \"1925-04-10\",\n  \"base64\": \"VGhpcyBpcyBzb21lIHRleHQgZW5jb2RlZCBhcyBiYXNlNjQ=\"\n  }"
+      },
+      "id": "b14b18b0-6570-4376-85cf-f3cc74835e58",
+      "name": "Code",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        680,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "options": {}
+      },
+      "id": "76373e3f-e103-465a-8b15-dd643915c532",
+      "name": "Extract From File",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        1160,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "options": {}
+      },
+      "id": "d8ba3980-873d-47d7-ad88-f5ff6c66774c",
+      "name": "Extract From File1",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        1160,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "options": {}
+      },
+      "id": "34838f1e-aee5-4b17-a9ec-bd9e09789045",
+      "name": "Extract From File2",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        1160,
+        580
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "toJson",
+        "options": {}
+      },
+      "id": "a6617075-83f4-4157-9d07-7e5df0cbd9b6",
+      "name": "Convert to File3",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        960,
+        780
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "options": {}
+      },
+      "id": "b2deb5a4-0f7a-4a1f-858f-17235db0b94e",
+      "name": "Extract From File3",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        1160,
+        780
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "11022c53-136b-44a0-af32-faac16e2fa89",
+      "name": "No Operation, do nothing",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1380,
+        200
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "f5ec42e5-8088-4a93-91ea-3a1cb4997eee",
+      "name": "No Operation, do nothing1",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1380,
+        400
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "d7106de2-455f-428f-bdfa-fe701136bdfa",
+      "name": "No Operation, do nothing2",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1380,
+        580
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "14dbc74c-fc0b-4339-88ea-76b3e9534de0",
+      "name": "No Operation, do nothing3",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1380,
+        780
+      ]
+    }
+  ],
+  "pinData": {
+    "No Operation, do nothing": [
+      {
+        "json": {
+          "data": "This is some text encoded as base64"
+        }
+      }
+    ],
+    "No Operation, do nothing1": [
+      {
+        "json": {
+          "data": "Keeps asking about a green light??"
+        }
+      }
+    ],
+    "No Operation, do nothing2": [
+      {
+        "json": {
+          "data": "[\n  {\n    \"id\": \"23423532\",\n    \"name\": \"Jay Gatsby\",\n    \"email\": \"gatsby@west-egg.com\",\n    \"notes\": \"Keeps asking about a green light??\",\n    \"country\": \"US\",\n    \"created\": \"1925-04-10\",\n    \"base64\": \"VGhpcyBpcyBzb21lIHRleHQgZW5jb2RlZCBhcyBiYXNlNjQ=\"\n  }\n]"
+        }
+      }
+    ],
+    "No Operation, do nothing3": [
+      {
+        "json": {
+          "data": "[{\"id\":\"23423532\",\"name\":\"Jay Gatsby\",\"email\":\"gatsby@west-egg.com\",\"notes\":\"Keeps asking about a green light??\",\"country\":\"US\",\"created\":\"1925-04-10\",\"base64\":\"VGhpcyBpcyBzb21lIHRleHQgZW5jb2RlZCBhcyBiYXNlNjQ=\"}]"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When clicking \"Test workflow\"": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Convert to File2",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Convert to File1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Convert to File3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File2": {
+      "main": [
+        [
+          {
+            "node": "Extract From File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        [
+          {
+            "node": "Extract From File1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File1": {
+      "main": [
+        [
+          {
+            "node": "Extract From File2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File3": {
+      "main": [
+        [
+          {
+            "node": "Extract From File3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract From File": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract From File3": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract From File2": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract From File1": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "6555e00a-2c20-46f2-9a2c-fb368d557035",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "be251a83c052a9862eeac953816fbb1464f89dfbf79d7ac490a8e336a8cc8bfd"
+  },
+  "id": "RSOCg1c3be66ZqVH",
+  "tags": []
+}
