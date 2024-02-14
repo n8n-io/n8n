@@ -6,6 +6,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	INodeTypeBaseDescription,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
@@ -569,7 +570,7 @@ export class AirtableV1 implements INodeType {
 
 		let returnAll = false;
 		let endpoint = '';
-		let requestMethod = '';
+		let requestMethod: IHttpRequestMethods;
 
 		const body: IDataObject = {};
 		const qs: IDataObject = {};

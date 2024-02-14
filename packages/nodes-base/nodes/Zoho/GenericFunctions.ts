@@ -1,11 +1,11 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IExecuteFunctions,
 	IHookFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	JsonObject,
+	IHttpRequestMethods,
+	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
@@ -41,7 +41,7 @@ export function throwOnErrorStatus(
 
 export async function zohoApiRequest(
 	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
@@ -51,7 +51,7 @@ export async function zohoApiRequest(
 		'zohoOAuth2Api',
 	)) as ZohoOAuth2ApiCredentials;
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		body: {
 			data: [body],
 		},
@@ -91,7 +91,7 @@ export async function zohoApiRequest(
  */
 export async function zohoApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
@@ -117,7 +117,7 @@ export async function zohoApiRequestAllItems(
  */
 export async function handleListing(
 	this: IExecuteFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},

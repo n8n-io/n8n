@@ -11,7 +11,7 @@ import get from 'lodash/get';
 
 export async function customerIoApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: object,
 	baseApi?: string,
@@ -22,7 +22,7 @@ export async function customerIoApiRequest(
 		headers: {
 			'Content-Type': 'application/json',
 		},
-		method: method as IHttpRequestMethods,
+		method,
 		body,
 		url: '',
 		json: true,
