@@ -85,10 +85,10 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 		return sharings.map((s) => s.credentialsId);
 	}
 
-	async deleteByIds(transaction: EntityManager, sharedCredentialsIds: string[], user: User) {
+	async deleteByIds(transaction: EntityManager, sharedCredentialsIds: string[], user?: User) {
 		return await transaction.delete(SharedCredentials, {
 			// FIXME: figure out under what circumstance the deletion should happen with regards to projects
-			deprecatedUserId: user.id,
+			deprecatedUser: user,
 			// role: 'credential:owner',
 			// project: {
 			// 	projectRelations: {
