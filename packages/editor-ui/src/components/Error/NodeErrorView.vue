@@ -1,118 +1,188 @@
 <template>
 	<div class="node-error-view">
-		<div class="error-header">
-			<div class="error-header__message" v-text="getErrorMessage()" />
+		<!-- Main info: Message and description -->
+		<div class="node-error-view__header">
+			<div class="node-error-view__header-message" v-text="getErrorMessage()" />
 			<div
-				class="error-header__description"
+				class="node-error-view__header-description"
 				v-if="error.description"
 				v-html="getErrorDescription()"
 			></div>
 		</div>
 
-		<details class="error-details" open v-if="error.httpCode">
-			<summary class="error-details__summary">
-				<font-awesome-icon class="error-details__icon" icon="angle-right" />
-				{{ error.node.name }} error details
-			</summary>
-			<div class="error-details__content">
-				<div class="error-details__content-row" v-if="error.httpCode">
-					<p class="error-details__content-label">Error code</p>
-					<p class="error-details__content-value">
-						<code>{{ error.httpCode }}</code>
-					</p>
-				</div>
-				<div class="error-details__content-row" v-if="error.description">
-					<p class="error-details__content-label">Full message</p>
-					<p class="error-details__content-value">
-						<code>{{ error.description }}</code>
-					</p>
+		<div class="node-error-view__info">
+			<div class="node-error-view__info-header">
+				<p class="node-error-view__info-title">Error details</p>
+				<div class="copy-button">
+					<n8n-button
+					label="Copy details"
+					icon="copy"
+					type="secondary"
+					size="mini"
+					transparent-background="transparent"
+					title="Test"
+					@click="copyCause"
+				/>
 				</div>
 			</div>
-		</details>
+			<div class="node-error-view__info-content">
 
-		<details class="error-details" open>
-			<summary class="error-details__summary">
-				<font-awesome-icon class="error-details__icon" icon="angle-right" />Info
-			</summary>
-			<div class="error-details__content">
-				<div class="error-details__content-row" v-if="error.timestamp">
-					<p class="error-details__content-label">{{ $locale.baseText('nodeErrorView.time') }}</p>
-					<p class="error-details__content-value">
-						<code>{{ new Date(error.timestamp).toLocaleString() }}</code>
-					</p>
-				</div>
-				<div
-					class="error-details__content-row"
-					v-if="error.context && error.context.itemIndex !== undefined"
-				>
-					<p class="error-details__content-label">
-						{{ $locale.baseText('nodeErrorView.itemIndex') }}
-					</p>
-					<p class="error-details__content-value">
-						<code>{{ error.context.itemIndex }}</code>
-					</p>
-				</div>
-				<div
-					class="error-details__content-row"
-					v-if="error.context && error.context.runIndex !== undefined"
-				>
-					<p class="error-details__content-label">Run</p>
-					<p class="error-details__content-value">
-						<code>{{ error.context.runIndex }}</code>
-					</p>
-				</div>
-				<div
-					class="error-details__content-row"
-					v-if="error.context && error.context.parameter !== undefined"
-				>
-					<p class="error-details__content-label">
-						{{ $locale.baseText('nodeErrorView.inParameter') }}
-					</p>
-					<p class="error-details__content-value">
-						<code>{{ parameterDisplayName(error.context.parameter) }}</code>
-					</p>
-				</div>
+				<!-- From the service (e.g. from Airtable) -->
+				<details class="node-error-view__details" v-if="error.httpCode">
+					<summary class="node-error-view__details-summary">
+						<font-awesome-icon class="node-error-view__details-icon" icon="angle-right" />From {{ error.node.name }}
+					</summary>
+					<div class="node-error-view__details-content">
+						<div class="node-error-view__details-row" v-if="error.httpCode">
+							<p class="node-error-view__details-label">Error code</p>
+							<p class="node-error-view__details-value">
+								<code>{{ error.httpCode }}</code>
+							</p>
+						</div>
+						<div class="node-error-view__details-row">
+							<p class="node-error-view__details-label">Error message</p>
+							<p class="node-error-view__details-value">
+								<code v-text="getErrorMessage()"></code>
+							</p>
+						</div>
+						<div class="node-error-view__details-row" v-if="error.description">
+							<p class="node-error-view__details-label">Full message</p>
+							<p class="node-error-view__details-value">
+								<code>{{ error.description }}</code>
+							</p>
+						</div>
+						<div class="node-error-view__details-row">
+							<p class="node-error-view__details-label">Request</p>
+							<p class="node-error-view__details-value">
+								<code>...</code>
+							</p>
+						</div>
+						<div class="node-error-view__details-row">
+							<p class="node-error-view__details-label">Response</p>
+							<p class="node-error-view__details-value">
+								<code>...</code>
+							</p>
+						</div>
+					</div>
+				</details>
+
+				<!-- Additional info -->
+				<details class="node-error-view__details">
+					<summary class="node-error-view__details-summary">
+						<font-awesome-icon class="node-error-view__details-icon" icon="angle-right" />n8n
+						details
+					</summary>
+					<div class="node-error-view__details-content">
+						<div
+							class="node-error-view__details-row"
+							v-if="error.context && error.context.itemIndex !== undefined"
+						>
+							<p class="node-error-view__details-label">
+								{{ $locale.baseText('nodeErrorView.itemIndex') }}
+							</p>
+							<p class="node-error-view__details-value">
+								<code>{{ error.context.itemIndex }}</code>
+							</p>
+						</div>
+
+						<div
+							class="node-error-view__details-row"
+							v-if="error.context && error.context.runIndex !== undefined"
+						>
+							<p class="node-error-view__details-label">Run indes</p>
+							<p class="node-error-view__details-value">
+								<code>{{ error.context.runIndex }}</code>
+							</p>
+						</div>
+
+						<div
+							class="node-error-view__details-row"
+							v-if="error.context && error.context.parameter !== undefined"
+						>
+							<p class="node-error-view__details-label">
+								{{ $locale.baseText('nodeErrorView.inParameter') }}
+							</p>
+							<p class="node-error-view__details-value">
+								<code>{{ parameterDisplayName(error.context.parameter) }}</code>
+							</p>
+						</div>
+
+						<div class="node-error-view__details-row" v-if="error.node && error.node.typeVersion">
+							<p class="node-error-view__details-label">Node version</p>
+							<p class="node-error-view__details-value">
+								<code>{{ error.node.typeVersion }}</code>
+							</p>
+						</div>
+
+						<div class="node-error-view__details-row">
+							<p class="node-error-view__details-label">n8n version</p>
+							<p class="node-error-view__details-value">
+								<code>Cloud 1.28.0</code>
+							</p>
+						</div>
+
+						<div class="node-error-view__details-row" v-if="error.timestamp">
+							<p class="node-error-view__details-label">
+								{{ $locale.baseText('nodeErrorView.time') }}
+							</p>
+							<p class="node-error-view__details-value">
+								<code>{{ new Date(error.timestamp).toLocaleString() }}</code>
+							</p>
+						</div>
+
+						<div class="node-error-view__details-row" v-if="error.cause && displayCause">
+							<p class="node-error-view__details-label">Error cause</p>
+							<p class="node-error-view__details-value">
+								<pre class="node-error-view__details-value"><code>{{ error.cause }}</code></pre>
+							</p>
+						</div>
+
+						<div class="node-error-view__details-row" v-if="error.stack">
+							<p class="node-error-view__details-label">Stack trace</p>
+							<p class="node-error-view__details-value">
+								<pre class="node-error-view__details-value"><code>{{ error.stack }}</code></pre>
+							</p>
+						</div>
+					</div>
+				</details>
+
+				<!-- n8n stack trace -->
+				<!-- <details class="node-error-view__details" v-if="error.stack">
+					<summary class="node-error-view__details-summary">
+						<font-awesome-icon class="node-error-view__details-icon" icon="angle-right" />n8n
+						stacktrace
+					</summary>
+					<div class="node-error-view__details-content">
+						<div class="node-error-view__details-row">
+							<pre class="node-error-view__details-value"><code>{{ error.stack }}</code></pre>
+						</div>
+					</div>
+				</details> -->
 			</div>
-		</details>
+		</div>
+	</div>
 
-		<details class="error-details" v-if="error.stack">
-			<summary class="error-details__summary">
-				<font-awesome-icon class="error-details__icon" icon="angle-right" />n8n stacktrace
-			</summary>
-			<div class="error-details__content">
-				<div class="error-details__content-row">
-					<pre class="error-details__content-value"><code>{{ error.stack }}</code></pre>
-				</div>
+<!-- 	<br />
+	<hr />
+	<br />
+	<p>Ignore the stuff below</p>
+	<br />
+	<br />
+	<pre class="node-error-view__details-value"><code>{{ error }}</code></pre> -->
+
+	<!-- <div>
+		<div>
+			Cause:
+			<div v-if="error.cause && displayCause">
+				<h4>Error.cause</h4>
+				<p>{{ error.cause }}</p>
 			</div>
-		</details>
-
-		<br />
-		<br />
-		<br />
-		<br />
-		<br />
-		<br />
-		<br />
-		<br />
-		<br />
-		<br />
-		<br />
-		<br />
-		<br />
-		<br />
-		<br />
-		<br />
-		<br />
-		<br />
-		<br />
-		<br />
-		<br />
-		<br />
-		<hr />
-		<br />
-		<p>Ignore the stuff below</p>
-		<br />
-		<br />
+			Cause detailed:
+			<div v-if="error.context && error.context.causeDetailed">
+				<h4>Error.causedetailed</h4>
+				<p>{{ error.context.causeDetailed }}</p>
+			</div>
+		</div>
 
 		<details class="error-details">
 			<summary class="error-details__summary">
@@ -121,7 +191,7 @@
 			</summary>
 			<div class="error-details__content">
 				<div class="error-details__content-row">
-					<pre class="error-details__content-value"><code>{{ error }}</code></pre>
+					<pre class="node-error-view__details-value"><code>{{ error }}</code></pre>
 				</div>
 			</div>
 		</details>
@@ -178,7 +248,7 @@
 				</div>
 			</div>
 		</details>
-	</div>
+	</div> -->
 </template>
 
 <script lang="ts">
@@ -364,70 +434,101 @@ export default defineComponent({
 
 <style lang="scss">
 .node-error-view {
-	// margin: 0 var(--font-size-2xl);
-}
-
-.error-header {
-	padding: var(--spacing-l);
-	margin-bottom: var(--spacing-l);
-	background-color: var(--color-background-xlight);
-	border: 1px solid var(--color-foreground-base);
-	border-radius: var(--border-radius-large);
-
-	&__message {
-		color: var(--color-primary);
-		font-weight: bold;
-		font-size: var(--font-size-s);
-	}
-	&__description {
-		margin-top: var(--spacing-xs);
-		font-size: var(--font-size-s);
-	}
-}
-
-.error-details {
-	margin-bottom: var(--spacing-s);
-	border: 1px solid var(--color-foreground-base);
-	border-radius: var(--border-radius-large);
-	&__summary {
-		padding: var(--spacing-xs) var(--spacing-l);
-		font-size: var(--font-size-xs);
-		font-weight: var(--font-weight-bold);
-		// color: var(--color-text-dark);
-		color: var(--color-text);
-		cursor: pointer;
-		outline: none;
-		background: var(--color-background-light);
+	&__header {
+		max-width: 960px;
+		margin: 0 auto var(--spacing-s) auto;
+		padding: var(--spacing-m);
+		background-color: var(--color-background-xlight);
+		border: 1px solid var(--color-foreground-base);
 		border-radius: var(--border-radius-large);
 	}
 
-	&__icon {
-		margin-right: var(--spacing-xs);
+	&__header-message {
+		color: var(--color-primary);
+		color: var(--color-danger);
+		font-weight: bold;
+		font-size: var(--font-size-s);
 	}
 
-	&__content {
+	&__header-description {
+		margin-top: var(--spacing-2xs);
+		font-size: var(--font-size-s);
 	}
 
-	&__content-row {
+	&__info {
+		max-width: 960px;
+		margin: 0 auto;
+		border: 1px solid var(--color-foreground-base);
+		border-radius: var(--border-radius-large);
+	}
+
+	&__info-header {
 		display: flex;
-		padding: var(--spacing-xs) var(--spacing-l);
+		align-items: center;
+		justify-content: space-between;
+		padding: var(--spacing-3xs) var(--spacing-3xs) var(--spacing-3xs) var(--spacing-m) ;
+		border-bottom: 1px solid var(--color-foreground-base);
+	}
+
+	&__info-title {
+		font-size: var(--font-size-2xs);
+		font-weight: var(--font-weight-bold);
+		color: var(--color-text-dark)
+	}
+
+	&__info-content {
+		padding: var(--spacing-xs) var(--spacing-m);
+	}
+
+	&__details {
+	}
+
+	&__details:not(:last-child) {
+		margin-bottom: var(--spacing-2xs);
+	}
+
+	&__details-summary {
+		padding: var(--spacing-5xs) 0;
+		font-size: var(--font-size-2xs);
+		font-weight: var(--font-weight-bold);
+		color: var(--color-text);
+		cursor: pointer;
+		list-style-type: none;
+		outline: none;
+	}
+
+	&__details-content {
+		// margin-top: var(--spacing-3xs);
+		padding: var(--spacing-2xs) var(--spacing-m);
+	}
+
+	&__details-row {
+		display: flex;
+		padding: var(--spacing-4xs) 0;
+	}
+
+	&__details-row:not(:first-child) {
 		border-top: 1px solid var(--color-foreground-base);
 	}
 
-	&__content-label {
+	&__details-icon {
+		margin-right: var(--spacing-xs);
+	}
+
+	&__details-label {
 		flex-grow: 0;
 		flex-shrink: 0;
 		width: 120px;
 		color: var(--color-text);
-		font-size: var(--font-size-xs);
+		font-size: var(--font-size-2xs);
 	}
 
-	&__content-value {
+	&__details-value {
 		flex: 1;
 		overflow: hidden;
 		margin-right: auto;
 		color: var(--color-text);
-		font-size: var(--font-size-xs);
+		font-size: var(--font-size-2xs);
 
 		code {
 			color: var(--color-json-string);
@@ -436,10 +537,8 @@ export default defineComponent({
 	}
 }
 
-details > summary {
-	list-style-type: none;
-}
 
+/*
 details > summary::-webkit-details-marker {
 	display: none;
 }
@@ -471,11 +570,11 @@ details[open] {
 	font-weight: 200;
 	font-style: italic;
 	font-size: 0.7rem;
-}
+} */
 
-.copy-button {
+/* .copy-button {
 	position: absolute;
 	right: 50px;
 	z-index: 1000;
-}
+} */
 </style>
