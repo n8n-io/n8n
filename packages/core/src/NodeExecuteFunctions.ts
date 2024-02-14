@@ -151,7 +151,6 @@ import Container from 'typedi';
 import type { BinaryData } from './BinaryData/types';
 import merge from 'lodash/merge';
 import { InstanceSettings } from './InstanceSettings';
-import { toUtcDate } from './utils';
 
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
@@ -3560,7 +3559,7 @@ export function getExecuteFunctions(
 			binaryToBuffer: async (body: Buffer | Readable) =>
 				await Container.get(BinaryDataService).toBuffer(body),
 			async putExecutionToWait(waitTill: Date): Promise<void> {
-				runExecutionData.waitTill = toUtcDate(waitTill, getTimezone(workflow));
+				runExecutionData.waitTill = waitTill;
 				if (additionalData.setExecutionStatus) {
 					additionalData.setExecutionStatus('waiting');
 				}
