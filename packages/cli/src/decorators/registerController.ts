@@ -31,7 +31,7 @@ import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.e
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { RoleService } from '@/services/role.service';
 import { SharedCredentialsRepository } from '@/databases/repositories/sharedCredentials.repository';
-import { In } from 'typeorm';
+import { In } from '@n8n/typeorm';
 import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 
