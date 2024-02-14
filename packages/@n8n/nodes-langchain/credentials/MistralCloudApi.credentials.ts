@@ -8,7 +8,7 @@ import type {
 export class MistralCloudApi implements ICredentialType {
 	name = 'mistralCloudApi';
 
-	displayName = 'Mistral Cloud API';
+	displayName = 'Mistral API';
 
 	documentationUrl = 'mistral';
 
