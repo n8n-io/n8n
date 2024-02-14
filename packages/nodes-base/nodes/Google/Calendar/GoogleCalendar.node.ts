@@ -414,16 +414,16 @@ export class GoogleCalendar implements INodeType {
 							qs.singleEvents = options.singleEvents as boolean;
 						}
 						if (options.timeMax) {
-							qs.timeMax = options.timeMax as string;
+							qs.timeMax = new Date(options.timeMax as string).toISOString();
 						}
 						if (options.timeMin) {
-							qs.timeMin = options.timeMin as string;
+							qs.timeMin = new Date(options.timeMin as string).toISOString();
 						}
 						if (tz) {
 							qs.timeZone = tz;
 						}
 						if (options.updatedMin) {
-							qs.updatedMin = options.updatedMin as string;
+							qs.updatedMin = new Date(options.updatedMin as string).toISOString();
 						}
 						if (returnAll) {
 							responseData = await googleApiRequestAllItems.call(
