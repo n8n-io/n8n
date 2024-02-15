@@ -40,6 +40,12 @@ export class HoneyBook implements INodeType {
 						description: 'Move workspace to pipeline stage',
 						action: 'Move to pipeline stage',
 					},
+					{
+						name: 'Send email',
+						value: 'sendEmail',
+						description: 'Send email to client',
+						action: 'Send email to client',
+					},
 				],
 				default: 'createTask',
 			},
@@ -68,6 +74,20 @@ export class HoneyBook implements INodeType {
 				},
 				default: '',
 			},
+			{
+				displayName: 'Send Email',
+				name: 'email_template_id',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getEmailTemplates',
+				},
+				displayOptions: {
+					show: {
+						action: ['sendEmail'],
+					},
+				},
+				default: '',
+			},
 		],
 	};
 
@@ -79,7 +99,14 @@ export class HoneyBook implements INodeType {
 					name: stage.name,
 					value: stage._id,
 				}));
-			}
+			},
+			async getEmailTemplates(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const userPipelineStages = await honeyBookApiRequest.call(this, 'GET', '/n8n/email_templates');
+				return userPipelineStages.map((stage: { _id: string, title: string }) => ({
+					name: stage.title,
+					value: stage._id,
+				}));
+			},
 		},
 	}
 
