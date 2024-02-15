@@ -46,7 +46,6 @@ import type {
 	IFakeDoorLocation,
 	INodeUi,
 	IOnboardingCallPrompt,
-	IUser,
 	UIState,
 	UTMCampaign,
 	XYPosition,
