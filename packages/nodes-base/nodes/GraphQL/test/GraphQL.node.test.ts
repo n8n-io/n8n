@@ -3,12 +3,11 @@ import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 import * as Helpers from '@test/nodes/Helpers';
 
 describe('GraphQL Node', () => {
-
 	const mockResponse = {
-			data: {
-				nodes: {}
-			}
-	}
+		data: {
+			nodes: {},
+		},
+	};
 
 	const tests: WorkflowTestData[] = [
 		{
@@ -19,7 +18,7 @@ describe('GraphQL Node', () => {
 			output: {
 				nodeExecutionOrder: ['Start'],
 				nodeData: {
-					"Fetch Request Format JSON": [
+					'Fetch Request Format JSON': [
 						[
 							{
 								json: mockResponse,
@@ -39,7 +38,7 @@ describe('GraphQL Node', () => {
 					},
 				],
 			},
-		}
+		},
 	];
 
 	const nodeTypes = Helpers.setup(tests);
