@@ -162,6 +162,10 @@ export class HoneyBookWebhookTrigger implements INodeType {
 				},
 				options: [
 					{
+						name: 'Seconds',
+						value: 'seconds',
+					},
+					{
 						name: 'Minutes',
 						value: 'minutes',
 					},
@@ -278,7 +282,7 @@ export class HoneyBookWebhookTrigger implements INodeType {
 
 				const response = await honeyBookApiRequest.call(this, 'POST', '/n8n/webhook', payload);
 
-				workflowStaticData.webhookId = response.webhookId;
+				// workflowStaticData.webhookId = response.webhookId;
 
 				if (response._id) {
 					staticData.webhookId = response._id;
