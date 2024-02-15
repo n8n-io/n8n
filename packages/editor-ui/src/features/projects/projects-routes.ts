@@ -1,6 +1,10 @@
 import type { RouteRecordRaw } from 'vue-router';
 import { EnterpriseEditionFeature, VIEWS } from '@/constants';
-import { projectsBaseRoute, projectsRoute } from '@/features/projects/projects-constants';
+import {
+	projectsBaseRoute,
+	projectsRoute,
+	oldRoutesToProjectMap,
+} from '@/features/projects/projects-constants';
 
 const MainHeader = async () => await import('@/components/MainHeader/MainHeader.vue');
 const MainSidebar = async () => await import('@/components/MainSidebar.vue');
@@ -154,34 +158,8 @@ export const projectsRoutes: Readonly<RouteRecordRaw[]> = [
 		component: Projects,
 	},
 	// Catch old /credentials and /workflow routes and redirect to /projects
-	{
-		path: '/credentials',
+	...Object.keys(oldRoutesToProjectMap).map((oldRoute) => ({
+		path: oldRoute,
 		redirect: '/projects',
-	},
-	{
-		path: '/workflows',
-		redirect: '/projects',
-	},
-	{
-		path: '/workflow',
-		redirect: '/projects',
-		children: [
-			{
-				path: '/:name/debug/:executionId',
-				redirect: '/projects',
-			},
-			{
-				path: '/:name/executions',
-				redirect: '/projects',
-			},
-			{
-				path: '/:workflowId/history/:versionId?',
-				redirect: '/projects',
-			},
-			{
-				path: '/new',
-				redirect: '/projects',
-			},
-		],
-	},
+	})),
 ];
