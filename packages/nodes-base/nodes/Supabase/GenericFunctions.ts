@@ -1,5 +1,3 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestFunctions,
@@ -11,12 +9,14 @@ import type {
 	INodeProperties,
 	IPairedItemData,
 	JsonObject,
+	IHttpRequestMethods,
+	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function supabaseApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	body: IDataObject | IDataObject[] = {},
 	qs: IDataObject = {},
@@ -28,7 +28,7 @@ export async function supabaseApiRequest(
 		serviceRole: string;
 	};
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			Prefer: 'return=representation',
 		},
@@ -302,7 +302,7 @@ export async function validateCredentials(
 		serviceRole: string;
 	};
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			apikey: serviceRole,
 			Authorization: 'Bearer ' + serviceRole,

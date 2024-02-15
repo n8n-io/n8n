@@ -1,11 +1,11 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
+	IRequestOptions,
 	IWebhookFunctions,
 	JsonObject,
 } from 'n8n-workflow';
@@ -20,7 +20,7 @@ export const removeTrailingSlash = (url: string) => {
 
 export async function strapiApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
@@ -39,7 +39,7 @@ export async function strapiApiRequest(
 	const url = removeTrailingSlash(credentials.url as string);
 
 	try {
-		const options: OptionsWithUri = {
+		const options: IRequestOptions = {
 			headers: {},
 			method,
 			body,
@@ -47,7 +47,7 @@ export async function strapiApiRequest(
 			uri: uri || credentials.apiVersion === 'v4' ? `${url}/api${resource}` : `${url}${resource}`,
 			json: true,
 			qsStringifyOptions: {
-				arrayFormat: 'indice',
+				arrayFormat: 'indices',
 			},
 		};
 		if (Object.keys(headers).length !== 0) {
@@ -74,7 +74,7 @@ export async function getToken(
 
 	const url = removeTrailingSlash(credentials.url as string);
 
-	let options = {} as OptionsWithUri;
+	let options = {} as IRequestOptions;
 	options = {
 		headers: {
 			'content-type': 'application/json',
@@ -92,7 +92,7 @@ export async function getToken(
 
 export async function strapiApiRequestAllItems(
 	this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	body: IDataObject = {},
 	query: IDataObject = {},

@@ -1,17 +1,17 @@
-import type { OptionsWithUri } from 'request';
-
-import {
-	type IDataObject,
-	type IExecuteFunctions,
-	type IExecuteSingleFunctions,
-	type ILoadOptionsFunctions,
-	type INodeExecutionData,
+import type {
+	IHttpRequestMethods,
+	IRequestOptions,
+	IDataObject,
+	IExecuteFunctions,
+	IExecuteSingleFunctions,
+	ILoadOptionsFunctions,
+	INodeExecutionData,
 } from 'n8n-workflow';
 import { prepareApiError } from '../helpers/utils';
 
 export async function microsoftApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
@@ -27,7 +27,7 @@ export async function microsoftApiRequest(
 		apiUrl = `https://graph.microsoft.com/v1.0/users/${credentials.userPrincipalName}${resource}`;
 	}
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
@@ -77,7 +77,7 @@ export async function microsoftApiRequest(
 export async function microsoftApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	query: IDataObject = {},
