@@ -2,11 +2,13 @@ import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { imageFields, imageOperations } from './ImageDescription';
 import { textFields, textOperations } from './TextDescription';
 import { chatFields, chatOperations } from './ChatDescription';
+import { oldVersionNotice } from '../../utils/descriptions';
 
 export class OpenAi implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'OpenAI',
 		name: 'openAi',
+		hidden: true,
 		icon: 'file:openAi.svg',
 		group: ['transform'],
 		version: [1, 1.1],
@@ -28,13 +30,7 @@ export class OpenAi implements INodeType {
 			baseURL: 'https://api.openai.com',
 		},
 		properties: [
-			{
-				displayName:
-					'For more advanced uses, consider using an <a data-action="openSelectiveNodeCreator" data-action-parameter-creatorview="AI">advanced AI</a> node',
-				name: 'noticeAdvanceAi',
-				type: 'notice',
-				default: '',
-			},
+			oldVersionNotice,
 			{
 				displayName: 'Resource',
 				name: 'resource',

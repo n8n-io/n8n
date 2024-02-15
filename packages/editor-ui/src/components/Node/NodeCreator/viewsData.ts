@@ -97,7 +97,9 @@ interface NodeView {
 
 function getAiNodesBySubcategory(nodes: INodeTypeDescription[], subcategory: string) {
 	return nodes
-		.filter((node) => node.codex?.subcategories?.[AI_SUBCATEGORY]?.includes(subcategory))
+		.filter(
+			(node) => !node.hidden && node.codex?.subcategories?.[AI_SUBCATEGORY]?.includes(subcategory),
+		)
 		.map((node) => ({
 			key: node.name,
 			type: 'node',
@@ -109,6 +111,13 @@ function getAiNodesBySubcategory(nodes: INodeTypeDescription[], subcategory: str
 				description: node.description,
 				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 				icon: node.icon!,
+				iconData: node.name.toLowerCase().includes('openai')
+					? {
+							type: 'file',
+							icon: 'openai',
+							fileBuffer: '/static/open-ai.svg',
+					  }
+					: undefined,
 			},
 		}))
 		.sort((a, b) => a.properties.displayName.localeCompare(b.properties.displayName));

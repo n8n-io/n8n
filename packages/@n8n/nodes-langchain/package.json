@@ -18,7 +18,9 @@
     "format": "prettier nodes credentials --write",
     "lint": "eslint nodes credentials",
     "lintfix": "eslint nodes credentials --fix",
-    "watch": "tsc-watch -p tsconfig.build.json --onCompilationComplete \"tsc-alias -p tsconfig.build.json\" --onSuccess \"pnpm n8n-generate-ui-types\""
+    "watch": "tsc-watch -p tsconfig.build.json --onCompilationComplete \"tsc-alias -p tsconfig.build.json\" --onSuccess \"pnpm n8n-generate-ui-types\"",
+    "test": "jest",
+    "test:dev": "jest --watch"
   },
   "files": [
     "dist"
@@ -42,6 +44,7 @@
       "dist/credentials/ZepApi.credentials.js"
     ],
     "nodes": [
+      "dist/nodes/vendors/OpenAi/OpenAi.node.js",
       "dist/nodes/agents/Agent/Agent.node.js",
       "dist/nodes/agents/OpenAiAssistant/OpenAiAssistant.node.js",
       "dist/nodes/chains/ChainSummarization/ChainSummarization.node.js",
@@ -140,6 +143,7 @@
     "cohere-ai": "6.2.2",
     "d3-dsv": "2.0.0",
     "epub2": "3.0.1",
+    "form-data": "4.0.0",
     "html-to-text": "9.0.5",
     "json-schema-to-zod": "1.2.0",
     "langchain": "0.0.198",
