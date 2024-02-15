@@ -14,7 +14,10 @@ onBeforeMount(async () => {
 	// TODO: Get the project id from the store
 	const oldRoutePatterns = oldRoutesToRedirectToProjects.map(getPathAsRegexPattern);
 	if (oldRoutePatterns.some((pattern) => pattern.test(route.path))) {
-		await router.replace({ path: `/projects/${projectId.value}/${route.path}` });
+		await router.replace({
+			path: `/projects/${projectId.value}/${route.path}`,
+			query: route.query,
+		});
 		redirectionSuccess.value = true;
 	}
 });
