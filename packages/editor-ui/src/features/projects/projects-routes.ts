@@ -23,6 +23,8 @@ const Projects = async () => await import('@/features/projects/views/Projects.vu
 export const projectsRoutes: Readonly<RouteRecordRaw[]> = [
 	{
 		path: projectsRoute,
+		name: VIEWS.PROJECTS,
+		component: Projects,
 		children: [
 			{
 				path: '/credentials',
@@ -150,11 +152,14 @@ export const projectsRoutes: Readonly<RouteRecordRaw[]> = [
 				path: '/workflow',
 				redirect: '/workflow/new',
 			},
+			{
+				path: '/',
+				redirect: '/workflows',
+			},
 		],
 	},
 	{
 		path: projectsBaseRoute,
-		name: VIEWS.PROJECTS,
 		component: Projects,
 	},
 	// Catch old /credentials and /workflow routes and redirect to /projects

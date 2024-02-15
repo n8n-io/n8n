@@ -8,14 +8,14 @@ const router = useRouter();
 const route = useRoute();
 
 const redirectionSuccess = ref(false);
+const projectId = ref('home');
 
 onBeforeMount(async () => {
+	// TODO: Get the project id from the store
 	const oldRoutePatterns = Object.keys(oldRoutesToProjectMap).map(getPathAsRegexPattern);
-	if (oldRoutePatterns.some((pattern) => pattern.test(route.path))) {
-		// Get the project id from backend
-		const projectId = 'home';
-		await router.replace({ path: `/projects/${projectId}/${route.path}` });
-		redirectionSucccess.value = true;
+	if (oldRoutePatterns.some((pattern) => new RegExp(pattern).test(route.path))) {
+		await router.replace({ path: `/projects/${projectId.value}/${route.path}` });
+		redirectionSuccess.value = true;
 	}
 });
 </script>
