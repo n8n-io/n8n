@@ -2127,12 +2127,12 @@ export interface WorkflowTestData {
 	};
 	nock: {
 		baseUrl: string;
-		mocks: {
+		mocks: Array<{
 			method: string;
 			path: string;
 			statusCode: number;
 			responseBody: any;
-		}[];
+		}>;
 	};
 	trigger?: {
 		mode: WorkflowExecuteMode;
