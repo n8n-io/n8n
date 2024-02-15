@@ -3,6 +3,7 @@ import { Container } from 'typedi';
 import jwt from 'jsonwebtoken';
 import passport from 'passport';
 import { Strategy } from 'passport-jwt';
+import { BasicStrategy } from 'passport-http';
 import { sync as globSync } from 'fast-glob';
 import type { JwtPayload } from '@/Interfaces';
 import type { AuthenticatedRequest } from '@/requests';
@@ -12,6 +13,7 @@ import { canSkipAuth } from '@/decorators/registerController';
 import { Logger } from '@/Logger';
 import { JwtService } from '@/services/jwt.service';
 import config from '@/config';
+import { UserRepository } from '@db/repositories/user.repository';
 
 const jwtFromRequest = (req: Request) => {
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
@@ -36,6 +38,23 @@ const userManagementJwtAuth = (): RequestHandler => {
 	);
 
 	passport.use(jwtStrategy);
+	return passport.initialize();
+};
+
+const userManagementBasicAuth = (): RequestHandler => {
+	const basicStrategy = new BasicStrategy(async (name: string, password: string, done) => {
+		try {
+			const user = await Container.get(UserRepository).findOne({
+				where: { email: name },
+			});
+			return done(null, user);
+		} catch (error) {
+			Container.get(Logger).debug('Failed to extract user from basic auth payload', { name });
+			return done({ message: 'User not found' }, null);
+		}
+	});
+
+	passport.use(basicStrategy);
 	return passport.initialize();
 };
 
@@ -66,6 +85,8 @@ export const refreshExpiringCookie = (async (req: AuthenticatedRequest, res, nex
 	next();
 }) satisfies RequestHandler;
 
+// TODO: Oz: we can uncomment this to change the internal API auth to basic auth
+// const passportMiddleware = passport.authenticate('basic', { session: false }) as RequestHandler;
 const passportMiddleware = passport.authenticate('jwt', { session: false }) as RequestHandler;
 
 const staticAssets = globSync(['**/*.html', '**/*.svg', '**/*.png', '**/*.ico'], {
@@ -92,6 +113,7 @@ export const setupAuthMiddlewares = (
 	restEndpoint: string,
 ) => {
 	app.use(userManagementJwtAuth());
+	app.use(userManagementBasicAuth());
 
 	app.use(async (req: Request, res: Response, next: NextFunction) => {
 		if (
