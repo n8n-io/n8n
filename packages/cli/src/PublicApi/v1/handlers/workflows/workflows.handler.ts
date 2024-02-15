@@ -329,7 +329,8 @@ export = {
 				await updateTags(id, newTags);
 				tags = await getWorkflowTags(id);
 			} catch (error) {
-				if (error instanceof QueryFailedError && error.message.includes('SQLITE_CONSTRAINT')) {
+				// TODO: add a `ConstraintFailureError` in typeorm to handle when tags are missing here
+				if (error instanceof QueryFailedError) {
 					return res.status(404).json({ message: 'Some tags not found' });
 				} else {
 					throw error;
