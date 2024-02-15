@@ -2,6 +2,7 @@
 	<div class="node-error-view">
 		<!-- Main info: Message and description -->
 		<div class="node-error-view__header">
+			<!-- <div class="node-error-view__header-title">ERROR</div> -->
 			<div class="node-error-view__header-message" v-text="getErrorMessage()" />
 			<div
 				class="node-error-view__header-description"
@@ -137,6 +138,13 @@
 							</p>
 						</div>
 
+						<div class="node-error-view__details-row" v-if="error.context && error.context.causeDetailed">
+							<p class="node-error-view__details-label">Cause detailed</p>
+							<p class="node-error-view__details-value">
+								<pre class="node-error-view__details-value"><code>{{ error.context.causeDetailed }}</code></pre>
+							</p>
+						</div>
+
 						<div class="node-error-view__details-row" v-if="error.stack">
 							<p class="node-error-view__details-label">Stack trace</p>
 							<p class="node-error-view__details-value">
@@ -146,18 +154,6 @@
 					</div>
 				</details>
 
-				<!-- n8n stack trace -->
-				<!-- <details class="node-error-view__details" v-if="error.stack">
-					<summary class="node-error-view__details-summary">
-						<font-awesome-icon class="node-error-view__details-icon" icon="angle-right" />n8n
-						stacktrace
-					</summary>
-					<div class="node-error-view__details-content">
-						<div class="node-error-view__details-row">
-							<pre class="node-error-view__details-value"><code>{{ error.stack }}</code></pre>
-						</div>
-					</div>
-				</details> -->
 			</div>
 		</div>
 	</div>
@@ -165,90 +161,9 @@
 <!-- 	<br />
 	<hr />
 	<br />
-	<p>Ignore the stuff below</p>
-	<br />
-	<br />
-	<pre class="node-error-view__details-value"><code>{{ error }}</code></pre> -->
+	<pre class="node-error-view__details-value"><code>{{ error }}</code></pre>
+-->
 
-	<!-- <div>
-		<div>
-			Cause:
-			<div v-if="error.cause && displayCause">
-				<h4>Error.cause</h4>
-				<p>{{ error.cause }}</p>
-			</div>
-			Cause detailed:
-			<div v-if="error.context && error.context.causeDetailed">
-				<h4>Error.causedetailed</h4>
-				<p>{{ error.context.causeDetailed }}</p>
-			</div>
-		</div>
-
-		<details class="error-details">
-			<summary class="error-details__summary">
-				<font-awesome-icon class="error-details__icon" icon="angle-right" />Only for this feature
-				debugging!
-			</summary>
-			<div class="error-details__content">
-				<div class="error-details__content-row">
-					<pre class="node-error-view__details-value"><code>{{ error }}</code></pre>
-				</div>
-			</div>
-		</details>
-
-		<details>
-			<summary class="error-details__summary">
-				<font-awesome-icon class="error-details__icon" icon="angle-right" />
-				{{ $locale.baseText('nodeErrorView.details') }}
-			</summary>
-			<div class="error-details__content">
-				<div v-if="error.context && error.context.causeDetailed">
-					<el-card class="box-card" shadow="never">
-						<div>
-							{{ error.context.causeDetailed }}
-						</div>
-					</el-card>
-				</div>
-
-				<div v-if="error.cause">
-					<el-card class="box-card" shadow="never">
-						<template #header>
-							<div class="clearfix box-card__title">
-								<span>{{ $locale.baseText('nodeErrorView.cause') }}</span>
-								<br />
-								<span class="box-card__subtitle">{{
-									$locale.baseText('nodeErrorView.dataBelowMayContain')
-								}}</span>
-							</div>
-						</template>
-						<div>
-							<div v-if="displayCause" class="copy-button">
-								<n8n-icon-button
-									:title="$locale.baseText('nodeErrorView.copyToClipboard')"
-									icon="copy"
-									@click="copyCause"
-								/>
-							</div>
-							<VueJsonPretty
-								v-if="displayCause"
-								:data="error.cause"
-								:deep="3"
-								:show-length="true"
-								selectable-type="single"
-								path="error"
-								class="json-data"
-							/>
-							<span v-else>
-								<font-awesome-icon icon="info-circle" />{{
-									$locale.baseText('nodeErrorView.theErrorCauseIsTooLargeToBeDisplayed')
-								}}
-							</span>
-						</div>
-					</el-card>
-				</div>
-			</div>
-		</details>
-	</div> -->
 </template>
 
 <script lang="ts">
@@ -437,21 +352,35 @@ export default defineComponent({
 	&__header {
 		max-width: 960px;
 		margin: 0 auto var(--spacing-s) auto;
-		padding: var(--spacing-m);
+		// padding: var(--spacing-m);
+		padding-bottom: var(--spacing-4xs);
 		background-color: var(--color-background-xlight);
 		border: 1px solid var(--color-foreground-base);
 		border-radius: var(--border-radius-large);
 	}
 
-	&__header-message {
-		color: var(--color-primary);
+	&__header-title {
+		padding: var(--spacing-2xs) var(--spacing-s);
+		border-bottom: 1px solid var(--color-danger-tint-1);
+		font-size: var(--font-size-3xs);
+		font-weight: var(--font-weight-bold);
+		background-color: var(--color-danger-tint-2);
+		border-radius: var(--border-radius-large) var(--border-radius-large) 0 0;
 		color: var(--color-danger);
-		font-weight: bold;
+	}
+
+	&__header-message {
+		padding: var(--spacing-xs) var(--spacing-s) var(--spacing-3xs) var(--spacing-s);
+		// color: var(--color-primary);
+		color: var(--color-danger);
+		color: var(--color-danger);
+		font-weight: var(--font-weight-bold);
 		font-size: var(--font-size-s);
 	}
 
 	&__header-description {
-		margin-top: var(--spacing-2xs);
+		// margin-top: var(--spacing-2xs);
+		padding: 0 var(--spacing-s) var(--spacing-xs) var(--spacing-s);
 		font-size: var(--font-size-s);
 	}
 
@@ -466,7 +395,7 @@ export default defineComponent({
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		padding: var(--spacing-3xs) var(--spacing-3xs) var(--spacing-3xs) var(--spacing-m) ;
+		padding: var(--spacing-3xs) var(--spacing-3xs) var(--spacing-3xs) var(--spacing-s) ;
 		border-bottom: 1px solid var(--color-foreground-base);
 	}
 
@@ -477,7 +406,7 @@ export default defineComponent({
 	}
 
 	&__info-content {
-		padding: var(--spacing-xs) var(--spacing-m);
+		padding: var(--spacing-2xs) var(--spacing-s);
 	}
 
 	&__details {
@@ -490,8 +419,8 @@ export default defineComponent({
 	&__details-summary {
 		padding: var(--spacing-5xs) 0;
 		font-size: var(--font-size-2xs);
-		font-weight: var(--font-weight-bold);
-		color: var(--color-text);
+		// font-weight: var(--font-weight-bold);
+		color: var(--color-text-dark);
 		cursor: pointer;
 		list-style-type: none;
 		outline: none;
@@ -499,7 +428,7 @@ export default defineComponent({
 
 	&__details-content {
 		// margin-top: var(--spacing-3xs);
-		padding: var(--spacing-2xs) var(--spacing-m);
+		padding: var(--spacing-2xs) var(--spacing-s);
 	}
 
 	&__details-row {
