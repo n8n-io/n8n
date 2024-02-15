@@ -99,8 +99,7 @@ export class ToolCode implements INodeType {
 					},
 				},
 				typeOptions: {
-					editor: 'codeNodeEditor',
-					editorLanguage: 'javaScript',
+					editor: 'jsEditor',
 				},
 				default:
 					'// Example: convert the incoming query to uppercase and return it\nreturn query.toUpperCase()',
@@ -120,7 +119,7 @@ export class ToolCode implements INodeType {
 					},
 				},
 				typeOptions: {
-					editor: 'codeNodeEditor',
+					editor: 'codeNodeEditor', // TODO: create a separate `pythonEditor` component
 					editorLanguage: 'python',
 				},
 				default:
