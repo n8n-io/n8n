@@ -56,18 +56,6 @@ const SettingsAuditLogs = async () => await import('./views/SettingsAuditLogs.vu
 const WorkerView = async () => await import('./views/WorkerView.vue');
 const WorkflowOnboardingView = async () => await import('@/views/WorkflowOnboardingView.vue');
 
-import { projectsRoutes } from '@/features/projects/projects-routes';
-
-function getTemplatesRedirect(defaultRedirect: VIEWS[keyof VIEWS]) {
-	const settingsStore = useSettingsStore();
-	const isTemplatesEnabled: boolean = settingsStore.isTemplatesEnabled;
-	if (!isTemplatesEnabled) {
-		return { name: defaultRedirect || VIEWS.NOT_FOUND };
-	}
-
-	return false;
-}
-
 export const routes = [
 	{
 		path: '/',
@@ -201,21 +189,6 @@ export const routes = [
 			sidebar: MainSidebar,
 		},
 		meta: {
-			middleware: ['authenticated'],
-		},
-	},
-	{
-		path: '/workflows/templates/:id',
-		name: VIEWS.TEMPLATE_IMPORT,
-		components: {
-			default: NodeView,
-			header: MainHeader,
-			sidebar: MainSidebar,
-		},
-		meta: {
-			templatesEnabled: true,
-			keepWorkflowAlive: true,
-			getRedirect: getTemplatesRedirect,
 			middleware: ['authenticated'],
 		},
 	},

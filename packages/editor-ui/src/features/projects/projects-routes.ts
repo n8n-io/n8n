@@ -3,8 +3,9 @@ import { EnterpriseEditionFeature, VIEWS } from '@/constants';
 import {
 	projectsBaseRoute,
 	projectsRoute,
-	oldRoutesToProjectMap,
+	oldRoutesToRedirectToProjects,
 } from '@/features/projects/projects-constants';
+import { getTemplatesRedirect } from '@/utils/routeUtils';
 
 const MainHeader = async () => await import('@/components/MainHeader/MainHeader.vue');
 const MainSidebar = async () => await import('@/components/MainSidebar.vue');
@@ -34,6 +35,21 @@ export const projectsRoutes: Readonly<RouteRecordRaw[]> = [
 					sidebar: MainSidebar,
 				},
 				meta: {
+					middleware: ['authenticated'],
+				},
+			},
+			{
+				path: '/workflows/templates/:id',
+				name: VIEWS.TEMPLATE_IMPORT,
+				components: {
+					default: NodeView,
+					header: MainHeader,
+					sidebar: MainSidebar,
+				},
+				meta: {
+					templatesEnabled: true,
+					keepWorkflowAlive: true,
+					getRedirect: getTemplatesRedirect,
 					middleware: ['authenticated'],
 				},
 			},
@@ -163,7 +179,7 @@ export const projectsRoutes: Readonly<RouteRecordRaw[]> = [
 		component: Projects,
 	},
 	// Catch old /credentials and /workflow routes and redirect to /projects
-	...Object.keys(oldRoutesToProjectMap).map((oldRoute) => ({
+	...oldRoutesToRedirectToProjects.map((oldRoute) => ({
 		path: oldRoute,
 		redirect: projectsBaseRoute,
 	})),
