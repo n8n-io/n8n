@@ -424,9 +424,8 @@ export class GraphQL implements INodeType {
 					requestOptions.qs.query = gqlQuery;
 				} else {
 					if (requestFormat === 'json') {
-						const jsonBody = requestOptions.body as IDataObject;
-						requestOptions.body = {
-							...jsonBody,
+						const jsonBody = {
+							...requestOptions.body,
 							query: gqlQuery,
 							variables: this.getNodeParameter('variables', itemIndex, {}) as object,
 							operationName: this.getNodeParameter('operationName', itemIndex) as string,
@@ -449,6 +448,7 @@ export class GraphQL implements INodeType {
 							jsonBody.operationName = null;
 						}
 						requestOptions.json = true;
+						requestOptions.body = jsonBody;
 					} else {
 						requestOptions.body = gqlQuery;
 					}
