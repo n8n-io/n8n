@@ -2125,6 +2125,15 @@ export interface WorkflowTestData {
 			[key: string]: any[][];
 		};
 	};
+	nock: {
+		baseUrl: string;
+		mocks: Array<{
+			method: string;
+			path: string;
+			statusCode: number;
+			responseBody: any;
+		}>;
+	};
 	trigger?: {
 		mode: WorkflowExecuteMode;
 		input: INodeExecutionData;
