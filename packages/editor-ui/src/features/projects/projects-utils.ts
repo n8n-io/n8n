@@ -1,8 +1,6 @@
-export const routeMapping = {
-	'old-path': '/new-path',
-	'another-old-path': '/another-new-path',
-};
+import { oldRoutesToProjectMap } from '@/features/projects/projects-constants';
 
-export const translateOldRouteToNew = (oldRoute: keyof typeof routeMapping) => {
-	return routeMapping[oldRoute] || '/fallback-path';
-};
+export const translateOldRouteToProjectRoute = (
+	oldRoute: keyof typeof oldRoutesToProjectMap,
+	projectId: string,
+) => oldRoutesToProjectMap[oldRoute].replace(':projectId', projectId);
