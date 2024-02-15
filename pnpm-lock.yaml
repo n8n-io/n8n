@@ -548,6 +548,9 @@ importers:
       passport-cookie:
         specifier: 1.0.9
         version: 1.0.9
+      passport-http:
+        specifier: 0.3.0
+        version: 0.3.0
       passport-jwt:
         specifier: 4.0.1
         version: 4.0.1
@@ -672,6 +675,9 @@ importers:
       '@types/lodash':
         specifier: ^4.14.195
         version: 4.14.195
+      '@types/passport-http':
+        specifier: ^0.3.11
+        version: 0.3.11
       '@types/passport-jwt':
         specifier: ^3.0.6
         version: 3.0.7
@@ -10358,6 +10364,13 @@ packages:
 
   /@types/parse-json@4.0.0:
     resolution: {integrity: sha512-//oorEZjL6sbPcKUaCdIGlIUeH26mgzimjBB77G6XRgnDl/L5wOnpyBGRe/Mmf5CVW3PwEBE1NjiMZ/ssFh4wA==}
+    dev: true
+
+  /@types/passport-http@0.3.11:
+    resolution: {integrity: sha512-FO0rDRYtuha9m2ZgRx5+jrgrrkAnUzgzdItFI0dwKBC6k9pArK677Gtan67u6+Qah2nXVP3M1uZ5p90SpBT5Zg==}
+    dependencies:
+      '@types/express': 4.17.14
+      '@types/passport': 1.0.11
     dev: true
 
   /@types/passport-jwt@3.0.7:
@@ -21268,6 +21281,13 @@ packages:
   /passport-cookie@1.0.9:
     resolution: {integrity: sha512-8a6foX2bbGoJzup0RAiNcC2tTqzYS46RQEK3Z4u8p86wesPUjgDaji3C7+5j4TGyCq4ZoOV+3YLw1Hy6cV6kyw==}
     engines: {node: '>= 0.10.0'}
+    dependencies:
+      passport-strategy: 1.0.0
+    dev: false
+
+  /passport-http@0.3.0:
+    resolution: {integrity: sha512-OwK9DkqGVlJfO8oD0Bz1VDIo+ijD3c1ZbGGozIZw+joIP0U60pXY7goB+8wiDWtNqHpkTaQiJ9Ux1jE3Ykmpuw==}
+    engines: {node: '>= 0.4.0'}
     dependencies:
       passport-strategy: 1.0.0
     dev: false
