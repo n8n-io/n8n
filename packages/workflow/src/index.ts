@@ -33,6 +33,7 @@ export {
 	fileTypeFromMimeType,
 	assert,
 	removeCircularRefs,
+	updateDisplayOptions,
 } from './utils';
 export {
 	isINodeProperties,
