@@ -1,3 +1,43 @@
+# [1.29.0](https://github.com/n8n-io/n8n/compare/n8n@1.28.0...n8n@1.29.0) (2024-02-15)
+
+
+### Bug Fixes
+
+* **core:** Custom workflow tool tweaks  ([#8561](https://github.com/n8n-io/n8n/issues/8561)) ([ccc0ad5](https://github.com/n8n-io/n8n/commit/ccc0ad5009b2d547accfc34a9c0917114fd19c81))
+* **core:** Give better error message if `executions.process` is still used in the configs ([#8618](https://github.com/n8n-io/n8n/issues/8618)) ([cd8ca84](https://github.com/n8n-io/n8n/commit/cd8ca8412d02090af07d8657283b7637178c975c))
+* **core:** Improve the startup error when EXECUTIONS_PROCESS is set ([#8630](https://github.com/n8n-io/n8n/issues/8630)) ([a2a3ca1](https://github.com/n8n-io/n8n/commit/a2a3ca160f253b3b09f83bdc6dec11987971e464))
+* **core:** Upgrade `@n8n/typeorm` to address postgres timestamp issues ([#8627](https://github.com/n8n-io/n8n/issues/8627)) ([68498cb](https://github.com/n8n-io/n8n/commit/68498cb72a16d587c4b24f9fe5e8ac2450cd78b9))
+* **core:** Upgrade rudderstack sdk to address npm postInstall issues ([#8568](https://github.com/n8n-io/n8n/issues/8568)) ([5750e8e](https://github.com/n8n-io/n8n/commit/5750e8e88ed59b40d5115416c8afe227cb64c70e))
+* **editor:** Debounce expression changes ([#8629](https://github.com/n8n-io/n8n/issues/8629)) ([9c7e026](https://github.com/n8n-io/n8n/commit/9c7e0266ee1c2112649772ca553bff429dcabc2d))
+* **Execute Workflow Node:** Passing the workflow that is supposed to be executed as a paramter ([#8614](https://github.com/n8n-io/n8n/issues/8614)) ([b54488a](https://github.com/n8n-io/n8n/commit/b54488ada53a9941f5fd4d3cab8d39bd81b22f4a))
+* Fix resolving of expressions of deeply nested sub-nodes ([#8612](https://github.com/n8n-io/n8n/issues/8612)) ([f527430](https://github.com/n8n-io/n8n/commit/f5274302f843c34f0a8a0b3eb51e7f9262fe0ea4))
+* **FTP Node:** Fix issue with connections not closing properly ([#8619](https://github.com/n8n-io/n8n/issues/8619)) ([e597fbc](https://github.com/n8n-io/n8n/commit/e597fbc78ff60ce495eecd9ffdffda801ed90b66))
+* **FTP Node:** Fix issue with paireditems not always working ([#8613](https://github.com/n8n-io/n8n/issues/8613)) ([d38a822](https://github.com/n8n-io/n8n/commit/d38a822b9501a8730c9cf097a9372e96080e8722))
+* **Google Sheets Trigger Node:** First non-header row is ignored when using on row added event ([#8580](https://github.com/n8n-io/n8n/issues/8580)) ([2db8231](https://github.com/n8n-io/n8n/commit/2db8231af5baed941b5250af373898c3924d3baa))
+* **HTTP Request Node:** Errorneous binary object without content-disposition response header ([#8583](https://github.com/n8n-io/n8n/issues/8583)) ([e28b374](https://github.com/n8n-io/n8n/commit/e28b374170725efeff59ac39e4ba6385bf834e7f))
+* **HTTP Request Node:** Handle special characters in pagination expressions + improve hint text ([#8576](https://github.com/n8n-io/n8n/issues/8576)) ([3b2078c](https://github.com/n8n-io/n8n/commit/3b2078c3caf2a5acee48fed3055b47dbfe0af44a))
+* **Jira Software Node:** Fix issue with not all issue types being supported ([#8571](https://github.com/n8n-io/n8n/issues/8571)) ([a6211c9](https://github.com/n8n-io/n8n/commit/a6211c9a5df9513ef057be1bfb78b4e0e2a75c2f))
+* **Merge Node:** Fixing how paired items are handled in the merge node, when choosing a branch and selecting to return an empty object ([#8479](https://github.com/n8n-io/n8n/issues/8479)) ([a3bed97](https://github.com/n8n-io/n8n/commit/a3bed97883ece25ffb4ab3a8246418b123c92e52))
+* **Microsoft Outlook Node:** Download executes more than once per incoming item ([#8566](https://github.com/n8n-io/n8n/issues/8566)) ([053fb5f](https://github.com/n8n-io/n8n/commit/053fb5ff7a3a4ce30b35fa6c830787b935ebaf63))
+* **Notion Node:** Block with text results in a body validation error ([#8622](https://github.com/n8n-io/n8n/issues/8622)) ([6bc1c3d](https://github.com/n8n-io/n8n/commit/6bc1c3d7a83436ee3b3520adf4b52f59f2b4231c))
+* **RSS Feed Trigger Node:** Save last item's date instead of last execution date ([#8572](https://github.com/n8n-io/n8n/issues/8572)) ([a822588](https://github.com/n8n-io/n8n/commit/a822588012b66711f37d3ca363fcd04742eda1b8))
+* **Wait Node:** Account for workflow timezone in Wait node datetime ([#8578](https://github.com/n8n-io/n8n/issues/8578)) ([1116a28](https://github.com/n8n-io/n8n/commit/1116a28b4582cae93e9d44890cfe020cd813521c))
+
+
+### Features
+
+* Add support for AI log streaming ([#8526](https://github.com/n8n-io/n8n/issues/8526)) ([7501ad8](https://github.com/n8n-io/n8n/commit/7501ad8f3c56d9fcc5f4ec3d6fc468ab9cdb5024))
+* Add telemetry event when users click on templates link ([#8625](https://github.com/n8n-io/n8n/issues/8625)) ([bf4f896](https://github.com/n8n-io/n8n/commit/bf4f896373acb2530a8f322cd612a3de616d6d15))
+* **API:** Add tag support to public API ([#8588](https://github.com/n8n-io/n8n/issues/8588)) ([a743a40](https://github.com/n8n-io/n8n/commit/a743a4037674ccb68a311daa5511cb48de6c9bfa))
+* **Convert to File Node:** Operation to convert a string in a plain text file, option to format JSON when creating file ([#8620](https://github.com/n8n-io/n8n/issues/8620)) ([d18cba3](https://github.com/n8n-io/n8n/commit/d18cba37a4a690cb3b4cd4259d27aedaa97193e4))
+* **core:** Migrate to n8n's typeorm fork ([#8590](https://github.com/n8n-io/n8n/issues/8590)) ([8e392cf](https://github.com/n8n-io/n8n/commit/8e392cfc1dd103a00b3a0e7c186cbfad989a5080))
+* **editor:** Use website as the main templates repository ([#8591](https://github.com/n8n-io/n8n/issues/8591)) ([79b09fd](https://github.com/n8n-io/n8n/commit/79b09fdf84860eee4c80e0c7eb7e320f6e05eabb))
+* **HTML Extract Node:** Better text extraction, option to specify selectors to skip, option to clean up text data ([#8586](https://github.com/n8n-io/n8n/issues/8586)) ([32281d1](https://github.com/n8n-io/n8n/commit/32281d12d775281e4b8e419d76e46ca9e3b47267))
+* **OpenAI Node:** Overhaul ([#8335](https://github.com/n8n-io/n8n/issues/8335)) ([941278d](https://github.com/n8n-io/n8n/commit/941278db6880ae3734a7a37aa03d7e6106ee5009))
+* Upgrade typeorm, sqlite3, and pg/pg-promise ([#8579](https://github.com/n8n-io/n8n/issues/8579)) ([7826bd8](https://github.com/n8n-io/n8n/commit/7826bd842a8e1548c1eab8fff942d2efe8b3dc75))
+
+
+
 # [1.28.0](https://github.com/n8n-io/n8n/compare/n8n@1.27.0...n8n@1.28.0) (2024-02-07)
 
 
