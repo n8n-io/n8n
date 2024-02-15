@@ -1,7 +1,7 @@
 import type express from 'express';
 import { Container } from 'typedi';
 
-import { clean, getAllUsersAndCount, getUser } from './users.service.ee';
+import {clean, createUser, getAllUsersAndCount, getUser} from './users.service.ee';
 
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 import {
@@ -13,6 +13,16 @@ import type { UserRequest } from '@/requests';
 import { InternalHooks } from '@/InternalHooks';
 
 export = {
+	createUser: [
+		authorize(['global:owner']),
+		async (req: UserRequest.Create, res: express.Response) => {
+			const { email } = req.body;
+
+			const user = await createUser(email);
+
+			return res.json(user);
+		},
+	],
 	getUser: [
 		validLicenseWithUserQuota,
 		authorize(['global:owner', 'global:admin']),

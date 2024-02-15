@@ -220,6 +220,8 @@ export declare namespace PasswordResetRequest {
 // ----------------------------------
 
 export declare namespace UserRequest {
+	export type Create = AuthenticatedRequest<{}, {}, { email: string; }>;
+
 	export type Invite = AuthenticatedRequest<
 		{},
 		{},

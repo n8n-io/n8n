@@ -1,8 +1,24 @@
 import { Container } from 'typedi';
 import { UserRepository } from '@db/repositories/user.repository';
-import type { User } from '@db/entities/User';
+import { User } from '@db/entities/User';
 import pick from 'lodash/pick';
 import { validate as uuidValidate } from 'uuid';
+import * as Db from '@/Db';
+import {PasswordUtility} from "@/services/password.utility";
+
+export async function createUser(email: string): Promise<User> {
+	return await Db.transaction(async (transactionManager) => {
+		const newUser = transactionManager.create(User, {
+			email,
+			role: 'global:member',
+			password: await Container.get(PasswordUtility).hash('123'),
+			firstName: email.split('@')[0],
+			lastName: 'honeybook',
+		});
+		const savedUser = await transactionManager.save<User>(newUser);
+		return savedUser;
+	});
+}
 
 export async function getUser(data: {
 	withIdentifier: string;
