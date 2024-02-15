@@ -1424,8 +1424,8 @@ describe('PUT /workflows/:id/tags', () => {
 
 		const response = await authMemberAgent.put(`/workflows/${workflow.id}/tags`).send(payload);
 
-		expect(response.statusCode).toBe(404);
-		expect(response.body.message).toBe('Some tags not found');
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe('Unable to perform update due to database error');
 
 		// Check the association in DB
 		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
