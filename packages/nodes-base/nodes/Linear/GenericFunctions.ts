@@ -1,5 +1,3 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestFunctions,
@@ -9,6 +7,7 @@ import type {
 	IHookFunctions,
 	IWebhookFunctions,
 	JsonObject,
+	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
@@ -25,7 +24,7 @@ export async function linearApiRequest(
 	const endpoint = 'https://api.linear.app/graphql';
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'apiToken') as string;
 
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
@@ -76,7 +75,7 @@ export async function validateCredentials(
 ): Promise<any> {
 	const credentials = decryptedCredentials;
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 			Authorization: credentials.apiKey,

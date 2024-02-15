@@ -9,10 +9,10 @@ import type {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import type { OptionsWithUri } from 'request';
 import moment from 'moment-timezone';
 import jwt from 'jsonwebtoken';
 import type { IMessage, IMessageUi } from './MessageInterface';
@@ -154,7 +154,7 @@ export class GoogleChat implements INodeType {
 						},
 					);
 
-					const options: OptionsWithUri = {
+					const options: IRequestOptions = {
 						headers: {
 							'Content-Type': 'application/x-www-form-urlencoded',
 						},
