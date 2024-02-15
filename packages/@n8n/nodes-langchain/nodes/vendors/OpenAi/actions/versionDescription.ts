@@ -61,7 +61,7 @@ export const versionDescription: INodeTypeDescription = {
 	group: ['transform'],
 	version: 1,
 	subtitle: `={{(${prettifyOperation})($parameter.resource, $parameter.operation)}}`,
-	description: 'Message an assistant or GPT, analyse images, generate audio, etc.',
+	description: 'Message an assistant or GPT, analyze images, generate audio, etc.',
 	defaults: {
 		name: 'OpenAI',
 	},

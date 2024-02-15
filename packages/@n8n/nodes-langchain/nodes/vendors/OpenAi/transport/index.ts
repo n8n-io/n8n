@@ -1,4 +1,9 @@
-import type { IDataObject, IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	IHttpRequestMethods,
+	ILoadOptionsFunctions,
+} from 'n8n-workflow';
 type RequestParameters = {
 	headers?: IDataObject;
 	body?: IDataObject | string;
@@ -9,7 +14,7 @@ type RequestParameters = {
 
 export async function apiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	parameters?: RequestParameters,
 ) {

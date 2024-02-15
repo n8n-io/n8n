@@ -44,7 +44,7 @@ const properties: INodeProperties[] = [
 		type: 'boolean',
 		default: false,
 		description:
-			'Whether to enable the code interpreter that allows the ssistants to write and run Python code in a sandboxed execution environment, find more <a href="https://platform.openai.com/docs/assistants/tools/code-interpreter" target="_blank">here</a>',
+			'Whether to enable the code interpreter that allows the assistants to write and run Python code in a sandboxed execution environment, find more <a href="https://platform.openai.com/docs/assistants/tools/code-interpreter" target="_blank">here</a>',
 	},
 	{
 		displayName: 'Knowledge Retrieval',

@@ -157,7 +157,7 @@ const properties: INodeProperties[] = [
 				default: 'vivid',
 			},
 			{
-				displayName: 'Responde with Image URL(s)',
+				displayName: 'Respond with Image URL(s)',
 				name: 'returnImageUrls',
 				type: 'boolean',
 				default: false,

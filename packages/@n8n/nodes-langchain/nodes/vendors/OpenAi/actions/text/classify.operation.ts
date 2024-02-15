@@ -34,7 +34,7 @@ const properties: INodeProperties[] = [
 				type: 'boolean',
 				default: false,
 				description:
-					'Whether to use the stable version of the model instead of the latest version, accuracy may be sligthly lower',
+					'Whether to use the stable version of the model instead of the latest version, accuracy may be slightly lower',
 			},
 		],
 	},

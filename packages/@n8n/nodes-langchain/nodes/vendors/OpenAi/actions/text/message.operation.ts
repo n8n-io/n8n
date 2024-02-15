@@ -60,7 +60,7 @@ const properties: INodeProperties[] = [
 								name: 'System',
 								value: 'system',
 								description:
-									"Usualy used to set the model's behavior or context for the next user message",
+									"Usually used to set the model's behavior or context for the next user message",
 							},
 						],
 						default: 'user',
