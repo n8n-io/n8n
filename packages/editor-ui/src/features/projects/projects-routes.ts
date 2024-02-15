@@ -160,6 +160,6 @@ export const projectsRoutes: Readonly<RouteRecordRaw[]> = [
 	// Catch old /credentials and /workflow routes and redirect to /projects
 	...Object.keys(oldRoutesToProjectMap).map((oldRoute) => ({
 		path: oldRoute,
-		redirect: '/projects',
+		redirect: projectsBaseRoute,
 	})),
 ];
