@@ -32,7 +32,7 @@ export async function honeyBookApiRequest(
 		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
 		}
-
+		// TODO: get honeybook credentials from n8n internal api
 		return await this.helpers.requestWithAuthentication.call(this, 'honeyBookApi', options);
 	} catch (error) {
 		console.log('=== HB API REQUEST ERROR ===', error);
