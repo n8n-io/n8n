@@ -19,6 +19,8 @@ import { middleware } from '@/rbac/middleware';
 import type { RouteConfig, RouterMiddleware } from '@/types/router';
 import { initializeCore } from '@/init';
 import { tryToParseNumber } from '@/utils/typesUtils';
+import { getTemplatesRedirect } from '@/utils/routeUtils';
+import { projectsRoutes } from '@/features/projects/projects-routes';
 
 const ChangePasswordView = async () => await import('./views/ChangePasswordView.vue');
 const ErrorView = async () => await import('./views/ErrorView.vue');
@@ -54,18 +56,6 @@ const SettingsExternalSecrets = async () => await import('./views/SettingsExtern
 const SettingsAuditLogs = async () => await import('./views/SettingsAuditLogs.vue');
 const WorkerView = async () => await import('./views/WorkerView.vue');
 const WorkflowOnboardingView = async () => await import('@/views/WorkflowOnboardingView.vue');
-
-import { projectsRoutes } from '@/features/projects/projects-routes';
-
-function getTemplatesRedirect(defaultRedirect: VIEWS[keyof VIEWS]) {
-	const settingsStore = useSettingsStore();
-	const isTemplatesEnabled: boolean = settingsStore.isTemplatesEnabled;
-	if (!isTemplatesEnabled) {
-		return { name: defaultRedirect || VIEWS.NOT_FOUND };
-	}
-
-	return false;
-}
 
 export const routes = [
 	{
@@ -208,21 +198,6 @@ export const routes = [
 			sidebar: MainSidebar,
 		},
 		meta: {
-			middleware: ['authenticated'],
-		},
-	},
-	{
-		path: '/workflows/templates/:id',
-		name: VIEWS.TEMPLATE_IMPORT,
-		components: {
-			default: NodeView,
-			header: MainHeader,
-			sidebar: MainSidebar,
-		},
-		meta: {
-			templatesEnabled: true,
-			keepWorkflowAlive: true,
-			getRedirect: getTemplatesRedirect,
 			middleware: ['authenticated'],
 		},
 	},
