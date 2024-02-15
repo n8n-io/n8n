@@ -9,12 +9,13 @@ import type {
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 	IHttpRequestOptions,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 
 export async function awsApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	service: string,
-	method: string,
+	method: IHttpRequestMethods,
 	path: string,
 	body?: string | Buffer | any,
 	query: IDataObject = {},
@@ -43,7 +44,7 @@ export async function awsApiRequest(
 export async function awsApiRequestREST(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	service: string,
-	method: string,
+	method: IHttpRequestMethods,
 	path: string,
 	body?: string | Buffer | any,
 	query: IDataObject = {},
@@ -83,7 +84,7 @@ export async function awsApiRequestRESTAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	service: string,
-	method: string,
+	method: IHttpRequestMethods,
 	path: string,
 	body?: string,
 	query: IDataObject = {},
