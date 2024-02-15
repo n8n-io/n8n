@@ -15,4 +15,17 @@ export class ProjectRepository extends Repository<Project> {
 	async getPersonalProjectForUserOrFail(userId: string) {
 		return await this.findOneOrFail({ where: { projectRelations: { userId } } });
 	}
+
+	async getAccessibleProjects(userId: string) {
+		return await this.find({
+			where: [
+				{ type: 'personal' },
+				{
+					projectRelations: {
+						userId,
+					},
+				},
+			],
+		});
+	}
 }

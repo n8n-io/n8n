@@ -20,6 +20,8 @@ import type { Variables } from '@db/entities/Variables';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { WorkflowHistory } from '@db/entities/WorkflowHistory';
+import type { Project } from '@db/entities/Project';
+import type { ProjectRole } from './databases/entities/ProjectRelation';
 
 export class UserUpdatePayload implements Pick<User, 'email' | 'firstName' | 'lastName'> {
 	@IsEmail()
@@ -497,4 +499,31 @@ export declare namespace ActiveWorkflowRequest {
 	type GetAllActive = AuthenticatedRequest;
 
 	type GetActivationError = AuthenticatedRequest<{ id: string }>;
+}
+
+// ----------------------------------
+//           /projects
+// ----------------------------------
+
+export declare namespace ProjectRequest {
+	type GetAll = AuthenticatedRequest<{}, Project[]>;
+
+	type Create = AuthenticatedRequest<
+		{},
+		Project,
+		{
+			name: string;
+		}
+	>;
+
+	type GetMyProjects = AuthenticatedRequest<{}, Array<Project & { role: ProjectRole }>>;
+
+	type GetPersonalProject = AuthenticatedRequest<{}, Project>;
+
+	type ProjectRelationPayload = { userId: string; role: ProjectRole };
+	type SetProjectRelations = AuthenticatedRequest<
+		{ projectId: string },
+		{},
+		{ relations: ProjectRelationPayload[] }
+	>;
 }

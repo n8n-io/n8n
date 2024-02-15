@@ -255,6 +255,11 @@ export const setupTestServer = ({
 						const { DebugController } = await import('@/controllers/debug.controller');
 						registerController(app, DebugController);
 						break;
+
+					case 'project':
+						const { ProjectController } = await import('@/controllers/project.controller');
+						registerController(app, ProjectController);
+						break;
 				}
 			}
 		}
