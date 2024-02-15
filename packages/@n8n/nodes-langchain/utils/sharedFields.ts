@@ -105,9 +105,12 @@ export function getConnectionHintNoticeField(
 
 	if (groupedConnections.size === 1) {
 		const [[connection, locales]] = Array.from(groupedConnections);
-		displayName = `This node must be connected to ${determineArticle(
-			locales[0],
-		)} ${locales[0].toLowerCase()}. <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='${connection}'>Insert one</a>`;
+		displayName = `This node must be connected to ${determineArticle(locales[0])} ${locales[0]
+			.toLowerCase()
+			.replace(
+				/^ai /,
+				'AI ',
+			)}. <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='${connection}'>Insert one</a>`;
 	} else {
 		const ahrefs = Array.from(groupedConnections, ([connection, locales]) => {
 			// If there are multiple locales, join them with ' or '
