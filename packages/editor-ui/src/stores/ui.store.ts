@@ -64,6 +64,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { hasPermission } from '@/rbac/permissions';
 import { useTelemetryStore } from '@/stores/telemetry.store';
+import { useUsersStore } from '@/stores/users.store';
 import { dismissBannerPermanently } from '@/api/ui';
 import type { BannerName } from 'n8n-workflow';
 import {
@@ -73,7 +74,6 @@ import {
 	isValidTheme,
 	updateTheme,
 } from './ui.utils';
-import { useUsersStore } from './users.store';
 
 let savedTheme: ThemeOption = 'system';
 try {
@@ -469,23 +469,20 @@ export const useUIStore = defineStore(STORES.UI, {
 		async getNextOnboardingPrompt(): Promise<IOnboardingCallPrompt> {
 			const rootStore = useRootStore();
 			const instanceId = rootStore.instanceId;
-			// TODO: current USER
-			const currentUser = {} as IUser;
+			const { currentUser } = useUsersStore();
 			return await fetchNextOnboardingPrompt(instanceId, currentUser);
 		},
 		async applyForOnboardingCall(email: string): Promise<string> {
 			const rootStore = useRootStore();
 			const instanceId = rootStore.instanceId;
-			// TODO: current USER
-			const currentUser = {} as IUser;
+			const { currentUser } = useUsersStore();
 			return await applyForOnboardingCall(instanceId, currentUser, email);
 		},
 		async submitContactEmail(email: string, agree: boolean): Promise<string> {
 			const rootStore = useRootStore();
 			const instanceId = rootStore.instanceId;
-			// TODO: current USER
-			const currentUser = {} as IUser;
-			return await submitEmailOnSignup(instanceId, currentUser, email || currentUser.email, agree);
+			const { currentUser } = useUsersStore();
+			return await submitEmailOnSignup(instanceId, currentUser, email || currentUser?.email, agree);
 		},
 		openCommunityPackageUninstallConfirmModal(packageName: string) {
 			this.setActiveId(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, packageName);

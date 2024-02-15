@@ -7,25 +7,25 @@ const CONTACT_EMAIL_SUBMISSION_ENDPOINT = '/accounts/onboarding';
 
 export async function fetchNextOnboardingPrompt(
 	instanceId: string,
-	currentUser: IUser,
+	currentUser: IUser | null,
 ): Promise<IOnboardingCallPrompt> {
 	return await get(N8N_API_BASE_URL, ONBOARDING_PROMPTS_ENDPOINT, {
 		instance_id: instanceId,
-		user_id: `${instanceId}#${currentUser.id}`,
-		is_owner: currentUser.isOwner,
-		survey_results: currentUser.personalizationAnswers,
+		user_id: `${instanceId}#${currentUser?.id}`,
+		is_owner: currentUser?.isOwner || false,
+		survey_results: currentUser?.personalizationAnswers,
 	});
 }
 
 export async function applyForOnboardingCall(
 	instanceId: string,
-	currentUser: IUser,
+	currentUser: IUser | null,
 	email: string,
 ): Promise<string> {
 	try {
 		const response = await post(N8N_API_BASE_URL, ONBOARDING_PROMPTS_ENDPOINT, {
 			instance_id: instanceId,
-			user_id: `${instanceId}#${currentUser.id}`,
+			user_id: `${instanceId}#${currentUser?.id}`,
 			email,
 		});
 		return response;
@@ -36,13 +36,13 @@ export async function applyForOnboardingCall(
 
 export async function submitEmailOnSignup(
 	instanceId: string,
-	currentUser: IUser,
+	currentUser: IUser | null,
 	email: string | undefined,
 	agree: boolean,
 ): Promise<string> {
 	return await post(N8N_API_BASE_URL, CONTACT_EMAIL_SUBMISSION_ENDPOINT, {
 		instance_id: instanceId,
-		user_id: `${instanceId}#${currentUser.id}`,
+		user_id: `${instanceId}#${currentUser?.id}`,
 		email,
 		agree,
 	});
