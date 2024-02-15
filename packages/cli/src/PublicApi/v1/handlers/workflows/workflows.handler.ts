@@ -329,10 +329,8 @@ export = {
 				await updateTags(id, newTags);
 				tags = await getWorkflowTags(id);
 			} catch (error) {
-				if (error instanceof QueryFailedError) {
-					return res
-						.status(400)
-						.json({ message: 'Unable to perform update due to database error' });
+				if (error instanceof QueryFailedError && 'constraint' in error) {
+					return res.status(404).json({ message: 'Some tags not found' });
 				} else {
 					throw error;
 				}
