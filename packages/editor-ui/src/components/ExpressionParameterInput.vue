@@ -62,6 +62,7 @@ import { createExpressionTelemetryPayload } from '@/utils/telemetryUtils';
 import type { Segment } from '@/types/expressions';
 import type { TargetItem } from '@/Interface';
 import type { IDataObject } from 'n8n-workflow';
+import { useDebounce } from '@/composables/useDebounce';
 
 type InlineExpressionEditorInputRef = InstanceType<typeof InlineExpressionEditorInput>;
 
@@ -95,6 +96,10 @@ export default defineComponent({
 			type: Object as PropType<IDataObject>,
 			default: () => ({}),
 		},
+	},
+	setup() {
+		const { callDebounced } = useDebounce();
+		return { callDebounced };
 	},
 	data() {
 		return {
@@ -154,7 +159,10 @@ export default defineComponent({
 				this.$telemetry.track('User closed Expression Editor', telemetryPayload);
 			}
 		},
-		onChange({ value, segments }: { value: string; segments: Segment[] }) {
+		onChange(value: { value: string; segments: Segment[] }) {
+			void this.callDebounced(this.onChangeDebounced, { debounceTime: 100, trailing: true }, value);
+		},
+		onChangeDebounced({ value, segments }: { value: string; segments: Segment[] }) {
 			this.segments = segments;
 
 			if (this.isDragging) return;

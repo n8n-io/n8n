@@ -83,11 +83,6 @@ export abstract class BaseCommand extends Command {
 				'Support for MySQL/MariaDB has been deprecated and will be removed with an upcoming version of n8n. Please migrate to PostgreSQL.',
 			);
 		}
-		if (process.env.EXECUTIONS_PROCESS === 'own') {
-			throw new ApplicationError(
-				'Own mode has been removed. If you need the isolation and performance gains, please consider using queue mode.',
-			);
-		}
 
 		if (process.env.N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN) {
 			this.logger.warn(
