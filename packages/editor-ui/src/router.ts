@@ -669,6 +669,9 @@ router.beforeEach(async (to: RouteLocationNormalized & RouteConfig, from, next) 
 			return next({ name: VIEWS.SETUP });
 		}
 
+		// Catch old /credentials and /workflow routes and redirect to /projects or /home
+		await projectsRouteBeforeMiddleware(to, from, next);
+
 		/**
 		 * Verify user permissions for current route
 		 */

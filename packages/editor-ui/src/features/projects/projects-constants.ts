@@ -1,3 +1,5 @@
+import { getPathAsRegexPattern } from '@/utils/routeUtils';
+
 export const projectsBaseRoute = '/projects';
 export const projectsRoute = `${projectsBaseRoute}/:projectId`;
 
@@ -11,3 +13,5 @@ export const oldRoutesToRedirectToProjects = [
 	'/workflow/:workflowId/history/:versionId?',
 	'/workflows/templates/:id',
 ];
+
+export const oldRoutesAsRegExps = oldRoutesToRedirectToProjects.map(getPathAsRegexPattern);

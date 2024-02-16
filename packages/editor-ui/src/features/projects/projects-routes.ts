@@ -1,9 +1,9 @@
-import type { RouteRecordRaw } from 'vue-router';
+import type { NavigationGuardNext, RouteLocationNormalized, RouteRecordRaw } from 'vue-router';
 import { EnterpriseEditionFeature, VIEWS } from '@/constants';
 import {
 	projectsBaseRoute,
 	projectsRoute,
-	oldRoutesToRedirectToProjects,
+	oldRoutesAsRegExps,
 } from '@/features/projects/projects-constants';
 import { getTemplatesRedirect } from '@/utils/routeUtils';
 
@@ -19,11 +19,11 @@ const ExecutionsLandingPage = async () =>
 const ExecutionPreview = async () =>
 	await import('@/components/ExecutionsView/ExecutionPreview.vue');
 const WorkflowHistory = async () => await import('@/views/WorkflowHistory.vue');
-const Projects = async () => await import('@/features/projects/views/Projects.vue');
 
 export const projectsRoutes: Readonly<RouteRecordRaw[]> = [
 	{
 		path: projectsRoute,
+		name: VIEWS.PROJECTS,
 		meta: {
 			middleware: ['authenticated'],
 		},
@@ -175,17 +175,24 @@ export const projectsRoutes: Readonly<RouteRecordRaw[]> = [
 			},
 		],
 	},
-	{
-		path: projectsBaseRoute,
-		component: Projects,
-		name: VIEWS.PROJECTS,
-		meta: {
-			middleware: ['authenticated'],
-		},
-	},
-	// Catch old /credentials and /workflow routes and redirect to /projects
-	...oldRoutesToRedirectToProjects.map((oldRoute) => ({
-		path: oldRoute,
-		redirect: projectsBaseRoute,
-	})),
 ];
+
+export const projectsRouteBeforeMiddleware = async (
+	to: RouteLocationNormalized,
+	from: RouteLocationNormalized,
+	next: NavigationGuardNext,
+) => {
+	const projectId = 'home';
+	if (
+		oldRoutesAsRegExps.some((pattern) => pattern.test(to.path)) &&
+		!to.path.includes(projectsBaseRoute)
+	) {
+		return next({
+			path: `${projectsBaseRoute}/${projectId}${to.path}`,
+			query: to.query,
+		});
+	}
+	if (to.path === '/' || to.path === projectsBaseRoute) {
+		return next({ name: VIEWS.WORKFLOWS, params: { projectId } });
+	}
+};
