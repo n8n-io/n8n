@@ -62,7 +62,7 @@ export const routes = [
 		path: '/',
 		name: VIEWS.HOMEPAGE,
 		redirect: () => {
-			return { name: VIEWS.WORKFLOWS };
+			return { name: VIEWS.PROJECTS };
 		},
 		meta: {
 			middleware: ['authenticated'],

@@ -24,14 +24,12 @@ const Projects = async () => await import('@/features/projects/views/Projects.vu
 export const projectsRoutes: Readonly<RouteRecordRaw[]> = [
 	{
 		path: projectsRoute,
-		name: VIEWS.PROJECTS,
-		component: Projects,
 		meta: {
 			middleware: ['authenticated'],
 		},
 		children: [
 			{
-				path: '/credentials',
+				path: 'credentials',
 				name: VIEWS.CREDENTIALS,
 				components: {
 					default: CredentialsView,
@@ -42,7 +40,7 @@ export const projectsRoutes: Readonly<RouteRecordRaw[]> = [
 				},
 			},
 			{
-				path: '/workflows/templates/:id',
+				path: 'workflows/templates/:id',
 				name: VIEWS.TEMPLATE_IMPORT,
 				components: {
 					default: NodeView,
@@ -57,7 +55,7 @@ export const projectsRoutes: Readonly<RouteRecordRaw[]> = [
 				},
 			},
 			{
-				path: '/workflows',
+				path: 'workflows',
 				name: VIEWS.WORKFLOWS,
 				components: {
 					default: WorkflowsView,
@@ -68,7 +66,7 @@ export const projectsRoutes: Readonly<RouteRecordRaw[]> = [
 				},
 			},
 			{
-				path: '/workflow/:name/debug/:executionId',
+				path: 'workflow/:name/debug/:executionId',
 				name: VIEWS.EXECUTION_DEBUG,
 				components: {
 					default: NodeView,
@@ -87,7 +85,7 @@ export const projectsRoutes: Readonly<RouteRecordRaw[]> = [
 				},
 			},
 			{
-				path: '/workflow/:name/executions',
+				path: 'workflow/:name/executions',
 				name: VIEWS.WORKFLOW_EXECUTIONS,
 				components: {
 					default: WorkflowExecutionsList,
@@ -124,7 +122,7 @@ export const projectsRoutes: Readonly<RouteRecordRaw[]> = [
 				],
 			},
 			{
-				path: '/workflow/:workflowId/history/:versionId?',
+				path: 'workflow/:workflowId/history/:versionId?',
 				name: VIEWS.WORKFLOW_HISTORY,
 				components: {
 					default: WorkflowHistory,
@@ -140,7 +138,7 @@ export const projectsRoutes: Readonly<RouteRecordRaw[]> = [
 				},
 			},
 			{
-				path: '/workflow/new',
+				path: 'workflow/new',
 				name: VIEWS.NEW_WORKFLOW,
 				components: {
 					default: NodeView,
@@ -154,7 +152,7 @@ export const projectsRoutes: Readonly<RouteRecordRaw[]> = [
 				},
 			},
 			{
-				path: '/workflow/:name',
+				path: 'workflow/:name',
 				name: VIEWS.WORKFLOW,
 				components: {
 					default: NodeView,
@@ -168,18 +166,19 @@ export const projectsRoutes: Readonly<RouteRecordRaw[]> = [
 				},
 			},
 			{
-				path: '/workflow',
-				redirect: '/workflow/new',
+				path: 'workflow',
+				redirect: 'workflow/new',
 			},
 			{
-				path: '/',
-				redirect: '/workflows',
+				path: '',
+				redirect: 'workflows',
 			},
 		],
 	},
 	{
 		path: projectsBaseRoute,
 		component: Projects,
+		name: VIEWS.PROJECTS,
 		meta: {
 			middleware: ['authenticated'],
 		},
