@@ -70,8 +70,7 @@
 				<!-- Additional info -->
 				<details class="node-error-view__details">
 					<summary class="node-error-view__details-summary">
-						<font-awesome-icon class="node-error-view__details-icon" icon="angle-right" />n8n
-						details
+						<font-awesome-icon class="node-error-view__details-icon" icon="angle-right" />Other info
 					</summary>
 					<div class="node-error-view__details-content">
 						<div
