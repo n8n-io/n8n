@@ -65,6 +65,26 @@ export const description: SheetProperties = [
 		},
 	},
 	{
+		displayName: 'Combine Filters',
+		name: 'combineFilters',
+		type: 'options',
+		description:
+			'How to combine the conditions defined in "Filters": AND requires all conditions to be true, OR requires at least one condition to be true',
+		options: [
+			{
+				name: 'AND',
+				value: 'AND',
+				description: 'Only rows that meet all the conditions are selected',
+			},
+			{
+				name: 'OR',
+				value: 'OR',
+				description: 'Rows that meet at least one condition are selected',
+			},
+		],
+		default: 'OR',
+	},
+	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
@@ -178,19 +198,24 @@ export async function execute(
 				}
 			}
 
+			const combineFilters = this.getNodeParameter('combineFilters', itemIndex, 'OR') as
+				| 'AND'
+				| 'OR';
+
 			responseData = await sheet.lookupValues(
 				data as string[][],
 				headerRow,
 				firstDataRow,
 				lookupValues,
 				returnAllMatches,
+				combineFilters,
 			);
 		} else {
 			responseData = sheet.structureArrayDataByColumn(data as string[][], headerRow, firstDataRow);
 		}
 
 		returnData.push(
-			...responseData.map((item, index) => {
+			...responseData.map((item) => {
 				return {
 					json: item,
 					pairedItem: { item: itemIndex },
