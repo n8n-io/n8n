@@ -62,7 +62,7 @@ describe('ProjectService', () => {
 			},
 		);
 
-		it('changes the role the user has to the project instead of creating a new relationship if the user already has a relationship to the project', async () => {
+		it('changes the role the user has in the project if the user is already part of the project, instead of creating a new relationship', async () => {
 			//
 			// ARRANGE
 			//
@@ -174,7 +174,7 @@ describe('ProjectService', () => {
 			},
 		);
 
-		it('should not return the project if the user is not related to it', async () => {
+		it('should not return the project if the user is not part of it', async () => {
 			//
 			// ARRANGE
 			//

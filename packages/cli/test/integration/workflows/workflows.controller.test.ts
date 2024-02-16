@@ -179,7 +179,7 @@ describe('POST /workflows', () => {
 		});
 	});
 
-	test('creates workflow in other project if projectId is passed', async () => {
+	test('creates workflow in a specific project if the projectId is passed', async () => {
 		//
 		// ARRANGE
 		//
@@ -212,7 +212,7 @@ describe('POST /workflows', () => {
 		});
 	});
 
-	test('does not create the workflow in specific project if the project is not shared with user', async () => {
+	test('does not create the workflow in a specific project if the user is not part of the project', async () => {
 		//
 		// ARRANGE
 		//
@@ -240,7 +240,7 @@ describe('POST /workflows', () => {
 			});
 	});
 
-	test('does not create workflow in other project if the user does not have the right role', async () => {
+	test('does not create the workflow in a specific project if the user does not have the right role to do so', async () => {
 		//
 		// ARRANGE
 		//
