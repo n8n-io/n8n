@@ -103,7 +103,6 @@ const onOperatorChange = (value: string): void => {
 
 	condition.value = handleOperatorChange({
 		condition: condition.value,
-		currentOperator: operator.value,
 		newOperator,
 	});
 
