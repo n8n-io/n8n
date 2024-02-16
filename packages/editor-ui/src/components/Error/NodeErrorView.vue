@@ -15,13 +15,13 @@
 			<div class="node-error-view__info-header">
 				<p class="node-error-view__info-title">Error details</p>
 				<div class="copy-button">
-					<n8n-button
-					label="Copy details"
+					<n8n-icon-button
+					:title="$locale.baseText('nodeErrorView.copyToClipboard')"
 					icon="copy"
 					type="secondary"
 					size="mini"
+					text="true"
 					transparent-background="transparent"
-					title="Test"
 					@click="copyCause"
 				/>
 				</div>
