@@ -26,6 +26,9 @@ export const projectsRoutes: Readonly<RouteRecordRaw[]> = [
 		path: projectsRoute,
 		name: VIEWS.PROJECTS,
 		component: Projects,
+		meta: {
+			middleware: ['authenticated'],
+		},
 		children: [
 			{
 				path: '/credentials',
@@ -177,6 +180,9 @@ export const projectsRoutes: Readonly<RouteRecordRaw[]> = [
 	{
 		path: projectsBaseRoute,
 		component: Projects,
+		meta: {
+			middleware: ['authenticated'],
+		},
 	},
 	// Catch old /credentials and /workflow routes and redirect to /projects
 	...oldRoutesToRedirectToProjects.map((oldRoute) => ({
