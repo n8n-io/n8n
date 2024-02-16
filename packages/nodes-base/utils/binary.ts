@@ -160,8 +160,9 @@ export async function extractDataFromPDF(
 	const params: { password?: string; url?: URL; data?: ArrayBuffer } = { password };
 
 	if (binaryData.id) {
-		const binaryPath = this.helpers.getBinaryPath(binaryData.id);
-		params.url = new URL(`file://${binaryPath}`);
+		params.data = await this.helpers.binaryToBuffer(
+			await this.helpers.getBinaryStream(binaryData.id),
+		);
 	} else {
 		params.data = Buffer.from(binaryData.data, BINARY_ENCODING).buffer;
 	}
