@@ -1,6 +1,7 @@
 import type { OptionsWithUri } from 'request';
 
 import {
+	type IPollFunctions,
 	type IDataObject,
 	type IExecuteFunctions,
 	type IExecuteSingleFunctions,
@@ -10,7 +11,7 @@ import {
 import { prepareApiError } from '../helpers/utils';
 
 export async function microsoftApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: string,
 	resource: string,
 	body: IDataObject = {},
@@ -59,7 +60,7 @@ export async function microsoftApiRequest(
 			error.description
 		) {
 			let updatedError;
-			// Try to return the error prettier, otherwise return the original one repalcing the message with the description
+			// Try to return the error prettier, otherwise return the original one replacing the message with the description
 			try {
 				updatedError = prepareApiError.call(this, error);
 			} catch (e) {}
@@ -75,7 +76,7 @@ export async function microsoftApiRequest(
 }
 
 export async function microsoftApiRequestAllItems(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	propertyName: string,
 	method: string,
 	endpoint: string,
@@ -107,7 +108,7 @@ export async function microsoftApiRequestAllItems(
 }
 
 export async function downloadAttachments(
-	this: IExecuteFunctions,
+	this: IExecuteFunctions | IPollFunctions,
 	messages: IDataObject[] | IDataObject,
 	prefix: string,
 ) {
