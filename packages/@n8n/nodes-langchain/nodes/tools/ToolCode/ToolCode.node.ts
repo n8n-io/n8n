@@ -47,6 +47,13 @@ export class ToolCode implements INodeType {
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionType.AiAgent]),
 			{
+				displayName:
+					'See an example of a conversational agent with custom tool written in JavaScript <a href="/templates/1963" target="_blank">here</a>.',
+				name: 'noticeTemplateExample',
+				type: 'notice',
+				default: '',
+			},
+			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
@@ -92,14 +99,14 @@ export class ToolCode implements INodeType {
 					},
 				},
 				typeOptions: {
-					editor: 'codeNodeEditor',
-					editorLanguage: 'javaScript',
+					editor: 'jsEditor',
 				},
-				default: '',
+				default:
+					'// Example: convert the incoming query to uppercase and return it\nreturn query.toUpperCase()',
 				// TODO: Add proper text here later
 				hint: 'You can access the input the tool receives via the input property "query". The returned value should be a single string.',
-				description:
-					'JavaScript code to execute.<br><br>Tip: You can use luxon vars like <code>$today</code> for dates and <code>$jmespath</code> for querying JSON structures. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.function">Learn more</a>.',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-missing-final-period
+				description: 'E.g. Converts any text to uppercase',
 				noDataExpression: true,
 			},
 			{
@@ -112,14 +119,15 @@ export class ToolCode implements INodeType {
 					},
 				},
 				typeOptions: {
-					editor: 'codeNodeEditor',
+					editor: 'codeNodeEditor', // TODO: create a separate `pythonEditor` component
 					editorLanguage: 'python',
 				},
-				default: '',
+				default:
+					'# Example: convert the incoming query to uppercase and return it\nreturn query.upper()',
 				// TODO: Add proper text here later
 				hint: 'You can access the input the tool receives via the input property "query". The returned value should be a single string.',
-				description:
-					'Python code to execute.<br><br>Tip: You can use built-in methods and variables like <code>_today</code> for dates and <code>_jmespath</code> for querying JSON structures. <a href="https://docs.n8n.io/code/builtin/">Learn more</a>.',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-missing-final-period
+				description: 'E.g. Converts any text to uppercase',
 				noDataExpression: true,
 			},
 		],

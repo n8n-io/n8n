@@ -8,6 +8,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
@@ -220,7 +221,7 @@ export class Mocean implements INodeType {
 
 		let endpoint: string;
 		let operation: string;
-		let requestMethod: string;
+		let requestMethod: IHttpRequestMethods;
 		let resource: string;
 		let text: string;
 		let dlrUrl: string;

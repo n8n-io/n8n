@@ -1,6 +1,5 @@
-import type { INodeTypes } from 'n8n-workflow';
+import type { INodeTypes, IRequestOptions } from 'n8n-workflow';
 import nock from 'nock';
-import type { OptionsWithUrl } from 'request-promise-native';
 import * as transport from '../../../../v2/transport/helpers';
 import { getResultNodeData, setup, workflowToTests } from '@test/nodes/Helpers';
 import type { WorkflowTestData } from '@test/nodes/types';
@@ -9,7 +8,7 @@ import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 const requestApiSpy = jest.spyOn(transport, 'requestApi');
 
 requestApiSpy.mockImplementation(
-	async (options: OptionsWithUrl, credentialType: string, endpoint: string) => {
+	async (options: IRequestOptions, credentialType: string, endpoint: string) => {
 		if (endpoint === '/users/@me/guilds') {
 			return {
 				headers: {},

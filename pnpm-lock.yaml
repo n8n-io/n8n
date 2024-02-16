@@ -197,8 +197,8 @@ importers:
         specifier: 0.0.6
         version: 0.0.6
       '@n8n/typeorm':
-        specifier: 0.3.20
-        version: 0.3.20(mssql@9.1.1)(pg@8.11.3)(redis@4.6.12)(sqlite3@5.1.7)
+        specifier: 0.3.20-2
+        version: 0.3.20-2(mssql@9.1.1)(pg@8.11.3)(redis@4.6.12)(sqlite3@5.1.7)
       '@n8n/vm2':
         specifier: 3.9.20
         version: 3.9.20
@@ -226,6 +226,9 @@ importers:
       epub2:
         specifier: 3.0.1
         version: 3.0.1(ts-toolbelt@9.6.0)
+      form-data:
+        specifier: 4.0.0
+        version: 4.0.0
       html-to-text:
         specifier: 9.0.5
         version: 9.0.5
@@ -290,9 +293,6 @@ importers:
       '@types/json-schema':
         specifier: ^7.0.12
         version: 7.0.12
-      '@types/request-promise-native':
-        specifier: ~1.0.15
-        version: 1.0.18
       '@types/temp':
         specifier: ^0.9.1
         version: 0.9.4
@@ -377,8 +377,8 @@ importers:
         specifier: workspace:*
         version: link:../@n8n/permissions
       '@n8n/typeorm':
-        specifier: 0.3.20
-        version: 0.3.20(ioredis@5.3.2)(mysql2@2.3.3)(pg@8.11.3)(sqlite3@5.1.7)
+        specifier: 0.3.20-2
+        version: 0.3.20-2(ioredis@5.3.2)(mysql2@2.3.3)(pg@8.11.3)(sqlite3@5.1.7)
       '@n8n_io/license-sdk':
         specifier: 2.10.0
         version: 2.10.0
@@ -810,9 +810,6 @@ importers:
       '@types/mime-types':
         specifier: ^2.1.0
         version: 2.1.1
-      '@types/request-promise-native':
-        specifier: ~1.0.15
-        version: 1.0.18
       '@types/uuid':
         specifier: ^8.3.2
         version: 8.3.4
@@ -1465,9 +1462,6 @@ importers:
       '@types/promise-ftp':
         specifier: ^1.3.4
         version: 1.3.4
-      '@types/request-promise-native':
-        specifier: ~1.0.15
-        version: 1.0.18
       '@types/rfc2047':
         specifier: ^2.0.1
         version: 2.0.1
@@ -6140,12 +6134,13 @@ packages:
       recast: 0.22.0
     dev: false
 
-  /@n8n/typeorm@0.3.20(ioredis@5.3.2)(mysql2@2.3.3)(pg@8.11.3)(sqlite3@5.1.7):
-    resolution: {integrity: sha512-8UQOwlKPHchtgMaYnN09WzqIw8/E8g5ggLjM+9XFxWAmbSLhW9a9PoYaackNotdNpvTa3uU/LXT+4sp8Pn5d2w==}
+  /@n8n/typeorm@0.3.20-2(ioredis@5.3.2)(mysql2@2.3.3)(pg@8.11.3)(sqlite3@5.1.7):
+    resolution: {integrity: sha512-cmUTS1SDWGXNSNTEoeweamGtLkKQ6XHyscGDfsByOsxj4aG0CQTa/WrYC3iMR2fjJsyHAvC7/1rB9LWWIMu+CA==}
     engines: {node: '>=16.13.0'}
     hasBin: true
     peerDependencies:
       '@google-cloud/spanner': ^5.18.0
+      '@libsql/client': ^0.4.2
       '@sap/hana-client': ^2.12.25
       better-sqlite3: ^7.1.2 || ^8.0.0 || ^9.0.0
       hdb-pool: ^0.1.6
@@ -6164,6 +6159,8 @@ packages:
       typeorm-aurora-data-api-driver: ^2.0.0
     peerDependenciesMeta:
       '@google-cloud/spanner':
+        optional: true
+      '@libsql/client':
         optional: true
       '@sap/hana-client':
         optional: true
@@ -6220,12 +6217,13 @@ packages:
       - supports-color
     dev: false
 
-  /@n8n/typeorm@0.3.20(mssql@9.1.1)(pg@8.11.3)(redis@4.6.12)(sqlite3@5.1.7):
-    resolution: {integrity: sha512-8UQOwlKPHchtgMaYnN09WzqIw8/E8g5ggLjM+9XFxWAmbSLhW9a9PoYaackNotdNpvTa3uU/LXT+4sp8Pn5d2w==}
+  /@n8n/typeorm@0.3.20-2(mssql@9.1.1)(pg@8.11.3)(redis@4.6.12)(sqlite3@5.1.7):
+    resolution: {integrity: sha512-cmUTS1SDWGXNSNTEoeweamGtLkKQ6XHyscGDfsByOsxj4aG0CQTa/WrYC3iMR2fjJsyHAvC7/1rB9LWWIMu+CA==}
     engines: {node: '>=16.13.0'}
     hasBin: true
     peerDependencies:
       '@google-cloud/spanner': ^5.18.0
+      '@libsql/client': ^0.4.2
       '@sap/hana-client': ^2.12.25
       better-sqlite3: ^7.1.2 || ^8.0.0 || ^9.0.0
       hdb-pool: ^0.1.6
@@ -6244,6 +6242,8 @@ packages:
       typeorm-aurora-data-api-driver: ^2.0.0
     peerDependenciesMeta:
       '@google-cloud/spanner':
+        optional: true
+      '@libsql/client':
         optional: true
       '@sap/hana-client':
         optional: true
@@ -10103,10 +10103,6 @@ packages:
       '@types/connect': 3.4.35
       '@types/node': 18.16.16
 
-  /@types/caseless@0.12.2:
-    resolution: {integrity: sha512-6ckxMjBBD8URvjB6J3NcnuAn5Pkl7t3TizAg+xdlzzQGSPSmBcXf8KoIH0ua/i+tio+ZRUHEXp0HEmvaR4kt0w==}
-    dev: true
-
   /@types/cheerio@0.22.31:
     resolution: {integrity: sha512-Kt7Cdjjdi2XWSfrZ53v4Of0wG3ZcmaegFXjMmz9tfNrZSkzzo36G0AL1YqSdcIA78Etjt6E609pt5h1xnQkPUw==}
     dependencies:
@@ -10571,21 +10567,6 @@ packages:
 
   /@types/replacestream@4.0.1:
     resolution: {integrity: sha512-3ecTmnzB90sgarVpIszCF1cX2cnxwqDovWb31jGrKfxAL0Knui1H7Reaz/zlT9zaE3u0un7L5cNy9fQPy0d2sg==}
-    dev: true
-
-  /@types/request-promise-native@1.0.18:
-    resolution: {integrity: sha512-tPnODeISFc/c1LjWyLuZUY+Z0uLB3+IMfNoQyDEi395+j6kTFTTRAqjENjoPJUid4vHRGEozoTrcTrfZM+AcbA==}
-    dependencies:
-      '@types/request': 2.48.8
-    dev: true
-
-  /@types/request@2.48.8:
-    resolution: {integrity: sha512-whjk1EDJPcAR2kYHRbFl/lKeeKYTi05A15K9bnLInCVroNDCtXce57xKdI0/rQaA3K+6q0eFyUBPmqfSndUZdQ==}
-    dependencies:
-      '@types/caseless': 0.12.2
-      '@types/node': 18.16.16
-      '@types/tough-cookie': 4.0.2
-      form-data: 2.5.1
     dev: true
 
   /@types/resolve@1.20.2:
@@ -16004,15 +15985,6 @@ packages:
 
   /form-data@2.3.3:
     resolution: {integrity: sha512-1lLKB2Mu3aGP1Q/2eCOx0fNbRMe7XdwktwOruhfqqd0rIJWwN4Dh+E3hrPSlDCXnSR7UtZ1N38rVXm+6+MEhJQ==}
-    engines: {node: '>= 0.12'}
-    dependencies:
-      asynckit: 0.4.0
-      combined-stream: 1.0.8
-      mime-types: 2.1.35
-    dev: true
-
-  /form-data@2.5.1:
-    resolution: {integrity: sha512-m21N3WOmEEURgk6B9GLOE4RuWOFf28Lhh9qGYeNlGq4VDXUlJy2th2slBNU8Gp8EzloYZOibZJ7t5ecIrFSjVA==}
     engines: {node: '>= 0.12'}
     dependencies:
       asynckit: 0.4.0
