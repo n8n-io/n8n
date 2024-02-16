@@ -294,17 +294,6 @@ describe('Test Google Sheets, lookupValues', () => {
 		[7, 7, 77, 'foo'],
 	] as string[][];
 
-	// const lookupValues = [
-	// 	{
-	// 		lookupColumn: 'num',
-	// 		lookupValue: '1',
-	// 	},
-	// 	{
-	// 		lookupColumn: 'text',
-	// 		lookupValue: 'bar',
-	// 	},
-	// ];
-
 	it('should return rows by combining filters by OR', async () => {
 		const fakeExecuteFunction = {
 			getNode() {
