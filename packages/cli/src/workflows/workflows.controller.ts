@@ -18,7 +18,7 @@ import {
 	Put,
 	RestController,
 } from '@/decorators';
-import { SharedWorkflow, type WorkflowSharingRole } from '@db/entities/SharedWorkflow';
+import type { SharedWorkflow, WorkflowSharingRole } from '@db/entities/SharedWorkflow';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { TagRepository } from '@db/repositories/tag.repository';
@@ -48,6 +48,7 @@ import { WorkflowExecutionService } from './workflowExecution.service';
 import { WorkflowSharingService } from './workflowSharing.service';
 import { UserManagementMailer } from '@/UserManagement/email';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
+import { ProjectService } from '@/services/project.service';
 
 @Authorized()
 @RestController('/workflows')
@@ -72,6 +73,7 @@ export class WorkflowsController {
 		private readonly mailer: UserManagementMailer,
 		private readonly credentialsService: CredentialsService,
 		private readonly projectRepository: ProjectRepository,
+		private readonly projectService: ProjectService,
 	) {}
 
 	@Post('/')
@@ -121,14 +123,29 @@ export class WorkflowsController {
 		await Db.transaction(async (transactionManager) => {
 			savedWorkflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
 
-			const project = await this.projectRepository.getPersonalProjectForUserOrFail(req.user.id);
+			const { projectId } = req.body;
+			const project =
+				projectId === undefined
+					? // TODO: pass the transaction manager optionally?
+					  await this.projectRepository.getPersonalProjectForUser(req.user.id)
+					: await this.projectService.getProjectWithScope(req.user, projectId, 'workflow:create');
 
-			const newSharedWorkflow = new SharedWorkflow();
+			if (typeof projectId === 'string' && project === null) {
+				throw new BadRequestError(
+					"You don't have the permissions to save the workflow in this project.",
+				);
+			}
 
-			Object.assign(newSharedWorkflow, {
+			// Safe guard in case the personal project does not exist for whatever reason.
+			if (project === null) {
+				throw new InternalServerError('Failed to save workflow');
+			}
+
+			const newSharedWorkflow = this.sharedWorkflowRepository.create({
 				role: 'workflow:owner',
+				// TODO: remove when https://linear.app/n8n/issue/PAY-1353/make-sure-that-sharedworkflowuserid-is-not-used-anymore-to-check lands
 				user: req.user,
-				project,
+				projectId: project.id,
 				workflow: savedWorkflow,
 			});
 

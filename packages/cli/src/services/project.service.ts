@@ -1,16 +1,22 @@
 import type { Project } from '@/databases/entities/Project';
-import { ProjectRelation, type ProjectRole } from '@/databases/entities/ProjectRelation';
+import { ProjectRelation } from '@/databases/entities/ProjectRelation';
+import type { ProjectRole } from '@/databases/entities/ProjectRelation';
 import type { User } from '@/databases/entities/User';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
 import { Not, type EntityManager } from '@n8n/typeorm';
 import { Service } from 'typedi';
+import { type Scope } from '@n8n/permissions';
+import { In } from '@n8n/typeorm';
+import { RoleService } from './role.service';
 
 @Service()
 export class ProjectService {
 	constructor(
-		private projectsRepository: ProjectRepository,
-		private projectRelationRepository: ProjectRelationRepository,
+		private readonly projectsRepository: ProjectRepository,
+		private readonly projectRepository: ProjectRepository,
+		private readonly projectRelationRepository: ProjectRelationRepository,
+		private readonly roleService: RoleService,
 	) {}
 
 	async getAccessibleProjects(user: User): Promise<Project[]> {
@@ -109,5 +115,27 @@ export class ProjectService {
 				}),
 			),
 		);
+	}
+
+	async getProjectWithScope(user: User, projectId: string, scope: Scope) {
+		const projectRoles = this.roleService.rolesWithScope('project', [scope]);
+
+		return await this.projectRepository.findOne({
+			where: {
+				id: projectId,
+				projectRelations: {
+					role: In(projectRoles),
+					userId: user.id,
+				},
+			},
+		});
+	}
+
+	async addUser(projectId: string, userId: string, role: ProjectRole) {
+		return await this.projectRelationRepository.save({
+			projectId,
+			userId,
+			role,
+		});
 	}
 }
