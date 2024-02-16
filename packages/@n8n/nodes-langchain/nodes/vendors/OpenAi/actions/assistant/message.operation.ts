@@ -36,7 +36,7 @@ const properties: INodeProperties[] = [
 		displayName: 'Text',
 		name: 'text',
 		type: 'string',
-		required: true,
+		// required: true,
 		default: '',
 		placeholder: 'e.g. Hello, how can you help me?',
 		typeOptions: {
