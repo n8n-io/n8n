@@ -7,7 +7,7 @@ import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { escapeMappingString } from '@/utils/mappingUtils';
 
-function getAutoCompletableNodeNames(nodes: INodeUi[])a {
+function getAutoCompletableNodeNames(nodes: INodeUi[]) {
 	return nodes
 		.filter((node: INodeUi) => !NODE_TYPES_EXCLUDED_FROM_AUTOCOMPLETION.includes(node.type))
 		.map((node: INodeUi) => node.name);
