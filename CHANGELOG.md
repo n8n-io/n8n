@@ -1,3 +1,13 @@
+## [1.29.1](https://github.com/n8n-io/n8n/compare/n8n@1.29.0...n8n@1.29.1) (2024-02-16)
+
+
+### Bug Fixes
+
+* **Extract From File Node:** Make binary data work with any backend  ([#8647](https://github.com/n8n-io/n8n/issues/8647)) ([cc7761e](https://github.com/n8n-io/n8n/commit/cc7761e41e22df998b0257032d2b1da8c8d06a85))
+* **GraphQL Node:** Fix request format JSON error ([#8646](https://github.com/n8n-io/n8n/issues/8646)) ([1e0370c](https://github.com/n8n-io/n8n/commit/1e0370c7891ac5462b508e26561e8dd8e72f6d9d))
+
+
+
 # [1.29.0](https://github.com/n8n-io/n8n/compare/n8n@1.28.0...n8n@1.29.0) (2024-02-15)
 
 
