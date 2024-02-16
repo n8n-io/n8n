@@ -1055,7 +1055,7 @@ export function useWorkflowHelpers(router: Router) {
 			uiStore.removeActiveAction('workflowSaving');
 
 			toast.showMessage({
-				title: $locale.baseText('workflowHelpers.showMessage.title'),
+				title: i18n.baseText('workflowHelpers.showMessage.title'),
 				message: (e as Error).message,
 				type: 'error',
 			});
