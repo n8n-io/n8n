@@ -3,10 +3,7 @@ import * as testDb from '../shared/testDb';
 import Container from 'typedi';
 import { createMember } from '../shared/db/users';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
-import type { DeepPartial } from 'ts-essentials';
-import type { Project } from '@/databases/entities/Project';
 import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
-import { EntityNotFoundError } from '@n8n/typeorm';
 import type { ProjectRole } from '@/databases/entities/ProjectRelation';
 import type { Scope } from '@n8n/permissions';
 
@@ -30,20 +27,6 @@ afterEach(async () => {
 	await testDb.truncate(['User']);
 });
 
-async function createTeamProject(project?: DeepPartial<Project>) {
-	const projectRepository = Container.get(ProjectRepository);
-
-	let projectEntity = projectRepository.create({
-		name: 'Team Project',
-		...project,
-		type: 'team',
-	});
-
-	projectEntity = await projectRepository.save(projectEntity);
-
-	return projectEntity;
-}
-
 describe('ProjectService', () => {
 	describe('addUser', () => {
 		it.each([
@@ -58,7 +41,12 @@ describe('ProjectService', () => {
 				// ARRANGE
 				//
 				const member = await createMember();
-				const project = await createTeamProject();
+				const project = await projectRepository.save(
+					projectRepository.create({
+						name: 'Team Project',
+						type: 'team',
+					}),
+				);
 
 				//
 				// ACT
@@ -79,7 +67,12 @@ describe('ProjectService', () => {
 			// ARRANGE
 			//
 			const member = await createMember();
-			const project = await createTeamProject();
+			const project = await projectRepository.save(
+				projectRepository.create({
+					name: 'Team Project',
+					type: 'team',
+				}),
+			);
 			await projectService.addUser(project.id, member.id, 'project:viewer');
 
 			await projectRelationRepository.findOneOrFail({
@@ -117,7 +110,12 @@ describe('ProjectService', () => {
 				// ARRANGE
 				//
 				const projectOwner = await createMember();
-				const project = await createTeamProject();
+				const project = await projectRepository.save(
+					projectRepository.create({
+						name: 'Team Project',
+						type: 'team',
+					}),
+				);
 				await projectService.addUser(project.id, projectOwner.id, role);
 
 				//
@@ -152,7 +150,12 @@ describe('ProjectService', () => {
 				// ARRANGE
 				//
 				const projectViewer = await createMember();
-				const project = await createTeamProject();
+				const project = await projectRepository.save(
+					projectRepository.create({
+						name: 'Team Project',
+						type: 'team',
+					}),
+				);
 				await projectService.addUser(project.id, projectViewer.id, role);
 
 				//
@@ -176,7 +179,12 @@ describe('ProjectService', () => {
 			// ARRANGE
 			//
 			const member = await createMember();
-			const project = await createTeamProject();
+			const project = await projectRepository.save(
+				projectRepository.create({
+					name: 'Team Project',
+					type: 'team',
+				}),
+			);
 
 			//
 			// ACT
