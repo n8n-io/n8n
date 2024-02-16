@@ -38,7 +38,7 @@ export const consolidateRunDataAndStartNodes = (
 	workflow: Workflow,
 ): { runData: IRunData | undefined; startNodes: string[] } => {
 	const startNodes: string[] = [];
-	let newRunData: IRunData | undefined = {};
+	let newRunData: IRunData | undefined;
 
 	if (runData !== null && Object.keys(runData).length !== 0) {
 		// Go over the direct parents of the node
