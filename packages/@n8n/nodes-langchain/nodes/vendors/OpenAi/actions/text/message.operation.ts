@@ -6,9 +6,9 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType, updateDisplayOptions } from 'n8n-workflow';
 
+import type { Tool } from 'langchain/tools';
 import { apiRequest } from '../../transport';
 import type { ChatCompletion } from '../../helpers/interfaces';
-import type { Tool } from 'langchain/tools';
 import { formatToOpenAIAssistantTool } from '../../helpers/utils';
 import { modelRLC } from '../descriptions';
 
@@ -81,13 +81,8 @@ const properties: INodeProperties[] = [
 		name: 'jsonOutput',
 		type: 'boolean',
 		description:
-			'Whether to attempt to return the response in JSON format, supported by gpt-3.5-turbo-1106 and gpt-4-1106-preview',
+			'Whether to attempt to return the response in JSON format. Compatible with GPT-4 Turbo and all GPT-3.5 Turbo models newer than gpt-3.5-turbo-1106.',
 		default: false,
-		displayOptions: {
-			show: {
-				modelId: ['gpt-3.5-turbo-1106', 'gpt-4-1106-preview'],
-			},
-		},
 	},
 	{
 		displayName: 'Connect your own custom n8n tools to this node on the canvas',
@@ -212,7 +207,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	let toolCalls = response?.choices[0]?.message?.tool_calls;
 
-	while (toolCalls && toolCalls.length) {
+	while (toolCalls?.length) {
 		messages.push(response.choices[0].message);
 
 		for (const toolCall of toolCalls) {
