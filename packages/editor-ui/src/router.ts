@@ -20,7 +20,7 @@ import type { RouteConfig, RouterMiddleware } from '@/types/router';
 import { initializeCore } from '@/init';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { getTemplatesRedirect } from '@/utils/routeUtils';
-import { projectsRoutes } from '@/features/projects/projects-routes';
+import { projectsRouteBeforeMiddleware, projectsRoutes } from '@/features/projects/projects-routes';
 
 const ChangePasswordView = async () => await import('./views/ChangePasswordView.vue');
 const ErrorView = async () => await import('./views/ErrorView.vue');
@@ -58,16 +58,6 @@ const WorkerView = async () => await import('./views/WorkerView.vue');
 const WorkflowOnboardingView = async () => await import('@/views/WorkflowOnboardingView.vue');
 
 export const routes = [
-	{
-		path: '/',
-		name: VIEWS.HOMEPAGE,
-		redirect: () => {
-			return { name: VIEWS.PROJECTS };
-		},
-		meta: {
-			middleware: ['authenticated'],
-		},
-	},
 	{
 		path: '/collections/:id',
 		name: VIEWS.COLLECTION,
@@ -669,6 +659,9 @@ router.beforeEach(async (to: RouteLocationNormalized & RouteConfig, from, next) 
 
 			return next({ name: VIEWS.SETUP });
 		}
+
+		// Catch old /credentials and /workflow routes and redirect to /projects or /home
+		await projectsRouteBeforeMiddleware(to, from, next);
 
 		/**
 		 * Verify user permissions for current route
