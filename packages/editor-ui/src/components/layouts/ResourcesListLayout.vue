@@ -1,13 +1,23 @@
 <template>
 	<PageViewLayout>
-		<template v-if="showAside" #aside>
+		<template #header>
 			<div :class="[$style['heading-wrapper'], 'mb-xs']">
 				<n8n-heading size="2xlarge">
 					{{ i18n.baseText(`${resourceKey}.heading`) }}
 				</n8n-heading>
 			</div>
+			<slot name="tabnav" />
+		</template>
+		<template v-if="showAside" #aside>
+			<enterprise-edition v-if="shareable" :features="[EnterpriseEditionFeature.Sharing]">
+				<ResourceOwnershipSelect
+					v-model="isOwnerSubview"
+					:my-resources-label="i18n.baseText(`${resourceKey}.menu.my`)"
+					:all-resources-label="i18n.baseText(`${resourceKey}.menu.all`)"
+				/>
+			</enterprise-edition>
 
-			<div class="mt-xs mb-l">
+			<div>
 				<slot name="add-button" :disabled="disabled">
 					<n8n-button
 						size="large"
@@ -20,14 +30,6 @@
 					</n8n-button>
 				</slot>
 			</div>
-
-			<enterprise-edition v-if="shareable" :features="[EnterpriseEditionFeature.Sharing]">
-				<ResourceOwnershipSelect
-					v-model="isOwnerSubview"
-					:my-resources-label="i18n.baseText(`${resourceKey}.menu.my`)"
-					:all-resources-label="i18n.baseText(`${resourceKey}.menu.all`)"
-				/>
-			</enterprise-edition>
 		</template>
 
 		<div v-if="loading">
