@@ -21,7 +21,7 @@ import { useI18n } from '@/composables/useI18n';
 import { useDebounce } from '@/composables/useDebounce';
 import Condition from './Condition.vue';
 import CombinatorSelect from './CombinatorSelect.vue';
-import { resolveParameter } from '@/mixins/workflowHelpers';
+import { resolveParameter } from '@/composables/useWorkflowHelpers';
 import { v4 as uuid } from 'uuid';
 
 interface Props {
@@ -138,6 +138,7 @@ function getIssues(index: number): string[] {
 			:underline="true"
 			:show-options="true"
 			:show-expression-selector="false"
+			size="small"
 			color="text-dark"
 		>
 		</n8n-input-label>

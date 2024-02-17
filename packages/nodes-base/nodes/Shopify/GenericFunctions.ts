@@ -1,18 +1,18 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IOAuth2Options,
+	IHttpRequestMethods,
+	IRequestOptions,
 } from 'n8n-workflow';
 
 import { snakeCase } from 'change-case';
 
 export async function shopifyApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 
 	body: any = {},
@@ -35,7 +35,7 @@ export async function shopifyApiRequest(
 		credentials = await this.getCredentials('shopifyOAuth2Api');
 	}
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		method,
 		qs: query,
 		uri: uri || `https://${credentials.shopSubdomain}.myshopify.com/admin/api/2019-10${resource}`,
@@ -86,7 +86,7 @@ export async function shopifyApiRequest(
 export async function shopifyApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 
 	body: any = {},

@@ -1,9 +1,10 @@
-import type { OptionsWithUri } from 'request';
 import type {
 	IDataObject,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	IOAuth2Options,
+	IHttpRequestMethods,
+	IRequestOptions,
 } from 'n8n-workflow';
 
 import { NodeOperationError, jsonParse } from 'n8n-workflow';
@@ -12,16 +13,16 @@ import get from 'lodash/get';
 
 export async function slackApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	body: object = {},
-	query: object = {},
+	query: IDataObject = {},
 	headers: {} | undefined = undefined,
 	option: {} = {},
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'accessToken') as string;
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		method,
 		headers: headers ?? {
 			'Content-Type': 'application/json; charset=utf-8',
@@ -92,7 +93,7 @@ export async function slackApiRequest(
 export async function slackApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	// tslint:disable-next-line:no-any
 	body: any = {},

@@ -1,5 +1,3 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IBinaryKeyData,
 	IDataObject,
@@ -8,6 +6,8 @@ import type {
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	IPairedItemData,
+	IRequestOptions,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 
 interface IAttachment {
@@ -28,7 +28,7 @@ export interface IRecord {
  */
 export async function apiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: object,
 	query?: IDataObject,
@@ -42,7 +42,7 @@ export async function apiRequest(
 	// it as query string.
 	// query.api_key = credentials.apiKey;
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {},
 		method,
 		body,
@@ -71,7 +71,7 @@ export async function apiRequest(
  */
 export async function apiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject,
 	query?: IDataObject,

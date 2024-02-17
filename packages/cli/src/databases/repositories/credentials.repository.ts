@@ -1,6 +1,6 @@
 import { Service } from 'typedi';
-import { DataSource, In, Not, Repository, Like } from 'typeorm';
-import type { FindManyOptions, DeleteResult, EntityManager, FindOptionsWhere } from 'typeorm';
+import { DataSource, In, Not, Repository, Like } from '@n8n/typeorm';
+import type { FindManyOptions, DeleteResult, EntityManager, FindOptionsWhere } from '@n8n/typeorm';
 import { CredentialsEntity } from '../entities/CredentialsEntity';
 import { SharedCredentials } from '../entities/SharedCredentials';
 import type { ListQuery } from '@/requests';

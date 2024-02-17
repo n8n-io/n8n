@@ -6,11 +6,11 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import { CREDENTIAL_EMPTY_VALUE, deepCopy, NodeHelpers } from 'n8n-workflow';
-import type { FindOptionsWhere } from 'typeorm';
+import type { FindOptionsWhere } from '@n8n/typeorm';
 import type { Scope } from '@n8n/permissions';
 import * as Db from '@/Db';
 import type { ICredentialsDb } from '@/Interfaces';
-import { CredentialsHelper, createCredentialsFromCredentialsEntity } from '@/CredentialsHelper';
+import { createCredentialsFromCredentialsEntity } from '@/CredentialsHelper';
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
@@ -24,6 +24,7 @@ import { Logger } from '@/Logger';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { Service } from 'typedi';
+import { CredentialsTester } from '@/services/credentials-tester.service';
 
 export type CredentialsGetSharedOptions =
 	| { allowGlobalScope: true; globalScope: Scope }
@@ -36,7 +37,7 @@ export class CredentialsService {
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly ownershipService: OwnershipService,
 		private readonly logger: Logger,
-		private readonly credenntialsHelper: CredentialsHelper,
+		private readonly credentialsTester: CredentialsTester,
 		private readonly externalHooks: ExternalHooks,
 		private readonly credentialTypes: CredentialTypes,
 	) {}
@@ -218,7 +219,7 @@ export class CredentialsService {
 	}
 
 	async test(user: User, credentials: ICredentialsDecrypted) {
-		return await this.credenntialsHelper.testCredentials(user, credentials.type, credentials);
+		return await this.credentialsTester.testCredentials(user, credentials.type, credentials);
 	}
 
 	// Take data and replace all sensitive values with a sentinel value.

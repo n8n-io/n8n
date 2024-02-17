@@ -7,7 +7,9 @@ import type {
 	IRunData,
 	IRunExecutionData,
 	ITaskData,
+	IPinData,
 	IWorkflowBase,
+	Workflow,
 } from 'n8n-workflow';
 import {
 	NodeHelpers,
@@ -18,7 +20,6 @@ import {
 
 import { useToast } from '@/composables/useToast';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 
 import { FORM_TRIGGER_NODE_TYPE, WAIT_NODE_TYPE } from '@/constants';
 import { useTitleChange } from '@/composables/useTitleChange';
@@ -27,16 +28,69 @@ import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { openPopUpWindow } from '@/utils/executionUtils';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useRouter } from 'vue-router';
+
+export const consolidateRunDataAndStartNodes = (
+	directParentNodes: string[],
+	runData: IRunData | null,
+	pinData: IPinData | undefined,
+	workflow: Workflow,
+): { runData: IRunData | undefined; startNodes: string[] } => {
+	const startNodes: string[] = [];
+	let newRunData: IRunData | undefined;
+
+	if (runData !== null && Object.keys(runData).length !== 0) {
+		newRunData = {};
+		// Go over the direct parents of the node
+		for (const directParentNode of directParentNodes) {
+			// Go over the parents of that node so that we can get a start
+			// node for each of the branches
+			const parentNodes = workflow.getParentNodes(directParentNode, NodeConnectionType.Main);
+
+			// Add also the enabled direct parent to be checked
+			if (workflow.nodes[directParentNode].disabled) continue;
+
+			parentNodes.push(directParentNode);
+
+			for (const parentNode of parentNodes) {
+				if (
+					(runData[parentNode] === undefined || runData[parentNode].length === 0) &&
+					pinData?.[parentNode].length === 0
+				) {
+					// When we hit a node which has no data we stop and set it
+					// as a start node the execution from and then go on with other
+					// direct input nodes
+					startNodes.push(parentNode);
+					break;
+				}
+				if (runData[parentNode] !== undefined) {
+					newRunData[parentNode] = runData[parentNode]?.slice(0, 1);
+				}
+			}
+		}
+
+		if (Object.keys(newRunData).length === 0) {
+			// If there is no data for any of the parent nodes make sure
+			// that run data is empty that it runs regularly
+			newRunData = undefined;
+		}
+	}
+
+	return { runData: newRunData, startNodes };
+};
 
 export const workflowRun = defineComponent({
-	mixins: [workflowHelpers],
 	setup() {
 		const nodeHelpers = useNodeHelpers();
+		const router = useRouter();
+		const workflowHelpers = useWorkflowHelpers(router);
 
 		return {
 			...useTitleChange(),
 			...useToast(),
 			nodeHelpers,
+			workflowHelpers,
 		};
 	},
 	computed: {
@@ -81,7 +135,7 @@ export const workflowRun = defineComponent({
 				| { triggerNode: string; nodeData: ITaskData; source?: string }
 				| { source?: string },
 		): Promise<IExecutionPushResponse | undefined> {
-			const workflow = this.getCurrentWorkflow();
+			const workflow = this.workflowHelpers.getCurrentWorkflow();
 
 			if (this.uiStore.isActionActive('workflowRunning')) {
 				return;
@@ -97,7 +151,10 @@ export const workflowRun = defineComponent({
 				const issuesExist = this.workflowsStore.nodesIssuesExist;
 				if (issuesExist) {
 					// If issues exist get all of the issues of all nodes
-					const workflowIssues = this.checkReadyForExecution(workflow, options.destinationNode);
+					const workflowIssues = this.workflowHelpers.checkReadyForExecution(
+						workflow,
+						options.destinationNode,
+					);
 					if (workflowIssues !== null) {
 						const errorMessages = [];
 						let nodeIssues: string[];
@@ -143,7 +200,7 @@ export const workflowRun = defineComponent({
 							nodeName: options.destinationNode,
 						});
 
-						await this.getWorkflowDataToSave().then((workflowData) => {
+						await this.workflowHelpers.getWorkflowDataToSave().then((workflowData) => {
 							this.$telemetry.track('Workflow execution preflight failed', {
 								workflow_id: workflow.id,
 								workflow_name: workflow.name,
@@ -152,7 +209,7 @@ export const workflowRun = defineComponent({
 								node_graph_string: JSON.stringify(
 									TelemetryHelpers.generateNodesGraph(
 										workflowData as IWorkflowBase,
-										this.getNodeTypes(),
+										this.workflowHelpers.getNodeTypes(),
 									).nodeGraph,
 								),
 								error_node_types: JSON.stringify(trackErrorNodeTypes),
@@ -175,43 +232,21 @@ export const workflowRun = defineComponent({
 
 				const runData = this.workflowsStore.getWorkflowRunData;
 
-				let newRunData: IRunData | undefined;
-
-				const startNodes: string[] = [];
-
-				if (runData !== null && Object.keys(runData).length !== 0) {
-					newRunData = {};
-
-					// Go over the direct parents of the node
-					for (const directParentNode of directParentNodes) {
-						// Go over the parents of that node so that we can get a start
-						// node for each of the branches
-						const parentNodes = workflow.getParentNodes(directParentNode, NodeConnectionType.Main);
-
-						// Add also the enabled direct parent to be checked
-						if (workflow.nodes[directParentNode].disabled) continue;
-
-						parentNodes.push(directParentNode);
-
-						for (const parentNode of parentNodes) {
-							if (runData[parentNode] === undefined || runData[parentNode].length === 0) {
-								// When we hit a node which has no data we stop and set it
-								// as a start node the execution from and then go on with other
-								// direct input nodes
-								startNodes.push(parentNode);
-								break;
-							}
-							newRunData[parentNode] = runData[parentNode].slice(0, 1);
-						}
-					}
-
-					if (Object.keys(newRunData).length === 0) {
-						// If there is no data for any of the parent nodes make sure
-						// that run data is empty that it runs regularly
-						newRunData = undefined;
-					}
+				if (this.workflowsStore.isNewWorkflow) {
+					await this.workflowHelpers.saveCurrentWorkflow();
 				}
 
+				const workflowData = await this.workflowHelpers.getWorkflowDataToSave();
+
+				const consolidatedData = consolidateRunDataAndStartNodes(
+					directParentNodes,
+					runData,
+					workflowData.pinData,
+					workflow,
+				);
+
+				const { startNodes } = consolidatedData;
+				let { runData: newRunData } = consolidatedData;
 				let executedNode: string | undefined;
 				if (
 					startNodes.length === 0 &&
@@ -229,12 +264,6 @@ export const workflowRun = defineComponent({
 					};
 					executedNode = options.triggerNode;
 				}
-
-				if (this.workflowsStore.isNewWorkflow) {
-					await this.saveCurrentWorkflow();
-				}
-
-				const workflowData = await this.getWorkflowDataToSave();
 
 				const startRunData: IStartRunData = {
 					workflowData,

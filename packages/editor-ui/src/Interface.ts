@@ -105,9 +105,6 @@ declare global {
 		};
 		// eslint-disable-next-line @typescript-eslint/naming-convention
 		Cypress: unknown;
-		Appcues?: {
-			track(event: string, properties?: ITelemetryTrackProperties): void;
-		};
 	}
 }
 
@@ -1235,8 +1232,8 @@ export interface NDVState {
 		isDragging: boolean;
 		type: string;
 		data: string;
-		activeTargetId: string | null;
-		stickyPosition: null | XYPosition;
+		dimensions: DOMRect | null;
+		activeTarget: { id: string; stickyPosition: null | XYPosition } | null;
 	};
 	isMappingOnboarded: boolean;
 }
