@@ -4,10 +4,10 @@ import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	JsonObject,
+	IHttpRequestMethods,
+	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
-
-import type { OptionsWithUri } from 'request';
 
 import { omit } from 'lodash';
 import type {
@@ -19,7 +19,7 @@ import type {
 
 export async function freshserviceApiRequest(
 	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
@@ -29,7 +29,7 @@ export async function freshserviceApiRequest(
 	)) as FreshserviceCredentials;
 	const encodedApiKey = Buffer.from(`${apiKey}:X`).toString('base64');
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			Authorization: `Basic ${encodedApiKey}`,
 		},
@@ -75,7 +75,7 @@ export async function freshserviceApiRequest(
 
 export async function freshserviceApiRequestAllItems(
 	this: IExecuteFunctions | IHookFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
@@ -98,7 +98,7 @@ export async function freshserviceApiRequestAllItems(
 
 export async function handleListing(
 	this: IExecuteFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},

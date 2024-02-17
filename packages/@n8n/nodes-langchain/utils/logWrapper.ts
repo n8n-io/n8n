@@ -4,6 +4,7 @@ import {
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	NodeConnectionType,
+	jsonStringify,
 } from 'n8n-workflow';
 
 import { Tool } from 'langchain/tools';
@@ -198,17 +199,20 @@ export function logWrapper(
 							arguments: [],
 						})) as BaseMessage[];
 
-						executeFunctions.addOutputData(connectionType, index, [
-							[{ json: { action: 'getMessages', response } }],
-						]);
+						const payload = { action: 'getMessages', response };
+						executeFunctions.addOutputData(connectionType, index, [[{ json: payload }]]);
+
+						void executeFunctions.logAiEvent(
+							'n8n.ai.memory.get.messages',
+							jsonStringify({ response }),
+						);
 						return response;
 					};
 				} else if (prop === 'addMessage' && 'addMessage' in target) {
 					return async (message: BaseMessage): Promise<void> => {
 						connectionType = NodeConnectionType.AiMemory;
-						const { index } = executeFunctions.addInputData(connectionType, [
-							[{ json: { action: 'addMessage', message } }],
-						]);
+						const payload = { action: 'addMessage', message };
+						const { index } = executeFunctions.addInputData(connectionType, [[{ json: payload }]]);
 
 						await callMethodAsync.call(target, {
 							executeFunctions,
@@ -218,9 +222,11 @@ export function logWrapper(
 							arguments: [message],
 						});
 
-						executeFunctions.addOutputData(connectionType, index, [
-							[{ json: { action: 'addMessage' } }],
-						]);
+						void executeFunctions.logAiEvent(
+							'n8n.ai.memory.added.message',
+							jsonStringify({ message }),
+						);
+						executeFunctions.addOutputData(connectionType, index, [[{ json: payload }]]);
 					};
 				}
 			}
@@ -237,7 +243,6 @@ export function logWrapper(
 						const { index } = executeFunctions.addInputData(connectionType, [
 							[{ json: { messages, options } }],
 						]);
-
 						try {
 							const response = (await callMethodAsync.call(target, {
 								executeFunctions,
@@ -250,6 +255,18 @@ export function logWrapper(
 									runManager,
 								],
 							})) as ChatResult;
+
+							void executeFunctions.logAiEvent(
+								'n8n.ai.llm.generated',
+								jsonStringify({
+									messages:
+										typeof messages === 'string'
+											? messages
+											: messages.map((message) => message.toJSON()),
+									options,
+									response,
+								}),
+							);
 							executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
 							return response;
 						} catch (error) {
@@ -282,6 +299,10 @@ export function logWrapper(
 						executeFunctions.addOutputData(connectionType, index, [
 							[{ json: { action: 'getFormatInstructions', response } }],
 						]);
+						void executeFunctions.logAiEvent(
+							'n8n.ai.output.parser.get.instructions',
+							jsonStringify({ response }),
+						);
 						return response;
 					};
 				} else if (prop === 'parse' && 'parse' in target) {
@@ -300,6 +321,10 @@ export function logWrapper(
 							arguments: [stringifiedText],
 						})) as object;
 
+						void executeFunctions.logAiEvent(
+							'n8n.ai.output.parser.parsed',
+							jsonStringify({ text, response }),
+						);
 						executeFunctions.addOutputData(connectionType, index, [
 							[{ json: { action: 'parse', response } }],
 						]);
@@ -328,6 +353,10 @@ export function logWrapper(
 							arguments: [query, config],
 						})) as Array<Document<Record<string, any>>>;
 
+						void executeFunctions.logAiEvent(
+							'n8n.ai.retriever.get.relevant.documents',
+							jsonStringify({ query }),
+						);
 						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
 						return response;
 					};
@@ -352,6 +381,7 @@ export function logWrapper(
 							arguments: [documents],
 						})) as number[][];
 
+						void executeFunctions.logAiEvent('n8n.ai.embeddings.embedded.document');
 						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
 						return response;
 					};
@@ -371,7 +401,7 @@ export function logWrapper(
 							method: target[prop],
 							arguments: [query],
 						})) as number[];
-
+						void executeFunctions.logAiEvent('n8n.ai.embeddings.embedded.query');
 						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
 						return response;
 					};
@@ -401,6 +431,7 @@ export function logWrapper(
 						return response;
 					};
 				}
+
 				// Process Each
 				if (prop === 'processItem' && 'processItem' in target) {
 					return async (item: INodeExecutionData, itemIndex: number): Promise<number[]> => {
@@ -415,6 +446,7 @@ export function logWrapper(
 							arguments: [item, itemIndex],
 						})) as number[];
 
+						void executeFunctions.logAiEvent('n8n.ai.document.processed');
 						executeFunctions.addOutputData(connectionType, index, [
 							[{ json: { response }, pairedItem: { item: itemIndex } }],
 						]);
@@ -440,6 +472,7 @@ export function logWrapper(
 							arguments: [text],
 						})) as string[];
 
+						void executeFunctions.logAiEvent('n8n.ai.text.splitter.split');
 						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
 						return response;
 					};
@@ -463,6 +496,10 @@ export function logWrapper(
 							arguments: [query],
 						})) as string;
 
+						void executeFunctions.logAiEvent(
+							'n8n.ai.tool.called',
+							jsonStringify({ query, response }),
+						);
 						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
 						return response;
 					};
@@ -492,6 +529,10 @@ export function logWrapper(
 							arguments: [query, k, filter, _callbacks],
 						})) as Array<Document<Record<string, any>>>;
 
+						void executeFunctions.logAiEvent(
+							'n8n.ai.vector.store.searched',
+							jsonStringify({ query }),
+						);
 						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
 
 						return response;

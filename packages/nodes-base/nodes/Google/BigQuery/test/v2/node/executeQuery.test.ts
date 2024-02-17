@@ -10,7 +10,7 @@ jest.mock('../../../v2/transport', () => {
 	const originalModule = jest.requireActual('../../../v2/transport');
 	return {
 		...originalModule,
-		googleApiRequest: jest.fn(async (method: string, resource: string) => {
+		googleApiRequest: jest.fn(async (method: IHttpRequestMethods, resource: string) => {
 			if (resource === '/v2/projects/test-project/jobs' && method === 'POST') {
 				return {
 					jobReference: {

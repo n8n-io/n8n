@@ -11,6 +11,8 @@ import type {
 	IRequestOptionsSimplified,
 	PaginationOptions,
 	JsonObject,
+	IRequestOptions,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 
 import {
@@ -21,8 +23,6 @@ import {
 	removeCircularRefs,
 	sleep,
 } from 'n8n-workflow';
-
-import type { OptionsWithUri } from 'request-promise-native';
 
 import type { BodyParameter, IAuthDataSanitizeKeys } from '../GenericFunctions';
 import {
@@ -988,7 +988,7 @@ export class HttpRequestV3 implements INodeType {
 											},
 											default: '',
 											description:
-												'Should evaluate to true when pagination is complete. More info.',
+												'Should evaluate to the URL of the next page. <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/#pagination" target="_blank">More info</a>.',
 										},
 										{
 											displayName: 'Parameters',
@@ -1112,7 +1112,7 @@ export class HttpRequestV3 implements INodeType {
 											},
 											default: '',
 											description:
-												'Should evaluate to true when pagination is complete. More info.',
+												'Should evaluate to true when pagination is complete. <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/#pagination" target="_blank">More info</a>.',
 										},
 										{
 											displayName: 'Limit Pages Fetched',
@@ -1223,8 +1223,7 @@ export class HttpRequestV3 implements INodeType {
 		let nodeCredentialType: string | undefined;
 		let genericCredentialType: string | undefined;
 
-		type RequestOptions = OptionsWithUri & { useStream?: boolean };
-		let requestOptions: RequestOptions = {
+		let requestOptions: IRequestOptions = {
 			uri: '',
 		};
 
@@ -1279,7 +1278,7 @@ export class HttpRequestV3 implements INodeType {
 				nodeCredentialType = this.getNodeParameter('nodeCredentialType', itemIndex) as string;
 			}
 
-			const requestMethod = this.getNodeParameter('method', itemIndex) as string;
+			const requestMethod = this.getNodeParameter('method', itemIndex) as IHttpRequestMethods;
 
 			const sendQuery = this.getNodeParameter('sendQuery', itemIndex, false) as boolean;
 			const queryParameters = this.getNodeParameter(
@@ -1465,10 +1464,10 @@ export class HttpRequestV3 implements INodeType {
 			// Change the way data get send in case a different content-type than JSON got selected
 			if (sendBody && ['PATCH', 'POST', 'PUT', 'GET'].includes(requestMethod)) {
 				if (bodyContentType === 'multipart-form-data') {
-					requestOptions.formData = requestOptions.body;
+					requestOptions.formData = requestOptions.body as IDataObject;
 					delete requestOptions.body;
 				} else if (bodyContentType === 'form-urlencoded') {
-					requestOptions.form = requestOptions.body;
+					requestOptions.form = requestOptions.body as IDataObject;
 					delete requestOptions.body;
 				} else if (bodyContentType === 'binaryData') {
 					const inputDataFieldName = this.getNodeParameter(
@@ -1608,7 +1607,7 @@ export class HttpRequestV3 implements INodeType {
 					authDataKeys.headers = Object.keys(customAuth.headers);
 				}
 				if (customAuth.body) {
-					requestOptions.body = { ...requestOptions.body, ...customAuth.body };
+					requestOptions.body = { ...(requestOptions.body as IDataObject), ...customAuth.body };
 					authDataKeys.body = Object.keys(customAuth.body);
 				}
 				if (customAuth.qs) {
@@ -1704,13 +1703,25 @@ export class HttpRequestV3 implements INodeType {
 					paginationData.binaryResult = true;
 				}
 
-				const requestPromise = this.helpers.requestWithAuthenticationPaginated.call(
-					this,
-					requestOptions,
-					itemIndex,
-					paginationData,
-					nodeCredentialType ?? genericCredentialType,
-				);
+				const requestPromise = this.helpers.requestWithAuthenticationPaginated
+					.call(
+						this,
+						requestOptions,
+						itemIndex,
+						paginationData,
+						nodeCredentialType ?? genericCredentialType,
+					)
+					.catch((error) => {
+						if (error instanceof NodeOperationError && error.type === 'invalid_url') {
+							const urlParameterName =
+								pagination.paginationMode === 'responseContainsNextURL' ? 'Next URL' : 'URL';
+							throw new NodeOperationError(this.getNode(), error.message, {
+								description: `Make sure the "${urlParameterName}" parameter evaluates to a valid URL.`,
+							});
+						}
+
+						throw error;
+					});
 				requestPromises.push(requestPromise);
 			} else if (authentication === 'genericCredentialType' || authentication === 'none') {
 				if (oAuth1Api) {
@@ -1810,8 +1821,8 @@ export class HttpRequestV3 implements INodeType {
 					}
 				}
 
+				const responseContentType = response.headers['content-type'] ?? '';
 				if (autoDetectResponseFormat) {
-					const responseContentType = response.headers['content-type'] ?? '';
 					if (responseContentType.includes('application/json')) {
 						responseFormat = 'json';
 						if (!response.__bodyResolved) {
@@ -1890,7 +1901,22 @@ export class HttpRequestV3 implements INodeType {
 						newItem.json = items[itemIndex].json;
 						binaryData = response;
 					}
-					newItem.binary![outputPropertyName] = await this.helpers.prepareBinaryData(binaryData);
+					const preparedBinaryData = await this.helpers.prepareBinaryData(
+						binaryData,
+						undefined,
+						responseContentType || undefined,
+					);
+
+					if (
+						!preparedBinaryData.fileName &&
+						preparedBinaryData.fileExtension &&
+						typeof requestOptions.uri === 'string' &&
+						requestOptions.uri.endsWith(preparedBinaryData.fileExtension)
+					) {
+						preparedBinaryData.fileName = requestOptions.uri.split('/').pop();
+					}
+
+					newItem.binary![outputPropertyName] = preparedBinaryData;
 
 					returnItems.push(newItem);
 				} else if (responseFormat === 'text') {

@@ -146,7 +146,6 @@ import type {
 } from 'n8n-workflow';
 import { jsonParse, NodeHelpers, NodeConnectionType } from 'n8n-workflow';
 import type { IExecutionResponse, INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 
 import NodeSettings from '@/components/NodeSettings.vue';
 import NDVDraggablePanels from './NDVDraggablePanels.vue';
@@ -174,6 +173,8 @@ import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useMessage } from '@/composables/useMessage';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { usePinnedData } from '@/composables/usePinnedData';
+import { useRouter } from 'vue-router';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 
 export default defineComponent({
 	name: 'NodeDetailsView',
@@ -184,7 +185,7 @@ export default defineComponent({
 		NDVDraggablePanels,
 		TriggerPanel,
 	},
-	mixins: [workflowHelpers, workflowActivate],
+	mixins: [workflowActivate],
 	props: {
 		readOnly: {
 			type: Boolean,
@@ -203,11 +204,14 @@ export default defineComponent({
 		const nodeHelpers = useNodeHelpers();
 		const { activeNode } = storeToRefs(ndvStore);
 		const pinnedData = usePinnedData(activeNode);
+		const router = useRouter();
+		const workflowHelpers = useWorkflowHelpers(router);
 
 		return {
 			externalHooks,
 			nodeHelpers,
 			pinnedData,
+			workflowHelpers,
 			...useDeviceSupport(),
 			...useMessage(),
 			// eslint-disable-next-line @typescript-eslint/no-misused-promises
@@ -289,7 +293,7 @@ export default defineComponent({
 			);
 		},
 		workflow(): Workflow {
-			return this.getCurrentWorkflow();
+			return this.workflowHelpers.getCurrentWorkflow();
 		},
 		hasOutputConnection() {
 			if (!this.activeNode) return false;
@@ -482,7 +486,7 @@ export default defineComponent({
 					nodeSubtitle: this.nodeHelpers.getNodeSubtitle(
 						node,
 						this.activeNodeType,
-						this.getCurrentWorkflow(),
+						this.workflowHelpers.getCurrentWorkflow(),
 					),
 				});
 

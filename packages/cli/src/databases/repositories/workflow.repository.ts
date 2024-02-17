@@ -11,7 +11,7 @@ import {
 	type EntityManager,
 	type DeleteResult,
 	Not,
-} from 'typeorm';
+} from '@n8n/typeorm';
 import type { ListQuery } from '@/requests';
 import { isStringArray } from '@/utils';
 import config from '@/config';

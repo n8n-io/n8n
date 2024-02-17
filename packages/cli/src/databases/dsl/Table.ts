@@ -1,5 +1,5 @@
-import type { TableForeignKeyOptions, TableIndexOptions, QueryRunner } from 'typeorm';
-import { Table, TableColumn, TableForeignKey } from 'typeorm';
+import type { TableForeignKeyOptions, TableIndexOptions, QueryRunner } from '@n8n/typeorm';
+import { Table, TableColumn, TableForeignKey } from '@n8n/typeorm';
 import LazyPromise from 'p-lazy';
 import { Column } from './Column';
 import { ApplicationError } from 'n8n-workflow';

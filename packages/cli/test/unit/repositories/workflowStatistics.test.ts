@@ -1,5 +1,5 @@
 import { WorkflowStatisticsRepository } from '@db/repositories/workflowStatistics.repository';
-import { DataSource, EntityManager, InsertResult, QueryFailedError } from 'typeorm';
+import { DataSource, EntityManager, InsertResult, QueryFailedError } from '@n8n/typeorm';
 import { mockInstance } from '../../shared/mocking';
 import { mock, mockClear } from 'jest-mock-extended';
 import { StatisticsNames, WorkflowStatistics } from '@/databases/entities/WorkflowStatistics';

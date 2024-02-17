@@ -8,7 +8,7 @@ import { CHAT_EMBED_MODAL_KEY, CHAT_TRIGGER_NODE_TYPE, WEBHOOK_NODE_TYPE } from 
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import HtmlEditor from '@/components/HtmlEditor/HtmlEditor.vue';
-import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
+import JsEditor from '@/components/JsEditor/JsEditor.vue';
 import { useI18n } from '@/composables/useI18n';
 
 const props = defineProps({
@@ -150,7 +150,7 @@ function closeDialog() {
 							{{ i18n.baseText('chatEmbed.install') }}
 						</n8n-text>
 					</div>
-					<CodeNodeEditor :model-value="commonCode.install" is-read-only />
+					<HtmlEditor :model-value="commonCode.install" is-read-only />
 				</div>
 
 				<div class="mb-s">
@@ -165,8 +165,8 @@ function closeDialog() {
 
 				<HtmlEditor v-if="currentTab === 'cdn'" :model-value="cdnCode" is-read-only />
 				<HtmlEditor v-if="currentTab === 'vue'" :model-value="vueCode" is-read-only />
-				<CodeNodeEditor v-if="currentTab === 'react'" :model-value="reactCode" is-read-only />
-				<CodeNodeEditor v-if="currentTab === 'other'" :model-value="otherCode" is-read-only />
+				<JsEditor v-if="currentTab === 'react'" :model-value="reactCode" is-read-only />
+				<JsEditor v-if="currentTab === 'other'" :model-value="otherCode" is-read-only />
 
 				<n8n-text>
 					{{ i18n.baseText('chatEmbed.packageInfo.description') }}
