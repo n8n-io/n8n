@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "0.13.0",
+  "version": "0.14.0",
   "description": "",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -18,7 +18,9 @@
     "format": "prettier nodes credentials --write",
     "lint": "eslint nodes credentials",
     "lintfix": "eslint nodes credentials --fix",
-    "watch": "tsc-watch -p tsconfig.build.json --onCompilationComplete \"tsc-alias -p tsconfig.build.json\" --onSuccess \"pnpm n8n-generate-ui-types\""
+    "watch": "tsc-watch -p tsconfig.build.json --onCompilationComplete \"tsc-alias -p tsconfig.build.json\" --onSuccess \"pnpm n8n-generate-ui-types\"",
+    "test": "jest",
+    "test:dev": "jest --watch"
   },
   "files": [
     "dist"
@@ -42,6 +44,7 @@
       "dist/credentials/ZepApi.credentials.js"
     ],
     "nodes": [
+      "dist/nodes/vendors/OpenAi/OpenAi.node.js",
       "dist/nodes/agents/Agent/Agent.node.js",
       "dist/nodes/agents/OpenAiAssistant/OpenAiAssistant.node.js",
       "dist/nodes/chains/ChainSummarization/ChainSummarization.node.js",
@@ -117,7 +120,6 @@
     "@types/express": "^4.17.6",
     "@types/html-to-text": "^9.0.1",
     "@types/json-schema": "^7.0.12",
-    "@types/request-promise-native": "~1.0.15",
     "@types/temp": "^0.9.1",
     "eslint-plugin-n8n-nodes-base": "^1.16.0",
     "gulp": "^4.0.2",
@@ -131,7 +133,7 @@
     "@huggingface/inference": "2.6.4",
     "@langchain/core": "0.1.8",
     "@langchain/mistralai": "0.0.6",
-    "@n8n/typeorm": "0.3.20",
+    "@n8n/typeorm": "0.3.20-2",
     "@n8n/vm2": "3.9.20",
     "@pinecone-database/pinecone": "1.1.2",
     "@qdrant/js-client-rest": "1.7.0",
@@ -141,6 +143,7 @@
     "cohere-ai": "6.2.2",
     "d3-dsv": "2.0.0",
     "epub2": "3.0.1",
+    "form-data": "4.0.0",
     "html-to-text": "9.0.5",
     "json-schema-to-zod": "1.2.0",
     "langchain": "0.0.198",

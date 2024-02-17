@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "1.28.0",
+  "version": "1.29.0",
   "description": "n8n Workflow Automation Tool",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -97,7 +97,7 @@
     "@n8n/localtunnel": "2.1.0",
     "@n8n/n8n-nodes-langchain": "workspace:*",
     "@n8n/permissions": "workspace:*",
-    "@n8n/typeorm": "0.3.20",
+    "@n8n/typeorm": "0.3.20-2",
     "@n8n_io/license-sdk": "2.10.0",
     "@oclif/core": "3.18.1",
     "@rudderstack/rudder-sdk-node": "2.0.7",

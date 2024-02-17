@@ -1,6 +1,10 @@
-import type { IDataObject, IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
-
-import type { OptionsWithUri } from 'request';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	IHttpRequestMethods,
+	ILoadOptionsFunctions,
+	IRequestOptions,
+} from 'n8n-workflow';
 
 import flow from 'lodash/flow';
 import omit from 'lodash/omit';
@@ -17,12 +21,12 @@ import type {
 
 export async function actionNetworkApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		method,
 		body,
 		qs,
@@ -59,7 +63,7 @@ const toItemsKey = (endpoint: string) => {
 
 export async function handleListing(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
@@ -77,7 +81,13 @@ export async function handleListing(
 	const itemsKey = toItemsKey(endpoint);
 
 	do {
-		responseData = await actionNetworkApiRequest.call(this, method, endpoint, body, qs);
+		responseData = await actionNetworkApiRequest.call(
+			this,
+			method as IHttpRequestMethods,
+			endpoint,
+			body,
+			qs,
+		);
 		const items = responseData._embedded[itemsKey];
 		returnData.push(...(items as IDataObject[]));
 
