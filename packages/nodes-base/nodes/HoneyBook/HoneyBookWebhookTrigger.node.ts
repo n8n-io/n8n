@@ -1,7 +1,10 @@
 import {
 	IHookFunctions,
 	INodeType,
-	INodeTypeDescription, IWebhookFunctions, IWebhookResponseData, NodeOperationError,
+	INodeTypeDescription,
+	IWebhookFunctions,
+	IWebhookResponseData,
+	NodeOperationError,
 } from 'n8n-workflow';
 import { honeyBookApiRequest } from './GenericFunctions';
 
@@ -16,12 +19,12 @@ export class HoneyBookWebhookTrigger implements INodeType {
 		defaults: {
 			name: 'HoneyBook Webhook',
 		},
-		credentials: [
-			{
-				name: 'honeyBookApi',
-				required: true,
-			},
-		],
+		// credentials: [
+		// 	{
+		// 		name: 'honeyBookApi',
+		// 		required: true,
+		// 	},
+		// ],
 		webhooks: [
 			{
 				name: 'default',
@@ -304,6 +307,3 @@ export class HoneyBookWebhookTrigger implements INodeType {
 		};
 	}
 }
-
-
-

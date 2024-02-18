@@ -1,5 +1,12 @@
-import {IExecuteFunctions, ILoadOptionsFunctions, INodeExecutionData, INodePropertyOptions, INodeType, INodeTypeDescription} from "n8n-workflow";
-import { honeyBookApiRequest } from "./GenericFunctions";
+import type {
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	INodeExecutionData,
+	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
+import { honeyBookApiRequest } from './GenericFunctions';
 
 export class HoneyBook implements INodeType {
 	description: INodeTypeDescription = {
@@ -15,12 +22,15 @@ export class HoneyBook implements INodeType {
 		},
 		inputs: ['main'],
 		outputs: ['main'],
-		credentials: [
-			{
-				name: 'honeyBookApi',
-				required: true,
-			},
-		],
+		// credentials: [
+		// 	{
+		// 		name: 'honeyBookApi',
+		// 		// required: true,
+		// 		displayOptions: {
+		// 			show: {},
+		// 		},
+		// 	},
+		// ],
 		properties: [
 			{
 				displayName: 'Action',
@@ -29,19 +39,18 @@ export class HoneyBook implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Create a task',
+						name: 'Create a Task',
 						value: 'createTask',
-						description: 'Create a task',
 						action: 'Create a task',
 					},
 					{
-						name: 'Move to pipeline stage',
+						name: 'Move to Pipeline Stage',
 						value: 'movePipelineStage',
 						description: 'Move workspace to pipeline stage',
 						action: 'Move to pipeline stage',
 					},
 					{
-						name: 'Send email',
+						name: 'Send Email',
 						value: 'sendEmail',
 						description: 'Send email to client',
 						action: 'Send email to client',
@@ -61,9 +70,11 @@ export class HoneyBook implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'Stage',
+				displayName: 'Stage Name or ID',
 				name: 'stage_id',
 				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getPipelineStages',
 				},
@@ -75,9 +86,11 @@ export class HoneyBook implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'Send Email',
+				displayName: 'Send Email Name or ID',
 				name: 'email_template_id',
 				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getEmailTemplates',
 				},
@@ -94,21 +107,29 @@ export class HoneyBook implements INodeType {
 	methods = {
 		loadOptions: {
 			async getPipelineStages(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const userPipelineStages = await honeyBookApiRequest.call(this, 'GET', '/n8n/pipeline_stages');
-				return userPipelineStages.map((stage: { _id: string, name: string }) => ({
+				const userPipelineStages = await honeyBookApiRequest.call(
+					this,
+					'GET',
+					'/n8n/pipeline_stages',
+				);
+				return userPipelineStages.map((stage: { _id: string; name: string }) => ({
 					name: stage.name,
 					value: stage._id,
 				}));
 			},
 			async getEmailTemplates(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const userPipelineStages = await honeyBookApiRequest.call(this, 'GET', '/n8n/email_templates');
-				return userPipelineStages.map((stage: { _id: string, title: string }) => ({
+				const userPipelineStages = await honeyBookApiRequest.call(
+					this,
+					'GET',
+					'/n8n/email_templates',
+				);
+				return userPipelineStages.map((stage: { _id: string; title: string }) => ({
 					name: stage.title,
 					value: stage._id,
 				}));
 			},
 		},
-	}
+	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const resource = this.getNodeParameter('action', 0);
@@ -121,15 +142,12 @@ export class HoneyBook implements INodeType {
 			staticData: nodeStaticData,
 		};
 
-		const response = await honeyBookApiRequest.call(this,
-			'POST',
-			`/n8n/trigger_action`,
-			body);
+		const response = await honeyBookApiRequest.call(this, 'POST', '/n8n/trigger_action', body);
 
-		console.log('response',response);
+		console.log('response', response);
 
 		const myReturnData = this.helpers.constructExecutionMetaData(
-			this.helpers.returnJsonArray({random_value: 12312312}),
+			this.helpers.returnJsonArray({ random_value: 12312312 }),
 			{ itemData: { item: 0 } },
 		);
 

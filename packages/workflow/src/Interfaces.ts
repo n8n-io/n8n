@@ -715,6 +715,7 @@ export interface NodeHelperFunctions {
 }
 
 export interface RequestHelperFunctions {
+	getDefaultCredentials: (this: IExecuteFunctions, type: string) => any;
 	request(uriOrObject: string | IDataObject | any, options?: IDataObject): Promise<any>;
 	requestWithAuthentication(
 		this: IAllExecuteFunctions,
@@ -755,6 +756,7 @@ export interface RequestHelperFunctions {
 export interface FunctionsBase {
 	logger: Logger;
 	getCredentials(type: string, itemIndex?: number): Promise<ICredentialDataDecryptedObject>;
+	getDefaultCredentials(type: string): Promise<any>;
 	getExecutionId(): string;
 	getNode(): INode;
 	getWorkflow(): IWorkflowMetadata;

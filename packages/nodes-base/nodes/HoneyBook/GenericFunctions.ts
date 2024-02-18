@@ -2,16 +2,29 @@ import type {
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	IPollFunctions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
-import type { OptionsWithUri } from 'request';
+
+type thisT = IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions;
+
+export async function withAuthentication(this: thisT, qs: IDataObject) {
+	// eslint-disable-next-line @typescript-eslint/no-non-null-assertion, @typescript-eslint/no-unnecessary-type-assertion
+	const defaultCredentials = await this.getDefaultCredentials!('honeyBookApi');
+
+	return {
+		...qs,
+		...defaultCredentials,
+	};
+}
 
 export async function honeyBookApiRequest(
-	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
-	method: string,
+	this: thisT,
+	method: IHttpRequestMethods,
 	resource: string,
 
 	body: any = {},
@@ -20,20 +33,20 @@ export async function honeyBookApiRequest(
 	option: IDataObject = {},
 ): Promise<any> {
 	try {
-		let options: OptionsWithUri = {
+		let options: IHttpRequestOptions = {
 			headers: {},
 			method,
-			qs,
+			qs: await withAuthentication.call(this, qs),
 			body,
-			uri: uri || `http://localhost:3000/api/v2${resource}`,
+			url: uri || `http://localhost:3000/api/v2${resource}`,
 			json: true,
 		};
 		options = Object.assign({}, options, option);
 		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
 		}
-		// TODO: get honeybook credentials from n8n internal api
-		return await this.helpers.requestWithAuthentication.call(this, 'honeyBookApi', options);
+
+		return await this.helpers.httpRequest(options);
 	} catch (error) {
 		console.log('=== HB API REQUEST ERROR ===', error);
 		throw new NodeApiError(this.getNode(), error as JsonObject);
