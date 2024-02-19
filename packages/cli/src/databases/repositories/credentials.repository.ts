@@ -101,7 +101,11 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 	) {
 		// If the user is the admin of the project and the project owns the
 		// credential, then they own the credential.
-		if (roleUserToProject === 'project:admin' && roleProjectToCredential === 'credential:owner') {
+		if (
+			roleUserToProject === 'project:admin' ||
+			(roleUserToProject === 'project:personalOwner' &&
+				roleProjectToCredential === 'credential:owner')
+		) {
 			return 'credential:owner';
 		}
 
