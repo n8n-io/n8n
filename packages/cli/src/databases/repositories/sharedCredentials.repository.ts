@@ -67,18 +67,39 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 	}
 
 	/** Get the IDs of all credentials owned by or shared with a user */
+	// FIXME: deduplicate this with `findCredentialForUser`
 	async getAccessibleCredentialIds(userIds: string[]) {
-		return await this.getCredentialIdsByUserAndRole(userIds, [
-			'credential:owner',
-			'credential:user',
-		]);
+		const projectRoles = this.roleService.rolesWithScope('project', ['credential:read']);
+		const credentialRoles = this.roleService.rolesWithScope('credential', ['credential:read']);
+		const projects = await this.projectRepository.find({
+			where: {
+				projectRelations: {
+					role: In(projectRoles),
+					userId: In(userIds),
+				},
+			},
+		});
+
+		const projectIds = projects.map((p) => p.id);
+
+		const result = await this.find({
+			where: {
+				role: In(credentialRoles),
+				project: In(projectIds),
+			},
+		});
+
+		return result.map((sc) => sc.credentialsId);
 	}
 
 	private async getCredentialIdsByUserAndRole(userIds: string[], roles: CredentialSharingRole[]) {
+		// TODO: get all projects the user is allowed to see
 		const projects = await this.projectRepository.getPersonalProjectForUsers(userIds);
+		const projectIds = projects.map((p) => p.id);
+
 		const sharings = await this.find({
 			where: {
-				projectId: In(projects.map((p) => p.id)),
+				projectId: In(projectIds),
 				role: In(roles),
 			},
 		});
