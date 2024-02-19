@@ -372,12 +372,18 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
  * Get the IDs of the workflows that have been shared with the user.
  * Returns all IDs if user is global owner (see `whereClause`)
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function getSharedWorkflowIds(user: User, roles?: string[]): Promise<string[]> {
-	const sharedWorkflows = await Db.collections.SharedWorkflow.find({
-		relations: ['workflow', 'role'],
-		where: whereClause({ user, entityType: 'workflow', roles }),
-		select: ['workflowId'],
-	});
+	const sharedWorkflows = process.env.ONLY_OWNER_OR_ADMIN_CAN_ACCESS_WORKFLOW
+		? await Db.collections.SharedWorkflow.find({
+				relations: ['workflow', 'role'],
+				select: ['workflowId'],
+				where: whereClause({ user, entityType: 'workflow', roles }),
+		  })
+		: await Db.collections.SharedWorkflow.find({
+				relations: ['workflow', 'role'],
+				select: ['workflowId'],
+		  });
 
 	return sharedWorkflows.map(({ workflowId }) => workflowId);
 }

@@ -17,14 +17,18 @@ function insertIf(condition: boolean, elements: string[]): string[] {
 	return condition ? elements : [];
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function getSharedWorkflowIds(user: User): Promise<string[]> {
 	const where = user.globalRole.name === 'owner' ? {} : { userId: user.id };
-	const sharedWorkflows = await Db.collections.SharedWorkflow.find({
-		where,
-		select: ['workflowId'],
-	});
-	return sharedWorkflows.map(({ workflowId }) => workflowId);
-
+	const sharedWorkflows =
+		process.env.ONLY_OWNER_OR_ADMIN_CAN_ACCESS_WORKFLOW === 'true'
+			? await Db.collections.SharedWorkflow.find({
+					where,
+					select: ['workflowId'],
+			  })
+			: await Db.collections.SharedWorkflow.find({
+					select: ['workflowId'],
+			  });
 	return sharedWorkflows.map(({ workflowId }) => workflowId);
 }
 
