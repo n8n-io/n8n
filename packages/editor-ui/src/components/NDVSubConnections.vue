@@ -16,14 +16,15 @@
 						[$style.connectedNodesWrapper]: true,
 						[$style.connectedNodesExpanded]: expandedGroups.includes(connection.type),
 					}"
+					:style="`--nodes-length: ${connectedNodes[connection.type].length}`"
 					@click="expandConnectionGroup(connection.type, true)"
 				>
 					<div
+						v-if="connectedNodes[connection.type].length > 0"
 						:class="{
 							[$style.connectedNodes]: true,
 							[$style.connectedNodesMultiple]: connectedNodes[connection.type].length > 1,
 						}"
-						:style="`--nodes-length: ${connectedNodes[connection.type].length}`"
 					>
 						<div
 							v-for="(node, index) in connectedNodes[connection.type]"
@@ -67,15 +68,15 @@
 								</div>
 							</n8n-tooltip>
 						</div>
-						<div
-							v-if="
-								connectedNodes[connection.type].length >= 1 ? connection.maxConnections !== 1 : true
-							"
-							:class="$style.plusButton"
-							@click="onPlusClick(connection.type)"
-						>
-							<n8n-icon-button size="medium" icon="plus" type="tertiary" />
-						</div>
+					</div>
+					<div
+						v-if="
+							connectedNodes[connection.type].length >= 1 ? connection.maxConnections !== 1 : true
+						"
+						:class="$style.plusButton"
+						@click="onPlusClick(connection.type)"
+					>
+						<n8n-icon-button size="medium" icon="plus" type="tertiary" />
 					</div>
 				</div>
 			</div>
@@ -232,8 +233,9 @@ watch(
 <style lang="scss" module>
 .container {
 	position: absolute;
-	left: var(--spacing-s);
-	right: var(--spacing-s);
+	bottom: calc(-1 * var(--spacing-s));
+	left: var(--spacing-xs);
+	right: var(--spacing-xs);
 	user-select: none;
 }
 .connections {
@@ -246,8 +248,6 @@ watch(
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	transform: translateY(-40px);
-	transform-origin: center;
 
 	.connectedNodesWrapper,
 	.connectionLabel {
@@ -271,38 +271,28 @@ watch(
 	flex-direction: column;
 	align-items: center;
 	justify-content: space-between;
+	position: relative;
 }
 .plusButton {
-	position: absolute;
-	top: 8px;
 	transition: all 100ms ease-in;
+	position: absolute;
+	top: var(--spacing-2xs);
 
 	&:not(:first-child) {
 		opacity: 1;
-		transform: translateX(calc((var(--nodes-length) - 1) * 45px * -1));
-		right: 0;
 		z-index: 0;
+		left: 100%;
+		margin-left: -15px;
 
 		.connectedNodesExpanded & {
+			margin-left: var(--spacing-2xs);
 			opacity: 1;
-			right: -40px;
-			transform: translateX(0%);
 		}
 	}
 }
-.connectedNodes {
-	display: flex;
-	justify-content: center;
-	position: absolute;
-	gap: var(--spacing-2xs);
-}
+
 .connectedNodesMultiple {
 	transition: margin 200ms ease-in;
-	margin-left: calc((var(--nodes-length) - 1) * 50px);
-
-	.connectedNodesExpanded & {
-		margin-left: -60px;
-	}
 }
 .connectedNodesExpanded {
 	z-index: 10;
@@ -325,8 +315,19 @@ watch(
 	justify-self: center;
 	align-self: center;
 }
+.connectedNodes {
+	display: flex;
+	justify-content: center;
+	margin-right: calc((var(--nodes-length) - 1) * -35px);
+
+	.connectedNodesExpanded & {
+		gap: var(--spacing-2xs);
+		margin-right: 0;
+	}
+}
 .nodeWrapper {
-	transition: transform 200ms ease-in;
+	--collapsed-node-offset: calc(var(--node-index) * -35px);
+	transition: all 200ms ease-in;
 	transform-origin: center;
 	z-index: 10;
 
@@ -338,7 +339,7 @@ watch(
 	}
 
 	&:not(:first-child) {
-		transform: translateX(calc(var(--node-index, 0) * -40px));
+		transform: translateX(var(--collapsed-node-offset));
 	}
 
 	.connectedNodesExpanded & {
