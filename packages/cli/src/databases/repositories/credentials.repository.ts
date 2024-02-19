@@ -7,6 +7,7 @@ import { SharedCredentials } from '../entities/SharedCredentials';
 import type { ListQuery } from '@/requests';
 import type { User } from '../entities/User';
 import type { ProjectRole } from '../entities/ProjectRelation';
+import { Project } from '../entities/Project';
 
 @Service()
 export class CredentialsRepository extends Repository<CredentialsEntity> {
@@ -14,19 +15,18 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 		super(CredentialsEntity, dataSource.manager);
 	}
 
-	// FIXME: Pruning does not work. Fix it.
 	async pruneSharings(
 		transaction: EntityManager,
 		credentialId: string,
 		userIds: string[],
 	): Promise<DeleteResult> {
+		const projects = await transaction.getRepository(Project).find({
+			where: { projectRelations: { userId: In(userIds) } },
+		});
+		const projectIds = projects.map((pp) => pp.id);
 		const conditions: FindOptionsWhere<SharedCredentials> = {
 			credentialsId: credentialId,
-			project: {
-				projectRelations: {
-					userId: Not(In(userIds)),
-				},
-			},
+			projectId: Not(In(projectIds)),
 		};
 		return await transaction.delete(SharedCredentials, conditions);
 	}
