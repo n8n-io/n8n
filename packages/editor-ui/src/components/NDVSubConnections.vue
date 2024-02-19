@@ -233,7 +233,7 @@ watch(
 <style lang="scss" module>
 .container {
 	position: absolute;
-	bottom: calc(-1 * var(--spacing-s));
+	top: calc(100% - 43px);
 	left: var(--spacing-xs);
 	right: var(--spacing-xs);
 	user-select: none;
