@@ -9,27 +9,13 @@
 			<slot name="tabnav" />
 		</template>
 		<template v-if="showAside" #aside>
-			<enterprise-edition v-if="shareable" :features="[EnterpriseEditionFeature.Sharing]">
+			<enterprise-edition v-if="false" :features="[EnterpriseEditionFeature.Sharing]">
 				<ResourceOwnershipSelect
 					v-model="isOwnerSubview"
 					:my-resources-label="i18n.baseText(`${resourceKey}.menu.my`)"
 					:all-resources-label="i18n.baseText(`${resourceKey}.menu.all`)"
 				/>
 			</enterprise-edition>
-
-			<div>
-				<slot name="add-button" :disabled="disabled">
-					<n8n-button
-						size="large"
-						block
-						:disabled="disabled"
-						data-test-id="resources-list-add"
-						@click="$emit('click:add', $event)"
-					>
-						{{ i18n.baseText(`${resourceKey}.add`) }}
-					</n8n-button>
-				</slot>
-			</div>
 		</template>
 
 		<div v-if="loading">
@@ -62,8 +48,32 @@
 			</div>
 			<PageViewLayoutList v-else :overflow="type !== 'list'">
 				<template #header>
-					<div class="mb-xs">
-						<div :class="$style['filters-row']">
+					<div :class="$style['filters-row']">
+						<div :class="$style.filters">
+							<ResourceFiltersDropdown
+								v-if="showFiltersDropdown"
+								:keys="filterKeys"
+								:reset="resetFilters"
+								:model-value="filtersModel"
+								:shareable="false"
+								@update:modelValue="$emit('update:filters', $event)"
+								@update:filtersLength="onUpdateFiltersLength"
+							>
+								<template #default="resourceFiltersSlotProps">
+									<slot name="filters" v-bind="resourceFiltersSlotProps" />
+								</template>
+							</ResourceFiltersDropdown>
+							<div :class="$style['sort-and-filter']">
+								<n8n-select v-model="sortBy" data-test-id="resources-list-sort">
+									<n8n-option
+										v-for="sortOption in sortOptions"
+										:key="sortOption"
+										data-test-id="resources-list-sort-item"
+										:value="sortOption"
+										:label="i18n.baseText(`${resourceKey}.sort.${sortOption}`)"
+									/>
+								</n8n-select>
+							</div>
 							<n8n-input
 								ref="search"
 								:model-value="filtersModel.search"
@@ -77,31 +87,17 @@
 									<n8n-icon icon="search" />
 								</template>
 							</n8n-input>
-							<div :class="$style['sort-and-filter']">
-								<n8n-select v-model="sortBy" data-test-id="resources-list-sort">
-									<n8n-option
-										v-for="sortOption in sortOptions"
-										:key="sortOption"
-										data-test-id="resources-list-sort-item"
-										:value="sortOption"
-										:label="i18n.baseText(`${resourceKey}.sort.${sortOption}`)"
-									/>
-								</n8n-select>
-								<ResourceFiltersDropdown
-									v-if="showFiltersDropdown"
-									:keys="filterKeys"
-									:reset="resetFilters"
-									:model-value="filtersModel"
-									:shareable="shareable"
-									@update:modelValue="$emit('update:filters', $event)"
-									@update:filtersLength="onUpdateFiltersLength"
-								>
-									<template #default="resourceFiltersSlotProps">
-										<slot name="filters" v-bind="resourceFiltersSlotProps" />
-									</template>
-								</ResourceFiltersDropdown>
-							</div>
 						</div>
+						<slot name="add-button" :disabled="disabled">
+							<n8n-button
+								size="large"
+								:disabled="disabled"
+								data-test-id="resources-list-add"
+								@click="$emit('click:add', $event)"
+							>
+								{{ i18n.baseText(`${resourceKey}.add`) }}
+							</n8n-button>
+						</slot>
 					</div>
 
 					<slot name="callout"></slot>
@@ -533,6 +529,15 @@ export default defineComponent({
 	flex-direction: row;
 	align-items: center;
 	justify-content: space-between;
+	margin-bottom: var(--spacing-s);
+}
+
+.filters {
+	display: grid;
+	grid-auto-flow: column;
+	grid-auto-columns: max-content;
+	gap: var(--spacing-2xs);
+	align-items: center;
 }
 
 .search {
@@ -549,10 +554,7 @@ export default defineComponent({
 }
 
 .sort-and-filter {
-	display: flex;
-	flex-direction: row;
-	align-items: center;
-	justify-content: space-between;
+	white-space: nowrap;
 }
 
 .header-loading {

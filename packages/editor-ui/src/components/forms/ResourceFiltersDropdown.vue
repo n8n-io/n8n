@@ -5,7 +5,7 @@
 				icon="filter"
 				type="tertiary"
 				:active="hasFilters"
-				:class="[$style['filter-button'], 'ml-2xs']"
+				:class="$style['filter-button']"
 				data-test-id="resources-list-filters-trigger"
 			>
 				<n8n-badge v-show="filtersLength > 0" theme="primary" class="mr-4xs">
