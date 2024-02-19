@@ -17,8 +17,10 @@ function insertIf(condition: boolean, elements: string[]): string[] {
 	return condition ? elements : [];
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function getSharedWorkflowIds(user: User): Promise<string[]> {
-	const where = user.globalRole.name === 'owner' ? {} : { userId: user.id };
+	const where = {};
+	// const where = user.globalRole.name === 'owner' ? {} : { userId: user.id };
 	const sharedWorkflows = await Db.collections.SharedWorkflow.find({
 		where,
 		select: ['workflowId'],
