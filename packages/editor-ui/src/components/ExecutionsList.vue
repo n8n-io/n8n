@@ -431,7 +431,7 @@ export default defineComponent({
 		displayExecution(execution: ExecutionSummary) {
 			const route = this.$router.resolve({
 				name: VIEWS.EXECUTION_PREVIEW,
-				params: { name: execution.workflowId, executionId: execution.id },
+				params: { name: execution.workflowId, executionId: execution.id, projectId: 'home' },
 			});
 			window.open(route.href, '_blank');
 		},
