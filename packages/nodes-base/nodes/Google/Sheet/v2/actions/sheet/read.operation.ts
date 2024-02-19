@@ -1,4 +1,9 @@
-import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IDataObject,
+	INodeExecutionData,
+	INodeProperties,
+} from 'n8n-workflow';
 import type { GoogleSheet } from '../../helpers/GoogleSheet';
 import {
 	getRangeString,
@@ -14,6 +19,27 @@ import type {
 } from '../../helpers/GoogleSheets.types';
 
 import { dataLocationOnSheet, outputFormatting } from './commonDescription';
+
+const combineFiltersOptions: INodeProperties = {
+	displayName: 'Combine Filters',
+	name: 'combineFilters',
+	type: 'options',
+	description:
+		'How to combine the conditions defined in "Filters": AND requires all conditions to be true, OR requires at least one condition to be true',
+	options: [
+		{
+			name: 'AND',
+			value: 'AND',
+			description: 'Only rows that meet all the conditions are selected',
+		},
+		{
+			name: 'OR',
+			value: 'OR',
+			description: 'Rows that meet at least one condition are selected',
+		},
+	],
+	default: 'AND',
+};
 
 export const description: SheetProperties = [
 	{
@@ -65,24 +91,31 @@ export const description: SheetProperties = [
 		},
 	},
 	{
-		displayName: 'Combine Filters',
-		name: 'combineFilters',
-		type: 'options',
-		description:
-			'How to combine the conditions defined in "Filters": AND requires all conditions to be true, OR requires at least one condition to be true',
-		options: [
-			{
-				name: 'AND',
-				value: 'AND',
-				description: 'Only rows that meet all the conditions are selected',
-			},
-			{
-				name: 'OR',
-				value: 'OR',
-				description: 'Rows that meet at least one condition are selected',
-			},
-		],
+		...combineFiltersOptions,
 		default: 'OR',
+		displayOptions: {
+			show: {
+				'@version': [{ _cnd: { lt: 4.3 } }],
+				resource: ['sheet'],
+				operation: ['read'],
+			},
+			hide: {
+				...untilSheetSelected,
+			},
+		},
+	},
+	{
+		...combineFiltersOptions,
+		displayOptions: {
+			show: {
+				'@version': [{ _cnd: { gte: 4.3 } }],
+				resource: ['sheet'],
+				operation: ['read'],
+			},
+			hide: {
+				...untilSheetSelected,
+			},
+		},
 	},
 	{
 		displayName: 'Options',
