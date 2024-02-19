@@ -167,11 +167,11 @@ export const projectsRoutes: Readonly<RouteRecordRaw[]> = [
 			},
 			{
 				path: 'workflow',
-				redirect: 'workflow/new',
+				redirect: { name: VIEWS.NEW_WORKFLOW },
 			},
 			{
 				path: '',
-				redirect: 'workflows',
+				redirect: { name: VIEWS.WORKFLOWS },
 			},
 		],
 	},
