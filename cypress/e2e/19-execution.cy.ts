@@ -518,7 +518,10 @@ describe('Execution', () => {
 	});
 
 	it('should send proper payload for manual node run', () => {
-		cy.createFixtureWorkflow('RunData_test.json', `RunData test ${uuid()}`);
+		cy.createFixtureWorkflow(
+			'Check_manual_node_run_for_pinned_and_rundata.json',
+			`Check manual node run for pinned and rundata ${uuid()}`,
+		);
 
 		workflowPage.getters.zoomToFitButton().click();
 
