@@ -48,11 +48,11 @@ export class CreateProject1705928727784 implements IrreversibleMigration {
 			escape,
 			isMysql,
 			runQuery,
-			schemaBuilder: { addForeignKey, addColumns, createIndex, column },
+			schemaBuilder: { addForeignKey, addColumns, addNotNull, createIndex, column },
 		}: MigrationContext,
 	) {
 		// Add projectId column, this is set to a blank string by default because it's a primary key
-		const projectIdColumn = column('projectId').varchar(36).notNull;
+		const projectIdColumn = column('projectId').varchar(36).default('NULL');
 		const projectIdColumnName = escape.columnName('projectId');
 		const userIdColumnName = escape.columnName('userId');
 		await addColumns(table, [projectIdColumn]);
@@ -84,6 +84,8 @@ export class CreateProject1705928727784 implements IrreversibleMigration {
 		await runQuery(swQuery);
 
 		await addForeignKey(table, 'projectId', ['project', 'id']);
+
+		await addNotNull(table, 'projectId');
 
 		// Index the new projectId column
 		await createIndex(table, ['projectId']);

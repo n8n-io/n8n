@@ -4,16 +4,16 @@ import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	JsonObject,
+	IHttpRequestMethods,
+	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
-
-import type { OptionsWithUri } from 'request';
 
 import type { MispCredentials } from './types';
 
 export async function mispApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
@@ -22,7 +22,7 @@ export async function mispApiRequest(
 		'mispApi',
 	)) as MispCredentials;
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		method,
 		body,
 		qs,
