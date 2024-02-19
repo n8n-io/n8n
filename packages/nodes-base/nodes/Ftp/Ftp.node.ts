@@ -502,9 +502,7 @@ export class Ftp implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		// const returnData: IDataObject[] = [];
-		const returnItems: INodeExecutionData[] = [];
-		let responseData;
+		let returnItems: INodeExecutionData[] = [];
 		const operation = this.getNodeParameter('operation', 0);
 
 		let credentials: ICredentialDataDecryptedObject | undefined = undefined;
