@@ -284,7 +284,13 @@ export class Aws implements ICredentialType {
 		let path = requestOptions.qs?.path;
 		const method = requestOptions.method;
 		let body = requestOptions.body;
+
 		let region = credentials.region;
+		if (requestOptions.qs?._region) {
+			region = requestOptions.qs._region as string;
+			delete requestOptions.qs._region;
+		}
+
 		let query = requestOptions.qs?.query as IDataObject;
 		// ! Workaround as we still use the IRequestOptions interface which uses uri instead of url
 		// ! To change when we replace the interface with IHttpRequestOptions
@@ -324,10 +330,10 @@ export class Aws implements ICredentialType {
 				} else if (service === 'sqs' && credentials.sqsEndpoint) {
 					endpointString = credentials.sqsEndpoint as string;
 				} else if (service) {
-					endpointString = `https://${service}.${credentials.region}.amazonaws.com`;
+					endpointString = `https://${service}.${region}.amazonaws.com`;
 				}
 				endpoint = new URL(
-					endpointString!.replace('{region}', credentials.region as string) + (path as string),
+					endpointString!.replace('{region}', region as string) + (path as string),
 				);
 			} else {
 				// If no endpoint is set, we try to decompose the path and use the default endpoint

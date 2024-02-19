@@ -29,12 +29,14 @@ export async function awsApiRequest(
 			service,
 			path,
 			query,
+			_region,
 		},
 		method,
 		body,
 		url: '',
 		headers,
 	} as IHttpRequestOptions;
+
 	if (Object.keys(option).length !== 0) {
 		Object.assign(requestOptions, option);
 	}
