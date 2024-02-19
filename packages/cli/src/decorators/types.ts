@@ -10,7 +10,12 @@ export type AuthRoleMetadata = Record<string, AuthRole>;
 
 export type LicenseMetadata = Record<string, BooleanLicenseFeature[]>;
 
-export type ScopeMetadata = Record<string, Scope[]>;
+export type RouteScopeMetadata = {
+	[handlerName: string]: {
+		scopes: Scope[];
+		globalOnly: boolean;
+	};
+};
 
 export interface MiddlewareMetadata {
 	handlerName: string;

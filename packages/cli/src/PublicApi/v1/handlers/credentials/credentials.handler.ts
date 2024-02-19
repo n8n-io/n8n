@@ -4,8 +4,7 @@ import type express from 'express';
 import { CredentialsHelper } from '@/CredentialsHelper';
 import { CredentialTypes } from '@/CredentialTypes';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
-import type { CredentialRequest } from '@/requests';
-import type { CredentialTypeRequest } from '../../../types';
+import type { CredentialTypeRequest, CredentialRequest } from '../../../types';
 import { authorize } from '../../shared/middlewares/global.middleware';
 import { validCredentialsProperties, validCredentialType } from './credentials.middleware';
 

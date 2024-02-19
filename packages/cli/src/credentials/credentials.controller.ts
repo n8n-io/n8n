@@ -5,13 +5,23 @@ import { CredentialRequest, ListQuery } from '@/requests';
 import { InternalHooks } from '@/InternalHooks';
 import { Logger } from '@/Logger';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NamingService } from '@/services/naming.service';
 import { License } from '@/License';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { OwnershipService } from '@/services/ownership.service';
 import { EnterpriseCredentialsService } from './credentials.service.ee';
-import { Authorized, Delete, Get, Licensed, Patch, Post, Put, RestController } from '@/decorators';
+import {
+	Authorized,
+	Delete,
+	Get,
+	Licensed,
+	Patch,
+	Post,
+	Put,
+	RestController,
+	ProjectScope,
+} from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { UserManagementMailer } from '@/UserManagement/email';
 import * as Db from '@/Db';
@@ -49,10 +59,11 @@ export class CredentialsController {
 		};
 	}
 
-	@Get('/:id')
+	@Get('/:credentialId')
+	@ProjectScope('credential:read')
 	async getOne(req: CredentialRequest.Get) {
 		if (this.license.isSharingEnabled()) {
-			const { id: credentialId } = req.params;
+			const { credentialId } = req.params;
 			const includeDecryptedData = req.query.includeData === 'true';
 
 			let credential = await this.credentialsRepository.findOne({
@@ -69,7 +80,7 @@ export class CredentialsController {
 			const userSharing = credential.shared?.find((shared) => shared.user.id === req.user.id);
 
 			if (!userSharing && !req.user.hasGlobalScope('credential:read')) {
-				throw new UnauthorizedError('Forbidden.');
+				throw new ForbiddenError();
 			}
 
 			credential = this.ownershipService.addOwnedByAndSharedWith(credential);
@@ -91,7 +102,7 @@ export class CredentialsController {
 
 		// non-enterprise
 
-		const { id: credentialId } = req.params;
+		const { credentialId } = req.params;
 		const includeDecryptedData = req.query.includeData === 'true';
 
 		const sharing = await this.credentialsService.getSharing(
@@ -138,7 +149,7 @@ export class CredentialsController {
 			});
 			if (!ownsCredential) {
 				if (!sharing) {
-					throw new UnauthorizedError('Forbidden');
+					throw new ForbiddenError();
 				}
 
 				const decryptedData = this.credentialsService.decrypt(sharing.credentials);
@@ -196,9 +207,10 @@ export class CredentialsController {
 		return credential;
 	}
 
-	@Patch('/:id')
+	@Patch('/:credentialId')
+	@ProjectScope('credential:update')
 	async updateCredentials(req: CredentialRequest.Update) {
-		const { id: credentialId } = req.params;
+		const { credentialId } = req.params;
 
 		const sharing = await this.credentialsService.getSharing(
 			req.user,
@@ -225,7 +237,7 @@ export class CredentialsController {
 				credentialId,
 				userId: req.user.id,
 			});
-			throw new UnauthorizedError('You can only update credentials owned by you');
+			throw new ForbiddenError('You can only update credentials owned by you');
 		}
 
 		const { credentials: credential } = sharing;
@@ -254,9 +266,10 @@ export class CredentialsController {
 		return { ...rest };
 	}
 
-	@Delete('/:id')
+	@Delete('/:credentialId')
+	@ProjectScope('credential:delete')
 	async deleteCredentials(req: CredentialRequest.Delete) {
-		const { id: credentialId } = req.params;
+		const { credentialId } = req.params;
 
 		const sharing = await this.credentialsService.getSharing(
 			req.user,
@@ -283,7 +296,7 @@ export class CredentialsController {
 				credentialId,
 				userId: req.user.id,
 			});
-			throw new UnauthorizedError('You can only remove credentials owned by you');
+			throw new ForbiddenError('You can only remove credentials owned by you');
 		}
 
 		const { credentials: credential } = sharing;
@@ -294,9 +307,10 @@ export class CredentialsController {
 	}
 
 	@Licensed('feat:sharing')
-	@Put('/:id/share')
+	@Put('/:credentialId/share')
+	@ProjectScope('credential:share')
 	async shareCredentials(req: CredentialRequest.Share) {
-		const { id: credentialId } = req.params;
+		const { credentialId } = req.params;
 		const { shareWithIds } = req.body;
 
 		if (
@@ -324,7 +338,7 @@ export class CredentialsController {
 				credential = sharedRes?.credentials;
 			}
 			if (!credential) {
-				throw new UnauthorizedError('Forbidden');
+				throw new ForbiddenError();
 			}
 		}
 

@@ -8,7 +8,7 @@ import { License } from '@/License';
 import { Container } from 'typedi';
 import { UserRepository } from '@db/repositories/user.repository';
 import { JwtService } from '@/services/jwt.service';
-import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { ApplicationError } from 'n8n-workflow';
 
@@ -30,7 +30,7 @@ export function issueJWT(user: User): JwtToken {
 		!user.isOwner &&
 		!isWithinUsersLimit
 	) {
-		throw new UnauthorizedError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
+		throw new ForbiddenError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 	}
 	if (password) {
 		payload.password = createHash('sha256')
