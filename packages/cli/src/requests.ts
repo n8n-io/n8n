@@ -152,7 +152,6 @@ export declare namespace CredentialRequest {
 	type Get = AuthenticatedRequest<{ credentialId: string }, {}, {}, Record<string, string>>;
 
 	type Delete = Get;
-	type PublicDelete = AuthenticatedRequest<{ id: string }, {}, {}, Record<string, string>>;
 
 	type GetAll = AuthenticatedRequest<{}, {}, {}, { filter: string }>;
 
