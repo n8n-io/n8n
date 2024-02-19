@@ -578,22 +578,19 @@ export class Ftp implements INodeType {
 
 							const recursive = this.getNodeParameter('recursive', i) as boolean;
 
+							let responseData: sftpClient.FileInfo[];
 							if (recursive) {
 								responseData = await callRecursiveList(path, sftp!, normalizeSFtpItem);
-								const executionData = this.helpers.constructExecutionMetaData(
-									this.helpers.returnJsonArray(responseData as unknown as IDataObject[]),
-									{ itemData: { item: i } },
-								);
-								returnItems.push.apply(returnItems, executionData);
 							} else {
 								responseData = await sftp!.list(path);
 								responseData.forEach((item) => normalizeSFtpItem(item, path));
-								const executionData = this.helpers.constructExecutionMetaData(
-									this.helpers.returnJsonArray(responseData as unknown as IDataObject[]),
-									{ itemData: { item: i } },
-								);
-								returnItems.push.apply(returnItems, executionData);
 							}
+
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray(responseData as unknown as IDataObject[]),
+								{ itemData: { item: i } },
+							);
+							returnItems = returnItems.concat(executionData);
 						}
 
 						if (operation === 'delete') {
@@ -601,15 +598,15 @@ export class Ftp implements INodeType {
 							const options = this.getNodeParameter('options', i);
 
 							if (options.folder === true) {
-								responseData = await sftp!.rmdir(path, !!options.recursive);
+								await sftp!.rmdir(path, !!options.recursive);
 							} else {
-								responseData = await sftp!.delete(path);
+								await sftp!.delete(path);
 							}
 							const executionData = this.helpers.constructExecutionMetaData(
 								[{ json: { success: true } }],
 								{ itemData: { item: i } },
 							);
-							returnItems.push(...executionData);
+							returnItems = returnItems.concat(executionData);
 						}
 
 						if (operation === 'rename') {
@@ -623,12 +620,12 @@ export class Ftp implements INodeType {
 								await recursivelyCreateSftpDirs(sftp!, newPath);
 							}
 
-							responseData = await sftp!.rename(oldPath, newPath);
+							await sftp!.rename(oldPath, newPath);
 							const executionData = this.helpers.constructExecutionMetaData(
 								[{ json: { success: true } }],
 								{ itemData: { item: i } },
 							);
-							returnItems.push(...executionData);
+							returnItems = returnItems.concat(executionData);
 						}
 
 						if (operation === 'download') {
@@ -649,7 +646,7 @@ export class Ftp implements INodeType {
 									this.helpers.returnJsonArray(items[i]),
 									{ itemData: { item: i } },
 								);
-								returnItems.push(...executionData);
+								returnItems = returnItems.concat(executionData);
 							} finally {
 								await binaryFile.cleanup();
 							}
@@ -683,7 +680,7 @@ export class Ftp implements INodeType {
 								this.helpers.returnJsonArray(items[i]),
 								{ itemData: { item: i } },
 							);
-							returnItems.push(...executionData);
+							returnItems = returnItems.concat(executionData);
 						}
 					}
 
@@ -693,24 +690,21 @@ export class Ftp implements INodeType {
 
 							const recursive = this.getNodeParameter('recursive', i) as boolean;
 
+							let responseData;
 							if (recursive) {
 								responseData = await callRecursiveList(path, ftp!, normalizeFtpItem);
-								const executionData = this.helpers.constructExecutionMetaData(
-									this.helpers.returnJsonArray(responseData as unknown as IDataObject[]),
-									{ itemData: { item: i } },
-								);
-								returnItems.push.apply(returnItems, executionData);
 							} else {
 								responseData = await ftp!.list(path);
 								responseData.forEach((item) =>
 									normalizeFtpItem(item as ftpClient.ListingElement, path),
 								);
-								const executionData = this.helpers.constructExecutionMetaData(
-									this.helpers.returnJsonArray(responseData as unknown as IDataObject[]),
-									{ itemData: { item: i } },
-								);
-								returnItems.push.apply(returnItems, executionData);
 							}
+
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray(responseData as unknown as IDataObject[]),
+								{ itemData: { item: i } },
+							);
+							returnItems = returnItems.concat(executionData);
 						}
 
 						if (operation === 'delete') {
@@ -718,15 +712,16 @@ export class Ftp implements INodeType {
 							const options = this.getNodeParameter('options', i);
 
 							if (options.folder === true) {
-								responseData = await ftp!.rmdir(path, !!options.recursive);
+								await ftp!.rmdir(path, !!options.recursive);
 							} else {
-								responseData = await ftp!.delete(path);
+								await ftp!.delete(path);
 							}
+
 							const executionData = this.helpers.constructExecutionMetaData(
 								[{ json: { success: true } }],
 								{ itemData: { item: i } },
 							);
-							returnItems.push(...executionData);
+							returnItems = returnItems.concat(executionData);
 						}
 
 						if (operation === 'download') {
@@ -748,7 +743,7 @@ export class Ftp implements INodeType {
 									this.helpers.returnJsonArray(items[i]),
 									{ itemData: { item: i } },
 								);
-								returnItems.push(...executionData);
+								returnItems = returnItems.concat(executionData);
 							} finally {
 								await binaryFile.cleanup();
 							}
@@ -759,12 +754,12 @@ export class Ftp implements INodeType {
 
 							const newPath = this.getNodeParameter('newPath', i) as string;
 
-							responseData = await ftp!.rename(oldPath, newPath);
+							await ftp!.rename(oldPath, newPath);
 							const executionData = this.helpers.constructExecutionMetaData(
 								[{ json: { success: true } }],
 								{ itemData: { item: i } },
 							);
-							returnItems.push(...executionData);
+							returnItems = returnItems.concat(executionData);
 						}
 
 						if (operation === 'upload') {
@@ -816,7 +811,7 @@ export class Ftp implements INodeType {
 								this.helpers.returnJsonArray(items[i]),
 								{ itemData: { item: i } },
 							);
-							returnItems.push(...executionData);
+							returnItems = returnItems.concat(executionData);
 						}
 					}
 				} catch (error) {
