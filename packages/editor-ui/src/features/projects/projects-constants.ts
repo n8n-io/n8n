@@ -8,9 +8,11 @@ export const oldRoutesToRedirectToProjects = [
 	'/workflows',
 	'/workflow',
 	'/workflow/new',
+	'/workflow/:name',
 	'/workflow/:name/debug/:executionId',
 	'/workflow/:name/executions',
 	'/workflow/:name/executions/:executionId',
+	'/workflow/:workflowId/history',
 	'/workflow/:workflowId/history/:versionId?',
 	'/workflows/templates/:id',
 ];

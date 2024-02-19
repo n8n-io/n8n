@@ -3,7 +3,7 @@ import { VIEWS } from '@/constants';
 import { useSettingsStore } from '@/stores/settings.store';
 
 export const getPathAsRegexPattern = (path: RouteRecordRaw['path']): RegExp =>
-	new RegExp(path.replace(/:([^\/]+)/g, '([^/]+)').replace('/', '\\/'));
+	new RegExp(`^${path.replace(/:([^\/]+)/g, '([^/]+)')}$`);
 
 export function getTemplatesRedirect(defaultRedirect: VIEWS[keyof VIEWS]) {
 	const settingsStore = useSettingsStore();
