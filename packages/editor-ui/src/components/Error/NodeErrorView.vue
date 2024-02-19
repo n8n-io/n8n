@@ -16,22 +16,22 @@
 				<p class="node-error-view__info-title">Error details</p>
 				<div class="copy-button">
 					<n8n-icon-button
-					:title="$locale.baseText('nodeErrorView.copyToClipboard')"
-					icon="copy"
-					type="secondary"
-					size="mini"
-					text="true"
-					transparent-background="transparent"
-					@click="copyCause"
-				/>
+						:title="$locale.baseText('nodeErrorView.copyToClipboard')"
+						icon="copy"
+						type="secondary"
+						size="mini"
+						text="true"
+						transparent-background="transparent"
+						@click="copyCause"
+					/>
 				</div>
 			</div>
 			<div class="node-error-view__info-content">
-
 				<!-- From the service (e.g. from Airtable) -->
 				<details class="node-error-view__details" v-if="error.httpCode">
 					<summary class="node-error-view__details-summary">
-						<font-awesome-icon class="node-error-view__details-icon" icon="angle-right" />From {{ error.node.name }}
+						<font-awesome-icon class="node-error-view__details-icon" icon="angle-right" />From
+						{{ error.node.name }}
 					</summary>
 					<div class="node-error-view__details-content">
 						<div class="node-error-view__details-row" v-if="error.httpCode">
@@ -132,38 +132,37 @@
 
 						<div class="node-error-view__details-row" v-if="error.cause && displayCause">
 							<p class="node-error-view__details-label">Error cause</p>
-							<p class="node-error-view__details-value">
-								<pre class="node-error-view__details-value"><code>{{ error.cause }}</code></pre>
-							</p>
+
+							<pre class="node-error-view__details-value"><code>{{ error.cause }}</code></pre>
 						</div>
 
-						<div class="node-error-view__details-row" v-if="error.context && error.context.causeDetailed">
+						<div
+							class="node-error-view__details-row"
+							v-if="error.context && error.context.causeDetailed"
+						>
 							<p class="node-error-view__details-label">Cause detailed</p>
-							<p class="node-error-view__details-value">
-								<pre class="node-error-view__details-value"><code>{{ error.context.causeDetailed }}</code></pre>
-							</p>
+
+							<pre
+								class="node-error-view__details-value"
+							><code>{{ error.context.causeDetailed }}</code></pre>
 						</div>
 
 						<div class="node-error-view__details-row" v-if="error.stack">
 							<p class="node-error-view__details-label">Stack trace</p>
-							<p class="node-error-view__details-value">
-								<pre class="node-error-view__details-value"><code>{{ error.stack }}</code></pre>
-							</p>
+
+							<pre class="node-error-view__details-value"><code>{{ error.stack }}</code></pre>
 						</div>
 					</div>
 				</details>
-
 			</div>
 		</div>
 	</div>
 
-<!-- 	<br />
+	<!-- 	<br />
 	<hr />
 	<br />
 	<pre class="node-error-view__details-value"><code>{{ error }}</code></pre>
--->
-
-</template>
+--></template>
 
 <script lang="ts">
 import { defineComponent } from 'vue';
@@ -394,14 +393,14 @@ export default defineComponent({
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		padding: var(--spacing-3xs) var(--spacing-3xs) var(--spacing-3xs) var(--spacing-s) ;
+		padding: var(--spacing-3xs) var(--spacing-3xs) var(--spacing-3xs) var(--spacing-s);
 		border-bottom: 1px solid var(--color-foreground-base);
 	}
 
 	&__info-title {
 		font-size: var(--font-size-2xs);
 		font-weight: var(--font-weight-bold);
-		color: var(--color-text-dark)
+		color: var(--color-text-dark);
 	}
 
 	&__info-content {
@@ -464,7 +463,6 @@ export default defineComponent({
 		}
 	}
 }
-
 
 /*
 details > summary::-webkit-details-marker {
