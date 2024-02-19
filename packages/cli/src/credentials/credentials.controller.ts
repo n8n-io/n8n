@@ -20,7 +20,7 @@ import {
 	Post,
 	Put,
 	RestController,
-	Scoped,
+	ProjectScope,
 } from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { UserManagementMailer } from '@/UserManagement/email';
@@ -60,7 +60,7 @@ export class CredentialsController {
 	}
 
 	@Get('/:credentialId')
-	@Scoped('credential:read')
+	@ProjectScope('credential:read')
 	async getOne(req: CredentialRequest.Get) {
 		if (this.license.isSharingEnabled()) {
 			const { credentialId } = req.params;
@@ -208,7 +208,7 @@ export class CredentialsController {
 	}
 
 	@Patch('/:credentialId')
-	@Scoped('credential:update')
+	@ProjectScope('credential:update')
 	async updateCredentials(req: CredentialRequest.Update) {
 		const { credentialId } = req.params;
 
@@ -267,7 +267,7 @@ export class CredentialsController {
 	}
 
 	@Delete('/:credentialId')
-	@Scoped('credential:delete')
+	@ProjectScope('credential:delete')
 	async deleteCredentials(req: CredentialRequest.Delete) {
 		const { credentialId } = req.params;
 
@@ -308,7 +308,7 @@ export class CredentialsController {
 
 	@Licensed('feat:sharing')
 	@Put('/:credentialId/share')
-	@Scoped('credential:share')
+	@ProjectScope('credential:share')
 	async shareCredentials(req: CredentialRequest.Share) {
 		const { credentialId } = req.params;
 		const { shareWithIds } = req.body;

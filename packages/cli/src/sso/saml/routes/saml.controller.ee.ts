@@ -1,5 +1,5 @@
 import express from 'express';
-import { Authorized, Get, NoAuthRequired, Post, RestController, Scoped } from '@/decorators';
+import { Authorized, Get, NoAuthRequired, Post, RestController, GlobalScope } from '@/decorators';
 import { SamlUrls } from '../constants';
 import {
 	samlLicensedAndEnabledMiddleware,
@@ -65,7 +65,7 @@ export class SamlController {
 	 * Set SAML config
 	 */
 	@Post(SamlUrls.config, { middlewares: [samlLicensedMiddleware] })
-	@Scoped('saml:manage', { globalOnly: true })
+	@GlobalScope('saml:manage')
 	async configPost(req: SamlConfiguration.Update) {
 		const validationResult = await validate(req.body);
 		if (validationResult.length === 0) {
@@ -84,7 +84,7 @@ export class SamlController {
 	 * Set SAML config
 	 */
 	@Post(SamlUrls.configToggleEnabled, { middlewares: [samlLicensedMiddleware] })
-	@Scoped('saml:manage', { globalOnly: true })
+	@GlobalScope('saml:manage')
 	async toggleEnabledPost(req: SamlConfiguration.Toggle, res: express.Response) {
 		if (req.body.loginEnabled === undefined) {
 			throw new BadRequestError('Body should contain a boolean "loginEnabled" property');
@@ -200,7 +200,7 @@ export class SamlController {
 	 * This endpoint is available if SAML is licensed and the requestor is an instance owner
 	 */
 	@Get(SamlUrls.configTest, { middlewares: [samlLicensedMiddleware] })
-	@Scoped('saml:manage', { globalOnly: true })
+	@GlobalScope('saml:manage')
 	async configTestGet(req: AuthenticatedRequest, res: express.Response) {
 		return await this.handleInitSSO(res, getServiceProviderConfigTestReturnUrl());
 	}

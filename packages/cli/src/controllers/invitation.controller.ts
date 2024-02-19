@@ -2,7 +2,7 @@ import { Response } from 'express';
 import validator from 'validator';
 
 import config from '@/config';
-import { Authorized, NoAuthRequired, Post, RestController, Scoped } from '@/decorators';
+import { Authorized, NoAuthRequired, Post, RestController, GlobalScope } from '@/decorators';
 import { issueCookie } from '@/auth/jwt';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { UserRequest } from '@/requests';
@@ -38,7 +38,7 @@ export class InvitationController {
 	 */
 
 	@Post('/')
-	@Scoped('user:create', { globalOnly: true })
+	@GlobalScope('user:create')
 	async inviteUser(req: UserRequest.Invite) {
 		const isWithinUsersLimit = this.license.isWithinUsersLimit();
 

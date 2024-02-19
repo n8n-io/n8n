@@ -1,7 +1,15 @@
 import { User } from '@db/entities/User';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
-import { Authorized, Delete, Get, RestController, Patch, Licensed, Scoped } from '@/decorators';
+import {
+	Authorized,
+	Delete,
+	Get,
+	RestController,
+	Patch,
+	Licensed,
+	GlobalScope,
+} from '@/decorators';
 import {
 	ListQuery,
 	UserRequest,
@@ -78,7 +86,7 @@ export class UsersController {
 	}
 
 	@Get('/', { middlewares: listQueryMiddleware })
-	@Scoped('user:list', { globalOnly: true })
+	@GlobalScope('user:list')
 	async listUsers(req: ListQuery.Request) {
 		const { listQueryOptions } = req;
 
@@ -99,7 +107,7 @@ export class UsersController {
 	}
 
 	@Get('/:id/password-reset-link')
-	@Scoped('user:resetPassword', { globalOnly: true })
+	@GlobalScope('user:resetPassword')
 	async getUserPasswordResetLink(req: UserRequest.PasswordResetLink) {
 		const user = await this.userRepository.findOneOrFail({
 			where: { id: req.params.id },
@@ -113,7 +121,7 @@ export class UsersController {
 	}
 
 	@Patch('/:id/settings')
-	@Scoped('user:update', { globalOnly: true })
+	@GlobalScope('user:update')
 	async updateUserSettings(req: UserRequest.UserSettingsUpdate) {
 		const payload = plainToInstance(UserSettingsUpdatePayload, req.body);
 
@@ -133,7 +141,7 @@ export class UsersController {
 	 * Delete a user. Optionally, designate a transferee for their workflows and credentials.
 	 */
 	@Delete('/:id')
-	@Scoped('user:delete', { globalOnly: true })
+	@GlobalScope('user:delete')
 	async deleteUser(req: UserRequest.Delete) {
 		const { id: idToDelete } = req.params;
 
@@ -285,7 +293,7 @@ export class UsersController {
 	}
 
 	@Patch('/:id/role')
-	@Scoped('user:changeRole', { globalOnly: true })
+	@GlobalScope('user:changeRole')
 	@Licensed('feat:advancedPermissions')
 	async changeGlobalRole(req: UserRequest.ChangeRole) {
 		const { NO_ADMIN_ON_OWNER, NO_USER, NO_OWNER_ON_OWNER } =

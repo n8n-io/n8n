@@ -8,7 +8,16 @@ import * as ResponseHelper from '@/ResponseHelper';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import type { IWorkflowResponse } from '@/Interfaces';
 import config from '@/config';
-import { Authorized, Delete, Get, Patch, Post, Put, RestController, Scoped } from '@/decorators';
+import {
+	Authorized,
+	Delete,
+	Get,
+	Patch,
+	Post,
+	ProjectScope,
+	Put,
+	RestController,
+} from '@/decorators';
 import { SharedWorkflow, type WorkflowSharingRole } from '@db/entities/SharedWorkflow';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
@@ -218,7 +227,7 @@ export class WorkflowsController {
 	}
 
 	@Get('/:workflowId')
-	@Scoped('workflow:read')
+	@ProjectScope('workflow:read')
 	async getWorkflow(req: WorkflowRequest.Get) {
 		const { workflowId } = req.params;
 
@@ -273,7 +282,7 @@ export class WorkflowsController {
 	}
 
 	@Patch('/:workflowId')
-	@Scoped('workflow:update')
+	@ProjectScope('workflow:update')
 	async update(req: WorkflowRequest.Update) {
 		const { workflowId } = req.params;
 		const forceSave = req.query.forceSave === 'true';
@@ -304,7 +313,7 @@ export class WorkflowsController {
 	}
 
 	@Delete('/:workflowId')
-	@Scoped('workflow:delete')
+	@ProjectScope('workflow:delete')
 	async delete(req: WorkflowRequest.Delete) {
 		const { workflowId } = req.params;
 
@@ -345,7 +354,7 @@ export class WorkflowsController {
 	}
 
 	@Put('/:workflowId/share')
-	@Scoped('workflow:share')
+	@ProjectScope('workflow:share')
 	async share(req: WorkflowRequest.Share) {
 		if (!this.license.isSharingEnabled()) throw new NotFoundError('Route not found');
 

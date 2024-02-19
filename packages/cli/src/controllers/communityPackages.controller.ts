@@ -13,7 +13,7 @@ import {
 	Patch,
 	Post,
 	RestController,
-	Scoped,
+	GlobalScope,
 } from '@/decorators';
 import { NodeRequest } from '@/requests';
 import type { InstalledPackages } from '@db/entities/InstalledPackages';
@@ -62,7 +62,7 @@ export class CommunityPackagesController {
 	}
 
 	@Post('/')
-	@Scoped('communityPackage:install', { globalOnly: true })
+	@GlobalScope('communityPackage:install')
 	async installPackage(req: NodeRequest.Post) {
 		const { name } = req.body;
 
@@ -159,7 +159,7 @@ export class CommunityPackagesController {
 	}
 
 	@Get('/')
-	@Scoped('communityPackage:list', { globalOnly: true })
+	@GlobalScope('communityPackage:list')
 	async getInstalledPackages() {
 		const installedPackages = await this.communityPackagesService.getAllInstalledPackages();
 
@@ -194,7 +194,7 @@ export class CommunityPackagesController {
 	}
 
 	@Delete('/')
-	@Scoped('communityPackage:uninstall', { globalOnly: true })
+	@GlobalScope('communityPackage:uninstall')
 	async uninstallPackage(req: NodeRequest.Delete) {
 		const { name } = req.query;
 
@@ -246,7 +246,7 @@ export class CommunityPackagesController {
 	}
 
 	@Patch('/')
-	@Scoped('communityPackage:update', { globalOnly: true })
+	@GlobalScope('communityPackage:update')
 	async updatePackage(req: NodeRequest.Update) {
 		const { name } = req.body;
 

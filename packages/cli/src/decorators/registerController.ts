@@ -143,7 +143,7 @@ export const createScopedMiddleware =
 		}
 
 		throw new ApplicationError(
-			"@Scoped decorator was used without globalOnly but does not have a credentialId or workflowId in it's URL parameters. This is likely an implementation error. If you're a developer, please check you're URL is correct or that this should be globalOnly.",
+			"@ProjectScope decorator was used but does not have a credentialId or workflowId in it's URL parameters. This is likely an implementation error. If you're a developer, please check you're URL is correct or that this should be using @GlobalScope.",
 		);
 	};
 

@@ -49,10 +49,10 @@ export = {
 	deleteCredential: [
 		authorize(['global:owner', 'global:admin', 'global:member']),
 		async (
-			req: CredentialRequest.Delete,
+			req: CredentialRequest.PublicDelete,
 			res: express.Response,
 		): Promise<express.Response<Partial<CredentialsEntity>>> => {
-			const { credentialId } = req.params;
+			const { id: credentialId } = req.params;
 			let credential: CredentialsEntity | undefined;
 
 			if (!['global:owner', 'global:admin'].includes(req.user.role)) {
