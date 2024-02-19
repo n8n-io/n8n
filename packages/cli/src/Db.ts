@@ -8,11 +8,15 @@ import config from '@/config';
 import { inTest } from '@/constants';
 import { wrapMigration } from '@db/utils/migrationHelpers';
 import type { Migration } from '@db/types';
+import { ExecutionRepository } from '@db/repositories/execution.repository';
+import { ExecutionDataRepository } from '@db/repositories/executionData.repository';
+import { ExecutionMetadataRepository } from '@db/repositories/executionMetadata.repository';
 import { getConnectionOptions } from '@db/config';
 
-let connection: Connection;
+let mainConnection: Connection;
+let executionConnection: Connection;
 
-export const getConnection = () => connection!;
+export const getConnection = () => mainConnection!;
 
 type ConnectionState = {
 	connected: boolean;
@@ -28,9 +32,9 @@ export const connectionState: ConnectionState = {
 let pingTimer: NodeJS.Timer | undefined;
 if (!inTest) {
 	const pingDBFn = async () => {
-		if (connection?.isInitialized) {
+		if (mainConnection?.isInitialized) {
 			try {
-				await connection.query('SELECT 1');
+				await mainConnection.query('SELECT 1');
 				connectionState.connected = true;
 				return;
 			} catch (error) {
@@ -45,7 +49,7 @@ if (!inTest) {
 }
 
 export async function transaction<T>(fn: (entityManager: EntityManager) => Promise<T>): Promise<T> {
-	return await connection.transaction(fn);
+	return await mainConnection.transaction(fn);
 }
 
 export async function setSchema(conn: Connection) {
@@ -64,20 +68,29 @@ export async function init(): Promise<void> {
 	const dbType = config.getEnv('database.type');
 	const connectionOptions = getConnectionOptions();
 
-	connection = new Connection(connectionOptions);
-	Container.set(Connection, connection);
-	await connection.initialize();
+	mainConnection = new Connection(connectionOptions);
+	Container.set(Connection, mainConnection);
+	await mainConnection.initialize();
 
 	if (dbType === 'postgresdb') {
-		await setSchema(connection);
+		await setSchema(mainConnection);
+	}
+
+	if (dbType === 'sqlite') {
+		executionConnection = new Connection(connectionOptions);
+		await executionConnection.initialize();
+		const { manager } = executionConnection;
+		Object.assign(Container.get(ExecutionRepository), { manager });
+		Object.assign(Container.get(ExecutionDataRepository), { manager });
+		Object.assign(Container.get(ExecutionMetadataRepository), { manager });
 	}
 
 	connectionState.connected = true;
 }
 
 export async function migrate() {
-	(connection.options.migrations as Migration[]).forEach(wrapMigration);
-	await connection.runMigrations({ transaction: 'each' });
+	(mainConnection.options.migrations as Migration[]).forEach(wrapMigration);
+	await mainConnection.runMigrations({ transaction: 'each' });
 	connectionState.migrated = true;
 }
 
@@ -87,5 +100,6 @@ export const close = async () => {
 		pingTimer = undefined;
 	}
 
-	if (connection.isInitialized) await connection.destroy();
+	if (mainConnection.isInitialized) await mainConnection.destroy();
+	if (executionConnection?.isInitialized) await executionConnection.destroy();
 };
