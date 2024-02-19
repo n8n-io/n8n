@@ -17,6 +17,9 @@ import { UserManagementMailer } from '@/UserManagement/email';
 
 import { mockInstance } from '../shared/mocking';
 import config from '@/config';
+import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
+import type { Project } from '@/databases/entities/Project';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['credentials'],
@@ -24,6 +27,7 @@ const testServer = utils.setupTestServer({
 });
 
 let owner: User;
+let ownerPersonalProject: Project;
 let member: User;
 let anotherMember: User;
 let authOwnerAgent: SuperAgentTest;
@@ -33,6 +37,14 @@ const mailer = mockInstance(UserManagementMailer);
 
 beforeAll(async () => {
 	owner = await createUser({ role: 'global:owner' });
+	ownerPersonalProject = await Container.get(ProjectRepository).findOneOrFail({
+		where: {
+			projectRelations: {
+				userId: owner.id,
+				role: 'project:personalOwner',
+			},
+		},
+	});
 	member = await createUser({ role: 'global:member' });
 	anotherMember = await createUser({ role: 'global:member' });
 
@@ -299,47 +311,62 @@ describe('GET /credentials/:id', () => {
 // idempotent share/unshare
 // ----------------------------------------
 describe('PUT /credentials/:id/share', () => {
-	test.skip('should share the credential with the provided userIds and unshare it for missing ones', async () => {
+	test('should share the credential with the provided userIds and unshare it for missing ones', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 
 		const [member1, member2, member3, member4, member5] = await createManyUsers(5, {
 			role: 'global:member',
 		});
-		const shareWithIds = [member1.id, member2.id, member3.id];
+		const shareWithUserIds = [member1.id, member2.id, member3.id];
+		const shareWithProjectIds = (
+			await Container.get(ProjectRelationRepository).find({
+				where: {
+					user: In(shareWithUserIds),
+				},
+			})
+		).map((pr) => pr.projectId);
 
 		await shareCredentialWithUsers(savedCredential, [member4, member5]);
 
 		const response = await authOwnerAgent
 			.put(`/credentials/${savedCredential.id}/share`)
-			.send({ shareWithIds });
+			.send({ shareWithIds: shareWithUserIds });
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data).toBeUndefined();
 
 		const sharedCredentials = await Container.get(SharedCredentialsRepository).find({
 			where: { credentialsId: savedCredential.id },
+			relations: ['project.projectRelations'],
 		});
 
 		// check that sharings have been removed/added correctly
-		expect(sharedCredentials.length).toBe(shareWithIds.length + 1); // +1 for the owner
+		expect(sharedCredentials.length).toBe(shareWithUserIds.length + 1); // +1 for the owner
 
 		sharedCredentials.forEach((sharedCredential) => {
-			if (sharedCredential.userId === owner.id) {
+			if (sharedCredential.projectId === ownerPersonalProject.id) {
 				expect(sharedCredential.role).toBe('credential:owner');
 				return;
 			}
-			expect(shareWithIds).toContain(sharedCredential.userId);
+			expect(shareWithProjectIds).toContain(sharedCredential.projectId);
 			expect(sharedCredential.role).toBe('credential:user');
 		});
 
 		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(1);
 	});
 
-	test.skip('should share the credential with the provided userIds', async () => {
+	test('should share the credential with the provided userIds', async () => {
 		const [member1, member2, member3] = await createManyUsers(3, {
 			role: 'global:member',
 		});
 		const memberIds = [member1.id, member2.id, member3.id];
+		const memberPersonalProjectIds = (
+			await Container.get(ProjectRelationRepository).find({
+				where: {
+					user: In(memberIds),
+				},
+			})
+		).map((pr) => pr.projectId);
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 
 		const response = await authOwnerAgent
@@ -351,7 +378,7 @@ describe('PUT /credentials/:id/share', () => {
 
 		// check that sharings got correctly set in DB
 		const sharedCredentials = await Container.get(SharedCredentialsRepository).find({
-			where: { credentialsId: savedCredential.id, userId: In([...memberIds]) },
+			where: { credentialsId: savedCredential.id, projectId: In(memberPersonalProjectIds) },
 		});
 
 		expect(sharedCredentials.length).toBe(memberIds.length);
@@ -362,7 +389,7 @@ describe('PUT /credentials/:id/share', () => {
 
 		// check that owner still exists
 		const ownerSharedCredential = await Container.get(SharedCredentialsRepository).findOneOrFail({
-			where: { credentialsId: savedCredential.id, userId: owner.id },
+			where: { credentialsId: savedCredential.id, projectId: ownerPersonalProject.id },
 		});
 
 		expect(ownerSharedCredential.role).toBe('credential:owner');
@@ -428,7 +455,7 @@ describe('PUT /credentials/:id/share', () => {
 		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(0);
 	});
 
-	test.skip('should respond 200 for non-owned credentials for owners', async () => {
+	test('should respond 200 for non-owned credentials for owners', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
 
 		const response = await authOwnerAgent
@@ -443,7 +470,7 @@ describe('PUT /credentials/:id/share', () => {
 		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(1);
 	});
 
-	test.skip('should ignore pending sharee', async () => {
+	test('should ignore pending sharee', async () => {
 		const memberShell = await createUserShell('global:member');
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 
@@ -458,10 +485,10 @@ describe('PUT /credentials/:id/share', () => {
 		});
 
 		expect(sharedCredentials).toHaveLength(1);
-		expect(sharedCredentials[0].userId).toBe(owner.id);
+		expect(sharedCredentials[0].projectId).toBe(ownerPersonalProject.id);
 	});
 
-	test.skip('should ignore non-existing sharee', async () => {
+	test('should ignore non-existing sharee', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 
 		const response = await authOwnerAgent
@@ -475,7 +502,7 @@ describe('PUT /credentials/:id/share', () => {
 		});
 
 		expect(sharedCredentials).toHaveLength(1);
-		expect(sharedCredentials[0].userId).toBe(owner.id);
+		expect(sharedCredentials[0].projectId).toBe(ownerPersonalProject.id);
 		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(1);
 	});
 
@@ -491,7 +518,7 @@ describe('PUT /credentials/:id/share', () => {
 		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(0);
 	});
 
-	test.skip('should unshare the credential', async () => {
+	test('should unshare the credential', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 
 		const [member1, member2] = await createManyUsers(2, {
@@ -511,11 +538,11 @@ describe('PUT /credentials/:id/share', () => {
 		});
 
 		expect(sharedCredentials).toHaveLength(1);
-		expect(sharedCredentials[0].userId).toBe(owner.id);
+		expect(sharedCredentials[0].projectId).toBe(ownerPersonalProject.id);
 		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(1);
 	});
 
-	test.skip('should not call internal hooks listener for email sent if emailing is disabled', async () => {
+	test('should not call internal hooks listener for email sent if emailing is disabled', async () => {
 		config.set('userManagement.emails.mode', '');
 
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
