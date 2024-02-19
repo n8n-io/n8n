@@ -47,28 +47,11 @@ export const properties: INodeProperties[] = [
 				name: 'values',
 				values: [
 					{
-						displayName: 'Filter By',
-						name: 'filterBy',
-						type: 'options',
-						options: [
-							{
-								name: 'Filters',
-								value: 'filters',
-							},
-						],
-						default: 'filters',
-					},
-					{
 						displayName: 'Filters',
 						name: 'filters',
 						type: 'collection',
 						placeholder: 'Add Filter',
 						default: {},
-						displayOptions: {
-							show: {
-								filterBy: ['filters'],
-							},
-						},
 						options: [
 							{
 								displayName: 'Filter Query',

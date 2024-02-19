@@ -35,12 +35,10 @@ export async function getPollResponse(
 				'id,conversationId,subject,bodyPreview,from,toRecipients,categories,hasAttachments';
 		}
 
-		if (filters.filterBy === 'filters') {
-			const filterString = prepareFilterString(filters);
+		const filterString = prepareFilterString(filters);
 
-			if (filterString) {
-				qs.$filter = filterString;
-			}
+		if (filterString) {
+			qs.$filter = filterString;
 		}
 
 		const endpoint = '/messages';
