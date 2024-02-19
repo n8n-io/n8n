@@ -37,92 +37,77 @@ export const properties: INodeProperties[] = [
 	},
 	{
 		displayName: 'Filters',
-		name: 'filtersUI',
-		type: 'fixedCollection',
-		placeholder: 'Add Filters',
+		name: 'filters',
+		type: 'collection',
+		placeholder: 'Add Filter',
 		default: {},
 		options: [
 			{
-				displayName: 'Values',
-				name: 'values',
-				values: [
+				displayName: 'Filter Query',
+				name: 'custom',
+				type: 'string',
+				default: '',
+				placeholder: 'e.g. isRead eq false',
+				hint: 'Search query to filter messages. <a href="https://learn.microsoft.com/en-us/graph/filter-query-parameter">More info</a>.',
+			},
+			{
+				displayName: 'Has Attachments',
+				name: 'hasAttachments',
+				type: 'boolean',
+				default: false,
+			},
+			{
+				displayName: 'Folders to Exclude',
+				name: 'foldersToExclude',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getFolders',
+				},
+				default: [],
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			},
+			{
+				displayName: 'Folders to Include',
+				name: 'foldersToInclude',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getFolders',
+				},
+				default: [],
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+			},
+			{
+				displayName: 'Read Status',
+				name: 'readStatus',
+				type: 'options',
+				default: 'unread',
+				hint: 'Filter messages by whether they have been read or not',
+				options: [
 					{
-						displayName: 'Filters',
-						name: 'filters',
-						type: 'collection',
-						placeholder: 'Add Filter',
-						default: {},
-						options: [
-							{
-								displayName: 'Filter Query',
-								name: 'custom',
-								type: 'string',
-								default: '',
-								placeholder: 'e.g. isRead eq false',
-								hint: 'Search query to filter messages. <a href="https://learn.microsoft.com/en-us/graph/filter-query-parameter">More info</a>.',
-							},
-							{
-								displayName: 'Has Attachments',
-								name: 'hasAttachments',
-								type: 'boolean',
-								default: false,
-							},
-							{
-								displayName: 'Folders to Exclude',
-								name: 'foldersToExclude',
-								type: 'multiOptions',
-								typeOptions: {
-									loadOptionsMethod: 'getFolders',
-								},
-								default: [],
-								description:
-									'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-							},
-							{
-								displayName: 'Folders to Include',
-								name: 'foldersToInclude',
-								type: 'multiOptions',
-								typeOptions: {
-									loadOptionsMethod: 'getFolders',
-								},
-								default: [],
-								description:
-									'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-							},
-							{
-								displayName: 'Read Status',
-								name: 'readStatus',
-								type: 'options',
-								default: 'unread',
-								hint: 'Filter messages by whether they have been read or not',
-								options: [
-									{
-										// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-										name: 'Unread and read messages',
-										value: 'both',
-									},
-									{
-										// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-										name: 'Unread messages only',
-										value: 'unread',
-									},
-									{
-										// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-										name: 'Read messages only',
-										value: 'read',
-									},
-								],
-							},
-							{
-								displayName: 'Sender',
-								name: 'sender',
-								type: 'string',
-								default: '',
-								description: 'Sender name or email to filter by',
-							},
-						],
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'Unread and read messages',
+						value: 'both',
+					},
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'Unread messages only',
+						value: 'unread',
+					},
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'Read messages only',
+						value: 'read',
 					},
 				],
+			},
+			{
+				displayName: 'Sender',
+				name: 'sender',
+				type: 'string',
+				default: '',
+				description: 'Sender name or email to filter by',
 			},
 		],
 	},

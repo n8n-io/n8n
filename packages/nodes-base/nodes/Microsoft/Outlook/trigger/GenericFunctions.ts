@@ -17,7 +17,7 @@ export async function getPollResponse(
 	let responseData;
 	const qs = {} as IDataObject;
 	try {
-		const filters = this.getNodeParameter('filtersUI.values', {}) as IDataObject;
+		const filters = this.getNodeParameter('filters', {}) as IDataObject;
 		const options = this.getNodeParameter('options', {}) as IDataObject;
 		const output = this.getNodeParameter('output') as string;
 		if (output === 'fields') {
@@ -35,7 +35,7 @@ export async function getPollResponse(
 				'id,conversationId,subject,bodyPreview,from,toRecipients,categories,hasAttachments';
 		}
 
-		const filterString = prepareFilterString(filters);
+		const filterString = prepareFilterString({ filters });
 
 		if (filterString) {
 			qs.$filter = filterString;

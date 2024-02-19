@@ -10,6 +10,7 @@ import { DateTime } from 'luxon';
 import { properties as messageProperties } from './trigger/MessageDescription';
 
 import { getPollResponse } from './trigger/GenericFunctions';
+import { loadOptions } from './v2/methods';
 
 export class MicrosoftOutlookTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -50,9 +51,7 @@ export class MicrosoftOutlookTrigger implements INodeType {
 		],
 	};
 
-	methods = {
-		loadOptions: {},
-	};
+	methods = { loadOptions };
 
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
 		const webhookData = this.getWorkflowStaticData('node');
