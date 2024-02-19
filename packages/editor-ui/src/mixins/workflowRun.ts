@@ -30,6 +30,7 @@ import { openPopUpWindow } from '@/utils/executionUtils';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useRouter } from 'vue-router';
+import { isEmpty } from '@/utils/typesUtils';
 
 export const consolidateRunDataAndStartNodes = (
 	directParentNodes: string[],
@@ -54,23 +55,20 @@ export const consolidateRunDataAndStartNodes = (
 			parentNodes.push(directParentNode);
 
 			for (const parentNode of parentNodes) {
-				if (
-					(runData[parentNode] === undefined || runData[parentNode].length === 0) &&
-					pinData?.[parentNode].length === 0
-				) {
+				if (!runData[parentNode]?.length && !pinData?.[parentNode]?.length) {
 					// When we hit a node which has no data we stop and set it
 					// as a start node the execution from and then go on with other
 					// direct input nodes
 					startNodes.push(parentNode);
 					break;
 				}
-				if (runData[parentNode] !== undefined) {
+				if (runData[parentNode]) {
 					newRunData[parentNode] = runData[parentNode]?.slice(0, 1);
 				}
 			}
 		}
 
-		if (Object.keys(newRunData).length === 0) {
+		if (isEmpty(newRunData)) {
 			// If there is no data for any of the parent nodes make sure
 			// that run data is empty that it runs regularly
 			newRunData = undefined;
