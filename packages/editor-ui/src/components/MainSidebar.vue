@@ -210,7 +210,7 @@ export default defineComponent({
 				icon: 'network-wired',
 				label: this.$locale.baseText('mainSidebar.workflows'),
 				position: 'top',
-				route: { to: { name: VIEWS.WORKFLOWS } },
+				route: { to: { name: VIEWS.WORKFLOWS, params: { projectId: 'home' } } },
 				secondaryIcon: this.sourceControlStore.preferences.branchReadOnly
 					? {
 							name: 'lock',
@@ -253,7 +253,7 @@ export default defineComponent({
 					label: this.$locale.baseText('mainSidebar.credentials'),
 					customIconSize: 'medium',
 					position: 'top',
-					route: { to: { name: VIEWS.CREDENTIALS } },
+					route: { to: { name: VIEWS.CREDENTIALS, params: { projectId: 'home' } } },
 				},
 				{
 					id: 'variables',
