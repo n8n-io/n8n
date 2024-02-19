@@ -1,14 +1,14 @@
 import type {
 	IDataObject,
 	IExecuteFunctions,
+	IHttpRequestMethods,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	IRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
-
-import type { OptionsWithUri } from 'request';
 
 export class FacebookGraphApi implements INodeType {
 	description: INodeTypeDescription = {
@@ -308,7 +308,10 @@ export class FacebookGraphApi implements INodeType {
 			const graphApiCredentials = await this.getCredentials('facebookGraphApi');
 
 			const hostUrl = this.getNodeParameter('hostUrl', itemIndex) as string;
-			const httpRequestMethod = this.getNodeParameter('httpRequestMethod', itemIndex) as string;
+			const httpRequestMethod = this.getNodeParameter(
+				'httpRequestMethod',
+				itemIndex,
+			) as IHttpRequestMethods;
 			let graphApiVersion = this.getNodeParameter('graphApiVersion', itemIndex) as string;
 			const node = this.getNodeParameter('node', itemIndex) as string;
 			const edge = this.getNodeParameter('edge', itemIndex) as string;
@@ -323,7 +326,10 @@ export class FacebookGraphApi implements INodeType {
 				uri = `${uri}/${edge}`;
 			}
 
-			const requestOptions: OptionsWithUri = {
+			const qs: IDataObject = {
+				access_token: graphApiCredentials.accessToken,
+			};
+			const requestOptions: IRequestOptions = {
 				headers: {
 					accept: 'application/json,text/*;q=0.99',
 				},
@@ -331,9 +337,6 @@ export class FacebookGraphApi implements INodeType {
 				uri,
 				json: true,
 				gzip: true,
-				qs: {
-					access_token: graphApiCredentials.accessToken,
-				},
 				rejectUnauthorized: !this.getNodeParameter('allowUnauthorizedCerts', itemIndex, false),
 			};
 
@@ -343,7 +346,7 @@ export class FacebookGraphApi implements INodeType {
 					const fields = options.fields as IDataObject;
 					if (fields.field !== undefined) {
 						const fieldsCsv = (fields.field as IDataObject[]).map((field) => field.name).join(',');
-						requestOptions.qs.fields = fieldsCsv;
+						qs.fields = fieldsCsv;
 					}
 				}
 
@@ -353,10 +356,12 @@ export class FacebookGraphApi implements INodeType {
 
 					if (queryParameters.parameter !== undefined) {
 						for (const queryParameter of queryParameters.parameter as IDataObject[]) {
-							requestOptions.qs[queryParameter.name as string] = queryParameter.value;
+							qs[queryParameter.name as string] = queryParameter.value;
 						}
 					}
 				}
+
+				requestOptions.qs = qs;
 
 				// Add the query parameters defined as a JSON object
 				if (options.queryParametersJson) {
@@ -366,7 +371,6 @@ export class FacebookGraphApi implements INodeType {
 					} catch {
 						/* Do nothing, at least for now */
 					}
-					const qs = requestOptions.qs;
 					requestOptions.qs = {
 						...qs,
 						...queryParametersJsonObj,

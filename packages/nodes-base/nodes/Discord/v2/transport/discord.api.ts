@@ -1,11 +1,11 @@
-import type { OptionsWithUrl } from 'request';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
+	IRequestOptions,
 } from 'n8n-workflow';
 
 import { sleep, NodeApiError, jsonParse } from 'n8n-workflow';
@@ -15,7 +15,7 @@ import { getCredentialsType, requestApi } from './helpers';
 
 export async function discordApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body?: IDataObject,
 	qs?: IDataObject,
@@ -25,7 +25,7 @@ export async function discordApiRequest(
 
 	const credentialType = getCredentialsType(authentication);
 
-	const options: OptionsWithUrl = {
+	const options: IRequestOptions = {
 		headers,
 		method,
 		qs,
@@ -59,7 +59,7 @@ export async function discordApiRequest(
 
 export async function discordApiMultiPartRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	formData: FormData,
 ) {
@@ -70,7 +70,7 @@ export async function discordApiMultiPartRequest(
 
 	const credentialType = getCredentialsType(authentication);
 
-	const options: OptionsWithUrl = {
+	const options: IRequestOptions = {
 		headers,
 		method,
 		formData,

@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { useI18n } from '@/composables/useI18n';
-import { OPERATORS_BY_ID, OPERATOR_GROUPS } from './constants';
 import { computed, ref } from 'vue';
+import { OPERATOR_GROUPS } from './constants';
 import type { FilterOperator } from './types';
+import { getFilterOperator } from './utils';
 
 interface Props {
 	selected: string;
@@ -28,7 +29,7 @@ const selectedGroupIcon = computed(
 	() => groups.find((group) => group.id === selected.value.split(':')[0])?.icon,
 );
 
-const selectedOperator = computed(() => OPERATORS_BY_ID[selected.value] as FilterOperator);
+const selectedOperator = computed(() => getFilterOperator(selected.value));
 
 const onOperatorChange = (operator: string): void => {
 	selected.value = operator;

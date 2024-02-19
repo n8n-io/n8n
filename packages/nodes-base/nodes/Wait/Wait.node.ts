@@ -1,3 +1,4 @@
+import { DateTime } from 'luxon';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -29,7 +30,6 @@ import {
 } from '../Form/common.descriptions';
 import { formWebhook } from '../Form/utils';
 import { updateDisplayOptions } from '../../utils/utilities';
-
 import { Webhook } from '../Webhook/Webhook.node';
 
 const waitTimeProperties: INodeProperties[] = [
@@ -420,12 +420,17 @@ export class Wait extends Webhook {
 
 			waitAmount *= 1000;
 
+			// Timezone does not change relative dates, since they are just
+			// a number of seconds added to the current timestamp
 			waitTill = new Date(new Date().getTime() + waitAmount);
 		} else {
-			// resume: dateTime
-			const dateTime = context.getNodeParameter('dateTime', 0) as string;
+			const dateTimeStr = context.getNodeParameter('dateTime', 0) as string;
 
-			waitTill = new Date(dateTime);
+			waitTill = DateTime.fromFormat(dateTimeStr, "yyyy-MM-dd'T'HH:mm:ss", {
+				zone: context.getTimezone(),
+			})
+				.toUTC()
+				.toJSDate();
 		}
 
 		const waitValue = Math.max(waitTill.getTime() - new Date().getTime(), 0);
