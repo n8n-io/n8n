@@ -39,6 +39,7 @@
 						v-if="activeNode"
 						:root-node="activeNode"
 						@switchSelectedNode="onSwitchSelectedNode"
+						@openConnectionNodeCreator="onOpenConnectionNodeCreator"
 					/>
 				</div>
 			</n8n-resize-wrapper>
@@ -53,7 +54,7 @@ import { mapStores } from 'pinia';
 import { get } from 'lodash-es';
 import { useStorage } from '@/composables/useStorage';
 
-import type { INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription, ConnectionTypes } from 'n8n-workflow';
 import PanelDragButton from './PanelDragButton.vue';
 
 import { LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH, MAIN_NODE_PANEL_WIDTH } from '@/constants';
@@ -272,6 +273,9 @@ export default defineComponent({
 	methods: {
 		onSwitchSelectedNode(node: string) {
 			this.$emit('switchSelectedNode', node);
+		},
+		onOpenConnectionNodeCreator(node: string, connectionType: ConnectionTypes) {
+			this.$emit('openConnectionNodeCreator', node, connectionType);
 		},
 		getInitialLeftPosition(width: number) {
 			if (this.currentNodePaneType === 'dragless')

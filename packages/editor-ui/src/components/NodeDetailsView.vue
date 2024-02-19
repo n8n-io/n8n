@@ -45,6 +45,7 @@
 				:has-double-width="activeNodeType?.parameterPane === 'wide'"
 				:node-type="activeNodeType"
 				@switchSelectedNode="onSwitchSelectedNode"
+				@openConnectionNodeCreator="onOpenConnectionNodeCreator"
 				@close="close"
 				@init="onPanelsInit"
 				@dragstart="onDragStart"
@@ -143,6 +144,7 @@ import type {
 	IRunData,
 	IRunExecutionData,
 	Workflow,
+	ConnectionTypes,
 } from 'n8n-workflow';
 import { jsonParse, NodeHelpers, NodeConnectionType } from 'n8n-workflow';
 import type { IExecutionResponse, INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
@@ -664,8 +666,11 @@ export default defineComponent({
 		nodeTypeSelected(nodeTypeName: string) {
 			this.$emit('nodeTypeSelected', nodeTypeName);
 		},
-		async onSwitchSelectedNode(nodeTypeName: string) {
+		onSwitchSelectedNode(nodeTypeName: string) {
 			this.$emit('switchSelectedNode', nodeTypeName);
+		},
+		onOpenConnectionNodeCreator(nodeTypeName: string, connectionType: ConnectionTypes) {
+			this.$emit('openConnectionNodeCreator', nodeTypeName, connectionType);
 		},
 		async close() {
 			if (this.isDragging) {

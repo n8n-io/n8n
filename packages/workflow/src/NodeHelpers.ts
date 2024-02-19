@@ -1094,7 +1094,7 @@ export function getNodeInputs(
 	if (Array.isArray(nodeTypeData?.inputs)) {
 		return nodeTypeData.inputs;
 	}
-
+	// console.log('nodeTypeData.inputs', nodeTypeData.inputs, nodeTypeData);
 	// Calculate the outputs dynamically
 	try {
 		return (workflow.expression.getSimpleParameterValue(

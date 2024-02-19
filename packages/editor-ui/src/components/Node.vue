@@ -402,6 +402,7 @@ export default defineComponent({
 				const inputs =
 					NodeHelpers.getNodeInputs(this.workflow, this.node, this.nodeType) ||
 					([] as Array<ConnectionTypes | INodeInputConfiguration>);
+				// console.log('🚀 ~ nodeWrapperStyles ~ inputs:', inputs);
 				const inputTypes = NodeHelpers.getConnectionTypes(inputs);
 
 				const nonMainInputs = inputTypes.filter((input) => input !== NodeConnectionType.Main);
