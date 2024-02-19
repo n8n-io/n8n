@@ -147,6 +147,16 @@ export async function init(testConnectionOptions?: ConnectionOptions): Promise<v
 		await setSchema(connection);
 	}
 
+	if (dbType === 'sqlite') {
+		const { SqliteQueryRunner } = await import('@n8n/typeorm/driver/sqlite/SqliteQueryRunner');
+		function noOp() {}
+		Object.assign(SqliteQueryRunner.prototype, {
+			startTransaction: noOp,
+			commitTransaction: noOp,
+			rollbackTransaction: noOp,
+		});
+	}
+
 	connectionState.connected = true;
 }
 
