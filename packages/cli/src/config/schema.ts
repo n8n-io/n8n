@@ -804,6 +804,12 @@ export const schema = {
 					default: true,
 					env: 'N8N_SMTP_SSL',
 				},
+				rejectUnauthorized: {
+					doc: 'If unauthorized SSL connections should be rejected',
+					format: Boolean,
+					default: true,
+					env: 'N8N_SMTP_SSL_REJECT_UNAUTHORIZED',
+				},
 				auth: {
 					user: {
 						doc: 'SMTP login username',

@@ -21,6 +21,12 @@ export class NodeMailer {
 			secure: config.getEnv('userManagement.emails.smtp.secure'),
 		};
 
+		if (config.getEnv('userManagement.emails.smtp.rejectUnauthorized')) {
+			transportConfig.tls = {
+				rejectUnauthorized: config.getEnv('userManagement.emails.smtp.rejectUnauthorized'),
+			};
+		}
+
 		if (
 			config.getEnv('userManagement.emails.smtp.auth.user') &&
 			config.getEnv('userManagement.emails.smtp.auth.pass')
