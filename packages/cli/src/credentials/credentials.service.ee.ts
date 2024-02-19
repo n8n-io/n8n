@@ -16,6 +16,9 @@ export class EnterpriseCredentialsService {
 		private readonly projectRepository: ProjectRepository,
 	) {}
 
+	/**
+	 * Returns the credential if the user owns it. Otherwise not.
+	 **/
 	async isOwned(user: User, credentialId: string) {
 		const sharing = await this.getSharing(user, credentialId, { allowGlobalScope: false }, [
 			'credentials',
