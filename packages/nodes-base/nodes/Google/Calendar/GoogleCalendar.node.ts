@@ -34,7 +34,7 @@ export class GoogleCalendar implements INodeType {
 		name: 'googleCalendar',
 		icon: 'file:googleCalendar.svg',
 		group: ['input'],
-		version: 1,
+		version: [1, 1.1],
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Google Calendar API',
 		defaults: {
@@ -128,9 +128,12 @@ export class GoogleCalendar implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
+
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
 		const timezone = this.getTimezone();
+		const nodeVersion = this.getNode().typeVersion;
+
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'calendar') {
@@ -415,16 +418,16 @@ export class GoogleCalendar implements INodeType {
 							qs.singleEvents = options.singleEvents as boolean;
 						}
 						if (options.timeMax) {
-							qs.timeMax = addTimezoneToDate(options.timeMax as string);
+							qs.timeMax = addTimezoneToDate(options.timeMax as string, tz || timezone);
 						}
 						if (options.timeMin) {
-							qs.timeMin = addTimezoneToDate(options.timeMin as string);
+							qs.timeMin = addTimezoneToDate(options.timeMin as string, tz || timezone);
 						}
 						if (tz) {
 							qs.timeZone = tz;
 						}
 						if (options.updatedMin) {
-							qs.updatedMin = addTimezoneToDate(options.updatedMin as string);
+							qs.updatedMin = addTimezoneToDate(options.updatedMin as string, tz || timezone);
 						}
 						if (returnAll) {
 							responseData = await googleApiRequestAllItems.call(
@@ -459,7 +462,11 @@ export class GoogleCalendar implements INodeType {
 						const eventId = this.getNodeParameter('eventId', i) as string;
 						const useDefaultReminders = this.getNodeParameter('useDefaultReminders', i) as boolean;
 						const updateFields = this.getNodeParameter('updateFields', i);
-						const updateTimezone = updateFields.timezone as string;
+						let updateTimezone = updateFields.timezone as string;
+
+						if (nodeVersion > 1 && updateTimezone === undefined) {
+							updateTimezone = timezone;
+						}
 
 						if (updateFields.maxAttendees) {
 							qs.maxAttendees = updateFields.maxAttendees as number;

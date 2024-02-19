@@ -180,6 +180,9 @@ export function addNextOccurrence(items: RecurentEvent[]) {
 	return items;
 }
 
-export function addTimezoneToDate(date: string) {
-	return new Date(date).toISOString();
+const hasTimezone = (date: string) => date.endsWith('Z') || /\+\d{2}:\d{2}$/.test(date);
+
+export function addTimezoneToDate(date: string, timezone: string) {
+	if (hasTimezone(date)) return date;
+	return moment.tz(date, timezone).utc().format();
 }
