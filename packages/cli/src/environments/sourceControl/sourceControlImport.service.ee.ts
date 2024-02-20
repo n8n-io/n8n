@@ -492,7 +492,7 @@ export class SourceControlImportService {
 					key,
 					value: valueOverrides[key],
 				});
-				await Container.get(VariablesRepository).save(newVariable);
+				await Container.get(VariablesRepository).save(newVariable, { transaction: false });
 			}
 		}
 
