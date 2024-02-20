@@ -154,28 +154,44 @@ type RecurentEvent = {
 export function addNextOccurrence(items: RecurentEvent[]) {
 	for (const item of items) {
 		if (item.recurrence) {
-			const rrule = RRule.fromString(item.recurrence[0]);
-			const until = rrule.options?.until;
+			let eventRecurrence;
+			try {
+				eventRecurrence = item.recurrence.find((r) => r.toUpperCase().startsWith('RRULE'));
+				if (!eventRecurrence) continue;
 
-			const now = new Date();
-			if (until && until < now) {
-				continue;
+				const rrule = RRule.fromString(eventRecurrence);
+				const until = rrule.options?.until;
+
+				const now = new Date();
+				if (until && until < now) {
+					continue;
+				}
+
+				const nextOccurrence = rrule.after(new Date());
+
+				item.nextOccurrence = {
+					start: {
+						dateTime: moment(nextOccurrence).format(),
+						timeZone: item.start.timeZone,
+					},
+					end: {
+						dateTime: moment(nextOccurrence)
+							.add(moment(item.end.dateTime).diff(moment(item.start.dateTime)))
+							.format(),
+						timeZone: item.end.timeZone,
+					},
+				};
+			} catch (error) {
+				console.log(`Error adding next occurrence ${eventRecurrence}`);
 			}
-
-			const nextOccurrence = rrule.after(new Date());
-			item.nextOccurrence = {
-				start: {
-					dateTime: moment(nextOccurrence).format(),
-					timeZone: item.start.timeZone,
-				},
-				end: {
-					dateTime: moment(nextOccurrence)
-						.add(moment(item.end.dateTime).diff(moment(item.start.dateTime)))
-						.format(),
-					timeZone: item.end.timeZone,
-				},
-			};
 		}
 	}
 	return items;
+}
+
+const hasTimezone = (date: string) => date.endsWith('Z') || /\+\d{2}:\d{2}$/.test(date);
+
+export function addTimezoneToDate(date: string, timezone: string) {
+	if (hasTimezone(date)) return date;
+	return moment.tz(date, timezone).utc().format();
 }
