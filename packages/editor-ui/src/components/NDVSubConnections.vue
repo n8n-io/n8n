@@ -266,8 +266,11 @@ watch(
 	--node-size: 45px;
 	--animation-duration: 200ms;
 	--collapsed-offset: 10px;
+	padding-top: calc(var(--node-size) + var(--spacing-3xs));
 }
 .connections {
+	// Make sure container has matching height if there's no connections
+	// since the plus button is absolutely positioned
 	min-height: calc(var(--node-size) + var(--spacing-m));
 	position: absolute;
 	bottom: calc((var(--node-size) / 2) * -1);
@@ -326,6 +329,7 @@ watch(
 	.connectionType:not(:has(.connectedNodesWrapperExpanded)) {
 	opacity: 0;
 	pointer-events: none;
+	visibility: hidden;
 }
 .connectedNode {
 	border: var(--border-base);
