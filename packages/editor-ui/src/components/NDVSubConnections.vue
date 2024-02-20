@@ -37,6 +37,7 @@
 									placement="top"
 									:teleported="true"
 									:offset="10"
+									:show-after="300"
 									:disabled="shouldShowConnectionTooltip(connection.type)"
 								>
 									<template #content>
@@ -77,6 +78,7 @@
 								placement="top"
 								:teleported="true"
 								:offset="10"
+								:show-after="300"
 								:disabled="
 									shouldShowConnectionTooltip(connection.type) &&
 									connectedNodes[connection.type].length >= 1
@@ -251,7 +253,8 @@ watch(
 <style lang="scss" module>
 .container {
 	--node-size: 45px;
-	--animation-duration: 200ms;
+	--plus-button-size: 30px;
+	--animation-duration: 150ms;
 	--collapsed-offset: 10px;
 	padding-top: calc(var(--node-size) + var(--spacing-3xs));
 }
@@ -272,7 +275,7 @@ watch(
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	transition: all var(--animation-duration) ease;
+	transition: all calc((var(--animation-duration) - 50ms)) ease;
 }
 .connectionLabel {
 	margin-bottom: var(--spacing-2xs);
@@ -292,15 +295,21 @@ watch(
 	position: absolute;
 	top: var(--spacing-2xs);
 
+	button {
+		border-radius: 100%;
+	}
+
 	&:not(:first-child) {
-		z-index: 0;
-		left: 100%;
+		z-index: 1;
+		right: calc(var(--spacing-4xs) * -1);
 		// Offset the plus button so it's hidden below the collapsed nodes
-		margin-left: calc(var(--spacing-s) * -1);
+		pointer-events: none;
 
 		.connectedNodesWrapperExpanded & {
+			left: 100%;
 			margin-left: var(--spacing-2xs);
 			opacity: 1;
+			pointer-events: all;
 		}
 	}
 }
@@ -339,6 +348,9 @@ watch(
 	);
 	.connectedNodesWrapperExpanded & {
 		margin-right: 0;
+		// Negative margin to offset the absolutely positioned plus button
+		// when the nodes are expanded to center the nodes
+		margin-left: calc((var(--spacing-2xs) + var(--plus-button-size)) * -1);
 	}
 }
 .nodeWrapper {
