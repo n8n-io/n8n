@@ -106,6 +106,13 @@ watch(state.paramValue, (value) => {
 	);
 });
 
+watch(
+	() => props.value,
+	(value) => {
+		state.paramValue = value;
+	},
+);
+
 function addCondition(): void {
 	state.paramValue.conditions.push(createCondition());
 }
