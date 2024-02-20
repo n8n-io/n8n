@@ -198,10 +198,6 @@ export class ExecuteWorkflow implements INodeType {
 
 		const workflowProxy = this.getWorkflowDataProxy(0);
 
-		// TODO: Think about what happens if workflow-id is not known
-		//       (like when executed from JSON or other, also about opening in frontend)
-		//       Look into that once bug in master got fixed
-
 		if (mode === 'each') {
 			const returnData: INodeExecutionData[][] = [];
 

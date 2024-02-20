@@ -1090,9 +1090,6 @@ export default defineComponent({
 			return [];
 		},
 		displayExecution(executionId: string, workflowId?: string) {
-			// TODO: See what to do here if we do nto have a workflowId.
-			//       As we have a bug in n8n right now do know how we handel that
-			//       case right now so return to it later.
 			const route = this.$router.resolve({
 				name: VIEWS.EXECUTION_PREVIEW,
 				params: { name: workflowId, executionId },
