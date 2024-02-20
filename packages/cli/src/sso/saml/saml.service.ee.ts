@@ -19,7 +19,6 @@ import {
 	setSamlLoginLabel,
 	updateUserFromSamlAttributes,
 } from './samlHelpers';
-import type { Settings } from '@db/entities/Settings';
 import axios from 'axios';
 import https from 'https';
 import type { SamlLoginBinding } from './types';
@@ -76,6 +75,7 @@ export class SamlService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly urlService: UrlService,
+		private readonly settingsRepository: SettingsRepository,
 	) {}
 
 	async init(): Promise<void> {
@@ -262,9 +262,7 @@ export class SamlService {
 	}
 
 	async loadFromDbAndApplySamlPreferences(apply = true): Promise<SamlPreferences | undefined> {
-		const samlPreferences = await Container.get(SettingsRepository).findOne({
-			where: { key: SAML_PREFERENCES_DB_KEY },
-		});
+		const samlPreferences = await this.settingsRepository.findByKey(SAML_PREFERENCES_DB_KEY);
 		if (samlPreferences) {
 			const prefs = jsonParse<SamlPreferences>(samlPreferences.value);
 			if (prefs) {
@@ -280,28 +278,15 @@ export class SamlService {
 	}
 
 	async saveSamlPreferencesToDb(): Promise<SamlPreferences | undefined> {
-		const samlPreferences = await Container.get(SettingsRepository).findOne({
-			where: { key: SAML_PREFERENCES_DB_KEY },
-		});
 		const settingsValue = JSON.stringify(this.samlPreferences);
-		let result: Settings;
-		if (samlPreferences) {
-			samlPreferences.value = settingsValue;
-			result = await Container.get(SettingsRepository).save(samlPreferences, {
-				transaction: false,
-			});
-		} else {
-			result = await Container.get(SettingsRepository).save(
-				{
-					key: SAML_PREFERENCES_DB_KEY,
-					value: settingsValue,
-					loadOnStartup: true,
-				},
-				{ transaction: false },
-			);
-		}
-		if (result) return jsonParse<SamlPreferences>(result.value);
-		return;
+
+		await this.settingsRepository.upsertByKey({
+			key: SAML_PREFERENCES_DB_KEY,
+			value: settingsValue,
+			loadOnStartup: true,
+		});
+
+		return jsonParse<SamlPreferences>(settingsValue);
 	}
 
 	async fetchMetadataFromUrl(): Promise<string | undefined> {

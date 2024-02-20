@@ -20,14 +20,11 @@ export class SettingsRepository extends Repository<Settings> {
 	}
 
 	async saveEncryptedSecretsProviderSettings(data: string): Promise<void> {
-		await this.upsert(
-			{
-				key: EXTERNAL_SECRETS_DB_KEY,
-				value: data,
-				loadOnStartup: false,
-			},
-			['key'],
-		);
+		await this.upsertByKey({
+			key: EXTERNAL_SECRETS_DB_KEY,
+			value: data,
+			loadOnStartup: false,
+		});
 	}
 
 	async dismissBanner({ bannerName }: { bannerName: string }): Promise<{ success: boolean }> {
@@ -42,7 +39,7 @@ export class SettingsRepository extends Repository<Settings> {
 				await this.update({ key }, { value, loadOnStartup: true });
 			} else {
 				value = JSON.stringify([bannerName]);
-				await this.save({ key, value, loadOnStartup: true }, { transaction: false });
+				await this.insert({ key, value, loadOnStartup: true });
 			}
 			config.set(key, value);
 			return { success: true };
@@ -50,5 +47,16 @@ export class SettingsRepository extends Repository<Settings> {
 			ErrorReporter.error(error);
 		}
 		return { success: false };
+	}
+
+	async upsertByKey(settings: Settings) {
+		return await super.upsert(
+			{
+				key: settings.key,
+				value: settings.value,
+				loadOnStartup: settings.loadOnStartup,
+			},
+			{ conflictPaths: ['key'] },
+		);
 	}
 }

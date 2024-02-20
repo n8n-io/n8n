@@ -1,6 +1,7 @@
 import { Container } from 'typedi';
 import config from '@/config';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
+import * as Db from '@/Db';
 import { User } from '@db/entities/User';
 import { License } from '@/License';
 import { PasswordUtility } from '@/services/password.utility';
@@ -17,8 +18,6 @@ import {
 } from '../ssoHelpers';
 import { getServiceProviderConfigTestReturnUrl } from './serviceProvider.ee';
 import type { SamlConfiguration } from './types/requests';
-import { UserRepository } from '@db/repositories/user.repository';
-import { AuthIdentityRepository } from '@db/repositories/authIdentity.repository';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { AuthError } from '@/errors/response-errors/auth.error';
 
@@ -109,14 +108,17 @@ export async function createUserFromSamlAttributes(attributes: SamlUserAttribute
 	authIdentity.providerId = attributes.userPrincipalName;
 	authIdentity.providerType = 'saml';
 	authIdentity.user = user;
-	const resultAuthIdentity = await Container.get(AuthIdentityRepository).save(authIdentity, {
-		transaction: false,
+
+	return await Db.transaction(async (tx) => {
+		const resultAuthIdentity = await tx.save(AuthIdentity, authIdentity);
+		if (!resultAuthIdentity) throw new AuthError('Could not create AuthIdentity');
+
+		user.authIdentities = [authIdentity];
+		const resultUser = await tx.save(User, user);
+		if (!resultUser) throw new AuthError('Could not create User');
+
+		return resultUser;
 	});
-	if (!resultAuthIdentity) throw new AuthError('Could not create AuthIdentity');
-	user.authIdentities = [authIdentity];
-	const resultUser = await Container.get(UserRepository).save(user, { transaction: false });
-	if (!resultUser) throw new AuthError('Could not create User');
-	return resultUser;
 }
 
 export async function updateUserFromSamlAttributes(
@@ -125,6 +127,7 @@ export async function updateUserFromSamlAttributes(
 ): Promise<User> {
 	if (!attributes.email) throw new AuthError('Email is required to update user');
 	if (!user) throw new AuthError('User not found');
+
 	let samlAuthIdentity = user?.authIdentities.find((e) => e.providerType === 'saml');
 	if (!samlAuthIdentity) {
 		samlAuthIdentity = new AuthIdentity();
@@ -135,12 +138,15 @@ export async function updateUserFromSamlAttributes(
 	} else {
 		samlAuthIdentity.providerId = attributes.userPrincipalName;
 	}
-	await Container.get(AuthIdentityRepository).save(samlAuthIdentity, { transaction: false });
-	user.firstName = attributes.firstName;
-	user.lastName = attributes.lastName;
-	const resultUser = await Container.get(UserRepository).save(user, { transaction: false });
-	if (!resultUser) throw new AuthError('Could not create User');
-	return resultUser;
+
+	return await Db.transaction(async (tx) => {
+		await tx.save(AuthIdentity, samlAuthIdentity!);
+		user.firstName = attributes.firstName;
+		user.lastName = attributes.lastName;
+		const resultUser = await tx.save(User, user);
+		if (!resultUser) throw new AuthError('Could not create User');
+		return resultUser;
+	});
 }
 
 type GetMappedSamlReturn = {
