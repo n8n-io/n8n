@@ -13,6 +13,8 @@ import { setInstanceOwnerSetUp } from '../shared/utils';
 import { createWorkflow } from '../shared/db/workflows';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
+import { createCredential } from '../shared/db/credentials';
+import { SharedCredentialsRepository } from '@/databases/repositories/sharedCredentials.repository';
 
 let userRepository: UserRepository;
 let settingsRepository: SettingsRepository;
@@ -94,4 +96,37 @@ test('user-management:reset should reset all workflows', async () => {
 	]);
 	expect(sharedWorkflow).toBeDefined();
 	expect(sharedWorkflow.projectId).toBe(ownerPersonalProject.id);
+});
+
+test('user-management:reset should reset all credentials', async () => {
+	//
+	// ARRANGE
+	//
+	const owner = await createOwner();
+	const ownerPersonalProject = await Container.get(
+		ProjectRepository,
+	).getPersonalProjectForUserOrFail(owner.id);
+	const member = await createMember();
+	const credential = await createCredential(
+		{
+			name: 'foobar',
+			data: {},
+			type: 'foobar',
+			nodesAccess: [],
+		},
+		{ user: member, role: 'credential:owner' },
+	);
+
+	//
+	// ACT
+	//
+	await Reset.run();
+
+	//
+	// ASSERT
+	//
+	const sharedCredential = await Container.get(SharedCredentialsRepository).findOneByOrFail({
+		credentialsId: credential.id,
+	});
+	expect(sharedCredential.projectId).toBe(ownerPersonalProject.id);
 });

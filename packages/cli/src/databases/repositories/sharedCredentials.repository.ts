@@ -52,12 +52,21 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 		});
 	}
 
-	// TODO: needs test
-	// FIXME: this should use the personal project instead of the deprecatedUserId
 	async makeOwnerOfAllCredentials(user: User) {
+		const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(user.id);
+
 		return await this.update(
-			{ deprecatedUserId: Not(user.id), role: 'credential:owner' },
-			{ deprecatedUserId: user.id },
+			{ projectId: Not(personalProject.id), role: 'credential:owner' },
+			{
+				projectId: personalProject.id,
+				// TODO: Remove this in the future when the userId property is removed
+				// from the SharedWorkflow.
+				// Right now it has to stay here, otherwise the cascading deletes
+				// started from the cli user management reset command will delete this
+				// shared workflow too.
+				// See: src/commands/user-management/reset.ts
+				deprecatedUserId: user.id,
+			},
 		);
 	}
 
