@@ -294,8 +294,9 @@ describe('WorkflowDataProxy', () => {
 			expect(() => proxy.$('doNotExist')).toThrowError(ExpressionError);
 		});
 
-		test('$("NodeName")', () => {
-			expect(() => proxy.$('Set')).toThrowError(ExpressionError);
+		test('test $("NodeName").isExecuted', () => {
+			expect(proxy.$('Function').isExecuted).toEqual(true);
+			expect(proxy.$('Set').isExecuted).toEqual(false);
 		});
 
 		test('test $input.all()', () => {
