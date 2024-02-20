@@ -4,7 +4,10 @@ import { resolveParameter } from '@/composables/useWorkflowHelpers';
 import { v4 as uuid } from 'uuid';
 
 export function nameFromExpression(expression: string): string {
-	return expression.replace(/^{{\s*|\s*}}$/g, '').replace('$json.', '');
+	return expression
+		.replace(/^{{\s*|\s*}}$/g, '')
+		.replace('$json.', '')
+		.replace(/^\$\(.*\)(\.item\.json)?\.(.*)/, '$2');
 }
 
 export function inferAssignmentType(value: unknown): string {
