@@ -7,13 +7,16 @@ import { UserRepository } from '@db/repositories/user.repository';
 
 import { mockInstance } from '../../shared/mocking';
 import * as testDb from '../shared/testDb';
-import { createUser } from '../shared/db/users';
+import { createMember, createOwner } from '../shared/db/users';
+
+let userRepository: UserRepository;
 
 beforeAll(async () => {
 	mockInstance(InternalHooks);
 	mockInstance(LoadNodesAndCredentials);
 	mockInstance(NodeTypes);
 	await testDb.init();
+	userRepository = Container.get(UserRepository);
 });
 
 beforeEach(async () => {
@@ -24,17 +27,29 @@ afterAll(async () => {
 	await testDb.terminate();
 });
 
-// eslint-disable-next-line n8n-local-rules/no-skipped-tests
-test.skip('user-management:reset should reset DB to default user state', async () => {
-	await createUser({ role: 'global:owner' });
+test('user-management:reset should reset DB to default user state', async () => {
+	//
+	// ARRANGE
+	//
+	await createOwner();
+	await createMember();
 
+	//
+	// ACT
+	//
 	await Reset.run();
 
-	const user = await Container.get(UserRepository).findOneBy({ role: 'global:owner' });
+	//
+	// ASSERT
+	//
+	const user = await userRepository.findOneBy({ role: 'global:owner' });
+	const numberOfUsers = await userRepository.count();
 
 	if (!user) {
 		fail('No owner found after DB reset to default user state');
 	}
+
+	expect(numberOfUsers).toBe(1);
 
 	expect(user.email).toBeNull();
 	expect(user.firstName).toBeNull();
