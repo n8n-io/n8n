@@ -311,13 +311,12 @@
 				></n8n-text>
 
 				<n8n-button
-					outline
 					:label="$locale.baseText('ndv.output.tooMuchData.showDataAnyway')"
 					@click="showTooMuchData"
 				/>
 
 				<n8n-button
-					size="small"
+					outline
 					:label="$locale.baseText('runData.downloadBinaryData')"
 					@click="downloadJsonData()"
 				/>
