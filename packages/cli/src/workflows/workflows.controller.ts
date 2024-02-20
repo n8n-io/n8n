@@ -49,6 +49,7 @@ import { WorkflowSharingService } from './workflowSharing.service';
 import { UserManagementMailer } from '@/UserManagement/email';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { ProjectService } from '@/services/project.service';
+import { ApplicationError } from '../../../workflow/src';
 
 @Authorized()
 @RestController('/workflows')
@@ -138,7 +139,7 @@ export class WorkflowsController {
 
 			// Safe guard in case the personal project does not exist for whatever reason.
 			if (project === null) {
-				throw new InternalServerError('Failed to save workflow');
+				throw new ApplicationError('No personal project found');
 			}
 
 			const newSharedWorkflow = this.sharedWorkflowRepository.create({
