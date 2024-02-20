@@ -18,10 +18,8 @@ import type {
 	AxiosError,
 	AxiosHeaders,
 	AxiosPromise,
-	AxiosProxyConfig,
 	AxiosRequestConfig,
 	AxiosResponse,
-	Method,
 } from 'axios';
 import axios from 'axios';
 import crypto, { createHmac } from 'crypto';
@@ -31,7 +29,7 @@ import FormData from 'form-data';
 import { createReadStream } from 'fs';
 import { access as fsAccess, writeFile as fsWriteFile } from 'fs/promises';
 import { IncomingMessage, type IncomingHttpHeaders } from 'http';
-import { Agent } from 'https';
+import { Agent, type AgentOptions } from 'https';
 import get from 'lodash/get';
 import pick from 'lodash/pick';
 import { extension, lookup } from 'mime-types';
@@ -40,6 +38,7 @@ import type {
 	CloseFunction,
 	ConnectionTypes,
 	ContextType,
+	EventNamesAiNodesType,
 	FieldType,
 	FileSystemHelperFunctions,
 	FunctionsBase,
@@ -76,6 +75,7 @@ import type {
 	IOAuth2Options,
 	IPairedItemData,
 	IPollFunctions,
+	IRequestOptions,
 	IRunExecutionData,
 	ISourceData,
 	ITaskData,
@@ -120,8 +120,6 @@ import type { Token } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
 import path from 'path';
 import { stringify } from 'qs';
-import type { OptionsWithUrl } from 'request';
-import type { OptionsWithUri, RequestPromiseOptions } from 'request-promise-native';
 import { Readable } from 'stream';
 import url, { URL, URLSearchParams } from 'url';
 
@@ -150,7 +148,6 @@ import Container from 'typedi';
 import type { BinaryData } from './BinaryData/types';
 import merge from 'lodash/merge';
 import { InstanceSettings } from './InstanceSettings';
-import { toUtcDate } from './utils';
 
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
@@ -196,6 +193,17 @@ const createFormDataObject = (data: Record<string, unknown>) => {
 	return formData;
 };
 
+const validateUrl = (url?: string): boolean => {
+	if (!url) return false;
+
+	try {
+		new URL(url);
+		return true;
+	} catch (error) {
+		return false;
+	}
+};
+
 function searchForHeader(config: AxiosRequestConfig, headerName: string) {
 	if (config.headers === undefined) {
 		return undefined;
@@ -229,7 +237,40 @@ async function generateContentLengthHeader(config: AxiosRequestConfig) {
 	}
 }
 
-async function parseRequestObject(requestObject: IDataObject) {
+const getHostFromRequestObject = (
+	requestObject: Partial<{
+		url: string;
+		uri: string;
+		baseURL: string;
+	}>,
+): string | null => {
+	try {
+		const url = (requestObject.url ?? requestObject.uri) as string;
+		return new URL(url, requestObject.baseURL).hostname;
+	} catch (error) {
+		return null;
+	}
+};
+
+const getBeforeRedirectFn =
+	(agentOptions: AgentOptions, axiosConfig: AxiosRequestConfig) =>
+	(redirectedRequest: Record<string, any>) => {
+		const redirectAgent = new Agent({
+			...agentOptions,
+			servername: redirectedRequest.hostname,
+		});
+		redirectedRequest.agent = redirectAgent;
+		redirectedRequest.agents.https = redirectAgent;
+
+		if (axiosConfig.headers?.Authorization) {
+			redirectedRequest.headers.Authorization = axiosConfig.headers.Authorization;
+		}
+		if (axiosConfig.auth) {
+			redirectedRequest.auth = `${axiosConfig.auth.username}:${axiosConfig.auth.password}`;
+		}
+	};
+
+export async function parseRequestObject(requestObject: IRequestOptions) {
 	// This function is a temporary implementation
 	// That translates all http requests done via
 	// the request library to axios directly
@@ -343,28 +384,28 @@ async function parseRequestObject(requestObject: IDataObject) {
 	}
 
 	if (requestObject.uri !== undefined) {
-		axiosConfig.url = requestObject.uri?.toString() as string;
+		axiosConfig.url = requestObject.uri?.toString();
 	}
 
 	if (requestObject.url !== undefined) {
-		axiosConfig.url = requestObject.url?.toString() as string;
+		axiosConfig.url = requestObject.url?.toString();
 	}
 
 	if (requestObject.baseURL !== undefined) {
-		axiosConfig.baseURL = requestObject.baseURL?.toString() as string;
+		axiosConfig.baseURL = requestObject.baseURL?.toString();
 	}
 
 	if (requestObject.method !== undefined) {
-		axiosConfig.method = requestObject.method as Method;
+		axiosConfig.method = requestObject.method;
 	}
 
 	if (requestObject.qs !== undefined && Object.keys(requestObject.qs as object).length > 0) {
-		axiosConfig.params = requestObject.qs as IDataObject;
+		axiosConfig.params = requestObject.qs;
 	}
 
 	function hasArrayFormatOptions(
-		arg: IDataObject,
-	): arg is IDataObject & { qsStringifyOptions: { arrayFormat: 'repeat' | 'brackets' } } {
+		arg: IRequestOptions,
+	): arg is Required<Pick<IRequestOptions, 'qsStringifyOptions'>> {
 		if (
 			typeof arg.qsStringifyOptions === 'object' &&
 			arg.qsStringifyOptions !== null &&
@@ -402,13 +443,13 @@ async function parseRequestObject(requestObject: IDataObject) {
 
 	if (requestObject.auth !== undefined) {
 		// Check support for sendImmediately
-		if ((requestObject.auth as IDataObject).bearer !== undefined) {
+		if (requestObject.auth.bearer !== undefined) {
 			axiosConfig.headers = Object.assign(axiosConfig.headers || {}, {
 				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-				Authorization: `Bearer ${(requestObject.auth as IDataObject).bearer}`,
+				Authorization: `Bearer ${requestObject.auth.bearer}`,
 			});
 		} else {
-			const authObj = requestObject.auth as IDataObject;
+			const authObj = requestObject.auth;
 			// Request accepts both user/username and pass/password
 			axiosConfig.auth = {
 				username: (authObj.user || authObj.username) as string,
@@ -452,24 +493,21 @@ async function parseRequestObject(requestObject: IDataObject) {
 		axiosConfig.maxRedirects = 0;
 	}
 
-	axiosConfig.beforeRedirect = (redirectedRequest) => {
-		if (axiosConfig.headers?.Authorization) {
-			redirectedRequest.headers.Authorization = axiosConfig.headers.Authorization;
-		}
-		if (axiosConfig.auth) {
-			redirectedRequest.auth = `${axiosConfig.auth.username}:${axiosConfig.auth.password}`;
-		}
-	};
-
-	if (requestObject.rejectUnauthorized === false) {
-		axiosConfig.httpsAgent = new Agent({
-			rejectUnauthorized: false,
-			secureOptions: crypto.constants.SSL_OP_LEGACY_SERVER_CONNECT,
-		});
+	const host = getHostFromRequestObject(requestObject);
+	const agentOptions: AgentOptions = {};
+	if (host) {
+		agentOptions.servername = host;
 	}
+	if (requestObject.rejectUnauthorized === false) {
+		agentOptions.rejectUnauthorized = false;
+		agentOptions.secureOptions = crypto.constants.SSL_OP_LEGACY_SERVER_CONNECT;
+	}
+	axiosConfig.httpsAgent = new Agent(agentOptions);
+
+	axiosConfig.beforeRedirect = getBeforeRedirectFn(agentOptions, axiosConfig);
 
 	if (requestObject.timeout !== undefined) {
-		axiosConfig.timeout = requestObject.timeout as number;
+		axiosConfig.timeout = requestObject.timeout;
 	}
 
 	if (requestObject.proxy !== undefined) {
@@ -528,7 +566,7 @@ async function parseRequestObject(requestObject: IDataObject) {
 				}
 			}
 		} else {
-			axiosConfig.proxy = requestObject.proxy as AxiosProxyConfig;
+			axiosConfig.proxy = requestObject.proxy;
 		}
 	}
 
@@ -627,12 +665,6 @@ function digestAuthAxiosConfig(
 	return axiosConfig;
 }
 
-type ConfigObject = {
-	auth?: { sendImmediately: boolean };
-	resolveWithFullResponse?: boolean;
-	simple?: boolean;
-};
-
 interface IContentType {
 	type: string;
 	parameters: {
@@ -725,21 +757,18 @@ export async function proxyRequestToAxios(
 	workflow: Workflow | undefined,
 	additionalData: IWorkflowExecuteAdditionalData | undefined,
 	node: INode | undefined,
-	uriOrObject: string | object,
-	options?: object,
+	uriOrObject: string | IRequestOptions,
+	options?: IRequestOptions,
 ): Promise<any> {
 	let axiosConfig: AxiosRequestConfig = {
 		maxBodyLength: Infinity,
 		maxContentLength: Infinity,
 	};
-	let configObject: ConfigObject;
-	if (uriOrObject !== undefined && typeof uriOrObject === 'string') {
-		axiosConfig.url = uriOrObject;
-	}
-	if (uriOrObject !== undefined && typeof uriOrObject === 'object') {
-		configObject = uriOrObject;
+	let configObject: IRequestOptions;
+	if (typeof uriOrObject === 'string') {
+		configObject = { uri: uriOrObject, ...options };
 	} else {
-		configObject = options || {};
+		configObject = uriOrObject ?? {};
 	}
 
 	axiosConfig = Object.assign(axiosConfig, await parseRequestObject(configObject));
@@ -859,11 +888,17 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 		axiosRequest.responseType = n8nRequest.encoding;
 	}
 
-	if (n8nRequest.skipSslCertificateValidation === true) {
-		axiosRequest.httpsAgent = new Agent({
-			rejectUnauthorized: false,
-		});
+	const host = getHostFromRequestObject(n8nRequest);
+	const agentOptions: AgentOptions = {};
+	if (host) {
+		agentOptions.servername = host;
 	}
+	if (n8nRequest.skipSslCertificateValidation === true) {
+		agentOptions.rejectUnauthorized = false;
+	}
+	axiosRequest.httpsAgent = new Agent(agentOptions);
+
+	axiosRequest.beforeRedirect = getBeforeRedirectFn(agentOptions, axiosRequest);
 
 	if (n8nRequest.arrayFormat !== undefined) {
 		axiosRequest.paramsSerializer = (params) => {
@@ -1208,16 +1243,36 @@ async function prepareBinaryData(
 	return await setBinaryDataBuffer(returnData, binaryData, workflowId, executionId);
 }
 
+function applyPaginationRequestData(
+	requestData: IRequestOptions,
+	paginationRequestData: PaginationOptions['request'],
+): IRequestOptions {
+	const preparedPaginationData: Partial<IRequestOptions> = {
+		...paginationRequestData,
+		uri: paginationRequestData.url,
+	};
+
+	if ('formData' in requestData) {
+		preparedPaginationData.formData = paginationRequestData.body;
+		delete preparedPaginationData.body;
+	} else if ('form' in requestData) {
+		preparedPaginationData.form = paginationRequestData.body;
+		delete preparedPaginationData.body;
+	}
+
+	return merge({}, requestData, preparedPaginationData);
+}
+
 /**
  * Makes a request using OAuth data for authentication
  *
- * @param {(OptionsWithUri | RequestPromiseOptions)} requestOptions
+ * @param {(IHttpRequestOptions | IRequestOptions)} requestOptions
  *
  */
 export async function requestOAuth2(
 	this: IAllExecuteFunctions,
 	credentialsType: string,
-	requestOptions: OptionsWithUri | RequestPromiseOptions | IHttpRequestOptions,
+	requestOptions: IHttpRequestOptions | IRequestOptions,
 	node: INode,
 	additionalData: IWorkflowExecuteAdditionalData,
 	oAuth2Options?: IOAuth2Options,
@@ -1281,7 +1336,7 @@ export async function requestOAuth2(
 		oAuth2Options?.tokenType || oauthTokenData.tokenType,
 	);
 
-	(requestOptions as OptionsWithUri).rejectUnauthorized = !credentials.ignoreSSLIssues;
+	(requestOptions as IRequestOptions).rejectUnauthorized = !credentials.ignoreSSLIssues;
 
 	// Signs the request by adding authorization headers or query parameters depending
 	// on the token-type used.
@@ -1365,7 +1420,7 @@ export async function requestOAuth2(
 			: oAuth2Options?.tokenExpiredStatusCode;
 
 	return await this.helpers
-		.request(newRequestOptions)
+		.request(newRequestOptions as IRequestOptions)
 		.then((response) => {
 			const requestOptions = newRequestOptions as any;
 			if (
@@ -1441,7 +1496,7 @@ export async function requestOAuth2(
 					});
 				}
 
-				return await this.helpers.request(newRequestOptions);
+				return await this.helpers.request(newRequestOptions as IRequestOptions);
 			}
 
 			// Unknown error so simply throw it
@@ -1455,7 +1510,7 @@ export async function requestOAuth2(
 export async function requestOAuth1(
 	this: IAllExecuteFunctions,
 	credentialsType: string,
-	requestOptions: OptionsWithUrl | OptionsWithUri | RequestPromiseOptions | IHttpRequestOptions,
+	requestOptions: IHttpRequestOptions | IRequestOptions,
 	isN8nRequest = false,
 ) {
 	const credentials = await this.getCredentials(credentialsType);
@@ -1502,25 +1557,24 @@ export async function requestOAuth1(
 	requestOptions.data = { ...requestOptions.qs, ...requestOptions.form };
 
 	// Fixes issue that OAuth1 library only works with "url" property and not with "uri"
-	// @ts-expect-error @TECH_DEBT: Remove request library
-	if (requestOptions.uri && !requestOptions.url) {
-		// @ts-expect-error @TECH_DEBT: Remove request library
+	if ('uri' in requestOptions && !requestOptions.url) {
 		requestOptions.url = requestOptions.uri;
-		// @ts-expect-error @TECH_DEBT: Remove request library
 		delete requestOptions.uri;
 	}
 
 	requestOptions.headers = oauth.toHeader(
 		oauth.authorize(requestOptions as unknown as clientOAuth1.RequestOptions, token),
-	);
+	) as unknown as Record<string, string>;
 	if (isN8nRequest) {
 		return await this.helpers.httpRequest(requestOptions as IHttpRequestOptions);
 	}
 
-	return await this.helpers.request(requestOptions).catch(async (error: IResponseError) => {
-		// Unknown error so simply throw it
-		throw error;
-	});
+	return await this.helpers
+		.request(requestOptions as IRequestOptions)
+		.catch(async (error: IResponseError) => {
+			// Unknown error so simply throw it
+			throw error;
+		});
 }
 
 export async function httpRequestWithAuthentication(
@@ -1718,7 +1772,7 @@ export function normalizeItems(
 export async function requestWithAuthentication(
 	this: IAllExecuteFunctions,
 	credentialsType: string,
-	requestOptions: OptionsWithUri | RequestPromiseOptions,
+	requestOptions: IRequestOptions,
 	workflow: Workflow,
 	node: INode,
 	additionalData: IWorkflowExecuteAdditionalData,
@@ -1773,14 +1827,14 @@ export async function requestWithAuthentication(
 			Object.assign(credentialsDecrypted, data);
 		}
 
-		requestOptions = await additionalData.credentialsHelper.authenticate(
+		requestOptions = (await additionalData.credentialsHelper.authenticate(
 			credentialsDecrypted,
 			credentialsType,
 			requestOptions as IHttpRequestOptions,
 			workflow,
 			node,
-		);
-		return await proxyRequestToAxios(workflow, additionalData, node, requestOptions as IDataObject);
+		)) as IRequestOptions;
+		return await proxyRequestToAxios(workflow, additionalData, node, requestOptions);
 	} catch (error) {
 		try {
 			if (credentialsDecrypted !== undefined) {
@@ -1797,20 +1851,15 @@ export async function requestWithAuthentication(
 					// make the updated property in the credentials
 					// available to the authenticate method
 					Object.assign(credentialsDecrypted, data);
-					requestOptions = await additionalData.credentialsHelper.authenticate(
+					requestOptions = (await additionalData.credentialsHelper.authenticate(
 						credentialsDecrypted,
 						credentialsType,
 						requestOptions as IHttpRequestOptions,
 						workflow,
 						node,
-					);
+					)) as IRequestOptions;
 					// retry the request
-					return await proxyRequestToAxios(
-						workflow,
-						additionalData,
-						node,
-						requestOptions as IDataObject,
-					);
+					return await proxyRequestToAxios(workflow, additionalData, node, requestOptions);
 				}
 			}
 			throw error;
@@ -2504,7 +2553,7 @@ const addExecutionDataFunctions = async (
 			runExecutionData.executionData!.metadata = {};
 		}
 
-		let sourceTaskData = get(runExecutionData, `executionData.metadata[${sourceNodeName}]`);
+		let sourceTaskData = get(runExecutionData, ['executionData', 'metadata', sourceNodeName]);
 
 		if (!sourceTaskData) {
 			runExecutionData.executionData!.metadata[sourceNodeName] = [];
@@ -2791,7 +2840,7 @@ const getRequestHelperFunctions = (
 		httpRequest,
 		async requestWithAuthenticationPaginated(
 			this: IExecuteFunctions,
-			requestOptions: OptionsWithUri,
+			requestOptions: IRequestOptions,
 			itemIndex: number,
 			paginationOptions: PaginationOptions,
 			credentialsType?: string,
@@ -2806,7 +2855,7 @@ const getRequestHelperFunctions = (
 
 			let tempResponseData: IN8nHttpFullResponse;
 			let makeAdditionalRequest: boolean;
-			let paginateRequestData: IHttpRequestOptions;
+			let paginateRequestData: PaginationOptions['request'];
 
 			const runIndex = 0;
 
@@ -2836,9 +2885,17 @@ const getRequestHelperFunctions = (
 					executeData,
 					additionalKeys,
 					false,
-				) as object as IHttpRequestOptions;
+				) as object as PaginationOptions['request'];
 
-				const tempRequestOptions = merge(requestOptions, paginateRequestData);
+				const tempRequestOptions = applyPaginationRequestData(requestOptions, paginateRequestData);
+
+				if (!validateUrl(tempRequestOptions.uri as string)) {
+					throw new NodeOperationError(node, `'${paginateRequestData.url}' is not a valid URL.`, {
+						itemIndex,
+						runIndex,
+						type: 'invalid_url',
+					});
+				}
 
 				if (credentialsType) {
 					tempResponseData = await this.helpers.requestWithAuthentication.call(
@@ -3027,7 +3084,7 @@ const getRequestHelperFunctions = (
 		async requestOAuth1(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
-			requestOptions: OptionsWithUrl | RequestPromiseOptions,
+			requestOptions: IRequestOptions,
 		): Promise<any> {
 			return await requestOAuth1.call(this, credentialsType, requestOptions);
 		},
@@ -3035,7 +3092,7 @@ const getRequestHelperFunctions = (
 		async requestOAuth2(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
-			requestOptions: OptionsWithUri | RequestPromiseOptions,
+			requestOptions: IRequestOptions,
 			oAuth2Options?: IOAuth2Options,
 		): Promise<any> {
 			return await requestOAuth2.call(
@@ -3493,7 +3550,7 @@ export function getExecuteFunctions(
 			binaryToBuffer: async (body: Buffer | Readable) =>
 				await Container.get(BinaryDataService).toBuffer(body),
 			async putExecutionToWait(waitTill: Date): Promise<void> {
-				runExecutionData.waitTill = toUtcDate(waitTill, getTimezone(workflow));
+				runExecutionData.waitTill = waitTill;
 				if (additionalData.setExecutionStatus) {
 					additionalData.setExecutionStatus('waiting');
 				}
@@ -3597,6 +3654,16 @@ export function getExecuteFunctions(
 				constructExecutionMetaData,
 			},
 			nodeHelpers: getNodeHelperFunctions(additionalData, workflow.id),
+			logAiEvent: async (eventName: EventNamesAiNodesType, msg: string) => {
+				return await additionalData.logAiEvent(eventName, {
+					executionId: additionalData.executionId ?? 'unsaved-execution',
+					nodeName: node.name,
+					workflowName: workflow.name ?? 'Unnamed workflow',
+					nodeType: node.type,
+					workflowId: workflow.id ?? 'unsaved-workflow',
+					msg,
+				});
+			},
 		};
 	})(workflow, runExecutionData, connectionInputData, inputData, node) as IExecuteFunctions;
 }
@@ -3736,6 +3803,16 @@ export function getExecuteSingleFunctions(
 					assertBinaryData(inputData, node, itemIndex, propertyName, inputIndex),
 				getBinaryDataBuffer: async (propertyName, inputIndex = 0) =>
 					await getBinaryDataBuffer(inputData, itemIndex, propertyName, inputIndex),
+			},
+			logAiEvent: async (eventName: EventNamesAiNodesType, msg: string) => {
+				return await additionalData.logAiEvent(eventName, {
+					executionId: additionalData.executionId ?? 'unsaved-execution',
+					nodeName: node.name,
+					workflowName: workflow.name ?? 'Unnamed workflow',
+					nodeType: node.type,
+					workflowId: workflow.id ?? 'unsaved-workflow',
+					msg,
+				});
 			},
 		};
 	})(workflow, runExecutionData, connectionInputData, inputData, node, itemIndex);

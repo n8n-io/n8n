@@ -4,21 +4,22 @@ import type {
 	IExecuteFunctions,
 	INode,
 	INodeExecutionData,
+	ValidationResult,
 } from 'n8n-workflow';
 import {
-	deepCopy,
+	ApplicationError,
 	NodeOperationError,
+	deepCopy,
 	jsonParse,
 	validateFieldType,
-	ApplicationError,
 } from 'n8n-workflow';
 
-import set from 'lodash/set';
 import get from 'lodash/get';
+import set from 'lodash/set';
 import unset from 'lodash/unset';
 
 import { getResolvables, sanitazeDataPathKey } from '../../../../utils/utilities';
-import type { SetNodeOptions, SetField } from './interfaces';
+import type { SetNodeOptions } from './interfaces';
 import { INCLUDE } from './interfaces';
 
 const configureFieldHelper = (dotNotation?: boolean) => {
@@ -163,46 +164,43 @@ export const parseJsonParameter = (
 };
 
 export const validateEntry = (
-	entry: SetField,
+	name: string,
+	type: FieldType,
+	value: unknown,
 	node: INode,
 	itemIndex: number,
 	ignoreErrors = false,
 	nodeVersion?: number,
 ) => {
-	let entryValue = entry[entry.type];
-	const name = entry.name;
-
-	if (nodeVersion && nodeVersion >= 3.2 && (entryValue === undefined || entryValue === null)) {
+	if (nodeVersion && nodeVersion >= 3.2 && (value === undefined || value === null)) {
 		return { name, value: null };
 	}
 
-	const entryType = entry.type.replace('Value', '') as FieldType;
-
 	const description = `To fix the error try to change the type for the field "${name}" or activate the option “Ignore Type Conversion Errors” to apply a less strict type validation`;
 
-	if (entryType === 'string') {
-		if (nodeVersion && nodeVersion > 3 && (entryValue === undefined || entryValue === null)) {
+	if (type === 'string') {
+		if (nodeVersion && nodeVersion > 3 && (value === undefined || value === null)) {
 			if (ignoreErrors) {
 				return { name, value: null };
 			} else {
 				throw new NodeOperationError(
 					node,
-					`'${name}' expects a ${entryType} but we got '${String(entryValue)}' [item ${itemIndex}]`,
+					`'${name}' expects a ${type} but we got '${String(value)}' [item ${itemIndex}]`,
 					{ description },
 				);
 			}
-		} else if (typeof entryValue === 'object') {
-			entryValue = JSON.stringify(entryValue);
+		} else if (typeof value === 'object') {
+			value = JSON.stringify(value);
 		} else {
-			entryValue = String(entryValue);
+			value = String(value);
 		}
 	}
 
-	const validationResult = validateFieldType(name, entryValue, entryType);
+	const validationResult = validateFieldType(name, value, type);
 
 	if (!validationResult.valid) {
 		if (ignoreErrors) {
-			validationResult.newValue = entry[entry.type];
+			validationResult.newValue = value as ValidationResult['newValue'];
 		} else {
 			const message = `${validationResult.errorMessage} [item ${itemIndex}]`;
 			throw new NodeOperationError(node, message, {
@@ -212,9 +210,10 @@ export const validateEntry = (
 		}
 	}
 
-	const value = validationResult.newValue === undefined ? null : validationResult.newValue;
-
-	return { name, value };
+	return {
+		name,
+		value: validationResult.newValue === undefined ? null : validationResult.newValue,
+	};
 };
 
 export function resolveRawData(this: IExecuteFunctions, rawData: string, i: number) {

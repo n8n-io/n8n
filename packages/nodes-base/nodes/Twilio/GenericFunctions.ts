@@ -1,6 +1,10 @@
-import type { IExecuteFunctions, IHookFunctions, IDataObject } from 'n8n-workflow';
-
-import type { OptionsWithUri } from 'request';
+import type {
+	IExecuteFunctions,
+	IHookFunctions,
+	IDataObject,
+	IHttpRequestMethods,
+	IRequestOptions,
+} from 'n8n-workflow';
 
 /**
  * Make an API request to Twilio
@@ -8,7 +12,7 @@ import type { OptionsWithUri } from 'request';
  */
 export async function twilioApiRequest(
 	this: IHookFunctions | IExecuteFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject,
 	query?: IDataObject,
@@ -25,7 +29,7 @@ export async function twilioApiRequest(
 		query = {};
 	}
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		method,
 		form: body,
 		qs: query,

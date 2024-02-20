@@ -12,8 +12,7 @@ jobs:
           repository: n8n-io/n8n
           ref: refs/pull/${{ github.event.pull_request.number }}/merge
 
-      - uses: pnpm/action-setup@v2.4.0
-
+      - run: corepack enable
       - name: Use Node.js 18
         uses: actions/setup-node@v4.0.1
         with:
@@ -50,8 +49,7 @@ jobs:
           repository: n8n-io/n8n
           ref: refs/pull/${{ github.event.pull_request.number }}/merge
 
-      - uses: pnpm/action-setup@v2.4.0
-
+      - run: corepack enable
       - name: Use Node.js 18
         uses: actions/setup-node@v4.0.1
         with:

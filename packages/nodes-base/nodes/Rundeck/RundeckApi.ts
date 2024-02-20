@@ -1,5 +1,10 @@
-import type { OptionsWithUri } from 'request';
-import type { IDataObject, IExecuteFunctions, JsonObject } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	JsonObject,
+	IHttpRequestMethods,
+	IRequestOptions,
+} from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 export interface RundeckCredentials {
@@ -16,10 +21,15 @@ export class RundeckApi {
 		this.executeFunctions = executeFunctions;
 	}
 
-	protected async request(method: string, endpoint: string, body: IDataObject, query: object) {
+	protected async request(
+		method: IHttpRequestMethods,
+		endpoint: string,
+		body: IDataObject,
+		query: IDataObject,
+	) {
 		const credentialType = 'rundeckApi';
 
-		const options: OptionsWithUri = {
+		const options: IRequestOptions = {
 			rejectUnauthorized: false,
 			method,
 			qs: query,

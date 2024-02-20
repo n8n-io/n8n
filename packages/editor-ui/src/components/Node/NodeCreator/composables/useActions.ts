@@ -18,6 +18,8 @@ import {
 	NODE_CREATOR_OPEN_SOURCES,
 	NO_OP_NODE_TYPE,
 	OPEN_AI_ASSISTANT_NODE_TYPE,
+	OPEN_AI_NODE_MESSAGE_ASSISTANT_TYPE,
+	OPEN_AI_NODE_TYPE,
 	QA_CHAIN_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	SPLIT_IN_BATCHES_NODE_TYPE,
@@ -188,6 +190,7 @@ export const useActions = () => {
 			AGENT_NODE_TYPE,
 			BASIC_CHAIN_NODE_TYPE,
 			OPEN_AI_ASSISTANT_NODE_TYPE,
+			OPEN_AI_NODE_MESSAGE_ASSISTANT_TYPE,
 		];
 
 		const isChatTriggerMissing =
@@ -228,6 +231,10 @@ export const useActions = () => {
 		}
 
 		addedNodes.forEach((node, index) => {
+			if (node.type === OPEN_AI_NODE_MESSAGE_ASSISTANT_TYPE) {
+				node.type = OPEN_AI_NODE_TYPE;
+			}
+
 			nodes.push(node);
 
 			switch (node.type) {

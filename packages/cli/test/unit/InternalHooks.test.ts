@@ -1,10 +1,10 @@
 import { mock } from 'jest-mock-extended';
+import config from '@/config';
 import { N8N_VERSION } from '@/constants';
 import { InternalHooks } from '@/InternalHooks';
 import type { License } from '@/License';
 import type { Telemetry } from '@/telemetry';
 
-jest.mock('@/eventbus');
 jest.mock('node:os', () => ({
 	tmpdir: () => '',
 	cpus: () => [{ model: 'MIPS R3000', speed: 40_000_000 }],
@@ -40,7 +40,7 @@ describe('InternalHooks', () => {
 
 		expect(telemetry.identify).toHaveBeenCalledWith({
 			version_cli: N8N_VERSION,
-			db_type: 'sqlite',
+			db_type: config.get('database.type'),
 			n8n_version_notifications_enabled: true,
 			n8n_disable_production_main_process: false,
 			system_info: {

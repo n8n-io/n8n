@@ -4,13 +4,13 @@ import type {
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	IPollFunctions,
+	IRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
-
-import type { OptionsWithUri } from 'request';
 
 // Interfaces and Types -------------------------------------------------------------
 interface IHaloPSATokens {
@@ -35,7 +35,7 @@ export async function getAccessTokens(
 ): Promise<IHaloPSATokens> {
 	const credentials = await this.getCredentials('haloPSAApi');
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/x-www-form-urlencoded',
 		},
@@ -60,7 +60,7 @@ export async function getAccessTokens(
 
 export async function haloPSAApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	accessToken: string,
 	body: IDataObject | IDataObject[] = {},
@@ -70,7 +70,7 @@ export async function haloPSAApiRequest(
 	const resourceApiUrl = (await this.getCredentials('haloPSAApi')).resourceApiUrl as string;
 
 	try {
-		let options: OptionsWithUri = {
+		let options: IRequestOptions = {
 			headers: {
 				Authorization: `Bearer ${accessToken}`,
 				'User-Agent': 'https://n8n.io',
@@ -96,7 +96,7 @@ export async function haloPSAApiRequest(
 		return result;
 	} catch (error) {
 		const message = (error as JsonObject).message as string;
-		if (method === 'DELETE' || method === 'GET' || (method === 'UPDATE' && message)) {
+		if (method === 'DELETE' || method === 'GET' || (method === 'POST' && message)) {
 			let newErrorMessage;
 			if (message.includes('400')) {
 				console.log(message);
@@ -151,7 +151,7 @@ export async function haloPSAApiRequest(
 export async function haloPSAApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	accessToken: string,
 	body = {},
@@ -224,7 +224,7 @@ export async function validateCredentials(
 ): Promise<IHaloPSATokens> {
 	const credentials = decryptedCredentials;
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/x-www-form-urlencoded',
 		},

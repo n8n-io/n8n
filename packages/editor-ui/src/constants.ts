@@ -130,6 +130,9 @@ export const MANUAL_TRIGGER_NODE_TYPE = 'n8n-nodes-base.manualTrigger';
 export const MANUAL_CHAT_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.manualChatTrigger';
 export const CHAT_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.chatTrigger';
 export const AGENT_NODE_TYPE = '@n8n/n8n-nodes-langchain.agent';
+export const OPEN_AI_NODE_TYPE = '@n8n/n8n-nodes-langchain.openAi';
+export const OPEN_AI_NODE_MESSAGE_ASSISTANT_TYPE =
+	'@n8n/n8n-nodes-langchain.openAi.assistant.message';
 export const OPEN_AI_ASSISTANT_NODE_TYPE = '@n8n/n8n-nodes-langchain.openAiAssistant';
 export const BASIC_CHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.chainLlm';
 export const QA_CHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.chainRetrievalQa';
@@ -737,3 +740,12 @@ export const MOUSE_EVENT_BUTTONS = {
 	BROWSER_BACK: 8,
 	BROWSER_FORWARD: 16,
 } as const;
+
+/**
+ * Urls used to route users to the right template repository
+ */
+export const TEMPLATES_URLS = {
+	DEFAULT_API_HOST: 'https://api.n8n.io/api/',
+	BASE_WEBSITE_URL: 'https://n8n.io/workflows',
+	UTM_QUERY: 'utm_source=n8n_app&utm_medium=template_library',
+};

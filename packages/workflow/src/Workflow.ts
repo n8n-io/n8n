@@ -43,8 +43,9 @@ import type {
 	NodeParameterValueType,
 	ConnectionTypes,
 	CloseFunction,
+	INodeOutputConfiguration,
 } from './Interfaces';
-import { Node } from './Interfaces';
+import { Node, NodeConnectionType } from './Interfaces';
 import type { IDeferredPromise } from './DeferredPromise';
 
 import * as NodeHelpers from './NodeHelpers';
@@ -80,6 +81,8 @@ export class Workflow {
 	// To save workflow specific static data like for example
 	// ids of registered webhooks of nodes
 	staticData: IDataObject;
+
+	testStaticData: IDataObject | undefined;
 
 	pinData?: IPinData;
 
@@ -328,6 +331,8 @@ export class Workflow {
 			});
 		}
 
+		if (this.testStaticData?.[key]) return this.testStaticData[key] as IDataObject;
+
 		if (this.staticData[key] === undefined) {
 			// Create it as ObservableObject that we can easily check if the data changed
 			// to know if the workflow with its data has to be saved afterwards or not.
@@ -335,6 +340,10 @@ export class Workflow {
 		}
 
 		return this.staticData[key] as IDataObject;
+	}
+
+	setTestStaticData(testStaticData: IDataObject) {
+		this.testStaticData = testStaticData;
 	}
 
 	/**
@@ -835,6 +844,47 @@ export class Workflow {
 		}
 
 		return returnConns;
+	}
+
+	getParentMainInputNode(node: INode): INode {
+		if (node) {
+			const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+			const outputs = NodeHelpers.getNodeOutputs(this, node, nodeType.description);
+
+			if (
+				!!outputs.find(
+					(output) =>
+						((output as INodeOutputConfiguration)?.type ?? output) !== NodeConnectionType.Main,
+				)
+			) {
+				// Get the first node which is connected to a non-main output
+				const nonMainNodesConnected = outputs?.reduce((acc, outputName) => {
+					const parentNodes = this.getChildNodes(
+						node.name,
+						(outputName as INodeOutputConfiguration)?.type ?? outputName,
+					);
+					if (parentNodes.length > 0) {
+						acc.push(...parentNodes);
+					}
+					return acc;
+				}, [] as string[]);
+
+				if (nonMainNodesConnected.length) {
+					const returnNode = this.getNode(nonMainNodesConnected[0]);
+					if (returnNode === null) {
+						// This should theoretically never happen as the node is connected
+						// but who knows and it makes TS happy
+						throw new ApplicationError(`Node "${nonMainNodesConnected[0]}" not found`);
+					}
+
+					// The chain of non-main nodes is potentially not finished yet so
+					// keep on going
+					return this.getParentMainInputNode(returnNode);
+				}
+			}
+		}
+
+		return node;
 	}
 
 	/**
