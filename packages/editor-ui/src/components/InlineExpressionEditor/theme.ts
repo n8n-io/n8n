@@ -44,6 +44,9 @@ export const inputTheme = ({ rows } = { rows: 5 }) => {
 		'.cm-scroller': {
 			lineHeight: '1.68',
 		},
+		'.cm-lineWrapping': {
+			wordBreak: 'break-all',
+		},
 	});
 
 	return [theme, highlighter.resolvableStyle];
