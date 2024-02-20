@@ -175,7 +175,6 @@ export function WorkflowExecuteAdditionalData(
 		executionId: '1',
 		credentialsHelper: new CredentialsHelper(credentialTypes),
 		hooks: new WorkflowHooks(hookFunctions, 'trigger', '1', workflowData),
-		// TODO: That is missing, for that reason the tests do not work. Problem is that it is defined in CLI package
 		executeWorkflow: async (workflowInfo: IExecuteWorkflowInfo): Promise<any> => {},
 		sendDataToUI: (message: string) => {},
 		restApiUrl: '',
