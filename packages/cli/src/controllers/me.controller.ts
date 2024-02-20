@@ -166,9 +166,13 @@ export class MeController {
 			throw new BadRequestError('Personalization answers are mandatory');
 		}
 
-		await this.userRepository.update(req.user.id, {
-			personalizationAnswers,
-		});
+		await this.userRepository.save(
+			{
+				id: req.user.id,
+				personalizationAnswers,
+			},
+			{ transaction: false },
+		);
 
 		this.logger.info('User survey updated successfully', { userId: req.user.id });
 
