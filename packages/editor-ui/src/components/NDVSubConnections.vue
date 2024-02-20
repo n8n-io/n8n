@@ -4,20 +4,7 @@
 			:class="$style.connections"
 			:style="`--possible-connections: ${possibleConnections.length}`"
 		>
-			<n8n-tooltip
-				v-for="connection in possibleConnections"
-				:key="connection.type"
-				placement="top"
-				:teleported="true"
-				:offset="10"
-				:disabled="
-					!shouldShowConnectionTooltip(connection.type) ||
-					connectedNodes[connection.type].length === 0
-				"
-			>
-				<template #content>
-					{{ connection.displayName }}
-				</template>
+			<div v-for="connection in possibleConnections" :key="connection.type">
 				<div :class="$style.connectionType">
 					<span
 						:class="$style.connectionLabel"
@@ -101,7 +88,7 @@
 						</div>
 					</div>
 				</div>
-			</n8n-tooltip>
+			</div>
 		</div>
 	</div>
 </template>
