@@ -46,7 +46,7 @@ export async function createCredentials(attributes: Partial<CredentialsEntity> =
 /**
  * Save a credential to the test DB, sharing it with a user.
  */
-export async function saveCredential(
+export async function createCredential(
 	credentialPayload: CredentialPayload,
 	{ user, role }: { user: User; role: CredentialSharingRole },
 ) {
@@ -97,7 +97,7 @@ export async function shareCredentialWithUsers(credential: CredentialsEntity, us
 
 export function affixRoleToSaveCredential(role: CredentialSharingRole) {
 	return async (credentialPayload: CredentialPayload, { user }: { user: User }) =>
-		await saveCredential(credentialPayload, { user, role });
+		await createCredential(credentialPayload, { user, role });
 }
 
 export async function getAllCredentials() {

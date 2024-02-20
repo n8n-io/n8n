@@ -8,7 +8,7 @@ import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { ExecutionService } from '@/executions/execution.service';
 
-import { getCredentialById, saveCredential } from './shared/db/credentials';
+import { getCredentialById, createCredential } from './shared/db/credentials';
 import { createAdmin, createMember, createOwner, getUserById } from './shared/db/users';
 import { createWorkflow, getWorkflowById } from './shared/db/workflows';
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
@@ -244,7 +244,7 @@ describe('DELETE /users/:id', () => {
 	test('should delete user and their resources', async () => {
 		const savedWorkflow = await createWorkflow({ name: randomName() }, member);
 
-		const savedCredential = await saveCredential(
+		const savedCredential = await createCredential(
 			{ name: randomName(), type: '', data: {}, nodesAccess: [] },
 			{ user: member, role: 'credential:owner' },
 		);
@@ -285,7 +285,7 @@ describe('DELETE /users/:id', () => {
 	test('should delete user and transfer their resources', async () => {
 		const [savedWorkflow, savedCredential] = await Promise.all([
 			await createWorkflow({ name: randomName() }, member),
-			await saveCredential(
+			await createCredential(
 				{ name: randomName(), type: '', data: {}, nodesAccess: [] },
 				{
 					user: member,

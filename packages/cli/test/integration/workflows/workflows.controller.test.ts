@@ -16,7 +16,7 @@ import * as utils from '../shared/utils/';
 import * as testDb from '../shared/testDb';
 import { makeWorkflow, MOCK_PINDATA } from '../shared/utils/';
 import { randomCredentialPayload } from '../shared/random';
-import { saveCredential } from '../shared/db/credentials';
+import { createCredential } from '../shared/db/credentials';
 import { createOwner } from '../shared/db/users';
 import { createWorkflow } from '../shared/db/workflows';
 import { createTag } from '../shared/db/tags';
@@ -292,7 +292,7 @@ describe('GET /workflows', () => {
 	});
 
 	test('should return workflows', async () => {
-		const credential = await saveCredential(randomCredentialPayload(), {
+		const credential = await createCredential(randomCredentialPayload(), {
 			user: owner,
 			role: 'credential:owner',
 		});
