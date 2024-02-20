@@ -216,10 +216,13 @@ export const processUsers = async (
 export const saveLdapSynchronization = async (
 	data: Omit<AuthProviderSyncHistory, 'id' | 'providerType'>,
 ): Promise<void> => {
-	await Container.get(AuthProviderSyncHistoryRepository).save({
-		...data,
-		providerType: 'ldap',
-	});
+	await Container.get(AuthProviderSyncHistoryRepository).save(
+		{
+			...data,
+			providerType: 'ldap',
+		},
+		{ transaction: false },
+	);
 };
 
 /**
@@ -257,15 +260,20 @@ export const getMappingAttributes = (ldapConfig: LdapConfig): string[] => {
 };
 
 export const createLdapAuthIdentity = async (user: User, ldapId: string) => {
-	return await Container.get(AuthIdentityRepository).save(AuthIdentity.create(user, ldapId));
+	return await Container.get(AuthIdentityRepository).save(AuthIdentity.create(user, ldapId), {
+		transaction: false,
+	});
 };
 
 export const createLdapUserOnLocalDb = async (data: Partial<User>, ldapId: string) => {
-	const user = await Container.get(UserRepository).save({
-		password: randomPassword(),
-		role: 'global:member',
-		...data,
-	});
+	const user = await Container.get(UserRepository).save(
+		{
+			password: randomPassword(),
+			role: 'global:member',
+			...data,
+		},
+		{ transaction: false },
+	);
 	await createLdapAuthIdentity(user, ldapId);
 	return user;
 };
