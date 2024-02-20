@@ -475,22 +475,6 @@ export async function parseRequestObject(requestObject: IRequestOptions) {
 		axiosConfig.maxRedirects = 0;
 	}
 
-	axiosConfig.beforeRedirect = (redirectedRequest) => {
-		if (axiosConfig.headers?.Authorization) {
-			redirectedRequest.headers.Authorization = axiosConfig.headers.Authorization;
-		}
-		if (axiosConfig.auth) {
-			redirectedRequest.auth = `${axiosConfig.auth.username}:${axiosConfig.auth.password}`;
-		}
-	};
-
-	if (requestObject.rejectUnauthorized === false) {
-		axiosConfig.httpsAgent = new Agent({
-			rejectUnauthorized: false,
-			secureOptions: crypto.constants.SSL_OP_LEGACY_SERVER_CONNECT,
-		});
-	}
-
 	const host = getHostFromRequestObject(requestObject);
 	const agentOptions: AgentOptions = {};
 	if (host) {
@@ -501,6 +485,22 @@ export async function parseRequestObject(requestObject: IRequestOptions) {
 		agentOptions.secureOptions = crypto.constants.SSL_OP_LEGACY_SERVER_CONNECT;
 	}
 	axiosConfig.httpsAgent = new Agent(agentOptions);
+
+	axiosConfig.beforeRedirect = (redirectedRequest) => {
+		const redirectAgent = new Agent({
+			...agentOptions,
+			servername: redirectedRequest.hostname,
+		});
+		redirectedRequest.agent = redirectAgent;
+		redirectedRequest.agents.https = redirectAgent;
+
+		if (axiosConfig.headers?.Authorization) {
+			redirectedRequest.headers.Authorization = axiosConfig.headers.Authorization;
+		}
+		if (axiosConfig.auth) {
+			redirectedRequest.auth = `${axiosConfig.auth.username}:${axiosConfig.auth.password}`;
+		}
+	};
 
 	if (requestObject.timeout !== undefined) {
 		axiosConfig.timeout = requestObject.timeout;
@@ -893,6 +893,22 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 		agentOptions.rejectUnauthorized = false;
 	}
 	axiosRequest.httpsAgent = new Agent(agentOptions);
+
+	axiosRequest.beforeRedirect = (redirectedRequest) => {
+		const redirectAgent = new Agent({
+			...agentOptions,
+			servername: redirectedRequest.hostname,
+		});
+		redirectedRequest.agent = redirectAgent;
+		redirectedRequest.agents.https = redirectAgent;
+
+		if (axiosRequest.headers?.Authorization) {
+			redirectedRequest.headers.Authorization = axiosRequest.headers.Authorization;
+		}
+		if (axiosRequest.auth) {
+			redirectedRequest.auth = `${axiosRequest.auth.username}:${axiosRequest.auth.password}`;
+		}
+	};
 
 	if (n8nRequest.arrayFormat !== undefined) {
 		axiosRequest.paramsSerializer = (params) => {
