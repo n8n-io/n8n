@@ -2,13 +2,8 @@ import Container from 'typedi';
 import { createOwner } from '../../shared/db/users';
 import * as testDb from '../../shared/testDb';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
-import type { DeepPartial } from 'ts-essentials';
-import type { Project } from '@/databases/entities/Project';
-import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
-import { User } from '@/databases/entities/User';
-import { createPromptModule } from 'inquirer';
-import { ApplicationError } from 'n8n-workflow';
 import { EntityNotFoundError } from '@n8n/typeorm';
+import { createProject } from '../../shared/db/projects';
 
 describe('ProjectRepository', () => {
 	beforeAll(async () => {
@@ -22,28 +17,6 @@ describe('ProjectRepository', () => {
 	afterAll(async () => {
 		await testDb.terminate();
 	});
-
-	async function createProject(user: User, project?: DeepPartial<Project>) {
-		const projectRepository = Container.get(ProjectRepository);
-		const projectRelationRepository = Container.get(ProjectRelationRepository);
-
-		const savedProject = await projectRepository.save<Project>(
-			projectRepository.create({
-				name: 'project name',
-				type: 'team',
-				...project,
-			}),
-		);
-		await projectRelationRepository.save(
-			projectRelationRepository.create({
-				userId: user.id,
-				projectId: savedProject.id,
-				role: 'project:personalOwner',
-			}),
-		);
-
-		return savedProject;
-	}
 
 	describe('getPersonalProjectForUser', () => {
 		it('returns the personal project', async () => {
