@@ -197,8 +197,8 @@ importers:
         specifier: 0.0.6
         version: 0.0.6
       '@n8n/typeorm':
-        specifier: 0.3.20-2
-        version: 0.3.20-2(mssql@9.1.1)(pg@8.11.3)(redis@4.6.12)(sqlite3@5.1.7)
+        specifier: 0.3.20-3
+        version: 0.3.20-3(mssql@9.1.1)(pg@8.11.3)(redis@4.6.12)(sqlite3@5.1.7)
       '@n8n/vm2':
         specifier: 3.9.20
         version: 3.9.20
@@ -377,8 +377,8 @@ importers:
         specifier: workspace:*
         version: link:../@n8n/permissions
       '@n8n/typeorm':
-        specifier: 0.3.20-2
-        version: 0.3.20-2(ioredis@5.3.2)(mysql2@2.3.3)(pg@8.11.3)(sqlite3@5.1.7)
+        specifier: 0.3.20-3
+        version: 0.3.20-3(@sentry/node@7.87.0)(ioredis@5.3.2)(mysql2@2.3.3)(pg@8.11.3)(sqlite3@5.1.7)
       '@n8n_io/license-sdk':
         specifier: 2.10.0
         version: 2.10.0
@@ -6134,14 +6134,15 @@ packages:
       recast: 0.22.0
     dev: false
 
-  /@n8n/typeorm@0.3.20-2(ioredis@5.3.2)(mysql2@2.3.3)(pg@8.11.3)(sqlite3@5.1.7):
-    resolution: {integrity: sha512-cmUTS1SDWGXNSNTEoeweamGtLkKQ6XHyscGDfsByOsxj4aG0CQTa/WrYC3iMR2fjJsyHAvC7/1rB9LWWIMu+CA==}
+  /@n8n/typeorm@0.3.20-3(@sentry/node@7.87.0)(ioredis@5.3.2)(mysql2@2.3.3)(pg@8.11.3)(sqlite3@5.1.7):
+    resolution: {integrity: sha512-eTaEBvaJZZCStqiLKSUIvFLMZJ3WMOFc+pnF+jedcQOc6AunWM57FqhPvnuB/Z6c67JmgIyINlnjbLDHtPgKZQ==}
     engines: {node: '>=16.13.0'}
     hasBin: true
     peerDependencies:
       '@google-cloud/spanner': ^5.18.0
       '@libsql/client': ^0.4.2
       '@sap/hana-client': ^2.12.25
+      '@sentry/node': ^7.87.0
       better-sqlite3: ^7.1.2 || ^8.0.0 || ^9.0.0
       hdb-pool: ^0.1.6
       ioredis: ^5.0.4
@@ -6163,6 +6164,8 @@ packages:
       '@libsql/client':
         optional: true
       '@sap/hana-client':
+        optional: true
+      '@sentry/node':
         optional: true
       better-sqlite3:
         optional: true
@@ -6195,6 +6198,7 @@ packages:
       typeorm-aurora-data-api-driver:
         optional: true
     dependencies:
+      '@sentry/node': 7.87.0
       '@sqltools/formatter': 1.2.5
       app-root-path: 3.1.0
       buffer: 6.0.3
@@ -6217,14 +6221,15 @@ packages:
       - supports-color
     dev: false
 
-  /@n8n/typeorm@0.3.20-2(mssql@9.1.1)(pg@8.11.3)(redis@4.6.12)(sqlite3@5.1.7):
-    resolution: {integrity: sha512-cmUTS1SDWGXNSNTEoeweamGtLkKQ6XHyscGDfsByOsxj4aG0CQTa/WrYC3iMR2fjJsyHAvC7/1rB9LWWIMu+CA==}
+  /@n8n/typeorm@0.3.20-3(mssql@9.1.1)(pg@8.11.3)(redis@4.6.12)(sqlite3@5.1.7):
+    resolution: {integrity: sha512-eTaEBvaJZZCStqiLKSUIvFLMZJ3WMOFc+pnF+jedcQOc6AunWM57FqhPvnuB/Z6c67JmgIyINlnjbLDHtPgKZQ==}
     engines: {node: '>=16.13.0'}
     hasBin: true
     peerDependencies:
       '@google-cloud/spanner': ^5.18.0
       '@libsql/client': ^0.4.2
       '@sap/hana-client': ^2.12.25
+      '@sentry/node': ^7.87.0
       better-sqlite3: ^7.1.2 || ^8.0.0 || ^9.0.0
       hdb-pool: ^0.1.6
       ioredis: ^5.0.4
@@ -6246,6 +6251,8 @@ packages:
       '@libsql/client':
         optional: true
       '@sap/hana-client':
+        optional: true
+      '@sentry/node':
         optional: true
       better-sqlite3:
         optional: true
@@ -9180,7 +9187,7 @@ packages:
       find-cache-dir: 3.3.2
       find-up: 5.0.0
       fs-extra: 11.1.1
-      glob: 10.3.3
+      glob: 10.3.10
       handlebars: 4.7.7
       lazy-universal-dotenv: 4.0.0
       node-fetch: 2.6.8
@@ -9211,7 +9218,7 @@ packages:
       find-cache-dir: 3.3.2
       find-up: 5.0.0
       fs-extra: 11.1.1
-      glob: 10.3.3
+      glob: 10.3.10
       handlebars: 4.7.7
       lazy-universal-dotenv: 4.0.0
       node-fetch: 2.7.0(encoding@0.1.13)
@@ -16372,7 +16379,6 @@ packages:
       minimatch: 9.0.3
       minipass: 7.0.2
       path-scurry: 1.10.1
-    dev: false
 
   /glob@10.3.3:
     resolution: {integrity: sha512-92vPiMb/iqpmEgsOoIDvTjc50wf9CCCvMzsi6W0JLPeUKE8TWP1a73PgqSrqy7iAZxaSD1YdzU7QZR5LF51MJw==}
@@ -17748,7 +17754,6 @@ packages:
       '@isaacs/cliui': 8.0.2
     optionalDependencies:
       '@pkgjs/parseargs': 0.11.0
-    dev: false
 
   /jake@10.8.5:
     resolution: {integrity: sha512-sVpxYeuAhWt0OTWITwT98oyV0GsXyMlXCF+3L1SuafBVUIr/uILGRB+NqwkzhgXKvoJpDIpQvqkUALgdmQsQxw==}
