@@ -1,9 +1,6 @@
 <template>
 	<div :class="$style.wrapper">
 		<slot name="header" />
-		<aside v-if="$slots.aside" :class="$style.aside">
-			<slot name="aside" />
-		</aside>
 		<main :class="$style.content">
 			<slot />
 		</main>
@@ -34,24 +31,14 @@ export default defineComponent({
 	height: 100%;
 	width: 100%;
 	max-width: 1280px;
+	grid-template-rows: auto 1fr;
 	box-sizing: border-box;
 	align-content: start;
 	padding: var(--spacing-2xl) var(--spacing-2xl) 0;
 }
 
-.aside {
-	display: grid;
-	grid-template-areas: 'left right';
-	height: 100%;
-	width: 100%;
-	justify-content: space-between;
-	margin-right: var(--spacing-l);
-}
-
 .content {
-	display: flex;
-	flex-direction: column;
-	flex: 1 1 100%;
+	display: grid;
 	height: 100%;
 }
 </style>

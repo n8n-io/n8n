@@ -8,16 +8,6 @@
 			</div>
 			<slot name="tabnav" />
 		</template>
-		<template v-if="showAside" #aside>
-			<enterprise-edition v-if="false" :features="[EnterpriseEditionFeature.Sharing]">
-				<ResourceOwnershipSelect
-					v-model="isOwnerSubview"
-					:my-resources-label="i18n.baseText(`${resourceKey}.menu.my`)"
-					:all-resources-label="i18n.baseText(`${resourceKey}.menu.all`)"
-				/>
-			</enterprise-edition>
-		</template>
-
 		<div v-if="loading">
 			<n8n-loading :class="[$style['header-loading'], 'mb-l']" variant="custom" />
 			<n8n-loading :class="[$style['card-loading'], 'mb-2xs']" variant="custom" />
@@ -124,7 +114,6 @@
 					<n8n-recycle-scroller
 						v-if="type === 'list'"
 						data-test-id="resources-list"
-						:class="[$style.list, 'list-style-none']"
 						:items="filteredAndSortedSubviewResources"
 						:item-size="typeProps.itemSize"
 						item-key="id"
@@ -252,10 +241,6 @@ export default defineComponent({
 		},
 		additionalFiltersHandler: {
 			type: Function,
-		},
-		showAside: {
-			type: Boolean,
-			default: true,
 		},
 		shareable: {
 			type: Boolean,
@@ -544,13 +529,10 @@ export default defineComponent({
 	max-width: 240px;
 }
 
-.list {
-	//display: flex;
-	//flex-direction: column;
-}
-
 .listWrapper {
+	position: absolute;
 	height: 100%;
+	width: 100%;
 }
 
 .sort-and-filter {
