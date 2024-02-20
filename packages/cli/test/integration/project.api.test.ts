@@ -263,7 +263,6 @@ describe('POST /projects/', () => {
 		const ownerAgent = testServer.authAgentFor(ownerUser);
 
 		const resp = await ownerAgent.post('/projects/').send({ name: 'Test Team Project' });
-		console.log(resp.body);
 		expect(resp.status).toBe(200);
 		const respProject = resp.body.data as Project;
 		expect(respProject.name).toEqual('Test Team Project');
@@ -273,7 +272,7 @@ describe('POST /projects/', () => {
 	});
 });
 
-describe('PATCH /projects/:projectId/share', () => {
+describe('PATCH /projects/:projectId/relations', () => {
 	test('should add or remove users from a project', async () => {
 		const [ownerUser, testUser1, testUser2, testUser3, teamProject1, teamProject2] =
 			await Promise.all([
@@ -323,5 +322,78 @@ describe('PATCH /projects/:projectId/share', () => {
 		expect(tp2Relations.find((p) => p.userId === testUser1.id)).toBeUndefined();
 		expect(tp2Relations.find((p) => p.userId === testUser2.id)?.role).toBe('project:editor');
 		expect(tp2Relations.find((p) => p.userId === ownerUser.id)?.role).toBe('project:editor');
+	});
+
+	test('should not add or remove users from a project if lacking permissions', async () => {
+		const [ownerUser, testUser1, testUser2, testUser3, teamProject1, teamProject2] =
+			await Promise.all([
+				createOwner(),
+				createUser(),
+				createUser(),
+				createUser(),
+				createTeamProject(),
+				createTeamProject(),
+			]);
+
+		await linkUserToProject(testUser1, teamProject1, 'project:viewer');
+		await linkUserToProject(testUser2, teamProject1, 'project:admin');
+		await linkUserToProject(ownerUser, teamProject2, 'project:editor');
+		await linkUserToProject(testUser2, teamProject2, 'project:editor');
+
+		const memberAgent = testServer.authAgentFor(testUser1);
+
+		const resp = await memberAgent.patch(`/projects/${teamProject1.id}/relations`).send({
+			relations: [
+				{ userId: testUser1.id, role: 'project:admin' },
+				{ userId: testUser3.id, role: 'project:editor' },
+				{ userId: ownerUser.id, role: 'project:viewer' },
+			] as Array<{
+				userId: string;
+				role: ProjectRole;
+			}>,
+		});
+		expect(resp.status).toBe(403);
+
+		const [tp1Relations, tp2Relations] = await Promise.all([
+			getProjectRelations({ projectId: teamProject1.id }),
+			getProjectRelations({ projectId: teamProject2.id }),
+		]);
+
+		expect(tp1Relations.length).toBe(2);
+		expect(tp2Relations.length).toBe(2);
+
+		expect(tp1Relations.find((p) => p.userId === testUser1.id)).not.toBeUndefined();
+		expect(tp1Relations.find((p) => p.userId === testUser2.id)).not.toBeUndefined();
+		expect(tp1Relations.find((p) => p.userId === testUser1.id)?.role).toBe('project:viewer');
+		expect(tp1Relations.find((p) => p.userId === testUser2.id)?.role).toBe('project:admin');
+		expect(tp1Relations.find((p) => p.userId === testUser3.id)).toBeUndefined();
+
+		// Check we haven't modified the other team project
+		expect(tp2Relations.find((p) => p.userId === testUser2.id)).not.toBeUndefined();
+		expect(tp2Relations.find((p) => p.userId === testUser1.id)).toBeUndefined();
+		expect(tp2Relations.find((p) => p.userId === testUser2.id)?.role).toBe('project:editor');
+		expect(tp2Relations.find((p) => p.userId === ownerUser.id)?.role).toBe('project:editor');
+	});
+
+	test('should not add or remove users from a personal project', async () => {
+		const [testUser1, testUser2] = await Promise.all([createUser(), createUser()]);
+
+		const personalProject = await getPersonalProject(testUser1);
+
+		const memberAgent = testServer.authAgentFor(testUser1);
+
+		const resp = await memberAgent.patch(`/projects/${personalProject.id}/relations`).send({
+			relations: [
+				{ userId: testUser1.id, role: 'project:personalOwner' },
+				{ userId: testUser2.id, role: 'project:admin' },
+			] as Array<{
+				userId: string;
+				role: ProjectRole;
+			}>,
+		});
+		expect(resp.status).toBe(403);
+
+		const p1Relations = await getProjectRelations({ projectId: personalProject.id });
+		expect(p1Relations.length).toBe(1);
 	});
 });

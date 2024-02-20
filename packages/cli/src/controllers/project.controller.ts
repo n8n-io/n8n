@@ -2,11 +2,12 @@ import type { Project } from '@db/entities/Project';
 import {
 	Get,
 	Post,
-	RequireGlobalScope,
+	GlobalScope,
 	RestController,
 	Licensed,
 	Authorized,
 	Patch,
+	ProjectScope,
 } from '@/decorators';
 import { ProjectRequest } from '@/requests';
 import { ProjectService } from '@/services/project.service';
@@ -26,7 +27,7 @@ export class ProjectController {
 	}
 
 	@Post('/')
-	@RequireGlobalScope('project:create')
+	@GlobalScope('project:create')
 	@Licensed('feat:advancedPermissions')
 	async createProject(req: ProjectRequest.Create): Promise<Project> {
 		return await this.projectsService.createTeamProject(req.body.name, req.user);
@@ -62,8 +63,8 @@ export class ProjectController {
 		return project;
 	}
 
-	// TODO: use new decorators for this
 	@Patch('/:projectId/relations')
+	@ProjectScope('project:invite')
 	async setProjectRelations(req: ProjectRequest.SetProjectRelations) {
 		await this.projectsService.syncProjectRelations(req.params.projectId, req.body.relations);
 	}

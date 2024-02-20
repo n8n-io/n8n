@@ -3,7 +3,7 @@ import { ProjectRelation, type ProjectRole } from '@/databases/entities/ProjectR
 import type { User } from '@/databases/entities/User';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
-import type { EntityManager } from '@n8n/typeorm';
+import { Not, type EntityManager } from '@n8n/typeorm';
 import { Service } from 'typedi';
 
 @Service()
@@ -82,7 +82,7 @@ export class ProjectService {
 		relations: Array<{ userId: string; role: ProjectRole }>,
 	) {
 		const project = await this.projectsRepository.findOneOrFail({
-			where: { id: projectId },
+			where: { id: projectId, type: Not('personal') },
 		});
 		await this.projectRelationRepository.manager.transaction(async (em) => {
 			await this.pruneRelations(em, project);
