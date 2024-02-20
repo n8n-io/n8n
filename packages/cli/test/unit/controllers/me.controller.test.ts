@@ -201,6 +201,26 @@ describe('MeController', () => {
 				new BadRequestError('Personalization answers are mandatory'),
 			);
 		});
+
+		it('should update the user in the DB', async () => {
+			const user = mock<User>({
+				id: '123',
+				password: 'password',
+				authIdentities: [],
+				role: 'global:owner',
+				personalizationAnswers: {},
+			});
+			const reqBody = { answer: '42' };
+			const req = mock<MeRequest.SurveyAnswers>({ user, body: reqBody });
+
+			await controller.storeSurveyAnswers(req);
+
+			expect(userRepository.update).toHaveBeenCalledWith(user.id, {
+				personalizationAnswers: reqBody,
+			});
+
+			expect(internalHooks.onPersonalizationSurveySubmitted).toHaveBeenCalledWith(user.id, reqBody);
+		});
 	});
 
 	describe('API Key methods', () => {

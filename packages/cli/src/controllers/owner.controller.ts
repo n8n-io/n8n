@@ -1,3 +1,4 @@
+import { DataSource } from '@n8n/typeorm';
 import validator from 'validator';
 import { Response } from 'express';
 
@@ -13,7 +14,8 @@ import { UserService } from '@/services/user.service';
 import { Logger } from '@/Logger';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalHooks } from '@/InternalHooks';
-import { UserRepository } from '@/databases/repositories/user.repository';
+import { User } from '@/databases/entities/User';
+import { Settings } from '@/databases/entities/Settings';
 
 @Authorized('global:owner')
 @RestController('/owner')
@@ -25,7 +27,7 @@ export class OwnerController {
 		private readonly userService: UserService,
 		private readonly passwordUtility: PasswordUtility,
 		private readonly postHog: PostHogClient,
-		private readonly userRepository: UserRepository,
+		private readonly dataSource: DataSource,
 	) {}
 
 	/**
@@ -66,7 +68,6 @@ export class OwnerController {
 		}
 
 		let owner = req.user;
-
 		Object.assign(owner, {
 			email,
 			firstName,
@@ -76,14 +77,17 @@ export class OwnerController {
 
 		await validateEntity(owner);
 
-		owner = await this.userRepository.save(owner, { transaction: false });
+		await this.dataSource.transaction(async (tx) => {
+			owner = await tx.save(User, owner);
 
-		this.logger.info('Owner was set up successfully', { userId });
+			await tx.update(
+				Settings,
+				{ key: 'userManagement.isInstanceOwnerSetUp' },
+				{ value: JSON.stringify(true) },
+			);
 
-		await this.settingsRepository.update(
-			{ key: 'userManagement.isInstanceOwnerSetUp' },
-			{ value: JSON.stringify(true) },
-		);
+			this.logger.info('Owner was set up successfully', { userId });
+		});
 
 		config.set('userManagement.isInstanceOwnerSetUp', true);
 

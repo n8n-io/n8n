@@ -159,15 +159,20 @@ export class InvitationController {
 			throw new BadRequestError('This invite has been accepted already');
 		}
 
+		const hashedPassword = await this.passwordUtility.hash(validPassword);
 		invitee.firstName = firstName;
 		invitee.lastName = lastName;
-		invitee.password = await this.passwordUtility.hash(validPassword);
+		invitee.password = hashedPassword;
+		invitee.isPending = false;
+		await this.userRepository.update(inviteeId, {
+			firstName,
+			lastName,
+			password: hashedPassword,
+		});
 
-		const updatedUser = await this.userRepository.save(invitee, { transaction: false });
+		await issueCookie(res, invitee);
 
-		await issueCookie(res, updatedUser);
-
-		void this.internalHooks.onUserSignup(updatedUser, {
+		void this.internalHooks.onUserSignup(invitee, {
 			user_type: 'email',
 			was_disabled_ldap_user: false,
 		});
@@ -177,7 +182,7 @@ export class InvitationController {
 		await this.externalHooks.run('user.profile.update', [invitee.email, publicInvitee]);
 		await this.externalHooks.run('user.password.update', [invitee.email, invitee.password]);
 
-		return await this.userService.toPublic(updatedUser, {
+		return await this.userService.toPublic(invitee, {
 			posthog: this.postHog,
 			withScopes: true,
 		});

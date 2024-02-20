@@ -1,7 +1,7 @@
 import type { CookieOptions, Response } from 'express';
-import { anyObject, captor, mock } from 'jest-mock-extended';
+import { captor, mock } from 'jest-mock-extended';
 import jwt from 'jsonwebtoken';
-import type { User } from '@db/entities/User';
+import { User } from '@db/entities/User';
 import type { SettingsRepository } from '@db/repositories/settings.repository';
 import config from '@/config';
 import type { OwnerRequest } from '@/requests';
@@ -16,14 +16,15 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { PasswordUtility } from '@/services/password.utility';
 import Container from 'typedi';
 import type { InternalHooks } from '@/InternalHooks';
-import { UserRepository } from '@/databases/repositories/user.repository';
+import type { DataSource, EntityManager } from '@n8n/typeorm';
+import { Settings } from '@/databases/entities/Settings';
 
 describe('OwnerController', () => {
 	const configGetSpy = jest.spyOn(config, 'getEnv');
 	const internalHooks = mock<InternalHooks>();
 	const userService = mockInstance(UserService);
-	const userRepository = mockInstance(UserRepository);
 	const settingsRepository = mock<SettingsRepository>();
+	const dataSource = mock<DataSource>();
 	mockInstance(License).isWithinUsersLimit.mockReturnValue(true);
 	const controller = new OwnerController(
 		mock(),
@@ -32,7 +33,7 @@ describe('OwnerController', () => {
 		userService,
 		Container.get(PasswordUtility),
 		mock(),
-		userRepository,
+		dataSource,
 	);
 
 	describe('setupOwner', () => {
@@ -88,14 +89,26 @@ describe('OwnerController', () => {
 				},
 				user,
 			});
+			const save = jest.fn().mockResolvedValue(user);
+			const update = jest.fn();
+			const trx = mock<EntityManager>({
+				save,
+				update,
+			});
+			// @ts-expect-error TS doesn't infer the type correctly here
+			dataSource.transaction.mockImplementation((cb) => cb(trx));
 			const res = mock<Response>();
 			configGetSpy.mockReturnValue(false);
-			userRepository.save.calledWith(anyObject()).mockResolvedValue(user);
 			jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
 
 			await controller.setupOwner(req, res);
 
-			expect(userRepository.save).toHaveBeenCalledWith(user, { transaction: false });
+			expect(save).toHaveBeenCalledWith(User, user);
+			expect(update).toHaveBeenCalledWith(
+				Settings,
+				{ key: 'userManagement.isInstanceOwnerSetUp' },
+				{ value: JSON.stringify(true) },
+			);
 
 			const cookieOptions = captor<CookieOptions>();
 			expect(res.cookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME, 'signed-token', cookieOptions);

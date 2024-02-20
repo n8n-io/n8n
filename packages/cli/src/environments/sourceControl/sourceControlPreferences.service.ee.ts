@@ -1,4 +1,4 @@
-import Container, { Service } from 'typedi';
+import { Service } from 'typedi';
 import { SourceControlPreferences } from './types/sourceControlPreferences';
 import type { ValidationError } from 'class-validator';
 import { validate } from 'class-validator';
@@ -36,6 +36,7 @@ export class SourceControlPreferencesService {
 	constructor(
 		instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
+		private readonly settingsRepository: SettingsRepository,
 	) {
 		this.sshFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_SSH_FOLDER);
 		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
@@ -173,14 +174,11 @@ export class SourceControlPreferencesService {
 		if (saveToDb) {
 			const settingsValue = JSON.stringify(this._sourceControlPreferences);
 			try {
-				await Container.get(SettingsRepository).save(
-					{
-						key: SOURCE_CONTROL_PREFERENCES_DB_KEY,
-						value: settingsValue,
-						loadOnStartup: true,
-					},
-					{ transaction: false },
-				);
+				await this.settingsRepository.upsertByKey({
+					key: SOURCE_CONTROL_PREFERENCES_DB_KEY,
+					value: settingsValue,
+					loadOnStartup: true,
+				});
 			} catch (error) {
 				throw new ApplicationError('Failed to save source control preferences', { cause: error });
 			}
@@ -191,9 +189,9 @@ export class SourceControlPreferencesService {
 	async loadFromDbAndApplySourceControlPreferences(): Promise<
 		SourceControlPreferences | undefined
 	> {
-		const loadedPreferences = await Container.get(SettingsRepository).findOne({
-			where: { key: SOURCE_CONTROL_PREFERENCES_DB_KEY },
-		});
+		const loadedPreferences = await this.settingsRepository.findByKey(
+			SOURCE_CONTROL_PREFERENCES_DB_KEY,
+		);
 		if (loadedPreferences) {
 			try {
 				const preferences = jsonParse<SourceControlPreferences>(loadedPreferences.value);

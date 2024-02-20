@@ -1,24 +1,23 @@
 import { Service } from 'typedi';
-import { ExecutionMetadataRepository } from '@db/repositories/executionMetadata.repository';
-import type { ExecutionMetadata } from '@db/entities/ExecutionMetadata';
+import { ExecutionMetadata } from '@db/entities/ExecutionMetadata';
+import { DataSource } from '@n8n/typeorm';
 
 @Service()
 export class ExecutionMetadataService {
-	constructor(private readonly executionMetadataRepository: ExecutionMetadataRepository) {}
+	constructor(private readonly dataSource: DataSource) {}
 
 	async save(
 		executionId: string,
 		executionMetadata: Record<string, string>,
 	): Promise<ExecutionMetadata[]> {
-		const metadataRows = [];
-		for (const [key, value] of Object.entries(executionMetadata)) {
-			metadataRows.push({
-				execution: { id: executionId },
-				key,
-				value,
-			});
-		}
+		const metadataRows = Object.entries(executionMetadata).map(([key, value]) => ({
+			execution: { id: executionId },
+			key,
+			value,
+		}));
 
-		return await this.executionMetadataRepository.save(metadataRows);
+		return await this.dataSource.transaction(async (tx) => {
+			return await tx.save(ExecutionMetadata, metadataRows);
+		});
 	}
 }

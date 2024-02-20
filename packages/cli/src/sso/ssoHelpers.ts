@@ -13,14 +13,11 @@ export async function setCurrentAuthenticationMethod(
 	authenticationMethod: AuthProviderType,
 ): Promise<void> {
 	config.set('userManagement.authenticationMethod', authenticationMethod);
-	await Container.get(SettingsRepository).save(
-		{
-			key: 'userManagement.authenticationMethod',
-			value: authenticationMethod,
-			loadOnStartup: true,
-		},
-		{ transaction: false },
-	);
+	await Container.get(SettingsRepository).upsertByKey({
+		key: 'userManagement.authenticationMethod',
+		value: authenticationMethod,
+		loadOnStartup: true,
+	});
 }
 
 export function getCurrentAuthenticationMethod(): AuthProviderType {

@@ -1,10 +1,16 @@
 import { Container } from 'typedi';
-import { ExecutionMetadataRepository } from '@db/repositories/executionMetadata.repository';
 import { ExecutionMetadataService } from '@/services/executionMetadata.service';
 import { mockInstance } from '../shared/mocking';
+import type { EntityManager } from '@n8n/typeorm';
+import { DataSource } from '@n8n/typeorm';
+import { mock } from 'jest-mock-extended';
+import { ExecutionMetadata } from '@/databases/entities/ExecutionMetadata';
 
 describe('ExecutionMetadataService', () => {
-	const repository = mockInstance(ExecutionMetadataRepository);
+	const dataSource = mockInstance(DataSource);
+	const trx = mock<EntityManager>();
+	// @ts-expect-error TS infers this incorrectly
+	dataSource.transaction.mockImplementation((cb) => cb(trx));
 
 	test('Execution metadata is saved in a batch', async () => {
 		const toSave = {
@@ -15,8 +21,9 @@ describe('ExecutionMetadataService', () => {
 
 		await Container.get(ExecutionMetadataService).save(executionId, toSave);
 
-		expect(repository.save).toHaveBeenCalledTimes(1);
-		expect(repository.save.mock.calls[0]).toEqual([
+		expect(trx.save).toHaveBeenCalledTimes(1);
+		expect(trx.save.mock.calls[0]).toEqual([
+			ExecutionMetadata,
 			[
 				{
 					execution: { id: executionId },

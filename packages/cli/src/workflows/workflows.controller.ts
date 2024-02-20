@@ -110,15 +110,13 @@ export class WorkflowsController {
 		await Db.transaction(async (transactionManager) => {
 			savedWorkflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
 
-			const newSharedWorkflow = new SharedWorkflow();
-
-			Object.assign(newSharedWorkflow, {
+			const newSharedWorkflow = this.sharedWorkflowRepository.create({
 				role: 'workflow:owner',
 				user: req.user,
 				workflow: savedWorkflow,
 			});
 
-			await transactionManager.save<SharedWorkflow>(newSharedWorkflow);
+			await transactionManager.insert(SharedWorkflow, newSharedWorkflow);
 		});
 
 		if (!savedWorkflow) {
