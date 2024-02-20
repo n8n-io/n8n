@@ -10,6 +10,9 @@ import * as testDb from '../shared/testDb';
 import { createMember, createOwner } from '../shared/db/users';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import { setInstanceOwnerSetUp } from '../shared/utils';
+import { createWorkflow } from '../shared/db/workflows';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
+import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
 
 let userRepository: UserRepository;
 let settingsRepository: SettingsRepository;
@@ -65,4 +68,30 @@ test('user-management:reset should reset DB to default user state', async () => 
 	expect(user.lastName).toBeNull();
 	expect(user.password).toBeNull();
 	expect(user.personalizationAnswers).toBeNull();
+});
+
+test('user-management:reset should reset all workflows', async () => {
+	//
+	// ARRANGE
+	//
+	const owner = await createOwner();
+	const ownerPersonalProject = await Container.get(
+		ProjectRepository,
+	).getPersonalProjectForUserOrFail(owner.id);
+	const member = await createMember();
+	const workflow = await createWorkflow(undefined, member);
+
+	//
+	// ACT
+	//
+	await Reset.run();
+
+	//
+	// ASSERT
+	//
+	const [sharedWorkflow] = await Container.get(SharedWorkflowRepository).findByWorkflowIds([
+		workflow.id,
+	]);
+	expect(sharedWorkflow).toBeDefined();
+	expect(sharedWorkflow.projectId).toBe(ownerPersonalProject.id);
 });

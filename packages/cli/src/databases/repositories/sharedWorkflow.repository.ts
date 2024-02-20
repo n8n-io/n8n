@@ -91,7 +91,20 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 	}
 
 	async makeOwnerOfAllWorkflows(user: User) {
-		return await this.update({ userId: Not(user.id), role: 'workflow:owner' }, { user });
+		const project = await this.projectRepository.getPersonalProjectForUserOrFail(user.id);
+		return await this.update(
+			{ projectId: Not(project.id), role: 'workflow:owner' },
+			{
+				projectId: project.id,
+				// TODO: Remove this in the future when the userId property is removed
+				// from the SharedWorkflow.
+				// Right now it has to stay here, otherwise the cascading deletes
+				// started from the cli user management reset command will delete this
+				// shared workflow too.
+				// See: src/commands/user-management/reset.ts
+				userId: user.id,
+			},
+		);
 	}
 
 	async getSharing(
