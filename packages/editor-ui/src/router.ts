@@ -13,13 +13,12 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSSOStore } from '@/stores/sso.store';
-import { VIEWS, EDITABLE_CANVAS_VIEWS } from '@/constants';
+import { EnterpriseEditionFeature, VIEWS, EDITABLE_CANVAS_VIEWS } from '@/constants';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { middleware } from '@/rbac/middleware';
 import type { RouteConfig, RouterMiddleware } from '@/types/router';
 import { initializeCore } from '@/init';
 import { tryToParseNumber } from '@/utils/typesUtils';
-import { projectsRoutes } from '@/features/projects/projects.routes';
 
 const ChangePasswordView = async () => await import('./views/ChangePasswordView.vue');
 const ErrorView = async () => await import('./views/ErrorView.vue');
@@ -27,6 +26,12 @@ const ForgotMyPasswordView = async () => await import('./views/ForgotMyPasswordV
 const MainHeader = async () => await import('@/components/MainHeader/MainHeader.vue');
 const MainSidebar = async () => await import('@/components/MainSidebar.vue');
 const NodeView = async () => await import('@/views/NodeView.vue');
+const WorkflowExecutionsList = async () =>
+	await import('@/components/ExecutionsView/ExecutionsList.vue');
+const ExecutionsLandingPage = async () =>
+	await import('@/components/ExecutionsView/ExecutionsLandingPage.vue');
+const ExecutionPreview = async () =>
+	await import('@/components/ExecutionsView/ExecutionPreview.vue');
 const SettingsView = async () => await import('./views/SettingsView.vue');
 const SettingsLdapView = async () => await import('./views/SettingsLdapView.vue');
 const SettingsPersonalView = async () => await import('./views/SettingsPersonalView.vue');
@@ -44,7 +49,9 @@ const TemplatesWorkflowView = async () => await import('@/views/TemplatesWorkflo
 const SetupWorkflowFromTemplateView = async () =>
 	await import('@/views/SetupWorkflowFromTemplateView/SetupWorkflowFromTemplateView.vue');
 const TemplatesSearchView = async () => await import('@/views/TemplatesSearchView.vue');
+const CredentialsView = async () => await import('@/views/CredentialsView.vue');
 const ExecutionsView = async () => await import('@/views/ExecutionsView.vue');
+const WorkflowsView = async () => await import('@/views/WorkflowsView.vue');
 const VariablesView = async () => await import('@/views/VariablesView.vue');
 const SettingsUsageAndPlan = async () => await import('./views/SettingsUsageAndPlan.vue');
 const SettingsSso = async () => await import('./views/SettingsSso.vue');
@@ -54,7 +61,18 @@ const SettingsSourceControl = async () => await import('./views/SettingsSourceCo
 const SettingsExternalSecrets = async () => await import('./views/SettingsExternalSecrets.vue');
 const SettingsAuditLogs = async () => await import('./views/SettingsAuditLogs.vue');
 const WorkerView = async () => await import('./views/WorkerView.vue');
+const WorkflowHistory = async () => await import('@/views/WorkflowHistory.vue');
 const WorkflowOnboardingView = async () => await import('@/views/WorkflowOnboardingView.vue');
+
+function getTemplatesRedirect(defaultRedirect: VIEWS[keyof VIEWS]) {
+	const settingsStore = useSettingsStore();
+	const isTemplatesEnabled: boolean = settingsStore.isTemplatesEnabled;
+	if (!isTemplatesEnabled) {
+		return { name: defaultRedirect || VIEWS.NOT_FOUND };
+	}
+
+	return false;
+}
 
 export const routes = [
 	{
@@ -173,6 +191,17 @@ export const routes = [
 		},
 	},
 	{
+		path: '/credentials',
+		name: VIEWS.CREDENTIALS,
+		components: {
+			default: CredentialsView,
+			sidebar: MainSidebar,
+		},
+		meta: {
+			middleware: ['authenticated'],
+		},
+	},
+	{
 		path: '/variables',
 		name: VIEWS.VARIABLES,
 		components: {
@@ -193,6 +222,104 @@ export const routes = [
 		},
 	},
 	{
+		path: '/workflows',
+		name: VIEWS.WORKFLOWS,
+		components: {
+			default: WorkflowsView,
+			sidebar: MainSidebar,
+		},
+		meta: {
+			middleware: ['authenticated'],
+		},
+	},
+	{
+		path: '/workflow/:name/debug/:executionId',
+		name: VIEWS.EXECUTION_DEBUG,
+		components: {
+			default: NodeView,
+			header: MainHeader,
+			sidebar: MainSidebar,
+		},
+		meta: {
+			nodeView: true,
+			keepWorkflowAlive: true,
+			middleware: ['authenticated', 'enterprise'],
+			middlewareOptions: {
+				enterprise: {
+					feature: [EnterpriseEditionFeature.DebugInEditor],
+				},
+			},
+		},
+	},
+	{
+		path: '/workflow/:name/executions',
+		name: VIEWS.WORKFLOW_EXECUTIONS,
+		components: {
+			default: WorkflowExecutionsList,
+			header: MainHeader,
+			sidebar: MainSidebar,
+		},
+		meta: {
+			keepWorkflowAlive: true,
+			middleware: ['authenticated'],
+		},
+		children: [
+			{
+				path: '',
+				name: VIEWS.EXECUTION_HOME,
+				components: {
+					executionPreview: ExecutionsLandingPage,
+				},
+				meta: {
+					keepWorkflowAlive: true,
+					middleware: ['authenticated'],
+				},
+			},
+			{
+				path: ':executionId',
+				name: VIEWS.EXECUTION_PREVIEW,
+				components: {
+					executionPreview: ExecutionPreview,
+				},
+				meta: {
+					keepWorkflowAlive: true,
+					middleware: ['authenticated'],
+				},
+			},
+		],
+	},
+	{
+		path: '/workflow/:workflowId/history/:versionId?',
+		name: VIEWS.WORKFLOW_HISTORY,
+		components: {
+			default: WorkflowHistory,
+			sidebar: MainSidebar,
+		},
+		meta: {
+			middleware: ['authenticated', 'enterprise'],
+			middlewareOptions: {
+				enterprise: {
+					feature: [EnterpriseEditionFeature.WorkflowHistory],
+				},
+			},
+		},
+	},
+	{
+		path: '/workflows/templates/:id',
+		name: VIEWS.TEMPLATE_IMPORT,
+		components: {
+			default: NodeView,
+			header: MainHeader,
+			sidebar: MainSidebar,
+		},
+		meta: {
+			templatesEnabled: true,
+			keepWorkflowAlive: true,
+			getRedirect: getTemplatesRedirect,
+			middleware: ['authenticated'],
+		},
+	},
+	{
 		path: '/workflows/onboarding/:id',
 		name: VIEWS.WORKFLOW_ONBOARDING,
 		components: {
@@ -204,6 +331,20 @@ export const routes = [
 			templatesEnabled: true,
 			keepWorkflowAlive: true,
 			getRedirect: () => getTemplatesRedirect(VIEWS.NEW_WORKFLOW),
+			middleware: ['authenticated'],
+		},
+	},
+	{
+		path: '/workflow/new',
+		name: VIEWS.NEW_WORKFLOW,
+		components: {
+			default: NodeView,
+			header: MainHeader,
+			sidebar: MainSidebar,
+		},
+		meta: {
+			nodeView: true,
+			keepWorkflowAlive: true,
 			middleware: ['authenticated'],
 		},
 	},
@@ -224,6 +365,24 @@ export const routes = [
 				},
 			},
 		},
+	},
+	{
+		path: '/workflow/:name',
+		name: VIEWS.WORKFLOW,
+		components: {
+			default: NodeView,
+			header: MainHeader,
+			sidebar: MainSidebar,
+		},
+		meta: {
+			nodeView: true,
+			keepWorkflowAlive: true,
+			middleware: ['authenticated'],
+		},
+	},
+	{
+		path: '/workflow',
+		redirect: '/workflow/new',
 	},
 	{
 		path: '/signin',
@@ -602,7 +761,6 @@ export const routes = [
 			},
 		},
 	},
-	...projectsRoutes,
 	{
 		path: '/:pathMatch(.*)*',
 		name: VIEWS.NOT_FOUND,
@@ -668,9 +826,6 @@ router.beforeEach(async (to: RouteLocationNormalized & RouteConfig, from, next) 
 
 			return next({ name: VIEWS.SETUP });
 		}
-
-		// Catch old /credentials and /workflow routes and redirect to /projects
-		await projectsRouteBeforeMiddleware(to, from, next);
 
 		/**
 		 * Verify user permissions for current route
