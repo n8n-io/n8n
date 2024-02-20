@@ -8,8 +8,11 @@ import { UserRepository } from '@db/repositories/user.repository';
 import { mockInstance } from '../../shared/mocking';
 import * as testDb from '../shared/testDb';
 import { createMember, createOwner } from '../shared/db/users';
+import { SettingsRepository } from '@/databases/repositories/settings.repository';
+import { setInstanceOwnerSetUp } from '../shared/utils';
 
 let userRepository: UserRepository;
+let settingsRepository: SettingsRepository;
 
 beforeAll(async () => {
 	mockInstance(InternalHooks);
@@ -17,6 +20,7 @@ beforeAll(async () => {
 	mockInstance(NodeTypes);
 	await testDb.init();
 	userRepository = Container.get(UserRepository);
+	settingsRepository = Container.get(SettingsRepository);
 });
 
 beforeEach(async () => {
@@ -33,6 +37,7 @@ test('user-management:reset should reset DB to default user state', async () => 
 	//
 	await createOwner();
 	await createMember();
+	await setInstanceOwnerSetUp(true);
 
 	//
 	// ACT
@@ -44,12 +49,16 @@ test('user-management:reset should reset DB to default user state', async () => 
 	//
 	const user = await userRepository.findOneBy({ role: 'global:owner' });
 	const numberOfUsers = await userRepository.count();
+	const isInstanceOwnerSetUp = await settingsRepository.findOneByOrFail({
+		key: 'userManagement.isInstanceOwnerSetUp',
+	});
 
 	if (!user) {
 		fail('No owner found after DB reset to default user state');
 	}
 
 	expect(numberOfUsers).toBe(1);
+	expect(isInstanceOwnerSetUp.value).toBe('false');
 
 	expect(user.email).toBeNull();
 	expect(user.firstName).toBeNull();
