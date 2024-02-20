@@ -22,10 +22,10 @@ export class PermissionChecker {
 	/**
 	 * Check if a user is permitted to execute a workflow.
 	 */
-	async check(workflow: Workflow, userId: string) {
+	async check(workflowId: string, userId: string, nodes: INode[]) {
 		// allow if no nodes in this workflow use creds
 
-		const credIdsToNodes = this.mapCredIdsToNodes(workflow);
+		const credIdsToNodes = this.mapCredIdsToNodes(nodes);
 
 		const workflowCredIds = Object.keys(credIdsToNodes);
 
@@ -46,8 +46,8 @@ export class PermissionChecker {
 
 		let workflowUserIds = [userId];
 
-		if (workflow.id && isSharingEnabled) {
-			workflowUserIds = await this.sharedWorkflowRepository.getSharedUserIds(workflow.id);
+		if (workflowId && isSharingEnabled) {
+			workflowUserIds = await this.sharedWorkflowRepository.getSharedUserIds(workflowId);
 		}
 
 		const accessibleCredIds = isSharingEnabled
@@ -129,25 +129,22 @@ export class PermissionChecker {
 		}
 	}
 
-	private mapCredIdsToNodes(workflow: Workflow) {
-		return Object.values(workflow.nodes).reduce<{ [credentialId: string]: INode[] }>(
-			(map, node) => {
-				if (node.disabled || !node.credentials) return map;
+	private mapCredIdsToNodes(nodes: INode[]) {
+		return nodes.reduce<{ [credentialId: string]: INode[] }>((map, node) => {
+			if (node.disabled || !node.credentials) return map;
 
-				Object.values(node.credentials).forEach((cred) => {
-					if (!cred.id) {
-						throw new NodeOperationError(node, 'Node uses invalid credential', {
-							description: 'Please recreate the credential.',
-							level: 'warning',
-						});
-					}
+			Object.values(node.credentials).forEach((cred) => {
+				if (!cred.id) {
+					throw new NodeOperationError(node, 'Node uses invalid credential', {
+						description: 'Please recreate the credential.',
+						level: 'warning',
+					});
+				}
 
-					map[cred.id] = map[cred.id] ? [...map[cred.id], node] : [node];
-				});
+				map[cred.id] = map[cred.id] ? [...map[cred.id], node] : [node];
+			});
 
-				return map;
-			},
-			{},
-		);
+			return map;
+		}, {});
 	}
 }
