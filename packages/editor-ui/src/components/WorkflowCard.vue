@@ -221,7 +221,7 @@ export default defineComponent({
 				this.$telemetry.track('User opened sharing modal', {
 					workflow_id: this.data.id,
 					user_id_sharer: this.currentUser.id,
-					sub_view: this.$route.name === VIEWS.WORKFLOWS ? 'Workflows listing' : 'Workflow editor',
+					sub_view: 'Workflows listing',
 				});
 			} else if (action === WORKFLOW_LIST_ITEM_ACTIONS.DELETE) {
 				const deleteConfirmed = await this.confirm(
