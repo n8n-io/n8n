@@ -12,14 +12,14 @@ import * as pdf from './actions/pdf.operation';
 export class ExtractFromFile implements INodeType {
 	// eslint-disable-next-line n8n-nodes-base/node-class-description-missing-subtitle
 	description: INodeTypeDescription = {
-		displayName: 'Extract From File',
+		displayName: 'Extract from File',
 		name: 'extractFromFile',
 		icon: 'file:extractFromFile.svg',
 		group: ['input'],
 		version: 1,
 		description: 'Convert binary data to JSON',
 		defaults: {
-			name: 'Extract From File',
+			name: 'Extract from File',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
