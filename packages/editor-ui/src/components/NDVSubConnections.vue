@@ -4,81 +4,102 @@
 			:class="$style.connections"
 			:style="`--possible-connections: ${possibleConnections.length}`"
 		>
-			<div
-				v-for="connection in possibleConnections"
-				:key="connection.type"
-				:class="$style.connectionType"
-			>
-				<span :class="$style.connectionLabel" v-text="connection.displayName" />
-				<div
-					v-on-click-outside="() => expandConnectionGroup(connection.type, false)"
-					:class="{
-						[$style.connectedNodesWrapper]: true,
-						[$style.connectedNodesExpanded]: expandedGroups.includes(connection.type),
-					}"
-					:style="`--nodes-length: ${connectedNodes[connection.type].length}`"
-					@click="expandConnectionGroup(connection.type, true)"
+			<div v-for="connection in possibleConnections" :key="connection.type">
+				<n8n-tooltip
+					placement="top"
+					:teleported="true"
+					:offset="10"
+					:disabled="
+						!shouldShowConnectionTooltip(connection.type) ||
+						connectedNodes[connection.type].length === 0
+					"
 				>
-					<div
-						v-if="connectedNodes[connection.type].length > 0"
-						:class="{
-							[$style.connectedNodes]: true,
-							[$style.connectedNodesMultiple]: connectedNodes[connection.type].length > 1,
-						}"
-					>
+					<template #content>
+						{{ connection.displayName }}
+					</template>
+					<div :class="$style.connectionType">
+						<span :class="$style.connectionLabel" v-text="connection.displayName" />
 						<div
-							v-for="(node, index) in connectedNodes[connection.type]"
-							:key="node.node.name"
-							:class="{ [$style.nodeWrapper]: true, [$style.hasIssues]: node.issues }"
-							:style="`--node-index: ${index}`"
+							v-on-click-outside="() => expandConnectionGroup(connection.type, false)"
+							:class="{
+								[$style.connectedNodesWrapper]: true,
+								[$style.connectedNodesExpanded]: expandedGroups.includes(connection.type),
+							}"
+							:style="`--nodes-length: ${connectedNodes[connection.type].length}`"
+							@click="expandConnectionGroup(connection.type, true)"
 						>
-							<n8n-tooltip
-								:key="node.node.name"
-								placement="top"
-								:teleported="true"
-								:offset="10"
-								:disabled="
-									isConnectionExpandable(connection.type) &&
-									!expandedGroups.includes(connection.type)
-								"
+							<div
+								v-if="connectedNodes[connection.type].length > 0"
+								:class="{
+									[$style.connectedNodes]: true,
+									[$style.connectedNodesMultiple]: connectedNodes[connection.type].length > 1,
+								}"
 							>
-								<template #content>
-									{{ node.node.name }}
-									<template v-if="node.issues">
-										<TitledList
-											:title="`${$locale.baseText('node.issues')}:`"
-											:items="node.issues"
-										/>
-									</template>
-								</template>
-
 								<div
-									:class="$style.connectedNode"
-									data-test-id="floating-node"
-									:data-node-name="node.node.name"
-									@click="onNodeClick(node.node.name, connection.type)"
+									v-for="(node, index) in connectedNodes[connection.type]"
+									:key="node.node.name"
+									:class="{ [$style.nodeWrapper]: true, [$style.hasIssues]: node.issues }"
+									:style="`--node-index: ${index}`"
 								>
-									<NodeIcon
-										:node-type="node.nodeType"
-										:node-name="node.node.name"
-										tooltip-position="top"
-										:size="20"
-										circle
-									/>
+									<n8n-tooltip
+										:key="node.node.name"
+										placement="top"
+										:teleported="true"
+										:offset="10"
+										:disabled="shouldShowConnectionTooltip(connection.type)"
+									>
+										<template #content>
+											{{ node.node.name }}
+											<template v-if="node.issues">
+												<TitledList
+													:title="`${$locale.baseText('node.issues')}:`"
+													:items="node.issues"
+												/>
+											</template>
+										</template>
+
+										<div
+											:class="$style.connectedNode"
+											data-test-id="floating-node"
+											:data-node-name="node.node.name"
+											@click="onNodeClick(node.node.name, connection.type)"
+										>
+											<NodeIcon
+												:node-type="node.nodeType"
+												:node-name="node.node.name"
+												tooltip-position="top"
+												:size="20"
+												circle
+											/>
+										</div>
+									</n8n-tooltip>
 								</div>
-							</n8n-tooltip>
+							</div>
+							<div
+								v-if="
+									connectedNodes[connection.type].length >= 1
+										? connection.maxConnections !== 1
+										: true
+								"
+								:class="$style.plusButton"
+								@click="onPlusClick(connection.type)"
+							>
+								<n8n-tooltip
+									placement="top"
+									:teleported="true"
+									:offset="10"
+									:disabled="
+										shouldShowConnectionTooltip(connection.type) &&
+										connectedNodes[connection.type].length >= 1
+									"
+								>
+									<template #content> Add {{ connection.displayName }} </template>
+									<n8n-icon-button size="medium" icon="plus" type="tertiary" />
+								</n8n-tooltip>
+							</div>
 						</div>
 					</div>
-					<div
-						v-if="
-							connectedNodes[connection.type].length >= 1 ? connection.maxConnections !== 1 : true
-						"
-						:class="$style.plusButton"
-						@click="onPlusClick(connection.type)"
-					>
-						<n8n-icon-button size="medium" icon="plus" type="tertiary" />
-					</div>
-				</div>
+				</n8n-tooltip>
 			</div>
 		</div>
 	</div>
@@ -130,6 +151,10 @@ function getConnectionConfig(connectionType: ConnectionTypes) {
 function isConnectionExpandable(connectionType: ConnectionTypes) {
 	const connectionConfig = getConnectionConfig(connectionType);
 	return connectionConfig?.maxConnections !== 1;
+}
+
+function shouldShowConnectionTooltip(connectionType: ConnectionTypes) {
+	return isConnectionExpandable(connectionType) && !expandedGroups.value.includes(connectionType);
 }
 
 function expandConnectionGroup(connectionType: ConnectionTypes, isExpanded: boolean) {
@@ -210,7 +235,7 @@ function onPlusClick(connectionType: ConnectionTypes) {
 	if (
 		isConnectionExpandable(connectionType) &&
 		!expandedGroups.value.includes(connectionType) &&
-		connectionNodes.length > 1
+		connectionNodes.length >= 1
 	) {
 		expandConnectionGroup(connectionType, true);
 		return;
@@ -232,15 +257,17 @@ watch(
 
 <style lang="scss" module>
 .container {
-	position: absolute;
-	top: calc(100% - 43px);
-	left: var(--spacing-xs);
-	right: var(--spacing-xs);
-	user-select: none;
+	--animation-duration: 200ms;
+	padding-top: 50px;
 }
 .connections {
+	z-index: 11;
+	position: absolute;
+	bottom: -20px;
+	left: 0;
+	right: 0;
+	user-select: none;
 	justify-content: space-between;
-	width: 100%;
 	display: grid;
 	grid-template-columns: repeat(var(--possible-connections), 1fr);
 }
@@ -248,17 +275,7 @@ watch(
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-
-	.connectedNodesWrapper,
-	.connectionLabel {
-		opacity: 0.8;
-		&:hover {
-			opacity: 1;
-		}
-	}
-	.connectedNodesExpanded {
-		opacity: 1;
-	}
+	transition: all var(--animation-duration) ease;
 }
 .connectionLabel {
 	margin-bottom: var(--spacing-2xs);
@@ -274,12 +291,11 @@ watch(
 	position: relative;
 }
 .plusButton {
-	transition: all 100ms ease-in;
+	transition: all var(--animation-duration) ease;
 	position: absolute;
 	top: var(--spacing-2xs);
 
 	&:not(:first-child) {
-		opacity: 1;
 		z-index: 0;
 		left: 100%;
 		margin-left: -15px;
@@ -292,7 +308,7 @@ watch(
 }
 
 .connectedNodesMultiple {
-	transition: margin 200ms ease-in;
+	transition: all var(--animation-duration) ease;
 }
 .connectedNodesExpanded {
 	z-index: 10;
@@ -301,6 +317,7 @@ watch(
 // Hide all other connection groups when one is expanded
 .connections:has(.connectedNodesExpanded) .connectionType:not(:has(.connectedNodesExpanded)) {
 	opacity: 0;
+	pointer-events: none;
 }
 .connectedNode {
 	border: var(--border-base);
@@ -309,7 +326,7 @@ watch(
 	padding: var(--spacing-xs);
 	cursor: pointer;
 	pointer-events: all;
-	transition: transform 200ms ease-in;
+	transition: all var(--animation-duration) ease;
 	position: relative;
 	display: flex;
 	justify-self: center;
@@ -319,18 +336,18 @@ watch(
 	display: flex;
 	justify-content: center;
 	margin-right: calc((var(--nodes-length) - 1) * -35px);
-
 	.connectedNodesExpanded & {
-		gap: var(--spacing-2xs);
 		margin-right: 0;
 	}
 }
 .nodeWrapper {
 	--collapsed-node-offset: calc(var(--node-index) * -35px);
-	transition: all 200ms ease-in;
+	transition: all var(--animation-duration) ease;
 	transform-origin: center;
 	z-index: 10;
-
+	.connectedNodesExpanded &:not(:first-child) {
+		margin-left: var(--spacing-2xs);
+	}
 	&.hasIssues {
 		.connectedNode {
 			border-width: 2px;

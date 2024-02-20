@@ -35,12 +35,6 @@
 				</div>
 				<div :class="{ [$style.mainPanelInner]: true, [$style.dragging]: isDragging }">
 					<slot name="main" />
-					<NDVSubConnections
-						v-if="activeNode"
-						:root-node="activeNode"
-						@switchSelectedNode="onSwitchSelectedNode"
-						@openConnectionNodeCreator="onOpenConnectionNodeCreator"
-					/>
 				</div>
 			</n8n-resize-wrapper>
 		</div>
@@ -54,14 +48,13 @@ import { mapStores } from 'pinia';
 import { get } from 'lodash-es';
 import { useStorage } from '@/composables/useStorage';
 
-import type { INodeTypeDescription, ConnectionTypes } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow';
 import PanelDragButton from './PanelDragButton.vue';
 
 import { LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH, MAIN_NODE_PANEL_WIDTH } from '@/constants';
 import { useNDVStore } from '@/stores/ndv.store';
 import { ndvEventBus } from '@/event-bus';
 import NDVFloatingNodes from '@/components/NDVFloatingNodes.vue';
-import NDVSubConnections from '@/components/NDVSubConnections.vue';
 import { useDebounce } from '@/composables/useDebounce';
 
 const SIDE_MARGIN = 24;
@@ -83,7 +76,6 @@ export default defineComponent({
 	components: {
 		PanelDragButton,
 		NDVFloatingNodes,
-		NDVSubConnections,
 	},
 	props: {
 		isDraggable: {
@@ -273,9 +265,6 @@ export default defineComponent({
 	methods: {
 		onSwitchSelectedNode(node: string) {
 			this.$emit('switchSelectedNode', node);
-		},
-		onOpenConnectionNodeCreator(node: string, connectionType: ConnectionTypes) {
-			this.$emit('openConnectionNodeCreator', node, connectionType);
 		},
 		getInitialLeftPosition(width: number) {
 			if (this.currentNodePaneType === 'dragless')

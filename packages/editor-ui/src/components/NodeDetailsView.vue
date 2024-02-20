@@ -118,6 +118,8 @@
 						@stopExecution="onStopExecution"
 						@redrawRequired="redrawRequired = true"
 						@activate="onWorkflowActivate"
+						@switchSelectedNode="onSwitchSelectedNode"
+						@openConnectionNodeCreator="onOpenConnectionNodeCreator"
 					/>
 					<a
 						v-if="featureRequestUrl"
