@@ -127,8 +127,7 @@ export class WorkflowsController {
 			const { projectId } = req.body;
 			const project =
 				projectId === undefined
-					? // TODO: pass the transaction manager optionally?
-					  await this.projectRepository.getPersonalProjectForUser(req.user.id)
+					? await this.projectRepository.getPersonalProjectForUser(req.user.id)
 					: await this.projectService.getProjectWithScope(req.user, projectId, 'workflow:create');
 
 			if (typeof projectId === 'string' && project === null) {
