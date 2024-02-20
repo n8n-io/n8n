@@ -173,11 +173,14 @@ export class SourceControlPreferencesService {
 		if (saveToDb) {
 			const settingsValue = JSON.stringify(this._sourceControlPreferences);
 			try {
-				await Container.get(SettingsRepository).save({
-					key: SOURCE_CONTROL_PREFERENCES_DB_KEY,
-					value: settingsValue,
-					loadOnStartup: true,
-				});
+				await Container.get(SettingsRepository).save(
+					{
+						key: SOURCE_CONTROL_PREFERENCES_DB_KEY,
+						value: settingsValue,
+						loadOnStartup: true,
+					},
+					{ transaction: false },
+				);
 			} catch (error) {
 				throw new ApplicationError('Failed to save source control preferences', { cause: error });
 			}

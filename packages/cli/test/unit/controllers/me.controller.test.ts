@@ -192,6 +192,17 @@ describe('MeController', () => {
 		});
 	});
 
+	describe('storeSurveyAnswers', () => {
+		it('should throw BadRequestError if answers are missing in the payload', async () => {
+			const req = mock<MeRequest.SurveyAnswers>({
+				body: undefined,
+			});
+			await expect(controller.storeSurveyAnswers(req)).rejects.toThrowError(
+				new BadRequestError('Personalization answers are mandatory'),
+			);
+		});
+	});
+
 	describe('API Key methods', () => {
 		let req: AuthenticatedRequest;
 		beforeAll(() => {

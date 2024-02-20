@@ -109,10 +109,12 @@ export async function createUserFromSamlAttributes(attributes: SamlUserAttribute
 	authIdentity.providerId = attributes.userPrincipalName;
 	authIdentity.providerType = 'saml';
 	authIdentity.user = user;
-	const resultAuthIdentity = await Container.get(AuthIdentityRepository).save(authIdentity);
+	const resultAuthIdentity = await Container.get(AuthIdentityRepository).save(authIdentity, {
+		transaction: false,
+	});
 	if (!resultAuthIdentity) throw new AuthError('Could not create AuthIdentity');
 	user.authIdentities = [authIdentity];
-	const resultUser = await Container.get(UserRepository).save(user);
+	const resultUser = await Container.get(UserRepository).save(user, { transaction: false });
 	if (!resultUser) throw new AuthError('Could not create User');
 	return resultUser;
 }
@@ -133,10 +135,10 @@ export async function updateUserFromSamlAttributes(
 	} else {
 		samlAuthIdentity.providerId = attributes.userPrincipalName;
 	}
-	await Container.get(AuthIdentityRepository).save(samlAuthIdentity);
+	await Container.get(AuthIdentityRepository).save(samlAuthIdentity, { transaction: false });
 	user.firstName = attributes.firstName;
 	user.lastName = attributes.lastName;
-	const resultUser = await Container.get(UserRepository).save(user);
+	const resultUser = await Container.get(UserRepository).save(user, { transaction: false });
 	if (!resultUser) throw new AuthError('Could not create User');
 	return resultUser;
 }

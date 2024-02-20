@@ -44,10 +44,10 @@
 					[$style.multipleModes]: hasMultipleModes,
 				}"
 			>
+				<div :class="$style.background"></div>
 				<div v-if="hasMultipleModes" :class="$style.modeSelector">
 					<n8n-select
 						:model-value="selectedMode"
-						filterable
 						:size="inputSize"
 						:disabled="isReadOnly"
 						:placeholder="$locale.baseText('resourceLocator.modeSelector.placeholder')"
@@ -93,7 +93,7 @@
 									ref="input"
 									:model-value="expressionDisplayValue"
 									:path="path"
-									:rows="1"
+									:rows="3"
 									@update:modelValue="onInputChange"
 									@modalOpenerClick="$emit('modalOpenerClick')"
 								/>
@@ -819,15 +819,32 @@ $--mode-selector-width: 92px;
 .resourceLocator {
 	display: flex;
 	flex-wrap: wrap;
+	position: relative;
+
+	--input-issues-width: 28px;
 
 	.inputContainer {
 		display: flex;
 		align-items: center;
 		width: 100%;
 
+		--input-border-top-left-radius: 0;
+		--input-border-bottom-left-radius: 0;
+
 		> div {
 			width: 100%;
 		}
+	}
+
+	.background {
+		position: absolute;
+		background-color: var(--color-background-input-triple);
+		top: 0;
+		bottom: 0;
+		left: 0;
+		right: var(--input-issues-width);
+		border: 1px solid var(--border-color-base);
+		border-radius: var(--border-radius-base);
 	}
 
 	&.multipleModes {
@@ -889,7 +906,9 @@ $--mode-selector-width: 92px;
 
 .openResourceLink {
 	width: 25px !important;
-	margin-left: var(--spacing-2xs);
+	padding-left: var(--spacing-2xs);
+	padding-top: var(--spacing-4xs);
+	align-self: flex-start;
 }
 
 .parameter-issues {
