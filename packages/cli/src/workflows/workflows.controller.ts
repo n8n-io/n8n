@@ -49,7 +49,7 @@ import { WorkflowSharingService } from './workflowSharing.service';
 import { UserManagementMailer } from '@/UserManagement/email';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { ProjectService } from '@/services/project.service';
-import { ApplicationError } from '../../../workflow/src';
+import { ApplicationError } from 'n8n-workflow';
 
 @Authorized()
 @RestController('/workflows')
