@@ -48,7 +48,6 @@
 				<div v-if="hasMultipleModes" :class="$style.modeSelector">
 					<n8n-select
 						:model-value="selectedMode"
-						filterable
 						:size="inputSize"
 						:disabled="isReadOnly"
 						:placeholder="$locale.baseText('resourceLocator.modeSelector.placeholder')"
