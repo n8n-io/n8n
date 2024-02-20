@@ -6,6 +6,7 @@ import { License } from '@/License';
 import * as testDb from './shared/testDb';
 import * as utils from './shared/utils/';
 import { createUserShell } from './shared/db/users';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 
 const MOCK_SERVER_URL = 'https://server.com/v1';
 const MOCK_RENEW_OFFSET = 259200;
@@ -57,7 +58,7 @@ describe('POST /license/activate', () => {
 		await authMemberAgent
 			.post('/license/activate')
 			.send({ activationKey: 'abcde' })
-			.expect(403, UNAUTHORIZED_RESPONSE);
+			.expect(403, { status: 'error', message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE });
 	});
 
 	test('errors out properly', async () => {
@@ -79,7 +80,9 @@ describe('POST /license/renew', () => {
 	});
 
 	test('does not work for regular users', async () => {
-		await authMemberAgent.post('/license/renew').expect(403, UNAUTHORIZED_RESPONSE);
+		await authMemberAgent
+			.post('/license/renew')
+			.expect(403, { status: 'error', message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE });
 	});
 
 	test('errors out properly', async () => {

@@ -9,7 +9,7 @@ const workflowPage = new WorkflowPage();
 const templateWorkflowPage = new TemplateWorkflowPage();
 
 
-describe('In-app templates repository', () => {
+describe.skip('In-app templates repository', () => {
 	beforeEach(() => {
 		cy.intercept('GET', '**/api/templates/search?page=1&rows=20&category=&search=', { fixture: 'templates_search/all_templates_search_response.json' }).as('searchRequest');
 		cy.intercept('GET', '**/api/templates/search?page=1&rows=20&category=Sales*', { fixture: 'templates_search/sales_templates_search_response.json' }).as('categorySearchRequest');

@@ -1,5 +1,5 @@
 import type express from 'express';
-import type { IDataObject, ExecutionStatus } from 'n8n-workflow';
+import type { ExecutionStatus, ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import type { User } from '@db/entities/User';
 
@@ -151,7 +151,14 @@ export declare namespace UserRequest {
 }
 
 export declare namespace CredentialRequest {
-	type Create = AuthenticatedRequest<{}, {}, { type: string; name: string; data: IDataObject }, {}>;
+	type Create = AuthenticatedRequest<
+		{},
+		{},
+		{ type: string; name: string; data: ICredentialDataDecryptedObject },
+		{}
+	>;
+
+	type Delete = AuthenticatedRequest<{ id: string }, {}, {}, Record<string, string>>;
 }
 
 export type OperationID = 'getUsers' | 'getUser';

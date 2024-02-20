@@ -5,10 +5,9 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
+	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
-
-import type { OptionsWithUri } from 'request';
 
 export class OpenWeatherMap implements INodeType {
 	description: INodeTypeDescription = {
@@ -260,7 +259,7 @@ export class OpenWeatherMap implements INodeType {
 					);
 				}
 
-				const options: OptionsWithUri = {
+				const options: IRequestOptions = {
 					method: 'GET',
 					qs,
 					uri: `https://api.openweathermap.org/data/2.5/${endpoint}`,

@@ -26,6 +26,7 @@ export type JsonToBinaryOptions = {
 	mimeType?: string;
 	dataIsBase64?: boolean;
 	itemIndex?: number;
+	format?: boolean;
 };
 
 type PdfDocument = Awaited<ReturnType<Awaited<typeof readPDF>>['promise']>;
@@ -102,7 +103,11 @@ export async function createBinaryFromJson(
 
 		if (typeof value === 'object') {
 			options.mimeType = 'application/json';
-			valueAsString = JSON.stringify(value);
+			if (options.format) {
+				valueAsString = JSON.stringify(value, null, 2);
+			} else {
+				valueAsString = JSON.stringify(value);
+			}
 		}
 
 		buffer = iconv.encode(valueAsString, options.encoding || 'utf8', {
@@ -155,8 +160,9 @@ export async function extractDataFromPDF(
 	const params: { password?: string; url?: URL; data?: ArrayBuffer } = { password };
 
 	if (binaryData.id) {
-		const binaryPath = this.helpers.getBinaryPath(binaryData.id);
-		params.url = new URL(`file://${binaryPath}`);
+		params.data = await this.helpers.binaryToBuffer(
+			await this.helpers.getBinaryStream(binaryData.id),
+		);
 	} else {
 		params.data = Buffer.from(binaryData.data, BINARY_ENCODING).buffer;
 	}

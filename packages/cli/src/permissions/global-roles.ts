@@ -1,6 +1,6 @@
 import type { Scope } from '@n8n/permissions';
 
-export const ownerPermissions: Scope[] = [
+export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'auditLogs:manage',
 	'credential:create',
 	'credential:read',
@@ -73,8 +73,10 @@ export const ownerPermissions: Scope[] = [
 	'project:update',
 	'project:delete',
 ];
-export const adminPermissions: Scope[] = ownerPermissions.concat();
-export const memberPermissions: Scope[] = [
+
+export const GLOBAL_ADMIN_SCOPES = GLOBAL_OWNER_SCOPES.concat();
+
+export const GLOBAL_MEMBER_SCOPES: Scope[] = [
 	'eventBusEvent:list',
 	'eventBusEvent:read',
 	'eventBusDestination:list',

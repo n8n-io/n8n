@@ -255,7 +255,7 @@ describe('GET /credentials/:id', () => {
 			lastName: member1.lastName,
 		});
 		expect(firstCredential.sharedWith).toHaveLength(2);
-		firstCredential.sharedWith.forEach((sharee: IUser, idx: number) => {
+		firstCredential.sharedWith.forEach((sharee: IUser) => {
 			expect([member2.id, member3.id]).toContain(sharee.id);
 		});
 
