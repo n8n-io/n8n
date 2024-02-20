@@ -19,4 +19,17 @@ export class ProjectRepository extends Repository<Project> {
 			where: { type: 'personal', projectRelations: { userId, role: 'project:personalOwner' } },
 		});
 	}
+
+	async getAccessibleProjects(userId: string) {
+		return await this.find({
+			where: [
+				{ type: 'personal' },
+				{
+					projectRelations: {
+						userId,
+					},
+				},
+			],
+		});
+	}
 }

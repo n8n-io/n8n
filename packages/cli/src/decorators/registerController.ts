@@ -68,7 +68,11 @@ export const createLicenseMiddleware =
 
 export const createScopedMiddleware =
 	(routeScopeMetadata: RouteScopeMetadata[string]): RequestHandler =>
-	async (req: AuthenticatedRequest<{ credentialId?: string; workflowId?: string }>, res, next) => {
+	async (
+		req: AuthenticatedRequest<{ credentialId?: string; workflowId?: string; projectId?: string }>,
+		res,
+		next,
+	) => {
 		if (!req.user) throw new UnauthenticatedError();
 
 		const { scopes, globalOnly } = routeScopeMetadata;
@@ -88,7 +92,7 @@ export const createScopedMiddleware =
 			});
 		}
 
-		const { credentialId, workflowId } = req.params;
+		const { credentialId, workflowId, projectId } = req.params;
 
 		const roleService = Container.get(RoleService);
 		const projectRoles = roleService.rolesWithScope('project', scopes);
@@ -142,8 +146,19 @@ export const createScopedMiddleware =
 			return next();
 		}
 
+		if (projectId) {
+			if (!userProjectIds.includes(projectId)) {
+				return res.status(403).json({
+					status: 'error',
+					message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE,
+				});
+			}
+
+			return next();
+		}
+
 		throw new ApplicationError(
-			"@ProjectScope decorator was used but does not have a credentialId or workflowId in it's URL parameters. This is likely an implementation error. If you're a developer, please check you're URL is correct or that this should be using @GlobalScope.",
+			"@ProjectScope decorator was used but does not have a credentialId, workflowId, or projectId in it's URL parameters. This is likely an implementation error. If you're a developer, please check you're URL is correct or that this should be using @GlobalScope.",
 		);
 	};
 

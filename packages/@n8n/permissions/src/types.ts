@@ -11,6 +11,7 @@ export type Resource =
 	| 'license'
 	| 'logStreaming'
 	| 'orchestration'
+	| 'project'
 	| 'sourceControl'
 	| 'saml'
 	| 'tag'
@@ -46,6 +47,7 @@ export type LdapScope = ResourceScope<'ldap', 'manage' | 'sync'>;
 export type LicenseScope = ResourceScope<'license', 'manage'>;
 export type LogStreamingScope = ResourceScope<'logStreaming', 'manage'>;
 export type OrchestrationScope = ResourceScope<'orchestration', 'read' | 'list'>;
+export type ProjectScope = ResourceScope<'project', DefaultOperations | 'invite'>;
 export type SamlScope = ResourceScope<'saml', 'manage'>;
 export type SourceControlScope = ResourceScope<'sourceControl', 'pull' | 'push' | 'manage'>;
 export type TagScope = ResourceScope<'tag'>;
@@ -66,6 +68,7 @@ export type Scope =
 	| LicenseScope
 	| LogStreamingScope
 	| OrchestrationScope
+	| ProjectScope
 	| SamlScope
 	| SourceControlScope
 	| TagScope
