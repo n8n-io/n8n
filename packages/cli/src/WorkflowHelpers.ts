@@ -374,16 +374,17 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
  */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function getSharedWorkflowIds(user: User, roles?: string[]): Promise<string[]> {
-	const sharedWorkflows = process.env.ONLY_OWNER_OR_ADMIN_CAN_ACCESS_WORKFLOW
-		? await Db.collections.SharedWorkflow.find({
-				relations: ['workflow', 'role'],
-				select: ['workflowId'],
-				where: whereClause({ user, entityType: 'workflow', roles }),
-		  })
-		: await Db.collections.SharedWorkflow.find({
-				relations: ['workflow', 'role'],
-				select: ['workflowId'],
-		  });
+	const sharedWorkflows =
+		process.env.ONLY_OWNER_OR_ADMIN_CAN_ACCESS_WORKFLOW === 'true'
+			? await Db.collections.SharedWorkflow.find({
+					relations: ['workflow', 'role'],
+					select: ['workflowId'],
+					where: whereClause({ user, entityType: 'workflow', roles }),
+			  })
+			: await Db.collections.SharedWorkflow.find({
+					relations: ['workflow', 'role'],
+					select: ['workflowId'],
+			  });
 
 	return sharedWorkflows.map(({ workflowId }) => workflowId);
 }
