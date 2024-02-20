@@ -1,8 +1,6 @@
 <template>
 	<div class="node-error-view">
-		<!-- Main info: Message and description -->
 		<div class="node-error-view__header">
-			<!-- <div class="node-error-view__header-title">ERROR</div> -->
 			<div class="node-error-view__header-message" v-text="getErrorMessage()" />
 			<div
 				class="node-error-view__header-description"
@@ -22,13 +20,13 @@
 						size="mini"
 						text="true"
 						transparent-background="transparent"
-						@click="copyCause"
+						@click="copyErrorDetails"
 					/>
 				</div>
 			</div>
+
 			<div class="node-error-view__info-content">
-				<!-- From the service (e.g. from Airtable) -->
-				<details class="node-error-view__details" v-if="error.httpCode">
+				<details class="node-error-view__details" v-if="error.httpCode || error.description">
 					<summary class="node-error-view__details-summary">
 						<font-awesome-icon class="node-error-view__details-icon" icon="angle-right" />From
 						{{ error.node.name }}
@@ -52,7 +50,7 @@
 								<code>{{ error.description }}</code>
 							</p>
 						</div>
-						<div class="node-error-view__details-row">
+						<!-- <div class="node-error-view__details-row">
 							<p class="node-error-view__details-label">Request</p>
 							<p class="node-error-view__details-value">
 								<code>...</code>
@@ -63,11 +61,10 @@
 							<p class="node-error-view__details-value">
 								<code>...</code>
 							</p>
-						</div>
+						</div> -->
 					</div>
 				</details>
 
-				<!-- Additional info -->
 				<details class="node-error-view__details">
 					<summary class="node-error-view__details-summary">
 						<font-awesome-icon class="node-error-view__details-icon" icon="angle-right" />Other info
@@ -89,7 +86,7 @@
 							class="node-error-view__details-row"
 							v-if="error.context && error.context.runIndex !== undefined"
 						>
-							<p class="node-error-view__details-label">Run indes</p>
+							<p class="node-error-view__details-label">Run index</p>
 							<p class="node-error-view__details-value">
 								<code>{{ error.context.runIndex }}</code>
 							</p>
@@ -110,14 +107,24 @@
 						<div class="node-error-view__details-row" v-if="error.node && error.node.typeVersion">
 							<p class="node-error-view__details-label">Node version</p>
 							<p class="node-error-view__details-value">
-								<code>{{ error.node.typeVersion }}</code>
+								<code>
+									<span>{{ error.node.typeVersion + ' ' }}</span>
+									<span>({{ nodeVersionTag(error.node) }})</span>
+								</code>
+							</p>
+						</div>
+
+						<div class="node-error-view__details-row">
+							<p class="node-error-view__details-label">Node type</p>
+							<p class="node-error-view__details-value">
+								<code>{{ error.node.type }}</code>
 							</p>
 						</div>
 
 						<div class="node-error-view__details-row">
 							<p class="node-error-view__details-label">n8n version</p>
 							<p class="node-error-view__details-value">
-								<code>Cloud 1.28.0</code>
+								<code>{{ n8nVersion }}</code>
 							</p>
 						</div>
 
@@ -167,7 +174,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import VueJsonPretty from 'vue-json-pretty';
+
 import { useToast } from '@/composables/useToast';
 import { MAX_DISPLAY_DATA_SIZE } from '@/constants';
 
@@ -180,13 +187,12 @@ import type {
 import { sanitizeHtml } from '@/utils/htmlUtils';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
 import { useClipboard } from '@/composables/useClipboard';
+import type { IDataObject } from 'n8n-workflow';
 
 export default defineComponent({
 	name: 'NodeErrorView',
-	components: {
-		VueJsonPretty,
-	},
 	props: ['error'],
 	setup() {
 		const clipboard = useClipboard();
@@ -197,7 +203,7 @@ export default defineComponent({
 		};
 	},
 	computed: {
-		...mapStores(useNodeTypesStore, useNDVStore),
+		...mapStores(useNodeTypesStore, useNDVStore, useRootStore),
 		displayCause(): boolean {
 			return JSON.stringify(this.error.cause).length < MAX_DISPLAY_DATA_SIZE;
 		},
@@ -214,8 +220,35 @@ export default defineComponent({
 
 			return nodeType.properties;
 		},
+		n8nVersion() {
+			const baseUrl = this.rootStore.baseUrl;
+			let instanceType = 'Self Hosted';
+
+			if (baseUrl.includes('n8n.cloud')) {
+				instanceType = 'Cloud';
+			}
+
+			return instanceType + ' ' + this.rootStore.versionCli;
+		},
 	},
 	methods: {
+		nodeVersionTag(nodeType: IDataObject): string {
+			if (!nodeType || nodeType.hidden) {
+				return this.$locale.baseText('nodeSettings.deprecated');
+			}
+
+			const latestNodeVersion = Math.max(
+				...this.nodeTypesStore.getNodeVersions(nodeType.type as string),
+			);
+
+			if (latestNodeVersion === nodeType.typeVersion) {
+				return this.$locale.baseText('nodeSettings.latest');
+			}
+
+			return this.$locale.baseText('nodeSettings.latestVersion', {
+				interpolate: { version: latestNodeVersion.toString() },
+			});
+		},
 		replacePlaceholders(parameter: string, message: string): string {
 			const parameterName = this.parameterDisplayName(parameter, false);
 			const parameterFullName = this.parameterDisplayName(parameter, true);
@@ -331,8 +364,78 @@ export default defineComponent({
 			// We can not resolve any deeper so lets stop here and at least return hopefully something useful
 			return [currentParameter];
 		},
-		copyCause() {
-			void this.clipboard.copy(JSON.stringify(this.error.cause));
+
+		copyErrorDetails() {
+			const error = this.error;
+			const errorInfo: IDataObject = {
+				errorMessage: this.getErrorMessage(),
+			};
+			if (error.description) {
+				errorInfo.errorDescription = error.description;
+			}
+
+			const errorDetails: IDataObject = {
+				rawErrorMessage: error.message,
+			};
+
+			if (error.httpCode) {
+				errorDetails.httpCode = error.httpCode;
+			}
+
+			errorInfo.errorDetails = errorDetails;
+
+			const n8nDetails: IDataObject = {};
+
+			if (error.node) {
+				n8nDetails.nodeName = error.node.name;
+				n8nDetails.nodeType = error.node.type;
+				n8nDetails.nodeVersion = error.node.typeVersion;
+
+				if (error?.node?.parameters?.resource) {
+					n8nDetails.resource = error.node.parameters.resource;
+				}
+				if (error?.node?.parameters?.operation) {
+					n8nDetails.operation = error.node.parameters.operation;
+				}
+			}
+
+			if (error.context) {
+				if (error.context.itemIndex !== undefined) {
+					n8nDetails.itemIndex = error.context.itemIndex;
+				}
+
+				if (error.context.runIndex !== undefined) {
+					n8nDetails.runIndex = error.context.runIndex;
+				}
+
+				if (error.context.parameter !== undefined) {
+					n8nDetails.parameter = error.context.parameter;
+				}
+
+				if (error.context.causeDetailed) {
+					n8nDetails.causeDetailed = error.context.causeDetailed;
+				}
+			}
+
+			if (error.timestamp) {
+				n8nDetails.time = new Date(error.timestamp).toLocaleString();
+			}
+
+			n8nDetails.n8nVersion = this.n8nVersion;
+
+			if (error.cause) {
+				n8nDetails.cause = error.cause;
+			}
+
+			if (error?.node?.parameters) {
+				n8nDetails.nodeParameters = error.node.parameters;
+			}
+
+			n8nDetails.stackTrace = error.stack && error.stack.split('\n');
+
+			errorInfo.n8nDetails = n8nDetails;
+
+			void this.clipboard.copy(JSON.stringify(errorInfo, null, 2));
 			this.copySuccess();
 		},
 		copySuccess() {
