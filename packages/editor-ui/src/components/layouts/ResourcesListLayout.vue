@@ -178,8 +178,6 @@ import type { IUser } from '@/Interface';
 import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
 import PageViewLayoutList from '@/components/layouts/PageViewLayoutList.vue';
 import { EnterpriseEditionFeature } from '@/constants';
-import ResourceOwnershipSelect from '@/components/forms/ResourceOwnershipSelect.ee.vue';
-import ResourceFiltersDropdown from '@/components/forms/ResourceFiltersDropdown.vue';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import type { N8nInput, DatatableColumn } from 'n8n-design-system';
@@ -211,7 +209,6 @@ export default defineComponent({
 	components: {
 		PageViewLayout,
 		PageViewLayoutList,
-		ResourceOwnershipSelect,
 		ResourceFiltersDropdown,
 	},
 	props: {
