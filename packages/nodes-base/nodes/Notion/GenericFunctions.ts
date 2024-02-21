@@ -1,16 +1,16 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IBinaryKeyData,
 	IDataObject,
 	IDisplayOptions,
 	IExecuteFunctions,
 	IHookFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodeProperties,
 	IPairedItemData,
 	IPollFunctions,
+	IRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
@@ -45,7 +45,7 @@ const apiVersion: { [key: number]: string } = {
 
 export async function notionApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 
 	body: any = {},
@@ -54,7 +54,7 @@ export async function notionApiRequest(
 	option: IDataObject = {},
 ): Promise<any> {
 	try {
-		let options: OptionsWithUri = {
+		let options: IRequestOptions = {
 			headers: {
 				'Notion-Version': apiVersion[this.getNode().typeVersion],
 			},
@@ -80,7 +80,7 @@ export async function notionApiRequest(
 export async function notionApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: any = {},
 	query: IDataObject = {},
@@ -307,7 +307,7 @@ export function formatBlocks(blocks: IDataObject[]) {
 				...(block.type === 'to_do' ? { checked: block.checked } : {}),
 				...(block.type === 'image' ? { type: 'external', external: { url: block.url } } : {}),
 				// prettier-ignore,
-				...(!['to_do', 'image'].includes(block.type as string) ? getTextBlocks(block) : {}),
+				...(!['image'].includes(block.type as string) ? getTextBlocks(block) : {}),
 			},
 		});
 	}

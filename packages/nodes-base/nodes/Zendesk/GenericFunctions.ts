@@ -1,10 +1,10 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
+	IHttpRequestMethods,
+	IRequestOptions,
 } from 'n8n-workflow';
 
 function getUri(resource: string, subdomain: string) {
@@ -17,7 +17,7 @@ function getUri(resource: string, subdomain: string) {
 
 export async function zendeskApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 
 	body: any = {},
@@ -35,7 +35,7 @@ export async function zendeskApiRequest(
 		credentials = (await this.getCredentials('zendeskOAuth2Api')) as { subdomain: string };
 	}
 
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		method,
 		qs,
 		body,
@@ -63,7 +63,7 @@ export async function zendeskApiRequest(
 export async function zendeskApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 
 	body: any = {},

@@ -3,10 +3,10 @@ import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	JsonObject,
+	IRequestOptions,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
-
-import type { OptionsWithUri } from 'request';
 
 import { parseString } from 'xml2js';
 
@@ -108,7 +108,7 @@ export function toUnixEpoch(timestamp: string) {
 
 export async function splunkApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
@@ -117,7 +117,7 @@ export async function splunkApiRequest(
 		'splunkApi',
 	)) as SplunkCredentials;
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			Authorization: `Bearer ${authToken}`,
 			'Content-Type': 'application/x-www-form-urlencoded',

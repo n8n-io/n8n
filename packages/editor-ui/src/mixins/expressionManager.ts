@@ -26,6 +26,7 @@ import {
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { i18n } from '@/plugins/i18n';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { isEqual } from 'lodash-es';
 
 export const expressionManager = defineComponent({
 	props: {
@@ -101,12 +102,17 @@ export const expressionManager = defineComponent({
 
 				if (skipSegments.includes(node.type.name)) return;
 
-				rawSegments.push({
+				const newSegment: RawSegment = {
 					from: node.from,
 					to: node.to,
 					text,
 					token: node.type.name === 'Resolvable' ? 'Resolvable' : 'Plaintext',
-				});
+				};
+
+				// Avoid duplicates
+				if (isEqual(newSegment, rawSegments.at(-1))) return;
+
+				rawSegments.push(newSegment);
 			});
 
 			return rawSegments.reduce<Segment[]>((acc, segment) => {

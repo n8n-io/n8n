@@ -94,6 +94,11 @@ describe('WorkflowDataProxy', () => {
 			expect(() => proxy.$('Set').item).toThrowError(ExpressionError);
 		});
 
+		test('$("NodeName").isExecuted', () => {
+			expect(proxy.$('Function').isExecuted).toEqual(true);
+			expect(proxy.$('Set').isExecuted).toEqual(false);
+		});
+
 		test('$input.all()', () => {
 			expect(proxy.$input.all()[1].json.data).toEqual(160);
 		});
