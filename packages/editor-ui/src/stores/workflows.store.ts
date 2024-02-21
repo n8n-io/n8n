@@ -1191,6 +1191,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				return;
 			}
 			this.activeExecutions.unshift(newActiveExecution);
+			this.activeExecutionId = newActiveExecution.id;
 		},
 		finishActiveExecution(
 			finishedActiveExecution: IPushDataExecutionFinished | IPushDataUnsavedExecutionFinished,
