@@ -1,4 +1,4 @@
-import type { Project } from '@/databases/entities/Project';
+import { Project } from '@/databases/entities/Project';
 import { ProjectRelation } from '@/databases/entities/ProjectRelation';
 import type { ProjectRole } from '@/databases/entities/ProjectRelation';
 import type { User } from '@/databases/entities/User';
@@ -116,10 +116,16 @@ export class ProjectService {
 		);
 	}
 
-	async getProjectWithScope(user: User, projectId: string, scope: Scope) {
+	async getProjectWithScope(
+		user: User,
+		projectId: string,
+		scope: Scope,
+		entityManager?: EntityManager,
+	) {
+		const em = entityManager ?? this.projectRepository.manager;
 		const projectRoles = this.roleService.rolesWithScope('project', [scope]);
 
-		return await this.projectRepository.findOne({
+		return await em.findOne(Project, {
 			where: {
 				id: projectId,
 				projectRelations: {

@@ -127,8 +127,13 @@ export class WorkflowsController {
 			const { projectId } = req.body;
 			const project =
 				projectId === undefined
-					? await this.projectRepository.getPersonalProjectForUser(req.user.id)
-					: await this.projectService.getProjectWithScope(req.user, projectId, 'workflow:create');
+					? await this.projectRepository.getPersonalProjectForUser(req.user.id, transactionManager)
+					: await this.projectService.getProjectWithScope(
+							req.user,
+							projectId,
+							'workflow:create',
+							transactionManager,
+					  );
 
 			if (typeof projectId === 'string' && project === null) {
 				throw new BadRequestError(
