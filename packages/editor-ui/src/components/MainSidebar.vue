@@ -20,6 +20,7 @@
 				<div :class="$style.logo">
 					<img :src="logoPath" data-test-id="n8n-logo" :class="$style.icon" alt="n8n" />
 				</div>
+				<ProjectNavigation :collapsed="isCollapsed" />
 			</template>
 
 			<template #beforeLowerMenu>
@@ -126,6 +127,7 @@ import { hasPermission } from '@/rbac/permissions';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useDebounce } from '@/composables/useDebounce';
 import { useBecomeTemplateCreatorStore } from '@/components/BecomeTemplateCreatorCta/becomeTemplateCreatorStore';
+import ProjectNavigation from '@/features/projects/ProjectNavigation.vue';
 
 export default defineComponent({
 	name: 'MainSidebar',
@@ -134,6 +136,7 @@ export default defineComponent({
 		ExecutionsUsage,
 		MainSidebarSourceControl,
 		BecomeTemplateCreatorCta,
+		ProjectNavigation,
 	},
 	mixins: [userHelpers],
 	setup(props, ctx) {
@@ -205,31 +208,14 @@ export default defineComponent({
 		mainMenuItems(): IMenuItem[] {
 			const items: IMenuItem[] = [];
 
-			const workflows: IMenuItem = {
-				id: 'workflows',
-				icon: 'network-wired',
-				label: this.$locale.baseText('mainSidebar.workflows'),
-				position: 'top',
-				route: { to: { name: VIEWS.WORKFLOWS } },
-				secondaryIcon: this.sourceControlStore.preferences.branchReadOnly
-					? {
-							name: 'lock',
-							tooltip: {
-								content: this.$locale.baseText('mainSidebar.workflows.readOnlyEnv.tooltip'),
-							},
-					  }
-					: undefined,
-			};
-
 			const defaultSettingsRoute = this.findFirstAccessibleSettingsRoute();
 			const regularItems: IMenuItem[] = [
-				workflows,
 				{
 					// Link to in-app templates, available if custom templates are enabled
 					id: 'templates',
 					icon: 'box-open',
 					label: this.$locale.baseText('mainSidebar.templates'),
-					position: 'top',
+					position: 'bottom',
 					available:
 						this.settingsStore.isTemplatesEnabled && this.templatesStore.hasCustomTemplatesHost,
 					route: { to: { name: VIEWS.TEMPLATES } },
@@ -239,7 +225,7 @@ export default defineComponent({
 					id: 'templates',
 					icon: 'box-open',
 					label: this.$locale.baseText('mainSidebar.templates'),
-					position: 'top',
+					position: 'bottom',
 					available:
 						this.settingsStore.isTemplatesEnabled && !this.templatesStore.hasCustomTemplatesHost,
 					link: {
@@ -248,26 +234,18 @@ export default defineComponent({
 					},
 				},
 				{
-					id: 'credentials',
-					icon: 'key',
-					label: this.$locale.baseText('mainSidebar.credentials'),
-					customIconSize: 'medium',
-					position: 'top',
-					route: { to: { name: VIEWS.CREDENTIALS } },
-				},
-				{
 					id: 'variables',
 					icon: 'variable',
 					label: this.$locale.baseText('mainSidebar.variables'),
 					customIconSize: 'medium',
-					position: 'top',
+					position: 'bottom',
 					route: { to: { name: VIEWS.VARIABLES } },
 				},
 				{
 					id: 'executions',
 					icon: 'tasks',
 					label: this.$locale.baseText('mainSidebar.executions'),
-					position: 'top',
+					position: 'bottom',
 					route: { to: { name: VIEWS.EXECUTIONS } },
 				},
 				{
