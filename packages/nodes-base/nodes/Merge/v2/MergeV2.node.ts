@@ -37,7 +37,7 @@ export class MergeV2 implements INodeType {
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
-			version: [2, 2.1, 2.2],
+			version: [2, 2.1],
 			defaults: {
 				name: 'Merge',
 			},
@@ -45,7 +45,7 @@ export class MergeV2 implements INodeType {
 			inputs: ['main', 'main'],
 			outputs: ['main'],
 			inputNames: ['Input 1', 'Input 2'],
-			// If the node is of version 2.2 or if mode is chooseBranch data from both branches is required
+			// If mode is chooseBranch data from both branches is required
 			// to continue, else data from any input suffices
 			requiredInputs: '={{ $parameter["mode"] === "chooseBranch" ? [0, 1] : 1 }}',
 			properties: [
