@@ -116,7 +116,7 @@ export class ChainRetrievalQa implements INodeType {
 				],
 				displayOptions: {
 					hide: {
-						'@version': [1, 1.1, 1.2],
+						'@version': [{ _cnd: { lte: 1.2 } }],
 					},
 				},
 				default: 'auto',
