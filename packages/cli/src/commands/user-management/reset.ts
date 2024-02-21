@@ -7,6 +7,7 @@ import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { UserRepository } from '@db/repositories/user.repository';
 import { BaseCommand } from '../BaseCommand';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
 
 const defaultUserProps = {
 	firstName: null,
@@ -23,6 +24,9 @@ export class Reset extends BaseCommand {
 
 	async run(): Promise<void> {
 		const owner = await this.getInstanceOwner();
+		const ownerPersonalProject = await Container.get(
+			ProjectRepository,
+		).getPersonalProjectForUserOrFail(owner.id);
 
 		await Container.get(SharedWorkflowRepository).makeOwnerOfAllWorkflows(owner);
 		await Container.get(SharedCredentialsRepository).makeOwnerOfAllCredentials(owner);
@@ -30,17 +34,19 @@ export class Reset extends BaseCommand {
 		await Container.get(UserRepository).deleteAllExcept(owner);
 		await Container.get(UserRepository).save(Object.assign(owner, defaultUserProps));
 
-		const danglingCredentials: CredentialsEntity[] = await Container.get(CredentialsRepository)
+		const orphanedCredentials: CredentialsEntity[] = await Container.get(CredentialsRepository)
 			.createQueryBuilder('credentials')
 			.leftJoinAndSelect('credentials.shared', 'shared')
 			.where('shared.credentialsId is null')
 			.getMany();
-		const newSharedCredentials = danglingCredentials.map((credentials) =>
+		const newSharedCredentials = orphanedCredentials.map((credentials) =>
 			Container.get(SharedCredentialsRepository).create({
 				credentials,
-				// FIXME: no idea how yet
-				// user: owner,
+				projectId: ownerPersonalProject.id,
 				role: 'credential:owner',
+				// TODO: Remove this in the future when the userId property is removed
+				// from the SharedWorkflow.
+				deprecatedUserId: owner.id,
 			}),
 		);
 		await Container.get(SharedCredentialsRepository).save(newSharedCredentials);

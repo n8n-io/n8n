@@ -15,6 +15,8 @@ import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
 import { createCredential } from '../shared/db/credentials';
 import { SharedCredentialsRepository } from '@/databases/repositories/sharedCredentials.repository';
+import { continueOnFail } from 'n8n-core';
+import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 
 let userRepository: UserRepository;
 let settingsRepository: SettingsRepository;
@@ -130,3 +132,40 @@ test('user-management:reset should reset all credentials', async () => {
 	});
 	expect(sharedCredential.projectId).toBe(ownerPersonalProject.id);
 });
+
+test('user-management:reset should re-own all orphaned credentials', async () => {
+	//
+	// ARRANGE
+	//
+	const owner = await createOwner();
+	const ownerPersonalProject = await Container.get(
+		ProjectRepository,
+	).getPersonalProjectForUserOrFail(owner.id);
+	const credential = await createCredential(
+		{
+			name: 'foobar',
+			data: {},
+			type: 'foobar',
+			nodesAccess: [],
+		},
+		{ user: owner, role: 'credential:owner' },
+	);
+	await Container.get(SharedCredentialsRepository).delete({ credentialsId: credential.id });
+
+	//
+	// ACT
+	//
+	await Reset.run();
+
+	//
+	// ASSERT
+	//
+	const sharedCredentialAfterReset = await Container.get(
+		SharedCredentialsRepository,
+	).findOneByOrFail({
+		credentialsId: credential.id,
+	});
+
+	expect(sharedCredentialAfterReset.projectId).toBe(ownerPersonalProject.id);
+});
+
