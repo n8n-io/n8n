@@ -158,7 +158,7 @@ export class CredentialsService {
 		}
 
 		// Do not overwrite the oauth data else data like the access or refresh token would get lost
-		// everytime anybody changes anything on the credentials even if it is just the name.
+		// every time anybody changes anything on the credentials even if it is just the name.
 		if (decryptedData.oauthTokenData) {
 			// @ts-ignore
 			updateData.data.oauthTokenData = decryptedData.oauthTokenData;
