@@ -73,6 +73,7 @@ function getInputs(
 						'@n8n/n8n-nodes-langchain.lmChatOpenAi',
 						'@n8n/n8n-nodes-langchain.lmChatGooglePalm',
 						'@n8n/n8n-nodes-langchain.lmChatMistralCloud',
+						'@n8n/n8n-nodes-langchain.lmChatAzureOpenAi',
 					],
 				},
 			},
