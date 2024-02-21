@@ -108,7 +108,7 @@
 	"auth.roles.member": "Member",
 	"auth.roles.admin": "Admin",
 	"auth.roles.owner": "Owner",
-	"auth.agreement.label": "Inform me about security vulnerabilities if they arise",
+	"auth.agreement.label": "I want to receive security and product updates",
 	"auth.setup.next": "Next",
 	"auth.setup.settingUpOwnerError": "Problem setting up owner",
 	"auth.setup.setupOwner": "Set up owner account",
