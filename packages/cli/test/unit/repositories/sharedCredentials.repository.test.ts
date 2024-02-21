@@ -44,9 +44,11 @@ describe('SharedCredentialsRepository', () => {
 
 		test('should allow instance owner access to all credentials', async () => {
 			entityManager.findOne.mockResolvedValueOnce(sharedCredential);
-			const credential = await repository.findCredentialForUser(credentialsId, owner);
+			const credential = await repository.findCredentialForUser(credentialsId, owner, [
+				'credential:read',
+			]);
 			expect(entityManager.findOne).toHaveBeenCalledWith(SharedCredentials, {
-				relations: ['credentials'],
+				relations: { credentials: { shared: { project: { projectRelations: { user: true } } } } },
 				where: { credentialsId },
 			});
 			expect(credential).toEqual(sharedCredential.credentials);
@@ -54,9 +56,11 @@ describe('SharedCredentialsRepository', () => {
 
 		test('should allow members', async () => {
 			entityManager.findOne.mockResolvedValueOnce(sharedCredential);
-			const credential = await repository.findCredentialForUser(credentialsId, member);
+			const credential = await repository.findCredentialForUser(credentialsId, member, [
+				'credential:read',
+			]);
 			expect(entityManager.findOne).toHaveBeenCalledWith(SharedCredentials, {
-				relations: ['credentials'],
+				relations: { credentials: { shared: { project: { projectRelations: { user: true } } } } },
 				where: {
 					credentialsId,
 					role: In(['credential:owner', 'credential:user']),
@@ -78,9 +82,11 @@ describe('SharedCredentialsRepository', () => {
 
 		test('should return null when no shared credential is found', async () => {
 			entityManager.findOne.mockResolvedValueOnce(null);
-			const credential = await repository.findCredentialForUser(credentialsId, member);
+			const credential = await repository.findCredentialForUser(credentialsId, member, [
+				'credential:read',
+			]);
 			expect(entityManager.findOne).toHaveBeenCalledWith(SharedCredentials, {
-				relations: ['credentials'],
+				relations: { credentials: { shared: { project: { projectRelations: { user: true } } } } },
 				where: {
 					credentialsId,
 					role: In(['credential:owner', 'credential:user']),

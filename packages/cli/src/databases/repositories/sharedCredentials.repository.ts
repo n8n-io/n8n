@@ -1,10 +1,12 @@
 import { Service } from 'typedi';
-import type { EntityManager, FindOptionsWhere } from '@n8n/typeorm';
+import type { EntityManager, FindOptionsRelations, FindOptionsWhere } from '@n8n/typeorm';
 import { DataSource, In, Not, Repository } from '@n8n/typeorm';
 import { type CredentialSharingRole, SharedCredentials } from '../entities/SharedCredentials';
 import type { User } from '../entities/User';
 import { ProjectRepository } from './project.repository';
 import { RoleService } from '@/services/role.service';
+import type { ProjectRole } from '../entities/ProjectRelation';
+import type { Scope } from '@n8n/permissions';
 
 @Service()
 export class SharedCredentialsRepository extends Repository<SharedCredentials> {
@@ -17,12 +19,17 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 	}
 
 	/** Get a credential if it has been shared with a user */
-	async findCredentialForUser(credentialsId: string, user: User) {
+	async findCredentialForUser(
+		credentialsId: string,
+		user: User,
+		scopes: Scope[],
+		_relations?: FindOptionsRelations<SharedCredentials>,
+	) {
 		let where: FindOptionsWhere<SharedCredentials> = { credentialsId };
 
-		if (!user.hasGlobalScope('credential:read')) {
-			const projectRoles = this.roleService.rolesWithScope('project', ['credential:read']);
-			const credentialRoles = this.roleService.rolesWithScope('credential', ['credential:read']);
+		if (!user.hasGlobalScope(scopes, { mode: 'allOf' })) {
+			const projectRoles = this.roleService.rolesWithScope('project', scopes);
+			const credentialRoles = this.roleService.rolesWithScope('credential', scopes);
 			where = {
 				...where,
 				role: In(credentialRoles),
@@ -36,8 +43,13 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 		}
 
 		const sharedCredential = await this.findOne({
-			relations: ['credentials'],
 			where,
+			// TODO: write a small relations merger and use that one here
+			relations: {
+				credentials: {
+					shared: { project: { projectRelations: { user: true } } },
+				},
+			},
 		});
 		if (!sharedCredential) return null;
 		return sharedCredential.credentials;
@@ -72,7 +84,11 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 
 	/** Get the IDs of all credentials owned by a user */
 	async getOwnedCredentialIds(userIds: string[]) {
-		return await this.getCredentialIdsByUserAndRole(userIds, ['credential:owner']);
+		return await this.getCredentialIdsByUserAndRole(
+			userIds,
+			['project:personalOwner'],
+			'credential:owner',
+		);
 	}
 
 	/** Get the IDs of all credentials owned by or shared with a user */
