@@ -74,7 +74,7 @@ export const versionDescription: INodeTypeDescription = {
 		resources: {
 			primaryDocumentation: [
 				{
-					url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.openai/',
+					url: 'https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.openai/',
 				},
 			],
 		},
