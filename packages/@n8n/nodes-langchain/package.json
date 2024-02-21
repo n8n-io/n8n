@@ -133,7 +133,7 @@
     "@huggingface/inference": "2.6.4",
     "@langchain/core": "0.1.8",
     "@langchain/mistralai": "0.0.6",
-    "@n8n/typeorm": "0.3.20-2",
+    "@n8n/typeorm": "0.3.20-3",
     "@n8n/vm2": "3.9.20",
     "@pinecone-database/pinecone": "1.1.2",
     "@qdrant/js-client-rest": "1.7.0",
