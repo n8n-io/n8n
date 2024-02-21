@@ -2,13 +2,13 @@ import type {
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
+	IRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
-
-import type { OptionsWithUri } from 'request';
 
 import moment from 'moment-timezone';
 
@@ -27,7 +27,7 @@ function convertLosslessNumber(key: any, value: any) {
  */
 export async function goToWebinarApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	qs: IDataObject,
 	body: IDataObject | IDataObject[],
@@ -36,7 +36,7 @@ export async function goToWebinarApiRequest(
 	const operation = this.getNodeParameter('operation', 0);
 	const resource = this.getNodeParameter('resource', 0);
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			'user-agent': 'n8n',
 			Accept: 'application/json',
@@ -86,7 +86,7 @@ export async function goToWebinarApiRequest(
  */
 export async function goToWebinarApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	query: IDataObject,
 	body: IDataObject,

@@ -76,7 +76,7 @@ export class OwnerController {
 
 		await validateEntity(owner);
 
-		owner = await this.userRepository.save(owner);
+		owner = await this.userRepository.save(owner, { transaction: false });
 
 		this.logger.info('Owner was set up successfully', { userId });
 

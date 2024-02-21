@@ -64,7 +64,7 @@
 							</div>
 						</div>
 					</div>
-					<MessageTyping ref="messageContainer" v-if="isLoading" />
+					<MessageTyping v-if="isLoading" ref="messageContainer" />
 				</div>
 				<div v-if="node" class="logs-wrapper" data-test-id="lm-chat-logs">
 					<n8n-text class="logs-title" tag="p" size="large">{{
@@ -149,6 +149,9 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 
 // eslint-disable-next-line import/no-unresolved
 import MessageTyping from '@n8n/chat/components/MessageTyping.vue';
+import { useRouter } from 'vue-router';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 const RunDataAi = defineAsyncComponent(
 	async () => await import('@/components/RunDataAi/RunDataAi.vue'),
@@ -181,9 +184,12 @@ export default defineComponent({
 	mixins: [workflowRun],
 	setup(props, ctx) {
 		const externalHooks = useExternalHooks();
+		const router = useRouter();
+		const workflowHelpers = useWorkflowHelpers(router);
 
 		return {
 			externalHooks,
+			workflowHelpers,
 			...useToast(),
 			// eslint-disable-next-line @typescript-eslint/no-misused-promises
 			...workflowRun.setup?.(props, ctx),
@@ -201,7 +207,7 @@ export default defineComponent({
 	},
 
 	computed: {
-		...mapStores(useWorkflowsStore, useUIStore),
+		...mapStores(useWorkflowsStore, useUIStore, useNodeTypesStore),
 		isLoading(): boolean {
 			return this.uiStore.isActionActive('workflowRunning');
 		},
@@ -213,7 +219,7 @@ export default defineComponent({
 	},
 	methods: {
 		displayExecution(executionId: string) {
-			const workflow = this.getCurrentWorkflow();
+			const workflow = this.workflowHelpers.getCurrentWorkflow();
 			const route = this.$router.resolve({
 				name: VIEWS.EXECUTION_PREVIEW,
 				params: { name: workflow.id, executionId },
@@ -264,9 +270,9 @@ export default defineComponent({
 				);
 				return;
 			}
-			const workflow = this.getCurrentWorkflow();
+			const workflow = this.workflowHelpers.getCurrentWorkflow();
 
-			const chatNode = this.workflowsStore.getNodes().find((node: INodeUi): boolean => {
+			const chatNode = this.workflowHelpers.getNodes().find((node: INodeUi): boolean => {
 				const nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 				if (!nodeType) return false;
 
@@ -317,7 +323,7 @@ export default defineComponent({
 		getChatMessages(): ChatMessage[] {
 			if (!this.connectedNode) return [];
 
-			const workflow = this.getCurrentWorkflow();
+			const workflow = this.workflowHelpers.getCurrentWorkflow();
 			const connectedMemoryInputs =
 				workflow.connectionsByDestinationNode[this.connectedNode.name][NodeConnectionType.AiMemory];
 			if (!connectedMemoryInputs) return [];
@@ -369,7 +375,7 @@ export default defineComponent({
 				return;
 			}
 
-			const workflow = this.getCurrentWorkflow();
+			const workflow = this.workflowHelpers.getCurrentWorkflow();
 			const childNodes = workflow.getChildNodes(triggerNode.name);
 
 			for (const childNode of childNodes) {
@@ -389,7 +395,7 @@ export default defineComponent({
 		},
 
 		getTriggerNode(): INode | null {
-			const workflow = this.getCurrentWorkflow();
+			const workflow = this.workflowHelpers.getCurrentWorkflow();
 			const triggerNode = workflow.queryNodes((nodeType: INodeType) =>
 				[CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE].includes(nodeType.description.name),
 			);

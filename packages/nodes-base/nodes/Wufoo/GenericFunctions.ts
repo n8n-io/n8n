@@ -1,15 +1,15 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
+	IRequestOptions,
 } from 'n8n-workflow';
 
 export async function wufooApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 
 	body: any = {},
@@ -19,7 +19,7 @@ export async function wufooApiRequest(
 ): Promise<any> {
 	const credentials = await this.getCredentials('wufooApi');
 
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		method,
 		form: body,
 		body,
