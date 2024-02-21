@@ -11,6 +11,7 @@ import { SqlToolkit, createSqlAgent } from 'langchain/agents/toolkits/sql';
 import type { BaseLanguageModel } from 'langchain/dist/base_language';
 import type { DataSource } from '@n8n/typeorm';
 
+import { getPromptInputByType } from '../../../../../utils/helpers';
 import { getSqliteDataSource } from './other/handlers/sqlite';
 import { getPostgresDataSource } from './other/handlers/postgres';
 import { SQL_PREFIX, SQL_SUFFIX } from './other/prompts';
@@ -37,7 +38,17 @@ export async function sqlAgentAgentExecute(
 
 	for (let i = 0; i < items.length; i++) {
 		const item = items[i];
-		const input = this.getNodeParameter('input', i) as string;
+		let input;
+		if (this.getNode().typeVersion <= 1.2) {
+			input = this.getNodeParameter('input', i) as string;
+		} else {
+			input = getPromptInputByType({
+				ctx: this,
+				i,
+				inputKey: 'input',
+				promptTypeKey: 'promptType',
+			});
+		}
 
 		if (input === undefined) {
 			throw new NodeOperationError(this.getNode(), 'The ‘prompt’ parameter is empty.');
