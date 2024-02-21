@@ -26,7 +26,7 @@ const home = ref<IMenuItem>({
 	label: 'Home',
 	icon: 'home',
 	route: {
-		to: '/projects/abc123/workflows',
+		to: '/home/workflows',
 	},
 });
 
