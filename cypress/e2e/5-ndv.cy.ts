@@ -504,7 +504,7 @@ describe('NDV', () => {
 				getFloatingNodeByPosition('outputSub').should('exist');
 				getFloatingNodeByPosition('outputSub').click({ force: true });
 
-				if (group.id !== 'ai_tool') {
+				if (group.id === 'ai_languageModel') {
 					cy.getByTestId(`add-subnode-${group.id}`).should('not.exist');
 				} else {
 					cy.getByTestId(`add-subnode-${group.id}`).should('exist');
