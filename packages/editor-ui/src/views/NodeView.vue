@@ -4834,7 +4834,7 @@ export default defineComponent({
 					this.resetWorkspace();
 					this.uiStore.stateIsDirty = false;
 
-					await this.$router.replace({ name: VIEWS.WORKFLOWS });
+					await this.$router.replace({ name: VIEWS.HOMEPAGE });
 				});
 			}
 		},

@@ -6,7 +6,6 @@
 		:filters="filters"
 		:additional-filters-handler="onFilter"
 		:type-props="{ itemSize: 80 }"
-		:show-aside="allWorkflows.length > 0"
 		:shareable="isShareable"
 		:initialize="initialize"
 		:disabled="readOnlyEnv"

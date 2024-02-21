@@ -1,35 +1,13 @@
 <template>
 	<PageViewLayout>
-		<template v-if="showAside" #aside>
+		<template #header>
 			<div :class="[$style['heading-wrapper'], 'mb-xs']">
 				<n8n-heading size="2xlarge">
 					{{ i18n.baseText(`${resourceKey}.heading`) }}
 				</n8n-heading>
 			</div>
-
-			<div class="mt-xs mb-l">
-				<slot name="add-button" :disabled="disabled">
-					<n8n-button
-						size="large"
-						block
-						:disabled="disabled"
-						data-test-id="resources-list-add"
-						@click="$emit('click:add', $event)"
-					>
-						{{ i18n.baseText(`${resourceKey}.add`) }}
-					</n8n-button>
-				</slot>
-			</div>
-
-			<enterprise-edition v-if="shareable" :features="[EnterpriseEditionFeature.Sharing]">
-				<ResourceOwnershipSelect
-					v-model="isOwnerSubview"
-					:my-resources-label="i18n.baseText(`${resourceKey}.menu.my`)"
-					:all-resources-label="i18n.baseText(`${resourceKey}.menu.all`)"
-				/>
-			</enterprise-edition>
+			<slot name="tabnav" />
 		</template>
-
 		<div v-if="loading">
 			<n8n-loading :class="[$style['header-loading'], 'mb-l']" variant="custom" />
 			<n8n-loading :class="[$style['card-loading'], 'mb-2xs']" variant="custom" />
@@ -60,8 +38,32 @@
 			</div>
 			<PageViewLayoutList v-else :overflow="type !== 'list'">
 				<template #header>
-					<div class="mb-xs">
-						<div :class="$style['filters-row']">
+					<div :class="$style['filters-row']">
+						<div :class="$style.filters">
+							<ResourceFiltersDropdown
+								v-if="showFiltersDropdown"
+								:keys="filterKeys"
+								:reset="resetFilters"
+								:model-value="filtersModel"
+								:shareable="false"
+								@update:modelValue="$emit('update:filters', $event)"
+								@update:filtersLength="onUpdateFiltersLength"
+							>
+								<template #default="resourceFiltersSlotProps">
+									<slot name="filters" v-bind="resourceFiltersSlotProps" />
+								</template>
+							</ResourceFiltersDropdown>
+							<div :class="$style['sort-and-filter']">
+								<n8n-select v-model="sortBy" data-test-id="resources-list-sort">
+									<n8n-option
+										v-for="sortOption in sortOptions"
+										:key="sortOption"
+										data-test-id="resources-list-sort-item"
+										:value="sortOption"
+										:label="i18n.baseText(`${resourceKey}.sort.${sortOption}`)"
+									/>
+								</n8n-select>
+							</div>
 							<n8n-input
 								ref="search"
 								:model-value="filtersModel.search"
@@ -75,31 +77,17 @@
 									<n8n-icon icon="search" />
 								</template>
 							</n8n-input>
-							<div :class="$style['sort-and-filter']">
-								<n8n-select v-model="sortBy" data-test-id="resources-list-sort">
-									<n8n-option
-										v-for="sortOption in sortOptions"
-										:key="sortOption"
-										data-test-id="resources-list-sort-item"
-										:value="sortOption"
-										:label="i18n.baseText(`${resourceKey}.sort.${sortOption}`)"
-									/>
-								</n8n-select>
-								<ResourceFiltersDropdown
-									v-if="showFiltersDropdown"
-									:keys="filterKeys"
-									:reset="resetFilters"
-									:model-value="filtersModel"
-									:shareable="shareable"
-									@update:modelValue="$emit('update:filters', $event)"
-									@update:filtersLength="onUpdateFiltersLength"
-								>
-									<template #default="resourceFiltersSlotProps">
-										<slot name="filters" v-bind="resourceFiltersSlotProps" />
-									</template>
-								</ResourceFiltersDropdown>
-							</div>
 						</div>
+						<slot name="add-button" :disabled="disabled">
+							<n8n-button
+								size="large"
+								:disabled="disabled"
+								data-test-id="resources-list-add"
+								@click="$emit('click:add', $event)"
+							>
+								{{ i18n.baseText(`${resourceKey}.add`) }}
+							</n8n-button>
+						</slot>
 					</div>
 
 					<slot name="callout"></slot>
@@ -126,7 +114,6 @@
 					<n8n-recycle-scroller
 						v-if="type === 'list'"
 						data-test-id="resources-list"
-						:class="[$style.list, 'list-style-none']"
 						:items="filteredAndSortedSubviewResources"
 						:item-size="typeProps.itemSize"
 						item-key="id"
@@ -191,7 +178,6 @@ import type { IUser } from '@/Interface';
 import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
 import PageViewLayoutList from '@/components/layouts/PageViewLayoutList.vue';
 import { EnterpriseEditionFeature } from '@/constants';
-import ResourceOwnershipSelect from '@/components/forms/ResourceOwnershipSelect.ee.vue';
 import ResourceFiltersDropdown from '@/components/forms/ResourceFiltersDropdown.vue';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
@@ -224,7 +210,6 @@ export default defineComponent({
 	components: {
 		PageViewLayout,
 		PageViewLayoutList,
-		ResourceOwnershipSelect,
 		ResourceFiltersDropdown,
 	},
 	props: {
@@ -254,10 +239,6 @@ export default defineComponent({
 		},
 		additionalFiltersHandler: {
 			type: Function,
-		},
-		showAside: {
-			type: Boolean,
-			default: true,
 		},
 		shareable: {
 			type: Boolean,
@@ -531,26 +512,29 @@ export default defineComponent({
 	flex-direction: row;
 	align-items: center;
 	justify-content: space-between;
+	margin-bottom: var(--spacing-s);
+}
+
+.filters {
+	display: grid;
+	grid-auto-flow: column;
+	grid-auto-columns: max-content;
+	gap: var(--spacing-2xs);
+	align-items: center;
 }
 
 .search {
 	max-width: 240px;
 }
 
-.list {
-	//display: flex;
-	//flex-direction: column;
-}
-
 .listWrapper {
+	position: absolute;
 	height: 100%;
+	width: 100%;
 }
 
 .sort-and-filter {
-	display: flex;
-	flex-direction: row;
-	align-items: center;
-	justify-content: space-between;
+	white-space: nowrap;
 }
 
 .header-loading {
