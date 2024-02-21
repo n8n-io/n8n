@@ -243,8 +243,9 @@ export class CredentialsService {
 		return await this.credentialsTester.testCredentials(user, credentials.type, credentials);
 	}
 
-	// Take data and replace all sensitive values with a sentinel value.
-	// This will replace password fields and oauth data.
+	/** Take data and replace all sensitive values with a sentinel value.
+	 * This will replace password fields and oauth data.
+	 **/
 	redact(data: ICredentialDataDecryptedObject, credential: CredentialsEntity) {
 		const copiedData = deepCopy(data);
 
