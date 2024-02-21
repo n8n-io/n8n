@@ -1,5 +1,5 @@
 import type { Functionality, IDataObject, JsonObject } from '../../Interfaces';
-import { ApplicationError, ReportingOptions } from '../application.error';
+import { ApplicationError, type ReportingOptions } from '../application.error';
 
 interface ExecutionBaseErrorOptions extends ReportingOptions {
 	cause?: Error;
