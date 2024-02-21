@@ -172,7 +172,7 @@ export const description: SheetProperties = [
 			show: {
 				resource: ['sheet'],
 				operation: ['appendOrUpdate'],
-				'@version': [4, 4.1, 4.2],
+				'@version': [{ _cnd: { gte: 4 } }],
 			},
 			hide: {
 				...untilSheetSelected,
