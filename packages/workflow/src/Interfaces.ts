@@ -2083,7 +2083,6 @@ export type WorkflowActivateMode =
 	| 'leadershipChange';
 
 export interface IWorkflowHooksOptionalParameters {
-	parentProcessMode?: string;
 	retryOf?: string;
 	sessionId?: string;
 }
