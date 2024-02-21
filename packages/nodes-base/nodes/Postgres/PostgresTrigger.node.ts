@@ -237,7 +237,7 @@ export class PostgresTrigger implements INodeType {
 			this.emit([this.helpers.returnJsonArray([data])]);
 		};
 
-		// create trigger, funstion and channel or use existing channel
+		// create trigger, function and channel or use existing channel
 		const pgNames = prepareNames(this.getNode().id, this.getMode(), additionalFields);
 		if (triggerMode === 'createTrigger') {
 			await pgTriggerFunction.call(
@@ -284,7 +284,7 @@ export class PostgresTrigger implements INodeType {
 					`Postgres Trigger Error: ${(error as Error).message}`,
 				);
 			} finally {
-				await db.$pool.end();
+				if (!db.$pool.ending) await db.$pool.end();
 			}
 		};
 
