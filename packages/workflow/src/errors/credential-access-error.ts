@@ -10,16 +10,15 @@ export class CredentialAccessError extends ExecutionBaseError {
 	constructor(
 		readonly node: INode,
 		credentialId: string,
-		workflow: { id: string; name?: string },
+		workflowId: string,
 	) {
 		super('Node has no access to credential', {
 			tags: {
 				nodeType: node.type,
 			},
 			extra: {
-				workflowId: workflow.id,
-				workflowName: workflow.name ?? '',
 				credentialId,
+				workflowId,
 			},
 		});
 	}
