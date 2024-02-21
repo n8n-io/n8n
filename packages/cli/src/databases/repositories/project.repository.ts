@@ -2,6 +2,7 @@ import { Service } from 'typedi';
 import type { EntityManager } from '@n8n/typeorm';
 import { DataSource, Repository, In } from '@n8n/typeorm';
 import { Project } from '../entities/Project';
+import { ProjectRelation } from '../entities/ProjectRelation';
 
 @Service()
 export class ProjectRepository extends Repository<Project> {
@@ -43,5 +44,22 @@ export class ProjectRepository extends Repository<Project> {
 				projectRelations: { userId: In(userIds) },
 			},
 		});
+	}
+
+	async createProjectForUser(userId: string, entityManager?: EntityManager) {
+		entityManager = entityManager ?? this.manager;
+
+		const project = await entityManager.save<Project>(
+			entityManager.create(Project, { type: 'personal' }),
+		);
+		await entityManager.save<ProjectRelation>(
+			entityManager.create(ProjectRelation, {
+				projectId: project.id,
+				userId,
+				role: 'project:personalOwner',
+			}),
+		);
+
+		return project;
 	}
 }

@@ -4,11 +4,15 @@ import { DataSource, In, IsNull, Not, Repository } from '@n8n/typeorm';
 import type { ListQuery } from '@/requests';
 
 import { type GlobalRole, User } from '../entities/User';
-import { Project } from '../entities/Project';
-import { ProjectRelation } from '../entities/ProjectRelation';
+import type { Project } from '../entities/Project';
+import { ProjectRepository } from './project.repository';
+
 @Service()
 export class UserRepository extends Repository<User> {
-	constructor(dataSource: DataSource) {
+	constructor(
+		dataSource: DataSource,
+		private readonly projectRepository: ProjectRepository,
+	) {
 		super(User, dataSource.manager);
 	}
 
@@ -114,19 +118,9 @@ export class UserRepository extends Repository<User> {
 		const createInner = async (entityManager: EntityManager) => {
 			const newUser = entityManager.create(User, user);
 			const savedUser = await entityManager.save<User>(newUser);
-			const savedProject = await entityManager.save<Project>(
-				entityManager.create(Project, {
-					type: 'personal',
-				}),
-			);
-			await entityManager.save<ProjectRelation>(
-				entityManager.create(ProjectRelation, {
-					projectId: savedProject.id,
-					userId: savedUser.id,
-					role: 'project:personalOwner',
-				}),
-			);
-			return { user: savedUser, project: savedProject };
+			const project = await this.projectRepository.createProjectForUser(newUser.id, entityManager);
+
+			return { user: savedUser, project };
 		};
 		if (transactionManager) {
 			return await createInner(transactionManager);
