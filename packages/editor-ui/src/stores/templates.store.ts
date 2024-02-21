@@ -40,6 +40,7 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 		workflowSearches: {},
 		currentSessionId: '',
 		previousSessionId: '',
+		currentN8nPath: `${window.location.protocol}//${window.location.host}${window.BASE_PATH}`,
 	}),
 	getters: {
 		allCategories(): ITemplatesCategory[] {
@@ -120,7 +121,7 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 		 */
 		getWebsiteTemplateRepositoryURL(): string {
 			return `${TEMPLATES_URLS.BASE_WEBSITE_URL}?${TEMPLATES_URLS.UTM_QUERY}&utm_instance=${
-				this.getCurrentN8nPath
+				this.currentN8nPath
 			}&utm_n8n_version=${useRootStore().versionCli}`;
 		},
 		/**
@@ -130,7 +131,7 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 		getWebsiteTemplatePageURL() {
 			return (id: string) => {
 				return `${TEMPLATES_URLS.BASE_WEBSITE_URL}/${id}?${TEMPLATES_URLS.UTM_QUERY}&utm_instance=${
-					this.getCurrentN8nPath
+					this.currentN8nPath
 				}&utm_n8n_version=${useRootStore().versionCli}`;
 			};
 		},
@@ -142,11 +143,8 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 			return (id: string) => {
 				return `${TEMPLATES_URLS.BASE_WEBSITE_URL}/?categories=${id}&${
 					TEMPLATES_URLS.UTM_QUERY
-				}&utm_instance=${this.getCurrentN8nPath}&utm_n8n_version=${useRootStore().versionCli}`;
+				}&utm_instance=${this.currentN8nPath}&utm_n8n_version=${useRootStore().versionCli}`;
 			};
-		},
-		getCurrentN8nPath(): string {
-			return `${window.location.protocol}//${window.location.host}${window.BASE_PATH}`;
 		},
 	},
 	actions: {
