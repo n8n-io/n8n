@@ -58,7 +58,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			sshClient.end();
 		}
 
-		await db.$pool.end();
+		if (!db.$pool.ending) await db.$pool.end();
 	}
 
 	return [returnData];
