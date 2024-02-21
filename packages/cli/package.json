@@ -37,8 +37,7 @@
     "test:sqlite": "N8N_LOG_LEVEL=silent DB_TYPE=sqlite jest",
     "test:postgres": "N8N_LOG_LEVEL=silent DB_TYPE=postgresdb DB_POSTGRESDB_SCHEMA=alt_schema DB_TABLE_PREFIX=test_ jest --no-coverage",
     "test:mysql": "N8N_LOG_LEVEL=silent DB_TYPE=mysqldb DB_TABLE_PREFIX=test_ jest --no-coverage",
-    "watch": "concurrently \"tsc -w -p tsconfig.build.json\" \"tsc-alias -w -p tsconfig.build.json\"",
-    "typeorm": "node ../../node_modules/typeorm/cli.js"
+    "watch": "concurrently \"tsc -w -p tsconfig.build.json\" \"tsc-alias -w -p tsconfig.build.json\""
   },
   "bin": {
     "n8n": "./bin/n8n"
@@ -97,7 +96,7 @@
     "@n8n/localtunnel": "2.1.0",
     "@n8n/n8n-nodes-langchain": "workspace:*",
     "@n8n/permissions": "workspace:*",
-    "@n8n/typeorm": "0.3.20-2",
+    "@n8n/typeorm": "0.3.20-3",
     "@n8n_io/license-sdk": "2.10.0",
     "@oclif/core": "3.18.1",
     "@rudderstack/rudder-sdk-node": "2.0.7",

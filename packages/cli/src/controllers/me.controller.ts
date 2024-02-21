@@ -104,12 +104,13 @@ export class MeController {
 	 */
 	@Patch('/password')
 	async updatePassword(req: MeRequest.Password, res: Response) {
+		const { user } = req;
 		const { currentPassword, newPassword } = req.body;
 
 		// If SAML is enabled, we don't allow the user to change their email address
 		if (isSamlLicensedAndEnabled()) {
 			this.logger.debug('Attempted to change password for user, while SAML is enabled', {
-				userId: req.user?.id,
+				userId: user.id,
 			});
 			throw new BadRequestError(
 				'With SAML enabled, users need to use their SAML provider to change passwords',
@@ -120,33 +121,30 @@ export class MeController {
 			throw new BadRequestError('Invalid payload.');
 		}
 
-		if (!req.user.password) {
+		if (!user.password) {
 			throw new BadRequestError('Requesting user not set up.');
 		}
 
-		const isCurrentPwCorrect = await this.passwordUtility.compare(
-			currentPassword,
-			req.user.password,
-		);
+		const isCurrentPwCorrect = await this.passwordUtility.compare(currentPassword, user.password);
 		if (!isCurrentPwCorrect) {
 			throw new BadRequestError('Provided current password is incorrect.');
 		}
 
 		const validPassword = this.passwordUtility.validate(newPassword);
 
-		req.user.password = await this.passwordUtility.hash(validPassword);
+		user.password = await this.passwordUtility.hash(validPassword);
 
-		const user = await this.userRepository.save(req.user);
+		const updatedUser = await this.userRepository.save(user, { transaction: false });
 		this.logger.info('Password updated successfully', { userId: user.id });
 
-		await issueCookie(res, user);
+		await issueCookie(res, updatedUser);
 
 		void this.internalHooks.onUserUpdate({
-			user,
+			user: updatedUser,
 			fields_changed: ['password'],
 		});
 
-		await this.externalHooks.run('user.password.update', [user.email, req.user.password]);
+		await this.externalHooks.run('user.password.update', [updatedUser.email, updatedUser.password]);
 
 		return { success: true };
 	}
@@ -168,11 +166,13 @@ export class MeController {
 			throw new BadRequestError('Personalization answers are mandatory');
 		}
 
-		await this.userRepository.save({
-			id: req.user.id,
-			// @ts-ignore
-			personalizationAnswers,
-		});
+		await this.userRepository.save(
+			{
+				id: req.user.id,
+				personalizationAnswers,
+			},
+			{ transaction: false },
+		);
 
 		this.logger.info('User survey updated successfully', { userId: req.user.id });
 
