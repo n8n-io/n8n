@@ -11,6 +11,7 @@ import type { IncomingMessage } from 'http';
 import { mock } from 'jest-mock-extended';
 import type {
 	IBinaryData,
+	IHttpRequestMethods,
 	INode,
 	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
@@ -317,6 +318,7 @@ describe('NodeExecuteFunctions', () => {
 						'X-Other-Header': 'otherHeaderContent',
 					},
 					resolveWithFullResponse: true,
+					followRedirect: true,
 				});
 
 				expect(response.statusCode).toBe(200);
@@ -334,6 +336,7 @@ describe('NodeExecuteFunctions', () => {
 				const response = await proxyRequestToAxios(workflow, additionalData, node, {
 					url: `${baseUrl}/redirect`,
 					resolveWithFullResponse: true,
+					followRedirect: true,
 				});
 
 				expect(response).toMatchObject({
@@ -367,6 +370,46 @@ describe('NodeExecuteFunctions', () => {
 				headers: { Host: 'other.host.com' },
 			});
 			expect((axiosOptions.httpsAgent as Agent).options.servername).toEqual('example.de');
+		});
+
+		describe('when followRedirect is true', () => {
+			test.each(['GET', 'HEAD'] as IHttpRequestMethods[])(
+				'should set maxRedirects on %s ',
+				async (method) => {
+					const axiosOptions = await parseRequestObject({
+						method,
+						followRedirect: true,
+						maxRedirects: 1234,
+					});
+					expect(axiosOptions.maxRedirects).toEqual(1234);
+				},
+			);
+
+			test.each(['POST', 'PUT', 'PATCH', 'DELETE'] as IHttpRequestMethods[])(
+				'should not set maxRedirects on %s ',
+				async (method) => {
+					const axiosOptions = await parseRequestObject({
+						method,
+						followRedirect: true,
+						maxRedirects: 1234,
+					});
+					expect(axiosOptions.maxRedirects).toEqual(0);
+				},
+			);
+		});
+
+		describe('when followAllRedirects is true', () => {
+			test.each(['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE'] as IHttpRequestMethods[])(
+				'should set maxRedirects on %s ',
+				async (method) => {
+					const axiosOptions = await parseRequestObject({
+						method,
+						followAllRedirects: true,
+						maxRedirects: 1234,
+					});
+					expect(axiosOptions.maxRedirects).toEqual(1234);
+				},
+			);
 		});
 	});
 
