@@ -139,7 +139,7 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 			};
 		},
 		getCurrentN8nPath(): string {
-			return `${window.location.host}${window.BASE_PATH}`;
+			return `${window.location.protocol}//${window.location.host}${window.BASE_PATH}`;
 		},
 	},
 	actions: {
