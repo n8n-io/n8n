@@ -1,16 +1,3 @@
-<template>
-	<div :class="$style.projects">
-		<ElMenu :collapse="props.collapsed" class="home">
-			<n8n-menu-item :item="home" :compact="props.collapsed" />
-		</ElMenu>
-		<hr class="mt-m mb-m" />
-		<ElMenu :collapse="props.collapsed" class="pl-xs pr-xs">
-			<n8n-menu-item :item="addProject" :compact="props.collapsed" />
-		</ElMenu>
-		<hr class="mt-m mb-m" />
-	</div>
-</template>
-
 <script lang="ts" setup>
 import type { IMenuItem } from 'n8n-design-system/types';
 import { ref } from 'vue';
@@ -39,6 +26,19 @@ const addProject = ref<IMenuItem>({
 	},
 });
 </script>
+
+<template>
+	<div :class="$style.projects">
+		<ElMenu :collapse="props.collapsed" class="home">
+			<n8n-menu-item :item="home" :compact="props.collapsed" />
+		</ElMenu>
+		<hr class="mt-m mb-m" />
+		<ElMenu :collapse="props.collapsed" class="pl-xs pr-xs">
+			<n8n-menu-item :item="addProject" :compact="props.collapsed" />
+		</ElMenu>
+		<hr class="mt-m mb-m" />
+	</div>
+</template>
 
 <style lang="scss" module>
 .projects {
