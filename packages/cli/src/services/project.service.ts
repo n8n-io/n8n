@@ -13,7 +13,6 @@ import { RoleService } from './role.service';
 @Service()
 export class ProjectService {
 	constructor(
-		private readonly projectsRepository: ProjectRepository,
 		private readonly projectRepository: ProjectRepository,
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly roleService: RoleService,
@@ -22,9 +21,9 @@ export class ProjectService {
 	async getAccessibleProjects(user: User): Promise<Project[]> {
 		// This user is probably an admin, show them everything
 		if (user.hasGlobalScope('project:read')) {
-			return await this.projectsRepository.find();
+			return await this.projectRepository.find();
 		}
-		return await this.projectsRepository.getAccessibleProjects(user.id);
+		return await this.projectRepository.getAccessibleProjects(user.id);
 	}
 
 	async getPersonalProjectOwners(projectIds: string[]): Promise<ProjectRelation[]> {
@@ -45,7 +44,7 @@ export class ProjectService {
 			} else if (pr) {
 				name = pr.user.email;
 			}
-			return this.projectsRepository.create({
+			return this.projectRepository.create({
 				...p,
 				name,
 			});
@@ -53,8 +52,8 @@ export class ProjectService {
 	}
 
 	async createTeamProject(name: string, adminUser: User): Promise<Project> {
-		const project = await this.projectsRepository.save(
-			this.projectsRepository.create({
+		const project = await this.projectRepository.save(
+			this.projectRepository.create({
 				name,
 				type: 'team',
 			}),
@@ -73,7 +72,7 @@ export class ProjectService {
 	}
 
 	async getPersonalProject(user: User): Promise<Project | null> {
-		return await this.projectsRepository.getPersonalProjectForUser(user.id);
+		return await this.projectRepository.getPersonalProjectForUser(user.id);
 	}
 
 	async getProjectRelationsForUser(user: User): Promise<ProjectRelation[]> {
@@ -87,7 +86,7 @@ export class ProjectService {
 		projectId: string,
 		relations: Array<{ userId: string; role: ProjectRole }>,
 	) {
-		const project = await this.projectsRepository.findOneOrFail({
+		const project = await this.projectRepository.findOneOrFail({
 			where: { id: projectId, type: Not('personal') },
 		});
 		await this.projectRelationRepository.manager.transaction(async (em) => {
