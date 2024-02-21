@@ -47,7 +47,7 @@ describe('Langchain Integration', () => {
 		addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME, true);
 		addNodeToCanvas(AGENT_NODE_NAME, true);
 
-		addLanguageModelNodeToParent(AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME, AGENT_NODE_NAME);
+		addLanguageModelNodeToParent(AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME, AGENT_NODE_NAME, true);
 		clickGetBackToCanvas();
 
 		addMemoryNodeToParent(AI_MEMORY_WINDOW_BUFFER_MEMORY_NODE_NAME, AGENT_NODE_NAME);
