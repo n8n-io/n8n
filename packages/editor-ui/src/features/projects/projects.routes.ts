@@ -4,6 +4,7 @@ import { VIEWS } from '@/constants';
 const MainSidebar = async () => await import('@/components/MainSidebar.vue');
 const WorkflowsView = async () => await import('@/views/WorkflowsView.vue');
 const CredentialsView = async () => await import('@/views/CredentialsView.vue');
+const ProjectSettings = async () => await import('@/features/projects/ProjectSettings.vue');
 
 const commonChildRoutes: RouteRecordRaw[] = [
 	{
@@ -62,10 +63,24 @@ export const projectsRoutes: RouteRecordRaw[] = [
 					middleware: ['authenticated'],
 				},
 				redirect: { name: VIEWS.PROJECTS_WORKFLOWS },
-				children: commonChildRoutes.map((route, idx) => ({
-					...route,
-					name: commonChildRouteExtensions.projects[idx].name,
-				})),
+				children: commonChildRoutes
+					.map((route, idx) => ({
+						...route,
+						name: commonChildRouteExtensions.projects[idx].name,
+					}))
+					.concat([
+						{
+							path: 'settings',
+							name: VIEWS.PROJECTS_SETTINGS,
+							components: {
+								default: ProjectSettings,
+								sidebar: MainSidebar,
+							},
+							meta: {
+								middleware: ['authenticated'],
+							},
+						},
+					]),
 			},
 		],
 	},
