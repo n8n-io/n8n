@@ -109,7 +109,11 @@ watch(state.paramValue, (value) => {
 watch(
 	() => props.value,
 	(value) => {
-		state.paramValue = value;
+		if (isEqual(state.paramValue, value)) return;
+
+		state.paramValue.conditions = value.conditions;
+		state.paramValue.combinator = value.combinator;
+		state.paramValue.options = value.options;
 	},
 );
 
