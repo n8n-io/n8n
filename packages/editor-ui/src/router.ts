@@ -130,15 +130,6 @@ export const routes = [
 			},
 			middleware: ['authenticated'],
 		},
-		beforeEnter: (to, _from, next) => {
-			const templatesStore = useTemplatesStore();
-			if (!templatesStore.hasCustomTemplatesHost) {
-				const id = Array.isArray(to.params.id) ? to.params.id[0] : to.params.id;
-				window.location.href = templatesStore.getWebsiteTemplatePageURL(id);
-			} else {
-				next();
-			}
-		},
 	},
 	{
 		path: '/templates/:id/setup',
