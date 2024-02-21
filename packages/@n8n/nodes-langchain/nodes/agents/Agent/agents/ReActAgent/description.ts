@@ -36,9 +36,7 @@ export const reActAgentAgentProperties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				agent: ['reActAgent'],
-			},
-			hide: {
-				'@version': [1, 1.1],
+				'@version': [1.2],
 			},
 		},
 		default: '={{ $json.chatInput }}',

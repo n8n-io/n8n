@@ -34,10 +34,8 @@ export const conversationalAgentProperties: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		displayOptions: {
-			hide: {
-				'@version': [1, 1.1],
-			},
 			show: {
+				'@version': [1.2],
 				agent: ['conversationalAgent'],
 			},
 		},

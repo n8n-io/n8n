@@ -29,6 +29,7 @@ function getInputs(
 	interface SpecialInput {
 		type: ConnectionTypes;
 		filter?: INodeInputFilter;
+		required?: boolean;
 	}
 
 	const getInputData = (
@@ -41,7 +42,7 @@ function getInputs(
 			[NodeConnectionType.AiOutputParser]: 'Output Parser',
 		};
 
-		return inputs.map(({ type, filter }) => {
+		return inputs.map(({ type, filter, required }) => {
 			const input: INodeInputConfiguration = {
 				type,
 				displayName: type in displayNames ? displayNames[type] : undefined,
@@ -100,6 +101,7 @@ function getInputs(
 			},
 			{
 				type: NodeConnectionType.AiTool,
+				required: true,
 			},
 			{
 				type: NodeConnectionType.AiOutputParser,
@@ -250,7 +252,48 @@ export class Agent implements INodeType {
 				],
 				default: 'conversationalAgent',
 			},
-
+			{
+				displayName: 'Prompt',
+				name: 'promptType',
+				type: 'options',
+				options: [
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'Take from previous node automatically',
+						value: 'auto',
+						description: 'Looks for an input field called chatInput',
+					},
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'Define below',
+						value: 'define',
+						description:
+							'Use an expression to reference data in previous nodes or enter static text',
+					},
+				],
+				displayOptions: {
+					hide: {
+						'@version': [1, 1.1, 1.2],
+					},
+				},
+				default: 'auto',
+			},
+			{
+				displayName: 'Text',
+				name: 'text',
+				type: 'string',
+				required: true,
+				default: '',
+				placeholder: 'e.g. Hello, how can you help me?',
+				typeOptions: {
+					rows: 2,
+				},
+				displayOptions: {
+					show: {
+						promptType: ['define'],
+					},
+				},
+			},
 			{
 				displayName: 'Require Specific Output Format',
 				name: 'hasOutputParser',
