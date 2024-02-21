@@ -149,6 +149,9 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 
 // eslint-disable-next-line import/no-unresolved
 import MessageTyping from '@n8n/chat/components/MessageTyping.vue';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useRouter } from 'vue-router';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 const RunDataAi = defineAsyncComponent(
 	async () => await import('@/components/RunDataAi/RunDataAi.vue'),
@@ -180,10 +183,13 @@ export default defineComponent({
 	},
 	mixins: [workflowRun],
 	setup(props, ctx) {
+		const router = useRouter();
 		const externalHooks = useExternalHooks();
+		const workflowHelpers = useWorkflowHelpers(router);
 
 		return {
 			externalHooks,
+			workflowHelpers,
 			...useToast(),
 			// eslint-disable-next-line @typescript-eslint/no-misused-promises
 			...workflowRun.setup?.(props, ctx),
@@ -197,11 +203,12 @@ export default defineComponent({
 			modalBus: createEventBus(),
 			node: null as INodeUi | null,
 			WORKFLOW_LM_CHAT_MODAL_KEY,
+			previousMessageIndex: 0,
 		};
 	},
 
 	computed: {
-		...mapStores(useWorkflowsStore, useUIStore),
+		...mapStores(useWorkflowsStore, useUIStore, useNodeTypesStore),
 		isLoading(): boolean {
 			return this.uiStore.isActionActive('workflowRunning');
 		},
@@ -210,10 +217,12 @@ export default defineComponent({
 		this.setConnectedNode();
 		this.messages = this.getChatMessages();
 		this.setNode();
+
+		setTimeout(() => this.$refs.inputField.focus(), 0);
 	},
 	methods: {
 		displayExecution(executionId: string) {
-			const workflow = this.getCurrentWorkflow();
+			const workflow = this.workflowHelpers.getCurrentWorkflow();
 			const route = this.$router.resolve({
 				name: VIEWS.EXECUTION_PREVIEW,
 				params: { name: workflow.id, executionId },
@@ -229,6 +238,20 @@ export default defineComponent({
 			inputField.focus();
 		},
 		updated(event: KeyboardEvent) {
+			const pastMessages = this.workflowsStore.getPastChatMessages;
+			if (
+				(this.currentMessage.length === 0 || pastMessages.includes(this.currentMessage)) &&
+				event.key === 'ArrowUp'
+			) {
+				const inputField = this.$refs.inputField as HTMLInputElement;
+
+				inputField.blur();
+				this.currentMessage =
+					pastMessages[pastMessages.length - 1 - this.previousMessageIndex] ?? '';
+				this.previousMessageIndex = (this.previousMessageIndex + 1) % pastMessages.length;
+				// Refocus to move the cursor to the end of the input
+				setTimeout(() => inputField.focus(), 0);
+			}
 			if (event.key === 'Enter' && !event.shiftKey && this.currentMessage) {
 				void this.sendChatMessage(this.currentMessage);
 				event.stopPropagation();
@@ -249,6 +272,7 @@ export default defineComponent({
 			} as ChatMessage);
 
 			this.currentMessage = '';
+			this.previousMessageIndex = 0;
 			await this.$nextTick();
 			this.scrollToLatestMessage();
 			await this.startWorkflowWithMessage(message);
@@ -264,7 +288,7 @@ export default defineComponent({
 				);
 				return;
 			}
-			const workflow = this.getCurrentWorkflow();
+			const workflow = this.workflowHelpers.getCurrentWorkflow();
 
 			const chatNode = this.workflowsStore.getNodes().find((node: INodeUi): boolean => {
 				const nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
@@ -317,7 +341,7 @@ export default defineComponent({
 		getChatMessages(): ChatMessage[] {
 			if (!this.connectedNode) return [];
 
-			const workflow = this.getCurrentWorkflow();
+			const workflow = this.workflowHelpers.getCurrentWorkflow();
 			const connectedMemoryInputs =
 				workflow.connectionsByDestinationNode[this.connectedNode.name][NodeConnectionType.AiMemory];
 			if (!connectedMemoryInputs) return [];
@@ -369,7 +393,7 @@ export default defineComponent({
 				return;
 			}
 
-			const workflow = this.getCurrentWorkflow();
+			const workflow = this.workflowHelpers.getCurrentWorkflow();
 			const childNodes = workflow.getChildNodes(triggerNode.name);
 
 			for (const childNode of childNodes) {
@@ -389,7 +413,7 @@ export default defineComponent({
 		},
 
 		getTriggerNode(): INode | null {
-			const workflow = this.getCurrentWorkflow();
+			const workflow = this.workflowHelpers.getCurrentWorkflow();
 			const triggerNode = workflow.queryNodes((nodeType: INodeType) =>
 				[CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE].includes(nodeType.description.name),
 			);
@@ -448,6 +472,7 @@ export default defineComponent({
 				source: 'RunData.ManualChatMessage',
 			});
 
+			this.workflowsStore.appendChatMessage(message);
 			if (!response) {
 				this.showError(
 					new Error('It was not possible to start workflow!'),
@@ -487,8 +512,8 @@ export default defineComponent({
 
 					let responseMessage: string;
 
-					if (get(nodeResponseData, ['error'])) {
-						responseMessage = '[ERROR: ' + get(nodeResponseData, ['error', 'message']) + ']';
+					if (get(nodeResponseData, 'error')) {
+						responseMessage = '[ERROR: ' + get(nodeResponseData, 'error.message') + ']';
 					} else {
 						const responseData = get(nodeResponseData, 'data.main[0][0].json');
 						responseMessage = this.extractResponseMessage(responseData);

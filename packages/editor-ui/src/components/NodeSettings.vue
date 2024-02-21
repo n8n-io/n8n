@@ -1181,7 +1181,7 @@ export default defineComponent({
 
 	.node-parameters-wrapper {
 		overflow-y: auto;
-		padding: var(--spacing-xl) var(--spacing-m) var(--spacing-l) var(--spacing-m);
+		padding: 0 var(--spacing-m) var(--spacing-l) var(--spacing-m);
 		flex-grow: 1;
 	}
 

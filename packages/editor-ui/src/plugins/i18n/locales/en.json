@@ -140,7 +140,7 @@
 	"chat.window.logs": "Log (for last message)",
 	"chat.window.noChatNode": "No Chat Node",
 	"chat.window.noExecution": "Nothing got executed yet",
-	"chat.window.chat.placeholder": "Type in message",
+	"chat.window.chat.placeholder": "Type a message, or press ‘up’ arrow for previous one",
 	"chat.window.chat.sendButtonText": "Send",
 	"chat.window.chat.provideMessage": "Please provide a message",
 	"chat.window.chat.emptyChatMessage": "Empty chat message",
