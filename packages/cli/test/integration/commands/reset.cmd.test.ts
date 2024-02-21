@@ -15,12 +15,12 @@ import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
 import { createCredential } from '../shared/db/credentials';
 import { SharedCredentialsRepository } from '@/databases/repositories/sharedCredentials.repository';
-import { continueOnFail } from 'n8n-core';
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
 
 let userRepository: UserRepository;
 let settingsRepository: SettingsRepository;
+let projectRepository: ProjectRepository;
+let sharedWorkflowRepository: SharedWorkflowRepository;
+let sharedCredentialsRepository: SharedCredentialsRepository;
 
 beforeAll(async () => {
 	mockInstance(InternalHooks);
@@ -29,10 +29,13 @@ beforeAll(async () => {
 	await testDb.init();
 	userRepository = Container.get(UserRepository);
 	settingsRepository = Container.get(SettingsRepository);
+	projectRepository = Container.get(ProjectRepository);
+	sharedWorkflowRepository = Container.get(SharedWorkflowRepository);
+	sharedCredentialsRepository = Container.get(SharedCredentialsRepository);
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['User']);
+	await testDb.truncate(['User', 'Credentials', 'Project', 'Workflow']);
 });
 
 afterAll(async () => {
@@ -80,9 +83,7 @@ test('user-management:reset should reset all workflows', async () => {
 	// ARRANGE
 	//
 	const owner = await createOwner();
-	const ownerPersonalProject = await Container.get(
-		ProjectRepository,
-	).getPersonalProjectForUserOrFail(owner.id);
+	const ownerPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
 	const member = await createMember();
 	const workflow = await createWorkflow(undefined, member);
 
@@ -94,9 +95,7 @@ test('user-management:reset should reset all workflows', async () => {
 	//
 	// ASSERT
 	//
-	const [sharedWorkflow] = await Container.get(SharedWorkflowRepository).findByWorkflowIds([
-		workflow.id,
-	]);
+	const [sharedWorkflow] = await sharedWorkflowRepository.findByWorkflowIds([workflow.id]);
 	expect(sharedWorkflow).toBeDefined();
 	expect(sharedWorkflow.projectId).toBe(ownerPersonalProject.id);
 });
@@ -106,9 +105,7 @@ test('user-management:reset should reset all credentials', async () => {
 	// ARRANGE
 	//
 	const owner = await createOwner();
-	const ownerPersonalProject = await Container.get(
-		ProjectRepository,
-	).getPersonalProjectForUserOrFail(owner.id);
+	const ownerPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
 	const member = await createMember();
 	const credential = await createCredential(
 		{
@@ -128,7 +125,7 @@ test('user-management:reset should reset all credentials', async () => {
 	//
 	// ASSERT
 	//
-	const sharedCredential = await Container.get(SharedCredentialsRepository).findOneByOrFail({
+	const sharedCredential = await sharedCredentialsRepository.findOneByOrFail({
 		credentialsId: credential.id,
 	});
 	expect(sharedCredential.projectId).toBe(ownerPersonalProject.id);
@@ -139,9 +136,7 @@ test('user-management:reset should re-own all orphaned credentials', async () =>
 	// ARRANGE
 	//
 	const owner = await createOwner();
-	const ownerPersonalProject = await Container.get(
-		ProjectRepository,
-	).getPersonalProjectForUserOrFail(owner.id);
+	const ownerPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
 	const credential = await createCredential(
 		{
 			name: 'foobar',
@@ -151,7 +146,7 @@ test('user-management:reset should re-own all orphaned credentials', async () =>
 		},
 		{ user: owner, role: 'credential:owner' },
 	);
-	await Container.get(SharedCredentialsRepository).delete({ credentialsId: credential.id });
+	await sharedCredentialsRepository.delete({ credentialsId: credential.id });
 
 	//
 	// ACT
@@ -161,9 +156,7 @@ test('user-management:reset should re-own all orphaned credentials', async () =>
 	//
 	// ASSERT
 	//
-	const sharedCredentialAfterReset = await Container.get(
-		SharedCredentialsRepository,
-	).findOneByOrFail({
+	const sharedCredentialAfterReset = await sharedCredentialsRepository.findOneByOrFail({
 		credentialsId: credential.id,
 	});
 
@@ -175,10 +168,8 @@ test('user-management:reset should create a personal project if there is none', 
 	// ARRANGE
 	//
 	const owner = await createOwner();
-	await Container.get(ProjectRepository).delete({});
-	await expect(
-		Container.get(ProjectRepository).getPersonalProjectForUser(owner.id),
-	).resolves.toBeNull();
+	await projectRepository.delete({});
+	await expect(projectRepository.getPersonalProjectForUser(owner.id)).resolves.toBeNull();
 
 	//
 	// ACT
@@ -188,16 +179,14 @@ test('user-management:reset should create a personal project if there is none', 
 	//
 	// ASSERT
 	//
-	await expect(
-		Container.get(ProjectRepository).getPersonalProjectForUser(owner.id),
-	).resolves.not.toBeNull();
+	await expect(projectRepository.getPersonalProjectForUser(owner.id)).resolves.not.toBeNull();
 });
 
 test('user-management:reset should create an owner if there is none', async () => {
 	//
 	// ARRANGE
 	//
-	let owner = await Container.get(UserRepository).findOneBy({ role: 'global:owner' });
+	let owner = await userRepository.findOneBy({ role: 'global:owner' });
 	expect(owner).toBeNull();
 
 	//
@@ -208,7 +197,7 @@ test('user-management:reset should create an owner if there is none', async () =
 	//
 	// ASSERT
 	//
-	owner = await Container.get(UserRepository).findOneBy({ role: 'global:owner' });
+	owner = await userRepository.findOneBy({ role: 'global:owner' });
 
 	if (!owner) {
 		fail('Expected owner to be defined.');
