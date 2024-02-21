@@ -107,6 +107,9 @@ export const routes = [
 			middleware: ['authenticated'],
 		},
 	},
+	// Single workflow view, this is no longer used in-app
+	// but is still reachable via direct link so we can redirect to it from the website
+	// an use for some other purposes (like template reviewing)
 	{
 		path: '/templates/:id',
 		name: VIEWS.TEMPLATE,
