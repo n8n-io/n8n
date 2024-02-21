@@ -787,8 +787,9 @@ export default defineComponent({
 }
 
 .data-display-wrapper {
-	height: calc(100% - var(--spacing-2xl));
+	height: calc(100% - var(--spacing-l)) !important;
 	margin-top: var(--spacing-xl) !important;
+	margin-bottom: var(--spacing-xl) !important;
 	width: 100%;
 	background: none;
 	border: none;

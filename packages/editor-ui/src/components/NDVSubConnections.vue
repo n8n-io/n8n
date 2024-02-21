@@ -11,7 +11,10 @@
 			>
 				<div :class="$style.connectionType">
 					<span
-						:class="$style.connectionLabel"
+						:class="{
+							[$style.connectionLabel]: true,
+							[$style.hasIssues]: hasInputIssues(connection.type),
+						}"
 						v-text="`${connection.displayName}${connection.required ? ' *' : ''}`"
 					/>
 					<div
@@ -23,6 +26,43 @@
 						:style="`--nodes-length: ${connectedNodes[connection.type].length}`"
 						@click="expandConnectionGroup(connection.type, true)"
 					>
+						<div
+							v-if="
+								connectedNodes[connection.type].length >= 1 ? connection.maxConnections !== 1 : true
+							"
+							:class="{
+								[$style.plusButton]: true,
+								[$style.hasIssues]: hasInputIssues(connection.type),
+							}"
+							@click="onPlusClick(connection.type)"
+						>
+							<n8n-tooltip
+								placement="top"
+								:teleported="true"
+								:offset="10"
+								:show-after="300"
+								:disabled="
+									shouldShowConnectionTooltip(connection.type) &&
+									connectedNodes[connection.type].length >= 1
+								"
+							>
+								<template #content>
+									Add {{ connection.displayName }}
+									<template v-if="hasInputIssues(connection.type)">
+										<TitledList
+											:title="`${$locale.baseText('node.issues')}:`"
+											:items="nodeInputIssues[connection.type]"
+										/>
+									</template>
+								</template>
+								<n8n-icon-button
+									size="medium"
+									icon="plus"
+									type="tertiary"
+									:data-test-id="`add-subnode-${connection.type}`"
+								/>
+							</n8n-tooltip>
+						</div>
 						<div
 							v-if="connectedNodes[connection.type].length > 0"
 							:class="{
@@ -71,32 +111,6 @@
 								</n8n-tooltip>
 							</div>
 						</div>
-						<div
-							v-if="
-								connectedNodes[connection.type].length >= 1 ? connection.maxConnections !== 1 : true
-							"
-							:class="$style.plusButton"
-							@click="onPlusClick(connection.type)"
-						>
-							<n8n-tooltip
-								placement="top"
-								:teleported="true"
-								:offset="10"
-								:show-after="300"
-								:disabled="
-									shouldShowConnectionTooltip(connection.type) &&
-									connectedNodes[connection.type].length >= 1
-								"
-							>
-								<template #content> Add {{ connection.displayName }} </template>
-								<n8n-icon-button
-									size="medium"
-									icon="plus"
-									type="tertiary"
-									:data-test-id="`add-subnode-${connection.type}`"
-								/>
-							</n8n-tooltip>
-						</div>
 					</div>
 				</div>
 			</div>
@@ -136,6 +150,7 @@ interface NodeConfig {
 const possibleConnections = ref<INodeInputConfiguration[]>([]);
 
 const expandedGroups = ref<ConnectionTypes[]>([]);
+const shouldShowNodeInputIssues = ref(false);
 
 const nodeType = computed(() =>
 	nodeTypesStore.getNodeType(props.rootNode.type, props.rootNode.typeVersion),
@@ -144,6 +159,28 @@ const nodeType = computed(() =>
 const nodeData = computed(() => workflowsStore.getNodeByName(props.rootNode.name));
 
 const workflow = computed(() => workflowsStore.getCurrentWorkflow());
+
+const nodeInputIssues = computed(() => {
+	const issues = nodeHelpers.getNodeIssues(nodeType.value, props.rootNode, workflow.value, [
+		'typeUnknown',
+		'parameters',
+		'credentials',
+		'execution',
+	]);
+	return issues?.input ?? {};
+});
+
+const connectedNodes = computed<Record<ConnectionTypes, NodeConfig[]>>(() => {
+	return possibleConnections.value.reduce(
+		(acc, connection) => {
+			const nodes = getINodesFromNames(
+				workflow.value.getParentNodes(props.rootNode.name, connection.type),
+			);
+			return { ...acc, [connection.type]: nodes };
+		},
+		{} as Record<ConnectionTypes, NodeConfig[]>,
+	);
+});
 
 function getConnectionConfig(connectionType: ConnectionTypes) {
 	return possibleConnections.value.find((c) => c.type === connectionType);
@@ -188,17 +225,11 @@ function getINodesFromNames(names: string[]): NodeConfig[] {
 		.filter((n): n is NodeConfig => n !== null);
 }
 
-const connectedNodes = computed<Record<ConnectionTypes, NodeConfig[]>>(() => {
-	return possibleConnections.value.reduce(
-		(acc, connection) => {
-			const nodes = getINodesFromNames(
-				workflow.value.getParentNodes(props.rootNode.name, connection.type),
-			);
-			return { ...acc, [connection.type]: nodes };
-		},
-		{} as Record<ConnectionTypes, NodeConfig[]>,
+function hasInputIssues(connectionType: ConnectionTypes) {
+	return (
+		shouldShowNodeInputIssues.value && (nodeInputIssues.value[connectionType] ?? []).length > 0
 	);
-});
+}
 
 function isNodeInputConfiguration(
 	connectionConfig: ConnectionTypes | INodeInputConfiguration,
@@ -245,6 +276,15 @@ function onPlusClick(connectionType: ConnectionTypes) {
 	emit('openConnectionNodeCreator', props.rootNode.name, connectionType);
 }
 
+function showNodeInputsIssues() {
+	console.log('showNodeInputsIssues');
+	shouldShowNodeInputIssues.value = false;
+	// Reset animation
+	setTimeout(() => {
+		shouldShowNodeInputIssues.value = true;
+	}, 0);
+}
+
 watch(
 	nodeData,
 	debounce(
@@ -257,9 +297,30 @@ watch(
 	),
 	{ immediate: true },
 );
+
+defineExpose({
+	showNodeInputsIssues,
+});
 </script>
 
 <style lang="scss" module>
+@keyframes horizontal-shake {
+	0% {
+		transform: translateX(0);
+	}
+	25% {
+		transform: translateX(5px);
+	}
+	50% {
+		transform: translateX(-5px);
+	}
+	75% {
+		transform: translateX(5px);
+	}
+	100% {
+		transform: translateX(0);
+	}
+}
 .container {
 	--node-size: 45px;
 	--plus-button-size: 30px;
@@ -291,6 +352,10 @@ watch(
 	font-size: var(--font-size-2xs);
 	user-select: none;
 	text-wrap: nowrap;
+
+	&.hasIssues {
+		color: var(--color-danger);
+	}
 }
 .connectedNodesWrapper {
 	display: flex;
@@ -304,19 +369,23 @@ watch(
 	position: absolute;
 	top: var(--spacing-2xs);
 
-	button {
-		border-radius: 100%;
+	&.hasIssues {
+		animation: horizontal-shake 500ms;
+		button {
+			--button-font-color: var(--color-danger);
+			--button-border-color: var(--color-danger);
+		}
 	}
 
-	&:not(:first-child) {
+	&:not(:last-child) {
 		z-index: 1;
-		right: calc(var(--spacing-4xs) * -1);
-		// Offset the plus button so it's hidden below the collapsed nodes
+		right: 100%;
+		margin-right: calc((var(--plus-button-size) * -1) * 0.9);
 		pointer-events: none;
 
 		.connectedNodesWrapperExpanded & {
-			left: 100%;
-			margin-left: var(--spacing-2xs);
+			// left: 100%;
+			margin-right: var(--spacing-2xs);
 			opacity: 1;
 			pointer-events: all;
 		}
@@ -359,7 +428,7 @@ watch(
 		margin-right: 0;
 		// Negative margin to offset the absolutely positioned plus button
 		// when the nodes are expanded to center the nodes
-		margin-left: calc((var(--spacing-2xs) + var(--plus-button-size)) * -1);
+		margin-right: calc((var(--spacing-2xs) + var(--plus-button-size)) * -1);
 	}
 }
 .nodeWrapper {

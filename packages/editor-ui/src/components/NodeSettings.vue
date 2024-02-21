@@ -167,6 +167,7 @@
 		</div>
 		<NDVSubConnections
 			v-if="node"
+			ref="subConnections"
 			:root-node="node"
 			@switchSelectedNode="onSwitchSelectedNode"
 			@openConnectionNodeCreator="onOpenConnectionNodeCreator"
@@ -627,6 +628,7 @@ export default defineComponent({
 		},
 		onNodeExecute() {
 			this.hiddenIssuesInputs = [];
+			(this.$refs.subConnections as InstanceType<typeof NDVSubConnections>)?.showNodeInputsIssues();
 			this.$emit('execute');
 		},
 		setValue(name: string, value: NodeParameterValue) {
