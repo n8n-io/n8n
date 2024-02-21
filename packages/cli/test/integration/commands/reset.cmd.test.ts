@@ -192,3 +192,27 @@ test('user-management:reset should create a personal project if there is none', 
 		Container.get(ProjectRepository).getPersonalProjectForUser(owner.id),
 	).resolves.not.toBeNull();
 });
+
+test('user-management:reset should create an owner if there is none', async () => {
+	//
+	// ARRANGE
+	//
+	let owner = await Container.get(UserRepository).findOneBy({ role: 'global:owner' });
+	expect(owner).toBeNull();
+
+	//
+	// ACT
+	//
+	await Reset.run();
+
+	//
+	// ASSERT
+	//
+	owner = await Container.get(UserRepository).findOneBy({ role: 'global:owner' });
+
+	if (!owner) {
+		fail('Expected owner to be defined.');
+	}
+
+	expect(owner.role).toBe('global:owner');
+});

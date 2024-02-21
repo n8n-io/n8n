@@ -1,6 +1,5 @@
 import { Container } from 'typedi';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
-import { User } from '@db/entities/User';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { SettingsRepository } from '@db/repositories/settings.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
@@ -15,7 +14,7 @@ const defaultUserProps = {
 	email: null,
 	password: null,
 	role: 'global:owner',
-};
+} as const;
 
 export class Reset extends BaseCommand {
 	static description = 'Resets the database to the default user state';
@@ -23,11 +22,15 @@ export class Reset extends BaseCommand {
 	static examples = ['$ n8n user-management:reset'];
 
 	async run(): Promise<void> {
-		const owner = await this.getInstanceOwner();
-		const ownerPersonalProject =
-			(await Container.get(ProjectRepository).getPersonalProjectForUser(owner.id)) ??
-			(await Container.get(ProjectRepository).createProjectForUser(owner.id));
+		const { owner, personalProject } = await this.getInstanceOwnerAndPersonalProject();
 
+		// TODO: Instead of re-owning all workflows and credentials this should
+		// instead add the owner to all projects in the database (except personal
+		// projects)
+		// This retains more of the structure of what was there before.
+		// This is blocked by SharedCredential.userId and SharedWorkflow.userId not
+		// being removed yet. So right now the cascading delete would delete all
+		// workflows and credentials unless the sharings are updated too.
 		await Container.get(SharedWorkflowRepository).makeOwnerOfAllWorkflows(owner);
 		await Container.get(SharedCredentialsRepository).makeOwnerOfAllCredentials(owner);
 
@@ -42,7 +45,7 @@ export class Reset extends BaseCommand {
 		const newSharedCredentials = orphanedCredentials.map((credentials) =>
 			Container.get(SharedCredentialsRepository).create({
 				credentials,
-				projectId: ownerPersonalProject.id,
+				projectId: personalProject.id,
 				role: 'credential:owner',
 				// TODO: Remove this in the future when the userId property is removed
 				// from the SharedWorkflow.
@@ -59,18 +62,22 @@ export class Reset extends BaseCommand {
 		this.logger.info('Successfully reset the database to default user state.');
 	}
 
-	async getInstanceOwner(): Promise<User> {
+	async getInstanceOwnerAndPersonalProject() {
 		const owner = await Container.get(UserRepository).findOneBy({ role: 'global:owner' });
 
-		if (owner) return owner;
+		if (owner) {
+			const personalProject =
+				(await Container.get(ProjectRepository).getPersonalProjectForUser(owner.id)) ??
+				(await Container.get(ProjectRepository).createProjectForUser(owner.id));
 
-		const user = new User();
+			return { owner, personalProject };
+		}
 
-		Object.assign(user, defaultUserProps);
+		const { user, project } = await Container.get(UserRepository).createUserWithProject({
+			role: 'global:owner',
+		});
 
-		await Container.get(UserRepository).save(user);
-
-		return await Container.get(UserRepository).findOneByOrFail({ role: 'global:owner' });
+		return { owner: user, personalProject: project };
 	}
 
 	async catch(error: Error): Promise<void> {
