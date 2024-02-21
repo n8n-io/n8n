@@ -986,11 +986,11 @@ export class WorkflowDataProxy {
 						get(target, property, receiver) {
 							if (property === 'isProxy') return true;
 
-							if (!that?.runExecutionData?.resultData?.runData.hasOwnProperty(nodeName)) {
-								if (property === 'isExecuted') return false;
-								throw createExpressionError(`no data, execute "${nodeName}" node first`);
+							if (property === 'isExecuted') {
+								return (
+									that?.runExecutionData?.resultData?.runData.hasOwnProperty(nodeName) ?? false
+								);
 							}
-							if (property === 'isExecuted') return true;
 
 							if (['pairedItem', 'itemMatching', 'item'].includes(property as string)) {
 								// Before resolving the pairedItem make sure that the requested node comes in the
