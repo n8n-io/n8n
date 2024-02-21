@@ -62,7 +62,7 @@ export class PermissionChecker {
 		const inaccessibleCredId = inaccessibleCredIds[0];
 		const nodeToFlag = credIdsToNodes[inaccessibleCredId][0];
 
-		throw new CredentialAccessError(nodeToFlag, inaccessibleCredId, workflow);
+		throw new CredentialAccessError(nodeToFlag, inaccessibleCredId, workflowId);
 	}
 
 	async checkSubworkflowExecutePolicy(
