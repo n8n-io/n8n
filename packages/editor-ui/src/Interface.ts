@@ -1379,6 +1379,7 @@ export interface ITemplateState {
 	};
 	currentSessionId: string;
 	previousSessionId: string;
+	currentN8nPath: string;
 }
 
 export interface IVersionsState {
