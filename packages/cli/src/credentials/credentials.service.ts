@@ -160,7 +160,7 @@ export class CredentialsService {
 		// Do not overwrite the oauth data else data like the access or refresh token would get lost
 		// every time anybody changes anything on the credentials even if it is just the name.
 		if (decryptedData.oauthTokenData) {
-			// @ts-ignore
+			// @ts-expect-error types don't align
 			updateData.data.oauthTokenData = decryptedData.oauthTokenData;
 		}
 		return updateData;
