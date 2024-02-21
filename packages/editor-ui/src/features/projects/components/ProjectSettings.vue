@@ -71,6 +71,13 @@ const onRoleAction = (user: Partial<IUser>, role: string) => {
 					</template>
 				</n8n-users-list>
 			</fieldset>
+			<fieldset>
+				<div :class="$style.buttons">
+					<span>You have unsaved changes</span>
+					<n8n-button type="secondary">Cancel</n8n-button>
+					<n8n-button type="primary">Save</n8n-button>
+				</div>
+			</fieldset>
 		</form>
 	</div>
 </template>
@@ -93,5 +100,11 @@ const onRoleAction = (user: Partial<IUser>, role: string) => {
 			margin-top: var(--spacing-2xl);
 		}
 	}
+}
+
+.buttons {
+	display: flex;
+	justify-content: flex-end;
+	align-items: center;
 }
 </style>
