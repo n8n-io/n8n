@@ -70,13 +70,13 @@
 							</div>
 							<div class="node-error-view__details-row" v-if="uniqueMessages.length">
 								<p class="node-error-view__details-label">Full message</p>
-								<p
+								<div
 									class="node-error-view__details-value"
 									v-for="(msg, index) in uniqueMessages"
 									:key="index"
 								>
 									<pre><code>{{ msg }}</code></pre>
-								</p>
+								</div>
 							</div>
 						</div>
 					</details>

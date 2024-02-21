@@ -110,9 +110,8 @@ describe('NodeErrors tests', () => {
 
 		expect(nodeOperationError.message).toEqual('The server closed the connection unexpectedly');
 
-		expect(nodeOperationError.description).toEqual(
-			'GETADDRINFO test error message - test error description',
-		);
+		//description should not include error message
+		expect(nodeOperationError.description).toEqual('test error description');
 	});
 
 	it('should remove description if it is equal to message, NodeOperationError', () => {
