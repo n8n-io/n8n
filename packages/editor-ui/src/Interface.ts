@@ -1073,6 +1073,7 @@ export interface WorkflowsState {
 	workflowExecutionData: IExecutionResponse | null;
 	workflowExecutionPairedItemMappings: { [itemId: string]: Set<string> };
 	workflowsById: IWorkflowsMap;
+	chatMessages: string[];
 	isInDebugMode?: boolean;
 }
 
