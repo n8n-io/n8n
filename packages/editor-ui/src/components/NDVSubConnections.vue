@@ -4,7 +4,11 @@
 			:class="$style.connections"
 			:style="`--possible-connections: ${possibleConnections.length}`"
 		>
-			<div v-for="connection in possibleConnections" :key="connection.type">
+			<div
+				v-for="connection in possibleConnections"
+				:key="connection.type"
+				:data-test-id="`subnode-connection-group-${connection.type}`"
+			>
 				<div :class="$style.connectionType">
 					<span
 						:class="$style.connectionLabel"
@@ -30,6 +34,8 @@
 								v-for="(node, index) in connectedNodes[connection.type]"
 								:key="node.node.name"
 								:class="{ [$style.nodeWrapper]: true, [$style.hasIssues]: node.issues }"
+								data-test-id="floating-subnode"
+								:data-node-name="node.node.name"
 								:style="`--node-index: ${index}`"
 							>
 								<n8n-tooltip
@@ -52,8 +58,6 @@
 
 									<div
 										:class="$style.connectedNode"
-										data-test-id="floating-node"
-										:data-node-name="node.node.name"
 										@click="onNodeClick(node.node.name, connection.type)"
 									>
 										<NodeIcon
@@ -85,7 +89,12 @@
 								"
 							>
 								<template #content> Add {{ connection.displayName }} </template>
-								<n8n-icon-button size="medium" icon="plus" type="tertiary" />
+								<n8n-icon-button
+									size="medium"
+									icon="plus"
+									type="tertiary"
+									:data-test-id="`add-subnode-${connection.type}`"
+								/>
 							</n8n-tooltip>
 						</div>
 					</div>
