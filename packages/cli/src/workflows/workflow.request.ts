@@ -4,7 +4,7 @@ import type { INode, IConnections, IWorkflowSettings, IRunData, IPinData } from 
 
 export declare namespace WorkflowRequest {
 	type CreateUpdatePayload = Partial<{
-		id: string; // delete if sent
+		id: string; // deleted if sent
 		name: string;
 		nodes: INode[];
 		connections: IConnections;
@@ -13,6 +13,7 @@ export declare namespace WorkflowRequest {
 		tags: string[];
 		hash: string;
 		meta: Record<string, unknown>;
+		projectId: string;
 	}>;
 
 	type ManualRunPayload = {

@@ -1,4 +1,5 @@
 import { Service } from 'typedi';
+import type { EntityManager } from '@n8n/typeorm';
 import { DataSource, Repository } from '@n8n/typeorm';
 import { Project } from '../entities/Project';
 
@@ -8,8 +9,10 @@ export class ProjectRepository extends Repository<Project> {
 		super(Project, dataSource.manager);
 	}
 
-	async getPersonalProjectForUser(userId: string) {
-		return await this.findOne({
+	async getPersonalProjectForUser(userId: string, entityManager?: EntityManager) {
+		const em = entityManager ?? this.manager;
+
+		return await em.findOne(Project, {
 			where: { type: 'personal', projectRelations: { userId, role: 'project:personalOwner' } },
 		});
 	}

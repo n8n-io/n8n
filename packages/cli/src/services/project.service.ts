@@ -1,24 +1,29 @@
-import type { Project } from '@/databases/entities/Project';
-import { ProjectRelation, type ProjectRole } from '@/databases/entities/ProjectRelation';
+import { Project } from '@/databases/entities/Project';
+import { ProjectRelation } from '@/databases/entities/ProjectRelation';
+import type { ProjectRole } from '@/databases/entities/ProjectRelation';
 import type { User } from '@/databases/entities/User';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
 import { Not, type EntityManager } from '@n8n/typeorm';
 import { Service } from 'typedi';
+import { type Scope } from '@n8n/permissions';
+import { In } from '@n8n/typeorm';
+import { RoleService } from './role.service';
 
 @Service()
 export class ProjectService {
 	constructor(
-		private projectsRepository: ProjectRepository,
-		private projectRelationRepository: ProjectRelationRepository,
+		private readonly projectRepository: ProjectRepository,
+		private readonly projectRelationRepository: ProjectRelationRepository,
+		private readonly roleService: RoleService,
 	) {}
 
 	async getAccessibleProjects(user: User): Promise<Project[]> {
 		// This user is probably an admin, show them everything
 		if (user.hasGlobalScope('project:read')) {
-			return await this.projectsRepository.find();
+			return await this.projectRepository.find();
 		}
-		return await this.projectsRepository.getAccessibleProjects(user.id);
+		return await this.projectRepository.getAccessibleProjects(user.id);
 	}
 
 	async getPersonalProjectOwners(projectIds: string[]): Promise<ProjectRelation[]> {
@@ -39,7 +44,7 @@ export class ProjectService {
 			} else if (pr) {
 				name = pr.user.email;
 			}
-			return this.projectsRepository.create({
+			return this.projectRepository.create({
 				...p,
 				name,
 			});
@@ -47,8 +52,8 @@ export class ProjectService {
 	}
 
 	async createTeamProject(name: string, adminUser: User): Promise<Project> {
-		const project = await this.projectsRepository.save(
-			this.projectsRepository.create({
+		const project = await this.projectRepository.save(
+			this.projectRepository.create({
 				name,
 				type: 'team',
 			}),
@@ -67,7 +72,7 @@ export class ProjectService {
 	}
 
 	async getPersonalProject(user: User): Promise<Project | null> {
-		return await this.projectsRepository.getPersonalProjectForUser(user.id);
+		return await this.projectRepository.getPersonalProjectForUser(user.id);
 	}
 
 	async getProjectRelationsForUser(user: User): Promise<ProjectRelation[]> {
@@ -81,7 +86,7 @@ export class ProjectService {
 		projectId: string,
 		relations: Array<{ userId: string; role: ProjectRole }>,
 	) {
-		const project = await this.projectsRepository.findOneOrFail({
+		const project = await this.projectRepository.findOneOrFail({
 			where: { id: projectId, type: Not('personal') },
 		});
 		await this.projectRelationRepository.manager.transaction(async (em) => {
@@ -109,5 +114,33 @@ export class ProjectService {
 				}),
 			),
 		);
+	}
+
+	async getProjectWithScope(
+		user: User,
+		projectId: string,
+		scope: Scope,
+		entityManager?: EntityManager,
+	) {
+		const em = entityManager ?? this.projectRepository.manager;
+		const projectRoles = this.roleService.rolesWithScope('project', [scope]);
+
+		return await em.findOne(Project, {
+			where: {
+				id: projectId,
+				projectRelations: {
+					role: In(projectRoles),
+					userId: user.id,
+				},
+			},
+		});
+	}
+
+	async addUser(projectId: string, userId: string, role: ProjectRole) {
+		return await this.projectRelationRepository.save({
+			projectId,
+			userId,
+			role,
+		});
 	}
 }
