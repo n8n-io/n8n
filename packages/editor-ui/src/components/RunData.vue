@@ -150,7 +150,6 @@
 				@focus="activatePane"
 			/>
 		</div>
-
 		<slot name="before-data" />
 
 		<div

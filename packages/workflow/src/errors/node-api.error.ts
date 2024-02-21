@@ -216,9 +216,9 @@ export class NodeApiError extends NodeError {
 		}
 
 		// if message contain common error code set descriptive message and update description
-		[this.message, this.description] = this.setDescriptiveErrorMessage(
+		[this.message, this.messages] = this.setDescriptiveErrorMessage(
 			this.message,
-			this.description,
+			this.messages,
 			// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 			this.httpCode ||
 				(errorResponse?.code as string) ||
@@ -264,18 +264,18 @@ export class NodeApiError extends NodeError {
 		}
 
 		if (STATUS_CODE_MESSAGES[this.httpCode]) {
-			this.description = this.updateDescription(this.message, this.description);
+			this.messages.push(this.message);
 			this.message = STATUS_CODE_MESSAGES[this.httpCode];
 			return;
 		}
 
 		switch (this.httpCode.charAt(0)) {
 			case '4':
-				this.description = this.updateDescription(this.message, this.description);
+				this.messages.push(this.message);
 				this.message = STATUS_CODE_MESSAGES['4XX'];
 				break;
 			case '5':
-				this.description = this.updateDescription(this.message, this.description);
+				this.messages.push(this.message);
 				this.message = STATUS_CODE_MESSAGES['5XX'];
 				break;
 			default:

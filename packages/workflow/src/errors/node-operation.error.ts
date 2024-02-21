@@ -32,9 +32,9 @@ export class NodeOperationError extends NodeError {
 			this.description = undefined;
 		}
 
-		[this.message, this.description] = this.setDescriptiveErrorMessage(
+		[this.message, this.messages] = this.setDescriptiveErrorMessage(
 			this.message,
-			this.description,
+			this.messages,
 			undefined,
 			options.messageMapping,
 		);

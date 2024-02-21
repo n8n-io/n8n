@@ -68,10 +68,14 @@
 									<code v-text="getErrorMessage()"></code>
 								</p>
 							</div>
-							<div class="node-error-view__details-row" v-if="error.description">
+							<div class="node-error-view__details-row" v-if="uniqueMessages.length">
 								<p class="node-error-view__details-label">Full message</p>
-								<p class="node-error-view__details-value">
-									<code>{{ error.description }}</code>
+								<p
+									class="node-error-view__details-value"
+									v-for="(msg, index) in uniqueMessages"
+									:key="index"
+								>
+									<pre><code>{{ msg }}</code></pre>
 								</p>
 							</div>
 						</div>
@@ -253,6 +257,26 @@ export default defineComponent({
 
 			return instanceType + ' ' + this.rootStore.versionCli;
 		},
+		uniqueMessages() {
+			const returnData: Array<string | IDataObject> = [];
+			if (!this.error.messages || !this.error.messages.length) {
+				return [];
+			}
+			(Array.from(new Set(this.error.messages)) as string[]).forEach((message) => {
+				const parts = message.split(' - ').map((part) => part.trim());
+				for (const part of parts) {
+					try {
+						const parsed = JSON.parse(part);
+						if (typeof parsed === 'object') {
+							returnData.push(parsed);
+							return;
+						}
+					} catch (error) {}
+				}
+				returnData.push(message);
+			});
+			return returnData;
+		},
 	},
 	methods: {
 		nodeVersionTag(nodeType: IDataObject): string {
@@ -398,7 +422,7 @@ export default defineComponent({
 			}
 
 			const errorDetails: IDataObject = {
-				rawErrorMessage: error.message,
+				rawErrorMessage: error.messages,
 			};
 
 			if (error.httpCode) {
@@ -448,10 +472,6 @@ export default defineComponent({
 
 			if (error.cause) {
 				n8nDetails.cause = error.cause;
-			}
-
-			if (error?.node?.parameters) {
-				n8nDetails.nodeParameters = error.node.parameters;
 			}
 
 			n8nDetails.stackTrace = error.stack && error.stack.split('\n');
