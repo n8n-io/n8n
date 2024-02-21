@@ -31,11 +31,12 @@ const onRoleAction = (user: Partial<IUser>, role: string) => {
 		<form>
 			<fieldset>
 				<label for="projectName">Project Name</label>
-				<input id="projectName" type="text" name="projectName" />
+				<n8n-input id="projectName" type="text" name="projectName" />
 			</fieldset>
 			<fieldset>
-				<label for="projectName">Project Members</label>
+				<label for="projectMembers">Project Members</label>
 				<n8n-user-select
+					id="projectMembers"
 					class="mb-s"
 					size="large"
 					:users="usersList"
@@ -73,10 +74,17 @@ const onRoleAction = (user: Partial<IUser>, role: string) => {
 			</fieldset>
 			<fieldset>
 				<div :class="$style.buttons">
-					<span>You have unsaved changes</span>
+					<small>You have unsaved changes</small>
 					<n8n-button type="secondary">Cancel</n8n-button>
 					<n8n-button type="primary">Save</n8n-button>
 				</div>
+			</fieldset>
+			<fieldset>
+				<hr class="mb-2xl" />
+				<h2>Delete project?</h2>
+				<n8n-button type="danger">Delete project</n8n-button>
+				<br />
+				<small>This action is permanent and cannot be undone</small>
 			</fieldset>
 		</form>
 	</div>
@@ -89,15 +97,17 @@ const onRoleAction = (user: Partial<IUser>, role: string) => {
 	justify-items: center;
 
 	form {
-		display: grid;
-		align-content: start;
 		width: 100%;
 		max-width: 800px;
 		padding: 0 var(--spacing-2xl);
 
 		fieldset {
-			display: grid;
 			margin-top: var(--spacing-2xl);
+
+			label {
+				display: block;
+				margin-bottom: var(--spacing-2xs);
+			}
 		}
 	}
 }
