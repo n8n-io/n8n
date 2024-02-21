@@ -21,6 +21,7 @@ import {
 	getWorkflowTemplate,
 } from '@/api/templates';
 import { getFixedNodesList } from '@/utils/nodeViewUtils';
+import { useRootStore } from '@/stores/n8nRoot.store';
 
 const TEMPLATES_PAGE_SIZE = 20;
 
@@ -118,7 +119,9 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 		 * @returns {string}
 		 */
 		getWebsiteTemplateRepositoryURL(): string {
-			return `${TEMPLATES_URLS.BASE_WEBSITE_URL}?${TEMPLATES_URLS.UTM_QUERY}&utm_instance=${this.getCurrentN8nPath}`;
+			return `${TEMPLATES_URLS.BASE_WEBSITE_URL}?${TEMPLATES_URLS.UTM_QUERY}&utm_instance=${
+				this.getCurrentN8nPath
+			}&utm_n8n_version=${useRootStore().versionCli}`;
 		},
 		/**
 		 * Construct the URL for the template page on the website for a given template id
@@ -126,7 +129,9 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 		 */
 		getWebsiteTemplatePageURL() {
 			return (id: string) => {
-				return `${TEMPLATES_URLS.BASE_WEBSITE_URL}/${id}?${TEMPLATES_URLS.UTM_QUERY}&utm_instance=${this.getCurrentN8nPath}`;
+				return `${TEMPLATES_URLS.BASE_WEBSITE_URL}/${id}?${TEMPLATES_URLS.UTM_QUERY}&utm_instance=${
+					this.getCurrentN8nPath
+				}&utm_n8n_version=${useRootStore().versionCli}`;
 			};
 		},
 		/**
@@ -135,7 +140,9 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 		 */
 		getWebsiteCategoryURL() {
 			return (id: string) => {
-				return `${TEMPLATES_URLS.BASE_WEBSITE_URL}/?categories=${id}&${TEMPLATES_URLS.UTM_QUERY}&utm_instance=${this.getCurrentN8nPath}`;
+				return `${TEMPLATES_URLS.BASE_WEBSITE_URL}/?categories=${id}&${
+					TEMPLATES_URLS.UTM_QUERY
+				}&utm_instance=${this.getCurrentN8nPath}&utm_n8n_version=${useRootStore().versionCli}`;
 			};
 		},
 		getCurrentN8nPath(): string {
