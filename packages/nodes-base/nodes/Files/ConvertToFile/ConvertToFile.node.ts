@@ -45,9 +45,9 @@ export class ConvertToFile implements INodeType {
 						description: 'Transform input data into a table in an HTML file',
 					},
 					{
-						name: 'Convert to iCal',
+						name: 'Convert to ICS',
 						value: 'iCal',
-						action: 'Convert to iCal',
+						action: 'Convert to ICS',
 						description: 'Converts each input item to an ICS event file',
 					},
 					{
