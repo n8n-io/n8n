@@ -24,9 +24,9 @@ export class Reset extends BaseCommand {
 
 	async run(): Promise<void> {
 		const owner = await this.getInstanceOwner();
-		const ownerPersonalProject = await Container.get(
-			ProjectRepository,
-		).getPersonalProjectForUserOrFail(owner.id);
+		const ownerPersonalProject =
+			(await Container.get(ProjectRepository).getPersonalProjectForUser(owner.id)) ??
+			(await Container.get(ProjectRepository).createProjectForUser(owner.id));
 
 		await Container.get(SharedWorkflowRepository).makeOwnerOfAllWorkflows(owner);
 		await Container.get(SharedCredentialsRepository).makeOwnerOfAllCredentials(owner);

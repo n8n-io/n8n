@@ -17,6 +17,7 @@ import { createCredential } from '../shared/db/credentials';
 import { SharedCredentialsRepository } from '@/databases/repositories/sharedCredentials.repository';
 import { continueOnFail } from 'n8n-core';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
+import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
 
 let userRepository: UserRepository;
 let settingsRepository: SettingsRepository;
@@ -169,3 +170,25 @@ test('user-management:reset should re-own all orphaned credentials', async () =>
 	expect(sharedCredentialAfterReset.projectId).toBe(ownerPersonalProject.id);
 });
 
+test('user-management:reset should create a personal project if there is none', async () => {
+	//
+	// ARRANGE
+	//
+	const owner = await createOwner();
+	await Container.get(ProjectRepository).delete({});
+	await expect(
+		Container.get(ProjectRepository).getPersonalProjectForUser(owner.id),
+	).resolves.toBeNull();
+
+	//
+	// ACT
+	//
+	await Reset.run();
+
+	//
+	// ASSERT
+	//
+	await expect(
+		Container.get(ProjectRepository).getPersonalProjectForUser(owner.id),
+	).resolves.not.toBeNull();
+});
