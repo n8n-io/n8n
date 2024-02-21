@@ -19,14 +19,13 @@ export class Code implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Code',
 		name: 'code',
-		icon: 'fa:code',
+		icon: 'file:code.svg',
 		group: ['transform'],
 		version: [1, 2],
 		defaultVersion: 2,
 		description: 'Run custom JavaScript or Python code',
 		defaults: {
 			name: 'Code',
-			color: '#FF9922',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
