@@ -107,9 +107,9 @@ export const routes = [
 			middleware: ['authenticated'],
 		},
 	},
-	// Single workflow view, this is no longer used in-app
-	// but is still reachable via direct link so we can redirect to it from the website
-	// an use for some other purposes (like template reviewing)
+	// Following two routes are kept in-app:
+	// Single workflow view, used when a custom template host is set
+	// Also, reachable directly from this URL
 	{
 		path: '/templates/:id',
 		name: VIEWS.TEMPLATE,
@@ -134,6 +134,7 @@ export const routes = [
 			middleware: ['authenticated'],
 		},
 	},
+	// Template setup view, this is the landing view for website users
 	{
 		path: '/templates/:id/setup',
 		name: VIEWS.TEMPLATE_SETUP,
