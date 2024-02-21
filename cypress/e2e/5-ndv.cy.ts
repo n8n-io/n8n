@@ -381,7 +381,7 @@ describe('NDV', () => {
 		cy.get('@fetchParameterOptions').should('have.been.calledOnce');
 	});
 
-	describe.only('floating nodes', () => {
+	describe('floating nodes', () => {
 		function getFloatingNodeByPosition(
 			position: 'inputMain' | 'outputMain' | 'outputSub' | 'inputSub',
 		) {
