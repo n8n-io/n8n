@@ -1,6 +1,6 @@
 import { Service } from 'typedi';
 import type { INode, Workflow } from 'n8n-workflow';
-import { NodeOperationError, WorkflowOperationError } from 'n8n-workflow';
+import { CredentialAccessError, NodeOperationError, WorkflowOperationError } from 'n8n-workflow';
 
 import config from '@/config';
 import { License } from '@/License';
@@ -59,13 +59,10 @@ export class PermissionChecker {
 		if (inaccessibleCredIds.length === 0) return;
 
 		// if disallowed, flag only first node using first inaccessible cred
+		const inaccessibleCredId = inaccessibleCredIds[0];
+		const nodeToFlag = credIdsToNodes[inaccessibleCredId][0];
 
-		const nodeToFlag = credIdsToNodes[inaccessibleCredIds[0]][0];
-
-		throw new NodeOperationError(nodeToFlag, 'Node has no access to credential', {
-			description: 'Please recreate the credential or ask its owner to share it with you.',
-			level: 'warning',
-		});
+		throw new CredentialAccessError(nodeToFlag, inaccessibleCredId, workflow);
 	}
 
 	async checkSubworkflowExecutePolicy(
