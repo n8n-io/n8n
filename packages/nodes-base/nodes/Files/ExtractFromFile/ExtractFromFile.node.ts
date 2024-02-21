@@ -82,7 +82,7 @@ export class ExtractFromFile implements INodeType {
 					{
 						name: 'Extract From XML',
 						value: 'xml',
-						action: 'Extract from XLS',
+						action: 'Extract from XML',
 						description: 'Extracts the content of an XML file',
 					},
 					{
