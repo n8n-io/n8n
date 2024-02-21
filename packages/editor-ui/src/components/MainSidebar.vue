@@ -20,6 +20,7 @@
 				<div :class="$style.logo">
 					<img :src="logoPath" data-test-id="n8n-logo" :class="$style.icon" alt="n8n" />
 				</div>
+				<ProjectNavigation :collapsed="isCollapsed" />
 			</template>
 
 			<template #beforeLowerMenu>
@@ -126,6 +127,7 @@ import { hasPermission } from '@/rbac/permissions';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useDebounce } from '@/composables/useDebounce';
 import { useBecomeTemplateCreatorStore } from '@/components/BecomeTemplateCreatorCta/becomeTemplateCreatorStore';
+import ProjectNavigation from '@/features/projects/ProjectNavigation.vue';
 
 export default defineComponent({
 	name: 'MainSidebar',
@@ -134,6 +136,7 @@ export default defineComponent({
 		ExecutionsUsage,
 		MainSidebarSourceControl,
 		BecomeTemplateCreatorCta,
+		ProjectNavigation,
 	},
 	mixins: [userHelpers],
 	setup(props, ctx) {
