@@ -218,7 +218,7 @@ export default defineComponent({
 		this.messages = this.getChatMessages();
 		this.setNode();
 
-		setTimeout(() => this.$refs.inputField.focus(), 0);
+		setTimeout(() => this.$refs.inputField?.focus(), 0);
 	},
 	methods: {
 		displayExecution(executionId: string) {
@@ -245,12 +245,12 @@ export default defineComponent({
 			) {
 				const inputField = this.$refs.inputField as HTMLInputElement;
 
-				inputField.blur();
+				inputField?.blur();
 				this.currentMessage =
 					pastMessages[pastMessages.length - 1 - this.previousMessageIndex] ?? '';
 				this.previousMessageIndex = (this.previousMessageIndex + 1) % pastMessages.length;
 				// Refocus to move the cursor to the end of the input
-				setTimeout(() => inputField.focus(), 0);
+				setTimeout(() => inputField?.focus(), 0);
 			}
 			if (event.key === 'Enter' && !event.shiftKey && this.currentMessage) {
 				void this.sendChatMessage(this.currentMessage);
