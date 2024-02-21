@@ -38,7 +38,7 @@ export class CreateUserManagement1646992772331 implements ReversibleMigration {
 		// Insert initial roles
 		await queryRunner.query(`
 			INSERT INTO "${tablePrefix}role" (name, scope)
-			VALUES ("owner", "global");
+			VALUES ('owner', 'global');
 		`);
 
 		const instanceOwnerRole = (await queryRunner.query(
@@ -47,12 +47,12 @@ export class CreateUserManagement1646992772331 implements ReversibleMigration {
 
 		await queryRunner.query(`
 			INSERT INTO "${tablePrefix}role" (name, scope)
-			VALUES ("member", "global");
+			VALUES ('member', 'global');
 		`);
 
 		await queryRunner.query(`
 			INSERT INTO "${tablePrefix}role" (name, scope)
-			VALUES ("owner", "workflow");
+			VALUES ('owner', 'workflow');
 		`);
 
 		const workflowOwnerRole = (await queryRunner.query(
@@ -61,7 +61,7 @@ export class CreateUserManagement1646992772331 implements ReversibleMigration {
 
 		await queryRunner.query(`
 			INSERT INTO "${tablePrefix}role" (name, scope)
-			VALUES ("owner", "credential");
+			VALUES ('owner', 'credential');
 		`);
 
 		const credentialOwnerRole = (await queryRunner.query(
@@ -99,7 +99,7 @@ export class CreateUserManagement1646992772331 implements ReversibleMigration {
 			INSERT INTO "${tablePrefix}settings" (key, value, loadOnStartup)
 				VALUES (?, ?, ?)
 		`,
-			['ui.banners.dismissed', '["V1"]', true],
+			['ui.banners.dismissed', '["V1"]', 'true'],
 		);
 	}
 

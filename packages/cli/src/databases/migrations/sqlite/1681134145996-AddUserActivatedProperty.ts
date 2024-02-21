@@ -15,17 +15,17 @@ export class AddUserActivatedProperty1681134145996 implements ReversibleMigratio
 							ON u.id = sw.userId
 			WHERE ws.name = 'production_success'
 						AND r.name = 'owner'
-						AND r.scope = "workflow"`,
+						AND r.scope = 'workflow'`,
 		)) as UserSettings[];
 
-		const updatedUserPromises = activatedUsers.map(async (user) => {
-			await queryRunner.query(
+		const updatedUsers = activatedUsers.map(async (user) =>
+			queryRunner.query(
 				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 				`UPDATE ${tablePrefix}user SET settings = '${user.settings}' WHERE id = '${user.id}' `,
-			);
-		});
+			),
+		);
 
-		await Promise.all(updatedUserPromises);
+		await Promise.all(updatedUsers);
 
 		if (!activatedUsers.length) {
 			await queryRunner.query(
