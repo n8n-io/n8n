@@ -25,7 +25,7 @@ export const createProject = async (
 	context: IRestApiContext,
 	req: ProjectCreateRequest,
 ): Promise<Project> => {
-	const { data } = await post(context.baseUrl, '/projects/personal', req);
+	const { data } = await post(context.baseUrl, '/projects', req);
 	return data;
 };
 
