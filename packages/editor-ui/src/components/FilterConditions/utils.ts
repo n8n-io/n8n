@@ -46,6 +46,13 @@ export const handleOperatorChange = ({
 		condition.rightValue = convertToType(condition.rightValue, newRightType);
 	}
 
+	condition.operator = {
+		type: newOperator.type,
+		operation: newOperator.operation,
+		rightType: newOperator.rightType,
+		singleValue: newOperator.singleValue,
+	};
+
 	return condition;
 };
 
