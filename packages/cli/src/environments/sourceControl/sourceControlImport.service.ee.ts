@@ -18,7 +18,7 @@ import { SharedCredentials } from '@db/entities/SharedCredentials';
 import type { WorkflowTagMapping } from '@db/entities/WorkflowTagMapping';
 import type { TagEntity } from '@db/entities/TagEntity';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
-import { In } from 'typeorm';
+import { In } from '@n8n/typeorm';
 import { isUniqueConstraintError } from '@/ResponseHelper';
 import type { SourceControlWorkflowVersionId } from './types/sourceControlWorkflowVersionId';
 import { getCredentialExportPath, getWorkflowExportPath } from './sourceControlHelper.ee';
@@ -492,7 +492,7 @@ export class SourceControlImportService {
 					key,
 					value: valueOverrides[key],
 				});
-				await Container.get(VariablesRepository).save(newVariable);
+				await Container.get(VariablesRepository).save(newVariable, { transaction: false });
 			}
 		}
 

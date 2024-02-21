@@ -3,29 +3,27 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
-import type { PropType } from 'vue';
-import { mapStores } from 'pinia';
-import { EditorView, keymap } from '@codemirror/view';
-import { Compartment, EditorState, Prec } from '@codemirror/state';
-import { history, redo, undo } from '@codemirror/commands';
 import { acceptCompletion, autocompletion, completionStatus } from '@codemirror/autocomplete';
+import { history, redo, undo } from '@codemirror/commands';
+import { Compartment, EditorState, Prec } from '@codemirror/state';
+import { EditorView, keymap } from '@codemirror/view';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
 
-import { useNDVStore } from '@/stores/ndv.store';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { expressionManager } from '@/mixins/expressionManager';
-import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
-import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
-import { inputTheme } from './theme';
-import { n8nLang } from '@/plugins/codemirror/n8nLang';
 import { completionManager } from '@/mixins/completionManager';
+import { expressionManager } from '@/mixins/expressionManager';
+import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
+import { n8nLang } from '@/plugins/codemirror/n8nLang';
+import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
+import { isEqual } from 'lodash-es';
 import type { IDataObject } from 'n8n-workflow';
+import { inputTheme } from './theme';
 
 const editableConf = new Compartment();
 
 export default defineComponent({
 	name: 'InlineExpressionEditorInput',
-	mixins: [completionManager, expressionManager, workflowHelpers],
+	mixins: [completionManager, expressionManager],
 	props: {
 		modelValue: {
 			type: String,
@@ -69,24 +67,16 @@ export default defineComponent({
 				},
 			});
 		},
-		ndvInputData() {
-			this.editor?.dispatch({
-				changes: {
-					from: 0,
-					to: this.editor.state.doc.length,
-					insert: this.modelValue,
-				},
-			});
+		displayableSegments(segments, newSegments) {
+			if (isEqual(segments, newSegments)) return;
 
-			setTimeout(() => {
-				this.editor?.contentDOM.blur();
+			highlighter.removeColor(this.editor, this.plaintextSegments);
+			highlighter.addColor(this.editor, this.resolvableSegments);
+
+			this.$emit('change', {
+				value: this.unresolvedExpression,
+				segments: this.displayableSegments,
 			});
-		},
-	},
-	computed: {
-		...mapStores(useNDVStore),
-		ndvInputData(): object {
-			return this.ndvStore.ndvInputData;
 		},
 	},
 	mounted() {
@@ -126,18 +116,10 @@ export default defineComponent({
 				// Force segments value update by keeping track of editor state
 				this.editorState = this.editor.state;
 
-				highlighter.removeColor(this.editor, this.plaintextSegments);
-				highlighter.addColor(this.editor, this.resolvableSegments);
-
 				setTimeout(() => {
 					try {
 						this.trackCompletion(viewUpdate, this.path);
 					} catch {}
-				});
-
-				this.$emit('change', {
-					value: this.unresolvedExpression,
-					segments: this.displayableSegments,
 				});
 			}),
 		];
@@ -149,14 +131,10 @@ export default defineComponent({
 				extensions,
 			}),
 		});
+
 		this.editorState = this.editor.state;
 
 		highlighter.addColor(this.editor, this.resolvableSegments);
-
-		this.$emit('change', {
-			value: this.unresolvedExpression,
-			segments: this.displayableSegments,
-		});
 	},
 	beforeUnmount() {
 		this.editor?.destroy();

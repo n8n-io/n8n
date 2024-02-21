@@ -10,7 +10,7 @@ export type ReportingOptions = {
 export class ApplicationError extends Error {
 	level: Level;
 
-	readonly tags?: Event['tags'];
+	readonly tags: NonNullable<Event['tags']>;
 
 	readonly extra?: Event['extra'];
 

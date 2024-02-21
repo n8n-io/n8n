@@ -1,23 +1,14 @@
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 import { Container } from 'typedi';
-import type { DataSourceOptions as ConnectionOptions, EntityManager, LoggerOptions } from 'typeorm';
-import { DataSource as Connection } from 'typeorm';
-import type { TlsOptions } from 'tls';
-import { ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
+import type { EntityManager } from '@n8n/typeorm';
+import { DataSource as Connection } from '@n8n/typeorm';
+import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 
 import config from '@/config';
-
-import { entities } from '@db/entities';
-import {
-	getMariaDBConnectionOptions,
-	getMysqlConnectionOptions,
-	getOptionOverrides,
-	getPostgresConnectionOptions,
-	getSqliteConnectionOptions,
-} from '@db/config';
 import { inTest } from '@/constants';
 import { wrapMigration } from '@db/utils/migrationHelpers';
-import type { DatabaseType, Migration } from '@db/types';
+import type { Migration } from '@db/types';
+import { getConnectionOptions } from '@db/config';
 
 let connection: Connection;
 
@@ -57,46 +48,6 @@ export async function transaction<T>(fn: (entityManager: EntityManager) => Promi
 	return await connection.transaction(fn);
 }
 
-export function getConnectionOptions(dbType: DatabaseType): ConnectionOptions {
-	switch (dbType) {
-		case 'postgresdb':
-			const sslCa = config.getEnv('database.postgresdb.ssl.ca');
-			const sslCert = config.getEnv('database.postgresdb.ssl.cert');
-			const sslKey = config.getEnv('database.postgresdb.ssl.key');
-			const sslRejectUnauthorized = config.getEnv('database.postgresdb.ssl.rejectUnauthorized');
-
-			let ssl: TlsOptions | boolean = config.getEnv('database.postgresdb.ssl.enabled');
-			if (sslCa !== '' || sslCert !== '' || sslKey !== '' || !sslRejectUnauthorized) {
-				ssl = {
-					ca: sslCa || undefined,
-					cert: sslCert || undefined,
-					key: sslKey || undefined,
-					rejectUnauthorized: sslRejectUnauthorized,
-				};
-			}
-
-			return {
-				...getPostgresConnectionOptions(),
-				...getOptionOverrides('postgresdb'),
-				ssl,
-			};
-
-		case 'mariadb':
-		case 'mysqldb':
-			return {
-				...(dbType === 'mysqldb' ? getMysqlConnectionOptions() : getMariaDBConnectionOptions()),
-				...getOptionOverrides('mysqldb'),
-				timezone: 'Z', // set UTC as default
-			};
-
-		case 'sqlite':
-			return getSqliteConnectionOptions();
-
-		default:
-			throw new ApplicationError('Database type currently not supported', { extra: { dbType } });
-	}
-}
-
 export async function setSchema(conn: Connection) {
 	const schema = config.getEnv('database.postgresdb.schema');
 	const searchPath = ['public'];
@@ -107,33 +58,11 @@ export async function setSchema(conn: Connection) {
 	await conn.query(`SET search_path TO ${searchPath.join(',')};`);
 }
 
-export async function init(testConnectionOptions?: ConnectionOptions): Promise<void> {
+export async function init(): Promise<void> {
 	if (connectionState.connected) return;
 
 	const dbType = config.getEnv('database.type');
-	const connectionOptions = testConnectionOptions ?? getConnectionOptions(dbType);
-
-	let loggingOption: LoggerOptions = config.getEnv('database.logging.enabled');
-
-	if (loggingOption) {
-		const optionsString = config.getEnv('database.logging.options').replace(/\s+/g, '');
-
-		if (optionsString === 'all') {
-			loggingOption = optionsString;
-		} else {
-			loggingOption = optionsString.split(',') as LoggerOptions;
-		}
-	}
-
-	const maxQueryExecutionTime = config.getEnv('database.logging.maxQueryExecutionTime');
-
-	Object.assign(connectionOptions, {
-		entities: Object.values(entities),
-		synchronize: false,
-		logging: loggingOption,
-		maxQueryExecutionTime,
-		migrationsRun: false,
-	});
+	const connectionOptions = getConnectionOptions();
 
 	connection = new Connection(connectionOptions);
 	Container.set(Connection, connection);

@@ -1,18 +1,18 @@
-import type { OptionsWithUri } from 'request';
-
 import { ApplicationError } from 'n8n-workflow';
 
 import type {
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
+	IRequestOptions,
 	IWebhookFunctions,
 } from 'n8n-workflow';
 
 export async function mailCheckApiRequest(
 	this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 
 	body: any = {},
@@ -23,7 +23,7 @@ export async function mailCheckApiRequest(
 ): Promise<any> {
 	const credentials = await this.getCredentials('mailcheckApi');
 
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 			Authorization: `Bearer ${credentials.apiKey}`,

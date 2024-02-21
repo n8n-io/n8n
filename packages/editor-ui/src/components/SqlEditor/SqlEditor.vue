@@ -1,6 +1,6 @@
 <template>
 	<div v-on-click-outside="onBlur" :class="$style.sqlEditor">
-		<div ref="sqlEditor" data-test-id="sql-editor-container"></div>
+		<div :class="$style.codemirror" ref="sqlEditor" data-test-id="sql-editor-container"></div>
 		<slot name="suffix" />
 		<InlineExpressionEditorOutput
 			v-if="!fillParent"
@@ -49,6 +49,7 @@ import {
 import { defineComponent } from 'vue';
 import { enterKeyMap, tabKeyMap } from '../CodeNodeEditor/baseExtensions';
 import { codeNodeEditorTheme } from '../CodeNodeEditor/theme';
+import { isEqual } from 'lodash-es';
 
 const SQL_DIALECTS = {
 	StandardSQL,
@@ -171,12 +172,10 @@ export default defineComponent({
 					dropCursor(),
 					bracketMatching(),
 					EditorView.updateListener.of((viewUpdate: ViewUpdate) => {
-						if (!viewUpdate.docChanged || !this.editor) return;
+						if (!this.editor || !viewUpdate.docChanged) return;
 
-						highlighter.removeColor(this.editor as EditorView, this.plaintextSegments);
-						highlighter.addColor(this.editor as EditorView, this.resolvableSegments);
-
-						this.$emit('update:modelValue', this.editor?.state.doc.toString());
+						// Force segments value update by keeping track of editor state
+						this.editorState = this.editor.state;
 					}),
 				);
 			}
@@ -184,18 +183,13 @@ export default defineComponent({
 		},
 	},
 	watch: {
-		'ndvStore.ndvInputData'() {
-			this.editor?.dispatch({
-				changes: {
-					from: 0,
-					to: this.editor.state.doc.length,
-					insert: this.modelValue,
-				},
-			});
+		displayableSegments(segments, newSegments) {
+			if (isEqual(segments, newSegments)) return;
 
-			setTimeout(() => {
-				this.editor?.contentDOM.blur();
-			});
+			highlighter.removeColor(this.editor, this.plaintextSegments);
+			highlighter.addColor(this.editor, this.resolvableSegments);
+
+			this.$emit('update:modelValue', this.editor?.state.doc.toString());
 		},
 	},
 	mounted() {
@@ -244,9 +238,9 @@ export default defineComponent({
 .sqlEditor {
 	position: relative;
 	height: 100%;
+}
 
-	& > div {
-		height: 100%;
-	}
+.codemirror {
+	height: 100%;
 }
 </style>

@@ -27,7 +27,7 @@ export class TagService {
 
 		await this.externalHooks.run(`tag.before${action}`, [tag]);
 
-		const savedTag = this.tagRepository.save(tag);
+		const savedTag = this.tagRepository.save(tag, { transaction: false });
 
 		await this.externalHooks.run(`tag.after${action}`, [tag]);
 
@@ -62,6 +62,12 @@ export class TagService {
 		return await (this.tagRepository.find({
 			select: ['id', 'name', 'createdAt', 'updatedAt'],
 		}) as Promise<GetAllResult<T>>);
+	}
+
+	async getById(id: string) {
+		return await this.tagRepository.findOneOrFail({
+			where: { id },
+		});
 	}
 
 	/**

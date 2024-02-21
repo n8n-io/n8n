@@ -489,4 +489,84 @@ describe('Execution', () => {
 				.should('have.class', 'has-run');
 		});
 	});
+
+	it('should send proper payload for node rerun', () => {
+		cy.createFixtureWorkflow(
+			'Multiple_trigger_node_rerun.json',
+			`Multiple trigger node rerun ${uuid()}`,
+		);
+
+		workflowPage.getters.zoomToFitButton().click();
+		workflowPage.getters.executeWorkflowButton().click();
+
+		workflowPage.getters.clearExecutionDataButton().should('be.visible');
+
+		cy.intercept('POST', '/rest/workflows/run').as('workflowRun');
+
+		workflowPage.getters
+			.canvasNodeByName('do something with them')
+			.findChildByTestId('execute-node-button')
+			.click({ force: true });
+
+		cy.wait('@workflowRun').then((interception) => {
+			expect(interception.request.body).to.have.property('runData').that.is.an('object');
+			const expectedKeys = ['When clicking "Test workflow"', 'fetch 5 random users'];
+
+			expect(Object.keys(interception.request.body.runData)).to.have.lengthOf(expectedKeys.length);
+			expect(interception.request.body.runData).to.include.all.keys(expectedKeys);
+		});
+	});
+
+	it('should send proper payload for manual node run', () => {
+		cy.createFixtureWorkflow(
+			'Check_manual_node_run_for_pinned_and_rundata.json',
+			`Check manual node run for pinned and rundata ${uuid()}`,
+		);
+
+		workflowPage.getters.zoomToFitButton().click();
+
+		cy.intercept('POST', '/rest/workflows/run').as('workflowRun');
+
+		workflowPage.getters
+			.canvasNodeByName('If')
+			.findChildByTestId('execute-node-button')
+			.click({ force: true });
+
+		cy.wait('@workflowRun').then((interception) => {
+			expect(interception.request.body).not.to.have.property('runData').that.is.an('object');
+			expect(interception.request.body).to.have.property('pinData').that.is.an('object');
+			const expectedPinnedDataKeys = ['Webhook'];
+
+			expect(Object.keys(interception.request.body.pinData)).to.have.lengthOf(
+				expectedPinnedDataKeys.length,
+			);
+			expect(interception.request.body.pinData).to.include.all.keys(expectedPinnedDataKeys);
+		});
+
+		workflowPage.getters.clearExecutionDataButton().should('be.visible');
+
+		cy.intercept('POST', '/rest/workflows/run').as('workflowRun');
+
+		workflowPage.getters
+			.canvasNodeByName('NoOp2')
+			.findChildByTestId('execute-node-button')
+			.click({ force: true });
+
+		cy.wait('@workflowRun').then((interception) => {
+			expect(interception.request.body).to.have.property('runData').that.is.an('object');
+			expect(interception.request.body).to.have.property('pinData').that.is.an('object');
+			const expectedPinnedDataKeys = ['Webhook'];
+			const expectedRunDataKeys = ['If', 'Webhook'];
+
+			expect(Object.keys(interception.request.body.pinData)).to.have.lengthOf(
+				expectedPinnedDataKeys.length,
+			);
+			expect(interception.request.body.pinData).to.include.all.keys(expectedPinnedDataKeys);
+
+			expect(Object.keys(interception.request.body.runData)).to.have.lengthOf(
+				expectedRunDataKeys.length,
+			);
+			expect(interception.request.body.runData).to.include.all.keys(expectedRunDataKeys);
+		});
+	});
 });
