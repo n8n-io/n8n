@@ -463,7 +463,7 @@ describe('NodeExecuteFunctions', () => {
 	});
 
 	describe('removeEmptyBody', () => {
-		test.each(['GET', 'HEAD', 'OPTIONS', 'TRACE'] as IHttpRequestMethods[])(
+		test.each(['GET', 'HEAD', 'OPTIONS'] as IHttpRequestMethods[])(
 			'Should remove empty body for %s',
 			async (method) => {
 				const requestOptions = {
@@ -475,7 +475,7 @@ describe('NodeExecuteFunctions', () => {
 			},
 		);
 
-		test.each(['GET', 'HEAD', 'OPTIONS', 'TRACE'] as IHttpRequestMethods[])(
+		test.each(['GET', 'HEAD', 'OPTIONS'] as IHttpRequestMethods[])(
 			'Should not remove non-empty body for %s',
 			async (method) => {
 				const requestOptions = {
