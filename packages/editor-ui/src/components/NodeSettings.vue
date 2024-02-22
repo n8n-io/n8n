@@ -157,7 +157,7 @@
 						$locale.baseText('nodeSettings.nodeVersion', {
 							interpolate: {
 								node: nodeType?.displayName as string,
-								version: node.typeVersion.toString(),
+								version: (node.typeVersion ?? latestVersion).toString(),
 							},
 						})
 					}}
@@ -284,7 +284,7 @@ export default defineComponent({
 			return Math.max(...this.nodeTypeVersions);
 		},
 		isLatestNodeVersion(): boolean {
-			return this.latestVersion === this.node?.typeVersion;
+			return !this.node?.typeVersion || this.latestVersion === this.node.typeVersion;
 		},
 		nodeVersionTag(): string {
 			if (!this.nodeType || this.nodeType.hidden) {
