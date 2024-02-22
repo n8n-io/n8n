@@ -125,6 +125,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		executionWaitingForWebhook: false,
 		nodeMetadata: {},
 		isInDebugMode: false,
+		chatMessages: [],
 	}),
 	getters: {
 		// Workflow getters
@@ -276,6 +277,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		},
 		getTotalFinishedExecutionsCount(): number {
 			return this.finishedExecutionsCount;
+		},
+		getPastChatMessages(): string[] {
+			return Array.from(new Set(this.chatMessages));
 		},
 	},
 	actions: {
@@ -1435,6 +1439,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 					pristine: isPristine,
 				},
 			};
+		},
+
+		resetChatMessages(): void {
+			this.chatMessages = [];
+		},
+
+		appendChatMessage(message: string): void {
+			this.chatMessages.push(message);
 		},
 	},
 });
