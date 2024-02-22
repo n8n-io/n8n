@@ -97,7 +97,7 @@
     "@n8n/localtunnel": "2.1.0",
     "@n8n/n8n-nodes-langchain": "workspace:*",
     "@n8n/permissions": "workspace:*",
-    "@n8n/typeorm": "0.3.20-3",
+    "@n8n/typeorm": "0.3.20-7",
     "@n8n_io/license-sdk": "2.10.0",
     "@oclif/core": "3.18.1",
     "@rudderstack/rudder-sdk-node": "2.0.7",
