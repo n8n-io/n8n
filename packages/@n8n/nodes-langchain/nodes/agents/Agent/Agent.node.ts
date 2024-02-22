@@ -160,7 +160,7 @@ export class Agent implements INodeType {
 		version: [1, 1.1, 1.2, 1.3, 1.4],
 		description: 'Generates an action plan and executes it. Can use external tools.',
 		subtitle:
-			"={{ {	conversationalAgent: 'Conversational Agent', openAiFunctionsAgent: 'OpenAI Functions Agent', reactAgent: 'ReAct Agent', sqlAgent: 'SQL Agent' }[$parameter.agent] }}",
+			"={{ {	conversationalAgent: 'Conversational Agent', openAiFunctionsAgent: 'OpenAI Functions Agent', reActAgent: 'ReAct Agent', sqlAgent: 'SQL Agent', planAndExecuteAgent: 'Plan and Execute Agent' }[$parameter.agent] }}",
 		defaults: {
 			name: 'AI Agent',
 			color: '#404040',
@@ -278,6 +278,7 @@ export class Agent implements INodeType {
 				displayOptions: {
 					hide: {
 						'@version': [{ _cnd: { lte: 1.2 } }],
+						agent: ['sqlAgent'],
 					},
 				},
 				default: 'auto',
@@ -295,6 +296,9 @@ export class Agent implements INodeType {
 				displayOptions: {
 					show: {
 						promptType: ['define'],
+					},
+					hide: {
+						agent: ['sqlAgent'],
 					},
 				},
 			},
