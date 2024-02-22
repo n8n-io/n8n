@@ -121,3 +121,6 @@ export const ROOT_DOLLAR_COMPLETIONS: Completion[] = [
 ];
 
 export const STRING_RECOMMENDED_OPTIONS = ['includes()', 'startsWith()', 'replaceAll()', 'length'];
+export const LUXON_RECOMMENDED_OPTIONS = ['format()', 'minus()', 'plus()', 'diff()'];
+export const ARRAY_RECOMMENDED_OPTIONS = ['length', 'last()', 'includes()', 'map()', 'filter()'];
+export const OBJECT_RECOMMENDED_OPTIONS = ['keys()', 'values()', 'isEmpty()'];

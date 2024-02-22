@@ -187,3 +187,7 @@ export const applyCompletion = (
 
 	view.dispatch(tx);
 };
+
+export const sortCompletionsAlpha = (completions: Completion[]): Completion[] => {
+	return completions.sort((a, b) => a.label.localeCompare(b.label));
+};

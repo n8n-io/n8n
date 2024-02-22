@@ -162,13 +162,10 @@ keys.doc = {
 };
 
 values.doc = {
-	doc: {
-		name: 'values',
-		description:
-			"Returns an array of a given object's own enumerable string-keyed property values.",
-		docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/objects/#object-values',
-		returnType: 'Array',
-	},
+	name: 'values',
+	description: "Returns an array of a given object's own enumerable string-keyed property values.",
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/objects/#object-values',
+	returnType: 'Array',
 };
 
 export const objectExtensions: ExtensionMap = {
