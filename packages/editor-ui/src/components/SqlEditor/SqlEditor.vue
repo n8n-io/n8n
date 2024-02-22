@@ -20,7 +20,7 @@ import { expressionManager } from '@/mixins/expressionManager';
 import { n8nCompletionSources } from '@/plugins/codemirror/completions/addCompletions';
 import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
 import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
-import { autocompletion, ifNotIn } from '@codemirror/autocomplete';
+import { ifNotIn } from '@codemirror/autocomplete';
 import { history, toggleComment } from '@codemirror/commands';
 import { LanguageSupport, bracketMatching, foldGutter, indentOnInput } from '@codemirror/language';
 import { type Extension, type Line, Prec } from '@codemirror/state';

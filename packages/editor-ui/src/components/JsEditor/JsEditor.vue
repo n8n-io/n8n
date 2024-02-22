@@ -6,8 +6,7 @@
 </template>
 
 <script lang="ts">
-import { autocompletion } from '@codemirror/autocomplete';
-import { history, redo, toggleComment, undo } from '@codemirror/commands';
+import { history, toggleComment } from '@codemirror/commands';
 import { javascript } from '@codemirror/lang-javascript';
 import { foldGutter, indentOnInput } from '@codemirror/language';
 import { lintGutter } from '@codemirror/lint';

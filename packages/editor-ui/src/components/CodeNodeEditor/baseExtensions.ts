@@ -8,7 +8,7 @@ import {
 	lineNumbers,
 } from '@codemirror/view';
 import { bracketMatching, foldGutter, indentOnInput } from '@codemirror/language';
-import { history, toggleComment, redo, deleteCharBackward, undo } from '@codemirror/commands';
+import { history, toggleComment, deleteCharBackward } from '@codemirror/commands';
 import { lintGutter } from '@codemirror/lint';
 import { type Extension, Prec } from '@codemirror/state';
 

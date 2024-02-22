@@ -3,13 +3,7 @@
 </template>
 
 <script lang="ts">
-import {
-	acceptCompletion,
-	autocompletion,
-	completionStatus,
-	moveCompletionSelection,
-} from '@codemirror/autocomplete';
-import { history, redo, undo } from '@codemirror/commands';
+import { history } from '@codemirror/commands';
 import { Compartment, EditorState, Prec } from '@codemirror/state';
 import { EditorView, keymap } from '@codemirror/view';
 import type { PropType } from 'vue';
