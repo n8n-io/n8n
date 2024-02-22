@@ -44,6 +44,7 @@ import { nodeViewEventBus } from '@/event-bus';
 import { usePinnedData } from '@/composables/usePinnedData';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useUIStore } from '@/stores/ui.store';
+import { useRouter } from 'vue-router';
 
 export default defineComponent({
 	inheritAttrs: false,
@@ -74,11 +75,12 @@ export default defineComponent({
 		},
 	},
 	setup(props) {
+		const router = useRouter();
 		const workflowsStore = useWorkflowsStore();
 		const node = workflowsStore.getNodeByName(props.nodeName);
 		const pinnedData = usePinnedData(node);
 		const externalHooks = useExternalHooks();
-		const { runWorkflow } = useRunWorkflow();
+		const { runWorkflow } = useRunWorkflow({ router });
 
 		return {
 			externalHooks,

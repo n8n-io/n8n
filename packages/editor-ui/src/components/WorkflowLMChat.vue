@@ -184,8 +184,8 @@ export default defineComponent({
 	setup() {
 		const router = useRouter();
 		const externalHooks = useExternalHooks();
-		const workflowHelpers = useWorkflowHelpers(router);
-		const { runWorkflow } = useRunWorkflow();
+		const workflowHelpers = useWorkflowHelpers({ router });
+		const { runWorkflow } = useRunWorkflow({ router });
 
 		return {
 			runWorkflow,

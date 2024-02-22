@@ -619,7 +619,7 @@ export default defineComponent({
 		const nodeHelpers = useNodeHelpers();
 		const { callDebounced } = useDebounce();
 		const router = useRouter();
-		const workflowHelpers = useWorkflowHelpers(router);
+		const workflowHelpers = useWorkflowHelpers({ router });
 
 		return {
 			externalHooks,

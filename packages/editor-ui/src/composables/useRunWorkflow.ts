@@ -31,15 +31,14 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { openPopUpWindow } from '@/utils/executionUtils';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { useRouter } from 'vue-router';
+import type { useRouter } from 'vue-router';
 import { isEmpty } from '@/utils/typesUtils';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
 
-export function useRunWorkflow() {
+export function useRunWorkflow(options: { router: ReturnType<typeof useRouter> }) {
 	const nodeHelpers = useNodeHelpers();
-	const router = useRouter();
-	const workflowHelpers = useWorkflowHelpers(router);
+	const workflowHelpers = useWorkflowHelpers(options.router);
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
 	const toast = useToast();

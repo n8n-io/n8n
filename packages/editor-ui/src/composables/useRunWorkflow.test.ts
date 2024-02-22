@@ -9,7 +9,6 @@ import { useToast } from '@/composables/useToast';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useRouter } from 'vue-router';
-import type { Component } from 'vue';
 import type { IPinData, IRunData, Workflow } from 'n8n-workflow';
 
 vi.mock('@/stores/n8nRoot.store', () => ({
@@ -90,7 +89,7 @@ vi.mock('vue-router', async (importOriginal) => {
 	};
 });
 
-describe('useRunWorkflow()', () => {
+describe('useRunWorkflow({ router })', () => {
 	let rootStore: ReturnType<typeof useRootStore>;
 	let uiStore: ReturnType<typeof useUIStore>;
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
@@ -110,13 +109,13 @@ describe('useRunWorkflow()', () => {
 
 		router = useRouter();
 		toast = useToast();
-		workflowHelpers = useWorkflowHelpers(router);
+		workflowHelpers = useWorkflowHelpers({ router });
 		nodeHelpers = useNodeHelpers();
 	});
 
 	describe('runWorkflowApi()', () => {
 		it('should throw an error if push connection is not active', async () => {
-			const { runWorkflowApi } = useRunWorkflow();
+			const { runWorkflowApi } = useRunWorkflow({ router });
 			rootStore.pushConnectionActive = false;
 
 			await expect(runWorkflowApi({} as IStartRunData)).rejects.toThrow(
@@ -125,7 +124,7 @@ describe('useRunWorkflow()', () => {
 		});
 
 		it('should successfully run a workflow', async () => {
-			const { runWorkflowApi } = useRunWorkflow();
+			const { runWorkflowApi } = useRunWorkflow({ router });
 			rootStore.pushConnectionActive = true;
 
 			const mockResponse = { executionId: '123', waitingForWebhook: false };
@@ -140,7 +139,7 @@ describe('useRunWorkflow()', () => {
 		});
 
 		it('should handle workflow run failure', async () => {
-			const { runWorkflowApi } = useRunWorkflow();
+			const { runWorkflowApi } = useRunWorkflow({ router });
 
 			rootStore.pushConnectionActive = true;
 			vi.mocked(workflowsStore).runWorkflow.mockRejectedValue(new Error('Failed to run workflow'));
@@ -150,7 +149,7 @@ describe('useRunWorkflow()', () => {
 		});
 
 		it('should set waitingForWebhook if response indicates waiting', async () => {
-			const { runWorkflowApi } = useRunWorkflow();
+			const { runWorkflowApi } = useRunWorkflow({ router });
 
 			rootStore.pushConnectionActive = true;
 			const mockResponse = { executionId: '123', waitingForWebhook: true };
@@ -165,14 +164,14 @@ describe('useRunWorkflow()', () => {
 
 	describe('runWorkflow()', () => {
 		it('should return undefined if UI action "workflowRunning" is active', async () => {
-			const { runWorkflow } = useRunWorkflow();
+			const { runWorkflow } = useRunWorkflow({ router });
 			vi.mocked(uiStore).isActionActive.mockReturnValue(true);
 			const result = await runWorkflow({});
 			expect(result).toBeUndefined();
 		});
 
 		it('should handle workflow issues correctly', async () => {
-			const { runWorkflow } = useRunWorkflow();
+			const { runWorkflow } = useRunWorkflow({ router });
 
 			vi.mocked(uiStore).isActionActive.mockReturnValue(false);
 			vi.mocked(workflowHelpers).getCurrentWorkflow.mockReturnValue({
@@ -191,7 +190,7 @@ describe('useRunWorkflow()', () => {
 
 		it('should execute workflow successfully', async () => {
 			const mockExecutionResponse = { executionId: '123' };
-			const { runWorkflow } = useRunWorkflow();
+			const { runWorkflow } = useRunWorkflow({ router });
 
 			vi.mocked(rootStore).pushConnectionActive = true;
 			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
@@ -215,7 +214,7 @@ describe('useRunWorkflow()', () => {
 
 	describe('consolidateRunDataAndStartNodes()', () => {
 		it('should return empty runData and startNodes if runData is null', () => {
-			const { consolidateRunDataAndStartNodes } = useRunWorkflow();
+			const { consolidateRunDataAndStartNodes } = useRunWorkflow({ router });
 			const workflowMock = {
 				getParentNodes: vi.fn(),
 				nodes: {},
@@ -226,7 +225,7 @@ describe('useRunWorkflow()', () => {
 		});
 
 		it('should return correct startNodes and newRunData for given directParentNodes and runData', () => {
-			const { consolidateRunDataAndStartNodes } = useRunWorkflow();
+			const { consolidateRunDataAndStartNodes } = useRunWorkflow({ router });
 			const directParentNodes = ['node1', 'node2'];
 			const runData = {
 				node2: [{ data: { main: [[{ json: { value: 'data2' } }]] } }],
@@ -260,7 +259,7 @@ describe('useRunWorkflow()', () => {
 		});
 
 		it('should include directParentNode in startNodes if it has no runData or pinData', () => {
-			const { consolidateRunDataAndStartNodes } = useRunWorkflow();
+			const { consolidateRunDataAndStartNodes } = useRunWorkflow({ router });
 			const directParentNodes = ['node1'];
 			const runData = {
 				node2: [

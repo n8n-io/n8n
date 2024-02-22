@@ -490,8 +490,8 @@ export default defineComponent({
 		const deviceSupport = useDeviceSupport();
 		const { callDebounced } = useDebounce();
 		const canvasPanning = useCanvasPanning(nodeViewRootRef, { onMouseMoveEnd });
-		const workflowHelpers = useWorkflowHelpers(router);
-		const { runWorkflow } = useRunWorkflow();
+		const workflowHelpers = useWorkflowHelpers({ router });
+		const { runWorkflow } = useRunWorkflow({ router });
 
 		return {
 			locale,
@@ -1901,7 +1901,7 @@ export default defineComponent({
 
 				const nodeData = JSON.stringify(workflowToCopy, null, 2);
 
-				this.clipboard.copy(nodeData);
+				void this.clipboard.copy(nodeData);
 				if (data.nodes.length > 0) {
 					if (!isCut) {
 						this.showMessage({
