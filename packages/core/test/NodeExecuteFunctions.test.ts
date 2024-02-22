@@ -318,7 +318,6 @@ describe('NodeExecuteFunctions', () => {
 						'X-Other-Header': 'otherHeaderContent',
 					},
 					resolveWithFullResponse: true,
-					followRedirect: true,
 				});
 
 				expect(response.statusCode).toBe(200);
@@ -336,7 +335,6 @@ describe('NodeExecuteFunctions', () => {
 				const response = await proxyRequestToAxios(workflow, additionalData, node, {
 					url: `${baseUrl}/redirect`,
 					resolveWithFullResponse: true,
-					followRedirect: true,
 				});
 
 				expect(response).toMatchObject({

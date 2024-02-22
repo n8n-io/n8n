@@ -482,7 +482,8 @@ export async function parseRequestObject(requestObject: IRequestOptions) {
 	// Axios will follow redirects by default, so we simply tell it otherwise if needed.
 	const { method } = requestObject;
 	if (
-		(requestObject.followRedirect && (!method || method === 'GET' || method === 'HEAD')) ||
+		(requestObject.followRedirect !== false &&
+			(!method || method === 'GET' || method === 'HEAD')) ||
 		requestObject.followAllRedirects
 	) {
 		axiosConfig.maxRedirects = requestObject.maxRedirects;
