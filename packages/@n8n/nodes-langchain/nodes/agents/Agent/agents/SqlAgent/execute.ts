@@ -45,7 +45,7 @@ export async function sqlAgentAgentExecute(
 			input = getPromptInputByType({
 				ctx: this,
 				i,
-				inputKey: 'input',
+				inputKey: 'text',
 				promptTypeKey: 'promptType',
 			});
 		}
@@ -73,7 +73,7 @@ export async function sqlAgentAgentExecute(
 				);
 			}
 
-			dataSource = getSqliteDataSource.call(this, item.binary);
+			dataSource = await getSqliteDataSource.call(this, item.binary);
 		}
 
 		if (selectedDataSource === 'postgres') {
