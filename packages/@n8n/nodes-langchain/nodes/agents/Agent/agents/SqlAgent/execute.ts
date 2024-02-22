@@ -74,7 +74,8 @@ export async function sqlAgentAgentExecute(
 				);
 			}
 
-			dataSource = await getSqliteDataSource.call(this, item.binary);
+			const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i, 'data');
+			dataSource = await getSqliteDataSource.call(this, item.binary, binaryPropertyName);
 		}
 
 		if (selectedDataSource === 'postgres') {

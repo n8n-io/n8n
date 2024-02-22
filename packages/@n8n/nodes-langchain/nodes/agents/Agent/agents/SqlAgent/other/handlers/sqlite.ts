@@ -8,8 +8,9 @@ import { DataSource } from '@n8n/typeorm';
 export async function getSqliteDataSource(
 	this: IExecuteFunctions,
 	binary: INodeExecutionData['binary'],
+	binaryPropertyName = 'data',
 ): Promise<DataSource> {
-	const binaryData = binary?.data;
+	const binaryData = binary?.[binaryPropertyName];
 
 	if (!binaryData) {
 		throw new NodeOperationError(this.getNode(), 'No binary data received.');

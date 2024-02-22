@@ -52,6 +52,15 @@ export const sqlAgentAgentProperties: INodeProperties[] = [
 		},
 	},
 	{
+		displayName: 'Input Binary Field',
+		name: 'binaryPropertyName',
+		type: 'string',
+		default: 'data',
+		required: true,
+		placeholder: 'e.g data',
+		hint: 'The name of the input binary field containing the file to be extracted',
+	},
+	{
 		displayName: 'Credentials',
 		name: 'credentials',
 		type: 'credentials',
@@ -60,7 +69,7 @@ export const sqlAgentAgentProperties: INodeProperties[] = [
 	{
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 		displayName:
-			"Input item has to contain sqLite file as a binary, e.g. use 'Read/Write Files from Disk' node and combine it with 'Chat' input by 'Edit Fields' node",
+			"Pass the SQLite database into this node as binary data, e.g. by inserting a 'Read/Write Files from Disk' node beforehand",
 		name: 'sqLiteFileNotice',
 		type: 'notice',
 		default: '',
