@@ -9,6 +9,7 @@ import { SqlDatabase } from 'langchain/sql_db';
 import type { SqlCreatePromptArgs } from 'langchain/agents/toolkits/sql';
 import { SqlToolkit, createSqlAgent } from 'langchain/agents/toolkits/sql';
 import type { BaseLanguageModel } from 'langchain/dist/base_language';
+import type { BaseChatMemory } from 'langchain/memory';
 import type { DataSource } from '@n8n/typeorm';
 
 import { getPromptInputByType } from '../../../../../utils/helpers';
@@ -106,6 +107,12 @@ export async function sqlAgentAgentExecute(
 
 		const toolkit = new SqlToolkit(dbInstance, model);
 		const agentExecutor = createSqlAgent(model, toolkit, agentOptions);
+
+		const memory = (await this.getInputConnectionData(NodeConnectionType.AiMemory, 0)) as
+			| BaseChatMemory
+			| undefined;
+
+		agentExecutor.memory = memory;
 
 		const response = await agentExecutor.call({ input, signal: this.getExecutionCancelSignal() });
 

@@ -125,6 +125,9 @@ function getInputs(
 			{
 				type: NodeConnectionType.AiLanguageModel,
 			},
+			{
+				type: NodeConnectionType.AiMemory,
+			},
 		];
 	} else if (agent === 'planAndExecuteAgent') {
 		specialInputs = [
