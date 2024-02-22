@@ -965,9 +965,21 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 	return axiosRequest;
 }
 
+const NoBodyHttpMethods = ['GET', 'HEAD', 'OPTIONS', 'TRACE'];
+
+/** Remove empty request body on GET, HEAD, OPTIONS, and TRACE requests */
+const removeEmptyBody = (requestOptions: IHttpRequestOptions | IRequestOptions) => {
+	const method = requestOptions.method || 'GET';
+	if (NoBodyHttpMethods.includes(method) && isEmpty(requestOptions.body)) {
+		delete requestOptions.body;
+	}
+};
+
 async function httpRequest(
 	requestOptions: IHttpRequestOptions,
 ): Promise<IN8nHttpFullResponse | IN8nHttpResponse> {
+	removeEmptyBody(requestOptions);
+
 	let axiosRequest = convertN8nRequestToAxios(requestOptions);
 	if (
 		axiosRequest.data === undefined ||
@@ -976,12 +988,6 @@ async function httpRequest(
 		delete axiosRequest.data;
 	}
 
-	if (
-		['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes(requestOptions.method as string) &&
-		isEmpty(requestOptions.body)
-	) {
-		delete requestOptions.body;
-	}
 	let result: AxiosResponse<any>;
 	try {
 		result = await axios(axiosRequest);
@@ -1286,6 +1292,8 @@ export async function requestOAuth2(
 	oAuth2Options?: IOAuth2Options,
 	isN8nRequest = false,
 ) {
+	removeEmptyBody(requestOptions);
+
 	const credentials = (await this.getCredentials(
 		credentialsType,
 	)) as unknown as OAuth2CredentialData;
@@ -1521,6 +1529,8 @@ export async function requestOAuth1(
 	requestOptions: IHttpRequestOptions | IRequestOptions,
 	isN8nRequest = false,
 ) {
+	removeEmptyBody(requestOptions);
+
 	const credentials = await this.getCredentials(credentialsType);
 
 	if (credentials === undefined) {
@@ -1594,15 +1604,11 @@ export async function httpRequestWithAuthentication(
 	additionalData: IWorkflowExecuteAdditionalData,
 	additionalCredentialOptions?: IAdditionalCredentialOptions,
 ) {
+	removeEmptyBody(requestOptions);
+
 	let credentialsDecrypted: ICredentialDataDecryptedObject | undefined;
 	try {
 		const parentTypes = additionalData.credentialsHelper.getParentTypes(credentialsType);
-		if (
-			['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes(requestOptions.method as string) &&
-			isEmpty(requestOptions.body)
-		) {
-			delete requestOptions.body;
-		}
 
 		if (parentTypes.includes('oAuth1Api')) {
 			return await requestOAuth1.call(this, credentialsType, requestOptions, true);
@@ -1794,17 +1800,12 @@ export async function requestWithAuthentication(
 	additionalCredentialOptions?: IAdditionalCredentialOptions,
 	itemIndex?: number,
 ) {
+	removeEmptyBody(requestOptions);
+
 	let credentialsDecrypted: ICredentialDataDecryptedObject | undefined;
 
 	try {
 		const parentTypes = additionalData.credentialsHelper.getParentTypes(credentialsType);
-
-		if (
-			['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes(requestOptions.method as string) &&
-			isEmpty(requestOptions.body)
-		) {
-			delete requestOptions.body;
-		}
 
 		if (credentialsType === 'oAuth1Api' || parentTypes.includes('oAuth1Api')) {
 			return await requestOAuth1.call(this, credentialsType, requestOptions, false);
