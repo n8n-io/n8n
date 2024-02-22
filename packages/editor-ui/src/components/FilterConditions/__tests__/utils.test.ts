@@ -12,16 +12,15 @@ describe('FilterConditions > utils', () => {
 			expect(
 				handleOperatorChange({
 					condition,
-					newOperator: getFilterOperator('number:equals'),
+					newOperator: getFilterOperator('number:gt'),
 				}),
 			).toEqual({
 				id: '1',
 				leftValue: 45,
 				rightValue: 'notANumber',
 				operator: {
-					name: 'filter.operator.equals',
-					operation: 'equals',
-					type: 'string',
+					operation: 'gt',
+					type: 'number',
 				},
 			});
 		});
@@ -36,16 +35,15 @@ describe('FilterConditions > utils', () => {
 			expect(
 				handleOperatorChange({
 					condition,
-					newOperator: getFilterOperator('boolean:equals'),
+					newOperator: getFilterOperator('boolean:notEquals'),
 				}),
 			).toEqual({
 				id: '1',
 				leftValue: false,
 				rightValue: true,
 				operator: {
-					name: 'filter.operator.equals',
-					operation: 'equals',
-					type: 'string',
+					operation: 'notEquals',
+					type: 'boolean',
 				},
 			});
 		});
@@ -62,7 +60,15 @@ describe('FilterConditions > utils', () => {
 					condition,
 					newOperator: getFilterOperator('boolean:equals'),
 				}),
-			).toEqual(condition);
+			).toEqual({
+				id: '1',
+				leftValue: '={{ $json.foo }}',
+				rightValue: '={{ $("nodename").foo }}',
+				operator: {
+					operation: 'equals',
+					type: 'boolean',
+				},
+			});
 		});
 	});
 });
