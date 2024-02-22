@@ -39,7 +39,7 @@ const onUpdateModelValue = (value: string) => {
 	selectedTab.value = value;
 };
 onMounted(() => {
-	selectedTab.value = route.name;
+	selectedTab.value = route?.name;
 });
 </script>
 
