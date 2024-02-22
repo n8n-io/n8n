@@ -1,12 +1,7 @@
 <template>
 	<PageViewLayout>
 		<template #header>
-			<div :class="[$style['heading-wrapper'], 'mb-xs']">
-				<n8n-heading size="2xlarge">
-					{{ i18n.baseText(`${resourceKey}.heading`) }}
-				</n8n-heading>
-			</div>
-			<slot name="tabnav" />
+			<slot name="header" />
 		</template>
 		<div v-if="loading">
 			<n8n-loading :class="[$style['header-loading'], 'mb-l']" variant="custom" />
@@ -503,10 +498,6 @@ export default defineComponent({
 </script>
 
 <style lang="scss" module>
-.heading-wrapper {
-	padding-bottom: 1px; // Match input height
-}
-
 .filters-row {
 	display: flex;
 	flex-direction: row;

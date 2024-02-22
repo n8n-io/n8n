@@ -1,6 +1,8 @@
 <template>
 	<div :class="$style.wrapper">
-		<slot name="header" />
+		<div :class="$style.header">
+			<slot name="header" />
+		</div>
 		<main :class="$style.content">
 			<slot />
 		</main>
@@ -27,18 +29,22 @@ export default defineComponent({
 
 <style lang="scss" module>
 .wrapper {
-	display: grid;
+	display: flex;
+	flex-direction: column;
 	height: 100%;
 	width: 100%;
 	max-width: 1280px;
-	grid-template-rows: auto 1fr;
 	box-sizing: border-box;
-	align-content: start;
-	padding: var(--spacing-2xl) var(--spacing-2xl) 0;
+	padding: var(--spacing-2xl) 0 0;
+}
+
+.header {
+	padding: 0 var(--spacing-2xl);
 }
 
 .content {
 	display: grid;
 	height: 100%;
+	padding: var(--spacing-2xl) var(--spacing-2xl) 0;
 }
 </style>
