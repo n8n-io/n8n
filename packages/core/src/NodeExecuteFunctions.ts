@@ -31,6 +31,7 @@ import { access as fsAccess, writeFile as fsWriteFile } from 'fs/promises';
 import { IncomingMessage, type IncomingHttpHeaders } from 'http';
 import { Agent, type AgentOptions } from 'https';
 import get from 'lodash/get';
+import isEmpty from 'lodash/isEmpty';
 import pick from 'lodash/pick';
 import { extension, lookup } from 'mime-types';
 import type {
@@ -148,7 +149,6 @@ import Container from 'typedi';
 import type { BinaryData } from './BinaryData/types';
 import merge from 'lodash/merge';
 import { InstanceSettings } from './InstanceSettings';
-import { isEmpty } from 'lodash';
 
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
