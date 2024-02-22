@@ -1013,6 +1013,7 @@ export default defineComponent({
 		this.instance.unbind();
 		this.instance.destroy();
 		this.uiStore.stateIsDirty = false;
+		this.workflowsStore.resetChatMessages();
 		window.removeEventListener('message', this.onPostMessageReceived);
 		nodeViewEventBus.off('newWorkflow', this.newWorkflow);
 		nodeViewEventBus.off('importWorkflowData', this.onImportWorkflowDataEvent);
