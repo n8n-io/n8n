@@ -74,7 +74,10 @@ export class CredentialsController {
 
 			credential = this.ownershipService.addOwnedByAndSharedWith(credential);
 
-			if (!includeDecryptedData || !userSharing || userSharing.role !== 'credential:owner') {
+			if (
+				!req.user.hasGlobalScope('credential:update') &&
+				(!includeDecryptedData || !userSharing || userSharing.role !== 'credential:owner')
+			) {
 				const { data: _, ...rest } = credential;
 				return { ...rest };
 			}
