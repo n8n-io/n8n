@@ -49,7 +49,6 @@ export const enterKeyMap: KeyBinding[] = [
 
 const SELECTED_AUTOCOMPLETE_OPTION_SELECTOR = '.cm-tooltip-autocomplete li[aria-selected]';
 const onAutocompleteNavigate = (dir: 'up' | 'down') => (view: EditorView) => {
-	console.log('hi');
 	if (completionStatus(view.state) !== null) {
 		moveCompletionSelection(dir === 'down')(view);
 		document

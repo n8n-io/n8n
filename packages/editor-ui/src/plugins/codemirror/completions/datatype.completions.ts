@@ -24,7 +24,12 @@ import { luxonInstanceDocs } from './nativesAutocompleteDocs/luxon.instance.docs
 import { luxonStaticDocs } from './nativesAutocompleteDocs/luxon.static.docs';
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
-import { FIELDS_SECTION, METHODS_SECTION, RECOMMENDED_SECTION } from './constants';
+import {
+	FIELDS_SECTION,
+	METHODS_SECTION,
+	RECOMMENDED_SECTION,
+	STRING_RECOMMENDED_OPTIONS,
+} from './constants';
 import { VALID_EMAIL_REGEX } from '@/constants';
 
 /**
@@ -339,10 +344,12 @@ const objectOptions = (toResolve: string, resolved: IDataObject) => {
 };
 
 const withRecommendedSection = (options: Completion[], recommended: string[]): Completion[] => {
-	const recommendedSet = new Set(recommended);
-	return options
-		.filter((option) => recommendedSet.has(option.label))
-		.map((option): Completion => ({ ...option, section: RECOMMENDED_SECTION }))
+	return recommended
+		.map((reco) => {
+			const option = options.find((op) => op.label === reco) as Completion;
+			option.section = RECOMMENDED_SECTION;
+			return option;
+		})
 		.concat(options);
 };
 
@@ -360,33 +367,23 @@ const stringOptions = (resolved: string): Completion[] => {
 		a.label.localeCompare(b.label),
 	);
 
-	const baseRecommended = ['includes()', 'startsWith()', 'replaceAll()', 'length'];
-
 	if (validateFieldType('string', resolved, 'number').valid) {
-		return withRecommendedSection(options, ['toInt()', 'toFloat()', ...baseRecommended]);
+		return withRecommendedSection(options, ['toInt()', 'toFloat()', ...STRING_RECOMMENDED_OPTIONS]);
 	}
 
 	if (validateFieldType('string', resolved, 'dateTime').valid) {
-		return withRecommendedSection(options, ['toDate()', ...baseRecommended]);
-	}
-
-	if (validateFieldType('string', resolved, 'object').valid) {
-		return withRecommendedSection(options, ['toObject()', ...baseRecommended]);
-	}
-
-	if (validateFieldType('string', resolved, 'boolean').valid) {
-		return withRecommendedSection(options, ['toBoolean()', ...baseRecommended]);
+		return withRecommendedSection(options, ['toDate()', ...STRING_RECOMMENDED_OPTIONS]);
 	}
 
 	if (VALID_EMAIL_REGEX.test(resolved) || isUrl(resolved)) {
-		return withRecommendedSection(options, ['extractDomain()', ...baseRecommended]);
+		return withRecommendedSection(options, ['extractDomain()', ...STRING_RECOMMENDED_OPTIONS]);
 	}
 
 	if (resolved.split(/\s/).find((token) => VALID_EMAIL_REGEX.test(token))) {
-		return withRecommendedSection(options, ['extractEmail()', ...baseRecommended]);
+		return withRecommendedSection(options, ['extractEmail()', ...STRING_RECOMMENDED_OPTIONS]);
 	}
 
-	return withRecommendedSection(options, baseRecommended);
+	return withRecommendedSection(options, STRING_RECOMMENDED_OPTIONS);
 };
 
 const numberOptions = (resolved: number): Completion[] => {
@@ -394,12 +391,8 @@ const numberOptions = (resolved: number): Completion[] => {
 		a.label.localeCompare(b.label),
 	);
 
-	if (validateFieldType('number', resolved, 'boolean').valid) {
-		return withRecommendedSection(options, ['toBoolean()']);
-	}
-
 	if (!Number.isInteger(resolved)) {
-		return withRecommendedSection(options, ['round()']);
+		return withRecommendedSection(options, ['round()', 'floor()', 'ceil()']);
 	}
 
 	return options;

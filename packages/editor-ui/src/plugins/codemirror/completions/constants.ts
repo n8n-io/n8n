@@ -119,3 +119,5 @@ export const ROOT_DOLLAR_COMPLETIONS: Completion[] = [
 		info: i18n.rootVars.$min,
 	},
 ];
+
+export const STRING_RECOMMENDED_OPTIONS = ['includes()', 'startsWith()', 'replaceAll()', 'length'];
