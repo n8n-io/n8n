@@ -1,5 +1,5 @@
 import type { IDataObject, DocMetadata, NativeDoc } from 'n8n-workflow';
-import { Expression, ExpressionExtensions, NativeMethods } from 'n8n-workflow';
+import { Expression, ExpressionExtensions, NativeMethods, validateFieldType } from 'n8n-workflow';
 import { DateTime } from 'luxon';
 import { i18n } from '@/plugins/i18n';
 import { resolveParameter } from '@/composables/useWorkflowHelpers';
@@ -14,6 +14,7 @@ import {
 	isPseudoParam,
 	stripExcessParens,
 	isCredentialsModalOpen,
+	applyCompletion,
 } from './utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import type { AutocompleteOptionType, ExtensionTypeName, FnToDoc, Resolved } from './types';
@@ -23,6 +24,8 @@ import { luxonInstanceDocs } from './nativesAutocompleteDocs/luxon.instance.docs
 import { luxonStaticDocs } from './nativesAutocompleteDocs/luxon.static.docs';
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
+import { FIELDS_SECTION, METHODS_SECTION, RECOMMENDED_SECTION } from './constants';
+import { VALID_EMAIL_REGEX } from '@/constants';
 
 /**
  * Resolution-based completions offered according to datatype.
@@ -87,23 +90,23 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 	};
 }
 
-function datatypeOptions(resolved: Resolved, toResolve: string) {
+function datatypeOptions(resolved: Resolved, toResolve: string): Completion[] {
 	if (resolved === null) return [];
 
 	if (typeof resolved === 'number') {
-		return [...natives('number'), ...extensions('number')];
+		return numberOptions(resolved);
 	}
 
 	if (typeof resolved === 'string') {
-		return [...natives('string'), ...extensions('string')];
+		return stringOptions(resolved);
 	}
 
-	if (['$now', '$today'].includes(toResolve)) {
-		return [...luxonInstanceOptions(), ...extensions('date')];
+	if (resolved instanceof DateTime) {
+		return luxonOptions();
 	}
 
 	if (resolved instanceof Date) {
-		return [...natives('date'), ...extensions('date')];
+		return dateOptions();
 	}
 
 	if (Array.isArray(resolved)) {
@@ -167,9 +170,13 @@ const createCompletionOption = (
 	optionType: AutocompleteOptionType,
 	docInfo: { doc?: DocMetadata | undefined },
 ): Completion => {
+	const isFunction = isFunctionOption(optionType);
+	const label = isFunction ? name + '()' : name;
 	const option: Completion = {
-		label: isFunctionOption(optionType) ? name + '()' : name,
+		label,
 		type: optionType,
+		section: isFunction ? METHODS_SECTION : FIELDS_SECTION,
+		apply: applyCompletion,
 	};
 
 	option.info = () => {
@@ -302,21 +309,18 @@ const objectOptions = (toResolve: string, resolved: IDataObject) => {
 			const option: Completion = {
 				label: isFunction ? key + '()' : key,
 				type: isFunction ? 'function' : 'keyword',
+				section: isFunction ? METHODS_SECTION : FIELDS_SECTION,
+				apply: applyCompletion,
 			};
 
 			const infoKey = [name, key].join('.');
-			option.info = createCompletionOption(
-				'Object',
-				key,
-				isFunction ? 'native-function' : 'keyword',
-				{
-					doc: {
-						name: key,
-						returnType: typeof resolved[key],
-						description: i18n.proxyVars[infoKey],
-					},
+			option.info = createCompletionOption('', key, isFunction ? 'native-function' : 'keyword', {
+				doc: {
+					name: key,
+					returnType: typeof resolved[key],
+					description: i18n.proxyVars[infoKey],
 				},
-			).info;
+			}).info;
 
 			return option;
 		});
@@ -324,7 +328,7 @@ const objectOptions = (toResolve: string, resolved: IDataObject) => {
 	const skipObjectExtensions =
 		resolved.isProxy ||
 		resolved.json ||
-		/json('])?$/.test(toResolve) ||
+		/json('])$/.test(toResolve) ||
 		toResolve === '$execution' ||
 		toResolve.endsWith('params') ||
 		toResolve === 'Math';
@@ -332,6 +336,83 @@ const objectOptions = (toResolve: string, resolved: IDataObject) => {
 	if (skipObjectExtensions) return [...localKeys, ...natives('object')];
 
 	return [...localKeys, ...natives('object'), ...extensions('object')];
+};
+
+const withRecommendedSection = (options: Completion[], recommended: string[]): Completion[] => {
+	const recommendedSet = new Set(recommended);
+	return options
+		.filter((option) => recommendedSet.has(option.label))
+		.map((option): Completion => ({ ...option, section: RECOMMENDED_SECTION }))
+		.concat(options);
+};
+
+const isUrl = (url: string): boolean => {
+	try {
+		new URL(url);
+		return true;
+	} catch (error) {
+		return false;
+	}
+};
+
+const stringOptions = (resolved: string): Completion[] => {
+	const options = [...natives('string'), ...extensions('string')].sort((a, b) =>
+		a.label.localeCompare(b.label),
+	);
+
+	const baseRecommended = ['includes()', 'startsWith()', 'replaceAll()', 'length'];
+
+	if (validateFieldType('string', resolved, 'number').valid) {
+		return withRecommendedSection(options, ['toInt()', 'toFloat()', ...baseRecommended]);
+	}
+
+	if (validateFieldType('string', resolved, 'dateTime').valid) {
+		return withRecommendedSection(options, ['toDate()', ...baseRecommended]);
+	}
+
+	if (validateFieldType('string', resolved, 'object').valid) {
+		return withRecommendedSection(options, ['toObject()', ...baseRecommended]);
+	}
+
+	if (validateFieldType('string', resolved, 'boolean').valid) {
+		return withRecommendedSection(options, ['toBoolean()', ...baseRecommended]);
+	}
+
+	if (VALID_EMAIL_REGEX.test(resolved) || isUrl(resolved)) {
+		return withRecommendedSection(options, ['extractDomain()', ...baseRecommended]);
+	}
+
+	if (resolved.split(/\s/).find((token) => VALID_EMAIL_REGEX.test(token))) {
+		return withRecommendedSection(options, ['extractEmail()', ...baseRecommended]);
+	}
+
+	return withRecommendedSection(options, baseRecommended);
+};
+
+const numberOptions = (resolved: number): Completion[] => {
+	const options = [...natives('number'), ...extensions('number')].sort((a, b) =>
+		a.label.localeCompare(b.label),
+	);
+
+	if (validateFieldType('number', resolved, 'boolean').valid) {
+		return withRecommendedSection(options, ['toBoolean()']);
+	}
+
+	if (!Number.isInteger(resolved)) {
+		return withRecommendedSection(options, ['round()']);
+	}
+
+	return options;
+};
+
+const dateOptions = (): Completion[] => {
+	return [...natives('date'), ...extensions('date')].sort((a, b) => a.label.localeCompare(b.label));
+};
+
+const luxonOptions = (): Completion[] => {
+	return [...luxonInstanceOptions(), ...extensions('date')].sort((a, b) =>
+		a.label.localeCompare(b.label),
+	);
 };
 
 function ensureKeyCanBeResolved(obj: IDataObject, key: string) {

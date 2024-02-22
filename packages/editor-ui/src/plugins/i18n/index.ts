@@ -357,7 +357,7 @@ export class I18nClass {
 		});
 	}
 
-	rootVars: Record<string, string | undefined> = {
+	rootVars = {
 		$binary: this.baseText('codeNodeEditor.completer.binary'),
 		$execution: this.baseText('codeNodeEditor.completer.$execution'),
 		$ifEmpty: this.baseText('codeNodeEditor.completer.$ifEmpty'),
@@ -375,7 +375,8 @@ export class I18nClass {
 		$today: this.baseText('codeNodeEditor.completer.$today'),
 		$vars: this.baseText('codeNodeEditor.completer.$vars'),
 		$workflow: this.baseText('codeNodeEditor.completer.$workflow'),
-	};
+		DateTime: this.baseText('codeNodeEditor.completer.dateTime'),
+	} as const satisfies Record<string, string | undefined>;
 
 	proxyVars: Record<string, string | undefined> = {
 		'$input.all': this.baseText('codeNodeEditor.completer.$input.all'),

@@ -4,7 +4,14 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { resolveParameter } from '@/composables/useWorkflowHelpers';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useUIStore } from '@/stores/ui.store';
-import type { Completion, CompletionContext } from '@codemirror/autocomplete';
+import {
+	insertCompletionText,
+	type Completion,
+	type CompletionContext,
+	pickedCompletion,
+} from '@codemirror/autocomplete';
+import type { EditorView } from '@codemirror/view';
+import type { TransactionSpec } from '@codemirror/state';
 
 // String literal expression is everything enclosed in single, double or tick quotes following a dot
 const stringLiteralRegex = /^"[^"]+"|^'[^']+'|^`[^`]+`\./;
@@ -156,4 +163,27 @@ export const stripExcessParens = (context: CompletionContext) => (option: Comple
 	}
 
 	return option;
+};
+
+/**
+ * When a function completion is selected, set the cursor correctly
+ * e.g. `$max()` -> `$max(<cursor>)`
+ */
+export const applyCompletion = (
+	view: EditorView,
+	completion: Completion,
+	from: number,
+	to: number,
+): void => {
+	const tx: TransactionSpec = {
+		...insertCompletionText(view.state, completion.label, from, to),
+		annotations: pickedCompletion.of(completion),
+	};
+
+	if (completion.label.endsWith('()')) {
+		const cursorPosition = from + completion.label.length - 1;
+		tx.selection = { anchor: cursorPosition, head: cursorPosition };
+	}
+
+	view.dispatch(tx);
 };
