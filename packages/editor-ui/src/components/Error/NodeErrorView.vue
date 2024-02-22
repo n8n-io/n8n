@@ -603,10 +603,12 @@ export default defineComponent({
 		margin-right: auto;
 		color: var(--color-text);
 		font-size: var(--font-size-2xs);
+		word-wrap: break-word;
 
 		code {
 			color: var(--color-json-string);
 			text-wrap: wrap;
+			word-wrap: break-word;
 		}
 	}
 }
