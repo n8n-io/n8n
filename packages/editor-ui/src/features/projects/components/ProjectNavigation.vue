@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import type { IMenuItem } from 'n8n-design-system/types';
+import { useI18n } from '@/composables/useI18n';
 import { VIEWS } from '@/constants';
 
 type Props = {
@@ -11,10 +12,11 @@ type Props = {
 const props = defineProps<Props>();
 
 const route = useRoute();
+const locale = useI18n();
 
 const home = ref<IMenuItem>({
 	id: 'home',
-	label: 'Home',
+	label: locale.baseText('projects.menu.home'),
 	icon: 'home',
 	route: {
 		to: { name: VIEWS.HOMEPAGE },
@@ -22,7 +24,7 @@ const home = ref<IMenuItem>({
 });
 const addProject = ref<IMenuItem>({
 	id: 'addProject',
-	label: 'Add project',
+	label: locale.baseText('projects.menu.addProject'),
 	icon: 'plus',
 });
 

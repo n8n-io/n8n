@@ -2,8 +2,10 @@
 import { computed, ref } from 'vue';
 import { useUsersStore } from '@/stores/users.store';
 import type { IUser } from '@/Interface';
+import { useI18n } from '@/composables/useI18n';
 
 const usersStore = useUsersStore();
+const locale = useI18n();
 
 const sharedWith = ref<Array<Partial<IUser>>>([]);
 
@@ -30,11 +32,13 @@ const onRoleAction = (user: Partial<IUser>, role: string) => {
 	<div :class="$style.projectSettings">
 		<form>
 			<fieldset>
-				<label for="projectName">Project Name</label>
+				<label for="projectName">{{ locale.baseText('projects.settings.projectName') }}</label>
 				<n8n-input id="projectName" type="text" name="projectName" />
 			</fieldset>
 			<fieldset>
-				<label for="projectMembers">Project Members</label>
+				<label for="projectMembers">{{
+					locale.baseText('projects.settings.projectMembers')
+				}}</label>
 				<n8n-user-select
 					id="projectMembers"
 					class="mb-s"
@@ -74,17 +78,25 @@ const onRoleAction = (user: Partial<IUser>, role: string) => {
 			</fieldset>
 			<fieldset>
 				<div :class="$style.buttons">
-					<small>You have unsaved changes</small>
-					<n8n-button type="secondary">Cancel</n8n-button>
-					<n8n-button type="primary">Save</n8n-button>
+					<small class="mr-2xs">{{
+						locale.baseText('projects.settings.message.unsavedChanges')
+					}}</small>
+					<n8n-button type="secondary" class="mr-2xs">{{
+						locale.baseText('projects.settings.button.cancel')
+					}}</n8n-button>
+					<n8n-button type="primary">{{
+						locale.baseText('projects.settings.button.save')
+					}}</n8n-button>
 				</div>
 			</fieldset>
 			<fieldset>
 				<hr class="mb-2xl" />
-				<h2>Delete project?</h2>
-				<n8n-button type="danger">Delete project</n8n-button>
+				<h3 class="mb-xs">{{ locale.baseText('projects.settings.title.deleteProject') }}</h3>
+				<n8n-button type="danger" class="mb-xs">{{
+					locale.baseText('projects.settings.title.deleteProject')
+				}}</n8n-button>
 				<br />
-				<small>This action is permanent and cannot be undone</small>
+				<small>{{ locale.baseText('projects.settings.message.cannotBeUndone') }}</small>
 			</fieldset>
 		</form>
 	</div>
@@ -106,7 +118,8 @@ const onRoleAction = (user: Partial<IUser>, role: string) => {
 
 			label {
 				display: block;
-				margin-bottom: var(--spacing-2xs);
+				margin-bottom: var(--spacing-xs);
+				font-size: var(--font-size-xl);
 			}
 		}
 	}
