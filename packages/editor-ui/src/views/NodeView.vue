@@ -258,7 +258,6 @@ import { useUniqueNodeName } from '@/composables/useUniqueNodeName';
 import { useI18n } from '@/composables/useI18n';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
-import { workflowRun } from '@/mixins/workflowRun';
 
 import NodeDetailsView from '@/components/NodeDetailsView.vue';
 import ContextMenu from '@/components/ContextMenu/ContextMenu.vue';
@@ -381,6 +380,7 @@ import { useDebounce } from '@/composables/useDebounce';
 import { useCanvasPanning } from '@/composables/useCanvasPanning';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useRunWorkflow } from '@/composables/useRunWorkflow';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -412,7 +412,6 @@ export default defineComponent({
 		ContextMenu,
 		SetupWorkflowCredentialsButton,
 	},
-	mixins: [workflowRun],
 	async beforeRouteLeave(to, from, next) {
 		if (
 			getNodeViewTab(to) === MAIN_HEADER_TABS.EXECUTIONS ||
@@ -473,7 +472,7 @@ export default defineComponent({
 			next();
 		}
 	},
-	setup(props, ctx) {
+	setup() {
 		const nodeViewRootRef = ref(null);
 		const nodeViewRef = ref(null);
 		const onMouseMoveEnd = ref(null);
@@ -492,6 +491,7 @@ export default defineComponent({
 		const { callDebounced } = useDebounce();
 		const canvasPanning = useCanvasPanning(nodeViewRootRef, { onMouseMoveEnd });
 		const workflowHelpers = useWorkflowHelpers(router);
+		const { runWorkflow } = useRunWorkflow();
 
 		return {
 			locale,
@@ -507,6 +507,7 @@ export default defineComponent({
 			nodeViewRef,
 			onMouseMoveEnd,
 			workflowHelpers,
+			runWorkflow,
 			callDebounced,
 			...useCanvasMouseSelect(),
 			...useGlobalLinkActions(),
@@ -515,8 +516,6 @@ export default defineComponent({
 			...useMessage(),
 			...useUniqueNodeName(),
 			...useExecutionDebugging(),
-			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...workflowRun.setup?.(props, ctx),
 		};
 	},
 	watch: {

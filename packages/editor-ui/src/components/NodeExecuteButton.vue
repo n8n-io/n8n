@@ -34,7 +34,6 @@ import {
 } from '@/constants';
 import type { INodeUi } from '@/Interface';
 import type { INodeTypeDescription } from 'n8n-workflow';
-import { workflowRun } from '@/mixins/workflowRun';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -43,9 +42,10 @@ import { useToast } from '@/composables/useToast';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { nodeViewEventBus } from '@/event-bus';
 import { usePinnedData } from '@/composables/usePinnedData';
+import { useRunWorkflow } from '@/composables/useRunWorkflow';
+import { useUIStore } from '@/stores/ui.store';
 
 export default defineComponent({
-	mixins: [workflowRun],
 	inheritAttrs: false,
 	props: {
 		nodeName: {
@@ -73,23 +73,23 @@ export default defineComponent({
 			type: String,
 		},
 	},
-	setup(props, ctx) {
+	setup(props) {
 		const workflowsStore = useWorkflowsStore();
 		const node = workflowsStore.getNodeByName(props.nodeName);
 		const pinnedData = usePinnedData(node);
 		const externalHooks = useExternalHooks();
+		const { runWorkflow } = useRunWorkflow();
 
 		return {
 			externalHooks,
 			pinnedData,
+			runWorkflow,
 			...useToast(),
 			...useMessage(),
-			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...workflowRun.setup?.(props, ctx),
 		};
 	},
 	computed: {
-		...mapStores(useNodeTypesStore, useNDVStore, useWorkflowsStore),
+		...mapStores(useNodeTypesStore, useNDVStore, useWorkflowsStore, useUIStore),
 		node(): INodeUi | null {
 			return this.workflowsStore.getNodeByName(this.nodeName);
 		},
