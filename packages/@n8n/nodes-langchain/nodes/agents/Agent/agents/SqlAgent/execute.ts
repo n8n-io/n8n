@@ -45,7 +45,7 @@ export async function sqlAgentAgentExecute(
 			input = getPromptInputByType({
 				ctx: this,
 				i,
-				inputKey: 'input',
+				inputKey: 'text',
 				promptTypeKey: 'promptType',
 			});
 		}
