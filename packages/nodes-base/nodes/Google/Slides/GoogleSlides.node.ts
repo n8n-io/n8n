@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -342,12 +341,12 @@ export class GoogleSlides implements INodeType {
 				description: 'Name of the binary property to which to write the data of the read page',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'Put Output File in Field',
 				name: 'binaryProperty',
 				type: 'string',
 				required: true,
 				default: 'data',
-				description: 'Name of the binary property to which to write to',
+				hint: 'The name of the output binary field to put the file in',
 				displayOptions: {
 					show: {
 						resource: ['page'],
@@ -361,7 +360,7 @@ export class GoogleSlides implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the pages to display them to user so that he can
+			// Get all the pages to display them to user so that they can
 			// select them easily
 			async getPages(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -387,8 +386,8 @@ export class GoogleSlides implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
 		const returnData: INodeExecutionData[] = [];
@@ -413,7 +412,7 @@ export class GoogleSlides implements INodeType {
 							`/presentations/${presentationId}/pages/${pageObjectId}`,
 						);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject),
 							{ itemData: { item: i } },
 						);
 
@@ -431,9 +430,9 @@ export class GoogleSlides implements INodeType {
 							`/presentations/${presentationId}/pages/${pageObjectId}/thumbnail`,
 						);
 
-						const download = this.getNodeParameter('download', 0) as boolean;
-						if (download === true) {
-							const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
+						const download = this.getNodeParameter('download', 0);
+						if (download) {
+							const binaryProperty = this.getNodeParameter('binaryProperty', i);
 
 							const data = await this.helpers.request({
 								uri: responseData.contentUrl,
@@ -443,7 +442,10 @@ export class GoogleSlides implements INodeType {
 							});
 
 							const fileName = pageObjectId + '.png';
-							const binaryData = await this.helpers.prepareBinaryData(data, fileName || fileName);
+							const binaryData = await this.helpers.prepareBinaryData(
+								data as Buffer,
+								fileName || fileName,
+							);
 							const executionData = this.helpers.constructExecutionMetaData(
 								[
 									{
@@ -459,7 +461,7 @@ export class GoogleSlides implements INodeType {
 							returnData.push(...executionData);
 						} else {
 							const executionData = this.helpers.constructExecutionMetaData(
-								this.helpers.returnJsonArray(responseData),
+								this.helpers.returnJsonArray(responseData as IDataObject),
 								{ itemData: { item: i } },
 							);
 
@@ -483,7 +485,7 @@ export class GoogleSlides implements INodeType {
 						responseData = await googleApiRequest.call(this, 'POST', '/presentations', body);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject),
 							{ itemData: { item: i } },
 						);
 
@@ -501,7 +503,7 @@ export class GoogleSlides implements INodeType {
 						);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject),
 							{ itemData: { item: i } },
 						);
 
@@ -510,7 +512,7 @@ export class GoogleSlides implements INodeType {
 						// ----------------------------------
 						//      presentation: getSlides
 						// ----------------------------------
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						const presentationId = this.getNodeParameter('presentationId', i) as string;
 						responseData = await googleApiRequest.call(
 							this,
@@ -520,13 +522,13 @@ export class GoogleSlides implements INodeType {
 							{ fields: 'slides' },
 						);
 						responseData = responseData.slides;
-						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+						if (!returnAll) {
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.slice(0, limit);
 						}
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject),
 							{ itemData: { item: i } },
 						);
 
@@ -537,7 +539,7 @@ export class GoogleSlides implements INodeType {
 						// ----------------------------------
 						const presentationId = this.getNodeParameter('presentationId', i) as string;
 						const texts = this.getNodeParameter('textUi.textValues', i, []) as IDataObject[];
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						const requests = texts.map((text) => {
 							return {
 								replaceAllText: {
@@ -556,7 +558,7 @@ export class GoogleSlides implements INodeType {
 						};
 
 						if (options.revisionId) {
-							body['writeControl'] = {
+							body.writeControl = {
 								requiredRevisionId: options.revisionId as string,
 							};
 						}
@@ -569,7 +571,7 @@ export class GoogleSlides implements INodeType {
 						);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject),
 							{ itemData: { item: i } },
 						);
 
@@ -589,6 +591,6 @@ export class GoogleSlides implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

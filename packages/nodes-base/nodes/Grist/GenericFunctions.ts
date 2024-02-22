@@ -1,10 +1,14 @@
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	IHttpRequestMethods,
+	ILoadOptionsFunctions,
+	IRequestOptions,
+	JsonObject,
+} from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
-
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
-
-import {
+import type {
 	GristCredentials,
 	GristDefinedFields,
 	GristFilterProperties,
@@ -13,7 +17,7 @@ import {
 
 export async function gristApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject | number[] = {},
 	qs: IDataObject = {},
@@ -26,10 +30,10 @@ export async function gristApiRequest(
 		planType === 'free'
 			? `https://docs.getgrist.com/api${endpoint}`
 			: planType === 'paid'
-			? `https://${customSubdomain}.getgrist.com/api${endpoint}`
-			: `${selfHostedUrl}/api${endpoint}`;
+			  ? `https://${customSubdomain}.getgrist.com/api${endpoint}`
+			  : `${selfHostedUrl}/api${endpoint}`;
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			Authorization: `Bearer ${apiKey}`,
 		},
@@ -49,9 +53,9 @@ export async function gristApiRequest(
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -80,12 +84,7 @@ export function parseDefinedFields(fieldsToSendProperties: GristDefinedFields) {
 	}, {});
 }
 
-export function parseAutoMappedInputs(
-	incomingKeys: string[],
-	inputsToIgnore: string[],
-	item: any, // tslint:disable-line:no-any
-) {
-	// tslint:disable-next-line:no-any
+export function parseAutoMappedInputs(incomingKeys: string[], inputsToIgnore: string[], item: any) {
 	return incomingKeys.reduce<{ [key: string]: any }>((acc, curKey) => {
 		if (inputsToIgnore.includes(curKey)) return acc;
 		acc = { ...acc, [curKey]: item[curKey] };

@@ -1,18 +1,21 @@
-import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
-
-import { IDataObject, JsonObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
-
-import { OptionsWithUri } from 'request';
+import type {
+	IExecuteFunctions,
+	IHookFunctions,
+	IDataObject,
+	JsonObject,
+	IHttpRequestMethods,
+	IRequestOptions,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 /**
  * Make an authenticated or unauthenticated API request to Reddit.
  */
 export async function redditApiRequest(
 	this: IHookFunctions | IExecuteFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	qs: IDataObject,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const resource = this.getNodeParameter('resource', 0) as string;
 
@@ -20,7 +23,7 @@ export async function redditApiRequest(
 
 	qs.api_type = 'json';
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			'user-agent': 'n8n',
 		},
@@ -56,16 +59,15 @@ export async function redditApiRequest(
  */
 export async function redditApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	qs: IDataObject,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	let responseData;
 	const returnData: IDataObject[] = [];
 
-	const resource = this.getNodeParameter('resource', 0) as string;
-	const operation = this.getNodeParameter('operation', 0) as string;
+	const resource = this.getNodeParameter('resource', 0);
+	const operation = this.getNodeParameter('operation', 0);
 	const returnAll = this.getNodeParameter('returnAll', 0, false) as boolean;
 
 	qs.limit = 100;
@@ -77,16 +79,20 @@ export async function redditApiRequestAllItems(
 		}
 
 		if (endpoint === 'api/search_subreddits.json') {
-			responseData.subreddits.forEach((child: any) => returnData.push(child)); // tslint:disable-line:no-any
+			responseData.subreddits.forEach((child: any) => returnData.push(child as IDataObject));
 		} else if (resource === 'postComment' && operation === 'getAll') {
-			responseData[1].data.children.forEach((child: any) => returnData.push(child.data)); // tslint:disable-line:no-any
+			responseData[1].data.children.forEach((child: any) =>
+				returnData.push(child.data as IDataObject),
+			);
 		} else {
-			responseData.data.children.forEach((child: any) => returnData.push(child.data)); // tslint:disable-line:no-any
+			responseData.data.children.forEach((child: any) =>
+				returnData.push(child.data as IDataObject),
+			);
 		}
-		if (qs.limit && returnData.length >= qs.limit && returnAll === false) {
+		if (qs.limit && returnData.length >= qs.limit && !returnAll) {
 			return returnData;
 		}
-	} while (responseData.data && responseData.data.after);
+	} while (responseData.data?.after);
 
 	return returnData;
 }
@@ -100,7 +106,6 @@ export async function handleListing(
 	endpoint: string,
 	qs: IDataObject = {},
 	requestMethod: 'GET' | 'POST' = 'GET',
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	let responseData;
 

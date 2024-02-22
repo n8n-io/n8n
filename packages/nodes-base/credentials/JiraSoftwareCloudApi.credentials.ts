@@ -1,4 +1,4 @@
-import {
+import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -7,8 +7,11 @@ import {
 
 export class JiraSoftwareCloudApi implements ICredentialType {
 	name = 'jiraSoftwareCloudApi';
+
 	displayName = 'Jira SW Cloud API';
+
 	documentationUrl = 'jira';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Email',
@@ -21,6 +24,7 @@ export class JiraSoftwareCloudApi implements ICredentialType {
 			displayName: 'API Token',
 			name: 'apiToken',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 		{
@@ -31,6 +35,7 @@ export class JiraSoftwareCloudApi implements ICredentialType {
 			placeholder: 'https://example.atlassian.net',
 		},
 	];
+
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
@@ -40,6 +45,7 @@ export class JiraSoftwareCloudApi implements ICredentialType {
 			},
 		},
 	};
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials?.domain}}',

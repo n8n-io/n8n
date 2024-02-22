@@ -1,26 +1,17 @@
 <template>
-	<n8n-text
-		:size="size"
-		:color="color"
-		:compact="true"
-		class="n8n-icon"
-	>
-		<font-awesome-icon
-			:icon="icon"
-			:spin="spin"
-			:class="$style[size]"
-		/>
-	</n8n-text>
+	<N8nText :size="size" :color="color" :compact="true" class="n8n-icon" v-bind="$attrs">
+		<FontAwesomeIcon :icon="icon" :spin="spin" :class="$style[size]" />
+	</N8nText>
 </template>
 
 <script lang="ts">
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import N8nText from '../N8nText';
 
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
-	name: 'n8n-icon',
+export default defineComponent({
+	name: 'N8nIcon',
 	components: {
 		FontAwesomeIcon,
 		N8nText,
@@ -43,7 +34,6 @@ export default Vue.extend({
 	},
 });
 </script>
-
 
 <style lang="scss" module>
 .xlarge {

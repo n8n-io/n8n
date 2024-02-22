@@ -1,40 +1,45 @@
 <template>
-	<div :class="$style.container">
+	<div :class="classes">
 		<div :class="$style.avatarContainer">
-			<n8n-avatar :firstName="firstName" :lastName="lastName" />
+			<N8nAvatar :first-name="firstName" :last-name="lastName" />
 		</div>
 
 		<div v-if="isPendingUser" :class="$style.pendingUser">
-			<n8n-text :bold="true">{{email}}</n8n-text>
-			<span :class="$style.pendingBadge"><n8n-badge :bold="true">Pending</n8n-badge></span>
+			<N8nText :bold="true">{{ email }}</N8nText>
+			<span :class="$style.pendingBadge"><N8nBadge :bold="true">Pending</N8nBadge></span>
 		</div>
 		<div v-else :class="$style.infoContainer">
 			<div>
-				<n8n-text :bold="true">{{firstName}} {{lastName}} {{isCurrentUser ? this.t('nds.userInfo.you') : ''}}</n8n-text>
+				<N8nText :bold="true" color="text-dark">
+					{{ firstName }} {{ lastName }}
+					{{ isCurrentUser ? t('nds.userInfo.you') : '' }}
+				</N8nText>
+				<span v-if="disabled" :class="$style.pendingBadge">
+					<N8nBadge :bold="true">Disabled</N8nBadge>
+				</span>
 			</div>
 			<div>
-				<n8n-text size="small" color="text-light">{{email}}</n8n-text>
+				<N8nText data-test-id="user-email" size="small" color="text-light">{{ email }}</N8nText>
 			</div>
 		</div>
 	</div>
 </template>
 
-
 <script lang="ts">
-import Vue from 'vue';
 import N8nText from '../N8nText';
 import N8nAvatar from '../N8nAvatar';
 import N8nBadge from '../N8nBadge';
 import Locale from '../../mixins/locale';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 
-export default mixins(Locale).extend({
-	name: 'n8n-users-info',
+export default defineComponent({
+	name: 'N8nUsersInfo',
 	components: {
 		N8nAvatar,
 		N8nText,
 		N8nBadge,
 	},
+	mixins: [Locale],
 	props: {
 		firstName: {
 			type: String,
@@ -45,16 +50,37 @@ export default mixins(Locale).extend({
 		email: {
 			type: String,
 		},
+		isOwner: {
+			type: Boolean,
+		},
 		isPendingUser: {
 			type: Boolean,
 		},
 		isCurrentUser: {
 			type: Boolean,
 		},
+		disabled: {
+			type: Boolean,
+		},
+		settings: {
+			type: Object,
+			required: false,
+		},
+		isSamlLoginEnabled: {
+			type: Boolean,
+			required: false,
+		},
+	},
+	computed: {
+		classes(): Record<string, boolean> {
+			return {
+				[this.$style.container]: true,
+				[this.$style.disabled]: this.disabled,
+			};
+		},
 	},
 });
 </script>
-
 
 <style lang="scss" module>
 .container {
@@ -72,7 +98,7 @@ export default mixins(Locale).extend({
 .infoContainer {
 	flex-grow: 1;
 	display: inline-flex;
-	flex-direction: column;;
+	flex-direction: column;
 	justify-content: center;
 	margin-left: var(--spacing-xs);
 }
@@ -86,5 +112,9 @@ export default mixins(Locale).extend({
 
 .pendingBadge {
 	margin-left: var(--spacing-xs);
+}
+
+.disabled {
+	opacity: 0.5;
 }
 </style>

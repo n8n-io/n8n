@@ -1,22 +1,25 @@
-import { OptionsWithUri } from 'request';
-
-import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	IDataObject,
+	JsonObject,
+	IHttpRequestMethods,
+	IRequestOptions,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
 
 export async function googleApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	method: string,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri: string | null = null,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
@@ -30,7 +33,7 @@ export async function googleApiRequest(
 		json: true,
 	};
 	try {
-		if (Object.keys(body).length === 0) {
+		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
 		}
 
@@ -41,20 +44,19 @@ export async function googleApiRequest(
 			options,
 		);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
 export async function googleApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
 	uri: string | null = null,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -63,9 +65,9 @@ export async function googleApiRequestAllItems(
 
 	do {
 		responseData = await googleApiRequest.call(this, method, endpoint, body, query, uri);
-		query.pageToken = responseData['nextPageToken'];
-		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (responseData['nextPageToken'] !== undefined && responseData['nextPageToken'] !== '');
+		query.pageToken = responseData.nextPageToken;
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+	} while (responseData.nextPageToken !== undefined && responseData.nextPageToken !== '');
 
 	return returnData;
 }
@@ -81,7 +83,7 @@ export function jsonToDocument(value: string | number | IDataObject | IDataObjec
 		return { booleanValue: value };
 	} else if (value === null) {
 		return { nullValue: null };
-	} else if (!isNaN(value as number)) {
+	} else if (value !== '' && !isNaN(value as number)) {
 		if (value.toString().indexOf('.') !== -1) {
 			return { doubleValue: value };
 		} else {
@@ -98,26 +100,12 @@ export function jsonToDocument(value: string | number | IDataObject | IDataObjec
 		const obj = {};
 		for (const o of Object.keys(value)) {
 			//@ts-ignore
-			obj[o] = jsonToDocument(value[o]);
+			obj[o] = jsonToDocument(value[o] as IDataObject);
 		}
 		return { mapValue: { fields: obj } };
 	}
 
 	return {};
-}
-
-export function fullDocumentToJson(data: IDataObject): IDataObject {
-	if (data === undefined) {
-		return data;
-	}
-
-	return {
-		_name: data.name,
-		_id: data.id,
-		_createTime: data.createTime,
-		_updateTime: data.updateTime,
-		...documentToJson(data.fields as IDataObject),
-	};
 }
 
 export function documentToJson(fields: IDataObject): IDataObject {
@@ -151,7 +139,7 @@ export function documentToJson(fields: IDataObject): IDataObject {
 				return value as IDataObject;
 			} else if ('mapValue' === key) {
 				//@ts-ignore
-				return documentToJson(value!.fields || {});
+				return documentToJson((value!.fields as IDataObject) || {});
 			} else if ('arrayValue' === key) {
 				// @ts-ignore
 				const list = value.values as IDataObject[];
@@ -164,4 +152,18 @@ export function documentToJson(fields: IDataObject): IDataObject {
 		}
 	}
 	return result;
+}
+
+export function fullDocumentToJson(data: IDataObject): IDataObject {
+	if (data === undefined) {
+		return data;
+	}
+
+	return {
+		_name: data.name,
+		_id: data.id,
+		_createTime: data.createTime,
+		_updateTime: data.updateTime,
+		...documentToJson(data.fields as IDataObject),
+	};
 }

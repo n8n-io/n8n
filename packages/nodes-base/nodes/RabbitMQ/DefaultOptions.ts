@@ -1,4 +1,4 @@
-import { INodeProperties, INodePropertyCollection, INodePropertyOptions } from 'n8n-workflow';
+import type { INodeProperties, INodePropertyCollection, INodePropertyOptions } from 'n8n-workflow';
 
 export const rabbitDefaultOptions: Array<
 	INodePropertyOptions | INodeProperties | INodePropertyCollection
@@ -71,6 +71,20 @@ export const rabbitDefaultOptions: Array<
 		type: 'boolean',
 		default: false,
 		description: 'Whether the queue will be deleted when the number of consumers drops to zero',
+	},
+	{
+		displayName: 'Assert Exchange',
+		name: 'assertExchange',
+		type: 'boolean',
+		default: true,
+		description: 'Whether to assert the exchange exists before sending',
+	},
+	{
+		displayName: 'Assert Queue',
+		name: 'assertQueue',
+		type: 'boolean',
+		default: true,
+		description: 'Whether to assert the queue exists before sending',
 	},
 	{
 		displayName: 'Durable',

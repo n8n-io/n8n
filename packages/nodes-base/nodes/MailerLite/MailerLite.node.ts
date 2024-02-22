@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -55,7 +54,7 @@ export class MailerLite implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available custom fields to display them to user so that he can
+			// Get all the available custom fields to display them to user so that they can
 			// select them easily
 			async getCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -77,8 +76,8 @@ export class MailerLite implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'subscriber') {
@@ -86,7 +85,7 @@ export class MailerLite implements INodeType {
 					if (operation === 'create') {
 						const email = this.getNodeParameter('email', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IDataObject = {
 							email,
@@ -126,9 +125,9 @@ export class MailerLite implements INodeType {
 					}
 					//https://developers.mailerlite.com/reference#subscribers
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 
 						Object.assign(qs, filters);
 
@@ -136,21 +135,21 @@ export class MailerLite implements INodeType {
 							responseData = await mailerliteApiRequestAllItems.call(
 								this,
 								'GET',
-								`/subscribers`,
+								'/subscribers',
 								{},
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 
-							responseData = await mailerliteApiRequest.call(this, 'GET', `/subscribers`, {}, qs);
+							responseData = await mailerliteApiRequest.call(this, 'GET', '/subscribers', {}, qs);
 						}
 					}
 					//https://developers.mailerlite.com/reference#update-subscriber
 					if (operation === 'update') {
 						const subscriberId = this.getNodeParameter('subscriberId', i) as string;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						const body: IDataObject = {};
 
@@ -194,13 +193,13 @@ export class MailerLite implements INodeType {
 			}
 
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
+				this.helpers.returnJsonArray(responseData as IDataObject[]),
 				{ itemData: { item: i } },
 			);
 
 			returnData.push(...executionData);
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

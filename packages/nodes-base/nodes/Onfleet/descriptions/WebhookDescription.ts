@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 import { webhookMapping } from '../WebhookMapping';
 
@@ -58,7 +58,7 @@ const triggerField = {
 	displayName: 'Trigger',
 	name: 'trigger',
 	type: 'options',
-	options: Object.entries(webhookMapping).map(([key, value]) => {
+	options: Object.entries(webhookMapping).map(([_key, value]) => {
 		return {
 			name: value.name,
 			value: value.key,

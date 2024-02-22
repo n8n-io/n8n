@@ -1,30 +1,28 @@
-import { OptionsWithUri } from 'request';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	IHookFunctions,
+	JsonObject,
+	IHttpRequestMethods,
+	IRequestOptions,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
-
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
-
-import { get } from 'lodash';
+import get from 'lodash/get';
 
 /**
  * Make an API request to Spotify
  *
- * @param {IHookFunctions} this
- * @param {string} method
- * @param {string} url
- * @param {object} body
- * @returns {Promise<any>}
  */
 export async function spotifyApiRequest(
 	this: IHookFunctions | IExecuteFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: object,
-	query?: object,
+	query?: IDataObject,
 	uri?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		method,
 		headers: {
 			'User-Agent': 'n8n',
@@ -42,18 +40,17 @@ export async function spotifyApiRequest(
 	try {
 		return await this.helpers.requestOAuth2.call(this, 'spotifyOAuth2Api', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
 export async function spotifyApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: object,
-	query?: object,
-	// tslint:disable-next-line:no-any
+	query?: IDataObject,
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -63,6 +60,7 @@ export async function spotifyApiRequestAllItems(
 
 	do {
 		responseData = await spotifyApiRequest.call(this, method, endpoint, body, query, uri);
+
 		returnData.push.apply(returnData, get(responseData, propertyName));
 		uri = responseData.next || responseData[propertyName.split('.')[0]].next;
 		//remove the query as the query parameters are already included in the next, else api throws error.
@@ -72,7 +70,7 @@ export async function spotifyApiRequestAllItems(
 			return returnData;
 		}
 	} while (
-		(responseData['next'] !== null && responseData['next'] !== undefined) ||
+		(responseData.next !== null && responseData.next !== undefined) ||
 		(responseData[propertyName.split('.')[0]].next !== null &&
 			responseData[propertyName.split('.')[0]].next !== undefined)
 	);

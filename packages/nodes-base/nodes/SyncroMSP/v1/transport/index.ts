@@ -1,14 +1,15 @@
-import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
+	IHookFunctions,
+	ILoadOptionsFunctions,
 	GenericValue,
 	ICredentialDataDecryptedObject,
 	ICredentialTestFunctions,
 	IDataObject,
 	IHttpRequestOptions,
-	NodeApiError,
-	NodeOperationError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 /**
  * Make an API request to Mattermost
@@ -22,7 +23,7 @@ export async function apiRequest(
 ) {
 	const credentials = await this.getCredentials('syncroMspApi');
 
-	query['api_key'] = credentials.apiKey;
+	query.api_key = credentials.apiKey;
 
 	const options: IHttpRequestOptions = {
 		method,
@@ -35,7 +36,7 @@ export async function apiRequest(
 	try {
 		return await this.helpers.httpRequest(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -54,7 +55,7 @@ export async function apiRequestAllItems(
 	do {
 		responseData = await apiRequest.call(this, method, endpoint, body, query);
 		query.page++;
-		returnData = returnData.concat(responseData[endpoint]);
+		returnData = returnData.concat(responseData[endpoint] as IDataObject[]);
 	} while (responseData[endpoint].length !== 0);
 	return returnData;
 }
@@ -62,7 +63,6 @@ export async function apiRequestAllItems(
 export async function validateCredentials(
 	this: ICredentialTestFunctions,
 	decryptedCredentials: ICredentialDataDecryptedObject,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = decryptedCredentials;
 
@@ -79,5 +79,5 @@ export async function validateCredentials(
 		url: `https://${subdomain}.syncromsp.com/api/v1//me`,
 	};
 
-	return this.helpers.request(options);
+	return await this.helpers.request(options);
 }

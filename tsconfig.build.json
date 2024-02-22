@@ -1,0 +1,16 @@
+{
+	"compilerOptions": {
+		"types": ["node"],
+		"noEmit": false,
+		"noUnusedLocals": false,
+		"noUnusedParameters": false,
+		"declaration": true
+	},
+	"tsc-alias": {
+		"replacers": {
+			"base-url": {
+				"enabled": false
+			}
+		}
+	}
+}

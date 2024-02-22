@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 import { invoiceAdditionalFieldsOptions } from './InvoiceAdditionalFieldsOptions';
 
@@ -106,9 +106,6 @@ export const invoiceFields: INodeProperties[] = [
 				description: 'Textual description of the line item',
 				type: 'string',
 				default: '',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 			},
 			{
 				displayName: 'Detail Type',
@@ -218,12 +215,12 @@ export const invoiceFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Binary Property',
+		displayName: 'Put Output File in Field',
 		name: 'binaryProperty',
 		type: 'string',
 		required: true,
 		default: 'data',
-		description: 'Name of the binary property to which to write to',
+		hint: 'The name of the output binary field to put the file in',
 		displayOptions: {
 			show: {
 				resource: ['invoice'],
@@ -298,9 +295,6 @@ export const invoiceFields: INodeProperties[] = [
 				placeholder: "WHERE Metadata.LastUpdatedTime > '2021-01-01'",
 				description:
 					'The condition for selecting invoices. See the <a href="https://developer.intuit.com/app/developer/qbo/docs/develop/explore-the-quickbooks-online-api/data-queries">guide</a> for supported syntax.',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 			},
 		],
 		displayOptions: {

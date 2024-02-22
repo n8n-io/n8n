@@ -1,29 +1,25 @@
-import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
-
-import { OptionsWithUri } from 'request';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	IHookFunctions,
+	IHttpRequestMethods,
+	ILoadOptionsFunctions,
+	IRequestOptions,
+} from 'n8n-workflow';
 
 /**
  * Make an API request to Twake
  *
- * @param {IHookFunctions} this
- * @param {string} method
- * @param {string} url
- * @param {object} body
- * @returns {Promise<any>}
  */
 export async function twakeApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	body: object,
-	query?: object,
+	query?: IDataObject,
 	uri?: string,
-	// tslint:disable-next-line:no-any
-): Promise<any> {
-	const authenticationMethod = this.getNodeParameter('twakeVersion', 0, 'twakeCloudApi') as string;
-
-	const options: OptionsWithUri = {
+) {
+	const options: IRequestOptions = {
 		headers: {},
 		method,
 		body,
@@ -39,12 +35,5 @@ export async function twakeApiRequest(
 	// 	options.uri = `${credentials!.hostUrl}/api/v1${resource}`;
 	// }
 
-	try {
-		return await this.helpers.requestWithAuthentication.call(this, 'twakeCloudApi', options);
-	} catch (error) {
-		if (error.error?.code === 'ECONNREFUSED') {
-			throw new NodeApiError(this.getNode(), error, { message: 'Twake host is not accessible!' });
-		}
-		throw new NodeApiError(this.getNode(), error);
-	}
+	return await this.helpers.requestWithAuthentication.call(this, 'twakeCloudApi', options);
 }

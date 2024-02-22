@@ -1,8 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import { OptionsWithUri } from 'request';
-
-import {
+import type {
+	IExecuteFunctions,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
@@ -10,11 +7,13 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
+	IRequestOptions,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	getToken,
+	removeTrailingSlash,
 	strapiApiRequest,
 	strapiApiRequestAllItems,
 	validateJSON,
@@ -41,9 +40,39 @@ export class Strapi implements INodeType {
 				name: 'strapiApi',
 				required: true,
 				testedBy: 'strapiApiTest',
+				displayOptions: {
+					show: {
+						authentication: ['password'],
+					},
+				},
+			},
+			{
+				name: 'strapiTokenApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['token'],
+					},
+				},
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Username & Password',
+						value: 'password',
+					},
+					{
+						name: 'API Token',
+						value: 'token',
+					},
+				],
+				default: 'password',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -68,24 +97,24 @@ export class Strapi implements INodeType {
 				this: ICredentialTestFunctions,
 				credential: ICredentialsDecrypted,
 			): Promise<INodeCredentialTestResult> {
-				const credentials = (await credential.data) as IDataObject;
-				let options = {} as OptionsWithUri;
+				const credentials = credential.data as IDataObject;
+				let options: IRequestOptions = {};
+
+				const url = removeTrailingSlash(credentials.url as string);
 
 				options = {
 					headers: {
-						'content-type': `application/json`,
+						'content-type': 'application/json',
 					},
 					method: 'POST',
 					body: {
 						identifier: credentials.email,
 						password: credentials.password,
 					},
-					uri:
-						credentials.apiVersion === 'v4'
-							? `${credentials.url}/api/auth/local`
-							: `${credentials.url}/auth/local`,
+					uri: credentials.apiVersion === 'v4' ? `${url}/api/auth/local` : `${url}/auth/local`,
 					json: true,
 				};
+
 				try {
 					await this.helpers.request(options);
 					return {
@@ -109,13 +138,21 @@ export class Strapi implements INodeType {
 		const qs: IDataObject = {};
 		const headers: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
-		const { apiVersion } = await this.getCredentials('strapiApi');
-		const { jwt } = await getToken.call(this);
+		const authenticationMethod = this.getNodeParameter('authentication', 0);
 
-		headers.Authorization = `Bearer ${jwt}`;
+		let apiVersion: string;
+
+		if (authenticationMethod === 'password') {
+			const { jwt } = await getToken.call(this);
+			apiVersion = (await this.getCredentials('strapiApi')).apiVersion as string;
+			headers.Authorization = `Bearer ${jwt}`;
+		} else {
+			apiVersion = (await this.getCredentials('strapiTokenApi')).apiVersion as string;
+		}
+
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'entry') {
@@ -146,7 +183,7 @@ export class Strapi implements INodeType {
 						);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject),
 							{ itemData: { item: i } },
 						);
 
@@ -169,7 +206,7 @@ export class Strapi implements INodeType {
 						);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject),
 							{ itemData: { item: i } },
 						);
 
@@ -177,11 +214,11 @@ export class Strapi implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						const contentType = this.getNodeParameter('contentType', i) as string;
 
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						if (apiVersion === 'v4') {
 							// Sort Option
@@ -213,9 +250,10 @@ export class Strapi implements INodeType {
 									{},
 									qs,
 									headers,
+									apiVersion,
 								);
 							} else {
-								qs['pagination[pageSize]'] = this.getNodeParameter('limit', i) as number;
+								qs['pagination[pageSize]'] = this.getNodeParameter('limit', i);
 								({ data: responseData } = await strapiApiRequest.call(
 									this,
 									'GET',
@@ -256,9 +294,10 @@ export class Strapi implements INodeType {
 									{},
 									qs,
 									headers,
+									apiVersion,
 								);
 							} else {
-								qs._limit = this.getNodeParameter('limit', i) as number;
+								qs._limit = this.getNodeParameter('limit', i);
 								responseData = await strapiApiRequest.call(
 									this,
 									'GET',
@@ -272,7 +311,7 @@ export class Strapi implements INodeType {
 						}
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject),
 							{ itemData: { item: i } },
 						);
 
@@ -299,7 +338,7 @@ export class Strapi implements INodeType {
 						}
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject),
 							{ itemData: { item: i } },
 						);
 
@@ -342,7 +381,7 @@ export class Strapi implements INodeType {
 						}
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject),
 							{ itemData: { item: i } },
 						);
 
@@ -361,6 +400,6 @@ export class Strapi implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

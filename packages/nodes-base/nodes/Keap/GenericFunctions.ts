@@ -1,29 +1,29 @@
-import { OptionsWithUri } from 'request';
-
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
+	IRequestOptions,
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+	JsonObject,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import { snakeCase } from 'change-case';
 
 export async function keapApiRequest(
 	this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
@@ -38,25 +38,24 @@ export async function keapApiRequest(
 		if (Object.keys(headers).length !== 0) {
 			options.headers = Object.assign({}, options.headers, headers);
 		}
-		if (Object.keys(body).length === 0) {
+		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
 		}
 		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'keapOAuth2Api', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
 export async function keapApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -67,7 +66,7 @@ export async function keapApiRequestAllItems(
 	do {
 		responseData = await keapApiRequest.call(this, method, endpoint, body, query, uri);
 		uri = responseData.next;
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (returnData.length < responseData.count);
 
 	return returnData;

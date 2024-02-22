@@ -1,0 +1,719 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`RunDataJsonSchema.vue > renders schema for data 1`] = `
+<div>
+  <div
+    class="schemaWrapper"
+  >
+    <div
+      class=""
+    >
+      
+      <div
+        class="schema"
+      >
+        <div
+          class="item"
+          data-test-id="run-data-schema-item"
+        >
+          <!--v-if-->
+          <!--v-if-->
+          <!--v-if-->
+          <!--v-if-->
+          <div
+            class="sub"
+          >
+            
+            <div
+              class="item"
+              data-test-id="run-data-schema-item"
+              style="transition-delay: 0s;"
+            >
+              <div
+                class="pill mappable"
+                title="string"
+              >
+                <span
+                  class="label"
+                  data-depth="1"
+                  data-name="name"
+                  data-path=".name"
+                  data-target="mappable"
+                  data-value="{{ $json.name }}"
+                >
+                  <svg
+                    aria-hidden="true"
+                    class="svg-inline--fa fa-font fa-w-14 fa-sm"
+                    data-icon="font"
+                    data-prefix="fas"
+                    focusable="false"
+                    role="img"
+                    viewBox="0 0 448 512"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      class=""
+                      d="M432 416h-23.41L277.88 53.69A32 32 0 0 0 247.58 32h-47.16a32 32 0 0 0-30.3 21.69L39.41 416H16a16 16 0 0 0-16 16v32a16 16 0 0 0 16 16h128a16 16 0 0 0 16-16v-32a16 16 0 0 0-16-16h-19.58l23.3-64h152.56l23.3 64H304a16 16 0 0 0-16 16v32a16 16 0 0 0 16 16h128a16 16 0 0 0 16-16v-32a16 16 0 0 0-16-16zM176.85 272L224 142.51 271.15 272z"
+                      fill="currentColor"
+                    />
+                  </svg>
+                  <!--v-if-->
+                  <span
+                    class=""
+                  >
+                    name
+                  </span>
+                </span>
+              </div>
+              <span
+                class="text"
+              >
+                John
+              </span>
+              <!--v-if-->
+              <!--v-if-->
+              <!--v-if-->
+            </div>
+            <div
+              class="item"
+              data-test-id="run-data-schema-item"
+              style="transition-delay: 0.033s;"
+            >
+              <div
+                class="pill mappable"
+                title="number"
+              >
+                <span
+                  class="label"
+                  data-depth="1"
+                  data-name="age"
+                  data-path=".age"
+                  data-target="mappable"
+                  data-value="{{ $json.age }}"
+                >
+                  <svg
+                    aria-hidden="true"
+                    class="svg-inline--fa fa-hashtag fa-w-14 fa-sm"
+                    data-icon="hashtag"
+                    data-prefix="fas"
+                    focusable="false"
+                    role="img"
+                    viewBox="0 0 448 512"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      class=""
+                      d="M440.667 182.109l7.143-40c1.313-7.355-4.342-14.109-11.813-14.109h-74.81l14.623-81.891C377.123 38.754 371.468 32 363.997 32h-40.632a12 12 0 0 0-11.813 9.891L296.175 128H197.54l14.623-81.891C213.477 38.754 207.822 32 200.35 32h-40.632a12 12 0 0 0-11.813 9.891L132.528 128H53.432a12 12 0 0 0-11.813 9.891l-7.143 40C33.163 185.246 38.818 192 46.289 192h74.81L98.242 320H19.146a12 12 0 0 0-11.813 9.891l-7.143 40C-1.123 377.246 4.532 384 12.003 384h74.81L72.19 465.891C70.877 473.246 76.532 480 84.003 480h40.632a12 12 0 0 0 11.813-9.891L151.826 384h98.634l-14.623 81.891C234.523 473.246 240.178 480 247.65 480h40.632a12 12 0 0 0 11.813-9.891L315.472 384h79.096a12 12 0 0 0 11.813-9.891l7.143-40c1.313-7.355-4.342-14.109-11.813-14.109h-74.81l22.857-128h79.096a12 12 0 0 0 11.813-9.891zM261.889 320h-98.634l22.857-128h98.634l-22.857 128z"
+                      fill="currentColor"
+                    />
+                  </svg>
+                  <!--v-if-->
+                  <span
+                    class=""
+                  >
+                    age
+                  </span>
+                </span>
+              </div>
+              <span
+                class="text"
+              >
+                22
+              </span>
+              <!--v-if-->
+              <!--v-if-->
+              <!--v-if-->
+            </div>
+            <div
+              class="item"
+              data-test-id="run-data-schema-item"
+              style="transition-delay: 0.066s;"
+            >
+              <div
+                class="pill mappable"
+                title="array"
+              >
+                <span
+                  class="label"
+                  data-depth="1"
+                  data-name="hobbies"
+                  data-path=".hobbies"
+                  data-target="mappable"
+                  data-value="{{ $json.hobbies }}"
+                >
+                  <svg
+                    aria-hidden="true"
+                    class="svg-inline--fa fa-list fa-w-16 fa-sm"
+                    data-icon="list"
+                    data-prefix="fas"
+                    focusable="false"
+                    role="img"
+                    viewBox="0 0 512 512"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      class=""
+                      d="M80 368H16a16 16 0 0 0-16 16v64a16 16 0 0 0 16 16h64a16 16 0 0 0 16-16v-64a16 16 0 0 0-16-16zm0-320H16A16 16 0 0 0 0 64v64a16 16 0 0 0 16 16h64a16 16 0 0 0 16-16V64a16 16 0 0 0-16-16zm0 160H16a16 16 0 0 0-16 16v64a16 16 0 0 0 16 16h64a16 16 0 0 0 16-16v-64a16 16 0 0 0-16-16zm416 176H176a16 16 0 0 0-16 16v32a16 16 0 0 0 16 16h320a16 16 0 0 0 16-16v-32a16 16 0 0 0-16-16zm0-320H176a16 16 0 0 0-16 16v32a16 16 0 0 0 16 16h320a16 16 0 0 0 16-16V80a16 16 0 0 0-16-16zm0 160H176a16 16 0 0 0-16 16v32a16 16 0 0 0 16 16h320a16 16 0 0 0 16-16v-32a16 16 0 0 0-16-16z"
+                      fill="currentColor"
+                    />
+                  </svg>
+                  <!--v-if-->
+                  <span
+                    class=""
+                  >
+                    hobbies
+                  </span>
+                </span>
+              </div>
+              <!--v-if-->
+              <input
+                id="input_array-0-2"
+                type="checkbox"
+              />
+              <label
+                class="toggle"
+                for="input_array-0-2"
+              >
+                <svg
+                  aria-hidden="true"
+                  class="svg-inline--fa fa-angle-up fa-w-10"
+                  data-icon="angle-up"
+                  data-prefix="fas"
+                  focusable="false"
+                  role="img"
+                  viewBox="0 0 320 512"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    class=""
+                    d="M177 159.7l136 136c9.4 9.4 9.4 24.6 0 33.9l-22.6 22.6c-9.4 9.4-24.6 9.4-33.9 0L160 255.9l-96.4 96.4c-9.4 9.4-24.6 9.4-33.9 0L7 329.7c-9.4-9.4-9.4-24.6 0-33.9l136-136c9.4-9.5 24.6-9.5 34-.1z"
+                    fill="currentColor"
+                  />
+                </svg>
+              </label>
+              <div
+                class="sub"
+              >
+                
+                <div
+                  class="item"
+                  data-test-id="run-data-schema-item"
+                  style="transition-delay: 0s;"
+                >
+                  <div
+                    class="pill mappable"
+                    title="string"
+                  >
+                    <span
+                      class="label"
+                      data-depth="2"
+                      data-name="string[0]"
+                      data-path=".hobbies[0]"
+                      data-target="mappable"
+                      data-value="{{ $json.hobbies[0] }}"
+                    >
+                      <svg
+                        aria-hidden="true"
+                        class="svg-inline--fa fa-font fa-w-14 fa-sm"
+                        data-icon="font"
+                        data-prefix="fas"
+                        focusable="false"
+                        role="img"
+                        viewBox="0 0 448 512"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          class=""
+                          d="M432 416h-23.41L277.88 53.69A32 32 0 0 0 247.58 32h-47.16a32 32 0 0 0-30.3 21.69L39.41 416H16a16 16 0 0 0-16 16v32a16 16 0 0 0 16 16h128a16 16 0 0 0 16-16v-32a16 16 0 0 0-16-16h-19.58l23.3-64h152.56l23.3 64H304a16 16 0 0 0-16 16v32a16 16 0 0 0 16 16h128a16 16 0 0 0 16-16v-32a16 16 0 0 0-16-16zM176.85 272L224 142.51 271.15 272z"
+                          fill="currentColor"
+                        />
+                      </svg>
+                      <span>
+                        hobbies
+                      </span>
+                      <span
+                        class="arrayIndex"
+                      >
+                        [0]
+                      </span>
+                    </span>
+                  </div>
+                  <span
+                    class="text"
+                  >
+                    surfing
+                  </span>
+                  <!--v-if-->
+                  <!--v-if-->
+                  <!--v-if-->
+                </div>
+                <div
+                  class="item"
+                  data-test-id="run-data-schema-item"
+                  style="transition-delay: 0.033s;"
+                >
+                  <div
+                    class="pill mappable"
+                    title="string"
+                  >
+                    <span
+                      class="label"
+                      data-depth="2"
+                      data-name="string[1]"
+                      data-path=".hobbies[1]"
+                      data-target="mappable"
+                      data-value="{{ $json.hobbies[1] }}"
+                    >
+                      <svg
+                        aria-hidden="true"
+                        class="svg-inline--fa fa-font fa-w-14 fa-sm"
+                        data-icon="font"
+                        data-prefix="fas"
+                        focusable="false"
+                        role="img"
+                        viewBox="0 0 448 512"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          class=""
+                          d="M432 416h-23.41L277.88 53.69A32 32 0 0 0 247.58 32h-47.16a32 32 0 0 0-30.3 21.69L39.41 416H16a16 16 0 0 0-16 16v32a16 16 0 0 0 16 16h128a16 16 0 0 0 16-16v-32a16 16 0 0 0-16-16h-19.58l23.3-64h152.56l23.3 64H304a16 16 0 0 0-16 16v32a16 16 0 0 0 16 16h128a16 16 0 0 0 16-16v-32a16 16 0 0 0-16-16zM176.85 272L224 142.51 271.15 272z"
+                          fill="currentColor"
+                        />
+                      </svg>
+                      <span>
+                        hobbies
+                      </span>
+                      <span
+                        class="arrayIndex"
+                      >
+                        [1]
+                      </span>
+                    </span>
+                  </div>
+                  <span
+                    class="text"
+                  >
+                    traveling
+                  </span>
+                  <!--v-if-->
+                  <!--v-if-->
+                  <!--v-if-->
+                </div>
+                
+              </div>
+            </div>
+            
+          </div>
+        </div>
+      </div>
+      
+      <!--teleport start-->
+      <!--teleport end-->
+    </div>
+  </div>
+</div>
+`;
+
+exports[`RunDataJsonSchema.vue > renders schema for empty data 1`] = `
+<div>
+  <div
+    class="schemaWrapper"
+  >
+    <div
+      class="n8n-info-tip infoTip info note bold"
+    >
+      <span
+        class="iconText"
+      >
+        <span
+          class="n8n-text compact size-medium regular n8n-icon n8n-icon"
+        >
+          
+          <svg
+            aria-hidden="true"
+            class="svg-inline--fa fa-info-circle fa-w-16 medium"
+            data-icon="info-circle"
+            data-prefix="fas"
+            focusable="false"
+            role="img"
+            viewBox="0 0 512 512"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              class=""
+              d="M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 110c23.196 0 42 18.804 42 42s-18.804 42-42 42-42-18.804-42-42 18.804-42 42-42zm56 254c0 6.627-5.373 12-12 12h-88c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h12v-64h-12c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h64c6.627 0 12 5.373 12 12v100h12c6.627 0 12 5.373 12 12v24z"
+              fill="currentColor"
+            />
+          </svg>
+          
+        </span>
+        <span>
+          
+          No data to show - item(s) exist, but they’re empty
+          
+        </span>
+      </span>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`RunDataJsonSchema.vue > renders schema with spaces and dots 1`] = `
+<div>
+  <div
+    class="schemaWrapper"
+  >
+    <div
+      class=""
+    >
+      
+      <div
+        class="schema"
+      >
+        <div
+          class="item"
+          data-test-id="run-data-schema-item"
+        >
+          <!--v-if-->
+          <!--v-if-->
+          <!--v-if-->
+          <!--v-if-->
+          <div
+            class="sub"
+          >
+            
+            <div
+              class="item"
+              data-test-id="run-data-schema-item"
+              style="transition-delay: 0s;"
+            >
+              <div
+                class="pill mappable"
+                title="array"
+              >
+                <span
+                  class="label"
+                  data-depth="1"
+                  data-name="hello world"
+                  data-path="['hello world']"
+                  data-target="mappable"
+                  data-value="{{ $json['hello world'] }}"
+                >
+                  <svg
+                    aria-hidden="true"
+                    class="svg-inline--fa fa-list fa-w-16 fa-sm"
+                    data-icon="list"
+                    data-prefix="fas"
+                    focusable="false"
+                    role="img"
+                    viewBox="0 0 512 512"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      class=""
+                      d="M80 368H16a16 16 0 0 0-16 16v64a16 16 0 0 0 16 16h64a16 16 0 0 0 16-16v-64a16 16 0 0 0-16-16zm0-320H16A16 16 0 0 0 0 64v64a16 16 0 0 0 16 16h64a16 16 0 0 0 16-16V64a16 16 0 0 0-16-16zm0 160H16a16 16 0 0 0-16 16v64a16 16 0 0 0 16 16h64a16 16 0 0 0 16-16v-64a16 16 0 0 0-16-16zm416 176H176a16 16 0 0 0-16 16v32a16 16 0 0 0 16 16h320a16 16 0 0 0 16-16v-32a16 16 0 0 0-16-16zm0-320H176a16 16 0 0 0-16 16v32a16 16 0 0 0 16 16h320a16 16 0 0 0 16-16V80a16 16 0 0 0-16-16zm0 160H176a16 16 0 0 0-16 16v32a16 16 0 0 0 16 16h320a16 16 0 0 0 16-16v-32a16 16 0 0 0-16-16z"
+                      fill="currentColor"
+                    />
+                  </svg>
+                  <!--v-if-->
+                  <span
+                    class=""
+                  >
+                    hello world
+                  </span>
+                </span>
+              </div>
+              <!--v-if-->
+              <input
+                id="input_array-0-0"
+                type="checkbox"
+              />
+              <label
+                class="toggle"
+                for="input_array-0-0"
+              >
+                <svg
+                  aria-hidden="true"
+                  class="svg-inline--fa fa-angle-up fa-w-10"
+                  data-icon="angle-up"
+                  data-prefix="fas"
+                  focusable="false"
+                  role="img"
+                  viewBox="0 0 320 512"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    class=""
+                    d="M177 159.7l136 136c9.4 9.4 9.4 24.6 0 33.9l-22.6 22.6c-9.4 9.4-24.6 9.4-33.9 0L160 255.9l-96.4 96.4c-9.4 9.4-24.6 9.4-33.9 0L7 329.7c-9.4-9.4-9.4-24.6 0-33.9l136-136c9.4-9.5 24.6-9.5 34-.1z"
+                    fill="currentColor"
+                  />
+                </svg>
+              </label>
+              <div
+                class="sub"
+              >
+                
+                <div
+                  class="item"
+                  data-test-id="run-data-schema-item"
+                  style="transition-delay: 0s;"
+                >
+                  <div
+                    class="pill mappable"
+                    title="object"
+                  >
+                    <span
+                      class="label"
+                      data-depth="2"
+                      data-name="object[0]"
+                      data-path="['hello world'][0]"
+                      data-target="mappable"
+                      data-value="{{ $json['hello world'][0] }}"
+                    >
+                      <svg
+                        aria-hidden="true"
+                        class="svg-inline--fa fa-cube fa-w-16 fa-sm"
+                        data-icon="cube"
+                        data-prefix="fas"
+                        focusable="false"
+                        role="img"
+                        viewBox="0 0 512 512"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          class=""
+                          d="M239.1 6.3l-208 78c-18.7 7-31.1 25-31.1 45v225.1c0 18.2 10.3 34.8 26.5 42.9l208 104c13.5 6.8 29.4 6.8 42.9 0l208-104c16.3-8.1 26.5-24.8 26.5-42.9V129.3c0-20-12.4-37.9-31.1-44.9l-208-78C262 2.2 250 2.2 239.1 6.3zM256 68.4l192 72v1.1l-192 78-192-78v-1.1l192-72zm32 356V275.5l160-65v133.9l-160 80z"
+                          fill="currentColor"
+                        />
+                      </svg>
+                      <span>
+                        hello world
+                      </span>
+                      <span
+                        class="arrayIndex"
+                      >
+                        [0]
+                      </span>
+                    </span>
+                  </div>
+                  <!--v-if-->
+                  <input
+                    id="input_object-1-0"
+                    type="checkbox"
+                  />
+                  <label
+                    class="toggle"
+                    for="input_object-1-0"
+                  >
+                    <svg
+                      aria-hidden="true"
+                      class="svg-inline--fa fa-angle-up fa-w-10"
+                      data-icon="angle-up"
+                      data-prefix="fas"
+                      focusable="false"
+                      role="img"
+                      viewBox="0 0 320 512"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        class=""
+                        d="M177 159.7l136 136c9.4 9.4 9.4 24.6 0 33.9l-22.6 22.6c-9.4 9.4-24.6 9.4-33.9 0L160 255.9l-96.4 96.4c-9.4 9.4-24.6 9.4-33.9 0L7 329.7c-9.4-9.4-9.4-24.6 0-33.9l136-136c9.4-9.5 24.6-9.5 34-.1z"
+                        fill="currentColor"
+                      />
+                    </svg>
+                  </label>
+                  <div
+                    class="sub"
+                  >
+                    
+                    <div
+                      class="item"
+                      data-test-id="run-data-schema-item"
+                      style="transition-delay: 0s;"
+                    >
+                      <div
+                        class="pill mappable"
+                        title="object"
+                      >
+                        <span
+                          class="label"
+                          data-depth="3"
+                          data-name="test"
+                          data-path="['hello world'][0].test"
+                          data-target="mappable"
+                          data-value="{{ $json['hello world'][0].test }}"
+                        >
+                          <svg
+                            aria-hidden="true"
+                            class="svg-inline--fa fa-cube fa-w-16 fa-sm"
+                            data-icon="cube"
+                            data-prefix="fas"
+                            focusable="false"
+                            role="img"
+                            viewBox="0 0 512 512"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path
+                              class=""
+                              d="M239.1 6.3l-208 78c-18.7 7-31.1 25-31.1 45v225.1c0 18.2 10.3 34.8 26.5 42.9l208 104c13.5 6.8 29.4 6.8 42.9 0l208-104c16.3-8.1 26.5-24.8 26.5-42.9V129.3c0-20-12.4-37.9-31.1-44.9l-208-78C262 2.2 250 2.2 239.1 6.3zM256 68.4l192 72v1.1l-192 78-192-78v-1.1l192-72zm32 356V275.5l160-65v133.9l-160 80z"
+                              fill="currentColor"
+                            />
+                          </svg>
+                          <!--v-if-->
+                          <span
+                            class=""
+                          >
+                            test
+                          </span>
+                        </span>
+                      </div>
+                      <!--v-if-->
+                      <input
+                        id="input_object-2-0"
+                        type="checkbox"
+                      />
+                      <label
+                        class="toggle"
+                        for="input_object-2-0"
+                      >
+                        <svg
+                          aria-hidden="true"
+                          class="svg-inline--fa fa-angle-up fa-w-10"
+                          data-icon="angle-up"
+                          data-prefix="fas"
+                          focusable="false"
+                          role="img"
+                          viewBox="0 0 320 512"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            class=""
+                            d="M177 159.7l136 136c9.4 9.4 9.4 24.6 0 33.9l-22.6 22.6c-9.4 9.4-24.6 9.4-33.9 0L160 255.9l-96.4 96.4c-9.4 9.4-24.6 9.4-33.9 0L7 329.7c-9.4-9.4-9.4-24.6 0-33.9l136-136c9.4-9.5 24.6-9.5 34-.1z"
+                            fill="currentColor"
+                          />
+                        </svg>
+                      </label>
+                      <div
+                        class="sub"
+                      >
+                        
+                        <div
+                          class="item"
+                          data-test-id="run-data-schema-item"
+                          style="transition-delay: 0s;"
+                        >
+                          <div
+                            class="pill mappable"
+                            title="number"
+                          >
+                            <span
+                              class="label"
+                              data-depth="4"
+                              data-name="more to think about"
+                              data-path="['hello world'][0].test['more to think about']"
+                              data-target="mappable"
+                              data-value="{{ $json['hello world'][0].test['more to think about'] }}"
+                            >
+                              <svg
+                                aria-hidden="true"
+                                class="svg-inline--fa fa-hashtag fa-w-14 fa-sm"
+                                data-icon="hashtag"
+                                data-prefix="fas"
+                                focusable="false"
+                                role="img"
+                                viewBox="0 0 448 512"
+                                xmlns="http://www.w3.org/2000/svg"
+                              >
+                                <path
+                                  class=""
+                                  d="M440.667 182.109l7.143-40c1.313-7.355-4.342-14.109-11.813-14.109h-74.81l14.623-81.891C377.123 38.754 371.468 32 363.997 32h-40.632a12 12 0 0 0-11.813 9.891L296.175 128H197.54l14.623-81.891C213.477 38.754 207.822 32 200.35 32h-40.632a12 12 0 0 0-11.813 9.891L132.528 128H53.432a12 12 0 0 0-11.813 9.891l-7.143 40C33.163 185.246 38.818 192 46.289 192h74.81L98.242 320H19.146a12 12 0 0 0-11.813 9.891l-7.143 40C-1.123 377.246 4.532 384 12.003 384h74.81L72.19 465.891C70.877 473.246 76.532 480 84.003 480h40.632a12 12 0 0 0 11.813-9.891L151.826 384h98.634l-14.623 81.891C234.523 473.246 240.178 480 247.65 480h40.632a12 12 0 0 0 11.813-9.891L315.472 384h79.096a12 12 0 0 0 11.813-9.891l7.143-40c1.313-7.355-4.342-14.109-11.813-14.109h-74.81l22.857-128h79.096a12 12 0 0 0 11.813-9.891zM261.889 320h-98.634l22.857-128h98.634l-22.857 128z"
+                                  fill="currentColor"
+                                />
+                              </svg>
+                              <!--v-if-->
+                              <span
+                                class=""
+                              >
+                                more to think about
+                              </span>
+                            </span>
+                          </div>
+                          <span
+                            class="text"
+                          >
+                            1
+                          </span>
+                          <!--v-if-->
+                          <!--v-if-->
+                          <!--v-if-->
+                        </div>
+                        
+                      </div>
+                    </div>
+                    <div
+                      class="item"
+                      data-test-id="run-data-schema-item"
+                      style="transition-delay: 0.033s;"
+                    >
+                      <div
+                        class="pill mappable"
+                        title="string"
+                      >
+                        <span
+                          class="label"
+                          data-depth="3"
+                          data-name="test.how"
+                          data-path="['hello world'][0]['test.how']"
+                          data-target="mappable"
+                          data-value="{{ $json['hello world'][0]['test.how'] }}"
+                        >
+                          <svg
+                            aria-hidden="true"
+                            class="svg-inline--fa fa-font fa-w-14 fa-sm"
+                            data-icon="font"
+                            data-prefix="fas"
+                            focusable="false"
+                            role="img"
+                            viewBox="0 0 448 512"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path
+                              class=""
+                              d="M432 416h-23.41L277.88 53.69A32 32 0 0 0 247.58 32h-47.16a32 32 0 0 0-30.3 21.69L39.41 416H16a16 16 0 0 0-16 16v32a16 16 0 0 0 16 16h128a16 16 0 0 0 16-16v-32a16 16 0 0 0-16-16h-19.58l23.3-64h152.56l23.3 64H304a16 16 0 0 0-16 16v32a16 16 0 0 0 16 16h128a16 16 0 0 0 16-16v-32a16 16 0 0 0-16-16zM176.85 272L224 142.51 271.15 272z"
+                              fill="currentColor"
+                            />
+                          </svg>
+                          <!--v-if-->
+                          <span
+                            class=""
+                          >
+                            test.how
+                          </span>
+                        </span>
+                      </div>
+                      <span
+                        class="text"
+                      >
+                        ignore
+                      </span>
+                      <!--v-if-->
+                      <!--v-if-->
+                      <!--v-if-->
+                    </div>
+                    
+                  </div>
+                </div>
+                
+              </div>
+            </div>
+            
+          </div>
+        </div>
+      </div>
+      
+      <!--teleport start-->
+      <!--teleport end-->
+    </div>
+  </div>
+</div>
+`;

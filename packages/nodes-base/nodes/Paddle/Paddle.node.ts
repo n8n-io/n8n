@@ -1,16 +1,16 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
-	NodeOperationError,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
 import { couponFields, couponOperations } from './CouponDescription';
 
 import { paddleApiRequest, paddleApiRequestAllItems, validateJSON } from './GenericFunctions';
@@ -27,8 +27,6 @@ import { userFields, userOperations } from './UserDescription';
 // 	orderOperations,
 // 	orderFields,
 // } from './OrderDescription';
-
-import moment from 'moment';
 
 export class Paddle implements INodeType {
 	description: INodeTypeDescription = {
@@ -120,7 +118,7 @@ export class Paddle implements INodeType {
 
 				// Alert user if there's no payments present to be loaded into payments property
 				if (paymentResponse.response === undefined || paymentResponse.response.length === 0) {
-					throw new NodeApiError(this.getNode(), paymentResponse, {
+					throw new NodeApiError(this.getNode(), paymentResponse as JsonObject, {
 						message: 'No payments on account.',
 					});
 				}
@@ -169,13 +167,13 @@ export class Paddle implements INodeType {
 		const length = items.length;
 		let responseData;
 		const body: IDataObject = {};
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'coupon') {
 					if (operation === 'create') {
-						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 						if (jsonParameters) {
 							const additionalFieldsJson = this.getNodeParameter(
@@ -211,7 +209,7 @@ export class Paddle implements INodeType {
 							body.discount_type = discountType;
 							body.discount_amount = discountAmount;
 
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+							const additionalFields = this.getNodeParameter('additionalFields', i);
 
 							if (additionalFields.allowedUses) {
 								body.allowed_uses = additionalFields.allowedUses as number;
@@ -223,9 +221,7 @@ export class Paddle implements INodeType {
 								body.coupon_prefix = additionalFields.couponPrefix as string;
 							}
 							if (additionalFields.expires) {
-								body.expires = moment(additionalFields.expires as Date).format(
-									'YYYY-MM-DD',
-								) as string;
+								body.expires = moment(additionalFields.expires as Date).format('YYYY-MM-DD');
 							}
 							if (additionalFields.group) {
 								body.group = additionalFields.group as string;
@@ -253,23 +249,23 @@ export class Paddle implements INodeType {
 
 					if (operation === 'getAll') {
 						const productId = this.getNodeParameter('productId', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const endpoint = '/2.0/product/list_coupons';
 
-						body.product_id = productId as string;
+						body.product_id = productId;
 
 						responseData = await paddleApiRequest.call(this, endpoint, 'POST', body);
 
 						if (returnAll) {
 							responseData = responseData.response;
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.response.splice(0, limit);
 						}
 					}
 
 					if (operation === 'update') {
-						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 						if (jsonParameters) {
 							const additionalFieldsJson = this.getNodeParameter(
@@ -297,7 +293,7 @@ export class Paddle implements INodeType {
 								body.coupon_code = this.getNodeParameter('couponCode', i) as string;
 							}
 
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+							const additionalFields = this.getNodeParameter('additionalFields', i);
 
 							if (additionalFields.allowedUses) {
 								body.allowed_uses = additionalFields.allowedUses as number;
@@ -309,9 +305,7 @@ export class Paddle implements INodeType {
 								body.new_coupon_code = additionalFields.newCouponCode as string;
 							}
 							if (additionalFields.expires) {
-								body.expires = moment(additionalFields.expires as Date).format(
-									'YYYY-MM-DD',
-								) as string;
+								body.expires = moment(additionalFields.expires as Date).format('YYYY-MM-DD');
 							}
 							if (additionalFields.newGroup) {
 								body.new_group = additionalFields.newGroup as string;
@@ -351,8 +345,8 @@ export class Paddle implements INodeType {
 				}
 				if (resource === 'payment') {
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 						if (jsonParameters) {
 							const additionalFieldsJson = this.getNodeParameter(
@@ -372,7 +366,7 @@ export class Paddle implements INodeType {
 								}
 							}
 						} else {
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+							const additionalFields = this.getNodeParameter('additionalFields', i);
 
 							if (additionalFields.subscriptionId) {
 								body.subscription_id = additionalFields.subscriptionId as number;
@@ -389,10 +383,10 @@ export class Paddle implements INodeType {
 								body.is_paid = 0;
 							}
 							if (additionalFields.from) {
-								body.from = moment(additionalFields.from as Date).format('YYYY-MM-DD') as string;
+								body.from = moment(additionalFields.from as Date).format('YYYY-MM-DD');
 							}
 							if (additionalFields.to) {
-								body.to = moment(additionalFields.to as Date).format('YYYY-MM-DD') as string;
+								body.to = moment(additionalFields.to as Date).format('YYYY-MM-DD');
 							}
 							if (additionalFields.isOneOffCharge) {
 								body.is_one_off_charge = additionalFields.isOneOffCharge as boolean;
@@ -405,7 +399,7 @@ export class Paddle implements INodeType {
 						if (returnAll) {
 							responseData = responseData.response;
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.response.splice(0, limit);
 						}
 					}
@@ -414,7 +408,7 @@ export class Paddle implements INodeType {
 						const date = this.getNodeParameter('date', i) as Date;
 
 						body.payment_id = paymentId;
-						body.date = body.to = moment(date as Date).format('YYYY-MM-DD') as string;
+						body.date = body.to = moment(date).format('YYYY-MM-DD');
 
 						const endpoint = '/2.0/subscription/payments_reschedule';
 
@@ -423,7 +417,7 @@ export class Paddle implements INodeType {
 				}
 				if (resource === 'plan') {
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const endpoint = '/2.0/subscription/plans';
 
 						responseData = await paddleApiRequest.call(this, endpoint, 'POST', body);
@@ -431,7 +425,7 @@ export class Paddle implements INodeType {
 						if (returnAll) {
 							responseData = responseData.response;
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.response.splice(0, limit);
 						}
 					}
@@ -448,7 +442,7 @@ export class Paddle implements INodeType {
 				}
 				if (resource === 'product') {
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const endpoint = '/2.0/product/get_products';
 
 						responseData = await paddleApiRequest.call(this, endpoint, 'POST', body);
@@ -456,7 +450,7 @@ export class Paddle implements INodeType {
 						if (returnAll) {
 							responseData = responseData.response.products;
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.response.products.splice(0, limit);
 						}
 					}
@@ -473,9 +467,9 @@ export class Paddle implements INodeType {
 				}
 				if (resource === 'user') {
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
-						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 						if (jsonParameters) {
 							const additionalFieldsJson = this.getNodeParameter(
@@ -495,7 +489,7 @@ export class Paddle implements INodeType {
 								}
 							}
 						} else {
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+							const additionalFields = this.getNodeParameter('additionalFields', i);
 
 							if (additionalFields.state) {
 								body.state = additionalFields.state as string;
@@ -519,7 +513,7 @@ export class Paddle implements INodeType {
 								body,
 							);
 						} else {
-							body.results_per_page = this.getNodeParameter('limit', i) as number;
+							body.results_per_page = this.getNodeParameter('limit', i);
 							responseData = await paddleApiRequest.call(this, endpoint, 'POST', body);
 							responseData = responseData.response;
 						}
@@ -537,12 +531,12 @@ export class Paddle implements INodeType {
 				throw error;
 			}
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
+				this.helpers.returnJsonArray(responseData as IDataObject),
 				{ itemData: { item: i } },
 			);
 
 			returnData.push(...executionData);
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

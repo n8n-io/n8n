@@ -1,22 +1,46 @@
 <template>
-	<div :class="['card', $style.card]" v-on="$listeners">
-		<div :class="$style.header" v-if="$slots.header">
-			<slot name="header" />
+	<div :class="classes" v-bind="$attrs">
+		<div v-if="$slots.prepend" :class="$style.icon">
+			<slot name="prepend" />
 		</div>
-		<div :class="$style.body" v-if="$slots.default">
-			<slot />
+		<div :class="$style.content">
+			<div v-if="$slots.header" :class="$style.header">
+				<slot name="header" />
+			</div>
+			<div v-if="$slots.default" :class="$style.body">
+				<slot />
+			</div>
+			<div v-if="$slots.footer" :class="$style.footer">
+				<slot name="footer" />
+			</div>
 		</div>
-		<div :class="$style.footer" v-if="$slots.footer">
-			<slot name="footer" />
+		<div v-if="$slots.append" :class="$style.append">
+			<slot name="append" />
 		</div>
 	</div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
-	name: 'n8n-card',
+export default defineComponent({
+	name: 'N8nCard',
+	inheritAttrs: true,
+	props: {
+		hoverable: {
+			type: Boolean,
+			default: false,
+		},
+	},
+	computed: {
+		classes(): Record<string, boolean> {
+			return {
+				card: true,
+				[this.$style.card]: true,
+				[this.$style.hoverable]: this.hoverable,
+			};
+		},
+	},
 });
 </script>
 
@@ -27,16 +51,25 @@ export default Vue.extend({
 	background-color: var(--color-background-xlight);
 	padding: var(--spacing-s);
 	display: flex;
-	flex-direction: column;
-	justify-content: space-between;
+	flex-direction: row;
+	width: 100%;
+	align-items: center;
 }
 
 .header,
 .footer {
 	display: flex;
-  	flex-direction: row;
-  	justify-content: space-between;
+	flex-direction: row;
+	justify-content: space-between;
 	align-items: center;
+}
+
+.content {
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+	flex: 1;
+	width: 100%;
 }
 
 .body {
@@ -45,5 +78,32 @@ export default Vue.extend({
 	display: flex;
 	flex-direction: column;
 	justify-content: space-between;
+}
+
+.icon {
+	width: 24px;
+	display: inline-flex;
+	justify-content: center;
+	align-items: center;
+	margin-right: var(--spacing-s);
+}
+
+.hoverable {
+	cursor: pointer;
+	transition-property: border, color;
+	transition-duration: 0.3s;
+	transition-timing-function: ease;
+
+	&:hover,
+	&:focus {
+		color: var(--color-primary);
+		border-color: var(--color-primary);
+	}
+}
+
+.append {
+	display: flex;
+	align-items: center;
+	cursor: default;
 }
 </style>

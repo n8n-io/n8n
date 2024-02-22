@@ -8,22 +8,19 @@
 				</n8n-heading>
 			</div>
 			<div>
-				<n8n-text size="large" v-if="errorCode">
-					{{errorCode}} {{ $locale.baseText('error') }}
+				<n8n-text v-if="errorCode" size="large">
+					{{ errorCode }} {{ $locale.baseText('error') }}
 				</n8n-text>
 			</div>
 		</div>
-		<n8n-button
-			:label="$locale.baseText(redirectTextKey)"
-			@click="onButtonClick"
-		/>
+		<n8n-button :label="$locale.baseText(redirectTextKey)" @click="onButtonClick" />
 	</div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'ErrorView',
 	props: {
 		messageKey: {
@@ -42,7 +39,7 @@ export default Vue.extend({
 	},
 	methods: {
 		onButtonClick() {
-			this.$router.push({ name: this.redirectPage });
+			void this.$router.push({ name: this.redirectPage });
 		},
 	},
 });

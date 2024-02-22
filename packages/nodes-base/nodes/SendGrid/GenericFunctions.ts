@@ -1,27 +1,24 @@
-import { OptionsWithUri } from 'request';
-
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+	IRequestOptions,
+} from 'n8n-workflow';
 
 export async function sendGridApiRequest(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	endpoint: string,
-	method: string,
-	// tslint:disable-next-line:no-any
+	method: IHttpRequestMethods,
+
 	body: any = {},
 	qs: IDataObject = {},
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const host = 'api.sendgrid.com/v3';
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		method,
 		qs,
 		body,
@@ -29,7 +26,7 @@ export async function sendGridApiRequest(
 		json: true,
 	};
 
-	if (Object.keys(body).length === 0) {
+	if (Object.keys(body as IDataObject).length === 0) {
 		delete options.body;
 	}
 
@@ -37,22 +34,17 @@ export async function sendGridApiRequest(
 		Object.assign(options, option);
 	}
 
-	try {
-		return await this.helpers.requestWithAuthentication.call(this, 'sendGridApi', options);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
-	}
+	return await this.helpers.requestWithAuthentication.call(this, 'sendGridApi', options);
 }
 
 export async function sendGridApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	endpoint: string,
-	method: string,
+	method: IHttpRequestMethods,
 	propertyName: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -61,10 +53,11 @@ export async function sendGridApiRequestAllItems(
 	let uri;
 
 	do {
-		responseData = await sendGridApiRequest.call(this, endpoint, method, body, query, uri);
+		responseData = await sendGridApiRequest.call(this, endpoint, method, body, query, uri); // possible bug, as function does not have uri parameter
 		uri = responseData._metadata.next;
-		returnData.push.apply(returnData, responseData[propertyName]);
-		if (query.limit && returnData.length >= query.limit) {
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		const limit = query.limit as number | undefined;
+		if (limit && returnData.length >= limit) {
 			return returnData;
 		}
 	} while (responseData._metadata.next !== undefined);

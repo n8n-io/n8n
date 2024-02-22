@@ -1,19 +1,63 @@
-import { CredentialsHelper, CredentialTypes } from '../../src';
-import * as Helpers from './Helpers';
-import {
+import Container from 'typedi';
+import type {
 	IAuthenticateGeneric,
 	ICredentialDataDecryptedObject,
 	ICredentialType,
-	ICredentialTypeData,
 	IHttpRequestOptions,
 	INode,
 	INodeProperties,
-	Workflow,
 } from 'n8n-workflow';
-
-const TEST_ENCRYPTION_KEY = 'test';
+import { deepCopy } from 'n8n-workflow';
+import { Workflow } from 'n8n-workflow';
+import { CredentialsHelper } from '@/CredentialsHelper';
+import { NodeTypes } from '@/NodeTypes';
+import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import { CredentialsRepository } from '@db/repositories/credentials.repository';
+import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+import { mockInstance } from '../shared/mocking';
 
 describe('CredentialsHelper', () => {
+	mockInstance(CredentialsRepository);
+	mockInstance(SharedCredentialsRepository);
+	const mockNodesAndCredentials = mockInstance(LoadNodesAndCredentials, {
+		loadedNodes: {
+			'test.set': {
+				sourcePath: '',
+				type: {
+					description: {
+						displayName: 'Set',
+						name: 'set',
+						group: ['input'],
+						version: 1,
+						description: 'Sets a value',
+						defaults: {
+							name: 'Set',
+							color: '#0000FF',
+						},
+						inputs: ['main'],
+						outputs: ['main'],
+						properties: [
+							{
+								displayName: 'Value1',
+								name: 'value1',
+								type: 'string',
+								default: 'default-value1',
+							},
+							{
+								displayName: 'Value2',
+								name: 'value2',
+								type: 'string',
+								default: 'default-value2',
+							},
+						],
+					},
+				},
+			},
+		},
+	});
+
+	const nodeTypes = mockInstance(NodeTypes);
+
 	describe('authenticate', () => {
 		const tests: Array<{
 			description: string;
@@ -32,7 +76,9 @@ describe('CredentialsHelper', () => {
 					},
 					credentialType: new (class TestApi implements ICredentialType {
 						name = 'testApi';
+
 						displayName = 'Test API';
+
 						properties: INodeProperties[] = [
 							{
 								displayName: 'User',
@@ -74,7 +120,9 @@ describe('CredentialsHelper', () => {
 					},
 					credentialType: new (class TestApi implements ICredentialType {
 						name = 'testApi';
+
 						displayName = 'Test API';
+
 						properties: INodeProperties[] = [
 							{
 								displayName: 'Access Token',
@@ -104,7 +152,9 @@ describe('CredentialsHelper', () => {
 					},
 					credentialType: new (class TestApi implements ICredentialType {
 						name = 'testApi';
+
 						displayName = 'Test API';
+
 						properties: INodeProperties[] = [
 							{
 								displayName: 'Access Token',
@@ -134,7 +184,9 @@ describe('CredentialsHelper', () => {
 					},
 					credentialType: new (class TestApi implements ICredentialType {
 						name = 'testApi';
+
 						displayName = 'Test API';
+
 						properties: INodeProperties[] = [
 							{
 								displayName: 'Access Token',
@@ -165,7 +217,9 @@ describe('CredentialsHelper', () => {
 					},
 					credentialType: new (class TestApi implements ICredentialType {
 						name = 'testApi';
+
 						displayName = 'Test API';
+
 						properties: INodeProperties[] = [
 							{
 								displayName: 'My Token',
@@ -179,8 +233,8 @@ describe('CredentialsHelper', () => {
 							credentials: ICredentialDataDecryptedObject,
 							requestOptions: IHttpRequestOptions,
 						): Promise<IHttpRequestOptions> {
-							requestOptions.headers!['Authorization'] = `Bearer ${credentials.accessToken}`;
-							requestOptions.qs!['user'] = credentials.user;
+							requestOptions.headers!.Authorization = `Bearer ${credentials.accessToken}`;
+							requestOptions.qs!.user = credentials.user;
 							return requestOptions;
 						}
 					})(),
@@ -208,8 +262,6 @@ describe('CredentialsHelper', () => {
 			qs: {},
 		};
 
-		const nodeTypes = Helpers.NodeTypes();
-
 		const workflow = new Workflow({
 			nodes: [node],
 			connections: {},
@@ -217,28 +269,24 @@ describe('CredentialsHelper', () => {
 			nodeTypes,
 		});
 
-		const timezone = 'America/New_York';
-
 		for (const testData of tests) {
 			test(testData.description, async () => {
-				const credentialTypes: ICredentialTypeData = {
+				//@ts-expect-error `loadedCredentials` is a getter and we are replacing it here with a property
+				mockNodesAndCredentials.loadedCredentials = {
 					[testData.input.credentialType.name]: {
 						type: testData.input.credentialType,
 						sourcePath: '',
 					},
 				};
 
-				await CredentialTypes().init(credentialTypes);
-
-				const credentialsHelper = new CredentialsHelper(TEST_ENCRYPTION_KEY);
+				const credentialsHelper = Container.get(CredentialsHelper);
 
 				const result = await credentialsHelper.authenticate(
 					testData.input.credentials,
 					testData.input.credentialType.name,
-					JSON.parse(JSON.stringify(incomingRequestOptions)),
+					deepCopy(incomingRequestOptions),
 					workflow,
 					node,
-					timezone,
 				);
 
 				expect(result).toEqual(testData.output);

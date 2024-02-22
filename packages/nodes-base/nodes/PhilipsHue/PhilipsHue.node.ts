@@ -1,7 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
 	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -55,7 +54,7 @@ export class PhilipsHue implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the lights to display them to user so that he can
+			// Get all the lights to display them to user so that they can
 			// select them easily
 			async getLights(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -66,11 +65,11 @@ export class PhilipsHue implements INodeType {
 
 				const groups = await philipsHueApiRequest.call(this, 'GET', `/api/${user}/groups`);
 
-				for (const light of Object.keys(lights)) {
+				for (const light of Object.keys(lights as IDataObject)) {
 					let lightName = lights[light].name;
 					const lightId = light;
 
-					for (const groupId of Object.keys(groups)) {
+					for (const groupId of Object.keys(groups as IDataObject)) {
 						if (groups[groupId].type === 'Room' && groups[groupId].lights.includes(lightId)) {
 							lightName = `${groups[groupId].name}: ${lightName}`;
 						}
@@ -88,12 +87,11 @@ export class PhilipsHue implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
-		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			if (resource === 'light') {
 				if (operation === 'update') {
@@ -101,7 +99,7 @@ export class PhilipsHue implements INodeType {
 
 					const on = this.getNodeParameter('on', i) as boolean;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					const body = {
 						on,
@@ -152,16 +150,16 @@ export class PhilipsHue implements INodeType {
 					);
 				}
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 
 					const user = await getUser.call(this);
 
 					const lights = await philipsHueApiRequest.call(this, 'GET', `/api/${user}/lights`);
 
-					responseData = Object.values(lights);
+					responseData = Object.values(lights as IDataObject);
 
 					if (!returnAll) {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit', i);
 						responseData = responseData.splice(0, limit);
 					}
 				}
@@ -177,12 +175,12 @@ export class PhilipsHue implements INodeType {
 					);
 				}
 			}
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(responseData as IDataObject[]),
+				{ itemData: { item: i } },
+			);
+			returnData.push(...executionData);
 		}
-		if (Array.isArray(responseData)) {
-			returnData.push.apply(returnData, responseData as IDataObject[]);
-		} else if (responseData !== undefined) {
-			returnData.push(responseData as IDataObject);
-		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return [returnData];
 	}
 }

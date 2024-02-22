@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -8,9 +7,9 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
-	NodeApiError,
-	NodeOperationError,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 
@@ -167,7 +166,7 @@ export class GoogleFirebaseRealtimeDatabase implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		let responseData;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 		//https://firebase.google.com/docs/reference/rest/database
 
 		if (
@@ -182,7 +181,7 @@ export class GoogleFirebaseRealtimeDatabase implements INodeType {
 			try {
 				const projectId = this.getNodeParameter('projectId', i) as string;
 
-				let method = 'GET',
+				let method: IHttpRequestMethods = 'GET',
 					attributes = '';
 				const document: IDataObject = {};
 				if (operation === 'create') {
@@ -219,8 +218,8 @@ export class GoogleFirebaseRealtimeDatabase implements INodeType {
 
 				if (responseData === null) {
 					if (operation === 'get') {
-						throw new NodeApiError(this.getNode(), responseData, {
-							message: `Requested entity was not found.`,
+						throw new NodeApiError(this.getNode(), responseData as JsonObject, {
+							message: 'Requested entity was not found.',
 						});
 					} else if (method === 'DELETE') {
 						responseData = { success: true };
@@ -245,12 +244,12 @@ export class GoogleFirebaseRealtimeDatabase implements INodeType {
 			}
 
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
+				this.helpers.returnJsonArray(responseData as IDataObject[]),
 				{ itemData: { item: i } },
 			);
 			returnData.push(...executionData);
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

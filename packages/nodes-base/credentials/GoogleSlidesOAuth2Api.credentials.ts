@@ -1,4 +1,4 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 const scopes = [
 	'https://www.googleapis.com/auth/drive.file',
@@ -7,9 +7,13 @@ const scopes = [
 
 export class GoogleSlidesOAuth2Api implements ICredentialType {
 	name = 'googleSlidesOAuth2Api';
+
 	extends = ['googleOAuth2Api'];
+
 	displayName = 'Google Slides OAuth2 API';
-	documentationUrl = 'google';
+
+	documentationUrl = 'google/oauth-single-service';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Scope',

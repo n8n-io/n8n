@@ -1,11 +1,11 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import { RundeckApi } from './RundeckApi';
 
 export class Rundeck implements INodeType {
@@ -119,6 +119,20 @@ export class Rundeck implements INodeType {
 					},
 				],
 			},
+			{
+				displayName: 'Filter',
+				name: 'filter',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: ['execute'],
+						resource: ['job'],
+					},
+				},
+				default: '',
+				placeholder: 'Add Filters',
+				description: 'Filter Rundeck nodes by name',
+			},
 
 			// ----------------------------------
 			//         job:getMetadata
@@ -147,8 +161,8 @@ export class Rundeck implements INodeType {
 		const returnData: IDataObject[] = [];
 		const length = items.length;
 
-		const operation = this.getNodeParameter('operation', 0) as string;
-		const resource = this.getNodeParameter('resource', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
+		const resource = this.getNodeParameter('resource', 0);
 		const rundeckApi = new RundeckApi(this);
 		await rundeckApi.init();
 
@@ -161,7 +175,8 @@ export class Rundeck implements INodeType {
 					const jobid = this.getNodeParameter('jobid', i) as string;
 					const rundeckArguments = (this.getNodeParameter('arguments', i) as IDataObject)
 						.arguments as IDataObject[];
-					const response = await rundeckApi.executeJob(jobid, rundeckArguments);
+					const filter = this.getNodeParameter('filter', i) as string;
+					const response = await rundeckApi.executeJob(jobid, rundeckArguments, filter);
 
 					returnData.push(response);
 				} else if (operation === 'getMetadata') {

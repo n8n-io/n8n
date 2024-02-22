@@ -1,0 +1,128 @@
+{
+	"meta": {
+	  "templateCredsSetupCompleted": true,
+	  "instanceId": "669258f419ee5d9faf0a484944244a47fcc28c541f3c6c874e50a171a0be1e6b"
+	},
+	"nodes": [
+	  {
+		"parameters": {
+		  "rule": {
+			"interval": [
+			  {}
+			]
+		  }
+		},
+		"id": "54b1cdeb-b453-4568-8107-c17fcf2aa25a",
+		"name": "Schedule Trigger",
+		"type": "n8n-nodes-base.scheduleTrigger",
+		"typeVersion": 1,
+		"position": [
+		  240,
+		  560
+		]
+	  },
+	  {
+		"parameters": {
+		  "options": {}
+		},
+		"id": "5f6dffef-61f7-459d-930c-ef701d08d49a",
+		"name": "Set",
+		"type": "n8n-nodes-base.set",
+		"typeVersion": 1,
+		"position": [
+		  460,
+		  460
+		]
+	  },
+	  {
+		"parameters": {
+		  "rules": {
+			"rules": [
+			  {
+				"outputKey": "a"
+			  }
+			]
+		  }
+		},
+		"id": "c07d3a12-1ee2-4131-bec2-ab366457d042",
+		"name": "Old version Switch Node",
+		"type": "n8n-nodes-base.switch",
+		"typeVersion": 2,
+		"position": [
+		  460,
+		  680
+		]
+	  },
+	  {
+		"parameters": {
+		  "options": {}
+		},
+		"id": "182a833d-3b93-4e86-a0db-3ceb19d6562b",
+		"name": "Loop Over Items",
+		"type": "n8n-nodes-base.splitInBatches",
+		"typeVersion": 3,
+		"position": [
+		  720,
+		  560
+		]
+	  },
+	  {
+		"parameters": {},
+		"id": "b0d0aeb7-0c8f-4810-8b78-6c0db3c9a486",
+		"name": "Replace Me",
+		"type": "n8n-nodes-base.noOp",
+		"typeVersion": 1,
+		"position": [
+		  900,
+		  560
+		]
+	  }
+	],
+	"connections": {
+	  "Schedule Trigger": {
+		"main": [
+		  [
+			{
+			  "node": "Set",
+			  "type": "main",
+			  "index": 0
+			},
+			{
+			  "node": "Old version Switch Node",
+			  "type": "main",
+			  "index": 0
+			},
+			{
+			  "node": "Loop Over Items",
+			  "type": "main",
+			  "index": 0
+			}
+		  ]
+		]
+	  },
+	  "Loop Over Items": {
+		"main": [
+		  null,
+		  [
+			{
+			  "node": "Replace Me",
+			  "type": "main",
+			  "index": 0
+			}
+		  ]
+		]
+	  },
+	  "Replace Me": {
+		"main": [
+		  [
+			{
+			  "node": "Loop Over Items",
+			  "type": "main",
+			  "index": 0
+			}
+		  ]
+		]
+	  }
+	},
+	"pinData": {}
+  }

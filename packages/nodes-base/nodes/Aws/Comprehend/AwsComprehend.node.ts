@@ -1,6 +1,10 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 import { awsApiRequestREST } from './GenericFunctions';
 
@@ -133,9 +137,6 @@ export class AwsComprehend implements INodeType {
 				displayName: 'Text',
 				name: 'text',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				displayOptions: {
 					show: {
@@ -175,9 +176,6 @@ export class AwsComprehend implements INodeType {
 						displayName: 'Endpoint Arn',
 						name: 'endpointArn',
 						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
 						default: '',
 						description:
 							'The Amazon Resource Name of an endpoint that is associated with a custom entity recognition model',
@@ -191,8 +189,8 @@ export class AwsComprehend implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < items.length; i++) {
 			try {
 				if (resource === 'text') {
@@ -214,7 +212,7 @@ export class AwsComprehend implements INodeType {
 							{ 'x-amz-target': action, 'Content-Type': 'application/x-amz-json-1.1' },
 						);
 
-						if (simple === true) {
+						if (simple) {
 							responseData = responseData.Languages.reduce(
 								(accumulator: { [key: string]: number }, currentValue: IDataObject) => {
 									accumulator[currentValue.LanguageCode as string] = currentValue.Score as number;
@@ -249,7 +247,7 @@ export class AwsComprehend implements INodeType {
 						const action = 'Comprehend_20171127.DetectEntities';
 						const text = this.getNodeParameter('text', i) as string;
 						const languageCode = this.getNodeParameter('languageCode', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IDataObject = {
 							Text: text,

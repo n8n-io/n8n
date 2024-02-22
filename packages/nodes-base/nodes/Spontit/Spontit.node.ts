@@ -1,11 +1,15 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
+import moment from 'moment-timezone';
 import { spontitApiRequest } from './GenericFunctions';
 
 import { pushFields, pushOperations } from './PushDescription';
-
-import moment from 'moment';
 
 export class Spontit implements INodeType {
 	description: INodeTypeDescription = {
@@ -52,14 +56,14 @@ export class Spontit implements INodeType {
 		const returnData: IDataObject[] = [];
 		const timezone = this.getTimezone();
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < items.length; i++) {
 			try {
 				if (resource === 'push') {
 					if (operation === 'create') {
 						const content = this.getNodeParameter('content', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IDataObject = {
 							content,

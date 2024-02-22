@@ -1,10 +1,9 @@
-import { INodeTypeBaseDescription, INodeVersionedType } from 'n8n-workflow';
-
-import { NodeVersionedType } from '../../src/NodeVersionedType';
+import type { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow';
+import { VersionedNodeType } from 'n8n-workflow';
 
 import { SyncroMspV1 } from './v1/SyncroMspV1.node';
 
-export class SyncroMsp extends NodeVersionedType {
+export class SyncroMsp extends VersionedNodeType {
 	constructor() {
 		const baseDescription: INodeTypeBaseDescription = {
 			displayName: 'SyncroMSP',
@@ -17,7 +16,7 @@ export class SyncroMsp extends NodeVersionedType {
 			defaultVersion: 1,
 		};
 
-		const nodeVersions: INodeVersionedType['nodeVersions'] = {
+		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
 			1: new SyncroMspV1(baseDescription),
 		};
 

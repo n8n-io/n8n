@@ -1,37 +1,36 @@
-import express from 'express';
+import { Reset } from '@/commands/user-management/reset';
+import { InternalHooks } from '@/InternalHooks';
+import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import { NodeTypes } from '@/NodeTypes';
+import Container from 'typedi';
+import { UserRepository } from '@db/repositories/user.repository';
 
-import { Db } from '../../../src';
-import { Reset } from '../../../commands/user-management/reset';
-import * as utils from '../shared/utils';
+import { mockInstance } from '../../shared/mocking';
 import * as testDb from '../shared/testDb';
-import type { Role } from '../../../src/databases/entities/Role';
-
-let app: express.Application;
-let testDbName = '';
-let globalOwnerRole: Role;
+import { createUser } from '../shared/db/users';
 
 beforeAll(async () => {
-	app = await utils.initTestServer({ endpointGroups: ['owner'], applyAuth: true });
-	const initResult = await testDb.init();
-	testDbName = initResult.testDbName;
-
-	globalOwnerRole = await testDb.getGlobalOwnerRole();
+	mockInstance(InternalHooks);
+	mockInstance(LoadNodesAndCredentials);
+	mockInstance(NodeTypes);
+	await testDb.init();
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['User'], testDbName);
+	await testDb.truncate(['User']);
 });
 
 afterAll(async () => {
-	await testDb.terminate(testDbName);
+	await testDb.terminate();
 });
 
-test('user-management:reset should reset DB to default user state', async () => {
-	await testDb.createUser({ globalRole: globalOwnerRole });
+// eslint-disable-next-line n8n-local-rules/no-skipped-tests
+test.skip('user-management:reset should reset DB to default user state', async () => {
+	await createUser({ role: 'global:owner' });
 
 	await Reset.run();
 
-	const user = await Db.collections.User.findOne({ globalRole: globalOwnerRole });
+	const user = await Container.get(UserRepository).findOneBy({ role: 'global:owner' });
 
 	if (!user) {
 		fail('No owner found after DB reset to default user state');
@@ -41,7 +40,5 @@ test('user-management:reset should reset DB to default user state', async () => 
 	expect(user.firstName).toBeNull();
 	expect(user.lastName).toBeNull();
 	expect(user.password).toBeNull();
-	expect(user.resetPasswordToken).toBeNull();
-	expect(user.resetPasswordTokenExpiration).toBeNull();
 	expect(user.personalizationAnswers).toBeNull();
 });

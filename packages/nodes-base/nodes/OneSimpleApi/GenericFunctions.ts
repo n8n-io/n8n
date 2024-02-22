@@ -1,12 +1,15 @@
-import { OptionsWithUri } from 'request';
-
-import { IExecuteFunctions } from 'n8n-core';
-
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IDataObject,
+	JsonObject,
+	IHttpRequestMethods,
+	IRequestOptions,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function oneSimpleApiRequest(
 	this: IExecuteFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
@@ -16,7 +19,7 @@ export async function oneSimpleApiRequest(
 	const credentials = await this.getCredentials('oneSimpleApi');
 
 	const outputFormat = 'json';
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		method,
 		body,
 		qs,
@@ -35,6 +38,6 @@ export async function oneSimpleApiRequest(
 		const responseData = await this.helpers.request(options);
 		return responseData;
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

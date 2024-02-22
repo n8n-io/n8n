@@ -1,41 +1,37 @@
-/* eslint-disable no-restricted-syntax */
-/* eslint-disable no-underscore-dangle */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-import { FindOneOptions } from 'typeorm';
-import { UserSettings, Credentials } from 'n8n-core';
-import { IDataObject, INodeProperties, INodePropertyOptions } from 'n8n-workflow';
-import { Db, ICredentialsDb } from '../../../..';
-import { CredentialsEntity } from '../../../../databases/entities/CredentialsEntity';
-import { SharedCredentials } from '../../../../databases/entities/SharedCredentials';
-import { User } from '../../../../databases/entities/User';
-import { externalHooks } from '../../../../Server';
-import { IDependency, IJsonSchema } from '../../../types';
-import { CredentialRequest } from '../../../../requests';
+import { Credentials } from 'n8n-core';
+import type {
+	DisplayCondition,
+	IDataObject,
+	INodeProperties,
+	INodePropertyOptions,
+} from 'n8n-workflow';
+import * as Db from '@/Db';
+import type { ICredentialsDb } from '@/Interfaces';
+import { CredentialsEntity } from '@db/entities/CredentialsEntity';
+import { SharedCredentials } from '@db/entities/SharedCredentials';
+import type { User } from '@db/entities/User';
+import { ExternalHooks } from '@/ExternalHooks';
+import type { IDependency, IJsonSchema } from '../../../types';
+import type { CredentialRequest } from '@/requests';
+import { Container } from 'typedi';
+import { CredentialsRepository } from '@db/repositories/credentials.repository';
+import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 
-export async function getCredentials(
-	credentialId: number | string,
-): Promise<ICredentialsDb | undefined> {
-	return Db.collections.Credentials.findOne(credentialId);
+export async function getCredentials(credentialId: string): Promise<ICredentialsDb | null> {
+	return await Container.get(CredentialsRepository).findOneBy({ id: credentialId });
 }
 
 export async function getSharedCredentials(
 	userId: string,
-	credentialId: number | string,
-	relations?: string[],
-): Promise<SharedCredentials | undefined> {
-	const options: FindOneOptions = {
+	credentialId: string,
+): Promise<SharedCredentials | null> {
+	return await Container.get(SharedCredentialsRepository).findOne({
 		where: {
-			user: { id: userId },
-			credentials: { id: credentialId },
+			userId,
+			credentialsId: credentialId,
 		},
-	};
-
-	if (relations) {
-		options.relations = relations;
-	}
-
-	return Db.collections.SharedCredentials.findOne(options);
+		relations: ['credentials'],
+	});
 }
 
 export async function createCredential(
@@ -55,7 +51,6 @@ export async function createCredential(
 	} else {
 		// Add the added date for node access permissions
 		newCredential.nodesAccess.forEach((nodeAccess) => {
-			// eslint-disable-next-line no-param-reassign
 			nodeAccess.date = new Date();
 		});
 	}
@@ -68,14 +63,9 @@ export async function saveCredential(
 	user: User,
 	encryptedData: ICredentialsDb,
 ): Promise<CredentialsEntity> {
-	const role = await Db.collections.Role.findOneOrFail({
-		name: 'owner',
-		scope: 'credential',
-	});
+	await Container.get(ExternalHooks).run('credentials.create', [encryptedData]);
 
-	await externalHooks.run('credentials.create', [encryptedData]);
-
-	return Db.transaction(async (transactionManager) => {
+	return await Db.transaction(async (transactionManager) => {
 		const savedCredential = await transactionManager.save<CredentialsEntity>(credential);
 
 		savedCredential.data = credential.data;
@@ -83,7 +73,7 @@ export async function saveCredential(
 		const newSharedCredential = new SharedCredentials();
 
 		Object.assign(newSharedCredential, {
-			role,
+			role: 'credential:owner',
 			user,
 			credentials: savedCredential,
 		});
@@ -95,13 +85,11 @@ export async function saveCredential(
 }
 
 export async function removeCredential(credentials: CredentialsEntity): Promise<ICredentialsDb> {
-	await externalHooks.run('credentials.delete', [credentials.id]);
-	return Db.collections.Credentials.remove(credentials);
+	await Container.get(ExternalHooks).run('credentials.delete', [credentials.id]);
+	return await Container.get(CredentialsRepository).remove(credentials);
 }
 
 export async function encryptCredential(credential: CredentialsEntity): Promise<ICredentialsDb> {
-	const encryptionKey = await UserSettings.getEncryptionKey();
-
 	// Encrypt the data
 	const coreCredential = new Credentials(
 		{ id: null, name: credential.name },
@@ -110,7 +98,7 @@ export async function encryptCredential(credential: CredentialsEntity): Promise<
 	);
 
 	// @ts-ignore
-	coreCredential.setData(credential.data, encryptionKey);
+	coreCredential.setData(credential.data);
 
 	return coreCredential.getDataToSave() as ICredentialsDb;
 }
@@ -127,7 +115,6 @@ export function sanitizeCredentials(
 	const credentialsList = argIsArray ? credentials : [credentials];
 
 	const sanitizedCredentials = credentialsList.map((credential) => {
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		const { data, nodesAccess, shared, ...rest } = credential;
 		return rest;
 	});
@@ -141,7 +128,6 @@ export function sanitizeCredentials(
  * to a JSON Schema (see https://json-schema.org/). With
  * the JSON Schema definition we can validate the credential's shape
  * @param properties - Credentials properties
- * @returns The credentials schema definition.
  */
 export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 	const jsonSchema: IJsonSchema = {
@@ -174,7 +160,9 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 	// to later validate that only this properties are set in
 	// the credentials sent in the API call.
 	properties.forEach((property) => {
-		requiredFields.push(property.name);
+		if (property.required) {
+			requiredFields.push(property.name);
+		}
 		if (property.type === 'options') {
 			// if the property is type options,
 			// include all possible values in the enum property.
@@ -199,10 +187,9 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 		if (property.displayOptions?.show) {
 			const dependantName = Object.keys(property.displayOptions?.show)[0] || '';
 			const displayOptionsValues = property.displayOptions.show[dependantName];
-			let dependantValue: string | number | boolean = '';
+			let dependantValue: DisplayCondition | string | number | boolean = '';
 
 			if (displayOptionsValues && Array.isArray(displayOptionsValues) && displayOptionsValues[0]) {
-				// eslint-disable-next-line prefer-destructuring
 				dependantValue = displayOptionsValues[0];
 			}
 
@@ -211,16 +198,79 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 			}
 
 			if (!resolveProperties.includes(dependantName)) {
+				let conditionalValue;
+				if (typeof dependantValue === 'object' && dependantValue._cnd) {
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+					const [key, targetValue] = Object.entries(dependantValue._cnd)[0];
+
+					if (key === 'eq') {
+						conditionalValue = {
+							const: [targetValue],
+						};
+					} else if (key === 'not') {
+						conditionalValue = {
+							not: {
+								const: [targetValue],
+							},
+						};
+					} else if (key === 'gt') {
+						conditionalValue = {
+							type: 'number',
+							exclusiveMinimum: [targetValue],
+						};
+					} else if (key === 'gte') {
+						conditionalValue = {
+							type: 'number',
+							minimum: [targetValue],
+						};
+					} else if (key === 'lt') {
+						conditionalValue = {
+							type: 'number',
+							exclusiveMaximum: [targetValue],
+						};
+					} else if (key === 'lte') {
+						conditionalValue = {
+							type: 'number',
+							maximum: [targetValue],
+						};
+					} else if (key === 'startsWith') {
+						conditionalValue = {
+							type: 'string',
+							pattern: `^${targetValue}`,
+						};
+					} else if (key === 'endsWith') {
+						conditionalValue = {
+							type: 'string',
+							pattern: `${targetValue}$`,
+						};
+					} else if (key === 'includes') {
+						conditionalValue = {
+							type: 'string',
+							pattern: `${targetValue}`,
+						};
+					} else if (key === 'regex') {
+						conditionalValue = {
+							type: 'string',
+							pattern: `${targetValue}`,
+						};
+					} else {
+						conditionalValue = {
+							enum: [dependantValue],
+						};
+					}
+				} else {
+					conditionalValue = {
+						enum: [dependantValue],
+					};
+				}
 				propertyRequiredDependencies[dependantName] = {
 					if: {
 						properties: {
-							[dependantName]: {
-								enum: [dependantValue],
-							},
+							[dependantName]: conditionalValue,
 						},
 					},
 					then: {
-						oneOf: [],
+						allOf: [],
 					},
 					else: {
 						allOf: [],
@@ -228,7 +278,7 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 				};
 			}
 
-			propertyRequiredDependencies[dependantName].then?.oneOf.push({ required: [property.name] });
+			propertyRequiredDependencies[dependantName].then?.allOf.push({ required: [property.name] });
 			propertyRequiredDependencies[dependantName].else?.allOf.push({
 				not: { required: [property.name] },
 			});

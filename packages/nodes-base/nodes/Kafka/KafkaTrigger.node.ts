@@ -1,16 +1,17 @@
-import { Kafka as apacheKafka, KafkaConfig, logLevel, SASLOptions } from 'kafkajs';
+import type { KafkaConfig, SASLOptions } from 'kafkajs';
+import { Kafka as apacheKafka, logLevel } from 'kafkajs';
 
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
 
-import { ITriggerFunctions } from 'n8n-core';
-
-import {
+import type {
+	ITriggerFunctions,
 	IDataObject,
 	INodeType,
 	INodeTypeDescription,
 	ITriggerResponse,
-	NodeOperationError,
+	IRun,
 } from 'n8n-workflow';
+import { createDeferredPromise, NodeOperationError } from 'n8n-workflow';
 
 export class KafkaTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -18,7 +19,7 @@ export class KafkaTrigger implements INodeType {
 		name: 'kafkaTrigger',
 		icon: 'file:kafka.svg',
 		group: ['trigger'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Consume messages from a Kafka topic',
 		defaults: {
 			name: 'Kafka Trigger',
@@ -116,7 +117,7 @@ export class KafkaTrigger implements INodeType {
 						type: 'number',
 						default: 1,
 						description:
-							'Max number of requests that may be in progress at any time. If falsey then no limit.',
+							'The maximum number of unacknowledged requests the client will send on a single connection',
 					},
 					{
 						displayName: 'Read Messages From Beginning',
@@ -131,6 +132,19 @@ export class KafkaTrigger implements INodeType {
 						type: 'boolean',
 						default: false,
 						description: 'Whether to try to parse the message to an object',
+					},
+					{
+						displayName: 'Parallel Processing',
+						name: 'parallelProcessing',
+						type: 'boolean',
+						default: true,
+						displayOptions: {
+							hide: {
+								'@version': [1],
+							},
+						},
+						description:
+							'Whether to process messages in parallel or by keeping the message in order',
 					},
 					{
 						displayName: 'Only Message',
@@ -171,13 +185,15 @@ export class KafkaTrigger implements INodeType {
 
 		const credentials = await this.getCredentials('kafka');
 
-		const brokers = ((credentials.brokers as string) || '')
-			.split(',')
-			.map((item) => item.trim()) as string[];
+		const brokers = ((credentials.brokers as string) || '').split(',').map((item) => item.trim());
 
 		const clientId = credentials.clientId as string;
 
 		const ssl = credentials.ssl as boolean;
+
+		const options = this.getNodeParameter('options', {}) as IDataObject;
+
+		options.nodeVersion = this.getNode().typeVersion;
 
 		const config: KafkaConfig = {
 			clientId,
@@ -215,13 +231,11 @@ export class KafkaTrigger implements INodeType {
 			heartbeatInterval: this.getNodeParameter('options.heartbeatInterval', 3000) as number,
 		});
 
+		const parallelProcessing = options.parallelProcessing as boolean;
+
 		await consumer.connect();
 
-		const options = this.getNodeParameter('options', {}) as IDataObject;
-
 		await consumer.subscribe({ topic, fromBeginning: options.fromBeginning ? true : false });
-
-		const self = this;
 
 		const useSchemaRegistry = this.getNodeParameter('useSchemaRegistry', 0) as boolean;
 
@@ -231,7 +245,7 @@ export class KafkaTrigger implements INodeType {
 			await consumer.run({
 				autoCommitInterval: (options.autoCommitInterval as number) || null,
 				autoCommitThreshold: (options.autoCommitThreshold as number) || null,
-				eachMessage: async ({ topic, message }) => {
+				eachMessage: async ({ topic: messageTopic, message }) => {
 					let data: IDataObject = {};
 					let value = message.value?.toString() as string;
 
@@ -259,19 +273,27 @@ export class KafkaTrigger implements INodeType {
 					}
 
 					data.message = value;
-					data.topic = topic;
+					data.topic = messageTopic;
 
 					if (options.onlyMessage) {
 						//@ts-ignore
 						data = value;
 					}
-
-					self.emit([self.helpers.returnJsonArray([data])]);
+					let responsePromise = undefined;
+					if (!parallelProcessing && (options.nodeVersion as number) > 1) {
+						responsePromise = await createDeferredPromise<IRun>();
+						this.emit([this.helpers.returnJsonArray([data])], undefined, responsePromise);
+					} else {
+						this.emit([this.helpers.returnJsonArray([data])]);
+					}
+					if (responsePromise) {
+						await responsePromise.promise();
+					}
 				},
 			});
 		};
 
-		startConsumer();
+		await startConsumer();
 
 		// The "closeFunction" function gets called by n8n whenever
 		// the workflow gets deactivated and can so clean up.
@@ -286,7 +308,7 @@ export class KafkaTrigger implements INodeType {
 		// would trigger by itself so that the user knows what data
 		// to expect.
 		async function manualTriggerFunction() {
-			startConsumer();
+			await startConsumer();
 		}
 
 		return {

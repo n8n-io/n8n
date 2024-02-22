@@ -1,26 +1,24 @@
-import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
-
-import { JsonObject, NodeApiError } from 'n8n-workflow';
-
-import { OptionsWithUri } from 'request';
+import {
+	NodeOperationError,
+	type IExecuteFunctions,
+	type IHookFunctions,
+	type IHttpRequestMethods,
+	type IRequestOptions,
+	type IDataObject,
+} from 'n8n-workflow';
 
 /**
  * Make an API request to NextCloud
  *
- * @param {IHookFunctions} this
- * @param {string} method
- * @param {string} url
- * @param {object} body
- * @returns {Promise<any>}
  */
 export async function nextCloudApiRequest(
 	this: IHookFunctions | IExecuteFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: object | string | Buffer,
-	headers?: object,
+	headers?: IDataObject,
 	encoding?: null | undefined,
-	query?: object,
+	query?: IDataObject,
 ) {
 	const resource = this.getNodeParameter('resource', 0);
 	const operation = this.getNodeParameter('operation', 0);
@@ -34,7 +32,7 @@ export async function nextCloudApiRequest(
 		credentials = (await this.getCredentials('nextCloudOAuth2Api')) as { webDavUrl: string };
 	}
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers,
 		method,
 		body,
@@ -60,9 +58,17 @@ export async function nextCloudApiRequest(
 	const credentialType =
 		authenticationMethod === 'accessToken' ? 'nextCloudApi' : 'nextCloudOAuth2Api';
 
-	try {
-		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error as JsonObject);
+	const response = await this.helpers.requestWithAuthentication.call(this, credentialType, options);
+
+	if (typeof response === 'string' && response.includes('<b>Fatal error</b>')) {
+		throw new NodeOperationError(
+			this.getNode(),
+			"NextCloud responded with a 'Fatal error', check description for more details",
+			{
+				description: `Server response:\n${response}`,
+			},
+		);
 	}
+
+	return response;
 }

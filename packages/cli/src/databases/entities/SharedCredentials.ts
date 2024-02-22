@@ -1,70 +1,24 @@
-/* eslint-disable import/no-cycle */
-import {
-	BeforeUpdate,
-	CreateDateColumn,
-	Entity,
-	ManyToOne,
-	RelationId,
-	UpdateDateColumn,
-} from 'typeorm';
-import { IsDate, IsOptional } from 'class-validator';
-
-import * as config from '../../../config';
-import { DatabaseType } from '../../index';
+import { Column, Entity, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
 import { CredentialsEntity } from './CredentialsEntity';
 import { User } from './User';
-import { Role } from './Role';
+import { WithTimestamps } from './AbstractEntity';
 
-// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-function getTimestampSyntax() {
-	const dbType = config.getEnv('database.type');
-
-	const map: { [key in DatabaseType]: string } = {
-		sqlite: "STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')",
-		postgresdb: 'CURRENT_TIMESTAMP(3)',
-		mysqldb: 'CURRENT_TIMESTAMP(3)',
-		mariadb: 'CURRENT_TIMESTAMP(3)',
-	};
-
-	return map[dbType];
-}
+export type CredentialSharingRole = 'credential:owner' | 'credential:user';
 
 @Entity()
-export class SharedCredentials {
-	@ManyToOne(() => Role, (role) => role.sharedCredentials, { nullable: false })
-	role: Role;
+export class SharedCredentials extends WithTimestamps {
+	@Column()
+	role: CredentialSharingRole;
 
-	@ManyToOne(() => User, (user) => user.sharedCredentials, { primary: true })
+	@ManyToOne('User', 'sharedCredentials')
 	user: User;
 
-	@RelationId((sharedCredential: SharedCredentials) => sharedCredential.user)
+	@PrimaryColumn()
 	userId: string;
 
-	@ManyToOne(() => CredentialsEntity, (credentials) => credentials.shared, {
-		primary: true,
-		onDelete: 'CASCADE',
-	})
+	@ManyToOne('CredentialsEntity', 'shared')
 	credentials: CredentialsEntity;
 
-	@RelationId((sharedCredential: SharedCredentials) => sharedCredential.credentials)
-	credentialId: number;
-
-	@CreateDateColumn({ precision: 3, default: () => getTimestampSyntax() })
-	@IsOptional() // ignored by validation because set at DB level
-	@IsDate()
-	createdAt: Date;
-
-	@UpdateDateColumn({
-		precision: 3,
-		default: () => getTimestampSyntax(),
-		onUpdate: getTimestampSyntax(),
-	})
-	@IsOptional() // ignored by validation because set at DB level
-	@IsDate()
-	updatedAt: Date;
-
-	@BeforeUpdate()
-	setUpdateDate(): void {
-		this.updatedAt = new Date();
-	}
+	@PrimaryColumn()
+	credentialsId: string;
 }

@@ -1,71 +1,20 @@
-/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
-/* eslint-disable import/no-cycle */
-import {
-	BeforeUpdate,
-	Column,
-	CreateDateColumn,
-	Entity,
-	Generated,
-	Index,
-	ManyToMany,
-	PrimaryColumn,
-	UpdateDateColumn,
-} from 'typeorm';
-import { IsDate, IsOptional, IsString, Length } from 'class-validator';
-
-import * as config from '../../../config';
-import { DatabaseType } from '../../index';
-import { ITagDb } from '../../Interfaces';
-import { idStringifier } from '../utils/transformers';
-import { WorkflowEntity } from './WorkflowEntity';
-
-// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-function getTimestampSyntax() {
-	const dbType = config.getEnv('database.type');
-
-	const map: { [key in DatabaseType]: string } = {
-		sqlite: "STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')",
-		postgresdb: 'CURRENT_TIMESTAMP(3)',
-		mysqldb: 'CURRENT_TIMESTAMP(3)',
-		mariadb: 'CURRENT_TIMESTAMP(3)',
-	};
-
-	return map[dbType];
-}
+import { Column, Entity, Index, ManyToMany, OneToMany } from '@n8n/typeorm';
+import { IsString, Length } from 'class-validator';
+import type { WorkflowEntity } from './WorkflowEntity';
+import type { WorkflowTagMapping } from './WorkflowTagMapping';
+import { WithTimestampsAndStringId } from './AbstractEntity';
 
 @Entity()
-export class TagEntity implements ITagDb {
-	@Generated()
-	@PrimaryColumn({
-		transformer: idStringifier,
-	})
-	id: number;
-
+export class TagEntity extends WithTimestampsAndStringId {
 	@Column({ length: 24 })
 	@Index({ unique: true })
 	@IsString({ message: 'Tag name must be of type string.' })
 	@Length(1, 24, { message: 'Tag name must be $constraint1 to $constraint2 characters long.' })
 	name: string;
 
-	@CreateDateColumn({ precision: 3, default: () => getTimestampSyntax() })
-	@IsOptional() // ignored by validation because set at DB level
-	@IsDate()
-	createdAt: Date;
-
-	@UpdateDateColumn({
-		precision: 3,
-		default: () => getTimestampSyntax(),
-		onUpdate: getTimestampSyntax(),
-	})
-	@IsOptional() // ignored by validation because set at DB level
-	@IsDate()
-	updatedAt: Date;
-
-	@ManyToMany(() => WorkflowEntity, (workflow) => workflow.tags)
+	@ManyToMany('WorkflowEntity', 'tags')
 	workflows: WorkflowEntity[];
 
-	@BeforeUpdate()
-	setUpdateDate() {
-		this.updatedAt = new Date();
-	}
+	@OneToMany('WorkflowTagMapping', 'tags')
+	workflowMappings: WorkflowTagMapping[];
 }

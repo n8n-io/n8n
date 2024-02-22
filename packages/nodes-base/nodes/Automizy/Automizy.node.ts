@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -66,7 +65,7 @@ export class Automizy implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the tags to display them to user so that he can
+			// Get all the tags to display them to user so that they can
 			// select them easily
 			async getLists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -74,7 +73,7 @@ export class Automizy implements INodeType {
 					this,
 					'smartLists',
 					'GET',
-					`/smart-lists`,
+					'/smart-lists',
 				);
 				for (const list of lists) {
 					returnData.push({
@@ -125,8 +124,8 @@ export class Automizy implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			if (resource === 'contact') {
 				if (operation === 'create') {
@@ -134,7 +133,7 @@ export class Automizy implements INodeType {
 
 					const email = this.getNodeParameter('email', i) as string;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					const body: IDataObject = {
 						email,
@@ -164,7 +163,7 @@ export class Automizy implements INodeType {
 					);
 					responseData = responseData.contacts;
 					responseData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 				}
@@ -186,17 +185,17 @@ export class Automizy implements INodeType {
 
 					responseData = await automizyApiRequest.call(this, 'GET', `/contacts/${contactId}`);
 					responseData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 				}
 
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 
 					const listId = this.getNodeParameter('listId', i) as string;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					if (additionalFields.direction && additionalFields.sortBy) {
 						qs.order = `${additionalFields.sortBy}:${additionalFields.direction}`;
@@ -216,7 +215,7 @@ export class Automizy implements INodeType {
 							qs,
 						);
 					} else {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit', i);
 
 						responseData = await automizyApiRequest.call(
 							this,
@@ -228,7 +227,7 @@ export class Automizy implements INodeType {
 					}
 
 					responseData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 				}
@@ -236,7 +235,7 @@ export class Automizy implements INodeType {
 				if (operation === 'update') {
 					const email = this.getNodeParameter('email', i) as string;
 
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 
 					const body: IDataObject = {};
 
@@ -258,7 +257,7 @@ export class Automizy implements INodeType {
 
 					responseData = await automizyApiRequest.call(this, 'PATCH', `/contacts/${email}`, body);
 					responseData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 				}
@@ -272,9 +271,9 @@ export class Automizy implements INodeType {
 						name,
 					};
 
-					responseData = await automizyApiRequest.call(this, 'POST', `/smart-lists`, body);
+					responseData = await automizyApiRequest.call(this, 'POST', '/smart-lists', body);
 					responseData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 				}
@@ -296,15 +295,15 @@ export class Automizy implements INodeType {
 
 					responseData = await automizyApiRequest.call(this, 'GET', `/smart-lists/${listId}`);
 					responseData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 				}
 
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					if (additionalFields.direction && additionalFields.sortBy) {
 						qs.order = `${additionalFields.sortBy}:${additionalFields.direction}`;
@@ -319,20 +318,20 @@ export class Automizy implements INodeType {
 							this,
 							'smartLists',
 							'GET',
-							`/smart-lists`,
+							'/smart-lists',
 							{},
 							qs,
 						);
 					} else {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit', i);
 
-						responseData = await automizyApiRequest.call(this, 'GET', `/smart-lists`, {}, qs);
+						responseData = await automizyApiRequest.call(this, 'GET', '/smart-lists', {}, qs);
 
 						responseData = responseData.smartLists;
 					}
 
 					responseData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 				}
@@ -354,7 +353,7 @@ export class Automizy implements INodeType {
 					);
 
 					responseData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 				}
@@ -363,6 +362,6 @@ export class Automizy implements INodeType {
 
 		returnData.push(...(responseData as NodeExecutionWithMetadata[]));
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

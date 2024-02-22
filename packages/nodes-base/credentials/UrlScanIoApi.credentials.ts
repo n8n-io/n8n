@@ -1,4 +1,4 @@
-import {
+import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -7,17 +7,22 @@ import {
 
 export class UrlScanIoApi implements ICredentialType {
 	name = 'urlScanIoApi';
+
 	displayName = 'urlscan.io API';
+
 	documentationUrl = 'urlScanIo';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',
 			name: 'apiKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 			required: true,
 		},
 	];
+
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {

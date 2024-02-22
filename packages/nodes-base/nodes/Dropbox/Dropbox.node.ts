@@ -1,12 +1,12 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
 	IDataObject,
+	IExecuteFunctions,
+	IHttpRequestMethods,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	dropboxApiRequest,
@@ -313,7 +313,7 @@ export class Dropbox implements INodeType {
 				description: 'The file path of the file to download. Has to contain the full path.',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'Put Output File in Field',
 				name: 'binaryPropertyName',
 				type: 'string',
 				required: true,
@@ -324,7 +324,7 @@ export class Dropbox implements INodeType {
 						resource: ['file'],
 					},
 				},
-				description: 'Name of the binary property to which to write the data of the read file',
+				hint: 'The name of the output binary field to put the file in',
 			},
 
 			// ----------------------------------
@@ -347,7 +347,7 @@ export class Dropbox implements INodeType {
 					'The file path of the file to upload. Has to contain the full path. The parent folder has to exist. Existing files get overwritten.',
 			},
 			{
-				displayName: 'Binary Data',
+				displayName: 'Binary File',
 				name: 'binaryData',
 				type: 'boolean',
 				default: false,
@@ -375,7 +375,7 @@ export class Dropbox implements INodeType {
 				description: 'The text content of the file to upload',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'Input Binary Field',
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',
@@ -388,8 +388,7 @@ export class Dropbox implements INodeType {
 					},
 				},
 				placeholder: '',
-				description:
-					'Name of the binary property which contains the data for the file to be uploaded',
+				hint: 'The name of the input binary field containing the file to be uploaded',
 			},
 
 			// ----------------------------------
@@ -695,11 +694,11 @@ export class Dropbox implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let endpoint = '';
-		let requestMethod = '';
+		let requestMethod: IHttpRequestMethods = 'GET';
 		let returnAll = false;
 		let property = '';
 		let body: IDataObject | Buffer;
@@ -759,27 +758,10 @@ export class Dropbox implements INodeType {
 
 						options = { json: false };
 
-						if (this.getNodeParameter('binaryData', i) === true) {
-							// Is binary file to upload
-							const item = items[i];
-
-							if (item.binary === undefined) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-									itemIndex: i,
-								});
-							}
-
-							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
-
-							if (item.binary[propertyNameUpload] === undefined) {
-								throw new NodeOperationError(
-									this.getNode(),
-									`No binary data property "${propertyNameUpload}" does not exists on item!`,
-									{ itemIndex: i },
-								);
-							}
-
-							body = await this.helpers.getBinaryDataBuffer(i, propertyNameUpload);
+						if (this.getNodeParameter('binaryData', i)) {
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
+							this.helpers.assertBinaryData(i, binaryPropertyName);
+							body = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 						} else {
 							// Is text file
 							body = Buffer.from(this.getNodeParameter('fileContent', i) as string, 'utf8');
@@ -802,9 +784,9 @@ export class Dropbox implements INodeType {
 						//         list
 						// ----------------------------------
 
-						returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						returnAll = this.getNodeParameter('returnAll', 0);
 
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 
 						property = 'entries';
 
@@ -814,8 +796,8 @@ export class Dropbox implements INodeType {
 							limit: 1000,
 						};
 
-						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', 0) as number;
+						if (!returnAll) {
+							const limit = this.getNodeParameter('limit', 0);
 							body.limit = limit;
 						}
 
@@ -829,11 +811,11 @@ export class Dropbox implements INodeType {
 						//         query
 						// ----------------------------------
 
-						returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						returnAll = this.getNodeParameter('returnAll', 0);
 
 						simple = this.getNodeParameter('simple', 0) as boolean;
 
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 
 						property = 'matches';
 
@@ -851,8 +833,8 @@ export class Dropbox implements INodeType {
 
 						Object.assign(body.options!, filters);
 
-						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+						if (!returnAll) {
+							const limit = this.getNodeParameter('limit', i);
 							Object.assign(body.options!, { max_results: limit });
 						}
 
@@ -909,7 +891,7 @@ export class Dropbox implements INodeType {
 
 				let responseData;
 
-				if (returnAll === true) {
+				if (returnAll) {
 					responseData = await dropboxpiRequestAllItems.call(
 						this,
 						property,
@@ -932,9 +914,9 @@ export class Dropbox implements INodeType {
 				}
 
 				if (resource === 'file' && operation === 'upload') {
-					const data = JSON.parse(responseData);
+					const data = JSON.parse(responseData as string);
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(data),
+						this.helpers.returnJsonArray(data as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
@@ -942,7 +924,7 @@ export class Dropbox implements INodeType {
 					const newItem: INodeExecutionData = {
 						json: items[i].json,
 						binary: {},
-						pairedItem: {item: i},
+						pairedItem: { item: i },
 					};
 
 					if (items[i].binary !== undefined) {
@@ -954,11 +936,11 @@ export class Dropbox implements INodeType {
 
 					items[i] = newItem;
 
-					const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
+					const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 
 					const filePathDownload = this.getNodeParameter('path', i) as string;
 					items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(
-						Buffer.from(responseData),
+						Buffer.from(responseData as string),
 						filePathDownload,
 					);
 				} else if (resource === 'folder' && operation === 'list') {
@@ -977,7 +959,7 @@ export class Dropbox implements INodeType {
 						is_downloadable: 'isDownloadable',
 					};
 
-					if (returnAll === false) {
+					if (!returnAll) {
 						responseData = responseData.entries;
 					}
 
@@ -999,21 +981,23 @@ export class Dropbox implements INodeType {
 					}
 				} else if (resource === 'search' && operation === 'query') {
 					let data = responseData;
-					if (returnAll === true) {
-							data = (simple === true) ? simplify(responseData) : responseData;
+					if (returnAll) {
+						data = simple ? simplify(responseData as IDataObject[]) : responseData;
 					} else {
-							data = (simple === true) ? simplify(responseData[property]) : responseData[property];
+						data = simple
+							? simplify(responseData[property] as IDataObject[])
+							: responseData[property];
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(data),
+						this.helpers.returnJsonArray(data as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 
 					returnData.push(...executionData);
 				} else {
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
@@ -1023,7 +1007,7 @@ export class Dropbox implements INodeType {
 					if (resource === 'file' && operation === 'download') {
 						items[i].json = { error: error.message };
 					} else {
-						returnData.push({json: { error: error.message }});
+						returnData.push({ json: { error: error.message } });
 					}
 					continue;
 				}
@@ -1033,10 +1017,10 @@ export class Dropbox implements INodeType {
 
 		if (resource === 'file' && operation === 'download') {
 			// For file downloads the files get attached to the existing items
-			return this.prepareOutputData(items);
+			return [items];
 		} else {
 			// For all other ones does the output items get replaced
-			return this.prepareOutputData(returnData);
+			return [returnData];
 		}
 	}
 }

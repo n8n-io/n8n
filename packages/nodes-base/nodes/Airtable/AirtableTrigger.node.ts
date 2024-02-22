@@ -1,16 +1,15 @@
-import { IPollFunctions } from 'n8n-core';
-
-import {
+import type {
+	IPollFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import { apiRequestAllItems, downloadRecordAttachments } from './GenericFunctions';
-
-import moment from 'moment';
+import moment from 'moment-timezone';
+import type { IRecord } from './v1/GenericFunctions';
+import { apiRequestAllItems, downloadRecordAttachments } from './v1/GenericFunctions';
 
 export class AirtableTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -28,6 +27,29 @@ export class AirtableTrigger implements INodeType {
 			{
 				name: 'airtableApi',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['airtableApi'],
+					},
+				},
+			},
+			{
+				name: 'airtableTokenApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['airtableTokenApi'],
+					},
+				},
+			},
+			{
+				name: 'airtableOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['airtableOAuth2Api'],
+					},
+				},
 			},
 		],
 		polling: true,
@@ -35,20 +57,112 @@ export class AirtableTrigger implements INodeType {
 		outputs: ['main'],
 		properties: [
 			{
-				displayName: 'Base ID',
-				name: 'baseId',
-				type: 'string',
-				default: '',
-				required: true,
-				description: 'The ID of this base',
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'API Key',
+						value: 'airtableApi',
+					},
+					{
+						name: 'Access Token',
+						value: 'airtableTokenApi',
+					},
+					{
+						name: 'OAuth2',
+						value: 'airtableOAuth2Api',
+					},
+				],
+				default: 'airtableApi',
 			},
 			{
-				displayName: 'Table ID',
-				name: 'tableId',
-				type: 'string',
-				default: '',
-				description: 'The ID of the table to access',
+				displayName: 'Base',
+				name: 'baseId',
+				type: 'resourceLocator',
+				default: { mode: 'url', value: '' },
 				required: true,
+				description: 'The Airtable Base in which to operate on',
+				modes: [
+					{
+						displayName: 'By URL',
+						name: 'url',
+						type: 'string',
+						placeholder: 'https://airtable.com/app12DiScdfes/tblAAAAAAAAAAAAA/viwHdfasdfeieg5p',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: 'https://airtable.com/([a-zA-Z0-9]{2,})/.*',
+									errorMessage: 'Not a valid Airtable Base URL',
+								},
+							},
+						],
+						extractValue: {
+							type: 'regex',
+							regex: 'https://airtable.com/([a-zA-Z0-9]{2,})',
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '[a-zA-Z0-9]{2,}',
+									errorMessage: 'Not a valid Airtable Base ID',
+								},
+							},
+						],
+						placeholder: 'appD3dfaeidke',
+						url: '=https://airtable.com/{{$value}}',
+					},
+				],
+			},
+			{
+				displayName: 'Table',
+				name: 'tableId',
+				type: 'resourceLocator',
+				default: { mode: 'url', value: '' },
+				required: true,
+				modes: [
+					{
+						displayName: 'By URL',
+						name: 'url',
+						type: 'string',
+						placeholder: 'https://airtable.com/app12DiScdfes/tblAAAAAAAAAAAAA/viwHdfasdfeieg5p',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: 'https://airtable.com/[a-zA-Z0-9]{2,}/([a-zA-Z0-9]{2,})/.*',
+									errorMessage: 'Not a valid Airtable Table URL',
+								},
+							},
+						],
+						extractValue: {
+							type: 'regex',
+							regex: 'https://airtable.com/[a-zA-Z0-9]{2,}/([a-zA-Z0-9]{2,})',
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '[a-zA-Z0-9]{2,}',
+									errorMessage: 'Not a valid Airtable Table ID',
+								},
+							},
+						],
+						placeholder: 'tbl3dirwqeidke',
+					},
+				],
 			},
 			{
 				displayName: 'Trigger Field',
@@ -91,6 +205,7 @@ export class AirtableTrigger implements INodeType {
 						displayName: 'Fields',
 						name: 'fields',
 						type: 'string',
+						requiresDataPath: 'multiple',
 						default: '',
 						// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
 						description:
@@ -119,18 +234,13 @@ export class AirtableTrigger implements INodeType {
 
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
 		const downloadAttachments = this.getNodeParameter('downloadAttachments', 0) as boolean;
-
 		const webhookData = this.getWorkflowStaticData('node');
+		const additionalFields = this.getNodeParameter('additionalFields') as IDataObject;
+		const base = this.getNodeParameter('baseId', '', { extractValue: true }) as string;
+		const table = this.getNodeParameter('tableId', '', { extractValue: true }) as string;
+		const triggerField = this.getNodeParameter('triggerField') as string;
 
 		const qs: IDataObject = {};
-
-		const additionalFields = this.getNodeParameter('additionalFields') as IDataObject;
-
-		const base = this.getNodeParameter('baseId') as string;
-
-		const table = this.getNodeParameter('tableId') as string;
-
-		const triggerField = this.getNodeParameter('triggerField') as string;
 
 		const endpoint = `${base}/${table}`;
 
@@ -168,11 +278,15 @@ export class AirtableTrigger implements INodeType {
 				throw new NodeOperationError(this.getNode(), `The Field "${triggerField}" does not exist.`);
 			}
 
-			if (downloadAttachments === true) {
+			if (downloadAttachments) {
 				const downloadFieldNames = (this.getNodeParameter('downloadFieldNames', 0) as string).split(
 					',',
 				);
-				const data = await downloadRecordAttachments.call(this, records, downloadFieldNames);
+				const data = await downloadRecordAttachments.call(
+					this,
+					records as IRecord[],
+					downloadFieldNames,
+				);
 				return [data];
 			}
 

@@ -2,10 +2,7 @@
 	"node": "n8n-nodes-base.msg91",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Communication",
-		"Development"
-	],
+	"categories": ["Communication", "Development"],
 	"resources": {
 		"credentialDocumentation": [
 			{
@@ -14,7 +11,7 @@
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.msg91/"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.msg91/"
 			}
 		]
 	}

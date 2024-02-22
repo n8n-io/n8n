@@ -1,15 +1,28 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
+import isEmpty from 'lodash/isEmpty';
+import omit from 'lodash/omit';
+
+import moment from 'moment-timezone';
+import {
+	goToWebinarApiRequest,
+	goToWebinarApiRequestAllItems,
+	handleGetAll,
+	loadAnswers,
+	loadRegistranMultiChoiceQuestions,
+	loadRegistranSimpleQuestions,
+	loadWebinars,
+	loadWebinarSessions,
+} from './GenericFunctions';
 import {
 	attendeeFields,
 	attendeeOperations,
@@ -24,21 +37,6 @@ import {
 	webinarFields,
 	webinarOperations,
 } from './descriptions';
-
-import {
-	goToWebinarApiRequest,
-	goToWebinarApiRequestAllItems,
-	handleGetAll,
-	loadAnswers,
-	loadRegistranMultiChoiceQuestions,
-	loadRegistranSimpleQuestions,
-	loadWebinars,
-	loadWebinarSessions,
-} from './GenericFunctions';
-
-import { isEmpty, omit } from 'lodash';
-
-import moment from 'moment-timezone';
 
 export class GoToWebinar implements INodeType {
 	description: INodeTypeDescription = {
@@ -120,7 +118,7 @@ export class GoToWebinar implements INodeType {
 			async getWebinarSessions(this: ILoadOptionsFunctions) {
 				return await loadWebinarSessions.call(this);
 			},
-			// Get all the timezones to display them to user so that he can
+			// Get all the timezones to display them to user so that they can
 			// select them easily
 			async getTimezones(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -150,8 +148,8 @@ export class GoToWebinar implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
 		const returnData: INodeExecutionData[] = [];
@@ -443,10 +441,10 @@ export class GoToWebinar implements INodeType {
 
 						const qs = {} as IDataObject;
 
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						if (!returnAll) {
-							qs.limit = this.getNodeParameter('limit', 0) as number;
+							qs.limit = this.getNodeParameter('limit', 0);
 						}
 
 						const { webinarKey, times } = this.getNodeParameter('additionalFields', i) as {
@@ -521,7 +519,7 @@ export class GoToWebinar implements INodeType {
 							times: timesProperties,
 						} as IDataObject;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(body, additionalFields);
 
 						const endpoint = `organizers/${organizerKey}/webinars`;
@@ -533,10 +531,7 @@ export class GoToWebinar implements INodeType {
 
 						const webinarKey = this.getNodeParameter('webinarKey', i) as string;
 
-						const { sendCancellationEmails } = this.getNodeParameter(
-							'additionalFields',
-							i,
-						) as IDataObject;
+						const { sendCancellationEmails } = this.getNodeParameter('additionalFields', i);
 
 						const qs = {} as IDataObject;
 
@@ -563,10 +558,10 @@ export class GoToWebinar implements INodeType {
 
 						const qs = {} as IDataObject;
 
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						if (!returnAll) {
-							qs.limit = this.getNodeParameter('limit', 0) as number;
+							qs.limit = this.getNodeParameter('limit', 0);
 						}
 
 						const { times } = this.getNodeParameter('additionalFields', i) as {
@@ -605,7 +600,7 @@ export class GoToWebinar implements INodeType {
 
 						let body = {};
 
-						let updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						let updateFields = this.getNodeParameter('updateFields', i);
 
 						if (updateFields.times) {
 							const { times } = updateFields as {
@@ -648,13 +643,13 @@ export class GoToWebinar implements INodeType {
 			}
 
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
+				this.helpers.returnJsonArray(responseData as IDataObject[]),
 				{ itemData: { item: i } },
 			);
 
 			returnData.push(...executionData);
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

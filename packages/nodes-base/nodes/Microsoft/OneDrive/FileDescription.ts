@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const fileOperations: INodeProperties[] = [
 	{
@@ -209,7 +209,7 @@ export const fileFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Binary Property',
+		displayName: 'Put Output File in Field',
 		name: 'binaryPropertyName',
 		type: 'string',
 		required: true,
@@ -220,7 +220,7 @@ export const fileFields: INodeProperties[] = [
 				resource: ['file'],
 			},
 		},
-		description: 'Name of the binary property to which to write the data of the read file',
+		hint: 'The name of the output binary field to put the file in',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 file:get                                   */
@@ -380,7 +380,7 @@ export const fileFields: INodeProperties[] = [
 		description: 'ID of the parent folder that will contain the file',
 	},
 	{
-		displayName: 'Binary Data',
+		displayName: 'Binary File',
 		name: 'binaryData',
 		type: 'boolean',
 		default: false,
@@ -410,7 +410,7 @@ export const fileFields: INodeProperties[] = [
 		description: 'The text content of the file',
 	},
 	{
-		displayName: 'Binary Property',
+		displayName: 'Input Binary Field',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
@@ -423,6 +423,6 @@ export const fileFields: INodeProperties[] = [
 			},
 		},
 		placeholder: '',
-		description: 'Name of the binary property which contains the data for the file',
+		hint: 'The name of the input binary field containing the file to be written',
 	},
 ];

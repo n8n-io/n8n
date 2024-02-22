@@ -1,16 +1,15 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import { isEmpty } from 'lodash';
+import isEmpty from 'lodash/isEmpty';
 
 import {
 	adjustChargeFields,
@@ -133,8 +132,8 @@ export class Stripe implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
 		const returnData: INodeExecutionData[] = [];
@@ -212,7 +211,7 @@ export class Stripe implements INodeType {
 							source: this.getNodeParameter('source', i),
 						} as IDataObject;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (!isEmpty(additionalFields)) {
 							Object.assign(body, adjustChargeFields(additionalFields));
@@ -239,7 +238,7 @@ export class Stripe implements INodeType {
 
 						const body = {} as IDataObject;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (isEmpty(updateFields)) {
 							throw new NodeOperationError(
@@ -309,7 +308,7 @@ export class Stripe implements INodeType {
 							name: this.getNodeParameter('name', i),
 						} as IDataObject;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (!isEmpty(additionalFields)) {
 							Object.assign(body, adjustCustomerFields(additionalFields));
@@ -348,7 +347,7 @@ export class Stripe implements INodeType {
 						// ----------------------------------
 
 						const qs = {} as IDataObject;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 
 						if (!isEmpty(filters)) {
 							qs.email = filters.email;
@@ -362,7 +361,7 @@ export class Stripe implements INodeType {
 
 						const body = {} as IDataObject;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (isEmpty(updateFields)) {
 							throw new NodeOperationError(
@@ -403,7 +402,7 @@ export class Stripe implements INodeType {
 							currency: this.getNodeParameter('currency', i),
 						} as IDataObject;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (!isEmpty(additionalFields)) {
 							Object.assign(body, adjustMetadata(additionalFields));
@@ -478,13 +477,13 @@ export class Stripe implements INodeType {
 			}
 
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
+				this.helpers.returnJsonArray(responseData as IDataObject[]),
 				{ itemData: { item: i } },
 			);
 
 			returnData.push(...executionData);
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

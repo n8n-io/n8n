@@ -1,14 +1,22 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type {
+	IExecuteFunctions,
+	IDataObject,
+	ILoadOptionsFunctions,
+	JsonObject,
+	IHttpRequestMethods,
+	IRequestOptions,
+} from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { IDataObject, ILoadOptionsFunctions, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { GrafanaCredentials } from './types';
 
-import { OptionsWithUri } from 'request';
-
-import { GrafanaCredentials } from './types';
+export function tolerateTrailingSlash(baseUrl: string) {
+	return baseUrl.endsWith('/') ? baseUrl.substr(0, baseUrl.length - 1) : baseUrl;
+}
 
 export async function grafanaApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
@@ -17,7 +25,7 @@ export async function grafanaApiRequest(
 
 	const baseUrl = tolerateTrailingSlash(rawBaseUrl);
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
@@ -64,7 +72,7 @@ export async function grafanaApiRequest(
 				'Invalid credentials or error in establishing connection with given credentials';
 		}
 
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -79,10 +87,6 @@ export function throwOnEmptyUpdate(
 			`Please enter at least one field to update for the ${resource}.`,
 		);
 	}
-}
-
-export function tolerateTrailingSlash(baseUrl: string) {
-	return baseUrl.endsWith('/') ? baseUrl.substr(0, baseUrl.length - 1) : baseUrl;
 }
 
 export function deriveUid(this: IExecuteFunctions, uidOrUrl: string) {

@@ -1,21 +1,39 @@
-export type Rule = { name: string; config?: any}; // tslint:disable-line:no-any
+export type Rule = { name: string; config?: unknown };
 
 export type RuleGroup = {
 	rules: Array<Rule | RuleGroup>;
-	defaultError?: {messageKey: string, options?: any}; // tslint:disable-line:no-any
+	defaultError?: { messageKey: string; options?: unknown };
 };
 
-export type IValidator = {
-	validate: (value: string | number | boolean | null | undefined, config: any) => false | {messageKey: string, options?: any} | null; // tslint:disable-line:no-any
+export type Validatable = string | number | boolean | null | undefined;
+
+export type IValidator<T = unknown> = {
+	validate: (
+		value: Validatable,
+		config: T,
+	) => false | { messageKey: string; message?: string; options?: unknown } | null;
 };
 
+export type FormState = {
+	isTyping: boolean;
+	hasBlutted: boolean;
+};
 
 export type IFormInput = {
 	name: string;
 	initialValue?: string | number | boolean | null;
 	properties: {
 		label?: string;
-		type?: 'text' | 'email' | 'password' | 'select' | 'multi-select' | 'info'| 'checkbox';
+		type?:
+			| 'text'
+			| 'email'
+			| 'password'
+			| 'select'
+			| 'multi-select'
+			| 'number'
+			| 'info'
+			| 'checkbox'
+			| 'toggle';
 		maxlength?: number;
 		required?: boolean;
 		showRequiredAsterisk?: boolean;
@@ -26,12 +44,21 @@ export type IFormInput = {
 		validateOnBlur?: boolean;
 		infoText?: string;
 		placeholder?: string;
-		options?: Array<{label: string; value: string}>;
-		autocomplete?: 'off' | 'new-password' | 'current-password' | 'given-name' | 'family-name' | 'email'; // https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/autocomplete
+		options?: Array<{ label: string; value: string; disabled?: boolean }>;
+		autocomplete?:
+			| 'off'
+			| 'new-password'
+			| 'current-password'
+			| 'given-name'
+			| 'family-name'
+			| 'email'; // https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/autocomplete
 		capitalize?: boolean;
 		focusInitially?: boolean;
+		disabled?: boolean;
+		labelSize?: 'small' | 'medium' | 'large';
+		labelAlignment?: 'left' | 'right' | 'center';
 	};
-	shouldDisplay?: (values: {[key: string]: unknown}) => boolean;
+	shouldDisplay?: (values: { [key: string]: unknown }) => boolean;
 };
 
 export type IFormInputs = IFormInput[];

@@ -1,12 +1,11 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	endOfDayDataFields,
@@ -24,7 +23,7 @@ import {
 	validateTimeOptions,
 } from './GenericFunctions';
 
-import { EndOfDayDataFilters, Operation, Resource } from './types';
+import type { EndOfDayDataFilters, Operation, Resource } from './types';
 
 export class Marketstack implements INodeType {
 	description: INodeTypeDescription = {
@@ -87,7 +86,7 @@ export class Marketstack implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as Resource;
 		const operation = this.getNodeParameter('operation', 0) as Operation;
 
-		let responseData: any; // tslint:disable-line: no-any
+		let responseData: any;
 		const returnData: INodeExecutionData[] = [];
 
 		for (let i = 0; i < items.length; i++) {
@@ -108,7 +107,7 @@ export class Marketstack implements INodeType {
 						) as EndOfDayDataFilters;
 
 						validateTimeOptions.call(this, [
-							latest !== undefined && latest !== false,
+							latest !== undefined && latest,
 							specificDate !== undefined,
 							dateFrom !== undefined && dateTo !== undefined,
 						]);
@@ -174,13 +173,13 @@ export class Marketstack implements INodeType {
 			}
 
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
+				this.helpers.returnJsonArray(responseData as IDataObject[]),
 				{ itemData: { item: i } },
 			);
 
 			returnData.push(...executionData);
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

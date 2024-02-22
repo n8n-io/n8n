@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
@@ -9,8 +8,9 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
-	NodeOperationError,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { moceanApiRequest } from './GenericFunctions';
 
@@ -18,7 +18,7 @@ export class Mocean implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Mocean',
 		name: 'mocean',
-		subtitle: `={{$parameter["operation"] + ": " + $parameter["resource"]}}`,
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		icon: 'file:mocean.svg',
 		group: ['transform'],
 		version: 1,
@@ -196,11 +196,11 @@ export class Mocean implements INodeType {
 				const options = {
 					method: 'GET',
 					qs: query,
-					uri: `https://rest.moceanapi.com/rest/2/account/balance`,
+					uri: 'https://rest.moceanapi.com/rest/2/account/balance',
 					json: true,
 				};
 				try {
-					await this.helpers.request!(options);
+					await this.helpers.request(options);
 				} catch (error) {
 					return {
 						status: 'Error',
@@ -221,7 +221,7 @@ export class Mocean implements INodeType {
 
 		let endpoint: string;
 		let operation: string;
-		let requesetMethod: string;
+		let requestMethod: IHttpRequestMethods;
 		let resource: string;
 		let text: string;
 		let dlrUrl: string;
@@ -235,10 +235,10 @@ export class Mocean implements INodeType {
 			body = {};
 			qs = {};
 			try {
-				resource = this.getNodeParameter('resource', itemIndex, '') as string;
-				operation = this.getNodeParameter('operation', itemIndex, '') as string;
+				resource = this.getNodeParameter('resource', itemIndex, '');
+				operation = this.getNodeParameter('operation', itemIndex, '');
 				text = this.getNodeParameter('message', itemIndex, '') as string;
-				requesetMethod = 'POST';
+				requestMethod = 'POST';
 				body['mocean-from'] = this.getNodeParameter('from', itemIndex, '') as string;
 				body['mocean-to'] = this.getNodeParameter('to', itemIndex, '') as string;
 
@@ -271,13 +271,7 @@ export class Mocean implements INodeType {
 				}
 
 				if (operation === 'send') {
-					const responseData = await moceanApiRequest.call(
-						this,
-						requesetMethod,
-						endpoint,
-						body,
-						qs,
-					);
+					const responseData = await moceanApiRequest.call(this, requestMethod, endpoint, body, qs);
 
 					for (const item of responseData[dataKey] as IDataObject[]) {
 						item.type = resource;

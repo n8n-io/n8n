@@ -1,14 +1,25 @@
 {
-	"extends": "../../tsconfig.json",
+	"extends": ["../../tsconfig.json", "../../tsconfig.backend.json"],
 	"compilerOptions": {
-		"outDir": "dist",
-		"types": ["node", "jest"],
+		"rootDir": ".",
+		"preserveSymlinks": true,
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
+		"baseUrl": "src",
+		"paths": {
+			"@/*": ["./*"],
+			"@db/*": ["./databases/*"]
+		},
+		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
 		// TODO: remove all options below this line
 		"strict": false,
-		"noUnusedLocals": false,
 		"useUnknownInCatchVariables": false
 	},
-	"include": ["**/*.d.ts", "commands/**/*", "config/**/*", "src/**/*"]
+	"include": ["src/**/*.ts", "test/**/*.ts", "src/sso/saml/saml-schema-metadata-2.0.xsd"],
+	"references": [
+		{ "path": "../workflow/tsconfig.build.json" },
+		{ "path": "../core/tsconfig.build.json" },
+		{ "path": "../@n8n/client-oauth2/tsconfig.build.json" },
+		{ "path": "../@n8n/permissions/tsconfig.build.json" }
+	]
 }

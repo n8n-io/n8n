@@ -1,6 +1,10 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 import { openThesaurusApiRequest } from './GenericFunctions';
 
@@ -139,13 +143,13 @@ export class OpenThesaurus implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
 				if (operation === 'getSynonyms') {
 					const text = this.getNodeParameter('text', i) as string;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 
 					qs.q = text;
 
@@ -154,7 +158,7 @@ export class OpenThesaurus implements INodeType {
 					responseData = await openThesaurusApiRequest.call(
 						this,
 						'GET',
-						`/synonyme/search`,
+						'/synonyme/search',
 						{},
 						qs,
 					);
@@ -162,7 +166,7 @@ export class OpenThesaurus implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 
@@ -179,6 +183,6 @@ export class OpenThesaurus implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

@@ -1,12 +1,9 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
-	IBinaryKeyData,
+import type {
 	IDataObject,
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import { lineApiRequest } from './GenericFunctions';
@@ -62,10 +59,9 @@ export class Line implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
-		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'notification') {
@@ -73,7 +69,7 @@ export class Line implements INodeType {
 					if (operation === 'send') {
 						const message = this.getNodeParameter('message', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IDataObject = {
 							message,
@@ -98,27 +94,9 @@ export class Line implements INodeType {
 							const image = (body.imageUi as IDataObject).imageValue as IDataObject;
 
 							if (image && image.binaryData === true) {
-								if (items[i].binary === undefined) {
-									throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-										itemIndex: i,
-									});
-								}
-								//@ts-ignore
-								if (items[i].binary[image.binaryProperty] === undefined) {
-									throw new NodeOperationError(
-										this.getNode(),
-										`No binary data property "${image.binaryProperty}" does not exists on item!`,
-										{ itemIndex: i },
-									);
-								}
-
-								const binaryData = (items[i].binary as IBinaryKeyData)[
-									image.binaryProperty as string
-								];
-								const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
-									i,
-									image.binaryProperty as string,
-								);
+								const binaryProperty = image.binaryProperty as string;
+								const binaryData = this.helpers.assertBinaryData(i, binaryProperty);
+								const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
 
 								body.imageFile = {
 									value: binaryDataBuffer,
@@ -144,7 +122,7 @@ export class Line implements INodeType {
 					}
 				}
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject),
 					{ itemData: { item: i } },
 				);
 
@@ -161,6 +139,6 @@ export class Line implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

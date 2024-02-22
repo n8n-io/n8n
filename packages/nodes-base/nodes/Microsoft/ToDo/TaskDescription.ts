@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const taskOperations: INodeProperties[] = [
 	{
@@ -104,6 +104,13 @@ export const taskFields: INodeProperties[] = [
 				type: 'dateTime',
 				default: '',
 				description: 'The date in the specified time zone that the task is to be finished',
+			},
+			{
+				displayName: 'Reminder',
+				name: 'reminderDateTime',
+				type: 'dateTime',
+				default: '',
+				description: 'The date in the specified time zone that the task is to be reminded',
 			},
 			{
 				displayName: 'Importance',

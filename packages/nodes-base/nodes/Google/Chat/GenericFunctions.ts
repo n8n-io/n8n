@@ -1,40 +1,28 @@
-import { OptionsWithUri } from 'request';
-
-import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
-import {
-	// ICredentialDataDecryptedObject,
-	ICredentialTestFunctions,
+import type {
 	IDataObject,
+	IExecuteFunctions,
+	IHttpRequestMethods,
+	ILoadOptionsFunctions,
 	INodeProperties,
-	NodeApiError,
-	NodeOperationError,
+	IRequestOptions,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import moment from 'moment-timezone';
-
-import jwt from 'jsonwebtoken';
-
-interface IGoogleAuthCredentials {
-	delegatedEmail?: string;
-	email: string;
-	inpersonate: boolean;
-	privateKey: string;
-}
+import { getGoogleAccessToken } from '../GenericFunctions';
 
 export async function googleApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	method: string,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	noCredentials = false,
 	encoding?: null | undefined,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
@@ -45,7 +33,7 @@ export async function googleApiRequest(
 		json: true,
 	};
 
-	if (Object.keys(body).length === 0) {
+	if (Object.keys(body as IDataObject).length === 0) {
 		delete options.body;
 	}
 
@@ -56,17 +44,12 @@ export async function googleApiRequest(
 	let responseData: IDataObject | undefined;
 	try {
 		if (noCredentials) {
-			//@ts-ignore
 			responseData = await this.helpers.request(options);
 		} else {
 			const credentials = await this.getCredentials('googleApi');
 
-			const { access_token } = await getAccessToken.call(
-				this,
-				credentials as unknown as IGoogleAuthCredentials,
-			);
+			const { access_token } = await getGoogleAccessToken.call(this, credentials, 'chat');
 			options.headers!.Authorization = `Bearer ${access_token}`;
-			//@ts-ignore
 			responseData = await this.helpers.request(options);
 		}
 	} catch (error) {
@@ -74,7 +57,7 @@ export async function googleApiRequest(
 			error.statusCode = '401';
 		}
 
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 	if (Object.keys(responseData as IDataObject).length !== 0) {
 		return responseData;
@@ -86,12 +69,11 @@ export async function googleApiRequest(
 export async function googleApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -100,68 +82,13 @@ export async function googleApiRequestAllItems(
 
 	do {
 		responseData = await googleApiRequest.call(this, method, endpoint, body, query);
-		query.pageToken = responseData['nextPageToken'];
-		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (responseData['nextPageToken'] !== undefined && responseData['nextPageToken'] !== '');
+		query.pageToken = responseData.nextPageToken;
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+	} while (responseData.nextPageToken !== undefined && responseData.nextPageToken !== '');
 
 	return returnData;
 }
 
-export function getAccessToken(
-	this:
-		| IExecuteFunctions
-		| IExecuteSingleFunctions
-		| ILoadOptionsFunctions
-		| ICredentialTestFunctions,
-	credentials: IGoogleAuthCredentials,
-): Promise<IDataObject> {
-	//https://developers.google.com/identity/protocols/oauth2/service-account#httprest
-
-	const scopes = ['https://www.googleapis.com/auth/chat.bot'];
-
-	const now = moment().unix();
-
-	credentials.email = credentials.email.trim();
-	const privateKey = (credentials.privateKey as string).replace(/\\n/g, '\n').trim();
-
-	const signature = jwt.sign(
-		{
-			iss: credentials.email as string,
-			sub: credentials.delegatedEmail || (credentials.email as string),
-			scope: scopes.join(' '),
-			aud: `https://oauth2.googleapis.com/token`,
-			iat: now,
-			exp: now + 3600,
-		},
-		privateKey,
-		{
-			algorithm: 'RS256',
-			header: {
-				kid: privateKey,
-				typ: 'JWT',
-				alg: 'RS256',
-			},
-		},
-	);
-
-	const options: OptionsWithUri = {
-		headers: {
-			'Content-Type': 'application/x-www-form-urlencoded',
-		},
-		method: 'POST',
-		form: {
-			grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-			assertion: signature,
-		},
-		uri: 'https://oauth2.googleapis.com/token',
-		json: true,
-	};
-
-	//@ts-ignore
-	return this.helpers.request(options);
-}
-
-// tslint:disable-next-line:no-any
 export function validateJSON(json: string | undefined): any {
 	let result;
 	try {

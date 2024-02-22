@@ -1,17 +1,13 @@
 #!/usr/bin/env node
 
-var path = require('path');
+const path = require('path');
 
 // Make sure that it also find the config folder when it
 // did get started from another folder that the root one.
 process.env.NODE_CONFIG_DIR = process.env.NODE_CONFIG_DIR || path.join(__dirname, 'config');
 
 // Check if version should be displayed
-var versionFlags = [
-	'-v',
-	'-V',
-	'--version',
-];
+const versionFlags = ['-v', '-V', '--version'];
 if (versionFlags.includes(process.argv.slice(-1)[0])) {
 	console.log(require('../package').version);
 	process.exit(0);
@@ -22,13 +18,33 @@ if (process.argv.length === 2) {
 	process.argv.push('start');
 }
 
-var nodeVersion = process.versions.node.split('.');
+const nodeVersion = process.versions.node;
+const nodeVersionMajor = require('semver').major(nodeVersion);
 
-if (parseInt(nodeVersion[0], 10) < 14) {
-	console.log(`\nYour Node.js version (${process.versions.node}) is too old to run n8n.\nPlease update at least to Node.js v14 or to the recommended Node.js v16!\n`);
+if (![18, 20].includes(nodeVersionMajor)) {
+	console.log(`
+	Your Node.js version (${nodeVersion}) is currently not supported by n8n.
+	Please use Node.js v18 (recommended), or v20 instead!
+	`);
 	process.exit(1);
 }
 
-require('@oclif/command').run()
-.then(require('@oclif/command/flush'))
-.catch(require('@oclif/errors/handle'));
+// Prevent oclif from loading ts-node and typescript
+process.env.OCLIF_TS_NODE = '0';
+
+// Disable nodejs custom inspection across the app
+const { inspect } = require('util');
+inspect.defaultOptions.customInspect = false;
+
+require('express-async-errors');
+require('source-map-support').install();
+require('reflect-metadata');
+
+if (process.env.NODEJS_PREFER_IPV4 === 'true') {
+	require('dns').setDefaultResultOrder('ipv4first');
+}
+
+(async () => {
+	const oclif = await import('@oclif/core');
+	await oclif.execute({});
+})();

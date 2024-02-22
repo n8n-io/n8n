@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const fileOperations: INodeProperties[] = [
 	{
@@ -40,7 +40,7 @@ export const fileFields: INodeProperties[] = [
 	/*                                 file:upload                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Binary Data',
+		displayName: 'Binary File',
 		name: 'binaryData',
 		type: 'boolean',
 		default: false,
@@ -53,7 +53,7 @@ export const fileFields: INodeProperties[] = [
 		description: 'Whether the data to upload should be taken from binary field',
 	},
 	{
-		displayName: 'Binary Property',
+		displayName: 'Input Binary Field',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
@@ -65,7 +65,7 @@ export const fileFields: INodeProperties[] = [
 				binaryData: [true],
 			},
 		},
-		description: 'Name of the binary property which contains the data for the file to be uploaded',
+		hint: 'The name of the input binary field containing the file to be uploaded',
 	},
 	{
 		displayName: 'File Association',
@@ -127,9 +127,6 @@ export const fileFields: INodeProperties[] = [
 		displayName: 'File Data',
 		name: 'fileData',
 		type: 'string',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		required: true,
 		displayOptions: {
 			show: {

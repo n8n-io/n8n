@@ -1,34 +1,35 @@
-import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
-
-import {
+import type {
 	IDataObject,
+	IExecuteFunctions,
+	IHookFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
-	NodeApiError,
+	IRequestOptions,
+	JsonObject,
 } from 'n8n-workflow';
-
-import { CustomField, GeneralAddress, Ref } from './descriptions/Shared.interface';
+import { NodeApiError } from 'n8n-workflow';
 
 import { capitalCase } from 'change-case';
 
-import { omit, pickBy } from 'lodash';
+import omit from 'lodash/omit';
+import pickBy from 'lodash/pickBy';
 
-import { OptionsWithUri } from 'request';
+import type { CustomField, GeneralAddress, Ref } from './descriptions/Shared.interface';
 
-import { DateFieldsUi, Option, QuickBooksOAuth2Credentials, TransactionReport } from './types';
+import type { DateFieldsUi, Option, QuickBooksOAuth2Credentials, TransactionReport } from './types';
 
 /**
  * Make an authenticated API request to QuickBooks.
  */
 export async function quickBooksApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	qs: IDataObject,
 	body: IDataObject,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const resource = this.getNodeParameter('resource', 0) as string;
 	const operation = this.getNodeParameter('operation', 0) as string;
@@ -46,7 +47,7 @@ export async function quickBooksApiRequest(
 		'quickBooksOAuth2Api',
 	)) as QuickBooksOAuth2Credentials;
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			'user-agent': 'n8n',
 		},
@@ -70,7 +71,7 @@ export async function quickBooksApiRequest(
 	}
 
 	if (isDownload) {
-		options.headers!['Accept'] = 'application/pdf';
+		options.headers!.Accept = 'application/pdf';
 	}
 
 	if (resource === 'invoice' && operation === 'send') {
@@ -85,10 +86,21 @@ export async function quickBooksApiRequest(
 	}
 
 	try {
-		return await this.helpers.requestOAuth2!.call(this, 'quickBooksOAuth2Api', options);
+		return await this.helpers.requestOAuth2.call(this, 'quickBooksOAuth2Api', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
+}
+
+async function getCount(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
+	endpoint: string,
+	qs: IDataObject,
+): Promise<any> {
+	const responseData = await quickBooksApiRequest.call(this, method, endpoint, qs, {});
+
+	return responseData.QueryResponse.totalCount;
 }
 
 /**
@@ -96,12 +108,11 @@ export async function quickBooksApiRequest(
  */
 export async function quickBooksApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	qs: IDataObject,
 	body: IDataObject,
 	resource: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	let responseData;
 	let startPosition = 1;
@@ -122,9 +133,9 @@ export async function quickBooksApiRequestAllItems(
 		try {
 			const nonResource = originalQuery.split(' ')?.pop();
 			if (nonResource === 'CreditMemo' || nonResource === 'Term' || nonResource === 'TaxCode') {
-				returnData.push(...responseData.QueryResponse[nonResource]);
+				returnData.push(...(responseData.QueryResponse[nonResource] as IDataObject[]));
 			} else {
-				returnData.push(...responseData.QueryResponse[capitalCase(resource)]);
+				returnData.push(...(responseData.QueryResponse[capitalCase(resource)] as IDataObject[]));
 			}
 		} catch (error) {
 			return [];
@@ -136,18 +147,6 @@ export async function quickBooksApiRequestAllItems(
 	return returnData;
 }
 
-async function getCount(
-	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
-	endpoint: string,
-	qs: IDataObject,
-	// tslint:disable-next-line:no-any
-): Promise<any> {
-	const responseData = await quickBooksApiRequest.call(this, method, endpoint, qs, {});
-
-	return responseData.QueryResponse.totalCount;
-}
-
 /**
  * Handles a QuickBooks listing by returning all items or up to a limit.
  */
@@ -156,7 +155,6 @@ export async function handleListing(
 	i: number,
 	endpoint: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	let responseData;
 
@@ -166,7 +164,7 @@ export async function handleListing(
 
 	const returnAll = this.getNodeParameter('returnAll', i);
 
-	const filters = this.getNodeParameter('filters', i) as IDataObject;
+	const filters = this.getNodeParameter('filters', i);
 	if (filters.query) {
 		qs.query += ` ${filters.query}`;
 	}
@@ -174,7 +172,7 @@ export async function handleListing(
 	if (returnAll) {
 		return await quickBooksApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, resource);
 	} else {
-		const limit = this.getNodeParameter('limit', i) as number;
+		const limit = this.getNodeParameter('limit', i);
 		qs.query += ` MAXRESULTS ${limit}`;
 		responseData = await quickBooksApiRequest.call(this, 'GET', endpoint, qs, {});
 		responseData = responseData.QueryResponse[capitalCase(resource)];
@@ -232,13 +230,13 @@ export async function handleBinaryData(
 	resource: string,
 	resourceId: string,
 ) {
-	const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
+	const binaryProperty = this.getNodeParameter('binaryProperty', i);
 	const fileName = this.getNodeParameter('fileName', i) as string;
 	const endpoint = `/v3/company/${companyId}/${resource}/${resourceId}/pdf`;
 	const data = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {}, { encoding: null });
 
 	items[i].binary = items[i].binary ?? {};
-	items[i].binary![binaryProperty] = await this.helpers.prepareBinaryData(data);
+	items[i].binary![binaryProperty] = await this.helpers.prepareBinaryData(data as Buffer);
 	items[i].binary![binaryProperty].fileName = fileName;
 	items[i].binary![binaryProperty].fileExtension = 'pdf';
 
@@ -402,7 +400,7 @@ export function populateFields(
 				const length = (body.CustomField as CustomField[]).length;
 				for (let i = 0; i < length; i++) {
 					//@ts-ignore
-					body.CustomField[i]['Type'] = 'StringType';
+					body.CustomField[i].Type = 'StringType';
 				}
 			} else if (key === 'CustomerMemo') {
 				body.CustomerMemo = {
@@ -430,12 +428,12 @@ export function populateFields(
 
 export const toOptions = (option: string) => ({ name: option, value: option });
 
-export const toDisplayName = ({ name, value }: Option): INodePropertyOptions => {
-	return { name: splitPascalCase(name), value };
-};
-
 export const splitPascalCase = (word: string) => {
 	return word.match(/($[a-z])|[A-Z][^A-Z]+/g)!.join(' ');
+};
+
+export const toDisplayName = ({ name, value }: Option): INodePropertyOptions => {
+	return { name: splitPascalCase(name), value };
 };
 
 export function adjustTransactionDates(transactionFields: IDataObject & DateFieldsUi): IDataObject {

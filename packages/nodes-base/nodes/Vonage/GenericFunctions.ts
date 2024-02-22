@@ -1,18 +1,20 @@
-import { OptionsWithUri } from 'request';
-
-import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	IDataObject,
+	JsonObject,
+	IRequestOptions,
+	IHttpRequestMethods,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function vonageApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	method: string,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
 	path: string,
-	// tslint:disable-next-line:no-any
 	body: any = {},
 	qs: IDataObject = {},
-	option = {},
-	// tslint:disable-next-line:no-any
+	_option = {},
 ): Promise<any> {
 	const credentials = await this.getCredentials('vonageApi');
 
@@ -20,7 +22,7 @@ export async function vonageApiRequest(
 
 	body.api_secret = credentials.apiSecret as string;
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		method,
 		form: body,
 		qs,
@@ -29,12 +31,11 @@ export async function vonageApiRequest(
 	};
 
 	try {
-		if (Object.keys(body).length === 0) {
+		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
 		}
-		//@ts-ignore
 		return await this.helpers.request.call(this, options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

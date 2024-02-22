@@ -1,19 +1,22 @@
 <template>
 	<div :class="['n8n-tabs', $style.container]">
-		<div :class="$style.back" v-if="scrollPosition > 0" @click="scrollLeft">
-			<n8n-icon icon="chevron-left" size="small" />
+		<div v-if="scrollPosition > 0" :class="$style.back" @click="scrollLeft">
+			<N8nIcon icon="chevron-left" size="small" />
 		</div>
-		<div :class="$style.next" v-if="canScrollRight" @click="scrollRight">
-			<n8n-icon icon="chevron-right" size="small" />
+		<div v-if="canScrollRight" :class="$style.next" @click="scrollRight">
+			<N8nIcon icon="chevron-right" size="small" />
 		</div>
 		<div ref="tabs" :class="$style.tabs">
-			<div  v-for="option in options"
-				:key="option.value"
+			<div
+				v-for="option in options"
 				:id="option.value"
+				:key="option.value"
 				:class="{ [$style.alignRight]: option.align === 'right' }"
 			>
 				<n8n-tooltip :disabled="!option.tooltip" placement="bottom">
-					<div slot="content" v-html="option.tooltip" @click="handleTooltipClick(option.value, $event)"></div>
+					<template #content>
+						<div @click="handleTooltipClick(option.value, $event)" v-html="option.tooltip" />
+					</template>
 					<a
 						v-if="option.href"
 						target="_blank"
@@ -23,16 +26,19 @@
 					>
 						<div>
 							{{ option.label }}
-							<span :class="$style.external"><n8n-icon icon="external-link-alt" size="small" /></span>
+							<span :class="$style.external"
+								><N8nIcon icon="external-link-alt" size="small"
+							/></span>
 						</div>
 					</a>
 
 					<div
 						v-else
-						:class="{ [$style.tab]: true, [$style.activeTab]: value === option.value }"
+						:class="{ [$style.tab]: true, [$style.activeTab]: modelValue === option.value }"
+						:data-test-id="`tab-${option.value}`"
 						@click="() => handleTabClick(option.value)"
 					>
-						<n8n-icon v-if="option.icon" :icon="option.icon" size="medium" />
+						<N8nIcon v-if="option.icon" :icon="option.icon" size="medium" />
 						<span v-if="option.label">{{ option.label }}</span>
 					</div>
 				</n8n-tooltip>
@@ -42,13 +48,40 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
 import N8nIcon from '../N8nIcon';
 
-export default Vue.extend({
+export interface N8nTabOptions {
+	value: string;
+	label?: string;
+	icon?: string;
+	href?: string;
+	tooltip?: string;
+	align?: 'left' | 'right';
+}
+
+export default defineComponent({
 	name: 'N8nTabs',
 	components: {
 		N8nIcon,
+	},
+	props: {
+		modelValue: {
+			type: String,
+			default: '',
+		},
+		options: {
+			type: Array as PropType<N8nTabOptions[]>,
+			default: (): N8nTabOptions[] => [],
+		},
+	},
+	data() {
+		return {
+			scrollPosition: 0,
+			canScrollRight: false,
+			resizeObserver: null as ResizeObserver | null,
+		};
 	},
 	mounted() {
 		const container = this.$refs.tabs as HTMLDivElement | undefined;
@@ -56,8 +89,8 @@ export default Vue.extend({
 			container.addEventListener('scroll', (event: Event) => {
 				const width = container.clientWidth;
 				const scrollWidth = container.scrollWidth;
-				// @ts-ignore
-				this.scrollPosition = event.srcElement.scrollLeft;
+				this.scrollPosition = (event.target as Element).scrollLeft;
+
 				this.canScrollRight = scrollWidth - width > this.scrollPosition;
 			});
 
@@ -73,30 +106,17 @@ export default Vue.extend({
 			this.canScrollRight = scrollWidth - width > this.scrollPosition;
 		}
 	},
-	destroyed() {
+	unmounted() {
 		if (this.resizeObserver) {
 			this.resizeObserver.disconnect();
 		}
-	},
-	data() {
-		return {
-			scrollPosition: 0,
-			canScrollRight: false,
-			resizeObserver: null as ResizeObserver | null,
-		};
-	},
-	props: {
-		value: {
-		},
-		options: {
-		},
 	},
 	methods: {
 		handleTooltipClick(tab: string, event: MouseEvent) {
 			this.$emit('tooltipClick', tab, event);
 		},
 		handleTabClick(tab: string) {
-			this.$emit('input', tab);
+			this.$emit('update:modelValue', tab);
 		},
 		scrollLeft() {
 			this.scroll(-50);
@@ -105,7 +125,9 @@ export default Vue.extend({
 			this.scroll(50);
 		},
 		scroll(left: number) {
-			const container = this.$refs.tabs as (HTMLDivElement & { scrollBy: ScrollByFunction }) | undefined;
+			const container = this.$refs.tabs as
+				| (HTMLDivElement & { scrollBy: ScrollByFunction })
+				| undefined;
 			if (container) {
 				container.scrollBy({ left, top: 0, behavior: 'smooth' });
 			}
@@ -113,10 +135,12 @@ export default Vue.extend({
 	},
 });
 
-type ScrollByFunction = (arg: { left: number, top: number, behavior: 'smooth' | 'instant' | 'auto' }) => void;
-
+type ScrollByFunction = (arg: {
+	left: number;
+	top: number;
+	behavior: 'smooth' | 'instant' | 'auto';
+}) => void;
 </script>
-
 
 <style lang="scss" module>
 .container {
@@ -140,8 +164,8 @@ type ScrollByFunction = (arg: { left: number, top: number, behavior: 'smooth' | 
 	}
 
 	/* Hide scrollbar for IE, Edge and Firefox */
-	-ms-overflow-style: none;  /* IE and Edge */
-	scrollbar-width: none;  /* Firefox */
+	-ms-overflow-style: none; /* IE and Edge */
+	scrollbar-width: none; /* Firefox */
 }
 
 .tab {
@@ -204,5 +228,4 @@ type ScrollByFunction = (arg: { left: number, top: number, behavior: 'smooth' | 
 	composes: button;
 	right: 0;
 }
-
 </style>

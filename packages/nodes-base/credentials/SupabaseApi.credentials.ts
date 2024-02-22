@@ -1,4 +1,4 @@
-import {
+import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -7,8 +7,11 @@ import {
 
 export class SupabaseApi implements ICredentialType {
 	name = 'supabaseApi';
+
 	displayName = 'Supabase API';
+
 	documentationUrl = 'supabase';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Host',
@@ -22,8 +25,12 @@ export class SupabaseApi implements ICredentialType {
 			name: 'serviceRole',
 			type: 'string',
 			default: '',
+			typeOptions: {
+				password: true,
+			},
 		},
 	];
+
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
@@ -33,6 +40,7 @@ export class SupabaseApi implements ICredentialType {
 			},
 		},
 	};
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials.host}}/rest/v1',

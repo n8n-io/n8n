@@ -1,26 +1,29 @@
-import { OptionsWithUri } from 'request';
-
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
+	JsonObject,
+	IRequestOptions,
+	IHttpRequestMethods,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+export function tolerateTrailingSlash(baseUrl: string) {
+	return baseUrl.endsWith('/') ? baseUrl.substr(0, baseUrl.length - 1) : baseUrl;
+}
 
 export async function jenkinsApiRequest(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	method: string,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
 	uri: string,
 	qs: IDataObject = {},
-	// tslint:disable-next-line:no-any
+
 	body: any = '',
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('jenkinsApi');
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		headers: {
 			Accept: 'application/json',
 		},
@@ -36,12 +39,8 @@ export async function jenkinsApiRequest(
 	};
 	options = Object.assign({}, options, option);
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
-}
-
-export function tolerateTrailingSlash(baseUrl: string) {
-	return baseUrl.endsWith('/') ? baseUrl.substr(0, baseUrl.length - 1) : baseUrl;
 }

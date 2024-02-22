@@ -1,6 +1,10 @@
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
-import { IDataObject, IHookFunctions, IWebhookFunctions, NodeOperationError } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	IDataObject,
+	IHookFunctions,
+	IWebhookFunctions,
+} from 'n8n-workflow';
 
 import { beeminderApiRequest, beeminderApiRequestAllItems } from './GenericFunctions';
 
@@ -24,7 +28,7 @@ export async function getAllDatapoints(
 	const endpoint = `/users/${credentials.user}/goals/${data.goalName}/datapoints.json`;
 
 	if (data.count !== undefined) {
-		return beeminderApiRequest.call(this, 'GET', endpoint, {}, data);
+		return await beeminderApiRequest.call(this, 'GET', endpoint, {}, data);
 	}
 
 	return await beeminderApiRequestAllItems.call(this, 'GET', endpoint, {}, data);

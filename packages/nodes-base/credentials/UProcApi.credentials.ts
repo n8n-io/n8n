@@ -1,4 +1,4 @@
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -8,8 +8,11 @@ import {
 
 export class UProcApi implements ICredentialType {
 	name = 'uprocApi';
+
 	displayName = 'uProc API';
+
 	documentationUrl = 'uProc';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Email',
@@ -22,9 +25,11 @@ export class UProcApi implements ICredentialType {
 			displayName: 'API Key',
 			name: 'apiKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];
+
 	async authenticate(
 		credentials: ICredentialDataDecryptedObject,
 		requestOptions: IHttpRequestOptions,
@@ -36,6 +41,7 @@ export class UProcApi implements ICredentialType {
 		};
 		return requestOptions;
 	}
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: 'https://api.uproc.io/api/v2',

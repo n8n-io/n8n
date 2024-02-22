@@ -2,13 +2,11 @@
 	"node": "n8n-nodes-base.rssFeedRead",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Core Nodes"
-	],
+	"categories": ["Core Nodes"],
 	"resources": {
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.rssFeedRead/"
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.rssfeedread/"
 			}
 		],
 		"generic": [
@@ -22,11 +20,6 @@
 				"icon": "😍",
 				"url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/"
 			}
-		]
-	},
-	"subcategories": {
-		"Core Nodes": [
-			"Helpers"
 		]
 	}
 }

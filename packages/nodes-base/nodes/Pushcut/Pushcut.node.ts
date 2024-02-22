@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -135,7 +134,7 @@ export class Pushcut implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available devices to display them to user so that he can
+			// Get all the available devices to display them to user so that they can
 			// select them easily
 			async getDevices(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -148,7 +147,7 @@ export class Pushcut implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available notifications to display them to user so that he can
+			// Get all the available notifications to display them to user so that they can
 			// select them easily
 			async getNotifications(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -168,16 +167,15 @@ export class Pushcut implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		const length = items.length;
-		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			if (resource === 'notification') {
 				if (operation === 'send') {
 					const notificationName = this.getNodeParameter('notificationName', i) as string;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					const body: IDataObject = {};
 

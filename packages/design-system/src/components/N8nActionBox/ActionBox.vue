@@ -1,28 +1,37 @@
 <template>
-	<div :class="['n8n-action-box', $style.container]">
-		<div :class="$style.heading" v-if="heading">
-			<n8n-heading size="xlarge" align="center">{{ heading }}</n8n-heading>
+	<div :class="['n8n-action-box', $style.container]" data-test-id="action-box">
+		<div v-if="emoji" :class="$style.emoji">
+			{{ emoji }}
+		</div>
+		<div v-if="heading || $slots.heading" :class="$style.heading">
+			<N8nHeading size="xlarge" align="center">
+				<slot name="heading">{{ heading }}</slot>
+			</N8nHeading>
 		</div>
 		<div :class="$style.description" @click="$emit('descriptionClick', $event)">
-			<n8n-text color="text-base">
-				<span v-html="description"></span>
-			</n8n-text>
+			<N8nText color="text-base">
+				<slot name="description">
+					<span v-html="description"></span>
+				</slot>
+			</N8nText>
 		</div>
-		<n8n-button v-if="buttonText" :label="buttonText" size="large"
-			@click="$emit('click', $event)"
+		<N8nButton
+			v-if="buttonText"
+			:label="buttonText"
+			:type="buttonType"
+			size="large"
+			@click="$emit('click:button', $event)"
 		/>
-		<n8n-callout
+		<N8nCallout
 			v-if="calloutText"
 			:theme="calloutTheme"
 			:icon="calloutIcon"
 			:class="$style.callout"
 		>
-			<template>
-				<n8n-text color="text-base">
-					<span size="small" v-html="calloutText"></span>
-				</n8n-text>
-			</template>
-		</n8n-callout>
+			<N8nText color="text-base">
+				<span size="small" v-html="calloutText"></span>
+			</N8nText>
+		</N8nCallout>
 	</div>
 </template>
 
@@ -31,10 +40,10 @@ import N8nButton from '../N8nButton';
 import N8nHeading from '../N8nHeading';
 import N8nText from '../N8nText';
 import N8nCallout from '../N8nCallout';
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
-	name: 'n8n-action-box',
+export default defineComponent({
+	name: 'N8nActionBox',
 	components: {
 		N8nButton,
 		N8nHeading,
@@ -42,10 +51,16 @@ export default Vue.extend({
 		N8nCallout,
 	},
 	props: {
+		emoji: {
+			type: String,
+		},
 		heading: {
 			type: String,
 		},
 		buttonText: {
+			type: String,
+		},
+		buttonType: {
 			type: String,
 		},
 		description: {
@@ -72,10 +87,14 @@ export default Vue.extend({
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	padding: var(--spacing-3xl) 20%;
+	padding: var(--spacing-3xl);
 
 	> * {
 		margin-bottom: var(--spacing-l);
+
+		&:last-child {
+			margin-bottom: 0;
+		}
 	}
 }
 
@@ -85,16 +104,17 @@ export default Vue.extend({
 
 .heading {
 	margin-bottom: var(--spacing-l);
+	text-align: center;
 }
 
 .description {
 	color: var(--color-text-base);
 	margin-bottom: var(--spacing-xl);
+	text-align: center;
 }
 
 .callout {
 	width: 100%;
 	text-align: left;
 }
-
 </style>

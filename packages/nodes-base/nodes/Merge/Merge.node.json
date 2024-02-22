@@ -6,7 +6,7 @@
 	"resources": {
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.merge/"
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.merge/"
 			}
 		],
 		"generic": [
@@ -43,6 +43,6 @@
 	},
 	"alias": ["Join", "Concatenate", "Wait"],
 	"subcategories": {
-		"Core Nodes": ["Flow"]
+		"Core Nodes": ["Flow", "Data Transformation"]
 	}
 }

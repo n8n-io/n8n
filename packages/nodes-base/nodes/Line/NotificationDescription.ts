@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const notificationOperations: INodeProperties[] = [
 	{
@@ -68,7 +68,7 @@ export const notificationFields: INodeProperties[] = [
 						displayName: 'Image',
 						values: [
 							{
-								displayName: 'Binary Data',
+								displayName: 'Binary File',
 								name: 'binaryData',
 								type: 'boolean',
 								default: false,
@@ -98,7 +98,7 @@ export const notificationFields: INodeProperties[] = [
 								description: 'HTTP/HTTPS URL. Maximum size of 240×240px JPEG.',
 							},
 							{
-								displayName: 'Binary Property',
+								displayName: 'Input Binary Field',
 								name: 'binaryProperty',
 								type: 'string',
 								displayOptions: {
@@ -107,7 +107,7 @@ export const notificationFields: INodeProperties[] = [
 									},
 								},
 								default: 'data',
-								description: 'Name of the property that holds the binary data',
+								hint: 'The name of the input binary field containing the file to be written',
 							},
 						],
 					},

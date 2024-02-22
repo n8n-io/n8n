@@ -37,6 +37,11 @@ properties:
   continueOnFail:
     type: boolean
     example: false
+    description: 'use onError instead'
+    deprecated: true
+  onError:
+    type: string
+    example: 'stopWorkflow'
   position:
     type: array
     items:
@@ -47,7 +52,7 @@ properties:
     example: { additionalProperties: {} }
   credentials:
     type: object
-    example: { jiraSoftwareCloudApi: { id: "35", name: "jiraApi"} }
+    example: { jiraSoftwareCloudApi: { id: '35', name: 'jiraApi' } }
   createdAt:
     type: string
     format: date-time

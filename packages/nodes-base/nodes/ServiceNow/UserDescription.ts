@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const userOperations: INodeProperties[] = [
 	{
@@ -184,6 +184,7 @@ export const userFields: INodeProperties[] = [
 				displayName: 'Password',
 				name: 'user_password',
 				type: 'string',
+				typeOptions: { password: true },
 				default: '',
 				description: "The user's password",
 			},
@@ -617,6 +618,7 @@ export const userFields: INodeProperties[] = [
 				displayName: 'Password',
 				name: 'user_password',
 				type: 'string',
+				typeOptions: { password: true },
 				default: '',
 				description: "The user's password",
 			},

@@ -1,12 +1,11 @@
 import { Builder, Parser } from 'xml2js';
-import { IExecuteFunctions } from 'n8n-core';
-import {
-	IDataObject,
+import type {
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError, deepCopy } from 'n8n-workflow';
 
 export class Xml implements INodeType {
 	description: INodeTypeDescription = {
@@ -42,6 +41,18 @@ export class Xml implements INodeType {
 				],
 				default: 'xmlToJson',
 				description: 'From and to what format the data should be converted',
+			},
+			{
+				displayName:
+					"If your XML is inside a binary file, use the 'Extract from File' node to convert it to text first",
+				name: 'xmlNotice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						mode: ['xmlToJson'],
+					},
+				},
 			},
 
 			// ----------------------------------
@@ -221,8 +232,8 @@ export class Xml implements INodeType {
 		const items = this.getInputData();
 
 		const mode = this.getNodeParameter('mode', 0) as string;
-		const dataPropertyName = this.getNodeParameter('dataPropertyName', 0) as string;
-		const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+		const dataPropertyName = this.getNodeParameter('dataPropertyName', 0);
+		const options = this.getNodeParameter('options', 0, {});
 
 		let item: INodeExecutionData;
 		const returnData: INodeExecutionData[] = [];
@@ -244,14 +255,13 @@ export class Xml implements INodeType {
 					if (item.json[dataPropertyName] === undefined) {
 						throw new NodeOperationError(
 							this.getNode(),
-							`No json property "${dataPropertyName}" does not exists on item!`,
+							`Item has no JSON property called "${dataPropertyName}"`,
 							{ itemIndex },
 						);
 					}
 
-					// @ts-ignore
-					const json = await parser.parseStringPromise(item.json[dataPropertyName]);
-					returnData.push({ json });
+					const json = await parser.parseStringPromise(item.json[dataPropertyName] as string);
+					returnData.push({ json: deepCopy(json) });
 				} else if (mode === 'jsonToxml') {
 					const builder = new Builder(options);
 
@@ -284,6 +294,6 @@ export class Xml implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

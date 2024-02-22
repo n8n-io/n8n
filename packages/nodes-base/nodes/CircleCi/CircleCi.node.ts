@@ -1,6 +1,10 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 import { pipelineFields, pipelineOperations } from './PipelineDescription';
 
@@ -52,8 +56,8 @@ export class CircleCi implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -69,14 +73,14 @@ export class CircleCi implements INodeType {
 
 						responseData = await circleciApiRequest.call(this, 'GET', endpoint, {}, qs);
 						responseData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 					}
 					if (operation === 'getAll') {
 						const vcs = this.getNodeParameter('vcs', i) as string;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const filters = this.getNodeParameter('filters', i);
+						const returnAll = this.getNodeParameter('returnAll', i);
 						let slug = this.getNodeParameter('projectSlug', i) as string;
 
 						slug = slug.replace(new RegExp(/\//g), '%2F');
@@ -87,7 +91,7 @@ export class CircleCi implements INodeType {
 
 						const endpoint = `/project/${vcs}/${slug}/pipeline`;
 
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await circleciApiRequestAllItems.call(
 								this,
 								'items',
@@ -97,13 +101,13 @@ export class CircleCi implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							responseData = await circleciApiRequest.call(this, 'GET', endpoint, {}, qs);
 							responseData = responseData.items;
 							responseData = responseData.splice(0, qs.limit);
 						}
 						responseData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 					}
@@ -112,7 +116,7 @@ export class CircleCi implements INodeType {
 						const vcs = this.getNodeParameter('vcs', i) as string;
 						let slug = this.getNodeParameter('projectSlug', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						slug = slug.replace(new RegExp(/\//g), '%2F');
 
@@ -130,13 +134,13 @@ export class CircleCi implements INodeType {
 
 						responseData = await circleciApiRequest.call(this, 'POST', endpoint, body, qs);
 						responseData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 					}
 				}
 
-				returnData.push(...responseData);
+				returnData.push(...(responseData as INodeExecutionData[]));
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({ error: error.message, json: {}, itemIndex: i });
@@ -145,6 +149,6 @@ export class CircleCi implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

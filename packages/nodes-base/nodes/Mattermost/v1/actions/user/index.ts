@@ -1,11 +1,10 @@
+import type { INodeProperties } from 'n8n-workflow';
 import * as create from './create';
 import * as deactive from './deactive';
 import * as getAll from './getAll';
 import * as getByEmail from './getByEmail';
 import * as getById from './getById';
 import * as invite from './invite';
-
-import { INodeProperties } from 'n8n-workflow';
 
 export { create, deactive, getAll, getByEmail, getById, invite };
 
@@ -30,7 +29,8 @@ export const descriptions: INodeProperties[] = [
 			{
 				name: 'Deactive',
 				value: 'deactive',
-				description: 'Deactivates the user and revokes all its sessions by archiving its user object',
+				description:
+					'Deactivates the user and revokes all its sessions by archiving its user object',
 				action: 'Deactivate a user',
 			},
 			{

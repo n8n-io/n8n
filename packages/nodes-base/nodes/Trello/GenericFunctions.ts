@@ -1,29 +1,26 @@
-import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
-import { OptionsWithUri } from 'request';
-
-import { IDataObject, JsonObject, NodeApiError } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	IHookFunctions,
+	IHttpRequestMethods,
+	ILoadOptionsFunctions,
+	IRequestOptions,
+} from 'n8n-workflow';
 
 /**
  * Make an API request to Trello
  *
- * @param {IHookFunctions} this
- * @param {string} method
- * @param {string} url
- * @param {object} body
- * @returns {Promise<any>}
  */
 export async function apiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: object,
 	query?: IDataObject,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	query = query || {};
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		method,
 		body,
 		qs: query,
@@ -31,20 +28,15 @@ export async function apiRequest(
 		json: true,
 	};
 
-	try {
-		return await this.helpers.requestWithAuthentication.call(this, 'trelloApi', options);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error as JsonObject);
-	}
+	return await this.helpers.requestWithAuthentication.call(this, 'trelloApi', options);
 }
 
 export async function apiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject,
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	query.limit = 30;
 
@@ -56,7 +48,7 @@ export async function apiRequestAllItems(
 
 	do {
 		responseData = await apiRequest.call(this, method, endpoint, body, query);
-		returnData.push.apply(returnData, responseData);
+		returnData.push.apply(returnData, responseData as IDataObject[]);
 		if (responseData.length !== 0) {
 			query.before = responseData[responseData.length - 1].id;
 		}

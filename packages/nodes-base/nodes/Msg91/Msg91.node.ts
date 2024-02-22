@@ -1,11 +1,12 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { msg91ApiRequest } from './GenericFunctions';
 
@@ -20,7 +21,7 @@ export class Msg91 implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Sends transactional SMS via MSG91',
 		defaults: {
-			name: 'Msg91',
+			name: 'MSG91',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -123,7 +124,7 @@ export class Msg91 implements INodeType {
 		// For Query string
 		let qs: IDataObject;
 
-		let requestMethod: string;
+		let requestMethod: IHttpRequestMethods;
 		let endpoint: string;
 
 		for (let i = 0; i < items.length; i++) {
@@ -131,8 +132,8 @@ export class Msg91 implements INodeType {
 			body = {};
 			qs = {};
 
-			resource = this.getNodeParameter('resource', i) as string;
-			operation = this.getNodeParameter('operation', i) as string;
+			resource = this.getNodeParameter('resource', i);
+			operation = this.getNodeParameter('operation', i);
 
 			if (resource === 'sms') {
 				if (operation === 'send') {

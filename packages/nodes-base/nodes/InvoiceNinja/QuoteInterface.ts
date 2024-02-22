@@ -3,6 +3,7 @@ export interface IItem {
 	notes?: string;
 	product_key?: string;
 	qty?: number;
+	quantity?: number;
 	tax_rate1?: number;
 	tax_rate2?: number;
 	tax_name1?: string;
@@ -20,7 +21,10 @@ export interface IQuote {
 	email?: string;
 	invoice_date?: string;
 	invoice_items?: IItem[];
+	line_items?: IItem[];
 	invoice_number?: string;
+	// eslint-disable-next-line id-denylist
+	number?: string;
 	invoice_status_id?: number;
 	is_amount_discount?: boolean;
 	is_quote?: boolean;

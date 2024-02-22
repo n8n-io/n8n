@@ -1,19 +1,21 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type { NodeVMOptions } from '@n8n/vm2';
+import { NodeVM } from '@n8n/vm2';
+import type {
+	IExecuteFunctions,
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
-
-const { NodeVM } = require('vm2');
+import { deepCopy, NodeOperationError } from 'n8n-workflow';
+import { vmResolver } from '../Code/JavaScriptSandbox';
 
 export class Function implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Function',
 		name: 'function',
+		hidden: true,
 		icon: 'fa:code',
 		group: ['transform'],
 		version: 1,
@@ -27,17 +29,23 @@ export class Function implements INodeType {
 		outputs: ['main'],
 		properties: [
 			{
+				displayName: 'A newer version of this node type is available, called the ‘Code’ node',
+				name: 'notice',
+				type: 'notice',
+				default: '',
+			},
+			{
 				displayName: 'JavaScript Code',
 				name: 'functionCode',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 					codeAutocomplete: 'function',
-					editor: 'code',
+					editor: 'jsEditor',
 					rows: 10,
 				},
 				type: 'string',
 				default: `// Code here will run only once, no matter how many input items there are.
-// More info and help: https://docs.n8n.io/nodes/n8n-nodes-base.function
+// More info and help:https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.function/
 // Tip: You can use luxon for dates and $jmespath for querying JSON structures
 
 // Loop over inputs and add a new field called 'myNewField' to the JSON of each one
@@ -60,7 +68,7 @@ return items;`,
 		let items = this.getInputData();
 
 		// Copy the items as they may get changed in the functions
-		items = JSON.parse(JSON.stringify(items));
+		items = deepCopy(items);
 
 		// Assign item indexes
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
@@ -75,7 +83,7 @@ return items;`,
 						inputData[key] = cleanupData(inputData[key] as IDataObject);
 					} else {
 						// Is some special object like a Date so stringify
-						inputData[key] = JSON.parse(JSON.stringify(inputData[key]));
+						inputData[key] = deepCopy(inputData[key]);
 					}
 				}
 			});
@@ -95,7 +103,7 @@ return items;`,
 				if (item?.binary && item?.index !== undefined && item?.index !== null) {
 					for (const binaryPropertyName of Object.keys(item.binary)) {
 						item.binary[binaryPropertyName].data = (
-							await this.helpers.getBinaryDataBuffer(item.index as number, binaryPropertyName)
+							await this.helpers.getBinaryDataBuffer(item.index, binaryPropertyName)
 						)?.toString('base64');
 					}
 				}
@@ -140,22 +148,11 @@ return items;`,
 
 		const mode = this.getMode();
 
-		const options = {
+		const options: NodeVMOptions = {
 			console: mode === 'manual' ? 'redirect' : 'inherit',
 			sandbox,
-			require: {
-				external: false as boolean | { modules: string[] },
-				builtin: [] as string[],
-			},
+			require: vmResolver,
 		};
-
-		if (process.env.NODE_FUNCTION_ALLOW_BUILTIN) {
-			options.require.builtin = process.env.NODE_FUNCTION_ALLOW_BUILTIN.split(',');
-		}
-
-		if (process.env.NODE_FUNCTION_ALLOW_EXTERNAL) {
-			options.require.external = { modules: process.env.NODE_FUNCTION_ALLOW_EXTERNAL.split(',') };
-		}
 
 		const vm = new NodeVM(options);
 
@@ -217,16 +214,16 @@ return items;`,
 					const lineParts = stackLines.find((line: string) => line.includes('Function')).split(':');
 					if (lineParts.length > 2) {
 						const lineNumber = lineParts.splice(-2, 1);
-						if (!isNaN(lineNumber)) {
+						if (!isNaN(lineNumber as number)) {
 							error.message = `${error.message} [Line ${lineNumber}]`;
 						}
 					}
 				}
 
-				return Promise.reject(error);
+				throw error;
 			}
 		}
 
-		return this.prepareOutputData(items);
+		return [items];
 	}
 }

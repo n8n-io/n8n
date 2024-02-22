@@ -1,31 +1,32 @@
-import { OptionsWithUri } from 'request';
-
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import { IDataObject, INodeProperties, INodePropertyOptions, NodeApiError } from 'n8n-workflow';
-
-import { Address, Filter, FilterGroup, ProductAttribute, Search } from './Types';
+	INodeProperties,
+	INodePropertyOptions,
+	JsonObject,
+	IHttpRequestMethods,
+	IRequestOptions,
+} from 'n8n-workflow';
+import { ApplicationError, NodeApiError } from 'n8n-workflow';
+import type { Filter, Address, Search, FilterGroup, ProductAttribute } from './types';
 
 export async function magentoApiRequest(
 	this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
-	headers: IDataObject = {},
+	_headers: IDataObject = {},
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('magento2Api');
 
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		method,
 		body,
 		qs,
@@ -35,25 +36,24 @@ export async function magentoApiRequest(
 
 	try {
 		options = Object.assign({}, options, option);
-		if (Object.keys(body).length === 0) {
+		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
 		}
 		//@ts-ignore
 		return await this.helpers.requestWithAuthentication.call(this, 'magento2Api', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
 export async function magentoApiRequestAllItems(
 	this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -61,8 +61,8 @@ export async function magentoApiRequestAllItems(
 
 	do {
 		responseData = await magentoApiRequest.call(this, method, resource, body, query);
-		returnData.push.apply(returnData, responseData[propertyName]);
-		query['current_page'] = query.current_page ? (query.current_page as number)++ : 1;
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		query.current_page = query.current_page ? (query.current_page as number)++ : 1;
 	} while (returnData.length < responseData.total_count);
 
 	return returnData;
@@ -193,7 +193,6 @@ export function getAddressesUi(): INodeProperties {
 	};
 }
 
-// tslint:disable-next-line: no-any
 export function adjustAddresses(addresses: [{ street: string; [key: string]: string }]): Address[] {
 	const _addresses: Address[] = [];
 	for (let i = 0; i < addresses.length; i++) {
@@ -206,6 +205,94 @@ export function adjustAddresses(addresses: [{ street: string; [key: string]: str
 		});
 	}
 	return _addresses;
+}
+
+function getConditionTypeFields(): INodeProperties {
+	return {
+		displayName: 'Condition Type',
+		name: 'condition_type',
+		type: 'options',
+		options: [
+			{
+				name: 'Equals',
+				value: 'eq',
+			},
+			{
+				name: 'Greater than',
+				value: 'gt',
+			},
+			{
+				name: 'Greater than or equal',
+				value: 'gteq',
+			},
+			{
+				name: 'In',
+				value: 'in',
+				description: 'The value can contain a comma-separated list of values',
+			},
+			{
+				name: 'Less Than',
+				value: 'lt',
+			},
+			{
+				name: 'Less Than or Equal',
+				value: 'lte',
+			},
+			{
+				name: 'Like',
+				value: 'like',
+				description: 'The value can contain the SQL wildcard characters when like is specified',
+			},
+			{
+				name: 'More or Equal',
+				value: 'moreq',
+			},
+			{
+				name: 'Not Equal',
+				value: 'neq',
+			},
+			{
+				name: 'Not In',
+				value: 'nin',
+				description: 'The value can contain a comma-separated list of values',
+			},
+			{
+				name: 'Not Null',
+				value: 'notnull',
+			},
+			{
+				name: 'Null',
+				value: 'null',
+			},
+		],
+		default: 'eq',
+	};
+}
+
+function getConditions(attributeFunction: string): INodeProperties[] {
+	return [
+		{
+			displayName: 'Field',
+			name: 'field',
+			type: 'options',
+			typeOptions: {
+				loadOptionsMethod: attributeFunction,
+			},
+			default: '',
+		},
+		getConditionTypeFields(),
+		{
+			displayName: 'Value',
+			name: 'value',
+			type: 'string',
+			displayOptions: {
+				hide: {
+					condition_type: ['null', 'notnull'],
+				},
+			},
+			default: '',
+		},
+	];
 }
 
 export function getSearchFilters(
@@ -305,9 +392,6 @@ export function getSearchFilters(
 			displayName: 'Filters (JSON)',
 			name: 'filterJson',
 			type: 'string',
-			typeOptions: {
-				alwaysOpenEditWindow: true,
-			},
 			displayOptions: {
 				show: {
 					resource: [resource],
@@ -390,101 +474,13 @@ export function getSearchFilters(
 	];
 }
 
-function getConditionTypeFields(): INodeProperties {
-	return {
-		displayName: 'Condition Type',
-		name: 'condition_type',
-		type: 'options',
-		options: [
-			{
-				name: 'Equals',
-				value: 'eq',
-			},
-			{
-				name: 'Greater than',
-				value: 'gt',
-			},
-			{
-				name: 'Greater than or equal',
-				value: 'gteq',
-			},
-			{
-				name: 'In',
-				value: 'in',
-				description: 'The value can contain a comma-separated list of values',
-			},
-			{
-				name: 'Less Than',
-				value: 'lt',
-			},
-			{
-				name: 'Less Than or Equal',
-				value: 'lte',
-			},
-			{
-				name: 'Like',
-				value: 'like',
-				description: 'The value can contain the SQL wildcard characters when like is specified',
-			},
-			{
-				name: 'More or Equal',
-				value: 'moreq',
-			},
-			{
-				name: 'Not Equal',
-				value: 'neq',
-			},
-			{
-				name: 'Not In',
-				value: 'nin',
-				description: 'The value can contain a comma-separated list of values',
-			},
-			{
-				name: 'Not Null',
-				value: 'notnull',
-			},
-			{
-				name: 'Null',
-				value: 'null',
-			},
-		],
-		default: 'eq',
-	};
-}
-
-function getConditions(attributeFunction: string): INodeProperties[] {
-	return [
-		{
-			displayName: 'Field',
-			name: 'field',
-			type: 'options',
-			typeOptions: {
-				loadOptionsMethod: attributeFunction,
-			},
-			default: '',
-		},
-		getConditionTypeFields(),
-		{
-			displayName: 'Value',
-			name: 'value',
-			type: 'string',
-			displayOptions: {
-				hide: {
-					condition_type: ['null', 'notnull'],
-				},
-			},
-			default: '',
-		},
-	];
-}
-
 export function getFilterQuery(data: {
 	conditions?: Filter[];
 	matchType: string;
 	sort: [{ direction: string; field: string }];
 }): Search {
 	if (!data.hasOwnProperty('conditions') || data.conditions?.length === 0) {
-		throw new Error('At least one filter has to be set');
+		throw new ApplicationError('At least one filter has to be set', { level: 'warning' });
 	}
 
 	if (data.matchType === 'anyFilter') {
@@ -515,7 +511,6 @@ export function getFilterQuery(data: {
 	};
 }
 
-// tslint:disable-next-line:no-any
 export function validateJSON(json: string | undefined): any {
 	let result;
 	try {
@@ -987,7 +982,7 @@ export const sort = (a: { name: string }, b: { name: string }) => {
 
 export async function getProductAttributes(
 	this: ILoadOptionsFunctions,
-	// tslint:disable-next-line:no-any
+
 	filter?: (attribute: ProductAttribute) => any,
 	extraValue?: { name: string; value: string },
 ): Promise<INodePropertyOptions[]> {
@@ -997,7 +992,7 @@ export async function getProductAttributes(
 		this,
 		'items',
 		'GET',
-		`/rest/default/V1/products/attributes`,
+		'/rest/default/V1/products/attributes',
 		{},
 		{
 			search_criteria: 0,
@@ -1016,8 +1011,8 @@ export async function getProductAttributes(
 	const returnData: INodePropertyOptions[] = [];
 	for (const attribute of attributes) {
 		returnData.push({
-			name: attribute.default_frontend_label as string,
-			value: attribute.attribute_code as string,
+			name: attribute.default_frontend_label,
+			value: attribute.attribute_code,
 		});
 	}
 	if (extraValue) {

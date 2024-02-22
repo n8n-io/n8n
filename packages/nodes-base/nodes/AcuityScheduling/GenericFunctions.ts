@@ -1,32 +1,27 @@
-import { OptionsWithUri } from 'request';
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
+	IRequestOptions,
 	IWebhookFunctions,
-} from 'n8n-core';
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+	JsonObject,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function acuitySchedulingApiRequest(
-	this:
-		| IHookFunctions
-		| IExecuteFunctions
-		| IExecuteSingleFunctions
-		| ILoadOptionsFunctions
-		| IWebhookFunctions,
-	method: string,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
+	method: IHttpRequestMethods,
 	resource: string,
-	// tslint:disable-next-line:no-any
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
-	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
+	_option: IDataObject = {},
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
@@ -47,10 +42,10 @@ export async function acuitySchedulingApiRequest(
 				password: credentials.apiKey as string,
 			};
 
-			return await this.helpers.request!(options);
+			return await this.helpers.request(options);
 		} else {
 			delete options.auth;
-			return await this.helpers.requestOAuth2!.call(
+			return await this.helpers.requestOAuth2.call(
 				this,
 				'acuitySchedulingOAuth2Api',
 				options,
@@ -59,6 +54,6 @@ export async function acuitySchedulingApiRequest(
 			);
 		}
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

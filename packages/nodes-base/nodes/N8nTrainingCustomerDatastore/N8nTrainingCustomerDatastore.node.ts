@@ -1,6 +1,9 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 const data = [
 	{
@@ -55,7 +58,7 @@ export class N8nTrainingCustomerDatastore implements INodeType {
 		subtitle: '={{$parameter["operation"]}}',
 		description: 'Dummy node used for n8n training',
 		defaults: {
-			name: 'Customer Datastore',
+			name: 'Customer Datastore (n8n training)',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -111,9 +114,9 @@ export class N8nTrainingCustomerDatastore implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 		let responseData;
 
 		for (let i = 0; i < length; i++) {
@@ -122,22 +125,26 @@ export class N8nTrainingCustomerDatastore implements INodeType {
 			}
 
 			if (operation === 'getAllPeople') {
-				const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+				const returnAll = this.getNodeParameter('returnAll', i);
 
-				if (returnAll === true) {
+				if (returnAll) {
 					responseData = data;
 				} else {
-					const limit = this.getNodeParameter('limit', i) as number;
+					const limit = this.getNodeParameter('limit', i);
 					responseData = data.slice(0, limit);
 				}
 			}
 
 			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: i } },
+				);
+				returnData.push.apply(returnData, executionData);
 			} else if (responseData !== undefined) {
-				returnData.push(responseData as IDataObject);
+				returnData.push({ json: responseData });
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return [returnData];
 	}
 }

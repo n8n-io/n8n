@@ -1,31 +1,24 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import { cortexApiRequest, getEntityLabel, prepareParameters, splitTags } from './GenericFunctions';
-
-import { analyzerFields, analyzersOperations } from './AnalyzerDescriptions';
-
-import {
-	IBinaryData,
+import { createHash } from 'crypto';
+import type {
 	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import upperFirst from 'lodash/upperFirst';
+import * as changeCase from 'change-case';
+import { cortexApiRequest, getEntityLabel, prepareParameters, splitTags } from './GenericFunctions';
+
+import { analyzerFields, analyzersOperations } from './AnalyzerDescriptions';
 
 import { responderFields, respondersOperations } from './ResponderDescription';
 
 import { jobFields, jobOperations } from './JobDescription';
 
-import { upperFirst } from 'lodash';
-
-import { IJob } from './AnalyzerInterface';
-
-import { createHash } from 'crypto';
-
-import * as changeCase from 'change-case';
+import type { IJob } from './AnalyzerInterface';
 
 export class Cortex implements INodeType {
 	description: INodeTypeDescription = {
@@ -89,7 +82,7 @@ export class Cortex implements INodeType {
 				const requestResult = await cortexApiRequest.call(
 					this,
 					'POST',
-					`/analyzer/_search?range=all`,
+					'/analyzer/_search?range=all',
 				);
 
 				const returnData: INodePropertyOptions[] = [];
@@ -107,7 +100,7 @@ export class Cortex implements INodeType {
 
 			async loadActiveResponders(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				// request the enabled responders from instance
-				const requestResult = await cortexApiRequest.call(this, 'GET', `/responder`);
+				const requestResult = await cortexApiRequest.call(this, 'GET', '/responder');
 
 				const returnData: INodePropertyOptions[] = [];
 				for (const responder of requestResult) {
@@ -165,10 +158,9 @@ export class Cortex implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		const length = items.length;
-		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -181,7 +173,7 @@ export class Cortex implements INodeType {
 
 						const observableType = this.getNodeParameter('observableType', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const tlp = this.getNodeParameter('tlp', i) as string;
 
@@ -195,24 +187,8 @@ export class Cortex implements INodeType {
 						}
 
 						if (observableType === 'file') {
-							const item = items[i];
-
-							if (item.binary === undefined) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-									itemIndex: i,
-								});
-							}
-
-							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
-
-							if (item.binary[binaryPropertyName] === undefined) {
-								throw new NodeOperationError(
-									this.getNode(),
-									`No binary data property "${binaryPropertyName}" does not exists on item!`,
-									{ itemIndex: i },
-								);
-							}
-
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
+							const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 							const fileBufferData = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 							const options = {
@@ -220,8 +196,8 @@ export class Cortex implements INodeType {
 									data: {
 										value: fileBufferData,
 										options: {
-											contentType: item.binary[binaryPropertyName].mimeType,
-											filename: item.binary[binaryPropertyName].fileName,
+											contentType: binaryData.mimeType,
+											filename: binaryData.fileName,
 										},
 									},
 									_json: JSON.stringify({
@@ -297,7 +273,7 @@ export class Cortex implements INodeType {
 
 							body = {
 								responderId,
-								label: getEntityLabel(entityJson),
+								label: getEntityLabel(entityJson as IDataObject),
 								dataType: `thehive:${entityType}`,
 								data: entityJson,
 								tlp: entityJson.tlp || 2,
@@ -322,7 +298,7 @@ export class Cortex implements INodeType {
 								const artifacts = (body.data as IDataObject).artifacts as IDataObject;
 
 								if (artifacts) {
-									const artifactValues = (artifacts as IDataObject).artifactValues as IDataObject[];
+									const artifactValues = artifacts.artifactValues as IDataObject[];
 
 									if (artifactValues) {
 										const artifactData = [];
@@ -332,34 +308,15 @@ export class Cortex implements INodeType {
 
 											element.message = artifactvalue.message as string;
 
-											element.tags = splitTags(artifactvalue.tags as string) as string[];
+											element.tags = splitTags(artifactvalue.tags as string);
 
 											element.dataType = artifactvalue.dataType as string;
 
 											element.data = artifactvalue.data as string;
 
 											if (artifactvalue.dataType === 'file') {
-												const item = items[i];
-
-												if (item.binary === undefined) {
-													throw new NodeOperationError(
-														this.getNode(),
-														'No binary data exists on item!',
-														{ itemIndex: i },
-													);
-												}
-
 												const binaryPropertyName = artifactvalue.binaryProperty as string;
-
-												if (item.binary[binaryPropertyName] === undefined) {
-													throw new NodeOperationError(
-														this.getNode(),
-														`No binary data property '${binaryPropertyName}' does not exists on item!`,
-														{ itemIndex: i },
-													);
-												}
-
-												const binaryData = item.binary[binaryPropertyName] as IBinaryData;
+												const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 
 												element.data = `${binaryData.fileName};${binaryData.mimeType};${binaryData.data}`;
 											}
@@ -375,24 +332,9 @@ export class Cortex implements INodeType {
 								// deal with file observable
 
 								if ((body.data as IDataObject).dataType === 'file') {
-									const item = items[i];
-
-									if (item.binary === undefined) {
-										throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-											itemIndex: i,
-										});
-									}
-
 									const binaryPropertyName = (body.data as IDataObject)
 										.binaryPropertyName as string;
-									if (item.binary[binaryPropertyName] === undefined) {
-										throw new NodeOperationError(
-											this.getNode(),
-											`No binary data property "${binaryPropertyName}" does not exists on item!`,
-											{ itemIndex: i },
-										);
-									}
-
+									const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 									const fileBufferData = await this.helpers.getBinaryDataBuffer(
 										i,
 										binaryPropertyName,
@@ -400,14 +342,14 @@ export class Cortex implements INodeType {
 									const sha256 = createHash('sha256').update(fileBufferData).digest('hex');
 
 									(body.data as IDataObject).attachment = {
-										name: item.binary[binaryPropertyName].fileName,
+										name: binaryData.fileName,
 										hashes: [
 											sha256,
 											createHash('sha1').update(fileBufferData).digest('hex'),
 											createHash('md5').update(fileBufferData).digest('hex'),
 										],
 										size: fileBufferData.byteLength,
-										contentType: item.binary[binaryPropertyName].mimeType,
+										contentType: binaryData.mimeType,
 										id: sha256,
 									};
 

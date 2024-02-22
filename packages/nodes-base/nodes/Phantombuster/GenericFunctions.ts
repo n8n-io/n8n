@@ -1,24 +1,24 @@
-import { OptionsWithUri } from 'request';
-
-import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type {
+	JsonObject,
+	IDataObject,
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	IHttpRequestMethods,
+	IRequestOptions,
+} from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 export async function phantombusterApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	method: string,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
 	path: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
-	option = {},
-	// tslint:disable-next-line:no-any
+	_option = {},
 ): Promise<any> {
-	const credentials = await this.getCredentials('phantombusterApi');
-
-	const options: OptionsWithUri = {
-		headers: {
-		},
+	const options: IRequestOptions = {
+		headers: {},
 		method,
 		body,
 		qs,
@@ -26,13 +26,12 @@ export async function phantombusterApiRequest(
 		json: true,
 	};
 	try {
-		if (Object.keys(body).length === 0) {
+		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
 		}
-		//@ts-ignore
-		return await this.helpers.requestWithAuthentication.call(this, 'phantombusterApi',options);
+		return await this.helpers.requestWithAuthentication.call(this, 'phantombusterApi', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 

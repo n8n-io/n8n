@@ -1,33 +1,42 @@
-import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
-
-import {
+import type {
 	IDataObject,
+	IExecuteFunctions,
+	IHookFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
-	NodeApiError,
+	IRequestOptions,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
-
-import moment from 'moment';
+import moment from 'moment-timezone';
 
 import * as losslessJSON from 'lossless-json';
+
+function convertLosslessNumber(key: any, value: any) {
+	if (value?.isLosslessNumber) {
+		return value.toString();
+	} else {
+		return value;
+	}
+}
 
 /**
  * Make an authenticated API request to GoToWebinar.
  */
 export async function goToWebinarApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	qs: IDataObject,
 	body: IDataObject | IDataObject[],
 	option: IDataObject = {},
 ) {
-	const operation = this.getNodeParameter('operation', 0) as string;
-	const resource = this.getNodeParameter('resource', 0) as string;
+	const operation = this.getNodeParameter('operation', 0);
+	const resource = this.getNodeParameter('resource', 0);
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			'user-agent': 'n8n',
 			Accept: 'application/json',
@@ -41,7 +50,7 @@ export async function goToWebinarApiRequest(
 	};
 
 	if (resource === 'session' && operation === 'getAll') {
-		options.headers!['Accept'] = 'application/vnd.citrix.g2wapi-v1.1+json';
+		options.headers!.Accept = 'application/vnd.citrix.g2wapi-v1.1+json';
 	}
 
 	if (['GET', 'DELETE'].includes(method)) {
@@ -57,7 +66,7 @@ export async function goToWebinarApiRequest(
 	}
 
 	try {
-		const response = await this.helpers.requestOAuth2!.call(this, 'goToWebinarOAuth2Api', options, {
+		const response = await this.helpers.requestOAuth2.call(this, 'goToWebinarOAuth2Api', options, {
 			tokenExpiredStatusCode: 403,
 		});
 
@@ -66,9 +75,9 @@ export async function goToWebinarApiRequest(
 		}
 
 		// https://stackoverflow.com/questions/62190724/getting-gotowebinar-registrant
-		return losslessJSON.parse(response, convertLosslessNumber);
+		return losslessJSON.parse(response as string, convertLosslessNumber);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -77,9 +86,9 @@ export async function goToWebinarApiRequest(
  */
 export async function goToWebinarApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
-	qs: IDataObject,
+	query: IDataObject,
 	body: IDataObject,
 	resource: string,
 ) {
@@ -94,23 +103,24 @@ export async function goToWebinarApiRequestAllItems(
 	let responseData;
 
 	do {
-		responseData = await goToWebinarApiRequest.call(this, method, endpoint, qs, body);
+		responseData = await goToWebinarApiRequest.call(this, method, endpoint, query, body);
 
-		if (responseData.page && parseInt(responseData.page.totalElements, 10) === 0) {
+		if (responseData.page && parseInt(responseData.page.totalElements as string, 10) === 0) {
 			return [];
-		} else if (responseData._embedded && responseData._embedded[key]) {
-			returnData.push(...responseData._embedded[key]);
+		} else if (responseData._embedded?.[key]) {
+			returnData.push(...(responseData._embedded[key] as IDataObject[]));
 		} else {
-			returnData.push(...responseData);
+			returnData.push(...(responseData as IDataObject[]));
 		}
 
-		if (qs.limit && returnData.length >= qs.limit) {
-			returnData = returnData.splice(0, qs.limit as number);
+		const limit = query.limit as number | undefined;
+		if (limit && returnData.length >= limit) {
+			returnData = returnData.splice(0, limit);
 			return returnData;
 		}
 	} while (
 		responseData.totalElements &&
-		parseInt(responseData.totalElements, 10) > returnData.length
+		parseInt(responseData.totalElements as string, 10) > returnData.length
 	);
 
 	return returnData;
@@ -123,10 +133,10 @@ export async function handleGetAll(
 	body: IDataObject,
 	resource: string,
 ) {
-	const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+	const returnAll = this.getNodeParameter('returnAll', 0);
 
 	if (!returnAll) {
-		qs.limit = this.getNodeParameter('limit', 0) as number;
+		qs.limit = this.getNodeParameter('limit', 0);
 	}
 
 	return await goToWebinarApiRequestAllItems.call(this, 'GET', endpoint, qs, body, resource);
@@ -274,13 +284,4 @@ export async function loadRegistranMultiChoiceQuestions(this: ILoadOptionsFuncti
 	});
 
 	return returnData;
-}
-
-// tslint:disable-next-line: no-any
-function convertLosslessNumber(key: any, value: any) {
-	if (value && value.isLosslessNumber) {
-		return value.toString();
-	} else {
-		return value;
-	}
 }

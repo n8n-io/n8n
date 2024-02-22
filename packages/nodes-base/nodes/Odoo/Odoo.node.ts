@@ -1,7 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { OptionsWithUri } from 'request';
-
-import {
+import type {
+	IExecuteFunctions,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
@@ -11,9 +9,11 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	JsonObject,
+	IRequestOptions,
 } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 
+import { capitalCase } from 'change-case';
 import {
 	contactDescription,
 	contactOperations,
@@ -25,8 +25,8 @@ import {
 	opportunityOperations,
 } from './descriptions';
 
+import type { IOdooFilterOperations } from './GenericFunctions';
 import {
-	IOdooFilterOperations,
 	odooCreate,
 	odooDelete,
 	odooGet,
@@ -39,7 +39,6 @@ import {
 	processNameValueFields,
 } from './GenericFunctions';
 
-import { capitalCase } from 'change-case';
 export class Odoo implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Odoo',
@@ -51,7 +50,6 @@ export class Odoo implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		defaults: {
 			name: 'Odoo',
-			color: '#714B67',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -257,7 +255,7 @@ export class Odoo implements INodeType {
 						id: Math.floor(Math.random() * 100),
 					};
 
-					const options: OptionsWithUri = {
+					const options: IRequestOptions = {
 						headers: {
 							'User-Agent': 'n8n',
 							Connection: 'keep-alive',
@@ -269,11 +267,11 @@ export class Odoo implements INodeType {
 						uri: `${(credentials?.url as string).replace(/\/$/, '')}/jsonrpc`,
 						json: true,
 					};
-					const result = await this.helpers.request!(options);
+					const result = await this.helpers.request(options);
 					if (result.error || !result.result) {
 						return {
 							status: 'Error',
-							message: `Credentials are not valid`,
+							message: 'Credentials are not valid',
 						};
 					} else if (result.error) {
 						return {
@@ -297,12 +295,12 @@ export class Odoo implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		let items = this.getInputData();
-		items = JSON.parse(JSON.stringify(items));
-		const returnData: IDataObject[] = [];
+		items = deepCopy(items);
+		const returnData: INodeExecutionData[] = [];
 		let responseData;
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		const credentials = await this.getCredentials('odooApi');
 		const url = (credentials.url as string).replace(/\/$/, '');
@@ -319,7 +317,7 @@ export class Odoo implements INodeType {
 			try {
 				if (resource === 'contact') {
 					if (operation === 'create') {
-						let additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						let additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (additionalFields.address) {
 							const addressFields = (additionalFields.address as IDataObject).value as IDataObject;
@@ -365,7 +363,7 @@ export class Odoo implements INodeType {
 
 					if (operation === 'get') {
 						const contactId = this.getNodeParameter('contactId', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						const fields = (options.fieldsList as IDataObject[]) || [];
 						responseData = await odooGet.call(
 							this,
@@ -381,8 +379,8 @@ export class Odoo implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const options = this.getNodeParameter('options', i);
 						const fields = (options.fieldsList as IDataObject[]) || [];
 						if (returnAll) {
 							responseData = await odooGetAll.call(
@@ -397,7 +395,7 @@ export class Odoo implements INodeType {
 								fields,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = await odooGetAll.call(
 								this,
 								db,
@@ -415,7 +413,7 @@ export class Odoo implements INodeType {
 
 					if (operation === 'update') {
 						const contactId = this.getNodeParameter('contactId', i) as string;
-						let updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						let updateFields = this.getNodeParameter('updateFields', i);
 
 						if (updateFields.address) {
 							const addressFields = (updateFields.address as IDataObject).value as IDataObject;
@@ -474,7 +472,7 @@ export class Odoo implements INodeType {
 
 					if (operation === 'get') {
 						const customResourceId = this.getNodeParameter('customResourceId', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						const fields = (options.fieldsList as IDataObject[]) || [];
 						responseData = await odooGet.call(
 							this,
@@ -490,8 +488,8 @@ export class Odoo implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const options = this.getNodeParameter('options', i);
 						const fields = (options.fieldsList as IDataObject[]) || [];
 						const filter = this.getNodeParameter('filterRequest', i) as IOdooFilterOperations;
 						if (returnAll) {
@@ -507,7 +505,7 @@ export class Odoo implements INodeType {
 								fields,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = await odooGetAll.call(
 								this,
 								db,
@@ -542,7 +540,7 @@ export class Odoo implements INodeType {
 
 				if (resource === 'note') {
 					if (operation === 'create') {
-						// const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						// const additionalFields = this.getNodeParameter('additionalFields', i);
 						const memo = this.getNodeParameter('memo', i) as string;
 						const fields: IDataObject = {
 							memo,
@@ -576,7 +574,7 @@ export class Odoo implements INodeType {
 
 					if (operation === 'get') {
 						const noteId = this.getNodeParameter('noteId', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						const fields = (options.fieldsList as IDataObject[]) || [];
 						responseData = await odooGet.call(
 							this,
@@ -592,8 +590,8 @@ export class Odoo implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const options = this.getNodeParameter('options', i);
 						const fields = (options.fieldsList as IDataObject[]) || [];
 						if (returnAll) {
 							responseData = await odooGetAll.call(
@@ -608,7 +606,7 @@ export class Odoo implements INodeType {
 								fields,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = await odooGetAll.call(
 								this,
 								db,
@@ -646,7 +644,7 @@ export class Odoo implements INodeType {
 
 				if (resource === 'opportunity') {
 					if (operation === 'create') {
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const name = this.getNodeParameter('opportunityName', i) as string;
 						const fields: IDataObject = {
 							name,
@@ -681,7 +679,7 @@ export class Odoo implements INodeType {
 
 					if (operation === 'get') {
 						const opportunityId = this.getNodeParameter('opportunityId', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						const fields = (options.fieldsList as IDataObject[]) || [];
 						responseData = await odooGet.call(
 							this,
@@ -697,8 +695,8 @@ export class Odoo implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const options = this.getNodeParameter('options', i);
 						const fields = (options.fieldsList as IDataObject[]) || [];
 						if (returnAll) {
 							responseData = await odooGetAll.call(
@@ -713,7 +711,7 @@ export class Odoo implements INodeType {
 								fields,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = await odooGetAll.call(
 								this,
 								db,
@@ -731,7 +729,7 @@ export class Odoo implements INodeType {
 
 					if (operation === 'update') {
 						const opportunityId = this.getNodeParameter('opportunityId', i) as string;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						responseData = await odooUpdate.call(
 							this,
 							db,
@@ -745,21 +743,27 @@ export class Odoo implements INodeType {
 						);
 					}
 				}
-
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData);
-				} else if (responseData !== undefined) {
-					returnData.push(responseData);
+				if (responseData !== undefined) {
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: (error as JsonObject).message });
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
+
 					continue;
 				}
 				throw error;
 			}
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return [returnData];
 	}
 }

@@ -1,57 +1,72 @@
 <template>
 	<Modal
 		:name="CHANGE_PASSWORD_MODAL_KEY"
-		@enter="onSubmit"
 		:title="$locale.baseText('auth.changePassword')"
 		:center="true"
 		width="460px"
-		:eventBus="modalBus"
+		:event-bus="modalBus"
+		@enter="onSubmit"
 	>
-		<template slot="content">
+		<template #content>
 			<n8n-form-inputs
 				:inputs="config"
-				:eventBus="formBus"
-				:columnView="true"
-				@input="onInput"
+				:event-bus="formBus"
+				:column-view="true"
+				@update="onInput"
 				@submit="onSubmit"
 			/>
 		</template>
-		<template slot="footer">
-			<n8n-button :loading="loading" :label="$locale.baseText('auth.changePassword')" @click="onSubmitClick" float="right" />
+		<template #footer>
+			<n8n-button
+				:loading="loading"
+				:label="$locale.baseText('auth.changePassword')"
+				float="right"
+				data-test-id="change-password-button"
+				@click="onSubmitClick"
+			/>
 		</template>
 	</Modal>
 </template>
 
-
 <script lang="ts">
-import mixins from "vue-typed-mixins";
+import { defineComponent } from 'vue';
 
-import { showMessage } from "@/components/mixins/showMessage";
-import Modal from "./Modal.vue";
-import Vue from "vue";
-import { IFormInputs } from "@/Interface";
 import { CHANGE_PASSWORD_MODAL_KEY } from '../constants';
+import { useToast } from '@/composables/useToast';
+import Modal from '@/components/Modal.vue';
+import type { IFormInputs } from '@/Interface';
+import { mapStores } from 'pinia';
+import { useUsersStore } from '@/stores/users.store';
+import { createEventBus } from 'n8n-design-system/utils';
 
-export default mixins(showMessage).extend({
+export default defineComponent({
+	name: 'ChangePasswordModal',
 	components: { Modal },
-	name: "ChangePasswordModal",
 	props: {
 		modalName: {
 			type: String,
 		},
 	},
+	setup() {
+		return {
+			...useToast(),
+		};
+	},
 	data() {
 		return {
 			config: null as null | IFormInputs,
-			formBus: new Vue(),
-			modalBus: new Vue(),
+			formBus: createEventBus(),
+			modalBus: createEventBus(),
 			password: '',
 			loading: false,
 			CHANGE_PASSWORD_MODAL_KEY,
 		};
 	},
+	computed: {
+		...mapStores(useUsersStore),
+	},
 	mounted() {
-		this.config = [
+		const form: IFormInputs = [
 			{
 				name: 'currentPassword',
 				properties: {
@@ -69,7 +84,7 @@ export default mixins(showMessage).extend({
 					label: this.$locale.baseText('auth.newPassword'),
 					type: 'password',
 					required: true,
-					validationRules: [{name: 'DEFAULT_PASSWORD_RULES'}],
+					validationRules: [{ name: 'DEFAULT_PASSWORD_RULES' }],
 					infoText: this.$locale.baseText('auth.defaultPasswordRequirements'),
 					autocomplete: 'new-password',
 					capitalize: true,
@@ -86,12 +101,14 @@ export default mixins(showMessage).extend({
 							validate: this.passwordsMatch,
 						},
 					},
-					validationRules: [{name: 'TWO_PASSWORDS_MATCH'}],
+					validationRules: [{ name: 'TWO_PASSWORDS_MATCH' }],
 					autocomplete: 'new-password',
 					capitalize: true,
 				},
 			},
 		];
+
+		this.config = form;
 	},
 	methods: {
 		passwordsMatch(value: string | number | boolean | null | undefined) {
@@ -107,33 +124,31 @@ export default mixins(showMessage).extend({
 
 			return false;
 		},
-		onInput(e: {name: string, value: string}) {
+		onInput(e: { name: string; value: string }) {
 			if (e.name === 'password') {
 				this.password = e.value;
 			}
 		},
-		async onSubmit(values: {[key: string]: string}) {
+		async onSubmit(values: { currentPassword: string; password: string }) {
 			try {
 				this.loading = true;
-				await this.$store.dispatch('users/updateCurrentUserPassword', values);
+				await this.usersStore.updateCurrentUserPassword(values);
 
-				this.$showMessage({
+				this.showMessage({
 					type: 'success',
 					title: this.$locale.baseText('auth.changePassword.passwordUpdated'),
 					message: this.$locale.baseText('auth.changePassword.passwordUpdatedMessage'),
 				});
 
-				this.modalBus.$emit('close');
-
+				this.modalBus.emit('close');
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('auth.changePassword.error'));
+				this.showError(error, this.$locale.baseText('auth.changePassword.error'));
 			}
 			this.loading = false;
 		},
 		onSubmitClick() {
-			this.formBus.$emit('submit');
+			this.formBus.emit('submit');
 		},
 	},
 });
-
 </script>

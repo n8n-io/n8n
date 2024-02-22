@@ -1,12 +1,15 @@
-import { OptionsWithUri } from 'request';
-
-import { IExecuteFunctions } from 'n8n-core';
-
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IDataObject,
+	JsonObject,
+	IHttpRequestMethods,
+	IRequestOptions,
+} from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 export async function marketstackApiRequest(
 	this: IExecuteFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
@@ -14,7 +17,7 @@ export async function marketstackApiRequest(
 	const credentials = await this.getCredentials('marketstackApi');
 	const protocol = credentials.useHttps ? 'https' : 'http'; // Free API does not support HTTPS
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		method,
 		uri: `${protocol}://api.marketstack.com/v1${endpoint}`,
 		qs: {
@@ -31,19 +34,19 @@ export async function marketstackApiRequest(
 	try {
 		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
 export async function marketstackApiRequestAllItems(
 	this: IExecuteFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const returnAll = this.getNodeParameter('returnAll', 0, false) as boolean;
-	const limit = this.getNodeParameter('limit', 0, 0) as number;
+	const returnAll = this.getNodeParameter('returnAll', 0, false);
+	const limit = this.getNodeParameter('limit', 0, 0);
 
 	let responseData;
 	const returnData: IDataObject[] = [];
@@ -52,7 +55,7 @@ export async function marketstackApiRequestAllItems(
 
 	do {
 		responseData = await marketstackApiRequest.call(this, method, endpoint, body, qs);
-		returnData.push(...responseData.data);
+		returnData.push(...(responseData.data as IDataObject[]));
 
 		if (!returnAll && returnData.length > limit) {
 			return returnData.slice(0, limit);

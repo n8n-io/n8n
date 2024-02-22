@@ -1,8 +1,11 @@
-import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
-
-import { IDataObject, ILoadOptionsFunctions, NodeApiError } from 'n8n-workflow';
-
-import { OptionsWithUri } from 'request';
+import type {
+	IExecuteFunctions,
+	IHookFunctions,
+	IDataObject,
+	ILoadOptionsFunctions,
+	IHttpRequestMethods,
+	IRequestOptions,
+} from 'n8n-workflow';
 
 import { capitalCase } from 'change-case';
 
@@ -11,16 +14,14 @@ import { capitalCase } from 'change-case';
  */
 export async function lemlistApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 	option: IDataObject = {},
 ) {
-
-	const options: OptionsWithUri = {
-		headers: {
-		},
+	const options: IRequestOptions = {
+		headers: {},
 		method,
 		uri: `https://api.lemlist.com/api${endpoint}`,
 		qs,
@@ -40,11 +41,7 @@ export async function lemlistApiRequest(
 		Object.assign(options, option);
 	}
 
-	try {
-		return await this.helpers.requestWithAuthentication.call(this,'lemlistApi',options);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
-	}
+	return await this.helpers.requestWithAuthentication.call(this, 'lemlistApi', options);
 }
 
 /**
@@ -52,20 +49,20 @@ export async function lemlistApiRequest(
  */
 export async function lemlistApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
+	qs: IDataObject = {},
 ) {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
-	const qs: IDataObject = {};
 
 	qs.limit = 100;
 	qs.offset = 0;
 
 	do {
 		responseData = await lemlistApiRequest.call(this, method, endpoint, {}, qs);
-		returnData.push(...responseData);
+		returnData.push(...(responseData as IDataObject[]));
 		qs.offset += qs.limit;
 	} while (responseData.length !== 0);
 	return returnData;

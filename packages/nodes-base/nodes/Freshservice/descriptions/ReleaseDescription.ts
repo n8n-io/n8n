@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const releaseOperations: INodeProperties[] = [
 	{
@@ -135,7 +135,7 @@ export const releaseFields: INodeProperties[] = [
 				operation: ['create'],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
+
 		options: [
 			{
 				name: 'Open',
@@ -412,7 +412,7 @@ export const releaseFields: INodeProperties[] = [
 				name: 'status',
 				type: 'options',
 				default: 1,
-				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
+
 				options: [
 					{
 						name: 'Open',

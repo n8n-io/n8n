@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 import { TLP } from '../interfaces/AlertInterface';
 
@@ -339,9 +339,10 @@ export const alertFields: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Binary Property',
+						displayName: 'Input Binary Field',
 						name: 'binaryProperty',
 						type: 'string',
+						hint: 'The name of the input binary field containing the file to be written',
 						displayOptions: {
 							show: {
 								dataType: ['file'],
@@ -553,9 +554,10 @@ export const alertFields: INodeProperties[] = [
 								default: '',
 							},
 							{
-								displayName: 'Binary Property',
+								displayName: 'Input Binary Field',
 								name: 'binaryProperty',
 								type: 'string',
+								hint: 'The name of the input binary field containing the file to be written',
 								displayOptions: {
 									show: {
 										dataType: ['file'],
@@ -655,7 +657,7 @@ export const alertFields: INodeProperties[] = [
 			},
 			{
 				displayName: 'Severity',
-				name: ' severity',
+				name: 'severity',
 				type: 'options',
 				options: [
 					{
@@ -759,6 +761,28 @@ export const alertFields: INodeProperties[] = [
 				type: 'string',
 				placeholder: '±Attribut, exp +status',
 				default: '',
+			},
+		],
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		displayOptions: {
+			show: {
+				operation: ['get'],
+				resource: ['alert'],
+			},
+		},
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		options: [
+			{
+				displayName: 'Include Similar Cases',
+				name: 'includeSimilar',
+				type: 'boolean',
+				description: 'Whether to include similar cases',
+				default: false,
 			},
 		],
 	},

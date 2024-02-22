@@ -1,40 +1,56 @@
-import { OptionsWithUrl } from 'request';
-
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
+	JsonObject,
+	IRequestOptions,
+	IHttpRequestMethods,
+} from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+async function getMetadata(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	oauthTokenData: IDataObject,
+) {
+	const credentials = await this.getCredentials('mailchimpOAuth2Api');
+	const options: IRequestOptions = {
+		headers: {
+			Accept: 'application/json',
+			Authorization: `OAuth ${oauthTokenData.access_token}`,
+		},
+		method: 'GET',
+		url: credentials.metadataUrl as string,
+		json: true,
+	};
+	return await this.helpers.request(options);
+}
 
 export async function mailchimpApiRequest(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	endpoint: string,
-	method: string,
-	// tslint:disable-next-line:no-any
+	method: IHttpRequestMethods,
+
 	body: any = {},
 	qs: IDataObject = {},
-	headers?: object,
-	// tslint:disable-next-line:no-any
+	_headers?: object,
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
 
 	const host = 'api.mailchimp.com/3.0';
 
-	const options: OptionsWithUrl = {
+	const options: IRequestOptions = {
 		headers: {
 			Accept: 'application/json',
 		},
 		method,
 		qs,
 		body,
-		url: ``,
+		url: '',
 		json: true,
 	};
 
-	if (Object.keys(body).length === 0) {
+	if (Object.keys(body as IDataObject).length === 0) {
 		delete options.body;
 	}
 
@@ -56,25 +72,23 @@ export async function mailchimpApiRequest(
 			);
 
 			options.url = `${api_endpoint}/3.0${endpoint}`;
-			//@ts-ignore
-			return await this.helpers.requestOAuth2!.call(this, 'mailchimpOAuth2Api', options, {
+			return await this.helpers.requestOAuth2.call(this, 'mailchimpOAuth2Api', options, {
 				tokenType: 'Bearer',
 			});
 		}
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
 export async function mailchimpApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	endpoint: string,
-	method: string,
+	method: IHttpRequestMethods,
 	propertyName: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -85,14 +99,13 @@ export async function mailchimpApiRequestAllItems(
 
 	do {
 		responseData = await mailchimpApiRequest.call(this, endpoint, method, body, query);
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 		query.offset += query.count;
 	} while (responseData[propertyName] && responseData[propertyName].length !== 0);
 
 	return returnData;
 }
 
-// tslint:disable-next-line:no-any
 export function validateJSON(json: string | undefined): any {
 	let result;
 	try {
@@ -101,23 +114,6 @@ export function validateJSON(json: string | undefined): any {
 		result = '';
 	}
 	return result;
-}
-
-async function getMetadata(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	oauthTokenData: IDataObject,
-) {
-	const credentials = await this.getCredentials('mailchimpOAuth2Api');
-	const options: OptionsWithUrl = {
-		headers: {
-			Accept: 'application/json',
-			Authorization: `OAuth ${oauthTokenData.access_token}`,
-		},
-		method: 'GET',
-		url: credentials.metadataUrl as string,
-		json: true,
-	};
-	return this.helpers.request!(options);
 }
 
 export const campaignFieldsMetadata = [

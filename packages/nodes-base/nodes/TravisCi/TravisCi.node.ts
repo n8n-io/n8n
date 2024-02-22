@@ -1,6 +1,10 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 import { buildFields, buildOperations } from './BuildDescription';
 
@@ -52,8 +56,8 @@ export class TravisCi implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -61,7 +65,7 @@ export class TravisCi implements INodeType {
 					//https://developer.travis-ci.com/resource/build#find
 					if (operation === 'get') {
 						const buildId = this.getNodeParameter('buildId', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (additionalFields.include) {
 							qs.include = additionalFields.include as string;
@@ -71,8 +75,8 @@ export class TravisCi implements INodeType {
 					}
 					//https://developer.travis-ci.com/resource/builds#for_current_user
 					if (operation === 'getAll') {
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (additionalFields.sortBy) {
 							qs.sort_by = additionalFields.sortBy;
@@ -86,7 +90,7 @@ export class TravisCi implements INodeType {
 							qs.include = additionalFields.include;
 						}
 
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await travisciApiRequestAllItems.call(
 								this,
 								'builds',
@@ -96,7 +100,7 @@ export class TravisCi implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							responseData = await travisciApiRequest.call(this, 'GET', '/builds', {}, qs);
 							responseData = responseData.builds;
 						}
@@ -127,7 +131,7 @@ export class TravisCi implements INodeType {
 					if (operation === 'trigger') {
 						let slug = this.getNodeParameter('slug', i) as string;
 						const branch = this.getNodeParameter('branch', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						slug = slug.replace(new RegExp(/\//g), '%2F');
 
@@ -153,7 +157,7 @@ export class TravisCi implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 
@@ -170,6 +174,6 @@ export class TravisCi implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

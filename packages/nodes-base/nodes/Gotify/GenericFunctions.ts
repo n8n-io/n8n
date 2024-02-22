@@ -1,23 +1,26 @@
-import { OptionsWithUri } from 'request';
-
-import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	IDataObject,
+	JsonObject,
+	IHttpRequestMethods,
+	IRequestOptions,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function gotifyApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	method: string,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
 	path: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string | undefined,
-	option = {},
-	// tslint:disable-next-line:no-any
+	_option = {},
 ): Promise<any> {
 	const credentials = await this.getCredentials('gotifyApi');
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		method,
 		headers: {
 			'X-Gotify-Key': method === 'POST' ? credentials.appApiToken : credentials.clientApiToken,
@@ -27,28 +30,28 @@ export async function gotifyApiRequest(
 		qs,
 		uri: uri || `${credentials.url}${path}`,
 		json: true,
+		rejectUnauthorized: credentials.ignoreSSLIssues as boolean,
 	};
 	try {
-		if (Object.keys(body).length === 0) {
+		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
 		}
 
 		//@ts-ignore
 		return await this.helpers.request.call(this, options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
 export async function gotifyApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -60,7 +63,7 @@ export async function gotifyApiRequestAllItems(
 		if (responseData.paging.next) {
 			uri = responseData.paging.next;
 		}
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (responseData.paging.next);
 
 	return returnData;

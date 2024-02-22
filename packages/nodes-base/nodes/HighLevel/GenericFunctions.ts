@@ -1,23 +1,24 @@
-import {
+import type {
 	DeclarativeRestApiSettings,
 	IDataObject,
 	IExecuteFunctions,
 	IExecutePaginationFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
+	IHttpRequestMethods,
 	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	IN8nHttpFullResponse,
 	INodeExecutionData,
 	INodePropertyOptions,
 	IPollFunctions,
+	IRequestOptions,
 	IWebhookFunctions,
-	NodeApiError,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
-
-import { DateTime, ToISOTimeOptions } from 'luxon';
+import type { ToISOTimeOptions } from 'luxon';
+import { DateTime } from 'luxon';
 
 const VALID_EMAIL_REGEX =
 	/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
@@ -40,7 +41,7 @@ function dateToIsoSupressMillis(dateTime: string) {
 export async function taskPostReceiceAction(
 	this: IExecuteSingleFunctions,
 	items: INodeExecutionData[],
-	response: IN8nHttpFullResponse,
+	_response: IN8nHttpFullResponse,
 ): Promise<INodeExecutionData[]> {
 	const contactId = this.getNodeParameter('contactId');
 	items.forEach((item) => (item.json.contactId = contactId));
@@ -122,6 +123,38 @@ export async function dateTimeToEpochPreSendAction(
 	return requestOptions;
 }
 
+export async function highLevelApiRequest(
+	this:
+		| IExecuteFunctions
+		| IExecuteSingleFunctions
+		| IWebhookFunctions
+		| IPollFunctions
+		| IHookFunctions
+		| ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
+	resource: string,
+	body: IDataObject = {},
+	qs: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+) {
+	let options: IRequestOptions = {
+		method,
+		body,
+		qs,
+		uri: uri || `https://rest.gohighlevel.com/v1${resource}`,
+		json: true,
+	};
+	if (!Object.keys(body).length) {
+		delete options.body;
+	}
+	if (!Object.keys(qs).length) {
+		delete options.qs;
+	}
+	options = Object.assign({}, options, option);
+	return await this.helpers.requestWithAuthentication.call(this, 'highLevelApi', options);
+}
+
 export async function opportunityUpdatePreSendAction(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
@@ -151,7 +184,7 @@ export async function taskUpdatePreSendAction(
 		const responseData = await highLevelApiRequest.call(this, 'GET', resource);
 		body.title = body.title || responseData.title;
 		// the api response dueDate has to be formatted or it will error on update
-		body.dueDate = body.dueDate || dateToIsoSupressMillis(responseData.dueDate);
+		body.dueDate = body.dueDate || dateToIsoSupressMillis(responseData.dueDate as string);
 		requestOptions.body = body;
 	}
 	return requestOptions;
@@ -201,44 +234,6 @@ export async function highLevelApiPagination(
 	} while (returnAll && responseTotal > responseData.length);
 
 	return responseData;
-}
-
-export async function highLevelApiRequest(
-	this:
-		| IExecuteFunctions
-		| IExecuteSingleFunctions
-		| IWebhookFunctions
-		| IPollFunctions
-		| IHookFunctions
-		| ILoadOptionsFunctions,
-	method: string,
-	resource: string,
-	body: IDataObject = {},
-	qs: IDataObject = {},
-	uri?: string,
-	option: IDataObject = {},
-) {
-	let options: OptionsWithUri = {
-		method,
-		body,
-		qs,
-		uri: uri || `https://rest.gohighlevel.com/v1${resource}`,
-		json: true,
-	};
-	if (!Object.keys(body).length) {
-		delete options.body;
-	}
-	if (!Object.keys(qs).length) {
-		delete options.qs;
-	}
-	options = Object.assign({}, options, option);
-	try {
-		return await this.helpers.requestWithAuthentication.call(this, 'highLevelApi', options);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error, {
-			message: error.message,
-		});
-	}
 }
 
 export async function getPipelineStages(

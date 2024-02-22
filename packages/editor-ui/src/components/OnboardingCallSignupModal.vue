@@ -2,31 +2,33 @@
 	<Modal
 		:name="ONBOARDING_CALL_SIGNUP_MODAL_KEY"
 		:title="$locale.baseText('onboardingCallSignupModal.title')"
-		:eventBus="modalBus"
+		:event-bus="modalBus"
 		:center="true"
-		:showClose="false"
-		:beforeClose="onModalClose"
+		:show-close="false"
+		:before-close="onModalClose"
 		width="460px"
 	>
-		<template slot="content">
+		<template #content>
 			<div class="pb-m">
 				<n8n-text>
 					{{ $locale.baseText('onboardingCallSignupModal.description') }}
 				</n8n-text>
 			</div>
 			<div @keyup.enter="onSignup">
-				<n8n-input v-model="email" :placeholder="$locale.baseText('onboardingCallSignupModal.emailInput.placeholder')" />
+				<n8n-input
+					v-model="email"
+					:placeholder="$locale.baseText('onboardingCallSignupModal.emailInput.placeholder')"
+				/>
 				<n8n-text v-if="showError" size="small" class="mt-4xs" tag="div" color="danger">
 					{{ $locale.baseText('onboardingCallSignupModal.infoText.emailError') }}
 				</n8n-text>
 			</div>
 		</template>
-		<template slot="footer">
+		<template #footer>
 			<div :class="$style.buttonsContainer">
 				<n8n-button
 					:label="$locale.baseText('onboardingCallSignupModal.cancelButton.label')"
 					:disabled="loading"
-					size="medium"
 					float="right"
 					type="outline"
 					@click="onCancel"
@@ -34,7 +36,6 @@
 				<n8n-button
 					:disabled="email === '' || loading"
 					:label="$locale.baseText('onboardingCallSignupModal.signupButton.label')"
-					size="medium"
 					float="right"
 					:loading="loading"
 					@click="onSignup"
@@ -45,29 +46,30 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-
-import {
-	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
-	VALID_EMAIL_REGEX,
-} from '@/constants';
+import { ONBOARDING_CALL_SIGNUP_MODAL_KEY, VALID_EMAIL_REGEX } from '@/constants';
 import Modal from './Modal.vue';
 
-import mixins from 'vue-typed-mixins';
-import { showMessage } from './mixins/showMessage';
+import { defineComponent } from 'vue';
+import { useToast } from '@/composables/useToast';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui.store';
+import { createEventBus } from 'n8n-design-system/utils';
 
-export default mixins(
-	showMessage,
-).extend({
+export default defineComponent({
+	name: 'OnboardingCallSignupModal',
 	components: {
 		Modal,
 	},
-	name: 'OnboardingCallSignupModal',
-	props: [ 'modalName' ],
+	props: ['modalName'],
+	setup() {
+		return {
+			...useToast(),
+		};
+	},
 	data() {
 		return {
 			email: '',
-			modalBus: new Vue(),
+			modalBus: createEventBus(),
 			ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 			showError: false,
 			okToClose: false,
@@ -75,6 +77,7 @@ export default mixins(
 		};
 	},
 	computed: {
+		...mapStores(useUIStore),
 		isEmailValid(): boolean {
 			return VALID_EMAIL_REGEX.test(String(this.email).toLowerCase());
 		},
@@ -90,16 +93,16 @@ export default mixins(
 			this.okToClose = false;
 
 			try {
-				await this.$store.dispatch('ui/applyForOnboardingCall', { email: this.email });
-				this.$showMessage({
+				await this.uiStore.applyForOnboardingCall(this.email);
+				this.showMessage({
 					type: 'success',
 					title: this.$locale.baseText('onboardingCallSignupSucess.title'),
 					message: this.$locale.baseText('onboardingCallSignupSucess.message'),
 				});
 				this.okToClose = true;
-				this.modalBus.$emit('close');
+				this.modalBus.emit('close');
 			} catch (e) {
-				this.$showError(
+				this.showError(
 					e,
 					this.$locale.baseText('onboardingCallSignupFailed.title'),
 					this.$locale.baseText('onboardingCallSignupFailed.message'),
@@ -110,7 +113,7 @@ export default mixins(
 		},
 		async onCancel() {
 			this.okToClose = true;
-			this.modalBus.$emit('close');
+			this.modalBus.emit('close');
 		},
 		onModalClose() {
 			return this.okToClose;

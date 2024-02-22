@@ -1,6 +1,5 @@
-import {render} from '@testing-library/vue';
-import N8nButton from "../Button.vue";
-import ElButton from "../overrides/ElButton.vue";
+import { render } from '@testing-library/vue';
+import N8nButton from '../Button.vue';
 
 const slots = {
 	default: 'Button',
@@ -12,7 +11,9 @@ describe('components', () => {
 		it('should render correctly', () => {
 			const wrapper = render(N8nButton, {
 				slots,
-				stubs,
+				global: {
+					stubs,
+				},
 			});
 			expect(wrapper.html()).toMatchSnapshot();
 		});
@@ -25,7 +26,9 @@ describe('components', () => {
 							loading: true,
 						},
 						slots,
-						stubs,
+						global: {
+							stubs,
+						},
 					});
 					expect(wrapper.html()).toMatchSnapshot();
 				});
@@ -38,7 +41,9 @@ describe('components', () => {
 							icon: 'plus-circle',
 						},
 						slots,
-						stubs,
+						global: {
+							stubs,
+						},
 					});
 					expect(wrapper.html()).toMatchSnapshot();
 				});
@@ -51,25 +56,12 @@ describe('components', () => {
 							square: true,
 							label: '48',
 						},
-						stubs,
+						global: {
+							stubs,
+						},
 					});
 					expect(wrapper.html()).toMatchSnapshot();
 				});
-			});
-		});
-
-		describe('overrides', () => {
-			it('should render correctly', () => {
-				const wrapper = render(ElButton, {
-					props: {
-						icon: 'plus-circle',
-						type: 'secondary',
-					},
-					slots,
-					stubs,
-				});
-
-				expect(wrapper.html()).toMatchSnapshot();
 			});
 		});
 	});

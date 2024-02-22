@@ -1,25 +1,26 @@
 <template>
-	<AuthView
-		:form="formConfig"
-		:formLoading="loading"
-		@submit="onSubmit"
-	/>
+	<AuthView :form="formConfig" :form-loading="loading" @submit="onSubmit" />
 </template>
 
 <script lang="ts">
 import AuthView from './AuthView.vue';
-import { showMessage } from '@/components/mixins/showMessage';
+import { useToast } from '@/composables/useToast';
 
-import mixins from 'vue-typed-mixins';
-import { IFormBoxConfig } from '@/Interface';
-import { mapGetters } from 'vuex';
+import { defineComponent } from 'vue';
+import type { IFormBoxConfig } from '@/Interface';
+import { mapStores } from 'pinia';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
 
-export default mixins(
-	showMessage,
-).extend({
+export default defineComponent({
 	name: 'ForgotMyPasswordView',
 	components: {
 		AuthView,
+	},
+	setup() {
+		return {
+			...useToast(),
+		};
 	},
 	data() {
 		return {
@@ -27,7 +28,7 @@ export default mixins(
 		};
 	},
 	computed: {
-		...mapGetters('settings', ['isSmtpSetup']),
+		...mapStores(useSettingsStore, useUsersStore),
 		formConfig(): IFormBoxConfig {
 			const EMAIL_INPUTS: IFormBoxConfig['inputs'] = [
 				{
@@ -36,7 +37,7 @@ export default mixins(
 						label: this.$locale.baseText('auth.email'),
 						type: 'email',
 						required: true,
-						validationRules: [{name: 'VALID_EMAIL'}],
+						validationRules: [{ name: 'VALID_EMAIL' }],
 						autocomplete: 'email',
 						capitalize: true,
 					},
@@ -59,7 +60,7 @@ export default mixins(
 				redirectLink: '/signin',
 			};
 
-			if (this.isSmtpSetup) {
+			if (this.settingsStore.isSmtpSetup) {
 				return {
 					...DEFAULT_FORM_CONFIG,
 					buttonText: this.$locale.baseText('forgotPassword.getRecoveryLink'),
@@ -76,22 +77,31 @@ export default mixins(
 		async onSubmit(values: { email: string }) {
 			try {
 				this.loading = true;
-				await this.$store.dispatch('users/sendForgotPasswordEmail', values);
+				await this.usersStore.sendForgotPasswordEmail(values);
 
-				this.$showMessage({
+				this.showMessage({
 					type: 'success',
 					title: this.$locale.baseText('forgotPassword.recoveryEmailSent'),
-					message: this.$locale.baseText(
-						'forgotPassword.emailSentIfExists',
-						{ interpolate: { email: values.email }},
-					),
+					message: this.$locale.baseText('forgotPassword.emailSentIfExists', {
+						interpolate: { email: values.email },
+					}),
 				});
 			} catch (error) {
-				this.$showMessage({
-					type: 'error',
-					title: this.$locale.baseText('forgotPassword.sendingEmailError'),
-					message: this.$locale.baseText('forgotPassword.smtpErrorContactAdministrator'),
-				});
+				let message = this.$locale.baseText('forgotPassword.smtpErrorContactAdministrator');
+				if (error.httpStatusCode) {
+					const { httpStatusCode: status } = error;
+					if (status === 429) {
+						message = this.$locale.baseText('forgotPassword.tooManyRequests');
+					} else if (error.httpStatusCode === 422) {
+						message = this.$locale.baseText(error.message);
+					}
+
+					this.showMessage({
+						type: 'error',
+						title: this.$locale.baseText('forgotPassword.sendingEmailError'),
+						message,
+					});
+				}
 			}
 			this.loading = false;
 		},

@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -9,11 +8,11 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import type { IField } from './GenericFunctions';
 import {
 	adjustAddresses,
 	getEntityFields,
 	getPicklistOptions,
-	IField,
 	microsoftApiRequest,
 	microsoftApiRequestAllItems,
 	sort,
@@ -150,8 +149,8 @@ export class MicrosoftDynamicsCrm implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -160,7 +159,6 @@ export class MicrosoftDynamicsCrm implements INodeType {
 					if (operation === 'create') {
 						const name = this.getNodeParameter('name', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as {
-							// tslint:disable-next-line: no-any
 							addresses: { address: [{ [key: string]: any }] };
 						};
 						const options = this.getNodeParameter('options', i) as { returnFields: string[] };
@@ -178,12 +176,12 @@ export class MicrosoftDynamicsCrm implements INodeType {
 
 						if (options.returnFields) {
 							options.returnFields.push('accountid');
-							qs['$select'] = options.returnFields.join(',');
+							qs.$select = options.returnFields.join(',');
 						} else {
-							qs['$select'] = 'accountid';
+							qs.$select = 'accountid';
 						}
 
-						responseData = await microsoftApiRequest.call(this, 'POST', `/accounts`, body, qs);
+						responseData = await microsoftApiRequest.call(this, 'POST', '/accounts', body, qs);
 					}
 
 					if (operation === 'delete') {
@@ -196,12 +194,12 @@ export class MicrosoftDynamicsCrm implements INodeType {
 					if (operation === 'get') {
 						//https://docs.microsoft.com/en-us/powerapps/developer/data-platform/webapi/retrieve-entity-using-web-api
 						const accountId = this.getNodeParameter('accountId', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						if (options.returnFields) {
-							qs['$select'] = (options.returnFields as string[]).join(',');
+							qs.$select = (options.returnFields as string[]).join(',');
 						}
 						if (options.expandFields) {
-							qs['$expand'] = (options.expandFields as string[]).join(',');
+							qs.$expand = (options.expandFields as string[]).join(',');
 						}
 						responseData = await microsoftApiRequest.call(
 							this,
@@ -214,30 +212,30 @@ export class MicrosoftDynamicsCrm implements INodeType {
 
 					if (operation === 'getAll') {
 						//https://docs.microsoft.com/en-us/powerapps/developer/data-platform/webapi/query-data-web-api
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const options = this.getNodeParameter('options', i) as IDataObject;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const options = this.getNodeParameter('options', i);
+						const filters = this.getNodeParameter('filters', i);
 						if (options.returnFields) {
-							qs['$select'] = (options.returnFields as string[]).join(',');
+							qs.$select = (options.returnFields as string[]).join(',');
 						}
 						if (options.expandFields) {
-							qs['$expand'] = (options.expandFields as string[]).join(',');
+							qs.$expand = (options.expandFields as string[]).join(',');
 						}
 						if (filters.query) {
-							qs['$filter'] = filters.query as string;
+							qs.$filter = filters.query as string;
 						}
 						if (returnAll) {
 							responseData = await microsoftApiRequestAllItems.call(
 								this,
 								'value',
 								'GET',
-								`/accounts`,
+								'/accounts',
 								{},
 								qs,
 							);
 						} else {
-							qs['$top'] = this.getNodeParameter('limit', 0) as number;
-							responseData = await microsoftApiRequest.call(this, 'GET', `/accounts`, {}, qs);
+							qs.$top = this.getNodeParameter('limit', 0);
+							responseData = await microsoftApiRequest.call(this, 'GET', '/accounts', {}, qs);
 							responseData = responseData.value;
 						}
 					}
@@ -245,7 +243,6 @@ export class MicrosoftDynamicsCrm implements INodeType {
 					if (operation === 'update') {
 						const accountId = this.getNodeParameter('accountId', i) as string;
 						const updateFields = this.getNodeParameter('updateFields', i) as {
-							// tslint:disable-next-line: no-any
 							addresses: { address: [{ [key: string]: any }] };
 						};
 						const options = this.getNodeParameter('options', i) as { returnFields: string[] };
@@ -262,9 +259,9 @@ export class MicrosoftDynamicsCrm implements INodeType {
 
 						if (options.returnFields) {
 							options.returnFields.push('accountid');
-							qs['$select'] = options.returnFields.join(',');
+							qs.$select = options.returnFields.join(',');
 						} else {
-							qs['$select'] = 'accountid';
+							qs.$select = 'accountid';
 						}
 
 						responseData = await microsoftApiRequest.call(
@@ -278,7 +275,7 @@ export class MicrosoftDynamicsCrm implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject),
 					{ itemData: { item: i } },
 				);
 
@@ -296,6 +293,6 @@ export class MicrosoftDynamicsCrm implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

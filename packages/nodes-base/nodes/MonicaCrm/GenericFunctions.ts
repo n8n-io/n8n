@@ -1,14 +1,18 @@
-import { Credentials, IExecuteFunctions } from 'n8n-core';
+import type {
+	IExecuteFunctions,
+	IDataObject,
+	ILoadOptionsFunctions,
+	JsonObject,
+	IHttpRequestMethods,
+	IRequestOptions,
+} from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { IDataObject, ILoadOptionsFunctions, NodeApiError, NodeOperationError } from 'n8n-workflow';
-
-import { OptionsWithUri } from 'request';
-
-import { LoaderGetResponse } from './types';
+import type { LoaderGetResponse } from './types';
 
 export async function monicaCrmApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
@@ -23,13 +27,13 @@ export async function monicaCrmApiRequest(
 		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 
-	let baseUrl = `https://app.monicahq.com`;
+	let baseUrl = 'https://app.monicahq.com';
 
 	if (credentials.environment === 'selfHosted') {
 		baseUrl = credentials.domain;
 	}
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			Authorization: `Bearer ${credentials.apiToken}`,
 		},
@@ -49,15 +53,15 @@ export async function monicaCrmApiRequest(
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
 export async function monicaCrmApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
@@ -75,7 +79,7 @@ export async function monicaCrmApiRequestAllItems(
 
 	do {
 		responseData = await monicaCrmApiRequest.call(this, method, endpoint, body, qs);
-		returnData.push(...responseData.data);
+		returnData.push(...(responseData.data as IDataObject[]));
 
 		if (!forLoader && !returnAll && returnData.length > limit) {
 			return returnData.slice(0, limit);

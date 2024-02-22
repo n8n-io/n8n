@@ -1,18 +1,13 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
-	ICredentialDataDecryptedObject,
-	ICredentialsDecrypted,
-	ICredentialTestFunctions,
+import type {
+	IExecuteFunctions,
 	IDataObject,
-	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { dropcontactApiRequest } from './GenericFunction';
+import { dropcontactApiRequest, mapPairedItemsFrom } from './GenericFunction';
 
 export class Dropcontact implements INodeType {
 	description: INodeTypeDescription = {
@@ -243,17 +238,18 @@ export class Dropcontact implements INodeType {
 			},
 		],
 	};
+
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const entryData = this.getInputData();
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
-		// tslint:disable-next-line: no-any
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
+
 		let responseData: any;
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 
 		if (resource === 'contact') {
 			if (operation === 'enrich') {
-				const options = this.getNodeParameter('options', 0) as IDataObject;
+				const options = this.getNodeParameter('options', 0);
 				const data = [];
 				const simplify = this.getNodeParameter('simplify', 0) as boolean;
 
@@ -281,7 +277,13 @@ export class Dropcontact implements INodeType {
 
 				if (!responseData.success) {
 					if (this.continueOnFail()) {
-						returnData.push({ error: responseData.reason || 'invalid request' });
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ error: responseData.reason || 'invalid request' }),
+							{
+								itemData: mapPairedItemsFrom(entryData),
+							},
+						);
+						returnData.push(...executionData);
 					} else {
 						throw new NodeApiError(this.getNode(), {
 							error: responseData.reason || 'invalid request',
@@ -289,10 +291,10 @@ export class Dropcontact implements INodeType {
 					}
 				}
 
-				if (simplify === false) {
+				if (!simplify) {
 					const waitTime = this.getNodeParameter('options.waitTime', 0, 45) as number;
-					// tslint:disable-next-line: no-any
-					const delay = (ms: any) => new Promise((res) => setTimeout(res, ms * 1000));
+
+					const delay = async (ms: any) => await new Promise((res) => setTimeout(res, ms * 1000));
 					await delay(waitTime);
 					responseData = await dropcontactApiRequest.call(
 						this,
@@ -303,7 +305,13 @@ export class Dropcontact implements INodeType {
 					);
 					if (!responseData.success) {
 						if (this.continueOnFail()) {
-							responseData.push({ error: responseData.reason });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: responseData.reason }),
+								{
+									itemData: mapPairedItemsFrom(entryData),
+								},
+							);
+							returnData.push(...executionData);
 						} else {
 							throw new NodeApiError(this.getNode(), {
 								error: responseData.reason,
@@ -311,10 +319,22 @@ export class Dropcontact implements INodeType {
 							});
 						}
 					} else {
-						returnData.push(...responseData.data);
+						responseData.data.forEach((d: IDataObject, index: number) => {
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray(d),
+								{ itemData: { item: index } },
+							);
+							returnData.push(...executionData);
+						});
 					}
 				} else {
-					returnData.push(responseData);
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
+						{
+							itemData: mapPairedItemsFrom(entryData),
+						},
+					);
+					returnData.push(...executionData);
 				}
 			}
 
@@ -330,18 +350,26 @@ export class Dropcontact implements INodeType {
 					)) as { request_id: string; error: string; success: boolean };
 					if (!responseData.success) {
 						if (this.continueOnFail()) {
-							responseData.push({ error: responseData.reason || 'invalid request' });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: responseData.reason || 'invalid request' }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 						} else {
 							throw new NodeApiError(this.getNode(), {
 								error: responseData.reason || 'invalid request',
 							});
 						}
 					}
-					returnData.push(...responseData.data);
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData.data as IDataObject[]),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 				}
 			}
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return [returnData];
 	}
 }

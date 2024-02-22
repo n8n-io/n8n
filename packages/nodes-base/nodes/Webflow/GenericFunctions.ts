@@ -1,17 +1,16 @@
-import { OptionsWithUri } from 'request';
-
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+	IHttpRequestMethods,
+	IRequestOptions,
+} from 'n8n-workflow';
 
 export async function webflowApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
@@ -29,7 +28,7 @@ export async function webflowApiRequest(
 		credentialsType = 'webflowOAuth2Api';
 	}
 
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		headers: {
 			'accept-version': '1.0.0',
 		},
@@ -41,23 +40,19 @@ export async function webflowApiRequest(
 	};
 	options = Object.assign({}, options, option);
 
-	if (Object.keys(options.qs).length === 0) {
+	if (Object.keys(options.qs as IDataObject).length === 0) {
 		delete options.qs;
 	}
 
-	if (Object.keys(options.body).length === 0) {
+	if (Object.keys(options.body as IDataObject).length === 0) {
 		delete options.body;
 	}
-	try {
-		return await this.helpers.requestWithAuthentication.call(this, credentialsType, options);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
-	}
+	return await this.helpers.requestWithAuthentication.call(this, credentialsType, options);
 }
 
 export async function webflowApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	query: IDataObject = {},
@@ -74,7 +69,7 @@ export async function webflowApiRequestAllItems(
 		if (responseData.offset !== undefined) {
 			query.offset += query.limit;
 		}
-		returnData.push.apply(returnData, responseData.items);
+		returnData.push.apply(returnData, responseData.items as IDataObject[]);
 	} while (returnData.length < responseData.total);
 
 	return returnData;

@@ -1,0 +1,326 @@
+{
+	"name": "Remove Duplicates",
+	"nodes": [
+	  {
+		"parameters": {},
+		"id": "a4da10da-991f-48ab-b873-9d633a11311f",
+		"name": "When clicking \"Execute Workflow\"",
+		"type": "n8n-nodes-base.manualTrigger",
+		"typeVersion": 1,
+		"position": [
+		  760,
+		  420
+		]
+	  },
+	  {
+		"parameters": {
+		  "jsCode": "return [{ id: 1, name: 'John Doe', age: 18 },{ id: 1, name: 'John Doe', age: 18 },\n  { id: 1, name: 'John Doe', age: 98 },\n  { id: 3, name: 'Bob Johnson', age:34 }]"
+		},
+		"id": "7ab7d5cd-0b1e-48bc-bdbd-57c91e201cf3",
+		"name": "Code",
+		"type": "n8n-nodes-base.code",
+		"typeVersion": 2,
+		"position": [
+		  980,
+		  420
+		]
+	  },
+	  {
+		"parameters": {},
+		"id": "c336939c-062e-475e-ba7c-8601e3662e8c",
+		"name": "Remove Duplicates (All Fields)",
+		"type": "n8n-nodes-base.removeDuplicates",
+		"typeVersion": 1,
+		"position": [
+		  1200,
+		  260
+		]
+	  },
+	  {
+		"parameters": {
+		  "compare": "selectedFields",
+		  "fieldsToCompare": "name",
+		  "options": {}
+		},
+		"id": "d4343ffe-8a9e-4e34-a0a1-aa463afedd80",
+		"name": "Remove Duplicates (Selected Fields)",
+		"type": "n8n-nodes-base.removeDuplicates",
+		"typeVersion": 1,
+		"position": [
+		  1200,
+		  420
+		]
+	  },
+	  {
+		"parameters": {
+		  "compare": "allFieldsExcept",
+		  "fieldsToExclude": "age",
+		  "options": {}
+		},
+		"id": "b67daea4-4545-429e-9e2a-58f2d6a7df7b",
+		"name": "Remove Duplicates (Except Fields)",
+		"type": "n8n-nodes-base.removeDuplicates",
+		"typeVersion": 1,
+		"position": [
+		  1200,
+		  580
+		]
+	  },
+	  {
+		"parameters": {},
+		"id": "813e690f-a83e-4a38-a64a-c3d72afcc9ba",
+		"name": "All Fields",
+		"type": "n8n-nodes-base.noOp",
+		"typeVersion": 1,
+		"position": [
+		  1380,
+		  260
+		]
+	  },
+	  {
+		"parameters": {},
+		"id": "b5c5c946-2e96-451b-b9a6-78e478504d6c",
+		"name": "Selected Fields",
+		"type": "n8n-nodes-base.noOp",
+		"typeVersion": 1,
+		"position": [
+		  1380,
+		  420
+		]
+	  },
+	  {
+		"parameters": {},
+		"id": "afb92bc5-beba-4b0a-aefb-b47cc708a125",
+		"name": "Except Fields",
+		"type": "n8n-nodes-base.noOp",
+		"typeVersion": 1,
+		"position": [
+		  1380,
+		  580
+		]
+	  },
+	  {
+		"parameters": {
+		  "compare": "allFieldsExcept",
+		  "fieldsToExclude": "age",
+		  "options": {
+			"removeOtherFields": true
+		  }
+		},
+		"id": "f92c5533-ac29-476c-aebb-4849ddd22110",
+		"name": "Remove Duplicates (Remove)",
+		"type": "n8n-nodes-base.removeDuplicates",
+		"typeVersion": 1,
+		"position": [
+		  1200,
+		  760
+		]
+	  },
+	  {
+		"parameters": {},
+		"id": "1e142ab7-b32e-4f67-b5cc-5c9fb63fba89",
+		"name": "Remove",
+		"type": "n8n-nodes-base.noOp",
+		"typeVersion": 1,
+		"position": [
+		  1380,
+		  760
+		]
+	  }
+	],
+	"pinData": {
+	  "Code": [
+		{
+		  "json": {
+			"id": 1,
+			"name": "John Doe",
+			"age": 18
+		  }
+		},
+		{
+		  "json": {
+			"id": 1,
+			"name": "John Doe",
+			"age": 18
+		  }
+		},
+		{
+		  "json": {
+			"id": 1,
+			"name": "John Doe",
+			"age": 98
+		  }
+		},
+		{
+		  "json": {
+			"id": 3,
+			"name": "Bob Johnson",
+			"age": 34
+		  }
+		}
+	  ],
+	  "All Fields": [
+		{
+		  "json": {
+			"id": 1,
+			"name": "John Doe",
+			"age": 18
+		  }
+		},
+		{
+		  "json": {
+			"id": 1,
+			"name": "John Doe",
+			"age": 98
+		  }
+		},
+		{
+		  "json": {
+			"id": 3,
+			"name": "Bob Johnson",
+			"age": 34
+		  }
+		}
+	  ],
+	  "Selected Fields": [
+		{
+		  "json": {
+			"id": 1,
+			"name": "John Doe",
+			"age": 18
+		  }
+		},
+		{
+		  "json": {
+			"id": 3,
+			"name": "Bob Johnson",
+			"age": 34
+		  }
+		}
+	  ],
+	  "Except Fields": [
+		{
+		  "json": {
+			"id": 1,
+			"name": "John Doe",
+			"age": 18
+		  }
+		},
+		{
+		  "json": {
+			"id": 3,
+			"name": "Bob Johnson",
+			"age": 34
+		  }
+		}
+	  ],
+	  "Remove": [
+		{
+		  "json": {
+			"id": 1,
+			"name": "John Doe"
+		  }
+		},
+		{
+		  "json": {
+			"id": 3,
+			"name": "Bob Johnson"
+		  }
+		}
+	  ]
+	},
+	"connections": {
+	  "When clicking \"Execute Workflow\"": {
+		"main": [
+		  [
+			{
+			  "node": "Code",
+			  "type": "main",
+			  "index": 0
+			}
+		  ]
+		]
+	  },
+	  "Code": {
+		"main": [
+		  [
+			{
+			  "node": "Remove Duplicates (All Fields)",
+			  "type": "main",
+			  "index": 0
+			},
+			{
+			  "node": "Remove Duplicates (Selected Fields)",
+			  "type": "main",
+			  "index": 0
+			},
+			{
+			  "node": "Remove Duplicates (Except Fields)",
+			  "type": "main",
+			  "index": 0
+			},
+			{
+			  "node": "Remove Duplicates (Remove)",
+			  "type": "main",
+			  "index": 0
+			}
+		  ]
+		]
+	  },
+	  "Remove Duplicates (All Fields)": {
+		"main": [
+		  [
+			{
+			  "node": "All Fields",
+			  "type": "main",
+			  "index": 0
+			}
+		  ]
+		]
+	  },
+	  "Remove Duplicates (Selected Fields)": {
+		"main": [
+		  [
+			{
+			  "node": "Selected Fields",
+			  "type": "main",
+			  "index": 0
+			}
+		  ]
+		]
+	  },
+	  "Remove Duplicates (Except Fields)": {
+		"main": [
+		  [
+			{
+			  "node": "Except Fields",
+			  "type": "main",
+			  "index": 0
+			}
+		  ]
+		]
+	  },
+	  "Remove Duplicates (Remove)": {
+		"main": [
+		  [
+			{
+			  "node": "Remove",
+			  "type": "main",
+			  "index": 0
+			}
+		  ]
+		]
+	  }
+	},
+	"active": false,
+	"settings": {
+	  "executionOrder": "v1"
+	},
+	"versionId": "5bb09766-4c67-4fb4-ae53-89d8db4727e3",
+	"id": "74gMYOHjjPArZg4q",
+	"meta": {
+	  "instanceId": "27cc9b56542ad45b38725555722c50a1c3fee1670bbb67980558314ee08517c4"
+	},
+	"tags": [
+	]
+  }

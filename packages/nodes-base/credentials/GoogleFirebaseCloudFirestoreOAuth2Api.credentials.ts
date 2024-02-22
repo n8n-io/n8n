@@ -1,4 +1,4 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 const scopes = [
 	'https://www.googleapis.com/auth/datastore',
@@ -7,9 +7,13 @@ const scopes = [
 
 export class GoogleFirebaseCloudFirestoreOAuth2Api implements ICredentialType {
 	name = 'googleFirebaseCloudFirestoreOAuth2Api';
+
 	extends = ['googleOAuth2Api'];
+
 	displayName = 'Google Firebase Cloud Firestore OAuth2 API';
-	documentationUrl = 'google';
+
+	documentationUrl = 'google/oauth-single-service';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Scope',

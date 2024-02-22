@@ -1,14 +1,26 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import { URL } from 'url';
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import Parser from 'rss-parser';
-import { URL } from 'url';
+import { generatePairedItemData } from '../../utils/utilities';
+
+// Utility function
+
+function validateURL(url: string) {
+	try {
+		new URL(url);
+		return true;
+	} catch (err) {
+		return false;
+	}
+}
 
 export class RssFeedRead implements INodeType {
 	description: INodeTypeDescription = {
@@ -19,7 +31,7 @@ export class RssFeedRead implements INodeType {
 		version: 1,
 		description: 'Reads data from an RSS Feed',
 		defaults: {
-			name: 'RSS Feed Read',
+			name: 'RSS Read',
 			color: '#b02020',
 		},
 		inputs: ['main'],
@@ -33,12 +45,32 @@ export class RssFeedRead implements INodeType {
 				required: true,
 				description: 'URL of the RSS feed',
 			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				options: [
+					{
+						displayName: 'Ignore SSL Issues',
+						name: 'ignoreSSL',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to ignore SSL/TLS certificate issues or not',
+					},
+				],
+			},
 		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const pairedItem = generatePairedItemData(this.getInputData().length);
+
 		try {
 			const url = this.getNodeParameter('url', 0) as string;
+			const options = this.getNodeParameter('options', 0);
+			const ignoreSSL = Boolean(options.ignoreSSL);
 
 			if (!url) {
 				throw new NodeOperationError(this.getNode(), 'The parameter "URL" has to be set!');
@@ -48,7 +80,11 @@ export class RssFeedRead implements INodeType {
 				throw new NodeOperationError(this.getNode(), 'The provided "URL" is not valid!');
 			}
 
-			const parser = new Parser();
+			const parser = new Parser({
+				requestOptions: {
+					rejectUnauthorized: !ignoreSSL,
+				},
+			});
 
 			let feed: Parser.Output<IDataObject>;
 			try {
@@ -61,36 +97,27 @@ export class RssFeedRead implements INodeType {
 					);
 				}
 
-				throw new NodeOperationError(this.getNode(), error);
+				throw new NodeOperationError(this.getNode(), error as Error);
 			}
 
-			const returnData: IDataObject[] = [];
+			const returnData: INodeExecutionData[] = [];
 
 			// For now we just take the items and ignore everything else
 			if (feed.items) {
 				feed.items.forEach((item) => {
-					// @ts-ignore
-					returnData.push(item);
+					returnData.push({
+						json: item,
+						pairedItem,
+					});
 				});
 			}
 
-			return [this.helpers.returnJsonArray(returnData)];
+			return [returnData];
 		} catch (error) {
 			if (this.continueOnFail()) {
-				return this.prepareOutputData([{ json: { error: error.message } }]);
+				return [[{ json: { error: error.message }, pairedItem }]];
 			}
 			throw error;
 		}
-	}
-}
-
-// Utility function
-
-function validateURL(url: string) {
-	try {
-		const parseUrl = new URL(url);
-		return true;
-	} catch (err) {
-		return false;
 	}
 }

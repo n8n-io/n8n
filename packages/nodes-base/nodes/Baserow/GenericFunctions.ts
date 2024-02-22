@@ -1,25 +1,29 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	IHttpRequestMethods,
+	ILoadOptionsFunctions,
+	IRequestOptions,
+	JsonObject,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
-
-import { IDataObject, ILoadOptionsFunctions, NodeApiError, NodeOperationError } from 'n8n-workflow';
-
-import { Accumulator, BaserowCredentials, LoadedResource } from './types';
+import type { Accumulator, BaserowCredentials, LoadedResource } from './types';
 
 /**
  * Make a request to Baserow API.
  */
 export async function baserowApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
+	jwtToken: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
-	jwtToken: string,
 ) {
 	const credentials = (await this.getCredentials('baserowApi')) as BaserowCredentials;
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			Authorization: `JWT ${jwtToken}`,
 		},
@@ -39,9 +43,9 @@ export async function baserowApiRequest(
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -50,11 +54,11 @@ export async function baserowApiRequest(
  */
 export async function baserowApiRequestAllItems(
 	this: IExecuteFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
+	jwtToken: string,
 	body: IDataObject,
 	qs: IDataObject = {},
-	jwtToken: string,
 ): Promise<IDataObject[]> {
 	const returnData: IDataObject[] = [];
 	let responseData;
@@ -62,12 +66,12 @@ export async function baserowApiRequestAllItems(
 	qs.page = 1;
 	qs.size = 100;
 
-	const returnAll = this.getNodeParameter('returnAll', 0, false) as boolean;
-	const limit = this.getNodeParameter('limit', 0, 0) as number;
+	const returnAll = this.getNodeParameter('returnAll', 0, false);
+	const limit = this.getNodeParameter('limit', 0, 0);
 
 	do {
-		responseData = await baserowApiRequest.call(this, method, endpoint, body, qs, jwtToken);
-		returnData.push(...responseData.results);
+		responseData = await baserowApiRequest.call(this, method, endpoint, jwtToken, body, qs);
+		returnData.push(...(responseData.results as IDataObject[]));
 
 		if (!returnAll && returnData.length > limit) {
 			return returnData.slice(0, limit);
@@ -86,7 +90,7 @@ export async function getJwtToken(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	{ username, password, host }: BaserowCredentials,
 ) {
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		method: 'POST',
 		body: {
 			username,
@@ -97,10 +101,10 @@ export async function getJwtToken(
 	};
 
 	try {
-		const { token } = (await this.helpers.request!(options)) as { token: string };
+		const { token } = (await this.helpers.request(options)) as { token: string };
 		return token;
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -114,8 +118,6 @@ export async function getFieldNamesAndIds(
 		this,
 		'GET',
 		endpoint,
-		{},
-		{},
 		jwtToken,
 	)) as LoadedResource[];
 
@@ -133,7 +135,9 @@ export const toOptions = (items: LoadedResource[]) =>
  */
 export class TableFieldMapper {
 	nameToIdMapping: Record<string, string> = {};
+
 	idToNameMapping: Record<string, string> = {};
+
 	mapIds = true;
 
 	async getTableFields(
@@ -142,7 +146,7 @@ export class TableFieldMapper {
 		jwtToken: string,
 	): Promise<LoadedResource[]> {
 		const endpoint = `/api/database/fields/table/${table}/`;
-		return await baserowApiRequest.call(this, 'GET', endpoint, {}, {}, jwtToken);
+		return await baserowApiRequest.call(this, 'GET', endpoint, jwtToken);
 	}
 
 	createMappings(tableFields: LoadedResource[]) {

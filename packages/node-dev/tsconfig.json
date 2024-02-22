@@ -1,10 +1,10 @@
 {
-	"extends": "../../tsconfig.json",
+	"extends": ["../../tsconfig.json", "../../tsconfig.backend.json"],
 	"compilerOptions": {
 		"outDir": "dist",
-		"types": ["node"],
+		"preserveSymlinks": true,
+		"tsBuildInfoFile": "dist/build.tsbuildinfo",
 		// TODO: remove all options below this line
-		"noUnusedLocals": false,
 		"useUnknownInCatchVariables": false
 	},
 	"include": ["commands/**/*.ts", "src/**/*.ts"]

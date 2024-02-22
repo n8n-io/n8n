@@ -1,69 +1,53 @@
 <template>
-	<div
-		:class="['n8n-form-box', $style.container]"
-	>
-		<div
-			v-if="title"
-			:class="$style.heading"
-		>
-			<n8n-heading
-				size="xlarge"
-			>
-			{{title}}
-			</n8n-heading>
+	<div :class="['n8n-form-box', $style.container]">
+		<div v-if="title" :class="$style.heading">
+			<N8nHeading size="xlarge">
+				{{ title }}
+			</N8nHeading>
 		</div>
-		<div
-			:class="$style.inputsContainer"
-		>
-			<n8n-form-inputs
+		<div :class="$style.inputsContainer">
+			<N8nFormInputs
 				:inputs="inputs"
-				:eventBus="formBus"
-				:columnView="true"
-				@input="onInput"
+				:event-bus="formBus"
+				:column-view="true"
+				@update="onUpdateModelValue"
 				@submit="onSubmit"
 			/>
 		</div>
-		<div :class="$style.buttonsContainer" v-if="secondaryButtonText || buttonText">
-			<span
-				v-if="secondaryButtonText"
-				:class="$style.secondaryButtonContainer"
-			>
-				<n8n-link
-					size="medium"
-					theme="text"
-					@click="onSecondaryButtonClick"
-				>
-					{{secondaryButtonText}}
-				</n8n-link>
+		<div v-if="secondaryButtonText || buttonText" :class="$style.buttonsContainer">
+			<span v-if="secondaryButtonText" :class="$style.secondaryButtonContainer">
+				<N8nLink size="medium" theme="text" @click="onSecondaryButtonClick">
+					{{ secondaryButtonText }}
+				</N8nLink>
 			</span>
-			<n8n-button
+			<N8nButton
 				v-if="buttonText"
 				:label="buttonText"
 				:loading="buttonLoading"
+				data-test-id="form-submit-button"
 				size="large"
 				@click="onButtonClick"
 			/>
 		</div>
 		<div :class="$style.actionContainer">
-			<n8n-link
-				v-if="redirectText && redirectLink"
-				:to="redirectLink"
-			>
-				{{redirectText}}
-			</n8n-link>
+			<N8nLink v-if="redirectText && redirectLink" :to="redirectLink">
+				{{ redirectText }}
+			</N8nLink>
 		</div>
+		<slot></slot>
 	</div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import N8nFormInputs from '../N8nFormInputs';
 import N8nHeading from '../N8nHeading';
 import N8nLink from '../N8nLink';
 import N8nButton from '../N8nButton';
+import { createEventBus } from '../../utils';
 
-export default Vue.extend({
-	name: 'n8n-form-box',
+export default defineComponent({
+	name: 'N8nFormBox',
 	components: {
 		N8nHeading,
 		N8nFormInputs,
@@ -73,12 +57,11 @@ export default Vue.extend({
 	props: {
 		title: {
 			type: String,
+			default: '',
 		},
 		inputs: {
 			type: Array,
-			default() {
-				return [];
-			},
+			default: () => [],
 		},
 		buttonText: {
 			type: String,
@@ -92,25 +75,27 @@ export default Vue.extend({
 		},
 		redirectText: {
 			type: String,
+			default: '',
 		},
 		redirectLink: {
 			type: String,
+			default: '',
 		},
 	},
 	data() {
 		return {
-			formBus: new Vue(),
+			formBus: createEventBus(),
 		};
 	},
 	methods: {
-		onInput(e: {name: string, value: string}) {
-			this.$emit('input', e);
+		onUpdateModelValue(e: { name: string; value: string }) {
+			this.$emit('update', e);
 		},
-		onSubmit(e: {[key: string]: string}) {
+		onSubmit(e: { [key: string]: string }) {
 			this.$emit('submit', e);
 		},
 		onButtonClick() {
-			this.formBus.$emit('submit');
+			this.formBus.emit('submit');
 		},
 		onSecondaryButtonClick(event: Event) {
 			this.$emit('secondaryClick', event);

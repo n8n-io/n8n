@@ -1,9 +1,13 @@
-import { ValueTransformer } from 'typeorm';
-import config from '../../../config';
+import { jsonParse } from 'n8n-workflow';
+import type { ValueTransformer, FindOperator } from '@n8n/typeorm';
+import config from '@/config';
 
 export const idStringifier = {
-	from: (value: number): string | number => (typeof value === 'number' ? value.toString() : value),
-	to: (value: string): number | string => (typeof value === 'string' ? Number(value) : value),
+	from: (value?: number): string | undefined => value?.toString(),
+	to: (
+		value: string | FindOperator<unknown> | undefined,
+	): number | FindOperator<unknown> | undefined =>
+		typeof value === 'string' ? Number(value) : value,
 };
 
 export const lowerCaser = {
@@ -16,8 +20,7 @@ export const lowerCaser = {
  */
 export const objectRetriever: ValueTransformer = {
 	to: (value: object): object => value,
-	from: (value: string | object): object =>
-		typeof value === 'string' ? (JSON.parse(value) as object) : value,
+	from: (value: string | object): object => (typeof value === 'string' ? jsonParse(value) : value),
 };
 
 /**
@@ -27,8 +30,7 @@ export const objectRetriever: ValueTransformer = {
 const jsonColumn: ValueTransformer = {
 	to: (value: object): string | object =>
 		config.getEnv('database.type') === 'sqlite' ? JSON.stringify(value) : value,
-	from: (value: string | object): object =>
-		typeof value === 'string' ? (JSON.parse(value) as object) : value,
+	from: (value: string | object): object => (typeof value === 'string' ? jsonParse(value) : value),
 };
 
 export const sqlite = { jsonColumn };

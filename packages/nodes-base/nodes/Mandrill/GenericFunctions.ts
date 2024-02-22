@@ -1,19 +1,23 @@
-import { OptionsWithUri } from 'request';
-
-import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
-import _ from 'lodash';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import map from 'lodash/map';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	IHookFunctions,
+	IHttpRequestMethods,
+	ILoadOptionsFunctions,
+	IRequestOptions,
+	JsonObject,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function mandrillApiRequest(
 	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,
 	resource: string,
-	method: string,
+	method: IHttpRequestMethods,
 	action: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
-	headers?: object,
-	// tslint:disable-next-line:no-any
+	headers?: IDataObject,
 ): Promise<any> {
 	const credentials = await this.getCredentials('mandrillApi');
 
@@ -21,7 +25,7 @@ export async function mandrillApiRequest(
 
 	const endpoint = 'mandrillapp.com/api/1.0';
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers,
 		method,
 		uri: `https://${endpoint}${resource}${action}.json`,
@@ -30,18 +34,17 @@ export async function mandrillApiRequest(
 	};
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
-// tslint:disable-next-line:no-any
 export function getToEmailArray(toEmail: string): any {
 	let toEmailArray;
 	if (toEmail.split(',').length > 0) {
 		const array = toEmail.split(',');
-		toEmailArray = _.map(array, (email) => {
+		toEmailArray = map(array, (email) => {
 			return {
 				email,
 				type: 'to',
@@ -68,7 +71,6 @@ export function getGoogleAnalyticsDomainsArray(s: string): string[] {
 	return array;
 }
 
-// tslint:disable-next-line:no-any
 export function getTags(s: string): any[] {
 	let array = [];
 	if (s.split(',').length > 0) {
@@ -79,7 +81,6 @@ export function getTags(s: string): any[] {
 	return array;
 }
 
-// tslint:disable-next-line:no-any
 export function validateJSON(json: string | undefined): any {
 	let result;
 	try {

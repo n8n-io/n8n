@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 import {
 	getActionInheritedProperties,
@@ -327,7 +327,7 @@ export const messageFields: INodeProperties[] = [
 										value: 'url',
 									},
 									{
-										name: 'Binary Data',
+										name: 'Binary File',
 										value: 'binaryData',
 									},
 								],

@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 import { TLP } from '../interfaces/AlertInterface';
 
@@ -101,7 +101,7 @@ export const observableFields: INodeProperties[] = [
 			},
 		},
 		description:
-			'Type of the observable. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 	},
 	{
 		displayName: 'Data',
@@ -120,12 +120,12 @@ export const observableFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Binary Property',
+		displayName: 'Input Binary Field',
 		name: 'binaryProperty',
 		type: 'string',
 		required: true,
 		default: 'data',
-		description: 'Binary Property that represent the attachment file',
+		description: 'The name of the input binary field that represent the attachment file',
 		displayOptions: {
 			show: {
 				resource: ['observable'],
@@ -448,7 +448,7 @@ export const observableFields: INodeProperties[] = [
 					loadOptionsMethod: 'loadObservableTypes',
 				},
 				description:
-					'Type of the observable. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 			},
 			{
 				displayName: 'Date Range',

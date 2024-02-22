@@ -1,70 +1,24 @@
-/* eslint-disable import/no-cycle */
-import {
-	BeforeUpdate,
-	CreateDateColumn,
-	Entity,
-	ManyToOne,
-	RelationId,
-	UpdateDateColumn,
-} from 'typeorm';
-import { IsDate, IsOptional } from 'class-validator';
-
-import * as config from '../../../config';
-import { DatabaseType } from '../../index';
+import { Column, Entity, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
 import { WorkflowEntity } from './WorkflowEntity';
 import { User } from './User';
-import { Role } from './Role';
+import { WithTimestamps } from './AbstractEntity';
 
-// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-function getTimestampSyntax() {
-	const dbType = config.getEnv('database.type');
-
-	const map: { [key in DatabaseType]: string } = {
-		sqlite: "STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')",
-		postgresdb: 'CURRENT_TIMESTAMP(3)',
-		mysqldb: 'CURRENT_TIMESTAMP(3)',
-		mariadb: 'CURRENT_TIMESTAMP(3)',
-	};
-
-	return map[dbType];
-}
+export type WorkflowSharingRole = 'workflow:owner' | 'workflow:editor' | 'workflow:user';
 
 @Entity()
-export class SharedWorkflow {
-	@ManyToOne(() => Role, (role) => role.sharedWorkflows, { nullable: false })
-	role: Role;
+export class SharedWorkflow extends WithTimestamps {
+	@Column()
+	role: WorkflowSharingRole;
 
-	@ManyToOne(() => User, (user) => user.sharedWorkflows, { primary: true })
+	@ManyToOne('User', 'sharedWorkflows')
 	user: User;
 
-	@RelationId((sharedWorkflow: SharedWorkflow) => sharedWorkflow.user)
+	@PrimaryColumn()
 	userId: string;
 
-	@ManyToOne(() => WorkflowEntity, (workflow) => workflow.shared, {
-		primary: true,
-		onDelete: 'CASCADE',
-	})
+	@ManyToOne('WorkflowEntity', 'shared')
 	workflow: WorkflowEntity;
 
-	@RelationId((sharedWorkflow: SharedWorkflow) => sharedWorkflow.workflow)
-	workflowId: number;
-
-	@CreateDateColumn({ precision: 3, default: () => getTimestampSyntax() })
-	@IsOptional() // ignored by validation because set at DB level
-	@IsDate()
-	createdAt: Date;
-
-	@UpdateDateColumn({
-		precision: 3,
-		default: () => getTimestampSyntax(),
-		onUpdate: getTimestampSyntax(),
-	})
-	@IsOptional() // ignored by validation because set at DB level
-	@IsDate()
-	updatedAt: Date;
-
-	@BeforeUpdate()
-	setUpdateDate(): void {
-		this.updatedAt = new Date();
-	}
+	@PrimaryColumn()
+	workflowId: string;
 }

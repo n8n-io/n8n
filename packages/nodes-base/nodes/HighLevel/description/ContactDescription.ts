@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 import { splitTagsPreSendAction, validEmailAndPhonePreSendAction } from '../GenericFunctions';
 
 export const contactOperations: INodeProperties[] = [
@@ -180,7 +180,7 @@ const customFields: INodeProperties = {
 					required: true,
 					default: '',
 					description:
-						'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+						'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 					typeOptions: {
 						loadOptions: {
 							routing: {

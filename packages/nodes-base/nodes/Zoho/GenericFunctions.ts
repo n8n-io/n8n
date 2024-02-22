@@ -1,12 +1,18 @@
-import { OptionsWithUri } from 'request';
+import type {
+	IExecuteFunctions,
+	IHookFunctions,
+	IDataObject,
+	ILoadOptionsFunctions,
+	JsonObject,
+	IHttpRequestMethods,
+	IRequestOptions,
+} from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
+import flow from 'lodash/flow';
+import sortBy from 'lodash/sortBy';
 
-import { IDataObject, ILoadOptionsFunctions, NodeApiError, NodeOperationError } from 'n8n-workflow';
-
-import { flow, sortBy } from 'lodash';
-
-import {
+import type {
 	AllFields,
 	CamelCaseResource,
 	DateType,
@@ -22,9 +28,20 @@ import {
 	ZohoOAuth2ApiCredentials,
 } from './types';
 
+export function throwOnErrorStatus(
+	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,
+	responseData: {
+		data?: Array<{ status: string; message: string }>;
+	},
+) {
+	if (responseData?.data?.[0].status === 'error') {
+		throw new NodeOperationError(this.getNode(), responseData as Error);
+	}
+}
+
 export async function zohoApiRequest(
 	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
@@ -34,13 +51,13 @@ export async function zohoApiRequest(
 		'zohoOAuth2Api',
 	)) as ZohoOAuth2ApiCredentials;
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		body: {
 			data: [body],
 		},
 		method,
 		qs,
-		uri: uri ?? `${oauthTokenData.api_domain}/crm/v2${endpoint}`,
+		uri: uri || `${oauthTokenData.api_domain}/crm/v2${endpoint}`,
 		json: true,
 	};
 
@@ -54,14 +71,18 @@ export async function zohoApiRequest(
 
 	try {
 		const responseData = await this.helpers.requestOAuth2?.call(this, 'zohoOAuth2Api', options);
-
 		if (responseData === undefined) return [];
-
-		throwOnErrorStatus.call(this, responseData);
+		throwOnErrorStatus.call(this, responseData as IDataObject);
 
 		return responseData;
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		const args = error.cause?.data
+			? {
+					message: error.cause.data.message || 'The Zoho API returned an error.',
+					description: JSON.stringify(error.cause.data, null, 2),
+			  }
+			: undefined;
+		throw new NodeApiError(this.getNode(), error as JsonObject, args);
 	}
 }
 
@@ -70,7 +91,7 @@ export async function zohoApiRequest(
  */
 export async function zohoApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
@@ -84,7 +105,7 @@ export async function zohoApiRequestAllItems(
 	do {
 		responseData = await zohoApiRequest.call(this, method, endpoint, body, qs);
 		if (Array.isArray(responseData) && !responseData.length) return returnData;
-		returnData.push(...responseData.data);
+		returnData.push(...(responseData.data as IDataObject[]));
 		qs.page++;
 	} while (responseData.info.more_records !== undefined && responseData.info.more_records === true);
 
@@ -96,19 +117,19 @@ export async function zohoApiRequestAllItems(
  */
 export async function handleListing(
 	this: IExecuteFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+	const returnAll = this.getNodeParameter('returnAll', 0);
 
 	if (returnAll) {
 		return await zohoApiRequestAllItems.call(this, method, endpoint, body, qs);
 	}
 
 	const responseData = await zohoApiRequestAllItems.call(this, method, endpoint, body, qs);
-	const limit = this.getNodeParameter('limit', 0) as number;
+	const limit = this.getNodeParameter('limit', 0);
 
 	return responseData.slice(0, limit);
 }
@@ -133,29 +154,31 @@ export function throwOnMissingProducts(
 	}
 }
 
-export function throwOnErrorStatus(
-	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,
-	responseData: { data?: Array<{ status: string; message: string }> },
-) {
-	if (responseData?.data?.[0].status === 'error') {
-		throw new NodeOperationError(this.getNode(), responseData as Error);
-	}
-}
-
 // ----------------------------------------
 //        required field adjusters
 // ----------------------------------------
 
 /**
+ * Create a copy of an object without a specific property.
+ */
+const omit = (propertyToOmit: string, { [propertyToOmit]: _, ...remainingObject }) =>
+	remainingObject;
+
+/**
  * Place a product ID at a nested position in a product details field.
  */
-export const adjustProductDetails = (productDetails: ProductDetails) => {
+export const adjustProductDetails = (productDetails: ProductDetails, operation?: string) => {
 	return productDetails.map((p) => {
-		return {
-			...omit('product', p),
+		const adjustedProduct = {
 			product: { id: p.id },
 			quantity: p.quantity || 1,
 		};
+
+		if (operation === 'upsert') {
+			return { ...adjustedProduct, ...omit('id', p) };
+		} else {
+			return { ...adjustedProduct, ...omit('product', p) };
+		}
 	});
 };
 
@@ -318,16 +341,27 @@ export const adjustProductPayload = adjustCustomFields;
 // ----------------------------------------
 
 /**
- * Create a copy of an object without a specific property.
- */
-const omit = (propertyToOmit: string, { [propertyToOmit]: _, ...remainingObject }) =>
-	remainingObject;
-
-/**
  * Convert items in a Zoho CRM API response into n8n load options.
  */
 export const toLoadOptions = (items: ResourceItems, nameProperty: NameType) =>
 	items.map((item) => ({ name: item[nameProperty], value: item.id }));
+
+export function getModuleName(resource: string) {
+	const map: { [key: string]: string } = {
+		account: 'Accounts',
+		contact: 'Contacts',
+		deal: 'Deals',
+		invoice: 'Invoices',
+		lead: 'Leads',
+		product: 'Products',
+		purchaseOrder: 'Purchase_Orders',
+		salesOrder: 'Sales_Orders',
+		vendor: 'Vendors',
+		quote: 'Quotes',
+	};
+
+	return map[resource];
+}
 
 /**
  * Retrieve all fields for a resource, sorted alphabetically.
@@ -359,21 +393,13 @@ export async function getFields(
 	return sortBy(options, (o) => o.name);
 }
 
-export function getModuleName(resource: string) {
-	const map: { [key: string]: string } = {
-		account: 'Accounts',
-		contact: 'Contacts',
-		deal: 'Deals',
-		invoice: 'Invoices',
-		lead: 'Leads',
-		product: 'Products',
-		purchaseOrder: 'Purchase_Orders',
-		salesOrder: 'Sales_Orders',
-		vendor: 'Vendors',
-		quote: 'Quotes',
-	};
+export const capitalizeInitial = (str: string) => str[0].toUpperCase() + str.slice(1);
 
-	return map[resource];
+function getSectionApiName(resource: string) {
+	if (resource === 'purchaseOrder') return 'Purchase Order Information';
+	if (resource === 'salesOrder') return 'Sales Order Information';
+
+	return `${capitalizeInitial(resource)} Information`;
 }
 
 export async function getPicklistOptions(
@@ -402,13 +428,6 @@ export async function getPicklistOptions(
 	}));
 }
 
-function getSectionApiName(resource: string) {
-	if (resource === 'purchaseOrder') return 'Purchase Order Information';
-	if (resource === 'salesOrder') return 'Sales Order Information';
-
-	return `${capitalizeInitial(resource)} Information`;
-}
-
 /**
  * Add filter options to a query string object.
  */
@@ -418,5 +437,3 @@ export const addGetAllFilterOptions = (qs: IDataObject, options: GetAllFilterOpt
 		Object.assign(qs, fields && { fields: fields.join(',') }, rest);
 	}
 };
-
-export const capitalizeInitial = (str: string) => str[0].toUpperCase() + str.slice(1);

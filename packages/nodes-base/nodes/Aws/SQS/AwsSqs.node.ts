@@ -1,22 +1,19 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import { URL } from 'url';
+import type {
 	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodeParameters,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
-	NodeOperationError,
+	JsonObject,
 } from 'n8n-workflow';
-
-import { URL } from 'url';
-
-import { awsApiRequestSOAP } from '../GenericFunctions';
+import { NodeApiError } from 'n8n-workflow';
 
 import { pascalCase } from 'change-case';
+import { awsApiRequestSOAP } from '../GenericFunctions';
 
 export class AwsSqs implements INodeType {
 	description: INodeTypeDescription = {
@@ -25,7 +22,7 @@ export class AwsSqs implements INodeType {
 		icon: 'file:sqs.svg',
 		group: ['output'],
 		version: 1,
-		subtitle: `={{$parameter["operation"]}}`,
+		subtitle: '={{$parameter["operation"]}}',
 		description: 'Sends messages to AWS SQS',
 		defaults: {
 			name: 'AWS SQS',
@@ -108,9 +105,6 @@ export class AwsSqs implements INodeType {
 					},
 				},
 				required: true,
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'Message to send to the queue',
 			},
@@ -252,14 +246,14 @@ export class AwsSqs implements INodeType {
 		loadOptions: {
 			// Get all the available queues to display them to user so that it can be selected easily
 			async getQueues(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const params = ['Version=2012-11-05', `Action=ListQueues`];
+				const params = ['Version=2012-11-05', 'Action=ListQueues'];
 
 				let data;
 				try {
 					// loads first 1000 queues from SQS
 					data = await awsApiRequestSOAP.call(this, 'sqs', 'GET', `?${params.join('&')}`);
 				} catch (error) {
-					throw new NodeApiError(this.getNode(), error);
+					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 
 				let queues = data.ListQueuesResponse.ListQueuesResult.QueueUrl;
@@ -290,7 +284,7 @@ export class AwsSqs implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < items.length; i++) {
 			try {
@@ -299,13 +293,19 @@ export class AwsSqs implements INodeType {
 
 				const params = ['Version=2012-11-05', `Action=${pascalCase(operation)}`];
 
-				const options = this.getNodeParameter('options', i, {}) as IDataObject;
+				const options = this.getNodeParameter('options', i, {});
 				const sendInputData = this.getNodeParameter('sendInputData', i) as boolean;
 
-				const message = sendInputData
+				let message = sendInputData
 					? JSON.stringify(items[i].json)
-					: (this.getNodeParameter('message', i) as string);
-				params.push(`MessageBody=${message}`);
+					: this.getNodeParameter('message', i);
+
+				// This prevents [object Object] from being sent as message when sending json in an expression
+				if (typeof message === 'object') {
+					message = JSON.stringify(message);
+				}
+
+				params.push(`MessageBody=${encodeURIComponent(message as string)}`);
 
 				if (options.delaySeconds) {
 					params.push(`DelaySeconds=${options.delaySeconds}`);
@@ -344,29 +344,12 @@ export class AwsSqs implements INodeType {
 					this.getNodeParameter('options.messageAttributes.binary', i, []) as INodeParameters[]
 				).forEach((attribute) => {
 					attributeCount++;
+
 					const dataPropertyName = attribute.dataPropertyName as string;
-					const item = items[i];
-
-					if (item.binary === undefined) {
-						throw new NodeOperationError(
-							this.getNode(),
-							'No binary data set. So message attribute cannot be added!',
-							{ itemIndex: i },
-						);
-					}
-
-					if (item.binary[dataPropertyName] === undefined) {
-						throw new NodeOperationError(
-							this.getNode(),
-							`The binary property "${dataPropertyName}" does not exist. So message attribute cannot be added!`,
-							{ itemIndex: i },
-						);
-					}
-
-					const binaryData = item.binary[dataPropertyName].data;
+					const binaryData = this.helpers.assertBinaryData(i, dataPropertyName);
 
 					params.push(`MessageAttribute.${attributeCount}.Name=${attribute.name}`);
-					params.push(`MessageAttribute.${attributeCount}.Value.BinaryValue=${binaryData}`);
+					params.push(`MessageAttribute.${attributeCount}.Value.BinaryValue=${binaryData.data}`);
 					params.push(`MessageAttribute.${attributeCount}.Value.DataType=Binary`);
 				});
 
@@ -389,7 +372,7 @@ export class AwsSqs implements INodeType {
 						`${queuePath}?${params.join('&')}`,
 					);
 				} catch (error) {
-					throw new NodeApiError(this.getNode(), error);
+					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 
 				const result = responseData.SendMessageResponse.SendMessageResult;

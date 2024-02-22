@@ -1,15 +1,16 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
+import { wrapData } from '../../utils/utilities';
 import { apiRequest } from './GenericFunctions';
 
 import { boardFields, boardOperations } from './BoardDescription';
@@ -119,7 +120,7 @@ export class Wekan implements INodeType {
 			},
 			async getBoards(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const user = await apiRequest.call(this, 'GET', `user`, {}, {});
+				const user = await apiRequest.call(this, 'GET', 'user', {}, {});
 				const boards = await apiRequest.call(this, 'GET', `users/${user._id}/boards`, {}, {});
 				for (const board of boards) {
 					returnData.push({
@@ -235,19 +236,19 @@ export class Wekan implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		let returnAll;
 		let limit;
 
-		const operation = this.getNodeParameter('operation', 0) as string;
-		const resource = this.getNodeParameter('resource', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
+		const resource = this.getNodeParameter('resource', 0);
 
 		// For Post
 		let body: IDataObject;
 		// For Query string
 		let qs: IDataObject;
 
-		let requestMethod: string;
+		let requestMethod: IHttpRequestMethods;
 		let endpoint: string;
 
 		for (let i = 0; i < items.length; i++) {
@@ -269,7 +270,7 @@ export class Wekan implements INodeType {
 						body.title = this.getNodeParameter('title', i) as string;
 						body.owner = this.getNodeParameter('owner', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(body, additionalFields);
 					} else if (operation === 'delete') {
 						// ----------------------------------
@@ -300,7 +301,7 @@ export class Wekan implements INodeType {
 
 						const userId = this.getNodeParameter('IdUser', i) as string;
 
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						returnAll = this.getNodeParameter('returnAll', i);
 
 						endpoint = `users/${userId}/boards`;
 					} else {
@@ -327,7 +328,7 @@ export class Wekan implements INodeType {
 						body.swimlaneId = this.getNodeParameter('swimlaneId', i) as string;
 						body.authorId = this.getNodeParameter('authorId', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(body, additionalFields);
 					} else if (operation === 'delete') {
 						// ----------------------------------
@@ -362,7 +363,7 @@ export class Wekan implements INodeType {
 
 						const boardId = this.getNodeParameter('boardId', i) as string;
 						const fromObject = this.getNodeParameter('fromObject', i) as string;
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						returnAll = this.getNodeParameter('returnAll', i);
 
 						if (fromObject === 'list') {
 							const listId = this.getNodeParameter('listId', i) as string;
@@ -388,7 +389,7 @@ export class Wekan implements INodeType {
 
 						endpoint = `boards/${boardId}/lists/${listId}/cards/${cardId}`;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						Object.assign(body, updateFields);
 					} else {
 						throw new NodeOperationError(
@@ -497,7 +498,7 @@ export class Wekan implements INodeType {
 						requestMethod = 'GET';
 
 						const boardId = this.getNodeParameter('boardId', i) as string;
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						returnAll = this.getNodeParameter('returnAll', i);
 
 						endpoint = `boards/${boardId}/lists`;
 					} else {
@@ -556,7 +557,7 @@ export class Wekan implements INodeType {
 
 						const boardId = this.getNodeParameter('boardId', i) as string;
 						const cardId = this.getNodeParameter('cardId', i) as string;
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						returnAll = this.getNodeParameter('returnAll', i);
 
 						endpoint = `boards/${boardId}/cards/${cardId}/checklists`;
 					} else if (operation === 'getCheckItem') {
@@ -599,7 +600,7 @@ export class Wekan implements INodeType {
 
 						endpoint = `boards/${boardId}/cards/${cardId}/checklists/${checklistId}/items/${itemId}`;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						Object.assign(body, updateFields);
 					} else {
 						throw new NodeOperationError(
@@ -649,25 +650,26 @@ export class Wekan implements INodeType {
 
 						endpoint = `boards/${boardId}/cards/${cardId}/checklists/${checklistId}/items/${itemId}`;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						Object.assign(body, updateFields);
 					}
 				}
 				let responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
-				if (returnAll === false) {
-					limit = this.getNodeParameter('limit', i) as number;
+				if (returnAll === false && Array.isArray(responseData)) {
+					limit = this.getNodeParameter('limit', i);
 					responseData = responseData.splice(0, limit);
 				}
 
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else {
-					returnData.push(responseData as IDataObject);
-				}
+				const executionData = this.helpers.constructExecutionMetaData(
+					wrapData(responseData as IDataObject[]),
+					{ itemData: { item: i } },
+				);
+
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ json: { error: error.message }, pairedItem: { item: i } });
 					continue;
 				}
 				throw error;

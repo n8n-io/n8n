@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -9,6 +8,8 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import { snakeCase } from 'change-case';
+import moment from 'moment-timezone';
 import {
 	keysToSnakeCase,
 	pagerDutyApiRequest,
@@ -23,11 +24,7 @@ import { logEntryFields, logEntryOperations } from './LogEntryDescription';
 
 import { userFields, userOperations } from './UserDescription';
 
-import { IIncident } from './IncidentInterface';
-
-import { snakeCase } from 'change-case';
-
-import moment from 'moment-timezone';
+import type { IIncident } from './IncidentInterface';
 
 export class PagerDuty implements INodeType {
 	description: INodeTypeDescription = {
@@ -122,7 +119,7 @@ export class PagerDuty implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available escalation policies to display them to user so that he can
+			// Get all the available escalation policies to display them to user so that they can
 			// select them easily
 			async getEscalationPolicies(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -142,7 +139,7 @@ export class PagerDuty implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available priorities to display them to user so that he can
+			// Get all the available priorities to display them to user so that they can
 			// select them easily
 			async getPriorities(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -164,7 +161,7 @@ export class PagerDuty implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available services to display them to user so that he can
+			// Get all the available services to display them to user so that they can
 			// select them easily
 			async getServices(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -184,7 +181,7 @@ export class PagerDuty implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the timezones to display them to user so that he can
+			// Get all the timezones to display them to user so that they can
 			// select them easily
 			async getTimezones(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -207,8 +204,8 @@ export class PagerDuty implements INodeType {
 		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'incident') {
@@ -217,7 +214,7 @@ export class PagerDuty implements INodeType {
 						const title = this.getNodeParameter('title', i) as string;
 						const serviceId = this.getNodeParameter('serviceId', i) as string;
 						const email = this.getNodeParameter('email', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const conferenceBridge = (this.getNodeParameter('conferenceBridgeUi', i) as IDataObject)
 							.conferenceBridgeValues as IDataObject;
 						const body: IIncident = {
@@ -277,13 +274,13 @@ export class PagerDuty implements INodeType {
 					}
 					//https://api-reference.pagerduty.com/#!/Incidents/get_incidents
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-						const options = this.getNodeParameter('options', 0) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', 0);
+						const options = this.getNodeParameter('options', 0);
 						if (options.userIds) {
-							options.userIds = (options.userIds as string).split(',') as string[];
+							options.userIds = (options.userIds as string).split(',');
 						}
 						if (options.teamIds) {
-							options.teamIds = (options.teamIds as string).split(',') as string[];
+							options.teamIds = (options.teamIds as string).split(',');
 						}
 						if (options.include) {
 							options.include = (options.include as string[]).map((e) => snakeCase(e));
@@ -302,7 +299,7 @@ export class PagerDuty implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', 0) as number;
+							qs.limit = this.getNodeParameter('limit', 0);
 							responseData = await pagerDutyApiRequest.call(this, 'GET', '/incidents', {}, qs);
 							responseData = responseData.incidents;
 						}
@@ -313,7 +310,7 @@ export class PagerDuty implements INodeType {
 						const email = this.getNodeParameter('email', i) as string;
 						const conferenceBridge = (this.getNodeParameter('conferenceBridgeUi', i) as IDataObject)
 							.conferenceBridgeValues as IDataObject;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: IIncident = {
 							type: 'incident',
 						};
@@ -390,7 +387,7 @@ export class PagerDuty implements INodeType {
 					//https://api-reference.pagerduty.com/#!/Incidents/get_incidents_id_notes
 					if (operation === 'getAll') {
 						const incidentId = this.getNodeParameter('incidentId', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						if (returnAll) {
 							responseData = await pagerDutyApiRequestAllItems.call(
 								this,
@@ -401,7 +398,7 @@ export class PagerDuty implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', 0) as number;
+							qs.limit = this.getNodeParameter('limit', 0);
 							responseData = await pagerDutyApiRequest.call(
 								this,
 								'GET',
@@ -426,10 +423,10 @@ export class PagerDuty implements INodeType {
 					}
 					//https://api-reference.pagerduty.com/#!/Log_Entries/get_log_entries
 					if (operation === 'getAll') {
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						Object.assign(qs, options);
 						keysToSnakeCase(qs);
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						if (returnAll) {
 							responseData = await pagerDutyApiRequestAllItems.call(
 								this,
@@ -440,7 +437,7 @@ export class PagerDuty implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', 0) as number;
+							qs.limit = this.getNodeParameter('limit', 0);
 							responseData = await pagerDutyApiRequest.call(this, 'GET', '/log_entries', {}, qs);
 							responseData = responseData.log_entries;
 						}
@@ -456,7 +453,7 @@ export class PagerDuty implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 
@@ -473,6 +470,6 @@ export class PagerDuty implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

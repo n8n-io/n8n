@@ -1,25 +1,23 @@
-import { OptionsWithUri } from 'request';
-
-import { BINARY_ENCODING, IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
-import {
+import type {
 	IDataObject,
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
 	IHookFunctions,
 	IWebhookFunctions,
-	NodeApiError,
-	NodeOperationError,
+	JsonObject,
+	IRequestOptions,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
+import { BINARY_ENCODING, NodeApiError } from 'n8n-workflow';
 
 export async function affinityApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
-	// tslint:disable-next-line:no-any
 	body: any = {},
 	query: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('affinityApi');
 
@@ -27,7 +25,7 @@ export async function affinityApiRequest(
 
 	const endpoint = 'https://api.affinity.co';
 
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 			Authorization: `Basic ${Buffer.from(apiKey).toString(BINARY_ENCODING)}`,
@@ -38,7 +36,7 @@ export async function affinityApiRequest(
 		uri: uri || `${endpoint}${resource}`,
 		json: true,
 	};
-	if (!Object.keys(body).length) {
+	if (!Object.keys(body as IDataObject).length) {
 		delete options.body;
 	}
 	if (!Object.keys(query).length) {
@@ -46,21 +44,19 @@ export async function affinityApiRequest(
 	}
 	options = Object.assign({}, options, option);
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
 export async function affinityApiRequestAllItems(
 	this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
-	// tslint:disable-next-line:no-any
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -72,7 +68,7 @@ export async function affinityApiRequestAllItems(
 		responseData = await affinityApiRequest.call(this, method, resource, body, query);
 		// @ts-ignore
 		query.page_token = responseData.page_token;
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (responseData.page_token !== undefined && responseData.page_token !== null);
 
 	return returnData;

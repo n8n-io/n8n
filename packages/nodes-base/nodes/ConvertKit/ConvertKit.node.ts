@@ -1,6 +1,6 @@
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -100,7 +100,7 @@ export class ConvertKit implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the tags to display them to user so that he can
+			// Get all the tags to display them to user so that they can
 			// select them easily
 			async getTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -116,7 +116,7 @@ export class ConvertKit implements INodeType {
 
 				return returnData;
 			},
-			// Get all the forms to display them to user so that he can
+			// Get all the forms to display them to user so that they can
 			// select them easily
 			async getForms(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -133,7 +133,7 @@ export class ConvertKit implements INodeType {
 				return returnData;
 			},
 
-			// Get all the sequences to display them to user so that he can
+			// Get all the sequences to display them to user so that they can
 			// select them easily
 			async getSequences(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -159,8 +159,8 @@ export class ConvertKit implements INodeType {
 		const qs: IDataObject = {};
 		let responseData;
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < items.length; i++) {
 			try {
@@ -187,14 +187,14 @@ export class ConvertKit implements INodeType {
 						responseData = await convertKitApiRequest.call(this, 'GET', `/custom_fields/${id}`);
 					}
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
-						responseData = await convertKitApiRequest.call(this, 'GET', `/custom_fields`);
+						responseData = await convertKitApiRequest.call(this, 'GET', '/custom_fields');
 
 						responseData = responseData.custom_fields;
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 
 							responseData = responseData.slice(0, limit);
 						}
@@ -218,7 +218,7 @@ export class ConvertKit implements INodeType {
 
 						const formId = this.getNodeParameter('id', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IDataObject = {
 							email,
@@ -254,14 +254,14 @@ export class ConvertKit implements INodeType {
 						responseData = subscription;
 					}
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
-						responseData = await convertKitApiRequest.call(this, 'GET', `/forms`);
+						responseData = await convertKitApiRequest.call(this, 'GET', '/forms');
 
 						responseData = responseData.forms;
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 
 							responseData = responseData.slice(0, limit);
 						}
@@ -269,9 +269,9 @@ export class ConvertKit implements INodeType {
 					if (operation === 'getSubscriptions') {
 						const formId = this.getNodeParameter('id', i) as string;
 
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (additionalFields.subscriberState) {
 							qs.subscriber_state = additionalFields.subscriberState as string;
@@ -288,7 +288,7 @@ export class ConvertKit implements INodeType {
 						responseData = responseData.subscriptions;
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 
 							responseData = responseData.slice(0, limit);
 						}
@@ -301,7 +301,7 @@ export class ConvertKit implements INodeType {
 
 						const sequenceId = this.getNodeParameter('id', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IDataObject = {
 							email,
@@ -337,14 +337,14 @@ export class ConvertKit implements INodeType {
 						responseData = subscription;
 					}
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
-						responseData = await convertKitApiRequest.call(this, 'GET', `/sequences`);
+						responseData = await convertKitApiRequest.call(this, 'GET', '/sequences');
 
 						responseData = responseData.courses;
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 
 							responseData = responseData.slice(0, limit);
 						}
@@ -352,9 +352,9 @@ export class ConvertKit implements INodeType {
 					if (operation === 'getSubscriptions') {
 						const sequenceId = this.getNodeParameter('id', i) as string;
 
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (additionalFields.subscriberState) {
 							qs.subscriber_state = additionalFields.subscriberState as string;
@@ -371,7 +371,7 @@ export class ConvertKit implements INodeType {
 						responseData = responseData.subscriptions;
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 
 							responseData = responseData.slice(0, limit);
 						}
@@ -380,9 +380,9 @@ export class ConvertKit implements INodeType {
 
 				if (resource === 'tag') {
 					if (operation === 'create') {
-						const names = ((this.getNodeParameter('name', i) as string).split(',') as string[]).map(
-							(e) => ({ name: e }),
-						);
+						const names = (this.getNodeParameter('name', i) as string)
+							.split(',')
+							.map((e) => ({ name: e }));
 
 						const body: IDataObject = {
 							tag: names,
@@ -392,14 +392,14 @@ export class ConvertKit implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
-						responseData = await convertKitApiRequest.call(this, 'GET', `/tags`);
+						responseData = await convertKitApiRequest.call(this, 'GET', '/tags');
 
 						responseData = responseData.tags;
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 
 							responseData = responseData.slice(0, limit);
 						}
@@ -412,7 +412,7 @@ export class ConvertKit implements INodeType {
 
 						const email = this.getNodeParameter('email', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IDataObject = {
 							email,
@@ -447,7 +447,7 @@ export class ConvertKit implements INodeType {
 					if (operation === 'getAll') {
 						const tagId = this.getNodeParameter('tagId', i) as string;
 
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						responseData = await convertKitApiRequest.call(
 							this,
@@ -458,7 +458,7 @@ export class ConvertKit implements INodeType {
 						responseData = responseData.subscriptions;
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 
 							responseData = responseData.slice(0, limit);
 						}
@@ -479,7 +479,7 @@ export class ConvertKit implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);
@@ -492,6 +492,6 @@ export class ConvertKit implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

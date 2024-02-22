@@ -1,10 +1,15 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
-
-import { connect, copyInputItems, destroy, execute } from './GenericFunctions';
+import type {
+	IExecuteFunctions,
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 import snowflake from 'snowflake-sdk';
+import { connect, destroy, execute } from './GenericFunctions';
+
+import { getResolvables } from '@utils/utilities';
 
 export class Snowflake implements INodeType {
 	description: INodeTypeDescription = {
@@ -19,6 +24,7 @@ export class Snowflake implements INodeType {
 		},
 		inputs: ['main'],
 		outputs: ['main'],
+		parameterPane: 'wide',
 		credentials: [
 			{
 				name: 'snowflake',
@@ -61,8 +67,9 @@ export class Snowflake implements INodeType {
 				displayName: 'Query',
 				name: 'query',
 				type: 'string',
+				noDataExpression: true,
 				typeOptions: {
-					alwaysOpenEditWindow: true,
+					editor: 'sqlEditor',
 				},
 				displayOptions: {
 					show: {
@@ -158,7 +165,7 @@ export class Snowflake implements INodeType {
 		const credentials = (await this.getCredentials(
 			'snowflake',
 		)) as unknown as snowflake.ConnectionOptions;
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		let responseData;
 
 		const connection = snowflake.createConnection(credentials);
@@ -166,7 +173,7 @@ export class Snowflake implements INodeType {
 		await connect(connection);
 
 		const items = this.getInputData();
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 
 		if (operation === 'executeQuery') {
 			// ----------------------------------
@@ -174,9 +181,18 @@ export class Snowflake implements INodeType {
 			// ----------------------------------
 
 			for (let i = 0; i < items.length; i++) {
-				const query = this.getNodeParameter('query', i) as string;
+				let query = this.getNodeParameter('query', i) as string;
+
+				for (const resolvable of getResolvables(query)) {
+					query = query.replace(resolvable, this.evaluateExpression(resolvable, i) as string);
+				}
+
 				responseData = await execute(connection, query, []);
-				returnData.push.apply(returnData, responseData as IDataObject[]);
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
+					{ itemData: { item: i } },
+				);
+				returnData.push(...executionData);
 			}
 		}
 
@@ -189,12 +205,18 @@ export class Snowflake implements INodeType {
 			const columnString = this.getNodeParameter('columns', 0) as string;
 			const columns = columnString.split(',').map((column) => column.trim());
 			const query = `INSERT INTO ${table}(${columns.join(',')}) VALUES (${columns
-				.map((column) => '?')
+				.map((_column) => '?')
 				.join(',')})`;
-			const data = copyInputItems(items, columns);
+			const data = this.helpers.copyInputItems(items, columns);
 			const binds = data.map((element) => Object.values(element));
 			await execute(connection, query, binds as unknown as snowflake.InsertBinds);
-			returnData.push.apply(returnData, data);
+			data.forEach((d, i) => {
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(d),
+					{ itemData: { item: i } },
+				);
+				returnData.push(...executionData);
+			});
 		}
 
 		if (operation === 'update') {
@@ -214,16 +236,21 @@ export class Snowflake implements INodeType {
 			const query = `UPDATE ${table} SET ${columns
 				.map((column) => `${column} = ?`)
 				.join(',')} WHERE ${updateKey} = ?;`;
-			const data = copyInputItems(items, columns);
+			const data = this.helpers.copyInputItems(items, columns);
 			const binds = data.map((element) => Object.values(element).concat(element[updateKey]));
 			for (let i = 0; i < binds.length; i++) {
 				await execute(connection, query, binds[i] as unknown as snowflake.InsertBinds);
 			}
-			returnData.push.apply(returnData, data);
+			data.forEach((d, i) => {
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(d),
+					{ itemData: { item: i } },
+				);
+				returnData.push(...executionData);
+			});
 		}
 
 		await destroy(connection);
-
-		return [this.helpers.returnJsonArray(returnData)];
+		return [returnData];
 	}
 }

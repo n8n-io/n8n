@@ -1,72 +1,21 @@
-/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
-/* eslint-disable import/no-cycle */
 import { Length } from 'class-validator';
 
-import {
-	IBinaryKeyData,
-	IConnections,
-	IDataObject,
-	INode,
-	IPairedItemData,
-	IWorkflowSettings,
-} from 'n8n-workflow';
+import { IConnections, IDataObject, IWorkflowSettings, WorkflowFEMeta } from 'n8n-workflow';
+import type { IBinaryKeyData, INode, IPairedItemData } from 'n8n-workflow';
 
-import {
-	BeforeUpdate,
-	Column,
-	ColumnOptions,
-	CreateDateColumn,
-	Entity,
-	Index,
-	JoinTable,
-	ManyToMany,
-	OneToMany,
-	PrimaryGeneratedColumn,
-	UpdateDateColumn,
-} from 'typeorm';
+import { Column, Entity, Index, JoinColumn, JoinTable, ManyToMany, OneToMany } from '@n8n/typeorm';
 
-import * as config from '../../../config';
-import { DatabaseType, IWorkflowDb } from '../..';
-import { TagEntity } from './TagEntity';
-import { SharedWorkflow } from './SharedWorkflow';
+import config from '@/config';
+import type { TagEntity } from './TagEntity';
+import type { SharedWorkflow } from './SharedWorkflow';
+import type { WorkflowStatistics } from './WorkflowStatistics';
+import type { WorkflowTagMapping } from './WorkflowTagMapping';
 import { objectRetriever, sqlite } from '../utils/transformers';
-
-function resolveDataType(dataType: string) {
-	const dbType = config.getEnv('database.type');
-
-	const typeMap: { [key in DatabaseType]: { [key: string]: string } } = {
-		sqlite: {
-			json: 'simple-json',
-		},
-		postgresdb: {
-			datetime: 'timestamptz',
-		},
-		mysqldb: {},
-		mariadb: {},
-	};
-
-	return typeMap[dbType][dataType] ?? dataType;
-}
-
-// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-function getTimestampSyntax() {
-	const dbType = config.getEnv('database.type');
-
-	const map: { [key in DatabaseType]: string } = {
-		sqlite: "STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')",
-		postgresdb: 'CURRENT_TIMESTAMP(3)',
-		mysqldb: 'CURRENT_TIMESTAMP(3)',
-		mariadb: 'CURRENT_TIMESTAMP(3)',
-	};
-
-	return map[dbType];
-}
+import { WithTimestampsAndStringId, jsonColumnType } from './AbstractEntity';
+import type { IWorkflowDb } from '@/Interfaces';
 
 @Entity()
-export class WorkflowEntity implements IWorkflowDb {
-	@PrimaryGeneratedColumn()
-	id: number;
-
+export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkflowDb {
 	// TODO: Add XSS check
 	@Index({ unique: true })
 	@Length(1, 128, {
@@ -78,36 +27,33 @@ export class WorkflowEntity implements IWorkflowDb {
 	@Column()
 	active: boolean;
 
-	@Column(resolveDataType('json'))
+	@Column(jsonColumnType)
 	nodes: INode[];
 
-	@Column(resolveDataType('json'))
+	@Column(jsonColumnType)
 	connections: IConnections;
 
-	@CreateDateColumn({ precision: 3, default: () => getTimestampSyntax() })
-	createdAt: Date;
-
-	@UpdateDateColumn({
-		precision: 3,
-		default: () => getTimestampSyntax(),
-		onUpdate: getTimestampSyntax(),
-	})
-	updatedAt: Date;
-
 	@Column({
-		type: resolveDataType('json') as ColumnOptions['type'],
+		type: jsonColumnType,
 		nullable: true,
 	})
 	settings?: IWorkflowSettings;
 
 	@Column({
-		type: resolveDataType('json') as ColumnOptions['type'],
+		type: jsonColumnType,
 		nullable: true,
 		transformer: objectRetriever,
 	})
 	staticData?: IDataObject;
 
-	@ManyToMany(() => TagEntity, (tag) => tag.workflows)
+	@Column({
+		type: jsonColumnType,
+		nullable: true,
+		transformer: objectRetriever,
+	})
+	meta?: WorkflowFEMeta;
+
+	@ManyToMany('TagEntity', 'workflows')
 	@JoinTable({
 		name: 'workflows_tags', // table name for the junction table of this relation
 		joinColumn: {
@@ -121,8 +67,15 @@ export class WorkflowEntity implements IWorkflowDb {
 	})
 	tags?: TagEntity[];
 
-	@OneToMany(() => SharedWorkflow, (sharedWorkflow) => sharedWorkflow.workflow)
+	@OneToMany('WorkflowTagMapping', 'workflows')
+	tagMappings: WorkflowTagMapping[];
+
+	@OneToMany('SharedWorkflow', 'workflow')
 	shared: SharedWorkflow[];
+
+	@OneToMany('WorkflowStatistics', 'workflow')
+	@JoinColumn({ referencedColumnName: 'workflow' })
+	statistics: WorkflowStatistics[];
 
 	@Column({
 		type: config.getEnv('database.type') === 'sqlite' ? 'text' : 'json',
@@ -131,9 +84,14 @@ export class WorkflowEntity implements IWorkflowDb {
 	})
 	pinData: ISimplifiedPinData;
 
-	@BeforeUpdate()
-	setUpdateDate() {
-		this.updatedAt = new Date();
+	@Column({ length: 36 })
+	versionId: string;
+
+	@Column({ default: 0 })
+	triggerCount: number;
+
+	display() {
+		return `"${this.name}" (ID: ${this.id})`;
 	}
 }
 

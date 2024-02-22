@@ -1,4 +1,4 @@
-import { INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
 
 import { campaignFields, campaignOperations } from './CampaignDescription';
 
@@ -13,7 +13,6 @@ export class GoogleAds implements INodeType {
 		description: 'Use the Google Ads API',
 		defaults: {
 			name: 'Google Ads',
-			color: '#ff0000',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -24,7 +23,7 @@ export class GoogleAds implements INodeType {
 				testedBy: {
 					request: {
 						method: 'GET',
-						url: '/v9/customers:listAccessibleCustomers',
+						url: '/v15/customers:listAccessibleCustomers',
 					},
 				},
 			},

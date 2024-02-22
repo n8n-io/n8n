@@ -1,14 +1,13 @@
 <template>
-	<component :is="tag" :class="['n8n-text', ...classes]" v-on="$listeners">
+	<component :is="tag" :class="['n8n-text', ...classes]" v-bind="$attrs">
 		<slot></slot>
 	</component>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-
-export default Vue.extend({
-	name: 'n8n-text',
+import { defineComponent } from 'vue';
+export default defineComponent({
+	name: 'N8nText',
 	props: {
 		bold: {
 			type: Boolean,
@@ -17,11 +16,22 @@ export default Vue.extend({
 		size: {
 			type: String,
 			default: 'medium',
-			validator: (value: string): boolean => ['xsmall', 'small', 'mini', 'medium', 'large', 'xlarge'].includes(value),
+			validator: (value: string): boolean =>
+				['xsmall', 'small', 'mini', 'medium', 'large', 'xlarge'].includes(value),
 		},
 		color: {
 			type: String,
-			validator: (value: string): boolean => ['primary', 'text-dark', 'text-base', 'text-light', 'text-xlight', 'danger'].includes(value),
+			validator: (value: string): boolean =>
+				[
+					'primary',
+					'text-dark',
+					'text-base',
+					'text-light',
+					'text-xlight',
+					'danger',
+					'success',
+					'warning',
+				].includes(value),
 		},
 		align: {
 			type: String,
@@ -52,10 +62,10 @@ export default Vue.extend({
 
 			applied.push(`size-${this.size}`);
 
-			applied.push(this.bold? 'bold': 'regular');
+			applied.push(this.bold ? 'bold' : 'regular');
 
-			return applied.map((c) => (this.$style as { [key: string]: string })[c]);
-		}
+			return applied.map((c) => this.$style[c]);
+		},
 	},
 });
 </script>
@@ -119,7 +129,15 @@ export default Vue.extend({
 }
 
 .danger {
-	color: var(--color-danger);
+	color: var(--color-text-danger);
+}
+
+.success {
+	color: var(--color-success);
+}
+
+.warning {
+	color: var(--color-warning);
 }
 
 .align-left {
@@ -133,5 +151,4 @@ export default Vue.extend({
 .align-center {
 	text-align: center;
 }
-
 </style>

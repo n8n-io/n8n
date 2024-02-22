@@ -1,84 +1,110 @@
 <template>
 	<span>
-		<div v-if="isLoading">
-			Loading binary data...
-		</div>
-		<div v-else-if="error">
-			Error loading binary data
-		</div>
+		<div v-if="isLoading">Loading binary data...</div>
+		<div v-else-if="error">Error loading binary data</div>
 		<span v-else>
-			<video v-if="binaryData.mimeType && binaryData.mimeType.startsWith('video/')" controls autoplay>
-				<source :src="embedSource" :type="binaryData.mimeType">
+			<video v-if="binaryData.fileType === 'video'" controls autoplay>
+				<source :src="embedSource" :type="binaryData.mimeType" />
 				{{ $locale.baseText('binaryDataDisplay.yourBrowserDoesNotSupport') }}
 			</video>
-			<embed v-else :src="embedSource" class="binary-data" :class="embedClass()"/>
+			<audio v-else-if="binaryData.fileType === 'audio'" controls autoplay>
+				<source :src="embedSource" :type="binaryData.mimeType" />
+				{{ $locale.baseText('binaryDataDisplay.yourBrowserDoesNotSupport') }}
+			</audio>
+			<VueJsonPretty
+				v-else-if="binaryData.fileType === 'json'"
+				:data="data"
+				:deep="3"
+				:show-length="true"
+			/>
+			<RunDataHtml v-else-if="binaryData.fileType === 'html'" :input-html="data" />
+			<embed v-else :src="embedSource" class="binary-data" :class="embedClass()" />
 		</span>
 	</span>
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+import type { IBinaryData } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import type { PropType } from 'vue';
+import VueJsonPretty from 'vue-json-pretty';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import RunDataHtml from '@/components/RunDataHtml.vue';
 
-
-import mixins from 'vue-typed-mixins';
-import { restApi } from '@/components/mixins/restApi';
-
-export default mixins(
-	restApi,
-)
-	.extend({
-		name: 'BinaryDataDisplayEmbed',
-		props: [
-			'binaryData', // IBinaryDisplayData
-		],
-		data() {
-			return {
-				isLoading: true,
-				embedSource: '',
-				error: false,
-			};
+export default defineComponent({
+	name: 'BinaryDataDisplayEmbed',
+	components: {
+		VueJsonPretty,
+		RunDataHtml,
+	},
+	props: {
+		binaryData: {
+			type: Object as PropType<IBinaryData>,
+			required: true,
 		},
-		async mounted() {
-			if(!this.binaryData.id) {
-				this.embedSource = 'data:' + this.binaryData.mimeType + ';base64,' + this.binaryData.data;
-				this.isLoading = false;
-				return;
-			}
+	},
+	data() {
+		return {
+			isLoading: true,
+			embedSource: '',
+			error: false,
+			data: '',
+		};
+	},
+	computed: {
+		...mapStores(useWorkflowsStore),
+	},
+	async mounted() {
+		const { id, data, fileName, fileType, mimeType } = this.binaryData;
+		const isJSONData = fileType === 'json';
+		const isHTMLData = fileType === 'html';
 
+		if (!id) {
+			if (isJSONData || isHTMLData) {
+				this.data = jsonParse(atob(data));
+			} else {
+				this.embedSource = 'data:' + mimeType + ';base64,' + data;
+			}
+		} else {
 			try {
-				const bufferString = await this.restApi().getBinaryBufferString(this.binaryData!.id!);
-				this.embedSource = 'data:' + this.binaryData.mimeType + ';base64,' + bufferString;
-				this.isLoading = false;
+				const binaryUrl = this.workflowsStore.getBinaryUrl(id, 'view', fileName, mimeType);
+				if (isJSONData || isHTMLData) {
+					const fetchedData = await fetch(binaryUrl, { credentials: 'include' });
+					this.data = await (isJSONData ? fetchedData.json() : fetchedData.text());
+				} else {
+					this.embedSource = binaryUrl;
+				}
 			} catch (e) {
-				this.isLoading = false;
 				this.error = true;
 			}
+		}
+
+		this.isLoading = false;
+	},
+	methods: {
+		embedClass(): string[] {
+			const { fileType } = this.binaryData;
+			return [fileType ?? 'other'];
 		},
-		methods: {
-			embedClass(): string[] {
-				// @ts-ignore
-				if (this.binaryData! !== null && this.binaryData!.mimeType! !== undefined && (this.binaryData!.mimeType! as string).startsWith('image')) {
-					return ['image'];
-				}
-				return ['other'];
-			},
-		},
-	});
+	},
+});
 </script>
 
 <style lang="scss">
-
 .binary-data {
-    background-color: var(--color-foreground-xlight);
+	background-color: var(--color-foreground-xlight);
 
-    &.image {
-        max-height: calc(100% - 1em);
-        max-width: calc(100% - 1em);
-    }
+	&.image {
+		max-height: calc(100% - 1em);
+		max-width: calc(100% - 1em);
+	}
 
-    &.other {
-        height: calc(100% - 1em);
-        width: calc(100% - 1em);
-    }
+	&.other,
+	&.pdf {
+		height: calc(100% - 1em);
+		width: calc(100% - 1em);
+	}
 }
-
 </style>

@@ -1,27 +1,26 @@
-import { OptionsWithUri } from 'request';
-
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+	JsonObject,
+	IRequestOptions,
+	IHttpRequestMethods,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function humanticAiApiRequest(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	method: string,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	try {
 		const credentials = await this.getCredentials('humanticAiApi');
-		let options: OptionsWithUri = {
+		let options = {
 			headers: {
 				'Content-Type': 'application/json',
 			},
@@ -30,23 +29,23 @@ export async function humanticAiApiRequest(
 			body,
 			uri: `https://api.humantic.ai/v1${resource}`,
 			json: true,
-		};
+		} satisfies IRequestOptions;
 
 		options = Object.assign({}, options, option);
 		options.qs.apikey = credentials.apiKey;
 
-		if (Object.keys(options.body).length === 0) {
+		if (Object.keys(options.body as IDataObject).length === 0) {
 			delete options.body;
 		}
 
-		const response = await this.helpers.request!(options);
+		const response = await this.helpers.request(options);
 
 		if (response.data && response.data.status === 'error') {
-			throw new NodeApiError(this.getNode(), response.data);
+			throw new NodeApiError(this.getNode(), response.data as JsonObject);
 		}
 
 		return response;
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

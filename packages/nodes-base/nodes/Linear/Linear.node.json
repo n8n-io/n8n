@@ -2,9 +2,7 @@
 	"node": "n8n-nodes-base.linear",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Productivity"
-	],
+	"categories": ["Productivity"],
 	"resources": {
 		"credentialDocumentation": [
 			{
@@ -13,7 +11,7 @@
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/integrations/nodes/n8n-nodes-base.linear/"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.linear/"
 			}
 		]
 	}

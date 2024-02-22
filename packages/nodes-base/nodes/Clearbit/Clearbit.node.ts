@@ -1,6 +1,10 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 import { clearbitApiRequest } from './GenericFunctions';
 
@@ -62,14 +66,14 @@ export class Clearbit implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'person') {
 					if (operation === 'enrich') {
 						const email = this.getNodeParameter('email', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						qs.email = email;
 						if (additionalFields.givenName) {
 							qs.given_name = additionalFields.givenName as string;
@@ -111,7 +115,7 @@ export class Clearbit implements INodeType {
 				if (resource === 'company') {
 					if (operation === 'enrich') {
 						const domain = this.getNodeParameter('domain', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						qs.domain = domain;
 						if (additionalFields.companyName) {
 							qs.company_name = additionalFields.companyName as string;
@@ -148,7 +152,7 @@ export class Clearbit implements INodeType {
 					}
 				}
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);
@@ -160,6 +164,6 @@ export class Clearbit implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

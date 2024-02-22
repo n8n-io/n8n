@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -284,7 +283,7 @@ export class Taiga implements INodeType {
 							subject: this.getNodeParameter('subject', i),
 						} as IDataObject;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, additionalFields);
@@ -314,7 +313,7 @@ export class Taiga implements INodeType {
 						// ----------------------------------------
 
 						const qs = {} as IDataObject;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 
 						if (Object.keys(filters).length) {
 							Object.assign(qs, filters);
@@ -327,7 +326,7 @@ export class Taiga implements INodeType {
 						// ----------------------------------------
 
 						const body = {} as IDataObject;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, updateFields);
@@ -355,7 +354,7 @@ export class Taiga implements INodeType {
 							subject: this.getNodeParameter('subject', i),
 						} as IDataObject;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, additionalFields);
@@ -385,7 +384,7 @@ export class Taiga implements INodeType {
 						// ----------------------------------------
 
 						const qs = {} as IDataObject;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 
 						if (Object.keys(filters).length) {
 							Object.assign(qs, filters);
@@ -398,7 +397,7 @@ export class Taiga implements INodeType {
 						// ----------------------------------------
 
 						const body = {} as IDataObject;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, updateFields);
@@ -426,7 +425,7 @@ export class Taiga implements INodeType {
 							subject: this.getNodeParameter('subject', i),
 						} as IDataObject;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, additionalFields);
@@ -456,7 +455,7 @@ export class Taiga implements INodeType {
 						// ----------------------------------------
 
 						const qs = {} as IDataObject;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 
 						if (Object.keys(filters).length) {
 							Object.assign(qs, filters);
@@ -469,7 +468,7 @@ export class Taiga implements INodeType {
 						// ----------------------------------------
 
 						const body = {} as IDataObject;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, updateFields);
@@ -497,7 +496,7 @@ export class Taiga implements INodeType {
 							subject: this.getNodeParameter('subject', i),
 						} as IDataObject;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, additionalFields);
@@ -529,7 +528,7 @@ export class Taiga implements INodeType {
 						// ----------------------------------------
 
 						const qs = {} as IDataObject;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 
 						if (Object.keys(filters).length) {
 							Object.assign(qs, filters);
@@ -542,7 +541,7 @@ export class Taiga implements INodeType {
 						// ----------------------------------------
 
 						const body = {} as IDataObject;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, updateFields);
@@ -575,13 +574,13 @@ export class Taiga implements INodeType {
 			}
 
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
+				this.helpers.returnJsonArray(responseData as IDataObject[]),
 				{ itemData: { item: i } },
 			);
 
 			returnData.push(...executionData);
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

@@ -1,0 +1,207 @@
+@use 'sass:math';
+
+@mixin theme {
+	// Primary tokens
+
+	// Text
+	--color-text-dark: var(--prim-gray-40);
+	--color-text-base: var(--prim-gray-200);
+	--color-text-light: var(--prim-gray-320);
+	--color-text-lighter: var(--prim-gray-740);
+	--color-text-xlight: var(--prim-gray-820);
+	--color-text-danger: var(--prim-color-alt-c-tint-150);
+
+	// Foreground
+	--color-foreground-xdark: var(--prim-gray-200);
+	--color-foreground-dark: var(--prim-gray-420);
+	--color-foreground-base: var(--prim-gray-670);
+	--color-foreground-light: var(--prim-gray-740);
+	--color-foreground-xlight: var(--prim-gray-820);
+
+	// Background
+	--color-background-dark: var(--prim-gray-70);
+	--color-background-medium: var(--prim-gray-540);
+	--color-background-base: var(--prim-gray-670);
+	--color-background-light: var(--prim-gray-820);
+	--color-background-xlight: var(--prim-gray-740);
+
+	--box-shadow-base: 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 6px rgba(0, 0, 0, 0.1);
+	--box-shadow-dark: 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 6px rgba(0, 0, 0, 0.2);
+	--box-shadow-light: 0 2px 12px 0 rgba(0, 0, 0, 0.2);
+
+	// Secondary tokens
+
+	// LangChain
+	--color-lm-chat-messages-background: var(--prim-gray-820);
+	--color-lm-chat-bot-background: var(--prim-gray-540);
+	--color-lm-chat-bot-border: var(--prim-gray-490);
+	--color-lm-chat-user-background: var(--prim-color-alt-a-shade-100);
+	--color-lm-chat-user-border: var(--prim-color-alt-a);
+
+	// Canvas
+	--color-canvas-background: var(--prim-gray-820);
+	--color-canvas-dot: var(--prim-gray-670);
+	--color-canvas-read-only-line: var(--prim-gray-800);
+	--color-canvas-node-background: var(--prim-gray-40);
+	--color-canvas-node-pinned-border: var(--prim-color-secondary-tint-100);
+	--color-canvas-selected: var(--prim-gray-0-alpha-025);
+	--node-type-main-color: var(--prim-gray-420);
+
+	// Sticky
+	--color-sticky-background: var(--prim-color-alt-d-shade-700);
+	--color-sticky-border: var(--prim-color-alt-d-shade-600);
+	--color-sticky-font: var(--prim-gray-40);
+	--color-sticky-code-font: var(--prim-color-secondary-tint-300);
+	--color-sticky-code-background: var(--prim-gray-70-alpha-01);
+
+	--color-sticky-background-1: var(--prim-color-alt-d-shade-700);
+	--color-sticky-border-1: var(--prim-color-alt-d-shade-600);
+	--color-sticky-background-2: var(--prim-color-alt-b-shade-350);
+	--color-sticky-border-2: var(--prim-color-alt-b-shade-250);
+	--color-sticky-background-3: var(--prim-color-alt-c-shade-250);
+	--color-sticky-border-3: var(--prim-color-alt-c-shade-150);
+	--color-sticky-background-4: var(--prim-color-alt-a-shade-200);
+	--color-sticky-border-4: var(--prim-color-alt-a-shade-100);
+	--color-sticky-background-5: var(--prim-color-alt-e-shade-350);
+	--color-sticky-border-5: var(--prim-color-alt-e-shade-250);
+	--color-sticky-background-6: var(--prim-color-secondary-shade-250);
+	--color-sticky-border-6: var(--prim-color-secondary-shade-100);
+	--color-sticky-background-7: var(--prim-gray-740);
+	--color-sticky-border-7: var(--prim-gray-670);
+
+	// Expressions
+	--color-valid-resolvable-foreground: var(--prim-color-alt-a-tint-300);
+	--color-valid-resolvable-background: var(--prim-color-alt-a-alpha-025);
+	--color-invalid-resolvable-foreground: var(--prim-color-alt-c-tint-250);
+	--color-invalid-resolvable-background: var(--prim-color-alt-c-alpha-02);
+	--color-expression-editor-background: var(--prim-gray-800);
+	--color-expression-syntax-example: var(--prim-gray-670);
+
+	// Code
+	--color-code-tags-string: var(--prim-color-alt-f-tint-150);
+	--color-code-tags-primitive: var(--prim-color-alt-b-shade-100);
+	--color-code-tags-keyword: var(--prim-color-alt-g-tint-150);
+	--color-code-tags-operator: var(--prim-color-alt-h);
+	--color-code-tags-variable: var(--prim-color-primary-tint-100);
+	--color-code-tags-definition: var(--prim-color-alt-e);
+	--color-json-default: var(--prim-color-secondary-tint-200);
+	--color-json-null: var(--prim-color-alt-c-tint-150);
+	--color-json-boolean: var(--prim-color-alt-a);
+	--color-json-number: var(--prim-color-alt-a);
+	--color-json-string: var(--prim-color-secondary-tint-200);
+	--color-json-key: var(--prim-gray-670);
+	--color-json-brackets: var(--prim-gray-670);
+	--color-json-brackets-hover: var(--prim-color-alt-e);
+	--color-json-line: var(--prim-gray-200);
+	--color-json-highlight: var(--prim-gray-70);
+	--color-code-background: var(--prim-gray-800);
+	--color-code-background-readonly: var(--prim-gray-740);
+	--color-code-lineHighlight: var(--prim-gray-740);
+	--color-code-foreground: var(--prim-gray-70);
+	--color-code-caret: var(--prim-gray-10);
+	--color-code-selection: var(--prim-color-alt-e-alpha-04);
+	--color-code-gutterBackground: var(--prim-gray-670);
+	--color-code-gutterForeground: var(--prim-gray-320);
+	--color-code-tags-comment: var(--prim-gray-200);
+
+	// Variables
+	--color-variables-usage-font: var(--prim-color-alt-a-tint-300);
+	--color-variables-usage-syntax-bg: var(--prim-color-alt-a-alpha-025);
+
+	// Button primary
+	--color-button-primary-disabled-font: var(--prim-gray-0-alpha-025);
+	--color-button-primary-disabled-border: transparent;
+	--color-button-primary-disabled-background: var(--prim-color-primary-shade-300);
+
+	// Button secondary
+	--color-button-secondary-border: var(--prim-gray-420);
+
+	// Text button
+	--color-text-button-secondary-font: var(--prim-gray-320);
+
+	// Table
+	--color-table-header-background: var(--prim-gray-740);
+	--color-table-row-background: var(--prim-gray-820);
+	--color-table-row-even-background: var(--prim-gray-800);
+	--color-table-row-hover-background: var(--prim-gray-740);
+
+	// Notification
+	--color-notification-background: var(--prim-gray-740);
+
+	// NDV
+	--color-run-data-background: var(--prim-gray-800);
+	--color-ndv-droppable-parameter: var(--prim-color-primary);
+	--color-ndv-droppable-parameter-background: var(--prim-color-primary-alpha-010);
+	--color-ndv-droppable-parameter-active-background: var(--prim-color-alt-a-alpha-015);
+	--color-ndv-back-font: var(--prim-gray-0);
+	--color-ndv-ouptut-error-font: var(--prim-color-alt-c-tint-150);
+
+	// Notice
+	--color-notice-warning-border: var(--prim-color-alt-b-tint-250);
+	--color-notice-warning-background: var(--prim-color-alt-b-alpha-02);
+	--color-notice-font: var(--prim-gray-0);
+
+	// Callout
+	--color-callout-info-border: var(--prim-gray-420);
+	--color-callout-info-background: var(--prim-gray-740);
+	--color-callout-info-font: var(--prim-gray-0);
+	--color-callout-success-border: var(--color-success);
+	--color-callout-success-background: var(--prim-color-alt-a-alpha-025);
+	--color-callout-success-font: var(--prim-gray-0);
+	--color-callout-warning-border: var(--color-warning);
+	--color-callout-warning-background: var(--prim-color-alt-b-alpha-02);
+	--color-callout-warning-font: var(--prim-gray-0);
+	--color-callout-danger-border: var(--color-danger);
+	--color-callout-danger-background: var(--prim-color-alt-c-alpha-02);
+	--color-callout-danger-font: var(--prim-gray-0);
+	--color-callout-secondary-border: var(--color-secondary);
+	--color-callout-secondary-background: var(--prim-color-secondary-alpha-025);
+	--color-callout-secondary-font: var(--prim-gray-0);
+
+	// Dialogs and overlays
+	--color-dialog-overlay-background: var(--prim-color-alt-j-alpha-075);
+	--color-dialog-overlay-background-dark: var(--prim-color-alt-j-alpha-075);
+
+	// Avatar
+	--color-avatar-font: var(--prim-gray-0);
+
+	// Value Survey
+	--color-value-survey-background: var(--prim-gray-740);
+	--color-value-survey-font: var(--prim-gray-0);
+
+	// Switch (Activation, boolean)
+	--color-switch-background: var(--prim-gray-820);
+	--color-switch-toggle: var(--prim-gray-40);
+
+	// Action Dropdown
+	--color-action-dropdown-item-active-background: var(--color-background-xlight);
+
+	// Input Triple
+	--color-background-input-triple: var(--prim-gray-800);
+
+	// Various
+	--color-info-tint-1: var(--prim-gray-420);
+	--color-info-tint-2: var(--prim-gray-740);
+	--border-color-base: var(--color-foreground-base);
+	--border-color-light: var(--color-foreground-light);
+	--border-base: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+	--node-type-supplemental-label-color-l: 100%;
+	--node-type-supplemental-label-color: hsl(
+		var(--node-type-supplemental-label-color-h),
+		var(--node-type-supplemental-label-color-s),
+		var(--node-type-supplemental-label-color-l)
+	);
+	--color-configurable-node-name: var(--color-text-lighter);
+	--color-secondary-link: var(--prim-color-secondary-tint-200);
+	--color-secondary-link-hover: var(--prim-color-secondary-tint-100);
+}
+
+body[data-theme='dark'] {
+	@include theme;
+}
+
+@media (prefers-color-scheme: dark) {
+	body:not([data-theme]) {
+		@include theme;
+	}
+}

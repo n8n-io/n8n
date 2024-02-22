@@ -1,17 +1,16 @@
+/** @type {import('jest').Config} */
 module.exports = {
-	verbose: true,
-	transform: {
-		'^.+\\.ts$': 'ts-jest',
+	...require('../../jest.config'),
+	testEnvironmentOptions: {
+		url: 'http://localhost/',
 	},
-	testURL: 'http://localhost/',
-	testRegex: '(/__tests__/.*|(\\.|/)(test))\\.ts$',
-	testPathIgnorePatterns: ['/dist/', '/node_modules/'],
-	moduleFileExtensions: ['ts', 'js', 'json'],
-	globals: {
-		'ts-jest': {
-			isolatedModules: true,
-		},
-	},
+	globalSetup: '<rootDir>/test/setup.ts',
 	globalTeardown: '<rootDir>/test/teardown.ts',
-	setupFiles: ['<rootDir>/test/setup.ts'],
+	setupFilesAfterEnv: [
+		'<rootDir>/test/setup-test-folder.ts',
+		'<rootDir>/test/setup-mocks.ts',
+		'<rootDir>/test/extend-expect.ts',
+	],
+	coveragePathIgnorePatterns: ['/src/databases/migrations/'],
+	testTimeout: 10_000,
 };

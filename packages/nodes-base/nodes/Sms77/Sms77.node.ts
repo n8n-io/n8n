@@ -1,27 +1,24 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
 	IDataObject,
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import { sms77ApiRequest } from './GenericFunctions';
 
 export class Sms77 implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'sms77',
+		displayName: 'seven',
 		name: 'sms77',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:sms77.png',
+		icon: 'file:seven.svg',
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Send SMS and make text-to-speech calls',
 		defaults: {
-			name: 'sms77',
+			name: 'seven',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -120,7 +117,7 @@ export class Sms77 implements INodeType {
 					},
 				},
 				description:
-					'The number of your recipient(s) separated by comma. Can be regular numbers or contact/groups from Sms77.',
+					'The number of your recipient(s) separated by comma. Can be regular numbers or contact/groups from seven.',
 			},
 			{
 				displayName: 'Message',
@@ -128,9 +125,6 @@ export class Sms77 implements INodeType {
 				type: 'string',
 				default: '',
 				required: true,
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				displayOptions: {
 					show: {
 						operation: ['send'],
@@ -272,7 +266,7 @@ export class Sms77 implements INodeType {
 						const from = this.getNodeParameter('from', i) as string;
 						const to = this.getNodeParameter('to', i) as string;
 						const text = this.getNodeParameter('message', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						const body = {
 							from,
 							to,
@@ -287,7 +281,7 @@ export class Sms77 implements INodeType {
 					if (operation === 'send') {
 						const to = this.getNodeParameter('to', i) as string;
 						const text = this.getNodeParameter('message', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						const body = {
 							to,
 							text,

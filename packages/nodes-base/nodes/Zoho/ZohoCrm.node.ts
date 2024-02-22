@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -23,7 +22,6 @@ import {
 	adjustSalesOrderPayload,
 	adjustVendorPayload,
 	getFields,
-	getModuleName,
 	getPicklistOptions,
 	handleListing,
 	throwOnEmptyUpdate,
@@ -33,7 +31,7 @@ import {
 	zohoApiRequestAllItems,
 } from './GenericFunctions';
 
-import {
+import type {
 	CamelCaseResource,
 	GetAllFilterOptions,
 	LoadedAccounts,
@@ -66,7 +64,6 @@ import {
 	vendorFields,
 	vendorOperations,
 } from './descriptions';
-import { exchangeFields } from '../Marketstack/descriptions';
 
 export class ZohoCrm implements INodeType {
 	description: INodeTypeDescription = {
@@ -78,7 +75,7 @@ export class ZohoCrm implements INodeType {
 		version: 1,
 		description: 'Consume Zoho CRM API',
 		defaults: {
-			name: 'Zoho',
+			name: 'Zoho CRM',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -215,93 +212,93 @@ export class ZohoCrm implements INodeType {
 			// standard fields - called from `makeGetAllFields`
 
 			async getAccountFields(this: ILoadOptionsFunctions) {
-				return getFields.call(this, 'account');
+				return await getFields.call(this, 'account');
 			},
 
 			async getContactFields(this: ILoadOptionsFunctions) {
-				return getFields.call(this, 'contact');
+				return await getFields.call(this, 'contact');
 			},
 
 			async getDealFields(this: ILoadOptionsFunctions) {
-				return getFields.call(this, 'deal');
+				return await getFields.call(this, 'deal');
 			},
 
 			async getInvoiceFields(this: ILoadOptionsFunctions) {
-				return getFields.call(this, 'invoice');
+				return await getFields.call(this, 'invoice');
 			},
 
 			async getLeadFields(this: ILoadOptionsFunctions) {
-				return getFields.call(this, 'lead');
+				return await getFields.call(this, 'lead');
 			},
 
 			async getProductFields(this: ILoadOptionsFunctions) {
-				return getFields.call(this, 'product');
+				return await getFields.call(this, 'product');
 			},
 
 			async getPurchaseOrderFields(this: ILoadOptionsFunctions) {
-				return getFields.call(this, 'purchase_order');
+				return await getFields.call(this, 'purchase_order');
 			},
 
 			async getVendorOrderFields(this: ILoadOptionsFunctions) {
-				return getFields.call(this, 'vendor');
+				return await getFields.call(this, 'vendor');
 			},
 
 			async getQuoteFields(this: ILoadOptionsFunctions) {
-				return getFields.call(this, 'quote');
+				return await getFields.call(this, 'quote');
 			},
 
 			async getSalesOrderFields(this: ILoadOptionsFunctions) {
-				return getFields.call(this, 'sales_order');
+				return await getFields.call(this, 'sales_order');
 			},
 
 			async getVendorFields(this: ILoadOptionsFunctions) {
-				return getFields.call(this, 'vendor');
+				return await getFields.call(this, 'vendor');
 			},
 
 			// custom fields
 
 			async getCustomAccountFields(this: ILoadOptionsFunctions) {
-				return getFields.call(this, 'account', { onlyCustom: true });
+				return await getFields.call(this, 'account', { onlyCustom: true });
 			},
 
 			async getCustomContactFields(this: ILoadOptionsFunctions) {
-				return getFields.call(this, 'contact', { onlyCustom: true });
+				return await getFields.call(this, 'contact', { onlyCustom: true });
 			},
 
 			async getCustomDealFields(this: ILoadOptionsFunctions) {
-				return getFields.call(this, 'deal', { onlyCustom: true });
+				return await getFields.call(this, 'deal', { onlyCustom: true });
 			},
 
 			async getCustomInvoiceFields(this: ILoadOptionsFunctions) {
-				return getFields.call(this, 'invoice', { onlyCustom: true });
+				return await getFields.call(this, 'invoice', { onlyCustom: true });
 			},
 
 			async getCustomLeadFields(this: ILoadOptionsFunctions) {
-				return getFields.call(this, 'lead', { onlyCustom: true });
+				return await getFields.call(this, 'lead', { onlyCustom: true });
 			},
 
 			async getCustomProductFields(this: ILoadOptionsFunctions) {
-				return getFields.call(this, 'product', { onlyCustom: true });
+				return await getFields.call(this, 'product', { onlyCustom: true });
 			},
 
 			async getCustomPurchaseOrderFields(this: ILoadOptionsFunctions) {
-				return getFields.call(this, 'purchase_order', { onlyCustom: true });
+				return await getFields.call(this, 'purchase_order', { onlyCustom: true });
 			},
 
 			async getCustomVendorOrderFields(this: ILoadOptionsFunctions) {
-				return getFields.call(this, 'vendor', { onlyCustom: true });
+				return await getFields.call(this, 'vendor', { onlyCustom: true });
 			},
 
 			async getCustomQuoteFields(this: ILoadOptionsFunctions) {
-				return getFields.call(this, 'quote', { onlyCustom: true });
+				return await getFields.call(this, 'quote', { onlyCustom: true });
 			},
 
 			async getCustomSalesOrderFields(this: ILoadOptionsFunctions) {
-				return getFields.call(this, 'sales_order', { onlyCustom: true });
+				return await getFields.call(this, 'sales_order', { onlyCustom: true });
 			},
 
 			async getCustomVendorFields(this: ILoadOptionsFunctions) {
-				return getFields.call(this, 'vendor', { onlyCustom: true });
+				return await getFields.call(this, 'vendor', { onlyCustom: true });
 			},
 
 			// ----------------------------------------
@@ -309,23 +306,23 @@ export class ZohoCrm implements INodeType {
 			// ----------------------------------------
 
 			async getAccountType(this: ILoadOptionsFunctions) {
-				return getPicklistOptions.call(this, 'account', 'Account_Type');
+				return await getPicklistOptions.call(this, 'account', 'Account_Type');
 			},
 
 			async getDealStage(this: ILoadOptionsFunctions) {
-				return getPicklistOptions.call(this, 'deal', 'Stage');
+				return await getPicklistOptions.call(this, 'deal', 'Stage');
 			},
 
 			async getPurchaseOrderStatus(this: ILoadOptionsFunctions) {
-				return getPicklistOptions.call(this, 'purchaseOrder', 'Status');
+				return await getPicklistOptions.call(this, 'purchaseOrder', 'Status');
 			},
 
 			async getSalesOrderStatus(this: ILoadOptionsFunctions) {
-				return getPicklistOptions.call(this, 'salesOrder', 'Status');
+				return await getPicklistOptions.call(this, 'salesOrder', 'Status');
 			},
 
 			async getQuoteStage(this: ILoadOptionsFunctions) {
-				return getPicklistOptions.call(this, 'quote', 'Quote_Stage');
+				return await getPicklistOptions.call(this, 'quote', 'Quote_Stage');
 			},
 		},
 	};
@@ -335,8 +332,7 @@ export class ZohoCrm implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 
 		const resource = this.getNodeParameter('resource', 0) as CamelCaseResource;
-		const operation = this.getNodeParameter('operation', 0) as string;
-		const resolveData = this.getNodeParameter('resolveData', 0, false) as boolean;
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
 
@@ -365,7 +361,7 @@ export class ZohoCrm implements INodeType {
 							Account_Name: this.getNodeParameter('accountName', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustAccountPayload(additionalFields));
@@ -410,7 +406,7 @@ export class ZohoCrm implements INodeType {
 						// ----------------------------------------
 
 						const body: IDataObject = {};
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, adjustAccountPayload(updateFields));
@@ -432,7 +428,7 @@ export class ZohoCrm implements INodeType {
 							Account_Name: this.getNodeParameter('accountName', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustAccountPayload(additionalFields));
@@ -458,7 +454,7 @@ export class ZohoCrm implements INodeType {
 							Last_Name: this.getNodeParameter('lastName', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustContactPayload(additionalFields));
@@ -503,7 +499,7 @@ export class ZohoCrm implements INodeType {
 						// ----------------------------------------
 
 						const body: IDataObject = {};
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, adjustContactPayload(updateFields));
@@ -525,7 +521,7 @@ export class ZohoCrm implements INodeType {
 							Last_Name: this.getNodeParameter('lastName', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustContactPayload(additionalFields));
@@ -552,7 +548,7 @@ export class ZohoCrm implements INodeType {
 							Stage: this.getNodeParameter('stage', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustDealPayload(additionalFields));
@@ -595,7 +591,7 @@ export class ZohoCrm implements INodeType {
 						// ----------------------------------------
 
 						const body: IDataObject = {};
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, adjustDealPayload(updateFields));
@@ -617,7 +613,7 @@ export class ZohoCrm implements INodeType {
 							Stage: this.getNodeParameter('stage', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustDealPayload(additionalFields));
@@ -648,7 +644,7 @@ export class ZohoCrm implements INodeType {
 							Product_Details: adjustProductDetails(productDetails),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustInvoicePayload(additionalFields));
@@ -693,7 +689,7 @@ export class ZohoCrm implements INodeType {
 						// ----------------------------------------
 
 						const body: IDataObject = {};
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, adjustInvoicePayloadOnUpdate(updateFields));
@@ -719,7 +715,7 @@ export class ZohoCrm implements INodeType {
 							Product_Details: adjustProductDetails(productDetails),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustInvoicePayload(additionalFields));
@@ -746,7 +742,7 @@ export class ZohoCrm implements INodeType {
 							Last_Name: this.getNodeParameter('lastName', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustLeadPayload(additionalFields));
@@ -801,7 +797,7 @@ export class ZohoCrm implements INodeType {
 						// ----------------------------------------
 
 						const body: IDataObject = {};
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, adjustLeadPayload(updateFields));
@@ -823,7 +819,7 @@ export class ZohoCrm implements INodeType {
 							Last_Name: this.getNodeParameter('lastName', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustLeadPayload(additionalFields));
@@ -849,7 +845,7 @@ export class ZohoCrm implements INodeType {
 							Product_Name: this.getNodeParameter('productName', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustProductPayload(additionalFields));
@@ -894,7 +890,7 @@ export class ZohoCrm implements INodeType {
 						// ----------------------------------------
 
 						const body: IDataObject = {};
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, adjustProductPayload(updateFields));
@@ -916,7 +912,7 @@ export class ZohoCrm implements INodeType {
 							Product_Name: this.getNodeParameter('productName', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustProductPayload(additionalFields));
@@ -948,7 +944,7 @@ export class ZohoCrm implements INodeType {
 							Product_Details: adjustProductDetails(productDetails),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustPurchaseOrderPayload(additionalFields));
@@ -993,7 +989,7 @@ export class ZohoCrm implements INodeType {
 						// ----------------------------------------
 
 						const body: IDataObject = {};
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, adjustPurchaseOrderPayload(updateFields));
@@ -1019,7 +1015,7 @@ export class ZohoCrm implements INodeType {
 							Product_Details: adjustProductDetails(productDetails),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustPurchaseOrderPayload(additionalFields));
@@ -1050,7 +1046,7 @@ export class ZohoCrm implements INodeType {
 							Product_Details: adjustProductDetails(productDetails),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustQuotePayload(additionalFields));
@@ -1093,7 +1089,7 @@ export class ZohoCrm implements INodeType {
 						// ----------------------------------------
 
 						const body: IDataObject = {};
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, adjustQuotePayload(updateFields));
@@ -1117,7 +1113,7 @@ export class ZohoCrm implements INodeType {
 							Product_Details: adjustProductDetails(productDetails),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustQuotePayload(additionalFields));
@@ -1147,7 +1143,7 @@ export class ZohoCrm implements INodeType {
 							Product_Details: adjustProductDetails(productDetails),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustSalesOrderPayload(additionalFields));
@@ -1192,7 +1188,7 @@ export class ZohoCrm implements INodeType {
 						// ----------------------------------------
 
 						const body: IDataObject = {};
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, adjustSalesOrderPayload(updateFields));
@@ -1215,10 +1211,10 @@ export class ZohoCrm implements INodeType {
 						const body: IDataObject = {
 							Account_Name: { id: this.getNodeParameter('accountId', i) },
 							Subject: this.getNodeParameter('subject', i),
-							Product_Details: adjustProductDetails(productDetails),
+							Product_Details: adjustProductDetails(productDetails, 'upsert'),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustSalesOrderPayload(additionalFields));
@@ -1244,7 +1240,7 @@ export class ZohoCrm implements INodeType {
 							Vendor_Name: this.getNodeParameter('vendorName', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustVendorPayload(additionalFields));
@@ -1289,7 +1285,7 @@ export class ZohoCrm implements INodeType {
 						// ----------------------------------------
 
 						const body: IDataObject = {};
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, adjustVendorPayload(updateFields));
@@ -1311,7 +1307,7 @@ export class ZohoCrm implements INodeType {
 							Vendor_Name: this.getNodeParameter('vendorName', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustVendorPayload(additionalFields));
@@ -1329,12 +1325,12 @@ export class ZohoCrm implements INodeType {
 				throw error;
 			}
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
+				this.helpers.returnJsonArray(responseData as IDataObject),
 				{ itemData: { item: i } },
 			);
 			returnData.push(...executionData);
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

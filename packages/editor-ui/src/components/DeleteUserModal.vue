@@ -1,65 +1,96 @@
 <template>
 	<Modal
 		:name="modalName"
-		@enter="onSubmit"
 		:title="title"
 		:center="true"
 		width="460px"
-		:eventBus="modalBus"
+		:event-bus="modalBus"
+		@enter="onSubmit"
 	>
-		<template slot="content">
+		<template #content>
 			<div>
 				<div v-if="isPending">
-					<n8n-text color="text-base">{{ $locale.baseText('settings.users.confirmUserDeletion') }}</n8n-text>
+					<n8n-text color="text-base">{{
+						$locale.baseText('settings.users.confirmUserDeletion')
+					}}</n8n-text>
 				</div>
-				<div :class="$style.content" v-else>
-					<div><n8n-text color="text-base">{{ $locale.baseText('settings.users.confirmDataHandlingAfterDeletion') }}</n8n-text></div>
-					<el-radio :value="operation" label="transfer" @change="() => setOperation('transfer')">
-						<n8n-text color="text-dark">{{ $locale.baseText('settings.users.transferWorkflowsAndCredentials') }}</n8n-text>
+				<div v-else :class="$style.content">
+					<div>
+						<n8n-text color="text-base">{{
+							$locale.baseText('settings.users.confirmDataHandlingAfterDeletion')
+						}}</n8n-text>
+					</div>
+					<el-radio
+						:model-value="operation"
+						label="transfer"
+						@update:modelValue="() => setOperation('transfer')"
+					>
+						<n8n-text color="text-dark">{{
+							$locale.baseText('settings.users.transferWorkflowsAndCredentials')
+						}}</n8n-text>
 					</el-radio>
-					<div :class="$style.optionInput" v-if="operation === 'transfer'">
+					<div v-if="operation === 'transfer'" :class="$style.optionInput">
 						<n8n-input-label :label="$locale.baseText('settings.users.userToTransferTo')">
 							<n8n-user-select
-								:users="allUsers"
-								:value="transferId"
-								:ignoreIds="ignoreIds"
-								:currentUserId="currentUserId"
-								@input="setTransferId"
+								:users="usersStore.allUsers"
+								:model-value="transferId"
+								:ignore-ids="ignoreIds"
+								:current-user-id="usersStore.currentUserId"
+								@update:modelValue="setTransferId"
 							/>
 						</n8n-input-label>
 					</div>
-					<el-radio :value="operation" label="delete" @change="() => setOperation('delete')">
-						<n8n-text color="text-dark">{{ $locale.baseText('settings.users.deleteWorkflowsAndCredentials') }}</n8n-text>
+					<el-radio
+						:model-value="operation"
+						label="delete"
+						@update:modelValue="() => setOperation('delete')"
+					>
+						<n8n-text color="text-dark">{{
+							$locale.baseText('settings.users.deleteWorkflowsAndCredentials')
+						}}</n8n-text>
 					</el-radio>
-					<div :class="$style.optionInput" v-if="operation === 'delete'">
+					<div
+						v-if="operation === 'delete'"
+						:class="$style.optionInput"
+						data-test-id="delete-data-input"
+					>
 						<n8n-input-label :label="$locale.baseText('settings.users.deleteConfirmationMessage')">
-							<n8n-input :value="deleteConfirmText" :placeholder="$locale.baseText('settings.users.deleteConfirmationText')" @input="setConfirmText" />
+							<n8n-input
+								:model-value="deleteConfirmText"
+								:placeholder="$locale.baseText('settings.users.deleteConfirmationText')"
+								@update:modelValue="setConfirmText"
+							/>
 						</n8n-input-label>
 					</div>
 				</div>
 			</div>
 		</template>
-		<template slot="footer">
-			<n8n-button :loading="loading" :disabled="!enabled" :label="$locale.baseText('settings.users.delete')" @click="onSubmit" float="right" />
+		<template #footer>
+			<n8n-button
+				:loading="loading"
+				:disabled="!enabled"
+				:label="$locale.baseText('settings.users.delete')"
+				float="right"
+				@click="onSubmit"
+			/>
 		</template>
 	</Modal>
 </template>
 
-
 <script lang="ts">
-import mixins from "vue-typed-mixins";
+import { defineComponent } from 'vue';
+import { useToast } from '@/composables/useToast';
+import Modal from '@/components/Modal.vue';
+import type { IUser } from '@/Interface';
+import { mapStores } from 'pinia';
+import { useUsersStore } from '@/stores/users.store';
+import { createEventBus } from 'n8n-design-system/utils';
 
-import { showMessage } from "@/components/mixins/showMessage";
-import Modal from "./Modal.vue";
-import Vue from "vue";
-import { IUser } from "../Interface";
-import { mapGetters } from "vuex";
-
-export default mixins(showMessage).extend({
+export default defineComponent({
+	name: 'DeleteUserModal',
 	components: {
 		Modal,
 	},
-	name: "DeleteUserModal",
 	props: {
 		modalName: {
 			type: String,
@@ -68,9 +99,14 @@ export default mixins(showMessage).extend({
 			type: String,
 		},
 	},
+	setup() {
+		return {
+			...useToast(),
+		};
+	},
 	data() {
 		return {
-			modalBus: new Vue(),
+			modalBus: createEventBus(),
 			loading: false,
 			operation: '',
 			deleteConfirmText: '',
@@ -79,26 +115,26 @@ export default mixins(showMessage).extend({
 		};
 	},
 	computed: {
-		...mapGetters('users', ['allUsers', 'currentUserId']),
-		userToDelete(): IUser {
-			const getUserById = this.$store.getters['users/getUserById'];
-			return getUserById(this.activeId);
+		...mapStores(useUsersStore),
+		userToDelete(): IUser | null {
+			return this.usersStore.getUserById(this.activeId);
 		},
 		isPending(): boolean {
-			return this.userToDelete && !this.userToDelete.firstName;
+			return this.userToDelete ? this.userToDelete && !this.userToDelete.firstName : false;
 		},
 		title(): string {
-			const user = this.userToDelete && (this.userToDelete.fullName || this.userToDelete.email) || '';
-			return this.$locale.baseText(
-				'settings.users.deleteUser',
-				{ interpolate: { user }},
-			);
+			const user =
+				(this.userToDelete && (this.userToDelete.fullName || this.userToDelete.email)) || '';
+			return this.$locale.baseText('settings.users.deleteUser', { interpolate: { user } });
 		},
 		enabled(): boolean {
 			if (this.isPending) {
 				return true;
 			}
-			if (this.operation === 'delete' && this.deleteConfirmText === this.$locale.baseText('settings.users.deleteConfirmationText')) {
+			if (
+				this.operation === 'delete' &&
+				this.deleteConfirmText === this.$locale.baseText('settings.users.deleteConfirmationText')
+			) {
 				return true;
 			}
 
@@ -128,39 +164,37 @@ export default mixins(showMessage).extend({
 
 				this.loading = true;
 
-				const params = {id: this.activeId} as {id: string, transferId?: string};
+				const params = { id: this.activeId } as { id: string; transferId?: string };
 				if (this.operation === 'transfer') {
 					params.transferId = this.transferId;
 				}
 
-				await this.$store.dispatch('users/deleteUser', params);
+				await this.usersStore.deleteUser(params);
 
 				let message = '';
 				if (this.transferId) {
-					const getUserById = this.$store.getters['users/getUserById'];
-					const transferUser: IUser = getUserById(this.transferId);
-					message = this.$locale.baseText(
-						'settings.users.transferredToUser',
-						{ interpolate: { user: transferUser.fullName || '' }},
-					);
+					const transferUser: IUser | null = this.usersStore.getUserById(this.transferId);
+					if (transferUser) {
+						message = this.$locale.baseText('settings.users.transferredToUser', {
+							interpolate: { user: transferUser.fullName || '' },
+						});
+					}
 				}
 
-				this.$showMessage({
+				this.showMessage({
 					type: 'success',
 					title: this.$locale.baseText('settings.users.userDeleted'),
 					message,
 				});
 
-				this.modalBus.$emit('close');
-
+				this.modalBus.emit('close');
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('settings.users.userDeletedError'));
+				this.showError(error, this.$locale.baseText('settings.users.userDeletedError'));
 			}
 			this.loading = false;
 		},
 	},
 });
-
 </script>
 
 <style lang="scss" module>

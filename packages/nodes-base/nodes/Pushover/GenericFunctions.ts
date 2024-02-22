@@ -1,18 +1,21 @@
-import { OptionsWithUri } from 'request';
-
-import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
-import { IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
+	JsonObject,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function pushoverApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
 	path: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
-	option = {},
-	// tslint:disable-next-line:no-any
+	_option = {},
 ): Promise<any> {
 	const options: IHttpRequestOptions = {
 		headers: {
@@ -26,12 +29,12 @@ export async function pushoverApiRequest(
 	};
 
 	try {
-		if (Object.keys(body).length === 0) {
+		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
 		}
 
 		return await this.helpers.requestWithAuthentication.call(this, 'pushoverApi', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

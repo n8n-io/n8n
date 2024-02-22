@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -84,7 +83,7 @@ export class Bitly implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available groups to display them to user so that he can
+			// Get all the available groups to display them to user so that they can
 			// select them easily
 			async getGroups(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -99,7 +98,7 @@ export class Bitly implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available tags to display them to user so that he can
+			// Get all the available tags to display them to user so that they can
 			// select them easily
 			async getTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const groupId = this.getCurrentNodeParameter('group') as string;
@@ -128,14 +127,14 @@ export class Bitly implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'link') {
 					if (operation === 'create') {
 						const longUrl = this.getNodeParameter('longUrl', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IDataObject = {
 							long_url: longUrl,
 						};
@@ -168,7 +167,7 @@ export class Bitly implements INodeType {
 					}
 					if (operation === 'update') {
 						const linkId = this.getNodeParameter('id', i) as string;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: IDataObject = {};
 						if (updateFields.longUrl) {
 							body.long_url = updateFields.longUrl as string;
@@ -207,7 +206,7 @@ export class Bitly implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);
@@ -219,6 +218,6 @@ export class Bitly implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

@@ -1,14 +1,13 @@
-import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-import { IDataObject } from 'n8n-workflow';
-import { ICollection } from './CollectionInterface';
+import type { IExecuteFunctions, ILoadOptionsFunctions, IDataObject } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import type { ICollection } from './CollectionInterface';
 import { cockpitApiRequest } from './GenericFunctions';
 
 export async function createCollectionEntry(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	resourceName: string,
 	data: IDataObject,
 	id?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const body: ICollection = {
 		data,
@@ -21,14 +20,13 @@ export async function createCollectionEntry(
 		};
 	}
 
-	return cockpitApiRequest.call(this, 'post', `/collections/save/${resourceName}`, body);
+	return await cockpitApiRequest.call(this, 'POST', `/collections/save/${resourceName}`, body);
 }
 
 export async function getAllCollectionEntries(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	resourceName: string,
 	options: IDataObject,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const body: ICollection = {};
 
@@ -46,7 +44,9 @@ export async function getAllCollectionEntries(
 	}
 
 	if (options.filter) {
-		body.filter = JSON.parse(options.filter.toString());
+		body.filter = jsonParse(options.filter.toString(), {
+			errorMessage: "'Filter' option is not valid JSON",
+		});
 	}
 
 	if (options.limit) {
@@ -58,7 +58,9 @@ export async function getAllCollectionEntries(
 	}
 
 	if (options.sort) {
-		body.sort = JSON.parse(options.sort.toString());
+		body.sort = jsonParse(options.sort.toString(), {
+			errorMessage: "'Sort' option is not valid JSON",
+		});
 	}
 
 	if (options.populate) {
@@ -67,18 +69,18 @@ export async function getAllCollectionEntries(
 
 	body.simple = true;
 	if (options.rawData) {
-		body.simple = !options.rawData as boolean;
+		body.simple = !options.rawData;
 	}
 
 	if (options.language) {
 		body.lang = options.language as string;
 	}
 
-	return cockpitApiRequest.call(this, 'post', `/collections/get/${resourceName}`, body);
+	return await cockpitApiRequest.call(this, 'POST', `/collections/get/${resourceName}`, body);
 }
 
 export async function getAllCollectionNames(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 ): Promise<string[]> {
-	return cockpitApiRequest.call(this, 'GET', `/collections/listCollections`, {});
+	return await cockpitApiRequest.call(this, 'GET', '/collections/listCollections', {});
 }

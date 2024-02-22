@@ -1,21 +1,23 @@
-import { OptionsWithUri } from 'request';
-
-import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
-import { IDataObject, IHookFunctions, JsonObject, NodeApiError } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	IDataObject,
+	IHookFunctions,
+	IHttpRequestMethods,
+	IRequestOptions,
+} from 'n8n-workflow';
 
 export async function mailjetApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | IHookFunctions | ILoadOptionsFunctions,
-	method: string,
+	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
 	path: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
-	const resource = this.getNodeParameter('resource', 0) as string;
+	const resource = this.getNodeParameter('resource', 0);
 
 	let credentialType;
 
@@ -32,7 +34,7 @@ export async function mailjetApiRequest(
 		credentialType = 'mailjetSmsApi';
 	}
 
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		headers: {
 			Accept: 'application/json',
 			'Content-Type': 'application/json',
@@ -44,25 +46,20 @@ export async function mailjetApiRequest(
 		json: true,
 	};
 	options = Object.assign({}, options, option);
-	if (Object.keys(options.body).length === 0) {
+	if (Object.keys(options.body as IDataObject).length === 0) {
 		delete options.body;
 	}
 
-	try {
-		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error as JsonObject);
-	}
+	return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 }
 
 export async function mailjetApiRequestAllItems(
 	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -75,13 +72,12 @@ export async function mailjetApiRequestAllItems(
 		responseData = await mailjetApiRequest.call(this, method, endpoint, body, query, undefined, {
 			resolveWithFullResponse: true,
 		});
-		returnData.push.apply(returnData, responseData.body);
+		returnData.push.apply(returnData, responseData.body as IDataObject[]);
 		query.Offset = query.Offset + query.Limit;
 	} while (responseData.length !== 0);
 	return returnData;
 }
 
-// tslint:disable-next-line:no-any
 export function validateJSON(json: string | undefined): IDataObject | undefined {
 	let result;
 	try {

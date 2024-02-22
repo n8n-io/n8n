@@ -1,29 +1,27 @@
-import { OptionsWithUri } from 'request';
-
-import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
-
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IHookFunctions,
+	IDataObject,
+	JsonObject,
+	IHttpRequestMethods,
+	IRequestOptions,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 /**
  * Make an API request to Message Bird
  *
- * @param {IHookFunctions} this
- * @param {string} method
- * @param {string} url
- * @param {object} body
- * @returns {Promise<any>}
  */
 export async function messageBirdApiRequest(
 	this: IHookFunctions | IExecuteFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	body: IDataObject,
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('messageBirdApi');
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			Accept: 'application/json',
 			Authorization: `AccessKey ${credentials.accessKey}`,
@@ -40,6 +38,6 @@ export async function messageBirdApiRequest(
 		}
 		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

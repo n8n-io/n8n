@@ -1,21 +1,25 @@
-import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
+import type {
+	IExecuteFunctions,
+	IHookFunctions,
+	IDataObject,
+	ILoadOptionsFunctions,
+	JsonObject,
+	IHttpRequestMethods,
+	IRequestOptions,
+} from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { IDataObject, ILoadOptionsFunctions, NodeApiError, NodeOperationError } from 'n8n-workflow';
-
-import {
+import { omit } from 'lodash';
+import type {
 	AddressFixedCollection,
 	FreshserviceCredentials,
 	LoadedUser,
 	RolesParameter,
 } from './types';
 
-import { OptionsWithUri } from 'request';
-
-import { omit } from 'lodash';
-
 export async function freshserviceApiRequest(
 	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
@@ -25,7 +29,7 @@ export async function freshserviceApiRequest(
 	)) as FreshserviceCredentials;
 	const encodedApiKey = Buffer.from(`${apiKey}:X`).toString('base64');
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			Authorization: `Basic ${encodedApiKey}`,
 		},
@@ -45,7 +49,7 @@ export async function freshserviceApiRequest(
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		if (error.error.description === 'Validation failed') {
 			const numberOfErrors = error.error.errors.length;
@@ -53,25 +57,25 @@ export async function freshserviceApiRequest(
 
 			if (numberOfErrors === 1) {
 				const [validationError] = error.error.errors;
-				throw new NodeApiError(this.getNode(), error, {
+				throw new NodeApiError(this.getNode(), error as JsonObject, {
 					message,
 					description: `For ${validationError.field}: ${validationError.message}`,
 				});
 			} else if (numberOfErrors > 1) {
-				throw new NodeApiError(this.getNode(), error, {
+				throw new NodeApiError(this.getNode(), error as JsonObject, {
 					message,
 					description: "For more information, expand 'details' below and look at 'cause' section",
 				});
 			}
 		}
 
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
 export async function freshserviceApiRequestAllItems(
 	this: IExecuteFunctions | IHookFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
@@ -82,10 +86,10 @@ export async function freshserviceApiRequestAllItems(
 
 	do {
 		const responseData = await freshserviceApiRequest.call(this, method, endpoint, body, qs);
-		const key = Object.keys(responseData)[0];
+		const key = Object.keys(responseData as IDataObject)[0];
 		items = responseData[key];
 		if (!items.length) return returnData;
-		returnData.push(...items);
+		returnData.push(...(items as IDataObject[]));
 		qs.page++;
 	} while (items.length >= 30);
 
@@ -94,19 +98,19 @@ export async function freshserviceApiRequestAllItems(
 
 export async function handleListing(
 	this: IExecuteFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+	const returnAll = this.getNodeParameter('returnAll', 0);
 
 	if (returnAll) {
 		return await freshserviceApiRequestAllItems.call(this, method, endpoint, body, qs);
 	}
 
 	const responseData = await freshserviceApiRequestAllItems.call(this, method, endpoint, body, qs);
-	const limit = this.getNodeParameter('limit', 0) as number;
+	const limit = this.getNodeParameter('limit', 0);
 
 	return responseData.slice(0, limit);
 }

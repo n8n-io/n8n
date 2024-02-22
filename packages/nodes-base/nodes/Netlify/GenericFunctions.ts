@@ -1,26 +1,25 @@
-import { OptionsWithUri } from 'request';
-
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+	JsonObject,
+	IRequestOptions,
+	IHttpRequestMethods,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function netlifyApiRequest(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	method: string,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		method,
 		headers: {
 			'Content-Type': 'application/json',
@@ -31,7 +30,7 @@ export async function netlifyApiRequest(
 		json: true,
 	};
 
-	if (!Object.keys(body).length) {
+	if (!Object.keys(body as IDataObject).length) {
 		delete options.body;
 	}
 
@@ -42,22 +41,21 @@ export async function netlifyApiRequest(
 	try {
 		const credentials = await this.getCredentials('netlifyApi');
 
-		options.headers!['Authorization'] = `Bearer ${credentials.accessToken}`;
+		options.headers!.Authorization = `Bearer ${credentials.accessToken}`;
 
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
 export async function netlifyRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -70,7 +68,7 @@ export async function netlifyRequestAllItems(
 			resolveWithFullResponse: true,
 		});
 		query.page++;
-		returnData.push.apply(returnData, responseData.body);
+		returnData.push.apply(returnData, responseData.body as IDataObject[]);
 	} while (responseData.headers.link.includes('next'));
 
 	return returnData;

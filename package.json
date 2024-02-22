@@ -1,12 +1,22 @@
 {
-  "name": "n8n",
-  "version": "0.194.0",
+  "name": "n8n-monorepo",
+  "version": "1.30.0",
   "private": true,
   "homepage": "https://n8n.io",
+  "engines": {
+    "node": ">=18.10",
+    "pnpm": ">=8.14"
+  },
+  "packageManager": "pnpm@8.14.3",
   "scripts": {
+    "preinstall": "node scripts/block-npm-install.js",
     "build": "turbo run build",
-    "dev": "turbo run dev --parallel",
-    "clean:dist": "npm exec -ws -- rimraf ./dist",
+    "build:backend": "pnpm --filter=!@n8n/chat --filter=!n8n-design-system --filter=!n8n-editor-ui build",
+    "build:frontend": "pnpm --filter=@n8n/chat --filter=n8n-design-system --filter=n8n-editor-ui build",
+    "typecheck": "turbo run typecheck",
+    "dev": "turbo run dev --parallel --filter=!n8n-design-system --filter=!@n8n/chat",
+    "dev:ai": "turbo run dev --parallel --filter=@n8n/nodes-langchain --filter=n8n --filter=n8n-core",
+    "clean": "turbo run clean --parallel",
     "format": "turbo run format && node scripts/format.mjs",
     "lint": "turbo run lint",
     "lintfix": "turbo run lintfix",
@@ -16,24 +26,78 @@
     "start:tunnel": "./packages/cli/bin/n8n start --tunnel",
     "start:windows": "cd packages/cli/bin && n8n",
     "test": "turbo run test",
-    "watch": "turbo run watch",
+    "test:backend": "pnpm --filter=!@n8n/chat --filter=!n8n-design-system --filter=!n8n-editor-ui  --filter=!n8n-nodes-base test",
+    "test:nodes": "pnpm --filter=n8n-nodes-base test",
+    "test:frontend": "pnpm --filter=@n8n/chat --filter=n8n-design-system --filter=n8n-editor-ui test",
+    "watch": "turbo run watch --parallel",
     "webhook": "./packages/cli/bin/n8n webhook",
-    "worker": "./packages/cli/bin/n8n worker"
+    "worker": "./packages/cli/bin/n8n worker",
+    "cypress:install": "cypress install",
+    "cypress:open": "CYPRESS_BASE_URL=http://localhost:8080 cypress open",
+    "test:e2e:ui": "scripts/run-e2e.js ui",
+    "test:e2e:dev": "scripts/run-e2e.js dev",
+    "test:e2e:all": "scripts/run-e2e.js all"
+  },
+  "dependencies": {
+    "n8n": "workspace:*"
   },
   "devDependencies": {
-    "rimraf": "^3.0.2",
+    "@n8n_io/eslint-config": "workspace:*",
+    "@ngneat/falso": "^6.4.0",
+    "@types/jest": "^29.5.3",
+    "@types/supertest": "^2.0.12",
+    "@vitest/coverage-v8": "^1.2.1",
+    "cross-env": "^7.0.3",
+    "cypress": "^13.6.2",
+    "cypress-otp": "^1.0.3",
+    "cypress-real-events": "^1.11.0",
+    "jest": "^29.6.2",
+    "jest-environment-jsdom": "^29.6.2",
+    "jest-expect-message": "^1.1.3",
+    "jest-mock": "^29.6.2",
+    "jest-mock-extended": "^3.0.4",
+    "nock": "^13.3.2",
+    "nodemon": "^3.0.1",
+    "p-limit": "^3.1.0",
+    "rimraf": "^5.0.1",
     "run-script-os": "^1.0.7",
-    "turbo": "1.2.15"
+    "start-server-and-test": "^2.0.3",
+    "supertest": "^6.3.3",
+    "ts-jest": "^29.1.1",
+    "tsc-alias": "^1.8.7",
+    "tsc-watch": "^6.0.4",
+    "turbo": "1.10.12",
+    "typescript": "*",
+    "vite": "^5.0.12",
+    "vitest": "^1.2.1",
+    "vue-tsc": "^1.8.27"
   },
-  "postcss": {},
-  "workspaces": [
-    "packages/*",
-    "packages/@n8n_io/*"
-  ],
-  "overrides": {
-    "browserslist": "^4.21.3",
-    "ejs": "^3.1.8",
-    "fork-ts-checker-webpack-plugin": "^6.0.4",
-    "globby": "^11.0.2"
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "sqlite3"
+    ],
+    "overrides": {
+      "@types/node": "^18.16.16",
+      "axios": "1.6.7",
+      "chokidar": "3.5.2",
+      "jsonwebtoken": "9.0.0",
+      "prettier": "^3.1.0",
+      "semver": "^7.5.4",
+      "tough-cookie": "^4.1.3",
+      "tslib": "^2.6.1",
+      "tsconfig-paths": "^4.2.0",
+      "typescript": "^5.3.0",
+      "xml2js": "^0.5.0",
+      "cpy@8>globby": "^11.1.0",
+      "qqjs>globby": "^11.1.0",
+      "@langchain/core": "^0.1.8"
+    },
+    "patchedDependencies": {
+      "typedi@0.10.0": "patches/typedi@0.10.0.patch",
+      "@sentry/cli@2.17.0": "patches/@sentry__cli@2.17.0.patch",
+      "pkce-challenge@3.0.0": "patches/pkce-challenge@3.0.0.patch",
+      "pyodide@0.23.4": "patches/pyodide@0.23.4.patch",
+      "@types/ws@8.5.4": "patches/@types__ws@8.5.4.patch"
+    }
   }
 }

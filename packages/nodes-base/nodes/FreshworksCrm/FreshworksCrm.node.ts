@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -8,6 +7,7 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import { tz } from 'moment-timezone';
 import {
 	adjustAccounts,
 	adjustAttendees,
@@ -15,7 +15,6 @@ import {
 	getAllItemsViewId,
 	handleListing,
 	loadResource,
-	throwOnEmptyFilter,
 	throwOnEmptyUpdate,
 } from './GenericFunctions';
 
@@ -38,9 +37,7 @@ import {
 	taskOperations,
 } from './descriptions';
 
-import { FreshworksConfigResponse, LoadedCurrency, LoadedUser, LoadOption } from './types';
-
-import { tz } from 'moment-timezone';
+import type { FreshworksConfigResponse, LoadedCurrency, LoadedUser, LoadOption } from './types';
 
 export class FreshworksCrm implements INodeType {
 	description: INodeTypeDescription = {
@@ -226,7 +223,7 @@ export class FreshworksCrm implements INodeType {
 				const response = (await freshworksCrmApiRequest.call(
 					this,
 					'GET',
-					`/selector/owners`,
+					'/selector/owners',
 				)) as FreshworksConfigResponse<LoadedUser>;
 
 				const key = Object.keys(response)[0];
@@ -240,8 +237,8 @@ export class FreshworksCrm implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		const defaultTimezone = this.getTimezone();
 
 		let responseData;
@@ -266,7 +263,7 @@ export class FreshworksCrm implements INodeType {
 							name: this.getNodeParameter('name', i),
 						} as IDataObject;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, additionalFields);
@@ -321,7 +318,7 @@ export class FreshworksCrm implements INodeType {
 						// https://developers.freshworks.com/crm/api/#update_a_account
 
 						const body = {} as IDataObject;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, updateFields);
@@ -380,7 +377,7 @@ export class FreshworksCrm implements INodeType {
 						Object.assign(body, additionalFields);
 
 						if (attendees.length) {
-							body['appointment_attendees_attributes'] = adjustAttendees(attendees);
+							body.appointment_attendees_attributes = adjustAttendees(attendees);
 						}
 						responseData = await freshworksCrmApiRequest.call(this, 'POST', '/appointments', body);
 						responseData = responseData.appointment;
@@ -467,7 +464,7 @@ export class FreshworksCrm implements INodeType {
 						Object.assign(body, rest);
 
 						if (attendees.length) {
-							body['appointment_attendees_attributes'] = adjustAttendees(attendees);
+							body.appointment_attendees_attributes = adjustAttendees(attendees);
 							delete body.attendees;
 						}
 
@@ -497,7 +494,7 @@ export class FreshworksCrm implements INodeType {
 							emails: this.getNodeParameter('emails', i),
 						} as IDataObject;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustAccounts(additionalFields));
@@ -547,7 +544,7 @@ export class FreshworksCrm implements INodeType {
 						// https://developers.freshworks.com/crm/api/#update_a_contact
 
 						const body = {} as IDataObject;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, adjustAccounts(updateFields));
@@ -580,7 +577,7 @@ export class FreshworksCrm implements INodeType {
 							amount: this.getNodeParameter('amount', i),
 						} as IDataObject;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, adjustAccounts(additionalFields));
@@ -628,7 +625,7 @@ export class FreshworksCrm implements INodeType {
 						// https://developers.freshworks.com/crm/api/#update_a_deal
 
 						const body = {} as IDataObject;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, adjustAccounts(updateFields));
@@ -687,7 +684,7 @@ export class FreshworksCrm implements INodeType {
 						// https://developers.freshworks.com/crm/api/#update_a_note
 
 						const body = {} as IDataObject;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (Object.keys(updateFields).length) {
 							Object.assign(body, updateFields);
@@ -732,7 +729,7 @@ export class FreshworksCrm implements INodeType {
 							targetable_id: this.getNodeParameter('targetable_id', i),
 						} as IDataObject;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, additionalFields);
@@ -887,7 +884,7 @@ export class FreshworksCrm implements INodeType {
 							targetable_id: this.getNodeParameter('targetable_id', i),
 						} as IDataObject;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, additionalFields);
@@ -950,7 +947,7 @@ export class FreshworksCrm implements INodeType {
 						// https://developers.freshworks.com/crm/api/#update_a_task
 
 						const body = {} as IDataObject;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (!Object.keys(updateFields).length) {
 							throwOnEmptyUpdate.call(this, resource);
@@ -990,12 +987,12 @@ export class FreshworksCrm implements INodeType {
 			}
 
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
+				this.helpers.returnJsonArray(responseData as IDataObject),
 				{ itemData: { item: i } },
 			);
 			returnData.push(...executionData);
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

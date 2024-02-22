@@ -1,21 +1,24 @@
-import { OptionsWithUri } from 'request';
-
-import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	IHttpRequestMethods,
+	ILoadOptionsFunctions,
+	IRequestOptions,
+	JsonObject,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function googleApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	method: string,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
@@ -29,26 +32,25 @@ export async function googleApiRequest(
 		if (Object.keys(headers).length !== 0) {
 			options.headers = Object.assign({}, options.headers, headers);
 		}
-		if (Object.keys(body).length === 0) {
+		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
 		}
 
 		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'googleContactsOAuth2Api', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
 export async function googleApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -57,9 +59,9 @@ export async function googleApiRequestAllItems(
 
 	do {
 		responseData = await googleApiRequest.call(this, method, endpoint, body, query);
-		query.pageToken = responseData['nextPageToken'];
-		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (responseData['nextPageToken'] !== undefined && responseData['nextPageToken'] !== '');
+		query.pageToken = responseData.nextPageToken;
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+	} while (responseData.nextPageToken !== undefined && responseData.nextPageToken !== '');
 
 	return returnData;
 }
@@ -91,7 +93,6 @@ export const allFields = [
 	'userDefined',
 ];
 
-// tslint:disable-next-line:no-any
 export function cleanData(responseData: any) {
 	const fields = ['emailAddresses', 'phoneNumbers', 'relations', 'events', 'addresses'];
 	const newResponseData = [];
@@ -99,8 +100,8 @@ export function cleanData(responseData: any) {
 		responseData = [responseData];
 	}
 	for (let y = 0; y < responseData.length; y++) {
-		const object: { [key: string]: any } = {}; // tslint:disable-line:no-any
-		for (const key of Object.keys(responseData[y])) {
+		const object: { [key: string]: any } = {};
+		for (const key of Object.keys(responseData[y] as IDataObject)) {
 			if (key === 'metadata') {
 				continue;
 			}
@@ -129,7 +130,7 @@ export function cleanData(responseData: any) {
 				}
 			}
 			if (fields.includes(key)) {
-				const value: { [key: string]: any } = {}; // tslint:disable-line:no-any
+				const value: { [key: string]: any } = {};
 				for (const data of responseData[y][key]) {
 					let result;
 					if (value[data.type] === undefined) {

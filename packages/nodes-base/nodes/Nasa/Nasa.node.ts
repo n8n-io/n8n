@@ -1,16 +1,14 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
 import { nasaApiRequest, nasaApiRequestAllItems } from './GenericFunctions';
-
-import moment from 'moment';
 
 export class Nasa implements INodeType {
 	description: INodeTypeDescription = {
@@ -572,7 +570,7 @@ export class Nasa implements INodeType {
 					'By default just the URL of the image is returned. When set to true the image will be downloaded.',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'Put Output File in Field',
 				name: 'binaryPropertyName',
 				type: 'string',
 				required: true,
@@ -584,7 +582,7 @@ export class Nasa implements INodeType {
 						download: [true],
 					},
 				},
-				description: 'Name of the binary property to which to write to',
+				hint: 'The name of the output binary field to put the file in',
 			},
 
 			/* date for astronomyPictureOfTheDay */
@@ -768,7 +766,7 @@ export class Nasa implements INodeType {
 				},
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'Put Output File in Field',
 				name: 'binaryPropertyName',
 				type: 'string',
 				required: true,
@@ -779,7 +777,7 @@ export class Nasa implements INodeType {
 						resource: ['earthImagery'],
 					},
 				},
-				description: 'Name of the binary property to which to write to',
+				hint: 'The name of the output binary field to put the file in',
 			},
 
 			//aqui
@@ -850,8 +848,8 @@ export class Nasa implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
 		const qs: IDataObject = {};
@@ -869,7 +867,7 @@ export class Nasa implements INodeType {
 				// trigger an error in getNodeParameter dealt with in the catch block.
 				let additionalFields;
 				try {
-					additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					additionalFields = this.getNodeParameter('additionalFields', i);
 				} catch (error) {
 					additionalFields = {} as IDataObject;
 				}
@@ -914,15 +912,15 @@ export class Nasa implements INodeType {
 				}
 				if (resource === 'asteroidNeoBrowse') {
 					if (operation === 'getAll') {
-						returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						returnAll = this.getNodeParameter('returnAll', 0);
 
-						if (returnAll === false) {
-							qs.size = this.getNodeParameter('limit', 0) as number;
+						if (!returnAll) {
+							qs.size = this.getNodeParameter('limit', 0);
 						}
 
 						propertyName = 'near_earth_objects';
 
-						endpoint = `/neo/rest/v1/neo/browse`;
+						endpoint = '/neo/rest/v1/neo/browse';
 					} else {
 						throw new NodeOperationError(
 							this.getNode(),
@@ -1045,12 +1043,12 @@ export class Nasa implements INodeType {
 				}
 
 				if (resource === 'asteroidNeoFeed') {
-					const date = Object.keys(responseData)[0];
+					const date = Object.keys(responseData as IDataObject)[0];
 					responseData = responseData[date];
 				}
 
 				if (resource === 'earthImagery') {
-					const binaryProperty = this.getNodeParameter('binaryPropertyName', i) as string;
+					const binaryProperty = this.getNodeParameter('binaryPropertyName', i);
 
 					const data = await nasaApiRequest.call(this, 'GET', endpoint, qs, { encoding: null });
 
@@ -1065,14 +1063,14 @@ export class Nasa implements INodeType {
 
 					items[i] = newItem;
 
-					items[i].binary![binaryProperty] = await this.helpers.prepareBinaryData(data);
+					items[i].binary![binaryProperty] = await this.helpers.prepareBinaryData(data as Buffer);
 				}
 
 				if (resource === 'astronomyPictureOfTheDay') {
-					download = this.getNodeParameter('download', 0) as boolean;
+					download = this.getNodeParameter('download', 0);
 
-					if (download === true) {
-						const binaryProperty = this.getNodeParameter('binaryPropertyName', i) as string;
+					if (download) {
+						const binaryProperty = this.getNodeParameter('binaryPropertyName', i);
 
 						const data = await nasaApiRequest.call(
 							this,
@@ -1080,7 +1078,7 @@ export class Nasa implements INodeType {
 							endpoint,
 							qs,
 							{ encoding: null },
-							responseData.hdurl,
+							responseData.hdurl as string,
 						);
 
 						const filename = (responseData.hdurl as string).split('/');
@@ -1099,14 +1097,14 @@ export class Nasa implements INodeType {
 						items[i] = newItem;
 
 						items[i].binary![binaryProperty] = await this.helpers.prepareBinaryData(
-							data,
+							data as Buffer,
 							filename[filename.length - 1],
 						);
 					}
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject),
 					{ itemData: { item: i } },
 				);
 
@@ -1115,11 +1113,7 @@ export class Nasa implements INodeType {
 				if (this.continueOnFail()) {
 					if (resource === 'earthImagery' && operation === 'get') {
 						items[i].json = { error: error.message };
-					} else if (
-						resource === 'astronomyPictureOfTheDay' &&
-						operation === 'get' &&
-						download === true
-					) {
+					} else if (resource === 'astronomyPictureOfTheDay' && operation === 'get' && download) {
 						items[i].json = { error: error.message };
 					} else {
 						const executionErrorData = this.helpers.constructExecutionMetaData(
@@ -1135,15 +1129,11 @@ export class Nasa implements INodeType {
 		}
 
 		if (resource === 'earthImagery' && operation === 'get') {
-			return this.prepareOutputData(items);
-		} else if (
-			resource === 'astronomyPictureOfTheDay' &&
-			operation === 'get' &&
-			download === true
-		) {
-			return this.prepareOutputData(items);
+			return [items];
+		} else if (resource === 'astronomyPictureOfTheDay' && operation === 'get' && download) {
+			return [items];
 		} else {
-			return this.prepareOutputData(returnData);
+			return [returnData];
 		}
 	}
 }

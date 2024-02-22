@@ -1,12 +1,7 @@
-import { IDataObject, IExecuteFunctions, ITriggerFunctions } from 'n8n-workflow';
-
+import type { IDataObject, IExecuteFunctions, ITriggerFunctions } from 'n8n-workflow';
+import { sleep } from 'n8n-workflow';
 import * as amqplib from 'amqplib';
-
-declare module 'amqplib' {
-	interface Channel {
-		connection: amqplib.Connection;
-	}
-}
+import { formatPrivateKey } from '@utils/utilities';
 
 export async function rabbitmqConnect(
 	this: IExecuteFunctions | ITriggerFunctions,
@@ -25,16 +20,23 @@ export async function rabbitmqConnect(
 	if (credentials.ssl === true) {
 		credentialData.protocol = 'amqps';
 
-		optsData.ca = credentials.ca === '' ? undefined : [Buffer.from(credentials.ca as string)];
+		optsData.ca =
+			credentials.ca === '' ? undefined : [Buffer.from(formatPrivateKey(credentials.ca as string))];
 		if (credentials.passwordless === true) {
-			optsData.cert = credentials.cert === '' ? undefined : Buffer.from(credentials.cert as string);
-			optsData.key = credentials.key === '' ? undefined : Buffer.from(credentials.key as string);
+			optsData.cert =
+				credentials.cert === ''
+					? undefined
+					: Buffer.from(formatPrivateKey(credentials.cert as string));
+			optsData.key =
+				credentials.key === ''
+					? undefined
+					: Buffer.from(formatPrivateKey(credentials.key as string));
 			optsData.passphrase = credentials.passphrase === '' ? undefined : credentials.passphrase;
 			optsData.credentials = amqplib.credentials.external();
 		}
 	}
 
-	return new Promise(async (resolve, reject) => {
+	return await new Promise(async (resolve, reject) => {
 		try {
 			const connection = await amqplib.connect(credentialData, optsData);
 
@@ -71,9 +73,26 @@ export async function rabbitmqConnectQueue(
 ): Promise<amqplib.Channel> {
 	const channel = await rabbitmqConnect.call(this, options);
 
-	return new Promise(async (resolve, reject) => {
+	return await new Promise(async (resolve, reject) => {
 		try {
-			await channel.assertQueue(queue, options);
+			if (options.assertQueue) {
+				await channel.assertQueue(queue, options);
+			} else {
+				await channel.checkQueue(queue);
+			}
+
+			if (options.binding && ((options.binding as IDataObject).bindings! as IDataObject[]).length) {
+				((options.binding as IDataObject).bindings as IDataObject[]).forEach(
+					async (binding: IDataObject) => {
+						await channel.bindQueue(
+							queue,
+							binding.exchange as string,
+							binding.routingKey as string,
+						);
+					},
+				);
+			}
+
 			resolve(channel);
 		} catch (error) {
 			reject(error);
@@ -89,9 +108,13 @@ export async function rabbitmqConnectExchange(
 ): Promise<amqplib.Channel> {
 	const channel = await rabbitmqConnect.call(this, options);
 
-	return new Promise(async (resolve, reject) => {
+	return await new Promise(async (resolve, reject) => {
 		try {
-			await channel.assertExchange(exchange, type, options);
+			if (options.assertExchange) {
+				await channel.assertExchange(exchange, type, options);
+			} else {
+				await channel.checkExchange(exchange);
+			}
 			resolve(channel);
 		} catch (error) {
 			reject(error);
@@ -101,6 +124,7 @@ export async function rabbitmqConnectExchange(
 
 export class MessageTracker {
 	messages: number[] = [];
+
 	isClosing = false;
 
 	received(message: amqplib.ConsumeMessage) {
@@ -138,9 +162,7 @@ export class MessageTracker {
 		// when for example a new version of the workflow got saved. That would lead to
 		// them getting delivered and processed again.
 		while (unansweredMessages !== 0 && count++ <= 300) {
-			await new Promise((resolve) => {
-				setTimeout(resolve, 1000);
-			});
+			await sleep(1000);
 			unansweredMessages = this.unansweredMessages();
 		}
 

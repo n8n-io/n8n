@@ -1,10 +1,26 @@
-import { IDataObject } from 'n8n-workflow';
-import {
+import type {
+	IDataObject,
 	IExecuteSingleFunctions,
 	IN8nHttpFullResponse,
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+
+async function processCampaignSearchResponse(
+	this: IExecuteSingleFunctions,
+	_inputData: INodeExecutionData[],
+	responseData: IN8nHttpFullResponse,
+): Promise<INodeExecutionData[]> {
+	const results = (responseData.body as IDataObject).results as GoogleAdsCampaignElement;
+
+	return results.map((result) => ({
+		json: {
+			...result.campaign,
+			...result.metrics,
+			...result.campaignBudget,
+		},
+	}));
+}
 
 export const campaignOperations: INodeProperties[] = [
 	{
@@ -25,7 +41,7 @@ export const campaignOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: '={{"/v9/customers/" + $parameter["clientCustomerId"].toString().replace(/-/g, "")  + "/googleAds:search"}}',
+						url: '={{"/v15/customers/" + $parameter["clientCustomerId"].toString().replace(/-/g, "")  + "/googleAds:search"}}',
 						body: {
 							query:
 								'={{ "' +
@@ -73,7 +89,7 @@ export const campaignOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: '={{"/v9/customers/" + $parameter["clientCustomerId"].toString().replace(/-/g, "") + "/googleAds:search"}}',
+						url: '={{"/v15/customers/" + $parameter["clientCustomerId"].toString().replace(/-/g, "") + "/googleAds:search"}}',
 						returnFullResponse: true,
 						body: {
 							query:
@@ -105,7 +121,6 @@ export const campaignOperations: INodeProperties[] = [
 						headers: {
 							'login-customer-id':
 								'={{$parameter["managerCustomerId"].toString().replace(/-/g, "")}}',
-							'content-type': 'application/x-www-form-urlencoded',
 						},
 					},
 					output: {
@@ -262,26 +277,6 @@ export const campaignFields: INodeProperties[] = [
 		],
 	},
 ];
-
-function processCampaignSearchResponse(
-	this: IExecuteSingleFunctions,
-	_inputData: INodeExecutionData[],
-	responseData: IN8nHttpFullResponse,
-): Promise<INodeExecutionData[]> {
-	const results = (responseData.body as IDataObject).results as GoogleAdsCampaignElement;
-
-	return Promise.resolve(
-		results.map((result) => {
-			return {
-				json: {
-					...result.campaign,
-					...result.metrics,
-					...result.campaignBudget,
-				},
-			};
-		}),
-	);
-}
 
 type GoogleAdsCampaignElement = [
 	{

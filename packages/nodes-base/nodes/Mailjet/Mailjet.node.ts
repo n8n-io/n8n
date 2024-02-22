@@ -1,17 +1,16 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	JsonObject,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import { IMessage, mailjetApiRequest, validateJSON } from './GenericFunctions';
+import type { IMessage } from './GenericFunctions';
+import { mailjetApiRequest, validateJSON } from './GenericFunctions';
 
 import { emailFields, emailOperations } from './EmailDescription';
 
@@ -77,7 +76,7 @@ export class Mailjet implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available custom fields to display them to user so that he can
+			// Get all the available custom fields to display them to user so that they can
 			// select them easily
 			async getTemplates(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -98,8 +97,8 @@ export class Mailjet implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -110,9 +109,9 @@ export class Mailjet implements INodeType {
 						const htmlBody = this.getNodeParameter('html', i) as string;
 						const textBody = this.getNodeParameter('text', i) as string;
 						const subject = this.getNodeParameter('subject', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-						const toEmail = (this.getNodeParameter('toEmail', i) as string).split(',') as string[];
-						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
+						const toEmail = (this.getNodeParameter('toEmail', i) as string).split(',');
+						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 						const body: IMessage = {
 							From: {
@@ -137,7 +136,7 @@ export class Mailjet implements INodeType {
 							if (parsedJson === undefined) {
 								throw new NodeOperationError(
 									this.getNode(),
-									`Parameter 'Variables (JSON)' has a invalid JSON`,
+									"Parameter 'Variables (JSON)' has a invalid JSON",
 									{ itemIndex: i },
 								);
 							}
@@ -158,7 +157,7 @@ export class Mailjet implements INodeType {
 							body.TextPart = textBody;
 						}
 						if (additionalFields.bccEmail) {
-							const bccEmail = (additionalFields.bccEmail as string).split(',') as string[];
+							const bccEmail = (additionalFields.bccEmail as string).split(',');
 							for (const email of bccEmail) {
 								body.Bcc!.push({
 									Email: email,
@@ -166,7 +165,7 @@ export class Mailjet implements INodeType {
 							}
 						}
 						if (additionalFields.ccAddresses) {
-							const ccEmail = (additionalFields.ccAddresses as string).split(',') as string[];
+							const ccEmail = (additionalFields.ccAddresses as string).split(',');
 							for (const email of ccEmail) {
 								body.Cc!.push({
 									Email: email,
@@ -178,7 +177,7 @@ export class Mailjet implements INodeType {
 						}
 						if (additionalFields.replyTo) {
 							const replyTo = additionalFields.replyTo as string;
-							body['ReplyTo'] = {
+							body.ReplyTo = {
 								Email: replyTo,
 							};
 						}
@@ -204,9 +203,9 @@ export class Mailjet implements INodeType {
 						const fromEmail = this.getNodeParameter('fromEmail', i) as string;
 						const templateId = parseInt(this.getNodeParameter('templateId', i) as string, 10);
 						const subject = this.getNodeParameter('subject', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-						const toEmail = (this.getNodeParameter('toEmail', i) as string).split(',') as string[];
-						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
+						const toEmail = (this.getNodeParameter('toEmail', i) as string).split(',');
+						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 						const body: IMessage = {
 							From: {
@@ -232,7 +231,7 @@ export class Mailjet implements INodeType {
 							if (parsedJson === undefined) {
 								throw new NodeOperationError(
 									this.getNode(),
-									`Parameter 'Variables (JSON)' has a invalid JSON`,
+									"Parameter 'Variables (JSON)' has a invalid JSON",
 									{ itemIndex: i },
 								);
 							}
@@ -247,7 +246,7 @@ export class Mailjet implements INodeType {
 						}
 
 						if (additionalFields.bccEmail) {
-							const bccEmail = (additionalFields.bccEmail as string).split(',') as string[];
+							const bccEmail = (additionalFields.bccEmail as string).split(',');
 							for (const email of bccEmail) {
 								body.Bcc!.push({
 									Email: email,
@@ -255,7 +254,7 @@ export class Mailjet implements INodeType {
 							}
 						}
 						if (additionalFields.ccEmail) {
-							const ccEmail = (additionalFields.ccEmail as string).split(',') as string[];
+							const ccEmail = (additionalFields.ccEmail as string).split(',');
 							for (const email of ccEmail) {
 								body.Cc!.push({
 									Email: email,
@@ -264,7 +263,7 @@ export class Mailjet implements INodeType {
 						}
 						if (additionalFields.replyTo) {
 							const replyTo = additionalFields.replyTo as string;
-							body['ReplyTo'] = {
+							body.ReplyTo = {
 								Email: replyTo,
 							};
 						}
@@ -305,7 +304,7 @@ export class Mailjet implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 
@@ -323,6 +322,6 @@ export class Mailjet implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

@@ -1,20 +1,22 @@
-import { OptionsWithUri } from 'request';
-
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	IDataObject,
+	JsonObject,
+	IHttpRequestMethods,
+	IRequestOptions,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function twistApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
-	body: any = {},
+	body: IDataObject = {},
 	qs: IDataObject = {},
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
-): Promise<any> {
-	const options: OptionsWithUri = {
+) {
+	const options: IRequestOptions = {
 		method,
 		body,
 		qs,
@@ -33,9 +35,8 @@ export async function twistApiRequest(
 	Object.assign(options, option);
 
 	try {
-		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'twistOAuth2Api', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

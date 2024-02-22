@@ -1,6 +1,10 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 import { oneSimpleApiRequest } from './GenericFunctions';
 
@@ -657,14 +661,14 @@ export class OneSimpleApi implements INodeType {
 		let download;
 		for (let i = 0; i < length; i++) {
 			try {
-				const resource = this.getNodeParameter('resource', 0) as string;
-				const operation = this.getNodeParameter('operation', 0) as string;
+				const resource = this.getNodeParameter('resource', 0);
+				const operation = this.getNodeParameter('operation', 0);
 
 				if (resource === 'website') {
 					if (operation === 'pdf') {
 						const link = this.getNodeParameter('link', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
-						download = this.getNodeParameter('download', i) as boolean;
+						const options = this.getNodeParameter('options', i);
+						download = this.getNodeParameter('download', i);
 						qs.url = link;
 
 						if (options.page) {
@@ -687,7 +691,7 @@ export class OneSimpleApi implements INodeType {
 								'',
 								{},
 								{},
-								response.url,
+								response.url as string,
 								{ json: false, encoding: null },
 							)) as Buffer;
 							responseData = {
@@ -703,8 +707,8 @@ export class OneSimpleApi implements INodeType {
 
 					if (operation === 'screenshot') {
 						const link = this.getNodeParameter('link', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
-						download = this.getNodeParameter('download', i) as boolean;
+						const options = this.getNodeParameter('options', i);
+						download = this.getNodeParameter('download', i);
 
 						qs.url = link;
 
@@ -734,7 +738,7 @@ export class OneSimpleApi implements INodeType {
 								'',
 								{},
 								{},
-								response.url,
+								response.url as string,
 								{ json: false, encoding: null },
 							)) as Buffer;
 							responseData = {
@@ -750,7 +754,7 @@ export class OneSimpleApi implements INodeType {
 
 					if (operation === 'seo') {
 						const link = this.getNodeParameter('link', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						qs.url = link;
 
 						if (options.headers) {
@@ -816,8 +820,8 @@ export class OneSimpleApi implements INodeType {
 
 					if (operation === 'qrCode') {
 						const message = this.getNodeParameter('message', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
-						download = this.getNodeParameter('download', i) as boolean;
+						const options = this.getNodeParameter('options', i);
+						download = this.getNodeParameter('download', i);
 
 						qs.message = message;
 
@@ -839,7 +843,7 @@ export class OneSimpleApi implements INodeType {
 								'',
 								{},
 								{},
-								response.url,
+								response.url as string,
 								{ json: false, encoding: null },
 							)) as Buffer;
 							responseData = {
@@ -869,7 +873,7 @@ export class OneSimpleApi implements INodeType {
 		}
 
 		if (download) {
-			return this.prepareOutputData(returnData as unknown as INodeExecutionData[]);
+			return [returnData as unknown as INodeExecutionData[]];
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];

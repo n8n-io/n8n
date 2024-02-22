@@ -1,16 +1,14 @@
-import { parse as urlParse } from 'url';
-
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
-
-import {
+import type {
+	IHookFunctions,
+	IWebhookFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { zendeskApiRequest, zendeskApiRequestAllItems } from './GenericFunctions';
 import { conditionFields } from './ConditionDescription';
@@ -143,9 +141,10 @@ export class ZendeskTrigger implements INodeType {
 			},
 		],
 	};
+
 	methods = {
 		loadOptions: {
-			// Get all the fields to display them to user so that he can
+			// Get all the fields to display them to user so that they can
 			// select them easily
 			async getFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = triggerPlaceholders;
@@ -166,7 +165,7 @@ export class ZendeskTrigger implements INodeType {
 					'/ticket_fields',
 				);
 				for (const field of fields) {
-					if (customFields.includes(field.type) && field.removable && field.active) {
+					if (customFields.includes(field.type as string) && field.removable && field.active) {
 						const fieldName = field.title;
 						const fieldId = field.id;
 						returnData.push({
@@ -178,7 +177,7 @@ export class ZendeskTrigger implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the groups to display them to user so that he can
+			// Get all the groups to display them to user so that they can
 			// select them easily
 			async getGroups(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -193,7 +192,7 @@ export class ZendeskTrigger implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the users to display them to user so that he can
+			// Get all the users to display them to user so that they can
 			// select them easily
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -218,7 +217,7 @@ export class ZendeskTrigger implements INodeType {
 			},
 		},
 	};
-	// @ts-ignore
+
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -275,7 +274,7 @@ export class ZendeskTrigger implements INodeType {
 					return false;
 				}
 
-				endpoint = `/triggers/active`;
+				endpoint = '/triggers/active';
 				const triggers = await zendeskApiRequestAllItems.call(this, 'triggers', 'GET', endpoint);
 
 				for (const trigger of triggers) {
@@ -316,7 +315,6 @@ export class ZendeskTrigger implements INodeType {
 
 					if (options.fields) {
 						for (const field of options.fields as string[]) {
-							// @ts-ignore
 							message[field] = `{{${field}}}`;
 						}
 					} else {
@@ -400,8 +398,10 @@ export class ZendeskTrigger implements INodeType {
 							.webhook as IDataObject;
 					}
 
-					// @ts-ignore
-					bodyTrigger.trigger.actions[0].value = [target.id, JSON.stringify(message)];
+					((bodyTrigger.trigger as IDataObject).actions as IDataObject[])[0].value = [
+						target.id,
+						JSON.stringify(message),
+					];
 
 					const { trigger } = await zendeskApiRequest.call(this, 'POST', '/triggers', bodyTrigger);
 					webhookData.webhookId = trigger.id;
@@ -427,7 +427,7 @@ export class ZendeskTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();
 		return {
-			workflowData: [this.helpers.returnJsonArray(req.body)],
+			workflowData: [this.helpers.returnJsonArray(req.body as IDataObject)],
 		};
 	}
 }

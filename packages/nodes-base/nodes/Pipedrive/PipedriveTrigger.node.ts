@@ -1,17 +1,17 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
-
-import {
+import type {
+	IHookFunctions,
+	IWebhookFunctions,
 	ICredentialDataDecryptedObject,
+	IDataObject,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
-import { pipedriveApiRequest } from './GenericFunctions';
-
 import basicAuth from 'basic-auth';
 
-import { Response } from 'express';
+import type { Response } from 'express';
+import { pipedriveApiRequest } from './GenericFunctions';
 
 function authorizationError(resp: Response, realm: string, responseCode: number, message?: string) {
 	if (message === undefined) {
@@ -209,7 +209,6 @@ export class PipedriveTrigger implements INodeType {
 		],
 	};
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -222,7 +221,7 @@ export class PipedriveTrigger implements INodeType {
 				const eventObject = this.getNodeParameter('object') as string;
 
 				// Webhook got created before so check if it still exists
-				const endpoint = `/webhooks`;
+				const endpoint = '/webhooks';
 
 				const responseData = await pipedriveApiRequest.call(this, 'GET', endpoint, {});
 
@@ -250,7 +249,7 @@ export class PipedriveTrigger implements INodeType {
 				const eventAction = this.getNodeParameter('action') as string;
 				const eventObject = this.getNodeParameter('object') as string;
 
-				const endpoint = `/webhooks`;
+				const endpoint = '/webhooks';
 
 				const body = {
 					event_action: eventAction,
@@ -304,7 +303,7 @@ export class PipedriveTrigger implements INodeType {
 					}
 
 					// Remove from the static workflow data so that it is clear
-					// that no webhooks are registred anymore
+					// that no webhooks are registered anymore
 					delete webhookData.webhookId;
 					delete webhookData.webhookEvents;
 				}
@@ -344,8 +343,8 @@ export class PipedriveTrigger implements INodeType {
 			}
 
 			if (
-				basicAuthData.name !== httpBasicAuth!.user ||
-				basicAuthData.pass !== httpBasicAuth!.password
+				basicAuthData.name !== httpBasicAuth.user ||
+				basicAuthData.pass !== httpBasicAuth.password
 			) {
 				// Provided authentication data is wrong
 				return authorizationError(resp, realm, 403);
@@ -353,7 +352,7 @@ export class PipedriveTrigger implements INodeType {
 		}
 
 		return {
-			workflowData: [this.helpers.returnJsonArray(req.body)],
+			workflowData: [this.helpers.returnJsonArray(req.body as IDataObject[])],
 		};
 	}
 }

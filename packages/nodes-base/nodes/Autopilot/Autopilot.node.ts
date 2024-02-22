@@ -1,12 +1,12 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 
 import { autopilotApiRequest, autopilotApiRequestAllItems } from './GenericFunctions';
@@ -121,15 +121,15 @@ export class Autopilot implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'contact') {
 					if (operation === 'upsert') {
 						const email = this.getNodeParameter('email', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IDataObject = {
 							Email: email,
@@ -169,7 +169,7 @@ export class Autopilot implements INodeType {
 							delete body.newEmail;
 						}
 
-						responseData = await autopilotApiRequest.call(this, 'POST', `/contact`, {
+						responseData = await autopilotApiRequest.call(this, 'POST', '/contact', {
 							contact: body,
 						});
 					}
@@ -189,21 +189,21 @@ export class Autopilot implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
-						if (returnAll === false) {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+						if (!returnAll) {
+							qs.limit = this.getNodeParameter('limit', i);
 						}
 						responseData = await autopilotApiRequestAllItems.call(
 							this,
 							'contacts',
 							'GET',
-							`/contacts`,
+							'/contacts',
 							{},
 							qs,
 						);
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							responseData = responseData.splice(0, qs.limit);
 						}
 					}
@@ -229,7 +229,7 @@ export class Autopilot implements INodeType {
 
 						const contactId = this.getNodeParameter('contactId', i) as string;
 
-						const method: { [key: string]: string } = {
+						const method: { [key: string]: IHttpRequestMethods } = {
 							add: 'POST',
 							remove: 'DELETE',
 							exist: 'GET',
@@ -246,17 +246,17 @@ export class Autopilot implements INodeType {
 							}
 						} else if (operation === 'add' || operation === 'remove') {
 							responseData = await autopilotApiRequest.call(this, method[operation], endpoint);
-							responseData['success'] = true;
+							responseData.success = true;
 						}
 					}
 
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						const listId = this.getNodeParameter('listId', i) as string;
 
-						if (returnAll === false) {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+						if (!returnAll) {
+							qs.limit = this.getNodeParameter('limit', i);
 						}
 						responseData = await autopilotApiRequestAllItems.call(
 							this,
@@ -267,7 +267,7 @@ export class Autopilot implements INodeType {
 							qs,
 						);
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							responseData = responseData.splice(0, qs.limit);
 						}
 					}
@@ -280,27 +280,27 @@ export class Autopilot implements INodeType {
 							name,
 						};
 
-						responseData = await autopilotApiRequest.call(this, 'POST', `/list`, body);
+						responseData = await autopilotApiRequest.call(this, 'POST', '/list', body);
 					}
 
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
-						if (returnAll === false) {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+						if (!returnAll) {
+							qs.limit = this.getNodeParameter('limit', i);
 						}
 						responseData = await autopilotApiRequest.call(this, 'GET', '/lists');
 
 						responseData = responseData.lists;
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							responseData = responseData.splice(0, qs.limit);
 						}
 					}
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);

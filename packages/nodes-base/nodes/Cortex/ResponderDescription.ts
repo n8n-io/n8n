@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 import { TLP } from './AnalyzerInterface';
 
@@ -233,7 +233,7 @@ export const responderFields: INodeProperties[] = [
 								name: 'artifactValues',
 								values: [
 									{
-										displayName: 'Binary Property',
+										displayName: 'Binary Field',
 										name: 'binaryProperty',
 										type: 'string',
 										displayOptions: {
@@ -490,7 +490,7 @@ export const responderFields: INodeProperties[] = [
 				name: 'values',
 				values: [
 					{
-						displayName: 'Binary Property',
+						displayName: 'Input Binary Field',
 						name: 'binaryPropertyName',
 						type: 'string',
 						default: 'data',
@@ -499,7 +499,7 @@ export const responderFields: INodeProperties[] = [
 								dataType: ['file'],
 							},
 						},
-						description: 'Name of the binary property which contains the attachement data',
+						hint: 'The name of the input binary field containing the attachement data',
 					},
 					{
 						displayName: 'Data',

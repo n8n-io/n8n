@@ -3,6 +3,7 @@ node_modules
 .tmp
 tmp
 dist
+coverage
 npm-debug.log*
 yarn.lock
 google-generated-credentials.json
@@ -13,6 +14,11 @@ _START_PACKAGE
 !.vscode/settings.default.json
 .idea
 nodelinter.config.json
-packages/*/package-lock.json
-packages/*/.turbo
+**/package-lock.json
+packages/**/.turbo
+*.tsbuildinfo
+cypress/videos/*
+cypress/screenshots/*
+cypress/downloads/*
 *.swp
+CHANGELOG-*.md

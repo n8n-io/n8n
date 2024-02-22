@@ -1,28 +1,28 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import { IDataObject, ILoadOptionsFunctions, NodeApiError, NodeOperationError } from 'n8n-workflow';
-
-import { OptionsWithUri } from 'request';
-
-import { MispCredentials } from './types';
-
 import { URL } from 'url';
+import type {
+	IExecuteFunctions,
+	IDataObject,
+	ILoadOptionsFunctions,
+	JsonObject,
+	IHttpRequestMethods,
+	IRequestOptions,
+} from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+
+import type { MispCredentials } from './types';
 
 export async function mispApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const { baseUrl, apiKey, allowUnauthorizedCerts } = (await this.getCredentials(
+	const { baseUrl, allowUnauthorizedCerts } = (await this.getCredentials(
 		'mispApi',
 	)) as MispCredentials;
 
-	const options: OptionsWithUri = {
-		headers: {
-			Authorization: apiKey,
-		},
+	const options: IRequestOptions = {
 		method,
 		body,
 		qs,
@@ -40,7 +40,7 @@ export async function mispApiRequest(
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.requestWithAuthentication.call(this, 'mispApi', options);
 	} catch (error) {
 		// MISP API wrongly returns 403 for malformed requests
 		if (error.statusCode === 403) {
@@ -50,7 +50,7 @@ export async function mispApiRequest(
 		const errors = error?.error?.errors;
 
 		if (errors) {
-			const key = Object.keys(errors)[0];
+			const key = Object.keys(errors as IDataObject)[0];
 
 			if (key !== undefined) {
 				let message = errors[key].join();
@@ -63,16 +63,16 @@ export async function mispApiRequest(
 			}
 		}
 
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
 export async function mispApiRequestAllItems(this: IExecuteFunctions, endpoint: string) {
 	const responseData = await mispApiRequest.call(this, 'GET', endpoint);
-	const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+	const returnAll = this.getNodeParameter('returnAll', 0);
 
 	if (!returnAll) {
-		const limit = this.getNodeParameter('limit', 0) as number;
+		const limit = this.getNodeParameter('limit', 0);
 		return responseData.slice(0, limit);
 	}
 
@@ -102,7 +102,7 @@ export function throwOnMissingSharingGroup(this: IExecuteFunctions, fields: IDat
 
 const isValidUrl = (str: string) => {
 	try {
-		new URL(str); // tslint:disable-line: no-unused-expression
+		new URL(str);
 		return true;
 	} catch (error) {
 		return false;

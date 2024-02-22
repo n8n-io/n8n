@@ -6,11 +6,11 @@
 		"target": "esnext",
 		"module": "esnext",
 		"importHelpers": true,
-		"skipLibCheck": true,
 		"allowJs": true,
+		"incremental": false,
 		"allowSyntheticDefaultImports": true,
 		"baseUrl": ".",
-		"types": ["webpack-env", "jest", "vitest/globals"],
+		"types": ["webpack-env", "vitest/globals"],
 		"typeRoots": ["@testing-library", "@types"],
 		"paths": {
 			"@/*": ["src/*"]
