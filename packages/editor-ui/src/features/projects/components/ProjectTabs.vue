@@ -10,7 +10,7 @@ const route = useRoute();
 
 const selectedTab = ref<RouteRecordName | null | undefined>('');
 const options = computed(() => {
-	const isProject = (route?.name ?? '').toString().toLowerCase().startsWith('project');
+	const isProject = route.name?.toString().toLowerCase().startsWith('project');
 	const name = isProject
 		? {
 				workflows: VIEWS.PROJECTS_WORKFLOWS,
@@ -39,7 +39,7 @@ const onUpdateModelValue = (value: string) => {
 	selectedTab.value = value;
 };
 onMounted(() => {
-	selectedTab.value = route?.name;
+	selectedTab.value = route.name;
 });
 </script>
 
@@ -51,6 +51,6 @@ onMounted(() => {
 
 <style module lang="scss">
 .projectTabs {
-	padding: var(--spacing-m) 0 var(--spacing-2xl);
+	padding: var(--spacing-m) 0 0;
 }
 </style>
