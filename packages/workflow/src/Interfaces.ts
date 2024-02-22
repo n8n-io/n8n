@@ -552,15 +552,21 @@ export interface IRequestOptions {
 	json?: boolean;
 	useStream?: boolean;
 	encoding?: string | null;
-	followRedirect?: boolean;
-	followAllRedirects?: boolean;
 	timeout?: number;
 	rejectUnauthorized?: boolean;
 	proxy?: string | AxiosProxyConfig;
 	simple?: boolean;
 	gzip?: boolean;
-	maxRedirects?: number;
 	resolveWithFullResponse?: boolean;
+
+	/** Whether to follow GET or HEAD HTTP 3xx redirects @default true */
+	followRedirect?: boolean;
+
+	/** Whether to follow **All** HTTP 3xx redirects @default false */
+	followAllRedirects?: boolean;
+
+	/** Max number of redirects to follow @default 21 */
+	maxRedirects?: number;
 }
 
 export interface PaginationOptions {
