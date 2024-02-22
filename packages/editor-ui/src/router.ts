@@ -107,6 +107,9 @@ export const routes = [
 			middleware: ['authenticated'],
 		},
 	},
+	// Following two routes are kept in-app:
+	// Single workflow view, used when a custom template host is set
+	// Also, reachable directly from this URL
 	{
 		path: '/templates/:id',
 		name: VIEWS.TEMPLATE,
@@ -130,16 +133,8 @@ export const routes = [
 			},
 			middleware: ['authenticated'],
 		},
-		beforeEnter: (to, _from, next) => {
-			const templatesStore = useTemplatesStore();
-			if (!templatesStore.hasCustomTemplatesHost) {
-				const id = Array.isArray(to.params.id) ? to.params.id[0] : to.params.id;
-				window.location.href = templatesStore.getWebsiteTemplatePageURL(id);
-			} else {
-				next();
-			}
-		},
 	},
+	// Template setup view, this is the landing view for website users
 	{
 		path: '/templates/:id/setup',
 		name: VIEWS.TEMPLATE_SETUP,

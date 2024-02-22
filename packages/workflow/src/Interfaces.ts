@@ -2083,7 +2083,6 @@ export type WorkflowActivateMode =
 	| 'leadershipChange';
 
 export interface IWorkflowHooksOptionalParameters {
-	parentProcessMode?: string;
 	retryOf?: string;
 	sessionId?: string;
 }
@@ -2175,7 +2174,7 @@ export type PropertiesOf<M extends { resource: string; operation: string }> = Ar
 			[key in 'show' | 'hide']?: {
 				resource?: Array<M['resource']>;
 				operation?: Array<M['operation']>;
-				[otherKey: string]: NodeParameterValue[] | undefined;
+				[otherKey: string]: Array<NodeParameterValue | DisplayCondition> | undefined;
 			};
 		};
 	}

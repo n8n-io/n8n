@@ -23,7 +23,7 @@ export async function schemaSearch(this: ILoadOptionsFunctions): Promise<INodeLi
 		if (sshClient) {
 			sshClient.end();
 		}
-		await db.$pool.end();
+		if (!db.$pool.ending) await db.$pool.end();
 	}
 }
 export async function tableSearch(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
@@ -54,6 +54,6 @@ export async function tableSearch(this: ILoadOptionsFunctions): Promise<INodeLis
 		if (sshClient) {
 			sshClient.end();
 		}
-		await db.$pool.end();
+		if (!db.$pool.ending) await db.$pool.end();
 	}
 }

@@ -922,10 +922,6 @@ export class WorkflowDataProxy {
 					throw createExpressionError(`"${nodeName}" node doesn't exist`);
 				}
 
-				if (!that?.runExecutionData?.resultData?.runData.hasOwnProperty(nodeName)) {
-					throw createExpressionError(`no data, execute "${nodeName}" node first`);
-				}
-
 				return new Proxy(
 					{},
 					{
@@ -933,6 +929,7 @@ export class WorkflowDataProxy {
 						ownKeys() {
 							return [
 								'pairedItem',
+								'isExecuted',
 								'itemMatching',
 								'item',
 								'first',
@@ -944,6 +941,12 @@ export class WorkflowDataProxy {
 						},
 						get(target, property, receiver) {
 							if (property === 'isProxy') return true;
+
+							if (!that?.runExecutionData?.resultData?.runData.hasOwnProperty(nodeName)) {
+								if (property === 'isExecuted') return false;
+								throw createExpressionError(`no data, execute "${nodeName}" node first`);
+							}
+							if (property === 'isExecuted') return true;
 
 							if (['pairedItem', 'itemMatching', 'item'].includes(property as string)) {
 								const pairedItemMethod = (itemIndex?: number) => {
