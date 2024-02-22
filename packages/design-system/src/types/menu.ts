@@ -27,6 +27,8 @@ export type IMenuItem = {
 	activateOnRoutePaths?: string[];
 
 	children?: IMenuItem[];
+	isLoading?: boolean;
+	disabled?: boolean;
 };
 
 export type IRouteMenuItemProperties = {

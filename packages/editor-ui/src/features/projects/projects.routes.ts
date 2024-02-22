@@ -72,7 +72,7 @@ export const projectsRoutes: RouteRecordRaw[] = [
 					.concat([
 						{
 							path: 'settings',
-							name: VIEWS.PROJECTS_SETTINGS,
+							name: VIEWS.PROJECT_SETTINGS,
 							components: {
 								default: ProjectSettings,
 								sidebar: MainSidebar,

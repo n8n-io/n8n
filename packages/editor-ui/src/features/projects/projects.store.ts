@@ -34,10 +34,11 @@ export const useProjectsStore = defineStore('projects', () => {
 		personalProject.value = await projectsApi.getPersonalProject(rootStore.getRestApiContext);
 	};
 
-	const createProject = async (project: ProjectCreateRequest) => {
+	const createProject = async (project: ProjectCreateRequest): Promise<Project> => {
 		const newProject = await projectsApi.createProject(rootStore.getRestApiContext, project);
 		projects.value.unshift(newProject);
 		myProjects.value.unshift(newProject);
+		return newProject;
 	};
 
 	const setProjectRelations = async (projectRelations: ProjectRelationsRequest) => {

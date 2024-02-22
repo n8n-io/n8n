@@ -1,9 +1,10 @@
 <script lang="ts" setup>
 import { ref, computed } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import type { IMenuItem } from 'n8n-design-system/types';
 import { useI18n } from '@/composables/useI18n';
 import { VIEWS } from '@/constants';
+import { useProjectsStore } from '@/features/projects/projects.store';
 
 type Props = {
 	collapsed: boolean;
@@ -12,8 +13,11 @@ type Props = {
 const props = defineProps<Props>();
 
 const route = useRoute();
+const router = useRouter();
 const locale = useI18n();
+const projectsStore = useProjectsStore();
 
+const isCreatingProject = ref(false);
 const home = ref<IMenuItem>({
 	id: 'home',
 	label: locale.baseText('projects.menu.home'),
@@ -37,8 +41,17 @@ const activeTab = computed(() =>
 );
 
 const homeClicked = () => {};
-const addProjectClicked = () => {
-	console.log('Add project clicked');
+const addProjectClicked = async () => {
+	isCreatingProject.value = true;
+	addProject.value.isLoading = true;
+	addProject.value.disabled = true;
+	const newProject = await projectsStore.createProject({
+		name: locale.baseText('projects.settings.newProjectName'),
+	});
+	isCreatingProject.value = false;
+	addProject.value.isLoading = false;
+	addProject.value.disabled = false;
+	await router.push({ name: VIEWS.PROJECT_SETTINGS, params: { projectId: newProject.id } });
 };
 </script>
 
