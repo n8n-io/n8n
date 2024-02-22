@@ -966,7 +966,7 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 const NoBodyHttpMethods = ['GET', 'HEAD', 'OPTIONS', 'TRACE'];
 
 /** Remove empty request body on GET, HEAD, OPTIONS, and TRACE requests */
-const removeEmptyBody = (requestOptions: IHttpRequestOptions | IRequestOptions) => {
+export const removeEmptyBody = (requestOptions: IHttpRequestOptions | IRequestOptions) => {
 	const method = requestOptions.method || 'GET';
 	if (NoBodyHttpMethods.includes(method) && isEmpty(requestOptions.body)) {
 		delete requestOptions.body;
