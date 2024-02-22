@@ -31,8 +31,9 @@ export default defineComponent({
 	height: 100%;
 	width: 100%;
 	max-width: 1280px;
-	grid-auto-rows: auto 1fr;
+	grid-template-rows: auto 1fr;
 	box-sizing: border-box;
+	align-content: start;
 	padding: var(--spacing-2xl) var(--spacing-2xl) 0;
 }
 
