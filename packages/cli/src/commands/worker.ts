@@ -4,24 +4,16 @@ import express from 'express';
 import http from 'http';
 import type PCancelable from 'p-cancelable';
 import { WorkflowExecute } from 'n8n-core';
-import type {
-	ExecutionError,
-	ExecutionStatus,
-	IExecuteResponsePromiseData,
-	INodeTypes,
-	IRun,
-} from 'n8n-workflow';
-import { Workflow, NodeOperationError, sleep, ApplicationError } from 'n8n-workflow';
+import type { ExecutionStatus, IExecuteResponsePromiseData, INodeTypes, IRun } from 'n8n-workflow';
+import { Workflow, sleep, ApplicationError } from 'n8n-workflow';
 
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
-import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 import config from '@/config';
 import type { Job, JobId, JobResponse, WebhookResponse } from '@/Queue';
 import { Queue } from '@/Queue';
-import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { N8N_VERSION } from '@/constants';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
@@ -179,20 +171,6 @@ export class Worker extends BaseCommand {
 				retryOf: fullExecutionData.retryOf as string,
 			},
 		);
-
-		try {
-			await Container.get(PermissionChecker).check(workflow, workflowOwner.id);
-		} catch (error) {
-			if (error instanceof NodeOperationError) {
-				const failedExecution = generateFailedExecutionFromError(
-					fullExecutionData.mode,
-					error,
-					error.node,
-				);
-				await additionalData.hooks.executeHookFunctions('workflowExecuteAfter', [failedExecution]);
-			}
-			return { success: true, error: error as ExecutionError };
-		}
 
 		additionalData.hooks.hookFunctions.sendResponse = [
 			async (response: IExecuteResponsePromiseData): Promise<void> => {

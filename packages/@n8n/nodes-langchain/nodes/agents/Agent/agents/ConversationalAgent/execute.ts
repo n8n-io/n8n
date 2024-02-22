@@ -11,7 +11,11 @@ import type { BaseChatMemory } from 'langchain/memory';
 import type { BaseOutputParser } from 'langchain/schema/output_parser';
 import { PromptTemplate } from 'langchain/prompts';
 import { CombiningOutputParser } from 'langchain/output_parsers';
-import { isChatInstance } from '../../../../../utils/helpers';
+import {
+	isChatInstance,
+	getPromptInputByType,
+	getOptionalOutputParsers,
+} from '../../../../../utils/helpers';
 
 export async function conversationalAgentExecute(
 	this: IExecuteFunctions,
@@ -28,10 +32,7 @@ export async function conversationalAgentExecute(
 		| BaseChatMemory
 		| undefined;
 	const tools = (await this.getInputConnectionData(NodeConnectionType.AiTool, 0)) as Tool[];
-	const outputParsers = (await this.getInputConnectionData(
-		NodeConnectionType.AiOutputParser,
-		0,
-	)) as BaseOutputParser[];
+	const outputParsers = await getOptionalOutputParsers(this);
 
 	// TODO: Make it possible in the future to use values for other items than just 0
 	const options = this.getNodeParameter('options', 0, {}) as {
@@ -80,7 +81,18 @@ export async function conversationalAgentExecute(
 
 	const items = this.getInputData();
 	for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-		let input = this.getNodeParameter('text', itemIndex) as string;
+		let input;
+
+		if (this.getNode().typeVersion <= 1.2) {
+			input = this.getNodeParameter('text', itemIndex) as string;
+		} else {
+			input = getPromptInputByType({
+				ctx: this,
+				i: itemIndex,
+				inputKey: 'text',
+				promptTypeKey: 'promptType',
+			});
+		}
 
 		if (input === undefined) {
 			throw new NodeOperationError(this.getNode(), 'The ‘text parameter is empty.');
