@@ -1597,7 +1597,6 @@ export async function httpRequestWithAuthentication(
 	let credentialsDecrypted: ICredentialDataDecryptedObject | undefined;
 	try {
 		const parentTypes = additionalData.credentialsHelper.getParentTypes(credentialsType);
-
 		if (
 			['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes(requestOptions.method as string) &&
 			isEmpty(requestOptions.body)
@@ -1799,6 +1798,13 @@ export async function requestWithAuthentication(
 
 	try {
 		const parentTypes = additionalData.credentialsHelper.getParentTypes(credentialsType);
+
+		if (
+			['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes(requestOptions.method as string) &&
+			isEmpty(requestOptions.body)
+		) {
+			delete requestOptions.body;
+		}
 
 		if (credentialsType === 'oAuth1Api' || parentTypes.includes('oAuth1Api')) {
 			return await requestOAuth1.call(this, credentialsType, requestOptions, false);
