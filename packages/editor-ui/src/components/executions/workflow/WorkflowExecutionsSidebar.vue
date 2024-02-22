@@ -127,7 +127,9 @@ export default defineComponent({
 		// On larger screens, we need to load more then first page of executions
 		// for the scroll bar to appear and infinite scrolling is enabled
 		this.checkListSize();
-		this.scrollToActiveCard();
+		setTimeout(() => {
+			this.scrollToActiveCard();
+		}, 1000);
 	},
 	methods: {
 		loadMore(limit = 20): void {
@@ -158,7 +160,7 @@ export default defineComponent({
 		checkListSize(): void {
 			const sidebarContainerRef = this.$refs.container as HTMLElement | undefined;
 			const currentWorkflowExecutionsCardRefs = this.$refs[
-				`execution-${this.workflowsStore.activeWorkflowExecution?.id}`
+				`execution-${this.executionsStore.activeExecution?.id}`
 			] as WorkflowExecutionsCardRef[] | undefined;
 
 			// Find out how many execution card can fit into list
@@ -175,13 +177,13 @@ export default defineComponent({
 		scrollToActiveCard(): void {
 			const executionsListRef = this.$refs.executionList as HTMLElement | undefined;
 			const currentWorkflowExecutionsCardRefs = this.$refs[
-				`execution-${this.workflowsStore.activeWorkflowExecution?.id}`
+				`execution-${this.executionsStore.activeExecution?.id}`
 			] as WorkflowExecutionsCardRef[] | undefined;
 
 			if (
 				executionsListRef &&
 				currentWorkflowExecutionsCardRefs?.length &&
-				this.workflowsStore.activeWorkflowExecution
+				this.executionsStore.activeExecution
 			) {
 				const cardElement = currentWorkflowExecutionsCardRefs[0].$el as HTMLElement;
 				const cardRect = cardElement.getBoundingClientRect();

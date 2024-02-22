@@ -46,10 +46,10 @@ const isWaitTillIndefinite = computed(() => {
 
 const isExecutionRetriable = computed(() => {
 	return (
-		props.execution.stoppedAt !== undefined &&
+		!!props.execution.stoppedAt &&
 		!props.execution.finished &&
-		props.execution.retryOf === undefined &&
-		props.execution.retrySuccessId === undefined &&
+		!props.execution.retryOf &&
+		!props.execution.retrySuccessId &&
 		!props.execution.waitTill
 	);
 });
@@ -160,7 +160,7 @@ async function handleActionItemClick(commandData: 'retrySaved' | 'retryOriginal'
 	<tr :class="classes">
 		<td>
 			<ElCheckbox
-				v-if="execution.stoppedAt !== undefined && execution.id"
+				v-if="!!execution.stoppedAt && execution.id"
 				:model-value="selected"
 				label=""
 				data-test-id="select-execution-checkbox"
@@ -191,7 +191,7 @@ async function handleActionItemClick(commandData: 'retrySaved' | 'retryOriginal'
 					</template>
 					<template #time>
 						<span v-if="execution.waitTill">{{ formattedWaitTillDate }}</span>
-						<span v-else-if="execution.stoppedAt !== null && execution.stoppedAt !== undefined">
+						<span v-else-if="!!execution.stoppedAt">
 							{{ formattedStoppedAtDate }}
 						</span>
 						<ExecutionsTime v-else :start-time="execution.startedAt" />
@@ -229,7 +229,7 @@ async function handleActionItemClick(commandData: 'retrySaved' | 'retryOriginal'
 		<td>
 			<div :class="$style.buttonCell">
 				<N8nButton
-					v-if="execution.stoppedAt !== undefined && execution.id"
+					v-if="!!execution.stoppedAt && execution.id"
 					size="small"
 					outline
 					:label="i18n.baseText('executionsList.view')"
@@ -240,7 +240,7 @@ async function handleActionItemClick(commandData: 'retrySaved' | 'retryOriginal'
 		<td>
 			<div :class="$style.buttonCell">
 				<N8nButton
-					v-if="execution.stoppedAt === undefined || execution.waitTill"
+					v-if="!execution.stoppedAt || execution.waitTill"
 					data-test-id="stop-execution-button"
 					size="small"
 					outline

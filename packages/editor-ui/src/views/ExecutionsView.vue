@@ -68,9 +68,9 @@ async function onRefreshData() {
 }
 
 async function onUpdateFilters(newFilters: ExecutionFilterType) {
-	executionsStore.resetData();
+	executionsStore.reset();
 	executionsStore.setFilters(newFilters);
-	await onRefreshData();
+	await executionsStore.initialize();
 }
 
 async function onExecutionStop() {

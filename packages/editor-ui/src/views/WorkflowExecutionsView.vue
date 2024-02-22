@@ -89,6 +89,7 @@ async function fetchExecution() {
 		currentExecution.value = (await executionsStore.fetchExecution(
 			executionId.value,
 		)) as ExecutionSummary;
+		executionsStore.activeExecution = currentExecution.value;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('nodeView.showError.openExecution.title'));
 	}
@@ -170,9 +171,9 @@ async function onRefreshData() {
 }
 
 async function onUpdateFilters(newFilters: ExecutionFilterType) {
-	executionsStore.resetData();
+	executionsStore.reset();
 	executionsStore.setFilters(newFilters);
-	await onRefreshData();
+	await executionsStore.initialize();
 }
 
 async function onExecutionStop(id: string) {

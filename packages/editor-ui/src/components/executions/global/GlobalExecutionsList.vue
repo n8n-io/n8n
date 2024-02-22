@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { PropType } from 'vue';
+import { onMounted, PropType } from 'vue';
 import { watch, computed, ref } from 'vue';
 import ExecutionsFilter from '@/components/executions/ExecutionsFilter.vue';
 import GlobalExecutionsListItem from '@/components/executions/global/GlobalExecutionsListItem.vue';
@@ -74,6 +74,10 @@ watch(
 		adjustSelectionAfterMoreItemsLoaded();
 	},
 );
+
+onMounted(() => {
+	isMounted.value = true;
+});
 
 function handleCheckAllExistingChange() {
 	allExistingSelected.value = !allExistingSelected.value;
@@ -154,7 +158,6 @@ function handleClearSelection() {
 async function onFilterChanged(filters: ExecutionFilterType) {
 	emit('update:filters', filters);
 	handleClearSelection();
-	isMounted.value = true;
 }
 
 function getExecutionWorkflowName(execution: ExecutionSummary): string {

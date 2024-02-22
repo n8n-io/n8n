@@ -20,6 +20,8 @@ export const useExecutionsStore = defineStore('executions', () => {
 	const loading = ref(false);
 	const itemsPerPage = ref(10);
 
+	const activeExecution = ref<ExecutionSummary | null>(null);
+
 	const filters = ref<ExecutionFilterType>(getDefaultExecutionFilters());
 	const executionsFilters = computed<ExecutionsQueryFilter>(() =>
 		executionFilterToQueryFilter(filters.value),
@@ -104,7 +106,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 	}
 
 	async function initialize(workflowId?: string) {
-		filters.value = getDefaultExecutionFilters();
+		await fetchExecutions();
 		await startAutoRefreshInterval(workflowId);
 	}
 
@@ -266,6 +268,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 		executionsByWorkflowId,
 		currentExecutions,
 		currentExecutionsByWorkflowId,
+		activeExecution,
 		fetchExecutions,
 		fetchExecution,
 		getExecutionStatus,
