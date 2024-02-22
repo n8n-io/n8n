@@ -10,7 +10,7 @@ const route = useRoute();
 
 const selectedTab = ref<RouteRecordName | null | undefined>('');
 const options = computed(() => {
-	const isProject = route.name?.toString().toLowerCase().startsWith('project');
+	const isProject = (route?.name ?? '').toString().toLowerCase().startsWith('project');
 	const name = isProject
 		? {
 				workflows: VIEWS.PROJECTS_WORKFLOWS,
