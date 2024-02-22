@@ -51,6 +51,6 @@ onMounted(() => {
 
 <style module lang="scss">
 .projectTabs {
-	padding: var(--spacing-m) 0 0;
+	padding: var(--spacing-m) 0 var(--spacing-2xl);
 }
 </style>
