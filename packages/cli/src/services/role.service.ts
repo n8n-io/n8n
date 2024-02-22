@@ -57,6 +57,8 @@ const ALL_MAPS = {
 	workflow: WORKFLOW_SHARING_SCOPE_MAP,
 } as const;
 
+type AllMaps = typeof ALL_MAPS;
+
 @Service()
 export class RoleService {
 	rolesWithScope(namespace: 'global', scopes: Scope | Scope[]): GlobalRole[];
@@ -74,5 +76,11 @@ export class RoleService {
 				((ALL_MAPS[namespace] as any)[k] as Scope[]).includes(s),
 			);
 		});
+	}
+
+	getRoles<K extends keyof AllMaps>(): Record<K, Array<keyof AllMaps[K]>> {
+		return Object.fromEntries(
+			Object.entries(ALL_MAPS).map((e) => [e[0], Object.keys(e[1])]),
+		) as unknown as Record<K, Array<keyof AllMaps[K]>>;
 	}
 }
