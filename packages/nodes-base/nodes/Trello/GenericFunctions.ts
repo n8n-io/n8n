@@ -28,6 +28,10 @@ export async function apiRequest(
 		json: true,
 	};
 
+	if (method === 'GET') {
+		delete options.body;
+	}
+
 	return await this.helpers.requestWithAuthentication.call(this, 'trelloApi', options);
 }
 

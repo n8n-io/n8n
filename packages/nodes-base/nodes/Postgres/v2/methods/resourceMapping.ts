@@ -94,6 +94,6 @@ export async function getMappingColumns(
 		if (sshClient) {
 			sshClient.end();
 		}
-		await db.$pool.end();
+		if (!db.$pool.ending) await db.$pool.end();
 	}
 }

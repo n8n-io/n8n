@@ -15,201 +15,192 @@ import { deepCopy } from 'n8n-workflow';
 import { oldVersionNotice } from '@utils/descriptions';
 import { generatePairedItemData } from '../../../utils/utilities';
 
-const versionDescription: INodeTypeDescription = {
-	displayName: 'Merge',
-	name: 'merge',
-	icon: 'fa:code-branch',
-	group: ['transform'],
-	version: 1,
-	subtitle: '={{$parameter["mode"]}}',
-	description: 'Merges data of multiple streams once data from both is available',
-	defaults: {
-		name: 'Merge',
-		color: '#00bbcc',
-	},
-	// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
-	inputs: ['main', 'main'],
-	outputs: ['main'],
-	inputNames: ['Input 1', 'Input 2'],
-	properties: [
-		oldVersionNotice,
-		{
-			displayName: 'Mode',
-			name: 'mode',
-			type: 'options',
-			options: [
-				{
-					name: 'Append',
-					value: 'append',
-					description:
-						'Combines data of both inputs. The output will contain items of input 1 and input 2.',
-				},
-				{
-					name: 'Keep Key Matches',
-					value: 'keepKeyMatches',
-					description: 'Keeps data of input 1 if it does find a match with data of input 2',
-				},
-				{
-					name: 'Merge By Index',
-					value: 'mergeByIndex',
-					description:
-						'Merges data of both inputs. The output will contain items of input 1 merged with data of input 2. Merge happens depending on the index of the items. So first item of input 1 will be merged with first item of input 2 and so on.',
-				},
-				{
-					name: 'Merge By Key',
-					value: 'mergeByKey',
-					description:
-						'Merges data of both inputs. The output will contain items of input 1 merged with data of input 2. Merge happens depending on a defined key.',
-				},
-				{
-					name: 'Multiplex',
-					value: 'multiplex',
-					description:
-						'Merges each value of one input with each value of the other input. The output will contain (m * n) items where (m) and (n) are lengths of the inputs.',
-				},
-				{
-					name: 'Pass-Through',
-					value: 'passThrough',
-					description:
-						'Passes through data of one input. The output will contain only items of the defined input.',
-				},
-				{
-					name: 'Remove Key Matches',
-					value: 'removeKeyMatches',
-					description: 'Keeps data of input 1 if it does NOT find match with data of input 2',
-				},
-				{
-					name: 'Wait',
-					value: 'wait',
-					description:
-						'Waits till data of both inputs is available and will then output a single empty item. Source Nodes must connect to both Input 1 and 2. This node only supports 2 Sources, if you need more Sources, connect multiple Merge nodes in series. This node will not output any data.',
-				},
-			],
-			default: 'append',
-			description: 'How data of branches should be merged',
-		},
-		{
-			displayName: 'Join',
-			name: 'join',
-			type: 'options',
-			displayOptions: {
-				show: {
-					mode: ['mergeByIndex'],
-				},
-			},
-			options: [
-				{
-					name: 'Inner Join',
-					value: 'inner',
-					description:
-						'Merges as many items as both inputs contain. (Example: Input1 = 5 items, Input2 = 3 items | Output will contain 3 items).',
-				},
-				{
-					name: 'Left Join',
-					value: 'left',
-					description:
-						'Merges as many items as first input contains. (Example: Input1 = 3 items, Input2 = 5 items | Output will contain 3 items).',
-				},
-				{
-					name: 'Outer Join',
-					value: 'outer',
-					description:
-						'Merges as many items as input contains with most items. (Example: Input1 = 3 items, Input2 = 5 items | Output will contain 5 items).',
-				},
-			],
-			default: 'left',
-			description:
-				'How many items the output will contain if inputs contain different amount of items',
-		},
-		{
-			displayName: 'Property Input 1',
-			name: 'propertyName1',
-			type: 'string',
-			default: '',
-			hint: 'The name of the field as text (e.g. “id”)',
-			required: true,
-			displayOptions: {
-				show: {
-					mode: ['keepKeyMatches', 'mergeByKey', 'removeKeyMatches'],
-				},
-			},
-			description: 'Name of property which decides which items to merge of input 1',
-		},
-		{
-			displayName: 'Property Input 2',
-			name: 'propertyName2',
-			type: 'string',
-			default: '',
-			hint: 'The name of the field as text (e.g. “id”)',
-			required: true,
-			displayOptions: {
-				show: {
-					mode: ['keepKeyMatches', 'mergeByKey', 'removeKeyMatches'],
-				},
-			},
-			description: 'Name of property which decides which items to merge of input 2',
-		},
-		{
-			displayName: 'Output Data',
-			name: 'output',
-			type: 'options',
-			displayOptions: {
-				show: {
-					mode: ['passThrough'],
-				},
-			},
-			options: [
-				{
-					name: 'Input 1',
-					value: 'input1',
-				},
-				{
-					name: 'Input 2',
-					value: 'input2',
-				},
-			],
-			default: 'input1',
-			description: 'Defines of which input the data should be used as output of node',
-		},
-		{
-			displayName: 'Overwrite',
-			name: 'overwrite',
-			type: 'options',
-			displayOptions: {
-				show: {
-					mode: ['mergeByKey'],
-				},
-			},
-			options: [
-				{
-					name: 'Always',
-					value: 'always',
-					description: 'Always overwrites everything',
-				},
-				{
-					name: 'If Blank',
-					value: 'blank',
-					description: 'Overwrites only values of "null", "undefined" or empty string',
-				},
-				{
-					name: 'If Missing',
-					value: 'undefined',
-					description: 'Only adds values which do not exist yet',
-				},
-			],
-			default: 'always',
-			description: 'Select when to overwrite the values from Input1 with values from Input 2',
-		},
-	],
-};
-
 export class MergeV1 implements INodeType {
 	description: INodeTypeDescription;
 
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
-			...versionDescription,
+			icon: 'fa:code-branch',
+			version: 1,
+			defaults: {
+				name: 'Merge',
+				color: '#00bbcc',
+			},
+			// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+			inputs: ['main', 'main'],
+			outputs: ['main'],
+			inputNames: ['Input 1', 'Input 2'],
+			properties: [
+				oldVersionNotice,
+				{
+					displayName: 'Mode',
+					name: 'mode',
+					type: 'options',
+					options: [
+						{
+							name: 'Append',
+							value: 'append',
+							description:
+								'Combines data of both inputs. The output will contain items of input 1 and input 2.',
+						},
+						{
+							name: 'Keep Key Matches',
+							value: 'keepKeyMatches',
+							description: 'Keeps data of input 1 if it does find a match with data of input 2',
+						},
+						{
+							name: 'Merge By Index',
+							value: 'mergeByIndex',
+							description:
+								'Merges data of both inputs. The output will contain items of input 1 merged with data of input 2. Merge happens depending on the index of the items. So first item of input 1 will be merged with first item of input 2 and so on.',
+						},
+						{
+							name: 'Merge By Key',
+							value: 'mergeByKey',
+							description:
+								'Merges data of both inputs. The output will contain items of input 1 merged with data of input 2. Merge happens depending on a defined key.',
+						},
+						{
+							name: 'Multiplex',
+							value: 'multiplex',
+							description:
+								'Merges each value of one input with each value of the other input. The output will contain (m * n) items where (m) and (n) are lengths of the inputs.',
+						},
+						{
+							name: 'Pass-Through',
+							value: 'passThrough',
+							description:
+								'Passes through data of one input. The output will contain only items of the defined input.',
+						},
+						{
+							name: 'Remove Key Matches',
+							value: 'removeKeyMatches',
+							description: 'Keeps data of input 1 if it does NOT find match with data of input 2',
+						},
+						{
+							name: 'Wait',
+							value: 'wait',
+							description:
+								'Waits till data of both inputs is available and will then output a single empty item. Source Nodes must connect to both Input 1 and 2. This node only supports 2 Sources, if you need more Sources, connect multiple Merge nodes in series. This node will not output any data.',
+						},
+					],
+					default: 'append',
+					description: 'How data of branches should be merged',
+				},
+				{
+					displayName: 'Join',
+					name: 'join',
+					type: 'options',
+					displayOptions: {
+						show: {
+							mode: ['mergeByIndex'],
+						},
+					},
+					options: [
+						{
+							name: 'Inner Join',
+							value: 'inner',
+							description:
+								'Merges as many items as both inputs contain. (Example: Input1 = 5 items, Input2 = 3 items | Output will contain 3 items).',
+						},
+						{
+							name: 'Left Join',
+							value: 'left',
+							description:
+								'Merges as many items as first input contains. (Example: Input1 = 3 items, Input2 = 5 items | Output will contain 3 items).',
+						},
+						{
+							name: 'Outer Join',
+							value: 'outer',
+							description:
+								'Merges as many items as input contains with most items. (Example: Input1 = 3 items, Input2 = 5 items | Output will contain 5 items).',
+						},
+					],
+					default: 'left',
+					description:
+						'How many items the output will contain if inputs contain different amount of items',
+				},
+				{
+					displayName: 'Property Input 1',
+					name: 'propertyName1',
+					type: 'string',
+					default: '',
+					hint: 'The name of the field as text (e.g. “id”)',
+					required: true,
+					displayOptions: {
+						show: {
+							mode: ['keepKeyMatches', 'mergeByKey', 'removeKeyMatches'],
+						},
+					},
+					description: 'Name of property which decides which items to merge of input 1',
+				},
+				{
+					displayName: 'Property Input 2',
+					name: 'propertyName2',
+					type: 'string',
+					default: '',
+					hint: 'The name of the field as text (e.g. “id”)',
+					required: true,
+					displayOptions: {
+						show: {
+							mode: ['keepKeyMatches', 'mergeByKey', 'removeKeyMatches'],
+						},
+					},
+					description: 'Name of property which decides which items to merge of input 2',
+				},
+				{
+					displayName: 'Output Data',
+					name: 'output',
+					type: 'options',
+					displayOptions: {
+						show: {
+							mode: ['passThrough'],
+						},
+					},
+					options: [
+						{
+							name: 'Input 1',
+							value: 'input1',
+						},
+						{
+							name: 'Input 2',
+							value: 'input2',
+						},
+					],
+					default: 'input1',
+					description: 'Defines of which input the data should be used as output of node',
+				},
+				{
+					displayName: 'Overwrite',
+					name: 'overwrite',
+					type: 'options',
+					displayOptions: {
+						show: {
+							mode: ['mergeByKey'],
+						},
+					},
+					options: [
+						{
+							name: 'Always',
+							value: 'always',
+							description: 'Always overwrites everything',
+						},
+						{
+							name: 'If Blank',
+							value: 'blank',
+							description: 'Overwrites only values of "null", "undefined" or empty string',
+						},
+						{
+							name: 'If Missing',
+							value: 'undefined',
+							description: 'Only adds values which do not exist yet',
+						},
+					],
+					default: 'always',
+					description: 'Select when to overwrite the values from Input1 with values from Input 2',
+				},
+			],
 		};
 	}
 

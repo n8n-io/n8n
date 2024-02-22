@@ -38,6 +38,7 @@ export const sqlAgentAgentProperties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				agent: ['sqlAgent'],
+				'@version': [{ _cnd: { lte: 1.2 } }],
 			},
 		},
 		default: '',

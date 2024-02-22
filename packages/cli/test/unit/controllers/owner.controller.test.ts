@@ -95,7 +95,7 @@ describe('OwnerController', () => {
 
 			await controller.setupOwner(req, res);
 
-			expect(userRepository.save).toHaveBeenCalledWith(user);
+			expect(userRepository.save).toHaveBeenCalledWith(user, { transaction: false });
 
 			const cookieOptions = captor<CookieOptions>();
 			expect(res.cookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME, 'signed-token', cookieOptions);
