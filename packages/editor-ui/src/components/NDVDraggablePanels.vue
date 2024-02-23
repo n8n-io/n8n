@@ -3,7 +3,6 @@
 		<NDVFloatingNodes
 			v-if="activeNode"
 			:root-node="activeNode"
-			type="input"
 			@switchSelectedNode="onSwitchSelectedNode"
 		/>
 		<div v-if="!hideInputAndOutput" :class="$style.inputPanel" :style="inputPanelStyles">
