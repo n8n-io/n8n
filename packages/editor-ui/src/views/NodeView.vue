@@ -94,6 +94,7 @@
 				:is-production-execution-preview="isProductionExecutionPreview"
 				@redrawNode="redrawNode"
 				@switchSelectedNode="onSwitchSelectedNode"
+				@openConnectionNodeCreator="onOpenConnectionNodeCreator"
 				@valueChanged="valueChanged"
 				@stopExecution="stopExecution"
 				@saveKeyboardShortcut="onSaveKeyboardShortcut"
@@ -900,38 +901,7 @@ export default defineComponent({
 
 		this.registerCustomAction({
 			key: 'openSelectiveNodeCreator',
-			action: async ({
-				connectiontype,
-				node,
-				creatorview,
-			}: {
-				connectiontype: NodeConnectionType;
-				node: string;
-				creatorview?: string;
-			}) => {
-				const nodeName = node ?? this.ndvStore.activeNodeName;
-				const nodeData = nodeName ? this.workflowsStore.getNodeByName(nodeName) : null;
-
-				this.ndvStore.activeNodeName = null;
-				await this.redrawNode(node);
-				// Wait for UI to update
-				setTimeout(() => {
-					if (creatorview) {
-						this.onToggleNodeCreator({
-							createNodeActive: true,
-							nodeCreatorView: creatorview,
-						});
-					} else if (connectiontype && nodeData) {
-						this.insertNodeAfterSelected({
-							index: 0,
-							endpointUuid: `${nodeData.id}-input${connectiontype}0`,
-							eventSource: NODE_CREATOR_OPEN_SOURCES.NOTICE_ERROR_MESSAGE,
-							outputType: connectiontype,
-							sourceId: nodeData.id,
-						});
-					}
-				}, 0);
-			},
+			action: this.openSelectiveNodeCreator,
 		});
 
 		this.readOnlyEnvRouteCheck();
@@ -1022,6 +992,38 @@ export default defineComponent({
 		sourceControlEventBus.off('pull', this.onSourceControlPull);
 	},
 	methods: {
+		async openSelectiveNodeCreator({
+			connectiontype,
+			node,
+			creatorview,
+		}: {
+			connectiontype: ConnectionTypes;
+			node: string;
+			creatorview?: string;
+		}) {
+			const nodeName = node ?? this.ndvStore.activeNodeName;
+			const nodeData = nodeName ? this.workflowsStore.getNodeByName(nodeName) : null;
+
+			this.ndvStore.activeNodeName = null;
+			await this.redrawNode(node);
+			// Wait for UI to update
+			setTimeout(() => {
+				if (creatorview) {
+					this.onToggleNodeCreator({
+						createNodeActive: true,
+						nodeCreatorView: creatorview,
+					});
+				} else if (connectiontype && nodeData) {
+					this.insertNodeAfterSelected({
+						index: 0,
+						endpointUuid: `${nodeData.id}-input${connectiontype}0`,
+						eventSource: NODE_CREATOR_OPEN_SOURCES.NOTICE_ERROR_MESSAGE,
+						outputType: connectiontype,
+						sourceId: nodeData.id,
+					});
+				}
+			});
+		},
 		editAllowedCheck(): boolean {
 			if (this.readOnlyNotification?.visible) {
 				return;
@@ -3965,6 +3967,12 @@ export default defineComponent({
 		},
 		async onSwitchSelectedNode(nodeName: string) {
 			this.nodeSelectedByName(nodeName, true, true);
+		},
+		async onOpenConnectionNodeCreator(node: string, connectionType: ConnectionTypes) {
+			await this.openSelectiveNodeCreator({
+				connectiontype: connectionType,
+				node,
+			});
 		},
 		async redrawNode(nodeName: string) {
 			// TODO: Improve later
