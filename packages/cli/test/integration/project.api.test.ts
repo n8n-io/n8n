@@ -273,7 +273,7 @@ describe('POST /projects/', () => {
 });
 
 describe('PATCH /projects/:projectId', () => {
-	test('should update a project', async () => {
+	test('should update a team project name', async () => {
 		const ownerUser = await createOwner();
 		const ownerAgent = testServer.authAgentFor(ownerUser);
 
@@ -286,7 +286,7 @@ describe('PATCH /projects/:projectId', () => {
 		expect(updatedProject.name).toEqual('New Name');
 	});
 
-	test('should not allow viewers to edit team name', async () => {
+	test('should not allow viewers to edit team project name', async () => {
 		const testUser = await createUser();
 		const teamProject = await createTeamProject();
 		await linkUserToProject(testUser, teamProject, 'project:viewer');
@@ -297,6 +297,22 @@ describe('PATCH /projects/:projectId', () => {
 		expect(resp.status).toBe(403);
 
 		const updatedProject = await findProject(teamProject.id);
+		expect(updatedProject.name).not.toEqual('New Name');
+	});
+
+	test('should not allow owners to edit personal project name', async () => {
+		const user = await createUser();
+		const personalProject = await getPersonalProject(user);
+
+		const ownerUser = await createOwner();
+		const ownerAgent = testServer.authAgentFor(ownerUser);
+
+		const resp = await ownerAgent
+			.patch(`/projects/${personalProject.id}`)
+			.send({ name: 'New Name' });
+		expect(resp.status).toBe(500);
+
+		const updatedProject = await findProject(personalProject.id);
 		expect(updatedProject.name).not.toEqual('New Name');
 	});
 });

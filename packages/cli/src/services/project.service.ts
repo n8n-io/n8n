@@ -9,6 +9,7 @@ import { Service } from 'typedi';
 import { type Scope } from '@n8n/permissions';
 import { In } from '@n8n/typeorm';
 import { RoleService } from './role.service';
+import { ApplicationError } from 'n8n-workflow';
 
 @Service()
 export class ProjectService {
@@ -72,10 +73,19 @@ export class ProjectService {
 	}
 
 	async updateProject(name: string, projectId: string): Promise<Project> {
-		await this.projectRepository.update(projectId, {
-			name,
-		});
+		const result = await this.projectRepository.update(
+			{
+				id: projectId,
+				type: 'team',
+			},
+			{
+				name,
+			},
+		);
 
+		if (!result.affected) {
+			throw new ApplicationError('Project not found', { level: 'warning' });
+		}
 		return await this.projectRepository.findOneByOrFail({ id: projectId });
 	}
 
