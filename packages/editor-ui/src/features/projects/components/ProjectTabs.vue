@@ -55,7 +55,7 @@ const options = computed(() => {
 	return tabs;
 });
 watch(
-	() => route.name,
+	() => route?.name,
 	() => {
 		selectedTab.value = route?.name;
 	},
