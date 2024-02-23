@@ -104,7 +104,7 @@ describe('ShutdownService', () => {
 		});
 
 		it('should throw error if app is not shutting down', async () => {
-			await expect(async () => shutdownService.waitForShutdown()).rejects.toThrow(
+			await expect(async () => await shutdownService.waitForShutdown()).rejects.toThrow(
 				'App is not shutting down',
 			);
 		});
@@ -122,6 +122,38 @@ describe('ShutdownService', () => {
 
 		it('should return false if app is not shutting down', () => {
 			expect(shutdownService.isShuttingDown()).toBe(false);
+		});
+	});
+
+	describe('validate', () => {
+		it('should throw error if component is not registered with the DI container', () => {
+			class UnregisteredComponent {
+				onShutdown() {}
+			}
+
+			shutdownService.register(10, {
+				serviceClass: UnregisteredComponent as unknown as ServiceClass,
+				methodName: 'onShutdown',
+			});
+
+			expect(() => shutdownService.validate()).toThrow(
+				'Component "UnregisteredComponent" is not registered with the DI container. Any component using @OnShutdown() must be decorated with @Service()',
+			);
+		});
+
+		it('should throw error if component is missing the shutdown method', () => {
+			class TestComponent {}
+
+			shutdownService.register(10, {
+				serviceClass: TestComponent as unknown as ServiceClass,
+				methodName: 'onShutdown',
+			});
+
+			Container.set(TestComponent, new TestComponent());
+
+			expect(() => shutdownService.validate()).toThrow(
+				'Component "TestComponent" does not have a "onShutdown" method',
+			);
 		});
 	});
 });

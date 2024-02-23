@@ -5,7 +5,7 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import type { ExcelResponse } from '../../helpers/interfaces';
-import { prepareOutput } from '../../helpers/utils';
+import { checkRange, prepareOutput } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
 import { workbookRLC, worksheetRLC } from '../common.descriptions';
 import { updateDisplayOptions } from '@utils/utilities';
@@ -25,7 +25,8 @@ const properties: INodeProperties[] = [
 		type: 'string',
 		placeholder: 'e.g. A1:B2',
 		default: '',
-		description: 'The sheet range to read the data from specified using a A1-style notation',
+		description:
+			'The sheet range to read the data from specified using a A1-style notation, has to be specific e.g A1:B5, generic ranges like A:B are not supported',
 		hint: 'Leave blank to return entire sheet',
 		displayOptions: {
 			show: {
@@ -140,6 +141,7 @@ export async function execute(
 			const options = this.getNodeParameter('options', i, {});
 
 			const range = this.getNodeParameter('range', i, '') as string;
+			checkRange(this.getNode(), range);
 
 			const rawData = (options.rawData as boolean) || false;
 

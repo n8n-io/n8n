@@ -49,7 +49,7 @@ export class FrontendService {
 		private readonly urlService: UrlService,
 		private readonly internalHooks: InternalHooks,
 	) {
-		loadNodesAndCredentials.addPostProcessor(async () => this.generateTypes());
+		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		void this.generateTypes();
 
 		this.initSettings();
@@ -115,9 +115,7 @@ export class FrontendService {
 				apiHost: config.getEnv('diagnostics.config.posthog.apiHost'),
 				apiKey: config.getEnv('diagnostics.config.posthog.apiKey'),
 				autocapture: false,
-				disableSessionRecording: config.getEnv(
-					'diagnostics.config.posthog.disableSessionRecording',
-				),
+				disableSessionRecording: config.getEnv('deployment.type') !== 'cloud',
 				debug: config.getEnv('logs.level') === 'debug',
 			},
 			personalizationSurveyEnabled:

@@ -16,7 +16,7 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import type { Route } from 'vue-router';
+import type { Route, RouteLocationRaw } from 'vue-router';
 import { mapStores } from 'pinia';
 import type { IExecutionsSummary } from 'n8n-workflow';
 import { pushConnection } from '@/mixins/pushConnection';
@@ -29,7 +29,6 @@ import {
 	VIEWS,
 } from '@/constants';
 import type { INodeUi, ITabBarItem } from '@/Interface';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -40,13 +39,11 @@ export default defineComponent({
 		WorkflowDetails,
 		TabBar,
 	},
-	mixins: [pushConnection, workflowHelpers],
+	mixins: [pushConnection],
 	setup(props, ctx) {
 		return {
 			// eslint-disable-next-line @typescript-eslint/no-misused-promises
 			...pushConnection.setup?.(props, ctx),
-			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...workflowHelpers.setup?.(props, ctx),
 		};
 	},
 	data() {
@@ -118,47 +115,67 @@ export default defineComponent({
 				this.workflowToReturnTo = workflowName;
 			}
 		},
-		onTabSelected(tab: string, event: MouseEvent) {
+		onTabSelected(tab: MAIN_HEADER_TABS, event: MouseEvent) {
+			const openInNewTab = event.ctrlKey || event.metaKey;
+
 			switch (tab) {
 				case MAIN_HEADER_TABS.WORKFLOW:
-					if (!['', 'new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(this.workflowToReturnTo)) {
-						if (this.$route.name !== VIEWS.WORKFLOW) {
-							void this.$router.push({
-								name: VIEWS.WORKFLOW,
-								params: { name: this.workflowToReturnTo },
-							});
-						}
-					} else {
-						if (this.$route.name !== VIEWS.NEW_WORKFLOW) {
-							void this.$router.push({ name: VIEWS.NEW_WORKFLOW });
-							this.uiStore.stateIsDirty = this.dirtyState;
-						}
-					}
-					this.activeHeaderTab = MAIN_HEADER_TABS.WORKFLOW;
+					void this.navigateToWorkflowView(openInNewTab);
 					break;
+
 				case MAIN_HEADER_TABS.EXECUTIONS:
-					this.dirtyState = this.uiStore.stateIsDirty;
-					this.workflowToReturnTo = this.currentWorkflow;
-					const routeWorkflowId =
-						this.currentWorkflow === PLACEHOLDER_EMPTY_WORKFLOW_ID ? 'new' : this.currentWorkflow;
-					if (this.activeExecution) {
-						this.$router
-							.push({
-								name: VIEWS.EXECUTION_PREVIEW,
-								params: { name: routeWorkflowId, executionId: this.activeExecution.id },
-							})
-							.catch(() => {});
-					} else {
-						void this.$router.push({
-							name: VIEWS.EXECUTION_HOME,
-							params: { name: routeWorkflowId },
-						});
-					}
-					// this.modalBus.emit('closeAll');
-					this.activeHeaderTab = MAIN_HEADER_TABS.EXECUTIONS;
+					void this.navigateToExecutionsView(openInNewTab);
 					break;
+
 				default:
 					break;
+			}
+		},
+
+		async navigateToWorkflowView(openInNewTab: boolean) {
+			let routeToNavigateTo: RouteLocationRaw;
+			if (!['', 'new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(this.workflowToReturnTo)) {
+				routeToNavigateTo = {
+					name: VIEWS.WORKFLOW,
+					params: { name: this.workflowToReturnTo },
+				};
+			} else {
+				routeToNavigateTo = { name: VIEWS.NEW_WORKFLOW };
+			}
+
+			if (openInNewTab) {
+				const { href } = this.$router.resolve(routeToNavigateTo);
+				window.open(href, '_blank');
+			} else if (this.$route.name !== routeToNavigateTo.name) {
+				if (this.$route.name === VIEWS.NEW_WORKFLOW) {
+					this.uiStore.stateIsDirty = this.dirtyState;
+				}
+				this.activeHeaderTab = MAIN_HEADER_TABS.WORKFLOW;
+				await this.$router.push(routeToNavigateTo);
+			}
+		},
+
+		async navigateToExecutionsView(openInNewTab: boolean) {
+			const routeWorkflowId =
+				this.currentWorkflow === PLACEHOLDER_EMPTY_WORKFLOW_ID ? 'new' : this.currentWorkflow;
+			const routeToNavigateTo: RouteLocationRaw = this.activeExecution
+				? {
+						name: VIEWS.EXECUTION_PREVIEW,
+						params: { name: routeWorkflowId, executionId: this.activeExecution.id },
+				  }
+				: {
+						name: VIEWS.EXECUTION_HOME,
+						params: { name: routeWorkflowId },
+				  };
+
+			if (openInNewTab) {
+				const { href } = this.$router.resolve(routeToNavigateTo);
+				window.open(href, '_blank');
+			} else if (this.$route.name !== routeToNavigateTo.name) {
+				this.dirtyState = this.uiStore.stateIsDirty;
+				this.workflowToReturnTo = this.currentWorkflow;
+				this.activeHeaderTab = MAIN_HEADER_TABS.EXECUTIONS;
+				await this.$router.push(routeToNavigateTo);
 			}
 		},
 	},

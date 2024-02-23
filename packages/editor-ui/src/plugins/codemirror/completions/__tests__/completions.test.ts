@@ -2,7 +2,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { createPinia, setActivePinia } from 'pinia';
 import { DateTime } from 'luxon';
 
-import * as workflowHelpers from '@/mixins/workflowHelpers';
+import * as workflowHelpers from '@/composables/useWorkflowHelpers';
 import { dollarOptions } from '@/plugins/codemirror/completions/dollar.completions';
 import * as utils from '@/plugins/codemirror/completions/utils';
 import {
@@ -193,6 +193,17 @@ describe('Resolution-based completions', () => {
 
 			expect(completions('{{ ({ a: 1 }).| }}')).toHaveLength(
 				Object.keys(object).length + natives('object').length + extensions('object').length,
+			);
+		});
+	});
+
+	describe('indexed access completions', () => {
+		test('should return string completions for indexed access that resolves to string literal: {{ "abc"[0].| }}', () => {
+			// @ts-expect-error Spied function is mistyped
+			resolveParameterSpy.mockReturnValueOnce('a');
+
+			expect(completions('{{ "abc"[0].| }}')).toHaveLength(
+				natives('string').length + extensions('string').length,
 			);
 		});
 	});

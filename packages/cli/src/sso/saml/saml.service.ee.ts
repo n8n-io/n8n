@@ -174,7 +174,7 @@ export class SamlService {
 			const lowerCasedEmail = attributes.email.toLowerCase();
 			const user = await Container.get(UserRepository).findOne({
 				where: { email: lowerCasedEmail },
-				relations: ['globalRole', 'authIdentities'],
+				relations: ['authIdentities'],
 			});
 			if (user) {
 				// Login path for existing users that are fully set up and that have a SAML authIdentity set up
@@ -287,13 +287,18 @@ export class SamlService {
 		let result: Settings;
 		if (samlPreferences) {
 			samlPreferences.value = settingsValue;
-			result = await Container.get(SettingsRepository).save(samlPreferences);
-		} else {
-			result = await Container.get(SettingsRepository).save({
-				key: SAML_PREFERENCES_DB_KEY,
-				value: settingsValue,
-				loadOnStartup: true,
+			result = await Container.get(SettingsRepository).save(samlPreferences, {
+				transaction: false,
 			});
+		} else {
+			result = await Container.get(SettingsRepository).save(
+				{
+					key: SAML_PREFERENCES_DB_KEY,
+					value: settingsValue,
+					loadOnStartup: true,
+				},
+				{ transaction: false },
+			);
 		}
 		if (result) return jsonParse<SamlPreferences>(result.value);
 		return;

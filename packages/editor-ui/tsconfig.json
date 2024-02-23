@@ -14,7 +14,8 @@
 		"types": ["vitest/globals"],
 		"paths": {
 			"@/*": ["src/*"],
-			"n8n-design-system/*": ["../design-system/src/*"]
+			"n8n-design-system/*": ["../design-system/src/*"],
+			"@n8n/chat/*": ["../@n8n/chat/src/*"]
 		},
 		"lib": ["esnext", "dom", "dom.iterable", "scripthost"],
 		// TODO: remove all options below this line

@@ -64,13 +64,12 @@ import TemplatesView from './TemplatesView.vue';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
 
 import type { ITemplatesWorkflowFull } from '@/Interface';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { setPageTitle } from '@/utils/htmlUtils';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { usePostHog } from '@/stores/posthog.store';
-import { openTemplateCredentialSetup } from '@/utils/templates/templateActions';
+import { useTemplateWorkflow } from '@/utils/templates/templateActions';
 import { useExternalHooks } from '@/composables/useExternalHooks';
-import { TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT } from '@/constants';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 export default defineComponent({
 	name: 'TemplatesWorkflowView',
@@ -79,7 +78,6 @@ export default defineComponent({
 		TemplatesView,
 		WorkflowPreview,
 	},
-	mixins: [workflowHelpers],
 	setup() {
 		const externalHooks = useExternalHooks();
 
@@ -132,24 +130,16 @@ export default defineComponent({
 	},
 	methods: {
 		async openTemplateSetup(id: string, e: PointerEvent) {
-			if (!this.posthogStore.isFeatureEnabled(TEMPLATE_CREDENTIAL_SETUP_EXPERIMENT)) {
-				const telemetryPayload = {
-					source: 'workflow',
-					template_id: id,
-					wf_template_repo_session_id: this.templatesStore.currentSessionId,
-				};
-
-				this.$telemetry.track('User inserted workflow template', telemetryPayload, {
-					withPostHog: true,
-				});
-				await this.externalHooks.run('templatesWorkflowView.openWorkflow', telemetryPayload);
-			}
-
-			await openTemplateCredentialSetup({
+			await useTemplateWorkflow({
 				posthogStore: this.posthogStore,
 				router: this.$router,
 				templateId: id,
 				inNewBrowserTab: e.metaKey || e.ctrlKey,
+				externalHooks: this.externalHooks,
+				nodeTypesStore: useNodeTypesStore(),
+				telemetry: this.$telemetry,
+				templatesStore: useTemplatesStore(),
+				source: 'template_preview',
 			});
 		},
 		onHidePreview() {

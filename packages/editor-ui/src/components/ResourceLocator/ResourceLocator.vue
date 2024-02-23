@@ -6,9 +6,9 @@
 	>
 		<ResourceLocatorDropdown
 			ref="dropdown"
+			v-on-click-outside="hideResourceDropdown"
 			:model-value="modelValue ? modelValue.value : ''"
 			:show="resourceDropdownVisible"
-			v-on-click-outside="hideResourceDropdown"
 			:filterable="isSearchable"
 			:filter-required="requiresSearchFilter"
 			:resources="currentQueryResults"
@@ -44,10 +44,10 @@
 					[$style.multipleModes]: hasMultipleModes,
 				}"
 			>
+				<div :class="$style.background"></div>
 				<div v-if="hasMultipleModes" :class="$style.modeSelector">
 					<n8n-select
 						:model-value="selectedMode"
-						filterable
 						:size="inputSize"
 						:disabled="isReadOnly"
 						:placeholder="$locale.baseText('resourceLocator.modeSelector.placeholder')"
@@ -93,7 +93,7 @@
 									ref="input"
 									:model-value="expressionDisplayValue"
 									:path="path"
-									is-single-line
+									:rows="3"
 									@update:modelValue="onInputChange"
 									@modalOpenerClick="$emit('modalOpenerClick')"
 								/>
@@ -148,8 +148,6 @@ import type { IResourceLocatorReqParams, IResourceLocatorResultExpanded } from '
 import DraggableTarget from '@/components/DraggableTarget.vue';
 import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
-import { debounceHelper } from '@/mixins/debounce';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -174,6 +172,9 @@ import { mapStores } from 'pinia';
 import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
 import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
+import { useDebounce } from '@/composables/useDebounce';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useRouter } from 'vue-router';
 
 interface IResourceLocatorQuery {
 	results: INodeListSearchItems[];
@@ -190,7 +191,6 @@ export default defineComponent({
 		ParameterIssues,
 		ResourceLocatorDropdown,
 	},
-	mixins: [debounceHelper, workflowHelpers],
 	props: {
 		parameter: {
 			type: Object as PropType<INodeProperties>,
@@ -256,6 +256,14 @@ export default defineComponent({
 			type: Object as PropType<EventBus>,
 			default: () => createEventBus(),
 		},
+	},
+	setup() {
+		const router = useRouter();
+		const workflowHelpers = useWorkflowHelpers(router);
+
+		const { callDebounced } = useDebounce();
+
+		return { callDebounced, workflowHelpers };
 	},
 	data() {
 		return {
@@ -365,7 +373,7 @@ export default defineComponent({
 				const value = this.isValueExpression ? this.expressionComputedValue : this.valueToDisplay;
 				if (typeof value === 'string') {
 					const expression = this.currentMode.url.replace(/\{\{\$value\}\}/g, value);
-					const resolved = this.resolveExpression(expression);
+					const resolved = this.workflowHelpers.resolveExpression(expression);
 
 					return typeof resolved === 'string' ? resolved : null;
 				}
@@ -636,7 +644,10 @@ export default defineComponent({
 			}
 		},
 		loadResourcesDebounced() {
-			void this.callDebounced('loadResources', { debounceTime: 1000, trailing: true });
+			void this.callDebounced(this.loadResources, {
+				debounceTime: 1000,
+				trailing: true,
+			});
 		},
 		setResponse(paramsKey: string, props: Partial<IResourceLocatorQuery>) {
 			this.cachedResponses = {
@@ -675,7 +686,7 @@ export default defineComponent({
 					});
 				}
 
-				const resolvedNodeParameters = this.resolveRequiredParameters(
+				const resolvedNodeParameters = this.workflowHelpers.resolveRequiredParameters(
 					this.parameter,
 					params.parameters,
 				) as INodeParameters;
@@ -808,15 +819,32 @@ $--mode-selector-width: 92px;
 .resourceLocator {
 	display: flex;
 	flex-wrap: wrap;
+	position: relative;
+
+	--input-issues-width: 28px;
 
 	.inputContainer {
 		display: flex;
 		align-items: center;
 		width: 100%;
 
+		--input-border-top-left-radius: 0;
+		--input-border-bottom-left-radius: 0;
+
 		> div {
 			width: 100%;
 		}
+	}
+
+	.background {
+		position: absolute;
+		background-color: var(--color-background-input-triple);
+		top: 0;
+		bottom: 0;
+		left: 0;
+		right: var(--input-issues-width);
+		border: 1px solid var(--border-color-base);
+		border-radius: var(--border-radius-base);
 	}
 
 	&.multipleModes {
@@ -878,7 +906,9 @@ $--mode-selector-width: 92px;
 
 .openResourceLink {
 	width: 25px !important;
-	margin-left: var(--spacing-2xs);
+	padding-left: var(--spacing-2xs);
+	padding-top: var(--spacing-4xs);
+	align-self: flex-start;
 }
 
 .parameter-issues {

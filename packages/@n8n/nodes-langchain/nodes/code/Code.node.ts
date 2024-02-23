@@ -53,6 +53,14 @@ export const vmResolver = makeResolverFromLegacyOptions({
 		modules: external ? ['langchain', ...external.split(',')] : ['langchain'],
 		transitive: false,
 	},
+	resolve(moduleName, parentDirname) {
+		if (moduleName.match(/^langchain\//)) {
+			return require.resolve(`@n8n/n8n-nodes-langchain/node_modules/${moduleName}.cjs`, {
+				paths: [parentDirname],
+			});
+		}
+		return;
+	},
 	builtin: builtIn?.split(',') ?? [],
 });
 
@@ -150,8 +158,7 @@ export class Code implements INodeType {
 								name: 'code',
 								type: 'string',
 								typeOptions: {
-									editor: 'codeNodeEditor',
-									editorLanguage: 'javaScript',
+									editor: 'jsEditor',
 								},
 								default: defaultCodeExecute,
 								hint: 'This code will only run and return data if a "Main" input & output got created.',
@@ -168,8 +175,7 @@ export class Code implements INodeType {
 								name: 'code',
 								type: 'string',
 								typeOptions: {
-									editor: 'codeNodeEditor',
-									editorLanguage: 'javaScript',
+									editor: 'jsEditor',
 								},
 								default: defaultCodeSupplyData,
 								hint: 'This code will only run and return data if an output got created which is not "Main".',

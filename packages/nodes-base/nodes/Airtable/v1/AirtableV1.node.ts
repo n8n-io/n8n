@@ -6,6 +6,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	INodeTypeBaseDescription,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
@@ -569,7 +570,7 @@ export class AirtableV1 implements INodeType {
 
 		let returnAll = false;
 		let endpoint = '';
-		let requestMethod = '';
+		let requestMethod: IHttpRequestMethods;
 
 		const body: IDataObject = {};
 		const qs: IDataObject = {};
@@ -718,10 +719,12 @@ export class AirtableV1 implements INodeType {
 					const downloadFieldNames = (
 						this.getNodeParameter('downloadFieldNames', 0) as string
 					).split(',');
+					const pairedItem = generatePairedItemData(items.length);
 					const data = await downloadRecordAttachments.call(
 						this,
 						responseData.records as IRecord[],
 						downloadFieldNames,
+						pairedItem,
 					);
 					return [data];
 				}

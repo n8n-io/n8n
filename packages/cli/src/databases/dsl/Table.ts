@@ -1,5 +1,5 @@
-import type { TableForeignKeyOptions, TableIndexOptions, QueryRunner } from 'typeorm';
-import { Table, TableColumn } from 'typeorm';
+import type { TableForeignKeyOptions, TableIndexOptions, QueryRunner } from '@n8n/typeorm';
+import { Table, TableColumn, TableForeignKey } from '@n8n/typeorm';
 import LazyPromise from 'p-lazy';
 import { Column } from './Column';
 import { ApplicationError } from 'n8n-workflow';
@@ -62,7 +62,7 @@ export class CreateTable extends TableOperation {
 	async execute(queryRunner: QueryRunner) {
 		const { driver } = queryRunner.connection;
 		const { columns, tableName: name, prefix, indices, foreignKeys } = this;
-		return queryRunner.createTable(
+		return await queryRunner.createTable(
 			new Table({
 				name: `${prefix}${name}`,
 				columns: columns.map((c) => c.toOptions(driver)),
@@ -78,7 +78,7 @@ export class CreateTable extends TableOperation {
 export class DropTable extends TableOperation {
 	async execute(queryRunner: QueryRunner) {
 		const { tableName: name, prefix } = this;
-		return queryRunner.dropTable(`${prefix}${name}`, true);
+		return await queryRunner.dropTable(`${prefix}${name}`, true);
 	}
 }
 
@@ -95,7 +95,7 @@ export class AddColumns extends TableOperation {
 	async execute(queryRunner: QueryRunner) {
 		const { driver } = queryRunner.connection;
 		const { tableName, prefix, columns } = this;
-		return queryRunner.addColumns(
+		return await queryRunner.addColumns(
 			`${prefix}${tableName}`,
 			columns.map((c) => new TableColumn(c.toOptions(driver))),
 		);
@@ -114,7 +114,43 @@ export class DropColumns extends TableOperation {
 
 	async execute(queryRunner: QueryRunner) {
 		const { tableName, prefix, columnNames } = this;
-		return queryRunner.dropColumns(`${prefix}${tableName}`, columnNames);
+		return await queryRunner.dropColumns(`${prefix}${tableName}`, columnNames);
+	}
+}
+
+abstract class ForeignKeyOperation extends TableOperation {
+	protected foreignKey: TableForeignKey;
+
+	constructor(
+		tableName: string,
+		columnName: string,
+		[referencedTableName, referencedColumnName]: [string, string],
+		prefix: string,
+		queryRunner: QueryRunner,
+		customConstraintName?: string,
+	) {
+		super(tableName, prefix, queryRunner);
+
+		this.foreignKey = new TableForeignKey({
+			name: customConstraintName,
+			columnNames: [columnName],
+			referencedTableName: `${prefix}${referencedTableName}`,
+			referencedColumnNames: [referencedColumnName],
+		});
+	}
+}
+
+export class AddForeignKey extends ForeignKeyOperation {
+	async execute(queryRunner: QueryRunner) {
+		const { tableName, prefix } = this;
+		return await queryRunner.createForeignKey(`${prefix}${tableName}`, this.foreignKey);
+	}
+}
+
+export class DropForeignKey extends ForeignKeyOperation {
+	async execute(queryRunner: QueryRunner) {
+		const { tableName, prefix } = this;
+		return await queryRunner.dropForeignKey(`${prefix}${tableName}`, this.foreignKey);
 	}
 }
 
@@ -136,7 +172,7 @@ class ModifyNotNull extends TableOperation {
 		const oldColumn = table.findColumnByName(columnName)!;
 		const newColumn = oldColumn.clone();
 		newColumn.isNullable = isNullable;
-		return queryRunner.changeColumn(table, oldColumn, newColumn);
+		return await queryRunner.changeColumn(table, oldColumn, newColumn);
 	}
 }
 

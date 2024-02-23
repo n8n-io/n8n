@@ -1,5 +1,5 @@
 <template>
-	<div ref="root" @keydown.stop></div>
+	<div ref="root" :class="$style.editor" @keydown.stop></div>
 </template>
 
 <script lang="ts">
@@ -8,7 +8,6 @@ import { EditorView, keymap } from '@codemirror/view';
 import { EditorState, Prec } from '@codemirror/state';
 import { history, redo, undo } from '@codemirror/commands';
 
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { expressionManager } from '@/mixins/expressionManager';
 import { completionManager } from '@/mixins/completionManager';
 import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
@@ -22,7 +21,7 @@ import type { IVariableItemSelected } from '@/Interface';
 
 export default defineComponent({
 	name: 'ExpressionEditorModalInput',
-	mixins: [expressionManager, completionManager, workflowHelpers],
+	mixins: [expressionManager, completionManager],
 	props: {
 		modelValue: {
 			type: String,
@@ -67,6 +66,7 @@ export default defineComponent({
 			history(),
 			expressionInputHandler(),
 			EditorView.lineWrapping,
+			EditorView.editable.of(!this.isReadOnly),
 			EditorState.readOnly.of(this.isReadOnly),
 			EditorView.contentAttributes.of({ 'data-gramm': 'false' }), // disable grammarly
 			EditorView.domEventHandlers({ scroll: forceParse }),
@@ -146,4 +146,14 @@ export default defineComponent({
 });
 </script>
 
-<style lang="scss"></style>
+<style lang="scss" module>
+.editor div[contenteditable='false'] {
+	background-color: var(--disabled-fill, var(--color-background-light));
+	cursor: not-allowed;
+}
+</style>
+<style lang="scss" scoped>
+:deep(.cm-content) {
+	border-radius: var(--border-radius-base);
+}
+</style>

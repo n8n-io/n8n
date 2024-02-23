@@ -1,7 +1,9 @@
 <template>
 	<div v-on-click-outside="onBlur" :class="$style.sqlEditor">
-		<div ref="sqlEditor" data-test-id="sql-editor-container"></div>
+		<div :class="$style.codemirror" ref="sqlEditor" data-test-id="sql-editor-container"></div>
+		<slot name="suffix" />
 		<InlineExpressionEditorOutput
+			v-if="!fillParent"
 			:segments="segments"
 			:is-read-only="isReadOnly"
 			:visible="isFocused"
@@ -11,41 +13,43 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
-import { acceptCompletion, autocompletion, ifNotIn } from '@codemirror/autocomplete';
-import { indentWithTab, history, redo, toggleComment, undo } from '@codemirror/commands';
-import { bracketMatching, foldGutter, indentOnInput, LanguageSupport } from '@codemirror/language';
+import InlineExpressionEditorOutput from '@/components/InlineExpressionEditor/InlineExpressionEditorOutput.vue';
+import { EXPRESSIONS_DOCS_URL } from '@/constants';
+import { codeNodeEditorEventBus } from '@/event-bus';
+import { expressionManager } from '@/mixins/expressionManager';
+import { n8nCompletionSources } from '@/plugins/codemirror/completions/addCompletions';
+import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
+import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
+import { autocompletion, ifNotIn } from '@codemirror/autocomplete';
+import { history, redo, toggleComment, undo } from '@codemirror/commands';
+import { LanguageSupport, bracketMatching, foldGutter, indentOnInput } from '@codemirror/language';
+import { type Extension, type Line, Prec } from '@codemirror/state';
 import { EditorState } from '@codemirror/state';
-import type { Line, Extension } from '@codemirror/state';
+import type { ViewUpdate } from '@codemirror/view';
 import {
-	dropCursor,
 	EditorView,
+	dropCursor,
 	highlightActiveLine,
 	highlightActiveLineGutter,
 	keymap,
 	lineNumbers,
 } from '@codemirror/view';
-import type { ViewUpdate } from '@codemirror/view';
+import type { SQLDialect as SQLDialectType } from '@n8n/codemirror-lang-sql';
 import {
-	MSSQL,
-	MySQL,
-	PostgreSQL,
-	StandardSQL,
-	MariaSQL,
-	SQLite,
 	Cassandra,
+	MSSQL,
+	MariaSQL,
+	MySQL,
 	PLSQL,
+	PostgreSQL,
+	SQLite,
+	StandardSQL,
 	keywordCompletionSource,
 } from '@n8n/codemirror-lang-sql';
-import type { SQLDialect as SQLDialectType } from '@n8n/codemirror-lang-sql';
+import { defineComponent } from 'vue';
+import { enterKeyMap, tabKeyMap } from '../CodeNodeEditor/baseExtensions';
 import { codeNodeEditorTheme } from '../CodeNodeEditor/theme';
-import { n8nCompletionSources } from '@/plugins/codemirror/completions/addCompletions';
-import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
-import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
-import { expressionManager } from '@/mixins/expressionManager';
-import InlineExpressionEditorOutput from '@/components/InlineExpressionEditor/InlineExpressionEditorOutput.vue';
-import { EXPRESSIONS_DOCS_URL } from '@/constants';
-import { codeNodeEditorEventBus } from '@/event-bus';
+import { isEqual } from 'lodash-es';
 
 const SQL_DIALECTS = {
 	StandardSQL,
@@ -85,6 +89,10 @@ export default defineComponent({
 			},
 		},
 		isReadOnly: {
+			type: Boolean,
+			default: false,
+		},
+		fillParent: {
 			type: Boolean,
 			default: false,
 		},
@@ -129,8 +137,9 @@ export default defineComponent({
 				expressionInputHandler(),
 				codeNodeEditorTheme({
 					isReadOnly: this.isReadOnly,
-					customMaxHeight: '350px',
-					customMinHeight: this.rows,
+					maxHeight: this.fillParent ? '100%' : '40vh',
+					minHeight: '10vh',
+					rows: this.rows,
 				}),
 				lineNumbers(),
 				EditorView.lineWrapping,
@@ -146,13 +155,15 @@ export default defineComponent({
 			if (!this.isReadOnly) {
 				extensions.push(
 					history(),
-					keymap.of([
-						{ key: 'Mod-z', run: undo },
-						{ key: 'Mod-Shift-z', run: redo },
-						{ key: 'Mod-/', run: toggleComment },
-						{ key: 'Tab', run: acceptCompletion },
-						indentWithTab,
-					]),
+					Prec.highest(
+						keymap.of([
+							...tabKeyMap,
+							...enterKeyMap,
+							{ key: 'Mod-z', run: undo },
+							{ key: 'Mod-Shift-z', run: redo },
+							{ key: 'Mod-/', run: toggleComment },
+						]),
+					),
 					autocompletion(),
 					indentOnInput(),
 					highlightActiveLine(),
@@ -161,12 +172,10 @@ export default defineComponent({
 					dropCursor(),
 					bracketMatching(),
 					EditorView.updateListener.of((viewUpdate: ViewUpdate) => {
-						if (!viewUpdate.docChanged || !this.editor) return;
+						if (!this.editor || !viewUpdate.docChanged) return;
 
-						highlighter.removeColor(this.editor as EditorView, this.plaintextSegments);
-						highlighter.addColor(this.editor as EditorView, this.resolvableSegments);
-
-						this.$emit('update:modelValue', this.editor?.state.doc.toString());
+						// Force segments value update by keeping track of editor state
+						this.editorState = this.editor.state;
 					}),
 				);
 			}
@@ -174,18 +183,13 @@ export default defineComponent({
 		},
 	},
 	watch: {
-		'ndvStore.ndvInputData'() {
-			this.editor?.dispatch({
-				changes: {
-					from: 0,
-					to: this.editor.state.doc.length,
-					insert: this.modelValue,
-				},
-			});
+		displayableSegments(segments, newSegments) {
+			if (isEqual(segments, newSegments)) return;
 
-			setTimeout(() => {
-				this.editor?.contentDOM.blur();
-			});
+			highlighter.removeColor(this.editor, this.plaintextSegments);
+			highlighter.addColor(this.editor, this.resolvableSegments);
+
+			this.$emit('update:modelValue', this.editor?.state.doc.toString());
 		},
 	},
 	mounted() {
@@ -233,5 +237,10 @@ export default defineComponent({
 <style module lang="scss">
 .sqlEditor {
 	position: relative;
+	height: 100%;
+}
+
+.codemirror {
+	height: 100%;
 }
 </style>

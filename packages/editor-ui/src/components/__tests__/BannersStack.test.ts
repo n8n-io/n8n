@@ -26,20 +26,11 @@ const initialState = {
 		users: {
 			'aaa-bbb': {
 				id: 'aaa-bbb',
-				globalRole: {
-					id: '1',
-					name: 'owner',
-					scope: 'global',
-				},
+				role: 'global:owner',
 			},
 			'bbb-bbb': {
 				id: 'bbb-bbb',
-				globalRoleId: 2,
-				globalRole: {
-					id: '2',
-					name: 'member',
-					scope: 'global',
-				},
+				role: 'global:member',
 			},
 		},
 	},

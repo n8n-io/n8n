@@ -10,6 +10,7 @@ import type {
 
 export class WriteBinaryFile implements INodeType {
 	description: INodeTypeDescription = {
+		hidden: true,
 		displayName: 'Write Binary File',
 		name: 'writeBinaryFile',
 		icon: 'fa:file-export',

@@ -1,6 +1,7 @@
 import type {
 	IDataObject,
 	IExecuteFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -1890,7 +1891,7 @@ export class Pipedrive implements INodeType {
 			//         file:create
 			// ----------------------------------
 			{
-				displayName: 'Binary Property',
+				displayName: 'Input Binary Field',
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',
@@ -1902,8 +1903,7 @@ export class Pipedrive implements INodeType {
 					},
 				},
 				placeholder: '',
-				description:
-					'Name of the binary property which contains the data for the file to be created',
+				hint: 'The name of the input binary field containing the file to be written',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -1996,7 +1996,7 @@ export class Pipedrive implements INodeType {
 				description: 'ID of the file to download',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'Put Output File in Field',
 				name: 'binaryPropertyName',
 				type: 'string',
 				required: true,
@@ -2007,8 +2007,7 @@ export class Pipedrive implements INodeType {
 						resource: ['file'],
 					},
 				},
-				description:
-					'Name of the binary property to which to write the data of the downloaded file',
+				hint: 'The name of the output binary field to put the file in',
 			},
 
 			// ----------------------------------
@@ -4086,7 +4085,7 @@ export class Pipedrive implements INodeType {
 
 		let downloadFile: boolean;
 
-		let requestMethod: string;
+		let requestMethod: IHttpRequestMethods;
 		let endpoint: string;
 		let returnAll = false;
 

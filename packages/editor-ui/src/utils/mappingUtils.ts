@@ -18,6 +18,10 @@ export function generatePath(root: string, path: Array<string | number>): string
 	}, root);
 }
 
+export function escapeMappingString(str: string): string {
+	return str.replace(/\'/g, "\\'");
+}
+
 export function getMappedExpression({
 	nodeName,
 	distanceFromActive,
@@ -28,7 +32,9 @@ export function getMappedExpression({
 	path: Array<string | number> | string;
 }) {
 	const root =
-		distanceFromActive === 1 ? '$json' : generatePath(`$('${nodeName}')`, ['item', 'json']);
+		distanceFromActive === 1
+			? '$json'
+			: generatePath(`$('${escapeMappingString(nodeName)}')`, ['item', 'json']);
 
 	if (typeof path === 'string') {
 		return `{{ ${root}${path} }}`;

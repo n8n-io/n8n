@@ -99,7 +99,7 @@ export class Webhook extends Node {
 		const options = context.getNodeParameter('options', {}) as {
 			binaryData: boolean;
 			ignoreBots: boolean;
-			rawBody: Buffer;
+			rawBody: boolean;
 			responseData?: string;
 		};
 		const req = context.getRequestObject();
@@ -119,11 +119,11 @@ export class Webhook extends Node {
 		}
 
 		if (options.binaryData) {
-			return this.handleBinaryData(context);
+			return await this.handleBinaryData(context);
 		}
 
 		if (req.contentType === 'multipart/form-data') {
-			return this.handleFormData(context);
+			return await this.handleFormData(context);
 		}
 
 		const nodeVersion = context.getNode().typeVersion;
@@ -225,7 +225,7 @@ export class Webhook extends Node {
 			},
 		};
 
-		if (files?.length) {
+		if (files && Object.keys(files).length) {
 			returnItem.binary = {};
 		}
 

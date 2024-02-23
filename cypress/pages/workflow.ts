@@ -3,6 +3,8 @@ import { BasePage } from './base';
 import { getVisibleSelect } from '../utils';
 import { NodeCreator } from './features/node-creator';
 
+type CyGetOptions = Parameters<(typeof cy)['get']>[1];
+
 const nodeCreator = new NodeCreator();
 export class WorkflowPage extends BasePage {
 	url = '/workflow/new';
@@ -48,7 +50,8 @@ export class WorkflowPage extends BasePage {
 		},
 		successToast: () => cy.get('.el-notification:has(.el-notification--success)'),
 		warningToast: () => cy.get('.el-notification:has(.el-notification--warning)'),
-		errorToast: () => cy.get('.el-notification:has(.el-notification--error)'),
+		errorToast: (options?: CyGetOptions) =>
+			cy.get('.el-notification:has(.el-notification--error)', options),
 		infoToast: () => cy.get('.el-notification:has(.el-notification--info)'),
 		activatorSwitch: () => cy.getByTestId('workflow-activate-switch'),
 		workflowMenu: () => cy.getByTestId('workflow-menu'),
@@ -174,14 +177,15 @@ export class WorkflowPage extends BasePage {
 
 			this.getters.nodeCreatorSearchBar().type(nodeDisplayName);
 			this.getters.nodeCreatorSearchBar().type('{enter}');
-			cy.wait(500);
 			cy.get('body').then((body) => {
 				if (body.find('[data-test-id=node-creator]').length > 0) {
 					if (action) {
 						cy.contains(action).click();
 					} else {
 						// Select the first action
-						cy.get('[data-keyboard-nav-type="action"]').eq(0).click();
+						if (body.find('[data-keyboard-nav-type="action"]').length > 0) {
+							cy.get('[data-keyboard-nav-type="action"]').eq(0).click();
+						}
 					}
 				}
 			});

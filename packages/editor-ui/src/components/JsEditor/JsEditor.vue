@@ -1,26 +1,30 @@
 <template>
-	<div ref="jsEditor" class="ph-no-capture js-editor"></div>
+	<div :class="$style.editor">
+		<div ref="jsEditor" class="ph-no-capture js-editor"></div>
+		<slot name="suffix" />
+	</div>
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
-import { acceptCompletion, autocompletion } from '@codemirror/autocomplete';
-import { indentWithTab, history, redo, toggleComment, undo } from '@codemirror/commands';
-import { foldGutter, indentOnInput } from '@codemirror/language';
+import { autocompletion } from '@codemirror/autocomplete';
+import { history, redo, toggleComment, undo } from '@codemirror/commands';
 import { javascript } from '@codemirror/lang-javascript';
+import { foldGutter, indentOnInput } from '@codemirror/language';
 import { lintGutter } from '@codemirror/lint';
 import type { Extension } from '@codemirror/state';
-import { EditorState } from '@codemirror/state';
+import { EditorState, Prec } from '@codemirror/state';
 import type { ViewUpdate } from '@codemirror/view';
 import {
-	dropCursor,
 	EditorView,
+	dropCursor,
 	highlightActiveLine,
 	highlightActiveLineGutter,
 	keymap,
 	lineNumbers,
 } from '@codemirror/view';
+import { defineComponent } from 'vue';
 
+import { enterKeyMap, tabKeyMap } from '../CodeNodeEditor/baseExtensions';
 import { codeNodeEditorTheme } from '../CodeNodeEditor/theme';
 
 export default defineComponent({
@@ -31,6 +35,10 @@ export default defineComponent({
 			required: true,
 		},
 		isReadOnly: {
+			type: Boolean,
+			default: false,
+		},
+		fillParent: {
 			type: Boolean,
 			default: false,
 		},
@@ -57,18 +65,25 @@ export default defineComponent({
 				EditorView.lineWrapping,
 				EditorState.readOnly.of(isReadOnly),
 				EditorView.editable.of(!isReadOnly),
-				codeNodeEditorTheme({ isReadOnly, customMinHeight: this.rows }),
+				codeNodeEditorTheme({
+					isReadOnly,
+					maxHeight: this.fillParent ? '100%' : '40vh',
+					minHeight: '20vh',
+					rows: this.rows,
+				}),
 			];
 			if (!isReadOnly) {
 				extensions.push(
 					history(),
-					keymap.of([
-						{ key: 'Mod-z', run: undo },
-						{ key: 'Mod-Shift-z', run: redo },
-						{ key: 'Mod-/', run: toggleComment },
-						{ key: 'Tab', run: acceptCompletion },
-						indentWithTab,
-					]),
+					Prec.highest(
+						keymap.of([
+							...tabKeyMap,
+							...enterKeyMap,
+							{ key: 'Mod-z', run: undo },
+							{ key: 'Mod-Shift-z', run: redo },
+							{ key: 'Mod-/', run: toggleComment },
+						]),
+					),
 					lintGutter(),
 					autocompletion(),
 					indentOnInput(),
@@ -93,3 +108,13 @@ export default defineComponent({
 	},
 });
 </script>
+
+<style lang="scss" module>
+.editor {
+	height: 100%;
+
+	& > div {
+		height: 100%;
+	}
+}
+</style>

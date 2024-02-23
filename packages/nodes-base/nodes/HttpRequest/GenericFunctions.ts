@@ -1,5 +1,9 @@
-import type { IDataObject, INodeExecutionData, IOAuth2Options } from 'n8n-workflow';
-import type { OptionsWithUri } from 'request-promise-native';
+import type {
+	IDataObject,
+	INodeExecutionData,
+	IOAuth2Options,
+	IRequestOptions,
+} from 'n8n-workflow';
 
 import set from 'lodash/set';
 
@@ -16,14 +20,16 @@ export const replaceNullValues = (item: INodeExecutionData) => {
 	return item;
 };
 
-export function sanitizeUiMessage(request: OptionsWithUri, authDataKeys: IAuthDataSanitizeKeys) {
+export function sanitizeUiMessage(request: IRequestOptions, authDataKeys: IAuthDataSanitizeKeys) {
 	let sendRequest = request as unknown as IDataObject;
 
 	// Protect browser from sending large binary data
 	if (Buffer.isBuffer(sendRequest.body) && sendRequest.body.length > 250000) {
 		sendRequest = {
 			...request,
-			body: `Binary data got replaced with this text. Original was a Buffer with a size of ${request.body.length} byte.`,
+			body: `Binary data got replaced with this text. Original was a Buffer with a size of ${
+				(request.body as string).length
+			} byte.`,
 		};
 	}
 
@@ -145,8 +151,8 @@ export async function reduceAsync<T, R>(
 	reducer: (acc: Awaited<Promise<R>>, cur: T) => Promise<R>,
 	init: Promise<R> = Promise.resolve({} as R),
 ): Promise<R> {
-	return arr.reduce(async (promiseAcc, item) => {
-		return reducer(await promiseAcc, item);
+	return await arr.reduce(async (promiseAcc, item) => {
+		return await reducer(await promiseAcc, item);
 	}, init);
 }
 
@@ -157,12 +163,12 @@ export const prepareRequestBody = async (
 	defaultReducer: BodyParametersReducer,
 ) => {
 	if (bodyType === 'json' && version >= 4) {
-		return parameters.reduce(async (acc, entry) => {
+		return await parameters.reduce(async (acc, entry) => {
 			const result = await acc;
 			set(result, entry.name, entry.value);
 			return result;
 		}, Promise.resolve({}));
 	} else {
-		return reduceAsync(parameters, defaultReducer);
+		return await reduceAsync(parameters, defaultReducer);
 	}
 };

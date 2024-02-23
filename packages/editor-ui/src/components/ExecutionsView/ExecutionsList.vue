@@ -55,13 +55,11 @@ import { NodeHelpers } from 'n8n-workflow';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { v4 as uuid } from 'uuid';
-import type { Route } from 'vue-router';
+import { useRouter, type Route } from 'vue-router';
 import { executionHelpers } from '@/mixins/executionsHelpers';
 import { range as _range } from 'lodash-es';
-import { debounceHelper } from '@/mixins/debounce';
 import { NO_NETWORK_ERROR_CODE } from '@/utils/apiUtils';
 import { getNodeViewTab } from '@/utils/canvasUtils';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -69,6 +67,8 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { executionFilterToQueryFilter } from '@/utils/executionUtils';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useDebounce } from '@/composables/useDebounce';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 
 // Number of execution pages that are fetched before temporary execution card is shown
 const MAX_LOADING_ATTEMPTS = 5;
@@ -80,12 +80,17 @@ export default defineComponent({
 	components: {
 		ExecutionsSidebar,
 	},
-	mixins: [executionHelpers, debounceHelper, workflowHelpers],
+	mixins: [executionHelpers],
 	setup() {
 		const externalHooks = useExternalHooks();
+		const router = useRouter();
+		const workflowHelpers = useWorkflowHelpers(router);
+		const { callDebounced } = useDebounce();
 
 		return {
 			externalHooks,
+			workflowHelpers,
+			callDebounced,
 			...useToast(),
 			...useMessage(),
 		};
@@ -166,7 +171,7 @@ export default defineComponent({
 			);
 
 			if (confirmModal === MODAL_CONFIRM) {
-				const saved = await this.saveCurrentWorkflow({}, false);
+				const saved = await this.workflowHelpers.saveCurrentWorkflow({}, false);
 				if (saved) {
 					await this.settingsStore.fetchPromptsData();
 				}
@@ -231,7 +236,7 @@ export default defineComponent({
 		},
 		async onLoadMore(): Promise<void> {
 			if (!this.loadingMore) {
-				await this.callDebounced('loadMore', { debounceTime: 1000 });
+				await this.callDebounced(this.loadMore, { debounceTime: 1000 });
 			}
 		},
 		async loadMore(limit = 20): Promise<void> {

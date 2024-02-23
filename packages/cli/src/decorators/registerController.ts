@@ -36,9 +36,7 @@ export const createAuthMiddleware =
 
 		if (!user) return res.status(401).json({ status: 'error', message: 'Unauthorized' });
 
-		const { globalRole } = user;
-		if (authRole === 'any' || (globalRole.scope === authRole[0] && globalRole.name === authRole[1]))
-			return next();
+		if (authRole === 'any' || authRole === user.role) return next();
 
 		res.status(403).json({ status: 'error', message: 'Unauthorized' });
 	};
@@ -121,7 +119,8 @@ export const registerController = (app: Application, controllerClass: Class<obje
 				const authRole = authRoles?.[handlerName] ?? authRoles?.['*'];
 				const features = licenseFeatures?.[handlerName] ?? licenseFeatures?.['*'];
 				const scopes = requiredScopes?.[handlerName] ?? requiredScopes?.['*'];
-				const handler = async (req: Request, res: Response) => controller[handlerName](req, res);
+				const handler = async (req: Request, res: Response) =>
+					await controller[handlerName](req, res);
 				router[method](
 					path,
 					...(authRole ? [createAuthMiddleware(authRole)] : []),

@@ -1,7 +1,7 @@
 <template>
 	<div :class="$style.container">
 		<transition name="fade" mode="out-in">
-			<div v-if="hasIssues" key="empty"></div>
+			<div v-if="hasIssues || hideContent" key="empty"></div>
 			<div v-else-if="isListeningForEvents" key="listening">
 				<n8n-pulse>
 					<NodeIcon :node-type="nodeType" :size="40"></NodeIcon>
@@ -45,6 +45,12 @@
 							{{ listeningHint }}
 						</n8n-text>
 					</div>
+					<div v-if="displayChatButton">
+						<n8n-button class="mb-xl" @click="openWebhookUrl()">
+							{{ $locale.baseText('ndv.trigger.chatTrigger.openChat') }}
+						</n8n-button>
+					</div>
+
 					<NodeExecuteButton
 						data-test-id="trigger-execute-button"
 						:node-name="nodeName"
@@ -105,6 +111,7 @@
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import {
+	CHAT_TRIGGER_NODE_TYPE,
 	VIEWS,
 	WEBHOOK_NODE_TYPE,
 	WORKFLOW_SETTINGS_MODAL_KEY,
@@ -114,7 +121,6 @@ import type { INodeUi } from '@/Interface';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
 import NodeExecuteButton from '@/components/NodeExecuteButton.vue';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 import CopyInput from '@/components/CopyInput.vue';
 import NodeIcon from '@/components/NodeIcon.vue';
 import { useUIStore } from '@/stores/ui.store';
@@ -122,6 +128,8 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { createEventBus } from 'n8n-design-system/utils';
+import { useRouter } from 'vue-router';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 
 export default defineComponent({
 	name: 'TriggerPanel',
@@ -130,7 +138,6 @@ export default defineComponent({
 		CopyInput,
 		NodeIcon,
 	},
-	mixins: [workflowHelpers],
 	props: {
 		nodeName: {
 			type: String,
@@ -138,6 +145,14 @@ export default defineComponent({
 		sessionId: {
 			type: String,
 		},
+	},
+	setup() {
+		const router = useRouter();
+		const workflowHelpers = useWorkflowHelpers(router);
+
+		return {
+			workflowHelpers,
+		};
 	},
 	data: () => {
 		return {
@@ -156,6 +171,33 @@ export default defineComponent({
 
 			return null;
 		},
+		hideContent(): boolean {
+			if (!this.nodeType?.triggerPanel) {
+				return false;
+			}
+
+			if (
+				this.nodeType?.triggerPanel &&
+				this.nodeType?.triggerPanel.hasOwnProperty('hideContent')
+			) {
+				const hideContent = this.nodeType?.triggerPanel.hideContent;
+				if (typeof hideContent === 'boolean') {
+					return hideContent;
+				}
+
+				if (this.node) {
+					const hideContentValue = this.workflowHelpers
+						.getCurrentWorkflow()
+						.expression.getSimpleParameterValue(this.node, hideContent, 'internal', {});
+
+					if (typeof hideContentValue === 'boolean') {
+						return hideContentValue;
+					}
+				}
+			}
+
+			return false;
+		},
 		hasIssues(): boolean {
 			return Boolean(
 				this.node?.issues && (this.node.issues.parameters || this.node.issues.credentials),
@@ -168,6 +210,13 @@ export default defineComponent({
 
 			return '';
 		},
+		displayChatButton(): boolean {
+			return Boolean(
+				this.node &&
+					this.node.type === CHAT_TRIGGER_NODE_TYPE &&
+					this.node.parameters.mode !== 'webhook',
+			);
+		},
 		isWebhookNode(): boolean {
 			return Boolean(this.node && this.node.type === WEBHOOK_NODE_TYPE);
 		},
@@ -176,14 +225,17 @@ export default defineComponent({
 				return undefined;
 			}
 
-			return this.getWebhookExpressionValue(this.nodeType.webhooks[0], 'httpMethod');
+			return this.workflowHelpers.getWebhookExpressionValue(
+				this.nodeType.webhooks[0],
+				'httpMethod',
+			);
 		},
 		webhookTestUrl(): string | undefined {
 			if (!this.node || !this.nodeType?.webhooks?.length) {
 				return undefined;
 			}
 
-			return this.getWebhookUrl(this.nodeType.webhooks[0], this.node, 'test');
+			return this.workflowHelpers.getWebhookUrl(this.nodeType.webhooks[0], this.node, 'test');
 		},
 		isWebhookBasedNode(): boolean {
 			return Boolean(this.nodeType?.webhooks?.length);
@@ -219,11 +271,16 @@ export default defineComponent({
 				: this.$locale.baseText('ndv.trigger.webhookNode.listening');
 		},
 		listeningHint(): string {
-			return this.nodeType?.name === FORM_TRIGGER_NODE_TYPE
-				? this.$locale.baseText('ndv.trigger.webhookBasedNode.formTrigger.serviceHint')
-				: this.$locale.baseText('ndv.trigger.webhookBasedNode.serviceHint', {
+			switch (this.nodeType?.name) {
+				case CHAT_TRIGGER_NODE_TYPE:
+					return this.$locale.baseText('ndv.trigger.webhookBasedNode.chatTrigger.serviceHint');
+				case FORM_TRIGGER_NODE_TYPE:
+					return this.$locale.baseText('ndv.trigger.webhookBasedNode.formTrigger.serviceHint');
+				default:
+					return this.$locale.baseText('ndv.trigger.webhookBasedNode.serviceHint', {
 						interpolate: { service: this.serviceName },
-				  });
+					});
+			}
 		},
 		header(): string {
 			const serviceName = this.nodeType ? getTriggerNodeServiceName(this.nodeType) : '';
@@ -348,6 +405,15 @@ export default defineComponent({
 			if (this.$refs.help) {
 				this.executionsHelpEventBus.emit('expand');
 			}
+		},
+		openWebhookUrl() {
+			this.$telemetry.track('User clicked ndv link', {
+				workflow_id: this.workflowsStore.workflowId,
+				session_id: this.sessionId,
+				pane: 'input',
+				type: 'open-chat',
+			});
+			window.open(this.webhookTestUrl, '_blank', 'noreferrer');
 		},
 		onLinkClick(e: MouseEvent) {
 			if (!e.target) {

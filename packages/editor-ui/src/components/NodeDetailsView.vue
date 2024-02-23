@@ -45,6 +45,7 @@
 				:has-double-width="activeNodeType?.parameterPane === 'wide'"
 				:node-type="activeNodeType"
 				@switchSelectedNode="onSwitchSelectedNode"
+				@openConnectionNodeCreator="onOpenConnectionNodeCreator"
 				@close="close"
 				@init="onPanelsInit"
 				@dragstart="onDragStart"
@@ -117,6 +118,8 @@
 						@stopExecution="onStopExecution"
 						@redrawRequired="redrawRequired = true"
 						@activate="onWorkflowActivate"
+						@switchSelectedNode="onSwitchSelectedNode"
+						@openConnectionNodeCreator="onOpenConnectionNodeCreator"
 					/>
 					<a
 						v-if="featureRequestUrl"
@@ -135,7 +138,7 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import { mapStores } from 'pinia';
+import { mapStores, storeToRefs } from 'pinia';
 import { createEventBus } from 'n8n-design-system/utils';
 import type {
 	INodeConnections,
@@ -143,10 +146,10 @@ import type {
 	IRunData,
 	IRunExecutionData,
 	Workflow,
+	ConnectionTypes,
 } from 'n8n-workflow';
 import { jsonParse, NodeHelpers, NodeConnectionType } from 'n8n-workflow';
 import type { IExecutionResponse, INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 
 import NodeSettings from '@/components/NodeSettings.vue';
 import NDVDraggablePanels from './NDVDraggablePanels.vue';
@@ -163,17 +166,19 @@ import {
 	STICKY_NODE_TYPE,
 } from '@/constants';
 import { workflowActivate } from '@/mixins/workflowActivate';
-import { pinData } from '@/mixins/pinData';
 import { dataPinningEventBus } from '@/event-bus';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useDeviceSupport } from 'n8n-design-system/composables/useDeviceSupport';
+import { useDeviceSupport } from 'n8n-design-system';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useMessage } from '@/composables/useMessage';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { usePinnedData } from '@/composables/usePinnedData';
+import { useRouter } from 'vue-router';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 
 export default defineComponent({
 	name: 'NodeDetailsView',
@@ -184,7 +189,7 @@ export default defineComponent({
 		NDVDraggablePanels,
 		TriggerPanel,
 	},
-	mixins: [workflowHelpers, workflowActivate, pinData],
+	mixins: [workflowActivate],
 	props: {
 		readOnly: {
 			type: Boolean,
@@ -198,12 +203,19 @@ export default defineComponent({
 		},
 	},
 	setup(props, ctx) {
+		const ndvStore = useNDVStore();
 		const externalHooks = useExternalHooks();
 		const nodeHelpers = useNodeHelpers();
+		const { activeNode } = storeToRefs(ndvStore);
+		const pinnedData = usePinnedData(activeNode);
+		const router = useRouter();
+		const workflowHelpers = useWorkflowHelpers(router);
 
 		return {
 			externalHooks,
 			nodeHelpers,
+			pinnedData,
+			workflowHelpers,
 			...useDeviceSupport(),
 			...useMessage(),
 			// eslint-disable-next-line @typescript-eslint/no-misused-promises
@@ -272,15 +284,20 @@ export default defineComponent({
 			return null;
 		},
 		showTriggerPanel(): boolean {
+			const override = !!this.activeNodeType?.triggerPanel;
+			if (typeof this.activeNodeType?.triggerPanel === 'boolean') {
+				return override;
+			}
+
 			const isWebhookBasedNode = !!this.activeNodeType?.webhooks?.length;
 			const isPollingNode = this.activeNodeType?.polling;
-			const override = !!this.activeNodeType?.triggerPanel;
+
 			return (
 				!this.readOnly && this.isTriggerNode && (isWebhookBasedNode || isPollingNode || override)
 			);
 		},
 		workflow(): Workflow {
-			return this.getCurrentWorkflow();
+			return this.workflowHelpers.getCurrentWorkflow();
 		},
 		hasOutputConnection() {
 			if (!this.activeNode) return false;
@@ -301,12 +318,10 @@ export default defineComponent({
 			return [];
 		},
 		parentNode(): string | undefined {
-			const pinData = this.workflowsStore.getPinData;
-
 			// Return the first parent node that contains data
 			for (const parentNodeName of this.parentNodes) {
 				// Check first for pinned data
-				if (pinData[parentNodeName]) {
+				if (this.workflowsStore.pinnedWorkflowData[parentNodeName]) {
 					return parentNodeName;
 				}
 
@@ -475,7 +490,7 @@ export default defineComponent({
 					nodeSubtitle: this.nodeHelpers.getNodeSubtitle(
 						node,
 						this.activeNodeType,
-						this.getCurrentWorkflow(),
+						this.workflowHelpers.getCurrentWorkflow(),
 					),
 				});
 
@@ -653,8 +668,11 @@ export default defineComponent({
 		nodeTypeSelected(nodeTypeName: string) {
 			this.$emit('nodeTypeSelected', nodeTypeName);
 		},
-		async onSwitchSelectedNode(nodeTypeName: string) {
+		onSwitchSelectedNode(nodeTypeName: string) {
 			this.$emit('switchSelectedNode', nodeTypeName);
+		},
+		onOpenConnectionNodeCreator(nodeTypeName: string, connectionType: ConnectionTypes) {
+			this.$emit('openConnectionNodeCreator', nodeTypeName, connectionType);
 		},
 		async close() {
 			if (this.isDragging) {
@@ -689,7 +707,7 @@ export default defineComponent({
 				if (shouldPinDataBeforeClosing === MODAL_CONFIRM) {
 					const { value } = this.outputPanelEditMode;
 					try {
-						this.setPinData(this.activeNode, jsonParse(value), 'on-ndv-close-modal');
+						this.pinnedData.setData(jsonParse(value), 'on-ndv-close-modal');
 					} catch (error) {
 						console.error(error);
 					}
@@ -769,8 +787,9 @@ export default defineComponent({
 }
 
 .data-display-wrapper {
-	height: calc(100% - var(--spacing-2xl));
+	height: calc(100% - var(--spacing-l)) !important;
 	margin-top: var(--spacing-xl) !important;
+	margin-bottom: var(--spacing-xl) !important;
 	width: 100%;
 	background: none;
 	border: none;

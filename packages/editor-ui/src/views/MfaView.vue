@@ -69,7 +69,6 @@
 </template>
 
 <script lang="ts">
-import { genericHelpers } from '@/mixins/genericHelpers';
 import type { IFormInputs } from '@/Interface';
 import Logo from '../components/Logo.vue';
 import {
@@ -92,7 +91,6 @@ export default defineComponent({
 	components: {
 		Logo,
 	},
-	mixins: [genericHelpers],
 	props: {
 		reportError: Boolean,
 	},

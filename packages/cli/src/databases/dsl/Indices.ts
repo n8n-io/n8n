@@ -1,5 +1,5 @@
-import type { QueryRunner } from 'typeorm';
-import { TableIndex } from 'typeorm';
+import type { QueryRunner } from '@n8n/typeorm';
+import { TableIndex } from '@n8n/typeorm';
 import LazyPromise from 'p-lazy';
 
 abstract class IndexOperation extends LazyPromise<void> {
@@ -40,7 +40,7 @@ export class CreateIndex extends IndexOperation {
 
 	async execute(queryRunner: QueryRunner) {
 		const { columnNames, isUnique } = this;
-		return queryRunner.createIndex(
+		return await queryRunner.createIndex(
 			this.fullTableName,
 			new TableIndex({ name: this.customIndexName ?? this.fullIndexName, columnNames, isUnique }),
 		);
@@ -49,6 +49,9 @@ export class CreateIndex extends IndexOperation {
 
 export class DropIndex extends IndexOperation {
 	async execute(queryRunner: QueryRunner) {
-		return queryRunner.dropIndex(this.fullTableName, this.customIndexName ?? this.fullIndexName);
+		return await queryRunner.dropIndex(
+			this.fullTableName,
+			this.customIndexName ?? this.fullIndexName,
+		);
 	}
 }

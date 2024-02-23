@@ -1,5 +1,5 @@
 import type { IDataObject } from 'n8n-workflow';
-import moment from 'moment';
+import moment from 'moment-timezone';
 import type { IRecurencyRule } from './SchedulerInterface';
 
 export function recurencyCheck(

@@ -1,5 +1,3 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IExecuteFunctions,
 	ICredentialsDecrypted,
@@ -11,6 +9,7 @@ import type {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	IRequestOptions,
 } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 
@@ -256,7 +255,7 @@ export class Odoo implements INodeType {
 						id: Math.floor(Math.random() * 100),
 					};
 
-					const options: OptionsWithUri = {
+					const options: IRequestOptions = {
 						headers: {
 							'User-Agent': 'n8n',
 							Connection: 'keep-alive',
