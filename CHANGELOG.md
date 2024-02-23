@@ -1,3 +1,19 @@
+## [1.30.1](https://github.com/n8n-io/n8n/compare/n8n@1.30.0...n8n@1.30.1) (2024-02-23)
+
+
+### Bug Fixes
+
+* **core:** Ensure `maxRedirects` is used for any http request defining it ([#8706](https://github.com/n8n-io/n8n/issues/8706)) ([be8167b](https://github.com/n8n-io/n8n/commit/be8167b75d86217f451870e88787a3afb9c9c154))
+* **core:** Fix pairedItem issue with partial manual executions ([#8575](https://github.com/n8n-io/n8n/issues/8575)) ([f9edf26](https://github.com/n8n-io/n8n/commit/f9edf26a47ffcf55f237cc3f0cc27e541c383cf0))
+* **Default Data Loader Node:** Fix binary data loader in s3 mode ([#8626](https://github.com/n8n-io/n8n/issues/8626)) ([14c1032](https://github.com/n8n-io/n8n/commit/14c1032e5359936ce2034e5690b26f2633d601ae))
+* **editor:** Do not break NDV for version-less nodes ([#8714](https://github.com/n8n-io/n8n/issues/8714)) ([b7d01aa](https://github.com/n8n-io/n8n/commit/b7d01aa0613248736dbb99ae135d1188bae00dd8))
+* **editor:** Update Filter component state when value is updated ([#8684](https://github.com/n8n-io/n8n/issues/8684)) ([a54e0d3](https://github.com/n8n-io/n8n/commit/a54e0d31d68bce849150873065f8743a871ca59a))
+* Fix execution error when using AI chain nodes with non-chat model ([#8724](https://github.com/n8n-io/n8n/issues/8724)) ([3b119c8](https://github.com/n8n-io/n8n/commit/3b119c8f6a0c7a2cb11339a6ceaf6390f29c1830))
+* **Trello Node:** Remove GET request body ([#8715](https://github.com/n8n-io/n8n/issues/8715)) ([c75b240](https://github.com/n8n-io/n8n/commit/c75b2406a5c8aea4a07c1df3e29635b40d3cce9b))
+* Wrong prompt input key for sql agent ([#8708](https://github.com/n8n-io/n8n/issues/8708)) ([6be5f5e](https://github.com/n8n-io/n8n/commit/6be5f5e860921e0efeab6781a35f9cd388e1ee0a))
+
+
+
 # [1.30.0](https://github.com/n8n-io/n8n/compare/n8n@1.29.0...n8n@1.30.0) (2024-02-21)
 
 
