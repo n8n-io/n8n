@@ -9,8 +9,6 @@ import { Service } from 'typedi';
 import { type Scope } from '@n8n/permissions';
 import { In } from '@n8n/typeorm';
 import { RoleService } from './role.service';
-import { ApplicationError } from 'n8n-workflow';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 @Service()
