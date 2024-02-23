@@ -1,15 +1,16 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IBinaryKeyData,
 	IDataObject,
 	IDisplayOptions,
 	IExecuteFunctions,
 	IHookFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodeProperties,
+	IPairedItemData,
 	IPollFunctions,
+	IRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
@@ -44,7 +45,7 @@ const apiVersion: { [key: number]: string } = {
 
 export async function notionApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 
 	body: any = {},
@@ -53,7 +54,7 @@ export async function notionApiRequest(
 	option: IDataObject = {},
 ): Promise<any> {
 	try {
-		let options: OptionsWithUri = {
+		let options: IRequestOptions = {
 			headers: {
 				'Notion-Version': apiVersion[this.getNode().typeVersion],
 			},
@@ -79,7 +80,7 @@ export async function notionApiRequest(
 export async function notionApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: any = {},
 	query: IDataObject = {},
@@ -306,7 +307,7 @@ export function formatBlocks(blocks: IDataObject[]) {
 				...(block.type === 'to_do' ? { checked: block.checked } : {}),
 				...(block.type === 'image' ? { type: 'external', external: { url: block.url } } : {}),
 				// prettier-ignore,
-				...(!['to_do', 'image'].includes(block.type as string) ? getTextBlocks(block) : {}),
+				...(!['image'].includes(block.type as string) ? getTextBlocks(block) : {}),
 			},
 		});
 	}
@@ -558,12 +559,16 @@ export function mapFilters(filtersList: IDataObject[], timezone: string) {
 		}
 
 		if (value.type === 'formula') {
-			const vpropertyName = value[`${camelCase(value.returnType as string)}Value`];
+			if (['is_empty', 'is_not_empty'].includes(value.condition as string)) {
+				key = value.returnType;
+			} else {
+				const vpropertyName = value[`${camelCase(value.returnType as string)}Value`];
 
-			return Object.assign(obj, {
-				['property']: getNameAndType(value.key as string).name,
-				[key]: { [value.returnType]: { [`${value.condition}`]: vpropertyName } },
-			});
+				return Object.assign(obj, {
+					['property']: getNameAndType(value.key as string).name,
+					[key]: { [value.returnType]: { [`${value.condition}`]: vpropertyName } },
+				});
+			}
 		}
 
 		return Object.assign(obj, {
@@ -860,12 +865,15 @@ export type FileRecord = {
 	};
 };
 // prettier-ignore
-export async function downloadFiles(this: IExecuteFunctions | IPollFunctions, records: FileRecord[]): Promise<INodeExecutionData[]> {
+export async function downloadFiles(this: IExecuteFunctions | IPollFunctions, records: FileRecord[], pairedItem?: IPairedItemData[]): Promise<INodeExecutionData[]> {
 
 	const elements: INodeExecutionData[] = [];
 	for (const record of records) {
 		const element: INodeExecutionData = { json: {}, binary: {} };
 		element.json = record as unknown as IDataObject;
+		if (pairedItem) {
+			element.pairedItems = pairedItem;
+		}
 		for (const key of Object.keys(record.properties)) {
 			if (record.properties[key].type === 'files') {
 				if (record.properties[key].files.length) {
@@ -892,7 +900,7 @@ export async function downloadFiles(this: IExecuteFunctions | IPollFunctions, re
 	return elements;
 }
 
-export function extractPageId(page: string) {
+export function extractPageId(page = '') {
 	if (page.includes('p=')) {
 		return page.split('p=')[1];
 	} else if (page.includes('-') && page.includes('https')) {

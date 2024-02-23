@@ -12,11 +12,9 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import { genericHelpers } from '@/mixins/genericHelpers';
 
 export default defineComponent({
 	name: 'Card',
-	mixins: [genericHelpers],
 	props: {
 		loading: {
 			type: Boolean,
@@ -30,7 +28,7 @@ export default defineComponent({
 
 <style lang="scss" module>
 .card {
-	min-width: 180px;
+	min-width: 235px;
 	height: 140px;
 	margin-right: var(--spacing-2xs);
 	cursor: pointer;

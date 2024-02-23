@@ -10,7 +10,7 @@ jest.mock('../../../../v2/transport', () => {
 	const originalModule = jest.requireActual('../../../../v2/transport');
 	return {
 		...originalModule,
-		microsoftApiRequest: jest.fn(async function (method: string) {
+		microsoftApiRequest: jest.fn(async function (method: IHttpRequestMethods) {
 			if (method === 'POST') {
 				return {
 					values: [
@@ -61,6 +61,6 @@ describe('Test MicrosoftExcelV2, worksheet => clear', () => {
 	};
 
 	for (const testData of tests) {
-		test(testData.description, async () => testNode(testData, nodeTypes));
+		test(testData.description, async () => await testNode(testData, nodeTypes));
 	}
 });

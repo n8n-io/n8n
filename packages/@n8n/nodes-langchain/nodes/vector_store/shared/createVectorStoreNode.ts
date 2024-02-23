@@ -18,7 +18,7 @@ import type { Document } from 'langchain/document';
 import { logWrapper } from '../../../utils/logWrapper';
 import type { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
 import type { N8nBinaryLoader } from '../../../utils/N8nBinaryLoader';
-import { getMetadataFiltersValues } from '../../../utils/helpers';
+import { getMetadataFiltersValues, logAiEvent } from '../../../utils/helpers';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 import { processDocument } from './processDocuments';
 
@@ -237,9 +237,10 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 					});
 
 					resultData.push(...serializedDocs);
+					void logAiEvent(this, 'n8n.ai.vector.store.searched', { query: prompt });
 				}
 
-				return this.prepareOutputData(resultData);
+				return await this.prepareOutputData(resultData);
 			}
 
 			if (mode === 'insert') {
@@ -262,12 +263,14 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 
 					try {
 						await args.populateVectorStore(this, embeddings, processedDocuments, itemIndex);
+
+						void logAiEvent(this, 'n8n.ai.vector.store.populated');
 					} catch (error) {
 						throw error;
 					}
 				}
 
-				return this.prepareOutputData(resultData);
+				return await this.prepareOutputData(resultData);
 			}
 
 			throw new NodeOperationError(

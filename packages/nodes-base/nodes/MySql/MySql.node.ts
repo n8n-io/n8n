@@ -13,6 +13,7 @@ export class MySql extends VersionedNodeType {
 			group: ['input'],
 			defaultVersion: 2.2,
 			description: 'Get, add and update data in MySQL',
+			parameterPane: 'wide',
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {

@@ -8,7 +8,6 @@ import type {
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useTitleChange } from '@/composables/useTitleChange';
 import { useToast } from '@/composables/useToast';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 
 import type {
 	ExpressionError,
@@ -39,26 +38,37 @@ import { useOrchestrationStore } from '@/stores/orchestration.store';
 import { usePushConnectionStore } from '@/stores/pushConnection.store';
 import { useCollaborationStore } from '@/stores/collaboration.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useRouter } from 'vue-router';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 
 export const pushConnection = defineComponent({
-	mixins: [workflowHelpers],
 	setup() {
+		const router = useRouter();
+		const workflowHelpers = useWorkflowHelpers(router);
+		const nodeHelpers = useNodeHelpers();
 		return {
 			...useTitleChange(),
 			...useToast(),
-			nodeHelpers: useNodeHelpers(),
+			nodeHelpers,
+			workflowHelpers,
 		};
 	},
 	data() {
 		return {
 			retryTimeout: null as NodeJS.Timeout | null,
 			pushMessageQueue: [] as Array<{ message: IPushData; retriesLeft: number }>,
+			removeEventListener: null as (() => void) | null,
 		};
 	},
 	created() {
-		this.pushStore.addEventListener((message) => {
+		this.removeEventListener = this.pushStore.addEventListener((message) => {
 			void this.pushMessageReceived(message);
 		});
+	},
+	unmounted() {
+		if (typeof this.removeEventListener === 'function') {
+			this.removeEventListener();
+		}
 	},
 	computed: {
 		...mapStores(
@@ -254,7 +264,8 @@ export const pushConnection = defineComponent({
 					pushData = receivedData.data as IPushDataExecutionFinished;
 				}
 
-				if (this.workflowsStore.activeExecutionId === pushData.executionId) {
+				const { activeExecutionId } = this.workflowsStore;
+				if (activeExecutionId === pushData.executionId) {
 					const activeRunData =
 						this.workflowsStore.workflowExecutionData?.data?.resultData?.runData;
 					if (activeRunData) {
@@ -275,7 +286,6 @@ export const pushConnection = defineComponent({
 					return false;
 				}
 
-				const { activeExecutionId } = this.workflowsStore;
 				if (activeExecutionId !== pushData.executionId) {
 					// The workflow which did finish execution did either not get started
 					// by this session or we do not have the execution id yet.
@@ -306,9 +316,8 @@ export const pushConnection = defineComponent({
 
 				codeNodeEditorEventBus.emit('error-line-number', lineNumber || 'final');
 
-				const workflow = this.getCurrentWorkflow();
+				const workflow = this.workflowHelpers.getCurrentWorkflow();
 				if (runDataExecuted.waitTill !== undefined) {
-					const activeExecutionId = this.workflowsStore.activeExecutionId;
 					const workflowSettings = this.workflowsStore.workflowSettings;
 					const saveManualExecutions = this.rootStore.saveManualExecutions;
 
@@ -322,7 +331,8 @@ export const pushConnection = defineComponent({
 						globalLinkActionsEventBus.emit('registerGlobalLinkAction', {
 							key: 'open-settings',
 							action: async () => {
-								if (this.workflowsStore.isNewWorkflow) await this.saveAsNewWorkflow();
+								if (this.workflowsStore.isNewWorkflow)
+									await this.workflowHelpers.saveAsNewWorkflow();
 								this.uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 							},
 						});
@@ -351,7 +361,7 @@ export const pushConnection = defineComponent({
 					) {
 						const error = runDataExecuted.data.resultData.error as ExpressionError;
 
-						void this.getWorkflowDataToSave().then((workflowData) => {
+						void this.workflowHelpers.getWorkflowDataToSave().then((workflowData) => {
 							const eventData: IDataObject = {
 								caused_by_credential: false,
 								error_message: error.description,
@@ -360,7 +370,7 @@ export const pushConnection = defineComponent({
 								node_graph_string: JSON.stringify(
 									TelemetryHelpers.generateNodesGraph(
 										workflowData as IWorkflowBase,
-										this.getNodeTypes(),
+										this.workflowHelpers.getNodeTypes(),
 									).nodeGraph,
 								),
 								workflow_id: this.workflowsStore.workflowId,

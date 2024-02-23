@@ -16,12 +16,6 @@ module.exports = {
 
 	overrides: [
 		{
-			files: ['src/**/*.vue'],
-			rules: {
-				'n8n-local-rules/dangerously-use-html-string-missing': 'error',
-			},
-		},
-		{
 			files: ['**/*.test.ts', '**/test/**/*.ts', '**/__tests__/**/*.ts'],
 			rules: {
 				'import/no-extraneous-dependencies': 'off',
@@ -42,6 +36,7 @@ module.exports = {
 		'vue/v-slot-style': 'error',
 		'vue/no-unused-components': 'error',
 		'vue/multi-word-component-names': 'off',
+		'@typescript-eslint/no-use-before-define': 'off',
 		'@typescript-eslint/no-explicit-any': 'error',
 		'vue/component-name-in-template-casing': [
 			'error',

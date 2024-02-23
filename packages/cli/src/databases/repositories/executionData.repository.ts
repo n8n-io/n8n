@@ -1,5 +1,5 @@
 import { Service } from 'typedi';
-import { DataSource, In, Repository } from 'typeorm';
+import { DataSource, In, Repository } from '@n8n/typeorm';
 import { ExecutionData } from '../entities/ExecutionData';
 
 @Service()
@@ -9,7 +9,7 @@ export class ExecutionDataRepository extends Repository<ExecutionData> {
 	}
 
 	async findByExecutionIds(executionIds: string[]) {
-		return this.find({
+		return await this.find({
 			select: ['workflowData'],
 			where: {
 				executionId: In(executionIds),

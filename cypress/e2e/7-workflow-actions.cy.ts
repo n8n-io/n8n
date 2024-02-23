@@ -120,10 +120,12 @@ describe('Workflow Actions', () => {
 		WorkflowPage.getters.successToast().should('exist');
 	});
 
-	it('should paste nodes', () => {
+	it('should paste nodes (both current and old node versions)', () => {
 		cy.fixture('Test_workflow-actions_paste-data.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
-			WorkflowPage.getters.canvasNodes().should('have.have.length', 2);
+			WorkflowPage.actions.zoomToFit();
+			WorkflowPage.getters.canvasNodes().should('have.length', 5);
+			WorkflowPage.getters.nodeConnections().should('have.length', 5);
 		});
 	});
 
@@ -147,8 +149,8 @@ describe('Workflow Actions', () => {
 			.selectFile('cypress/fixtures/Test_workflow-actions_paste-data.json', { force: true });
 		cy.waitForLoad(false);
 		WorkflowPage.actions.zoomToFit();
-		WorkflowPage.getters.canvasNodes().should('have.length', 2);
-		WorkflowPage.getters.nodeConnections().should('have.length', 1);
+		WorkflowPage.getters.canvasNodes().should('have.length', 5);
+		WorkflowPage.getters.nodeConnections().should('have.length', 5);
 	});
 
 	it('should update workflow settings', () => {
@@ -259,7 +261,7 @@ describe('Workflow Actions', () => {
 
 	it('should keep endpoint click working when switching between execution and editor tab', () => {
 		cy.intercept('GET', '/rest/executions?filter=*').as('getExecutions');
-		cy.intercept('GET', '/rest/executions-current?filter=*').as('getCurrentExecutions');
+		cy.intercept('GET', '/rest/executions/active?filter=*').as('getActiveExecutions');
 
 		WorkflowPage.actions.addInitialNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME);
@@ -270,7 +272,7 @@ describe('Workflow Actions', () => {
 		cy.get('body').type('{esc}');
 
 		executionsTab.actions.switchToExecutionsTab();
-		cy.wait(['@getExecutions', '@getCurrentExecutions']);
+		cy.wait(['@getExecutions', '@getActiveExecutions']);
 		cy.wait(500);
 		executionsTab.actions.switchToEditorTab();
 

@@ -17,6 +17,8 @@ export type ColumnInfo = {
 	is_nullable: string;
 	udt_name?: string;
 	column_default?: string;
+	is_generated?: 'ALWAYS' | 'NEVER';
+	identity_generation?: 'ALWAYS' | 'NEVER';
 };
 export type EnumInfo = {
 	typname: string;

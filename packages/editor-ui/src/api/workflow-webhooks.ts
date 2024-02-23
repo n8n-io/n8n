@@ -9,7 +9,7 @@ export async function fetchNextOnboardingPrompt(
 	instanceId: string,
 	currentUser: IUser,
 ): Promise<IOnboardingCallPrompt> {
-	return get(N8N_API_BASE_URL, ONBOARDING_PROMPTS_ENDPOINT, {
+	return await get(N8N_API_BASE_URL, ONBOARDING_PROMPTS_ENDPOINT, {
 		instance_id: instanceId,
 		user_id: `${instanceId}#${currentUser.id}`,
 		is_owner: currentUser.isOwner,
@@ -40,10 +40,11 @@ export async function submitEmailOnSignup(
 	email: string | undefined,
 	agree: boolean,
 ): Promise<string> {
-	return post(N8N_API_BASE_URL, CONTACT_EMAIL_SUBMISSION_ENDPOINT, {
+	return await post(N8N_API_BASE_URL, CONTACT_EMAIL_SUBMISSION_ENDPOINT, {
 		instance_id: instanceId,
 		user_id: `${instanceId}#${currentUser.id}`,
 		email,
 		agree,
+		agree_updates: true,
 	});
 }

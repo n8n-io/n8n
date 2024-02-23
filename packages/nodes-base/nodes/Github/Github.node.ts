@@ -1,6 +1,7 @@
 import type {
 	IDataObject,
 	IExecuteFunctions,
+	IHttpRequestMethods,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -550,7 +551,7 @@ export class Github implements INodeType {
 			//         file:create/edit
 			// ----------------------------------
 			{
-				displayName: 'Binary Data',
+				displayName: 'Binary File',
 				name: 'binaryData',
 				type: 'boolean',
 				default: false,
@@ -580,7 +581,7 @@ export class Github implements INodeType {
 				description: 'The text content of the file',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'Input Binary Field',
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',
@@ -593,7 +594,7 @@ export class Github implements INodeType {
 					},
 				},
 				placeholder: '',
-				description: 'Name of the binary property which contains the data for the file',
+				hint: 'The name of the input binary field containing the file to be written',
 			},
 			{
 				displayName: 'Commit Message',
@@ -699,7 +700,7 @@ export class Github implements INodeType {
 					'Whether to set the data of the file as binary property instead of returning the raw API response',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'Put Output File in Field',
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',
@@ -712,8 +713,7 @@ export class Github implements INodeType {
 					},
 				},
 				placeholder: '',
-				description:
-					'Name of the binary property in which to save the binary data of the received file',
+				hint: 'The name of the output binary field to put the file in',
 			},
 
 			{
@@ -1747,7 +1747,7 @@ export class Github implements INodeType {
 		// For Query string
 		let qs: IDataObject;
 
-		let requestMethod: string;
+		let requestMethod: IHttpRequestMethods;
 		let endpoint: string;
 
 		const operation = this.getNodeParameter('operation', 0);
@@ -2204,6 +2204,7 @@ export class Github implements INodeType {
 						const newItem: INodeExecutionData = {
 							json: items[i].json,
 							binary: {},
+							pairedItem: items[i].pairedItem,
 						};
 
 						if (items[i].binary !== undefined) {
@@ -2218,9 +2219,8 @@ export class Github implements INodeType {
 							path as string,
 						);
 
-						items[i] = newItem;
-
-						return [items];
+						returnData.push(newItem);
+						continue;
 					}
 				}
 

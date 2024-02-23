@@ -11,7 +11,7 @@
 			:class="{
 				'sticky-default': true,
 				'touch-active': isTouchActive,
-				'is-touch-device': isTouchDevice,
+				'is-touch-device': deviceSupport.isTouchDevice,
 				'is-read-only': isReadOnly,
 			}"
 			:style="stickySize"
@@ -106,7 +106,6 @@ import { defineComponent, ref } from 'vue';
 import { mapStores } from 'pinia';
 
 import { nodeBase } from '@/mixins/nodeBase';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { isNumber, isString } from '@/utils/typeGuards';
 import type {
 	INodeUi,
@@ -122,10 +121,11 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useContextMenu } from '@/composables/useContextMenu';
+import { useDeviceSupport } from 'n8n-design-system';
 
 export default defineComponent({
 	name: 'Sticky',
-	mixins: [nodeBase, workflowHelpers],
+	mixins: [nodeBase],
 	props: {
 		nodeViewScale: {
 			type: Number,
@@ -135,6 +135,7 @@ export default defineComponent({
 		},
 	},
 	setup() {
+		const deviceSupport = useDeviceSupport();
 		const colorPopoverTrigger = ref<HTMLDivElement>();
 		const forceActions = ref(false);
 		const setForceActions = (value: boolean) => {
@@ -147,7 +148,7 @@ export default defineComponent({
 			}
 		});
 
-		return { colorPopoverTrigger, contextMenu, forceActions, setForceActions };
+		return { deviceSupport, colorPopoverTrigger, contextMenu, forceActions, setForceActions };
 	},
 	computed: {
 		...mapStores(useNodeTypesStore, useNDVStore, useUIStore, useWorkflowsStore),
@@ -318,7 +319,7 @@ export default defineComponent({
 			this.workflowsStore.updateNodeProperties(updateInformation);
 		},
 		touchStart() {
-			if (this.isTouchDevice === true && !this.isMacOs && !this.isTouchActive) {
+			if (this.deviceSupport.isTouchDevice && !this.isMacOs && !this.isTouchActive) {
 				this.isTouchActive = true;
 				setTimeout(() => {
 					this.isTouchActive = false;
@@ -326,8 +327,10 @@ export default defineComponent({
 			}
 		},
 		onContextMenu(e: MouseEvent): void {
-			if (this.node) {
+			if (this.node && !this.isActive) {
 				this.contextMenu.open(e, { source: 'node-right-click', node: this.node });
+			} else {
+				e.stopPropagation();
 			}
 		},
 	},

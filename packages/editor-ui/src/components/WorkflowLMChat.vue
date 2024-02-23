@@ -15,7 +15,7 @@
 		@keydown.stop
 	>
 		<template #content>
-			<div v-loading="isLoading" class="workflow-lm-chat" data-test-id="workflow-lm-chat-dialog">
+			<div class="workflow-lm-chat" data-test-id="workflow-lm-chat-dialog">
 				<div class="messages ignore-key-press">
 					<div
 						v-for="message in messages"
@@ -64,8 +64,9 @@
 							</div>
 						</div>
 					</div>
+					<MessageTyping v-if="isLoading" ref="messageContainer" />
 				</div>
-				<div v-if="node" class="logs-wrapper" data-test-id="lm-chat-logs">
+				<div v-if="node && messages.length" class="logs-wrapper" data-test-id="lm-chat-logs">
 					<n8n-text class="logs-title" tag="p" size="large">{{
 						$locale.baseText('chat.window.logs')
 					}}</n8n-text>
@@ -128,6 +129,7 @@ import {
 	AI_CODE_NODE_TYPE,
 	AI_SUBCATEGORY,
 	CHAT_EMBED_MODAL_KEY,
+	CHAT_TRIGGER_NODE_TYPE,
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
 	VIEWS,
 	WORKFLOW_LM_CHAT_MODAL_KEY,
@@ -137,14 +139,23 @@ import { workflowRun } from '@/mixins/workflowRun';
 import { get, last } from 'lodash-es';
 
 import { useUIStore } from '@/stores/ui.store';
+import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createEventBus } from 'n8n-design-system/utils';
 import type { IDataObject, INodeType, INode, ITaskData } from 'n8n-workflow';
 import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
-import type { INodeUi } from '@/Interface';
+import type { INodeUi, IUser } from '@/Interface';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 
-const RunDataAi = defineAsyncComponent(async () => import('@/components/RunDataAi/RunDataAi.vue'));
+// eslint-disable-next-line import/no-unresolved
+import MessageTyping from '@n8n/chat/components/MessageTyping.vue';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useRouter } from 'vue-router';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+
+const RunDataAi = defineAsyncComponent(
+	async () => await import('@/components/RunDataAi/RunDataAi.vue'),
+);
 
 interface ChatMessage {
 	text: string;
@@ -167,14 +178,18 @@ export default defineComponent({
 	name: 'WorkflowLMChat',
 	components: {
 		Modal,
+		MessageTyping,
 		RunDataAi,
 	},
 	mixins: [workflowRun],
 	setup(props, ctx) {
+		const router = useRouter();
 		const externalHooks = useExternalHooks();
+		const workflowHelpers = useWorkflowHelpers(router);
 
 		return {
 			externalHooks,
+			workflowHelpers,
 			...useToast(),
 			// eslint-disable-next-line @typescript-eslint/no-misused-promises
 			...workflowRun.setup?.(props, ctx),
@@ -188,11 +203,12 @@ export default defineComponent({
 			modalBus: createEventBus(),
 			node: null as INodeUi | null,
 			WORKFLOW_LM_CHAT_MODAL_KEY,
+			previousMessageIndex: 0,
 		};
 	},
 
 	computed: {
-		...mapStores(useWorkflowsStore, useUIStore),
+		...mapStores(useWorkflowsStore, useUIStore, useNodeTypesStore),
 		isLoading(): boolean {
 			return this.uiStore.isActionActive('workflowRunning');
 		},
@@ -201,10 +217,12 @@ export default defineComponent({
 		this.setConnectedNode();
 		this.messages = this.getChatMessages();
 		this.setNode();
+
+		setTimeout(() => this.$refs.inputField?.focus(), 0);
 	},
 	methods: {
 		displayExecution(executionId: string) {
-			const workflow = this.getCurrentWorkflow();
+			const workflow = this.workflowHelpers.getCurrentWorkflow();
 			const route = this.$router.resolve({
 				name: VIEWS.EXECUTION_PREVIEW,
 				params: { name: workflow.id, executionId },
@@ -220,6 +238,20 @@ export default defineComponent({
 			inputField.focus();
 		},
 		updated(event: KeyboardEvent) {
+			const pastMessages = this.workflowsStore.getPastChatMessages;
+			if (
+				(this.currentMessage.length === 0 || pastMessages.includes(this.currentMessage)) &&
+				event.key === 'ArrowUp'
+			) {
+				const inputField = this.$refs.inputField as HTMLInputElement;
+
+				inputField?.blur();
+				this.currentMessage =
+					pastMessages[pastMessages.length - 1 - this.previousMessageIndex] ?? '';
+				this.previousMessageIndex = (this.previousMessageIndex + 1) % pastMessages.length;
+				// Refocus to move the cursor to the end of the input
+				setTimeout(() => inputField?.focus(), 0);
+			}
 			if (event.key === 'Enter' && !event.shiftKey && this.currentMessage) {
 				void this.sendChatMessage(this.currentMessage);
 				event.stopPropagation();
@@ -240,24 +272,24 @@ export default defineComponent({
 			} as ChatMessage);
 
 			this.currentMessage = '';
+			this.previousMessageIndex = 0;
 			await this.$nextTick();
 			this.scrollToLatestMessage();
 			await this.startWorkflowWithMessage(message);
 		},
 
 		setConnectedNode() {
-			const workflow = this.getCurrentWorkflow();
-			const triggerNode = workflow.queryNodes(
-				(nodeType: INodeType) => nodeType.description.name === MANUAL_CHAT_TRIGGER_NODE_TYPE,
-			);
+			const triggerNode = this.getTriggerNode();
 
-			if (!triggerNode.length) {
+			if (!triggerNode) {
 				this.showError(
 					new Error('Chat Trigger Node could not be found!'),
 					'Trigger Node not found',
 				);
 				return;
 			}
+			const workflow = this.workflowHelpers.getCurrentWorkflow();
+
 			const chatNode = this.workflowsStore.getNodes().find((node: INodeUi): boolean => {
 				const nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 				if (!nodeType) return false;
@@ -288,7 +320,7 @@ export default defineComponent({
 
 				const parentNodes = workflow.getParentNodes(node.name);
 				const isChatChild = parentNodes.some(
-					(parentNodeName) => parentNodeName === triggerNode[0].name,
+					(parentNodeName) => parentNodeName === triggerNode.name,
 				);
 
 				return Boolean(isChatChild && (isAgent || isChain || isCustomChainOrAgent));
@@ -309,9 +341,9 @@ export default defineComponent({
 		getChatMessages(): ChatMessage[] {
 			if (!this.connectedNode) return [];
 
-			const workflow = this.getCurrentWorkflow();
+			const workflow = this.workflowHelpers.getCurrentWorkflow();
 			const connectedMemoryInputs =
-				workflow.connectionsByDestinationNode[this.connectedNode.name]?.memory;
+				workflow.connectionsByDestinationNode[this.connectedNode.name][NodeConnectionType.AiMemory];
 			if (!connectedMemoryInputs) return [];
 
 			const memoryConnection = (connectedMemoryInputs ?? []).find((i) => i.length > 0)?.[0];
@@ -330,9 +362,9 @@ export default defineComponent({
 						action: string;
 						chatHistory?: unknown[];
 						response?: {
-							chat_history?: unknown[];
+							sessionId?: unknown[];
 						};
-					} => get(data, 'data.memory.0.0.json')!,
+					} => get(data, ['data', NodeConnectionType.AiMemory, 0, 0, 'json'])!,
 				)
 				?.find((data) =>
 					['chatHistory', 'loadMemoryVariables'].includes(data?.action) ? data : undefined,
@@ -342,12 +374,12 @@ export default defineComponent({
 			if (memoryOutputData?.chatHistory) {
 				chatHistory = memoryOutputData?.chatHistory as LangChainMessage[];
 			} else if (memoryOutputData?.response) {
-				chatHistory = memoryOutputData?.response.chat_history as LangChainMessage[];
+				chatHistory = memoryOutputData?.response.sessionId as LangChainMessage[];
 			} else {
 				return [];
 			}
 
-			return chatHistory.map((message) => {
+			return (chatHistory || []).map((message) => {
 				return {
 					text: message.kwargs.content,
 					sender: last(message.id) === 'HumanMessage' ? 'user' : 'bot',
@@ -361,7 +393,7 @@ export default defineComponent({
 				return;
 			}
 
-			const workflow = this.getCurrentWorkflow();
+			const workflow = this.workflowHelpers.getCurrentWorkflow();
 			const childNodes = workflow.getChildNodes(triggerNode.name);
 
 			for (const childNode of childNodes) {
@@ -381,9 +413,9 @@ export default defineComponent({
 		},
 
 		getTriggerNode(): INode | null {
-			const workflow = this.getCurrentWorkflow();
-			const triggerNode = workflow.queryNodes(
-				(nodeType: INodeType) => nodeType.description.name === MANUAL_CHAT_TRIGGER_NODE_TYPE,
+			const workflow = this.workflowHelpers.getCurrentWorkflow();
+			const triggerNode = workflow.queryNodes((nodeType: INodeType) =>
+				[CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE].includes(nodeType.description.name),
 			);
 
 			if (!triggerNode.length) {
@@ -403,7 +435,16 @@ export default defineComponent({
 				return;
 			}
 
-			const inputKey = triggerNode.typeVersion < 1.1 ? 'input' : 'chat_input';
+			let inputKey = 'chatInput';
+			if (triggerNode.type === MANUAL_CHAT_TRIGGER_NODE_TYPE && triggerNode.typeVersion < 1.1) {
+				inputKey = 'input';
+			}
+			if (triggerNode.type === CHAT_TRIGGER_NODE_TYPE) {
+				inputKey = 'chatInput';
+			}
+
+			const usersStore = useUsersStore();
+			const currentUser = usersStore.currentUser ?? ({} as IUser);
 
 			const nodeData: ITaskData = {
 				startTime: new Date().getTime(),
@@ -414,6 +455,8 @@ export default defineComponent({
 						[
 							{
 								json: {
+									sessionId: `test-${currentUser.id || 'unknown'}`,
+									action: 'sendMessage',
 									[inputKey]: message,
 								},
 							},
@@ -429,6 +472,7 @@ export default defineComponent({
 				source: 'RunData.ManualChatMessage',
 			});
 
+			this.workflowsStore.appendChatMessage(message);
 			if (!response) {
 				this.showError(
 					new Error('It was not possible to start workflow!'),
@@ -461,15 +505,15 @@ export default defineComponent({
 
 					const nodeResponseDataArray = get(
 						this.workflowsStore.getWorkflowExecution?.data?.resultData.runData,
-						`[${lastNodeExecuted}]`,
+						lastNodeExecuted,
 					) as ITaskData[];
 
 					const nodeResponseData = nodeResponseDataArray[nodeResponseDataArray.length - 1];
 
 					let responseMessage: string;
 
-					if (get(nodeResponseData, ['error'])) {
-						responseMessage = '[ERROR: ' + get(nodeResponseData, ['error', 'message']) + ']';
+					if (get(nodeResponseData, 'error')) {
+						responseMessage = '[ERROR: ' + get(nodeResponseData, 'error.message') + ']';
 					} else {
 						const responseData = get(nodeResponseData, 'data.main[0][0].json');
 						responseMessage = this.extractResponseMessage(responseData);
@@ -549,13 +593,18 @@ export default defineComponent({
 		padding-top: 1.5em;
 		margin-right: 1em;
 
+		.chat-message {
+			float: left;
+			margin: var(--spacing-2xs) var(--spacing-s);
+		}
+
 		.message {
 			float: left;
 			position: relative;
 			width: 100%;
 
 			.content {
-				border-radius: var(--border-radius-large);
+				border-radius: var(--border-radius-base);
 				line-height: 1.5;
 				margin: var(--spacing-2xs) var(--spacing-s);
 				max-width: 75%;
@@ -565,8 +614,9 @@ export default defineComponent({
 
 				&.bot {
 					background-color: var(--color-lm-chat-bot-background);
-					border: 1px solid var(--color-lm-chat-bot-border);
+					color: var(--color-lm-chat-bot-color);
 					float: left;
+					border-bottom-left-radius: 0;
 
 					.message-options {
 						left: 1.5em;
@@ -575,9 +625,10 @@ export default defineComponent({
 
 				&.user {
 					background-color: var(--color-lm-chat-user-background);
-					border: 1px solid var(--color-lm-chat-user-border);
+					color: var(--color-lm-chat-user-color);
 					float: right;
 					text-align: right;
+					border-bottom-right-radius: 0;
 
 					.message-options {
 						right: 1.5em;

@@ -16,6 +16,7 @@ export class OpenAiAssistant implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'OpenAI Assistant',
 		name: 'openAiAssistant',
+		hidden: true,
 		icon: 'fa:robot',
 		group: ['transform'],
 		version: 1,
@@ -224,6 +225,23 @@ export class OpenAiAssistant implements INodeType {
 				type: 'string',
 				required: true,
 				default: '={{ $json.chat_input }}',
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
+			},
+			{
+				displayName: 'Text',
+				name: 'text',
+				type: 'string',
+				required: true,
+				default: '={{ $json.chatInput }}',
+				displayOptions: {
+					show: {
+						'@version': [1.1],
+					},
+				},
 			},
 			{
 				displayName: 'OpenAI Tools',
@@ -363,6 +381,6 @@ export class OpenAiAssistant implements INodeType {
 			returnData.push({ json: response });
 		}
 
-		return this.prepareOutputData(returnData);
+		return await this.prepareOutputData(returnData);
 	}
 }

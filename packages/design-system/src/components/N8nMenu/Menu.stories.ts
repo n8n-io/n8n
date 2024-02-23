@@ -114,10 +114,9 @@ const menuItems = [
 		id: 'website',
 		icon: 'globe',
 		label: 'Website',
-		type: 'link',
-		properties: {
+		link: {
 			href: 'https://www.n8n.io',
-			newWindow: true,
+			target: '_blank',
 		},
 		position: 'bottom',
 	},
@@ -140,10 +139,9 @@ const menuItems = [
 				id: 'quickstart',
 				icon: 'video',
 				label: 'Quickstart',
-				type: 'link',
-				properties: {
+				link: {
 					href: 'https://www.youtube.com/watch?v=RpjQTGKm-ok',
-					newWindow: true,
+					target: '_blank',
 				},
 			},
 		],

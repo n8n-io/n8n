@@ -1,5 +1,5 @@
 import { screen } from '@testing-library/vue';
-import { defaultMountingTarget } from '@/constants';
+import { defaultMountingTarget } from '@n8n/chat/constants';
 
 export function getMountingTarget(target = defaultMountingTarget) {
 	return document.querySelector(target);

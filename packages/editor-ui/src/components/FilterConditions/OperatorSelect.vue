@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import { useI18n } from '@/composables/useI18n';
-import { OPERATORS_BY_ID, OPERATOR_GROUPS } from './constants';
 import { computed, ref } from 'vue';
+import { OPERATOR_GROUPS } from './constants';
 import type { FilterOperator } from './types';
+import { getFilterOperator } from './utils';
 
 interface Props {
 	selected: string;
+	readOnly?: boolean;
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), { readOnly: false });
 
 const selected = ref(props.selected);
 const menuOpen = ref(false);
@@ -27,7 +29,7 @@ const selectedGroupIcon = computed(
 	() => groups.find((group) => group.id === selected.value.split(':')[0])?.icon,
 );
 
-const selectedOperator = computed(() => OPERATORS_BY_ID[selected.value] as FilterOperator);
+const selectedOperator = computed(() => getFilterOperator(selected.value));
 
 const onOperatorChange = (operator: string): void => {
 	selected.value = operator;
@@ -57,6 +59,7 @@ function onGroupSelect(group: string) {
 		data-test-id="filter-operator-select"
 		size="small"
 		:model-value="selected"
+		:disabled="readOnly"
 		@update:modelValue="onOperatorChange"
 		@visible-change="onSelectVisibleChange"
 		@mouseenter="shouldRenderItems = true"
@@ -81,12 +84,15 @@ function onGroupSelect(group: string) {
 				>
 					<template #reference>
 						<div
-							:class="$style.groupTitle"
+							:class="$style.group"
 							@mouseenter="() => onGroupSelect(group.id)"
 							@click="() => onGroupSelect(group.id)"
 						>
-							<n8n-icon v-if="group.icon" :icon="group.icon" color="text-light" size="small" />
-							<span>{{ i18n.baseText(group.name) }}</span>
+							<div :class="$style.groupTitle">
+								<n8n-icon v-if="group.icon" :icon="group.icon" color="text-light" size="small" />
+								<span>{{ i18n.baseText(group.name) }}</span>
+							</div>
+							<n8n-icon icon="chevron-right" color="text-light" size="xsmall" />
 						</div>
 					</template>
 					<div>
@@ -119,10 +125,11 @@ function onGroupSelect(group: string) {
 	flex-direction: column;
 }
 
-.groupTitle {
+.group {
 	display: flex;
 	gap: var(--spacing-2xs);
 	align-items: center;
+	justify-content: space-between;
 	font-size: var(--font-size-s);
 	font-weight: var(--font-weight-bold);
 	line-height: var(--font-line-height-regular);
@@ -133,5 +140,11 @@ function onGroupSelect(group: string) {
 	&:hover {
 		background: var(--color-background-base);
 	}
+}
+
+.groupTitle {
+	display: flex;
+	gap: var(--spacing-2xs);
+	align-items: center;
 }
 </style>

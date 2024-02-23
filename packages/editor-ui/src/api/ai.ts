@@ -21,7 +21,7 @@ export async function generateCodeForPrompt(
 		n8nVersion: string;
 	},
 ): Promise<{ code: string }> {
-	return makeRestApiRequest(ctx, 'POST', '/ask-ai', {
+	return await makeRestApiRequest(ctx, 'POST', '/ask-ai', {
 		question,
 		context,
 		model,
