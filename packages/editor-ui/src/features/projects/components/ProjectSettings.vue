@@ -3,11 +3,14 @@ import { computed, ref } from 'vue';
 import { useUsersStore } from '@/stores/users.store';
 import type { IUser } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
+import { useProjectsStore } from '@/features/projects/projects.store';
 
 const usersStore = useUsersStore();
 const locale = useI18n();
+const projectsStore = useProjectsStore();
 
 const sharedWith = ref<Array<Partial<IUser>>>([]);
+const projectName = ref(projectsStore.currentProject?.name);
 
 const usersList = computed(() => usersStore.allUsers);
 const currentUser = computed(() => usersStore.currentUser);
@@ -33,7 +36,7 @@ const onRoleAction = (user: Partial<IUser>, role: string) => {
 		<form>
 			<fieldset>
 				<label for="projectName">{{ locale.baseText('projects.settings.projectName') }}</label>
-				<n8n-input id="projectName" type="text" name="projectName" />
+				<n8n-input id="projectName" type="text" name="projectName" :value="projectName" />
 			</fieldset>
 			<fieldset>
 				<label for="projectMembers">{{

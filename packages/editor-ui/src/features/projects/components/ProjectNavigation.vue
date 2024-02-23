@@ -1,10 +1,11 @@
 <script lang="ts" setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onBeforeMount } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { IMenuItem } from 'n8n-design-system/types';
 import { useI18n } from '@/composables/useI18n';
 import { VIEWS } from '@/constants';
 import { useProjectsStore } from '@/features/projects/projects.store';
+import type { Project } from '@/features/projects/projects.types';
 
 type Props = {
 	collapsed: boolean;
@@ -40,19 +41,43 @@ const activeTab = computed(() =>
 		: undefined,
 );
 
+const isActiveProject = (projectId: string) =>
+	route.params.projectId === projectId ? projectId : undefined;
+const getProjectMenuItem = (project: Project) => ({
+	id: project.id,
+	label: project.name,
+	route: { to: { name: VIEWS.PROJECTS_WORKFLOWS, params: { projectId: project.id } } },
+});
+
 const homeClicked = () => {};
+const projectClicked = () => {};
 const addProjectClicked = async () => {
 	isCreatingProject.value = true;
 	addProject.value.isLoading = true;
 	addProject.value.disabled = true;
-	const newProject = await projectsStore.createProject({
-		name: locale.baseText('projects.settings.newProjectName'),
-	});
-	isCreatingProject.value = false;
-	addProject.value.isLoading = false;
-	addProject.value.disabled = false;
-	await router.push({ name: VIEWS.PROJECT_SETTINGS, params: { projectId: newProject.id } });
+
+	try {
+		const newProject = await projectsStore.createProject({
+			name: locale.baseText('projects.settings.newProjectName'),
+		});
+		projectsStore.setCurrentProject(newProject);
+		await router.push({ name: VIEWS.PROJECT_SETTINGS, params: { projectId: newProject.id } });
+	} catch (error) {
+		console.error(error);
+	} finally {
+		isCreatingProject.value = false;
+		addProject.value.isLoading = false;
+		addProject.value.disabled = false;
+	}
 };
+
+onBeforeMount(async () => {
+	await Promise.all([
+		projectsStore.getAllProjects(),
+		projectsStore.getMyProjects(),
+		projectsStore.getPersonalProject(),
+	]);
+});
 </script>
 
 <template>
@@ -67,7 +92,18 @@ const addProjectClicked = async () => {
 			/>
 		</ElMenu>
 		<hr class="mt-m mb-m" />
-		<ElMenu :collapse="props.collapsed" class="pl-xs pr-xs">
+		<ElMenu :collapse="props.collapsed" :class="$style.projectItems">
+			<n8n-menu-item
+				v-for="project in projectsStore.projects"
+				:key="project.id"
+				:item="getProjectMenuItem(project)"
+				:compact="props.collapsed"
+				:handle-select="projectClicked"
+				:active-tab="isActiveProject(project.id)"
+				mode="tabs"
+			/>
+		</ElMenu>
+		<ElMenu :collapse="props.collapsed" class="pt-s pl-xs pr-xs">
 			<n8n-menu-item
 				:item="addProject"
 				:compact="props.collapsed"
@@ -82,8 +118,15 @@ const addProjectClicked = async () => {
 <style lang="scss" module>
 .projects {
 	display: grid;
+	grid-auto-rows: auto;
 	width: 100%;
 	overflow: hidden;
+}
+
+.projectItems {
+	height: 100%;
+	padding: 0 var(--spacing-xs);
+	overflow: auto;
 }
 </style>
 
