@@ -12,7 +12,7 @@ import type { BaseLanguageModel } from 'langchain/dist/base_language';
 import type { BaseChatMemory } from 'langchain/memory';
 import type { DataSource } from '@n8n/typeorm';
 
-import { getPromptInputByType } from '../../../../../utils/helpers';
+import { getPromptInputByType, serializeChatHistory } from '../../../../../utils/helpers';
 import { getSqliteDataSource } from './other/handlers/sqlite';
 import { getPostgresDataSource } from './other/handlers/postgres';
 import { SQL_PREFIX, SQL_SUFFIX } from './other/prompts';
@@ -97,6 +97,7 @@ export async function sqlAgentAgentExecute(
 			topK: (options.topK as number) ?? 10,
 			prefix: (options.prefixPrompt as string) ?? SQL_PREFIX,
 			suffix: (options.suffixPrompt as string) ?? SQL_SUFFIX,
+			inputVariables: ['dialect' ,'top_k', 'chatHistory', 'input', 'agent_scratchpad']
 		};
 
 		const dbInstance = await SqlDatabase.fromDataSourceParams({
@@ -110,13 +111,21 @@ export async function sqlAgentAgentExecute(
 		const agentExecutor = createSqlAgent(model, toolkit, agentOptions);
 
 		const memory = (await this.getInputConnectionData(NodeConnectionType.AiMemory, 0)) as
-			| BaseChatMemory
-			| undefined;
+		| BaseChatMemory
+		| undefined;
 
-		agentExecutor.memory = memory;
+		let chatHistory = '';
+		if (memory) {
+			const messages = await memory.chatHistory.getMessages();
+			chatHistory = serializeChatHistory(messages);
+		}
 
-		const response = await agentExecutor.call({ input, signal: this.getExecutionCancelSignal() });
+		const response = await agentExecutor.call({ input, signal: this.getExecutionCancelSignal(), chatHistory });
 
+		if (memory) {
+			memory.chatHistory.addUserMessage(input);
+			memory.chatHistory.addAIChatMessage(response?.output ?? response);
+		}
 		returnData.push({ json: response });
 	}
 
