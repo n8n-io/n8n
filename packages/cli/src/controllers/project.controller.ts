@@ -63,6 +63,12 @@ export class ProjectController {
 		return project;
 	}
 
+	@Patch('/:projectId')
+	@ProjectScope('project:update')
+	async updateProject(req: ProjectRequest.Update) {
+		await this.projectsService.updateProject(req.body.name, req.params.projectId);
+	}
+
 	@Patch('/:projectId/relations')
 	@ProjectScope('project:invite')
 	async setProjectRelations(req: ProjectRequest.SetProjectRelations) {

@@ -9,6 +9,7 @@ import { Service } from 'typedi';
 import { type Scope } from '@n8n/permissions';
 import { In } from '@n8n/typeorm';
 import { RoleService } from './role.service';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 @Service()
 export class ProjectService {
@@ -69,6 +70,23 @@ export class ProjectService {
 		);
 
 		return project;
+	}
+
+	async updateProject(name: string, projectId: string): Promise<Project> {
+		const result = await this.projectRepository.update(
+			{
+				id: projectId,
+				type: 'team',
+			},
+			{
+				name,
+			},
+		);
+
+		if (!result.affected) {
+			throw new ForbiddenError('Project not found');
+		}
+		return await this.projectRepository.findOneByOrFail({ id: projectId });
 	}
 
 	async getPersonalProject(user: User): Promise<Project | null> {
