@@ -391,6 +391,7 @@ export class I18nClass {
 		'$().itemMatching': this.baseText('codeNodeEditor.completer.selector.itemMatching'),
 		'$().last': this.baseText('codeNodeEditor.completer.selector.last'),
 		'$().params': this.baseText('codeNodeEditor.completer.selector.params'),
+		'$().isExecuted': this.baseText('codeNodeEditor.completer.selector.isExecuted'),
 
 		'$prevNode.name': this.baseText('codeNodeEditor.completer.$prevNode.name'),
 		'$prevNode.outputIndex': this.baseText('codeNodeEditor.completer.$prevNode.outputIndex'),

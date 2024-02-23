@@ -315,6 +315,7 @@
 	"codeNodeEditor.completer.selector.itemMatching": "@:_reusableBaseText.codeNodeEditor.completer.itemMatching",
 	"codeNodeEditor.completer.selector.last": "@:_reusableBaseText.codeNodeEditor.completer.last",
 	"codeNodeEditor.completer.selector.params": "The parameters of the node",
+	"codeNodeEditor.completer.selector.isExecuted": "Whether the node has executed",
 	"codeNodeEditor.completer.section.input": "Input",
 	"codeNodeEditor.completer.section.prevNodes": "Previous nodes",
 	"codeNodeEditor.completer.section.metadata": "Metadata",
