@@ -1,6 +1,7 @@
 import type { IExecutionPushResponse, IExecutionResponse, IStartRunData } from '@/Interface';
 import { mapStores } from 'pinia';
 import { defineComponent } from 'vue';
+import { get } from 'lodash-es';
 
 import type {
 	IDataObject,
@@ -10,6 +11,7 @@ import type {
 	IPinData,
 	IWorkflowBase,
 	Workflow,
+	StartNodeData,
 } from 'n8n-workflow';
 import {
 	NodeHelpers,
@@ -37,8 +39,8 @@ export const consolidateRunDataAndStartNodes = (
 	runData: IRunData | null,
 	pinData: IPinData | undefined,
 	workflow: Workflow,
-): { runData: IRunData | undefined; startNodes: string[] } => {
-	const startNodes: string[] = [];
+): { runData: IRunData | undefined; startNodeNames: string[] } => {
+	const startNodeNames: string[] = [];
 	let newRunData: IRunData | undefined;
 
 	if (runData !== null && Object.keys(runData).length !== 0) {
@@ -59,7 +61,7 @@ export const consolidateRunDataAndStartNodes = (
 					// When we hit a node which has no data we stop and set it
 					// as a start node the execution from and then go on with other
 					// direct input nodes
-					startNodes.push(parentNode);
+					startNodeNames.push(parentNode);
 					break;
 				}
 				if (runData[parentNode]) {
@@ -75,7 +77,7 @@ export const consolidateRunDataAndStartNodes = (
 		}
 	}
 
-	return { runData: newRunData, startNodes };
+	return { runData: newRunData, startNodeNames };
 };
 
 export const workflowRun = defineComponent({
@@ -243,18 +245,18 @@ export const workflowRun = defineComponent({
 					workflow,
 				);
 
-				const { startNodes } = consolidatedData;
+				const { startNodeNames } = consolidatedData;
 				let { runData: newRunData } = consolidatedData;
 				let executedNode: string | undefined;
 				if (
-					startNodes.length === 0 &&
+					startNodeNames.length === 0 &&
 					'destinationNode' in options &&
 					options.destinationNode !== undefined
 				) {
 					executedNode = options.destinationNode;
-					startNodes.push(options.destinationNode);
+					startNodeNames.push(options.destinationNode);
 				} else if ('triggerNode' in options && 'nodeData' in options) {
-					startNodes.push(
+					startNodeNames.push(
 						...workflow.getChildNodes(options.triggerNode, NodeConnectionType.Main, 1),
 					);
 					newRunData = {
@@ -262,6 +264,25 @@ export const workflowRun = defineComponent({
 					};
 					executedNode = options.triggerNode;
 				}
+
+				const startNodes: StartNodeData[] = startNodeNames.map((name) => {
+					// Find for each start node the source data
+					let sourceData = get(runData, [name, 0, 'source', 0], null);
+					if (sourceData === null) {
+						const parentNodes = workflow.getParentNodes(name, NodeConnectionType.Main, 1);
+						const executeData = this.workflowHelpers.executeData(
+							parentNodes,
+							name,
+							NodeConnectionType.Main,
+							0,
+						);
+						sourceData = get(executeData, ['source', NodeConnectionType.Main, 0], null);
+					}
+					return {
+						name,
+						sourceData,
+					};
+				});
 
 				const startRunData: IStartRunData = {
 					workflowData,
@@ -288,7 +309,6 @@ export const workflowRun = defineComponent({
 						resultData: {
 							runData: newRunData || {},
 							pinData: workflowData.pinData,
-							startNodes,
 							workflowData,
 						},
 					} as IRunExecutionData,
