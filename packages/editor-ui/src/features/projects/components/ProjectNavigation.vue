@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref, computed, onBeforeMount } from 'vue';
+import { ref, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { IMenuItem } from 'n8n-design-system/types';
 import { useI18n } from '@/composables/useI18n';
@@ -42,11 +42,16 @@ const activeTab = computed(() =>
 );
 
 const isActiveProject = (projectId: string) =>
-	route.params.projectId === projectId ? projectId : undefined;
+	route?.params?.projectId === projectId ? projectId : undefined;
 const getProjectMenuItem = (project: Project) => ({
 	id: project.id,
 	label: project.name,
-	route: { to: { name: VIEWS.PROJECTS_WORKFLOWS, params: { projectId: project.id } } },
+	route: {
+		to: {
+			name: projectsStore.isProjectRoute ? route?.name : VIEWS.PROJECTS_WORKFLOWS,
+			params: { projectId: project.id },
+		},
+	},
 });
 
 const homeClicked = () => {};
@@ -60,7 +65,6 @@ const addProjectClicked = async () => {
 		const newProject = await projectsStore.createProject({
 			name: locale.baseText('projects.settings.newProjectName'),
 		});
-		projectsStore.setCurrentProject(newProject);
 		await router.push({ name: VIEWS.PROJECT_SETTINGS, params: { projectId: newProject.id } });
 	} catch (error) {
 		console.error(error);
@@ -70,14 +74,6 @@ const addProjectClicked = async () => {
 		addProject.value.disabled = false;
 	}
 };
-
-onBeforeMount(async () => {
-	await Promise.all([
-		projectsStore.getAllProjects(),
-		projectsStore.getMyProjects(),
-		projectsStore.getPersonalProject(),
-	]);
-});
 </script>
 
 <template>
@@ -94,7 +90,7 @@ onBeforeMount(async () => {
 		<hr class="mt-m mb-m" />
 		<ElMenu :collapse="props.collapsed" :class="$style.projectItems">
 			<n8n-menu-item
-				v-for="project in projectsStore.projects"
+				v-for="project in projectsStore.myProjects"
 				:key="project.id"
 				:item="getProjectMenuItem(project)"
 				:compact="props.collapsed"

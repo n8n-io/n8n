@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import * as projectsApi from '@/features/projects/projects.api';
 import type {
@@ -9,7 +10,9 @@ import type {
 } from '@/features/projects/projects.types';
 
 export const useProjectsStore = defineStore('projects', () => {
+	const route = useRoute();
 	const rootStore = useRootStore();
+
 	const projects = ref<Project[]>([]);
 	const myProjects = ref<Project[]>([]);
 	const personalProject = ref<Project | null>(null);
@@ -17,6 +20,7 @@ export const useProjectsStore = defineStore('projects', () => {
 		id: '',
 		name: '',
 	});
+	const isProjectRoute = ref(false);
 
 	const setCurrentProject = (project: Project) => {
 		currentProject.value = project;
@@ -27,7 +31,9 @@ export const useProjectsStore = defineStore('projects', () => {
 	};
 
 	const getMyProjects = async () => {
-		myProjects.value = await projectsApi.getMyProjects(rootStore.getRestApiContext);
+		myProjects.value = (await projectsApi.getMyProjects(rootStore.getRestApiContext)).filter(
+			(p) => !!p.name,
+		);
 	};
 
 	const getPersonalProject = async () => {
@@ -45,9 +51,23 @@ export const useProjectsStore = defineStore('projects', () => {
 		await projectsApi.setProjectRelations(rootStore.getRestApiContext, projectRelations);
 	};
 
+	watch(
+		route,
+		(newRoute) => {
+			isProjectRoute.value = (newRoute?.name ?? '').toString().toLowerCase().startsWith('project');
+			const project = myProjects.value.find((p) => p.id === newRoute.params?.projectId);
+			if (project) {
+				setCurrentProject(project);
+			}
+		},
+		{ immediate: true },
+	);
+
 	return {
 		projects,
+		myProjects,
 		currentProject,
+		isProjectRoute,
 		setCurrentProject,
 		getAllProjects,
 		getMyProjects,

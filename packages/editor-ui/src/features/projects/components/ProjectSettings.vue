@@ -4,13 +4,20 @@ import { useUsersStore } from '@/stores/users.store';
 import type { IUser } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
 import { useProjectsStore } from '@/features/projects/projects.store';
+import ProjectTabs from '@/features/projects/components/ProjectTabs.vue';
 
 const usersStore = useUsersStore();
 const locale = useI18n();
 const projectsStore = useProjectsStore();
 
 const sharedWith = ref<Array<Partial<IUser>>>([]);
-const projectName = ref(projectsStore.currentProject?.name);
+const projectNameEdited = ref('');
+const projectName = computed({
+	get: () => (projectNameEdited.value || projectsStore.currentProject?.name) ?? '',
+	set: (value) => {
+		projectNameEdited.value = value;
+	},
+});
 
 const usersList = computed(() => usersStore.allUsers);
 const currentUser = computed(() => usersStore.currentUser);
@@ -33,6 +40,9 @@ const onRoleAction = (user: Partial<IUser>, role: string) => {
 
 <template>
 	<div :class="$style.projectSettings">
+		<div :class="$style.header">
+			<ProjectTabs />
+		</div>
 		<form>
 			<fieldset>
 				<label for="projectName">{{ locale.baseText('projects.settings.projectName') }}</label>
@@ -110,14 +120,15 @@ const onRoleAction = (user: Partial<IUser>, role: string) => {
 	display: grid;
 	width: 100%;
 	justify-items: center;
+	grid-auto-rows: max-content;
 
 	form {
 		width: 100%;
-		max-width: 800px;
+		max-width: 1280px;
 		padding: 0 var(--spacing-2xl);
 
 		fieldset {
-			margin-top: var(--spacing-2xl);
+			padding-bottom: var(--spacing-2xl);
 
 			label {
 				display: block;
@@ -126,6 +137,12 @@ const onRoleAction = (user: Partial<IUser>, role: string) => {
 			}
 		}
 	}
+}
+
+.header {
+	width: 100%;
+	max-width: 1280px;
+	padding: var(--spacing-2xl) var(--spacing-2xl) 0;
 }
 
 .buttons {

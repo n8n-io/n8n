@@ -4,42 +4,58 @@ import type { RouteRecordName } from 'vue-router';
 import { useRoute } from 'vue-router';
 import { VIEWS } from '@/constants';
 import { useI18n } from '@/composables/useI18n';
+import { useProjectsStore } from '@/features/projects/projects.store';
 
 const locale = useI18n();
 const route = useRoute();
+const projectsStore = useProjectsStore();
 
 const selectedTab = ref<RouteRecordName | null | undefined>('');
 const options = computed(() => {
-	const isProject = (route?.name ?? '').toString().toLowerCase().startsWith('project');
-	const name = isProject
+	const to = projectsStore.isProjectRoute
 		? {
-				workflows: VIEWS.PROJECTS_WORKFLOWS,
-				credentials: VIEWS.PROJECTS_CREDENTIALS,
+				workflows: {
+					name: VIEWS.PROJECTS_WORKFLOWS,
+					params: { projectId: projectsStore.currentProject?.id },
+				},
+				credentials: {
+					name: VIEWS.PROJECTS_CREDENTIALS,
+					params: { projectId: projectsStore.currentProject?.id },
+				},
 		  }
 		: {
-				workflows: VIEWS.WORKFLOWS,
-				credentials: VIEWS.CREDENTIALS,
+				workflows: {
+					name: VIEWS.WORKFLOWS,
+				},
+				credentials: {
+					name: VIEWS.CREDENTIALS,
+				},
 		  };
 	const tabs = [
 		{
 			label: locale.baseText('mainSidebar.workflows'),
-			value: name.workflows,
-			to: { name: name.workflows },
+			value: to.workflows.name,
+			to: to.workflows,
 		},
 		{
 			label: locale.baseText('mainSidebar.credentials'),
-			value: name.credentials,
-			to: { name: name.credentials },
+			value: to.credentials.name,
+			to: to.credentials,
 		},
 	];
 
+	if (projectsStore.isProjectRoute) {
+		tabs.push({
+			label: locale.baseText('settings'),
+			value: VIEWS.PROJECT_SETTINGS,
+			to: { name: VIEWS.PROJECT_SETTINGS, params: { projectId: projectsStore.currentProject?.id } },
+		});
+	}
+
 	return tabs;
 });
-const onUpdateModelValue = (value: string) => {
-	selectedTab.value = value;
-};
 watch(
-	() => route?.name,
+	() => route.name,
 	() => {
 		selectedTab.value = route?.name;
 	},
@@ -49,7 +65,7 @@ watch(
 
 <template>
 	<div :class="$style.projectTabs">
-		<n8n-tabs v-model="selectedTab" :options="options" @update:model-value="onUpdateModelValue" />
+		<n8n-tabs v-model="selectedTab" :options="options" />
 	</div>
 </template>
 
