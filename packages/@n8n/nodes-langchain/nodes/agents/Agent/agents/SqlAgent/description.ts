@@ -52,15 +52,6 @@ export const sqlAgentAgentProperties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Input Binary Field',
-		name: 'binaryPropertyName',
-		type: 'string',
-		default: 'data',
-		required: true,
-		placeholder: 'e.g data',
-		hint: 'The name of the input binary field containing the file to be extracted',
-	},
-	{
 		displayName: 'Credentials',
 		name: 'credentials',
 		type: 'credentials',
@@ -73,6 +64,21 @@ export const sqlAgentAgentProperties: INodeProperties[] = [
 		name: 'sqLiteFileNotice',
 		type: 'notice',
 		default: '',
+		displayOptions: {
+			show: {
+				agent: ['sqlAgent'],
+				dataSource: ['sqlite'],
+			},
+		},
+	},
+	{
+		displayName: 'Input Binary Field',
+		name: 'binaryPropertyName',
+		type: 'string',
+		default: 'data',
+		required: true,
+		placeholder: 'e.g data',
+		hint: 'The name of the input binary field containing the file to be extracted',
 		displayOptions: {
 			show: {
 				agent: ['sqlAgent'],
