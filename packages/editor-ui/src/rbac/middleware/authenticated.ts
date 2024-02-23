@@ -7,8 +7,9 @@ export const authenticatedMiddleware: RouterMiddleware<AuthenticatedPermissionOp
 	to,
 	from,
 	next,
+	options,
 ) => {
-	const valid = isAuthenticated();
+	const valid = isAuthenticated(options);
 	if (!valid) {
 		const redirect =
 			to.query.redirect ??
