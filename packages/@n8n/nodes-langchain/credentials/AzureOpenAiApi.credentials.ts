@@ -28,7 +28,7 @@ export class AzureOpenAiApi implements ICredentialType {
 			name: 'apiVersion',
 			type: 'string',
 			required: true,
-			default: '2023-05-15',
+			default: '2023-07-01-preview',
 		},
 	];
 
