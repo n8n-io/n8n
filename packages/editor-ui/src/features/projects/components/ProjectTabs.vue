@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, watch, computed } from 'vue';
 import type { RouteRecordName } from 'vue-router';
 import { useRoute } from 'vue-router';
 import { VIEWS } from '@/constants';
@@ -38,9 +38,13 @@ const options = computed(() => {
 const onUpdateModelValue = (value: string) => {
 	selectedTab.value = value;
 };
-onMounted(() => {
-	selectedTab.value = route?.name;
-});
+watch(
+	() => route?.name,
+	() => {
+		selectedTab.value = route?.name;
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>
