@@ -570,7 +570,7 @@ describe('Execution', () => {
 		});
 	});
 
-	it('should successful execute partial executions with nodes attached to the second output', () => {
+	it('should successfully execute partial executions with nodes attached to the second output', () => {
 		cy.createFixtureWorkflow(
 			'Test_Workflow_pairedItem_incomplete_manual_bug.json',
 			'My test workflow',
