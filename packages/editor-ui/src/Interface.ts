@@ -47,6 +47,7 @@ import {
 	type INodeProperties,
 	type NodeConnectionType,
 	type INodeCredentialsDetails,
+	type StartNodeData,
 } from 'n8n-workflow';
 import type { BulkCommand, Undoable } from '@/models/history';
 import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
@@ -188,7 +189,7 @@ export interface IAiData {
 
 export interface IStartRunData {
 	workflowData: IWorkflowData;
-	startNodes?: string[];
+	startNodes?: StartNodeData[];
 	destinationNode?: string;
 	runData?: IRunData;
 	pinData?: IPinData;
