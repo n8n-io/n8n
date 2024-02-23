@@ -66,13 +66,13 @@ export function getPromptInputByType(options: {
 	return input;
 }
 
-export function logAiEvent(
+export async function logAiEvent(
 	executeFunctions: IExecuteFunctions,
 	event: EventNamesAiNodesType,
 	data?: IDataObject,
 ) {
 	try {
-		void executeFunctions.logAiEvent(event, data ? jsonStringify(data) : undefined);
+		await executeFunctions.logAiEvent(event, data ? jsonStringify(data) : undefined);
 	} catch (error) {
 		executeFunctions.logger.debug(`Error logging AI event: ${event}`);
 	}
