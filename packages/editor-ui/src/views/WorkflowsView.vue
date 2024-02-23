@@ -12,6 +12,9 @@
 		@click:add="addWorkflow"
 		@update:filters="onFiltersUpdated"
 	>
+		<template #header>
+			<ProjectTabs />
+		</template>
 		<template #add-button="{ disabled }">
 			<n8n-tooltip :disabled="!readOnlyEnv">
 				<div>
@@ -151,6 +154,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useTagsStore } from '@/stores/tags.store';
+import ProjectTabs from '@/features/projects/components/ProjectTabs.vue';
 
 type IResourcesListLayoutInstance = InstanceType<typeof ResourcesListLayout>;
 
@@ -176,6 +180,7 @@ const WorkflowsView = defineComponent({
 		TagsDropdown,
 		SuggestedTemplatesPage,
 		SuggestedTemplatesSection,
+		ProjectTabs,
 	},
 	data() {
 		return {

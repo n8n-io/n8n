@@ -10,6 +10,9 @@
 		@click:add="addCredential"
 		@update:filters="filters = $event"
 	>
+		<template #header>
+			<ProjectTabs />
+		</template>
 		<template #default="{ data }">
 			<CredentialCard data-test-id="resources-list-item" class="mb-2xs" :data="data" />
 		</template>
@@ -58,6 +61,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
+import ProjectTabs from '@/features/projects/components/ProjectTabs.vue';
 
 type IResourcesListLayoutInstance = InstanceType<typeof ResourcesListLayout>;
 
@@ -66,6 +70,7 @@ export default defineComponent({
 	components: {
 		ResourcesListLayout,
 		CredentialCard,
+		ProjectTabs,
 	},
 	data() {
 		return {
