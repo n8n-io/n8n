@@ -17,6 +17,7 @@ import { getSqliteDataSource } from './other/handlers/sqlite';
 import { getPostgresDataSource } from './other/handlers/postgres';
 import { SQL_PREFIX, SQL_SUFFIX } from './other/prompts';
 import { getMysqlDataSource } from './other/handlers/mysql';
+import { HumanMessage, type BaseChatMessageHistory, AIMessage } from 'langchain/schema';
 
 const parseTablesString = (tablesString: string) =>
 	tablesString
@@ -114,21 +115,30 @@ export async function sqlAgentAgentExecute(
 			| BaseChatMemory
 			| undefined;
 
+		agentExecutor.memory = memory;
+
 		let chatHistory = '';
+		let chatHistoryInstance: BaseChatMessageHistory | undefined;
 		if (memory) {
-			const messages = await memory.chatHistory.getMessages();
+			chatHistoryInstance = memory.chatHistory;
+			const messages = await chatHistoryInstance.getMessages();
 			chatHistory = serializeChatHistory(messages);
 		}
 
-		const response = await agentExecutor.call({
-			input,
-			signal: this.getExecutionCancelSignal(),
-			chatHistory,
-		});
+		let response;
+		try {
+			response = await agentExecutor.call({
+				input,
+				signal: this.getExecutionCancelSignal(),
+				chatHistory,
+			});
+		} catch (error) {
+			response = error.message;
+		}
 
-		if (memory) {
-			await memory.chatHistory.addUserMessage(input);
-			await memory.chatHistory.addAIChatMessage(response?.output ?? response);
+		if (memory && chatHistoryInstance) {
+			await chatHistoryInstance.addMessage(new HumanMessage(input));
+			await chatHistoryInstance.addMessage(new AIMessage(response?.output ?? response));
 		}
 
 		returnData.push({ json: response });
