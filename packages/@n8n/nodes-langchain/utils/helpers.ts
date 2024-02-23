@@ -1,4 +1,5 @@
-import { NodeConnectionType, type IExecuteFunctions, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError, jsonStringify } from 'n8n-workflow';
+import type { EventNamesAiNodesType, IDataObject, IExecuteFunctions } from 'n8n-workflow';
 import { BaseChatModel } from 'langchain/chat_models/base';
 import { BaseChatModel as BaseChatModelCore } from '@langchain/core/language_models/chat_models';
 import type { BaseOutputParser } from '@langchain/core/output_parsers';
@@ -63,4 +64,16 @@ export function getPromptInputByType(options: {
 	}
 
 	return input;
+}
+
+export async function logAiEvent(
+	executeFunctions: IExecuteFunctions,
+	event: EventNamesAiNodesType,
+	data?: IDataObject,
+) {
+	try {
+		await executeFunctions.logAiEvent(event, data ? jsonStringify(data) : undefined);
+	} catch (error) {
+		executeFunctions.logger.debug(`Error logging AI event: ${event}`);
+	}
 }
