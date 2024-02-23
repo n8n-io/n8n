@@ -94,18 +94,21 @@ export class MemoryXata implements INodeType {
 			);
 		}
 
+		const chatHistory = new XataChatMessageHistory({
+			table: table[1],
+			sessionId,
+			client: xataClient,
+			apiKey: credentials.apiKey as string,
+		});
+
 		const memory = new BufferMemory({
-			chatHistory: new XataChatMessageHistory({
-				table: table[1],
-				sessionId,
-				client: xataClient,
-				apiKey: credentials.apiKey as string,
-			}),
+			chatHistory,
 			memoryKey: 'chat_history',
 			returnMessages: true,
 			inputKey: 'input',
 			outputKey: 'output',
 		});
+
 		return {
 			response: logWrapper(memory, this),
 		};
