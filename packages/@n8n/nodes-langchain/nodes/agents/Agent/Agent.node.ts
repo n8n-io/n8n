@@ -94,7 +94,10 @@ function getInputs(
 			{
 				type: NodeConnectionType.AiLanguageModel,
 				filter: {
-					nodes: ['@n8n/n8n-nodes-langchain.lmChatOpenAi'],
+					nodes: [
+						'@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						'@n8n/n8n-nodes-langchain.lmChatAzureOpenAi',
+					],
 				},
 			},
 			{
