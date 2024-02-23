@@ -33,6 +33,7 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	WorkflowExecuteMode,
 	CloseFunction,
+	StartNodeData,
 } from 'n8n-workflow';
 import {
 	LoggerProxy as Logger,
@@ -43,7 +44,6 @@ import {
 } from 'n8n-workflow';
 import get from 'lodash/get';
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
-import type { StartNodeData } from './Interfaces';
 
 export class WorkflowExecute {
 	private status: ExecutionStatus = 'new';

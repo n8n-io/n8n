@@ -23,11 +23,12 @@ import type {
 	INodeProperties,
 	IUserSettings,
 	IHttpRequestMethods,
+	StartNodeData,
 } from 'n8n-workflow';
 
 import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 
-import type { StartNodeData, WorkflowExecute } from 'n8n-core';
+import type { WorkflowExecute } from 'n8n-core';
 
 import type PCancelable from 'p-cancelable';
 

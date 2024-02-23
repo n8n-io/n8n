@@ -1,17 +1,11 @@
 import type {
 	IPollResponse,
-	ISourceData,
 	ITriggerResponse,
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
 	ValidationResult,
 } from 'n8n-workflow';
 
 export type Class<T = object, A extends unknown[] = unknown[]> = new (...args: A) => T;
-
-export interface StartNodeData {
-	name: string;
-	sourceData: ISourceData | null;
-}
 
 export interface IResponseError extends Error {
 	statusCode?: number;
