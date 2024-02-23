@@ -526,4 +526,6 @@ export declare namespace ProjectRequest {
 		{},
 		{ relations: ProjectRelationPayload[] }
 	>;
+
+	type Update = AuthenticatedRequest<{ projectId: string }, {}, { name: string }>;
 }

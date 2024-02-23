@@ -71,6 +71,14 @@ export class ProjectService {
 		return project;
 	}
 
+	async updateProject(name: string, projectId: string): Promise<Project> {
+		await this.projectRepository.update(projectId, {
+			name,
+		});
+
+		return await this.projectRepository.findOneByOrFail({ id: projectId });
+	}
+
 	async getPersonalProject(user: User): Promise<Project | null> {
 		return await this.projectRepository.getPersonalProjectForUser(user.id);
 	}

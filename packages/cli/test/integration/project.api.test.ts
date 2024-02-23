@@ -272,6 +272,35 @@ describe('POST /projects/', () => {
 	});
 });
 
+describe('PATCH /projects/:projectId', () => {
+	test('should update a project', async () => {
+		const ownerUser = await createOwner();
+		const ownerAgent = testServer.authAgentFor(ownerUser);
+
+		const teamProject = await createTeamProject();
+
+		const resp = await ownerAgent.patch(`/projects/${teamProject.id}`).send({ name: 'New Name' });
+		expect(resp.status).toBe(200);
+
+		const updatedProject = await findProject(teamProject.id);
+		expect(updatedProject.name).toEqual('New Name');
+	});
+
+	test('should not allow viewers to edit team name', async () => {
+		const testUser = await createUser();
+		const teamProject = await createTeamProject();
+		await linkUserToProject(testUser, teamProject, 'project:viewer');
+
+		const memberAgent = testServer.authAgentFor(testUser);
+
+		const resp = await memberAgent.patch(`/projects/${teamProject.id}`).send({ name: 'New Name' });
+		expect(resp.status).toBe(403);
+
+		const updatedProject = await findProject(teamProject.id);
+		expect(updatedProject.name).not.toEqual('New Name');
+	});
+});
+
 describe('PATCH /projects/:projectId/relations', () => {
 	test('should add or remove users from a project', async () => {
 		const [ownerUser, testUser1, testUser2, testUser3, teamProject1, teamProject2] =
