@@ -97,7 +97,7 @@ export async function sqlAgentAgentExecute(
 			topK: (options.topK as number) ?? 10,
 			prefix: (options.prefixPrompt as string) ?? SQL_PREFIX,
 			suffix: (options.suffixPrompt as string) ?? SQL_SUFFIX,
-			inputVariables: ['dialect' ,'top_k', 'chatHistory', 'input', 'agent_scratchpad']
+			inputVariables: ['dialect', 'top_k', 'chatHistory', 'input', 'agent_scratchpad'],
 		};
 
 		const dbInstance = await SqlDatabase.fromDataSourceParams({
@@ -111,8 +111,8 @@ export async function sqlAgentAgentExecute(
 		const agentExecutor = createSqlAgent(model, toolkit, agentOptions);
 
 		const memory = (await this.getInputConnectionData(NodeConnectionType.AiMemory, 0)) as
-		| BaseChatMemory
-		| undefined;
+			| BaseChatMemory
+			| undefined;
 
 		let chatHistory = '';
 		if (memory) {
@@ -120,12 +120,17 @@ export async function sqlAgentAgentExecute(
 			chatHistory = serializeChatHistory(messages);
 		}
 
-		const response = await agentExecutor.call({ input, signal: this.getExecutionCancelSignal(), chatHistory });
+		const response = await agentExecutor.call({
+			input,
+			signal: this.getExecutionCancelSignal(),
+			chatHistory,
+		});
 
 		if (memory) {
-			memory.chatHistory.addUserMessage(input);
-			memory.chatHistory.addAIChatMessage(response?.output ?? response);
+			await memory.chatHistory.addUserMessage(input);
+			await memory.chatHistory.addAIChatMessage(response?.output ?? response);
 		}
+
 		returnData.push({ json: response });
 	}
 
