@@ -44,7 +44,7 @@ export class Xml implements INodeType {
 			},
 			{
 				displayName:
-					"If your XML is inside a binary file, use the 'Extract From File' node to convert it to text first",
+					"If your XML is inside a binary file, use the 'Extract from File' node to convert it to text first",
 				name: 'xmlNotice',
 				type: 'notice',
 				default: '',
