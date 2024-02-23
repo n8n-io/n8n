@@ -83,6 +83,7 @@ export class FrontendService {
 		}
 
 		this.settings = {
+			previewMode: process.env.N8N_PREVIEW_MODE === 'true',
 			endpointForm: config.getEnv('endpoints.form'),
 			endpointFormTest: config.getEnv('endpoints.formTest'),
 			endpointFormWaiting: config.getEnv('endpoints.formWaiting'),
