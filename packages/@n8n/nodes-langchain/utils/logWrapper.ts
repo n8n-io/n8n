@@ -8,9 +8,9 @@ import {
 } from 'n8n-workflow';
 
 import { Tool } from 'langchain/tools';
-import type { BaseMessage, ChatResult, InputValues } from 'langchain/schema';
+import type { ChatResult, InputValues, BaseMessage } from 'langchain/schema';
 import { BaseChatMessageHistory } from 'langchain/schema';
-import { BaseChatModel } from 'langchain/chat_models/base';
+import type { BaseChatModel } from 'langchain/chat_models/base';
 import type { CallbackManagerForLLMRun } from 'langchain/callbacks';
 
 import { Embeddings } from 'langchain/embeddings/base';
@@ -255,14 +255,20 @@ export function logWrapper(
 									runManager,
 								],
 							})) as ChatResult;
+							const parsedMessages =
+								typeof messages === 'string'
+									? messages
+									: messages.map((message) => {
+											if (typeof message === 'string') return message;
+											if (typeof message?.toJSON === 'function') return message.toJSON();
+
+											return message;
+									  });
 
 							void executeFunctions.logAiEvent(
 								'n8n.ai.llm.generated',
 								jsonStringify({
-									messages:
-										typeof messages === 'string'
-											? messages
-											: messages.map((message) => message.toJSON()),
+									messages: parsedMessages,
 									options,
 									response,
 								}),
