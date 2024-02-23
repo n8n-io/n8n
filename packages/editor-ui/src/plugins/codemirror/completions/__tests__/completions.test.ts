@@ -423,6 +423,14 @@ describe('Resolution-based completions', () => {
 			);
 		});
 
+		test("should return completions for: {{ $('(Complex) \"No\\'de\" name').| }}", () => {
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($('Rename'));
+
+			expect(completions("{{ $('(Complex) \"No\\'de\" name').| }}")).toHaveLength(
+				Reflect.ownKeys($('Rename')).length - ['pairedItem'].length,
+			);
+		});
+
 		test('should return completions for: {{ $input.item.| }}', () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($input.item);
 

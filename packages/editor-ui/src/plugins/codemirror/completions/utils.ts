@@ -12,20 +12,27 @@ import {
 } from '@codemirror/autocomplete';
 import type { EditorView } from '@codemirror/view';
 import type { TransactionSpec } from '@codemirror/state';
+import type { SyntaxNode } from '@lezer/common';
+import { javascriptLanguage } from '@codemirror/lang-javascript';
 
-// String literal expression is everything enclosed in single, double or tick quotes following a dot
-const stringLiteralRegex = /^"[^"]+"|^'[^']+'|^`[^`]+`\./;
-// JavaScript operands
-const operandsRegex = /[+\-*/><<==>**!=?]/;
 /**
  * Split user input into base (to resolve) and tail (to filter).
  */
 export function splitBaseTail(userInput: string): [string, string] {
-	const processedInput = extractSubExpression(userInput);
-	const parts = processedInput.split('.');
-	const tail = parts.pop() ?? '';
+	const read = (node: SyntaxNode | null) => (node ? userInput.slice(node.from, node.to) : '');
+	const lastNode = javascriptLanguage.parser.parse(userInput).resolveInner(userInput.length, -1);
 
-	return [parts.join('.'), tail];
+	switch (lastNode.type.name) {
+		case '.':
+			return [read(lastNode.parent).slice(0, -1), ''];
+		case 'MemberExpression':
+			return [read(lastNode.parent), read(lastNode)];
+		case 'PropertyName':
+			const tail = read(lastNode);
+			return [read(lastNode.parent).slice(0, -(tail.length + 1)), tail];
+		default:
+			return ['', ''];
+	}
 }
 
 export function longestCommonPrefix(...strings: string[]) {
@@ -42,29 +49,6 @@ export function longestCommonPrefix(...strings: string[]) {
 
 		return acc.slice(0, i);
 	}, '');
-}
-
-// Process user input if expressions are used as part of complex expression
-// i.e. as a function parameter or an operation expression
-// this function will extract expression that is currently typed so autocomplete
-// suggestions can be matched based on it.
-function extractSubExpression(userInput: string): string {
-	const dollarSignIndex = userInput.indexOf('$');
-	if (dollarSignIndex === -1) {
-		return userInput;
-	} else if (!stringLiteralRegex.test(userInput)) {
-		// If there is a dollar sign in the input and input is not a string literal,
-		// extract part of following the last $
-		const expressionParts = userInput.split('$');
-		userInput = `$${expressionParts[expressionParts.length - 1]}`;
-		// If input is part of a complex operation expression and extract last operand
-		const operationPart = userInput.split(operandsRegex).pop()?.trim() || '';
-		const lastOperand = operationPart.split(' ').pop();
-		if (lastOperand) {
-			userInput = lastOperand;
-		}
-	}
-	return userInput;
 }
 
 export const prefixMatch = (first: string, second: string) =>
