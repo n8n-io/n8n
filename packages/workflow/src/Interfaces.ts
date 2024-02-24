@@ -1943,6 +1943,11 @@ export interface ISourceData {
 	previousNodeRun?: number; // If undefined "0" gets used
 }
 
+export interface StartNodeData {
+	name: string;
+	sourceData: ISourceData | null;
+}
+
 // The data for all the different kind of connections (like main) and all the indexes
 export interface ITaskDataConnections {
 	// Key for each input type and because there can be multiple inputs of the same type it is an array
@@ -2500,6 +2505,7 @@ export interface IN8nUISettings {
 	workflowTagsDisabled: boolean;
 	logLevel: LogLevel;
 	hiringBannerEnabled: boolean;
+	previewMode: boolean;
 	templates: {
 		enabled: boolean;
 		host: string;

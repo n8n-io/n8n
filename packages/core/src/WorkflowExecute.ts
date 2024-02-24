@@ -33,6 +33,7 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	WorkflowExecuteMode,
 	CloseFunction,
+	StartNodeData,
 } from 'n8n-workflow';
 import {
 	LoggerProxy as Logger,
@@ -157,7 +158,7 @@ export class WorkflowExecute {
 	runPartialWorkflow(
 		workflow: Workflow,
 		runData: IRunData,
-		startNodes: string[],
+		startNodes: StartNodeData[],
 		destinationNode?: string,
 		pinData?: IPinData,
 	): PCancelable<IRun> {
@@ -175,7 +176,7 @@ export class WorkflowExecute {
 		const waitingExecution: IWaitingForExecution = {};
 		const waitingExecutionSource: IWaitingForExecutionSource = {};
 		for (const startNode of startNodes) {
-			incomingNodeConnections = workflow.connectionsByDestinationNode[startNode];
+			incomingNodeConnections = workflow.connectionsByDestinationNode[startNode.name];
 
 			const incomingData: INodeExecutionData[][] = [];
 			let incomingSourceData: ITaskDataConnectionsSource | null = null;
@@ -210,15 +211,13 @@ export class WorkflowExecute {
 							}
 						}
 
-						incomingSourceData.main.push({
-							previousNode: connection.node,
-						});
+						incomingSourceData.main.push(startNode.sourceData);
 					}
 				}
 			}
 
 			const executeData: IExecuteData = {
-				node: workflow.getNode(startNode) as INode,
+				node: workflow.getNode(startNode.name) as INode,
 				data: {
 					main: incomingData,
 				},
