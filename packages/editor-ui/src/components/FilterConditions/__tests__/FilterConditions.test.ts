@@ -304,4 +304,76 @@ describe('FilterConditions.vue', () => {
 			expect(operatorSelect.querySelector('input')).toBeDisabled();
 		}
 	});
+
+	it('re-renders when value prop changes', async () => {
+		const { findAllByTestId, rerender } = renderComponent({
+			...DEFAULT_SETUP,
+			props: {
+				...DEFAULT_SETUP.props,
+				value: {
+					conditions: [
+						{
+							id: '1',
+							leftValue: 'foo',
+							rightValue: 'bar',
+							operator: {
+								type: 'string',
+								operation: 'equals',
+							},
+						},
+					],
+					combinator: 'and',
+				},
+			},
+		});
+
+		// Rerender with different conditions
+		await rerender({
+			value: {
+				conditions: [
+					{
+						id: '2',
+						leftValue: 'quz',
+						rightValue: 'qux',
+						operator: {
+							type: 'string',
+							operation: 'notEquals',
+						},
+					},
+					{
+						id: '3',
+						leftValue: 5,
+						rightValue: 6,
+						operator: {
+							type: 'number',
+							operation: 'gt',
+						},
+					},
+				],
+				combinator: 'and',
+			},
+		});
+
+		const conditions = await findAllByTestId('filter-condition');
+		expect(conditions).toHaveLength(2);
+
+		expect(
+			within(conditions[0]).getByTestId('filter-condition-left').querySelector('input'),
+		).toHaveValue('quz');
+		expect(
+			within(conditions[0]).getByTestId('filter-operator-select').querySelector('input'),
+		).toHaveValue('is not equal to');
+		expect(
+			within(conditions[0]).getByTestId('filter-condition-right').querySelector('input'),
+		).toHaveValue('qux');
+		expect(
+			within(conditions[1]).getByTestId('filter-condition-left').querySelector('input'),
+		).toHaveValue(5);
+		expect(
+			within(conditions[1]).getByTestId('filter-operator-select').querySelector('input'),
+		).toHaveValue('is greater than');
+		expect(
+			within(conditions[1]).getByTestId('filter-condition-right').querySelector('input'),
+		).toHaveValue(6);
+	});
 });

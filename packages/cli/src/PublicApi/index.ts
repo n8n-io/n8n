@@ -17,6 +17,7 @@ import { InternalHooks } from '@/InternalHooks';
 import { License } from '@/License';
 import { UserRepository } from '@db/repositories/user.repository';
 import { UrlService } from '@/services/url.service';
+import type { AuthenticatedRequest } from '@/requests';
 
 async function createApiRouter(
 	version: string,
@@ -51,7 +52,7 @@ async function createApiRouter(
 		);
 	}
 
-	apiController.get(`/${publicApiEndpoint}/${version}/openapi.yml`, (req, res) => {
+	apiController.get(`/${publicApiEndpoint}/${version}/openapi.yml`, (_, res) => {
 		res.sendFile(openApiSpecPath);
 	});
 
@@ -91,7 +92,7 @@ async function createApiRouter(
 			validateSecurity: {
 				handlers: {
 					ApiKeyAuth: async (
-						req: express.Request,
+						req: AuthenticatedRequest,
 						_scopes: unknown,
 						schema: OpenAPIV3.ApiKeySecurityScheme,
 					): Promise<boolean> => {
