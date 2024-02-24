@@ -11,7 +11,6 @@ import type {
 import { getTemplateNoticeField } from '../../../utils/sharedFields';
 import { conversationalAgentProperties } from './agents/ConversationalAgent/description';
 import { conversationalAgentExecute } from './agents/ConversationalAgent/execute';
-
 import { openAiFunctionsAgentProperties } from './agents/OpenAiFunctionsAgent/description';
 import { openAiFunctionsAgentExecute } from './agents/OpenAiFunctionsAgent/execute';
 import { planAndExecuteAgentProperties } from './agents/PlanAndExecuteAgent/description';
@@ -20,6 +19,9 @@ import { reActAgentAgentProperties } from './agents/ReActAgent/description';
 import { reActAgentAgentExecute } from './agents/ReActAgent/execute';
 import { sqlAgentAgentProperties } from './agents/SqlAgent/description';
 import { sqlAgentAgentExecute } from './agents/SqlAgent/execute';
+
+import { promptTypeOptions, textInput } from '../../../utils/descriptions';
+
 // Function used in the inputs expression to figure out which inputs to
 // display based on the agent type
 function getInputs(
@@ -260,42 +262,16 @@ export class Agent implements INodeType {
 				default: 'conversationalAgent',
 			},
 			{
-				displayName: 'Prompt',
-				name: 'promptType',
-				type: 'options',
-				options: [
-					{
-						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-						name: 'Take from previous node automatically',
-						value: 'auto',
-						description: 'Looks for an input field called chatInput',
-					},
-					{
-						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-						name: 'Define below',
-						value: 'define',
-						description:
-							'Use an expression to reference data in previous nodes or enter static text',
-					},
-				],
+				...promptTypeOptions,
 				displayOptions: {
 					hide: {
 						'@version': [{ _cnd: { lte: 1.2 } }],
 						agent: ['sqlAgent'],
 					},
 				},
-				default: 'auto',
 			},
 			{
-				displayName: 'Text',
-				name: 'text',
-				type: 'string',
-				required: true,
-				default: '',
-				placeholder: 'e.g. Hello, how can you help me?',
-				typeOptions: {
-					rows: 2,
-				},
+				...textInput,
 				displayOptions: {
 					show: {
 						promptType: ['define'],

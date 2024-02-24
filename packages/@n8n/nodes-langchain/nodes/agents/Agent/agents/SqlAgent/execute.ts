@@ -119,10 +119,19 @@ export async function sqlAgentAgentExecute(
 
 		let chatHistory = '';
 		let chatHistoryInstance: BaseChatMessageHistory | undefined;
+
 		if (memory) {
 			chatHistoryInstance = memory.chatHistory;
-			const messages = await chatHistoryInstance.getMessages();
-			chatHistory = serializeChatHistory(messages);
+			try {
+				const messages = await chatHistoryInstance.getMessages();
+				chatHistory = serializeChatHistory(messages);
+			} catch (error) {
+				throw new NodeOperationError(
+					this.getNode(),
+					"This memory node require 'Chat' trigger node",
+					{ itemIndex: i },
+				);
+			}
 		}
 
 		let response;
@@ -133,12 +142,20 @@ export async function sqlAgentAgentExecute(
 				chatHistory,
 			});
 		} catch (error) {
-			response = error.message;
+			if (error.message?.output) {
+				response = error.message;
+			} else {
+				throw new NodeOperationError(this.getNode(), error.message, { itemIndex: i });
+			}
 		}
 
 		if (memory && chatHistoryInstance) {
 			await chatHistoryInstance.addMessage(new HumanMessage(input));
-			await chatHistoryInstance.addMessage(new AIMessage(response?.output ?? response));
+
+			const output = response?.output ?? response;
+			if (output && !output.includes("I don't know")) {
+				await chatHistoryInstance.addMessage(new AIMessage(output));
+			}
 		}
 
 		returnData.push({ json: response });
