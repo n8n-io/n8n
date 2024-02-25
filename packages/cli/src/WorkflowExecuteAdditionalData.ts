@@ -391,7 +391,7 @@ export function hookFunctionsPreExecute(): IWorkflowExecuteHooks {
  * Returns hook functions to save workflow execution and call error workflow
  *
  */
-function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
+function hookFunctionsSave(): IWorkflowExecuteHooks {
 	const logger = Container.get(Logger);
 	const internalHooks = Container.get(InternalHooks);
 	const eventsService = Container.get(EventsService);
@@ -420,7 +420,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 
 				await restoreBinaryDataId(fullRunData, this.executionId, this.mode);
 
-				const isManualMode = [this.mode, parentProcessMode].includes('manual');
+				const isManualMode = this.mode === 'manual';
 
 				try {
 					if (!isManualMode && isWorkflowIdValid(this.workflowData.id) && newStaticData) {
@@ -809,7 +809,11 @@ async function executeWorkflow(
 
 		let data;
 		try {
-			await Container.get(PermissionChecker).check(workflow, additionalData.userId);
+			await Container.get(PermissionChecker).check(
+				workflowData.id,
+				additionalData.userId,
+				workflowData.nodes,
+			);
 			await Container.get(PermissionChecker).checkSubworkflowExecutePolicy(
 				workflow,
 				options.parentWorkflowId,
@@ -823,7 +827,6 @@ async function executeWorkflow(
 				runData.executionMode,
 				executionId,
 				workflowData,
-				{ parentProcessMode: additionalData.hooks!.mode },
 			);
 			additionalDataIntegrated.executionId = executionId;
 
@@ -1045,10 +1048,8 @@ function getWorkflowHooksIntegrated(
 	mode: WorkflowExecuteMode,
 	executionId: string,
 	workflowData: IWorkflowBase,
-	optionalParameters?: IWorkflowHooksOptionalParameters,
 ): WorkflowHooks {
-	optionalParameters = optionalParameters || {};
-	const hookFunctions = hookFunctionsSave(optionalParameters.parentProcessMode);
+	const hookFunctions = hookFunctionsSave();
 	const preExecuteFunctions = hookFunctionsPreExecute();
 	for (const key of Object.keys(preExecuteFunctions)) {
 		if (hookFunctions[key] === undefined) {
@@ -1056,7 +1057,7 @@ function getWorkflowHooksIntegrated(
 		}
 		hookFunctions[key]!.push.apply(hookFunctions[key], preExecuteFunctions[key]);
 	}
-	return new WorkflowHooks(hookFunctions, mode, executionId, workflowData, optionalParameters);
+	return new WorkflowHooks(hookFunctions, mode, executionId, workflowData);
 }
 
 /**
@@ -1098,7 +1099,7 @@ export function getWorkflowHooksWorkerMain(
 	// TODO: simplifying this for now to just leave the bare minimum hooks
 
 	// const hookFunctions = hookFunctionsPush();
-	// const preExecuteFunctions = hookFunctionsPreExecute(optionalParameters.parentProcessMode);
+	// const preExecuteFunctions = hookFunctionsPreExecute();
 	// for (const key of Object.keys(preExecuteFunctions)) {
 	// 	if (hookFunctions[key] === undefined) {
 	// 		hookFunctions[key] = [];
@@ -1139,7 +1140,6 @@ export function getWorkflowHooksWorkerMain(
 export function getWorkflowHooksMain(
 	data: IWorkflowExecutionDataProcess,
 	executionId: string,
-	isMainProcess = false,
 ): WorkflowHooks {
 	const hookFunctions = hookFunctionsSave();
 	const pushFunctions = hookFunctionsPush();
@@ -1150,14 +1150,12 @@ export function getWorkflowHooksMain(
 		hookFunctions[key]!.push.apply(hookFunctions[key], pushFunctions[key]);
 	}
 
-	if (isMainProcess) {
-		const preExecuteFunctions = hookFunctionsPreExecute();
-		for (const key of Object.keys(preExecuteFunctions)) {
-			if (hookFunctions[key] === undefined) {
-				hookFunctions[key] = [];
-			}
-			hookFunctions[key]!.push.apply(hookFunctions[key], preExecuteFunctions[key]);
+	const preExecuteFunctions = hookFunctionsPreExecute();
+	for (const key of Object.keys(preExecuteFunctions)) {
+		if (hookFunctions[key] === undefined) {
+			hookFunctions[key] = [];
 		}
+		hookFunctions[key]!.push.apply(hookFunctions[key], preExecuteFunctions[key]);
 	}
 
 	if (!hookFunctions.nodeExecuteBefore) hookFunctions.nodeExecuteBefore = [];

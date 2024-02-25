@@ -101,7 +101,11 @@ export class WorkflowExecutionService {
 		user: User,
 		sessionId?: string,
 	) {
-		const pinnedTrigger = this.selectPinnedActivatorStarter(workflowData, startNodes, pinData);
+		const pinnedTrigger = this.selectPinnedActivatorStarter(
+			workflowData,
+			startNodes?.map((nodeData) => nodeData.name),
+			pinData,
+		);
 
 		// If webhooks nodes exist and are active we have to wait for till we receive a call
 		if (
@@ -143,7 +147,7 @@ export class WorkflowExecutionService {
 		const hasRunData = (node: INode) => runData !== undefined && !!runData[node.name];
 
 		if (pinnedTrigger && !hasRunData(pinnedTrigger)) {
-			data.startNodes = [pinnedTrigger.name];
+			data.startNodes = [{ name: pinnedTrigger.name, sourceData: null }];
 		}
 
 		const executionId = await this.workflowRunner.run(data);

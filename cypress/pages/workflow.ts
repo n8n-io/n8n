@@ -3,6 +3,8 @@ import { BasePage } from './base';
 import { getVisibleSelect } from '../utils';
 import { NodeCreator } from './features/node-creator';
 
+type CyGetOptions = Parameters<(typeof cy)['get']>[1];
+
 const nodeCreator = new NodeCreator();
 export class WorkflowPage extends BasePage {
 	url = '/workflow/new';
@@ -48,7 +50,8 @@ export class WorkflowPage extends BasePage {
 		},
 		successToast: () => cy.get('.el-notification:has(.el-notification--success)'),
 		warningToast: () => cy.get('.el-notification:has(.el-notification--warning)'),
-		errorToast: () => cy.get('.el-notification:has(.el-notification--error)'),
+		errorToast: (options?: CyGetOptions) =>
+			cy.get('.el-notification:has(.el-notification--error)', options),
 		infoToast: () => cy.get('.el-notification:has(.el-notification--info)'),
 		activatorSwitch: () => cy.getByTestId('workflow-activate-switch'),
 		workflowMenu: () => cy.getByTestId('workflow-menu'),

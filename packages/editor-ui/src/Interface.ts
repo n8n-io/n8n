@@ -47,6 +47,7 @@ import {
 	type INodeProperties,
 	type NodeConnectionType,
 	type INodeCredentialsDetails,
+	type StartNodeData,
 } from 'n8n-workflow';
 import type { BulkCommand, Undoable } from '@/models/history';
 import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
@@ -188,7 +189,7 @@ export interface IAiData {
 
 export interface IStartRunData {
 	workflowData: IWorkflowData;
-	startNodes?: string[];
+	startNodes?: StartNodeData[];
 	destinationNode?: string;
 	runData?: IRunData;
 	pinData?: IPinData;
@@ -1073,6 +1074,7 @@ export interface WorkflowsState {
 	workflowExecutionData: IExecutionResponse | null;
 	workflowExecutionPairedItemMappings: { [itemId: string]: Set<string> };
 	workflowsById: IWorkflowsMap;
+	chatMessages: string[];
 	isInDebugMode?: boolean;
 }
 
@@ -1379,6 +1381,7 @@ export interface ITemplateState {
 	};
 	currentSessionId: string;
 	previousSessionId: string;
+	currentN8nPath: string;
 }
 
 export interface IVersionsState {

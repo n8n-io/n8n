@@ -553,15 +553,21 @@ export interface IRequestOptions {
 	json?: boolean;
 	useStream?: boolean;
 	encoding?: string | null;
-	followRedirect?: boolean;
-	followAllRedirects?: boolean;
 	timeout?: number;
 	rejectUnauthorized?: boolean;
 	proxy?: string | AxiosProxyConfig;
 	simple?: boolean;
 	gzip?: boolean;
-	maxRedirects?: number;
 	resolveWithFullResponse?: boolean;
+
+	/** Whether to follow GET or HEAD HTTP 3xx redirects @default true */
+	followRedirect?: boolean;
+
+	/** Whether to follow **All** HTTP 3xx redirects @default false */
+	followAllRedirects?: boolean;
+
+	/** Max number of redirects to follow @default 21 */
+	maxRedirects?: number;
 }
 
 export interface PaginationOptions {
@@ -1954,6 +1960,11 @@ export interface ISourceData {
 	previousNodeRun?: number; // If undefined "0" gets used
 }
 
+export interface StartNodeData {
+	name: string;
+	sourceData: ISourceData | null;
+}
+
 // The data for all the different kind of connections (like main) and all the indexes
 export interface ITaskDataConnections {
 	// Key for each input type and because there can be multiple inputs of the same type it is an array
@@ -2100,7 +2111,6 @@ export type WorkflowActivateMode =
 	| 'leadershipChange';
 
 export interface IWorkflowHooksOptionalParameters {
-	parentProcessMode?: string;
 	retryOf?: string;
 	sessionId?: string;
 }
@@ -2192,7 +2202,7 @@ export type PropertiesOf<M extends { resource: string; operation: string }> = Ar
 			[key in 'show' | 'hide']?: {
 				resource?: Array<M['resource']>;
 				operation?: Array<M['operation']>;
-				[otherKey: string]: NodeParameterValue[] | undefined;
+				[otherKey: string]: Array<NodeParameterValue | DisplayCondition> | undefined;
 			};
 		};
 	}
@@ -2512,6 +2522,7 @@ export interface IN8nUISettings {
 	workflowTagsDisabled: boolean;
 	logLevel: LogLevel;
 	hiringBannerEnabled: boolean;
+	previewMode: boolean;
 	templates: {
 		enabled: boolean;
 		host: string;

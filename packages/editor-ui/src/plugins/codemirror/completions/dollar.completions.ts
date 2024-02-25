@@ -11,6 +11,7 @@ import {
 } from './utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
+import { escapeMappingString } from '@/utils/mappingUtils';
 
 /**
  * Completions offered at the dollar position: `$|`
@@ -90,7 +91,7 @@ export function dollarOptions() {
 		})
 		.concat(
 			autocompletableNodeNames().map((nodeName) => ({
-				label: `$('${nodeName}')`,
+				label: `$('${escapeMappingString(nodeName)}')`,
 				type: 'keyword',
 				info: i18n.baseText('codeNodeEditor.completer.$()', { interpolate: { nodeName } }),
 			})),
