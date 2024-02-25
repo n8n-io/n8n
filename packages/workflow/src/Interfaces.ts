@@ -231,10 +231,10 @@ export abstract class ICredentialsHelper {
 export interface IAuthenticateBase {
 	type: string;
 	properties:
-		| {
-				[key: string]: string;
-		  }
-		| IRequestOptionsSimplifiedAuth;
+	| {
+		[key: string]: string;
+	}
+	| IRequestOptionsSimplifiedAuth;
 }
 
 export interface IAuthenticateGeneric extends IAuthenticateBase {
@@ -244,9 +244,9 @@ export interface IAuthenticateGeneric extends IAuthenticateBase {
 
 export type IAuthenticate =
 	| ((
-			credentials: ICredentialDataDecryptedObject,
-			requestOptions: IHttpRequestOptions,
-	  ) => Promise<IHttpRequestOptions>)
+		credentials: ICredentialDataDecryptedObject,
+		requestOptions: IHttpRequestOptions,
+	) => Promise<IHttpRequestOptions>)
 	| IAuthenticateGeneric;
 
 export interface IAuthenticateRuleBase {
@@ -589,12 +589,12 @@ export interface IN8nHttpFullResponse {
 
 export interface IN8nRequestOperations {
 	pagination?:
-		| IN8nRequestOperationPaginationGeneric
-		| IN8nRequestOperationPaginationOffset
-		| ((
-				this: IExecutePaginationFunctions,
-				requestOptions: DeclarativeRestApiSettings.ResultOptions,
-		  ) => Promise<INodeExecutionData[]>);
+	| IN8nRequestOperationPaginationGeneric
+	| IN8nRequestOperationPaginationOffset
+	| ((
+		this: IExecutePaginationFunctions,
+		requestOptions: DeclarativeRestApiSettings.ResultOptions,
+	) => Promise<INodeExecutionData[]>);
 }
 
 export interface IN8nRequestOperationPaginationBase {
@@ -882,19 +882,20 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 
 		nodeHelpers: NodeHelperFunctions;
 		helpers: RequestHelperFunctions &
-			BaseHelperFunctions &
-			BinaryHelperFunctions &
-			FileSystemHelperFunctions &
-			JsonHelperFunctions & {
-				normalizeItems(items: INodeExecutionData | INodeExecutionData[]): INodeExecutionData[];
-				constructExecutionMetaData(
-					inputData: INodeExecutionData[],
-					options: { itemData: IPairedItemData | IPairedItemData[] },
-				): NodeExecutionWithMetadata[];
-				assertBinaryData(itemIndex: number, propertyName: string): IBinaryData;
-				getBinaryDataBuffer(itemIndex: number, propertyName: string): Promise<Buffer>;
-				copyInputItems(items: INodeExecutionData[], properties: string[]): IDataObject[];
-			};
+		BaseHelperFunctions &
+		BinaryHelperFunctions &
+		FileSystemHelperFunctions &
+		JsonHelperFunctions & {
+			normalizeItems(items: INodeExecutionData | INodeExecutionData[]): INodeExecutionData[];
+			constructExecutionMetaData(
+				inputData: INodeExecutionData[],
+				options: { itemData: IPairedItemData | IPairedItemData[] },
+			): NodeExecutionWithMetadata[];
+			assertBinaryData(itemIndex: number, propertyName: string): IBinaryData;
+			getBinaryDataBuffer(itemIndex: number, propertyName: string): Promise<Buffer>;
+			copyInputItems(items: INodeExecutionData[], properties: string[]): IDataObject[];
+		};
+		deleteExecution(): Promise<void>
 	};
 
 export interface IExecuteSingleFunctions extends BaseExecutionFunctions {
@@ -907,11 +908,11 @@ export interface IExecuteSingleFunctions extends BaseExecutionFunctions {
 	): NodeParameterValueType | object;
 
 	helpers: RequestHelperFunctions &
-		BaseHelperFunctions &
-		BinaryHelperFunctions & {
-			assertBinaryData(propertyName: string, inputIndex?: number): IBinaryData;
-			getBinaryDataBuffer(propertyName: string, inputIndex?: number): Promise<Buffer>;
-		};
+	BaseHelperFunctions &
+	BinaryHelperFunctions & {
+		assertBinaryData(propertyName: string, inputIndex?: number): IBinaryData;
+		getBinaryDataBuffer(propertyName: string, inputIndex?: number): Promise<Buffer>;
+	};
 }
 
 export interface IExecutePaginationFunctions extends IExecuteSingleFunctions {
@@ -949,9 +950,9 @@ export interface IPollFunctions
 		options?: IGetNodeParameterOptions,
 	): NodeParameterValueType | object;
 	helpers: RequestHelperFunctions &
-		BaseHelperFunctions &
-		BinaryHelperFunctions &
-		JsonHelperFunctions;
+	BaseHelperFunctions &
+	BinaryHelperFunctions &
+	JsonHelperFunctions;
 }
 
 export interface ITriggerFunctions
@@ -968,9 +969,9 @@ export interface ITriggerFunctions
 		options?: IGetNodeParameterOptions,
 	): NodeParameterValueType | object;
 	helpers: RequestHelperFunctions &
-		BaseHelperFunctions &
-		BinaryHelperFunctions &
-		JsonHelperFunctions;
+	BaseHelperFunctions &
+	BinaryHelperFunctions &
+	JsonHelperFunctions;
 }
 
 export interface IHookFunctions
@@ -1007,9 +1008,9 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	getWebhookName(): string;
 	nodeHelpers: NodeHelperFunctions;
 	helpers: RequestHelperFunctions &
-		BaseHelperFunctions &
-		BinaryHelperFunctions &
-		JsonHelperFunctions;
+	BaseHelperFunctions &
+	BinaryHelperFunctions &
+	JsonHelperFunctions;
 }
 
 export interface INodeCredentialsDetails {
@@ -1069,14 +1070,14 @@ export interface IPairedItemData {
 
 export interface INodeExecutionData {
 	[key: string]:
-		| IDataObject
-		| IBinaryKeyData
-		| IPairedItemData
-		| IPairedItemData[]
-		| NodeApiError
-		| NodeOperationError
-		| number
-		| undefined;
+	| IDataObject
+	| IBinaryKeyData
+	| IPairedItemData
+	| IPairedItemData[]
+	| NodeApiError
+	| NodeOperationError
+	| number
+	| undefined;
 	json: IDataObject;
 	binary?: IBinaryKeyData;
 	error?: NodeApiError | NodeOperationError;
@@ -1553,10 +1554,10 @@ export interface INodePropertyRouting {
 
 export type PostReceiveAction =
 	| ((
-			this: IExecuteSingleFunctions,
-			items: INodeExecutionData[],
-			response: IN8nHttpFullResponse,
-	  ) => Promise<INodeExecutionData[]>)
+		this: IExecuteSingleFunctions,
+		items: INodeExecutionData[],
+		response: IN8nHttpFullResponse,
+	) => Promise<INodeExecutionData[]>)
 	| IPostReceiveBinaryData
 	| IPostReceiveFilter
 	| IPostReceiveLimit
@@ -1732,23 +1733,23 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	translation?: { [key: string]: object };
 	mockManualExecution?: true;
 	triggerPanel?:
+	| {
+		hideContent?: boolean | string;
+		header?: string;
+		executionsHelp?:
+		| string
 		| {
-				hideContent?: boolean | string;
-				header?: string;
-				executionsHelp?:
-					| string
-					| {
-							active: string;
-							inactive: string;
-					  };
-				activationHint?:
-					| string
-					| {
-							active: string;
-							inactive: string;
-					  };
-		  }
-		| boolean;
+			active: string;
+			inactive: string;
+		};
+		activationHint?:
+		| string
+		| {
+			active: string;
+			inactive: string;
+		};
+	}
+	| boolean;
 	extendsCredential?: string;
 	__loadOptionsMethods?: string[]; // only for validation during build
 }
@@ -2073,6 +2074,7 @@ export interface IWorkflowExecuteAdditionalData {
 			nodeType?: string;
 		},
 	) => Promise<void>;
+	deleteExecution?: () => Promise<void>
 }
 
 export type WorkflowExecuteMode =

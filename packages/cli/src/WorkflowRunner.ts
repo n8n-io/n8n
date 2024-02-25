@@ -274,6 +274,8 @@ export class WorkflowRunner {
 
 		additionalData.executionId = executionId;
 
+		additionalData.deleteExecution = () => WorkflowExecuteAdditionalData.deleteExecution(workflowId, executionId)
+
 		this.logger.verbose(
 			`Execution for workflow ${data.workflowData.name} was assigned id ${executionId}`,
 			{ executionId },

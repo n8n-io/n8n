@@ -1,0 +1,19 @@
+{
+    "node": "n8n-nodes-base.deleteExecution",
+    "nodeVersion": "1.0",
+    "codexVersion": "1.0",
+    "details": "delete current execution.",
+    "categories": [
+        "Core Nodes"
+    ],
+    "resources": {},
+    "alias": [
+        "Condition",
+        "Logic"
+    ],
+    "subcategories": {
+        "Core Nodes": [
+            "Flow"
+        ]
+    }
+}

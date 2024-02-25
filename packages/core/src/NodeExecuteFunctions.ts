@@ -3662,6 +3662,9 @@ export function getExecuteFunctions(
 					msg,
 				});
 			},
+			deleteExecution: async () => {
+				await additionalData?.deleteExecution?.()
+			}
 		};
 	})(workflow, runExecutionData, connectionInputData, inputData, node) as IExecuteFunctions;
 }

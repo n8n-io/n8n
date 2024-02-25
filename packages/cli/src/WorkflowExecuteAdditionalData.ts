@@ -135,9 +135,8 @@ export function executeErrorWorkflow(
 	// Check if there was an error and if so if an errorWorkflow or a trigger is set
 	let pastExecutionUrl: string | undefined;
 	if (executionId !== undefined) {
-		pastExecutionUrl = `${Container.get(UrlService).getWebhookBaseUrl()}workflow/${
-			workflowData.id
-		}/executions/${executionId}`;
+		pastExecutionUrl = `${Container.get(UrlService).getWebhookBaseUrl()}workflow/${workflowData.id
+			}/executions/${executionId}`;
 	}
 
 	if (fullRunData.data.resultData.error !== undefined) {
@@ -783,7 +782,7 @@ async function executeWorkflow(
 		options.loadedRunData ??
 		(await getRunData(workflowData, additionalData.userId, options.inputData));
 
-	let executionId;
+	let executionId = '';
 
 	if (options.parentExecutionId !== undefined) {
 		executionId = options.parentExecutionId;
@@ -820,6 +819,8 @@ async function executeWorkflow(
 		// This one already contains changes to talk to parent process
 		// and get executionID from `activeExecutions` running on main process
 		additionalDataIntegrated.executeWorkflow = additionalData.executeWorkflow;
+
+		additionalDataIntegrated.deleteExecution = () => deleteExecution(workflowInfo.id, executionId)
 
 		let subworkflowTimeout = additionalData.executionTimeoutTimestamp;
 		const workflowSettings = workflowData.settings;
@@ -936,6 +937,16 @@ export function setExecutionStatus(status: ExecutionStatus) {
 	}
 	logger.debug(`Setting execution status for ${this.executionId} to "${status}"`);
 	Container.get(ActiveExecutions).setStatus(this.executionId, status);
+}
+
+export async function deleteExecution(workflowId?: string, executionId?: string) {
+	if (workflowId && executionId) {
+		await Container.get(ExecutionRepository).hardDelete({
+			workflowId: workflowId,
+			executionId: executionId,
+		});
+	}
+
 }
 
 export function sendDataToUI(type: string, data: IDataObject | IDataObject[]) {
