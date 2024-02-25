@@ -579,6 +579,7 @@ export default defineComponent({
 		border-left: var(--border-base);
 		overflow-wrap: break-word;
 		white-space: pre-wrap;
+		vertical-align:top;
 	}
 
 	td:first-child,
