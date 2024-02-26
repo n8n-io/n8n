@@ -9,7 +9,7 @@ import {
 import { OllamaEmbeddings } from 'langchain/embeddings/ollama';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
-import { ollamaDescription, ollamaProperties } from '../../llms/LMOllama/description';
+import { ollamaDescription, ollamaModel } from '../../llms/LMOllama/description';
 
 export class EmbeddingsOllama implements INodeType {
 	description: INodeTypeDescription = {
@@ -43,20 +43,18 @@ export class EmbeddingsOllama implements INodeType {
 		outputNames: ['Embeddings'],
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionType.AiVectorStore]),
-			...ollamaProperties,
+			ollamaModel,
 		],
 	};
 
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
 		this.logger.verbose('Supply data for embeddings Ollama');
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
-		const options = this.getNodeParameter('options', itemIndex, {}) as object;
 		const credentials = await this.getCredentials('ollamaApi');
 
 		const embeddings = new OllamaEmbeddings({
 			baseUrl: credentials.baseUrl as string,
 			model: modelName,
-			requestOptions: options,
 		});
 
 		return {

@@ -8,7 +8,7 @@ import {
 } from 'n8n-workflow';
 
 import { Ollama } from 'langchain/llms/ollama';
-import { ollamaDescription, ollamaProperties } from './description';
+import { ollamaDescription, ollamaModel, ollamaOptions } from './description';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
@@ -45,7 +45,8 @@ export class LmOllama implements INodeType {
 		...ollamaDescription,
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
-			...ollamaProperties,
+			ollamaModel,
+			ollamaOptions,
 		],
 	};
 
