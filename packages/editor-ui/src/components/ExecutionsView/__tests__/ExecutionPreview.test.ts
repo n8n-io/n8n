@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { faker } from '@faker-js/faker';
 import { createRouter, createWebHistory } from 'vue-router';
 import { createPinia, PiniaVuePlugin, setActivePinia } from 'pinia';
-import type { IExecutionsSummary } from 'n8n-workflow';
+import type { ExecutionSummary } from 'n8n-workflow';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import ExecutionPreview from '@/components/ExecutionsView/ExecutionPreview.vue';
@@ -48,7 +48,7 @@ const generateUndefinedNullOrString = () => {
 	}
 };
 
-const executionDataFactory = (): IExecutionsSummary => ({
+const executionDataFactory = (): ExecutionSummary => ({
 	id: faker.string.uuid(),
 	finished: faker.datatype.boolean(),
 	mode: faker.helpers.arrayElement(['manual', 'trigger']),
@@ -65,7 +65,7 @@ const executionDataFactory = (): IExecutionsSummary => ({
 describe('ExecutionPreview.vue', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let settingsStore: ReturnType<typeof useSettingsStore>;
-	const executionData: IExecutionsSummary = executionDataFactory();
+	const executionData: ExecutionSummary = executionDataFactory();
 
 	beforeEach(() => {
 		pinia = createPinia();

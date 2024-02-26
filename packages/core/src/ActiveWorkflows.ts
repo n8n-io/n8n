@@ -15,8 +15,10 @@ import type {
 } from 'n8n-workflow';
 import {
 	ApplicationError,
+	ErrorReporterProxy as ErrorReporter,
 	LoggerProxy as Logger,
 	toCronExpression,
+	TriggerCloseError,
 	WorkflowActivationError,
 	WorkflowDeactivationError,
 } from 'n8n-workflow';
@@ -238,6 +240,14 @@ export class ActiveWorkflows {
 		try {
 			await response.closeFunction();
 		} catch (e) {
+			if (e instanceof TriggerCloseError) {
+				Logger.error(
+					`There was a problem calling "closeFunction" on "${e.node.name}" in workflow "${workflowId}"`,
+				);
+				ErrorReporter.error(e, { extra: { target, workflowId } });
+				return;
+			}
+
 			const error = e instanceof Error ? e : new Error(`${e}`);
 
 			throw new WorkflowDeactivationError(
