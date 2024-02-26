@@ -18,7 +18,7 @@
 import { defineComponent } from 'vue';
 import type { Route, RouteLocationRaw } from 'vue-router';
 import { mapStores } from 'pinia';
-import type { IExecutionsSummary } from 'n8n-workflow';
+import type { ExecutionSummary } from 'n8n-workflow';
 import { pushConnection } from '@/mixins/pushConnection';
 import WorkflowDetails from '@/components/MainHeader/WorkflowDetails.vue';
 import TabBar from '@/components/MainHeader/TabBar.vue';
@@ -79,8 +79,8 @@ export default defineComponent({
 				(this.$route.meta.nodeView || this.$route.meta.keepWorkflowAlive === true)
 			);
 		},
-		activeExecution(): IExecutionsSummary {
-			return this.workflowsStore.activeWorkflowExecution as IExecutionsSummary;
+		activeExecution(): ExecutionSummary {
+			return this.workflowsStore.activeWorkflowExecution as ExecutionSummary;
 		},
 		readOnly(): boolean {
 			return this.sourceControlStore.preferences.branchReadOnly;
