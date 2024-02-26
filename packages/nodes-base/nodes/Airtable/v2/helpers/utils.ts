@@ -66,13 +66,18 @@ export function findMatches(
 	}
 }
 
-export function processAirtableError(error: NodeApiError, id?: string) {
+export function processAirtableError(error: NodeApiError, id?: string, itemIndex?: number) {
 	if (error.description === 'NOT_FOUND' && id) {
 		error.description = `${id} is not a valid Record ID`;
 	}
 	if (error.description?.includes('You must provide an array of up to 10 record objects') && id) {
 		error.description = `${id} is not a valid Record ID`;
 	}
+
+	if (itemIndex !== undefined) {
+		error.context = { itemIndex };
+	}
+
 	return error;
 }
 

@@ -13,6 +13,8 @@ import { PythonSandbox } from './PythonSandbox';
 import { getSandboxContext } from './Sandbox';
 import { standardizeOutput } from './utils';
 
+import set from 'lodash/set';
+
 const { CODE_ENABLE_STDOUT } = process.env;
 
 export class Code implements INodeType {
@@ -133,7 +135,10 @@ export class Code implements INodeType {
 			try {
 				items = (await sandbox.runCodeAllItems()) as INodeExecutionData[];
 			} catch (error) {
-				if (!this.continueOnFail()) throw error;
+				if (!this.continueOnFail()) {
+					set(error, 'node', node);
+					throw error;
+				}
 				items = [{ json: { error: error.message } }];
 			}
 
@@ -158,7 +163,10 @@ export class Code implements INodeType {
 			try {
 				result = await sandbox.runCodeEachItem();
 			} catch (error) {
-				if (!this.continueOnFail()) throw error;
+				if (!this.continueOnFail()) {
+					set(error, 'node', node);
+					throw error;
+				}
 				returnData.push({
 					json: { error: error.message },
 					pairedItem: {
