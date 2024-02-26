@@ -10,23 +10,12 @@ import { EXPRESSION_EDITOR_PARSER_TIMEOUT } from '@/constants';
 import { useNDVStore } from '@/stores/ndv.store';
 
 import type { TargetItem } from '@/Interface';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { Html, Plaintext, RawSegment, Resolvable, Segment } from '@/types/expressions';
 import type { EditorView } from '@codemirror/view';
-import {
-	getResolvableState,
-	isAnyPairedItemError,
-	isInvalidPairedItemError,
-	isNoExecDataExpressionError,
-	isNoInputConnectionError,
-	isNoNodeExecDataExpressionError,
-	isNoPairedItemError,
-	isPairedItemIntermediateNodesError,
-	isPairedItemNoConnectionError,
-} from '../utils/expressions';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { i18n } from '@/plugins/i18n';
-import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { isEqual } from 'lodash-es';
+import { getExpressionErrorMessage, getResolvableState } from '@/utils/expressions';
 
 export const expressionManager = defineComponent({
 	props: {
@@ -233,7 +222,7 @@ export const expressionManager = defineComponent({
 					result.resolved = workflowHelpers.resolveExpression('=' + resolvable, undefined, opts);
 				}
 			} catch (error) {
-				result.resolved = `[${this.getExpressionErrorMessage(error)}]`;
+				result.resolved = `[${getExpressionErrorMessage(error)}]`;
 				result.error = true;
 				result.fullError = error;
 			}
@@ -269,43 +258,6 @@ export const expressionManager = defineComponent({
 				.pop();
 
 			return end !== undefined && this.expressionExtensionNames.has(end);
-		},
-
-		getExpressionErrorMessage(error: Error): string {
-			if (isNoExecDataExpressionError(error) || isPairedItemIntermediateNodesError(error)) {
-				return i18n.baseText('expressionModalInput.noExecutionData');
-			}
-
-			if (isNoNodeExecDataExpressionError(error)) {
-				const nodeCause = error.context.nodeCause as string;
-				return i18n.baseText('expressionModalInput.noNodeExecutionData', {
-					interpolate: { node: nodeCause },
-				});
-			}
-			if (isNoInputConnectionError(error)) {
-				return i18n.baseText('expressionModalInput.noInputConnection');
-			}
-
-			if (isPairedItemNoConnectionError(error)) {
-				return i18n.baseText('expressionModalInput.pairedItemConnectionError');
-			}
-
-			if (isInvalidPairedItemError(error) || isNoPairedItemError(error)) {
-				const nodeCause = error.context.nodeCause as string;
-				const isPinned = !!this.workflowsStore.pinDataByNodeName(nodeCause);
-
-				if (isPinned) {
-					return i18n.baseText('expressionModalInput.pairedItemInvalidPinnedError', {
-						interpolate: { node: nodeCause },
-					});
-				}
-			}
-
-			if (isAnyPairedItemError(error)) {
-				return i18n.baseText('expressionModalInput.pairedItemError');
-			}
-
-			return error.message;
 		},
 	},
 });

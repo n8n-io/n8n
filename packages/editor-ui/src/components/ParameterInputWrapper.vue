@@ -69,10 +69,9 @@ import { isResourceLocatorValue } from 'n8n-workflow';
 
 import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
-import { getResolvableState } from '@/utils/expressions';
-import { expressionManager } from '@/mixins/expressionManager';
 import { useRouter } from 'vue-router';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { getExpressionErrorMessage, getResolvableState } from '@/utils/expressions';
 
 export default defineComponent({
 	name: 'ParameterInputWrapper',
@@ -80,7 +79,6 @@ export default defineComponent({
 		ParameterInput,
 		InputHint,
 	},
-	mixins: [expressionManager],
 	props: {
 		additionalExpressionData: {
 			type: Object as PropType<IDataObject>,
@@ -236,7 +234,7 @@ export default defineComponent({
 					return null;
 				}
 
-				return `[${this.$locale.baseText('parameterInput.error')}: ${this.getExpressionErrorMessage(
+				return `[${this.$locale.baseText('parameterInput.error')}: ${getExpressionErrorMessage(
 					evaluated.error as Error,
 				)}]`;
 			}

@@ -1,5 +1,7 @@
 import type { ResolvableState } from '@/types/expressions';
 import { ExpressionError, ExpressionParser } from 'n8n-workflow';
+import { i18n } from '@/plugins/i18n';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 export const isExpression = (expr: unknown) => {
 	if (typeof expr !== 'string') return false;
@@ -61,4 +63,41 @@ export const getResolvableState = (error: unknown): ResolvableState => {
 	}
 
 	return 'invalid';
+};
+
+export const getExpressionErrorMessage = (error: Error): string => {
+	if (isNoExecDataExpressionError(error) || isPairedItemIntermediateNodesError(error)) {
+		return i18n.baseText('expressionModalInput.noExecutionData');
+	}
+
+	if (isNoNodeExecDataExpressionError(error)) {
+		const nodeCause = error.context.nodeCause as string;
+		return i18n.baseText('expressionModalInput.noNodeExecutionData', {
+			interpolate: { node: nodeCause },
+		});
+	}
+	if (isNoInputConnectionError(error)) {
+		return i18n.baseText('expressionModalInput.noInputConnection');
+	}
+
+	if (isPairedItemNoConnectionError(error)) {
+		return i18n.baseText('expressionModalInput.pairedItemConnectionError');
+	}
+
+	if (isInvalidPairedItemError(error) || isNoPairedItemError(error)) {
+		const nodeCause = error.context.nodeCause as string;
+		const isPinned = !!useWorkflowsStore().pinDataByNodeName(nodeCause);
+
+		if (isPinned) {
+			return i18n.baseText('expressionModalInput.pairedItemInvalidPinnedError', {
+				interpolate: { node: nodeCause },
+			});
+		}
+	}
+
+	if (isAnyPairedItemError(error)) {
+		return i18n.baseText('expressionModalInput.pairedItemError');
+	}
+
+	return error.message;
 };
