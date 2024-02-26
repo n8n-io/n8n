@@ -46,7 +46,7 @@
 				</div>
 
 				<div class="node-error-view__info-content">
-					<details class="node-error-view__details" v-if="error.httpCode || error.description">
+					<details class="node-error-view__details" v-if="error.httpCode || uniqueMessages.length">
 						<summary class="node-error-view__details-summary">
 							<font-awesome-icon class="node-error-view__details-icon" icon="angle-right" />
 							From {{ error?.node?.name || 'Node' }}
@@ -58,14 +58,6 @@
 								</p>
 								<p class="node-error-view__details-value">
 									<code>{{ error.httpCode }}</code>
-								</p>
-							</div>
-							<div class="node-error-view__details-row">
-								<p class="node-error-view__details-label">
-									{{ $locale.baseText('nodeErrorView.details.message') }}
-								</p>
-								<p class="node-error-view__details-value">
-									<code v-text="getErrorMessage()"></code>
 								</p>
 							</div>
 							<div class="node-error-view__details-row" v-if="uniqueMessages.length">
@@ -248,22 +240,24 @@ export default defineComponent({
 			return nodeType.properties;
 		},
 		n8nVersion() {
-			const baseUrl = this.rootStore.baseUrl;
+			const baseUrl = this.rootStore.urlBaseEditor;
 			let instanceType = 'Self Hosted';
 
 			if (baseUrl.includes('n8n.cloud')) {
 				instanceType = 'Cloud';
 			}
 
-			return instanceType + ' ' + this.rootStore.versionCli;
+			return this.rootStore.versionCli + ` (${instanceType})`;
 		},
 		uniqueMessages() {
 			const returnData: Array<string | IDataObject> = [];
 			if (!this.error.messages || !this.error.messages.length) {
 				return [];
 			}
+			const errorMessage = this.getErrorMessage();
 			(Array.from(new Set(this.error.messages)) as string[]).forEach((message) => {
 				const parts = message.split(' - ').map((part) => part.trim());
+				//try to parse the message as JSON
 				for (const part of parts) {
 					try {
 						const parsed = JSON.parse(part);
@@ -273,6 +267,8 @@ export default defineComponent({
 						}
 					} catch (error) {}
 				}
+				//if message is the same as error message, do not include it
+				if (message === errorMessage) return;
 				returnData.push(message);
 			});
 			return returnData;

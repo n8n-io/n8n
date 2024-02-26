@@ -175,6 +175,8 @@ export class NodeApiError extends NodeError {
 		// set http code of this error
 		if (httpCode) {
 			this.httpCode = httpCode;
+		} else if (errorResponse.httpCode) {
+			this.httpCode = errorResponse.httpCode as string;
 		} else {
 			this.httpCode =
 				this.findProperty(errorResponse, ERROR_STATUS_PROPERTIES, ERROR_NESTING_PROPERTIES) ?? null;
@@ -195,11 +197,11 @@ export class NodeApiError extends NodeError {
 			if (parseXml) {
 				this.setDescriptionFromXml(errorResponse.error as string);
 			} else {
-				this.description = this.findProperty(
-					errorResponse,
-					ERROR_MESSAGE_PROPERTIES,
-					ERROR_NESTING_PROPERTIES,
-				);
+				// this.description = this.findProperty(
+				// 	errorResponse,
+				// 	ERROR_MESSAGE_PROPERTIES,
+				// 	ERROR_NESTING_PROPERTIES,
+				// );
 			}
 		}
 
@@ -259,7 +261,7 @@ export class NodeApiError extends NodeError {
 		if (!this.httpCode) {
 			this.httpCode = null;
 			// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-			this.message = this.message || this.description || UNKNOWN_ERROR_MESSAGE;
+			this.message = this.message || UNKNOWN_ERROR_MESSAGE;
 			return;
 		}
 
@@ -280,7 +282,7 @@ export class NodeApiError extends NodeError {
 				break;
 			default:
 				// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-				this.message = this.message || this.description || UNKNOWN_ERROR_MESSAGE;
+				this.message = this.message || UNKNOWN_ERROR_MESSAGE;
 		}
 		if (this.node.type === 'n8n-nodes-base.noOp' && this.message === UNKNOWN_ERROR_MESSAGE) {
 			this.message = `${UNKNOWN_ERROR_MESSAGE_CRED} - ${this.httpCode}`;
