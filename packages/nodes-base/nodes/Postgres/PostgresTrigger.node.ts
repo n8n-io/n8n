@@ -1,5 +1,5 @@
 import {
-	NodeOperationError,
+	TriggerCloseError,
 	type IDataObject,
 	type INodeType,
 	type INodeTypeDescription,
@@ -257,33 +257,42 @@ export class PostgresTrigger implements INodeType {
 
 		const cleanUpDb = async () => {
 			try {
-				await connection.none('UNLISTEN $1:name', [pgNames.channelName]);
-				if (triggerMode === 'createTrigger') {
-					const functionName = pgNames.functionName.includes('(')
-						? pgNames.functionName.split('(')[0]
-						: pgNames.functionName;
-					await connection.any('DROP FUNCTION IF EXISTS $1:name CASCADE', [functionName]);
-
-					const schema = this.getNodeParameter('schema', undefined, {
-						extractValue: true,
-					}) as string;
-					const table = this.getNodeParameter('tableName', undefined, {
-						extractValue: true,
-					}) as string;
-
-					await connection.any('DROP TRIGGER IF EXISTS $1:name ON $2:name.$3:name CASCADE', [
-						pgNames.triggerName,
-						schema,
-						table,
-					]);
+				try {
+					// check if the connection is healthy
+					await connection.query('SELECT 1');
+				} catch {
+					// connection already closed. Can't perform cleanup
+					// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
+					throw new TriggerCloseError(this.getNode(), { level: 'warning' });
 				}
-				connection.client.removeListener('notification', onNotification);
-			} catch (error) {
-				throw new NodeOperationError(
-					this.getNode(),
-					`Postgres Trigger Error: ${(error as Error).message}`,
-				);
+
+				try {
+					await connection.none('UNLISTEN $1:name', [pgNames.channelName]);
+					if (triggerMode === 'createTrigger') {
+						const functionName = pgNames.functionName.includes('(')
+							? pgNames.functionName.split('(')[0]
+							: pgNames.functionName;
+						await connection.any('DROP FUNCTION IF EXISTS $1:name CASCADE', [functionName]);
+
+						const schema = this.getNodeParameter('schema', undefined, {
+							extractValue: true,
+						}) as string;
+						const table = this.getNodeParameter('tableName', undefined, {
+							extractValue: true,
+						}) as string;
+
+						await connection.any('DROP TRIGGER IF EXISTS $1:name ON $2:name.$3:name CASCADE', [
+							pgNames.triggerName,
+							schema,
+							table,
+						]);
+					}
+				} catch (error) {
+					// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
+					throw new TriggerCloseError(this.getNode(), { cause: error as Error, level: 'error' });
+				}
 			} finally {
+				connection.client.removeListener('notification', onNotification);
 				if (!db.$pool.ending) await db.$pool.end();
 			}
 		};
