@@ -158,7 +158,9 @@ export function generateNodesGraph(
 			nodeItem.src_node_id = options.nodeIdMap[node.id];
 		}
 
-		if (node.type === 'n8n-nodes-base.httpRequest' && node.typeVersion === 1) {
+		if (node.type === '@n8n/n8n-nodes-langchain.agent') {
+			nodeItem.agent = (node.parameters.agent as string) || 'conversationalAgent';
+		} else if (node.type === 'n8n-nodes-base.httpRequest' && node.typeVersion === 1) {
 			try {
 				nodeItem.domain = new URL(node.parameters.url as string).hostname;
 			} catch {
