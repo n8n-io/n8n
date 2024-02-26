@@ -25,7 +25,6 @@ import { setupServer } from '@/__tests__/server';
 import {
 	ARRAY_RECOMMENDED_OPTIONS,
 	FIELDS_SECTION,
-	INPUT_SECTION,
 	LUXON_RECOMMENDED_OPTIONS,
 	METADATA_SECTION,
 	METHODS_SECTION,
@@ -78,7 +77,7 @@ describe('Top-level completions', () => {
 		expect(result).toHaveLength(dollarOptions().length);
 
 		expect(result?.[0]).toEqual(
-			expect.objectContaining({ label: '$json', section: INPUT_SECTION }),
+			expect.objectContaining({ label: '$json', section: RECOMMENDED_SECTION }),
 		);
 		expect(result?.[4]).toEqual(
 			expect.objectContaining({ label: '$parameter', section: METADATA_SECTION }),

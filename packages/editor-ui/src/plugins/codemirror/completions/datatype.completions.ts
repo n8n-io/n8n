@@ -17,7 +17,12 @@ import {
 	applyCompletion,
 	sortCompletionsAlpha,
 } from './utils';
-import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
+import type {
+	Completion,
+	CompletionContext,
+	CompletionResult,
+	CompletionSection,
+} from '@codemirror/autocomplete';
 import type { AutocompleteOptionType, ExtensionTypeName, FnToDoc, Resolved } from './types';
 import { sanitizeHtml } from '@/utils/htmlUtils';
 import { isFunctionOption } from './typeGuards';
@@ -29,12 +34,18 @@ import {
 	ARRAY_RECOMMENDED_OPTIONS,
 	FIELDS_SECTION,
 	LUXON_RECOMMENDED_OPTIONS,
+	LUXON_SECTIONS,
 	METHODS_SECTION,
 	OBJECT_RECOMMENDED_OPTIONS,
+	OTHER_METHODS_SECTION,
+	OTHER_SECTION,
+	RECOMMENDED_METHODS_SECTION,
 	RECOMMENDED_SECTION,
 	STRING_RECOMMENDED_OPTIONS,
+	STRING_SECTIONS,
 } from './constants';
 import { VALID_EMAIL_REGEX } from '@/constants';
+import { uniqBy } from 'lodash-es';
 
 /**
  * Resolution-based completions offered according to datatype.
@@ -119,7 +130,7 @@ function datatypeOptions(resolved: Resolved, toResolve: string): Completion[] {
 	}
 
 	if (Array.isArray(resolved)) {
-		return arrayOptions(toResolve, resolved);
+		return arrayOptions(resolved);
 	}
 
 	if (typeof resolved === 'object') {
@@ -175,8 +186,8 @@ const createCompletionOption = (
 	const option: Completion = {
 		label,
 		type: optionType,
-		section: isFunction ? METHODS_SECTION : FIELDS_SECTION,
-		apply: applyCompletion,
+		section: docInfo.doc?.section,
+		apply: applyCompletion((docInfo.doc?.args?.length ?? 0) > 0),
 	};
 
 	option.info = () => {
@@ -284,7 +295,7 @@ const objectOptions = (toResolve: string, resolved: IDataObject) => {
 
 	if (isSplitInBatchesAbsent()) SKIP.add('context');
 
-	const name = toResolve.startsWith('$(') ? '$()' : toResolve;
+	const name = /^\$\(.*\)$/.test(toResolve) ? '$()' : toResolve;
 
 	if (['$input', '$()'].includes(name) && hasNoParams(toResolve)) SKIP.add('params');
 
@@ -303,21 +314,23 @@ const objectOptions = (toResolve: string, resolved: IDataObject) => {
 		.filter((key) => !SKIP.has(key) && isAllowedInDotNotation(key) && !isPseudoParam(key))
 		.map((key) => {
 			ensureKeyCanBeResolved(resolved, key);
+			const resolvedProp = resolved[key];
 
-			const isFunction = typeof resolved[key] === 'function';
+			const isFunction = typeof resolvedProp === 'function';
+			const hasArgs = isFunction && resolvedProp.length > 0 && name !== '$()';
 
 			const option: Completion = {
 				label: isFunction ? key + '()' : key,
 				type: isFunction ? 'function' : 'keyword',
-				section: isFunction ? METHODS_SECTION : { ...FIELDS_SECTION, rank: -1 },
-				apply: applyCompletion,
+				section: getObjectPropertySection({ name, key, isFunction }),
+				apply: applyCompletion(hasArgs),
 			};
 
 			const infoKey = [name, key].join('.');
 			option.info = createCompletionOption('', key, isFunction ? 'native-function' : 'keyword', {
 				doc: {
 					name: key,
-					returnType: typeof resolved[key],
+					returnType: typeof resolvedProp,
 					description: i18n.proxyVars[infoKey],
 				},
 			}).info;
@@ -337,19 +350,77 @@ const objectOptions = (toResolve: string, resolved: IDataObject) => {
 		return sortCompletionsAlpha([...localKeys, ...natives('object')]);
 	}
 
-	return withRecommendedSection(
-		sortCompletionsAlpha([...localKeys, ...natives('object'), ...extensions('object')]),
-		OBJECT_RECOMMENDED_OPTIONS,
-	);
+	return applySections({
+		options: sortCompletionsAlpha([...localKeys, ...natives('object'), ...extensions('object')]),
+		recommended: OBJECT_RECOMMENDED_OPTIONS,
+		recommendedSection: RECOMMENDED_METHODS_SECTION,
+		methodsSection: OTHER_METHODS_SECTION,
+		fieldsSection: { ...FIELDS_SECTION, rank: -1 },
+		excludeRecommended: true,
+	});
 };
 
-const withRecommendedSection = (options: Completion[], recommended: string[]): Completion[] => {
+const getObjectPropertySection = ({
+	name,
+	key,
+	isFunction,
+}: {
+	name: string;
+	key: string;
+	isFunction: boolean;
+}): CompletionSection => {
+	if (name === '$input' || name === '$()') {
+		if (key === 'item') return RECOMMENDED_SECTION;
+		return OTHER_SECTION;
+	}
+
+	return isFunction ? METHODS_SECTION : { ...FIELDS_SECTION, rank: 0 };
+};
+
+const applySections = ({
+	options,
+	sections,
+	recommended = [],
+	excludeRecommended = false,
+	methodsSection = METHODS_SECTION,
+	fieldsSection = FIELDS_SECTION,
+	recommendedSection = RECOMMENDED_SECTION,
+}: {
+	options: Completion[];
+	recommended?: string[];
+	recommendedSection?: CompletionSection;
+	methodsSection?: CompletionSection;
+	fieldsSection?: CompletionSection;
+	sections?: Record<string, CompletionSection>;
+	excludeRecommended?: boolean;
+}) => {
+	const recommendedSet = new Set(recommended);
+	const optionByLabel = options.reduce(
+		(acc, option) => {
+			acc[option.label] = option;
+			return acc;
+		},
+		{} as Record<string, Completion>,
+	);
 	return recommended
-		.map((reco) => {
-			const option = options.find((op) => op.label === reco) as Completion;
-			return { ...option, section: RECOMMENDED_SECTION } as Completion;
-		})
-		.concat(options);
+		.map(
+			(reco): Completion => ({
+				...optionByLabel[reco],
+				section: recommendedSection,
+			}),
+		)
+		.concat(
+			options
+				.filter((option) => !excludeRecommended || !recommendedSet.has(option.label))
+				.map((option) => {
+					if (sections) {
+						option.section = sections[option.section as string] ?? OTHER_SECTION;
+					} else {
+						option.section = option.label.endsWith('()') ? methodsSection : fieldsSection;
+					}
+					return option;
+				}),
+		);
 };
 
 const isUrl = (url: string): boolean => {
@@ -365,52 +436,75 @@ const stringOptions = (resolved: string): Completion[] => {
 	const options = sortCompletionsAlpha([...natives('string'), ...extensions('string')]);
 
 	if (validateFieldType('string', resolved, 'number').valid) {
-		return withRecommendedSection(options, ['toInt()', 'toFloat()', ...STRING_RECOMMENDED_OPTIONS]);
+		return applySections({
+			options,
+			recommended: ['toInt()', 'toFloat()'],
+			sections: STRING_SECTIONS,
+		});
 	}
 
 	if (validateFieldType('string', resolved, 'dateTime').valid) {
-		return withRecommendedSection(options, ['toDate()', ...STRING_RECOMMENDED_OPTIONS]);
+		return applySections({
+			options,
+			recommended: ['toDate()'],
+			sections: STRING_SECTIONS,
+		});
 	}
 
 	if (VALID_EMAIL_REGEX.test(resolved) || isUrl(resolved)) {
-		return withRecommendedSection(options, ['extractDomain()', ...STRING_RECOMMENDED_OPTIONS]);
+		return applySections({
+			options,
+			recommended: ['extractDomain()'],
+			sections: STRING_SECTIONS,
+		});
 	}
 
 	if (resolved.split(/\s/).find((token) => VALID_EMAIL_REGEX.test(token))) {
-		return withRecommendedSection(options, ['extractEmail()', ...STRING_RECOMMENDED_OPTIONS]);
+		return applySections({
+			options,
+			recommended: ['extractEmail()'],
+			sections: STRING_SECTIONS,
+		});
 	}
 
-	return withRecommendedSection(options, STRING_RECOMMENDED_OPTIONS);
+	return applySections({
+		options,
+		recommended: STRING_RECOMMENDED_OPTIONS,
+		sections: STRING_SECTIONS,
+	});
 };
 
 const numberOptions = (resolved: number): Completion[] => {
 	const options = sortCompletionsAlpha([...natives('number'), ...extensions('number')]);
 
 	if (!Number.isInteger(resolved)) {
-		return withRecommendedSection(options, ['round()', 'floor()', 'ceil()']);
+		return applySections({ options, recommended: ['round()', 'floor()', 'ceil()'] });
 	}
 
-	return options;
+	return applySections({ options });
 };
 
 const dateOptions = (): Completion[] => {
-	return sortCompletionsAlpha([...natives('date'), ...extensions('date')]);
+	return applySections({
+		options: sortCompletionsAlpha([...natives('date'), ...extensions('date')]),
+	});
 };
 
 const luxonOptions = (): Completion[] => {
-	return withRecommendedSection(
-		sortCompletionsAlpha([...luxonInstanceOptions(), ...extensions('date')]),
-		LUXON_RECOMMENDED_OPTIONS,
-	);
+	return applySections({
+		options: sortCompletionsAlpha(
+			uniqBy([...extensions('date'), ...luxonInstanceOptions()], (option) => option.label),
+		),
+		recommended: LUXON_RECOMMENDED_OPTIONS,
+		sections: LUXON_SECTIONS,
+	});
 };
 
-const arrayOptions = (toResolve: string, resolved: unknown[]): Completion[] => {
-	if (/all\(.*?\)/.test(toResolve)) return [];
-
-	const options = withRecommendedSection(
-		sortCompletionsAlpha([...natives('array'), ...extensions('array')]),
-		ARRAY_RECOMMENDED_OPTIONS,
-	);
+const arrayOptions = (resolved: unknown[]): Completion[] => {
+	const options = applySections({
+		options: sortCompletionsAlpha([...natives('array'), ...extensions('array')]),
+		recommended: ARRAY_RECOMMENDED_OPTIONS,
+	});
 
 	if (resolved.length > 0 && resolved.some((i) => typeof i !== 'number')) {
 		const NUMBER_ONLY_ARRAY_EXTENSIONS = new Set(['max()', 'min()', 'sum()', 'average()']);
@@ -537,11 +631,6 @@ const createLuxonAutocompleteOption = (
 ): Completion => {
 	const isFunction = isFunctionOption(type);
 	const label = isFunction ? name + '()' : name;
-	const option: Completion = {
-		label,
-		type,
-		section: isFunction ? METHODS_SECTION : FIELDS_SECTION,
-	};
 
 	let doc: DocMetadata | undefined;
 	if (docDefinition.properties && docDefinition.properties.hasOwnProperty(name)) {
@@ -559,6 +648,13 @@ const createLuxonAutocompleteOption = (
 			docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetime',
 		};
 	}
+
+	const option: Completion = {
+		label,
+		type,
+		section: doc?.section,
+		apply: applyCompletion((doc?.args?.length ?? 0) > 0),
+	};
 	option.info = createCompletionOption('DateTime', name, type, {
 		// Add translated description
 		doc: { ...doc, description: translations[name] } as DocMetadata,

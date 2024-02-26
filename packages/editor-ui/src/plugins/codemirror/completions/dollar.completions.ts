@@ -79,5 +79,5 @@ export function dollarOptions(): Completion[] {
 
 	return ROOT_DOLLAR_COMPLETIONS.filter(({ label }) => !SKIP.has(label))
 		.concat(previousNodesCompletions)
-		.map((completion) => ({ ...completion, apply: applyCompletion }));
+		.map((completion) => ({ ...completion, apply: applyCompletion() }));
 }

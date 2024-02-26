@@ -1,7 +1,6 @@
-import { NODE_TYPES_EXCLUDED_FROM_AUTOCOMPLETION } from '@/components/CodeNodeEditor/constants';
 import { CREDENTIAL_EDIT_MODAL_KEY, SPLIT_IN_BATCHES_NODE_TYPE } from '@/constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { resolveParameter } from '@/composables/useWorkflowHelpers';
+import { resolveParameter, useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useUIStore } from '@/stores/ui.store';
 import {
@@ -14,6 +13,7 @@ import type { EditorView } from '@codemirror/view';
 import type { TransactionSpec } from '@codemirror/state';
 import type { SyntaxNode } from '@lezer/common';
 import { javascriptLanguage } from '@codemirror/lang-javascript';
+import { useRouter } from 'vue-router';
 
 /**
  * Split user input into base (to resolve) and tail (to filter).
@@ -124,15 +124,15 @@ export const isSplitInBatchesAbsent = () =>
 	!useWorkflowsStore().workflow.nodes.some((node) => node.type === SPLIT_IN_BATCHES_NODE_TYPE);
 
 export function autocompletableNodeNames() {
-	return useWorkflowsStore()
-		.allNodes.filter((node) => {
-			const activeNodeName = useNDVStore().activeNode?.name;
+	const activeNodeName = useNDVStore().activeNode?.name;
 
-			return (
-				!NODE_TYPES_EXCLUDED_FROM_AUTOCOMPLETION.includes(node.type) && node.name !== activeNodeName
-			);
-		})
-		.map((node) => node.name);
+	if (!activeNodeName) return [];
+
+	return useWorkflowHelpers(useRouter())
+		.getCurrentWorkflow()
+		.getParentNodesByDepth(activeNodeName)
+		.map((node) => node.name)
+		.filter((name) => name !== activeNodeName);
 }
 
 /**
@@ -153,24 +153,21 @@ export const stripExcessParens = (context: CompletionContext) => (option: Comple
  * When a function completion is selected, set the cursor correctly
  * e.g. `$max()` -> `$max(<cursor>)`
  */
-export const applyCompletion = (
-	view: EditorView,
-	completion: Completion,
-	from: number,
-	to: number,
-): void => {
-	const tx: TransactionSpec = {
-		...insertCompletionText(view.state, completion.label, from, to),
-		annotations: pickedCompletion.of(completion),
+export const applyCompletion =
+	(hasArgs = true) =>
+	(view: EditorView, completion: Completion, from: number, to: number): void => {
+		const tx: TransactionSpec = {
+			...insertCompletionText(view.state, completion.label, from, to),
+			annotations: pickedCompletion.of(completion),
+		};
+
+		if (completion.label.endsWith('()') && hasArgs) {
+			const cursorPosition = from + completion.label.length - 1;
+			tx.selection = { anchor: cursorPosition, head: cursorPosition };
+		}
+
+		view.dispatch(tx);
 	};
-
-	if (completion.label.endsWith('()')) {
-		const cursorPosition = from + completion.label.length - 1;
-		tx.selection = { anchor: cursorPosition, head: cursorPosition };
-	}
-
-	view.dispatch(tx);
-};
 
 export const sortCompletionsAlpha = (completions: Completion[]): Completion[] => {
 	return completions.sort((a, b) => a.label.localeCompare(b.label));
