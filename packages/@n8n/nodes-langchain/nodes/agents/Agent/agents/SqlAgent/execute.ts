@@ -12,7 +12,6 @@ import type { BaseLanguageModel } from 'langchain/dist/base_language';
 import type { BaseChatMemory } from 'langchain/memory';
 import type { DataSource } from '@n8n/typeorm';
 
-import { type BaseChatMessageHistory } from 'langchain/schema';
 import { getPromptInputByType, serializeChatHistory } from '../../../../../utils/helpers';
 import { getSqliteDataSource } from './other/handlers/sqlite';
 import { getPostgresDataSource } from './other/handlers/postgres';
