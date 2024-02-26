@@ -9,6 +9,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { getTemplateNoticeField } from '../../../utils/sharedFields';
+import { promptTypeOptions, textInput } from '../../../utils/descriptions';
 import { conversationalAgentProperties } from './agents/ConversationalAgent/description';
 import { conversationalAgentExecute } from './agents/ConversationalAgent/execute';
 import { openAiFunctionsAgentProperties } from './agents/OpenAiFunctionsAgent/description';
@@ -19,8 +20,6 @@ import { reActAgentAgentProperties } from './agents/ReActAgent/description';
 import { reActAgentAgentExecute } from './agents/ReActAgent/execute';
 import { sqlAgentAgentProperties } from './agents/SqlAgent/description';
 import { sqlAgentAgentExecute } from './agents/SqlAgent/execute';
-
-import { promptTypeOptions, textInput } from '../../../utils/descriptions';
 
 // Function used in the inputs expression to figure out which inputs to
 // display based on the agent type

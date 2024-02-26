@@ -12,12 +12,12 @@ import type { BaseLanguageModel } from 'langchain/dist/base_language';
 import type { BaseChatMemory } from 'langchain/memory';
 import type { DataSource } from '@n8n/typeorm';
 
+import { HumanMessage, type BaseChatMessageHistory, AIMessage } from 'langchain/schema';
 import { getPromptInputByType, serializeChatHistory } from '../../../../../utils/helpers';
 import { getSqliteDataSource } from './other/handlers/sqlite';
 import { getPostgresDataSource } from './other/handlers/postgres';
 import { SQL_PREFIX, SQL_SUFFIX } from './other/prompts';
 import { getMysqlDataSource } from './other/handlers/mysql';
-import { HumanMessage, type BaseChatMessageHistory, AIMessage } from 'langchain/schema';
 
 const parseTablesString = (tablesString: string) =>
 	tablesString
