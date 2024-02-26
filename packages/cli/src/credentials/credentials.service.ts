@@ -197,7 +197,10 @@ export class CredentialsService {
 
 			savedCredential.data = newCredential.data;
 
-			const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(user.id);
+			const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(
+				user.id,
+				transactionManager,
+			);
 
 			const newSharedCredential = new SharedCredentials();
 
@@ -205,6 +208,7 @@ export class CredentialsService {
 				role: 'credential:owner',
 				credentials: savedCredential,
 				projectId: personalProject.id,
+				// TODO: remove when the user is removed
 				deprecatedUserId: user.id,
 			});
 
