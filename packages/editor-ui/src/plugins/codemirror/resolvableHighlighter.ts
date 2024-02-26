@@ -52,29 +52,31 @@ const coloringStateField = StateField.define<DecorationSet>({
 		return Decoration.none;
 	},
 	update(colorings, transaction) {
-		colorings = colorings.map(transaction.changes); // recalculate positions for new doc
+		try {
+			colorings = colorings.map(transaction.changes); // recalculate positions for new doc
 
-		for (const txEffect of transaction.effects) {
-			if (txEffect.is(coloringStateEffects.removeColorEffect)) {
-				colorings = colorings.update({
-					filter: (from, to) => txEffect.value.from !== from && txEffect.value.to !== to,
-				});
+			for (const txEffect of transaction.effects) {
+				if (txEffect.is(coloringStateEffects.removeColorEffect)) {
+					colorings = colorings.update({
+						filter: (from, to) => txEffect.value.from !== from && txEffect.value.to !== to,
+					});
+				}
+
+				if (txEffect.is(coloringStateEffects.addColorEffect)) {
+					colorings = colorings.update({
+						filter: (from, to) => txEffect.value.from !== from && txEffect.value.to !== to,
+					});
+
+					const decoration = txEffect.value.error ? marks.invalid : marks.valid;
+
+					if (txEffect.value.from === 0 && txEffect.value.to === 0) continue;
+
+					colorings = colorings.update({
+						add: [decoration.range(txEffect.value.from, txEffect.value.to)],
+					});
+				}
 			}
-
-			if (txEffect.is(coloringStateEffects.addColorEffect)) {
-				colorings = colorings.update({
-					filter: (from, to) => txEffect.value.from !== from && txEffect.value.to !== to,
-				});
-
-				const decoration = txEffect.value.error ? marks.invalid : marks.valid;
-
-				if (txEffect.value.from === 0 && txEffect.value.to === 0) continue;
-
-				colorings = colorings.update({
-					add: [decoration.range(txEffect.value.from, txEffect.value.to)],
-				});
-			}
-		}
+		} catch (error) {}
 
 		return colorings;
 	},
