@@ -92,11 +92,11 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 	}
 
 	/** Get the IDs of all credentials owned by or shared with a user */
-	// FIXME: deduplicate this with `findCredentialForUser`
 	async getAccessibleCredentialIds(userIds: string[]) {
 		const projectRoles = this.roleService.rolesWithScope('project', ['credential:read']);
 		const credentialRoles = this.roleService.rolesWithScope('credential', ['credential:read']);
 		const projects = await this.projectRepository.find({
+			select: { id: true },
 			where: {
 				projectRelations: {
 					role: In(projectRoles),
@@ -108,6 +108,7 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 		const projectIds = projects.map((p) => p.id);
 
 		const result = await this.find({
+			select: { credentialsId: true },
 			where: {
 				role: In(credentialRoles),
 				project: In(projectIds),
