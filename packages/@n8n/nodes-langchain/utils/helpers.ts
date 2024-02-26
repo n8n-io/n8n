@@ -66,6 +66,25 @@ export function getPromptInputByType(options: {
 	return input;
 }
 
+export function getSessionId(
+	ctx: IExecuteFunctions,
+	i: number,
+	selectorKey = 'sessionIdType',
+	autoSelect = 'fromInput',
+	customKey = 'sessionKey',
+) {
+	let sessionId = '';
+	const selectorType = ctx.getNodeParameter(selectorKey, i) as string;
+
+	if (selectorType === autoSelect) {
+		sessionId = ctx.evaluateExpression('{{ $json.sessionId }}', i) as string;
+	} else {
+		sessionId = ctx.getNodeParameter(customKey, i) as string;
+	}
+
+	return sessionId;
+}
+
 export async function logAiEvent(
 	executeFunctions: IExecuteFunctions,
 	event: EventNamesAiNodesType,
