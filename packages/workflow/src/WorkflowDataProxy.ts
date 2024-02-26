@@ -22,7 +22,7 @@ import type {
 	ProxyInput,
 } from './Interfaces';
 import * as NodeHelpers from './NodeHelpers';
-import { ExpressionError } from './errors/expression.error';
+import { ExpressionError, type ExpressionErrorOptions } from './errors/expression.error';
 import type { Workflow } from './Workflow';
 import { augmentArray, augmentObject } from './AugmentObject';
 import { deepCopy } from './utils';
@@ -644,22 +644,13 @@ export class WorkflowDataProxy {
 
 		const createExpressionError = (
 			message: string,
-			context?: {
-				causeDetailed?: string;
-				description?: string;
-				descriptionTemplate?: string;
-				functionality?: 'pairedItem';
+			context?: ExpressionErrorOptions & {
+				moreInfoLink?: boolean;
 				functionOverrides?: {
 					// Custom data to display for Function-Nodes
 					message?: string;
 					description?: string;
 				};
-				itemIndex?: number;
-				messageTemplate?: string;
-				moreInfoLink?: boolean;
-				nodeCause?: string;
-				runIndex?: number;
-				type?: string;
 			},
 		) => {
 			if (isScriptingNode(that.activeNodeName, that.workflow) && context?.functionOverrides) {
