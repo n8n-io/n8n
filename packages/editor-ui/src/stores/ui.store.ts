@@ -465,23 +465,37 @@ export const useUIStore = defineStore(STORES.UI, {
 			this.setMode(CREDENTIAL_EDIT_MODAL_KEY, 'new');
 			this.openModal(CREDENTIAL_EDIT_MODAL_KEY);
 		},
-		async getNextOnboardingPrompt(): Promise<IOnboardingCallPrompt> {
+		async getNextOnboardingPrompt(): Promise<IOnboardingCallPrompt | null> {
 			const rootStore = useRootStore();
 			const instanceId = rootStore.instanceId;
 			const { currentUser } = useUsersStore();
-			return await fetchNextOnboardingPrompt(instanceId, currentUser);
+			if (currentUser) {
+				return await fetchNextOnboardingPrompt(instanceId, currentUser);
+			}
+			return null;
 		},
-		async applyForOnboardingCall(email: string): Promise<string> {
+		async applyForOnboardingCall(email: string): Promise<string | null> {
 			const rootStore = useRootStore();
 			const instanceId = rootStore.instanceId;
 			const { currentUser } = useUsersStore();
-			return await applyForOnboardingCall(instanceId, currentUser, email);
+			if (currentUser) {
+				return await applyForOnboardingCall(instanceId, currentUser, email);
+			}
+			return null;
 		},
-		async submitContactEmail(email: string, agree: boolean): Promise<string> {
+		async submitContactEmail(email: string, agree: boolean): Promise<string | null> {
 			const rootStore = useRootStore();
 			const instanceId = rootStore.instanceId;
 			const { currentUser } = useUsersStore();
-			return await submitEmailOnSignup(instanceId, currentUser, email || currentUser?.email, agree);
+			if (currentUser) {
+				return await submitEmailOnSignup(
+					instanceId,
+					currentUser,
+					email ?? currentUser?.email,
+					agree,
+				);
+			}
+			return null;
 		},
 		openCommunityPackageUninstallConfirmModal(packageName: string) {
 			this.setActiveId(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, packageName);
