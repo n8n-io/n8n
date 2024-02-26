@@ -98,7 +98,7 @@ export async function sqlAgentAgentExecute(
 			topK: (options.topK as number) ?? 10,
 			prefix: (options.prefixPrompt as string) ?? SQL_PREFIX,
 			suffix: (options.suffixPrompt as string) ?? SQL_SUFFIX,
-			inputVariables: ['sqlDialect', 'chatHistory', 'input', 'agent_scratchpad'],
+			inputVariables: ['chatHistory', 'input', 'agent_scratchpad'],
 		};
 
 		const dbInstance = await SqlDatabase.fromDataSourceParams({
@@ -129,7 +129,6 @@ export async function sqlAgentAgentExecute(
 				input,
 				signal: this.getExecutionCancelSignal(),
 				chatHistory,
-				sqlDialect: selectedDataSource,
 			});
 		} catch (error) {
 			if (error.message?.output) {
