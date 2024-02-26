@@ -66,7 +66,7 @@
 					</div>
 					<MessageTyping v-if="isLoading" ref="messageContainer" />
 				</div>
-				<div v-if="node" class="logs-wrapper" data-test-id="lm-chat-logs">
+				<div v-if="node && messages.length" class="logs-wrapper" data-test-id="lm-chat-logs">
 					<n8n-text class="logs-title" tag="p" size="large">{{
 						$locale.baseText('chat.window.logs')
 					}}</n8n-text>
@@ -149,8 +149,8 @@ import { useExternalHooks } from '@/composables/useExternalHooks';
 
 // eslint-disable-next-line import/no-unresolved
 import MessageTyping from '@n8n/chat/components/MessageTyping.vue';
-import { useRouter } from 'vue-router';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useRouter } from 'vue-router';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 const RunDataAi = defineAsyncComponent(
@@ -183,8 +183,8 @@ export default defineComponent({
 	},
 	mixins: [workflowRun],
 	setup(props, ctx) {
-		const externalHooks = useExternalHooks();
 		const router = useRouter();
+		const externalHooks = useExternalHooks();
 		const workflowHelpers = useWorkflowHelpers(router);
 
 		return {
@@ -203,6 +203,7 @@ export default defineComponent({
 			modalBus: createEventBus(),
 			node: null as INodeUi | null,
 			WORKFLOW_LM_CHAT_MODAL_KEY,
+			previousMessageIndex: 0,
 		};
 	},
 
@@ -216,6 +217,8 @@ export default defineComponent({
 		this.setConnectedNode();
 		this.messages = this.getChatMessages();
 		this.setNode();
+
+		setTimeout(() => this.$refs.inputField?.focus(), 0);
 	},
 	methods: {
 		displayExecution(executionId: string) {
@@ -235,6 +238,20 @@ export default defineComponent({
 			inputField.focus();
 		},
 		updated(event: KeyboardEvent) {
+			const pastMessages = this.workflowsStore.getPastChatMessages;
+			if (
+				(this.currentMessage.length === 0 || pastMessages.includes(this.currentMessage)) &&
+				event.key === 'ArrowUp'
+			) {
+				const inputField = this.$refs.inputField as HTMLInputElement;
+
+				inputField?.blur();
+				this.currentMessage =
+					pastMessages[pastMessages.length - 1 - this.previousMessageIndex] ?? '';
+				this.previousMessageIndex = (this.previousMessageIndex + 1) % pastMessages.length;
+				// Refocus to move the cursor to the end of the input
+				setTimeout(() => inputField?.focus(), 0);
+			}
 			if (event.key === 'Enter' && !event.shiftKey && this.currentMessage) {
 				void this.sendChatMessage(this.currentMessage);
 				event.stopPropagation();
@@ -255,6 +272,7 @@ export default defineComponent({
 			} as ChatMessage);
 
 			this.currentMessage = '';
+			this.previousMessageIndex = 0;
 			await this.$nextTick();
 			this.scrollToLatestMessage();
 			await this.startWorkflowWithMessage(message);
@@ -272,7 +290,7 @@ export default defineComponent({
 			}
 			const workflow = this.workflowHelpers.getCurrentWorkflow();
 
-			const chatNode = this.workflowHelpers.getNodes().find((node: INodeUi): boolean => {
+			const chatNode = this.workflowsStore.getNodes().find((node: INodeUi): boolean => {
 				const nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 				if (!nodeType) return false;
 
@@ -454,6 +472,7 @@ export default defineComponent({
 				source: 'RunData.ManualChatMessage',
 			});
 
+			this.workflowsStore.appendChatMessage(message);
 			if (!response) {
 				this.showError(
 					new Error('It was not possible to start workflow!'),

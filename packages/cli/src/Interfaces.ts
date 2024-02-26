@@ -23,6 +23,7 @@ import type {
 	INodeProperties,
 	IUserSettings,
 	IHttpRequestMethods,
+	StartNodeData,
 } from 'n8n-workflow';
 
 import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
@@ -532,7 +533,7 @@ export interface IWorkflowExecutionDataProcess {
 	pinData?: IPinData;
 	retryOf?: string;
 	sessionId?: string;
-	startNodes?: string[];
+	startNodes?: StartNodeData[];
 	workflowData: IWorkflowBase;
 	userId: string;
 }

@@ -252,6 +252,24 @@ const getHostFromRequestObject = (
 	}
 };
 
+const getBeforeRedirectFn =
+	(agentOptions: AgentOptions, axiosConfig: AxiosRequestConfig) =>
+	(redirectedRequest: Record<string, any>) => {
+		const redirectAgent = new Agent({
+			...agentOptions,
+			servername: redirectedRequest.hostname,
+		});
+		redirectedRequest.agent = redirectAgent;
+		redirectedRequest.agents.https = redirectAgent;
+
+		if (axiosConfig.headers?.Authorization) {
+			redirectedRequest.headers.Authorization = axiosConfig.headers.Authorization;
+		}
+		if (axiosConfig.auth) {
+			redirectedRequest.auth = `${axiosConfig.auth.username}:${axiosConfig.auth.password}`;
+		}
+	};
+
 export async function parseRequestObject(requestObject: IRequestOptions) {
 	// This function is a temporary implementation
 	// That translates all http requests done via
@@ -462,33 +480,15 @@ export async function parseRequestObject(requestObject: IRequestOptions) {
 	}
 
 	// Axios will follow redirects by default, so we simply tell it otherwise if needed.
+	const { method } = requestObject;
 	if (
-		requestObject.followRedirect === false &&
-		((requestObject.method as string | undefined) || 'get').toLowerCase() === 'get'
+		(requestObject.followRedirect !== false &&
+			(!method || method === 'GET' || method === 'HEAD')) ||
+		requestObject.followAllRedirects
 	) {
+		axiosConfig.maxRedirects = requestObject.maxRedirects;
+	} else {
 		axiosConfig.maxRedirects = 0;
-	}
-	if (
-		requestObject.followAllRedirects === false &&
-		((requestObject.method as string | undefined) || 'get').toLowerCase() !== 'get'
-	) {
-		axiosConfig.maxRedirects = 0;
-	}
-
-	axiosConfig.beforeRedirect = (redirectedRequest) => {
-		if (axiosConfig.headers?.Authorization) {
-			redirectedRequest.headers.Authorization = axiosConfig.headers.Authorization;
-		}
-		if (axiosConfig.auth) {
-			redirectedRequest.auth = `${axiosConfig.auth.username}:${axiosConfig.auth.password}`;
-		}
-	};
-
-	if (requestObject.rejectUnauthorized === false) {
-		axiosConfig.httpsAgent = new Agent({
-			rejectUnauthorized: false,
-			secureOptions: crypto.constants.SSL_OP_LEGACY_SERVER_CONNECT,
-		});
 	}
 
 	const host = getHostFromRequestObject(requestObject);
@@ -501,6 +501,8 @@ export async function parseRequestObject(requestObject: IRequestOptions) {
 		agentOptions.secureOptions = crypto.constants.SSL_OP_LEGACY_SERVER_CONNECT;
 	}
 	axiosConfig.httpsAgent = new Agent(agentOptions);
+
+	axiosConfig.beforeRedirect = getBeforeRedirectFn(agentOptions, axiosConfig);
 
 	if (requestObject.timeout !== undefined) {
 		axiosConfig.timeout = requestObject.timeout;
@@ -893,6 +895,8 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 		agentOptions.rejectUnauthorized = false;
 	}
 	axiosRequest.httpsAgent = new Agent(agentOptions);
+
+	axiosRequest.beforeRedirect = getBeforeRedirectFn(agentOptions, axiosRequest);
 
 	if (n8nRequest.arrayFormat !== undefined) {
 		axiosRequest.paramsSerializer = (params) => {

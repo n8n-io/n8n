@@ -45,5 +45,6 @@ export async function submitEmailOnSignup(
 		user_id: `${instanceId}#${currentUser.id}`,
 		email,
 		agree,
+		agree_updates: true,
 	});
 }

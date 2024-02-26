@@ -54,6 +54,8 @@ import type {
 	ThemeOption,
 	AppliedThemeOption,
 	SuggestedTemplates,
+	NotificationOptions,
+	ModalState,
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@/stores/n8nRoot.store';
@@ -143,7 +145,7 @@ export const useUIStore = defineStore(STORES.UI, {
 				mode: '',
 				activeId: null,
 				showAuthSelector: false,
-			},
+			} as ModalState,
 		},
 		modalStack: [],
 		sidebarMenuCollapsed: true,
@@ -171,6 +173,7 @@ export const useUIStore = defineStore(STORES.UI, {
 		stateIsDirty: false,
 		lastSelectedNode: null,
 		lastSelectedNodeOutputIndex: null,
+		lastSelectedNodeEndpointUuid: null,
 		nodeViewOffsetPosition: [0, 0],
 		nodeViewMoveInProgress: false,
 		selectedNodes: [],
@@ -191,11 +194,10 @@ export const useUIStore = defineStore(STORES.UI, {
 		},
 		logo(): string {
 			const { releaseChannel } = useSettingsStore().settings;
-			const type = this.appliedTheme === 'dark' ? '-dark-mode.svg' : '.svg';
-
-			return releaseChannel === 'stable'
-				? `n8n-logo-expanded${type}`
-				: `n8n-${releaseChannel}-logo${type}`;
+			const suffix = this.appliedTheme === 'dark' ? '-dark.svg' : '.svg';
+			return `static/logo/${
+				releaseChannel === 'stable' ? 'expanded' : `channel/${releaseChannel}`
+			}${suffix}`;
 		},
 		contextBasedTranslationKeys() {
 			const settingsStore = useSettingsStore();

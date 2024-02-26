@@ -1,5 +1,6 @@
 import { ElNotification as Notification } from 'element-plus';
-import type { NotificationInstance, NotificationOptions, MessageBoxState } from 'element-plus';
+import type { NotificationHandle, MessageBoxState } from 'element-plus';
+import type { NotificationOptions } from '@/Interface';
 import { sanitizeHtml } from '@/utils/htmlUtils';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -8,12 +9,19 @@ import { useI18n } from './useI18n';
 import { useExternalHooks } from './useExternalHooks';
 import { VIEWS } from '@/constants';
 
+export interface NotificationErrorWithNodeAndDescription extends Error {
+	node: {
+		name: string;
+	};
+	description: string;
+}
+
 const messageDefaults: Partial<Omit<NotificationOptions, 'message'>> = {
 	dangerouslyUseHTMLString: true,
 	position: 'bottom-right',
 };
 
-const stickyNotificationQueue: NotificationInstance[] = [];
+const stickyNotificationQueue: NotificationHandle[] = [];
 
 export function useToast() {
 	const telemetry = useTelemetry();
@@ -39,7 +47,7 @@ export function useToast() {
 			telemetry.track('Instance FE emitted error', {
 				error_title: messageData.title,
 				error_message: messageData.message,
-				caused_by_credential: causedByCredential(messageData.message),
+				caused_by_credential: causedByCredential(messageData.message as string),
 				workflow_id: workflowsStore.workflowId,
 			});
 		}
@@ -59,7 +67,7 @@ export function useToast() {
 		dangerouslyUseHTMLString?: boolean;
 	}) {
 		// eslint-disable-next-line prefer-const
-		let notification: NotificationInstance;
+		let notification: NotificationHandle;
 		if (config.closeOnClick) {
 			const cb = config.onClick;
 			config.onClick = () => {
@@ -87,7 +95,7 @@ export function useToast() {
 		return notification;
 	}
 
-	function collapsableDetails({ description, node }: Error) {
+	function collapsableDetails({ description, node }: NotificationErrorWithNodeAndDescription) {
 		if (!description) return '';
 
 		const errorDescription =
@@ -116,7 +124,7 @@ export function useToast() {
 				message: `
 					${messageLine}
 					<i>${error.message}</i>
-					${collapsableDetails(error)}`,
+					${collapsableDetails(error as NotificationErrorWithNodeAndDescription)}`,
 				type: 'error',
 				duration: 0,
 			},
@@ -138,7 +146,7 @@ export function useToast() {
 		});
 	}
 
-	function showAlert(config: NotificationOptions): NotificationInstance {
+	function showAlert(config: NotificationOptions): NotificationHandle {
 		return Notification(config);
 	}
 
