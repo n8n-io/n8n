@@ -1,45 +1,46 @@
 import type { Completion, CompletionSection } from '@codemirror/autocomplete';
 import { i18n } from '@/plugins/i18n';
+import { withSectionHeader } from './utils';
 
-export const RECOMMENDED_SECTION: CompletionSection = {
+export const RECOMMENDED_SECTION: CompletionSection = withSectionHeader({
 	name: i18n.baseText('codeNodeEditor.completer.section.recommended'),
 	rank: 0,
-};
+});
 
-export const RECOMMENDED_METHODS_SECTION: CompletionSection = {
+export const RECOMMENDED_METHODS_SECTION: CompletionSection = withSectionHeader({
 	name: i18n.baseText('codeNodeEditor.completer.section.recommendedMethods'),
 	rank: 0,
-};
+});
 
-export const PREVIOUS_NODES_SECTION: CompletionSection = {
+export const PREVIOUS_NODES_SECTION: CompletionSection = withSectionHeader({
 	name: i18n.baseText('codeNodeEditor.completer.section.prevNodes'),
 	rank: 2,
-};
+});
 
-export const FIELDS_SECTION: CompletionSection = {
+export const FIELDS_SECTION: CompletionSection = withSectionHeader({
 	name: i18n.baseText('codeNodeEditor.completer.section.fields'),
 	rank: 3,
-};
+});
 
-export const METHODS_SECTION: CompletionSection = {
+export const METHODS_SECTION: CompletionSection = withSectionHeader({
 	name: i18n.baseText('codeNodeEditor.completer.section.methods'),
 	rank: 4,
-};
+});
 
-export const METADATA_SECTION: CompletionSection = {
+export const METADATA_SECTION: CompletionSection = withSectionHeader({
 	name: i18n.baseText('codeNodeEditor.completer.section.metadata'),
 	rank: 5,
-};
+});
 
-export const OTHER_METHODS_SECTION: CompletionSection = {
+export const OTHER_METHODS_SECTION: CompletionSection = withSectionHeader({
 	name: i18n.baseText('codeNodeEditor.completer.section.otherMethods'),
 	rank: 100,
-};
+});
 
-export const OTHER_SECTION: CompletionSection = {
+export const OTHER_SECTION: CompletionSection = withSectionHeader({
 	name: i18n.baseText('codeNodeEditor.completer.section.other'),
 	rank: 101,
-};
+});
 
 export const ROOT_DOLLAR_COMPLETIONS: Completion[] = [
 	{
@@ -160,46 +161,47 @@ export const STRING_EDIT_OPTIONS = [
 
 export const LUXON_RECOMMENDED_OPTIONS = ['format()', 'minus()', 'plus()', 'diff()'];
 export const ARRAY_RECOMMENDED_OPTIONS = ['length', 'last()', 'includes()', 'map()', 'filter()'];
+export const ARRAY_NUMBER_ONLY_METHODS = ['max()', 'min()', 'sum()', 'average()'];
 export const OBJECT_RECOMMENDED_OPTIONS = ['keys()', 'values()', 'isEmpty()'];
 
 export const LUXON_SECTIONS: Record<string, CompletionSection> = {
-	edit: {
+	edit: withSectionHeader({
 		name: i18n.baseText('codeNodeEditor.completer.section.edit'),
 		rank: 1,
-	},
-	compare: {
+	}),
+	compare: withSectionHeader({
 		name: i18n.baseText('codeNodeEditor.completer.section.compare'),
 		rank: 2,
-	},
-	format: {
+	}),
+	format: withSectionHeader({
 		name: i18n.baseText('codeNodeEditor.completer.section.format'),
 		rank: 3,
-	},
-	query: {
+	}),
+	query: withSectionHeader({
 		name: i18n.baseText('codeNodeEditor.completer.section.component'),
 		rank: 4,
-	},
+	}),
 };
 
 export const STRING_SECTIONS: Record<string, CompletionSection> = {
-	edit: {
+	edit: withSectionHeader({
 		name: i18n.baseText('codeNodeEditor.completer.section.edit'),
 		rank: 1,
-	},
-	query: {
+	}),
+	query: withSectionHeader({
 		name: i18n.baseText('codeNodeEditor.completer.section.query'),
 		rank: 2,
-	},
-	validation: {
+	}),
+	validation: withSectionHeader({
 		name: i18n.baseText('codeNodeEditor.completer.section.validation'),
 		rank: 3,
-	},
-	case: {
+	}),
+	case: withSectionHeader({
 		name: i18n.baseText('codeNodeEditor.completer.section.case'),
 		rank: 4,
-	},
-	cast: {
+	}),
+	cast: withSectionHeader({
 		name: i18n.baseText('codeNodeEditor.completer.section.cast'),
 		rank: 5,
-	},
+	}),
 };

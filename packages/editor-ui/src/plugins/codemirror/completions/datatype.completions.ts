@@ -31,6 +31,7 @@ import { luxonStaticDocs } from './nativesAutocompleteDocs/luxon.static.docs';
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import {
+	ARRAY_NUMBER_ONLY_METHODS,
 	ARRAY_RECOMMENDED_OPTIONS,
 	FIELDS_SECTION,
 	LUXON_RECOMMENDED_OPTIONS,
@@ -507,7 +508,7 @@ const arrayOptions = (resolved: unknown[]): Completion[] => {
 	});
 
 	if (resolved.length > 0 && resolved.some((i) => typeof i !== 'number')) {
-		const NUMBER_ONLY_ARRAY_EXTENSIONS = new Set(['max()', 'min()', 'sum()', 'average()']);
+		const NUMBER_ONLY_ARRAY_EXTENSIONS = new Set(ARRAY_NUMBER_ONLY_METHODS);
 
 		return options.filter((m) => !NUMBER_ONLY_ARRAY_EXTENSIONS.has(m.label));
 	}
