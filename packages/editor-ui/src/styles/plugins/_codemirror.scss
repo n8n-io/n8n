@@ -20,16 +20,17 @@
 
 	> ul[role='listbox'] {
 		font-family: var(--font-family-monospace);
-		max-height: min(280px, 50vh);
-		width: min(320px, 50vw);
+		max-height: min(220px, 50vh);
+		width: min(260px, 50vw);
 		min-width: auto;
 		max-width: none;
 		border: var(--border-base);
 		border-radius: var(--border-radius-base);
 
 		li[role='option'] {
-			color: var(--color-success);
+			color: var(--color-text-base);
 			display: flex;
+			font-size: var(--font-size-2xs);
 			justify-content: space-between;
 			padding: var(--spacing-5xs) var(--spacing-2xs);
 			scroll-padding: 40px;
@@ -41,25 +42,30 @@
 		}
 
 		li[aria-selected] {
-			background-color: var(--color-autocomplete-selected-background);
-			color: var(--color-autocomplete-selected-font);
+			background-color: var(--color-background-base);
+			color: var(--color-text-dark);
 		}
 
-		> completion-section {
-			font-family: var(--font-family);
-			font-weight: var(--font-weight-bold);
-			padding: var(--spacing-4xs) var(--spacing-2xs);
-			color: var(--color-text-base);
-			opacity: 1;
-			background-color: var(--color-background-base);
-			border-bottom: var(--border-base);
-			line-height: var(--font-line-height-loose);
+		> .cm-section-header {
+			padding: var(--spacing-4xs) var(--spacing-4xs);
+			padding-bottom: 0;
+			border-bottom: var(--spacing-4xs) solid var(--color-background-xlight);
+			background-color: var(--color-background-xlight);
 			position: sticky;
 			top: 0;
 		}
 
-		li:has(+ completion-section) {
-			border-bottom: var(--border-base);
+		.cm-section-title {
+			font-family: var(--font-family);
+			font-weight: var(--font-weight-bold);
+			font-size: var(--font-size-3xs);
+			padding: var(--spacing-5xs) var(--spacing-4xs);
+
+			border-radius: var(--border-radius-base);
+			display: inline-flex;
+			text-transform: uppercase;
+			background-color: var(--color-success-tint-1);
+			color: var(--color-success);
 		}
 	}
 }
