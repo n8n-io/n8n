@@ -20,7 +20,6 @@ export const useProjectsStore = defineStore('projects', () => {
 		id: '',
 		name: '',
 	});
-	const isProjectRoute = ref(false);
 
 	const setCurrentProject = (project: Project) => {
 		currentProject.value = project;
@@ -54,8 +53,18 @@ export const useProjectsStore = defineStore('projects', () => {
 	watch(
 		route,
 		(newRoute) => {
-			isProjectRoute.value = (newRoute?.name ?? '').toString().toLowerCase().startsWith('project');
 			const project = myProjects.value.find((p) => p.id === newRoute.params?.projectId);
+			if (project) {
+				setCurrentProject(project);
+			}
+		},
+		{ immediate: true },
+	);
+
+	watch(
+		myProjects,
+		(newProjects) => {
+			const project = newProjects.find((p) => p.id === route?.params?.projectId);
 			if (project) {
 				setCurrentProject(project);
 			}
@@ -67,7 +76,6 @@ export const useProjectsStore = defineStore('projects', () => {
 		projects,
 		myProjects,
 		currentProject,
-		isProjectRoute,
 		setCurrentProject,
 		getAllProjects,
 		getMyProjects,

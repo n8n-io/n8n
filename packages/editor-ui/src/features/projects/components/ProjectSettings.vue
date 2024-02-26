@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
+import { computed, ref, watch, onBeforeMount } from 'vue';
 import { useUsersStore } from '@/stores/users.store';
 import type { IUser } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
@@ -14,12 +14,28 @@ const sharedWith = ref<Array<Partial<IUser>>>([]);
 const projectNameEdited = ref('');
 const projectName = computed({
 	get: () => (projectNameEdited.value || projectsStore.currentProject?.name) ?? '',
-	set: (value) => {
+	set: (value: string) => {
 		projectNameEdited.value = value;
 	},
 });
 
-const usersList = computed(() => usersStore.allUsers);
+const usersList = computed(() =>
+	usersStore.allUsers.filter((user: IUser) => {
+		// TODO: Get project share data
+		const projectData = {
+			sharedWith: [],
+			ownedBy: { id: '' },
+		};
+		const isAlreadySharedWithUser = (projectData.sharedWith || []).find(
+			(sharee: IUser) => sharee.id === user.id,
+		);
+
+		// TODO: Check if user is owner of the project
+		const isOwner = projectData.ownedBy?.id === user.id;
+
+		return !isAlreadySharedWithUser && !isOwner;
+	}),
+);
 const currentUser = computed(() => usersStore.currentUser);
 const sharedWithList = computed(() => sharedWith.value);
 
@@ -36,6 +52,19 @@ const onRoleAction = (user: Partial<IUser>, role: string) => {
 		sharedWith.value.splice(index, 1);
 	}
 };
+
+watch(
+	() => projectsStore.currentProject,
+	() => {
+		sharedWith.value = projectsStore.currentProject?.sharedWith ?? [];
+		projectName.value = projectsStore.currentProject?.name ?? '';
+	},
+	{ immediate: true },
+);
+
+onBeforeMount(async () => {
+	await usersStore.fetchUsers();
+});
 </script>
 
 <template>
@@ -46,7 +75,7 @@ const onRoleAction = (user: Partial<IUser>, role: string) => {
 		<form>
 			<fieldset>
 				<label for="projectName">{{ locale.baseText('projects.settings.projectName') }}</label>
-				<n8n-input id="projectName" type="text" name="projectName" :value="projectName" />
+				<n8n-input id="projectName" v-model="projectName" type="text" name="projectName" />
 			</fieldset>
 			<fieldset>
 				<label for="projectMembers">{{

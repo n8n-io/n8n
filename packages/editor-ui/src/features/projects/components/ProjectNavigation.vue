@@ -48,7 +48,7 @@ const getProjectMenuItem = (project: Project) => ({
 	label: project.name,
 	route: {
 		to: {
-			name: projectsStore.isProjectRoute ? route?.name : VIEWS.PROJECTS_WORKFLOWS,
+			name: route?.params?.projectId ? route?.name : VIEWS.PROJECTS_WORKFLOWS,
 			params: { projectId: project.id },
 		},
 	},
