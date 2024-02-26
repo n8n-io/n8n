@@ -10,14 +10,11 @@ const usersStore = useUsersStore();
 const locale = useI18n();
 const projectsStore = useProjectsStore();
 
-const sharedWith = ref<Array<Partial<IUser>>>([]);
-const projectNameEdited = ref('');
-const projectName = computed({
-	get: () => (projectNameEdited.value || projectsStore.currentProject?.name) ?? '',
-	set: (value: string) => {
-		projectNameEdited.value = value;
-	},
-});
+const isDirty = ref(false);
+const formData = ref<{
+	projectName: string;
+	sharedWith: Array<Partial<IUser>>;
+}>({ projectName: projectsStore.currentProject?.name ?? '', sharedWith: [] });
 
 const usersList = computed(() =>
 	usersStore.allUsers.filter((user: IUser) => {
@@ -37,27 +34,48 @@ const usersList = computed(() =>
 	}),
 );
 const currentUser = computed(() => usersStore.currentUser);
-const sharedWithList = computed(() => sharedWith.value);
+const sharedWithList = computed(() => formData.value.sharedWith);
 
 const onAddSharee = (userId: string) => {
+	isDirty.value = true;
 	const { id, firstName, lastName, email } = usersStore.getUserById(userId)!;
 	const sharee = { id, firstName, lastName, email };
 
-	sharedWith.value.push(sharee);
+	formData.value.sharedWith.push(sharee);
 };
 
 const onRoleAction = (user: Partial<IUser>, role: string) => {
 	if (role === 'remove') {
-		const index = sharedWith.value.findIndex((u) => u.id === user.id);
-		sharedWith.value.splice(index, 1);
+		const index = formData.value.sharedWith.findIndex((u: Partial<IUser>) => u.id === user.id);
+		formData.value.sharedWith.splice(index, 1);
 	}
+};
+
+const onNameInput = () => {
+	isDirty.value = true;
+};
+
+const onCancel = () => {
+	formData.value.sharedWith = projectsStore.currentProject?.sharedWith ?? [];
+	formData.value.projectName = projectsStore.currentProject?.name ?? '';
+	isDirty.value = false;
+};
+
+const onSubmit = async () => {
+	if (formData.value.projectName !== projectsStore.currentProject?.name) {
+		await projectsStore.updateProject({
+			id: projectsStore.currentProject.id,
+			name: formData.value.projectName,
+		});
+	}
+	isDirty.value = false;
 };
 
 watch(
 	() => projectsStore.currentProject,
 	() => {
-		sharedWith.value = projectsStore.currentProject?.sharedWith ?? [];
-		projectName.value = projectsStore.currentProject?.name ?? '';
+		formData.value.sharedWith = projectsStore.currentProject?.sharedWith ?? [];
+		formData.value.projectName = projectsStore.currentProject?.name ?? '';
 	},
 	{ immediate: true },
 );
@@ -72,10 +90,16 @@ onBeforeMount(async () => {
 		<div :class="$style.header">
 			<ProjectTabs />
 		</div>
-		<form>
+		<form @submit.prevent="onSubmit">
 			<fieldset>
 				<label for="projectName">{{ locale.baseText('projects.settings.projectName') }}</label>
-				<n8n-input id="projectName" v-model="projectName" type="text" name="projectName" />
+				<n8n-input
+					id="projectName"
+					v-model="formData.projectName"
+					type="text"
+					name="projectName"
+					@input="onNameInput"
+				/>
 			</fieldset>
 			<fieldset>
 				<label for="projectMembers">{{
@@ -120,13 +144,17 @@ onBeforeMount(async () => {
 			</fieldset>
 			<fieldset>
 				<div :class="$style.buttons">
-					<small class="mr-2xs">{{
+					<small v-if="isDirty" class="mr-2xs">{{
 						locale.baseText('projects.settings.message.unsavedChanges')
 					}}</small>
-					<n8n-button type="secondary" class="mr-2xs">{{
-						locale.baseText('projects.settings.button.cancel')
-					}}</n8n-button>
-					<n8n-button type="primary">{{
+					<n8n-button
+						:disabled="!isDirty"
+						type="secondary"
+						class="mr-2xs"
+						@click.stop.prevent="onCancel"
+						>{{ locale.baseText('projects.settings.button.cancel') }}</n8n-button
+					>
+					<n8n-button :disabled="!isDirty" type="primary">{{
 						locale.baseText('projects.settings.button.save')
 					}}</n8n-button>
 				</div>

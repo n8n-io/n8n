@@ -6,6 +6,7 @@ import * as projectsApi from '@/features/projects/projects.api';
 import type {
 	Project,
 	ProjectCreateRequest,
+	ProjectUpdateRequest,
 	ProjectRelationsRequest,
 } from '@/features/projects/projects.types';
 
@@ -50,6 +51,14 @@ export const useProjectsStore = defineStore('projects', () => {
 		await projectsApi.setProjectRelations(rootStore.getRestApiContext, projectRelations);
 	};
 
+	const updateProject = async (projectData: ProjectUpdateRequest) => {
+		await projectsApi.updateProject(rootStore.getRestApiContext, projectData);
+		const projectIndex = myProjects.value.findIndex((p) => p.id === projectData.id);
+		if (projectIndex !== -1) {
+			myProjects.value[projectIndex].name = projectData.name;
+		}
+	};
+
 	watch(
 		route,
 		(newRoute) => {
@@ -82,5 +91,6 @@ export const useProjectsStore = defineStore('projects', () => {
 		getPersonalProject,
 		createProject,
 		setProjectRelations,
+		updateProject,
 	};
 });

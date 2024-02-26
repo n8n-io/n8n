@@ -3,6 +3,7 @@ import { get, post, patch } from '@/utils/apiUtils';
 import type {
 	Project,
 	ProjectCreateRequest,
+	ProjectUpdateRequest,
 	ProjectRelationsRequest,
 } from '@/features/projects/projects.types';
 
@@ -33,6 +34,14 @@ export const setProjectRelations = async (
 	context: IRestApiContext,
 	req: ProjectRelationsRequest,
 ): Promise<void> => {
-	const { projectId, relations } = req;
-	await patch(context.baseUrl, `/projects/${projectId}/relations`, { relations });
+	const { id, relations } = req;
+	await patch(context.baseUrl, `/projects/${id}/relations`, { relations });
+};
+
+export const updateProject = async (
+	context: IRestApiContext,
+	req: ProjectUpdateRequest,
+): Promise<void> => {
+	const { id, name } = req;
+	await patch(context.baseUrl, `/projects/${id}`, { name });
 };
