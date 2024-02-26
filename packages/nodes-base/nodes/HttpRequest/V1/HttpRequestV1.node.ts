@@ -325,14 +325,14 @@ export class HttpRequestV1 implements INodeType {
 							name: 'followAllRedirects',
 							type: 'boolean',
 							default: false,
-							description: 'Whether to follow non-GET HTTP 3xx redirects',
+							description: 'Whether to follow All HTTP 3xx redirects',
 						},
 						{
-							displayName: 'Follow GET Redirect',
+							displayName: 'Follow GET/HEAD Redirect',
 							name: 'followRedirect',
 							type: 'boolean',
 							default: true,
-							description: 'Whether to follow GET HTTP 3xx redirects',
+							description: 'Whether to follow GET or HEAD HTTP 3xx redirects',
 						},
 						{
 							displayName: 'Ignore Response Code',

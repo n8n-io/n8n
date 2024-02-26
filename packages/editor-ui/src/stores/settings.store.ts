@@ -85,6 +85,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		isSwaggerUIEnabled(): boolean {
 			return this.api.swaggerUi.enabled;
 		},
+		isPreviewMode(): boolean {
+			return this.settings.previewMode;
+		},
 		publicApiLatestVersion(): number {
 			return this.api.latestVersion;
 		},

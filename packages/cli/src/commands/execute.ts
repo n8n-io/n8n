@@ -101,7 +101,7 @@ export class Execute extends BaseCommand {
 		const user = await Container.get(OwnershipService).getInstanceOwner();
 		const runData: IWorkflowExecutionDataProcess = {
 			executionMode: 'cli',
-			startNodes: [startingNode.name],
+			startNodes: [{ name: startingNode.name, sourceData: null }],
 			workflowData,
 			userId: user.id,
 		};

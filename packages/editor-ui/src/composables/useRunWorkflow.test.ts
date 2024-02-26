@@ -213,7 +213,7 @@ describe('useRunWorkflow({ router })', () => {
 	});
 
 	describe('consolidateRunDataAndStartNodes()', () => {
-		it('should return empty runData and startNodes if runData is null', () => {
+		it('should return empty runData and startNodeNames if runData is null', () => {
 			const { consolidateRunDataAndStartNodes } = useRunWorkflow({ router });
 			const workflowMock = {
 				getParentNodes: vi.fn(),
@@ -221,10 +221,10 @@ describe('useRunWorkflow({ router })', () => {
 			} as unknown as Workflow;
 
 			const result = consolidateRunDataAndStartNodes([], null, undefined, workflowMock);
-			expect(result).toEqual({ runData: undefined, startNodes: [] });
+			expect(result).toEqual({ runData: undefined, startNodeNames: [] });
 		});
 
-		it('should return correct startNodes and newRunData for given directParentNodes and runData', () => {
+		it('should return correct startNodeNames and newRunData for given directParentNodes and runData', () => {
 			const { consolidateRunDataAndStartNodes } = useRunWorkflow({ router });
 			const directParentNodes = ['node1', 'node2'];
 			const runData = {
@@ -253,12 +253,12 @@ describe('useRunWorkflow({ router })', () => {
 				workflowMock,
 			);
 
-			expect(result.startNodes).toContain('node1');
-			expect(result.startNodes).not.toContain('node3');
+			expect(result.startNodeNames).toContain('node1');
+			expect(result.startNodeNames).not.toContain('node3');
 			expect(result.runData).toEqual(runData);
 		});
 
-		it('should include directParentNode in startNodes if it has no runData or pinData', () => {
+		it('should include directParentNode in startNodeNames if it has no runData or pinData', () => {
 			const { consolidateRunDataAndStartNodes } = useRunWorkflow({ router });
 			const directParentNodes = ['node1'];
 			const runData = {
@@ -282,7 +282,7 @@ describe('useRunWorkflow({ router })', () => {
 				workflowMock,
 			);
 
-			expect(result.startNodes).toContain('node1');
+			expect(result.startNodeNames).toContain('node1');
 			expect(result.runData).toBeUndefined();
 		});
 	});

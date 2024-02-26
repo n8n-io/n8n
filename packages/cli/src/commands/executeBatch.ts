@@ -620,7 +620,7 @@ export class ExecuteBatch extends BaseCommand {
 
 				const runData: IWorkflowExecutionDataProcess = {
 					executionMode: 'cli',
-					startNodes: [startingNode.name],
+					startNodes: [{ name: startingNode.name, sourceData: null }],
 					workflowData,
 					userId: ExecuteBatch.instanceOwner.id,
 				};

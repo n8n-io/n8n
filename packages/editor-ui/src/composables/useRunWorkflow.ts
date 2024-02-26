@@ -12,6 +12,7 @@ import type {
 	IPinData,
 	IWorkflowBase,
 	Workflow,
+	StartNodeData,
 } from 'n8n-workflow';
 import {
 	NodeHelpers,
@@ -35,10 +36,11 @@ import type { useRouter } from 'vue-router';
 import { isEmpty } from '@/utils/typesUtils';
 import { useI18n } from '@/composables/useI18n';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { get } from 'lodash-es';
 
 export function useRunWorkflow(options: { router: ReturnType<typeof useRouter> }) {
 	const nodeHelpers = useNodeHelpers();
-	const workflowHelpers = useWorkflowHelpers(options.router);
+	const workflowHelpers = useWorkflowHelpers({ router: options.router });
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
 	const toast = useToast();
@@ -155,7 +157,7 @@ export function useRunWorkflow(options: { router: ReturnType<typeof useRouter> }
 						telemetry.track('Workflow execution preflight failed', {
 							workflow_id: workflow.id,
 							workflow_name: workflow.name,
-							execution_type: options.destinationNode ?? options.triggerNode ? 'node' : 'workflow',
+							execution_type: options.destinationNode || options.triggerNode ? 'node' : 'workflow',
 							node_graph_string: JSON.stringify(
 								TelemetryHelpers.generateNodesGraph(
 									workflowData as IWorkflowBase,
@@ -195,26 +197,44 @@ export function useRunWorkflow(options: { router: ReturnType<typeof useRouter> }
 				workflow,
 			);
 
-			const { startNodes } = consolidatedData;
+			const { startNodeNames } = consolidatedData;
 			let { runData: newRunData } = consolidatedData;
 			let executedNode: string | undefined;
 			if (
-				startNodes.length === 0 &&
+				startNodeNames.length === 0 &&
 				'destinationNode' in options &&
 				options.destinationNode !== undefined
 			) {
 				executedNode = options.destinationNode;
-				startNodes.push(options.destinationNode);
+				startNodeNames.push(options.destinationNode);
 			} else if ('triggerNode' in options && 'nodeData' in options) {
-				const triggerNode = options.triggerNode as string;
-				const nodeData = options.nodeData as ITaskData;
-
-				startNodes.push(...workflow.getChildNodes(triggerNode, NodeConnectionType.Main, 1));
+				startNodeNames.push(
+					...workflow.getChildNodes(options.triggerNode as string, NodeConnectionType.Main, 1),
+				);
 				newRunData = {
-					[triggerNode]: [nodeData],
-				};
+					[options.triggerNode as string]: [options.nodeData],
+				} as IRunData;
 				executedNode = options.triggerNode;
 			}
+
+			const startNodes: StartNodeData[] = startNodeNames.map((name) => {
+				// Find for each start node the source data
+				let sourceData = get(runData, [name, 0, 'source', 0], null);
+				if (sourceData === null) {
+					const parentNodes = workflow.getParentNodes(name, NodeConnectionType.Main, 1);
+					const executeData = workflowHelpers.executeData(
+						parentNodes,
+						name,
+						NodeConnectionType.Main,
+						0,
+					);
+					sourceData = get(executeData, ['source', NodeConnectionType.Main, 0], null);
+				}
+				return {
+					name,
+					sourceData,
+				};
+			});
 
 			const startRunData: IStartRunData = {
 				workflowData,
@@ -240,18 +260,19 @@ export function useRunWorkflow(options: { router: ReturnType<typeof useRouter> }
 				executedNode,
 				data: {
 					resultData: {
-						runData: newRunData ?? {},
+						runData: newRunData || {},
 						pinData: workflowData.pinData,
-						startNodes,
 						workflowData,
 					},
 				} as IRunExecutionData,
 				workflowData: {
-					...(workflowData as IWorkflowDb),
 					id: workflowsStore.workflowId,
+					name: workflowData.name!,
+					active: workflowData.active!,
 					createdAt: 0,
 					updatedAt: 0,
-				},
+					...workflowData,
+				} as IWorkflowDb,
 			};
 			workflowsStore.setWorkflowExecutionData(executionData);
 			nodeHelpers.updateNodesExecutionIssues();
@@ -327,8 +348,8 @@ export function useRunWorkflow(options: { router: ReturnType<typeof useRouter> }
 		runData: IRunData | null,
 		pinData: IPinData | undefined,
 		workflow: Workflow,
-	): { runData: IRunData | undefined; startNodes: string[] } {
-		const startNodes: string[] = [];
+	): { runData: IRunData | undefined; startNodeNames: string[] } {
+		const startNodeNames: string[] = [];
 		let newRunData: IRunData | undefined;
 
 		if (runData !== null && Object.keys(runData).length !== 0) {
@@ -349,7 +370,7 @@ export function useRunWorkflow(options: { router: ReturnType<typeof useRouter> }
 						// When we hit a node which has no data we stop and set it
 						// as a start node the execution from and then go on with other
 						// direct input nodes
-						startNodes.push(parentNode);
+						startNodeNames.push(parentNode);
 						break;
 					}
 					if (runData[parentNode]) {
@@ -365,7 +386,7 @@ export function useRunWorkflow(options: { router: ReturnType<typeof useRouter> }
 			}
 		}
 
-		return { runData: newRunData, startNodes };
+		return { runData: newRunData, startNodeNames };
 	}
 
 	return {
