@@ -25,6 +25,7 @@ import { UserManagementMailer } from '@/UserManagement/email';
 import * as Db from '@/Db';
 import * as utils from '@/utils';
 import { listQueryMiddleware } from '@/middlewares';
+import { SharedCredentialsRepository } from '@/databases/repositories/sharedCredentials.repository';
 
 @Authorized()
 @RestController('/credentials')
@@ -38,6 +39,7 @@ export class CredentialsController {
 		private readonly logger: Logger,
 		private readonly internalHooks: InternalHooks,
 		private readonly userManagementMailer: UserManagementMailer,
+		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 	) {}
 
 	@Get('/', { middlewares: listQueryMiddleware })
@@ -105,11 +107,13 @@ export class CredentialsController {
 	async updateCredentials(req: CredentialRequest.Update) {
 		const { credentialId } = req.params;
 
-		const sharing = await this.credentialsService.getSharing(req.user, credentialId, [
-			'credential:update',
-		]);
+		const credential = await this.sharedCredentialsRepository.findCredentialForUser(
+			credentialId,
+			req.user,
+			['credential:update'],
+		);
 
-		if (!sharing) {
+		if (!credential) {
 			this.logger.info('Attempt to update credential blocked due to lack of permissions', {
 				credentialId,
 				userId: req.user.id,
@@ -118,16 +122,6 @@ export class CredentialsController {
 				'Credential to be updated not found. You can only update credentials owned by you',
 			);
 		}
-
-		if (sharing.role !== 'credential:owner' && !req.user.hasGlobalScope('credential:update')) {
-			this.logger.info('Attempt to update credential blocked due to lack of permissions', {
-				credentialId,
-				userId: req.user.id,
-			});
-			throw new ForbiddenError('You can only update credentials owned by you');
-		}
-
-		const { credentials: credential } = sharing;
 
 		const decryptedData = this.credentialsService.decrypt(credential);
 		const preparedCredentialData = await this.credentialsService.prepareUpdateData(
