@@ -12,7 +12,7 @@ import type { BaseLanguageModel } from 'langchain/dist/base_language';
 import type { BaseChatMemory } from 'langchain/memory';
 import type { DataSource } from '@n8n/typeorm';
 
-import { HumanMessage, type BaseChatMessageHistory, AIMessage } from 'langchain/schema';
+import { type BaseChatMessageHistory } from 'langchain/schema';
 import { getPromptInputByType, serializeChatHistory } from '../../../../../utils/helpers';
 import { getSqliteDataSource } from './other/handlers/sqlite';
 import { getPostgresDataSource } from './other/handlers/postgres';
@@ -98,7 +98,7 @@ export async function sqlAgentAgentExecute(
 			topK: (options.topK as number) ?? 10,
 			prefix: (options.prefixPrompt as string) ?? SQL_PREFIX,
 			suffix: (options.suffixPrompt as string) ?? SQL_SUFFIX,
-			inputVariables: ['dialect', 'top_k', 'chatHistory', 'input', 'agent_scratchpad'],
+			inputVariables: ['sqlDialect', 'chatHistory', 'input', 'agent_scratchpad'],
 		};
 
 		const dbInstance = await SqlDatabase.fromDataSourceParams({
@@ -118,20 +118,9 @@ export async function sqlAgentAgentExecute(
 		agentExecutor.memory = memory;
 
 		let chatHistory = '';
-		let chatHistoryInstance: BaseChatMessageHistory | undefined;
-
 		if (memory) {
-			chatHistoryInstance = memory.chatHistory;
-			try {
-				const messages = await chatHistoryInstance.getMessages();
-				chatHistory = serializeChatHistory(messages);
-			} catch (error) {
-				throw new NodeOperationError(
-					this.getNode(),
-					"This memory node require 'Chat' trigger node",
-					{ itemIndex: i },
-				);
-			}
+			const messages = await memory.chatHistory.getMessages();
+			chatHistory = serializeChatHistory(messages);
 		}
 
 		let response;
@@ -140,21 +129,13 @@ export async function sqlAgentAgentExecute(
 				input,
 				signal: this.getExecutionCancelSignal(),
 				chatHistory,
+				sqlDialect: selectedDataSource,
 			});
 		} catch (error) {
 			if (error.message?.output) {
 				response = error.message;
 			} else {
 				throw new NodeOperationError(this.getNode(), error.message, { itemIndex: i });
-			}
-		}
-
-		if (memory && chatHistoryInstance) {
-			await chatHistoryInstance.addMessage(new HumanMessage(input));
-
-			const output = response?.output ?? response;
-			if (output && !output.includes("I don't know")) {
-				await chatHistoryInstance.addMessage(new AIMessage(output));
 			}
 		}
 
