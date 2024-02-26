@@ -11,6 +11,7 @@ import { PromptTemplate } from 'langchain/prompts';
 import { CombiningOutputParser } from 'langchain/output_parsers';
 import type { BaseChatModel } from 'langchain/chat_models/base';
 import { PlanAndExecuteAgentExecutor } from 'langchain/experimental/plan_and_execute';
+import { getOptionalOutputParsers, getPromptInputByType } from '../../../../../utils/helpers';
 
 export async function planAndExecuteAgentExecute(
 	this: IExecuteFunctions,
@@ -23,10 +24,7 @@ export async function planAndExecuteAgentExecute(
 
 	const tools = (await this.getInputConnectionData(NodeConnectionType.AiTool, 0)) as Tool[];
 
-	const outputParsers = (await this.getInputConnectionData(
-		NodeConnectionType.AiOutputParser,
-		0,
-	)) as BaseOutputParser[];
+	const outputParsers = await getOptionalOutputParsers(this);
 
 	const options = this.getNodeParameter('options', 0, {}) as {
 		humanMessageTemplate?: string;
@@ -57,7 +55,17 @@ export async function planAndExecuteAgentExecute(
 
 	const items = this.getInputData();
 	for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-		let input = this.getNodeParameter('text', itemIndex) as string;
+		let input;
+		if (this.getNode().typeVersion <= 1.2) {
+			input = this.getNodeParameter('text', itemIndex) as string;
+		} else {
+			input = getPromptInputByType({
+				ctx: this,
+				i: itemIndex,
+				inputKey: 'text',
+				promptTypeKey: 'promptType',
+			});
+		}
 
 		if (input === undefined) {
 			throw new NodeOperationError(this.getNode(), 'The ‘text‘ parameter is empty.');
