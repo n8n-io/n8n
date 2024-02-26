@@ -114,6 +114,11 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	async getMany(sharedWorkflowIds: string[], options?: ListQuery.Options) {
 		if (sharedWorkflowIds.length === 0) return { workflows: [], count: 0 };
 
+		if (typeof options?.filter?.projectId === 'string' && options.filter.projectId !== '') {
+			options.filter.shared = { projectId: options.filter.projectId };
+			delete options.filter.projectId;
+		}
+
 		const where: FindOptionsWhere<WorkflowEntity> = {
 			...options?.filter,
 			id: In(sharedWorkflowIds),

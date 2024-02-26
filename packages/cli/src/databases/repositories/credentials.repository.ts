@@ -60,6 +60,11 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 			filter.type = Like(`%${filter.type}%`);
 		}
 
+		if (typeof filter?.projectId === 'string' && filter.projectId !== '') {
+			filter.shared = { projectId: filter.projectId };
+			delete filter.projectId;
+		}
+
 		if (filter) findManyOptions.where = filter;
 		if (select) findManyOptions.select = select;
 		if (take) findManyOptions.take = take;
