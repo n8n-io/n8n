@@ -301,7 +301,7 @@ import type {
 	ExecutionFilterType,
 	ExecutionsQueryFilter,
 } from '@/Interface';
-import type { IExecutionsSummary, ExecutionStatus } from 'n8n-workflow';
+import type { ExecutionSummary, ExecutionStatus } from 'n8n-workflow';
 import { range as _range } from 'lodash-es';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -342,7 +342,7 @@ export default defineComponent({
 	data() {
 		return {
 			isMounting: true,
-			finishedExecutions: [] as IExecutionsSummary[],
+			finishedExecutions: [] as ExecutionSummary[],
 			finishedExecutionsCount: 0,
 			finishedExecutionsCountEstimated: false,
 
@@ -388,8 +388,8 @@ export default defineComponent({
 		activeExecutions(): IExecutionsCurrentSummaryExtended[] {
 			return this.workflowsStore.activeExecutions;
 		},
-		combinedExecutions(): IExecutionsSummary[] {
-			const returnData: IExecutionsSummary[] = [];
+		combinedExecutions(): ExecutionSummary[] {
+			const returnData: ExecutionSummary[] = [];
 
 			if (['all', 'running'].includes(this.filter.status)) {
 				returnData.push(...this.activeExecutions);
@@ -428,7 +428,7 @@ export default defineComponent({
 		closeDialog() {
 			this.$emit('closeModal');
 		},
-		displayExecution(execution: IExecutionsSummary) {
+		displayExecution(execution: ExecutionSummary) {
 			const route = this.$router.resolve({
 				name: VIEWS.EXECUTION_PREVIEW,
 				params: { name: execution.workflowId, executionId: execution.id },
@@ -529,7 +529,7 @@ export default defineComponent({
 			this.handleClearSelection();
 			this.isMounting = false;
 		},
-		async handleActionItemClick(commandData: { command: string; execution: IExecutionsSummary }) {
+		async handleActionItemClick(commandData: { command: string; execution: ExecutionSummary }) {
 			if (['currentlySaved', 'original'].includes(commandData.command)) {
 				let loadWorkflow = false;
 				if (commandData.command === 'currentlySaved') {
@@ -747,7 +747,7 @@ export default defineComponent({
 				this.showError(error, this.i18n.baseText('executionsList.showError.loadWorkflows.title'));
 			}
 		},
-		async retryExecution(execution: IExecutionsSummary, loadWorkflow?: boolean) {
+		async retryExecution(execution: ExecutionSummary, loadWorkflow?: boolean) {
 			this.isDataLoading = true;
 
 			try {
@@ -786,7 +786,7 @@ export default defineComponent({
 
 			this.isDataLoading = false;
 		},
-		getStatus(execution: IExecutionsSummary): ExecutionStatus {
+		getStatus(execution: ExecutionSummary): ExecutionStatus {
 			if (execution.status) {
 				return execution.status;
 			} else {
@@ -806,10 +806,10 @@ export default defineComponent({
 				return status;
 			}
 		},
-		getRowClass(execution: IExecutionsSummary): string {
+		getRowClass(execution: ExecutionSummary): string {
 			return [this.$style.execRow, this.$style[this.getStatus(execution)]].join(' ');
 		},
-		getStatusText(entry: IExecutionsSummary): string {
+		getStatusText(entry: ExecutionSummary): string {
 			const status = this.getStatus(entry);
 			let text = '';
 
@@ -833,7 +833,7 @@ export default defineComponent({
 
 			return text;
 		},
-		getStatusTextTranslationPath(entry: IExecutionsSummary): string {
+		getStatusTextTranslationPath(entry: ExecutionSummary): string {
 			const status = this.getStatus(entry);
 			let path = '';
 
@@ -857,7 +857,7 @@ export default defineComponent({
 
 			return path;
 		},
-		getStatusTooltipText(entry: IExecutionsSummary): string {
+		getStatusTooltipText(entry: ExecutionSummary): string {
 			const status = this.getStatus(entry);
 			let text = '';
 
@@ -894,7 +894,7 @@ export default defineComponent({
 				this.showError(error, this.i18n.baseText('executionsList.showError.stopExecution.title'));
 			}
 		},
-		isExecutionRetriable(execution: IExecutionsSummary): boolean {
+		isExecutionRetriable(execution: ExecutionSummary): boolean {
 			return (
 				execution.stoppedAt !== undefined &&
 				!execution.finished &&
@@ -903,7 +903,7 @@ export default defineComponent({
 				!execution.waitTill
 			);
 		},
-		async deleteExecution(execution: IExecutionsSummary) {
+		async deleteExecution(execution: ExecutionSummary) {
 			this.isDataLoading = true;
 			try {
 				await this.workflowsStore.deleteExecutions({ ids: [execution.id] });
@@ -921,17 +921,17 @@ export default defineComponent({
 			}
 			this.isDataLoading = true;
 		},
-		isWaitTillIndefinite(execution: IExecutionsSummary): boolean {
+		isWaitTillIndefinite(execution: ExecutionSummary): boolean {
 			if (!execution.waitTill) {
 				return false;
 			}
 			return new Date(execution.waitTill).toISOString() === WAIT_TIME_UNLIMITED;
 		},
-		isRunning(execution: IExecutionsSummary): boolean {
+		isRunning(execution: ExecutionSummary): boolean {
 			return this.getStatus(execution) === 'running';
 		},
 		selectAllVisibleExecutions() {
-			this.combinedExecutions.forEach((execution: IExecutionsSummary) => {
+			this.combinedExecutions.forEach((execution: ExecutionSummary) => {
 				this.selectedItems = { ...this.selectedItems, [execution.id]: true };
 			});
 		},
