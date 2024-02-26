@@ -1,7 +1,7 @@
 import { vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { waitFor } from '@testing-library/vue';
-import type { IExecutionsSummary } from 'n8n-workflow';
+import type { ExecutionSummary } from 'n8n-workflow';
 import { createComponentRenderer } from '@/__tests__/render';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
@@ -152,7 +152,7 @@ describe('WorkflowPreview', () => {
 	it('should call also iframe postMessage with "setActiveExecution" if active execution is set', async () => {
 		vi.spyOn(workflowsStore, 'activeWorkflowExecution', 'get').mockReturnValue({
 			id: 'abc',
-		} as IExecutionsSummary);
+		} as ExecutionSummary);
 
 		const executionId = '123';
 		renderComponent({
