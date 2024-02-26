@@ -16,7 +16,6 @@ import {
 	getCredentialTypes,
 	oAuth1CredentialAuthorize,
 	oAuth2CredentialAuthorize,
-	testCredential,
 	updateCredential,
 } from '@/api/credentials';
 import { setCredentialSharedWith } from '@/api/credentials.ee';
@@ -27,7 +26,6 @@ import { i18n } from '@/plugins/i18n';
 import type {
 	ICredentialsDecrypted,
 	ICredentialType,
-	INodeCredentialTestResult,
 	INodeTypeDescription,
 	IUser,
 } from 'n8n-workflow';
@@ -325,10 +323,6 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 		async oAuth1Authorize(data: ICredentialsResponse): Promise<string> {
 			const rootStore = useRootStore();
 			return await oAuth1CredentialAuthorize(rootStore.getRestApiContext, data);
-		},
-		async testCredential(data: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
-			const rootStore = useRootStore();
-			return await testCredential(rootStore.getRestApiContext, { credentials: data });
 		},
 		async getNewCredentialName(params: { credentialTypeName: string }): Promise<string> {
 			try {

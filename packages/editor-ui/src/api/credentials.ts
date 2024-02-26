@@ -87,15 +87,3 @@ export async function oAuth2CredentialAuthorize(
 		data as unknown as IDataObject,
 	);
 }
-
-export async function testCredential(
-	context: IRestApiContext,
-	data: INodeCredentialTestRequest,
-): Promise<INodeCredentialTestResult> {
-	return await makeRestApiRequest(
-		context,
-		'POST',
-		'/credentials/test',
-		data as unknown as IDataObject,
-	);
-}

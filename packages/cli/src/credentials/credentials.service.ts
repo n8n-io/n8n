@@ -1,7 +1,6 @@
 import { Credentials } from 'n8n-core';
 import type {
 	ICredentialDataDecryptedObject,
-	ICredentialsDecrypted,
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';
@@ -24,7 +23,6 @@ import { Logger } from '@/Logger';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { Service } from 'typedi';
-import { CredentialsTester } from '@/services/credentials-tester.service';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
@@ -35,7 +33,6 @@ export class CredentialsService {
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly ownershipService: OwnershipService,
 		private readonly logger: Logger,
-		private readonly credentialsTester: CredentialsTester,
 		private readonly externalHooks: ExternalHooks,
 		private readonly credentialTypes: CredentialTypes,
 		private readonly projectRepository: ProjectRepository,
@@ -226,10 +223,6 @@ export class CredentialsService {
 		await this.externalHooks.run('credentials.delete', [credentials.id]);
 
 		await this.credentialsRepository.remove(credentials);
-	}
-
-	async test(user: User, credentials: ICredentialsDecrypted) {
-		return await this.credentialsTester.testCredentials(user, credentials.type, credentials);
 	}
 
 	/** Take data and replace all sensitive values with a sentinel value.
