@@ -60,8 +60,7 @@ export const ollamaModel: INodeProperties = {
 		},
 	},
 	required: true,
-}
-
+};
 
 export const ollamaOptions: INodeProperties = {
 	displayName: 'Options',

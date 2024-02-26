@@ -41,10 +41,7 @@ export class EmbeddingsOllama implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 		outputs: [NodeConnectionType.AiEmbedding],
 		outputNames: ['Embeddings'],
-		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiVectorStore]),
-			ollamaModel,
-		],
+		properties: [getConnectionHintNoticeField([NodeConnectionType.AiVectorStore]), ollamaModel],
 	};
 
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {

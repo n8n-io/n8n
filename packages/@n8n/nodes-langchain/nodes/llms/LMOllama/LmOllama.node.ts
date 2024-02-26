@@ -8,9 +8,9 @@ import {
 } from 'n8n-workflow';
 
 import { Ollama } from 'langchain/llms/ollama';
-import { ollamaDescription, ollamaModel, ollamaOptions } from './description';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { ollamaDescription, ollamaModel, ollamaOptions } from './description';
 
 export class LmOllama implements INodeType {
 	description: INodeTypeDescription = {
