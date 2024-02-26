@@ -264,7 +264,8 @@ export const pushConnection = defineComponent({
 					pushData = receivedData.data as IPushDataExecutionFinished;
 				}
 
-				if (this.workflowsStore.activeExecutionId === pushData.executionId) {
+				const { activeExecutionId } = this.workflowsStore;
+				if (activeExecutionId === pushData.executionId) {
 					const activeRunData =
 						this.workflowsStore.workflowExecutionData?.data?.resultData?.runData;
 					if (activeRunData) {
@@ -285,7 +286,6 @@ export const pushConnection = defineComponent({
 					return false;
 				}
 
-				const { activeExecutionId } = this.workflowsStore;
 				if (activeExecutionId !== pushData.executionId) {
 					// The workflow which did finish execution did either not get started
 					// by this session or we do not have the execution id yet.
@@ -318,7 +318,6 @@ export const pushConnection = defineComponent({
 
 				const workflow = this.workflowHelpers.getCurrentWorkflow();
 				if (runDataExecuted.waitTill !== undefined) {
-					const activeExecutionId = this.workflowsStore.activeExecutionId;
 					const workflowSettings = this.workflowsStore.workflowSettings;
 					const saveManualExecutions = this.rootStore.saveManualExecutions;
 

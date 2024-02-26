@@ -1,12 +1,13 @@
 /* eslint-disable @typescript-eslint/no-invalid-void-type */
-
 import type express from 'express';
 import { Container } from 'typedi';
 
-import type { AuthenticatedRequest, PaginatedRequest } from '../../../types';
-import { decodeCursor } from '../services/pagination.service';
 import { License } from '@/License';
 import type { GlobalRole } from '@db/entities/User';
+import type { AuthenticatedRequest } from '@/requests';
+
+import type { PaginatedRequest } from '../../../types';
+import { decodeCursor } from '../services/pagination.service';
 
 const UNLIMITED_USERS_QUOTA = -1;
 
@@ -51,7 +52,7 @@ export const validCursor = (
 };
 
 export const validLicenseWithUserQuota = (
-	req: express.Request,
+	_: express.Request,
 	res: express.Response,
 	next: express.NextFunction,
 ): express.Response | void => {
