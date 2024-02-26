@@ -14,6 +14,7 @@ export type DocMetadata = {
 	name: string;
 	returnType: string;
 	description?: string;
+	section?: string;
 	aliases?: string[];
 	args?: Array<{ name: string; type?: string }>;
 	docURL?: string;

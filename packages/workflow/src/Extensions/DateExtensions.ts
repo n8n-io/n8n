@@ -220,6 +220,7 @@ endOfMonth.doc = {
 	name: 'endOfMonth',
 	returnType: 'Date',
 	description: 'Transforms a date to the last possible moment that lies within the month.',
+	section: 'edit',
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-endOfMonth',
 };
 
@@ -227,6 +228,7 @@ isDst.doc = {
 	name: 'isDst',
 	returnType: 'boolean',
 	description: 'Checks if a Date is within Daylight Savings Time.',
+	section: 'query',
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-isDst',
 };
 
@@ -234,12 +236,14 @@ isWeekend.doc = {
 	name: 'isWeekend',
 	returnType: 'boolean',
 	description: 'Checks if the Date falls on a Saturday or Sunday.',
+	section: 'query',
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-isWeekend',
 };
 
 beginningOf.doc = {
 	name: 'beginningOf',
 	description: 'Transform a Date to the start of the given time period. Default unit is `week`.',
+	section: 'edit',
 	returnType: 'Date',
 	args: [{ name: 'unit?', type: 'DurationUnit' }],
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-beginningOf',
@@ -248,6 +252,7 @@ beginningOf.doc = {
 extract.doc = {
 	name: 'extract',
 	description: 'Extracts the part defined in `datePart` from a Date. Default unit is `week`.',
+	section: 'query',
 	returnType: 'number',
 	args: [{ name: 'datePart?', type: 'DurationUnit' }],
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-extract',
@@ -257,6 +262,7 @@ format.doc = {
 	name: 'format',
 	description: 'Formats a Date in the given structure.',
 	returnType: 'string',
+	section: 'format',
 	args: [{ name: 'fmt', type: 'TimeFormat' }],
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-format',
 };
@@ -264,6 +270,7 @@ format.doc = {
 isBetween.doc = {
 	name: 'isBetween',
 	description: 'Checks if a Date is between two given dates.',
+	section: 'query',
 	returnType: 'boolean',
 	args: [
 		{ name: 'date1', type: 'Date|string' },
@@ -275,6 +282,7 @@ isBetween.doc = {
 isInLast.doc = {
 	name: 'isInLast',
 	description: 'Checks if a Date is within a given time period. Default unit is `minute`.',
+	section: 'query',
 	returnType: 'boolean',
 	args: [
 		{ name: 'n', type: 'number' },
@@ -286,6 +294,7 @@ isInLast.doc = {
 minus.doc = {
 	name: 'minus',
 	description: 'Subtracts a given time period from a Date. Default unit is `milliseconds`.',
+	section: 'edit',
 	returnType: 'Date',
 	args: [
 		{ name: 'n', type: 'number' },
@@ -297,6 +306,7 @@ minus.doc = {
 plus.doc = {
 	name: 'plus',
 	description: 'Adds a given time period to a Date. Default unit is `milliseconds`.',
+	section: 'edit',
 	returnType: 'Date',
 	args: [
 		{ name: 'n', type: 'number' },
