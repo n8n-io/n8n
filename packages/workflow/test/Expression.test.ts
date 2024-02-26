@@ -192,8 +192,8 @@ for (const evaluator of ['tmpl', 'tournament'] as const) {
 					for (const test of evaluationTests) {
 						const input = test.input.map((d) => ({ json: d })) as any;
 
-						if (test.output instanceof ExpressionError) {
-							expect(() => evaluate(t.expression, input)).toThrowError(test.output);
+						if ('error' in test) {
+							expect(() => evaluate(t.expression, input)).toThrowError(test.error);
 						} else {
 							expect(evaluate(t.expression, input)).toStrictEqual(test.output);
 						}
