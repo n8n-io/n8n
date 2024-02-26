@@ -298,15 +298,15 @@ describe('PATCH /credentials/:id', () => {
 			id: savedCredential.id,
 		});
 
+		expect(credential.name).toBe(patchPayload.name);
+		expect(credential.type).toBe(patchPayload.type);
+
 		const credentialObject = new Credentials(
 			{ id: credential.id, name: credential.name },
 			credential.type,
 			credential.nodesAccess,
 			credential.data,
 		);
-
-		expect(credential.name).toBe(patchPayload.name);
-		expect(credential.type).toBe(patchPayload.type);
 		expect(credentialObject.getData()).toStrictEqual(patchPayload.data);
 
 		const sharedCredential = await Container.get(SharedCredentialsRepository).findOneOrFail({
