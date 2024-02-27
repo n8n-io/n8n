@@ -40,6 +40,10 @@ export const useProjectsStore = defineStore('projects', () => {
 		personalProject.value = await projectsApi.getPersonalProject(rootStore.getRestApiContext);
 	};
 
+	const getProject = async (id: string) => {
+		currentProject.value = await projectsApi.getProject(rootStore.getRestApiContext, id);
+	};
+
 	const createProject = async (project: ProjectCreateRequest): Promise<Project> => {
 		const newProject = await projectsApi.createProject(rootStore.getRestApiContext, project);
 		projects.value.unshift(newProject);
@@ -61,22 +65,11 @@ export const useProjectsStore = defineStore('projects', () => {
 
 	watch(
 		route,
-		(newRoute) => {
-			const project = myProjects.value.find((p) => p.id === newRoute.params?.projectId);
-			if (project) {
-				setCurrentProject(project);
+		async (newRoute) => {
+			if (!newRoute.params?.projectId) {
+				return;
 			}
-		},
-		{ immediate: true },
-	);
-
-	watch(
-		myProjects,
-		(newProjects) => {
-			const project = newProjects.find((p) => p.id === route?.params?.projectId);
-			if (project) {
-				setCurrentProject(project);
-			}
+			await getProject(newRoute.params.projectId);
 		},
 		{ immediate: true },
 	);
@@ -89,6 +82,7 @@ export const useProjectsStore = defineStore('projects', () => {
 		getAllProjects,
 		getMyProjects,
 		getPersonalProject,
+		getProject,
 		createProject,
 		setProjectRelations,
 		updateProject,

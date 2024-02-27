@@ -22,6 +22,11 @@ export const getPersonalProject = async (context: IRestApiContext): Promise<Proj
 	return data;
 };
 
+export const getProject = async (context: IRestApiContext, id: string): Promise<Project> => {
+	const { data } = await get(context.baseUrl, `/projects/${id}`);
+	return data;
+};
+
 export const createProject = async (
 	context: IRestApiContext,
 	req: ProjectCreateRequest,
