@@ -33,7 +33,8 @@ type EndpointGroup =
 	| 'binaryData'
 	| 'invitations'
 	| 'debug'
-	| 'project';
+	| 'project'
+	| 'role';
 
 export interface SetupProps {
 	applyAuth?: boolean;

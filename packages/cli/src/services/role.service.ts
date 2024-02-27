@@ -50,12 +50,45 @@ const WORKFLOW_SHARING_SCOPE_MAP: Record<WorkflowSharingRole, Scope[]> = {
 	'workflow:user': [],
 };
 
-const ALL_MAPS = {
+interface AllMaps {
+	global: Record<GlobalRole, Scope[]>;
+	project: Record<ProjectRole, Scope[]>;
+	credential: Record<CredentialSharingRole, Scope[]>;
+	workflow: Record<WorkflowSharingRole, Scope[]>;
+}
+
+const ALL_MAPS: AllMaps = {
 	global: GLOBAL_SCOPE_MAP,
 	project: PROJECT_SCOPE_MAP,
 	credential: CREDENTIALS_SHARING_SCOPE_MAP,
 	workflow: WORKFLOW_SHARING_SCOPE_MAP,
 } as const;
+
+export interface RoleMap {
+	global: GlobalRole[];
+	project: ProjectRole[];
+	credential: CredentialSharingRole[];
+	workflow: WorkflowSharingRole[];
+}
+export type AllRoleTypes = GlobalRole | ProjectRole | WorkflowSharingRole | CredentialSharingRole;
+
+const ROLE_NAMES: Record<
+	GlobalRole | ProjectRole | WorkflowSharingRole | CredentialSharingRole,
+	string
+> = {
+	'global:owner': 'Owner',
+	'global:admin': 'Admin',
+	'global:member': 'Member',
+	'project:personalOwner': 'Project Owner',
+	'project:admin': 'Project Admin',
+	'project:editor': 'Project Editor',
+	'project:viewer': 'Project Viewer',
+	'credential:user': 'Credential User',
+	'credential:owner': 'Credential Owner',
+	'workflow:owner': 'Workflow Owner',
+	'workflow:editor': 'Workflow Editor',
+	'workflow:user': 'Workflow User',
+};
 
 @Service()
 export class RoleService {
@@ -74,5 +107,16 @@ export class RoleService {
 				((ALL_MAPS[namespace] as any)[k] as Scope[]).includes(s),
 			);
 		});
+	}
+
+	getRoles(): RoleMap {
+		return Object.fromEntries(
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+			Object.entries(ALL_MAPS).map((e) => [e[0], Object.keys(e[1])]),
+		) as unknown as RoleMap;
+	}
+
+	getRoleName(role: AllRoleTypes): string {
+		return ROLE_NAMES[role];
 	}
 }

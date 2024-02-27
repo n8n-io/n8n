@@ -260,6 +260,11 @@ export const setupTestServer = ({
 						const { ProjectController } = await import('@/controllers/project.controller');
 						registerController(app, ProjectController);
 						break;
+
+					case 'role':
+						const { RoleController } = await import('@/controllers/role.controller');
+						registerController(app, RoleController);
+						break;
 				}
 			}
 		}
