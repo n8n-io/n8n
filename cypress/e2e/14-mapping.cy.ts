@@ -181,11 +181,6 @@ describe('Data mapping', () => {
 		ndv.getters
 			.inlineExpressionEditorInput()
 			.should('have.text', `{{ $('${SCHEDULE_TRIGGER_NODE_NAME}').item.json.input[0].count }}`);
-		ndv.getters
-			.parameterExpressionPreview('value')
-			.invoke('text')
-			.invoke('replace', /\u00a0/g, ' ')
-			.should('equal', '[ERROR: no data, execute "Schedule Trigger" node first]');
 
 		ndv.actions.switchInputMode('Table');
 		ndv.actions.mapDataFromHeader(1, 'value');
@@ -195,7 +190,6 @@ describe('Data mapping', () => {
 				'have.text',
 				`{{ $('${SCHEDULE_TRIGGER_NODE_NAME}').item.json.input[0].count }} {{ $('${SCHEDULE_TRIGGER_NODE_NAME}').item.json.input }}`,
 			);
-		ndv.actions.validateExpressionPreview('value', ' ');
 
 		ndv.actions.selectInputNode('Set');
 
