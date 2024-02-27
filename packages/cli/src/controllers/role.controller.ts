@@ -1,5 +1,5 @@
 import { Get, RestController, Authorized } from '@/decorators';
-import { RoleService } from '@/services/role.service';
+import { type AllRoleTypes, RoleService } from '@/services/role.service';
 
 @Authorized()
 @RestController('/roles')
@@ -8,6 +8,11 @@ export class RoleController {
 
 	@Get('/')
 	async getAllRoles() {
-		return this.roleService.getRoles();
+		return Object.fromEntries(
+			Object.entries(this.roleService.getRoles()).map((e) => [
+				e[0],
+				(e[1] as AllRoleTypes[]).map((r) => ({ name: this.roleService.getRoleName(r), role: r })),
+			]),
+		);
 	}
 }
