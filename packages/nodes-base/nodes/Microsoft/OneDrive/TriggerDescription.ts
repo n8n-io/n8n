@@ -170,10 +170,6 @@ export const triggerDescription: INodeProperties[] = [
 				name: 'Selected File',
 				value: 'selectedFile',
 			},
-			{
-				name: 'Any Child of a Selected Folder',
-				value: 'selectedFolderChild',
-			},
 		],
 	},
 	{
@@ -201,6 +197,13 @@ export const triggerDescription: INodeProperties[] = [
 				value: 'selectedFolderChild',
 			},
 		],
+	},
+	{
+		displayName: 'Simplify',
+		name: 'simple',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
+		type: 'boolean',
+		default: true,
 	},
 	{
 		...fileRLC,

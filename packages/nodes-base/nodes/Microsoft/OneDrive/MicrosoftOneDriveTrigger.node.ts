@@ -122,6 +122,21 @@ export class MicrosoftOneDriveTrigger implements INodeType {
 			if (!responseData?.length) {
 				return null;
 			}
+
+			const simplify = this.getNodeParameter('simple') as boolean;
+			if (simplify) {
+				responseData = responseData.map((x) => ({
+					id: x.id,
+					createdDateTime: (x.fileSystemInfo as IDataObject)?.createdDateTime,
+					lastModifiedDateTime: (x.fileSystemInfo as IDataObject)?.lastModifiedDateTime,
+					name: x.name,
+					webUrl: x.webUrl,
+					size: x.size,
+					path: (x.parentReference as IDataObject)?.path || '',
+					mimeType: (x.file as IDataObject)?.mimeType || '',
+				}));
+			}
+
 			if (this.getMode() === 'manual') {
 				return [this.helpers.returnJsonArray(responseData[0])];
 			} else {
