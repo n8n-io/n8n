@@ -104,7 +104,7 @@ export namespace ListQuery {
 
 		type SharedField = Partial<Pick<WorkflowEntity, 'shared'>>;
 
-		type OwnedByField = { ownedBy: SlimUser | null; ownedByProject: SlimProject | null };
+		type OwnedByField = { ownedBy: SlimUser | null; homeProject: SlimProject | null };
 
 		export type Plain = BaseFields;
 
@@ -118,7 +118,7 @@ export namespace ListQuery {
 	}
 
 	export namespace Credentials {
-		type OwnedByField = { ownedBy: SlimUser | null; ownedByProject: SlimProject | null };
+		type OwnedByField = { ownedBy: SlimUser | null; homeProject: SlimProject | null };
 
 		type SharedWithField = { sharedWith: SlimUser[]; sharedWithProjects: SlimProject[] };
 

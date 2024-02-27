@@ -52,7 +52,7 @@ export class OwnershipService {
 		Object.assign(entity, {
 			ownedBy: null,
 			sharedWith: [],
-			ownedByProject: null,
+			homeProject: null,
 			sharedWithProjects: [],
 		});
 
@@ -61,7 +61,7 @@ export class OwnershipService {
 
 			if (role === 'credential:owner' || role === 'workflow:owner') {
 				entity.ownedBy = { id, email, firstName, lastName };
-				entity.ownedByProject = {
+				entity.homeProject = {
 					id: project.id,
 					type: project.type,
 					// TODO: confirm name with product

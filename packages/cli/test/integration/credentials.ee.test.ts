@@ -173,7 +173,7 @@ describe('GET /credentials', () => {
 			lastName: member2.lastName,
 		});
 
-		expect(member1Credential.ownedByProject).toMatchObject({
+		expect(member1Credential.homeProject).toMatchObject({
 			id: member1PersonalProject.id,
 			name: 'My n8n',
 			type: member1PersonalProject.type,
@@ -208,7 +208,7 @@ describe('GET /credentials/:id', () => {
 			lastName: owner.lastName,
 		});
 		expect(firstCredential.sharedWith).toHaveLength(0);
-		expect(firstCredential.ownedByProject).toMatchObject({
+		expect(firstCredential.homeProject).toMatchObject({
 			id: ownerPersonalProject.id,
 			name: 'My n8n',
 			type: ownerPersonalProject.type,
@@ -261,7 +261,7 @@ describe('GET /credentials/:id', () => {
 					lastName: member2.lastName,
 				},
 			],
-			ownedByProject: {
+			homeProject: {
 				id: member1PersonalProject.id,
 				name: 'My n8n',
 				type: member1PersonalProject.type,
@@ -321,7 +321,7 @@ describe('GET /credentials/:id', () => {
 				expect.objectContaining({ id: member2.id }),
 				expect.objectContaining({ id: member3.id }),
 			]),
-			ownedByProject: {
+			homeProject: {
 				id: member1PersonalProject.id,
 				name: 'My n8n',
 				type: 'personal',

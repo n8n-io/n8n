@@ -339,7 +339,7 @@ describe('GET /workflows', () => {
 						lastName: any(String),
 					},
 					sharedWith: [],
-					ownedByProject: {
+					homeProject: {
 						id: ownerPersonalProject.id,
 						name: 'My n8n',
 						type: ownerPersonalProject.type,
@@ -361,7 +361,7 @@ describe('GET /workflows', () => {
 						lastName: any(String),
 					},
 					sharedWith: [],
-					ownedByProject: {
+					homeProject: {
 						id: ownerPersonalProject.id,
 						name: 'My n8n',
 						type: ownerPersonalProject.type,
@@ -569,7 +569,7 @@ describe('GET /workflows', () => {
 							lastName: any(String),
 						},
 						sharedWith: [],
-						ownedByProject: {
+						homeProject: {
 							id: ownerPersonalProject.id,
 							name: 'My n8n',
 							type: ownerPersonalProject.type,
@@ -585,7 +585,7 @@ describe('GET /workflows', () => {
 							lastName: any(String),
 						},
 						sharedWith: [],
-						ownedByProject: {
+						homeProject: {
 							id: ownerPersonalProject.id,
 							name: 'My n8n',
 							type: ownerPersonalProject.type,

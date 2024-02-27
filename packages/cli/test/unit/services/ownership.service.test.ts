@@ -58,7 +58,7 @@ describe('OwnershipService', () => {
 				{ role: 'credential:editor', user: editor, project: editorProject },
 			] as SharedCredentials[];
 
-			const { ownedBy, sharedWith, ownedByProject, sharedWithProjects } =
+			const { ownedBy, sharedWith, homeProject, sharedWithProjects } =
 				ownershipService.addOwnedByAndSharedWith(credential);
 
 			expect(ownedBy).toStrictEqual({
@@ -77,7 +77,7 @@ describe('OwnershipService', () => {
 				},
 			]);
 
-			expect(ownedByProject).toMatchObject({
+			expect(homeProject).toMatchObject({
 				id: ownerProject.id,
 				name: 'My n8n',
 				type: ownerProject.type,
@@ -106,7 +106,7 @@ describe('OwnershipService', () => {
 				{ role: 'workflow:editor', user: editor, project: projectEditor },
 			] as SharedWorkflow[];
 
-			const { ownedBy, sharedWith, ownedByProject, sharedWithProjects } =
+			const { ownedBy, sharedWith, homeProject, sharedWithProjects } =
 				ownershipService.addOwnedByAndSharedWith(workflow);
 
 			expect(ownedBy).toStrictEqual({
@@ -125,7 +125,7 @@ describe('OwnershipService', () => {
 				},
 			]);
 
-			expect(ownedByProject).toMatchObject({
+			expect(homeProject).toMatchObject({
 				id: projectOwner.id,
 				name: 'My n8n',
 				type: projectOwner.type,
@@ -150,7 +150,7 @@ describe('OwnershipService', () => {
 				{ role: 'credential:owner', user: owner, project },
 			] as SharedCredentials[];
 
-			const { ownedBy, sharedWith, ownedByProject, sharedWithProjects } =
+			const { ownedBy, sharedWith, homeProject, sharedWithProjects } =
 				ownershipService.addOwnedByAndSharedWith(credential);
 
 			expect(ownedBy).toStrictEqual({
@@ -162,7 +162,7 @@ describe('OwnershipService', () => {
 
 			expect(sharedWith).toHaveLength(0);
 
-			expect(ownedByProject).toMatchObject({
+			expect(homeProject).toMatchObject({
 				id: project.id,
 				name: 'My n8n',
 				type: project.type,
