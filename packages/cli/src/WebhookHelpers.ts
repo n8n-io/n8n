@@ -34,6 +34,7 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
+	ApplicationError,
 	BINARY_ENCODING,
 	createDeferredPromise,
 	ErrorReporterProxy as ErrorReporter,
@@ -807,7 +808,13 @@ export async function executeWebhook(
 				})
 				.catch((e) => {
 					if (!didSendResponse) {
-						responseCallback(new Error('There was a problem executing the workflow'), {});
+						responseCallback(
+							new ApplicationError('There was a problem executing the workflow', {
+								level: 'warning',
+								cause: e,
+							}),
+							{},
+						);
 					}
 
 					throw new InternalServerError(e.message);
@@ -818,7 +825,10 @@ export async function executeWebhook(
 		const error =
 			e instanceof UnprocessableRequestError
 				? e
-				: new Error('There was a problem executing the workflow', { cause: e });
+				: new ApplicationError('There was a problem executing the workflow', {
+						level: 'warning',
+						cause: e,
+				  });
 		if (didSendResponse) throw error;
 		responseCallback(error, {});
 		return;
