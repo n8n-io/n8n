@@ -359,6 +359,14 @@ export const routes = [
 		},
 		meta: {
 			middleware: ['authenticated'],
+			middlewareOptions: {
+				authenticated: {
+					bypass: () => {
+						const settingsStore = useSettingsStore();
+						return settingsStore.isPreviewMode;
+					},
+				},
+			},
 		},
 	},
 	{

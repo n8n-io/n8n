@@ -1,7 +1,9 @@
-import { NodeConnectionType, type IExecuteFunctions, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError, jsonStringify } from 'n8n-workflow';
+import type { EventNamesAiNodesType, IDataObject, IExecuteFunctions } from 'n8n-workflow';
 import { BaseChatModel } from 'langchain/chat_models/base';
 import { BaseChatModel as BaseChatModelCore } from '@langchain/core/language_models/chat_models';
 import type { BaseOutputParser } from '@langchain/core/output_parsers';
+import { BaseMessage } from 'langchain/schema';
 
 export function getMetadataFiltersValues(
 	ctx: IExecuteFunctions,
@@ -63,4 +65,30 @@ export function getPromptInputByType(options: {
 	}
 
 	return input;
+}
+
+export async function logAiEvent(
+	executeFunctions: IExecuteFunctions,
+	event: EventNamesAiNodesType,
+	data?: IDataObject,
+) {
+	try {
+		await executeFunctions.logAiEvent(event, data ? jsonStringify(data) : undefined);
+	} catch (error) {
+		executeFunctions.logger.debug(`Error logging AI event: ${event}`);
+	}
+}
+
+export function serializeChatHistory (chatHistory: Array<BaseMessage>): string {
+	return chatHistory
+		.map((chatMessage) => {
+			if (chatMessage._getType() === 'human') {
+				return `Human: ${chatMessage.content}`;
+			} else if (chatMessage._getType() === 'ai') {
+				return `Assistant: ${chatMessage.content}`;
+			} else {
+				return `${chatMessage.content}`;
+			}
+		})
+		.join('\n');
 }

@@ -31,7 +31,7 @@ x-shared: &shared
 
 services:
   postgres:
-    image: postgres:11
+    image: postgres:16
     restart: always
     environment:
       - POSTGRES_USER

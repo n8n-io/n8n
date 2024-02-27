@@ -110,6 +110,7 @@
 					</template>
 					<NodeExecuteButton
 						type="secondary"
+						hide-icon
 						:transparent="true"
 						:node-name="isActiveNodeConfig ? rootNode : currentNodeName"
 						:label="$locale.baseText('ndv.input.noOutputData.executePrevious')"
@@ -395,6 +396,8 @@ export default defineComponent({
 				if (val === 'mapping') {
 					this.onUnlinkRun();
 					this.mappedNode = this.rootNodesParents[0];
+				} else {
+					this.mappedNode = null;
 				}
 			},
 			immediate: true,

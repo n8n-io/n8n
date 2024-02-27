@@ -8,12 +8,14 @@ export type Plaintext = { kind: 'plaintext'; plaintext: string } & Range;
 
 export type Html = Plaintext; // for n8n parser, functionally identical to plaintext
 
+export type ResolvableState = 'valid' | 'invalid' | 'pending';
+
 export type Resolvable = {
 	kind: 'resolvable';
 	resolvable: string;
 	resolved: unknown;
-	error: boolean;
-	fullError: Error | null;
+	state: ResolvableState;
+	error: Error | null;
 } & Range;
 
 export type Resolved = Resolvable;
@@ -21,6 +23,6 @@ export type Resolved = Resolvable;
 export namespace ColoringStateEffect {
 	export type Value = {
 		kind?: 'plaintext' | 'resolvable';
-		error?: boolean;
+		state?: ResolvableState;
 	} & Range;
 }
