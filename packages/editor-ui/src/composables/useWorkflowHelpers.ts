@@ -71,7 +71,7 @@ import { useCanvasStore } from '@/stores/canvas.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { useI18n } from '@/composables/useI18n';
-import type { Router } from 'vue-router';
+import type { useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
 
 export function resolveParameter(
@@ -451,7 +451,8 @@ export function executeData(
 	return executeData;
 }
 
-export function useWorkflowHelpers(router: Router) {
+export function useWorkflowHelpers(options: { router: ReturnType<typeof useRouter> }) {
+	const router = options.router;
 	const nodeTypesStore = useNodeTypesStore();
 	const rootStore = useRootStore();
 	const templatesStore = useTemplatesStore();

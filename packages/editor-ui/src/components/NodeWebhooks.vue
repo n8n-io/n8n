@@ -75,7 +75,7 @@ export default defineComponent({
 	setup() {
 		const router = useRouter();
 		const clipboard = useClipboard();
-		const workflowHelpers = useWorkflowHelpers(router);
+		const workflowHelpers = useWorkflowHelpers({ router });
 		return {
 			clipboard,
 			workflowHelpers,

@@ -135,7 +135,6 @@ import {
 	WORKFLOW_LM_CHAT_MODAL_KEY,
 } from '@/constants';
 
-import { workflowRun } from '@/mixins/workflowRun';
 import { get, last } from 'lodash-es';
 
 import { useUIStore } from '@/stores/ui.store';
@@ -152,6 +151,7 @@ import MessageTyping from '@n8n/chat/components/MessageTyping.vue';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useRouter } from 'vue-router';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useRunWorkflow } from '@/composables/useRunWorkflow';
 
 const RunDataAi = defineAsyncComponent(
 	async () => await import('@/components/RunDataAi/RunDataAi.vue'),
@@ -181,18 +181,17 @@ export default defineComponent({
 		MessageTyping,
 		RunDataAi,
 	},
-	mixins: [workflowRun],
-	setup(props, ctx) {
+	setup() {
 		const router = useRouter();
 		const externalHooks = useExternalHooks();
-		const workflowHelpers = useWorkflowHelpers(router);
+		const workflowHelpers = useWorkflowHelpers({ router });
+		const { runWorkflow } = useRunWorkflow({ router });
 
 		return {
+			runWorkflow,
 			externalHooks,
 			workflowHelpers,
 			...useToast(),
-			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...workflowRun.setup?.(props, ctx),
 		};
 	},
 	data() {
@@ -350,7 +349,7 @@ export default defineComponent({
 
 			if (!memoryConnection) return [];
 
-			const nodeResultData = this.workflowsStore?.getWorkflowResultDataByNodeName(
+			const nodeResultData = this.workflowsStore.getWorkflowResultDataByNodeName(
 				memoryConnection.node,
 			);
 

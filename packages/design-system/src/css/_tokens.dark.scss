@@ -74,6 +74,8 @@
 	--color-valid-resolvable-background: var(--prim-color-alt-a-alpha-025);
 	--color-invalid-resolvable-foreground: var(--prim-color-alt-c-tint-250);
 	--color-invalid-resolvable-background: var(--prim-color-alt-c-alpha-02);
+	--color-pending-resolvable-foreground: var(--color-text-base);
+	--color-pending-resolvable-background: var(--prim-gray-70-alpha-01);
 	--color-expression-editor-background: var(--prim-gray-800);
 	--color-expression-syntax-example: var(--prim-gray-670);
 

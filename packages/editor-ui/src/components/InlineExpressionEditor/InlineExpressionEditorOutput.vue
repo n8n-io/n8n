@@ -1,6 +1,6 @@
 <template>
 	<div :class="visible ? $style.dropdown : $style.hidden">
-		<n8n-text size="small" compact :class="$style.header">
+		<n8n-text v-if="!noInputData" size="small" compact :class="$style.header">
 			{{ i18n.baseText('parameterInput.resultForItem') }} {{ hoveringItemNumber }}
 		</n8n-text>
 		<n8n-text :class="$style.body">
@@ -54,6 +54,10 @@ export default defineComponent({
 			default: false,
 		},
 		visible: {
+			type: Boolean,
+			default: false,
+		},
+		noInputData: {
 			type: Boolean,
 			default: false,
 		},
@@ -169,6 +173,10 @@ export default defineComponent({
 		padding-top: 0;
 		padding-left: var(--spacing-2xs);
 		color: var(--color-text-dark);
+
+		&:first-child {
+			padding-top: var(--spacing-2xs);
+		}
 	}
 
 	.footer {
