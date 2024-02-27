@@ -384,9 +384,17 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			);
 		},
 
-		async fetchAllWorkflows(): Promise<IWorkflowDb[]> {
+		async fetchAllWorkflows(projectId?: string): Promise<IWorkflowDb[]> {
 			const rootStore = useRootStore();
-			const workflows = await getWorkflows(rootStore.getRestApiContext);
+
+			const filter = {
+				projectId,
+			};
+
+			const workflows = await getWorkflows(
+				rootStore.getRestApiContext,
+				isEmpty(filter) ? undefined : filter,
+			);
 			this.setWorkflows(workflows);
 			return workflows;
 		},
@@ -398,7 +406,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			return workflow;
 		},
 
-		async getNewWorkflowData(name?: string): Promise<INewWorkflowData> {
+		async getNewWorkflowData(name?: string, projectId?: string): Promise<INewWorkflowData> {
 			let workflowData = {
 				name: '',
 				onboardingFlowEnabled: false,
@@ -406,7 +414,16 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			};
 			try {
 				const rootStore = useRootStore();
-				workflowData = await getNewWorkflow(rootStore.getRestApiContext, name);
+
+				const data: IDataObject = {
+					name,
+					projectId,
+				};
+
+				workflowData = await getNewWorkflow(
+					rootStore.getRestApiContext,
+					isEmpty(data) ? undefined : data,
+				);
 			} catch (e) {
 				// in case of error, default to original name
 				workflowData.name = name || DEFAULT_NEW_WORKFLOW_NAME;

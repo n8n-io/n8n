@@ -264,7 +264,10 @@ const WorkflowsView = defineComponent({
 		},
 		addWorkflow() {
 			this.uiStore.nodeViewInitialized = false;
-			void this.$router.push({ name: VIEWS.NEW_WORKFLOW });
+			void this.$router.push({
+				name: VIEWS.NEW_WORKFLOW,
+				query: { projectId: this.$route?.params?.projectId },
+			});
 
 			this.$telemetry.track('User clicked add workflow button', {
 				source: 'Workflows list',
@@ -273,7 +276,7 @@ const WorkflowsView = defineComponent({
 		async initialize() {
 			await Promise.all([
 				this.usersStore.fetchUsers(),
-				this.workflowsStore.fetchAllWorkflows(),
+				this.workflowsStore.fetchAllWorkflows(this.$route?.params?.projectId as string | undefined),
 				this.workflowsStore.fetchActiveWorkflows(),
 				this.credentialsStore.fetchAllCredentials(),
 			]);

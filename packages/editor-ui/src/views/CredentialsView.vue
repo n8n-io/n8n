@@ -129,7 +129,9 @@ export default defineComponent({
 		},
 		async initialize() {
 			const loadPromises = [
-				this.credentialsStore.fetchAllCredentials(),
+				this.credentialsStore.fetchAllCredentials(
+					this.$route?.params?.projectId as string | undefined,
+				),
 				this.credentialsStore.fetchCredentialTypes(false),
 				this.externalSecretsStore.fetchAllSecrets(),
 				this.nodeTypesStore.loadNodeTypesIfNotLoaded(),

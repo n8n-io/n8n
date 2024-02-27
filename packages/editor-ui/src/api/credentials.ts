@@ -25,15 +25,23 @@ export async function getCredentialsNewName(
 	return await makeRestApiRequest(context, 'GET', '/credentials/new', name ? { name } : {});
 }
 
-export async function getAllCredentials(context: IRestApiContext): Promise<ICredentialsResponse[]> {
-	return await makeRestApiRequest(context, 'GET', '/credentials');
+export async function getAllCredentials(
+	context: IRestApiContext,
+	filter?: object,
+): Promise<ICredentialsResponse[]> {
+	const sendData = filter ? { filter } : undefined;
+	return await makeRestApiRequest(context, 'GET', '/credentials', sendData);
 }
 
 export async function createNewCredential(
 	context: IRestApiContext,
 	data: ICredentialsDecrypted,
+	projectId?: string,
 ): Promise<ICredentialsResponse> {
-	return await makeRestApiRequest(context, 'POST', '/credentials', data as unknown as IDataObject);
+	return await makeRestApiRequest(context, 'POST', '/credentials', {
+		...data,
+		projectId,
+	} as unknown as IDataObject);
 }
 
 export async function deleteCredential(context: IRestApiContext, id: string): Promise<boolean> {

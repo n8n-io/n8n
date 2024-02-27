@@ -36,6 +36,7 @@ import { useRootStore } from './n8nRoot.store';
 import { useNodeTypesStore } from './nodeTypes.store';
 import { useSettingsStore } from './settings.store';
 import { useUsersStore } from './users.store';
+import { isEmpty } from '@/utils/typesUtils';
 
 const DEFAULT_CREDENTIAL_NAME = 'Unnamed credential';
 const DEFAULT_CREDENTIAL_POSTFIX = 'account';
@@ -245,9 +246,17 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 			const credentialTypes = await getCredentialTypes(rootStore.getBaseUrl);
 			this.setCredentialTypes(credentialTypes);
 		},
-		async fetchAllCredentials(): Promise<ICredentialsResponse[]> {
+		async fetchAllCredentials(projectId?: string): Promise<ICredentialsResponse[]> {
 			const rootStore = useRootStore();
-			const credentials = await getAllCredentials(rootStore.getRestApiContext);
+
+			const filter = {
+				projectId,
+			};
+
+			const credentials = await getAllCredentials(
+				rootStore.getRestApiContext,
+				isEmpty(filter) ? undefined : filter,
+			);
 			this.setCredentials(credentials);
 			return credentials;
 		},
@@ -259,10 +268,13 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 			const rootStore = useRootStore();
 			return await getCredentialData(rootStore.getRestApiContext, id);
 		},
-		async createNewCredential(data: ICredentialsDecrypted): Promise<ICredentialsResponse> {
+		async createNewCredential(
+			data: ICredentialsDecrypted,
+			projectId?: string,
+		): Promise<ICredentialsResponse> {
 			const rootStore = useRootStore();
 			const settingsStore = useSettingsStore();
-			const credential = await createNewCredential(rootStore.getRestApiContext, data);
+			const credential = await createNewCredential(rootStore.getRestApiContext, data, projectId);
 
 			if (settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
 				this.upsertCredential(credential);

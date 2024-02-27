@@ -1352,7 +1352,11 @@ export default defineComponent({
 			await this.$router.replace({ name: VIEWS.NEW_WORKFLOW, query: { templateId } });
 
 			await this.addNodes(data.workflow.nodes, data.workflow.connections);
-			this.workflowData = (await this.workflowsStore.getNewWorkflowData(data.name)) || {};
+			this.workflowData =
+				(await this.workflowsStore.getNewWorkflowData(
+					data.name,
+					(this.$route?.params?.projectId ?? this.$route?.query?.projectId) as string | undefined,
+				)) || {};
 			this.workflowsStore.addToWorkflowMetadata({ templateId });
 			await this.$nextTick();
 			this.canvasStore.zoomToFit();
@@ -3527,7 +3531,10 @@ export default defineComponent({
 		async newWorkflow(): Promise<void> {
 			this.canvasStore.startLoading();
 			this.resetWorkspace();
-			this.workflowData = await this.workflowsStore.getNewWorkflowData();
+			this.workflowData = await this.workflowsStore.getNewWorkflowData(
+				undefined,
+				(this.$route?.params?.projectId ?? this.$route?.query?.projectId) as string | undefined,
+			);
 			this.workflowsStore.currentWorkflowExecutions = [];
 			this.workflowsStore.activeWorkflowExecution = null;
 
