@@ -75,6 +75,10 @@ export const useNDVStore = defineStore(STORES.NDV, {
 			return executionData.data?.resultData?.runData?.[inputNodeName]?.[inputRunIndex]?.data
 				?.main?.[inputBranchIndex];
 		},
+		hasInputData(): boolean {
+			const data = this.ndvInputData;
+			return data && data.length > 0;
+		},
 		getPanelDisplayMode() {
 			return (panel: NodePanelType) => this[panel].displayMode;
 		},

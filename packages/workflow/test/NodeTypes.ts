@@ -536,42 +536,45 @@ const googleSheetsNode: LoadedClass<IVersionedNodeType> = {
 	},
 };
 
+const setNode: LoadedClass<INodeType> = {
+	sourcePath: '',
+	type: {
+		description: {
+			displayName: 'Set',
+			name: 'set',
+			group: ['input'],
+			version: 1,
+			description: 'Sets a value',
+			defaults: {
+				name: 'Set',
+				color: '#0000FF',
+			},
+			inputs: ['main'],
+			outputs: ['main'],
+			properties: [
+				{
+					displayName: 'Value1',
+					name: 'value1',
+					type: 'string',
+					default: 'default-value1',
+				},
+				{
+					displayName: 'Value2',
+					name: 'value2',
+					type: 'string',
+					default: 'default-value2',
+				},
+			],
+		},
+	},
+};
+
 export class NodeTypes implements INodeTypes {
 	nodeTypes: INodeTypeData = {
 		'n8n-nodes-base.stickyNote': stickyNode,
+		'n8n-nodes-base.set': setNode,
 		'test.googleSheets': googleSheetsNode,
-		'test.set': {
-			sourcePath: '',
-			type: {
-				description: {
-					displayName: 'Set',
-					name: 'set',
-					group: ['input'],
-					version: 1,
-					description: 'Sets a value',
-					defaults: {
-						name: 'Set',
-						color: '#0000FF',
-					},
-					inputs: ['main'],
-					outputs: ['main'],
-					properties: [
-						{
-							displayName: 'Value1',
-							name: 'value1',
-							type: 'string',
-							default: 'default-value1',
-						},
-						{
-							displayName: 'Value2',
-							name: 'value2',
-							type: 'string',
-							default: 'default-value2',
-						},
-					],
-				},
-			},
-		},
+		'test.set': setNode,
 		'test.setMulti': {
 			sourcePath: '',
 			type: {
