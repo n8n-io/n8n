@@ -271,7 +271,8 @@ export default defineComponent({
 			}
 			const errorMessage = this.getErrorMessage();
 			(Array.from(new Set(this.error.messages)) as string[]).forEach((message) => {
-				const parts = message.split(' - ').map((part) => part.trim());
+				const isParsable = /^\d{3} - \{/.test(message);
+				const parts = isParsable ? message.split(' - ').map((part) => part.trim()) : [];
 				//try to parse the message as JSON
 				for (const part of parts) {
 					try {
@@ -438,10 +439,6 @@ export default defineComponent({
 
 			if (error.httpCode) {
 				errorDetails.httpCode = error.httpCode;
-			}
-
-			if (error?.context?.request) {
-				errorDetails.request = error.context.request;
 			}
 
 			errorInfo.errorDetails = errorDetails;
