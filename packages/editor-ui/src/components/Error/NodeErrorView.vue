@@ -139,6 +139,15 @@
 								</p>
 							</div>
 
+							<div class="node-error-view__details-row" v-if="error.node && error.node.type">
+								<p class="node-error-view__details-label">
+									{{ $locale.baseText('nodeErrorView.details.nodeType') }}
+								</p>
+								<p class="node-error-view__details-value">
+									<code>{{ error.node.type }}</code>
+								</p>
+							</div>
+
 							<div class="node-error-view__details-row" v-if="error.node && error.node.typeVersion">
 								<p class="node-error-view__details-label">
 									{{ $locale.baseText('nodeErrorView.details.nodeVersion') }}
@@ -148,15 +157,6 @@
 										<span>{{ error.node.typeVersion + ' ' }}</span>
 										<span>({{ nodeVersionTag(error.node) }})</span>
 									</code>
-								</p>
-							</div>
-
-							<div class="node-error-view__details-row" v-if="error.node && error.node.type">
-								<p class="node-error-view__details-label">
-									{{ $locale.baseText('nodeErrorView.details.nodeType') }}
-								</p>
-								<p class="node-error-view__details-value">
-									<code>{{ error.node.type }}</code>
 								</p>
 							</div>
 
