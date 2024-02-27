@@ -37,6 +37,7 @@ import type {
 	INodeTypesMaxCount,
 	INodeUi,
 	ITag,
+	IUpdateInformation,
 	IWorkflowData,
 	IWorkflowDataUpdate,
 	IWorkflowDb,
@@ -1022,7 +1023,7 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 					key: 'webhookId',
 					value: changedNodes[nodeName],
 					name: nodeName,
-				};
+				} as IUpdateInformation;
 				workflowsStore.setNodeValue(changes);
 			});
 

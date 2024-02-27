@@ -271,7 +271,7 @@ import type {
 	IConnection,
 	IConnections,
 	IDataObject,
-	IExecutionsSummary,
+	ExecutionSummary,
 	INode,
 	INodeConnections,
 	INodeCredentialsDetails,
@@ -1279,7 +1279,7 @@ export default defineComponent({
 					});
 				}
 			}
-			if ((data as IExecutionsSummary).waitTill) {
+			if ((data as ExecutionSummary).waitTill) {
 				this.showMessage({
 					title: this.$locale.baseText('nodeView.thisExecutionHasntFinishedYet'),
 					message: `<a data-action="reload">${this.$locale.baseText(

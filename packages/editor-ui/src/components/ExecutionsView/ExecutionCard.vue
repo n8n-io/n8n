@@ -83,7 +83,7 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import type { IExecutionsSummary } from '@/Interface';
+import type { ExecutionSummary } from '@/Interface';
 import type { IExecutionUIData } from '@/mixins/executionsHelpers';
 import { executionHelpers } from '@/mixins/executionsHelpers';
 import { VIEWS } from '@/constants';
@@ -97,7 +97,7 @@ export default defineComponent({
 	mixins: [executionHelpers],
 	props: {
 		execution: {
-			type: Object as () => IExecutionsSummary,
+			type: Object as () => ExecutionSummary,
 			required: true,
 		},
 		highlight: {

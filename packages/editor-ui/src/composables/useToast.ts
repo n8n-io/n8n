@@ -1,5 +1,6 @@
 import { ElNotification as Notification } from 'element-plus';
-import type { NotificationHandle, NotificationOptions, MessageBoxState } from 'element-plus';
+import type { NotificationHandle, MessageBoxState } from 'element-plus';
+import type { NotificationOptions } from '@/Interface';
 import { sanitizeHtml } from '@/utils/htmlUtils';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -8,9 +9,11 @@ import { useI18n } from './useI18n';
 import { useExternalHooks } from './useExternalHooks';
 import { VIEWS } from '@/constants';
 
-interface CollapsableDetailsError extends Error {
+export interface NotificationErrorWithNodeAndDescription extends Error {
+	node: {
+		name: string;
+	};
 	description: string;
-	node: { name: string };
 }
 
 const messageDefaults: Partial<Omit<NotificationOptions, 'message'>> = {
@@ -97,7 +100,7 @@ export function useToast() {
 		return notification;
 	}
 
-	function collapsableDetails({ description, node }: CollapsableDetailsError) {
+	function collapsableDetails({ description, node }: NotificationErrorWithNodeAndDescription) {
 		if (!description) return '';
 
 		const errorDescription =
@@ -118,7 +121,7 @@ export function useToast() {
 	}
 
 	function showError(e: Error | unknown, title: string, message?: string) {
-		const error = e as CollapsableDetailsError;
+		const error = e as NotificationErrorWithNodeAndDescription;
 		const messageLine = message ? `${message}<br/>` : '';
 		showMessage(
 			{

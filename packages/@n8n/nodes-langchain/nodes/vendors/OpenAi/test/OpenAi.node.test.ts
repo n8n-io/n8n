@@ -1,13 +1,12 @@
+import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
+import get from 'lodash/get';
 import * as assistant from '../actions/assistant';
 import * as audio from '../actions/audio';
 import * as file from '../actions/file';
 import * as image from '../actions/image';
 import * as text from '../actions/text';
 
-import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
 import * as transport from '../transport';
-
-import get from 'lodash/get';
 
 const createExecuteFunctionsMock = (parameters: IDataObject) => {
 	const nodeParameters = parameters;
