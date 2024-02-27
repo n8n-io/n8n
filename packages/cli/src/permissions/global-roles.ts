@@ -73,7 +73,6 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'project:read',
 	'project:update',
 	'project:delete',
-	'project:invite',
 ];
 
 export const GLOBAL_ADMIN_SCOPES = GLOBAL_OWNER_SCOPES.concat();
