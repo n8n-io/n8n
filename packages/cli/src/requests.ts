@@ -539,6 +539,6 @@ export declare namespace ProjectRequest {
 	type Update = AuthenticatedRequest<
 		{ projectId: string },
 		{},
-		{ name: string; relations: ProjectRelationPayload[] }
+		{ name?: string; relations?: ProjectRelationPayload[] }
 	>;
 }

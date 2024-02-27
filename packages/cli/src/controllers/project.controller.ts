@@ -88,7 +88,11 @@ export class ProjectController {
 	@Patch('/:projectId')
 	@ProjectScope('project:update')
 	async updateProject(req: ProjectRequest.Update) {
-		await this.projectsService.updateProject(req.body.name, req.params.projectId);
-		await this.projectsService.syncProjectRelations(req.params.projectId, req.body.relations);
+		if (req.body.name) {
+			await this.projectsService.updateProject(req.body.name, req.params.projectId);
+		}
+		if (req.body.relations) {
+			await this.projectsService.syncProjectRelations(req.params.projectId, req.body.relations);
+		}
 	}
 }

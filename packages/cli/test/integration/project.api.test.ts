@@ -279,9 +279,7 @@ describe('PATCH /projects/:projectId', () => {
 
 		const teamProject = await createTeamProject();
 
-		const resp = await ownerAgent
-			.patch(`/projects/${teamProject.id}`)
-			.send({ name: 'New Name', relations: [] });
+		const resp = await ownerAgent.patch(`/projects/${teamProject.id}`).send({ name: 'New Name' });
 		expect(resp.status).toBe(200);
 
 		const updatedProject = await findProject(teamProject.id);
