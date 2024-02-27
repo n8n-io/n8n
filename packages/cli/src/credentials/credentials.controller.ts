@@ -74,7 +74,9 @@ export class CredentialsController {
 
 			credential = this.ownershipService.addOwnedByAndSharedWith(credential);
 
-			if (!includeDecryptedData || !userSharing || userSharing.role !== 'credential:owner') {
+			// Below, if `userSharing` does not exist, it means this credential is being
+			// fetched by the instance owner or an admin. In this case, they get the full data
+			if (!includeDecryptedData || userSharing?.role === 'credential:user') {
 				const { data: _, ...rest } = credential;
 				return { ...rest };
 			}
