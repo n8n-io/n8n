@@ -444,3 +444,46 @@ describe('PATCH /projects/:projectId', () => {
 		expect(p1Relations.length).toBe(1);
 	});
 });
+
+describe('GET /project/:projectId', () => {
+	test('should get project details and relations', async () => {
+		const [ownerUser, testUser1, testUser2, testUser3, teamProject1, teamProject2] =
+			await Promise.all([
+				createOwner(),
+				createUser(),
+				createUser(),
+				createUser(),
+				createTeamProject(),
+				createTeamProject(),
+			]);
+
+		await linkUserToProject(testUser1, teamProject1, 'project:viewer');
+		await linkUserToProject(testUser2, teamProject1, 'project:admin');
+		await linkUserToProject(ownerUser, teamProject2, 'project:editor');
+		await linkUserToProject(testUser2, teamProject2, 'project:editor');
+
+		const memberAgent = testServer.authAgentFor(testUser1);
+
+		const resp = await memberAgent.get(`/projects/${teamProject1.id}`);
+		expect(resp.status).toBe(200);
+
+		expect(resp.body.data.id).toBe(teamProject1.id);
+		expect(resp.body.data.name).toBe(teamProject1.name);
+
+		expect(resp.body.data.relations.length).toBe(2);
+		expect(resp.body.data.relations).toContainEqual({
+			id: testUser1.id,
+			email: testUser1.email,
+			firstName: testUser1.firstName,
+			lastName: testUser1.lastName,
+			role: 'project:viewer',
+		});
+		expect(resp.body.data.relations).toContainEqual({
+			id: testUser2.id,
+			email: testUser2.email,
+			firstName: testUser2.firstName,
+			lastName: testUser2.lastName,
+			role: 'project:admin',
+		});
+	});
+});

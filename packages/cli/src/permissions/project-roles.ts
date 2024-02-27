@@ -53,6 +53,8 @@ export const PROJECT_EDITOR_SCOPES: Scope[] = [
 	'credential:update',
 	'credential:delete',
 	'credential:list',
+	'project:list',
+	'project:read',
 ];
 
 export const PROJECT_VIEWER_SCOPES: Scope[] = [
@@ -60,4 +62,6 @@ export const PROJECT_VIEWER_SCOPES: Scope[] = [
 	'workflow:list',
 	'credential:read',
 	'credential:list',
+	'project:list',
+	'project:read',
 ];
