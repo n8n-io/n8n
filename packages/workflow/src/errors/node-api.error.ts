@@ -229,6 +229,15 @@ export class NodeApiError extends NodeError {
 			messageMapping,
 		);
 
+		if (
+			errorResponse?.response &&
+			typeof errorResponse?.response === 'object' &&
+			!Array.isArray(errorResponse.response) &&
+			errorResponse.response.data
+		) {
+			this.context.data = errorResponse.response.data;
+		}
+
 		if (functionality !== undefined) this.context.functionality = functionality;
 		if (runIndex !== undefined) this.context.runIndex = runIndex;
 		if (itemIndex !== undefined) this.context.itemIndex = itemIndex;
@@ -266,18 +275,18 @@ export class NodeApiError extends NodeError {
 		}
 
 		if (STATUS_CODE_MESSAGES[this.httpCode]) {
-			this.messages.push(this.message);
+			this.addToMessages(this.message);
 			this.message = STATUS_CODE_MESSAGES[this.httpCode];
 			return;
 		}
 
 		switch (this.httpCode.charAt(0)) {
 			case '4':
-				this.messages.push(this.message);
+				this.addToMessages(this.message);
 				this.message = STATUS_CODE_MESSAGES['4XX'];
 				break;
 			case '5':
-				this.messages.push(this.message);
+				this.addToMessages(this.message);
 				this.message = STATUS_CODE_MESSAGES['5XX'];
 				break;
 			default:

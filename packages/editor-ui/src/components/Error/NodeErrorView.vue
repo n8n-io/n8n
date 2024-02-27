@@ -46,7 +46,10 @@
 				</div>
 
 				<div class="node-error-view__info-content">
-					<details class="node-error-view__details" v-if="error.httpCode || uniqueMessages.length">
+					<details
+						class="node-error-view__details"
+						v-if="error.httpCode || uniqueMessages.length || error?.context?.data"
+					>
 						<summary class="node-error-view__details-summary">
 							<font-awesome-icon class="node-error-view__details-icon" icon="angle-right" />
 							From {{ error?.node?.name || 'Node' }}
@@ -68,6 +71,12 @@
 									:key="index"
 								>
 									<pre><code>{{ msg }}</code></pre>
+								</div>
+							</div>
+							<div class="node-error-view__details-row" v-if="error?.context?.data">
+								<p class="node-error-view__details-label">Error data</p>
+								<div class="node-error-view__details-value">
+									<pre><code>{{ error.context.data }}</code></pre>
 								</div>
 							</div>
 							<div
