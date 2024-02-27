@@ -70,6 +70,21 @@
 									<pre><code>{{ msg }}</code></pre>
 								</div>
 							</div>
+							<div
+								class="node-error-view__details-row"
+								v-if="error.context && error.context.request"
+							>
+								<p class="node-error-view__details-label">Request</p>
+								<div class="node-error-view__details-value">
+									<pre><code>{{ error.context.request }}</code></pre>
+								</div>
+							</div>
+							<!-- <div class="node-error-view__details-row">
+								<p class="node-error-view__details-label">Response</p>
+								<p class="node-error-view__details-value">
+									<code>...</code>
+								</p>
+							</div> -->
 						</div>
 					</details>
 
@@ -425,6 +440,10 @@ export default defineComponent({
 				errorDetails.httpCode = error.httpCode;
 			}
 
+			if (error?.context?.request) {
+				errorDetails.request = error.context.request;
+			}
+
 			errorInfo.errorDetails = errorDetails;
 
 			const n8nDetails: IDataObject = {};
@@ -473,6 +492,8 @@ export default defineComponent({
 			n8nDetails.stackTrace = error.stack && error.stack.split('\n');
 
 			errorInfo.n8nDetails = n8nDetails;
+
+			// errorInfo.error = error;
 
 			void this.clipboard.copy(JSON.stringify(errorInfo, null, 2));
 			this.copySuccess();
