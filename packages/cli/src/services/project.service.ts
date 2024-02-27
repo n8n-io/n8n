@@ -61,13 +61,7 @@ export class ProjectService {
 		);
 
 		// Link admin
-		await this.projectRelationRepository.save(
-			this.projectRelationRepository.create({
-				projectId: project.id,
-				userId: adminUser.id,
-				role: 'project:admin',
-			}),
-		);
+		await this.addUser(project.id, adminUser.id, 'project:admin');
 
 		return project;
 	}
@@ -159,6 +153,21 @@ export class ProjectService {
 			projectId,
 			userId,
 			role,
+		});
+	}
+
+	async getProject(projectId: string): Promise<Project> {
+		return await this.projectRepository.findOneOrFail({
+			where: {
+				id: projectId,
+			},
+		});
+	}
+
+	async getProjectRelations(projectId: string): Promise<ProjectRelation[]> {
+		return await this.projectRelationRepository.find({
+			where: { projectId },
+			select: ['user'],
 		});
 	}
 }

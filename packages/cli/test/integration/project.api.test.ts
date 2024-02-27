@@ -279,7 +279,9 @@ describe('PATCH /projects/:projectId', () => {
 
 		const teamProject = await createTeamProject();
 
-		const resp = await ownerAgent.patch(`/projects/${teamProject.id}`).send({ name: 'New Name' });
+		const resp = await ownerAgent
+			.patch(`/projects/${teamProject.id}`)
+			.send({ name: 'New Name', relations: [] });
 		expect(resp.status).toBe(200);
 
 		const updatedProject = await findProject(teamProject.id);
@@ -317,7 +319,7 @@ describe('PATCH /projects/:projectId', () => {
 	});
 });
 
-describe('PATCH /projects/:projectId/relations', () => {
+describe('PATCH /projects/:projectId', () => {
 	test('should add or remove users from a project', async () => {
 		const [ownerUser, testUser1, testUser2, testUser3, teamProject1, teamProject2] =
 			await Promise.all([
@@ -336,7 +338,8 @@ describe('PATCH /projects/:projectId/relations', () => {
 
 		const memberAgent = testServer.authAgentFor(testUser1);
 
-		const resp = await memberAgent.patch(`/projects/${teamProject1.id}/relations`).send({
+		const resp = await memberAgent.patch(`/projects/${teamProject1.id}`).send({
+			name: teamProject1.name,
 			relations: [
 				{ userId: testUser1.id, role: 'project:admin' },
 				{ userId: testUser3.id, role: 'project:editor' },
@@ -387,7 +390,8 @@ describe('PATCH /projects/:projectId/relations', () => {
 
 		const memberAgent = testServer.authAgentFor(testUser1);
 
-		const resp = await memberAgent.patch(`/projects/${teamProject1.id}/relations`).send({
+		const resp = await memberAgent.patch(`/projects/${teamProject1.id}`).send({
+			name: teamProject1.name,
 			relations: [
 				{ userId: testUser1.id, role: 'project:admin' },
 				{ userId: testUser3.id, role: 'project:editor' },
@@ -427,7 +431,7 @@ describe('PATCH /projects/:projectId/relations', () => {
 
 		const memberAgent = testServer.authAgentFor(testUser1);
 
-		const resp = await memberAgent.patch(`/projects/${personalProject.id}/relations`).send({
+		const resp = await memberAgent.patch(`/projects/${personalProject.id}`).send({
 			relations: [
 				{ userId: testUser1.id, role: 'project:personalOwner' },
 				{ userId: testUser2.id, role: 'project:admin' },

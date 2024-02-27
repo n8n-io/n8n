@@ -20,7 +20,7 @@ import type { Variables } from '@db/entities/Variables';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { WorkflowHistory } from '@db/entities/WorkflowHistory';
-import type { Project } from '@db/entities/Project';
+import type { Project, ProjectType } from '@db/entities/Project';
 import type { ProjectRole } from './databases/entities/ProjectRelation';
 
 export class UserUpdatePayload implements Pick<User, 'email' | 'firstName' | 'lastName'> {
@@ -521,11 +521,24 @@ export declare namespace ProjectRequest {
 	type GetPersonalProject = AuthenticatedRequest<{}, Project>;
 
 	type ProjectRelationPayload = { userId: string; role: ProjectRole };
-	type SetProjectRelations = AuthenticatedRequest<
+	type ProjectRelationResponse = {
+		id: string;
+		email: string;
+		firstName: string;
+		lastName: string;
+		role: ProjectRole;
+	};
+	type ProjectWithRelations = {
+		id: string;
+		name: string | undefined;
+		type: ProjectType;
+		relations: ProjectRelationResponse[];
+	};
+
+	type Get = AuthenticatedRequest<{ projectId: string }, {}>;
+	type Update = AuthenticatedRequest<
 		{ projectId: string },
 		{},
-		{ relations: ProjectRelationPayload[] }
+		{ name: string; relations: ProjectRelationPayload[] }
 	>;
-
-	type Update = AuthenticatedRequest<{ projectId: string }, {}, { name: string }>;
 }

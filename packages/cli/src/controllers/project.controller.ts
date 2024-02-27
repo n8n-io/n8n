@@ -63,15 +63,32 @@ export class ProjectController {
 		return project;
 	}
 
+	@Get('/:projectId')
+	@ProjectScope('project:read')
+	async getProject(req: ProjectRequest.Get): Promise<ProjectRequest.ProjectWithRelations> {
+		const [{ id, name, type }, relations] = await Promise.all([
+			this.projectsService.getProject(req.params.projectId),
+			this.projectsService.getProjectRelations(req.params.projectId),
+		]);
+
+		return {
+			id,
+			name,
+			type,
+			relations: relations.map((r) => ({
+				id: r.user.id,
+				email: r.user.email,
+				firstName: r.user.firstName,
+				lastName: r.user.lastName,
+				role: r.role,
+			})),
+		};
+	}
+
 	@Patch('/:projectId')
 	@ProjectScope('project:update')
 	async updateProject(req: ProjectRequest.Update) {
 		await this.projectsService.updateProject(req.body.name, req.params.projectId);
-	}
-
-	@Patch('/:projectId/relations')
-	@ProjectScope('project:invite')
-	async setProjectRelations(req: ProjectRequest.SetProjectRelations) {
 		await this.projectsService.syncProjectRelations(req.params.projectId, req.body.relations);
 	}
 }
