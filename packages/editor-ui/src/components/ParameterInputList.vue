@@ -251,7 +251,7 @@ export default defineComponent({
 		const nodeHelpers = useNodeHelpers();
 		const asyncLoadingError = ref(false);
 		const router = useRouter();
-		const workflowHelpers = useWorkflowHelpers(router);
+		const workflowHelpers = useWorkflowHelpers({ router });
 
 		// This will catch errors in async components
 		onErrorCaptured((e, component) => {

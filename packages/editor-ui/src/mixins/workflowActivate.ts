@@ -19,7 +19,7 @@ import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 export const workflowActivate = defineComponent({
 	setup() {
 		const router = useRouter();
-		const workflowHelpers = useWorkflowHelpers(router);
+		const workflowHelpers = useWorkflowHelpers({ router });
 		return {
 			workflowHelpers,
 			...useToast(),
