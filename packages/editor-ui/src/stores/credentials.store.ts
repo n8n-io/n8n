@@ -36,7 +36,7 @@ import { useRootStore } from './n8nRoot.store';
 import { useNodeTypesStore } from './nodeTypes.store';
 import { useSettingsStore } from './settings.store';
 import { useUsersStore } from './users.store';
-import { useRoute } from 'vue-router';
+import { isEmpty } from '@/utils/typesUtils';
 
 const DEFAULT_CREDENTIAL_NAME = 'Unnamed credential';
 const DEFAULT_CREDENTIAL_POSTFIX = 'account';
@@ -246,15 +246,14 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 			const credentialTypes = await getCredentialTypes(rootStore.getBaseUrl);
 			this.setCredentialTypes(credentialTypes);
 		},
-		async fetchAllCredentials(): Promise<ICredentialsResponse[]> {
-			const route = useRoute();
+		async fetchAllCredentials(projectId? string): Promise<ICredentialsResponse[]> {
 			const rootStore = useRootStore();
 
 			const filter = {
-				projectId: (route?.query?.projectId ?? route?.params?.projectId) as string,
+				projectId,
 			};
 
-			const credentials = await getAllCredentials(rootStore.getRestApiContext, filter);
+			const credentials = await getAllCredentials(rootStore.getRestApiContext, isEmpty(filter) ? undefined : filter);
 			this.setCredentials(credentials);
 			return credentials;
 		},
