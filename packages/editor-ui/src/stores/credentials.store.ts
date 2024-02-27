@@ -268,7 +268,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 		},
 		async createNewCredential(
 			data: ICredentialsDecrypted,
-			projectId: string,
+			projectId?: string,
 		): Promise<ICredentialsResponse> {
 			const rootStore = useRootStore();
 			const settingsStore = useSettingsStore();

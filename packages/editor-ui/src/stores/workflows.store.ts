@@ -406,7 +406,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			return workflow;
 		},
 
-		async getNewWorkflowData(projectId: string, name?: string): Promise<INewWorkflowData> {
+		async getNewWorkflowData(name?: string, projectId?: string): Promise<INewWorkflowData> {
 			let workflowData = {
 				name: '',
 				onboardingFlowEnabled: false,
@@ -420,7 +420,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 					projectId,
 				};
 
-				workflowData = await getNewWorkflow(rootStore.getRestApiContext, data);
+				workflowData = await getNewWorkflow(
+					rootStore.getRestApiContext,
+					isEmpty(data) ? undefined : data,
+				);
 			} catch (e) {
 				// in case of error, default to original name
 				workflowData.name = name || DEFAULT_NEW_WORKFLOW_NAME;

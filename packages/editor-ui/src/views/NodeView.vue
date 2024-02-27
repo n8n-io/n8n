@@ -1354,8 +1354,8 @@ export default defineComponent({
 			await this.addNodes(data.workflow.nodes, data.workflow.connections);
 			this.workflowData =
 				(await this.workflowsStore.getNewWorkflowData(
-					(this.$route?.params?.projectId ?? this.$route?.query?.projectId) as string,
 					data.name,
+					(this.$route?.params?.projectId ?? this.$route?.query?.projectId) as string | undefined,
 				)) || {};
 			this.workflowsStore.addToWorkflowMetadata({ templateId });
 			await this.$nextTick();
@@ -3532,7 +3532,8 @@ export default defineComponent({
 			this.canvasStore.startLoading();
 			this.resetWorkspace();
 			this.workflowData = await this.workflowsStore.getNewWorkflowData(
-				(this.$route?.params?.projectId ?? this.$route?.query?.projectId) as string,
+				undefined,
+				(this.$route?.params?.projectId ?? this.$route?.query?.projectId) as string | undefined,
 			);
 			this.workflowsStore.currentWorkflowExecutions = [];
 			this.workflowsStore.activeWorkflowExecution = null;

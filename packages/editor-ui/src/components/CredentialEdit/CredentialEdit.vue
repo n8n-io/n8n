@@ -839,7 +839,7 @@ export default defineComponent({
 			if (isNewCredential) {
 				credential = await this.createCredential(
 					credentialDetails,
-					this.$route?.params?.projectId as string,
+					this.$route?.params?.projectId as string | undefined,
 				);
 			} else {
 				credential = await this.updateCredential(credentialDetails);
@@ -899,7 +899,7 @@ export default defineComponent({
 
 		async createCredential(
 			credentialDetails: ICredentialsDecrypted,
-			projectId: string,
+			projectId?: string,
 		): Promise<ICredentialsResponse | null> {
 			let credential;
 
