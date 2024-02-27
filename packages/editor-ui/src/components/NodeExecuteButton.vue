@@ -12,7 +12,7 @@
 					:label="buttonLabel"
 					:type="type"
 					:size="size"
-					:icon="!isListeningForEvents && 'flask'"
+					:icon="!isListeningForEvents && !hideIcon && 'flask'"
 					:transparent-background="transparent"
 					:title="!isTriggerNode ? $locale.baseText('ndv.execute.testNode.description') : ''"
 					@click="onClick"
@@ -71,6 +71,9 @@ export default defineComponent({
 		},
 		telemetrySource: {
 			type: String,
+		},
+		hideIcon: {
+			type: Boolean,
 		},
 	},
 	setup(props, ctx) {
