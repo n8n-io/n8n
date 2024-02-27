@@ -23,7 +23,13 @@ import type {
 	CompletionResult,
 	CompletionSection,
 } from '@codemirror/autocomplete';
-import type { AutocompleteOptionType, ExtensionTypeName, FnToDoc, Resolved } from './types';
+import type {
+	AutocompleteInput,
+	AutocompleteOptionType,
+	ExtensionTypeName,
+	FnToDoc,
+	Resolved,
+} from './types';
 import { sanitizeHtml } from '@/utils/htmlUtils';
 import { isFunctionOption } from './typeGuards';
 import { luxonInstanceDocs } from './nativesAutocompleteDocs/luxon.instance.docs';
@@ -40,6 +46,7 @@ import {
 	OBJECT_RECOMMENDED_OPTIONS,
 	OTHER_METHODS_SECTION,
 	OTHER_SECTION,
+	PROPERTIES_SECTION,
 	RECOMMENDED_METHODS_SECTION,
 	RECOMMENDED_SECTION,
 	STRING_RECOMMENDED_OPTIONS,
@@ -87,7 +94,7 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 		if (resolved === null) return null;
 
 		try {
-			options = datatypeOptions(resolved, base).map(stripExcessParens(context));
+			options = datatypeOptions({ resolved, base, tail }).map(stripExcessParens(context));
 		} catch {
 			return null;
 		}
@@ -111,19 +118,21 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 	};
 }
 
-function datatypeOptions(resolved: Resolved, toResolve: string): Completion[] {
+function datatypeOptions(input: AutocompleteInput): Completion[] {
+	const { resolved } = input;
+
 	if (resolved === null) return [];
 
 	if (typeof resolved === 'number') {
-		return numberOptions(resolved);
+		return numberOptions(input as AutocompleteInput<number>);
 	}
 
 	if (typeof resolved === 'string') {
-		return stringOptions(resolved);
+		return stringOptions(input as AutocompleteInput<string>);
 	}
 
 	if (resolved instanceof DateTime) {
-		return luxonOptions();
+		return luxonOptions(input as AutocompleteInput<DateTime>);
 	}
 
 	if (resolved instanceof Date) {
@@ -131,28 +140,28 @@ function datatypeOptions(resolved: Resolved, toResolve: string): Completion[] {
 	}
 
 	if (Array.isArray(resolved)) {
-		return arrayOptions(resolved);
+		return arrayOptions(input as AutocompleteInput<unknown[]>);
 	}
 
 	if (typeof resolved === 'object') {
-		return objectOptions(toResolve, resolved);
+		return objectOptions(input as AutocompleteInput<IDataObject>);
 	}
 
 	return [];
 }
 
-export const natives = (typeName: ExtensionTypeName): Completion[] => {
+export const natives = (typeName: ExtensionTypeName, includeHidden = false): Completion[] => {
 	const natives: NativeDoc = NativeMethods.find((ee) => ee.typeName.toLowerCase() === typeName);
 
 	if (!natives) return [];
 
 	const nativeProps = natives.properties ? toOptions(natives.properties, typeName, 'keyword') : [];
-	const nativeMethods = toOptions(natives.functions, typeName, 'native-function');
+	const nativeMethods = toOptions(natives.functions, typeName, 'native-function', includeHidden);
 
 	return [...nativeProps, ...nativeMethods];
 };
 
-export const extensions = (typeName: ExtensionTypeName) => {
+export const extensions = (typeName: ExtensionTypeName, includeHidden = false) => {
 	const extensions = ExpressionExtensions.find((ee) => ee.typeName.toLowerCase() === typeName);
 
 	if (!extensions) return [];
@@ -161,18 +170,20 @@ export const extensions = (typeName: ExtensionTypeName) => {
 		return { ...acc, [fnName]: { doc: fn.doc } };
 	}, {});
 
-	return toOptions(fnToDoc, typeName, 'extension-function');
+	return toOptions(fnToDoc, typeName, 'extension-function', includeHidden);
 };
 
 export const toOptions = (
 	fnToDoc: FnToDoc,
 	typeName: ExtensionTypeName,
 	optionType: AutocompleteOptionType = 'native-function',
+	includeHidden = false,
 ) => {
 	return Object.entries(fnToDoc)
 		.sort((a, b) => a[0].localeCompare(b[0]))
-		.map(([fnName, fn]) => {
-			return createCompletionOption(typeName, fnName, optionType, fn);
+		.filter(([, docInfo]) => !docInfo.doc?.hidden || includeHidden)
+		.map(([fnName, docInfo]) => {
+			return createCompletionOption(typeName, fnName, optionType, docInfo);
 		});
 };
 
@@ -290,15 +301,17 @@ const createPropHeader = (typeName: string, property: { doc?: DocMetadata | unde
 	return header;
 };
 
-const objectOptions = (toResolve: string, resolved: IDataObject) => {
+const objectOptions = (input: AutocompleteInput<IDataObject>): Completion[] => {
+	const { base, tail, resolved } = input;
+	const includeHidden = tail.length > 0;
 	const rank = setRank(['item', 'all', 'first', 'last']);
 	const SKIP = new Set(['__ob__', 'pairedItem']);
 
 	if (isSplitInBatchesAbsent()) SKIP.add('context');
 
-	const name = /^\$\(.*\)$/.test(toResolve) ? '$()' : toResolve;
+	const name = /^\$\(.*\)$/.test(base) ? '$()' : base;
 
-	if (['$input', '$()'].includes(name) && hasNoParams(toResolve)) SKIP.add('params');
+	if (['$input', '$()'].includes(name) && hasNoParams(base)) SKIP.add('params');
 
 	let rawKeys = Object.keys(resolved);
 
@@ -306,7 +319,7 @@ const objectOptions = (toResolve: string, resolved: IDataObject) => {
 		rawKeys = Reflect.ownKeys(resolved) as string[];
 	}
 
-	if (toResolve === 'Math') {
+	if (base === 'Math') {
 		const descriptors = Object.getOwnPropertyDescriptors(Math);
 		rawKeys = Object.keys(descriptors).sort((a, b) => a.localeCompare(b));
 	}
@@ -342,21 +355,25 @@ const objectOptions = (toResolve: string, resolved: IDataObject) => {
 	const skipObjectExtensions =
 		resolved.isProxy ||
 		resolved.json ||
-		/json('])$/.test(toResolve) ||
-		toResolve === '$execution' ||
-		toResolve.endsWith('params') ||
-		toResolve === 'Math';
+		/json('])$/.test(base) ||
+		base === '$execution' ||
+		base.endsWith('params') ||
+		base === 'Math';
 
 	if (skipObjectExtensions) {
-		return sortCompletionsAlpha([...localKeys, ...natives('object')]);
+		return sortCompletionsAlpha([...localKeys, ...natives('object', includeHidden)]);
 	}
 
 	return applySections({
-		options: sortCompletionsAlpha([...localKeys, ...natives('object'), ...extensions('object')]),
+		options: sortCompletionsAlpha([
+			...localKeys,
+			...natives('object', includeHidden),
+			...extensions('object', includeHidden),
+		]),
 		recommended: OBJECT_RECOMMENDED_OPTIONS,
 		recommendedSection: RECOMMENDED_METHODS_SECTION,
 		methodsSection: OTHER_METHODS_SECTION,
-		fieldsSection: { ...FIELDS_SECTION, rank: -1 },
+		propSection: FIELDS_SECTION,
 		excludeRecommended: true,
 	});
 };
@@ -375,7 +392,7 @@ const getObjectPropertySection = ({
 		return OTHER_SECTION;
 	}
 
-	return isFunction ? METHODS_SECTION : { ...FIELDS_SECTION, rank: 0 };
+	return isFunction ? METHODS_SECTION : FIELDS_SECTION;
 };
 
 const applySections = ({
@@ -384,14 +401,14 @@ const applySections = ({
 	recommended = [],
 	excludeRecommended = false,
 	methodsSection = METHODS_SECTION,
-	fieldsSection = FIELDS_SECTION,
+	propSection = PROPERTIES_SECTION,
 	recommendedSection = RECOMMENDED_SECTION,
 }: {
 	options: Completion[];
 	recommended?: string[];
 	recommendedSection?: CompletionSection;
 	methodsSection?: CompletionSection;
-	fieldsSection?: CompletionSection;
+	propSection?: CompletionSection;
 	sections?: Record<string, CompletionSection>;
 	excludeRecommended?: boolean;
 }) => {
@@ -417,7 +434,7 @@ const applySections = ({
 					if (sections) {
 						option.section = sections[option.section as string] ?? OTHER_SECTION;
 					} else {
-						option.section = option.label.endsWith('()') ? methodsSection : fieldsSection;
+						option.section = option.label.endsWith('()') ? methodsSection : propSection;
 					}
 					return option;
 				}),
@@ -433,8 +450,13 @@ const isUrl = (url: string): boolean => {
 	}
 };
 
-const stringOptions = (resolved: string): Completion[] => {
-	const options = sortCompletionsAlpha([...natives('string'), ...extensions('string')]);
+const stringOptions = (input: AutocompleteInput<string>): Completion[] => {
+	const { resolved, tail } = input;
+	const includeHidden = tail.length > 0;
+	const options = sortCompletionsAlpha([
+		...natives('string', includeHidden),
+		...extensions('string', includeHidden),
+	]);
 
 	if (validateFieldType('string', resolved, 'number').valid) {
 		return applySections({
@@ -455,7 +477,7 @@ const stringOptions = (resolved: string): Completion[] => {
 	if (VALID_EMAIL_REGEX.test(resolved) || isUrl(resolved)) {
 		return applySections({
 			options,
-			recommended: ['extractDomain()'],
+			recommended: ['extractDomain()', 'isEmail()', ...STRING_RECOMMENDED_OPTIONS],
 			sections: STRING_SECTIONS,
 		});
 	}
@@ -463,7 +485,7 @@ const stringOptions = (resolved: string): Completion[] => {
 	if (resolved.split(/\s/).find((token) => VALID_EMAIL_REGEX.test(token))) {
 		return applySections({
 			options,
-			recommended: ['extractEmail()'],
+			recommended: ['extractEmail()', ...STRING_RECOMMENDED_OPTIONS],
 			sections: STRING_SECTIONS,
 		});
 	}
@@ -475,35 +497,57 @@ const stringOptions = (resolved: string): Completion[] => {
 	});
 };
 
-const numberOptions = (resolved: number): Completion[] => {
-	const options = sortCompletionsAlpha([...natives('number'), ...extensions('number')]);
+const numberOptions = (input: AutocompleteInput<number>): Completion[] => {
+	const { resolved, tail } = input;
+	const includeHidden = tail.length > 0;
+	const options = sortCompletionsAlpha([
+		...natives('number', includeHidden),
+		...extensions('number', includeHidden),
+	]);
+	const ONLY_INTEGER = ['isEven()', 'isOdd()'];
 
-	if (!Number.isInteger(resolved)) {
-		return applySections({ options, recommended: ['round()', 'floor()', 'ceil()'] });
+	if (Number.isInteger(resolved)) {
+		return applySections({
+			options,
+			recommended: ONLY_INTEGER,
+		});
+	} else {
+		const exclude = new Set(ONLY_INTEGER);
+		return applySections({
+			options: options.filter((option) => !exclude.has(option.label)),
+			recommended: ['round()', 'floor()', 'ceil()', 'toFixed()'],
+		});
 	}
-
-	return applySections({ options });
 };
 
 const dateOptions = (): Completion[] => {
 	return applySections({
-		options: sortCompletionsAlpha([...natives('date'), ...extensions('date')]),
+		options: sortCompletionsAlpha([...natives('date'), ...extensions('date', true)]),
 	});
 };
 
-const luxonOptions = (): Completion[] => {
+const luxonOptions = (input: AutocompleteInput<DateTime>): Completion[] => {
+	const includeHidden = input.tail.length > 0;
 	return applySections({
 		options: sortCompletionsAlpha(
-			uniqBy([...extensions('date'), ...luxonInstanceOptions()], (option) => option.label),
+			uniqBy(
+				[...extensions('date', includeHidden), ...luxonInstanceOptions(includeHidden)],
+				(option) => option.label,
+			),
 		),
 		recommended: LUXON_RECOMMENDED_OPTIONS,
 		sections: LUXON_SECTIONS,
 	});
 };
 
-const arrayOptions = (resolved: unknown[]): Completion[] => {
+const arrayOptions = (input: AutocompleteInput<unknown[]>): Completion[] => {
+	const { resolved, tail } = input;
+	const includeHidden = tail.length > 0;
 	const options = applySections({
-		options: sortCompletionsAlpha([...natives('array'), ...extensions('array')]),
+		options: sortCompletionsAlpha([
+			...natives('array', includeHidden),
+			...extensions('array', includeHidden),
+		]),
 		recommended: ARRAY_RECOMMENDED_OPTIONS,
 	});
 
@@ -591,7 +635,7 @@ export const secretProvidersOptions = () => {
 /**
  * Methods and fields defined on a Luxon `DateTime` class instance.
  */
-export const luxonInstanceOptions = () => {
+export const luxonInstanceOptions = (includeHidden = false) => {
 	const SKIP = new Set(['constructor', 'get', 'invalidExplanation', 'invalidReason']);
 
 	return Object.entries(Object.getOwnPropertyDescriptors(DateTime.prototype))
@@ -600,8 +644,15 @@ export const luxonInstanceOptions = () => {
 		.map(([key, descriptor]) => {
 			const isFunction = typeof descriptor.value === 'function';
 			const optionType = isFunction ? 'native-function' : 'keyword';
-			return createLuxonAutocompleteOption(key, optionType, luxonInstanceDocs, i18n.luxonInstance);
-		});
+			return createLuxonAutocompleteOption(
+				key,
+				optionType,
+				luxonInstanceDocs,
+				i18n.luxonInstance,
+				includeHidden,
+			) as Completion;
+		})
+		.filter(Boolean);
 };
 
 /**
@@ -619,8 +670,9 @@ export const luxonStaticOptions = () => {
 					'native-function',
 					luxonStaticDocs,
 					i18n.luxonStatic,
-				);
-			}),
+				) as Completion;
+			})
+			.filter(Boolean),
 	);
 };
 
@@ -629,7 +681,8 @@ const createLuxonAutocompleteOption = (
 	type: AutocompleteOptionType,
 	docDefinition: NativeDoc,
 	translations: Record<string, string | undefined>,
-): Completion => {
+	includeHidden = false,
+): Completion | null => {
 	const isFunction = isFunctionOption(type);
 	const label = isFunction ? name + '()' : name;
 
@@ -648,6 +701,10 @@ const createLuxonAutocompleteOption = (
 			returnType: !optionType || optionType === 'undefined' ? '' : optionType,
 			docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetime',
 		};
+	}
+
+	if (doc?.hidden && !includeHidden) {
+		return null;
 	}
 
 	const option: Completion = {
@@ -682,20 +739,20 @@ export const objectGlobalOptions = () => {
 };
 
 const regexes = {
-	generalRef: /\$[^$'"]+\.([^{\s])*/, // $input. or $json. or similar ones
-	selectorRef: /\$\(['"][\S\s]+['"]\)\.([^{\s])*/, // $('nodeName').
+	generalRef: /\$[^$'"]+\.(.*)/, // $input. or $json. or similar ones
+	selectorRef: /\$\(['"][\S\s]+['"]\)\.(.*)/, // $('nodeName').
 
-	numberLiteral: /\((\d+)\.?(\d*)\)\.([^{\s])*/, // (123). or (123.4).
+	numberLiteral: /\((\d+)\.?(\d*)\)\.(.*)/, // (123). or (123.4).
 	singleQuoteStringLiteral: /('.+')\.([^'{\s])*/, // 'abc'.
 	doubleQuoteStringLiteral: /(".+")\.([^"{\s])*/, // "abc".
-	dateLiteral: /\(?new Date\(\(?.*?\)\)?\.([^{\s])*/, // new Date(). or (new Date()).
-	arrayLiteral: /(\[.+\])\.([^{\s])*/, // [1, 2, 3].
-	indexedAccess: /([^{\s]+\[.+\])\.([^{\s])*/, // 'abc'[0]. or 'abc'.split('')[0] or similar ones
-	objectLiteral: /\(\{.*\}\)\.([^{\s])*/, // ({}).
+	dateLiteral: /\(?new Date\(\(?.*?\)\)?\.(.*)/, // new Date(). or (new Date()).
+	arrayLiteral: /(\[.*\])\.(.*)/, // [1, 2, 3].
+	indexedAccess: /([^"{\s]+\[.+\])\.(.*)/, // 'abc'[0]. or 'abc'.split('')[0] or similar ones
+	objectLiteral: /\(\{.*\}\)\.(.*)/, // ({}).
 
-	mathGlobal: /Math\.([^{\s])*/, // Math.
-	datetimeGlobal: /DateTime\.(\w+\(.*\)\.[^{\s]*)?/, // DateTime.
-	objectGlobal: /Object\.(\w+\(.*\)\.[^{\s]*)?/, // Object. or Object.method(arg).
+	mathGlobal: /Math\.(.*)/, // Math.
+	datetimeGlobal: /DateTime\.(.*)/, // DateTime.
+	objectGlobal: /Object\.(.*)/, // Object. or Object.method(arg).
 };
 
 const DATATYPE_REGEX = new RegExp(

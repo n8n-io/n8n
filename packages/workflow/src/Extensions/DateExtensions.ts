@@ -219,6 +219,7 @@ function plus(
 endOfMonth.doc = {
 	name: 'endOfMonth',
 	returnType: 'Date',
+	hidden: true,
 	description: 'Transforms a date to the last possible moment that lies within the month.',
 	section: 'edit',
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-endOfMonth',
@@ -227,6 +228,7 @@ endOfMonth.doc = {
 isDst.doc = {
 	name: 'isDst',
 	returnType: 'boolean',
+	hidden: true,
 	description: 'Checks if a Date is within Daylight Savings Time.',
 	section: 'query',
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-isDst',
@@ -235,6 +237,7 @@ isDst.doc = {
 isWeekend.doc = {
 	name: 'isWeekend',
 	returnType: 'boolean',
+	hidden: true,
 	description: 'Checks if the Date falls on a Saturday or Sunday.',
 	section: 'query',
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-isWeekend',
@@ -244,6 +247,7 @@ beginningOf.doc = {
 	name: 'beginningOf',
 	description: 'Transform a Date to the start of the given time period. Default unit is `week`.',
 	section: 'edit',
+	hidden: true,
 	returnType: 'Date',
 	args: [{ name: 'unit?', type: 'DurationUnit' }],
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-beginningOf',

@@ -2,7 +2,7 @@ import SHA from 'jssha';
 import MD5 from 'md5';
 import { encode } from 'js-base64';
 import { titleCase } from 'title-case';
-import type { ExtensionMap } from './Extensions';
+import type { Extension, ExtensionMap } from './Extensions';
 import { transliterate } from 'transliteration';
 import { ExpressionExtensionError } from '../errors/expression-extension.error';
 
@@ -465,6 +465,7 @@ replaceSpecialChars.doc = {
 length.doc = {
 	name: 'length',
 	section: 'query',
+	hidden: true,
 	description: 'Returns the character count of a string.',
 	returnType: 'number',
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/strings',
@@ -566,6 +567,11 @@ quote.doc = {
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-quote',
 };
 
+const toDecimalNumber: Extension = toFloat.bind({});
+toDecimalNumber.doc = { ...toFloat.doc, hidden: true };
+const toWholeNumber: Extension = toInt.bind({});
+toWholeNumber.doc = { ...toInt.doc, hidden: true };
+
 export const stringExtensions: ExtensionMap = {
 	typeName: 'String',
 	functions: {
@@ -573,10 +579,10 @@ export const stringExtensions: ExtensionMap = {
 		removeMarkdown,
 		removeTags,
 		toDate,
-		toDecimalNumber: toFloat,
+		toDecimalNumber,
 		toFloat,
 		toInt,
-		toWholeNumber: toInt,
+		toWholeNumber,
 		toSentenceCase,
 		toSnakeCase,
 		toTitleCase,

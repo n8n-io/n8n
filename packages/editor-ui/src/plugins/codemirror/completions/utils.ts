@@ -129,7 +129,7 @@ export function autocompletableNodeNames() {
 
 	if (!activeNodeName) return [];
 
-	return useWorkflowHelpers(useRouter())
+	return useWorkflowHelpers({ router: useRouter() })
 		.getCurrentWorkflow()
 		.getParentNodesByDepth(activeNodeName)
 		.map((node) => node.name)

@@ -2,6 +2,11 @@ import type { Completion, CompletionSection } from '@codemirror/autocomplete';
 import { i18n } from '@/plugins/i18n';
 import { withSectionHeader } from './utils';
 
+export const FIELDS_SECTION: CompletionSection = withSectionHeader({
+	name: i18n.baseText('codeNodeEditor.completer.section.fields'),
+	rank: -1,
+});
+
 export const RECOMMENDED_SECTION: CompletionSection = withSectionHeader({
 	name: i18n.baseText('codeNodeEditor.completer.section.recommended'),
 	rank: 0,
@@ -14,22 +19,22 @@ export const RECOMMENDED_METHODS_SECTION: CompletionSection = withSectionHeader(
 
 export const PREVIOUS_NODES_SECTION: CompletionSection = withSectionHeader({
 	name: i18n.baseText('codeNodeEditor.completer.section.prevNodes'),
-	rank: 2,
+	rank: 1,
 });
 
-export const FIELDS_SECTION: CompletionSection = withSectionHeader({
-	name: i18n.baseText('codeNodeEditor.completer.section.fields'),
-	rank: 3,
+export const PROPERTIES_SECTION: CompletionSection = withSectionHeader({
+	name: i18n.baseText('codeNodeEditor.completer.section.properties'),
+	rank: 2,
 });
 
 export const METHODS_SECTION: CompletionSection = withSectionHeader({
 	name: i18n.baseText('codeNodeEditor.completer.section.methods'),
-	rank: 4,
+	rank: 3,
 });
 
 export const METADATA_SECTION: CompletionSection = withSectionHeader({
 	name: i18n.baseText('codeNodeEditor.completer.section.metadata'),
-	rank: 5,
+	rank: 4,
 });
 
 export const OTHER_METHODS_SECTION: CompletionSection = withSectionHeader({

@@ -179,7 +179,7 @@ describe('Resolution-based completions', () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce(123);
 
 			expect(completions('{{ (123).| }}')).toHaveLength(
-				natives('number').length + extensions('number').length,
+				natives('number').length + extensions('number').length + ['isEven()', 'isOdd()'].length,
 			);
 		});
 
@@ -234,7 +234,9 @@ describe('Resolution-based completions', () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($input.item.json.num);
 			const found = completions('{{ Math.abs($input.item.json.num1).| }}');
 			if (!found) throw new Error('Expected to find completions');
-			expect(found).toHaveLength(extensions('number').length + natives('number').length);
+			expect(found).toHaveLength(
+				extensions('number').length + natives('number').length + ['isEven()', 'isOdd()'].length,
+			);
 		});
 
 		test('should return completions when node reference is used as a function parameter', () => {
@@ -306,7 +308,9 @@ describe('Resolution-based completions', () => {
 
 			if (!found) throw new Error('Expected to find completions');
 
-			expect(found).toHaveLength(extensions('number').length + natives('number').length);
+			expect(found).toHaveLength(
+				extensions('number').length + natives('number').length + ['isEven()', 'isOdd()'].length,
+			);
 			expect(found.map((c) => c.label).every((l) => !l.endsWith('()')));
 		});
 
@@ -502,7 +506,7 @@ describe('Resolution-based completions', () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($input.item.json.num);
 
 			expect(completions('{{ $input.item.json.num.| }}')).toHaveLength(
-				extensions('number').length + natives('number').length,
+				extensions('number').length + natives('number').length + ['isEven()', 'isOdd()'].length,
 			);
 		});
 

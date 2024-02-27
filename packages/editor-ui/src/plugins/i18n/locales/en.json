@@ -320,6 +320,7 @@
 	"codeNodeEditor.completer.section.prevNodes": "Earlier nodes",
 	"codeNodeEditor.completer.section.metadata": "Metadata",
 	"codeNodeEditor.completer.section.fields": "Fields",
+	"codeNodeEditor.completer.section.properties": "Properties",
 	"codeNodeEditor.completer.section.methods": "Methods",
 	"codeNodeEditor.completer.section.otherMethods": "Other methods",
 	"codeNodeEditor.completer.section.recommended": "Suggested",
