@@ -4,6 +4,7 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'auditLogs:manage',
 	'credential:create',
 	'credential:read',
+	'credential:update',
 	'credential:delete',
 	'credential:list',
 	'credential:share',

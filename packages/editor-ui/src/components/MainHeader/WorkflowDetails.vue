@@ -217,7 +217,7 @@ export default defineComponent({
 	},
 	setup() {
 		const router = useRouter();
-		const workflowHelpers = useWorkflowHelpers(router);
+		const workflowHelpers = useWorkflowHelpers({ router });
 
 		return {
 			workflowHelpers,

@@ -34,7 +34,7 @@ import {
 	type INodeListSearchItems,
 	type NodeParameterValueType,
 	type IDisplayOptions,
-	type IExecutionsSummary,
+	type ExecutionSummary,
 	type FeatureFlags,
 	type ExecutionStatus,
 	type ITelemetryTrackProperties,
@@ -47,11 +47,13 @@ import {
 	type INodeProperties,
 	type NodeConnectionType,
 	type INodeCredentialsDetails,
+	type StartNodeData,
 } from 'n8n-workflow';
 import type { BulkCommand, Undoable } from '@/models/history';
 import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
 import type { Component } from 'vue';
 import type { Scope } from '@n8n/permissions';
+import type { NotificationOptions as ElementNotificationOptions } from 'element-plus';
 
 export * from 'n8n-design-system/types';
 
@@ -188,7 +190,7 @@ export interface IAiData {
 
 export interface IStartRunData {
 	workflowData: IWorkflowData;
-	startNodes?: string[];
+	startNodes?: StartNodeData[];
 	destinationNode?: string;
 	runData?: IRunData;
 	pinData?: IPinData;
@@ -394,7 +396,7 @@ export interface IExecutionShortResponse {
 
 export interface IExecutionsListResponse {
 	count: number;
-	results: IExecutionsSummary[];
+	results: ExecutionSummary[];
 	estimated: boolean;
 }
 
@@ -1060,8 +1062,8 @@ export interface IUsedCredential {
 export interface WorkflowsState {
 	activeExecutions: IExecutionsCurrentSummaryExtended[];
 	activeWorkflows: string[];
-	activeWorkflowExecution: IExecutionsSummary | null;
-	currentWorkflowExecutions: IExecutionsSummary[];
+	activeWorkflowExecution: ExecutionSummary | null;
+	currentWorkflowExecutions: ExecutionSummary[];
 	activeExecutionId: string | null;
 	executingNode: string[];
 	executionWaitingForWebhook: boolean;
@@ -1188,9 +1190,9 @@ export type ModalState = {
 	httpNodeParameters?: string;
 };
 
-export type NewCredentialsModal = ModalState & {
+export interface NewCredentialsModal extends ModalState {
 	showAuthSelector?: boolean;
-};
+}
 
 export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema' | 'html' | 'ai';
 export type NodePanelType = 'input' | 'output';
@@ -1237,6 +1239,10 @@ export interface NDVState {
 		activeTarget: { id: string; stickyPosition: null | XYPosition } | null;
 	};
 	isMappingOnboarded: boolean;
+}
+
+export interface NotificationOptions extends Partial<ElementNotificationOptions> {
+	message: string | ElementNotificationOptions['message'];
 }
 
 export interface UIState {
@@ -1397,8 +1403,8 @@ export interface IUsersState {
 }
 
 export interface IWorkflowsState {
-	currentWorkflowExecutions: IExecutionsSummary[];
-	activeWorkflowExecution: IExecutionsSummary | null;
+	currentWorkflowExecutions: ExecutionSummary[];
+	activeWorkflowExecution: ExecutionSummary | null;
 	finishedExecutionsCount: number;
 }
 export interface IWorkflowsMap {
