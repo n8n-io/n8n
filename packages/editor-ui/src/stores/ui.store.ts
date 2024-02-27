@@ -46,7 +46,6 @@ import type {
 	IFakeDoorLocation,
 	INodeUi,
 	IOnboardingCallPrompt,
-	IUser,
 	UIState,
 	UTMCampaign,
 	XYPosition,
@@ -64,6 +63,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { hasPermission } from '@/rbac/permissions';
 import { useTelemetryStore } from '@/stores/telemetry.store';
+import { useUsersStore } from '@/stores/users.store';
 import { dismissBannerPermanently } from '@/api/ui';
 import type { BannerName } from 'n8n-workflow';
 import {
@@ -73,7 +73,6 @@ import {
 	isValidTheme,
 	updateTheme,
 } from './ui.utils';
-import { useUsersStore } from './users.store';
 
 let savedTheme: ThemeOption = 'system';
 try {
@@ -465,26 +464,37 @@ export const useUIStore = defineStore(STORES.UI, {
 			this.setMode(CREDENTIAL_EDIT_MODAL_KEY, 'new');
 			this.openModal(CREDENTIAL_EDIT_MODAL_KEY);
 		},
-		async getNextOnboardingPrompt(): Promise<IOnboardingCallPrompt> {
+		async getNextOnboardingPrompt(): Promise<IOnboardingCallPrompt | null> {
 			const rootStore = useRootStore();
 			const instanceId = rootStore.instanceId;
-			// TODO: current USER
-			const currentUser = {} as IUser;
-			return await fetchNextOnboardingPrompt(instanceId, currentUser);
+			const { currentUser } = useUsersStore();
+			if (currentUser) {
+				return await fetchNextOnboardingPrompt(instanceId, currentUser);
+			}
+			return null;
 		},
-		async applyForOnboardingCall(email: string): Promise<string> {
+		async applyForOnboardingCall(email: string): Promise<string | null> {
 			const rootStore = useRootStore();
 			const instanceId = rootStore.instanceId;
-			// TODO: current USER
-			const currentUser = {} as IUser;
-			return await applyForOnboardingCall(instanceId, currentUser, email);
+			const { currentUser } = useUsersStore();
+			if (currentUser) {
+				return await applyForOnboardingCall(instanceId, currentUser, email);
+			}
+			return null;
 		},
-		async submitContactEmail(email: string, agree: boolean): Promise<string> {
+		async submitContactEmail(email: string, agree: boolean): Promise<string | null> {
 			const rootStore = useRootStore();
 			const instanceId = rootStore.instanceId;
-			// TODO: current USER
-			const currentUser = {} as IUser;
-			return await submitEmailOnSignup(instanceId, currentUser, email || currentUser.email, agree);
+			const { currentUser } = useUsersStore();
+			if (currentUser) {
+				return await submitEmailOnSignup(
+					instanceId,
+					currentUser,
+					email ?? currentUser?.email,
+					agree,
+				);
+			}
+			return null;
 		},
 		openCommunityPackageUninstallConfirmModal(packageName: string) {
 			this.setActiveId(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, packageName);
