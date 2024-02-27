@@ -204,7 +204,7 @@ export const expressionManager = defineComponent({
 
 			try {
 				const ndvStore = useNDVStore();
-				const workflowHelpers = useWorkflowHelpers(this.$router);
+				const workflowHelpers = useWorkflowHelpers({ router: this.$router });
 				if (!ndvStore.activeNode) {
 					// e.g. credential modal
 					result.resolved = Expression.resolveWithoutWorkflow(resolvable, this.additionalData);
