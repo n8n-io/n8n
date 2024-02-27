@@ -191,7 +191,7 @@ import {
 import { nodeBase } from '@/mixins/nodeBase';
 import type {
 	ConnectionTypes,
-	IExecutionsSummary,
+	ExecutionSummary,
 	INodeInputConfiguration,
 	INodeOutputConfiguration,
 	INodeTypeDescription,
@@ -494,7 +494,7 @@ export default defineComponent({
 			return this.data.name;
 		},
 		waiting(): string | undefined {
-			const workflowExecution = this.workflowsStore.getWorkflowExecution as IExecutionsSummary;
+			const workflowExecution = this.workflowsStore.getWorkflowExecution as ExecutionSummary;
 
 			if (workflowExecution?.waitTill) {
 				const lastNodeExecuted = get(workflowExecution, 'data.resultData.lastNodeExecuted');

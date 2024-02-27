@@ -6,33 +6,32 @@ import {
 	type INodeTypeDescription,
 	type SupplyData,
 } from 'n8n-workflow';
-
-import { Ollama } from 'langchain/llms/ollama';
+import { OllamaEmbeddings } from 'langchain/embeddings/ollama';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
-import { ollamaDescription, ollamaModel, ollamaOptions } from './description';
+import { ollamaDescription, ollamaModel } from '../../llms/LMOllama/description';
 
-export class LmOllama implements INodeType {
+export class EmbeddingsOllama implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Ollama Model',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
-		name: 'lmOllama',
+		displayName: 'Embeddings Ollama',
+		name: 'embeddingsOllama',
 		icon: 'file:ollama.svg',
 		group: ['transform'],
 		version: 1,
-		description: 'Language Model Ollama',
+		description: 'Use Ollama Embeddings',
 		defaults: {
-			name: 'Ollama Model',
+			name: 'Embeddings Ollama',
 		},
+		...ollamaDescription,
 		codex: {
 			categories: ['AI'],
 			subcategories: {
-				AI: ['Language Models'],
+				AI: ['Embeddings'],
 			},
 			resources: {
 				primaryDocumentation: [
 					{
-						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmollama/',
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.embeddingsollama/',
 					},
 				],
 			},
@@ -40,30 +39,23 @@ export class LmOllama implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.AiLanguageModel],
-		outputNames: ['Model'],
-		...ollamaDescription,
-		properties: [
-			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
-			ollamaModel,
-			ollamaOptions,
-		],
+		outputs: [NodeConnectionType.AiEmbedding],
+		outputNames: ['Embeddings'],
+		properties: [getConnectionHintNoticeField([NodeConnectionType.AiVectorStore]), ollamaModel],
 	};
 
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+		this.logger.verbose('Supply data for embeddings Ollama');
+		const modelName = this.getNodeParameter('model', itemIndex) as string;
 		const credentials = await this.getCredentials('ollamaApi');
 
-		const modelName = this.getNodeParameter('model', itemIndex) as string;
-		const options = this.getNodeParameter('options', itemIndex, {}) as object;
-
-		const model = new Ollama({
+		const embeddings = new OllamaEmbeddings({
 			baseUrl: credentials.baseUrl as string,
 			model: modelName,
-			...options,
 		});
 
 		return {
-			response: logWrapper(model, this),
+			response: logWrapper(embeddings, this),
 		};
 	}
 }
