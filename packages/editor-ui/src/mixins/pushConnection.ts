@@ -44,7 +44,7 @@ import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 export const pushConnection = defineComponent({
 	setup() {
 		const router = useRouter();
-		const workflowHelpers = useWorkflowHelpers(router);
+		const workflowHelpers = useWorkflowHelpers({ router });
 		const nodeHelpers = useNodeHelpers();
 		return {
 			...useTitleChange(),

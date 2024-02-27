@@ -30,12 +30,17 @@ export function useToast() {
 	const externalHooks = useExternalHooks();
 	const i18n = useI18n();
 
-	function showMessage(messageData: NotificationOptions, track = true) {
+	function showMessage(messageData: Partial<NotificationOptions>, track = true) {
 		messageData = { ...messageDefaults, ...messageData };
-		messageData.message =
-			typeof messageData.message === 'string'
-				? sanitizeHtml(messageData.message)
-				: messageData.message;
+
+		Object.defineProperty(messageData, 'message', {
+			value:
+				typeof messageData.message === 'string'
+					? sanitizeHtml(messageData.message)
+					: messageData.message,
+			writable: true,
+			enumerable: true,
+		});
 
 		const notification = Notification(messageData);
 
@@ -116,7 +121,7 @@ export function useToast() {
 	}
 
 	function showError(e: Error | unknown, title: string, message?: string) {
-		const error = e as Error;
+		const error = e as NotificationErrorWithNodeAndDescription;
 		const messageLine = message ? `${message}<br/>` : '';
 		showMessage(
 			{
@@ -124,7 +129,7 @@ export function useToast() {
 				message: `
 					${messageLine}
 					<i>${error.message}</i>
-					${collapsableDetails(error as NotificationErrorWithNodeAndDescription)}`,
+					${collapsableDetails(error)}`,
 				type: 'error',
 				duration: 0,
 			},
@@ -170,7 +175,7 @@ export function useToast() {
 	function showNotificationForViews(views: VIEWS[]) {
 		const notifications: NotificationOptions[] = [];
 		views.forEach((view) => {
-			notifications.push(...uiStore.getNotificationsForView(view));
+			notifications.push(...(uiStore.getNotificationsForView(view) as NotificationOptions[]));
 		});
 		if (notifications.length) {
 			notifications.forEach(async (notification) => {
