@@ -71,6 +71,10 @@ const onSubmit = async () => {
 	isDirty.value = false;
 };
 
+const onDelete = () => {
+	alert('Not yet implemented');
+};
+
 watch(
 	() => projectsStore.currentProject,
 	() => {
@@ -162,7 +166,7 @@ onBeforeMount(async () => {
 			<fieldset>
 				<hr class="mb-2xl" />
 				<h3 class="mb-xs">{{ locale.baseText('projects.settings.title.deleteProject') }}</h3>
-				<n8n-button type="danger" class="mb-xs">{{
+				<n8n-button type="danger" class="mb-xs" @click.stop.prevent="onDelete">{{
 					locale.baseText('projects.settings.title.deleteProject')
 				}}</n8n-button>
 				<br />
