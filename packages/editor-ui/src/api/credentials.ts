@@ -36,8 +36,12 @@ export async function getAllCredentials(
 export async function createNewCredential(
 	context: IRestApiContext,
 	data: ICredentialsDecrypted,
+	projectId: string,
 ): Promise<ICredentialsResponse> {
-	return await makeRestApiRequest(context, 'POST', '/credentials', data as unknown as IDataObject);
+	return await makeRestApiRequest(context, 'POST', '/credentials', {
+		...data,
+		projectId,
+	} as unknown as IDataObject);
 }
 
 export async function deleteCredential(context: IRestApiContext, id: string): Promise<boolean> {

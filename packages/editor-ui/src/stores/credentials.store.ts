@@ -266,10 +266,13 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 			const rootStore = useRootStore();
 			return await getCredentialData(rootStore.getRestApiContext, id);
 		},
-		async createNewCredential(data: ICredentialsDecrypted): Promise<ICredentialsResponse> {
+		async createNewCredential(
+			data: ICredentialsDecrypted,
+			projectId: string,
+		): Promise<ICredentialsResponse> {
 			const rootStore = useRootStore();
 			const settingsStore = useSettingsStore();
-			const credential = await createNewCredential(rootStore.getRestApiContext, data);
+			const credential = await createNewCredential(rootStore.getRestApiContext, data, projectId);
 
 			if (settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
 				this.upsertCredential(credential);
