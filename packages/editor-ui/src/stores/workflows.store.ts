@@ -82,6 +82,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { getCredentialOnlyNodeTypeName } from '@/utils/credentialOnlyNodes';
+import { useRoute } from 'vue-router';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -385,8 +386,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		},
 
 		async fetchAllWorkflows(): Promise<IWorkflowDb[]> {
+			const route = useRoute();
 			const rootStore = useRootStore();
-			const workflows = await getWorkflows(rootStore.getRestApiContext);
+
+			const filter = {
+				projectId: (route?.query?.projectId ?? route?.params?.projectId) as string,
+			};
+
+			const workflows = await getWorkflows(rootStore.getRestApiContext, filter);
 			this.setWorkflows(workflows);
 			return workflows;
 		},
