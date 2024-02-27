@@ -378,7 +378,9 @@ export const pushConnection = defineComponent({
 
 							if (
 								error.context.nodeCause &&
-								['no pairing info', 'invalid pairing info'].includes(error.context.type as string)
+								['paired_item_no_info', 'paired_item_invalid_info'].includes(
+									error.context.type as string,
+								)
 							) {
 								const node = workflow.getNode(error.context.nodeCause as string);
 
