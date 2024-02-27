@@ -49,15 +49,32 @@ export class OwnershipService {
 			| ListQuery.Workflow.WithOwnedByAndSharedWith
 			| ListQuery.Credentials.WithOwnedByAndSharedWith;
 
-		Object.assign(entity, { ownedBy: null, sharedWith: [] });
+		Object.assign(entity, {
+			ownedBy: null,
+			sharedWith: [],
+			ownedByProject: null,
+			sharedWithProjects: [],
+		});
 
-		shared?.forEach(({ user, role }) => {
+		shared?.forEach(({ user, role, project }) => {
 			const { id, email, firstName, lastName } = user;
 
 			if (role === 'credential:owner' || role === 'workflow:owner') {
 				entity.ownedBy = { id, email, firstName, lastName };
+				entity.ownedByProject = {
+					id: project.id,
+					type: project.type,
+					// TODO: confirm name with product
+					name: project.name ?? 'My n8n',
+				};
 			} else {
 				entity.sharedWith.push({ id, email, firstName, lastName });
+				entity.sharedWithProjects.push({
+					id: project.id,
+					type: project.type,
+					// TODO: confirm name with product
+					name: project.name ?? 'My n8n',
+				});
 			}
 		});
 

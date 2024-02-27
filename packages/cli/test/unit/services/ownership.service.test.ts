@@ -7,7 +7,7 @@ import { mockInstance } from '../../shared/mocking';
 import { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { mock } from 'jest-mock-extended';
-import { mockCredential, mockUser } from '../shared/mockObjects';
+import { mockCredential, mockProject, mockUser } from '../shared/mockObjects';
 
 describe('OwnershipService', () => {
 	const userRepository = mockInstance(UserRepository);
@@ -48,14 +48,18 @@ describe('OwnershipService', () => {
 			const owner = mockUser();
 			const editor = mockUser();
 
+			const ownerProject = mockProject();
+			const editorProject = mockProject();
+
 			const credential = mockCredential();
 
 			credential.shared = [
-				{ role: 'credential:owner', user: owner },
-				{ role: 'credential:editor', user: editor },
+				{ role: 'credential:owner', user: owner, project: ownerProject },
+				{ role: 'credential:editor', user: editor, project: editorProject },
 			] as SharedCredentials[];
 
-			const { ownedBy, sharedWith } = ownershipService.addOwnedByAndSharedWith(credential);
+			const { ownedBy, sharedWith, ownedByProject, sharedWithProjects } =
+				ownershipService.addOwnedByAndSharedWith(credential);
 
 			expect(ownedBy).toStrictEqual({
 				id: owner.id,
@@ -72,20 +76,38 @@ describe('OwnershipService', () => {
 					lastName: editor.lastName,
 				},
 			]);
+
+			expect(ownedByProject).toMatchObject({
+				id: ownerProject.id,
+				name: 'My n8n',
+				type: ownerProject.type,
+			});
+
+			expect(sharedWithProjects).toMatchObject([
+				{
+					id: editorProject.id,
+					name: 'My n8n',
+					type: editorProject.type,
+				},
+			]);
 		});
 
 		test('should add `ownedBy` and `sharedWith` to workflow', async () => {
 			const owner = mockUser();
 			const editor = mockUser();
 
+			const projectOwner = mockProject();
+			const projectEditor = mockProject();
+
 			const workflow = new WorkflowEntity();
 
 			workflow.shared = [
-				{ role: 'workflow:owner', user: owner },
-				{ role: 'workflow:editor', user: editor },
+				{ role: 'workflow:owner', user: owner, project: projectOwner },
+				{ role: 'workflow:editor', user: editor, project: projectEditor },
 			] as SharedWorkflow[];
 
-			const { ownedBy, sharedWith } = ownershipService.addOwnedByAndSharedWith(workflow);
+			const { ownedBy, sharedWith, ownedByProject, sharedWithProjects } =
+				ownershipService.addOwnedByAndSharedWith(workflow);
 
 			expect(ownedBy).toStrictEqual({
 				id: owner.id,
@@ -100,6 +122,19 @@ describe('OwnershipService', () => {
 					email: editor.email,
 					firstName: editor.firstName,
 					lastName: editor.lastName,
+				},
+			]);
+
+			expect(ownedByProject).toMatchObject({
+				id: projectOwner.id,
+				name: 'My n8n',
+				type: projectOwner.type,
+			});
+			expect(sharedWithProjects).toMatchObject([
+				{
+					id: projectEditor.id,
+					name: 'My n8n',
+					type: projectEditor.type,
 				},
 			]);
 		});
@@ -109,9 +144,14 @@ describe('OwnershipService', () => {
 
 			const credential = mockCredential();
 
-			credential.shared = [{ role: 'credential:owner', user: owner }] as SharedCredentials[];
+			const project = mockProject();
 
-			const { ownedBy, sharedWith } = ownershipService.addOwnedByAndSharedWith(credential);
+			credential.shared = [
+				{ role: 'credential:owner', user: owner, project },
+			] as SharedCredentials[];
+
+			const { ownedBy, sharedWith, ownedByProject, sharedWithProjects } =
+				ownershipService.addOwnedByAndSharedWith(credential);
 
 			expect(ownedBy).toStrictEqual({
 				id: owner.id,
@@ -121,6 +161,14 @@ describe('OwnershipService', () => {
 			});
 
 			expect(sharedWith).toHaveLength(0);
+
+			expect(ownedByProject).toMatchObject({
+				id: project.id,
+				name: 'My n8n',
+				type: project.type,
+			});
+
+			expect(sharedWithProjects).toHaveLength(0);
 		});
 	});
 

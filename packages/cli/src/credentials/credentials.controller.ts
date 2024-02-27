@@ -68,7 +68,7 @@ export class CredentialsController {
 
 			let credential = await this.credentialsRepository.findOne({
 				where: { id: credentialId },
-				relations: ['shared', 'shared.user'],
+				relations: { shared: { user: true, project: true } },
 			});
 
 			if (!credential) {

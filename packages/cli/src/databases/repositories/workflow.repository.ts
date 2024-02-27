@@ -152,7 +152,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			select.tags = { id: true, name: true };
 		}
 
-		if (isOwnedByIncluded) relations.push('shared', 'shared.user');
+		if (isOwnedByIncluded) relations.push('shared', 'shared.user', 'shared.project');
 
 		if (typeof where.name === 'string' && where.name !== '') {
 			where.name = Like(`%${where.name}%`);

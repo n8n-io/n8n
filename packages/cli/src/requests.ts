@@ -104,7 +104,7 @@ export namespace ListQuery {
 
 		type SharedField = Partial<Pick<WorkflowEntity, 'shared'>>;
 
-		type OwnedByField = { ownedBy: SlimUser | null };
+		type OwnedByField = { ownedBy: SlimUser | null; ownedByProject: SlimProject | null };
 
 		export type Plain = BaseFields;
 
@@ -112,15 +112,15 @@ export namespace ListQuery {
 
 		export type WithOwnership = BaseFields & OwnedByField;
 
-		type SharedWithField = { sharedWith: SlimUser[] };
+		type SharedWithField = { sharedWith: SlimUser[]; sharedWithProjects: SlimProject[] };
 
 		export type WithOwnedByAndSharedWith = BaseFields & OwnedByField & SharedWithField;
 	}
 
 	export namespace Credentials {
-		type OwnedByField = { ownedBy: SlimUser | null };
+		type OwnedByField = { ownedBy: SlimUser | null; ownedByProject: SlimProject | null };
 
-		type SharedWithField = { sharedWith: SlimUser[] };
+		type SharedWithField = { sharedWith: SlimUser[]; sharedWithProjects: SlimProject[] };
 
 		export type WithSharing = CredentialsEntity & Partial<Pick<CredentialsEntity, 'shared'>>;
 
@@ -129,6 +129,7 @@ export namespace ListQuery {
 }
 
 type SlimUser = Pick<IUser, 'id' | 'email' | 'firstName' | 'lastName'>;
+type SlimProject = Pick<Project, 'id' | 'type' | 'name'>;
 
 export function hasSharing(
 	workflows: ListQuery.Workflow.Plain[] | ListQuery.Workflow.WithSharing[],
