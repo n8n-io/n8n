@@ -66,7 +66,7 @@ export const useProjectsStore = defineStore('projects', () => {
 	watch(
 		route,
 		async (newRoute) => {
-			if (!newRoute.params?.projectId) {
+			if (!newRoute?.params?.projectId) {
 				return;
 			}
 			await getProject(newRoute.params.projectId);
