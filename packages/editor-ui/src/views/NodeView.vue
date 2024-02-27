@@ -869,9 +869,9 @@ export default defineComponent({
 		) {
 			const onboardingResponse = await this.uiStore.getNextOnboardingPrompt();
 			const promptTimeout =
-				onboardingResponse.toast_sequence_number === 1 ? FIRST_ONBOARDING_PROMPT_TIMEOUT : 1000;
+				onboardingResponse?.toast_sequence_number === 1 ? FIRST_ONBOARDING_PROMPT_TIMEOUT : 1000;
 
-			if (onboardingResponse.title && onboardingResponse.description) {
+			if (onboardingResponse?.title && onboardingResponse?.description) {
 				setTimeout(async () => {
 					this.showToast({
 						type: 'info',
