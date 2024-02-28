@@ -300,23 +300,36 @@ export default defineComponent({
 
 <style lang="scss">
 .error-header {
-	margin-bottom: 10px;
+	margin-bottom: var(--spacing-s);
 }
 
 .error-message {
 	color: var(--color-ndv-ouptut-error-font);
-	font-weight: bold;
-	font-size: 1.1rem;
+	font-weight: var(--font-weight-bold);
+	font-size: var(--font-size-l);
 }
 
 .error-description {
-	margin-top: 10px;
-	font-size: 1rem;
+	margin-top: var(--spacing-s);
+	font-size: var(--font-size-m);
+
+	ul {
+		padding: var(--spacing-s) 0;
+		padding-left: var(--spacing-l);
+	}
+
+	code {
+		font-size: var(--font-size-xs);
+		color: var(--color-text-dark);
+		background: var(--color-background-medium);
+		padding: var(--spacing-5xs);
+		border-radius: var(--border-radius-base);
+	}
 }
 
 .error-details__summary {
-	font-weight: 600;
-	font-size: 16px;
+	font-weight: var(--font-weight-bold);
+	font-size: var(--font-size-m);
 	cursor: pointer;
 	outline: none;
 }
