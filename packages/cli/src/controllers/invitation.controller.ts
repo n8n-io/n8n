@@ -3,7 +3,7 @@ import validator from 'validator';
 
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
-import { Authorized, NoAuthRequired, Post, RequireGlobalScope, RestController } from '@/decorators';
+import { Authorized, NoAuthRequired, Post, GlobalScope, RestController } from '@/decorators';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { UserRequest } from '@/requests';
 import { License } from '@/License';
@@ -39,7 +39,7 @@ export class InvitationController {
 	 */
 
 	@Post('/')
-	@RequireGlobalScope('user:create')
+	@GlobalScope('user:create')
 	async inviteUser(req: UserRequest.Invite) {
 		const isWithinUsersLimit = this.license.isWithinUsersLimit();
 
