@@ -1,7 +1,7 @@
 import { Service } from 'typedi';
 import type { Response } from 'express';
 import { createHash } from 'crypto';
-import { TokenExpiredError, type JwtPayload } from 'jsonwebtoken';
+import { JsonWebTokenError, TokenExpiredError, type JwtPayload } from 'jsonwebtoken';
 
 import config from '@/config';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES, Time } from '@/constants';
@@ -57,7 +57,7 @@ export class AuthService {
 				try {
 					req.user = await this.resolveJwt(token, res);
 				} catch (error) {
-					if (error instanceof TokenExpiredError || error instanceof AuthError) {
+					if (error instanceof JsonWebTokenError || error instanceof AuthError) {
 						this.clearCookie(res);
 					} else {
 						throw error;
