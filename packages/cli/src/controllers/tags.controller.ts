@@ -8,7 +8,7 @@ import {
 	Patch,
 	Post,
 	RestController,
-	RequireGlobalScope,
+	GlobalScope,
 } from '@/decorators';
 import { TagService } from '@/services/tag.service';
 import { TagsRequest } from '@/requests';
@@ -30,13 +30,13 @@ export class TagsController {
 	}
 
 	@Get('/')
-	@RequireGlobalScope('tag:list')
+	@GlobalScope('tag:list')
 	async getAll(req: TagsRequest.GetAll) {
 		return await this.tagService.getAll({ withUsageCount: req.query.withUsageCount === 'true' });
 	}
 
 	@Post('/')
-	@RequireGlobalScope('tag:create')
+	@GlobalScope('tag:create')
 	async createTag(req: TagsRequest.Create) {
 		const tag = this.tagService.toEntity({ name: req.body.name });
 
@@ -44,7 +44,7 @@ export class TagsController {
 	}
 
 	@Patch('/:id(\\w+)')
-	@RequireGlobalScope('tag:update')
+	@GlobalScope('tag:update')
 	async updateTag(req: TagsRequest.Update) {
 		const newTag = this.tagService.toEntity({ id: req.params.id, name: req.body.name.trim() });
 
@@ -52,7 +52,7 @@ export class TagsController {
 	}
 
 	@Delete('/:id(\\w+)')
-	@RequireGlobalScope('tag:delete')
+	@GlobalScope('tag:delete')
 	async deleteTag(req: TagsRequest.Delete) {
 		const { id } = req.params;
 
