@@ -1,3 +1,4 @@
+import type { ParsedQs } from 'qs';
 import type express from 'express';
 import type {
 	BannerName,
@@ -19,6 +20,17 @@ import type { Variables } from '@db/entities/Variables';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { WorkflowHistory } from '@db/entities/WorkflowHistory';
+
+export type AsyncRequestHandler<
+	Params = Record<string, string>,
+	ResBody = unknown,
+	ReqBody = unknown,
+	ReqQuery = ParsedQs,
+> = (
+	req: express.Request<Params, ResBody, ReqBody, ReqQuery>,
+	res: express.Response<ResBody>,
+	next: () => void,
+) => Promise<void>;
 
 export class UserUpdatePayload implements Pick<User, 'email' | 'firstName' | 'lastName'> {
 	@IsEmail()
@@ -62,8 +74,12 @@ export type AuthenticatedRequest<
 	ResponseBody = {},
 	RequestBody = {},
 	RequestQuery = {},
-> = Omit<express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery>, 'user'> & {
+> = Omit<
+	express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery>,
+	'user' | 'cookies'
+> & {
 	user: User;
+	cookies: Record<string, string | undefined>;
 };
 
 // ----------------------------------

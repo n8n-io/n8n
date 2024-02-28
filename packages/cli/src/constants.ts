@@ -131,6 +131,7 @@ export const Time = {
 	},
 	days: {
 		toSeconds: 24 * 60 * 60,
+		toMilliseconds: 24 * 60 * 60 * 1000,
 	},
 };
 
