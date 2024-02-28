@@ -415,6 +415,26 @@ describe('GET /workflows', () => {
 				data: [objectContaining({ name: 'First', tags: [{ id: any(String), name: 'A' }] })],
 			});
 		});
+
+		test('should filter workflows by projectId', async () => {
+			const workflow = await createWorkflow({ name: 'First' }, owner);
+			const pp = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(owner.id);
+
+			const response1 = await authOwnerAgent
+				.get('/workflows')
+				.query(`filter={ "projectId": "${pp.id}" }`)
+				.expect(200);
+
+			expect(response1.body.data).toHaveLength(1);
+			expect(response1.body.data[0].id).toBe(workflow.id);
+
+			const response2 = await authOwnerAgent
+				.get('/workflows')
+				.query('filter={ "projectId": "Non-Existing Project ID" }')
+				.expect(200);
+
+			expect(response2.body.data).toHaveLength(0);
+		});
 	});
 
 	describe('select', () => {
