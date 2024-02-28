@@ -17,6 +17,8 @@ import { UserManagementMailer } from '@/UserManagement/email';
 
 import { mockInstance } from '../shared/mocking';
 import config from '@/config';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
+import type { Project } from '@/databases/entities/Project';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['credentials'],
@@ -24,6 +26,7 @@ const testServer = utils.setupTestServer({
 });
 
 let owner: User;
+let ownerPersonalProject: Project;
 let member: User;
 let anotherMember: User;
 let authOwnerAgent: SuperAgentTest;
@@ -31,8 +34,13 @@ let authAnotherMemberAgent: SuperAgentTest;
 let saveCredential: SaveCredentialFunction;
 const mailer = mockInstance(UserManagementMailer);
 
+let projectRepository: ProjectRepository;
+
 beforeAll(async () => {
+	projectRepository = Container.get(ProjectRepository);
+
 	owner = await createUser({ role: 'global:owner' });
+	ownerPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
 	member = await createUser({ role: 'global:member' });
 	anotherMember = await createUser({ role: 'global:member' });
 
@@ -122,6 +130,12 @@ describe('GET /credentials', () => {
 		const [member1, member2] = await createManyUsers(2, {
 			role: 'global:member',
 		});
+		const member1PersonalProject = await projectRepository.getPersonalProjectForUserOrFail(
+			member1.id,
+		);
+		const member2PersonalProject = await projectRepository.getPersonalProjectForUserOrFail(
+			member2.id,
+		);
 
 		await saveCredential(randomCredentialPayload(), { user: member2 });
 		const savedMemberCredential = await saveCredential(randomCredentialPayload(), {
@@ -158,6 +172,18 @@ describe('GET /credentials', () => {
 			firstName: member2.firstName,
 			lastName: member2.lastName,
 		});
+
+		expect(member1Credential.homeProject).toMatchObject({
+			id: member1PersonalProject.id,
+			name: 'My n8n',
+			type: member1PersonalProject.type,
+		});
+		expect(member1Credential.sharedWithProjects).toHaveLength(1);
+		expect(member1Credential.sharedWithProjects[0]).toMatchObject({
+			id: member2PersonalProject.id,
+			name: 'My n8n',
+			type: member2PersonalProject.type,
+		});
 	});
 });
 
@@ -182,6 +208,12 @@ describe('GET /credentials/:id', () => {
 			lastName: owner.lastName,
 		});
 		expect(firstCredential.sharedWith).toHaveLength(0);
+		expect(firstCredential.homeProject).toMatchObject({
+			id: ownerPersonalProject.id,
+			name: 'My n8n',
+			type: ownerPersonalProject.type,
+		});
+		expect(firstCredential.sharedWithProjects).toHaveLength(0);
 
 		const secondResponse = await authOwnerAgent
 			.get(`/credentials/${savedCredential.id}`)
@@ -198,6 +230,12 @@ describe('GET /credentials/:id', () => {
 		const [member1, member2] = await createManyUsers(2, {
 			role: 'global:member',
 		});
+		const member1PersonalProject = await projectRepository.getPersonalProjectForUserOrFail(
+			member1.id,
+		);
+		const member2PersonalProject = await projectRepository.getPersonalProjectForUserOrFail(
+			member2.id,
+		);
 
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member1 });
 		await shareCredentialWithUsers(savedCredential, [member2]);
@@ -208,18 +246,33 @@ describe('GET /credentials/:id', () => {
 
 		validateMainCredentialData(response1.body.data);
 		expect(response1.body.data.data).toBeUndefined();
-		expect(response1.body.data.ownedBy).toMatchObject({
-			id: member1.id,
-			email: member1.email,
-			firstName: member1.firstName,
-			lastName: member1.lastName,
-		});
-		expect(response1.body.data.sharedWith).toHaveLength(1);
-		expect(response1.body.data.sharedWith[0]).toMatchObject({
-			id: member2.id,
-			email: member2.email,
-			firstName: member2.firstName,
-			lastName: member2.lastName,
+		expect(response1.body.data).toMatchObject({
+			ownedBy: {
+				id: member1.id,
+				email: member1.email,
+				firstName: member1.firstName,
+				lastName: member1.lastName,
+			},
+			sharedWith: [
+				{
+					id: member2.id,
+					email: member2.email,
+					firstName: member2.firstName,
+					lastName: member2.lastName,
+				},
+			],
+			homeProject: {
+				id: member1PersonalProject.id,
+				name: 'My n8n',
+				type: member1PersonalProject.type,
+			},
+			sharedWithProjects: [
+				{
+					id: member2PersonalProject.id,
+					name: 'My n8n',
+					type: member2PersonalProject.type,
+				},
+			],
 		});
 
 		const response2 = await authOwnerAgent
@@ -237,6 +290,15 @@ describe('GET /credentials/:id', () => {
 		const [member1, member2, member3] = await createManyUsers(3, {
 			role: 'global:member',
 		});
+		const member1PersonalProject = await projectRepository.getPersonalProjectForUserOrFail(
+			member1.id,
+		);
+		const member2PersonalProject = await projectRepository.getPersonalProjectForUserOrFail(
+			member2.id,
+		);
+		const member3PersonalProject = await projectRepository.getPersonalProjectForUserOrFail(
+			member3.id,
+		);
 		const authMemberAgent = testServer.authAgentFor(member1);
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member1 });
 		await shareCredentialWithUsers(savedCredential, [member2, member3]);
@@ -248,15 +310,34 @@ describe('GET /credentials/:id', () => {
 		const { data: firstCredential } = firstResponse.body;
 		validateMainCredentialData(firstCredential);
 		expect(firstCredential.data).toBeUndefined();
-		expect(firstCredential.ownedBy).toMatchObject({
-			id: member1.id,
-			email: member1.email,
-			firstName: member1.firstName,
-			lastName: member1.lastName,
-		});
-		expect(firstCredential.sharedWith).toHaveLength(2);
-		firstCredential.sharedWith.forEach((sharee: IUser) => {
-			expect([member2.id, member3.id]).toContain(sharee.id);
+		expect(firstCredential).toMatchObject({
+			ownedBy: {
+				id: member1.id,
+				email: member1.email,
+				firstName: member1.firstName,
+				lastName: member1.lastName,
+			},
+			sharedWith: expect.arrayContaining([
+				expect.objectContaining({ id: member2.id }),
+				expect.objectContaining({ id: member3.id }),
+			]),
+			homeProject: {
+				id: member1PersonalProject.id,
+				name: 'My n8n',
+				type: 'personal',
+			},
+			sharedWithProjects: expect.arrayContaining([
+				{
+					id: member2PersonalProject.id,
+					name: 'My n8n',
+					type: member2PersonalProject.type,
+				},
+				{
+					id: member3PersonalProject.id,
+					name: 'My n8n',
+					type: member3PersonalProject.type,
+				},
+			]),
 		});
 
 		const secondResponse = await authMemberAgent

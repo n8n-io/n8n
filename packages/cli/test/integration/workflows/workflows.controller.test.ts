@@ -37,7 +37,10 @@ const { objectContaining, arrayContaining, any } = expect;
 
 const activeWorkflowRunnerLike = mockInstance(ActiveWorkflowRunner);
 
+let projectRepository: ProjectRepository;
+
 beforeAll(async () => {
+	projectRepository = Container.get(ProjectRepository);
 	owner = await createOwner();
 	authOwnerAgent = testServer.authAgentFor(owner);
 });
@@ -159,7 +162,6 @@ describe('POST /workflows', () => {
 		//
 		// ARRANGE
 		//
-		const projectRepository = Container.get(ProjectRepository);
 		const workflow = makeWorkflow();
 		const personalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
 
@@ -183,7 +185,6 @@ describe('POST /workflows', () => {
 		//
 		// ARRANGE
 		//
-		const projectRepository = Container.get(ProjectRepository);
 		const workflow = makeWorkflow();
 		const project = await projectRepository.save(
 			projectRepository.create({
@@ -216,7 +217,6 @@ describe('POST /workflows', () => {
 		//
 		// ARRANGE
 		//
-		const projectRepository = Container.get(ProjectRepository);
 		const workflow = makeWorkflow();
 		const project = await projectRepository.save(
 			projectRepository.create({
@@ -244,7 +244,6 @@ describe('POST /workflows', () => {
 		//
 		// ARRANGE
 		//
-		const projectRepository = Container.get(ProjectRepository);
 		const workflow = makeWorkflow();
 		const project = await projectRepository.save(
 			projectRepository.create({
@@ -296,6 +295,7 @@ describe('GET /workflows', () => {
 			user: owner,
 			role: 'credential:owner',
 		});
+		const ownerPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
 
 		const nodes: INode[] = [
 			{
@@ -339,6 +339,12 @@ describe('GET /workflows', () => {
 						lastName: any(String),
 					},
 					sharedWith: [],
+					homeProject: {
+						id: ownerPersonalProject.id,
+						name: 'My n8n',
+						type: ownerPersonalProject.type,
+					},
+					sharedWithProjects: [],
 				}),
 				objectContaining({
 					id: any(String),
@@ -355,6 +361,12 @@ describe('GET /workflows', () => {
 						lastName: any(String),
 					},
 					sharedWith: [],
+					homeProject: {
+						id: ownerPersonalProject.id,
+						name: 'My n8n',
+						type: ownerPersonalProject.type,
+					},
+					sharedWithProjects: [],
 				}),
 			]),
 		});
@@ -556,6 +568,9 @@ describe('GET /workflows', () => {
 		test('should select workflow field: ownedBy', async () => {
 			await createWorkflow({}, owner);
 			await createWorkflow({}, owner);
+			const ownerPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(
+				owner.id,
+			);
 
 			const response = await authOwnerAgent
 				.get('/workflows')
@@ -574,6 +589,12 @@ describe('GET /workflows', () => {
 							lastName: any(String),
 						},
 						sharedWith: [],
+						homeProject: {
+							id: ownerPersonalProject.id,
+							name: 'My n8n',
+							type: ownerPersonalProject.type,
+						},
+						sharedWithProjects: [],
 					},
 					{
 						id: any(String),
@@ -584,6 +605,12 @@ describe('GET /workflows', () => {
 							lastName: any(String),
 						},
 						sharedWith: [],
+						homeProject: {
+							id: ownerPersonalProject.id,
+							name: 'My n8n',
+							type: ownerPersonalProject.type,
+						},
+						sharedWithProjects: [],
 					},
 				]),
 			});
