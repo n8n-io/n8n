@@ -1,4 +1,8 @@
 import express from 'express';
+import { validate } from 'class-validator';
+import type { PostBindingContext } from 'samlify/types/src/entity';
+import url from 'url';
+
 import {
 	Authorized,
 	Get,
@@ -7,20 +11,16 @@ import {
 	RestController,
 	RequireGlobalScope,
 } from '@/decorators';
-import { SamlUrls } from '../constants';
-import {
-	samlLicensedAndEnabledMiddleware,
-	samlLicensedMiddleware,
-} from '../middleware/samlEnabledMiddleware';
-import { SamlService } from '../saml.service.ee';
-import { SamlConfiguration } from '../types/requests';
-import { getInitSSOFormView } from '../views/initSsoPost';
-import { issueCookie } from '@/auth/jwt';
-import { validate } from 'class-validator';
-import type { PostBindingContext } from 'samlify/types/src/entity';
-import { isConnectionTestRequest, isSamlLicensedAndEnabled } from '../samlHelpers';
-import type { SamlLoginBinding } from '../types';
+
+import { AuthService } from '@/auth/auth.service';
 import { AuthenticatedRequest } from '@/requests';
+import { InternalHooks } from '@/InternalHooks';
+import querystring from 'querystring';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { AuthError } from '@/errors/response-errors/auth.error';
+import { UrlService } from '@/services/url.service';
+
+import { SamlUrls } from '../constants';
 import {
 	getServiceProviderConfigTestReturnUrl,
 	getServiceProviderEntityId,
@@ -28,17 +28,21 @@ import {
 } from '../serviceProvider.ee';
 import { getSamlConnectionTestSuccessView } from '../views/samlConnectionTestSuccess';
 import { getSamlConnectionTestFailedView } from '../views/samlConnectionTestFailed';
-import { InternalHooks } from '@/InternalHooks';
-import url from 'url';
-import querystring from 'querystring';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { AuthError } from '@/errors/response-errors/auth.error';
-import { UrlService } from '@/services/url.service';
+import { isConnectionTestRequest, isSamlLicensedAndEnabled } from '../samlHelpers';
+import type { SamlLoginBinding } from '../types';
+import {
+	samlLicensedAndEnabledMiddleware,
+	samlLicensedMiddleware,
+} from '../middleware/samlEnabledMiddleware';
+import { SamlService } from '../saml.service.ee';
+import { SamlConfiguration } from '../types/requests';
+import { getInitSSOFormView } from '../views/initSsoPost';
 
 @Authorized()
 @RestController('/sso/saml')
 export class SamlController {
 	constructor(
+		private readonly authService: AuthService,
 		private readonly samlService: SamlService,
 		private readonly urlService: UrlService,
 		private readonly internalHooks: InternalHooks,
@@ -46,7 +50,7 @@ export class SamlController {
 
 	@NoAuthRequired()
 	@Get(SamlUrls.metadata)
-	async getServiceProviderMetadata(req: express.Request, res: express.Response) {
+	async getServiceProviderMetadata(_: express.Request, res: express.Response) {
 		return res
 			.header('Content-Type', 'text/xml')
 			.send(this.samlService.getServiceProviderInstance().getMetadata());
@@ -147,7 +151,7 @@ export class SamlController {
 				});
 				// Only sign in user if SAML is enabled, otherwise treat as test connection
 				if (isSamlLicensedAndEnabled()) {
-					await issueCookie(res, loginResult.authenticatedUser);
+					this.authService.issueCookie(res, loginResult.authenticatedUser);
 					if (loginResult.onboardingRequired) {
 						return res.redirect(this.urlService.getInstanceBaseUrl() + SamlUrls.samlOnboarding);
 					} else {

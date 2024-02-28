@@ -62,7 +62,6 @@ import { EventBusController } from '@/eventbus/eventBus.controller';
 import { EventBusControllerEE } from '@/eventbus/eventBus.controller.ee';
 import { LicenseController } from '@/license/license.controller';
 import { setupPushServer, setupPushHandler } from '@/push';
-import { setupAuthMiddlewares } from './middlewares';
 import { isLdapEnabled } from './Ldap/helpers';
 import { AbstractServer } from './AbstractServer';
 import { PostHogClient } from './posthog';
@@ -129,9 +128,8 @@ export class Server extends AbstractServer {
 		Container.get(CollaborationService);
 	}
 
-	private async registerControllers(ignoredEndpoints: Readonly<string[]>) {
+	private async registerControllers() {
 		const { app } = this;
-		setupAuthMiddlewares(app, ignoredEndpoints, this.restEndpoint);
 
 		const controllers: Array<Class<object>> = [
 			EventBusController,
@@ -278,7 +276,7 @@ export class Server extends AbstractServer {
 
 		await handleMfaDisable();
 
-		await this.registerControllers(ignoredEndpoints);
+		await this.registerControllers();
 
 		// ----------------------------------------
 		// SAML
