@@ -17,7 +17,6 @@ import type { EditorView } from '@codemirror/view';
 import { isEqual } from 'lodash-es';
 import { getExpressionErrorMessage, getResolvableState } from '@/utils/expressions';
 import type { EditorState } from '@codemirror/state';
-import { completionStatus } from '@codemirror/autocomplete';
 
 export const expressionManager = defineComponent({
 	props: {
