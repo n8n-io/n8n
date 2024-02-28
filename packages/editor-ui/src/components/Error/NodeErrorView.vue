@@ -491,6 +491,8 @@ export default defineComponent({
 
 			n8nDetails.n8nVersion = this.n8nVersion;
 
+			n8nDetails.binaryDataMode = this.rootStore.binaryDataMode;
+
 			if (error.cause) {
 				n8nDetails.cause = error.cause;
 			}
