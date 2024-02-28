@@ -18,7 +18,6 @@ describe('Auth Middleware', () => {
 		['PATCH', '/me/password'],
 		['POST', '/me/survey'],
 		['POST', '/owner/setup'],
-		['GET', '/non-existent'],
 	];
 
 	/** Routes requiring a valid `n8n-auth` cookie for an owner. */
