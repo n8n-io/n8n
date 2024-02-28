@@ -57,15 +57,13 @@ const onNameInput = () => {
 };
 
 const onCancel = () => {
-	formData.value.relations = projectsStore.currentProject?.relations ?? [];
+	formData.value.relations = projectsStore.currentProject?.relations?.slice() ?? [];
 	formData.value.name = projectsStore.currentProject?.name ?? '';
 	isDirty.value = false;
 };
 
 const onSubmit = async () => {
 	if (isDirty.value) {
-		console.log('Form data:', formData.value);
-
 		await projectsStore.updateProject({
 			id: projectsStore.currentProject.id,
 			name: formData.value.name,
@@ -86,7 +84,7 @@ watch(
 	() => projectsStore.currentProject,
 	() => {
 		formData.value.name = projectsStore.currentProject?.name ?? '';
-		formData.value.relations = projectsStore.currentProject?.relations ?? [];
+		formData.value.relations = projectsStore.currentProject?.relations?.slice() ?? [];
 	},
 	{ immediate: true },
 );
