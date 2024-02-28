@@ -4,14 +4,6 @@ export const REST_PATH_SEGMENT = config.getEnv('endpoints.rest');
 
 export const PUBLIC_API_REST_PATH_SEGMENT = config.getEnv('publicApi.path');
 
-export const AUTHLESS_ENDPOINTS: Readonly<string[]> = [
-	'healthz',
-	'metrics',
-	config.getEnv('endpoints.webhook'),
-	config.getEnv('endpoints.webhookWaiting'),
-	config.getEnv('endpoints.webhookTest'),
-];
-
 export const SUCCESS_RESPONSE_BODY = {
 	data: {
 		success: true,
