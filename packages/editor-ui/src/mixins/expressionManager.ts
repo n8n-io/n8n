@@ -17,6 +17,7 @@ import type { EditorView } from '@codemirror/view';
 import { isEqual } from 'lodash-es';
 import { getExpressionErrorMessage, getResolvableState } from '@/utils/expressions';
 import type { EditorState } from '@codemirror/state';
+import { completionStatus } from '@codemirror/autocomplete';
 
 export const expressionManager = defineComponent({
 	props: {
@@ -28,10 +29,16 @@ export const expressionManager = defineComponent({
 			default: () => ({}),
 		},
 	},
-	data(): { editor: EditorView; skipSegments: string[]; editorState: EditorState | undefined } {
+	data(): {
+		editor: EditorView;
+		skipSegments: string[];
+		editorState: EditorState | undefined;
+		completionStatus: 'active' | 'pending' | null;
+	} {
 		return {
 			editor: {} as EditorView,
 			skipSegments: [],
+			completionStatus: null,
 			editorState: undefined,
 		};
 	},
@@ -106,8 +113,7 @@ export const expressionManager = defineComponent({
 				const { from, to, text, token } = segment;
 
 				if (token === 'Resolvable') {
-					const { resolved, fullError } = this.resolve(text, this.hoveringItem);
-					const hasFocus = this.editor.hasFocus;
+					const { resolved, error, fullError } = this.resolve(text, this.hoveringItem);
 					acc.push({
 						kind: 'resolvable',
 						from,
@@ -117,7 +123,7 @@ export const expressionManager = defineComponent({
 						// For some reason, expressions that resolve to a number 0 are breaking preview in the SQL editor
 						// This fixes that but as as TODO we should figure out why this is happening
 						resolved: String(resolved),
-						state: getResolvableState(fullError, hasFocus),
+						state: getResolvableState(fullError ?? error, this.completionStatus !== null),
 						error: fullError,
 					});
 

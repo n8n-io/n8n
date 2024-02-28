@@ -1,5 +1,5 @@
 import { createTestingPinia } from '@pinia/testing';
-import { createPinia, setActivePinia } from 'pinia';
+import { setActivePinia } from 'pinia';
 import { DateTime } from 'luxon';
 
 import * as workflowHelpers from '@/composables/useWorkflowHelpers';
@@ -21,30 +21,22 @@ import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { CREDENTIAL_EDIT_MODAL_KEY, EnterpriseEditionFeature } from '@/constants';
-import { setupServer } from '@/__tests__/server';
 import {
 	ARRAY_NUMBER_ONLY_METHODS,
-	ARRAY_RECOMMENDED_OPTIONS,
 	LUXON_RECOMMENDED_OPTIONS,
 	METADATA_SECTION,
 	METHODS_SECTION,
 	RECOMMENDED_SECTION,
 	STRING_RECOMMENDED_OPTIONS,
 } from '../constants';
-import { uniqBy } from 'lodash-es';
+import { set, uniqBy } from 'lodash-es';
 
 let externalSecretsStore: ReturnType<typeof useExternalSecretsStore>;
 let uiStore: ReturnType<typeof useUIStore>;
 let settingsStore: ReturnType<typeof useSettingsStore>;
 
-let server: ReturnType<typeof setupServer>;
-
-beforeAll(() => {
-	server = setupServer();
-});
-
 beforeEach(async () => {
-	setActivePinia(createPinia());
+	setActivePinia(createTestingPinia());
 
 	externalSecretsStore = useExternalSecretsStore();
 	uiStore = useUIStore();
@@ -53,12 +45,6 @@ beforeEach(async () => {
 	vi.spyOn(utils, 'receivesNoBinaryData').mockReturnValue(true); // hide $binary
 	vi.spyOn(utils, 'isSplitInBatchesAbsent').mockReturnValue(false); // show context
 	vi.spyOn(utils, 'hasActiveNode').mockReturnValue(true);
-
-	await settingsStore.getSettings();
-});
-
-afterAll(() => {
-	server.shutdown();
 });
 
 describe('No completions', () => {
@@ -188,7 +174,7 @@ describe('Resolution-based completions', () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce([1, 2, 3]);
 
 			expect(completions('{{ [1, 2, 3].| }}')).toHaveLength(
-				natives('array').length + extensions('array').length + ARRAY_RECOMMENDED_OPTIONS.length,
+				natives('array').length + extensions('array').length,
 			);
 		});
 
@@ -200,9 +186,7 @@ describe('Resolution-based completions', () => {
 
 			if (!found) throw new Error('Expected to find completion');
 
-			expect(found).toHaveLength(
-				natives('array').length + extensions('array').length + ARRAY_RECOMMENDED_OPTIONS.length,
-			);
+			expect(found).toHaveLength(natives('array').length + extensions('array').length);
 		});
 
 		test('should return completions for object literal', () => {
@@ -321,15 +305,15 @@ describe('Resolution-based completions', () => {
 
 			if (!found) throw new Error('Expected to find completions');
 
-			expect(found).toHaveLength(
-				extensions('array').length + natives('array').length + ARRAY_RECOMMENDED_OPTIONS.length,
-			);
+			expect(found).toHaveLength(extensions('array').length + natives('array').length);
 			expect(found.map((c) => c.label).every((l) => !l.endsWith('()')));
 		});
 	});
 
 	describe('secrets', () => {
 		const { $input } = mockProxy;
+
+		beforeEach(() => {});
 
 		test('should return completions for: {{ $secrets.| }}', () => {
 			const provider = 'infisical';
@@ -338,7 +322,7 @@ describe('Resolution-based completions', () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($input);
 
 			uiStore.modals[CREDENTIAL_EDIT_MODAL_KEY].open = true;
-			settingsStore.settings.enterprise[EnterpriseEditionFeature.ExternalSecrets] = true;
+			set(settingsStore.settings, ['enterprise', EnterpriseEditionFeature.ExternalSecrets], true);
 			externalSecretsStore.state.secrets = {
 				[provider]: secrets,
 			};
@@ -362,7 +346,7 @@ describe('Resolution-based completions', () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($input);
 
 			uiStore.modals[CREDENTIAL_EDIT_MODAL_KEY].open = true;
-			settingsStore.settings.enterprise[EnterpriseEditionFeature.ExternalSecrets] = true;
+			set(settingsStore.settings, ['enterprise', EnterpriseEditionFeature.ExternalSecrets], true);
 			externalSecretsStore.state.secrets = {
 				[provider]: secrets,
 			};
@@ -455,10 +439,7 @@ describe('Resolution-based completions', () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue([$input.item]);
 
 			expect(completions('{{ $input.all().| }}')).toHaveLength(
-				extensions('array').length +
-					natives('array').length +
-					ARRAY_RECOMMENDED_OPTIONS.length -
-					ARRAY_NUMBER_ONLY_METHODS.length,
+				extensions('array').length + natives('array').length - ARRAY_NUMBER_ONLY_METHODS.length,
 			);
 		});
 
@@ -514,7 +495,7 @@ describe('Resolution-based completions', () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($input.item.json.arr);
 
 			expect(completions('{{ $input.item.json.arr.| }}')).toHaveLength(
-				extensions('array').length + natives('array').length + ARRAY_RECOMMENDED_OPTIONS.length,
+				extensions('array').length + natives('array').length,
 			);
 		});
 

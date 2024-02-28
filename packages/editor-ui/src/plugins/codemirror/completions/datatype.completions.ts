@@ -39,6 +39,7 @@ import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import {
 	ARRAY_NUMBER_ONLY_METHODS,
 	ARRAY_RECOMMENDED_OPTIONS,
+	DATE_RECOMMENDED_OPTIONS,
 	FIELDS_SECTION,
 	LUXON_RECOMMENDED_OPTIONS,
 	LUXON_SECTIONS,
@@ -132,7 +133,7 @@ function datatypeOptions(input: AutocompleteInput): Completion[] {
 	}
 
 	if (resolved instanceof DateTime) {
-		return luxonOptions(input as AutocompleteInput<DateTime>);
+		return luxonOptions();
 	}
 
 	if (resolved instanceof Date) {
@@ -150,13 +151,13 @@ function datatypeOptions(input: AutocompleteInput): Completion[] {
 	return [];
 }
 
-export const natives = (typeName: ExtensionTypeName, includeHidden = false): Completion[] => {
+export const natives = (typeName: ExtensionTypeName): Completion[] => {
 	const natives: NativeDoc = NativeMethods.find((ee) => ee.typeName.toLowerCase() === typeName);
 
 	if (!natives) return [];
 
 	const nativeProps = natives.properties ? toOptions(natives.properties, typeName, 'keyword') : [];
-	const nativeMethods = toOptions(natives.functions, typeName, 'native-function', includeHidden);
+	const nativeMethods = toOptions(natives.functions, typeName, 'native-function');
 
 	return [...nativeProps, ...nativeMethods];
 };
@@ -302,8 +303,7 @@ const createPropHeader = (typeName: string, property: { doc?: DocMetadata | unde
 };
 
 const objectOptions = (input: AutocompleteInput<IDataObject>): Completion[] => {
-	const { base, tail, resolved } = input;
-	const includeHidden = tail.length > 0;
+	const { base, resolved } = input;
 	const rank = setRank(['item', 'all', 'first', 'last']);
 	const SKIP = new Set(['__ob__', 'pairedItem']);
 
@@ -361,15 +361,11 @@ const objectOptions = (input: AutocompleteInput<IDataObject>): Completion[] => {
 		base === 'Math';
 
 	if (skipObjectExtensions) {
-		return sortCompletionsAlpha([...localKeys, ...natives('object', includeHidden)]);
+		return sortCompletionsAlpha([...localKeys, ...natives('object')]);
 	}
 
 	return applySections({
-		options: sortCompletionsAlpha([
-			...localKeys,
-			...natives('object', includeHidden),
-			...extensions('object', includeHidden),
-		]),
+		options: sortCompletionsAlpha([...localKeys, ...natives('object'), ...extensions('object')]),
 		recommended: OBJECT_RECOMMENDED_OPTIONS,
 		recommendedSection: RECOMMENDED_METHODS_SECTION,
 		methodsSection: OTHER_METHODS_SECTION,
@@ -452,11 +448,7 @@ const isUrl = (url: string): boolean => {
 
 const stringOptions = (input: AutocompleteInput<string>): Completion[] => {
 	const { resolved, tail } = input;
-	const includeHidden = tail.length > 0;
-	const options = sortCompletionsAlpha([
-		...natives('string', includeHidden),
-		...extensions('string', includeHidden),
-	]);
+	const options = sortCompletionsAlpha([...natives('string'), ...extensions('string')]);
 
 	if (validateFieldType('string', resolved, 'number').valid) {
 		return applySections({
@@ -498,12 +490,8 @@ const stringOptions = (input: AutocompleteInput<string>): Completion[] => {
 };
 
 const numberOptions = (input: AutocompleteInput<number>): Completion[] => {
-	const { resolved, tail } = input;
-	const includeHidden = tail.length > 0;
-	const options = sortCompletionsAlpha([
-		...natives('number', includeHidden),
-		...extensions('number', includeHidden),
-	]);
+	const { resolved } = input;
+	const options = sortCompletionsAlpha([...natives('number'), ...extensions('number')]);
 	const ONLY_INTEGER = ['isEven()', 'isOdd()'];
 
 	if (Number.isInteger(resolved)) {
@@ -523,17 +511,14 @@ const numberOptions = (input: AutocompleteInput<number>): Completion[] => {
 const dateOptions = (): Completion[] => {
 	return applySections({
 		options: sortCompletionsAlpha([...natives('date'), ...extensions('date', true)]),
+		recommended: DATE_RECOMMENDED_OPTIONS,
 	});
 };
 
-const luxonOptions = (input: AutocompleteInput<DateTime>): Completion[] => {
-	const includeHidden = input.tail.length > 0;
+const luxonOptions = (): Completion[] => {
 	return applySections({
 		options: sortCompletionsAlpha(
-			uniqBy(
-				[...extensions('date', includeHidden), ...luxonInstanceOptions(includeHidden)],
-				(option) => option.label,
-			),
+			uniqBy([...extensions('date'), ...luxonInstanceOptions()], (option) => option.label),
 		),
 		recommended: LUXON_RECOMMENDED_OPTIONS,
 		sections: LUXON_SECTIONS,
@@ -541,14 +526,13 @@ const luxonOptions = (input: AutocompleteInput<DateTime>): Completion[] => {
 };
 
 const arrayOptions = (input: AutocompleteInput<unknown[]>): Completion[] => {
-	const { resolved, tail } = input;
-	const includeHidden = tail.length > 0;
+	const { resolved } = input;
 	const options = applySections({
-		options: sortCompletionsAlpha([
-			...natives('array', includeHidden),
-			...extensions('array', includeHidden),
-		]),
+		options: sortCompletionsAlpha([...natives('array'), ...extensions('array')]),
 		recommended: ARRAY_RECOMMENDED_OPTIONS,
+		methodsSection: OTHER_SECTION,
+		propSection: OTHER_SECTION,
+		excludeRecommended: true,
 	});
 
 	if (resolved.length > 0 && resolved.some((i) => typeof i !== 'number')) {

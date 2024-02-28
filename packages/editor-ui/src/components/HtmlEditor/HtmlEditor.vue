@@ -49,6 +49,7 @@ import {
 	tabKeyMap,
 } from '@/plugins/codemirror/keymap';
 import { n8nAutocompletion } from '@/plugins/codemirror/n8nLang';
+import { completionStatus } from '@codemirror/autocomplete';
 
 export default defineComponent({
 	name: 'HtmlEditor',
@@ -135,7 +136,11 @@ export default defineComponent({
 				EditorView.editable.of(!this.isReadOnly),
 				EditorState.readOnly.of(this.isReadOnly),
 				EditorView.updateListener.of((viewUpdate: ViewUpdate) => {
-					if (!this.editor || !viewUpdate.docChanged) return;
+					if (!this.editor) return;
+
+					this.completionStatus = completionStatus(viewUpdate.view.state);
+
+					if (!viewUpdate.docChanged) return;
 
 					// Force segments value update by keeping track of editor state
 					this.editorState = this.editor.state;
