@@ -1,7 +1,7 @@
 import { Service } from 'typedi';
 import type { Response } from 'express';
 import { createHash } from 'crypto';
-import { JsonWebTokenError, type JwtPayload } from 'jsonwebtoken';
+import { TokenExpiredError, type JwtPayload } from 'jsonwebtoken';
 
 import config from '@/config';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES, Time } from '@/constants';
@@ -54,7 +54,7 @@ export class AuthService {
 				try {
 					req.user = await this.resolveJwt(token, res);
 				} catch (error) {
-					if (error instanceof JsonWebTokenError || error instanceof AuthError) {
+					if (error instanceof TokenExpiredError || error instanceof AuthError) {
 						this.clearCookie(res);
 					} else {
 						throw error;
@@ -70,7 +70,7 @@ export class AuthService {
 			if (authRole === 'any' || authRole === req.user.role) {
 				next();
 			} else {
-				res.status(403).json({ status: 'error', message: 'Unauthorized' });
+				res.status(403).json({ status: 'error', message: 'Forbidden' });
 			}
 		};
 
@@ -175,7 +175,7 @@ export class AuthService {
 		try {
 			decodedToken = this.jwtService.verify(token);
 		} catch (e) {
-			if (e instanceof JsonWebTokenError) {
+			if (e instanceof TokenExpiredError) {
 				this.logger.debug('Reset password token expired', { token });
 			} else {
 				this.logger.debug('Error verifying token', { token });
@@ -210,7 +210,7 @@ export class AuthService {
 			.digest('hex');
 	}
 
-	/** How many **milliseconds** before a JWT expires should it be renewed */
+	/** How many **milliseconds** before expiration should a JWT be renewed */
 	get jwtRefreshTimeout() {
 		const { jwtRefreshTimeoutHours, jwtSessionDurationHours } = config.get('userManagement');
 		if (jwtRefreshTimeoutHours === 0) {

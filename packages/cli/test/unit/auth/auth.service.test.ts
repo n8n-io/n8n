@@ -134,7 +134,6 @@ describe('AuthService', () => {
 				config.set('userManagement.jwtSessionDurationHours', testDurationHours);
 				const token = authService.issueJWT(user);
 
-				// expect(expiresIn).toBe(testDurationSeconds);
 				const decodedToken = jwtService.verify(token);
 				if (decodedToken.exp === undefined || decodedToken.iat === undefined) {
 					fail('Expected exp and iat to be defined on decodedToken');
@@ -156,6 +155,13 @@ describe('AuthService', () => {
 			jest.advanceTimersByTime(365 * Time.days.toMilliseconds);
 
 			await expect(authService.resolveJwt(validToken, res)).rejects.toThrow('jwt expired');
+			expect(res.cookie).not.toHaveBeenCalled();
+		});
+
+		it('should throw on tampered tokens', async () => {
+			const [header, payload, signature] = validToken.split('.');
+			const tamperedToken = [header, payload, signature + '123'].join('.');
+			await expect(authService.resolveJwt(tamperedToken, res)).rejects.toThrow('invalid signature');
 			expect(res.cookie).not.toHaveBeenCalled();
 		});
 
