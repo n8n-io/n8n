@@ -129,6 +129,8 @@ export class NodeApiError extends NodeError {
 	) {
 		super(node, errorResponse);
 
+		this.addToMessages(errorResponse.message as string);
+
 		if (!httpCode && errorResponse instanceof AxiosError) {
 			httpCode = errorResponse.response?.status?.toString();
 		}
@@ -197,15 +199,17 @@ export class NodeApiError extends NodeError {
 			if (parseXml) {
 				this.setDescriptionFromXml(errorResponse.error as string);
 			} else {
-				// this.description = this.findProperty(
-				// 	errorResponse,
-				// 	ERROR_MESSAGE_PROPERTIES,
-				// 	ERROR_NESTING_PROPERTIES,
-				// );
+				this.description = this.findProperty(
+					errorResponse,
+					ERROR_MESSAGE_PROPERTIES,
+					ERROR_NESTING_PROPERTIES,
+				);
 			}
 		}
 
-		// set message if provided or set default message based on http code
+		// set message if provided
+		// set default message based on http code
+		// or use raw error message
 		if (message) {
 			this.message = message;
 		} else {
