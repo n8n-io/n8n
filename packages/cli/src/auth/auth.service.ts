@@ -17,8 +17,11 @@ import { JwtService } from '@/services/jwt.service';
 import { UrlService } from '@/services/url.service';
 
 interface AuthJwtPayload {
+	/** User Id */
 	id: string;
+	/** User's email */
 	email: string | null;
+	/** SHA-256 hash of bcrypt hash of the user's password */
 	password: string | null;
 }
 
@@ -106,14 +109,8 @@ export class AuthService {
 		const payload: AuthJwtPayload = {
 			id,
 			email,
-			password: password ?? null,
+			password: password ? this.createPasswordSha(user) : null,
 		};
-		if (password) {
-			payload.password = createHash('sha256')
-				.update(password.slice(password.length / 2))
-				.digest('hex');
-		}
-
 		return this.jwtService.sign(payload, {
 			expiresIn: this.jwtExpiration,
 		});
