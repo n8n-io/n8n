@@ -12,7 +12,6 @@ import { CredentialsRepository } from '@/databases/repositories/credentials.repo
 import { OwnershipService } from '@/services/ownership.service';
 import { EnterpriseCredentialsService } from './credentials.service.ee';
 import {
-	Authorized,
 	Delete,
 	Get,
 	Licensed,
@@ -28,7 +27,6 @@ import * as Db from '@/Db';
 import * as utils from '@/utils';
 import { listQueryMiddleware } from '@/middlewares';
 
-@Authorized()
 @RestController('/credentials')
 export class CredentialsController {
 	constructor(

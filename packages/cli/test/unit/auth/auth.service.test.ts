@@ -39,7 +39,7 @@ describe('AuthService', () => {
 		config.set('userManagement.jwtRefreshTimeoutHours', 0);
 	});
 
-	describe('createAuthMiddleware', () => {
+	describe('authMiddleware', () => {
 		const req = mock<AuthenticatedRequest>({ cookies: {}, user: undefined });
 		const res = mock<Response>();
 		const next = jest.fn() as NextFunction;
@@ -48,64 +48,34 @@ describe('AuthService', () => {
 			res.status.mockReturnThis();
 		});
 
-		describe('authRole = none', () => {
-			const authMiddleware = authService.createAuthMiddleware('none');
-
-			it('should just skips auth checks', async () => {
-				await authMiddleware(req, res, next);
-				expect(next).toHaveBeenCalled();
-				expect(res.status).not.toHaveBeenCalled();
-			});
+		it('should 401 if no cookie is set', async () => {
+			req.cookies[AUTH_COOKIE_NAME] = undefined;
+			await authService.authMiddleware(req, res, next);
+			expect(next).not.toHaveBeenCalled();
+			expect(res.status).toHaveBeenCalledWith(401);
 		});
 
-		describe('authRole = any', () => {
-			const authMiddleware = authService.createAuthMiddleware('any');
+		it('should 401 and clear the cookie if the JWT is expired', async () => {
+			req.cookies[AUTH_COOKIE_NAME] = validToken;
+			jest.advanceTimersByTime(365 * Time.days.toMilliseconds);
 
-			it('should 401 if no cookie is set', async () => {
-				req.cookies[AUTH_COOKIE_NAME] = undefined;
-				await authMiddleware(req, res, next);
-				expect(next).not.toHaveBeenCalled();
-				expect(res.status).toHaveBeenCalledWith(401);
-			});
-
-			it('should 401 and clear the cookie if the JWT is expired', async () => {
-				req.cookies[AUTH_COOKIE_NAME] = validToken;
-				jest.advanceTimersByTime(365 * Time.days.toMilliseconds);
-
-				await authMiddleware(req, res, next);
-				expect(next).not.toHaveBeenCalled();
-				expect(res.status).toHaveBeenCalledWith(401);
-				expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
-			});
-
-			it('should refresh the cookie before it expires', async () => {
-				req.cookies[AUTH_COOKIE_NAME] = validToken;
-				jest.advanceTimersByTime(6 * Time.days.toMilliseconds);
-				userRepository.findOne.mockResolvedValue(user);
-
-				await authMiddleware(req, res, next);
-				expect(next).toHaveBeenCalled();
-				expect(res.cookie).toHaveBeenCalledWith('n8n-auth', expect.any(String), {
-					httpOnly: true,
-					maxAge: 604800000,
-					sameSite: 'lax',
-				});
-			});
+			await authService.authMiddleware(req, res, next);
+			expect(next).not.toHaveBeenCalled();
+			expect(res.status).toHaveBeenCalledWith(401);
+			expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
 		});
 
-		describe('authRole = global:owner', () => {
-			const authMiddleware = authService.createAuthMiddleware('global:owner');
+		it('should refresh the cookie before it expires', async () => {
+			req.cookies[AUTH_COOKIE_NAME] = validToken;
+			jest.advanceTimersByTime(6 * Time.days.toMilliseconds);
+			userRepository.findOne.mockResolvedValue(user);
 
-			it('should 403 if the user does not have the correct role', async () => {
-				req.cookies[AUTH_COOKIE_NAME] = validToken;
-				jest.advanceTimersByTime(6 * Time.days.toMilliseconds);
-				userRepository.findOne.mockResolvedValue(
-					mock<User>({ ...userData, role: 'global:member' }),
-				);
-
-				await authMiddleware(req, res, next);
-				expect(next).not.toHaveBeenCalled();
-				expect(res.status).toHaveBeenCalledWith(403);
+			await authService.authMiddleware(req, res, next);
+			expect(next).toHaveBeenCalled();
+			expect(res.cookie).toHaveBeenCalledWith('n8n-auth', expect.any(String), {
+				httpOnly: true,
+				maxAge: 604800000,
+				sameSite: 'lax',
 			});
 		});
 	});

@@ -1,8 +1,7 @@
-import { Authorized, Get, Post, RestController, GlobalScope } from '@/decorators';
+import { Get, Post, RestController, GlobalScope } from '@/decorators';
 import { LicenseRequest } from '@/requests';
 import { LicenseService } from './license.service';
 
-@Authorized()
 @RestController('/license')
 export class LicenseController {
 	constructor(private readonly licenseService: LicenseService) {}

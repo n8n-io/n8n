@@ -1,4 +1,3 @@
-import type { ParsedQs } from 'qs';
 import type express from 'express';
 import type {
 	BannerName,
@@ -22,17 +21,6 @@ import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { WorkflowHistory } from '@db/entities/WorkflowHistory';
 import type { Project, ProjectType } from '@db/entities/Project';
 import type { ProjectRole } from './databases/entities/ProjectRelation';
-
-export type AsyncRequestHandler<
-	Params = Record<string, string>,
-	ResBody = unknown,
-	ReqBody = unknown,
-	ReqQuery = ParsedQs,
-> = (
-	req: express.Request<Params, ResBody, ReqBody, ReqQuery>,
-	res: express.Response<ResBody>,
-	next: () => void,
-) => Promise<void>;
 
 export class UserUpdatePayload implements Pick<User, 'email' | 'firstName' | 'lastName'> {
 	@IsEmail()

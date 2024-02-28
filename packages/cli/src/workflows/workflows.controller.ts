@@ -8,16 +8,7 @@ import * as ResponseHelper from '@/ResponseHelper';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import type { IWorkflowResponse } from '@/Interfaces';
 import config from '@/config';
-import {
-	Authorized,
-	Delete,
-	Get,
-	Patch,
-	Post,
-	ProjectScope,
-	Put,
-	RestController,
-} from '@/decorators';
+import { Delete, Get, Patch, Post, ProjectScope, Put, RestController } from '@/decorators';
 import type { SharedWorkflow, WorkflowSharingRole } from '@db/entities/SharedWorkflow';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
@@ -51,7 +42,6 @@ import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { ProjectService } from '@/services/project.service';
 import { ApplicationError } from 'n8n-workflow';
 
-@Authorized()
 @RestController('/workflows')
 export class WorkflowsController {
 	constructor(

@@ -1,6 +1,6 @@
 import type { PullResult } from 'simple-git';
 import express from 'express';
-import { Authorized, Get, Post, Patch, RestController, GlobalScope } from '@/decorators';
+import { Get, Post, Patch, RestController, GlobalScope } from '@/decorators';
 import {
 	sourceControlLicensedMiddleware,
 	sourceControlLicensedAndEnabledMiddleware,
@@ -17,7 +17,6 @@ import { getRepoType } from './sourceControlHelper.ee';
 import { SourceControlGetStatus } from './types/sourceControlGetStatus';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
-@Authorized()
 @RestController('/source-control')
 export class SourceControlController {
 	constructor(
@@ -26,8 +25,7 @@ export class SourceControlController {
 		private readonly internalHooks: InternalHooks,
 	) {}
 
-	@Authorized('none')
-	@Get('/preferences', { middlewares: [sourceControlLicensedMiddleware] })
+	@Get('/preferences', { middlewares: [sourceControlLicensedMiddleware], skipAuth: true })
 	async getPreferences(): Promise<SourceControlPreferences> {
 		// returns the settings with the privateKey property redacted
 		return this.sourceControlPreferencesService.getPreferences();
@@ -151,7 +149,6 @@ export class SourceControlController {
 		}
 	}
 
-	@Authorized('any')
 	@Get('/get-branches', { middlewares: [sourceControlLicensedMiddleware] })
 	async getBranches() {
 		try {
@@ -212,7 +209,6 @@ export class SourceControlController {
 		}
 	}
 
-	@Authorized('any')
 	@Get('/get-status', { middlewares: [sourceControlLicensedAndEnabledMiddleware] })
 	async getStatus(req: SourceControlRequest.GetStatus) {
 		try {
@@ -225,7 +221,6 @@ export class SourceControlController {
 		}
 	}
 
-	@Authorized('any')
 	@Get('/status', { middlewares: [sourceControlLicensedMiddleware] })
 	async status(req: SourceControlRequest.GetStatus) {
 		try {

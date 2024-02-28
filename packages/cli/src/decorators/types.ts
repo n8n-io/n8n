@@ -1,12 +1,8 @@
 import type { Request, Response, RequestHandler } from 'express';
-import type { GlobalRole } from '@db/entities/User';
 import type { BooleanLicenseFeature } from '@/Interfaces';
 import type { Scope } from '@n8n/permissions';
 
 export type Method = 'get' | 'post' | 'put' | 'patch' | 'delete';
-
-export type AuthRole = GlobalRole | 'any' | 'none';
-export type AuthRoleMetadata = Record<string, AuthRole>;
 
 export type LicenseMetadata = Record<string, BooleanLicenseFeature[]>;
 
@@ -27,6 +23,7 @@ export interface RouteMetadata {
 	handlerName: string;
 	middlewares: RequestHandler[];
 	usesTemplates: boolean;
+	skipAuth: boolean;
 }
 
 export type Controller = Record<
