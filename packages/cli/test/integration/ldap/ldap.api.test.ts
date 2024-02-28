@@ -453,7 +453,7 @@ describe('POST /ldap/sync', () => {
 			await authOwnerAgent.post('/ldap/sync').send({ type: 'live' });
 
 			const response = await testServer.authAgentFor(member).get('/login');
-			expect(response.body.code).toBe(401);
+			expect(response.status).toBe(401);
 		});
 	});
 });
