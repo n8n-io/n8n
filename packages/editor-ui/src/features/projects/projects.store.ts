@@ -43,7 +43,7 @@ export const useProjectsStore = defineStore('projects', () => {
 
 	const createProject = async (project: ProjectCreateRequest): Promise<void> => {
 		const { id, name } = await projectsApi.createProject(rootStore.getRestApiContext, project);
-		myProjects.value.unshift({ id, name } as ProjectListItem);
+		myProjects.value.push({ id, name } as ProjectListItem);
 	};
 
 	const updateProject = async (projectData: ProjectUpdateRequest): Promise<void> => {
