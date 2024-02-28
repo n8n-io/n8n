@@ -1,7 +1,6 @@
 import { Container } from 'typedi';
 import { Router } from 'express';
 import type { Application, Request, Response, RequestHandler } from 'express';
-import type { Scope } from '@n8n/permissions';
 import { In } from '@n8n/typeorm';
 import { ApplicationError } from 'n8n-workflow';
 import type { Class } from 'n8n-core';

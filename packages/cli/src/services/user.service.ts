@@ -2,7 +2,7 @@ import { Container, Service } from 'typedi';
 import type { IUserSettings } from 'n8n-workflow';
 import { ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 
-import { type AssignableRole, User } from '@db/entities/User';
+import type { User, AssignableRole } from '@db/entities/User';
 import { UserRepository } from '@db/repositories/user.repository';
 import type { PublicUser } from '@/Interfaces';
 import type { PostHogClient } from '@/posthog';
