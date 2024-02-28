@@ -6,21 +6,18 @@ import * as projectsApi from '@/features/projects/projects.api';
 import type {
 	Project,
 	ProjectCreateRequest,
+	ProjectListItem,
 	ProjectUpdateRequest,
-	ProjectRelationsRequest,
 } from '@/features/projects/projects.types';
 
 export const useProjectsStore = defineStore('projects', () => {
 	const route = useRoute();
 	const rootStore = useRootStore();
 
-	const projects = ref<Project[]>([]);
-	const myProjects = ref<Project[]>([]);
+	const projects = ref<ProjectListItem[]>([]);
+	const myProjects = ref<ProjectListItem[]>([]);
 	const personalProject = ref<Project | null>(null);
-	const currentProject = ref<Project>({
-		id: '',
-		name: '',
-	});
+	const currentProject = ref<Project>({} as Project);
 
 	const setCurrentProject = (project: Project) => {
 		currentProject.value = project;
@@ -44,18 +41,12 @@ export const useProjectsStore = defineStore('projects', () => {
 		currentProject.value = await projectsApi.getProject(rootStore.getRestApiContext, id);
 	};
 
-	const createProject = async (project: ProjectCreateRequest): Promise<Project> => {
-		const newProject = await projectsApi.createProject(rootStore.getRestApiContext, project);
-		projects.value.unshift(newProject);
-		myProjects.value.unshift(newProject);
-		return newProject;
+	const createProject = async (project: ProjectCreateRequest): Promise<void> => {
+		const { id, name } = await projectsApi.createProject(rootStore.getRestApiContext, project);
+		myProjects.value.unshift({ id, name } as ProjectListItem);
 	};
 
-	const setProjectRelations = async (projectRelations: ProjectRelationsRequest) => {
-		await projectsApi.setProjectRelations(rootStore.getRestApiContext, projectRelations);
-	};
-
-	const updateProject = async (projectData: ProjectUpdateRequest) => {
+	const updateProject = async (projectData: ProjectUpdateRequest): Promise<void> => {
 		await projectsApi.updateProject(rootStore.getRestApiContext, projectData);
 		const projectIndex = myProjects.value.findIndex((p) => p.id === projectData.id);
 		if (projectIndex !== -1) {
@@ -69,7 +60,7 @@ export const useProjectsStore = defineStore('projects', () => {
 			if (!newRoute?.params?.projectId) {
 				return;
 			}
-			await getProject(newRoute.params.projectId);
+			await getProject(newRoute.params.projectId as string);
 		},
 		{ immediate: true },
 	);
@@ -84,7 +75,6 @@ export const useProjectsStore = defineStore('projects', () => {
 		getPersonalProject,
 		getProject,
 		createProject,
-		setProjectRelations,
 		updateProject,
 	};
 });

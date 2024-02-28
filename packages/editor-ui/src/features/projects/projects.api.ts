@@ -3,16 +3,16 @@ import { get, post, patch } from '@/utils/apiUtils';
 import type {
 	Project,
 	ProjectCreateRequest,
+	ProjectListItem,
 	ProjectUpdateRequest,
-	ProjectRelationsRequest,
 } from '@/features/projects/projects.types';
 
-export const getAllProjects = async (context: IRestApiContext): Promise<Project[]> => {
+export const getAllProjects = async (context: IRestApiContext): Promise<ProjectListItem[]> => {
 	const { data } = await get(context.baseUrl, '/projects');
 	return data;
 };
 
-export const getMyProjects = async (context: IRestApiContext): Promise<Project[]> => {
+export const getMyProjects = async (context: IRestApiContext): Promise<ProjectListItem[]> => {
 	const { data } = await get(context.baseUrl, '/projects/my-projects');
 	return data;
 };
@@ -35,18 +35,10 @@ export const createProject = async (
 	return data;
 };
 
-export const setProjectRelations = async (
-	context: IRestApiContext,
-	req: ProjectRelationsRequest,
-): Promise<void> => {
-	const { id, relations } = req;
-	await patch(context.baseUrl, `/projects/${id}/relations`, { relations });
-};
-
 export const updateProject = async (
 	context: IRestApiContext,
 	req: ProjectUpdateRequest,
 ): Promise<void> => {
-	const { id, name } = req;
-	await patch(context.baseUrl, `/projects/${id}`, { name });
+	const { id, name, relations } = req;
+	await patch(context.baseUrl, `/projects/${id}`, { name, relations });
 };

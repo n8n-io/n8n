@@ -5,49 +5,50 @@ import type { IUser } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
 import { useProjectsStore } from '@/features/projects/projects.store';
 import ProjectTabs from '@/features/projects/components/ProjectTabs.vue';
+import type { Project, ProjectRole, ProjectRelation } from '@/features/projects/projects.types';
 
 const usersStore = useUsersStore();
 const locale = useI18n();
 const projectsStore = useProjectsStore();
 
 const isDirty = ref(false);
-const formData = ref<{
-	projectName: string;
-	sharedWith: Array<Partial<IUser>>;
-}>({ projectName: projectsStore.currentProject?.name ?? '', sharedWith: [] });
+const formData = ref<Pick<Project, 'name' | 'relations'>>({
+	name: '',
+	relations: [],
+});
+const projectRoles = ref<{ label: string; value: ProjectRole }>([
+	{ value: 'project:admin', label: locale.baseText('projects.settings.role.admin') },
+	{ value: 'project:member', label: locale.baseText('projects.settings.role.editor') },
+	{ value: 'project:viewer', label: locale.baseText('projects.settings.role.viewer') },
+]);
 
 const usersList = computed(() =>
 	usersStore.allUsers.filter((user: IUser) => {
-		// TODO: Get project share data
-		const projectData = {
-			sharedWith: [],
-			ownedBy: { id: '' },
-		};
-		const isAlreadySharedWithUser = (projectData.sharedWith || []).find(
+		const isAlreadySharedWithUser = (formData.value.relations || []).find(
 			(sharee: IUser) => sharee.id === user.id,
 		);
 
-		// TODO: Check if user is owner of the project
-		const isOwner = projectData.ownedBy?.id === user.id;
-
-		return !isAlreadySharedWithUser && !isOwner;
+		return !isAlreadySharedWithUser;
 	}),
 );
-const currentUser = computed(() => usersStore.currentUser);
-const sharedWithList = computed(() => formData.value.sharedWith);
 
 const onAddSharee = (userId: string) => {
 	isDirty.value = true;
 	const { id, firstName, lastName, email } = usersStore.getUserById(userId)!;
-	const sharee = { id, firstName, lastName, email };
+	const sharee = { id, firstName, lastName, email } as ProjectRelation;
 
-	formData.value.sharedWith.push(sharee);
+	sharee.role = 'project:admin';
+
+	formData.value.relations.push(sharee);
 };
 
 const onRoleAction = (user: Partial<IUser>, role: string) => {
+	isDirty.value = true;
+	const index = formData.value.relations.findIndex((u: Partial<IUser>) => u.id === user.id);
 	if (role === 'remove') {
-		const index = formData.value.sharedWith.findIndex((u: Partial<IUser>) => u.id === user.id);
-		formData.value.sharedWith.splice(index, 1);
+		formData.value.relations.splice(index, 1);
+	} else {
+		formData.value.relations[index].role = role as ProjectRole;
 	}
 };
 
@@ -56,19 +57,25 @@ const onNameInput = () => {
 };
 
 const onCancel = () => {
-	formData.value.sharedWith = projectsStore.currentProject?.sharedWith ?? [];
-	formData.value.projectName = projectsStore.currentProject?.name ?? '';
+	formData.value.relations = projectsStore.currentProject?.relations ?? [];
+	formData.value.name = projectsStore.currentProject?.name ?? '';
 	isDirty.value = false;
 };
 
 const onSubmit = async () => {
-	if (formData.value.projectName !== projectsStore.currentProject?.name) {
+	if (isDirty.value) {
+		console.log('Form data:', formData.value);
+
 		await projectsStore.updateProject({
 			id: projectsStore.currentProject.id,
-			name: formData.value.projectName,
+			name: formData.value.name,
+			relations: formData.value.relations.map((r: ProjectRelation) => ({
+				userId: r.id,
+				role: r.role,
+			})),
 		});
+		isDirty.value = false;
 	}
-	isDirty.value = false;
 };
 
 const onDelete = () => {
@@ -78,8 +85,8 @@ const onDelete = () => {
 watch(
 	() => projectsStore.currentProject,
 	() => {
-		formData.value.sharedWith = projectsStore.currentProject?.sharedWith ?? [];
-		formData.value.projectName = projectsStore.currentProject?.name ?? '';
+		formData.value.name = projectsStore.currentProject?.name ?? '';
+		formData.value.relations = projectsStore.currentProject?.relations ?? [];
 	},
 	{ immediate: true },
 );
@@ -96,14 +103,8 @@ onBeforeMount(async () => {
 		</div>
 		<form @submit.prevent="onSubmit">
 			<fieldset>
-				<label for="projectName">{{ locale.baseText('projects.settings.projectName') }}</label>
-				<n8n-input
-					id="projectName"
-					v-model="formData.projectName"
-					type="text"
-					name="projectName"
-					@input="onNameInput"
-				/>
+				<label for="name">{{ locale.baseText('projects.settings.name') }}</label>
+				<n8n-input id="name" v-model="formData.name" type="text" name="name" @input="onNameInput" />
 			</fieldset>
 			<fieldset>
 				<label for="projectMembers">{{
@@ -114,7 +115,7 @@ onBeforeMount(async () => {
 					class="mb-s"
 					size="large"
 					:users="usersList"
-					:current-user-id="currentUser?.id"
+					:current-user-id="usersStore.currentUser?.id"
 					:placeholder="$locale.baseText('workflows.shareModal.select.placeholder')"
 					data-test-id="workflow-sharing-modal-users-select"
 					@update:modelValue="onAddSharee"
@@ -125,21 +126,26 @@ onBeforeMount(async () => {
 				</n8n-user-select>
 				<n8n-users-list
 					:actions="[]"
-					:users="sharedWithList"
-					:current-user-id="currentUser?.id"
+					:users="formData.relations"
+					:current-user-id="usersStore.currentUser?.id"
 					:delete-label="$locale.baseText('workflows.shareModal.list.delete')"
 				>
 					<template #actions="{ user }">
 						<n8n-select
 							:class="$style.roleSelect"
-							model-value="editor"
+							:model-value="user?.role || 'project:admin'"
 							size="small"
 							@update:modelValue="onRoleAction(user, $event)"
 						>
-							<n8n-option :label="$locale.baseText('workflows.roles.editor')" value="editor" />
+							<n8n-option
+								v-for="role in projectRoles"
+								:key="role.value"
+								:value="role.value"
+								:label="role.label"
+							/>
 							<n8n-option :class="$style.roleSelectRemoveOption" value="remove">
 								<n8n-text color="danger">{{
-									$locale.baseText('workflows.shareModal.list.delete')
+									$locale.baseText('projects.settings.removeAccess')
 								}}</n8n-text>
 							</n8n-option>
 						</n8n-select>
