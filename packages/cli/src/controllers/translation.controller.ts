@@ -1,7 +1,7 @@
 import type { Request } from 'express';
 import { join } from 'path';
 import { access } from 'fs/promises';
-import { Authorized, Get, RestController } from '@/decorators';
+import { Get, RestController } from '@/decorators';
 import config from '@/config';
 import { NODES_BASE_DIR } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -15,7 +15,6 @@ export declare namespace TranslationRequest {
 	export type Credential = Request<{}, {}, {}, { credentialType: string }>;
 }
 
-@Authorized()
 @RestController('/')
 export class TranslationController {
 	constructor(private readonly credentialTypes: CredentialTypes) {}
