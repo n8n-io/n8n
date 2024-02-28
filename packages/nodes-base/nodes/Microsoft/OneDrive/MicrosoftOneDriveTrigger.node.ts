@@ -51,6 +51,8 @@ export class MicrosoftOneDriveTrigger implements INodeType {
 		const end = now;
 		const event = this.getNodeParameter('event', 'fileCreated') as string;
 		const watch = this.getNodeParameter('watch', 'anyFile') as string;
+		const watchFolder = (this.getNodeParameter('watchFolder', false) as boolean) || false;
+		const folderChild = (this.getNodeParameter('options.folderChild', false) as boolean) || false;
 
 		let eventType = 'created';
 		let eventResource = 'file';
@@ -82,18 +84,20 @@ export class MicrosoftOneDriveTrigger implements INodeType {
 				responseData = response.returnData as IDataObject[];
 				workflowData.LastLink = response.deltaLink;
 			}
+
 			workflowData.lastTimeChecked = end.toISO();
 			if (watch === 'selectedFile') {
-				const fileId = this.getNodeParameter('fileId.value', '', {
+				const fileId = this.getNodeParameter('fileId', '', {
 					extractValue: true,
 				}) as string;
 				if (fileId) {
 					responseData = responseData.filter((item: IDataObject) => item.id === fileId);
 				}
 			}
-			if (watch === 'selectedFolder') {
+
+			if ((watch === 'selectedFolder' || watchFolder) && !folderChild) {
 				const folderId = (
-					this.getNodeParameter('folderId.value', '', {
+					this.getNodeParameter('folderId', '', {
 						extractValue: true,
 					}) as string
 				).replace('%21', '!');
@@ -107,9 +111,9 @@ export class MicrosoftOneDriveTrigger implements INodeType {
 					}
 				}
 			}
-			if (watch === 'selectedFolderChild') {
+			if ((watch === 'selectedFolder' || watchFolder) && folderChild) {
 				const folderId = (
-					this.getNodeParameter('folderId.value', '', {
+					this.getNodeParameter('folderId', '', {
 						extractValue: true,
 					}) as string
 				).replace('%21', '!');

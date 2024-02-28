@@ -121,35 +121,29 @@ export const triggerDescription: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Watch',
-		name: 'watch',
-		description: 'How to select which file/folder to watch',
-		type: 'options',
-		default: 'anyFile',
+		displayName: 'Simplify',
+		name: 'simple',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
+		type: 'boolean',
+		default: true,
+	},
+	{
+		displayName: 'Watch Folder',
+		name: 'watchFolder',
+		description:
+			'Whether to watch for the created file in a given folder, rather than the entire OneDrive',
+		type: 'boolean',
+		default: false,
 		displayOptions: {
 			show: {
 				event: ['fileCreated'],
 			},
 		},
-		options: [
-			{
-				name: 'Any File',
-				value: 'anyFile',
-			},
-			{
-				name: 'Selected Folder',
-				value: 'selectedFolder',
-			},
-			{
-				name: 'Any Child of a Selected Folder',
-				value: 'selectedFolderChild',
-			},
-		],
 	},
 	{
 		displayName: 'Watch',
 		name: 'watch',
-		description: 'How to select which file/folder to watch',
+		description: 'How to select which file to watch',
 		type: 'options',
 		default: 'anyFile',
 		displayOptions: {
@@ -173,37 +167,30 @@ export const triggerDescription: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Watch',
-		name: 'watch',
-		description: 'How to select which file/folder to watch',
-		type: 'options',
-		default: 'anyFile',
+		displayName: 'Watch Folder',
+		name: 'watchFolder',
+		description:
+			'Whether to watch for the created Folder in a given folder, rather than the entire OneDrive',
+		type: 'boolean',
+		default: false,
 		displayOptions: {
 			show: {
-				event: ['folderCreated', 'folderUpdated'],
+				event: ['folderCreated'],
 			},
 		},
-		options: [
-			{
-				name: 'Any Folder',
-				value: 'anyFolder',
-			},
-			{
-				name: 'Selected Folder',
-				value: 'selectedFolder',
-			},
-			{
-				name: 'Any Child of a Selected Folder',
-				value: 'selectedFolderChild',
-			},
-		],
 	},
 	{
-		displayName: 'Simplify',
-		name: 'simple',
-		description: 'Whether to return a simplified version of the response instead of the raw data',
+		displayName: 'Watch Folder',
+		name: 'watchFolder',
+		description:
+			'Whether to watch for the updated Folder in a given folder, rather than the entire OneDrive',
 		type: 'boolean',
-		default: true,
+		default: false,
+		displayOptions: {
+			show: {
+				event: ['folderUpdated'],
+			},
+		},
 	},
 	{
 		...fileRLC,
@@ -218,8 +205,58 @@ export const triggerDescription: INodeProperties[] = [
 		...folderRLC,
 		displayOptions: {
 			show: {
-				watch: ['selectedFolder', 'selectedFolderChild'],
+				watch: ['selectedFolder'],
 			},
 		},
+	},
+	{
+		...folderRLC,
+		displayOptions: {
+			show: {
+				watchFolder: [true],
+			},
+		},
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		displayOptions: {
+			show: {
+				watch: ['selectedFolder'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Watch Sub Folders',
+				name: 'folderChild',
+				type: 'boolean',
+				default: false,
+				description: 'Whether the folder to watch includes Sub Folders.',
+			},
+		],
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		displayOptions: {
+			show: {
+				watchFolder: [true],
+			},
+		},
+		options: [
+			{
+				displayName: 'Watch Sub Folders',
+				name: 'folderChild',
+				type: 'boolean',
+				default: false,
+				description: 'Whether the folder to watch includes Sub Folders.',
+			},
+		],
 	},
 ];
