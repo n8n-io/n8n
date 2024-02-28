@@ -3,21 +3,21 @@ import validator from 'validator';
 
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
-import { Post, GlobalScope, RestController } from '@/decorators';
+import { Post, GlobalScope, RestController, Get } from '@/decorators';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { UserRequest } from '@/requests';
+import { InvitationRequest } from '@/requests';
 import { License } from '@/License';
 import { UserService } from '@/services/user.service';
 import { Logger } from '@/Logger';
 import { isSamlLicensedAndEnabled } from '@/sso/saml/samlHelpers';
 import { PasswordUtility } from '@/services/password.utility';
 import { PostHogClient } from '@/posthog';
-import type { User } from '@/databases/entities/User';
 import { UserRepository } from '@db/repositories/user.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
 import { InternalHooks } from '@/InternalHooks';
 import { ExternalHooks } from '@/ExternalHooks';
+import { InvitationService } from '@/services/invitation.service';
 
 @RestController('/invitations')
 export class InvitationController {
@@ -27,6 +27,7 @@ export class InvitationController {
 		private readonly externalHooks: ExternalHooks,
 		private readonly authService: AuthService,
 		private readonly userService: UserService,
+		private readonly invitationService: InvitationService,
 		private readonly license: License,
 		private readonly passwordUtility: PasswordUtility,
 		private readonly userRepository: UserRepository,
@@ -36,10 +37,9 @@ export class InvitationController {
 	/**
 	 * Send email invite(s) to one or multiple users and create user shell(s).
 	 */
-
 	@Post('/')
 	@GlobalScope('user:create')
-	async inviteUser(req: UserRequest.Invite) {
+	async inviteUser(req: InvitationRequest.Create) {
 		const isWithinUsersLimit = this.license.isWithinUsersLimit();
 
 		if (isSamlLicensedAndEnabled()) {
@@ -109,23 +109,45 @@ export class InvitationController {
 			role: role ?? 'global:member',
 		}));
 
-		const { usersInvited, usersCreated } = await this.userService.inviteUsers(req.user, attributes);
+		const { usersInvited, usersCreated } = await this.invitationService.inviteUsers(
+			req.user,
+			attributes,
+		);
 
 		await this.externalHooks.run('user.invited', [usersCreated]);
 
 		return usersInvited;
 	}
 
+	/** Validate invite token to enable invitee to set up their account */
+	@Get('/:token', { skipAuth: true })
+	async resolveSignupToken(req: InvitationRequest.ResolveInvitation) {
+		const isWithinUsersLimit = this.license.isWithinUsersLimit();
+		if (!isWithinUsersLimit) {
+			this.logger.debug('Request to resolve signup token failed because of users quota reached');
+			throw new UnauthorizedError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
+		}
+
+		const { token } = req.params;
+		const { invitee, inviter } = await this.invitationService.validateInvitationToken(token);
+		if (!invitee || !inviter || invitee.password) {
+			this.logger.debug('The invitation was likely either deleted or already claimed');
+			throw new BadRequestError('Invalid token');
+		}
+
+		void this.internalHooks.onUserInviteEmailClick({ inviter, invitee });
+
+		const { firstName, lastName } = inviter;
+		return { inviter: { firstName, lastName } };
+	}
+
 	/**
 	 * Fill out user shell with first name, last name, and password.
 	 */
-	@Post('/:id/accept', { skipAuth: true })
-	async acceptInvitation(req: UserRequest.Update, res: Response) {
-		const { id: inviteeId } = req.params;
-
-		const { inviterId, firstName, lastName, password } = req.body;
-
-		if (!inviterId || !inviteeId || !firstName || !lastName || !password) {
+	@Post('/:token/accept', { skipAuth: true })
+	async acceptInvitation(req: InvitationRequest.AcceptInvitation, res: Response) {
+		const { firstName, lastName, password } = req.body;
+		if (!firstName || !lastName || !password) {
 			this.logger.debug(
 				'Request to fill out a user shell failed because of missing properties in payload',
 				{ payload: req.body },
@@ -133,33 +155,17 @@ export class InvitationController {
 			throw new BadRequestError('Invalid payload');
 		}
 
-		const validPassword = this.passwordUtility.validate(password);
-
-		const users = await this.userRepository.findManyByIds([inviterId, inviteeId]);
-
-		if (users.length !== 2) {
-			this.logger.debug(
-				'Request to fill out a user shell failed because the inviter ID and/or invitee ID were not found in database',
-				{
-					inviterId,
-					inviteeId,
-				},
-			);
-			throw new BadRequestError('Invalid payload or URL');
-		}
-
-		const invitee = users.find((user) => user.id === inviteeId) as User;
-
-		if (invitee.password) {
-			this.logger.debug(
-				'Request to fill out a user shell failed because the invite had already been accepted',
-				{ inviteeId },
-			);
-			throw new BadRequestError('This invite has been accepted already');
+		const { token } = req.params;
+		const { invitee, inviter } = await this.invitationService.validateInvitationToken(token);
+		if (!invitee || !inviter || invitee.password) {
+			this.logger.debug('The invitation was likely either deleted or already claimed');
+			throw new BadRequestError('Invalid token');
 		}
 
 		invitee.firstName = firstName;
 		invitee.lastName = lastName;
+
+		const validPassword = this.passwordUtility.validate(password);
 		invitee.password = await this.passwordUtility.hash(validPassword);
 
 		const updatedUser = await this.userRepository.save(invitee, { transaction: false });

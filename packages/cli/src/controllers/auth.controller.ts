@@ -1,11 +1,8 @@
-import validator from 'validator';
-
 import { AuthService } from '@/auth/auth.service';
 import { Get, Post, RestController } from '@/decorators';
-import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { Request, Response } from 'express';
 import type { User } from '@db/entities/User';
-import { AuthenticatedRequest, LoginRequest, UserRequest } from '@/requests';
+import { AuthenticatedRequest, LoginRequest } from '@/requests';
 import type { PublicUser } from '@/Interfaces';
 import { handleEmailLogin, handleLdapLogin } from '@/auth';
 import { PostHogClient } from '@/posthog';
@@ -15,26 +12,18 @@ import {
 	isSamlCurrentAuthenticationMethod,
 } from '@/sso/ssoHelpers';
 import { InternalHooks } from '../InternalHooks';
-import { License } from '@/License';
 import { UserService } from '@/services/user.service';
 import { MfaService } from '@/Mfa/mfa.service';
-import { Logger } from '@/Logger';
 import { AuthError } from '@/errors/response-errors/auth.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
 import { ApplicationError } from 'n8n-workflow';
-import { UserRepository } from '@/databases/repositories/user.repository';
 
 @RestController()
 export class AuthController {
 	constructor(
-		private readonly logger: Logger,
 		private readonly internalHooks: InternalHooks,
 		private readonly authService: AuthService,
 		private readonly mfaService: MfaService,
 		private readonly userService: UserService,
-		private readonly license: License,
-		private readonly userRepository: UserRepository,
 		private readonly postHog?: PostHogClient,
 	) {}
 
@@ -117,74 +106,6 @@ export class AuthController {
 			posthog: this.postHog,
 			withScopes: true,
 		});
-	}
-
-	/** Validate invite token to enable invitee to set up their account */
-	@Get('/resolve-signup-token', { skipAuth: true })
-	async resolveSignupToken(req: UserRequest.ResolveSignUp) {
-		const { inviterId, inviteeId } = req.query;
-		const isWithinUsersLimit = this.license.isWithinUsersLimit();
-
-		if (!isWithinUsersLimit) {
-			this.logger.debug('Request to resolve signup token failed because of users quota reached', {
-				inviterId,
-				inviteeId,
-			});
-			throw new UnauthorizedError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
-		}
-
-		if (!inviterId || !inviteeId) {
-			this.logger.debug(
-				'Request to resolve signup token failed because of missing user IDs in query string',
-				{ inviterId, inviteeId },
-			);
-			throw new BadRequestError('Invalid payload');
-		}
-
-		// Postgres validates UUID format
-		for (const userId of [inviterId, inviteeId]) {
-			if (!validator.isUUID(userId)) {
-				this.logger.debug('Request to resolve signup token failed because of invalid user ID', {
-					userId,
-				});
-				throw new BadRequestError('Invalid userId');
-			}
-		}
-
-		const users = await this.userRepository.findManyByIds([inviterId, inviteeId]);
-
-		if (users.length !== 2) {
-			this.logger.debug(
-				'Request to resolve signup token failed because the ID of the inviter and/or the ID of the invitee were not found in database',
-				{ inviterId, inviteeId },
-			);
-			throw new BadRequestError('Invalid invite URL');
-		}
-
-		const invitee = users.find((user) => user.id === inviteeId);
-		if (!invitee || invitee.password) {
-			this.logger.error('Invalid invite URL - invitee already setup', {
-				inviterId,
-				inviteeId,
-			});
-			throw new BadRequestError('The invitation was likely either deleted or already claimed');
-		}
-
-		const inviter = users.find((user) => user.id === inviterId);
-		if (!inviter?.email || !inviter?.firstName) {
-			this.logger.error(
-				'Request to resolve signup token failed because inviter does not exist or is not set up',
-				{
-					inviterId: inviter?.id,
-				},
-			);
-			throw new BadRequestError('Invalid request');
-		}
-
-		void this.internalHooks.onUserInviteEmailClick({ inviter, invitee });
-
-		const { firstName, lastName } = inviter;
-		return { inviter: { firstName, lastName } };
 	}
 
 	/** Log out a user */

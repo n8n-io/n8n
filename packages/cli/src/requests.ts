@@ -231,32 +231,39 @@ export declare namespace PasswordResetRequest {
 }
 
 // ----------------------------------
-//             /users
+//             /invitations
 // ----------------------------------
 
-export declare namespace UserRequest {
-	export type Invite = AuthenticatedRequest<
+export declare namespace InvitationRequest {
+	export type Create = AuthenticatedRequest<
 		{},
 		{},
 		Array<{ email: string; role?: AssignableRole }>
 	>;
 
+	export type ResolveInvitation = AuthlessRequest<{ token: string }>;
+
+	export type AcceptInvitation = AuthlessRequest<
+		{ token: string },
+		{},
+		{
+			firstName: string;
+			lastName: string;
+			password: string;
+		}
+	>;
+}
+
+// ----------------------------------
+//             /users
+// ----------------------------------
+
+export declare namespace UserRequest {
+	// TODO: move to invitations
 	export type InviteResponse = {
 		user: { id: string; email: string; inviteAcceptUrl?: string; emailSent: boolean };
 		error?: string;
 	};
-
-	export type ResolveSignUp = AuthlessRequest<
-		{},
-		{},
-		{},
-		{ inviterId?: string; inviteeId?: string }
-	>;
-
-	export type SignUp = AuthenticatedRequest<
-		{ id: string },
-		{ inviterId?: string; inviteeId?: string }
-	>;
 
 	export type Delete = AuthenticatedRequest<
 		{ id: string; email: string; identifier: string },
@@ -280,19 +287,6 @@ export declare namespace UserRequest {
 		{ id: string },
 		{},
 		UserSettingsUpdatePayload
-	>;
-
-	export type Reinvite = AuthenticatedRequest<{ id: string }>;
-
-	export type Update = AuthlessRequest<
-		{ id: string },
-		{},
-		{
-			inviterId: string;
-			firstName: string;
-			lastName: string;
-			password: string;
-		}
 	>;
 }
 

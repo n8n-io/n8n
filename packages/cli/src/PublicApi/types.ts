@@ -112,8 +112,6 @@ export declare namespace UserRequest {
 		{ limit?: number; offset?: number; cursor?: string; includeRole?: boolean }
 	>;
 
-	export type Reinvite = AuthenticatedRequest<{ id: string }>;
-
 	export type Update = AuthlessRequest<
 		{ id: string },
 		{},
