@@ -254,7 +254,11 @@ const getHostFromRequestObject = (
 
 const getBeforeRedirectFn =
 	(agentOptions: AgentOptions, axiosConfig: AxiosRequestConfig) =>
-	(redirectedRequest: Record<string, any>) => {
+	(redirectedRequest: Record<string, any>, response: { headers: Record<string, string> }) => {
+		const { location } = response.headers;
+		const encodedUrl = new URL(encodeURI(Buffer.from(location, 'binary').toString('utf8')));
+		redirectedRequest.pathname = encodedUrl.pathname;
+
 		const redirectAgent = new Agent({
 			...agentOptions,
 			servername: redirectedRequest.hostname,
