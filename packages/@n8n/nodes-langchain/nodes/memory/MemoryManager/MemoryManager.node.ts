@@ -52,16 +52,15 @@ const prepareOutputSetup = (ctx: IExecuteFunctions, version: number, memory: Bas
 
 			return executionData;
 		};
-	} else {
-		return async (i: number) => {
-			return [
-				{
-					json: { success: true },
-					pairedItem: { item: i },
-				},
-			];
-		};
 	}
+	return async (i: number) => {
+		return [
+			{
+				json: { success: true },
+				pairedItem: { item: i },
+			},
+		];
+	};
 };
 
 export class MemoryManager implements INodeType {
