@@ -5,16 +5,7 @@ import {
 	STARTER_TEMPLATE_NAME,
 	UNKNOWN_FAILURE_REASON,
 } from '@/constants';
-import {
-	Authorized,
-	Delete,
-	Get,
-	Middleware,
-	Patch,
-	Post,
-	RestController,
-	GlobalScope,
-} from '@/decorators';
+import { Delete, Get, Middleware, Patch, Post, RestController, GlobalScope } from '@/decorators';
 import { NodeRequest } from '@/requests';
 import type { InstalledPackages } from '@db/entities/InstalledPackages';
 import type { CommunityPackages } from '@/Interfaces';
@@ -41,7 +32,6 @@ export function isNpmError(error: unknown): error is { code: number; stdout: str
 	return typeof error === 'object' && error !== null && 'code' in error && 'stdout' in error;
 }
 
-@Authorized()
 @RestController('/community-packages')
 export class CommunityPackagesController {
 	constructor(

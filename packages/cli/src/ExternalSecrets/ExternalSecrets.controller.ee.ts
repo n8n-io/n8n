@@ -1,11 +1,10 @@
-import { Authorized, Get, Post, RestController, GlobalScope } from '@/decorators';
+import { Get, Post, RestController, GlobalScope } from '@/decorators';
 import { ExternalSecretsRequest } from '@/requests';
 import { Response } from 'express';
 import { ExternalSecretsService } from './ExternalSecrets.service.ee';
 import { ExternalSecretsProviderNotFoundError } from '@/errors/external-secrets-provider-not-found.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-@Authorized()
 @RestController('/external-secrets')
 export class ExternalSecretsController {
 	constructor(private readonly secretsService: ExternalSecretsService) {}

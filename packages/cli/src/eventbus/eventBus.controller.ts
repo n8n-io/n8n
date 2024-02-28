@@ -2,7 +2,7 @@ import express from 'express';
 import type { IRunExecutionData } from 'n8n-workflow';
 import { EventMessageTypeNames } from 'n8n-workflow';
 
-import { RestController, Get, Post, Authorized, GlobalScope } from '@/decorators';
+import { RestController, Get, Post, GlobalScope } from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import { isEventMessageOptions } from './EventMessageClasses/AbstractEventMessage';
@@ -33,7 +33,6 @@ const isWithQueryString = (candidate: unknown): candidate is { query: string } =
 // Controller
 // ----------------------------------------
 
-@Authorized()
 @RestController('/eventbus')
 export class EventBusController {
 	constructor(

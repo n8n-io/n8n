@@ -104,7 +104,7 @@ export const setupPushHandler = (restEndpoint: string, app: Application) => {
 
 	const pushValidationMiddleware: RequestHandler = async (
 		req: SSEPushRequest | WebSocketPushRequest,
-		res,
+		_,
 		next,
 	) => {
 		const ws = req.ws;
@@ -127,7 +127,8 @@ export const setupPushHandler = (restEndpoint: string, app: Application) => {
 	const authService = Container.get(AuthService);
 	app.use(
 		endpoint,
-		authService.createAuthMiddleware('any'),
+		// eslint-disable-next-line @typescript-eslint/unbound-method
+		authService.authMiddleware,
 		pushValidationMiddleware,
 		(req: SSEPushRequest | WebSocketPushRequest, res: PushResponse) => push.handleRequest(req, res),
 	);

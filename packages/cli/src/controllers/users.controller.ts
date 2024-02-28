@@ -4,15 +4,7 @@ import { AuthService } from '@/auth/auth.service';
 import { User } from '@db/entities/User';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
-import {
-	GlobalScope,
-	Authorized,
-	Delete,
-	Get,
-	RestController,
-	Patch,
-	Licensed,
-} from '@/decorators';
+import { GlobalScope, Delete, Get, RestController, Patch, Licensed } from '@/decorators';
 import {
 	ListQuery,
 	UserRequest,
@@ -35,7 +27,6 @@ import { ExternalHooks } from '@/ExternalHooks';
 import { InternalHooks } from '@/InternalHooks';
 import { validateEntity } from '@/GenericHelpers';
 
-@Authorized()
 @RestController('/users')
 export class UsersController {
 	constructor(
