@@ -230,11 +230,12 @@ export const triggerDescription: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Watch Sub Folders',
+				displayName: 'Watch Nested Folders',
 				name: 'folderChild',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the folder to watch includes Sub Folders.',
+				description:
+					'Whether to look for modified files/folders in all nested folders, rather than only direct descendants',
 			},
 		],
 	},
@@ -251,11 +252,12 @@ export const triggerDescription: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Watch Sub Folders',
+				displayName: 'Watch Nested Folders',
 				name: 'folderChild',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the folder to watch includes Sub Folders.',
+				description:
+					'Whether to look for modified files/folders in all nested folders, rather than only direct descendants.',
 			},
 		],
 	},
