@@ -1,19 +1,19 @@
 import validator from 'validator';
 import { Response } from 'express';
 
+import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
 import { validateEntity } from '@/GenericHelpers';
 import { Authorized, Post, RestController } from '@/decorators';
 import { PasswordUtility } from '@/services/password.utility';
-import { issueCookie } from '@/auth/jwt';
 import { OwnerRequest } from '@/requests';
 import { SettingsRepository } from '@db/repositories/settings.repository';
+import { UserRepository } from '@db/repositories/user.repository';
 import { PostHogClient } from '@/posthog';
 import { UserService } from '@/services/user.service';
 import { Logger } from '@/Logger';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalHooks } from '@/InternalHooks';
-import { UserRepository } from '@/databases/repositories/user.repository';
 
 @Authorized('global:owner')
 @RestController('/owner')
@@ -22,6 +22,7 @@ export class OwnerController {
 		private readonly logger: Logger,
 		private readonly internalHooks: InternalHooks,
 		private readonly settingsRepository: SettingsRepository,
+		private readonly authService: AuthService,
 		private readonly userService: UserService,
 		private readonly passwordUtility: PasswordUtility,
 		private readonly postHog: PostHogClient,
@@ -89,7 +90,7 @@ export class OwnerController {
 
 		this.logger.debug('Setting isInstanceOwnerSetUp updated successfully', { userId });
 
-		await issueCookie(res, owner);
+		this.authService.issueCookie(res, owner);
 
 		void this.internalHooks.onInstanceOwnerSetup({ user_id: userId });
 

@@ -1,3 +1,6 @@
+import { plainToInstance } from 'class-transformer';
+
+import { AuthService } from '@/auth/auth.service';
 import { User } from '@db/entities/User';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
@@ -22,7 +25,6 @@ import { AuthIdentity } from '@db/entities/AuthIdentity';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { UserRepository } from '@db/repositories/user.repository';
-import { plainToInstance } from 'class-transformer';
 import { UserService } from '@/services/user.service';
 import { listQueryMiddleware } from '@/middlewares';
 import { Logger } from '@/Logger';
@@ -44,6 +46,7 @@ export class UsersController {
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly userRepository: UserRepository,
 		private readonly activeWorkflowRunner: ActiveWorkflowRunner,
+		private readonly authService: AuthService,
 		private readonly userService: UserService,
 	) {}
 
@@ -116,7 +119,7 @@ export class UsersController {
 			throw new NotFoundError('User not found');
 		}
 
-		const link = this.userService.generatePasswordResetUrl(user);
+		const link = this.authService.generatePasswordResetUrl(user);
 		return { link };
 	}
 
