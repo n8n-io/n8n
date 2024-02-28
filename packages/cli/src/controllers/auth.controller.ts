@@ -1,7 +1,7 @@
 import validator from 'validator';
 
 import { AuthService } from '@/auth/auth.service';
-import { Authorized, Get, Post, RestController } from '@/decorators';
+import { Get, Post, RestController } from '@/decorators';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { Request, Response } from 'express';
 import type { User } from '@db/entities/User';
@@ -38,10 +38,8 @@ export class AuthController {
 		private readonly postHog?: PostHogClient,
 	) {}
 
-	/**
-	 * Log in a user.
-	 */
-	@Post('/login')
+	/** Log in a user */
+	@Post('/login', { skipAuth: true })
 	async login(req: LoginRequest, res: Response): Promise<PublicUser | undefined> {
 		const { email, password, mfaToken, mfaRecoveryCode } = req.body;
 		if (!email) throw new ApplicationError('Email is required to log in');
@@ -113,7 +111,6 @@ export class AuthController {
 	}
 
 	/** Check if the user is already logged in */
-	@Authorized()
 	@Get('/login')
 	async currentUser(req: AuthenticatedRequest): Promise<PublicUser> {
 		return await this.userService.toPublic(req.user, {
@@ -122,10 +119,8 @@ export class AuthController {
 		});
 	}
 
-	/**
-	 * Validate invite token to enable invitee to set up their account.
-	 */
-	@Get('/resolve-signup-token')
+	/** Validate invite token to enable invitee to set up their account */
+	@Get('/resolve-signup-token', { skipAuth: true })
 	async resolveSignupToken(req: UserRequest.ResolveSignUp) {
 		const { inviterId, inviteeId } = req.query;
 		const isWithinUsersLimit = this.license.isWithinUsersLimit();
@@ -192,10 +187,7 @@ export class AuthController {
 		return { inviter: { firstName, lastName } };
 	}
 
-	/**
-	 * Log out a user.
-	 */
-	@Authorized()
+	/** Log out a user */
 	@Post('/logout')
 	logout(_: Request, res: Response) {
 		this.authService.clearCookie(res);
