@@ -5,7 +5,7 @@ import type {
 } from 'n8n-workflow';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 
-import { RestController, Get, Post, Delete, Authorized, GlobalScope } from '@/decorators';
+import { RestController, Get, Post, Delete, GlobalScope } from '@/decorators';
 import { AuthenticatedRequest } from '@/requests';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
@@ -52,7 +52,6 @@ const isMessageEventBusDestinationOptions = (
 // Controller
 // ----------------------------------------
 
-@Authorized()
 @RestController('/eventbus')
 export class EventBusControllerEE {
 	constructor(private readonly eventBus: MessageEventBus) {}

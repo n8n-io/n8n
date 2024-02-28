@@ -3,7 +3,7 @@ import validator from 'validator';
 
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
-import { Authorized, NoAuthRequired, Post, GlobalScope, RestController } from '@/decorators';
+import { Post, GlobalScope, RestController } from '@/decorators';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { UserRequest } from '@/requests';
 import { License } from '@/License';
@@ -19,7 +19,6 @@ import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
 import { InternalHooks } from '@/InternalHooks';
 import { ExternalHooks } from '@/ExternalHooks';
 
-@Authorized()
 @RestController('/invitations')
 export class InvitationController {
 	constructor(
@@ -120,8 +119,7 @@ export class InvitationController {
 	/**
 	 * Fill out user shell with first name, last name, and password.
 	 */
-	@NoAuthRequired()
-	@Post('/:id/accept')
+	@Post('/:id/accept', { skipAuth: true })
 	async acceptInvitation(req: UserRequest.Update, res: Response) {
 		const { id: inviteeId } = req.params;
 

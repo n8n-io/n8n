@@ -1,5 +1,5 @@
 import { Service } from 'typedi';
-import type { Response } from 'express';
+import type { NextFunction, Response } from 'express';
 import { createHash } from 'crypto';
 import { JsonWebTokenError, TokenExpiredError, type JwtPayload } from 'jsonwebtoken';
 
@@ -7,12 +7,11 @@ import config from '@/config';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES, Time } from '@/constants';
 import type { User } from '@db/entities/User';
 import { UserRepository } from '@db/repositories/user.repository';
-import type { AuthRole } from '@/decorators/types';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
 import { License } from '@/License';
 import { Logger } from '@/Logger';
-import type { AuthenticatedRequest, AsyncRequestHandler } from '@/requests';
+import type { AuthenticatedRequest } from '@/requests';
 import { JwtService } from '@/services/jwt.service';
 import { UrlService } from '@/services/url.service';
 
@@ -31,54 +30,33 @@ interface IssuedJWT extends AuthJwtPayload {
 
 @Service()
 export class AuthService {
-	private middlewareCache = new Map<string, AsyncRequestHandler>();
-
 	constructor(
 		private readonly logger: Logger,
 		private readonly license: License,
 		private readonly jwtService: JwtService,
 		private readonly urlService: UrlService,
 		private readonly userRepository: UserRepository,
-	) {}
+	) {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+		this.authMiddleware = this.authMiddleware.bind(this);
+	}
 
-	createAuthMiddleware(authRole: AuthRole): AsyncRequestHandler {
-		const { middlewareCache: cache } = this;
-		let authMiddleware = cache.get(authRole);
-		if (authMiddleware) return authMiddleware;
-
-		authMiddleware = async (req: AuthenticatedRequest, res, next) => {
-			if (authRole === 'none') {
-				next();
-				return;
-			}
-
-			const token = req.cookies[AUTH_COOKIE_NAME];
-			if (token) {
-				try {
-					req.user = await this.resolveJwt(token, res);
-				} catch (error) {
-					if (error instanceof JsonWebTokenError || error instanceof AuthError) {
-						this.clearCookie(res);
-					} else {
-						throw error;
-					}
+	async authMiddleware(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+		const token = req.cookies[AUTH_COOKIE_NAME];
+		if (token) {
+			try {
+				req.user = await this.resolveJwt(token, res);
+			} catch (error) {
+				if (error instanceof JsonWebTokenError || error instanceof AuthError) {
+					this.clearCookie(res);
+				} else {
+					throw error;
 				}
 			}
+		}
 
-			if (!req.user) {
-				res.status(401).json({ status: 'error', message: 'Unauthorized' });
-				return;
-			}
-
-			if (authRole === 'any' || authRole === req.user.role) {
-				next();
-			} else {
-				res.status(403).json({ status: 'error', message: 'Forbidden' });
-			}
-		};
-
-		cache.set(authRole, authMiddleware);
-		return authMiddleware;
+		if (req.user) next();
+		else res.status(401).json({ status: 'error', message: 'Unauthorized' });
 	}
 
 	clearCookie(res: Response) {

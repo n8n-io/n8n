@@ -1,21 +1,11 @@
 import { VariablesRequest } from '@/requests';
-import {
-	Authorized,
-	Delete,
-	Get,
-	Licensed,
-	Patch,
-	Post,
-	GlobalScope,
-	RestController,
-} from '@/decorators';
+import { Delete, Get, Licensed, Patch, Post, GlobalScope, RestController } from '@/decorators';
 import { VariablesService } from './variables.service.ee';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { VariableValidationError } from '@/errors/variable-validation.error';
 import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
 
-@Authorized()
 @RestController('/variables')
 export class VariablesController {
 	constructor(private readonly variablesService: VariablesService) {}

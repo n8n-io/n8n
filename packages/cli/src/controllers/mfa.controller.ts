@@ -1,9 +1,8 @@
-import { Authorized, Delete, Get, Post, RestController } from '@/decorators';
+import { Delete, Get, Post, RestController } from '@/decorators';
 import { AuthenticatedRequest, MFA } from '@/requests';
 import { MfaService } from '@/Mfa/mfa.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
-@Authorized()
 @RestController('/mfa')
 export class MFAController {
 	constructor(private mfaService: MfaService) {}
