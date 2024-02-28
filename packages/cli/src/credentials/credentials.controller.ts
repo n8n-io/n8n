@@ -196,7 +196,12 @@ export class CredentialsController {
 		const newCredential = await this.credentialsService.prepareCreateData(req.body);
 
 		const encryptedData = this.credentialsService.createEncryptedData(null, newCredential);
-		const credential = await this.credentialsService.save(newCredential, encryptedData, req.user);
+		const credential = await this.credentialsService.save(
+			newCredential,
+			encryptedData,
+			req.user,
+			req.body.projectId,
+		);
 
 		void this.internalHooks.onUserCreatedCredentials({
 			user: req.user,
