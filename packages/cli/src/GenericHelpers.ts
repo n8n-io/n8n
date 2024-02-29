@@ -6,6 +6,22 @@ import type { TagEntity } from '@db/entities/TagEntity';
 import type { User } from '@db/entities/User';
 import type { UserRoleChangePayload, UserUpdatePayload } from '@/requests';
 import { BadRequestError } from './errors/response-errors/bad-request.error';
+import config from '@/config';
+
+/**
+ * Returns the base URL n8n is reachable from
+ */
+export function getBaseUrl(): string {
+	const protocol = config.getEnv('protocol');
+	const host = config.getEnv('host');
+	const port = config.getEnv('port');
+	const path = config.getEnv('path');
+
+	if ((protocol === 'http' && port === 80) || (protocol === 'https' && port === 443)) {
+		return `${protocol}://${host}${path}`;
+	}
+	return `${protocol}://${host}:${port}${path}`;
+}
 
 /**
  * Returns the session id if one is set

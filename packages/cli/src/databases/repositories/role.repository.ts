@@ -10,6 +10,10 @@ export class RoleRepository extends Repository<Role> {
 		super(Role, dataSource.manager);
 	}
 
+	async findGlobalMemberRole(): Promise<Role | null> {
+		return this.findRole('global', 'member');
+	}
+
 	async findRole(scope: RoleScopes, name: RoleNames) {
 		return this.findOne({ where: { scope, name } });
 	}
