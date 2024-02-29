@@ -8,7 +8,6 @@ import type { IExecutionBase } from '@/Interfaces';
 import type { ActiveExecutionService } from '@/executions/active-execution.service';
 import type { ExecutionRequest } from '@/executions/execution.types';
 import type { WorkflowSharingService } from '@/workflows/workflowSharing.service';
-import type { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 
 describe('ExecutionsController', () => {
 	const getEnv = mockFn<(typeof config)['getEnv']>();
@@ -17,7 +16,6 @@ describe('ExecutionsController', () => {
 	mockInstance(License);
 	const activeExecutionService = mock<ActiveExecutionService>();
 	const workflowSharingService = mock<WorkflowSharingService>();
-	const workflowRepository = mock<WorkflowRepository>();
 
 	const req = mock<ExecutionRequest.GetManyActive>({ query: { filter: '{}' } });
 
@@ -27,7 +25,6 @@ describe('ExecutionsController', () => {
 
 	describe('getActive()', () => {
 		workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['123']);
-		workflowRepository.getAllIds.mockResolvedValue(['123']);
 
 		it('should call `ActiveExecutionService.findManyInQueueMode()`', async () => {
 			getEnv.calledWith('executions.mode').mockReturnValue('queue');
@@ -37,7 +34,6 @@ describe('ExecutionsController', () => {
 				mock(),
 				workflowSharingService,
 				activeExecutionService,
-				mock(),
 				mock(),
 			).getActive(req);
 
@@ -53,7 +49,6 @@ describe('ExecutionsController', () => {
 				mock(),
 				workflowSharingService,
 				activeExecutionService,
-				mock(),
 				mock(),
 			).getActive(req);
 
@@ -75,7 +70,6 @@ describe('ExecutionsController', () => {
 				workflowSharingService,
 				activeExecutionService,
 				mock(),
-				workflowRepository,
 			).stop(req);
 
 			await expect(promise).rejects.toThrow(NotFoundError);
@@ -92,7 +86,6 @@ describe('ExecutionsController', () => {
 				workflowSharingService,
 				activeExecutionService,
 				mock(),
-				workflowRepository,
 			).stop(req);
 
 			expect(activeExecutionService.stop).toHaveBeenCalled();

@@ -225,10 +225,4 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	async findByActiveState(activeState: boolean) {
 		return await this.findBy({ active: activeState });
 	}
-
-	async getAllIds() {
-		const workflows = await this.find({ where: {}, select: { id: true } });
-
-		return workflows.map((w) => w.id);
-	}
 }

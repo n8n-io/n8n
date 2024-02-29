@@ -169,10 +169,9 @@ export class WorkflowsController {
 	@Get('/', { middlewares: listQueryMiddleware })
 	async getAll(req: ListQuery.Request, res: express.Response) {
 		try {
-			const sharedWorkflowIds = await this.workflowSharingService.getSharedWorkflowIds(
-				req.user,
-				'workflow:read',
-			);
+			const sharedWorkflowIds = await this.workflowSharingService.getSharedWorkflowIds(req.user, {
+				scopes: ['workflow:read'],
+			});
 
 			const { workflows: data, count } = await this.workflowService.getMany(
 				sharedWorkflowIds,

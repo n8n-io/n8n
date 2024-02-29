@@ -11,7 +11,6 @@ import { jsonParse } from 'n8n-workflow';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ActiveExecutionService } from './active-execution.service';
 import type { Scope } from '@n8n/permissions';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 
 @RestController('/executions')
 export class ExecutionsController {
@@ -23,13 +22,17 @@ export class ExecutionsController {
 		private readonly workflowSharingService: WorkflowSharingService,
 		private readonly activeExecutionService: ActiveExecutionService,
 		private readonly license: License,
-		private readonly workflowRepository: WorkflowRepository,
 	) {}
 
 	private async getAccessibleWorkflowIds(user: User, scope: Scope) {
-		return this.license.isSharingEnabled()
-			? await this.workflowSharingService.getSharedWorkflowIds(user, scope)
-			: await this.workflowRepository.getAllIds();
+		if (this.license.isSharingEnabled()) {
+			return await this.workflowSharingService.getSharedWorkflowIds(user, { scopes: [scope] });
+		} else {
+			return await this.workflowSharingService.getSharedWorkflowIds(user, {
+				workflowRoles: ['workflow:owner'],
+				projectRoles: ['project:personalOwner'],
+			});
+		}
 	}
 
 	@Get('/')

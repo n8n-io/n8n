@@ -33,10 +33,9 @@ describe('WorkflowSharingService', () => {
 			owner.role = 'global:owner';
 			const workflow1 = await createWorkflow({}, member);
 			const workflow2 = await createWorkflow({}, anotherMember);
-			const sharedWorkflowIds = await workflowSharingService.getSharedWorkflowIds(
-				owner,
-				'workflow:read',
-			);
+			const sharedWorkflowIds = await workflowSharingService.getSharedWorkflowIds(owner, {
+				scopes: ['workflow:read'],
+			});
 			expect(sharedWorkflowIds).toHaveLength(2);
 			expect(sharedWorkflowIds).toContain(workflow1.id);
 			expect(sharedWorkflowIds).toContain(workflow2.id);
@@ -49,10 +48,9 @@ describe('WorkflowSharingService', () => {
 			const workflow3 = await createWorkflow({}, anotherMember);
 			await shareWorkflowWithUsers(workflow1, [member]);
 			await shareWorkflowWithUsers(workflow3, [member]);
-			const sharedWorkflowIds = await workflowSharingService.getSharedWorkflowIds(
-				member,
-				'workflow:read',
-			);
+			const sharedWorkflowIds = await workflowSharingService.getSharedWorkflowIds(member, {
+				scopes: ['workflow:read'],
+			});
 			expect(sharedWorkflowIds).toHaveLength(2);
 			expect(sharedWorkflowIds).toContain(workflow1.id);
 			expect(sharedWorkflowIds).toContain(workflow3.id);
@@ -70,10 +68,9 @@ describe('WorkflowSharingService', () => {
 			//
 			// ACT
 			//
-			const sharedWorkflowIds = await workflowSharingService.getSharedWorkflowIds(
-				anotherMember,
-				'workflow:read',
-			);
+			const sharedWorkflowIds = await workflowSharingService.getSharedWorkflowIds(anotherMember, {
+				scopes: ['workflow:read'],
+			});
 
 			//
 			// ASSERT
@@ -95,10 +92,9 @@ describe('WorkflowSharingService', () => {
 			//
 			// ACT
 			//
-			const sharedWorkflowIds = await workflowSharingService.getSharedWorkflowIds(
-				anotherMember,
-				'workflow:update',
-			);
+			const sharedWorkflowIds = await workflowSharingService.getSharedWorkflowIds(anotherMember, {
+				scopes: ['workflow:update'],
+			});
 
 			//
 			// ASSERT
