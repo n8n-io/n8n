@@ -145,11 +145,12 @@ export function hasSharing(
 
 export declare namespace CredentialRequest {
 	type CredentialProperties = Partial<{
-		id: string; // delete if sent
+		id: string; // deleted if sent
 		name: string;
 		type: string;
 		nodesAccess: ICredentialNodeAccess[];
 		data: ICredentialDataDecryptedObject;
+		projectId?: string;
 	}>;
 
 	type Create = AuthenticatedRequest<{}, {}, CredentialProperties>;

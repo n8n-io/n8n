@@ -5,7 +5,7 @@ import type {
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';
-import { CREDENTIAL_EMPTY_VALUE, deepCopy, NodeHelpers } from 'n8n-workflow';
+import { ApplicationError, CREDENTIAL_EMPTY_VALUE, deepCopy, NodeHelpers } from 'n8n-workflow';
 import type { FindOptionsWhere } from '@n8n/typeorm';
 import type { Scope } from '@n8n/permissions';
 import * as Db from '@/Db';
@@ -13,7 +13,7 @@ import type { ICredentialsDb } from '@/Interfaces';
 import { createCredentialsFromCredentialsEntity } from '@/CredentialsHelper';
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
-import { SharedCredentials } from '@db/entities/SharedCredentials';
+import type { SharedCredentials } from '@db/entities/SharedCredentials';
 import { validateEntity } from '@/GenericHelpers';
 import { ExternalHooks } from '@/ExternalHooks';
 import type { User } from '@db/entities/User';
@@ -26,6 +26,8 @@ import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.
 import { Service } from 'typedi';
 import { CredentialsTester } from '@/services/credentials-tester.service';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
+import { ProjectService } from '@/services/project.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 export type CredentialsGetSharedOptions =
 	| { allowGlobalScope: true; globalScope: Scope }
@@ -42,6 +44,7 @@ export class CredentialsService {
 		private readonly externalHooks: ExternalHooks,
 		private readonly credentialTypes: CredentialTypes,
 		private readonly projectRepository: ProjectRepository,
+		private readonly projectService: ProjectService,
 	) {}
 
 	async get(where: FindOptionsWhere<ICredentialsDb>, options?: { relations: string[] }) {
@@ -183,7 +186,12 @@ export class CredentialsService {
 		return await this.credentialsRepository.findOneBy({ id: credentialId });
 	}
 
-	async save(credential: CredentialsEntity, encryptedData: ICredentialsDb, user: User) {
+	async save(
+		credential: CredentialsEntity,
+		encryptedData: ICredentialsDb,
+		user: User,
+		projectId?: string,
+	) {
 		// To avoid side effects
 		const newCredential = new CredentialsEntity();
 		Object.assign(newCredential, credential, encryptedData);
@@ -195,15 +203,32 @@ export class CredentialsService {
 
 			savedCredential.data = newCredential.data;
 
-			const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(user.id);
+			const project =
+				projectId === undefined
+					? await this.projectRepository.getPersonalProjectForUserOrFail(user.id)
+					: await this.projectService.getProjectWithScope(
+							user,
+							projectId,
+							'credential:create',
+							transactionManager,
+					  );
 
-			const newSharedCredential = new SharedCredentials();
+			if (typeof projectId === 'string' && project === null) {
+				throw new BadRequestError(
+					"You don't have the permissions to save the workflow in this project.",
+				);
+			}
 
-			Object.assign(newSharedCredential, {
+			// Safe guard in case the personal project does not exist for whatever reason.
+			if (project === null) {
+				throw new ApplicationError('No personal project found');
+			}
+
+			const newSharedCredential = this.sharedCredentialsRepository.create({
 				role: 'credential:owner',
 				user,
 				credentials: savedCredential,
-				projectId: personalProject.id,
+				projectId: project.id,
 			});
 
 			await transactionManager.save<SharedCredentials>(newSharedCredential);
