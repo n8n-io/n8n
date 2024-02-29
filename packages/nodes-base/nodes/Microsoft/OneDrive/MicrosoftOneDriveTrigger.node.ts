@@ -95,14 +95,17 @@ export class MicrosoftOneDriveTrigger implements INodeType {
 				}
 			}
 
-			if ((watch === 'selectedFolder' || watchFolder) && !folderChild) {
+			if (
+				!folderChild &&
+				(watch === 'oneSelectedFolder' || watch === 'selectedFolder' || watchFolder)
+			) {
 				const folderId = (
 					this.getNodeParameter('folderId', '', {
 						extractValue: true,
 					}) as string
 				).replace('%21', '!');
 				if (folderId) {
-					if (eventResource === 'folder') {
+					if (watch === 'oneSelectedFolder') {
 						responseData = responseData.filter((item: IDataObject) => item.id === folderId);
 					} else {
 						responseData = responseData.filter(
@@ -111,7 +114,7 @@ export class MicrosoftOneDriveTrigger implements INodeType {
 					}
 				}
 			}
-			if ((watch === 'selectedFolder' || watchFolder) && folderChild) {
+			if (folderChild && (watch === 'selectedFolder' || watchFolder)) {
 				const folderId = (
 					this.getNodeParameter('folderId', '', {
 						extractValue: true,
