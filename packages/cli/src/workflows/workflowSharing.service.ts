@@ -39,8 +39,6 @@ export class WorkflowSharingService {
 			select: ['workflowId'],
 		});
 
-		// console.trace(scope, projectRoles, workflowRoles, sharedWorkflows);
-
 		return sharedWorkflows.map(({ workflowId }) => workflowId);
 	}
 }

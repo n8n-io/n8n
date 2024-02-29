@@ -174,8 +174,6 @@ export class WorkflowsController {
 				'workflow:read',
 			);
 
-			console.log(sharedWorkflowIds);
-
 			const { workflows: data, count } = await this.workflowService.getMany(
 				sharedWorkflowIds,
 				req.listQueryOptions,
