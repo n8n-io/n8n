@@ -1,3 +1,4 @@
+import validator from 'validator';
 import { User } from '@db/entities/User';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
@@ -9,6 +10,7 @@ import {
 	RestController,
 	Patch,
 	Licensed,
+	Post,
 } from '@/decorators';
 import {
 	ListQuery,
@@ -30,9 +32,17 @@ import { Logger } from '@/Logger';
 import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 import { ExternalHooks } from '@/ExternalHooks';
 import { InternalHooks } from '@/InternalHooks';
 import { validateEntity } from '@/GenericHelpers';
+import config from '@/config';
+import { userManagementEnabledMiddleware } from '../middlewares/userManagementEnabled';
+import { getInstanceBaseUrl, generateUserInviteUrl } from '@/UserManagement/UserManagementHelper';
+import { isSamlLicensedAndEnabled } from '@/sso/saml/samlHelpers';
+import { RoleRepository } from '@/databases/repositories/role.repository';
+import { UserManagementMailer } from '@/UserManagement/email';
 
 @Authorized()
 @RestController('/users')
@@ -47,6 +57,9 @@ export class UsersController {
 		private readonly activeWorkflowRunner: ActiveWorkflowRunner,
 		private readonly roleService: RoleService,
 		private readonly userService: UserService,
+		private readonly roleRepository: RoleRepository,
+		private readonly mailer: UserManagementMailer,
+		//private readonly config: Config,
 	) {}
 
 	static ERROR_MESSAGES = {
@@ -85,6 +98,184 @@ export class UsersController {
 		}
 
 		return publicUsers;
+	}
+
+	@Post('/')
+	@RequireGlobalScope('user:create')
+	async sendEmailInvites(req: UserRequest.Invite) {
+		// if (isSamlLicensedAndEnabled()) {
+		// 	this.logger.debug(
+		// 		'SAML is enabled, so users are managed by the Identity Provider and cannot be added through invites',
+		// 	);
+		// 	throw new BadRequestError(
+		// 		'SAML is enabled, so users are managed by the Identity Provider and cannot be added through invites',
+		// 	);
+		// }
+
+		// if (!config.getEnv('userManagement.isInstanceOwnerSetUp')) {
+		// 	this.logger.debug(
+		// 		'Request to send email invite(s) to user(s) failed because the owner account is not set up',
+		// 	);
+		// 	throw new BadRequestError('You must set up your own account before inviting others');
+		// }
+
+		if (!Array.isArray(req.body)) {
+			this.logger.debug(
+				'Request to send email invite(s) to user(s) failed because the payload is not an array',
+				{
+					payload: req.body,
+				},
+			);
+			throw new BadRequestError('Invalid payload');
+		}
+
+		if (!req.body.length) return [];
+
+		const createUsers: { [key: string]: string | null } = {};
+		// Validate payload
+		req.body.forEach((invite) => {
+			if (typeof invite !== 'object' || !invite.email) {
+				throw new BadRequestError(
+					'Request to send email invite(s) to user(s) failed because the payload is not an array shaped Array<{ email: string }>',
+				);
+			}
+
+			if (!validator.isEmail(invite.email)) {
+				this.logger.debug('Invalid email in payload', { invalidEmail: invite.email });
+				throw new BadRequestError(
+					`Request to send email invite(s) to user(s) failed because of an invalid email address: ${invite.email}`,
+				);
+			}
+			createUsers[invite.email.toLowerCase()] = null;
+		});
+
+		const role = await this.roleRepository.findGlobalMemberRole();
+
+		if (!role) {
+			this.logger.error(
+				'Request to send email invite(s) to user(s) failed because no global member role was found in database',
+			);
+			throw new InternalServerError('Members role not found in database - inconsistent state');
+		}
+
+		// // remove/exclude existing users from creation
+		// const existingUsers = await this.userRepository.findManyByEmail({
+		// 	,
+		// });
+		// existingUsers.forEach((user) => {
+		// 	if (user.password) {
+		// 		delete createUsers[user.email];
+		// 		return;
+		// 	}
+		// 	createUsers[user.email] = user.id;
+		// });
+
+		const usersToSetUp = Object.keys(createUsers).filter((email) => createUsers[email] === null);
+		const total = usersToSetUp.length;
+
+		this.logger.debug(total > 1 ? `Creating ${total} user shells...` : 'Creating 1 user shell...');
+
+		try {
+			await this.userRepository.manager.transaction(async (transactionManager) =>
+				Promise.all(
+					usersToSetUp.map(async (email) => {
+						const newUser = Object.assign(new User(), {
+							email,
+							globalRole: role,
+						});
+						const savedUser = await transactionManager.save<User>(newUser);
+						createUsers[savedUser.email] = savedUser.id;
+						return savedUser;
+					}),
+				),
+			);
+		} catch (error) {
+			ErrorReporter.error(error);
+			this.logger.error('Failed to create user shells', { userShells: createUsers });
+			throw new InternalServerError('An error occurred during user creation');
+		}
+
+		this.logger.debug('Created user shell(s) successfully', { userId: req.user.id });
+		this.logger.verbose(total > 1 ? `${total} user shells created` : '1 user shell created', {
+			userShells: createUsers,
+		});
+
+		const baseUrl = getInstanceBaseUrl();
+
+		const usersPendingSetup = Object.entries(createUsers).filter(([email, id]) => id && email);
+
+		// send invite email to new or not yet setup users
+
+		const emailingResults = await Promise.all(
+			usersPendingSetup.map(async ([email, id]) => {
+				if (!id) {
+					// This should never happen since those are removed from the list before reaching this point
+					throw new InternalServerError('User ID is missing for user with email address');
+				}
+				const inviteAcceptUrl = generateUserInviteUrl(req.user.id, id);
+				const resp: {
+					user: { id: string | null; email: string; inviteAcceptUrl: string; emailSent: boolean };
+					error?: string;
+				} = {
+					user: {
+						id,
+						email,
+						inviteAcceptUrl,
+						emailSent: false,
+					},
+				};
+				try {
+					const result = await this.mailer.invite({
+						email,
+						inviteAcceptUrl,
+						domain: baseUrl,
+					});
+					if (result.emailSent) {
+						resp.user.emailSent = true;
+						void this.internalHooks.onUserTransactionalEmail({
+							user_id: id,
+							message_type: 'New user invite',
+							public_api: false,
+						});
+					}
+
+					void this.internalHooks.onUserInvite({
+						user: req.user,
+						target_user_id: Object.values(createUsers) as string[],
+						public_api: false,
+						email_sent: result.emailSent,
+						invitee_role: 'member',
+					});
+				} catch (error) {
+					if (error instanceof Error) {
+						void this.internalHooks.onEmailFailed({
+							user: req.user,
+							message_type: 'New user invite',
+							public_api: false,
+						});
+						this.logger.error('Failed to send email', {
+							userId: req.user.id,
+							inviteAcceptUrl,
+							domain: baseUrl,
+							email,
+						});
+						resp.error = error.message;
+					}
+				}
+				return resp;
+			}),
+		);
+
+		await this.externalHooks.run('user.invited', [usersToSetUp]);
+
+		this.logger.debug(
+			usersPendingSetup.length > 1
+				? `Sent ${usersPendingSetup.length} invite emails successfully`
+				: 'Sent 1 invite email successfully',
+			{ userShells: createUsers },
+		);
+
+		return emailingResults;
 	}
 
 	@Get('/', { middlewares: listQueryMiddleware })

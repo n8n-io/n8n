@@ -13,6 +13,7 @@ import stream from 'stream';
 import { promisify } from 'util';
 import formidable from 'formidable';
 
+import * as GenericHelpers from '@/GenericHelpers';
 import { BinaryDataService, NodeExecuteFunctions } from 'n8n-core';
 
 import type {
@@ -827,4 +828,24 @@ export async function executeWebhook(
 		responseCallback(error, {});
 		return;
 	}
+}
+
+/**
+ * Returns the base URL of the webhooks
+ *
+ */
+export function getWebhookBaseUrl() {
+	let urlBaseWebhook = GenericHelpers.getBaseUrl();
+
+	// We renamed WEBHOOK_TUNNEL_URL to WEBHOOK_URL. This is here to maintain
+	// backward compatibility. Will be deprecated and removed in the future.
+	if (process.env.WEBHOOK_TUNNEL_URL !== undefined || process.env.WEBHOOK_URL !== undefined) {
+		// @ts-ignore
+		urlBaseWebhook = process.env.WEBHOOK_TUNNEL_URL || process.env.WEBHOOK_URL;
+	}
+	if (!urlBaseWebhook.endsWith('/')) {
+		urlBaseWebhook += '/';
+	}
+
+	return urlBaseWebhook;
 }
