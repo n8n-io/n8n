@@ -118,7 +118,7 @@ onBeforeMount(async () => {
 					:users="usersList"
 					:current-user-id="usersStore.currentUser?.id"
 					:placeholder="$locale.baseText('workflows.shareModal.select.placeholder')"
-					data-test-id="workflow-sharing-modal-users-select"
+					data-test-id="project-members-select"
 					@update:model-value="onAddMember"
 				>
 					<template #prefix>
