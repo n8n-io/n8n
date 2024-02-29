@@ -5,16 +5,20 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import type { Tool } from 'langchain/tools';
 import type { BaseOutputParser } from 'langchain/schema/output_parser';
 import { PromptTemplate } from 'langchain/prompts';
 import { CombiningOutputParser } from 'langchain/output_parsers';
 import type { BaseChatModel } from 'langchain/chat_models/base';
 import { PlanAndExecuteAgentExecutor } from 'langchain/experimental/plan_and_execute';
-import { getOptionalOutputParsers, getPromptInputByType } from '../../../../../utils/helpers';
+import {
+	getConnectedTools,
+	getOptionalOutputParsers,
+	getPromptInputByType,
+} from '../../../../../utils/helpers';
 
 export async function planAndExecuteAgentExecute(
 	this: IExecuteFunctions,
+	nodeVersion: number,
 ): Promise<INodeExecutionData[][]> {
 	this.logger.verbose('Executing PlanAndExecute Agent');
 	const model = (await this.getInputConnectionData(
@@ -22,7 +26,7 @@ export async function planAndExecuteAgentExecute(
 		0,
 	)) as BaseChatModel;
 
-	const tools = (await this.getInputConnectionData(NodeConnectionType.AiTool, 0)) as Tool[];
+	const tools = await getConnectedTools(this, nodeVersion >= 1.5);
 
 	const outputParsers = await getOptionalOutputParsers(this);
 
