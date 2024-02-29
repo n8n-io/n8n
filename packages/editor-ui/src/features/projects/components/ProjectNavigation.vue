@@ -85,6 +85,7 @@ const addProjectClicked = async () => {
 				:handle-select="homeClicked"
 				:active-tab="activeTab"
 				mode="tabs"
+				data-test-id="project-home-menu-item"
 			/>
 		</ElMenu>
 		<hr class="mt-m mb-m" />
@@ -97,6 +98,7 @@ const addProjectClicked = async () => {
 				:handle-select="projectClicked"
 				:active-tab="isActiveProject(project.id)"
 				mode="tabs"
+				data-test-id="project-menu-item"
 			/>
 		</ElMenu>
 		<ElMenu :collapse="props.collapsed" class="pt-s pl-xs pr-xs">
@@ -105,6 +107,7 @@ const addProjectClicked = async () => {
 				:compact="props.collapsed"
 				:handle-select="addProjectClicked"
 				mode="tabs"
+				data-test-id="add-project-menu-item"
 			/>
 		</ElMenu>
 		<hr class="mt-m mb-m" />

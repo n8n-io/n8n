@@ -16,35 +16,38 @@ const formData = ref<Pick<Project, 'name' | 'relations'>>({
 	name: '',
 	relations: [],
 });
-const projectRoles = ref<{ label: string; value: ProjectRole }>([
+const projectRoles = ref<Array<{ label: string; value: ProjectRole }>>([
 	{ value: 'project:admin', label: locale.baseText('projects.settings.role.admin') },
-	{ value: 'project:member', label: locale.baseText('projects.settings.role.editor') },
+	{ value: 'project:editor', label: locale.baseText('projects.settings.role.editor') },
 	{ value: 'project:viewer', label: locale.baseText('projects.settings.role.viewer') },
 ]);
 
 const usersList = computed(() =>
 	usersStore.allUsers.filter((user: IUser) => {
 		const isAlreadySharedWithUser = (formData.value.relations || []).find(
-			(sharee: IUser) => sharee.id === user.id,
+			(r: ProjectRelation) => r.id === user.id,
 		);
 
 		return !isAlreadySharedWithUser;
 	}),
 );
 
-const onAddSharee = (userId: string) => {
+const onAddMember = (userId: string) => {
 	isDirty.value = true;
-	const { id, firstName, lastName, email } = usersStore.getUserById(userId)!;
-	const sharee = { id, firstName, lastName, email } as ProjectRelation;
+	const user = usersStore.getUserById(userId);
+	if (!user) return;
 
-	sharee.role = 'project:admin';
+	const { id, firstName, lastName, email } = user;
+	const relation = { id, firstName, lastName, email } as ProjectRelation;
 
-	formData.value.relations.push(sharee);
+	relation.role = 'project:admin';
+
+	formData.value.relations.push(relation);
 };
 
 const onRoleAction = (user: Partial<IUser>, role: string) => {
 	isDirty.value = true;
-	const index = formData.value.relations.findIndex((u: Partial<IUser>) => u.id === user.id);
+	const index = formData.value.relations.findIndex((r: ProjectRelation) => r.id === user.id);
 	if (role === 'remove') {
 		formData.value.relations.splice(index, 1);
 	} else {
@@ -116,7 +119,7 @@ onBeforeMount(async () => {
 					:current-user-id="usersStore.currentUser?.id"
 					:placeholder="$locale.baseText('workflows.shareModal.select.placeholder')"
 					data-test-id="workflow-sharing-modal-users-select"
-					@update:modelValue="onAddSharee"
+					@update:model-value="onAddMember"
 				>
 					<template #prefix>
 						<n8n-icon icon="search" />
@@ -133,7 +136,7 @@ onBeforeMount(async () => {
 							:class="$style.roleSelect"
 							:model-value="user?.role || 'project:admin'"
 							size="small"
-							@update:modelValue="onRoleAction(user, $event)"
+							@update:model-value="onRoleAction(user, $event)"
 						>
 							<n8n-option
 								v-for="role in projectRoles"
@@ -152,27 +155,37 @@ onBeforeMount(async () => {
 			</fieldset>
 			<fieldset>
 				<div :class="$style.buttons">
-					<small v-if="isDirty" class="mr-2xs">{{
-						locale.baseText('projects.settings.message.unsavedChanges')
-					}}</small>
 					<n8n-button
 						:disabled="!isDirty"
-						type="secondary"
-						class="mr-2xs"
-						@click.stop.prevent="onCancel"
-						>{{ locale.baseText('projects.settings.button.cancel') }}</n8n-button
+						type="primary"
+						data-test-id="project-settings-save-button"
+						>{{ locale.baseText('projects.settings.button.save') }}</n8n-button
 					>
-					<n8n-button :disabled="!isDirty" type="primary">{{
-						locale.baseText('projects.settings.button.save')
-					}}</n8n-button>
+					<div>
+						<small v-if="isDirty" class="mr-2xs">{{
+							locale.baseText('projects.settings.message.unsavedChanges')
+						}}</small>
+						<n8n-button
+							:disabled="!isDirty"
+							type="secondary"
+							class="mr-2xs"
+							data-test-id="project-settings-cancel-button"
+							@click.stop.prevent="onCancel"
+							>{{ locale.baseText('projects.settings.button.cancel') }}</n8n-button
+						>
+					</div>
 				</div>
 			</fieldset>
 			<fieldset>
 				<hr class="mb-2xl" />
 				<h3 class="mb-xs">{{ locale.baseText('projects.settings.title.deleteProject') }}</h3>
-				<n8n-button type="danger" class="mb-xs" @click.stop.prevent="onDelete">{{
-					locale.baseText('projects.settings.title.deleteProject')
-				}}</n8n-button>
+				<n8n-button
+					type="danger"
+					class="mb-xs"
+					data-test-id="project-settings-delete-button"
+					@click.stop.prevent="onDelete"
+					>{{ locale.baseText('projects.settings.title.deleteProject') }}</n8n-button
+				>
 				<br />
 				<small>{{ locale.baseText('projects.settings.message.cannotBeUndone') }}</small>
 			</fieldset>
@@ -212,7 +225,11 @@ onBeforeMount(async () => {
 
 .buttons {
 	display: flex;
-	justify-content: flex-end;
+	// TODO: Remove this once the button component does not use 'type' prop
+	// Button component should use 'variant' instead of 'type'
+	// so we can use 'type' for defining the button type so the form element does not mix them up
+	flex-direction: row-reverse;
+	justify-content: flex-start;
 	align-items: center;
 }
 </style>
