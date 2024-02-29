@@ -521,7 +521,7 @@ export default defineComponent({
 	&__header {
 		max-width: 960px;
 		margin: 0 auto var(--spacing-s) auto;
-		padding-bottom: var(--spacing-4xs);
+		padding-bottom: var(--spacing-3xs);
 		background-color: var(--color-background-xlight);
 		border: 1px solid var(--color-foreground-base);
 		border-radius: var(--border-radius-large);
@@ -546,8 +546,8 @@ export default defineComponent({
 	}
 
 	&__header-description {
-		padding: 0 var(--spacing-s) var(--spacing-xs) var(--spacing-s);
-		font-size: var(--font-size-s);
+		padding: 0 var(--spacing-s) var(--spacing-3xs) var(--spacing-s);
+		font-size: var(--font-size-xs);
 	}
 
 	&__info {
