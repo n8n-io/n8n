@@ -50,6 +50,7 @@ export class PasswordResetController {
 	 */
 	@Post('/forgot-password', {
 		middlewares: !inTest ? [throttle] : [],
+		skipAuth: true,
 	})
 	async forgotPassword(req: PasswordResetRequest.Email) {
 		if (!this.mailer.isEmailSetUp) {
@@ -150,7 +151,7 @@ export class PasswordResetController {
 	/**
 	 * Verify password reset token and user ID.
 	 */
-	@Get('/resolve-password-token')
+	@Get('/resolve-password-token', { skipAuth: true })
 	async resolvePasswordToken(req: PasswordResetRequest.Credentials) {
 		const { token } = req.query;
 
@@ -182,7 +183,7 @@ export class PasswordResetController {
 	/**
 	 * Verify password reset token and update password.
 	 */
-	@Post('/change-password')
+	@Post('/change-password', { skipAuth: true })
 	async changePassword(req: PasswordResetRequest.NewPassword, res: Response) {
 		const { token, password, mfaToken } = req.body;
 

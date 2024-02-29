@@ -4,7 +4,7 @@ import { Response } from 'express';
 import { randomBytes } from 'crypto';
 
 import { AuthService } from '@/auth/auth.service';
-import { Authorized, Delete, Get, Patch, Post, RestController } from '@/decorators';
+import { Delete, Get, Patch, Post, RestController } from '@/decorators';
 import { PasswordUtility } from '@/services/password.utility';
 import { validateEntity } from '@/GenericHelpers';
 import type { User } from '@db/entities/User';
@@ -23,7 +23,6 @@ import { InternalHooks } from '@/InternalHooks';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { UserRepository } from '@/databases/repositories/user.repository';
 
-@Authorized()
 @RestController('/me')
 export class MeController {
 	constructor(

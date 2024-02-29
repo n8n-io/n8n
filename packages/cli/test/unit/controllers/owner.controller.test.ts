@@ -93,11 +93,15 @@ describe('OwnerController', () => {
 			});
 			const res = mock<Response>();
 			configGetSpy.mockReturnValue(false);
+			userRepository.findOneOrFail.calledWith(anyObject()).mockResolvedValue(user);
 			userRepository.save.calledWith(anyObject()).mockResolvedValue(user);
 			jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
 
 			await controller.setupOwner(req, res);
 
+			expect(userRepository.findOneOrFail).toHaveBeenCalledWith({
+				where: { role: 'global:owner' },
+			});
 			expect(userRepository.save).toHaveBeenCalledWith(user, { transaction: false });
 			expect(authService.issueCookie).toHaveBeenCalledWith(res, user);
 		});

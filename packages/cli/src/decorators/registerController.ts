@@ -12,7 +12,6 @@ import { License } from '@/License';
 import type { AuthenticatedRequest } from '@/requests';
 import { send } from '@/ResponseHelper'; // TODO: move `ResponseHelper.send` to this file
 import {
-	CONTROLLER_AUTH_ROLES,
 	CONTROLLER_BASE_PATH,
 	CONTROLLER_LICENSE_FEATURES,
 	CONTROLLER_MIDDLEWARES,
@@ -20,7 +19,6 @@ import {
 	CONTROLLER_ROUTES,
 } from './constants';
 import type {
-	AuthRoleMetadata,
 	Controller,
 	LicenseMetadata,
 	MiddlewareMetadata,
@@ -74,9 +72,6 @@ export const registerController = (app: Application, controllerClass: Class<obje
 			extra: { controllerName: controllerClass.name },
 		});
 
-	const authRoles = Reflect.getMetadata(CONTROLLER_AUTH_ROLES, controllerClass) as
-		| AuthRoleMetadata
-		| undefined;
 	const routes = Reflect.getMetadata(CONTROLLER_ROUTES, controllerClass) as RouteMetadata[];
 	const licenseFeatures = Reflect.getMetadata(CONTROLLER_LICENSE_FEATURES, controllerClass) as
 		| LicenseMetadata
@@ -99,15 +94,15 @@ export const registerController = (app: Application, controllerClass: Class<obje
 		const authService = Container.get(AuthService);
 
 		routes.forEach(
-			({ method, path, middlewares: routeMiddlewares, handlerName, usesTemplates }) => {
-				const authRole = authRoles?.[handlerName] ?? authRoles?.['*'];
+			({ method, path, middlewares: routeMiddlewares, handlerName, usesTemplates, skipAuth }) => {
 				const features = licenseFeatures?.[handlerName] ?? licenseFeatures?.['*'];
 				const scopes = requiredScopes?.[handlerName] ?? requiredScopes?.['*'];
 				const handler = async (req: Request, res: Response) =>
 					await controller[handlerName](req, res);
 				router[method](
 					path,
-					...(authRole ? [authService.createAuthMiddleware(authRole)] : []),
+					// eslint-disable-next-line @typescript-eslint/unbound-method
+					...(skipAuth ? [] : [authService.authMiddleware]),
 					...(features ? [createLicenseMiddleware(features)] : []),
 					...(scopes ? [createGlobalScopeMiddleware(scopes)] : []),
 					...controllerMiddlewares,
