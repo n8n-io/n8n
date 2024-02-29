@@ -211,7 +211,7 @@ export const triggerDescription: INodeProperties[] = [
 			{
 				name: 'A Selected Folder',
 				value: 'selectedFolder',
-				description: 'Watch a specific file for updates',
+				description: 'Watch a specific folder for updates',
 			},
 		],
 	},
