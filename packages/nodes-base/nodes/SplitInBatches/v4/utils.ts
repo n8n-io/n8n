@@ -29,7 +29,7 @@ export function getPairedItemInformation(
 	}
 
 	if (Array.isArray(item.pairedItem)) {
-		return item.pairedItem.map((item) => addSourceOverwrite(item, source));
+		return item.pairedItem.map((pairedItem) => addSourceOverwrite(pairedItem, source));
 	}
 
 	return addSourceOverwrite(item.pairedItem, source);

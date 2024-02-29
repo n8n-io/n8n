@@ -7,7 +7,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError, deepCopy } from 'n8n-workflow';
 import { getPairedItemInformation } from './utils';
-import { SplitInBatchesContext } from './types';
+import type { SplitInBatchesContext } from './types';
 
 export class SplitInBatchesV4 implements INodeType {
 	description: INodeTypeDescription = {
@@ -65,7 +65,7 @@ export class SplitInBatchesV4 implements INodeType {
 		if (nodeContext.done && loopItems.length > 0) {
 			throw new NodeOperationError(
 				this.getNode(),
-				`The 'loop' input was triggered when no more items were left. Make sure to not create any branches within your loop.`,
+				"The 'loop' input was triggered when no more items were left. Make sure to not create any branches within your loop.",
 			);
 		}
 
