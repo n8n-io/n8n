@@ -598,6 +598,7 @@ import { useToast } from '@/composables/useToast';
 import { isObject } from 'lodash-es';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
 import RunDataPinButton from '@/components/RunDataPinButton.vue';
 
 const RunDataTable = defineAsyncComponent(
@@ -743,7 +744,13 @@ export default defineComponent({
 		this.hidePinDataDiscoveryTooltip();
 	},
 	computed: {
-		...mapStores(useNodeTypesStore, useNDVStore, useWorkflowsStore, useSourceControlStore),
+		...mapStores(
+			useNodeTypesStore,
+			useNDVStore,
+			useWorkflowsStore,
+			useSourceControlStore,
+			useRootStore,
+		),
 		isReadOnlyRoute() {
 			return this.$route?.meta?.readOnlyCanvas === true;
 		},
@@ -840,7 +847,31 @@ export default defineComponent({
 			return Boolean(this.subworkflowExecutionError);
 		},
 		hasRunError(): boolean {
-			return Boolean(this.node && this.workflowRunData?.[this.node.name]?.[this.runIndex]?.error);
+			const hasError = Boolean(
+				this.node && this.workflowRunData?.[this.node.name]?.[this.runIndex]?.error,
+			);
+
+			if (hasError) {
+				const error = this.workflowRunData?.[this.node.name]?.[this.runIndex]?.error;
+				const errorsToTrack = ['unknown error'];
+
+				if (error && errorsToTrack.map((e) => error.message.toLowerCase().includes(e))) {
+					this.$telemetry.track(
+						`User encountered an error: "${error.message}"`,
+						{
+							node: this.node.type,
+							errorMessage: error.message,
+							nodeVersion: this.node.typeVersion,
+							n8nVersion: this.rootStore.versionCli,
+						},
+						{
+							withPostHog: true,
+						},
+					);
+				}
+			}
+
+			return hasError;
 		},
 		workflowExecution(): IExecutionResponse | null {
 			return this.workflowsStore.getWorkflowExecution;
