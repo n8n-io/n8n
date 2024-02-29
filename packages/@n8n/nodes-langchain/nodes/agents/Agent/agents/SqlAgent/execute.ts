@@ -26,6 +26,7 @@ const parseTablesString = (tablesString: string) =>
 
 export async function sqlAgentAgentExecute(
 	this: IExecuteFunctions,
+	nodeVersion: number,
 ): Promise<INodeExecutionData[][]> {
 	this.logger.verbose('Executing SQL Agent');
 
