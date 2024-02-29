@@ -28,7 +28,9 @@ const STATIC_SCOPE_MAP: Record<string, Scope[]> = {
 	member: memberPermissions,
 	admin: adminPermissions,
 };
+export const MIN_PASSWORD_LENGTH = 8;
 
+export const MAX_PASSWORD_LENGTH = 64;
 @Entity()
 export class User extends WithTimestamps implements IUser {
 	@PrimaryGeneratedColumn('uuid')

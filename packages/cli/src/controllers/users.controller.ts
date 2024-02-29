@@ -2,6 +2,7 @@ import validator from 'validator';
 import { User } from '@db/entities/User';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
+import { In } from 'typeorm';
 import {
 	RequireGlobalScope,
 	Authorized,
@@ -37,10 +38,17 @@ import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 import { ExternalHooks } from '@/ExternalHooks';
 import { InternalHooks } from '@/InternalHooks';
 import { validateEntity } from '@/GenericHelpers';
-import config from '@/config';
-import { userManagementEnabledMiddleware } from '../middlewares/userManagementEnabled';
-import { getInstanceBaseUrl, generateUserInviteUrl } from '@/UserManagement/UserManagementHelper';
-import { isSamlLicensedAndEnabled } from '@/sso/saml/samlHelpers';
+import type { PostHogClient } from '@/posthog';
+import { Response } from 'express';
+import {
+	getInstanceBaseUrl,
+	generateUserInviteUrl,
+	validatePassword,
+	hashPassword,
+	sanitizeUser,
+	withFeatureFlags,
+} from '@/UserManagement/UserManagementHelper';
+import { issueCookie } from '@/auth/jwt';
 import { RoleRepository } from '@/databases/repositories/role.repository';
 import { UserManagementMailer } from '@/UserManagement/email';
 
@@ -59,8 +67,9 @@ export class UsersController {
 		private readonly userService: UserService,
 		private readonly roleRepository: RoleRepository,
 		private readonly mailer: UserManagementMailer,
-		//private readonly config: Config,
 	) {}
+
+	private readonly postHog?: PostHogClient;
 
 	static ERROR_MESSAGES = {
 		CHANGE_ROLE: {
@@ -276,6 +285,71 @@ export class UsersController {
 		);
 
 		return emailingResults;
+	}
+
+	/**
+	 * Fill out user shell with first name, last name, and password.
+	 */
+	@Post('/:id')
+	@RequireGlobalScope('user:update')
+	async updateUser(req: UserRequest.Update, res: Response) {
+		const { id: inviteeId } = req.params;
+
+		const { inviterId, firstName, lastName, password } = req.body;
+
+		if (!inviterId || !inviteeId || !firstName || !lastName || !password) {
+			this.logger.debug(
+				'Request to fill out a user shell failed because of missing properties in payload',
+				{ payload: req.body },
+			);
+			throw new BadRequestError('Invalid payload');
+		}
+
+		const validPassword = validatePassword(password);
+
+		const users = await this.userRepository.find({
+			where: { id: In([inviterId, inviteeId]) },
+			relations: ['globalRole'],
+		});
+
+		if (users.length !== 2) {
+			this.logger.debug(
+				'Request to fill out a user shell failed because the inviter ID and/or invitee ID were not found in database',
+				{
+					inviterId,
+					inviteeId,
+				},
+			);
+			throw new BadRequestError('Invalid payload or URL');
+		}
+
+		const invitee = users.find((user) => user.id === inviteeId) as User;
+
+		if (invitee.password) {
+			this.logger.debug(
+				'Request to fill out a user shell failed because the invite had already been accepted',
+				{ inviteeId },
+			);
+			throw new BadRequestError('This invite has been accepted already');
+		}
+
+		invitee.firstName = firstName;
+		invitee.lastName = lastName;
+		invitee.password = await hashPassword(validPassword);
+
+		const updatedUser = await this.userRepository.save(invitee);
+
+		await issueCookie(res, updatedUser);
+
+		void this.internalHooks.onUserSignup(updatedUser, {
+			user_type: 'email',
+			was_disabled_ldap_user: false,
+		});
+
+		await this.externalHooks.run('user.profile.update', [invitee.email, sanitizeUser(invitee)]);
+		await this.externalHooks.run('user.password.update', [invitee.email, invitee.password]);
+
+		return withFeatureFlags(this.postHog, sanitizeUser(updatedUser));
 	}
 
 	@Get('/', { middlewares: listQueryMiddleware })
