@@ -1,8 +1,8 @@
 import type { INodeProperties, IExecuteFunctions } from 'n8n-workflow';
-import { microsoftApiRequestAllItems } from '../../transport';
-import { teamRLC } from '../../descriptions';
 import { updateDisplayOptions } from '@utils/utilities';
 import { returnAllOrLimit } from '@utils/descriptions';
+import { microsoftApiRequestAllItems } from '../../transport';
+import { teamRLC } from '../../descriptions';
 
 const properties: INodeProperties[] = [teamRLC, ...returnAllOrLimit];
 

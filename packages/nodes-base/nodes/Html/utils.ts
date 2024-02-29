@@ -1,6 +1,7 @@
 import type { IDataObject } from 'n8n-workflow';
-import { convert } from 'html-to-text';
 import type { IValueData, Cheerio } from './types';
+
+import { convert } from 'html-to-text';
 
 // The extraction functions
 const extractFunctions: {

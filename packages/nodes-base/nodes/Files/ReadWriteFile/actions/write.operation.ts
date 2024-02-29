@@ -1,9 +1,10 @@
-import type { Readable } from 'stream';
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { BINARY_ENCODING } from 'n8n-workflow';
 
-import { errorMapper } from '../helpers/utils';
+import type { Readable } from 'stream';
+
 import { updateDisplayOptions } from '@utils/utilities';
+import { errorMapper } from '../helpers/utils';
 
 export const properties: INodeProperties[] = [
 	{
