@@ -65,7 +65,9 @@ describe('Projects', () => {
 			expect(interception.request.body).to.have.property('name').and.to.contain('My project 1');
 			expect(interception.request.body).to.have.property('relations').to.have.lengthOf(2);
 		});
+	});
 
+	it('should show correct projects, workflows and credentials for admin user', () => {
 		cy.signin(INSTANCE_ADMIN);
 		cy.visit('/');
 		projects.getMenuItems().should('have.length', 1);
