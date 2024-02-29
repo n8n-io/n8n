@@ -127,29 +127,25 @@ export function serializeChatHistory(chatHistory: BaseMessage[]): string {
 		.join('\n');
 }
 
-export const getConnectedTools = async (ctx: IExecuteFunctions, checkUniqueness: boolean) => {
-	const tools = ((await ctx.getInputConnectionData(NodeConnectionType.AiTool, 0)) as Tool[]) || [];
+export const getConnectedTools = async (ctx: IExecuteFunctions, enforceUniqueNames: boolean) => {
+  const connectedTools = ((await ctx.getInputConnectionData(NodeConnectionType.AiTool, 0)) as Tool[]) || [];
 
-	if (!checkUniqueness) return tools;
+  if (!enforceUniqueNames) return connectedTools;
 
-	const dynamicToolsNames = tools
-		.filter((tool) => tool instanceof DynamicTool)
-		.map((tool) => tool.name);
+  const seenNames = new Set<string>();
 
-	if (dynamicToolsNames.length) {
-		const uniqueDynamicToolsNames = Array.from(new Set(dynamicToolsNames));
+  for (const tool of connectedTools) {
+    if (!(tool instanceof DynamicTool)) continue;
 
-		if (uniqueDynamicToolsNames.length < dynamicToolsNames.length) {
-			for (const name of dynamicToolsNames) {
-				if (dynamicToolsNames.filter((n) => n === name).length > 1) {
-					throw new NodeOperationError(
-						ctx.getNode(),
-						`You have multiple tools with the same name: '${name}', please rename them to avoid conflicts`,
-					);
-				}
-			}
-		}
-	}
+    const { name } = tool;
+    if (seenNames.has(name)) {
+      throw new NodeOperationError(
+        ctx.getNode(),
+        `You have multiple tools with the same name: '${name}', please rename them to avoid conflicts`,
+      );
+    }
+    seenNames.add(name);
+  }
 
-	return tools;
+  return connectedTools;
 };
