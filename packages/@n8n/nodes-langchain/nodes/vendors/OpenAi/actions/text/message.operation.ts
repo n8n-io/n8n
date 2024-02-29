@@ -4,13 +4,12 @@ import type {
 	INodeExecutionData,
 	IDataObject,
 } from 'n8n-workflow';
-import { NodeConnectionType, updateDisplayOptions } from 'n8n-workflow';
-
-import type { Tool } from 'langchain/tools';
+import { updateDisplayOptions } from 'n8n-workflow';
 import { apiRequest } from '../../transport';
 import type { ChatCompletion } from '../../helpers/interfaces';
 import { formatToOpenAIAssistantTool } from '../../helpers/utils';
 import { modelRLC } from '../descriptions';
+import { getConnectedTools } from '../../../../../utils/helpers';
 
 const properties: INodeProperties[] = [
 	modelRLC,
@@ -166,6 +165,7 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
+	const nodeVersion = this.getNode().typeVersion;
 	const model = this.getNodeParameter('modelId', i, '', { extractValue: true });
 	let messages = this.getNodeParameter('messages.values', i, []) as IDataObject[];
 	const options = this.getNodeParameter('options', i, {});
@@ -183,8 +183,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		];
 	}
 
-	const externalTools =
-		((await this.getInputConnectionData(NodeConnectionType.AiTool, 0)) as Tool[]) || [];
+	const externalTools = await getConnectedTools(this, nodeVersion > 1);
 	let tools;
 
 	if (externalTools.length) {

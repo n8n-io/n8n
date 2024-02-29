@@ -7,16 +7,20 @@ import {
 
 import type { AgentExecutorInput } from 'langchain/agents';
 import { AgentExecutor, OpenAIAgent } from 'langchain/agents';
-import type { Tool } from 'langchain/tools';
 import type { BaseOutputParser } from 'langchain/schema/output_parser';
 import { PromptTemplate } from 'langchain/prompts';
 import { CombiningOutputParser } from 'langchain/output_parsers';
 import { BufferMemory, type BaseChatMemory } from 'langchain/memory';
 import { ChatOpenAI } from 'langchain/chat_models/openai';
-import { getOptionalOutputParsers, getPromptInputByType } from '../../../../../utils/helpers';
+import {
+	getConnectedTools,
+	getOptionalOutputParsers,
+	getPromptInputByType,
+} from '../../../../../utils/helpers';
 
 export async function openAiFunctionsAgentExecute(
 	this: IExecuteFunctions,
+	nodeVersion: number,
 ): Promise<INodeExecutionData[][]> {
 	this.logger.verbose('Executing OpenAi Functions Agent');
 	const model = (await this.getInputConnectionData(
@@ -33,7 +37,7 @@ export async function openAiFunctionsAgentExecute(
 	const memory = (await this.getInputConnectionData(NodeConnectionType.AiMemory, 0)) as
 		| BaseChatMemory
 		| undefined;
-	const tools = (await this.getInputConnectionData(NodeConnectionType.AiTool, 0)) as Tool[];
+	const tools = await getConnectedTools(this, nodeVersion >= 1.5);
 	const outputParsers = await getOptionalOutputParsers(this);
 	const options = this.getNodeParameter('options', 0, {}) as {
 		systemMessage?: string;

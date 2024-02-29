@@ -59,7 +59,7 @@ export const versionDescription: INodeTypeDescription = {
 	name: 'openAi',
 	icon: 'file:openAi.svg',
 	group: ['transform'],
-	version: 1,
+	version: [1, 1.1],
 	subtitle: `={{(${prettifyOperation})($parameter.resource, $parameter.operation)}}`,
 	description: 'Message an assistant or GPT, analyze images, generate audio, etc.',
 	defaults: {
