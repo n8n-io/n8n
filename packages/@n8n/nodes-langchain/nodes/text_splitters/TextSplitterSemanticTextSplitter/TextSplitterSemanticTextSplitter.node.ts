@@ -26,55 +26,32 @@ const BREAKPOINT_DEFAULTS: Record<BreakpointThresholdType, number> = {
 	interquartile: 1.5,
 };
 
-function computePercentile(
-	a: number[] | number[][],
-	q: number | number[],
-	limit?: [number, number],
-	interpolation: 'linear' | 'lower' | 'higher' | 'midpoint' = 'linear',
-	axis?: number,
-	out?: number[],
-	overwrite_input: boolean = false,
-): number | number[] {
-	// Convert input to an array if it's not already, handle overwrite_input
-	let arr = overwrite_input ? a : cloneDeep(a);
+type ArrayLike = number[] | number[][];
 
-	// Flatten the array if axis is not specified
-	if (axis === undefined) arr = flatten(arr);
+function computePercentile(a: ArrayLike, q: number | number[]): number | number[] {
+  const flatArray = a instanceof Array && a[0] instanceof Array ? ([] as number[]).concat(...a) : a as number[];
+  const sortedArray = flatArray.slice().sort((a, b) => a - b);
 
-	// Apply limits if specified
-	if (limit) {
-		arr = (arr as number[]).filter((value) => value >= limit[0] && value <= limit[1]);
-	}
+  // Helper function to compute a single percentile
+  const computeSinglePercentile = (q: number, sortedArray: number[]): number => {
+    if (q < 0 || q > 100) throw new Error('Percentile q must be between 0 and 100');
+    const position = (sortedArray.length - 1) * q / 100;
+    const base = Math.floor(position);
+    const rest = position - base;
 
-	// Sort the array
-	const sortedArr = sort(arr as number[], (aS, b) => aS - b);
+    if (sortedArray.length === 1 || rest === 0) return sortedArray[base];
 
-	const compute = (qn: number) => {
-		const n = sortedArr.length;
-		const pos = (qn / 100) * (n - 1);
-		const lowerIndex = Math.floor(pos);
-		const upperIndex = Math.ceil(pos);
+		return sortedArray[base] + rest * (sortedArray[base + 1] - sortedArray[base]);
+  };
 
-		switch (interpolation) {
-			case 'lower':
-				return sortedArr[lowerIndex];
-			case 'higher':
-				return sortedArr[upperIndex];
-			case 'midpoint':
-				return (sortedArr[lowerIndex] + sortedArr[upperIndex]) / 2;
-			case 'linear':
-			default:
-				const fraction = pos - lowerIndex;
-				return sortedArr[lowerIndex] + fraction * (sortedArr[upperIndex] - sortedArr[lowerIndex]);
-		}
-	};
-
-	// Handle single or multiple percentiles
-	if (Array.isArray(q)) {
-		return q.map((quantile) => compute(quantile));
-	} else {
-		return compute(q);
-	}
+  // Compute percentile(s)
+  if (typeof q === 'number') {
+    return computeSinglePercentile(q, sortedArray);
+  } else if (Array.isArray(q)) {
+    return q.map(qValue => computeSinglePercentile(qValue, sortedArray));
+  } else {
+    throw new Error('Invalid percentile q value');
+  }
 }
 
 function percentile<T extends number | number[]>(
