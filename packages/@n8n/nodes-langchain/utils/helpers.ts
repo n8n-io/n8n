@@ -4,6 +4,7 @@ import { BaseChatModel } from 'langchain/chat_models/base';
 import { BaseChatModel as BaseChatModelCore } from '@langchain/core/language_models/chat_models';
 import type { BaseOutputParser } from '@langchain/core/output_parsers';
 import type { BaseMessage } from 'langchain/schema';
+import { DynamicTool, type Tool } from 'langchain/tools';
 
 export function getMetadataFiltersValues(
 	ctx: IExecuteFunctions,
@@ -125,3 +126,30 @@ export function serializeChatHistory(chatHistory: BaseMessage[]): string {
 		})
 		.join('\n');
 }
+
+export const getConnectedTools = async (ctx: IExecuteFunctions, checkUniqueness: boolean) => {
+	const tools = ((await ctx.getInputConnectionData(NodeConnectionType.AiTool, 0)) as Tool[]) || [];
+
+	if (!checkUniqueness) return tools;
+
+	const dynamicToolsNames = tools
+		.filter((tool) => tool instanceof DynamicTool)
+		.map((tool) => tool.name);
+
+	if (dynamicToolsNames.length) {
+		const uniqueDynamicToolsNames = Array.from(new Set(dynamicToolsNames));
+
+		if (uniqueDynamicToolsNames.length < dynamicToolsNames.length) {
+			for (const name of dynamicToolsNames) {
+				if (dynamicToolsNames.filter((n) => n === name).length > 1) {
+					throw new NodeOperationError(
+						ctx.getNode(),
+						`You have multiple tools with the same name: '${name}', please rename them to avoid conflicts`,
+					);
+				}
+			}
+		}
+	}
+
+	return tools;
+};
