@@ -339,7 +339,18 @@ export class HubspotV2 implements INodeType {
 			async getContactProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const endpoint = '/properties/v2/contacts/properties';
-				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+
+				let properties = (await hubspotApiRequest.call(this, 'GET', endpoint, {})) as Array<{
+					label: string;
+					name: string;
+				}>;
+
+				properties = properties.sort((a, b) => {
+					if (a.label < b.label) return -1;
+					if (a.label > b.label) return 1;
+					return 0;
+				});
+
 				for (const property of properties) {
 					const propertyName = property.label;
 					const propertyId = property.name;
@@ -348,6 +359,7 @@ export class HubspotV2 implements INodeType {
 						value: propertyId,
 					});
 				}
+
 				return returnData;
 			},
 			// Get all the contact properties to display them to user so that they can
