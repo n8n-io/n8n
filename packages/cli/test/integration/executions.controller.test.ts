@@ -1,4 +1,4 @@
-import type { User } from '@db/entities/User';
+import type { AuthUser } from '@db/entities/AuthUser';
 import { EnterpriseExecutionsService } from '@/executions/execution.service.ee';
 import { WaitTracker } from '@/WaitTracker';
 
@@ -14,9 +14,9 @@ mockInstance(WaitTracker);
 
 let testServer = setupTestServer({ endpointGroups: ['executions'] });
 
-let owner: User;
+let owner: AuthUser;
 
-const saveExecution = async ({ belongingTo }: { belongingTo: User }) => {
+const saveExecution = async ({ belongingTo }: { belongingTo: AuthUser }) => {
 	const workflow = await createWorkflow({}, belongingTo);
 	return await createSuccessfulExecution(workflow);
 };

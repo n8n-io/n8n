@@ -7,7 +7,8 @@ import { AuthService } from '@/auth/auth.service';
 import { Delete, Get, Patch, Post, RestController } from '@/decorators';
 import { PasswordUtility } from '@/services/password.utility';
 import { validateEntity } from '@/GenericHelpers';
-import type { User } from '@db/entities/User';
+import type { AuthUser } from '@db/entities/AuthUser';
+import { AuthUserRepository } from '@db/repositories/authUser.repository';
 import {
 	AuthenticatedRequest,
 	MeRequest,
@@ -21,7 +22,6 @@ import { Logger } from '@/Logger';
 import { ExternalHooks } from '@/ExternalHooks';
 import { InternalHooks } from '@/InternalHooks';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { UserRepository } from '@/databases/repositories/user.repository';
 
 @RestController('/me')
 export class MeController {
@@ -32,7 +32,7 @@ export class MeController {
 		private readonly authService: AuthService,
 		private readonly userService: UserService,
 		private readonly passwordUtility: PasswordUtility,
-		private readonly userRepository: UserRepository,
+		private readonly authUserRepository: AuthUserRepository,
 	) {}
 
 	/**
@@ -78,8 +78,8 @@ export class MeController {
 
 		await this.externalHooks.run('user.profile.beforeUpdate', [userId, currentEmail, payload]);
 
-		await this.userService.update(userId, payload);
-		const user = await this.userRepository.findOneOrFail({
+		await this.authUserRepository.update(userId, payload);
+		const user = await this.authUserRepository.findOneOrFail({
 			where: { id: userId },
 		});
 
@@ -135,7 +135,7 @@ export class MeController {
 
 		user.password = await this.passwordUtility.hash(validPassword);
 
-		const updatedUser = await this.userRepository.save(user, { transaction: false });
+		const updatedUser = await this.authUserRepository.save(user, { transaction: false });
 		this.logger.info('Password updated successfully', { userId: user.id });
 
 		this.authService.issueCookie(res, updatedUser);
@@ -167,7 +167,7 @@ export class MeController {
 			throw new BadRequestError('Personalization answers are mandatory');
 		}
 
-		await this.userRepository.save(
+		await this.authUserRepository.save(
 			{
 				id: req.user.id,
 				personalizationAnswers,
@@ -189,7 +189,7 @@ export class MeController {
 	async createAPIKey(req: AuthenticatedRequest) {
 		const apiKey = `n8n_api_${randomBytes(40).toString('hex')}`;
 
-		await this.userService.update(req.user.id, { apiKey });
+		await this.authUserRepository.update(req.user.id, { apiKey });
 
 		void this.internalHooks.onApiKeyCreated({
 			user: req.user,
@@ -212,7 +212,7 @@ export class MeController {
 	 */
 	@Delete('/api-key')
 	async deleteAPIKey(req: AuthenticatedRequest) {
-		await this.userService.update(req.user.id, { apiKey: null });
+		await this.authUserRepository.update(req.user.id, { apiKey: null });
 
 		void this.internalHooks.onApiKeyDeleted({
 			user: req.user,
@@ -226,13 +226,15 @@ export class MeController {
 	 * Update the logged-in user's settings.
 	 */
 	@Patch('/settings')
-	async updateCurrentUserSettings(req: MeRequest.UserSettingsUpdate): Promise<User['settings']> {
+	async updateCurrentUserSettings(
+		req: MeRequest.UserSettingsUpdate,
+	): Promise<AuthUser['settings']> {
 		const payload = plainToInstance(UserSettingsUpdatePayload, req.body);
 		const { id } = req.user;
 
 		await this.userService.updateSettings(id, payload);
 
-		const user = await this.userRepository.findOneOrFail({
+		const user = await this.authUserRepository.findOneOrFail({
 			select: ['settings'],
 			where: { id },
 		});

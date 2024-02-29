@@ -1,7 +1,7 @@
 import { Container } from 'typedi';
 import config from '@/config';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
-import { User } from '@db/entities/User';
+import { AuthUser } from '@db/entities/AuthUser';
 import { License } from '@/License';
 import { PasswordUtility } from '@/services/password.utility';
 import type { SamlPreferences } from './types/samlPreferences';
@@ -96,8 +96,10 @@ export function generatePassword(): string {
 	return password;
 }
 
-export async function createUserFromSamlAttributes(attributes: SamlUserAttributes): Promise<User> {
-	const user = new User();
+export async function createUserFromSamlAttributes(
+	attributes: SamlUserAttributes,
+): Promise<AuthUser> {
+	const user = new AuthUser();
 	const authIdentity = new AuthIdentity();
 	const lowerCasedEmail = attributes.email?.toLowerCase() ?? '';
 	user.email = lowerCasedEmail;
@@ -120,9 +122,9 @@ export async function createUserFromSamlAttributes(attributes: SamlUserAttribute
 }
 
 export async function updateUserFromSamlAttributes(
-	user: User,
+	user: AuthUser,
 	attributes: SamlUserAttributes,
-): Promise<User> {
+): Promise<AuthUser> {
 	if (!attributes.email) throw new AuthError('Email is required to update user');
 	if (!user) throw new AuthError('User not found');
 	let samlAuthIdentity = user?.authIdentities.find((e) => e.providerType === 'saml');

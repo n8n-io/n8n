@@ -5,8 +5,8 @@ import { JsonWebTokenError, TokenExpiredError, type JwtPayload } from 'jsonwebto
 
 import config from '@/config';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES, Time } from '@/constants';
-import type { User } from '@db/entities/User';
-import { UserRepository } from '@db/repositories/user.repository';
+import type { AuthUser } from '@db/entities/AuthUser';
+import { AuthUserRepository } from '@db/repositories/authUser.repository';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
 import { License } from '@/License';
@@ -35,7 +35,7 @@ export class AuthService {
 		private readonly license: License,
 		private readonly jwtService: JwtService,
 		private readonly urlService: UrlService,
-		private readonly userRepository: UserRepository,
+		private readonly authUserRepository: AuthUserRepository,
 	) {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		this.authMiddleware = this.authMiddleware.bind(this);
@@ -63,7 +63,7 @@ export class AuthService {
 		res.clearCookie(AUTH_COOKIE_NAME);
 	}
 
-	issueCookie(res: Response, user: User) {
+	issueCookie(res: Response, user: AuthUser) {
 		// If the instance has exceeded its user quota, prevent non-owners from logging in
 		const isWithinUsersLimit = this.license.isWithinUsersLimit();
 		if (
@@ -82,7 +82,7 @@ export class AuthService {
 		});
 	}
 
-	issueJWT(user: User) {
+	issueJWT(user: AuthUser) {
 		const { id, email, password } = user;
 		const payload: AuthJwtPayload = {
 			id,
@@ -94,13 +94,13 @@ export class AuthService {
 		});
 	}
 
-	async resolveJwt(token: string, res: Response): Promise<User> {
+	async resolveJwt(token: string, res: Response): Promise<AuthUser> {
 		const jwtPayload: IssuedJWT = this.jwtService.verify(token, {
 			algorithms: ['HS256'],
 		});
 
 		// TODO: Use an in-memory ttl-cache to cache the User object for upto a minute
-		const user = await this.userRepository.findOne({
+		const user = await this.authUserRepository.findOne({
 			where: { id: jwtPayload.id },
 		});
 
@@ -128,14 +128,14 @@ export class AuthService {
 		return user;
 	}
 
-	generatePasswordResetToken(user: User, expiresIn = '20m') {
+	generatePasswordResetToken(user: AuthUser, expiresIn = '20m') {
 		return this.jwtService.sign(
 			{ sub: user.id, passwordSha: this.createPasswordSha(user) },
 			{ expiresIn },
 		);
 	}
 
-	generatePasswordResetUrl(user: User) {
+	generatePasswordResetUrl(user: AuthUser) {
 		const instanceBaseUrl = this.urlService.getInstanceBaseUrl();
 		const url = new URL(`${instanceBaseUrl}/change-password`);
 
@@ -145,7 +145,7 @@ export class AuthService {
 		return url.toString();
 	}
 
-	async resolvePasswordResetToken(token: string): Promise<User | undefined> {
+	async resolvePasswordResetToken(token: string): Promise<AuthUser | undefined> {
 		let decodedToken: JwtPayload & { passwordSha: string };
 		try {
 			decodedToken = this.jwtService.verify(token);
@@ -158,7 +158,7 @@ export class AuthService {
 			return;
 		}
 
-		const user = await this.userRepository.findOne({
+		const user = await this.authUserRepository.findOne({
 			where: { id: decodedToken.sub },
 			relations: ['authIdentities'],
 		});
@@ -179,7 +179,7 @@ export class AuthService {
 		return user;
 	}
 
-	private createPasswordSha({ password }: User) {
+	private createPasswordSha({ password }: AuthUser) {
 		return createHash('sha256')
 			.update(password.slice(password.length / 2))
 			.digest('hex');

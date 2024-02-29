@@ -5,8 +5,8 @@ import { type NextFunction, type Response } from 'express';
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
 import { AUTH_COOKIE_NAME, Time } from '@/constants';
-import type { User } from '@db/entities/User';
-import type { UserRepository } from '@db/repositories/user.repository';
+import type { AuthUser } from '@db/entities/AuthUser';
+import type { AuthUserRepository } from '@db/repositories/authUser.repository';
 import { JwtService } from '@/services/jwt.service';
 import type { UrlService } from '@/services/url.service';
 import type { AuthenticatedRequest } from '@/requests';
@@ -24,10 +24,10 @@ describe('AuthService', () => {
 	const validToken =
 		'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMyIsImVtYWlsIjoidGVzdEBleGFtcGxlLmNvbSIsInBhc3N3b3JkIjoiMzE1MTNjNWE5ZTNjNWFmZTVjMDZkNTY3NWFjZTc0ZThiYzNmYWRkOTc0NGFiNWQ4OWMzMTFmMmE2MmNjYmQzOSIsImlhdCI6MTcwNjc1MDYyNSwiZXhwIjoxNzA3MzU1NDI1fQ.mtXKUwQDHOhiHn0YNuCeybmxevtNG6LXTAv_sQL63Zc';
 
-	const user = mock<User>(userData);
+	const user = mock<AuthUser>(userData);
 	const jwtService = new JwtService(mock());
 	const urlService = mock<UrlService>();
-	const userRepository = mock<UserRepository>();
+	const userRepository = mock<AuthUserRepository>();
 	const authService = new AuthService(mock(), mock(), jwtService, urlService, userRepository);
 
 	jest.useFakeTimers();
@@ -147,7 +147,7 @@ describe('AuthService', () => {
 				{ ...userData, email: 'someone@example.com' },
 			],
 		])('should throw if %s', async (_, data) => {
-			userRepository.findOne.mockResolvedValueOnce(data && mock<User>(data));
+			userRepository.findOne.mockResolvedValueOnce(data && mock<AuthUser>(data));
 			await expect(authService.resolveJwt(validToken, res)).rejects.toThrow('Unauthorized');
 			expect(res.cookie).not.toHaveBeenCalled();
 		});

@@ -4,7 +4,7 @@ import Container from 'typedi';
 import type { INode } from 'n8n-workflow';
 import { STARTING_NODES } from '@/constants';
 import type { TagEntity } from '@db/entities/TagEntity';
-import type { User } from '@db/entities/User';
+import type { AuthUser } from '@db/entities/AuthUser';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
@@ -18,8 +18,8 @@ import { createWorkflow, createWorkflowWithTrigger } from '../shared/db/workflow
 import { createTag } from '../shared/db/tags';
 import { mockInstance } from '../../shared/mocking';
 
-let owner: User;
-let member: User;
+let owner: AuthUser;
+let member: AuthUser;
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
 let workflowRunner: ActiveWorkflowRunner;

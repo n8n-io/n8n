@@ -1,13 +1,13 @@
 import { v4 as uuid } from 'uuid';
 import { Service } from 'typedi';
 import { Cipher } from 'n8n-core';
-import { UserRepository } from '@db/repositories/user.repository';
+import { AuthUserRepository } from '@db/repositories/authUser.repository';
 import { TOTPService } from './totp.service';
 
 @Service()
 export class MfaService {
 	constructor(
-		private userRepository: UserRepository,
+		private authUserRepository: AuthUserRepository,
 		public totp: TOTPService,
 		private cipher: Cipher,
 	) {}
@@ -25,7 +25,7 @@ export class MfaService {
 			secret,
 			recoveryCodes,
 		);
-		return await this.userRepository.update(userId, {
+		return await this.authUserRepository.update(userId, {
 			mfaSecret: encryptedSecret,
 			mfaRecoveryCodes: encryptedRecoveryCodes,
 		});
@@ -48,7 +48,7 @@ export class MfaService {
 	}
 
 	public async getSecretAndRecoveryCodes(userId: string) {
-		const { mfaSecret, mfaRecoveryCodes } = await this.userRepository.findOneOrFail({
+		const { mfaSecret, mfaRecoveryCodes } = await this.authUserRepository.findOneOrFail({
 			where: { id: userId },
 			select: ['id', 'mfaSecret', 'mfaRecoveryCodes'],
 		});
@@ -56,7 +56,7 @@ export class MfaService {
 	}
 
 	public async enableMfa(userId: string) {
-		await this.userRepository.update(userId, { mfaEnabled: true });
+		await this.authUserRepository.update(userId, { mfaEnabled: true });
 	}
 
 	public encryptRecoveryCodes(mfaRecoveryCodes: string[]) {
@@ -64,7 +64,7 @@ export class MfaService {
 	}
 
 	public async disableMfa(userId: string) {
-		await this.userRepository.update(userId, {
+		await this.authUserRepository.update(userId, {
 			mfaEnabled: false,
 			mfaSecret: null,
 			mfaRecoveryCodes: [],

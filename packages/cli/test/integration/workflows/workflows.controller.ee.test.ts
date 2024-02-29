@@ -3,10 +3,13 @@ import type { SuperAgentTest } from 'supertest';
 import { v4 as uuid } from 'uuid';
 import type { INode } from 'n8n-workflow';
 
-import type { User } from '@db/entities/User';
+import config from '@/config';
+import type { AuthUser } from '@db/entities/AuthUser';
 import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { WorkflowSharingService } from '@/workflows/workflowSharing.service';
+import { License } from '@/License';
+import { UserManagementMailer } from '@/UserManagement/email';
 
 import { mockInstance } from '../../shared/mocking';
 import * as utils from '../shared/utils/';
@@ -17,13 +20,10 @@ import { randomCredentialPayload } from '../shared/random';
 import { affixRoleToSaveCredential, shareCredentialWithUsers } from '../shared/db/credentials';
 import { createUser } from '../shared/db/users';
 import { createWorkflow, getWorkflowSharing, shareWorkflowWithUsers } from '../shared/db/workflows';
-import { License } from '@/License';
-import { UserManagementMailer } from '@/UserManagement/email';
-import config from '@/config';
 
-let owner: User;
-let member: User;
-let anotherMember: User;
+let owner: AuthUser;
+let member: AuthUser;
+let anotherMember: AuthUser;
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
 let authAnotherMemberAgent: SuperAgentTest;

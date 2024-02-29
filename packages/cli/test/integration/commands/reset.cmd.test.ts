@@ -3,7 +3,7 @@ import { InternalHooks } from '@/InternalHooks';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { NodeTypes } from '@/NodeTypes';
 import Container from 'typedi';
-import { UserRepository } from '@db/repositories/user.repository';
+import { AuthUserRepository } from '@db/repositories/authUser.repository';
 
 import { mockInstance } from '../../shared/mocking';
 import * as testDb from '../shared/testDb';
@@ -30,7 +30,7 @@ test.skip('user-management:reset should reset DB to default user state', async (
 
 	await Reset.run();
 
-	const user = await Container.get(UserRepository).findOneBy({ role: 'global:owner' });
+	const user = await Container.get(AuthUserRepository).findOneBy({ role: 'global:owner' });
 
 	if (!user) {
 		fail('No owner found after DB reset to default user state');

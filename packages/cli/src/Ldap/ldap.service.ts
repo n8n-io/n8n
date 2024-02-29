@@ -7,7 +7,7 @@ import { ApplicationError, jsonParse } from 'n8n-workflow';
 import { Cipher } from 'n8n-core';
 
 import config from '@/config';
-import type { User } from '@db/entities/User';
+import type { AuthUser } from '@db/entities/AuthUser';
 import type { RunningMode, SyncStatus } from '@db/entities/AuthProviderSyncHistory';
 import { SettingsRepository } from '@db/repositories/settings.repository';
 import { InternalHooks } from '@/InternalHooks';
@@ -403,8 +403,8 @@ export class LdapService {
 		adUsers: LdapUser[],
 		localAdUsers: string[],
 	): {
-		usersToCreate: Array<[string, User]>;
-		usersToUpdate: Array<[string, User]>;
+		usersToCreate: Array<[string, AuthUser]>;
+		usersToUpdate: Array<[string, AuthUser]>;
 		usersToDisable: string[];
 	} {
 		return {
@@ -418,7 +418,7 @@ export class LdapService {
 	private getUsersToCreate(
 		remoteAdUsers: LdapUser[],
 		localLdapIds: string[],
-	): Array<[string, User]> {
+	): Array<[string, AuthUser]> {
 		return remoteAdUsers
 			.filter((adUser) => !localLdapIds.includes(adUser[this.config.ldapIdAttribute] as string))
 			.map((adUser) => mapLdapUserToDbUser(adUser, this.config, true));
@@ -428,7 +428,7 @@ export class LdapService {
 	private getUsersToUpdate(
 		remoteAdUsers: LdapUser[],
 		localLdapIds: string[],
-	): Array<[string, User]> {
+	): Array<[string, AuthUser]> {
 		return remoteAdUsers
 			.filter((adUser) => localLdapIds.includes(adUser[this.config.ldapIdAttribute] as string))
 			.map((adUser) => mapLdapUserToDbUser(adUser, this.config));

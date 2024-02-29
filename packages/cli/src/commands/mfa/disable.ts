@@ -1,6 +1,6 @@
 import Container from 'typedi';
 import { Flags } from '@oclif/core';
-import { UserRepository } from '@db/repositories/user.repository';
+import { AuthUserRepository } from '@db/repositories/authUser.repository';
 import { BaseCommand } from '../BaseCommand';
 
 export class DisableMFACommand extends BaseCommand {
@@ -27,7 +27,7 @@ export class DisableMFACommand extends BaseCommand {
 			return;
 		}
 
-		const updateOperationResult = await Container.get(UserRepository).update(
+		const updateOperationResult = await Container.get(AuthUserRepository).update(
 			{ email: flags.email },
 			{ mfaSecret: null, mfaRecoveryCodes: [], mfaEnabled: false },
 		);

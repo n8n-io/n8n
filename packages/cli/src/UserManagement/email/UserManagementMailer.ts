@@ -8,7 +8,7 @@ import { ApplicationError } from 'n8n-workflow';
 import config from '@/config';
 import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { UserRepository } from '@db/repositories/user.repository';
+import { AuthUserRepository } from '@db/repositories/authUser.repository';
 import { InternalHooks } from '@/InternalHooks';
 import { Logger } from '@/Logger';
 import { UrlService } from '@/services/url.service';
@@ -50,7 +50,7 @@ export class UserManagementMailer {
 	private mailer: NodeMailer | undefined;
 
 	constructor(
-		private readonly userRepository: UserRepository,
+		private readonly authUserRepository: AuthUserRepository,
 		private readonly logger: Logger,
 		private readonly urlService: UrlService,
 	) {
@@ -107,7 +107,7 @@ export class UserManagementMailer {
 	}) {
 		if (!this.mailer) return;
 
-		const recipients = await this.userRepository.getEmailsByIds(newShareeIds);
+		const recipients = await this.authUserRepository.getEmailsByIds(newShareeIds);
 
 		if (recipients.length === 0) return;
 
@@ -162,7 +162,7 @@ export class UserManagementMailer {
 	}) {
 		if (!this.mailer) return;
 
-		const recipients = await this.userRepository.getEmailsByIds(newShareeIds);
+		const recipients = await this.authUserRepository.getEmailsByIds(newShareeIds);
 
 		if (recipients.length === 0) return;
 

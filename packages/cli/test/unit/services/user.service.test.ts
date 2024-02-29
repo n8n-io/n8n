@@ -1,22 +1,22 @@
 import { mock } from 'jest-mock-extended';
 import { v4 as uuid } from 'uuid';
 
-import { User } from '@db/entities/User';
+import { AuthUser } from '@db/entities/AuthUser';
 import { UserService } from '@/services/user.service';
 import { UrlService } from '@/services/url.service';
 
 describe('UserService', () => {
 	const urlService = new UrlService();
-	const userService = new UserService(mock(), mock(), mock(), urlService);
+	const userService = new UserService(mock(), mock(), mock(), mock(), urlService);
 
-	const commonMockUser = Object.assign(new User(), {
+	const commonMockUser = Object.assign(new AuthUser(), {
 		id: uuid(),
 		password: 'passwordHash',
 	});
 
 	describe('toPublic', () => {
 		it('should remove sensitive properties', async () => {
-			const mockUser = Object.assign(new User(), {
+			const mockUser = Object.assign(new AuthUser(), {
 				id: uuid(),
 				password: 'passwordHash',
 				mfaEnabled: false,
@@ -27,6 +27,7 @@ describe('UserService', () => {
 			});
 
 			type MaybeSensitiveProperties = Partial<
+				// @ts-expect-error
 				Pick<User, 'password' | 'mfaSecret' | 'mfaRecoveryCodes' | 'updatedAt' | 'authIdentities'>
 			>;
 
@@ -49,8 +50,8 @@ describe('UserService', () => {
 		});
 
 		it('should add invite URL if requested', async () => {
-			const firstUser = Object.assign(new User(), { id: uuid() });
-			const secondUser = Object.assign(new User(), { id: uuid(), isPending: true });
+			const firstUser = Object.assign(new AuthUser(), { id: uuid() });
+			const secondUser = Object.assign(new AuthUser(), { id: uuid(), isPending: true });
 
 			const withoutUrl = await userService.toPublic(secondUser);
 			const withUrl = await userService.toPublic(secondUser, {

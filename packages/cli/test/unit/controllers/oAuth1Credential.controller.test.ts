@@ -5,7 +5,7 @@ import { mock } from 'jest-mock-extended';
 
 import { OAuth1CredentialController } from '@/controllers/oauth/oAuth1Credential.controller';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
-import type { User } from '@db/entities/User';
+import type { AuthUser } from '@db/entities/AuthUser';
 import type { OAuthRequest } from '@/requests';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
@@ -30,7 +30,7 @@ describe('OAuth1CredentialController', () => {
 	const credentialsHelper = mockInstance(CredentialsHelper);
 	const credentialsRepository = mockInstance(CredentialsRepository);
 	const sharedCredentialsRepository = mockInstance(SharedCredentialsRepository);
-	const user = mock<User>({
+	const user = mock<AuthUser>({
 		id: '123',
 		password: 'password',
 		authIdentities: [],

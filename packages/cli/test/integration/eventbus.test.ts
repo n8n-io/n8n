@@ -1,6 +1,6 @@
 import type { SuperAgentTest } from 'supertest';
 
-import type { User } from '@db/entities/User';
+import type { AuthUser } from '@db/entities/AuthUser';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { ExecutionDataRecoveryService } from '@/eventbus/executionDataRecovery.service';
 
@@ -14,7 +14,7 @@ import { mockInstance } from '../shared/mocking';
  * The tests in this file are only checking endpoint permissions.
  */
 
-let owner: User;
+let owner: AuthUser;
 let authOwnerAgent: SuperAgentTest;
 
 mockInstance(MessageEventBus);

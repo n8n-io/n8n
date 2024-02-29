@@ -4,7 +4,7 @@ import { In } from '@n8n/typeorm';
 import type { IUser } from 'n8n-workflow';
 
 import type { ListQuery } from '@/requests';
-import type { User } from '@db/entities/User';
+import type { AuthUser } from '@db/entities/AuthUser';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 
 import { randomCredentialPayload } from './shared/random';
@@ -23,9 +23,9 @@ const testServer = utils.setupTestServer({
 	enabledFeatures: ['feat:sharing'],
 });
 
-let owner: User;
-let member: User;
-let anotherMember: User;
+let owner: AuthUser;
+let member: AuthUser;
+let anotherMember: AuthUser;
 let authOwnerAgent: SuperAgentTest;
 let authAnotherMemberAgent: SuperAgentTest;
 let saveCredential: SaveCredentialFunction;

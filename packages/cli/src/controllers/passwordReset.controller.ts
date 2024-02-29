@@ -21,7 +21,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
-import { UserRepository } from '@/databases/repositories/user.repository';
+import { AuthUserRepository } from '@db/repositories/authUser.repository';
 
 const throttle = rateLimit({
 	windowMs: 5 * 60 * 1000, // 5 minutes
@@ -42,7 +42,7 @@ export class PasswordResetController {
 		private readonly urlService: UrlService,
 		private readonly license: License,
 		private readonly passwordUtility: PasswordUtility,
-		private readonly userRepository: UserRepository,
+		private readonly authUserRepository: AuthUserRepository,
 	) {}
 
 	/**
@@ -80,7 +80,7 @@ export class PasswordResetController {
 		}
 
 		// User should just be able to reset password if one is already present
-		const user = await this.userRepository.findNonShellUser(email);
+		const user = await this.authUserRepository.findNonShellUser(email);
 
 		if (!user?.isOwner && !this.license.isWithinUsersLimit()) {
 			this.logger.debug(
@@ -214,7 +214,7 @@ export class PasswordResetController {
 
 		const passwordHash = await this.passwordUtility.hash(validPassword);
 
-		await this.userService.update(user.id, { password: passwordHash });
+		await this.authUserRepository.update(user.id, { password: passwordHash });
 
 		this.logger.info('User password updated successfully', { userId: user.id });
 

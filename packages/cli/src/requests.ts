@@ -15,6 +15,7 @@ import { IsBoolean, IsEmail, IsIn, IsOptional, IsString, Length } from 'class-va
 import { NoXss } from '@db/utils/customValidators';
 import type { PublicUser, SecretsProvider, SecretsProviderState } from '@/Interfaces';
 import { AssignableRole, type User } from '@db/entities/User';
+import type { AuthUser } from '@db/entities/AuthUser';
 import type { Variables } from '@db/entities/Variables';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
@@ -66,7 +67,7 @@ export type AuthenticatedRequest<
 	express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery>,
 	'user' | 'cookies'
 > & {
-	user: User;
+	user: AuthUser;
 	cookies: Record<string, string | undefined>;
 };
 

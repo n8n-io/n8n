@@ -3,7 +3,7 @@ import { Container } from 'typedi';
 import jwt from 'jsonwebtoken';
 import { mock, anyObject, captor } from 'jest-mock-extended';
 import type { PublicUser } from '@/Interfaces';
-import type { User } from '@db/entities/User';
+import type { AuthUser } from '@db/entities/AuthUser';
 import { MeController } from '@/controllers/me.controller';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import type { AuthenticatedRequest, MeRequest } from '@/requests';
@@ -40,7 +40,7 @@ describe('MeController', () => {
 		});
 
 		it('should update the user in the DB, and issue a new cookie', async () => {
-			const user = mock<User>({
+			const user = mock<AuthUser>({
 				id: '123',
 				password: 'password',
 				authIdentities: [],
@@ -75,7 +75,7 @@ describe('MeController', () => {
 		});
 
 		it('should not allow updating any other fields on a user besides email and name', async () => {
-			const user = mock<User>({
+			const user = mock<AuthUser>({
 				id: '123',
 				password: 'password',
 				authIdentities: [],
@@ -103,7 +103,7 @@ describe('MeController', () => {
 		});
 
 		it('should throw BadRequestError if beforeUpdate hook throws BadRequestError', async () => {
-			const user = mock<User>({
+			const user = mock<AuthUser>({
 				id: '123',
 				password: 'password',
 				authIdentities: [],
@@ -206,7 +206,7 @@ describe('MeController', () => {
 	describe('API Key methods', () => {
 		let req: AuthenticatedRequest;
 		beforeAll(() => {
-			req = mock({ user: mock<Partial<User>>({ id: '123', apiKey: 'test-key' }) });
+			req = mock({ user: mock<Partial<AuthUser>>({ id: '123', apiKey: 'test-key' }) });
 		});
 
 		describe('createAPIKey', () => {

@@ -2,7 +2,9 @@ import { Container, Service } from 'typedi';
 import type { IUserSettings } from 'n8n-workflow';
 import { ApplicationError, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 
+import type { AuthUser } from '@db/entities/AuthUser';
 import { type AssignableRole, User } from '@db/entities/User';
+import { AuthUserRepository } from '@db/repositories/authUser.repository';
 import { UserRepository } from '@db/repositories/user.repository';
 import type { PublicUser } from '@/Interfaces';
 import type { PostHogClient } from '@/posthog';
@@ -18,13 +20,10 @@ export class UserService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly userRepository: UserRepository,
+		private readonly authUserRepository: AuthUserRepository,
 		private readonly mailer: UserManagementMailer,
 		private readonly urlService: UrlService,
 	) {}
-
-	async update(userId: string, data: Partial<User>) {
-		return await this.userRepository.update(userId, data);
-	}
 
 	getManager() {
 		return this.userRepository.manager;
@@ -37,7 +36,7 @@ export class UserService {
 	}
 
 	async toPublic(
-		user: User,
+		user: AuthUser,
 		options?: {
 			withInviteUrl?: boolean;
 			inviterId?: string;
@@ -171,13 +170,13 @@ export class UserService {
 	async inviteUsers(owner: User, attributes: Array<{ email: string; role: AssignableRole }>) {
 		const emails = attributes.map(({ email }) => email);
 
-		const existingUsers = await this.userRepository.findManyByEmail(emails);
+		const existingUsers = await this.authUserRepository.findManyByEmail(emails);
 
 		const existUsersEmails = existingUsers.map((user) => user.email);
 
 		const toCreateUsers = attributes.filter(({ email }) => !existUsersEmails.includes(email));
 
-		const pendingUsersToInvite = existingUsers.filter((email) => email.isPending);
+		const pendingUsersToInvite = existingUsers.filter((user) => user.isPending);
 
 		const createdUsers = new Map<string, string>();
 

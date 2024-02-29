@@ -1,8 +1,8 @@
 import { Request } from 'express';
 import { v4 as uuid } from 'uuid';
 import config from '@/config';
+import { AuthUserRepository } from '@db/repositories/authUser.repository';
 import { SettingsRepository } from '@db/repositories/settings.repository';
-import { UserRepository } from '@db/repositories/user.repository';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { License } from '@/License';
@@ -84,7 +84,7 @@ export class E2EController {
 	constructor(
 		license: License,
 		private readonly settingsRepo: SettingsRepository,
-		private readonly userRepo: UserRepository,
+		private readonly authUserRepo: AuthUserRepository,
 		private readonly workflowRunner: ActiveWorkflowRunner,
 		private readonly mfaService: MfaService,
 		private readonly cacheService: CacheService,
@@ -159,7 +159,7 @@ export class E2EController {
 		members: UserSetupPayload[],
 		admin: UserSetupPayload,
 	) {
-		const instanceOwner = this.userRepo.create({
+		const instanceOwner = this.authUserRepo.create({
 			id: uuid(),
 			...owner,
 			password: await this.passwordUtility.hash(owner.password),
@@ -173,7 +173,7 @@ export class E2EController {
 			instanceOwner.mfaRecoveryCodes = encryptedRecoveryCodes;
 		}
 
-		const adminUser = this.userRepo.create({
+		const adminUser = this.authUserRepo.create({
 			id: uuid(),
 			...admin,
 			password: await this.passwordUtility.hash(admin.password),
@@ -186,7 +186,7 @@ export class E2EController {
 
 		for (const { password, ...payload } of members) {
 			users.push(
-				this.userRepo.create({
+				this.authUserRepo.create({
 					id: uuid(),
 					...payload,
 					password: await this.passwordUtility.hash(password),
@@ -195,7 +195,7 @@ export class E2EController {
 			);
 		}
 
-		await this.userRepo.insert(users);
+		await this.authUserRepo.insert(users);
 
 		await this.settingsRepo.update(
 			{ key: 'userManagement.isInstanceOwnerSetUp' },

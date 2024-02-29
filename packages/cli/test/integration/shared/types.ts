@@ -3,6 +3,7 @@ import type { ICredentialDataDecryptedObject, ICredentialNodeAccess } from 'n8n-
 import type { SuperAgentTest } from 'supertest';
 import type { Server } from 'http';
 
+import type { AuthUser } from '@db/entities/AuthUser';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { User } from '@db/entities/User';
 import type { BooleanLicenseFeature, ICredentialsDb, NumericLicenseFeature } from '@/Interfaces';
@@ -43,8 +44,8 @@ export interface SetupProps {
 export interface TestServer {
 	app: Application;
 	httpServer: Server;
-	authAgentFor: (user: User) => SuperAgentTest;
-	publicApiAgentFor: (user: User) => SuperAgentTest;
+	authAgentFor: (user: AuthUser) => SuperAgentTest;
+	publicApiAgentFor: (user: AuthUser) => SuperAgentTest;
 	authlessAgent: SuperAgentTest;
 	license: LicenseMocker;
 }

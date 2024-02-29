@@ -1,5 +1,5 @@
 import type { ListQuery } from '@/requests';
-import type { User } from '@db/entities/User';
+import type { AuthUser } from '@db/entities/AuthUser';
 import * as testDb from './shared/testDb';
 import { setupTestServer } from './shared/utils/';
 import { randomCredentialPayload as payload } from './shared/random';
@@ -10,8 +10,8 @@ const { any } = expect;
 
 const testServer = setupTestServer({ endpointGroups: ['credentials'] });
 
-let owner: User;
-let member: User;
+let owner: AuthUser;
+let member: AuthUser;
 
 beforeEach(async () => {
 	await testDb.truncate(['SharedCredentials', 'Credentials']);

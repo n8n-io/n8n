@@ -15,7 +15,7 @@ import {
 	defaultMessageEventBusDestinationWebhookOptions,
 } from 'n8n-workflow';
 
-import type { User } from '@db/entities/User';
+import type { AuthUser } from '@db/entities/AuthUser';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { EventMessageGeneric } from '@/eventbus/EventMessageClasses/EventMessageGeneric';
 import type { MessageEventBusDestinationSyslog } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationSyslog.ee';
@@ -37,7 +37,7 @@ const mockedAxios = axios as jest.Mocked<typeof axios>;
 jest.mock('syslog-client');
 const mockedSyslog = syslog as jest.Mocked<typeof syslog>;
 
-let owner: User;
+let owner: AuthUser;
 let authOwnerAgent: SuperAgentTest;
 
 const testSyslogDestination: MessageEventBusDestinationSyslogOptions = {

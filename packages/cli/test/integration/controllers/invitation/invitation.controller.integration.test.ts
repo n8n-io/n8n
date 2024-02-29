@@ -5,7 +5,8 @@ import { Not } from '@n8n/typeorm';
 import { InternalHooks } from '@/InternalHooks';
 import { ExternalHooks } from '@/ExternalHooks';
 import { UserManagementMailer } from '@/UserManagement/email';
-import { UserRepository } from '@/databases/repositories/user.repository';
+import type { AuthUser } from '@db/entities/AuthUser';
+import { AuthUserRepository } from '@db/repositories/authUser.repository';
 import { PasswordUtility } from '@/services/password.utility';
 
 import {
@@ -17,15 +18,13 @@ import {
 import { createMember, createOwner, createUserShell } from '../../shared/db/users';
 import { mockInstance } from '../../../shared/mocking';
 import * as utils from '../../shared/utils';
+import type { UserInvitationResult } from '../../shared/utils/users';
 
 import {
 	assertReturnedUserProps,
 	assertStoredUserProps,
 	assertUserInviteResult,
 } from './assertions';
-
-import type { User } from '@/databases/entities/User';
-import type { UserInvitationResult } from '../../shared/utils/users';
 
 describe('InvitationController', () => {
 	const mailer = mockInstance(UserManagementMailer);
@@ -34,17 +33,17 @@ describe('InvitationController', () => {
 
 	const testServer = utils.setupTestServer({ endpointGroups: ['invitations'] });
 
-	let instanceOwner: User;
-	let userRepository: UserRepository;
+	let instanceOwner: AuthUser;
+	let authUserRepository: AuthUserRepository;
 
 	beforeAll(async () => {
-		userRepository = Container.get(UserRepository);
+		authUserRepository = Container.get(AuthUserRepository);
 		instanceOwner = await createOwner();
 	});
 
 	beforeEach(async () => {
 		jest.clearAllMocks();
-		await userRepository.delete({ role: Not('global:owner') });
+		await authUserRepository.delete({ role: Not('global:owner') });
 	});
 
 	afterEach(() => {
@@ -76,7 +75,7 @@ describe('InvitationController', () => {
 			expect(returnedMember.role).toBe('global:member');
 			expect(utils.getAuthToken(response)).toBeDefined();
 
-			const storedMember = await userRepository.findOneByOrFail({ id: returnedMember.id });
+			const storedMember = await authUserRepository.findOneByOrFail({ id: returnedMember.id });
 
 			expect(storedMember.firstName).toBe(memberProps.firstName);
 			expect(storedMember.lastName).toBe(memberProps.lastName);
@@ -107,7 +106,7 @@ describe('InvitationController', () => {
 			expect(returnedAdmin.role).toBe('global:admin');
 			expect(utils.getAuthToken(response)).toBeDefined();
 
-			const storedAdmin = await userRepository.findOneByOrFail({ id: returnedAdmin.id });
+			const storedAdmin = await authUserRepository.findOneByOrFail({ id: returnedAdmin.id });
 
 			expect(storedAdmin.firstName).toBe(memberProps.firstName);
 			expect(storedAdmin.lastName).toBe(memberProps.lastName);
@@ -115,7 +114,7 @@ describe('InvitationController', () => {
 		});
 
 		test('should fail with invalid payloads', async () => {
-			const memberShell = await userRepository.save({
+			const memberShell = await authUserRepository.save({
 				email: randomEmail(),
 				role: 'global:member',
 			});
@@ -155,7 +154,7 @@ describe('InvitationController', () => {
 					.send(payload)
 					.expect(400);
 
-				const storedMemberShell = await userRepository.findOneByOrFail({
+				const storedMemberShell = await authUserRepository.findOneByOrFail({
 					email: memberShell.email,
 				});
 
@@ -180,7 +179,7 @@ describe('InvitationController', () => {
 				.send(memberProps)
 				.expect(400);
 
-			const storedMember = await userRepository.findOneByOrFail({
+			const storedMember = await authUserRepository.findOneByOrFail({
 				email: member.email,
 			});
 
@@ -216,7 +215,7 @@ describe('InvitationController', () => {
 					.send(invalidPayload)
 					.expect(400);
 
-				await expect(userRepository.count()).resolves.toBe(2); // DB unaffected
+				await expect(authUserRepository.count()).resolves.toBe(2); // DB unaffected
 			}
 		});
 
@@ -229,7 +228,7 @@ describe('InvitationController', () => {
 
 			expect(response.body.data).toStrictEqual([]);
 
-			await expect(userRepository.count()).resolves.toBe(2); // DB unaffected
+			await expect(authUserRepository.count()).resolves.toBe(2); // DB unaffected
 		});
 
 		test('should return 200 if emailing is not set up', async () => {
@@ -264,7 +263,7 @@ describe('InvitationController', () => {
 
 			const [result] = response.body.data;
 
-			const storedUser = await userRepository.findOneByOrFail({
+			const storedUser = await authUserRepository.findOneByOrFail({
 				id: result.user.id,
 			});
 
@@ -284,7 +283,7 @@ describe('InvitationController', () => {
 
 			const [result] = response.body.data;
 
-			const storedUser = await userRepository.findOneByOrFail({
+			const storedUser = await authUserRepository.findOneByOrFail({
 				id: result.user.id,
 			});
 
@@ -361,7 +360,7 @@ describe('InvitationController', () => {
 			for (const result of results) {
 				assertUserInviteResult(result);
 
-				const storedUser = await Container.get(UserRepository).findOneByOrFail({
+				const storedUser = await Container.get(AuthUserRepository).findOneByOrFail({
 					id: result.user.id,
 				});
 

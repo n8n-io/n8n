@@ -1,25 +1,21 @@
 import {
 	AfterLoad,
-	AfterUpdate,
 	BeforeUpdate,
 	Column,
 	Entity,
 	Index,
-	OneToMany,
 	PrimaryGeneratedColumn,
 	BeforeInsert,
 } from '@n8n/typeorm';
 import { IsEmail, IsString, Length } from 'class-validator';
 import type { IUser, IUserSettings } from 'n8n-workflow';
-import type { SharedWorkflow } from './SharedWorkflow';
-import type { SharedCredentials } from './SharedCredentials';
+import { hasScope, type ScopeOptions, type Scope } from '@n8n/permissions';
+
 import { NoXss } from '../utils/customValidators';
 import { objectRetriever, lowerCaser } from '../utils/transformers';
 import { WithTimestamps, jsonColumnType } from './AbstractEntity';
 import type { IPersonalizationSurveyAnswers } from '@/Interfaces';
-import type { AuthIdentity } from './AuthIdentity';
 import { ownerPermissions, memberPermissions, adminPermissions } from '@/permissions/roles';
-import { hasScope, type ScopeOptions, type Scope } from '@n8n/permissions';
 
 export type GlobalRole = 'global:owner' | 'global:admin' | 'global:member';
 export type AssignableRole = Exclude<GlobalRole, 'global:owner'>;
@@ -30,8 +26,7 @@ const STATIC_SCOPE_MAP: Record<GlobalRole, Scope[]> = {
 	'global:admin': adminPermissions,
 };
 
-@Entity()
-export class User extends WithTimestamps implements IUser {
+export abstract class AbstractUser extends WithTimestamps {
 	@PrimaryGeneratedColumn('uuid')
 	id: string;
 
@@ -56,10 +51,6 @@ export class User extends WithTimestamps implements IUser {
 	@Length(1, 32, { message: 'Last name must be $constraint1 to $constraint2 characters long.' })
 	lastName: string;
 
-	@Column({ nullable: true })
-	@IsString({ message: 'Password must be of type string.' })
-	password: string;
-
 	@Column({
 		type: jsonColumnType,
 		nullable: true,
@@ -76,15 +67,6 @@ export class User extends WithTimestamps implements IUser {
 	@Column()
 	role: GlobalRole;
 
-	@OneToMany('AuthIdentity', 'user')
-	authIdentities: AuthIdentity[];
-
-	@OneToMany('SharedWorkflow', 'user')
-	sharedWorkflows: SharedWorkflow[];
-
-	@OneToMany('SharedCredentials', 'user')
-	sharedCredentials: SharedCredentials[];
-
 	@Column({ type: Boolean, default: false })
 	disabled: boolean;
 
@@ -92,40 +74,6 @@ export class User extends WithTimestamps implements IUser {
 	@BeforeUpdate()
 	preUpsertHook(): void {
 		this.email = this.email?.toLowerCase() ?? null;
-	}
-
-	@Column({ type: String, nullable: true })
-	@Index({ unique: true })
-	apiKey?: string | null;
-
-	@Column({ type: Boolean, default: false })
-	mfaEnabled: boolean;
-
-	@Column({ type: String, nullable: true, select: false })
-	mfaSecret?: string | null;
-
-	@Column({ type: 'simple-array', default: '', select: false })
-	mfaRecoveryCodes: string[];
-
-	/**
-	 * Whether the user is pending setup completion.
-	 */
-	isPending: boolean;
-
-	@AfterLoad()
-	@AfterUpdate()
-	computeIsPending(): void {
-		this.isPending = this.password === null;
-	}
-
-	/**
-	 * Whether the user is instance owner
-	 */
-	isOwner: boolean;
-
-	@AfterLoad()
-	computeIsOwner(): void {
-		this.isOwner = this.role === 'global:owner';
 	}
 
 	get globalScopes() {
@@ -142,3 +90,6 @@ export class User extends WithTimestamps implements IUser {
 		);
 	}
 }
+
+@Entity()
+export class User extends AbstractUser implements IUser {}

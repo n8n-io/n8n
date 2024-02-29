@@ -1,5 +1,5 @@
 import type { SuperAgentTest } from 'supertest';
-import type { User } from '@db/entities/User';
+import type { AuthUser } from '@db/entities/AuthUser';
 import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 
 import { randomApiKey } from '../shared/random';
@@ -18,9 +18,9 @@ import {
 	createWaitingExecution,
 } from '../shared/db/executions';
 
-let owner: User;
-let user1: User;
-let user2: User;
+let owner: AuthUser;
+let user1: AuthUser;
+let user2: AuthUser;
 let authOwnerAgent: SuperAgentTest;
 let authUser1Agent: SuperAgentTest;
 let authUser2Agent: SuperAgentTest;

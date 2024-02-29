@@ -1,13 +1,15 @@
 import { Container } from 'typedi';
 import { DataSource, EntityManager, type EntityMetadata } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
-import type { User } from '@db/entities/User';
+import { hasScope } from '@n8n/permissions';
+
+import type { AuthUser } from '@/databases/entities/AuthUser';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
-import { mockInstance } from '../../shared/mocking';
 import { memberPermissions, ownerPermissions } from '@/permissions/roles';
-import { hasScope } from '@n8n/permissions';
+
+import { mockInstance } from '../../shared/mocking';
 
 describe('SharedCredentialsRepository', () => {
 	const entityManager = mockInstance(EntityManager);
@@ -22,14 +24,14 @@ describe('SharedCredentialsRepository', () => {
 		const credentialsId = 'cred_123';
 		const sharedCredential = mock<SharedCredentials>();
 		sharedCredential.credentials = mock<CredentialsEntity>({ id: credentialsId });
-		const owner = mock<User>({
+		const owner = mock<AuthUser>({
 			isOwner: true,
 			hasGlobalScope: (scope) =>
 				hasScope(scope, {
 					global: ownerPermissions,
 				}),
 		});
-		const member = mock<User>({
+		const member = mock<AuthUser>({
 			isOwner: false,
 			id: 'test',
 			hasGlobalScope: (scope) =>

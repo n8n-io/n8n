@@ -1,7 +1,7 @@
 import { Container } from 'typedi';
 import type { SuperAgentTest } from 'supertest';
 
-import type { User } from '@db/entities/User';
+import type { AuthUser } from '@db/entities/AuthUser';
 import config from '@/config';
 import { SourceControlPreferencesService } from '@/environments/sourceControl/sourceControlPreferences.service.ee';
 import { SourceControlService } from '@/environments/sourceControl/sourceControl.service.ee';
@@ -11,7 +11,7 @@ import * as utils from '../shared/utils/';
 import { createUser } from '../shared/db/users';
 
 let authOwnerAgent: SuperAgentTest;
-let owner: User;
+let owner: AuthUser;
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['sourceControl', 'license', 'auth'],

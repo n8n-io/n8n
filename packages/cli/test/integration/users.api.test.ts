@@ -2,7 +2,7 @@ import Container from 'typedi';
 import type { SuperAgentTest } from 'supertest';
 
 import { UsersController } from '@/controllers/users.controller';
-import type { User } from '@db/entities/User';
+import type { AuthUser } from '@db/entities/AuthUser';
 import { UserRepository } from '@db/repositories/user.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
@@ -26,8 +26,8 @@ const testServer = utils.setupTestServer({
 });
 
 describe('GET /users', () => {
-	let owner: User;
-	let member: User;
+	let owner: AuthUser;
+	let member: AuthUser;
 	let ownerAgent: SuperAgentTest;
 
 	beforeAll(async () => {
@@ -228,8 +228,8 @@ describe('GET /users', () => {
 });
 
 describe('DELETE /users/:id', () => {
-	let owner: User;
-	let member: User;
+	let owner: AuthUser;
+	let member: AuthUser;
 	let ownerAgent: SuperAgentTest;
 
 	beforeAll(async () => {
@@ -341,11 +341,11 @@ describe('DELETE /users/:id', () => {
 });
 
 describe('PATCH /users/:id/role', () => {
-	let owner: User;
-	let admin: User;
-	let otherAdmin: User;
-	let member: User;
-	let otherMember: User;
+	let owner: AuthUser;
+	let admin: AuthUser;
+	let otherAdmin: AuthUser;
+	let member: AuthUser;
+	let otherMember: AuthUser;
 
 	let ownerAgent: SuperAgentTest;
 	let adminAgent: SuperAgentTest;

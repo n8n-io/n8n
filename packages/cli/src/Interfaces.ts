@@ -38,7 +38,7 @@ import type { TagEntity } from '@db/entities/TagEntity';
 import type { GlobalRole, User } from '@db/entities/User';
 import type { CredentialsRepository } from '@db/repositories/credentials.repository';
 import type { SettingsRepository } from '@db/repositories/settings.repository';
-import type { UserRepository } from '@db/repositories/user.repository';
+import type { AuthUserRepository } from '@db/repositories/authUser.repository';
 import type { WorkflowRepository } from '@db/repositories/workflow.repository';
 import type { ExternalHooks } from './ExternalHooks';
 import type { LICENSE_FEATURES, LICENSE_QUOTAS } from './constants';
@@ -231,7 +231,7 @@ export interface IExternalHooksFileData {
 export interface IExternalHooksFunctions {
 	dbCollections: {
 		/* eslint-disable @typescript-eslint/naming-convention */
-		User: UserRepository;
+		User: AuthUserRepository;
 		Settings: SettingsRepository;
 		Credentials: CredentialsRepository;
 		Workflow: WorkflowRepository;

@@ -6,7 +6,7 @@ import { jsonParse } from 'n8n-workflow';
 import { Cipher } from 'n8n-core';
 
 import config from '@/config';
-import type { User } from '@db/entities/User';
+import type { AuthUser } from '@db/entities/AuthUser';
 import { LDAP_DEFAULT_CONFIGURATION, LDAP_FEATURE_NAME } from '@/Ldap/constants';
 import { LdapService } from '@/Ldap/ldap.service';
 import { saveLdapSynchronization } from '@/Ldap/helpers';
@@ -24,7 +24,7 @@ import { AuthProviderSyncHistoryRepository } from '@db/repositories/authProvider
 
 jest.mock('@/telemetry');
 
-let owner: User;
+let owner: AuthUser;
 let authOwnerAgent: SuperAgentTest;
 
 const defaultLdapConfig = {

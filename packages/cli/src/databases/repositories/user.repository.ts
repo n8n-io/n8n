@@ -1,6 +1,6 @@
 import { Service } from 'typedi';
 import type { EntityManager, FindManyOptions } from '@n8n/typeorm';
-import { DataSource, In, IsNull, Not, Repository } from '@n8n/typeorm';
+import { DataSource, In, Not, Repository } from '@n8n/typeorm';
 import type { ListQuery } from '@/requests';
 
 import { type GlobalRole, User } from '../entities/User';
@@ -8,12 +8,6 @@ import { type GlobalRole, User } from '../entities/User';
 export class UserRepository extends Repository<User> {
 	constructor(dataSource: DataSource) {
 		super(User, dataSource.manager);
-	}
-
-	async findManyByIds(userIds: string[]) {
-		return await this.find({
-			where: { id: In(userIds) },
-		});
 	}
 
 	async deleteAllExcept(user: User) {
@@ -24,25 +18,8 @@ export class UserRepository extends Repository<User> {
 		return await transaction.find(User, { where: { id: In(ids) } });
 	}
 
-	async findManyByEmail(emails: string[]) {
-		return await this.find({
-			where: { email: In(emails) },
-			select: ['email', 'password', 'id'],
-		});
-	}
-
 	async deleteMany(userIds: string[]) {
 		return await this.delete({ id: In(userIds) });
-	}
-
-	async findNonShellUser(email: string) {
-		return await this.findOne({
-			where: {
-				email,
-				password: Not(IsNull()),
-			},
-			relations: ['authIdentities'],
-		});
 	}
 
 	/** Counts the number of users in each role, e.g. `{ admin: 2, member: 6, owner: 1 }` */
@@ -93,15 +70,5 @@ export class UserRepository extends Repository<User> {
 		}
 
 		return findManyOptions;
-	}
-
-	/**
-	 * Get emails of users who have completed setup, by user IDs.
-	 */
-	async getEmailsByIds(userIds: string[]) {
-		return await this.find({
-			select: ['email'],
-			where: { id: In(userIds), password: Not(IsNull()) },
-		});
 	}
 }

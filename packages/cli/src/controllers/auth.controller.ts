@@ -1,10 +1,12 @@
 import validator from 'validator';
+import { Request, Response } from 'express';
+import { ApplicationError } from 'n8n-workflow';
 
 import { AuthService } from '@/auth/auth.service';
 import { Get, Post, RestController } from '@/decorators';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { Request, Response } from 'express';
-import type { User } from '@db/entities/User';
+import type { AuthUser } from '@db/entities/AuthUser';
+import { AuthUserRepository } from '@db/repositories/authUser.repository';
 import { AuthenticatedRequest, LoginRequest, UserRequest } from '@/requests';
 import type { PublicUser } from '@/Interfaces';
 import { handleEmailLogin, handleLdapLogin } from '@/auth';
@@ -14,7 +16,7 @@ import {
 	isLdapCurrentAuthenticationMethod,
 	isSamlCurrentAuthenticationMethod,
 } from '@/sso/ssoHelpers';
-import { InternalHooks } from '../InternalHooks';
+import { InternalHooks } from '@/InternalHooks';
 import { License } from '@/License';
 import { UserService } from '@/services/user.service';
 import { MfaService } from '@/Mfa/mfa.service';
@@ -22,8 +24,6 @@ import { Logger } from '@/Logger';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
-import { ApplicationError } from 'n8n-workflow';
-import { UserRepository } from '@/databases/repositories/user.repository';
 
 @RestController()
 export class AuthController {
@@ -34,7 +34,7 @@ export class AuthController {
 		private readonly mfaService: MfaService,
 		private readonly userService: UserService,
 		private readonly license: License,
-		private readonly userRepository: UserRepository,
+		private readonly authUserRepository: AuthUserRepository,
 		private readonly postHog?: PostHogClient,
 	) {}
 
@@ -45,7 +45,7 @@ export class AuthController {
 		if (!email) throw new ApplicationError('Email is required to log in');
 		if (!password) throw new ApplicationError('Password is required to log in');
 
-		let user: User | undefined;
+		let user: AuthUser | undefined;
 
 		let usedAuthenticationMethod = getCurrentAuthenticationMethod();
 		if (isSamlCurrentAuthenticationMethod()) {
@@ -151,7 +151,7 @@ export class AuthController {
 			}
 		}
 
-		const users = await this.userRepository.findManyByIds([inviterId, inviteeId]);
+		const users = await this.authUserRepository.findManyByIds([inviterId, inviteeId]);
 
 		if (users.length !== 2) {
 			this.logger.debug(
@@ -194,7 +194,7 @@ export class AuthController {
 		return { loggedOut: true };
 	}
 
-	private async validateMfaToken(user: User, token?: string) {
+	private async validateMfaToken(user: AuthUser, token?: string) {
 		if (!!!token) return false;
 		return this.mfaService.totp.verifySecret({
 			secret: user.mfaSecret ?? '',
@@ -202,7 +202,7 @@ export class AuthController {
 		});
 	}
 
-	private async validateMfaRecoveryCode(user: User, mfaRecoveryCode?: string) {
+	private async validateMfaRecoveryCode(user: AuthUser, mfaRecoveryCode?: string) {
 		if (!!!mfaRecoveryCode) return false;
 		const index = user.mfaRecoveryCodes.indexOf(mfaRecoveryCode);
 		if (index === -1) return false;
@@ -210,7 +210,7 @@ export class AuthController {
 		// remove used recovery code
 		user.mfaRecoveryCodes.splice(index, 1);
 
-		await this.userService.update(user.id, {
+		await this.authUserRepository.update(user.id, {
 			mfaRecoveryCodes: this.mfaService.encryptRecoveryCodes(user.mfaRecoveryCodes),
 		});
 

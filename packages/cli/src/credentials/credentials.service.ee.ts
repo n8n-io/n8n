@@ -63,7 +63,8 @@ export class EnterpriseCredentialsService {
 		const users = await this.userRepository.getByIds(transaction, shareWithIds);
 
 		const newSharedCredentials = users
-			.filter((user) => !user.isPending)
+			// Why do we prevent sharing with pending users?
+			// .filter((user) => !user.isPending)
 			.map((user) =>
 				this.sharedCredentialsRepository.create({
 					credentialsId: credential.id,

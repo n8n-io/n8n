@@ -126,9 +126,9 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 
 	async share(transaction: EntityManager, workflow: WorkflowEntity, users: User[]) {
 		const newSharedWorkflows = users.reduce<SharedWorkflow[]>((acc, user) => {
-			if (user.isPending) {
-				return acc;
-			}
+			// if (user.isPending) {
+			// 	return acc;
+			// }
 			const entity: Partial<SharedWorkflow> = {
 				workflowId: workflow.id,
 				userId: user.id,

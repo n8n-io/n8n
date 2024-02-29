@@ -1,14 +1,21 @@
 import type express from 'express';
 import Container, { Service } from 'typedi';
-import type { User } from '@db/entities/User';
+import axios from 'axios';
+import https from 'https';
+import type { IdentityProviderInstance, ServiceProviderInstance } from 'samlify';
+import type { BindingContext, PostBindingContext } from 'samlify/types/src/entity';
 import { ApplicationError, jsonParse } from 'n8n-workflow';
+
+import type { AuthUser } from '@db/entities/AuthUser';
+import type { Settings } from '@db/entities/Settings';
+import { SettingsRepository } from '@db/repositories/settings.repository';
+import { AuthUserRepository } from '@db/repositories/authUser.repository';
+
 import { getServiceProviderInstance } from './serviceProvider.ee';
 import type { SamlUserAttributes } from './types/samlUserAttributes';
 import { isSsoJustInTimeProvisioningEnabled } from '../ssoHelpers';
 import type { SamlPreferences } from './types/samlPreferences';
 import { SAML_PREFERENCES_DB_KEY } from './constants';
-import type { IdentityProviderInstance, ServiceProviderInstance } from 'samlify';
-import type { BindingContext, PostBindingContext } from 'samlify/types/src/entity';
 import {
 	createUserFromSamlAttributes,
 	getMappedSamlAttributesFromFlowResult,
@@ -19,14 +26,9 @@ import {
 	setSamlLoginLabel,
 	updateUserFromSamlAttributes,
 } from './samlHelpers';
-import type { Settings } from '@db/entities/Settings';
-import axios from 'axios';
-import https from 'https';
 import type { SamlLoginBinding } from './types';
 import { validateMetadata, validateResponse } from './samlValidator';
 import { Logger } from '@/Logger';
-import { UserRepository } from '@db/repositories/user.repository';
-import { SettingsRepository } from '@db/repositories/settings.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { UrlService } from '@/services/url.service';
@@ -76,6 +78,7 @@ export class SamlService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly urlService: UrlService,
+		private readonly authUserRepository: AuthUserRepository,
 	) {}
 
 	async init(): Promise<void> {
@@ -165,14 +168,14 @@ export class SamlService {
 		req: express.Request,
 		binding: SamlLoginBinding,
 	): Promise<{
-		authenticatedUser: User | undefined;
+		authenticatedUser: AuthUser | undefined;
 		attributes: SamlUserAttributes;
 		onboardingRequired: boolean;
 	}> {
 		const attributes = await this.getAttributesFromLoginResponse(req, binding);
 		if (attributes.email) {
 			const lowerCasedEmail = attributes.email.toLowerCase();
-			const user = await Container.get(UserRepository).findOne({
+			const user = await this.authUserRepository.findOne({
 				where: { email: lowerCasedEmail },
 				relations: ['authIdentities'],
 			});

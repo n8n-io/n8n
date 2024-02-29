@@ -1,5 +1,6 @@
 import { Container } from 'typedi';
 
+import type { AuthUser } from '@db/entities/AuthUser';
 import { InternalHooks } from '@/InternalHooks';
 import { LdapService } from '@/Ldap/ldap.service';
 import {
@@ -11,12 +12,11 @@ import {
 	createLdapAuthIdentity,
 	updateLdapUserOnLocalDb,
 } from '@/Ldap/helpers';
-import type { User } from '@db/entities/User';
 
 export const handleLdapLogin = async (
 	loginId: string,
 	password: string,
-): Promise<User | undefined> => {
+): Promise<AuthUser | undefined> => {
 	if (!isLdapEnabled()) return undefined;
 
 	const ldapService = Container.get(LdapService);

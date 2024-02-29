@@ -1,7 +1,9 @@
+import Container from 'typedi';
 import validator from 'validator';
 
 import config from '@/config';
 import type { User } from '@db/entities/User';
+import { AuthUserRepository } from '@db/repositories/authUser.repository';
 import {
 	randomEmail,
 	randomInvalidPassword,
@@ -11,8 +13,6 @@ import {
 import * as testDb from './shared/testDb';
 import * as utils from './shared/utils/';
 import { createUserShell } from './shared/db/users';
-import { UserRepository } from '@db/repositories/user.repository';
-import Container from 'typedi';
 
 const testServer = utils.setupTestServer({ endpointGroups: ['owner'] });
 
@@ -64,7 +64,7 @@ describe('POST /owner/setup', () => {
 		expect(apiKey).toBeUndefined();
 		expect(globalScopes).not.toHaveLength(0);
 
-		const storedOwner = await Container.get(UserRepository).findOneByOrFail({ id });
+		const storedOwner = await Container.get(AuthUserRepository).findOneByOrFail({ id });
 		expect(storedOwner.password).not.toBe(newOwnerData.password);
 		expect(storedOwner.email).toBe(newOwnerData.email);
 		expect(storedOwner.firstName).toBe(newOwnerData.firstName);
@@ -94,7 +94,7 @@ describe('POST /owner/setup', () => {
 		expect(id).toBe(ownerShell.id);
 		expect(email).toBe(newOwnerData.email.toLowerCase());
 
-		const storedOwner = await Container.get(UserRepository).findOneByOrFail({ id });
+		const storedOwner = await Container.get(AuthUserRepository).findOneByOrFail({ id });
 		expect(storedOwner.email).toBe(newOwnerData.email.toLowerCase());
 	});
 

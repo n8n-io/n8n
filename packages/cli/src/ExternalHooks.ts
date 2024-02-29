@@ -1,12 +1,13 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 import { Service } from 'typedi';
+import { ApplicationError } from 'n8n-workflow';
+
 import type { IExternalHooksFileData, IExternalHooksFunctions } from '@/Interfaces';
 import config from '@/config';
-import { UserRepository } from '@db/repositories/user.repository';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { SettingsRepository } from '@db/repositories/settings.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import { ApplicationError } from 'n8n-workflow';
+import { AuthUserRepository } from '@db/repositories/authUser.repository';
 
 @Service()
 export class ExternalHooks {
@@ -19,14 +20,14 @@ export class ExternalHooks {
 	private dbCollections: IExternalHooksFunctions['dbCollections'];
 
 	constructor(
-		userRepository: UserRepository,
+		authUserRepository: AuthUserRepository,
 		settingsRepository: SettingsRepository,
 		credentialsRepository: CredentialsRepository,
 		workflowRepository: WorkflowRepository,
 	) {
 		/* eslint-disable @typescript-eslint/naming-convention */
 		this.dbCollections = {
-			User: userRepository,
+			User: authUserRepository,
 			Settings: settingsRepository,
 			Credentials: credentialsRepository,
 			Workflow: workflowRepository,

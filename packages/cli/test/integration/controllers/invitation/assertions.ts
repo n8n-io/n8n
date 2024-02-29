@@ -1,8 +1,8 @@
 import validator from 'validator';
-import type { User } from '@/databases/entities/User';
+import type { AuthUser } from '@db/entities/AuthUser';
 import type { UserInvitationResult } from '../../shared/utils/users';
 
-export function assertReturnedUserProps(user: User) {
+export function assertReturnedUserProps(user: AuthUser) {
 	expect(validator.isUUID(user.id)).toBe(true);
 	expect(user.email).toBeDefined();
 	expect(user.personalizationAnswers).toBeNull();
@@ -13,7 +13,7 @@ export function assertReturnedUserProps(user: User) {
 	expect(user.globalScopes).not.toHaveLength(0);
 }
 
-export const assertStoredUserProps = (user: User) => {
+export const assertStoredUserProps = (user: AuthUser) => {
 	expect(user.firstName).toBeNull();
 	expect(user.lastName).toBeNull();
 	expect(user.personalizationAnswers).toBeNull();

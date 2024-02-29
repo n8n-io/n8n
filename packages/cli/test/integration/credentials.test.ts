@@ -3,7 +3,7 @@ import type { SuperAgentTest } from 'supertest';
 
 import config from '@/config';
 import type { ListQuery } from '@/requests';
-import type { User } from '@db/entities/User';
+import type { AuthUser } from '@db/entities/AuthUser';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { License } from '@/License';
@@ -20,9 +20,9 @@ import { Credentials } from 'n8n-core';
 jest.spyOn(License.prototype, 'isSharingEnabled').mockReturnValue(false);
 const testServer = utils.setupTestServer({ endpointGroups: ['credentials'] });
 
-let owner: User;
-let member: User;
-let secondMember: User;
+let owner: AuthUser;
+let member: AuthUser;
+let secondMember: AuthUser;
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
 let saveCredential: SaveCredentialFunction;

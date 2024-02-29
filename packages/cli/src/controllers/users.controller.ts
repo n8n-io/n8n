@@ -14,6 +14,7 @@ import {
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import type { PublicUser, ITelemetryUserDeletionData } from '@/Interfaces';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
+import { AuthUserRepository } from '@db/repositories/authUser.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { UserRepository } from '@db/repositories/user.repository';
@@ -36,6 +37,7 @@ export class UsersController {
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly userRepository: UserRepository,
+		private readonly authUserRepository: AuthUserRepository,
 		private readonly activeWorkflowRunner: ActiveWorkflowRunner,
 		private readonly authService: AuthService,
 		private readonly userService: UserService,
@@ -86,7 +88,7 @@ export class UsersController {
 
 		const findManyOptions = await this.userRepository.toFindManyOptions(listQueryOptions);
 
-		const users = await this.userRepository.find(findManyOptions);
+		const users = await this.authUserRepository.find(findManyOptions);
 
 		const publicUsers: Array<Partial<PublicUser>> = await Promise.all(
 			users.map(
@@ -103,7 +105,7 @@ export class UsersController {
 	@Get('/:id/password-reset-link')
 	@GlobalScope('user:resetPassword')
 	async getUserPasswordResetLink(req: UserRequest.PasswordResetLink) {
-		const user = await this.userRepository.findOneOrFail({
+		const user = await this.authUserRepository.findOneOrFail({
 			where: { id: req.params.id },
 		});
 		if (!user) {
@@ -157,7 +159,7 @@ export class UsersController {
 
 		const userIds = transferId ? [transferId, idToDelete] : [idToDelete];
 
-		const users = await this.userRepository.findManyByIds(userIds);
+		const users = await this.authUserRepository.findManyByIds(userIds);
 
 		if (!users.length || (transferId && users.length !== 2)) {
 			throw new NotFoundError(
@@ -165,7 +167,7 @@ export class UsersController {
 			);
 		}
 
-		const userToDelete = users.find((user) => user.id === req.params.id) as User;
+		const userToDelete = users.find((user) => user.id === req.params.id)!;
 
 		const telemetryData: ITelemetryUserDeletionData = {
 			user_id: req.user.id,
@@ -311,7 +313,7 @@ export class UsersController {
 			throw new UnauthorizedError(NO_OWNER_ON_OWNER);
 		}
 
-		await this.userService.update(targetUser.id, { role: payload.newRoleName });
+		await this.userRepository.update(targetUser.id, { role: payload.newRoleName });
 
 		void this.internalHooks.onUserRoleChange({
 			user: req.user,

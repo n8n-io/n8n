@@ -1,5 +1,5 @@
 import type { SuperAgentTest } from 'supertest';
-import type { User } from '@db/entities/User';
+import type { AuthUser } from '@db/entities/AuthUser';
 
 import { randomApiKey, randomName, randomString } from '../shared/random';
 import * as utils from '../shared/utils/';
@@ -11,8 +11,8 @@ import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import Container from 'typedi';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 
-let owner: User;
-let member: User;
+let owner: AuthUser;
+let member: AuthUser;
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
 

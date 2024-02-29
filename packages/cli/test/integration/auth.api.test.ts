@@ -3,7 +3,7 @@ import { Container } from 'typedi';
 import validator from 'validator';
 import config from '@/config';
 import { AUTH_COOKIE_NAME } from '@/constants';
-import type { User } from '@db/entities/User';
+import type { AuthUser } from '@db/entities/AuthUser';
 import { LOGGED_OUT_RESPONSE_BODY } from './shared/constants';
 import { randomValidPassword } from './shared/random';
 import * as testDb from './shared/testDb';
@@ -12,7 +12,7 @@ import { createUser, createUserShell } from './shared/db/users';
 import { UserRepository } from '@db/repositories/user.repository';
 import { MfaService } from '@/Mfa/mfa.service';
 
-let owner: User;
+let owner: AuthUser;
 let authOwnerAgent: SuperAgentTest;
 const ownerPassword = randomValidPassword();
 
