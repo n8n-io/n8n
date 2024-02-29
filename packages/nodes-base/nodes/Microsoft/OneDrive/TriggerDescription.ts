@@ -228,7 +228,7 @@ export const triggerDescription: INodeProperties[] = [
 		...folderRLC,
 		displayOptions: {
 			show: {
-				watch: ['selectedFolder'],
+				watch: ['selectedFolder', 'oneSelectedFolder'],
 			},
 		},
 	},
