@@ -34,11 +34,11 @@
 			<slot v-if="hasDefaultSlot" />
 			<N8nSelect
 				v-else-if="type === 'select' || type === 'multi-select'"
+				ref="inputRef"
 				:class="{ [$style.multiSelectSmallTags]: tagSize === 'small' }"
 				:model-value="modelValue"
 				:placeholder="placeholder"
 				:multiple="type === 'multi-select'"
-				ref="inputRef"
 				:disabled="disabled"
 				:name="name"
 				:teleported="teleported"
@@ -57,8 +57,8 @@
 			</N8nSelect>
 			<N8nInput
 				v-else
-				:name="name"
 				ref="inputRef"
+				:name="name"
 				:type="type"
 				:placeholder="placeholder"
 				:model-value="modelValue"
