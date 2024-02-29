@@ -10,6 +10,8 @@ import config from '@/config';
 import { jsonParse } from 'n8n-workflow';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ActiveExecutionService } from './active-execution.service';
+import type { Scope } from '@n8n/permissions';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 
 @RestController('/executions')
 export class ExecutionsController {
@@ -21,17 +23,18 @@ export class ExecutionsController {
 		private readonly workflowSharingService: WorkflowSharingService,
 		private readonly activeExecutionService: ActiveExecutionService,
 		private readonly license: License,
+		private readonly workflowRepository: WorkflowRepository,
 	) {}
 
-	private async getAccessibleWorkflowIds(user: User) {
+	private async getAccessibleWorkflowIds(user: User, scope: Scope) {
 		return this.license.isSharingEnabled()
-			? await this.workflowSharingService.getSharedWorkflowIds(user)
-			: await this.workflowSharingService.getSharedWorkflowIds(user, ['workflow:owner']);
+			? await this.workflowSharingService.getSharedWorkflowIds(user, scope)
+			: await this.workflowRepository.getAllIds();
 	}
 
 	@Get('/')
 	async getMany(req: ExecutionRequest.GetMany) {
-		const workflowIds = await this.getAccessibleWorkflowIds(req.user);
+		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:read');
 
 		if (workflowIds.length === 0) return { count: 0, estimated: false, results: [] };
 
@@ -42,7 +45,7 @@ export class ExecutionsController {
 	async getActive(req: ExecutionRequest.GetManyActive) {
 		const filter = req.query.filter?.length ? jsonParse<GetManyActiveFilter>(req.query.filter) : {};
 
-		const workflowIds = await this.getAccessibleWorkflowIds(req.user);
+		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:read');
 
 		return this.isQueueMode
 			? await this.activeExecutionService.findManyInQueueMode(filter, workflowIds)
@@ -51,7 +54,7 @@ export class ExecutionsController {
 
 	@Post('/active/:id/stop')
 	async stop(req: ExecutionRequest.Stop) {
-		const workflowIds = await this.getAccessibleWorkflowIds(req.user);
+		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:execute');
 
 		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
 
@@ -64,7 +67,7 @@ export class ExecutionsController {
 
 	@Get('/:id')
 	async getOne(req: ExecutionRequest.GetOne) {
-		const workflowIds = await this.getAccessibleWorkflowIds(req.user);
+		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:read');
 
 		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
 
@@ -75,7 +78,7 @@ export class ExecutionsController {
 
 	@Post('/:id/retry')
 	async retry(req: ExecutionRequest.Retry) {
-		const workflowIds = await this.getAccessibleWorkflowIds(req.user);
+		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:execute');
 
 		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
 
@@ -84,7 +87,7 @@ export class ExecutionsController {
 
 	@Post('/delete')
 	async delete(req: ExecutionRequest.Delete) {
-		const workflowIds = await this.getAccessibleWorkflowIds(req.user);
+		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:execute');
 
 		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
 

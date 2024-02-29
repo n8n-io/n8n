@@ -1,30 +1,46 @@
 import { Service } from 'typedi';
-import { In, type FindOptionsWhere } from '@n8n/typeorm';
+import { In } from '@n8n/typeorm';
 
-import type { SharedWorkflow, WorkflowSharingRole } from '@db/entities/SharedWorkflow';
 import type { User } from '@db/entities/User';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import { RoleService } from '@/services/role.service';
+import type { Scope } from '@n8n/permissions';
 
 @Service()
 export class WorkflowSharingService {
-	constructor(private readonly sharedWorkflowRepository: SharedWorkflowRepository) {}
+	constructor(
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly roleService: RoleService,
+	) {}
 
 	/**
 	 * Get the IDs of the workflows that have been shared with the user.
 	 * Returns all IDs if user has the 'workflow:read' scope.
 	 */
-	async getSharedWorkflowIds(user: User, roles?: WorkflowSharingRole[]): Promise<string[]> {
-		const where: FindOptionsWhere<SharedWorkflow> = {};
-		if (!user.hasGlobalScope('workflow:read')) {
-			where.userId = user.id;
+	async getSharedWorkflowIds(user: User, scope: Scope): Promise<string[]> {
+		if (user.hasGlobalScope('workflow:read')) {
+			const sharedWorkflows = await this.sharedWorkflowRepository.find({});
+			return sharedWorkflows.map(({ workflowId }) => workflowId);
 		}
-		if (roles?.length) {
-			where.role = In(roles);
-		}
+
+		const projectRoles = this.roleService.rolesWithScope('project', [scope]);
+		const workflowRoles = this.roleService.rolesWithScope('workflow', [scope]);
+
 		const sharedWorkflows = await this.sharedWorkflowRepository.find({
-			where,
+			where: {
+				role: In(workflowRoles),
+				project: {
+					projectRelations: {
+						userId: user.id,
+						role: In(projectRoles),
+					},
+				},
+			},
 			select: ['workflowId'],
 		});
+
+		// console.trace(scope, projectRoles, workflowRoles, sharedWorkflows);
+
 		return sharedWorkflows.map(({ workflowId }) => workflowId);
 	}
 }
