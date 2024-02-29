@@ -460,7 +460,7 @@ export default defineComponent({
 			this.$telemetry.track('User selected sharee to remove', {
 				workflow_id: this.workflow.id,
 				user_id_sharer: this.currentUser?.id,
-				sub_view: this.$route.name === VIEWS.WORKFLOWS ? 'Workflows listing' : 'Workflow editor',
+				sub_view: this.$route.name === VIEWS.WORKFLOW ? 'Workflow editor' : 'Workflows listing',
 				...data,
 			});
 		},

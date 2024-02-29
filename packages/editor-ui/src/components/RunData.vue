@@ -173,6 +173,7 @@
 
 		<div
 			v-else-if="
+				!hasRunError &&
 				hasNodeRun &&
 				((dataCount > 0 && maxRunIndex === 0) || search) &&
 				!isArtificialRecoveredEventItem

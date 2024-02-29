@@ -6,7 +6,7 @@ import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { mockInstance } from '../../shared/mocking';
-import { memberPermissions, ownerPermissions } from '@/permissions/roles';
+import { GLOBAL_MEMBER_SCOPES, GLOBAL_OWNER_SCOPES } from '@/permissions/global-roles';
 import { hasScope } from '@n8n/permissions';
 
 describe('SharedCredentialsRepository', () => {
@@ -26,7 +26,7 @@ describe('SharedCredentialsRepository', () => {
 			isOwner: true,
 			hasGlobalScope: (scope) =>
 				hasScope(scope, {
-					global: ownerPermissions,
+					global: GLOBAL_OWNER_SCOPES,
 				}),
 		});
 		const member = mock<User>({
@@ -34,7 +34,7 @@ describe('SharedCredentialsRepository', () => {
 			id: 'test',
 			hasGlobalScope: (scope) =>
 				hasScope(scope, {
-					global: memberPermissions,
+					global: GLOBAL_MEMBER_SCOPES,
 				}),
 		});
 

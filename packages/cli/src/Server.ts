@@ -83,6 +83,8 @@ import { InvitationController } from './controllers/invitation.controller';
 import { CollaborationService } from './collaboration/collaboration.service';
 import { BadRequestError } from './errors/response-errors/bad-request.error';
 import { OrchestrationService } from '@/services/orchestration.service';
+import { ProjectController } from './controllers/project.controller';
+import { RoleController } from './controllers/role.controller';
 
 const exec = promisify(callbackExec);
 
@@ -162,6 +164,8 @@ export class Server extends AbstractServer {
 			WorkflowsController,
 			ExecutionsController,
 			CredentialsController,
+			ProjectController,
+			RoleController,
 		];
 
 		if (

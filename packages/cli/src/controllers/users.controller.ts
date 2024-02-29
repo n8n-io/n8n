@@ -2,13 +2,13 @@ import { User } from '@db/entities/User';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import {
-	RequireGlobalScope,
 	Authorized,
 	Delete,
 	Get,
 	RestController,
 	Patch,
 	Licensed,
+	GlobalScope,
 } from '@/decorators';
 import {
 	ListQuery,
@@ -26,7 +26,7 @@ import { plainToInstance } from 'class-transformer';
 import { UserService } from '@/services/user.service';
 import { listQueryMiddleware } from '@/middlewares';
 import { Logger } from '@/Logger';
-import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ExternalHooks } from '@/ExternalHooks';
@@ -86,7 +86,7 @@ export class UsersController {
 	}
 
 	@Get('/', { middlewares: listQueryMiddleware })
-	@RequireGlobalScope('user:list')
+	@GlobalScope('user:list')
 	async listUsers(req: ListQuery.Request) {
 		const { listQueryOptions } = req;
 
@@ -107,7 +107,7 @@ export class UsersController {
 	}
 
 	@Get('/:id/password-reset-link')
-	@RequireGlobalScope('user:resetPassword')
+	@GlobalScope('user:resetPassword')
 	async getUserPasswordResetLink(req: UserRequest.PasswordResetLink) {
 		const user = await this.userRepository.findOneOrFail({
 			where: { id: req.params.id },
@@ -121,7 +121,7 @@ export class UsersController {
 	}
 
 	@Patch('/:id/settings')
-	@RequireGlobalScope('user:update')
+	@GlobalScope('user:update')
 	async updateUserSettings(req: UserRequest.UserSettingsUpdate) {
 		const payload = plainToInstance(UserSettingsUpdatePayload, req.body);
 
@@ -141,7 +141,7 @@ export class UsersController {
 	 * Delete a user. Optionally, designate a transferee for their workflows and credentials.
 	 */
 	@Delete('/:id')
-	@RequireGlobalScope('user:delete')
+	@GlobalScope('user:delete')
 	async deleteUser(req: UserRequest.Delete) {
 		const { id: idToDelete } = req.params;
 
@@ -293,7 +293,7 @@ export class UsersController {
 	}
 
 	@Patch('/:id/role')
-	@RequireGlobalScope('user:changeRole')
+	@GlobalScope('user:changeRole')
 	@Licensed('feat:advancedPermissions')
 	async changeGlobalRole(req: UserRequest.ChangeRole) {
 		const { NO_ADMIN_ON_OWNER, NO_USER, NO_OWNER_ON_OWNER } =
@@ -310,11 +310,11 @@ export class UsersController {
 		}
 
 		if (req.user.role === 'global:admin' && targetUser.role === 'global:owner') {
-			throw new UnauthorizedError(NO_ADMIN_ON_OWNER);
+			throw new ForbiddenError(NO_ADMIN_ON_OWNER);
 		}
 
 		if (req.user.role === 'global:owner' && targetUser.role === 'global:owner') {
-			throw new UnauthorizedError(NO_OWNER_ON_OWNER);
+			throw new ForbiddenError(NO_OWNER_ON_OWNER);
 		}
 
 		await this.userService.update(targetUser.id, { role: payload.newRoleName });

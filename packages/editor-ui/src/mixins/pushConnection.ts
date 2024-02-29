@@ -44,7 +44,7 @@ import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 export const pushConnection = defineComponent({
 	setup() {
 		const router = useRouter();
-		const workflowHelpers = useWorkflowHelpers(router);
+		const workflowHelpers = useWorkflowHelpers({ router });
 		const nodeHelpers = useNodeHelpers();
 		return {
 			...useTitleChange(),
@@ -264,7 +264,8 @@ export const pushConnection = defineComponent({
 					pushData = receivedData.data as IPushDataExecutionFinished;
 				}
 
-				if (this.workflowsStore.activeExecutionId === pushData.executionId) {
+				const { activeExecutionId } = this.workflowsStore;
+				if (activeExecutionId === pushData.executionId) {
 					const activeRunData =
 						this.workflowsStore.workflowExecutionData?.data?.resultData?.runData;
 					if (activeRunData) {
@@ -285,7 +286,6 @@ export const pushConnection = defineComponent({
 					return false;
 				}
 
-				const { activeExecutionId } = this.workflowsStore;
 				if (activeExecutionId !== pushData.executionId) {
 					// The workflow which did finish execution did either not get started
 					// by this session or we do not have the execution id yet.
@@ -318,7 +318,6 @@ export const pushConnection = defineComponent({
 
 				const workflow = this.workflowHelpers.getCurrentWorkflow();
 				if (runDataExecuted.waitTill !== undefined) {
-					const activeExecutionId = this.workflowsStore.activeExecutionId;
 					const workflowSettings = this.workflowsStore.workflowSettings;
 					const saveManualExecutions = this.rootStore.saveManualExecutions;
 
@@ -379,7 +378,9 @@ export const pushConnection = defineComponent({
 
 							if (
 								error.context.nodeCause &&
-								['no pairing info', 'invalid pairing info'].includes(error.context.type as string)
+								['paired_item_no_info', 'paired_item_invalid_info'].includes(
+									error.context.type as string,
+								)
 							) {
 								const node = workflow.getNode(error.context.nodeCause as string);
 

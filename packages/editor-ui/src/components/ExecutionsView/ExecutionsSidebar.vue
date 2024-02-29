@@ -64,7 +64,7 @@ import ExecutionCard from '@/components/ExecutionsView/ExecutionCard.vue';
 import ExecutionsInfoAccordion from '@/components/ExecutionsView/ExecutionsInfoAccordion.vue';
 import ExecutionFilter from '@/components/ExecutionFilter.vue';
 import { VIEWS } from '@/constants';
-import type { IExecutionsSummary } from 'n8n-workflow';
+import type { ExecutionSummary } from 'n8n-workflow';
 import type { Route } from 'vue-router';
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
@@ -88,7 +88,7 @@ export default defineComponent({
 			default: false,
 		},
 		executions: {
-			type: Array as PropType<IExecutionsSummary[]>,
+			type: Array as PropType<ExecutionSummary[]>,
 			required: true,
 		},
 		loading: {
@@ -100,7 +100,7 @@ export default defineComponent({
 			default: false,
 		},
 		temporaryExecution: {
-			type: Object as PropType<IExecutionsSummary>,
+			type: Object as PropType<ExecutionSummary>,
 			default: null,
 		},
 	},

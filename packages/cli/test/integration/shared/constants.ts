@@ -33,8 +33,3 @@ export const COMMUNITY_NODE_VERSION = {
 	CURRENT: 1,
 	UPDATED: 2,
 };
-
-/**
- * Timeout (in milliseconds) to account for DB being slow to initialize.
- */
-export const DB_INITIALIZATION_TIMEOUT = 30_000;

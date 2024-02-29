@@ -37,6 +37,7 @@ import type {
 	INodeTypesMaxCount,
 	INodeUi,
 	ITag,
+	IUpdateInformation,
 	IWorkflowData,
 	IWorkflowDataUpdate,
 	IWorkflowDb,
@@ -70,43 +71,8 @@ import { useCanvasStore } from '@/stores/canvas.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { useI18n } from '@/composables/useI18n';
-import type { Router } from 'vue-router';
+import type { useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
-
-export function getParentMainInputNode(workflow: Workflow, node: INode): INode {
-	const nodeType = useNodeTypesStore().getNodeType(node.type);
-	if (nodeType) {
-		const outputs = NodeHelpers.getNodeOutputs(workflow, node, nodeType);
-
-		if (!!outputs.find((output) => output !== NodeConnectionType.Main)) {
-			// Get the first node which is connected to a non-main output
-			const nonMainNodesConnected = outputs?.reduce((acc, outputName) => {
-				const parentNodes = workflow.getChildNodes(node.name, outputName);
-				if (parentNodes.length > 0) {
-					acc.push(...parentNodes);
-				}
-				return acc;
-			}, [] as string[]);
-
-			if (nonMainNodesConnected.length) {
-				const returnNode = workflow.getNode(nonMainNodesConnected[0]);
-				if (returnNode === null) {
-					// This should theoretically never happen as the node is connected
-					// but who knows and it makes TS happy
-					throw new Error(
-						`The node "${nonMainNodesConnected[0]}" which is a connection of "${node.name}" could not be found!`,
-					);
-				}
-
-				// The chain of non-main nodes is potentially not finished yet so
-				// keep on going
-				return getParentMainInputNode(workflow, returnNode);
-			}
-		}
-	}
-
-	return node;
-}
 
 export function resolveParameter(
 	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
@@ -127,7 +93,7 @@ export function resolveParameter(
 	const workflow = getCurrentWorkflow();
 
 	if (activeNode) {
-		contextNode = getParentMainInputNode(workflow, activeNode);
+		contextNode = workflow.getParentMainInputNode(activeNode);
 	}
 
 	const workflowRunData = useWorkflowsStore().getWorkflowRunData;
@@ -214,7 +180,7 @@ export function resolveParameter(
 		// in pagination expressions
 		additionalKeys.$response = get(
 			executionData,
-			`data.executionData.contextData['node:${activeNode.name}'].response`,
+			['data', 'executionData', 'contextData', `node:${activeNode.name}`, 'response'],
 			{},
 		);
 	}
@@ -485,7 +451,8 @@ export function executeData(
 	return executeData;
 }
 
-export function useWorkflowHelpers(router: Router) {
+export function useWorkflowHelpers(options: { router: ReturnType<typeof useRouter> }) {
+	const router = options.router;
 	const nodeTypesStore = useNodeTypesStore();
 	const rootStore = useRootStore();
 	const templatesStore = useTemplatesStore();
@@ -1056,7 +1023,7 @@ export function useWorkflowHelpers(router: Router) {
 					key: 'webhookId',
 					value: changedNodes[nodeName],
 					name: nodeName,
-				};
+				} as IUpdateInformation;
 				workflowsStore.setNodeValue(changes);
 			});
 
@@ -1090,7 +1057,7 @@ export function useWorkflowHelpers(router: Router) {
 			uiStore.removeActiveAction('workflowSaving');
 
 			toast.showMessage({
-				title: $locale.baseText('workflowHelpers.showMessage.title'),
+				title: i18n.baseText('workflowHelpers.showMessage.title'),
 				message: (e as Error).message,
 				type: 'error',
 			});
@@ -1187,7 +1154,6 @@ export function useWorkflowHelpers(router: Router) {
 		getCurrentWorkflow,
 		getConnectedNodes,
 		getNodes,
-		getParentMainInputNode,
 		getWorkflow,
 		getNodeTypes,
 		connectionInputData,

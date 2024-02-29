@@ -15,11 +15,12 @@ import { IsBoolean, IsEmail, IsIn, IsOptional, IsString, Length } from 'class-va
 import { NoXss } from '@db/utils/customValidators';
 import type { PublicUser, SecretsProvider, SecretsProviderState } from '@/Interfaces';
 import { AssignableRole, type User } from '@db/entities/User';
-import type { UserManagementMailer } from '@/UserManagement/email';
 import type { Variables } from '@db/entities/Variables';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { WorkflowHistory } from '@db/entities/WorkflowHistory';
+import type { Project, ProjectType } from '@db/entities/Project';
+import type { ProjectRole } from './databases/entities/ProjectRelation';
 
 export class UserUpdatePayload implements Pick<User, 'email' | 'firstName' | 'lastName'> {
 	@IsEmail()
@@ -65,7 +66,6 @@ export type AuthenticatedRequest<
 	RequestQuery = {},
 > = Omit<express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery>, 'user'> & {
 	user: User;
-	mailer?: UserManagementMailer;
 };
 
 // ----------------------------------
@@ -149,19 +149,19 @@ export declare namespace CredentialRequest {
 
 	type Create = AuthenticatedRequest<{}, {}, CredentialProperties>;
 
-	type Get = AuthenticatedRequest<{ id: string }, {}, {}, Record<string, string>>;
+	type Get = AuthenticatedRequest<{ credentialId: string }, {}, {}, Record<string, string>>;
 
 	type Delete = Get;
 
 	type GetAll = AuthenticatedRequest<{}, {}, {}, { filter: string }>;
 
-	type Update = AuthenticatedRequest<{ id: string }, {}, CredentialProperties>;
+	type Update = AuthenticatedRequest<{ credentialId: string }, {}, CredentialProperties>;
 
 	type NewName = AuthenticatedRequest<{}, {}, {}, { name?: string }>;
 
 	type Test = AuthenticatedRequest<{}, {}, INodeCredentialTestRequest>;
 
-	type Share = AuthenticatedRequest<{ id: string }, {}, { shareWithIds: string[] }>;
+	type Share = AuthenticatedRequest<{ credentialId: string }, {}, { shareWithIds: string[] }>;
 }
 
 // ----------------------------------
@@ -497,4 +497,46 @@ export declare namespace ActiveWorkflowRequest {
 	type GetAllActive = AuthenticatedRequest;
 
 	type GetActivationError = AuthenticatedRequest<{ id: string }>;
+}
+
+// ----------------------------------
+//           /projects
+// ----------------------------------
+
+export declare namespace ProjectRequest {
+	type GetAll = AuthenticatedRequest<{}, Project[]>;
+
+	type Create = AuthenticatedRequest<
+		{},
+		Project,
+		{
+			name: string;
+		}
+	>;
+
+	type GetMyProjects = AuthenticatedRequest<{}, Array<Project & { role: ProjectRole }>>;
+
+	type GetPersonalProject = AuthenticatedRequest<{}, Project>;
+
+	type ProjectRelationPayload = { userId: string; role: ProjectRole };
+	type ProjectRelationResponse = {
+		id: string;
+		email: string;
+		firstName: string;
+		lastName: string;
+		role: ProjectRole;
+	};
+	type ProjectWithRelations = {
+		id: string;
+		name: string | undefined;
+		type: ProjectType;
+		relations: ProjectRelationResponse[];
+	};
+
+	type Get = AuthenticatedRequest<{ projectId: string }, {}>;
+	type Update = AuthenticatedRequest<
+		{ projectId: string },
+		{},
+		{ name?: string; relations?: ProjectRelationPayload[] }
+	>;
 }

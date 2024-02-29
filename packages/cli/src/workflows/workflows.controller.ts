@@ -8,8 +8,17 @@ import * as ResponseHelper from '@/ResponseHelper';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import type { IWorkflowResponse } from '@/Interfaces';
 import config from '@/config';
-import { Authorized, Delete, Get, Patch, Post, Put, RestController } from '@/decorators';
-import { SharedWorkflow, type WorkflowSharingRole } from '@db/entities/SharedWorkflow';
+import {
+	Authorized,
+	Delete,
+	Get,
+	Patch,
+	Post,
+	ProjectScope,
+	Put,
+	RestController,
+} from '@/decorators';
+import type { SharedWorkflow, WorkflowSharingRole } from '@db/entities/SharedWorkflow';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { TagRepository } from '@db/repositories/tag.repository';
@@ -29,7 +38,7 @@ import { Logger } from '@/Logger';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NamingService } from '@/services/naming.service';
 import { UserOnboardingService } from '@/services/userOnboarding.service';
 import { CredentialsService } from '../credentials/credentials.service';
@@ -39,6 +48,8 @@ import { WorkflowExecutionService } from './workflowExecution.service';
 import { WorkflowSharingService } from './workflowSharing.service';
 import { UserManagementMailer } from '@/UserManagement/email';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
+import { ProjectService } from '@/services/project.service';
+import { ApplicationError } from 'n8n-workflow';
 
 @Authorized()
 @RestController('/workflows')
@@ -63,6 +74,7 @@ export class WorkflowsController {
 		private readonly mailer: UserManagementMailer,
 		private readonly credentialsService: CredentialsService,
 		private readonly projectRepository: ProjectRepository,
+		private readonly projectService: ProjectService,
 	) {}
 
 	@Post('/')
@@ -112,14 +124,33 @@ export class WorkflowsController {
 		await Db.transaction(async (transactionManager) => {
 			savedWorkflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
 
-			const project = await this.projectRepository.getPersonalProjectForUserOrFail(req.user.id);
+			const { projectId } = req.body;
+			const project =
+				projectId === undefined
+					? await this.projectRepository.getPersonalProjectForUser(req.user.id, transactionManager)
+					: await this.projectService.getProjectWithScope(
+							req.user,
+							projectId,
+							'workflow:create',
+							transactionManager,
+					  );
 
-			const newSharedWorkflow = new SharedWorkflow();
+			if (typeof projectId === 'string' && project === null) {
+				throw new BadRequestError(
+					"You don't have the permissions to save the workflow in this project.",
+				);
+			}
 
-			Object.assign(newSharedWorkflow, {
+			// Safe guard in case the personal project does not exist for whatever reason.
+			if (project === null) {
+				throw new ApplicationError('No personal project found');
+			}
+
+			const newSharedWorkflow = this.sharedWorkflowRepository.create({
 				role: 'workflow:owner',
+				// TODO: remove when https://linear.app/n8n/issue/PAY-1353/make-sure-that-sharedworkflowuserid-is-not-used-anymore-to-check lands
 				user: req.user,
-				project,
+				projectId: project.id,
 				workflow: savedWorkflow,
 			});
 
@@ -217,9 +248,10 @@ export class WorkflowsController {
 		return workflowData;
 	}
 
-	@Get('/:id')
+	@Get('/:workflowId')
+	@ProjectScope('workflow:read')
 	async getWorkflow(req: WorkflowRequest.Get) {
-		const { id: workflowId } = req.params;
+		const { workflowId } = req.params;
 
 		if (this.license.isSharingEnabled()) {
 			const relations = ['shared', 'shared.user'];
@@ -235,7 +267,7 @@ export class WorkflowsController {
 
 			const userSharing = workflow.shared?.find((shared) => shared.user.id === req.user.id);
 			if (!userSharing && !req.user.hasGlobalScope('workflow:read')) {
-				throw new UnauthorizedError(
+				throw new ForbiddenError(
 					'You do not have permission to access this workflow. Ask the owner to share it with you',
 				);
 			}
@@ -271,9 +303,10 @@ export class WorkflowsController {
 		return shared.workflow;
 	}
 
-	@Patch('/:id')
+	@Patch('/:workflowId')
+	@ProjectScope('workflow:update')
 	async update(req: WorkflowRequest.Update) {
-		const { id: workflowId } = req.params;
+		const { workflowId } = req.params;
 		const forceSave = req.query.forceSave === 'true';
 
 		let updateData = new WorkflowEntity();
@@ -301,9 +334,10 @@ export class WorkflowsController {
 		return updatedWorkflow;
 	}
 
-	@Delete('/:id')
+	@Delete('/:workflowId')
+	@ProjectScope('workflow:delete')
 	async delete(req: WorkflowRequest.Delete) {
-		const { id: workflowId } = req.params;
+		const { workflowId } = req.params;
 
 		const workflow = await this.workflowService.delete(req.user, workflowId);
 		if (!workflow) {
@@ -342,6 +376,7 @@ export class WorkflowsController {
 	}
 
 	@Put('/:workflowId/share')
+	@ProjectScope('workflow:share')
 	async share(req: WorkflowRequest.Share) {
 		if (!this.license.isSharingEnabled()) throw new NotFoundError('Route not found');
 
@@ -370,7 +405,7 @@ export class WorkflowsController {
 				workflow = sharedRes?.workflow;
 			}
 			if (!workflow) {
-				throw new UnauthorizedError('Forbidden');
+				throw new ForbiddenError();
 			}
 		}
 

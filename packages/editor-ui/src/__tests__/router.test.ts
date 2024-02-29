@@ -31,6 +31,7 @@ describe('router', () => {
 
 	test.each([
 		['/', VIEWS.WORKFLOWS],
+		['/workflows', VIEWS.WORKFLOWS],
 		['/workflow', VIEWS.NEW_WORKFLOW],
 		['/workflow/new', VIEWS.NEW_WORKFLOW],
 		['/workflow/R9JFXwkUCL1jZBuw', VIEWS.WORKFLOW],

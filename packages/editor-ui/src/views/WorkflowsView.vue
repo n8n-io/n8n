@@ -6,13 +6,15 @@
 		:filters="filters"
 		:additional-filters-handler="onFilter"
 		:type-props="{ itemSize: 80 }"
-		:show-aside="allWorkflows.length > 0"
 		:shareable="isShareable"
 		:initialize="initialize"
 		:disabled="readOnlyEnv"
 		@click:add="addWorkflow"
 		@update:filters="onFiltersUpdated"
 	>
+		<template #header>
+			<ProjectTabs />
+		</template>
 		<template #add-button="{ disabled }">
 			<n8n-tooltip :disabled="!readOnlyEnv">
 				<div>
@@ -152,6 +154,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useTagsStore } from '@/stores/tags.store';
+import ProjectTabs from '@/features/projects/components/ProjectTabs.vue';
 
 type IResourcesListLayoutInstance = InstanceType<typeof ResourcesListLayout>;
 
@@ -177,6 +180,7 @@ const WorkflowsView = defineComponent({
 		TagsDropdown,
 		SuggestedTemplatesPage,
 		SuggestedTemplatesSection,
+		ProjectTabs,
 	},
 	data() {
 		return {
@@ -260,7 +264,10 @@ const WorkflowsView = defineComponent({
 		},
 		addWorkflow() {
 			this.uiStore.nodeViewInitialized = false;
-			void this.$router.push({ name: VIEWS.NEW_WORKFLOW });
+			void this.$router.push({
+				name: VIEWS.NEW_WORKFLOW,
+				query: { projectId: this.$route?.params?.projectId },
+			});
 
 			this.$telemetry.track('User clicked add workflow button', {
 				source: 'Workflows list',
@@ -269,7 +276,7 @@ const WorkflowsView = defineComponent({
 		async initialize() {
 			await Promise.all([
 				this.usersStore.fetchUsers(),
-				this.workflowsStore.fetchAllWorkflows(),
+				this.workflowsStore.fetchAllWorkflows(this.$route?.params?.projectId as string | undefined),
 				this.workflowsStore.fetchActiveWorkflows(),
 				this.credentialsStore.fetchAllCredentials(),
 			]);

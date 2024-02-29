@@ -1,6 +1,6 @@
 import { v4 as uuid } from 'uuid';
 import { Container } from 'typedi';
-import type { WorkflowSettings } from 'n8n-workflow';
+import type { INode, WorkflowSettings } from 'n8n-workflow';
 import { SubworkflowOperationError, Workflow } from 'n8n-workflow';
 
 import config from '@/config';
@@ -92,6 +92,8 @@ beforeAll(async () => {
  */
 
 describe.skip('check()', () => {
+	const workflowId = randomPositiveDigit().toString();
+
 	beforeEach(async () => {
 		await testDb.truncate(['Workflow', 'Credentials']);
 	});
@@ -102,56 +104,40 @@ describe.skip('check()', () => {
 
 	test('should allow if workflow has no creds', async () => {
 		const userId = uuid();
+		const nodes: INode[] = [
+			{
+				id: uuid(),
+				name: 'Start',
+				type: 'n8n-nodes-base.start',
+				typeVersion: 1,
+				parameters: {},
+				position: [0, 0],
+			},
+		];
 
-		const workflow = new Workflow({
-			id: randomPositiveDigit().toString(),
-			name: 'test',
-			active: false,
-			connections: {},
-			nodeTypes: mockNodeTypes,
-			nodes: [
-				{
-					id: uuid(),
-					name: 'Start',
-					type: 'n8n-nodes-base.start',
-					typeVersion: 1,
-					parameters: {},
-					position: [0, 0],
-				},
-			],
-		});
-
-		expect(async () => await permissionChecker.check(workflow, userId)).not.toThrow();
+		expect(async () => await permissionChecker.check(workflowId, userId, nodes)).not.toThrow();
 	});
 
 	test('should allow if requesting user is instance owner', async () => {
 		const owner = await createOwner();
-
-		const workflow = new Workflow({
-			id: randomPositiveDigit().toString(),
-			name: 'test',
-			active: false,
-			connections: {},
-			nodeTypes: mockNodeTypes,
-			nodes: [
-				{
-					id: uuid(),
-					name: 'Action Network',
-					type: 'n8n-nodes-base.actionNetwork',
-					parameters: {},
-					typeVersion: 1,
-					position: [0, 0],
-					credentials: {
-						actionNetworkApi: {
-							id: randomPositiveDigit().toString(),
-							name: 'Action Network Account',
-						},
+		const nodes: INode[] = [
+			{
+				id: uuid(),
+				name: 'Action Network',
+				type: 'n8n-nodes-base.actionNetwork',
+				parameters: {},
+				typeVersion: 1,
+				position: [0, 0],
+				credentials: {
+					actionNetworkApi: {
+						id: randomPositiveDigit().toString(),
+						name: 'Action Network Account',
 					},
 				},
-			],
-		});
+			},
+		];
 
-		expect(async () => await permissionChecker.check(workflow, owner.id)).not.toThrow();
+		expect(async () => await permissionChecker.check(workflowId, owner.id, nodes)).not.toThrow();
 	});
 
 	test('should allow if workflow creds are valid subset', async () => {
@@ -159,46 +145,38 @@ describe.skip('check()', () => {
 
 		const ownerCred = await saveCredential(randomCred(), { user: owner });
 		const memberCred = await saveCredential(randomCred(), { user: member });
-
-		const workflow = new Workflow({
-			id: randomPositiveDigit().toString(),
-			name: 'test',
-			active: false,
-			connections: {},
-			nodeTypes: mockNodeTypes,
-			nodes: [
-				{
-					id: uuid(),
-					name: 'Action Network',
-					type: 'n8n-nodes-base.actionNetwork',
-					parameters: {},
-					typeVersion: 1,
-					position: [0, 0],
-					credentials: {
-						actionNetworkApi: {
-							id: ownerCred.id,
-							name: ownerCred.name,
-						},
+		const nodes: INode[] = [
+			{
+				id: uuid(),
+				name: 'Action Network',
+				type: 'n8n-nodes-base.actionNetwork',
+				parameters: {},
+				typeVersion: 1,
+				position: [0, 0],
+				credentials: {
+					actionNetworkApi: {
+						id: ownerCred.id,
+						name: ownerCred.name,
 					},
 				},
-				{
-					id: uuid(),
-					name: 'Action Network 2',
-					type: 'n8n-nodes-base.actionNetwork',
-					parameters: {},
-					typeVersion: 1,
-					position: [0, 0],
-					credentials: {
-						actionNetworkApi: {
-							id: memberCred.id,
-							name: memberCred.name,
-						},
+			},
+			{
+				id: uuid(),
+				name: 'Action Network 2',
+				type: 'n8n-nodes-base.actionNetwork',
+				parameters: {},
+				typeVersion: 1,
+				position: [0, 0],
+				credentials: {
+					actionNetworkApi: {
+						id: memberCred.id,
+						name: memberCred.name,
 					},
 				},
-			],
-		});
+			},
+		];
 
-		expect(async () => await permissionChecker.check(workflow, owner.id)).not.toThrow();
+		expect(async () => await permissionChecker.check(workflowId, owner.id, nodes)).not.toThrow();
 	});
 
 	test('should deny if workflow creds are not valid subset', async () => {
@@ -256,9 +234,9 @@ describe.skip('check()', () => {
 			role: 'workflow:owner',
 		});
 
-		const workflow = new Workflow(workflowDetails);
-
-		await expect(permissionChecker.check(workflow, member.id)).rejects.toThrow();
+		await expect(
+			permissionChecker.check(workflowDetails.id, member.id, workflowDetails.nodes),
+		).rejects.toThrow();
 	});
 });
 

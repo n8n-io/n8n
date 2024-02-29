@@ -17,6 +17,7 @@ import { randomName } from './shared/random';
 import * as utils from './shared/utils/';
 import * as testDb from './shared/testDb';
 import { mockInstance } from '../shared/mocking';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 
 mockInstance(ExecutionService);
 
@@ -400,66 +401,66 @@ describe('PATCH /users/:id/role', () => {
 
 	describe('member', () => {
 		test('should fail to demote owner to member', async () => {
-			const response = await memberAgent.patch(`/users/${owner.id}/role`).send({
-				newRoleName: 'global:member',
-			});
-
-			expect(response.statusCode).toBe(403);
-			expect(response.body.message).toBe(UNAUTHORIZED);
+			await memberAgent
+				.patch(`/users/${owner.id}/role`)
+				.send({
+					newRoleName: 'global:member',
+				})
+				.expect(403, { status: 'error', message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE });
 		});
 
 		test('should fail to demote owner to admin', async () => {
-			const response = await memberAgent.patch(`/users/${owner.id}/role`).send({
-				newRoleName: 'global:admin',
-			});
-
-			expect(response.statusCode).toBe(403);
-			expect(response.body.message).toBe(UNAUTHORIZED);
+			await memberAgent
+				.patch(`/users/${owner.id}/role`)
+				.send({
+					newRoleName: 'global:admin',
+				})
+				.expect(403, { status: 'error', message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE });
 		});
 
 		test('should fail to demote admin to member', async () => {
-			const response = await memberAgent.patch(`/users/${admin.id}/role`).send({
-				newRoleName: 'global:member',
-			});
-
-			expect(response.statusCode).toBe(403);
-			expect(response.body.message).toBe(UNAUTHORIZED);
+			await memberAgent
+				.patch(`/users/${admin.id}/role`)
+				.send({
+					newRoleName: 'global:member',
+				})
+				.expect(403, { status: 'error', message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE });
 		});
 
 		test('should fail to promote other member to owner', async () => {
-			const response = await memberAgent.patch(`/users/${otherMember.id}/role`).send({
-				newRoleName: 'global:owner',
-			});
-
-			expect(response.statusCode).toBe(403);
-			expect(response.body.message).toBe(UNAUTHORIZED);
+			await memberAgent
+				.patch(`/users/${otherMember.id}/role`)
+				.send({
+					newRoleName: 'global:owner',
+				})
+				.expect(403, { status: 'error', message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE });
 		});
 
 		test('should fail to promote other member to admin', async () => {
-			const response = await memberAgent.patch(`/users/${otherMember.id}/role`).send({
-				newRoleName: 'global:admin',
-			});
-
-			expect(response.statusCode).toBe(403);
-			expect(response.body.message).toBe(UNAUTHORIZED);
+			await memberAgent
+				.patch(`/users/${otherMember.id}/role`)
+				.send({
+					newRoleName: 'global:admin',
+				})
+				.expect(403, { status: 'error', message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE });
 		});
 
 		test('should fail to promote self to admin', async () => {
-			const response = await memberAgent.patch(`/users/${member.id}/role`).send({
-				newRoleName: 'global:admin',
-			});
-
-			expect(response.statusCode).toBe(403);
-			expect(response.body.message).toBe(UNAUTHORIZED);
+			await memberAgent
+				.patch(`/users/${member.id}/role`)
+				.send({
+					newRoleName: 'global:admin',
+				})
+				.expect(403, { status: 'error', message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE });
 		});
 
 		test('should fail to promote self to owner', async () => {
-			const response = await memberAgent.patch(`/users/${member.id}/role`).send({
-				newRoleName: 'global:owner',
-			});
-
-			expect(response.statusCode).toBe(403);
-			expect(response.body.message).toBe(UNAUTHORIZED);
+			await memberAgent
+				.patch(`/users/${member.id}/role`)
+				.send({
+					newRoleName: 'global:owner',
+				})
+				.expect(403, { status: 'error', message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE });
 		});
 	});
 

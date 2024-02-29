@@ -229,7 +229,7 @@ describe('GET /credentials/:id', () => {
 		expect(response2.statusCode).toBe(200);
 
 		validateMainCredentialData(response2.body.data);
-		expect(response2.body.data.data).toBeUndefined();
+		expect(response2.body.data.data).toBeDefined(); // Instance owners should be capable of editing all credentials
 		expect(response2.body.data.sharedWith).toHaveLength(1);
 	});
 
@@ -255,7 +255,7 @@ describe('GET /credentials/:id', () => {
 			lastName: member1.lastName,
 		});
 		expect(firstCredential.sharedWith).toHaveLength(2);
-		firstCredential.sharedWith.forEach((sharee: IUser, idx: number) => {
+		firstCredential.sharedWith.forEach((sharee: IUser) => {
 			expect([member2.id, member3.id]).toContain(sharee.id);
 		});
 

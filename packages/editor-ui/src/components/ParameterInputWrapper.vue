@@ -67,11 +67,11 @@ import type {
 } from 'n8n-workflow';
 import { isResourceLocatorValue } from 'n8n-workflow';
 
-import { get } from 'lodash-es';
 import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useRouter } from 'vue-router';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { getExpressionErrorMessage, getResolvableState } from '@/utils/expressions';
 
 export default defineComponent({
 	name: 'ParameterInputWrapper',
@@ -151,7 +151,7 @@ export default defineComponent({
 	},
 	setup() {
 		const router = useRouter();
-		const workflowHelpers = useWorkflowHelpers(router);
+		const workflowHelpers = useWorkflowHelpers({ router });
 
 		return {
 			workflowHelpers,
@@ -230,9 +230,12 @@ export default defineComponent({
 			const evaluated = this.evaluatedExpression;
 
 			if (!evaluated.ok) {
-				return `[${this.$locale.baseText('parameterInput.error')}: ${get(
-					evaluated.error,
-					'message',
+				if (getResolvableState(evaluated.error) !== 'invalid') {
+					return null;
+				}
+
+				return `[${this.$locale.baseText('parameterInput.error')}: ${getExpressionErrorMessage(
+					evaluated.error as Error,
 				)}]`;
 			}
 

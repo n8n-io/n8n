@@ -16,6 +16,7 @@ export class OpenAiAssistant implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'OpenAI Assistant',
 		name: 'openAiAssistant',
+		hidden: true,
 		icon: 'fa:robot',
 		group: ['transform'],
 		version: 1,

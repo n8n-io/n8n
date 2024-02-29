@@ -21,6 +21,9 @@ import { createOwner } from '../shared/db/users';
 import { createWorkflow } from '../shared/db/workflows';
 import { createTag } from '../shared/db/tags';
 import { License } from '@/License';
+import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
+import { ProjectService } from '@/services/project.service';
 
 let owner: User;
 let authOwnerAgent: SuperAgentTest;
@@ -150,6 +153,120 @@ describe('POST /workflows', () => {
 		expect(
 			await Container.get(WorkflowHistoryRepository).count({ where: { workflowId: id } }),
 		).toBe(0);
+	});
+
+	test('create workflow in personal project by default', async () => {
+		//
+		// ARRANGE
+		//
+		const projectRepository = Container.get(ProjectRepository);
+		const workflow = makeWorkflow();
+		const personalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
+
+		//
+		// ACT
+		//
+		const response = await authOwnerAgent.post('/workflows').send(workflow).expect(200);
+
+		//
+		// ASSERT
+		//
+		await Container.get(SharedWorkflowRepository).findOneOrFail({
+			where: {
+				projectId: personalProject.id,
+				workflowId: response.body.data.id,
+			},
+		});
+	});
+
+	test('creates workflow in a specific project if the projectId is passed', async () => {
+		//
+		// ARRANGE
+		//
+		const projectRepository = Container.get(ProjectRepository);
+		const workflow = makeWorkflow();
+		const project = await projectRepository.save(
+			projectRepository.create({
+				name: 'Team Project',
+				type: 'team',
+			}),
+		);
+		await Container.get(ProjectService).addUser(project.id, owner.id, 'project:admin');
+
+		//
+		// ACT
+		//
+		const response = await authOwnerAgent
+			.post('/workflows')
+			.send({ ...workflow, projectId: project.id })
+			.expect(200);
+
+		//
+		// ASSERT
+		//
+		await Container.get(SharedWorkflowRepository).findOneOrFail({
+			where: {
+				projectId: project.id,
+				workflowId: response.body.data.id,
+			},
+		});
+	});
+
+	test('does not create the workflow in a specific project if the user is not part of the project', async () => {
+		//
+		// ARRANGE
+		//
+		const projectRepository = Container.get(ProjectRepository);
+		const workflow = makeWorkflow();
+		const project = await projectRepository.save(
+			projectRepository.create({
+				name: 'Team Project',
+				type: 'team',
+			}),
+		);
+
+		//
+		// ACT
+		//
+		await authOwnerAgent
+			.post('/workflows')
+			.send({ ...workflow, projectId: project.id })
+			//
+			// ASSERT
+			//
+			.expect(400, {
+				code: 400,
+				message: "You don't have the permissions to save the workflow in this project.",
+			});
+	});
+
+	test('does not create the workflow in a specific project if the user does not have the right role to do so', async () => {
+		//
+		// ARRANGE
+		//
+		const projectRepository = Container.get(ProjectRepository);
+		const workflow = makeWorkflow();
+		const project = await projectRepository.save(
+			projectRepository.create({
+				name: 'Team Project',
+				type: 'team',
+			}),
+		);
+		await Container.get(ProjectService).addUser(project.id, owner.id, 'project:viewer');
+
+		//
+		// ACT
+		//
+		await authOwnerAgent
+			.post('/workflows')
+			.send({ ...workflow, projectId: project.id })
+			//
+			// ASSERT
+			//
+			.expect(400, {
+				code: 400,
+				message: "You don't have the permissions to save the workflow in this project.",
+			});
 	});
 });
 

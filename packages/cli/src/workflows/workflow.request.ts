@@ -1,10 +1,17 @@
 import type { IWorkflowDb } from '@/Interfaces';
 import type { AuthenticatedRequest } from '@/requests';
-import type { INode, IConnections, IWorkflowSettings, IRunData, IPinData } from 'n8n-workflow';
+import type {
+	INode,
+	IConnections,
+	IWorkflowSettings,
+	IRunData,
+	IPinData,
+	StartNodeData,
+} from 'n8n-workflow';
 
 export declare namespace WorkflowRequest {
 	type CreateUpdatePayload = Partial<{
-		id: string; // delete if sent
+		id: string; // deleted if sent
 		name: string;
 		nodes: INode[];
 		connections: IConnections;
@@ -13,24 +20,25 @@ export declare namespace WorkflowRequest {
 		tags: string[];
 		hash: string;
 		meta: Record<string, unknown>;
+		projectId: string;
 	}>;
 
 	type ManualRunPayload = {
 		workflowData: IWorkflowDb;
 		runData: IRunData;
 		pinData: IPinData;
-		startNodes?: string[];
+		startNodes?: StartNodeData[];
 		destinationNode?: string;
 	};
 
 	type Create = AuthenticatedRequest<{}, {}, CreateUpdatePayload>;
 
-	type Get = AuthenticatedRequest<{ id: string }>;
+	type Get = AuthenticatedRequest<{ workflowId: string }>;
 
 	type Delete = Get;
 
 	type Update = AuthenticatedRequest<
-		{ id: string },
+		{ workflowId: string },
 		{},
 		CreateUpdatePayload,
 		{ forceSave?: string }

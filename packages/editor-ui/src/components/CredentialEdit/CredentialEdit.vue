@@ -837,7 +837,10 @@ export default defineComponent({
 			const isNewCredential = this.mode === 'new' && !this.credentialId;
 
 			if (isNewCredential) {
-				credential = await this.createCredential(credentialDetails);
+				credential = await this.createCredential(
+					credentialDetails,
+					this.$route?.params?.projectId as string | undefined,
+				);
 			} else {
 				credential = await this.updateCredential(credentialDetails);
 			}
@@ -896,11 +899,12 @@ export default defineComponent({
 
 		async createCredential(
 			credentialDetails: ICredentialsDecrypted,
+			projectId?: string,
 		): Promise<ICredentialsResponse | null> {
 			let credential;
 
 			try {
-				credential = await this.credentialsStore.createNewCredential(credentialDetails);
+				credential = await this.credentialsStore.createNewCredential(credentialDetails, projectId);
 				this.hasUnsavedChanges = false;
 			} catch (error) {
 				this.showError(

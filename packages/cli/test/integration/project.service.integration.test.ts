@@ -4,7 +4,7 @@ import * as testDb from './shared/testDb';
 import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
 import { createUser } from './shared/db/users';
 import { createWorkflow } from './shared/db/workflows';
-import { addUserToProject, createTeamProject } from './shared/db/projects';
+import { linkUserToProject, createTeamProject } from './shared/db/projects';
 
 describe('ProjectService', () => {
 	let projectService: ProjectService;
@@ -36,8 +36,8 @@ describe('ProjectService', () => {
 				const firstProject = await createTeamProject('Project 1');
 				const secondProject = await createTeamProject('Project 2');
 
-				await addUserToProject(user.id, firstProject.id, 'project:admin');
-				await addUserToProject(user.id, secondProject.id, 'project:viewer');
+				await linkUserToProject(user, firstProject, 'project:admin');
+				await linkUserToProject(user, secondProject, 'project:viewer');
 
 				const workflow = await createWorkflow();
 
@@ -108,8 +108,8 @@ describe('ProjectService', () => {
 				const firstProject = await createTeamProject('Project 1');
 				const secondProject = await createTeamProject('Project 2');
 
-				await addUserToProject(user.id, firstProject.id, 'project:admin');
-				await addUserToProject(user.id, secondProject.id, 'project:viewer');
+				await linkUserToProject(user, firstProject, 'project:admin');
+				await linkUserToProject(user, secondProject, 'project:viewer');
 
 				const workflow = await createWorkflow();
 

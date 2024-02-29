@@ -1,4 +1,4 @@
-import { Column, Entity, OneToMany } from 'typeorm';
+import { Column, Entity, OneToMany } from '@n8n/typeorm';
 import { WithTimestampsAndStringId } from './AbstractEntity';
 import type { ProjectRelation } from './ProjectRelation';
 import type { SharedCredentials } from './SharedCredentials';

@@ -14,6 +14,7 @@ import type { SaveCredentialFunction } from './shared/types';
 import * as utils from './shared/utils/';
 import { affixRoleToSaveCredential, shareCredentialWithUsers } from './shared/db/credentials';
 import { createManyUsers, createUser } from './shared/db/users';
+import { Credentials } from 'n8n-core';
 
 // mock that credentialsSharing is not enabled
 jest.spyOn(License.prototype, 'isSharingEnabled').mockReturnValue(false);
@@ -206,7 +207,7 @@ describe('DELETE /credentials/:id', () => {
 
 		const response = await authMemberAgent.delete(`/credentials/${savedCredential.id}`);
 
-		expect(response.statusCode).toBe(404);
+		expect(response.statusCode).toBe(403);
 
 		const shellCredential = await Container.get(CredentialsRepository).findOneBy({
 			id: savedCredential.id,
@@ -226,7 +227,7 @@ describe('DELETE /credentials/:id', () => {
 
 		const response = await authMemberAgent.delete(`/credentials/${savedCredential.id}`);
 
-		expect(response.statusCode).toBe(404);
+		expect(response.statusCode).toBe(403);
 
 		const shellCredential = await Container.get(CredentialsRepository).findOneBy({
 			id: savedCredential.id,
@@ -283,7 +284,7 @@ describe('PATCH /credentials/:id', () => {
 		expect(sharedCredential.credentials.name).toBe(patchPayload.name); // updated
 	});
 
-	test('should not update non-owned cred for owner', async () => {
+	test('should update non-owned cred for owner', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
 		const patchPayload = randomCredentialPayload();
 
@@ -291,22 +292,29 @@ describe('PATCH /credentials/:id', () => {
 			.patch(`/credentials/${savedCredential.id}`)
 			.send(patchPayload);
 
-		expect(response.statusCode).toBe(404);
+		expect(response.statusCode).toBe(200);
 
 		const credential = await Container.get(CredentialsRepository).findOneByOrFail({
 			id: savedCredential.id,
 		});
 
-		expect(credential.name).not.toBe(patchPayload.name);
-		expect(credential.type).not.toBe(patchPayload.type);
-		expect(credential.data).not.toBe(patchPayload.data);
+		expect(credential.name).toBe(patchPayload.name);
+		expect(credential.type).toBe(patchPayload.type);
+
+		const credentialObject = new Credentials(
+			{ id: credential.id, name: credential.name },
+			credential.type,
+			credential.nodesAccess,
+			credential.data,
+		);
+		expect(credentialObject.getData()).toStrictEqual(patchPayload.data);
 
 		const sharedCredential = await Container.get(SharedCredentialsRepository).findOneOrFail({
 			relations: ['credentials'],
 			where: { credentialsId: credential.id },
 		});
 
-		expect(sharedCredential.credentials.name).not.toBe(patchPayload.name); // updated
+		expect(sharedCredential.credentials.name).toBe(patchPayload.name); // updated
 	});
 
 	test('should update owned cred for member', async () => {
@@ -354,7 +362,7 @@ describe('PATCH /credentials/:id', () => {
 			.patch(`/credentials/${savedCredential.id}`)
 			.send(patchPayload);
 
-		expect(response.statusCode).toBe(404);
+		expect(response.statusCode).toBe(403);
 
 		const shellCredential = await Container.get(CredentialsRepository).findOneByOrFail({
 			id: savedCredential.id,
@@ -372,7 +380,7 @@ describe('PATCH /credentials/:id', () => {
 			.patch(`/credentials/${savedCredential.id}`)
 			.send(patchPayload);
 
-		expect(response.statusCode).toBe(404);
+		expect(response.statusCode).toBe(403);
 
 		const shellCredential = await Container.get(CredentialsRepository).findOneByOrFail({
 			id: savedCredential.id,
@@ -381,7 +389,7 @@ describe('PATCH /credentials/:id', () => {
 		expect(shellCredential.name).not.toBe(patchPayload.name); // not updated
 	});
 
-	test('should not update non-owned but shared cred for instance owner', async () => {
+	test('should update non-owned but shared cred for instance owner', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: secondMember });
 		await shareCredentialWithUsers(savedCredential, [owner]);
 		const patchPayload = randomCredentialPayload();
@@ -390,13 +398,13 @@ describe('PATCH /credentials/:id', () => {
 			.patch(`/credentials/${savedCredential.id}`)
 			.send(patchPayload);
 
-		expect(response.statusCode).toBe(404);
+		expect(response.statusCode).toBe(200);
 
 		const shellCredential = await Container.get(CredentialsRepository).findOneByOrFail({
 			id: savedCredential.id,
 		});
 
-		expect(shellCredential.name).not.toBe(patchPayload.name); // not updated
+		expect(shellCredential.name).toBe(patchPayload.name); // updated
 	});
 
 	test('should fail with invalid inputs', async () => {
@@ -414,10 +422,18 @@ describe('PATCH /credentials/:id', () => {
 		}
 	});
 
-	test('should fail if cred not found', async () => {
+	test('should fail with a 404 if the credential does not exist and the actor has the global credential:update scope', async () => {
 		const response = await authOwnerAgent.patch('/credentials/123').send(randomCredentialPayload());
 
 		expect(response.statusCode).toBe(404);
+	});
+
+	test('should fail with a 403 if the credential does not exist and the actor does not have the global credential:update scope', async () => {
+		const response = await authMemberAgent
+			.patch('/credentials/123')
+			.send(randomCredentialPayload());
+
+		expect(response.statusCode).toBe(403);
 	});
 });
 
@@ -523,7 +539,7 @@ describe('GET /credentials/:id', () => {
 
 		const response = await authMemberAgent.get(`/credentials/${savedCredential.id}`);
 
-		expect(response.statusCode).toBe(404);
+		expect(response.statusCode).toBe(403);
 		expect(response.body.data).toBeUndefined(); // owner's cred not returned
 	});
 

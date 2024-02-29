@@ -157,7 +157,7 @@
 						$locale.baseText('nodeSettings.nodeVersion', {
 							interpolate: {
 								node: nodeType?.displayName as string,
-								version: node.typeVersion.toString(),
+								version: (node.typeVersion ?? latestVersion).toString(),
 							},
 						})
 					}}
@@ -165,6 +165,13 @@
 				</div>
 			</div>
 		</div>
+		<NDVSubConnections
+			v-if="node"
+			ref="subConnections"
+			:root-node="node"
+			@switchSelectedNode="onSwitchSelectedNode"
+			@openConnectionNodeCreator="onOpenConnectionNodeCreator"
+		/>
 		<n8n-block-ui :show="blockUI" />
 	</div>
 </template>
@@ -178,6 +185,7 @@ import type {
 	INodeParameters,
 	INodeProperties,
 	NodeParameterValue,
+	ConnectionTypes,
 } from 'n8n-workflow';
 import { NodeHelpers, NodeConnectionType, deepCopy } from 'n8n-workflow';
 import type {
@@ -199,6 +207,7 @@ import ParameterInputList from '@/components/ParameterInputList.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
 import NodeSettingsTabs from '@/components/NodeSettingsTabs.vue';
 import NodeWebhooks from '@/components/NodeWebhooks.vue';
+import NDVSubConnections from '@/components/NDVSubConnections.vue';
 import { get, set, unset } from 'lodash-es';
 
 import NodeExecuteButton from './NodeExecuteButton.vue';
@@ -223,6 +232,7 @@ export default defineComponent({
 		ParameterInputList,
 		NodeSettingsTabs,
 		NodeWebhooks,
+		NDVSubConnections,
 		NodeExecuteButton,
 	},
 	setup() {
@@ -284,7 +294,7 @@ export default defineComponent({
 			return Math.max(...this.nodeTypeVersions);
 		},
 		isLatestNodeVersion(): boolean {
-			return this.latestVersion === this.node?.typeVersion;
+			return !this.node?.typeVersion || this.latestVersion === this.node.typeVersion;
 		},
 		nodeVersionTag(): string {
 			if (!this.nodeType || this.nodeType.hidden) {
@@ -467,6 +477,12 @@ export default defineComponent({
 		this.eventBus?.off('openSettings', this.openSettings);
 	},
 	methods: {
+		onSwitchSelectedNode(node: string) {
+			this.$emit('switchSelectedNode', node);
+		},
+		onOpenConnectionNodeCreator(node: string, connectionType: ConnectionTypes) {
+			this.$emit('openConnectionNodeCreator', node, connectionType);
+		},
 		populateHiddenIssuesSet() {
 			if (!this.node || !this.workflowsStore.isNodePristine(this.node.name)) return;
 
@@ -612,6 +628,7 @@ export default defineComponent({
 		},
 		onNodeExecute() {
 			this.hiddenIssuesInputs = [];
+			(this.$refs.subConnections as InstanceType<typeof NDVSubConnections>)?.showNodeInputsIssues();
 			this.$emit('execute');
 		},
 		setValue(name: string, value: NodeParameterValue) {

@@ -1,6 +1,11 @@
 import { Service } from 'typedi';
 import type { INode, Workflow } from 'n8n-workflow';
-import { ApplicationError, NodeOperationError, WorkflowOperationError } from 'n8n-workflow';
+import {
+	ApplicationError,
+	CredentialAccessError,
+	NodeOperationError,
+	WorkflowOperationError,
+} from 'n8n-workflow';
 
 import config from '@/config';
 import { License } from '@/License';
@@ -31,25 +36,25 @@ export class PermissionChecker {
 	 * credential used by nodes in the workflow is accessible by any of the
 	 * projects where the workflow is accessible.
 	 */
-	async check(workflow: Workflow, userId: string) {
+	async check(workflowId: string, userId: string, nodes: INode[]) {
 		const user = await this.userRepository.findOneByOrFail({ id: userId });
 
 		if (user.hasGlobalScope('workflow:execute')) return;
 
 		const { roles, projectIds } = await this.projectService.findRolesAndProjects(
 			userId,
-			workflow.id,
+			workflowId,
 		);
 
 		const scopes = this.roleService.getScopesBy(roles);
 
 		if (!scopes.has('workflow:execute')) {
 			throw new ApplicationError('User is not allowed to execute this workflow', {
-				extra: { userId, workflowId: workflow.id },
+				extra: { userId, workflowId },
 			});
 		}
 
-		const credIdsToNodes = this.mapCredIdsToNodes(workflow);
+		const credIdsToNodes = this.mapCredIdsToNodes(nodes);
 
 		const workflowCredIds = Object.keys(credIdsToNodes);
 
@@ -68,11 +73,7 @@ export class PermissionChecker {
 
 			if (!isAccessible) {
 				const nodeToFlag = credIdsToNodes[credentialsId][0];
-
-				throw new NodeOperationError(nodeToFlag, 'Node has no access to credential', {
-					description: 'Please recreate the credential or ask its owner to share it with you.',
-					level: 'warning',
-				});
+				throw new CredentialAccessError(nodeToFlag, credentialsId, workflowId);
 			}
 		}
 	}
@@ -141,25 +142,22 @@ export class PermissionChecker {
 		}
 	}
 
-	private mapCredIdsToNodes(workflow: Workflow) {
-		return Object.values(workflow.nodes).reduce<{ [credentialId: string]: INode[] }>(
-			(map, node) => {
-				if (node.disabled || !node.credentials) return map;
+	private mapCredIdsToNodes(nodes: INode[]) {
+		return nodes.reduce<{ [credentialId: string]: INode[] }>((map, node) => {
+			if (node.disabled || !node.credentials) return map;
 
-				Object.values(node.credentials).forEach((cred) => {
-					if (!cred.id) {
-						throw new NodeOperationError(node, 'Node uses invalid credential', {
-							description: 'Please recreate the credential.',
-							level: 'warning',
-						});
-					}
+			Object.values(node.credentials).forEach((cred) => {
+				if (!cred.id) {
+					throw new NodeOperationError(node, 'Node uses invalid credential', {
+						description: 'Please recreate the credential.',
+						level: 'warning',
+					});
+				}
 
-					map[cred.id] = map[cred.id] ? [...map[cred.id], node] : [node];
-				});
+				map[cred.id] = map[cred.id] ? [...map[cred.id], node] : [node];
+			});
 
-				return map;
-			},
-			{},
-		);
+			return map;
+		}, {});
 	}
 }
