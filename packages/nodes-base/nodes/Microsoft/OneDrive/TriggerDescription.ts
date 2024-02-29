@@ -105,18 +105,22 @@ export const triggerDescription: INodeProperties[] = [
 			{
 				name: 'File Created',
 				value: 'fileCreated',
+				description: 'Triggered when a new file is created',
 			},
 			{
 				name: 'File Updated',
 				value: 'fileUpdated',
+				description: 'Triggered when an existing file is modified',
 			},
 			{
 				name: 'Folder Created',
 				value: 'folderCreated',
+				description: 'Triggered when a new folder is created',
 			},
 			{
 				name: 'Folder Updated',
 				value: 'folderUpdated',
+				description: 'Triggered when an existing folder is modified',
 			},
 		],
 	},
@@ -155,14 +159,17 @@ export const triggerDescription: INodeProperties[] = [
 			{
 				name: 'Any File',
 				value: 'anyFile',
+				description: 'Watch for updated files in the entire OneDrive',
 			},
 			{
-				name: 'Selected Folder',
+				name: 'Inside a Folder',
 				value: 'selectedFolder',
+				description: 'Watch for updated files inside a selected folder',
 			},
 			{
-				name: 'Selected File',
+				name: 'A Selected File',
 				value: 'selectedFile',
+				description: 'Watch a specific file for updates',
 			},
 		],
 	},
@@ -170,7 +177,7 @@ export const triggerDescription: INodeProperties[] = [
 		displayName: 'Watch Folder',
 		name: 'watchFolder',
 		description:
-			'Whether to watch for the created Folder in a given folder, rather than the entire OneDrive',
+			'Whether to watch for the created folder in a given folder, rather than the entire OneDrive',
 		type: 'boolean',
 		default: false,
 		displayOptions: {
@@ -183,7 +190,7 @@ export const triggerDescription: INodeProperties[] = [
 		displayName: 'Watch Folder',
 		name: 'watchFolder',
 		description:
-			'Whether to watch for the updated Folder in a given folder, rather than the entire OneDrive',
+			'Whether to watch for the updated folder in a given folder, rather than the entire OneDrive',
 		type: 'boolean',
 		default: false,
 		displayOptions: {
@@ -257,7 +264,7 @@ export const triggerDescription: INodeProperties[] = [
 				type: 'boolean',
 				default: false,
 				description:
-					'Whether to look for modified files/folders in all nested folders, rather than only direct descendants.',
+					'Whether to look for modified files/folders in all nested folders, rather than only direct descendants',
 			},
 		],
 	},
