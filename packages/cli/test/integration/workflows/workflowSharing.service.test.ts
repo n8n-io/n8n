@@ -47,6 +47,7 @@ describe('WorkflowSharingService', () => {
 			expect(sharedWorkflowIds).toHaveLength(2);
 			expect(sharedWorkflowIds).toContain(workflow1.id);
 			expect(sharedWorkflowIds).toContain(workflow3.id);
+			expect(sharedWorkflowIds).not.toContain(workflow2.id);
 		});
 	});
 });
