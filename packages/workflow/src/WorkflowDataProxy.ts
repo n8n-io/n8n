@@ -733,10 +733,11 @@ export class WorkflowDataProxy {
 				functionality: 'pairedItem',
 				functionOverrides: {
 					message: 'Can’t get data',
-					description: `An expression here won't work because it uses <code>.item</code> and n8n can't figure out the <a href="https://docs.n8n.io/data/data-mapping/data-item-linking/item-linking-errors/">matching item</a>. You can either: <ul><li>Add the <a href="https://docs.n8n.io/data/data-mapping/data-item-linking/item-linking-code-node/">missing information</a> to the node <strong>'${nodeName}'</strong></li><li>Or use <code>.first()</code>, <code>.last()</code> or <code>.all()[index]</code> instead of <code>.item</code></li></ul>`,
 				},
 				nodeCause: nodeName,
-				description: `An expression here won't work because it uses <code>.item</code> and n8n can't figure out the <a href=”https://docs.n8n.io/data/data-mapping/data-item-linking/item-linking-errors/”>matching item</a>. The node <strong>'${nodeName}'</strong> didn't return enough information.`,
+				description: isScriptingNode(nodeName, that.workflow)
+					? `An expression here won't work because it uses <code>.item</code> and n8n can't figure out the <a href="https://docs.n8n.io/data/data-mapping/data-item-linking/item-linking-errors/">matching item</a>. You can either: <ul><li>Add the <a href="https://docs.n8n.io/data/data-mapping/data-item-linking/item-linking-code-node/">missing information</a> to the node <strong>'${nodeName}'</strong></li><li>Or use <code>.first()</code>, <code>.last()</code> or <code>.all()[index]</code> instead of <code>.item</code></li></ul>`
+					: `An expression here won't work because it uses <code>.item</code> and n8n can't figure out the <a href=”https://docs.n8n.io/data/data-mapping/data-item-linking/item-linking-errors/”>matching item</a>. The node <strong>'${nodeName}'</strong> didn't return enough information.`,
 				causeDetailed: `Missing pairedItem data (node ‘${nodeName}’ probably didn’t supply it)`,
 				type: 'paired_item_no_info',
 			});
