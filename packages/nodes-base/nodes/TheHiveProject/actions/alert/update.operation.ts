@@ -100,7 +100,7 @@ export async function execute(
 	}
 
 	if (fieldsToMatchOn.includes('id')) {
-		await theHiveApiRequest.call(this, 'PATCH', `/v1/alert/${id}`, body);
+		await theHiveApiRequest.call(this, 'PATCH', `/v1/alert/${id}`, updateBody);
 	} else {
 		const filter = {
 			_name: 'filter',
