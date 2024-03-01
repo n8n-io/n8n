@@ -1,6 +1,7 @@
 import { fileURLToPath, URL } from 'node:url';
 
 import { defineConfig } from 'vite';
+import checker from 'vite-plugin-checker';
 import { resolve } from 'path';
 import vue from '@vitejs/plugin-vue';
 import icons from 'unplugin-icons/vite';
@@ -9,15 +10,20 @@ import dts from 'vite-plugin-dts';
 const includeVue = process.env.INCLUDE_VUE === 'true';
 const srcPath = fileURLToPath(new URL('./src', import.meta.url));
 
+const plugins = [
+	vue(),
+	icons({
+		compiler: 'vue3',
+	}),
+	dts(),
+];
+if (process.env.ENABLE_TYPE_CHECKING === 'true') {
+	plugins.push(checker({ vueTsc: true }));
+}
+
 // https://vitejs.dev/config/
 export default defineConfig({
-	plugins: [
-		vue(),
-		icons({
-			compiler: 'vue3',
-		}),
-		dts(),
-	],
+	plugins,
 	resolve: {
 		alias: {
 			'@': srcPath,
