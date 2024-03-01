@@ -82,6 +82,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { getCredentialOnlyNodeTypeName } from '@/utils/credentialOnlyNodes';
+import { useProjectsStore } from '@/features/projects/projects.store';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -1330,6 +1331,12 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			sendData.active = false;
 
 			const rootStore = useRootStore();
+			const projectStore = useProjectsStore();
+
+			if (projectStore.currentProject?.id) {
+				(sendData as unknown as IDataObject).projectId = projectStore.currentProject.id;
+			}
+
 			return await makeRestApiRequest(
 				rootStore.getRestApiContext,
 				'POST',

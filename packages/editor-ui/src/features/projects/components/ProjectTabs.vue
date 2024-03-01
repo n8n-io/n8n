@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, watch, computed } from 'vue';
 import type { RouteRecordName } from 'vue-router';
 import { useRoute } from 'vue-router';
 import { VIEWS } from '@/constants';
@@ -10,42 +10,61 @@ const route = useRoute();
 
 const selectedTab = ref<RouteRecordName | null | undefined>('');
 const options = computed(() => {
-	const isProject = (route?.name ?? '').toString().toLowerCase().startsWith('project');
-	const name = isProject
+	const projectId = route?.params?.projectId;
+	const to = projectId
 		? {
-				workflows: VIEWS.PROJECTS_WORKFLOWS,
-				credentials: VIEWS.PROJECTS_CREDENTIALS,
+				workflows: {
+					name: VIEWS.PROJECTS_WORKFLOWS,
+					params: { projectId },
+				},
+				credentials: {
+					name: VIEWS.PROJECTS_CREDENTIALS,
+					params: { projectId },
+				},
 		  }
 		: {
-				workflows: VIEWS.WORKFLOWS,
-				credentials: VIEWS.CREDENTIALS,
+				workflows: {
+					name: VIEWS.WORKFLOWS,
+				},
+				credentials: {
+					name: VIEWS.CREDENTIALS,
+				},
 		  };
 	const tabs = [
 		{
 			label: locale.baseText('mainSidebar.workflows'),
-			value: name.workflows,
-			to: { name: name.workflows },
+			value: to.workflows.name,
+			to: to.workflows,
 		},
 		{
 			label: locale.baseText('mainSidebar.credentials'),
-			value: name.credentials,
-			to: { name: name.credentials },
+			value: to.credentials.name,
+			to: to.credentials,
 		},
 	];
 
+	if (projectId) {
+		tabs.push({
+			label: locale.baseText('settings'),
+			value: VIEWS.PROJECT_SETTINGS,
+			to: { name: VIEWS.PROJECT_SETTINGS, params: { projectId } },
+		});
+	}
+
 	return tabs;
 });
-const onUpdateModelValue = (value: string) => {
-	selectedTab.value = value;
-};
-onMounted(() => {
-	selectedTab.value = route?.name;
-});
+watch(
+	() => route?.name,
+	() => {
+		selectedTab.value = route?.name;
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>
 	<div :class="$style.projectTabs">
-		<n8n-tabs v-model="selectedTab" :options="options" @update:model-value="onUpdateModelValue" />
+		<n8n-tabs v-model="selectedTab" :options="options" data-test-id="project-tabs" />
 	</div>
 </template>
 

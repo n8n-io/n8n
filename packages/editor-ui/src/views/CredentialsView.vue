@@ -106,6 +106,9 @@ export default defineComponent({
 		'filters.type'() {
 			this.sendFiltersTelemetry('type');
 		},
+		'$route.params.projectId'() {
+			void this.initialize();
+		},
 	},
 	mounted() {
 		this.sourceControlStoreUnsubscribe = this.sourceControlStore.$onAction(({ name, after }) => {

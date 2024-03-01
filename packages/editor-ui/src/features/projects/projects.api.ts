@@ -3,21 +3,27 @@ import { get, post, patch } from '@/utils/apiUtils';
 import type {
 	Project,
 	ProjectCreateRequest,
-	ProjectRelationsRequest,
+	ProjectListItem,
+	ProjectUpdateRequest,
 } from '@/features/projects/projects.types';
 
-export const getAllProjects = async (context: IRestApiContext): Promise<Project[]> => {
+export const getAllProjects = async (context: IRestApiContext): Promise<ProjectListItem[]> => {
 	const { data } = await get(context.baseUrl, '/projects');
 	return data;
 };
 
-export const getMyProjects = async (context: IRestApiContext): Promise<Project[]> => {
+export const getMyProjects = async (context: IRestApiContext): Promise<ProjectListItem[]> => {
 	const { data } = await get(context.baseUrl, '/projects/my-projects');
 	return data;
 };
 
 export const getPersonalProject = async (context: IRestApiContext): Promise<Project> => {
 	const { data } = await get(context.baseUrl, '/projects/personal');
+	return data;
+};
+
+export const getProject = async (context: IRestApiContext, id: string): Promise<Project> => {
+	const { data } = await get(context.baseUrl, `/projects/${id}`);
 	return data;
 };
 
@@ -29,10 +35,10 @@ export const createProject = async (
 	return data;
 };
 
-export const setProjectRelations = async (
+export const updateProject = async (
 	context: IRestApiContext,
-	req: ProjectRelationsRequest,
+	req: ProjectUpdateRequest,
 ): Promise<void> => {
-	const { projectId, relations } = req;
-	await patch(context.baseUrl, `/projects/${projectId}/relations`, { relations });
+	const { id, name, relations } = req;
+	await patch(context.baseUrl, `/projects/${id}`, { name, relations });
 };

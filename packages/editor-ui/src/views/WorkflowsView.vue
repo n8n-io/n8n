@@ -240,6 +240,9 @@ const WorkflowsView = defineComponent({
 		'filters.tags'() {
 			this.sendFiltersTelemetry('tags');
 		},
+		'$route.params.projectId'() {
+			void this.initialize();
+		},
 	},
 	mounted() {
 		this.setFiltersFromQueryString();
