@@ -19,6 +19,7 @@ import { mockInstance } from '../shared/mocking';
 import config from '@/config';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import type { Project } from '@/databases/entities/Project';
+import { ProjectService } from '@/services/project.service';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['credentials'],
@@ -34,10 +35,13 @@ let authAnotherMemberAgent: SuperAgentTest;
 let saveCredential: SaveCredentialFunction;
 const mailer = mockInstance(UserManagementMailer);
 
+let projectService: ProjectService;
 let projectRepository: ProjectRepository;
 
-beforeAll(async () => {
+beforeEach(async () => {
+	await testDb.truncate(['SharedCredentials', 'Credentials', 'Project', 'ProjectRelation']);
 	projectRepository = Container.get(ProjectRepository);
+	projectService = Container.get(ProjectService);
 
 	owner = await createUser({ role: 'global:owner' });
 	ownerPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
@@ -48,10 +52,6 @@ beforeAll(async () => {
 	authAnotherMemberAgent = testServer.authAgentFor(anotherMember);
 
 	saveCredential = affixRoleToSaveCredential('credential:owner');
-});
-
-beforeEach(async () => {
-	await testDb.truncate(['SharedCredentials', 'Credentials']);
 });
 
 afterEach(() => {
@@ -184,6 +184,31 @@ describe('GET /credentials', () => {
 			name: 'My n8n',
 			type: member2PersonalProject.type,
 		});
+	});
+
+	test('should show credentials that the user has access to through a team project they are part of', async () => {
+		//
+		// ARRANGE
+		//
+		const project1 = await projectService.createTeamProject('Team Project', member);
+		await projectService.addUser(project1.id, anotherMember.id, 'project:viewer');
+		// anotherMember should see this one
+		const credential1 = await saveCredential(randomCredentialPayload(), { project: project1 });
+
+		const project2 = await projectService.createTeamProject('Team Project', member);
+		// anotherMember should NOT see this one
+		await saveCredential(randomCredentialPayload(), { project: project2 });
+
+		//
+		// ACT
+		//
+		const response = await testServer.authAgentFor(anotherMember).get('/credentials');
+
+		//
+		// ASSERT
+		//
+		expect(response.body.data).toHaveLength(1);
+		expect(response.body.data[0].id).toBe(credential1.id);
 	});
 });
 

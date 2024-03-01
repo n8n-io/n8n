@@ -51,7 +51,9 @@ export class PermissionChecker {
 		}
 
 		const accessibleCredIds = isSharingEnabled
-			? await this.sharedCredentialsRepository.getAccessibleCredentialIds(workflowUserIds)
+			? await this.sharedCredentialsRepository.getCredentialIdsByUserAndRole(workflowUserIds, {
+					scopes: ['credential:read'],
+			  })
 			: await this.sharedCredentialsRepository.getOwnedCredentialIds(workflowUserIds);
 
 		const inaccessibleCredIds = workflowCredIds.filter((id) => !accessibleCredIds.includes(id));
