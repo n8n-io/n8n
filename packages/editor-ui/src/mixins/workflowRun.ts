@@ -325,8 +325,11 @@ export const workflowRun = defineComponent({
 				this.nodeHelpers.updateNodesExecutionIssues();
 
 				const runWorkflowApiResponse = await this.runWorkflowApi(startRunData);
+				const pinData = workflowData.pinData ?? {};
 
 				for (const node of workflowData.nodes) {
+					if (pinData[node.name]) continue;
+
 					if (![FORM_TRIGGER_NODE_TYPE, WAIT_NODE_TYPE].includes(node.type)) {
 						continue;
 					}
