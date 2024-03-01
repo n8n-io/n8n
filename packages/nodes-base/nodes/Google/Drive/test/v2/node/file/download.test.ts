@@ -56,7 +56,7 @@ describe('test GoogleDriveV2: file download', () => {
 			'GET',
 			'/drive/v3/files/fileIDxxxxxx',
 			{},
-			{ alt: 'media',  supportsAllDrives: true },
+			{ alt: 'media', supportsAllDrives: true },
 			undefined,
 			{ encoding: 'arraybuffer', json: false, returnFullResponse: true, useStream: true },
 		);
