@@ -69,6 +69,7 @@
     "turbo": "1.10.12",
     "typescript": "*",
     "vite": "^5.0.12",
+    "vite-plugin-checker": "^0.6.4",
     "vitest": "^1.2.1",
     "vue-tsc": "^1.8.27"
   },
