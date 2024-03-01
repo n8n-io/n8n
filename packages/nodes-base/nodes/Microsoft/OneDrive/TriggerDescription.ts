@@ -45,7 +45,7 @@ export const fileRLC: INodeProperties = {
 			url: '=https://onedrive.live.com/...',
 		},
 	],
-	description: 'The file to operate on',
+	description: "The file to operate on. The 'By URL' option only accepts URLs that start with 'https://onedrive.live.com'.",
 };
 
 export const folderRLC: INodeProperties = {
@@ -92,7 +92,7 @@ export const folderRLC: INodeProperties = {
 			url: '=https://onedrive.live.com/...',
 		},
 	],
-	description: 'The folder to operate on',
+	description: "The folder to operate on. The 'By URL' option only accepts URLs that start with 'https://onedrive.live.com'.",
 };
 
 export const triggerDescription: INodeProperties[] = [
