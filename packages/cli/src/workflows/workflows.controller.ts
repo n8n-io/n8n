@@ -9,7 +9,7 @@ import * as WorkflowHelpers from '@/WorkflowHelpers';
 import type { IWorkflowResponse } from '@/Interfaces';
 import config from '@/config';
 import { Delete, Get, Patch, Post, ProjectScope, Put, RestController } from '@/decorators';
-import type { SharedWorkflow, WorkflowSharingRole } from '@db/entities/SharedWorkflow';
+import type { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { TagRepository } from '@db/repositories/tag.repository';
@@ -169,13 +169,9 @@ export class WorkflowsController {
 	@Get('/', { middlewares: listQueryMiddleware })
 	async getAll(req: ListQuery.Request, res: express.Response) {
 		try {
-			const roles: WorkflowSharingRole[] = this.license.isSharingEnabled()
-				? []
-				: ['workflow:owner'];
-			const sharedWorkflowIds = await this.workflowSharingService.getSharedWorkflowIds(
-				req.user,
-				roles,
-			);
+			const sharedWorkflowIds = await this.workflowSharingService.getSharedWorkflowIds(req.user, {
+				scopes: ['workflow:read'],
+			});
 
 			const { workflows: data, count } = await this.workflowService.getMany(
 				sharedWorkflowIds,

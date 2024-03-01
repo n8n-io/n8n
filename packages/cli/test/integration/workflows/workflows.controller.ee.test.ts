@@ -6,7 +6,6 @@ import type { INode } from 'n8n-workflow';
 import type { User } from '@db/entities/User';
 import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
-import { WorkflowSharingService } from '@/workflows/workflowSharing.service';
 
 import { mockInstance } from '../../shared/mocking';
 import * as utils from '../shared/utils/';
@@ -1000,33 +999,6 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 
 		expect(updateAttemptResponse.status).toBe(400);
 		expect(updateAttemptResponse.body.code).toBe(100);
-	});
-});
-
-describe('getSharedWorkflowIds', () => {
-	it('should show all workflows to owners', async () => {
-		owner.role = 'global:owner';
-		const workflow1 = await createWorkflow({}, member);
-		const workflow2 = await createWorkflow({}, anotherMember);
-		const sharedWorkflowIds =
-			await Container.get(WorkflowSharingService).getSharedWorkflowIds(owner);
-		expect(sharedWorkflowIds).toHaveLength(2);
-		expect(sharedWorkflowIds).toContain(workflow1.id);
-		expect(sharedWorkflowIds).toContain(workflow2.id);
-	});
-
-	it('should show shared workflows to users', async () => {
-		member.role = 'global:member';
-		const workflow1 = await createWorkflow({}, anotherMember);
-		const workflow2 = await createWorkflow({}, anotherMember);
-		const workflow3 = await createWorkflow({}, anotherMember);
-		await shareWorkflowWithUsers(workflow1, [member]);
-		await shareWorkflowWithUsers(workflow3, [member]);
-		const sharedWorkflowIds =
-			await Container.get(WorkflowSharingService).getSharedWorkflowIds(member);
-		expect(sharedWorkflowIds).toHaveLength(2);
-		expect(sharedWorkflowIds).toContain(workflow1.id);
-		expect(sharedWorkflowIds).toContain(workflow3.id);
 	});
 });
 

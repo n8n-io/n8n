@@ -2,12 +2,14 @@ import Container from 'typedi';
 import type { DeepPartial } from '@n8n/typeorm';
 import { v4 as uuid } from 'uuid';
 
-import type { User } from '@db/entities/User';
+import { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import type { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
+import { Project } from '@/databases/entities/Project';
+import { UserRepository } from '@/databases/repositories/user.repository';
 
 export async function createManyWorkflows(
 	amount: number,
@@ -25,7 +27,10 @@ export async function createManyWorkflows(
  * @param attributes workflow attributes
  * @param user user to assign the workflow to
  */
-export async function createWorkflow(attributes: Partial<WorkflowEntity> = {}, user?: User) {
+export async function createWorkflow(
+	attributes: Partial<WorkflowEntity> = {},
+	userOrProject?: User | Project,
+) {
 	const { active, name, nodes, connections, versionId } = attributes;
 
 	const workflowEntity = Container.get(WorkflowRepository).create({
@@ -48,7 +53,8 @@ export async function createWorkflow(attributes: Partial<WorkflowEntity> = {}, u
 
 	const workflow = await Container.get(WorkflowRepository).save(workflowEntity);
 
-	if (user) {
+	if (userOrProject instanceof User) {
+		const user = userOrProject;
 		const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(user.id);
 		await Container.get(SharedWorkflowRepository).save({
 			user,
@@ -57,6 +63,21 @@ export async function createWorkflow(attributes: Partial<WorkflowEntity> = {}, u
 			role: 'workflow:owner',
 		});
 	}
+
+	if (userOrProject instanceof Project) {
+		const project = userOrProject;
+		// TODO: remove this when we remove users from SharedWorkflow
+		const user = await Container.get(UserRepository).findOneByOrFail({
+			projectRelations: { projectId: project.id },
+		});
+		await Container.get(SharedWorkflowRepository).save({
+			user,
+			project,
+			workflow,
+			role: 'workflow:owner',
+		});
+	}
+
 	return workflow;
 }
 
