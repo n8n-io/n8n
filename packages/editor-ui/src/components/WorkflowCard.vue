@@ -280,10 +280,7 @@ export default defineComponent({
 	padding: var(--spacing-s) 0 0 var(--spacing-s);
 
 	span {
-		&,
-		a {
-			color: var(--color-text-light);
-		}
+		color: var(--color-text-light);
 	}
 }
 

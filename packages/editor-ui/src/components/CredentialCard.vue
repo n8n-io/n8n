@@ -185,6 +185,10 @@ export default defineComponent({
 .cardHeading {
 	font-size: var(--font-size-s);
 	padding: var(--spacing-s) 0 0;
+
+	span {
+		color: var(--color-text-light);
+	}
 }
 
 .cardDescription {
