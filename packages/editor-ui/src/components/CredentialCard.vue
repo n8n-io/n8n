@@ -5,7 +5,7 @@
 		</template>
 		<template #header>
 			<n8n-heading tag="h2" bold :class="$style.cardHeading">
-				{{ data.name }}
+				{{ data.name }}<span v-if="data.homeProject?.name"> - {{ data.homeProject.name }}</span>
 			</n8n-heading>
 		</template>
 		<div :class="$style.cardDescription">

@@ -2,7 +2,7 @@
 	<n8n-card :class="$style.cardLink" @click="onClick">
 		<template #header>
 			<n8n-heading tag="h2" bold :class="$style.cardHeading" data-test-id="workflow-card-name">
-				{{ data.name }}
+				{{ data.name }}<span v-if="data.homeProject?.name"> - {{ data.homeProject.name }}</span>
 			</n8n-heading>
 		</template>
 		<div :class="$style.cardDescription">
@@ -278,6 +278,13 @@ export default defineComponent({
 	font-size: var(--font-size-s);
 	word-break: break-word;
 	padding: var(--spacing-s) 0 0 var(--spacing-s);
+
+	span {
+		&,
+		a {
+			color: var(--color-text-light);
+		}
+	}
 }
 
 .cardDescription {
