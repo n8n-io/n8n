@@ -126,6 +126,9 @@ export default defineComponent({
 		isChatNode(): boolean {
 			return Boolean(this.nodeType && this.nodeType.name === CHAT_TRIGGER_NODE_TYPE);
 		},
+		isChatChild(): boolean {
+			return this.workflowsStore.checkIfNodeHasChatParent(this.nodeName);
+		},
 		isFormTriggerNode(): boolean {
 			return Boolean(this.nodeType && this.nodeType.name === FORM_TRIGGER_NODE_TYPE);
 		},
@@ -226,7 +229,8 @@ export default defineComponent({
 		},
 
 		async onClick() {
-			if (this.isChatNode) {
+			// Show chat if it's a chat node or a child of a chat node with no input data
+			if (this.isChatNode || (this.isChatChild && this.ndvStore.isDNVDataEmpty('input'))) {
 				this.ndvStore.setActiveNodeName(null);
 				nodeViewEventBus.emit('openChat');
 			} else if (this.isListeningForEvents) {
