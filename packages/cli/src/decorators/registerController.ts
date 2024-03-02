@@ -1,13 +1,17 @@
 import { Container } from 'typedi';
 import { Router } from 'express';
 import type { Application, Request, Response, RequestHandler } from 'express';
+import type { Scope } from '@n8n/permissions';
+import { ApplicationError } from 'n8n-workflow';
 import type { Class } from 'n8n-core';
 
+import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
+import type { BooleanLicenseFeature } from '@/Interfaces';
+import { License } from '@/License';
 import type { AuthenticatedRequest } from '@/requests';
 import { send } from '@/ResponseHelper'; // TODO: move `ResponseHelper.send` to this file
 import {
-	CONTROLLER_AUTH_ROLES,
 	CONTROLLER_BASE_PATH,
 	CONTROLLER_LICENSE_FEATURES,
 	CONTROLLER_MIDDLEWARES,
@@ -15,31 +19,12 @@ import {
 	CONTROLLER_ROUTES,
 } from './constants';
 import type {
-	AuthRole,
-	AuthRoleMetadata,
 	Controller,
 	LicenseMetadata,
 	MiddlewareMetadata,
 	RouteMetadata,
 	ScopeMetadata,
 } from './types';
-import type { BooleanLicenseFeature } from '@/Interfaces';
-
-import { License } from '@/License';
-import type { Scope } from '@n8n/permissions';
-import { ApplicationError } from 'n8n-workflow';
-
-export const createAuthMiddleware =
-	(authRole: AuthRole): RequestHandler =>
-	({ user }: AuthenticatedRequest, res, next) => {
-		if (authRole === 'none') return next();
-
-		if (!user) return res.status(401).json({ status: 'error', message: 'Unauthorized' });
-
-		if (authRole === 'any' || authRole === user.role) return next();
-
-		res.status(403).json({ status: 'error', message: 'Unauthorized' });
-	};
 
 export const createLicenseMiddleware =
 	(features: BooleanLicenseFeature[]): RequestHandler =>
@@ -77,11 +62,6 @@ export const createGlobalScopeMiddleware =
 		return next();
 	};
 
-const authFreeRoutes: string[] = [];
-
-export const canSkipAuth = (method: string, path: string): boolean =>
-	authFreeRoutes.includes(`${method.toLowerCase()} ${path}`);
-
 export const registerController = (app: Application, controllerClass: Class<object>) => {
 	const controller = Container.get(controllerClass as Class<Controller>);
 	const controllerBasePath = Reflect.getMetadata(CONTROLLER_BASE_PATH, controllerClass) as
@@ -92,9 +72,6 @@ export const registerController = (app: Application, controllerClass: Class<obje
 			extra: { controllerName: controllerClass.name },
 		});
 
-	const authRoles = Reflect.getMetadata(CONTROLLER_AUTH_ROLES, controllerClass) as
-		| AuthRoleMetadata
-		| undefined;
 	const routes = Reflect.getMetadata(CONTROLLER_ROUTES, controllerClass) as RouteMetadata[];
 	const licenseFeatures = Reflect.getMetadata(CONTROLLER_LICENSE_FEATURES, controllerClass) as
 		| LicenseMetadata
@@ -114,23 +91,24 @@ export const registerController = (app: Application, controllerClass: Class<obje
 			(Reflect.getMetadata(CONTROLLER_MIDDLEWARES, controllerClass) ?? []) as MiddlewareMetadata[]
 		).map(({ handlerName }) => controller[handlerName].bind(controller) as RequestHandler);
 
+		const authService = Container.get(AuthService);
+
 		routes.forEach(
-			({ method, path, middlewares: routeMiddlewares, handlerName, usesTemplates }) => {
-				const authRole = authRoles?.[handlerName] ?? authRoles?.['*'];
+			({ method, path, middlewares: routeMiddlewares, handlerName, usesTemplates, skipAuth }) => {
 				const features = licenseFeatures?.[handlerName] ?? licenseFeatures?.['*'];
 				const scopes = requiredScopes?.[handlerName] ?? requiredScopes?.['*'];
 				const handler = async (req: Request, res: Response) =>
 					await controller[handlerName](req, res);
 				router[method](
 					path,
-					...(authRole ? [createAuthMiddleware(authRole)] : []),
+					// eslint-disable-next-line @typescript-eslint/unbound-method
+					...(skipAuth ? [] : [authService.authMiddleware]),
 					...(features ? [createLicenseMiddleware(features)] : []),
 					...(scopes ? [createGlobalScopeMiddleware(scopes)] : []),
 					...controllerMiddlewares,
 					...routeMiddlewares,
 					usesTemplates ? handler : send(handler),
 				);
-				if (!authRole || authRole === 'none') authFreeRoutes.push(`${method} ${prefix}${path}`);
 			},
 		);
 

@@ -1,22 +1,13 @@
-import Container from 'typedi';
-import jwt from 'jsonwebtoken';
-import { Logger } from '@/Logger';
-import config from '@/config';
-import { User } from '@db/entities/User';
-import { UserRepository } from '@db/repositories/user.repository';
-import { UserService } from '@/services/user.service';
-import { mockInstance } from '../../shared/mocking';
+import { mock } from 'jest-mock-extended';
 import { v4 as uuid } from 'uuid';
-import { InternalHooks } from '@/InternalHooks';
+
+import { User } from '@db/entities/User';
+import { UserService } from '@/services/user.service';
+import { UrlService } from '@/services/url.service';
 
 describe('UserService', () => {
-	config.set('userManagement.jwtSecret', 'random-secret');
-
-	mockInstance(Logger);
-	mockInstance(InternalHooks);
-
-	const userRepository = mockInstance(UserRepository);
-	const userService = Container.get(UserService);
+	const urlService = new UrlService();
+	const userService = new UserService(mock(), mock(), mock(), urlService);
 
 	const commonMockUser = Object.assign(new User(), {
 		id: uuid(),
@@ -73,68 +64,6 @@ describe('UserService', () => {
 
 			expect(url.searchParams.get('inviterId')).toBe(firstUser.id);
 			expect(url.searchParams.get('inviteeId')).toBe(secondUser.id);
-		});
-	});
-
-	describe('generatePasswordResetToken', () => {
-		it('should generate valid password-reset tokens', () => {
-			const token = userService.generatePasswordResetToken(commonMockUser);
-
-			const decoded = jwt.decode(token) as jwt.JwtPayload;
-
-			if (!decoded.exp) fail('Token does not contain expiry');
-			if (!decoded.iat) fail('Token does not contain issued-at');
-
-			expect(decoded.sub).toEqual(commonMockUser.id);
-			expect(decoded.exp - decoded.iat).toEqual(1200); // Expires in 20 minutes
-			expect(decoded.passwordSha).toEqual(
-				'31513c5a9e3c5afe5c06d5675ace74e8bc3fadd9744ab5d89c311f2a62ccbd39',
-			);
-		});
-	});
-
-	describe('resolvePasswordResetToken', () => {
-		it('should not return a user if the token in invalid', async () => {
-			const user = await userService.resolvePasswordResetToken('invalid-token');
-
-			expect(user).toBeUndefined();
-		});
-
-		it('should not return a user if the token in expired', async () => {
-			const token = userService.generatePasswordResetToken(commonMockUser, '-1h');
-
-			const user = await userService.resolvePasswordResetToken(token);
-
-			expect(user).toBeUndefined();
-		});
-
-		it('should not return a user if the user does not exist in the DB', async () => {
-			userRepository.findOne.mockResolvedValueOnce(null);
-			const token = userService.generatePasswordResetToken(commonMockUser);
-
-			const user = await userService.resolvePasswordResetToken(token);
-
-			expect(user).toBeUndefined();
-		});
-
-		it('should not return a user if the password sha does not match', async () => {
-			const token = userService.generatePasswordResetToken(commonMockUser);
-			const updatedUser = Object.create(commonMockUser);
-			updatedUser.password = 'something-else';
-			userRepository.findOne.mockResolvedValueOnce(updatedUser);
-
-			const user = await userService.resolvePasswordResetToken(token);
-
-			expect(user).toBeUndefined();
-		});
-
-		it('should not return the user if all checks pass', async () => {
-			const token = userService.generatePasswordResetToken(commonMockUser);
-			userRepository.findOne.mockResolvedValueOnce(commonMockUser);
-
-			const user = await userService.resolvePasswordResetToken(token);
-
-			expect(user).toEqual(commonMockUser);
 		});
 	});
 });

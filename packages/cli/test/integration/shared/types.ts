@@ -35,7 +35,6 @@ type EndpointGroup =
 	| 'debug';
 
 export interface SetupProps {
-	applyAuth?: boolean;
 	endpointGroups?: EndpointGroup[];
 	enabledFeatures?: BooleanLicenseFeature[];
 	quotas?: Partial<{ [K in NumericLicenseFeature]: number }>;
@@ -61,7 +60,3 @@ export type SaveCredentialFunction = (
 	credentialPayload: CredentialPayload,
 	{ user }: { user: User },
 ) => Promise<CredentialsEntity & ICredentialsDb>;
-
-export type PostgresSchemaSection = {
-	[K in 'host' | 'port' | 'schema' | 'user' | 'password']: { env: string };
-};

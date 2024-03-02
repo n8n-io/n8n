@@ -40,7 +40,7 @@ import type {
 	IConnection,
 	IConnections,
 	IDataObject,
-	IExecutionsSummary,
+	ExecutionSummary,
 	INode,
 	INodeConnections,
 	INodeCredentials,
@@ -125,6 +125,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		executionWaitingForWebhook: false,
 		nodeMetadata: {},
 		isInDebugMode: false,
+		chatMessages: [],
 	}),
 	getters: {
 		// Workflow getters
@@ -262,11 +263,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			return (nodeName: string) => this.executingNode.includes(nodeName);
 		},
 		// Executions getters
-		getExecutionDataById(): (id: string) => IExecutionsSummary | undefined {
-			return (id: string): IExecutionsSummary | undefined =>
+		getExecutionDataById(): (id: string) => ExecutionSummary | undefined {
+			return (id: string): ExecutionSummary | undefined =>
 				this.currentWorkflowExecutions.find((execution) => execution.id === id);
 		},
-		getAllLoadedFinishedExecutions(): IExecutionsSummary[] {
+		getAllLoadedFinishedExecutions(): ExecutionSummary[] {
 			return this.currentWorkflowExecutions.filter(
 				(ex) => ex.finished === true || ex.stoppedAt !== undefined,
 			);
@@ -276,6 +277,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		},
 		getTotalFinishedExecutionsCount(): number {
 			return this.finishedExecutionsCount;
+		},
+		getPastChatMessages(): string[] {
+			return Array.from(new Set(this.chatMessages));
 		},
 	},
 	actions: {
@@ -1191,6 +1195,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				return;
 			}
 			this.activeExecutions.unshift(newActiveExecution);
+			this.activeExecutionId = newActiveExecution.id;
 		},
 		finishActiveExecution(
 			finishedActiveExecution: IPushDataExecutionFinished | IPushDataUnsavedExecutionFinished,
@@ -1361,7 +1366,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 		async loadCurrentWorkflowExecutions(
 			requestFilter: ExecutionsQueryFilter,
-		): Promise<IExecutionsSummary[]> {
+		): Promise<ExecutionSummary[]> {
 			let activeExecutions = [];
 
 			if (!requestFilter.workflowId) {
@@ -1387,11 +1392,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			return await getExecutionData(rootStore.getRestApiContext, executionId);
 		},
 
-		deleteExecution(execution: IExecutionsSummary): void {
+		deleteExecution(execution: ExecutionSummary): void {
 			this.currentWorkflowExecutions.splice(this.currentWorkflowExecutions.indexOf(execution), 1);
 		},
 
-		addToCurrentExecutions(executions: IExecutionsSummary[]): void {
+		addToCurrentExecutions(executions: ExecutionSummary[]): void {
 			executions.forEach((execution) => {
 				const exists = this.currentWorkflowExecutions.find((ex) => ex.id === execution.id);
 				if (!exists && execution.workflowId === this.workflowId) {
@@ -1434,6 +1439,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 					pristine: isPristine,
 				},
 			};
+		},
+
+		resetChatMessages(): void {
+			this.chatMessages = [];
+		},
+
+		appendChatMessage(message: string): void {
+			this.chatMessages.push(message);
 		},
 	},
 });

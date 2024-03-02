@@ -39,7 +39,7 @@ export const planAndExecuteAgentProperties: INodeProperties[] = [
 				'@version': [1.2],
 			},
 		},
-		default: '={{ $json.chatInput } }',
+		default: '={{ $json.chatInput }}',
 	},
 	{
 		displayName: 'Options',

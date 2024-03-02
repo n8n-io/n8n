@@ -37,5 +37,6 @@ RUN \
 	mkdir .n8n && \
 	chown node:node .n8n
 
+ENV SHELL /bin/sh
 USER node
 ENTRYPOINT ["tini", "--", "/docker-entrypoint.sh"]

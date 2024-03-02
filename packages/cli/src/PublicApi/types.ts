@@ -1,32 +1,8 @@
-import type express from 'express';
 import type { IDataObject, ExecutionStatus } from 'n8n-workflow';
-
-import type { User } from '@db/entities/User';
-
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
-
 import type { TagEntity } from '@db/entities/TagEntity';
-
-import type { UserManagementMailer } from '@/UserManagement/email';
-
 import type { Risk } from '@/security-audit/types';
-
-export type AuthlessRequest<
-	RouteParams = {},
-	ResponseBody = {},
-	RequestBody = {},
-	RequestQuery = {},
-> = express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery>;
-
-export type AuthenticatedRequest<
-	RouteParams = {},
-	ResponseBody = {},
-	RequestBody = {},
-	RequestQuery = {},
-> = express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery> & {
-	user: User;
-	mailer?: UserManagementMailer;
-};
+import type { AuthlessRequest, AuthenticatedRequest } from '@/requests';
 
 export type PaginatedRequest = AuthenticatedRequest<
 	{},

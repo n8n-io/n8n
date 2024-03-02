@@ -1,14 +1,16 @@
 import Container from 'typedi';
+
+import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
 import type { User } from '@db/entities/User';
+import { UserRepository } from '@db/repositories/user.repository';
 import { randomPassword } from '@/Ldap/helpers';
 import { TOTPService } from '@/Mfa/totp.service';
-import { UserService } from '@/services/user.service';
-import { randomDigit, randomString, randomValidPassword, uniqueId } from '../shared/random';
+
 import * as testDb from '../shared/testDb';
 import * as utils from '../shared/utils';
+import { randomDigit, randomString, randomValidPassword, uniqueId } from '../shared/random';
 import { createUser, createUserWithMfaEnabled } from '../shared/db/users';
-import { UserRepository } from '@db/repositories/user.repository';
 
 jest.mock('@/telemetry');
 
@@ -241,7 +243,7 @@ describe('Change password with MFA enabled', () => {
 
 		config.set('userManagement.jwtSecret', randomString(5, 10));
 
-		const resetPasswordToken = Container.get(UserService).generatePasswordResetToken(user);
+		const resetPasswordToken = Container.get(AuthService).generatePasswordResetToken(user);
 
 		const mfaToken = new TOTPService().generateTOTP(rawSecret);
 

@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "1.29.0",
+  "version": "1.31.0",
   "private": true,
   "homepage": "https://n8n.io",
   "engines": {
@@ -69,6 +69,7 @@
     "turbo": "1.10.12",
     "typescript": "*",
     "vite": "^5.0.12",
+    "vite-plugin-checker": "^0.6.4",
     "vitest": "^1.2.1",
     "vue-tsc": "^1.8.27"
   },
@@ -80,6 +81,7 @@
       "@types/node": "^18.16.16",
       "axios": "1.6.7",
       "chokidar": "3.5.2",
+      "ip": "2.0.1",
       "jsonwebtoken": "9.0.0",
       "prettier": "^3.1.0",
       "semver": "^7.5.4",

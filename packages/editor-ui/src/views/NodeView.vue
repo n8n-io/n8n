@@ -94,6 +94,7 @@
 				:is-production-execution-preview="isProductionExecutionPreview"
 				@redrawNode="redrawNode"
 				@switchSelectedNode="onSwitchSelectedNode"
+				@openConnectionNodeCreator="onOpenConnectionNodeCreator"
 				@valueChanged="valueChanged"
 				@stopExecution="stopExecution"
 				@saveKeyboardShortcut="onSaveKeyboardShortcut"
@@ -258,7 +259,6 @@ import { useUniqueNodeName } from '@/composables/useUniqueNodeName';
 import { useI18n } from '@/composables/useI18n';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
-import { workflowRun } from '@/mixins/workflowRun';
 
 import NodeDetailsView from '@/components/NodeDetailsView.vue';
 import ContextMenu from '@/components/ContextMenu/ContextMenu.vue';
@@ -271,7 +271,7 @@ import type {
 	IConnection,
 	IConnections,
 	IDataObject,
-	IExecutionsSummary,
+	ExecutionSummary,
 	INode,
 	INodeConnections,
 	INodeCredentialsDetails,
@@ -381,6 +381,7 @@ import { useDebounce } from '@/composables/useDebounce';
 import { useCanvasPanning } from '@/composables/useCanvasPanning';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useRunWorkflow } from '@/composables/useRunWorkflow';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -412,7 +413,6 @@ export default defineComponent({
 		ContextMenu,
 		SetupWorkflowCredentialsButton,
 	},
-	mixins: [workflowRun],
 	async beforeRouteLeave(to, from, next) {
 		if (
 			getNodeViewTab(to) === MAIN_HEADER_TABS.EXECUTIONS ||
@@ -473,7 +473,7 @@ export default defineComponent({
 			next();
 		}
 	},
-	setup(props, ctx) {
+	setup() {
 		const nodeViewRootRef = ref(null);
 		const nodeViewRef = ref(null);
 		const onMouseMoveEnd = ref(null);
@@ -491,7 +491,8 @@ export default defineComponent({
 		const deviceSupport = useDeviceSupport();
 		const { callDebounced } = useDebounce();
 		const canvasPanning = useCanvasPanning(nodeViewRootRef, { onMouseMoveEnd });
-		const workflowHelpers = useWorkflowHelpers(router);
+		const workflowHelpers = useWorkflowHelpers({ router });
+		const { runWorkflow } = useRunWorkflow({ router });
 
 		return {
 			locale,
@@ -507,6 +508,7 @@ export default defineComponent({
 			nodeViewRef,
 			onMouseMoveEnd,
 			workflowHelpers,
+			runWorkflow,
 			callDebounced,
 			...useCanvasMouseSelect(),
 			...useGlobalLinkActions(),
@@ -515,8 +517,6 @@ export default defineComponent({
 			...useMessage(),
 			...useUniqueNodeName(),
 			...useExecutionDebugging(),
-			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...workflowRun.setup?.(props, ctx),
 		};
 	},
 	watch: {
@@ -804,13 +804,16 @@ export default defineComponent({
 		this.clipboard.onPaste.value = this.onClipboardPasteEvent;
 
 		this.canvasStore.startLoading();
-		const loadPromises = [
-			this.loadActiveWorkflows(),
-			this.loadCredentials(),
-			this.loadCredentialTypes(),
-			this.loadVariables(),
-			this.loadSecrets(),
-		];
+		const loadPromises =
+			this.settingsStore.isPreviewMode && this.isDemo
+				? []
+				: [
+						this.loadActiveWorkflows(),
+						this.loadCredentials(),
+						this.loadCredentialTypes(),
+						this.loadVariables(),
+						this.loadSecrets(),
+				  ];
 
 		if (this.nodeTypesStore.allNodeTypes.length === 0) {
 			loadPromises.push(this.loadNodeTypes());
@@ -865,9 +868,9 @@ export default defineComponent({
 		) {
 			const onboardingResponse = await this.uiStore.getNextOnboardingPrompt();
 			const promptTimeout =
-				onboardingResponse.toast_sequence_number === 1 ? FIRST_ONBOARDING_PROMPT_TIMEOUT : 1000;
+				onboardingResponse?.toast_sequence_number === 1 ? FIRST_ONBOARDING_PROMPT_TIMEOUT : 1000;
 
-			if (onboardingResponse.title && onboardingResponse.description) {
+			if (onboardingResponse?.title && onboardingResponse?.description) {
 				setTimeout(async () => {
 					this.showToast({
 						type: 'info',
@@ -900,38 +903,7 @@ export default defineComponent({
 
 		this.registerCustomAction({
 			key: 'openSelectiveNodeCreator',
-			action: async ({
-				connectiontype,
-				node,
-				creatorview,
-			}: {
-				connectiontype: NodeConnectionType;
-				node: string;
-				creatorview?: string;
-			}) => {
-				const nodeName = node ?? this.ndvStore.activeNodeName;
-				const nodeData = nodeName ? this.workflowsStore.getNodeByName(nodeName) : null;
-
-				this.ndvStore.activeNodeName = null;
-				await this.redrawNode(node);
-				// Wait for UI to update
-				setTimeout(() => {
-					if (creatorview) {
-						this.onToggleNodeCreator({
-							createNodeActive: true,
-							nodeCreatorView: creatorview,
-						});
-					} else if (connectiontype && nodeData) {
-						this.insertNodeAfterSelected({
-							index: 0,
-							endpointUuid: `${nodeData.id}-input${connectiontype}0`,
-							eventSource: NODE_CREATOR_OPEN_SOURCES.NOTICE_ERROR_MESSAGE,
-							outputType: connectiontype,
-							sourceId: nodeData.id,
-						});
-					}
-				}, 0);
-			},
+			action: this.openSelectiveNodeCreator,
 		});
 
 		this.readOnlyEnvRouteCheck();
@@ -1013,6 +985,7 @@ export default defineComponent({
 		this.instance.unbind();
 		this.instance.destroy();
 		this.uiStore.stateIsDirty = false;
+		this.workflowsStore.resetChatMessages();
 		window.removeEventListener('message', this.onPostMessageReceived);
 		nodeViewEventBus.off('newWorkflow', this.newWorkflow);
 		nodeViewEventBus.off('importWorkflowData', this.onImportWorkflowDataEvent);
@@ -1021,6 +994,38 @@ export default defineComponent({
 		sourceControlEventBus.off('pull', this.onSourceControlPull);
 	},
 	methods: {
+		async openSelectiveNodeCreator({
+			connectiontype,
+			node,
+			creatorview,
+		}: {
+			connectiontype: ConnectionTypes;
+			node: string;
+			creatorview?: string;
+		}) {
+			const nodeName = node ?? this.ndvStore.activeNodeName;
+			const nodeData = nodeName ? this.workflowsStore.getNodeByName(nodeName) : null;
+
+			this.ndvStore.activeNodeName = null;
+			await this.redrawNode(node);
+			// Wait for UI to update
+			setTimeout(() => {
+				if (creatorview) {
+					this.onToggleNodeCreator({
+						createNodeActive: true,
+						nodeCreatorView: creatorview,
+					});
+				} else if (connectiontype && nodeData) {
+					this.insertNodeAfterSelected({
+						index: 0,
+						endpointUuid: `${nodeData.id}-input${connectiontype}0`,
+						eventSource: NODE_CREATOR_OPEN_SOURCES.NOTICE_ERROR_MESSAGE,
+						outputType: connectiontype,
+						sourceId: nodeData.id,
+					});
+				}
+			});
+		},
 		editAllowedCheck(): boolean {
 			if (this.readOnlyNotification?.visible) {
 				return;
@@ -1274,7 +1279,7 @@ export default defineComponent({
 					});
 				}
 			}
-			if ((data as IExecutionsSummary).waitTill) {
+			if ((data as ExecutionSummary).waitTill) {
 				this.showMessage({
 					title: this.$locale.baseText('nodeView.thisExecutionHasntFinishedYet'),
 					message: `<a data-action="reload">${this.$locale.baseText(
@@ -1901,7 +1906,7 @@ export default defineComponent({
 
 				const nodeData = JSON.stringify(workflowToCopy, null, 2);
 
-				this.clipboard.copy(nodeData);
+				void this.clipboard.copy(nodeData);
 				if (data.nodes.length > 0) {
 					if (!isCut) {
 						this.showMessage({
@@ -3964,6 +3969,12 @@ export default defineComponent({
 		},
 		async onSwitchSelectedNode(nodeName: string) {
 			this.nodeSelectedByName(nodeName, true, true);
+		},
+		async onOpenConnectionNodeCreator(node: string, connectionType: ConnectionTypes) {
+			await this.openSelectiveNodeCreator({
+				connectiontype: connectionType,
+				node,
+			});
 		},
 		async redrawNode(nodeName: string) {
 			// TODO: Improve later

@@ -1,34 +1,37 @@
-import type { CookieOptions, Response } from 'express';
-import { anyObject, captor, mock } from 'jest-mock-extended';
+import Container from 'typedi';
+import type { Response } from 'express';
+import { anyObject, mock } from 'jest-mock-extended';
 import jwt from 'jsonwebtoken';
+
+import type { AuthService } from '@/auth/auth.service';
+import config from '@/config';
+import { OwnerController } from '@/controllers/owner.controller';
 import type { User } from '@db/entities/User';
 import type { SettingsRepository } from '@db/repositories/settings.repository';
-import config from '@/config';
-import type { OwnerRequest } from '@/requests';
-import { OwnerController } from '@/controllers/owner.controller';
-import { AUTH_COOKIE_NAME } from '@/constants';
-import { UserService } from '@/services/user.service';
+import type { UserRepository } from '@db/repositories/user.repository';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import type { InternalHooks } from '@/InternalHooks';
 import { License } from '@/License';
+import type { OwnerRequest } from '@/requests';
+import type { UserService } from '@/services/user.service';
+import { PasswordUtility } from '@/services/password.utility';
 
 import { mockInstance } from '../../shared/mocking';
 import { badPasswords } from '../shared/testData';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { PasswordUtility } from '@/services/password.utility';
-import Container from 'typedi';
-import type { InternalHooks } from '@/InternalHooks';
-import { UserRepository } from '@/databases/repositories/user.repository';
 
 describe('OwnerController', () => {
 	const configGetSpy = jest.spyOn(config, 'getEnv');
 	const internalHooks = mock<InternalHooks>();
-	const userService = mockInstance(UserService);
-	const userRepository = mockInstance(UserRepository);
+	const authService = mock<AuthService>();
+	const userService = mock<UserService>();
+	const userRepository = mock<UserRepository>();
 	const settingsRepository = mock<SettingsRepository>();
 	mockInstance(License).isWithinUsersLimit.mockReturnValue(true);
 	const controller = new OwnerController(
 		mock(),
 		internalHooks,
 		settingsRepository,
+		authService,
 		userService,
 		Container.get(PasswordUtility),
 		mock(),
@@ -90,17 +93,17 @@ describe('OwnerController', () => {
 			});
 			const res = mock<Response>();
 			configGetSpy.mockReturnValue(false);
+			userRepository.findOneOrFail.calledWith(anyObject()).mockResolvedValue(user);
 			userRepository.save.calledWith(anyObject()).mockResolvedValue(user);
 			jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
 
 			await controller.setupOwner(req, res);
 
-			expect(userRepository.save).toHaveBeenCalledWith(user);
-
-			const cookieOptions = captor<CookieOptions>();
-			expect(res.cookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME, 'signed-token', cookieOptions);
-			expect(cookieOptions.value.httpOnly).toBe(true);
-			expect(cookieOptions.value.sameSite).toBe('lax');
+			expect(userRepository.findOneOrFail).toHaveBeenCalledWith({
+				where: { role: 'global:owner' },
+			});
+			expect(userRepository.save).toHaveBeenCalledWith(user, { transaction: false });
+			expect(authService.issueCookie).toHaveBeenCalledWith(res, user);
 		});
 	});
 });
