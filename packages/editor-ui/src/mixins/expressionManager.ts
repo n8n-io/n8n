@@ -1,19 +1,21 @@
-import { defineComponent } from 'vue';
-import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
 
+import { ensureSyntaxTree } from '@codemirror/language';
 import type { IDataObject } from 'n8n-workflow';
 import { Expression, ExpressionExtensions } from 'n8n-workflow';
-import { ensureSyntaxTree } from '@codemirror/language';
 
-import { useNDVStore } from '@/stores/ndv.store';
 import { EXPRESSION_EDITOR_PARSER_TIMEOUT } from '@/constants';
+import { useNDVStore } from '@/stores/ndv.store';
 
-import type { EditorView } from '@codemirror/view';
 import type { TargetItem } from '@/Interface';
-import type { Html, Plaintext, RawSegment, Resolvable, Segment } from '@/types/expressions';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { Html, Plaintext, RawSegment, Resolvable, Segment } from '@/types/expressions';
+import type { EditorView } from '@codemirror/view';
 import { isEqual } from 'lodash-es';
+import { getExpressionErrorMessage, getResolvableState } from '@/utils/expressions';
 
 export const expressionManager = defineComponent({
 	props: {
@@ -32,18 +34,8 @@ export const expressionManager = defineComponent({
 			editorState: undefined,
 		};
 	},
-	watch: {
-		targetItem() {
-			setTimeout(() => {
-				this.$emit('change', {
-					value: this.unresolvedExpression,
-					segments: this.displayableSegments,
-				});
-			});
-		},
-	},
 	computed: {
-		...mapStores(useNDVStore),
+		...mapStores(useNDVStore, useWorkflowsStore),
 
 		unresolvedExpression(): string {
 			return this.segments.reduce((acc, segment) => {
@@ -116,7 +108,7 @@ export const expressionManager = defineComponent({
 				const { from, to, text, token } = segment;
 
 				if (token === 'Resolvable') {
-					const { resolved, error, fullError } = this.resolve(text, this.hoveringItem);
+					const { resolved, fullError } = this.resolve(text, this.hoveringItem);
 
 					acc.push({
 						kind: 'resolvable',
@@ -127,8 +119,8 @@ export const expressionManager = defineComponent({
 						// For some reason, expressions that resolve to a number 0 are breaking preview in the SQL editor
 						// This fixes that but as as TODO we should figure out why this is happening
 						resolved: String(resolved),
-						error,
-						fullError,
+						state: getResolvableState(fullError),
+						error: fullError,
 					});
 
 					return acc;
@@ -188,6 +180,16 @@ export const expressionManager = defineComponent({
 				});
 		},
 	},
+	watch: {
+		targetItem() {
+			setTimeout(() => {
+				this.$emit('change', {
+					value: this.unresolvedExpression,
+					segments: this.displayableSegments,
+				});
+			});
+		},
+	},
 	methods: {
 		isEmptyExpression(resolvable: string) {
 			return /\{\{\s*\}\}/.test(resolvable);
@@ -202,7 +204,7 @@ export const expressionManager = defineComponent({
 
 			try {
 				const ndvStore = useNDVStore();
-				const workflowHelpers = useWorkflowHelpers(this.$router);
+				const workflowHelpers = useWorkflowHelpers({ router: this.$router });
 				if (!ndvStore.activeNode) {
 					// e.g. credential modal
 					result.resolved = Expression.resolveWithoutWorkflow(resolvable, this.additionalData);
@@ -220,7 +222,7 @@ export const expressionManager = defineComponent({
 					result.resolved = workflowHelpers.resolveExpression('=' + resolvable, undefined, opts);
 				}
 			} catch (error) {
-				result.resolved = `[${error.message}]`;
+				result.resolved = `[${getExpressionErrorMessage(error)}]`;
 				result.error = true;
 				result.fullError = error;
 			}

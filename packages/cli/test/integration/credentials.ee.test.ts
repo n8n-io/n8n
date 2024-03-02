@@ -229,7 +229,7 @@ describe('GET /credentials/:id', () => {
 		expect(response2.statusCode).toBe(200);
 
 		validateMainCredentialData(response2.body.data);
-		expect(response2.body.data.data).toBeUndefined();
+		expect(response2.body.data.data).toBeDefined(); // Instance owners should be capable of editing all credentials
 		expect(response2.body.data.sharedWith).toHaveLength(1);
 	});
 

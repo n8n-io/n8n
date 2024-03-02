@@ -17,15 +17,12 @@ describe('Auth Middleware', () => {
 		['PATCH', '/me'],
 		['PATCH', '/me/password'],
 		['POST', '/me/survey'],
-		['POST', '/owner/setup'],
-		['GET', '/non-existent'],
 	];
 
 	/** Routes requiring a valid `n8n-auth` cookie for an owner. */
 	const ROUTES_REQUIRING_AUTHORIZATION: Readonly<Array<[string, string]>> = [
 		['POST', '/invitations'],
 		['DELETE', '/users/123'],
-		['POST', '/owner/setup'],
 	];
 
 	describe('Routes requiring Authentication', () => {

@@ -44,7 +44,7 @@ import type {
 	IWorkflowDb,
 } from '@/Interface';
 import type {
-	IExecutionsSummary,
+	ExecutionSummary,
 	IConnection,
 	IConnections,
 	IDataObject,
@@ -84,7 +84,7 @@ export default defineComponent({
 	setup() {
 		const externalHooks = useExternalHooks();
 		const router = useRouter();
-		const workflowHelpers = useWorkflowHelpers(router);
+		const workflowHelpers = useWorkflowHelpers({ router });
 		const { callDebounced } = useDebounce();
 
 		return {
@@ -100,7 +100,7 @@ export default defineComponent({
 			loading: false,
 			loadingMore: false,
 			filter: {} as ExecutionFilterType,
-			temporaryExecution: null as IExecutionsSummary | null,
+			temporaryExecution: null as ExecutionSummary | null,
 			autoRefresh: false,
 			autoRefreshTimeout: undefined as undefined | NodeJS.Timer,
 		};
@@ -284,7 +284,7 @@ export default defineComponent({
 			this.loading = true;
 			try {
 				const executionIndex = this.executions.findIndex(
-					(execution: IExecutionsSummary) => execution.id === this.$route.params.executionId,
+					(execution: ExecutionSummary) => execution.id === this.$route.params.executionId,
 				);
 				const nextExecution =
 					this.executions[executionIndex + 1] ||
@@ -388,8 +388,8 @@ export default defineComponent({
 		},
 		async loadAutoRefresh(): Promise<void> {
 			// Most of the auto-refresh logic is taken from the `ExecutionsList` component
-			const fetchedExecutions: IExecutionsSummary[] = await this.loadExecutions();
-			let existingExecutions: IExecutionsSummary[] = [...this.executions];
+			const fetchedExecutions: ExecutionSummary[] = await this.loadExecutions();
+			let existingExecutions: ExecutionSummary[] = [...this.executions];
 			const alreadyPresentExecutionIds = existingExecutions.map((exec) => parseInt(exec.id, 10));
 			let lastId = 0;
 			const gaps = [] as number[];
@@ -465,7 +465,7 @@ export default defineComponent({
 				}
 			}
 		},
-		async loadExecutions(): Promise<IExecutionsSummary[]> {
+		async loadExecutions(): Promise<ExecutionSummary[]> {
 			if (!this.currentWorkflow) {
 				return [];
 			}
@@ -536,7 +536,7 @@ export default defineComponent({
 					);
 					return;
 				} else {
-					this.temporaryExecution = existingExecution as IExecutionsSummary;
+					this.temporaryExecution = existingExecution as ExecutionSummary;
 				}
 			}
 			// stop if the execution wasn't found in the first 1000 lookups
@@ -716,7 +716,7 @@ export default defineComponent({
 		async loadActiveWorkflows(): Promise<void> {
 			await this.workflowsStore.fetchActiveWorkflows();
 		},
-		async onRetryExecution(payload: { execution: IExecutionsSummary; command: string }) {
+		async onRetryExecution(payload: { execution: ExecutionSummary; command: string }) {
 			const loadWorkflow = payload.command === 'current-workflow';
 
 			this.showMessage({
@@ -733,7 +733,7 @@ export default defineComponent({
 				retry_type: loadWorkflow ? 'current' : 'original',
 			});
 		},
-		async retryExecution(execution: IExecutionsSummary, loadWorkflow?: boolean) {
+		async retryExecution(execution: ExecutionSummary, loadWorkflow?: boolean) {
 			try {
 				const retrySuccessful = await this.workflowsStore.retryExecution(
 					execution.id,
