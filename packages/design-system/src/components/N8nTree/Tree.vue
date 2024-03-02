@@ -72,9 +72,9 @@ export default defineComponent({
 
 			return typeof data !== 'object';
 		},
-		getPath(key: string): unknown[] {
+		getPath(key: string): string[] {
 			if (Array.isArray(this.value)) {
-				return [...this.path, parseInt(key, 10)];
+				return [...this.path, parseInt(key, 10).toString()];
 			}
 			return [...this.path, key];
 		},

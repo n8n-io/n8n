@@ -3,6 +3,7 @@ import { defineComponent } from 'vue';
 import { ElPagination } from 'element-plus';
 
 export default defineComponent({
+	name: 'N8nPagination',
 	components: {
 		ElPagination,
 	},
