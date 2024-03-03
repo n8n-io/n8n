@@ -73,6 +73,15 @@ export class Jira implements INodeType {
 					},
 				},
 			},
+			{
+				name: 'jiraSoftwareCloudOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						jiraVersion: ['cloudOAuth2'],
+					},
+				},
+			},
 		],
 		properties: [
 			{
@@ -85,11 +94,32 @@ export class Jira implements INodeType {
 						value: 'cloud',
 					},
 					{
+						name: 'Cloud OAuth2',
+						value: 'cloudOAuth2',
+					},
+					{
 						name: 'Server (Self Hosted)',
 						value: 'server',
 					},
 				],
 				default: 'cloud',
+			},
+			{
+				displayName: 'Jira Instance Name or ID',
+				name: 'cloudID',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				displayOptions: {
+					show: {
+						jiraVersion: ['cloudOAuth2'],
+					},
+				},
+				typeOptions: {
+					loadOptionsMethod: 'getCloudIDs',
+					loadOptionsDependsOn: ['jiraVersion'],
+				},
+				default: '',
 			},
 			{
 				displayName: 'Resource',
@@ -417,6 +447,31 @@ export class Jira implements INodeType {
 					}
 					return 0;
 				});
+
+				return returnData;
+			},
+
+			async getCloudIDs(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+
+				const instances = await jiraSoftwareCloudApiRequest.call(
+					this,
+					'',
+					'GET',
+					{},
+					{},
+					'https://api.atlassian.com/oauth/token/accessible-resources',
+				);
+
+				for (const instance of instances) {
+					const instanceName = `${instance.name} (${instance.url.replace(/https?:\/\//i, '')})`;
+					const instanceId = instance.id;
+
+					returnData.push({
+						name: instanceName,
+						value: instanceId,
+					});
+				}
 
 				return returnData;
 			},
