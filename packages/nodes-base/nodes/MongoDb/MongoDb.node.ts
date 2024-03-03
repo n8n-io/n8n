@@ -208,6 +208,9 @@ export class MongoDb implements INodeType {
 			const dateFields = prepareFields(
 				this.getNodeParameter('options.dateFields', 0, '') as string,
 			);
+			const objectIdFields = prepareFields(
+				this.getNodeParameter('options.objectIdFields', 0, '') as string,
+			);
 
 			const updateKey = ((this.getNodeParameter('updateKey', 0) as string) || '').trim();
 
@@ -215,7 +218,14 @@ export class MongoDb implements INodeType {
 				? { upsert: true }
 				: undefined;
 
-			const updateItems = prepareItems(items, fields, updateKey, useDotNotation, dateFields);
+			const updateItems = prepareItems(
+				items,
+				fields,
+				updateKey,
+				useDotNotation,
+				dateFields,
+				objectIdFields,
+			);
 
 			for (const item of updateItems) {
 				try {
@@ -248,6 +258,9 @@ export class MongoDb implements INodeType {
 			const dateFields = prepareFields(
 				this.getNodeParameter('options.dateFields', 0, '') as string,
 			);
+			const objectIdFields = prepareFields(
+				this.getNodeParameter('options.objectIdFields', 0, '') as string,
+			);
 
 			const updateKey = ((this.getNodeParameter('updateKey', 0) as string) || '').trim();
 
@@ -255,7 +268,14 @@ export class MongoDb implements INodeType {
 				? { upsert: true }
 				: undefined;
 
-			const updateItems = prepareItems(items, fields, updateKey, useDotNotation, dateFields);
+			const updateItems = prepareItems(
+				items,
+				fields,
+				updateKey,
+				useDotNotation,
+				dateFields,
+				objectIdFields,
+			);
 
 			for (const item of updateItems) {
 				try {
@@ -289,8 +309,18 @@ export class MongoDb implements INodeType {
 				const dateFields = prepareFields(
 					this.getNodeParameter('options.dateFields', 0, '') as string,
 				);
+				const objectIdFields = prepareFields(
+					this.getNodeParameter('options.objectIdFields', 0, '') as string,
+				);
 
-				const insertItems = prepareItems(items, fields, '', useDotNotation, dateFields);
+				const insertItems = prepareItems(
+					items,
+					fields,
+					'',
+					useDotNotation,
+					dateFields,
+					objectIdFields,
+				);
 
 				const { insertedIds } = await mdb
 					.collection(this.getNodeParameter('collection', 0) as string)
@@ -320,6 +350,9 @@ export class MongoDb implements INodeType {
 			const dateFields = prepareFields(
 				this.getNodeParameter('options.dateFields', 0, '') as string,
 			);
+			const objectIdFields = prepareFields(
+				this.getNodeParameter('options.objectIdFields', 0, '') as string,
+			);
 
 			const updateKey = ((this.getNodeParameter('updateKey', 0) as string) || '').trim();
 
@@ -327,7 +360,14 @@ export class MongoDb implements INodeType {
 				? { upsert: true }
 				: undefined;
 
-			const updateItems = prepareItems(items, fields, updateKey, useDotNotation, dateFields);
+			const updateItems = prepareItems(
+				items,
+				fields,
+				updateKey,
+				useDotNotation,
+				dateFields,
+				objectIdFields,
+			);
 
 			for (const item of updateItems) {
 				try {

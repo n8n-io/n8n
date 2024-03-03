@@ -87,6 +87,7 @@ export function prepareItems(
 	updateKey = '',
 	useDotNotation = false,
 	dateFields: string[] = [],
+	objectIdFields: string[] = [],
 ) {
 	let data = items;
 
@@ -111,6 +112,9 @@ export function prepareItems(
 
 			if (fieldData && dateFields.includes(field)) {
 				fieldData = new Date(fieldData as string);
+			}
+			if (fieldData && objectIdFields.includes(field)) {
+				fieldData = new ObjectId(fieldData as string);
 			}
 
 			if (useDotNotation) {
