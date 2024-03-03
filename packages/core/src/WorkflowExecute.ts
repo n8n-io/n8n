@@ -89,9 +89,9 @@ export class WorkflowExecute {
 		this.status = 'running';
 
 		// Get the nodes to start workflow execution from
-		startNode = startNode || workflow.getStartNode(destinationNode);
+		startNode ||= workflow.getStartNode(destinationNode);
 
-		if (startNode === undefined) {
+		if (startNode == null) {
 			throw new ApplicationError('No node to start the workflow from could be found');
 		}
 
@@ -417,12 +417,12 @@ export class WorkflowExecute {
 				)) {
 					if (
 						!this.runExecutionData.executionData!.waitingExecution[connectionData.node][
-							parseInt(index)
+							+index
 						].main[connectionData.index]
 					) {
 						// Data for the input is missing so we can add it to the existing entry
 						createNewWaitingEntry = false;
-						waitingNodeIndex = parseInt(index);
+						waitingNodeIndex = +index;
 						break;
 					}
 				}
@@ -1444,13 +1444,13 @@ export class WorkflowExecute {
 											nodesToAdd.push({
 												position: nodeToAdd?.position || [0, 0],
 												connection: connectionData,
-												outputIndex: parseInt(outputIndex, 10),
+												outputIndex: +outputIndex,
 											});
 										} else {
 											this.addNodeToBeExecuted(
 												workflow,
 												connectionData,
-												parseInt(outputIndex, 10),
+												+outputIndex,
 												executionNode.name,
 												nodeSuccessData!,
 												runIndex,
@@ -1569,7 +1569,7 @@ export class WorkflowExecute {
 							).sort();
 
 							// The run-index of the earliest outstanding one
-							const firstRunIndex = parseInt(runIndexes[0]);
+							const firstRunIndex = +runIndexes[0];
 
 							// Find all the inputs which received any kind of data, even if it was an empty
 							// array as this shows that the parent nodes executed but they did not have any
