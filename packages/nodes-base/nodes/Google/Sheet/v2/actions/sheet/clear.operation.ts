@@ -163,6 +163,10 @@ export async function execute(
 ): Promise<INodeExecutionData[]> {
 	const items = this.getInputData();
 
+	// Initialize variables to store the first row data and flag to check if it has been updated
+	let firstRowData: string[][] | undefined;
+	let firstRowUpdated = false;
+
 	for (let i = 0; i < items.length; i++) {
 		const clearType = this.getNodeParameter('clear', i) as string;
 		const keepFirstRow = this.getNodeParameter('keepFirstRow', i, false) as boolean;
@@ -196,14 +200,20 @@ export async function execute(
 			range = sheetName;
 		}
 
-		if (keepFirstRow) {
-			const firstRow = await sheet.getData(`${range}!1:1`, 'FORMATTED_VALUE');
-			await sheet.clearData(range);
-			await sheet.updateRows(range, firstRow as string[][], 'RAW', 1);
-		} else {
-			await sheet.clearData(range);
+		if (!firstRowUpdated && keepFirstRow) {
+            // Fetch the first row data only once
+            firstRowData = await sheet.getData(`${range}!1:1`, 'FORMATTED_VALUE');
+            firstRowUpdated = true;
 		}
+
+		await sheet.clearData(range);
+		
 	}
 
+	if (firstRowData && firstRowUpdated) {
+        // Update the first row data outside the loop
+        await sheet.updateRows(sheetName, firstRowData, 'RAW', 1);
+	}
+	
 	return items;
 }
