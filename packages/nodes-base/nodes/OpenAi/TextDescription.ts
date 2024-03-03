@@ -63,7 +63,7 @@ const completeOperations: INodeProperties[] = [
 		name: 'model',
 		type: 'options',
 		description:
-			'The model which will generate the completion. <a href="https://beta.openai.com/docs/models/overview">Learn more</a>.',
+			'The model which will generate the completion. <a href="https://beta.openai.com/docs/models/overview">More info</a>.',
 		displayOptions: {
 			show: {
 				operation: ['complete'],
@@ -148,7 +148,7 @@ const editOperations: INodeProperties[] = [
 		name: 'model',
 		type: 'options',
 		description:
-			'The model which will generate the edited version. <a href="https://beta.openai.com/docs/models/overview">Learn more</a>.',
+			'The model which will generate the edited version. <a href="https://beta.openai.com/docs/models/overview">More info</a>.',
 		displayOptions: {
 			show: {
 				operation: ['edit'],
@@ -221,7 +221,7 @@ const moderateOperations: INodeProperties[] = [
 		name: 'model',
 		type: 'options',
 		description:
-			'The model which will classify the text. <a href="https://beta.openai.com/docs/models/overview">Learn more</a>.',
+			'The model which will classify the text. <a href="https://beta.openai.com/docs/models/overview">More info</a>.',
 		displayOptions: {
 			show: {
 				resource: ['text'],
@@ -400,7 +400,7 @@ const sharedOperations: INodeProperties[] = [
 			{
 				displayName: 'Maximum Number of Tokens',
 				name: 'maxTokens',
-				default: 16,
+				default: 128,
 				description:
 					'The maximum number of tokens to generate in the completion. Most models have a context length of 2048 tokens (except for the newest models, which support 32,768).',
 				type: 'number',
