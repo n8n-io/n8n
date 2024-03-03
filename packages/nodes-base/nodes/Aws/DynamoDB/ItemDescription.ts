@@ -748,6 +748,21 @@ export const itemFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
+		displayName: 'Return LastEvaluatedKey',
+		name: 'returnExtraInfo',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: ['item'],
+				operation: ['getAll'],
+				// returnAll: [false],
+			},
+		},
+		default: false,
+		description:
+			'Whether to return LastEvaluatedKey, which can be passed back as ExclusiveStartKey to continue getting results in batches',
+	},
+	{
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
@@ -882,6 +897,13 @@ export const itemFields: INodeProperties[] = [
 				],
 				description:
 					'One or more substitution tokens for attribute names in an expression. Check <a href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html">Info</a>.',
+			},
+			{
+				displayName: 'ExclusiveStartKey',
+				name: 'exclusiveStartKey',
+				description: 'Set this to lastEvaluatedKey from a previous iteration to process in batches',
+				type: 'string',
+				default: '',
 			},
 		],
 	},
