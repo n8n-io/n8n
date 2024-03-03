@@ -173,7 +173,7 @@ export class Amqp implements INodeType {
 			const container = create_container();
 
 			/*
-				Values are documentet here: https://github.com/amqp/rhea#container
+				Values are documented here: https://github.com/amqp/rhea#container
 			*/
 			const connectOptions: ContainerOptions = {
 				host: credentials.hostname,
@@ -192,15 +192,27 @@ export class Amqp implements INodeType {
 			const sender = conn.open_sender(sink);
 
 			const responseData: IDataObject[] = await new Promise((resolve) => {
-				container.once('sendable', (context: EventContext) => {
-					const returnData = [];
 
-					const items = this.getInputData();
-					for (let i = 0; i < items.length; i++) {
-						const item = items[i];
+				const sendOnlyProperty = options.sendOnlyProperty as string;
+
+				const items = this.getInputData();
+				let itemIdx = 0;
+				let itemAck = 0;
+
+				const returnData: IDataObject[] = [];
+
+				container.on('accepted', () => {
+					// resolve promise after all messages are accepted by the message broker
+					if (++itemAck === items.length) {
+						resolve(returnData);
+					}
+				});
+
+				container.on('sendable', (context: EventContext) => {
+					while (context.sender?.sendable() && itemIdx < items.length) {
+						const item = items[itemIdx++];
 
 						let body: IDataObject | string = item.json;
-						const sendOnlyProperty = options.sendOnlyProperty as string;
 
 						if (sendOnlyProperty) {
 							body = body[sendOnlyProperty] as string;
@@ -217,8 +229,6 @@ export class Amqp implements INodeType {
 
 						returnData.push({ id: result?.id });
 					}
-
-					resolve(returnData);
 				});
 			});
 
