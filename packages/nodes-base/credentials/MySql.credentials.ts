@@ -50,6 +50,14 @@ export class MySql implements ICredentialType {
 				'The milliseconds before a timeout occurs during the initial connection to the MySQL server',
 		},
 		{
+			displayName: 'Multiple Statements',
+			name: 'multipleStatements',
+			type: 'boolean',
+			default: false,
+			description:
+				'Allow multiple mysql statements per query. Be careful with this, it could increase the scope of SQL injection attacks.',
+		},
+		{
 			displayName: 'SSL',
 			name: 'ssl',
 			type: 'boolean',
