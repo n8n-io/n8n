@@ -3061,7 +3061,7 @@ export class HubspotV2 implements INodeType {
 						error.cause.error.validationResults[0].error === 'INVALID_EMAIL'
 					) {
 						const message = error.cause.error.validationResults[0].message as string;
-						throw new NodeOperationError(this.getNode(), error, { message, itemIndex: i });
+						set(error, 'message', message);
 					}
 					if (error.cause.error?.message !== 'The resource you are requesting could not be found') {
 						if (error.httpCode === '404' && error.description === 'resource not found') {
@@ -3069,9 +3069,8 @@ export class HubspotV2 implements INodeType {
 								error.node.parameters[`${error.node.parameters.resource}Id`].value
 							} could not be found. Check your ${error.node.parameters.resource} ID is correct`;
 
-							throw new NodeOperationError(this.getNode(), error, { message, itemIndex: i });
+							set(error, 'message', message);
 						}
-						throw new NodeOperationError(this.getNode(), error as string);
 					}
 					if (this.continueOnFail()) {
 						returnData.push({

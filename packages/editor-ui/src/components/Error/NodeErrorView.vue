@@ -63,6 +63,12 @@
 									<code>{{ error.httpCode }}</code>
 								</p>
 							</div>
+							<!-- <div class="node-error-view__details-row" v-if="error.httpCode">
+								<p class="node-error-view__details-label">Code description</p>
+								<p class="node-error-view__details-value">
+									<code>{{ error.message }}</code>
+								</p>
+							</div> -->
 							<div class="node-error-view__details-row" v-if="uniqueMessages.length">
 								<p class="node-error-view__details-label">Full message</p>
 								<div
