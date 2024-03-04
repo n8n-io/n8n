@@ -641,6 +641,91 @@ export class NextCloud implements INodeType {
 				placeholder: '/invoices/2019/',
 				description: 'The path of which to list the content. The path should start with "/".',
 			},
+			{
+				displayName: 'List Folder Options',
+				name: 'folderListOptions',
+				type: 'collection',
+				default: {},
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: ['list'],
+						resource: ['folder'],
+					},
+				},
+				description: 'Additional options for the Folder > List operation',
+				options: [
+					{
+						displayName: 'Include Fields',
+						name: 'folderListIncludeFields',
+						type: 'multiOptions',
+						options: [
+							{
+								name: 'Comments Unread',
+								value: 'oc:comments-unread',
+							},
+							{
+								name: 'Contained File Count',
+								value: 'nc:contained-file-count',
+							},
+							{
+								name: 'Contained Folder Count',
+								value: 'nc:contained-folder-count',
+							},
+							{
+								name: 'Content Type',
+								value: 'd:getcontenttype',
+							},
+							{
+								name: 'eTag',
+								value: 'd:getetag',
+							},
+							{
+								name: 'Favorite',
+								value: 'oc:favorite',
+							},
+							{
+								name: 'File ID',
+								value: 'oc:fileid',
+							},
+							{
+								name: 'File Path',
+								value: 'd:getcontentlength',
+							},
+							{
+								name: 'Has Preview',
+								value: 'nc:has-preview',
+							},
+							{
+								name: 'Last Modified',
+								value: 'd:getlastmodified',
+							},
+							{
+								name: 'Owner Display Name',
+								value: 'oc:owner-display-name',
+							},
+							{
+								name: 'Permissions',
+								value: 'oc:permissions',
+							},
+							{
+								name: 'Resource Type',
+								value: 'd:resourcetype',
+							},
+							{
+								name: 'Share Types',
+								value: 'oc:share-types',
+							},
+							{
+								name: 'Size',
+								value: 'oc:size',
+							},
+						],
+						default: [],
+						description: 'Include only selected fields',
+					},
+				],
+			},
 
 			// ----------------------------------
 			//         user
@@ -880,7 +965,7 @@ export class NextCloud implements INodeType {
 
 		let body: string | Buffer | IDataObject = '';
 		const headers: IDataObject = {};
-		let qs;
+		let qs: any;
 
 		for (let i = 0; i < items.length; i++) {
 			try {
@@ -924,6 +1009,25 @@ export class NextCloud implements INodeType {
 
 						requestMethod = 'PROPFIND' as IHttpRequestMethods;
 						endpoint = this.getNodeParameter('path', i) as string;
+
+						const folderListOptions: any = this.getNodeParameter('folderListOptions', i);
+						const customFields = folderListOptions.folderListIncludeFields as string[];
+
+						if (customFields.length > 0) {
+							// https://docs.nextcloud.com/server/latest/developer_manual/client_apis/WebDAV/basic.html
+							let propXML = '';
+
+							for (const field of customFields) {
+								propXML += `<${field} />`;
+							}
+
+							const propFindBody = `<?xml version="1.0"?>
+								<d:propfind  xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns" xmlns:nc="http://nextcloud.org/ns">
+									<d:prop>${propXML}</d:prop>
+								</d:propfind>`;
+
+							body = propFindBody;
+						}
 					}
 				}
 
@@ -965,7 +1069,11 @@ export class NextCloud implements INodeType {
 						headers['OCS-APIRequest'] = true;
 						headers['Content-Type'] = 'application/x-www-form-urlencoded';
 
-						const bodyParameters = this.getNodeParameter('options', i);
+						const bodyParameters: any = this.getNodeParameter('options', i);
+
+						if (bodyParameters == null) {
+							throw new NodeOperationError(this.getNode(), 'Body parameters are missing');
+						}
 
 						bodyParameters.path = this.getNodeParameter('path', i) as string;
 						bodyParameters.shareType = this.getNodeParameter('shareType', i) as number;
@@ -1233,6 +1341,21 @@ export class NextCloud implements INodeType {
 						'd:getlastmodified': 'lastModified',
 						'd:getcontentlength': 'contentLength',
 						'd:getcontenttype': 'contentType',
+
+						// handled below
+						// 'd:getetag': 'getetag',
+						// 'd:resourcetype': 'resourcetype',
+
+						'oc:fileid': 'fileId',
+						'oc:permissions': 'permissions',
+						'oc:size': 'size',
+						'nc:has-preview': 'hasPreview',
+						'oc:favorite': 'favorite',
+						'oc:comments-unread': 'commentsUnread',
+						'oc:owner-display-name': 'ownerDisplayName',
+						'oc:share-types': 'shareTypes',
+						'nc:contained-folder-count': 'containedFolderCount',
+						'nc:contained-file-count': 'containedFileCount',
 					};
 
 					if (
@@ -1273,8 +1396,11 @@ export class NextCloud implements INodeType {
 								} else {
 									newItem.type = 'folder';
 								}
-								// @ts-ignore
-								newItem.eTag = props['d:getetag'].slice(1, -1);
+
+								if (props['d:getetag'] != null) {
+									// @ts-ignore
+									newItem.eTag = props['d:getetag'].slice(1, -1);
+								}
 
 								returnData.push({ json: newItem, pairedItem: { item: i } });
 							}
