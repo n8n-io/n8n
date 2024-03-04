@@ -60,18 +60,13 @@ export class PermissionChecker {
 
 		if (workflowCredIds.length === 0) return;
 
-		/**
-		 * @TODO We still need to ensure that the workflow's credentials
-		 * are in the relevant project IDs. Optimize check.
-		 */
+		const accessable = await this.sharedCredentialsRepository.getFilteredAccessibleCredentials(
+			projectIds,
+			workflowCredIds,
+		);
 
 		for (const credentialsId of workflowCredIds) {
-			const isAccessible = await this.sharedCredentialsRepository.isAccessible(
-				credentialsId,
-				projectIds,
-			);
-
-			if (!isAccessible) {
+			if (!accessable.includes(credentialsId)) {
 				const nodeToFlag = credIdsToNodes[credentialsId][0];
 				throw new CredentialAccessError(nodeToFlag, credentialsId, workflowId);
 			}

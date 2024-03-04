@@ -7,14 +7,20 @@ import type { User } from '@/databases/entities/User';
 import type { Project } from '@/databases/entities/Project';
 import type { ProjectRelation, ProjectRole } from '@/databases/entities/ProjectRelation';
 
-export const createTeamProject = async (name?: string) => {
+export const createTeamProject = async (name?: string, adminUser?: User) => {
 	const projectRepository = Container.get(ProjectRepository);
-	return await projectRepository.save(
+	const project = await projectRepository.save(
 		projectRepository.create({
 			name: name ?? randomName(),
 			type: 'team',
 		}),
 	);
+
+	if (adminUser) {
+		await linkUserToProject(adminUser, project, 'project:admin');
+	}
+
+	return project;
 };
 
 export const linkUserToProject = async (user: User, project: Project, role: ProjectRole) => {
