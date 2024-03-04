@@ -48,7 +48,7 @@
 				<div class="node-error-view__info-content">
 					<details
 						class="node-error-view__details"
-						v-if="error.httpCode || uniqueMessages.length || error?.context?.data"
+						v-if="error.httpCode || uniqueMessages.length || error?.context?.data || error.extra"
 					>
 						<summary class="node-error-view__details-summary">
 							<font-awesome-icon class="node-error-view__details-icon" icon="angle-right" />
@@ -65,18 +65,22 @@
 							</div>
 							<div class="node-error-view__details-row" v-if="uniqueMessages.length">
 								<p class="node-error-view__details-label">Full message</p>
-								<div
-									class="node-error-view__details-value"
-									v-for="(msg, index) in uniqueMessages"
-									:key="index"
-								>
-									<pre><code>{{ msg }}</code></pre>
+								<div class="node-error-view__details-value">
+									<div v-for="(msg, index) in uniqueMessages" :key="index">
+										<pre><code>{{ msg }}</code></pre>
+									</div>
 								</div>
 							</div>
 							<div class="node-error-view__details-row" v-if="error?.context?.data">
 								<p class="node-error-view__details-label">Error data</p>
 								<div class="node-error-view__details-value">
 									<pre><code>{{ error.context.data }}</code></pre>
+								</div>
+							</div>
+							<div class="node-error-view__details-row" v-if="error.extra">
+								<p class="node-error-view__details-label">Error extra</p>
+								<div class="node-error-view__details-value">
+									<pre><code>{{ error.extra }}</code></pre>
 								</div>
 							</div>
 							<div
