@@ -38,13 +38,6 @@ export class ProjectController {
 		const relations = await this.projectsService.getProjectRelationsForUser(req.user);
 
 		return relations.map((pr) => {
-			let name = pr.project.name;
-			// Only personal projects don't have a name and the only
-			// personal project a user should be linked to is their own
-			if (!name) {
-				// TODO: confirm name with product
-				name = 'My n8n';
-			}
 			return {
 				...pr.project,
 				role: pr.role,

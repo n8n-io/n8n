@@ -64,16 +64,14 @@ export class OwnershipService {
 				entity.homeProject = {
 					id: project.id,
 					type: project.type,
-					// TODO: confirm name with product
-					name: project.name ?? 'My n8n',
+					name: project.actualName,
 				};
 			} else {
 				entity.sharedWith.push({ id, email, firstName, lastName });
 				entity.sharedWithProjects.push({
 					id: project.id,
 					type: project.type,
-					// TODO: confirm name with product
-					name: project.name ?? 'My n8n',
+					name: project.actualName,
 				});
 			}
 		});

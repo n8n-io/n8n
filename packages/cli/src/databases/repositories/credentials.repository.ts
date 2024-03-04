@@ -1,6 +1,13 @@
 import { Service } from 'typedi';
 import { DataSource, In, Not, Repository, Like } from '@n8n/typeorm';
-import type { FindManyOptions, DeleteResult, EntityManager, FindOptionsWhere } from '@n8n/typeorm';
+import type {
+	FindManyOptions,
+	DeleteResult,
+	EntityManager,
+	FindOptionsWhere,
+	FindOptionsSelect,
+	FindOptionsRelations,
+} from '@n8n/typeorm';
 import { CredentialsEntity } from '../entities/CredentialsEntity';
 import { SharedCredentials } from '../entities/SharedCredentials';
 import type { ListQuery } from '@/requests';
@@ -43,10 +50,24 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 	private toFindManyOptions(listQueryOptions?: ListQuery.Options) {
 		const findManyOptions: FindManyOptions<CredentialsEntity> = {};
 
-		type Select = Array<keyof CredentialsEntity>;
-
-		const defaultRelations = ['shared', 'shared.user', 'shared.project'];
-		const defaultSelect: Select = ['id', 'name', 'type', 'nodesAccess', 'createdAt', 'updatedAt'];
+		const defaultRelations: FindOptionsRelations<CredentialsEntity> = {
+			shared: {
+				user: true,
+				project: {
+					projectRelations: {
+						user: true,
+					},
+				},
+			},
+		};
+		const defaultSelect: FindOptionsSelect<CredentialsEntity> = {
+			id: true,
+			name: true,
+			type: true,
+			nodesAccess: true,
+			createdAt: true,
+			updatedAt: true,
+		};
 
 		if (!listQueryOptions) return { select: defaultSelect, relations: defaultRelations };
 

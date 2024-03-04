@@ -8,6 +8,7 @@ import { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { mock } from 'jest-mock-extended';
 import { mockCredential, mockProject, mockUser } from '../shared/mockObjects';
+import type { ProjectRelation } from '@/databases/entities/ProjectRelation';
 
 describe('OwnershipService', () => {
 	const userRepository = mockInstance(UserRepository);
@@ -49,7 +50,22 @@ describe('OwnershipService', () => {
 			const editor = mockUser();
 
 			const ownerProject = mockProject();
+			ownerProject.projectRelations = [
+				{
+					project: { ...ownerProject },
+					user: owner,
+					role: 'project:personalOwner',
+				},
+			] as ProjectRelation[];
+
 			const editorProject = mockProject();
+			editorProject.projectRelations = [
+				{
+					project: { ...editorProject },
+					user: editor,
+					role: 'project:personalOwner',
+				},
+			] as ProjectRelation[];
 
 			const credential = mockCredential();
 
@@ -79,14 +95,14 @@ describe('OwnershipService', () => {
 
 			expect(homeProject).toMatchObject({
 				id: ownerProject.id,
-				name: 'My n8n',
+				name: ownerProject.actualName,
 				type: ownerProject.type,
 			});
 
 			expect(sharedWithProjects).toMatchObject([
 				{
 					id: editorProject.id,
-					name: 'My n8n',
+					name: editorProject.actualName,
 					type: editorProject.type,
 				},
 			]);
@@ -97,7 +113,22 @@ describe('OwnershipService', () => {
 			const editor = mockUser();
 
 			const projectOwner = mockProject();
+			projectOwner.projectRelations = [
+				{
+					project: { ...projectOwner },
+					user: owner,
+					role: 'project:personalOwner',
+				},
+			] as ProjectRelation[];
+
 			const projectEditor = mockProject();
+			projectEditor.projectRelations = [
+				{
+					project: { ...projectEditor },
+					user: editor,
+					role: 'project:personalOwner',
+				},
+			] as ProjectRelation[];
 
 			const workflow = new WorkflowEntity();
 
@@ -127,13 +158,13 @@ describe('OwnershipService', () => {
 
 			expect(homeProject).toMatchObject({
 				id: projectOwner.id,
-				name: 'My n8n',
+				name: projectOwner.actualName,
 				type: projectOwner.type,
 			});
 			expect(sharedWithProjects).toMatchObject([
 				{
 					id: projectEditor.id,
-					name: 'My n8n',
+					name: projectEditor.actualName,
 					type: projectEditor.type,
 				},
 			]);
@@ -145,6 +176,14 @@ describe('OwnershipService', () => {
 			const credential = mockCredential();
 
 			const project = mockProject();
+
+			project.projectRelations = [
+				{
+					user: owner,
+					project: { ...project },
+					role: 'project:personalOwner',
+				},
+			] as ProjectRelation[];
 
 			credential.shared = [
 				{ role: 'credential:owner', user: owner, project },
@@ -164,7 +203,7 @@ describe('OwnershipService', () => {
 
 			expect(homeProject).toMatchObject({
 				id: project.id,
-				name: 'My n8n',
+				name: project.actualName,
 				type: project.type,
 			});
 

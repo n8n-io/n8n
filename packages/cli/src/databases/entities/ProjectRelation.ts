@@ -15,7 +15,7 @@ export class ProjectRelation extends WithTimestamps {
 	@Column()
 	role: ProjectRole;
 
-	@ManyToOne('User', 'projectRelations')
+	@ManyToOne('User', 'projectRelations', { eager: true })
 	user: User;
 
 	@PrimaryColumn('uuid')
