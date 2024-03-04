@@ -43,12 +43,12 @@
 
 		li[aria-selected] {
 			background-color: var(--color-background-base);
-			color: var(--color-secondary);
+			color: var(--color-autocomplete-item-selected);
 		}
 
 		> .cm-section-header {
 			padding: var(--spacing-4xs) var(--spacing-3xs);
-			border-bottom: 1px solid var(--color-foreground-light);
+			border-bottom: 1px solid var(--color-autocomplete-section-header-border);
 			background-color: var(--color-background-xlight);
 			position: sticky;
 			top: 0;
@@ -91,7 +91,7 @@
 	}
 
 	.autocomplete-info-name {
-		color: var(--color-secondary);
+		color: var(--color-autocomplete-item-selected);
 	}
 
 	.autocomplete-info-description {
