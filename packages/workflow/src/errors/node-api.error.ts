@@ -102,7 +102,9 @@ const STATUS_CODE_MESSAGES: IStatusCodeMessages = {
 	'504': 'Gateway timed out - perhaps try again later?',
 };
 
-const UNKNOWN_ERROR_MESSAGE = 'UNKNOWN ERROR - check the detailed error for more information';
+const UNKNOWN_ERROR_MESSAGE = 'There was an unknown issue while executing the node';
+const UNKNOWN_ERROR_DESCRIPTION =
+	'Double-check the node configuration and the service it connects to. Check the error details below and refer to the <a href="https://docs.n8n.io" target="_blank">n8n documentation</a> to troubleshoot the issue. ';
 const UNKNOWN_ERROR_MESSAGE_CRED = 'UNKNOWN ERROR';
 
 /**
@@ -304,8 +306,15 @@ export class NodeApiError extends NodeError {
 				this.message = STATUS_CODE_MESSAGES['5XX'];
 				break;
 			default:
-				// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-				this.message = this.message || UNKNOWN_ERROR_MESSAGE;
+				if (!this.message) {
+					if (this.description) {
+						this.message = this.description;
+						this.description = undefined;
+					} else {
+						this.message = UNKNOWN_ERROR_MESSAGE;
+						this.description = UNKNOWN_ERROR_DESCRIPTION;
+					}
+				}
 		}
 		if (this.node.type === 'n8n-nodes-base.noOp' && this.message === UNKNOWN_ERROR_MESSAGE) {
 			this.message = `${UNKNOWN_ERROR_MESSAGE_CRED} - ${this.httpCode}`;
