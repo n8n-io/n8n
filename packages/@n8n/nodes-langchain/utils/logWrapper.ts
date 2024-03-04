@@ -18,7 +18,7 @@ import { BaseChatMemory } from 'langchain/memory';
 import type { MemoryVariables } from 'langchain/dist/memory/base';
 import { BaseRetriever } from 'langchain/schema/retriever';
 import type { FormatInstructionsOptions } from 'langchain/schema/output_parser';
-import { BaseOutputParser } from 'langchain/schema/output_parser';
+import { BaseOutputParser, OutputParserException } from 'langchain/schema/output_parser';
 import { isObject } from 'lodash';
 import { N8nJsonLoader } from './N8nJsonLoader';
 import { N8nBinaryLoader } from './N8nBinaryLoader';
@@ -44,6 +44,10 @@ export async function callMethodAsync<T>(
 	try {
 		return await parameters.method.call(this, ...parameters.arguments);
 	} catch (e) {
+		// Langchain checks for OutputParserException to run retry chain
+		// for auto-fixing the output so skip wrapping in this case
+		if (e instanceof OutputParserException) throw e;
+
 		// Propagate errors from sub-nodes
 		if (e.functionality === 'configuration-node') throw e;
 		const connectedNode = parameters.executeFunctions.getNode();
