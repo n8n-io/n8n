@@ -18,6 +18,7 @@ import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
 
 export default defineComponent({
 	name: 'SetupView',
