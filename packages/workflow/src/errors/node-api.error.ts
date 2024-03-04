@@ -190,6 +190,25 @@ export class NodeApiError extends NodeError {
 			this.level = 'warning';
 		}
 
+		if (
+			errorResponse?.response &&
+			typeof errorResponse?.response === 'object' &&
+			!Array.isArray(errorResponse.response) &&
+			errorResponse.response.data &&
+			typeof errorResponse.response.data === 'object' &&
+			!Array.isArray(errorResponse.response.data)
+		) {
+			const data = errorResponse.response.data;
+
+			if (data.message) {
+				description = data.message as string;
+			} else if (data.error && ((data.error as IDataObject) || {}).message) {
+				description = (data.error as IDataObject).message as string;
+			}
+
+			this.context.data = data;
+		}
+
 		// set description of this error
 		if (description) {
 			this.description = description;
@@ -232,15 +251,6 @@ export class NodeApiError extends NodeError {
 				undefined,
 			messageMapping,
 		);
-
-		if (
-			errorResponse?.response &&
-			typeof errorResponse?.response === 'object' &&
-			!Array.isArray(errorResponse.response) &&
-			errorResponse.response.data
-		) {
-			this.context.data = errorResponse.response.data;
-		}
 
 		if (functionality !== undefined) this.context.functionality = functionality;
 		if (runIndex !== undefined) this.context.runIndex = runIndex;

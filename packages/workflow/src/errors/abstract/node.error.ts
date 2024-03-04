@@ -129,7 +129,7 @@ export abstract class NodeError extends ExecutionBaseError {
 	 * Preserve the original error message before setting the new one
 	 */
 	protected addToMessages(message: string): void {
-		if (!this.messages.includes(message)) {
+		if (message && !this.messages.includes(message)) {
 			this.messages.push(message);
 		}
 	}

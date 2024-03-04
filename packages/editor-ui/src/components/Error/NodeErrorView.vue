@@ -63,12 +63,6 @@
 									<code>{{ error.httpCode }}</code>
 								</p>
 							</div>
-							<!-- <div class="node-error-view__details-row" v-if="error.httpCode">
-								<p class="node-error-view__details-label">Code description</p>
-								<p class="node-error-view__details-value">
-									<code>{{ error.message }}</code>
-								</p>
-							</div> -->
 							<div class="node-error-view__details-row" v-if="uniqueMessages.length">
 								<p class="node-error-view__details-label">Full message</p>
 								<div
@@ -454,6 +448,10 @@ export default defineComponent({
 
 			if (error.httpCode) {
 				errorDetails.httpCode = error.httpCode;
+			}
+
+			if (error.context && error.context.data) {
+				errorDetails.errorData = error.context.data;
 			}
 
 			errorInfo.errorDetails = errorDetails;
