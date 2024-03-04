@@ -43,29 +43,28 @@
 
 		li[aria-selected] {
 			background-color: var(--color-background-base);
-			color: var(--color-text-dark);
+			color: var(--color-secondary);
 		}
 
 		> .cm-section-header {
-			padding: var(--spacing-4xs) var(--spacing-4xs);
-			padding-bottom: 0;
-			border-bottom: var(--spacing-4xs) solid var(--color-background-xlight);
+			padding: var(--spacing-4xs) var(--spacing-3xs);
+			border-bottom: 1px solid var(--color-foreground-light);
 			background-color: var(--color-background-xlight);
 			position: sticky;
 			top: 0;
 		}
 
+		> .cm-section-header:not(:first-child) {
+			margin-top: var(--spacing-2xs);
+		}
+
 		.cm-section-title {
+			color: var(--color-text-dark);
 			font-family: var(--font-family);
 			font-weight: var(--font-weight-bold);
 			font-size: var(--font-size-3xs);
-			padding: var(--spacing-5xs) var(--spacing-4xs);
-
-			border-radius: var(--border-radius-base);
-			display: inline-flex;
 			text-transform: uppercase;
-			background-color: var(--color-success-tint-1);
-			color: var(--color-success);
+			padding: var(--spacing-5xs) var(--spacing-4xs);
 		}
 	}
 }
@@ -84,14 +83,15 @@
 	line-height: var(--font-line-height-loose);
 
 	.autocomplete-info-header {
-		color: var(--color-text-dark);
+		color: var(--color-text-base);
+		font-size: var(--font-size-2xs);
+		font-family: var(--font-family-monospace);
 		line-height: var(--font-line-height-compact);
 		margin-bottom: var(--spacing-2xs);
 	}
 
 	.autocomplete-info-name {
-		color: var(--color-success);
-		font-weight: var(--font-weight-bold);
+		color: var(--color-secondary);
 	}
 
 	.autocomplete-info-description {
