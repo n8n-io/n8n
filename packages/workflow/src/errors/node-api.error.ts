@@ -285,8 +285,16 @@ export class NodeApiError extends NodeError {
 
 		if (!this.httpCode) {
 			this.httpCode = null;
-			// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-			this.message = this.message || UNKNOWN_ERROR_MESSAGE;
+
+			if (!this.message) {
+				if (this.description) {
+					this.message = this.description;
+					this.description = undefined;
+				} else {
+					this.message = UNKNOWN_ERROR_MESSAGE;
+					this.description = UNKNOWN_ERROR_DESCRIPTION;
+				}
+			}
 			return;
 		}
 

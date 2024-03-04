@@ -17,9 +17,7 @@ describe('NodeErrors tests', () => {
 	it('should return unknown error message', () => {
 		const nodeApiError = new NodeApiError(node, {});
 
-		expect(nodeApiError.message).toEqual(
-			'UNKNOWN ERROR - check the detailed error for more information',
-		);
+		expect(nodeApiError.message).toEqual('There was an unknown issue while executing the node');
 	});
 
 	it('should return the error message', () => {
