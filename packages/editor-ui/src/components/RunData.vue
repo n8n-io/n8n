@@ -595,7 +595,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useToast } from '@/composables/useToast';
-import { isObject } from 'lodash-es';
+import { isEqual, isObject } from 'lodash-es';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import RunDataPinButton from '@/components/RunDataPinButton.vue';
@@ -1473,7 +1473,8 @@ export default defineComponent({
 		},
 	},
 	watch: {
-		node() {
+		node(newNode: INodeUi, prevNode: INodeUi) {
+			if (newNode.id === prevNode.id) return;
 			this.init();
 		},
 		hasNodeRun() {
@@ -1491,9 +1492,10 @@ export default defineComponent({
 			immediate: true,
 			deep: true,
 		},
-		jsonData(value: IDataObject[]) {
+		jsonData(data: IDataObject[], prevData: IDataObject[]) {
+			if (isEqual(data, prevData)) return;
 			this.refreshDataSize();
-			this.showPinDataDiscoveryTooltip(value);
+			this.showPinDataDiscoveryTooltip(data);
 		},
 		binaryData(newData: IBinaryKeyData[], prevData: IBinaryKeyData[]) {
 			if (newData.length && !prevData.length && this.displayMode !== 'binary') {
