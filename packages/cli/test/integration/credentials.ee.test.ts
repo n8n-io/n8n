@@ -310,7 +310,7 @@ describe('GET /credentials/:id', () => {
 // ----------------------------------------
 // idempotent share/unshare
 // ----------------------------------------
-describe('PUT /credentials/:id/share', () => {
+describe.only('PUT /credentials/:id/share', () => {
 	test('should share the credential with the provided userIds and unshare it for missing ones', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 
@@ -325,6 +325,8 @@ describe('PUT /credentials/:id/share', () => {
 				},
 			})
 		).map((pr) => pr.projectId);
+
+		console.log(member4.id, member5.id);
 
 		await shareCredentialWithUsers(savedCredential, [member4, member5]);
 

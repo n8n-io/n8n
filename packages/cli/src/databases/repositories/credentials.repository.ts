@@ -95,6 +95,7 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 		return await this.find(findManyOptions);
 	}
 
+	// FIXME: I think this is wrong. The user can have no relationship to the credential.
 	getRelationShipOfUserForCredential(
 		roleUserToProject: ProjectRole,
 		roleProjectToCredential: CredentialSharingRole,

@@ -26,6 +26,9 @@ import * as Db from '@/Db';
 import * as utils from '@/utils';
 import { listQueryMiddleware } from '@/middlewares';
 import { SharedCredentialsRepository } from '@/databases/repositories/sharedCredentials.repository';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
+import { In } from '@n8n/typeorm';
+import Container from 'typedi';
 
 @Authorized()
 @RestController('/credentials')
@@ -40,8 +43,10 @@ export class CredentialsController {
 		private readonly internalHooks: InternalHooks,
 		private readonly userManagementMailer: UserManagementMailer,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
+		private readonly projectRepository: ProjectRepository,
 	) {}
 
+	// DONE
 	@Get('/', { middlewares: listQueryMiddleware })
 	async getMany(req: ListQuery.Request) {
 		return await this.credentialsService.getMany(req.user, {
@@ -49,6 +54,7 @@ export class CredentialsController {
 		});
 	}
 
+	// DONE
 	@Get('/new')
 	async generateUniqueName(req: CredentialRequest.NewName) {
 		const requestedName = req.query.name ?? config.getEnv('credentials.defaultName');
@@ -58,6 +64,7 @@ export class CredentialsController {
 		};
 	}
 
+	// DONE
 	@Get('/:credentialId')
 	@ProjectScope('credential:read')
 	async getOne(req: CredentialRequest.Get) {
@@ -84,6 +91,7 @@ export class CredentialsController {
 		);
 	}
 
+	// DONE
 	@Post('/')
 	async createCredentials(req: CredentialRequest.Create) {
 		const newCredential = await this.credentialsService.prepareCreateData(req.body);
@@ -102,6 +110,7 @@ export class CredentialsController {
 		return credential;
 	}
 
+	// DONE
 	@Patch('/:credentialId')
 	@ProjectScope('credential:update')
 	async updateCredentials(req: CredentialRequest.Update) {
@@ -147,6 +156,7 @@ export class CredentialsController {
 		return { ...rest };
 	}
 
+	// DONE
 	@Delete('/:credentialId')
 	@ProjectScope('credential:delete')
 	async deleteCredentials(req: CredentialRequest.Delete) {
@@ -173,6 +183,7 @@ export class CredentialsController {
 		return true;
 	}
 
+	// TODO:
 	@Licensed('feat:sharing')
 	@Put('/:credentialId/share')
 	@ProjectScope('credential:share')
@@ -187,74 +198,74 @@ export class CredentialsController {
 			throw new BadRequestError('Bad request');
 		}
 
-		const isOwnedRes = await this.enterpriseCredentialsService.isOwned(req.user, credentialId);
-		const { ownsCredential } = isOwnedRes;
-		let { credential } = isOwnedRes;
-		if (!ownsCredential || !credential) {
-			credential = undefined;
-			// Allow owners/admins to share
-			if (req.user.hasGlobalScope('credential:share')) {
-				const sharedRes = await this.enterpriseCredentialsService.getSharing(
-					req.user,
-					credentialId,
-					{
-						allowGlobalScope: true,
-						globalScope: 'credential:share',
-					},
-				);
-				credential = sharedRes?.credentials;
-			}
-			if (!credential) {
-				throw new ForbiddenError();
-			}
+		const credential = await this.sharedCredentialsRepository.findCredentialForUser(
+			credentialId,
+			req.user,
+			['credential:share'],
+		);
+
+		if (!credential) {
+			throw new ForbiddenError();
 		}
-
-		const ownerIds = (
-			await this.enterpriseCredentialsService.getSharings(
-				Db.getConnection().createEntityManager(),
-				credentialId,
-				['shared.project.projectRelations.user'],
-			)
-		)
-			.flatMap((sharedCredential) => {
-				const result = [];
-				for (const projectRelation of sharedCredential.project.projectRelations) {
-					result.push({
-						user: projectRelation.user,
-						role: this.credentialsRepository.getRelationShipOfUserForCredential(
-							projectRelation.role,
-							sharedCredential.role,
-						),
-					});
-				}
-
-				return result;
-			})
-			.filter((sc) => sc.role === 'credential:owner')
-			.map((sc) => sc.user.id);
 
 		let amountRemoved: number | null = null;
 		let newShareeIds: string[] = [];
 		await Db.transaction(async (trx) => {
-			// remove all sharings that are not supposed to exist anymore
-			const { affected } = await this.credentialsRepository.pruneSharings(trx, credentialId, [
-				...ownerIds,
-				...shareWithIds,
-			]);
-			if (affected) amountRemoved = affected;
+			debugger;
+			const [ownerId] = credential.shared
+				.filter((sc) => sc.role === 'credential:owner')
+				.map((sc) => sc.projectId);
+			const currentPersonalProjectIDs = credential.shared
+				.filter((sc) => sc.role === 'credential:user')
+				.map((sc) => sc.projectId);
+			const newPersonalProjectIDs = (
+				await this.projectRepository.getPersonalProjectForUsers(shareWithIds)
+			)
+				.map((pp) => pp.id)
+				.filter((id) => id !== ownerId);
 
-			const sharings = await this.enterpriseCredentialsService.getSharings(trx, credentialId);
-
-			// extract the new sharings that need to be added
-			// FIXME: This should not depend on the deprecatedUserId, but instead should get the user IDs from the projectRelations
-			newShareeIds = utils.rightDiff(
-				[sharings, (sharing) => sharing.deprecatedUserId],
-				[shareWithIds, (shareeId) => shareeId],
+			const toShare = utils.rightDiff(
+				[currentPersonalProjectIDs, (id) => id],
+				[newPersonalProjectIDs, (id) => id],
+			);
+			const toUnshare = utils.rightDiff(
+				[newPersonalProjectIDs, (id) => id],
+				[currentPersonalProjectIDs, (id) => id],
 			);
 
-			if (newShareeIds.length) {
-				await this.enterpriseCredentialsService.share(trx, credential!, newShareeIds);
+			console.log(await Container.get(SharedCredentialsRepository).findBy({}));
+			const deleteResult = await this.sharedCredentialsRepository.delete({
+				credentialsId: credentialId,
+				projectId: In(toUnshare),
+			});
+			console.log(deleteResult);
+
+			await this.enterpriseCredentialsService.shareWithProjects(credential, toShare, trx);
+
+			// try {
+			// 	const userIds = (
+			// 		await this.projectRepository.find({
+			// 			where: { id: In(toShare), projectRelations: { role: 'project:personalOwner' } },
+			// 			relations: {
+			// 				projectRelations: true,
+			// 			},
+			// 		})
+			// 	)
+			// 		.flatMap((p) => p.projectRelations)
+			// 		.map((pr) => pr.userId);
+			//
+			// 	console.log({ toUnshare, toShare, userIds });
+			//
+			// 	await this.enterpriseCredentialsService.share(trx, credential, userIds);
+			// } catch (error) {
+			// 	console.error(error);
+			// 	throw error;
+			// }
+			if (deleteResult.affected) {
+				amountRemoved = deleteResult.affected;
 			}
+
+			newShareeIds = toShare;
 		});
 
 		void this.internalHooks.onUserSharedCredentials({

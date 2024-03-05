@@ -1,4 +1,4 @@
-import type { EntityManager, FindOptionsWhere } from '@n8n/typeorm';
+import { In, type EntityManager, type FindOptionsWhere } from '@n8n/typeorm';
 import type { SharedCredentials } from '@db/entities/SharedCredentials';
 import type { User } from '@db/entities/User';
 import { CredentialsService } from './credentials.service';
@@ -11,6 +11,8 @@ import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { OwnershipService } from '@/services/ownership.service';
 import type { Scope } from '@n8n/permissions';
+import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
+import { Project } from '@/databases/entities/Project';
 
 export type CredentialsGetSharedOptions =
 	| { allowGlobalScope: true; globalScope: Scope }
@@ -24,6 +26,7 @@ export class EnterpriseCredentialsService {
 		private readonly projectRepository: ProjectRepository,
 		private readonly ownershipService: OwnershipService,
 		private readonly credentialsService: CredentialsService,
+		private readonly credentialsRepository: CredentialsRepository,
 	) {}
 
 	/**
@@ -75,8 +78,9 @@ export class EnterpriseCredentialsService {
 		});
 	}
 
-	async getSharings(transaction: EntityManager, credentialId: string, relations = ['shared']) {
-		const credential = await transaction.findOne(CredentialsEntity, {
+	async getSharings(credentialId: string, relations = ['shared'], entityManager?: EntityManager) {
+		const em = entityManager ?? this.credentialsRepository.manager;
+		const credential = await em.findOne(CredentialsEntity, {
 			where: { id: credentialId },
 			relations,
 		});
@@ -105,6 +109,31 @@ export class EnterpriseCredentialsService {
 		);
 
 		return await transaction.save(newSharedCredentials);
+	}
+
+	async shareWithProjects(
+		credential: CredentialsEntity,
+		shareWithIds: string[],
+		entityManager: EntityManager,
+	) {
+		const em = entityManager ?? this.sharedCredentialsRepository.manager;
+
+		const projects = await em.find(Project, {
+			select: { projectRelations: { userId: true } },
+			where: { id: In(shareWithIds), projectRelations: { role: 'project:personalOwner' } },
+			relations: { projectRelations: true },
+		});
+
+		const newSharedCredentials = projects.map((project) =>
+			this.sharedCredentialsRepository.create({
+				credentialsId: credential.id,
+				role: 'credential:user',
+				projectId: project.id,
+				deprecatedUserId: project.projectRelations.find((pr) => pr.userId)?.userId,
+			}),
+		);
+
+		return await em.save(newSharedCredentials);
 	}
 
 	async getOne(user: User, credentialId: string, includeDecryptedData: boolean) {

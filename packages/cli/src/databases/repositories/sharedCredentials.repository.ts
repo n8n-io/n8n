@@ -118,15 +118,25 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 		return result.map((sc) => sc.credentialsId);
 	}
 
-	private async getCredentialIdsByUserAndRole(userIds: string[], roles: CredentialSharingRole[]) {
-		// TODO: get all projects the user is allowed to see
-		const projects = await this.projectRepository.getPersonalProjectForUsers(userIds);
+	private async getCredentialIdsByUserAndRole(
+		userIds: string[],
+		projectRole: ProjectRole[],
+		credentialRole: CredentialSharingRole,
+	) {
+		const projects = await this.projectRepository.find({
+			where: {
+				projectRelations: {
+					role: In(projectRole),
+					userId: In(userIds),
+				},
+			},
+		});
 		const projectIds = projects.map((p) => p.id);
 
 		const sharings = await this.find({
 			where: {
 				projectId: In(projectIds),
-				role: In(roles),
+				role: credentialRole,
 			},
 		});
 		return sharings.map((s) => s.credentialsId);

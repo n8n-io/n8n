@@ -38,7 +38,7 @@ export const schema = {
 			enabled: {
 				doc: 'Typeorm logging enabled flag.',
 				format: Boolean,
-				default: false,
+				default: true,
 				env: 'DB_LOGGING_ENABLED',
 			},
 			options: {

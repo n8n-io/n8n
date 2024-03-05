@@ -53,6 +53,9 @@ export class OwnershipService {
 
 		if (shared === undefined) {
 			return entity;
+			// throw new ApplicationError(
+			// 	'The entity that was passed in did not have a `shared` property. Make sure to add it to TypeORMs relation options.',
+			// );
 		}
 
 		for (const sharedEntity of shared) {
