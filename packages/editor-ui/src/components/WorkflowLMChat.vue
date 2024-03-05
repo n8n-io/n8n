@@ -171,6 +171,10 @@ interface LangChainMessage {
 	};
 }
 
+interface MemoryOutput {
+	action: string;
+	chatHistory?: LangChainMessage[];
+}
 // TODO:
 // - display additional information like execution time, tokens used, ...
 // - display errors better
@@ -217,7 +221,10 @@ export default defineComponent({
 		this.messages = this.getChatMessages();
 		this.setNode();
 
-		setTimeout(() => this.$refs.inputField?.focus(), 0);
+		setTimeout(() => {
+			this.scrollToLatestMessage();
+			this.$refs.inputField?.focus();
+		}, 0);
 	},
 	methods: {
 		displayExecution(executionId: string) {
@@ -353,32 +360,13 @@ export default defineComponent({
 				memoryConnection.node,
 			);
 
-			const memoryOutputData = nodeResultData
-				?.map(
-					(
-						data,
-					): {
-						action: string;
-						chatHistory?: unknown[];
-						response?: {
-							sessionId?: unknown[];
-						};
-					} => get(data, ['data', NodeConnectionType.AiMemory, 0, 0, 'json'])!,
+			const memoryOutputData = (nodeResultData ?? [])
+				.map(
+					(data) => get(data, ['data', NodeConnectionType.AiMemory, 0, 0, 'json']) as MemoryOutput,
 				)
-				?.find((data) =>
-					['chatHistory', 'loadMemoryVariables'].includes(data?.action) ? data : undefined,
-				);
+				.find((data) => data.action === 'saveContext');
 
-			let chatHistory: LangChainMessage[];
-			if (memoryOutputData?.chatHistory) {
-				chatHistory = memoryOutputData?.chatHistory as LangChainMessage[];
-			} else if (memoryOutputData?.response) {
-				chatHistory = memoryOutputData?.response.sessionId as LangChainMessage[];
-			} else {
-				return [];
-			}
-
-			return (chatHistory || []).map((message) => {
+			return (memoryOutputData?.chatHistory ?? []).map((message) => {
 				return {
 					text: message.kwargs.content,
 					sender: last(message.id) === 'HumanMessage' ? 'user' : 'bot',

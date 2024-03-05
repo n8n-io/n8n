@@ -15,7 +15,7 @@ import type { BaseDocumentLoader } from 'langchain/document_loaders/base';
 import type { BaseCallbackConfig, Callbacks } from 'langchain/dist/callbacks/manager';
 import { BaseLLM } from 'langchain/llms/base';
 import { BaseChatMemory } from 'langchain/memory';
-import type { MemoryVariables } from 'langchain/dist/memory/base';
+import type { MemoryVariables, OutputValues } from 'langchain/dist/memory/base';
 import { BaseRetriever } from 'langchain/schema/retriever';
 import type { FormatInstructionsOptions } from 'langchain/schema/output_parser';
 import { BaseOutputParser, OutputParserException } from 'langchain/schema/output_parser';
@@ -148,35 +148,37 @@ export function logWrapper(
 							arguments: [values],
 						})) as MemoryVariables;
 
+						const chatHistory = (response?.chat_history as BaseMessage[]) ?? response;
+
 						executeFunctions.addOutputData(connectionType, index, [
-							[{ json: { action: 'loadMemoryVariables', response } }],
+							[{ json: { action: 'loadMemoryVariables', chatHistory } }],
 						]);
 						return response;
 					};
-				} else if (
-					prop === 'outputKey' &&
-					'outputKey' in target &&
-					target.constructor.name === 'BufferWindowMemory'
-				) {
-					connectionType = NodeConnectionType.AiMemory;
-					const { index } = executeFunctions.addInputData(connectionType, [
-						[{ json: { action: 'chatHistory' } }],
-					]);
-					const response = target[prop];
+				} else if (prop === 'saveContext' && 'saveContext' in target) {
+					return async (input: InputValues, output: OutputValues): Promise<MemoryVariables> => {
+						connectionType = NodeConnectionType.AiMemory;
 
-					target.chatHistory
-						.getMessages()
-						.then((messages) => {
-							executeFunctions.addOutputData(NodeConnectionType.AiMemory, index, [
-								[{ json: { action: 'chatHistory', chatHistory: messages } }],
-							]);
-						})
-						.catch((error: Error) => {
-							executeFunctions.addOutputData(NodeConnectionType.AiMemory, index, [
-								[{ json: { action: 'chatHistory', error } }],
-							]);
-						});
-					return response;
+						const { index } = executeFunctions.addInputData(connectionType, [
+							[{ json: { action: 'saveContext', input, output } }],
+						]);
+
+						const response = (await callMethodAsync.call(target, {
+							executeFunctions,
+							connectionType,
+							currentNodeRunIndex: index,
+							method: target[prop],
+							arguments: [input, output],
+						})) as MemoryVariables;
+
+						const chatHistory = await target.chatHistory.getMessages();
+
+						executeFunctions.addOutputData(connectionType, index, [
+							[{ json: { action: 'saveContext', chatHistory } }],
+						]);
+
+						return response;
+					};
 				}
 			}
 
