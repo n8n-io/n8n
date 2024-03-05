@@ -504,7 +504,7 @@ export class ChainLlm implements INodeType {
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			let prompt: string;
-			if (this.getNode().typeVersion <= 1.2) {
+			if (this.getNode().typeVersion <= 1.3) {
 				prompt = this.getNodeParameter('prompt', itemIndex) as string;
 			} else {
 				prompt = getPromptInputByType({
