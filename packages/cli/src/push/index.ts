@@ -15,6 +15,7 @@ import type { PushResponse, SSEPushRequest, WebSocketPushRequest } from './types
 import type { IPushDataType } from '@/Interfaces';
 import type { User } from '@db/entities/User';
 import { OnShutdown } from '@/decorators/OnShutdown';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 const useWebSockets = config.getEnv('push.backend') === 'websocket';
 
@@ -39,14 +40,24 @@ export class Push extends EventEmitter {
 
 	handleRequest(req: SSEPushRequest | WebSocketPushRequest, res: PushResponse) {
 		const {
-			userId,
+			user,
+			ws,
 			query: { sessionId },
 		} = req;
 
+		if (!sessionId) {
+			if (ws) {
+				ws.send('The query parameter "sessionId" is missing!');
+				ws.close(1008);
+				return;
+			}
+			throw new BadRequestError('The query parameter "sessionId" is missing!');
+		}
+
 		if (req.ws) {
-			(this.backend as WebSocketPush).add(sessionId, userId, req.ws);
+			(this.backend as WebSocketPush).add(sessionId, user.id, req.ws);
 		} else if (!useWebSockets) {
-			(this.backend as SSEPush).add(sessionId, userId, { req, res });
+			(this.backend as SSEPush).add(sessionId, user.id, { req, res });
 		} else {
 			res.status(401).send('Unauthorized');
 			return;
@@ -103,29 +114,17 @@ export const setupPushServer = (restEndpoint: string, server: Server, app: Appli
 export const setupPushHandler = (restEndpoint: string, app: Application) => {
 	const endpoint = `/${restEndpoint}/push`;
 
-	const pushValidationMiddleware: RequestHandler = async (
+	const authMiddleware: RequestHandler = async (
 		req: SSEPushRequest | WebSocketPushRequest,
 		res,
 		next,
 	) => {
-		const ws = req.ws;
-
-		const { sessionId } = req.query;
-		if (sessionId === undefined) {
-			if (ws) {
-				ws.send('The query parameter "sessionId" is missing!');
-				ws.close(1008);
-			} else {
-				next(new Error('The query parameter "sessionId" is missing!'));
-			}
-			return;
-		}
 		try {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
 			const authCookie: string = req.cookies?.[AUTH_COOKIE_NAME] ?? '';
-			const user = await resolveJwt(authCookie);
-			req.userId = user.id;
+			req.user = await resolveJwt(authCookie);
 		} catch (error) {
+			const ws = req.ws;
 			if (ws) {
 				ws.send(`Unauthorized: ${(error as Error).message}`);
 				ws.close(1008);
@@ -141,7 +140,7 @@ export const setupPushHandler = (restEndpoint: string, app: Application) => {
 	const push = Container.get(Push);
 	app.use(
 		endpoint,
-		pushValidationMiddleware,
+		authMiddleware,
 		(req: SSEPushRequest | WebSocketPushRequest, res: PushResponse) => push.handleRequest(req, res),
 	);
 };
