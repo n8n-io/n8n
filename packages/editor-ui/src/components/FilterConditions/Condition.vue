@@ -79,16 +79,17 @@ const leftParameter = computed<INodeProperties>(() => ({
 	...operatorTypeToNodeProperty(operator.value.type),
 }));
 
-const rightParameter = computed<INodeProperties>(() => ({
-	name: '',
-	displayName: '',
-	default: '',
-	placeholder:
-		operator.value.type === 'dateTime'
-			? now.value
-			: i18n.baseText('filter.condition.placeholderRight'),
-	...operatorTypeToNodeProperty(operator.value.type),
-}));
+const rightParameter = computed<INodeProperties>(() => {
+	const type = operator.value.rightType ?? operator.value.type;
+	return {
+		name: '',
+		displayName: '',
+		default: '',
+		placeholder:
+			type === 'dateTime' ? now.value : i18n.baseText('filter.condition.placeholderRight'),
+		...operatorTypeToNodeProperty(type),
+	};
+});
 
 const onLeftValueChange = (update: IUpdateInformation): void => {
 	condition.value.leftValue = update.value;
