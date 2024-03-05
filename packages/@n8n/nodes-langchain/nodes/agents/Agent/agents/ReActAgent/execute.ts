@@ -7,12 +7,12 @@ import {
 
 import { AgentExecutor, ChatAgent, ZeroShotAgent } from 'langchain/agents';
 import type { BaseLanguageModel } from 'langchain/base_language';
-import type { Tool } from 'langchain/tools';
 import type { BaseOutputParser } from 'langchain/schema/output_parser';
 import { PromptTemplate } from 'langchain/prompts';
 import { CombiningOutputParser } from 'langchain/output_parsers';
 import type { BaseChatModel } from 'langchain/chat_models/base';
 import {
+	getConnectedTools,
 	getOptionalOutputParsers,
 	getPromptInputByType,
 	isChatInstance,
@@ -20,6 +20,7 @@ import {
 
 export async function reActAgentAgentExecute(
 	this: IExecuteFunctions,
+	nodeVersion: number,
 ): Promise<INodeExecutionData[][]> {
 	this.logger.verbose('Executing ReAct Agent');
 
@@ -27,7 +28,7 @@ export async function reActAgentAgentExecute(
 		| BaseLanguageModel
 		| BaseChatModel;
 
-	const tools = (await this.getInputConnectionData(NodeConnectionType.AiTool, 0)) as Tool[];
+	const tools = await getConnectedTools(this, nodeVersion >= 1.5);
 
 	const outputParsers = await getOptionalOutputParsers(this);
 
