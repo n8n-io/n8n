@@ -3,7 +3,8 @@ import type { EventNamesAiNodesType, IDataObject, IExecuteFunctions } from 'n8n-
 import { BaseChatModel } from 'langchain/chat_models/base';
 import { BaseChatModel as BaseChatModelCore } from '@langchain/core/language_models/chat_models';
 import type { BaseOutputParser } from '@langchain/core/output_parsers';
-import { BaseMessage } from 'langchain/schema';
+import type { BaseMessage } from 'langchain/schema';
+import { DynamicTool, type Tool } from 'langchain/tools';
 
 export function getMetadataFiltersValues(
 	ctx: IExecuteFunctions,
@@ -67,6 +68,39 @@ export function getPromptInputByType(options: {
 	return input;
 }
 
+export function getSessionId(
+	ctx: IExecuteFunctions,
+	itemIndex: number,
+	selectorKey = 'sessionIdType',
+	autoSelect = 'fromInput',
+	customKey = 'sessionKey',
+) {
+	let sessionId = '';
+	const selectorType = ctx.getNodeParameter(selectorKey, itemIndex) as string;
+
+	if (selectorType === autoSelect) {
+		sessionId = ctx.evaluateExpression('{{ $json.sessionId }}', itemIndex) as string;
+		if (sessionId === '' || sessionId === undefined) {
+			throw new NodeOperationError(ctx.getNode(), 'No session ID found', {
+				description:
+					"Expected to find the session ID in an input field called 'sessionId' (this is what the chat trigger node outputs). To use something else, change the 'Session ID' parameter",
+				itemIndex,
+			});
+		}
+	} else {
+		sessionId = ctx.getNodeParameter(customKey, itemIndex, '') as string;
+		if (sessionId === '' || sessionId === undefined) {
+			throw new NodeOperationError(ctx.getNode(), 'Key parameter is empty', {
+				description:
+					"Provide a key to use as session ID in the 'Key' parameter or use the 'Take from previous node automatically' option to use the session ID from the previous node, e.t. chat trigger node",
+				itemIndex,
+			});
+		}
+	}
+
+	return sessionId;
+}
+
 export async function logAiEvent(
 	executeFunctions: IExecuteFunctions,
 	event: EventNamesAiNodesType,
@@ -79,7 +113,7 @@ export async function logAiEvent(
 	}
 }
 
-export function serializeChatHistory (chatHistory: Array<BaseMessage>): string {
+export function serializeChatHistory(chatHistory: BaseMessage[]): string {
 	return chatHistory
 		.map((chatMessage) => {
 			if (chatMessage._getType() === 'human') {
@@ -92,3 +126,26 @@ export function serializeChatHistory (chatHistory: Array<BaseMessage>): string {
 		})
 		.join('\n');
 }
+
+export const getConnectedTools = async (ctx: IExecuteFunctions, enforceUniqueNames: boolean) => {
+  const connectedTools = ((await ctx.getInputConnectionData(NodeConnectionType.AiTool, 0)) as Tool[]) || [];
+
+  if (!enforceUniqueNames) return connectedTools;
+
+  const seenNames = new Set<string>();
+
+  for (const tool of connectedTools) {
+    if (!(tool instanceof DynamicTool)) continue;
+
+    const { name } = tool;
+    if (seenNames.has(name)) {
+      throw new NodeOperationError(
+        ctx.getNode(),
+        `You have multiple tools with the same name: '${name}', please rename them to avoid conflicts`,
+      );
+    }
+    seenNames.add(name);
+  }
+
+  return connectedTools;
+};

@@ -35,7 +35,6 @@ type EndpointGroup =
 	| 'debug';
 
 export interface SetupProps {
-	applyAuth?: boolean;
 	endpointGroups?: EndpointGroup[];
 	enabledFeatures?: BooleanLicenseFeature[];
 	quotas?: Partial<{ [K in NumericLicenseFeature]: number }>;
