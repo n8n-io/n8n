@@ -142,33 +142,12 @@ export const STRING_RECOMMENDED_OPTIONS = [
 	'replaceAll()',
 	'length',
 ];
-export const STRING_EDIT_OPTIONS = [
-	'concat()',
-	'replace()',
-	'replaceAll()',
-	'replaceSpecialChars()',
-	'slice()',
-	'split()',
-	'substring()',
-	'trim()',
-	'trimEnd()',
-	'trimStart()',
-	'hash()',
-	'removeMarkdown()',
-	'removeTags()',
-	'urlDecode()',
-	'urlEncode()',
-	'quote()',
-	'extractEmail()',
-	'extractDomain()',
-	'extractUrl()',
-];
 
 export const DATE_RECOMMENDED_OPTIONS = ['format()', 'minus()', 'plus()', 'extract()'];
 export const LUXON_RECOMMENDED_OPTIONS = ['format()', 'minus()', 'plus()', 'diff()', 'extract()'];
+export const OBJECT_RECOMMENDED_OPTIONS = ['keys()', 'values()', 'isEmpty()'];
 export const ARRAY_RECOMMENDED_OPTIONS = ['length', 'last()', 'includes()', 'map()', 'filter()'];
 export const ARRAY_NUMBER_ONLY_METHODS = ['max()', 'min()', 'sum()', 'average()'];
-export const OBJECT_RECOMMENDED_OPTIONS = ['keys()', 'values()', 'isEmpty()'];
 
 export const LUXON_SECTIONS: Record<string, CompletionSection> = {
 	edit: withSectionHeader({

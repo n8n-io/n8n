@@ -16,6 +16,7 @@ import {
 	isCredentialsModalOpen,
 	applyCompletion,
 	sortCompletionsAlpha,
+	hasRequiredArgs,
 } from './utils';
 import type {
 	Completion,
@@ -200,7 +201,7 @@ const createCompletionOption = (
 		label,
 		type: optionType,
 		section: docInfo.doc?.section,
-		apply: applyCompletion((docInfo.doc?.args?.length ?? 0) > 0),
+		apply: applyCompletion(hasRequiredArgs(docInfo?.doc)),
 	};
 
 	option.info = () => {
@@ -695,7 +696,7 @@ const createLuxonAutocompleteOption = (
 		label,
 		type,
 		section: doc?.section,
-		apply: applyCompletion((doc?.args?.length ?? 0) > 0),
+		apply: applyCompletion(hasRequiredArgs(doc)),
 	};
 	option.info = createCompletionOption('DateTime', name, type, {
 		// Add translated description

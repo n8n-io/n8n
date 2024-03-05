@@ -15,6 +15,7 @@ import type { TransactionSpec } from '@codemirror/state';
 import type { SyntaxNode } from '@lezer/common';
 import { javascriptLanguage } from '@codemirror/lang-javascript';
 import { useRouter } from 'vue-router';
+import type { DocMetadata } from 'n8n-workflow';
 
 /**
  * Split user input into base (to resolve) and tail (to filter).
@@ -152,7 +153,8 @@ export const stripExcessParens = (context: CompletionContext) => (option: Comple
 
 /**
  * When a function completion is selected, set the cursor correctly
- * e.g. `$max()` -> `$max(<cursor>)`
+ * @example `.includes()` -> `.includes(<cursor>)`
+ *  @example `$max()` -> `$max()<cursor>`
  */
 export const applyCompletion =
 	(hasArgs = true) =>
@@ -169,6 +171,12 @@ export const applyCompletion =
 
 		view.dispatch(tx);
 	};
+
+export const hasRequiredArgs = (doc?: DocMetadata): boolean => {
+	if (!doc) return false;
+	const requiredArgs = doc?.args?.filter((arg) => !arg.name.endsWith('?')) ?? [];
+	return requiredArgs.length > 0;
+};
 
 export const sortCompletionsAlpha = (completions: Completion[]): Completion[] => {
 	return completions.sort((a, b) => a.label.localeCompare(b.label));
