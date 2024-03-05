@@ -3,7 +3,7 @@ import { WithTimestampsAndStringId } from './AbstractEntity';
 import type { ProjectRelation } from './ProjectRelation';
 import type { SharedCredentials } from './SharedCredentials';
 import type { SharedWorkflow } from './SharedWorkflow';
-import { ApplicationError } from '../../../../workflow/src';
+import { ApplicationError } from 'n8n-workflow';
 
 export type ProjectType = 'personal' | 'team' | 'public';
 
