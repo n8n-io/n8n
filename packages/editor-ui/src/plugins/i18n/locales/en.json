@@ -2324,6 +2324,8 @@
 	"projects.settings.role.editor": "Editor",
 	"projects.settings.role.viewer": "Viewer",
 	"projects.settings.removeAccess": "Remove access",
+	"projects.sharing.noMatchingProjects": "There are no available projects",
+	"projects.sharing.placeholder": "Add projects...",
 	"mfa.setup.invalidAuthenticatorCode": "{code} is not a valid number",
 	"mfa.setup.invalidCode": "Two-factor code failed. Please try again.",
 	"mfa.code.modal.title": "Two-factor authentication",

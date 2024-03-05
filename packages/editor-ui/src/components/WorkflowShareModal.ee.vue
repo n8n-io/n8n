@@ -31,6 +31,11 @@
 					}}
 				</n8n-info-tip>
 				<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
+					<ProjectSharing
+						v-model="sharedWithProjects"
+						:projects="projectsStore.projects"
+						:shared-with-projects="[]"
+					/>
 					<n8n-user-select
 						v-if="workflowPermissions.updateSharing"
 						class="mb-s"
@@ -149,11 +154,14 @@ import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import { useUsageStore } from '@/stores/usage.store';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { isNavigationFailure } from 'vue-router';
+import ProjectSharing from '@/features/projects/components/ProjectSharing.vue';
+import { useProjectsStore } from '@/features/projects/projects.store';
 
 export default defineComponent({
 	name: 'WorkflowShareModal',
 	components: {
 		Modal,
+		ProjectSharing,
 	},
 	props: {
 		data: {
@@ -179,6 +187,9 @@ export default defineComponent({
 			loading: true,
 			modalBus: createEventBus(),
 			sharedWith: [...(workflow.sharedWith || [])] as Array<Partial<IUser>>,
+			sharedWithProjects: [
+				...(workflow.sharedWithProjects || []),
+			] as IWorkflowDb['sharedWithProjects'],
 			EnterpriseEditionFeature,
 		};
 	},
@@ -190,6 +201,7 @@ export default defineComponent({
 			useUsageStore,
 			useWorkflowsStore,
 			useWorkflowsEEStore,
+			useProjectsStore,
 		),
 		isDefaultUser(): boolean {
 			return this.usersStore.isDefaultUser;
@@ -470,6 +482,7 @@ export default defineComponent({
 		async initialize() {
 			if (this.isSharingEnabled) {
 				await this.loadUsers();
+				await this.projectsStore.getAllProjects();
 
 				if (
 					this.workflow.id !== PLACEHOLDER_EMPTY_WORKFLOW_ID &&

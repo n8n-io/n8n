@@ -299,7 +299,7 @@ export interface IWorkflowDb {
 	usedCredentials?: IUsedCredential[];
 	meta?: WorkflowMetadata;
 	homeProject?: Pick<Project, 'id' | 'name' | 'type'>;
-	sharedWithProjects?: Array<Pick<Project, 'id' | 'name' | 'type'>>;
+	sharedWithProjects?: Array<Omit<Project, 'relations'>>;
 }
 
 // Identical to cli.Interfaces.ts
