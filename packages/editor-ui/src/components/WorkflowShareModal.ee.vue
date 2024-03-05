@@ -31,11 +31,7 @@
 					}}
 				</n8n-info-tip>
 				<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
-					<ProjectSharing
-						v-model="sharedWithProjects"
-						:projects="projectsStore.projects"
-						:shared-with-projects="[]"
-					/>
+					<ProjectSharing v-model="sharedWithProjects" :projects="projectsStore.projects" />
 					<n8n-user-select
 						v-if="workflowPermissions.updateSharing"
 						class="mb-s"

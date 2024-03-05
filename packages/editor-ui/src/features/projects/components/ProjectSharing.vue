@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref, onBeforeMount } from 'vue';
+import { computed, ref } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 import type { ProjectListItem } from '@/features/projects/projects.types';
 import type { IWorkflowDb } from '@/Interface';
@@ -8,7 +8,6 @@ const locale = useI18n();
 
 type Props = {
 	projects: ProjectListItem[];
-	sharedWithProjects: IWorkflowDb['sharedWithProjects'];
 };
 
 const props = defineProps<Props>();
@@ -51,10 +50,6 @@ const onProjectRemoved = (projectId: string) => {
 	}
 	selectedProjects.value?.splice(index, 1);
 };
-
-onBeforeMount(() => {
-	selectedProjects.value = [...(props.sharedWithProjects ?? [])];
-});
 </script>
 <template>
 	<div>
