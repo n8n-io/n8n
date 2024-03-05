@@ -90,6 +90,7 @@ describe('AuthService', () => {
 				httpOnly: true,
 				maxAge: 604800000,
 				sameSite: 'lax',
+				secure: false,
 			});
 		});
 	});
@@ -177,6 +178,7 @@ describe('AuthService', () => {
 				httpOnly: true,
 				maxAge: 604800000,
 				sameSite: 'lax',
+				secure: false,
 			});
 		});
 

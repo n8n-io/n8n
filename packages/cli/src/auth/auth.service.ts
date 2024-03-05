@@ -82,6 +82,7 @@ export class AuthService {
 			maxAge: this.jwtExpiration * Time.seconds.toMilliseconds,
 			httpOnly: true,
 			sameSite: 'lax',
+			secure: config.getEnv('secure_cookie'),
 		});
 	}
 
