@@ -216,6 +216,25 @@ function plus(
 	return DateTime.fromJSDate(date).plus(duration).toJSDate();
 }
 
+function toDateTime(date: Date | DateTime): DateTime {
+	if (isDateTime(date)) return date;
+
+	return DateTime.fromJSDate(date);
+}
+
+function toInt(date: Date | DateTime): number {
+	if (isDateTime(date)) {
+		return date.toMillis();
+	}
+	return date.getTime();
+}
+
+const toFloat = toInt;
+
+function toBoolean() {
+	return undefined;
+}
+
 endOfMonth.doc = {
 	name: 'endOfMonth',
 	returnType: 'Date',
@@ -295,6 +314,15 @@ isInLast.doc = {
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-isInLast',
 };
 
+toDateTime.doc = {
+	name: 'toDateTime',
+	description: 'Convert a JavaScript Date to a Luxon DateTime.',
+	section: 'query',
+	returnType: 'DateTime',
+	hidden: true,
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-toDateTime',
+};
+
 minus.doc = {
 	name: 'minus',
 	description: 'Subtracts a given time period from a Date. Default unit is `milliseconds`.',
@@ -332,5 +360,9 @@ export const dateExtensions: ExtensionMap = {
 		minus,
 		plus,
 		format,
+		toDateTime,
+		toInt,
+		toFloat,
+		toBoolean,
 	},
 };

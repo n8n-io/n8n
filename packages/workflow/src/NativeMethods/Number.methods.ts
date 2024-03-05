@@ -24,5 +24,14 @@ export const numberMethods: NativeDoc = {
 				args: [{ name: 'precision?', type: 'number' }],
 			},
 		},
+		toString: {
+			doc: {
+				name: 'toString',
+				description: 'returns a string representing this number value.',
+				docURL:
+					'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/toString',
+				returnType: 'string',
+			},
+		},
 	},
 };

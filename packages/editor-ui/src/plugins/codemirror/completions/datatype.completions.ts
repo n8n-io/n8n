@@ -133,6 +133,10 @@ function datatypeOptions(input: AutocompleteInput): Completion[] {
 		return stringOptions(input as AutocompleteInput<string>);
 	}
 
+	if (typeof resolved === 'boolean') {
+		return booleanOptions();
+	}
+
 	if (resolved instanceof DateTime) {
 		return luxonOptions();
 	}
@@ -183,7 +187,7 @@ export const toOptions = (
 ) => {
 	return Object.entries(fnToDoc)
 		.sort((a, b) => a[0].localeCompare(b[0]))
-		.filter(([, docInfo]) => !docInfo.doc?.hidden || includeHidden)
+		.filter(([, docInfo]) => (docInfo.doc && !docInfo.doc?.hidden) || includeHidden)
 		.map(([fnName, docInfo]) => {
 			return createCompletionOption(typeName, fnName, optionType, docInfo);
 		});
@@ -448,7 +452,7 @@ const isUrl = (url: string): boolean => {
 };
 
 const stringOptions = (input: AutocompleteInput<string>): Completion[] => {
-	const { resolved, tail } = input;
+	const { resolved } = input;
 	const options = sortCompletionsAlpha([...natives('string'), ...extensions('string')]);
 
 	if (validateFieldType('string', resolved, 'number').valid) {
@@ -462,7 +466,7 @@ const stringOptions = (input: AutocompleteInput<string>): Completion[] => {
 	if (validateFieldType('string', resolved, 'dateTime').valid) {
 		return applySections({
 			options,
-			recommended: ['toDate()'],
+			recommended: ['toDateTime()'],
 			sections: STRING_SECTIONS,
 		});
 	}
@@ -488,6 +492,10 @@ const stringOptions = (input: AutocompleteInput<string>): Completion[] => {
 		recommended: STRING_RECOMMENDED_OPTIONS,
 		sections: STRING_SECTIONS,
 	});
+};
+
+const booleanOptions = (): Completion[] => {
+	return sortCompletionsAlpha([...natives('boolean'), ...extensions('boolean')]);
 };
 
 const numberOptions = (input: AutocompleteInput<number>): Completion[] => {
@@ -688,7 +696,7 @@ const createLuxonAutocompleteOption = (
 		};
 	}
 
-	if (doc?.hidden && !includeHidden) {
+	if (!doc || (doc?.hidden && !includeHidden)) {
 		return null;
 	}
 
