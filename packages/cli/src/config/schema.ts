@@ -538,6 +538,12 @@ export const schema = {
 		env: 'N8N_PROTOCOL',
 		doc: 'HTTP Protocol via which n8n can be reached',
 	},
+	secure_cookie: {
+		doc: 'This sets the `Secure` flag on n8n auth cookie',
+		format: Boolean,
+		default: true,
+		env: 'N8N_SECURE_COOKIE',
+	},
 	ssl_key: {
 		format: String,
 		default: '',

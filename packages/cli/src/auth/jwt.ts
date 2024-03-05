@@ -90,5 +90,6 @@ export async function issueCookie(res: Response, user: User): Promise<void> {
 		maxAge: userData.expiresIn * Time.seconds.toMilliseconds,
 		httpOnly: true,
 		sameSite: 'lax',
+		secure: config.getEnv('secure_cookie'),
 	});
 }
