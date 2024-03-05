@@ -1473,7 +1473,8 @@ export default defineComponent({
 		},
 	},
 	watch: {
-		node() {
+		node(newNode: INodeUi, prevNode: INodeUi) {
+			if (newNode.id === prevNode.id) return;
 			this.init();
 		},
 		hasNodeRun() {
