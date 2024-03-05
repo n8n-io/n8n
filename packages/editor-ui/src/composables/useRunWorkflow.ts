@@ -278,8 +278,11 @@ export function useRunWorkflow(options: { router: ReturnType<typeof useRouter> }
 			nodeHelpers.updateNodesExecutionIssues();
 
 			const runWorkflowApiResponse = await runWorkflowApi(startRunData);
+			const pinData = workflowData.pinData ?? {};
 
 			for (const node of workflowData.nodes) {
+				if (pinData[node.name]) continue;
+
 				if (![FORM_TRIGGER_NODE_TYPE, WAIT_NODE_TYPE].includes(node.type)) {
 					continue;
 				}
