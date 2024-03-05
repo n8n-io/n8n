@@ -156,6 +156,7 @@ describe('refreshExpiringCookie', () => {
 				httpOnly: true,
 				maxAge: jwtSessionDurationHours * Time.hours.toMilliseconds,
 				sameSite: 'lax',
+				secure: false,
 			});
 		});
 	});
