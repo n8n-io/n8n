@@ -350,11 +350,6 @@
 		var(--prim-color-alt-e-l),
 		0.4
 	);
-	--prim-color-alt-e-tint-100: hsl(
-		var(--prim-color-alt-e-h),
-		var(--prim-color-alt-e-s),
-		calc(var(--prim-color-alt-e-l) + 10%)
-	);
 	--prim-color-alt-e-tint-250: hsl(
 		var(--prim-color-alt-e-h),
 		var(--prim-color-alt-e-s),
