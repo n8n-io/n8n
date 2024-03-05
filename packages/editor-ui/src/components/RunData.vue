@@ -744,7 +744,7 @@ export default defineComponent({
 			const error = this.workflowRunData?.[this.node.name]?.[this.runIndex]?.error;
 			const errorsToTrack = ['unknown error'];
 
-			if (error && errorsToTrack.map((e) => error.message.toLowerCase().includes(e))) {
+			if (error && errorsToTrack.some((e) => error.message.toLowerCase().includes(e))) {
 				this.$telemetry.track(
 					`User encountered an error: "${error.message}"`,
 					{
