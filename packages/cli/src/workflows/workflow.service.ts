@@ -47,7 +47,6 @@ export class WorkflowService {
 	async getMany(sharedWorkflowIds: string[], options?: ListQuery.Options) {
 		const { workflows, count } = await this.workflowRepository.getMany(sharedWorkflowIds, options);
 
-		// update so that it checks the relations
 		return hasSharing(workflows)
 			? {
 					workflows: workflows.map((w) => this.ownershipService.addOwnedByAndSharedWith(w)),

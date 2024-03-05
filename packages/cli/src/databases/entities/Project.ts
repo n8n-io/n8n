@@ -25,8 +25,6 @@ export class Project extends WithTimestampsAndStringId {
 			return `${user.firstName} ${user.lastName} <${user.email}>`; // generate name
 		}
 
-		console.trace(JSON.stringify(this.projectRelations, null, 2));
-
 		throw new ApplicationError(
 			'You asked for the actual name of a personal project. I can only generate the actual name if `projectRelations: { user: true }` is part of the relations when querying the database. Please make sure to add this to your query.',
 		);
