@@ -1,3 +1,25 @@
+## [1.30.2](https://github.com/n8n-io/n8n/compare/n8n@1.30.1...n8n@1.30.2) (2024-03-05)
+
+
+### Bug Fixes
+
+* **Basic LLM Chain Node:** Fix retrieving of prompt parameter for v1.3 of the node ([#8817](https://github.com/n8n-io/n8n/issues/8817)) ([05d3373](https://github.com/n8n-io/n8n/commit/05d3373f9fa1bd1548ba70e7eb85d3d8779e4187))
+* **editor:** Fix NDV output tabs resetting on any click ([#8808](https://github.com/n8n-io/n8n/issues/8808)) ([f8250a6](https://github.com/n8n-io/n8n/commit/f8250a6f782ec36324e2d9064626b68d45be23d4))
+* **editor:** Fix opening of node creator for sub-nodes connection hint link ([#8809](https://github.com/n8n-io/n8n/issues/8809)) ([9c0df23](https://github.com/n8n-io/n8n/commit/9c0df237c4562affba4d7dfdadd361dcb07a0435))
+* **editor:** Set correct type for right input in filter component ([#8771](https://github.com/n8n-io/n8n/issues/8771)) ([ffd1039](https://github.com/n8n-io/n8n/commit/ffd10392b1a48abe389e7cea5feba6e6878ee210))
+* **editor:** Update assignment hint when user hovers table row ([#8782](https://github.com/n8n-io/n8n/issues/8782)) ([a2f4d95](https://github.com/n8n-io/n8n/commit/a2f4d958c8229178c8bfceab394699a20a98197a))
+* **Google Drive Node:** Add supportsAllDrives: true to update and download ([#8786](https://github.com/n8n-io/n8n/issues/8786)) ([dde6350](https://github.com/n8n-io/n8n/commit/dde6350bf357b728146f83232d690fc0472c2ce7))
+* **HubSpot Node:** Include properties for contact and deal in getAll operation ([#8772](https://github.com/n8n-io/n8n/issues/8772)) ([467fbc7](https://github.com/n8n-io/n8n/commit/467fbc712e6fc58626c81f4c635c5d5161df6292))
+* **n8n Form Trigger Node:** Do not open pop up when data is pinned in trigger ([#8781](https://github.com/n8n-io/n8n/issues/8781)) ([59b9b7a](https://github.com/n8n-io/n8n/commit/59b9b7ad9895b17e7ae40280889dfbd8109dca74))
+* **OpenAI Node:** Message text operation parameters case fix ([#8804](https://github.com/n8n-io/n8n/issues/8804)) ([c1bda9a](https://github.com/n8n-io/n8n/commit/c1bda9a8124a9cd6b8712a534c2ab3350d89c22d))
+* **Postgres Trigger Node:** `closeFunction` errors should not prevent a workflow from being deactivated ([#8738](https://github.com/n8n-io/n8n/issues/8738)) ([7535203](https://github.com/n8n-io/n8n/commit/7535203f87fb6b8a94c60367d158a9de6c8fe157))
+* Send user id when setting up an account ([#8639](https://github.com/n8n-io/n8n/issues/8639)) ([ad344ee](https://github.com/n8n-io/n8n/commit/ad344eeca56572ff681de8b6e48036a0ffed8e2c))
+* Simplify Structured Output Parser wrapping and fix auto-fixing output parser ([#8778](https://github.com/n8n-io/n8n/issues/8778)) ([acdd787](https://github.com/n8n-io/n8n/commit/acdd7874ee5b328fc186ff3aed90643240c17e93))
+* **TheHive 5 Node:** The Hive - Custom fields are no longer working ([#8780](https://github.com/n8n-io/n8n/issues/8780)) ([b906197](https://github.com/n8n-io/n8n/commit/b906197c2858bd2eb37aa7a984052b9441632780))
+* **Wait Node:** Change default wait period to 5 seconds ([#8783](https://github.com/n8n-io/n8n/issues/8783)) ([19b69b6](https://github.com/n8n-io/n8n/commit/19b69b6fb07373d965e5001ba97e59927a884fa4))
+
+
+
 ## [1.30.1](https://github.com/n8n-io/n8n/compare/n8n@1.30.0...n8n@1.30.1) (2024-02-23)
 
 
