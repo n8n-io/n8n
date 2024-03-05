@@ -44,6 +44,14 @@ const onProjectSelected = (projectId: string) => {
 	selectedProject.value = '';
 };
 
+const onProjectRemoved = (projectId: string) => {
+	const index = selectedProjects.value?.findIndex((p) => p.id === projectId) ?? -1;
+	if (index === -1) {
+		return;
+	}
+	selectedProjects.value?.splice(index, 1);
+};
+
 onBeforeMount(() => {
 	selectedProjects.value = [...(props.sharedWithProjects ?? [])];
 });
@@ -71,25 +79,35 @@ onBeforeMount(() => {
 				:value="project.id"
 				:label="project.name"
 			>
-				{{ project.name }}
+				<div :class="$style.project">
+					<N8nAvatar :first-name="project.name" />
+					<N8nText :bold="true" color="text-dark">{{ project.name }}</N8nText>
+				</div>
 			</N8nOption>
 		</N8nSelect>
-		<ul :class="$style.selectedProject">
-			<li v-for="project in selectedProjects" :key="project.id">
-				<N8nAvatar :first-name="project.name" />
-				<N8nText :bold="true" color="text-dark">{{ project.name }}</N8nText>
+		<ul :class="$style.selectedProjects">
+			<li v-for="project in selectedProjects" :key="project.id" :class="$style.project">
+				<div :class="$style.project">
+					<N8nAvatar :first-name="project.name" />
+					<N8nText :bold="true" color="text-dark">{{ project.name }}</N8nText>
+				</div>
+				<n8n-button size="small" square icon="trash" @click="onProjectRemoved(project.id)" />
 			</li>
 		</ul>
 	</div>
 </template>
 
 <style lang="scss" module>
-.selectedProject {
+.project {
+	display: flex;
+	width: 100%;
+	align-items: center;
+	padding: var(--spacing-2xs) 0;
+	gap: var(--spacing-xs);
+}
+
+.selectedProjects {
 	li {
-		display: flex;
-		align-items: center;
-		padding: var(--spacing-2xs) 0;
-		gap: var(--spacing-xs);
 		border-bottom: var(--border-base);
 
 		&:first-child {
