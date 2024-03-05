@@ -1,4 +1,4 @@
-import { formatBlocks } from '../GenericFunctions';
+import { formatBlocks } from '../shared/GenericFunctions';
 
 describe('Test NotionV2, formatBlocks', () => {
 	it('should format to_do block', () => {
