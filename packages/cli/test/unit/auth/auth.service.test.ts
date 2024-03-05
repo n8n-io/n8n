@@ -22,7 +22,7 @@ describe('AuthService', () => {
 		mfaEnabled: false,
 	};
 	const validToken =
-		'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMyIsImVtYWlsIjoidGVzdEBleGFtcGxlLmNvbSIsInBhc3N3b3JkIjoiMzE1MTNjNWE5ZTNjNWFmZTVjMDZkNTY3NWFjZTc0ZThiYzNmYWRkOTc0NGFiNWQ4OWMzMTFmMmE2MmNjYmQzOSIsImlhdCI6MTcwNjc1MDYyNSwiZXhwIjoxNzA3MzU1NDI1fQ.mtXKUwQDHOhiHn0YNuCeybmxevtNG6LXTAv_sQL63Zc';
+		'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMyIsImhhc2giOiJtSkFZeDRXYjdrIiwiaWF0IjoxNzA2NzUwNjI1LCJleHAiOjE3MDczNTU0MjV9.JwY3doH0YrxHdX4nTOlTN4-QMaXsAu5OFOaFcIHSHBI';
 
 	const user = mock<User>(userData);
 	const jwtService = new JwtService(mock());
@@ -37,6 +37,20 @@ describe('AuthService', () => {
 		jest.setSystemTime(now);
 		config.set('userManagement.jwtSessionDurationHours', 168);
 		config.set('userManagement.jwtRefreshTimeoutHours', 0);
+	});
+
+	describe('createJWTHash', () => {
+		it('should generate unique hashes', () => {
+			expect(authService.createJWTHash(user)).toEqual('mJAYx4Wb7k');
+			expect(
+				authService.createJWTHash(mock<User>({ email: user.email, password: 'newPasswordHash' })),
+			).toEqual('FVALtU7AE0');
+			expect(
+				authService.createJWTHash(
+					mock<User>({ email: 'test1@example.com', password: user.password }),
+				),
+			).toEqual('y8ha6X01jd');
+		});
 	});
 
 	describe('authMiddleware', () => {
@@ -76,6 +90,7 @@ describe('AuthService', () => {
 				httpOnly: true,
 				maxAge: 604800000,
 				sameSite: 'lax',
+				secure: false,
 			});
 		});
 	});
@@ -163,6 +178,7 @@ describe('AuthService', () => {
 				httpOnly: true,
 				maxAge: 604800000,
 				sameSite: 'lax',
+				secure: false,
 			});
 		});
 
@@ -198,7 +214,7 @@ describe('AuthService', () => {
 			urlService.getInstanceBaseUrl.mockReturnValue('https://n8n.instance');
 			const url = authService.generatePasswordResetUrl(user);
 			expect(url).toEqual(
-				'https://n8n.instance/change-password?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjMiLCJwYXNzd29yZFNoYSI6IjMxNTEzYzVhOWUzYzVhZmU1YzA2ZDU2NzVhY2U3NGU4YmMzZmFkZDk3NDRhYjVkODljMzExZjJhNjJjY2JkMzkiLCJpYXQiOjE3MDY3NTA2MjUsImV4cCI6MTcwNjc1MTgyNX0.wsdEpbK2zhFucaPwga7f8EOcwiJcv0iW23HcnvJs-s8&mfaEnabled=false',
+				'https://n8n.instance/change-password?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjMiLCJoYXNoIjoibUpBWXg0V2I3ayIsImlhdCI6MTcwNjc1MDYyNSwiZXhwIjoxNzA2NzUxODI1fQ.rg90I7MKjc_KC77mov59XYAeRc-CoW9ka4mt1dCfrnk&mfaEnabled=false',
 			);
 		});
 	});
@@ -214,9 +230,7 @@ describe('AuthService', () => {
 
 			expect(decoded.sub).toEqual(user.id);
 			expect(decoded.exp - decoded.iat).toEqual(1200); // Expires in 20 minutes
-			expect(decoded.passwordSha).toEqual(
-				'31513c5a9e3c5afe5c06d5675ace74e8bc3fadd9744ab5d89c311f2a62ccbd39',
-			);
+			expect(decoded.hash).toEqual('mJAYx4Wb7k');
 		});
 	});
 
