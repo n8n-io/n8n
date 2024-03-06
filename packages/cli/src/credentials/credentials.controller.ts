@@ -138,6 +138,7 @@ export class CredentialsController {
 		return await this.credentialsService.test(req.user, mergedCredentials);
 	}
 
+	// NOTE: tested
 	@Post('/')
 	async createCredentials(req: CredentialRequest.Create) {
 		const newCredential = await this.credentialsService.prepareCreateData(req.body);

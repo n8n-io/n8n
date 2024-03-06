@@ -100,6 +100,7 @@ describe('GET /credentials', () => {
 	});
 });
 
+// NOTE: passing
 describe('POST /credentials', () => {
 	test('should create cred', async () => {
 		const payload = randomCredentialPayload();
@@ -126,11 +127,11 @@ describe('POST /credentials', () => {
 		expect(credential.data).not.toBe(payload.data);
 
 		const sharedCredential = await Container.get(SharedCredentialsRepository).findOneOrFail({
-			relations: ['user', 'credentials'],
+			relations: { project: true, credentials: true },
 			where: { credentialsId: credential.id },
 		});
 
-		expect(sharedCredential.user.id).toBe(owner.id);
+		expect(sharedCredential.project.id).toBe(ownerPersonalProject.id);
 		expect(sharedCredential.credentials.name).toBe(payload.name);
 	});
 
