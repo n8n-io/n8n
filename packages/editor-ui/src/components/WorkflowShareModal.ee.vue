@@ -31,7 +31,11 @@
 					}}
 				</n8n-info-tip>
 				<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
-					<ProjectSharing v-model="sharedWithProjects" :projects="projectsStore.projects" />
+					<ProjectSharing
+						v-model="sharedWithProjects"
+						:projects="projectsStore.projects"
+						:readonly="!workflowPermissions.updateSharing"
+					/>
 					<n8n-user-select
 						v-if="workflowPermissions.updateSharing"
 						class="mb-s"
@@ -181,6 +185,7 @@ export default defineComponent({
 		return {
 			WORKFLOW_SHARE_MODAL_KEY,
 			loading: true,
+			isDirty: false,
 			modalBus: createEventBus(),
 			sharedWith: [...(workflow.sharedWith || [])] as Array<Partial<IUser>>,
 			sharedWithProjects: [
@@ -250,22 +255,24 @@ export default defineComponent({
 		workflowOwnerName(): string {
 			return this.workflowsEEStore.getWorkflowOwnerName(`${this.workflow.id}`);
 		},
-		isDirty(): boolean {
-			const previousSharedWith = this.workflow.sharedWith || [];
-
-			return (
-				this.sharedWith.length !== previousSharedWith.length ||
-				this.sharedWith.some(
-					(sharee) => !previousSharedWith.find((previousSharee) => sharee.id === previousSharee.id),
-				)
-			);
-		},
 	},
 	watch: {
 		workflow(workflow) {
 			if (workflow.sharedWith) {
 				this.sharedWith = workflow.sharedWith;
 			}
+		},
+		sharedWith: {
+			handler() {
+				this.isDirty = true;
+			},
+			deep: true,
+		},
+		sharedWithProjects: {
+			handler() {
+				this.isDirty = true;
+			},
+			deep: true,
 		},
 	},
 	mounted() {
@@ -305,6 +312,7 @@ export default defineComponent({
 				await this.workflowsEEStore.saveWorkflowSharedWith({
 					workflowId,
 					sharedWith: this.sharedWith,
+					sharedWithProjects: this.sharedWithProjects,
 				});
 
 				this.trackTelemetry({
@@ -316,6 +324,7 @@ export default defineComponent({
 					title: this.$locale.baseText('workflows.shareModal.onSave.success.title'),
 					type: 'success',
 				});
+				this.isDirty = false;
 			} catch (error) {
 				this.showError(error, this.$locale.baseText('workflows.shareModal.onSave.error.title'));
 			} finally {

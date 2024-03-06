@@ -8,6 +8,7 @@ const locale = useI18n();
 
 type Props = {
 	projects: ProjectListItem[];
+	readonly?: boolean;
 };
 
 const props = defineProps<Props>();
@@ -63,6 +64,7 @@ const onProjectRemoved = (projectId: string) => {
 			teleported
 			:no-data-text="locale.baseText('projects.sharing.noMatchingProjects')"
 			size="large"
+			:disabled="props.readonly"
 			@update:modelValue="onProjectSelected"
 		>
 			<template #prefix>
@@ -86,7 +88,13 @@ const onProjectRemoved = (projectId: string) => {
 					<N8nAvatar :first-name="project.name" />
 					<N8nText :bold="true" color="text-dark">{{ project.name }}</N8nText>
 				</div>
-				<n8n-button size="small" square icon="trash" @click="onProjectRemoved(project.id)" />
+				<n8n-button
+					:disabled="props.readonly"
+					size="small"
+					square
+					icon="trash"
+					@click="onProjectRemoved(project.id)"
+				/>
 			</li>
 		</ul>
 	</div>

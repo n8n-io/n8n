@@ -1,4 +1,4 @@
-import type { IUser } from '../Interface';
+import type { IUser, IWorkflowDb } from '../Interface';
 import { setWorkflowSharedWith } from '@/api/workflows.ee';
 import { EnterpriseEditionFeature, STORES } from '@/constants';
 import { useRootStore } from '@/stores/n8nRoot.store';
@@ -74,6 +74,7 @@ export const useWorkflowsEEStore = defineStore(STORES.WORKFLOWS_EE, {
 		},
 		async saveWorkflowSharedWith(payload: {
 			sharedWith: Array<Partial<IUser>>;
+			sharedWithProjects: IWorkflowDb['sharedWithProjects'];
 			workflowId: string;
 		}): Promise<void> {
 			const rootStore = useRootStore();
@@ -82,6 +83,7 @@ export const useWorkflowsEEStore = defineStore(STORES.WORKFLOWS_EE, {
 			if (settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
 				await setWorkflowSharedWith(rootStore.getRestApiContext, payload.workflowId, {
 					shareWithIds: payload.sharedWith.map((sharee) => sharee.id as string),
+					sharedWithProjects: (payload.sharedWithProjects ?? []).map((p) => p.id),
 				});
 
 				this.setWorkflowSharedWith(payload);
