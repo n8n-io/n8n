@@ -36,43 +36,6 @@
 						:projects="projectsStore.projects"
 						:readonly="!workflowPermissions.updateSharing"
 					/>
-					<n8n-user-select
-						v-if="workflowPermissions.updateSharing"
-						class="mb-s"
-						size="large"
-						:users="usersList"
-						:current-user-id="currentUser.id"
-						:placeholder="$locale.baseText('workflows.shareModal.select.placeholder')"
-						data-test-id="workflow-sharing-modal-users-select"
-						@update:modelValue="onAddSharee"
-					>
-						<template #prefix>
-							<n8n-icon icon="search" />
-						</template>
-					</n8n-user-select>
-					<n8n-users-list
-						:actions="[]"
-						:users="sharedWithList"
-						:current-user-id="currentUser.id"
-						:delete-label="$locale.baseText('workflows.shareModal.list.delete')"
-						:readonly="!workflowPermissions.updateSharing"
-					>
-						<template #actions="{ user }">
-							<n8n-select
-								:class="$style.roleSelect"
-								model-value="editor"
-								size="small"
-								@update:modelValue="onRoleAction(user, $event)"
-							>
-								<n8n-option :label="$locale.baseText('workflows.roles.editor')" value="editor" />
-								<n8n-option :class="$style.roleSelectRemoveOption" value="remove">
-									<n8n-text color="danger">{{
-										$locale.baseText('workflows.shareModal.list.delete')
-									}}</n8n-text>
-								</n8n-option>
-							</n8n-select>
-						</template>
-					</n8n-users-list>
 					<template #fallback>
 						<n8n-text>
 							<i18n-t
@@ -150,8 +113,6 @@ import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
-import type { ITelemetryTrackProperties } from 'n8n-workflow';
-import { useUsageStore } from '@/stores/usage.store';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { isNavigationFailure } from 'vue-router';
 import ProjectSharing from '@/features/projects/components/ProjectSharing.vue';
@@ -187,7 +148,6 @@ export default defineComponent({
 			loading: true,
 			isDirty: false,
 			modalBus: createEventBus(),
-			sharedWith: [...(workflow.sharedWith || [])] as Array<Partial<IUser>>,
 			sharedWithProjects: [
 				...(workflow.sharedWithProjects || []),
 			] as IWorkflowDb['sharedWithProjects'],
@@ -199,7 +159,6 @@ export default defineComponent({
 			useSettingsStore,
 			useUIStore,
 			useUsersStore,
-			useUsageStore,
 			useWorkflowsStore,
 			useWorkflowsEEStore,
 			useProjectsStore,
@@ -221,26 +180,6 @@ export default defineComponent({
 				},
 			);
 		},
-		usersList(): IUser[] {
-			return this.usersStore.allUsers.filter((user: IUser) => {
-				const isAlreadySharedWithUser = (this.sharedWith || []).find(
-					(sharee) => sharee.id === user.id,
-				);
-				const isOwner = this.workflow?.ownedBy?.id === user.id;
-
-				return !isAlreadySharedWithUser && !isOwner;
-			});
-		},
-		sharedWithList(): Array<Partial<IUser>> {
-			return (
-				[
-					{
-						...(this.workflow?.ownedBy ? this.workflow.ownedBy : this.usersStore.currentUser),
-						isOwner: true,
-					},
-				] as Array<Partial<IUser>>
-			).concat(this.sharedWith || []);
-		},
 		workflow(): IWorkflowDb {
 			return this.data.id === PLACEHOLDER_EMPTY_WORKFLOW_ID
 				? this.workflowsStore.workflow
@@ -257,17 +196,6 @@ export default defineComponent({
 		},
 	},
 	watch: {
-		workflow(workflow) {
-			if (workflow.sharedWith) {
-				this.sharedWith = workflow.sharedWith;
-			}
-		},
-		sharedWith: {
-			handler() {
-				this.isDirty = true;
-			},
-			deep: true,
-		},
 		sharedWithProjects: {
 			handler() {
 				this.isDirty = true;
@@ -299,25 +227,10 @@ export default defineComponent({
 			};
 
 			try {
-				const shareesAdded = this.sharedWith.filter(
-					(sharee) =>
-						!this.workflow.sharedWith?.find((previousSharee) => sharee.id === previousSharee.id),
-				);
-				const shareesRemoved =
-					this.workflow.sharedWith?.filter(
-						(previousSharee) => !this.sharedWith.find((sharee) => sharee.id === previousSharee.id),
-					) || [];
-
 				const workflowId = await saveWorkflowPromise();
 				await this.workflowsEEStore.saveWorkflowSharedWith({
 					workflowId,
-					sharedWith: this.sharedWith,
 					sharedWithProjects: this.sharedWithProjects,
-				});
-
-				this.trackTelemetry({
-					user_ids_sharees_added: shareesAdded.map((sharee) => sharee.id),
-					sharees_removed: shareesRemoved.length,
 				});
 
 				this.showMessage({
@@ -330,113 +243,6 @@ export default defineComponent({
 			} finally {
 				this.modalBus.emit('close');
 				this.loading = false;
-			}
-		},
-		async onAddSharee(userId: string) {
-			const { id, firstName, lastName, email } = this.usersStore.getUserById(userId)!;
-			const sharee = { id, firstName, lastName, email };
-
-			this.sharedWith = this.sharedWith.concat(sharee);
-
-			this.trackTelemetry({
-				user_id_sharee: userId,
-			});
-		},
-		async onRemoveSharee(userId: string) {
-			const user = this.usersStore.getUserById(userId)!;
-			const isNewSharee = !(this.workflow.sharedWith || []).find((sharee) => sharee.id === userId);
-
-			const isLastUserWithAccessToCredentialsById = (this.workflow.usedCredentials || []).reduce<
-				Record<string, boolean>
-			>((acc, credential) => {
-				if (
-					!credential.id ||
-					!credential.ownedBy ||
-					!credential.sharedWith ||
-					!this.workflow.sharedWith
-				) {
-					return acc;
-				}
-
-				// if is credential owner, and no credential sharees have access to workflow  => NOT OK
-				// if is credential owner, and credential sharees have access to workflow => OK
-
-				// if is credential sharee, and no credential sharees have access to workflow or owner does not have access to workflow => NOT OK
-				// if is credential sharee, and credential owner has access to workflow => OK
-				// if is credential sharee, and other credential sharees have access to workflow => OK
-
-				let isLastUserWithAccess = false;
-
-				const isCredentialOwner = credential.ownedBy.id === user.id;
-				const isCredentialSharee = !!credential.sharedWith.find((sharee) => sharee.id === user.id);
-
-				if (isCredentialOwner) {
-					isLastUserWithAccess = !credential.sharedWith.some((sharee) => {
-						return this.workflow.sharedWith!.find(
-							(workflowSharee) => workflowSharee.id === sharee.id,
-						);
-					});
-				} else if (isCredentialSharee) {
-					isLastUserWithAccess =
-						!credential.sharedWith.some((sharee) => {
-							return this.workflow.sharedWith!.find(
-								(workflowSharee) => workflowSharee.id === sharee.id,
-							);
-						}) &&
-						!this.workflow.sharedWith.find(
-							(workflowSharee) => workflowSharee.id === credential.ownedBy.id,
-						);
-				}
-
-				acc[credential.id] = isLastUserWithAccess;
-
-				return acc;
-			}, {});
-
-			const isLastUserWithAccessToCredentials = Object.values(
-				isLastUserWithAccessToCredentialsById,
-			).some((value) => value);
-
-			let confirm = true;
-			if (!isNewSharee && isLastUserWithAccessToCredentials) {
-				const confirmAction = await this.confirm(
-					this.$locale.baseText(
-						'workflows.shareModal.list.delete.confirm.lastUserWithAccessToCredentials.message',
-						{
-							interpolate: { name: user.fullName as string, workflow: this.workflow.name },
-						},
-					),
-					this.$locale.baseText('workflows.shareModal.list.delete.confirm.title', {
-						interpolate: { name: user.fullName as string },
-					}),
-					{
-						confirmButtonText: this.$locale.baseText(
-							'workflows.shareModal.list.delete.confirm.confirmButtonText',
-						),
-						cancelButtonText: this.$locale.baseText(
-							'workflows.shareModal.list.delete.confirm.cancelButtonText',
-						),
-						dangerouslyUseHTMLString: true,
-					},
-				);
-
-				confirm = confirmAction === MODAL_CONFIRM;
-			}
-
-			if (confirm) {
-				this.sharedWith = this.sharedWith.filter((sharee: Partial<IUser>) => {
-					return sharee.id !== user.id;
-				});
-
-				this.trackTelemetry({
-					user_id_sharee: userId,
-					warning_orphan_credentials: isLastUserWithAccessToCredentials,
-				});
-			}
-		},
-		onRoleAction(user: IUser, action: string) {
-			if (action === 'remove') {
-				void this.onRemoveSharee(user.id);
 			}
 		},
 		async onCloseModal() {
@@ -462,9 +268,6 @@ export default defineComponent({
 
 			return true;
 		},
-		async loadUsers() {
-			await this.usersStore.fetchUsers();
-		},
 		goToUsersSettings() {
 			this.$router.push({ name: VIEWS.USERS_SETTINGS }).catch((failure) => {
 				if (!isNavigationFailure(failure)) {
@@ -473,26 +276,15 @@ export default defineComponent({
 			});
 			this.modalBus.emit('close');
 		},
-		trackTelemetry(data: ITelemetryTrackProperties) {
-			this.$telemetry.track('User selected sharee to remove', {
-				workflow_id: this.workflow.id,
-				user_id_sharer: this.currentUser?.id,
-				sub_view: this.$route.name === VIEWS.WORKFLOW ? 'Workflow editor' : 'Workflows listing',
-				...data,
-			});
-		},
 		goToUpgrade() {
 			void this.uiStore.goToUpgrade('workflow_sharing', 'upgrade-workflow-sharing');
 		},
 		async initialize() {
 			if (this.isSharingEnabled) {
-				await this.loadUsers();
+				await this.usersStore.fetchUsers();
 				await this.projectsStore.getAllProjects();
 
-				if (
-					this.workflow.id !== PLACEHOLDER_EMPTY_WORKFLOW_ID &&
-					!this.workflow.sharedWith?.length // Sharing info already loaded
-				) {
+				if (this.workflow.id !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 					await this.workflowsStore.fetchWorkflow(this.workflow.id);
 				}
 			}

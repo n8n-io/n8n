@@ -73,7 +73,6 @@ export const useWorkflowsEEStore = defineStore(STORES.WORKFLOWS_EE, {
 			};
 		},
 		async saveWorkflowSharedWith(payload: {
-			sharedWith: Array<Partial<IUser>>;
 			sharedWithProjects: IWorkflowDb['sharedWithProjects'];
 			workflowId: string;
 		}): Promise<void> {
@@ -82,7 +81,6 @@ export const useWorkflowsEEStore = defineStore(STORES.WORKFLOWS_EE, {
 
 			if (settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
 				await setWorkflowSharedWith(rootStore.getRestApiContext, payload.workflowId, {
-					shareWithIds: payload.sharedWith.map((sharee) => sharee.id as string),
 					sharedWithProjects: (payload.sharedWithProjects ?? []).map((p) => p.id),
 				});
 

@@ -111,6 +111,7 @@ const onProjectRemoved = (projectId: string) => {
 
 .selectedProjects {
 	li {
+		padding: 0;
 		border-bottom: var(--border-base);
 
 		&:first-child {
