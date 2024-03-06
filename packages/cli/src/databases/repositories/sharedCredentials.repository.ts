@@ -1,10 +1,11 @@
 import { Service } from 'typedi';
-import type { EntityManager } from '@n8n/typeorm';
+import type { EntityManager, FindOptionsRelations, FindOptionsWhere } from '@n8n/typeorm';
 import { DataSource, In, Not, Repository } from '@n8n/typeorm';
 import { type CredentialSharingRole, SharedCredentials } from '../entities/SharedCredentials';
 import type { User } from '../entities/User';
 import { RoleService } from '@/services/role.service';
 import { ProjectRepository } from './project.repository';
+import type { Scope } from '@n8n/permissions';
 
 @Service()
 export class SharedCredentialsRepository extends Repository<SharedCredentials> {
@@ -17,12 +18,36 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 	}
 
 	/** Get a credential if it has been shared with a user */
-	async findCredentialForUser(credentialsId: string, user: User) {
+	async findCredentialForUser(
+		credentialsId: string,
+		user: User,
+		scopes: Scope[],
+		_relations?: FindOptionsRelations<SharedCredentials>,
+	) {
+		let where: FindOptionsWhere<SharedCredentials> = { credentialsId };
+
+		if (!user.hasGlobalScope(scopes, { mode: 'allOf' })) {
+			const projectRoles = this.roleService.rolesWithScope('project', scopes);
+			const credentialRoles = this.roleService.rolesWithScope('credential', scopes);
+			where = {
+				...where,
+				role: In(credentialRoles),
+				project: {
+					projectRelations: {
+						role: In(projectRoles),
+						userId: user.id,
+					},
+				},
+			};
+		}
+
 		const sharedCredential = await this.findOne({
-			relations: ['credentials'],
-			where: {
-				credentialsId,
-				...(!user.hasGlobalScope('credential:read') ? { userId: user.id } : {}),
+			where,
+			// TODO: write a small relations merger and use that one here
+			relations: {
+				credentials: {
+					shared: { project: { projectRelations: { user: true } } },
+				},
 			},
 		});
 		if (!sharedCredential) return null;

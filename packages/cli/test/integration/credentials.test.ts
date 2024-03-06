@@ -56,7 +56,7 @@ beforeEach(async () => {
 // ----------------------------------------
 // GET /credentials - fetch all credentials
 // ----------------------------------------
-// NOTE: fixed
+// NOTE: passing
 describe('GET /credentials', () => {
 	test('should return all creds for owner', async () => {
 		const [{ id: savedOwnerCredentialId }, { id: savedMemberCredentialId }] = await Promise.all([
@@ -539,7 +539,7 @@ describe('PATCH /credentials/:id', () => {
 	});
 });
 
-// NOTE: fixed
+// NOTE: passing
 describe('GET /credentials/new', () => {
 	test('should return default name for new credential or its increment', async () => {
 		const name = config.getEnv('credentials.defaultName');
@@ -578,6 +578,7 @@ describe('GET /credentials/new', () => {
 	});
 });
 
+// NOTE: passing
 describe('GET /credentials/:id', () => {
 	test('should retrieve owned cred for owner', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });

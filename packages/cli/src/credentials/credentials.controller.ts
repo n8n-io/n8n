@@ -9,7 +9,6 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NamingService } from '@/services/naming.service';
 import { License } from '@/License';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
-import { OwnershipService } from '@/services/ownership.service';
 import { EnterpriseCredentialsService } from './credentials.service.ee';
 import {
 	Delete,
@@ -36,7 +35,6 @@ export class CredentialsController {
 		private readonly namingService: NamingService,
 		private readonly license: License,
 		private readonly logger: Logger,
-		private readonly ownershipService: OwnershipService,
 		private readonly internalHooks: InternalHooks,
 		private readonly userManagementMailer: UserManagementMailer,
 	) {}
@@ -59,79 +57,28 @@ export class CredentialsController {
 		};
 	}
 
+	// NOTE: tested
 	@Get('/:credentialId')
 	@ProjectScope('credential:read')
 	async getOne(req: CredentialRequest.Get) {
 		if (this.license.isSharingEnabled()) {
-			const { credentialId } = req.params;
-			const includeDecryptedData = req.query.includeData === 'true';
-
-			let credential = await this.credentialsRepository.findOne({
-				where: { id: credentialId },
-				relations: { shared: { user: true, project: true } },
-			});
-
-			if (!credential) {
-				throw new NotFoundError(
-					'Could not load the credential. If you think this is an error, ask the owner to share it with you again',
-				);
-			}
-
-			const userSharing = credential.shared?.find((shared) => shared.user.id === req.user.id);
-
-			if (!userSharing && !req.user.hasGlobalScope('credential:read')) {
-				throw new ForbiddenError();
-			}
-
-			credential = this.ownershipService.addOwnedByAndSharedWith(credential);
-
-			// Below, if `userSharing` does not exist, it means this credential is being
-			// fetched by the instance owner or an admin. In this case, they get the full data
-			if (!includeDecryptedData || userSharing?.role === 'credential:user') {
-				const { data: _, ...rest } = credential;
-				return { ...rest };
-			}
-
-			const { data: _, ...rest } = credential;
-
-			const decryptedData = this.credentialsService.redact(
-				this.credentialsService.decrypt(credential),
-				credential,
+			return await this.enterpriseCredentialsService.getOne(
+				req.user,
+				req.params.credentialId,
+				// TODO: editor-ui is always sending this, maybe we can just rely on the
+				// the scopes and always decrypt the data if the user has the permissions
+				// to do so.
+				req.query.includeData === 'true',
 			);
-
-			return { data: decryptedData, ...rest };
 		}
 
 		// non-enterprise
 
-		const { credentialId } = req.params;
-		const includeDecryptedData = req.query.includeData === 'true';
-
-		const sharing = await this.credentialsService.getSharing(
+		return await this.credentialsService.getOne(
 			req.user,
-			credentialId,
-			{ allowGlobalScope: true, globalScope: 'credential:read' },
-			['credentials'],
+			req.params.credentialId,
+			req.query.includeData === 'true',
 		);
-
-		if (!sharing) {
-			throw new NotFoundError(`Credential with ID "${credentialId}" could not be found.`);
-		}
-
-		const { credentials: credential } = sharing;
-
-		const { data: _, ...rest } = credential;
-
-		if (!includeDecryptedData) {
-			return { ...rest };
-		}
-
-		const decryptedData = this.credentialsService.redact(
-			this.credentialsService.decrypt(credential),
-			credential,
-		);
-
-		return { data: decryptedData, ...rest };
 	}
 
 	@Post('/test')

@@ -64,7 +64,7 @@ afterEach(() => {
 // ----------------------------------------
 // GET /credentials - fetch all credentials
 // ----------------------------------------
-// NOTE: fixed
+// NOTE: passing
 describe('GET /credentials', () => {
 	test('should return all creds for owner', async () => {
 		const [member1, member2, member3] = await createManyUsers(3, {
@@ -186,6 +186,7 @@ describe('GET /credentials', () => {
 // ----------------------------------------
 // GET /credentials/:id - fetch a certain credential
 // ----------------------------------------
+// NOTE: passing
 describe('GET /credentials/:id', () => {
 	test('should retrieve owned cred for owner', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
@@ -194,16 +195,10 @@ describe('GET /credentials/:id', () => {
 
 		expect(firstResponse.statusCode).toBe(200);
 
-		const { data: firstCredential } = firstResponse.body;
+		const firstCredential: ListQuery.Credentials.WithOwnedByAndSharedWith = firstResponse.body.data;
 		validateMainCredentialData(firstCredential);
 		expect(firstCredential.data).toBeUndefined();
-		expect(firstCredential.ownedBy).toMatchObject({
-			id: owner.id,
-			email: owner.email,
-			firstName: owner.firstName,
-			lastName: owner.lastName,
-		});
-		expect(firstCredential.sharedWith).toHaveLength(0);
+
 		expect(firstCredential.homeProject).toMatchObject({
 			id: ownerPersonalProject.id,
 			name: 'My n8n',
@@ -236,27 +231,13 @@ describe('GET /credentials/:id', () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member1 });
 		await shareCredentialWithUsers(savedCredential, [member2]);
 
-		const response1 = await authOwnerAgent.get(`/credentials/${savedCredential.id}`);
+		const response1 = await authOwnerAgent.get(`/credentials/${savedCredential.id}`).expect(200);
 
-		expect(response1.statusCode).toBe(200);
+		const credential: ListQuery.Credentials.WithOwnedByAndSharedWith = response1.body.data;
 
-		validateMainCredentialData(response1.body.data);
-		expect(response1.body.data.data).toBeUndefined();
-		expect(response1.body.data).toMatchObject({
-			ownedBy: {
-				id: member1.id,
-				email: member1.email,
-				firstName: member1.firstName,
-				lastName: member1.lastName,
-			},
-			sharedWith: [
-				{
-					id: member2.id,
-					email: member2.email,
-					firstName: member2.firstName,
-					lastName: member2.lastName,
-				},
-			],
+		validateMainCredentialData(credential);
+		expect(credential.data).toBeUndefined();
+		expect(credential).toMatchObject({
 			homeProject: {
 				id: member1PersonalProject.id,
 				name: 'My n8n',
@@ -273,13 +254,14 @@ describe('GET /credentials/:id', () => {
 
 		const response2 = await authOwnerAgent
 			.get(`/credentials/${savedCredential.id}`)
-			.query({ includeData: true });
+			.query({ includeData: true })
+			.expect(200);
 
-		expect(response2.statusCode).toBe(200);
+		const credential2: ListQuery.Credentials.WithOwnedByAndSharedWith = response2.body.data;
 
-		validateMainCredentialData(response2.body.data);
-		expect(response2.body.data.data).toBeDefined(); // Instance owners should be capable of editing all credentials
-		expect(response2.body.data.sharedWith).toHaveLength(1);
+		validateMainCredentialData(credential);
+		expect(credential2.data).toBeDefined(); // Instance owners should be capable of editing all credentials
+		expect(credential2.sharedWithProjects).toHaveLength(1);
 	});
 
 	test('should retrieve owned cred for member', async () => {
@@ -299,24 +281,14 @@ describe('GET /credentials/:id', () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member1 });
 		await shareCredentialWithUsers(savedCredential, [member2, member3]);
 
-		const firstResponse = await authMemberAgent.get(`/credentials/${savedCredential.id}`);
+		const firstResponse = await authMemberAgent
+			.get(`/credentials/${savedCredential.id}`)
+			.expect(200);
 
-		expect(firstResponse.statusCode).toBe(200);
-
-		const { data: firstCredential } = firstResponse.body;
+		const firstCredential: ListQuery.Credentials.WithOwnedByAndSharedWith = firstResponse.body.data;
 		validateMainCredentialData(firstCredential);
 		expect(firstCredential.data).toBeUndefined();
 		expect(firstCredential).toMatchObject({
-			ownedBy: {
-				id: member1.id,
-				email: member1.email,
-				firstName: member1.firstName,
-				lastName: member1.lastName,
-			},
-			sharedWith: expect.arrayContaining([
-				expect.objectContaining({ id: member2.id }),
-				expect.objectContaining({ id: member3.id }),
-			]),
 			homeProject: {
 				id: member1PersonalProject.id,
 				name: 'My n8n',
@@ -338,14 +310,14 @@ describe('GET /credentials/:id', () => {
 
 		const secondResponse = await authMemberAgent
 			.get(`/credentials/${savedCredential.id}`)
-			.query({ includeData: true });
+			.query({ includeData: true })
+			.expect(200);
 
-		expect(secondResponse.statusCode).toBe(200);
-
-		const { data: secondCredential } = secondResponse.body;
+		const secondCredential: ListQuery.Credentials.WithOwnedByAndSharedWith =
+			secondResponse.body.data;
 		validateMainCredentialData(secondCredential);
 		expect(secondCredential.data).toBeDefined();
-		expect(firstCredential.sharedWith).toHaveLength(2);
+		expect(secondCredential.sharedWithProjects).toHaveLength(2);
 	});
 
 	test('should not retrieve non-owned cred for member', async () => {
