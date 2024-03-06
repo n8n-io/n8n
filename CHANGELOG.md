@@ -1,3 +1,25 @@
+## [1.31.1](https://github.com/n8n-io/n8n/compare/n8n@1.31.0...n8n@1.31.1) (2024-03-06)
+
+
+### Bug Fixes
+
+* AI agents, throw error on duplicate names in dynamic tools ([#8766](https://github.com/n8n-io/n8n/issues/8766)) ([836bf07](https://github.com/n8n-io/n8n/commit/836bf0793165e276ce62498553c35d1aef33e908))
+* **Basic LLM Chain Node:** Fix retrieving of prompt parameter for v1.3 of the node ([#8817](https://github.com/n8n-io/n8n/issues/8817)) ([b5ffb7d](https://github.com/n8n-io/n8n/commit/b5ffb7d9fa434ab03134f59f0703cbee21b1cc73))
+* **editor:** Fix NDV output tabs resetting on any click ([#8808](https://github.com/n8n-io/n8n/issues/8808)) ([2b06477](https://github.com/n8n-io/n8n/commit/2b06477994fddb88213c26f13b115a34b3c040df))
+* **editor:** Fix opening of node creator for sub-nodes connection hint link ([#8809](https://github.com/n8n-io/n8n/issues/8809)) ([174dc9a](https://github.com/n8n-io/n8n/commit/174dc9afb10a6e40e06415f9697ada79b90f2a17))
+* **editor:** Fix retrieving of messages from memory in chat modal ([#8807](https://github.com/n8n-io/n8n/issues/8807)) ([af69dd9](https://github.com/n8n-io/n8n/commit/af69dd9660ff2a02484bfb00b00ba098b2f1db83))
+* **editor:** Set correct type for right input in filter component ([#8771](https://github.com/n8n-io/n8n/issues/8771)) ([839793e](https://github.com/n8n-io/n8n/commit/839793e6521caea58dadf5baadac76ec6cdfd045))
+* **editor:** Update assignment hint when user hovers table row ([#8782](https://github.com/n8n-io/n8n/issues/8782)) ([5266bcb](https://github.com/n8n-io/n8n/commit/5266bcbf1b09b7269e62349e74ad565e2f17ab0e))
+* **Google Drive Node:** Add supportsAllDrives: true to update and download ([#8786](https://github.com/n8n-io/n8n/issues/8786)) ([8733832](https://github.com/n8n-io/n8n/commit/8733832d05802363ebc48352b797cb1c2de5ad09))
+* **HubSpot Node:** Include properties for contact and deal in getAll operation ([#8772](https://github.com/n8n-io/n8n/issues/8772)) ([62ee6a5](https://github.com/n8n-io/n8n/commit/62ee6a5c1887f3ec0fd7cd8016345d392786a7c3))
+* **n8n Form Trigger Node:** Do not open pop up when data is pinned in trigger ([#8781](https://github.com/n8n-io/n8n/issues/8781)) ([abce3bd](https://github.com/n8n-io/n8n/commit/abce3bd7d31e426cd1f4a950ed6c7f6092397db1))
+* **OpenAI Node:** Message text operation parameters case fix ([#8804](https://github.com/n8n-io/n8n/issues/8804)) ([5f54695](https://github.com/n8n-io/n8n/commit/5f546959c8e06cbfeba4f28931cb6c11ca90a76a))
+* Simplify Structured Output Parser wrapping and fix auto-fixing output parser ([#8778](https://github.com/n8n-io/n8n/issues/8778)) ([e3a1b93](https://github.com/n8n-io/n8n/commit/e3a1b93685a0a6e6456bc91b5b65d5c2e51186c0))
+* **TheHive 5 Node:** The Hive - Custom fields are no longer working ([#8780](https://github.com/n8n-io/n8n/issues/8780)) ([5a56422](https://github.com/n8n-io/n8n/commit/5a564222a4d27fd490149edd17c45bb354973a27))
+* **Wait Node:** Change default wait period to 5 seconds ([#8783](https://github.com/n8n-io/n8n/issues/8783)) ([add4a39](https://github.com/n8n-io/n8n/commit/add4a397adb08b52bca788d35d2fc733e25db2d5))
+
+
+
 # [1.31.0](https://github.com/n8n-io/n8n/compare/n8n@1.30.0...n8n@1.31.0) (2024-02-28)
 
 
