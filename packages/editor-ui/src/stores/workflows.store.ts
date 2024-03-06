@@ -82,6 +82,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { getCredentialOnlyNodeTypeName } from '@/utils/credentialOnlyNodes';
+import { ResponseError } from '@/utils/apiUtils';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -1338,12 +1339,25 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 		async runWorkflow(startRunData: IStartRunData): Promise<IExecutionPushResponse> {
 			const rootStore = useRootStore();
-			return await makeRestApiRequest(
-				rootStore.getRestApiContext,
-				'POST',
-				'/workflows/run',
-				startRunData as unknown as IDataObject,
-			);
+			try {
+				return await makeRestApiRequest(
+					rootStore.getRestApiContext,
+					'POST',
+					'/workflows/run',
+					startRunData as unknown as IDataObject,
+				);
+			} catch (error) {
+				if (error.response?.status === 413) {
+					throw new ResponseError(
+						'The execution data is too large for n8n to process. Try reducing the data and try again.',
+						{
+							errorCode: 413,
+							httpStatusCode: 413,
+						},
+					);
+				}
+				throw error;
+			}
 		},
 
 		async removeTestWebhook(workflowId: string): Promise<boolean> {
