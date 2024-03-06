@@ -171,6 +171,16 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const options = this.getNodeParameter('options', i, {});
 	const jsonOutput = this.getNodeParameter('jsonOutput', i, false) as boolean;
 
+	if (options.maxTokens !== undefined) {
+		options.max_tokens = options.maxTokens;
+		delete options.maxTokens;
+	}
+
+	if (options.topP !== undefined) {
+		options.top_p = options.topP;
+		delete options.topP;
+	}
+
 	let response_format;
 	if (jsonOutput) {
 		response_format = { type: 'json_object' };
