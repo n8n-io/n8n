@@ -49,6 +49,7 @@ export class CredentialsController {
 		});
 	}
 
+	// NOTE: tested
 	@Get('/new')
 	async generateUniqueName(req: CredentialRequest.NewName) {
 		const requestedName = req.query.name ?? config.getEnv('credentials.defaultName');

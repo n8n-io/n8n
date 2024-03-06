@@ -539,6 +539,7 @@ describe('PATCH /credentials/:id', () => {
 	});
 });
 
+// NOTE: fixed
 describe('GET /credentials/new', () => {
 	test('should return default name for new credential or its increment', async () => {
 		const name = config.getEnv('credentials.defaultName');
