@@ -446,7 +446,6 @@
 	"credentialEdit.credentialSharing.info.notShared": "You can share it with yourself or other users to use it in a workflow.",
 	"credentialEdit.credentialSharing.info.sharee": "Only {credentialOwnerName} can change who this credential is shared with",
 	"credentialEdit.credentialSharing.info.sharee.fallback": "the owner",
-	"credentialEdit.credentialSharing.select.placeholder": "Add users...",
 	"credentialEdit.credentialSharing.list.delete": "Remove",
 	"credentialEdit.credentialSharing.list.delete.confirm.title": "Remove access?",
 	"credentialEdit.credentialSharing.list.delete.confirm.message": "This may break any workflows in which {name} has used this credential",

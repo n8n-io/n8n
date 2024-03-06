@@ -56,26 +56,10 @@
 					</template>
 				</i18n-t>
 			</n8n-info-tip>
-			<n8n-user-select
-				v-if="credentialPermissions.share"
-				class="mb-s"
-				size="large"
-				:users="usersList"
-				:current-user-id="usersStore.currentUser.id"
-				:placeholder="$locale.baseText('credentialEdit.credentialSharing.select.placeholder')"
-				data-test-id="credential-sharing-modal-users-select"
-				@update:modelValue="onAddSharee"
-			>
-				<template #prefix>
-					<n8n-icon icon="search" />
-				</template>
-			</n8n-user-select>
-			<n8n-users-list
-				:actions="usersListActions"
-				:users="sharedWithList"
-				:current-user-id="usersStore.currentUser.id"
+			<ProjectSharing
+				v-model="sharedWithProjects"
+				:projects="projectsStore.projects"
 				:readonly="!credentialPermissions.share"
-				@delete="onRemoveSharee"
 			/>
 		</div>
 	</div>
@@ -91,25 +75,35 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useUsageStore } from '@/stores/usage.store';
-import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/constants';
+import { EnterpriseEditionFeature, VIEWS } from '@/constants';
+import ProjectSharing from '@/features/projects/components/ProjectSharing.vue';
+import { useProjectsStore } from '@/features/projects/projects.store';
 
 export default defineComponent({
 	name: 'CredentialSharing',
-	props: [
-		'credential',
-		'credentialId',
-		'credentialData',
-		'sharedWith',
-		'credentialPermissions',
-		'modalBus',
-	],
+	components: {
+		ProjectSharing,
+	},
+	props: ['credential', 'credentialId', 'credentialData', 'credentialPermissions', 'modalBus'],
 	setup() {
 		return {
 			...useMessage(),
 		};
 	},
+	data() {
+		return {
+			sharedWithProjects: [...(this.credential?.sharedWithProjects || [])],
+		};
+	},
 	computed: {
-		...mapStores(useCredentialsStore, useUsersStore, useUsageStore, useUIStore, useSettingsStore),
+		...mapStores(
+			useCredentialsStore,
+			useUsersStore,
+			useUsageStore,
+			useUIStore,
+			useSettingsStore,
+			useProjectsStore,
+		),
 		usersListActions(): IUserListAction[] {
 			return [
 				{
@@ -124,24 +118,6 @@ export default defineComponent({
 		isSharingEnabled(): boolean {
 			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
 		},
-		usersList(): IUser[] {
-			return this.usersStore.allUsers.filter((user: IUser) => {
-				const isAlreadySharedWithUser = (this.credentialData.sharedWith || []).find(
-					(sharee: IUser) => sharee.id === user.id,
-				);
-				const isOwner = this.credentialData.ownedBy?.id === user.id;
-
-				return !isAlreadySharedWithUser && !isOwner;
-			});
-		},
-		sharedWithList(): IUser[] {
-			return [
-				{
-					...(this.credential ? this.credential.ownedBy : this.usersStore.currentUser),
-					isOwner: true,
-				},
-			].concat(this.credentialData.sharedWith || []);
-		},
 		credentialOwnerName(): string {
 			return this.credentialsStore.getCredentialOwnerNameById(`${this.credentialId}`);
 		},
@@ -151,46 +127,18 @@ export default defineComponent({
 			});
 		},
 	},
-	mounted() {
-		void this.loadUsers();
+	watch: {
+		sharedWithProjects: {
+			handler(changedSharedWithProjects) {
+				this.$emit('update:modelValue', changedSharedWithProjects);
+			},
+			deep: true,
+		},
+	},
+	async mounted() {
+		await Promise.all([this.usersStore.fetchUsers(), this.projectsStore.getAllProjects()]);
 	},
 	methods: {
-		async onAddSharee(userId: string) {
-			const sharee = { ...this.usersStore.getUserById(userId), isOwner: false };
-			this.$emit('update:modelValue', (this.credentialData.sharedWith || []).concat(sharee));
-		},
-		async onRemoveSharee(userId: string) {
-			const user = this.usersStore.getUserById(userId);
-
-			if (user) {
-				const confirm = await this.confirm(
-					this.$locale.baseText('credentialEdit.credentialSharing.list.delete.confirm.message', {
-						interpolate: { name: user.fullName || '' },
-					}),
-					this.$locale.baseText('credentialEdit.credentialSharing.list.delete.confirm.title'),
-					{
-						confirmButtonText: this.$locale.baseText(
-							'credentialEdit.credentialSharing.list.delete.confirm.confirmButtonText',
-						),
-						cancelButtonText: this.$locale.baseText(
-							'credentialEdit.credentialSharing.list.delete.confirm.cancelButtonText',
-						),
-					},
-				);
-
-				if (confirm === MODAL_CONFIRM) {
-					this.$emit(
-						'update:modelValue',
-						this.credentialData.sharedWith.filter((sharee: IUser) => {
-							return sharee.id !== user.id;
-						}),
-					);
-				}
-			}
-		},
-		async loadUsers() {
-			await this.usersStore.fetchUsers();
-		},
 		goToUsersSettings() {
 			void this.$router.push({ name: VIEWS.USERS_SETTINGS });
 			this.modalBus.emit('close');

@@ -664,10 +664,10 @@ export default defineComponent({
 				sharing_enabled: EnterpriseEditionFeature.Sharing,
 			});
 		},
-		onChangeSharedWith(sharees: IDataObject[]) {
+		onChangeSharedWith(sharedWithProjects: IDataObject[]) {
 			this.credentialData = {
 				...this.credentialData,
-				sharedWith: sharees,
+				sharedWithProjects,
 			};
 			this.isSharedWithChanged = true;
 			this.hasUnsavedChanges = true;
