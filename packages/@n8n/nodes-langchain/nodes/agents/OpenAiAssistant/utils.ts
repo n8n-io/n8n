@@ -1,6 +1,6 @@
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import type { OpenAI as OpenAIClient } from 'openai';
-import type { StructuredTool } from 'langchain/tools';
+import type { StructuredTool } from '@langchain/core/tools';
 
 // Copied from langchain(`langchain/src/tools/convert_to_openai.ts`)
 // since these functions are not exported

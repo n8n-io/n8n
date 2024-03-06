@@ -7,7 +7,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { ChatAnthropic } from 'langchain/chat_models/anthropic';
+import { ChatAnthropic } from '@langchain/anthropic';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 

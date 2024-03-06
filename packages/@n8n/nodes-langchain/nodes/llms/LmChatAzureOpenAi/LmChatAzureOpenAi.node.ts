@@ -7,8 +7,8 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import type { ClientOptions } from 'openai';
-import { ChatOpenAI } from 'langchain/chat_models/openai';
+import type { ClientOptions } from '@langchain/openai';
+import { ChatOpenAI } from '@langchain/openai';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 

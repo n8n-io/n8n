@@ -8,8 +8,8 @@ import {
 import { SqlDatabase } from 'langchain/sql_db';
 import type { SqlCreatePromptArgs } from 'langchain/agents/toolkits/sql';
 import { SqlToolkit, createSqlAgent } from 'langchain/agents/toolkits/sql';
-import type { BaseLanguageModel } from 'langchain/dist/base_language';
-import type { BaseChatMemory } from 'langchain/memory';
+import type { BaseLanguageModel } from '@langchain/core/language_models/base';
+import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import type { DataSource } from '@n8n/typeorm';
 
 import { getPromptInputByType, serializeChatHistory } from '../../../../../utils/helpers';
