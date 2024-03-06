@@ -210,22 +210,19 @@ export class CredentialsController {
 		return { ...rest };
 	}
 
+	// NOTE: tested
 	@Delete('/:credentialId')
 	@ProjectScope('credential:delete')
 	async deleteCredentials(req: CredentialRequest.Delete) {
 		const { credentialId } = req.params;
 
-		const sharing = await this.credentialsService.getSharing(
-			req.user,
+		const credential = await this.sharedCredentialsRepository.findCredentialForUser(
 			credentialId,
-			{
-				allowGlobalScope: true,
-				globalScope: 'credential:delete',
-			},
-			['credentials'],
+			req.user,
+			['credential:delete'],
 		);
 
-		if (!sharing) {
+		if (!credential) {
 			this.logger.info('Attempt to delete credential blocked due to lack of permissions', {
 				credentialId,
 				userId: req.user.id,
@@ -234,16 +231,6 @@ export class CredentialsController {
 				'Credential to be deleted not found. You can only removed credentials owned by you',
 			);
 		}
-
-		if (sharing.role !== 'credential:owner' && !req.user.hasGlobalScope('credential:delete')) {
-			this.logger.info('Attempt to delete credential blocked due to lack of permissions', {
-				credentialId,
-				userId: req.user.id,
-			});
-			throw new ForbiddenError('You can only remove credentials owned by you');
-		}
-
-		const { credentials: credential } = sharing;
 
 		await this.credentialsService.delete(credential);
 

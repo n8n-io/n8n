@@ -247,6 +247,7 @@ describe('POST /credentials', () => {
 	});
 });
 
+// NOTE: passing
 describe('DELETE /credentials/:id', () => {
 	test('should delete owned cred for owner', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
