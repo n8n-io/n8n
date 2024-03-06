@@ -7,6 +7,7 @@ import type { CredentialSharingRole } from '@db/entities/SharedCredentials';
 import type { ICredentialsDb } from '@/Interfaces';
 import type { CredentialPayload } from '../types';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
+import { Project } from '@/databases/entities/Project';
 
 async function encryptCredentialData(credential: CredentialsEntity) {
 	const { createCredentialsFromCredentialsEntity } = await import('@/CredentialsHelper');
@@ -88,6 +89,23 @@ export async function shareCredentialWithUsers(credential: CredentialsEntity, us
 				credentialsId: credential.id,
 				role: 'credential:user',
 				projectId: personalProject.id,
+			});
+		}),
+	);
+
+	return await Container.get(SharedCredentialsRepository).save(newSharedCredentials);
+}
+
+export async function shareCredentialWithProjects(
+	credential: CredentialsEntity,
+	projects: Project[],
+) {
+	const newSharedCredentials = await Promise.all(
+		projects.map(async (project) => {
+			return Container.get(SharedCredentialsRepository).create({
+				credentialsId: credential.id,
+				role: 'credential:user',
+				projectId: project.id,
 			});
 		}),
 	);

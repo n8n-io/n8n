@@ -56,6 +56,7 @@ beforeEach(async () => {
 // ----------------------------------------
 // GET /credentials - fetch all credentials
 // ----------------------------------------
+// NOTE: fixed
 describe('GET /credentials', () => {
 	test('should return all creds for owner', async () => {
 		const [{ id: savedOwnerCredentialId }, { id: savedMemberCredentialId }] = await Promise.all([

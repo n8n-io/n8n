@@ -120,9 +120,9 @@ export namespace ListQuery {
 	}
 
 	export namespace Credentials {
-		type OwnedByField = { ownedBy: SlimUser | null; homeProject: SlimProject | null };
+		type OwnedByField = { homeProject: SlimProject | null };
 
-		type SharedWithField = { sharedWith: SlimUser[]; sharedWithProjects: SlimProject[] };
+		type SharedWithField = { sharedWithProjects: SlimProject[] };
 
 		export type WithSharing = CredentialsEntity & Partial<Pick<CredentialsEntity, 'shared'>>;
 

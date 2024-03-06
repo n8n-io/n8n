@@ -41,6 +41,7 @@ export class CredentialsController {
 		private readonly userManagementMailer: UserManagementMailer,
 	) {}
 
+	// NOTE: tested
 	@Get('/', { middlewares: listQueryMiddleware })
 	async getMany(req: ListQuery.Request) {
 		return await this.credentialsService.getMany(req.user, {

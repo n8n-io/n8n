@@ -45,7 +45,7 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 
 		type Select = Array<keyof CredentialsEntity>;
 
-		const defaultRelations = ['shared', 'shared.user', 'shared.project'];
+		const defaultRelations = ['shared', 'shared.project'];
 		const defaultSelect: Select = ['id', 'name', 'type', 'nodesAccess', 'createdAt', 'updatedAt'];
 
 		if (!listQueryOptions) return { select: defaultSelect, relations: defaultRelations };

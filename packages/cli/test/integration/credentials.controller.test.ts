@@ -24,6 +24,7 @@ beforeEach(async () => {
 
 type GetAllResponse = { body: { data: ListQuery.Credentials.WithOwnedByAndSharedWith[] } };
 
+// NOTE: passing
 describe('GET /credentials', () => {
 	describe('should return', () => {
 		test('all credentials for owner', async () => {

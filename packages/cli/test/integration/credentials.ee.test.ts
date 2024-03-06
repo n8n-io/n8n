@@ -1,7 +1,6 @@
 import { Container } from 'typedi';
 import type { SuperAgentTest } from 'supertest';
 import { In } from '@n8n/typeorm';
-import type { IUser } from 'n8n-workflow';
 
 import type { ListQuery } from '@/requests';
 import type { User } from '@db/entities/User';
@@ -11,7 +10,11 @@ import { randomCredentialPayload } from './shared/random';
 import * as testDb from './shared/testDb';
 import type { SaveCredentialFunction } from './shared/types';
 import * as utils from './shared/utils/';
-import { affixRoleToSaveCredential, shareCredentialWithUsers } from './shared/db/credentials';
+import {
+	affixRoleToSaveCredential,
+	shareCredentialWithProjects,
+	shareCredentialWithUsers,
+} from './shared/db/credentials';
 import { createManyUsers, createUser, createUserShell } from './shared/db/users';
 import { UserManagementMailer } from '@/UserManagement/email';
 
@@ -61,28 +64,41 @@ afterEach(() => {
 // ----------------------------------------
 // GET /credentials - fetch all credentials
 // ----------------------------------------
+// NOTE: fixed
 describe('GET /credentials', () => {
 	test('should return all creds for owner', async () => {
 		const [member1, member2, member3] = await createManyUsers(3, {
 			role: 'global:member',
 		});
+		const member1PersonalProject = await projectRepository.getPersonalProjectForUserOrFail(
+			member1.id,
+		);
+		const member2PersonalProject = await projectRepository.getPersonalProjectForUserOrFail(
+			member2.id,
+		);
+		const member3PersonalProject = await projectRepository.getPersonalProjectForUserOrFail(
+			member3.id,
+		);
 
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 		await saveCredential(randomCredentialPayload(), { user: member1 });
 
-		const sharedWith = [member1, member2, member3];
-		await shareCredentialWithUsers(savedCredential, sharedWith);
+		const sharedWith = [member1PersonalProject, member2PersonalProject, member3PersonalProject];
+		await shareCredentialWithProjects(savedCredential, sharedWith);
 
 		const response = await authOwnerAgent.get('/credentials');
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data).toHaveLength(2); // owner retrieved owner cred and member cred
-		const ownerCredential = response.body.data.find(
-			(e: ListQuery.Credentials.WithOwnedByAndSharedWith) => e.ownedBy?.id === owner.id,
+		const ownerCredential: ListQuery.Credentials.WithOwnedByAndSharedWith = response.body.data.find(
+			(e: ListQuery.Credentials.WithOwnedByAndSharedWith) =>
+				e.homeProject?.id === ownerPersonalProject.id,
 		);
-		const memberCredential = response.body.data.find(
-			(e: ListQuery.Credentials.WithOwnedByAndSharedWith) => e.ownedBy?.id === member1.id,
-		);
+		const memberCredential: ListQuery.Credentials.WithOwnedByAndSharedWith =
+			response.body.data.find(
+				(e: ListQuery.Credentials.WithOwnedByAndSharedWith) =>
+					e.homeProject?.id === member1PersonalProject.id,
+			);
 
 		validateMainCredentialData(ownerCredential);
 		expect(ownerCredential.data).toBeUndefined();
@@ -90,40 +106,37 @@ describe('GET /credentials', () => {
 		validateMainCredentialData(memberCredential);
 		expect(memberCredential.data).toBeUndefined();
 
-		expect(ownerCredential.ownedBy).toMatchObject({
-			id: owner.id,
-			email: owner.email,
-			firstName: owner.firstName,
-			lastName: owner.lastName,
+		expect(ownerCredential.homeProject).toMatchObject({
+			id: ownerPersonalProject.id,
+			type: 'personal',
+			name: 'My n8n',
 		});
 
-		expect(Array.isArray(ownerCredential.sharedWith)).toBe(true);
-		expect(ownerCredential.sharedWith).toHaveLength(3);
+		expect(Array.isArray(ownerCredential.sharedWithProjects)).toBe(true);
+		expect(ownerCredential.sharedWithProjects).toHaveLength(3);
 
 		// Fix order issue (MySQL might return items in any order)
-		const ownerCredentialsSharedWithOrdered = [...ownerCredential.sharedWith!].sort(
-			(a: IUser, b: IUser) => (a.email < b.email ? -1 : 1),
+		const ownerCredentialsSharedWithOrdered = [...ownerCredential.sharedWithProjects].sort(
+			(a, b) => (a.id < b.id ? -1 : 1),
 		);
-		const orderedSharedWith = [...sharedWith].sort((a, b) => (a.email < b.email ? -1 : 1));
+		const orderedSharedWith = [...sharedWith].sort((a, b) => (a.id < b.id ? -1 : 1));
 
-		ownerCredentialsSharedWithOrdered.forEach((sharee: IUser, idx: number) => {
+		ownerCredentialsSharedWithOrdered.forEach((sharee, idx) => {
 			expect(sharee).toMatchObject({
 				id: orderedSharedWith[idx].id,
-				email: orderedSharedWith[idx].email,
-				firstName: orderedSharedWith[idx].firstName,
-				lastName: orderedSharedWith[idx].lastName,
+				type: orderedSharedWith[idx].type,
+				name: 'My n8n',
 			});
 		});
 
-		expect(memberCredential.ownedBy).toMatchObject({
-			id: member1.id,
-			email: member1.email,
-			firstName: member1.firstName,
-			lastName: member1.lastName,
+		expect(memberCredential.homeProject).toMatchObject({
+			id: member1PersonalProject.id,
+			type: member1PersonalProject.type,
+			name: 'My n8n',
 		});
 
-		expect(Array.isArray(memberCredential.sharedWith)).toBe(true);
-		expect(memberCredential.sharedWith).toHaveLength(0);
+		expect(Array.isArray(memberCredential.sharedWithProjects)).toBe(true);
+		expect(memberCredential.sharedWithProjects).toHaveLength(0);
 	});
 
 	test('should return only relevant creds for member', async () => {
@@ -149,35 +162,18 @@ describe('GET /credentials', () => {
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data).toHaveLength(1); // member retrieved only member cred
 
-		const [member1Credential] = response.body.data;
+		const [member1Credential]: [ListQuery.Credentials.WithOwnedByAndSharedWith] =
+			response.body.data;
 
 		validateMainCredentialData(member1Credential);
 		expect(member1Credential.data).toBeUndefined();
-
-		expect(member1Credential.ownedBy).toMatchObject({
-			id: member1.id,
-			email: member1.email,
-			firstName: member1.firstName,
-			lastName: member1.lastName,
-		});
-
-		expect(Array.isArray(member1Credential.sharedWith)).toBe(true);
-		expect(member1Credential.sharedWith).toHaveLength(1);
-
-		const [sharee] = member1Credential.sharedWith;
-
-		expect(sharee).toMatchObject({
-			id: member2.id,
-			email: member2.email,
-			firstName: member2.firstName,
-			lastName: member2.lastName,
-		});
 
 		expect(member1Credential.homeProject).toMatchObject({
 			id: member1PersonalProject.id,
 			name: 'My n8n',
 			type: member1PersonalProject.type,
 		});
+
 		expect(member1Credential.sharedWithProjects).toHaveLength(1);
 		expect(member1Credential.sharedWithProjects[0]).toMatchObject({
 			id: member2PersonalProject.id,
