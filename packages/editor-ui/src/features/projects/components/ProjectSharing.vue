@@ -1,8 +1,7 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
 import { useI18n } from '@/composables/useI18n';
-import type { ProjectListItem } from '@/features/projects/projects.types';
-import type { IWorkflowDb } from '@/Interface';
+import type { Project, ProjectListItem } from '@/features/projects/projects.types';
 
 const locale = useI18n();
 
@@ -12,7 +11,7 @@ type Props = {
 };
 
 const props = defineProps<Props>();
-const selectedProjects = defineModel<IWorkflowDb['sharedWithProjects']>({
+const selectedProjects = defineModel<Array<Omit<Project, 'relations'>>>({
 	required: true,
 });
 const selectedProject = ref('');

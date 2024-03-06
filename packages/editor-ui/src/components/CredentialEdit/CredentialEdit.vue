@@ -664,7 +664,7 @@ export default defineComponent({
 				sharing_enabled: EnterpriseEditionFeature.Sharing,
 			});
 		},
-		onChangeSharedWith(sharedWithProjects: IDataObject[]) {
+		onChangeSharedWith(sharedWithProjects: string[]) {
 			this.credentialData = {
 				...this.credentialData,
 				sharedWithProjects,
@@ -784,10 +784,10 @@ export default defineComponent({
 				null,
 			);
 
-			let sharedWith: IUser[] | undefined;
+			let sharedWithProjects: string[] = [];
 			let ownedBy: IUser | undefined;
 			if (this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
-				sharedWith = this.credentialData.sharedWith as unknown as IUser[];
+				sharedWithProjects = this.credentialData.sharedWithProjects;
 				ownedBy = this.credentialData.ownedBy as unknown as IUser;
 			}
 
@@ -797,8 +797,8 @@ export default defineComponent({
 				type: this.credentialTypeName!,
 				data: data as unknown as ICredentialDataDecryptedObject,
 				nodesAccess: [],
-				sharedWith,
-				ownedBy,
+				sharedWithProjects,
+				...(ownedBy ? { ownedBy } : {}),
 			};
 
 			let credential;
@@ -1164,3 +1164,4 @@ export default defineComponent({
 	margin-right: var(--spacing-xs);
 }
 </style>
+import { updateCredential, deleteCredential } from '@/api/credentials';

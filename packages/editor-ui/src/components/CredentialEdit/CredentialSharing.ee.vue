@@ -78,6 +78,7 @@ import { useUsageStore } from '@/stores/usage.store';
 import { EnterpriseEditionFeature, VIEWS } from '@/constants';
 import ProjectSharing from '@/features/projects/components/ProjectSharing.vue';
 import { useProjectsStore } from '@/features/projects/projects.store';
+import type { Project } from '@/features/projects/projects.types';
 
 export default defineComponent({
 	name: 'CredentialSharing',
@@ -129,8 +130,11 @@ export default defineComponent({
 	},
 	watch: {
 		sharedWithProjects: {
-			handler(changedSharedWithProjects) {
-				this.$emit('update:modelValue', changedSharedWithProjects);
+			handler(changedSharedWithProjects: Array<Omit<Project, 'relations'>>) {
+				this.$emit(
+					'update:modelValue',
+					changedSharedWithProjects.map((p) => p.id),
+				);
 			},
 			deep: true,
 		},
