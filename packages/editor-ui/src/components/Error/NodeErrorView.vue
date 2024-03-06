@@ -39,7 +39,7 @@
 				>
 					<summary class="node-error-view__details-summary">
 						<font-awesome-icon class="node-error-view__details-icon" icon="angle-right" />
-						From {{ error?.node?.name || 'Node' }}
+						From {{ getNodeDefaultName(error?.node) }}
 					</summary>
 					<div class="node-error-view__details-content">
 						<div class="node-error-view__details-row" v-if="error.httpCode">
@@ -220,6 +220,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useClipboard } from '@/composables/useClipboard';
 import type { IDataObject } from 'n8n-workflow';
+import type { INodeUi } from '@/Interface';
 
 export default defineComponent({
 	name: 'NodeErrorView',
@@ -287,6 +288,11 @@ export default defineComponent({
 		},
 	},
 	methods: {
+		getNodeDefaultName(node: INodeUi) {
+			if (!node) return 'Node';
+			const nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
+			return nodeType?.defaults?.name || node.name;
+		},
 		nodeVersionTag(nodeType: IDataObject): string {
 			if (!nodeType || nodeType.hidden) {
 				return this.$locale.baseText('nodeSettings.deprecated');
