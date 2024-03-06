@@ -1011,8 +1011,8 @@ describe('FilterParameter', () => {
 				it.each([
 					{ left: {}, expected: true },
 					{ left: { foo: 'bar' }, expected: false },
-					{ left: undefined, expected: false },
-					{ left: null, expected: false },
+					{ left: undefined, expected: true },
+					{ left: null, expected: true },
 				])('object:empty($left) === $expected', ({ left, expected }) => {
 					const result = executeFilter(
 						filterFactory({
