@@ -20,6 +20,10 @@ const renderComponent = createComponentRenderer(WorkflowLMChatModal, {
 	},
 });
 
+vi.mock('@/composables/usePinnedData', () => ({
+	usePinnedData: () => ({ hasData: false }),
+}));
+
 async function createPiniaWithAINodes(options = { withConnections: true, withAgentNode: true }) {
 	const { withConnections, withAgentNode } = options;
 	const workflowId = uuid();
