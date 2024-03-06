@@ -350,6 +350,7 @@ describe('DELETE /credentials/:id', () => {
 	});
 });
 
+// NOTE: passing
 describe('PATCH /credentials/:id', () => {
 	test('should update owned cred for owner', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
