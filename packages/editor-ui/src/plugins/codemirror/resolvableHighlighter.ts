@@ -87,7 +87,9 @@ const coloringStateField = StateField.define<DecorationSet>({
 					});
 				}
 			}
-		} catch (error) {}
+		} catch (error) {
+			window?.Sentry?.captureException(error);
+		}
 
 		return colorings;
 	},
