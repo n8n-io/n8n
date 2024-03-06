@@ -1,5 +1,6 @@
 import PersonalizationModal from '@/components/PersonalizationModal.vue';
 import { createTestingPinia } from '@pinia/testing';
+import userEvent from '@testing-library/user-event';
 import { PERSONALIZATION_MODAL_KEY, STORES, VIEWS } from '@/constants';
 import { retry } from '@/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -128,8 +129,8 @@ describe('PersonalizationModal.vue', () => {
 		const agreeCheckbox = wrapper.container.querySelector('.n8n-checkbox')!;
 		await fireEvent.click(agreeCheckbox);
 
-		const submitButton = wrapper.container.querySelector('button')!;
-		await fireEvent.click(submitButton);
+		const submitButton = wrapper.getByRole('button')!;
+		await userEvent.click(submitButton);
 
 		await retry(() => expect(spyLicenseTrial).toHaveBeenCalled());
 	});
