@@ -3,10 +3,16 @@ import type { EntityManager } from '@n8n/typeorm';
 import { DataSource, In, Not, Repository } from '@n8n/typeorm';
 import { type CredentialSharingRole, SharedCredentials } from '../entities/SharedCredentials';
 import type { User } from '../entities/User';
+import type { Scope } from '@n8n/permissions';
+import type { ProjectRole } from '../entities/ProjectRelation';
+import { RoleService } from '@/services/role.service';
 
 @Service()
 export class SharedCredentialsRepository extends Repository<SharedCredentials> {
-	constructor(dataSource: DataSource) {
+	constructor(
+		dataSource: DataSource,
+		private readonly roleService: RoleService,
+	) {
 		super(SharedCredentials, dataSource.manager);
 	}
 
@@ -38,22 +44,36 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 
 	/** Get the IDs of all credentials owned by a user */
 	async getOwnedCredentialIds(userIds: string[]) {
-		return await this.getCredentialIdsByUserAndRole(userIds, ['credential:owner']);
+		return await this.getCredentialIdsByUserAndRole(userIds, {
+			credentialRoles: ['credential:owner'],
+			projectRoles: ['project:personalOwner'],
+		});
 	}
 
-	/** Get the IDs of all credentials owned by or shared with a user */
-	async getAccessibleCredentialIds(userIds: string[]) {
-		return await this.getCredentialIdsByUserAndRole(userIds, [
-			'credential:owner',
-			'credential:user',
-		]);
-	}
+	async getCredentialIdsByUserAndRole(
+		userIds: string[],
+		options:
+			| { scopes: Scope[] }
+			| { projectRoles: ProjectRole[]; credentialRoles: CredentialSharingRole[] },
+	) {
+		const projectRoles =
+			'scopes' in options
+				? this.roleService.rolesWithScope('project', options.scopes)
+				: options.projectRoles;
+		const credentialRoles =
+			'scopes' in options
+				? this.roleService.rolesWithScope('credential', options.scopes)
+				: options.credentialRoles;
 
-	private async getCredentialIdsByUserAndRole(userIds: string[], roles: CredentialSharingRole[]) {
 		const sharings = await this.find({
 			where: {
-				userId: In(userIds),
-				role: In(roles),
+				role: In(credentialRoles),
+				project: {
+					projectRelations: {
+						userId: In(userIds),
+						role: In(projectRoles),
+					},
+				},
 			},
 		});
 		return sharings.map((s) => s.credentialsId);

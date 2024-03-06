@@ -48,7 +48,7 @@ describe('PermissionChecker', () => {
 			expect(license.isSharingEnabled).not.toHaveBeenCalled();
 			expect(sharedWorkflowRepo.getSharedUserIds).not.toBeCalled();
 			expect(sharedCredentialsRepo.getOwnedCredentialIds).not.toHaveBeenCalled();
-			expect(sharedCredentialsRepo.getAccessibleCredentialIds).not.toHaveBeenCalled();
+			expect(sharedCredentialsRepo.getCredentialIdsByUserAndRole).not.toHaveBeenCalled();
 		});
 
 		it('should allow a user if they have a global `workflow:execute` scope', async () => {
@@ -58,7 +58,7 @@ describe('PermissionChecker', () => {
 			expect(license.isSharingEnabled).not.toHaveBeenCalled();
 			expect(sharedWorkflowRepo.getSharedUserIds).not.toBeCalled();
 			expect(sharedCredentialsRepo.getOwnedCredentialIds).not.toHaveBeenCalled();
-			expect(sharedCredentialsRepo.getAccessibleCredentialIds).not.toHaveBeenCalled();
+			expect(sharedCredentialsRepo.getCredentialIdsByUserAndRole).not.toHaveBeenCalled();
 		});
 
 		describe('When sharing is disabled', () => {
@@ -75,7 +75,7 @@ describe('PermissionChecker', () => {
 
 				expect(sharedWorkflowRepo.getSharedUserIds).not.toBeCalled();
 				expect(sharedCredentialsRepo.getOwnedCredentialIds).toBeCalledWith([user.id]);
-				expect(sharedCredentialsRepo.getAccessibleCredentialIds).not.toHaveBeenCalled();
+				expect(sharedCredentialsRepo.getCredentialIdsByUserAndRole).not.toHaveBeenCalled();
 			});
 
 			it('should throw when the user does not have access to the credential', async () => {
@@ -87,7 +87,7 @@ describe('PermissionChecker', () => {
 
 				expect(sharedWorkflowRepo.getSharedUserIds).not.toBeCalled();
 				expect(sharedCredentialsRepo.getOwnedCredentialIds).toBeCalledWith([user.id]);
-				expect(sharedCredentialsRepo.getAccessibleCredentialIds).not.toHaveBeenCalled();
+				expect(sharedCredentialsRepo.getCredentialIdsByUserAndRole).not.toHaveBeenCalled();
 			});
 		});
 
@@ -100,30 +100,30 @@ describe('PermissionChecker', () => {
 			});
 
 			it('should validate credential access using only owned credentials', async () => {
-				sharedCredentialsRepo.getAccessibleCredentialIds.mockResolvedValue(['cred-id']);
+				sharedCredentialsRepo.getCredentialIdsByUserAndRole.mockResolvedValue(['cred-id']);
 
 				await expect(permissionChecker.check(workflowId, user.id, nodes)).resolves.not.toThrow();
 
 				expect(sharedWorkflowRepo.getSharedUserIds).toBeCalledWith(workflowId);
-				expect(sharedCredentialsRepo.getAccessibleCredentialIds).toBeCalledWith([
-					user.id,
-					'another-user',
-				]);
+				expect(sharedCredentialsRepo.getCredentialIdsByUserAndRole).toBeCalledWith(
+					[user.id, 'another-user'],
+					{ scopes: ['credential:read'] },
+				);
 				expect(sharedCredentialsRepo.getOwnedCredentialIds).not.toHaveBeenCalled();
 			});
 
 			it('should throw when the user does not have access to the credential', async () => {
-				sharedCredentialsRepo.getAccessibleCredentialIds.mockResolvedValue(['cred-id2']);
+				sharedCredentialsRepo.getCredentialIdsByUserAndRole.mockResolvedValue(['cred-id2']);
 
 				await expect(permissionChecker.check(workflowId, user.id, nodes)).rejects.toThrow(
 					'Node has no access to credential',
 				);
 
 				expect(sharedWorkflowRepo.find).not.toBeCalled();
-				expect(sharedCredentialsRepo.getAccessibleCredentialIds).toBeCalledWith([
-					user.id,
-					'another-user',
-				]);
+				expect(sharedCredentialsRepo.getCredentialIdsByUserAndRole).toBeCalledWith(
+					[user.id, 'another-user'],
+					{ scopes: ['credential:read'] },
+				);
 				expect(sharedCredentialsRepo.getOwnedCredentialIds).not.toHaveBeenCalled();
 			});
 		});
