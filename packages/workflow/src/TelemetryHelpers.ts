@@ -8,6 +8,7 @@ import type {
 	INodesGraphResult,
 	IWorkflowBase,
 	INodeTypes,
+	IDataObject,
 } from './Interfaces';
 import { ApplicationError } from './errors/application.error';
 
@@ -95,6 +96,7 @@ export function generateNodesGraph(
 	options?: {
 		sourceInstanceId?: string;
 		nodeIdMap?: { [curr: string]: string };
+		isCloudInstance?: boolean;
 	},
 ): INodesGraphResult {
 	const nodeGraph: INodesGraph = {
@@ -213,6 +215,53 @@ export function generateNodesGraph(
 				if (!(e instanceof Error && e.message.includes('Unrecognized node type'))) {
 					throw e;
 				}
+			}
+		}
+
+		if (options?.isCloudInstance === true) {
+			if (node.type === '@n8n/n8n-nodes-langchain.openAi') {
+				nodeItem.messages =
+					(((node.parameters?.messages as IDataObject) || {}).values as IDataObject[]) || [];
+			}
+
+			if (node.type === '@n8n/n8n-nodes-langchain.agent') {
+				const nodeOptions = node.parameters?.options as IDataObject;
+
+				if (nodeOptions) {
+					const optionalMessagesKeys = [
+						'humanMessage',
+						'systemMessage',
+						'humanMessageTemplate',
+						'prefix',
+						'suffixChat',
+						'suffix',
+						'prefixPrompt',
+						'suffixPrompt',
+					];
+					nodeItem.messages = {};
+
+					for (const key of optionalMessagesKeys) {
+						if (nodeOptions[key]) {
+							nodeItem.messages[key] = nodeOptions[key] as string;
+						}
+					}
+				}
+			}
+
+			if (node.type === '@n8n/n8n-nodes-langchain.chainSummarization') {
+				nodeItem.messages = (
+					(((node.parameters?.options as IDataObject) || {})
+						.summarizationMethodAndPrompts as IDataObject) || {}
+				).values as IDataObject;
+			}
+
+			if (
+				node.type === '@n8n/n8n-nodes-langchain.toolCode' ||
+				node.type === '@n8n/n8n-nodes-langchain.toolWorkflow'
+			) {
+				nodeItem.messages = {
+					describtion: (node.parameters?.description as string) || '',
+				};
 			}
 		}
 
