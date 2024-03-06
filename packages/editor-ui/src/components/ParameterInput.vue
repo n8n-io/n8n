@@ -80,7 +80,7 @@
 							:language="editorLanguage"
 							:is-read-only="isReadOnly"
 							fill-parent
-							@update:model-value="valueChangedDebounced"
+							@update:model-value="valueChangedFullscreenEditor"
 						/>
 						<HtmlEditor
 							v-else-if="editorType === 'htmlEditor'"
@@ -90,7 +90,7 @@
 							:disable-expression-coloring="!isHtmlNode(node)"
 							:disable-expression-completions="!isHtmlNode(node)"
 							fill-parent
-							@update:model-value="valueChangedDebounced"
+							@update:model-value="valueChangedFullscreenEditor"
 						/>
 						<SqlEditor
 							v-else-if="editorType === 'sqlEditor'"
@@ -99,7 +99,7 @@
 							:is-read-only="isReadOnly"
 							:rows="getArgument('rows')"
 							fill-parent
-							@update:model-value="valueChangedDebounced"
+							@update:model-value="valueChangedFullscreenEditor"
 						/>
 						<JsEditor
 							v-else-if="editorType === 'jsEditor'"
@@ -107,7 +107,7 @@
 							:is-read-only="isReadOnly"
 							:rows="getArgument('rows')"
 							fill-parent
-							@update:model-value="valueChangedDebounced"
+							@update:model-value="valueChangedFullscreenEditor"
 						/>
 
 						<JsonEditor
@@ -116,7 +116,7 @@
 							:is-read-only="isReadOnly"
 							:rows="getArgument('rows')"
 							fill-parent
-							@update:model-value="valueChangedDebounced"
+							@update:model-value="valueChangedFullscreenEditor"
 						/>
 					</div>
 				</el-dialog>
@@ -141,7 +141,7 @@
 					:is-read-only="isReadOnly"
 					:rows="getArgument('rows')"
 					:ai-button-enabled="settingsStore.isCloudDeployment"
-					@update:model-value="valueChangedDebounced"
+					@update:model-value="valueChangedEditor"
 				>
 					<template #suffix>
 						<n8n-icon
@@ -163,7 +163,7 @@
 					:rows="getArgument('rows')"
 					:disable-expression-coloring="!isHtmlNode(node)"
 					:disable-expression-completions="!isHtmlNode(node)"
-					@update:model-value="valueChangedDebounced"
+					@update:model-value="valueChangedEditor"
 				>
 					<template #suffix>
 						<n8n-icon
@@ -184,7 +184,7 @@
 					:dialect="getArgument('sqlDialect')"
 					:is-read-only="isReadOnly"
 					:rows="getArgument('rows')"
-					@update:model-value="valueChangedDebounced"
+					@update:model-value="valueChangedEditor"
 				>
 					<template #suffix>
 						<n8n-icon
@@ -204,7 +204,7 @@
 					:model-value="modelValue"
 					:is-read-only="isReadOnly"
 					:rows="getArgument('rows')"
-					@update:model-value="valueChangedDebounced"
+					@update:model-value="valueChangedEditor"
 				>
 					<template #suffix>
 						<n8n-icon
@@ -224,7 +224,7 @@
 					:model-value="modelValue"
 					:is-read-only="isReadOnly"
 					:rows="getArgument('rows')"
-					@update:model-value="valueChangedDebounced"
+					@update:model-value="valueChangedEditor"
 				>
 					<template #suffix>
 						<n8n-icon
@@ -1251,6 +1251,16 @@ export default defineComponent({
 			};
 
 			this.$emit('textInput', parameterData);
+		},
+		valueChangedEditor(value: NodeParameterValueType) {
+			if (!this.codeEditDialogVisible) {
+				this.valueChangedDebounced(value);
+			}
+		},
+		valueChangedFullscreenEditor(value: NodeParameterValueType) {
+			if (this.codeEditDialogVisible) {
+				this.valueChangedDebounced(value);
+			}
 		},
 		valueChangedDebounced(value: NodeParameterValueType | {} | Date) {
 			void this.callDebounced(this.valueChanged, { debounceTime: 100 }, value);

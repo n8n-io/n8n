@@ -27,6 +27,38 @@ describe('SQL editors', () => {
 		ndv.getters.sqlEditorContainer().should('contain', 'SELECT * FROM `testTable` LIMIT 10');
 	});
 
+	it('should preserve changes when editing query in full screen', () => {
+		workflowPage.actions.addInitialNodeToCanvas('Postgres', {
+			action: 'Execute a SQL query',
+			keepNdvOpen: true,
+		});
+		ndv.getters
+			.sqlEditorContainer()
+			.click()
+			.find('.cm-content')
+			.type('SELECT * FROM `{{ $json.table }}`', { parseSpecialCharSequences: false })
+			.type('{esc}');
+
+		ndv.actions.openCodeEditorFullscreen();
+		ndv.getters.codeEditorFullscreen().type("WHERE name = 'foo'\nAND LIMIT 10");
+		ndv.getters
+			.codeEditorFullscreen()
+			.should('have.text', "SELECT * FROM `{{ $json.table }}`WHERE name = 'foo'AND LIMIT 10");
+		ndv.getters.codeEditorDialog().find('.el-dialog__close').click();
+		ndv.getters
+			.sqlEditorContainer()
+			.first()
+			.find('.cm-content')
+			.should('have.text', "SELECT * FROM `{{ $json.table }}`WHERE name = 'foo'AND LIMIT 10");
+		ndv.actions.close();
+		workflowPage.actions.openNode('Postgres');
+		ndv.getters
+			.sqlEditorContainer()
+			.first()
+			.find('.cm-content')
+			.should('have.text', "SELECT * FROM `{{ $json.table }}`WHERE name = 'foo'AND LIMIT 10");
+	});
+
 	it('should update expression output dropdown as the query is edited', () => {
 		workflowPage.actions.addInitialNodeToCanvas('MySQL', {
 			action: 'Execute a SQL query',
