@@ -1,6 +1,6 @@
 {
   "name": "n8n-design-system",
-  "version": "1.21.0",
+  "version": "1.22.0",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
   "author": {
@@ -46,7 +46,7 @@
     "@types/markdown-it": "^12.2.3",
     "@types/markdown-it-emoji": "^2.0.2",
     "@types/markdown-it-link-attributes": "^3.0.1",
-    "@types/sanitize-html": "^2.9.0",
+    "@types/sanitize-html": "^2.11.0",
     "@vitejs/plugin-vue": "^4.5.2",
     "@vue/test-utils": "^2.4.3",
     "@vue/tsconfig": "^0.5.1",
@@ -71,8 +71,8 @@
     "markdown-it-emoji": "^2.0.2",
     "markdown-it-link-attributes": "^4.0.1",
     "markdown-it-task-lists": "^2.1.1",
-    "sanitize-html": "2.10.0",
-    "vue": "^3.3.4",
+    "sanitize-html": "2.12.1",
+    "vue": "^3.4.21",
     "vue-boring-avatars": "^1.3.0",
     "vue-router": "^4.2.2",
     "xss": "^1.0.14"

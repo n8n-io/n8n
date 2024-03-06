@@ -1,35 +1,5 @@
 <template>
 	<div :class="$style.container">
-		<el-row v-if="nodesWithAccess.length > 0">
-			<el-col :span="8" :class="$style.accessLabel">
-				<n8n-text :compact="true" :bold="true">
-					{{ $locale.baseText('credentialEdit.credentialInfo.allowUseBy') }}
-				</n8n-text>
-			</el-col>
-			<el-col :span="16">
-				<div v-for="node in nodesWithAccess" :key="node.name" :class="$style.valueLabel">
-					<el-checkbox
-						v-if="credentialPermissions.update"
-						:label="
-							$locale.headerText({
-								key: `headers.${shortNodeType(node)}.displayName`,
-								fallback: node.displayName,
-							})
-						"
-						:model-value="!!nodeAccess[node.name]"
-						@update:modelValue="(val) => onNodeAccessChange(node.name, val)"
-					/>
-					<n8n-text v-else>
-						{{
-							$locale.headerText({
-								key: `headers.${shortNodeType(node)}.displayName`,
-								fallback: node.displayName,
-							})
-						}}
-					</n8n-text>
-				</div>
-			</el-col>
-		</el-row>
 		<el-row v-if="currentCredential">
 			<el-col :span="8" :class="$style.label">
 				<n8n-text :compact="true" :bold="true">
@@ -78,14 +48,8 @@ export default defineComponent({
 	components: {
 		TimeAgo,
 	},
-	props: ['nodesWithAccess', 'nodeAccess', 'currentCredential', 'credentialPermissions'],
+	props: ['currentCredential', 'credentialPermissions'],
 	methods: {
-		onNodeAccessChange(name: string, value: string) {
-			this.$emit('accessChange', {
-				name,
-				value,
-			});
-		},
 		shortNodeType(nodeType: INodeTypeDescription) {
 			return this.$locale.shortNodeType(nodeType.name);
 		},

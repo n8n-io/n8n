@@ -2,10 +2,11 @@ import validator from 'validator';
 import { plainToInstance } from 'class-transformer';
 import { Response } from 'express';
 import { randomBytes } from 'crypto';
-import { Authorized, Delete, Get, Patch, Post, RestController } from '@/decorators';
+
+import { AuthService } from '@/auth/auth.service';
+import { Delete, Get, Patch, Post, RestController } from '@/decorators';
 import { PasswordUtility } from '@/services/password.utility';
 import { validateEntity } from '@/GenericHelpers';
-import { issueCookie } from '@/auth/jwt';
 import type { User } from '@db/entities/User';
 import {
 	AuthenticatedRequest,
@@ -14,7 +15,7 @@ import {
 	UserUpdatePayload,
 } from '@/requests';
 import type { PublicUser } from '@/Interfaces';
-import { isSamlLicensedAndEnabled } from '../sso/saml/samlHelpers';
+import { isSamlLicensedAndEnabled } from '@/sso/saml/samlHelpers';
 import { UserService } from '@/services/user.service';
 import { Logger } from '@/Logger';
 import { ExternalHooks } from '@/ExternalHooks';
@@ -22,13 +23,13 @@ import { InternalHooks } from '@/InternalHooks';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { UserRepository } from '@/databases/repositories/user.repository';
 
-@Authorized()
 @RestController('/me')
 export class MeController {
 	constructor(
 		private readonly logger: Logger,
 		private readonly externalHooks: ExternalHooks,
 		private readonly internalHooks: InternalHooks,
+		private readonly authService: AuthService,
 		private readonly userService: UserService,
 		private readonly passwordUtility: PasswordUtility,
 		private readonly userRepository: UserRepository,
@@ -84,7 +85,7 @@ export class MeController {
 
 		this.logger.info('User updated successfully', { userId });
 
-		await issueCookie(res, user);
+		this.authService.issueCookie(res, user);
 
 		const updatedKeys = Object.keys(payload);
 		void this.internalHooks.onUserUpdate({
@@ -137,7 +138,7 @@ export class MeController {
 		const updatedUser = await this.userRepository.save(user, { transaction: false });
 		this.logger.info('Password updated successfully', { userId: user.id });
 
-		await issueCookie(res, updatedUser);
+		this.authService.issueCookie(res, updatedUser);
 
 		void this.internalHooks.onUserUpdate({
 			user: updatedUser,

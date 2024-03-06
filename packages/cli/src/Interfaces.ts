@@ -613,18 +613,6 @@ export interface ILicensePostResponse extends ILicenseReadResponse {
 	managementToken: string;
 }
 
-export interface JwtToken {
-	token: string;
-	/** The amount of seconds after which the JWT will expire. **/
-	expiresIn: number;
-}
-
-export interface JwtPayload {
-	id: string;
-	email: string | null;
-	password: string | null;
-}
-
 export interface PublicUser {
 	id: string;
 	email?: string;

@@ -62,8 +62,12 @@ export type AuthenticatedRequest<
 	ResponseBody = {},
 	RequestBody = {},
 	RequestQuery = {},
-> = Omit<express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery>, 'user'> & {
+> = Omit<
+	express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery>,
+	'user' | 'cookies'
+> & {
 	user: User;
+	cookies: Record<string, string | undefined>;
 };
 
 // ----------------------------------

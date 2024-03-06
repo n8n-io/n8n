@@ -1,14 +1,16 @@
 import { AgentExecutor } from 'langchain/agents';
-import type { Tool } from 'langchain/tools';
+
 import { OpenAIAssistantRunnable } from 'langchain/experimental/openai_assistant';
 import type { OpenAIToolType } from 'langchain/dist/experimental/openai_assistant/schema';
 import { OpenAI as OpenAIClient } from 'openai';
 
-import { NodeConnectionType, NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
+import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
 import { formatToOpenAIAssistantTool } from '../../helpers/utils';
 import { assistantRLC } from '../descriptions';
+
+import { getConnectedTools } from '../../../../../utils/helpers';
 
 const properties: INodeProperties[] = [
 	assistantRLC,
@@ -97,6 +99,7 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const credentials = await this.getCredentials('openAiApi');
+	const nodeVersion = this.getNode().typeVersion;
 
 	const prompt = this.getNodeParameter('prompt', i) as string;
 
@@ -131,7 +134,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	const agent = new OpenAIAssistantRunnable({ assistantId, client, asAgent: true });
 
-	const tools = ((await this.getInputConnectionData(NodeConnectionType.AiTool, 0)) as Tool[]) || [];
+	const tools = await getConnectedTools(this, nodeVersion > 1);
 
 	if (tools.length) {
 		const transformedConnectedTools = tools?.map(formatToOpenAIAssistantTool) ?? [];
