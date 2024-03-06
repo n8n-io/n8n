@@ -1,7 +1,7 @@
 import { Service } from 'typedi';
 import type { NextFunction, Response } from 'express';
 import { createHash } from 'crypto';
-import { JsonWebTokenError, TokenExpiredError, type JwtPayload } from 'jsonwebtoken';
+import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 
 import config from '@/config';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES, Time } from '@/constants';
@@ -18,14 +18,17 @@ import { UrlService } from '@/services/url.service';
 interface AuthJwtPayload {
 	/** User Id */
 	id: string;
-	/** User's email */
-	email: string | null;
-	/** SHA-256 hash of bcrypt hash of the user's password */
-	password: string | null;
+	/** This hash is derived from email and bcrypt of password */
+	hash: string;
 }
 
 interface IssuedJWT extends AuthJwtPayload {
 	exp: number;
+}
+
+interface PasswordResetToken {
+	sub: string;
+	hash: string;
 }
 
 @Service()
@@ -79,15 +82,14 @@ export class AuthService {
 			maxAge: this.jwtExpiration * Time.seconds.toMilliseconds,
 			httpOnly: true,
 			sameSite: 'lax',
+			secure: config.getEnv('secure_cookie'),
 		});
 	}
 
 	issueJWT(user: User) {
-		const { id, email, password } = user;
 		const payload: AuthJwtPayload = {
-			id,
-			email,
-			password: password ? this.createPasswordSha(user) : null,
+			id: user.id,
+			hash: this.createJWTHash(user),
 		};
 		return this.jwtService.sign(payload, {
 			expiresIn: this.jwtExpiration,
@@ -104,18 +106,13 @@ export class AuthService {
 			where: { id: jwtPayload.id },
 		});
 
-		// TODO: include these checks in the cache, to avoid computed this over and over again
-		const passwordHash = user?.password ? this.createPasswordSha(user) : null;
-
 		if (
 			// If not user is found
 			!user ||
 			// or, If the user has been deactivated (i.e. LDAP users)
 			user.disabled ||
-			// or, If the password has been updated
-			jwtPayload.password !== passwordHash ||
-			// or, If the email has been updated
-			user.email !== jwtPayload.email
+			// or, If the email or password has been updated
+			jwtPayload.hash !== this.createJWTHash(user)
 		) {
 			throw new AuthError('Unauthorized');
 		}
@@ -129,10 +126,8 @@ export class AuthService {
 	}
 
 	generatePasswordResetToken(user: User, expiresIn = '20m') {
-		return this.jwtService.sign(
-			{ sub: user.id, passwordSha: this.createPasswordSha(user) },
-			{ expiresIn },
-		);
+		const payload: PasswordResetToken = { sub: user.id, hash: this.createJWTHash(user) };
+		return this.jwtService.sign(payload, { expiresIn });
 	}
 
 	generatePasswordResetUrl(user: User) {
@@ -146,7 +141,7 @@ export class AuthService {
 	}
 
 	async resolvePasswordResetToken(token: string): Promise<User | undefined> {
-		let decodedToken: JwtPayload & { passwordSha: string };
+		let decodedToken: PasswordResetToken;
 		try {
 			decodedToken = this.jwtService.verify(token);
 		} catch (e) {
@@ -171,7 +166,7 @@ export class AuthService {
 			return;
 		}
 
-		if (this.createPasswordSha(user) !== decodedToken.passwordSha) {
+		if (decodedToken.hash !== this.createJWTHash(user)) {
 			this.logger.debug('Password updated since this token was generated');
 			return;
 		}
@@ -179,10 +174,11 @@ export class AuthService {
 		return user;
 	}
 
-	private createPasswordSha({ password }: User) {
-		return createHash('sha256')
-			.update(password.slice(password.length / 2))
-			.digest('hex');
+	createJWTHash({ email, password }: User) {
+		const hash = createHash('sha256')
+			.update(email + ':' + password)
+			.digest('base64');
+		return hash.substring(0, 10);
 	}
 
 	/** How many **milliseconds** before expiration should a JWT be renewed */

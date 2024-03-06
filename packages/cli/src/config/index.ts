@@ -15,6 +15,7 @@ if (inE2ETests) {
 	process.env.N8N_LOG_LEVEL = 'silent';
 	process.env.N8N_PUBLIC_API_DISABLED = 'true';
 	process.env.SKIP_STATISTICS_EVENTS = 'true';
+	process.env.N8N_SECURE_COOKIE = 'false';
 } else {
 	dotenv.config();
 }
