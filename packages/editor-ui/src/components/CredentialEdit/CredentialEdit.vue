@@ -97,11 +97,8 @@
 				</div>
 				<div v-else-if="activeTab === 'details' && credentialType" :class="$style.mainContent">
 					<CredentialInfo
-						:node-access="nodeAccess"
-						:nodes-with-access="nodesWithAccess"
 						:current-credential="currentCredential"
 						:credential-permissions="credentialPermissions"
-						@accessChange="onNodeAccessChange"
 					/>
 				</div>
 				<div v-else-if="activeTab.startsWith('coming-soon')" :class="$style.mainContent">
@@ -642,10 +639,6 @@ export default defineComponent({
 				}
 
 				this.credentialName = currentCredentials.name;
-				currentCredentials.nodesAccess.forEach((access: { nodeType: string }) => {
-					// keep node access structure to keep dates when updating
-					this.nodeAccess[access.nodeType] = access;
-				});
 			} catch (error) {
 				this.showError(
 					error,
@@ -670,23 +663,6 @@ export default defineComponent({
 				credential_id: this.credentialId,
 				sharing_enabled: EnterpriseEditionFeature.Sharing,
 			});
-		},
-		onNodeAccessChange({ name, value }: { name: string; value: boolean }) {
-			this.hasUnsavedChanges = true;
-
-			if (value) {
-				this.nodeAccess = {
-					...this.nodeAccess,
-					[name]: {
-						nodeType: name,
-					},
-				};
-			} else {
-				this.nodeAccess = {
-					...this.nodeAccess,
-					[name]: null,
-				};
-			}
 		},
 		onChangeSharedWith(sharees: IDataObject[]) {
 			this.credentialData = {
@@ -762,17 +738,13 @@ export default defineComponent({
 				return;
 			}
 
-			const nodesAccess = Object.values(this.nodeAccess).filter(
-				(access) => !!access,
-			) as ICredentialNodeAccess[];
-
 			const { ownedBy, sharedWith, ...credentialData } = this.credentialData;
 			const details: ICredentialsDecrypted = {
 				id: this.credentialId,
 				name: this.credentialName,
 				type: this.credentialTypeName!,
 				data: credentialData,
-				nodesAccess,
+				nodesAccess: [],
 			};
 
 			this.isRetesting = true;
@@ -802,9 +774,6 @@ export default defineComponent({
 			}
 
 			this.isSaving = true;
-			const nodesAccess = Object.values(this.nodeAccess).filter(
-				(access) => !!access,
-			) as ICredentialNodeAccess[];
 
 			// Save only the none default data
 			const data = NodeHelpers.getNodeParameters(
@@ -827,7 +796,7 @@ export default defineComponent({
 				name: this.credentialName,
 				type: this.credentialTypeName!,
 				data: data as unknown as ICredentialDataDecryptedObject,
-				nodesAccess,
+				nodesAccess: [],
 				sharedWith,
 				ownedBy,
 			};
@@ -1114,18 +1083,7 @@ export default defineComponent({
 			}
 		},
 		setupNodeAccess(): void {
-			this.nodeAccess = this.nodesWithAccess.reduce(
-				(accu: NodeAccessMap, node: { name: string }) => {
-					if (this.mode === 'new') {
-						accu[node.name] = { nodeType: node.name }; // enable all nodes by default
-					} else {
-						accu[node.name] = null;
-					}
-
-					return accu;
-				},
-				{},
-			);
+			this.nodeAccess = {};
 		},
 		resetCredentialData(): void {
 			if (!this.credentialType) {

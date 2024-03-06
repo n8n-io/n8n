@@ -27,6 +27,8 @@ import type { SaveCredentialFunction } from '../integration/shared/types';
 import { mockNodeTypesData } from '../unit/Helpers';
 import { affixRoleToSaveCredential } from '../integration/shared/db/credentials';
 import { createOwner, createUser } from '../integration/shared/db/users';
+import { SharedCredentialsRepository } from '@/databases/repositories/sharedCredentials.repository';
+import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
 
 export const toTargetCallErrorMsg = (subworkflowId: string) =>
 	`Target workflow ID ${subworkflowId} may not be called`;
@@ -69,7 +71,33 @@ export function createSubworkflow({
 	});
 }
 
+const createWorkflow = async (nodes: INode[], workflowOwner?: User): Promise<WorkflowEntity> => {
+	const workflowDetails = {
+		id: uuid(),
+		name: 'test',
+		active: false,
+		connections: {},
+		nodeTypes: mockNodeTypes,
+		nodes,
+	};
+
+	const workflowEntity = await Container.get(WorkflowRepository).save(workflowDetails);
+
+	if (workflowOwner) {
+		await Container.get(SharedWorkflowRepository).save({
+			workflow: workflowEntity,
+			user: workflowOwner,
+			role: 'workflow:owner',
+		});
+	}
+
+	return workflowEntity;
+};
+
 let saveCredential: SaveCredentialFunction;
+
+let owner: User;
+let member: User;
 
 const mockNodeTypes = mockInstance(NodeTypes);
 mockInstance(LoadNodesAndCredentials, {
@@ -78,17 +106,29 @@ mockInstance(LoadNodesAndCredentials, {
 
 let permissionChecker: PermissionChecker;
 
+let license: LicenseMocker;
+
 beforeAll(async () => {
 	await testDb.init();
 
 	saveCredential = affixRoleToSaveCredential('credential:owner');
 
 	permissionChecker = Container.get(PermissionChecker);
+
+	[owner, member] = await Promise.all([createOwner(), createUser()]);
+
+	license = new LicenseMocker();
+	license.mock(Container.get(License));
+	license.setDefaults({
+		features: ['feat:sharing'],
+	});
+});
+
+beforeEach(() => {
+	license.reset();
 });
 
 describe('check()', () => {
-	const workflowId = randomPositiveDigit().toString();
-
 	beforeEach(async () => {
 		await testDb.truncate(['Workflow', 'Credentials']);
 	});
@@ -98,7 +138,6 @@ describe('check()', () => {
 	});
 
 	test('should allow if workflow has no creds', async () => {
-		const userId = uuid();
 		const nodes: INode[] = [
 			{
 				id: uuid(),
@@ -110,7 +149,11 @@ describe('check()', () => {
 			},
 		];
 
-		expect(async () => await permissionChecker.check(workflowId, userId, nodes)).not.toThrow();
+		const workflow = await createWorkflow(nodes, member);
+
+		await expect(
+			permissionChecker.check(workflow.id, member.id, workflow.nodes),
+		).resolves.not.toThrow();
 	});
 
 	test('should allow if requesting user is instance owner', async () => {
@@ -132,14 +175,25 @@ describe('check()', () => {
 			},
 		];
 
-		expect(async () => await permissionChecker.check(workflowId, owner.id, nodes)).not.toThrow();
+		const workflow = await createWorkflow(nodes);
+
+		await expect(
+			permissionChecker.check(workflow.id, owner.id, workflow.nodes),
+		).resolves.not.toThrow();
 	});
 
-	test('should allow if workflow creds are valid subset', async () => {
-		const [owner, member] = await Promise.all([createOwner(), createUser()]);
-
+	test('should allow if workflow creds are valid subset (shared credential)', async () => {
 		const ownerCred = await saveCredential(randomCred(), { user: owner });
 		const memberCred = await saveCredential(randomCred(), { user: member });
+
+		await Container.get(SharedCredentialsRepository).save(
+			Container.get(SharedCredentialsRepository).create({
+				credentialsId: ownerCred.id,
+				userId: member.id,
+				role: 'credential:user',
+			}),
+		);
+
 		const nodes: INode[] = [
 			{
 				id: uuid(),
@@ -171,7 +225,111 @@ describe('check()', () => {
 			},
 		];
 
-		expect(async () => await permissionChecker.check(workflowId, owner.id, nodes)).not.toThrow();
+		const workflow = await createWorkflow(nodes, member);
+
+		await expect(
+			permissionChecker.check(workflow.id, member.id, workflow.nodes),
+		).resolves.not.toThrow();
+	});
+
+	test('should allow if workflow creds are valid subset (shared workflow)', async () => {
+		const ownerCred = await saveCredential(randomCred(), { user: owner });
+		const memberCred = await saveCredential(randomCred(), { user: member });
+
+		const nodes: INode[] = [
+			{
+				id: uuid(),
+				name: 'Action Network',
+				type: 'n8n-nodes-base.actionNetwork',
+				parameters: {},
+				typeVersion: 1,
+				position: [0, 0],
+				credentials: {
+					actionNetworkApi: {
+						id: ownerCred.id,
+						name: ownerCred.name,
+					},
+				},
+			},
+			{
+				id: uuid(),
+				name: 'Action Network 2',
+				type: 'n8n-nodes-base.actionNetwork',
+				parameters: {},
+				typeVersion: 1,
+				position: [0, 0],
+				credentials: {
+					actionNetworkApi: {
+						id: memberCred.id,
+						name: memberCred.name,
+					},
+				},
+			},
+		];
+
+		const workflow = await createWorkflow(nodes, member);
+		await Container.get(SharedWorkflowRepository).save(
+			Container.get(SharedWorkflowRepository).create({
+				workflowId: workflow.id,
+				userId: owner.id,
+				role: 'workflow:editor',
+			}),
+		);
+
+		await expect(
+			permissionChecker.check(workflow.id, member.id, workflow.nodes),
+		).resolves.not.toThrow();
+	});
+
+	test('should deny if workflow creds are valid subset but sharing is disabled', async () => {
+		const [owner, member] = await Promise.all([createOwner(), createUser()]);
+
+		const ownerCred = await saveCredential(randomCred(), { user: owner });
+		const memberCred = await saveCredential(randomCred(), { user: member });
+
+		await Container.get(SharedCredentialsRepository).save(
+			Container.get(SharedCredentialsRepository).create({
+				credentialsId: ownerCred.id,
+				userId: member.id,
+				role: 'credential:user',
+			}),
+		);
+
+		const nodes: INode[] = [
+			{
+				id: uuid(),
+				name: 'Action Network',
+				type: 'n8n-nodes-base.actionNetwork',
+				parameters: {},
+				typeVersion: 1,
+				position: [0, 0],
+				credentials: {
+					actionNetworkApi: {
+						id: ownerCred.id,
+						name: ownerCred.name,
+					},
+				},
+			},
+			{
+				id: uuid(),
+				name: 'Action Network 2',
+				type: 'n8n-nodes-base.actionNetwork',
+				parameters: {},
+				typeVersion: 1,
+				position: [0, 0],
+				credentials: {
+					actionNetworkApi: {
+						id: memberCred.id,
+						name: memberCred.name,
+					},
+				},
+			},
+		];
+
+		const workflow = await createWorkflow(nodes, member);
+
+		license.disable('feat:sharing');
+		await expect(permissionChecker.check(workflow.id, member.id, nodes)).rejects.toThrow();
 	});
 
 	test('should deny if workflow creds are not valid subset', async () => {
@@ -179,68 +337,45 @@ describe('check()', () => {
 
 		const memberCred = await saveCredential(randomCred(), { user: member });
 
-		const workflowDetails = {
-			id: randomPositiveDigit().toString(),
-			name: 'test',
-			active: false,
-			connections: {},
-			nodeTypes: mockNodeTypes,
-			nodes: [
-				{
-					id: uuid(),
-					name: 'Action Network',
-					type: 'n8n-nodes-base.actionNetwork',
-					parameters: {},
-					typeVersion: 1,
-					position: [0, 0] as [number, number],
-					credentials: {
-						actionNetworkApi: {
-							id: memberCred.id,
-							name: memberCred.name,
-						},
+		const nodes: INode[] = [
+			{
+				id: uuid(),
+				name: 'Action Network',
+				type: 'n8n-nodes-base.actionNetwork',
+				parameters: {},
+				typeVersion: 1,
+				position: [0, 0] as [number, number],
+				credentials: {
+					actionNetworkApi: {
+						id: memberCred.id,
+						name: memberCred.name,
 					},
 				},
-				{
-					id: uuid(),
-					name: 'Action Network 2',
-					type: 'n8n-nodes-base.actionNetwork',
-					parameters: {},
-					typeVersion: 1,
-					position: [0, 0] as [number, number],
-					credentials: {
-						actionNetworkApi: {
-							id: 'non-existing-credential-id',
-							name: 'Non-existing credential name',
-						},
+			},
+			{
+				id: uuid(),
+				name: 'Action Network 2',
+				type: 'n8n-nodes-base.actionNetwork',
+				parameters: {},
+				typeVersion: 1,
+				position: [0, 0] as [number, number],
+				credentials: {
+					actionNetworkApi: {
+						id: 'non-existing-credential-id',
+						name: 'Non-existing credential name',
 					},
 				},
-			],
-		};
+			},
+		];
 
-		const workflowEntity = await Container.get(WorkflowRepository).save(workflowDetails);
+		const workflow = await createWorkflow(nodes, member);
 
-		await Container.get(SharedWorkflowRepository).save({
-			workflow: workflowEntity,
-			user: member,
-			role: 'workflow:owner',
-		});
-
-		await expect(
-			permissionChecker.check(workflowDetails.id, member.id, workflowDetails.nodes),
-		).rejects.toThrow();
+		await expect(permissionChecker.check(workflow.id, member.id, workflow.nodes)).rejects.toThrow();
 	});
 });
 
 describe('checkSubworkflowExecutePolicy()', () => {
 	const ownershipService = mockInstance(OwnershipService);
-
-	let license: LicenseMocker;
-
-	beforeAll(() => {
-		license = new LicenseMocker();
-		license.mock(Container.get(License));
-		license.enable('feat:sharing');
-	});
 
 	describe('no caller policy', () => {
 		test('should fall back to N8N_WORKFLOW_CALLER_POLICY_DEFAULT_OPTION', async () => {
