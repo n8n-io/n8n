@@ -1,11 +1,7 @@
-import {
-	type IExecuteFunctions,
-	type INodeExecutionData,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { type IExecuteFunctions, type INodeExecutionData, NodeOperationError } from 'n8n-workflow';
 
 import type { TextSplitter } from 'langchain/text_splitter';
-import type { Document } from 'langchain/document';
+import type { Document } from '@langchain/core/documents';
 import { JSONLoader } from 'langchain/document_loaders/fs/json';
 import { TextLoader } from 'langchain/document_loaders/fs/text';
 import { getMetadataFiltersValues } from './helpers';

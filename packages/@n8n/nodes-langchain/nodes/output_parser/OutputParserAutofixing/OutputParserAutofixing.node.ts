@@ -7,8 +7,8 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 import { OutputFixingParser } from 'langchain/output_parsers';
-import type { BaseOutputParser } from 'langchain/schema/output_parser';
-import type { BaseLanguageModel } from 'langchain/base_language';
+import type { BaseOutputParser } from '@langchain/core/output_parsers';
+import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 

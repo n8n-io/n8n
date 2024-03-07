@@ -95,20 +95,21 @@ const outputTypeParsers: {
 					) {
 						interface MessageContent {
 							type: string;
+							text?: string;
 							image_url?: {
 								url: string;
 							};
 						}
 						let message = content.kwargs.content;
 						if (Array.isArray(message)) {
-							const messageContent = message[0] as {
-								type?: string;
-								image_url?: { url: string };
-							};
-							if (messageContent?.type === 'image_url') {
-								message = `![Input image](${messageContent.image_url?.url})`;
-							}
-							message = message as MessageContent[];
+							message = (message as MessageContent[])
+								.map((item) => {
+									if (item?.type === 'image_url') {
+										return `![Input image](${item.image_url?.url})`;
+									}
+									return item.text;
+								})
+								.join('\n');
 						}
 						if (Object.keys(content.kwargs.additional_kwargs).length) {
 							message += ` (${JSON.stringify(content.kwargs.additional_kwargs)})`;
