@@ -73,7 +73,7 @@ const onRoleAction = (project: ProjectSharingData, role: string) => {
 			:filter-method="setFilter"
 			:placeholder="locale.baseText('projects.sharing.placeholder')"
 			:default-first-option="true"
-			teleported
+			:teleported="false"
 			:no-data-text="locale.baseText('projects.sharing.noMatchingProjects')"
 			size="large"
 			:disabled="props.readonly"
@@ -149,5 +149,11 @@ const onRoleAction = (project: ProjectSharingData, role: string) => {
 
 .projectRoleSelect {
 	width: auto;
+}
+</style>
+
+<style lang="scss" scoped>
+:deep(.el-select__popper) {
+	inset: 50px auto auto auto !important;
 }
 </style>
