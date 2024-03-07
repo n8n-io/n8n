@@ -15,7 +15,12 @@ import { NodeError } from './abstract/node.error';
 import { removeCircularRefs } from '../utils';
 import type { ReportingOptions } from './application.error';
 import { AxiosError } from 'axios';
-import { NO_OP_NODE_TYPE } from '../Constants';
+import {
+	NO_OP_NODE_TYPE,
+	UNKNOWN_ERROR_DESCRIPTION,
+	UNKNOWN_ERROR_MESSAGE,
+	UNKNOWN_ERROR_MESSAGE_CRED,
+} from '../Constants';
 
 export interface NodeOperationErrorOptions {
 	message?: string;
@@ -102,11 +107,6 @@ const STATUS_CODE_MESSAGES: IStatusCodeMessages = {
 		'Service unavailable - try again later or consider setting this node to retry automatically (in the node settings)',
 	'504': 'Gateway timed out - perhaps try again later?',
 };
-
-const UNKNOWN_ERROR_MESSAGE = 'There was an unknown issue while executing the node';
-const UNKNOWN_ERROR_DESCRIPTION =
-	'Double-check the node configuration and the service it connects to. Check the error details below and refer to the <a href="https://docs.n8n.io" target="_blank">n8n documentation</a> to troubleshoot the issue.';
-const UNKNOWN_ERROR_MESSAGE_CRED = 'UNKNOWN ERROR';
 
 /**
  * Class for instantiating an error in an API response, e.g. a 404 Not Found response,

@@ -1,6 +1,7 @@
 import type { INode } from '@/Interfaces';
 import { NodeOperationError } from '@/errors';
 import { NodeApiError } from '@/errors/node-api.error';
+import { UNKNOWN_ERROR_DESCRIPTION, UNKNOWN_ERROR_MESSAGE } from '../src/Constants';
 
 const node: INode = {
 	id: '1',
@@ -17,7 +18,7 @@ describe('NodeErrors tests', () => {
 	it('should return unknown error message', () => {
 		const nodeApiError = new NodeApiError(node, {});
 
-		expect(nodeApiError.message).toEqual('There was an unknown issue while executing the node');
+		expect(nodeApiError.message).toEqual(UNKNOWN_ERROR_MESSAGE);
 	});
 
 	it('should return the error message', () => {
@@ -256,9 +257,7 @@ describe('NodeApiError message and description logic', () => {
 		const apiError = {};
 		const nodeApiError = new NodeApiError(node, apiError);
 
-		expect(nodeApiError.message).toEqual('There was an unknown issue while executing the node');
-		expect(nodeApiError.description).toEqual(
-			'Double-check the node configuration and the service it connects to. Check the error details below and refer to the <a href="https://docs.n8n.io" target="_blank">n8n documentation</a> to troubleshoot the issue.',
-		);
+		expect(nodeApiError.message).toEqual(UNKNOWN_ERROR_MESSAGE);
+		expect(nodeApiError.description).toEqual(UNKNOWN_ERROR_DESCRIPTION);
 	});
 });
