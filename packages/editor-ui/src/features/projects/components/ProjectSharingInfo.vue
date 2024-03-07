@@ -38,7 +38,7 @@ const splitName = computed<{
 	<div :class="$style.projectInfo">
 		<N8nAvatar :first-name="splitName.firstName" :last-name="splitName.lastName" />
 		<div>
-			<p>{{ props.project.name }}</p>
+			<p>{{ splitName.firstName }} {{ splitName.lastName }}</p>
 			<small>{{ splitName.email }}</small>
 		</div>
 	</div>
