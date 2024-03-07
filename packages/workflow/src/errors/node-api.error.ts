@@ -104,7 +104,7 @@ const STATUS_CODE_MESSAGES: IStatusCodeMessages = {
 
 const UNKNOWN_ERROR_MESSAGE = 'There was an unknown issue while executing the node';
 const UNKNOWN_ERROR_DESCRIPTION =
-	'Double-check the node configuration and the service it connects to. Check the error details below and refer to the <a href="https://docs.n8n.io" target="_blank">n8n documentation</a> to troubleshoot the issue. ';
+	'Double-check the node configuration and the service it connects to. Check the error details below and refer to the <a href="https://docs.n8n.io" target="_blank">n8n documentation</a> to troubleshoot the issue.';
 const UNKNOWN_ERROR_MESSAGE_CRED = 'UNKNOWN ERROR';
 
 /**

@@ -172,3 +172,93 @@ describe('NodeErrors tests', () => {
 		);
 	});
 });
+
+describe('NodeApiError message and description logic', () => {
+	it('case: customMessage && customDescription, result: message === customMessage; description === customDescription', () => {
+		const apiError = { message: 'Original message', code: 404 };
+		const nodeApiError = new NodeApiError(node, apiError, {
+			message: 'Custom message',
+			description: 'Custom description',
+		});
+
+		expect(nodeApiError.message).toEqual('Custom message');
+		expect(nodeApiError.description).toEqual('Custom description');
+		expect(nodeApiError.messages).toContain('Original message');
+	});
+
+	it('case: customMessage && !customDescription && extractedMessage, result: message === customMessage; description === extractedMessage', () => {
+		const apiError = {
+			message: 'Original message',
+			code: 404,
+			response: { data: { error: { message: 'Extracted message' } } },
+		};
+		const nodeApiError = new NodeApiError(node, apiError, {
+			message: 'Custom message',
+		});
+
+		expect(nodeApiError.message).toEqual('Custom message');
+		expect(nodeApiError.description).toEqual('Extracted message');
+		expect(nodeApiError.messages).toContain('Original message');
+	});
+
+	it('case: customMessage && !customDescription && !extractedMessage, result: message === customMessage; !description', () => {
+		const apiError = {
+			message: '',
+			code: 404,
+			response: { data: { error: { foo: 'Extracted message' } } },
+		};
+		const nodeApiError = new NodeApiError(node, apiError, {
+			message: 'Custom message',
+		});
+
+		expect(nodeApiError.message).toEqual('Custom message');
+		expect(nodeApiError.description).toBeFalsy();
+		expect(nodeApiError.messages.length).toBe(0);
+	});
+
+	it('case: !customMessage && httpCodeMapping && extractedMessage, result: message === httpCodeMapping; description === extractedMessage', () => {
+		const apiError = {
+			message: 'Original message',
+			code: 404,
+			response: { data: { error: { message: 'Extracted message' } } },
+		};
+		const nodeApiError = new NodeApiError(node, apiError);
+
+		expect(nodeApiError.message).toEqual('The resource you are requesting could not be found');
+		expect(nodeApiError.description).toEqual('Extracted message');
+		expect(nodeApiError.messages).toContain('Original message');
+	});
+
+	it('case: !customMessage && httpCodeMapping && !extractedMessage, result: message === httpCodeMapping; !description', () => {
+		const apiError = {
+			message: '',
+			code: 500,
+		};
+		const nodeApiError = new NodeApiError(node, apiError);
+
+		expect(nodeApiError.message).toEqual('The service was not able to process your request');
+		expect(nodeApiError.description).toBeFalsy();
+	});
+
+	it('case: !customMessage && !httpCodeMapping && extractedMessage, result: message === extractedMessage; !description', () => {
+		const apiError = {
+			message: '',
+			code: 300,
+			response: { data: { error: { message: 'Extracted message' } } },
+		};
+		const nodeApiError = new NodeApiError(node, apiError);
+
+		expect(nodeApiError.message).toEqual('Extracted message');
+		expect(nodeApiError.description).toBeFalsy();
+	});
+
+	it('case: !customMessage && !httpCodeMapping && !extractedMessage, result: message === UNKNOWN_ERROR_MESSAGE; description === UNKNOWN_ERROR_DESCRIPTION', () => {
+		const apiError = {};
+		const nodeApiError = new NodeApiError(node, apiError);
+
+		expect(nodeApiError.message).toEqual('There was an unknown issue while executing the node');
+		expect(nodeApiError.description).toEqual(
+			'Double-check the node configuration and the service it connects to. Check the error details below and refer to the <a href="https://docs.n8n.io" target="_blank">n8n documentation</a> to troubleshoot the issue.',
+		);
+	});
+});
