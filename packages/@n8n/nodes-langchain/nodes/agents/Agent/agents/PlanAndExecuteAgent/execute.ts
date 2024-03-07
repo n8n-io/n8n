@@ -5,10 +5,10 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import type { BaseOutputParser } from 'langchain/schema/output_parser';
-import { PromptTemplate } from 'langchain/prompts';
+import type { BaseOutputParser } from '@langchain/core/output_parsers';
+import { PromptTemplate } from '@langchain/core/prompts';
 import { CombiningOutputParser } from 'langchain/output_parsers';
-import type { BaseChatModel } from 'langchain/chat_models/base';
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { PlanAndExecuteAgentExecutor } from 'langchain/experimental/plan_and_execute';
 import {
 	getConnectedTools,
