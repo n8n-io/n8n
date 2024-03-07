@@ -79,7 +79,7 @@ import { ActiveWorkflowsController } from './controllers/activeWorkflows.control
 import { OrchestrationController } from './controllers/orchestration.controller';
 import { WorkflowHistoryController } from './workflows/workflowHistory/workflowHistory.controller.ee';
 import { InvitationController } from './controllers/invitation.controller';
-import { CollaborationService } from './collaboration/collaboration.service';
+// import { CollaborationService } from './collaboration/collaboration.service';
 import { BadRequestError } from './errors/response-errors/bad-request.error';
 import { OrchestrationService } from '@/services/orchestration.service';
 
@@ -125,7 +125,7 @@ export class Server extends AbstractServer {
 		}
 
 		void Container.get(InternalHooks).onServerStarted();
-		Container.get(CollaborationService);
+		// Container.get(CollaborationService);
 	}
 
 	private async registerControllers() {

@@ -16,6 +16,7 @@ import type { Html, Plaintext, RawSegment, Resolvable, Segment } from '@/types/e
 import type { EditorView } from '@codemirror/view';
 import { isEqual } from 'lodash-es';
 import { getExpressionErrorMessage, getResolvableState } from '@/utils/expressions';
+import type { EditorState } from '@codemirror/state';
 
 export const expressionManager = defineComponent({
 	props: {
@@ -27,10 +28,16 @@ export const expressionManager = defineComponent({
 			default: () => ({}),
 		},
 	},
-	data() {
+	data(): {
+		editor: EditorView;
+		skipSegments: string[];
+		editorState: EditorState | undefined;
+		completionStatus: 'active' | 'pending' | null;
+	} {
 		return {
 			editor: {} as EditorView,
-			skipSegments: [] as string[],
+			skipSegments: [],
+			completionStatus: null,
 			editorState: undefined,
 		};
 	},
@@ -70,15 +77,12 @@ export const expressionManager = defineComponent({
 		},
 
 		segments(): Segment[] {
-			if (!this.editorState || !this.editorState) return [];
+			const state = this.editorState as EditorState;
+			if (!state) return [];
 
 			const rawSegments: RawSegment[] = [];
 
-			const fullTree = ensureSyntaxTree(
-				this.editorState,
-				this.editorState.doc.length,
-				EXPRESSION_EDITOR_PARSER_TIMEOUT,
-			);
+			const fullTree = ensureSyntaxTree(state, state.doc.length, EXPRESSION_EDITOR_PARSER_TIMEOUT);
 
 			if (fullTree === null) {
 				throw new Error(`Failed to parse expression: ${this.editorValue}`);
@@ -87,7 +91,7 @@ export const expressionManager = defineComponent({
 			const skipSegments = ['Program', 'Script', 'Document', ...this.skipSegments];
 
 			fullTree.cursor().iterate((node) => {
-				const text = this.editorState.sliceDoc(node.from, node.to);
+				const text = state.sliceDoc(node.from, node.to);
 
 				if (skipSegments.includes(node.type.name)) return;
 
@@ -108,8 +112,7 @@ export const expressionManager = defineComponent({
 				const { from, to, text, token } = segment;
 
 				if (token === 'Resolvable') {
-					const { resolved, fullError } = this.resolve(text, this.hoveringItem);
-
+					const { resolved, error, fullError } = this.resolve(text, this.hoveringItem);
 					acc.push({
 						kind: 'resolvable',
 						from,
@@ -119,7 +122,7 @@ export const expressionManager = defineComponent({
 						// For some reason, expressions that resolve to a number 0 are breaking preview in the SQL editor
 						// This fixes that but as as TODO we should figure out why this is happening
 						resolved: String(resolved),
-						state: getResolvableState(fullError),
+						state: getResolvableState(fullError ?? error, this.completionStatus !== null),
 						error: fullError,
 					});
 

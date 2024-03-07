@@ -149,9 +149,9 @@ export default defineComponent({
 
 			this.isFocused = false;
 
-			this.$emit('blur');
-
 			if (wasFocused) {
+				this.$emit('blur');
+
 				const telemetryPayload = createExpressionTelemetryPayload(
 					this.segments,
 					this.modelValue,

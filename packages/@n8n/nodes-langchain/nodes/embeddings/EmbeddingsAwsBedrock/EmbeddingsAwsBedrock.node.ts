@@ -6,7 +6,7 @@ import {
 	type INodeTypeDescription,
 	type SupplyData,
 } from 'n8n-workflow';
-import { BedrockEmbeddings } from 'langchain/embeddings/bedrock';
+import { BedrockEmbeddings } from '@langchain/community/embeddings/bedrock';
 
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';

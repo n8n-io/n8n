@@ -5,7 +5,7 @@ import { wrapData } from '../../../../../../utils/utilities';
 
 export async function execute(
 	this: IExecuteFunctions,
-	sheet: GoogleSheet,
+	_sheet: GoogleSheet,
 	sheetName: string,
 ): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
