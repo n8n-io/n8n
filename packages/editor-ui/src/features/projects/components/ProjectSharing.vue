@@ -1,7 +1,8 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
 import { useI18n } from '@/composables/useI18n';
-import type { Project, ProjectListItem } from '@/features/projects/projects.types';
+import type { ProjectListItem, ProjectRole } from '@/features/projects/projects.types';
+import ProjectSharingInfo from '@/features/projects/components/ProjectSharingInfo.vue';
 
 const locale = useI18n();
 
@@ -11,13 +12,17 @@ type Props = {
 };
 
 const props = defineProps<Props>();
-const selectedProjects = defineModel<Array<Omit<Project, 'relations'>>>({
+const selectedProjects = defineModel<ProjectListItem[]>({
 	required: true,
 });
-const selectedProject = ref('');
 
+const selectedProject = ref('');
 const filter = ref('');
-const sortedProjects = computed(() =>
+const projectRoles = ref<Array<{ label: string; value: ProjectRole }>>([
+	{ value: 'project:editor', label: locale.baseText('projects.settings.role.editor') },
+]);
+
+const filteredProjects = computed(() =>
 	props.projects
 		.filter(
 			(project) =>
@@ -38,17 +43,19 @@ const onProjectSelected = (projectId: string) => {
 	if (!project) {
 		return;
 	}
-	const { id, name, type } = project;
-	selectedProjects.value?.push({ id, name, type });
+	selectedProjects.value?.push(project);
 	selectedProject.value = '';
 };
 
-const onProjectRemoved = (projectId: string) => {
-	const index = selectedProjects.value?.findIndex((p) => p.id === projectId) ?? -1;
+const onRoleAction = (project: ProjectListItem, role: string) => {
+	const index = selectedProjects.value?.findIndex((p) => p.id === project.id) ?? -1;
 	if (index === -1) {
 		return;
 	}
-	selectedProjects.value?.splice(index, 1);
+
+	if (role === 'remove') {
+		selectedProjects.value?.splice(index, 1);
+	}
 };
 </script>
 <template>
@@ -70,30 +77,41 @@ const onProjectRemoved = (projectId: string) => {
 				<n8n-icon icon="search" />
 			</template>
 			<N8nOption
-				v-for="project in sortedProjects"
+				v-for="project in filteredProjects"
 				:key="project.id"
 				:value="project.id"
 				:label="project.name"
 			>
-				<div :class="$style.project">
-					<N8nAvatar :first-name="project.name" />
-					<N8nText :bold="true" color="text-dark">{{ project.name }}</N8nText>
-				</div>
+				<ProjectSharingInfo :project="project" />
 			</N8nOption>
 		</N8nSelect>
 		<ul :class="$style.selectedProjects">
-			<li v-for="project in selectedProjects" :key="project.id" :class="$style.project">
-				<div :class="$style.project">
-					<N8nAvatar :first-name="project.name" />
-					<N8nText :bold="true" color="text-dark">{{ project.name }}</N8nText>
-				</div>
-				<n8n-button
+			<li
+				v-for="project in selectedProjects"
+				:key="project.id"
+				:class="$style.project"
+				data-test-id="project-sharing-list-item"
+			>
+				<ProjectSharingInfo :project="project" />
+				<N8nSelect
+					:class="$style.projectRoleSelect"
+					:model-value="'project:editor'"
 					:disabled="props.readonly"
 					size="small"
-					square
-					icon="trash"
-					@click="onProjectRemoved(project.id)"
-				/>
+					@update:model-value="onRoleAction(project, $event)"
+				>
+					<N8nOption
+						v-for="role in projectRoles"
+						:key="role.value"
+						:value="role.value"
+						:label="role.label"
+					/>
+					<N8nOption value="remove">
+						<N8nText color="danger">{{
+							$locale.baseText('projects.settings.removeAccess')
+						}}</N8nText>
+					</N8nOption>
+				</N8nSelect>
 			</li>
 		</ul>
 	</div>
@@ -121,5 +139,9 @@ const onProjectRemoved = (projectId: string) => {
 			border-bottom: none;
 		}
 	}
+}
+
+.projectRoleSelect {
+	width: auto;
 }
 </style>
