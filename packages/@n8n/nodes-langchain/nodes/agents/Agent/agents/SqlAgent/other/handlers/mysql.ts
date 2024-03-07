@@ -11,10 +11,19 @@ export async function getMysqlDataSource(this: IExecuteFunctions): Promise<DataS
 		username: credentials.user as string,
 		password: credentials.password as string,
 		database: credentials.database as string,
-		ssl: {
-			rejectUnauthorized: credentials.ssl as boolean,
-		},
 	});
+
+	if (credentials.ssl === true) {
+		dataSource.setOptions({
+			ssl: {
+				rejectUnauthorized: true,
+			},
+		});
+	} else {
+		dataSource.setOptions({
+			ssl: !['disable', undefined].includes(credentials.ssl as string | undefined),
+		});
+	}
 
 	return dataSource;
 }
