@@ -1083,6 +1083,7 @@ export default defineComponent({
 						TelemetryHelpers.generateNodesGraph(
 							workflowData as IWorkflowBase,
 							this.workflowHelpers.getNodeTypes(),
+							{ isCloudDeployment: this.settingsStore.isCloudDeployment },
 						).nodeGraph,
 					),
 				};
@@ -1995,6 +1996,7 @@ export default defineComponent({
 						TelemetryHelpers.generateNodesGraph(
 							workflowData as IWorkflowBase,
 							this.workflowHelpers.getNodeTypes(),
+							{ isCloudDeployment: this.settingsStore.isCloudDeployment },
 						).nodeGraph,
 					),
 				};
@@ -2151,6 +2153,7 @@ export default defineComponent({
 								workflowData.meta && workflowData.meta.instanceId !== currInstanceId
 									? workflowData.meta.instanceId
 									: '',
+							isCloudDeployment: this.settingsStore.isCloudDeployment,
 						},
 					).nodeGraph,
 				);
