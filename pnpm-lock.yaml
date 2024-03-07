@@ -22,7 +22,7 @@ overrides:
   xml2js: ^0.5.0
   cpy@8>globby: ^11.1.0
   qqjs>globby: ^11.1.0
-  '@langchain/core': ^0.1.8
+  '@langchain/core': 0.1.41
 
 patchedDependencies:
   '@sentry/cli@2.17.0':
@@ -194,12 +194,30 @@ importers:
       '@huggingface/inference':
         specifier: 2.6.4
         version: 2.6.4
+      '@langchain/anthropic':
+        specifier: ^0.1.3
+        version: 0.1.3
+      '@langchain/cohere':
+        specifier: ^0.0.5
+        version: 0.0.5
+      '@langchain/community':
+        specifier: ^0.0.34
+        version: 0.0.34(@aws-sdk/client-bedrock-runtime@3.454.0)(@aws-sdk/credential-provider-node@3.451.0)(@getzep/zep-js@0.9.0)(@google-ai/generativelanguage@0.2.1)(@huggingface/inference@2.6.4)(@pinecone-database/pinecone@2.0.1)(@qdrant/js-client-rest@1.7.0)(@supabase/supabase-js@2.38.5)(@xata.io/client@0.28.0)(cohere-ai@6.2.2)(html-to-text@9.0.5)(lodash@4.17.21)(pg@8.11.3)(redis@4.6.12)
       '@langchain/core':
-        specifier: ^0.1.8
-        version: 0.1.8
+        specifier: 0.1.41
+        version: 0.1.41
       '@langchain/mistralai':
-        specifier: 0.0.6
-        version: 0.0.6
+        specifier: 0.0.7
+        version: 0.0.7
+      '@langchain/openai':
+        specifier: ^0.0.16
+        version: 0.0.16
+      '@langchain/pinecone':
+        specifier: ^0.0.3
+        version: 0.0.3
+      '@langchain/redis':
+        specifier: ^0.0.2
+        version: 0.0.2
       '@n8n/typeorm':
         specifier: 0.3.20-3
         version: 0.3.20-3(mssql@9.1.1)(pg@8.11.3)(redis@4.6.12)(sqlite3@5.1.7)
@@ -207,8 +225,8 @@ importers:
         specifier: 3.9.20
         version: 3.9.20
       '@pinecone-database/pinecone':
-        specifier: 1.1.2
-        version: 1.1.2
+        specifier: 2.0.1
+        version: 2.0.1
       '@qdrant/js-client-rest':
         specifier: 1.7.0
         version: 1.7.0(typescript@5.3.2)
@@ -216,8 +234,8 @@ importers:
         specifier: 2.38.5
         version: 2.38.5
       '@xata.io/client':
-        specifier: 0.25.3
-        version: 0.25.3(typescript@5.3.2)
+        specifier: 0.28.0
+        version: 0.28.0(typescript@5.3.2)
       basic-auth:
         specifier: 2.0.1
         version: 2.0.1
@@ -240,8 +258,8 @@ importers:
         specifier: 1.2.0
         version: 1.2.0
       langchain:
-        specifier: 0.0.198
-        version: 0.0.198(@aws-sdk/client-bedrock-runtime@3.454.0)(@aws-sdk/credential-provider-node@3.451.0)(@getzep/zep-js@0.9.0)(@google-ai/generativelanguage@0.2.1)(@huggingface/inference@2.6.4)(@pinecone-database/pinecone@1.1.2)(@qdrant/js-client-rest@1.7.0)(@supabase/supabase-js@2.38.5)(@xata.io/client@0.25.3)(axios@1.6.7)(cohere-ai@6.2.2)(d3-dsv@2.0.0)(epub2@3.0.1)(html-to-text@9.0.5)(lodash@4.17.21)(mammoth@1.6.0)(pdf-parse@1.1.1)(pg@8.11.3)(redis@4.6.12)
+        specifier: 0.1.25
+        version: 0.1.25(@aws-sdk/client-bedrock-runtime@3.454.0)(@aws-sdk/credential-provider-node@3.451.0)(@getzep/zep-js@0.9.0)(@google-ai/generativelanguage@0.2.1)(@huggingface/inference@2.6.4)(@pinecone-database/pinecone@2.0.1)(@qdrant/js-client-rest@1.7.0)(@supabase/supabase-js@2.38.5)(@xata.io/client@0.28.0)(axios@1.6.7)(cohere-ai@6.2.2)(d3-dsv@2.0.0)(epub2@3.0.1)(html-to-text@9.0.5)(lodash@4.17.21)(mammoth@1.6.0)(pdf-parse@1.1.1)(pg@8.11.3)(redis@4.6.12)
       lodash:
         specifier: 4.17.21
         version: 4.17.21
@@ -258,8 +276,8 @@ importers:
         specifier: workspace:*
         version: link:../../workflow
       openai:
-        specifier: 4.20.0
-        version: 4.20.0
+        specifier: 4.26.1
+        version: 4.26.1
       pdf-parse:
         specifier: 1.1.1
         version: 1.1.1
@@ -275,6 +293,9 @@ importers:
       temp:
         specifier: 0.9.4
         version: 0.9.4
+      tmp-promise:
+        specifier: 3.0.3
+        version: 3.0.3
       zod:
         specifier: 3.22.4
         version: 3.22.4
@@ -1601,6 +1622,23 @@ packages:
   /@antfu/utils@0.7.6:
     resolution: {integrity: sha512-pvFiLP2BeOKA/ZOS6jxx4XhKzdVLHDhGlFEaZ2flWWYf2xOqVniqpk38I04DFRyz+L0ASggl7SkItTc+ZLju4w==}
     dev: true
+
+  /@anthropic-ai/sdk@0.15.0:
+    resolution: {integrity: sha512-QMNEFcwGGB64oEIL+U9b+mxSbat5TCdNxvQVV0qCNGQvg/nlnbOmq2/x/0mKhuKD0n5bioL75oCkTbQaAgyYtw==}
+    dependencies:
+      '@types/node': 18.16.16
+      '@types/node-fetch': 2.6.4
+      abort-controller: 3.0.0
+      agentkeepalive: 4.2.1
+      digest-fetch: 1.3.0
+      form-data-encoder: 1.7.2
+      formdata-node: 4.4.1
+      node-fetch: 2.7.0(encoding@0.1.13)
+      web-streams-polyfill: 3.2.1
+    transitivePeerDependencies:
+      - encoding
+      - supports-color
+    dev: false
 
   /@anthropic-ai/sdk@0.9.1:
     resolution: {integrity: sha512-wa1meQ2WSfoY8Uor3EdrJq0jTiZJoKoSii2ZVWRY1oN4Tlr5s59pADg9T79FTbPe1/se5c3pBeZgJL63wmuoBA==}
@@ -4348,18 +4386,6 @@ packages:
     engines: {node: '>=10.0.0'}
     dev: true
 
-  /@edge-runtime/primitives@4.0.5:
-    resolution: {integrity: sha512-t7QiN5d/KpXgCvIfSt6Nm9Hj3WVdNgc5CpOD73jasY+9EvTI7Ngdj5cXvjcHrPcmYWJZMySPgeEeoL/1N/Llag==}
-    engines: {node: '>=16'}
-    dev: false
-
-  /@edge-runtime/types@2.2.7:
-    resolution: {integrity: sha512-9MTwGooICP7+ZsX9BTy6YCRzOr4tP6RFRymsc8CaKORfvuAHgLZUQaLwILfQ94tddufVXcBwq637VfEd3ZXbWA==}
-    engines: {node: '>=16'}
-    dependencies:
-      '@edge-runtime/primitives': 4.0.5
-    dev: false
-
   /@element-plus/icons-vue@2.1.0(vue@3.4.21):
     resolution: {integrity: sha512-PSBn3elNoanENc1vnCfh+3WA9fimRC7n+fWkf3rE5jvv+aBohNHABC/KAR5KWPecxWxDTVT1ERpRbOMRcOV/vA==}
     peerDependencies:
@@ -5460,30 +5486,370 @@ packages:
     resolution: {integrity: sha512-GaHYm+c0O9MjZRu0ongGBRbinu8gVAMd2UZjji6jVmqKtZluZnptXGWhz1E8j8D2HJ3f/yMxKAUC0b+57wncIw==}
     dev: false
 
-  /@langchain/core@0.1.8:
-    resolution: {integrity: sha512-ZTQ/NFjBbOKktVL+BlT/Fal5Ys0GAhygWeWdGNoFZg0qJfSt54fQzFhljNSpnQQ4Wavj8NkkCLiSFMnxDAuHjg==}
+  /@langchain/anthropic@0.1.3:
+    resolution: {integrity: sha512-osixwWnuof2dx9C9VkVF2/Xi208qzIA20o/W9NuTt6SVCp1TjJm7guxrQiGjdqhdsM2v+7oeKmKJRYlT2prpOQ==}
+    engines: {node: '>=18'}
+    dependencies:
+      '@anthropic-ai/sdk': 0.15.0
+      '@langchain/core': 0.1.41
+      fast-xml-parser: 4.3.5
+      zod: 3.22.4
+      zod-to-json-schema: 3.22.4(zod@3.22.4)
+    transitivePeerDependencies:
+      - encoding
+      - supports-color
+    dev: false
+
+  /@langchain/cohere@0.0.5:
+    resolution: {integrity: sha512-4q6dHZ6XCk5NIrLBzxedNGwlmj7cROVvAtSnCaDsLKVKX2cgTUxjiSKAtzjX39RqHwCsdt919ZRdL/X15AQK/w==}
+    engines: {node: '>=18'}
+    dependencies:
+      '@langchain/core': 0.1.41
+      cohere-ai: 7.7.7
+    transitivePeerDependencies:
+      - encoding
+    dev: false
+
+  /@langchain/community@0.0.34(@aws-sdk/client-bedrock-runtime@3.454.0)(@aws-sdk/credential-provider-node@3.451.0)(@getzep/zep-js@0.9.0)(@google-ai/generativelanguage@0.2.1)(@huggingface/inference@2.6.4)(@pinecone-database/pinecone@2.0.1)(@qdrant/js-client-rest@1.7.0)(@supabase/supabase-js@2.38.5)(@xata.io/client@0.28.0)(cohere-ai@6.2.2)(html-to-text@9.0.5)(lodash@4.17.21)(pg@8.11.3)(redis@4.6.12):
+    resolution: {integrity: sha512-eU3VyK7dZ3S05E4IQ3IVb3B8Ja/GaNDHaXhfjUJfZLOwyZrrLMhshGRIbbO+iMqJz8omGK761QK14v0G0/U3iw==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      '@aws-crypto/sha256-js': ^5.0.0
+      '@aws-sdk/client-bedrock-agent-runtime': ^3.485.0
+      '@aws-sdk/client-bedrock-runtime': ^3.422.0
+      '@aws-sdk/client-dynamodb': ^3.310.0
+      '@aws-sdk/client-kendra': ^3.352.0
+      '@aws-sdk/client-lambda': ^3.310.0
+      '@aws-sdk/client-sagemaker-runtime': ^3.310.0
+      '@aws-sdk/client-sfn': ^3.310.0
+      '@aws-sdk/credential-provider-node': ^3.388.0
+      '@azure/search-documents': ^12.0.0
+      '@clickhouse/client': ^0.2.5
+      '@cloudflare/ai': '*'
+      '@datastax/astra-db-ts': ^0.1.4
+      '@elastic/elasticsearch': ^8.4.0
+      '@getmetal/metal-sdk': '*'
+      '@getzep/zep-js': ^0.9.0
+      '@gomomento/sdk': ^1.51.1
+      '@gomomento/sdk-core': ^1.51.1
+      '@google-ai/generativelanguage': ^0.2.1
+      '@gradientai/nodejs-sdk': ^1.2.0
+      '@huggingface/inference': ^2.6.4
+      '@mozilla/readability': '*'
+      '@opensearch-project/opensearch': '*'
+      '@pinecone-database/pinecone': '*'
+      '@planetscale/database': ^1.8.0
+      '@qdrant/js-client-rest': ^1.2.0
+      '@raycast/api': ^1.55.2
+      '@rockset/client': ^0.9.1
+      '@smithy/eventstream-codec': ^2.0.5
+      '@smithy/protocol-http': ^3.0.6
+      '@smithy/signature-v4': ^2.0.10
+      '@smithy/util-utf8': ^2.0.0
+      '@supabase/postgrest-js': ^1.1.1
+      '@supabase/supabase-js': ^2.10.0
+      '@tensorflow-models/universal-sentence-encoder': '*'
+      '@tensorflow/tfjs-converter': '*'
+      '@tensorflow/tfjs-core': '*'
+      '@upstash/redis': ^1.20.6
+      '@upstash/vector': ^1.0.2
+      '@vercel/kv': ^0.2.3
+      '@vercel/postgres': ^0.5.0
+      '@writerai/writer-sdk': ^0.40.2
+      '@xata.io/client': ^0.28.0
+      '@xenova/transformers': ^2.5.4
+      '@zilliz/milvus2-sdk-node': '>=2.2.7'
+      better-sqlite3: ^9.4.0
+      cassandra-driver: ^4.7.2
+      chromadb: '*'
+      closevector-common: 0.1.3
+      closevector-node: 0.1.6
+      closevector-web: 0.1.6
+      cohere-ai: '*'
+      convex: ^1.3.1
+      discord.js: ^14.14.1
+      dria: ^0.0.3
+      faiss-node: ^0.5.1
+      firebase-admin: ^11.9.0 || ^12.0.0
+      google-auth-library: ^8.9.0
+      googleapis: ^126.0.1
+      hnswlib-node: ^1.4.2
+      html-to-text: ^9.0.5
+      ioredis: ^5.3.2
+      jsdom: '*'
+      llmonitor: ^0.5.9
+      lodash: ^4.17.21
+      lunary: ^0.6.11
+      mongodb: '>=5.2.0'
+      mysql2: ^3.3.3
+      neo4j-driver: '*'
+      node-llama-cpp: '*'
+      pg: ^8.11.0
+      pg-copy-streams: ^6.0.5
+      pickleparser: ^0.2.1
+      portkey-ai: ^0.1.11
+      redis: '*'
+      replicate: ^0.18.0
+      typeorm: ^0.3.12
+      typesense: ^1.5.3
+      usearch: ^1.1.1
+      vectordb: ^0.1.4
+      voy-search: 0.6.2
+      weaviate-ts-client: '*'
+      web-auth-library: ^1.0.3
+      ws: ^8.14.2
+    peerDependenciesMeta:
+      '@aws-crypto/sha256-js':
+        optional: true
+      '@aws-sdk/client-bedrock-agent-runtime':
+        optional: true
+      '@aws-sdk/client-bedrock-runtime':
+        optional: true
+      '@aws-sdk/client-dynamodb':
+        optional: true
+      '@aws-sdk/client-kendra':
+        optional: true
+      '@aws-sdk/client-lambda':
+        optional: true
+      '@aws-sdk/client-sagemaker-runtime':
+        optional: true
+      '@aws-sdk/client-sfn':
+        optional: true
+      '@aws-sdk/credential-provider-node':
+        optional: true
+      '@azure/search-documents':
+        optional: true
+      '@clickhouse/client':
+        optional: true
+      '@cloudflare/ai':
+        optional: true
+      '@datastax/astra-db-ts':
+        optional: true
+      '@elastic/elasticsearch':
+        optional: true
+      '@getmetal/metal-sdk':
+        optional: true
+      '@getzep/zep-js':
+        optional: true
+      '@gomomento/sdk':
+        optional: true
+      '@gomomento/sdk-core':
+        optional: true
+      '@google-ai/generativelanguage':
+        optional: true
+      '@gradientai/nodejs-sdk':
+        optional: true
+      '@huggingface/inference':
+        optional: true
+      '@mozilla/readability':
+        optional: true
+      '@opensearch-project/opensearch':
+        optional: true
+      '@pinecone-database/pinecone':
+        optional: true
+      '@planetscale/database':
+        optional: true
+      '@qdrant/js-client-rest':
+        optional: true
+      '@raycast/api':
+        optional: true
+      '@rockset/client':
+        optional: true
+      '@smithy/eventstream-codec':
+        optional: true
+      '@smithy/protocol-http':
+        optional: true
+      '@smithy/signature-v4':
+        optional: true
+      '@smithy/util-utf8':
+        optional: true
+      '@supabase/postgrest-js':
+        optional: true
+      '@supabase/supabase-js':
+        optional: true
+      '@tensorflow-models/universal-sentence-encoder':
+        optional: true
+      '@tensorflow/tfjs-converter':
+        optional: true
+      '@tensorflow/tfjs-core':
+        optional: true
+      '@upstash/redis':
+        optional: true
+      '@upstash/vector':
+        optional: true
+      '@vercel/kv':
+        optional: true
+      '@vercel/postgres':
+        optional: true
+      '@writerai/writer-sdk':
+        optional: true
+      '@xata.io/client':
+        optional: true
+      '@xenova/transformers':
+        optional: true
+      '@zilliz/milvus2-sdk-node':
+        optional: true
+      better-sqlite3:
+        optional: true
+      cassandra-driver:
+        optional: true
+      chromadb:
+        optional: true
+      closevector-common:
+        optional: true
+      closevector-node:
+        optional: true
+      closevector-web:
+        optional: true
+      cohere-ai:
+        optional: true
+      convex:
+        optional: true
+      discord.js:
+        optional: true
+      dria:
+        optional: true
+      faiss-node:
+        optional: true
+      firebase-admin:
+        optional: true
+      google-auth-library:
+        optional: true
+      googleapis:
+        optional: true
+      hnswlib-node:
+        optional: true
+      html-to-text:
+        optional: true
+      ioredis:
+        optional: true
+      jsdom:
+        optional: true
+      llmonitor:
+        optional: true
+      lodash:
+        optional: true
+      lunary:
+        optional: true
+      mongodb:
+        optional: true
+      mysql2:
+        optional: true
+      neo4j-driver:
+        optional: true
+      node-llama-cpp:
+        optional: true
+      pg:
+        optional: true
+      pg-copy-streams:
+        optional: true
+      pickleparser:
+        optional: true
+      portkey-ai:
+        optional: true
+      redis:
+        optional: true
+      replicate:
+        optional: true
+      typeorm:
+        optional: true
+      typesense:
+        optional: true
+      usearch:
+        optional: true
+      vectordb:
+        optional: true
+      voy-search:
+        optional: true
+      weaviate-ts-client:
+        optional: true
+      web-auth-library:
+        optional: true
+      ws:
+        optional: true
+    dependencies:
+      '@aws-sdk/client-bedrock-runtime': 3.454.0
+      '@aws-sdk/credential-provider-node': 3.451.0
+      '@getzep/zep-js': 0.9.0
+      '@google-ai/generativelanguage': 0.2.1
+      '@huggingface/inference': 2.6.4
+      '@langchain/core': 0.1.41
+      '@langchain/openai': 0.0.16
+      '@pinecone-database/pinecone': 2.0.1
+      '@qdrant/js-client-rest': 1.7.0(typescript@5.3.2)
+      '@supabase/supabase-js': 2.38.5
+      '@xata.io/client': 0.28.0(typescript@5.3.2)
+      cohere-ai: 6.2.2
+      flat: 5.0.2
+      html-to-text: 9.0.5
+      langsmith: 0.1.12
+      lodash: 4.17.21
+      pg: 8.11.3
+      redis: 4.6.12
+      uuid: 9.0.0
+      zod: 3.22.4
+    transitivePeerDependencies:
+      - encoding
+      - supports-color
+    dev: false
+
+  /@langchain/core@0.1.41:
+    resolution: {integrity: sha512-h7UuoB8CDv0Ux4k9rXFpiXONg3Jod/46hpSj+ZZx3U9WuNL2rB6IIdJrYYCQ/0EVpZteA/1/XWyxVFeL9QCIFA==}
     engines: {node: '>=18'}
     dependencies:
       ansi-styles: 5.2.0
       camelcase: 6.3.0
       decamelize: 1.2.0
       js-tiktoken: 1.0.8
-      langsmith: 0.0.48
+      langsmith: 0.1.12
       ml-distance: 4.0.1
       p-queue: 6.6.2
       p-retry: 4.6.2
       uuid: 9.0.0
       zod: 3.22.4
+      zod-to-json-schema: 3.22.4(zod@3.22.4)
     dev: false
 
-  /@langchain/mistralai@0.0.6:
-    resolution: {integrity: sha512-zA/xxKNF+rDM9IF1uvVx+LI/eWPZSO85tJBX60ENeQrcM35np92Sm3ca0D4ixcdBAkG0vnn+9ELcYHGdknCbHQ==}
+  /@langchain/mistralai@0.0.7:
+    resolution: {integrity: sha512-i0L463ojB9/LHSYo3MCYBWkCsb+qqNxD6PYRAJQ1fObSqLqpGIhRRIWegipIte8MFzIfREkOTiEQEbwIM1I7Wg==}
     engines: {node: '>=18'}
     dependencies:
-      '@langchain/core': 0.1.8
+      '@langchain/core': 0.1.41
       '@mistralai/mistralai': 0.0.7
     transitivePeerDependencies:
       - debug
+    dev: false
+
+  /@langchain/openai@0.0.16:
+    resolution: {integrity: sha512-GUEeyQ4/pwqr60sPwadrlN5DLe8a3sOhF3ZC96bJTqt9P6rmBQTxwYSHysmsRL/VN9k79+CsqTQ1krrwbocDmQ==}
+    engines: {node: '>=18'}
+    dependencies:
+      '@langchain/core': 0.1.41
+      js-tiktoken: 1.0.8
+      openai: 4.26.1
+      zod: 3.22.4
+      zod-to-json-schema: 3.22.4(zod@3.22.4)
+    transitivePeerDependencies:
+      - encoding
+      - supports-color
+    dev: false
+
+  /@langchain/pinecone@0.0.3:
+    resolution: {integrity: sha512-uhmGdiF6OLL583kQNMdKl799+3E1nQphrZ4a/Y/yQcXKUPVNZYwNLUimK1ws80RBhfqR7DKvywkvERoOsvCDlA==}
+    engines: {node: '>=18'}
+    dependencies:
+      '@langchain/core': 0.1.41
+      '@pinecone-database/pinecone': 2.0.1
+      flat: 5.0.2
+      uuid: 9.0.0
+    dev: false
+
+  /@langchain/redis@0.0.2:
+    resolution: {integrity: sha512-kDaW4JotKH4J9QxcsRP0onydxz8QgGD1bYosdpzuZ2a7kYcDeJWMqapR0eFFjOznemgyn27jxUFGG0GhvI3pYA==}
+    engines: {node: '>=18'}
+    dependencies:
+      '@langchain/core': 0.1.41
+      redis: 4.6.13
     dev: false
 
   /@lezer/common@1.1.0:
@@ -6018,17 +6384,14 @@ packages:
       '@otplib/plugin-thirty-two': 12.0.1
     dev: true
 
-  /@pinecone-database/pinecone@1.1.2:
-    resolution: {integrity: sha512-xrvaMWWloTjT70pSxvw+Es2f7qX5lzhtTZBfduagtwGQqK0nFMqS6Jq+1yqzobDaUhqfRfVwRZ95Gm10odqD3Q==}
+  /@pinecone-database/pinecone@2.0.1:
+    resolution: {integrity: sha512-a1ejzrqdSQ2yW+9QUi2TVlKwYUbrvGH+QH6POJhITyaOz9ANE+EhXqToC9af93Ctzq9n87+bOUvBvewLeW++Mw==}
     engines: {node: '>=14.0.0'}
     dependencies:
-      '@edge-runtime/types': 2.2.7
       '@sinclair/typebox': 0.29.6
-      '@types/node': 18.16.16
       ajv: 8.12.0
       cross-fetch: 3.1.8(encoding@0.1.13)
       encoding: 0.1.13
-      typescript: 5.3.2
     dev: false
 
   /@pinia/testing@0.1.3(pinia@2.1.6)(vue@3.4.21):
@@ -6647,8 +7010,25 @@ packages:
       '@redis/client': 1.5.13
     dev: false
 
+  /@redis/bloom@1.2.0(@redis/client@1.5.14):
+    resolution: {integrity: sha512-HG2DFjYKbpNmVXsa0keLHp/3leGJz1mjh09f2RLGGLQZzSHpkmZWuwJbAvo3QcRY8p80m5+ZdXZdYOSBLlp7Cg==}
+    peerDependencies:
+      '@redis/client': ^1.0.0
+    dependencies:
+      '@redis/client': 1.5.14
+    dev: false
+
   /@redis/client@1.5.13:
     resolution: {integrity: sha512-epkUM9D0Sdmt93/8Ozk43PNjLi36RZzG+d/T1Gdu5AI8jvghonTeLYV69WVWdilvFo+PYxbP0TZ0saMvr6nscQ==}
+    engines: {node: '>=14'}
+    dependencies:
+      cluster-key-slot: 1.1.2
+      generic-pool: 3.9.0
+      yallist: 4.0.0
+    dev: false
+
+  /@redis/client@1.5.14:
+    resolution: {integrity: sha512-YGn0GqsRBFUQxklhY7v562VMOP0DcmlrHHs3IV1mFE3cbxe31IITUkqhBcIhVSI/2JqtWAJXg5mjV4aU+zD0HA==}
     engines: {node: '>=14'}
     dependencies:
       cluster-key-slot: 1.1.2
@@ -6664,12 +7044,28 @@ packages:
       '@redis/client': 1.5.13
     dev: false
 
+  /@redis/graph@1.1.1(@redis/client@1.5.14):
+    resolution: {integrity: sha512-FEMTcTHZozZciLRl6GiiIB4zGm5z5F3F6a6FZCyrfxdKOhFlGkiAqlexWMBzCi4DcRoyiOsuLfW+cjlGWyExOw==}
+    peerDependencies:
+      '@redis/client': ^1.0.0
+    dependencies:
+      '@redis/client': 1.5.14
+    dev: false
+
   /@redis/json@1.0.6(@redis/client@1.5.13):
     resolution: {integrity: sha512-rcZO3bfQbm2zPRpqo82XbW8zg4G/w4W3tI7X8Mqleq9goQjAGLL7q/1n1ZX4dXEAmORVZ4s1+uKLaUOg7LrUhw==}
     peerDependencies:
       '@redis/client': ^1.0.0
     dependencies:
       '@redis/client': 1.5.13
+    dev: false
+
+  /@redis/json@1.0.6(@redis/client@1.5.14):
+    resolution: {integrity: sha512-rcZO3bfQbm2zPRpqo82XbW8zg4G/w4W3tI7X8Mqleq9goQjAGLL7q/1n1ZX4dXEAmORVZ4s1+uKLaUOg7LrUhw==}
+    peerDependencies:
+      '@redis/client': ^1.0.0
+    dependencies:
+      '@redis/client': 1.5.14
     dev: false
 
   /@redis/search@1.1.6(@redis/client@1.5.13):
@@ -6680,12 +7076,28 @@ packages:
       '@redis/client': 1.5.13
     dev: false
 
+  /@redis/search@1.1.6(@redis/client@1.5.14):
+    resolution: {integrity: sha512-mZXCxbTYKBQ3M2lZnEddwEAks0Kc7nauire8q20oA0oA/LoA+E/b5Y5KZn232ztPb1FkIGqo12vh3Lf+Vw5iTw==}
+    peerDependencies:
+      '@redis/client': ^1.0.0
+    dependencies:
+      '@redis/client': 1.5.14
+    dev: false
+
   /@redis/time-series@1.0.5(@redis/client@1.5.13):
     resolution: {integrity: sha512-IFjIgTusQym2B5IZJG3XKr5llka7ey84fw/NOYqESP5WUfQs9zz1ww/9+qoz4ka/S6KcGBodzlCeZ5UImKbscg==}
     peerDependencies:
       '@redis/client': ^1.0.0
     dependencies:
       '@redis/client': 1.5.13
+    dev: false
+
+  /@redis/time-series@1.0.5(@redis/client@1.5.14):
+    resolution: {integrity: sha512-IFjIgTusQym2B5IZJG3XKr5llka7ey84fw/NOYqESP5WUfQs9zz1ww/9+qoz4ka/S6KcGBodzlCeZ5UImKbscg==}
+    peerDependencies:
+      '@redis/client': ^1.0.0
+    dependencies:
+      '@redis/client': 1.5.14
     dev: false
 
   /@redocly/ajv@8.11.0:
@@ -11106,8 +11518,8 @@ packages:
       '@xtuc/long': 4.2.2
     dev: true
 
-  /@xata.io/client@0.25.3(typescript@5.3.2):
-    resolution: {integrity: sha512-JM3FWFRFNG4W+F4PO0jNVf2byMqJP319iH3SrOQh8Hi+AI+WUW2PyNVShCt5cwykjxhJVzeEd9xUnq++HVVdWA==}
+  /@xata.io/client@0.28.0(typescript@5.3.2):
+    resolution: {integrity: sha512-V6rpx+9C6uYdGUDUvk5xIot19zRvDEQhkHXWGIkKY/SCKu4w68S81Z88tgGLRaknSFjpAm7H/rvGBR2DrDpqtQ==}
     peerDependencies:
       typescript: ^5.3.0
     dependencies:
@@ -12815,6 +13227,18 @@ packages:
 
   /cohere-ai@6.2.2:
     resolution: {integrity: sha512-+Tq+4e8N/YWKJqFpWaULsfbZR/GOvGh8WWYFKR1bpipu8bCok3VcbTPnBmIToQiIqOgFpGk3HsA4b0guVyL3vg==}
+    dev: false
+
+  /cohere-ai@7.7.7:
+    resolution: {integrity: sha512-eLL/5lkAxFvqwV200bsBsS5ZnPHZZKur0WR3dXD5K47QT7C9r0OFv/ykJw/rCuoSsyyK3eoHm+znIi3W3QCwiQ==}
+    dependencies:
+      form-data: 4.0.0
+      js-base64: 3.7.2
+      node-fetch: 2.7.0(encoding@0.1.13)
+      qs: 6.11.2
+      url-join: 4.0.1
+    transitivePeerDependencies:
+      - encoding
     dev: false
 
   /collect-v8-coverage@1.0.1:
@@ -15312,6 +15736,13 @@ packages:
 
   /fast-xml-parser@4.2.7:
     resolution: {integrity: sha512-J8r6BriSLO1uj2miOk1NW0YVm8AGOOu3Si2HQp/cSmo6EA4m3fcwu2WKjJ4RK9wMLBtg69y1kS8baDiQBR41Ig==}
+    hasBin: true
+    dependencies:
+      strnum: 1.0.5
+    dev: false
+
+  /fast-xml-parser@4.3.5:
+    resolution: {integrity: sha512-sWvP1Pl8H03B8oFJpFR3HE31HUfwtX7Rlf9BNsvdpujD4n7WMhfmu8h9wOV2u+c1k0ZilTADhPqypzx2J690ZQ==}
     hasBin: true
     dependencies:
       strnum: 1.0.5
@@ -18446,121 +18877,62 @@ packages:
     resolution: {integrity: sha512-Xq9nH7KlWZmXAtodXDDRE7vs6DU1gTU8zYDHDiWLSip45Egwq3plLHzPn27NgvzL2r1LMPC1vdqh98sQxtqj4A==}
     dev: false
 
-  /langchain@0.0.198(@aws-sdk/client-bedrock-runtime@3.454.0)(@aws-sdk/credential-provider-node@3.451.0)(@getzep/zep-js@0.9.0)(@google-ai/generativelanguage@0.2.1)(@huggingface/inference@2.6.4)(@pinecone-database/pinecone@1.1.2)(@qdrant/js-client-rest@1.7.0)(@supabase/supabase-js@2.38.5)(@xata.io/client@0.25.3)(axios@1.6.7)(cohere-ai@6.2.2)(d3-dsv@2.0.0)(epub2@3.0.1)(html-to-text@9.0.5)(lodash@4.17.21)(mammoth@1.6.0)(pdf-parse@1.1.1)(pg@8.11.3)(redis@4.6.12):
-    resolution: {integrity: sha512-YC0O1g8r61InCWyF5NmiQjdghdq6LKcgMrDZtqLbgDxAe4RoSldonm+5oNXS3yjCISG0j3s5Cty+yB7klqvUpg==}
+  /langchain@0.1.25(@aws-sdk/client-bedrock-runtime@3.454.0)(@aws-sdk/credential-provider-node@3.451.0)(@getzep/zep-js@0.9.0)(@google-ai/generativelanguage@0.2.1)(@huggingface/inference@2.6.4)(@pinecone-database/pinecone@2.0.1)(@qdrant/js-client-rest@1.7.0)(@supabase/supabase-js@2.38.5)(@xata.io/client@0.28.0)(axios@1.6.7)(cohere-ai@6.2.2)(d3-dsv@2.0.0)(epub2@3.0.1)(html-to-text@9.0.5)(lodash@4.17.21)(mammoth@1.6.0)(pdf-parse@1.1.1)(pg@8.11.3)(redis@4.6.12):
+    resolution: {integrity: sha512-sfEChvr4H2CklHdSByNBbytwBrFhgtA5kPOnwcBrxuXGg1iOaTzhVxQA0QcNcQucI3hZrsNbZjxGp+Can1ooZQ==}
     engines: {node: '>=18'}
     peerDependencies:
-      '@aws-crypto/sha256-js': ^5.0.0
-      '@aws-sdk/client-bedrock-runtime': ^3.422.0
-      '@aws-sdk/client-dynamodb': ^3.310.0
-      '@aws-sdk/client-kendra': ^3.352.0
-      '@aws-sdk/client-lambda': ^3.310.0
       '@aws-sdk/client-s3': ^3.310.0
       '@aws-sdk/client-sagemaker-runtime': ^3.310.0
       '@aws-sdk/client-sfn': ^3.310.0
       '@aws-sdk/credential-provider-node': ^3.388.0
       '@azure/storage-blob': ^12.15.0
-      '@clickhouse/client': ^0.2.5
-      '@cloudflare/ai': ^1.0.12
-      '@elastic/elasticsearch': ^8.4.0
-      '@getmetal/metal-sdk': '*'
-      '@getzep/zep-js': ^0.9.0
       '@gomomento/sdk': ^1.51.1
       '@gomomento/sdk-core': ^1.51.1
       '@gomomento/sdk-web': ^1.51.1
       '@google-ai/generativelanguage': ^0.2.1
-      '@google-cloud/storage': ^6.10.1
-      '@huggingface/inference': ^2.6.4
-      '@mozilla/readability': '*'
+      '@google-cloud/storage': ^6.10.1 || ^7.7.0
       '@notionhq/client': ^2.2.10
-      '@opensearch-project/opensearch': '*'
-      '@pinecone-database/pinecone': ^1.1.0
-      '@planetscale/database': ^1.8.0
-      '@qdrant/js-client-rest': ^1.2.0
-      '@raycast/api': ^1.55.2
-      '@rockset/client': ^0.9.1
-      '@smithy/eventstream-codec': ^2.0.5
-      '@smithy/protocol-http': ^3.0.6
-      '@smithy/signature-v4': ^2.0.10
-      '@smithy/util-utf8': ^2.0.0
-      '@supabase/postgrest-js': ^1.1.1
+      '@pinecone-database/pinecone': '*'
       '@supabase/supabase-js': ^2.10.0
-      '@tensorflow-models/universal-sentence-encoder': '*'
-      '@tensorflow/tfjs-converter': '*'
-      '@tensorflow/tfjs-core': '*'
-      '@upstash/redis': ^1.20.6
       '@vercel/kv': ^0.2.3
-      '@vercel/postgres': ^0.5.0
-      '@writerai/writer-sdk': ^0.40.2
-      '@xata.io/client': ^0.25.1
-      '@xenova/transformers': ^2.5.4
-      '@zilliz/milvus2-sdk-node': '>=2.2.7'
+      '@xata.io/client': ^0.28.0
       apify-client: ^2.7.1
-      assemblyai: ^2.0.2
+      assemblyai: ^4.0.0
       axios: 1.6.7
-      cassandra-driver: ^4.7.2
       cheerio: ^1.0.0-rc.12
       chromadb: '*'
-      closevector-common: 0.1.0-alpha.1
-      closevector-node: 0.1.0-alpha.10
-      closevector-web: 0.1.0-alpha.16
-      cohere-ai: '>=6.0.0'
       convex: ^1.3.1
+      couchbase: ^4.2.10
       d3-dsv: ^2.0.0
       epub2: ^3.0.1
-      faiss-node: ^0.5.1
+      faiss-node: '*'
       fast-xml-parser: ^4.2.7
-      firebase-admin: ^11.9.0
       google-auth-library: ^8.9.0
-      googleapis: ^126.0.1
-      hnswlib-node: ^1.4.2
+      handlebars: ^4.7.8
       html-to-text: ^9.0.5
       ignore: ^5.2.0
       ioredis: ^5.3.2
       jsdom: '*'
-      llmonitor: ^0.5.9
-      lodash: ^4.17.21
-      mammoth: '*'
-      mongodb: ^5.2.0
-      mysql2: ^3.3.3
-      neo4j-driver: '*'
+      mammoth: ^1.6.0
+      mongodb: '>=5.2.0'
       node-llama-cpp: '*'
       notion-to-md: ^3.1.0
       officeparser: ^4.0.4
       pdf-parse: 1.1.1
       peggy: ^3.0.2
-      pg: ^8.11.0
-      pg-copy-streams: ^6.0.5
-      pickleparser: ^0.2.1
       playwright: ^1.32.1
-      portkey-ai: ^0.1.11
       puppeteer: ^19.7.2
       pyodide: ^0.24.1
       redis: ^4.6.4
-      replicate: ^0.18.0
       sonix-speech-recognition: ^2.1.1
-      srt-parser-2: ^1.2.2
+      srt-parser-2: ^1.2.3
       typeorm: ^0.3.12
-      typesense: ^1.5.3
-      usearch: ^1.1.1
-      vectordb: ^0.1.4
-      voy-search: 0.6.2
-      weaviate-ts-client: ^1.4.0
+      weaviate-ts-client: '*'
       web-auth-library: ^1.0.3
       ws: ^8.14.2
       youtube-transcript: ^1.0.6
-      youtubei.js: ^5.8.0
+      youtubei.js: ^9.1.0
     peerDependenciesMeta:
-      '@aws-crypto/sha256-js':
-        optional: true
-      '@aws-sdk/client-bedrock-runtime':
-        optional: true
-      '@aws-sdk/client-dynamodb':
-        optional: true
-      '@aws-sdk/client-kendra':
-        optional: true
-      '@aws-sdk/client-lambda':
-        optional: true
       '@aws-sdk/client-s3':
         optional: true
       '@aws-sdk/client-sagemaker-runtime':
@@ -18570,16 +18942,6 @@ packages:
       '@aws-sdk/credential-provider-node':
         optional: true
       '@azure/storage-blob':
-        optional: true
-      '@clickhouse/client':
-        optional: true
-      '@cloudflare/ai':
-        optional: true
-      '@elastic/elasticsearch':
-        optional: true
-      '@getmetal/metal-sdk':
-        optional: true
-      '@getzep/zep-js':
         optional: true
       '@gomomento/sdk':
         optional: true
@@ -18591,55 +18953,15 @@ packages:
         optional: true
       '@google-cloud/storage':
         optional: true
-      '@huggingface/inference':
-        optional: true
-      '@mozilla/readability':
-        optional: true
       '@notionhq/client':
-        optional: true
-      '@opensearch-project/opensearch':
         optional: true
       '@pinecone-database/pinecone':
         optional: true
-      '@planetscale/database':
-        optional: true
-      '@qdrant/js-client-rest':
-        optional: true
-      '@raycast/api':
-        optional: true
-      '@rockset/client':
-        optional: true
-      '@smithy/eventstream-codec':
-        optional: true
-      '@smithy/protocol-http':
-        optional: true
-      '@smithy/signature-v4':
-        optional: true
-      '@smithy/util-utf8':
-        optional: true
-      '@supabase/postgrest-js':
-        optional: true
       '@supabase/supabase-js':
-        optional: true
-      '@tensorflow-models/universal-sentence-encoder':
-        optional: true
-      '@tensorflow/tfjs-converter':
-        optional: true
-      '@tensorflow/tfjs-core':
-        optional: true
-      '@upstash/redis':
         optional: true
       '@vercel/kv':
         optional: true
-      '@vercel/postgres':
-        optional: true
-      '@writerai/writer-sdk':
-        optional: true
       '@xata.io/client':
-        optional: true
-      '@xenova/transformers':
-        optional: true
-      '@zilliz/milvus2-sdk-node':
         optional: true
       apify-client:
         optional: true
@@ -18647,21 +18969,13 @@ packages:
         optional: true
       axios:
         optional: true
-      cassandra-driver:
-        optional: true
       cheerio:
         optional: true
       chromadb:
         optional: true
-      closevector-common:
-        optional: true
-      closevector-node:
-        optional: true
-      closevector-web:
-        optional: true
-      cohere-ai:
-        optional: true
       convex:
+        optional: true
+      couchbase:
         optional: true
       d3-dsv:
         optional: true
@@ -18671,13 +18985,9 @@ packages:
         optional: true
       fast-xml-parser:
         optional: true
-      firebase-admin:
-        optional: true
       google-auth-library:
         optional: true
-      googleapis:
-        optional: true
-      hnswlib-node:
+      handlebars:
         optional: true
       html-to-text:
         optional: true
@@ -18687,17 +18997,9 @@ packages:
         optional: true
       jsdom:
         optional: true
-      llmonitor:
-        optional: true
-      lodash:
-        optional: true
       mammoth:
         optional: true
       mongodb:
-        optional: true
-      mysql2:
-        optional: true
-      neo4j-driver:
         optional: true
       node-llama-cpp:
         optional: true
@@ -18709,15 +19011,7 @@ packages:
         optional: true
       peggy:
         optional: true
-      pg:
-        optional: true
-      pg-copy-streams:
-        optional: true
-      pickleparser:
-        optional: true
       playwright:
-        optional: true
-      portkey-ai:
         optional: true
       puppeteer:
         optional: true
@@ -18725,21 +19019,11 @@ packages:
         optional: true
       redis:
         optional: true
-      replicate:
-        optional: true
       sonix-speech-recognition:
         optional: true
       srt-parser-2:
         optional: true
       typeorm:
-        optional: true
-      typesense:
-        optional: true
-      usearch:
-        optional: true
-      vectordb:
-        optional: true
-      voy-search:
         optional: true
       weaviate-ts-client:
         optional: true
@@ -18753,54 +19037,106 @@ packages:
         optional: true
     dependencies:
       '@anthropic-ai/sdk': 0.9.1
-      '@aws-sdk/client-bedrock-runtime': 3.454.0
       '@aws-sdk/credential-provider-node': 3.451.0
-      '@getzep/zep-js': 0.9.0
       '@google-ai/generativelanguage': 0.2.1
-      '@huggingface/inference': 2.6.4
-      '@langchain/core': 0.1.8
-      '@pinecone-database/pinecone': 1.1.2
-      '@qdrant/js-client-rest': 1.7.0(typescript@5.3.2)
+      '@langchain/community': 0.0.34(@aws-sdk/client-bedrock-runtime@3.454.0)(@aws-sdk/credential-provider-node@3.451.0)(@getzep/zep-js@0.9.0)(@google-ai/generativelanguage@0.2.1)(@huggingface/inference@2.6.4)(@pinecone-database/pinecone@2.0.1)(@qdrant/js-client-rest@1.7.0)(@supabase/supabase-js@2.38.5)(@xata.io/client@0.28.0)(cohere-ai@6.2.2)(html-to-text@9.0.5)(lodash@4.17.21)(pg@8.11.3)(redis@4.6.12)
+      '@langchain/core': 0.1.41
+      '@langchain/openai': 0.0.16
+      '@pinecone-database/pinecone': 2.0.1
       '@supabase/supabase-js': 2.38.5
-      '@xata.io/client': 0.25.3(typescript@5.3.2)
+      '@xata.io/client': 0.28.0(typescript@5.3.2)
       axios: 1.6.7
       binary-extensions: 2.2.0
-      cohere-ai: 6.2.2
       d3-dsv: 2.0.0
       epub2: 3.0.1(ts-toolbelt@9.6.0)
       expr-eval: 2.0.2
-      flat: 5.0.2
       html-to-text: 9.0.5
       js-tiktoken: 1.0.8
       js-yaml: 4.1.0
       jsonpointer: 5.0.1
-      langchainhub: 0.0.6
-      langsmith: 0.0.48
-      lodash: 4.17.21
+      langchainhub: 0.0.8
+      langsmith: 0.1.12
       mammoth: 1.6.0
       ml-distance: 4.0.1
-      openai: 4.20.0
       openapi-types: 12.1.3
       p-retry: 4.6.2
       pdf-parse: 1.1.1
-      pg: 8.11.3
       redis: 4.6.12
       uuid: 9.0.0
       yaml: 2.3.4
       zod: 3.22.4
-      zod-to-json-schema: 3.20.3(zod@3.22.4)
+      zod-to-json-schema: 3.22.4(zod@3.22.4)
     transitivePeerDependencies:
+      - '@aws-crypto/sha256-js'
+      - '@aws-sdk/client-bedrock-agent-runtime'
+      - '@aws-sdk/client-bedrock-runtime'
+      - '@aws-sdk/client-dynamodb'
+      - '@aws-sdk/client-kendra'
+      - '@aws-sdk/client-lambda'
+      - '@azure/search-documents'
+      - '@clickhouse/client'
+      - '@cloudflare/ai'
+      - '@datastax/astra-db-ts'
+      - '@elastic/elasticsearch'
+      - '@getmetal/metal-sdk'
+      - '@getzep/zep-js'
+      - '@gradientai/nodejs-sdk'
+      - '@huggingface/inference'
+      - '@mozilla/readability'
+      - '@opensearch-project/opensearch'
+      - '@planetscale/database'
+      - '@qdrant/js-client-rest'
+      - '@raycast/api'
+      - '@rockset/client'
+      - '@smithy/eventstream-codec'
+      - '@smithy/protocol-http'
+      - '@smithy/signature-v4'
+      - '@smithy/util-utf8'
+      - '@supabase/postgrest-js'
+      - '@tensorflow-models/universal-sentence-encoder'
+      - '@tensorflow/tfjs-converter'
+      - '@tensorflow/tfjs-core'
+      - '@upstash/redis'
+      - '@upstash/vector'
+      - '@vercel/postgres'
+      - '@writerai/writer-sdk'
+      - '@xenova/transformers'
+      - '@zilliz/milvus2-sdk-node'
+      - better-sqlite3
+      - cassandra-driver
+      - closevector-common
+      - closevector-node
+      - closevector-web
+      - cohere-ai
+      - discord.js
+      - dria
       - encoding
+      - firebase-admin
+      - googleapis
+      - hnswlib-node
+      - llmonitor
+      - lodash
+      - lunary
+      - mysql2
+      - neo4j-driver
+      - pg
+      - pg-copy-streams
+      - pickleparser
+      - portkey-ai
+      - replicate
       - supports-color
+      - typesense
+      - usearch
+      - vectordb
+      - voy-search
     dev: false
 
-  /langchainhub@0.0.6:
-    resolution: {integrity: sha512-SW6105T+YP1cTe0yMf//7kyshCgvCTyFBMTgH2H3s9rTAR4e+78DA/BBrUL/Mt4Q5eMWui7iGuAYb3pgGsdQ9w==}
+  /langchainhub@0.0.8:
+    resolution: {integrity: sha512-Woyb8YDHgqqTOZvWIbm2CaFDGfZ4NTSyXV687AG4vXEfoNo7cGQp7nhl7wL3ehenKWmNEmcxCLgOZzW8jE6lOQ==}
     dev: false
 
-  /langsmith@0.0.48:
-    resolution: {integrity: sha512-s0hW8iZ90Q9XLTnDK0Pgee245URV3b1cXQjPDj5OKm1+KN7iSK1pKx+4CO7RcFLz58Ixe7Mt+mVcomYqUuryxQ==}
-    hasBin: true
+  /langsmith@0.1.12:
+    resolution: {integrity: sha512-ActVB73EPOIXNbtM8Xm+hjX/ZX39EOnNaCOVaRY/LZQiFDH6+ZbPd4hRm6FfwaXe1zhGqP9nKS3JtVTGY1S+VA==}
     dependencies:
       '@types/uuid': 9.0.7
       commander: 10.0.1
@@ -20764,8 +21100,8 @@ packages:
       is-docker: 2.2.1
       is-wsl: 2.2.0
 
-  /openai@4.20.0:
-    resolution: {integrity: sha512-VbAYerNZFfIIeESS+OL9vgDkK8Mnri55n+jN0UN/HZeuM0ghGh6nDN6UGRZxslNgyJ7XmY/Ca9DO4YYyvrszGA==}
+  /openai@4.26.1:
+    resolution: {integrity: sha512-DvWbjhWbappsFRatOWmu4Dp1/Q4RG9oOz6CfOSjy0/Drb8G+5iAiqWAO4PfpGIkhOOKtvvNfQri2SItl+U7LhQ==}
     hasBin: true
     dependencies:
       '@types/node': 18.16.16
@@ -22333,6 +22669,13 @@ packages:
     dependencies:
       side-channel: 1.0.4
 
+  /qs@6.11.2:
+    resolution: {integrity: sha512-tDNIz22aBzCDxLtVH++VnTfzxlfeK5CbqohpSqpJgj1Wg/cQbStNAz3NuqCs5vV+pjBsK4x4pN9HlVh7rcYRiA==}
+    engines: {node: '>=0.6'}
+    dependencies:
+      side-channel: 1.0.4
+    dev: false
+
   /query-string@7.1.3:
     resolution: {integrity: sha512-hh2WYhq4fi8+b+/2Kg9CEge4fDPvHS534aOOvOZeQ3+Vf2mCFsaFBYj0i+iXcAq6I9Vzp5fjMFBlONvayDC1qg==}
     engines: {node: '>=6'}
@@ -22686,6 +23029,17 @@ packages:
       '@redis/json': 1.0.6(@redis/client@1.5.13)
       '@redis/search': 1.1.6(@redis/client@1.5.13)
       '@redis/time-series': 1.0.5(@redis/client@1.5.13)
+    dev: false
+
+  /redis@4.6.13:
+    resolution: {integrity: sha512-MHgkS4B+sPjCXpf+HfdetBwbRz6vCtsceTmw1pHNYJAsYxrfpOP6dz+piJWGos8wqG7qb3vj/Rrc5qOlmInUuA==}
+    dependencies:
+      '@redis/bloom': 1.2.0(@redis/client@1.5.14)
+      '@redis/client': 1.5.14
+      '@redis/graph': 1.1.1(@redis/client@1.5.14)
+      '@redis/json': 1.0.6(@redis/client@1.5.14)
+      '@redis/search': 1.1.6(@redis/client@1.5.14)
+      '@redis/time-series': 1.0.5(@redis/client@1.5.14)
     dev: false
 
   /redoc@2.1.3(core-js@3.35.0)(mobx@6.12.0)(react-dom@18.2.0)(react@18.2.0)(styled-components@6.1.8):
@@ -25547,6 +25901,10 @@ packages:
     deprecated: Please see https://github.com/lydell/urix#deprecated
     dev: true
 
+  /url-join@4.0.1:
+    resolution: {integrity: sha512-jk1+QP6ZJqyOiuEI9AEWQfju/nB2Pw466kbA0LEZljHwKeMgd9WrAEgEGxjPDD2+TNbbb37rTyhEfrCXfuKXnA==}
+    dev: false
+
   /url-parse@1.5.10:
     resolution: {integrity: sha512-WypcfiRhfeUP9vvF0j6rw0J3hrWrw6iZv3+22h6iRMJ/8z1Tj6XfLP4DsUix5MhMPnXpiHDoKyoZ/bdCkwBCiQ==}
     dependencies:
@@ -26848,16 +27206,16 @@ packages:
       commander: 9.4.1
     dev: true
 
-  /zod-to-json-schema@3.20.3(zod@3.22.4):
-    resolution: {integrity: sha512-/Q3wnyxAfCt94ZcrGiXXoiAfRqasxl9CX64LZ9fj+4dKH68zulUtU0uk1WMxQPfAxQ0ZI70dKzcoW7hHj+DwSQ==}
+  /zod-to-json-schema@3.22.0(zod@3.22.4):
+    resolution: {integrity: sha512-XQr8EwxPMzJGhoR+d/nRFWdi15VaZ+R5Uhssm+Xx5yS30xCpuutfKRm4rerE0SK9j2dWB5Z3FvDD0w8WMVGzkA==}
     peerDependencies:
-      zod: ^3.20.0
+      zod: ^3.22.4
     dependencies:
       zod: 3.22.4
     dev: false
 
-  /zod-to-json-schema@3.22.0(zod@3.22.4):
-    resolution: {integrity: sha512-XQr8EwxPMzJGhoR+d/nRFWdi15VaZ+R5Uhssm+Xx5yS30xCpuutfKRm4rerE0SK9j2dWB5Z3FvDD0w8WMVGzkA==}
+  /zod-to-json-schema@3.22.4(zod@3.22.4):
+    resolution: {integrity: sha512-2Ed5dJ+n/O3cU383xSY28cuVi0BCQhF8nYqWU5paEpl7fVdqdAmiLdqLyfblbNdfOFwFfi/mqU4O1pwc60iBhQ==}
     peerDependencies:
       zod: ^3.22.4
     dependencies:

@@ -6,7 +6,7 @@ import {
 	type INodeTypeDescription,
 	type SupplyData,
 } from 'n8n-workflow';
-import { ChatBedrock } from 'langchain/chat_models/bedrock';
+import { BedrockChat } from '@langchain/community/chat_models/bedrock';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 // Dependencies needed underneath the hood. We add them
@@ -149,7 +149,7 @@ export class LmChatAwsBedrock implements INodeType {
 			maxTokensToSample: number;
 		};
 
-		const model = new ChatBedrock({
+		const model = new BedrockChat({
 			region: credentials.region as string,
 			model: modelName,
 			temperature: options.temperature,
