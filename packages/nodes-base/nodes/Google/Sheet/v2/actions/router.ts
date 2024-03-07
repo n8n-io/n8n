@@ -76,15 +76,6 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 		if (this.continueOnFail()) {
 			operationResult.push({ json: this.getInputData(0)[0].json, error });
 		} else {
-			// if (
-			// 	error.message &&
-			// 	(error.message.toLowerCase().includes('bad request') ||
-			// 		error.message.toLowerCase().includes('uknown error')) &&
-			// 	error.description
-			// ) {
-			// 	error.message = error.description;
-			// 	error.description = undefined;
-			// }
 			throw error;
 		}
 	}

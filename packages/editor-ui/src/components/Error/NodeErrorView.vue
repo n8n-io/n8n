@@ -35,11 +35,15 @@
 			<div class="node-error-view__info-content">
 				<details
 					class="node-error-view__details"
-					v-if="error.httpCode || uniqueMessages.length || error?.context?.data || error.extra"
+					v-if="error.httpCode || prepareRawMessages.length || error?.context?.data || error.extra"
 				>
 					<summary class="node-error-view__details-summary">
 						<font-awesome-icon class="node-error-view__details-icon" icon="angle-right" />
-						From {{ getNodeDefaultName(error?.node) }}
+						{{
+							$locale.baseText('nodeErrorView.details.from', {
+								interpolate: { node: getNodeDefaultName(error?.node) as string },
+							})
+						}}
 					</summary>
 					<div class="node-error-view__details-content">
 						<div class="node-error-view__details-row" v-if="error.httpCode">
@@ -50,38 +54,40 @@
 								<code>{{ error.httpCode }}</code>
 							</p>
 						</div>
-						<div class="node-error-view__details-row" v-if="uniqueMessages.length">
-							<p class="node-error-view__details-label">Full message</p>
+						<div class="node-error-view__details-row" v-if="prepareRawMessages.length">
+							<p class="node-error-view__details-label">
+								{{ $locale.baseText('nodeErrorView.details.rawMessages') }}
+							</p>
 							<div class="node-error-view__details-value">
-								<div v-for="(msg, index) in uniqueMessages" :key="index">
+								<div v-for="(msg, index) in prepareRawMessages" :key="index">
 									<pre><code>{{ msg }}</code></pre>
 								</div>
 							</div>
 						</div>
 						<div class="node-error-view__details-row" v-if="error?.context?.data">
-							<p class="node-error-view__details-label">Error data</p>
+							<p class="node-error-view__details-label">
+								{{ $locale.baseText('nodeErrorView.details.errorData') }}
+							</p>
 							<div class="node-error-view__details-value">
 								<pre><code>{{ error.context.data }}</code></pre>
 							</div>
 						</div>
 						<div class="node-error-view__details-row" v-if="error.extra">
-							<p class="node-error-view__details-label">Error extra</p>
+							<p class="node-error-view__details-label">
+								{{ $locale.baseText('nodeErrorView.details.errorExtra') }}
+							</p>
 							<div class="node-error-view__details-value">
 								<pre><code>{{ error.extra }}</code></pre>
 							</div>
 						</div>
 						<div class="node-error-view__details-row" v-if="error.context && error.context.request">
-							<p class="node-error-view__details-label">Request</p>
+							<p class="node-error-view__details-label">
+								{{ $locale.baseText('nodeErrorView.details.request') }}
+							</p>
 							<div class="node-error-view__details-value">
 								<pre><code>{{ error.context.request }}</code></pre>
 							</div>
 						</div>
-						<!-- <div class="node-error-view__details-row">
-								<p class="node-error-view__details-label">Response</p>
-								<p class="node-error-view__details-value">
-									<code>...</code>
-								</p>
-							</div> -->
 					</div>
 				</details>
 
@@ -261,15 +267,17 @@ export default defineComponent({
 
 			return this.rootStore.versionCli + ` (${instanceType})`;
 		},
-		uniqueMessages() {
+		prepareRawMessages() {
 			const returnData: Array<string | IDataObject> = [];
 			if (!this.error.messages || !this.error.messages.length) {
 				return [];
 			}
 			const errorMessage = this.getErrorMessage();
+
 			(Array.from(new Set(this.error.messages)) as string[]).forEach((message) => {
 				const isParsable = /^\d{3} - \{/.test(message);
 				const parts = isParsable ? message.split(' - ').map((part) => part.trim()) : [];
+
 				//try to parse the message as JSON
 				for (const part of parts) {
 					try {
@@ -428,6 +436,7 @@ export default defineComponent({
 
 		copyErrorDetails() {
 			const error = this.error;
+
 			const errorInfo: IDataObject = {
 				errorMessage: this.getErrorMessage(),
 			};
@@ -435,9 +444,12 @@ export default defineComponent({
 				errorInfo.errorDescription = error.description;
 			}
 
-			const errorDetails: IDataObject = {
-				rawErrorMessage: error.messages,
-			};
+			//add error details
+			const errorDetails: IDataObject = {};
+
+			if (error?.messages?.length) {
+				errorDetails.rawErrorMessage = error.messages;
+			}
 
 			if (error.httpCode) {
 				errorDetails.httpCode = error.httpCode;
@@ -453,6 +465,7 @@ export default defineComponent({
 
 			errorInfo.errorDetails = errorDetails;
 
+			//add n8n details
 			const n8nDetails: IDataObject = {};
 
 			if (error.node) {
@@ -460,7 +473,7 @@ export default defineComponent({
 				n8nDetails.nodeType = error.node.type;
 				n8nDetails.nodeVersion = error.node.typeVersion;
 
-				if (error?.node?.parameters?.resource) {
+				if (error.node?.parameters?.resource) {
 					n8nDetails.resource = error.node.parameters.resource;
 				}
 				if (error?.node?.parameters?.operation) {
@@ -501,8 +514,6 @@ export default defineComponent({
 			n8nDetails.stackTrace = error.stack && error.stack.split('\n');
 
 			errorInfo.n8nDetails = n8nDetails;
-
-			// errorInfo.error = error;
 
 			void this.clipboard.copy(JSON.stringify(errorInfo, null, 2));
 			this.copySuccess();

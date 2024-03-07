@@ -352,7 +352,7 @@ export class SwitchV3 implements INodeType {
 								error.description =
 									"Try to change the operator, switch ON the option 'Less Strict Type Validation', or change the type with an expression";
 							}
-							set(error, 'context', { itemIndex });
+							set(error, 'context.itemIndex', itemIndex);
 							set(error, 'node', this.getNode());
 							throw error;
 						}

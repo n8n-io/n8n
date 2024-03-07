@@ -1,5 +1,6 @@
 import { ApplicationError, type IDataObject, type NodeApiError } from 'n8n-workflow';
 import type { UpdateRecord } from './interfaces';
+import set from 'lodash/set';
 
 export function removeIgnored(data: IDataObject, ignore: string | string[]) {
 	if (ignore) {
@@ -75,7 +76,7 @@ export function processAirtableError(error: NodeApiError, id?: string, itemIndex
 	}
 
 	if (itemIndex !== undefined) {
-		error.context = { itemIndex };
+		set(error, 'context.itemIndex', itemIndex);
 	}
 
 	return error;
