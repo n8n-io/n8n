@@ -1349,7 +1349,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			} catch (error) {
 				if (error.response?.status === 413) {
 					throw new ResponseError(
-						'The execution data is too large for n8n to process. Try reducing the data and try again.',
+						'Please execute the whole workflow, rather than just the node. (Existing execution data is too large.)',
 						{
 							errorCode: 413,
 							httpStatusCode: 413,
