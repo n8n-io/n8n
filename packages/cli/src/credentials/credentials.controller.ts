@@ -82,54 +82,25 @@ export class CredentialsController {
 		);
 	}
 
+	// NOTE: updated, but not tested, route has no tests.
+	// TODO: Write at least test cases for the failure paths.
 	@Post('/test')
 	async testCredentials(req: CredentialRequest.Test) {
-		if (this.license.isSharingEnabled()) {
-			const { credentials } = req.body;
-
-			const credentialId = credentials.id;
-			const { ownsCredential } = await this.enterpriseCredentialsService.isOwned(
-				req.user,
-				credentialId,
-			);
-
-			const sharing = await this.enterpriseCredentialsService.getSharing(req.user, credentialId, {
-				allowGlobalScope: true,
-				globalScope: 'credential:read',
-			});
-			if (!ownsCredential) {
-				if (!sharing) {
-					throw new ForbiddenError();
-				}
-
-				const decryptedData = this.credentialsService.decrypt(sharing.credentials);
-				Object.assign(credentials, { data: decryptedData });
-			}
-
-			const mergedCredentials = deepCopy(credentials);
-			if (mergedCredentials.data && sharing?.credentials) {
-				const decryptedData = this.credentialsService.decrypt(sharing.credentials);
-				mergedCredentials.data = this.credentialsService.unredact(
-					mergedCredentials.data,
-					decryptedData,
-				);
-			}
-
-			return await this.credentialsService.test(req.user, mergedCredentials);
-		}
-
-		// non-enterprise
-
 		const { credentials } = req.body;
 
-		const sharing = await this.credentialsService.getSharing(req.user, credentials.id, {
-			allowGlobalScope: true,
-			globalScope: 'credential:read',
-		});
+		const storedCredential = await this.sharedCredentialsRepository.findCredentialForUser(
+			credentials.id,
+			req.user,
+			['credential:read'],
+		);
+
+		if (!storedCredential) {
+			throw new ForbiddenError();
+		}
 
 		const mergedCredentials = deepCopy(credentials);
-		if (mergedCredentials.data && sharing?.credentials) {
-			const decryptedData = this.credentialsService.decrypt(sharing.credentials);
+		if (mergedCredentials.data && storedCredential) {
+			const decryptedData = this.credentialsService.decrypt(storedCredential);
 			mergedCredentials.data = this.credentialsService.unredact(
 				mergedCredentials.data,
 				decryptedData,
