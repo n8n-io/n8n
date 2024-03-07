@@ -96,7 +96,7 @@ export function generateNodesGraph(
 	options?: {
 		sourceInstanceId?: string;
 		nodeIdMap?: { [curr: string]: string };
-		isCloudInstance?: boolean;
+		isCloudDeployment?: boolean;
 	},
 ): INodesGraphResult {
 	const nodeGraph: INodesGraph = {
@@ -218,13 +218,18 @@ export function generateNodesGraph(
 			}
 		}
 
-		if (options?.isCloudInstance === true) {
+		if (options?.isCloudDeployment === true) {
 			if (node.type === '@n8n/n8n-nodes-langchain.openAi') {
 				nodeItem.messages =
 					(((node.parameters?.messages as IDataObject) || {}).values as IDataObject[]) || [];
 			}
 
 			if (node.type === '@n8n/n8n-nodes-langchain.agent') {
+				nodeItem.messages = {};
+
+				if (node.parameters?.text) {
+					nodeItem.messages.text = node.parameters.text as string;
+				}
 				const nodeOptions = node.parameters?.options as IDataObject;
 
 				if (nodeOptions) {
@@ -238,7 +243,6 @@ export function generateNodesGraph(
 						'prefixPrompt',
 						'suffixPrompt',
 					];
-					nodeItem.messages = {};
 
 					for (const key of optionalMessagesKeys) {
 						if (nodeOptions[key]) {
