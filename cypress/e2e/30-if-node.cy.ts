@@ -24,8 +24,16 @@ describe('If Node (filter component)', () => {
 
 		// Add
 		ndv.actions.addFilterCondition(FILTER_PARAM_NAME);
-		ndv.getters.filterConditionLeft(FILTER_PARAM_NAME, 0).find('input').type('first left');
-		ndv.getters.filterConditionLeft(FILTER_PARAM_NAME, 1).find('input').type('second left');
+		ndv.getters
+			.filterConditionLeft(FILTER_PARAM_NAME, 0)
+			.find('.cm-content')
+			.first()
+			.type('first left');
+		ndv.getters
+			.filterConditionLeft(FILTER_PARAM_NAME, 1)
+			.find('.cm-content')
+			.first()
+			.type('second left');
 		ndv.actions.addFilterCondition(FILTER_PARAM_NAME);
 		ndv.getters.filterConditions(FILTER_PARAM_NAME).should('have.length', 3);
 
@@ -34,8 +42,9 @@ describe('If Node (filter component)', () => {
 		ndv.getters.filterConditions(FILTER_PARAM_NAME).should('have.length', 2);
 		ndv.getters
 			.filterConditionLeft(FILTER_PARAM_NAME, 0)
-			.find('input')
-			.should('have.value', 'second left');
+			.find('.cm-content')
+			.first()
+			.should('have.text', 'second left');
 		ndv.actions.removeFilterCondition(FILTER_PARAM_NAME, 1);
 		ndv.getters.filterConditions(FILTER_PARAM_NAME).should('have.length', 1);
 	});
