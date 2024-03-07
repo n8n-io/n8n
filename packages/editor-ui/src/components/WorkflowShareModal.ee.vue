@@ -117,6 +117,7 @@ import type { BaseTextKey } from '@/plugins/i18n';
 import { isNavigationFailure } from 'vue-router';
 import ProjectSharing from '@/features/projects/components/ProjectSharing.vue';
 import { useProjectsStore } from '@/features/projects/projects.store';
+import type { ProjectSharingData } from '@/features/projects/projects.types';
 
 export default defineComponent({
 	name: 'WorkflowShareModal',
@@ -148,9 +149,7 @@ export default defineComponent({
 			loading: true,
 			isDirty: false,
 			modalBus: createEventBus(),
-			sharedWithProjects: [
-				...(workflow.sharedWithProjects || []),
-			] as IWorkflowDb['sharedWithProjects'],
+			sharedWithProjects: [...(workflow.sharedWithProjects || [])] as ProjectSharingData[],
 			EnterpriseEditionFeature,
 		};
 	},
@@ -313,3 +312,4 @@ export default defineComponent({
 	border-top: 1px solid var(--color-foreground-base);
 }
 </style>
+import { ProjectSharingData } from '@/features/projects/projects.types';
