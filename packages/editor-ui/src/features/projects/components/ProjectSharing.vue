@@ -53,7 +53,7 @@ const onProjectSelected = (projectId: string) => {
 	selectedProject.value = '';
 };
 
-const onRoleAction = (project: ProjectListItem, role: string) => {
+const onRoleAction = (project: ProjectSharingData, role: string) => {
 	const index = selectedProjects.value?.findIndex((p) => p.id === project.id) ?? -1;
 	if (index === -1) {
 		return;

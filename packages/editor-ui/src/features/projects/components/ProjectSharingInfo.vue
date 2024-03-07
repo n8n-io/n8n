@@ -1,9 +1,9 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
-import type { ProjectListItem } from '@/features/projects/projects.types';
+import type { ProjectListItem, ProjectSharingData } from '@/features/projects/projects.types';
 
 type Props = {
-	project: ProjectListItem;
+	project: ProjectListItem | ProjectSharingData;
 };
 
 const props = defineProps<Props>();
