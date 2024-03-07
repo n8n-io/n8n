@@ -64,7 +64,7 @@ watch(
 
 <template>
 	<div :class="$style.projectTabs">
-		<n8n-tabs v-model="selectedTab" :options="options" data-test-id="project-tabs" />
+		<N8nTabs v-model="selectedTab" :options="options" data-test-id="project-tabs" />
 	</div>
 </template>
 
