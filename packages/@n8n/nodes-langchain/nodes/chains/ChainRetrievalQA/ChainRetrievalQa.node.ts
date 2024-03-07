@@ -8,8 +8,8 @@ import {
 } from 'n8n-workflow';
 
 import { RetrievalQAChain } from 'langchain/chains';
-import type { BaseLanguageModel } from 'langchain/dist/base_language';
-import type { BaseRetriever } from 'langchain/schema/retriever';
+import type { BaseLanguageModel } from '@langchain/core/language_models/base';
+import type { BaseRetriever } from '@langchain/core/retrievers';
 import { getTemplateNoticeField } from '../../../utils/sharedFields';
 import { getPromptInputByType } from '../../../utils/helpers';
 
