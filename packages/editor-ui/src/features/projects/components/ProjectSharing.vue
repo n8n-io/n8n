@@ -1,7 +1,11 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
 import { useI18n } from '@/composables/useI18n';
-import type { ProjectListItem, ProjectRole } from '@/features/projects/projects.types';
+import type {
+	ProjectListItem,
+	ProjectRole,
+	ProjectSharingData,
+} from '@/features/projects/projects.types';
 import ProjectSharingInfo from '@/features/projects/components/ProjectSharingInfo.vue';
 
 const locale = useI18n();
@@ -12,7 +16,7 @@ type Props = {
 };
 
 const props = defineProps<Props>();
-const selectedProjects = defineModel<ProjectListItem[]>({
+const selectedProjects = defineModel<ProjectSharingData[]>({
 	required: true,
 });
 
@@ -71,7 +75,7 @@ const onRoleAction = (project: ProjectListItem, role: string) => {
 			:no-data-text="locale.baseText('projects.sharing.noMatchingProjects')"
 			size="large"
 			:disabled="props.readonly"
-			@update:modelValue="onProjectSelected"
+			@update:model-value="onProjectSelected"
 		>
 			<template #prefix>
 				<n8n-icon icon="search" />

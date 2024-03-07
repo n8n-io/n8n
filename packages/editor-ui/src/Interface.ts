@@ -54,7 +54,7 @@ import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
 import type { Component } from 'vue';
 import type { Scope } from '@n8n/permissions';
 import type { NotificationOptions as ElementNotificationOptions } from 'element-plus';
-import type { Project } from '@/features/projects/projects.types';
+import type { ProjectSharingData } from '@/features/projects/projects.types';
 
 export * from 'n8n-design-system/types';
 
@@ -298,8 +298,8 @@ export interface IWorkflowDb {
 	versionId: string;
 	usedCredentials?: IUsedCredential[];
 	meta?: WorkflowMetadata;
-	homeProject?: Pick<Project, 'id' | 'name' | 'type'>;
-	sharedWithProjects?: Array<Omit<Project, 'relations'>>;
+	homeProject?: ProjectSharingData;
+	sharedWithProjects?: ProjectSharingData[];
 }
 
 // Identical to cli.Interfaces.ts
@@ -316,7 +316,7 @@ export interface IWorkflowsShareResponse {
 	id: string;
 	createdAt: number | string;
 	updatedAt: number | string;
-	sharedWithProjects?: Array<Omit<Project, 'relations'>>;
+	sharedWithProjects?: ProjectSharingData[];
 	ownedBy?: Partial<IUser>;
 }
 
@@ -344,8 +344,8 @@ export interface ICredentialsResponse extends ICredentialsEncrypted {
 	sharedWith?: Array<Partial<IUser>>;
 	ownedBy?: Partial<IUser>;
 	currentUserHasAccess?: boolean;
-	homeProject?: Pick<Project, 'id' | 'name' | 'type'>;
-	sharedWithProjects?: Array<Pick<Project, 'id' | 'name' | 'type'>>;
+	homeProject?: ProjectSharingData;
+	sharedWithProjects?: ProjectSharingData[];
 }
 
 export interface ICredentialsBase {
