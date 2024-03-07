@@ -220,15 +220,15 @@ export function generateNodesGraph(
 
 		if (options?.isCloudDeployment === true) {
 			if (node.type === '@n8n/n8n-nodes-langchain.openAi') {
-				nodeItem.messages =
+				nodeItem.prompts =
 					(((node.parameters?.messages as IDataObject) || {}).values as IDataObject[]) || [];
 			}
 
 			if (node.type === '@n8n/n8n-nodes-langchain.agent') {
-				nodeItem.messages = {};
+				nodeItem.prompts = {};
 
 				if (node.parameters?.text) {
-					nodeItem.messages.text = node.parameters.text as string;
+					nodeItem.prompts.text = node.parameters.text as string;
 				}
 				const nodeOptions = node.parameters?.options as IDataObject;
 
@@ -246,14 +246,14 @@ export function generateNodesGraph(
 
 					for (const key of optionalMessagesKeys) {
 						if (nodeOptions[key]) {
-							nodeItem.messages[key] = nodeOptions[key] as string;
+							nodeItem.prompts[key] = nodeOptions[key] as string;
 						}
 					}
 				}
 			}
 
 			if (node.type === '@n8n/n8n-nodes-langchain.chainSummarization') {
-				nodeItem.messages = (
+				nodeItem.prompts = (
 					(((node.parameters?.options as IDataObject) || {})
 						.summarizationMethodAndPrompts as IDataObject) || {}
 				).values as IDataObject;
@@ -263,8 +263,8 @@ export function generateNodesGraph(
 				node.type === '@n8n/n8n-nodes-langchain.toolCode' ||
 				node.type === '@n8n/n8n-nodes-langchain.toolWorkflow'
 			) {
-				nodeItem.messages = {
-					describtion: (node.parameters?.description as string) || '',
+				nodeItem.prompts = {
+					description: (node.parameters?.description as string) || '',
 				};
 			}
 		}
