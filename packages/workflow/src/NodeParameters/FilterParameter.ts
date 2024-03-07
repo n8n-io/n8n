@@ -37,6 +37,11 @@ function parseSingleFilterValue(
 		: validateFieldType('filter', value, type, { strict, parseStrings: true });
 }
 
+const withIndefiniteArticle = (noun: string): string => {
+	const article = 'aeiou'.includes(noun.charAt(0)) ? 'an' : 'a';
+	return `${article} ${noun}`;
+};
+
 function parseFilterConditionValues(
 	condition: FilterConditionValue,
 	options: FilterOptionsValue,
@@ -63,15 +68,19 @@ function parseFilterConditionValues(
 			condition.rightValue.startsWith('='));
 	const leftValueString = String(condition.leftValue);
 	const rightValueString = String(condition.rightValue);
-	const inCondition = errorFormat === 'full' ? `in condition ${index + 1}` : ' ';
-	const itemSuffix = `[item ${itemIndex}]`;
+	const suffix =
+		errorFormat === 'full' ? `[condition ${index}, item ${itemIndex}]` : `[item ${itemIndex}]`;
 
 	const composeInvalidTypeMessage = (type: string, fromType: string, value: string) => {
 		fromType = fromType.toLocaleLowerCase();
 		if (strict) {
-			return `Wrong type: expected ${type} ${inCondition}, received '${value}' (${fromType}) ${itemSuffix}`;
+			return `Wrong type: '${value}' is ${withIndefiniteArticle(
+				fromType,
+			)} but was expecting ${withIndefiniteArticle(type)} ${suffix}`;
 		}
-		return `Conversion error: '${value}' (${fromType}) cannot be converted to type '${type}' ${inCondition} ${itemSuffix}`;
+		return `Conversion error: the ${fromType} '${value}' can't be converted to ${withIndefiniteArticle(
+			type,
+		)} ${suffix}`;
 	};
 
 	const invalidTypeDescription = 'Try changing the type of comparison.';
