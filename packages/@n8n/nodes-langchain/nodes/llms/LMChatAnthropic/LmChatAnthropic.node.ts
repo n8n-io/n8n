@@ -72,6 +72,7 @@ export class LmChatAnthropic implements INodeType {
 					},
 				],
 			},
+			alias: ['claude', 'sonnet', 'opus'],
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
