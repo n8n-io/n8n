@@ -59,6 +59,7 @@
 			<ProjectSharing
 				v-model="sharedWithProjects"
 				:projects="projectsStore.projects"
+				:home-project="credential.homeProject"
 				:readonly="!credentialPermissions.share"
 			/>
 		</div>

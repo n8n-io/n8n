@@ -12,6 +12,7 @@ const locale = useI18n();
 
 type Props = {
 	projects: ProjectListItem[];
+	homeProject?: ProjectSharingData;
 	readonly?: boolean;
 };
 
@@ -32,6 +33,7 @@ const filteredProjects = computed(() =>
 			(project) =>
 				project.name?.toLowerCase().includes(filter.value.toLowerCase()) &&
 				project.type === 'personal' &&
+				project.id !== props.homeProject?.id &&
 				!selectedProjects.value?.find((p) => p.id === project.id),
 		)
 		.sort((a, b) => (a.name && b.name ? a.name.localeCompare(b.name) : 0)),
