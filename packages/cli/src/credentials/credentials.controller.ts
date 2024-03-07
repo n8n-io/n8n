@@ -8,7 +8,6 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NamingService } from '@/services/naming.service';
 import { License } from '@/License';
-import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { EnterpriseCredentialsService } from './credentials.service.ee';
 import {
 	Delete,
@@ -26,13 +25,13 @@ import * as Db from '@/Db';
 import * as utils from '@/utils';
 import { listQueryMiddleware } from '@/middlewares';
 import { SharedCredentialsRepository } from '@/databases/repositories/sharedCredentials.repository';
+import { In } from '@n8n/typeorm';
 
 @RestController('/credentials')
 export class CredentialsController {
 	constructor(
 		private readonly credentialsService: CredentialsService,
 		private readonly enterpriseCredentialsService: EnterpriseCredentialsService,
-		private readonly credentialsRepository: CredentialsRepository,
 		private readonly namingService: NamingService,
 		private readonly license: License,
 		private readonly logger: Logger,
@@ -237,6 +236,7 @@ export class CredentialsController {
 		return true;
 	}
 
+	// NOTE: tested
 	@Licensed('feat:sharing')
 	@Put('/:credentialId/share')
 	@ProjectScope('credential:share')
@@ -251,59 +251,45 @@ export class CredentialsController {
 			throw new BadRequestError('Bad request');
 		}
 
-		const isOwnedRes = await this.enterpriseCredentialsService.isOwned(req.user, credentialId);
-		const { ownsCredential } = isOwnedRes;
-		let { credential } = isOwnedRes;
-		if (!ownsCredential || !credential) {
-			credential = undefined;
-			// Allow owners/admins to share
-			if (req.user.hasGlobalScope('credential:share')) {
-				const sharedRes = await this.enterpriseCredentialsService.getSharing(
-					req.user,
-					credentialId,
-					{
-						allowGlobalScope: true,
-						globalScope: 'credential:share',
-					},
-				);
-				credential = sharedRes?.credentials;
-			}
-			if (!credential) {
-				throw new ForbiddenError();
-			}
-		}
+		const credential = await this.sharedCredentialsRepository.findCredentialForUser(
+			credentialId,
+			req.user,
+			['credential:share'],
+		);
 
-		const ownerIds = (
-			await this.enterpriseCredentialsService.getSharings(
-				Db.getConnection().createEntityManager(),
-				credentialId,
-				['shared'],
-			)
-		)
-			.filter((e) => e.role === 'credential:owner')
-			.map((e) => e.userId);
+		if (!credential) {
+			throw new ForbiddenError();
+		}
 
 		let amountRemoved: number | null = null;
 		let newShareeIds: string[] = [];
+
 		await Db.transaction(async (trx) => {
-			// remove all sharings that are not supposed to exist anymore
-			const { affected } = await this.credentialsRepository.pruneSharings(trx, credentialId, [
-				...ownerIds,
-				...shareWithIds,
-			]);
-			if (affected) amountRemoved = affected;
+			const currentPersonalProjectIDs = credential.shared
+				.filter((sc) => sc.role === 'credential:user')
+				.map((sc) => sc.projectId);
+			const newPersonalProjectIds = shareWithIds;
 
-			const sharings = await this.enterpriseCredentialsService.getSharings(trx, credentialId);
-
-			// extract the new sharings that need to be added
-			newShareeIds = utils.rightDiff(
-				[sharings, (sharing) => sharing.userId],
-				[shareWithIds, (shareeId) => shareeId],
+			const toShare = utils.rightDiff(
+				[currentPersonalProjectIDs, (id) => id],
+				[newPersonalProjectIds, (id) => id],
+			);
+			const toUnshare = utils.rightDiff(
+				[newPersonalProjectIds, (id) => id],
+				[currentPersonalProjectIDs, (id) => id],
 			);
 
-			if (newShareeIds.length) {
-				await this.enterpriseCredentialsService.share(trx, credential!, newShareeIds);
+			const deleteResult = await this.sharedCredentialsRepository.delete({
+				credentialsId: credentialId,
+				projectId: In(toUnshare),
+			});
+			await this.enterpriseCredentialsService.shareWithProjects(credential, toShare, trx);
+
+			if (deleteResult.affected) {
+				amountRemoved = deleteResult.affected;
 			}
+
+			newShareeIds = toShare;
 		});
 
 		void this.internalHooks.onUserSharedCredentials({

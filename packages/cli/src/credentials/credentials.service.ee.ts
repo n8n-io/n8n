@@ -1,4 +1,4 @@
-import type { EntityManager, FindOptionsWhere } from '@n8n/typeorm';
+import { In, type EntityManager, type FindOptionsWhere } from '@n8n/typeorm';
 import type { SharedCredentials } from '@db/entities/SharedCredentials';
 import type { User } from '@db/entities/User';
 import { CredentialsService, type CredentialsGetSharedOptions } from './credentials.service';
@@ -10,6 +10,7 @@ import { Service } from 'typedi';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { OwnershipService } from '@/services/ownership.service';
+import { Project } from '@/databases/entities/Project';
 
 @Service()
 export class EnterpriseCredentialsService {
@@ -87,6 +88,34 @@ export class EnterpriseCredentialsService {
 		);
 
 		return await transaction.save(newSharedCredentials);
+	}
+
+	async shareWithProjects(
+		credential: CredentialsEntity,
+		shareWithIds: string[],
+		entityManager?: EntityManager,
+	) {
+		const em = entityManager ?? this.sharedCredentialsRepository.manager;
+
+		const projects = await em.find(Project, {
+			select: { projectRelations: { userId: true } },
+			where: { id: In(shareWithIds), projectRelations: { role: 'project:personalOwner' } },
+			relations: { projectRelations: { user: true } },
+		});
+
+		const newSharedCredentials = projects
+			// We filter by role === 'project:personalOwner' above and there should
+			// always only be one owner.
+			.filter((project) => !project.projectRelations[0].user.isPending)
+			.map((project) =>
+				this.sharedCredentialsRepository.create({
+					credentialsId: credential.id,
+					role: 'credential:user',
+					projectId: project.id,
+				}),
+			);
+
+		return await em.save(newSharedCredentials);
 	}
 
 	async getOne(user: User, credentialId: string, includeDecryptedData: boolean) {
