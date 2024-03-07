@@ -3,7 +3,7 @@ import type { INode } from '@/Interfaces';
 import { NodeApiError } from '@/errors/node-api.error';
 import { NodeOperationError } from '@/errors/node-operation.error';
 
-describe('NodeError TESTER', () => {
+describe('NodeError', () => {
 	const node = mock<INode>();
 
 	it('should update re-wrapped error level and message', () => {
