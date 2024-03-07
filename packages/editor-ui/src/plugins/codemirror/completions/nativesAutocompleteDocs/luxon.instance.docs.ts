@@ -8,6 +8,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		day: {
 			doc: {
 				name: 'day',
+				section: 'query',
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimeday',
 				returnType: 'number',
 			},
@@ -15,6 +16,8 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		daysInMonth: {
 			doc: {
 				name: 'daysInMonth',
+				section: 'query',
+				hidden: true,
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimedaysinmonth',
 				returnType: 'number',
 			},
@@ -22,6 +25,8 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		daysInYear: {
 			doc: {
 				name: 'daysInYear',
+				hidden: true,
+				section: 'query',
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimedaysinyear',
 				returnType: 'number',
 			},
@@ -29,6 +34,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		hour: {
 			doc: {
 				name: 'hour',
+				section: 'query',
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimehour',
 				returnType: 'number',
 			},
@@ -36,6 +42,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		locale: {
 			doc: {
 				name: 'locale',
+				section: 'query',
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimelocale',
 				returnType: 'string',
 			},
@@ -43,6 +50,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		millisecond: {
 			doc: {
 				name: 'millisecond',
+				section: 'query',
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimemillisecond',
 				returnType: 'number',
 			},
@@ -50,6 +58,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		minute: {
 			doc: {
 				name: 'minute',
+				section: 'query',
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimeminute',
 				returnType: 'number',
 			},
@@ -57,6 +66,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		month: {
 			doc: {
 				name: 'month',
+				section: 'query',
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimemonth',
 				returnType: 'number',
 			},
@@ -64,6 +74,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		monthLong: {
 			doc: {
 				name: 'monthLong',
+				section: 'query',
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimemonthlong',
 				returnType: 'string',
 			},
@@ -71,6 +82,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		monthShort: {
 			doc: {
 				name: 'monthShort',
+				section: 'query',
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimemonthshort',
 				returnType: 'string',
 			},
@@ -78,6 +90,8 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		numberingSystem: {
 			doc: {
 				name: 'numberingSystem',
+				section: 'query',
+				hidden: true,
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimenumberingsystem',
 				returnType: 'string',
 			},
@@ -85,6 +99,8 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		offset: {
 			doc: {
 				name: 'offset',
+				section: 'query',
+				hidden: true,
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimeoffset',
 				returnType: 'number',
 			},
@@ -92,6 +108,8 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		offsetNameLong: {
 			doc: {
 				name: 'offsetNameLong',
+				section: 'query',
+				hidden: true,
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimeoffsetnamelong',
 				returnType: 'string',
 			},
@@ -99,6 +117,8 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		offsetNameShort: {
 			doc: {
 				name: 'offsetNameShort',
+				section: 'query',
+				hidden: true,
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimeoffsetnameshort',
 				returnType: 'string',
 			},
@@ -106,6 +126,8 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		ordinal: {
 			doc: {
 				name: 'ordinal',
+				section: 'query',
+				hidden: true,
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimeordinal',
 				returnType: 'string',
 			},
@@ -113,6 +135,8 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		outputCalendar: {
 			doc: {
 				name: 'outputCalendar',
+				section: 'query',
+				hidden: true,
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimeoutputcalendar',
 				returnType: 'string',
 			},
@@ -120,6 +144,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		quarter: {
 			doc: {
 				name: 'quarter',
+				section: 'query',
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimequarter',
 				returnType: 'number',
 			},
@@ -127,6 +152,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		second: {
 			doc: {
 				name: 'second',
+				section: 'query',
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimesecond',
 				returnType: 'number',
 			},
@@ -134,6 +160,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		weekday: {
 			doc: {
 				name: 'weekday',
+				section: 'query',
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimeweekday',
 				returnType: 'number',
 			},
@@ -141,6 +168,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		weekdayLong: {
 			doc: {
 				name: 'weekdayLong',
+				section: 'query',
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimeweekdaylong',
 				returnType: 'string',
 			},
@@ -148,6 +176,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		weekdayShort: {
 			doc: {
 				name: 'weekdayShort',
+				section: 'query',
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimeweekdayshort',
 				returnType: 'string',
 			},
@@ -155,6 +184,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		weekNumber: {
 			doc: {
 				name: 'weekNumber',
+				section: 'query',
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimeweeknumber',
 				returnType: 'number',
 			},
@@ -162,6 +192,8 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		weeksInWeekYear: {
 			doc: {
 				name: 'weeksInWeekYear',
+				section: 'query',
+				hidden: true,
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimeweeksinweekyear',
 				returnType: 'number',
 			},
@@ -169,6 +201,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		weekYear: {
 			doc: {
 				name: 'weekYear',
+				section: 'query',
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimeweekyear',
 				returnType: 'number',
 			},
@@ -176,6 +209,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		year: {
 			doc: {
 				name: 'year',
+				section: 'query',
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimeyear',
 				returnType: 'number',
 			},
@@ -183,6 +217,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		zone: {
 			doc: {
 				name: 'zone',
+				section: 'query',
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimezone',
 				returnType: 'Zone',
 			},
@@ -190,6 +225,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		zoneName: {
 			doc: {
 				name: 'zoneName',
+				section: 'query',
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimezonename',
 				returnType: 'string',
 			},
@@ -197,6 +233,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		isInDST: {
 			doc: {
 				name: 'isInDST',
+				section: 'query',
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimeisindst',
 				returnType: 'boolean',
 			},
@@ -204,6 +241,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		isInLeapYear: {
 			doc: {
 				name: 'isInLeapYear',
+				section: 'query',
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimeisinleapyear',
 				returnType: 'boolean',
 			},
@@ -211,6 +249,8 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		isOffsetFixed: {
 			doc: {
 				name: 'isOffsetFixed',
+				section: 'query',
+				hidden: true,
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimeisoffsetfixed',
 				returnType: 'boolean',
 			},
@@ -218,6 +258,8 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		isValid: {
 			doc: {
 				name: 'isValid',
+				hidden: true,
+				section: 'query',
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimeisvalid',
 				returnType: 'boolean',
 			},
@@ -227,6 +269,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		diff: {
 			doc: {
 				name: 'diff',
+				section: 'compare',
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimediff',
 				returnType: 'Duration',
 				args: [
@@ -239,6 +282,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		diffNow: {
 			doc: {
 				name: 'diffNow',
+				section: 'compare',
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimediffnow',
 				returnType: 'Duration',
 				args: [
@@ -250,6 +294,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		endOf: {
 			doc: {
 				name: 'endOf',
+				section: 'edit',
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimeendof',
 				returnType: 'DateTime',
 				args: [{ name: 'unit', type: 'string' }],
@@ -258,6 +303,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		equals: {
 			doc: {
 				name: 'equals',
+				section: 'compare',
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimeequals',
 				returnType: 'boolean',
 				args: [{ name: 'other', type: 'DateTime' }],
@@ -266,6 +312,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		hasSame: {
 			doc: {
 				name: 'hasSame',
+				section: 'compare',
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimehassame',
 				returnType: 'boolean',
 				args: [
@@ -277,6 +324,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		minus: {
 			doc: {
 				name: 'minus',
+				section: 'edit',
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimeminus',
 				returnType: 'DateTime',
 				args: [{ name: 'duration', type: 'Duration|object|number' }],
@@ -285,6 +333,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		plus: {
 			doc: {
 				name: 'plus',
+				section: 'edit',
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimeplus',
 				returnType: 'DateTime',
 				args: [{ name: 'duration', type: 'Duration|object|number' }],
@@ -293,6 +342,8 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		reconfigure: {
 			doc: {
 				name: 'reconfigure',
+				section: 'other',
+				hidden: true,
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimereconfigure',
 				returnType: 'DateTime',
 				args: [{ name: 'properties', type: 'object' }],
@@ -301,6 +352,8 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		resolvedLocaleOptions: {
 			doc: {
 				name: 'resolvedLocaleOptions',
+				section: 'other',
+				hidden: true,
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimeresolvedlocaleoptions',
 				returnType: 'object',
 				args: [{ name: 'opts', type: 'object' }],
@@ -309,6 +362,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		set: {
 			doc: {
 				name: 'set',
+				section: 'edit',
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimeset',
 				returnType: 'DateTime',
 				args: [{ name: 'values', type: 'object' }],
@@ -317,6 +371,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		setLocale: {
 			doc: {
 				name: 'setLocale',
+				section: 'edit',
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimesetlocale',
 				returnType: 'DateTime',
 				args: [{ name: 'locale', type: 'any' }],
@@ -325,6 +380,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		setZone: {
 			doc: {
 				name: 'setZone',
+				section: 'edit',
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimesetzone',
 				returnType: 'DateTime',
 				args: [
@@ -336,6 +392,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		startOf: {
 			doc: {
 				name: 'startOf',
+				section: 'edit',
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimestartof',
 				returnType: 'DateTime',
 				args: [{ name: 'unit', type: 'string' }],
@@ -344,6 +401,8 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		toBSON: {
 			doc: {
 				name: 'toBSON',
+				section: 'format',
+				hidden: true,
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimetobson',
 				returnType: 'Date',
 			},
@@ -351,6 +410,8 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		toFormat: {
 			doc: {
 				name: 'toFormat',
+				section: 'format',
+				hidden: true,
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetime',
 				returnType: 'string',
 				args: [
@@ -362,6 +423,8 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		toHTTP: {
 			doc: {
 				name: 'toHTTP',
+				section: 'format',
+				hidden: true,
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimetohttp',
 				returnType: 'string',
 			},
@@ -369,6 +432,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		toISO: {
 			doc: {
 				name: 'toISO',
+				section: 'format',
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimetoiso',
 				returnType: 'string',
 				args: [{ name: 'opts', type: 'object' }],
@@ -377,6 +441,8 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		toISODate: {
 			doc: {
 				name: 'toISODate',
+				section: 'format',
+				hidden: true,
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimetoisodate',
 				returnType: 'string',
 				args: [{ name: 'opts', type: 'object' }],
@@ -385,6 +451,8 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		toISOTime: {
 			doc: {
 				name: 'toISOTime',
+				section: 'format',
+				hidden: true,
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimetoisotime',
 				returnType: 'string',
 				args: [{ name: 'opts', type: 'object' }],
@@ -393,6 +461,8 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		toISOWeekDate: {
 			doc: {
 				name: 'toISOWeekDate',
+				section: 'format',
+				hidden: true,
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimetoisoweekdate',
 				returnType: 'string',
 			},
@@ -400,6 +470,8 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		toJSDate: {
 			doc: {
 				name: 'toJSDate',
+				section: 'format',
+				hidden: true,
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimetojsdate',
 				returnType: 'Date',
 			},
@@ -407,6 +479,8 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		toJSON: {
 			doc: {
 				name: 'toJSON',
+				section: 'format',
+				hidden: true,
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimetojson',
 				returnType: 'string',
 			},
@@ -414,6 +488,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		toLocal: {
 			doc: {
 				name: 'toLocal',
+				section: 'format',
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimetolocal',
 				returnType: 'DateTime',
 			},
@@ -421,6 +496,8 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		toLocaleParts: {
 			doc: {
 				name: 'toLocaleParts',
+				section: 'format',
+				hidden: true,
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimetolocaleparts',
 				returnType: 'string',
 				args: [
@@ -432,6 +509,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		toLocaleString: {
 			doc: {
 				name: 'toLocaleString',
+				section: 'format',
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimetolocalestring',
 				returnType: 'string',
 				args: [
@@ -443,6 +521,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		toMillis: {
 			doc: {
 				name: 'toMillis',
+				section: 'format',
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimetomillis',
 				returnType: 'number',
 			},
@@ -450,6 +529,8 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		toObject: {
 			doc: {
 				name: 'toObject',
+				section: 'format',
+				hidden: true,
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimetoobject',
 				returnType: 'object',
 				args: [{ name: 'opts', type: 'any' }],
@@ -458,6 +539,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		toRelative: {
 			doc: {
 				name: 'toRelative',
+				section: 'format',
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimetorelative',
 				returnType: 'string',
 				args: [{ name: 'options', type: 'object' }],
@@ -466,6 +548,8 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		toRelativeCalendar: {
 			doc: {
 				name: 'toRelativeCalendar',
+				section: 'format',
+				hidden: true,
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimetorelativecalendar',
 				returnType: 'string',
 				args: [{ name: 'options', type: 'object' }],
@@ -474,6 +558,8 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		toRFC2822: {
 			doc: {
 				name: 'toRFC2822',
+				section: 'format',
+				hidden: true,
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimetorfc2822',
 				returnType: 'string',
 			},
@@ -481,6 +567,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		toSeconds: {
 			doc: {
 				name: 'toSeconds',
+				section: 'format',
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimetoseconds',
 				returnType: 'number',
 			},
@@ -488,14 +575,18 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		toSQL: {
 			doc: {
 				name: 'toSQL',
+				section: 'format',
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimetosql',
 				returnType: 'string',
+				hidden: true,
 				args: [{ name: 'options', type: 'object' }],
 			},
 		},
 		toSQLDate: {
 			doc: {
 				name: 'toSQLDate',
+				section: 'format',
+				hidden: true,
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimetosqldate',
 				returnType: 'string',
 			},
@@ -503,6 +594,8 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		toSQLTime: {
 			doc: {
 				name: 'toSQLTime',
+				section: 'format',
+				hidden: true,
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimetosqltime',
 				returnType: 'string',
 			},
@@ -510,6 +603,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		toString: {
 			doc: {
 				name: 'toString',
+				section: 'format',
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimetostring',
 				returnType: 'string',
 			},
@@ -517,6 +611,8 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		toUnixInteger: {
 			doc: {
 				name: 'toUnixInteger',
+				section: 'format',
+				hidden: true,
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimetounixinteger',
 				returnType: 'number',
 			},
@@ -524,6 +620,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		toUTC: {
 			doc: {
 				name: 'toUTC',
+				section: 'edit',
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimetoutc',
 				returnType: 'DateTime',
 				args: [
@@ -535,6 +632,7 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		until: {
 			doc: {
 				name: 'until',
+				section: 'compare',
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimeuntil',
 				returnType: 'Interval',
 				args: [{ name: 'other', type: 'DateTime' }],
@@ -543,6 +641,8 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 		valueOf: {
 			doc: {
 				name: 'valueOf',
+				section: 'format',
+				hidden: true,
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimevalueof',
 				returnType: 'number',
 			},
