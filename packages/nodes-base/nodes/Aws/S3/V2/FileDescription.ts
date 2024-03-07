@@ -65,7 +65,7 @@ export const fileFields: INodeProperties[] = [
 			},
 		},
 		description:
-			'The name of the source bucket and key name of the source object, separated by a slash (/)',
+			'The name of the source bucket should start with (/) and key name of the source object, separated by a slash (/)',
 	},
 	{
 		displayName: 'Destination Path',
