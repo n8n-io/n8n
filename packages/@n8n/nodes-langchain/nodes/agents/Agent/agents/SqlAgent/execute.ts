@@ -3,6 +3,7 @@ import {
 	type INodeExecutionData,
 	NodeConnectionType,
 	NodeOperationError,
+	type IDataObject,
 } from 'n8n-workflow';
 
 import { SqlDatabase } from 'langchain/sql_db';
@@ -123,7 +124,7 @@ export async function sqlAgentAgentExecute(
 			chatHistory = serializeChatHistory(messages);
 		}
 
-		let response;
+		let response: IDataObject;
 		try {
 			response = await agentExecutor.call({
 				input,
@@ -131,10 +132,10 @@ export async function sqlAgentAgentExecute(
 				chatHistory,
 			});
 		} catch (error) {
-			if (error.message?.output) {
-				response = error.message;
+			if ((error.message as IDataObject)?.output) {
+				response = error.message as IDataObject;
 			} else {
-				throw new NodeOperationError(this.getNode(), error.message, { itemIndex: i });
+				throw new NodeOperationError(this.getNode(), error.message as string, { itemIndex: i });
 			}
 		}
 
