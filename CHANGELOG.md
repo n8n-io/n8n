@@ -1,3 +1,12 @@
+## [1.32.1](https://github.com/n8n-io/n8n/compare/n8n@1.32.0...n8n@1.32.1) (2024-03-07)
+
+
+### Bug Fixes
+
+* Always register webhooks on startup ([#8830](https://github.com/n8n-io/n8n/issues/8830)) ([04fdc22](https://github.com/n8n-io/n8n/commit/04fdc22986699da3d96d07af1a782121cf6d3f70))
+
+
+
 # [1.32.0](https://github.com/n8n-io/n8n/compare/n8n@1.31.0...n8n@1.32.0) (2024-03-06)
 
 
