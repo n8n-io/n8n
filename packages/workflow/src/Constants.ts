@@ -12,6 +12,11 @@ export const CREDENTIAL_EMPTY_VALUE =
 
 export const FORM_TRIGGER_PATH_IDENTIFIER = 'n8n-form';
 
+export const UNKNOWN_ERROR_MESSAGE = 'There was an unknown issue while executing the node';
+export const UNKNOWN_ERROR_DESCRIPTION =
+	'Double-check the node configuration and the service it connects to. Check the error details below and refer to the <a href="https://docs.n8n.io" target="_blank">n8n documentation</a> to troubleshoot the issue.';
+export const UNKNOWN_ERROR_MESSAGE_CRED = 'UNKNOWN ERROR';
+
 //n8n-nodes-base
 export const STICKY_NODE_TYPE = 'n8n-nodes-base.stickyNote';
 export const NO_OP_NODE_TYPE = 'n8n-nodes-base.noOp';
