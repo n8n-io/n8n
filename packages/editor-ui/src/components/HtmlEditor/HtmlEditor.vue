@@ -6,8 +6,7 @@
 </template>
 
 <script lang="ts">
-import { autocompletion } from '@codemirror/autocomplete';
-import { history, redo, undo } from '@codemirror/commands';
+import { history } from '@codemirror/commands';
 import {
 	LanguageSupport,
 	bracketMatching,
@@ -39,11 +38,18 @@ import { expressionManager } from '@/mixins/expressionManager';
 import { n8nCompletionSources } from '@/plugins/codemirror/completions/addCompletions';
 import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
 import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
-import { enterKeyMap, tabKeyMap } from '../CodeNodeEditor/baseExtensions';
 import { codeNodeEditorTheme } from '../CodeNodeEditor/theme';
 import type { Range, Section } from './types';
 import { nonTakenRanges } from './utils';
 import { isEqual } from 'lodash-es';
+import {
+	autocompleteKeyMap,
+	enterKeyMap,
+	historyKeyMap,
+	tabKeyMap,
+} from '@/plugins/codemirror/keymap';
+import { n8nAutocompletion } from '@/plugins/codemirror/n8nLang';
+import { completionStatus } from '@codemirror/autocomplete';
 
 export default defineComponent({
 	name: 'HtmlEditor',
@@ -105,17 +111,12 @@ export default defineComponent({
 
 			return [
 				bracketMatching(),
-				autocompletion(),
+				n8nAutocompletion(),
 				this.disableExpressionCompletions ? html() : htmlWithCompletions(),
 				autoCloseTags,
 				expressionInputHandler(),
 				Prec.highest(
-					keymap.of([
-						...tabKeyMap,
-						...enterKeyMap,
-						{ key: 'Mod-z', run: undo },
-						{ key: 'Mod-Shift-z', run: redo },
-					]),
+					keymap.of([...tabKeyMap(), ...enterKeyMap, ...historyKeyMap, ...autocompleteKeyMap]),
 				),
 				indentOnInput(),
 				codeNodeEditorTheme({
@@ -135,7 +136,11 @@ export default defineComponent({
 				EditorView.editable.of(!this.isReadOnly),
 				EditorState.readOnly.of(this.isReadOnly),
 				EditorView.updateListener.of((viewUpdate: ViewUpdate) => {
-					if (!this.editor || !viewUpdate.docChanged) return;
+					if (!this.editor) return;
+
+					this.completionStatus = completionStatus(viewUpdate.view.state);
+
+					if (!viewUpdate.docChanged) return;
 
 					// Force segments value update by keeping track of editor state
 					this.editorState = this.editor.state;

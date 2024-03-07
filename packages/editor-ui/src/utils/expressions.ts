@@ -51,13 +51,14 @@ export const isAnyPairedItemError = (error: unknown): error is ExpressionError =
 	return error instanceof ExpressionError && error.context.functionality === 'pairedItem';
 };
 
-export const getResolvableState = (error: unknown): ResolvableState => {
+export const getResolvableState = (error: unknown, ignoreError = false): ResolvableState => {
 	if (!error) return 'valid';
 
 	if (
 		isNoExecDataExpressionError(error) ||
 		isNoNodeExecDataExpressionError(error) ||
-		isPairedItemIntermediateNodesError(error)
+		isPairedItemIntermediateNodesError(error) ||
+		ignoreError
 	) {
 		return 'pending';
 	}
