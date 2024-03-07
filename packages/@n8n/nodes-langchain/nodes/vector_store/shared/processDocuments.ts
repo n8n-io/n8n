@@ -1,4 +1,4 @@
-import type { Document } from 'langchain/document';
+import type { Document } from '@langchain/core/documents';
 import type { INodeExecutionData } from 'n8n-workflow';
 import { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
 import { N8nBinaryLoader } from '../../../utils/N8nBinaryLoader';

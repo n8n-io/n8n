@@ -15,6 +15,7 @@ import { NodeError } from './abstract/node.error';
 import { removeCircularRefs } from '../utils';
 import type { ReportingOptions } from './application.error';
 import { AxiosError } from 'axios';
+import { NO_OP_NODE_TYPE } from '../Constants';
 
 export interface NodeOperationErrorOptions {
 	message?: string;
@@ -324,7 +325,7 @@ export class NodeApiError extends NodeError {
 					}
 				}
 		}
-		if (this.node.type === 'n8n-nodes-base.noOp' && this.message === UNKNOWN_ERROR_MESSAGE) {
+		if (this.node.type === NO_OP_NODE_TYPE && this.message === UNKNOWN_ERROR_MESSAGE) {
 			this.message = `${UNKNOWN_ERROR_MESSAGE_CRED} - ${this.httpCode}`;
 		}
 	}
