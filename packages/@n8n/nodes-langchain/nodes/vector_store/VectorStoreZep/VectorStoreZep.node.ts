@@ -1,7 +1,7 @@
 import type { IDataObject, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import type { IZepConfig } from 'langchain/vectorstores/zep';
-import { ZepVectorStore } from 'langchain/vectorstores/zep';
+import type { IZepConfig } from '@langchain/community/vectorstores/zep';
+import { ZepVectorStore } from '@langchain/community/vectorstores/zep';
 import { createVectorStoreNode } from '../shared/createVectorStoreNode';
 import { metadataFilterField } from '../../../utils/sharedFields';
 

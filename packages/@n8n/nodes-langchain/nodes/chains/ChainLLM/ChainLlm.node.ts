@@ -8,19 +8,19 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import type { BaseLanguageModel } from 'langchain/base_language';
+import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import {
 	AIMessagePromptTemplate,
 	PromptTemplate,
 	SystemMessagePromptTemplate,
 	HumanMessagePromptTemplate,
 	ChatPromptTemplate,
-} from 'langchain/prompts';
-import type { BaseOutputParser } from 'langchain/schema/output_parser';
+} from '@langchain/core/prompts';
+import type { BaseOutputParser } from '@langchain/core/output_parsers';
 import { CombiningOutputParser } from 'langchain/output_parsers';
 import { LLMChain } from 'langchain/chains';
-import type { BaseChatModel } from 'langchain/chat_models/base';
-import { HumanMessage } from 'langchain/schema';
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import { HumanMessage } from '@langchain/core/messages';
 import { getTemplateNoticeField } from '../../../utils/sharedFields';
 import {
 	getOptionalOutputParsers,
@@ -92,6 +92,7 @@ async function getChainPromptTemplate(
 	llm: BaseLanguageModel | BaseChatModel,
 	messages?: MessagesTemplate[],
 	formatInstructions?: string,
+	query?: string,
 ) {
 	const queryTemplate = new PromptTemplate({
 		template: `{query}${formatInstructions ? '\n{formatInstructions}' : ''}`,
@@ -129,7 +130,15 @@ async function getChainPromptTemplate(
 			}),
 		);
 
-		parsedMessages.push(new HumanMessagePromptTemplate(queryTemplate));
+		const lastMessage = parsedMessages[parsedMessages.length - 1];
+		// If the last message is a human message and it has an array of content, we need to add the query to the last message
+		if (lastMessage instanceof HumanMessage && Array.isArray(lastMessage.content)) {
+			const humanMessage = new HumanMessagePromptTemplate(queryTemplate);
+			const test = await humanMessage.format({ query });
+			lastMessage.content.push({ text: test.content.toString(), type: 'text' });
+		} else {
+			parsedMessages.push(new HumanMessagePromptTemplate(queryTemplate));
+		}
 		return ChatPromptTemplate.fromMessages(parsedMessages);
 	}
 
@@ -146,6 +155,7 @@ async function createSimpleLLMChain(
 		llm,
 		prompt,
 	});
+
 	const response = (await chain.call({
 		query,
 		signal: context.getExecutionCancelSignal(),
@@ -167,6 +177,8 @@ async function getChain(
 		itemIndex,
 		llm,
 		messages,
+		undefined,
+		query,
 	);
 
 	// If there are no output parsers, create a simple LLM chain and execute the query
@@ -187,6 +199,7 @@ async function getChain(
 		llm,
 		messages,
 		formatInstructions,
+		query,
 	);
 
 	const chain = prompt.pipe(llm).pipe(combinedOutputParser);
