@@ -52,7 +52,11 @@ import * as NodeHelpers from './NodeHelpers';
 import * as ObservableObject from './ObservableObject';
 import { RoutingNode } from './RoutingNode';
 import { Expression } from './Expression';
-import { NODES_WITH_RENAMABLE_CONTENT } from './Constants';
+import {
+	MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE,
+	NODES_WITH_RENAMABLE_CONTENT,
+	STARTING_NODE_TYPES,
+} from './Constants';
 import { ApplicationError } from './errors/application.error';
 
 function dedupe<T>(arr: T[]): T[] {
@@ -990,7 +994,7 @@ export class Workflow {
 			nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 			// TODO: Identify later differently
-			if (nodeType.description.name === '@n8n/n8n-nodes-langchain.manualChatTrigger') {
+			if (nodeType.description.name === MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE) {
 				continue;
 			}
 
@@ -1002,20 +1006,13 @@ export class Workflow {
 			}
 		}
 
-		const startingNodeTypes = [
-			'n8n-nodes-base.manualTrigger',
-			'n8n-nodes-base.executeWorkflowTrigger',
-			'n8n-nodes-base.errorTrigger',
-			'n8n-nodes-base.start',
-		];
-
 		const sortedNodeNames = Object.values(this.nodes)
-			.sort((a, b) => startingNodeTypes.indexOf(a.type) - startingNodeTypes.indexOf(b.type))
+			.sort((a, b) => STARTING_NODE_TYPES.indexOf(a.type) - STARTING_NODE_TYPES.indexOf(b.type))
 			.map((n) => n.name);
 
 		for (const nodeName of sortedNodeNames) {
 			node = this.nodes[nodeName];
-			if (startingNodeTypes.includes(node.type)) {
+			if (STARTING_NODE_TYPES.includes(node.type)) {
 				if (node.disabled === true) {
 					continue;
 				}
