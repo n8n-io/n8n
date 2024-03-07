@@ -1,4 +1,4 @@
-import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { type IExecuteFunctions, type IDataObject, type INodeExecutionData } from 'n8n-workflow';
 import { GoogleSheet } from '../helpers/GoogleSheet';
 import { getSpreadsheetId } from '../helpers/GoogleSheets.utils';
 import type { GoogleSheets, ResourceLocator } from '../helpers/GoogleSheets.types';
@@ -72,20 +72,11 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 		if (results?.length) {
 			operationResult = operationResult.concat(results);
 		}
-	} catch (err) {
+	} catch (error) {
 		if (this.continueOnFail()) {
-			operationResult.push({ json: this.getInputData(0)[0].json, error: err });
+			operationResult.push({ json: this.getInputData(0)[0].json, error });
 		} else {
-			if (
-				err.message &&
-				(err.message.toLowerCase().includes('bad request') ||
-					err.message.toLowerCase().includes('uknown error')) &&
-				err.description
-			) {
-				err.message = err.description;
-				err.description = undefined;
-			}
-			throw err;
+			throw error;
 		}
 	}
 
