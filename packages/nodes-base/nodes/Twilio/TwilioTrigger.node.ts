@@ -87,7 +87,7 @@ export class TwilioTrigger implements INodeType {
 				const endpoint = 'Sinks';
 				const webhookReturnData = await twilioTriggerApiRequest.call(this, 'GET', endpoint, {});
 				const webhookUrl = this.getNodeWebhookUrl('default');
-				const sink = webhookReturnData.Sinks.find(
+				const sink = webhookReturnData.sinks.find(
 					(sink: { sink_configuration: { destination: string | undefined } }) =>
 						sink.sink_configuration.destination === webhookUrl,
 				);
@@ -109,7 +109,6 @@ export class TwilioTrigger implements INodeType {
 						}
 					}
 				}
-
 				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
@@ -117,23 +116,22 @@ export class TwilioTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 
 				let allowedUpdate = this.getNodeParameter('updates') as string;
-
 				const endpointSink = 'Sinks';
+				//const bodySink: FormData = new FormData();
+				//bodySink.set('Description', 'Sink created by n8n Twilio Trigger Node');
+				//bodySink.set('SinkConfiguration', "{	destination: webhookUrl,	method: 'POST',	}");
+				//bodySink.set('SinkType', 'webhook');
 				const bodySink = {
-					Description: 'Sink created by n8n Twilio Trigger Node',
-					SinkConfiguration: {
-						SinkType: 'webhook',
-						Destination: webhookUrl,
-						Method: 'POST',
-					},
+					Description: 'Sink created by n8n Twilio Trigger Node.',
+					SinkConfiguration: `{	"destination": "${webhookUrl}",	"method": "POST"	}`,
+					SinkType: 'webhook',
 				};
 				const sink = await twilioTriggerApiRequest.call(this, 'POST', endpointSink, bodySink);
 				workflowData.sinkId = sink.sid;
-
 				const endpoint = 'Subscriptions';
 				const body = {
-					Description: 'Subscription created by n8n Twilio Trigger Node',
-					Types: { type: allowedUpdate },
+					Description: 'Subscription created by n8n Twilio Trigger Node.',
+					Types: `{ "type": "${allowedUpdate}" }`,
 					SinkSid: sink.sid,
 				};
 
