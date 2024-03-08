@@ -15,7 +15,9 @@ import { Logger } from '@/Logger';
 import type {
 	CredentialUsedByWorkflow,
 	WorkflowWithSharingsAndCredentials,
+	WorkflowWithSharingsMetaDataAndCredentials,
 } from './workflows.types';
+import { OwnershipService } from '@/services/ownership.service';
 
 @Service()
 export class EnterpriseWorkflowService {
@@ -25,6 +27,7 @@ export class EnterpriseWorkflowService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly credentialsService: CredentialsService,
+		private readonly ownershipService: OwnershipService,
 	) {}
 
 	async isOwned(
@@ -45,29 +48,20 @@ export class EnterpriseWorkflowService {
 		return { ownsWorkflow: true, workflow };
 	}
 
-	addOwnerAndSharings(workflow: WorkflowWithSharingsAndCredentials): void {
-		workflow.ownedBy = null;
-		workflow.sharedWith = [];
-		if (!workflow.usedCredentials) {
-			workflow.usedCredentials = [];
-		}
+	addOwnerAndSharings(
+		workflow: WorkflowWithSharingsAndCredentials,
+	): WorkflowWithSharingsMetaDataAndCredentials {
+		const workflowWithMetaData = this.ownershipService.addOwnedByAndSharedWith(workflow);
 
-		workflow.shared?.forEach(({ user, role }) => {
-			const { id, email, firstName, lastName } = user;
-
-			if (role === 'workflow:owner') {
-				workflow.ownedBy = { id, email, firstName, lastName };
-				return;
-			}
-
-			workflow.sharedWith?.push({ id, email, firstName, lastName });
-		});
-
-		delete workflow.shared;
+		return {
+			...workflow,
+			...workflowWithMetaData,
+			usedCredentials: workflow.usedCredentials ?? [],
+		};
 	}
 
 	async addCredentialsToWorkflow(
-		workflow: WorkflowWithSharingsAndCredentials,
+		workflow: WorkflowWithSharingsMetaDataAndCredentials,
 		currentUser: User,
 	): Promise<void> {
 		workflow.usedCredentials = [];
@@ -100,14 +94,7 @@ export class EnterpriseWorkflowService {
 				sharedWith: [],
 				ownedBy: null,
 			};
-			credential.shared?.forEach(({ user, role }) => {
-				const { id, email, firstName, lastName } = user;
-				if (role === 'credential:owner') {
-					workflowCredential.ownedBy = { id, email, firstName, lastName };
-				} else {
-					workflowCredential.sharedWith?.push({ id, email, firstName, lastName });
-				}
-			});
+			credential = this.ownershipService.addOwnedByAndSharedWith(credential);
 			workflow.usedCredentials?.push(workflowCredential);
 		});
 	}

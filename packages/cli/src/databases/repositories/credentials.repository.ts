@@ -1,26 +1,13 @@
 import { Service } from 'typedi';
-import { DataSource, In, Not, Repository, Like } from '@n8n/typeorm';
-import type { FindManyOptions, DeleteResult, EntityManager, FindOptionsWhere } from '@n8n/typeorm';
+import { DataSource, In, Repository, Like } from '@n8n/typeorm';
+import type { FindManyOptions } from '@n8n/typeorm';
 import { CredentialsEntity } from '../entities/CredentialsEntity';
-import { SharedCredentials } from '../entities/SharedCredentials';
 import type { ListQuery } from '@/requests';
 
 @Service()
 export class CredentialsRepository extends Repository<CredentialsEntity> {
 	constructor(dataSource: DataSource) {
 		super(CredentialsEntity, dataSource.manager);
-	}
-
-	async pruneSharings(
-		transaction: EntityManager,
-		credentialId: string,
-		userIds: string[],
-	): Promise<DeleteResult> {
-		const conditions: FindOptionsWhere<SharedCredentials> = {
-			credentialsId: credentialId,
-			userId: Not(In(userIds)),
-		};
-		return await transaction.delete(SharedCredentials, conditions);
 	}
 
 	async findStartingWith(credentialName: string) {
@@ -86,7 +73,11 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 		const findManyOptions: FindManyOptions<CredentialsEntity> = { where: { id: In(ids) } };
 
 		if (withSharings) {
-			findManyOptions.relations = ['shared', 'shared.user'];
+			findManyOptions.relations = {
+				shared: {
+					project: true,
+				},
+			};
 		}
 
 		return await this.find(findManyOptions);

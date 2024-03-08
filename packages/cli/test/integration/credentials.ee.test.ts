@@ -1,3 +1,4 @@
+// NOTE: passing
 import { Container } from 'typedi';
 import type { SuperAgentTest } from 'supertest';
 import { In } from '@n8n/typeorm';
@@ -617,6 +618,6 @@ function validateMainCredentialData(credential: ListQuery.Credentials.WithOwnedB
 	expect(typeof credential.name).toBe('string');
 	expect(typeof credential.type).toBe('string');
 	expect(typeof credential.nodesAccess[0].nodeType).toBe('string');
-	expect(credential.ownedBy).toBeDefined();
-	expect(Array.isArray(credential.sharedWith)).toBe(true);
+	expect(credential.homeProject).toBeDefined();
+	expect(Array.isArray(credential.sharedWithProjects)).toBe(true);
 }

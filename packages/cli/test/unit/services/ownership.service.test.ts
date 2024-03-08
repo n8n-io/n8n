@@ -1,3 +1,4 @@
+// NOTE: passing
 import { OwnershipService } from '@/services/ownership.service';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
@@ -43,39 +44,21 @@ describe('OwnershipService', () => {
 		});
 	});
 
+	// NOTE: passing
 	describe('addOwnedByAndSharedWith()', () => {
 		test('should add `ownedBy` and `sharedWith` to credential', async () => {
-			const owner = mockUser();
-			const editor = mockUser();
-
 			const ownerProject = mockProject();
 			const editorProject = mockProject();
 
 			const credential = mockCredential();
 
 			credential.shared = [
-				{ role: 'credential:owner', user: owner, project: ownerProject },
-				{ role: 'credential:editor', user: editor, project: editorProject },
+				{ role: 'credential:owner', project: ownerProject },
+				{ role: 'credential:editor', project: editorProject },
 			] as SharedCredentials[];
 
-			const { ownedBy, sharedWith, homeProject, sharedWithProjects } =
+			const { homeProject, sharedWithProjects } =
 				ownershipService.addOwnedByAndSharedWith(credential);
-
-			expect(ownedBy).toStrictEqual({
-				id: owner.id,
-				email: owner.email,
-				firstName: owner.firstName,
-				lastName: owner.lastName,
-			});
-
-			expect(sharedWith).toStrictEqual([
-				{
-					id: editor.id,
-					email: editor.email,
-					firstName: editor.firstName,
-					lastName: editor.lastName,
-				},
-			]);
 
 			expect(homeProject).toMatchObject({
 				id: ownerProject.id,
@@ -106,24 +89,8 @@ describe('OwnershipService', () => {
 				{ role: 'workflow:editor', user: editor, project: projectEditor },
 			] as SharedWorkflow[];
 
-			const { ownedBy, sharedWith, homeProject, sharedWithProjects } =
+			const { homeProject, sharedWithProjects } =
 				ownershipService.addOwnedByAndSharedWith(workflow);
-
-			expect(ownedBy).toStrictEqual({
-				id: owner.id,
-				email: owner.email,
-				firstName: owner.firstName,
-				lastName: owner.lastName,
-			});
-
-			expect(sharedWith).toStrictEqual([
-				{
-					id: editor.id,
-					email: editor.email,
-					firstName: editor.firstName,
-					lastName: editor.lastName,
-				},
-			]);
 
 			expect(homeProject).toMatchObject({
 				id: projectOwner.id,
@@ -140,27 +107,14 @@ describe('OwnershipService', () => {
 		});
 
 		test('should produce an empty sharedWith if no sharee', async () => {
-			const owner = mockUser();
-
 			const credential = mockCredential();
 
 			const project = mockProject();
 
-			credential.shared = [
-				{ role: 'credential:owner', user: owner, project },
-			] as SharedCredentials[];
+			credential.shared = [{ role: 'credential:owner', project }] as SharedCredentials[];
 
-			const { ownedBy, sharedWith, homeProject, sharedWithProjects } =
+			const { homeProject, sharedWithProjects } =
 				ownershipService.addOwnedByAndSharedWith(credential);
-
-			expect(ownedBy).toStrictEqual({
-				id: owner.id,
-				email: owner.email,
-				firstName: owner.firstName,
-				lastName: owner.lastName,
-			});
-
-			expect(sharedWith).toHaveLength(0);
 
 			expect(homeProject).toMatchObject({
 				id: project.id,

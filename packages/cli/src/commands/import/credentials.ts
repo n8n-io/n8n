@@ -153,11 +153,10 @@ export class ImportCredentialsCommand extends BaseCommand {
 			SharedCredentials,
 			{
 				credentialsId: result.identifiers[0].id as string,
-				userId: user.id,
 				role: 'credential:owner',
-				project: personalProject,
+				projectId: personalProject.id,
 			},
-			['credentialsId', 'userId'],
+			['credentialsId', 'projectId'],
 		);
 	}
 

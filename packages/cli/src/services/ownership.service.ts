@@ -50,8 +50,6 @@ export class OwnershipService {
 			| ListQuery.Credentials.WithOwnedByAndSharedWith;
 
 		Object.assign(entity, {
-			ownedBy: null,
-			sharedWith: [],
 			homeProject: null,
 			sharedWithProjects: [],
 		});

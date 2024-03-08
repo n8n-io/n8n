@@ -10,6 +10,7 @@ import {
 	type FindManyOptions,
 	type EntityManager,
 	type DeleteResult,
+	type FindOptionsRelations,
 	Not,
 } from '@n8n/typeorm';
 import type { ListQuery } from '@/requests';
@@ -25,7 +26,10 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		super(WorkflowEntity, dataSource.manager);
 	}
 
-	async get(where: FindOptionsWhere<WorkflowEntity>, options?: { relations: string[] }) {
+	async get(
+		where: FindOptionsWhere<WorkflowEntity>,
+		options?: { relations: string[] | FindOptionsRelations<WorkflowEntity> },
+	) {
 		return await this.findOne({
 			where,
 			relations: options?.relations,

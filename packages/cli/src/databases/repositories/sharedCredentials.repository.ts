@@ -6,6 +6,7 @@ import type { User } from '../entities/User';
 import { RoleService } from '@/services/role.service';
 import { ProjectRepository } from './project.repository';
 import type { Scope } from '@n8n/permissions';
+import type { Project } from '../entities/Project';
 
 @Service()
 export class SharedCredentialsRepository extends Repository<SharedCredentials> {
@@ -63,8 +64,14 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 		});
 	}
 
-	async makeOwnerOfAllCredentials(user: User) {
-		return await this.update({ userId: Not(user.id), role: 'credential:owner' }, { user });
+	async makeOwnerOfAllCredentials(project: Project) {
+		return await this.update(
+			{
+				projectId: Not(project.id),
+				role: 'credential:owner',
+			},
+			{ project },
+		);
 	}
 
 	/** Get the IDs of all credentials owned by a user */
@@ -100,18 +107,21 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 	}
 
 	private async getCredentialIdsByUserAndRole(userIds: string[], roles: CredentialSharingRole[]) {
+		const projects = await this.projectRepository.findBy({
+			projectRelations: { role: 'project:personalOwner', userId: In(userIds) },
+		});
 		const sharings = await this.find({
 			where: {
-				userId: In(userIds),
+				projectId: In(projects.map((p) => p.id)),
 				role: In(roles),
 			},
 		});
 		return sharings.map((s) => s.credentialsId);
 	}
 
-	async deleteByIds(transaction: EntityManager, sharedCredentialsIds: string[], user?: User) {
+	async deleteByIds(transaction: EntityManager, sharedCredentialsIds: string[], project?: Project) {
 		return await transaction.delete(SharedCredentials, {
-			user,
+			project,
 			credentialsId: In(sharedCredentialsIds),
 		});
 	}
