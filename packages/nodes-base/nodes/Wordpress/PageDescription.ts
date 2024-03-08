@@ -1,6 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-export const postOperations: INodeProperties[] = [
+export const pageOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
@@ -8,42 +8,42 @@ export const postOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: ['post'],
+				resource: ['page'],
 			},
 		},
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a post',
-				action: 'Create a post',
+				description: 'Create a page',
+				action: 'Create a page',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a post',
-				action: 'Get a post',
+				description: 'Get a page',
+				action: 'Get a page',
 			},
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get many posts',
-				action: 'Get many posts',
+				description: 'Get many pages',
+				action: 'Get many pages',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update a post',
-				action: 'Update a post',
+				description: 'Update a page',
+				action: 'Update a page',
 			},
 		],
 		default: 'create',
 	},
 ];
 
-export const postFields: INodeProperties[] = [
+export const pageFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
-	/*                                post:create                                 */
+	/*                                page:create                                 */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Title',
@@ -53,11 +53,11 @@ export const postFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: ['post'],
+				resource: ['page'],
 				operation: ['create'],
 			},
 		},
-		description: 'The title for the post',
+		description: 'The title for the page',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -67,7 +67,7 @@ export const postFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: ['post'],
+				resource: ['page'],
 				operation: ['create'],
 			},
 		},
@@ -84,11 +84,18 @@ export const postFields: INodeProperties[] = [
 					'The ID for the author of the object. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
+				displayName: 'Parent ID',
+				name: 'parent',
+				type: 'number',
+				default: '',
+				description: 'The ID for the parent of the post',
+			},
+			{
 				displayName: 'Content',
 				name: 'content',
 				type: 'string',
 				default: '',
-				description: 'The content for the post',
+				description: 'The content for the page',
 			},
 			{
 				displayName: 'Slug',
@@ -132,7 +139,7 @@ export const postFields: INodeProperties[] = [
 					},
 				],
 				default: 'draft',
-				description: 'A named status for the post',
+				description: 'A named status for the page',
 			},
 			{
 				displayName: 'Comment Status',
@@ -149,7 +156,7 @@ export const postFields: INodeProperties[] = [
 					},
 				],
 				default: 'open',
-				description: 'Whether or not comments are open on the post',
+				description: 'Whether or not comments are open on the page',
 			},
 			{
 				displayName: 'Ping Status',
@@ -166,89 +173,11 @@ export const postFields: INodeProperties[] = [
 					},
 				],
 				default: 'open',
-				description: 'If the a message should be send to announce the post',
-			},
-			{
-				displayName: 'Format',
-				name: 'format',
-				type: 'options',
-				options: [
-					{
-						name: 'Aside',
-						value: 'aside',
-					},
-					{
-						name: 'Audio',
-						value: 'audio',
-					},
-					{
-						name: 'Chat',
-						value: 'chat',
-					},
-					{
-						name: 'Gallery',
-						value: 'gallery',
-					},
-					{
-						name: 'Image',
-						value: 'image',
-					},
-					{
-						name: 'Link',
-						value: 'link',
-					},
-					{
-						name: 'Quote',
-						value: 'quote',
-					},
-					{
-						name: 'Standard',
-						value: 'standard',
-					},
-					{
-						name: 'Status',
-						value: 'status',
-					},
-					{
-						name: 'Video',
-						value: 'video',
-					},
-				],
-				default: 'standard',
-				description: 'Whether or not comments are open on the post',
-			},
-			{
-				displayName: 'Sticky',
-				name: 'sticky',
-				type: 'boolean',
-				default: false,
-				description: 'Whether or not the object should be treated as sticky',
-			},
-			{
-				displayName: 'Category Names or IDs',
-				name: 'categories',
-				type: 'multiOptions',
-				typeOptions: {
-					loadOptionsMethod: 'getCategories',
-				},
-				default: [],
-				description:
-					'The terms assigned to the object in the category taxonomy. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-			},
-			{
-				displayName: 'Tag Names or IDs',
-				name: 'tags',
-				type: 'multiOptions',
-				typeOptions: {
-					loadOptionsMethod: 'getTags',
-				},
-				default: [],
-				description:
-					'The terms assigned to the object in the post_tag taxonomy. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description: 'If the a message should be send to announce the page',
 			},
 			{
 				displayName: 'Template',
-				name: 'postTemplate',
+				name: 'pageTemplate',
 				type: 'fixedCollection',
 				default: {},
 				typeOptions: {
@@ -312,20 +241,51 @@ export const postFields: INodeProperties[] = [
 					},
 				],
 			},
+			{
+				displayName: 'Menu Order',
+				name: 'menuOrder',
+				type: 'number',
+				default: 0,
+				description: 'The order of the page in relation to other pages',
+			},
+			{
+				displayName: 'Comment Status',
+				name: 'commentStatus',
+				type: 'options',
+				options: [
+					{
+						name: 'Open',
+						value: 'open',
+					},
+					{
+						name: 'Closed',
+						value: 'closed',
+					},
+				],
+				default: 'open',
+				description: 'Whether or not comments are open on the page',
+			},
+			{
+				displayName: 'Featured Media ID',
+				name: 'featuredMediaId',
+				type: 'number',
+				default: '',
+				description: 'The ID of the featured media for the page',
+			},
 		],
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                 post:update                                */
+	/*                                 page:update                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Post ID',
-		name: 'postId',
+		displayName: 'Page ID',
+		name: 'pageId',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: ['post'],
+				resource: ['page'],
 				operation: ['update'],
 			},
 		},
@@ -339,7 +299,7 @@ export const postFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: ['post'],
+				resource: ['page'],
 				operation: ['update'],
 			},
 		},
@@ -356,18 +316,25 @@ export const postFields: INodeProperties[] = [
 					'The ID for the author of the object. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
+				displayName: 'Parent ID',
+				name: 'parent',
+				type: 'number',
+				default: '',
+				description: 'The ID for the parent of the post',
+			},
+			{
 				displayName: 'Title',
 				name: 'title',
 				type: 'string',
 				default: '',
-				description: 'The title for the post',
+				description: 'The title for the page',
 			},
 			{
 				displayName: 'Content',
 				name: 'content',
 				type: 'string',
 				default: '',
-				description: 'The content for the post',
+				description: 'The content for the page',
 			},
 			{
 				displayName: 'Slug',
@@ -411,7 +378,7 @@ export const postFields: INodeProperties[] = [
 					},
 				],
 				default: 'draft',
-				description: 'A named status for the post',
+				description: 'A named status for the page',
 			},
 			{
 				displayName: 'Comment Status',
@@ -428,7 +395,7 @@ export const postFields: INodeProperties[] = [
 					},
 				],
 				default: 'open',
-				description: 'Whether or not comments are open on the post',
+				description: 'Whether or not comments are open on the page',
 			},
 			{
 				displayName: 'Ping Status',
@@ -445,89 +412,11 @@ export const postFields: INodeProperties[] = [
 					},
 				],
 				default: 'open',
-				description: 'Whether or not comments are open on the post',
-			},
-			{
-				displayName: 'Format',
-				name: 'format',
-				type: 'options',
-				options: [
-					{
-						name: 'Aside',
-						value: 'aside',
-					},
-					{
-						name: 'Audio',
-						value: 'audio',
-					},
-					{
-						name: 'Chat',
-						value: 'chat',
-					},
-					{
-						name: 'Gallery',
-						value: 'gallery',
-					},
-					{
-						name: 'Image',
-						value: 'image',
-					},
-					{
-						name: 'Link',
-						value: 'link',
-					},
-					{
-						name: 'Quote',
-						value: 'quote',
-					},
-					{
-						name: 'Standard',
-						value: 'standard',
-					},
-					{
-						name: 'Status',
-						value: 'status',
-					},
-					{
-						name: 'Video',
-						value: 'video',
-					},
-				],
-				default: 'standard',
-				description: 'The format of the post',
-			},
-			{
-				displayName: 'Sticky',
-				name: 'sticky',
-				type: 'boolean',
-				default: false,
-				description: 'Whether or not the object should be treated as sticky',
-			},
-			{
-				displayName: 'Category Names or IDs',
-				name: 'categories',
-				type: 'multiOptions',
-				typeOptions: {
-					loadOptionsMethod: 'getCategories',
-				},
-				default: [],
-				description:
-					'The terms assigned to the object in the category taxonomy. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-			},
-			{
-				displayName: 'Tag Names or IDs',
-				name: 'tags',
-				type: 'multiOptions',
-				typeOptions: {
-					loadOptionsMethod: 'getTags',
-				},
-				default: [],
-				description:
-					'The terms assigned to the object in the post_tag taxonomy. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description: 'Whether or not comments are open on the page',
 			},
 			{
 				displayName: 'Template',
-				name: 'postTemplate',
+				name: 'pageTemplate',
 				type: 'fixedCollection',
 				default: {},
 				typeOptions: {
@@ -591,20 +480,51 @@ export const postFields: INodeProperties[] = [
 					},
 				],
 			},
+			{
+				displayName: 'Menu Order',
+				name: 'menuOrder',
+				type: 'number',
+				default: 0,
+				description: 'The order of the page in relation to other pages',
+			},
+			{
+				displayName: 'Comment Status',
+				name: 'commentStatus',
+				type: 'options',
+				options: [
+					{
+						name: 'Open',
+						value: 'open',
+					},
+					{
+						name: 'Closed',
+						value: 'closed',
+					},
+				],
+				default: 'open',
+				description: 'Whether or not comments are open on the page',
+			},
+			{
+				displayName: 'Featured Media ID',
+				name: 'featuredMediaId',
+				type: 'number',
+				default: '',
+				description: 'The ID of the featured media for the page',
+			},
 		],
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                  post:get                                  */
+	/*                                  page:get                                  */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Post ID',
-		name: 'postId',
+		displayName: 'Page ID',
+		name: 'pageId',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: ['post'],
+				resource: ['page'],
 				operation: ['get'],
 			},
 		},
@@ -618,7 +538,7 @@ export const postFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: ['post'],
+				resource: ['page'],
 				operation: ['get'],
 			},
 		},
@@ -629,7 +549,7 @@ export const postFields: INodeProperties[] = [
 				type: 'string',
 				typeOptions: { password: true },
 				default: '',
-				description: 'The password for the post if it is password protected',
+				description: 'The password for the page if it is password protected',
 			},
 			{
 				displayName: 'Context',
@@ -655,7 +575,7 @@ export const postFields: INodeProperties[] = [
 		],
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                   post:getAll                              */
+	/*                                   page:getAll                              */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
@@ -663,7 +583,7 @@ export const postFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: ['post'],
+				resource: ['page'],
 				operation: ['getAll'],
 			},
 		},
@@ -676,7 +596,7 @@ export const postFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: ['post'],
+				resource: ['page'],
 				operation: ['getAll'],
 				returnAll: [false],
 			},
@@ -696,7 +616,7 @@ export const postFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: ['post'],
+				resource: ['page'],
 				operation: ['getAll'],
 			},
 		},
@@ -706,7 +626,7 @@ export const postFields: INodeProperties[] = [
 				name: 'after',
 				type: 'dateTime',
 				default: '',
-				description: 'Limit response to posts published after a given ISO8601 compliant date',
+				description: 'Limit response to pages published after a given ISO8601 compliant date',
 			},
 			{
 				displayName: 'Author Names or IDs',
@@ -717,25 +637,14 @@ export const postFields: INodeProperties[] = [
 					loadOptionsMethod: 'getAuthors',
 				},
 				description:
-					'Limit result set to posts assigned to specific authors. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Limit result set to pages assigned to specific authors. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Before',
 				name: 'before',
 				type: 'dateTime',
 				default: '',
-				description: 'Limit response to posts published before a given ISO8601 compliant date',
-			},
-			{
-				displayName: 'Category Names or IDs',
-				name: 'categories',
-				type: 'multiOptions',
-				default: [],
-				typeOptions: {
-					loadOptionsMethod: 'getCategories',
-				},
-				description:
-					'Limit result set to all items that have the specified term assigned in the categories taxonomy. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description: 'Limit response to pages published before a given ISO8601 compliant date',
 			},
 			{
 				displayName: 'Context',
@@ -759,28 +668,11 @@ export const postFields: INodeProperties[] = [
 				description: 'Scope under which the request is made; determines fields present in response',
 			},
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
-				displayName: 'Exclude Categories',
-				name: 'excludedCategories',
-				type: 'multiOptions',
-				default: [],
-				typeOptions: {
-					loadOptionsMethod: 'getCategories',
-				},
-				description:
-					'Limit result set to all items except those that have the specified term assigned in the categories taxonomy. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-			},
-			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
-				displayName: 'Exclude Tags',
-				name: 'excludedTags',
-				type: 'multiOptions',
-				default: [],
-				typeOptions: {
-					loadOptionsMethod: 'getTags',
-				},
-				description:
-					'Limit result set to all items except those that have the specified term assigned in the tags taxonomy. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				displayName: 'Menu Order',
+				name: 'menuOrder',
+				type: 'number',
+				default: 0,
+				description: 'Limit result set to items with a specific menu order value',
 			},
 			{
 				displayName: 'Order',
@@ -849,6 +741,20 @@ export const postFields: INodeProperties[] = [
 				description: 'Sort collection by object attribute',
 			},
 			{
+				displayName: 'Page',
+				name: 'page',
+				type: 'number',
+				default: 1,
+				description: 'Current page of the collection',
+			},
+			{
+				displayName: 'Parent Page ID',
+				name: 'parent',
+				type: 'number',
+				default: '',
+				description: 'Limit result set to items with a particular parent page ID',
+			},
+			{
 				displayName: 'Search',
 				name: 'search',
 				type: 'string',
@@ -882,40 +788,22 @@ export const postFields: INodeProperties[] = [
 					},
 				],
 				default: 'publish',
-				description: 'The status of the post',
-			},
-			{
-				displayName: 'Sticky',
-				name: 'sticky',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to limit the result set to items that are sticky',
-			},
-			{
-				displayName: 'Tag Names or IDs',
-				name: 'tags',
-				type: 'multiOptions',
-				default: [],
-				typeOptions: {
-					loadOptionsMethod: 'getTags',
-				},
-				description:
-					'Limit result set to all items that have the specified term assigned in the tags taxonomy. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description: 'The status of the page',
 			},
 		],
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                 post:delete                                */
+	/*                                 page:delete                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Post ID',
-		name: 'postId',
+		displayName: 'Page ID',
+		name: 'pageId',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: ['post'],
+				resource: ['page'],
 				operation: ['delete'],
 			},
 		},
@@ -929,7 +817,7 @@ export const postFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: ['post'],
+				resource: ['page'],
 				operation: ['delete'],
 			},
 		},
