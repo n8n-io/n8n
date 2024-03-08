@@ -12,6 +12,25 @@ import { ChatMistralAI } from '@langchain/mistralai';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
+/*
+TODO: There's an issue in the @langchain/mistral:0.0.11 where it always tries to populate tools with an empty array, resulting in an API error for the model which do not support tools. For this we need to manually delete the tools
+This can be removed once this issue is fixed: https://github.com/langchain-ai/langchainjs/issues/4646
+*/
+
+class ChatMistralAIOverride extends ChatMistralAI {
+	constructor(fields?: ChatMistralAIInput) {
+		super(fields ?? {});
+	}
+
+	invocationParams(
+		options?: this['ParsedCallOptions'],
+	): ReturnType<ChatMistralAI['invocationParams']> {
+		const result = super.invocationParams(options);
+
+		delete result.tools;
+		return result;
+	}
+}
 export class LmChatMistralCloud implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Mistral Cloud Chat Model',
@@ -184,7 +203,7 @@ export class LmChatMistralCloud implements INodeType {
 			randomSeed: undefined,
 		}) as Partial<ChatMistralAIInput>;
 
-		const model = new ChatMistralAI({
+		const model = new ChatMistralAIOverride({
 			apiKey: credentials.apiKey as string,
 			modelName,
 			...options,
