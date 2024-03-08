@@ -40,6 +40,40 @@ export async function twilioApiRequest(
 	return await this.helpers.requestWithAuthentication.call(this, 'twilioApi', options);
 }
 
+/**
+ * Make an API request to Twilio
+ *
+ */
+export async function twilioTriggerApiRequest(
+	this: IHookFunctions | IExecuteFunctions,
+	method: IHttpRequestMethods,
+	endpoint: string,
+	body: IDataObject,
+	query?: IDataObject,
+): Promise<any> {
+	const credentials = (await this.getCredentials('twilioApi')) as {
+		accountSid: string;
+		authType: 'authToken' | 'apiKey';
+		authToken: string;
+		apiKeySid: string;
+		apiKeySecret: string;
+	};
+
+	if (query === undefined) {
+		query = {};
+	}
+
+	const options: IRequestOptions = {
+		method,
+		form: body,
+		qs: query,
+		uri: `https://events.twilio.com/v1/${endpoint}`,
+		json: true,
+	};
+
+	return await this.helpers.requestWithAuthentication.call(this, 'twilioApi', options);
+}
+
 const XML_CHAR_MAP: { [key: string]: string } = {
 	'<': '&lt;',
 	'>': '&gt;',
