@@ -211,7 +211,7 @@ export class WorkflowExecute {
 							}
 						}
 
-						incomingSourceData.main.push(startNode.sourceData);
+						incomingSourceData.main.push(startNode.sourceData ?? { previousNode: connection.node });
 					}
 				}
 			}
