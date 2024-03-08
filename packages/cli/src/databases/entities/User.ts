@@ -24,7 +24,7 @@ import {
 	GLOBAL_ADMIN_SCOPES,
 } from '@/permissions/global-roles';
 import { hasScope, type ScopeOptions, type Scope } from '@n8n/permissions';
-import type { ProjectRelation, ProjectRole } from './ProjectRelation';
+import type { ProjectRelation } from './ProjectRelation';
 
 export type GlobalRole = 'global:owner' | 'global:admin' | 'global:member';
 export type AssignableRole = Exclude<GlobalRole, 'global:owner'>;
