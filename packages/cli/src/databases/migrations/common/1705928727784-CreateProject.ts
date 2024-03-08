@@ -7,6 +7,9 @@ const projectAdminRole: ProjectRole = 'project:personalOwner';
 const projectTable = 'project';
 const projectRelationTable = 'project_relation';
 
+const sharedCredentials = 'shared_credentials';
+const sharedCredentialsTemp = 'shared_credentials_2';
+
 type Table = 'shared_workflow' | 'shared_credentials';
 
 // const resourceIdColumns: Record<Table, string> = {
@@ -89,23 +92,55 @@ export class CreateProject1705928727784 implements IrreversibleMigration {
 
 		// Index the new projectId column
 		await createIndex(table, ['projectId']);
+	}
 
+	async alterSharedCredentials({
+		escape,
+		runQuery,
+		schemaBuilder: { column, createTable, dropTable },
+	}: MigrationContext) {
 		// Set up new composite unique index
 		// await createIndex(table, ['projectId', resourceIdColumn], true);
-		await runQuery(`
-			CREATE TABLE "shared_credentials_2" (
-				"createdAt"	datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
-				"updatedAt"	datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
-				"credentialsId"	varchar(36) NOT NULL,
-				"role"	text NOT NULL,
-				"projectId"	varchar(36) NOT NULL,
-				CONSTRAINT "FK_shared_credentials_credentials" FOREIGN KEY("credentialsId") REFERENCES "credentials_entity"("id") ON DELETE CASCADE ON UPDATE NO ACTION,
-				CONSTRAINT "FK_shared_credentials_projects" FOREIGN KEY("projectId") REFERENCES "project"("id"),
-				PRIMARY KEY("projectId","credentialsId")
-			);
-		`);
-		await runQuery('DROP TABLE shared_credentials');
-		await runQuery('ALTER TABLE shared_credentials_2 RENAME TO shared_credentials;');
+		// await runQuery(`
+		// 	CREATE TABLE "shared_credentials_2" (
+		// 		"createdAt"	datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
+		// 		"updatedAt"	datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
+		// 		"credentialsId"	varchar(36) NOT NULL,
+		// 		"role"	text NOT NULL,
+		// 		"projectId"	varchar(36) NOT NULL,
+		// 		CONSTRAINT "FK_shared_credentials_credentials" FOREIGN KEY("credentialsId") REFERENCES "credentials_entity"("id") ON DELETE CASCADE ON UPDATE NO ACTION,
+		// 		CONSTRAINT "FK_shared_credentials_projects" FOREIGN KEY("projectId") REFERENCES "project"("id"),
+		// 		PRIMARY KEY("projectId","credentialsId")
+		// 	);
+		// `);
+		// await runQuery('DROP TABLE shared_credentials');
+		// await runQuery('ALTER TABLE shared_credentials_2 RENAME TO shared_credentials;');
+
+		await createTable(sharedCredentialsTemp)
+			.withColumns(
+				column('credentialsId').varchar(36).notNull.primary,
+				column('projectId').varchar(36).notNull.primary,
+				column('role').text.notNull,
+			)
+			.withForeignKey('credentialsId', {
+				tableName: 'credentials_entity',
+				columnName: 'id',
+				onDelete: 'CASCADE',
+			})
+			.withForeignKey('projectId', {
+				tableName: projectTable,
+				columnName: 'id',
+				onDelete: 'CASCADE',
+			}).withTimestamps;
+
+		await dropTable(sharedCredentials);
+		console.log('before');
+		await runQuery(
+			`ALTER TABLE ${escape.tableName(sharedCredentialsTemp)} RENAME TO ${escape.tableName(
+				sharedCredentials,
+			)};`,
+		);
+		console.log('after');
 	}
 
 	async createUserPersonalProjects({ runQuery, runInBatches, escape }: MigrationContext) {
@@ -140,6 +175,7 @@ export class CreateProject1705928727784 implements IrreversibleMigration {
 		await this.setupTables(context);
 		await this.createUserPersonalProjects(context);
 		await this.alterSharedTable('shared_credentials', context);
+		await this.alterSharedCredentials(context);
 		await this.alterSharedTable('shared_workflow', context);
 	}
 
