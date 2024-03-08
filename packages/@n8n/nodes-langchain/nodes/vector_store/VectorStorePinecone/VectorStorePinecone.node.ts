@@ -124,7 +124,13 @@ export const VectorStorePinecone = createVectorStoreNode({
 		const pineconeIndex = client.Index(index);
 
 		if (options.pineconeNamespace && options.clearNamespace) {
-			await pineconeIndex.namespace(options.pineconeNamespace).deleteAll();
+			const namespace = pineconeIndex.namespace(options.pineconeNamespace);
+			try {
+				await namespace.deleteAll();
+			} catch (error) {
+				// Namespace doesn't exist yet
+				context.logger.info(`Namespace ${options.pineconeNamespace} does not exist yet`);
+			}
 		}
 
 		await PineconeStore.fromDocuments(documents, embeddings, {

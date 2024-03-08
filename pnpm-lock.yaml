@@ -202,7 +202,7 @@ importers:
         version: 0.0.5
       '@langchain/community':
         specifier: ^0.0.34
-        version: 0.0.34(@aws-sdk/client-bedrock-runtime@3.454.0)(@aws-sdk/credential-provider-node@3.451.0)(@getzep/zep-js@0.9.0)(@google-ai/generativelanguage@0.2.1)(@huggingface/inference@2.6.4)(@pinecone-database/pinecone@2.0.1)(@qdrant/js-client-rest@1.7.0)(@supabase/supabase-js@2.38.5)(@xata.io/client@0.28.0)(cohere-ai@6.2.2)(html-to-text@9.0.5)(lodash@4.17.21)(pg@8.11.3)(redis@4.6.12)
+        version: 0.0.34(@aws-sdk/client-bedrock-runtime@3.454.0)(@aws-sdk/credential-provider-node@3.451.0)(@getzep/zep-js@0.9.0)(@google-ai/generativelanguage@0.2.1)(@huggingface/inference@2.6.4)(@pinecone-database/pinecone@2.1.0)(@qdrant/js-client-rest@1.7.0)(@supabase/supabase-js@2.38.5)(@xata.io/client@0.28.0)(cohere-ai@6.2.2)(html-to-text@9.0.5)(lodash@4.17.21)(pg@8.11.3)(redis@4.6.12)
       '@langchain/core':
         specifier: 0.1.41
         version: 0.1.41
@@ -225,8 +225,8 @@ importers:
         specifier: 3.9.20
         version: 3.9.20
       '@pinecone-database/pinecone':
-        specifier: 2.0.1
-        version: 2.0.1
+        specifier: 2.1.0
+        version: 2.1.0
       '@qdrant/js-client-rest':
         specifier: 1.7.0
         version: 1.7.0(typescript@5.3.2)
@@ -259,7 +259,7 @@ importers:
         version: 1.2.0
       langchain:
         specifier: 0.1.25
-        version: 0.1.25(@aws-sdk/client-bedrock-runtime@3.454.0)(@aws-sdk/credential-provider-node@3.451.0)(@getzep/zep-js@0.9.0)(@google-ai/generativelanguage@0.2.1)(@huggingface/inference@2.6.4)(@pinecone-database/pinecone@2.0.1)(@qdrant/js-client-rest@1.7.0)(@supabase/supabase-js@2.38.5)(@xata.io/client@0.28.0)(axios@1.6.7)(cohere-ai@6.2.2)(d3-dsv@2.0.0)(epub2@3.0.1)(html-to-text@9.0.5)(lodash@4.17.21)(mammoth@1.6.0)(pdf-parse@1.1.1)(pg@8.11.3)(redis@4.6.12)
+        version: 0.1.25(@aws-sdk/client-bedrock-runtime@3.454.0)(@aws-sdk/credential-provider-node@3.451.0)(@getzep/zep-js@0.9.0)(@google-ai/generativelanguage@0.2.1)(@huggingface/inference@2.6.4)(@pinecone-database/pinecone@2.1.0)(@qdrant/js-client-rest@1.7.0)(@supabase/supabase-js@2.38.5)(@xata.io/client@0.28.0)(axios@1.6.7)(cohere-ai@6.2.2)(d3-dsv@2.0.0)(epub2@3.0.1)(html-to-text@9.0.5)(lodash@4.17.21)(mammoth@1.6.0)(pdf-parse@1.1.1)(pg@8.11.3)(redis@4.6.12)
       lodash:
         specifier: 4.17.21
         version: 4.17.21
@@ -5510,7 +5510,7 @@ packages:
       - encoding
     dev: false
 
-  /@langchain/community@0.0.34(@aws-sdk/client-bedrock-runtime@3.454.0)(@aws-sdk/credential-provider-node@3.451.0)(@getzep/zep-js@0.9.0)(@google-ai/generativelanguage@0.2.1)(@huggingface/inference@2.6.4)(@pinecone-database/pinecone@2.0.1)(@qdrant/js-client-rest@1.7.0)(@supabase/supabase-js@2.38.5)(@xata.io/client@0.28.0)(cohere-ai@6.2.2)(html-to-text@9.0.5)(lodash@4.17.21)(pg@8.11.3)(redis@4.6.12):
+  /@langchain/community@0.0.34(@aws-sdk/client-bedrock-runtime@3.454.0)(@aws-sdk/credential-provider-node@3.451.0)(@getzep/zep-js@0.9.0)(@google-ai/generativelanguage@0.2.1)(@huggingface/inference@2.6.4)(@pinecone-database/pinecone@2.1.0)(@qdrant/js-client-rest@1.7.0)(@supabase/supabase-js@2.38.5)(@xata.io/client@0.28.0)(cohere-ai@6.2.2)(html-to-text@9.0.5)(lodash@4.17.21)(pg@8.11.3)(redis@4.6.12):
     resolution: {integrity: sha512-eU3VyK7dZ3S05E4IQ3IVb3B8Ja/GaNDHaXhfjUJfZLOwyZrrLMhshGRIbbO+iMqJz8omGK761QK14v0G0/U3iw==}
     engines: {node: '>=18'}
     peerDependencies:
@@ -5775,7 +5775,7 @@ packages:
       '@huggingface/inference': 2.6.4
       '@langchain/core': 0.1.41
       '@langchain/openai': 0.0.16
-      '@pinecone-database/pinecone': 2.0.1
+      '@pinecone-database/pinecone': 2.1.0
       '@qdrant/js-client-rest': 1.7.0(typescript@5.3.2)
       '@supabase/supabase-js': 2.38.5
       '@xata.io/client': 0.28.0(typescript@5.3.2)
@@ -5839,7 +5839,7 @@ packages:
     engines: {node: '>=18'}
     dependencies:
       '@langchain/core': 0.1.41
-      '@pinecone-database/pinecone': 2.0.1
+      '@pinecone-database/pinecone': 2.1.0
       flat: 5.0.2
       uuid: 9.0.0
     dev: false
@@ -6384,8 +6384,8 @@ packages:
       '@otplib/plugin-thirty-two': 12.0.1
     dev: true
 
-  /@pinecone-database/pinecone@2.0.1:
-    resolution: {integrity: sha512-a1ejzrqdSQ2yW+9QUi2TVlKwYUbrvGH+QH6POJhITyaOz9ANE+EhXqToC9af93Ctzq9n87+bOUvBvewLeW++Mw==}
+  /@pinecone-database/pinecone@2.1.0:
+    resolution: {integrity: sha512-sbU5+FZ2yhG+tJYwEochoZei5988OLWZyM2aT4wenWc6sbKGV69Jm9Yl4yix10NNglzfksF9avkte1a0/k7x5Q==}
     engines: {node: '>=14.0.0'}
     dependencies:
       '@sinclair/typebox': 0.29.6
@@ -9147,7 +9147,7 @@ packages:
       glob: 10.3.10
       handlebars: 4.7.7
       lazy-universal-dotenv: 4.0.0
-      node-fetch: 2.6.8
+      node-fetch: 2.7.0(encoding@0.1.13)
       picomatch: 2.3.1
       pkg-dir: 5.0.0
       pretty-hrtime: 1.0.3
@@ -9789,7 +9789,7 @@ packages:
       ts-dedent: 2.2.0
       type-fest: 2.19.0
       vue: 3.4.21(typescript@5.3.2)
-      vue-component-type-helpers: 2.0.5
+      vue-component-type-helpers: 2.0.6
     transitivePeerDependencies:
       - encoding
       - supports-color
@@ -18877,7 +18877,7 @@ packages:
     resolution: {integrity: sha512-Xq9nH7KlWZmXAtodXDDRE7vs6DU1gTU8zYDHDiWLSip45Egwq3plLHzPn27NgvzL2r1LMPC1vdqh98sQxtqj4A==}
     dev: false
 
-  /langchain@0.1.25(@aws-sdk/client-bedrock-runtime@3.454.0)(@aws-sdk/credential-provider-node@3.451.0)(@getzep/zep-js@0.9.0)(@google-ai/generativelanguage@0.2.1)(@huggingface/inference@2.6.4)(@pinecone-database/pinecone@2.0.1)(@qdrant/js-client-rest@1.7.0)(@supabase/supabase-js@2.38.5)(@xata.io/client@0.28.0)(axios@1.6.7)(cohere-ai@6.2.2)(d3-dsv@2.0.0)(epub2@3.0.1)(html-to-text@9.0.5)(lodash@4.17.21)(mammoth@1.6.0)(pdf-parse@1.1.1)(pg@8.11.3)(redis@4.6.12):
+  /langchain@0.1.25(@aws-sdk/client-bedrock-runtime@3.454.0)(@aws-sdk/credential-provider-node@3.451.0)(@getzep/zep-js@0.9.0)(@google-ai/generativelanguage@0.2.1)(@huggingface/inference@2.6.4)(@pinecone-database/pinecone@2.1.0)(@qdrant/js-client-rest@1.7.0)(@supabase/supabase-js@2.38.5)(@xata.io/client@0.28.0)(axios@1.6.7)(cohere-ai@6.2.2)(d3-dsv@2.0.0)(epub2@3.0.1)(html-to-text@9.0.5)(lodash@4.17.21)(mammoth@1.6.0)(pdf-parse@1.1.1)(pg@8.11.3)(redis@4.6.12):
     resolution: {integrity: sha512-sfEChvr4H2CklHdSByNBbytwBrFhgtA5kPOnwcBrxuXGg1iOaTzhVxQA0QcNcQucI3hZrsNbZjxGp+Can1ooZQ==}
     engines: {node: '>=18'}
     peerDependencies:
@@ -19039,10 +19039,10 @@ packages:
       '@anthropic-ai/sdk': 0.9.1
       '@aws-sdk/credential-provider-node': 3.451.0
       '@google-ai/generativelanguage': 0.2.1
-      '@langchain/community': 0.0.34(@aws-sdk/client-bedrock-runtime@3.454.0)(@aws-sdk/credential-provider-node@3.451.0)(@getzep/zep-js@0.9.0)(@google-ai/generativelanguage@0.2.1)(@huggingface/inference@2.6.4)(@pinecone-database/pinecone@2.0.1)(@qdrant/js-client-rest@1.7.0)(@supabase/supabase-js@2.38.5)(@xata.io/client@0.28.0)(cohere-ai@6.2.2)(html-to-text@9.0.5)(lodash@4.17.21)(pg@8.11.3)(redis@4.6.12)
+      '@langchain/community': 0.0.34(@aws-sdk/client-bedrock-runtime@3.454.0)(@aws-sdk/credential-provider-node@3.451.0)(@getzep/zep-js@0.9.0)(@google-ai/generativelanguage@0.2.1)(@huggingface/inference@2.6.4)(@pinecone-database/pinecone@2.1.0)(@qdrant/js-client-rest@1.7.0)(@supabase/supabase-js@2.38.5)(@xata.io/client@0.28.0)(cohere-ai@6.2.2)(html-to-text@9.0.5)(lodash@4.17.21)(pg@8.11.3)(redis@4.6.12)
       '@langchain/core': 0.1.41
       '@langchain/openai': 0.0.16
-      '@pinecone-database/pinecone': 2.0.1
+      '@pinecone-database/pinecone': 2.1.0
       '@supabase/supabase-js': 2.38.5
       '@xata.io/client': 0.28.0(typescript@5.3.2)
       axios: 1.6.7
@@ -20601,6 +20601,7 @@ packages:
         optional: true
     dependencies:
       whatwg-url: 5.0.0
+    dev: false
 
   /node-fetch@2.7.0(encoding@0.1.13):
     resolution: {integrity: sha512-c4FRfUm/dbcWZ7U+1Wq0AwCyFL+3nt2bEw05wfxSz+DWpWsitgmSgYmy2dQdWyKC1694ELPqMs/YzUSNozLt8A==}
@@ -22595,11 +22596,6 @@ packages:
       inherits: 2.0.4
       pump: 2.0.1
     dev: true
-
-  /punycode@2.2.0:
-    resolution: {integrity: sha512-LN6QV1IJ9ZhxWTNdktaPClrNfp8xdSAYS0Zk2ddX7XsXZAxckMHPCBcHRo0cTcEIgYPRiGEkmji3Idkh2yFtYw==}
-    engines: {node: '>=6'}
-    dev: false
 
   /punycode@2.3.1:
     resolution: {integrity: sha512-vYt7UD1U9Wg6138shLtLOvdAu+8DsC/ilFtEVHcH+wydcSpNE20AfSOduf6MkRFahL5FY7X1oU7nKVZFtfq8Fg==}
@@ -24874,7 +24870,7 @@ packages:
       jsbi: 4.3.0
       native-duplexpair: 1.0.0
       node-abort-controller: 3.0.1
-      punycode: 2.2.0
+      punycode: 2.3.1
       sprintf-js: 1.1.2
     transitivePeerDependencies:
       - supports-color
@@ -26377,8 +26373,8 @@ packages:
     resolution: {integrity: sha512-NCA6sekiJIMnMs4DdORxATXD+/NRkQpS32UC+I1KQJUasx+Z7MZUb3Y+MsKsFmX+PgyTYSteb73JW77AibaCCw==}
     dev: true
 
-  /vue-component-type-helpers@2.0.5:
-    resolution: {integrity: sha512-v9N4ufDSnd8YHcDq/vURPjxDyBVak5ZVAQ6aGNIrf7ZAj/VxRKpLZXFHEaqt9yHkWi0/TZp76Jmf8yNJxDQi4g==}
+  /vue-component-type-helpers@2.0.6:
+    resolution: {integrity: sha512-qdGXCtoBrwqk1BT6r2+1Wcvl583ZVkuSZ3or7Y1O2w5AvWtlvvxwjGhmz5DdPJS9xqRdDlgTJ/38ehWnEi0tFA==}
     dev: true
 
   /vue-demi@0.14.5(vue@3.4.21):
