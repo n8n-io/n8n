@@ -73,7 +73,7 @@ export function createSubworkflow({
 	});
 }
 
-const createWorkflow = async (nodes: INode[], workflowOwner?: Project): Promise<WorkflowEntity> => {
+const createWorkflow = async (nodes: INode[], workflowOwner?: User): Promise<WorkflowEntity> => {
 	const workflowDetails = {
 		id: uuid(),
 		name: 'test',
@@ -86,9 +86,14 @@ const createWorkflow = async (nodes: INode[], workflowOwner?: Project): Promise<
 	const workflowEntity = await Container.get(WorkflowRepository).save(workflowDetails);
 
 	if (workflowOwner) {
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			workflowOwner.id,
+		);
+
 		await Container.get(SharedWorkflowRepository).save({
+			user: workflowOwner,
 			workflow: workflowEntity,
-			project: workflowOwner,
+			project: personalProject,
 			role: 'workflow:owner',
 		});
 	}
@@ -96,14 +101,12 @@ const createWorkflow = async (nodes: INode[], workflowOwner?: Project): Promise<
 	return workflowEntity;
 };
 
-const getPersonalProject = async (user: User): Promise<Project> => {
-	return await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(user.id);
-};
-
 let saveCredential: SaveCredentialFunction;
 
 let owner: User;
+let ownerPersonalProject: Project;
 let member: User;
+let memberPersonalProject: Project;
 
 const mockNodeTypes = mockInstance(NodeTypes);
 mockInstance(LoadNodesAndCredentials, {
@@ -122,6 +125,12 @@ beforeAll(async () => {
 	permissionChecker = Container.get(PermissionChecker);
 
 	[owner, member] = await Promise.all([createOwner(), createUser()]);
+	ownerPersonalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+		owner.id,
+	);
+	memberPersonalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+		member.id,
+	);
 
 	license = new LicenseMocker();
 	license.mock(Container.get(License));
@@ -155,7 +164,7 @@ describe('check()', () => {
 			},
 		];
 
-		const workflow = await createWorkflow(nodes, await getPersonalProject(member));
+		const workflow = await createWorkflow(nodes, member);
 
 		await expect(
 			permissionChecker.check(workflow.id, member.id, workflow.nodes),
@@ -194,8 +203,8 @@ describe('check()', () => {
 
 		await Container.get(SharedCredentialsRepository).save(
 			Container.get(SharedCredentialsRepository).create({
+				projectId: memberPersonalProject.id,
 				credentialsId: ownerCred.id,
-				userId: member.id,
 				role: 'credential:user',
 			}),
 		);
@@ -231,7 +240,7 @@ describe('check()', () => {
 			},
 		];
 
-		const workflow = await createWorkflow(nodes, await getPersonalProject(member));
+		const workflow = await createWorkflow(nodes, member);
 
 		await expect(
 			permissionChecker.check(workflow.id, member.id, workflow.nodes),
@@ -273,12 +282,13 @@ describe('check()', () => {
 			},
 		];
 
-		const workflow = await createWorkflow(nodes, await getPersonalProject(member));
+		const workflow = await createWorkflow(nodes, member);
 		await Container.get(SharedWorkflowRepository).save(
 			Container.get(SharedWorkflowRepository).create({
 				workflowId: workflow.id,
 				userId: owner.id,
 				role: 'workflow:editor',
+				projectId: ownerPersonalProject.id,
 			}),
 		);
 
@@ -296,7 +306,7 @@ describe('check()', () => {
 		await Container.get(SharedCredentialsRepository).save(
 			Container.get(SharedCredentialsRepository).create({
 				credentialsId: ownerCred.id,
-				userId: member.id,
+				projectId: memberPersonalProject.id,
 				role: 'credential:user',
 			}),
 		);
@@ -332,7 +342,7 @@ describe('check()', () => {
 			},
 		];
 
-		const workflow = await createWorkflow(nodes, await getPersonalProject(member));
+		const workflow = await createWorkflow(nodes, member);
 
 		license.disable('feat:sharing');
 		await expect(permissionChecker.check(workflow.id, member.id, nodes)).rejects.toThrow();
@@ -374,7 +384,7 @@ describe('check()', () => {
 			},
 		];
 
-		const workflow = await createWorkflow(nodes, await getPersonalProject(member));
+		const workflow = await createWorkflow(nodes, member);
 
 		await expect(permissionChecker.check(workflow.id, member.id, workflow.nodes)).rejects.toThrow();
 	});
