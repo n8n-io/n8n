@@ -6,6 +6,8 @@ import { shorten } from '@/utils/typesUtils';
 import { getMappedExpression } from '@/utils/mappingUtils';
 import TextWithHighlights from './TextWithHighlights.vue';
 import { useNDVStore } from '@/stores/ndv.store';
+import { useStorage } from '@/composables/useStorage';
+import { LOCAL_STORAGE_MAPPING_IS_ONBOARDED } from '@/constants';
 
 type Props = {
 	schema: Schema;
@@ -21,7 +23,7 @@ type Props = {
 };
 
 const props = defineProps<Props>();
-const ndvStore = useNDVStore();
+const isMappingOnboarded = useStorage(LOCAL_STORAGE_MAPPING_IS_ONBOARDED);
 
 const isSchemaValueArray = computed(() => Array.isArray(props.schema.value));
 const isSchemaParentTypeArray = computed(() => props.parent?.type === 'array');
@@ -41,9 +43,7 @@ const text = computed(() =>
 	Array.isArray(props.schema.value) ? '' : shorten(props.schema.value, 600, 0),
 );
 
-const dragged = computed(
-	() => props.draggingPath === props.schema.path || !ndvStore.isMappingOnboarded,
-);
+const dragged = computed(() => props.draggingPath === props.schema.path || !isMappingOnboarded);
 
 const getJsonParameterPath = (path: string): string =>
 	getMappedExpression({
