@@ -56,6 +56,10 @@ export const handleOperatorChange = ({
 	return condition;
 };
 
+export const isEmptyInput = (value: unknown): boolean => {
+	return value === '' || value === '=';
+};
+
 export const resolveCondition = ({
 	condition,
 	options,
