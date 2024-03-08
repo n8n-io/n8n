@@ -1,3 +1,4 @@
+import type { MockInstance } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
@@ -27,12 +28,12 @@ const createWorkflow = (overrides = {}) => ({
 
 describe('WorkflowCard', () => {
 	let pinia: ReturnType<typeof createPinia>;
-	let windowOpenSpy: ReturnType<typeof vi.fn>;
+	let windowOpenSpy: MockInstance;
 
 	beforeEach(async () => {
 		pinia = createPinia();
 		setActivePinia(pinia);
-		windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
+		windowOpenSpy = vi.spyOn(window, 'open');
 	});
 
 	afterEach(() => {
