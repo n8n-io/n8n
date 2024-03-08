@@ -632,4 +632,24 @@ describe('NDV', () => {
 		ndv.actions.changeNodeOperation('Update Row');
 		ndv.getters.resourceLocatorInput('documentId').find('input').should('have.value', TEST_DOC_ID);
 	});
+
+	it('Should open appropriate node creator after clicking on connection hint link', () => {
+		const nodeCreator = new NodeCreator();
+		const hintMapper = {
+			'Memory': 'AI Nodes',
+			'Output Parser': 'AI Nodes',
+			'Token Splitter': 'Document Loaders',
+			'Tool': 'AI Nodes',
+			'Embeddings': 'Vector Stores',
+			'Vector Store': 'Retrievers'
+		}
+		cy.createFixtureWorkflow('open_node_creator_for_connection.json', `open_node_creator_for_connection ${uuid()}`);
+
+		Object.entries(hintMapper).forEach(([node, group]) => {
+			workflowPage.actions.openNode(node);
+			cy.get('[data-action=openSelectiveNodeCreator]').contains('Insert one').click();
+			nodeCreator.getters.activeSubcategory().should('contain', group);
+			cy.realPress('Escape');
+		});
+	})
 });

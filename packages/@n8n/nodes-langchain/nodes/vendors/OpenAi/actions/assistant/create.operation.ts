@@ -170,7 +170,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		let after: string | undefined;
 
 		do {
-			const response = await apiRequest.call(this, 'GET', '/assistants', {
+			const response = (await apiRequest.call(this, 'GET', '/assistants', {
 				headers: {
 					'OpenAI-Beta': 'assistants=v1',
 				},
@@ -178,16 +178,16 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 					limit: 100,
 					after,
 				},
-			});
+			})) as { data: IDataObject[]; has_more: boolean; last_id: string };
 
 			for (const assistant of response.data || []) {
-				assistants.push(assistant.name);
+				assistants.push(assistant.name as string);
 			}
 
 			has_more = response.has_more;
 
 			if (has_more) {
-				after = response.last_id as string;
+				after = response.last_id;
 			} else {
 				break;
 			}

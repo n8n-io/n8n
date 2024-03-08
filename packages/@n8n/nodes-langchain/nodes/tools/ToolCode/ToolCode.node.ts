@@ -12,7 +12,7 @@ import { getSandboxContext } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
 import { JavaScriptSandbox } from 'n8n-nodes-base/dist/nodes/Code/JavaScriptSandbox';
 import { PythonSandbox } from 'n8n-nodes-base/dist/nodes/Code/PythonSandbox';
 
-import { DynamicTool } from 'langchain/tools';
+import { DynamicTool } from '@langchain/core/tools';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 export class ToolCode implements INodeType {

@@ -20,7 +20,7 @@ import { camelCase, capitalCase, snakeCase } from 'change-case';
 import moment from 'moment-timezone';
 
 import { validate as uuidValidate } from 'uuid';
-import { filters } from './Filters';
+import { filters } from './descriptions/Filters';
 
 function uuidValidateWithoutDashes(this: IExecuteFunctions, value: string) {
 	if (uuidValidate(value)) return true;
@@ -151,7 +151,7 @@ export async function notionApiRequestGetBlockChildrens(
 	return responseData;
 }
 
-export function getBlockTypes() {
+export function getBlockTypesOptions() {
 	return [
 		{
 			name: 'Paragraph',

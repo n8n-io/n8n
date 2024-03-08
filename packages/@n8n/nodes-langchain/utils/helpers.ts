@@ -1,9 +1,9 @@
 import { NodeConnectionType, NodeOperationError, jsonStringify } from 'n8n-workflow';
 import type { EventNamesAiNodesType, IDataObject, IExecuteFunctions } from 'n8n-workflow';
-import { BaseChatModel } from 'langchain/chat_models/base';
-import { BaseChatModel as BaseChatModelCore } from '@langchain/core/language_models/chat_models';
+import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { BaseOutputParser } from '@langchain/core/output_parsers';
-import type { BaseMessage } from 'langchain/schema';
+import type { BaseMessage } from '@langchain/core/messages';
+import { DynamicTool, type Tool } from '@langchain/core/tools';
 
 export function getMetadataFiltersValues(
 	ctx: IExecuteFunctions,
@@ -22,8 +22,8 @@ export function getMetadataFiltersValues(
 
 // TODO: Remove this function once langchain package is updated to 0.1.x
 // eslint-disable-next-line @typescript-eslint/no-duplicate-type-constituents
-export function isChatInstance(model: any): model is BaseChatModel | BaseChatModelCore {
-	return model instanceof BaseChatModel || model instanceof BaseChatModelCore;
+export function isChatInstance(model: any): model is BaseChatModel {
+	return model instanceof BaseChatModel;
 }
 
 export async function getOptionalOutputParsers(
@@ -125,3 +125,27 @@ export function serializeChatHistory(chatHistory: BaseMessage[]): string {
 		})
 		.join('\n');
 }
+
+export const getConnectedTools = async (ctx: IExecuteFunctions, enforceUniqueNames: boolean) => {
+	const connectedTools =
+		((await ctx.getInputConnectionData(NodeConnectionType.AiTool, 0)) as Tool[]) || [];
+
+	if (!enforceUniqueNames) return connectedTools;
+
+	const seenNames = new Set<string>();
+
+	for (const tool of connectedTools) {
+		if (!(tool instanceof DynamicTool)) continue;
+
+		const { name } = tool;
+		if (seenNames.has(name)) {
+			throw new NodeOperationError(
+				ctx.getNode(),
+				`You have multiple tools with the same name: '${name}', please rename them to avoid conflicts`,
+			);
+		}
+		seenNames.add(name);
+	}
+
+	return connectedTools;
+};

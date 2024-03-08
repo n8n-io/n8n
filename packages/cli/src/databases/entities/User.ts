@@ -141,4 +141,9 @@ export class User extends WithTimestamps implements IUser {
 			scopeOptions,
 		);
 	}
+
+	toJSON() {
+		const { password, apiKey, mfaSecret, mfaRecoveryCodes, ...rest } = this;
+		return rest;
+	}
 }
