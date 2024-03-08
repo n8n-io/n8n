@@ -1,7 +1,6 @@
 <template>
 	<Modal
 		width="460px"
-		min-height="480px"
 		:title="modalTitle"
 		:event-bus="modalBus"
 		:name="WORKFLOW_SHARE_MODAL_KEY"
