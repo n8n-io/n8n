@@ -34,6 +34,7 @@ import {
 	sanitizeUiMessage,
 } from '../GenericFunctions';
 import { keysToLowercase } from '@utils/utilities';
+import set from 'lodash/set';
 
 function toText<T>(data: T) {
 	if (typeof data === 'object' && data !== null) {
@@ -1255,6 +1256,7 @@ export class HttpRequestV3 implements INodeType {
 			requestInterval: number;
 		};
 
+		const sanitazedRequests: IDataObject[] = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			if (authentication === 'genericCredentialType') {
 				genericCredentialType = this.getNodeParameter('genericAuthType', 0) as string;
@@ -1627,8 +1629,11 @@ export class HttpRequestV3 implements INodeType {
 						'application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, image/*;q=0.8, */*;q=0.7';
 				}
 			}
+
 			try {
-				this.sendMessageToUI(sanitizeUiMessage(requestOptions, authDataKeys));
+				const sanitazedRequestOptions = sanitizeUiMessage(requestOptions, authDataKeys);
+				this.sendMessageToUI(sanitazedRequestOptions);
+				sanitazedRequests.push(sanitazedRequestOptions);
 			} catch (e) {}
 
 			if (pagination && pagination.paginationMode !== 'off') {
@@ -1770,7 +1775,9 @@ export class HttpRequestV3 implements INodeType {
 					if (autoDetectResponseFormat && responseData.reason.error instanceof Buffer) {
 						responseData.reason.error = Buffer.from(responseData.reason.error as Buffer).toString();
 					}
-					throw new NodeApiError(this.getNode(), responseData as JsonObject, { itemIndex });
+					const error = new NodeApiError(this.getNode(), responseData as JsonObject, { itemIndex });
+					set(error, 'context.request', sanitazedRequests[itemIndex]);
+					throw error;
 				} else {
 					removeCircularRefs(responseData.reason as JsonObject);
 					// Return the actual reason as error
