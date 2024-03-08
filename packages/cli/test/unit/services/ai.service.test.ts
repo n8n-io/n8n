@@ -2,14 +2,15 @@ import type { INode, INodeType } from 'n8n-workflow';
 import { ApplicationError, NodeOperationError } from 'n8n-workflow';
 import { AIService } from '@/services/ai.service';
 import config from '@/config';
+import { createDebugErrorPrompt } from '@/services/ai/prompts/debugError';
 
 jest.mock('@/config', () => {
 	return {
-		getEnv: jest.fn(),
+		getEnv: jest.fn().mockReturnValue('openai'),
 	};
 });
 
-jest.mock('@/services/ai/openai', () => {
+jest.mock('@/services/ai/providers/openai', () => {
 	return {
 		AIProviderOpenAI: jest.fn().mockImplementation(() => {
 			return {
@@ -51,7 +52,9 @@ describe('AIService', () => {
 
 			const nodeType = {
 				description: {
+					displayName: 'Node Type',
 					name: 'nodeType',
+					properties: [],
 				},
 			} as INodeType;
 			const error = new NodeOperationError(
@@ -64,10 +67,7 @@ describe('AIService', () => {
 
 			await service.debugError(error, nodeType);
 
-			expect(promptSpy).toHaveBeenCalledWith(expect.stringContaining(nodeType.description.name));
-			expect(promptSpy).toHaveBeenCalledWith(
-				expect.stringContaining(JSON.stringify(error, null, 2)),
-			);
+			expect(promptSpy).toHaveBeenCalledWith(createDebugErrorPrompt(error, nodeType));
 		});
 	});
 });
