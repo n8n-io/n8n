@@ -60,8 +60,7 @@ export const folderRLC: INodeProperties = {
 			displayName: 'Link',
 			name: 'url',
 			type: 'string',
-			placeholder:
-				'e.g. https://onedrive.live.com/?WT.mc_id=PROD%5FOL%2DWeb%5FInApp%5FLeftNav%5FFreeOfficeBarOD&ocid=PROD%5FOL%2DWeb%5FInApp%5FLeftNav%5FFreeOfficeBarOD&id=170B5C65E30736A3%21136&cid=170B5C65E30736A3',
+			placeholder: 'e.g. https://onedrive.live.com/?id=170B5C65E30736A3%21103&cid=170B5C65E30736A3',
 			extractValue: {
 				type: 'regex',
 				regex: MICROSOFT_DRIVE_FOLDER_URL_REGEX,

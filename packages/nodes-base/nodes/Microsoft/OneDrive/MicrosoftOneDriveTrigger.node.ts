@@ -18,7 +18,7 @@ export class MicrosoftOneDriveTrigger implements INodeType {
 		group: ['trigger'],
 		version: 1,
 		description: 'Trigger for Microsoft OneDrive API.',
-		subtitle: '={{"Microsoft OneDrive Trigger"}}',
+		subtitle: '={{($parameter["event"])}}',
 		defaults: {
 			name: 'Microsoft OneDrive Trigger',
 		},
@@ -163,6 +163,7 @@ export class MicrosoftOneDriveTrigger implements INodeType {
 					error,
 				},
 			);
+			throw error;
 		}
 
 		return null;
