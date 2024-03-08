@@ -1,25 +1,34 @@
-import OpenAI from 'openai';
 import config from '@/config';
-import type { N8nAIProvider, N8nAIProviderMessage } from 'n8n-workflow';
+import { ChatOpenAI } from '@langchain/openai';
+import type { BaseMessageChunk, BaseMessageLike } from '@langchain/core/messages';
+import type { N8nAIProvider } from '@/types/ai.types';
 
 export class AIProviderOpenAI implements N8nAIProvider {
-	private model: OpenAI;
+	private model: ChatOpenAI;
 
 	constructor() {
-		this.model = new OpenAI({
-			apiKey: config.getEnv('ai.openAIApiKey'),
+		this.model = new ChatOpenAI({
+			openAIApiKey: config.getEnv('ai.openAIApiKey'),
+			modelName: 'gpt-3.5-turbo-16k',
+			timeout: 60000,
+			maxRetries: 2,
 		});
 	}
 
-	mapResponse(data: OpenAI.ChatCompletion): string {
-		return data.choices[0].message.content ?? '';
+	mapResponse(data: BaseMessageChunk): string {
+		if (Array.isArray(data.content)) {
+			return data.content
+				.map((message) =>
+					'text' in message ? message.text : 'image_url' in message ? message.image_url : '',
+				)
+				.join('\n');
+		}
+
+		return data.content;
 	}
 
-	async prompt(messages: N8nAIProviderMessage[]) {
-		const data = await this.model.chat.completions.create({
-			messages,
-			model: 'gpt-3.5-turbo',
-		});
+	async prompt(messages: BaseMessageLike[]) {
+		const data = await this.model.invoke(messages);
 
 		return this.mapResponse(data);
 	}

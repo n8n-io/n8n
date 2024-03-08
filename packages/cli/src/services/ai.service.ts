@@ -1,9 +1,10 @@
 import { Service } from 'typedi';
 import config from '@/config';
-import type { INodeType, N8nAIProviderMessage, N8nAIProviderType, NodeError } from 'n8n-workflow';
+import type { INodeType, N8nAIProviderType, NodeError } from 'n8n-workflow';
 import { AIProviderOpenAI } from '@/services/ai/providers/openai';
 import { ApplicationError } from 'n8n-workflow';
 import { createDebugErrorPrompt } from '@/services/ai/prompts/debugError';
+import type { BaseMessageLike } from '@langchain/core/messages';
 
 function isN8nAIProviderType(value: string): value is N8nAIProviderType {
 	return ['openai'].includes(value);
@@ -28,7 +29,7 @@ export class AIService {
 		}
 	}
 
-	async prompt(messages: N8nAIProviderMessage[]) {
+	async prompt(messages: BaseMessageLike[]) {
 		return await this.model.prompt(messages);
 	}
 
