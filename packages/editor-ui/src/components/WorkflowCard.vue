@@ -29,7 +29,7 @@
 			</n8n-text>
 		</div>
 		<template #append>
-			<div ref="cardActions" :class="$style.cardActions">
+			<div :class="$style.cardActions" @click.stop>
 				<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
 					<n8n-badge v-if="workflowPermissions.isOwner" class="mr-xs" theme="tertiary" bold>
 						{{ $locale.baseText('workflows.item.owner') }}
@@ -48,7 +48,6 @@
 					theme="dark"
 					data-test-id="workflow-card-actions"
 					@action="onAction"
-					@click.stop
 				/>
 			</div>
 		</template>
@@ -171,11 +170,6 @@ export default defineComponent({
 	methods: {
 		async onClick(event?: KeyboardEvent | PointerEvent) {
 			if (event) {
-				const cardActions = this.$refs.cardActions as HTMLElement;
-				if (cardActions === event.target || cardActions?.contains(event.target as HTMLElement)) {
-					return;
-				}
-
 				if (event.metaKey || event.ctrlKey) {
 					const route = this.$router.resolve({
 						name: VIEWS.WORKFLOW,
