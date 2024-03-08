@@ -42,7 +42,7 @@ export const fileRLC: INodeProperties = {
 					},
 				},
 			],
-			url: '=https://onedrive.live.com/...',
+			url: '=https://onedrive.live.com/?id={{value}}',
 		},
 	],
 	description:
@@ -89,7 +89,7 @@ export const folderRLC: INodeProperties = {
 					},
 				},
 			],
-			url: '=https://onedrive.live.com/...',
+			url: '=https://onedrive.live.com/?id={{value}}',
 		},
 	],
 	description:
