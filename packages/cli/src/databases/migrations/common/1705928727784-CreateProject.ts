@@ -116,11 +116,17 @@ export class CreateProject1705928727784 implements IrreversibleMigration {
 				onDelete: 'CASCADE',
 			}).withTimestamps;
 
+		const updatedAtColumnName = escape.columnName('updatedAt');
+		const createdAtColumnName = escape.columnName('createdAt');
+		const credentialsIdColumnName = escape.columnName('credentialsId');
+		const projectIdColumnName = escape.columnName('projectId');
+		const roleColumnName = escape.columnName('role');
+
 		await runQuery(`
 			INSERT INTO ${escape.tableName(
 				sharedCredentialsTemp,
-			)} ("createdAt", "updatedAt", "credentialsId", "projectId", "role")
-			SELECT "createdAt", "updatedAt", "credentialsId", "projectId", "role" FROM ${escape.tableName(
+			)} (${createdAtColumnName}, ${updatedAtColumnName}, ${credentialsIdColumnName}, ${projectIdColumnName}, ${roleColumnName})
+			SELECT ${createdAtColumnName}, ${updatedAtColumnName}, ${credentialsIdColumnName}, ${projectIdColumnName}, ${roleColumnName} FROM ${escape.tableName(
 				sharedCredentials,
 			)};
 		`);
