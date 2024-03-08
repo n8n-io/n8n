@@ -79,7 +79,7 @@
 							/>
 						</td>
 						<td>
-							<span @click.stop="displayExecution(execution)"
+							<span @click.stop="displayExecution(execution.id, execution.workflowId)"
 								><a href="#" :class="$style.link">{{
 									execution.workflowName || i18n.baseText('executionsList.unsavedWorkflow')
 								}}</a></span
@@ -157,7 +157,7 @@
 									size="small"
 									outline
 									:label="i18n.baseText('executionsList.view')"
-									@click.stop="displayExecution(execution)"
+									@click.stop="displayExecution(execution.id, execution.workflowId)"
 								/>
 							</div>
 						</td>
@@ -427,13 +427,6 @@ export default defineComponent({
 	methods: {
 		closeDialog() {
 			this.$emit('closeModal');
-		},
-		displayExecution(execution: ExecutionSummary) {
-			const route = this.$router.resolve({
-				name: VIEWS.EXECUTION_PREVIEW,
-				params: { name: execution.workflowId, executionId: execution.id },
-			});
-			window.open(route.href, '_blank');
 		},
 		async handleAutoRefreshToggle() {
 			this.stopAutoRefreshInterval(); // Clear any previously existing intervals (if any - there shouldn't)

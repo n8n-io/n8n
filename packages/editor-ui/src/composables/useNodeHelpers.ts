@@ -527,6 +527,29 @@ export function useNodeHelpers() {
 		}
 	}
 
+	function getNodeTaskData(node: INodeUi | null, runIndex = 0): ITaskData | null {
+		if (node === null) {
+			return null;
+		}
+		if (workflowsStore.getWorkflowExecution === null) {
+			return null;
+		}
+
+		const executionData = workflowsStore.getWorkflowExecution.data;
+		if (!executionData?.resultData) {
+			// unknown status
+			return null;
+		}
+		const runData = executionData.resultData.runData;
+
+		const taskData = get(runData, [node.name, runIndex]);
+		if (!taskData) {
+			return null;
+		}
+
+		return taskData;
+	}
+
 	function getNodeInputData(
 		node: INodeUi | null,
 		runIndex = 0,
@@ -534,22 +557,9 @@ export function useNodeHelpers() {
 		paneType: NodePanelType = 'output',
 		connectionType: ConnectionTypes = NodeConnectionType.Main,
 	): INodeExecutionData[] {
-		if (node === null) {
-			return [];
-		}
-		if (workflowsStore.getWorkflowExecution === null) {
-			return [];
-		}
+		const taskData = getNodeTaskData(node, runIndex);
 
-		const executionData = workflowsStore.getWorkflowExecution.data;
-		if (!executionData?.resultData) {
-			// unknown status
-			return [];
-		}
-		const runData = executionData.resultData.runData;
-
-		const taskData = get(runData, [node.name, runIndex]);
-		if (!taskData) {
+		if (taskData === null) {
 			return [];
 		}
 
@@ -799,6 +809,7 @@ export function useNodeHelpers() {
 		getNodeSubtitle,
 		updateNodesCredentialsIssues,
 		getNodeInputData,
+		getNodeTaskData,
 		setSuccessOutput,
 	};
 }

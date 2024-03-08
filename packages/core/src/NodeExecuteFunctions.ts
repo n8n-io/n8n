@@ -40,6 +40,7 @@ import type {
 	ConnectionTypes,
 	ContextType,
 	EventNamesAiNodesType,
+	ExecuteWorkflowData,
 	FieldType,
 	FileSystemHelperFunctions,
 	FunctionsBase,
@@ -2478,6 +2479,7 @@ const addExecutionDataFunctions = async (
 	sourceNodeName: string,
 	sourceNodeRunIndex: number,
 	currentNodeRunIndex: number,
+	metadata?: ITaskMetadata,
 ): Promise<void> => {
 	if (connectionType === 'main') {
 		throw new ApplicationError('Setting type is not supported for main connection', {
@@ -2503,6 +2505,7 @@ const addExecutionDataFunctions = async (
 		if (taskData === undefined) {
 			return;
 		}
+		taskData.metadata = metadata;
 	}
 	taskData = taskData!;
 
@@ -3446,7 +3449,7 @@ export function getExecuteFunctions(
 					doNotWaitToFinish?: boolean;
 					startMetadata?: ITaskMetadata;
 				},
-			): Promise<any> {
+			): Promise<ExecuteWorkflowData> {
 				return await additionalData
 					.executeWorkflow(workflowInfo, additionalData, {
 						...options,
@@ -3455,14 +3458,14 @@ export function getExecuteFunctions(
 						parentWorkflowSettings: workflow.settings,
 						node,
 					})
-					.then(
-						async (result) =>
-							await Container.get(BinaryDataService).duplicateBinaryData(
-								workflow.id,
-								additionalData.executionId!,
-								result,
-							),
-					);
+					.then(async (result) => {
+						const data = await Container.get(BinaryDataService).duplicateBinaryData(
+							workflow.id,
+							additionalData.executionId!,
+							result.data,
+						);
+						return { ...result, data };
+					});
 			},
 			getContext(type: ContextType): IContextObject {
 				return NodeHelpers.getContext(runExecutionData, type, node);
@@ -3634,6 +3637,7 @@ export function getExecuteFunctions(
 				connectionType: ConnectionTypes,
 				currentNodeRunIndex: number,
 				data: INodeExecutionData[][] | ExecutionBaseError,
+				metadata?: ITaskMetadata,
 			): void {
 				addExecutionDataFunctions(
 					'output',
@@ -3645,6 +3649,7 @@ export function getExecuteFunctions(
 					node.name,
 					runIndex,
 					currentNodeRunIndex,
+					metadata,
 				).catch((error) => {
 					Logger.warn(
 						`There was a problem logging output data of node "${this.getNode().name}": ${

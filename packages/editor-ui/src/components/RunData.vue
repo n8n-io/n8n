@@ -154,7 +154,7 @@
 
 		<div :class="$style.execution">
 			<n8n-button
-				v-if="subWorkflowData"
+				v-if="subWorkflowData && !(paneType === 'input' && hasInputOverwrite())"
 				:label="
 					i18n.baseText('ndv.output.subworkflow.openExecution', {
 						interpolate: { executionId: subWorkflowData.executionId },
@@ -613,7 +613,6 @@ import {
 	MAX_DISPLAY_ITEMS_AUTO_ALL,
 	TEST_PIN_DATA,
 	HTML_NODE_TYPE,
-	VIEWS,
 } from '@/constants';
 
 import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
@@ -630,6 +629,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { executionHelpers } from '@/mixins/executionsHelpers';
 import { useToast } from '@/composables/useToast';
 import { get, isEqual, isObject } from 'lodash-es';
 import { useExternalHooks } from '@/composables/useExternalHooks';
@@ -666,6 +666,7 @@ export default defineComponent({
 		RunDataSearch,
 		RunDataPinButton,
 	},
+	mixins: [executionHelpers],
 	props: {
 		node: {
 			type: Object as PropType<INodeUi>,
@@ -1117,13 +1118,6 @@ export default defineComponent({
 			}
 			return [];
 		},
-		displayExecution(executionId: string, workflowId?: string) {
-			const route = this.$router.resolve({
-				name: VIEWS.EXECUTION_PREVIEW,
-				params: { name: workflowId, executionId },
-			});
-			window.open(route.href, '_blank');
-		},
 		onItemHover(itemIndex: number | null) {
 			if (itemIndex === null) {
 				this.$emit('itemHover', null);
@@ -1375,6 +1369,16 @@ export default defineComponent({
 			});
 			const itemsLabel = itemsCount > 0 ? ` (${items})` : '';
 			return option + this.$locale.baseText('ndv.output.of') + (this.maxRunIndex + 1) + itemsLabel;
+		},
+		hasInputOverwrite(): boolean {
+			if (!this.node) {
+				return false;
+			}
+			const taskData = this.nodeHelpers.getNodeTaskData(this.node, this.runIndex);
+
+			if (taskData === null) return false;
+
+			return !!taskData.inputOverride;
 		},
 		getRawInputData(
 			runIndex: number,

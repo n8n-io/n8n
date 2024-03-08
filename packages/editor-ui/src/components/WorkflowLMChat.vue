@@ -123,6 +123,7 @@ import { mapStores } from 'pinia';
 
 import { useToast } from '@/composables/useToast';
 import Modal from '@/components/Modal.vue';
+import { executionHelpers } from '@/mixins/executionsHelpers';
 import {
 	AI_CATEGORY_AGENTS,
 	AI_CATEGORY_CHAINS,
@@ -131,7 +132,6 @@ import {
 	CHAT_EMBED_MODAL_KEY,
 	CHAT_TRIGGER_NODE_TYPE,
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
-	VIEWS,
 	WORKFLOW_LM_CHAT_MODAL_KEY,
 } from '@/constants';
 
@@ -185,6 +185,7 @@ export default defineComponent({
 		MessageTyping,
 		RunDataAi,
 	},
+	mixins: [executionHelpers],
 	setup() {
 		const router = useRouter();
 		const externalHooks = useExternalHooks();
@@ -227,14 +228,6 @@ export default defineComponent({
 		}, 0);
 	},
 	methods: {
-		displayExecution(executionId: string) {
-			const workflow = this.workflowHelpers.getCurrentWorkflow();
-			const route = this.$router.resolve({
-				name: VIEWS.EXECUTION_PREVIEW,
-				params: { name: workflow.id, executionId },
-			});
-			window.open(route.href, '_blank');
-		},
 		repostMessage(message: ChatMessage) {
 			void this.sendChatMessage(message.text);
 		},

@@ -862,7 +862,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 				doNotWaitToFinish?: boolean;
 				startMetadata?: ITaskMetadata;
 			},
-		): Promise<any>;
+		): Promise<ExecuteWorkflowData>;
 		getInputConnectionData(
 			inputName: ConnectionTypes,
 			itemIndex: number,
@@ -884,6 +884,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			connectionType: ConnectionTypes,
 			currentNodeRunIndex: number,
 			data: INodeExecutionData[][] | ExecutionError,
+			metadata?: ITaskMetadata,
 		): void;
 
 		nodeHelpers: NodeHelperFunctions;
@@ -2055,12 +2056,11 @@ export interface IWorkflowExecuteAdditionalData {
 			node?: INode;
 			parentWorkflowId: string;
 			inputData?: INodeExecutionData[];
-			parentExecutionId?: string;
 			loadedWorkflowData?: IWorkflowBase;
 			loadedRunData?: any;
 			parentWorkflowSettings?: IWorkflowSettings;
 		},
-	) => Promise<any>;
+	) => Promise<ExecuteWorkflowData>;
 	executionId?: string;
 	restartExecutionId?: string;
 	hooks?: WorkflowHooks;

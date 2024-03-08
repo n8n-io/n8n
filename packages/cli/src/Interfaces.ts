@@ -538,12 +538,6 @@ export interface IWorkflowExecutionDataProcess {
 	userId: string;
 }
 
-export interface IWorkflowExecuteProcess {
-	startedAt: Date;
-	workflow: Workflow;
-	workflowExecute: WorkflowExecute;
-}
-
 export interface IWorkflowStatisticsDataLoaded {
 	dataLoaded: boolean;
 }

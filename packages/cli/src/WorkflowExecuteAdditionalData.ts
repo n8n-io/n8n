@@ -42,7 +42,6 @@ import { CredentialsHelper } from '@/CredentialsHelper';
 import { ExternalHooks } from '@/ExternalHooks';
 import type {
 	IPushDataExecutionFinished,
-	IWorkflowExecuteProcess,
 	IWorkflowExecutionDataProcess,
 	IWorkflowErrorData,
 	IPushDataType,
@@ -755,13 +754,12 @@ async function executeWorkflow(
 		node?: INode;
 		parentWorkflowId: string; // TODO: Why is this here? Does not seem to be used anywhere
 		inputData?: INodeExecutionData[];
-		parentExecutionId?: string;
 		loadedWorkflowData?: IWorkflowBase;
 		loadedRunData?: IWorkflowExecutionDataProcess;
 		parentWorkflowSettings?: IWorkflowSettings;
 		startMetadata?: ITaskMetadata;
 	},
-): Promise<ExecuteWorkflowData | IWorkflowExecuteProcess> {
+): Promise<ExecuteWorkflowData> {
 	const internalHooks = Container.get(InternalHooks);
 	const externalHooks = Container.get(ExternalHooks);
 	await externalHooks.init();
@@ -794,17 +792,11 @@ async function executeWorkflow(
 			options.startMetadata,
 		));
 
-	let executionId: string;
-
-	if (options.parentExecutionId !== undefined) {
-		executionId = options.parentExecutionId;
-	} else {
-		executionId = await activeExecutions.add(runData);
-	}
+	const executionId = await activeExecutions.add(runData);
 
 	// We wrap it in another promise that we can depending on the setting return
 	// the execution ID before the execution is finished
-	const executionPromise = (async (): Promise<ExecuteWorkflowData | IWorkflowExecuteProcess> => {
+	const executionPromise = (async (): Promise<ExecuteWorkflowData> => {
 		void internalHooks.onWorkflowBeforeExecute(executionId || '', runData);
 
 		let data;
@@ -860,15 +852,6 @@ async function executeWorkflow(
 				runData.executionMode,
 				runExecutionData,
 			);
-			if (options.parentExecutionId !== undefined) {
-				// Must be changed to become typed
-				return {
-					executionId,
-					startedAt: new Date(),
-					workflow,
-					workflowExecute,
-				};
-			}
 
 			data = await workflowExecute.processRunExecutionData(workflow);
 		} catch (error) {
