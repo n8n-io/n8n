@@ -9,6 +9,14 @@ function isNotEmpty(value: object): boolean {
 	return !isEmpty(value);
 }
 
+function keys(value: object): string[] {
+	return Object.keys(value);
+}
+
+function values(value: object): unknown[] {
+	return Object.values(value);
+}
+
 function hasField(value: object, extraArgs: string[]): boolean {
 	const [name] = extraArgs;
 	return name in value;
@@ -146,6 +154,20 @@ keepFieldsContaining.doc = {
 		'https://docs.n8n.io/code/builtin/data-transformation-functions/objects/#object-keepFieldsContaining',
 };
 
+keys.doc = {
+	name: 'keys',
+	description: "Returns an array of a given object's own enumerable string-keyed property names.",
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/objects/#object-keys',
+	returnType: 'Array',
+};
+
+values.doc = {
+	name: 'values',
+	description: "Returns an array of a given object's own enumerable string-keyed property values.",
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/objects/#object-values',
+	returnType: 'Array',
+};
+
 export const objectExtensions: ExtensionMap = {
 	typeName: 'Object',
 	functions: {
@@ -157,5 +179,7 @@ export const objectExtensions: ExtensionMap = {
 		keepFieldsContaining,
 		compact,
 		urlEncode,
+		keys,
+		values,
 	},
 };

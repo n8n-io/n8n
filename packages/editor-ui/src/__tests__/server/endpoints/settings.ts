@@ -92,6 +92,7 @@ const defaultSettings: IN8nUISettings = {
 	banners: {
 		dismissed: [],
 	},
+	binaryDataMode: 'default',
 };
 
 export function routesForSettings(server: Server) {

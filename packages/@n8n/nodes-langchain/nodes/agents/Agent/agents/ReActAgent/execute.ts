@@ -7,10 +7,10 @@ import {
 
 import { AgentExecutor, ChatAgent, ZeroShotAgent } from 'langchain/agents';
 import type { BaseLanguageModel } from 'langchain/base_language';
-import type { BaseOutputParser } from 'langchain/schema/output_parser';
-import { PromptTemplate } from 'langchain/prompts';
+import type { BaseOutputParser } from '@langchain/core/output_parsers';
+import { PromptTemplate } from '@langchain/core/prompts';
 import { CombiningOutputParser } from 'langchain/output_parsers';
-import type { BaseChatModel } from 'langchain/chat_models/base';
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import {
 	getConnectedTools,
 	getOptionalOutputParsers,
