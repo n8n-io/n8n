@@ -169,16 +169,14 @@ export default defineComponent({
 	},
 	methods: {
 		async onClick(event?: KeyboardEvent | PointerEvent) {
-			if (event) {
-				if (event.metaKey || event.ctrlKey) {
-					const route = this.$router.resolve({
-						name: VIEWS.WORKFLOW,
-						params: { name: this.data.id },
-					});
-					window.open(route.href, '_blank');
+			if (event?.metaKey || event?.ctrlKey) {
+				const route = this.$router.resolve({
+					name: VIEWS.WORKFLOW,
+					params: { name: this.data.id },
+				});
+				window.open(route.href, '_blank');
 
-					return;
-				}
+				return;
 			}
 
 			await this.$router.push({
