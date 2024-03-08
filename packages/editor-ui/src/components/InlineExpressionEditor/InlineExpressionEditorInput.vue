@@ -3,13 +3,8 @@
 </template>
 
 <script lang="ts">
-import {
-	acceptCompletion,
-	autocompletion,
-	completionStatus,
-	startCompletion,
-} from '@codemirror/autocomplete';
-import { history, redo, undo } from '@codemirror/commands';
+import { completionStatus, startCompletion } from '@codemirror/autocomplete';
+import { history } from '@codemirror/commands';
 import { Compartment, EditorState, Prec } from '@codemirror/state';
 import { EditorView, keymap } from '@codemirror/view';
 import type { PropType } from 'vue';
@@ -18,12 +13,18 @@ import { defineComponent, nextTick } from 'vue';
 import { completionManager } from '@/mixins/completionManager';
 import { expressionManager } from '@/mixins/expressionManager';
 import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
-import { n8nLang } from '@/plugins/codemirror/n8nLang';
+import {
+	autocompleteKeyMap,
+	enterKeyMap,
+	historyKeyMap,
+	tabKeyMap,
+} from '@/plugins/codemirror/keymap';
+import { n8nAutocompletion, n8nLang } from '@/plugins/codemirror/n8nLang';
 import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 import { isEqual } from 'lodash-es';
+import { createEventBus, type EventBus } from 'n8n-design-system/utils';
 import type { IDataObject } from 'n8n-workflow';
 import { inputTheme } from './theme';
-import { type EventBus, createEventBus } from 'n8n-design-system/utils';
 
 const editableConf = new Compartment();
 
@@ -91,25 +92,12 @@ export default defineComponent({
 	},
 	mounted() {
 		const extensions = [
-			n8nLang(),
-			inputTheme({ rows: this.rows }),
 			Prec.highest(
-				keymap.of([
-					{ key: 'Tab', run: acceptCompletion },
-					{
-						any(view: EditorView, event: KeyboardEvent) {
-							if (event.key === 'Escape' && completionStatus(view.state) !== null) {
-								event.stopPropagation();
-							}
-
-							return false;
-						},
-					},
-					{ key: 'Mod-z', run: undo },
-					{ key: 'Mod-Shift-z', run: redo },
-				]),
+				keymap.of([...tabKeyMap(true), ...enterKeyMap, ...autocompleteKeyMap, ...historyKeyMap]),
 			),
-			autocompletion(),
+			n8nLang(),
+			n8nAutocompletion(),
+			inputTheme({ rows: this.rows }),
 			history(),
 			expressionInputHandler(),
 			EditorView.lineWrapping,
@@ -121,7 +109,11 @@ export default defineComponent({
 				},
 			}),
 			EditorView.updateListener.of((viewUpdate) => {
-				if (!this.editor || !viewUpdate.docChanged) return;
+				if (!this.editor) return;
+
+				this.completionStatus = completionStatus(viewUpdate.view.state);
+
+				if (!viewUpdate.docChanged) return;
 
 				// Force segments value update by keeping track of editor state
 				this.editorState = this.editor.state;
@@ -156,11 +148,18 @@ export default defineComponent({
 		focus() {
 			this.editor?.focus();
 		},
+		setCursorPosition(pos: number) {
+			this.editor.dispatch({ selection: { anchor: pos, head: pos } });
+		},
 		async onDrop() {
 			await nextTick();
 			this.focus();
-			const pos = this.editor.state.sliceDoc(0).lastIndexOf(' }}');
-			this.editor.dispatch({ selection: { anchor: pos, head: pos } });
+
+			const END_OF_EXPRESSION = ' }}';
+			const value = this.editor.state.sliceDoc(0);
+
+			this.setCursorPosition(Math.max(value.lastIndexOf(END_OF_EXPRESSION), 0));
+
 			startCompletion(this.editor as EditorView);
 		},
 	},
