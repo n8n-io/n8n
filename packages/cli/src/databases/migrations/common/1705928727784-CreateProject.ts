@@ -99,23 +99,6 @@ export class CreateProject1705928727784 implements IrreversibleMigration {
 		runQuery,
 		schemaBuilder: { column, createTable, dropTable },
 	}: MigrationContext) {
-		// Set up new composite unique index
-		// await createIndex(table, ['projectId', resourceIdColumn], true);
-		// await runQuery(`
-		// 	CREATE TABLE "shared_credentials_2" (
-		// 		"createdAt"	datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
-		// 		"updatedAt"	datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
-		// 		"credentialsId"	varchar(36) NOT NULL,
-		// 		"role"	text NOT NULL,
-		// 		"projectId"	varchar(36) NOT NULL,
-		// 		CONSTRAINT "FK_shared_credentials_credentials" FOREIGN KEY("credentialsId") REFERENCES "credentials_entity"("id") ON DELETE CASCADE ON UPDATE NO ACTION,
-		// 		CONSTRAINT "FK_shared_credentials_projects" FOREIGN KEY("projectId") REFERENCES "project"("id"),
-		// 		PRIMARY KEY("projectId","credentialsId")
-		// 	);
-		// `);
-		// await runQuery('DROP TABLE shared_credentials');
-		// await runQuery('ALTER TABLE shared_credentials_2 RENAME TO shared_credentials;');
-
 		await createTable(sharedCredentialsTemp)
 			.withColumns(
 				column('credentialsId').varchar(36).notNull.primary,
@@ -133,14 +116,21 @@ export class CreateProject1705928727784 implements IrreversibleMigration {
 				onDelete: 'CASCADE',
 			}).withTimestamps;
 
+		await runQuery(`
+			INSERT INTO ${escape.tableName(
+				sharedCredentialsTemp,
+			)} ("createdAt", "updatedAt", "credentialsId", "projectId", "role")
+			SELECT "createdAt", "updatedAt", "credentialsId", "projectId", "role" FROM ${escape.tableName(
+				sharedCredentials,
+			)};
+		`);
+
 		await dropTable(sharedCredentials);
-		console.log('before');
 		await runQuery(
 			`ALTER TABLE ${escape.tableName(sharedCredentialsTemp)} RENAME TO ${escape.tableName(
 				sharedCredentials,
 			)};`,
 		);
-		console.log('after');
 	}
 
 	async createUserPersonalProjects({ runQuery, runInBatches, escape }: MigrationContext) {
