@@ -57,6 +57,7 @@ const repositories = [
 	'InstalledNodes',
 	'InstalledPackages',
 	'Project',
+	'ProjectRelation',
 	'Role',
 	'Settings',
 	'SharedCredentials',

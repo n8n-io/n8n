@@ -7,6 +7,7 @@ import { RoleService } from '@/services/role.service';
 import { ProjectRepository } from './project.repository';
 import type { Scope } from '@n8n/permissions';
 import type { Project } from '../entities/Project';
+import type { ProjectRole } from '../entities/ProjectRelation';
 
 @Service()
 export class SharedCredentialsRepository extends Repository<SharedCredentials> {
@@ -76,7 +77,10 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 
 	/** Get the IDs of all credentials owned by a user */
 	async getOwnedCredentialIds(userIds: string[]) {
-		return await this.getCredentialIdsByUserAndRole(userIds, ['credential:owner']);
+		return await this.getCredentialIdsByUserAndRole(userIds, {
+			credentialRoles: ['credential:owner'],
+			projectRoles: ['project:personalOwner'],
+		});
 	}
 
 	/** Get the IDs of all credentials owned by or shared with a user */
@@ -106,14 +110,30 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 		return result.map((sc) => sc.credentialsId);
 	}
 
-	private async getCredentialIdsByUserAndRole(userIds: string[], roles: CredentialSharingRole[]) {
-		const projects = await this.projectRepository.findBy({
-			projectRelations: { role: 'project:personalOwner', userId: In(userIds) },
-		});
+	async getCredentialIdsByUserAndRole(
+		userIds: string[],
+		options:
+			| { scopes: Scope[] }
+			| { projectRoles: ProjectRole[]; credentialRoles: CredentialSharingRole[] },
+	) {
+		const projectRoles =
+			'scopes' in options
+				? this.roleService.rolesWithScope('project', options.scopes)
+				: options.projectRoles;
+		const credentialRoles =
+			'scopes' in options
+				? this.roleService.rolesWithScope('credential', options.scopes)
+				: options.credentialRoles;
+
 		const sharings = await this.find({
 			where: {
-				projectId: In(projects.map((p) => p.id)),
-				role: In(roles),
+				role: In(credentialRoles),
+				project: {
+					projectRelations: {
+						userId: In(userIds),
+						role: In(projectRoles),
+					},
+				},
 			},
 		});
 		return sharings.map((s) => s.credentialsId);

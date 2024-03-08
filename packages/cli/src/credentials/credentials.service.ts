@@ -70,7 +70,9 @@ export class CredentialsService {
 				: credentials;
 		}
 
-		const ids = await this.sharedCredentialsRepository.getAccessibleCredentialIds([user.id]);
+		const ids = await this.sharedCredentialsRepository.getCredentialIdsByUserAndRole([user.id], {
+			scopes: ['credential:read'],
+		});
 
 		const credentials = await this.credentialsRepository.findMany(
 			options.listQueryOptions,
