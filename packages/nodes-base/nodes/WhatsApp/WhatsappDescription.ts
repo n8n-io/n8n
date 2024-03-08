@@ -50,20 +50,4 @@ export const whatsappTriggerDescription: INodeProperties[] = [
 			},
 		],
 	},
-	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
-		options: [
-			{
-				displayName: 'Download Images/Files',
-				name: 'download',
-				type: 'boolean',
-				default: false,
-				description: '',
-			},
-		],
-	},
 ];

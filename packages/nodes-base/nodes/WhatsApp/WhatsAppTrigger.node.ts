@@ -53,8 +53,8 @@ export class WhatsAppTrigger implements INodeType {
 		properties: [
 			{
 				displayName:
-					'Due to Facebook API limitations, you can use just one Facebook Lead Ads trigger for each Facebook App',
-				name: 'facebookLeadAdsNotice',
+					'Due to Facebook API limitations, you can use just one WhatsApp trigger for each Facebook App',
+				name: 'whatsAppNotice',
 				type: 'notice',
 				default: '',
 			},
@@ -167,7 +167,12 @@ export class WhatsAppTrigger implements INodeType {
 			return {};
 		}
 
-		const events = await Promise.all(bodyData.entry.map((entry) => entry.changes).flat());
+		const events = await Promise.all(
+			bodyData.entry
+				.map((entry) => entry.changes)
+				.flat()
+				.map((change) => ({ ...change.value, field: change.field })),
+		);
 
 		if (events.length === 0) {
 			return {};
