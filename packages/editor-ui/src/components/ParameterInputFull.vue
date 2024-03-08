@@ -333,6 +333,7 @@ export default defineComponent({
 					}
 
 					this.valueChanged(parameterData);
+					this.eventBus.emit('drop', updatedValue);
 
 					if (!this.ndvStore.isMappingOnboarded) {
 						this.showMessage({

@@ -3,12 +3,17 @@
 </template>
 
 <script lang="ts">
-import { acceptCompletion, autocompletion, completionStatus } from '@codemirror/autocomplete';
+import {
+	acceptCompletion,
+	autocompletion,
+	completionStatus,
+	startCompletion,
+} from '@codemirror/autocomplete';
 import { history, redo, undo } from '@codemirror/commands';
 import { Compartment, EditorState, Prec } from '@codemirror/state';
 import { EditorView, keymap } from '@codemirror/view';
 import type { PropType } from 'vue';
-import { defineComponent } from 'vue';
+import { defineComponent, nextTick } from 'vue';
 
 import { completionManager } from '@/mixins/completionManager';
 import { expressionManager } from '@/mixins/expressionManager';
@@ -18,6 +23,7 @@ import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 import { isEqual } from 'lodash-es';
 import type { IDataObject } from 'n8n-workflow';
 import { inputTheme } from './theme';
+import { type EventBus, createEventBus } from 'n8n-design-system/utils';
 
 const editableConf = new Compartment();
 
@@ -44,6 +50,10 @@ export default defineComponent({
 		additionalData: {
 			type: Object as PropType<IDataObject>,
 			default: () => ({}),
+		},
+		eventBus: {
+			type: Object as PropType<EventBus>,
+			default: () => createEventBus(),
 		},
 	},
 	watch: {
@@ -135,13 +145,23 @@ export default defineComponent({
 		this.editorState = this.editor.state;
 
 		highlighter.addColor(this.editor, this.resolvableSegments);
+
+		this.eventBus.on('drop', this.onDrop);
 	},
 	beforeUnmount() {
 		this.editor?.destroy();
+		this.eventBus.off('drop', this.onDrop);
 	},
 	methods: {
 		focus() {
 			this.editor?.focus();
+		},
+		async onDrop() {
+			await nextTick();
+			this.focus();
+			const pos = this.editor.state.sliceDoc(0).lastIndexOf(' }}');
+			this.editor.dispatch({ selection: { anchor: pos, head: pos } });
+			startCompletion(this.editor as EditorView);
 		},
 	},
 });

@@ -34,8 +34,7 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 
 	if (word.from === word.to && !context.explicit) return null;
 
-	// eslint-disable-next-line prefer-const
-	let [base, tail] = splitBaseTail(word.text);
+	const [base, tail] = splitBaseTail(word.text);
 
 	let options: Completion[] = [];
 
@@ -75,8 +74,17 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 		options = options.filter((o) => prefixMatch(o.label, tail) && o.label !== tail);
 	}
 
+	let from = word.to - tail.length;
+
+	// When autocomplete is explicitely opened (by Ctrl+Space or programatically), add completions for the current word with '.' prefix
+	// example: {{ $json.str| }} -> ['.length', '.includes()'...]
+	if (context.explicit && !word.text.endsWith('.')) {
+		options = extendDataTypeOptions(options, word.text);
+		from = word.to;
+	}
+
 	return {
-		from: word.to - tail.length,
+		from,
 		options,
 		filter: false,
 		getMatch(completion: Completion) {
@@ -85,6 +93,20 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 			return [0, lcp.length];
 		},
 	};
+}
+
+function extendDataTypeOptions(options: Completion[], expression: string): Completion[] {
+	try {
+		const resolved = resolveParameter(`={{ ${expression} }}`);
+		return options.concat(
+			datatypeOptions(resolved, expression).map((option) => {
+				option.label = '.' + option.label;
+				return option;
+			}),
+		);
+	} catch {
+		return options;
+	}
 }
 
 function datatypeOptions(resolved: Resolved, toResolve: string) {

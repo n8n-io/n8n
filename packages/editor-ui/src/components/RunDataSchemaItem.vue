@@ -5,6 +5,7 @@ import { checkExhaustive } from '@/utils/typeGuards';
 import { shorten } from '@/utils/typesUtils';
 import { getMappedExpression } from '@/utils/mappingUtils';
 import TextWithHighlights from './TextWithHighlights.vue';
+import { useNDVStore } from '@/stores/ndv.store';
 
 type Props = {
 	schema: Schema;
@@ -20,6 +21,7 @@ type Props = {
 };
 
 const props = defineProps<Props>();
+const ndvStore = useNDVStore();
 
 const isSchemaValueArray = computed(() => Array.isArray(props.schema.value));
 const isSchemaParentTypeArray = computed(() => props.parent?.type === 'array');
@@ -37,6 +39,10 @@ const schemaName = computed(() =>
 );
 const text = computed(() =>
 	Array.isArray(props.schema.value) ? '' : shorten(props.schema.value, 600, 0),
+);
+
+const dragged = computed(
+	() => props.draggingPath === props.schema.path || !ndvStore.isMappingOnboarded,
 );
 
 const getJsonParameterPath = (path: string): string =>
@@ -83,7 +89,7 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 			:class="{
 				[$style.pill]: true,
 				[$style.mappable]: mappingEnabled,
-				[$style.dragged]: draggingPath === schema.path,
+				[$style.dragged]: dragged,
 			}"
 		>
 			<span
@@ -241,7 +247,8 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 	&.dragged {
 		&,
 		&:hover,
-		span {
+		span,
+		&:hover span span {
 			color: var(--color-primary);
 			border-color: var(--color-primary-tint-1);
 			background-color: var(--color-primary-tint-3);

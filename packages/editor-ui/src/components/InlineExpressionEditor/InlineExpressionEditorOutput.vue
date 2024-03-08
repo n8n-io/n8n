@@ -7,130 +7,106 @@
 			<div ref="root" data-test-id="inline-expression-editor-output"></div>
 		</n8n-text>
 		<div :class="$style.footer">
-			<n8n-text size="small" compact>
-				{{ i18n.baseText('parameterInput.anythingInside') }}
-			</n8n-text>
-			<div :class="$style['expression-syntax-example']" v-text="`{{ }}`"></div>
-			<n8n-text size="small" compact>
-				{{ i18n.baseText('parameterInput.isJavaScript') }}
-			</n8n-text>
-			{{ ' ' }}
-			<n8n-link
-				:class="$style['learn-more']"
-				size="small"
-				underline
-				theme="text"
-				:to="expressionsDocsUrl"
+			<n8n-text size="small" compact :class="$style.tip"
+				>{{ $locale.baseText('parameterInput.tip') }}:</n8n-text
 			>
-				{{ i18n.baseText('parameterInput.learnMore') }}
-			</n8n-link>
+			<n8n-text size="small" compact :class="$style.footerText">
+				{{ $locale.baseText('parameterInput.dragTipBeforePill') }}
+			</n8n-text>
+			<div :class="$style.pill">
+				{{ $locale.baseText('parameterInput.inputField') }}
+			</div>
+			<n8n-text size="small" compact :class="$style.footerText">
+				{{ $locale.baseText('parameterInput.dragTipAfterPill') }}
+			</n8n-text>
 		</div>
 	</div>
 </template>
 
-<script lang="ts">
+<script setup lang="ts">
 import { EditorView } from '@codemirror/view';
 import { EditorState } from '@codemirror/state';
 
-import { defineComponent } from 'vue';
-import type { PropType } from 'vue';
-
+import { useI18n } from '@/composables/useI18n';
+import type { Plaintext, Resolved, Segment } from '@/types/expressions';
 import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
+import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue';
 import { outputTheme } from './theme';
 
-import type { Plaintext, Resolved, Segment } from '@/types/expressions';
-import { EXPRESSIONS_DOCS_URL } from '@/constants';
-import { useI18n } from '@/composables/useI18n';
+interface InlineExpressionEditorOutputProps {
+	segments: Segment[];
+	hoveringItemNumber: number;
+	isReadOnly?: boolean;
+	visible?: boolean;
+	noInputData?: boolean;
+}
 
-export default defineComponent({
-	name: 'InlineExpressionEditorOutput',
-	props: {
-		segments: {
-			type: Array as PropType<Segment[]>,
-			required: true,
-		},
-		isReadOnly: {
-			type: Boolean,
-			default: false,
-		},
-		visible: {
-			type: Boolean,
-			default: false,
-		},
-		noInputData: {
-			type: Boolean,
-			default: false,
-		},
-		hoveringItemNumber: {
-			type: Number,
-			required: true,
-		},
-	},
-	setup() {
-		const i18n = useI18n();
+const props = withDefaults(defineProps<InlineExpressionEditorOutputProps>(), {
+	readOnly: false,
+	visible: false,
+	noInputData: false,
+});
 
-		return {
-			i18n,
-		};
-	},
-	data() {
-		return {
-			editor: null as EditorView | null,
-			expressionsDocsUrl: EXPRESSIONS_DOCS_URL,
-		};
-	},
-	computed: {
-		resolvedExpression(): string {
-			return this.segments.reduce((acc, segment) => {
-				acc += segment.kind === 'resolvable' ? segment.resolved : segment.plaintext;
-				return acc;
-			}, '');
-		},
-		plaintextSegments(): Plaintext[] {
-			return this.segments.filter((s): s is Plaintext => s.kind === 'plaintext');
-		},
-		resolvedSegments(): Resolved[] {
-			let cursor = 0;
+const i18n = useI18n();
 
-			return this.segments
-				.map((segment) => {
-					segment.from = cursor;
-					cursor +=
-						segment.kind === 'plaintext'
-							? segment.plaintext.length
-							: segment.resolved
-							  ? segment.resolved.toString().length
-							  : 0;
-					segment.to = cursor;
-					return segment;
-				})
-				.filter((segment): segment is Resolved => segment.kind === 'resolvable');
-		},
-	},
-	watch: {
-		segments() {
-			if (!this.editor) return;
+const editor = ref<EditorView | null>(null);
+const root = ref<HTMLElement | null>(null);
 
-			this.editor.dispatch({
-				changes: { from: 0, to: this.editor.state.doc.length, insert: this.resolvedExpression },
-			});
+const resolvedExpression = computed(() => {
+	return props.segments.reduce((acc, segment) => {
+		acc += segment.kind === 'resolvable' ? (segment.resolved as string) : segment.plaintext;
+		return acc;
+	}, '');
+});
 
-			highlighter.addColor(this.editor, this.resolvedSegments);
-			highlighter.removeColor(this.editor, this.plaintextSegments);
-		},
-	},
-	mounted() {
-		this.editor = new EditorView({
-			parent: this.$refs.root as HTMLDivElement,
-			state: EditorState.create({
-				doc: this.resolvedExpression,
-				extensions: [outputTheme(), EditorState.readOnly.of(true), EditorView.lineWrapping],
-			}),
+const plaintextSegments = computed<Plaintext[]>(() => {
+	return props.segments.filter((s): s is Plaintext => s.kind === 'plaintext');
+});
+
+const resolvedSegments = computed<Resolved[]>(() => {
+	let cursor = 0;
+
+	return props.segments
+		.map((segment) => {
+			segment.from = cursor;
+			cursor +=
+				segment.kind === 'plaintext'
+					? segment.plaintext.length
+					: segment.resolved
+					  ? (segment.resolved as string | number | boolean).toString().length
+					  : 0;
+			segment.to = cursor;
+			return segment;
+		})
+		.filter((segment): segment is Resolved => segment.kind === 'resolvable');
+});
+
+watch(
+	() => props.segments,
+	() => {
+		if (!editor.value) return;
+
+		editor.value.dispatch({
+			changes: { from: 0, to: editor.value.state.doc.length, insert: resolvedExpression.value },
 		});
+
+		highlighter.addColor(editor.value as EditorView, resolvedSegments.value);
+		highlighter.removeColor(editor.value as EditorView, plaintextSegments.value);
 	},
-	beforeUnmount() {
-		this.editor?.destroy();
-	},
+);
+
+onMounted(() => {
+	editor.value = new EditorView({
+		parent: root.value as HTMLElement,
+		state: EditorState.create({
+			doc: resolvedExpression.value,
+			extensions: [outputTheme(), EditorState.readOnly.of(true), EditorView.lineWrapping],
+		}),
+	});
+});
+
+onBeforeUnmount(() => {
+	editor.value?.destroy();
 });
 </script>
 
@@ -180,25 +156,42 @@ export default defineComponent({
 	}
 
 	.footer {
+		display: inline-flex;
+		align-items: center;
 		border-top: var(--border-base);
-		padding: var(--spacing-4xs);
-		padding-left: var(--spacing-2xs);
-		padding-top: 0;
 		line-height: var(--font-line-height-regular);
 		color: var(--color-text-base);
+		font-size: var(--font-size-2xs);
+		padding: var(--spacing-2xs);
+		gap: var(--spacing-4xs);
 
-		.expression-syntax-example {
-			display: inline-block;
-			font-size: var(--font-size-2xs);
-			height: var(--font-size-m);
-			background-color: var(--color-expression-syntax-example);
-			margin-left: var(--spacing-5xs);
-			margin-right: var(--spacing-5xs);
+		.tip {
+			color: var(--color-text-dark);
+			font-weight: var(--font-weight-bold);
 		}
 
-		.learn-more {
-			line-height: 1;
-			white-space: nowrap;
+		.footerText {
+			flex-shrink: 0;
+
+			&:last-child {
+				flex-shrink: 1;
+				white-space: nowrap;
+				min-width: 0;
+				overflow: hidden;
+				text-overflow: ellipsis;
+			}
+		}
+
+		.pill {
+			flex-shrink: 0;
+			display: flex;
+			align-items: center;
+			color: var(--color-primary);
+			background-color: var(--color-primary-tint-3);
+			border: var(--border-base);
+			border-color: var(--color-primary-tint-1);
+			padding: var(--spacing-5xs) var(--spacing-3xs);
+			border-radius: var(--border-radius-base);
 		}
 	}
 }
