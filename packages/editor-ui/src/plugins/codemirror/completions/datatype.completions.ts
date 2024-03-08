@@ -495,7 +495,9 @@ const stringOptions = (input: AutocompleteInput<string>): Completion[] => {
 };
 
 const booleanOptions = (): Completion[] => {
-	return sortCompletionsAlpha([...natives('boolean'), ...extensions('boolean')]);
+	return applySections({
+		options: sortCompletionsAlpha([...natives('boolean'), ...extensions('boolean')]),
+	});
 };
 
 const numberOptions = (input: AutocompleteInput<number>): Completion[] => {
