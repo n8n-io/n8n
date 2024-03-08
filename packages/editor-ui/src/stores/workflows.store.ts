@@ -83,6 +83,7 @@ import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { getCredentialOnlyNodeTypeName } from '@/utils/credentialOnlyNodes';
 import { ResponseError } from '@/utils/apiUtils';
+import { i18n } from '@/plugins/i18n';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -1348,13 +1349,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				);
 			} catch (error) {
 				if (error.response?.status === 413) {
-					throw new ResponseError(
-						'Please execute the whole workflow, rather than just the node. (Existing execution data is too large.)',
-						{
-							errorCode: 413,
-							httpStatusCode: 413,
-						},
-					);
+					throw new ResponseError(i18n.baseText('workflowRun.showError.payloadTooLarge'), {
+						errorCode: 413,
+						httpStatusCode: 413,
+					});
 				}
 				throw error;
 			}
