@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
-import Container, { Service } from 'typedi';
+import { Service } from 'typedi';
 import { Credentials, NodeExecuteFunctions } from 'n8n-core';
 
 import type {
@@ -29,16 +29,13 @@ import { ICredentialsHelper, NodeHelpers, Workflow, ApplicationError } from 'n8n
 import type { ICredentialsDb } from '@/Interfaces';
 
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
-import { NodeTypes } from '@/NodeTypes';
 import { CredentialTypes } from '@/CredentialTypes';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { RESPONSE_ERROR_MESSAGES } from './constants';
 
-import { Logger } from '@/Logger';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { CredentialNotFoundError } from './errors/credential-not-found.error';
-import { ProjectRepository } from './databases/repositories/project.repository';
 
 const mockNode = {
 	name: '',
@@ -74,9 +71,7 @@ const mockNodeTypes: INodeTypes = {
 @Service()
 export class CredentialsHelper extends ICredentialsHelper {
 	constructor(
-		private readonly logger: Logger,
 		private readonly credentialTypes: CredentialTypes,
-		private readonly nodeTypes: NodeTypes,
 		private readonly credentialsOverwrites: CredentialsOverwrites,
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
@@ -242,7 +237,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 	async getCredentials(
 		nodeCredential: INodeCredentialsDetails,
 		type: string,
-		userId?: string,
 	): Promise<Credentials> {
 		if (!nodeCredential.id) {
 			throw new ApplicationError('Found credential with no ID.', {
@@ -253,22 +247,11 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 		let credential: CredentialsEntity;
 
-		const personalProject = userId
-			? await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(userId)
-			: undefined;
-
 		try {
-			credential = personalProject
-				? await this.sharedCredentialsRepository
-						.findOneOrFail({
-							relations: ['credentials'],
-							where: {
-								credentials: { id: nodeCredential.id, type },
-								projectId: personalProject.id,
-							},
-						})
-						.then((shared) => shared.credentials)
-				: await this.credentialsRepository.findOneByOrFail({ id: nodeCredential.id, type });
+			credential = await this.credentialsRepository.findOneByOrFail({
+				id: nodeCredential.id,
+				type,
+			});
 		} catch (error) {
 			throw new CredentialNotFoundError(nodeCredential.id, type);
 		}
