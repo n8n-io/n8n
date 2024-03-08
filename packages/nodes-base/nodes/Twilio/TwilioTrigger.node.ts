@@ -171,7 +171,6 @@ export class TwilioTrigger implements INodeType {
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const bodyData = this.getBodyData();
-
 		return {
 			workflowData: [this.helpers.returnJsonArray([bodyData as unknown as IDataObject])],
 		};
