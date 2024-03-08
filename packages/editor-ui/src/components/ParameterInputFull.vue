@@ -243,6 +243,7 @@ export default defineComponent({
 			return (
 				this.mappingTooltipEnabled &&
 				!this.ndvStore.isMappingOnboarded &&
+				!this.ndvStore.isMappingHintDisabled &&
 				this.focused &&
 				this.isInputTypeString &&
 				!this.isInputDataEmpty &&
