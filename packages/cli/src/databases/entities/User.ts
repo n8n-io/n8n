@@ -151,19 +151,6 @@ export class User extends WithTimestamps implements IUser {
 		);
 	}
 
-	hasScope(scope: Scope | Scope[], projectRole: ProjectRole) {
-		scope = Array.isArray(scope) ? scope : [scope];
-
-		return hasScope(
-			scope,
-			{
-				global: this.globalScopes,
-				project: ['credential:read'], // @TODO: Gather scopes for all project roles
-			},
-			{ sharing: scope },
-		);
-	}
-
 	toJSON() {
 		const { password, apiKey, mfaSecret, mfaRecoveryCodes, ...rest } = this;
 		return rest;

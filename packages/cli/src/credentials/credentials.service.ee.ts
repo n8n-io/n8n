@@ -1,11 +1,8 @@
-import { In, type EntityManager, type FindOptionsWhere } from '@n8n/typeorm';
-import type { SharedCredentials } from '@db/entities/SharedCredentials';
+import { In, type EntityManager } from '@n8n/typeorm';
 import type { User } from '@db/entities/User';
-import { CredentialsService, type CredentialsGetSharedOptions } from './credentials.service';
+import { CredentialsService } from './credentials.service';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
-import { UserRepository } from '@/databases/repositories/user.repository';
-import { CredentialsEntity } from '@/databases/entities/CredentialsEntity';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
+import type { CredentialsEntity } from '@/databases/entities/CredentialsEntity';
 import { Service } from 'typedi';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -15,80 +12,10 @@ import { Project } from '@/databases/entities/Project';
 @Service()
 export class EnterpriseCredentialsService {
 	constructor(
-		private readonly userRepository: UserRepository,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly ownershipService: OwnershipService,
 		private readonly credentialsService: CredentialsService,
-		private readonly projectRepository: ProjectRepository,
 	) {}
-
-	async isOwned(user: User, credentialId: string) {
-		const sharing = await this.getSharing(user, credentialId, { allowGlobalScope: false }, [
-			'credentials',
-		]);
-
-		if (!sharing || sharing.role !== 'credential:owner') return { ownsCredential: false };
-
-		const { credentials: credential } = sharing;
-
-		return { ownsCredential: true, credential };
-	}
-
-	/**
-	 * Retrieve the sharing that matches a user and a credential.
-	 */
-	async getSharing(
-		user: User,
-		credentialId: string,
-		options: CredentialsGetSharedOptions,
-		relations: string[] = ['credentials'],
-	) {
-		const where: FindOptionsWhere<SharedCredentials> = { credentialsId: credentialId };
-
-		// Omit user from where if the requesting user has relevant
-		// global credential permissions. This allows the user to
-		// access credentials they don't own.
-		if (!options.allowGlobalScope || !user.hasGlobalScope(options.globalScope)) {
-			where.userId = user.id;
-		}
-
-		return await this.sharedCredentialsRepository.findOne({
-			where,
-			relations,
-		});
-	}
-
-	async getSharings(transaction: EntityManager, credentialId: string, relations = ['shared']) {
-		const credential = await transaction.findOne(CredentialsEntity, {
-			where: { id: credentialId },
-			relations,
-		});
-
-		return credential?.shared ?? [];
-	}
-
-	async share(transaction: EntityManager, credential: CredentialsEntity, shareWithIds: string[]) {
-		const users = await this.userRepository.getByIds(transaction, shareWithIds);
-
-		const newSharedCredentials = await Promise.all(
-			users
-				.filter((user) => !user.isPending)
-				.map(async (user) => {
-					const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(
-						user.id,
-					);
-
-					return this.sharedCredentialsRepository.create({
-						credentialsId: credential.id,
-						userId: user.id,
-						role: 'credential:user',
-						project: personalProject,
-					});
-				}),
-		);
-
-		return await transaction.save(newSharedCredentials);
-	}
 
 	async shareWithProjects(
 		credential: CredentialsEntity,

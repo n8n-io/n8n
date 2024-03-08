@@ -660,23 +660,22 @@ describe('GET /credentials/:id', () => {
 });
 
 function validateMainCredentialData(credential: ListQuery.Credentials.WithOwnedByAndSharedWith) {
-	const { name, type, nodesAccess, sharedWith, ownedBy } = credential;
+	const { name, type, nodesAccess, sharedWithProjects, homeProject } = credential;
 
 	expect(typeof name).toBe('string');
 	expect(typeof type).toBe('string');
 	expect(typeof nodesAccess?.[0].nodeType).toBe('string');
 
-	if (sharedWith) {
-		expect(Array.isArray(sharedWith)).toBe(true);
+	if (sharedWithProjects) {
+		expect(Array.isArray(sharedWithProjects)).toBe(true);
 	}
 
-	if (ownedBy) {
-		const { id, email, firstName, lastName } = ownedBy;
+	if (homeProject) {
+		const { id, type, name } = homeProject;
 
 		expect(typeof id).toBe('string');
-		expect(typeof email).toBe('string');
-		expect(typeof firstName).toBe('string');
-		expect(typeof lastName).toBe('string');
+		expect(typeof name).toBe('string');
+		expect(type).toBe('personal');
 	}
 }
 
