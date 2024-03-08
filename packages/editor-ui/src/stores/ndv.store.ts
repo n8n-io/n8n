@@ -50,6 +50,7 @@ export const useNDVStore = defineStore(STORES.NDV, {
 			activeTarget: null,
 		},
 		isMappingOnboarded: useStorage(LOCAL_STORAGE_MAPPING_IS_ONBOARDED).value === 'true',
+		isMappingHintDisabled: false,
 	}),
 	getters: {
 		activeNode(): INodeUi | null {
@@ -236,11 +237,12 @@ export const useNDVStore = defineStore(STORES.NDV, {
 		setNDVPanelDataIsEmpty(payload: { panel: 'input' | 'output'; isEmpty: boolean }): void {
 			this[payload.panel].data.isEmpty = payload.isEmpty;
 		},
-		disableMappingHint(store = true) {
+		setMappingOnboarded() {
 			this.isMappingOnboarded = true;
-			if (store) {
-				useStorage(LOCAL_STORAGE_MAPPING_IS_ONBOARDED).value = 'true';
-			}
+			useStorage(LOCAL_STORAGE_MAPPING_IS_ONBOARDED).value = 'true';
+		},
+		disableMappingHint() {
+			this.isMappingHintDisabled = true;
 		},
 		updateNodeParameterIssues(issues: INodeIssues): void {
 			const workflowsStore = useWorkflowsStore();

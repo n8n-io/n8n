@@ -343,7 +343,7 @@ export default defineComponent({
 							dangerouslyUseHTMLString: true,
 						});
 
-						this.ndvStore.disableMappingHint();
+						this.ndvStore.setMappingOnboarded();
 					}
 
 					this.ndvStore.setMappingTelemetry({
@@ -366,7 +366,7 @@ export default defineComponent({
 			}, 200);
 		},
 		onMappingTooltipDismissed() {
-			this.ndvStore.disableMappingHint(false);
+			this.ndvStore.disableMappingHint();
 		},
 	},
 	watch: {
