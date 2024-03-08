@@ -19,6 +19,7 @@ import type { Variables } from '@db/entities/Variables';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { WorkflowHistory } from '@db/entities/WorkflowHistory';
+import { NodeError } from 'n8n-workflow';
 
 export class UserUpdatePayload implements Pick<User, 'email' | 'firstName' | 'lastName'> {
 	@IsEmail()
@@ -134,6 +135,18 @@ export function hasSharing(
 	workflows: ListQuery.Workflow.Plain[] | ListQuery.Workflow.WithSharing[],
 ): workflows is ListQuery.Workflow.WithSharing[] {
 	return workflows.some((w) => 'shared' in w);
+}
+
+// ----------------------------------
+//          /ai
+// ----------------------------------
+
+export declare namespace AIRequest {
+	export type DebugError = AuthenticatedRequest<{}, {}, AIDebugErrorPayload>;
+}
+
+export interface AIDebugErrorPayload {
+	error: NodeError;
 }
 
 // ----------------------------------
