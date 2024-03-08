@@ -32,10 +32,15 @@ function parseSingleFilterValue(
 	type: FilterOperatorType,
 	strict = false,
 ): ValidationResult {
-	return type === 'any' || value === null || value === undefined || value === ''
+	return type === 'any' || value === null || value === undefined
 		? ({ valid: true, newValue: value } as ValidationResult)
 		: validateFieldType('filter', value, type, { strict, parseStrings: true });
 }
+
+const withIndefiniteArticle = (noun: string): string => {
+	const article = 'aeiou'.includes(noun.charAt(0)) ? 'an' : 'a';
+	return `${article} ${noun}`;
+};
 
 function parseFilterConditionValues(
 	condition: FilterConditionValue,
@@ -63,50 +68,29 @@ function parseFilterConditionValues(
 			condition.rightValue.startsWith('='));
 	const leftValueString = String(condition.leftValue);
 	const rightValueString = String(condition.rightValue);
-	const errorDescription = 'Try to change the operator, or change the type with an expression';
-	const inCondition = errorFormat === 'full' ? ` in condition ${index + 1} ` : ' ';
-	const itemSuffix = `[item ${itemIndex}]`;
+	const suffix =
+		errorFormat === 'full' ? `[condition ${index}, item ${itemIndex}]` : `[item ${itemIndex}]`;
 
-	if (!leftValid && !rightValid) {
-		const providedValues = 'The provided values';
-		let types = `'${operator.type}'`;
-		if (rightType !== operator.type) {
-			types = `'${operator.type}' and '${rightType}' respectively`;
-		}
+	const composeInvalidTypeMessage = (type: string, fromType: string, value: string) => {
+		fromType = fromType.toLocaleLowerCase();
 		if (strict) {
-			return {
-				ok: false,
-				error: new FilterError(
-					`${providedValues} '${leftValueString}' and '${rightValueString}'${inCondition}are not of the expected type ${types} ${itemSuffix}`,
-					errorDescription,
-				),
-			};
+			return `Wrong type: '${value}' is ${withIndefiniteArticle(
+				fromType,
+			)} but was expecting ${withIndefiniteArticle(type)} ${suffix}`;
 		}
-
-		return {
-			ok: false,
-			error: new FilterError(
-				`${providedValues} '${leftValueString}' and '${rightValueString}'${inCondition}cannot be converted to the expected type ${types} ${itemSuffix}`,
-				errorDescription,
-			),
-		};
-	}
-
-	const composeInvalidTypeMessage = (field: 'left' | 'right', type: string, value: string) => {
-		const fieldNumber = field === 'left' ? 1 : 2;
-
-		if (strict) {
-			return `The provided value ${fieldNumber} '${value}'${inCondition}is not of the expected type '${type}' ${itemSuffix}`;
-		}
-		return `The provided value ${fieldNumber} '${value}'${inCondition}cannot be converted to the expected type '${type}' ${itemSuffix}`;
+		return `Conversion error: the ${fromType} '${value}' can't be converted to ${withIndefiniteArticle(
+			type,
+		)} ${suffix}`;
 	};
+
+	const invalidTypeDescription = 'Try changing the type of comparison.';
 
 	if (!leftValid) {
 		return {
 			ok: false,
 			error: new FilterError(
-				composeInvalidTypeMessage('left', operator.type, leftValueString),
-				errorDescription,
+				composeInvalidTypeMessage(operator.type, typeof condition.leftValue, leftValueString),
+				invalidTypeDescription,
 			),
 		};
 	}
@@ -115,8 +99,8 @@ function parseFilterConditionValues(
 		return {
 			ok: false,
 			error: new FilterError(
-				composeInvalidTypeMessage('right', rightType, rightValueString),
-				errorDescription,
+				composeInvalidTypeMessage(rightType, typeof condition.rightValue, rightValueString),
+				invalidTypeDescription,
 			),
 		};
 	}
@@ -301,7 +285,7 @@ export function executeFilterCondition(
 
 			switch (condition.operator.operation) {
 				case 'empty':
-					return !!left && Object.keys(left).length === 0;
+					return !left || Object.keys(left).length === 0;
 				case 'notEmpty':
 					return !!left && Object.keys(left).length !== 0;
 			}
