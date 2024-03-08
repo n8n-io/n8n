@@ -169,22 +169,22 @@ export default defineComponent({
 		},
 	},
 	methods: {
-		async onClick(event: Event) {
-			if (
-				this.$refs.cardActions === event.target ||
-				this.$refs.cardActions?.contains(event.target)
-			) {
-				return;
-			}
+		async onClick(event?: KeyboardEvent | PointerEvent) {
+			if (event) {
+				const cardActions = this.$refs.cardActions as HTMLElement;
+				if (cardActions === event.target || cardActions?.contains(event.target as HTMLElement)) {
+					return;
+				}
 
-			if (event.metaKey || event.ctrlKey) {
-				const route = this.$router.resolve({
-					name: VIEWS.WORKFLOW,
-					params: { name: this.data.id },
-				});
-				window.open(route.href, '_blank');
+				if (event.metaKey || event.ctrlKey) {
+					const route = this.$router.resolve({
+						name: VIEWS.WORKFLOW,
+						params: { name: this.data.id },
+					});
+					window.open(route.href, '_blank');
 
-				return;
+					return;
+				}
 			}
 
 			await this.$router.push({
