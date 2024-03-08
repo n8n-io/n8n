@@ -45,6 +45,7 @@ import {
 	LUXON_RECOMMENDED_OPTIONS,
 	LUXON_SECTIONS,
 	METHODS_SECTION,
+	METHOD_TYPE,
 	OBJECT_RECOMMENDED_OPTIONS,
 	OTHER_METHODS_SECTION,
 	OTHER_SECTION,
@@ -175,6 +176,11 @@ export const extensions = (typeName: ExtensionTypeName, includeHidden = false) =
 	return toOptions(fnToDoc, typeName, 'extension-function', includeHidden);
 };
 
+export const getDetail = (type = 'unknown', isFunction = false): string => {
+	if (isFunction) return METHOD_TYPE;
+	return type.toLocaleLowerCase();
+};
+
 export const toOptions = (
 	fnToDoc: FnToDoc,
 	typeName: ExtensionTypeName,
@@ -201,6 +207,7 @@ const createCompletionOption = (
 		label,
 		type: optionType,
 		section: docInfo.doc?.section,
+		detail: getDetail(docInfo.doc?.returnType, isFunction),
 		apply: applyCompletion(hasRequiredArgs(docInfo?.doc)),
 	};
 
@@ -338,6 +345,7 @@ const objectOptions = (input: AutocompleteInput<IDataObject>): Completion[] => {
 				label: isFunction ? key + '()' : key,
 				type: isFunction ? 'function' : 'keyword',
 				section: getObjectPropertySection({ name, key, isFunction }),
+				detail: getDetail(typeof resolvedProp, isFunction),
 				apply: applyCompletion(hasArgs),
 			};
 
@@ -588,7 +596,7 @@ export const secretOptions = (base: string) => {
 			return [];
 		}
 		return Object.entries(resolved).map(([secret, value]) =>
-			createCompletionOption('Object', secret, 'keyword', {
+			createCompletionOption('', secret, 'keyword', {
 				doc: {
 					name: secret,
 					returnType: typeof value,
@@ -696,6 +704,7 @@ const createLuxonAutocompleteOption = (
 		label,
 		type,
 		section: doc?.section,
+		detail: getDetail(doc?.returnType, isFunction),
 		apply: applyCompletion(hasRequiredArgs(doc)),
 	};
 	option.info = createCompletionOption('DateTime', name, type, {

@@ -12,7 +12,7 @@ import {
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { escapeMappingString } from '@/utils/mappingUtils';
-import { PREVIOUS_NODES_SECTION, ROOT_DOLLAR_COMPLETIONS } from './constants';
+import { NODE_TYPE, PREVIOUS_NODES_SECTION, ROOT_DOLLAR_COMPLETIONS } from './constants';
 
 /**
  * Completions offered at the dollar position: `$|`
@@ -74,6 +74,7 @@ export function dollarOptions(): Completion[] {
 		label: `$('${escapeMappingString(nodeName)}')`,
 		type: 'keyword',
 		info: i18n.baseText('codeNodeEditor.completer.$()', { interpolate: { nodeName } }),
+		detail: NODE_TYPE,
 		section: PREVIOUS_NODES_SECTION,
 	}));
 

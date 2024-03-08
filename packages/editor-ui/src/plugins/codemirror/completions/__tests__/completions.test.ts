@@ -26,6 +26,8 @@ import {
 	LUXON_RECOMMENDED_OPTIONS,
 	METADATA_SECTION,
 	METHODS_SECTION,
+	METHOD_TYPE,
+	N8N_OBJECT_TYPE,
 	RECOMMENDED_SECTION,
 	STRING_RECOMMENDED_OPTIONS,
 } from '../constants';
@@ -63,13 +65,21 @@ describe('Top-level completions', () => {
 		expect(result).toHaveLength(dollarOptions().length);
 
 		expect(result?.[0]).toEqual(
-			expect.objectContaining({ label: '$json', section: RECOMMENDED_SECTION }),
+			expect.objectContaining({
+				label: '$json',
+				section: RECOMMENDED_SECTION,
+				detail: N8N_OBJECT_TYPE,
+			}),
 		);
 		expect(result?.[4]).toEqual(
-			expect.objectContaining({ label: '$execution', section: METADATA_SECTION }),
+			expect.objectContaining({
+				label: '$execution',
+				section: METADATA_SECTION,
+				detail: N8N_OBJECT_TYPE,
+			}),
 		);
 		expect(result?.[14]).toEqual(
-			expect.objectContaining({ label: '$max()', section: METHODS_SECTION }),
+			expect.objectContaining({ label: '$max()', section: METHODS_SECTION, detail: METHOD_TYPE }),
 		);
 	});
 
@@ -334,6 +344,7 @@ describe('Resolution-based completions', () => {
 					info: expect.any(Function),
 					label: provider,
 					type: 'keyword',
+					detail: 'object',
 					apply: expect.any(Function),
 				},
 			]);
@@ -358,12 +369,14 @@ describe('Resolution-based completions', () => {
 					info: expect.any(Function),
 					label: secrets[0],
 					type: 'keyword',
+					detail: 'string',
 					apply: expect.any(Function),
 				},
 				{
 					info: expect.any(Function),
 					label: secrets[1],
 					type: 'keyword',
+					detail: 'string',
 					apply: expect.any(Function),
 				},
 			]);

@@ -47,90 +47,113 @@ export const OTHER_SECTION: CompletionSection = withSectionHeader({
 	rank: 101,
 });
 
+export const N8N_OBJECT_TYPE = 'n8n object';
+export const NODE_TYPE = 'n8n node';
+export const METHOD_TYPE = 'method';
+export const LUXON_TYPE = 'datetime';
+export const NUMBER_TYPE = 'number';
+
 export const ROOT_DOLLAR_COMPLETIONS: Completion[] = [
 	{
 		label: '$json',
 		section: RECOMMENDED_SECTION,
+		detail: N8N_OBJECT_TYPE,
 		info: i18n.rootVars.$json,
 	},
 	{
 		label: '$binary',
 		section: RECOMMENDED_SECTION,
+		detail: N8N_OBJECT_TYPE,
 		info: i18n.rootVars.$binary,
 	},
 	{
 		label: '$now',
 		section: RECOMMENDED_SECTION,
+		detail: LUXON_TYPE,
 		info: i18n.rootVars.$now,
 	},
 	{
 		label: '$if()',
 		section: RECOMMENDED_SECTION,
+		detail: METHOD_TYPE,
 		info: i18n.rootVars.$if,
 	},
 	{
 		label: '$ifEmpty()',
 		section: RECOMMENDED_SECTION,
+		detail: METHOD_TYPE,
 		info: i18n.rootVars.$ifEmpty,
 	},
 	{
 		label: '$execution',
 		section: METADATA_SECTION,
+		detail: N8N_OBJECT_TYPE,
 		info: i18n.rootVars.$execution,
 	},
 	{
 		label: '$itemIndex',
 		section: METADATA_SECTION,
+		detail: NUMBER_TYPE,
 		info: i18n.rootVars.$itemIndex,
 	},
 	{
 		label: '$input',
 		section: METADATA_SECTION,
+		detail: N8N_OBJECT_TYPE,
 		info: i18n.rootVars.$input,
 	},
 	{
 		label: '$parameter',
 		section: METADATA_SECTION,
+		detail: N8N_OBJECT_TYPE,
 		info: i18n.rootVars.$parameter,
 	},
 	{
 		label: '$prevNode',
 		section: METADATA_SECTION,
+		detail: N8N_OBJECT_TYPE,
 		info: i18n.rootVars.$prevNode,
 	},
 	{
 		label: '$runIndex',
 		section: METADATA_SECTION,
+		detail: NUMBER_TYPE,
 		info: i18n.rootVars.$runIndex,
 	},
 	{
 		label: '$today',
 		section: METADATA_SECTION,
+		detail: LUXON_TYPE,
 		info: i18n.rootVars.$today,
 	},
 	{
 		label: '$vars',
 		section: METADATA_SECTION,
+		detail: N8N_OBJECT_TYPE,
 		info: i18n.rootVars.$vars,
 	},
 	{
 		label: '$workflow',
 		section: METADATA_SECTION,
+		detail: N8N_OBJECT_TYPE,
 		info: i18n.rootVars.$workflow,
 	},
 	{
 		label: '$jmespath()',
 		section: METHODS_SECTION,
+		detail: METHOD_TYPE,
 		info: i18n.rootVars.$jmespath,
 	},
 	{
 		label: '$max()',
 		section: METHODS_SECTION,
+		detail: METHOD_TYPE,
 		info: i18n.rootVars.$max,
 	},
 	{
 		label: '$min()',
 		section: METHODS_SECTION,
+		detail: METHOD_TYPE,
 		info: i18n.rootVars.$min,
 	},
 ];
