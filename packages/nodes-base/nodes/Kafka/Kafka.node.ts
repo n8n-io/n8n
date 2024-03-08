@@ -1,6 +1,8 @@
 import type { KafkaConfig, SASLOptions, TopicMessages } from 'kafkajs';
 import { CompressionTypes, Kafka as apacheKafka } from 'kafkajs';
 
+import { ConnectionOptions } from 'tls';
+
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
 
 import type {
@@ -222,10 +224,29 @@ export class Kafka implements INodeType {
 
 					const ssl = credentials.ssl as boolean;
 
+					let useSslConnectionOptions = false as boolean;
+					let sslConnectionOptions: ConnectionOptions = {}
+
+					if (ssl === true && (credentials.sslCa !== '' || credentials.sslCert !== ''  || credentials.sslKey !== '')) {
+						useSslConnectionOptions = true;
+						if (credentials.sslCa !== '') {
+							sslConnectionOptions.ca = [credentials.sslCa] as string[];
+						}
+						if (credentials.sslCert !== '') {
+							sslConnectionOptions.cert = credentials.sslCert as string;
+						}
+						if (credentials.sslKey !== '') {
+							sslConnectionOptions.key = credentials.sslKey as string;
+						}
+						if (credentials.sslPassphrase !== '') {
+							sslConnectionOptions.passphrase = credentials.sslPassphrase as string;
+						}
+					};
+
 					const config: KafkaConfig = {
 						clientId,
 						brokers,
-						ssl,
+						ssl: useSslConnectionOptions ? sslConnectionOptions : ssl,
 					};
 					if (credentials.authentication === true) {
 						if (!(credentials.username && credentials.password)) {
@@ -293,10 +314,29 @@ export class Kafka implements INodeType {
 
 			const ssl = credentials.ssl as boolean;
 
+			let useSslConnectionOptions = false as boolean;
+			let sslConnectionOptions: ConnectionOptions = {}
+
+			if (ssl === true && (credentials.sslCa !== '' || credentials.sslCert !== ''  || credentials.sslKey !== '')) {
+				useSslConnectionOptions = true;
+				if (credentials.sslCa !== '') {
+					sslConnectionOptions.ca = [credentials.sslCa] as string[];
+				}
+				if (credentials.sslCert !== '') {
+					sslConnectionOptions.cert = credentials.sslCert as string;
+				}
+				if (credentials.sslKey !== '') {
+					sslConnectionOptions.key = credentials.sslKey as string;
+				}
+				if (credentials.sslPassphrase !== '') {
+					sslConnectionOptions.passphrase = credentials.sslPassphrase as string;
+				}
+			};
+			
 			const config: KafkaConfig = {
 				clientId,
 				brokers,
-				ssl,
+				ssl: useSslConnectionOptions ? sslConnectionOptions : ssl,
 			};
 
 			if (credentials.authentication === true) {
