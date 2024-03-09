@@ -36,6 +36,7 @@ import { RESPONSE_ERROR_MESSAGES } from './constants';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { CredentialNotFoundError } from './errors/credential-not-found.error';
+import { In } from '@n8n/typeorm';
 
 const mockNode = {
 	name: '',
@@ -326,7 +327,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 		await additionalData?.secretsHelpers?.waitForInit();
 
-		const canUseSecrets = await this.credentialOwnedByOwner(nodeCredentials);
+		const canUseSecrets = await this.credentialOwnedBySuperUsers(nodeCredentials);
 
 		return this.applyDefaultsAndOverwrites(
 			additionalData,
@@ -445,7 +446,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		await this.credentialsRepository.update(findQuery, newCredentialsData);
 	}
 
-	async credentialOwnedByOwner(nodeCredential: INodeCredentialsDetails): Promise<boolean> {
+	async credentialOwnedBySuperUsers(nodeCredential: INodeCredentialsDetails): Promise<boolean> {
 		if (!nodeCredential.id) {
 			return false;
 		}
@@ -457,7 +458,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 					projectRelations: {
 						role: 'project:personalOwner',
 						user: {
-							role: 'global:owner',
+							role: In(['global:owner', 'global:admin']),
 						},
 					},
 				},
