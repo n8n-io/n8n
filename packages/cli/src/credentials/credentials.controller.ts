@@ -40,7 +40,6 @@ export class CredentialsController {
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 	) {}
 
-	// NOTE: tested
 	@Get('/', { middlewares: listQueryMiddleware })
 	async getMany(req: ListQuery.Request) {
 		return await this.credentialsService.getMany(req.user, {
@@ -48,7 +47,6 @@ export class CredentialsController {
 		});
 	}
 
-	// NOTE: tested
 	@Get('/new')
 	async generateUniqueName(req: CredentialRequest.NewName) {
 		const requestedName = req.query.name ?? config.getEnv('credentials.defaultName');
@@ -58,7 +56,6 @@ export class CredentialsController {
 		};
 	}
 
-	// NOTE: tested
 	@Get('/:credentialId')
 	@ProjectScope('credential:read')
 	async getOne(req: CredentialRequest.Get) {
@@ -82,7 +79,6 @@ export class CredentialsController {
 		);
 	}
 
-	// NOTE: updated, but not tested, route has no tests.
 	// TODO: Write at least test cases for the failure paths.
 	@Post('/test')
 	async testCredentials(req: CredentialRequest.Test) {
@@ -110,7 +106,6 @@ export class CredentialsController {
 		return await this.credentialsService.test(req.user, mergedCredentials);
 	}
 
-	// NOTE: tested
 	@Post('/')
 	async createCredentials(req: CredentialRequest.Create) {
 		const newCredential = await this.credentialsService.prepareCreateData(req.body);
@@ -134,7 +129,6 @@ export class CredentialsController {
 		return credential;
 	}
 
-	// NOTE: tested
 	@Patch('/:credentialId')
 	@ProjectScope('credential:update')
 	async updateCredentials(req: CredentialRequest.Update) {
@@ -180,7 +174,6 @@ export class CredentialsController {
 		return { ...rest };
 	}
 
-	// NOTE: tested
 	@Delete('/:credentialId')
 	@ProjectScope('credential:delete')
 	async deleteCredentials(req: CredentialRequest.Delete) {
@@ -207,7 +200,6 @@ export class CredentialsController {
 		return true;
 	}
 
-	// NOTE: tested
 	@Licensed('feat:sharing')
 	@Put('/:credentialId/share')
 	@ProjectScope('credential:share')

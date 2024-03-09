@@ -1,4 +1,3 @@
-// NOTE: passing
 import Container from 'typedi';
 import type { SuperAgentTest } from 'supertest';
 import { v4 as uuid } from 'uuid';
@@ -436,7 +435,6 @@ describe('GET /workflows', () => {
 		});
 	});
 
-	// NOTE: passing
 	describe('select', () => {
 		test('should select workflow field: name', async () => {
 			await createWorkflow({ name: 'First' }, owner);

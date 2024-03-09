@@ -1,4 +1,3 @@
-// NOTE: passing
 import { Container } from 'typedi';
 import type { SuperAgentTest } from 'supertest';
 import { In } from '@n8n/typeorm';
@@ -73,7 +72,6 @@ afterEach(() => {
 // ----------------------------------------
 // GET /credentials - fetch all credentials
 // ----------------------------------------
-// NOTE: passing
 describe('GET /credentials', () => {
 	test('should return all creds for owner', async () => {
 		const [member1, member2, member3] = await createManyUsers(3, {
@@ -220,7 +218,6 @@ describe('GET /credentials', () => {
 // ----------------------------------------
 // GET /credentials/:id - fetch a certain credential
 // ----------------------------------------
-// NOTE: passing
 describe('GET /credentials/:id', () => {
 	test('should retrieve owned cred for owner', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
@@ -381,7 +378,6 @@ describe('GET /credentials/:id', () => {
 // ----------------------------------------
 // idempotent share/unshare
 // ----------------------------------------
-// NOTE: passing
 describe('PUT /credentials/:id/share', () => {
 	test('should share the credential with the provided userIds and unshare it for missing ones', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });

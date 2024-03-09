@@ -1,4 +1,3 @@
-// NOTE: passing
 import { Config } from '@oclif/core';
 
 import { InternalHooks } from '@/InternalHooks';

@@ -56,7 +56,6 @@ beforeEach(async () => {
 // ----------------------------------------
 // GET /credentials - fetch all credentials
 // ----------------------------------------
-// NOTE: passing
 describe('GET /credentials', () => {
 	test('should return all creds for owner', async () => {
 		const [{ id: savedOwnerCredentialId }, { id: savedMemberCredentialId }] = await Promise.all([
@@ -100,7 +99,6 @@ describe('GET /credentials', () => {
 	});
 });
 
-// NOTE: passing
 describe('POST /credentials', () => {
 	test('should create cred', async () => {
 		const payload = randomCredentialPayload();
@@ -247,7 +245,6 @@ describe('POST /credentials', () => {
 	});
 });
 
-// NOTE: passing
 describe('DELETE /credentials/:id', () => {
 	test('should delete owned cred for owner', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
@@ -351,7 +348,6 @@ describe('DELETE /credentials/:id', () => {
 	});
 });
 
-// NOTE: passing
 describe('PATCH /credentials/:id', () => {
 	test('should update owned cred for owner', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
@@ -542,7 +538,6 @@ describe('PATCH /credentials/:id', () => {
 	});
 });
 
-// NOTE: passing
 describe('GET /credentials/new', () => {
 	test('should return default name for new credential or its increment', async () => {
 		const name = config.getEnv('credentials.defaultName');
@@ -581,7 +576,6 @@ describe('GET /credentials/new', () => {
 	});
 });
 
-// NOTE: passing
 describe('GET /credentials/:id', () => {
 	test('should retrieve owned cred for owner', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });

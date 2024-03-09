@@ -269,7 +269,6 @@ describe('GET /workflows/new', () => {
 	});
 });
 
-// NOTE: passing
 describe('GET /workflows/:id', () => {
 	test('GET should fail with invalid id due to route rule', async () => {
 		const response = await authOwnerAgent.get('/workflows/potatoes');
