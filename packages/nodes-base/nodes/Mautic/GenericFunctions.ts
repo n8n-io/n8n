@@ -51,7 +51,7 @@ export async function mauticApiRequest(
 		}
 
 		if (returnData.errors) {
-			// They seem to to sometimes return 200 status but still error.
+			// They seem to sometimes return 200 status but still error.
 			throw new NodeApiError(this.getNode(), returnData as JsonObject);
 		}
 
