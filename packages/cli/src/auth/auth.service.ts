@@ -60,7 +60,13 @@ export class AuthService {
 
 		const bearerToken = req.headers.authorization;
 		if (bearerToken) {
-			req.user = await this.resolveHBJwt(bearerToken);
+			try {
+				req.user = await this.resolveHBJwt(bearerToken);
+			} catch (error) {
+				if (!(error instanceof AuthError)) {
+					throw error;
+				}
+			}
 		}
 
 		if (req.user) next();
