@@ -17,6 +17,7 @@ export const eventNamesAudit = [
 	'n8n.audit.user.login.success',
 	'n8n.audit.user.login.failed',
 	'n8n.audit.user.signedup',
+	'n8n.audit.user.created',
 	'n8n.audit.user.updated',
 	'n8n.audit.user.deleted',
 	'n8n.audit.user.invited',

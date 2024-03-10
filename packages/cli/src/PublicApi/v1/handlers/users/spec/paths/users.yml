@@ -18,3 +18,26 @@ get:
             $ref: '../schemas/userList.yml'
     '401':
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
+post:
+  x-eov-operation-id: createUser
+  x-eov-operation-handler: v1/handlers/users/users.handler.ee
+  tags:
+    - User
+  summary: Create a user
+  description: Create a user in your instance. Only available for the instance owner.
+  requestBody:
+    description: Created user object.
+    content:
+      application/json:
+        schema:
+          $ref: '../schemas/user.yml'
+    required: true
+  responses:
+    '200':
+      description: Operation successful.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/user.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'

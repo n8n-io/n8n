@@ -281,6 +281,13 @@ export declare namespace UserRequest {
 			password: string;
 		}
 	>;
+
+	export type UserCreateProperties = Pick<
+		User,
+		'email' | 'firstName' | 'lastName' | 'password' | 'role'
+	>;
+
+	export type Create = AuthenticatedRequest<{}, {}, UserCreateProperties>;
 }
 
 // ----------------------------------

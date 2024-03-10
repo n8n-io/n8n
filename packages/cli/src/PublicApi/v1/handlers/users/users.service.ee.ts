@@ -1,8 +1,11 @@
 import { Container } from 'typedi';
 import { UserRepository } from '@db/repositories/user.repository';
-import type { User } from '@db/entities/User';
+import { User } from '@db/entities/User';
 import pick from 'lodash/pick';
 import { validate as uuidValidate } from 'uuid';
+import { PasswordUtility } from '@/services/password.utility';
+import type { UserRequest } from '@/requests';
+import * as Db from '@/Db';
 
 export async function getUser(data: {
 	withIdentifier: string;
@@ -38,6 +41,29 @@ export async function getAllUsersAndCount(data: {
 	}
 	const count = await Container.get(UserRepository).count();
 	return [users, count];
+}
+
+export async function createUser(properties: UserRequest.UserCreateProperties): Promise<User> {
+	const newUser = new User();
+
+	Object.assign(newUser, {
+		...properties,
+		role: 'global:member',
+		password: await Container.get(PasswordUtility).hash(properties.password),
+	});
+
+	return newUser;
+}
+
+export async function saveUser(user: User): Promise<User> {
+	// TODO: is there a hook we need to run?
+	// await Container.get(ExternalHooks).run('user.create', [user]);
+
+	return await Db.transaction(async (transactionManager) => {
+		const savedUser = await transactionManager.save<User>(user);
+
+		return savedUser;
+	});
 }
 
 const userProperties = [

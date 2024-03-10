@@ -660,6 +660,19 @@ export class InternalHooks {
 		]);
 	}
 
+	async onUserCreate(userCreateData: { user: User }): Promise<void> {
+		// TODO: should this be an audit event or a telemetry event?
+		void Promise.all([
+			this.eventBus.sendAuditEvent({
+				eventName: 'n8n.audit.user.created',
+				payload: userToPayload(userCreateData.user),
+			}),
+			this.telemetry.track('User created', {
+				user_id: userCreateData.user.id,
+			}),
+		]);
+	}
+
 	async onUserInviteEmailClick(userInviteClickData: {
 		inviter: User;
 		invitee: User;
