@@ -544,7 +544,7 @@ describe('Resolution-based completions', () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce('1-Feb-2024');
 
 			expect(completions('{{ "1-Feb-2024".| }}')?.[0]).toEqual(
-				expect.objectContaining({ label: 'toDate()', section: RECOMMENDED_SECTION }),
+				expect.objectContaining({ label: 'toDateTime()', section: RECOMMENDED_SECTION }),
 			);
 		});
 
