@@ -1,6 +1,6 @@
 {
   "name": "n8n-editor-ui",
-  "version": "1.28.0",
+  "version": "1.31.0",
   "description": "Workflow Editor UI for n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -70,7 +70,7 @@
     "timeago.js": "^4.0.2",
     "uuid": "^8.3.2",
     "v3-infinite-loading": "^1.2.2",
-    "vue": "^3.3.4",
+    "vue": "^3.4.21",
     "vue-agile": "^2.0.0",
     "vue-chartjs": "^5.2.0",
     "vue-i18n": "^9.2.2",

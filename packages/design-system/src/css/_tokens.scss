@@ -102,13 +102,17 @@
 	--color-sticky-background-7: var(--prim-gray-10);
 	--color-sticky-border-7: var(--prim-gray-120);
 
-	// Expressions
+	// Expressions and autocomplete
 	--color-valid-resolvable-foreground: var(--prim-color-alt-a);
 	--color-valid-resolvable-background: var(--prim-color-alt-a-tint-500);
 	--color-invalid-resolvable-foreground: var(--prim-color-alt-c);
 	--color-invalid-resolvable-background: var(--prim-color-alt-c-tint-450);
+	--color-pending-resolvable-foreground: var(--color-text-base);
+	--color-pending-resolvable-background: var(--prim-gray-40);
 	--color-expression-editor-background: var(--prim-gray-0);
 	--color-expression-syntax-example: var(--prim-gray-40);
+	--color-autocomplete-item-selected: var(--color-secondary);
+	--color-autocomplete-section-header-border: var(--color-foreground-light);
 
 	// Code
 	--color-code-tags-string: var(--prim-color-alt-f);
@@ -136,8 +140,6 @@
 	--color-code-gutterBackground: var(--prim-gray-0);
 	--color-code-gutterForeground: var(--prim-gray-320);
 	--color-code-tags-comment: var(--prim-gray-420);
-	--color-autocomplete-selected-background: var(--prim-color-alt-e);
-	--color-autocomplete-selected-font: var(--prim-gray-0);
 
 	// Variables
 	--color-variables-usage-font: var(--color-success);

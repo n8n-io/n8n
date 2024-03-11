@@ -22,24 +22,19 @@ import type {
 	ProxyInput,
 } from './Interfaces';
 import * as NodeHelpers from './NodeHelpers';
-import { ExpressionError } from './errors/expression.error';
+import { ExpressionError, type ExpressionErrorOptions } from './errors/expression.error';
 import type { Workflow } from './Workflow';
 import { augmentArray, augmentObject } from './AugmentObject';
 import { deepCopy } from './utils';
 import { getGlobalState } from './GlobalState';
 import { ApplicationError } from './errors/application.error';
+import { SCRIPTING_NODE_TYPES } from './Constants';
 
 export function isResourceLocatorValue(value: unknown): value is INodeParameterResourceLocator {
 	return Boolean(
 		typeof value === 'object' && value && 'mode' in value && 'value' in value && '__rl' in value,
 	);
 }
-
-const SCRIPTING_NODE_TYPES = [
-	'n8n-nodes-base.function',
-	'n8n-nodes-base.functionItem',
-	'n8n-nodes-base.code',
-];
 
 const isScriptingNode = (nodeName: string, workflow: Workflow) => {
 	const node = workflow.getNode(nodeName);
@@ -104,6 +99,7 @@ export class WorkflowDataProxy {
 				{
 					runIndex: that.runIndex,
 					itemIndex: that.itemIndex,
+					type: 'no_execution_data',
 				},
 			);
 		}
@@ -274,16 +270,22 @@ export class WorkflowDataProxy {
 				);
 			}
 
-			if (!that.runExecutionData.resultData.runData.hasOwnProperty(nodeName)) {
-				if (that.workflow.getNode(nodeName)) {
-					throw new ExpressionError(`no data, execute "${nodeName}" node first`, {
-						runIndex: that.runIndex,
-						itemIndex: that.itemIndex,
-					});
-				}
+			if (!that.workflow.getNode(nodeName)) {
 				throw new ExpressionError(`"${nodeName}" node doesn't exist`, {
 					runIndex: that.runIndex,
 					itemIndex: that.itemIndex,
+				});
+			}
+
+			if (
+				!that.runExecutionData.resultData.runData.hasOwnProperty(nodeName) &&
+				!that.workflow.getPinDataOfNode(nodeName)
+			) {
+				throw new ExpressionError(`no data, execute "${nodeName}" node first`, {
+					runIndex: that.runIndex,
+					itemIndex: that.itemIndex,
+					type: 'no_node_execution_data',
+					nodeCause: nodeName,
 				});
 			}
 
@@ -372,6 +374,28 @@ export class WorkflowDataProxy {
 
 					if (['binary', 'data', 'json'].includes(name)) {
 						const executionData = that.getNodeExecutionData(nodeName, shortSyntax, undefined);
+
+						if (executionData.length === 0) {
+							if (that.workflow.getParentNodes(nodeName).length === 0) {
+								throw new ExpressionError('No execution data available', {
+									messageTemplate:
+										'No execution data available to expression under ‘%%PARAMETER%%’',
+									description:
+										'This node has no input data. Please make sure this node is connected to another node.',
+									nodeCause: nodeName,
+									runIndex: that.runIndex,
+									itemIndex: that.itemIndex,
+									type: 'no_input_connection',
+								});
+							}
+
+							throw new ExpressionError('No execution data available', {
+								runIndex: that.runIndex,
+								itemIndex: that.itemIndex,
+								type: 'no_execution_data',
+							});
+						}
+
 						if (executionData.length <= that.itemIndex) {
 							throw new ExpressionError(`No data found for item-index: "${that.itemIndex}"`, {
 								runIndex: that.runIndex,
@@ -615,22 +639,13 @@ export class WorkflowDataProxy {
 
 		const createExpressionError = (
 			message: string,
-			context?: {
-				causeDetailed?: string;
-				description?: string;
-				descriptionTemplate?: string;
-				functionality?: 'pairedItem';
+			context?: ExpressionErrorOptions & {
+				moreInfoLink?: boolean;
 				functionOverrides?: {
 					// Custom data to display for Function-Nodes
 					message?: string;
 					description?: string;
 				};
-				itemIndex?: number;
-				messageTemplate?: string;
-				moreInfoLink?: boolean;
-				nodeCause?: string;
-				runIndex?: number;
-				type?: string;
 			},
 		) => {
 			if (isScriptingNode(that.activeNodeName, that.workflow) && context?.functionOverrides) {
@@ -678,7 +693,7 @@ export class WorkflowDataProxy {
 			incomingSourceData: ISourceData | null,
 			pairedItem: IPairedItemData,
 		): INodeExecutionData | null => {
-			let taskData: ITaskData;
+			let taskData: ITaskData | undefined;
 
 			let sourceData: ISourceData | null = incomingSourceData;
 
@@ -697,13 +712,12 @@ export class WorkflowDataProxy {
 			let nodeBeforeLast: string | undefined;
 
 			while (sourceData !== null && destinationNodeName !== sourceData.previousNode) {
-				taskData =
-					that.runExecutionData!.resultData.runData[sourceData.previousNode][
-						sourceData?.previousNodeRun || 0
-					];
-
+				const runIndex = sourceData?.previousNodeRun || 0;
 				const previousNodeOutput = sourceData.previousNodeOutput || 0;
-				if (previousNodeOutput >= taskData.data!.main.length) {
+				taskData =
+					that.runExecutionData?.resultData?.runData?.[sourceData.previousNode]?.[runIndex];
+
+				if (taskData?.data?.main && previousNodeOutput >= taskData.data.main.length) {
 					throw createExpressionError('Can’t get data for expression', {
 						messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’ field',
 						functionOverrides: {
@@ -716,7 +730,12 @@ export class WorkflowDataProxy {
 					});
 				}
 
-				if (pairedItem.item >= taskData.data!.main[previousNodeOutput]!.length) {
+				const previousNodeOutputData =
+					taskData?.data?.main?.[previousNodeOutput] ??
+					(that.workflow.getPinDataOfNode(sourceData.previousNode) as INodeExecutionData[]);
+				const source = taskData?.source ?? [];
+
+				if (pairedItem.item >= previousNodeOutputData.length) {
 					throw createExpressionError('Can’t get data for expression', {
 						messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’ field',
 						functionality: 'pairedItem',
@@ -733,13 +752,12 @@ export class WorkflowDataProxy {
 						}points to an input item on node ‘<strong>${
 							sourceData.previousNode
 						}</strong>‘ that doesn’t exist.`,
-						type: 'invalid pairing info',
+						type: 'paired_item_invalid_info',
 						moreInfoLink: true,
 					});
 				}
 
-				const itemPreviousNode: INodeExecutionData =
-					taskData.data!.main[previousNodeOutput]![pairedItem.item];
+				const itemPreviousNode: INodeExecutionData = previousNodeOutputData[pairedItem.item];
 
 				if (itemPreviousNode.pairedItem === undefined) {
 					throw createExpressionError('Can’t get data for expression', {
@@ -751,7 +769,7 @@ export class WorkflowDataProxy {
 						nodeCause: sourceData.previousNode,
 						description: `To fetch the data from other nodes that this expression needs, more information is needed from the node ‘<strong>${sourceData.previousNode}</strong>’`,
 						causeDetailed: `Missing pairedItem data (node ‘${sourceData.previousNode}’ probably didn’t supply it)`,
-						type: 'no pairing info',
+						type: 'paired_item_no_info',
 						moreInfoLink: true,
 					});
 				}
@@ -763,13 +781,13 @@ export class WorkflowDataProxy {
 						.map((item) => {
 							try {
 								const itemInput = item.input || 0;
-								if (itemInput >= taskData.source.length) {
+								if (itemInput >= source.length) {
 									// `Could not resolve pairedItem as the defined node input '${itemInput}' does not exist on node '${sourceData!.previousNode}'.`
 									// Actual error does not matter as it gets caught below and `null` will be returned
 									throw new ApplicationError('Not found');
 								}
 
-								return getPairedItem(destinationNodeName, taskData.source[itemInput], item);
+								return getPairedItem(destinationNodeName, source[itemInput], item);
 							} catch (error) {
 								// Means pairedItem could not be found
 								return null;
@@ -793,7 +811,7 @@ export class WorkflowDataProxy {
 								message: 'Invalid code',
 							},
 							description: `The expression uses data in the node ‘<strong>${destinationNodeName}</strong>’ but there is more than one matching item in that node`,
-							type: 'multiple matches',
+							type: 'paired_item_multiple_matches',
 						});
 					}
 
@@ -812,8 +830,8 @@ export class WorkflowDataProxy {
 				}
 
 				const itemInput = pairedItem.input || 0;
-				if (itemInput >= taskData.source.length) {
-					if (taskData.source.length === 0) {
+				if (itemInput >= source.length) {
+					if (source.length === 0) {
 						// A trigger node got reached, so looks like that that item can not be resolved
 						throw createExpressionError('Invalid expression', {
 							messageTemplate: 'Invalid expression under ‘%%PARAMETER%%’',
@@ -823,7 +841,7 @@ export class WorkflowDataProxy {
 								message: 'Invalid code',
 							},
 							description: `The expression uses data in the node ‘<strong>${destinationNodeName}</strong>’ but there is no path back to it. Please check this node is connected to it (there can be other nodes in between).`,
-							type: 'no connection',
+							type: 'paired_item_no_connection',
 							moreInfoLink: true,
 						});
 					}
@@ -841,12 +859,12 @@ export class WorkflowDataProxy {
 								? `of run ${(sourceData.previousNodeRun || 0).toString()} `
 								: ''
 						}points to a branch that doesn’t exist.`,
-						type: 'invalid pairing info',
+						type: 'paired_item_invalid_info',
 					});
 				}
 
 				nodeBeforeLast = sourceData.previousNode;
-				sourceData = taskData.source[pairedItem.input || 0] || null;
+				sourceData = source[pairedItem.input || 0] || null;
 
 				if (pairedItem.sourceOverwrite) {
 					sourceData = pairedItem.sourceOverwrite;
@@ -862,7 +880,7 @@ export class WorkflowDataProxy {
 					},
 					nodeCause: nodeBeforeLast,
 					description: 'Could not resolve, probably no pairedItem exists',
-					type: 'no pairing info',
+					type: 'paired_item_no_info',
 					moreInfoLink: true,
 				});
 			}
@@ -882,7 +900,7 @@ export class WorkflowDataProxy {
 					},
 					description: 'Item points to a node output which does not exist',
 					causeDetailed: `The sourceData points to a node output ‘${previousNodeOutput}‘ which does not exist on node ‘${sourceData.previousNode}‘ (output node did probably supply a wrong one)`,
-					type: 'invalid pairing info',
+					type: 'paired_item_invalid_info',
 				});
 			}
 
@@ -903,7 +921,7 @@ export class WorkflowDataProxy {
 					}points to an input item on node ‘<strong>${
 						sourceData.previousNode
 					}</strong>‘ that doesn’t exist.`,
-					type: 'invalid pairing info',
+					type: 'paired_item_invalid_info',
 					moreInfoLink: true,
 				});
 			}
@@ -922,9 +940,17 @@ export class WorkflowDataProxy {
 					throw createExpressionError(`"${nodeName}" node doesn't exist`);
 				}
 
-				if (!that?.runExecutionData?.resultData?.runData.hasOwnProperty(nodeName)) {
-					throw createExpressionError(`no data, execute "${nodeName}" node first`);
-				}
+				const ensureNodeExecutionData = () => {
+					if (
+						!that?.runExecutionData?.resultData?.runData.hasOwnProperty(nodeName) &&
+						!that.workflow.getPinDataOfNode(nodeName)
+					) {
+						throw createExpressionError(`no data, execute "${nodeName}" node first`, {
+							type: 'no_node_execution_data',
+							nodeCause: nodeName,
+						});
+					}
+				};
 
 				return new Proxy(
 					{},
@@ -933,6 +959,7 @@ export class WorkflowDataProxy {
 						ownKeys() {
 							return [
 								'pairedItem',
+								'isExecuted',
 								'itemMatching',
 								'item',
 								'first',
@@ -945,7 +972,38 @@ export class WorkflowDataProxy {
 						get(target, property, receiver) {
 							if (property === 'isProxy') return true;
 
+							if (property === 'isExecuted') {
+								return (
+									that?.runExecutionData?.resultData?.runData.hasOwnProperty(nodeName) ?? false
+								);
+							}
+
 							if (['pairedItem', 'itemMatching', 'item'].includes(property as string)) {
+								// Before resolving the pairedItem make sure that the requested node comes in the
+								// graph before the current one
+								const activeNode = that.workflow.getNode(that.activeNodeName);
+								let contextNode = that.contextNodeName;
+								if (activeNode) {
+									const parentMainInputNode = that.workflow.getParentMainInputNode(activeNode);
+									contextNode = parentMainInputNode.name ?? contextNode;
+								}
+								const parentNodes = that.workflow.getParentNodes(contextNode);
+								if (!parentNodes.includes(nodeName)) {
+									throw createExpressionError('Invalid expression', {
+										messageTemplate: 'Invalid expression under ‘%%PARAMETER%%’',
+										functionality: 'pairedItem',
+										functionOverrides: {
+											description: `The code uses data in the node <strong>‘${nodeName}’</strong> but there is no path back to it. Please check this node is connected to it (there can be other nodes in between).`,
+											message: `No path back to node ‘${nodeName}’`,
+										},
+										description: `The expression uses data in the node <strong>‘${nodeName}’</strong> but there is no path back to it. Please check this node is connected to it (there can be other nodes in between).`,
+										nodeCause: nodeName,
+										type: 'paired_item_no_connection',
+									});
+								}
+
+								ensureNodeExecutionData();
+
 								const pairedItemMethod = (itemIndex?: number) => {
 									if (itemIndex === undefined) {
 										if (property === 'itemMatching') {
@@ -957,11 +1015,26 @@ export class WorkflowDataProxy {
 									}
 
 									const executionData = that.connectionInputData;
+									const input = executionData[itemIndex];
+									if (!input) {
+										throw createExpressionError('Can’t get data for expression', {
+											messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’ field',
+											functionality: 'pairedItem',
+											functionOverrides: {
+												description: `Some intermediate nodes between ‘<strong>${nodeName}</strong>‘ and  ‘<strong>${that.activeNodeName}</strong>‘ have not executed yet.`,
+												message: 'Can’t get data',
+											},
+											description: `Some intermediate nodes between ‘<strong>${nodeName}</strong>‘ and  ‘<strong>${that.activeNodeName}</strong>‘ have not executed yet.`,
+											causeDetailed: `pairedItem can\'t be found when intermediate nodes between ‘<strong>${nodeName}</strong>‘ and  ‘<strong>${that.activeNodeName}</strong> have not executed yet.`,
+											itemIndex,
+											type: 'paired_item_intermediate_nodes',
+										});
+									}
 
 									// As we operate on the incoming item we can be sure that pairedItem is not an
 									// array. After all can it only come from exactly one previous node via a certain
 									// input. For that reason do we not have to consider the array case.
-									const pairedItem = executionData[itemIndex].pairedItem as IPairedItemData;
+									const pairedItem = input.pairedItem as IPairedItemData;
 
 									if (pairedItem === undefined) {
 										throw createExpressionError('Can’t get data for expression', {
@@ -991,22 +1064,6 @@ export class WorkflowDataProxy {
 										});
 									}
 
-									// Before resolving the pairedItem make sure that the requested node comes in the
-									// graph before the current one
-									const parentNodes = that.workflow.getParentNodes(that.contextNodeName);
-									if (!parentNodes.includes(nodeName)) {
-										throw createExpressionError('Invalid expression', {
-											messageTemplate: 'Invalid expression under ‘%%PARAMETER%%’',
-											functionality: 'pairedItem',
-											functionOverrides: {
-												description: `The code uses data in the node <strong>‘${nodeName}’</strong> but there is no path back to it. Please check this node is connected to it (there can be other nodes in between).`,
-												message: `No path back to node ‘${nodeName}’`,
-											},
-											description: `The expression uses data in the node <strong>‘${nodeName}’</strong> but there is no path back to it. Please check this node is connected to it (there can be other nodes in between).`,
-											itemIndex,
-										});
-									}
-
 									const sourceData: ISourceData | null =
 										that.executeData.source.main[pairedItem.input || 0] ??
 										that.executeData.source.main[0];
@@ -1020,6 +1077,7 @@ export class WorkflowDataProxy {
 								return pairedItemMethod;
 							}
 							if (property === 'first') {
+								ensureNodeExecutionData();
 								return (branchIndex?: number, runIndex?: number) => {
 									const executionData = getNodeOutput(nodeName, branchIndex, runIndex);
 									if (executionData[0]) return executionData[0];
@@ -1027,6 +1085,7 @@ export class WorkflowDataProxy {
 								};
 							}
 							if (property === 'last') {
+								ensureNodeExecutionData();
 								return (branchIndex?: number, runIndex?: number) => {
 									const executionData = getNodeOutput(nodeName, branchIndex, runIndex);
 									if (!executionData.length) return undefined;
@@ -1037,6 +1096,7 @@ export class WorkflowDataProxy {
 								};
 							}
 							if (property === 'all') {
+								ensureNodeExecutionData();
 								return (branchIndex?: number, runIndex?: number) =>
 									getNodeOutput(nodeName, branchIndex, runIndex);
 							}
@@ -1065,6 +1125,14 @@ export class WorkflowDataProxy {
 				},
 				get(target, property, receiver) {
 					if (property === 'isProxy') return true;
+
+					if (that.connectionInputData.length === 0) {
+						throw createExpressionError('No execution data available', {
+							runIndex: that.runIndex,
+							itemIndex: that.itemIndex,
+							type: 'no_execution_data',
+						});
+					}
 
 					if (property === 'item') {
 						return that.connectionInputData[that.itemIndex];

@@ -33,4 +33,24 @@ describe('ExpressionParameterInput', () => {
 		await userEvent.click(getByTestId('expander'));
 		expect(emitted().modalOpenerClick).toEqual(expected);
 	});
+
+	test('it should only emit blur when input had focus', async () => {
+		const { getByTestId, emitted, baseElement } = renderComponent({
+			props: {
+				modelValue: '={{$json.foo}}',
+			},
+		});
+
+		// trigger click outside -> blur
+		await userEvent.click(baseElement);
+		expect(emitted('blur')).toBeUndefined();
+
+		// focus expression editor
+		await userEvent.click(
+			getByTestId('inline-expression-editor-input').querySelector('.cm-line') as Element,
+		);
+		// trigger click outside -> blur
+		await userEvent.click(baseElement);
+		expect(emitted('blur')).toHaveLength(1);
+	});
 });

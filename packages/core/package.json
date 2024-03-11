@@ -1,6 +1,6 @@
 {
   "name": "n8n-core",
-  "version": "1.28.0",
+  "version": "1.31.0",
   "description": "Core functionality of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -40,7 +40,6 @@
     "@types/express": "^4.17.6",
     "@types/lodash": "^4.14.195",
     "@types/mime-types": "^2.1.0",
-    "@types/request-promise-native": "~1.0.15",
     "@types/uuid": "^8.3.2",
     "@types/xml2js": "^0.4.11"
   },

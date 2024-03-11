@@ -11,14 +11,13 @@ import { License } from '@/License';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { OwnershipService } from '@/services/ownership.service';
 import { EnterpriseCredentialsService } from './credentials.service.ee';
-import { Authorized, Delete, Get, Licensed, Patch, Post, Put, RestController } from '@/decorators';
+import { Delete, Get, Licensed, Patch, Post, Put, RestController } from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { UserManagementMailer } from '@/UserManagement/email';
 import * as Db from '@/Db';
 import * as utils from '@/utils';
 import { listQueryMiddleware } from '@/middlewares';
 
-@Authorized()
 @RestController('/credentials')
 export class CredentialsController {
 	constructor(
@@ -74,7 +73,9 @@ export class CredentialsController {
 
 			credential = this.ownershipService.addOwnedByAndSharedWith(credential);
 
-			if (!includeDecryptedData || !userSharing || userSharing.role !== 'credential:owner') {
+			// Below, if `userSharing` does not exist, it means this credential is being
+			// fetched by the instance owner or an admin. In this case, they get the full data
+			if (!includeDecryptedData || userSharing?.role === 'credential:user') {
 				const { data: _, ...rest } = credential;
 				return { ...rest };
 			}

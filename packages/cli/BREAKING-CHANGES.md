@@ -2,6 +2,29 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 1.32.0
+
+### What changed?
+
+N8n auth cookie has `Secure` flag set by default now.
+
+### When is action necessary?
+
+If you are running n8n without HTTP**S** on a domain other than `localhost`, you need to either setup HTTPS, or you can disable the secure flag by setting the env variable `N8N_SECURE_COOKIE` to `false`.
+
+## 1.27.0
+
+### What changed?
+
+The execution mode `own` was removed.
+If `EXECUTIONS_PROCESS` is set to `main` or if `executions.process` in a config file is set to `main` n8n will print a warning, but start up normally.
+If `EXECUTIONS_PROCESS` is set to `own` or if `executions.process` in a config file is set to `own` n8n will print an error message and refuse to start up.
+
+### When is action necessary?
+
+If you use `own` mode and need the isolation and performance gains, please consider using queue mode instead, otherwise switch to main mode by removing the environment variable or config field.
+If you have the environment variable `EXECUTIONS_PROCESS` or the config field `executions.process` set, please remove them. The environment variable has no effect anymore and the configuration field will be removed in future releases, prevent n8n from starting if it is still set.
+
 ## 1.25.0
 
 ### What changed?

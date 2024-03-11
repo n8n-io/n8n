@@ -6,9 +6,11 @@ import {
 	type INodeTypeDescription,
 	type SupplyData,
 } from 'n8n-workflow';
-import { ZepMemory } from 'langchain/memory/zep';
+import { ZepMemory } from '@langchain/community/memory/zep';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { sessionIdOption, sessionKeyProperty } from '../descriptions';
+import { getSessionId } from '../../../utils/helpers';
 
 export class MemoryZep implements INodeType {
 	description: INodeTypeDescription = {
@@ -17,7 +19,7 @@ export class MemoryZep implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:zep.png',
 		group: ['transform'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		description: 'Use Zep Memory',
 		defaults: {
 			name: 'Zep',
@@ -72,6 +74,15 @@ export class MemoryZep implements INodeType {
 					},
 				},
 			},
+			{
+				...sessionIdOption,
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.2 } }],
+					},
+				},
+			},
+			sessionKeyProperty,
 		],
 	};
 
@@ -81,8 +92,15 @@ export class MemoryZep implements INodeType {
 			apiUrl: string;
 		};
 
-		// TODO: Should it get executed once per item or not?
-		const sessionId = this.getNodeParameter('sessionId', itemIndex) as string;
+		const nodeVersion = this.getNode().typeVersion;
+
+		let sessionId;
+
+		if (nodeVersion >= 1.2) {
+			sessionId = getSessionId(this, itemIndex);
+		} else {
+			sessionId = this.getNodeParameter('sessionId', itemIndex) as string;
+		}
 
 		const memory = new ZepMemory({
 			sessionId,

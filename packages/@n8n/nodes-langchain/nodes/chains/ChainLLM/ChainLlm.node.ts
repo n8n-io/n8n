@@ -8,21 +8,25 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import type { BaseLanguageModel } from 'langchain/base_language';
+import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import {
 	AIMessagePromptTemplate,
 	PromptTemplate,
 	SystemMessagePromptTemplate,
 	HumanMessagePromptTemplate,
 	ChatPromptTemplate,
-} from 'langchain/prompts';
-import type { BaseOutputParser } from 'langchain/schema/output_parser';
+} from '@langchain/core/prompts';
+import type { BaseOutputParser } from '@langchain/core/output_parsers';
 import { CombiningOutputParser } from 'langchain/output_parsers';
 import { LLMChain } from 'langchain/chains';
-import type { BaseChatModel } from 'langchain/chat_models/base';
-import { HumanMessage } from 'langchain/schema';
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import { HumanMessage } from '@langchain/core/messages';
 import { getTemplateNoticeField } from '../../../utils/sharedFields';
-import { isChatInstance } from '../../../utils/helpers';
+import {
+	getOptionalOutputParsers,
+	getPromptInputByType,
+	isChatInstance,
+} from '../../../utils/helpers';
 
 interface MessagesTemplate {
 	type: string;
@@ -88,6 +92,7 @@ async function getChainPromptTemplate(
 	llm: BaseLanguageModel | BaseChatModel,
 	messages?: MessagesTemplate[],
 	formatInstructions?: string,
+	query?: string,
 ) {
 	const queryTemplate = new PromptTemplate({
 		template: `{query}${formatInstructions ? '\n{formatInstructions}' : ''}`,
@@ -125,7 +130,15 @@ async function getChainPromptTemplate(
 			}),
 		);
 
-		parsedMessages.push(new HumanMessagePromptTemplate(queryTemplate));
+		const lastMessage = parsedMessages[parsedMessages.length - 1];
+		// If the last message is a human message and it has an array of content, we need to add the query to the last message
+		if (lastMessage instanceof HumanMessage && Array.isArray(lastMessage.content)) {
+			const humanMessage = new HumanMessagePromptTemplate(queryTemplate);
+			const test = await humanMessage.format({ query });
+			lastMessage.content.push({ text: test.content.toString(), type: 'text' });
+		} else {
+			parsedMessages.push(new HumanMessagePromptTemplate(queryTemplate));
+		}
 		return ChatPromptTemplate.fromMessages(parsedMessages);
 	}
 
@@ -142,6 +155,7 @@ async function createSimpleLLMChain(
 		llm,
 		prompt,
 	});
+
 	const response = (await chain.call({
 		query,
 		signal: context.getExecutionCancelSignal(),
@@ -163,6 +177,8 @@ async function getChain(
 		itemIndex,
 		llm,
 		messages,
+		undefined,
+		query,
 	);
 
 	// If there are no output parsers, create a simple LLM chain and execute the query
@@ -183,6 +199,7 @@ async function getChain(
 		llm,
 		messages,
 		formatInstructions,
+		query,
 	);
 
 	const chain = prompt.pipe(llm).pipe(combinedOutputParser);
@@ -204,7 +221,7 @@ function getInputs(parameters: IDataObject) {
 		},
 	];
 
-	// If `hasOutputParser` is undefined it must be version 1.1 or earlier so we
+	// If `hasOutputParser` is undefined it must be version 1.3 or earlier so we
 	// always add the output parser input
 	if (hasOutputParser === undefined || hasOutputParser === true) {
 		inputs.push({ displayName: 'Output Parser', type: NodeConnectionType.AiOutputParser });
@@ -218,7 +235,7 @@ export class ChainLlm implements INodeType {
 		name: 'chainLlm',
 		icon: 'fa:link',
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3],
+		version: [1, 1.1, 1.2, 1.3, 1.4],
 		description: 'A simple chain to prompt a large language model',
 		defaults: {
 			name: 'Basic LLM Chain',
@@ -276,6 +293,60 @@ export class ChainLlm implements INodeType {
 				displayOptions: {
 					show: {
 						'@version': [1.3],
+					},
+				},
+			},
+			{
+				displayName: 'Prompt',
+				name: 'promptType',
+				type: 'options',
+				options: [
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'Take from previous node automatically',
+						value: 'auto',
+						description: 'Looks for an input field called chatInput',
+					},
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'Define below',
+						value: 'define',
+						description:
+							'Use an expression to reference data in previous nodes or enter static text',
+					},
+				],
+				displayOptions: {
+					hide: {
+						'@version': [1, 1.1, 1.2, 1.3],
+					},
+				},
+				default: 'auto',
+			},
+			{
+				displayName: 'Text',
+				name: 'text',
+				type: 'string',
+				required: true,
+				default: '',
+				placeholder: 'e.g. Hello, how can you help me?',
+				typeOptions: {
+					rows: 2,
+				},
+				displayOptions: {
+					show: {
+						promptType: ['define'],
+					},
+				},
+			},
+			{
+				displayName: 'Require Specific Output Format',
+				name: 'hasOutputParser',
+				type: 'boolean',
+				default: false,
+				noDataExpression: true,
+				displayOptions: {
+					hide: {
+						'@version': [1, 1.1, 1.3],
 					},
 				},
 			},
@@ -420,17 +491,6 @@ export class ChainLlm implements INodeType {
 				],
 			},
 			{
-				displayName: 'Require Specific Output Format',
-				name: 'hasOutputParser',
-				type: 'boolean',
-				default: false,
-				displayOptions: {
-					show: {
-						'@version': [1.2],
-					},
-				},
-			},
-			{
 				displayName: `Connect an <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='${NodeConnectionType.AiOutputParser}'>output parser</a> on the canvas to specify the output format you require`,
 				name: 'notice',
 				type: 'notice',
@@ -454,17 +514,20 @@ export class ChainLlm implements INodeType {
 			0,
 		)) as BaseLanguageModel;
 
-		let outputParsers: BaseOutputParser[] = [];
-
-		if (this.getNodeParameter('hasOutputParser', 0, true) === true) {
-			outputParsers = (await this.getInputConnectionData(
-				NodeConnectionType.AiOutputParser,
-				0,
-			)) as BaseOutputParser[];
-		}
+		const outputParsers = await getOptionalOutputParsers(this);
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			const prompt = this.getNodeParameter('prompt', itemIndex) as string;
+			let prompt: string;
+			if (this.getNode().typeVersion <= 1.3) {
+				prompt = this.getNodeParameter('prompt', itemIndex) as string;
+			} else {
+				prompt = getPromptInputByType({
+					ctx: this,
+					i: itemIndex,
+					inputKey: 'text',
+					promptTypeKey: 'promptType',
+				});
+			}
 			const messages = this.getNodeParameter(
 				'messages.messageValues',
 				itemIndex,

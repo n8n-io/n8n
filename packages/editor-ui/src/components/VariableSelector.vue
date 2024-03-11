@@ -50,6 +50,7 @@ import { useRootStore } from '@/stores/n8nRoot.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useRouter } from 'vue-router';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { escapeMappingString } from '@/utils/mappingUtils';
 
 // Node types that should not be displayed in variable selector
 const SKIPPED_NODE_TYPES = [STICKY_NODE_TYPE];
@@ -62,7 +63,7 @@ export default defineComponent({
 	props: ['path', 'redactValues'],
 	setup() {
 		const router = useRouter();
-		const workflowHelpers = useWorkflowHelpers(router);
+		const workflowHelpers = useWorkflowHelpers({ router });
 
 		return {
 			workflowHelpers,
@@ -81,10 +82,7 @@ export default defineComponent({
 			if (!activeNode) {
 				return null;
 			}
-			return this.workflowHelpers.getParentMainInputNode(
-				this.workflowHelpers.getCurrentWorkflow(),
-				activeNode,
-			);
+			return this.workflow.getParentMainInputNode(activeNode);
 		},
 		extendAll(): boolean {
 			if (this.variableFilter) {
@@ -401,7 +399,9 @@ export default defineComponent({
 
 			// Get json data
 			if (outputData.hasOwnProperty('json')) {
-				const jsonPropertyPrefix = useShort ? '$json' : `$('${nodeName}').item.json`;
+				const jsonPropertyPrefix = useShort
+					? '$json'
+					: `$('${escapeMappingString(nodeName)}').item.json`;
 
 				const jsonDataOptions: IVariableSelectorOption[] = [];
 				for (const propertyName of Object.keys(outputData.json)) {
@@ -426,7 +426,9 @@ export default defineComponent({
 
 			// Get binary data
 			if (outputData.hasOwnProperty('binary')) {
-				const binaryPropertyPrefix = useShort ? '$binary' : `$('${nodeName}').item.binary`;
+				const binaryPropertyPrefix = useShort
+					? '$binary'
+					: `$('${escapeMappingString(nodeName)}').item.binary`;
 
 				const binaryData = [];
 				let binaryPropertyData = [];
@@ -540,7 +542,7 @@ export default defineComponent({
 
 				returnData.push({
 					name: key,
-					key: `$('${nodeName}').context["${key}"]`,
+					key: `$('${escapeMappingString(nodeName)}').context['${escapeMappingString(key)}']`,
 					// @ts-ignore
 					value: nodeContext[key],
 				});
@@ -796,7 +798,12 @@ export default defineComponent({
 					{
 						name: this.$locale.baseText('variableSelector.parameters'),
 						options: this.sortOptions(
-							this.getNodeParameters(nodeName, `$('${nodeName}').params`, undefined, filterText),
+							this.getNodeParameters(
+								nodeName,
+								`$('${escapeMappingString(nodeName)}').params`,
+								undefined,
+								filterText,
+							),
 						),
 					} as IVariableSelectorOption,
 				];

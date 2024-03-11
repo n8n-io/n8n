@@ -1,6 +1,6 @@
 import { ExecutionRequest } from './execution.types';
 import { ExecutionService } from './execution.service';
-import { Authorized, Get, Post, RequireGlobalScope, RestController } from '@/decorators';
+import { Get, Post, RestController } from '@/decorators';
 import { EnterpriseExecutionsService } from './execution.service.ee';
 import { License } from '@/License';
 import { WorkflowSharingService } from '@/workflows/workflowSharing.service';
@@ -8,7 +8,6 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { parseRangeQuery } from './parse-range-query.middleware';
 import type { User } from '@/databases/entities/User';
 
-@Authorized()
 @RestController('/executions')
 export class ExecutionsController {
 	constructor(
@@ -25,7 +24,6 @@ export class ExecutionsController {
 	}
 
 	@Get('/', { middlewares: [parseRangeQuery] })
-	@RequireGlobalScope('workflow:list')
 	async getMany(req: ExecutionRequest.GetMany) {
 		const accessibleWorkflowIds = await this.getAccessibleWorkflowIds(req.user);
 

@@ -2,11 +2,10 @@ import { readFile } from 'fs/promises';
 import get from 'lodash/get';
 import { Request } from 'express';
 import type { INodeTypeDescription, INodeTypeNameVersion } from 'n8n-workflow';
-import { Authorized, Post, RestController } from '@/decorators';
+import { Post, RestController } from '@/decorators';
 import config from '@/config';
 import { NodeTypes } from '@/NodeTypes';
 
-@Authorized()
 @RestController('/node-types')
 export class NodeTypesController {
 	constructor(private readonly nodeTypes: NodeTypes) {}

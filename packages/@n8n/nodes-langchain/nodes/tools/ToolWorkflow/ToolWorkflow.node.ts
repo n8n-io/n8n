@@ -13,7 +13,7 @@ import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type { SetField, SetNodeOptions } from 'n8n-nodes-base/dist/nodes/Set/v2/helpers/interfaces';
 import * as manual from 'n8n-nodes-base/dist/nodes/Set/v2/manual.mode';
 
-import { DynamicTool } from 'langchain/tools';
+import { DynamicTool } from '@langchain/core/tools';
 import get from 'lodash/get';
 import isObject from 'lodash/isObject';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
@@ -49,6 +49,13 @@ export class ToolWorkflow implements INodeType {
 		outputNames: ['Tool'],
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionType.AiAgent]),
+			{
+				displayName:
+					'See an example of a workflow to suggest meeting slots using AI <a href="/templates/1953" target="_blank">here</a>.',
+				name: 'noticeTemplateExample',
+				type: 'notice',
+				default: '',
+			},
 			{
 				displayName: 'Name',
 				name: 'name',

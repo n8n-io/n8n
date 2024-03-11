@@ -1,18 +1,22 @@
-import { defineComponent } from 'vue';
-import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
 
+import { ensureSyntaxTree } from '@codemirror/language';
 import type { IDataObject } from 'n8n-workflow';
 import { Expression, ExpressionExtensions } from 'n8n-workflow';
-import { ensureSyntaxTree } from '@codemirror/language';
 
-import { useNDVStore } from '@/stores/ndv.store';
 import { EXPRESSION_EDITOR_PARSER_TIMEOUT } from '@/constants';
+import { useNDVStore } from '@/stores/ndv.store';
 
-import type { EditorView } from '@codemirror/view';
 import type { TargetItem } from '@/Interface';
-import type { Html, Plaintext, RawSegment, Resolvable, Segment } from '@/types/expressions';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { Html, Plaintext, RawSegment, Resolvable, Segment } from '@/types/expressions';
+import type { EditorView } from '@codemirror/view';
+import { isEqual } from 'lodash-es';
+import { getExpressionErrorMessage, getResolvableState } from '@/utils/expressions';
+import type { EditorState } from '@codemirror/state';
 
 export const expressionManager = defineComponent({
 	props: {
@@ -24,25 +28,21 @@ export const expressionManager = defineComponent({
 			default: () => ({}),
 		},
 	},
-	data() {
+	data(): {
+		editor: EditorView;
+		skipSegments: string[];
+		editorState: EditorState | undefined;
+		completionStatus: 'active' | 'pending' | null;
+	} {
 		return {
 			editor: {} as EditorView,
-			skipSegments: [] as string[],
+			skipSegments: [],
+			completionStatus: null,
 			editorState: undefined,
 		};
 	},
-	watch: {
-		targetItem() {
-			setTimeout(() => {
-				this.$emit('change', {
-					value: this.unresolvedExpression,
-					segments: this.displayableSegments,
-				});
-			});
-		},
-	},
 	computed: {
-		...mapStores(useNDVStore),
+		...mapStores(useNDVStore, useWorkflowsStore),
 
 		unresolvedExpression(): string {
 			return this.segments.reduce((acc, segment) => {
@@ -77,15 +77,12 @@ export const expressionManager = defineComponent({
 		},
 
 		segments(): Segment[] {
-			if (!this.editorState || !this.editorState) return [];
+			const state = this.editorState as EditorState;
+			if (!state) return [];
 
 			const rawSegments: RawSegment[] = [];
 
-			const fullTree = ensureSyntaxTree(
-				this.editorState,
-				this.editorState.doc.length,
-				EXPRESSION_EDITOR_PARSER_TIMEOUT,
-			);
+			const fullTree = ensureSyntaxTree(state, state.doc.length, EXPRESSION_EDITOR_PARSER_TIMEOUT);
 
 			if (fullTree === null) {
 				throw new Error(`Failed to parse expression: ${this.editorValue}`);
@@ -94,16 +91,21 @@ export const expressionManager = defineComponent({
 			const skipSegments = ['Program', 'Script', 'Document', ...this.skipSegments];
 
 			fullTree.cursor().iterate((node) => {
-				const text = this.editorState.sliceDoc(node.from, node.to);
+				const text = state.sliceDoc(node.from, node.to);
 
 				if (skipSegments.includes(node.type.name)) return;
 
-				rawSegments.push({
+				const newSegment: RawSegment = {
 					from: node.from,
 					to: node.to,
 					text,
 					token: node.type.name === 'Resolvable' ? 'Resolvable' : 'Plaintext',
-				});
+				};
+
+				// Avoid duplicates
+				if (isEqual(newSegment, rawSegments.at(-1))) return;
+
+				rawSegments.push(newSegment);
 			});
 
 			return rawSegments.reduce<Segment[]>((acc, segment) => {
@@ -111,7 +113,6 @@ export const expressionManager = defineComponent({
 
 				if (token === 'Resolvable') {
 					const { resolved, error, fullError } = this.resolve(text, this.hoveringItem);
-
 					acc.push({
 						kind: 'resolvable',
 						from,
@@ -121,8 +122,8 @@ export const expressionManager = defineComponent({
 						// For some reason, expressions that resolve to a number 0 are breaking preview in the SQL editor
 						// This fixes that but as as TODO we should figure out why this is happening
 						resolved: String(resolved),
-						error,
-						fullError,
+						state: getResolvableState(fullError ?? error, this.completionStatus !== null),
+						error: fullError,
 					});
 
 					return acc;
@@ -182,6 +183,16 @@ export const expressionManager = defineComponent({
 				});
 		},
 	},
+	watch: {
+		targetItem() {
+			setTimeout(() => {
+				this.$emit('change', {
+					value: this.unresolvedExpression,
+					segments: this.displayableSegments,
+				});
+			});
+		},
+	},
 	methods: {
 		isEmptyExpression(resolvable: string) {
 			return /\{\{\s*\}\}/.test(resolvable);
@@ -196,7 +207,7 @@ export const expressionManager = defineComponent({
 
 			try {
 				const ndvStore = useNDVStore();
-				const workflowHelpers = useWorkflowHelpers(this.$router);
+				const workflowHelpers = useWorkflowHelpers({ router: this.$router });
 				if (!ndvStore.activeNode) {
 					// e.g. credential modal
 					result.resolved = Expression.resolveWithoutWorkflow(resolvable, this.additionalData);
@@ -214,7 +225,7 @@ export const expressionManager = defineComponent({
 					result.resolved = workflowHelpers.resolveExpression('=' + resolvable, undefined, opts);
 				}
 			} catch (error) {
-				result.resolved = `[${error.message}]`;
+				result.resolved = `[${getExpressionErrorMessage(error)}]`;
 				result.error = true;
 				result.fullError = error;
 			}

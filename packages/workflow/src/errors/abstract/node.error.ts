@@ -35,6 +35,8 @@ const COMMON_ERRORS: IDataObject = {
  * a value recursively inside an error object.
  */
 export abstract class NodeError extends ExecutionBaseError {
+	messages: string[] = [];
+
 	constructor(
 		readonly node: INode,
 		error: Error | JsonObject,
@@ -45,8 +47,7 @@ export abstract class NodeError extends ExecutionBaseError {
 		super(message, options);
 
 		if (error instanceof NodeError) {
-			this.level = 'error';
-			this.message = `[RE-WRAPPED]: ${message}`;
+			this.tags.reWrapped = true;
 		}
 	}
 
@@ -125,51 +126,55 @@ export abstract class NodeError extends ExecutionBaseError {
 	}
 
 	/**
+	 * Preserve the original error message before setting the new one
+	 */
+	protected addToMessages(message: string): void {
+		if (message && !this.messages.includes(message)) {
+			this.messages.push(message);
+		}
+	}
+
+	/**
 	 * Set descriptive error message if code is provided or if message contains any of the common errors,
 	 * update description to include original message plus the description
 	 */
 	protected setDescriptiveErrorMessage(
 		message: string,
-		description: string | undefined | null,
+		messages: string[],
 		code?: string | null,
 		messageMapping?: { [key: string]: string },
-	) {
+	): [string, string[]] {
 		let newMessage = message;
-		let newDescription = description as string;
 
 		if (messageMapping) {
 			for (const [mapKey, mapMessage] of Object.entries(messageMapping)) {
 				if ((message || '').toUpperCase().includes(mapKey.toUpperCase())) {
 					newMessage = mapMessage;
-					newDescription = this.updateDescription(message, description);
+					messages.push(message);
 					break;
 				}
 			}
 			if (newMessage !== message) {
-				return [newMessage, newDescription];
+				return [newMessage, messages];
 			}
 		}
 
 		// if code is provided and it is in the list of common errors set the message and return early
 		if (code && COMMON_ERRORS[code.toUpperCase()]) {
 			newMessage = COMMON_ERRORS[code] as string;
-			newDescription = this.updateDescription(message, description);
-			return [newMessage, newDescription];
+			messages.push(message);
+			return [newMessage, messages];
 		}
 
 		// check if message contains any of the common errors and set the message and description
 		for (const [errorCode, errorDescriptiveMessage] of Object.entries(COMMON_ERRORS)) {
 			if ((message || '').toUpperCase().includes(errorCode.toUpperCase())) {
 				newMessage = errorDescriptiveMessage as string;
-				newDescription = this.updateDescription(message, description);
+				messages.push(message);
 				break;
 			}
 		}
 
-		return [newMessage, newDescription];
-	}
-
-	protected updateDescription(message: string, description: string | undefined | null) {
-		return `${message}${description ? ` - ${description}` : ''}`;
+		return [newMessage, messages];
 	}
 }

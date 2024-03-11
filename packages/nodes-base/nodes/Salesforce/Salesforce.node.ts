@@ -7,6 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
@@ -1169,7 +1170,7 @@ export class Salesforce implements INodeType {
 							}
 						}
 						let endpoint = '/sobjects/lead';
-						let method = 'POST';
+						let method: IHttpRequestMethods = 'POST';
 						if (operation === 'upsert') {
 							method = 'PATCH';
 							const externalId = this.getNodeParameter('externalId', 0) as string;
@@ -1497,7 +1498,7 @@ export class Salesforce implements INodeType {
 							}
 						}
 						let endpoint = '/sobjects/contact';
-						let method = 'POST';
+						let method: IHttpRequestMethods = 'POST';
 						if (operation === 'upsert') {
 							method = 'PATCH';
 							const externalId = this.getNodeParameter('externalId', 0) as string;
@@ -1749,7 +1750,7 @@ export class Salesforce implements INodeType {
 							body.RecordTypeId = additionalFields.recordTypeId as string;
 						}
 						let endpoint = `/sobjects/${customObject}`;
-						let method = 'POST';
+						let method: IHttpRequestMethods = 'POST';
 						if (operation === 'upsert') {
 							method = 'PATCH';
 							const externalId = this.getNodeParameter('externalId', 0) as string;
@@ -1944,7 +1945,7 @@ export class Salesforce implements INodeType {
 							}
 						}
 						let endpoint = '/sobjects/opportunity';
-						let method = 'POST';
+						let method: IHttpRequestMethods = 'POST';
 						if (operation === 'upsert') {
 							method = 'PATCH';
 							const externalId = this.getNodeParameter('externalId', 0) as string;
@@ -2193,7 +2194,7 @@ export class Salesforce implements INodeType {
 							}
 						}
 						let endpoint = '/sobjects/account';
-						let method = 'POST';
+						let method: IHttpRequestMethods = 'POST';
 						if (operation === 'upsert') {
 							method = 'PATCH';
 							const externalId = this.getNodeParameter('externalId', 0) as string;

@@ -1,12 +1,12 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	INodeListSearchItems,
 	INodeListSearchResult,
 	IPollFunctions,
+	IRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
@@ -16,14 +16,14 @@ import { RRule } from 'rrule';
 
 export async function googleApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
 ): Promise<any> {
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
@@ -50,7 +50,7 @@ export async function googleApiRequest(
 export async function googleApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 
 	body: any = {},
@@ -154,28 +154,44 @@ type RecurentEvent = {
 export function addNextOccurrence(items: RecurentEvent[]) {
 	for (const item of items) {
 		if (item.recurrence) {
-			const rrule = RRule.fromString(item.recurrence[0]);
-			const until = rrule.options?.until;
+			let eventRecurrence;
+			try {
+				eventRecurrence = item.recurrence.find((r) => r.toUpperCase().startsWith('RRULE'));
+				if (!eventRecurrence) continue;
 
-			const now = new Date();
-			if (until && until < now) {
-				continue;
+				const rrule = RRule.fromString(eventRecurrence);
+				const until = rrule.options?.until;
+
+				const now = new Date();
+				if (until && until < now) {
+					continue;
+				}
+
+				const nextOccurrence = rrule.after(new Date());
+
+				item.nextOccurrence = {
+					start: {
+						dateTime: moment(nextOccurrence).format(),
+						timeZone: item.start.timeZone,
+					},
+					end: {
+						dateTime: moment(nextOccurrence)
+							.add(moment(item.end.dateTime).diff(moment(item.start.dateTime)))
+							.format(),
+						timeZone: item.end.timeZone,
+					},
+				};
+			} catch (error) {
+				console.log(`Error adding next occurrence ${eventRecurrence}`);
 			}
-
-			const nextOccurrence = rrule.after(new Date());
-			item.nextOccurrence = {
-				start: {
-					dateTime: moment(nextOccurrence).format(),
-					timeZone: item.start.timeZone,
-				},
-				end: {
-					dateTime: moment(nextOccurrence)
-						.add(moment(item.end.dateTime).diff(moment(item.start.dateTime)))
-						.format(),
-					timeZone: item.end.timeZone,
-				},
-			};
 		}
 	}
 	return items;
+}
+
+const hasTimezone = (date: string) => date.endsWith('Z') || /\+\d{2}:\d{2}$/.test(date);
+
+export function addTimezoneToDate(date: string, timezone: string) {
+	if (hasTimezone(date)) return date;
+	return moment.tz(date, timezone).utc().format();
 }

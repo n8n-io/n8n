@@ -41,6 +41,7 @@
 		<InlineExpressionEditorOutput
 			:segments="segments"
 			:is-read-only="isReadOnly"
+			:no-input-data="noInputData"
 			:visible="isFocused"
 			:hovering-item-number="hoveringItemNumber"
 		/>
@@ -62,6 +63,7 @@ import { createExpressionTelemetryPayload } from '@/utils/telemetryUtils';
 import type { Segment } from '@/types/expressions';
 import type { TargetItem } from '@/Interface';
 import type { IDataObject } from 'n8n-workflow';
+import { useDebounce } from '@/composables/useDebounce';
 
 type InlineExpressionEditorInputRef = InstanceType<typeof InlineExpressionEditorInput>;
 
@@ -96,6 +98,10 @@ export default defineComponent({
 			default: () => ({}),
 		},
 	},
+	setup() {
+		const { callDebounced } = useDebounce();
+		return { callDebounced };
+	},
 	data() {
 		return {
 			isFocused: false,
@@ -112,6 +118,9 @@ export default defineComponent({
 		},
 		isDragging(): boolean {
 			return this.ndvStore.isDraggableDragging;
+		},
+		noInputData(): boolean {
+			return !this.ndvStore.hasInputData;
 		},
 	},
 	methods: {
@@ -140,9 +149,9 @@ export default defineComponent({
 
 			this.isFocused = false;
 
-			this.$emit('blur');
-
 			if (wasFocused) {
+				this.$emit('blur');
+
 				const telemetryPayload = createExpressionTelemetryPayload(
 					this.segments,
 					this.modelValue,
@@ -154,7 +163,10 @@ export default defineComponent({
 				this.$telemetry.track('User closed Expression Editor', telemetryPayload);
 			}
 		},
-		onChange({ value, segments }: { value: string; segments: Segment[] }) {
+		onChange(value: { value: string; segments: Segment[] }) {
+			void this.callDebounced(this.onChangeDebounced, { debounceTime: 100, trailing: true }, value);
+		},
+		onChangeDebounced({ value, segments }: { value: string; segments: Segment[] }) {
 			this.segments = segments;
 
 			if (this.isDragging) return;

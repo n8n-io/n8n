@@ -10,6 +10,8 @@ import type { BufferWindowMemoryInput } from 'langchain/memory';
 import { BufferWindowMemory } from 'langchain/memory';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { sessionIdOption, sessionKeyProperty } from '../descriptions';
+import { getSessionId } from '../../../utils/helpers';
 
 class MemoryChatBufferSingleton {
 	private static instance: MemoryChatBufferSingleton;
@@ -70,7 +72,7 @@ export class MemoryBufferWindow implements INodeType {
 		name: 'memoryBufferWindow',
 		icon: 'fa:database',
 		group: ['transform'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		description: 'Stores in n8n memory, so no credentials required',
 		defaults: {
 			name: 'Window Buffer Memory',
@@ -120,6 +122,15 @@ export class MemoryBufferWindow implements INodeType {
 				},
 			},
 			{
+				...sessionIdOption,
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.2 } }],
+					},
+				},
+			},
+			sessionKeyProperty,
+			{
 				displayName: 'Context Window Length',
 				name: 'contextWindowLength',
 				type: 'number',
@@ -130,12 +141,21 @@ export class MemoryBufferWindow implements INodeType {
 	};
 
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
-		const sessionKey = this.getNodeParameter('sessionKey', itemIndex) as string;
 		const contextWindowLength = this.getNodeParameter('contextWindowLength', itemIndex) as number;
 		const workflowId = this.getWorkflow().id;
 		const memoryInstance = MemoryChatBufferSingleton.getInstance();
 
-		const memory = await memoryInstance.getMemory(`${workflowId}__${sessionKey}`, {
+		const nodeVersion = this.getNode().typeVersion;
+
+		let sessionId;
+
+		if (nodeVersion >= 1.2) {
+			sessionId = getSessionId(this, itemIndex);
+		} else {
+			sessionId = this.getNodeParameter('sessionKey', itemIndex) as string;
+		}
+
+		const memory = await memoryInstance.getMemory(`${workflowId}__${sessionId}`, {
 			k: contextWindowLength,
 			inputKey: 'input',
 			memoryKey: 'chat_history',
