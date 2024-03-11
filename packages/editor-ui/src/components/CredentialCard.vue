@@ -21,11 +21,6 @@
 		</div>
 		<template #append>
 			<div ref="cardActions" :class="$style.cardActions">
-				<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
-					<n8n-badge v-if="credentialPermissions.isOwner" class="mr-xs" theme="tertiary" bold>
-						{{ $locale.baseText('credentials.item.owner') }}
-					</n8n-badge>
-				</enterprise-edition>
 				<n8n-action-toggle :actions="actions" theme="dark" @action="onAction" @click.stop />
 			</div>
 		</template>
