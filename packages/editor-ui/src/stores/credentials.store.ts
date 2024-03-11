@@ -37,6 +37,7 @@ import { useNodeTypesStore } from './nodeTypes.store';
 import { useSettingsStore } from './settings.store';
 import { useUsersStore } from './users.store';
 import { isEmpty } from '@/utils/typesUtils';
+import type { ProjectSharingData } from '@/features/projects/projects.types';
 
 const DEFAULT_CREDENTIAL_NAME = 'Unnamed credential';
 const DEFAULT_CREDENTIAL_POSTFIX = 'account';
@@ -370,12 +371,12 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 			};
 		},
 		async setCredentialSharedWith(payload: {
-			sharedWith: IUser[];
+			sharedWith: ProjectSharingData[];
 			credentialId: string;
 		}): Promise<ICredentialsResponse> {
 			if (useSettingsStore().isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
 				await setCredentialSharedWith(useRootStore().getRestApiContext, payload.credentialId, {
-					shareWithIds: payload.sharedWith.map((sharee) => sharee.id),
+					shareWithIds: payload.sharedWith.map((project) => project.id),
 				});
 
 				this.credentials[payload.credentialId] = {
@@ -384,22 +385,6 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 				};
 			}
 			return this.credentials[payload.credentialId];
-		},
-		addCredentialSharee(payload: { credentialId: string; sharee: Partial<IUser> }): void {
-			this.credentials[payload.credentialId] = {
-				...this.credentials[payload.credentialId],
-				sharedWith: (this.credentials[payload.credentialId].sharedWith || []).concat([
-					payload.sharee,
-				]),
-			};
-		},
-		removeCredentialSharee(payload: { credentialId: string; sharee: Partial<IUser> }): void {
-			this.credentials[payload.credentialId] = {
-				...this.credentials[payload.credentialId],
-				sharedWith: (this.credentials[payload.credentialId].sharedWith || []).filter(
-					(sharee) => sharee.id !== payload.sharee.id,
-				),
-			};
 		},
 
 		async getCredentialTranslation(credentialType: string): Promise<object> {

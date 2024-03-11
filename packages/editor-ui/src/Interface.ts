@@ -341,11 +341,10 @@ export interface ICredentialsResponse extends ICredentialsEncrypted {
 	id: string;
 	createdAt: number | string;
 	updatedAt: number | string;
-	sharedWith?: Array<Partial<IUser>>;
+	sharedWith?: ProjectSharingData[];
 	ownedBy?: Partial<IUser>;
 	currentUserHasAccess?: boolean;
 	homeProject?: ProjectSharingData;
-	sharedWithProjects?: ProjectSharingData[];
 }
 
 export interface ICredentialsBase {

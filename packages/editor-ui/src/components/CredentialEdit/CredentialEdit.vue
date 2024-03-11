@@ -154,6 +154,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import type { ProjectSharingData } from '@/features/projects/projects.types';
 
 import {
 	getNodeAuthOptions,
@@ -664,10 +665,10 @@ export default defineComponent({
 				sharing_enabled: EnterpriseEditionFeature.Sharing,
 			});
 		},
-		onChangeSharedWith(sharedWithProjects: string[]) {
+		onChangeSharedWith(sharedWith: ProjectSharingData[]) {
 			this.credentialData = {
 				...this.credentialData,
-				sharedWithProjects,
+				sharedWith,
 			};
 			this.isSharedWithChanged = true;
 			this.hasUnsavedChanges = true;
@@ -784,10 +785,10 @@ export default defineComponent({
 				null,
 			);
 
-			let sharedWithProjects: string[] = [];
+			let sharedWith: ProjectSharingData[] | undefined;
 			let ownedBy: IUser | undefined;
 			if (this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
-				sharedWithProjects = this.credentialData.sharedWithProjects;
+				sharedWith = this.credentialData.sharedWith;
 				ownedBy = this.credentialData.ownedBy as unknown as IUser;
 			}
 
@@ -797,7 +798,7 @@ export default defineComponent({
 				type: this.credentialTypeName!,
 				data: data as unknown as ICredentialDataDecryptedObject,
 				nodesAccess: [],
-				sharedWithProjects,
+				sharedWith,
 				...(ownedBy ? { ownedBy } : {}),
 			};
 
@@ -1164,4 +1165,3 @@ export default defineComponent({
 	margin-right: var(--spacing-xs);
 }
 </style>
-import { updateCredential, deleteCredential } from '@/api/credentials';
