@@ -153,8 +153,60 @@ export const blockFields: INodeProperties[] = [
 				resource: ['block'],
 				operation: ['getAll'],
 			},
+			hide: {
+				'@version': [{ _cnd: { gte: 2.2 } }],
+			},
 		},
 		description: 'The Notion Block to get all children from',
+	},
+	//fixed regex for blockId
+	{
+		displayName: 'Block',
+		name: 'blockId',
+		type: 'resourceLocator',
+		default: { mode: 'url', value: '' },
+		required: true,
+		modes: [
+			{
+				displayName: 'Link',
+				name: 'url',
+				type: 'string',
+				placeholder:
+					'https://www.notion.so/Block-Test-88888ccc303e4f44847f27d24bd7ad8e?pvs=4#c44444444444bbbbb4d32fdfdd84e',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: 'https:\\/\\/www\\.notion\\.so\\/.+\\?pvs=[0-9]+#([a-f0-9]{2,})',
+							errorMessage: 'Not a valid Notion Block URL',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: 'https:\\/\\/www\\.notion\\.so\\/.+\\?pvs=[0-9]+#([a-f0-9]{2,})',
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				placeholder: 'ab1545b247fb49fa92d6f4b49f4d8116',
+				extractValue: {
+					type: 'regex',
+					regex: '[a-f0-9]{32}',
+				},
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: ['block'],
+				operation: ['getAll'],
+				'@version': [{ _cnd: { gte: 2.2 } }],
+			},
+		},
+		description:
+			"The Notion Block to get all children from, when using 'By URL' mode make sure to use the URL of the block itself, you can find it in block parameters in Notion under 'Copy link to block'",
 	},
 	{
 		displayName: 'Return All',
