@@ -334,7 +334,7 @@ export interface IShareCredentialsPayload {
 }
 
 export interface IShareWorkflowsPayload {
-	sharedWithProjects: string[];
+	shareWithIds: string[];
 }
 
 export interface ICredentialsResponse extends ICredentialsEncrypted {
