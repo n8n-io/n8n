@@ -713,6 +713,7 @@
       "dist/nodes/Shopify/ShopifyTrigger.node.js",
       "dist/nodes/Signl4/Signl4.node.js",
       "dist/nodes/Slack/Slack.node.js",
+      "dist/nodes/Slack/SlackTrigger.node.js",
       "dist/nodes/Sms77/Sms77.node.js",
       "dist/nodes/Snowflake/Snowflake.node.js",
       "dist/nodes/SplitInBatches/SplitInBatches.node.js",
