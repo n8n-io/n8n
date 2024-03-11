@@ -287,10 +287,10 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 					});
 
 					const usersStore = useUsersStore();
-					if (data.sharedWith && data.ownedBy.id === usersStore.currentUserId) {
+					if (data.sharedWithProjects && data.ownedBy.id === usersStore.currentUserId) {
 						await this.setCredentialSharedWith({
 							credentialId: credential.id,
-							sharedWith: data.sharedWith,
+							sharedWithProjects: data.sharedWithProjects,
 						});
 					}
 				}
@@ -371,17 +371,17 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 			};
 		},
 		async setCredentialSharedWith(payload: {
-			sharedWith: ProjectSharingData[];
+			sharedWithProjects: ProjectSharingData[];
 			credentialId: string;
 		}): Promise<ICredentialsResponse> {
 			if (useSettingsStore().isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
 				await setCredentialSharedWith(useRootStore().getRestApiContext, payload.credentialId, {
-					shareWithIds: payload.sharedWith.map((project) => project.id),
+					shareWithIds: payload.sharedWithProjects.map((project) => project.id),
 				});
 
 				this.credentials[payload.credentialId] = {
 					...this.credentials[payload.credentialId],
-					sharedWith: payload.sharedWith,
+					sharedWithProjects: payload.sharedWithProjects,
 				};
 			}
 			return this.credentials[payload.credentialId];

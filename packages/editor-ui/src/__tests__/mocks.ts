@@ -20,6 +20,7 @@ import type {
 	IWorkflowDb,
 	WorkflowMetadata,
 } from '@/Interface';
+import type { ProjectSharingData } from '@/features/projects/projects.types';
 
 export function createTestNodeTypes(data: INodeTypeData = {}): INodeTypes {
 	const getResolvedKey = (key: string) => {
@@ -81,7 +82,7 @@ export function createTestWorkflow(options: {
 	settings?: IWorkflowSettings;
 	tags?: ITag[] | string[];
 	pinData?: IPinData;
-	sharedWith?: Array<Partial<IUser>>;
+	sharedWithProjects?: ProjectSharingData[];
 	ownedBy?: Partial<IUser>;
 	versionId?: string;
 	usedCredentials?: IUsedCredential[];

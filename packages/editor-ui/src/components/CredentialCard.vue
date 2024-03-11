@@ -69,7 +69,7 @@ export default defineComponent({
 				type: '',
 				name: '',
 				nodesAccess: [],
-				sharedWith: [],
+				sharedWithProjects: [],
 				ownedBy: {} as IUser,
 			}),
 		},

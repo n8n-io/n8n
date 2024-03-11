@@ -293,13 +293,12 @@ export interface IWorkflowDb {
 	settings?: IWorkflowSettings;
 	tags?: ITag[] | string[]; // string[] when store or requested, ITag[] from API response
 	pinData?: IPinData;
-	sharedWith?: Array<Partial<IUser>>;
+	sharedWithProjects?: ProjectSharingData[];
 	ownedBy?: Partial<IUser>;
 	versionId: string;
 	usedCredentials?: IUsedCredential[];
 	meta?: WorkflowMetadata;
 	homeProject?: ProjectSharingData;
-	sharedWithProjects?: ProjectSharingData[];
 }
 
 // Identical to cli.Interfaces.ts
@@ -341,7 +340,7 @@ export interface ICredentialsResponse extends ICredentialsEncrypted {
 	id: string;
 	createdAt: number | string;
 	updatedAt: number | string;
-	sharedWith?: ProjectSharingData[];
+	sharedWithProjects?: ProjectSharingData[];
 	ownedBy?: Partial<IUser>;
 	currentUserHasAccess?: boolean;
 	homeProject?: ProjectSharingData;
@@ -1064,7 +1063,7 @@ export interface IUsedCredential {
 	credentialType: string;
 	currentUserHasAccess: boolean;
 	ownedBy: Partial<IUser>;
-	sharedWith: Array<Partial<IUser>>;
+	sharedWithProjects?: ProjectSharingData[];
 }
 
 export interface WorkflowsState {

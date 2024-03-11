@@ -379,7 +379,7 @@ export default defineComponent({
 				return false;
 			}
 
-			const { ownedBy, sharedWith, ...credentialData } = this.credentialData;
+			const { ownedBy, sharedWithProjects, ...credentialData } = this.credentialData;
 			const hasUntestableExpressions = Object.values(credentialData).reduce(
 				(accu: boolean, value: CredentialInformation) =>
 					accu ||
@@ -626,10 +626,10 @@ export default defineComponent({
 				}
 
 				this.credentialData = (currentCredentials.data as ICredentialDataDecryptedObject) || {};
-				if (currentCredentials.sharedWith) {
+				if (currentCredentials.sharedWithProjects) {
 					this.credentialData = {
 						...this.credentialData,
-						sharedWith: currentCredentials.sharedWith as IDataObject[],
+						sharedWithProjects: currentCredentials.sharedWithProjects as IDataObject[],
 					};
 				}
 				if (currentCredentials.ownedBy) {
@@ -665,10 +665,10 @@ export default defineComponent({
 				sharing_enabled: EnterpriseEditionFeature.Sharing,
 			});
 		},
-		onChangeSharedWith(sharedWith: ProjectSharingData[]) {
+		onChangeSharedWith(sharedWithProjects: ProjectSharingData[]) {
 			this.credentialData = {
 				...this.credentialData,
-				sharedWith,
+				sharedWithProjects,
 			};
 			this.isSharedWithChanged = true;
 			this.hasUnsavedChanges = true;
@@ -739,7 +739,7 @@ export default defineComponent({
 				return;
 			}
 
-			const { ownedBy, sharedWith, ...credentialData } = this.credentialData;
+			const { ownedBy, sharedWithProjects, ...credentialData } = this.credentialData;
 			const details: ICredentialsDecrypted = {
 				id: this.credentialId,
 				name: this.credentialName,
@@ -785,10 +785,10 @@ export default defineComponent({
 				null,
 			);
 
-			let sharedWith: ProjectSharingData[] | undefined;
+			let sharedWithProjects: ProjectSharingData[] | undefined;
 			let ownedBy: IUser | undefined;
 			if (this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
-				sharedWith = this.credentialData.sharedWith;
+				sharedWithProjects = this.credentialData.sharedWithProjects;
 				ownedBy = this.credentialData.ownedBy as unknown as IUser;
 			}
 
@@ -798,7 +798,7 @@ export default defineComponent({
 				type: this.credentialTypeName!,
 				data: data as unknown as ICredentialDataDecryptedObject,
 				nodesAccess: [],
-				sharedWith,
+				sharedWithProjects,
 				...(ownedBy ? { ownedBy } : {}),
 			};
 
@@ -914,11 +914,11 @@ export default defineComponent({
 				if (
 					this.credentialPermissions.share &&
 					this.isSharedWithChanged &&
-					credentialDetails.sharedWith
+					credentialDetails.sharedWithProjects
 				) {
 					credential = await this.credentialsStore.setCredentialSharedWith({
 						credentialId: credentialDetails.id,
-						sharedWith: credentialDetails.sharedWith,
+						sharedWithProjects: credentialDetails.sharedWithProjects,
 					});
 					this.isSharedWithChanged = false;
 				}

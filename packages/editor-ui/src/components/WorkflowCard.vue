@@ -102,7 +102,7 @@ export default defineComponent({
 				connections: {},
 				nodes: [],
 				name: '',
-				sharedWith: [],
+				sharedWithProjects: [],
 				ownedBy: {} as IUser,
 				versionId: '',
 			}),

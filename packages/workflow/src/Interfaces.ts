@@ -139,7 +139,7 @@ export interface ICredentialsDecrypted {
 	nodesAccess: ICredentialNodeAccess[];
 	data?: ICredentialDataDecryptedObject;
 	ownedBy?: IUser;
-	sharedWith?: Array<{
+	sharedWithProjects?: Array<{
 		id: string;
 		name: string | null;
 		type: 'personal' | 'team' | 'public';

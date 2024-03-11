@@ -120,7 +120,7 @@ export default defineComponent({
 	},
 	data() {
 		return {
-			sharedWithProjects: [...(this.credential?.sharedWith || [])] as ProjectSharingData[],
+			sharedWithProjects: [...(this.credential?.sharedWithProjects || [])] as ProjectSharingData[],
 		};
 	},
 	computed: {
@@ -150,7 +150,7 @@ export default defineComponent({
 			return this.credentialsStore.getCredentialOwnerNameById(`${this.credentialId}`);
 		},
 		isCredentialSharedWithCurrentUser(): boolean {
-			return (this.credentialData.sharedWith || []).some((sharee: IUser) => {
+			return (this.credentialData.sharedWithProjects || []).some((sharee: IUser) => {
 				return sharee.id === this.usersStore.currentUser?.id;
 			});
 		},
