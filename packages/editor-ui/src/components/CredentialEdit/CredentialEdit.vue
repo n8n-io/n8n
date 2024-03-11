@@ -784,18 +784,12 @@ export default defineComponent({
 				null,
 			);
 
-			let sharedWithProjects: ProjectSharingData[] | undefined;
-			if (this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
-				sharedWithProjects = this.credentialData.sharedWithProjects;
-			}
-
 			const credentialDetails: ICredentialsDecrypted = {
 				id: this.credentialId,
 				name: this.credentialName,
 				type: this.credentialTypeName!,
 				data: data as unknown as ICredentialDataDecryptedObject,
 				nodesAccess: [],
-				sharedWithProjects,
 			};
 
 			let credential;
@@ -808,6 +802,11 @@ export default defineComponent({
 					this.$route?.params?.projectId as string | undefined,
 				);
 			} else {
+				if (this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
+					credentialDetails.sharedWithProjects = this.credentialData
+						.sharedWithProjects as ProjectSharingData[];
+				}
+
 				credential = await this.updateCredential(credentialDetails);
 			}
 
