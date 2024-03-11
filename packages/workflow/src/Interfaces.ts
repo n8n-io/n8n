@@ -138,7 +138,11 @@ export interface ICredentialsDecrypted {
 	type: string;
 	nodesAccess: ICredentialNodeAccess[];
 	data?: ICredentialDataDecryptedObject;
-	ownedBy?: IUser;
+	homeProject?: {
+		id: string;
+		name: string | null;
+		type: 'personal' | 'team' | 'public';
+	};
 	sharedWithProjects?: Array<{
 		id: string;
 		name: string | null;

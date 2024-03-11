@@ -629,13 +629,13 @@ export default defineComponent({
 				if (currentCredentials.sharedWithProjects) {
 					this.credentialData = {
 						...this.credentialData,
-						sharedWithProjects: currentCredentials.sharedWithProjects as IDataObject[],
+						sharedWithProjects: currentCredentials.sharedWithProjects,
 					};
 				}
-				if (currentCredentials.ownedBy) {
+				if (currentCredentials.homeProject) {
 					this.credentialData = {
 						...this.credentialData,
-						ownedBy: currentCredentials.ownedBy as IDataObject[],
+						homeProject: currentCredentials.homeProject,
 					};
 				}
 

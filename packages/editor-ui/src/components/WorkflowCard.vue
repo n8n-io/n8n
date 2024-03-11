@@ -77,6 +77,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import TimeAgo from '@/components/TimeAgo.vue';
+import type { ProjectSharingData } from '@/features/projects/projects.types';
 
 export const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -103,7 +104,7 @@ export default defineComponent({
 				nodes: [],
 				name: '',
 				sharedWithProjects: [],
-				ownedBy: {} as IUser,
+				homeProject: {} as ProjectSharingData,
 				versionId: '',
 			}),
 		},
