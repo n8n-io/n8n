@@ -127,7 +127,6 @@ import type {
 	INodeProperties,
 	INodeTypeDescription,
 	ITelemetryTrackProperties,
-	IDataObject,
 } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 import CredentialIcon from '@/components/CredentialIcon.vue';
@@ -786,10 +785,8 @@ export default defineComponent({
 			);
 
 			let sharedWithProjects: ProjectSharingData[] | undefined;
-			let ownedBy: IUser | undefined;
 			if (this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
 				sharedWithProjects = this.credentialData.sharedWithProjects;
-				ownedBy = this.credentialData.ownedBy as unknown as IUser;
 			}
 
 			const credentialDetails: ICredentialsDecrypted = {
@@ -799,7 +796,6 @@ export default defineComponent({
 				data: data as unknown as ICredentialDataDecryptedObject,
 				nodesAccess: [],
 				sharedWithProjects,
-				...(ownedBy ? { ownedBy } : {}),
 			};
 
 			let credential;
