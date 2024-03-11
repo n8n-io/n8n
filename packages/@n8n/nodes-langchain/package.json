@@ -136,7 +136,7 @@
     "@langchain/cohere": "^0.0.5",
     "@langchain/community": "^0.0.34",
     "@langchain/core": "0.1.41",
-    "@langchain/mistralai": "0.0.7",
+    "@langchain/mistralai": "0.0.13",
     "@langchain/openai": "^0.0.16",
     "@langchain/pinecone": "^0.0.3",
     "@langchain/redis": "^0.0.2",
