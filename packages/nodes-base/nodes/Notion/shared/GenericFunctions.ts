@@ -41,6 +41,7 @@ const apiVersion: { [key: number]: string } = {
 	1: '2021-05-13',
 	2: '2021-08-16',
 	2.1: '2021-08-16',
+	2.2: '2021-08-16',
 };
 
 export async function notionApiRequest(
