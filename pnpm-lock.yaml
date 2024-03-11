@@ -207,8 +207,8 @@ importers:
         specifier: 0.1.41
         version: 0.1.41
       '@langchain/mistralai':
-        specifier: 0.0.7
-        version: 0.0.7
+        specifier: 0.0.13
+        version: 0.0.13
       '@langchain/openai':
         specifier: ^0.0.16
         version: 0.0.16
@@ -259,7 +259,7 @@ importers:
         version: 1.2.0
       langchain:
         specifier: 0.1.25
-        version: 0.1.25(@aws-sdk/client-bedrock-runtime@3.454.0)(@aws-sdk/credential-provider-node@3.451.0)(@getzep/zep-js@0.9.0)(@google-ai/generativelanguage@0.2.1)(@huggingface/inference@2.6.4)(@pinecone-database/pinecone@2.1.0)(@qdrant/js-client-rest@1.7.0)(@supabase/supabase-js@2.38.5)(@xata.io/client@0.28.0)(axios@1.6.7)(cohere-ai@6.2.2)(d3-dsv@2.0.0)(epub2@3.0.1)(html-to-text@9.0.5)(lodash@4.17.21)(mammoth@1.6.0)(pdf-parse@1.1.1)(pg@8.11.3)(redis@4.6.12)
+        version: 0.1.25(@aws-sdk/client-bedrock-runtime@3.454.0)(@aws-sdk/credential-provider-node@3.451.0)(@getzep/zep-js@0.9.0)(@google-ai/generativelanguage@0.2.1)(@huggingface/inference@2.6.4)(@pinecone-database/pinecone@2.1.0)(@qdrant/js-client-rest@1.7.0)(@supabase/supabase-js@2.38.5)(@xata.io/client@0.28.0)(cohere-ai@6.2.2)(d3-dsv@2.0.0)(epub2@3.0.1)(html-to-text@9.0.5)(lodash@4.17.21)(mammoth@1.6.0)(pdf-parse@1.1.1)(pg@8.11.3)(redis@4.6.12)
       lodash:
         specifier: 4.17.21
         version: 4.17.21
@@ -5810,14 +5810,16 @@ packages:
       zod-to-json-schema: 3.22.4(zod@3.22.4)
     dev: false
 
-  /@langchain/mistralai@0.0.7:
-    resolution: {integrity: sha512-i0L463ojB9/LHSYo3MCYBWkCsb+qqNxD6PYRAJQ1fObSqLqpGIhRRIWegipIte8MFzIfREkOTiEQEbwIM1I7Wg==}
+  /@langchain/mistralai@0.0.13:
+    resolution: {integrity: sha512-0oNTICsukEnZLJ1HwtlCADZi5jqircK8B+svLrRbp+1HVue5hXPsU36b54mr0WEwhmY0QIXJ9CwEaGRSfEEZcg==}
     engines: {node: '>=18'}
     dependencies:
       '@langchain/core': 0.1.41
-      '@mistralai/mistralai': 0.0.7
+      '@mistralai/mistralai': 0.1.3
+      zod: 3.22.4
+      zod-to-json-schema: 3.22.4(zod@3.22.4)
     transitivePeerDependencies:
-      - debug
+      - encoding
     dev: false
 
   /@langchain/openai@0.0.16:
@@ -5961,13 +5963,12 @@ packages:
     resolution: {integrity: sha512-M/BexG/p05C5lFfMunxo/QcgIJnMT2vDVCd00wNqK2ImZONIlEETZwWJu1QtLxtmYlSHlCFl3JNzp0tLe7OJ5g==}
     dev: true
 
-  /@mistralai/mistralai@0.0.7:
-    resolution: {integrity: sha512-47FiV/GBnt6gug99ZfDBcBofYuYvqT5AyhUDdtktUbCN+gq52tmiAbtwc88k7hlyUWHzJ28VpHRDfNTRfaWKxA==}
+  /@mistralai/mistralai@0.1.3:
+    resolution: {integrity: sha512-WUHxC2xdeqX9PTXJEqdiNY54vT2ir72WSJrZTTBKRnkfhX6zIfCYA24faRlWjUB5WTpn+wfdGsTMl3ArijlXFA==}
     dependencies:
-      axios: 1.6.7
-      axios-retry: 4.0.0(axios@1.6.7)
+      node-fetch: 2.7.0(encoding@0.1.13)
     transitivePeerDependencies:
-      - debug
+      - encoding
     dev: false
 
   /@mongodb-js/saslprep@1.1.0:
@@ -12220,15 +12221,6 @@ packages:
     resolution: {integrity: sha512-ZTnCkJbRtfScvwiRnoVskFAfvU0UG3xNcsjwTR0mawSbIJoothxn67gKsMaNAFHRXJ1RmuLhmZBzvyXi3+9WyQ==}
     dependencies:
       '@babel/runtime': 7.23.6
-      is-retry-allowed: 2.2.0
-    dev: false
-
-  /axios-retry@4.0.0(axios@1.6.7):
-    resolution: {integrity: sha512-F6P4HVGITD/v4z9Lw2mIA24IabTajvpDZmKa6zq/gGwn57wN5j1P3uWrAV0+diqnW6kTM2fTqmWNfgYWGmMuiA==}
-    peerDependencies:
-      axios: 1.6.7
-    dependencies:
-      axios: 1.6.7
       is-retry-allowed: 2.2.0
     dev: false
 
@@ -18877,7 +18869,7 @@ packages:
     resolution: {integrity: sha512-Xq9nH7KlWZmXAtodXDDRE7vs6DU1gTU8zYDHDiWLSip45Egwq3plLHzPn27NgvzL2r1LMPC1vdqh98sQxtqj4A==}
     dev: false
 
-  /langchain@0.1.25(@aws-sdk/client-bedrock-runtime@3.454.0)(@aws-sdk/credential-provider-node@3.451.0)(@getzep/zep-js@0.9.0)(@google-ai/generativelanguage@0.2.1)(@huggingface/inference@2.6.4)(@pinecone-database/pinecone@2.1.0)(@qdrant/js-client-rest@1.7.0)(@supabase/supabase-js@2.38.5)(@xata.io/client@0.28.0)(axios@1.6.7)(cohere-ai@6.2.2)(d3-dsv@2.0.0)(epub2@3.0.1)(html-to-text@9.0.5)(lodash@4.17.21)(mammoth@1.6.0)(pdf-parse@1.1.1)(pg@8.11.3)(redis@4.6.12):
+  /langchain@0.1.25(@aws-sdk/client-bedrock-runtime@3.454.0)(@aws-sdk/credential-provider-node@3.451.0)(@getzep/zep-js@0.9.0)(@google-ai/generativelanguage@0.2.1)(@huggingface/inference@2.6.4)(@pinecone-database/pinecone@2.1.0)(@qdrant/js-client-rest@1.7.0)(@supabase/supabase-js@2.38.5)(@xata.io/client@0.28.0)(cohere-ai@6.2.2)(d3-dsv@2.0.0)(epub2@3.0.1)(html-to-text@9.0.5)(lodash@4.17.21)(mammoth@1.6.0)(pdf-parse@1.1.1)(pg@8.11.3)(redis@4.6.12):
     resolution: {integrity: sha512-sfEChvr4H2CklHdSByNBbytwBrFhgtA5kPOnwcBrxuXGg1iOaTzhVxQA0QcNcQucI3hZrsNbZjxGp+Can1ooZQ==}
     engines: {node: '>=18'}
     peerDependencies:
@@ -19045,7 +19037,6 @@ packages:
       '@pinecone-database/pinecone': 2.1.0
       '@supabase/supabase-js': 2.38.5
       '@xata.io/client': 0.28.0(typescript@5.3.2)
-      axios: 1.6.7
       binary-extensions: 2.2.0
       d3-dsv: 2.0.0
       epub2: 3.0.1(ts-toolbelt@9.6.0)
