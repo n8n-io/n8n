@@ -202,6 +202,7 @@ export class WorkflowsController {
 		return { name, onboardingFlowEnabled };
 	}
 
+	// NOTE: updated
 	@Get('/from-url')
 	async getFromUrl(req: WorkflowRequest.FromUrl) {
 		if (req.query.url === undefined) {
