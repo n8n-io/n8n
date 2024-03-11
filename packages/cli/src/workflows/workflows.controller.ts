@@ -187,6 +187,7 @@ export class WorkflowsController {
 		}
 	}
 
+	// NOTE: updated
 	@Get('/new')
 	async getNewName(req: WorkflowRequest.NewName) {
 		const requestedName = req.query.name ?? config.getEnv('workflows.defaultName');

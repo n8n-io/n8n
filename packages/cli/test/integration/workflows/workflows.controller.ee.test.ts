@@ -252,6 +252,7 @@ describe('PUT /workflows/:id', () => {
 	});
 });
 
+// NOTE: passing
 describe('GET /workflows/new', () => {
 	[true, false].forEach((sharingEnabled) => {
 		test(`should return an auto-incremented name, even when sharing is ${
