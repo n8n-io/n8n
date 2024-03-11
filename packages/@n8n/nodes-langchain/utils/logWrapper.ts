@@ -1,25 +1,29 @@
 import { NodeOperationError, NodeConnectionType } from 'n8n-workflow';
 import type { ConnectionTypes, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
-import { Tool } from 'langchain/tools';
-import type { ChatResult, InputValues, BaseMessage } from 'langchain/schema';
-import { BaseChatMessageHistory } from 'langchain/schema';
-import type { BaseChatModel } from 'langchain/chat_models/base';
-import type { CallbackManagerForLLMRun } from 'langchain/callbacks';
+import { Tool } from '@langchain/core/tools';
+import type { BaseMessage } from '@langchain/core/messages';
+import type { InputValues, MemoryVariables, OutputValues } from '@langchain/core/memory';
+import type { ChatResult } from '@langchain/core/outputs';
+import { BaseChatMessageHistory } from '@langchain/core/chat_history';
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import type {
+	CallbackManagerForLLMRun,
+	BaseCallbackConfig,
+	Callbacks,
+} from '@langchain/core/callbacks/manager';
 
-import { Embeddings } from 'langchain/embeddings/base';
-import { VectorStore } from 'langchain/vectorstores/base';
-import type { Document } from 'langchain/document';
+import { Embeddings } from '@langchain/core/embeddings';
+import { VectorStore } from '@langchain/core/vectorstores';
+import type { Document } from '@langchain/core/documents';
 import { TextSplitter } from 'langchain/text_splitter';
-import type { BaseDocumentLoader } from 'langchain/document_loaders/base';
-import type { BaseCallbackConfig, Callbacks } from 'langchain/dist/callbacks/manager';
-import { BaseLLM } from 'langchain/llms/base';
-import { BaseChatMemory } from 'langchain/memory';
-import type { MemoryVariables, OutputValues } from 'langchain/dist/memory/base';
-import { BaseRetriever } from 'langchain/schema/retriever';
-import type { FormatInstructionsOptions } from 'langchain/schema/output_parser';
-import { BaseOutputParser, OutputParserException } from 'langchain/schema/output_parser';
+import { BaseLLM } from '@langchain/core/language_models/llms';
+import { BaseChatMemory } from '@langchain/community/memory/chat_memory';
+import { BaseRetriever } from '@langchain/core/retrievers';
+import type { FormatInstructionsOptions } from '@langchain/core/output_parsers';
+import { BaseOutputParser, OutputParserException } from '@langchain/core/output_parsers';
 import { isObject } from 'lodash';
+import type { BaseDocumentLoader } from 'langchain/dist/document_loaders/base';
 import { N8nJsonLoader } from './N8nJsonLoader';
 import { N8nBinaryLoader } from './N8nBinaryLoader';
 import { isChatInstance, logAiEvent } from './helpers';
@@ -524,6 +528,7 @@ export function logWrapper(
 				}
 			}
 
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 			return (target as any)[prop];
 		},
 	});

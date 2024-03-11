@@ -139,11 +139,8 @@ export class GoogleSheet {
 		});
 
 		if (!foundItem?.properties?.title) {
-			throw new NodeOperationError(
-				node,
-				`Sheet with ${mode === 'name' ? 'name' : 'ID'} ${value} not found`,
-				{ level: 'warning' },
-			);
+			const error = new Error(`Sheet with ${mode === 'name' ? 'name' : 'ID'} ${value} not found`);
+			throw new NodeOperationError(node, error, { level: 'warning' });
 		}
 
 		return foundItem.properties;

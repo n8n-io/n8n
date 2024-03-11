@@ -6,7 +6,7 @@ import { parse } from 'flatted';
 
 export const NO_NETWORK_ERROR_CODE = 999;
 
-class ResponseError extends Error {
+export class ResponseError extends Error {
 	// The HTTP status code of response
 	httpStatusCode?: number;
 
