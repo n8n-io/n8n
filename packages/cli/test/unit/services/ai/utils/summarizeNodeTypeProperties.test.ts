@@ -81,7 +81,7 @@ describe('summarizeProperty', () => {
 		const result = summarizeProperty(property);
 
 		expect(result).toEqual({
-			displayName: 'testDisplayName',
+			name: 'testDisplayName',
 			type: 'string',
 			displayOptions: {
 				show: {
@@ -108,7 +108,7 @@ describe('summarizeProperty', () => {
 		const result = summarizeProperty(property);
 
 		expect(result).toEqual({
-			displayName: 'testDisplayName',
+			name: 'testDisplayName',
 			type: 'string',
 			options: [
 				{
@@ -130,7 +130,7 @@ describe('summarizeProperty', () => {
 		const result = summarizeProperty(property);
 
 		expect(result).toEqual({
-			displayName: 'testDisplayName',
+			name: 'testDisplayName',
 			type: 'string',
 		});
 	});
@@ -169,7 +169,7 @@ describe('summarizeNodeTypeProperties', () => {
 
 		expect(result).toEqual([
 			{
-				displayName: 'testDisplayName1',
+				name: 'testDisplayName1',
 				type: 'string',
 				options: [
 					{
@@ -179,7 +179,7 @@ describe('summarizeNodeTypeProperties', () => {
 				],
 			},
 			{
-				displayName: 'testDisplayName2',
+				name: 'testDisplayName2',
 				type: 'number',
 				options: [
 					{

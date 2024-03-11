@@ -21,7 +21,7 @@ export function summarizeOption(
 
 export function summarizeProperty(property: INodeProperties): Partial<INodeProperties> {
 	return {
-		displayName: property.displayName,
+		name: property.displayName,
 		type: property.type,
 		...(property.displayOptions ? { displayOptions: property.displayOptions } : {}),
 		...((property.options
