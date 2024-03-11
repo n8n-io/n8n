@@ -68,6 +68,7 @@ export class WorkflowsController {
 		private readonly projectService: ProjectService,
 	) {}
 
+	// NOTE: updated
 	@Post('/')
 	async create(req: WorkflowRequest.Create) {
 		delete req.body.id; // delete if sent
@@ -139,8 +140,6 @@ export class WorkflowsController {
 
 			const newSharedWorkflow = this.sharedWorkflowRepository.create({
 				role: 'workflow:owner',
-				// TODO: remove when https://linear.app/n8n/issue/PAY-1353/make-sure-that-sharedworkflowuserid-is-not-used-anymore-to-check lands
-				user: req.user,
 				projectId: project.id,
 				workflow: savedWorkflow,
 			});

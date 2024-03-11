@@ -50,6 +50,7 @@ beforeEach(async () => {
 	await testDb.truncate(['Workflow', 'SharedWorkflow', 'Tag', 'WorkflowHistory']);
 });
 
+// NOTE: passing
 describe('POST /workflows', () => {
 	const testWithPinData = async (withPinData: boolean) => {
 		const workflow = makeWorkflow({ withPinData });

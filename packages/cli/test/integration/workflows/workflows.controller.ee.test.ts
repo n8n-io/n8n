@@ -459,6 +459,7 @@ describe('GET /workflows/:id', () => {
 	});
 });
 
+// NOTE: passing
 describe('POST /workflows', () => {
 	it('Should create a workflow that uses no credential', async () => {
 		const workflow = makeWorkflow({ withPinData: false });
