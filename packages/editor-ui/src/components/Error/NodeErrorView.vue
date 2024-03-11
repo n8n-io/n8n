@@ -18,7 +18,6 @@ import type {
 	NodeError,
 	NodeOperationError,
 } from 'n8n-workflow';
-import type { INodeUi } from '@/Interface';
 import { sanitizeHtml } from '@/utils/htmlUtils';
 import { useAIStore } from '@/stores/ai.store';
 import { MAX_DISPLAY_DATA_SIZE } from '@/constants';
