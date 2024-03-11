@@ -9,6 +9,7 @@ import type {
 	INodeParameters,
 	INodeTypeNameVersion,
 	IUser,
+	NodeError,
 } from 'n8n-workflow';
 
 import { IsBoolean, IsEmail, IsIn, IsOptional, IsString, Length } from 'class-validator';
@@ -19,7 +20,6 @@ import type { Variables } from '@db/entities/Variables';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { WorkflowHistory } from '@db/entities/WorkflowHistory';
-import type { NodeError } from 'n8n-workflow';
 
 export class UserUpdatePayload implements Pick<User, 'email' | 'firstName' | 'lastName'> {
 	@IsEmail()
