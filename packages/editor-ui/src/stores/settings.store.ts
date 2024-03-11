@@ -280,6 +280,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			rootStore.setN8nMetadata(settings.n8nMetadata || {});
 			rootStore.setDefaultLocale(settings.defaultLocale);
 			rootStore.setIsNpmAvailable(settings.isNpmAvailable);
+			rootStore.setBinaryDataMode(settings.binaryDataMode);
 
 			useVersionsStore().setVersionNotificationSettings(settings.versionNotifications);
 		},
