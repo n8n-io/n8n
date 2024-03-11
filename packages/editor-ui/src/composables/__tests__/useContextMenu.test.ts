@@ -1,6 +1,6 @@
 import type { INodeUi } from '@/Interface';
 import { useContextMenu } from '@/composables/useContextMenu';
-import { NO_OP_NODE_TYPE, STICKY_NODE_TYPE, STORES } from '@/constants';
+import { BASIC_CHAIN_NODE_TYPE, NO_OP_NODE_TYPE, STICKY_NODE_TYPE, STORES } from '@/constants';
 import { faker } from '@faker-js/faker';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -90,6 +90,17 @@ describe('useContextMenu', () => {
 		expect(isOpen.value).toBe(true);
 		expect(actions.value).toMatchSnapshot();
 		expect(targetNodes.value).toEqual([sticky]);
+	});
+
+	it('should disable pinning for node that has other inputs then "main"', () => {
+		const { open, isOpen, actions, targetNodes } = useContextMenu();
+		const basicChain = nodeFactory({ type: BASIC_CHAIN_NODE_TYPE });
+		vi.spyOn(NodeHelpers, 'getConnectionTypes').mockReturnValue(['main', 'ai_languageModel']);
+		open(mockEvent, { source: 'node-right-click', node: basicChain });
+
+		expect(isOpen.value).toBe(true);
+		expect(actions.value.find((action) => action.id === 'toggle_pin')?.disabled).toBe(true);
+		expect(targetNodes.value).toEqual([basicChain]);
 	});
 
 	it('should return the correct actions when right clicking a Node', () => {
