@@ -1951,6 +1951,7 @@
 	"workflowPreview.showError.previewError.title": "Preview error",
 	"workflowRun.noActiveConnectionToTheServer": "Lost connection to the server",
 	"workflowRun.showError.title": "Problem running workflow",
+	"workflowRun.showError.payloadTooLarge": "Please execute the whole workflow, rather than just the node. (Existing execution data is too large.)",
 	"workflowRun.showMessage.message": "Please fix them before executing",
 	"workflowRun.showMessage.title": "Workflow has issues",
 	"workflowSettings.callerIds": "IDs of workflows that can call this one",
