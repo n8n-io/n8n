@@ -34,7 +34,7 @@
 					<ProjectSharing
 						v-model="sharedWithProjects"
 						:projects="projectsStore.projects"
-						:home-project="workflowsStore.workflow.homeProject"
+						:home-project="workflow.homeProject"
 						:readonly="!workflowPermissions.updateSharing"
 					/>
 					<template #fallback>
