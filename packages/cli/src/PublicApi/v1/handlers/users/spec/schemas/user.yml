@@ -14,13 +14,11 @@ properties:
     maxLength: 32
     type: string
     description: User's first name
-    readOnly: true
     example: john
   lastName:
     maxLength: 32
     type: string
     description: User's last name
-    readOnly: true
     example: Doe
   isPending:
     type: boolean
@@ -39,4 +37,3 @@ properties:
   role:
     type: string
     example: owner
-    readOnly: true

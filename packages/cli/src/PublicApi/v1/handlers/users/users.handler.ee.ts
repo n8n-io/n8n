@@ -1,7 +1,7 @@
 import type express from 'express';
 import { Container } from 'typedi';
 
-import { clean, getAllUsersAndCount, getUser } from './users.service.ee';
+import { clean, getAllUsersAndCount, getUser, createUser, saveUser } from './users.service.ee';
 
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 import {
@@ -11,6 +11,7 @@ import {
 } from '../../shared/middlewares/global.middleware';
 import type { UserRequest } from '@/requests';
 import { InternalHooks } from '@/InternalHooks';
+import { validUserRole } from '@/PublicApi/v1/handlers/users/users.middlewares';
 
 export = {
 	getUser: [
@@ -66,6 +67,20 @@ export = {
 					numberOfTotalRecords: count,
 				}),
 			});
+		},
+	],
+	createUser: [
+		validLicenseWithUserQuota,
+		validUserRole,
+		authorize(['global:owner']),
+		async (req: UserRequest.Create, res: express.Response) => {
+			const newUser = await createUser(req.body);
+
+			const user = await saveUser(newUser);
+
+			void Container.get(InternalHooks).onUserCreate({ user });
+
+			return res.json(clean(user));
 		},
 	],
 };
