@@ -51,22 +51,22 @@ export class TwilioTrigger implements INodeType {
 					},
 					{
 						name: 'New Call Completed',
-						value: 'com.twilio.voice.webhook.status-callback.call.completed',
+						value: 'com.twilio.voice.status-callback.call.completed',
 						description: 'Inbound Call Received',
 					},
 					{
 						name: 'New Call Initiated',
-						value: 'com.twilio.voice.webhook.status-callback.call.initiated',
+						value: 'com.twilio.voice.status-callback.call.initiated',
 						description: 'Inbound Call Received',
 					},
 					{
 						name: 'New Call Ringing',
-						value: 'com.twilio.voice.webhook.status-callback.call.ringing',
+						value: 'com.twilio.voice.status-callback.call.ringing',
 						description: 'Inbound Call Received',
 					},
 					{
 						name: 'New Call answered',
-						value: 'com.twilio.voice.webhook.status-callback.call.answered',
+						value: 'com.twilio.voice.status-callback.call.answered',
 						description: 'Inbound Call Received',
 					},
 					{
@@ -169,8 +169,10 @@ export class TwilioTrigger implements INodeType {
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const bodyData = this.getBodyData();
+
+		//const returnData = bodyData.map((body: any)=>({json:body}));
 		return {
-			workflowData: [this.helpers.returnJsonArray([bodyData as unknown as IDataObject])],
+			workflowData: [this.helpers.returnJsonArray(bodyData as unknown as IDataObject)],
 		};
 	}
 }
