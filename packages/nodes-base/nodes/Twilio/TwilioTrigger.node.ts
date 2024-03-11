@@ -117,10 +117,6 @@ export class TwilioTrigger implements INodeType {
 
 				let allowedUpdate = this.getNodeParameter('updates') as string;
 				const endpointSink = 'Sinks';
-				//const bodySink: FormData = new FormData();
-				//bodySink.set('Description', 'Sink created by n8n Twilio Trigger Node');
-				//bodySink.set('SinkConfiguration', "{	destination: webhookUrl,	method: 'POST',	}");
-				//bodySink.set('SinkType', 'webhook');
 				const bodySink = {
 					Description: 'Sink created by n8n Twilio Trigger Node.',
 					SinkConfiguration: `{	"destination": "${webhookUrl}",	"method": "POST"	}`,
@@ -169,8 +165,6 @@ export class TwilioTrigger implements INodeType {
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const bodyData = this.getBodyData();
-
-		//const returnData = bodyData.map((body: any)=>({json:body}));
 		return {
 			workflowData: [this.helpers.returnJsonArray(bodyData as unknown as IDataObject)],
 		};
