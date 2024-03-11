@@ -378,7 +378,7 @@ function extractUrlPath(value: string) {
 	}
 }
 
-function parseJson(value: string) {
+function parseJson(value: string): unknown {
 	try {
 		return JSON.parse(value);
 	} catch (error) {

@@ -133,13 +133,15 @@ describe('Data Transformation Functions', () => {
 
 		describe('toInt/toFloat', () => {
 			test('should return milliseconds for DateTime', () => {
-				expect(evaluate("={{ DateTime.fromFormat('01-01-2024', 'dd-MM-yyyy').toInt() }}")).toEqual(
-					1704085200000,
+				expect(evaluate("={{ DateTime.fromISO('2024-01-01T00:00:00.000Z').toInt() }}")).toEqual(
+					1704067200000,
 				);
 			});
 
 			test('should return milliseconds for JS Date', () => {
-				expect(evaluate('={{ new Date(2024, 0, 1, 12).toFloat() }}')).toEqual(1704106800000);
+				expect(evaluate('={{ new Date("2024-01-01T00:00:00.000Z").toFloat() }}')).toEqual(
+					1704067200000,
+				);
 			});
 
 			test('should not have a doc (hidden from autocomplete)', () => {
@@ -150,7 +152,7 @@ describe('Data Transformation Functions', () => {
 
 		describe('toBoolean', () => {
 			test('should return undefined', () => {
-				expect(evaluate('={{ new Date(2024, 0, 1, 12).toBoolean() }}')).toBeUndefined();
+				expect(evaluate('={{ new Date("2024-01-01T00:00:00.000Z").toBoolean() }}')).toBeUndefined();
 			});
 
 			test('should not have a doc (hidden from autocomplete)', () => {
