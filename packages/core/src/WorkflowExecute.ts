@@ -1037,8 +1037,10 @@ export class WorkflowExecute {
 
 							if (pinData && !executionNode.disabled && pinData[executionNode.name] !== undefined) {
 								const nodePinData = pinData[executionNode.name];
-
-								nodeSuccessData = [nodePinData]; // always zeroth runIndex
+								nodeSuccessData = [];
+								for (const pinnedData of nodePinData) {
+									nodeSuccessData.push([pinnedData]);
+								}
 							} else {
 								Logger.debug(`Running node "${executionNode.name}" started`, {
 									node: executionNode.name,
