@@ -142,7 +142,7 @@
     "@langchain/redis": "^0.0.2",
     "@n8n/typeorm": "0.3.20-3",
     "@n8n/vm2": "3.9.20",
-    "@pinecone-database/pinecone": "2.0.1",
+    "@pinecone-database/pinecone": "2.1.0",
     "@qdrant/js-client-rest": "1.7.0",
     "@supabase/supabase-js": "2.38.5",
     "@xata.io/client": "0.28.0",
