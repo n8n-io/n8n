@@ -1919,6 +1919,12 @@ export const nodeTypeTelegramV1 = {
 					action: 'Delete a chat message',
 				},
 				{
+					name: 'Edit Message Caption',
+					value: 'editMessageCaption',
+					description: 'Edit a caption of message',
+					action: 'Edit a caption of test message',
+				},
+				{
 					name: 'Edit Message Text',
 					value: 'editMessageText',
 					description: 'Edit a text message',
@@ -2231,7 +2237,9 @@ export const nodeTypeTelegramV1 = {
 			displayName: 'Message Type',
 			name: 'messageType',
 			type: 'options',
-			displayOptions: { show: { operation: ['editMessageText'], resource: ['message'] } },
+			displayOptions: {
+				show: { operation: ['editMessageText', 'editMessageCaption'], resource: ['message'] },
+			},
 			options: [
 				{ name: 'Inline Message', value: 'inlineMessage' },
 				{ name: 'Message', value: 'message' },
@@ -2245,7 +2253,11 @@ export const nodeTypeTelegramV1 = {
 			type: 'string',
 			default: '',
 			displayOptions: {
-				show: { messageType: ['message'], operation: ['editMessageText'], resource: ['message'] },
+				show: {
+					messageType: ['message'],
+					operation: ['editMessageText', 'editMessageCaption'],
+					resource: ['message'],
+				},
 			},
 			required: true,
 			description:
@@ -2301,7 +2313,11 @@ export const nodeTypeTelegramV1 = {
 			type: 'string',
 			default: '',
 			displayOptions: {
-				show: { messageType: ['message'], operation: ['editMessageText'], resource: ['message'] },
+				show: {
+					messageType: ['message'],
+					operation: ['editMessageText', 'editMessageCaption'],
+					resource: ['message'],
+				},
 			},
 			required: true,
 			description: 'Unique identifier of the message to edit',
@@ -2314,7 +2330,7 @@ export const nodeTypeTelegramV1 = {
 			displayOptions: {
 				show: {
 					messageType: ['inlineMessage'],
-					operation: ['editMessageText'],
+					operation: ['editMessageText', 'editMessageCaption'],
 					resource: ['message'],
 				},
 			},
@@ -2324,7 +2340,9 @@ export const nodeTypeTelegramV1 = {
 		{
 			displayName: 'Reply Markup',
 			name: 'replyMarkup',
-			displayOptions: { show: { operation: ['editMessageText'], resource: ['message'] } },
+			displayOptions: {
+				show: { operation: ['editMessageText', 'editMessageCaption'], resource: ['message'] },
+			},
 			type: 'options',
 			options: [
 				{ name: 'None', value: 'none' },
@@ -2520,6 +2538,7 @@ export const nodeTypeTelegramV1 = {
 			displayOptions: {
 				show: {
 					operation: [
+						'editMessageCaption',
 						'sendAnimation',
 						'sendDocument',
 						'sendMessage',
@@ -2788,6 +2807,7 @@ export const nodeTypeTelegramV1 = {
 			displayOptions: {
 				show: {
 					operation: [
+						'editMessageCaption',
 						'editMessageText',
 						'sendAnimation',
 						'sendAudio',
@@ -2820,6 +2840,7 @@ export const nodeTypeTelegramV1 = {
 					displayOptions: {
 						show: {
 							'/operation': [
+								'editMessageCaption',
 								'sendAnimation',
 								'sendAudio',
 								'sendDocument',
@@ -2836,7 +2857,7 @@ export const nodeTypeTelegramV1 = {
 					name: 'disable_notification',
 					type: 'boolean',
 					default: false,
-					displayOptions: { hide: { '/operation': ['editMessageText'] } },
+					displayOptions: { hide: { '/operation': ['editMessageText', 'editMessageCaption'] } },
 					description:
 						'Whether to send the message silently. Users will receive a notification with no sound.',
 				},
@@ -2899,6 +2920,7 @@ export const nodeTypeTelegramV1 = {
 					displayOptions: {
 						show: {
 							'/operation': [
+								'editMessageCaption',
 								'editMessageText',
 								'sendAnimation',
 								'sendAudio',
@@ -2924,7 +2946,7 @@ export const nodeTypeTelegramV1 = {
 					displayName: 'Reply To Message ID',
 					name: 'reply_to_message_id',
 					type: 'number',
-					displayOptions: { hide: { '/operation': ['editMessageText'] } },
+					displayOptions: { hide: { '/operation': ['editMessageText', 'editMessageCaption'] } },
 					default: 0,
 					description: 'If the message is a reply, ID of the original message',
 				},
@@ -3110,6 +3132,12 @@ export const nodeTypeTelegramV1_1 = {
 					action: 'Delete a chat message',
 				},
 				{
+					name: 'Edit Message Caption',
+					value: 'editMessageCaption',
+					description: 'Edit a caption of message',
+					action: 'Edit a caption of test message',
+				},
+				{
 					name: 'Edit Message Text',
 					value: 'editMessageText',
 					description: 'Edit a text message',
@@ -3422,7 +3450,9 @@ export const nodeTypeTelegramV1_1 = {
 			displayName: 'Message Type',
 			name: 'messageType',
 			type: 'options',
-			displayOptions: { show: { operation: ['editMessageText'], resource: ['message'] } },
+			displayOptions: {
+				show: { operation: ['editMessageText', 'editMessageCaption'], resource: ['message'] },
+			},
 			options: [
 				{ name: 'Inline Message', value: 'inlineMessage' },
 				{ name: 'Message', value: 'message' },
@@ -3436,7 +3466,11 @@ export const nodeTypeTelegramV1_1 = {
 			type: 'string',
 			default: '',
 			displayOptions: {
-				show: { messageType: ['message'], operation: ['editMessageText'], resource: ['message'] },
+				show: {
+					messageType: ['message'],
+					operation: ['editMessageText', 'editMessageCaption'],
+					resource: ['message'],
+				},
 			},
 			required: true,
 			description:
@@ -3492,7 +3526,11 @@ export const nodeTypeTelegramV1_1 = {
 			type: 'string',
 			default: '',
 			displayOptions: {
-				show: { messageType: ['message'], operation: ['editMessageText'], resource: ['message'] },
+				show: {
+					messageType: ['message'],
+					operation: ['editMessageText', 'editMessageCaption'],
+					resource: ['message'],
+				},
 			},
 			required: true,
 			description: 'Unique identifier of the message to edit',
@@ -3505,7 +3543,7 @@ export const nodeTypeTelegramV1_1 = {
 			displayOptions: {
 				show: {
 					messageType: ['inlineMessage'],
-					operation: ['editMessageText'],
+					operation: ['editMessageText', 'editMessageCaption'],
 					resource: ['message'],
 				},
 			},
@@ -3515,7 +3553,9 @@ export const nodeTypeTelegramV1_1 = {
 		{
 			displayName: 'Reply Markup',
 			name: 'replyMarkup',
-			displayOptions: { show: { operation: ['editMessageText'], resource: ['message'] } },
+			displayOptions: {
+				show: { operation: ['editMessageText', 'editMessageCaption'], resource: ['message'] },
+			},
 			type: 'options',
 			options: [
 				{ name: 'None', value: 'none' },
@@ -3711,6 +3751,7 @@ export const nodeTypeTelegramV1_1 = {
 			displayOptions: {
 				show: {
 					operation: [
+						'editMessageCaption',
 						'sendAnimation',
 						'sendDocument',
 						'sendMessage',
@@ -3979,6 +4020,7 @@ export const nodeTypeTelegramV1_1 = {
 			displayOptions: {
 				show: {
 					operation: [
+						'editMessageCaption',
 						'editMessageText',
 						'sendAnimation',
 						'sendAudio',
@@ -4011,6 +4053,7 @@ export const nodeTypeTelegramV1_1 = {
 					displayOptions: {
 						show: {
 							'/operation': [
+								'editMessageCaption',
 								'sendAnimation',
 								'sendAudio',
 								'sendDocument',
@@ -4027,7 +4070,7 @@ export const nodeTypeTelegramV1_1 = {
 					name: 'disable_notification',
 					type: 'boolean',
 					default: false,
-					displayOptions: { hide: { '/operation': ['editMessageText'] } },
+					displayOptions: { hide: { '/operation': ['editMessageText', 'editMessageCaption'] } },
 					description:
 						'Whether to send the message silently. Users will receive a notification with no sound.',
 				},
@@ -4090,6 +4133,7 @@ export const nodeTypeTelegramV1_1 = {
 					displayOptions: {
 						show: {
 							'/operation': [
+								'editMessageCaption',
 								'editMessageText',
 								'sendAnimation',
 								'sendAudio',
@@ -4115,7 +4159,7 @@ export const nodeTypeTelegramV1_1 = {
 					displayName: 'Reply To Message ID',
 					name: 'reply_to_message_id',
 					type: 'number',
-					displayOptions: { hide: { '/operation': ['editMessageText'] } },
+					displayOptions: { hide: { '/operation': ['editMessageText', 'editMessageCaption'] } },
 					default: 0,
 					description: 'If the message is a reply, ID of the original message',
 				},
