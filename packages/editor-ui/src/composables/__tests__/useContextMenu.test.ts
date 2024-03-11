@@ -6,6 +6,8 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { NodeHelpers } from 'n8n-workflow';
 
 const nodeFactory = (data: Partial<INodeUi> = {}): INodeUi => ({
 	id: faker.string.uuid(),
@@ -20,6 +22,7 @@ const nodeFactory = (data: Partial<INodeUi> = {}): INodeUi => ({
 describe('useContextMenu', () => {
 	let sourceControlStore: ReturnType<typeof useSourceControlStore>;
 	let uiStore: ReturnType<typeof useUIStore>;
+	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	const nodes = [nodeFactory(), nodeFactory(), nodeFactory()];
 	const selectedNodes = nodes.slice(0, 2);
 
@@ -34,10 +37,19 @@ describe('useContextMenu', () => {
 		);
 		sourceControlStore = useSourceControlStore();
 		uiStore = useUIStore();
+		workflowsStore = useWorkflowsStore();
 		vi.spyOn(uiStore, 'isReadOnlyView', 'get').mockReturnValue(false);
 		vi.spyOn(sourceControlStore, 'preferences', 'get').mockReturnValue({
 			branchReadOnly: false,
 		} as never);
+		vi.spyOn(workflowsStore, 'getCurrentWorkflow').mockReturnValue({
+			nodes,
+			getNode: (_: string) => {
+				return {};
+			},
+		} as never);
+
+		vi.spyOn(NodeHelpers, 'getNodeInputs').mockReturnValue([]);
 	});
 
 	afterEach(() => {
