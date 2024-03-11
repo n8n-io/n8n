@@ -144,7 +144,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 					createdAt: true,
 					updatedAt: true,
 					versionId: true,
-					shared: { userId: true, role: true },
+					shared: { role: true },
 			  };
 
 		delete select?.ownedBy; // remove non-entity field, handled after query
@@ -161,7 +161,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			select.tags = { id: true, name: true };
 		}
 
-		if (isOwnedByIncluded) relations.push('shared', 'shared.user', 'shared.project');
+		if (isOwnedByIncluded) relations.push('shared', 'shared.project');
 
 		if (typeof where.name === 'string' && where.name !== '') {
 			where.name = Like(`%${where.name}%`);

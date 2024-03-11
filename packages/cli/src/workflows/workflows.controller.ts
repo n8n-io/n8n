@@ -166,6 +166,7 @@ export class WorkflowsController {
 		return savedWorkflow;
 	}
 
+	// NOTE: updated
 	@Get('/', { middlewares: listQueryMiddleware })
 	async getAll(req: ListQuery.Request, res: express.Response) {
 		try {

@@ -284,6 +284,7 @@ describe('GET /workflows/:id', () => {
 	});
 });
 
+// NOTE: passing
 describe('GET /workflows', () => {
 	test('should return zero workflows if none exist', async () => {
 		const response = await authOwnerAgent.get('/workflows').expect(200);
