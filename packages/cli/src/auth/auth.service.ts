@@ -58,6 +58,17 @@ export class AuthService {
 			}
 		}
 
+		const bearerToken = req.headers.authorization;
+		if (bearerToken) {
+			try {
+				req.user = await this.resolveHBJwt(bearerToken);
+			} catch (error) {
+				if (!(error instanceof AuthError)) {
+					throw error;
+				}
+			}
+		}
+
 		if (req.user) next();
 		else res.status(401).json({ status: 'error', message: 'Unauthorized' });
 	}
@@ -120,6 +131,22 @@ export class AuthService {
 		if (jwtPayload.exp * 1000 - Date.now() < this.jwtRefreshTimeout) {
 			this.logger.debug('JWT about to expire. Will be refreshed');
 			this.issueCookie(res, user);
+		}
+
+		return user;
+	}
+
+	async resolveHBJwt(token: string): Promise<User> {
+		const jwtPayload: { email: string } = this.jwtService.verify(token, {
+			algorithms: ['HS256'],
+		});
+
+		const user = await this.userRepository.findOne({
+			where: { email: jwtPayload.email },
+		});
+
+		if (!user) {
+			throw new AuthError('Unauthorized');
 		}
 
 		return user;
