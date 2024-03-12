@@ -25,6 +25,8 @@ import { isEqual } from 'lodash-es';
 import { createEventBus, type EventBus } from 'n8n-design-system/utils';
 import type { IDataObject } from 'n8n-workflow';
 import { inputTheme } from './theme';
+import { useNDVStore } from '@/stores/ndv.store';
+import { mapStores } from 'pinia';
 
 const editableConf = new Compartment();
 
@@ -56,6 +58,9 @@ export default defineComponent({
 			type: Object as PropType<EventBus>,
 			default: () => createEventBus(),
 		},
+	},
+	computed: {
+		...mapStores(useNDVStore),
 	},
 	watch: {
 		isReadOnly(newValue: boolean) {
@@ -157,10 +162,13 @@ export default defineComponent({
 
 			const END_OF_EXPRESSION = ' }}';
 			const value = this.editor.state.sliceDoc(0);
+			const cursorPosition = Math.max(value.lastIndexOf(END_OF_EXPRESSION), 0);
 
-			this.setCursorPosition(Math.max(value.lastIndexOf(END_OF_EXPRESSION), 0));
+			this.setCursorPosition(cursorPosition);
 
-			startCompletion(this.editor as EditorView);
+			if (!this.ndvStore.isAutocompleteOnboarded) {
+				startCompletion(this.editor as EditorView);
+			}
 		},
 	},
 });

@@ -7,7 +7,11 @@ import type {
 	XYPosition,
 } from '@/Interface';
 import { useStorage } from '@/composables/useStorage';
-import { LOCAL_STORAGE_MAPPING_IS_ONBOARDED, STORES } from '@/constants';
+import {
+	LOCAL_STORAGE_AUTOCOMPLETE_IS_ONBOARDED,
+	LOCAL_STORAGE_MAPPING_IS_ONBOARDED,
+	STORES,
+} from '@/constants';
 import type { INodeExecutionData, INodeIssues } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 import { defineStore } from 'pinia';
@@ -50,7 +54,7 @@ export const useNDVStore = defineStore(STORES.NDV, {
 			activeTarget: null,
 		},
 		isMappingOnboarded: useStorage(LOCAL_STORAGE_MAPPING_IS_ONBOARDED).value === 'true',
-		isMappingHintDisabled: false,
+		isAutocompleteOnboarded: useStorage(LOCAL_STORAGE_AUTOCOMPLETE_IS_ONBOARDED).value === 'true',
 	}),
 	getters: {
 		activeNode(): INodeUi | null {
@@ -241,8 +245,9 @@ export const useNDVStore = defineStore(STORES.NDV, {
 			this.isMappingOnboarded = true;
 			useStorage(LOCAL_STORAGE_MAPPING_IS_ONBOARDED).value = 'true';
 		},
-		disableMappingHint() {
-			this.isMappingHintDisabled = true;
+		setAutocompleteOnboarded() {
+			this.isAutocompleteOnboarded = true;
+			useStorage(LOCAL_STORAGE_AUTOCOMPLETE_IS_ONBOARDED).value = 'true';
 		},
 		updateNodeParameterIssues(issues: INodeIssues): void {
 			const workflowsStore = useWorkflowsStore();

@@ -7,18 +7,7 @@
 			<div ref="root" data-test-id="inline-expression-editor-output"></div>
 		</n8n-text>
 		<div :class="$style.footer">
-			<n8n-text size="small" compact :class="$style.tip"
-				>{{ $locale.baseText('parameterInput.tip') }}:</n8n-text
-			>
-			<n8n-text size="small" compact :class="$style.footerText">
-				{{ $locale.baseText('parameterInput.dragTipBeforePill') }}
-			</n8n-text>
-			<div :class="$style.pill">
-				{{ $locale.baseText('parameterInput.inputField') }}
-			</div>
-			<n8n-text size="small" compact :class="$style.footerText">
-				{{ $locale.baseText('parameterInput.dragTipAfterPill') }}
-			</n8n-text>
+			<InlineExpressionTip />
 		</div>
 	</div>
 </template>
@@ -32,6 +21,7 @@ import type { Plaintext, Resolved, Segment } from '@/types/expressions';
 import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue';
 import { outputTheme } from './theme';
+import InlineExpressionTip from './InlineExpressionTip.vue';
 
 interface InlineExpressionEditorOutputProps {
 	segments: Segment[];
@@ -53,6 +43,10 @@ const editor = ref<EditorView | null>(null);
 const root = ref<HTMLElement | null>(null);
 
 const resolvedExpression = computed(() => {
+	if (props.segments.length === 0) {
+		return i18n.baseText('parameterInput.emptyString');
+	}
+
 	return props.segments.reduce((acc, segment) => {
 		acc += segment.kind === 'resolvable' ? (segment.resolved as string) : segment.plaintext;
 		return acc;
@@ -60,6 +54,17 @@ const resolvedExpression = computed(() => {
 });
 
 const plaintextSegments = computed<Plaintext[]>(() => {
+	if (props.segments.length === 0) {
+		return [
+			{
+				from: 0,
+				to: resolvedExpression.value.length - 1,
+				plaintext: resolvedExpression.value,
+				kind: 'plaintext',
+			},
+		];
+	}
+
 	return props.segments.filter((s): s is Plaintext => s.kind === 'plaintext');
 });
 
@@ -133,9 +138,12 @@ onBeforeUnmount(() => {
 	}
 
 	.header,
-	.body,
-	.footer {
+	.body {
 		padding: var(--spacing-3xs);
+	}
+
+	.footer {
+		border-top: var(--border-base);
 	}
 
 	.header {
@@ -152,46 +160,6 @@ onBeforeUnmount(() => {
 
 		&:first-child {
 			padding-top: var(--spacing-2xs);
-		}
-	}
-
-	.footer {
-		display: inline-flex;
-		align-items: center;
-		border-top: var(--border-base);
-		line-height: var(--font-line-height-regular);
-		color: var(--color-text-base);
-		font-size: var(--font-size-2xs);
-		padding: var(--spacing-2xs);
-		gap: var(--spacing-4xs);
-
-		.tip {
-			color: var(--color-text-dark);
-			font-weight: var(--font-weight-bold);
-		}
-
-		.footerText {
-			flex-shrink: 0;
-
-			&:last-child {
-				flex-shrink: 1;
-				white-space: nowrap;
-				min-width: 0;
-				overflow: hidden;
-				text-overflow: ellipsis;
-			}
-		}
-
-		.pill {
-			flex-shrink: 0;
-			display: flex;
-			align-items: center;
-			color: var(--color-primary);
-			background-color: var(--color-primary-tint-3);
-			border: var(--border-base);
-			border-color: var(--color-primary-tint-1);
-			padding: var(--spacing-5xs) var(--spacing-3xs);
-			border-radius: var(--border-radius-base);
 		}
 	}
 }

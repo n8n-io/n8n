@@ -65,7 +65,7 @@ import type { Segment } from '@/types/expressions';
 import type { TargetItem } from '@/Interface';
 import type { IDataObject } from 'n8n-workflow';
 import { useDebounce } from '@/composables/useDebounce';
-import { EventBus, createEventBus } from 'n8n-design-system/utils';
+import { type EventBus, createEventBus } from 'n8n-design-system/utils';
 
 type InlineExpressionEditorInputRef = InstanceType<typeof InlineExpressionEditorInput>;
 

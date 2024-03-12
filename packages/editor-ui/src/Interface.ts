@@ -1245,7 +1245,7 @@ export interface NDVState {
 		activeTarget: { id: string; stickyPosition: null | XYPosition } | null;
 	};
 	isMappingOnboarded: boolean;
-	isMappingHintDisabled: boolean;
+	isAutocompleteOnboarded: boolean;
 }
 
 export interface NotificationOptions extends Partial<ElementNotificationOptions> {

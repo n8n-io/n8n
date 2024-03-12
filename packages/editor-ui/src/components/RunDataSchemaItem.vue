@@ -41,8 +41,10 @@ const text = computed(() =>
 	Array.isArray(props.schema.value) ? '' : shorten(props.schema.value, 600, 0),
 );
 
-const dragged = computed(
-	() => props.draggingPath === props.schema.path || !ndvStore.isMappingOnboarded,
+const dragged = computed(() => props.draggingPath === props.schema.path);
+
+const highlight = computed(
+	() => dragged.value || (!ndvStore.isMappingOnboarded && Boolean(ndvStore.focusedMappableInput)),
 );
 
 const getJsonParameterPath = (path: string): string =>
@@ -89,7 +91,7 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 			:class="{
 				[$style.pill]: true,
 				[$style.mappable]: mappingEnabled,
-				[$style.dragged]: dragged,
+				[$style.highlight]: highlight,
 			}"
 		>
 			<span
@@ -244,7 +246,7 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 		}
 	}
 
-	&.dragged {
+	&.highlight {
 		&,
 		&:hover,
 		span,

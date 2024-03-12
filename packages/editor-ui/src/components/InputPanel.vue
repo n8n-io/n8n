@@ -243,9 +243,6 @@ export default defineComponent({
 		isUserOnboarded(): boolean {
 			return this.ndvStore.isMappingOnboarded;
 		},
-		isMappingHintDisabled(): boolean {
-			return this.ndvStore.isMappingHintDisabled;
-		},
 		isMappingMode(): boolean {
 			return this.isActiveNodeConfig && this.inputMode === 'mapping';
 		},
@@ -260,7 +257,7 @@ export default defineComponent({
 				return false;
 			}
 
-			return !!this.focusedMappableInput && !this.isUserOnboarded && !this.isMappingHintDisabled;
+			return !!this.focusedMappableInput && !this.isUserOnboarded;
 		},
 		isActiveNodeConfig(): boolean {
 			let inputs = this.activeNodeType?.inputs ?? [];

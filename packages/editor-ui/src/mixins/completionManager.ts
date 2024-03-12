@@ -32,6 +32,8 @@ export const completionManager = defineComponent({
 
 			if (!completionTx) return;
 
+			this.ndvStore.setAutocompleteOnboarded();
+
 			let completion = '';
 			let completionBase = '';
 
