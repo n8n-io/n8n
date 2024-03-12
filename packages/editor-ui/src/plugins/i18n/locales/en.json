@@ -1029,8 +1029,6 @@
 	"nodeErrorView.inputPanel.previousNodeError.title": "Error running node '{nodeName}'",
 	"nodeErrorView.debugError.button": "Ask AI ✨",
 	"nodeErrorView.debugError.loading": "Asking AI.. ✨",
-	"nodeErrorView.debugError.feedback.positive": "I found this helpful",
-	"nodeErrorView.debugError.feedback.negative": "I didn't find this helpful",
 	"nodeErrorView.debugError.feedback.reload": "Regenerate answer",
 	"nodeHelpers.credentialsUnset": "Credentials for '{credentialType}' are not set.",
 	"nodeSettings.alwaysOutputData.description": "If active, will output a single, empty item when the output would have been empty. Use to prevent the workflow finishing on this node.",
