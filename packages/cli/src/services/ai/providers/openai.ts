@@ -11,7 +11,7 @@ export class AIProviderOpenAI implements N8nAIProvider {
 			modelName: 'gpt-3.5-turbo-16k',
 			timeout: 60000,
 			maxRetries: 2,
-			temperature: 0.5,
+			temperature: 0.2,
 		});
 	}
 
