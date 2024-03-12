@@ -101,8 +101,6 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 		}
 	}
 
-	if (options.length === 0) return null;
-
 	if (tail !== '') {
 		options = options.filter((o) => prefixMatch(o.label, tail) && o.label !== tail);
 	}
@@ -110,11 +108,13 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 	let from = word.to - tail.length;
 
 	// When autocomplete is explicitely opened (by Ctrl+Space or programatically), add completions for the current word with '.' prefix
-	// example: {{ $json.str| }} -> ['.length', '.includes()'...]
-	if (context.explicit && !word.text.endsWith('.')) {
-		options = extendDataTypeOptions(options, word.text);
+	// example: {{ $json.str| }} -> ['length', 'includes()'...] (would usually need a '.' suffix)
+	if (context.explicit && !word.text.endsWith('.') && options.length === 0) {
+		options = explicitDataTypeOptions(word.text);
 		from = word.to;
 	}
+
+	if (options.length === 0) return null;
 
 	return {
 		from,
@@ -128,19 +128,17 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 	};
 }
 
-function extendDataTypeOptions(options: Completion[], expression: string): Completion[] {
+function explicitDataTypeOptions(expression: string): Completion[] {
 	try {
 		const resolved = resolveParameter(`={{ ${expression} }}`);
-		return options.concat(
-			datatypeOptions({
-				resolved,
-				base: expression,
-				tail: '',
-				transformLabel: (label) => '.' + label,
-			}),
-		);
+		return datatypeOptions({
+			resolved,
+			base: expression,
+			tail: '',
+			transformLabel: (label) => '.' + label,
+		});
 	} catch {
-		return options;
+		return [];
 	}
 }
 
