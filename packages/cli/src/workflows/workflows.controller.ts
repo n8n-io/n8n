@@ -237,15 +237,16 @@ export class WorkflowsController {
 		return workflowData;
 	}
 
+	// NOTE: updated
 	@Get('/:workflowId')
 	@ProjectScope('workflow:read')
 	async getWorkflow(req: WorkflowRequest.Get) {
 		const { workflowId } = req.params;
 
 		if (this.license.isSharingEnabled()) {
+			// TODO: tags are currently ignored, fix this
 			const relations: FindOptionsRelations<WorkflowEntity> = {
 				shared: {
-					user: true,
 					project: {
 						projectRelations: true,
 					},
@@ -256,17 +257,14 @@ export class WorkflowsController {
 				relations.tags = true;
 			}
 
-			const workflow = await this.workflowRepository.get({ id: workflowId }, { relations });
+			const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(
+				workflowId,
+				req.user,
+				['workflow:read'],
+			);
 
 			if (!workflow) {
 				throw new NotFoundError(`Workflow with ID "${workflowId}" does not exist`);
-			}
-
-			const userSharing = workflow.shared?.find((shared) => shared.user.id === req.user.id);
-			if (!userSharing && !req.user.hasGlobalScope('workflow:read')) {
-				throw new ForbiddenError(
-					'You do not have permission to access this workflow. Ask the owner to share it with you',
-				);
 			}
 
 			const enterpriseWorkflowService = this.enterpriseWorkflowService;

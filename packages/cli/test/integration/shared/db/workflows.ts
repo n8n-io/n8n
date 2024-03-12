@@ -9,7 +9,6 @@ import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import type { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { Project } from '@/databases/entities/Project';
-import { UserRepository } from '@/databases/repositories/user.repository';
 
 export async function createManyWorkflows(
 	amount: number,
@@ -56,26 +55,24 @@ export async function createWorkflow(
 	if (userOrProject instanceof User) {
 		const user = userOrProject;
 		const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(user.id);
-		await Container.get(SharedWorkflowRepository).save({
-			user,
-			project,
-			workflow,
-			role: 'workflow:owner',
-		});
+		await Container.get(SharedWorkflowRepository).save(
+			Container.get(SharedWorkflowRepository).create({
+				project,
+				workflow,
+				role: 'workflow:owner',
+			}),
+		);
 	}
 
 	if (userOrProject instanceof Project) {
 		const project = userOrProject;
-		// TODO: remove this when we remove users from SharedWorkflow
-		const user = await Container.get(UserRepository).findOneByOrFail({
-			projectRelations: { projectId: project.id },
-		});
-		await Container.get(SharedWorkflowRepository).save({
-			user,
-			project,
-			workflow,
-			role: 'workflow:owner',
-		});
+		await Container.get(SharedWorkflowRepository).save(
+			Container.get(SharedWorkflowRepository).create({
+				project,
+				workflow,
+				role: 'workflow:owner',
+			}),
+		);
 	}
 
 	return workflow;
@@ -88,7 +85,6 @@ export async function shareWorkflowWithUsers(workflow: WorkflowEntity, users: Us
 				user.id,
 			);
 			return {
-				userId: user.id,
 				projectId: project.id,
 				workflowId: workflow.id,
 				role: 'workflow:editor',

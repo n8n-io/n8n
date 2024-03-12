@@ -6,12 +6,14 @@ import { type User } from '../entities/User';
 import type { Scope } from '@n8n/permissions';
 import type { WorkflowEntity } from '../entities/WorkflowEntity';
 import { ProjectRepository } from './project.repository';
+import { RoleService } from '@/services/role.service';
 
 @Service()
 export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 	constructor(
 		dataSource: DataSource,
 		private readonly projectRepository: ProjectRepository,
+		private roleService: RoleService,
 	) {
 		super(SharedWorkflow, dataSource.manager);
 	}
@@ -166,5 +168,40 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 			user,
 			workflowId: In(sharedWorkflowIds),
 		});
+	}
+
+	async findWorkflowForUser(workflowId: string, user: User, scopes: Scope[]) {
+		let where: FindOptionsWhere<SharedWorkflow> = { workflowId };
+
+		if (!user.hasGlobalScope(scopes, { mode: 'allOf' })) {
+			const projectRoles = this.roleService.rolesWithScope('project', scopes);
+			const workflowRoles = this.roleService.rolesWithScope('workflow', scopes);
+
+			where = {
+				...where,
+				role: In(workflowRoles),
+				project: {
+					projectRelations: {
+						role: In(projectRoles),
+						userId: user.id,
+					},
+				},
+			};
+		}
+
+		const sharedWorkflow = await this.findOne({
+			where,
+			relations: {
+				workflow: {
+					shared: { project: { projectRelations: { user: true } } },
+				},
+			},
+		});
+
+		if (!sharedWorkflow) {
+			return null;
+		}
+
+		return sharedWorkflow.workflow;
 	}
 }

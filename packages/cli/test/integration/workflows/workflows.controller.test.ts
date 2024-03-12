@@ -270,6 +270,7 @@ describe('POST /workflows', () => {
 	});
 });
 
+// NOTE: passing
 describe('GET /workflows/:id', () => {
 	test('should return pin data', async () => {
 		const workflow = makeWorkflow({ withPinData: true });
