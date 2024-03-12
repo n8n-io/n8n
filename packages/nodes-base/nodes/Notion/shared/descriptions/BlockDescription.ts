@@ -20,15 +20,16 @@ const blockIdRLC: INodeProperties = {
 				{
 					type: 'regex',
 					properties: {
-						regex: 'https:\\/\\/www\\.notion\\.so\\/.+\\?pvs=[0-9]+#([a-f0-9]{2,})',
+						regex:
+							'(?:https|http)://www.notion.so/(?:[a-z0-9-]{2,}/)?(?:[a-zA-Z0-9-]{2,}-)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12}).*',
 						errorMessage: 'Not a valid Notion Block URL',
 					},
 				},
 			],
-			extractValue: {
-				type: 'regex',
-				regex: 'https:\\/\\/www\\.notion\\.so\\/.+\\?pvs=[0-9]+#([a-f0-9]{2,})',
-			},
+			// extractValue: {
+			// 	type: 'regex',
+			// 	regex: 'https:\\/\\/www\\.notion\\.so\\/.+\\?pvs=[0-9]+#([a-f0-9]{2,})',
+			// },
 		},
 		{
 			displayName: 'ID',
