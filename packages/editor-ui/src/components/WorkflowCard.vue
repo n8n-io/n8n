@@ -169,7 +169,7 @@ export default defineComponent({
 	},
 	methods: {
 		async onClick(event?: KeyboardEvent | PointerEvent) {
-			if (event?.metaKey || event?.ctrlKey) {
+			if (event?.metaKey ?? event?.ctrlKey) {
 				const route = this.$router.resolve({
 					name: VIEWS.WORKFLOW,
 					params: { name: this.data.id },
