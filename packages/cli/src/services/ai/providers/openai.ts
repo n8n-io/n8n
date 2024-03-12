@@ -1,4 +1,3 @@
-import config from '@/config';
 import { ChatOpenAI } from '@langchain/openai';
 import type { BaseMessageChunk, BaseMessageLike } from '@langchain/core/messages';
 import type { N8nAIProvider } from '@/types/ai.types';
@@ -6,12 +5,13 @@ import type { N8nAIProvider } from '@/types/ai.types';
 export class AIProviderOpenAI implements N8nAIProvider {
 	private model: ChatOpenAI;
 
-	constructor() {
+	constructor(options: { apiKey: string }) {
 		this.model = new ChatOpenAI({
-			openAIApiKey: config.getEnv('ai.openAIApiKey'),
+			openAIApiKey: options.apiKey,
 			modelName: 'gpt-3.5-turbo-16k',
 			timeout: 60000,
 			maxRetries: 2,
+			temperature: 0.1,
 		});
 	}
 

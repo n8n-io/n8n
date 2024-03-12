@@ -22,16 +22,27 @@ jest.mock('@/services/ai/providers/openai', () => {
 
 describe('AIService', () => {
 	describe('constructor', () => {
-		test('should throw if unknown provider type', () => {
+		test('should throw if prompting with unknown provider type', async () => {
 			jest.mocked(config).getEnv.mockReturnValue('unknown');
+			const aiService = new AIService();
 
-			expect(() => new AIService()).toThrow(ApplicationError);
+			await expect(async () => await aiService.prompt([])).rejects.toThrow(ApplicationError);
 		});
 
-		test('should not throw if known provider type', () => {
-			jest.mocked(config).getEnv.mockReturnValue('openai');
+		test('should throw if prompting with known provider type without api key', async () => {
+			jest
+				.mocked(config)
+				.getEnv.mockImplementation((value) => (value === 'ai.openAIApiKey' ? '' : 'openai'));
+			const aiService = new AIService();
 
-			expect(() => new AIService()).not.toThrow(ApplicationError);
+			await expect(async () => await aiService.prompt([])).rejects.toThrow(ApplicationError);
+		});
+
+		test('should not throw if prompting with known provider type', () => {
+			jest.mocked(config).getEnv.mockReturnValue('openai');
+			const aiService = new AIService();
+
+			expect(async () => await aiService.prompt([])).not.toThrow(ApplicationError);
 		});
 	});
 
@@ -39,9 +50,9 @@ describe('AIService', () => {
 		test('should call model.prompt', async () => {
 			const service = new AIService();
 
-			await service.prompt('message');
+			await service.prompt(['message']);
 
-			expect(service.model.prompt).toHaveBeenCalledWith('message');
+			expect(service.model.prompt).toHaveBeenCalledWith(['message']);
 		});
 	});
 
@@ -56,7 +67,7 @@ describe('AIService', () => {
 					name: 'nodeType',
 					properties: [],
 				},
-			} as INodeType;
+			} as unknown as INodeType;
 			const error = new NodeOperationError(
 				{
 					type: 'n8n-nodes-base.error',

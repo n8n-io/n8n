@@ -2,6 +2,7 @@ import { Post, RestController } from '@/decorators';
 import { AIRequest } from '@/requests';
 import { AIService } from '@/services/ai.service';
 import { NodeTypes } from '@/NodeTypes';
+import { FailedDependencyError } from '@/errors/response-errors/failed-dependency.error';
 
 @RestController('/ai')
 export class AIController {
@@ -22,9 +23,16 @@ export class AIController {
 			nodeType = this.nodeTypes.getByNameAndVersion(error.node.type, error.node.typeVersion);
 		}
 
-		const message = await this.aiService.debugError(error, nodeType);
-		return {
-			message,
-		};
+		try {
+			const message = await this.aiService.debugError(error, nodeType);
+			return {
+				message,
+			};
+		} catch (aiServiceError) {
+			throw new FailedDependencyError(
+				(aiServiceError as Error).message ||
+					'Failed to debug error due to an issue with an external dependency. Please try again later.',
+			);
+		}
 	}
 }

@@ -2454,7 +2454,7 @@ export interface IPublicApiSettings {
 
 export type ExpressionEvaluatorType = 'tmpl' | 'tournament';
 
-export type N8nAIProviderType = 'openai';
+export type N8nAIProviderType = 'openai' | 'unknown';
 
 export interface IN8nUISettings {
 	endpointForm: string;
