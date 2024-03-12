@@ -1,4 +1,4 @@
-import {
+import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -7,7 +7,9 @@ import {
 
 export class HoneyBookApi implements ICredentialType {
 	name = 'honeyBookApi';
+
 	displayName = 'HoneyBook API';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Context user',
@@ -35,9 +37,9 @@ export class HoneyBookApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: process.env['HB_API_ENDPOINT'] || 'https://mocki.io',
-			url: process.env['HB_TEST_API_ENDPOINT'] || 'v2/n8n/test_credentials',
-			method: 'GET'
+			baseURL: process.env.HB_API_ENDPOINT || 'https://mocki.io',
+			url: process.env.HB_TEST_API_ENDPOINT || 'v2/n8n/test_credentials',
+			method: 'GET',
 		},
 	};
 }
