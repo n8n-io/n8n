@@ -5,6 +5,7 @@ import type {
 	IHttpRequestMethods,
 	IRequestOptions,
 	IHttpRequestOptions,
+	ILoadOptionsFunctions,
 } from 'n8n-workflow';
 
 /**
@@ -42,10 +43,10 @@ export async function twilioApiRequest(
 }
 
 export async function twilioTriggerApiRequest(
-	this: IHookFunctions | IExecuteFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
 	endpoint: string,
-	body: FormData | IDataObject,
+	body: FormData | IDataObject = {},
 ): Promise<any> {
 	const options: IHttpRequestOptions = {
 		method,
