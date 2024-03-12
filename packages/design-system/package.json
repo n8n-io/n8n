@@ -27,16 +27,7 @@
     "lintfix": "eslint src --ext .js,.ts,.vue --fix"
   },
   "devDependencies": {
-    "@storybook/addon-a11y": "^8.0.0",
-    "@storybook/addon-actions": "^8.0.0",
-    "@storybook/addon-docs": "^8.0.0",
-    "@storybook/addon-essentials": "^8.0.0",
-    "@storybook/addon-interactions": "^8.0.0",
-    "@storybook/addon-links": "^8.0.0",
-    "@storybook/blocks": "^8.0.0",
-    "@storybook/test": "^8.0.0",
-    "@storybook/vue3": "^8.0.0",
-    "@storybook/vue3-vite": "^8.0.0",
+    "@n8n/storybook": "workspace:*",
     "@testing-library/jest-dom": "^6.1.5",
     "@testing-library/user-event": "^14.5.1",
     "@testing-library/vue": "^8.0.1",
@@ -53,8 +44,7 @@
     "core-js": "^3.31.0",
     "jsdom": "^23.0.1",
     "sass": "^1.64.1",
-    "sass-loader": "^13.3.2",
-    "storybook": "^8.0.0"
+    "sass-loader": "^13.3.2"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^1.2.36",
