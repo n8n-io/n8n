@@ -24,6 +24,10 @@ const props = defineProps({
 		type: String,
 		default: undefined,
 	},
+	animationsEnabled: {
+		type: Boolean,
+		default: true,
+	},
 });
 
 const style = useCssModule();
@@ -58,6 +62,7 @@ const classes = computed(() => {
 	return {
 		[style.executionListItem]: true,
 		[style[props.execution.status ?? '']]: !!props.execution.status,
+		[style.animated]: props.animationsEnabled,
 	};
 });
 
@@ -301,8 +306,6 @@ async function handleActionItemClick(commandData: 'retrySaved' | 'retryOriginal'
 
 	td {
 		transition: background 0.3s ease;
-		animation: execution-item-animation $executions-list-item-animation-duration ease-out;
-		animation-delay: $executions-list-item-animation-delay;
 		background: var(--execution-list-item-background);
 	}
 
@@ -351,6 +354,13 @@ async function handleActionItemClick(commandData: 'retrySaved' | 'retryOriginal'
 
 	&.unknown td:first-child::before {
 		background: var(--execution-card-border-unknown);
+	}
+}
+
+.animated {
+	td {
+		animation: execution-item-animation $executions-list-item-animation-duration ease-out;
+		animation-delay: $executions-list-item-animation-delay;
 	}
 }
 

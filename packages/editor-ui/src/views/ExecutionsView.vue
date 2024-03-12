@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { onBeforeMount, onBeforeUnmount, onMounted } from 'vue';
+import { onBeforeMount, onBeforeUnmount, onMounted, ref } from 'vue';
 import GlobalExecutionsList from '@/components/executions/global/GlobalExecutionsList.vue';
 import { setPageTitle } from '@/utils/htmlUtils';
 import { useI18n } from '@/composables/useI18n';
@@ -19,6 +19,8 @@ const executionsStore = useExecutionsStore();
 
 const toast = useToast();
 
+const animationsEnabled = ref(false);
+
 const { executionsCount, executionsCountEstimated, filters, allExecutions } =
 	storeToRefs(executionsStore);
 
@@ -31,17 +33,27 @@ onBeforeMount(async () => {
 	});
 });
 
-onMounted(() => {
+onMounted(async () => {
 	setPageTitle(`n8n - ${i18n.baseText('executionsList.workflowExecutions')}`);
-
-	void executionsStore.initialize();
 	document.addEventListener('visibilitychange', onDocumentVisibilityChange);
+
+	await initialize();
 });
 
 onBeforeUnmount(() => {
 	executionsStore.reset();
 	document.removeEventListener('visibilitychange', onDocumentVisibilityChange);
 });
+
+async function initialize() {
+	setAnimationsEnabled(false);
+	await executionsStore.initialize();
+	setAnimationsEnabled(true);
+}
+
+function setAnimationsEnabled(value: boolean) {
+	animationsEnabled.value = value;
+}
 
 async function loadWorkflows() {
 	try {
@@ -70,7 +82,7 @@ async function onRefreshData() {
 async function onUpdateFilters(newFilters: ExecutionFilterType) {
 	executionsStore.reset();
 	executionsStore.setFilters(newFilters);
-	await executionsStore.initialize();
+	await initialize();
 }
 
 async function onExecutionStop() {
@@ -83,7 +95,10 @@ async function onExecutionStop() {
 		:filters="filters"
 		:total="executionsCount"
 		:estimated-total="executionsCountEstimated"
+		:animations-enabled="animationsEnabled"
 		@execution:stop="onExecutionStop"
 		@update:filters="onUpdateFilters"
+		@load-more:start="setAnimationsEnabled(false)"
+		@load-more:complete="setAnimationsEnabled(true)"
 	/>
 </template>

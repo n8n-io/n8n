@@ -1,6 +1,6 @@
 <script lang="ts" setup>
-import { onMounted, PropType } from 'vue';
-import { watch, computed, ref } from 'vue';
+import type { PropType } from 'vue';
+import { watch, computed, ref, onMounted } from 'vue';
 import ExecutionsFilter from '@/components/executions/ExecutionsFilter.vue';
 import GlobalExecutionsListItem from '@/components/executions/global/GlobalExecutionsListItem.vue';
 import { MODAL_CONFIRM } from '@/constants';
@@ -30,9 +30,20 @@ const props = defineProps({
 		type: Boolean,
 		default: false,
 	},
+	animationsEnabled: {
+		type: Boolean,
+		default: true,
+	},
 });
 
-const emit = defineEmits(['closeModal', 'execution:stop', 'update:autoRefresh', 'update:filters']);
+const emit = defineEmits([
+	'closeModal',
+	'execution:stop',
+	'update:autoRefresh',
+	'update:filters',
+	'loadMore:start',
+	'loadMore:complete',
+]);
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
@@ -46,6 +57,8 @@ const selectedItems = ref<Record<string, boolean>>({});
 
 const message = useMessage();
 const toast = useToast();
+
+const alreadyAnimated = ref<Set<string>>(new Set());
 
 const selectedCount = computed(() => {
 	if (allExistingSelected.value) {
@@ -67,7 +80,11 @@ const workflows = computed<IWorkflowDb[]>(() => {
 
 watch(
 	() => props.executions,
-	() => {
+	(newValue, oldValue) => {
+		if (oldValue.length === 0 && newValue.length > 0) {
+			setAlreadyAnimatedItems();
+		}
+
 		if (props.executions.length === 0) {
 			handleClearSelection();
 		}
@@ -78,6 +95,10 @@ watch(
 onMounted(() => {
 	isMounted.value = true;
 });
+
+function setAlreadyAnimatedItems() {
+	alreadyAnimated.value = new Set(props.executions.map((execution) => execution.id));
+}
 
 function handleCheckAllExistingChange() {
 	allExistingSelected.value = !allExistingSelected.value;
@@ -171,6 +192,7 @@ function getWorkflowName(workflowId: string): string | undefined {
 }
 
 async function loadMore() {
+	emit('loadMore:start');
 	if (executionsStore.filters.status === 'running') {
 		return;
 	}
@@ -186,6 +208,8 @@ async function loadMore() {
 	} catch (error) {
 		toast.showError(error, i18n.baseText('executionsList.showError.loadMore.title'));
 		return;
+	} finally {
+		emit('loadMore:complete');
 	}
 }
 
@@ -343,13 +367,17 @@ async function onAutoRefreshToggle(value: boolean) {
 						<th></th>
 					</tr>
 				</thead>
-				<TransitionGroup tag="tbody" name="executions-list">
+				{{
+					alreadyAnimated
+				}}
+				<TransitionGroup tag="tbody" :name="animationsEnabled ? 'executions-list' : undefined">
 					<GlobalExecutionsListItem
 						v-for="execution in executions"
 						:key="execution.id"
 						:execution="execution"
 						:workflow-name="getExecutionWorkflowName(execution)"
 						:selected="selectedItems[execution.id] || allExistingSelected"
+						:animations-enabled="animationsEnabled && !alreadyAnimated.has(execution.id)"
 						@stop="stopExecution"
 						@delete="deleteExecution"
 						@select="toggleSelectExecution"
