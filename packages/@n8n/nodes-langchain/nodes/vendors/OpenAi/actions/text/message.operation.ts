@@ -5,13 +5,13 @@ import type {
 	IDataObject,
 } from 'n8n-workflow';
 import { jsonParse, updateDisplayOptions } from 'n8n-workflow';
+import type { Tool } from '@langchain/core/tools';
 import { apiRequest } from '../../transport';
 import type { ChatCompletion } from '../../helpers/interfaces';
 import { formatToOpenAIAssistantTool } from '../../helpers/utils';
 import { modelRLC } from '../descriptions';
 import { getConnectedTools } from '../../../../../utils/helpers';
 import { MODELS_NOT_SUPPORT_FUNCTION_CALLS } from '../../helpers/constants';
-import type { Tool } from '@langchain/core/tools';
 
 const properties: INodeProperties[] = [
 	modelRLC,
@@ -252,7 +252,8 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			let functionResponse;
 			for (const tool of externalTools ?? []) {
 				if (tool.name === functionName) {
-					const functionInput = (jsonParse(functionArgs) as { input: string })?.input ?? functionArgs;
+					const parsedArgs: { input: string } = jsonParse(functionArgs);
+					const functionInput = parsedArgs.input ?? functionArgs;
 					functionResponse = await tool.invoke(functionInput);
 				}
 			}
