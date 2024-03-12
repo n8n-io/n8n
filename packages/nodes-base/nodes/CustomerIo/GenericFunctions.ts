@@ -11,7 +11,7 @@ import get from 'lodash/get';
 
 export async function customerIoApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: object,
 	baseApi?: string,
@@ -22,7 +22,7 @@ export async function customerIoApiRequest(
 		headers: {
 			'Content-Type': 'application/json',
 		},
-		method: method as IHttpRequestMethods,
+		method,
 		body,
 		url: '',
 		json: true,
@@ -48,9 +48,7 @@ export async function customerIoApiRequest(
 
 export function eventExists(currentEvents: string[], webhookEvents: IDataObject) {
 	for (const currentEvent of currentEvents) {
-		if (
-			get(webhookEvents, `${currentEvent.split('.')[0]}.${currentEvent.split('.')[1]}`) !== true
-		) {
+		if (get(webhookEvents, [currentEvent.split('.')[0], currentEvent.split('.')[1]]) !== true) {
 			return false;
 		}
 	}

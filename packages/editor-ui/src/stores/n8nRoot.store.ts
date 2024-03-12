@@ -30,6 +30,7 @@ export const useRootStore = defineStore(STORES.ROOT, {
 		urlBaseEditor: 'http://localhost:5678',
 		isNpmAvailable: false,
 		instanceId: '',
+		binaryDataMode: 'default',
 	}),
 	getters: {
 		getBaseUrl(): string {
@@ -127,6 +128,9 @@ export const useRootStore = defineStore(STORES.ROOT, {
 		},
 		setIsNpmAvailable(isNpmAvailable: boolean): void {
 			this.isNpmAvailable = isNpmAvailable;
+		},
+		setBinaryDataMode(binaryDataMode: string): void {
+			this.binaryDataMode = binaryDataMode;
 		},
 	},
 });

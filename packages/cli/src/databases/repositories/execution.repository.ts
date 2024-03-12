@@ -10,15 +10,15 @@ import {
 	Not,
 	Raw,
 	Repository,
-} from 'typeorm';
-import { DateUtils } from 'typeorm/util/DateUtils';
+} from '@n8n/typeorm';
+import { DateUtils } from '@n8n/typeorm/util/DateUtils';
 import type {
 	FindManyOptions,
 	FindOneOptions,
 	FindOperator,
 	FindOptionsWhere,
 	SelectQueryBuilder,
-} from 'typeorm';
+} from '@n8n/typeorm';
 import { parse, stringify } from 'flatted';
 import {
 	ApplicationError,
@@ -645,6 +645,16 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				workflowId: In(workflowIds),
 			},
 			includeData,
+			unflattenData: true,
+		});
+	}
+
+	async findWithUnflattenedData(executionId: string, accessibleWorkflowIds: string[]) {
+		return await this.findSingleExecution(executionId, {
+			where: {
+				workflowId: In(accessibleWorkflowIds),
+			},
+			includeData: true,
 			unflattenData: true,
 		});
 	}

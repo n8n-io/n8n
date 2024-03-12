@@ -234,15 +234,13 @@ export const schema = {
 	},
 
 	executions: {
-		// By default workflows get always executed in the main process.
-		// TODO: remove this and all usage of `executions.process` when `own` mode is deleted
+		// TODO: remove this and all usage of `executions.process` when we're sure that nobody has this in their config file anymore.
 		process: {
-			doc: 'In what process workflows should be executed.',
-			format: ['main', 'own'] as const,
-			default: 'main',
+			doc: 'Deprecated key, that will be removed in the future. Please remove it from your configuration and environment variables to prevent issues in the future.',
+			format: String,
+			default: '',
 			env: 'EXECUTIONS_PROCESS',
 		},
-
 		mode: {
 			doc: 'If it should run executions directly or via queue',
 			format: ['regular', 'queue'] as const,
@@ -539,6 +537,12 @@ export const schema = {
 		default: 'http',
 		env: 'N8N_PROTOCOL',
 		doc: 'HTTP Protocol via which n8n can be reached',
+	},
+	secure_cookie: {
+		doc: 'This sets the `Secure` flag on n8n auth cookie',
+		format: Boolean,
+		default: true,
+		env: 'N8N_SECURE_COOKIE',
 	},
 	ssl_key: {
 		format: String,

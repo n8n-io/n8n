@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { STORES } from '@/constants';
+import { STORES, TEMPLATES_URLS } from '@/constants';
 import type {
 	INodeUi,
 	ITemplatesCategory,
@@ -21,6 +21,7 @@ import {
 	getWorkflowTemplate,
 } from '@/api/templates';
 import { getFixedNodesList } from '@/utils/nodeViewUtils';
+import { useRootStore } from '@/stores/n8nRoot.store';
 
 const TEMPLATES_PAGE_SIZE = 20;
 
@@ -39,6 +40,7 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 		workflowSearches: {},
 		currentSessionId: '',
 		previousSessionId: '',
+		currentN8nPath: `${window.location.protocol}//${window.location.host}${window.BASE_PATH}`,
 	}),
 	getters: {
 		allCategories(): ITemplatesCategory[] {
@@ -107,6 +109,41 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 				return Boolean(
 					search && !search.loadingMore && search.totalWorkflows === search.workflowIds.length,
 				);
+			};
+		},
+		hasCustomTemplatesHost(): boolean {
+			const settingsStore = useSettingsStore();
+			return settingsStore.templatesHost !== TEMPLATES_URLS.DEFAULT_API_HOST;
+		},
+		/**
+		 * Construct the URL for the template repository on the website
+		 * @returns {string}
+		 */
+		getWebsiteTemplateRepositoryURL(): string {
+			return `${TEMPLATES_URLS.BASE_WEBSITE_URL}?${TEMPLATES_URLS.UTM_QUERY}&utm_instance=${
+				this.currentN8nPath
+			}&utm_n8n_version=${useRootStore().versionCli}`;
+		},
+		/**
+		 * Construct the URL for the template page on the website for a given template id
+		 * @returns {function(string): string}
+		 */
+		getWebsiteTemplatePageURL() {
+			return (id: string) => {
+				return `${TEMPLATES_URLS.BASE_WEBSITE_URL}/${id}?${TEMPLATES_URLS.UTM_QUERY}&utm_instance=${
+					this.currentN8nPath
+				}&utm_n8n_version=${useRootStore().versionCli}`;
+			};
+		},
+		/**
+		 * Construct the URL for the template category page on the website for a given category id
+		 * @returns {function(string): string}
+		 */
+		getWebsiteCategoryURL() {
+			return (id: string) => {
+				return `${TEMPLATES_URLS.BASE_WEBSITE_URL}/?categories=${id}&${
+					TEMPLATES_URLS.UTM_QUERY
+				}&utm_instance=${this.currentN8nPath}&utm_n8n_version=${useRootStore().versionCli}`;
 			};
 		},
 	},

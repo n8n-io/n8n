@@ -9,8 +9,7 @@
 import type express from 'express';
 import { Container } from 'typedi';
 import get from 'lodash/get';
-import stream from 'stream';
-import { promisify } from 'util';
+import { pipeline } from 'stream/promises';
 import formidable from 'formidable';
 
 import { BinaryDataService, NodeExecuteFunctions } from 'n8n-core';
@@ -35,6 +34,7 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
+	ApplicationError,
 	BINARY_ENCODING,
 	createDeferredPromise,
 	ErrorReporterProxy as ErrorReporter,
@@ -64,8 +64,6 @@ import { Logger } from './Logger';
 import { NotFoundError } from './errors/response-errors/not-found.error';
 import { InternalServerError } from './errors/response-errors/internal-server.error';
 import { UnprocessableRequestError } from './errors/response-errors/unprocessable.error';
-
-const pipeline = promisify(stream.pipeline);
 
 export const WEBHOOK_METHODS: IHttpRequestMethods[] = [
 	'DELETE',
@@ -810,7 +808,13 @@ export async function executeWebhook(
 				})
 				.catch((e) => {
 					if (!didSendResponse) {
-						responseCallback(new Error('There was a problem executing the workflow'), {});
+						responseCallback(
+							new ApplicationError('There was a problem executing the workflow', {
+								level: 'warning',
+								cause: e,
+							}),
+							{},
+						);
 					}
 
 					throw new InternalServerError(e.message);
@@ -821,7 +825,10 @@ export async function executeWebhook(
 		const error =
 			e instanceof UnprocessableRequestError
 				? e
-				: new Error('There was a problem executing the workflow', { cause: e });
+				: new ApplicationError('There was a problem executing the workflow', {
+						level: 'warning',
+						cause: e,
+				  });
 		if (didSendResponse) throw error;
 		responseCallback(error, {});
 		return;

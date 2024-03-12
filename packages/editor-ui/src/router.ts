@@ -18,6 +18,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import { middleware } from '@/rbac/middleware';
 import type { RouteConfig, RouterMiddleware } from '@/types/router';
 import { initializeCore } from '@/init';
+import { tryToParseNumber } from '@/utils/typesUtils';
 
 const ChangePasswordView = async () => await import('./views/ChangePasswordView.vue');
 const ErrorView = async () => await import('./views/ErrorView.vue');
@@ -77,7 +78,7 @@ export const routes = [
 	{
 		path: '/',
 		name: VIEWS.HOMEPAGE,
-		redirect: (to) => {
+		redirect: () => {
 			return { name: VIEWS.WORKFLOWS };
 		},
 		meta: {
@@ -106,6 +107,9 @@ export const routes = [
 			middleware: ['authenticated'],
 		},
 	},
+	// Following two routes are kept in-app:
+	// Single workflow view, used when a custom template host is set
+	// Also, reachable directly from this URL
 	{
 		path: '/templates/:id',
 		name: VIEWS.TEMPLATE,
@@ -120,7 +124,9 @@ export const routes = [
 				getProperties(route: RouteLocation) {
 					const templatesStore = useTemplatesStore();
 					return {
-						template_id: route.params.id,
+						template_id: tryToParseNumber(
+							Array.isArray(route.params.id) ? route.params.id[0] : route.params.id,
+						),
 						wf_template_repo_session_id: templatesStore.currentSessionId,
 					};
 				},
@@ -128,6 +134,7 @@ export const routes = [
 			middleware: ['authenticated'],
 		},
 	},
+	// Template setup view, this is the landing view for website users
 	{
 		path: '/templates/:id/setup',
 		name: VIEWS.TEMPLATE_SETUP,
@@ -142,7 +149,9 @@ export const routes = [
 				getProperties(route: RouteLocation) {
 					const templatesStore = useTemplatesStore();
 					return {
-						template_id: route.params.id,
+						template_id: tryToParseNumber(
+							Array.isArray(route.params.id) ? route.params.id[0] : route.params.id,
+						),
 						wf_template_repo_session_id: templatesStore.currentSessionId,
 					};
 				},
@@ -174,6 +183,14 @@ export const routes = [
 				this.scrollOffset = pos;
 			},
 			middleware: ['authenticated'],
+		},
+		beforeEnter: (_to, _from, next) => {
+			const templatesStore = useTemplatesStore();
+			if (!templatesStore.hasCustomTemplatesHost) {
+				window.location.href = templatesStore.getWebsiteTemplateRepositoryURL;
+			} else {
+				next();
+			}
 		},
 	},
 	{
@@ -342,6 +359,14 @@ export const routes = [
 		},
 		meta: {
 			middleware: ['authenticated'],
+			middlewareOptions: {
+				authenticated: {
+					bypass: () => {
+						const settingsStore = useSettingsStore();
+						return settingsStore.isPreviewMode;
+					},
+				},
+			},
 		},
 	},
 	{

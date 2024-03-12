@@ -18,8 +18,7 @@ jobs:
       - name: Check out branch
         uses: actions/checkout@v4.1.1
 
-      - uses: pnpm/action-setup@v2.4.0
-
+      - run: corepack enable
       - uses: actions/setup-node@v4.0.1
         with:
           node-version: 18.x
@@ -30,6 +29,6 @@ jobs:
 
       - name: Validate PR title
         id: validate_pr_title
-        uses: n8n-io/validate-n8n-pull-request-title@v2.0.0
+        uses: n8n-io/validate-n8n-pull-request-title@v2.0.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

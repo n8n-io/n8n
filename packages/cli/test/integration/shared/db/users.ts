@@ -9,6 +9,9 @@ import { MfaService } from '@/Mfa/mfa.service';
 
 import { randomApiKey, randomEmail, randomName, randomValidPassword } from '../random';
 
+// pre-computed bcrypt hash for the string 'password', using `await hash('password', 10)`
+const passwordHash = '$2a$10$njedH7S6V5898mj6p0Jr..IGY9Ms.qNwR7RbSzzX9yubJocKfvGGK';
+
 /**
  * Store a user in the DB, defaulting to a `member`.
  */
@@ -16,7 +19,7 @@ export async function createUser(attributes: Partial<User> = {}): Promise<User> 
 	const { email, password, firstName, lastName, role, ...rest } = attributes;
 	const user = Container.get(UserRepository).create({
 		email: email ?? randomEmail(),
-		password: await hash(password ?? randomValidPassword(), 10),
+		password: password ? await hash(password, 1) : passwordHash,
 		firstName: firstName ?? randomName(),
 		lastName: lastName ?? randomName(),
 		role: role ?? 'global:member',
@@ -101,7 +104,7 @@ export async function createManyUsers(
 		[...Array(amount)].map(async () =>
 			Container.get(UserRepository).create({
 				email: email ?? randomEmail(),
-				password: await hash(password ?? randomValidPassword(), 10),
+				password: password ? await hash(password, 1) : passwordHash,
 				firstName: firstName ?? randomName(),
 				lastName: lastName ?? randomName(),
 				role: role ?? 'global:member',

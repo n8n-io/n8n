@@ -1,5 +1,5 @@
 import type { SuperAgentTest } from 'supertest';
-import { IsNull } from 'typeorm';
+import { IsNull } from '@n8n/typeorm';
 import validator from 'validator';
 import type { User } from '@db/entities/User';
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
@@ -300,10 +300,6 @@ describe('Member', () => {
 });
 
 describe('Owner', () => {
-	beforeEach(async () => {
-		await utils.setInstanceOwnerSetUp(true);
-	});
-
 	test('PATCH /me should succeed with valid inputs', async () => {
 		const owner = await createUser({ role: 'global:owner' });
 		const authOwnerAgent = testServer.authAgentFor(owner);

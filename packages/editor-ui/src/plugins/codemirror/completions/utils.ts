@@ -1,24 +1,40 @@
-import { NODE_TYPES_EXCLUDED_FROM_AUTOCOMPLETION } from '@/components/CodeNodeEditor/constants';
 import { CREDENTIAL_EDIT_MODAL_KEY, SPLIT_IN_BATCHES_NODE_TYPE } from '@/constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { resolveParameter } from '@/mixins/workflowHelpers';
+import { resolveParameter, useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useUIStore } from '@/stores/ui.store';
-import type { Completion, CompletionContext } from '@codemirror/autocomplete';
+import {
+	insertCompletionText,
+	type Completion,
+	type CompletionContext,
+	pickedCompletion,
+	type CompletionSection,
+} from '@codemirror/autocomplete';
+import type { EditorView } from '@codemirror/view';
+import type { TransactionSpec } from '@codemirror/state';
+import type { SyntaxNode } from '@lezer/common';
+import { javascriptLanguage } from '@codemirror/lang-javascript';
+import { useRouter } from 'vue-router';
+import type { DocMetadata } from 'n8n-workflow';
 
-// String literal expression is everything enclosed in single, double or tick quotes following a dot
-const stringLiteralRegex = /^"[^"]+"|^'[^']+'|^`[^`]+`\./;
-// JavaScript operands
-const operandsRegex = /[+\-*/><<==>**!=?]/;
 /**
  * Split user input into base (to resolve) and tail (to filter).
  */
 export function splitBaseTail(userInput: string): [string, string] {
-	const processedInput = extractSubExpression(userInput);
-	const parts = processedInput.split('.');
-	const tail = parts.pop() ?? '';
+	const read = (node: SyntaxNode | null) => (node ? userInput.slice(node.from, node.to) : '');
+	const lastNode = javascriptLanguage.parser.parse(userInput).resolveInner(userInput.length, -1);
 
-	return [parts.join('.'), tail];
+	switch (lastNode.type.name) {
+		case '.':
+			return [read(lastNode.parent).slice(0, -1), ''];
+		case 'MemberExpression':
+			return [read(lastNode.parent), read(lastNode)];
+		case 'PropertyName':
+			const tail = read(lastNode);
+			return [read(lastNode.parent).slice(0, -(tail.length + 1)), tail];
+		default:
+			return ['', ''];
+	}
 }
 
 export function longestCommonPrefix(...strings: string[]) {
@@ -35,29 +51,6 @@ export function longestCommonPrefix(...strings: string[]) {
 
 		return acc.slice(0, i);
 	}, '');
-}
-
-// Process user input if expressions are used as part of complex expression
-// i.e. as a function parameter or an operation expression
-// this function will extract expression that is currently typed so autocomplete
-// suggestions can be matched based on it.
-function extractSubExpression(userInput: string): string {
-	const dollarSignIndex = userInput.indexOf('$');
-	if (dollarSignIndex === -1) {
-		return userInput;
-	} else if (!stringLiteralRegex.test(userInput)) {
-		// If there is a dollar sign in the input and input is not a string literal,
-		// extract part of following the last $
-		const expressionParts = userInput.split('$');
-		userInput = `$${expressionParts[expressionParts.length - 1]}`;
-		// If input is part of a complex operation expression and extract last operand
-		const operationPart = userInput.split(operandsRegex).pop()?.trim() || '';
-		const lastOperand = operationPart.split(' ').pop();
-		if (lastOperand) {
-			userInput = lastOperand;
-		}
-	}
-	return userInput;
 }
 
 export const prefixMatch = (first: string, second: string) =>
@@ -133,15 +126,15 @@ export const isSplitInBatchesAbsent = () =>
 	!useWorkflowsStore().workflow.nodes.some((node) => node.type === SPLIT_IN_BATCHES_NODE_TYPE);
 
 export function autocompletableNodeNames() {
-	return useWorkflowsStore()
-		.allNodes.filter((node) => {
-			const activeNodeName = useNDVStore().activeNode?.name;
+	const activeNodeName = useNDVStore().activeNode?.name;
 
-			return (
-				!NODE_TYPES_EXCLUDED_FROM_AUTOCOMPLETION.includes(node.type) && node.name !== activeNodeName
-			);
-		})
-		.map((node) => node.name);
+	if (!activeNodeName) return [];
+
+	return useWorkflowHelpers({ router: useRouter() })
+		.getCurrentWorkflow()
+		.getParentNodesByDepth(activeNodeName)
+		.map((node) => node.name)
+		.filter((name) => name !== activeNodeName);
 }
 
 /**
@@ -156,4 +149,51 @@ export const stripExcessParens = (context: CompletionContext) => (option: Comple
 	}
 
 	return option;
+};
+
+/**
+ * When a function completion is selected, set the cursor correctly
+ * @example `.includes()` -> `.includes(<cursor>)`
+ *  @example `$max()` -> `$max()<cursor>`
+ */
+export const applyCompletion =
+	(hasArgs = true) =>
+	(view: EditorView, completion: Completion, from: number, to: number): void => {
+		const tx: TransactionSpec = {
+			...insertCompletionText(view.state, completion.label, from, to),
+			annotations: pickedCompletion.of(completion),
+		};
+
+		if (completion.label.endsWith('()') && hasArgs) {
+			const cursorPosition = from + completion.label.length - 1;
+			tx.selection = { anchor: cursorPosition, head: cursorPosition };
+		}
+
+		view.dispatch(tx);
+	};
+
+export const hasRequiredArgs = (doc?: DocMetadata): boolean => {
+	if (!doc) return false;
+	const requiredArgs = doc?.args?.filter((arg) => !arg.name.endsWith('?')) ?? [];
+	return requiredArgs.length > 0;
+};
+
+export const sortCompletionsAlpha = (completions: Completion[]): Completion[] => {
+	return completions.sort((a, b) => a.label.localeCompare(b.label));
+};
+
+export const renderSectionHeader = (section: CompletionSection): HTMLElement => {
+	const container = document.createElement('li');
+	container.classList.add('cm-section-header');
+	const inner = document.createElement('div');
+	inner.classList.add('cm-section-title');
+	inner.textContent = section.name;
+	container.appendChild(inner);
+
+	return container;
+};
+
+export const withSectionHeader = (section: CompletionSection): CompletionSection => {
+	section.header = renderSectionHeader;
+	return section;
 };

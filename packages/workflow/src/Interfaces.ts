@@ -4,8 +4,6 @@ import type * as express from 'express';
 import type FormData from 'form-data';
 import type { PathLike } from 'fs';
 import type { IncomingHttpHeaders } from 'http';
-import type { OptionsWithUri, OptionsWithUrl } from 'request';
-import type { RequestPromiseOptions } from 'request-promise-native';
 import type { Readable } from 'stream';
 import type { URLSearchParams } from 'url';
 
@@ -20,6 +18,7 @@ import type { WorkflowOperationError } from './errors/workflow-operation.error';
 import type { WorkflowHooks } from './WorkflowHooks';
 import type { NodeOperationError } from './errors/node-operation.error';
 import type { NodeApiError } from './errors/node-api.error';
+import type { AxiosProxyConfig } from 'axios';
 
 export interface IAdditionalCredentialOptions {
 	oauth2?: IOAuth2Options;
@@ -493,6 +492,7 @@ export interface IExecuteContextData {
 
 export type IHttpRequestMethods = 'DELETE' | 'GET' | 'HEAD' | 'PATCH' | 'POST' | 'PUT';
 
+/** used in helpers.httpRequest(WithAuthentication) */
 export interface IHttpRequestOptions {
 	url: string;
 	baseURL?: string;
@@ -522,6 +522,51 @@ export interface IHttpRequestOptions {
 	};
 	timeout?: number;
 	json?: boolean;
+}
+
+/**
+ * used in helpers.request(WithAuthentication)
+ * @see IHttpRequestOptions
+ * @deprecated Prefer using IHttpRequestOptions
+ */
+export interface IRequestOptions {
+	baseURL?: string;
+	uri?: string;
+	url?: string;
+	method?: IHttpRequestMethods;
+	qs?: IDataObject;
+	qsStringifyOptions?: { arrayFormat: 'repeat' | 'brackets' | 'indices' };
+	useQuerystring?: boolean;
+	headers?: IDataObject;
+	auth?: Partial<{
+		sendImmediately: boolean;
+		bearer: string;
+		user: string;
+		username: string;
+		password: string;
+		pass: string;
+	}>;
+	body?: any;
+	formData?: IDataObject | FormData;
+	form?: IDataObject | FormData;
+	json?: boolean;
+	useStream?: boolean;
+	encoding?: string | null;
+	timeout?: number;
+	rejectUnauthorized?: boolean;
+	proxy?: string | AxiosProxyConfig;
+	simple?: boolean;
+	gzip?: boolean;
+	resolveWithFullResponse?: boolean;
+
+	/** Whether to follow GET or HEAD HTTP 3xx redirects @default true */
+	followRedirect?: boolean;
+
+	/** Whether to follow **All** HTTP 3xx redirects @default false */
+	followAllRedirects?: boolean;
+
+	/** Max number of redirects to follow @default 21 */
+	maxRedirects?: number;
 }
 
 export interface PaginationOptions {
@@ -715,14 +760,6 @@ export interface NodeHelperFunctions {
 }
 
 export interface RequestHelperFunctions {
-	request(uriOrObject: string | IDataObject | any, options?: IDataObject): Promise<any>;
-	requestWithAuthentication(
-		this: IAllExecuteFunctions,
-		credentialsType: string,
-		requestOptions: OptionsWithUri | RequestPromiseOptions,
-		additionalCredentialOptions?: IAdditionalCredentialOptions,
-	): Promise<any>;
-
 	httpRequest(requestOptions: IHttpRequestOptions): Promise<any>;
 	httpRequestWithAuthentication(
 		this: IAllExecuteFunctions,
@@ -732,22 +769,46 @@ export interface RequestHelperFunctions {
 	): Promise<any>;
 	requestWithAuthenticationPaginated(
 		this: IAllExecuteFunctions,
-		requestOptions: OptionsWithUri,
+		requestOptions: IRequestOptions,
 		itemIndex: number,
 		paginationOptions: PaginationOptions,
 		credentialsType?: string,
 		additionalCredentialOptions?: IAdditionalCredentialOptions,
 	): Promise<any[]>;
 
+	/**
+	 * @deprecated Use .httpRequest instead
+	 * @see RequestHelperFunctions.httpRequest
+	 */
+	request(uriOrObject: string | IRequestOptions, options?: IRequestOptions): Promise<any>;
+	/**
+	 * @deprecated Use .httpRequestWithAuthentication instead
+	 * @see RequestHelperFunctions.requestWithAuthentication
+	 */
+	requestWithAuthentication(
+		this: IAllExecuteFunctions,
+		credentialsType: string,
+		requestOptions: IRequestOptions,
+		additionalCredentialOptions?: IAdditionalCredentialOptions,
+		itemIndex?: number,
+	): Promise<any>;
+	/**
+	 * @deprecated Use .httpRequestWithAuthentication instead
+	 * @see RequestHelperFunctions.requestWithAuthentication
+	 */
 	requestOAuth1(
 		this: IAllExecuteFunctions,
 		credentialsType: string,
-		requestOptions: OptionsWithUrl | RequestPromiseOptions,
+		requestOptions: IRequestOptions,
 	): Promise<any>;
+	/**
+	 * @deprecated Use .httpRequestWithAuthentication instead
+	 * @see RequestHelperFunctions.requestWithAuthentication
+	 */
 	requestOAuth2(
 		this: IAllExecuteFunctions,
 		credentialsType: string,
-		requestOptions: OptionsWithUri | RequestPromiseOptions,
+		requestOptions: IRequestOptions,
 		oAuth2Options?: IOAuth2Options,
 	): Promise<any>;
 }
@@ -786,6 +847,7 @@ type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
 	getInputSourceData(inputIndex?: number, inputName?: string): ISourceData;
 	getExecutionCancelSignal(): AbortSignal | undefined;
 	onExecutionCancellation(handler: () => unknown): void;
+	logAiEvent(eventName: EventNamesAiNodesType, msg?: string | undefined): Promise<void>;
 };
 
 // TODO: Create later own type only for Config-Nodes
@@ -1082,6 +1144,7 @@ export type NodePropertyTypes =
 	| 'curlImport'
 	| 'resourceMapper'
 	| 'filter'
+	| 'assignmentCollection'
 	| 'credentials';
 
 export type CodeAutocompleteTypes = 'function' | 'functionItem';
@@ -1129,6 +1192,7 @@ export interface INodePropertyTypeOptions {
 	expirable?: boolean; // Supported by: hidden (only in the credentials)
 	resourceMapper?: ResourceMapperTypeOptions;
 	filter?: FilterTypeOptions;
+	assignment?: AssignmentTypeOptions;
 	[key: string]: any;
 }
 
@@ -1158,6 +1222,10 @@ export type FilterTypeOptions = Partial<{
 	allowedCombinators: NonEmptyArray<FilterTypeCombinator>; // default = ['and', 'or']
 	maxConditions: number; // default = 10
 	typeValidation: 'strict' | 'loose' | {}; // default = strict, `| {}` is a TypeScript trick to allow custom strings, but still give autocomplete
+}>;
+
+export type AssignmentTypeOptions = Partial<{
+	hideType?: boolean; // visible by default
 }>;
 
 export type DisplayCondition =
@@ -1875,6 +1943,11 @@ export interface ISourceData {
 	previousNodeRun?: number; // If undefined "0" gets used
 }
 
+export interface StartNodeData {
+	name: string;
+	sourceData: ISourceData | null;
+}
+
 // The data for all the different kind of connections (like main) and all the indexes
 export interface ITaskDataConnections {
 	// Key for each input type and because there can be multiple inputs of the same type it is an array
@@ -1938,6 +2011,24 @@ export interface IWorkflowExecuteHooks {
 	sendResponse?: Array<(response: IExecuteResponsePromiseData) => Promise<void>>;
 }
 
+export const eventNamesAiNodes = [
+	'n8n.ai.memory.get.messages',
+	'n8n.ai.memory.added.message',
+	'n8n.ai.output.parser.get.instructions',
+	'n8n.ai.output.parser.parsed',
+	'n8n.ai.retriever.get.relevant.documents',
+	'n8n.ai.embeddings.embedded.document',
+	'n8n.ai.embeddings.embedded.query',
+	'n8n.ai.document.processed',
+	'n8n.ai.text.splitter.split',
+	'n8n.ai.tool.called',
+	'n8n.ai.vector.store.searched',
+	'n8n.ai.llm.generated',
+	'n8n.ai.vector.store.populated',
+] as const;
+
+export type EventNamesAiNodesType = (typeof eventNamesAiNodes)[number];
+
 export interface IWorkflowExecuteAdditionalData {
 	credentialsHelper: ICredentialsHelper;
 	executeWorkflow: (
@@ -1971,6 +2062,17 @@ export interface IWorkflowExecuteAdditionalData {
 	userId: string;
 	variables: IDataObject;
 	secretsHelpers: SecretsHelpersBase;
+	logAiEvent: (
+		eventName: EventNamesAiNodesType,
+		payload: {
+			msg?: string;
+			executionId: string;
+			nodeName: string;
+			workflowId?: string;
+			workflowName: string;
+			nodeType?: string;
+		},
+	) => Promise<void>;
 }
 
 export type WorkflowExecuteMode =
@@ -1985,14 +2087,13 @@ export type WorkflowExecuteMode =
 
 export type WorkflowActivateMode =
 	| 'init'
-	| 'create'
+	| 'create' // unused
 	| 'update'
 	| 'activate'
-	| 'manual'
+	| 'manual' // unused
 	| 'leadershipChange';
 
 export interface IWorkflowHooksOptionalParameters {
-	parentProcessMode?: string;
 	retryOf?: string;
 	sessionId?: string;
 }
@@ -2033,6 +2134,15 @@ export interface WorkflowTestData {
 		nodeData: {
 			[key: string]: any[][];
 		};
+	};
+	nock: {
+		baseUrl: string;
+		mocks: Array<{
+			method: string;
+			path: string;
+			statusCode: number;
+			responseBody: any;
+		}>;
 	};
 	trigger?: {
 		mode: WorkflowExecuteMode;
@@ -2075,7 +2185,7 @@ export type PropertiesOf<M extends { resource: string; operation: string }> = Ar
 			[key in 'show' | 'hide']?: {
 				resource?: Array<M['resource']>;
 				operation?: Array<M['operation']>;
-				[otherKey: string]: NodeParameterValue[] | undefined;
+				[otherKey: string]: Array<NodeParameterValue | DisplayCondition> | undefined;
 			};
 		};
 	}
@@ -2127,6 +2237,8 @@ export interface INodeGraphItem {
 	method?: string; // HTTP Request node v2
 	src_node_id?: string;
 	src_instance_id?: string;
+	agent?: string; //@n8n/n8n-nodes-langchain.agent
+	prompts?: IDataObject[] | IDataObject; //ai node's prompts, cloud only
 }
 
 export interface INodeNameIndex {
@@ -2286,6 +2398,17 @@ export type FilterValue = {
 	combinator: FilterTypeCombinator;
 };
 
+export type AssignmentCollectionValue = {
+	assignments: AssignmentValue[];
+};
+
+export type AssignmentValue = {
+	id: string;
+	name: string;
+	value: NodeParameterValue;
+	type?: string;
+};
+
 export interface ExecutionOptions {
 	limit?: number;
 }
@@ -2351,6 +2474,7 @@ export interface IN8nUISettings {
 	urlBaseWebhook: string;
 	urlBaseEditor: string;
 	versionCli: string;
+	binaryDataMode: string;
 	releaseChannel: 'stable' | 'beta' | 'nightly' | 'dev';
 	n8nMetadata?: {
 		userId?: string;
@@ -2384,6 +2508,7 @@ export interface IN8nUISettings {
 	workflowTagsDisabled: boolean;
 	logLevel: LogLevel;
 	hiringBannerEnabled: boolean;
+	previewMode: boolean;
 	templates: {
 		enabled: boolean;
 		host: string;
@@ -2461,4 +2586,6 @@ export type BannerName =
 	| 'NON_PRODUCTION_LICENSE'
 	| 'EMAIL_CONFIRMATION';
 
-export type Functionality = 'regular' | 'configuration-node';
+export type Functionality = 'regular' | 'configuration-node' | 'pairedItem';
+
+export type Result<T, E> = { ok: true; result: T } | { ok: false; error: E };

@@ -13,7 +13,7 @@ import { parseSchema } from 'json-schema-to-zod';
 import { z } from 'zod';
 import type { JSONSchema7 } from 'json-schema';
 import { StructuredOutputParser } from 'langchain/output_parsers';
-import { OutputParserException } from 'langchain/schema/output_parser';
+import { OutputParserException } from '@langchain/core/output_parsers';
 import get from 'lodash/get';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
@@ -28,8 +28,8 @@ class N8nStructuredOutputParser<T extends z.ZodTypeAny> extends StructuredOutput
 			const parsed = (await super.parse(text)) as object;
 
 			return (
-				get(parsed, `${STRUCTURED_OUTPUT_KEY}.${STRUCTURED_OUTPUT_OBJECT_KEY}`) ??
-				get(parsed, `${STRUCTURED_OUTPUT_KEY}.${STRUCTURED_OUTPUT_ARRAY_KEY}`) ??
+				get(parsed, [STRUCTURED_OUTPUT_KEY, STRUCTURED_OUTPUT_OBJECT_KEY]) ??
+				get(parsed, [STRUCTURED_OUTPUT_KEY, STRUCTURED_OUTPUT_ARRAY_KEY]) ??
 				get(parsed, STRUCTURED_OUTPUT_KEY) ??
 				parsed
 			);
@@ -41,6 +41,7 @@ class N8nStructuredOutputParser<T extends z.ZodTypeAny> extends StructuredOutput
 
 	static fromZedJsonSchema(
 		schema: JSONSchema7,
+		nodeVersion: number,
 	): StructuredOutputParser<z.ZodType<object, z.ZodTypeDef, object>> {
 		// Make sure to remove the description from root schema
 		const { description, ...restOfSchema } = schema;
@@ -51,30 +52,37 @@ class N8nStructuredOutputParser<T extends z.ZodTypeAny> extends StructuredOutput
 		// eslint-disable-next-line @typescript-eslint/no-implied-eval
 		const itemSchema = new Function('z', `return (${zodSchemaString})`)(z) as z.ZodSchema<object>;
 
-		const returnSchema = z.object({
-			[STRUCTURED_OUTPUT_KEY]: z
-				.object({
-					[STRUCTURED_OUTPUT_OBJECT_KEY]: itemSchema.optional(),
-					[STRUCTURED_OUTPUT_ARRAY_KEY]: z.array(itemSchema).optional(),
-				})
-				.describe(
-					`Wrapper around the output data. It can only contain ${STRUCTURED_OUTPUT_OBJECT_KEY} or ${STRUCTURED_OUTPUT_ARRAY_KEY} but never both.`,
-				)
-				.refine(
-					(data) => {
-						// Validate that one and only one of the properties exists
-						return (
-							Boolean(data[STRUCTURED_OUTPUT_OBJECT_KEY]) !==
-							Boolean(data[STRUCTURED_OUTPUT_ARRAY_KEY])
-						);
-					},
-					{
-						message:
-							'One and only one of __structured__output__object and __structured__output__array should be present.',
-						path: [STRUCTURED_OUTPUT_KEY],
-					},
-				),
-		});
+		let returnSchema: z.ZodSchema<object>;
+		if (nodeVersion === 1) {
+			returnSchema = z.object({
+				[STRUCTURED_OUTPUT_KEY]: z
+					.object({
+						[STRUCTURED_OUTPUT_OBJECT_KEY]: itemSchema.optional(),
+						[STRUCTURED_OUTPUT_ARRAY_KEY]: z.array(itemSchema).optional(),
+					})
+					.describe(
+						`Wrapper around the output data. It can only contain ${STRUCTURED_OUTPUT_OBJECT_KEY} or ${STRUCTURED_OUTPUT_ARRAY_KEY} but never both.`,
+					)
+					.refine(
+						(data) => {
+							// Validate that one and only one of the properties exists
+							return (
+								Boolean(data[STRUCTURED_OUTPUT_OBJECT_KEY]) !==
+								Boolean(data[STRUCTURED_OUTPUT_ARRAY_KEY])
+							);
+						},
+						{
+							message:
+								'One and only one of __structured__output__object and __structured__output__array should be present.',
+							path: [STRUCTURED_OUTPUT_KEY],
+						},
+					),
+			});
+		} else {
+			returnSchema = z.object({
+				output: itemSchema.optional(),
+			});
+		}
 
 		return N8nStructuredOutputParser.fromZodSchema(returnSchema);
 	}
@@ -85,7 +93,8 @@ export class OutputParserStructured implements INodeType {
 		name: 'outputParserStructured',
 		icon: 'fa:code',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
+		defaultVersion: 1.1,
 		description: 'Return data in a defined JSON format',
 		defaults: {
 			name: 'Structured Output Parser',
@@ -152,11 +161,20 @@ export class OutputParserStructured implements INodeType {
 		let itemSchema: JSONSchema7;
 		try {
 			itemSchema = jsonParse<JSONSchema7>(schema);
+
+			// If the type is not defined, we assume it's an object
+			if (itemSchema.type === undefined) {
+				itemSchema = {
+					type: 'object',
+					properties: itemSchema.properties || (itemSchema as { [key: string]: JSONSchema7 }),
+				};
+			}
 		} catch (error) {
 			throw new NodeOperationError(this.getNode(), 'Error during parsing of JSON Schema.');
 		}
 
-		const parser = N8nStructuredOutputParser.fromZedJsonSchema(itemSchema);
+		const nodeVersion = this.getNode().typeVersion;
+		const parser = N8nStructuredOutputParser.fromZedJsonSchema(itemSchema, nodeVersion);
 
 		return {
 			response: logWrapper(parser, this),

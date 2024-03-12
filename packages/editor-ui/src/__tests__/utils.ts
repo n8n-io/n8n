@@ -144,4 +144,5 @@ export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
 	saveDataErrorExecution: 'all',
 	saveDataSuccessExecution: 'all',
 	saveManualExecutions: false,
+	binaryDataMode: 'default',
 };

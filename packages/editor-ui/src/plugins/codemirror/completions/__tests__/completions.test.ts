@@ -1,8 +1,8 @@
 import { createTestingPinia } from '@pinia/testing';
-import { createPinia, setActivePinia } from 'pinia';
+import { setActivePinia } from 'pinia';
 import { DateTime } from 'luxon';
 
-import * as workflowHelpers from '@/mixins/workflowHelpers';
+import * as workflowHelpers from '@/composables/useWorkflowHelpers';
 import { dollarOptions } from '@/plugins/codemirror/completions/dollar.completions';
 import * as utils from '@/plugins/codemirror/completions/utils';
 import {
@@ -21,20 +21,22 @@ import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { CREDENTIAL_EDIT_MODAL_KEY, EnterpriseEditionFeature } from '@/constants';
-import { setupServer } from '@/__tests__/server';
+import {
+	ARRAY_NUMBER_ONLY_METHODS,
+	LUXON_RECOMMENDED_OPTIONS,
+	METADATA_SECTION,
+	METHODS_SECTION,
+	RECOMMENDED_SECTION,
+	STRING_RECOMMENDED_OPTIONS,
+} from '../constants';
+import { set, uniqBy } from 'lodash-es';
 
 let externalSecretsStore: ReturnType<typeof useExternalSecretsStore>;
 let uiStore: ReturnType<typeof useUIStore>;
 let settingsStore: ReturnType<typeof useSettingsStore>;
 
-let server: ReturnType<typeof setupServer>;
-
-beforeAll(() => {
-	server = setupServer();
-});
-
 beforeEach(async () => {
-	setActivePinia(createPinia());
+	setActivePinia(createTestingPinia());
 
 	externalSecretsStore = useExternalSecretsStore();
 	uiStore = useUIStore();
@@ -43,12 +45,6 @@ beforeEach(async () => {
 	vi.spyOn(utils, 'receivesNoBinaryData').mockReturnValue(true); // hide $binary
 	vi.spyOn(utils, 'isSplitInBatchesAbsent').mockReturnValue(false); // show context
 	vi.spyOn(utils, 'hasActiveNode').mockReturnValue(true);
-
-	await settingsStore.getSettings();
-});
-
-afterAll(() => {
-	server.shutdown();
 });
 
 describe('No completions', () => {
@@ -63,7 +59,18 @@ describe('No completions', () => {
 
 describe('Top-level completions', () => {
 	test('should return dollar completions for blank position: {{ | }}', () => {
-		expect(completions('{{ | }}')).toHaveLength(dollarOptions().length);
+		const result = completions('{{ | }}');
+		expect(result).toHaveLength(dollarOptions().length);
+
+		expect(result?.[0]).toEqual(
+			expect.objectContaining({ label: '$json', section: RECOMMENDED_SECTION }),
+		);
+		expect(result?.[4]).toEqual(
+			expect.objectContaining({ label: '$execution', section: METADATA_SECTION }),
+		);
+		expect(result?.[14]).toEqual(
+			expect.objectContaining({ label: '$max()', section: METHODS_SECTION }),
+		);
 	});
 
 	test('should return DateTime completion for: {{ D| }}', () => {
@@ -98,77 +105,73 @@ describe('Top-level completions', () => {
 	});
 
 	test('should return node selector completions for: {{ $(| }}', () => {
-		const initialState = { workflows: { workflow: { nodes: mockNodes } } };
-
-		setActivePinia(createTestingPinia({ initialState }));
+		vi.spyOn(utils, 'autocompletableNodeNames').mockReturnValue(mockNodes.map((node) => node.name));
 
 		expect(completions('{{ $(| }}')).toHaveLength(mockNodes.length);
 	});
 });
 
 describe('Luxon method completions', () => {
-	const resolveParameterSpy = vi.spyOn(workflowHelpers, 'resolveParameter');
-
 	test('should return class completions for: {{ DateTime.| }}', () => {
 		// @ts-expect-error Spied function is mistyped
-		resolveParameterSpy.mockReturnValueOnce(DateTime);
+		vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce(DateTime);
 
 		expect(completions('{{ DateTime.| }}')).toHaveLength(luxonStaticOptions().length);
 	});
 
 	test('should return instance completions for: {{ $now.| }}', () => {
 		// @ts-expect-error Spied function is mistyped
-		resolveParameterSpy.mockReturnValueOnce(DateTime.now());
+		vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce(DateTime.now());
 
 		expect(completions('{{ $now.| }}')).toHaveLength(
-			luxonInstanceOptions().length + extensions('date').length,
+			uniqBy(luxonInstanceOptions().concat(extensions('date')), (option) => option.label).length +
+				LUXON_RECOMMENDED_OPTIONS.length,
 		);
 	});
 
 	test('should return instance completions for: {{ $today.| }}', () => {
 		// @ts-expect-error Spied function is mistyped
-		resolveParameterSpy.mockReturnValueOnce(DateTime.now());
+		vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce(DateTime.now());
 
 		expect(completions('{{ $today.| }}')).toHaveLength(
-			luxonInstanceOptions().length + extensions('date').length,
+			uniqBy(luxonInstanceOptions().concat(extensions('date')), (option) => option.label).length +
+				LUXON_RECOMMENDED_OPTIONS.length,
 		);
 	});
 });
 
 describe('Resolution-based completions', () => {
-	const resolveParameterSpy = vi.spyOn(workflowHelpers, 'resolveParameter');
-
 	describe('literals', () => {
 		test('should return completions for string literal: {{ "abc".| }}', () => {
 			// @ts-expect-error Spied function is mistyped
-			resolveParameterSpy.mockReturnValueOnce('abc');
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce('abc');
 
 			expect(completions('{{ "abc".| }}')).toHaveLength(
-				natives('string').length + extensions('string').length,
+				natives('string').length + extensions('string').length + STRING_RECOMMENDED_OPTIONS.length,
 			);
 		});
 
 		test('should properly handle string that contain dollar signs', () => {
 			// @ts-expect-error Spied function is mistyped
-			resolveParameterSpy.mockReturnValueOnce('"You \'owe\' me 200$"');
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce("You 'owe' me 200$ ");
 
-			expect(completions('{{ "You \'owe\' me 200$".| }}')).toHaveLength(
-				natives('string').length + extensions('string').length,
-			);
+			const result = completions('{{ "You \'owe\' me 200$".| }}');
+
+			expect(result).toHaveLength(natives('string').length + extensions('string').length + 1);
 		});
 
 		test('should return completions for number literal: {{ (123).| }}', () => {
 			// @ts-expect-error Spied function is mistyped
-			resolveParameterSpy.mockReturnValueOnce(123);
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce(123);
 
 			expect(completions('{{ (123).| }}')).toHaveLength(
-				natives('number').length + extensions('number').length,
+				natives('number').length + extensions('number').length + ['isEven()', 'isOdd()'].length,
 			);
 		});
 
 		test('should return completions for array literal: {{ [1, 2, 3].| }}', () => {
 			// @ts-expect-error Spied function is mistyped
-			resolveParameterSpy.mockReturnValueOnce([1, 2, 3]);
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce([1, 2, 3]);
 
 			expect(completions('{{ [1, 2, 3].| }}')).toHaveLength(
 				natives('array').length + extensions('array').length,
@@ -177,7 +180,7 @@ describe('Resolution-based completions', () => {
 
 		test('should return completions for Object methods: {{ Object.values({ abc: 123 }).| }}', () => {
 			// @ts-expect-error Spied function is mistyped
-			resolveParameterSpy.mockReturnValueOnce([123]);
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce([123]);
 
 			const found = completions('{{ Object.values({ abc: 123 }).| }}');
 
@@ -189,10 +192,10 @@ describe('Resolution-based completions', () => {
 		test('should return completions for object literal', () => {
 			const object = { a: 1 };
 
-			resolveParameterSpy.mockReturnValueOnce(object);
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce(object);
 
 			expect(completions('{{ ({ a: 1 }).| }}')).toHaveLength(
-				Object.keys(object).length + natives('object').length + extensions('object').length,
+				Object.keys(object).length + extensions('object').length,
 			);
 		});
 	});
@@ -200,23 +203,24 @@ describe('Resolution-based completions', () => {
 	describe('indexed access completions', () => {
 		test('should return string completions for indexed access that resolves to string literal: {{ "abc"[0].| }}', () => {
 			// @ts-expect-error Spied function is mistyped
-			resolveParameterSpy.mockReturnValueOnce('a');
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce('a');
 
 			expect(completions('{{ "abc"[0].| }}')).toHaveLength(
-				natives('string').length + extensions('string').length,
+				natives('string').length + extensions('string').length + STRING_RECOMMENDED_OPTIONS.length,
 			);
 		});
 	});
 
 	describe('complex expression completions', () => {
-		const resolveParameterSpy = vi.spyOn(workflowHelpers, 'resolveParameter');
 		const { $input } = mockProxy;
 
 		test('should return completions when $input is used as a function parameter', () => {
-			resolveParameterSpy.mockReturnValue($input.item.json.num);
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($input.item.json.num);
 			const found = completions('{{ Math.abs($input.item.json.num1).| }}');
 			if (!found) throw new Error('Expected to find completions');
-			expect(found).toHaveLength(extensions('number').length + natives('number').length);
+			expect(found).toHaveLength(
+				extensions('number').length + natives('number').length + ['isEven()', 'isOdd()'].length,
+			);
 		});
 
 		test('should return completions when node reference is used as a function parameter', () => {
@@ -228,69 +232,74 @@ describe('Resolution-based completions', () => {
 		});
 
 		test('should return completions for complex expression: {{ $now.diff($now.diff($now.|)) }}', () => {
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce(DateTime.now());
 			expect(completions('{{ $now.diff($now.diff($now.|)) }}')).toHaveLength(
-				natives('date').length + extensions('object').length,
+				uniqBy(luxonInstanceOptions().concat(extensions('date')), (option) => option.label).length +
+					LUXON_RECOMMENDED_OPTIONS.length,
 			);
 		});
 
 		test('should return completions for complex expression: {{ $execution.resumeUrl.includes($json.) }}', () => {
-			resolveParameterSpy.mockReturnValue($input.item.json);
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce($input.item.json);
 			const { $json } = mockProxy;
 			const found = completions('{{ $execution.resumeUrl.includes($json.|) }}');
 
 			if (!found) throw new Error('Expected to find completions');
-			expect(found).toHaveLength(Object.keys($json).length + natives('object').length);
+			expect(found).toHaveLength(Object.keys($json).length + extensions('object').length);
 		});
 
 		test('should return completions for operation expression: {{ $now.day + $json. }}', () => {
-			resolveParameterSpy.mockReturnValue($input.item.json);
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce($input.item.json);
 			const { $json } = mockProxy;
 			const found = completions('{{ $now.day + $json.| }}');
 
 			if (!found) throw new Error('Expected to find completions');
 
-			expect(found).toHaveLength(Object.keys($json).length + natives('object').length);
+			expect(found).toHaveLength(Object.keys($json).length + extensions('object').length);
 		});
 
 		test('should return completions for operation expression: {{ Math.abs($now.day) >= 10 ? $now : Math.abs($json.). }}', () => {
-			resolveParameterSpy.mockReturnValue($input.item.json);
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($input.item.json);
 			const { $json } = mockProxy;
 			const found = completions('{{ Math.abs($now.day) >= 10 ? $now : Math.abs($json.|) }}');
 
 			if (!found) throw new Error('Expected to find completions');
 
-			expect(found).toHaveLength(Object.keys($json).length + natives('object').length);
+			expect(found).toHaveLength(Object.keys($json).length + extensions('object').length);
 		});
 	});
 
 	describe('bracket-aware completions', () => {
-		const resolveParameterSpy = vi.spyOn(workflowHelpers, 'resolveParameter');
 		const { $input } = mockProxy;
 
 		test('should return bracket-aware completions for: {{ $input.item.json.str.|() }}', () => {
-			resolveParameterSpy.mockReturnValue($input.item.json.str);
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($input.item.json.str);
 
 			const found = completions('{{ $input.item.json.str.|() }}');
 
 			if (!found) throw new Error('Expected to find completions');
 
-			expect(found).toHaveLength(extensions('string').length + natives('string').length);
+			expect(found).toHaveLength(
+				extensions('string').length + natives('string').length + STRING_RECOMMENDED_OPTIONS.length,
+			);
 			expect(found.map((c) => c.label).every((l) => !l.endsWith('()')));
 		});
 
 		test('should return bracket-aware completions for: {{ $input.item.json.num.|() }}', () => {
-			resolveParameterSpy.mockReturnValue($input.item.json.num);
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($input.item.json.num);
 
 			const found = completions('{{ $input.item.json.num.|() }}');
 
 			if (!found) throw new Error('Expected to find completions');
 
-			expect(found).toHaveLength(extensions('number').length + natives('number').length);
+			expect(found).toHaveLength(
+				extensions('number').length + natives('number').length + ['isEven()', 'isOdd()'].length,
+			);
 			expect(found.map((c) => c.label).every((l) => !l.endsWith('()')));
 		});
 
 		test('should return bracket-aware completions for: {{ $input.item.json.arr.| }}', () => {
-			resolveParameterSpy.mockReturnValue($input.item.json.arr);
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($input.item.json.arr);
 
 			const found = completions('{{ $input.item.json.arr.|() }}');
 
@@ -302,17 +311,18 @@ describe('Resolution-based completions', () => {
 	});
 
 	describe('secrets', () => {
-		const resolveParameterSpy = vi.spyOn(workflowHelpers, 'resolveParameter');
-		const { $input, $ } = mockProxy;
+		const { $input } = mockProxy;
+
+		beforeEach(() => {});
 
 		test('should return completions for: {{ $secrets.| }}', () => {
 			const provider = 'infisical';
 			const secrets = ['SECRET'];
 
-			resolveParameterSpy.mockReturnValue($input);
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($input);
 
 			uiStore.modals[CREDENTIAL_EDIT_MODAL_KEY].open = true;
-			settingsStore.settings.enterprise[EnterpriseEditionFeature.ExternalSecrets] = true;
+			set(settingsStore.settings, ['enterprise', EnterpriseEditionFeature.ExternalSecrets], true);
 			externalSecretsStore.state.secrets = {
 				[provider]: secrets,
 			};
@@ -324,6 +334,7 @@ describe('Resolution-based completions', () => {
 					info: expect.any(Function),
 					label: provider,
 					type: 'keyword',
+					apply: expect.any(Function),
 				},
 			]);
 		});
@@ -332,10 +343,10 @@ describe('Resolution-based completions', () => {
 			const provider = 'infisical';
 			const secrets = ['SECRET1', 'SECRET2'];
 
-			resolveParameterSpy.mockReturnValue($input);
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($input);
 
 			uiStore.modals[CREDENTIAL_EDIT_MODAL_KEY].open = true;
-			settingsStore.settings.enterprise[EnterpriseEditionFeature.ExternalSecrets] = true;
+			set(settingsStore.settings, ['enterprise', EnterpriseEditionFeature.ExternalSecrets], true);
 			externalSecretsStore.state.secrets = {
 				[provider]: secrets,
 			};
@@ -347,138 +358,141 @@ describe('Resolution-based completions', () => {
 					info: expect.any(Function),
 					label: secrets[0],
 					type: 'keyword',
+					apply: expect.any(Function),
 				},
 				{
 					info: expect.any(Function),
 					label: secrets[1],
 					type: 'keyword',
+					apply: expect.any(Function),
 				},
 			]);
 		});
 	});
 
 	describe('references', () => {
-		const resolveParameterSpy = vi.spyOn(workflowHelpers, 'resolveParameter');
 		const { $input, $ } = mockProxy;
 
 		test('should return completions for: {{ $input.| }}', () => {
-			resolveParameterSpy.mockReturnValue($input);
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($input);
 
-			expect(completions('{{ $input.| }}')).toHaveLength(
-				Reflect.ownKeys($input).length + natives('object').length,
-			);
+			expect(completions('{{ $input.| }}')).toHaveLength(Reflect.ownKeys($input).length);
 		});
 
 		test('should return completions for: {{ "hello"+input.| }}', () => {
-			resolveParameterSpy.mockReturnValue($input);
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($input);
 
-			expect(completions('{{ "hello"+$input.| }}')).toHaveLength(
-				Reflect.ownKeys($input).length + natives('object').length,
-			);
+			expect(completions('{{ "hello"+$input.| }}')).toHaveLength(Reflect.ownKeys($input).length);
 		});
 
 		test("should return completions for: {{ $('nodeName').| }}", () => {
-			resolveParameterSpy.mockReturnValue($('Rename'));
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($('Rename'));
 
 			expect(completions('{{ $("Rename").| }}')).toHaveLength(
-				Reflect.ownKeys($('Rename')).length + natives('object').length - ['pairedItem'].length,
+				Reflect.ownKeys($('Rename')).length - ['pairedItem'].length,
+			);
+		});
+
+		test("should return completions for: {{ $('(Complex) \"No\\'de\" name').| }}", () => {
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($('Rename'));
+
+			expect(completions("{{ $('(Complex) \"No\\'de\" name').| }}")).toHaveLength(
+				Reflect.ownKeys($('Rename')).length - ['pairedItem'].length,
 			);
 		});
 
 		test('should return completions for: {{ $input.item.| }}', () => {
-			resolveParameterSpy.mockReturnValue($input.item);
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($input.item);
 
 			const found = completions('{{ $input.item.| }}');
 
 			if (!found) throw new Error('Expected to find completion');
 
-			expect(found).toHaveLength(3);
+			expect(found).toHaveLength(1);
 			expect(found[0].label).toBe('json');
 		});
 
 		test('should return completions for: {{ $input.first().| }}', () => {
-			resolveParameterSpy.mockReturnValue($input.first());
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($input.first());
 
 			const found = completions('{{ $input.first().| }}');
 
 			if (!found) throw new Error('Expected to find completion');
 
-			expect(found).toHaveLength(3);
+			expect(found).toHaveLength(1);
 			expect(found[0].label).toBe('json');
 		});
 
 		test('should return completions for: {{ $input.last().| }}', () => {
-			resolveParameterSpy.mockReturnValue($input.last());
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($input.last());
 
 			const found = completions('{{ $input.last().| }}');
 
 			if (!found) throw new Error('Expected to find completion');
 
-			expect(found).toHaveLength(3);
+			expect(found).toHaveLength(1);
 			expect(found[0].label).toBe('json');
 		});
 
-		test('should return no completions for: {{ $input.all().| }}', () => {
+		test('should return completions for: {{ $input.all().| }}', () => {
 			// @ts-expect-error
-			resolveParameterSpy.mockReturnValue([$input.item]);
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue([$input.item]);
 
-			expect(completions('{{ $input.all().| }}')).toBeNull();
+			expect(completions('{{ $input.all().| }}')).toHaveLength(
+				extensions('array').length + natives('array').length - ARRAY_NUMBER_ONLY_METHODS.length,
+			);
 		});
 
 		test("should return completions for: '{{ $input.item.| }}'", () => {
-			resolveParameterSpy.mockReturnValue($input.item.json);
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($input.item.json);
 
 			expect(completions('{{ $input.item.| }}')).toHaveLength(
-				Object.keys($input.item.json).length +
-					(extensions('object').length + natives('object').length),
+				Object.keys($input.item.json).length + extensions('object').length,
 			);
 		});
 
 		test("should return completions for: '{{ $input.first().| }}'", () => {
-			resolveParameterSpy.mockReturnValue($input.first().json);
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($input.first().json);
 
 			expect(completions('{{ $input.first().| }}')).toHaveLength(
-				Object.keys($input.first().json).length +
-					(extensions('object').length + natives('object').length),
+				Object.keys($input.first().json).length + extensions('object').length,
 			);
 		});
 
 		test("should return completions for: '{{ $input.last().| }}'", () => {
-			resolveParameterSpy.mockReturnValue($input.last().json);
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($input.last().json);
 
 			expect(completions('{{ $input.last().| }}')).toHaveLength(
-				Object.keys($input.last().json).length +
-					(extensions('object').length + natives('object').length),
+				Object.keys($input.last().json).length + extensions('object').length,
 			);
 		});
 
 		test("should return completions for: '{{ $input.all()[0].| }}'", () => {
-			resolveParameterSpy.mockReturnValue($input.all()[0].json);
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($input.all()[0].json);
 
 			expect(completions('{{ $input.all()[0].| }}')).toHaveLength(
-				Object.keys($input.all()[0].json).length +
-					(extensions('object').length + natives('object').length),
+				Object.keys($input.all()[0].json).length + extensions('object').length,
 			);
 		});
 
 		test('should return completions for: {{ $input.item.json.str.| }}', () => {
-			resolveParameterSpy.mockReturnValue($input.item.json.str);
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($input.item.json.str);
 
 			expect(completions('{{ $input.item.json.str.| }}')).toHaveLength(
-				extensions('string').length + natives('string').length,
+				extensions('string').length + natives('string').length + STRING_RECOMMENDED_OPTIONS.length,
 			);
 		});
 
 		test('should return completions for: {{ $input.item.json.num.| }}', () => {
-			resolveParameterSpy.mockReturnValue($input.item.json.num);
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($input.item.json.num);
 
 			expect(completions('{{ $input.item.json.num.| }}')).toHaveLength(
-				extensions('number').length + natives('number').length,
+				extensions('number').length + natives('number').length + ['isEven()', 'isOdd()'].length,
 			);
 		});
 
 		test('should return completions for: {{ $input.item.json.arr.| }}', () => {
-			resolveParameterSpy.mockReturnValue($input.item.json.arr);
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($input.item.json.arr);
 
 			expect(completions('{{ $input.item.json.arr.| }}')).toHaveLength(
 				extensions('array').length + natives('array').length,
@@ -486,22 +500,20 @@ describe('Resolution-based completions', () => {
 		});
 
 		test('should return completions for: {{ $input.item.json.obj.| }}', () => {
-			resolveParameterSpy.mockReturnValue($input.item.json.obj);
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($input.item.json.obj);
 
 			expect(completions('{{ $input.item.json.obj.| }}')).toHaveLength(
-				Object.keys($input.item.json.obj).length +
-					(extensions('object').length + natives('object').length),
+				Object.keys($input.item.json.obj).length + extensions('object').length,
 			);
 		});
 	});
 
 	describe('bracket access', () => {
-		const resolveParameterSpy = vi.spyOn(workflowHelpers, 'resolveParameter');
 		const { $input } = mockProxy;
 
 		['{{ $input.item.json[| }}', '{{ $json[| }}'].forEach((expression) => {
 			test(`should return completions for: ${expression}`, () => {
-				resolveParameterSpy.mockReturnValue($input.item.json);
+				vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($input.item.json);
 
 				const found = completions(expression);
 
@@ -514,7 +526,7 @@ describe('Resolution-based completions', () => {
 
 		["{{ $input.item.json['obj'][| }}", "{{ $json['obj'][| }}"].forEach((expression) => {
 			test(`should return completions for: ${expression}`, () => {
-				resolveParameterSpy.mockReturnValue($input.item.json.obj);
+				vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue($input.item.json.obj);
 
 				const found = completions(expression);
 
@@ -523,6 +535,68 @@ describe('Resolution-based completions', () => {
 				expect(found).toHaveLength(Object.keys($input.item.json.obj).length);
 				expect(found.map((c) => c.label).every((l) => l.endsWith(']')));
 			});
+		});
+	});
+
+	describe('recommended completions', () => {
+		test('should recommended toDate() for {{ "1-Feb-2024".| }}', () => {
+			// @ts-expect-error Spied function is mistyped
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce('1-Feb-2024');
+
+			expect(completions('{{ "1-Feb-2024".| }}')?.[0]).toEqual(
+				expect.objectContaining({ label: 'toDate()', section: RECOMMENDED_SECTION }),
+			);
+		});
+
+		test('should recommended toInt(),toFloat() for: {{ "5.3".| }}', () => {
+			// @ts-expect-error Spied function is mistyped
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce('5.3');
+			const options = completions('{{ "5.3".| }}');
+			expect(options?.[0]).toEqual(
+				expect.objectContaining({ label: 'toInt()', section: RECOMMENDED_SECTION }),
+			);
+			expect(options?.[1]).toEqual(
+				expect.objectContaining({ label: 'toFloat()', section: RECOMMENDED_SECTION }),
+			);
+		});
+
+		test('should recommended extractEmail() for: {{ "string with test@n8n.io in it".| }}', () => {
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce(
+				// @ts-expect-error Spied function is mistyped
+				'string with test@n8n.io in it',
+			);
+			const options = completions('{{ "string with test@n8n.io in it".| }}');
+			expect(options?.[0]).toEqual(
+				expect.objectContaining({ label: 'extractEmail()', section: RECOMMENDED_SECTION }),
+			);
+		});
+
+		test('should recommended extractDomain() for: {{ "test@n8n.io".| }}', () => {
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce(
+				// @ts-expect-error Spied function is mistyped
+				'test@n8n.io',
+			);
+			const options = completions('{{ "test@n8n.io".| }}');
+			expect(options?.[0]).toEqual(
+				expect.objectContaining({ label: 'extractDomain()', section: RECOMMENDED_SECTION }),
+			);
+		});
+
+		test('should recommended round(),floor(),ceil() for: {{ (5.46).| }}', () => {
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce(
+				// @ts-expect-error Spied function is mistyped
+				5.46,
+			);
+			const options = completions('{{ (5.46).| }}');
+			expect(options?.[0]).toEqual(
+				expect.objectContaining({ label: 'round()', section: RECOMMENDED_SECTION }),
+			);
+			expect(options?.[1]).toEqual(
+				expect.objectContaining({ label: 'floor()', section: RECOMMENDED_SECTION }),
+			);
+			expect(options?.[2]).toEqual(
+				expect.objectContaining({ label: 'ceil()', section: RECOMMENDED_SECTION }),
+			);
 		});
 	});
 });

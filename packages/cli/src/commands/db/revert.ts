@@ -1,9 +1,10 @@
 import { Command, Flags } from '@oclif/core';
-import type { DataSourceOptions as ConnectionOptions } from 'typeorm';
-import { DataSource as Connection } from 'typeorm';
+import type { DataSourceOptions as ConnectionOptions } from '@n8n/typeorm';
+import { DataSource as Connection } from '@n8n/typeorm';
 import { Container } from 'typedi';
 import { Logger } from '@/Logger';
-import { getConnectionOptions, setSchema } from '@/Db';
+import { setSchema } from '@/Db';
+import { getConnectionOptions } from '@db/config';
 import type { Migration } from '@db/types';
 import { wrapMigration } from '@db/utils/migrationHelpers';
 import config from '@/config';
@@ -28,7 +29,7 @@ export class DbRevertMigrationCommand extends Command {
 	async run() {
 		const dbType = config.getEnv('database.type');
 		const connectionOptions: ConnectionOptions = {
-			...getConnectionOptions(dbType),
+			...getConnectionOptions(),
 			subscribers: [],
 			synchronize: false,
 			migrationsRun: false,

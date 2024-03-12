@@ -46,7 +46,8 @@
 				:model-value="expressionDisplayValue"
 				:title="displayTitle"
 				:is-read-only="isReadOnly"
-				:is-single-line="isSingleLine"
+				:rows="rows"
+				:is-assignment="isAssignment"
 				:path="path"
 				:additional-expression-data="additionalExpressionData"
 				:class="{ 'ph-no-capture': shouldRedactValue }"
@@ -501,7 +502,6 @@ import JsEditor from '@/components/JsEditor/JsEditor.vue';
 import JsonEditor from '@/components/JsonEditor/JsonEditor.vue';
 import SqlEditor from '@/components/SqlEditor/SqlEditor.vue';
 
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { hasExpressionMapping, isValueExpression } from '@/utils/nodeTypesUtils';
 import { isResourceLocatorValue } from '@/utils/typeGuards';
 
@@ -522,6 +522,8 @@ import type { N8nInput } from 'n8n-design-system';
 import { isCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useDebounce } from '@/composables/useDebounce';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useRouter } from 'vue-router';
 
 type Picker = { $emit: (arg0: string, arg1: Date) => void };
 
@@ -540,7 +542,6 @@ export default defineComponent({
 		ResourceLocator,
 		TextEdit,
 	},
-	mixins: [workflowHelpers],
 	props: {
 		additionalExpressionData: {
 			type: Object as PropType<IDataObject>,
@@ -549,7 +550,11 @@ export default defineComponent({
 		isReadOnly: {
 			type: Boolean,
 		},
-		isSingleLine: {
+		rows: {
+			type: Number,
+			default: 5,
+		},
+		isAssignment: {
 			type: Boolean,
 		},
 		parameter: {
@@ -613,11 +618,14 @@ export default defineComponent({
 		const i18n = useI18n();
 		const nodeHelpers = useNodeHelpers();
 		const { callDebounced } = useDebounce();
+		const router = useRouter();
+		const workflowHelpers = useWorkflowHelpers({ router });
 
 		return {
 			externalHooks,
 			i18n,
 			nodeHelpers,
+			workflowHelpers,
 			callDebounced,
 		};
 	},
@@ -719,7 +727,7 @@ export default defineComponent({
 			// Get the resolved parameter values of the current node
 			const currentNodeParameters = this.ndvStore.activeNode?.parameters;
 			try {
-				const resolvedNodeParameters = this.resolveParameter(currentNodeParameters);
+				const resolvedNodeParameters = this.workflowHelpers.resolveParameter(currentNodeParameters);
 
 				const returnValues: string[] = [];
 				for (const parameterPath of loadOptionsDependsOn) {
@@ -964,7 +972,7 @@ export default defineComponent({
 			return shortPath.join('.');
 		},
 		workflow(): Workflow {
-			return this.getCurrentWorkflow();
+			return this.workflowHelpers.getCurrentWorkflow();
 		},
 		isResourceLocatorParameter(): boolean {
 			return this.parameter.type === 'resourceLocator';
@@ -1087,7 +1095,7 @@ export default defineComponent({
 
 			try {
 				const currentNodeParameters = (this.ndvStore.activeNode as INodeUi).parameters;
-				const resolvedNodeParameters = this.resolveRequiredParameters(
+				const resolvedNodeParameters = this.workflowHelpers.resolveRequiredParameters(
 					this.parameter,
 					currentNodeParameters,
 				) as INodeParameters;
@@ -1314,7 +1322,11 @@ export default defineComponent({
 					(!this.modelValue || this.modelValue === '[Object: null]')
 				) {
 					this.valueChanged('={{ 0 }}');
-				} else if (this.parameter.type === 'number' || this.parameter.type === 'boolean') {
+				} else if (
+					this.parameter.type === 'number' ||
+					this.parameter.type === 'boolean' ||
+					typeof this.modelValue !== 'string'
+				) {
 					this.valueChanged(`={{ ${this.modelValue} }}`);
 				} else {
 					this.valueChanged(`=${this.modelValue}`);
@@ -1345,7 +1357,6 @@ export default defineComponent({
 						// Strip the '=' from the beginning
 						newValue = this.modelValue ? this.modelValue.toString().substring(1) : null;
 					}
-
 					this.valueChanged(newValue);
 				}
 			} else if (command === 'refreshOptions') {
@@ -1416,6 +1427,7 @@ export default defineComponent({
 
 .droppable {
 	--input-border-color: var(--color-ndv-droppable-parameter);
+	--input-border-right-color: var(--color-ndv-droppable-parameter);
 	--input-border-style: dashed;
 
 	textarea,
@@ -1427,6 +1439,7 @@ export default defineComponent({
 
 .activeDrop {
 	--input-border-color: var(--color-success);
+	--input-border-right-color: var(--color-success);
 	--input-background-color: var(--color-foreground-xlight);
 	--input-border-style: solid;
 

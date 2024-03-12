@@ -91,9 +91,11 @@ export class TestWebhooks implements IWebhookManager {
 			});
 		}
 
-		const { destinationNode, sessionId, workflowEntity } = registration;
+		const { destinationNode, sessionId, workflowEntity, webhook: testWebhook } = registration;
 
 		const workflow = this.toWorkflow(workflowEntity);
+
+		if (testWebhook.staticData) workflow.setTestStaticData(testWebhook.staticData);
 
 		const workflowStartNode = workflow.getNode(webhook.node);
 
@@ -405,14 +407,7 @@ export class TestWebhooks implements IWebhookManager {
 			connections: workflowEntity.connections,
 			active: false,
 			nodeTypes: this.nodeTypes,
-
-			/**
-			 * `staticData` in the original workflow entity has production webhook IDs.
-			 * Since we are creating here a temporary workflow only for a test webhook,
-			 * `staticData` from the original workflow entity should not be transferred.
-			 */
-			staticData: undefined,
-
+			staticData: {},
 			settings: workflowEntity.settings,
 		});
 	}

@@ -12,10 +12,10 @@
 					:label="buttonLabel"
 					:type="type"
 					:size="size"
-					:icon="!isListeningForEvents && 'flask'"
+					:icon="!isListeningForEvents && !hideIcon && 'flask'"
 					:transparent-background="transparent"
-					@click="onClick"
 					:title="!isTriggerNode ? $locale.baseText('ndv.execute.testNode.description') : ''"
+					@click="onClick"
 				/>
 			</div>
 		</n8n-tooltip>
@@ -34,7 +34,6 @@ import {
 } from '@/constants';
 import type { INodeUi } from '@/Interface';
 import type { INodeTypeDescription } from 'n8n-workflow';
-import { workflowRun } from '@/mixins/workflowRun';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -43,9 +42,11 @@ import { useToast } from '@/composables/useToast';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { nodeViewEventBus } from '@/event-bus';
 import { usePinnedData } from '@/composables/usePinnedData';
+import { useRunWorkflow } from '@/composables/useRunWorkflow';
+import { useUIStore } from '@/stores/ui.store';
+import { useRouter } from 'vue-router';
 
 export default defineComponent({
-	mixins: [workflowRun],
 	inheritAttrs: false,
 	props: {
 		nodeName: {
@@ -72,24 +73,28 @@ export default defineComponent({
 		telemetrySource: {
 			type: String,
 		},
+		hideIcon: {
+			type: Boolean,
+		},
 	},
-	setup(props, ctx) {
+	setup(props) {
+		const router = useRouter();
 		const workflowsStore = useWorkflowsStore();
 		const node = workflowsStore.getNodeByName(props.nodeName);
 		const pinnedData = usePinnedData(node);
 		const externalHooks = useExternalHooks();
+		const { runWorkflow } = useRunWorkflow({ router });
 
 		return {
 			externalHooks,
 			pinnedData,
+			runWorkflow,
 			...useToast(),
 			...useMessage(),
-			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...workflowRun.setup?.(props, ctx),
 		};
 	},
 	computed: {
-		...mapStores(useNodeTypesStore, useNDVStore, useWorkflowsStore),
+		...mapStores(useNodeTypesStore, useNDVStore, useWorkflowsStore, useUIStore),
 		node(): INodeUi | null {
 			return this.workflowsStore.getNodeByName(this.nodeName);
 		},

@@ -15,7 +15,6 @@ import { IsBoolean, IsEmail, IsIn, IsOptional, IsString, Length } from 'class-va
 import { NoXss } from '@db/utils/customValidators';
 import type { PublicUser, SecretsProvider, SecretsProviderState } from '@/Interfaces';
 import { AssignableRole, type User } from '@db/entities/User';
-import type { UserManagementMailer } from '@/UserManagement/email';
 import type { Variables } from '@db/entities/Variables';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
@@ -63,9 +62,12 @@ export type AuthenticatedRequest<
 	ResponseBody = {},
 	RequestBody = {},
 	RequestQuery = {},
-> = Omit<express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery>, 'user'> & {
+> = Omit<
+	express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery>,
+	'user' | 'cookies'
+> & {
 	user: User;
-	mailer?: UserManagementMailer;
+	cookies: Record<string, string | undefined>;
 };
 
 // ----------------------------------
@@ -161,7 +163,7 @@ export declare namespace CredentialRequest {
 
 	type Test = AuthenticatedRequest<{}, {}, INodeCredentialTestRequest>;
 
-	type Share = AuthenticatedRequest<{ credentialId: string }, {}, { shareWithIds: string[] }>;
+	type Share = AuthenticatedRequest<{ id: string }, {}, { shareWithIds: string[] }>;
 }
 
 // ----------------------------------
@@ -279,6 +281,13 @@ export declare namespace UserRequest {
 			password: string;
 		}
 	>;
+
+	export type UserCreateProperties = Pick<
+		User,
+		'email' | 'firstName' | 'lastName' | 'password' | 'role'
+	>;
+
+	export type Create = AuthenticatedRequest<{}, {}, UserCreateProperties>;
 }
 
 // ----------------------------------

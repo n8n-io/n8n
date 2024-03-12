@@ -6,7 +6,6 @@ import { inTest, inE2ETests } from '@/constants';
 
 if (inE2ETests) {
 	// Skip loading config from env variables in end-to-end tests
-	process.env.EXECUTIONS_PROCESS = 'main';
 	process.env.N8N_DIAGNOSTICS_ENABLED = 'false';
 	process.env.N8N_PUBLIC_API_DISABLED = 'true';
 	process.env.EXTERNAL_FRONTEND_HOOKS_URLS = '';
@@ -16,6 +15,7 @@ if (inE2ETests) {
 	process.env.N8N_LOG_LEVEL = 'silent';
 	process.env.N8N_PUBLIC_API_DISABLED = 'true';
 	process.env.SKIP_STATISTICS_EVENTS = 'true';
+	process.env.N8N_SECURE_COOKIE = 'false';
 } else {
 	dotenv.config();
 }
@@ -73,6 +73,26 @@ if (userManagement.jwtRefreshTimeoutHours >= userManagement.jwtSessionDurationHo
 	);
 
 	config.set('userManagement.jwtRefreshTimeoutHours', 0);
+}
+
+import colors from 'picocolors';
+const executionProcess = config.getEnv('executions.process');
+if (executionProcess) {
+	console.error(
+		colors.yellow('Please unset the deprecated env variable'),
+		colors.bold(colors.yellow('EXECUTIONS_PROCESS')),
+	);
+}
+if (executionProcess === 'own') {
+	console.error(
+		colors.bold(colors.red('Application failed to start because "Own" mode has been removed.')),
+	);
+	console.error(
+		colors.red(
+			'If you need the isolation and performance gains, please consider using queue mode instead.\n\n',
+		),
+	);
+	process.exit(-1);
 }
 
 setGlobalState({

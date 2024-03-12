@@ -29,7 +29,7 @@
 					<div v-if="isWebhookMethodVisible(webhook)" class="webhook-wrapper">
 						<div class="http-field">
 							<div class="http-method">
-								{{ getWebhookExpressionValue(webhook, 'httpMethod') }}<br />
+								{{ workflowHelpers.getWebhookExpressionValue(webhook, 'httpMethod') }}<br />
 							</div>
 						</div>
 						<div class="url-field">
@@ -62,21 +62,23 @@ import {
 	OPEN_URL_PANEL_TRIGGER_NODE_TYPES,
 	PRODUCTION_ONLY_TRIGGER_NODE_TYPES,
 } from '@/constants';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useClipboard } from '@/composables/useClipboard';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useRouter } from 'vue-router';
 
 export default defineComponent({
 	name: 'NodeWebhooks',
-	mixins: [workflowHelpers],
 	props: [
 		'node', // NodeUi
 		'nodeType', // INodeTypeDescription
 	],
 	setup() {
+		const router = useRouter();
 		const clipboard = useClipboard();
-
+		const workflowHelpers = useWorkflowHelpers({ router });
 		return {
 			clipboard,
+			workflowHelpers,
 			...useToast(),
 		};
 	},
@@ -102,7 +104,7 @@ export default defineComponent({
 		visibleWebhookUrls(): IWebhookDescription[] {
 			return this.webhooksNode.filter((webhook) => {
 				if (typeof webhook.ndvHideUrl === 'string') {
-					return !this.getWebhookExpressionValue(webhook, 'ndvHideUrl');
+					return !this.workflowHelpers.getWebhookExpressionValue(webhook, 'ndvHideUrl');
 				}
 
 				return !webhook.ndvHideUrl;
@@ -184,7 +186,7 @@ export default defineComponent({
 		},
 		getWebhookUrlDisplay(webhookData: IWebhookDescription): string {
 			if (this.node) {
-				return this.getWebhookUrl(
+				return this.workflowHelpers.getWebhookUrl(
 					webhookData,
 					this.node,
 					this.isProductionOnly ? 'production' : this.showUrlFor,
@@ -194,7 +196,7 @@ export default defineComponent({
 		},
 		isWebhookMethodVisible(webhook: IWebhookDescription): boolean {
 			if (typeof webhook.ndvHideMethod === 'string') {
-				return !this.getWebhookExpressionValue(webhook, 'ndvHideMethod');
+				return !this.workflowHelpers.getWebhookExpressionValue(webhook, 'ndvHideMethod');
 			}
 
 			return !webhook.ndvHideMethod;

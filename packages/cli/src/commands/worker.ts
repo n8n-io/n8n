@@ -4,24 +4,16 @@ import express from 'express';
 import http from 'http';
 import type PCancelable from 'p-cancelable';
 import { WorkflowExecute } from 'n8n-core';
-import type {
-	ExecutionError,
-	ExecutionStatus,
-	IExecuteResponsePromiseData,
-	INodeTypes,
-	IRun,
-} from 'n8n-workflow';
-import { Workflow, NodeOperationError, sleep, ApplicationError } from 'n8n-workflow';
+import type { ExecutionStatus, IExecuteResponsePromiseData, INodeTypes, IRun } from 'n8n-workflow';
+import { Workflow, sleep, ApplicationError } from 'n8n-workflow';
 
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
-import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 import config from '@/config';
 import type { Job, JobId, JobResponse, WebhookResponse } from '@/Queue';
 import { Queue } from '@/Queue';
-import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { N8N_VERSION } from '@/constants';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
@@ -29,7 +21,7 @@ import { OwnershipService } from '@/services/ownership.service';
 import type { ICredentialsOverwrite } from '@/Interfaces';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { rawBodyReader, bodyParser } from '@/middlewares';
-import { MessageEventBus } from '@/eventbus';
+import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import type { RedisServicePubSubSubscriber } from '@/services/redis/RedisServicePubSubSubscriber';
 import { EventMessageGeneric } from '@/eventbus/EventMessageClasses/EventMessageGeneric';
 import { OrchestrationHandlerWorkerService } from '@/services/orchestration/worker/orchestration.handler.worker.service';
@@ -180,20 +172,6 @@ export class Worker extends BaseCommand {
 			},
 		);
 
-		try {
-			await Container.get(PermissionChecker).check(workflow, workflowOwner.id);
-		} catch (error) {
-			if (error instanceof NodeOperationError) {
-				const failedExecution = generateFailedExecutionFromError(
-					fullExecutionData.mode,
-					error,
-					error.node,
-				);
-				await additionalData.hooks.executeHookFunctions('workflowExecuteAfter', [failedExecution]);
-			}
-			return { success: true, error: error as ExecutionError };
-		}
-
 		additionalData.hooks.hookFunctions.sendResponse = [
 			async (response: IExecuteResponsePromiseData): Promise<void> => {
 				const progress: WebhookResponse = {
@@ -267,9 +245,10 @@ export class Worker extends BaseCommand {
 	}
 
 	async init() {
-		const configuredShutdownTimeout = config.getEnv('queue.bull.gracefulShutdownTimeout');
-		if (configuredShutdownTimeout) {
-			this.gracefulShutdownTimeoutInS = configuredShutdownTimeout;
+		const { QUEUE_WORKER_TIMEOUT } = process.env;
+		if (QUEUE_WORKER_TIMEOUT) {
+			this.gracefulShutdownTimeoutInS =
+				parseInt(QUEUE_WORKER_TIMEOUT, 10) || config.default('queue.bull.gracefulShutdownTimeout');
 			this.logger.warn(
 				'QUEUE_WORKER_TIMEOUT has been deprecated. Rename it to N8N_GRACEFUL_SHUTDOWN_TIMEOUT.',
 			);

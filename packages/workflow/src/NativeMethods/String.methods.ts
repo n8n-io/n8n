@@ -7,6 +7,7 @@ export const stringMethods: NativeDoc = {
 			doc: {
 				name: 'length',
 				description: 'Returns the number of characters in the string.',
+				section: 'query',
 				docURL:
 					'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/length',
 				returnType: 'number',
@@ -18,6 +19,7 @@ export const stringMethods: NativeDoc = {
 			doc: {
 				name: 'concat',
 				description: 'Concatenates the string arguments to the calling string.',
+				section: 'edit',
 				docURL:
 					'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/concat',
 				returnType: 'string',
@@ -27,6 +29,7 @@ export const stringMethods: NativeDoc = {
 			doc: {
 				name: 'endsWith',
 				description: 'Checks if a string ends with `searchString`.',
+				section: 'query',
 				docURL:
 					'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/endsWith',
 				returnType: 'boolean',
@@ -37,6 +40,7 @@ export const stringMethods: NativeDoc = {
 			doc: {
 				name: 'indexOf',
 				description: 'Returns the index of the first occurrence of `searchString`.',
+				section: 'query',
 				docURL:
 					'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/indexOf',
 				returnType: 'number',
@@ -50,6 +54,7 @@ export const stringMethods: NativeDoc = {
 			doc: {
 				name: 'lastIndexOf',
 				description: 'Returns the index of the last occurrence of `searchString`.',
+				section: 'query',
 				docURL:
 					'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/lastIndexOf',
 				returnType: 'number',
@@ -63,6 +68,7 @@ export const stringMethods: NativeDoc = {
 			doc: {
 				name: 'match',
 				description: 'Retrieves the result of matching a string against a regular expression.',
+				section: 'query',
 				docURL:
 					'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/match',
 				returnType: 'Array',
@@ -73,6 +79,7 @@ export const stringMethods: NativeDoc = {
 			doc: {
 				name: 'includes',
 				description: 'Checks if `searchString` may be found within the calling string.',
+				section: 'query',
 				docURL:
 					'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/includes',
 				returnType: 'boolean',
@@ -87,6 +94,7 @@ export const stringMethods: NativeDoc = {
 				name: 'replace',
 				description:
 					'Returns a string with matches of a `pattern` replaced by a `replacement`. If `pattern` is a string, only the first occurrence will be replaced.',
+				section: 'edit',
 				docURL:
 					'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/replace',
 				returnType: 'string',
@@ -100,6 +108,7 @@ export const stringMethods: NativeDoc = {
 			doc: {
 				name: 'replaceAll',
 				description: 'Returns a string with matches of a `pattern` replaced by a `replacement`.',
+				section: 'edit',
 				docURL:
 					'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/replaceAll',
 				returnType: 'string',
@@ -113,6 +122,7 @@ export const stringMethods: NativeDoc = {
 			doc: {
 				name: 'search',
 				description: 'Returns a string that matches `pattern` within the given string.',
+				section: 'query',
 				docURL:
 					'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/search',
 				returnType: 'string',
@@ -124,6 +134,7 @@ export const stringMethods: NativeDoc = {
 				name: 'slice',
 				description:
 					'Returns a section of a string. `indexEnd` defaults to the length of the string if not given.',
+				section: 'edit',
 				docURL:
 					'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/slice',
 				returnType: 'string',
@@ -138,6 +149,7 @@ export const stringMethods: NativeDoc = {
 				name: 'split',
 				description:
 					'Returns the substrings that result from dividing the given string with `separator`.',
+				section: 'edit',
 				docURL:
 					'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/split',
 				returnType: 'Array',
@@ -151,6 +163,7 @@ export const stringMethods: NativeDoc = {
 			doc: {
 				name: 'startsWith',
 				description: 'Checks if the string begins with `searchString`.',
+				section: 'query',
 				docURL:
 					'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/startsWith',
 				returnType: 'boolean',
@@ -165,6 +178,7 @@ export const stringMethods: NativeDoc = {
 				name: 'substring',
 				description:
 					'Returns the part of the string from the start index up to and excluding the end index, or to the end of the string if no end index is supplied.',
+				section: 'edit',
 				docURL:
 					'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/substring',
 				returnType: 'string',
@@ -178,6 +192,7 @@ export const stringMethods: NativeDoc = {
 			doc: {
 				name: 'toLowerCase',
 				description: 'Formats a string to lowercase. Example: "this is lowercase”.',
+				section: 'case',
 				docURL:
 					'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/toLowerCase',
 				returnType: 'string',
@@ -187,6 +202,7 @@ export const stringMethods: NativeDoc = {
 			doc: {
 				name: 'toUpperCase',
 				description: 'Formats a string to lowercase. Example: "THIS IS UPPERCASE”.',
+				section: 'case',
 				docURL:
 					'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/toUpperCase',
 				returnType: 'string',
@@ -196,6 +212,7 @@ export const stringMethods: NativeDoc = {
 			doc: {
 				name: 'trim',
 				description: 'Removes whitespace from both ends of a string and returns a new string.',
+				section: 'edit',
 				docURL:
 					'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/Trim',
 				returnType: 'string',
@@ -205,6 +222,7 @@ export const stringMethods: NativeDoc = {
 			doc: {
 				name: 'trimEnd',
 				description: 'Removes whitespace from the end of a string and returns a new string.',
+				section: 'edit',
 				docURL:
 					'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/trimEnd',
 				returnType: 'string',
@@ -214,6 +232,7 @@ export const stringMethods: NativeDoc = {
 			doc: {
 				name: 'trimStart',
 				description: 'Removes whitespace from the beginning of a string and returns a new string.',
+				section: 'edit',
 				docURL:
 					'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/trimStart',
 				returnType: 'string',

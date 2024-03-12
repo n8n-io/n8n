@@ -44,7 +44,7 @@ export abstract class BaseCommand extends Command {
 	/**
 	 * How long to wait for graceful shutdown before force killing the process.
 	 */
-	protected gracefulShutdownTimeoutInS: number = config.getEnv('generic.gracefulShutdownTimeout');
+	protected gracefulShutdownTimeoutInS = config.getEnv('generic.gracefulShutdownTimeout');
 
 	async init(): Promise<void> {
 		await initErrorHandling();
@@ -81,11 +81,6 @@ export abstract class BaseCommand extends Command {
 		if (['mysqldb', 'mariadb'].includes(dbType)) {
 			this.logger.warn(
 				'Support for MySQL/MariaDB has been deprecated and will be removed with an upcoming version of n8n. Please migrate to PostgreSQL.',
-			);
-		}
-		if (process.env.EXECUTIONS_PROCESS === 'own') {
-			this.logger.warn(
-				'Own mode has been deprecated and will be removed in a future version of n8n. If you need the isolation and performance gains, please consider using queue mode.',
 			);
 		}
 

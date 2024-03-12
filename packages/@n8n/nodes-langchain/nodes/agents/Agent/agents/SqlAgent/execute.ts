@@ -3,14 +3,17 @@ import {
 	type INodeExecutionData,
 	NodeConnectionType,
 	NodeOperationError,
+	type IDataObject,
 } from 'n8n-workflow';
 
 import { SqlDatabase } from 'langchain/sql_db';
 import type { SqlCreatePromptArgs } from 'langchain/agents/toolkits/sql';
 import { SqlToolkit, createSqlAgent } from 'langchain/agents/toolkits/sql';
-import type { BaseLanguageModel } from 'langchain/dist/base_language';
-import type { DataSource } from 'typeorm';
+import type { BaseLanguageModel } from '@langchain/core/language_models/base';
+import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
+import type { DataSource } from '@n8n/typeorm';
 
+import { getPromptInputByType, serializeChatHistory } from '../../../../../utils/helpers';
 import { getSqliteDataSource } from './other/handlers/sqlite';
 import { getPostgresDataSource } from './other/handlers/postgres';
 import { SQL_PREFIX, SQL_SUFFIX } from './other/prompts';
@@ -24,6 +27,7 @@ const parseTablesString = (tablesString: string) =>
 
 export async function sqlAgentAgentExecute(
 	this: IExecuteFunctions,
+	nodeVersion: number,
 ): Promise<INodeExecutionData[][]> {
 	this.logger.verbose('Executing SQL Agent');
 
@@ -37,7 +41,17 @@ export async function sqlAgentAgentExecute(
 
 	for (let i = 0; i < items.length; i++) {
 		const item = items[i];
-		const input = this.getNodeParameter('input', i) as string;
+		let input;
+		if (this.getNode().typeVersion <= 1.2) {
+			input = this.getNodeParameter('input', i) as string;
+		} else {
+			input = getPromptInputByType({
+				ctx: this,
+				i,
+				inputKey: 'text',
+				promptTypeKey: 'promptType',
+			});
+		}
 
 		if (input === undefined) {
 			throw new NodeOperationError(this.getNode(), 'The ‘prompt’ parameter is empty.');
@@ -62,7 +76,8 @@ export async function sqlAgentAgentExecute(
 				);
 			}
 
-			dataSource = getSqliteDataSource.call(this, item.binary);
+			const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i, 'data');
+			dataSource = await getSqliteDataSource.call(this, item.binary, binaryPropertyName);
 		}
 
 		if (selectedDataSource === 'postgres') {
@@ -84,6 +99,7 @@ export async function sqlAgentAgentExecute(
 			topK: (options.topK as number) ?? 10,
 			prefix: (options.prefixPrompt as string) ?? SQL_PREFIX,
 			suffix: (options.suffixPrompt as string) ?? SQL_SUFFIX,
+			inputVariables: ['chatHistory', 'input', 'agent_scratchpad'],
 		};
 
 		const dbInstance = await SqlDatabase.fromDataSourceParams({
@@ -96,7 +112,32 @@ export async function sqlAgentAgentExecute(
 		const toolkit = new SqlToolkit(dbInstance, model);
 		const agentExecutor = createSqlAgent(model, toolkit, agentOptions);
 
-		const response = await agentExecutor.call({ input, signal: this.getExecutionCancelSignal() });
+		const memory = (await this.getInputConnectionData(NodeConnectionType.AiMemory, 0)) as
+			| BaseChatMemory
+			| undefined;
+
+		agentExecutor.memory = memory;
+
+		let chatHistory = '';
+		if (memory) {
+			const messages = await memory.chatHistory.getMessages();
+			chatHistory = serializeChatHistory(messages);
+		}
+
+		let response: IDataObject;
+		try {
+			response = await agentExecutor.call({
+				input,
+				signal: this.getExecutionCancelSignal(),
+				chatHistory,
+			});
+		} catch (error) {
+			if ((error.message as IDataObject)?.output) {
+				response = error.message as IDataObject;
+			} else {
+				throw new NodeOperationError(this.getNode(), error.message as string, { itemIndex: i });
+			}
+		}
 
 		returnData.push({ json: response });
 	}

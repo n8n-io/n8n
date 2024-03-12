@@ -139,7 +139,6 @@ import {
 	REPORTED_SOURCE_OTHER_KEY,
 	VIEWS,
 } from '@/constants';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useToast } from '@/composables/useToast';
 import Modal from '@/components/Modal.vue';
 import type { IFormInputs, IPersonalizationLatestVersion, IUser } from '@/Interface';
@@ -160,7 +159,6 @@ const SURVEY_VERSION = 'v4';
 export default defineComponent({
 	name: 'PersonalizationModal',
 	components: { Modal },
-	mixins: [workflowHelpers],
 	props: {
 		teleported: {
 			type: Boolean,
@@ -728,6 +726,10 @@ export default defineComponent({
 				if (this.registerForEnterpriseTrial && this.canRegisterForEnterpriseTrial) {
 					await this.usageStore.requestEnterpriseLicenseTrial();
 					licenseRequestSucceeded = true;
+					this.$telemetry.track('User registered for self serve trial', {
+						email: this.usersStore.currentUser?.email,
+						instance_id: this.rootStore.instanceId,
+					});
 				}
 			} catch (e) {
 				this.showError(
@@ -759,29 +761,32 @@ export default defineComponent({
 				getAccountAge(this.usersStore.currentUser || ({} as IUser)) <= ONBOARDING_PROMPT_TIMEBOX
 			) {
 				const onboardingResponse = await this.uiStore.getNextOnboardingPrompt();
+
+				if (!onboardingResponse) {
+					return;
+				}
+
 				const promptTimeout =
 					onboardingResponse.toast_sequence_number === 1 ? FIRST_ONBOARDING_PROMPT_TIMEOUT : 1000;
 
-				if (onboardingResponse.title && onboardingResponse.description) {
-					setTimeout(async () => {
-						this.showToast({
-							type: 'info',
-							title: onboardingResponse.title,
-							message: onboardingResponse.description,
-							duration: 0,
-							customClass: 'clickable',
-							closeOnClick: true,
-							onClick: () => {
-								this.$telemetry.track('user clicked onboarding toast', {
-									seq_num: onboardingResponse.toast_sequence_number,
-									title: onboardingResponse.title,
-									description: onboardingResponse.description,
-								});
-								this.uiStore.openModal(ONBOARDING_CALL_SIGNUP_MODAL_KEY);
-							},
-						});
-					}, promptTimeout);
-				}
+				setTimeout(async () => {
+					this.showToast({
+						type: 'info',
+						title: onboardingResponse.title,
+						message: onboardingResponse.description,
+						duration: 0,
+						customClass: 'clickable',
+						closeOnClick: true,
+						onClick: () => {
+							this.$telemetry.track('user clicked onboarding toast', {
+								seq_num: onboardingResponse.toast_sequence_number,
+								title: onboardingResponse.title,
+								description: onboardingResponse.description,
+							});
+							this.uiStore.openModal(ONBOARDING_CALL_SIGNUP_MODAL_KEY);
+						},
+					});
+				}, promptTimeout);
 			}
 		},
 	},

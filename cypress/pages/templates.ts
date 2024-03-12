@@ -23,14 +23,14 @@ export class TemplatesPage extends BasePage {
 			cy.waitForLoad();
 		},
 
-		openOnboardingFlow: (id: number, name: string, workflow: object) => {
+		openOnboardingFlow: (id: number, name: string, workflow: object, templatesHost: string) => {
 			const apiResponse = {
 				id,
 				name,
 				workflow,
 			};
 			cy.intercept('POST', '/rest/workflows').as('createWorkflow');
-			cy.intercept('GET', `https://api.n8n.io/api/workflows/templates/${id}`, {
+			cy.intercept('GET', `${templatesHost}/api/workflows/templates/${id}`, {
 				statusCode: 200,
 				body: apiResponse,
 			}).as('getTemplate');
@@ -42,13 +42,13 @@ export class TemplatesPage extends BasePage {
 			cy.wait(['@createWorkflow', '@getWorkflow']);
 		},
 
-		importTemplate: (id: number, name: string, workflow: object) => {
+		importTemplate: (id: number, name: string, workflow: object, templatesHost: string) => {
 			const apiResponse = {
 				id,
 				name,
 				workflow,
 			};
-			cy.intercept('GET', `https://api.n8n.io/api/workflows/templates/${id}`, {
+			cy.intercept('GET', `${templatesHost}/api/workflows/templates/${id}`, {
 				statusCode: 200,
 				body: apiResponse,
 			}).as('getTemplate');

@@ -12,7 +12,7 @@ export async function fetchNextOnboardingPrompt(
 	return await get(N8N_API_BASE_URL, ONBOARDING_PROMPTS_ENDPOINT, {
 		instance_id: instanceId,
 		user_id: `${instanceId}#${currentUser.id}`,
-		is_owner: currentUser.isOwner,
+		is_owner: currentUser.isOwner ?? false,
 		survey_results: currentUser.personalizationAnswers,
 	});
 }
@@ -45,5 +45,6 @@ export async function submitEmailOnSignup(
 		user_id: `${instanceId}#${currentUser.id}`,
 		email,
 		agree,
+		agree_updates: true,
 	});
 }

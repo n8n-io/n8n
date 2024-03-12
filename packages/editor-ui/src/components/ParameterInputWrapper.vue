@@ -7,6 +7,7 @@
 			:model-value="modelValue"
 			:path="path"
 			:is-read-only="isReadOnly"
+			:is-assignment="isAssignment"
 			:droppable="droppable"
 			:active-drop="activeDrop"
 			:force-show-expression="forceShowExpression"
@@ -15,10 +16,10 @@
 			:error-highlight="errorHighlight"
 			:is-for-credential="isForCredential"
 			:event-source="eventSource"
-			:expression-evaluated="expressionValueComputed"
+			:expression-evaluated="evaluatedExpressionValue"
 			:additional-expression-data="resolvedAdditionalExpressionData"
 			:label="label"
-			:is-single-line="isSingleLine"
+			:rows="rows"
 			:data-test-id="`parameter-input-${parsedParameterName}`"
 			:event-bus="eventBus"
 			@focus="onFocus"
@@ -45,30 +46,32 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
-import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
 
+import type { INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
 import ParameterInput from '@/components/ParameterInput.vue';
 import InputHint from '@/components/ParameterInputHint.vue';
+import { useEnvironmentsStore } from '@/stores/environments.ee.store';
+import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { isValueExpression, parseResourceMapperFieldName } from '@/utils/nodeTypesUtils';
 import type {
 	IDataObject,
 	INodeProperties,
 	INodePropertyMode,
 	IParameterLabel,
-	NodeParameterValue,
 	NodeParameterValueType,
+	Result,
 } from 'n8n-workflow';
 import { isResourceLocatorValue } from 'n8n-workflow';
-import type { INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { isValueExpression, parseResourceMapperFieldName } from '@/utils/nodeTypesUtils';
-import { useNDVStore } from '@/stores/ndv.store';
-import { useEnvironmentsStore } from '@/stores/environments.ee.store';
-import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 
 import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
+import { useRouter } from 'vue-router';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { getExpressionErrorMessage, getResolvableState } from '@/utils/expressions';
 
 export default defineComponent({
 	name: 'ParameterInputWrapper',
@@ -76,7 +79,6 @@ export default defineComponent({
 		ParameterInput,
 		InputHint,
 	},
-	mixins: [workflowHelpers],
 	props: {
 		additionalExpressionData: {
 			type: Object as PropType<IDataObject>,
@@ -85,7 +87,11 @@ export default defineComponent({
 		isReadOnly: {
 			type: Boolean,
 		},
-		isSingleLine: {
+		rows: {
+			type: Number,
+			default: 5,
+		},
+		isAssignment: {
 			type: Boolean,
 		},
 		parameter: {
@@ -143,6 +149,14 @@ export default defineComponent({
 			default: () => createEventBus(),
 		},
 	},
+	setup() {
+		const router = useRouter();
+		const workflowHelpers = useWorkflowHelpers({ router });
+
+		return {
+			workflowHelpers,
+		};
+	},
 	computed: {
 		...mapStores(useNDVStore, useExternalSecretsStore, useEnvironmentsStore),
 		isValueExpression() {
@@ -183,15 +197,14 @@ export default defineComponent({
 		isInputParentOfActiveNode(): boolean {
 			return this.ndvStore.isInputParentOfActiveNode;
 		},
-		expressionValueComputed(): string | null {
+		evaluatedExpression(): Result<unknown, unknown> {
 			const value = isResourceLocatorValue(this.modelValue)
 				? this.modelValue.value
 				: this.modelValue;
 			if (!this.activeNode || !this.isValueExpression || typeof value !== 'string') {
-				return null;
+				return { ok: false, error: '' };
 			}
 
-			let computedValue: NodeParameterValue;
 			try {
 				let opts;
 				if (this.ndvStore.isInputParentOfActiveNode) {
@@ -204,24 +217,42 @@ export default defineComponent({
 					};
 				}
 
-				computedValue = this.resolveExpression(value, undefined, opts);
+				return { ok: true, result: this.workflowHelpers.resolveExpression(value, undefined, opts) };
+			} catch (error) {
+				return { ok: false, error };
+			}
+		},
+		evaluatedExpressionValue(): unknown {
+			const evaluated = this.evaluatedExpression;
+			return evaluated.ok ? evaluated.result : null;
+		},
+		evaluatedExpressionString(): string | null {
+			const evaluated = this.evaluatedExpression;
 
-				if (computedValue === null) {
+			if (!evaluated.ok) {
+				if (getResolvableState(evaluated.error) !== 'invalid') {
 					return null;
 				}
 
-				if (typeof computedValue === 'string' && computedValue.length === 0) {
-					return this.$locale.baseText('parameterInput.emptyString');
-				}
-			} catch (error) {
-				computedValue = `[${this.$locale.baseText('parameterInput.error')}: ${error.message}]`;
+				return `[${this.$locale.baseText('parameterInput.error')}: ${getExpressionErrorMessage(
+					evaluated.error as Error,
+				)}]`;
 			}
 
-			return typeof computedValue === 'string' ? computedValue : JSON.stringify(computedValue);
+			if (evaluated.result === null) {
+				return null;
+			}
+
+			if (typeof evaluated.result === 'string' && evaluated.result.length === 0) {
+				return this.$locale.baseText('parameterInput.emptyString');
+			}
+			return typeof evaluated.result === 'string'
+				? evaluated.result
+				: JSON.stringify(evaluated.result);
 		},
 		expressionOutput(): string | null {
-			if (this.isValueExpression && this.expressionValueComputed) {
-				return this.expressionValueComputed;
+			if (this.isValueExpression && this.evaluatedExpressionString) {
+				return this.evaluatedExpressionString;
 			}
 
 			return null;

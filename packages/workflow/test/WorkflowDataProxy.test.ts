@@ -1,348 +1,286 @@
-import type { IConnections, IExecuteData, INode, IRunExecutionData } from '@/Interfaces';
+import type { IExecuteData, INode, IRun, IWorkflowBase } from '@/Interfaces';
 import { Workflow } from '@/Workflow';
 import { WorkflowDataProxy } from '@/WorkflowDataProxy';
-import * as Helpers from './Helpers';
 import { ExpressionError } from '@/errors/expression.error';
+import * as Helpers from './Helpers';
 
-describe('WorkflowDataProxy', () => {
-	describe('test data proxy', () => {
-		const nodes: INode[] = [
-			{
-				name: 'Start',
-				type: 'test.set',
-				parameters: {},
-				typeVersion: 1,
-				id: 'uuid-1',
-				position: [100, 200],
-			},
-			{
-				name: 'Function',
-				type: 'test.set',
-				parameters: {
-					functionCode:
-						'// Code here will run only once, no matter how many input items there are.\n// More info and help: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.function/\nconst { DateTime, Duration, Interval } = require("luxon");\n\nconst data = [\n  {\n  "length": 105\n  },\n  {\n  "length": 160\n  },\n  {\n  "length": 121\n  },\n  {\n  "length": 275\n  },\n  {\n  "length": 950\n  },\n];\n\nreturn data.map(fact => ({json: fact}));',
-				},
-				typeVersion: 1,
-				id: 'uuid-2',
-				position: [280, 200],
-			},
-			{
-				name: 'Rename',
-				type: 'test.set',
-				parameters: {
-					value1: 'data',
-					value2: 'initialName',
-				},
-				typeVersion: 1,
-				id: 'uuid-3',
-				position: [460, 200],
-			},
-			{
-				name: 'Set',
-				type: 'test.set',
-				parameters: {},
-				typeVersion: 1,
-				id: 'uuid-4',
-				position: [640, 200],
-			},
-			{
-				name: 'End',
-				type: 'test.set',
-				parameters: {},
-				typeVersion: 1,
-				id: 'uuid-5',
-				position: [640, 200],
-			},
-		];
+const loadFixture = (fixture: string) => {
+	const workflow = Helpers.readJsonFileSync<IWorkflowBase>(
+		`test/fixtures/WorkflowDataProxy/${fixture}_workflow.json`,
+	);
+	const run = Helpers.readJsonFileSync<IRun>(`test/fixtures/WorkflowDataProxy/${fixture}_run.json`);
 
-		const connections: IConnections = {
-			Start: {
-				main: [
-					[
-						{
-							node: 'Function',
-							type: 'main',
-							index: 0,
-						},
-					],
-				],
-			},
-			Function: {
-				main: [
-					[
-						{
-							node: 'Rename',
-							type: 'main',
-							index: 0,
-						},
-					],
-				],
-			},
-			Rename: {
-				main: [
-					[
-						{
-							node: 'End',
-							type: 'main',
-							index: 0,
-						},
-					],
-				],
+	return { workflow, run };
+};
+
+const getProxyFromFixture = (workflow: IWorkflowBase, run: IRun | null, activeNode: string) => {
+	const taskData = run?.data.resultData.runData[activeNode]?.[0];
+	const lastNodeConnectionInputData = taskData?.data?.main[0];
+
+	let executeData: IExecuteData | undefined;
+
+	if (taskData) {
+		executeData = {
+			data: taskData.data!,
+			node: workflow.nodes.find((node) => node.name === activeNode) as INode,
+			source: {
+				main: taskData.source,
 			},
 		};
+	}
 
-		const runExecutionData: IRunExecutionData = {
-			resultData: {
-				runData: {
-					Start: [
-						{
-							startTime: 1,
-							executionTime: 1,
-							data: {
-								main: [
-									[
-										{
-											json: {},
-										},
-									],
-								],
-							},
-							source: [],
-						},
-					],
-					Function: [
-						{
-							startTime: 1,
-							executionTime: 1,
-							data: {
-								main: [
-									[
-										{
-											json: { initialName: 105 },
-											pairedItem: { item: 0 },
-										},
-										{
-											json: { initialName: 160 },
-											pairedItem: { item: 0 },
-										},
-										{
-											json: { initialName: 121 },
-											pairedItem: { item: 0 },
-										},
-										{
-											json: { initialName: 275 },
-											pairedItem: { item: 0 },
-										},
-										{
-											json: { initialName: 950 },
-											pairedItem: { item: 0 },
-										},
-									],
-								],
-							},
-							source: [
-								{
-									previousNode: 'Start',
-								},
-							],
-						},
-					],
-					Rename: [
-						{
-							startTime: 1,
-							executionTime: 1,
-							data: {
-								main: [
-									[
-										{
-											json: { data: 105 },
-											pairedItem: { item: 0 },
-										},
-										{
-											json: { data: 160 },
-											pairedItem: { item: 1 },
-										},
-										{
-											json: { data: 121 },
-											pairedItem: { item: 2 },
-										},
-										{
-											json: { data: 275 },
-											pairedItem: { item: 3 },
-										},
-										{
-											json: { data: 950 },
-											pairedItem: { item: 4 },
-										},
-									],
-								],
-							},
-							source: [
-								{
-									previousNode: 'Function',
-								},
-							],
-						},
-					],
-					End: [
-						{
-							startTime: 1,
-							executionTime: 1,
-							data: {
-								main: [
-									[
-										{
-											json: { data: 105 },
-											pairedItem: { item: 0 },
-										},
-										{
-											json: { data: 160 },
-											pairedItem: { item: 1 },
-										},
-										{
-											json: { data: 121 },
-											pairedItem: { item: 2 },
-										},
-										{
-											json: { data: 275 },
-											pairedItem: { item: 3 },
-										},
-										{
-											json: { data: 950 },
-											pairedItem: { item: 4 },
-										},
-									],
-								],
-							},
-							source: [
-								{
-									previousNode: 'Rename',
-								},
-							],
-						},
-					],
-				},
-			},
-		};
-
-		const nodeTypes = Helpers.NodeTypes();
-		const workflow = new Workflow({
+	const dataProxy = new WorkflowDataProxy(
+		new Workflow({
 			id: '123',
 			name: 'test workflow',
-			nodes,
-			connections,
+			nodes: workflow.nodes,
+			connections: workflow.connections,
 			active: false,
-			nodeTypes,
-		});
-		const nameLastNode = 'End';
+			nodeTypes: Helpers.NodeTypes(),
+		}),
+		run?.data ?? null,
+		0,
+		0,
+		activeNode,
+		lastNodeConnectionInputData ?? [],
+		{},
+		'manual',
+		{},
+		executeData,
+	);
 
-		const lastNodeConnectionInputData =
-			runExecutionData.resultData.runData[nameLastNode][0].data!.main[0];
+	return dataProxy.getDataProxy();
+};
 
-		const executeData: IExecuteData = {
-			data: runExecutionData.resultData.runData[nameLastNode][0].data!,
-			node: nodes.find((node) => node.name === nameLastNode) as INode,
-			source: {
-				main: runExecutionData.resultData.runData[nameLastNode][0].source,
-			},
-		};
+describe('WorkflowDataProxy', () => {
+	describe('Base', () => {
+		const fixture = loadFixture('base');
+		const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'End');
 
-		const dataProxy = new WorkflowDataProxy(
-			workflow,
-			runExecutionData,
-			0,
-			0,
-			nameLastNode,
-			lastNodeConnectionInputData ?? [],
-			{},
-			'manual',
-			{},
-			executeData,
-		);
-		const proxy = dataProxy.getDataProxy();
-
-		test('test $("NodeName").all()', () => {
+		test('$("NodeName").all()', () => {
 			expect(proxy.$('Rename').all()[1].json.data).toEqual(160);
 		});
-		test('test $("NodeName").all() length', () => {
+		test('$("NodeName").all() length', () => {
 			expect(proxy.$('Rename').all().length).toEqual(5);
 		});
-		test('test $("NodeName").item', () => {
+		test('$("NodeName").item', () => {
 			expect(proxy.$('Rename').item).toEqual({ json: { data: 105 }, pairedItem: { item: 0 } });
 		});
-		test('test $("NodeNameEarlier").item', () => {
+		test('$("NodeNameEarlier").item', () => {
 			expect(proxy.$('Function').item).toEqual({
 				json: { initialName: 105 },
 				pairedItem: { item: 0 },
 			});
 		});
-		test('test $("NodeName").itemMatching(2)', () => {
+		test('$("NodeName").itemMatching(2)', () => {
 			expect(proxy.$('Rename').itemMatching(2).json.data).toEqual(121);
 		});
-		test('test $("NodeName").first()', () => {
+		test('$("NodeName").first()', () => {
 			expect(proxy.$('Rename').first().json.data).toEqual(105);
 		});
-		test('test $("NodeName").last()', () => {
+		test('$("NodeName").last()', () => {
 			expect(proxy.$('Rename').last().json.data).toEqual(950);
 		});
 
-		test('test $("NodeName").params', () => {
+		test('$("NodeName").params', () => {
 			expect(proxy.$('Rename').params).toEqual({ value1: 'data', value2: 'initialName' });
 		});
 
-		test('$("NodeName")', () => {
+		test('$("NodeName") not in workflow should throw', () => {
 			expect(() => proxy.$('doNotExist')).toThrowError(ExpressionError);
 		});
 
-		test('$("NodeName")', () => {
-			expect(() => proxy.$('Set')).toThrowError(ExpressionError);
+		test('$("NodeName").item on Node that has not executed', () => {
+			expect(() => proxy.$('Set').item).toThrowError(ExpressionError);
 		});
 
-		test('test $input.all()', () => {
+		test('$("NodeName").isExecuted', () => {
+			expect(proxy.$('Function').isExecuted).toEqual(true);
+			expect(proxy.$('Set').isExecuted).toEqual(false);
+		});
+
+		test('$input.all()', () => {
 			expect(proxy.$input.all()[1].json.data).toEqual(160);
 		});
-		test('test $input.all() length', () => {
+		test('$input.all() length', () => {
 			expect(proxy.$input.all().length).toEqual(5);
 		});
-		test('test $input.first()', () => {
-			expect(proxy.$input.first().json.data).toEqual(105);
+		test('$input.first()', () => {
+			expect(proxy.$input.first()?.json?.data).toEqual(105);
 		});
-		test('test $input.last()', () => {
-			expect(proxy.$input.last().json.data).toEqual(950);
+		test('$input.last()', () => {
+			expect(proxy.$input.last()?.json?.data).toEqual(950);
 		});
-		test('test $input.item', () => {
-			expect(proxy.$input.item.json.data).toEqual(105);
+		test('$input.item', () => {
+			expect(proxy.$input.item?.json?.data).toEqual(105);
 		});
-		test('test $thisItem', () => {
+		test('$thisItem', () => {
 			expect(proxy.$thisItem.json.data).toEqual(105);
 		});
 
-		test('test $binary', () => {
+		test('$binary', () => {
 			expect(proxy.$binary).toEqual({});
 		});
 
-		test('test $json', () => {
+		test('$json', () => {
 			expect(proxy.$json).toEqual({ data: 105 });
 		});
 
-		test('test $itemIndex', () => {
+		test('$itemIndex', () => {
 			expect(proxy.$itemIndex).toEqual(0);
 		});
 
-		test('test $prevNode', () => {
+		test('$prevNode', () => {
 			expect(proxy.$prevNode).toEqual({ name: 'Rename', outputIndex: 0, runIndex: 0 });
 		});
 
-		test('test $runIndex', () => {
+		test('$runIndex', () => {
 			expect(proxy.$runIndex).toEqual(0);
 		});
 
-		test('test $workflow', () => {
+		test('$workflow', () => {
 			expect(proxy.$workflow).toEqual({
 				active: false,
 				id: '123',
 				name: 'test workflow',
 			});
+		});
+	});
+
+	describe('Errors', () => {
+		const fixture = loadFixture('errors');
+
+		test('$("NodeName").item, Node does not exist', (done) => {
+			const proxy = getProxyFromFixture(
+				fixture.workflow,
+				fixture.run,
+				'Reference non-existent node',
+			);
+			try {
+				proxy.$('does not exist').item;
+				done('should throw');
+			} catch (error) {
+				expect(error).toBeInstanceOf(ExpressionError);
+				const exprError = error as ExpressionError;
+				expect(exprError.message).toEqual('"does not exist" node doesn\'t exist');
+				done();
+			}
+		});
+
+		test('$("NodeName").item, node has no connection to referenced node', (done) => {
+			const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'NoPathBack');
+			try {
+				proxy.$('Customer Datastore (n8n training)').item;
+				done('should throw');
+			} catch (error) {
+				expect(error).toBeInstanceOf(ExpressionError);
+				const exprError = error as ExpressionError;
+				expect(exprError.message).toEqual('Invalid expression');
+				expect(exprError.context.type).toEqual('paired_item_no_connection');
+				done();
+			}
+		});
+
+		test('$("NodeName").first(), node has no connection to referenced node', (done) => {
+			const proxy = getProxyFromFixture(
+				fixture.workflow,
+				fixture.run,
+				'Reference impossible with .first()',
+			);
+			try {
+				proxy.$('Impossible').first().json.name;
+				done('should throw');
+			} catch (error) {
+				expect(error).toBeInstanceOf(ExpressionError);
+				const exprError = error as ExpressionError;
+				expect(exprError.message).toEqual('no data, execute "Impossible" node first');
+				expect(exprError.context.type).toEqual('no_node_execution_data');
+				done();
+			}
+		});
+
+		test('$json, Node has no connections', (done) => {
+			const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'NoInputConnection');
+			try {
+				proxy.$json.email;
+				done('should throw');
+			} catch (error) {
+				expect(error).toBeInstanceOf(ExpressionError);
+				const exprError = error as ExpressionError;
+				expect(exprError.message).toEqual('No execution data available');
+				expect(exprError.context.type).toEqual('no_input_connection');
+				done();
+			}
+		});
+
+		test('$("NodeName").item, Node has not run', (done) => {
+			const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'Impossible');
+			try {
+				proxy.$('Impossible if').item;
+				done('should throw');
+			} catch (error) {
+				expect(error).toBeInstanceOf(ExpressionError);
+				const exprError = error as ExpressionError;
+				expect(exprError.message).toEqual('no data, execute "Impossible if" node first');
+				expect(exprError.context.type).toEqual('no_node_execution_data');
+				done();
+			}
+		});
+
+		test('$json, Node has not run', (done) => {
+			const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'Impossible');
+			try {
+				proxy.$json.email;
+				done('should throw');
+			} catch (error) {
+				expect(error).toBeInstanceOf(ExpressionError);
+				const exprError = error as ExpressionError;
+				expect(exprError.message).toEqual('No execution data available');
+				expect(exprError.context.type).toEqual('no_execution_data');
+				done();
+			}
+		});
+
+		test('$("NodeName").item, paired item error: more than 1 matching item', (done) => {
+			const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'PairedItemMultipleMatches');
+			try {
+				proxy.$('Edit Fields').item;
+				done('should throw');
+			} catch (error) {
+				expect(error).toBeInstanceOf(ExpressionError);
+				const exprError = error as ExpressionError;
+				expect(exprError.message).toEqual('Invalid expression');
+				expect(exprError.context.type).toEqual('paired_item_multiple_matches');
+				done();
+			}
+		});
+
+		test('$("NodeName").item, paired item error: missing paired item', (done) => {
+			const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'PairedItemInfoMissing');
+			try {
+				proxy.$('Edit Fields').item;
+				done('should throw');
+			} catch (error) {
+				expect(error).toBeInstanceOf(ExpressionError);
+				const exprError = error as ExpressionError;
+				expect(exprError.message).toEqual('Can’t get data for expression');
+				expect(exprError.context.type).toEqual('paired_item_no_info');
+				done();
+			}
+		});
+
+		test('$("NodeName").item, paired item error: invalid paired item', (done) => {
+			const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'IncorrectPairedItem');
+			try {
+				proxy.$('Edit Fields').item;
+				done('should throw');
+			} catch (error) {
+				expect(error).toBeInstanceOf(ExpressionError);
+				const exprError = error as ExpressionError;
+				expect(exprError.message).toEqual('Can’t get data for expression');
+				expect(exprError.context.type).toEqual('paired_item_invalid_info');
+				done();
+			}
 		});
 	});
 });

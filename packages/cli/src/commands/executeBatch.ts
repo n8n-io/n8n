@@ -4,7 +4,7 @@ import { Flags } from '@oclif/core';
 import fs from 'fs';
 import os from 'os';
 import type { IRun, ITaskData } from 'n8n-workflow';
-import { ApplicationError, jsonParse, sleep } from 'n8n-workflow';
+import { ApplicationError, jsonParse } from 'n8n-workflow';
 import { sep } from 'path';
 import { diff } from 'json-diff';
 import pick from 'lodash/pick';
@@ -118,28 +118,9 @@ export class ExecuteBatch extends BaseCommand {
 		}
 
 		ExecuteBatch.cancelled = true;
-		const activeExecutionsInstance = Container.get(ActiveExecutions);
-		const stopPromises = activeExecutionsInstance
-			.getActiveExecutions()
-			.map(async (execution) => await activeExecutionsInstance.stopExecution(execution.id));
 
-		await Promise.allSettled(stopPromises);
+		await Container.get(ActiveExecutions).shutdown(true);
 
-		setTimeout(() => process.exit(0), 30000);
-
-		let executingWorkflows = activeExecutionsInstance.getActiveExecutions();
-
-		let count = 0;
-		while (executingWorkflows.length !== 0) {
-			if (count++ % 4 === 0) {
-				console.log(`Waiting for ${executingWorkflows.length} active executions to finish...`);
-				executingWorkflows.map((execution) => {
-					console.log(` - Execution ID ${execution.id}, workflow ID: ${execution.workflowId}`);
-				});
-			}
-			await sleep(500);
-			executingWorkflows = activeExecutionsInstance.getActiveExecutions();
-		}
 		// We may receive true but when called from `process.on`
 		// we get the signal (SIGINT, etc.)
 		if (skipExit !== true) {
@@ -639,7 +620,7 @@ export class ExecuteBatch extends BaseCommand {
 
 				const runData: IWorkflowExecutionDataProcess = {
 					executionMode: 'cli',
-					startNodes: [startingNode.name],
+					startNodes: [{ name: startingNode.name, sourceData: null }],
 					workflowData,
 					userId: ExecuteBatch.instanceOwner.id,
 				};
