@@ -134,7 +134,6 @@
     "json-diff": "1.0.6",
     "jsonschema": "1.4.1",
     "jsonwebtoken": "9.0.0",
-    "jwks-rsa": "3.0.1",
     "ldapts": "4.2.6",
     "lodash": "4.17.21",
     "luxon": "3.3.0",
