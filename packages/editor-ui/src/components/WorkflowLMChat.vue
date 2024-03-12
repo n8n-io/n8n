@@ -278,7 +278,7 @@ export default defineComponent({
 			}
 
 			const pinnedChatData = usePinnedData(this.getTriggerNode());
-			if (pinnedChatData.hasData) {
+			if (pinnedChatData.hasData.value) {
 				const confirmResult = await this.confirm(
 					this.$locale.baseText('chat.window.chat.unpinAndExecute.description'),
 					this.$locale.baseText('chat.window.chat.unpinAndExecute.title'),
