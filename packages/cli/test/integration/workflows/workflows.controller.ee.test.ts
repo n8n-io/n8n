@@ -28,6 +28,7 @@ let ownerPersonalProject: Project;
 let member: User;
 let memberPersonalProject: Project;
 let anotherMember: User;
+let anotherMemberPersonalProject: Project;
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
 let authAnotherMemberAgent: SuperAgentTest;
@@ -53,6 +54,9 @@ beforeAll(async () => {
 	member = await createUser({ role: 'global:member' });
 	memberPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(member.id);
 	anotherMember = await createUser({ role: 'global:member' });
+	anotherMemberPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(
+		anotherMember.id,
+	);
 
 	authOwnerAgent = testServer.authAgentFor(owner);
 	authMemberAgent = testServer.authAgentFor(member);
@@ -99,13 +103,14 @@ describe('router should switch based on flag', () => {
 	});
 });
 
+// NOTE: passing
 describe('PUT /workflows/:id', () => {
 	test('PUT /workflows/:id/share should save sharing with new users', async () => {
 		const workflow = await createWorkflow({}, owner);
 
 		const response = await authOwnerAgent
 			.put(`/workflows/${workflow.id}/share`)
-			.send({ shareWithIds: [member.id] });
+			.send({ shareWithIds: [memberPersonalProject.id] });
 
 		expect(response.statusCode).toBe(200);
 
@@ -132,7 +137,7 @@ describe('PUT /workflows/:id', () => {
 
 		const response = await authOwnerAgent
 			.put(`/workflows/${workflow.id}/share`)
-			.send({ shareWithIds: [member.id, anotherMember.id] });
+			.send({ shareWithIds: [memberPersonalProject.id, anotherMemberPersonalProject.id] });
 
 		expect(response.statusCode).toBe(200);
 
@@ -146,7 +151,7 @@ describe('PUT /workflows/:id', () => {
 
 		const response = await authOwnerAgent
 			.put(`/workflows/${workflow.id}/share`)
-			.send({ shareWithIds: [member.id, anotherMember.id] });
+			.send({ shareWithIds: [memberPersonalProject.id, anotherMemberPersonalProject.id] });
 
 		expect(response.statusCode).toBe(200);
 
@@ -155,7 +160,7 @@ describe('PUT /workflows/:id', () => {
 
 		const secondResponse = await authOwnerAgent
 			.put(`/workflows/${workflow.id}/share`)
-			.send({ shareWithIds: [member.id] });
+			.send({ shareWithIds: [memberPersonalProject.id] });
 		expect(secondResponse.statusCode).toBe(200);
 
 		const secondSharedWorkflows = await getWorkflowSharing(workflow);
@@ -168,7 +173,7 @@ describe('PUT /workflows/:id', () => {
 
 		const response = await authMemberAgent
 			.put(`/workflows/${workflow.id}/share`)
-			.send({ shareWithIds: [anotherMember.id] });
+			.send({ shareWithIds: [anotherMemberPersonalProject.id] });
 
 		expect(response.statusCode).toBe(200);
 
@@ -182,7 +187,7 @@ describe('PUT /workflows/:id', () => {
 
 		const response = await authOwnerAgent
 			.put(`/workflows/${workflow.id}/share`)
-			.send({ shareWithIds: [anotherMember.id] });
+			.send({ shareWithIds: [anotherMemberPersonalProject.id] });
 
 		expect(response.statusCode).toBe(200);
 
@@ -198,7 +203,7 @@ describe('PUT /workflows/:id', () => {
 
 		const response = await authAnotherMemberAgent
 			.put(`/workflows/${workflow.id}/share`)
-			.send({ shareWithIds: [anotherMember.id, owner.id] });
+			.send({ shareWithIds: [anotherMemberPersonalProject.id, ownerPersonalProject.id] });
 
 		expect(response.statusCode).toBe(403);
 
