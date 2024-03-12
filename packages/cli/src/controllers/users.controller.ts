@@ -26,6 +26,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ExternalHooks } from '@/ExternalHooks';
 import { InternalHooks } from '@/InternalHooks';
 import { validateEntity } from '@/GenericHelpers';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
 
 @RestController('/users')
 export class UsersController {
@@ -39,6 +40,7 @@ export class UsersController {
 		private readonly activeWorkflowRunner: ActiveWorkflowRunner,
 		private readonly authService: AuthService,
 		private readonly userService: UserService,
+		private readonly projectRepository: ProjectRepository,
 	) {}
 
 	static ERROR_MESSAGES = {
@@ -166,6 +168,9 @@ export class UsersController {
 		}
 
 		const userToDelete = users.find((user) => user.id === req.params.id) as User;
+		const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(
+			userToDelete.id,
+		);
 
 		const telemetryData: ITelemetryUserDeletionData = {
 			user_id: req.user.id,
@@ -181,6 +186,9 @@ export class UsersController {
 
 		if (transferId) {
 			const transferee = users.find((user) => user.id === transferId);
+			const transfereePersonalProject = transferee
+				? (await this.projectRepository.getPersonalProjectForUser(transferee.id)) ?? undefined
+				: undefined;
 
 			await this.userService.getManager().transaction(async (transactionManager) => {
 				// Get all workflow ids belonging to user to delete
@@ -214,7 +222,7 @@ export class UsersController {
 					.getRepository(SharedCredentials)
 					.find({
 						select: ['credentialsId'],
-						where: { userId: userToDelete.id, role: 'credential:owner' },
+						where: { projectId: personalProject.id, role: 'credential:owner' },
 					})
 					.then((sharedCredentials) => sharedCredentials.map(({ credentialsId }) => credentialsId));
 
@@ -223,14 +231,14 @@ export class UsersController {
 				await this.sharedCredentialsRepository.deleteByIds(
 					transactionManager,
 					sharedCredentialIds,
-					transferee,
+					transfereePersonalProject,
 				);
 
 				// Transfer ownership of owned credentials
 				await transactionManager.update(
 					SharedCredentials,
-					{ user: userToDelete, role: 'credential:owner' },
-					{ user: transferee },
+					{ project: personalProject, role: 'credential:owner' },
+					{ project: transfereePersonalProject },
 				);
 
 				await transactionManager.delete(AuthIdentity, { userId: userToDelete.id });
@@ -255,7 +263,7 @@ export class UsersController {
 			}),
 			this.sharedCredentialsRepository.find({
 				relations: ['credentials'],
-				where: { userId: userToDelete.id, role: 'credential:owner' },
+				where: { projectId: personalProject.id, role: 'credential:owner' },
 			}),
 		]);
 

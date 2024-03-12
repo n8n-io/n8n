@@ -332,13 +332,6 @@ describe('GET /workflows', () => {
 					updatedAt: any(String),
 					tags: [{ id: any(String), name: 'A' }],
 					versionId: any(String),
-					ownedBy: {
-						id: owner.id,
-						email: any(String),
-						firstName: any(String),
-						lastName: any(String),
-					},
-					sharedWith: [],
 					homeProject: {
 						id: ownerPersonalProject.id,
 						name: 'My n8n',
@@ -354,13 +347,6 @@ describe('GET /workflows', () => {
 					updatedAt: any(String),
 					tags: [],
 					versionId: any(String),
-					ownedBy: {
-						id: owner.id,
-						email: any(String),
-						firstName: any(String),
-						lastName: any(String),
-					},
-					sharedWith: [],
 					homeProject: {
 						id: ownerPersonalProject.id,
 						name: 'My n8n',
@@ -376,7 +362,7 @@ describe('GET /workflows', () => {
 		);
 
 		expect(found.nodes).toBeUndefined();
-		expect(found.sharedWith).toHaveLength(0);
+		expect(found.sharedWithProjects).toHaveLength(0);
 		expect(found.usedCredentials).toBeUndefined();
 	});
 
@@ -582,13 +568,6 @@ describe('GET /workflows', () => {
 				data: arrayContaining([
 					{
 						id: any(String),
-						ownedBy: {
-							id: owner.id,
-							email: any(String),
-							firstName: any(String),
-							lastName: any(String),
-						},
-						sharedWith: [],
 						homeProject: {
 							id: ownerPersonalProject.id,
 							name: 'My n8n',
@@ -598,13 +577,6 @@ describe('GET /workflows', () => {
 					},
 					{
 						id: any(String),
-						ownedBy: {
-							id: owner.id,
-							email: any(String),
-							firstName: any(String),
-							lastName: any(String),
-						},
-						sharedWith: [],
 						homeProject: {
 							id: ownerPersonalProject.id,
 							name: 'My n8n',

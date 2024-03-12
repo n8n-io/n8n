@@ -108,10 +108,26 @@ export async function shareCredentialWithUsers(credential: CredentialsEntity, us
 			).getPersonalProjectForUserOrFail(user.id);
 
 			return Container.get(SharedCredentialsRepository).create({
-				userId: user.id,
 				credentialsId: credential.id,
 				role: 'credential:user',
 				projectId: personalProject.id,
+			});
+		}),
+	);
+
+	return await Container.get(SharedCredentialsRepository).save(newSharedCredentials);
+}
+
+export async function shareCredentialWithProjects(
+	credential: CredentialsEntity,
+	projects: Project[],
+) {
+	const newSharedCredentials = await Promise.all(
+		projects.map(async (project) => {
+			return Container.get(SharedCredentialsRepository).create({
+				credentialsId: credential.id,
+				role: 'credential:user',
+				projectId: project.id,
 			});
 		}),
 	);

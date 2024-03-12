@@ -7,6 +7,9 @@ const projectAdminRole: ProjectRole = 'project:personalOwner';
 const projectTable = 'project';
 const projectRelationTable = 'project_relation';
 
+const sharedCredentials = 'shared_credentials';
+const sharedCredentialsTemp = 'shared_credentials_2';
+
 type Table = 'shared_workflow' | 'shared_credentials';
 
 // const resourceIdColumns: Record<Table, string> = {
@@ -89,9 +92,51 @@ export class CreateProject1705928727784 implements IrreversibleMigration {
 
 		// Index the new projectId column
 		await createIndex(table, ['projectId']);
+	}
 
-		// Set up new composite unique index
-		// await createIndex(table, ['projectId', resourceIdColumn], true);
+	async alterSharedCredentials({
+		escape,
+		runQuery,
+		schemaBuilder: { column, createTable, dropTable },
+	}: MigrationContext) {
+		await createTable(sharedCredentialsTemp)
+			.withColumns(
+				column('credentialsId').varchar(36).notNull.primary,
+				column('projectId').varchar(36).notNull.primary,
+				column('role').text.notNull,
+			)
+			.withForeignKey('credentialsId', {
+				tableName: 'credentials_entity',
+				columnName: 'id',
+				onDelete: 'CASCADE',
+			})
+			.withForeignKey('projectId', {
+				tableName: projectTable,
+				columnName: 'id',
+				onDelete: 'CASCADE',
+			}).withTimestamps;
+
+		const updatedAtColumnName = escape.columnName('updatedAt');
+		const createdAtColumnName = escape.columnName('createdAt');
+		const credentialsIdColumnName = escape.columnName('credentialsId');
+		const projectIdColumnName = escape.columnName('projectId');
+		const roleColumnName = escape.columnName('role');
+
+		await runQuery(`
+			INSERT INTO ${escape.tableName(
+				sharedCredentialsTemp,
+			)} (${createdAtColumnName}, ${updatedAtColumnName}, ${credentialsIdColumnName}, ${projectIdColumnName}, ${roleColumnName})
+			SELECT ${createdAtColumnName}, ${updatedAtColumnName}, ${credentialsIdColumnName}, ${projectIdColumnName}, ${roleColumnName} FROM ${escape.tableName(
+				sharedCredentials,
+			)};
+		`);
+
+		await dropTable(sharedCredentials);
+		await runQuery(
+			`ALTER TABLE ${escape.tableName(sharedCredentialsTemp)} RENAME TO ${escape.tableName(
+				sharedCredentials,
+			)};`,
+		);
 	}
 
 	async createUserPersonalProjects({ runQuery, runInBatches, escape }: MigrationContext) {
@@ -126,6 +171,7 @@ export class CreateProject1705928727784 implements IrreversibleMigration {
 		await this.setupTables(context);
 		await this.createUserPersonalProjects(context);
 		await this.alterSharedTable('shared_credentials', context);
+		await this.alterSharedCredentials(context);
 		await this.alterSharedTable('shared_workflow', context);
 	}
 

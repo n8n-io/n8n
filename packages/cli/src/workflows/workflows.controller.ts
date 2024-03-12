@@ -41,6 +41,7 @@ import { UserManagementMailer } from '@/UserManagement/email';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { ProjectService } from '@/services/project.service';
 import { ApplicationError } from 'n8n-workflow';
+import type { FindOptionsRelations } from '@n8n/typeorm';
 
 @RestController('/workflows')
 export class WorkflowsController {
@@ -240,9 +241,17 @@ export class WorkflowsController {
 		const { workflowId } = req.params;
 
 		if (this.license.isSharingEnabled()) {
-			const relations = ['shared', 'shared.user'];
+			const relations: FindOptionsRelations<WorkflowEntity> = {
+				shared: {
+					user: true,
+					project: {
+						projectRelations: true,
+					},
+				},
+			};
+
 			if (!config.getEnv('workflowTagsDisabled')) {
-				relations.push('tags');
+				relations.tags = true;
 			}
 
 			const workflow = await this.workflowRepository.get({ id: workflowId }, { relations });
@@ -260,9 +269,11 @@ export class WorkflowsController {
 
 			const enterpriseWorkflowService = this.enterpriseWorkflowService;
 
-			enterpriseWorkflowService.addOwnerAndSharings(workflow);
-			await enterpriseWorkflowService.addCredentialsToWorkflow(workflow, req.user);
-			return workflow;
+			const workflowWithMetaData = enterpriseWorkflowService.addOwnerAndSharings(workflow);
+
+			await enterpriseWorkflowService.addCredentialsToWorkflow(workflowWithMetaData, req.user);
+
+			return workflowWithMetaData;
 		}
 
 		// sharing disabled
