@@ -211,10 +211,10 @@ export class ChainSummarizationV2 implements INodeType {
 											],
 										},
 										{
-											displayName: 'Final Prompt to Combine',
+											displayName: 'Individual Summary Prompt',
 											name: 'combineMapPrompt',
 											type: 'string',
-											hint: 'The prompt to combine individual summaries',
+											hint: 'The prompt to summarize an individual document (or chunk)',
 											displayOptions: {
 												hide: {
 													'/options.summarizationMethodAndPrompts.values.summarizationMethod': [
@@ -229,11 +229,11 @@ export class ChainSummarizationV2 implements INodeType {
 											},
 										},
 										{
-											displayName: 'Individual Summary Prompt',
+											displayName: 'Final Prompt to Combine',
 											name: 'prompt',
 											type: 'string',
 											default: DEFAULT_PROMPT_TEMPLATE,
-											hint: 'The prompt to summarize an individual document (or chunk)',
+											hint: 'The prompt to combine individual summaries',
 											displayOptions: {
 												hide: {
 													'/options.summarizationMethodAndPrompts.values.summarizationMethod': [
