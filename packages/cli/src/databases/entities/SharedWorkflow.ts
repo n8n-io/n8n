@@ -19,6 +19,6 @@ export class SharedWorkflow extends WithTimestamps {
 	@ManyToOne('Project', 'sharedWorkflows')
 	project: Project;
 
-	@Column()
+	@PrimaryColumn()
 	projectId: string;
 }
