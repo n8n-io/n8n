@@ -42,8 +42,17 @@ const prettifyOperation = (resource: string, operation: string) => {
 	return `${capitalize(operation)} ${capitalize(resource)}`;
 };
 
-const configureNodeInputs = (resource: string, operation: string) => {
-	if (['assistant', 'text'].includes(resource) && operation === 'message') {
+const configureNodeInputs = (resource: string, operation: string, hideTools: string) => {
+	if (resource === 'assistant' && operation === 'message') {
+		return [
+			{ type: NodeConnectionType.Main },
+			{ type: NodeConnectionType.AiTool, displayName: 'Tools' },
+		];
+	}
+	if (resource === 'text' && operation === 'message') {
+		if (hideTools === 'hide') {
+			return [NodeConnectionType.Main];
+		}
 		return [
 			{ type: NodeConnectionType.Main },
 			{ type: NodeConnectionType.AiTool, displayName: 'Tools' },
@@ -59,7 +68,7 @@ export const versionDescription: INodeTypeDescription = {
 	name: 'openAi',
 	icon: 'file:openAi.svg',
 	group: ['transform'],
-	version: [1, 1.1],
+	version: [1, 1.1, 1.2],
 	subtitle: `={{(${prettifyOperation})($parameter.resource, $parameter.operation)}}`,
 	description: 'Message an assistant or GPT, analyze images, generate audio, etc.',
 	defaults: {
@@ -79,7 +88,7 @@ export const versionDescription: INodeTypeDescription = {
 			],
 		},
 	},
-	inputs: `={{(${configureNodeInputs})($parameter.resource, $parameter.operation)}}`,
+	inputs: `={{(${configureNodeInputs})($parameter.resource, $parameter.operation, $parameter.hideTools)}}`,
 	outputs: ['main'],
 	credentials: [
 		{
