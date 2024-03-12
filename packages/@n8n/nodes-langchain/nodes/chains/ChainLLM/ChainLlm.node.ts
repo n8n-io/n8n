@@ -343,6 +343,7 @@ export class ChainLlm implements INodeType {
 				name: 'hasOutputParser',
 				type: 'boolean',
 				default: false,
+				noDataExpression: true,
 				displayOptions: {
 					hide: {
 						'@version': [1, 1.1, 1.3],
