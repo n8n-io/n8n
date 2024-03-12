@@ -2059,7 +2059,7 @@ export interface IWorkflowExecuteAdditionalData {
 	webhookTestBaseUrl: string;
 	currentNodeParameters?: INodeParameters;
 	executionTimeoutTimestamp?: number;
-	userId: string;
+	userId?: string;
 	variables: IDataObject;
 	secretsHelpers: SecretsHelpersBase;
 	logAiEvent: (

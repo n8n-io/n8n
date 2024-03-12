@@ -25,14 +25,8 @@ export class ProjectService {
 	 * Find all the projects where a workflow is accessible,
 	 * along with the roles of a user in those projects.
 	 */
-	async findRolesAndProjects(userId: string, resourceId: string) {
-		const projectIds = await this.sharedWorkflowRepository.findProjectIds(resourceId);
-
-		if (projectIds.length === 0) return { roles: new Set<ProjectRole>(), projectIds: [] };
-
-		const roles = await this.projectRelationRepository.findRoles(userId, projectIds);
-
-		return { roles, projectIds };
+	async findProjectsWorkflowIsIn(workflowId: string) {
+		return await this.sharedWorkflowRepository.findProjectIds(workflowId);
 	}
 
 	async getAccessibleProjects(user: User): Promise<Project[]> {

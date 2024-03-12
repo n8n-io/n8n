@@ -1,29 +1,20 @@
 import { Service } from 'typedi';
 import type { INode, Workflow } from 'n8n-workflow';
-import {
-	ApplicationError,
-	CredentialAccessError,
-	NodeOperationError,
-	WorkflowOperationError,
-} from 'n8n-workflow';
+import { CredentialAccessError, NodeOperationError, WorkflowOperationError } from 'n8n-workflow';
 
 import config from '@/config';
 import { License } from '@/License';
 import { OwnershipService } from '@/services/ownership.service';
-import { UserRepository } from '@db/repositories/user.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { ProjectService } from '@/services/project.service';
-import { RoleService } from '@/services/role.service';
 
 @Service()
 export class PermissionChecker {
 	constructor(
-		private readonly userRepository: UserRepository,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly ownershipService: OwnershipService,
 		private readonly license: License,
 		private readonly projectService: ProjectService,
-		private readonly roleService: RoleService,
 	) {}
 
 	/**
@@ -36,24 +27,8 @@ export class PermissionChecker {
 	 * credential used by nodes in the workflow is accessible by any of the
 	 * projects where the workflow is accessible.
 	 */
-	async check(workflowId: string, userId: string, nodes: INode[]) {
-		const user = await this.userRepository.findOneByOrFail({ id: userId });
-
-		if (user.hasGlobalScope('workflow:execute')) return;
-
-		const { roles, projectIds } = await this.projectService.findRolesAndProjects(
-			userId,
-			workflowId,
-		);
-
-		const scopes = this.roleService.getScopesBy(roles);
-
-		if (!scopes.has('workflow:execute')) {
-			throw new ApplicationError('User is not allowed to execute this workflow', {
-				extra: { userId, workflowId },
-			});
-		}
-
+	async check(workflowId: string, nodes: INode[]) {
+		const projectIds = await this.projectService.findProjectsWorkflowIsIn(workflowId);
 		const credIdsToNodes = this.mapCredIdsToNodes(nodes);
 
 		const workflowCredIds = Object.keys(credIdsToNodes);
@@ -99,14 +74,14 @@ export class PermissionChecker {
 		}
 
 		const parentWorkflowOwner =
-			await this.ownershipService.getWorkflowOwnerCached(parentWorkflowId);
+			await this.ownershipService.getWorkflowProjectCached(parentWorkflowId);
 
-		const subworkflowOwner = await this.ownershipService.getWorkflowOwnerCached(subworkflow.id);
+		const subworkflowOwner = await this.ownershipService.getWorkflowProjectCached(subworkflow.id);
 
 		const description =
 			subworkflowOwner.id === parentWorkflowOwner.id
 				? 'Change the settings of the sub-workflow so it can be called by this one.'
-				: `${subworkflowOwner.firstName} (${subworkflowOwner.email}) can make this change. You may need to tell them the ID of the sub-workflow, which is ${subworkflow.id}`;
+				: `An admin for the ${subworkflowOwner.name} project can make this change. You may need to tell them the ID of the sub-workflow, which is ${subworkflow.id}`;
 
 		const errorToThrow = new WorkflowOperationError(
 			`Target workflow ID ${subworkflow.id} may not be called`,

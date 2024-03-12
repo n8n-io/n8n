@@ -353,19 +353,30 @@ export class WorkflowsController {
 		return true;
 	}
 
-	@Post('/run')
+	@Post('/:workflowId/run')
+	@ProjectScope('workflow:execute')
 	async runManually(req: WorkflowRequest.ManualRun) {
+		if (!req.body.workflowData.id) {
+			throw new ApplicationError('You cannot execute a workflow without an ID', {
+				level: 'warning',
+			});
+		}
+
+		if (req.params.workflowId !== req.body.workflowData.id) {
+			throw new ApplicationError('Workflow ID in body does not match workflow ID in URL', {
+				level: 'warning',
+			});
+		}
+
 		if (this.license.isSharingEnabled()) {
 			const workflow = this.workflowRepository.create(req.body.workflowData);
 
-			if (req.body.workflowData.id !== undefined) {
-				const safeWorkflow = await this.enterpriseWorkflowService.preventTampering(
-					workflow,
-					workflow.id,
-					req.user,
-				);
-				req.body.workflowData.nodes = safeWorkflow.nodes;
-			}
+			const safeWorkflow = await this.enterpriseWorkflowService.preventTampering(
+				workflow,
+				workflow.id,
+				req.user,
+			);
+			req.body.workflowData.nodes = safeWorkflow.nodes;
 		}
 
 		return await this.workflowExecutionService.executeManually(

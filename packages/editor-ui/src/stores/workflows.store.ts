@@ -1358,7 +1358,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			return await makeRestApiRequest(
 				rootStore.getRestApiContext,
 				'POST',
-				'/workflows/run',
+				`/workflows/${startRunData.workflowData.id}/run`,
 				startRunData as unknown as IDataObject,
 			);
 		},
