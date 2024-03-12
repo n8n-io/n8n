@@ -4,7 +4,7 @@ import type {
 	INodeExecutionData,
 	IDataObject,
 } from 'n8n-workflow';
-import { updateDisplayOptions } from 'n8n-workflow';
+import { jsonParse, updateDisplayOptions } from 'n8n-workflow';
 import { apiRequest } from '../../transport';
 import type { ChatCompletion } from '../../helpers/interfaces';
 import { formatToOpenAIAssistantTool } from '../../helpers/utils';
@@ -252,7 +252,8 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			let functionResponse;
 			for (const tool of externalTools ?? []) {
 				if (tool.name === functionName) {
-					functionResponse = await tool.invoke(functionArgs);
+					const functionInput = (jsonParse(functionArgs) as { input: string })?.input ?? functionArgs;
+					functionResponse = await tool.invoke(functionInput);
 				}
 			}
 
