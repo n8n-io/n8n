@@ -9,19 +9,25 @@ import { join, dirname } from 'path';
 function getAbsolutePath(value: string): any {
 	return dirname(require.resolve(join(value, 'package.json')));
 }
+
 const config: StorybookConfig = {
-	stories: ['../src/**/*.mdx', '../src/**/*.stories.@(js|jsx|mjs|ts|tsx)'],
+	stories: ['../src/**/*.stories.ts'],
 	addons: [
-		getAbsolutePath('@storybook/addon-links'),
-		getAbsolutePath('@storybook/addon-essentials'),
-		getAbsolutePath('@storybook/addon-interactions'),
-	],
+		'@storybook/addon-a11y',
+		'@storybook/addon-essentials',
+		'@storybook/addon-interactions',
+		'@storybook/addon-links',
+	].map((path) => getAbsolutePath(path)),
 	framework: {
-		name: getAbsolutePath('@storybook/vue3-vite'),
+		name: getAbsolutePath('@storybook/vue3-vite') as '@storybook/vue3-vite',
 		options: {},
 	},
+	core: {
+		disableTelemetry: true,
+	},
 	docs: {
-		autodocs: 'tag',
+		autodocs: true,
 	},
 };
+
 export default config;

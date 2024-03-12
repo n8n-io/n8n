@@ -6,13 +6,13 @@ function getAbsolutePath(value: string): string {
 }
 
 const config: StorybookConfig = {
-	stories: ['../src/**/*.stories.@(js|jsx|ts|tsx|mdx)'],
+	stories: ['../src/**/*.stories.ts'],
 	addons: [
-		getAbsolutePath('@storybook/addon-links'),
-		getAbsolutePath('@storybook/addon-essentials'),
-		getAbsolutePath('@storybook/addon-a11y'),
-		getAbsolutePath('storybook-dark-mode'),
-	],
+		'@storybook/addon-a11y',
+		'@storybook/addon-essentials',
+		'@storybook/addon-interactions',
+		'@storybook/addon-links',
+	].map((path) => getAbsolutePath(path)),
 	staticDirs: ['../public'],
 	framework: {
 		name: getAbsolutePath('@storybook/vue3-vite') as '@storybook/vue3-vite',
