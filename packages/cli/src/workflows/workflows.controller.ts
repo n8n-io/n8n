@@ -349,6 +349,7 @@ export class WorkflowsController {
 		return true;
 	}
 
+	// NOTE: updated
 	@Post('/run')
 	async runManually(req: WorkflowRequest.ManualRun) {
 		if (this.license.isSharingEnabled()) {
