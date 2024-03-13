@@ -79,7 +79,7 @@ const addProjectClicked = async () => {
 <template>
 	<div :class="$style.projects">
 		<ElMenu :collapse="props.collapsed" class="home">
-			<n8n-menu-item
+			<N8nMenuItem
 				:item="home"
 				:compact="props.collapsed"
 				:handle-select="homeClicked"
@@ -90,7 +90,7 @@ const addProjectClicked = async () => {
 		</ElMenu>
 		<hr class="mt-m mb-m" />
 		<ElMenu :collapse="props.collapsed" :class="$style.projectItems">
-			<n8n-menu-item
+			<N8nMenuItem
 				v-for="project in projectsStore.myProjects"
 				:key="project.id"
 				:item="getProjectMenuItem(project)"
@@ -102,7 +102,7 @@ const addProjectClicked = async () => {
 			/>
 		</ElMenu>
 		<ElMenu :collapse="props.collapsed" class="pt-s pl-xs pr-xs">
-			<n8n-menu-item
+			<N8nMenuItem
 				:item="addProject"
 				:compact="props.collapsed"
 				:handle-select="addProjectClicked"

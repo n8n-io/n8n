@@ -1,0 +1,45 @@
+<script lang="ts" setup>
+import { computed } from 'vue';
+import type { ProjectListItem, ProjectSharingData } from '@/features/projects/projects.types';
+import { splitName } from '@/features/projects/projects.utils';
+
+type Props = {
+	project: ProjectListItem | ProjectSharingData;
+};
+
+const props = defineProps<Props>();
+
+const processedName = computed(() => splitName(props.project.name ?? ''));
+</script>
+<template>
+	<div :class="$style.projectInfo">
+		<N8nAvatar :first-name="processedName.firstName" :last-name="processedName.lastName" />
+		<div>
+			<p>{{ processedName.firstName }} {{ processedName.lastName }}</p>
+			<small>{{ processedName.email }}</small>
+		</div>
+	</div>
+</template>
+
+<style lang="scss" module>
+.projectInfo {
+	display: flex;
+	align-items: center;
+	width: 100%;
+	padding: var(--spacing-2xs) 0;
+	gap: 8px;
+
+	p {
+		font-size: var(--font-size-s);
+		color: var(--color-text-dark);
+		font-weight: var(--font-weight-bold);
+		line-height: var(--font-line-height-loose);
+	}
+
+	small {
+		font-size: var(--font-size-xs);
+		color: var(--color-text-light);
+		line-height: var(--font-line-height-loose);
+	}
+}
+</style>
