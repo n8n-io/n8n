@@ -16,6 +16,7 @@ import { type FilterOperatorId } from './constants';
 import {
 	getFilterOperator,
 	handleOperatorChange,
+	isEmptyInput,
 	operatorTypeToNodeProperty,
 	resolveCondition,
 } from './utils';
@@ -54,12 +55,20 @@ const operatorId = computed<FilterOperatorId>(() => {
 });
 const operator = computed(() => getFilterOperator(operatorId.value));
 
+const isEmpty = computed(() => {
+	if (operator.value.singleValue) {
+		return isEmptyInput(condition.value.leftValue);
+	}
+
+	return isEmptyInput(condition.value.leftValue) && isEmptyInput(condition.value.rightValue);
+});
+
 const conditionResult = computed(() =>
 	resolveCondition({ condition: condition.value, options: props.options }),
 );
 
 const allIssues = computed(() => {
-	if (conditionResult.value.status === 'validation_error') {
+	if (conditionResult.value.status === 'validation_error' && !isEmpty.value) {
 		return [conditionResult.value.error];
 	}
 
@@ -79,16 +88,17 @@ const leftParameter = computed<INodeProperties>(() => ({
 	...operatorTypeToNodeProperty(operator.value.type),
 }));
 
-const rightParameter = computed<INodeProperties>(() => ({
-	name: '',
-	displayName: '',
-	default: '',
-	placeholder:
-		operator.value.type === 'dateTime'
-			? now.value
-			: i18n.baseText('filter.condition.placeholderRight'),
-	...operatorTypeToNodeProperty(operator.value.type),
-}));
+const rightParameter = computed<INodeProperties>(() => {
+	const type = operator.value.rightType ?? operator.value.type;
+	return {
+		name: '',
+		displayName: '',
+		default: '',
+		placeholder:
+			type === 'dateTime' ? now.value : i18n.baseText('filter.condition.placeholderRight'),
+		...operatorTypeToNodeProperty(type),
+	};
+});
 
 const onLeftValueChange = (update: IUpdateInformation): void => {
 	condition.value.leftValue = update.value;

@@ -3,13 +3,14 @@ import {
 	type INodeExecutionData,
 	NodeConnectionType,
 	NodeOperationError,
+	type IDataObject,
 } from 'n8n-workflow';
 
 import { SqlDatabase } from 'langchain/sql_db';
 import type { SqlCreatePromptArgs } from 'langchain/agents/toolkits/sql';
 import { SqlToolkit, createSqlAgent } from 'langchain/agents/toolkits/sql';
-import type { BaseLanguageModel } from 'langchain/dist/base_language';
-import type { BaseChatMemory } from 'langchain/memory';
+import type { BaseLanguageModel } from '@langchain/core/language_models/base';
+import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import type { DataSource } from '@n8n/typeorm';
 
 import { getPromptInputByType, serializeChatHistory } from '../../../../../utils/helpers';
@@ -26,6 +27,7 @@ const parseTablesString = (tablesString: string) =>
 
 export async function sqlAgentAgentExecute(
 	this: IExecuteFunctions,
+	nodeVersion: number,
 ): Promise<INodeExecutionData[][]> {
 	this.logger.verbose('Executing SQL Agent');
 
@@ -122,7 +124,7 @@ export async function sqlAgentAgentExecute(
 			chatHistory = serializeChatHistory(messages);
 		}
 
-		let response;
+		let response: IDataObject;
 		try {
 			response = await agentExecutor.call({
 				input,
@@ -130,10 +132,10 @@ export async function sqlAgentAgentExecute(
 				chatHistory,
 			});
 		} catch (error) {
-			if (error.message?.output) {
-				response = error.message;
+			if ((error.message as IDataObject)?.output) {
+				response = error.message as IDataObject;
 			} else {
-				throw new NodeOperationError(this.getNode(), error.message, { itemIndex: i });
+				throw new NodeOperationError(this.getNode(), error.message as string, { itemIndex: i });
 			}
 		}
 

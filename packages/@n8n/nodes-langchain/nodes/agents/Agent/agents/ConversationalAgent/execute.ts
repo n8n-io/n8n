@@ -6,19 +6,20 @@ import {
 } from 'n8n-workflow';
 
 import { initializeAgentExecutorWithOptions } from 'langchain/agents';
-import type { Tool } from 'langchain/tools';
-import type { BaseChatMemory } from 'langchain/memory';
-import type { BaseOutputParser } from 'langchain/schema/output_parser';
-import { PromptTemplate } from 'langchain/prompts';
+import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
+import type { BaseOutputParser } from '@langchain/core/output_parsers';
+import { PromptTemplate } from '@langchain/core/prompts';
 import { CombiningOutputParser } from 'langchain/output_parsers';
 import {
 	isChatInstance,
 	getPromptInputByType,
 	getOptionalOutputParsers,
+	getConnectedTools,
 } from '../../../../../utils/helpers';
 
 export async function conversationalAgentExecute(
 	this: IExecuteFunctions,
+	nodeVersion: number,
 ): Promise<INodeExecutionData[][]> {
 	this.logger.verbose('Executing Conversational Agent');
 
@@ -31,7 +32,8 @@ export async function conversationalAgentExecute(
 	const memory = (await this.getInputConnectionData(NodeConnectionType.AiMemory, 0)) as
 		| BaseChatMemory
 		| undefined;
-	const tools = (await this.getInputConnectionData(NodeConnectionType.AiTool, 0)) as Tool[];
+
+	const tools = await getConnectedTools(this, nodeVersion >= 1.5);
 	const outputParsers = await getOptionalOutputParsers(this);
 
 	// TODO: Make it possible in the future to use values for other items than just 0

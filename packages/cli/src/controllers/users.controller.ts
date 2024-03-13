@@ -1,15 +1,10 @@
+import { plainToInstance } from 'class-transformer';
+
+import { AuthService } from '@/auth/auth.service';
 import { User } from '@db/entities/User';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
-import {
-	Authorized,
-	Delete,
-	Get,
-	RestController,
-	Patch,
-	Licensed,
-	GlobalScope,
-} from '@/decorators';
+import { GlobalScope, Delete, Get, RestController, Patch, Licensed } from '@/decorators';
 import {
 	ListQuery,
 	UserRequest,
@@ -22,7 +17,6 @@ import { AuthIdentity } from '@db/entities/AuthIdentity';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { UserRepository } from '@db/repositories/user.repository';
-import { plainToInstance } from 'class-transformer';
 import { UserService } from '@/services/user.service';
 import { listQueryMiddleware } from '@/middlewares';
 import { Logger } from '@/Logger';
@@ -32,8 +26,8 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ExternalHooks } from '@/ExternalHooks';
 import { InternalHooks } from '@/InternalHooks';
 import { validateEntity } from '@/GenericHelpers';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
 
-@Authorized()
 @RestController('/users')
 export class UsersController {
 	constructor(
@@ -44,7 +38,9 @@ export class UsersController {
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly userRepository: UserRepository,
 		private readonly activeWorkflowRunner: ActiveWorkflowRunner,
+		private readonly authService: AuthService,
 		private readonly userService: UserService,
+		private readonly projectRepository: ProjectRepository,
 	) {}
 
 	static ERROR_MESSAGES = {
@@ -116,7 +112,7 @@ export class UsersController {
 			throw new NotFoundError('User not found');
 		}
 
-		const link = this.userService.generatePasswordResetUrl(user);
+		const link = this.authService.generatePasswordResetUrl(user);
 		return { link };
 	}
 
@@ -172,6 +168,9 @@ export class UsersController {
 		}
 
 		const userToDelete = users.find((user) => user.id === req.params.id) as User;
+		const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(
+			userToDelete.id,
+		);
 
 		const telemetryData: ITelemetryUserDeletionData = {
 			user_id: req.user.id,
@@ -187,6 +186,9 @@ export class UsersController {
 
 		if (transferId) {
 			const transferee = users.find((user) => user.id === transferId);
+			const transfereePersonalProject = transferee
+				? (await this.projectRepository.getPersonalProjectForUser(transferee.id)) ?? undefined
+				: undefined;
 
 			await this.userService.getManager().transaction(async (transactionManager) => {
 				// Get all workflow ids belonging to user to delete
@@ -220,7 +222,7 @@ export class UsersController {
 					.getRepository(SharedCredentials)
 					.find({
 						select: ['credentialsId'],
-						where: { userId: userToDelete.id, role: 'credential:owner' },
+						where: { projectId: personalProject.id, role: 'credential:owner' },
 					})
 					.then((sharedCredentials) => sharedCredentials.map(({ credentialsId }) => credentialsId));
 
@@ -229,14 +231,14 @@ export class UsersController {
 				await this.sharedCredentialsRepository.deleteByIds(
 					transactionManager,
 					sharedCredentialIds,
-					transferee,
+					transfereePersonalProject,
 				);
 
 				// Transfer ownership of owned credentials
 				await transactionManager.update(
 					SharedCredentials,
-					{ user: userToDelete, role: 'credential:owner' },
-					{ user: transferee },
+					{ project: personalProject, role: 'credential:owner' },
+					{ project: transfereePersonalProject },
 				);
 
 				await transactionManager.delete(AuthIdentity, { userId: userToDelete.id });
@@ -261,7 +263,7 @@ export class UsersController {
 			}),
 			this.sharedCredentialsRepository.find({
 				relations: ['credentials'],
-				where: { userId: userToDelete.id, role: 'credential:owner' },
+				where: { projectId: personalProject.id, role: 'credential:owner' },
 			}),
 		]);
 

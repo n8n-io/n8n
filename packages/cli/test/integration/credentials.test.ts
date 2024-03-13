@@ -15,20 +15,31 @@ import * as utils from './shared/utils/';
 import { affixRoleToSaveCredential, shareCredentialWithUsers } from './shared/db/credentials';
 import { createManyUsers, createUser } from './shared/db/users';
 import { Credentials } from 'n8n-core';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
+import type { Project } from '@/databases/entities/Project';
+import { ProjectService } from '@/services/project.service';
 
 // mock that credentialsSharing is not enabled
 jest.spyOn(License.prototype, 'isSharingEnabled').mockReturnValue(false);
 const testServer = utils.setupTestServer({ endpointGroups: ['credentials'] });
 
 let owner: User;
+let ownerPersonalProject: Project;
 let member: User;
 let secondMember: User;
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
 let saveCredential: SaveCredentialFunction;
+let projectRepository: ProjectRepository;
+let sharedCredentialsRepository: SharedCredentialsRepository;
+let projectService: ProjectService;
 
 beforeAll(async () => {
+	projectRepository = Container.get(ProjectRepository);
+	sharedCredentialsRepository = Container.get(SharedCredentialsRepository);
+	projectService = Container.get(ProjectService);
 	owner = await createUser({ role: 'global:owner' });
+	ownerPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
 	member = await createUser({ role: 'global:member' });
 	secondMember = await createUser({ role: 'global:member' });
 
@@ -114,11 +125,11 @@ describe('POST /credentials', () => {
 		expect(credential.data).not.toBe(payload.data);
 
 		const sharedCredential = await Container.get(SharedCredentialsRepository).findOneOrFail({
-			relations: ['user', 'credentials'],
+			relations: { project: true, credentials: true },
 			where: { credentialsId: credential.id },
 		});
 
-		expect(sharedCredential.user.id).toBe(owner.id);
+		expect(sharedCredential.project.id).toBe(ownerPersonalProject.id);
 		expect(sharedCredential.credentials.name).toBe(payload.name);
 	});
 
@@ -141,6 +152,96 @@ describe('POST /credentials', () => {
 			.send({ id: 8, ...randomCredentialPayload() });
 
 		expect(secondResponse.body.data.id).not.toBe(8);
+	});
+
+	test('creates credential in personal project by default', async () => {
+		//
+		// ACT
+		//
+		const response = await authOwnerAgent.post('/credentials').send(randomCredentialPayload());
+
+		//
+		// ASSERT
+		//
+		await sharedCredentialsRepository.findOneByOrFail({
+			projectId: ownerPersonalProject.id,
+			credentialsId: response.body.data.id,
+		});
+	});
+
+	test('creates credential in a specific project if the projectId is passed', async () => {
+		//
+		// ARRANGE
+		//
+		const project = await Container.get(ProjectService).createTeamProject('Team Project', owner);
+
+		//
+		// ACT
+		//
+		const response = await authOwnerAgent
+			.post('/credentials')
+			.send({ ...randomCredentialPayload(), projectId: project.id });
+
+		//
+		// ASSERT
+		//
+		await sharedCredentialsRepository.findOneByOrFail({
+			projectId: project.id,
+			credentialsId: response.body.data.id,
+		});
+	});
+
+	test('does not create the credential in a specific project if the user is not part of the project', async () => {
+		//
+		// ARRANGE
+		//
+		const project = await projectRepository.save(
+			projectRepository.create({
+				name: 'Team Project',
+				type: 'team',
+			}),
+		);
+
+		//
+		// ACT
+		//
+		await authOwnerAgent
+			.post('/credentials')
+			.send({ ...randomCredentialPayload(), projectId: project.id })
+			//
+			// ASSERT
+			//
+			.expect(400, {
+				code: 400,
+				message: "You don't have the permissions to save the workflow in this project.",
+			});
+	});
+
+	test('does not create the credential in a specific project if the user does not have the right role to do so', async () => {
+		//
+		// ARRANGE
+		//
+		const project = await projectRepository.save(
+			projectRepository.create({
+				name: 'Team Project',
+				type: 'team',
+			}),
+		);
+		await projectService.addUser(project.id, owner.id, 'project:viewer');
+
+		//
+		// ACT
+		//
+		await authOwnerAgent
+			.post('/credentials')
+			.send({ ...randomCredentialPayload(), projectId: project.id })
+			//
+			// ASSERT
+			//
+			.expect(400, {
+				code: 400,
+				message: "You don't have the permissions to save the workflow in this project.",
+			});
 	});
 });
 
@@ -553,23 +654,22 @@ describe('GET /credentials/:id', () => {
 });
 
 function validateMainCredentialData(credential: ListQuery.Credentials.WithOwnedByAndSharedWith) {
-	const { name, type, nodesAccess, sharedWith, ownedBy } = credential;
+	const { name, type, nodesAccess, sharedWithProjects, homeProject } = credential;
 
 	expect(typeof name).toBe('string');
 	expect(typeof type).toBe('string');
 	expect(typeof nodesAccess?.[0].nodeType).toBe('string');
 
-	if (sharedWith) {
-		expect(Array.isArray(sharedWith)).toBe(true);
+	if (sharedWithProjects) {
+		expect(Array.isArray(sharedWithProjects)).toBe(true);
 	}
 
-	if (ownedBy) {
-		const { id, email, firstName, lastName } = ownedBy;
+	if (homeProject) {
+		const { id, type, name } = homeProject;
 
 		expect(typeof id).toBe('string');
-		expect(typeof email).toBe('string');
-		expect(typeof firstName).toBe('string');
-		expect(typeof lastName).toBe('string');
+		expect(typeof name).toBe('string');
+		expect(type).toBe('personal');
 	}
 }
 

@@ -54,6 +54,7 @@ import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
 import type { Component } from 'vue';
 import type { Scope } from '@n8n/permissions';
 import type { NotificationOptions as ElementNotificationOptions } from 'element-plus';
+import type { Project } from '@/features/projects/projects.types';
 
 export * from 'n8n-design-system/types';
 
@@ -107,6 +108,10 @@ declare global {
 		};
 		// eslint-disable-next-line @typescript-eslint/naming-convention
 		Cypress: unknown;
+
+		Sentry?: {
+			captureException: (error: Error, metadata?: unknown) => void;
+		};
 	}
 }
 
@@ -293,6 +298,8 @@ export interface IWorkflowDb {
 	versionId: string;
 	usedCredentials?: IUsedCredential[];
 	meta?: WorkflowMetadata;
+	homeProject?: Pick<Project, 'id' | 'name' | 'type'>;
+	sharedWithProjects?: Array<Pick<Project, 'id' | 'name' | 'type'>>;
 }
 
 // Identical to cli.Interfaces.ts
@@ -337,6 +344,8 @@ export interface ICredentialsResponse extends ICredentialsEncrypted {
 	sharedWith?: Array<Partial<IUser>>;
 	ownedBy?: Partial<IUser>;
 	currentUserHasAccess?: boolean;
+	homeProject?: Pick<Project, 'id' | 'name' | 'type'>;
+	sharedWithProjects?: Array<Pick<Project, 'id' | 'name' | 'type'>>;
 }
 
 export interface ICredentialsBase {
@@ -1102,6 +1111,7 @@ export interface RootState {
 	urlBaseEditor: string;
 	instanceId: string;
 	isNpmAvailable: boolean;
+	binaryDataMode: string;
 }
 
 export interface NodeMetadataMap {
@@ -1150,6 +1160,7 @@ export interface IRootState {
 	nodeMetadata: NodeMetadataMap;
 	isNpmAvailable: boolean;
 	subworkflowExecutionError: Error | null;
+	binaryDataMode: string;
 }
 
 export interface CommunityPackageMap {

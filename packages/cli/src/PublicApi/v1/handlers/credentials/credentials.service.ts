@@ -28,7 +28,7 @@ export async function getSharedCredentials(
 ): Promise<SharedCredentials | null> {
 	return await Container.get(SharedCredentialsRepository).findOne({
 		where: {
-			userId,
+			project: { projectRelations: { userId } },
 			credentialsId: credentialId,
 		},
 		relations: ['credentials'],
@@ -79,7 +79,6 @@ export async function saveCredential(
 
 		Object.assign(newSharedCredential, {
 			role: 'credential:owner',
-			user,
 			credentials: savedCredential,
 			projectId: personalProject.id,
 		});

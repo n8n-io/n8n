@@ -8,9 +8,8 @@ import { URL } from 'url';
 import config from '@/config';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import type { User } from '@db/entities/User';
-import { issueJWT } from '@/auth/jwt';
 import { registerController } from '@/decorators';
-import { rawBodyReader, bodyParser, setupAuthMiddlewares } from '@/middlewares';
+import { rawBodyReader, bodyParser } from '@/middlewares';
 import { PostHogClient } from '@/posthog';
 import { Push } from '@/push';
 import { License } from '@/License';
@@ -19,9 +18,10 @@ import { InternalHooks } from '@/InternalHooks';
 
 import { mockInstance } from '../../../shared/mocking';
 import * as testDb from '../../shared/testDb';
-import { AUTHLESS_ENDPOINTS, PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from '../constants';
+import { PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from '../constants';
 import type { SetupProps, TestServer } from '../types';
 import { LicenseMocker } from '../license';
+import { AuthService } from '@/auth/auth.service';
 
 /**
  * Plugin to prefix a path segment into a request URL pathname.
@@ -47,7 +47,7 @@ function createAgent(app: express.Application, options?: { auth: boolean; user: 
 	const agent = request.agent(app);
 	void agent.use(prefix(REST_PATH_SEGMENT));
 	if (options?.auth && options?.user) {
-		const { token } = issueJWT(options.user);
+		const token = Container.get(AuthService).issueJWT(options.user);
 		agent.jar.setCookie(`${AUTH_COOKIE_NAME}=${token}`);
 	}
 	return agent;
@@ -67,7 +67,6 @@ function publicApiAgent(
 
 export const setupTestServer = ({
 	endpointGroups,
-	applyAuth = true,
 	enabledFeatures,
 	quotas,
 }: SetupProps): TestServer => {
@@ -104,15 +103,11 @@ export const setupTestServer = ({
 			});
 		}
 
-		const enablePublicAPI = endpointGroups?.includes('publicApi');
-		if (applyAuth && !enablePublicAPI) {
-			setupAuthMiddlewares(app, AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT);
-		}
-
 		if (!endpointGroups) return;
 
 		app.use(bodyParser);
 
+		const enablePublicAPI = endpointGroups?.includes('publicApi');
 		if (enablePublicAPI) {
 			const { loadPublicApiVersions } = await import('@/PublicApi');
 			const { apiRouters } = await loadPublicApiVersions(PUBLIC_API_REST_PATH_SEGMENT);

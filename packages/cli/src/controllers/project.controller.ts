@@ -5,7 +5,6 @@ import {
 	GlobalScope,
 	RestController,
 	Licensed,
-	Authorized,
 	Patch,
 	ProjectScope,
 } from '@/decorators';
@@ -14,7 +13,6 @@ import { ProjectService } from '@/services/project.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { ProjectRole } from '@/databases/entities/ProjectRelation';
 
-@Authorized()
 @RestController('/projects')
 export class ProjectController {
 	constructor(private projectsService: ProjectService) {}

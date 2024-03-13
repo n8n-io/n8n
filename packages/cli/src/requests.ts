@@ -64,8 +64,12 @@ export type AuthenticatedRequest<
 	ResponseBody = {},
 	RequestBody = {},
 	RequestQuery = {},
-> = Omit<express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery>, 'user'> & {
+> = Omit<
+	express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery>,
+	'user' | 'cookies'
+> & {
 	user: User;
+	cookies: Record<string, string | undefined>;
 };
 
 // ----------------------------------
@@ -102,7 +106,7 @@ export namespace ListQuery {
 
 		type SharedField = Partial<Pick<WorkflowEntity, 'shared'>>;
 
-		type OwnedByField = { ownedBy: SlimUser | null };
+		type OwnedByField = { ownedBy: SlimUser | null; homeProject: SlimProject | null };
 
 		export type Plain = BaseFields;
 
@@ -110,15 +114,15 @@ export namespace ListQuery {
 
 		export type WithOwnership = BaseFields & OwnedByField;
 
-		type SharedWithField = { sharedWith: SlimUser[] };
+		type SharedWithField = { sharedWith: SlimUser[]; sharedWithProjects: SlimProject[] };
 
 		export type WithOwnedByAndSharedWith = BaseFields & OwnedByField & SharedWithField;
 	}
 
 	export namespace Credentials {
-		type OwnedByField = { ownedBy: SlimUser | null };
+		type OwnedByField = { homeProject: SlimProject | null };
 
-		type SharedWithField = { sharedWith: SlimUser[] };
+		type SharedWithField = { sharedWithProjects: SlimProject[] };
 
 		export type WithSharing = CredentialsEntity & Partial<Pick<CredentialsEntity, 'shared'>>;
 
@@ -127,6 +131,7 @@ export namespace ListQuery {
 }
 
 type SlimUser = Pick<IUser, 'id' | 'email' | 'firstName' | 'lastName'>;
+export type SlimProject = Pick<Project, 'id' | 'type' | 'name'>;
 
 export function hasSharing(
 	workflows: ListQuery.Workflow.Plain[] | ListQuery.Workflow.WithSharing[],
@@ -140,11 +145,12 @@ export function hasSharing(
 
 export declare namespace CredentialRequest {
 	type CredentialProperties = Partial<{
-		id: string; // delete if sent
+		id: string; // deleted if sent
 		name: string;
 		type: string;
 		nodesAccess: ICredentialNodeAccess[];
 		data: ICredentialDataDecryptedObject;
+		projectId?: string;
 	}>;
 
 	type Create = AuthenticatedRequest<{}, {}, CredentialProperties>;

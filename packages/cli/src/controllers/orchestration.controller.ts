@@ -1,9 +1,8 @@
-import { Authorized, Post, RestController, GlobalScope } from '@/decorators';
+import { Post, RestController, GlobalScope } from '@/decorators';
 import { OrchestrationRequest } from '@/requests';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { License } from '@/License';
 
-@Authorized()
 @RestController('/orchestration')
 export class OrchestrationController {
 	constructor(
@@ -12,7 +11,7 @@ export class OrchestrationController {
 	) {}
 
 	/**
-	 * These endpoints do not return anything, they just trigger the messsage to
+	 * These endpoints do not return anything, they just trigger the message to
 	 * the workers to respond on Redis with their status.
 	 */
 	@GlobalScope('orchestration:read')

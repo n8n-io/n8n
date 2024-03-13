@@ -8,17 +8,8 @@ import * as ResponseHelper from '@/ResponseHelper';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import type { IWorkflowResponse } from '@/Interfaces';
 import config from '@/config';
-import {
-	Authorized,
-	Delete,
-	Get,
-	Patch,
-	Post,
-	ProjectScope,
-	Put,
-	RestController,
-} from '@/decorators';
-import type { SharedWorkflow, WorkflowSharingRole } from '@db/entities/SharedWorkflow';
+import { Delete, Get, Patch, Post, ProjectScope, Put, RestController } from '@/decorators';
+import type { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { TagRepository } from '@db/repositories/tag.repository';
@@ -50,8 +41,8 @@ import { UserManagementMailer } from '@/UserManagement/email';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { ProjectService } from '@/services/project.service';
 import { ApplicationError } from 'n8n-workflow';
+import type { FindOptionsRelations } from '@n8n/typeorm';
 
-@Authorized()
 @RestController('/workflows')
 export class WorkflowsController {
 	constructor(
@@ -179,13 +170,9 @@ export class WorkflowsController {
 	@Get('/', { middlewares: listQueryMiddleware })
 	async getAll(req: ListQuery.Request, res: express.Response) {
 		try {
-			const roles: WorkflowSharingRole[] = this.license.isSharingEnabled()
-				? []
-				: ['workflow:owner'];
-			const sharedWorkflowIds = await this.workflowSharingService.getSharedWorkflowIds(
-				req.user,
-				roles,
-			);
+			const sharedWorkflowIds = await this.workflowSharingService.getSharedWorkflowIds(req.user, {
+				scopes: ['workflow:read'],
+			});
 
 			const { workflows: data, count } = await this.workflowService.getMany(
 				sharedWorkflowIds,
@@ -254,9 +241,17 @@ export class WorkflowsController {
 		const { workflowId } = req.params;
 
 		if (this.license.isSharingEnabled()) {
-			const relations = ['shared', 'shared.user'];
+			const relations: FindOptionsRelations<WorkflowEntity> = {
+				shared: {
+					user: true,
+					project: {
+						projectRelations: true,
+					},
+				},
+			};
+
 			if (!config.getEnv('workflowTagsDisabled')) {
-				relations.push('tags');
+				relations.tags = true;
 			}
 
 			const workflow = await this.workflowRepository.get({ id: workflowId }, { relations });
@@ -274,9 +269,11 @@ export class WorkflowsController {
 
 			const enterpriseWorkflowService = this.enterpriseWorkflowService;
 
-			enterpriseWorkflowService.addOwnerAndSharings(workflow);
-			await enterpriseWorkflowService.addCredentialsToWorkflow(workflow, req.user);
-			return workflow;
+			const workflowWithMetaData = enterpriseWorkflowService.addOwnerAndSharings(workflow);
+
+			await enterpriseWorkflowService.addCredentialsToWorkflow(workflowWithMetaData, req.user);
+
+			return workflowWithMetaData;
 		}
 
 		// sharing disabled

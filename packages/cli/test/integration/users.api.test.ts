@@ -18,12 +18,20 @@ import * as utils from './shared/utils/';
 import * as testDb from './shared/testDb';
 import { mockInstance } from '../shared/mocking';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
+import type { Project } from '@/databases/entities/Project';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
 
 mockInstance(ExecutionService);
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['users'],
 	enabledFeatures: ['feat:advancedPermissions'],
+});
+
+let projectRepository: ProjectRepository;
+
+beforeAll(() => {
+	projectRepository = Container.get(ProjectRepository);
 });
 
 describe('GET /users', () => {
@@ -230,14 +238,19 @@ describe('GET /users', () => {
 
 describe('DELETE /users/:id', () => {
 	let owner: User;
+	let ownerPersonalProject: Project;
 	let member: User;
+	let memberPersonalProject: Project;
 	let ownerAgent: SuperAgentTest;
 
 	beforeAll(async () => {
 		await testDb.truncate(['User']);
 
 		owner = await createOwner();
+		ownerPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
+
 		member = await createMember();
+		memberPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(member.id);
 		ownerAgent = testServer.authAgentFor(owner);
 	});
 
@@ -249,9 +262,8 @@ describe('DELETE /users/:id', () => {
 			{ user: member, role: 'credential:owner' },
 		);
 
-		const response = await ownerAgent.delete(`/users/${member.id}`);
+		const response = await ownerAgent.delete(`/users/${member.id}`).expect(200);
 
-		expect(response.statusCode).toBe(200);
 		expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
 
 		const user = await Container.get(UserRepository).findOneBy({ id: member.id });
@@ -262,8 +274,7 @@ describe('DELETE /users/:id', () => {
 		});
 
 		const sharedCredential = await Container.get(SharedCredentialsRepository).findOne({
-			relations: ['user'],
-			where: { userId: member.id, role: 'credential:owner' },
+			where: { projectId: memberPersonalProject.id, role: 'credential:owner' },
 		});
 
 		const workflow = await getWorkflowById(savedWorkflow.id);
@@ -309,7 +320,7 @@ describe('DELETE /users/:id', () => {
 			}),
 			await Container.get(SharedCredentialsRepository).findOneOrFail({
 				relations: ['credentials'],
-				where: { userId: owner.id },
+				where: { projectId: ownerPersonalProject.id },
 			}),
 		]);
 

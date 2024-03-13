@@ -2238,6 +2238,7 @@ export interface INodeGraphItem {
 	src_node_id?: string;
 	src_instance_id?: string;
 	agent?: string; //@n8n/n8n-nodes-langchain.agent
+	prompts?: IDataObject[] | IDataObject; //ai node's prompts, cloud only
 }
 
 export interface INodeNameIndex {
@@ -2473,6 +2474,7 @@ export interface IN8nUISettings {
 	urlBaseWebhook: string;
 	urlBaseEditor: string;
 	versionCli: string;
+	binaryDataMode: string;
 	releaseChannel: 'stable' | 'beta' | 'nightly' | 'dev';
 	n8nMetadata?: {
 		userId?: string;

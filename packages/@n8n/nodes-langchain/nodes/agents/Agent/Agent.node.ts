@@ -161,7 +161,7 @@ export class Agent implements INodeType {
 		name: 'agent',
 		icon: 'fa:robot',
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3, 1.4],
+		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5],
 		description: 'Generates an action plan and executes it. Can use external tools.',
 		subtitle:
 			"={{ {	conversationalAgent: 'Conversational Agent', openAiFunctionsAgent: 'OpenAI Functions Agent', reActAgent: 'ReAct Agent', sqlAgent: 'SQL Agent', planAndExecuteAgent: 'Plan and Execute Agent' }[$parameter.agent] }}",
@@ -314,17 +314,18 @@ export class Agent implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const agentType = this.getNodeParameter('agent', 0, '') as string;
+		const nodeVersion = this.getNode().typeVersion;
 
 		if (agentType === 'conversationalAgent') {
-			return await conversationalAgentExecute.call(this);
+			return await conversationalAgentExecute.call(this, nodeVersion);
 		} else if (agentType === 'openAiFunctionsAgent') {
-			return await openAiFunctionsAgentExecute.call(this);
+			return await openAiFunctionsAgentExecute.call(this, nodeVersion);
 		} else if (agentType === 'reActAgent') {
-			return await reActAgentAgentExecute.call(this);
+			return await reActAgentAgentExecute.call(this, nodeVersion);
 		} else if (agentType === 'sqlAgent') {
-			return await sqlAgentAgentExecute.call(this);
+			return await sqlAgentAgentExecute.call(this, nodeVersion);
 		} else if (agentType === 'planAndExecuteAgent') {
-			return await planAndExecuteAgentExecute.call(this);
+			return await planAndExecuteAgentExecute.call(this, nodeVersion);
 		}
 
 		throw new NodeOperationError(this.getNode(), `The agent type "${agentType}" is not supported`);

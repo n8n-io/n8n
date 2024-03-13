@@ -156,7 +156,6 @@ describe('check()', () => {
 			Container.get(SharedCredentialsRepository).create({
 				projectId: (await getPersonalProject(member)).id,
 				credentialsId: ownerCred.id,
-				userId: member.id,
 				role: 'credential:user',
 			}),
 		);

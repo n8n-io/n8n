@@ -8,35 +8,65 @@
 	content: 'n8n supports all JavaScript functions, including those not listed.';
 }
 
-// Custom autocomplete item type icons
-// 1. Native and n8n extension functions:
-.cm-completionIcon-extension-function,
-.cm-completionIcon-native-function {
-	&::after {
-		content: 'ƒ';
-	}
-}
-
-.cm-tooltip-autocomplete {
+.ͼ2 .cm-tooltip-autocomplete {
 	background-color: var(--color-background-xlight) !important;
+	box-shadow: var(--box-shadow-light);
+	border: none;
 
 	.cm-tooltip {
 		overflow: hidden;
 		text-overflow: ellipsis;
 	}
 
-	li .cm-completionLabel {
-		color: var(--color-success);
+	> ul[role='listbox'] {
+		font-family: var(--font-family-monospace);
+		max-height: min(220px, 50vh);
+		width: min(260px, 50vw);
+		min-width: 100%;
+		max-width: none;
+		border: var(--border-base);
+		border-radius: var(--border-radius-base);
+
+		li[role='option'] {
+			color: var(--color-text-base);
+			display: flex;
+			font-size: var(--font-size-2xs);
+			justify-content: space-between;
+			padding: var(--spacing-5xs) var(--spacing-2xs);
+			scroll-padding: 40px;
+			scroll-margin: 40px;
+		}
+
+		li .cm-completionLabel {
+			line-height: var(--font-line-height-xloose);
+		}
+
+		li[aria-selected] {
+			background-color: var(--color-background-base);
+			color: var(--color-autocomplete-item-selected);
+		}
+
+		> .cm-section-header {
+			padding: var(--spacing-4xs) var(--spacing-3xs);
+			border-bottom: 1px solid var(--color-autocomplete-section-header-border);
+			background-color: var(--color-background-xlight);
+			position: sticky;
+			top: 0;
+		}
+
+		> .cm-section-header:not(:first-child) {
+			margin-top: var(--spacing-2xs);
+		}
+
+		.cm-section-title {
+			color: var(--color-text-dark);
+			font-family: var(--font-family);
+			font-weight: var(--font-weight-bold);
+			font-size: var(--font-size-3xs);
+			text-transform: uppercase;
+			padding: var(--spacing-5xs) var(--spacing-4xs);
+		}
 	}
-}
-
-.ͼ2 .cm-tooltip-autocomplete ul li[aria-selected] {
-	background-color: var(--color-autocomplete-selected-background);
-}
-
-.ͼ2 .cm-tooltip-autocomplete ul li[aria-selected] .cm-completionLabel {
-	color: var(--color-autocomplete-selected-font) !important;
-	font-weight: 600;
 }
 
 .autocomplete-info-container {
@@ -45,18 +75,23 @@
 	padding: var(--spacing-4xs) 0;
 }
 
-.cm-completionInfo {
-	background-color: var(--color-background-xlight) !important;
+.ͼ2 .cm-completionInfo {
+	background-color: var(--color-background-xlight);
+	border: var(--border-base);
+	margin-left: var(--spacing-5xs);
+	border-radius: var(--border-radius-base);
+	line-height: var(--font-line-height-loose);
 
 	.autocomplete-info-header {
-		color: var(--color-text-dark);
+		color: var(--color-text-base);
+		font-size: var(--font-size-2xs);
+		font-family: var(--font-family-monospace);
 		line-height: var(--font-line-height-compact);
 		margin-bottom: var(--spacing-2xs);
 	}
 
 	.autocomplete-info-name {
-		color: var(--color-success);
-		font-weight: var(--font-weight-bold);
+		color: var(--color-autocomplete-item-selected);
 	}
 
 	.autocomplete-info-description {

@@ -10,6 +10,7 @@ import {
 	type FindManyOptions,
 	type EntityManager,
 	type DeleteResult,
+	type FindOptionsRelations,
 	Not,
 } from '@n8n/typeorm';
 import type { ListQuery } from '@/requests';
@@ -25,7 +26,10 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		super(WorkflowEntity, dataSource.manager);
 	}
 
-	async get(where: FindOptionsWhere<WorkflowEntity>, options?: { relations: string[] }) {
+	async get(
+		where: FindOptionsWhere<WorkflowEntity>,
+		options?: { relations: string[] | FindOptionsRelations<WorkflowEntity> },
+	) {
 		return await this.findOne({
 			where,
 			relations: options?.relations,
@@ -114,6 +118,11 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	async getMany(sharedWorkflowIds: string[], options?: ListQuery.Options) {
 		if (sharedWorkflowIds.length === 0) return { workflows: [], count: 0 };
 
+		if (typeof options?.filter?.projectId === 'string' && options.filter.projectId !== '') {
+			options.filter.shared = { projectId: options.filter.projectId };
+			delete options.filter.projectId;
+		}
+
 		const where: FindOptionsWhere<WorkflowEntity> = {
 			...options?.filter,
 			id: In(sharedWorkflowIds),
@@ -152,7 +161,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			select.tags = { id: true, name: true };
 		}
 
-		if (isOwnedByIncluded) relations.push('shared', 'shared.user');
+		if (isOwnedByIncluded) relations.push('shared', 'shared.user', 'shared.project');
 
 		if (typeof where.name === 'string' && where.name !== '') {
 			where.name = Like(`%${where.name}%`);

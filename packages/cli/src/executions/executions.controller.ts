@@ -1,7 +1,7 @@
 import type { GetManyActiveFilter } from './execution.types';
 import { ExecutionRequest } from './execution.types';
 import { ExecutionService } from './execution.service';
-import { Authorized, Get, Post, RestController } from '@/decorators';
+import { Get, Post, RestController } from '@/decorators';
 import { EnterpriseExecutionsService } from './execution.service.ee';
 import { License } from '@/License';
 import { WorkflowSharingService } from '@/workflows/workflowSharing.service';
@@ -10,8 +10,8 @@ import config from '@/config';
 import { jsonParse } from 'n8n-workflow';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ActiveExecutionService } from './active-execution.service';
+import type { Scope } from '@n8n/permissions';
 
-@Authorized()
 @RestController('/executions')
 export class ExecutionsController {
 	private readonly isQueueMode = config.getEnv('executions.mode') === 'queue';
@@ -24,15 +24,20 @@ export class ExecutionsController {
 		private readonly license: License,
 	) {}
 
-	private async getAccessibleWorkflowIds(user: User) {
-		return this.license.isSharingEnabled()
-			? await this.workflowSharingService.getSharedWorkflowIds(user)
-			: await this.workflowSharingService.getSharedWorkflowIds(user, ['workflow:owner']);
+	private async getAccessibleWorkflowIds(user: User, scope: Scope) {
+		if (this.license.isSharingEnabled()) {
+			return await this.workflowSharingService.getSharedWorkflowIds(user, { scopes: [scope] });
+		} else {
+			return await this.workflowSharingService.getSharedWorkflowIds(user, {
+				workflowRoles: ['workflow:owner'],
+				projectRoles: ['project:personalOwner'],
+			});
+		}
 	}
 
 	@Get('/')
 	async getMany(req: ExecutionRequest.GetMany) {
-		const workflowIds = await this.getAccessibleWorkflowIds(req.user);
+		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:read');
 
 		if (workflowIds.length === 0) return { count: 0, estimated: false, results: [] };
 
@@ -43,7 +48,7 @@ export class ExecutionsController {
 	async getActive(req: ExecutionRequest.GetManyActive) {
 		const filter = req.query.filter?.length ? jsonParse<GetManyActiveFilter>(req.query.filter) : {};
 
-		const workflowIds = await this.getAccessibleWorkflowIds(req.user);
+		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:read');
 
 		return this.isQueueMode
 			? await this.activeExecutionService.findManyInQueueMode(filter, workflowIds)
@@ -52,7 +57,7 @@ export class ExecutionsController {
 
 	@Post('/active/:id/stop')
 	async stop(req: ExecutionRequest.Stop) {
-		const workflowIds = await this.getAccessibleWorkflowIds(req.user);
+		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:execute');
 
 		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
 
@@ -65,7 +70,7 @@ export class ExecutionsController {
 
 	@Get('/:id')
 	async getOne(req: ExecutionRequest.GetOne) {
-		const workflowIds = await this.getAccessibleWorkflowIds(req.user);
+		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:read');
 
 		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
 
@@ -76,7 +81,7 @@ export class ExecutionsController {
 
 	@Post('/:id/retry')
 	async retry(req: ExecutionRequest.Retry) {
-		const workflowIds = await this.getAccessibleWorkflowIds(req.user);
+		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:execute');
 
 		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
 
@@ -85,7 +90,7 @@ export class ExecutionsController {
 
 	@Post('/delete')
 	async delete(req: ExecutionRequest.Delete) {
-		const workflowIds = await this.getAccessibleWorkflowIds(req.user);
+		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:execute');
 
 		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
 

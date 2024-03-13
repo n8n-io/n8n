@@ -1,14 +1,14 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import {
-	NodeConnectionType,
-	type IDataObject,
-	type IExecuteFunctions,
-	type INodeExecutionData,
-	type INodeType,
-	type INodeTypeDescription,
+import { NodeConnectionType } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
-import type { BaseChatMemory } from 'langchain/memory';
-import { AIMessage, SystemMessage, HumanMessage, type BaseMessage } from 'langchain/schema';
+import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
+import { AIMessage, SystemMessage, HumanMessage, type BaseMessage } from '@langchain/core/messages';
 
 type MessageRole = 'ai' | 'system' | 'user';
 interface MessageRecord {
@@ -37,13 +37,39 @@ function simplifyMessages(messages: BaseMessage[]) {
 	return transformedMessages;
 }
 
+const prepareOutputSetup = (ctx: IExecuteFunctions, version: number, memory: BaseChatMemory) => {
+	if (version === 1) {
+		//legacy behavior of insert and delete for version 1
+		return async (i: number) => {
+			const messages = await memory.chatHistory.getMessages();
+
+			const serializedMessages = messages?.map((message) => message.toJSON()) ?? [];
+
+			const executionData = ctx.helpers.constructExecutionMetaData(
+				ctx.helpers.returnJsonArray(serializedMessages as unknown as IDataObject[]),
+				{ itemData: { item: i } },
+			);
+
+			return executionData;
+		};
+	}
+	return async (i: number) => {
+		return [
+			{
+				json: { success: true },
+				pairedItem: { item: i },
+			},
+		];
+	};
+};
+
 export class MemoryManager implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Chat Memory Manager',
 		name: 'memoryManager',
 		icon: 'fa:database',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Manage chat messages memory and use it in the workflow',
 		defaults: {
 			name: 'Chat Memory Manager',
@@ -240,21 +266,46 @@ export class MemoryManager implements INodeType {
 					},
 				},
 			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				placeholder: 'Add Option',
+				type: 'collection',
+				default: {},
+				options: [
+					{
+						displayName: 'Group Messages',
+						name: 'groupMessages',
+						type: 'boolean',
+						default: true,
+						description:
+							'Whether to group messages into a single item or return each message as a separate item',
+					},
+				],
+				displayOptions: {
+					show: {
+						mode: ['load'],
+					},
+				},
+			},
 		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const nodeVersion = this.getNode().typeVersion;
+		const items = this.getInputData();
+		const mode = this.getNodeParameter('mode', 0, 'load') as 'load' | 'insert' | 'delete';
 		const memory = (await this.getInputConnectionData(
 			NodeConnectionType.AiMemory,
 			0,
 		)) as BaseChatMemory;
 
-		const items = this.getInputData();
-		const result = [];
-		for (let i = 0; i < items.length; i++) {
-			const mode = this.getNodeParameter('mode', i) as 'load' | 'insert' | 'delete';
+		const prepareOutput = prepareOutputSetup(this, nodeVersion, memory);
 
-			let messages = [...(await memory.chatHistory.getMessages())];
+		const returnData: INodeExecutionData[] = [];
+
+		for (let i = 0; i < items.length; i++) {
+			const messages = await memory.chatHistory.getMessages();
 
 			if (mode === 'delete') {
 				const deleteMode = this.getNodeParameter('deleteMode', i) as 'lastN' | 'all';
@@ -272,6 +323,8 @@ export class MemoryManager implements INodeType {
 				} else {
 					await memory.chatHistory.clear();
 				}
+
+				returnData.push(...(await prepareOutput(i)));
 			}
 
 			if (mode === 'insert') {
@@ -301,29 +354,57 @@ export class MemoryManager implements INodeType {
 
 					await memory.chatHistory.addMessage(MessageClass);
 				}
+
+				returnData.push(...(await prepareOutput(i)));
 			}
 
-			// Refresh messages from memory
-			messages = await memory.chatHistory.getMessages();
+			if (mode === 'load') {
+				const simplifyOutput = this.getNodeParameter('simplifyOutput', i, false) as boolean;
+				const options = this.getNodeParameter('options', i);
 
-			const simplifyOutput = this.getNodeParameter('simplifyOutput', i, false) as boolean;
-			if (simplifyOutput && messages) {
-				return [
-					this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(simplifyMessages(messages)),
-						{ itemData: { item: i } },
-					),
-				];
+				//Load mode, legacy behavior for version 1, buggy - outputs only for single input item
+				if (simplifyOutput && messages.length && nodeVersion === 1) {
+					const groupMessages = options.groupMessages as boolean;
+					const output = simplifyMessages(messages);
+
+					return [
+						this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(
+								groupMessages ? [{ messages: output, messagesCount: output.length }] : output,
+							),
+							{ itemData: { item: i } },
+						),
+					];
+				}
+
+				let groupMessages = true;
+				//disable grouping if explicitly set to false
+				if (options.groupMessages === false) {
+					groupMessages = false;
+				}
+				//disable grouping if not set and node version is 1 (legacy behavior)
+				if (options.groupMessages === undefined && nodeVersion === 1) {
+					groupMessages = false;
+				}
+
+				let output: IDataObject[] =
+					(simplifyOutput
+						? simplifyMessages(messages)
+						: (messages?.map((message) => message.toJSON()) as unknown as IDataObject[])) ?? [];
+
+				if (groupMessages) {
+					output = [{ messages: output, messagesCount: output.length }];
+				}
+
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(output),
+					{ itemData: { item: i } },
+				);
+
+				returnData.push(...executionData);
 			}
-			const serializedMessages = messages?.map((message) => message.toJSON()) ?? [];
-
-			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(serializedMessages as unknown as IDataObject[]),
-				{ itemData: { item: i } },
-			);
-			result.push(...executionData);
 		}
 
-		return await this.prepareOutputData(result);
+		return [returnData];
 	}
 }

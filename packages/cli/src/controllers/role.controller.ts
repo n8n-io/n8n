@@ -1,7 +1,6 @@
-import { Get, RestController, Authorized } from '@/decorators';
+import { Get, RestController } from '@/decorators';
 import { type AllRoleTypes, RoleService } from '@/services/role.service';
 
-@Authorized()
 @RestController('/roles')
 export class RoleController {
 	constructor(private roleService: RoleService) {}

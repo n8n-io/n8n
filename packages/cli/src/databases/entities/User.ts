@@ -24,7 +24,7 @@ import {
 	GLOBAL_ADMIN_SCOPES,
 } from '@/permissions/global-roles';
 import { hasScope, type ScopeOptions, type Scope } from '@n8n/permissions';
-import type { ProjectRelation, ProjectRole } from './ProjectRelation';
+import type { ProjectRelation } from './ProjectRelation';
 
 export type GlobalRole = 'global:owner' | 'global:admin' | 'global:member';
 export type AssignableRole = Exclude<GlobalRole, 'global:owner'>;
@@ -151,16 +151,8 @@ export class User extends WithTimestamps implements IUser {
 		);
 	}
 
-	hasScope(scope: Scope | Scope[], projectRole: ProjectRole) {
-		scope = Array.isArray(scope) ? scope : [scope];
-
-		return hasScope(
-			scope,
-			{
-				global: this.globalScopes,
-				project: ['credential:read'], // @TODO: Gather scopes for all project roles
-			},
-			{ sharing: scope },
-		);
+	toJSON() {
+		const { password, apiKey, mfaSecret, mfaRecoveryCodes, ...rest } = this;
+		return rest;
 	}
 }

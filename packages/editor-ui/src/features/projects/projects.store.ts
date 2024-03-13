@@ -1,22 +1,23 @@
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import * as projectsApi from '@/features/projects/projects.api';
 import type {
 	Project,
 	ProjectCreateRequest,
-	ProjectRelationsRequest,
+	ProjectListItem,
+	ProjectUpdateRequest,
 } from '@/features/projects/projects.types';
 
 export const useProjectsStore = defineStore('projects', () => {
+	const route = useRoute();
 	const rootStore = useRootStore();
-	const projects = ref<Project[]>([]);
-	const myProjects = ref<Project[]>([]);
+
+	const projects = ref<ProjectListItem[]>([]);
+	const myProjects = ref<ProjectListItem[]>([]);
 	const personalProject = ref<Project | null>(null);
-	const currentProject = ref<Project>({
-		id: '',
-		name: '',
-	});
+	const currentProject = ref<Project>({} as Project);
 
 	const setCurrentProject = (project: Project) => {
 		currentProject.value = project;
@@ -27,31 +28,55 @@ export const useProjectsStore = defineStore('projects', () => {
 	};
 
 	const getMyProjects = async () => {
-		myProjects.value = await projectsApi.getMyProjects(rootStore.getRestApiContext);
+		myProjects.value = (await projectsApi.getMyProjects(rootStore.getRestApiContext)).filter(
+			(p) => !!p.name,
+		);
 	};
 
 	const getPersonalProject = async () => {
 		personalProject.value = await projectsApi.getPersonalProject(rootStore.getRestApiContext);
 	};
 
-	const createProject = async (project: ProjectCreateRequest) => {
-		const newProject = await projectsApi.createProject(rootStore.getRestApiContext, project);
-		projects.value.unshift(newProject);
-		myProjects.value.unshift(newProject);
+	const getProject = async (id: string) => {
+		currentProject.value = await projectsApi.getProject(rootStore.getRestApiContext, id);
 	};
 
-	const setProjectRelations = async (projectRelations: ProjectRelationsRequest) => {
-		await projectsApi.setProjectRelations(rootStore.getRestApiContext, projectRelations);
+	const createProject = async (project: ProjectCreateRequest): Promise<Project> => {
+		const newProject = await projectsApi.createProject(rootStore.getRestApiContext, project);
+		const { id, name } = newProject;
+		myProjects.value.push({ id, name } as ProjectListItem);
+		return newProject;
 	};
+
+	const updateProject = async (projectData: ProjectUpdateRequest): Promise<void> => {
+		await projectsApi.updateProject(rootStore.getRestApiContext, projectData);
+		const projectIndex = myProjects.value.findIndex((p) => p.id === projectData.id);
+		if (projectIndex !== -1) {
+			myProjects.value[projectIndex].name = projectData.name;
+		}
+	};
+
+	watch(
+		route,
+		async (newRoute) => {
+			if (!newRoute?.params?.projectId) {
+				return;
+			}
+			await getProject(newRoute.params.projectId as string);
+		},
+		{ immediate: true },
+	);
 
 	return {
 		projects,
+		myProjects,
 		currentProject,
 		setCurrentProject,
 		getAllProjects,
 		getMyProjects,
 		getPersonalProject,
+		getProject,
 		createProject,
-		setProjectRelations,
+		updateProject,
 	};
 });

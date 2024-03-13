@@ -7,6 +7,7 @@ import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { User } from '@db/entities/User';
 import type { BooleanLicenseFeature, ICredentialsDb, NumericLicenseFeature } from '@/Interfaces';
 import type { LicenseMocker } from './license';
+import type { Project } from '@/databases/entities/Project';
 
 type EndpointGroup =
 	| 'me'
@@ -37,7 +38,6 @@ type EndpointGroup =
 	| 'role';
 
 export interface SetupProps {
-	applyAuth?: boolean;
 	endpointGroups?: EndpointGroup[];
 	enabledFeatures?: BooleanLicenseFeature[];
 	quotas?: Partial<{ [K in NumericLicenseFeature]: number }>;
@@ -61,5 +61,5 @@ export type CredentialPayload = {
 
 export type SaveCredentialFunction = (
 	credentialPayload: CredentialPayload,
-	{ user }: { user: User },
+	options: { user: User } | { project: Project },
 ) => Promise<CredentialsEntity & ICredentialsDb>;

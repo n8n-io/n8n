@@ -5,6 +5,8 @@ import { setupTestServer } from './shared/utils/';
 import { randomCredentialPayload as payload } from './shared/random';
 import { saveCredential } from './shared/db/credentials';
 import { createMember, createOwner } from './shared/db/users';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
+import Container from 'typedi';
 
 const { any } = expect;
 
@@ -171,6 +173,28 @@ describe('GET /credentials', () => {
 
 			expect(_response.body.data).toHaveLength(0);
 		});
+
+		test('should filter credentials by projectId', async () => {
+			const credential = await saveCredential(payload(), { user: owner, role: 'credential:owner' });
+			const pp = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(owner.id);
+
+			const response1: GetAllResponse = await testServer
+				.authAgentFor(owner)
+				.get('/credentials')
+				.query(`filter={ "projectId": "${pp.id}" }`)
+				.expect(200);
+
+			expect(response1.body.data).toHaveLength(1);
+			expect(response1.body.data[0].id).toBe(credential.id);
+
+			const response2 = await testServer
+				.authAgentFor(owner)
+				.get('/credentials')
+				.query('filter={ "projectId": "Non-Existing Project ID" }')
+				.expect(200);
+
+			expect(response2.body.data).toHaveLength(0);
+		});
 	});
 
 	describe('select', () => {
@@ -264,21 +288,20 @@ describe('GET /credentials', () => {
 });
 
 function validateCredential(credential: ListQuery.Credentials.WithOwnedByAndSharedWith) {
-	const { name, type, nodesAccess, sharedWith, ownedBy } = credential;
+	const { name, type, nodesAccess, sharedWithProjects, homeProject } = credential;
 
 	expect(typeof name).toBe('string');
 	expect(typeof type).toBe('string');
 	expect(typeof nodesAccess[0].nodeType).toBe('string');
 	expect('data' in credential).toBe(false);
 
-	if (sharedWith) expect(Array.isArray(sharedWith)).toBe(true);
+	if (sharedWithProjects) expect(Array.isArray(sharedWithProjects)).toBe(true);
 
-	if (ownedBy) {
-		const { id, email, firstName, lastName } = ownedBy;
+	if (homeProject) {
+		const { id, name, type } = homeProject;
 
 		expect(typeof id).toBe('string');
-		expect(typeof email).toBe('string');
-		expect(typeof firstName).toBe('string');
-		expect(typeof lastName).toBe('string');
+		expect(typeof name).toBe('string');
+		expect(type).toBe('personal');
 	}
 }

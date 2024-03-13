@@ -1,6 +1,7 @@
 export type DefaultOperations = 'create' | 'read' | 'update' | 'delete' | 'list';
 export type Resource =
 	| 'auditLogs'
+	| 'banner'
 	| 'communityPackage'
 	| 'credential'
 	| 'externalSecretsProvider'
@@ -28,6 +29,7 @@ export type ResourceScope<
 export type WildcardScope = `${Resource}:*` | '*';
 
 export type AuditLogsScope = ResourceScope<'auditLogs', 'manage'>;
+export type BannerScope = ResourceScope<'banner', 'dismiss'>;
 export type CommunityPackageScope = ResourceScope<
 	'communityPackage',
 	'install' | 'uninstall' | 'update' | 'list' | 'manage'
@@ -58,6 +60,7 @@ export type WorkflowScope = ResourceScope<'workflow', DefaultOperations | 'share
 
 export type Scope =
 	| AuditLogsScope
+	| BannerScope
 	| CommunityPackageScope
 	| CredentialScope
 	| ExternalSecretProviderScope

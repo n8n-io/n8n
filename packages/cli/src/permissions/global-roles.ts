@@ -2,6 +2,7 @@ import type { Scope } from '@n8n/permissions';
 
 export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'auditLogs:manage',
+	'banner:dismiss',
 	'credential:create',
 	'credential:read',
 	'credential:update',

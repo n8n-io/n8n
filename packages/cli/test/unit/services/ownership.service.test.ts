@@ -7,10 +7,10 @@ import { mockInstance } from '../../shared/mocking';
 import { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { mock } from 'jest-mock-extended';
-import { mockCredential, mockUser } from '../shared/mockObjects';
 import { Project } from '@/databases/entities/Project';
 import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
 import { ProjectRelation } from '@/databases/entities/ProjectRelation';
+import { mockCredential, mockProject, mockUser } from '../shared/mockObjects';
 
 describe('OwnershipService', () => {
 	const userRepository = mockInstance(UserRepository);
@@ -80,31 +80,30 @@ describe('OwnershipService', () => {
 
 	describe('addOwnedByAndSharedWith()', () => {
 		test('should add `ownedBy` and `sharedWith` to credential', async () => {
-			const owner = mockUser();
-			const editor = mockUser();
+			const ownerProject = mockProject();
+			const editorProject = mockProject();
 
 			const credential = mockCredential();
 
 			credential.shared = [
-				{ role: 'credential:owner', user: owner },
-				{ role: 'credential:editor', user: editor },
+				{ role: 'credential:owner', project: ownerProject },
+				{ role: 'credential:editor', project: editorProject },
 			] as SharedCredentials[];
 
-			const { ownedBy, sharedWith } = ownershipService.addOwnedByAndSharedWith(credential);
+			const { homeProject, sharedWithProjects } =
+				ownershipService.addOwnedByAndSharedWith(credential);
 
-			expect(ownedBy).toStrictEqual({
-				id: owner.id,
-				email: owner.email,
-				firstName: owner.firstName,
-				lastName: owner.lastName,
+			expect(homeProject).toMatchObject({
+				id: ownerProject.id,
+				name: 'My n8n',
+				type: ownerProject.type,
 			});
 
-			expect(sharedWith).toStrictEqual([
+			expect(sharedWithProjects).toMatchObject([
 				{
-					id: editor.id,
-					email: editor.email,
-					firstName: editor.firstName,
-					lastName: editor.lastName,
+					id: editorProject.id,
+					name: 'My n8n',
+					type: editorProject.type,
 				},
 			]);
 		});
@@ -113,49 +112,50 @@ describe('OwnershipService', () => {
 			const owner = mockUser();
 			const editor = mockUser();
 
+			const projectOwner = mockProject();
+			const projectEditor = mockProject();
+
 			const workflow = new WorkflowEntity();
 
 			workflow.shared = [
-				{ role: 'workflow:owner', user: owner },
-				{ role: 'workflow:editor', user: editor },
+				{ role: 'workflow:owner', user: owner, project: projectOwner },
+				{ role: 'workflow:editor', user: editor, project: projectEditor },
 			] as SharedWorkflow[];
 
-			const { ownedBy, sharedWith } = ownershipService.addOwnedByAndSharedWith(workflow);
+			const { homeProject, sharedWithProjects } =
+				ownershipService.addOwnedByAndSharedWith(workflow);
 
-			expect(ownedBy).toStrictEqual({
-				id: owner.id,
-				email: owner.email,
-				firstName: owner.firstName,
-				lastName: owner.lastName,
+			expect(homeProject).toMatchObject({
+				id: projectOwner.id,
+				name: 'My n8n',
+				type: projectOwner.type,
 			});
-
-			expect(sharedWith).toStrictEqual([
+			expect(sharedWithProjects).toMatchObject([
 				{
-					id: editor.id,
-					email: editor.email,
-					firstName: editor.firstName,
-					lastName: editor.lastName,
+					id: projectEditor.id,
+					name: 'My n8n',
+					type: projectEditor.type,
 				},
 			]);
 		});
 
 		test('should produce an empty sharedWith if no sharee', async () => {
-			const owner = mockUser();
-
 			const credential = mockCredential();
 
-			credential.shared = [{ role: 'credential:owner', user: owner }] as SharedCredentials[];
+			const project = mockProject();
 
-			const { ownedBy, sharedWith } = ownershipService.addOwnedByAndSharedWith(credential);
+			credential.shared = [{ role: 'credential:owner', project }] as SharedCredentials[];
 
-			expect(ownedBy).toStrictEqual({
-				id: owner.id,
-				email: owner.email,
-				firstName: owner.firstName,
-				lastName: owner.lastName,
+			const { homeProject, sharedWithProjects } =
+				ownershipService.addOwnedByAndSharedWith(credential);
+
+			expect(homeProject).toMatchObject({
+				id: project.id,
+				name: 'My n8n',
+				type: project.type,
 			});
 
-			expect(sharedWith).toHaveLength(0);
+			expect(sharedWithProjects).toHaveLength(0);
 		});
 	});
 

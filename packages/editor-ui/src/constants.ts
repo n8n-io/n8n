@@ -470,6 +470,7 @@ export const enum VIEWS {
 	PROJECTS = 'Projects',
 	PROJECTS_WORKFLOWS = 'ProjectsWorkflows',
 	PROJECTS_CREDENTIALS = 'ProjectsCredentials',
+	PROJECT_SETTINGS = 'ProjectSettings',
 }
 
 export const EDITABLE_CANVAS_VIEWS = [VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG];
