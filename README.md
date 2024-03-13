@@ -1,3 +1,11 @@
+# HoneyBook specifics
+Our dev config is at [config.dev.json](config.dev.json)
+Set these env variables when running the n8n process:
+```bash
+N8N_CONFIG_FILES=/Users/ozweiss/honeybook/n8n/config.dev.json;
+N8N_CUSTOM_EXTENSIONS=/Users/ozweiss/honeybook/n8n/packages/n8n-nodes-honeybook/dist
+```
+
 ![n8n.io - Workflow Automation](https://user-images.githubusercontent.com/65276001/173571060-9f2f6d7b-bac0-43b6-bdb2-001da9694058.png)
 
 # n8n - Workflow automation tool
