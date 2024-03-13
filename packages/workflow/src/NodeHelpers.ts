@@ -268,6 +268,127 @@ const commonCORSParameters: INodeProperties[] = [
 	},
 ];
 
+const declarativeNodeOptionParameters: INodeProperties = {
+	displayName: 'Options',
+	name: 'options',
+	type: 'collection',
+	placeholder: 'Add Option',
+	default: {},
+	options: [
+		{
+			displayName: 'Batching',
+			name: 'batching',
+			placeholder: 'Add Batching',
+			type: 'fixedCollection',
+			typeOptions: {
+				multipleValues: false,
+			},
+			default: {
+				batch: {},
+			},
+			options: [
+				{
+					displayName: 'Batching',
+					name: 'batch',
+					values: [
+						{
+							displayName: 'Items per Batch',
+							name: 'batchSize',
+							type: 'number',
+							typeOptions: {
+								minValue: -1,
+							},
+							default: 50,
+							description:
+								'Input will be split in batches to throttle requests. -1 for disabled. 0 will be treated as 1.',
+						},
+						{
+							displayName: 'Batch Interval (ms)',
+							name: 'batchInterval',
+							type: 'number',
+							typeOptions: {
+								minValue: 0,
+							},
+							default: 1000,
+							description: 'Time (in milliseconds) between each batch of requests. 0 for disabled.',
+						},
+					],
+				},
+			],
+		},
+		{
+			displayName: 'Ignore SSL Issues',
+			name: 'allowUnauthorizedCerts',
+			type: 'boolean',
+			noDataExpression: true,
+			default: false,
+			description:
+				'Whether to download the response even if SSL certificate validation is not possible',
+		},
+		// {
+		// 	displayName: 'Proxy',
+		// 	name: 'proxy',
+		// 	type: 'string',
+		// 	default: '',
+		// 	placeholder: 'e.g. http://myproxy:3128',
+		// 	description: 'HTTP proxy to use',
+		// },
+		{
+			displayName: 'Timeout',
+			name: 'timeout',
+			type: 'number',
+			typeOptions: {
+				minValue: 1,
+			},
+			default: 10000,
+			description:
+				'Time in ms to wait for the server to send response headers (and start the response body) before aborting the request',
+		},
+	],
+};
+
+export function applyDeclarativeNodeOptionParameters(nodeType: INodeType): void {
+	if (nodeType.execute || nodeType.trigger || nodeType.description.polling) {
+		return;
+	}
+
+	const parameters = nodeType.description.properties;
+
+	if (!parameters) {
+		return;
+	}
+
+	const existingOptionsIndex = parameters.findIndex((parameter) => parameter.name === 'options');
+	if (existingOptionsIndex !== -1) {
+		parameters[existingOptionsIndex] = {
+			...declarativeNodeOptionParameters,
+			options: [
+				...(declarativeNodeOptionParameters.options || []),
+				...(parameters[existingOptionsIndex]?.options || []),
+			],
+		};
+
+		if (parameters[existingOptionsIndex]?.options) {
+			parameters[existingOptionsIndex].options!.sort((a, b) => {
+				if ('displayName' in a && 'displayName' in b) {
+					if (a.displayName < b.displayName) {
+						return -1;
+					}
+					if (a.displayName > b.displayName) {
+						return 1;
+					}
+				}
+
+				return 0;
+			});
+		}
+	} else {
+		parameters.push(declarativeNodeOptionParameters);
+	}
+
+	return;
+}
+
 /**
  * Apply special parameters which should be added to nodeTypes depending on their type or configuration
  */
@@ -281,6 +402,8 @@ export function applySpecialNodeParameters(nodeType: INodeType): void {
 		if (optionsProperty) optionsProperty.options!.push(...commonCORSParameters);
 		else properties.push(...commonCORSParameters);
 	}
+
+	applyDeclarativeNodeOptionParameters(nodeType);
 }
 
 const getPropertyValues = (
