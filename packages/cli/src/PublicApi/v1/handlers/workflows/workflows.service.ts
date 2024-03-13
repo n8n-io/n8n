@@ -10,18 +10,18 @@ import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.reposi
 import type { Project } from '@/databases/entities/Project';
 import { WorkflowTagMappingRepository } from '@db/repositories/workflowTagMapping.repository';
 import { TagRepository } from '@db/repositories/tag.repository';
+import type { Scope } from '../../../../../../@n8n/permissions/src';
 
 function insertIf(condition: boolean, elements: string[]): string[] {
 	return condition ? elements : [];
 }
 
-export async function getSharedWorkflowIds(user: User): Promise<string[]> {
-	const where = ['global:owner', 'global:admin'].includes(user.role) ? {} : { userId: user.id };
-	const sharedWorkflows = await Container.get(SharedWorkflowRepository).find({
-		where,
-		select: ['workflowId'],
-	});
-	return sharedWorkflows.map(({ workflowId }) => workflowId);
+export async function getSharedWorkflowIds(user: User, scopes: Scope[]): Promise<string[]> {
+	const workflows = await Container.get(SharedWorkflowRepository).findAllWorkflowsForUser(
+		user,
+		scopes,
+	);
+	return workflows.map((w) => w.id);
 }
 
 export async function getSharedWorkflow(

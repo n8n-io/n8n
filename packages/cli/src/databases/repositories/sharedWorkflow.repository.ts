@@ -207,4 +207,35 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 
 		return sharedWorkflow.workflow;
 	}
+
+	async findAllWorkflowsForUser(user: User, scopes: Scope[]) {
+		let where: FindOptionsWhere<SharedWorkflow> = {};
+
+		if (!user.hasGlobalScope(scopes, { mode: 'allOf' })) {
+			const projectRoles = this.roleService.rolesWithScope('project', scopes);
+			const workflowRoles = this.roleService.rolesWithScope('workflow', scopes);
+
+			where = {
+				...where,
+				role: In(workflowRoles),
+				project: {
+					projectRelations: {
+						role: In(projectRoles),
+						userId: user.id,
+					},
+				},
+			};
+		}
+
+		const sharedWorkflows = await this.find({
+			where,
+			relations: {
+				workflow: {
+					shared: { project: { projectRelations: { user: true } } },
+				},
+			},
+		});
+
+		return sharedWorkflows.map((sw) => sw.workflow);
+	}
 }
