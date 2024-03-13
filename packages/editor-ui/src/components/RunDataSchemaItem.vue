@@ -5,7 +5,6 @@ import { checkExhaustive } from '@/utils/typeGuards';
 import { shorten } from '@/utils/typesUtils';
 import { getMappedExpression } from '@/utils/mappingUtils';
 import TextWithHighlights from './TextWithHighlights.vue';
-import { useNDVStore } from '@/stores/ndv.store';
 
 type Props = {
 	schema: Schema;
@@ -21,7 +20,6 @@ type Props = {
 };
 
 const props = defineProps<Props>();
-const ndvStore = useNDVStore();
 
 const isSchemaValueArray = computed(() => Array.isArray(props.schema.value));
 const isSchemaParentTypeArray = computed(() => props.parent?.type === 'array');
@@ -42,10 +40,6 @@ const text = computed(() =>
 );
 
 const dragged = computed(() => props.draggingPath === props.schema.path);
-
-const highlight = computed(
-	() => dragged.value || (!ndvStore.isMappingOnboarded && Boolean(ndvStore.focusedMappableInput)),
-);
 
 const getJsonParameterPath = (path: string): string =>
 	getMappedExpression({
@@ -91,7 +85,7 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 			:class="{
 				[$style.pill]: true,
 				[$style.mappable]: mappingEnabled,
-				[$style.highlight]: highlight,
+				[$style.highlight]: dragged,
 			}"
 		>
 			<span
@@ -211,6 +205,25 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 	}
 }
 
+:global(.highlightSchema) {
+	.pill.mappable {
+		&,
+		&:hover,
+		span,
+		&:hover span span {
+			color: var(--color-primary);
+			border-color: var(--color-primary-tint-1);
+			background-color: var(--color-primary-tint-3);
+
+			svg {
+				path {
+					fill: var(--color-primary);
+				}
+			}
+		}
+	}
+}
+
 .pill {
 	float: left;
 	display: inline-flex;
@@ -242,23 +255,6 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 			span span {
 				background-color: var(--color-background-light);
 				border-color: var(--color-foreground-base);
-			}
-		}
-	}
-
-	&.highlight {
-		&,
-		&:hover,
-		span,
-		&:hover span span {
-			color: var(--color-primary);
-			border-color: var(--color-primary-tint-1);
-			background-color: var(--color-primary-tint-3);
-
-			svg {
-				path {
-					fill: var(--color-primary);
-				}
 			}
 		}
 	}

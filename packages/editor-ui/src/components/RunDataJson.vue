@@ -1,5 +1,5 @@
 <template>
-	<div :class="$style.jsonDisplay">
+	<div :class="[$style.jsonDisplay, { [$style.highlight]: highlight }]">
 		<Suspense>
 			<RunDataJsonActions
 				v-if="!editMode.enabled"
@@ -64,7 +64,7 @@
 						:data-depth="node.level"
 						:class="{
 							[$style.mappable]: mappingEnabled,
-							[$style.dragged]: draggingPath === node.path || highlight,
+							[$style.dragged]: draggingPath === node.path,
 						}"
 						class="ph-no-capture"
 					/>
@@ -203,7 +203,9 @@ export default defineComponent({
 
 			setTimeout(() => {
 				void this.externalHooks.run('runDataJson.onDragEnd', telemetryPayload);
-				this.$telemetry.track('User dragged data for mapping', telemetryPayload);
+				this.$telemetry.track('User dragged data for mapping', telemetryPayload, {
+					withPostHog: true,
+				});
 			}, 1000); // ensure dest data gets set if drop
 		},
 		getContent(value: unknown): string {
@@ -244,6 +246,7 @@ export default defineComponent({
 		}
 	}
 
+	&.highlight .mappable,
 	.dragged {
 		&,
 		&:hover {

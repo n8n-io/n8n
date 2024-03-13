@@ -438,7 +438,9 @@ export default defineComponent({
 
 				void this.externalHooks.run('runDataTable.onDragEnd', telemetryPayload);
 
-				this.$telemetry.track('User dragged data for mapping', telemetryPayload);
+				this.$telemetry.track('User dragged data for mapping', telemetryPayload, {
+					withPostHog: true,
+				});
 			}, 1000); // ensure dest data gets set if drop
 		},
 		isSimple(data: unknown): boolean {
