@@ -7,6 +7,7 @@ import type { Scope } from '@n8n/permissions';
 import type { WorkflowEntity } from '../entities/WorkflowEntity';
 import { ProjectRepository } from './project.repository';
 import { RoleService } from '@/services/role.service';
+import { Project } from '../entities/Project';
 
 @Service()
 export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
@@ -166,9 +167,9 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 		});
 	}
 
-	async deleteByIds(transaction: EntityManager, sharedWorkflowIds: string[], user?: User) {
+	async deleteByIds(transaction: EntityManager, sharedWorkflowIds: string[], project?: Project) {
 		return await transaction.delete(SharedWorkflow, {
-			user,
+			project,
 			workflowId: In(sharedWorkflowIds),
 		});
 	}

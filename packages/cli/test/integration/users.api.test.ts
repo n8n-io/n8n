@@ -1,3 +1,4 @@
+// NOTE: passing
 import Container from 'typedi';
 import type { SuperAgentTest } from 'supertest';
 
@@ -269,8 +270,7 @@ describe('DELETE /users/:id', () => {
 		const user = await Container.get(UserRepository).findOneBy({ id: member.id });
 
 		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
-			relations: ['user'],
-			where: { userId: member.id, role: 'workflow:owner' },
+			where: { projectId: memberPersonalProject.id, role: 'workflow:owner' },
 		});
 
 		const sharedCredential = await Container.get(SharedCredentialsRepository).findOne({
@@ -306,17 +306,13 @@ describe('DELETE /users/:id', () => {
 			),
 		]);
 
-		const response = await ownerAgent.delete(`/users/${member.id}`).query({
-			transferId: owner.id,
-		});
-
-		expect(response.statusCode).toBe(200);
+		await ownerAgent.delete(`/users/${member.id}`).query({ transferId: owner.id }).expect(200);
 
 		const [user, sharedWorkflow, sharedCredential] = await Promise.all([
 			await Container.get(UserRepository).findOneBy({ id: member.id }),
 			await Container.get(SharedWorkflowRepository).findOneOrFail({
 				relations: ['workflow'],
-				where: { userId: owner.id },
+				where: { projectId: ownerPersonalProject.id },
 			}),
 			await Container.get(SharedCredentialsRepository).findOneOrFail({
 				relations: ['credentials'],

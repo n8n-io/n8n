@@ -196,7 +196,7 @@ export class UsersController {
 					.getRepository(SharedWorkflow)
 					.find({
 						select: ['workflowId'],
-						where: { userId: userToDelete.id, role: 'workflow:owner' },
+						where: { projectId: personalProject.id, role: 'workflow:owner' },
 					})
 					.then((sharedWorkflows) => sharedWorkflows.map(({ workflowId }) => workflowId));
 
@@ -205,14 +205,14 @@ export class UsersController {
 				await this.sharedWorkflowRepository.deleteByIds(
 					transactionManager,
 					sharedWorkflowIds,
-					transferee,
+					transfereePersonalProject,
 				);
 
 				// Transfer ownership of owned workflows
 				await transactionManager.update(
 					SharedWorkflow,
-					{ user: userToDelete, role: 'workflow:owner' },
-					{ user: transferee },
+					{ project: personalProject, role: 'workflow:owner' },
+					{ project: transfereePersonalProject },
 				);
 
 				// Now do the same for creds
@@ -259,7 +259,7 @@ export class UsersController {
 		const [ownedSharedWorkflows, ownedSharedCredentials] = await Promise.all([
 			this.sharedWorkflowRepository.find({
 				relations: ['workflow'],
-				where: { userId: userToDelete.id, role: 'workflow:owner' },
+				where: { projectId: personalProject.id, role: 'workflow:owner' },
 			}),
 			this.sharedCredentialsRepository.find({
 				relations: ['credentials'],
