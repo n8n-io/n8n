@@ -220,6 +220,7 @@ export default defineComponent({
 				(this.isInputTypeString || this.isInputTypeNumber) &&
 				!this.isValueExpression &&
 				!this.isDropDisabled &&
+				this.ndvStore.hasInputData &&
 				!this.ndvStore.isMappingOnboarded
 			);
 		},

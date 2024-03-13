@@ -182,7 +182,9 @@ export const natives = (
 
 	if (!natives) return [];
 
-	const nativeProps = natives.properties ? toOptions(natives.properties, typeName, 'keyword') : [];
+	const nativeProps = natives.properties
+		? toOptions(natives.properties, typeName, 'keyword', false, transformLabel)
+		: [];
 	const nativeMethods = toOptions(
 		natives.functions,
 		typeName,
@@ -379,13 +381,19 @@ const objectOptions = (input: AutocompleteInput<IDataObject>): Completion[] => {
 			};
 
 			const infoKey = [name, key].join('.');
-			option.info = createCompletionOption('', key, isFunction ? 'native-function' : 'keyword', {
-				doc: {
-					name: key,
-					returnType: typeof resolvedProp,
-					description: i18n.proxyVars[infoKey],
+			option.info = createCompletionOption(
+				'',
+				key,
+				isFunction ? 'native-function' : 'keyword',
+				{
+					doc: {
+						name: key,
+						returnType: typeof resolvedProp,
+						description: i18n.proxyVars[infoKey],
+					},
 				},
-			}).info;
+				transformLabel,
+			).info;
 
 			return option;
 		});
@@ -758,10 +766,16 @@ const createLuxonAutocompleteOption = (
 		section: doc?.section,
 		apply: applyCompletion(hasRequiredArgs(doc), transformLabel),
 	};
-	option.info = createCompletionOption('DateTime', name, type, {
-		// Add translated description
-		doc: { ...doc, description: translations[name] } as DocMetadata,
-	}).info;
+	option.info = createCompletionOption(
+		'DateTime',
+		name,
+		type,
+		{
+			// Add translated description
+			doc: { ...doc, description: translations[name] } as DocMetadata,
+		},
+		transformLabel,
+	).info;
 	return option;
 };
 

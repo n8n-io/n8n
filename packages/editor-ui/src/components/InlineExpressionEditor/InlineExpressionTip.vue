@@ -13,6 +13,16 @@
 			{{ $locale.baseText('parameterInput.dragTipAfterPill') }}
 		</n8n-text>
 	</div>
+
+	<div v-else-if="tip === 'executePrevious'" :class="$style.tip">
+		<n8n-text size="small" :class="$style.tipText"
+			>{{ $locale.baseText('parameterInput.tip') }}:
+		</n8n-text>
+		<n8n-text size="small" :class="$style.text"
+			>{{ $locale.baseText('expressionModalInput.noExecutionData') }}
+		</n8n-text>
+	</div>
+
 	<div v-else :class="$style.tip">
 		<n8n-text size="small" :class="$style.tipText"
 			>{{ $locale.baseText('parameterInput.tip') }}:
@@ -48,11 +58,13 @@ const ndvStore = useNDVStore();
 const props = defineProps<{ tip?: 'drag' | 'default' }>();
 
 const tip = computed(() => {
+	if (!ndvStore.hasInputData) {
+		return 'executePrevious';
+	}
+
 	if (props.tip) return props.tip;
 
-	if (ndvStore.hasInputData) {
-		return 'drag';
-	}
+	if (ndvStore.focusedMappableInput) return 'drag';
 
 	return 'default';
 });

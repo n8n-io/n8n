@@ -1,5 +1,5 @@
 <template>
-	<div :class="$style.dataDisplay">
+	<div :class="[$style.dataDisplay, { [$style.highlight]: highlight }]">
 		<table v-if="tableData.columns && tableData.columns.length === 0" :class="$style.table">
 			<tr>
 				<th :class="$style.emptyCell"></th>
@@ -258,6 +258,9 @@ export default defineComponent({
 		},
 		focusedMappableInput(): string {
 			return this.ndvStore.focusedMappableInput;
+		},
+		highlight(): boolean {
+			return !this.ndvStore.isMappingOnboarded && Boolean(this.ndvStore.focusedMappableInput);
 		},
 	},
 	methods: {
@@ -644,7 +647,9 @@ export default defineComponent({
 	}
 }
 
+.highlight .draggableHeader,
 .draggingHeader {
+	color: var(--color-primary);
 	background-color: var(--color-primary-tint-2);
 }
 
