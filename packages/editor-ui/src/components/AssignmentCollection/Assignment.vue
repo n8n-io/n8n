@@ -58,7 +58,7 @@ const assignmentTypeToNodeProperty = (
 
 const nameParameter = computed<INodeProperties>(() => ({
 	name: 'name',
-	displayName: '',
+	displayName: 'Name',
 	default: '',
 	requiresDataPath: 'single',
 	placeholder: 'name',
@@ -68,7 +68,7 @@ const nameParameter = computed<INodeProperties>(() => ({
 const valueParameter = computed<INodeProperties>(() => {
 	return {
 		name: 'value',
-		displayName: '',
+		displayName: 'Value',
 		default: '',
 		placeholder: 'value',
 		...assignmentTypeToNodeProperty(assignment.value.type ?? 'string'),
