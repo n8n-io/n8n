@@ -7,9 +7,9 @@ import config from '@/config';
 export class OrchestrationWorkerService extends OrchestrationService {
 	sanityCheck(): boolean {
 		return (
-			this.isInitialized &&
-			config.get('executions.mode') === 'queue' &&
-			config.get('generic.instanceType') === 'worker'
+			this.isInitialized && config.get('executions.mode') === 'queue' //  &&
+			// @TODO: why worker check?
+			// config.get('generic.instanceType') === 'worker'
 		);
 	}
 

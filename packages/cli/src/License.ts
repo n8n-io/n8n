@@ -59,9 +59,7 @@ export class License {
 		const saveCertStr = isMainInstance
 			? async (value: TLicenseBlock) => await this.saveCertStr(value)
 			: async () => {};
-		const onFeatureChange = isMainInstance
-			? async (features: TFeatures) => await this.onFeatureChange(features)
-			: async () => {};
+		const onFeatureChange = async (features: TFeatures) => await this.onFeatureChange(features);
 		const collectUsageMetrics = isMainInstance
 			? async () => await this.usageMetricsService.collectUsageMetrics()
 			: async () => [];
@@ -107,6 +105,8 @@ export class License {
 	}
 
 	async onFeatureChange(_features: TFeatures): Promise<void> {
+		const error = new Error('oh noes');
+		console.log('=-=-=-=-=-=-=-= onFeatureChange called -=-=-=-=-=-=-=-=-', error.stack);
 		if (config.getEnv('executions.mode') === 'queue' && config.getEnv('multiMainSetup.enabled')) {
 			const isMultiMainLicensed = _features[LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES] as
 				| boolean

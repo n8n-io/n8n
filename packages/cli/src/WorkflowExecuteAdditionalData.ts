@@ -70,6 +70,7 @@ import { WorkflowRepository } from './databases/repositories/workflow.repository
 import { UrlService } from './services/url.service';
 import { WorkflowExecutionService } from './workflows/workflowExecution.service';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
+import { OrchestrationService } from './services/orchestration.service';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -946,6 +947,7 @@ export function sendDataToUI(type: string, data: IDataObject | IDataObject[]) {
 
 	// Push data to session which started workflow
 	try {
+		console.log('pushing event of type ' + type + ' to session ' + sessionId);
 		const pushInstance = Container.get(Push);
 		pushInstance.send(type as IPushDataType, data, sessionId);
 	} catch (error) {
@@ -1044,6 +1046,25 @@ export function getWorkflowHooksWorkerExecuter(
 			hookFunctions[key] = [];
 		}
 		hookFunctions[key]!.push.apply(hookFunctions[key], preExecuteFunctions[key]);
+	}
+
+	console.log('executino mode is ' + mode);
+	console.log(
+		'multi main setup enabled: ' + Container.get(OrchestrationService).isMultiMainSetupEnabled,
+	);
+
+	if (mode === 'manual' && Container.get(OrchestrationService).isMultiMainSetupEnabled) {
+		console.log('=-=-=-=-=-=-=-= manual execution with multi main setup enabled =-=-=-=-=-=-=-=-=');
+		// We are now proxying manual executions to workers as well
+		// So the execution progress must be pushed back via redis to the main
+		// that is currently handling the user's push connection
+		const pushHooks = hookFunctionsPush();
+		for (const key of Object.keys(pushHooks)) {
+			if (hookFunctions[key] === undefined) {
+				hookFunctions[key] = [];
+			}
+			hookFunctions[key]!.push.apply(hookFunctions[key], pushHooks[key]);
+		}
 	}
 
 	return new WorkflowHooks(hookFunctions, mode, executionId, workflowData, optionalParameters);

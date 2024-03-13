@@ -25,10 +25,13 @@ export class OrchestrationService {
 	}
 
 	get isMultiMainSetupEnabled() {
+		console.log('is queue?', config.getEnv('executions.mode') === 'queue');
+		console.log('is mm enabled?', config.getEnv('multiMainSetup.enabled'));
+		console.log('is mm licensed?', this.isMultiMainSetupLicensed);
 		return (
 			config.getEnv('executions.mode') === 'queue' &&
 			config.getEnv('multiMainSetup.enabled') &&
-			config.getEnv('generic.instanceType') === 'main' &&
+			// config.getEnv('generic.instanceType') === 'main' &&
 			this.isMultiMainSetupLicensed
 		);
 	}
@@ -52,16 +55,20 @@ export class OrchestrationService {
 	}
 
 	async init() {
+		console.log('called init on orchestration service.');
 		if (this.isInitialized) return;
+		console.log('did not return early');
 
 		if (config.get('executions.mode') === 'queue') await this.initPublisher();
 
+		console.log('checked publisher');
 		if (this.isMultiMainSetupEnabled) {
 			await this.multiMainSetup.init();
 		} else {
 			config.set('multiMainSetup.instanceType', 'leader');
 		}
 
+		console.log('done init orchestration service.');
 		this.isInitialized = true;
 	}
 
@@ -84,7 +91,10 @@ export class OrchestrationService {
 	}
 
 	async publish(command: RedisServiceCommand, data?: unknown) {
+		console.log('about to run sanity check');
+		console.log('is initialized?', this.isInitialized);
 		if (!this.sanityCheck()) return;
+		console.log('sanity check passed');
 
 		const payload = data as RedisServiceBaseCommand['payload'];
 

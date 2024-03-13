@@ -177,7 +177,7 @@ export class WorkflowRunner {
 			this.activeExecutions.attachResponsePromise(executionId, responsePromise);
 		}
 
-		if (this.executionsMode === 'queue' && data.executionMode !== 'manual') {
+		if (this.executionsMode === 'queue') {
 			// Do not run "manual" executions in bull because sending events to the
 			// frontend would not be possible
 			await this.enqueueExecution(executionId, data, loadStaticData, realtime);
@@ -393,6 +393,9 @@ export class WorkflowRunner {
 			executionId,
 			loadStaticData: !!loadStaticData,
 		};
+		if (data.sessionId) {
+			jobData.sessionId = data.sessionId;
+		}
 
 		let priority = 100;
 		if (realtime === true) {

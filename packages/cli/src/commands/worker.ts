@@ -93,7 +93,7 @@ export class Worker extends BaseCommand {
 	}
 
 	async runJob(job: Job, nodeTypes: INodeTypes): Promise<JobResponse> {
-		const { executionId, loadStaticData } = job.data;
+		const { executionId, loadStaticData, sessionId } = job.data;
 		const executionRepository = Container.get(ExecutionRepository);
 		const fullExecutionData = await executionRepository.findSingleExecution(executionId, {
 			includeData: true,
@@ -169,8 +169,15 @@ export class Worker extends BaseCommand {
 			fullExecutionData.workflowData,
 			{
 				retryOf: fullExecutionData.retryOf as string,
+				sessionId,
 			},
 		);
+		if (sessionId) {
+			this.logger.debug(`Session ID exists ${sessionId} for execution "${executionId}`);
+			additionalData.sendDataToUI = WorkflowExecuteAdditionalData.sendDataToUI.bind({
+				sessionId: sessionId,
+			});
+		}
 
 		additionalData.hooks.hookFunctions.sendResponse = [
 			async (response: IExecuteResponsePromiseData): Promise<void> => {
