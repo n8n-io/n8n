@@ -64,7 +64,7 @@
 						:data-depth="node.level"
 						:class="{
 							[$style.mappable]: mappingEnabled,
-							[$style.dragged]: draggingPath === node.path,
+							[$style.dragged]: draggingPath === node.path || highlight,
 						}"
 						class="ph-no-capture"
 					/>
@@ -157,6 +157,9 @@ export default defineComponent({
 		jsonData(): IDataObject[] {
 			return executionDataToJson(this.inputData);
 		},
+		highlight(): boolean {
+			return !this.ndvStore.isMappingOnboarded && Boolean(this.ndvStore.focusedMappableInput);
+		},
 	},
 	methods: {
 		getShortKey(el: HTMLElement): string {
@@ -232,20 +235,21 @@ export default defineComponent({
 			opacity: 1;
 		}
 	}
-}
 
-.mappable {
-	cursor: grab;
+	.mappable {
+		cursor: grab;
 
-	&:hover {
-		background-color: var(--color-json-highlight);
+		&:hover {
+			background-color: var(--color-json-highlight);
+		}
 	}
-}
 
-.dragged {
-	&,
-	&:hover {
-		background-color: var(--color-primary-tint-2);
+	.dragged {
+		&,
+		&:hover {
+			background-color: var(--color-primary-tint-2);
+			color: var(--color-primary);
+		}
 	}
 }
 </style>
