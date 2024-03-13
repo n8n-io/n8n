@@ -3,27 +3,30 @@
 </template>
 
 <script lang="ts">
+import { completionStatus, startCompletion } from '@codemirror/autocomplete';
 import { history } from '@codemirror/commands';
 import { Compartment, EditorState, Prec } from '@codemirror/state';
 import { EditorView, keymap } from '@codemirror/view';
 import type { PropType } from 'vue';
-import { defineComponent } from 'vue';
+import { defineComponent, nextTick } from 'vue';
 
 import { completionManager } from '@/mixins/completionManager';
 import { expressionManager } from '@/mixins/expressionManager';
 import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
-import { n8nAutocompletion, n8nLang } from '@/plugins/codemirror/n8nLang';
-import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
-import { isEqual } from 'lodash-es';
-import type { IDataObject } from 'n8n-workflow';
-import { inputTheme } from './theme';
 import {
 	autocompleteKeyMap,
 	enterKeyMap,
 	historyKeyMap,
 	tabKeyMap,
 } from '@/plugins/codemirror/keymap';
-import { completionStatus } from '@codemirror/autocomplete';
+import { n8nAutocompletion, n8nLang } from '@/plugins/codemirror/n8nLang';
+import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
+import { isEqual } from 'lodash-es';
+import { createEventBus, type EventBus } from 'n8n-design-system/utils';
+import type { IDataObject } from 'n8n-workflow';
+import { inputTheme } from './theme';
+import { useNDVStore } from '@/stores/ndv.store';
+import { mapStores } from 'pinia';
 
 const editableConf = new Compartment();
 
@@ -51,6 +54,13 @@ export default defineComponent({
 			type: Object as PropType<IDataObject>,
 			default: () => ({}),
 		},
+		eventBus: {
+			type: Object as PropType<EventBus>,
+			default: () => createEventBus(),
+		},
+	},
+	computed: {
+		...mapStores(useNDVStore),
 	},
 	watch: {
 		isReadOnly(newValue: boolean) {
@@ -132,13 +142,33 @@ export default defineComponent({
 		this.editorState = this.editor.state;
 
 		highlighter.addColor(this.editor, this.resolvableSegments);
+
+		this.eventBus.on('drop', this.onDrop);
 	},
 	beforeUnmount() {
 		this.editor?.destroy();
+		this.eventBus.off('drop', this.onDrop);
 	},
 	methods: {
 		focus() {
 			this.editor?.focus();
+		},
+		setCursorPosition(pos: number) {
+			this.editor.dispatch({ selection: { anchor: pos, head: pos } });
+		},
+		async onDrop() {
+			await nextTick();
+			this.focus();
+
+			const END_OF_EXPRESSION = ' }}';
+			const value = this.editor.state.sliceDoc(0);
+			const cursorPosition = Math.max(value.lastIndexOf(END_OF_EXPRESSION), 0);
+
+			this.setCursorPosition(cursorPosition);
+
+			if (!this.ndvStore.isAutocompleteOnboarded) {
+				startCompletion(this.editor as EditorView);
+			}
 		},
 	},
 });
