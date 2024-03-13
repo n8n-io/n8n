@@ -34,7 +34,9 @@
     "test:e2e:all": "cross-env E2E_TESTS=true start-server-and-test start http://localhost:5678/favicon.ico 'cypress run --headless'"
   },
   "dependencies": {
-    "n8n": "workspace:*"
+    "@types/strftime": "^0.9.8",
+    "n8n": "workspace:*",
+    "strftime": "^0.10.2"
   },
   "devDependencies": {
     "@n8n_io/eslint-config": "workspace:*",
