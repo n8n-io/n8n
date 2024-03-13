@@ -63,8 +63,8 @@ export class ImportService {
 
 				await tx.upsert(
 					SharedWorkflow,
-					{ workflowId, userId, projectId: personalProject.id, role: 'workflow:owner' },
-					['workflowId', 'userId'],
+					{ workflowId, projectId: personalProject.id, role: 'workflow:owner' },
+					['workflowId', 'projectId'],
 				);
 
 				if (!workflow.tags?.length) continue;
