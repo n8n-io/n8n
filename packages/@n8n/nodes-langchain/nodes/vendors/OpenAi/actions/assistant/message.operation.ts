@@ -190,8 +190,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	if (
 		options.preserveOriginalTools !== false &&
 		nodeVersion >= 1.3 &&
-		assistantTools &&
-		assistantTools?.length
+		(assistantTools ?? [])?.length
 	) {
 		await client.beta.assistants.update(assistantId, {
 			tools: assistantTools,
