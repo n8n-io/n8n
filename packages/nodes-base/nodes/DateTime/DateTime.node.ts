@@ -223,22 +223,6 @@ export class DateTime implements INodeType {
 				description: 'The format to convert the date to',
 			},
 			{
-				displayName: 'From Timezone Name or ID',
-				name: 'fromTimezone',
-				type: 'options',
-				displayOptions: {
-					show: {
-						action: ['customFormat'],
-					},
-				},
-				typeOptions: {
-					loadOptionsMethod: 'getTimezones',
-				},
-				default: 'UTC',
-				description:
-					'The timezone to convert from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-			},
-			{
 				displayName: 'To Timezone Name or ID',
 				name: 'toTimezone',
 				type: 'options',
