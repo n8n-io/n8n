@@ -9,6 +9,7 @@ import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { IActionDropdownItem } from 'n8n-design-system/src/components/N8nActionDropdown/ActionDropdown.vue';
+import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import { computed, ref, watch } from 'vue';
 import { getMousePosition } from '../utils/nodeViewUtils';
@@ -158,6 +159,16 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 				...selectionActions,
 			];
 		} else {
+			const nonMainInputs = (node: INode) => {
+				const workflow = workflowsStore.getCurrentWorkflow();
+				const workflowNode = workflow.getNode(node.name);
+				const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+				const inputs = NodeHelpers.getNodeInputs(workflow, workflowNode!, nodeType!);
+				const inputNames = NodeHelpers.getConnectionTypes(inputs);
+
+				return !!inputNames.find((inputName) => inputName !== NodeConnectionType.Main);
+			};
+
 			const menuActions: IActionDropdownItem[] = [
 				!onlyStickies && {
 					id: 'toggle_activation',
@@ -173,7 +184,7 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 						? i18n.baseText('contextMenu.unpin', i18nOptions)
 						: i18n.baseText('contextMenu.pin', i18nOptions),
 					shortcut: { keys: ['p'] },
-					disabled: isReadOnly.value || !nodes.every(canPinNode),
+					disabled: nodes.some(nonMainInputs) || isReadOnly.value || !nodes.every(canPinNode),
 				},
 				{
 					id: 'copy',
