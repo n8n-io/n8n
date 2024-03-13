@@ -1,0 +1,7 @@
+{
+	"node": "n8n-nodes-honeybook.action",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["HoneyBook"],
+	"resources": {}
+}

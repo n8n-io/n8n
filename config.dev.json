@@ -1,0 +1,17 @@
+{
+	"userManagement": {
+		"jwtSecret": "honeybook-rules"
+	},
+	"logs": {
+		"level": "debug"
+	},
+	"nodes": {
+		"communityPackages": {
+			"enabled": true
+		},
+		"include": [
+			"CUSTOM.honeyBookAction",
+			"CUSTOM.honeyBookTrigger"
+		]
+	}
+}

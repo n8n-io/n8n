@@ -153,7 +153,7 @@ importers:
         version: 3.3.4
       vue-markdown-render:
         specifier: ^2.0.1
-        version: 2.0.1
+        version: 2.0.1(typescript@5.3.2)
     devDependencies:
       '@iconify-json/mdi':
         specifier: ^1.1.54
@@ -1182,6 +1182,25 @@ importers:
       unplugin-icons:
         specifier: ^0.17.0
         version: 0.17.4
+
+  packages/n8n-nodes-honeybook:
+    dependencies:
+      '@n8n/vm2':
+        specifier: 3.9.20
+        version: 3.9.20
+      n8n-workflow:
+        specifier: workspace:*
+        version: link:../workflow
+    devDependencies:
+      eslint-plugin-n8n-nodes-base:
+        specifier: ^1.16.0
+        version: 1.16.0(eslint@8.54.0)(typescript@5.3.2)
+      gulp:
+        specifier: ^4.0.0
+        version: 4.0.2
+      n8n-core:
+        specifier: workspace:*
+        version: link:../core
 
   packages/node-dev:
     dependencies:
@@ -26070,7 +26089,7 @@ packages:
     dependencies:
       fs-mkdirp-stream: 1.0.0
       glob-stream: 6.1.0
-      graceful-fs: 4.2.10
+      graceful-fs: 4.2.11
       is-valid-glob: 1.0.0
       lazystream: 1.0.1
       lead: 1.0.0
@@ -26468,13 +26487,6 @@ packages:
       vue: '>=3.0.0'
     dependencies:
       vue: 3.4.21(typescript@5.3.2)
-    dev: false
-
-  /vue-markdown-render@2.0.1:
-    resolution: {integrity: sha512-/UBCu0OrZ9zzEDtiZVwlV/CQ+CgcwViServGis3TRXSVc6+6lJxcaOcD43vRoQzYfPa9r9WDt0Q7GyupOmpEWA==}
-    dependencies:
-      markdown-it: 12.3.2
-      vue: 3.3.4
     dev: false
 
   /vue-markdown-render@2.0.1(typescript@5.3.2):
