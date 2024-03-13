@@ -2341,6 +2341,7 @@ export interface ResourceMapperField {
 
 export type FieldType =
 	| 'string'
+	| 'string-alphanumeric'
 	| 'number'
 	| 'dateTime'
 	| 'boolean'
