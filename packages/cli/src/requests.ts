@@ -9,6 +9,7 @@ import type {
 	INodeParameters,
 	INodeTypeNameVersion,
 	IUser,
+	NodeError,
 } from 'n8n-workflow';
 
 import { IsBoolean, IsEmail, IsIn, IsOptional, IsString, Length } from 'class-validator';
@@ -134,6 +135,18 @@ export function hasSharing(
 	workflows: ListQuery.Workflow.Plain[] | ListQuery.Workflow.WithSharing[],
 ): workflows is ListQuery.Workflow.WithSharing[] {
 	return workflows.some((w) => 'shared' in w);
+}
+
+// ----------------------------------
+//          /ai
+// ----------------------------------
+
+export declare namespace AIRequest {
+	export type DebugError = AuthenticatedRequest<{}, {}, AIDebugErrorPayload>;
+}
+
+export interface AIDebugErrorPayload {
+	error: NodeError;
 }
 
 // ----------------------------------
