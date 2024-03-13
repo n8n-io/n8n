@@ -13,4 +13,5 @@ export type AutocompleteInput<R = Resolved> = {
 	resolved: R;
 	base: string;
 	tail: string;
+	transformLabel?: (label: string) => string;
 };
