@@ -1,5 +1,5 @@
 <template>
-	<div :class="$style.dataDisplay">
+	<div :class="[$style.dataDisplay, { [$style.highlight]: highlight }]">
 		<table v-if="tableData.columns && tableData.columns.length === 0" :class="$style.table">
 			<tr>
 				<th :class="$style.emptyCell"></th>
@@ -259,6 +259,9 @@ export default defineComponent({
 		focusedMappableInput(): string {
 			return this.ndvStore.focusedMappableInput;
 		},
+		highlight(): boolean {
+			return !this.ndvStore.isMappingOnboarded && Boolean(this.ndvStore.focusedMappableInput);
+		},
 	},
 	methods: {
 		shorten,
@@ -438,7 +441,9 @@ export default defineComponent({
 
 				void this.externalHooks.run('runDataTable.onDragEnd', telemetryPayload);
 
-				this.$telemetry.track('User dragged data for mapping', telemetryPayload);
+				this.$telemetry.track('User dragged data for mapping', telemetryPayload, {
+					withPostHog: true,
+				});
 			}, 1000); // ensure dest data gets set if drop
 		},
 		isSimple(data: unknown): boolean {
@@ -642,7 +647,12 @@ export default defineComponent({
 	}
 }
 
+.highlight .draggableHeader {
+	color: var(--color-primary);
+}
+
 .draggingHeader {
+	color: var(--color-primary);
 	background-color: var(--color-primary-tint-2);
 }
 

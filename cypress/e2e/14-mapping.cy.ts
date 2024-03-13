@@ -253,7 +253,6 @@ describe('Data mapping', () => {
 		workflowPage.actions.openNode('Set');
 
 		ndv.actions.typeIntoParameterInput('value', 'delete me');
-		ndv.actions.dismissMappingTooltip();
 
 		ndv.actions.typeIntoParameterInput('name', 'test');
 
