@@ -7,8 +7,7 @@
 	},
 	"nodes": {
 		"communityPackages": {
-			"enabled": true,
-			"folders": "/Users/ozweiss/honeybook/n8n/packages/n8n-nodes-honeybook/dist"
+			"enabled": true
 		},
 		"include": [
 			"CUSTOM.honeyBookAction",
