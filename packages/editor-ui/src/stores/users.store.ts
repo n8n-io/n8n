@@ -32,7 +32,7 @@ import type {
 	InvitableRoleName,
 } from '@/Interface';
 import { getCredentialPermissions } from '@/permissions';
-import { getPersonalizedNodeTypes } from '@/utils/userUtils';
+import { ROLE, getPersonalizedNodeTypes } from '@/utils/userUtils';
 import { defineStore } from 'pinia';
 import { useRootStore } from './n8nRoot.store';
 import { usePostHog } from './posthog.store';
@@ -46,7 +46,7 @@ import type { Scope } from '@n8n/permissions';
 import { inviteUsers, acceptInvitation } from '@/api/invitation';
 
 const isPendingUser = (user: IUserResponse | null) => !!user?.isPending;
-const isInstanceOwner = (user: IUserResponse | null) => user?.role === 'global:owner';
+const isInstanceOwner = (user: IUserResponse | null) => user?.role === ROLE.Owner;
 const isDefaultUser = (user: IUserResponse | null) => isInstanceOwner(user) && isPendingUser(user);
 
 export const useUsersStore = defineStore(STORES.USERS, {
@@ -139,7 +139,6 @@ export const useUsersStore = defineStore(STORES.USERS, {
 						: undefined,
 					isDefaultUser: isDefaultUser(updatedUser),
 					isPendingUser: isPendingUser(updatedUser),
-					isOwner: isInstanceOwner(updatedUser),
 				};
 
 				this.users = {

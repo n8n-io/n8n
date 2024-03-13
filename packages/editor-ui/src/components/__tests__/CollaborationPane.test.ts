@@ -16,7 +16,6 @@ const OWNER_USER = {
 	role: 'global:owner',
 	disabled: false,
 	isPending: false,
-	isOwner: true,
 	fullName: 'Owner User',
 };
 
@@ -29,7 +28,6 @@ const MEMBER_USER = {
 	role: 'global:member',
 	disabled: false,
 	isPending: false,
-	isOwner: false,
 	fullName: 'Member User',
 };
 
@@ -42,7 +40,6 @@ const MEMBER_USER_2 = {
 	role: 'global:member',
 	disabled: false,
 	isPending: false,
-	isOwner: false,
 	fullName: 'Another Member User',
 };
 
