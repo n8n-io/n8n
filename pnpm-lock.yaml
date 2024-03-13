@@ -19,9 +19,6 @@ overrides:
   tslib: ^2.6.1
   tsconfig-paths: ^4.2.0
   typescript: ^5.3.0
-  xml2js: ^0.5.0
-  cpy@8>globby: ^11.1.0
-  qqjs>globby: ^11.1.0
 
 patchedDependencies:
   '@sentry/cli@2.17.0':
@@ -248,8 +245,8 @@ importers:
         specifier: 2.0.0
         version: 2.0.0
       epub2:
-        specifier: 3.0.1
-        version: 3.0.1(ts-toolbelt@9.6.0)
+        specifier: 3.0.2
+        version: 3.0.2(ts-toolbelt@9.6.0)
       form-data:
         specifier: 4.0.0
         version: 4.0.0
@@ -261,7 +258,7 @@ importers:
         version: 2.0.14
       langchain:
         specifier: 0.1.25
-        version: 0.1.25(@aws-sdk/client-bedrock-runtime@3.454.0)(@aws-sdk/credential-provider-node@3.451.0)(@getzep/zep-js@0.9.0)(@google-ai/generativelanguage@0.2.1)(@huggingface/inference@2.6.4)(@pinecone-database/pinecone@2.1.0)(@qdrant/js-client-rest@1.7.0)(@supabase/supabase-js@2.38.5)(@xata.io/client@0.28.0)(cohere-ai@6.2.2)(d3-dsv@2.0.0)(epub2@3.0.1)(html-to-text@9.0.5)(lodash@4.17.21)(mammoth@1.6.0)(pdf-parse@1.1.1)(pg@8.11.3)(redis@4.6.12)
+        version: 0.1.25(@aws-sdk/client-bedrock-runtime@3.454.0)(@aws-sdk/credential-provider-node@3.451.0)(@getzep/zep-js@0.9.0)(@google-ai/generativelanguage@0.2.1)(@huggingface/inference@2.6.4)(@pinecone-database/pinecone@2.1.0)(@qdrant/js-client-rest@1.7.0)(@supabase/supabase-js@2.38.5)(@xata.io/client@0.28.0)(cohere-ai@6.2.2)(d3-dsv@2.0.0)(epub2@3.0.2)(html-to-text@9.0.5)(lodash@4.17.21)(mammoth@1.6.0)(pdf-parse@1.1.1)(pg@8.11.3)(redis@4.6.12)
       lodash:
         specifier: 4.17.21
         version: 4.17.21
@@ -689,8 +686,8 @@ importers:
         specifier: 8.14.2
         version: 8.14.2
       xml2js:
-        specifier: ^0.5.0
-        version: 0.5.0
+        specifier: 0.6.2
+        version: 0.6.2
       xmllint-wasm:
         specifier: 3.0.1
         version: 3.0.1
@@ -765,8 +762,8 @@ importers:
         specifier: ^8.5.4
         version: 8.5.4(patch_hash=nbzuqaoyqbrfwipijj5qriqqju)
       '@types/xml2js':
-        specifier: ^0.4.11
-        version: 0.4.11
+        specifier: ^0.4.14
+        version: 0.4.14
       '@types/yamljs':
         specifier: ^0.2.31
         version: 0.2.31
@@ -843,8 +840,8 @@ importers:
         specifier: 8.3.2
         version: 8.3.2
       xml2js:
-        specifier: ^0.5.0
-        version: 0.5.0
+        specifier: 0.6.2
+        version: 0.6.2
     devDependencies:
       '@types/aws4':
         specifier: ^1.5.1
@@ -868,8 +865,8 @@ importers:
         specifier: ^8.3.2
         version: 8.3.4
       '@types/xml2js':
-        specifier: ^0.4.11
-        version: 0.4.11
+        specifier: ^0.4.14
+        version: 0.4.14
 
   packages/design-system:
     dependencies:
@@ -1375,8 +1372,8 @@ importers:
         specifier: ^2.8.1
         version: 2.8.1
       rss-parser:
-        specifier: 3.12.0
-        version: 3.12.0
+        specifier: 3.13.0
+        version: 3.13.0
       semver:
         specifier: ^7.5.4
         version: 7.5.4
@@ -1408,8 +1405,8 @@ importers:
         specifier: https://cdn.sheetjs.com/xlsx-0.19.3/xlsx-0.19.3.tgz
         version: '@cdn.sheetjs.com/xlsx-0.19.3/xlsx-0.19.3.tgz'
       xml2js:
-        specifier: ^0.5.0
-        version: 0.5.0
+        specifier: 0.6.2
+        version: 0.6.2
     devDependencies:
       '@types/amqplib':
         specifier: ^0.10.1
@@ -1490,8 +1487,8 @@ importers:
         specifier: ^8.3.2
         version: 8.3.4
       '@types/xml2js':
-        specifier: ^0.4.11
-        version: 0.4.11
+        specifier: ^0.4.14
+        version: 0.4.14
       eslint-plugin-n8n-nodes-base:
         specifier: ^1.16.0
         version: 1.16.0(eslint@8.54.0)(typescript@5.3.2)
@@ -1556,8 +1553,8 @@ importers:
         specifier: 2.3.5
         version: 2.3.5
       xml2js:
-        specifier: ^0.5.0
-        version: 0.5.0
+        specifier: 0.6.2
+        version: 0.6.2
     devDependencies:
       '@types/deep-equal':
         specifier: ^1.0.1
@@ -1578,8 +1575,8 @@ importers:
         specifier: ^2.3.5
         version: 2.3.5
       '@types/xml2js':
-        specifier: ^0.4.11
-        version: 0.4.11
+        specifier: ^0.4.14
+        version: 0.4.14
 
 packages:
 
@@ -9919,8 +9916,8 @@ packages:
     dev: true
     patched: true
 
-  /@types/xml2js@0.4.11:
-    resolution: {integrity: sha512-JdigeAKmCyoJUiQljjr7tQG3if9NkqGUgwEUqBvV0N7LM4HyQk7UXCnusRa1lnvXAEYJ8mw8GtZWioagNztOwA==}
+  /@types/xml2js@0.4.14:
+    resolution: {integrity: sha512-4YnrRemBShWRO2QjvUin8ESA41rH+9nQGLUGZV/1IDhi3SL9OhdpNC/MrulTWuptXKwhx/aDxE7toV0f/ypIXQ==}
     dependencies:
       '@types/node': 18.16.16
     dev: true
@@ -13907,15 +13904,15 @@ packages:
     hasBin: true
     dev: true
 
-  /epub2@3.0.1(ts-toolbelt@9.6.0):
-    resolution: {integrity: sha512-qwAPzDvcfKOZza1FU38BHo7qyiHMZXpJKVkdLK7I+wHi4nUhIhh+6qQbOGxPdiPaqAuI985d/nIUuJmbZ1ACrA==}
+  /epub2@3.0.2(ts-toolbelt@9.6.0):
+    resolution: {integrity: sha512-rhvpt27CV5MZfRetfNtdNwi3XcNg1Am0TwfveJkK8YWeHItHepQ8Js9J06v8XRIjuTrCW/NSGYMTy55Of7BfNQ==}
     dependencies:
       adm-zip: 0.5.10
       array-hyper-unique: 2.1.4
       bluebird: 3.7.2
       crlf-normalize: 1.0.19(ts-toolbelt@9.6.0)
       tslib: 2.6.1
-      xml2js: 0.5.0
+      xml2js: 0.6.2
     transitivePeerDependencies:
       - ts-toolbelt
     dev: false
@@ -18134,7 +18131,7 @@ packages:
     resolution: {integrity: sha512-Xq9nH7KlWZmXAtodXDDRE7vs6DU1gTU8zYDHDiWLSip45Egwq3plLHzPn27NgvzL2r1LMPC1vdqh98sQxtqj4A==}
     dev: false
 
-  /langchain@0.1.25(@aws-sdk/client-bedrock-runtime@3.454.0)(@aws-sdk/credential-provider-node@3.451.0)(@getzep/zep-js@0.9.0)(@google-ai/generativelanguage@0.2.1)(@huggingface/inference@2.6.4)(@pinecone-database/pinecone@2.1.0)(@qdrant/js-client-rest@1.7.0)(@supabase/supabase-js@2.38.5)(@xata.io/client@0.28.0)(cohere-ai@6.2.2)(d3-dsv@2.0.0)(epub2@3.0.1)(html-to-text@9.0.5)(lodash@4.17.21)(mammoth@1.6.0)(pdf-parse@1.1.1)(pg@8.11.3)(redis@4.6.12):
+  /langchain@0.1.25(@aws-sdk/client-bedrock-runtime@3.454.0)(@aws-sdk/credential-provider-node@3.451.0)(@getzep/zep-js@0.9.0)(@google-ai/generativelanguage@0.2.1)(@huggingface/inference@2.6.4)(@pinecone-database/pinecone@2.1.0)(@qdrant/js-client-rest@1.7.0)(@supabase/supabase-js@2.38.5)(@xata.io/client@0.28.0)(cohere-ai@6.2.2)(d3-dsv@2.0.0)(epub2@3.0.2)(html-to-text@9.0.5)(lodash@4.17.21)(mammoth@1.6.0)(pdf-parse@1.1.1)(pg@8.11.3)(redis@4.6.12):
     resolution: {integrity: sha512-sfEChvr4H2CklHdSByNBbytwBrFhgtA5kPOnwcBrxuXGg1iOaTzhVxQA0QcNcQucI3hZrsNbZjxGp+Can1ooZQ==}
     engines: {node: '>=18'}
     peerDependencies:
@@ -18304,7 +18301,7 @@ packages:
       '@xata.io/client': 0.28.0(typescript@5.3.2)
       binary-extensions: 2.2.0
       d3-dsv: 2.0.0
-      epub2: 3.0.1(ts-toolbelt@9.6.0)
+      epub2: 3.0.2(ts-toolbelt@9.6.0)
       expr-eval: 2.0.2
       html-to-text: 9.0.5
       js-tiktoken: 1.0.8
@@ -22807,8 +22804,8 @@ packages:
     resolution: {integrity: sha512-APM0Gt1KoXBz0iIkkdB/kfvGOwC4UuJFeG/c+yV7wSc7q96cG/kJ0HiYCnzivD9SB53cLV1MlHFNfOuPaadYSw==}
     dev: true
 
-  /rss-parser@3.12.0:
-    resolution: {integrity: sha512-aqD3E8iavcCdkhVxNDIdg1nkBI17jgqF+9OqPS1orwNaOgySdpvq6B+DoONLhzjzwV8mWg37sb60e4bmLK117A==}
+  /rss-parser@3.13.0:
+    resolution: {integrity: sha512-7jWUBV5yGN3rqMMj7CZufl/291QAhvrrGpDNE4k/02ZchL0npisiYYqULF71jCEKoIiHvK/Q2e6IkDwPziT7+w==}
     dependencies:
       entities: 2.2.0
       xml2js: 0.5.0
@@ -26251,6 +26248,14 @@ packages:
 
   /xml2js@0.5.0:
     resolution: {integrity: sha512-drPFnkQJik/O+uPKpqSgr22mpuFHqKdbS835iAQrUC73L2F5WkboIRd63ai/2Yg6I1jzifPFKH2NTK+cfglkIA==}
+    engines: {node: '>=4.0.0'}
+    dependencies:
+      sax: 1.2.4
+      xmlbuilder: 11.0.1
+    dev: false
+
+  /xml2js@0.6.2:
+    resolution: {integrity: sha512-T4rieHaC1EXcES0Kxxj4JWgaUQHDk+qwHcYOCFHfiwKz7tOVPLq7Hjq9dM1WCMhylqMEfP7hMcOIChvotiZegA==}
     engines: {node: '>=4.0.0'}
     dependencies:
       sax: 1.2.4
