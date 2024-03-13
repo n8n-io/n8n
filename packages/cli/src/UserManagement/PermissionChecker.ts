@@ -18,14 +18,7 @@ export class PermissionChecker {
 	) {}
 
 	/**
-	 * Check if a user is permitted to execute a workflow.
-	 *
-	 * Allow:
-	 * - if user has global scope `workflow:execute`, OR
-	 * - if user has project scope `workflow:execute` in any of their roles
-	 * in any of the projects where the workflow is accessible, AND if every
-	 * credential used by nodes in the workflow is accessible by any of the
-	 * projects where the workflow is accessible.
+	 * Check if a workflow has the ability to execute based on the projects it's apart of.
 	 */
 	async check(workflowId: string, nodes: INode[]) {
 		const projectIds = await this.projectService.findProjectsWorkflowIsIn(workflowId);
