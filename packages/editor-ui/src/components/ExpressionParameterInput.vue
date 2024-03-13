@@ -22,6 +22,7 @@
 				:rows="rows"
 				:additional-data="additionalExpressionData"
 				:path="path"
+				:event-bus="eventBus"
 				@focus="onFocus"
 				@blur="onBlur"
 				@change="onChange"
@@ -64,6 +65,7 @@ import type { Segment } from '@/types/expressions';
 import type { TargetItem } from '@/Interface';
 import type { IDataObject } from 'n8n-workflow';
 import { useDebounce } from '@/composables/useDebounce';
+import { type EventBus, createEventBus } from 'n8n-design-system/utils';
 
 type InlineExpressionEditorInputRef = InstanceType<typeof InlineExpressionEditorInput>;
 
@@ -96,6 +98,10 @@ export default defineComponent({
 		additionalExpressionData: {
 			type: Object as PropType<IDataObject>,
 			default: () => ({}),
+		},
+		eventBus: {
+			type: Object as PropType<EventBus>,
+			default: () => createEventBus(),
 		},
 	},
 	setup() {

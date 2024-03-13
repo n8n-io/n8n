@@ -29,46 +29,34 @@
 			@drop="onDrop"
 		>
 			<template #default="{ droppable, activeDrop }">
-				<n8n-tooltip
-					placement="left"
-					:visible="showMappingTooltip"
-					:buttons="dataMappingTooltipButtons"
-				>
-					<template #content>
-						<span
-							v-html="
-								i18n.baseText(`dataMapping.${displayMode}Hint`, {
-									interpolate: { name: parameter.displayName },
-								})
-							"
-						/>
-					</template>
-					<ParameterInputWrapper
-						ref="param"
-						:parameter="parameter"
-						:model-value="value"
-						:path="path"
-						:is-read-only="isReadOnly"
-						:is-assignment="isAssignment"
-						:rows="rows"
-						:droppable="droppable"
-						:active-drop="activeDrop"
-						:force-show-expression="forceShowExpression"
-						:hint="hint"
-						:hide-hint="hideHint"
-						:hide-issues="hideIssues"
-						:label="label"
-						:event-bus="eventBus"
-						input-size="small"
-						@update="valueChanged"
-						@textInput="onTextInput"
-						@focus="onFocus"
-						@blur="onBlur"
-						@drop="onDrop"
-					/>
-				</n8n-tooltip>
+				<ParameterInputWrapper
+					ref="param"
+					:parameter="parameter"
+					:model-value="value"
+					:path="path"
+					:is-read-only="isReadOnly"
+					:is-assignment="isAssignment"
+					:rows="rows"
+					:droppable="droppable"
+					:active-drop="activeDrop"
+					:force-show-expression="forceShowExpression"
+					:hint="hint"
+					:hide-hint="hideHint"
+					:hide-issues="hideIssues"
+					:label="label"
+					:event-bus="eventBus"
+					input-size="small"
+					@update="valueChanged"
+					@textInput="onTextInput"
+					@focus="onFocus"
+					@blur="onBlur"
+					@drop="onDrop"
+				/>
 			</template>
 		</DraggableTarget>
+		<div v-if="showDragnDropTip" :class="$style.tip">
+			<InlineExpressionTip tip="drag" />
+		</div>
 		<div
 			:class="{
 				[$style.options]: true,
@@ -94,7 +82,7 @@ import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 
-import type { IN8nButton, INodeUi, IRunDataDisplayMode, IUpdateInformation } from '@/Interface';
+import type { INodeUi, IRunDataDisplayMode, IUpdateInformation } from '@/Interface';
 
 import ParameterOptions from '@/components/ParameterOptions.vue';
 import DraggableTarget from '@/components/DraggableTarget.vue';
@@ -109,13 +97,11 @@ import type {
 	IParameterLabel,
 	NodeParameterValueType,
 } from 'n8n-workflow';
-import type { BaseTextKey } from '@/plugins/i18n';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useSegment } from '@/stores/segment.store';
 import { getMappedResult } from '@/utils/mappingUtils';
 import { createEventBus } from 'n8n-design-system/utils';
-
-const DISPLAY_MODES_WITH_DATA_MAPPING = ['table', 'json', 'schema'];
+import InlineExpressionTip from './InlineExpressionEditor/InlineExpressionTip.vue';
 
 export default defineComponent({
 	name: 'ParameterInputFull',
@@ -123,6 +109,7 @@ export default defineComponent({
 		ParameterOptions,
 		DraggableTarget,
 		ParameterInputWrapper,
+		InlineExpressionTip,
 	},
 	props: {
 		displayOptions: {
@@ -159,6 +146,7 @@ export default defineComponent({
 		},
 		parameter: {
 			type: Object as PropType<INodeProperties>,
+			required: true,
 		},
 		path: {
 			type: String,
@@ -192,23 +180,7 @@ export default defineComponent({
 			focused: false,
 			menuExpanded: false,
 			forceShowExpression: false,
-			dataMappingTooltipButtons: [] as IN8nButton[],
-			mappingTooltipEnabled: false,
 		};
-	},
-	mounted() {
-		const mappingTooltipDismissHandler = this.onMappingTooltipDismissed.bind(this);
-		this.dataMappingTooltipButtons = [
-			{
-				attrs: {
-					label: this.i18n.baseText('_reusableBaseText.dismiss' as BaseTextKey),
-					'data-test-id': 'dismiss-mapping-tooltip',
-				},
-				listeners: {
-					onClick: mappingTooltipDismissHandler,
-				},
-			},
-		];
 	},
 	computed: {
 		...mapStores(useNDVStore),
@@ -220,6 +192,9 @@ export default defineComponent({
 		},
 		isInputTypeString(): boolean {
 			return this.parameter.type === 'string';
+		},
+		isInputTypeNumber(): boolean {
+			return this.parameter.type === 'number';
 		},
 		isResourceLocator(): boolean {
 			return this.parameter.type === 'resourceLocator';
@@ -239,31 +214,29 @@ export default defineComponent({
 		displayMode(): IRunDataDisplayMode {
 			return this.ndvStore.inputPanelDisplayMode;
 		},
-		showMappingTooltip(): boolean {
+		showDragnDropTip(): boolean {
 			return (
-				this.mappingTooltipEnabled &&
-				!this.ndvStore.isMappingOnboarded &&
 				this.focused &&
-				this.isInputTypeString &&
-				!this.isInputDataEmpty &&
-				DISPLAY_MODES_WITH_DATA_MAPPING.includes(this.displayMode)
+				(this.isInputTypeString || this.isInputTypeNumber) &&
+				!this.isValueExpression &&
+				!this.isDropDisabled &&
+				!this.ndvStore.isMappingOnboarded
 			);
 		},
 	},
 	methods: {
 		onFocus() {
 			this.focused = true;
-			setTimeout(() => {
-				this.mappingTooltipEnabled = true;
-			}, 500);
 			if (!this.parameter.noDataExpression) {
 				this.ndvStore.setMappableNDVInputFocus(this.parameter.displayName);
 			}
 		},
 		onBlur() {
 			this.focused = false;
-			this.mappingTooltipEnabled = false;
-			if (!this.parameter.noDataExpression) {
+			if (
+				!this.parameter.noDataExpression &&
+				this.ndvStore.focusedMappableInput === this.parameter.displayName
+			) {
 				this.ndvStore.setMappableNDVInputFocus('');
 			}
 			this.$emit('blur');
@@ -333,6 +306,7 @@ export default defineComponent({
 					}
 
 					this.valueChanged(parameterData);
+					this.eventBus.emit('drop', updatedValue);
 
 					if (!this.ndvStore.isMappingOnboarded) {
 						this.showMessage({
@@ -342,7 +316,7 @@ export default defineComponent({
 							dangerouslyUseHTMLString: true,
 						});
 
-						this.ndvStore.disableMappingHint();
+						this.ndvStore.setMappingOnboarded();
 					}
 
 					this.ndvStore.setMappingTelemetry({
@@ -364,21 +338,11 @@ export default defineComponent({
 				this.forceShowExpression = false;
 			}, 200);
 		},
-		onMappingTooltipDismissed() {
-			this.ndvStore.disableMappingHint(false);
-		},
-	},
-	watch: {
-		showMappingTooltip(newValue: boolean) {
-			if (!newValue) {
-				this.$telemetry.track('User viewed data mapping tooltip', { type: 'param focus' });
-			}
-		},
 	},
 });
 </script>
 
-<style module>
+<style lang="scss" module>
 .wrapper {
 	position: relative;
 
@@ -388,6 +352,20 @@ export default defineComponent({
 		}
 	}
 }
+
+.tip {
+	position: absolute;
+	z-index: 2;
+	top: 100%;
+	background: var(--color-code-background);
+	border: var(--border-base);
+	border-top: none;
+	width: 100%;
+	box-shadow: 0 2px 6px 0 rgba(#441c17, 0.1);
+	border-bottom-left-radius: 4px;
+	border-bottom-right-radius: 4px;
+}
+
 .options {
 	position: absolute;
 	bottom: -22px;
