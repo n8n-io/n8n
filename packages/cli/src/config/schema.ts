@@ -917,6 +917,12 @@ export const schema = {
 				default: true,
 				env: 'N8N_COMMUNITY_PACKAGES_ENABLED',
 			},
+			folders: {
+				doc: 'Folders to load community nodes from',
+				format: String,
+				default: '',
+				env: 'N8N_CUSTOM_EXTENSIONS',
+			},
 		},
 	},
 

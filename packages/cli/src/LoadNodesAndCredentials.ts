@@ -5,7 +5,6 @@ import fsPromises from 'fs/promises';
 
 import type { Class, DirectoryLoader, Types } from 'n8n-core';
 import {
-	CUSTOM_EXTENSION_ENV,
 	InstanceSettings,
 	CustomDirectoryLoader,
 	PackageDirectoryLoader,
@@ -162,8 +161,8 @@ export class LoadNodesAndCredentials {
 	getCustomDirectories(): string[] {
 		const customDirectories = [this.instanceSettings.customExtensionDir];
 
-		if (process.env[CUSTOM_EXTENSION_ENV] !== undefined) {
-			const customExtensionFolders = process.env[CUSTOM_EXTENSION_ENV].split(';');
+		if (config.getEnv('nodes.communityPackages.folders') !== undefined) {
+			const customExtensionFolders = config.getEnv('nodes.communityPackages.folders').split(';');
 			customDirectories.push(...customExtensionFolders);
 		}
 

@@ -1,0 +1,18 @@
+{
+	"userManagement": {
+		"jwtSecret": "honeybook-rules"
+	},
+	"logs": {
+		"level": "debug"
+	},
+	"nodes": {
+		"communityPackages": {
+			"enabled": true,
+			"folders": "/Users/ozweiss/honeybook/n8n/packages/n8n-nodes-honeybook/dist"
+		},
+		"include": [
+			"CUSTOM.honeyBookAction",
+			"CUSTOM.honeyBookTrigger"
+		]
+	}
+}
