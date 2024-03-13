@@ -44,18 +44,13 @@ export class AIController {
 	async generateCurl(req: AIRequest.GenerateCurl): Promise<{ curl: string; metadata: object }> {
 		const { service, request } = req.body;
 
+		let data: string;
 		try {
-			const data = await this.aiService.generateCurl(service as string, request as string);
-			const { curl, metadata } = jsonParse<{ curl: string; metadata: object }>(data);
-
-			return {
-				curl,
-				metadata,
-			};
+			return await this.aiService.generateCurl(service, request);
 		} catch (aiServiceError) {
 			throw new FailedDependencyError(
 				(aiServiceError as Error).message ||
-					'Failed to debug error due to an issue with an external dependency. Please try again later.',
+					'Failed to generate HTTP Request Node parameters due to an issue with an external dependency. Please try again later.',
 			);
 		}
 	}

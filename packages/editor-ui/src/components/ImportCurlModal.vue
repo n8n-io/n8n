@@ -31,7 +31,7 @@
 					<N8nButton
 						float="right"
 						:label="i18n.baseText('importCurlModal.button.label')"
-						@click="importCurlCommand"
+						@click="onImport"
 					/>
 				</div>
 			</div>
@@ -41,19 +41,14 @@
 
 <script lang="ts" setup>
 import Modal from '@/components/Modal.vue';
-import {
-	IMPORT_CURL_MODAL_KEY,
-	CURL_IMPORT_NOT_SUPPORTED_PROTOCOLS,
-	CURL_IMPORT_NODES_PROTOCOLS,
-} from '@/constants';
-import { useToast } from '@/composables/useToast';
+import { IMPORT_CURL_MODAL_KEY } from '@/constants';
 import { onMounted, ref } from 'vue';
 import { useUIStore } from '@/stores/ui.store';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useI18n } from '@/composables/useI18n';
+import { useImportCurlCommand } from '@/composables/useImportCurlCommand';
 
-const toast = useToast();
 const telemetry = useTelemetry();
 const i18n = useI18n();
 
@@ -64,8 +59,14 @@ const modalBus = createEventBus();
 
 const inputRef = ref<HTMLTextAreaElement | null>(null);
 
+const { importCurlCommand } = useImportCurlCommand({
+	onImportSuccess,
+	onImportFailure,
+	onAfterImport,
+});
+
 onMounted(() => {
-	curlCommand.value = uiStore.getCurlCommand ?? '';
+	curlCommand.value = uiStore.getModalData(IMPORT_CURL_MODAL_KEY).curlCommand ?? '';
 
 	setTimeout(() => {
 		inputRef.value?.focus();
@@ -80,85 +81,19 @@ function closeDialog(): void {
 	modalBus.emit('close');
 }
 
-async function importCurlCommand(): Promise<void> {
-	const command = curlCommand.value;
-	if (command === '') return;
-
-	try {
-		const parameters = await uiStore.getCurlToJson(command);
-		const url = parameters['parameters.url'];
-
-		const invalidProtocol = CURL_IMPORT_NOT_SUPPORTED_PROTOCOLS.find((p) =>
-			url.includes(`${p}://`),
-		);
-
-		if (!invalidProtocol) {
-			uiStore.setHttpNodeParameters({
-				name: IMPORT_CURL_MODAL_KEY,
-				parameters: JSON.stringify(parameters),
-			});
-
-			closeDialog();
-			sendTelemetry();
-
-			return;
-			// if we have a node that supports the invalid protocol
-			// suggest that one
-		} else if (CURL_IMPORT_NODES_PROTOCOLS[invalidProtocol]) {
-			const useNode = CURL_IMPORT_NODES_PROTOCOLS[invalidProtocol];
-
-			showProtocolErrorWithSupportedNode(invalidProtocol, useNode);
-			// we do not have a node that supports the use protocol
-		} else {
-			showProtocolError(invalidProtocol);
-		}
-
-		sendTelemetry({ success: false, invalidProtocol: true, protocol: invalidProtocol });
-	} catch (e) {
-		showInvalidcURLCommandError();
-
-		sendTelemetry({ success: false, invalidProtocol: false });
-	} finally {
-		uiStore.setCurlCommand({ name: IMPORT_CURL_MODAL_KEY, command: this.curlCommand });
-	}
+function onImportSuccess() {
+	sendTelemetry();
+	closeDialog();
 }
 
-function showProtocolErrorWithSupportedNode(protocol: string, node: string): void {
-	toast.showToast({
-		title: i18n.baseText('importCurlParameter.showError.invalidProtocol1.title', {
-			interpolate: {
-				node,
-			},
-		}),
-		message: i18n.baseText('importCurlParameter.showError.invalidProtocol.message', {
-			interpolate: {
-				protocol: protocol.toUpperCase(),
-			},
-		}),
-		type: 'error',
-		duration: 0,
-	});
+function onImportFailure(data: { invalidProtocol: boolean; protocol?: string }) {
+	sendTelemetry({ success: false, ...data });
 }
 
-function showProtocolError(protocol: string): void {
-	toast.showToast({
-		title: i18n.baseText('importCurlParameter.showError.invalidProtocol2.title'),
-		message: i18n.baseText('importCurlParameter.showError.invalidProtocol.message', {
-			interpolate: {
-				protocol,
-			},
-		}),
-		type: 'error',
-		duration: 0,
-	});
-}
-
-function showInvalidcURLCommandError(): void {
-	toast.showToast({
-		title: i18n.baseText('importCurlParameter.showError.invalidCurlCommand.title'),
-		message: i18n.baseText('importCurlParameter.showError.invalidCurlCommand.message'),
-		type: 'error',
-		duration: 0,
+function onAfterImport() {
+	uiStore.setModalData({
+		name: IMPORT_CURL_MODAL_KEY,
+		data: { curlCommand: curlCommand.value },
 	});
 }
 
@@ -174,6 +109,10 @@ function sendTelemetry(
 		invalidProtocol: data.invalidProtocol,
 		protocol: data.protocol,
 	});
+}
+
+async function onImport() {
+	await importCurlCommand(curlCommand);
 }
 </script>
 

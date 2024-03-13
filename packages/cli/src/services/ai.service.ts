@@ -6,6 +6,8 @@ import type { BaseMessageLike } from '@langchain/core/messages';
 import { AIProviderOpenAI } from '@/services/ai/providers/openai';
 import { AIProviderUnknown } from '@/services/ai/providers/unknown';
 import { createGenerateCurlPrompt } from '@/services/ai/prompts/generateCurl';
+import type { BaseChatModelCallOptions } from '@langchain/core/dist/language_models/chat_models';
+import { ApplicationError, jsonParse } from 'n8n-workflow';
 
 function isN8nAIProviderType(value: string): value is N8nAIProviderType {
 	return ['openai'].includes(value);
@@ -31,8 +33,8 @@ export class AIService {
 		}
 	}
 
-	async prompt(messages: BaseMessageLike[]) {
-		return await this.model.prompt(messages);
+	async prompt(messages: BaseMessageLike[], options?: BaseChatModelCallOptions) {
+		return await this.model.prompt(messages, options);
 	}
 
 	async debugError(error: NodeError, nodeType?: INodeType) {
@@ -40,6 +42,17 @@ export class AIService {
 	}
 
 	async generateCurl(service: string, request: string) {
-		return await this.prompt(createGenerateCurlPrompt(service, request));
+		const data = await this.prompt(createGenerateCurlPrompt(service, request));
+
+		try {
+			console.log('Data:', data);
+			console.log('Request data:', service, request, typeof data);
+			const { curl, metadata } = jsonParse<{ curl: string; metadata: object }>(data);
+			return { curl, metadata };
+		} catch (error) {
+			throw new ApplicationError(
+				'The response from the AI service was not in the expected format.',
+			);
+		}
 	}
 }
