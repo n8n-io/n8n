@@ -19,7 +19,7 @@
 			>{{ $locale.baseText('parameterInput.tip') }}:
 		</n8n-text>
 		<n8n-text size="small" :class="$style.text"
-			>{{ $locale.baseText('expressionModalInput.noExecutionData') }}
+			>{{ $locale.baseText('expressionTip.noExecutionData') }}
 		</n8n-text>
 	</div>
 

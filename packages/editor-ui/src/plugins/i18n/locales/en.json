@@ -679,6 +679,7 @@
 	"expressionModalInput.empty": "[empty]",
 	"expressionModalInput.undefined": "[undefined]",
 	"expressionModalInput.null": "null",
+	"expressionTip.noExecutionData": "Execute previous nodes to use input data",
 	"expressionModalInput.noExecutionData": "Execute previous nodes for preview",
 	"expressionModalInput.noNodeExecutionData": "Execute node ‘{node}’ for preview",
 	"expressionModalInput.noInputConnection": "No input connected",
