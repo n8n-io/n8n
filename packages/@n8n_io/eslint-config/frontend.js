@@ -16,7 +16,12 @@ module.exports = {
 
 	overrides: [
 		{
-			files: ['**/*.test.ts', '**/test/**/*.ts', '**/__tests__/**/*.ts'],
+			files: [
+				'**/*.test.ts',
+				'**/test/**/*.ts',
+				'**/__tests__/**/*.ts',
+				'**/*.stories.ts',
+			],
 			rules: {
 				'import/no-extraneous-dependencies': 'off',
 			},
