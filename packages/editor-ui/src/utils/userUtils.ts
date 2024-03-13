@@ -95,6 +95,8 @@ export const LOGIN_STATUS: { LoggedIn: ILogInStatus; LoggedOut: ILogInStatus } =
 	LoggedOut: 'LoggedOut', // Can only be logged out if UM has been setup
 };
 
+export const isUserGlobalOwner = (user: IUser): boolean => user.role === ROLE.Owner;
+
 export function getPersonalizedNodeTypes(
 	answers:
 		| IPersonalizationSurveyAnswersV1

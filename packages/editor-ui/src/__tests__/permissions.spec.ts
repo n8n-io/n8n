@@ -7,9 +7,10 @@ describe('parsePermissionsTable()', () => {
 		firstName: 'John',
 		lastName: 'Doe',
 		isDefaultUser: false,
-		isOwner: true,
 		isPending: false,
 		isPendingUser: false,
+		mfaEnabled: false,
+		hasRecoveryCodesLeft: false,
 	};
 
 	it('should return permissions object using generic permissions table', () => {

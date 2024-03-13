@@ -31,7 +31,7 @@ const pinia = createTestingPinia({
 					isDefaultUser: false,
 					isPendingUser: false,
 					hasRecoveryCodesLeft: true,
-					isOwner: true,
+					role: 'global:owner',
 					mfaEnabled: false,
 				},
 			},

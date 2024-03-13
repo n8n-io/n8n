@@ -19,7 +19,7 @@ const currentUser = {
 	lastName: 'Doe',
 	email: 'joh.doe@example.com',
 	createdAt: Date().toString(),
-	isOwner: true,
+	role: 'global:owner',
 	isDefaultUser: false,
 	isPendingUser: false,
 	isPending: false,
