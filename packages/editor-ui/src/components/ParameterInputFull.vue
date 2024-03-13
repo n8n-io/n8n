@@ -193,6 +193,9 @@ export default defineComponent({
 		isInputTypeString(): boolean {
 			return this.parameter.type === 'string';
 		},
+		isInputTypeNumber(): boolean {
+			return this.parameter.type === 'number';
+		},
 		isResourceLocator(): boolean {
 			return this.parameter.type === 'resourceLocator';
 		},
@@ -214,6 +217,7 @@ export default defineComponent({
 		showDragnDropTip(): boolean {
 			return (
 				this.focused &&
+				(this.isInputTypeString || this.isInputTypeNumber) &&
 				!this.isValueExpression &&
 				!this.isDropDisabled &&
 				!this.ndvStore.isMappingOnboarded
