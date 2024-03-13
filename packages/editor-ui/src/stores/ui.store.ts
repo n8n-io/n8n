@@ -39,6 +39,7 @@ import {
 	WORKFLOW_HISTORY_VERSION_RESTORE,
 	SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY,
 	SETUP_CREDENTIALS_MODAL_KEY,
+	GENERATE_CURL_MODAL_KEY,
 } from '@/constants';
 import type {
 	CloudUpdateLinkSourceType,
@@ -132,6 +133,11 @@ export const useUIStore = defineStore(STORES.UI, {
 				activeId: null,
 			},
 			[IMPORT_CURL_MODAL_KEY]: {
+				open: false,
+				curlCommand: '',
+				httpNodeParameters: '',
+			},
+			[GENERATE_CURL_MODAL_KEY]: {
 				open: false,
 				curlCommand: '',
 				httpNodeParameters: '',

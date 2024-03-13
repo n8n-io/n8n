@@ -5,6 +5,7 @@ import { createDebugErrorPrompt } from '@/services/ai/prompts/debugError';
 import type { BaseMessageLike } from '@langchain/core/messages';
 import { AIProviderOpenAI } from '@/services/ai/providers/openai';
 import { AIProviderUnknown } from '@/services/ai/providers/unknown';
+import { createGenerateCurlPrompt } from '@/services/ai/prompts/generateCurl';
 
 function isN8nAIProviderType(value: string): value is N8nAIProviderType {
 	return ['openai'].includes(value);
@@ -36,5 +37,9 @@ export class AIService {
 
 	async debugError(error: NodeError, nodeType?: INodeType) {
 		return await this.prompt(createDebugErrorPrompt(error, nodeType));
+	}
+
+	async generateCurl(service: string, request: string) {
+		return await this.prompt(createGenerateCurlPrompt(service, request));
 	}
 }

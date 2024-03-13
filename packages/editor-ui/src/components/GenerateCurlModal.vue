@@ -3,19 +3,28 @@
 		width="700px"
 		:title="i18n.baseText('importCurlModal.title')"
 		:event-bus="modalBus"
-		:name="IMPORT_CURL_MODAL_KEY"
+		:name="GENERATE_CURL_MODAL_KEY"
 		:center="true"
 	>
 		<template #content>
 			<div :class="$style.container">
 				<N8nInputLabel :label="i18n.baseText('importCurlModal.input.label')" color="text-dark">
 					<N8nInput
-						ref="inputRef"
-						:model-value="curlCommand"
-						type="textarea"
-						:rows="5"
-						:placeholder="i18n.baseText('importCurlModal.input.placeholder')"
-						@update:model-value="onInput"
+						ref="serviceRef"
+						:model-value="service"
+						type="text"
+						:placeholder="i18n.baseText('importCurlModal.input.servicePlaceholder')"
+						@update:model-value="onServiceInput"
+						@focus="$event.target.select()"
+					/>
+				</N8nInputLabel>
+				<N8nInputLabel :label="i18n.baseText('importCurlModal.input.label')" color="text-dark">
+					<N8nInput
+						ref="requestRef"
+						:model-value="request"
+						type="text"
+						:placeholder="i18n.baseText('importCurlModal.input.requestPlaceholder')"
+						@update:model-value="onRequestInput"
 						@focus="$event.target.select()"
 					/>
 				</N8nInputLabel>
@@ -42,7 +51,7 @@
 <script lang="ts" setup>
 import Modal from '@/components/Modal.vue';
 import {
-	IMPORT_CURL_MODAL_KEY,
+	GENERATE_CURL_MODAL_KEY,
 	CURL_IMPORT_NOT_SUPPORTED_PROTOCOLS,
 	CURL_IMPORT_NODES_PROTOCOLS,
 } from '@/constants';
@@ -59,16 +68,17 @@ const i18n = useI18n();
 
 const uiStore = useUIStore();
 
-const curlCommand = ref('');
 const modalBus = createEventBus();
 
-const inputRef = ref<HTMLTextAreaElement | null>(null);
+const service = ref('');
+const request = ref('');
+
+const serviceRef = ref<HTMLInputElement | null>(null);
+const requestRef = ref<HTMLInputElement | null>(null);
 
 onMounted(() => {
-	curlCommand.value = uiStore.getCurlCommand ?? '';
-
 	setTimeout(() => {
-		inputRef.value?.focus();
+		serviceRef.value?.focus();
 	});
 });
 
