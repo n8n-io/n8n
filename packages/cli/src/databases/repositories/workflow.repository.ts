@@ -54,7 +54,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	async findById(workflowId: string) {
 		return await this.findOne({
 			where: { id: workflowId },
-			relations: ['shared', 'shared.user'],
+			relations: { shared: true },
 		});
 	}
 

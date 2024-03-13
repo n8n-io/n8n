@@ -223,18 +223,15 @@ export class WorkflowService {
 	async delete(user: User, workflowId: string): Promise<WorkflowEntity | undefined> {
 		await this.externalHooks.run('workflow.delete', [workflowId]);
 
-		const sharedWorkflow = await this.sharedWorkflowRepository.findSharing(
-			workflowId,
-			user,
+		const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(workflowId, user, [
 			'workflow:delete',
-			{ roles: ['workflow:owner'] },
-		);
+		]);
 
-		if (!sharedWorkflow) {
+		if (!workflow) {
 			return;
 		}
 
-		if (sharedWorkflow.workflow.active) {
+		if (workflow.active) {
 			// deactivate before deleting
 			await this.activeWorkflowRunner.remove(workflowId);
 		}
@@ -252,6 +249,6 @@ export class WorkflowService {
 		void Container.get(InternalHooks).onWorkflowDeleted(user, workflowId, false);
 		await this.externalHooks.run('workflow.afterDelete', [workflowId]);
 
-		return sharedWorkflow.workflow;
+		return workflow;
 	}
 }

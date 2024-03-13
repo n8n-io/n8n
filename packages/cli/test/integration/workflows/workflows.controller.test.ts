@@ -18,7 +18,7 @@ import * as testDb from '../shared/testDb';
 import { makeWorkflow, MOCK_PINDATA } from '../shared/utils/';
 import { randomCredentialPayload } from '../shared/random';
 import { saveCredential } from '../shared/db/credentials';
-import { createOwner } from '../shared/db/users';
+import { createMember, createOwner } from '../shared/db/users';
 import { createWorkflow } from '../shared/db/workflows';
 import { createTag } from '../shared/db/tags';
 import { License } from '@/License';
@@ -27,6 +27,9 @@ import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { ProjectService } from '@/services/project.service';
 
 let owner: User;
+let member: User;
+let anotherMember: User;
+
 let authOwnerAgent: SuperAgentTest;
 
 jest.spyOn(License.prototype, 'isSharingEnabled').mockReturnValue(false);
@@ -44,6 +47,8 @@ beforeAll(async () => {
 	projectRepository = Container.get(ProjectRepository);
 	owner = await createOwner();
 	authOwnerAgent = testServer.authAgentFor(owner);
+	member = await createMember();
+	anotherMember = await createMember();
 });
 
 beforeEach(async () => {
@@ -797,5 +802,68 @@ describe('POST /workflows/run', () => {
 		await authOwnerAgent.post('/workflows/run').send({ workflowData: workflow });
 
 		expect(tamperingSpy).not.toHaveBeenCalled();
+	});
+});
+
+// NOTE: passing
+describe('DELETE /workflows/:id', () => {
+	test('deletes a workflow owned by the user', async () => {
+		const workflow = await createWorkflow({}, owner);
+
+		await authOwnerAgent.delete(`/workflows/${workflow.id}`).send().expect(200);
+
+		const workflowInDb = await Container.get(WorkflowRepository).findById(workflow.id);
+		const sharedWorkflowsInDb = await Container.get(SharedWorkflowRepository).findBy({
+			workflowId: workflow.id,
+		});
+
+		expect(workflowInDb).toBeNull();
+		expect(sharedWorkflowsInDb).toHaveLength(0);
+	});
+
+	test('deletes a workflow owned by the user, even if the user is just a member', async () => {
+		const workflow = await createWorkflow({}, member);
+
+		await testServer.authAgentFor(member).delete(`/workflows/${workflow.id}`).send().expect(200);
+
+		const workflowInDb = await Container.get(WorkflowRepository).findById(workflow.id);
+		const sharedWorkflowsInDb = await Container.get(SharedWorkflowRepository).findBy({
+			workflowId: workflow.id,
+		});
+
+		expect(workflowInDb).toBeNull();
+		expect(sharedWorkflowsInDb).toHaveLength(0);
+	});
+
+	test('does not delete a workflow that is not owned by the user', async () => {
+		const workflow = await createWorkflow({}, member);
+
+		await testServer
+			.authAgentFor(anotherMember)
+			.delete(`/workflows/${workflow.id}`)
+			.send()
+			.expect(403);
+
+		const workflowsInDb = await Container.get(WorkflowRepository).findById(workflow.id);
+		const sharedWorkflowsInDb = await Container.get(SharedWorkflowRepository).findBy({
+			workflowId: workflow.id,
+		});
+
+		expect(workflowsInDb).not.toBeNull();
+		expect(sharedWorkflowsInDb).toHaveLength(1);
+	});
+
+	test("allows the owner to delete workflows they don't own", async () => {
+		const workflow = await createWorkflow({}, member);
+
+		await authOwnerAgent.delete(`/workflows/${workflow.id}`).send().expect(200);
+
+		const workflowsInDb = await Container.get(WorkflowRepository).findById(workflow.id);
+		const sharedWorkflowsInDb = await Container.get(SharedWorkflowRepository).findBy({
+			workflowId: workflow.id,
+		});
+
+		expect(workflowsInDb).toBeNull();
+		expect(sharedWorkflowsInDb).toHaveLength(0);
 	});
 });

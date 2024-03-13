@@ -329,6 +329,7 @@ export class WorkflowsController {
 		return updatedWorkflow;
 	}
 
+	// NOTE: updated
 	@Delete('/:workflowId')
 	@ProjectScope('workflow:delete')
 	async delete(req: WorkflowRequest.Delete) {
