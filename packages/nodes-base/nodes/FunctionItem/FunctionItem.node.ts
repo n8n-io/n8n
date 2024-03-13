@@ -126,7 +126,7 @@ return item;`,
 								)?.toString('base64');
 							}
 						}
-						// Retrun Data
+						// Return Data
 						return item.binary;
 					},
 					setBinaryDataAsync: async (data: IBinaryKeyData) => {
