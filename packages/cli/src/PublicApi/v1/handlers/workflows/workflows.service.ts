@@ -4,17 +4,12 @@ import type { User } from '@db/entities/User';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { WorkflowTagMapping } from '@db/entities/WorkflowTagMapping';
 import { SharedWorkflow, type WorkflowSharingRole } from '@db/entities/SharedWorkflow';
-import config from '@/config';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import type { Project } from '@/databases/entities/Project';
 import { WorkflowTagMappingRepository } from '@db/repositories/workflowTagMapping.repository';
 import { TagRepository } from '@db/repositories/tag.repository';
 import type { Scope } from '../../../../../../@n8n/permissions/src';
-
-function insertIf(condition: boolean, elements: string[]): string[] {
-	return condition ? elements : [];
-}
 
 export async function getSharedWorkflowIds(user: User, scopes: Scope[]): Promise<string[]> {
 	const workflows = await Container.get(SharedWorkflowRepository).findAllWorkflowsForUser(

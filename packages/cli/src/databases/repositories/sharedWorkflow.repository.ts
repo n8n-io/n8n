@@ -174,7 +174,12 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 		});
 	}
 
-	async findWorkflowForUser(workflowId: string, user: User, scopes: Scope[]) {
+	async findWorkflowForUser(
+		workflowId: string,
+		user: User,
+		scopes: Scope[],
+		{ includeTags = false } = {},
+	) {
 		let where: FindOptionsWhere<SharedWorkflow> = { workflowId };
 
 		if (!user.hasGlobalScope(scopes, { mode: 'allOf' })) {
@@ -198,6 +203,7 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 			relations: {
 				workflow: {
 					shared: { project: { projectRelations: { user: true } } },
+					tags: includeTags,
 				},
 			},
 		});
