@@ -84,6 +84,19 @@ const properties: INodeProperties[] = [
 				description: 'Maximum amount of time a request is allowed to take in milliseconds',
 				type: 'number',
 			},
+			{
+				displayName: 'Preserve Original Tools',
+				name: 'preserveOriginalTools',
+				type: 'boolean',
+				default: true,
+				description:
+					'Whether to preserve the original tools of the assistant after the execution of this node, otherwise the tools will be replaced with the connected tools, if any, default is true',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.3 } }],
+					},
+				},
+			},
 		],
 	},
 ];
@@ -123,6 +136,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		baseURL?: string;
 		maxRetries: number;
 		timeout: number;
+		preserveOriginalTools?: boolean;
 	};
 
 	const client = new OpenAIClient({
@@ -135,21 +149,22 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const agent = new OpenAIAssistantRunnable({ assistantId, client, asAgent: true });
 
 	const tools = await getConnectedTools(this, nodeVersion > 1);
+	let assistantTools;
 
 	if (tools.length) {
 		const transformedConnectedTools = tools?.map(formatToOpenAIAssistantTool) ?? [];
 		const nativeToolsParsed: OpenAIToolType = [];
 
-		const assistant = await client.beta.assistants.retrieve(assistantId);
+		assistantTools = (await client.beta.assistants.retrieve(assistantId)).tools;
 
-		const useCodeInterpreter = assistant.tools.some((tool) => tool.type === 'code_interpreter');
+		const useCodeInterpreter = assistantTools.some((tool) => tool.type === 'code_interpreter');
 		if (useCodeInterpreter) {
 			nativeToolsParsed.push({
 				type: 'code_interpreter',
 			});
 		}
 
-		const useRetrieval = assistant.tools.some((tool) => tool.type === 'retrieval');
+		const useRetrieval = assistantTools.some((tool) => tool.type === 'retrieval');
 		if (useRetrieval) {
 			nativeToolsParsed.push({
 				type: 'retrieval',
@@ -166,11 +181,21 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		tools: tools ?? [],
 	});
 
-	const response = await agentExecutor.call({
+	const response = await agentExecutor.invoke({
 		content: input,
 		signal: this.getExecutionCancelSignal(),
 		timeout: options.timeout ?? 10000,
 	});
+
+	if (
+		options.preserveOriginalTools !== false &&
+		nodeVersion >= 1.3 &&
+		(assistantTools ?? [])?.length
+	) {
+		await client.beta.assistants.update(assistantId, {
+			tools: assistantTools,
+		});
+	}
 
 	return [{ json: response, pairedItem: { item: i } }];
 }
