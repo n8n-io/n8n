@@ -82,7 +82,9 @@ export const useNDVStore = defineStore(STORES.NDV, {
 		},
 		hasInputData(): boolean {
 			const data = this.ndvInputData;
-			return data && data.length > 0;
+			const pinData =
+				this.ndvInputNodeName && useWorkflowsStore().pinDataByNodeName(this.ndvInputNodeName);
+			return !!(data && data.length > 0) || !!(pinData && pinData.length > 0);
 		},
 		getPanelDisplayMode() {
 			return (panel: NodePanelType) => this[panel].displayMode;

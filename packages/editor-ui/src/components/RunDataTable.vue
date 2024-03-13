@@ -647,7 +647,10 @@ export default defineComponent({
 	}
 }
 
-.highlight .draggableHeader,
+.highlight .draggableHeader {
+	color: var(--color-primary);
+}
+
 .draggingHeader {
 	color: var(--color-primary);
 	background-color: var(--color-primary-tint-2);
