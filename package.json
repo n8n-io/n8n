@@ -82,7 +82,6 @@
       "axios": "1.6.7",
       "chokidar": "3.5.2",
       "ip": "2.0.1",
-      "jsonwebtoken": "9.0.0",
       "prettier": "^3.1.0",
       "semver": "^7.5.4",
       "tough-cookie": "^4.1.3",
