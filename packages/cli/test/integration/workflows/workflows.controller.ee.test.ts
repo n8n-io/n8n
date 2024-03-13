@@ -1,3 +1,4 @@
+// NOTE: passing
 import Container from 'typedi';
 import type { SuperAgentTest } from 'supertest';
 import { v4 as uuid } from 'uuid';
@@ -91,14 +92,14 @@ describe('router should switch based on flag', () => {
 
 		await authOwnerAgent
 			.put(`/workflows/${savedWorkflowId}/share`)
-			.send({ shareWithIds: [member.id] })
+			.send({ shareWithIds: [memberPersonalProject.id] })
 			.expect(404);
 	});
 
 	test('when sharing is enabled', async () => {
 		await authOwnerAgent
 			.put(`/workflows/${savedWorkflowId}/share`)
-			.send({ shareWithIds: [member.id] })
+			.send({ shareWithIds: [memberPersonalProject.id] })
 			.expect(200);
 	});
 });
@@ -217,7 +218,7 @@ describe('PUT /workflows/:id', () => {
 
 		const response = await authAnotherMemberAgent
 			.put(`/workflows/${workflow.id}/share`)
-			.send({ shareWithIds: [anotherMember.id] });
+			.send({ shareWithIds: [anotherMemberPersonalProject.id] });
 
 		expect(response.statusCode).toBe(403);
 
@@ -230,10 +231,13 @@ describe('PUT /workflows/:id', () => {
 		const workflow = await createWorkflow({}, member);
 
 		const tempUser = await createUser({ role: 'global:member' });
+		const tempUserPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(
+			tempUser.id,
+		);
 
 		const response = await authAnotherMemberAgent
 			.put(`/workflows/${workflow.id}/share`)
-			.send({ shareWithIds: [tempUser.id] });
+			.send({ shareWithIds: [tempUserPersonalProject.id] });
 
 		expect(response.statusCode).toBe(403);
 
@@ -249,7 +253,7 @@ describe('PUT /workflows/:id', () => {
 
 		const response = await authOwnerAgent
 			.put(`/workflows/${workflow.id}/share`)
-			.send({ shareWithIds: [member.id] });
+			.send({ shareWithIds: [memberPersonalProject.id] });
 
 		expect(response.statusCode).toBe(200);
 
@@ -621,6 +625,7 @@ describe('POST /workflows', () => {
 	});
 });
 
+// NOTE: passing
 describe('PATCH /workflows/:id - validate credential permissions to user', () => {
 	it('Should succeed when saving unchanged workflow nodes', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
@@ -838,7 +843,10 @@ describe('PATCH /workflows/:id - validate credential permissions to user', () =>
 		const createResponse = await authMemberAgent.post('/workflows').send(workflow);
 		const { id, versionId } = createResponse.body.data;
 
-		await authMemberAgent.put(`/workflows/${id}/share`).send({ shareWithIds: [anotherMember.id] });
+		await authMemberAgent
+			.put(`/workflows/${id}/share`)
+			.send({ shareWithIds: [anotherMemberPersonalProject.id] })
+			.expect(200);
 
 		const response = await authAnotherMemberAgent.patch(`/workflows/${id}`).send({
 			versionId,
@@ -850,13 +858,16 @@ describe('PATCH /workflows/:id - validate credential permissions to user', () =>
 	});
 });
 
+// NOTE: passing
 describe('PATCH /workflows/:id - validate interim updates', () => {
 	it('should block owner updating workflow nodes on interim update by member', async () => {
 		// owner creates and shares workflow
 
 		const createResponse = await authOwnerAgent.post('/workflows').send(makeWorkflow());
 		const { id, versionId: ownerVersionId } = createResponse.body.data;
-		await authOwnerAgent.put(`/workflows/${id}/share`).send({ shareWithIds: [member.id] });
+		await authOwnerAgent
+			.put(`/workflows/${id}/share`)
+			.send({ shareWithIds: [memberPersonalProject.id] });
 
 		// member accesses and updates workflow name
 
@@ -889,7 +900,9 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 
 		const { versionId: ownerSecondVersionId } = updateResponse.body.data;
 
-		await authOwnerAgent.put(`/workflows/${id}/share`).send({ shareWithIds: [member.id] });
+		await authOwnerAgent
+			.put(`/workflows/${id}/share`)
+			.send({ shareWithIds: [memberPersonalProject.id] });
 
 		// member accesses workflow
 
@@ -917,7 +930,9 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 
 		const createResponse = await authOwnerAgent.post('/workflows').send(makeWorkflow());
 		const { id, versionId: ownerVersionId } = createResponse.body.data;
-		await authOwnerAgent.put(`/workflows/${id}/share`).send({ shareWithIds: [member.id] });
+		await authOwnerAgent
+			.put(`/workflows/${id}/share`)
+			.send({ shareWithIds: [memberPersonalProject.id] });
 
 		// member accesses and activates workflow
 
@@ -947,7 +962,9 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 			.send({ name: 'Update by owner', versionId: ownerFirstVersionId });
 		const { versionId: ownerSecondVersionId } = updateResponse.body.data;
 
-		await authOwnerAgent.put(`/workflows/${id}/share`).send({ shareWithIds: [member.id] });
+		await authOwnerAgent
+			.put(`/workflows/${id}/share`)
+			.send({ shareWithIds: [memberPersonalProject.id] });
 
 		// member accesses workflow
 
@@ -975,7 +992,9 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 
 		const createResponse = await authOwnerAgent.post('/workflows').send(makeWorkflow());
 		const { id, versionId: ownerVersionId } = createResponse.body.data;
-		await authOwnerAgent.put(`/workflows/${id}/share`).send({ shareWithIds: [member.id] });
+		await authOwnerAgent
+			.put(`/workflows/${id}/share`)
+			.send({ shareWithIds: [memberPersonalProject.id] });
 
 		// member accesses workflow
 
@@ -1003,7 +1022,9 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 
 		const createResponse = await authOwnerAgent.post('/workflows').send(makeWorkflow());
 		const { id, versionId: ownerVersionId } = createResponse.body.data;
-		await authOwnerAgent.put(`/workflows/${id}/share`).send({ shareWithIds: [member.id] });
+		await authOwnerAgent
+			.put(`/workflows/${id}/share`)
+			.send({ shareWithIds: [memberPersonalProject.id] });
 
 		// member accesses workflow
 
@@ -1027,6 +1048,7 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 	});
 });
 
+// NOTE: passing
 describe('PATCH /workflows/:id - workflow history', () => {
 	test('Should create workflow history version when licensed', async () => {
 		license.enable('feat:workflowHistory');
@@ -1137,6 +1159,7 @@ describe('PATCH /workflows/:id - workflow history', () => {
 	});
 });
 
+// NOTE: passing
 describe('PATCH /workflows/:id - activate workflow', () => {
 	test('should activate workflow without changing version ID', async () => {
 		license.disable('feat:workflowHistory');

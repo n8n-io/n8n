@@ -14,7 +14,6 @@ import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { TagRepository } from '@db/repositories/tag.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import { UserRepository } from '@db/repositories/user.repository';
 import { validateEntity } from '@/GenericHelpers';
 import { ExternalHooks } from '@/ExternalHooks';
 import { ListQuery } from '@/requests';
@@ -60,7 +59,6 @@ export class WorkflowsController {
 		private readonly workflowExecutionService: WorkflowExecutionService,
 		private readonly workflowSharingService: WorkflowSharingService,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
-		private readonly userRepository: UserRepository,
 		private readonly license: License,
 		private readonly mailer: UserManagementMailer,
 		private readonly credentialsService: CredentialsService,
@@ -300,6 +298,7 @@ export class WorkflowsController {
 		return shared.workflow;
 	}
 
+	// NOTE: updated
 	@Patch('/:workflowId')
 	@ProjectScope('workflow:update')
 	async update(req: WorkflowRequest.Update) {
@@ -325,7 +324,6 @@ export class WorkflowsController {
 			workflowId,
 			tags,
 			isSharingEnabled ? forceSave : true,
-			isSharingEnabled ? undefined : ['workflow:owner'],
 		);
 
 		return updatedWorkflow;
