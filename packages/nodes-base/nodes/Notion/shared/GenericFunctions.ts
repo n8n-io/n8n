@@ -41,6 +41,7 @@ const apiVersion: { [key: number]: string } = {
 	1: '2021-05-13',
 	2: '2021-08-16',
 	2.1: '2021-08-16',
+	2.2: '2021-08-16',
 };
 
 export async function notionApiRequest(
@@ -1127,4 +1128,45 @@ export function simplifyBlocksOutput(blocks: IDataObject[], rootId: string) {
 	}
 
 	return blocks;
+}
+
+export function extractBlockId(this: IExecuteFunctions, nodeVersion: number, itemIndex: number) {
+	let blockId: string;
+
+	if (nodeVersion < 2.2) {
+		blockId = extractPageId(
+			this.getNodeParameter('blockId', itemIndex, '', { extractValue: true }) as string,
+		);
+	} else {
+		const blockIdRLCData = this.getNodeParameter('blockId', itemIndex, {}) as IDataObject;
+
+		if (blockIdRLCData.mode === 'id') {
+			blockId = blockIdRLCData.value as string;
+		} else {
+			const blockRegex = /https:\/\/www\.notion\.so\/.+\?pvs=[0-9]+#([a-f0-9]{2,})/;
+			const match = (blockIdRLCData.value as string).match(blockRegex);
+
+			if (match === null) {
+				const pageRegex =
+					/(?:https|http):\/\/www\.notion\.so\/(?:[a-z0-9-]{2,}\/)?(?:[a-zA-Z0-9-]{2,}-)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})/;
+				const pageMatch = (blockIdRLCData.value as string).match(pageRegex);
+
+				if (pageMatch === null) {
+					throw new NodeOperationError(
+						this.getNode(),
+						'Invalid URL, could not find block ID or page ID',
+						{
+							itemIndex,
+						},
+					);
+				} else {
+					blockId = extractPageId(pageMatch[1]);
+				}
+			} else {
+				blockId = match[1];
+			}
+		}
+	}
+
+	return blockId;
 }

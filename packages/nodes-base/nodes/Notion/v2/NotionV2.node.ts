@@ -11,6 +11,7 @@ import { jsonParse, NodeApiError } from 'n8n-workflow';
 import type { SortData, FileRecord } from '../shared/GenericFunctions';
 import {
 	downloadFiles,
+	extractBlockId,
 	extractDatabaseId,
 	extractDatabaseMentionRLC,
 	extractPageId,
@@ -45,6 +46,7 @@ export class NotionV2 implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
+		const nodeVersion = this.getNode().typeVersion;
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
 
@@ -60,9 +62,7 @@ export class NotionV2 implements INodeType {
 			if (operation === 'append') {
 				for (let i = 0; i < itemsLength; i++) {
 					try {
-						const blockId = extractPageId(
-							this.getNodeParameter('blockId', i, '', { extractValue: true }) as string,
-						);
+						const blockId = extractBlockId.call(this, nodeVersion, i);
 						const blockValues = this.getNodeParameter(
 							'blockUi.blockValues',
 							i,
@@ -100,9 +100,7 @@ export class NotionV2 implements INodeType {
 			if (operation === 'getAll') {
 				for (let i = 0; i < itemsLength; i++) {
 					try {
-						const blockId = extractPageId(
-							this.getNodeParameter('blockId', i, '', { extractValue: true }) as string,
-						);
+						const blockId = extractBlockId.call(this, nodeVersion, i);
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const fetchNestedBlocks = this.getNodeParameter('fetchNestedBlocks', i) as boolean;
 
@@ -147,8 +145,6 @@ export class NotionV2 implements INodeType {
 							parent_id: blockId,
 							..._data,
 						}));
-
-						const nodeVersion = this.getNode().typeVersion;
 
 						if (nodeVersion > 2) {
 							const simplifyOutput = this.getNodeParameter('simplifyOutput', i) as boolean;
