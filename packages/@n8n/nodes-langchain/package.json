@@ -156,7 +156,6 @@
     "langchain": "0.1.25",
     "lodash": "4.17.21",
     "mammoth": "1.6.0",
-    "mssql": "9.1.1",
     "n8n-nodes-base": "workspace:*",
     "n8n-workflow": "workspace:*",
     "openai": "4.26.1",
