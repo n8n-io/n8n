@@ -8,20 +8,19 @@ onlyBuiltDependencies:
   - sqlite3
 
 overrides:
+  '@langchain/core': 0.1.41
   '@types/node': ^18.16.16
   axios: 1.6.7
   chokidar: 3.5.2
   ip: 2.0.1
   prettier: ^3.1.0
   semver: ^7.5.4
-  tough-cookie: ^4.1.3
   tslib: ^2.6.1
   tsconfig-paths: ^4.2.0
   typescript: ^5.3.0
   xml2js: ^0.5.0
   cpy@8>globby: ^11.1.0
   qqjs>globby: ^11.1.0
-  '@langchain/core': 0.1.41
 
 patchedDependencies:
   '@sentry/cli@2.17.0':
@@ -2715,14 +2714,14 @@ packages:
       - supports-color
     dev: false
 
-  /@azure/core-http@2.2.7:
-    resolution: {integrity: sha512-TyGMeDm90mkRS8XzSQbSMD+TqnWL1XKGCh0x0QVGMD8COH2yU0q5SaHm/IBEBkzcq0u73NhS/p57T3KVSgUFqQ==}
-    engines: {node: '>=12.0.0'}
+  /@azure/core-http@2.3.2:
+    resolution: {integrity: sha512-Z4dfbglV9kNZO177CNx4bo5ekFuYwwsvjLiKdZI4r84bYGv3irrbQz7JC3/rUfFH2l4T/W6OFleJaa2X0IaQqw==}
+    engines: {node: '>=14.0.0'}
     dependencies:
       '@azure/abort-controller': 1.1.0
-      '@azure/core-auth': 1.4.0
+      '@azure/core-auth': 1.6.0
       '@azure/core-tracing': 1.0.0-preview.13
-      '@azure/core-util': 1.1.1
+      '@azure/core-util': 1.7.0
       '@azure/logger': 1.0.3
       '@types/node-fetch': 2.6.4
       '@types/tunnel': 0.0.3
@@ -2877,7 +2876,7 @@ packages:
     engines: {node: '>=12.0.0'}
     dependencies:
       '@azure/abort-controller': 1.1.0
-      '@azure/core-http': 2.2.7
+      '@azure/core-http': 2.3.2
       '@azure/core-lro': 2.4.0
       '@azure/core-paging': 1.3.0
       '@azure/core-tracing': 1.0.0-preview.13
