@@ -569,13 +569,16 @@ export class ActiveWorkflowRunner {
 				);
 			}
 
-			const sharing = dbWorkflow.shared.find((shared) => shared.role === 'workflow:owner');
+			const ownerRelation = dbWorkflow.shared
+				.filter((sw) => sw.role === 'workflow:owner')
+				.flatMap((sw) => sw.project.projectRelations)
+				.find((pr) => pr.role === 'project:personalOwner');
 
-			if (!sharing) {
+			if (!ownerRelation) {
 				throw new WorkflowActivationError(`Workflow ${dbWorkflow.display()} has no owner`);
 			}
 
-			const additionalData = await WorkflowExecuteAdditionalData.getBase(sharing.user.id);
+			const additionalData = await WorkflowExecuteAdditionalData.getBase(ownerRelation.userId);
 
 			if (shouldAddWebhooks) {
 				await this.addWebhooks(workflow, additionalData, 'trigger', activationMode);

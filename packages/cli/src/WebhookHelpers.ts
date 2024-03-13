@@ -56,7 +56,6 @@ import { WorkflowRunner } from '@/WorkflowRunner';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import type { User } from '@db/entities/User';
-import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { EventsService } from '@/services/events.service';
 import { OwnershipService } from './services/ownership.service';
 import { parseBody } from './middlewares';
@@ -235,17 +234,11 @@ export async function executeWebhook(
 	};
 
 	let user: User;
-	if (
-		(workflowData as WorkflowEntity).shared?.length &&
-		(workflowData as WorkflowEntity).shared[0].user
-	) {
-		user = (workflowData as WorkflowEntity).shared[0].user;
-	} else {
-		try {
-			user = await Container.get(OwnershipService).getWorkflowOwnerCached(workflowData.id);
-		} catch (error) {
-			throw new NotFoundError('Cannot find workflow');
-		}
+
+	try {
+		user = await Container.get(OwnershipService).getWorkflowOwnerCached(workflowData.id);
+	} catch (error) {
+		throw new NotFoundError('Cannot find workflow');
 	}
 
 	// Prepare everything that is needed to run the workflow

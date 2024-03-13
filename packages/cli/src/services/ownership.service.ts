@@ -4,6 +4,7 @@ import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.reposi
 import type { User } from '@db/entities/User';
 import { UserRepository } from '@db/repositories/user.repository';
 import type { ListQuery } from '@/requests';
+import { ApplicationError } from '../../../workflow/src';
 
 @Service()
 export class OwnershipService {
@@ -25,13 +26,28 @@ export class OwnershipService {
 		if (cachedValue) return this.userRepository.create(cachedValue);
 
 		const sharedWorkflow = await this.sharedWorkflowRepository.findOneOrFail({
-			where: { workflowId, role: 'workflow:owner' },
-			relations: ['user'],
+			where: {
+				workflowId,
+				role: 'workflow:owner',
+				project: { projectRelations: { role: 'project:personalOwner' } },
+			},
+			relations: {
+				workflow: true,
+				project: { projectRelations: { user: true } },
+			},
 		});
 
-		void this.cacheService.setHash('workflow-ownership', { [workflowId]: sharedWorkflow.user });
+		const ownerRelation = sharedWorkflow.project.projectRelations.find(
+			(pr) => pr.role === 'project:personalOwner',
+		);
 
-		return sharedWorkflow.user;
+		if (!ownerRelation) {
+			throw new ApplicationError(`Workflow ${sharedWorkflow.workflow.display()} has no owner`);
+		}
+
+		void this.cacheService.setHash('workflow-ownership', { [workflowId]: ownerRelation.user });
+
+		return ownerRelation.user;
 	}
 
 	addOwnedByAndSharedWith(
