@@ -181,6 +181,8 @@ export const CRYPTO_NODE_TYPE = 'n8n-nodes-base.crypto';
 export const RSS_READ_NODE_TYPE = 'n8n-nodes-base.rssFeedRead';
 export const COMPRESSION_NODE_TYPE = 'n8n-nodes-base.compression';
 export const EDIT_IMAGE_NODE_TYPE = 'n8n-nodes-base.editImage';
+export const CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE =
+	'@n8n/n8n-nodes-langchain.chainSummarization';
 
 export const CREDENTIAL_ONLY_NODE_PREFIX = 'n8n-creds-base';
 export const CREDENTIAL_ONLY_HTTP_NODE_VERSION = 4.1;
