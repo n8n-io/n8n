@@ -8,18 +8,6 @@ export class ProjectRelationRepository extends Repository<ProjectRelation> {
 		super(ProjectRelation, dataSource.manager);
 	}
 
-	/**
-	 * Find the roles of a user in an array of projects.
-	 */
-	async findRoles(userId: string, projectIds: string[]) {
-		const rows = await this.find({
-			where: { userId, projectId: In(projectIds) },
-			select: ['role'],
-		});
-
-		return new Set(rows.map((row) => row.role));
-	}
-
 	async getPersonalProjectOwners(projectIds: string[]) {
 		return await this.find({
 			where: {
