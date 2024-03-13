@@ -88,10 +88,7 @@
       "semver": "^7.5.4",
       "tslib": "^2.6.1",
       "tsconfig-paths": "^4.2.0",
-      "typescript": "^5.3.0",
-      "xml2js": "^0.5.0",
-      "cpy@8>globby": "^11.1.0",
-      "qqjs>globby": "^11.1.0"
+      "typescript": "^5.3.0"
     },
     "patchedDependencies": {
       "typedi@0.10.0": "patches/typedi@0.10.0.patch",
