@@ -31,10 +31,13 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 	/** Get the IDs of all users this workflow is shared with */
 	async getSharedUserIds(workflowId: string) {
 		const sharedWorkflows = await this.find({
-			select: ['userId'],
 			where: { workflowId },
+			relations: { project: { projectRelations: true } },
 		});
-		return sharedWorkflows.map((sharing) => sharing.userId);
+
+		return sharedWorkflows.flatMap((sharing) =>
+			sharing.project.projectRelations.map((pr) => pr.userId),
+		);
 	}
 
 	async getSharedWorkflowIds(workflowIds: string[]) {
