@@ -28,7 +28,6 @@ interface NoticeProps {
 	fullContent?: string;
 }
 
-// defineOptions({ name: 'N8nNotice' });
 const props = withDefaults(defineProps<NoticeProps>(), {
 	id: () => uid('notice'),
 	theme: 'warning',

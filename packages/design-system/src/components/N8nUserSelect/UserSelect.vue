@@ -47,7 +47,6 @@ interface UserSelectProps {
 	size?: Exclude<SelectSize, 'xlarge'>;
 }
 
-// defineOptions({ name: 'SpacingPreview' });
 const props = withDefaults(defineProps<UserSelectProps>(), {
 	users: () => [],
 	modelValue: '',

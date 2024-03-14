@@ -23,7 +23,6 @@ interface VariableTableProps {
 	attr?: string;
 }
 
-// defineOptions({ name: 'VariableTable' });
 const props = withDefaults(defineProps<VariableTableProps>(), {
 	attr: '',
 });

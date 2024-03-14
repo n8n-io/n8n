@@ -55,7 +55,6 @@ interface NodeIconProps {
 	badge?: { src: string; type: string };
 }
 
-// defineOptions({ name: 'N8nNodeIcon' });
 const props = withDefaults(defineProps<NodeIconProps>(), {
 	tooltipPosition: 'top',
 });

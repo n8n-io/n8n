@@ -34,7 +34,6 @@ const SIZES = [
 	'5xl',
 ] as const;
 
-// defineOptions({ name: 'SpacingPreview' });
 const props = withDefaults(defineProps<SpacingPreviewProps>(), {
 	property: 'padding',
 	side: '',
