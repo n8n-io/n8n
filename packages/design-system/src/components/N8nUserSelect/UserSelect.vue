@@ -31,7 +31,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import N8nUserInfo from '../N8nUserInfo';
 import N8nSelect from '../N8nSelect';
 import N8nOption from '../N8nOption';
@@ -59,7 +59,7 @@ const $emit = defineEmits(['blur', 'focus']);
 
 const { t } = useI18n();
 
-let filter: string = '';
+let filter = ref('');
 
 const filteredUsers = computed(() =>
 	props.users.filter((user) => {
@@ -72,13 +72,13 @@ const filteredUsers = computed(() =>
 		}
 
 		if (user.fullName) {
-			const match = user.fullName.toLowerCase().includes(filter.toLowerCase());
+			const match = user.fullName.toLowerCase().includes(filter.value.toLowerCase());
 			if (match) {
 				return true;
 			}
 		}
 
-		return user.email.includes(filter);
+		return user.email.includes(filter.value);
 	}),
 );
 
@@ -100,7 +100,7 @@ const sortedUsers = computed(() =>
 );
 
 const setFilter = (value: string) => {
-	filter = value;
+	filter.value = value;
 };
 
 const onBlur = () => $emit('blur');
