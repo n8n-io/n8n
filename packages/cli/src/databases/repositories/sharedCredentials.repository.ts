@@ -58,7 +58,7 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 
 	async findByCredentialIds(credentialIds: string[]) {
 		return await this.find({
-			relations: ['credentials', 'user'],
+			relations: { credentials: true },
 			where: {
 				credentialsId: In(credentialIds),
 			},

@@ -139,5 +139,5 @@ export const getUserById = async (id: string) =>
 export const getLdapIdentities = async () =>
 	await Container.get(AuthIdentityRepository).find({
 		where: { providerType: 'ldap' },
-		relations: ['user'],
+		relations: { user: true },
 	});

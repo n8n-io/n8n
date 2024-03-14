@@ -40,11 +40,11 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 
 	async findByWorkflowIds(workflowIds: string[]) {
 		return await this.find({
-			relations: ['user'],
 			where: {
 				role: 'workflow:owner',
 				workflowId: In(workflowIds),
 			},
+			relations: { project: { projectRelations: { user: true } } },
 		});
 	}
 
