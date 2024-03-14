@@ -27,7 +27,9 @@ const activationKeyModal = ref(false);
 const activationKey = ref('');
 const activationKeyInput = ref<HTMLInputElement | null>(null);
 
-const canUserActivateLicense = computed(() => hasPermission(['instanceOwner']));
+const canUserActivateLicense = computed(() =>
+	hasPermission(['rbac'], { rbac: { scope: 'license:manage' } }),
+);
 
 const showActivationSuccess = () => {
 	toast.showMessage({
