@@ -393,7 +393,7 @@ export class WorkflowsController {
 
 			if (newShareeIds.length) {
 				const users = await this.userRepository.getByIds(trx, newShareeIds);
-				await this.sharedWorkflowRepository.share(trx, workflow!, users);
+				await this.sharedWorkflowRepository.share(trx, workflow, users);
 			}
 		});
 

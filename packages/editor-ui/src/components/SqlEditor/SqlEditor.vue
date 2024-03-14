@@ -1,6 +1,6 @@
 <template>
 	<div v-on-click-outside="onBlur" :class="$style.sqlEditor">
-		<div :class="$style.codemirror" ref="sqlEditor" data-test-id="sql-editor-container"></div>
+		<div ref="sqlEditor" :class="$style.codemirror" data-test-id="sql-editor-container"></div>
 		<slot name="suffix" />
 		<InlineExpressionEditorOutput
 			v-if="!fillParent"

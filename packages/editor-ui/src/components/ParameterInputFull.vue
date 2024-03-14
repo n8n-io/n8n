@@ -17,7 +17,7 @@
 				:is-read-only="isReadOnly"
 				:show-options="displayOptions"
 				:show-expression-selector="showExpressionSelector"
-				@update:modelValue="optionSelected"
+				@update:model-value="optionSelected"
 				@menu-expanded="onMenuExpanded"
 			/>
 		</template>
@@ -47,7 +47,7 @@
 					:event-bus="eventBus"
 					input-size="small"
 					@update="valueChanged"
-					@textInput="onTextInput"
+					@text-input="onTextInput"
 					@focus="onFocus"
 					@blur="onBlur"
 					@drop="onDrop"
@@ -70,7 +70,7 @@
 				:is-read-only="isReadOnly"
 				:show-options="displayOptions"
 				:show-expression-selector="showExpressionSelector"
-				@update:modelValue="optionSelected"
+				@update:model-value="optionSelected"
 				@menu-expanded="onMenuExpanded"
 			/>
 		</div>

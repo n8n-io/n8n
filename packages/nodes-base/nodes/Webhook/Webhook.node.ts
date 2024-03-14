@@ -150,7 +150,7 @@ export class Webhook extends Node {
 							data: (req.rawBody ?? '').toString(BINARY_ENCODING),
 							mimeType: req.contentType ?? 'application/json',
 						},
-				  }
+					}
 				: undefined,
 		};
 

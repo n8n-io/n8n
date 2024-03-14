@@ -126,11 +126,11 @@ export class CredentialsTester {
 								? {
 										status: 'OK',
 										message: OAUTH2_CREDENTIAL_TEST_SUCCEEDED,
-								  }
+									}
 								: {
 										status: 'Error',
 										message: OAUTH2_CREDENTIAL_TEST_FAILED,
-								  };
+									};
 						};
 					}
 

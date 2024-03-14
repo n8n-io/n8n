@@ -140,7 +140,7 @@ defineExpose({
 			:label="prop.value"
 			:class="$style.authRadioButton"
 			border
-			@update:modelValue="onAuthTypeChange"
+			@update:model-value="onAuthTypeChange"
 			>{{ prop.name }}</el-radio
 		>
 	</div>

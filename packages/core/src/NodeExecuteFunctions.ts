@@ -809,7 +809,7 @@ export async function proxyRequestToAxios(
 					statusCode: response.status,
 					statusMessage: response.statusText,
 					request: response.request,
-			  }
+				}
 			: body;
 	} catch (error) {
 		const { config, response } = error;
@@ -1041,7 +1041,7 @@ export function assertBinaryData(
 	propertyName: string,
 	inputIndex: number,
 ): IBinaryData {
-	const binaryKeyData = inputData.main[inputIndex]![itemIndex]!.binary;
+	const binaryKeyData = inputData.main[inputIndex]![itemIndex].binary;
 	if (binaryKeyData === undefined) {
 		throw new NodeOperationError(
 			node,
@@ -1078,7 +1078,7 @@ export async function getBinaryDataBuffer(
 	propertyName: string,
 	inputIndex: number,
 ): Promise<Buffer> {
-	const binaryData = inputData.main[inputIndex]![itemIndex]!.binary![propertyName]!;
+	const binaryData = inputData.main[inputIndex]![itemIndex].binary![propertyName];
 	return await Container.get(BinaryDataService).getAsBuffer(binaryData);
 }
 
@@ -1939,7 +1939,7 @@ export function getAdditionalKeys(
 						getAll(): Record<string, string> {
 							return getAllWorkflowExecutionMetadata(runExecutionData);
 						},
-				  }
+					}
 				: undefined,
 		},
 		$vars: additionalData.variables,
@@ -3203,7 +3203,7 @@ const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunctions =>
 				? new NodeOperationError(node, error, {
 						message: `The file "${String(filePath)}" could not be accessed.`,
 						level: 'warning',
-				  })
+					})
 				: error;
 		}
 		if (isFilePathBlocked(filePath as string)) {

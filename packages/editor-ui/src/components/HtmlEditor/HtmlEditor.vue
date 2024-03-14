@@ -86,16 +86,6 @@ export default defineComponent({
 			editorState: null as EditorState | null,
 		};
 	},
-	watch: {
-		displayableSegments(segments, newSegments) {
-			if (isEqual(segments, newSegments)) return;
-
-			highlighter.removeColor(this.editor, this.plaintextSegments);
-			highlighter.addColor(this.editor, this.resolvableSegments);
-
-			this.$emit('update:modelValue', this.editor?.state.doc.toString());
-		},
-	},
 	computed: {
 		doc(): string {
 			return this.editor.state.doc.toString();
@@ -200,6 +190,16 @@ export default defineComponent({
 			return [...styleSections, ...scriptSections, ...htmlSections].sort(
 				(a, b) => a.range[0] - b.range[0],
 			);
+		},
+	},
+	watch: {
+		displayableSegments(segments, newSegments) {
+			if (isEqual(segments, newSegments)) return;
+
+			highlighter.removeColor(this.editor, this.plaintextSegments);
+			highlighter.addColor(this.editor, this.resolvableSegments);
+
+			this.$emit('update:modelValue', this.editor?.state.doc.toString());
 		},
 	},
 

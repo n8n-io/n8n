@@ -13,11 +13,11 @@
 			<el-checkbox
 				:model-value="autoRefresh"
 				data-test-id="auto-refresh-checkbox"
-				@update:modelValue="$emit('update:autoRefresh', $event)"
+				@update:model-value="$emit('update:autoRefresh', $event)"
 			>
 				{{ $locale.baseText('executionsList.autoRefresh') }}
 			</el-checkbox>
-			<ExecutionFilter popover-placement="left-start" @filterChanged="onFilterChanged" />
+			<ExecutionFilter popover-placement="left-start" @filter-changed="onFilterChanged" />
 		</div>
 		<div
 			ref="executionList"
@@ -39,7 +39,7 @@
 				:execution="temporaryExecution"
 				:data-test-id="`execution-details-${temporaryExecution.id}`"
 				:show-gap="true"
-				@retryExecution="onRetryExecution"
+				@retry-execution="onRetryExecution"
 			/>
 			<ExecutionCard
 				v-for="execution in executions"
@@ -47,7 +47,7 @@
 				:ref="`execution-${execution.id}`"
 				:execution="execution"
 				:data-test-id="`execution-details-${execution.id}`"
-				@retryExecution="onRetryExecution"
+				@retry-execution="onRetryExecution"
 			/>
 			<div v-if="loadingMore" class="mr-m">
 				<n8n-loading variant="p" :rows="1" />
