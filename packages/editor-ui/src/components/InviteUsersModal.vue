@@ -66,8 +66,12 @@ import { mapStores } from 'pinia';
 import { useToast } from '@/composables/useToast';
 import Modal from './Modal.vue';
 import type { IFormInputs, IInviteResponse, IUser } from '@/Interface';
-import { ROLE } from '@/utils/userUtils';
-import { EnterpriseEditionFeature, VALID_EMAIL_REGEX, INVITE_USER_MODAL_KEY } from '@/constants';
+import {
+	EnterpriseEditionFeature,
+	VALID_EMAIL_REGEX,
+	INVITE_USER_MODAL_KEY,
+	ROLE,
+} from '@/constants';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';

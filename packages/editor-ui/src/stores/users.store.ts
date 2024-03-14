@@ -18,7 +18,7 @@ import {
 	validateSignupToken,
 	updateGlobalRole,
 } from '@/api/users';
-import { PERSONALIZATION_MODAL_KEY, STORES } from '@/constants';
+import { PERSONALIZATION_MODAL_KEY, STORES, ROLE } from '@/constants';
 import type {
 	Cloud,
 	ICredentialsResponse,
@@ -32,7 +32,7 @@ import type {
 	InvitableRoleName,
 } from '@/Interface';
 import { getCredentialPermissions } from '@/permissions';
-import { ROLE, getPersonalizedNodeTypes } from '@/utils/userUtils';
+import { getPersonalizedNodeTypes } from '@/utils/userUtils';
 import { defineStore } from 'pinia';
 import { useRootStore } from './n8nRoot.store';
 import { usePostHog } from './posthog.store';

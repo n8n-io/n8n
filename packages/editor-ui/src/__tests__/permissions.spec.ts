@@ -1,5 +1,6 @@
 import { parsePermissionsTable } from '@/permissions';
 import type { IUser } from '@/Interface';
+import { ROLE } from '@/constants';
 
 describe('parsePermissionsTable()', () => {
 	const user: IUser = {
@@ -11,6 +12,7 @@ describe('parsePermissionsTable()', () => {
 		isPendingUser: false,
 		mfaEnabled: false,
 		hasRecoveryCodesLeft: false,
+		role: ROLE.Owner,
 	};
 
 	it('should return permissions object using generic permissions table', () => {
