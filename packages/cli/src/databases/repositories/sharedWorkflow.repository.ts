@@ -76,24 +76,6 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 		return await this.update({ userId: Not(user.id), role: 'workflow:owner' }, { user });
 	}
 
-	async getSharing(
-		user: User,
-		workflowId: string,
-		options: { allowGlobalScope: true; globalScope: Scope } | { allowGlobalScope: false },
-		relations: string[] = ['workflow'],
-	): Promise<SharedWorkflow | null> {
-		const where: FindOptionsWhere<SharedWorkflow> = { workflowId };
-
-		// Omit user from where if the requesting user has relevant
-		// global workflow permissions. This allows the user to
-		// access workflows they don't own.
-		if (!options.allowGlobalScope || !user.hasGlobalScope(options.globalScope)) {
-			where.userId = user.id;
-		}
-
-		return await this.findOne({ where, relations });
-	}
-
 	async getSharedWorkflows(
 		user: User,
 		options: {

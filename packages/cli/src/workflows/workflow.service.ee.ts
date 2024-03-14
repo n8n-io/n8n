@@ -62,24 +62,6 @@ export class EnterpriseWorkflowService {
 		return await em.save(newSharedWorkflows);
 	}
 
-	async isOwned(
-		user: User,
-		workflowId: string,
-	): Promise<{ ownsWorkflow: boolean; workflow?: WorkflowEntity }> {
-		const sharing = await this.sharedWorkflowRepository.getSharing(
-			user,
-			workflowId,
-			{ allowGlobalScope: false },
-			['workflow'],
-		);
-
-		if (!sharing || sharing.role !== 'workflow:owner') return { ownsWorkflow: false };
-
-		const { workflow } = sharing;
-
-		return { ownsWorkflow: true, workflow };
-	}
-
 	addOwnerAndSharings(
 		workflow: WorkflowWithSharingsAndCredentials,
 	): WorkflowWithSharingsMetaDataAndCredentials {
