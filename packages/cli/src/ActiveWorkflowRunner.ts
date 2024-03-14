@@ -249,9 +249,16 @@ export class ActiveWorkflowRunner {
 
 		const mode = 'internal';
 
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(
-			workflowData.shared[0].user.id,
-		);
+		const ownerRelation = workflowData.shared
+			.filter((sw) => sw.role === 'workflow:owner')
+			.flatMap((sw) => sw.project.projectRelations)
+			.find((pr) => pr.role === 'project:personalOwner');
+
+		if (!ownerRelation) {
+			throw new ApplicationError(`Workflow ${workflowData.display()} has no owner`);
+		}
+
+		const additionalData = await WorkflowExecuteAdditionalData.getBase(ownerRelation.userId);
 
 		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, undefined, true);
 

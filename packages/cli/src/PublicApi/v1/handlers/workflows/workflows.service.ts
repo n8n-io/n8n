@@ -19,19 +19,6 @@ export async function getSharedWorkflowIds(user: User, scopes: Scope[]): Promise
 	return workflows.map((w) => w.id);
 }
 
-export async function getSharedWorkflow(
-	user: User,
-	workflowId?: string | undefined,
-): Promise<SharedWorkflow | null> {
-	return await Container.get(SharedWorkflowRepository).findOne({
-		where: {
-			...(!['global:owner', 'global:admin'].includes(user.role) && { userId: user.id }),
-			...(workflowId && { workflowId }),
-		},
-		relations: [...insertIf(!config.getEnv('workflowTagsDisabled'), ['workflow.tags']), 'workflow'],
-	});
-}
-
 export async function getWorkflowById(id: string): Promise<WorkflowEntity | null> {
 	return await Container.get(WorkflowRepository).findOne({
 		where: { id },
