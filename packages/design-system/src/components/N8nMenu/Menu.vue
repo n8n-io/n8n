@@ -55,9 +55,10 @@
 
 <script lang="ts" setup>
 import { computed, onMounted, ref } from 'vue';
+import { useRoute } from 'vue-router';
 import { ElMenu } from 'element-plus';
 import N8nMenuItem from '../N8nMenuItem';
-import type { IMenuItem, RouteObject } from '../../types';
+import type { IMenuItem } from '../../types';
 import { doesMenuItemMatchCurrentRoute } from '../N8nMenuItem/routerUtil';
 
 interface MenuProps {
@@ -79,6 +80,7 @@ const props = withDefaults(defineProps<MenuProps>(), {
 	tooltipDelay: 300,
 	items: () => [],
 });
+const $route = useRoute();
 
 const $emit = defineEmits<{
 	(event: 'select', itemId: string);
@@ -95,10 +97,8 @@ const lowerMenuItems = computed(() =>
 	props.items.filter((item: IMenuItem) => item.position === 'bottom' && item.available !== false),
 );
 
-const currentRoute = computed((): RouteObject => {
-	// TODO: what's $route?
-	// return props.$route || { name: '', path: '' };
-	return { name: '', path: '' };
+const currentRoute = computed(() => {
+	return $route ?? { name: '', path: '' };
 });
 
 onMounted(() => {

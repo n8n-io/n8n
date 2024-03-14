@@ -82,11 +82,12 @@
 
 <script lang="ts" setup>
 import { computed, useCssModule } from 'vue';
+import { useRoute } from 'vue-router';
 import { ElSubMenu, ElMenuItem } from 'element-plus';
 import N8nTooltip from '../N8nTooltip';
 import N8nIcon from '../N8nIcon';
 import ConditionalRouterLink from '../ConditionalRouterLink';
-import type { IMenuItem, RouteObject } from '../../types';
+import type { IMenuItem } from '../../types';
 import { doesMenuItemMatchCurrentRoute } from './routerUtil';
 
 interface MenuItemProps {
@@ -105,7 +106,9 @@ const props = withDefaults(defineProps<MenuItemProps>(), {
 	popperClass: '',
 	mode: 'router',
 });
+
 const $style = useCssModule();
+const $route = useRoute();
 
 const availableChildren = computed((): IMenuItem[] =>
 	Array.isArray(props.item.children)
@@ -113,10 +116,8 @@ const availableChildren = computed((): IMenuItem[] =>
 		: [],
 );
 
-const currentRoute = computed((): RouteObject => {
-	// TODO: what's $route?
-	// return props.$route || { name: '', path: '' };
-	return { name: '', path: '' };
+const currentRoute = computed(() => {
+	return $route ?? { name: '', path: '' };
 });
 
 const submenuPopperClass = computed((): string => {
@@ -136,10 +137,9 @@ const isActive = (item: IMenuItem): boolean => {
 };
 
 const isItemActive = (item: IMenuItem): boolean => {
-	const isItemActive = isActive(item);
 	const hasActiveChild =
 		Array.isArray(item.children) && item.children.some((child) => isActive(child));
-	return isItemActive || hasActiveChild;
+	return isActive(item) || hasActiveChild;
 };
 </script>
 

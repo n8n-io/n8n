@@ -30,7 +30,7 @@
 
 <script lang="ts">
 import { ElSelect } from 'element-plus';
-import { PropType, defineComponent } from 'vue';
+import { type PropType, defineComponent } from 'vue';
 import type { SelectSize } from '@/types';
 
 type InnerSelectRef = InstanceType<typeof ElSelect>;
