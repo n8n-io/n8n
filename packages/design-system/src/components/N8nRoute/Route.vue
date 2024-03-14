@@ -9,12 +9,10 @@
 
 <script lang="ts" setup>
 import { computed } from 'vue';
-
-// TODO: replace `object` with a more detailed type
-export type RouteTo = string | object;
+import { type RouteLocationRaw } from 'vue-router';
 
 interface RouteProps {
-	to?: RouteTo;
+	to?: RouteLocationRaw;
 	newWindow?: boolean;
 }
 

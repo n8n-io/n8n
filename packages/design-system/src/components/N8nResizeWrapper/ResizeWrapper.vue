@@ -69,20 +69,19 @@ const props = withDefaults(defineProps<ResizeProps>(), {
 	supportedDirections: () => [],
 });
 
+export interface ResizeData {
+	height: number;
+	width: number;
+	dX: number;
+	dY: number;
+	x: number;
+	y: number;
+	direction: Direction;
+}
+
 const $emit = defineEmits<{
 	(event: 'resizestart');
-	(
-		event: 'resize',
-		value: {
-			height: number;
-			width: number;
-			dX: number;
-			dY: number;
-			x: number;
-			y: number;
-			direction: Direction;
-		},
-	): void;
+	(event: 'resize', value: ResizeData): void;
 	(event: 'resizeend');
 }>();
 

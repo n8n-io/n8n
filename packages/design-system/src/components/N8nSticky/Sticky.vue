@@ -61,7 +61,7 @@
 import { computed, ref, watch } from 'vue';
 import N8nInput from '../N8nInput';
 import N8nMarkdown from '../N8nMarkdown';
-import N8nResizeWrapper from '../N8nResizeWrapper';
+import N8nResizeWrapper, { ResizeData } from '../N8nResizeWrapper/ResizeWrapper.vue';
 import N8nText from '../N8nText';
 import { useI18n } from '../../composables/useI18n';
 
@@ -97,7 +97,7 @@ const $emit = defineEmits<{
 	(event: 'edit', editing: boolean);
 	(event: 'update:modelValue', value: string);
 	(event: 'markdown-click', link: string, e: Event);
-	(event: 'resize', values: unknown[]);
+	(event: 'resize', values: ResizeData);
 	(event: 'resizestart');
 	(event: 'resizeend', value: unknown);
 }>();
@@ -151,7 +151,7 @@ const onMarkdownClick = (link: string, event: Event) => {
 	$emit('markdown-click', link, event);
 };
 
-const onResize = (values: unknown[]) => {
+const onResize = (values: ResizeData) => {
 	$emit('resize', values);
 };
 

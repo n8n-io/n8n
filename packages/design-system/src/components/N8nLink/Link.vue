@@ -9,15 +9,16 @@
 </template>
 
 <script lang="ts" setup>
+import type { RouteLocationRaw } from 'vue-router';
 import N8nText from '../N8nText';
-import N8nRoute, { type RouteTo } from '../N8nRoute';
+import N8nRoute from '../N8nRoute';
 import type { TextSize } from '@/types/text';
 
 const THEME = ['primary', 'danger', 'text', 'secondary'] as const;
 
 interface LinkProps {
+	to?: RouteLocationRaw;
 	size?: TextSize;
-	to?: RouteTo;
 	newWindow?: boolean;
 	bold?: boolean;
 	underline?: boolean;

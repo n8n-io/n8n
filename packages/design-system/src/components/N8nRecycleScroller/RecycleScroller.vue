@@ -22,8 +22,6 @@ const scrollTop = ref(0);
 const wrapperHeight = ref(0);
 const windowHeight = ref(0);
 
-const itemCount = computed(() => props.items.length);
-
 /** Cache */
 
 const itemSizeCache = ref<Record<string, number>>({});
