@@ -289,14 +289,6 @@ export const useExpressionEditor = ({
 		return result;
 	}
 
-	const unresolvedExpression = computed(() => {
-		return segments.value.reduce((acc, segment) => {
-			acc += segment.kind === 'resolvable' ? segment.resolvable : segment.plaintext;
-
-			return acc;
-		}, '=');
-	});
-
 	const hoveringItem = computed(() => {
 		return ndvStore.hoveringItem;
 	});
@@ -398,7 +390,6 @@ export const useExpressionEditor = ({
 
 	return {
 		editor,
-		unresolvedExpression,
 		hasFocus,
 		segments: {
 			all: segments,

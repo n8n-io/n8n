@@ -170,6 +170,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
 	codeNodeEditorEventBus.off('error-line-number', highlightLine);
+	emit('update:model-value', readEditorValue());
 });
 
 function line(lineNumber: number): Line | null {

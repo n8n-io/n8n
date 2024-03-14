@@ -73,7 +73,7 @@ const editorValue = ref<string>(removeExpressionPrefix(props.modelValue));
 const {
 	editor: editorRef,
 	segments,
-	unresolvedExpression,
+	readEditorValue,
 	setCursorPosition,
 	hasFocus,
 	focus,
@@ -94,7 +94,7 @@ watch(
 
 watch(segments.display, (newSegments) => {
 	emit('change', {
-		value: toValue(unresolvedExpression),
+		value: '=' + readEditorValue(),
 		segments: newSegments,
 	});
 });
