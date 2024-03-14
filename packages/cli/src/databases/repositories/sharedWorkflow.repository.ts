@@ -4,8 +4,6 @@ import type { EntityManager, FindManyOptions, FindOptionsWhere } from '@n8n/type
 import { SharedWorkflow, type WorkflowSharingRole } from '../entities/SharedWorkflow';
 import { type User } from '../entities/User';
 import type { Scope } from '@n8n/permissions';
-import type { WorkflowEntity } from '../entities/WorkflowEntity';
-import { ProjectRepository } from './project.repository';
 import { RoleService } from '@/services/role.service';
 import type { Project } from '../entities/Project';
 
@@ -13,7 +11,6 @@ import type { Project } from '../entities/Project';
 export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 	constructor(
 		dataSource: DataSource,
-		private readonly projectRepository: ProjectRepository,
 		private roleService: RoleService,
 	) {
 		super(SharedWorkflow, dataSource.manager);
@@ -96,27 +93,6 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 			},
 			...(options.relations && { relations: options.relations }),
 		});
-	}
-
-	async share(transaction: EntityManager, workflow: WorkflowEntity, users: User[]) {
-		const newSharedWorkflows = [];
-
-		for (const user of users) {
-			if (user.isPending) {
-				continue;
-			}
-
-			const project = await this.projectRepository.getPersonalProjectForUserOrFail(user.id);
-			const entity: Partial<SharedWorkflow> = {
-				workflowId: workflow.id,
-				userId: user.id,
-				projectId: project.id,
-				role: 'workflow:editor',
-			};
-			newSharedWorkflows.push(this.create(entity));
-		}
-
-		return await transaction.save(newSharedWorkflows);
 	}
 
 	async findWithFields(
