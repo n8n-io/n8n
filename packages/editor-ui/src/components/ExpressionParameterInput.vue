@@ -17,11 +17,10 @@
 			<InlineExpressionEditorInput
 				ref="inlineInput"
 				:model-value="modelValue"
+				:path="path"
 				:is-read-only="isReadOnly"
-				:target-item="hoveringItem"
 				:rows="rows"
 				:additional-data="additionalExpressionData"
-				:path="path"
 				:event-bus="eventBus"
 				@focus="onFocus"
 				@blur="onBlur"
@@ -36,7 +35,7 @@
 				size="xsmall"
 				:class="$style['expression-editor-modal-opener']"
 				data-test-id="expander"
-				@click="$emit('modalOpenerClick')"
+				@click="$emit('modal-opener-click')"
 			/>
 		</div>
 		<InlineExpressionEditorOutput
@@ -62,7 +61,6 @@ import ExpressionFunctionIcon from '@/components/ExpressionFunctionIcon.vue';
 import { createExpressionTelemetryPayload } from '@/utils/telemetryUtils';
 
 import type { Segment } from '@/types/expressions';
-import type { TargetItem } from '@/Interface';
 import type { IDataObject } from 'n8n-workflow';
 import { useDebounce } from '@/composables/useDebounce';
 import { type EventBus, createEventBus } from 'n8n-design-system/utils';
@@ -79,9 +77,11 @@ export default defineComponent({
 	props: {
 		path: {
 			type: String,
+			required: true,
 		},
 		modelValue: {
 			type: String,
+			required: true,
 		},
 		isReadOnly: {
 			type: Boolean,
@@ -104,6 +104,7 @@ export default defineComponent({
 			default: () => createEventBus(),
 		},
 	},
+	emits: ['focus', 'blur', 'update:model-value', 'modal-opener-click'],
 	setup() {
 		const { callDebounced } = useDebounce();
 		return { callDebounced };
@@ -118,9 +119,6 @@ export default defineComponent({
 		...mapStores(useNDVStore, useWorkflowsStore),
 		hoveringItemNumber(): number {
 			return this.ndvStore.hoveringItemNumber;
-		},
-		hoveringItem(): TargetItem | null {
-			return this.ndvStore.getHoveringItem;
 		},
 		isDragging(): boolean {
 			return this.ndvStore.isDraggableDragging;
@@ -141,9 +139,9 @@ export default defineComponent({
 
 			this.$emit('focus');
 		},
-		onBlur(event: FocusEvent | KeyboardEvent) {
+		onBlur(event?: FocusEvent | KeyboardEvent) {
 			if (
-				event.target instanceof Element &&
+				event?.target instanceof Element &&
 				Array.from(event.target.classList).some((_class) => _class.includes('resizer'))
 			) {
 				return; // prevent blur on resizing
@@ -169,16 +167,13 @@ export default defineComponent({
 				this.$telemetry.track('User closed Expression Editor', telemetryPayload);
 			}
 		},
-		onChange(value: { value: string; segments: Segment[] }) {
-			void this.callDebounced(this.onChangeDebounced, { debounceTime: 100, trailing: true }, value);
-		},
-		onChangeDebounced({ value, segments }: { value: string; segments: Segment[] }) {
+		onChange({ value, segments }: { value: string; segments: Segment[] }) {
 			this.segments = segments;
 
 			if (this.isDragging) return;
 			if (value === '=' + this.modelValue) return; // prevent report on change of target item
 
-			this.$emit('update:modelValue', value);
+			this.$emit('update:model-value', value);
 		},
 	},
 });
