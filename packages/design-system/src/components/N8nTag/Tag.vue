@@ -4,17 +4,12 @@
 	</span>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
-
-export default defineComponent({
-	name: 'N8nTag',
-	props: {
-		text: {
-			type: String,
-		},
-	},
-});
+<script lang="ts" setup>
+interface TagProps {
+	text: string;
+}
+defineOptions({ name: 'N8nTag' });
+defineProps<TagProps>();
 </script>
 
 <style lang="scss" module>
