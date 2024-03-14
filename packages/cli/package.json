@@ -82,7 +82,7 @@
     "@types/uuid": "^8.3.2",
     "@types/validator": "^13.7.0",
     "@types/ws": "^8.5.4",
-    "@types/xml2js": "^0.4.11",
+    "@types/xml2js": "^0.4.14",
     "@types/yamljs": "^0.2.31",
     "chokidar": "^3.5.2",
     "concurrently": "^8.2.0",
@@ -178,7 +178,7 @@
     "validator": "13.7.0",
     "winston": "3.8.2",
     "ws": "8.14.2",
-    "xml2js": "0.5.0",
+    "xml2js": "0.6.2",
     "xmllint-wasm": "3.0.1",
     "yamljs": "0.3.0"
   }
