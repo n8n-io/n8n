@@ -29,11 +29,10 @@ export class WorkflowStatisticsController {
 	 */
 	// TODO: move this into a new decorator `@ValidateWorkflowPermission`
 	@Middleware()
-	async hasWorkflowAccess(req: StatisticsRequest.GetOne, res: Response, next: NextFunction) {
+	async hasWorkflowAccess(req: StatisticsRequest.GetOne, _res: Response, next: NextFunction) {
 		const { user } = req;
 		const workflowId = req.params.id;
 
-		//
 		const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(workflowId, user, [
 			'workflow:read',
 		]);
