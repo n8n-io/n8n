@@ -56,6 +56,11 @@ export const useProjectsStore = defineStore('projects', () => {
 		}
 	};
 
+	const deleteProject = async (projectId: string): Promise<void> => {
+		await projectsApi.deleteProject(rootStore.getRestApiContext, projectId);
+		myProjects.value = myProjects.value.filter((p) => p.id !== projectId);
+	};
+
 	watch(
 		route,
 		async (newRoute) => {
@@ -78,5 +83,6 @@ export const useProjectsStore = defineStore('projects', () => {
 		getProject,
 		createProject,
 		updateProject,
+		deleteProject,
 	};
 });
