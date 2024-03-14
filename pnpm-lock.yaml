@@ -218,8 +218,8 @@ importers:
         specifier: ^0.0.2
         version: 0.0.2
       '@n8n/typeorm':
-        specifier: 0.3.20-3
-        version: 0.3.20-3(pg@8.11.3)(redis@4.6.12)(sqlite3@5.1.7)
+        specifier: 0.3.20-7
+        version: 0.3.20-7(pg@8.11.3)(redis@4.6.12)(sqlite3@5.1.7)
       '@n8n/vm2':
         specifier: 3.9.20
         version: 3.9.20
@@ -443,8 +443,8 @@ importers:
         specifier: workspace:*
         version: link:../@n8n/permissions
       '@n8n/typeorm':
-        specifier: 0.3.20-3
-        version: 0.3.20-3(@sentry/node@7.87.0)(ioredis@5.3.2)(mysql2@2.3.3)(pg@8.11.3)(sqlite3@5.1.7)
+        specifier: 0.3.20-7
+        version: 0.3.20-7(@sentry/node@7.87.0)(ioredis@5.3.2)(mysql2@2.3.3)(pg@8.11.3)(sqlite3@5.1.7)
       '@n8n_io/license-sdk':
         specifier: 2.10.0
         version: 2.10.0
@@ -4642,6 +4642,11 @@ packages:
     resolution: {integrity: sha512-ooWCrlZP11i8GImSjTHYHLkvFDP48nS4+204nGb1RiX/WXYHmJA2III9/e2DWVabCESdW7hBAEzHRqUn9OUVvQ==}
     engines: {node: '>=0.1.90'}
 
+  /@common.js/is-network-error@1.0.1:
+    resolution: {integrity: sha512-dkk7FX8L/JLia5pi+IQ11lCw2D6FTmbWL2iWTHgCbP40/deeXgknlkEQcQ/rOkjwQbqp8RZ4ey/anR17K66sqw==}
+    engines: {node: '>=16'}
+    dev: false
+
   /@ctrl/tinycolor@3.6.0:
     resolution: {integrity: sha512-/Z3l6pXthq0JvMYdUFyX9j0MaCltlIn6mfh9jLyQwg5aPKxkyNa0PTHtU1AlFXLNk55ZuAeJRcpvq+tmLfKmaQ==}
     engines: {node: '>=10'}
@@ -6437,6 +6442,15 @@ packages:
       - supports-color
     dev: false
 
+  /@n8n/p-retry@6.2.0-2:
+    resolution: {integrity: sha512-rbnMnSdEwq2yuYMgzOQ4jTXm+oH7yjN/0ISfB/7O6pUcEPsZt9UW60BYfQ1WWHkKa/evI8vgER2zV5/RC1BupQ==}
+    engines: {node: '>=18.10'}
+    dependencies:
+      '@common.js/is-network-error': 1.0.1
+      '@types/retry': 0.12.5
+      retry: 0.13.1
+    dev: false
+
   /@n8n/tournament@1.0.2:
     resolution: {integrity: sha512-fTpi7F8ra5flGSVfRzohPyG7czAAKCZPlLjdKdwbLJivLoI/Ekhgodov1jfVSCVFVbwQ06gRQRxLEDzl2jl8ig==}
     engines: {node: '>=18.10', pnpm: '>=8.6'}
@@ -6447,8 +6461,8 @@ packages:
       recast: 0.22.0
     dev: false
 
-  /@n8n/typeorm@0.3.20-3(@sentry/node@7.87.0)(ioredis@5.3.2)(mysql2@2.3.3)(pg@8.11.3)(sqlite3@5.1.7):
-    resolution: {integrity: sha512-eTaEBvaJZZCStqiLKSUIvFLMZJ3WMOFc+pnF+jedcQOc6AunWM57FqhPvnuB/Z6c67JmgIyINlnjbLDHtPgKZQ==}
+  /@n8n/typeorm@0.3.20-7(@sentry/node@7.87.0)(ioredis@5.3.2)(mysql2@2.3.3)(pg@8.11.3)(sqlite3@5.1.7):
+    resolution: {integrity: sha512-f4A9RGOnB3kCkusNAr1QDCGOVq1HU1YCBKoIGr2of+P3CVS3I+1vW7neOhlr/ic5S1F14Qy5TU8Lb78mRBYRSw==}
     engines: {node: '>=16.13.0'}
     hasBin: true
     peerDependencies:
@@ -6511,6 +6525,7 @@ packages:
       typeorm-aurora-data-api-driver:
         optional: true
     dependencies:
+      '@n8n/p-retry': 6.2.0-2
       '@sentry/node': 7.87.0
       '@sqltools/formatter': 1.2.5
       app-root-path: 3.1.0
@@ -6527,6 +6542,7 @@ packages:
       reflect-metadata: 0.2.1
       sha.js: 2.4.11
       sqlite3: 5.1.7
+      tarn: 3.0.2
       tslib: 2.6.1
       uuid: 9.0.0
       yargs: 17.7.2
@@ -6534,8 +6550,8 @@ packages:
       - supports-color
     dev: false
 
-  /@n8n/typeorm@0.3.20-3(pg@8.11.3)(redis@4.6.12)(sqlite3@5.1.7):
-    resolution: {integrity: sha512-eTaEBvaJZZCStqiLKSUIvFLMZJ3WMOFc+pnF+jedcQOc6AunWM57FqhPvnuB/Z6c67JmgIyINlnjbLDHtPgKZQ==}
+  /@n8n/typeorm@0.3.20-7(pg@8.11.3)(redis@4.6.12)(sqlite3@5.1.7):
+    resolution: {integrity: sha512-f4A9RGOnB3kCkusNAr1QDCGOVq1HU1YCBKoIGr2of+P3CVS3I+1vW7neOhlr/ic5S1F14Qy5TU8Lb78mRBYRSw==}
     engines: {node: '>=16.13.0'}
     hasBin: true
     peerDependencies:
@@ -6598,6 +6614,7 @@ packages:
       typeorm-aurora-data-api-driver:
         optional: true
     dependencies:
+      '@n8n/p-retry': 6.2.0-2
       '@sqltools/formatter': 1.2.5
       app-root-path: 3.1.0
       buffer: 6.0.3
@@ -6612,6 +6629,7 @@ packages:
       reflect-metadata: 0.2.1
       sha.js: 2.4.11
       sqlite3: 5.1.7
+      tarn: 3.0.2
       tslib: 2.6.1
       uuid: 9.0.0
       yargs: 17.7.2
@@ -9701,6 +9719,10 @@ packages:
 
   /@types/retry@0.12.0:
     resolution: {integrity: sha512-wWKOClTTiizcZhXnPY4wikVAwmdYHp8q6DmC+EJUzAMsycb7HB32Kh9RN4+0gExjmPmZSAQjgURXIGATPegAvA==}
+    dev: false
+
+  /@types/retry@0.12.5:
+    resolution: {integrity: sha512-3xSjTp3v03X/lSQLkczaN9UIEwJMoMCA1+Nb5HfbJEQWogdeQIyVtTvxPXDQjZ5zws8rFQfVfRdz03ARihPJgw==}
     dev: false
 
   /@types/rfc2047@2.0.1:
