@@ -6,33 +6,31 @@
 	</span>
 </template>
 
-<script lang="ts">
+<script lang="ts" setup>
+import type { TextSize } from '@/types/text';
 import N8nText from '../N8nText';
 
-import { defineComponent } from 'vue';
+const THEME = [
+	'default',
+	'success',
+	'warning',
+	'danger',
+	'primary',
+	'secondary',
+	'tertiary',
+] as const;
 
-export default defineComponent({
-	components: {
-		N8nText,
-	},
-	props: {
-		theme: {
-			type: String,
-			default: 'default',
-			validator: (value: string) =>
-				['default', 'success', 'warning', 'danger', 'primary', 'secondary', 'tertiary'].includes(
-					value,
-				),
-		},
-		size: {
-			type: String,
-			default: 'small',
-		},
-		bold: {
-			type: Boolean,
-			default: false,
-		},
-	},
+interface BadgeProps {
+	theme?: (typeof THEME)[number];
+	size?: TextSize;
+	bold: boolean;
+}
+
+defineOptions({ name: 'N8nBadge' });
+withDefaults(defineProps<BadgeProps>(), {
+	theme: 'default',
+	size: 'small',
+	bold: false,
 });
 </script>
 

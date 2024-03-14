@@ -38,6 +38,7 @@
 <script lang="ts">
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import { defineComponent, type PropType } from 'vue';
+import type { Placement } from 'element-plus';
 import N8nTooltip from '../N8nTooltip';
 
 export default defineComponent({
@@ -77,7 +78,7 @@ export default defineComponent({
 			type: Boolean,
 		},
 		tooltipPosition: {
-			type: String,
+			type: String as PropType<Placement>,
 			default: 'top',
 		},
 		badge: { type: Object as PropType<{ src: string; type: string }> },
