@@ -22,133 +22,68 @@
 	</ElInput>
 </template>
 
-<script lang="ts">
+<script lang="ts" setup>
+import { computed, ref } from 'vue';
 import { ElInput } from 'element-plus';
-import type { PropType } from 'vue';
-import { defineComponent } from 'vue';
 import { uid } from '../../utils';
 
-type InputRef = InstanceType<typeof ElInput>;
+const INPUT = ['text', 'textarea', 'number', 'password', 'email'] as const;
+const SIZE = ['mini', 'small', 'medium', 'large', 'xlarge'] as const;
 
-export default defineComponent({
-	name: 'N8nInput',
-	components: {
-		ElInput,
-	},
-	props: {
-		modelValue: {
-			type: [String, Number] as PropType<string | number>,
-			default: '',
-		},
-		type: {
-			type: String,
-			validator: (value: string): boolean =>
-				['text', 'textarea', 'number', 'password', 'email'].includes(value),
-		},
-		size: {
-			type: String,
-			default: 'large',
-			validator: (value: string): boolean =>
-				['mini', 'small', 'medium', 'large', 'xlarge'].includes(value),
-		},
-		placeholder: {
-			type: String,
-			default: '',
-		},
-		disabled: {
-			type: Boolean,
-			default: false,
-		},
-		readonly: {
-			type: Boolean,
-			default: false,
-		},
-		clearable: {
-			type: Boolean,
-			default: false,
-		},
-		rows: {
-			type: Number,
-			default: 2,
-		},
-		maxlength: {
-			type: Number,
-			default: Infinity,
-		},
-		title: {
-			type: String,
-			default: '',
-		},
-		name: {
-			type: String,
-			default: () => uid('input'),
-		},
-		autocomplete: {
-			type: String,
-			default: 'off',
-		},
-	},
-	computed: {
-		computedSize(): string | undefined {
-			if (this.size === 'xlarge') {
-				return undefined;
-			}
+interface InputProps {
+	modelValue?: string | number;
+	type?: (typeof INPUT)[number];
+	size?: (typeof SIZE)[number];
+	placeholder?: string;
+	disabled?: boolean;
+	readonly?: boolean;
+	clearable?: boolean;
+	rows?: number;
+	maxlength?: number;
+	title?: string;
+	name?: string;
+	autocomplete?: 'off' | 'autocomplete';
+}
 
-			return this.size;
-		},
-		classes(): string[] {
-			const classes = [];
-			if (this.size === 'xlarge') {
-				classes.push('xlarge');
-			}
-			if (this.type === 'password') {
-				classes.push('ph-no-capture');
-			}
-			return classes;
-		},
-	},
-	methods: {
-		focus() {
-			const innerInput = this.$refs.innerInput as InputRef | undefined;
-
-			if (!innerInput) return;
-
-			const inputElement = innerInput.$el.querySelector(
-				this.type === 'textarea' ? 'textarea' : 'input',
-			);
-
-			if (!inputElement) return;
-
-			inputElement.focus();
-		},
-		blur() {
-			const innerInput = this.$refs.innerInput as InputRef | undefined;
-
-			if (!innerInput) return;
-
-			const inputElement = innerInput.$el.querySelector(
-				this.type === 'textarea' ? 'textarea' : 'input',
-			);
-
-			if (!inputElement) return;
-
-			inputElement.blur();
-		},
-		select() {
-			const innerInput = this.$refs.innerInput as InputRef | undefined;
-
-			if (!innerInput) return;
-
-			const inputElement = innerInput.$el.querySelector(
-				this.type === 'textarea' ? 'textarea' : 'input',
-			);
-
-			if (!inputElement) return;
-
-			inputElement.select();
-		},
-	},
+defineOptions({ name: 'N8nInput' });
+const props = withDefaults(defineProps<InputProps>(), {
+	modelValue: '',
+	size: 'large',
+	placeholder: '',
+	disabled: false,
+	readonly: false,
+	clearable: false,
+	rows: 2,
+	maxlength: Infinity,
+	title: '',
+	name: () => uid('input'),
+	autocomplete: 'off',
 });
+
+const computedSize = computed(() => (props.size === 'xlarge' ? undefined : props.size));
+
+const classes = computed(() => {
+	const applied: string[] = [];
+	if (props.size === 'xlarge') {
+		applied.push('xlarge');
+	}
+	if (props.type === 'password') {
+		applied.push('ph-no-capture');
+	}
+	return applied;
+});
+
+const innerInput = ref<InstanceType<typeof ElInput>>();
+const inputElement = computed(() => {
+	if (!innerInput?.value) return;
+	const inputType = props.type === 'textarea' ? 'textarea' : 'input';
+	return (innerInput.value.$el as HTMLElement).querySelector(inputType);
+});
+
+const focus = () => inputElement.value?.focus();
+const blur = () => inputElement.value?.blur();
+const select = () => inputElement.value?.select();
+defineExpose({ focus, blur, select });
 </script>
 
 <style lang="scss" module>

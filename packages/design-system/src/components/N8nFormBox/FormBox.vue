@@ -38,70 +38,40 @@
 	</div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script lang="ts" setup>
 import N8nFormInputs from '../N8nFormInputs';
 import N8nHeading from '../N8nHeading';
 import N8nLink from '../N8nLink';
 import N8nButton from '../N8nButton';
+import type { IFormInput } from '@/types';
 import { createEventBus } from '../../utils';
 
-export default defineComponent({
-	name: 'N8nFormBox',
-	components: {
-		N8nHeading,
-		N8nFormInputs,
-		N8nLink,
-		N8nButton,
-	},
-	props: {
-		title: {
-			type: String,
-			default: '',
-		},
-		inputs: {
-			type: Array,
-			default: () => [],
-		},
-		buttonText: {
-			type: String,
-		},
-		buttonLoading: {
-			type: Boolean,
-			default: false,
-		},
-		secondaryButtonText: {
-			type: String,
-		},
-		redirectText: {
-			type: String,
-			default: '',
-		},
-		redirectLink: {
-			type: String,
-			default: '',
-		},
-	},
-	data() {
-		return {
-			formBus: createEventBus(),
-		};
-	},
-	methods: {
-		onUpdateModelValue(e: { name: string; value: string }) {
-			this.$emit('update', e);
-		},
-		onSubmit(e: { [key: string]: string }) {
-			this.$emit('submit', e);
-		},
-		onButtonClick() {
-			this.formBus.emit('submit');
-		},
-		onSecondaryButtonClick(event: Event) {
-			this.$emit('secondaryClick', event);
-		},
-	},
+interface FormBoxProps {
+	title?: string;
+	inputs?: IFormInput[];
+	buttonText?: string;
+	buttonLoading?: boolean;
+	secondaryButtonText?: string;
+	redirectText?: string;
+	redirectLink?: string;
+}
+
+defineOptions({ name: 'N8nFormBox' });
+withDefaults(defineProps<FormBoxProps>(), {
+	title: '',
+	inputs: () => [],
+	buttonLoading: false,
+	redirectText: '',
+	redirectLink: '',
 });
+
+const formBus = createEventBus();
+const $emit = defineEmits(['submit', 'update', 'secondaryClick']);
+
+const onUpdateModelValue = (e: { name: string; value: string }) => $emit('update', e);
+const onSubmit = (e: { [key: string]: string }) => $emit('submit', e);
+const onButtonClick = () => formBus.emit('submit');
+const onSecondaryButtonClick = (event: Event) => $emit('secondaryClick', event);
 </script>
 
 <style lang="scss" module>

@@ -120,7 +120,7 @@ export default defineComponent({
 		},
 		currentRoute(): RouteObject {
 			return (
-				(this as typeof this & { $route: RouteObject }).$route || {
+				this.$route || {
 					name: '',
 					path: '',
 				}
