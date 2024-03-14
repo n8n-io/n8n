@@ -16,6 +16,8 @@ import moment from 'moment-timezone';
 
 import { DateTime as LuxonDateTime } from 'luxon';
 
+import strftime from 'strftime';
+
 function parseDateByFormat(this: IExecuteFunctions, value: string, fromFormat: string) {
 	const date = moment(value, fromFormat, true);
 	if (moment(date).isValid()) return date;
@@ -87,6 +89,12 @@ export class DateTime implements INodeType {
 						value: 'format',
 						action: 'Convert a date to a different format',
 					},
+					{
+						name: 'Format Date Using Strftime',
+						description: 'Convert a date to a different format using strftime library',
+						value: 'customFormat',
+						action: 'Convert a date to a different format using strftime library',
+					},
 				],
 				default: 'format',
 			},
@@ -95,7 +103,7 @@ export class DateTime implements INodeType {
 				name: 'value',
 				displayOptions: {
 					show: {
-						action: ['format'],
+						action: ['format', 'customFormat'],
 					},
 				},
 				type: 'string',
@@ -111,7 +119,7 @@ export class DateTime implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						action: ['format'],
+						action: ['format', 'customFormat'],
 					},
 				},
 				description: 'Name of the property to which to write the converted date',
@@ -192,6 +200,43 @@ export class DateTime implements INodeType {
 				],
 				default: 'MM/DD/YYYY',
 				description: 'The format to convert the date to',
+			},
+			{
+				displayName: 'To Format',
+				name: 'toFormat',
+				type: 'options',
+				displayOptions: {
+					show: {
+						action: ['customFormat'],
+					},
+				},
+				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
+				options: [
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: '%A, %B %e, %Y at %l:%M %P %Z',
+						value: '%A, %B %e, %Y at %l:%M %P %Z',
+						description: 'Example: Wednesday, March 13, 2024 at 12:00 pm West Africa Standard Time',
+					},
+				],
+				default: '%A, %B %e, %Y at %l:%M %P %Z',
+				description: 'The format to convert the date to',
+			},
+			{
+				displayName: 'To Timezone Name or ID',
+				name: 'toTimezone',
+				type: 'options',
+				displayOptions: {
+					show: {
+						action: ['customFormat'],
+					},
+				},
+				typeOptions: {
+					loadOptionsMethod: 'getTimezones',
+				},
+				default: 'UTC',
+				description:
+					'The timezone to convert to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Options',
@@ -466,10 +511,70 @@ export class DateTime implements INodeType {
 						// If either a source or a target timezone got defined the
 						// timezone of the date has to be changed. If a target-timezone
 						// is set use it else fall back to workflow timezone.
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 						newDate = newDate.tz((options.toTimezone as string) || workflowTimezone);
 					}
 
 					newDate = newDate.format(toFormat);
+
+					let newItem: INodeExecutionData;
+					if (dataPropertyName.includes('.')) {
+						// Uses dot notation so copy all data
+						newItem = {
+							json: deepCopy(item.json),
+							pairedItem: {
+								item: i,
+							},
+						};
+					} else {
+						// Does not use dot notation so shallow copy is enough
+						newItem = {
+							json: { ...item.json },
+							pairedItem: {
+								item: i,
+							},
+						};
+					}
+
+					if (item.binary !== undefined) {
+						newItem.binary = item.binary;
+					}
+
+					set(newItem, `json.${dataPropertyName}`, newDate);
+
+					returnData.push(newItem);
+				}
+
+				if (action === 'customFormat') {
+					let currentDate = this.getNodeParameter('value', i) as any;
+					const dataPropertyName = this.getNodeParameter('dataPropertyName', i);
+					const toFormat = this.getNodeParameter('toFormat', i) as string;
+					const toTimezone = this.getNodeParameter('toTimezone', i);
+					let newDate;
+
+					if ((currentDate as unknown as IDataObject) instanceof LuxonDateTime) {
+						currentDate = (currentDate as unknown as LuxonDateTime).toISO();
+					}
+
+					if (currentDate === undefined) {
+						continue;
+					}
+
+					if (Number.isInteger(currentDate as number)) {
+						newDate = new Date(currentDate * 1000);
+					} else {
+						newDate = new Date(currentDate as string);
+					}
+
+					const currentTimezone = process.env.TZ;
+
+					if (toTimezone) {
+						process.env.TZ = toTimezone as string;
+					}
+
+					newDate = strftime(toFormat, newDate);
+
+					process.env.TZ = currentTimezone;
 
 					let newItem: INodeExecutionData;
 					if (dataPropertyName.includes('.')) {
