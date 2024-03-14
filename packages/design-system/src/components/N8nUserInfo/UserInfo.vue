@@ -25,61 +25,38 @@
 	</div>
 </template>
 
-<script lang="ts">
+<script lang="ts" setup>
+import { computed, useCssModule } from 'vue';
 import N8nText from '../N8nText';
 import N8nAvatar from '../N8nAvatar';
 import N8nBadge from '../N8nBadge';
-import Locale from '../../mixins/locale';
-import { defineComponent } from 'vue';
+import { useI18n } from '../../composables/useI18n';
 
-export default defineComponent({
-	name: 'N8nUsersInfo',
-	components: {
-		N8nAvatar,
-		N8nText,
-		N8nBadge,
-	},
-	mixins: [Locale],
-	props: {
-		firstName: {
-			type: String,
-		},
-		lastName: {
-			type: String,
-		},
-		email: {
-			type: String,
-		},
-		isOwner: {
-			type: Boolean,
-		},
-		isPendingUser: {
-			type: Boolean,
-		},
-		isCurrentUser: {
-			type: Boolean,
-		},
-		disabled: {
-			type: Boolean,
-		},
-		settings: {
-			type: Object,
-			required: false,
-		},
-		isSamlLoginEnabled: {
-			type: Boolean,
-			required: false,
-		},
-	},
-	computed: {
-		classes(): Record<string, boolean> {
-			return {
-				[this.$style.container]: true,
-				[this.$style.disabled]: this.disabled,
-			};
-		},
-	},
+interface UsersInfoProps {
+	firstName?: string;
+	lastName?: string;
+	email?: string;
+	isOwner?: boolean;
+	isPendingUser?: boolean;
+	isCurrentUser?: boolean;
+	disabled?: boolean;
+	settings?: object;
+	isSamlLoginEnabled?: boolean;
+}
+
+const props = withDefaults(defineProps<UsersInfoProps>(), {
+	disabled: false,
 });
+
+const { t } = useI18n();
+
+const $style = useCssModule();
+const classes = computed(
+	(): Record<string, boolean> => ({
+		[$style.container]: true,
+		[$style.disabled]: props.disabled,
+	}),
+);
 </script>
 
 <style lang="scss" module>

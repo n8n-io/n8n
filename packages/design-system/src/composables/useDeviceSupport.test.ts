@@ -3,7 +3,7 @@ import { useDeviceSupport } from '@/composables/useDeviceSupport';
 describe('useDeviceSupport()', () => {
 	beforeEach(() => {
 		global.window = Object.create(window);
-		global.navigator = { userAgent: 'test-agent', maxTouchPoints: 0 };
+		global.navigator = { userAgent: 'test-agent', maxTouchPoints: 0 } as Navigator;
 	});
 
 	describe('isTouchDevice', () => {
