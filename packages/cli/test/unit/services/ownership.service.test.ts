@@ -8,7 +8,7 @@ import { mockInstance } from '../../shared/mocking';
 import { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { mock } from 'jest-mock-extended';
-import { mockCredential, mockProject, mockUser } from '../shared/mockObjects';
+import { mockCredential, mockProject } from '../shared/mockObjects';
 import { Project } from '@/databases/entities/Project';
 import { ProjectRelation } from '@/databases/entities/ProjectRelation';
 
@@ -86,17 +86,14 @@ describe('OwnershipService', () => {
 		});
 
 		test('should add `ownedBy` and `sharedWith` to workflow', async () => {
-			const owner = mockUser();
-			const editor = mockUser();
-
 			const projectOwner = mockProject();
 			const projectEditor = mockProject();
 
 			const workflow = new WorkflowEntity();
 
 			workflow.shared = [
-				{ role: 'workflow:owner', user: owner, project: projectOwner },
-				{ role: 'workflow:editor', user: editor, project: projectEditor },
+				{ role: 'workflow:owner', project: projectOwner },
+				{ role: 'workflow:editor', project: projectEditor },
 			] as SharedWorkflow[];
 
 			const { homeProject, sharedWithProjects } =

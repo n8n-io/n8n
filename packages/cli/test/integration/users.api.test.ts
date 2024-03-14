@@ -363,8 +363,6 @@ describe('PATCH /users/:id/role', () => {
 	const { NO_ADMIN_ON_OWNER, NO_USER, NO_OWNER_ON_OWNER } =
 		UsersController.ERROR_MESSAGES.CHANGE_ROLE;
 
-	const UNAUTHORIZED = 'Unauthorized';
-
 	beforeAll(async () => {
 		await testDb.truncate(['User']);
 

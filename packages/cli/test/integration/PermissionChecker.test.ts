@@ -287,7 +287,6 @@ describe('check()', () => {
 		await Container.get(SharedWorkflowRepository).save(
 			Container.get(SharedWorkflowRepository).create({
 				workflowId: workflow.id,
-				userId: owner.id,
 				role: 'workflow:editor',
 				projectId: ownerPersonalProject.id,
 			}),

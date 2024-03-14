@@ -3,8 +3,6 @@ import { DataSource, MoreThanOrEqual, QueryFailedError, Repository } from '@n8n/
 import config from '@/config';
 import { StatisticsNames, WorkflowStatistics } from '../entities/WorkflowStatistics';
 import type { User } from '@/databases/entities/User';
-import { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
-import { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
 
 type StatisticsInsertResult = 'insert' | 'failed' | 'alreadyExists';
 type StatisticsUpsertResult = StatisticsInsertResult | 'update';
