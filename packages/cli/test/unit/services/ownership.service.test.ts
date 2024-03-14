@@ -1,3 +1,4 @@
+// NOTE: passing
 import { OwnershipService } from '@/services/ownership.service';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
@@ -8,6 +9,8 @@ import { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { mock } from 'jest-mock-extended';
 import { mockCredential, mockProject, mockUser } from '../shared/mockObjects';
+import { Project } from '@/databases/entities/Project';
+import { ProjectRelation } from '@/databases/entities/ProjectRelation';
 
 describe('OwnershipService', () => {
 	const userRepository = mockInstance(UserRepository);
@@ -22,10 +25,19 @@ describe('OwnershipService', () => {
 		test('should retrieve a workflow owner', async () => {
 			const mockOwner = new User();
 			const mockNonOwner = new User();
+			const mockWorkflow = new WorkflowEntity();
+			const mockProjectRelation = Object.assign(new ProjectRelation(), {
+				role: 'project:personalOwner',
+				user: mockOwner,
+			});
+			const mockProject = Object.assign(new Project(), {
+				projectRelations: [mockProjectRelation],
+			});
 
 			const sharedWorkflow = Object.assign(new SharedWorkflow(), {
 				role: 'workflow:owner',
-				user: mockOwner,
+				project: mockProject,
+				workflow: mockWorkflow,
 			});
 
 			sharedWorkflowRepository.findOneOrFail.mockResolvedValueOnce(sharedWorkflow);
