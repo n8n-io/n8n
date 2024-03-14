@@ -67,11 +67,9 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 	const getUserCloudAccount = async () => {
 		if (!hasCloudPlan.value) throw new Error('User does not have a cloud plan');
 		try {
-			if (hasPermission(['instanceOwner'])) {
-				await usersStore.fetchUserCloudAccount();
-				if (!usersStore.currentUserCloudInfo?.confirmed && !userIsTrialing.value) {
-					useUIStore().pushBannerToStack('EMAIL_CONFIRMATION');
-				}
+			await usersStore.fetchUserCloudAccount();
+			if (!usersStore.currentUserCloudInfo?.confirmed && !userIsTrialing.value) {
+				useUIStore().pushBannerToStack('EMAIL_CONFIRMATION');
 			}
 		} catch (error) {
 			throw new Error(error.message);
