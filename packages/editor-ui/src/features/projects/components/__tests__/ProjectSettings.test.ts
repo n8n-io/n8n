@@ -49,6 +49,7 @@ describe('ProjectSettings', () => {
 		const deleteButton = getByTestId('project-settings-delete-button');
 
 		await userEvent.click(deleteButton);
+		expect(deleteProjectSpy).not.toHaveBeenCalled();
 		let modal = getByRole('dialog');
 		expect(modal).toBeInTheDocument();
 		const cancelButton = modal.querySelector('.btn--cancel');
@@ -56,6 +57,7 @@ describe('ProjectSettings', () => {
 		if (cancelButton) {
 			await userEvent.click(cancelButton);
 			expect(queryByRole('dialog')).not.toBeInTheDocument();
+			expect(deleteProjectSpy).not.toHaveBeenCalled();
 		}
 
 		await userEvent.click(deleteButton);
