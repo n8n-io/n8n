@@ -33,9 +33,12 @@ export class WorkflowStatisticsController {
 		const { user } = req;
 		const workflowId = req.params.id;
 
-		const hasAccess = await this.sharedWorkflowRepository.hasAccess(workflowId, user);
+		//
+		const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(workflowId, user, [
+			'workflow:read',
+		]);
 
-		if (hasAccess) {
+		if (workflow) {
 			next();
 		} else {
 			this.logger.verbose('User attempted to read a workflow without permissions', {

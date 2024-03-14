@@ -7,7 +7,7 @@ import type { Scope } from '@n8n/permissions';
 import type { WorkflowEntity } from '../entities/WorkflowEntity';
 import { ProjectRepository } from './project.repository';
 import { RoleService } from '@/services/role.service';
-import { Project } from '../entities/Project';
+import type { Project } from '../entities/Project';
 
 @Service()
 export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
@@ -17,16 +17,6 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 		private roleService: RoleService,
 	) {
 		super(SharedWorkflow, dataSource.manager);
-	}
-
-	async hasAccess(workflowId: string, user: User) {
-		const where: FindOptionsWhere<SharedWorkflow> = {
-			workflowId,
-		};
-		if (!user.hasGlobalScope('workflow:read')) {
-			where.userId = user.id;
-		}
-		return await this.exist({ where });
 	}
 
 	/** Get the IDs of all users this workflow is shared with */
