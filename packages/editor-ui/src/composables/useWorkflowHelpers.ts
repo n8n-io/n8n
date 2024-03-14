@@ -729,12 +729,21 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		return nodeData;
 	}
 
-	function getWebhookExpressionValue(webhookData: IWebhookDescription, key: string): string {
+	function getWebhookExpressionValue(
+		webhookData: IWebhookDescription,
+		key: string,
+		stringify = true,
+	): string {
 		if (webhookData[key] === undefined) {
 			return 'empty';
 		}
 		try {
-			return resolveExpression(webhookData[key] as string) as string;
+			return resolveExpression(
+				webhookData[key] as string,
+				undefined,
+				undefined,
+				stringify,
+			) as string;
 		} catch (e) {
 			return i18n.baseText('nodeWebhooks.invalidExpression');
 		}
@@ -776,6 +785,7 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 			c?: number;
 			additionalKeys?: IWorkflowDataProxyAdditionalKeys;
 		} = {},
+		stringifyObject = true,
 	) {
 		const parameters = {
 			__xxxxxxx__: expression,
@@ -787,7 +797,7 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		}
 
 		const obj = returnData.__xxxxxxx__;
-		if (typeof obj === 'object') {
+		if (typeof obj === 'object' && stringifyObject) {
 			const proxy = obj as { isProxy: boolean; toJSON?: () => unknown } | null;
 			if (proxy?.isProxy && proxy.toJSON) return JSON.stringify(proxy.toJSON());
 			const workflow = getCurrentWorkflow();

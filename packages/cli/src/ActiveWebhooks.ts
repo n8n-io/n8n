@@ -145,17 +145,20 @@ export class ActiveWebhooks implements IWebhookManager {
 		});
 	}
 
-	private async findWebhook(path: string, httpMethod: IHttpRequestMethods) {
-		// Remove trailing slash
-		if (path.endsWith('/')) {
-			path = path.slice(0, -1);
+	private async findWebhook(path: string, httpMethod: IHttpRequestMethods | IHttpRequestMethods[]) {
+		if (!Array.isArray(httpMethod)) {
+			httpMethod = [httpMethod];
 		}
 
-		const webhook = await this.webhookService.findWebhook(httpMethod, path);
-		if (webhook === null) {
-			throw new WebhookNotFoundError({ path, httpMethod }, { hint: 'production' });
+		for (const method of httpMethod) {
+			const webhook = await this.webhookService.findWebhook(method, path);
+			if (webhook !== null) {
+				return webhook;
+			}
 		}
-
-		return webhook;
+		throw new WebhookNotFoundError(
+			{ path, httpMethod: httpMethod.join(', ') },
+			{ hint: 'production' },
+		);
 	}
 }

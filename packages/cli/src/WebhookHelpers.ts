@@ -262,7 +262,7 @@ export async function executeWebhook(
 	);
 	const responseCode = workflow.expression.getSimpleParameterValue(
 		workflowStartNode,
-		webhookData.webhookDescription.responseCode,
+		webhookData.webhookDescription.responseCode as string,
 		executionMode,
 		additionalKeys,
 		undefined,
@@ -324,7 +324,7 @@ export async function executeWebhook(
 					// TODO: pass a custom `fileWriteStreamHandler` to create binary data files directly
 				});
 				req.body = await new Promise((resolve) => {
-					form.parse(req, async (err, data, files) => {
+					form.parse(req, async (_err, data, files) => {
 						normalizeFormData(data);
 						normalizeFormData(files);
 						resolve({ data, files });

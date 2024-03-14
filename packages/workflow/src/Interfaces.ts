@@ -1758,7 +1758,7 @@ export interface INodeHookDescription {
 }
 
 export interface IWebhookData {
-	httpMethod: IHttpRequestMethods;
+	httpMethod: IHttpRequestMethods | IHttpRequestMethods[];
 	node: string;
 	path: string;
 	webhookDescription: IWebhookDescription;
@@ -1771,8 +1771,14 @@ export interface IWebhookData {
 }
 
 export interface IWebhookDescription {
-	[key: string]: IHttpRequestMethods | WebhookResponseMode | boolean | string | undefined;
-	httpMethod: IHttpRequestMethods | string;
+	[key: string]:
+		| IHttpRequestMethods
+		| IHttpRequestMethods[]
+		| WebhookResponseMode
+		| boolean
+		| string
+		| undefined;
+	httpMethod: IHttpRequestMethods | IHttpRequestMethods[] | string;
 	isFullPath?: boolean;
 	name: 'default' | 'setup';
 	path: string;

@@ -10,8 +10,9 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 	MultiPartFormData,
+	INodeParameters,
 } from 'n8n-workflow';
-import { BINARY_ENCODING, NodeOperationError, Node } from 'n8n-workflow';
+import { BINARY_ENCODING, NodeOperationError, Node, NodeConnectionType } from 'n8n-workflow';
 
 import { v4 as uuid } from 'uuid';
 import basicAuth from 'basic-auth';
@@ -31,6 +32,40 @@ import {
 } from './description';
 import { WebhookAuthorizationError } from './error';
 
+const configuredOutputs = (parameters: INodeParameters) => {
+	const httpMethod = parameters.httpMethod as string | string[];
+
+	if (!Array.isArray(httpMethod)) return [NodeConnectionType.Main];
+
+	const outputs = httpMethod.map((method) => {
+		return {
+			type: `${NodeConnectionType.Main}`,
+			displayName: method,
+		};
+	});
+
+	return outputs;
+};
+
+const setupOutputConnection = (ctx: IWebhookFunctions, method: string) => {
+	const httpMethod = ctx.getNodeParameter('httpMethod', []) as string[] | string;
+
+	// before version 2, httpMethod was a string and not an array
+	if (!Array.isArray(httpMethod)) {
+		return (outputData: INodeExecutionData): INodeExecutionData[][] => {
+			return [[outputData]];
+		};
+	}
+
+	const outputIndex = httpMethod.indexOf(method.toUpperCase());
+	const outputs: INodeExecutionData[][] = httpMethod.map(() => []);
+
+	return (outputData: INodeExecutionData): INodeExecutionData[][] => {
+		outputs[outputIndex] = [outputData];
+		return outputs;
+	};
+};
+
 export class Webhook extends Node {
 	authPropertyName = 'authentication';
 
@@ -39,7 +74,7 @@ export class Webhook extends Node {
 		icon: 'file:webhook.svg',
 		name: 'webhook',
 		group: ['trigger'],
-		version: [1, 1.1],
+		version: [1, 1.1, 2],
 		description: 'Starts the workflow when a webhook is called',
 		eventTriggerDescription: 'Waiting for you to call the Test URL',
 		activationMessage: 'You can now make calls to your production webhook URL.',
@@ -56,16 +91,61 @@ export class Webhook extends Node {
 					'Webhooks have two modes: test and production. <br /> <br /> <b>Use test mode while you build your workflow</b>. Click the \'listen\' button, then make a request to the test URL. The executions will show up in the editor.<br /> <br /> <b>Use production mode to run your workflow automatically</b>. Since the workflow is activated, you can make requests to the production URL. These executions will show up in the <a data-key="executions">executions list</a>, but not in the editor.',
 			},
 			activationHint:
-				'Once you’ve finished building your workflow, run it without having to click this button by using the production webhook URL.',
+				"Once you've finished building your workflow, run it without having to click this button by using the production webhook URL.",
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
-		outputs: ['main'],
+		outputs: `={{(${configuredOutputs})($parameter)}}`,
 		credentials: credentialsProperty(this.authPropertyName),
 		webhooks: [defaultWebhookDescription],
 		properties: [
 			authenticationProperty(this.authPropertyName),
-			httpMethodsProperty,
+			{
+				...httpMethodsProperty,
+				displayOptions: {
+					show: {
+						'@version': [1, 1.1],
+					},
+				},
+			},
+			{
+				displayName: 'HTTP Methods',
+				name: 'httpMethod',
+				type: 'multiOptions',
+				options: [
+					{
+						name: 'DELETE',
+						value: 'DELETE',
+					},
+					{
+						name: 'GET',
+						value: 'GET',
+					},
+					{
+						name: 'HEAD',
+						value: 'HEAD',
+					},
+					{
+						name: 'PATCH',
+						value: 'PATCH',
+					},
+					{
+						name: 'POST',
+						value: 'POST',
+					},
+					{
+						name: 'PUT',
+						value: 'PUT',
+					},
+				],
+				default: ['GET', 'POST'],
+				description: 'The HTTP methods to listen to',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 2 } }],
+					},
+				},
+			},
 			{
 				displayName: 'Path',
 				name: 'path',
@@ -104,6 +184,9 @@ export class Webhook extends Node {
 		};
 		const req = context.getRequestObject();
 		const resp = context.getResponseObject();
+		const requestMethod = context.getRequestObject().method;
+
+		const prepareOutput = setupOutputConnection(context, requestMethod);
 
 		try {
 			if (options.ignoreBots && isbot(req.headers['user-agent']))
@@ -119,17 +202,17 @@ export class Webhook extends Node {
 		}
 
 		if (options.binaryData) {
-			return await this.handleBinaryData(context);
+			return await this.handleBinaryData(context, prepareOutput);
 		}
 
 		if (req.contentType === 'multipart/form-data') {
-			return await this.handleFormData(context);
+			return await this.handleFormData(context, prepareOutput);
 		}
 
 		const nodeVersion = context.getNode().typeVersion;
 		if (nodeVersion > 1 && !req.body && !options.rawBody) {
 			try {
-				return await this.handleBinaryData(context);
+				return await this.handleBinaryData(context, prepareOutput);
 			} catch (error) {}
 		}
 
@@ -156,7 +239,7 @@ export class Webhook extends Node {
 
 		return {
 			webhookResponse: options.responseData,
-			workflowData: [[response]],
+			workflowData: prepareOutput(response),
 		};
 	}
 
@@ -211,7 +294,10 @@ export class Webhook extends Node {
 		}
 	}
 
-	private async handleFormData(context: IWebhookFunctions) {
+	private async handleFormData(
+		context: IWebhookFunctions,
+		prepareOutput: (data: INodeExecutionData) => INodeExecutionData[][],
+	) {
 		const req = context.getRequestObject() as MultiPartFormData.Request;
 		const options = context.getNodeParameter('options', {}) as IDataObject;
 		const { data, files } = req.body;
@@ -264,10 +350,13 @@ export class Webhook extends Node {
 			}
 		}
 
-		return { workflowData: [[returnItem]] };
+		return { workflowData: prepareOutput(returnItem) };
 	}
 
-	private async handleBinaryData(context: IWebhookFunctions): Promise<IWebhookResponseData> {
+	private async handleBinaryData(
+		context: IWebhookFunctions,
+		prepareOutput: (data: INodeExecutionData) => INodeExecutionData[][],
+	): Promise<IWebhookResponseData> {
 		const req = context.getRequestObject();
 		const options = context.getNodeParameter('options', {}) as IDataObject;
 
@@ -298,7 +387,7 @@ export class Webhook extends Node {
 				returnItem.binary = { [binaryPropertyName]: binaryData };
 			}
 
-			return { workflowData: [[returnItem]] };
+			return { workflowData: prepareOutput(returnItem) };
 		} catch (error) {
 			throw new NodeOperationError(context.getNode(), error as Error);
 		} finally {
