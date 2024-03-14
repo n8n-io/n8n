@@ -46,7 +46,7 @@ const $emit = defineEmits(['expand', 'click:tag']);
 
 const { t } = useI18n();
 
-let showAll = ref(false);
+const showAll = ref(false);
 
 const visibleTags = computed((): ITag[] => {
 	const { tags, truncate, truncateAt } = props;

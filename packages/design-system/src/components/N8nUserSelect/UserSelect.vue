@@ -58,7 +58,7 @@ const $emit = defineEmits(['blur', 'focus']);
 
 const { t } = useI18n();
 
-let filter = ref('');
+const filter = ref('');
 
 const filteredUsers = computed(() =>
 	props.users.filter((user) => {

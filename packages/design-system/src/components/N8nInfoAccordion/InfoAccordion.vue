@@ -70,7 +70,7 @@ const props = withDefaults(defineProps<InfoAccordionProps>(), {
 });
 const $emit = defineEmits(['click:body', 'tooltipClick']);
 
-let expanded = ref(false);
+const expanded = ref(false);
 onMounted(() => {
 	props.eventBus.on('expand', () => {
 		expanded.value = true;

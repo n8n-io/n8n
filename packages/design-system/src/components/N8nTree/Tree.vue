@@ -36,6 +36,7 @@ interface TreeProps {
 	nodeClass?: string;
 }
 
+defineOptions({ name: 'N8nTree' });
 const props = withDefaults(defineProps<TreeProps>(), {
 	value: () => ({}),
 	path: () => [],
