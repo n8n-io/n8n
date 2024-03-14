@@ -74,6 +74,7 @@ const {
 	editor: editorRef,
 	segments,
 	unresolvedExpression,
+	setCursorPosition,
 	hasFocus,
 	focus,
 } = useExpressionEditor({
@@ -131,6 +132,9 @@ function itemSelected({ variable }: IVariableItemSelected) {
 			insert,
 		},
 	});
+
+	focus();
+	setCursorPosition(head + insert.length);
 }
 
 defineExpose({ itemSelected });
