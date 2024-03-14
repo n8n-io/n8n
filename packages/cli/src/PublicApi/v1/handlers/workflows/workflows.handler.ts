@@ -260,7 +260,6 @@ export = {
 					await Container.get(ActiveWorkflowRunner).add(workflow.id, 'activate');
 				} catch (error) {
 					if (error instanceof Error) {
-						console.log(error);
 						return res.status(400).json({ message: error.message });
 					}
 				}
