@@ -65,10 +65,21 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 		userId: string,
 		workflowId: string,
 	): Promise<WorkflowSharingRole | undefined> {
-		return await this.findOne({
-			select: ['role'],
-			where: { workflowId, userId },
-		}).then((shared) => shared?.role);
+		const sharing = await this.findOne({
+			// NOTE: We have to select everything that is used in the `where` clause. Otherwise typeorm will create an invalid query and we get this error:
+			//       QueryFailedError: SQLITE_ERROR: no such column: distinctAlias.SharedWorkflow_...
+			select: {
+				role: true,
+				workflowId: true,
+				projectId: true,
+			},
+			where: {
+				workflowId,
+				project: { projectRelations: { role: 'project:personalOwner', userId } },
+			},
+		});
+
+		return sharing?.role;
 	}
 
 	async findSharing(
