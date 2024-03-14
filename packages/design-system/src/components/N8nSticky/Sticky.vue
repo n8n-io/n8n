@@ -61,7 +61,7 @@
 import { computed, ref, watch } from 'vue';
 import N8nInput from '../N8nInput';
 import N8nMarkdown from '../N8nMarkdown';
-import N8nResizeWrapper, { ResizeData } from '../N8nResizeWrapper/ResizeWrapper.vue';
+import N8nResizeWrapper, { type ResizeData } from '../N8nResizeWrapper/ResizeWrapper.vue';
 import N8nText from '../N8nText';
 import { useI18n } from '../../composables/useI18n';
 
