@@ -18,7 +18,7 @@ const DEFAULT_SETUP = {
 	},
 };
 
-describe('SQL Editor Preview Tests', () => {
+describe('SqlEditor.vue', () => {
 	const pinia = createTestingPinia({
 		initialState: {
 			[STORES.SETTINGS]: {

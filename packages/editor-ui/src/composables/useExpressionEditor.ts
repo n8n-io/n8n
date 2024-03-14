@@ -72,9 +72,7 @@ export const useExpressionEditor = ({
 
 		const fullTree = ensureSyntaxTree(state, state.doc.length, EXPRESSION_EDITOR_PARSER_TIMEOUT);
 
-		if (fullTree === null) {
-			throw new Error('Failed to parse expression');
-		}
+		if (fullTree === null) return;
 
 		const skip = ['Program', 'Script', 'Document', ...toValue(skipSegments)];
 
@@ -375,9 +373,9 @@ export const useExpressionEditor = ({
 		editor.value?.dispatch({ selection: { head: pos, anchor: pos } });
 	}
 
-	function select(start: number, end: number | 'end'): void {
+	function select(anchor: number, head: number | 'end' = 'end'): void {
 		editor.value?.dispatch({
-			selection: { head: start, anchor: end === 'end' ? editor.value?.state.doc.length ?? 0 : end },
+			selection: { anchor, head: head === 'end' ? editor.value?.state.doc.length ?? 0 : head },
 		});
 	}
 
