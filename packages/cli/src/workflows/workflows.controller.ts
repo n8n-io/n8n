@@ -276,16 +276,14 @@ export class WorkflowsController {
 
 		// sharing disabled
 
-		const extraRelations = config.getEnv('workflowTagsDisabled') ? [] : ['workflow.tags'];
-
-		const shared = await this.sharedWorkflowRepository.findSharing(
+		const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(
 			workflowId,
 			req.user,
-			'workflow:read',
-			{ extraRelations },
+			['workflow:read'],
+			{ includeTags: !config.getEnv('workflowTagsDisabled') },
 		);
 
-		if (!shared) {
+		if (!workflow) {
 			this.logger.verbose('User attempted to access a workflow without permissions', {
 				workflowId,
 				userId: req.user.id,
@@ -295,7 +293,7 @@ export class WorkflowsController {
 			);
 		}
 
-		return shared.workflow;
+		return workflow;
 	}
 
 	// NOTE: updated

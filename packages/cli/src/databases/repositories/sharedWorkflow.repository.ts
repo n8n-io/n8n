@@ -72,31 +72,6 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 		return sharing?.role;
 	}
 
-	async findSharing(
-		workflowId: string,
-		user: User,
-		scope: Scope,
-		{ roles, extraRelations }: { roles?: WorkflowSharingRole[]; extraRelations?: string[] } = {},
-	) {
-		const where: FindOptionsWhere<SharedWorkflow> = {
-			workflow: { id: workflowId },
-		};
-
-		if (!user.hasGlobalScope(scope)) {
-			where.user = { id: user.id };
-		}
-
-		if (roles) {
-			where.role = In(roles);
-		}
-
-		const relations = ['workflow'];
-
-		if (extraRelations) relations.push(...extraRelations);
-
-		return await this.findOne({ relations, where });
-	}
-
 	async makeOwnerOfAllWorkflows(user: User) {
 		return await this.update({ userId: Not(user.id), role: 'workflow:owner' }, { user });
 	}
