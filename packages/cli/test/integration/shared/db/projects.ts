@@ -1,11 +1,9 @@
 import Container from 'typedi';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
-import type { DeepPartial } from 'ts-essentials';
-import type { Project } from '@/databases/entities/Project';
 import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
 import type { User } from '@/databases/entities/User';
 
-export async function createProject(user: User, project?: DeepPartial<Project>) {
+export async function createProject(user: User) {
 	const projectRepository = Container.get(ProjectRepository);
 	const projectRelationRepository = Container.get(ProjectRelationRepository);
 
@@ -13,7 +11,6 @@ export async function createProject(user: User, project?: DeepPartial<Project>) 
 		projectRepository.create({
 			name: 'project name',
 			type: 'team',
-			...project,
 		}),
 	);
 	await projectRelationRepository.save(
