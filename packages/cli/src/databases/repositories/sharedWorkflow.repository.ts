@@ -72,8 +72,14 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 		return sharing?.role;
 	}
 
-	async makeOwnerOfAllWorkflows(user: User) {
-		return await this.update({ userId: Not(user.id), role: 'workflow:owner' }, { user });
+	async makeOwnerOfAllWorkflows(project: Project) {
+		return await this.update(
+			{
+				projectId: Not(project.id),
+				role: 'workflow:owner',
+			},
+			{ project },
+		);
 	}
 
 	async getSharedWorkflows(
