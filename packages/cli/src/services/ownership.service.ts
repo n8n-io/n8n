@@ -4,7 +4,7 @@ import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.reposi
 import type { User } from '@db/entities/User';
 import { UserRepository } from '@db/repositories/user.repository';
 import type { ListQuery } from '@/requests';
-import { ApplicationError } from '../../../workflow/src';
+import { ApplicationError } from 'n8n-workflow';
 
 @Service()
 export class OwnershipService {
