@@ -10,13 +10,15 @@ export type ProjectRelation = Pick<IUserResponse, 'id' | 'email' | 'firstName' |
 	role: ProjectRole;
 };
 export type ProjectRelationPayload = { userId: string; role: ProjectRole };
-export type Project = {
+export type ProjectSharingData = {
 	id: string;
 	name: string | null;
 	type: ProjectType;
+};
+export type Project = ProjectSharingData & {
 	relations: ProjectRelation[];
 };
-export type ProjectListItem = Omit<Project, 'relations'> & {
+export type ProjectListItem = ProjectSharingData & {
 	role: ProjectRole;
 	createdAt: string;
 	updatedAt: string;

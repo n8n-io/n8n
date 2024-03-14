@@ -105,13 +105,13 @@ onBeforeMount(async () => {
 		<form @submit.prevent="onSubmit">
 			<fieldset>
 				<label for="name">{{ locale.baseText('projects.settings.name') }}</label>
-				<n8n-input id="name" v-model="formData.name" type="text" name="name" @input="onNameInput" />
+				<N8nInput id="name" v-model="formData.name" type="text" name="name" @input="onNameInput" />
 			</fieldset>
 			<fieldset>
 				<label for="projectMembers">{{
 					locale.baseText('projects.settings.projectMembers')
 				}}</label>
-				<n8n-user-select
+				<N8nUserSelect
 					id="projectMembers"
 					class="mb-s"
 					size="large"
@@ -122,56 +122,55 @@ onBeforeMount(async () => {
 					@update:model-value="onAddMember"
 				>
 					<template #prefix>
-						<n8n-icon icon="search" />
+						<N8nIcon icon="search" />
 					</template>
-				</n8n-user-select>
-				<n8n-users-list
+				</N8nUserSelect>
+				<N8nUsersList
 					:actions="[]"
 					:users="formData.relations"
 					:current-user-id="usersStore.currentUser?.id"
 					:delete-label="$locale.baseText('workflows.shareModal.list.delete')"
 				>
 					<template #actions="{ user }">
-						<n8n-select
-							:class="$style.roleSelect"
+						<N8nSelect
 							:model-value="user?.role || 'project:admin'"
 							size="small"
 							@update:model-value="onRoleAction(user, $event)"
 						>
-							<n8n-option
+							<N8nOption
 								v-for="role in projectRoles"
 								:key="role.value"
 								:value="role.value"
 								:label="role.label"
 							/>
-							<n8n-option :class="$style.roleSelectRemoveOption" value="remove">
-								<n8n-text color="danger">{{
+							<N8nOption value="remove">
+								<N8nText color="danger">{{
 									$locale.baseText('projects.settings.removeAccess')
-								}}</n8n-text>
-							</n8n-option>
-						</n8n-select>
+								}}</N8nText>
+							</N8nOption>
+						</N8nSelect>
 					</template>
-				</n8n-users-list>
+				</N8nUsersList>
 			</fieldset>
 			<fieldset>
 				<div :class="$style.buttons">
-					<n8n-button
+					<N8nButton
 						:disabled="!isDirty"
 						type="primary"
 						data-test-id="project-settings-save-button"
-						>{{ locale.baseText('projects.settings.button.save') }}</n8n-button
+						>{{ locale.baseText('projects.settings.button.save') }}</N8nButton
 					>
 					<div>
 						<small v-if="isDirty" class="mr-2xs">{{
 							locale.baseText('projects.settings.message.unsavedChanges')
 						}}</small>
-						<n8n-button
+						<N8nButton
 							:disabled="!isDirty"
 							type="secondary"
 							class="mr-2xs"
 							data-test-id="project-settings-cancel-button"
 							@click.stop.prevent="onCancel"
-							>{{ locale.baseText('projects.settings.button.cancel') }}</n8n-button
+							>{{ locale.baseText('projects.settings.button.cancel') }}</N8nButton
 						>
 					</div>
 				</div>
@@ -179,12 +178,12 @@ onBeforeMount(async () => {
 			<fieldset>
 				<hr class="mb-2xl" />
 				<h3 class="mb-xs">{{ locale.baseText('projects.settings.title.deleteProject') }}</h3>
-				<n8n-button
+				<N8nButton
 					type="danger"
 					class="mb-xs"
 					data-test-id="project-settings-delete-button"
 					@click.stop.prevent="onDelete"
-					>{{ locale.baseText('projects.settings.title.deleteProject') }}</n8n-button
+					>{{ locale.baseText('projects.settings.title.deleteProject') }}</N8nButton
 				>
 				<br />
 				<small>{{ locale.baseText('projects.settings.message.cannotBeUndone') }}</small>

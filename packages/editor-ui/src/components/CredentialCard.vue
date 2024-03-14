@@ -21,11 +21,6 @@
 		</div>
 		<template #append>
 			<div ref="cardActions" :class="$style.cardActions">
-				<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
-					<n8n-badge v-if="credentialPermissions.isOwner" class="mr-xs" theme="tertiary" bold>
-						{{ $locale.baseText('credentials.item.owner') }}
-					</n8n-badge>
-				</enterprise-edition>
 				<n8n-action-toggle :actions="actions" theme="dark" @action="onAction" @click.stop />
 			</div>
 		</template>
@@ -47,6 +42,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import TimeAgo from '@/components/TimeAgo.vue';
+import type { ProjectSharingData } from '@/features/projects/projects.types';
 
 export const CREDENTIAL_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -69,8 +65,8 @@ export default defineComponent({
 				type: '',
 				name: '',
 				nodesAccess: [],
-				sharedWith: [],
-				ownedBy: {} as IUser,
+				sharedWithProjects: [],
+				homeProject: {} as ProjectSharingData,
 			}),
 		},
 		readonly: {

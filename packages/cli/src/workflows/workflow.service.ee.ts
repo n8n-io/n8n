@@ -45,8 +45,6 @@ export class EnterpriseWorkflowService {
 			relations: { projectRelations: { user: true } },
 		});
 
-		console.log('projects', projects);
-
 		const newSharedWorkflows = projects
 			// We filter by role === 'project:personalOwner' above and there should
 			// always only be one owner.

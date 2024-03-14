@@ -12,14 +12,8 @@ import type {
 import { NodeHelpers, Workflow } from 'n8n-workflow';
 import { uuid } from '@jsplumb/util';
 import { defaultMockNodeTypes } from '@/__tests__/defaults';
-import type {
-	INodeUi,
-	ITag,
-	IUsedCredential,
-	IUser,
-	IWorkflowDb,
-	WorkflowMetadata,
-} from '@/Interface';
+import type { INodeUi, ITag, IUsedCredential, IWorkflowDb, WorkflowMetadata } from '@/Interface';
+import type { ProjectSharingData } from '@/features/projects/projects.types';
 
 export function createTestNodeTypes(data: INodeTypeData = {}): INodeTypes {
 	const getResolvedKey = (key: string) => {
@@ -81,8 +75,8 @@ export function createTestWorkflow(options: {
 	settings?: IWorkflowSettings;
 	tags?: ITag[] | string[];
 	pinData?: IPinData;
-	sharedWith?: Array<Partial<IUser>>;
-	ownedBy?: Partial<IUser>;
+	sharedWithProjects?: ProjectSharingData[];
+	homeProject?: ProjectSharingData;
 	versionId?: string;
 	usedCredentials?: IUsedCredential[];
 	meta?: WorkflowMetadata;

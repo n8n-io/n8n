@@ -242,7 +242,6 @@ export class WorkflowsController {
 		const { workflowId } = req.params;
 
 		if (this.license.isSharingEnabled()) {
-			// TODO: tags are currently ignored, fix this
 			const relations: FindOptionsRelations<WorkflowEntity> = {
 				shared: {
 					project: {
