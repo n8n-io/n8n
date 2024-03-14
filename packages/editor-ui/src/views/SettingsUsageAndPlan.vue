@@ -6,9 +6,8 @@ import { useUsageStore } from '@/stores/usage.store';
 import { telemetry } from '@/plugins/telemetry';
 import { i18n as locale } from '@/plugins/i18n';
 import { useUIStore } from '@/stores/ui.store';
-import { N8N_PRICING_PAGE_URL } from '@/constants';
+import { N8N_PRICING_PAGE_URL, ROLE } from '@/constants';
 import { useToast } from '@/composables/useToast';
-import { ROLE } from '@/utils/userUtils';
 import { hasPermission } from '@/rbac/permissions';
 
 const usageStore = useUsageStore();

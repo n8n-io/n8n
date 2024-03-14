@@ -1,6 +1,6 @@
 import { merge } from 'lodash-es';
 import { SETTINGS_STORE_DEFAULT_STATE, waitAllPromises } from '@/__tests__/utils';
-import { STORES } from '@/constants';
+import { ROLE, STORES } from '@/constants';
 import { createTestingPinia } from '@pinia/testing';
 import { useUIStore } from '@/stores/ui.store';
 import CollaborationPane from '@/components//MainHeader/CollaborationPane.vue';
@@ -13,7 +13,7 @@ const OWNER_USER = {
 	email: 'owner@user.com',
 	firstName: 'Owner',
 	lastName: 'User',
-	role: 'global:owner',
+	role: ROLE.Owner,
 	disabled: false,
 	isPending: false,
 	fullName: 'Owner User',
@@ -25,7 +25,7 @@ const MEMBER_USER = {
 	email: 'member@user.com',
 	firstName: 'Member',
 	lastName: 'User',
-	role: 'global:member',
+	role: ROLE.Member,
 	disabled: false,
 	isPending: false,
 	fullName: 'Member User',
@@ -37,7 +37,7 @@ const MEMBER_USER_2 = {
 	email: 'member2@user.com',
 	firstName: 'Another Member',
 	lastName: 'User',
-	role: 'global:member',
+	role: ROLE.Member,
 	disabled: false,
 	isPending: false,
 	fullName: 'Another Member User',

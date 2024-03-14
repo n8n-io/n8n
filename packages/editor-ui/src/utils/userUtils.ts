@@ -59,6 +59,7 @@ import {
 	BAMBOO_HR_NODE_TYPE,
 	GOOGLE_SHEETS_NODE_TYPE,
 	CODE_NODE_TYPE,
+	ROLE,
 } from '@/constants';
 import type {
 	IPersonalizationSurveyAnswersV1,
@@ -82,13 +83,6 @@ function isPersonalizationSurveyV2OrLater(
 	| IPersonalizationSurveyAnswersV4 {
 	return 'version' in data;
 }
-
-export const ROLE = {
-	Owner: 'global:owner',
-	Member: 'global:member',
-	Admin: 'global:admin',
-	Default: 'default', // default user with no email when setting up instance
-} as const;
 
 export const LOGIN_STATUS: { LoggedIn: ILogInStatus; LoggedOut: ILogInStatus } = {
 	LoggedIn: 'LoggedIn', // Can be owner or member or default user
