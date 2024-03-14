@@ -15,7 +15,7 @@ import { completionStatus } from '@codemirror/autocomplete';
 import { inputTheme } from './theme';
 
 import type { IVariableItemSelected } from '@/Interface';
-import { useExpressionEditor } from '@/mixins/expressionManager';
+import { useExpressionEditor } from '@/composables/useExpressionEditor';
 import {
 	autocompleteKeyMap,
 	enterKeyMap,

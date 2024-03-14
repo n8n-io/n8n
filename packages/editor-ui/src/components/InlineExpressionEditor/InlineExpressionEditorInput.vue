@@ -9,7 +9,7 @@ import { Prec } from '@codemirror/state';
 import { EditorView, keymap } from '@codemirror/view';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, toValue, watch } from 'vue';
 
-import { useExpressionEditor } from '@/mixins/expressionManager';
+import { useExpressionEditor } from '@/composables/useExpressionEditor';
 import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
 import {
 	autocompleteKeyMap,

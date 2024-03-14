@@ -3,7 +3,7 @@ import { STORES } from '@/constants';
 import { createTestingPinia } from '@pinia/testing';
 
 import SqlEditor from '@/components/SqlEditor/SqlEditor.vue';
-import { expressionManager } from '@/mixins/expressionManager';
+import { expressionManager } from '@/composables/useExpressionEditor';
 import type { TargetItem } from '@/Interface';
 import { renderComponent } from '@/__tests__/render';
 

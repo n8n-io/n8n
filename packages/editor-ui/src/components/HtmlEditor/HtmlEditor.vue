@@ -30,7 +30,7 @@ import cssParser from 'prettier/plugins/postcss';
 import { computed, onBeforeUnmount, onMounted, ref, toValue, watch } from 'vue';
 
 import { htmlEditorEventBus } from '@/event-bus';
-import { useExpressionEditor } from '@/mixins/expressionManager';
+import { useExpressionEditor } from '@/composables/useExpressionEditor';
 import { n8nCompletionSources } from '@/plugins/codemirror/completions/addCompletions';
 import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
 import {

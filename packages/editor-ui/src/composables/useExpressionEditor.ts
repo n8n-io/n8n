@@ -32,7 +32,7 @@ import { useRouter } from 'vue-router';
 import { useI18n } from '../composables/useI18n';
 import { highlighter } from '../plugins/codemirror/resolvableHighlighter';
 import { useWorkflowsStore } from '../stores/workflows.store';
-import { useAutocompleteTelemetry } from './completionManager';
+import { useAutocompleteTelemetry } from './useAutocompleteTelemetry';
 
 export const useExpressionEditor = ({
 	editorRef,

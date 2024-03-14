@@ -15,7 +15,7 @@
 <script setup lang="ts">
 import InlineExpressionEditorOutput from '@/components/InlineExpressionEditor/InlineExpressionEditorOutput.vue';
 import { codeNodeEditorEventBus } from '@/event-bus';
-import { useExpressionEditor } from '@/mixins/expressionManager';
+import { useExpressionEditor } from '@/composables/useExpressionEditor';
 import { n8nCompletionSources } from '@/plugins/codemirror/completions/addCompletions';
 import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
 import {
