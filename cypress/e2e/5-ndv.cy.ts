@@ -1,9 +1,6 @@
 import { v4 as uuid } from 'uuid';
 import { getVisibleSelect } from '../utils';
-import {
-	MANUAL_TRIGGER_NODE_DISPLAY_NAME,
-	// AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME,
-} from '../constants';
+import { MANUAL_TRIGGER_NODE_DISPLAY_NAME } from '../constants';
 import { NDV, WorkflowPage } from '../pages';
 import { NodeCreator } from '../pages/features/node-creator';
 
@@ -483,7 +480,7 @@ describe('NDV', () => {
 				.should('contain', MANUAL_TRIGGER_NODE_DISPLAY_NAME);
 		});
 
-		it.only('should connect floating sub-nodes', () => {
+		it('should connect floating sub-nodes', () => {
 			const nodeCreator = new NodeCreator();
 			const connectionGroups = [
 				{
