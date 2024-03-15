@@ -72,6 +72,7 @@ import { SamlService } from './sso/saml/saml.service.ee';
 import { VariablesController } from './environments/variables/variables.controller.ee';
 import { SourceControlService } from '@/environments/sourceControl/sourceControl.service.ee';
 import { SourceControlController } from '@/environments/sourceControl/sourceControl.controller.ee';
+import { AIController } from '@/controllers/ai.controller';
 
 import { handleMfaDisable, isMfaFeatureEnabled } from './Mfa/helpers';
 import type { FrontendService } from './services/frontend.service';
@@ -160,6 +161,7 @@ export class Server extends AbstractServer {
 			WorkflowsController,
 			ExecutionsController,
 			CredentialsController,
+			AIController,
 		];
 
 		if (
