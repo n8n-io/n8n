@@ -46,7 +46,7 @@ export declare namespace WorkflowRequest {
 
 	type NewName = AuthenticatedRequest<{}, {}, {}, { name?: string }>;
 
-	type ManualRun = AuthenticatedRequest<{}, {}, ManualRunPayload>;
+	type ManualRun = AuthenticatedRequest<{ workflowId: string }, {}, ManualRunPayload>;
 
 	type Share = AuthenticatedRequest<{ workflowId: string }, {}, { shareWithIds: string[] }>;
 

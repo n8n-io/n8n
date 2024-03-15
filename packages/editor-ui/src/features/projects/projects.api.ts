@@ -1,5 +1,5 @@
 import type { IRestApiContext } from '@/Interface';
-import { get, post, patch } from '@/utils/apiUtils';
+import { get, post, patch, makeRestApiRequest } from '@/utils/apiUtils';
 import type {
 	Project,
 	ProjectCreateRequest,
@@ -41,4 +41,8 @@ export const updateProject = async (
 ): Promise<void> => {
 	const { id, name, relations } = req;
 	await patch(context.baseUrl, `/projects/${id}`, { name, relations });
+};
+
+export const deleteProject = async (context: IRestApiContext, id: string): Promise<void> => {
+	await makeRestApiRequest(context, 'DELETE', `/projects/${id}`);
 };

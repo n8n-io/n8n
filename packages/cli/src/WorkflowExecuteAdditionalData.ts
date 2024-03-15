@@ -194,12 +194,12 @@ export function executeErrorWorkflow(
 			}
 
 			Container.get(OwnershipService)
-				.getWorkflowOwnerCached(workflowId)
-				.then((user) => {
+				.getWorkflowProjectCached(workflowId)
+				.then((project) => {
 					void Container.get(WorkflowExecutionService).executeErrorWorkflow(
 						errorWorkflow,
 						workflowErrorData,
-						user,
+						project,
 					);
 				})
 				.catch((error: Error) => {
@@ -222,12 +222,12 @@ export function executeErrorWorkflow(
 		) {
 			logger.verbose('Start internal error workflow', { executionId, workflowId });
 			void Container.get(OwnershipService)
-				.getWorkflowOwnerCached(workflowId)
-				.then((user) => {
+				.getWorkflowProjectCached(workflowId)
+				.then((project) => {
 					void Container.get(WorkflowExecutionService).executeErrorWorkflow(
 						workflowId,
 						workflowErrorData,
-						user,
+						project,
 					);
 				});
 		}
@@ -651,7 +651,6 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 
 export async function getRunData(
 	workflowData: IWorkflowBase,
-	userId: string,
 	inputData?: INodeExecutionData[],
 ): Promise<IWorkflowExecutionDataProcess> {
 	const mode = 'integrated';
@@ -694,7 +693,6 @@ export async function getRunData(
 		executionData: runExecutionData,
 		// @ts-ignore
 		workflowData,
-		userId,
 	};
 
 	return runData;
@@ -779,9 +777,7 @@ async function executeWorkflow(
 		settings: workflowData.settings,
 	});
 
-	const runData =
-		options.loadedRunData ??
-		(await getRunData(workflowData, additionalData.userId, options.inputData));
+	const runData = options.loadedRunData ?? (await getRunData(workflowData, options.inputData));
 
 	let executionId;
 
@@ -795,11 +791,7 @@ async function executeWorkflow(
 
 	let data;
 	try {
-		await Container.get(PermissionChecker).check(
-			workflowData.id,
-			additionalData.userId,
-			workflowData.nodes,
-		);
+		await Container.get(PermissionChecker).check(workflowData.id, workflowData.nodes);
 		await Container.get(PermissionChecker).checkSubworkflowExecutePolicy(
 			workflow,
 			options.parentWorkflowId,
@@ -808,7 +800,7 @@ async function executeWorkflow(
 
 		// Create new additionalData to have different workflow loaded and to call
 		// different webhooks
-		const additionalDataIntegrated = await getBase(additionalData.userId);
+		const additionalDataIntegrated = await getBase();
 		additionalDataIntegrated.hooks = getWorkflowHooksIntegrated(
 			runData.executionMode,
 			executionId,
@@ -958,7 +950,7 @@ export function sendDataToUI(type: string, data: IDataObject | IDataObject[]) {
  * Returns the base additional data without webhooks
  */
 export async function getBase(
-	userId: string,
+	userId?: string,
 	currentNodeParameters?: INodeParameters,
 	executionTimeoutTimestamp?: number,
 ): Promise<IWorkflowExecuteAdditionalData> {

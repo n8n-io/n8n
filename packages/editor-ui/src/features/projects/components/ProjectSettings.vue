@@ -1,15 +1,22 @@
 <script lang="ts" setup>
 import { computed, ref, watch, onBeforeMount } from 'vue';
+import { useRouter } from 'vue-router';
 import { useUsersStore } from '@/stores/users.store';
 import type { IUser } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
 import { useProjectsStore } from '@/features/projects/projects.store';
 import ProjectTabs from '@/features/projects/components/ProjectTabs.vue';
 import type { Project, ProjectRole, ProjectRelation } from '@/features/projects/projects.types';
+import { useMessage } from '@/composables/useMessage';
+import { useToast } from '@/composables/useToast';
+import { MODAL_CONFIRM, VIEWS } from '@/constants';
 
 const usersStore = useUsersStore();
 const locale = useI18n();
 const projectsStore = useProjectsStore();
+const toast = useToast();
+const message = useMessage();
+const router = useRouter();
 
 const isDirty = ref(false);
 const formData = ref<Pick<Project, 'name' | 'relations'>>({
@@ -79,8 +86,33 @@ const onSubmit = async () => {
 	}
 };
 
-const onDelete = () => {
-	alert('Not yet implemented');
+const onDelete = async () => {
+	try {
+		const projectName = projectsStore.currentProject.name ?? '';
+		const confirmation = await message.confirm(
+			locale.baseText('projects.settings.delete.message'),
+			locale.baseText('projects.settings.delete.title', {
+				interpolate: { projectName },
+			}),
+			{
+				confirmButtonText: locale.baseText('projects.settings.delete.confirm'),
+				cancelButtonText: locale.baseText('projects.settings.delete.cancel'),
+			},
+		);
+
+		if (confirmation === MODAL_CONFIRM) {
+			await projectsStore.deleteProject(projectsStore.currentProject.id);
+			await router.push({ name: VIEWS.HOMEPAGE });
+			toast.showMessage({
+				title: locale.baseText('projects.settings.delete.successful.title', {
+					interpolate: { projectName },
+				}),
+				type: 'success',
+			});
+		}
+	} catch (error) {
+		toast.showError(error, locale.baseText('projects.settings.delete.error.title'));
+	}
 };
 
 watch(

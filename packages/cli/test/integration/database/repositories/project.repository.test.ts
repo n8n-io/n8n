@@ -3,7 +3,7 @@ import { createOwner } from '../../shared/db/users';
 import * as testDb from '../../shared/testDb';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { EntityNotFoundError } from '@n8n/typeorm';
-import { createProject } from '../../shared/db/projects';
+import { createTeamProject } from '../../shared/db/projects';
 
 describe('ProjectRepository', () => {
 	beforeAll(async () => {
@@ -51,7 +51,7 @@ describe('ProjectRepository', () => {
 			//
 			const owner = await createOwner();
 			await Container.get(ProjectRepository).delete({});
-			await createProject(owner);
+			await createTeamProject(undefined, owner);
 
 			//
 			// ACT
@@ -100,7 +100,7 @@ describe('ProjectRepository', () => {
 			//
 			const owner = await createOwner();
 			await Container.get(ProjectRepository).delete({});
-			await createProject(owner);
+			await createTeamProject(undefined, owner);
 
 			//
 			// ACT

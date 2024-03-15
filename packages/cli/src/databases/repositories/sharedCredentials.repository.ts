@@ -145,4 +145,28 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 			credentialsId: In(sharedCredentialsIds),
 		});
 	}
+
+	/**
+	 * Check if a credential is accessible in any of an array of projects.
+	 */
+	async isAccessible(credentialsId: string, projectIds: string[]) {
+		const count = await this.count({ where: { credentialsId, projectId: In(projectIds) } });
+
+		return count > 0;
+	}
+
+	async getFilteredAccessibleCredentials(
+		projectIds: string[],
+		credentialsIds: string[],
+	): Promise<string[]> {
+		return (
+			await this.find({
+				where: {
+					projectId: In(projectIds),
+					credentialsId: In(credentialsIds),
+				},
+				select: ['credentialsId'],
+			})
+		).map((s) => s.credentialsId);
+	}
 }

@@ -791,7 +791,7 @@ describe('POST /workflows/run', () => {
 	test('should prevent tampering if sharing is enabled', async () => {
 		sharingSpy.mockReturnValue(true);
 
-		await authOwnerAgent.post('/workflows/run').send({ workflowData: workflow });
+		await authOwnerAgent.post(`/workflows/${workflow.id}/run`).send({ workflowData: workflow });
 
 		expect(tamperingSpy).toHaveBeenCalledTimes(1);
 	});
@@ -799,7 +799,7 @@ describe('POST /workflows/run', () => {
 	test('should skip tampering prevention if sharing is disabled', async () => {
 		sharingSpy.mockReturnValue(false);
 
-		await authOwnerAgent.post('/workflows/run').send({ workflowData: workflow });
+		await authOwnerAgent.post(`/workflows/${workflow.id}/run`).send({ workflowData: workflow });
 
 		expect(tamperingSpy).not.toHaveBeenCalled();
 	});

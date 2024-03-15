@@ -10,14 +10,24 @@ import { type Scope } from '@n8n/permissions';
 import { In } from '@n8n/typeorm';
 import { RoleService } from './role.service';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
 
 @Service()
 export class ProjectService {
 	constructor(
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly projectRepository: ProjectRepository,
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly roleService: RoleService,
 	) {}
+
+	/**
+	 * Find all the projects where a workflow is accessible,
+	 * along with the roles of a user in those projects.
+	 */
+	async findProjectsWorkflowIsIn(workflowId: string) {
+		return await this.sharedWorkflowRepository.findProjectIds(workflowId);
+	}
 
 	async getAccessibleProjects(user: User): Promise<Project[]> {
 		// This user is probably an admin, show them everything
