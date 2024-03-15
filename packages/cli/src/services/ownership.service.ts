@@ -19,44 +19,6 @@ export class OwnershipService {
 	) {}
 
 	/**
-	 * Retrieve the user who owns the workflow. Note that workflow ownership is **immutable**.
-	 */
-	async getWorkflowOwnerCached(workflowId: string) {
-		const cachedValue = await this.cacheService.getHashValue<User>(
-			'workflow-ownership',
-			workflowId,
-		);
-
-		if (cachedValue) return this.userRepository.create(cachedValue);
-
-		const sharedWorkflow = await this.sharedWorkflowRepository.findOneOrFail({
-			where: {
-				workflowId,
-				role: 'workflow:owner',
-				project: { projectRelations: { role: 'project:personalOwner' } },
-			},
-			relations: {
-				workflow: true,
-				project: { projectRelations: { user: true } },
-			},
-		});
-
-		const ownerRelation = sharedWorkflow.project.projectRelations.find(
-			(pr) => pr.role === 'project:personalOwner',
-		);
-
-		if (ownerRelation) {
-			void this.cacheService.setHash('workflow-ownership', { [workflowId]: ownerRelation.user });
-
-			return ownerRelation.user;
-		} else {
-			void this.cacheService.setHash('workflow-ownership', { [workflowId]: undefined });
-
-			return undefined;
-		}
-	}
-
-	/**
 	 * Retrieve the project that owns the workflow. Note that workflow ownership is **immutable**.
 	 */
 	async getWorkflowProjectCached(workflowId: string): Promise<Project> {
