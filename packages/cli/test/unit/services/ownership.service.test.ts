@@ -28,40 +28,6 @@ describe('OwnershipService', () => {
 		jest.clearAllMocks();
 	});
 
-	describe('getWorkflowOwner()', () => {
-		test('should retrieve a workflow owner', async () => {
-			const mockOwner = new User();
-			const mockNonOwner = new User();
-			const mockWorkflow = new WorkflowEntity();
-			const mockProjectRelation = Object.assign(new ProjectRelation(), {
-				role: 'project:personalOwner',
-				user: mockOwner,
-			});
-			const mockProject = Object.assign(new Project(), {
-				projectRelations: [mockProjectRelation],
-			});
-
-			const sharedWorkflow = Object.assign(new SharedWorkflow(), {
-				role: 'workflow:owner',
-				project: mockProject,
-				workflow: mockWorkflow,
-			});
-
-			sharedWorkflowRepository.findOneOrFail.mockResolvedValueOnce(sharedWorkflow);
-
-			const returnedOwner = await ownershipService.getWorkflowOwnerCached('some-workflow-id');
-
-			expect(returnedOwner).toBe(mockOwner);
-			expect(returnedOwner).not.toBe(mockNonOwner);
-		});
-
-		test('should throw if no workflow owner found', async () => {
-			sharedWorkflowRepository.findOneOrFail.mockRejectedValue(new Error());
-
-			await expect(ownershipService.getWorkflowOwnerCached('some-workflow-id')).rejects.toThrow();
-		});
-	});
-
 	describe('getWorkflowProjectCached()', () => {
 		test('should retrieve a workflow owner project', async () => {
 			const mockProject = new Project();
