@@ -106,11 +106,15 @@ export class ActiveWebhooks implements IWebhookManager {
 			workflowData.shared[0].user.id,
 		);
 
-		const webhookData = NodeHelpers.getNodeWebhooks(
+		const webhooks = NodeHelpers.getNodeWebhooks(
 			workflow,
 			workflow.getNode(webhook.node) as INode,
 			additionalData,
-		).find((w) => w.httpMethod === httpMethod && w.path === webhook.webhookPath) as IWebhookData;
+		);
+
+		const webhookData = webhooks.find(
+			(w) => w.httpMethod.includes(httpMethod) && w.path === webhook.webhookPath,
+		) as IWebhookData;
 
 		// Get the node which has the webhook defined to know where to start from and to
 		// get additional data

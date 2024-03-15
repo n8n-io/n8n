@@ -79,9 +79,19 @@ export class TestWebhooks implements IWebhookManager {
 			});
 		}
 
-		const key = this.registrations.toKey(webhook);
+		let registration;
+		let key: string;
+		const httpMethods = webhook.httpMethod.split(',') as IHttpRequestMethods[];
 
-		const registration = await this.registrations.get(key);
+		for (const method of httpMethods) {
+			key = this.registrations.toKey({
+				httpMethod: method,
+				path: webhook.path,
+				webhookId: webhook.webhookId,
+			});
+			registration = await this.registrations.get(key);
+			if (registration) break;
+		}
 
 		if (!registration) {
 			throw new WebhookNotFoundError({

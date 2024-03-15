@@ -18,6 +18,7 @@ import type {
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 	INodeType,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 import {
 	Workflow,
@@ -157,10 +158,7 @@ export class ActiveWorkflowRunner {
 
 			path = webhookData.path;
 
-			let webhookMethods = webhookData.httpMethod;
-			if (!Array.isArray(webhookMethods)) {
-				webhookMethods = [webhookMethods];
-			}
+			const webhookMethods = webhookData.httpMethod.split(',') as IHttpRequestMethods[];
 
 			for (const method of webhookMethods) {
 				const webhook = this.webhookService.createWebhook({

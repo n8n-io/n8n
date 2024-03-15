@@ -533,7 +533,7 @@ export function getParameterResolveOrder(
 	parameterDependencies: IParameterDependencies,
 ): number[] {
 	const executionOrder: number[] = [];
-	const indexToResolve = Array.from({ length: nodePropertiesArray.length }, (_v, k) => k);
+	const indexToResolve = Array.from({ length: nodePropertiesArray.length }, (_, k) => k);
 	const resolvedParameters: string[] = [];
 
 	let index: number;
@@ -990,11 +990,7 @@ export function getNodeWebhooks(
 		) as boolean;
 		const path = getNodeWebhookPath(workflowId, node, nodeWebhookPath, isFullPath, restartWebhook);
 
-		let webhookMethods = webhookDescription.httpMethod;
-
-		if (!Array.isArray(webhookMethods)) {
-			webhookMethods = [webhookMethods as IHttpRequestMethods];
-		}
+		const webhookMethods = webhookDescription.httpMethod.split(',') as IHttpRequestMethods[];
 
 		for (const webhookMethod of webhookMethods) {
 			const httpMethod = workflow.expression.getSimpleParameterValue(
