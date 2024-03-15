@@ -75,41 +75,6 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 		);
 	}
 
-	/** Get the IDs of all credentials owned by a user */
-	async getOwnedCredentialIds(userIds: string[]) {
-		return await this.getCredentialIdsByUserAndRole(userIds, {
-			credentialRoles: ['credential:owner'],
-			projectRoles: ['project:personalOwner'],
-		});
-	}
-
-	/** Get the IDs of all credentials owned by or shared with a user */
-	async getAccessibleCredentialIds(userIds: string[]) {
-		const projectRoles = this.roleService.rolesWithScope('project', ['credential:read']);
-		const credentialRoles = this.roleService.rolesWithScope('credential', ['credential:read']);
-		const projects = await this.projectRepository.find({
-			select: { id: true },
-			where: {
-				projectRelations: {
-					role: In(projectRoles),
-					userId: In(userIds),
-				},
-			},
-		});
-
-		const projectIds = projects.map((p) => p.id);
-
-		const result = await this.find({
-			select: { credentialsId: true },
-			where: {
-				role: In(credentialRoles),
-				project: In(projectIds),
-			},
-		});
-
-		return result.map((sc) => sc.credentialsId);
-	}
-
 	async getCredentialIdsByUserAndRole(
 		userIds: string[],
 		options:
@@ -144,15 +109,6 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 			project,
 			credentialsId: In(sharedCredentialsIds),
 		});
-	}
-
-	/**
-	 * Check if a credential is accessible in any of an array of projects.
-	 */
-	async isAccessible(credentialsId: string, projectIds: string[]) {
-		const count = await this.count({ where: { credentialsId, projectId: In(projectIds) } });
-
-		return count > 0;
 	}
 
 	async getFilteredAccessibleCredentials(

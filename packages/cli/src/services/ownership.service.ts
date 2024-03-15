@@ -46,13 +46,15 @@ export class OwnershipService {
 			(pr) => pr.role === 'project:personalOwner',
 		);
 
-		if (!ownerRelation) {
-			throw new ApplicationError(`Workflow ${sharedWorkflow.workflow.display()} has no owner`);
+		if (ownerRelation) {
+			void this.cacheService.setHash('workflow-ownership', { [workflowId]: ownerRelation.user });
+
+			return ownerRelation.user;
+		} else {
+			void this.cacheService.setHash('workflow-ownership', { [workflowId]: undefined });
+
+			return undefined;
 		}
-
-		void this.cacheService.setHash('workflow-ownership', { [workflowId]: ownerRelation.user });
-
-		return ownerRelation.user;
 	}
 
 	/**
