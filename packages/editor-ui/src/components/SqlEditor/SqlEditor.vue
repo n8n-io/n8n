@@ -48,7 +48,6 @@ import {
 } from '@n8n/codemirror-lang-sql';
 import { defineComponent } from 'vue';
 import { codeNodeEditorTheme } from '../CodeNodeEditor/theme';
-import { isEqual } from 'lodash-es';
 import {
 	autocompleteKeyMap,
 	enterKeyMap,
