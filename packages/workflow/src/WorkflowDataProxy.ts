@@ -677,8 +677,7 @@ export class WorkflowDataProxy {
 					}
 					message = `Unpin '${nodeName}' to execute`;
 					context.messageTemplate = undefined;
-					context.description =
-						'The <a href=”https://docs.n8n.io/data/data-mapping/data-item-linking/item-linking-errors/”>item-matching</a> data in that node may be stale. It is needed by an expression in this node that uses <code>.item</code>.';
+					context.descriptionKey = 'pairedItemPinned';
 				}
 
 				if (context.moreInfoLink && (pinData || isScriptingNode(nodeName, that.workflow))) {
@@ -834,12 +833,11 @@ export class WorkflowDataProxy {
 							functionality: 'pairedItem',
 							functionOverrides: {
 								message: `Multiple matching items for code [item ${currentPairedItem.item || 0}]`,
-								description:
-									"The code here won't work because it uses <code>.item</code> and n8n can't figure out the <a href=”https://docs.n8n.io/data/data-mapping/data-item-linking/item-linking-errors/”>matching item</a>. (There are multiple possible matches) <br/><br/>Try using <code>.first()</code>, <code>.last()</code> or <code>.all()[index]</code> instead of <code>.item</code> or <a href=”https://docs.n8n.io/data/data-mapping/data-item-linking/item-linking-code-node/”>reference a different node</a>.",
 							},
 							nodeCause: destinationNodeName,
-							description:
-								"An expression here won't work because it uses <code>.item</code> and n8n can't figure out the <a href=”https://docs.n8n.io/data/data-mapping/data-item-linking/item-linking-errors/”>matching item</a>. (There are multiple possible matches) <br/><br/>Try using <code>.first()</code>, <code>.last()</code> or <code>.all()[index]</code> instead of <code>.item</code> or <a href=”https://docs.n8n.io/data/data-mapping/data-item-linking/item-linking-code-node/”>reference a different node</a>.",
+							descriptionKey: isScriptingNode(destinationNodeName, that.workflow)
+								? 'pairedItemMultipleMatchesCodeNode'
+								: 'pairedItemMultipleMatches',
 							type: 'paired_item_multiple_matches',
 						});
 					}
