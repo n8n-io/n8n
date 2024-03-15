@@ -514,7 +514,7 @@ const numberOptions = (input: AutocompleteInput<number>): Completion[] => {
 		const exclude = new Set(ONLY_INTEGER);
 		return applySections({
 			options: options.filter((option) => !exclude.has(option.label)),
-			recommended: ['round()', 'floor()', 'ceil()', 'toFixed()'],
+			recommended: ['round()', 'floor()', 'ceil()'],
 		});
 	}
 };

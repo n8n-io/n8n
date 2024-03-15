@@ -6,6 +6,7 @@ export const numberMethods: NativeDoc = {
 		toFixed: {
 			doc: {
 				name: 'toFixed',
+				hidden: true,
 				description:
 					'Formats a number using fixed-point notation. `digits` defaults to null if not given.',
 				docURL:
@@ -17,6 +18,7 @@ export const numberMethods: NativeDoc = {
 		toPrecision: {
 			doc: {
 				name: 'toPrecision',
+				hidden: true,
 				description: 'Returns a string representing the number to the specified precision.',
 				docURL:
 					'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/toPrecision',
