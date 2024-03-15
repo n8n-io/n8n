@@ -39,7 +39,7 @@
 </template>
 
 <script lang="ts" setup>
-import { onMounted } from 'vue';
+import { onMounted, ref } from 'vue';
 import N8nText from '../N8nText';
 import N8nIcon from '../N8nIcon';
 import type { IconColor } from '@/types/icon';
@@ -70,16 +70,16 @@ const props = withDefaults(defineProps<InfoAccordionProps>(), {
 });
 const $emit = defineEmits(['click:body', 'tooltipClick']);
 
-let expanded = false;
+const expanded = ref(false);
 onMounted(() => {
 	props.eventBus.on('expand', () => {
-		expanded = true;
+		expanded.value = true;
 	});
-	expanded = props.initiallyExpanded;
+	expanded.value = props.initiallyExpanded;
 });
 
 const toggle = () => {
-	expanded = !expanded;
+	expanded.value = !expanded.value;
 };
 
 const onClick = (e: MouseEvent) => $emit('click:body', e);

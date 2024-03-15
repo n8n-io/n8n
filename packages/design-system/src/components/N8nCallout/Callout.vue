@@ -19,6 +19,7 @@
 import { computed, useCssModule } from 'vue';
 import N8nText from '../N8nText';
 import N8nIcon from '../N8nIcon';
+import type { IconSize } from '@/types/icon';
 
 const THEMES = ['info', 'success', 'secondary', 'warning', 'danger', 'custom'] as const;
 export type CalloutTheme = (typeof THEMES)[number];
@@ -33,7 +34,7 @@ const CALLOUT_DEFAULT_ICONS = {
 interface CalloutProps {
 	theme: CalloutTheme;
 	icon?: string;
-	iconSize?: string;
+	iconSize?: IconSize;
 	iconless?: boolean;
 	slim?: boolean;
 	roundCorners?: boolean;
@@ -58,7 +59,7 @@ const getIcon = computed(
 	() => props.icon ?? CALLOUT_DEFAULT_ICONS?.[props.theme] ?? CALLOUT_DEFAULT_ICONS.info,
 );
 
-const getIconSize = computed(() => {
+const getIconSize = computed<IconSize>(() => {
 	if (props.iconSize) {
 		return props.iconSize;
 	}
