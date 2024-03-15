@@ -8,7 +8,7 @@
 			v-html="htmlContent"
 		/>
 		<div v-else :class="$style.markdown">
-			<div v-for="(block, index) in loadingBlocks" :key="index">
+			<div v-for="(_, index) in loadingBlocks" :key="index">
 				<N8nLoading :loading="loading" :rows="loadingRows" animated variant="p" />
 				<div :class="$style.spacer" />
 			</div>
