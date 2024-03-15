@@ -14,7 +14,6 @@ import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { TagRepository } from '@db/repositories/tag.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import { UserRepository } from '@db/repositories/user.repository';
 import { validateEntity } from '@/GenericHelpers';
 import { ExternalHooks } from '@/ExternalHooks';
 import { ListQuery } from '@/requests';
@@ -41,7 +40,7 @@ import { UserManagementMailer } from '@/UserManagement/email';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { ProjectService } from '@/services/project.service';
 import { ApplicationError } from 'n8n-workflow';
-import type { FindOptionsRelations } from '@n8n/typeorm';
+import { In, type FindOptionsRelations } from '@n8n/typeorm';
 
 @RestController('/workflows')
 export class WorkflowsController {
@@ -60,7 +59,6 @@ export class WorkflowsController {
 		private readonly workflowExecutionService: WorkflowExecutionService,
 		private readonly workflowSharingService: WorkflowSharingService,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
-		private readonly userRepository: UserRepository,
 		private readonly license: License,
 		private readonly mailer: UserManagementMailer,
 		private readonly credentialsService: CredentialsService,
@@ -68,6 +66,7 @@ export class WorkflowsController {
 		private readonly projectService: ProjectService,
 	) {}
 
+	// NOTE: updated
 	@Post('/')
 	async create(req: WorkflowRequest.Create) {
 		delete req.body.id; // delete if sent
@@ -139,8 +138,6 @@ export class WorkflowsController {
 
 			const newSharedWorkflow = this.sharedWorkflowRepository.create({
 				role: 'workflow:owner',
-				// TODO: remove when https://linear.app/n8n/issue/PAY-1353/make-sure-that-sharedworkflowuserid-is-not-used-anymore-to-check lands
-				user: req.user,
 				projectId: project.id,
 				workflow: savedWorkflow,
 			});
@@ -243,7 +240,6 @@ export class WorkflowsController {
 		if (this.license.isSharingEnabled()) {
 			const relations: FindOptionsRelations<WorkflowEntity> = {
 				shared: {
-					user: true,
 					project: {
 						projectRelations: true,
 					},
@@ -254,17 +250,14 @@ export class WorkflowsController {
 				relations.tags = true;
 			}
 
-			const workflow = await this.workflowRepository.get({ id: workflowId }, { relations });
+			const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(
+				workflowId,
+				req.user,
+				['workflow:read'],
+			);
 
 			if (!workflow) {
 				throw new NotFoundError(`Workflow with ID "${workflowId}" does not exist`);
-			}
-
-			const userSharing = workflow.shared?.find((shared) => shared.user.id === req.user.id);
-			if (!userSharing && !req.user.hasGlobalScope('workflow:read')) {
-				throw new ForbiddenError(
-					'You do not have permission to access this workflow. Ask the owner to share it with you',
-				);
 			}
 
 			const enterpriseWorkflowService = this.enterpriseWorkflowService;
@@ -278,16 +271,14 @@ export class WorkflowsController {
 
 		// sharing disabled
 
-		const extraRelations = config.getEnv('workflowTagsDisabled') ? [] : ['workflow.tags'];
-
-		const shared = await this.sharedWorkflowRepository.findSharing(
+		const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(
 			workflowId,
 			req.user,
-			'workflow:read',
-			{ extraRelations },
+			['workflow:read'],
+			{ includeTags: !config.getEnv('workflowTagsDisabled') },
 		);
 
-		if (!shared) {
+		if (!workflow) {
 			this.logger.verbose('User attempted to access a workflow without permissions', {
 				workflowId,
 				userId: req.user.id,
@@ -297,7 +288,7 @@ export class WorkflowsController {
 			);
 		}
 
-		return shared.workflow;
+		return workflow;
 	}
 
 	@Patch('/:workflowId')
@@ -325,7 +316,6 @@ export class WorkflowsController {
 			workflowId,
 			tags,
 			isSharingEnabled ? forceSave : true,
-			isSharingEnabled ? undefined : ['workflow:owner'],
 		);
 
 		return updatedWorkflow;
@@ -398,52 +388,39 @@ export class WorkflowsController {
 			throw new BadRequestError('Bad request');
 		}
 
-		const isOwnedRes = await this.enterpriseWorkflowService.isOwned(req.user, workflowId);
-		const { ownsWorkflow } = isOwnedRes;
-		let { workflow } = isOwnedRes;
+		const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(workflowId, req.user, [
+			'workflow:share',
+		]);
 
-		if (!ownsWorkflow || !workflow) {
-			workflow = undefined;
-			// Allow owners/admins to share
-			if (req.user.hasGlobalScope('workflow:share')) {
-				const sharedRes = await this.sharedWorkflowRepository.getSharing(req.user, workflowId, {
-					allowGlobalScope: true,
-					globalScope: 'workflow:share',
-				});
-				workflow = sharedRes?.workflow;
-			}
-			if (!workflow) {
-				throw new ForbiddenError();
-			}
+		if (!workflow) {
+			throw new ForbiddenError();
 		}
-
-		const ownerIds = (
-			await this.workflowRepository.getSharings(
-				Db.getConnection().createEntityManager(),
-				workflowId,
-				['shared'],
-			)
-		)
-			.filter((e) => e.role === 'workflow:owner')
-			.map((e) => e.userId);
 
 		let newShareeIds: string[] = [];
 		await Db.transaction(async (trx) => {
-			// remove all sharings that are not supposed to exist anymore
-			await this.workflowRepository.pruneSharings(trx, workflowId, [...ownerIds, ...shareWithIds]);
+			const currentPersonalProjectIDs = workflow.shared
+				.filter((sw) => sw.role === 'workflow:user' || sw.role === 'workflow:editor')
+				.map((sw) => sw.projectId);
+			const newPersonalProjectIDs = shareWithIds;
 
-			const sharings = await this.workflowRepository.getSharings(trx, workflowId);
-
-			// extract the new sharings that need to be added
-			newShareeIds = utils.rightDiff(
-				[sharings, (sharing) => sharing.userId],
-				[shareWithIds, (shareeId) => shareeId],
+			const toShare = utils.rightDiff(
+				[currentPersonalProjectIDs, (id) => id],
+				[newPersonalProjectIDs, (id) => id],
 			);
 
-			if (newShareeIds.length) {
-				const users = await this.userRepository.getByIds(trx, newShareeIds);
-				await this.sharedWorkflowRepository.share(trx, workflow!, users);
-			}
+			const toUnshare = utils.rightDiff(
+				[newPersonalProjectIDs, (id) => id],
+				[currentPersonalProjectIDs, (id) => id],
+			);
+
+			await this.sharedWorkflowRepository.delete({
+				workflowId,
+				projectId: In(toUnshare),
+			});
+
+			await this.enterpriseWorkflowService.shareWithProjects(workflow, toShare, trx);
+
+			newShareeIds = toShare;
 		});
 
 		void this.internalHooks.onWorkflowSharingUpdate(workflowId, req.user.id, shareWithIds);

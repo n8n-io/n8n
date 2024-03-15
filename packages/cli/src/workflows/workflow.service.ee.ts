@@ -18,6 +18,8 @@ import type {
 	WorkflowWithSharingsMetaDataAndCredentials,
 } from './workflows.types';
 import { OwnershipService } from '@/services/ownership.service';
+import { In, type EntityManager } from '@n8n/typeorm';
+import { Project } from '@/databases/entities/Project';
 
 @Service()
 export class EnterpriseWorkflowService {
@@ -30,22 +32,32 @@ export class EnterpriseWorkflowService {
 		private readonly ownershipService: OwnershipService,
 	) {}
 
-	async isOwned(
-		user: User,
-		workflowId: string,
-	): Promise<{ ownsWorkflow: boolean; workflow?: WorkflowEntity }> {
-		const sharing = await this.sharedWorkflowRepository.getSharing(
-			user,
-			workflowId,
-			{ allowGlobalScope: false },
-			['workflow'],
-		);
+	async shareWithProjects(
+		workflow: WorkflowEntity,
+		shareWithIds: string[],
+		entityManager: EntityManager,
+	) {
+		const em = entityManager ?? this.sharedWorkflowRepository.manager;
 
-		if (!sharing || sharing.role !== 'workflow:owner') return { ownsWorkflow: false };
+		const projects = await em.find(Project, {
+			select: { projectRelations: { userId: true } },
+			where: { id: In(shareWithIds), projectRelations: { role: 'project:personalOwner' } },
+			relations: { projectRelations: { user: true } },
+		});
 
-		const { workflow } = sharing;
+		const newSharedWorkflows = projects
+			// We filter by role === 'project:personalOwner' above and there should
+			// always only be one owner.
+			.filter((project) => !project.projectRelations[0].user.isPending)
+			.map((project) =>
+				this.sharedWorkflowRepository.create({
+					workflowId: workflow.id,
+					role: 'workflow:editor',
+					projectId: project.id,
+				}),
+			);
 
-		return { ownsWorkflow: true, workflow };
+		return await em.save(newSharedWorkflows);
 	}
 
 	addOwnerAndSharings(

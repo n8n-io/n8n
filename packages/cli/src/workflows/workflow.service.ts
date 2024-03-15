@@ -8,7 +8,6 @@ import { BinaryDataService } from 'n8n-core';
 import config from '@/config';
 import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import type { WorkflowSharingRole } from '@db/entities/SharedWorkflow';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowTagMappingRepository } from '@db/repositories/workflowTagMapping.repository';
@@ -57,20 +56,16 @@ export class WorkflowService {
 
 	async update(
 		user: User,
-		workflow: WorkflowEntity,
+		workflowUpdateData: WorkflowEntity,
 		workflowId: string,
 		tagIds?: string[],
 		forceSave?: boolean,
-		roles?: WorkflowSharingRole[],
 	): Promise<WorkflowEntity> {
-		const shared = await this.sharedWorkflowRepository.findSharing(
-			workflowId,
-			user,
+		const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(workflowId, user, [
 			'workflow:update',
-			{ roles },
-		);
+		]);
 
-		if (!shared) {
+		if (!workflow) {
 			this.logger.verbose('User attempted to update a workflow without permissions', {
 				workflowId,
 				userId: user.id,
@@ -82,8 +77,8 @@ export class WorkflowService {
 
 		if (
 			!forceSave &&
-			workflow.versionId !== '' &&
-			workflow.versionId !== shared.workflow.versionId
+			workflowUpdateData.versionId !== '' &&
+			workflowUpdateData.versionId !== workflow.versionId
 		) {
 			throw new BadRequestError(
 				'Your most recent changes may be lost, because someone else just updated this workflow. Open this workflow in a new tab to see those new updates.',
@@ -91,25 +86,25 @@ export class WorkflowService {
 			);
 		}
 
-		if (Object.keys(omit(workflow, ['id', 'versionId', 'active'])).length > 0) {
+		if (Object.keys(omit(workflowUpdateData, ['id', 'versionId', 'active'])).length > 0) {
 			// Update the workflow's version when changing properties such as
 			// `name`, `pinData`, `nodes`, `connections`, `settings` or `tags`
-			workflow.versionId = uuid();
+			workflowUpdateData.versionId = uuid();
 			this.logger.verbose(
 				`Updating versionId for workflow ${workflowId} for user ${user.id} after saving`,
 				{
-					previousVersionId: shared.workflow.versionId,
-					newVersionId: workflow.versionId,
+					previousVersionId: workflow.versionId,
+					newVersionId: workflowUpdateData.versionId,
 				},
 			);
 		}
 
 		// check credentials for old format
-		await WorkflowHelpers.replaceInvalidCredentials(workflow);
+		await WorkflowHelpers.replaceInvalidCredentials(workflowUpdateData);
 
-		WorkflowHelpers.addNodeIds(workflow);
+		WorkflowHelpers.addNodeIds(workflowUpdateData);
 
-		await this.externalHooks.run('workflow.update', [workflow]);
+		await this.externalHooks.run('workflow.update', [workflowUpdateData]);
 
 		/**
 		 * If the workflow being updated is stored as `active`, remove it from
@@ -118,11 +113,11 @@ export class WorkflowService {
 		 * If a trigger or poller in the workflow was updated, the new value
 		 * will take effect only on removing and re-adding.
 		 */
-		if (shared.workflow.active) {
+		if (workflow.active) {
 			await this.activeWorkflowRunner.remove(workflowId);
 		}
 
-		const workflowSettings = workflow.settings ?? {};
+		const workflowSettings = workflowUpdateData.settings ?? {};
 
 		const keysAllowingDefault = [
 			'timezone',
@@ -143,14 +138,14 @@ export class WorkflowService {
 			delete workflowSettings.executionTimeout;
 		}
 
-		if (workflow.name) {
-			workflow.updatedAt = new Date(); // required due to atomic update
-			await validateEntity(workflow);
+		if (workflowUpdateData.name) {
+			workflowUpdateData.updatedAt = new Date(); // required due to atomic update
+			await validateEntity(workflowUpdateData);
 		}
 
 		await this.workflowRepository.update(
 			workflowId,
-			pick(workflow, [
+			pick(workflowUpdateData, [
 				'name',
 				'active',
 				'nodes',
@@ -167,8 +162,8 @@ export class WorkflowService {
 			await this.workflowTagMappingRepository.overwriteTaggings(workflowId, tagIds);
 		}
 
-		if (workflow.versionId !== shared.workflow.versionId) {
-			await this.workflowHistoryService.saveVersion(user, workflow, workflowId);
+		if (workflowUpdateData.versionId !== workflow.versionId) {
+			await this.workflowHistoryService.saveVersion(user, workflowUpdateData, workflowId);
 		}
 
 		const relations = config.getEnv('workflowTagsDisabled') ? [] : ['tags'];
@@ -199,16 +194,13 @@ export class WorkflowService {
 			// When the workflow is supposed to be active add it again
 			try {
 				await this.externalHooks.run('workflow.activate', [updatedWorkflow]);
-				await this.activeWorkflowRunner.add(
-					workflowId,
-					shared.workflow.active ? 'update' : 'activate',
-				);
+				await this.activeWorkflowRunner.add(workflowId, workflow.active ? 'update' : 'activate');
 			} catch (error) {
 				// If workflow could not be activated set it again to inactive
 				// and revert the versionId change so UI remains consistent
 				await this.workflowRepository.update(workflowId, {
 					active: false,
-					versionId: shared.workflow.versionId,
+					versionId: workflow.versionId,
 				});
 
 				// Also set it in the returned data
@@ -231,18 +223,15 @@ export class WorkflowService {
 	async delete(user: User, workflowId: string): Promise<WorkflowEntity | undefined> {
 		await this.externalHooks.run('workflow.delete', [workflowId]);
 
-		const sharedWorkflow = await this.sharedWorkflowRepository.findSharing(
-			workflowId,
-			user,
+		const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(workflowId, user, [
 			'workflow:delete',
-			{ roles: ['workflow:owner'] },
-		);
+		]);
 
-		if (!sharedWorkflow) {
+		if (!workflow) {
 			return;
 		}
 
-		if (sharedWorkflow.workflow.active) {
+		if (workflow.active) {
 			// deactivate before deleting
 			await this.activeWorkflowRunner.remove(workflowId);
 		}
@@ -260,6 +249,6 @@ export class WorkflowService {
 		void Container.get(InternalHooks).onWorkflowDeleted(user, workflowId, false);
 		await this.externalHooks.run('workflow.afterDelete', [workflowId]);
 
-		return sharedWorkflow.workflow;
+		return workflow;
 	}
 }

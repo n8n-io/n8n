@@ -28,7 +28,7 @@ export class Reset extends BaseCommand {
 			owner.id,
 		);
 
-		await Container.get(SharedWorkflowRepository).makeOwnerOfAllWorkflows(owner);
+		await Container.get(SharedWorkflowRepository).makeOwnerOfAllWorkflows(personalProject);
 		await Container.get(SharedCredentialsRepository).makeOwnerOfAllCredentials(personalProject);
 
 		await Container.get(UserRepository).deleteAllExcept(owner);

@@ -10,7 +10,7 @@ import { mock } from 'jest-mock-extended';
 import { Project } from '@/databases/entities/Project';
 import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
 import { ProjectRelation } from '@/databases/entities/ProjectRelation';
-import { mockCredential, mockProject, mockUser } from '../shared/mockObjects';
+import { mockCredential, mockProject } from '../shared/mockObjects';
 
 describe('OwnershipService', () => {
 	const userRepository = mockInstance(UserRepository);
@@ -78,6 +78,33 @@ describe('OwnershipService', () => {
 		});
 	});
 
+	describe('getProjectOwnerCached()', () => {
+		test('should retrieve a project owner', async () => {
+			const mockProject = new Project();
+			const mockOwner = new User();
+
+			const projectRelation = Object.assign(new ProjectRelation(), {
+				role: 'project:personalOwner',
+				project: mockProject,
+				user: mockOwner,
+			});
+
+			projectRelationRepository.getPersonalProjectOwners.mockResolvedValueOnce([projectRelation]);
+
+			const returnedOwner = await ownershipService.getProjectOwnerCached('some-project-id');
+
+			expect(returnedOwner).toBe(mockOwner);
+		});
+
+		test('should not throw if no project owner found, should return null instead', async () => {
+			projectRelationRepository.getPersonalProjectOwners.mockResolvedValueOnce([]);
+
+			const owner = await ownershipService.getProjectOwnerCached('some-project-id');
+
+			expect(owner).toBeNull();
+		});
+	});
+
 	describe('addOwnedByAndSharedWith()', () => {
 		test('should add `ownedBy` and `sharedWith` to credential', async () => {
 			const ownerProject = mockProject();
@@ -109,17 +136,14 @@ describe('OwnershipService', () => {
 		});
 
 		test('should add `ownedBy` and `sharedWith` to workflow', async () => {
-			const owner = mockUser();
-			const editor = mockUser();
-
 			const projectOwner = mockProject();
 			const projectEditor = mockProject();
 
 			const workflow = new WorkflowEntity();
 
 			workflow.shared = [
-				{ role: 'workflow:owner', user: owner, project: projectOwner },
-				{ role: 'workflow:editor', user: editor, project: projectEditor },
+				{ role: 'workflow:owner', project: projectOwner },
+				{ role: 'workflow:editor', project: projectEditor },
 			] as SharedWorkflow[];
 
 			const { homeProject, sharedWithProjects } =

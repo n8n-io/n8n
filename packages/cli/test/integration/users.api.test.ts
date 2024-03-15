@@ -269,8 +269,7 @@ describe('DELETE /users/:id', () => {
 		const user = await Container.get(UserRepository).findOneBy({ id: member.id });
 
 		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
-			relations: ['user'],
-			where: { userId: member.id, role: 'workflow:owner' },
+			where: { projectId: memberPersonalProject.id, role: 'workflow:owner' },
 		});
 
 		const sharedCredential = await Container.get(SharedCredentialsRepository).findOne({
@@ -306,17 +305,13 @@ describe('DELETE /users/:id', () => {
 			),
 		]);
 
-		const response = await ownerAgent.delete(`/users/${member.id}`).query({
-			transferId: owner.id,
-		});
-
-		expect(response.statusCode).toBe(200);
+		await ownerAgent.delete(`/users/${member.id}`).query({ transferId: owner.id }).expect(200);
 
 		const [user, sharedWorkflow, sharedCredential] = await Promise.all([
 			await Container.get(UserRepository).findOneBy({ id: member.id }),
 			await Container.get(SharedWorkflowRepository).findOneOrFail({
 				relations: ['workflow'],
-				where: { userId: owner.id },
+				where: { projectId: ownerPersonalProject.id },
 			}),
 			await Container.get(SharedCredentialsRepository).findOneOrFail({
 				relations: ['credentials'],
@@ -366,8 +361,6 @@ describe('PATCH /users/:id/role', () => {
 
 	const { NO_ADMIN_ON_OWNER, NO_USER, NO_OWNER_ON_OWNER } =
 		UsersController.ERROR_MESSAGES.CHANGE_ROLE;
-
-	const UNAUTHORIZED = 'Unauthorized';
 
 	beforeAll(async () => {
 		await testDb.truncate(['User']);

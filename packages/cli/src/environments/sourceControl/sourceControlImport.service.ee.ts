@@ -212,7 +212,7 @@ export class SourceControlImportService {
 		});
 		const allSharedWorkflows = await Container.get(SharedWorkflowRepository).findWithFields(
 			candidateIds,
-			{ select: ['workflowId', 'role', 'userId'] },
+			{ select: ['workflowId', 'role', 'projectId'] },
 		);
 		const cachedOwnerIds = new Map<string, string>();
 		const importWorkflowsResult = await Promise.all(
@@ -239,6 +239,8 @@ export class SourceControlImportService {
 				// Update workflow owner to the user who exported the workflow, if that user exists
 				// in the instance, and the workflow doesn't already have an owner
 				let workflowOwnerId = userId;
+				const workflowOwnerPersonalProject =
+					await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(workflowOwnerId);
 				if (cachedOwnerIds.has(importedWorkflow.owner)) {
 					workflowOwnerId = cachedOwnerIds.get(importedWorkflow.owner) ?? userId;
 				} else {
@@ -264,7 +266,7 @@ export class SourceControlImportService {
 					// no owner exists yet, so create one
 					await Container.get(SharedWorkflowRepository).insert({
 						workflowId: importedWorkflow.id,
-						userId: workflowOwnerId,
+						projectId: workflowOwnerPersonalProject.id,
 						role: 'workflow:owner',
 					});
 				} else if (existingSharedWorkflowOwnerByRoleId) {
@@ -275,7 +277,7 @@ export class SourceControlImportService {
 					await Container.get(SharedWorkflowRepository).update(
 						{
 							workflowId: importedWorkflow.id,
-							userId: workflowOwnerId,
+							projectId: workflowOwnerPersonalProject.id,
 						},
 						{ role: 'workflow:owner' },
 					);

@@ -14,7 +14,7 @@ export = {
 	deleteExecution: [
 		authorize(['global:owner', 'global:admin', 'global:member']),
 		async (req: ExecutionRequest.Delete, res: express.Response): Promise<express.Response> => {
-			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user);
+			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:delete']);
 
 			// user does not have workflows hence no executions
 			// or the execution they are trying to access belongs to a workflow they do not own
@@ -46,7 +46,7 @@ export = {
 	getExecution: [
 		authorize(['global:owner', 'global:admin', 'global:member']),
 		async (req: ExecutionRequest.Get, res: express.Response): Promise<express.Response> => {
-			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user);
+			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
 
 			// user does not have workflows hence no executions
 			// or the execution they are trying to access belongs to a workflow they do not own
@@ -86,7 +86,7 @@ export = {
 				workflowId = undefined,
 			} = req.query;
 
-			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user);
+			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
 
 			// user does not have workflows hence no executions
 			// or the execution they are trying to access belongs to a workflow they do not own

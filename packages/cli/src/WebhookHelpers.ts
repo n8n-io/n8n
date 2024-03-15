@@ -55,8 +55,6 @@ import * as WorkflowHelpers from '@/WorkflowHelpers';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { ActiveExecutions } from '@/ActiveExecutions';
-import type { User } from '@db/entities/User';
-import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { EventsService } from '@/services/events.service';
 import { OwnershipService } from './services/ownership.service';
 import { parseBody } from './middlewares';
@@ -235,19 +233,11 @@ export async function executeWebhook(
 		$executionId: executionId,
 	};
 
-	let user: User | undefined = undefined;
 	let project: Project | undefined = undefined;
-	if (
-		(workflowData as WorkflowEntity).shared?.length &&
-		(workflowData as WorkflowEntity).shared[0].user
-	) {
-		user = (workflowData as WorkflowEntity).shared[0].user;
-	} else {
-		try {
-			project = await Container.get(OwnershipService).getWorkflowProjectCached(workflowData.id);
-		} catch (error) {
-			throw new NotFoundError('Cannot find workflow');
-		}
+	try {
+		project = await Container.get(OwnershipService).getWorkflowProjectCached(workflowData.id);
+	} catch (error) {
+		throw new NotFoundError('Cannot find workflow');
 	}
 
 	// Prepare everything that is needed to run the workflow
@@ -326,7 +316,7 @@ export async function executeWebhook(
 					// TODO: pass a custom `fileWriteStreamHandler` to create binary data files directly
 				});
 				req.body = await new Promise((resolve) => {
-					form.parse(req, async (err, data, files) => {
+					form.parse(req, async (_err, data, files) => {
 						normalizeFormData(data);
 						normalizeFormData(files);
 						resolve({ data, files });
@@ -528,7 +518,6 @@ export async function executeWebhook(
 			sessionId,
 			workflowData,
 			pinData,
-			userId: user?.id,
 			projectId: project?.id,
 		};
 

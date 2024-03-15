@@ -1,4 +1,3 @@
-import type { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { WorkflowHistory } from '@db/entities/WorkflowHistory';
@@ -18,28 +17,23 @@ export class WorkflowHistoryService {
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 	) {}
 
-	private async getSharedWorkflow(user: User, workflowId: string): Promise<SharedWorkflow | null> {
-		return await this.sharedWorkflowRepository.findOne({
-			where: {
-				...(!user.hasGlobalScope('workflow:read') && { userId: user.id }),
-				workflowId,
-			},
-		});
-	}
-
 	async getList(
 		user: User,
 		workflowId: string,
 		take: number,
 		skip: number,
 	): Promise<Array<Omit<WorkflowHistory, 'nodes' | 'connections'>>> {
-		const sharedWorkflow = await this.getSharedWorkflow(user, workflowId);
-		if (!sharedWorkflow) {
+		const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(workflowId, user, [
+			'workflow:read',
+		]);
+
+		if (!workflow) {
 			throw new SharedWorkflowNotFoundError('');
 		}
+
 		return await this.workflowHistoryRepository.find({
 			where: {
-				workflowId: sharedWorkflow.workflowId,
+				workflowId: workflow.id,
 			},
 			take,
 			skip,
@@ -49,13 +43,17 @@ export class WorkflowHistoryService {
 	}
 
 	async getVersion(user: User, workflowId: string, versionId: string): Promise<WorkflowHistory> {
-		const sharedWorkflow = await this.getSharedWorkflow(user, workflowId);
-		if (!sharedWorkflow) {
+		const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(workflowId, user, [
+			'workflow:read',
+		]);
+
+		if (!workflow) {
 			throw new SharedWorkflowNotFoundError('');
 		}
+
 		const hist = await this.workflowHistoryRepository.findOne({
 			where: {
-				workflowId: sharedWorkflow.workflowId,
+				workflowId: workflow.id,
 				versionId,
 			},
 		});

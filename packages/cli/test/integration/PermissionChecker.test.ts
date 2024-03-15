@@ -121,8 +121,6 @@ beforeAll(async () => {
 });
 
 describe('check()', () => {
-	const workflowId = randomPositiveDigit().toString();
-
 	beforeEach(async () => {
 		await testDb.truncate(['Workflow', 'Credentials']);
 	});
