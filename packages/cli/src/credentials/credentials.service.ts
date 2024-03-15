@@ -48,13 +48,6 @@ export class CredentialsService {
 		private readonly projectService: ProjectService,
 	) {}
 
-	async get(where: FindOptionsWhere<ICredentialsDb>, options?: { relations: string[] }) {
-		return await this.credentialsRepository.findOne({
-			relations: options?.relations,
-			where,
-		});
-	}
-
 	async getMany(
 		user: User,
 		options: { listQueryOptions?: ListQuery.Options; onlyOwn?: boolean } = {},

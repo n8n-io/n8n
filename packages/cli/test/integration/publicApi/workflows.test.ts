@@ -1,4 +1,3 @@
-// NOTE: passing
 import type { SuperAgentTest } from 'supertest';
 import config from '@/config';
 import Container from 'typedi';
@@ -83,7 +82,6 @@ const testWithAPIKey =
 		expect(response.statusCode).toBe(401);
 	};
 
-// NOTE: passing
 describe('GET /workflows', () => {
 	test('should fail due to missing API Key', testWithAPIKey('get', '/workflows', null));
 
@@ -341,7 +339,6 @@ describe('GET /workflows', () => {
 	});
 });
 
-// NOTE: passing
 describe('GET /workflows/:id', () => {
 	test('should fail due to missing API Key', testWithAPIKey('get', '/workflows/2', null));
 
@@ -408,7 +405,6 @@ describe('GET /workflows/:id', () => {
 	});
 });
 
-// NOTE: passing
 describe('DELETE /workflows/:id', () => {
 	test('should fail due to missing API Key', testWithAPIKey('delete', '/workflows/2', null));
 
@@ -478,7 +474,6 @@ describe('DELETE /workflows/:id', () => {
 	});
 });
 
-// NOTE: passing
 describe('POST /workflows/:id/activate', () => {
 	test('should fail due to missing API Key', testWithAPIKey('post', '/workflows/2/activate', null));
 
@@ -576,7 +571,6 @@ describe('POST /workflows/:id/activate', () => {
 	});
 });
 
-// NOTE: passing
 describe('POST /workflows/:id/deactivate', () => {
 	test(
 		'should fail due to missing API Key',
@@ -676,7 +670,6 @@ describe('POST /workflows/:id/deactivate', () => {
 	});
 });
 
-// NOTE: passing
 describe('POST /workflows', () => {
 	test('should fail due to missing API Key', testWithAPIKey('post', '/workflows', null));
 
@@ -857,7 +850,6 @@ describe('POST /workflows', () => {
 	});
 });
 
-// NOTE: passing
 describe('PUT /workflows/:id', () => {
 	test('should fail due to missing API Key', testWithAPIKey('put', '/workflows/1', null));
 
@@ -1164,7 +1156,6 @@ describe('PUT /workflows/:id', () => {
 	});
 });
 
-// NOTE: passing
 describe('GET /workflows/:id/tags', () => {
 	test('should fail due to missing API Key', testWithAPIKey('get', '/workflows/2/tags', null));
 
@@ -1225,7 +1216,6 @@ describe('GET /workflows/:id/tags', () => {
 	});
 });
 
-// NOTE: passing
 describe('PUT /workflows/:id/tags', () => {
 	test('should fail due to missing API Key', testWithAPIKey('put', '/workflows/2/tags', null));
 

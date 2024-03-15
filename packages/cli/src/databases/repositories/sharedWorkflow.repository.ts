@@ -16,18 +16,6 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 		super(SharedWorkflow, dataSource.manager);
 	}
 
-	/** Get the IDs of all users this workflow is shared with */
-	async getSharedUserIds(workflowId: string) {
-		const sharedWorkflows = await this.find({
-			where: { workflowId },
-			relations: { project: { projectRelations: true } },
-		});
-
-		return sharedWorkflows.flatMap((sharing) =>
-			sharing.project.projectRelations.map((pr) => pr.userId),
-		);
-	}
-
 	async getSharedWorkflowIds(workflowIds: string[]) {
 		const sharedWorkflows = await this.find({
 			select: ['workflowId'],
@@ -77,22 +65,6 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 			},
 			{ project },
 		);
-	}
-
-	async getSharedWorkflows(
-		user: User,
-		options: {
-			relations?: string[];
-			workflowIds?: string[];
-		},
-	): Promise<SharedWorkflow[]> {
-		return await this.find({
-			where: {
-				...(!['global:owner', 'global:admin'].includes(user.role) && { userId: user.id }),
-				...(options.workflowIds && { workflowId: In(options.workflowIds) }),
-			},
-			...(options.relations && { relations: options.relations }),
-		});
 	}
 
 	async findWithFields(
@@ -184,5 +156,19 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 		});
 
 		return sharedWorkflows.map((sw) => sw.workflow);
+	}
+
+	/**
+	 * Find the IDs of all the projects where a workflow is accessible.
+	 */
+	async findProjectIds(workflowId: string) {
+		const rows = await this.find({ where: { workflowId }, select: ['projectId'] });
+
+		const projectIds = rows.reduce<string[]>((acc, row) => {
+			if (row.projectId) acc.push(row.projectId);
+			return acc;
+		}, []);
+
+		return [...new Set(projectIds)];
 	}
 }

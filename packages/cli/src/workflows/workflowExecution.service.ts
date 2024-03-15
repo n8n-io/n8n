@@ -34,6 +34,7 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 import { TestWebhooks } from '@/TestWebhooks';
 import { Logger } from '@/Logger';
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
+import type { Project } from '@/databases/entities/Project';
 
 @Service()
 export class WorkflowExecutionService {
@@ -161,7 +162,7 @@ export class WorkflowExecutionService {
 	async executeErrorWorkflow(
 		workflowId: string,
 		workflowErrorData: IWorkflowErrorData,
-		runningUser: User,
+		runningProject: Project,
 	): Promise<void> {
 		// Wrap everything in try/catch to make sure that no errors bubble up and all get caught here
 		try {
@@ -284,7 +285,7 @@ export class WorkflowExecutionService {
 				executionMode,
 				executionData: runExecutionData,
 				workflowData,
-				userId: runningUser.id,
+				projectId: runningProject.id,
 			};
 
 			await this.workflowRunner.run(runData);

@@ -252,16 +252,7 @@ export class ActiveWorkflowRunner {
 
 		const mode = 'internal';
 
-		const ownerRelation = workflowData.shared
-			.filter((sw) => sw.role === 'workflow:owner')
-			.flatMap((sw) => sw.project.projectRelations)
-			.find((pr) => pr.role === 'project:personalOwner');
-
-		if (!ownerRelation) {
-			throw new ApplicationError(`Workflow ${workflowData.display()} has no owner`);
-		}
-
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(ownerRelation.userId);
+		const additionalData = await WorkflowExecuteAdditionalData.getBase();
 
 		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, undefined, true);
 
@@ -580,16 +571,7 @@ export class ActiveWorkflowRunner {
 				);
 			}
 
-			const ownerRelation = dbWorkflow.shared
-				.filter((sw) => sw.role === 'workflow:owner')
-				.flatMap((sw) => sw.project.projectRelations)
-				.find((pr) => pr.role === 'project:personalOwner');
-
-			if (!ownerRelation) {
-				throw new WorkflowActivationError(`Workflow ${dbWorkflow.display()} has no owner`);
-			}
-
-			const additionalData = await WorkflowExecuteAdditionalData.getBase(ownerRelation.userId);
+			const additionalData = await WorkflowExecuteAdditionalData.getBase();
 
 			if (shouldAddWebhooks) {
 				await this.addWebhooks(workflow, additionalData, 'trigger', activationMode);

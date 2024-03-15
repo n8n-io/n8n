@@ -90,7 +90,8 @@ export = {
 
 			if (!workflow) {
 				// user trying to access a workflow they do not own
-				// or workflow does not exist
+				// and was not shared to them
+				// Or does not exist.
 				return res.status(404).json({ message: 'Not Found' });
 			}
 

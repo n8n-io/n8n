@@ -1,4 +1,3 @@
-// NOTE: passing
 import Container from 'typedi';
 import type { SuperAgentTest } from 'supertest';
 import { v4 as uuid } from 'uuid';
@@ -104,7 +103,6 @@ describe('router should switch based on flag', () => {
 	});
 });
 
-// NOTE: passing
 describe('PUT /workflows/:id', () => {
 	test('PUT /workflows/:id/share should save sharing with new users', async () => {
 		const workflow = await createWorkflow({}, owner);
@@ -261,7 +259,6 @@ describe('PUT /workflows/:id', () => {
 	});
 });
 
-// NOTE: passing
 describe('GET /workflows/new', () => {
 	[true, false].forEach((sharingEnabled) => {
 		test(`should return an auto-incremented name, even when sharing is ${
@@ -279,7 +276,6 @@ describe('GET /workflows/new', () => {
 	});
 });
 
-// NOTE: passing
 describe('GET /workflows/:id', () => {
 	test('GET should fail with invalid id due to route rule', async () => {
 		const response = await authOwnerAgent.get('/workflows/potatoes');
@@ -470,7 +466,6 @@ describe('GET /workflows/:id', () => {
 	});
 });
 
-// NOTE: passing
 describe('POST /workflows', () => {
 	it('Should create a workflow that uses no credential', async () => {
 		const workflow = makeWorkflow({ withPinData: false });
@@ -625,7 +620,6 @@ describe('POST /workflows', () => {
 	});
 });
 
-// NOTE: passing
 describe('PATCH /workflows/:id - validate credential permissions to user', () => {
 	it('Should succeed when saving unchanged workflow nodes', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
@@ -858,7 +852,6 @@ describe('PATCH /workflows/:id - validate credential permissions to user', () =>
 	});
 });
 
-// NOTE: passing
 describe('PATCH /workflows/:id - validate interim updates', () => {
 	it('should block owner updating workflow nodes on interim update by member', async () => {
 		// owner creates and shares workflow
@@ -1048,7 +1041,6 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 	});
 });
 
-// NOTE: passing
 describe('PATCH /workflows/:id - workflow history', () => {
 	test('Should create workflow history version when licensed', async () => {
 		license.enable('feat:workflowHistory');
@@ -1159,7 +1151,6 @@ describe('PATCH /workflows/:id - workflow history', () => {
 	});
 });
 
-// NOTE: passing
 describe('PATCH /workflows/:id - activate workflow', () => {
 	test('should activate workflow without changing version ID', async () => {
 		license.disable('feat:workflowHistory');

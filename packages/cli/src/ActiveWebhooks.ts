@@ -1,6 +1,6 @@
 import { Service } from 'typedi';
 import type { Response } from 'express';
-import { Workflow, NodeHelpers, ApplicationError } from 'n8n-workflow';
+import { Workflow, NodeHelpers } from 'n8n-workflow';
 import type { INode, IWebhookData, IHttpRequestMethods } from 'n8n-workflow';
 
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
@@ -102,16 +102,7 @@ export class ActiveWebhooks implements IWebhookManager {
 			settings: workflowData.settings,
 		});
 
-		const ownerRelation = workflowData.shared
-			.filter((sw) => sw.role === 'workflow:owner')
-			.flatMap((sw) => sw.project.projectRelations)
-			.find((pr) => pr.role === 'project:personalOwner');
-
-		if (!ownerRelation) {
-			throw new ApplicationError(`Workflow ${workflowData.display()} has no owner`);
-		}
-
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(ownerRelation.userId);
+		const additionalData = await WorkflowExecuteAdditionalData.getBase();
 
 		const webhookData = NodeHelpers.getNodeWebhooks(
 			workflow,

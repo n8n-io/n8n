@@ -11,7 +11,6 @@ import { In } from '@n8n/typeorm';
 import { RoleService } from './role.service';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { SharedCredentialsRepository } from '@/databases/repositories/sharedCredentials.repository';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -21,6 +20,7 @@ import { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
 @Service()
 export class ProjectService {
 	constructor(
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly projectRepository: ProjectRepository,
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly roleService: RoleService,
@@ -74,6 +74,14 @@ export class ProjectService {
 			// 5. delete project
 			await em.remove(project);
 		});
+	}
+
+	/**
+	 * Find all the projects where a workflow is accessible,
+	 * along with the roles of a user in those projects.
+	 */
+	async findProjectsWorkflowIsIn(workflowId: string) {
+		return await this.sharedWorkflowRepository.findProjectIds(workflowId);
 	}
 
 	async getAccessibleProjects(user: User): Promise<Project[]> {
