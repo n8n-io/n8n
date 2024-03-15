@@ -22,7 +22,7 @@ import { sanitizeHtml } from '@/utils/htmlUtils';
 import { useAIStore } from '@/stores/ai.store';
 import { MAX_DISPLAY_DATA_SIZE } from '@/constants';
 import VueMarkdown from 'vue-markdown-render';
-import { BaseTextKey } from '@/plugins/i18n';
+import type { BaseTextKey } from '@/plugins/i18n';
 
 const props = defineProps({
 	error: {
