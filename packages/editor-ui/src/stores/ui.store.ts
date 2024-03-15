@@ -39,6 +39,7 @@ import {
 	WORKFLOW_HISTORY_VERSION_RESTORE,
 	SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY,
 	SETUP_CREDENTIALS_MODAL_KEY,
+	GENERATE_CURL_MODAL_KEY,
 } from '@/constants';
 import type {
 	CloudUpdateLinkSourceType,
@@ -133,8 +134,16 @@ export const useUIStore = defineStore(STORES.UI, {
 			},
 			[IMPORT_CURL_MODAL_KEY]: {
 				open: false,
-				curlCommand: '',
-				httpNodeParameters: '',
+				data: {
+					curlCommand: '',
+				},
+			},
+			[GENERATE_CURL_MODAL_KEY]: {
+				open: false,
+				data: {
+					service: '',
+					request: '',
+				},
 			},
 			[LOG_STREAM_MODAL_KEY]: {
 				open: false,
@@ -265,12 +274,6 @@ export const useUIStore = defineStore(STORES.UI, {
 				return workflowsStore.getNodeByName(this.lastSelectedNode);
 			}
 			return null;
-		},
-		getCurlCommand(): string | undefined {
-			return this.modals[IMPORT_CURL_MODAL_KEY].curlCommand;
-		},
-		getHttpNodeParameters(): string | undefined {
-			return this.modals[IMPORT_CURL_MODAL_KEY].httpNodeParameters;
 		},
 		areExpressionsDisabled(): boolean {
 			return this.currentView === VIEWS.DEMO;
@@ -542,12 +545,6 @@ export const useUIStore = defineStore(STORES.UI, {
 			this.modals[payload.name] = {
 				...this.modals[payload.name],
 				curlCommand: payload.command,
-			};
-		},
-		setHttpNodeParameters(payload: { name: string; parameters: string }): void {
-			this.modals[payload.name] = {
-				...this.modals[payload.name],
-				httpNodeParameters: payload.parameters,
 			};
 		},
 		toggleSidebarMenuCollapse(): void {

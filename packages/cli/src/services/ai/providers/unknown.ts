@@ -6,4 +6,8 @@ export class AIProviderUnknown implements N8nAIProvider {
 		throw new ApplicationError('Unknown AI provider. Please check the configuration.');
 		return '';
 	}
+
+	async promptJSON() {
+		return await this.prompt();
+	}
 }

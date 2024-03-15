@@ -3,6 +3,7 @@ import { AIRequest } from '@/requests';
 import { AIService } from '@/services/ai.service';
 import { NodeTypes } from '@/NodeTypes';
 import { FailedDependencyError } from '@/errors/response-errors/failed-dependency.error';
+import { jsonParse } from 'n8n-workflow';
 
 @RestController('/ai')
 export class AIController {
@@ -32,6 +33,24 @@ export class AIController {
 			throw new FailedDependencyError(
 				(aiServiceError as Error).message ||
 					'Failed to debug error due to an issue with an external dependency. Please try again later.',
+			);
+		}
+	}
+
+	/**
+	 * Generate CURL request and additional HTTP Node metadata for given service and request
+	 */
+	@Post('/generate-curl')
+	async generateCurl(req: AIRequest.GenerateCurl): Promise<{ curl: string; metadata: object }> {
+		const { service, request } = req.body;
+
+		let data: string;
+		try {
+			return await this.aiService.generateCurl(service, request);
+		} catch (aiServiceError) {
+			throw new FailedDependencyError(
+				(aiServiceError as Error).message ||
+					'Failed to generate HTTP Request Node parameters due to an issue with an external dependency. Please try again later.',
 			);
 		}
 	}

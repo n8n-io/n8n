@@ -1,6 +1,7 @@
 import { ChatOpenAI } from '@langchain/openai';
 import type { BaseMessageChunk, BaseMessageLike } from '@langchain/core/messages';
 import type { N8nAIProvider } from '@/types/ai.types';
+import type { BaseChatModelCallOptions } from '@langchain/core/language_models/chat_models';
 
 export class AIProviderOpenAI implements N8nAIProvider {
 	private model: ChatOpenAI;
@@ -27,8 +28,8 @@ export class AIProviderOpenAI implements N8nAIProvider {
 		return data.content;
 	}
 
-	async prompt(messages: BaseMessageLike[]) {
-		const data = await this.model.invoke(messages);
+	async prompt(messages: BaseMessageLike[], options?: BaseChatModelCallOptions) {
+		const data = await this.model.invoke(messages, options);
 
 		return this.mapResponse(data);
 	}
