@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-use-before-define */
 import { EventEmitter } from 'events';
 import type Imap from 'imap';
@@ -10,7 +8,7 @@ import * as utf8 from 'utf8';
 import * as uuencode from 'uuencode';
 
 import { getMessage } from './helpers/getMessage';
-import type { Message, MessageSource, Labels, MessagePart } from './types';
+import type { Message, MessagePart } from './types';
 
 const IMAP_EVENTS = ['alert', 'mail', 'expunge', 'uidvalidity', 'update', 'close', 'end'] as const;
 
@@ -52,26 +50,6 @@ export class ImapSimple extends EventEmitter {
 		});
 
 		this.imap.end();
-	}
-
-	/** Open a mailbox */
-	async openBox(
-		/** The name of the box to open */
-		boxName: string,
-	): Promise<Imap.Box> {
-		return await new Promise((resolve, reject) => {
-			this.imap.openBox(boxName, (e, result) => (e ? reject(e) : resolve(result)));
-		});
-	}
-
-	/** Close a mailbox */
-	async closeBox(
-		/** If autoExpunge is true, any messages marked as Deleted in the currently open mailbox will be removed @default true */
-		autoExpunge = true,
-	) {
-		return await new Promise<void>((resolve, reject) => {
-			this.imap.closeBox(autoExpunge, (e) => (e ? reject(e) : resolve()));
-		});
 	}
 
 	/**
@@ -216,52 +194,6 @@ export class ImapSimple extends EventEmitter {
 		});
 	}
 
-	/** Moves the specified message(s) in the currently open mailbox to another mailbox. */
-	async moveMessage(
-		/** The node-imap `MessageSource` indicating the message(s) from the current open mailbox to move. */
-		source: MessageSource,
-		/** The mailbox to move the message(s) to. */
-		boxName: string,
-	) {
-		return await new Promise<void>((resolve, reject) => {
-			this.imap.move(source, boxName, (e) => (e ? reject(e) : resolve()));
-		});
-	}
-
-	/**
-	 * Adds the provided label(s) to the specified message(s).
-	 *
-	 * This is a Gmail extension method (X-GM-EXT-1)
-	 */
-	async addMessageLabel(
-		/** The node-imap `MessageSource` indicating the message(s) to add the label(s) to. */
-		source: MessageSource,
-		/** Either a single string or an array of strings indicating the labels to add to the message(s). */
-		labels: Labels,
-	) {
-		return await new Promise<void>((resolve, reject) => {
-			// @ts-expect-error `addLabels` type-definition is missing
-			this.imap.addLabels(source, labels, (e) => (e ? reject(e) : resolve()));
-		});
-	}
-
-	/**
-	 * Remove the provided label(s) from the specified message(s).
-	 *
-	 * This is a Gmail extension method (X-GM-EXT-1)
-	 */
-	async removeMessageLabel(
-		/** The node-imap `MessageSource` indicating the message(s) to remove the label(s) from. */
-		source: MessageSource,
-		/** Either a single string or an array of strings indicating the labels to remove from the message(s). */
-		labels: Labels,
-	) {
-		return await new Promise<void>((resolve, reject) => {
-			// @ts-expect-error `delLabels` type-definition is missing
-			this.imap.delLabels(source, labels, (e) => (e ? reject(e) : resolve()));
-		});
-	}
-
 	/** Adds the provided flag(s) to the specified message(s). */
 	async addFlags(
 		/** The messages uid */
@@ -274,42 +206,6 @@ export class ImapSimple extends EventEmitter {
 		});
 	}
 
-	/** Removes the provided flag(s) to the specified message(s). */
-	async delFlags(
-		/** The messages uid */
-		uid: number[],
-		/** The flags to remove from the message(s). */
-		flags: string | string[],
-	) {
-		return await new Promise<void>((resolve, reject) => {
-			this.imap.delFlags(uid, flags, (e) => (e ? reject(e) : resolve()));
-		});
-	}
-
-	/** Deletes the specified message(s). */
-	async deleteMessage(
-		/** The uids of messages to be deleted */
-		uid: number[],
-	) {
-		return await new Promise<void>((resolve, reject) => {
-			this.imap.addFlags(uid, '\\Deleted', (e) => {
-				if (e) return reject(e);
-				this.imap.expunge((error) => (error ? reject(error) : resolve()));
-			});
-		});
-	}
-
-	/** Appends a mime-encoded message to a mailbox */
-	async append(
-		/** The messages to append to the mailbox */
-		message: string | Buffer,
-		options: Imap.AppendOptions,
-	) {
-		return await new Promise<void>((resolve, reject) => {
-			this.imap.append(message, options, (e) => (e ? reject(e) : resolve()));
-		});
-	}
-
 	/** Returns a list of mailboxes (folders). */
 	async getBoxes() {
 		return await new Promise<Imap.MailBoxes>((resolve, reject) => {
@@ -317,17 +213,23 @@ export class ImapSimple extends EventEmitter {
 		});
 	}
 
-	/** Add new mailbox (folder) */
-	async addBox(boxName: string) {
-		return await new Promise<void>((resolve, reject) => {
-			this.imap.addBox(boxName, (e) => (e ? reject(e) : resolve()));
+	/** Open a mailbox */
+	async openBox(
+		/** The name of the box to open */
+		boxName: string,
+	): Promise<Imap.Box> {
+		return await new Promise((resolve, reject) => {
+			this.imap.openBox(boxName, (e, result) => (e ? reject(e) : resolve(result)));
 		});
 	}
 
-	/** Delete mailbox (folder) */
-	async delBox(boxName: string) {
+	/** Close a mailbox */
+	async closeBox(
+		/** If autoExpunge is true, any messages marked as Deleted in the currently open mailbox will be removed @default true */
+		autoExpunge = true,
+	) {
 		return await new Promise<void>((resolve, reject) => {
-			this.imap.delBox(boxName, (e) => (e ? reject(e) : resolve()));
+			this.imap.closeBox(autoExpunge, (e) => (e ? reject(e) : resolve()));
 		});
 	}
 }

@@ -39,6 +39,3 @@ export interface Message {
 	parts: MessageBodyPart[];
 	seqNo?: number;
 }
-
-export type MessageSource = string | string[];
-export type Labels = string | string[];
