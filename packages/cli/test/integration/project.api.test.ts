@@ -15,8 +15,9 @@ import { ProjectRelationRepository } from '@/databases/repositories/projectRelat
 import type { ProjectRole } from '@/databases/entities/ProjectRelation';
 import { EntityNotFoundError } from '@n8n/typeorm';
 import { createWorkflow } from './shared/db/workflows';
-import { createCredentials, saveCredential } from './shared/db/credentials';
+import { createCredentials, getCredentialById, saveCredential } from './shared/db/credentials';
 import { randomCredentialPayload } from './shared/random';
+import { getWorkflowById } from '@/PublicApi/v1/handlers/workflows/workflows.service';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['project'],
@@ -491,7 +492,7 @@ describe.only('DELETE /project/:projectId', () => {
 		},
 	);
 
-	test('deletes all workflows and credentials it owns as well as the sharings into other projects', async () => {
+	test.only('deletes all workflows and credentials it owns as well as the sharings into other projects', async () => {
 		const owner = await createOwner();
 		const project = await createTeamProject(undefined, owner);
 		const workflow = await createWorkflow({}, project);
@@ -502,9 +503,12 @@ describe.only('DELETE /project/:projectId', () => {
 
 		await testServer.authAgentFor(owner).delete(`/projects/${project.id}`).expect(200);
 
-		const projectInDB = findProject(project.id);
+		const workflowInDB = await getWorkflowById(workflow.id);
+		const credentialInDB = await getCredentialById(credential.id);
 
-		await expect(projectInDB).rejects.toThrowError(EntityNotFoundError);
+		expect(workflowInDB).toBeNull();
+		expect(credentialInDB).toBeNull();
+		await expect(findProject(project.id)).rejects.toThrowError(EntityNotFoundError);
 	});
 
 	test.todo('unshares all workflows and credentials that were shared with the project');

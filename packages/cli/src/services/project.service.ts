@@ -49,32 +49,39 @@ export class ProjectService {
 		// TODO: do all of this inside a transaction
 
 		await this.projectRelationRepository.manager.transaction(async (em) => {
-			// 1. delete credentials owned by this project
-			const ownedCredentials = await em.findBy(SharedCredentials, {
-				projectId: project.id,
-				role: 'credential:owner',
-			});
+			try {
+				// 1. delete credentials owned by this project
+				const ownedCredentials = await em.find(SharedCredentials, {
+					where: { projectId: project.id, role: 'credential:owner' },
+					relations: { credentials: true },
+				});
 
-			for (const credential of ownedCredentials) {
-				await Container.get(CredentialsService).delete(credential.credentials, em);
+				console.log('ownedCredentials', ownedCredentials);
+
+				for (const credential of ownedCredentials) {
+					await Container.get(CredentialsService).delete(credential.credentials, em);
+				}
+
+				// 2. delete workflows owned by this project
+				const ownedSharedWorkflows = await em.find(SharedWorkflow, {
+					where: { projectId: project.id, role: 'workflow:owner' },
+					relations: { workflow: true },
+				});
+
+				for (const sharedWorkflow of ownedSharedWorkflows) {
+					await Container.get(WorkflowService).delete(user, sharedWorkflow.workflow.id, em);
+				}
+
+				// 3. delete shared credentials into this project
+				// Should cascade, but should this run the same hooks that unsharing does?
+				// 4. delete shared workflows into this project
+				// Should cascade, but should this run the same hooks that unsharing does?
+				// 5. delete project
+				await em.remove(project);
+			} catch (error) {
+				console.error(error);
+				throw error;
 			}
-
-			// 2. delete workflows owned by this project
-			const ownedSharedWorkflows = await em.findBy(SharedWorkflow, {
-				projectId: project.id,
-				role: 'workflow:owner',
-			});
-
-			for (const sharedWorkflow of ownedSharedWorkflows) {
-				await Container.get(WorkflowService).delete(user, sharedWorkflow.workflow.id, em);
-			}
-
-			// 3. delete shared credentials into this project
-			// Should cascade, but should this run the same hooks that unsharing does?
-			// 4. delete shared workflows into this project
-			// Should cascade, but should this run the same hooks that unsharing does?
-			// 5. delete project
-			await em.remove(project);
 		});
 	}
 
