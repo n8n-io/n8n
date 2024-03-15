@@ -763,8 +763,8 @@ export const INSECURE_CONNECTION_WARNING = `
 	To fix this, please consider the following options:
 	<ul>
 		<li>Setup TLS/HTTPS (<strong>recommended</strong>), or</li>
-		<li>If you are running this locally, try using http://localhost:5678 instead</li>
-		<li>If you prefer to disable this security feature (<strong>not recommended</strong>), set the environment variable \`N8N_SECURE_COOKIE\` to \`false\`</li>
+		<li>If you are running this locally, try using <a href="http://localhost:5678">localhost</a> instead</li>
+		<li>If you prefer to disable this security feature (<strong>not recommended</strong>), set the environment variable <code>N8N_SECURE_COOKIE</code> to <code>false</code></li>
 	</ul>
 </div>
 </body>`;
