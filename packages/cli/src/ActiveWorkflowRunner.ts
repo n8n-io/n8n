@@ -50,6 +50,7 @@ import { ActiveWorkflowsService } from '@/services/activeWorkflows.service';
 import { WorkflowExecutionService } from '@/workflows/workflowExecution.service';
 import { WorkflowStaticDataService } from '@/workflows/workflowStaticData.service';
 import { OnShutdown } from '@/decorators/OnShutdown';
+import { EntityManager } from '@n8n/typeorm';
 
 interface QueuedActivation {
 	activationMode: WorkflowActivateMode;
@@ -226,7 +227,9 @@ export class ActiveWorkflowRunner {
 	 * Remove all webhooks of a workflow from the database, and
 	 * deregister those webhooks from external services.
 	 */
-	async clearWebhooks(workflowId: string) {
+	async clearWebhooks(workflowId: string, em: EntityManager) {
+		em = em ?? this.workflowRepository.manager;
+
 		const workflowData = await this.workflowRepository.findOne({
 			where: { id: workflowId },
 			relations: ['shared', 'shared.user'],
@@ -263,12 +266,13 @@ export class ActiveWorkflowRunner {
 		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, undefined, true);
 
 		for (const webhookData of webhooks) {
+			// TODO: Does not need to run inside a trx?
 			await workflow.deleteWebhook(webhookData, NodeExecuteFunctions, mode, 'update');
 		}
 
-		await this.workflowStaticDataService.saveStaticData(workflow);
+		await this.workflowStaticDataService.saveStaticData(workflow, em);
 
-		await this.webhookService.deleteWorkflowWebhooks(workflowId);
+		await this.webhookService.deleteWorkflowWebhooks(workflowId, em);
 	}
 
 	/**
@@ -717,10 +721,11 @@ export class ActiveWorkflowRunner {
 	 * @param {string} workflowId The id of the workflow to deactivate
 	 */
 	// TODO: this should happen in a transaction
-	async remove(workflowId: string) {
+	async remove(workflowId: string, em?: EntityManager) {
+		em = em ?? this.workflowRepository.manager;
 		if (this.orchestrationService.isMultiMainSetupEnabled) {
 			try {
-				await this.clearWebhooks(workflowId);
+				await this.clearWebhooks(workflowId, em);
 			} catch (error) {
 				ErrorReporter.error(error);
 				this.logger.error(
@@ -734,7 +739,7 @@ export class ActiveWorkflowRunner {
 		}
 
 		try {
-			await this.clearWebhooks(workflowId);
+			await this.clearWebhooks(workflowId, em);
 		} catch (error) {
 			ErrorReporter.error(error);
 			this.logger.error(

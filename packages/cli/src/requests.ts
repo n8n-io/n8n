@@ -545,4 +545,5 @@ export declare namespace ProjectRequest {
 		{},
 		{ name?: string; relations?: ProjectRelationPayload[] }
 	>;
+	type Delete = AuthenticatedRequest<{ projectId: string }, {}>;
 }

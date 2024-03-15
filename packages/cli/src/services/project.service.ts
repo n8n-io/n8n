@@ -5,11 +5,18 @@ import type { User } from '@/databases/entities/User';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
 import { Not, type EntityManager } from '@n8n/typeorm';
-import { Service } from 'typedi';
+import Container, { Service } from 'typedi';
 import { type Scope } from '@n8n/permissions';
 import { In } from '@n8n/typeorm';
 import { RoleService } from './role.service';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { SharedCredentialsRepository } from '@/databases/repositories/sharedCredentials.repository';
+import { CredentialsService } from '@/credentials/credentials.service';
+import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
+import { WorkflowService } from '@/workflows/workflow.service';
+import { SharedCredentials } from '@/databases/entities/SharedCredentials';
+import { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
 
 @Service()
 export class ProjectService {
@@ -18,6 +25,56 @@ export class ProjectService {
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly roleService: RoleService,
 	) {}
+
+	// TODO: Should internal and external hooks run within transactions?
+	// They are not guaranteed to run. They would need to be persisted to the db
+	// within the same transaction and then a worker would need to pick them up and execute them.
+	// That way we'd at least achieve "run at least once" SLA.
+	async deleteProject(user: User, projectId: string) {
+		const project = await this.getProjectWithScope(user, projectId, 'project:delete');
+
+		if (!project) {
+			throw new NotFoundError(`Could not find project with ID: ${projectId}`);
+		}
+
+		// 0. check if this is a team project
+		if (project.type !== 'team') {
+			throw new ForbiddenError(
+				`Can't delete project. Project with ID "${projectId}" is not a team project.`,
+			);
+		}
+
+		// TODO: do all of this inside a transaction
+
+		await this.projectRelationRepository.manager.transaction(async (em) => {
+			// 1. delete credentials owned by this project
+			const ownedCredentials = await em.findBy(SharedCredentials, {
+				projectId: project.id,
+				role: 'credential:owner',
+			});
+
+			for (const credential of ownedCredentials) {
+				await Container.get(CredentialsService).delete(credential.credentials, em);
+			}
+
+			// 2. delete workflows owned by this project
+			const ownedSharedWorkflows = await em.findBy(SharedWorkflow, {
+				projectId: project.id,
+				role: 'workflow:owner',
+			});
+
+			for (const sharedWorkflow of ownedSharedWorkflows) {
+				await Container.get(WorkflowService).delete(user, sharedWorkflow.workflow.id, em);
+			}
+
+			// 3. delete shared credentials into this project
+			// Should cascade, but should this run the same hooks that unsharing does?
+			// 4. delete shared workflows into this project
+			// Should cascade, but should this run the same hooks that unsharing does?
+			// 5. delete project
+			await em.remove(project);
+		});
+	}
 
 	async getAccessibleProjects(user: User): Promise<Project[]> {
 		// This user is probably an admin, show them everything

@@ -7,11 +7,13 @@ import {
 	Licensed,
 	Patch,
 	ProjectScope,
+	Delete,
 } from '@/decorators';
 import { ProjectRequest } from '@/requests';
 import { ProjectService } from '@/services/project.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { ProjectRole } from '@/databases/entities/ProjectRelation';
+import { DeleteDateColumn } from '@n8n/typeorm';
 
 @RestController('/projects')
 export class ProjectController {
@@ -92,5 +94,11 @@ export class ProjectController {
 		if (req.body.relations) {
 			await this.projectsService.syncProjectRelations(req.params.projectId, req.body.relations);
 		}
+	}
+
+	@Delete('/:projectId')
+	@ProjectScope('project:delete')
+	async deleteProject(req: ProjectRequest.Delete) {
+		this.projectsService.deleteProject(req.params.projectId);
 	}
 }

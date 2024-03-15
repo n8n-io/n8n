@@ -6,7 +6,7 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import { ApplicationError, CREDENTIAL_EMPTY_VALUE, deepCopy, NodeHelpers } from 'n8n-workflow';
-import type { FindOptionsRelations, FindOptionsWhere } from '@n8n/typeorm';
+import type { EntityManager, FindOptionsRelations, FindOptionsWhere } from '@n8n/typeorm';
 import type { Scope } from '@n8n/permissions';
 import * as Db from '@/Db';
 import type { ICredentialsDb } from '@/Interfaces';
@@ -253,10 +253,13 @@ export class CredentialsService {
 		return result;
 	}
 
-	async delete(credentials: CredentialsEntity) {
+	async delete(credentials: CredentialsEntity, em?: EntityManager) {
+		em = em ?? this.credentialsRepository.manager;
+
+		// TODO: Should the hook also run within the transaction?
 		await this.externalHooks.run('credentials.delete', [credentials.id]);
 
-		await this.credentialsRepository.remove(credentials);
+		await em.remove(credentials);
 	}
 
 	async test(user: User, credentials: ICredentialsDecrypted) {

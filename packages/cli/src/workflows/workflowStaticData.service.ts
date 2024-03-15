@@ -3,6 +3,8 @@ import { type IDataObject, type Workflow, ErrorReporterProxy as ErrorReporter } 
 import { Logger } from '@/Logger';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { isWorkflowIdValid } from '@/utils';
+import { EntityManager } from '@n8n/typeorm';
+import { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
 
 @Service()
 export class WorkflowStaticDataService {
@@ -21,13 +23,15 @@ export class WorkflowStaticDataService {
 	}
 
 	/** Saves the static data if it changed */
-	async saveStaticData(workflow: Workflow): Promise<void> {
+	async saveStaticData(workflow: Workflow, em?: EntityManager): Promise<void> {
+		em = em ?? this.workflowRepository.manager;
+
 		if (workflow.staticData.__dataChanged === true) {
 			// Static data of workflow changed and so has to be saved
 			if (isWorkflowIdValid(workflow.id)) {
 				// Workflow is saved so update in database
 				try {
-					await this.saveStaticDataById(workflow.id, workflow.staticData);
+					await this.saveStaticDataById(workflow.id, workflow.staticData, em);
 					workflow.staticData.__dataChanged = false;
 				} catch (error) {
 					ErrorReporter.error(error);
@@ -42,8 +46,14 @@ export class WorkflowStaticDataService {
 	}
 
 	/** Saves the given static data on workflow */
-	async saveStaticDataById(workflowId: string, newStaticData: IDataObject): Promise<void> {
-		await this.workflowRepository.update(workflowId, {
+	async saveStaticDataById(
+		workflowId: string,
+		newStaticData: IDataObject,
+		em?: EntityManager,
+	): Promise<void> {
+		em = em ?? this.workflowRepository.manager;
+
+		await em.update(WorkflowEntity, workflowId, {
 			staticData: newStaticData,
 		});
 	}

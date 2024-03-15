@@ -447,7 +447,7 @@ describe('PATCH /projects/:projectId', () => {
 
 describe('GET /project/:projectId', () => {
 	test('should get project details and relations', async () => {
-		const [ownerUser, testUser1, testUser2, testUser3, teamProject1, teamProject2] =
+		const [ownerUser, testUser1, testUser2, _testUser3, teamProject1, teamProject2] =
 			await Promise.all([
 				createOwner(),
 				createUser(),
@@ -486,4 +486,20 @@ describe('GET /project/:projectId', () => {
 			role: 'project:admin',
 		});
 	});
+});
+
+describe('DELETE /project/:projectId', () => {
+	test('allows the project:owner to delete a project', async () => {
+		const 
+	});
+
+	test.todo('does not allow deleting of personal projects');
+
+	test.todo('does not allow the user, editor or viewer to delete a project');
+
+	test.todo(
+		'deletes all workflows and credentials it owns as well as the sharings into other projects',
+	);
+
+	test.todo('unshares all workflows and credentials that were shared with the project');
 });
