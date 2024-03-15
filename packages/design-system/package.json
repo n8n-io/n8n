@@ -17,7 +17,7 @@
     "dev": "pnpm run storybook",
     "clean": "rimraf dist .turbo",
     "build": "vite build",
-    "typecheck": "vue-tsc --declaration --emitDeclarationOnly",
+    "typecheck": "vue-tsc --noEmit",
     "test": "vitest run",
     "test:dev": "vitest",
     "build:storybook": "storybook build",
