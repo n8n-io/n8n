@@ -27,6 +27,7 @@ import {
 	optionsProperty,
 	responseBinaryPropertyNameProperty,
 	responseCodeProperty,
+	responseCodeSelector,
 	responseDataProperty,
 	responseModeProperty,
 } from './description';
@@ -35,7 +36,13 @@ import { WebhookAuthorizationError } from './error';
 const configuredOutputs = (parameters: INodeParameters) => {
 	const httpMethod = parameters.httpMethod as string | string[];
 
-	if (!Array.isArray(httpMethod)) return [NodeConnectionType.Main];
+	if (!Array.isArray(httpMethod))
+		return [
+			{
+				type: `${NodeConnectionType.Main}`,
+				displayName: httpMethod,
+			},
+		];
 
 	const outputs = httpMethod.map((method) => {
 		return {
@@ -168,7 +175,44 @@ export class Webhook extends Node {
 				},
 				default: '',
 			},
-			responseCodeProperty,
+			{
+				...responseCodeProperty,
+				displayOptions: {
+					show: {
+						'@version': [1, 1.1],
+					},
+					hide: {
+						responseMode: ['responseNode'],
+					},
+				},
+			},
+			{
+				...responseCodeSelector,
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 2 } }],
+					},
+					hide: {
+						responseMode: ['responseNode'],
+					},
+				},
+			},
+			{
+				displayName: 'Code',
+				name: 'customCode',
+				type: 'number',
+				default: 200,
+				placeholder: 'e.g. 400',
+				typeOptions: {
+					minValue: 100,
+				},
+				displayOptions: {
+					show: {
+						responseCode: ['customCode'],
+						'@version': [{ _cnd: { gte: 2 } }],
+					},
+				},
+			},
 			responseDataProperty,
 			responseBinaryPropertyNameProperty,
 			optionsProperty,
