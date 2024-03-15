@@ -1,13 +1,18 @@
 import * as testDb from './shared/testDb';
 import * as utils from './shared/utils/';
 import { createOwner, createUser } from './shared/db/users';
+import {
+	createTeamProject,
+	linkUserToProject,
+	getPersonalProject,
+	findProject,
+	getProjectRelations,
+} from './shared/db/projects';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import Container from 'typedi';
 import type { Project } from '@/databases/entities/Project';
-import type { User } from '@/databases/entities/User';
 import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
-import type { ProjectRelation, ProjectRole } from '@/databases/entities/ProjectRelation';
-import { randomName } from './shared/random';
+import type { ProjectRole } from '@/databases/entities/ProjectRelation';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['project'],
@@ -16,51 +21,6 @@ const testServer = utils.setupTestServer({
 
 let projectRepository: ProjectRepository;
 let projectRelationRepository: ProjectRelationRepository;
-
-const createTeamProject = async (name?: string) => {
-	return await projectRepository.save(
-		projectRepository.create({
-			name: name ?? randomName(),
-			type: 'team',
-		}),
-	);
-};
-
-const linkUserToProject = async (user: User, project: Project, role: ProjectRole) => {
-	await projectRelationRepository.save(
-		projectRelationRepository.create({
-			projectId: project.id,
-			userId: user.id,
-			role,
-		}),
-	);
-};
-
-const getPersonalProject = async (user: User): Promise<Project> => {
-	return await projectRepository.findOneOrFail({
-		where: {
-			projectRelations: {
-				userId: user.id,
-				role: 'project:personalOwner',
-			},
-			type: 'personal',
-		},
-	});
-};
-
-const findProject = async (id: string): Promise<Project> => {
-	return await projectRepository.findOneOrFail({
-		where: { id },
-	});
-};
-
-const getProjectRelations = async ({
-	projectId,
-	userId,
-	role,
-}: Partial<ProjectRelation>): Promise<ProjectRelation[]> => {
-	return await projectRelationRepository.find({ where: { projectId, userId, role } });
-};
 
 beforeAll(() => {
 	projectRepository = Container.get(ProjectRepository);
@@ -73,15 +33,16 @@ beforeEach(async () => {
 
 describe('GET /projects/', () => {
 	test('member should get all personal projects and team projects they are apart of', async () => {
-		const [testUser1, testUser2, testUser3, teamProject1, teamProject2] = await Promise.all([
+		const [testUser1, testUser2, testUser3] = await Promise.all([
 			createUser(),
 			createUser(),
 			createUser(),
-			createTeamProject(),
+		]);
+		const [teamProject1, teamProject2] = await Promise.all([
+			createTeamProject(undefined, testUser1),
 			createTeamProject(),
 		]);
 
-		await linkUserToProject(testUser1, teamProject1, 'project:editor');
 		const [personalProject1, personalProject2, personalProject3] = await Promise.all([
 			getPersonalProject(testUser1),
 			getPersonalProject(testUser2),
@@ -110,17 +71,17 @@ describe('GET /projects/', () => {
 	});
 
 	test('owner should get all projects', async () => {
-		const [ownerUser, testUser1, testUser2, testUser3, teamProject1, teamProject2] =
-			await Promise.all([
-				createOwner(),
-				createUser(),
-				createUser(),
-				createUser(),
-				createTeamProject(),
-				createTeamProject(),
-			]);
+		const [ownerUser, testUser1, testUser2, testUser3] = await Promise.all([
+			createOwner(),
+			createUser(),
+			createUser(),
+			createUser(),
+		]);
+		const [teamProject1, teamProject2] = await Promise.all([
+			createTeamProject(undefined, testUser1),
+			createTeamProject(),
+		]);
 
-		await linkUserToProject(testUser1, teamProject1, 'project:editor');
 		const [ownerProject, personalProject1, personalProject2, personalProject3] = await Promise.all([
 			getPersonalProject(ownerUser),
 			getPersonalProject(testUser1),
@@ -152,15 +113,16 @@ describe('GET /projects/', () => {
 
 describe('GET /projects/my-projects', () => {
 	test('member should get all projects they are apart of', async () => {
-		const [testUser1, testUser2, testUser3, teamProject1, teamProject2] = await Promise.all([
+		const [testUser1, testUser2, testUser3] = await Promise.all([
 			createUser(),
 			createUser(),
 			createUser(),
-			createTeamProject(),
+		]);
+		const [teamProject1, teamProject2] = await Promise.all([
+			createTeamProject(undefined, testUser1),
 			createTeamProject(),
 		]);
 
-		await linkUserToProject(testUser1, teamProject1, 'project:editor');
 		const [personalProject1, personalProject2, personalProject3] = await Promise.all([
 			getPersonalProject(testUser1),
 			getPersonalProject(testUser2),
@@ -189,18 +151,17 @@ describe('GET /projects/my-projects', () => {
 	});
 
 	test('owner should get all projects they are apart of', async () => {
-		const [ownerUser, testUser1, testUser2, testUser3, teamProject1, teamProject2] =
-			await Promise.all([
-				createOwner(),
-				createUser(),
-				createUser(),
-				createUser(),
-				createTeamProject(),
-				createTeamProject(),
-			]);
+		const [ownerUser, testUser1, testUser2, testUser3] = await Promise.all([
+			createOwner(),
+			createUser(),
+			createUser(),
+			createUser(),
+		]);
+		const [teamProject1, teamProject2] = await Promise.all([
+			createTeamProject(undefined, testUser1),
+			createTeamProject(undefined, ownerUser),
+		]);
 
-		await linkUserToProject(testUser1, teamProject1, 'project:editor');
-		await linkUserToProject(ownerUser, teamProject2, 'project:editor');
 		const [ownerProject, personalProject1, personalProject2, personalProject3] = await Promise.all([
 			getPersonalProject(ownerUser),
 			getPersonalProject(testUser1),
@@ -319,18 +280,17 @@ describe('PATCH /projects/:projectId', () => {
 
 describe('PATCH /projects/:projectId', () => {
 	test('should add or remove users from a project', async () => {
-		const [ownerUser, testUser1, testUser2, testUser3, teamProject1, teamProject2] =
-			await Promise.all([
-				createOwner(),
-				createUser(),
-				createUser(),
-				createUser(),
-				createTeamProject(),
-				createTeamProject(),
-			]);
+		const [ownerUser, testUser1, testUser2, testUser3] = await Promise.all([
+			createOwner(),
+			createUser(),
+			createUser(),
+			createUser(),
+		]);
+		const [teamProject1, teamProject2] = await Promise.all([
+			createTeamProject(undefined, testUser1),
+			createTeamProject(undefined, testUser2),
+		]);
 
-		await linkUserToProject(testUser1, teamProject1, 'project:admin');
-		await linkUserToProject(testUser2, teamProject1, 'project:admin');
 		await linkUserToProject(ownerUser, teamProject2, 'project:editor');
 		await linkUserToProject(testUser2, teamProject2, 'project:editor');
 
@@ -371,18 +331,18 @@ describe('PATCH /projects/:projectId', () => {
 	});
 
 	test('should not add or remove users from a project if lacking permissions', async () => {
-		const [ownerUser, testUser1, testUser2, testUser3, teamProject1, teamProject2] =
-			await Promise.all([
-				createOwner(),
-				createUser(),
-				createUser(),
-				createUser(),
-				createTeamProject(),
-				createTeamProject(),
-			]);
+		const [ownerUser, testUser1, testUser2, testUser3] = await Promise.all([
+			createOwner(),
+			createUser(),
+			createUser(),
+			createUser(),
+		]);
+		const [teamProject1, teamProject2] = await Promise.all([
+			createTeamProject(undefined, testUser2),
+			createTeamProject(),
+		]);
 
 		await linkUserToProject(testUser1, teamProject1, 'project:viewer');
-		await linkUserToProject(testUser2, teamProject1, 'project:admin');
 		await linkUserToProject(ownerUser, teamProject2, 'project:editor');
 		await linkUserToProject(testUser2, teamProject2, 'project:editor');
 
@@ -447,18 +407,18 @@ describe('PATCH /projects/:projectId', () => {
 
 describe('GET /project/:projectId', () => {
 	test('should get project details and relations', async () => {
-		const [ownerUser, testUser1, testUser2, _testUser3, teamProject1, teamProject2] =
-			await Promise.all([
-				createOwner(),
-				createUser(),
-				createUser(),
-				createUser(),
-				createTeamProject(),
-				createTeamProject(),
-			]);
+		const [ownerUser, testUser1, testUser2, _testUser3] = await Promise.all([
+			createOwner(),
+			createUser(),
+			createUser(),
+			createUser(),
+		]);
+		const [teamProject1, teamProject2] = await Promise.all([
+			createTeamProject(undefined, testUser2),
+			createTeamProject(),
+		]);
 
 		await linkUserToProject(testUser1, teamProject1, 'project:viewer');
-		await linkUserToProject(testUser2, teamProject1, 'project:admin');
 		await linkUserToProject(ownerUser, teamProject2, 'project:editor');
 		await linkUserToProject(testUser2, teamProject2, 'project:editor');
 
