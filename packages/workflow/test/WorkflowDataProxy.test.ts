@@ -263,7 +263,7 @@ describe('WorkflowDataProxy', () => {
 			} catch (error) {
 				expect(error).toBeInstanceOf(ExpressionError);
 				const exprError = error as ExpressionError;
-				expect(exprError.message).toEqual('Can’t get data for expression');
+				expect(exprError.message).toEqual("Can't get data for expression");
 				expect(exprError.context.type).toEqual('paired_item_no_info');
 				done();
 			}
@@ -277,7 +277,7 @@ describe('WorkflowDataProxy', () => {
 			} catch (error) {
 				expect(error).toBeInstanceOf(ExpressionError);
 				const exprError = error as ExpressionError;
-				expect(exprError.message).toEqual('Can’t get data for expression');
+				expect(exprError.message).toEqual("Can't get data for expression");
 				expect(exprError.context.type).toEqual('paired_item_invalid_info');
 				done();
 			}

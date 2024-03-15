@@ -4,7 +4,7 @@
 			<div class="node-error-view__header-message" v-text="getErrorMessage()" />
 			<div
 				class="node-error-view__header-description"
-				v-if="error.description"
+				v-if="error.description || error.context?.descriptionKey"
 				v-html="getErrorDescription()"
 			></div>
 		</div>
@@ -227,6 +227,7 @@ import { useRootStore } from '@/stores/n8nRoot.store';
 import { useClipboard } from '@/composables/useClipboard';
 import type { IDataObject } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
+import type { BaseTextKey } from '@/plugins/i18n';
 
 export default defineComponent({
 	name: 'NodeErrorView',
@@ -338,6 +339,22 @@ export default defineComponent({
 						}),
 				);
 			}
+
+			if (this.error.context?.descriptionKey) {
+				return sanitizeHtml(
+					this.$locale.baseText(
+						`nodeErrorView.description.${this.error.context.descriptionKey}` as BaseTextKey,
+						{
+							interpolate: {
+								nodeCause: this.error.context.nodeCause,
+								runIndex: this.error.context.runIndex ?? 0,
+								itemIndex: this.error.context.itemIndex ?? 0,
+							},
+						},
+					),
+				);
+			}
+
 			if (!this.error.context?.descriptionTemplate) {
 				return sanitizeHtml(this.error.description);
 			}
@@ -568,8 +585,8 @@ export default defineComponent({
 
 		code {
 			font-size: var(--font-size-xs);
-			color: var(--color-text-dark);
-			background: var(--color-background-medium);
+			color: var(--color-text-base);
+			background: var(--color-background-base);
 			padding: var(--spacing-5xs);
 			border-radius: var(--border-radius-base);
 		}
