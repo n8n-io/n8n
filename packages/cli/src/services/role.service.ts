@@ -119,4 +119,17 @@ export class RoleService {
 	getRoleName(role: AllRoleTypes): string {
 		return ROLE_NAMES[role];
 	}
+
+	/**
+	 * Find all distinct scopes in a set of project roles.
+	 */
+	getScopesBy(projectRoles: Set<ProjectRole>) {
+		return [...projectRoles].reduce<Set<Scope>>((acc, projectRole) => {
+			for (const scope of PROJECT_SCOPE_MAP[projectRole] ?? []) {
+				acc.add(scope);
+			}
+
+			return acc;
+		}, new Set());
+	}
 }
