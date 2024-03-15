@@ -4,6 +4,7 @@ import {
 	parseIncomingMessage,
 	parseRequestObject,
 	proxyRequestToAxios,
+	removeEmptyBody,
 	setBinaryDataBuffer,
 } from '@/NodeExecuteFunctions';
 import { mkdtempSync, readFileSync } from 'fs';
@@ -12,7 +13,9 @@ import { mock } from 'jest-mock-extended';
 import type {
 	IBinaryData,
 	IHttpRequestMethods,
+	IHttpRequestOptions,
 	INode,
+	IRequestOptions,
 	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
 	Workflow,
@@ -457,5 +460,43 @@ describe('NodeExecuteFunctions', () => {
 			expect(output[0].a).toEqual(input.a);
 			expect(output[0].a === input.a).toEqual(false);
 		});
+	});
+
+	describe('removeEmptyBody', () => {
+		test.each(['GET', 'HEAD', 'OPTIONS'] as IHttpRequestMethods[])(
+			'Should remove empty body for %s',
+			async (method) => {
+				const requestOptions = {
+					method,
+					body: {},
+				} as IHttpRequestOptions | IRequestOptions;
+				removeEmptyBody(requestOptions);
+				expect(requestOptions.body).toEqual(undefined);
+			},
+		);
+
+		test.each(['GET', 'HEAD', 'OPTIONS'] as IHttpRequestMethods[])(
+			'Should not remove non-empty body for %s',
+			async (method) => {
+				const requestOptions = {
+					method,
+					body: { test: true },
+				} as IHttpRequestOptions | IRequestOptions;
+				removeEmptyBody(requestOptions);
+				expect(requestOptions.body).toEqual({ test: true });
+			},
+		);
+
+		test.each(['POST', 'PUT', 'PATCH', 'DELETE'] as IHttpRequestMethods[])(
+			'Should not remove empty body for %s',
+			async (method) => {
+				const requestOptions = {
+					method,
+					body: {},
+				} as IHttpRequestOptions | IRequestOptions;
+				removeEmptyBody(requestOptions);
+				expect(requestOptions.body).toEqual({});
+			},
+		);
 	});
 });

@@ -235,6 +235,7 @@ async function commitAndPush() {
 		:title="i18n.baseText('settings.sourceControl.modals.push.title')"
 		:event-bus="data.eventBus"
 		:name="SOURCE_CONTROL_PUSH_MODAL_KEY"
+		max-height="80%"
 	>
 		<template #content>
 			<div :class="$style.container">
