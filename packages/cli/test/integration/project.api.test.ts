@@ -13,6 +13,10 @@ import Container from 'typedi';
 import type { Project } from '@/databases/entities/Project';
 import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
 import type { ProjectRole } from '@/databases/entities/ProjectRelation';
+import { EntityNotFoundError } from '@n8n/typeorm';
+import { createWorkflow } from './shared/db/workflows';
+import { createCredentials, saveCredential } from './shared/db/credentials';
+import { randomCredentialPayload } from './shared/random';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['project'],
@@ -448,18 +452,60 @@ describe('GET /project/:projectId', () => {
 	});
 });
 
-describe('DELETE /project/:projectId', () => {
+describe.only('DELETE /project/:projectId', () => {
 	test('allows the project:owner to delete a project', async () => {
-		const 
+		const owner = await createOwner();
+		const project = await createTeamProject(undefined, owner);
+
+		await testServer.authAgentFor(owner).delete(`/projects/${project.id}`).expect(200);
+
+		const projectInDB = findProject(project.id);
+
+		await expect(projectInDB).rejects.toThrowError(EntityNotFoundError);
 	});
 
-	test.todo('does not allow deleting of personal projects');
+	test('does not allow deleting of personal projects', async () => {
+		const owner = await createOwner();
+		const project = await getPersonalProject(owner);
 
-	test.todo('does not allow the user, editor or viewer to delete a project');
+		await testServer.authAgentFor(owner).delete(`/projects/${project.id}`).expect(404);
 
-	test.todo(
-		'deletes all workflows and credentials it owns as well as the sharings into other projects',
+		const projectInDB = await findProject(project.id);
+
+		expect(projectInDB).toHaveProperty('id', project.id);
+	});
+
+	test.each(['project:editor', 'project:viewer'] as ProjectRole[])(
+		'does not allow users with the role %s to delete a project',
+		async (role) => {
+			const owner = await createOwner();
+			const project = await createTeamProject();
+
+			await linkUserToProject(owner, project, role);
+
+			await testServer.authAgentFor(owner).delete(`/projects/${project.id}`).expect(404);
+
+			const projectInDB = await findProject(project.id);
+
+			expect(projectInDB).toHaveProperty('id', project.id);
+		},
 	);
+
+	test('deletes all workflows and credentials it owns as well as the sharings into other projects', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject(undefined, owner);
+		const workflow = await createWorkflow({}, project);
+		const credential = await saveCredential(randomCredentialPayload(), {
+			project,
+			role: 'credential:owner',
+		});
+
+		await testServer.authAgentFor(owner).delete(`/projects/${project.id}`).expect(200);
+
+		const projectInDB = findProject(project.id);
+
+		await expect(projectInDB).rejects.toThrowError(EntityNotFoundError);
+	});
 
 	test.todo('unshares all workflows and credentials that were shared with the project');
 });

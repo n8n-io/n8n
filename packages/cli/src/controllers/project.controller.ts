@@ -99,6 +99,7 @@ export class ProjectController {
 	@Delete('/:projectId')
 	@ProjectScope('project:delete')
 	async deleteProject(req: ProjectRequest.Delete) {
-		this.projectsService.deleteProject(req.params.projectId);
+		console.log('deleteProject');
+		await this.projectsService.deleteProject(req.user, req.params.projectId);
 	}
 }

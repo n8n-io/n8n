@@ -33,6 +33,8 @@ export class ProjectService {
 	async deleteProject(user: User, projectId: string) {
 		const project = await this.getProjectWithScope(user, projectId, 'project:delete');
 
+		console.log('project', project);
+
 		if (!project) {
 			throw new NotFoundError(`Could not find project with ID: ${projectId}`);
 		}
@@ -201,6 +203,9 @@ export class ProjectService {
 	) {
 		const em = entityManager ?? this.projectRepository.manager;
 		const projectRoles = this.roleService.rolesWithScope('project', [scope]);
+
+		console.log('scope', scope);
+		console.log('projectRoles', projectRoles);
 
 		return await em.findOne(Project, {
 			where: {
