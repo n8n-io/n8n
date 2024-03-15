@@ -15,48 +15,41 @@
 	</div>
 </template>
 
-<script lang="ts">
+<script lang="ts" setup>
 import RadioButton from './RadioButton.vue';
 
-import type { PropType } from 'vue';
-import { defineComponent } from 'vue';
-
-export interface RadioOption {
+interface RadioOption {
 	label: string;
 	value: string;
 	disabled?: boolean;
 }
 
-export default defineComponent({
-	name: 'N8nRadioButtons',
-	components: {
-		RadioButton,
-	},
-	props: {
-		modelValue: {
-			type: String,
-		},
-		options: {
-			type: Array as PropType<RadioOption[]>,
-			default: (): RadioOption[] => [],
-		},
-		size: {
-			type: String,
-		},
-		disabled: {
-			type: Boolean,
-		},
-	},
-	emits: ['update:modelValue'],
-	methods: {
-		onClick(option: { label: string; value: string; disabled?: boolean }, event: MouseEvent) {
-			if (this.disabled || option.disabled) {
-				return;
-			}
-			this.$emit('update:modelValue', option.value, event);
-		},
-	},
+interface RadioButtonsProps {
+	modelValue?: string;
+	options?: RadioOption[];
+	size: 'small' | 'medium';
+	disabled?: boolean;
+}
+
+const props = withDefaults(defineProps<RadioButtonsProps>(), {
+	active: false,
+	disabled: false,
+	size: 'medium',
 });
+
+const $emit = defineEmits<{
+	(event: 'update:modelValue', value: string, e: MouseEvent): void;
+}>();
+
+const onClick = (
+	option: { label: string; value: string; disabled?: boolean },
+	event: MouseEvent,
+) => {
+	if (props.disabled || option.disabled) {
+		return;
+	}
+	$emit('update:modelValue', option.value, event);
+};
 </script>
 
 <style lang="scss" module>

@@ -128,6 +128,7 @@ import {
 	AI_CATEGORY_CHAINS,
 	AI_CODE_NODE_TYPE,
 	AI_SUBCATEGORY,
+	CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE,
 	CHAT_EMBED_MODAL_KEY,
 	CHAT_TRIGGER_NODE_TYPE,
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
@@ -297,6 +298,7 @@ export default defineComponent({
 			const workflow = this.workflowHelpers.getCurrentWorkflow();
 
 			const chatNode = this.workflowsStore.getNodes().find((node: INodeUi): boolean => {
+				if (node.type === CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE) return false;
 				const nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 				if (!nodeType) return false;
 
@@ -335,7 +337,7 @@ export default defineComponent({
 			if (!chatNode) {
 				this.showError(
 					new Error(
-						'Chat only works when an AI agent or chain is connected to the chat trigger node',
+						'Chat only works when an AI agent or chain(except summarization chain) is connected to the chat trigger node',
 					),
 					'Missing AI node',
 				);

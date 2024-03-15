@@ -45,65 +45,37 @@
 	</div>
 </template>
 
-<script lang="ts">
+<script lang="ts" setup>
 import N8nText from '../N8nText';
-import N8nTooltip from '../N8nTooltip';
 import N8nIcon from '../N8nIcon';
+import N8nTooltip from '../N8nTooltip';
+import type { TextColor } from '@/types/text';
 
-import { addTargetBlank } from '../utils/helpers';
+const SIZE = ['small', 'medium'] as const;
 
-import { defineComponent } from 'vue';
+interface InputLabelProps {
+	compact?: boolean;
+	color?: TextColor;
+	label?: string;
+	tooltipText?: string;
+	inputName?: string;
+	required?: boolean;
+	bold?: boolean;
+	size?: (typeof SIZE)[number];
+	underline?: boolean;
+	showTooltip?: boolean;
+	showOptions?: boolean;
+}
 
-export default defineComponent({
-	name: 'N8nInputLabel',
-	components: {
-		N8nText,
-		N8nIcon,
-		N8nTooltip,
-	},
-	props: {
-		compact: {
-			type: Boolean,
-			default: false,
-		},
-		color: {
-			type: String,
-		},
-		label: {
-			type: String,
-		},
-		tooltipText: {
-			type: String,
-		},
-		inputName: {
-			type: String,
-		},
-		required: {
-			type: Boolean,
-		},
-		bold: {
-			type: Boolean,
-			default: true,
-		},
-		size: {
-			type: String,
-			default: 'medium',
-			validator: (value: string): boolean => ['small', 'medium'].includes(value),
-		},
-		underline: {
-			type: Boolean,
-		},
-		showTooltip: {
-			type: Boolean,
-		},
-		showOptions: {
-			type: Boolean,
-		},
-	},
-	methods: {
-		addTargetBlank,
-	},
+defineOptions({ name: 'N8nInputLabel' });
+withDefaults(defineProps<InputLabelProps>(), {
+	compact: false,
+	bold: true,
+	size: 'medium',
 });
+
+const addTargetBlank = (html: string) =>
+	html && html.includes('href=') ? html.replace(/href=/g, 'target="_blank" href=') : html;
 </script>
 
 <style lang="scss" module>

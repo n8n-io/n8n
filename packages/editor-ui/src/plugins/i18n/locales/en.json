@@ -52,6 +52,7 @@
 	"generic.yes": "Yes",
 	"generic.no": "No",
 	"generic.retry": "Retry",
+	"generic.error": "Something went wrong",
 	"generic.settings": "Settings",
 	"generic.service": "the service",
 	"generic.unsavedWork.confirmMessage.headline": "Save changes before leaving?",
@@ -763,7 +764,8 @@
 	"mainSidebar.showMessage.stopExecution.title": "Execution stopped",
 	"mainSidebar.templates": "Templates",
 	"mainSidebar.workflows": "Workflows",
-	"mainSidebar.workflows.readOnlyEnv.tooltip": "Protected instances prevent editing workflows (recommended for production environments). <a target=\"_blank\" href=\"https://docs.n8n.io/source-control-environments/\">More info</a>",
+	"mainSidebar.workflows.readOnlyEnv.tooltip": "Protected instances prevent editing workflows (recommended for production environments). {link}",
+	"mainSidebar.workflows.readOnlyEnv.tooltip.link": "More info",
 	"mainSidebar.executions": "All executions",
 	"mainSidebar.workersView": "Workers",
 	"menuActions.duplicate": "Duplicate",
@@ -1024,6 +1026,9 @@
 	"nodeErrorView.theErrorCauseIsTooLargeToBeDisplayed": "The error cause is too large to be displayed",
 	"nodeErrorView.time": "Time",
 	"nodeErrorView.inputPanel.previousNodeError.title": "Error running node '{nodeName}'",
+	"nodeErrorView.debugError.button": "Ask AI ✨",
+	"nodeErrorView.debugError.loading": "Asking AI.. ✨",
+	"nodeErrorView.debugError.feedback.reload": "Regenerate answer",
 	"nodeHelpers.credentialsUnset": "Credentials for '{credentialType}' are not set.",
 	"nodeSettings.alwaysOutputData.description": "If active, will output a single, empty item when the output would have been empty. Use to prevent the workflow finishing on this node.",
 	"nodeSettings.alwaysOutputData.displayName": "Always Output Data",
@@ -2431,5 +2436,8 @@
 	"setupCredentialsModal.title": "Set up template",
 	"becomeCreator.text": "Share your workflows with 40k+ users, unlock perks, and shine as a featured template creator!",
 	"becomeCreator.buttonText": "Become a creator",
-	"becomeCreator.closeButtonTitle": "Close"
+	"becomeCreator.closeButtonTitle": "Close",
+	"feedback.title": "Was this helpful?",
+	"feedback.positive": "I found this helpful",
+	"feedback.negative": "I didn't find this helpful"
 }

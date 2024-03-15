@@ -171,10 +171,16 @@ export const schema = {
 				env: 'DB_SQLITE_DATABASE',
 			},
 			enableWAL: {
-				doc: 'Enable SQLite WAL mode',
+				doc: 'Enable SQLite WAL mode (Always enabled for pool-size > 1)',
 				format: Boolean,
 				default: false,
 				env: 'DB_SQLITE_ENABLE_WAL',
+			},
+			poolSize: {
+				doc: 'SQLite Pool Size (Setting this to 0 disables pooling)',
+				format: Number,
+				default: 0,
+				env: 'DB_SQLITE_POOL_SIZE',
 			},
 			executeVacuumOnStartup: {
 				doc: 'Runs VACUUM operation on startup to rebuild the database. Reduces filesize and optimizes indexes. WARNING: This is a long running blocking operation. Will increase start-up time.',
@@ -1343,6 +1349,18 @@ export const schema = {
 			format: Boolean,
 			default: false,
 			env: 'N8N_AI_ENABLED',
+		},
+		provider: {
+			doc: 'AI provider to use. Currently only "openai" is supported.',
+			format: String,
+			default: 'openai',
+			env: 'N8N_AI_PROVIDER',
+		},
+		openAIApiKey: {
+			doc: 'Enable AI features using OpenAI API key',
+			format: String,
+			default: '',
+			env: 'N8N_AI_OPENAI_API_KEY',
 		},
 	},
 
