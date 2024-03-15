@@ -26,8 +26,6 @@ import {
 	LUXON_RECOMMENDED_OPTIONS,
 	METADATA_SECTION,
 	METHODS_SECTION,
-	METHOD_TYPE,
-	N8N_OBJECT_TYPE,
 	RECOMMENDED_SECTION,
 	STRING_RECOMMENDED_OPTIONS,
 } from '../constants';
@@ -68,18 +66,16 @@ describe('Top-level completions', () => {
 			expect.objectContaining({
 				label: '$json',
 				section: RECOMMENDED_SECTION,
-				detail: N8N_OBJECT_TYPE,
 			}),
 		);
 		expect(result?.[4]).toEqual(
 			expect.objectContaining({
 				label: '$execution',
 				section: METADATA_SECTION,
-				detail: N8N_OBJECT_TYPE,
 			}),
 		);
 		expect(result?.[14]).toEqual(
-			expect.objectContaining({ label: '$max()', section: METHODS_SECTION, detail: METHOD_TYPE }),
+			expect.objectContaining({ label: '$max()', section: METHODS_SECTION }),
 		);
 	});
 
@@ -344,7 +340,6 @@ describe('Resolution-based completions', () => {
 					info: expect.any(Function),
 					label: provider,
 					type: 'keyword',
-					detail: 'object',
 					apply: expect.any(Function),
 				},
 			]);
@@ -369,14 +364,12 @@ describe('Resolution-based completions', () => {
 					info: expect.any(Function),
 					label: secrets[0],
 					type: 'keyword',
-					detail: 'string',
 					apply: expect.any(Function),
 				},
 				{
 					info: expect.any(Function),
 					label: secrets[1],
 					type: 'keyword',
-					detail: 'string',
 					apply: expect.any(Function),
 				},
 			]);
@@ -625,6 +618,23 @@ describe('Resolution-based completions', () => {
 			expect(result).toHaveLength(
 				extensions('string').length + natives('string').length + STRING_RECOMMENDED_OPTIONS.length,
 			);
+		});
+	});
+
+	describe('type information', () => {
+		test('should display type information for: {{ $json.obj.| }}', () => {
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce({
+				str: 'bar',
+				empty: null,
+				arr: [],
+				obj: {},
+			});
+
+			const result = completions('{{ $json.obj.| }}');
+			expect(result).toContainEqual(expect.objectContaining({ label: 'str', detail: 'string' }));
+			expect(result).toContainEqual(expect.objectContaining({ label: 'empty', detail: 'null' }));
+			expect(result).toContainEqual(expect.objectContaining({ label: 'arr', detail: 'array' }));
+			expect(result).toContainEqual(expect.objectContaining({ label: 'obj', detail: 'object' }));
 		});
 	});
 });
