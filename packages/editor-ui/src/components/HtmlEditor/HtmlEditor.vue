@@ -41,7 +41,6 @@ import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 import { codeNodeEditorTheme } from '../CodeNodeEditor/theme';
 import type { Range, Section } from './types';
 import { nonTakenRanges } from './utils';
-import { isEqual } from 'lodash-es';
 import {
 	autocompleteKeyMap,
 	enterKeyMap,
@@ -85,16 +84,6 @@ export default defineComponent({
 			editor: null as EditorView | null,
 			editorState: null as EditorState | null,
 		};
-	},
-	watch: {
-		displayableSegments(segments, newSegments) {
-			if (isEqual(segments, newSegments)) return;
-
-			highlighter.removeColor(this.editor, this.plaintextSegments);
-			highlighter.addColor(this.editor, this.resolvableSegments);
-
-			this.$emit('update:modelValue', this.editor?.state.doc.toString());
-		},
 	},
 	computed: {
 		doc(): string {
@@ -144,6 +133,10 @@ export default defineComponent({
 
 					// Force segments value update by keeping track of editor state
 					this.editorState = this.editor.state;
+					highlighter.removeColor(this.editor, this.plaintextSegments);
+					highlighter.addColor(this.editor, this.resolvableSegments);
+
+					this.$emit('update:modelValue', this.editor?.state.doc.toString());
 				}),
 			];
 		},
