@@ -105,7 +105,7 @@ describe('WorkflowLMChatModal', () => {
 
 		await waitFor(() =>
 			expect(document.querySelectorAll('.el-notification')[0]).toHaveTextContent(
-				'Missing AI node Chat only works when an AI agent or chain is connected to the chat trigger node',
+				'Missing AI node Chat only works when an AI agent or chain(except summarization chain) is connected to the chat trigger node',
 			),
 		);
 	});
@@ -120,7 +120,7 @@ describe('WorkflowLMChatModal', () => {
 
 		await waitFor(() =>
 			expect(document.querySelectorAll('.el-notification')[1]).toHaveTextContent(
-				'Missing AI node Chat only works when an AI agent or chain is connected to the chat trigger node',
+				'Missing AI node Chat only works when an AI agent or chain(except summarization chain) is connected to the chat trigger node',
 			),
 		);
 	});
