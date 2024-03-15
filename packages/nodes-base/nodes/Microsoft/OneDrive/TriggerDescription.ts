@@ -98,7 +98,7 @@ export const folderRLC: INodeProperties = {
 
 export const triggerDescription: INodeProperties[] = [
 	{
-		displayName: 'Event',
+		displayName: 'Trigger On',
 		name: 'event',
 		type: 'options',
 		default: 'fileCreated',
@@ -106,22 +106,22 @@ export const triggerDescription: INodeProperties[] = [
 			{
 				name: 'File Created',
 				value: 'fileCreated',
-				description: 'Triggered when a new file is created',
+				description: 'When a new file is created',
 			},
 			{
 				name: 'File Updated',
 				value: 'fileUpdated',
-				description: 'Triggered when an existing file is modified',
+				description: 'When an existing file is modified',
 			},
 			{
 				name: 'Folder Created',
 				value: 'folderCreated',
-				description: 'Triggered when a new folder is created',
+				description: 'When a new folder is created',
 			},
 			{
 				name: 'Folder Updated',
 				value: 'folderUpdated',
-				description: 'Triggered when an existing folder is modified',
+				description: 'When an existing folder is modified',
 			},
 		],
 	},
