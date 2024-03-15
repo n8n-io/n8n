@@ -1,3 +1,12 @@
+## [1.32.2](https://github.com/n8n-io/n8n/compare/n8n@1.32.1...n8n@1.32.2) (2024-03-15)
+
+
+### Bug Fixes
+
+* **editor:** Improve expression editor performance by removing watchers ([#8900](https://github.com/n8n-io/n8n/issues/8900)) ([788d790](https://github.com/n8n-io/n8n/commit/788d7907b2629c73f4e556fd42fb636e4d1eae77))
+
+
+
 ## [1.32.1](https://github.com/n8n-io/n8n/compare/n8n@1.32.0...n8n@1.32.1) (2024-03-07)
 
 
