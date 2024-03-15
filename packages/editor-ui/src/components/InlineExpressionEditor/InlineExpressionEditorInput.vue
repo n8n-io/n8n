@@ -67,17 +67,6 @@ export default defineComponent({
 				},
 			});
 		},
-		displayableSegments(segments, newSegments) {
-			if (isEqual(segments, newSegments)) return;
-
-			highlighter.removeColor(this.editor, this.plaintextSegments);
-			highlighter.addColor(this.editor, this.resolvableSegments);
-
-			this.$emit('change', {
-				value: this.unresolvedExpression,
-				segments: this.displayableSegments,
-			});
-		},
 	},
 	mounted() {
 		const extensions = [
@@ -115,6 +104,13 @@ export default defineComponent({
 
 				// Force segments value update by keeping track of editor state
 				this.editorState = this.editor.state;
+				highlighter.removeColor(this.editor, this.plaintextSegments);
+				highlighter.addColor(this.editor, this.resolvableSegments);
+
+				this.$emit('change', {
+					value: this.unresolvedExpression,
+					segments: this.displayableSegments,
+				});
 
 				setTimeout(() => {
 					try {

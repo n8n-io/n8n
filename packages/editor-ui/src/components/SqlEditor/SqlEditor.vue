@@ -176,20 +176,14 @@ export default defineComponent({
 
 						// Force segments value update by keeping track of editor state
 						this.editorState = this.editor.state;
+						highlighter.removeColor(this.editor, this.plaintextSegments);
+						highlighter.addColor(this.editor, this.resolvableSegments);
+
+						this.$emit('update:modelValue', this.editor?.state.doc.toString());
 					}),
 				);
 			}
 			return extensions;
-		},
-	},
-	watch: {
-		displayableSegments(segments, newSegments) {
-			if (isEqual(segments, newSegments)) return;
-
-			highlighter.removeColor(this.editor, this.plaintextSegments);
-			highlighter.addColor(this.editor, this.resolvableSegments);
-
-			this.$emit('update:modelValue', this.editor?.state.doc.toString());
 		},
 	},
 	mounted() {
