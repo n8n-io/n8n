@@ -1,3 +1,4 @@
+import type { EntityManager } from '@n8n/typeorm';
 import { readFile, stat } from 'node:fs/promises';
 import prettyBytes from 'pretty-bytes';
 import Container, { Service } from 'typedi';
@@ -142,7 +143,7 @@ export class BinaryDataService {
 		return await this.getManager(mode).getMetadata(fileId);
 	}
 
-	async deleteMany(ids: BinaryData.IdsForDeletion) {
+	async deleteMany(ids: BinaryData.IdsForDeletion, _em?: EntityManager) {
 		const manager = this.managers[this.mode];
 
 		if (!manager) return;

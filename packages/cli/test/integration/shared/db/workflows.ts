@@ -6,7 +6,7 @@ import { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import type { SharedWorkflow } from '@db/entities/SharedWorkflow';
+import type { SharedWorkflow, WorkflowSharingRole } from '@db/entities/SharedWorkflow';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { Project } from '@/databases/entities/Project';
 
@@ -92,6 +92,23 @@ export async function shareWorkflowWithUsers(workflow: WorkflowEntity, users: Us
 		}),
 	);
 	return await Container.get(SharedWorkflowRepository).save(sharedWorkflows);
+}
+
+export async function shareWorkflowWithProjects(
+	workflow: WorkflowEntity,
+	projectsWithRole: Array<{ project: Project; role: WorkflowSharingRole }>,
+) {
+	const newSharedWorkflow = await Promise.all(
+		projectsWithRole.map(async ({ project, role }) => {
+			return Container.get(SharedWorkflowRepository).create({
+				workflowId: workflow.id,
+				role,
+				projectId: project.id,
+			});
+		}),
+	);
+
+	return await Container.get(SharedWorkflowRepository).save(newSharedWorkflow);
 }
 
 export async function getWorkflowSharing(workflow: WorkflowEntity) {

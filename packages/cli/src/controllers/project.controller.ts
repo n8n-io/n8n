@@ -13,7 +13,6 @@ import { ProjectRequest } from '@/requests';
 import { ProjectService } from '@/services/project.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { ProjectRole } from '@/databases/entities/ProjectRelation';
-import { DeleteDateColumn } from '@n8n/typeorm';
 
 @RestController('/projects')
 export class ProjectController {

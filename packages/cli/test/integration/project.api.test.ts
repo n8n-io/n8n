@@ -14,10 +14,16 @@ import type { Project } from '@/databases/entities/Project';
 import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
 import type { ProjectRole } from '@/databases/entities/ProjectRelation';
 import { EntityNotFoundError } from '@n8n/typeorm';
-import { createWorkflow } from './shared/db/workflows';
-import { createCredentials, getCredentialById, saveCredential } from './shared/db/credentials';
+import { createWorkflow, shareWorkflowWithProjects } from './shared/db/workflows';
+import {
+	getCredentialById,
+	saveCredential,
+	shareCredentialWithProjects,
+} from './shared/db/credentials';
 import { randomCredentialPayload } from './shared/random';
 import { getWorkflowById } from '@/PublicApi/v1/handlers/workflows/workflows.service';
+import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
+import { SharedCredentialsRepository } from '@/databases/repositories/sharedCredentials.repository';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['project'],
@@ -493,22 +499,65 @@ describe.only('DELETE /project/:projectId', () => {
 	);
 
 	test.only('deletes all workflows and credentials it owns as well as the sharings into other projects', async () => {
+		//
+		// ARRANGE
+		//
 		const owner = await createOwner();
-		const project = await createTeamProject(undefined, owner);
-		const workflow = await createWorkflow({}, project);
-		const credential = await saveCredential(randomCredentialPayload(), {
-			project,
+
+		const otherProject = await createTeamProject(undefined, owner);
+		const sharedWorkflow1 = await createWorkflow({}, otherProject);
+		const sharedWorkflow2 = await createWorkflow({}, otherProject);
+		const sharedCredential = await saveCredential(randomCredentialPayload(), {
+			project: otherProject,
 			role: 'credential:owner',
 		});
 
-		await testServer.authAgentFor(owner).delete(`/projects/${project.id}`).expect(200);
+		const projectToBeDeleted = await createTeamProject(undefined, owner);
+		const ownedWorkflow = await createWorkflow({}, projectToBeDeleted);
+		const ownedCredential = await saveCredential(randomCredentialPayload(), {
+			project: projectToBeDeleted,
+			role: 'credential:owner',
+		});
 
-		const workflowInDB = await getWorkflowById(workflow.id);
-		const credentialInDB = await getCredentialById(credential.id);
+		await shareCredentialWithProjects(sharedCredential, [otherProject]);
+		await shareWorkflowWithProjects(sharedWorkflow1, [
+			{ project: otherProject, role: 'workflow:editor' },
+		]);
+		await shareWorkflowWithProjects(sharedWorkflow2, [
+			{ project: otherProject, role: 'workflow:user' },
+		]);
 
-		expect(workflowInDB).toBeNull();
-		expect(credentialInDB).toBeNull();
-		await expect(findProject(project.id)).rejects.toThrowError(EntityNotFoundError);
+		//
+		// ACT
+		//
+		await testServer.authAgentFor(owner).delete(`/projects/${projectToBeDeleted.id}`).expect(200);
+
+		//
+		// ASSERT
+		//
+
+		// Make sure the project and owned workflow and credential where deleted.
+		await expect(getWorkflowById(ownedWorkflow.id)).resolves.toBeNull();
+		await expect(getCredentialById(ownedCredential.id)).resolves.toBeNull();
+		await expect(findProject(projectToBeDeleted.id)).rejects.toThrowError(EntityNotFoundError);
+
+		// Make sure the shared workflow and credential were not deleted
+		await expect(getWorkflowById(sharedWorkflow1.id)).resolves.not.toBeNull();
+		await expect(getCredentialById(sharedCredential.id)).resolves.not.toBeNull();
+
+		// Make sure the sharings for them have been deleted
+		await expect(
+			Container.get(SharedWorkflowRepository).findOneByOrFail({
+				projectId: projectToBeDeleted.id,
+				workflowId: sharedWorkflow1.id,
+			}),
+		).rejects.toThrowError(EntityNotFoundError);
+		await expect(
+			Container.get(SharedCredentialsRepository).findOneByOrFail({
+				projectId: projectToBeDeleted.id,
+				credentialsId: sharedCredential.id,
+			}),
+		).rejects.toThrowError(EntityNotFoundError);
 	});
 
 	test.todo('unshares all workflows and credentials that were shared with the project');

@@ -227,7 +227,7 @@ export class ActiveWorkflowRunner {
 	 * Remove all webhooks of a workflow from the database, and
 	 * deregister those webhooks from external services.
 	 */
-	async clearWebhooks(workflowId: string, em: EntityManager) {
+	async clearWebhooks(workflowId: string, em?: EntityManager) {
 		em = em ?? this.workflowRepository.manager;
 
 		const workflowData = await this.workflowRepository.findOne({

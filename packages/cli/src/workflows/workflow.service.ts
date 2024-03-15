@@ -8,8 +8,6 @@ import { BinaryDataService } from 'n8n-core';
 import config from '@/config';
 import type { User } from '@db/entities/User';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowTagMappingRepository } from '@db/repositories/workflowTagMapping.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
@@ -26,14 +24,13 @@ import { Logger } from '@/Logger';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EntityManager } from '@n8n/typeorm';
+import type { EntityManager } from '@n8n/typeorm';
 import { ExecutionEntity } from '@/databases/entities/ExecutionEntity';
 
 @Service()
 export class WorkflowService {
 	constructor(
 		private readonly logger: Logger,
-		private readonly executionRepository: ExecutionRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowTagMappingRepository: WorkflowTagMappingRepository,
@@ -226,7 +223,7 @@ export class WorkflowService {
 	async delete(
 		user: User,
 		workflowId: string,
-		em: EntityManager,
+		em?: EntityManager,
 	): Promise<WorkflowEntity | undefined> {
 		em = em ?? this.workflowRepository.manager;
 		await this.externalHooks.run('workflow.delete', [workflowId]);
