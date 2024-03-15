@@ -24,10 +24,10 @@ const defaultSettings: IN8nUISettings = {
 		auditLogs: false,
 		showNonProdBanner: false,
 		workflowHistory: false,
-		debugInEditor: false,
 		binaryDataS3: false,
 		externalSecrets: false,
 		workerView: false,
+		advancedPermissions: false,
 	},
 	expressions: {
 		evaluator: 'tournament',
@@ -55,7 +55,6 @@ const defaultSettings: IN8nUISettings = {
 	},
 	publicApi: { enabled: false, latestVersion: 0, path: '', swaggerUi: { enabled: false } },
 	pushBackend: 'websocket',
-	releaseChannel: 'stable',
 	saveDataErrorExecution: 'DEFAULT',
 	saveDataSuccessExecution: 'DEFAULT',
 	saveManualExecutions: false,
@@ -70,10 +69,14 @@ const defaultSettings: IN8nUISettings = {
 	timezone: '',
 	urlBaseEditor: '',
 	urlBaseWebhook: '',
+	authCookie: {
+		secure: false,
+	},
 	userManagement: {
 		showSetupOnFirstLoad: false,
 		smtpSetup: true,
 		authenticationMethod: 'email',
+		quota: 10,
 	},
 	versionCli: '',
 	versionNotifications: {
@@ -93,6 +96,19 @@ const defaultSettings: IN8nUISettings = {
 		dismissed: [],
 	},
 	binaryDataMode: 'default',
+	previewMode: false,
+	mfa: {
+		enabled: false,
+	},
+	ai: {
+		enabled: false,
+		provider: '',
+		errorDebugging: false,
+	},
+	workflowHistory: {
+		pruneTime: 0,
+		licensePruneTime: 0,
+	},
 };
 
 export function routesForSettings(server: Server) {
