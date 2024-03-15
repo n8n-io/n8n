@@ -2,6 +2,7 @@
   "name": "@n8n/storybook",
   "private": true,
   "devDependencies": {
+    "@chromatic-com/storybook": "^1.2.18",
     "@storybook/addon-a11y": "^8.0.0",
     "@storybook/addon-actions": "^8.0.0",
     "@storybook/addon-docs": "^8.0.0",
@@ -12,6 +13,7 @@
     "@storybook/test": "^8.0.0",
     "@storybook/vue3": "^8.0.0",
     "@storybook/vue3-vite": "^8.0.0",
+    "chromatic": "^11.0.8",
     "storybook": "^8.0.0"
   }
 }

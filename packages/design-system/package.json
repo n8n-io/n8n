@@ -22,6 +22,7 @@
     "test:dev": "vitest",
     "build:storybook": "storybook build",
     "storybook": "storybook dev -p 6006",
+    "chromatic": "chromatic",
     "format": "prettier --write . --ignore-path ../../.prettierignore",
     "lint": "eslint src --ext .js,.ts,.vue --quiet",
     "lintfix": "eslint src --ext .js,.ts,.vue --fix"
