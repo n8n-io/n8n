@@ -50,7 +50,7 @@
     "shelljs": "^0.8.5",
     "unbuild": "^2.0.0",
     "unplugin-icons": "^0.17.0",
-    "vite-plugin-dts": "^3.6.4"
+    "vite-plugin-dts": "^3.7.3"
   },
   "repository": {
     "type": "git",
