@@ -212,11 +212,16 @@ export const extensions = (
 	return toOptions(fnToDoc, typeName, 'extension-function', includeHidden, transformLabel);
 };
 
-export const getDetail = (base: string, value: unknown): string | undefined => {
-	if (typeof value === 'function' || !base.startsWith('$json')) return undefined;
+export const getType = (value: unknown): string => {
 	if (Array.isArray(value)) return 'array';
 	if (value === null) return 'null';
 	return (typeof value).toLocaleLowerCase();
+};
+
+export const getDetail = (base: string, value: unknown): string | undefined => {
+	const type = getType(value);
+	if (!base.startsWith('$json') || type === 'function') return undefined;
+	return type;
 };
 
 export const toOptions = (
@@ -396,7 +401,7 @@ const objectOptions = (input: AutocompleteInput<IDataObject>): Completion[] => {
 				{
 					doc: {
 						name: key,
-						returnType: typeof resolvedProp,
+						returnType: getType(resolvedProp),
 						description: i18n.proxyVars[infoKey],
 					},
 				},
