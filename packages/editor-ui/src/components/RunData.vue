@@ -381,7 +381,7 @@
 				<RunDataJson
 					:pane-type="paneType"
 					:edit-mode="editMode"
-					:sessio-id="sessionId"
+					:sessio-id="pushRef"
 					:node="node"
 					:input-data="inputDataPage"
 					:mapping-enabled="mappingEnabled"
@@ -657,7 +657,7 @@ export default defineComponent({
 		executingMessage: {
 			type: String,
 		},
-		sessionId: {
+		pushRef: {
 			type: String,
 		},
 		paneType: {
@@ -1061,7 +1061,7 @@ export default defineComponent({
 		onClickDataPinningDocsLink() {
 			this.$telemetry.track('User clicked ndv link', {
 				workflow_id: this.workflowsStore.workflowId,
-				session_id: this.sessionId,
+				push_ref: this.pushRef,
 				node_type: this.activeNode?.type,
 				pane: 'output',
 				type: 'data-pinning-docs',
@@ -1108,7 +1108,7 @@ export default defineComponent({
 			this.$telemetry.track('User opened ndv edit state', {
 				node_type: this.activeNode?.type,
 				click_type: origin === 'editIconButton' ? 'button' : 'link',
-				session_id: this.sessionId,
+				push_ref: this.pushRef,
 				run_index: this.runIndex,
 				is_output_present: this.hasNodeRun || this.pinnedData.hasData.value,
 				view: !this.hasNodeRun && !this.pinnedData.hasData.value ? 'undefined' : this.displayMode,
@@ -1143,7 +1143,7 @@ export default defineComponent({
 		onExitEditMode({ type }: { type: 'save' | 'cancel' }) {
 			this.$telemetry.track('User closed ndv edit state', {
 				node_type: this.activeNode?.type,
-				session_id: this.sessionId,
+				push_ref: this.pushRef,
 				run_index: this.runIndex,
 				view: this.displayMode,
 				type,
@@ -1157,7 +1157,7 @@ export default defineComponent({
 			if (source === 'pin-icon-click') {
 				const telemetryPayload = {
 					node_type: this.activeNode.type,
-					session_id: this.sessionId,
+					push_ref: this.pushRef,
 					run_index: this.runIndex,
 					view: !this.hasNodeRun && !this.pinnedData.hasData.value ? 'none' : this.displayMode,
 				};
@@ -1203,7 +1203,7 @@ export default defineComponent({
 			this.outputIndex = value;
 
 			this.$telemetry.track('User changed ndv branch', {
-				session_id: this.sessionId,
+				push_ref: this.pushRef,
 				branch_index: value,
 				node_type: this.activeNode.type,
 				node_type_input_selection: this.nodeType ? this.nodeType.name : '',
@@ -1215,7 +1215,7 @@ export default defineComponent({
 			this.$telemetry.track('User clicked ndv button', {
 				node_type: this.activeNode.type,
 				workflow_id: this.workflowsStore.workflowId,
-				session_id: this.sessionId,
+				push_ref: this.pushRef,
 				pane: this.paneType,
 				type: 'showTooMuchData',
 			});
@@ -1234,7 +1234,7 @@ export default defineComponent({
 			this.$telemetry.track('User changed ndv page', {
 				node_type: this.activeNode?.type,
 				workflow_id: this.workflowsStore.workflowId,
-				session_id: this.sessionId,
+				push_ref: this.pushRef,
 				pane: this.paneType,
 				page_selected: this.currentPage,
 				page_size: this.pageSize,
@@ -1251,7 +1251,7 @@ export default defineComponent({
 			this.$telemetry.track('User changed ndv page size', {
 				node_type: this.activeNode?.type,
 				workflow_id: this.workflowsStore.workflowId,
-				session_id: this.sessionId,
+				push_ref: this.pushRef,
 				pane: this.paneType,
 				page_selected: this.currentPage,
 				page_size: this.pageSize,
@@ -1282,7 +1282,7 @@ export default defineComponent({
 					new_view: displayMode,
 					node_type: this.activeNode.type,
 					workflow_id: this.workflowsStore.workflowId,
-					session_id: this.sessionId,
+					push_ref: this.pushRef,
 					pane: this.paneType,
 				});
 			}

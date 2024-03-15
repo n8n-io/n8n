@@ -33,7 +33,7 @@
 				v-if="node && nodeValid"
 				v-model="openPanel"
 				:node-type="nodeType"
-				:session-id="sessionId"
+				:session-id="pushRef"
 			/>
 		</div>
 		<div v-if="node && !nodeValid" class="node-is-not-valid">
@@ -389,7 +389,7 @@ export default defineComponent({
 		dragging: {
 			type: Boolean,
 		},
-		sessionId: {
+		pushRef: {
 			type: String,
 		},
 		nodeType: {
