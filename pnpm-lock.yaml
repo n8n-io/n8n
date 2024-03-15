@@ -541,9 +541,6 @@ importers:
       flatted:
         specifier: 3.2.7
         version: 3.2.7
-      follow-redirects:
-        specifier: 1.15.6
-        version: 1.15.6(debug@3.2.7)
       formidable:
         specifier: 3.5.1
         version: 3.5.1

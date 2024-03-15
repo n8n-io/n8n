@@ -127,7 +127,6 @@
     "express-rate-limit": "7.2.0",
     "fast-glob": "3.2.12",
     "flatted": "3.2.7",
-    "follow-redirects": "1.15.6",
     "formidable": "3.5.1",
     "google-timezones-json": "1.1.0",
     "handlebars": "4.7.8",
