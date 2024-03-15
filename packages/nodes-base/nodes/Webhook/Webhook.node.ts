@@ -56,10 +56,18 @@ const configuredOutputs = (parameters: INodeParameters) => {
 
 const setupOutputConnection = (ctx: IWebhookFunctions, method: string) => {
 	const httpMethod = ctx.getNodeParameter('httpMethod', []) as string[] | string;
+	let webhookUrl = ctx.getNodeWebhookUrl('default') as string;
+	const executionMode = ctx.getMode() === 'manual' ? 'test' : 'production';
+
+	if (executionMode === 'test') {
+		webhookUrl = webhookUrl.replace('/webhook/', '/webhook-test/');
+	}
 
 	// before version 2, httpMethod was a string and not an array
 	if (!Array.isArray(httpMethod)) {
 		return (outputData: INodeExecutionData): INodeExecutionData[][] => {
+			outputData.json.webhookUrl = webhookUrl;
+			outputData.json.executionMode = executionMode;
 			return [[outputData]];
 		};
 	}
@@ -68,6 +76,8 @@ const setupOutputConnection = (ctx: IWebhookFunctions, method: string) => {
 	const outputs: INodeExecutionData[][] = httpMethod.map(() => []);
 
 	return (outputData: INodeExecutionData): INodeExecutionData[][] => {
+		outputData.json.webhookUrl = webhookUrl;
+		outputData.json.executionMode = executionMode;
 		outputs[outputIndex] = [outputData];
 		return outputs;
 	};
