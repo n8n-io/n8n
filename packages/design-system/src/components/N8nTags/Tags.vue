@@ -19,7 +19,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import N8nTag from '../N8nTag';
 import N8nLink from '../N8nLink';
 import { useI18n } from '../../composables/useI18n';
@@ -46,11 +46,11 @@ const $emit = defineEmits(['expand', 'click:tag']);
 
 const { t } = useI18n();
 
-let showAll = false;
+const showAll = ref(false);
 
 const visibleTags = computed((): ITag[] => {
 	const { tags, truncate, truncateAt } = props;
-	if (truncate && !showAll && tags.length > truncateAt) {
+	if (truncate && !showAll.value && tags.length > truncateAt) {
 		return tags.slice(0, truncateAt);
 	}
 	return tags;
@@ -59,7 +59,7 @@ const visibleTags = computed((): ITag[] => {
 const hiddenTagsLength = computed((): number => props.tags.length - props.truncateAt);
 
 const onExpand = () => {
-	showAll = true;
+	showAll.value = true;
 	$emit('expand', true);
 };
 </script>
