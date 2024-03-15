@@ -1,4 +1,3 @@
-// NOTE: passing
 import Container from 'typedi';
 import type { SuperAgentTest } from 'supertest';
 

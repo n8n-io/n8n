@@ -1,4 +1,3 @@
-// NOTE: passing
 import { OwnershipService } from '@/services/ownership.service';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';

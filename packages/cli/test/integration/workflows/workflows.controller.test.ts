@@ -1,4 +1,3 @@
-// NOTE: passing
 import Container from 'typedi';
 import type { SuperAgentTest } from 'supertest';
 import { v4 as uuid } from 'uuid';
@@ -56,7 +55,6 @@ beforeEach(async () => {
 	await testDb.truncate(['Workflow', 'SharedWorkflow', 'Tag', 'WorkflowHistory']);
 });
 
-// NOTE: passing
 describe('POST /workflows', () => {
 	const testWithPinData = async (withPinData: boolean) => {
 		const workflow = makeWorkflow({ withPinData });
@@ -276,7 +274,6 @@ describe('POST /workflows', () => {
 	});
 });
 
-// NOTE: passing
 describe('GET /workflows/:id', () => {
 	test('should return pin data', async () => {
 		const workflow = makeWorkflow({ withPinData: true });
@@ -291,7 +288,6 @@ describe('GET /workflows/:id', () => {
 	});
 });
 
-// NOTE: passing
 describe('GET /workflows', () => {
 	test('should return zero workflows if none exist', async () => {
 		const response = await authOwnerAgent.get('/workflows').expect(200);
@@ -599,7 +595,6 @@ describe('GET /workflows', () => {
 	});
 });
 
-// NOTE: passing
 describe('PATCH /workflows/:id', () => {
 	test('should create workflow history version when licensed', async () => {
 		license.enable('feat:workflowHistory');
@@ -805,7 +800,6 @@ describe('POST /workflows/run', () => {
 	});
 });
 
-// NOTE: passing
 describe('DELETE /workflows/:id', () => {
 	test('deletes a workflow owned by the user', async () => {
 		const workflow = await createWorkflow({}, owner);

@@ -1,4 +1,3 @@
-// NOTE: passing
 import Container from 'typedi';
 import { mock } from 'jest-mock-extended';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';

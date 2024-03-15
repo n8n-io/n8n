@@ -164,7 +164,6 @@ export class WorkflowsController {
 		return savedWorkflow;
 	}
 
-	// NOTE: updated
 	@Get('/', { middlewares: listQueryMiddleware })
 	async getAll(req: ListQuery.Request, res: express.Response) {
 		try {
@@ -185,7 +184,6 @@ export class WorkflowsController {
 		}
 	}
 
-	// NOTE: updated
 	@Get('/new')
 	async getNewName(req: WorkflowRequest.NewName) {
 		const requestedName = req.query.name ?? config.getEnv('workflows.defaultName');
@@ -200,7 +198,6 @@ export class WorkflowsController {
 		return { name, onboardingFlowEnabled };
 	}
 
-	// NOTE: updated
 	@Get('/from-url')
 	async getFromUrl(req: WorkflowRequest.FromUrl) {
 		if (req.query.url === undefined) {
@@ -235,7 +232,6 @@ export class WorkflowsController {
 		return workflowData;
 	}
 
-	// NOTE: updated
 	@Get('/:workflowId')
 	@ProjectScope('workflow:read')
 	async getWorkflow(req: WorkflowRequest.Get) {
@@ -295,7 +291,6 @@ export class WorkflowsController {
 		return workflow;
 	}
 
-	// NOTE: updated
 	@Patch('/:workflowId')
 	@ProjectScope('workflow:update')
 	async update(req: WorkflowRequest.Update) {
@@ -326,7 +321,6 @@ export class WorkflowsController {
 		return updatedWorkflow;
 	}
 
-	// NOTE: updated
 	@Delete('/:workflowId')
 	@ProjectScope('workflow:delete')
 	async delete(req: WorkflowRequest.Delete) {
@@ -346,7 +340,6 @@ export class WorkflowsController {
 		return true;
 	}
 
-	// NOTE: updated
 	@Post('/:workflowId/run')
 	@ProjectScope('workflow:execute')
 	async runManually(req: WorkflowRequest.ManualRun) {
@@ -380,7 +373,6 @@ export class WorkflowsController {
 		);
 	}
 
-	// NOTE: updated
 	@Put('/:workflowId/share')
 	@ProjectScope('workflow:share')
 	async share(req: WorkflowRequest.Share) {

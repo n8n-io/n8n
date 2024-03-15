@@ -1,4 +1,3 @@
-// NOTE: passing
 import Container from 'typedi';
 import * as testDb from './shared/testDb';
 import { CtaService } from '@/services/cta.service';
