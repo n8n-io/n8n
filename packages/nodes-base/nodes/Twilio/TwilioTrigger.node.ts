@@ -41,81 +41,25 @@ export class TwilioTrigger implements INodeType {
 		],
 		properties: [
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Trigger On',
 				name: 'updates',
-				// eslint-disable-next-line n8n-nodes-base/node-param-description-missing-from-dynamic-options
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getTypes',
-				},
+				type: 'multiOptions',
+				options: [
+					{
+						name: 'New SMS',
+						value: 'com.twilio.messaging.inbound-message.received',
+						description: 'Inbound Message Received',
+					},
+					{
+						name: 'New Call',
+						value: 'com.twilio.voice.insights.call-summary.complete',
+						description: 'Inbound Call Received',
+					},
+				],
 				required: true,
-				default: '',
+				default: [],
 			},
-			// {
-			// 	displayName: 'Trigger On',
-			// 	name: 'updates',
-			// 	type: 'options',
-			// 	// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
-			// 	options: [
-			// 		{
-			// 			name: 'New SMS',
-			// 			value: 'com.twilio.messaging.inbound-message.received',
-			// 			description: 'Inbound Message Received',
-			// 		},
-			// 		{
-			// 			name: 'New Call Completed',
-			// 			value: 'com.twilio.voice.status-callback.call.completed',
-			// 			description: 'Inbound Call Received',
-			// 		},
-			// 		{
-			// 			name: 'New Call Initiated',
-			// 			value: 'com.twilio.voice.status-callback.call.initiated',
-			// 			description: 'Inbound Call Received',
-			// 		},
-			// 		{
-			// 			name: 'New Call Ringing',
-			// 			value: 'com.twilio.voice.status-callback.call.ringing',
-			// 			description: 'Inbound Call Received',
-			// 		},
-			// 		{
-			// 			name: 'New Call Answered',
-			// 			value: 'com.twilio.voice.status-callback.call.answered',
-			// 			description: 'Inbound Call Received',
-			// 		},
-			// 		{
-			// 			name: 'New Call',
-			// 			value: 'com.twilio.voice.insights.call-event.gateway',
-			// 			description: 'Inbound Call Received',
-			// 		},
-			// 	],
-			// 	required: true,
-			// 	default: '',
-			// },
 		],
-	};
-
-	methods = {
-		loadOptions: {
-			async getTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const { types } = await twilioTriggerApiRequest.call(this, 'GET', 'Types?PageSize=200');
-
-				for (const type of types as Array<{
-					description: string;
-					type: string;
-					schema_id: string;
-				}>) {
-					returnData.push({
-						name: type.description,
-						value: type.type,
-						description: type.schema_id,
-					});
-				}
-
-				return returnData;
-			},
-		},
 	};
 
 	webhookMethods = {
@@ -146,11 +90,11 @@ export class TwilioTrigger implements INodeType {
 								`Subscriptions/${subscription.sid}/SubscribedEvents`,
 							)) || {};
 
-						const typeFound = types.map((type: { type: any }) => type.type)[0];
+						const typesFound = types.map((type: { type: any }) => type.type);
 
-						const allowedUpdate = this.getNodeParameter('updates') as string;
+						const allowedUpdates = this.getNodeParameter('updates') as string[];
 
-						if (typeFound === allowedUpdate) {
+						if (typesFound.sort().join(',') === allowedUpdates.sort().join(',')) {
 							return true;
 						} else {
 							return false;
@@ -164,7 +108,7 @@ export class TwilioTrigger implements INodeType {
 				const workflowData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default');
 
-				const allowedUpdate = this.getNodeParameter('updates') as string;
+				const allowedUpdates = this.getNodeParameter('updates') as string[];
 
 				const bodySink = {
 					Description: 'Sink created by n8n Twilio Trigger Node.',
@@ -178,7 +122,7 @@ export class TwilioTrigger implements INodeType {
 
 				const body = {
 					Description: 'Subscription created by n8n Twilio Trigger Node.',
-					Types: `{ "type": "${allowedUpdate}" }`,
+					Types: `{ "type": "${allowedUpdates[0]}" }`,
 					SinkSid: sink.sid,
 				};
 
@@ -189,6 +133,20 @@ export class TwilioTrigger implements INodeType {
 					body,
 				);
 				workflowData.subscriptionId = subscription.sid;
+				// if there is more than one event type add the others on the existing subscription
+				if (allowedUpdates.length > 1) {
+					for (let index = 1; index < allowedUpdates.length; index++) {
+						const body = {
+							Type: allowedUpdates[index],
+						};
+						await twilioTriggerApiRequest.call(
+							this,
+							'POST',
+							`Subscriptions/${workflowData.subscriptionId}/SubscribedEvents`,
+							body,
+						);
+					}
+				}
 
 				return true;
 			},
