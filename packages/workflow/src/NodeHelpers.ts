@@ -325,14 +325,14 @@ const declarativeNodeOptionParameters: INodeProperties = {
 			description:
 				'Whether to download the response even if SSL certificate validation is not possible',
 		},
-		// {
-		// 	displayName: 'Proxy',
-		// 	name: 'proxy',
-		// 	type: 'string',
-		// 	default: '',
-		// 	placeholder: 'e.g. http://myproxy:3128',
-		// 	description: 'HTTP proxy to use',
-		// },
+		{
+			displayName: 'Proxy',
+			name: 'proxy',
+			type: 'string',
+			default: '',
+			placeholder: 'e.g. http://myproxy:3128',
+			description: 'HTTP proxy to use',
+		},
 		{
 			displayName: 'Timeout',
 			name: 'timeout',

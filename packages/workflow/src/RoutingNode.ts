@@ -250,11 +250,11 @@ export class RoutingNode {
 					}
 				}
 
-				// itemContext[itemIndex].requestData.options.proxy = {
-				// 	host: proxyParsed.host as string,
-				// 	port: parseInt(proxyParsed.port!),
-				// 	protocol: proxyParsed.protocol || undefined,
-				// };
+				itemContext[itemIndex].requestData.options.proxy = {
+					host: proxyParsed.hostname as string,
+					port: parseInt(proxyParsed.port!),
+					protocol: proxyParsed.protocol?.replace(/:$/, '') || undefined,
+				};
 
 				if (proxyParsed.auth) {
 					const [username, password] = proxyParsed.auth.split(':');
