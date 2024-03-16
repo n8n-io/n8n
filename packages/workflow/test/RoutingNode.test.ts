@@ -42,7 +42,7 @@ const preSendFunction1 = async function (
 describe('RoutingNode', () => {
 	test('applyDeclarativeNodeOptionParameters', () => {
 		const nodeTypes = Helpers.NodeTypes();
-		const nodeType = nodeTypes.getByNameAndVersion('test.set');
+		const nodeType = nodeTypes.getByNameAndVersion('test.setMulti');
 
 		applyDeclarativeNodeOptionParameters(nodeType);
 
@@ -742,6 +742,9 @@ describe('RoutingNode', () => {
 		const tests: Array<{
 			description: string;
 			input: {
+				special?: {
+					applyDeclarativeNodeOptionParameters?: boolean;
+				};
 				nodeType: {
 					properties?: INodeProperties[];
 					credentials?: INodeCredentialDescription[];
@@ -1018,6 +1021,53 @@ describe('RoutingNode', () => {
 									},
 									returnFullResponse: true,
 									timeout: 300000,
+								},
+							},
+						},
+					],
+				],
+			},
+			{
+				description: 'multiple parameters, from applyDeclarativeNodeOptionParameters',
+				input: {
+					special: {
+						applyDeclarativeNodeOptionParameters: true,
+					},
+					node: {
+						parameters: {
+							options: {
+								allowUnauthorizedCerts: true,
+								proxy: 'http://user:password@127.0.0.1:8080',
+								timeout: 123,
+							},
+						},
+					},
+					nodeType: {
+						properties: [],
+					},
+				},
+				output: [
+					[
+						{
+							json: {
+								headers: {},
+								statusCode: 200,
+								requestOptions: {
+									qs: {},
+									headers: {},
+									proxy: {
+										auth: {
+											username: 'user',
+											password: 'password',
+										},
+										host: '127.0.0.1',
+										protocol: 'http',
+										port: 8080,
+									},
+									body: {},
+									returnFullResponse: true,
+									skipSslCertificateValidation: true,
+									timeout: 123,
 								},
 							},
 						},
@@ -1731,6 +1781,9 @@ describe('RoutingNode', () => {
 		const runExecutionData: IRunExecutionData = { resultData: { runData: {} } };
 		const additionalData = Helpers.WorkflowExecuteAdditionalData();
 		const nodeType = nodeTypes.getByNameAndVersion(baseNode.type);
+		applyDeclarativeNodeOptionParameters(nodeType);
+
+		const propertiesOriginal = nodeType.description.properties;
 
 		const inputData: ITaskDataConnections = {
 			main: [
@@ -1752,6 +1805,9 @@ describe('RoutingNode', () => {
 				};
 
 				nodeType.description = { ...testData.input.nodeType } as INodeTypeDescription;
+				if (testData.input.special?.applyDeclarativeNodeOptionParameters) {
+					nodeType.description.properties = propertiesOriginal;
+				}
 
 				const workflow = new Workflow({
 					nodes: workflowData.nodes,
