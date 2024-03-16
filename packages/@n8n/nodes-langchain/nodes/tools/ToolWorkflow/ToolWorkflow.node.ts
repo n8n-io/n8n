@@ -24,7 +24,7 @@ export class ToolWorkflow implements INodeType {
 		name: 'toolWorkflow',
 		icon: 'fa:network-wired',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Uses another n8n workflow as a tool. Allows packaging any n8n node(s) as a tool.',
 		defaults: {
 			name: 'Custom n8n Workflow Tool',
@@ -62,6 +62,26 @@ export class ToolWorkflow implements INodeType {
 				type: 'string',
 				default: '',
 				placeholder: 'My_Color_Tool',
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
+			},
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+				placeholder: 'e.g. My_Color_Tool',
+				validateType: 'string-alphanumeric',
+				description:
+					'The name of the function to be called, could contain letters, numbers, and underscores only',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.1 } }],
+					},
+				},
 			},
 			{
 				displayName: 'Description',

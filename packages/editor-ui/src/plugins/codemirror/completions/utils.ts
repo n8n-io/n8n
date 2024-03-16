@@ -157,15 +157,16 @@ export const stripExcessParens = (context: CompletionContext) => (option: Comple
  *  @example `$max()` -> `$max()<cursor>`
  */
 export const applyCompletion =
-	(hasArgs = true) =>
+	(hasArgs = true, transform: (label: string) => string = (label) => label) =>
 	(view: EditorView, completion: Completion, from: number, to: number): void => {
+		const label = transform(completion.label);
 		const tx: TransactionSpec = {
-			...insertCompletionText(view.state, completion.label, from, to),
+			...insertCompletionText(view.state, label, from, to),
 			annotations: pickedCompletion.of(completion),
 		};
 
-		if (completion.label.endsWith('()') && hasArgs) {
-			const cursorPosition = from + completion.label.length - 1;
+		if (label.endsWith('()') && hasArgs) {
+			const cursorPosition = from + label.length - 1;
 			tx.selection = { anchor: cursorPosition, head: cursorPosition };
 		}
 

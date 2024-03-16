@@ -4,7 +4,7 @@ import { uid } from '../../utils';
 import { ElColorPicker } from 'element-plus';
 import N8nInput from '../N8nInput';
 
-export type Props = {
+export type ColorPickerProps = {
 	disabled?: boolean;
 	size?: 'small' | 'medium' | 'mini';
 	showAlpha?: boolean;
@@ -16,21 +16,21 @@ export type Props = {
 	name?: string;
 };
 
-const props = withDefaults(defineProps<Props>(), {
+defineOptions({ name: 'N8nColorPicker' });
+const props = withDefaults(defineProps<ColorPickerProps>(), {
 	disabled: false,
 	size: 'medium',
 	showAlpha: false,
 	colorFormat: 'hex',
 	popperClass: '',
 	showInput: true,
-	modelValue: null,
 	name: uid('color-picker'),
 });
 
 const color = ref(props.modelValue);
 
 const colorPickerProps = computed(() => {
-	const { value, showInput, ...rest } = props;
+	const { showInput, ...rest } = props;
 	return rest;
 });
 
@@ -62,6 +62,7 @@ const onActiveChange = (value: string) => {
 	emit('active-change', value);
 };
 </script>
+
 <template>
 	<span :class="['n8n-color-picker', $style.component]">
 		<ElColorPicker
@@ -82,6 +83,7 @@ const onActiveChange = (value: string) => {
 		/>
 	</span>
 </template>
+
 <style lang="scss" module>
 .component {
 	display: inline-flex;
