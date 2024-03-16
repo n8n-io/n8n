@@ -48,7 +48,7 @@ import type { NodeError } from './errors/abstract/node.error';
 
 import { NodeOperationError } from './errors/node-operation.error';
 import { NodeApiError } from './errors/node-api.error';
-import { sleep, removeCircularRefs } from './utils';
+import { sleep } from './utils';
 
 export class RoutingNode {
 	additionalData: IWorkflowExecuteAdditionalData;

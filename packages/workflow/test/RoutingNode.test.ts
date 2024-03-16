@@ -18,6 +18,8 @@ import type {
 import { RoutingNode } from '@/RoutingNode';
 import { Workflow } from '@/Workflow';
 
+import * as utilsModule from '@/utils';
+
 import * as Helpers from './Helpers';
 import { applyDeclarativeNodeOptionParameters } from '@/NodeHelpers';
 
@@ -742,8 +744,10 @@ describe('RoutingNode', () => {
 		const tests: Array<{
 			description: string;
 			input: {
-				special?: {
+				specialTestOptions?: {
 					applyDeclarativeNodeOptionParameters?: boolean;
+					numberOfItems?: number;
+					sleepCalls?: number[][];
 				};
 				nodeType: {
 					properties?: INodeProperties[];
@@ -1030,13 +1034,21 @@ describe('RoutingNode', () => {
 			{
 				description: 'multiple parameters, from applyDeclarativeNodeOptionParameters',
 				input: {
-					special: {
+					specialTestOptions: {
 						applyDeclarativeNodeOptionParameters: true,
+						numberOfItems: 5,
+						sleepCalls: [[500], [500]],
 					},
 					node: {
 						parameters: {
 							options: {
 								allowUnauthorizedCerts: true,
+								batching: {
+									batch: {
+										batchSize: 2,
+										batchInterval: 500,
+									},
+								},
 								proxy: 'http://user:password@127.0.0.1:8080',
 								timeout: 123,
 							},
@@ -1048,6 +1060,98 @@ describe('RoutingNode', () => {
 				},
 				output: [
 					[
+						{
+							json: {
+								headers: {},
+								statusCode: 200,
+								requestOptions: {
+									qs: {},
+									headers: {},
+									proxy: {
+										auth: {
+											username: 'user',
+											password: 'password',
+										},
+										host: '127.0.0.1',
+										protocol: 'http',
+										port: 8080,
+									},
+									body: {},
+									returnFullResponse: true,
+									skipSslCertificateValidation: true,
+									timeout: 123,
+								},
+							},
+						},
+						{
+							json: {
+								headers: {},
+								statusCode: 200,
+								requestOptions: {
+									qs: {},
+									headers: {},
+									proxy: {
+										auth: {
+											username: 'user',
+											password: 'password',
+										},
+										host: '127.0.0.1',
+										protocol: 'http',
+										port: 8080,
+									},
+									body: {},
+									returnFullResponse: true,
+									skipSslCertificateValidation: true,
+									timeout: 123,
+								},
+							},
+						},
+						{
+							json: {
+								headers: {},
+								statusCode: 200,
+								requestOptions: {
+									qs: {},
+									headers: {},
+									proxy: {
+										auth: {
+											username: 'user',
+											password: 'password',
+										},
+										host: '127.0.0.1',
+										protocol: 'http',
+										port: 8080,
+									},
+									body: {},
+									returnFullResponse: true,
+									skipSslCertificateValidation: true,
+									timeout: 123,
+								},
+							},
+						},
+						{
+							json: {
+								headers: {},
+								statusCode: 200,
+								requestOptions: {
+									qs: {},
+									headers: {},
+									proxy: {
+										auth: {
+											username: 'user',
+											password: 'password',
+										},
+										host: '127.0.0.1',
+										protocol: 'http',
+										port: 8080,
+									},
+									body: {},
+									returnFullResponse: true,
+									skipSslCertificateValidation: true,
+									timeout: 123,
+								},
+							},
+						},
 						{
 							json: {
 								headers: {},
@@ -1786,13 +1890,7 @@ describe('RoutingNode', () => {
 		const propertiesOriginal = nodeType.description.properties;
 
 		const inputData: ITaskDataConnections = {
-			main: [
-				[
-					{
-						json: {},
-					},
-				],
-			],
+			main: [[]],
 		};
 
 		for (const testData of tests) {
@@ -1805,7 +1903,7 @@ describe('RoutingNode', () => {
 				};
 
 				nodeType.description = { ...testData.input.nodeType } as INodeTypeDescription;
-				if (testData.input.special?.applyDeclarativeNodeOptionParameters) {
+				if (testData.input.specialTestOptions?.applyDeclarativeNodeOptionParameters) {
 					nodeType.description.properties = propertiesOriginal;
 				}
 
@@ -1862,6 +1960,22 @@ describe('RoutingNode', () => {
 					},
 				};
 
+				const numberOfItems = testData.input.specialTestOptions?.numberOfItems ?? 1;
+				if (!inputData.main[0] || inputData.main[0].length !== numberOfItems) {
+					inputData.main[0] = [];
+					for (let i = 0; i < numberOfItems; i++) {
+						inputData.main[0].push({ json: {} });
+					}
+				}
+
+				const spy = jest.spyOn(utilsModule, 'sleep').mockReturnValue(
+					new Promise((resolve) => {
+						resolve();
+					}),
+				);
+
+				spy.mockClear();
+
 				const result = await routingNode.runNode(
 					inputData,
 					runIndex,
@@ -1869,6 +1983,12 @@ describe('RoutingNode', () => {
 					executeData,
 					nodeExecuteFunctions as INodeExecuteFunctions,
 				);
+
+				if (testData.input.specialTestOptions?.sleepCalls) {
+					expect(spy.mock.calls).toEqual(testData.input.specialTestOptions?.sleepCalls);
+				} else {
+					expect(spy).toHaveBeenCalledTimes(0);
+				}
 
 				expect(result).toEqual(testData.output);
 			});
