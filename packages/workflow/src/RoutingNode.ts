@@ -265,8 +265,10 @@ export class RoutingNode {
 				}
 			}
 
-			itemContext[itemIndex].requestData.options.skipSslCertificateValidation =
-				!!allowUnauthorizedCerts || false;
+			if (allowUnauthorizedCerts) {
+				itemContext[itemIndex].requestData.options.skipSslCertificateValidation =
+					allowUnauthorizedCerts;
+			}
 
 			if (timeout) {
 				itemContext[itemIndex].requestData.options.timeout = timeout;

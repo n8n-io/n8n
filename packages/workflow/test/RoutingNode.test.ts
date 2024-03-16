@@ -19,6 +19,7 @@ import { RoutingNode } from '@/RoutingNode';
 import { Workflow } from '@/Workflow';
 
 import * as Helpers from './Helpers';
+import { applySpecialNodeParameters } from '@/NodeHelpers';
 
 const postReceiveFunction1 = async function (
 	this: IExecuteSingleFunctions,
@@ -779,6 +780,7 @@ describe('RoutingNode', () => {
 									},
 									baseURL: 'http://127.0.0.1:5678',
 									returnFullResponse: true,
+									timeout: 300000,
 								},
 							},
 						},
@@ -828,6 +830,7 @@ describe('RoutingNode', () => {
 									},
 									baseURL: 'http://127.0.0.1:5678',
 									returnFullResponse: true,
+									timeout: 300000,
 								},
 							},
 						},
@@ -883,6 +886,7 @@ describe('RoutingNode', () => {
 									},
 									baseURL: 'http://127.0.0.1:5678',
 									returnFullResponse: true,
+									timeout: 300000,
 								},
 							},
 						},
@@ -938,6 +942,7 @@ describe('RoutingNode', () => {
 									},
 									baseURL: 'http://127.0.0.1:5678',
 									returnFullResponse: true,
+									timeout: 300000,
 								},
 							},
 						},
@@ -995,6 +1000,7 @@ describe('RoutingNode', () => {
 										offset: 10,
 									},
 									returnFullResponse: true,
+									timeout: 300000,
 								},
 							},
 						},
@@ -1431,6 +1437,7 @@ describe('RoutingNode', () => {
 									addedIn: 'preSendFunction1',
 								},
 								returnFullResponse: true,
+								timeout: 300000,
 							},
 						},
 					],
@@ -1526,6 +1533,7 @@ describe('RoutingNode', () => {
 											baseURL: 'http://127.0.0.1:5678',
 											url: '/test-url',
 											returnFullResponse: true,
+											timeout: 300000,
 										},
 									},
 								},
@@ -1847,6 +1855,7 @@ describe('RoutingNode', () => {
 									},
 									baseURL: 'http://127.0.0.1:5678',
 									returnFullResponse: true,
+									timeout: 300000,
 								},
 							},
 						},

@@ -247,6 +247,7 @@ export function getExecuteFunctions(
 					itemIndex,
 					mode,
 					{},
+					executeData,
 					fallbackValue,
 				);
 			},
@@ -451,6 +452,7 @@ export function getExecuteSingleFunctions(
 					itemIndex,
 					mode,
 					{},
+					executeData,
 					fallbackValue,
 				);
 			},
