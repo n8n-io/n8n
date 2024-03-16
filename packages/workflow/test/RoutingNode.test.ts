@@ -19,7 +19,7 @@ import { RoutingNode } from '@/RoutingNode';
 import { Workflow } from '@/Workflow';
 
 import * as Helpers from './Helpers';
-import { applySpecialNodeParameters } from '@/NodeHelpers';
+import { applyDeclarativeNodeOptionParameters } from '@/NodeHelpers';
 
 const postReceiveFunction1 = async function (
 	this: IExecuteSingleFunctions,
@@ -40,6 +40,23 @@ const preSendFunction1 = async function (
 };
 
 describe('RoutingNode', () => {
+	test('applyDeclarativeNodeOptionParameters', () => {
+		const nodeTypes = Helpers.NodeTypes();
+		const nodeType = nodeTypes.getByNameAndVersion('test.set');
+
+		applyDeclarativeNodeOptionParameters(nodeType);
+
+		const options = nodeType.description.properties.find(
+			(property) => property.displayName === 'Options',
+		);
+
+		expect(options?.options).toBeDefined;
+
+		const optionNames = options!.options!.map((option) => option.name);
+
+		expect(optionNames).toEqual(['batching', 'allowUnauthorizedCerts', 'proxy', 'timeout']);
+	});
+
 	describe('getRequestOptionsFromParameters', () => {
 		const tests: Array<{
 			description: string;
