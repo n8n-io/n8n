@@ -50,15 +50,21 @@
 	</div>
 </template>
 
-<script lang="ts">
-import type { PropType } from 'vue';
-import { defineComponent } from 'vue';
-import { ElDropdown, ElDropdownMenu, ElDropdownItem } from 'element-plus';
+<script lang="ts" setup>
+// This component is visually similar to the ActionToggle component
+// but it offers more options when it comes to dropdown items styling
+// (supports icons, separators, custom styling and all options provided
+// by Element UI dropdown component).
+// It can be used in different parts of editor UI while ActionToggle
+// is designed to be used in card components.
+import { ref, useCssModule, useAttrs } from 'vue';
+import { ElDropdown, ElDropdownMenu, ElDropdownItem, type Placement } from 'element-plus';
 import N8nIcon from '../N8nIcon';
 import { N8nKeyboardShortcut } from '../N8nKeyboardShortcut';
 import type { KeyboardShortcut } from '../../types';
+import type { IconSize } from '@/types/icon';
 
-export interface IActionDropdownItem {
+interface IActionDropdownItem {
 	id: string;
 	label: string;
 	icon?: string;
@@ -68,92 +74,56 @@ export interface IActionDropdownItem {
 	customClass?: string;
 }
 
-// This component is visually similar to the ActionToggle component
-// but it offers more options when it comes to dropdown items styling
-// (supports icons, separators, custom styling and all options provided
-// by Element UI dropdown component).
-// It can be used in different parts of editor UI while ActionToggle
-// is designed to be used in card components.
-export default defineComponent({
-	name: 'N8nActionDropdown',
-	components: {
-		ElDropdown,
-		ElDropdownMenu,
-		ElDropdownItem,
-		N8nIcon,
-		N8nKeyboardShortcut,
-	},
-	props: {
-		items: {
-			type: Array as PropType<IActionDropdownItem[]>,
-			required: true,
-		},
-		placement: {
-			type: String,
-			default: 'bottom',
-			validator: (value: string): boolean =>
-				['top', 'top-end', 'top-start', 'bottom', 'bottom-end', 'bottom-start'].includes(value),
-		},
-		activatorIcon: {
-			type: String,
-			default: 'ellipsis-h',
-		},
-		activatorSize: {
-			type: String,
-			default: 'medium',
-		},
-		iconSize: {
-			type: String,
-			default: 'medium',
-			validator: (value: string): boolean => ['small', 'medium', 'large'].includes(value),
-		},
-		trigger: {
-			type: String,
-			default: 'click',
-			validator: (value: string): boolean => ['click', 'hover'].includes(value),
-		},
-		hideArrow: {
-			type: Boolean,
-			default: false,
-		},
-	},
-	data() {
-		const testIdPrefix = this.$attrs['data-test-id'];
-		return { testIdPrefix };
-	},
-	methods: {
-		getItemClasses(item: IActionDropdownItem): Record<string, boolean> {
-			return {
-				[this.$style.itemContainer]: true,
-				[this.$style.disabled]: item.disabled,
-				[this.$style.hasCustomStyling]: item.customClass !== undefined,
-				...(item.customClass !== undefined ? { [item.customClass]: true } : {}),
-			};
-		},
-		onSelect(action: string): void {
-			this.$emit('select', action);
-		},
-		onVisibleChange(open: boolean): void {
-			this.$emit('visibleChange', open);
-		},
-		onButtonBlur(event: FocusEvent): void {
-			const elementDropdown = this.$refs.elementDropdown as InstanceType<typeof ElDropdown>;
+const TRIGGER = ['click', 'hover'] as const;
 
-			// Hide dropdown when clicking outside of current document
-			if (elementDropdown?.handleClose && event.relatedTarget === null) {
-				elementDropdown.handleClose();
-			}
-		},
-		open() {
-			const elementDropdown = this.$refs.elementDropdown as InstanceType<typeof ElDropdown>;
-			elementDropdown.handleOpen();
-		},
-		close() {
-			const elementDropdown = this.$refs.elementDropdown as InstanceType<typeof ElDropdown>;
-			elementDropdown.handleClose();
-		},
-	},
+interface ActionDropdownProps {
+	items: IActionDropdownItem[];
+	placement?: Placement;
+	activatorIcon?: string;
+	activatorSize?: IconSize;
+	iconSize?: IconSize;
+	trigger?: (typeof TRIGGER)[number];
+	hideArrow?: boolean;
+}
+
+withDefaults(defineProps<ActionDropdownProps>(), {
+	placement: 'bottom',
+	activatorIcon: 'ellipsis-h',
+	activatorSize: 'medium',
+	iconSize: 'medium',
+	trigger: 'click',
+	hideArrow: false,
 });
+
+const $attrs = useAttrs();
+const testIdPrefix = $attrs['data-test-id'];
+
+const $style = useCssModule();
+const getItemClasses = (item: IActionDropdownItem): Record<string, boolean> => {
+	return {
+		[$style.itemContainer]: true,
+		[$style.disabled]: !!item.disabled,
+		[$style.hasCustomStyling]: item.customClass !== undefined,
+		...(item.customClass !== undefined ? { [item.customClass]: true } : {}),
+	};
+};
+
+const $emit = defineEmits(['select', 'visibleChange']);
+const elementDropdown = ref<InstanceType<typeof ElDropdown>>();
+
+const onSelect = (action: string) => $emit('select', action);
+const onVisibleChange = (open: boolean) => $emit('visibleChange', open);
+
+const onButtonBlur = (event: FocusEvent) => {
+	// Hide dropdown when clicking outside of current document
+	if (elementDropdown.value?.handleClose && event.relatedTarget === null) {
+		elementDropdown.value.handleClose();
+	}
+};
+
+const open = () => elementDropdown.value?.handleOpen();
+const close = () => elementDropdown.value?.handleClose();
+defineExpose({ open, close });
 </script>
 
 <style lang="scss" module>

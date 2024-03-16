@@ -10,14 +10,15 @@
 		"incremental": false,
 		"allowSyntheticDefaultImports": true,
 		"baseUrl": ".",
-		"types": ["webpack-env", "vitest/globals"],
-		"typeRoots": ["@testing-library", "@types"],
+		"types": ["vitest/globals"],
+		"typeRoots": ["@testing-library", "@types", "../../node_modules"],
 		"paths": {
 			"@/*": ["src/*"]
 		},
 		"lib": ["esnext", "dom", "dom.iterable", "scripthost"],
 		// TODO: remove all options below this line
-		"noUnusedLocals": false,
+		"strict": false,
+		"noImplicitAny": false,
 		"noImplicitReturns": false
 	},
 	"include": ["src/**/*.ts", "src/**/*.vue"]

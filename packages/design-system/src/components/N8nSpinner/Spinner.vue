@@ -10,31 +10,20 @@
 	</span>
 </template>
 
-<script lang="ts">
+<script lang="ts" setup>
+import type { TextSize } from '@/types/text';
 import N8nIcon from '../N8nIcon';
 
-import { defineComponent } from 'vue';
+const TYPE = ['dots', 'ring'] as const;
 
-export default defineComponent({
-	name: 'N8nSpinner',
-	components: {
-		N8nIcon,
-	},
-	props: {
-		size: {
-			type: String,
-			validator(value: string): boolean {
-				return ['small', 'medium', 'large'].includes(value);
-			},
-		},
-		type: {
-			type: String,
-			validator(value: string): boolean {
-				return ['dots', 'ring'].includes(value);
-			},
-			default: 'dots',
-		},
-	},
+interface SpinnerProps {
+	size?: Exclude<TextSize, 'xsmall' | 'mini' | 'xlarge'>;
+	type?: (typeof TYPE)[number];
+}
+
+defineOptions({ name: 'N8nSpinner' });
+withDefaults(defineProps<SpinnerProps>(), {
+	type: 'dots',
 });
 </script>
 

@@ -1227,9 +1227,8 @@ export function getNodeInputs(
 			{},
 		) || []) as ConnectionTypes[];
 	} catch (e) {
-		throw new ApplicationError('Could not calculate inputs dynamically for node', {
-			extra: { nodeName: node.name },
-		});
+		console.warn('Could not calculate inputs dynamically for node: ', node.name);
+		return [];
 	}
 }
 
@@ -1252,9 +1251,7 @@ export function getNodeOutputs(
 				{},
 			) || []) as ConnectionTypes[];
 		} catch (e) {
-			throw new ApplicationError('Could not calculate outputs dynamically for node', {
-				extra: { nodeName: node.name },
-			});
+			console.warn('Could not calculate outputs dynamically for node: ', node.name);
 		}
 	}
 

@@ -27,7 +27,13 @@
 					</n8n-button>
 				</div>
 				<template #content>
-					{{ $locale.baseText('mainSidebar.workflows.readOnlyEnv.tooltip') }}
+					<i18n-t tag="span" keypath="mainSidebar.workflows.readOnlyEnv.tooltip">
+						<template #link>
+							<a target="_blank" href="https://docs.n8n.io/source-control-environments/">
+								{{ $locale.baseText('mainSidebar.workflows.readOnlyEnv.tooltip.link') }}
+							</a>
+						</template>
+					</i18n-t>
 				</template>
 			</n8n-tooltip>
 		</template>

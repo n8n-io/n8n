@@ -599,9 +599,24 @@ describe('Resolution-based completions', () => {
 			);
 		});
 	});
+
+	describe('explicit completions (opened by Ctrl+Space or programatically)', () => {
+		test('should return completions for: {{ $json.foo| }}', () => {
+			vi.spyOn(workflowHelpers, 'resolveParameter')
+				// @ts-expect-error Spied function is mistyped
+				.mockReturnValueOnce(undefined)
+				// @ts-expect-error Spied function is mistyped
+				.mockReturnValueOnce('foo');
+
+			const result = completions('{{ $json.foo| }}', true);
+			expect(result).toHaveLength(
+				extensions('string').length + natives('string').length + STRING_RECOMMENDED_OPTIONS.length,
+			);
+		});
+	});
 });
 
-export function completions(docWithCursor: string) {
+export function completions(docWithCursor: string, explicit = false) {
 	const cursorPosition = docWithCursor.indexOf('|');
 
 	const doc = docWithCursor.slice(0, cursorPosition) + docWithCursor.slice(cursorPosition + 1);
@@ -612,7 +627,7 @@ export function completions(docWithCursor: string) {
 		extensions: [n8nLang()],
 	});
 
-	const context = new CompletionContext(state, cursorPosition, false);
+	const context = new CompletionContext(state, cursorPosition, explicit);
 
 	for (const completionSource of state.languageDataAt<CompletionSource>(
 		'autocomplete',
