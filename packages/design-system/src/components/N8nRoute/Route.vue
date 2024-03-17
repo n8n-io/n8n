@@ -32,14 +32,5 @@ const useRouterLink = computed(() => {
 	return props.to !== undefined;
 });
 
-const openNewWindow = computed(() => {
-	if (props.newWindow) {
-		return true;
-	}
-
-	if (typeof props.to === 'string') {
-		return !props.to.startsWith('/');
-	}
-	return true;
-});
+const openNewWindow = computed(() => !useRouterLink.value);
 </script>
