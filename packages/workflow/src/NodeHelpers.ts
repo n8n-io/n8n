@@ -269,8 +269,8 @@ const commonCORSParameters: INodeProperties[] = [
 ];
 
 const declarativeNodeOptionParameters: INodeProperties = {
-	displayName: 'Options',
-	name: 'options',
+	displayName: 'Request Options',
+	name: 'requestOptions',
 	type: 'collection',
 	placeholder: 'Add Option',
 	default: {},
@@ -349,7 +349,7 @@ const declarativeNodeOptionParameters: INodeProperties = {
 };
 
 export function applyDeclarativeNodeOptionParameters(nodeType: INodeType): void {
-	if (nodeType.execute || nodeType.trigger || nodeType.description.polling) {
+	if (nodeType.execute || nodeType.trigger || nodeType.webhook || nodeType.description.polling) {
 		return;
 	}
 
@@ -359,18 +359,23 @@ export function applyDeclarativeNodeOptionParameters(nodeType: INodeType): void 
 		return;
 	}
 
-	const existingOptionsIndex = parameters.findIndex((parameter) => parameter.name === 'options');
-	if (existingOptionsIndex !== -1) {
-		parameters[existingOptionsIndex] = {
+	// Was originally under "options" instead of "requestOptions" so the chance
+	// that that existed was quite high. With this name the chance is actually
+	// very low that it already exists but lets leave it in anyway to be sure.
+	const existingRequestOptionsIndex = parameters.findIndex(
+		(parameter) => parameter.name === 'requestOptions',
+	);
+	if (existingRequestOptionsIndex !== -1) {
+		parameters[existingRequestOptionsIndex] = {
 			...declarativeNodeOptionParameters,
 			options: [
 				...(declarativeNodeOptionParameters.options || []),
-				...(parameters[existingOptionsIndex]?.options || []),
+				...(parameters[existingRequestOptionsIndex]?.options || []),
 			],
 		};
 
-		if (parameters[existingOptionsIndex]?.options) {
-			parameters[existingOptionsIndex].options!.sort((a, b) => {
+		if (parameters[existingRequestOptionsIndex]?.options) {
+			parameters[existingRequestOptionsIndex].options!.sort((a, b) => {
 				if ('displayName' in a && 'displayName' in b) {
 					if (a.displayName < b.displayName) {
 						return -1;

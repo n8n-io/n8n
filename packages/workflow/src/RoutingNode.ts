@@ -131,7 +131,7 @@ export class RoutingNode {
 			}
 		}
 
-		const { batching } = executeFunctions.getNodeParameter('options', 0, {}) as {
+		const { batching } = executeFunctions.getNodeParameter('requestOptions', 0, {}) as {
 			batching: { batch: { batchSize: number; batchInterval: number } };
 		};
 
@@ -179,7 +179,7 @@ export class RoutingNode {
 
 			const { proxy, timeout, allowUnauthorizedCerts } = itemContext[
 				itemIndex
-			].thisArgs.getNodeParameter('options', 0, {}) as {
+			].thisArgs.getNodeParameter('requestOptions', 0, {}) as {
 				proxy: string;
 				timeout: number;
 				allowUnauthorizedCerts: boolean;

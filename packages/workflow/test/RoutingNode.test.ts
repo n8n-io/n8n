@@ -49,7 +49,7 @@ describe('RoutingNode', () => {
 		applyDeclarativeNodeOptionParameters(nodeType);
 
 		const options = nodeType.description.properties.find(
-			(property) => property.displayName === 'Options',
+			(property) => property.name === 'requestOptions',
 		);
 
 		expect(options?.options).toBeDefined;
@@ -1041,7 +1041,7 @@ describe('RoutingNode', () => {
 					},
 					node: {
 						parameters: {
-							options: {
+							requestOptions: {
 								allowUnauthorizedCerts: true,
 								batching: {
 									batch: {
