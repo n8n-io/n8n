@@ -9,6 +9,8 @@ import type {
 	IDataObject,
 } from 'n8n-workflow';
 
+import { honeyBookApiRequest } from './honeyBookApi';
+
 export class HoneyBookTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Trigger',
@@ -27,6 +29,14 @@ export class HoneyBookTrigger implements INodeType {
 			{
 				name: 'honeyBookApi',
 				required: true,
+			},
+		],
+		webhooks: [
+			{
+				name: 'default',
+				httpMethod: 'POST',
+				responseMode: 'onReceived',
+				path: 'webhook',
 			},
 		],
 		properties: [
@@ -77,12 +87,40 @@ export class HoneyBookTrigger implements INodeType {
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
+				/**
+				 * n8n calls this before creating/updating the webhook,
+				 * I think it's redundant to make 2 calls to the API every time.
+				 * the create endpoint in our API will accept an optional existingSubscriptionId param and drop it if it exists.
+				 * this way we always end up with the most up-to-date webhook configuration.
+				 */
 				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
+				const webhookUrl = this.getNodeWebhookUrl('default');
+				const webhookData = this.getWorkflowStaticData('node');
+				const trigger = this.getNodeParameter('trigger') as string;
+				const body: IDataObject = {
+					existing_subscription_id: webhookData.subscriptionId,
+					webhook_url: webhookUrl,
+					trigger,
+				};
+				const { _id } = await honeyBookApiRequest.call(
+					this,
+					'POST',
+					'/automations/subscriptions',
+					body,
+				);
+				webhookData.subscriptionId = _id;
 				return true;
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
+				const webhookData = this.getWorkflowStaticData('node');
+				await honeyBookApiRequest.call(
+					this,
+					'DELETE',
+					`/automations/subscriptions/${webhookData.subscriptionId}`,
+				);
+				delete webhookData.subscriptionId;
 				return true;
 			},
 		},
