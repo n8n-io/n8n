@@ -39,6 +39,7 @@ export class NDV extends BasePage {
 		inputTbodyCell: (row: number, col: number) =>
 			this.getters.inputTableRow(row).find('td').eq(col),
 		inlineExpressionEditorInput: () => cy.getByTestId('inline-expression-editor-input'),
+		inlineExpressionEditorOutput: () => cy.getByTestId('inline-expression-editor-output'),
 		nodeParameters: () => cy.getByTestId('node-parameters'),
 		parameterInput: (parameterName: string) => cy.getByTestId(`parameter-input-${parameterName}`),
 		parameterInputIssues: (parameterName: string) =>

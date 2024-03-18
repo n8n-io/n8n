@@ -2,16 +2,14 @@
 	<div ref="root" :class="$style.editor" data-test-id="inline-expression-editor-input"></div>
 </template>
 
-<script lang="ts">
-import { completionStatus, startCompletion } from '@codemirror/autocomplete';
+<script setup lang="ts">
+import { startCompletion } from '@codemirror/autocomplete';
 import { history } from '@codemirror/commands';
-import { Compartment, EditorState, Prec } from '@codemirror/state';
+import { Prec } from '@codemirror/state';
 import { EditorView, keymap } from '@codemirror/view';
-import type { PropType } from 'vue';
-import { defineComponent, nextTick } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, toValue, watch } from 'vue';
 
-import { completionManager } from '@/mixins/completionManager';
-import { expressionManager } from '@/mixins/expressionManager';
+import { useExpressionEditor } from '@/composables/useExpressionEditor';
 import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
 import {
 	autocompleteKeyMap,
@@ -20,157 +18,110 @@ import {
 	tabKeyMap,
 } from '@/plugins/codemirror/keymap';
 import { n8nAutocompletion, n8nLang } from '@/plugins/codemirror/n8nLang';
-import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
-import { isEqual } from 'lodash-es';
+import { useNDVStore } from '@/stores/ndv.store';
+import type { Segment } from '@/types/expressions';
+import { removeExpressionPrefix } from '@/utils/expressions';
 import { createEventBus, type EventBus } from 'n8n-design-system/utils';
 import type { IDataObject } from 'n8n-workflow';
 import { inputTheme } from './theme';
-import { useNDVStore } from '@/stores/ndv.store';
-import { mapStores } from 'pinia';
 
-const editableConf = new Compartment();
+type Props = {
+	modelValue: string;
+	path: string;
+	rows?: number;
+	isReadonly?: boolean;
+	additionalData?: IDataObject;
+	eventBus?: EventBus;
+};
 
-export default defineComponent({
-	name: 'InlineExpressionEditorInput',
-	mixins: [completionManager, expressionManager],
-	props: {
-		modelValue: {
-			type: String,
-			required: true,
-		},
-		isReadOnly: {
-			type: Boolean,
-			default: false,
-		},
-		rows: {
-			type: Number,
-			default: 5,
-		},
-		path: {
-			type: String,
-			required: true,
-		},
-		additionalData: {
-			type: Object as PropType<IDataObject>,
-			default: () => ({}),
-		},
-		eventBus: {
-			type: Object as PropType<EventBus>,
-			default: () => createEventBus(),
-		},
+const props = withDefaults(defineProps<Props>(), {
+	rows: 5,
+	isReadonly: false,
+	additionalData: () => ({}),
+	eventBus: () => createEventBus(),
+});
+
+const emit = defineEmits<{
+	(event: 'change', value: { value: string; segments: Segment[] }): void;
+	(event: 'focus'): void;
+}>();
+
+const ndvStore = useNDVStore();
+
+const root = ref<HTMLElement>();
+const extensions = computed(() => [
+	Prec.highest(
+		keymap.of([...tabKeyMap(true), ...enterKeyMap, ...autocompleteKeyMap, ...historyKeyMap]),
+	),
+	n8nLang(),
+	n8nAutocompletion(),
+	inputTheme({ rows: props.rows }),
+	history(),
+	expressionInputHandler(),
+	EditorView.lineWrapping,
+]);
+const editorValue = ref<string>(removeExpressionPrefix(props.modelValue));
+const {
+	editor: editorRef,
+	segments,
+	readEditorValue,
+	setCursorPosition,
+	hasFocus,
+	focus,
+} = useExpressionEditor({
+	editorRef: root,
+	editorValue,
+	extensions,
+	isReadOnly: props.isReadonly,
+	autocompleteTelemetry: { enabled: true, parameterPath: props.path },
+	additionalData: props.additionalData,
+});
+
+defineExpose({
+	focus: () => {
+		setCursorPosition('lastExpression');
+		focus();
 	},
-	computed: {
-		...mapStores(useNDVStore),
+});
+
+async function onDrop() {
+	const editor = toValue(editorRef);
+	if (!editor) return;
+
+	await nextTick();
+	focus();
+
+	setCursorPosition('lastExpression');
+
+	if (!ndvStore.isAutocompleteOnboarded) {
+		startCompletion(editor);
+	}
+}
+
+watch(
+	() => props.modelValue,
+	(newValue) => {
+		editorValue.value = removeExpressionPrefix(newValue);
 	},
-	watch: {
-		isReadOnly(newValue: boolean) {
-			this.editor?.dispatch({
-				effects: editableConf.reconfigure(EditorView.editable.of(!newValue)),
-			});
-		},
-		modelValue(newValue) {
-			const isInternalChange = newValue === this.editor?.state.doc.toString();
+);
 
-			if (isInternalChange) return;
+watch(segments.display, (newSegments) => {
+	emit('change', {
+		value: '=' + readEditorValue(),
+		segments: newSegments,
+	});
+});
 
-			// manual update on external change, e.g. from expression modal or mapping drop
+watch(hasFocus, (focused) => {
+	if (focused) emit('focus');
+});
 
-			this.editor?.dispatch({
-				changes: {
-					from: 0,
-					to: this.editor?.state.doc.length,
-					insert: newValue,
-				},
-			});
-		},
-		displayableSegments(segments, newSegments) {
-			if (isEqual(segments, newSegments)) return;
+onMounted(() => {
+	props.eventBus.on('drop', onDrop);
+});
 
-			highlighter.removeColor(this.editor, this.plaintextSegments);
-			highlighter.addColor(this.editor, this.resolvableSegments);
-
-			this.$emit('change', {
-				value: this.unresolvedExpression,
-				segments: this.displayableSegments,
-			});
-		},
-	},
-	mounted() {
-		const extensions = [
-			Prec.highest(
-				keymap.of([...tabKeyMap(true), ...enterKeyMap, ...autocompleteKeyMap, ...historyKeyMap]),
-			),
-			n8nLang(),
-			n8nAutocompletion(),
-			inputTheme({ rows: this.rows }),
-			history(),
-			expressionInputHandler(),
-			EditorView.lineWrapping,
-			editableConf.of(EditorView.editable.of(!this.isReadOnly)),
-			EditorView.contentAttributes.of({ 'data-gramm': 'false' }), // disable grammarly
-			EditorView.domEventHandlers({
-				focus: () => {
-					this.$emit('focus');
-				},
-			}),
-			EditorView.updateListener.of((viewUpdate) => {
-				if (!this.editor) return;
-
-				this.completionStatus = completionStatus(viewUpdate.view.state);
-
-				if (!viewUpdate.docChanged) return;
-
-				// Force segments value update by keeping track of editor state
-				this.editorState = this.editor.state;
-
-				setTimeout(() => {
-					try {
-						this.trackCompletion(viewUpdate, this.path);
-					} catch {}
-				});
-			}),
-		];
-
-		this.editor = new EditorView({
-			parent: this.$refs.root as HTMLDivElement,
-			state: EditorState.create({
-				doc: this.modelValue.startsWith('=') ? this.modelValue.slice(1) : this.modelValue,
-				extensions,
-			}),
-		});
-
-		this.editorState = this.editor.state;
-
-		highlighter.addColor(this.editor, this.resolvableSegments);
-
-		this.eventBus.on('drop', this.onDrop);
-	},
-	beforeUnmount() {
-		this.editor?.destroy();
-		this.eventBus.off('drop', this.onDrop);
-	},
-	methods: {
-		focus() {
-			this.editor?.focus();
-		},
-		setCursorPosition(pos: number) {
-			this.editor.dispatch({ selection: { anchor: pos, head: pos } });
-		},
-		async onDrop() {
-			await nextTick();
-			this.focus();
-
-			const END_OF_EXPRESSION = ' }}';
-			const value = this.editor.state.sliceDoc(0);
-			const cursorPosition = Math.max(value.lastIndexOf(END_OF_EXPRESSION), 0);
-
-			this.setCursorPosition(cursorPosition);
-
-			if (!this.ndvStore.isAutocompleteOnboarded) {
-				startCompletion(this.editor as EditorView);
-			}
-		},
-	},
+onBeforeUnmount(() => {
+	props.eventBus.off('drop', onDrop);
 });
 </script>
 
