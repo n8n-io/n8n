@@ -8,6 +8,14 @@ export const isExpression = (expr: unknown) => {
 	return expr.startsWith('=');
 };
 
+export const isEmptyExpression = (expr: string) => {
+	return /\{\{\s*\}\}/.test(expr);
+};
+
+export const removeExpressionPrefix = (expr: string) => {
+	return expr.startsWith('=') ? expr.slice(1) : expr;
+};
+
 export const isTestableExpression = (expr: string) => {
 	return ExpressionParser.splitExpression(expr).every((c) => {
 		if (c.type === 'text') {

@@ -1,6 +1,13 @@
-import { action } from '@storybook/addon-actions';
+import { type StoryFn } from '@storybook/vue3';
+import { type ActionOptions, action } from '@storybook/addon-actions';
 import N8nResizeWrapper from './ResizeWrapper.vue';
 import { ref } from 'vue';
+
+// TODO: remove this after converting ResizeWrapper to composition API
+interface ResizeData extends ActionOptions {
+	height: number;
+	width: number;
+}
 
 export default {
 	title: 'Atoms/ResizeWrapper',
@@ -13,12 +20,12 @@ const methods = {
 	onResizeStart: action('resizestart'),
 };
 
-const Template = (args, { argTypes }) => ({
+const Template: StoryFn = (args, { argTypes }) => ({
 	setup: () => {
 		const newWidth = ref(args.width);
 		const newHeight = ref(args.height);
 
-		function onResize(resizeData) {
+		function onResize(resizeData: ResizeData) {
 			action('resize', resizeData);
 			newHeight.value = resizeData.height;
 			newWidth.value = resizeData.width;
