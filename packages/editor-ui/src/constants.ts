@@ -752,3 +752,10 @@ export const TEMPLATES_URLS = {
 	BASE_WEBSITE_URL: 'https://n8n.io/workflows',
 	UTM_QUERY: 'utm_source=n8n_app&utm_medium=template_library',
 };
+
+export const ROLE = {
+	Owner: 'global:owner',
+	Member: 'global:member',
+	Admin: 'global:admin',
+	Default: 'default', // default user with no email when setting up instance
+} as const;
