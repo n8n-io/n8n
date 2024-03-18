@@ -5,6 +5,7 @@ import { CacheService } from '@/services/cache/cache.service';
 import { WebhookService } from '@/services/webhook.service';
 import { WebhookEntity } from '@db/entities/WebhookEntity';
 import { mockInstance } from '../../shared/mocking';
+import { EntityManager, EntityNotFoundError } from '@n8n/typeorm';
 
 const createWebhook = (method: string, path: string, webhookId?: string, pathSegments?: number) =>
 	Object.assign(new WebhookEntity(), {
@@ -15,7 +16,10 @@ const createWebhook = (method: string, path: string, webhookId?: string, pathSeg
 	}) as WebhookEntity;
 
 describe('WebhookService', () => {
-	const webhookRepository = mockInstance(WebhookRepository);
+	const entityManager = mockInstance(EntityManager);
+	const webhookRepository = mockInstance(WebhookRepository, {
+		manager: entityManager,
+	});
 	const cacheService = mockInstance(CacheService);
 	const webhookService = new WebhookService(webhookRepository, cacheService);
 
@@ -158,23 +162,23 @@ describe('WebhookService', () => {
 				createWebhook('POST', ':var'),
 			];
 
-			webhookRepository.findBy.mockResolvedValue(mockWorkflowWebhooks);
+			entityManager.findBy.mockResolvedValue(mockWorkflowWebhooks);
 
 			const workflowId = uuid();
 
 			await webhookService.deleteWorkflowWebhooks(workflowId);
 
-			expect(webhookRepository.remove).toHaveBeenCalledWith(mockWorkflowWebhooks);
+			expect(entityManager.remove).toHaveBeenCalledWith(mockWorkflowWebhooks);
 		});
 
 		test('should not delete any webhooks if none found', async () => {
-			webhookRepository.findBy.mockResolvedValue([]);
+			entityManager.findBy.mockResolvedValue([]);
 
 			const workflowId = uuid();
 
 			await webhookService.deleteWorkflowWebhooks(workflowId);
 
-			expect(webhookRepository.remove).toHaveBeenCalledWith([]);
+			expect(entityManager.remove).toHaveBeenCalledWith([]);
 		});
 	});
 
