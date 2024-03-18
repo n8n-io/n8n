@@ -5,7 +5,7 @@ import { CacheService } from '@/services/cache/cache.service';
 import { WebhookService } from '@/services/webhook.service';
 import { WebhookEntity } from '@db/entities/WebhookEntity';
 import { mockInstance } from '../../shared/mocking';
-import { EntityManager, EntityNotFoundError } from '@n8n/typeorm';
+import { EntityManager } from '@n8n/typeorm';
 
 const createWebhook = (method: string, path: string, webhookId?: string, pathSegments?: number) =>
 	Object.assign(new WebhookEntity(), {
