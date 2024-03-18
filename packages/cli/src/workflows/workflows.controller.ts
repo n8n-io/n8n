@@ -330,7 +330,7 @@ export class WorkflowsController {
 		return await this.workflowExecutionService.executeManually(
 			req.body,
 			req.user,
-			req.headers.push_ref as string,
+			req.headers['push-ref'] as string,
 		);
 	}
 

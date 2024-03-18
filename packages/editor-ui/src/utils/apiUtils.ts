@@ -125,7 +125,7 @@ export async function makeRestApiRequest<T>(
 		method,
 		baseURL: context.baseUrl,
 		endpoint,
-		headers: { push_ref: context.pushRef },
+		headers: { 'push-ref': context.pushRef },
 		data,
 	});
 
