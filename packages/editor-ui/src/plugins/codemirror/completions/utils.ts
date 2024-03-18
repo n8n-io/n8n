@@ -151,23 +151,50 @@ export const stripExcessParens = (context: CompletionContext) => (option: Comple
 	return option;
 };
 
+export const getDefaultArgs = (doc?: DocMetadata): unknown[] => {
+	return doc?.args?.map((arg) => arg.default).filter(Boolean) ?? [];
+};
+
+export const insertDefaultArgs = (label: string, args: unknown[]): string => {
+	if (!label.endsWith('()')) return label;
+	const argList = args.map((arg) => JSON.stringify(arg)).join(', ');
+	const fnName = label.replace('()', '');
+
+	return `${fnName}(${argList})`;
+};
+
 /**
  * When a function completion is selected, set the cursor correctly
- * @example `.includes()` -> `.includes(<cursor>)`
+ *
+ *  @example `.includes()` -> `.includes(<cursor>)`
  *  @example `$max()` -> `$max()<cursor>`
  */
 export const applyCompletion =
-	(hasArgs = true, transform: (label: string) => string = (label) => label) =>
+	({
+		hasArgs = true,
+		defaultArgs = [],
+		transformLabel = (label) => label,
+	}: {
+		hasArgs?: boolean;
+		defaultArgs?: unknown[];
+		transformLabel?: (label: string) => string;
+	} = {}) =>
 	(view: EditorView, completion: Completion, from: number, to: number): void => {
-		const label = transform(completion.label);
+		const isFunction = completion.label.endsWith('()');
+		const label = insertDefaultArgs(transformLabel(completion.label), defaultArgs);
+
 		const tx: TransactionSpec = {
 			...insertCompletionText(view.state, label, from, to),
 			annotations: pickedCompletion.of(completion),
 		};
 
-		if (label.endsWith('()') && hasArgs) {
+		if (isFunction) {
+			if (defaultArgs.length > 0) {
+				tx.selection = { anchor: from + label.indexOf('(') + 1, head: from + label.length - 1 };
+			} else if (hasArgs) {
 			const cursorPosition = from + label.length - 1;
 			tx.selection = { anchor: cursorPosition, head: cursorPosition };
+			}
 		}
 
 		view.dispatch(tx);

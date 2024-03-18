@@ -244,7 +244,11 @@ const createCompletionOption = (
 		label,
 		type: optionType,
 		section: docInfo.doc?.section,
-		apply: applyCompletion(hasRequiredArgs(docInfo?.doc), transformLabel),
+		apply: applyCompletion({
+			hasArgs: hasRequiredArgs(docInfo?.doc),
+			defaultArgs: getDefaultArgs(docInfo?.doc),
+			transformLabel,
+		}),
 	};
 
 	option.info = () => {
@@ -381,7 +385,7 @@ const objectOptions = (input: AutocompleteInput<IDataObject>): Completion[] => {
 				label: isFunction ? key + '()' : key,
 				type: isFunction ? 'function' : 'keyword',
 				section: getObjectPropertySection({ name, key, isFunction }),
-				apply: applyCompletion(hasArgs, transformLabel),
+				apply: applyCompletion({ hasArgs, transformLabel }),
 			};
 
 			const infoKey = [name, key].join('.');
@@ -774,7 +778,11 @@ const createLuxonAutocompleteOption = (
 		label,
 		type,
 		section: doc?.section,
-		apply: applyCompletion(hasRequiredArgs(doc), transformLabel),
+		apply: applyCompletion({
+			hasArgs: hasRequiredArgs(doc),
+			defaultArgs: getDefaultArgs(doc),
+			transformLabel,
+		}),
 	};
 	option.info = createCompletionOption(
 		'DateTime',
