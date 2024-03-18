@@ -55,7 +55,7 @@
 					<TriggerPanel
 						v-if="showTriggerPanel"
 						:node-name="activeNode.name"
-						:session-id="pushRef"
+						:push-ref="pushRef"
 						@execute="onNodeExecute"
 						@activate="onWorkflowActivate"
 					/>
@@ -66,7 +66,7 @@
 						:run-index="inputRun"
 						:linked-runs="linked"
 						:current-node-name="inputNodeName"
-						:session-id="pushRef"
+						:push-ref="pushRef"
 						:read-only="readOnly || hasForeignCredential"
 						:is-production-execution-preview="isProductionExecutionPreview"
 						:is-pane-active="isInputPaneActive"
@@ -88,7 +88,7 @@
 						:can-link-runs="canLinkRuns"
 						:run-index="outputRun"
 						:linked-runs="linked"
-						:session-id="pushRef"
+						:push-ref="pushRef"
 						:is-read-only="readOnly || hasForeignCredential"
 						:block-u-i="blockUi && isTriggerNode && !isExecutableTriggerNode"
 						:is-production-execution-preview="isProductionExecutionPreview"
@@ -107,7 +107,7 @@
 					<NodeSettings
 						:event-bus="settingsEventBus"
 						:dragging="isDragging"
-						:session-id="pushRef"
+						:push-ref="pushRef"
 						:node-type="activeNodeType"
 						:foreign-credentials="foreignCredentials"
 						:read-only="readOnly"

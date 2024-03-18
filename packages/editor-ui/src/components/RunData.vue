@@ -381,7 +381,7 @@
 				<RunDataJson
 					:pane-type="paneType"
 					:edit-mode="editMode"
-					:sessio-id="pushRef"
+					:push-ref="pushRef"
 					:node="node"
 					:input-data="inputDataPage"
 					:mapping-enabled="mappingEnabled"

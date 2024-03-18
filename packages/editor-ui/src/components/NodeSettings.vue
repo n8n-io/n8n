@@ -33,7 +33,7 @@
 				v-if="node && nodeValid"
 				v-model="openPanel"
 				:node-type="nodeType"
-				:session-id="pushRef"
+				:push-ref="pushRef"
 			/>
 		</div>
 		<div v-if="node && !nodeValid" class="node-is-not-valid">

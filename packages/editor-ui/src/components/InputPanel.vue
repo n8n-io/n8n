@@ -8,7 +8,7 @@
 		:no-data-in-branch-message="$locale.baseText('ndv.input.noOutputDataInBranch')"
 		:is-executing="isExecutingPrevious"
 		:executing-message="$locale.baseText('ndv.input.executingPrevious')"
-		:session-id="pushRef"
+		:push-ref="pushRef"
 		:override-outputs="connectedCurrentNodeOutputs"
 		:mapping-enabled="isMappingEnabled"
 		:distance-from-active="currentNodeDepth"

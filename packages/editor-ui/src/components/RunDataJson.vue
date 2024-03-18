@@ -4,7 +4,7 @@
 			<RunDataJsonActions
 				v-if="!editMode.enabled"
 				:node="node"
-				:sessio-id="pushRef"
+				:push-ref="pushRef"
 				:display-mode="displayMode"
 				:distance-from-active="distanceFromActive"
 				:selected-json-path="selectedJsonPath"

@@ -9,7 +9,7 @@
 		:no-data-in-branch-message="$locale.baseText('ndv.output.noOutputDataInBranch')"
 		:is-executing="isNodeRunning"
 		:executing-message="$locale.baseText('ndv.output.executing')"
-		:session-id="pushRef"
+		:push-ref="pushRef"
 		:block-u-i="blockUI"
 		:is-production-execution-preview="isProductionExecutionPreview"
 		:is-pane-active="isPaneActive"
