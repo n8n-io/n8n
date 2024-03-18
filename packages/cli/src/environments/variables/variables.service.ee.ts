@@ -1,5 +1,5 @@
 import { Container, Service } from 'typedi';
-import type { Variables } from '@db/entities/Variables';
+import { Variables } from '@db/entities/Variables';
 import { InternalHooks } from '@/InternalHooks';
 import { generateNanoId } from '@db/utils/generators';
 import { canCreateNewVariable } from './environmentHelpers';
@@ -7,6 +7,7 @@ import { CacheService } from '@/services/cache/cache.service';
 import { VariablesRepository } from '@db/repositories/variables.repository';
 import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
 import { VariableValidationError } from '@/errors/variable-validation.error';
+import { EntityManager } from '@n8n/typeorm';
 
 @Service()
 export class VariablesService {
@@ -15,10 +16,10 @@ export class VariablesService {
 		protected variablesRepository: VariablesRepository,
 	) {}
 
-	async getAllCached(): Promise<Variables[]> {
+	async getAllCached(em?: EntityManager): Promise<Variables[]> {
 		const variables = await this.cacheService.get('variables', {
 			async refreshFn() {
-				return await Container.get(VariablesService).findAll();
+				return await Container.get(VariablesService).findAll(em);
 			},
 		});
 		return (variables as Array<Partial<Variables>>).map((v) => this.variablesRepository.create(v));
@@ -48,8 +49,9 @@ export class VariablesService {
 		await this.cacheService.set('variables', variables);
 	}
 
-	async findAll(): Promise<Variables[]> {
-		return await this.variablesRepository.find();
+	async findAll(em?: EntityManager): Promise<Variables[]> {
+		em = em ?? this.variablesRepository.manager;
+		return await em.find(Variables);
 	}
 
 	validateVariable(variable: Omit<Variables, 'id'>): void {

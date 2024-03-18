@@ -249,9 +249,6 @@ export class CredentialsService {
 	async delete(credentials: CredentialsEntity, em?: EntityManager) {
 		em = em ?? this.credentialsRepository.manager;
 
-		console.log('credentials', credentials);
-
-		// TODO: Should the hook also run within the transaction?
 		await this.externalHooks.run('credentials.delete', [credentials.id]);
 
 		await em.remove(credentials);

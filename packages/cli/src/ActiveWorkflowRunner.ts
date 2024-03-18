@@ -31,7 +31,7 @@ import type { IWorkflowDb } from '@/Interfaces';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 
-import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { ExecutionService } from './executions/execution.service';
 import {
@@ -230,7 +230,7 @@ export class ActiveWorkflowRunner {
 	async clearWebhooks(workflowId: string, em?: EntityManager) {
 		em = em ?? this.workflowRepository.manager;
 
-		const workflowData = await this.workflowRepository.findOne({
+		const workflowData = await em.findOne(WorkflowEntity, {
 			where: { id: workflowId },
 			relations: ['shared', 'shared.user'],
 		});
@@ -252,12 +252,16 @@ export class ActiveWorkflowRunner {
 
 		const mode = 'internal';
 
-		const additionalData = await WorkflowExecuteAdditionalData.getBase();
+		const additionalData = await WorkflowExecuteAdditionalData.getBase(
+			undefined,
+			undefined,
+			undefined,
+			em,
+		);
 
 		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, undefined, true);
 
 		for (const webhookData of webhooks) {
-			// TODO: Does not need to run inside a trx?
 			await workflow.deleteWebhook(webhookData, NodeExecuteFunctions, mode, 'update');
 		}
 
@@ -702,7 +706,6 @@ export class ActiveWorkflowRunner {
 	 *
 	 * @param {string} workflowId The id of the workflow to deactivate
 	 */
-	// TODO: this should happen in a transaction
 	async remove(workflowId: string, em?: EntityManager) {
 		em = em ?? this.workflowRepository.manager;
 		if (this.orchestrationService.isMultiMainSetupEnabled) {

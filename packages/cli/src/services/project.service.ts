@@ -26,60 +26,49 @@ export class ProjectService {
 		private readonly roleService: RoleService,
 	) {}
 
-	// TODO: Should internal and external hooks run within transactions?
-	// They are not guaranteed to run. They would need to be persisted to the db
-	// within the same transaction and then a worker would need to pick them up and execute them.
-	// That way we'd at least achieve "run at least once" SLA.
 	async deleteProject(user: User, projectId: string) {
-		const project = await this.getProjectWithScope(user, projectId, 'project:delete');
-
-		console.log('project', project);
-
-		if (!project) {
-			throw new NotFoundError(`Could not find project with ID: ${projectId}`);
-		}
-
-		// 0. check if this is a team project
-		if (project.type !== 'team') {
-			throw new ForbiddenError(
-				`Can't delete project. Project with ID "${projectId}" is not a team project.`,
-			);
-		}
-
-		// TODO: do all of this inside a transaction
-
 		await this.projectRelationRepository.manager.transaction(async (em) => {
-			try {
-				// 1. delete workflows owned by this project
-				const ownedSharedWorkflows = await em.find(SharedWorkflow, {
-					where: { projectId: project.id, role: 'workflow:owner' },
-					relations: { workflow: true },
-				});
+			const project = await this.getProjectWithScope(user, projectId, 'project:delete', em);
 
-				for (const sharedWorkflow of ownedSharedWorkflows) {
-					await Container.get(WorkflowService).delete(user, sharedWorkflow.workflow.id, em);
-				}
-
-				// 2. delete credentials owned by this project
-				const ownedCredentials = await em.find(SharedCredentials, {
-					where: { projectId: project.id, role: 'credential:owner' },
-					relations: { credentials: true },
-				});
-
-				for (const credential of ownedCredentials) {
-					await Container.get(CredentialsService).delete(credential.credentials, em);
-				}
-
-				// 3. delete shared credentials into this project
-				// Should cascade, but should this run the same hooks that unsharing does?
-				// 4. delete shared workflows into this project
-				// Should cascade, but should this run the same hooks that unsharing does?
-				// 5. delete project
-				await em.remove(project);
-			} catch (error) {
-				console.error(error);
-				throw error;
+			if (!project) {
+				throw new NotFoundError(`Could not find project with ID: ${projectId}`);
 			}
+
+			// 0. check if this is a team project
+			if (project.type !== 'team') {
+				throw new ForbiddenError(
+					`Can't delete project. Project with ID "${projectId}" is not a team project.`,
+				);
+			}
+
+			// 1. delete workflows owned by this project
+			const ownedSharedWorkflows = await em.find(SharedWorkflow, {
+				where: { projectId: project.id, role: 'workflow:owner' },
+				relations: { workflow: true },
+			});
+
+			for (const sharedWorkflow of ownedSharedWorkflows) {
+				await Container.get(WorkflowService).delete(user, sharedWorkflow.workflow.id, em);
+			}
+
+			// 2. delete credentials owned by this project
+			const ownedCredentials = await em.find(SharedCredentials, {
+				where: { projectId: project.id, role: 'credential:owner' },
+				relations: { credentials: true },
+			});
+
+			for (const credential of ownedCredentials) {
+				await Container.get(CredentialsService).delete(credential.credentials, em);
+			}
+
+			// 3. delete shared credentials into this project
+			// Cascading deletes take care of this.
+
+			// 4. delete shared workflows into this project
+			// Cascading deletes take care of this.
+
+			// 5. delete project
+			await em.remove(project);
 		});
 	}
 
@@ -208,9 +197,6 @@ export class ProjectService {
 	) {
 		const em = entityManager ?? this.projectRepository.manager;
 		const projectRoles = this.roleService.rolesWithScope('project', [scope]);
-
-		console.log('scope', scope);
-		console.log('projectRoles', projectRoles);
 
 		return await em.findOne(Project, {
 			where: {

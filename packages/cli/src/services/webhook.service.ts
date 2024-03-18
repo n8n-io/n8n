@@ -106,7 +106,7 @@ export class WebhookService {
 
 		const webhooks = await em.findBy(WebhookEntity, { workflowId });
 
-		return await this.deleteWebhooks(webhooks);
+		return await this.deleteWebhooks(webhooks, em);
 	}
 
 	private async deleteWebhooks(webhooks: WebhookEntity[], em?: EntityManager) {
