@@ -1,5 +1,6 @@
 import type { IOnboardingCallPrompt, IUser } from '@/Interface';
 import { get, post } from '@/utils/apiUtils';
+import { isUserGlobalOwner } from '@/utils/userUtils';
 
 const N8N_API_BASE_URL = 'https://api.n8n.io/api';
 const ONBOARDING_PROMPTS_ENDPOINT = '/prompts/onboarding';
@@ -12,7 +13,7 @@ export async function fetchNextOnboardingPrompt(
 	return await get(N8N_API_BASE_URL, ONBOARDING_PROMPTS_ENDPOINT, {
 		instance_id: instanceId,
 		user_id: `${instanceId}#${currentUser.id}`,
-		is_owner: currentUser.isOwner ?? false,
+		is_owner: isUserGlobalOwner(currentUser),
 		survey_results: currentUser.personalizationAnswers,
 	});
 }

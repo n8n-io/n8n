@@ -7,43 +7,39 @@
 	</a>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script lang="ts" setup>
+import { computed } from 'vue';
+import { type RouteLocationRaw } from 'vue-router';
 
-export default defineComponent({
-	name: 'N8nRoute',
-	props: {
-		to: {
-			type: String || Object,
-		},
-		newWindow: {
-			type: Boolean || undefined,
-			default: undefined,
-		},
-	},
-	computed: {
-		useRouterLink() {
-			if (this.newWindow) {
-				// router-link does not support click events and opening in new window
-				return false;
-			}
+interface RouteProps {
+	to?: RouteLocationRaw;
+	newWindow?: boolean;
+}
 
-			if (typeof this.to === 'string') {
-				return this.to.startsWith('/');
-			}
+defineOptions({ name: 'N8nRoute' });
+const props = withDefaults(defineProps<RouteProps>(), {});
 
-			return this.to !== undefined;
-		},
-		openNewWindow() {
-			if (this.newWindow !== undefined) {
-				return this.newWindow;
-			}
+const useRouterLink = computed(() => {
+	if (props.newWindow) {
+		// router-link does not support click events and opening in new window
+		return false;
+	}
 
-			if (typeof this.to === 'string') {
-				return !this.to.startsWith('/');
-			}
-			return true;
-		},
-	},
+	if (typeof props.to === 'string') {
+		return props.to.startsWith('/');
+	}
+
+	return props.to !== undefined;
+});
+
+const openNewWindow = computed(() => {
+	if (props.newWindow !== undefined) {
+		return props.newWindow;
+	}
+
+	if (typeof props.to === 'string') {
+		return !props.to.startsWith('/');
+	}
+	return true;
 });
 </script>

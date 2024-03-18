@@ -285,6 +285,7 @@ export class Agent implements INodeType {
 				name: 'hasOutputParser',
 				type: 'boolean',
 				default: false,
+				noDataExpression: true,
 				displayOptions: {
 					hide: {
 						'@version': [{ _cnd: { lte: 1.2 } }],

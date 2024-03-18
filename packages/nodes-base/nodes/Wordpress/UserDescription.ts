@@ -18,11 +18,6 @@ export const userOperations: INodeProperties[] = [
 				description: 'Create a user',
 				action: 'Create a user',
 			},
-			// {
-			// 	name: 'Delete',
-			// 	value: 'delete',
-			// 	description: 'Delete a user',
-			// },
 			{
 				name: 'Get',
 				value: 'get',
