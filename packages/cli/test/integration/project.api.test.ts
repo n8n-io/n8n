@@ -1,6 +1,6 @@
 import * as testDb from './shared/testDb';
 import * as utils from './shared/utils/';
-import { createOwner, createUser } from './shared/db/users';
+import { createMember, createOwner, createUser } from './shared/db/users';
 import {
 	createTeamProject,
 	linkUserToProject,
@@ -616,6 +616,46 @@ describe('DELETE /project/:projectId', () => {
 			Container.get(SharedCredentialsRepository).findOneByOrFail({
 				projectId: projectToBeDeleted.id,
 				credentialsId: ownedCredential.id,
+			}),
+		).rejects.toThrowError(EntityNotFoundError);
+	});
+
+	test('deletes the project relations', async () => {
+		//
+		// ARRANGE
+		//
+		const owner = await createOwner();
+		const editor = await createMember();
+		const viewer = await createMember();
+
+		const project = await createTeamProject(undefined, owner);
+		await linkUserToProject(editor, project, 'project:editor');
+		await linkUserToProject(viewer, project, 'project:viewer');
+
+		//
+		// ACT
+		//
+		await testServer.authAgentFor(owner).delete(`/projects/${project.id}`).expect(200);
+
+		//
+		// ASSERT
+		//
+		await expect(
+			Container.get(ProjectRelationRepository).findOneByOrFail({
+				projectId: project.id,
+				userId: owner.id,
+			}),
+		).rejects.toThrowError(EntityNotFoundError);
+		await expect(
+			Container.get(ProjectRelationRepository).findOneByOrFail({
+				projectId: project.id,
+				userId: editor.id,
+			}),
+		).rejects.toThrowError(EntityNotFoundError);
+		await expect(
+			Container.get(ProjectRelationRepository).findOneByOrFail({
+				projectId: project.id,
+				userId: viewer.id,
 			}),
 		).rejects.toThrowError(EntityNotFoundError);
 	});

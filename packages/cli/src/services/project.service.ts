@@ -82,6 +82,9 @@ export class ProjectService {
 
 			// 5. delete project
 			await em.remove(project);
+
+			// 6. delete project relations
+			// Cascading deletes take care of this.
 		});
 	}
 
