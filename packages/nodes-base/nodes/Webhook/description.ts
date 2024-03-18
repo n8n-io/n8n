@@ -37,6 +37,15 @@ export const credentialsProperty = (
 			},
 		},
 	},
+	{
+		name: 'webhookJwtAuth',
+		required: true,
+		displayOptions: {
+			show: {
+				[propertyName]: ['jwtAuth'],
+			},
+		},
+	},
 ];
 
 export const authenticationProperty = (propertyName = 'authentication'): INodeProperties => ({
@@ -51,6 +60,10 @@ export const authenticationProperty = (propertyName = 'authentication'): INodePr
 		{
 			name: 'Header Auth',
 			value: 'headerAuth',
+		},
+		{
+			name: 'JWT Auth',
+			value: 'jwtAuth',
 		},
 		{
 			name: 'None',

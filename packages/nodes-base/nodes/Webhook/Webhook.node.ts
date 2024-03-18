@@ -12,12 +12,19 @@ import type {
 	MultiPartFormData,
 	INodeParameters,
 } from 'n8n-workflow';
-import { BINARY_ENCODING, NodeOperationError, Node, NodeConnectionType } from 'n8n-workflow';
+import {
+	BINARY_ENCODING,
+	NodeOperationError,
+	Node,
+	NodeConnectionType,
+	jsonParse,
+} from 'n8n-workflow';
 
 import { v4 as uuid } from 'uuid';
 import basicAuth from 'basic-auth';
 import isbot from 'isbot';
 import { file as tmpFile } from 'tmp-promise';
+import jwt from 'jsonwebtoken';
 
 import {
 	authenticationProperty,
@@ -373,6 +380,41 @@ export class Webhook extends Node {
 			) {
 				// Provided authentication data is wrong
 				throw new WebhookAuthorizationError(403);
+			}
+		} else if (authentication === 'jwtAuth') {
+			let expectedAuth: ICredentialDataDecryptedObject | undefined;
+			try {
+				expectedAuth = await context.getCredentials('webhookJwtAuth');
+			} catch {}
+
+			if (expectedAuth === undefined || !expectedAuth.tokenSecret) {
+				// Data is not defined on node so can not authenticate
+				throw new WebhookAuthorizationError(500, 'No authentication data defined on node!');
+			}
+
+			const authHeader = req.headers.authorization;
+			const token = authHeader && authHeader.split(' ')[1];
+
+			if (!token) {
+				throw new WebhookAuthorizationError(401, 'No token provided');
+			}
+
+			try {
+				const tokenData = jwt.verify(token, expectedAuth.tokenSecret as string, {
+					algorithms: [expectedAuth.tokenAlgorithm as jwt.Algorithm],
+				}) as IDataObject;
+
+				if (!expectedAuth.tokenPayload) return;
+
+				const payload = jsonParse<IDataObject>(expectedAuth.tokenPayload as string);
+
+				for (const key of Object.keys(payload)) {
+					if (tokenData[key] !== payload[key]) {
+						throw new WebhookAuthorizationError(403, 'Token payload does not match');
+					}
+				}
+			} catch (error) {
+				throw new WebhookAuthorizationError(403, error.message);
 			}
 		}
 	}

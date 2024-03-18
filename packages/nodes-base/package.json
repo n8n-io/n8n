@@ -365,6 +365,7 @@
       "dist/credentials/VenafiTlsProtectDatacenterApi.credentials.js",
       "dist/credentials/WebflowApi.credentials.js",
       "dist/credentials/WebflowOAuth2Api.credentials.js",
+      "dist/credentials/WebhookJwtAuth.credentials.js",
       "dist/credentials/WekanApi.credentials.js",
       "dist/credentials/WhatsAppApi.credentials.js",
       "dist/credentials/WiseApi.credentials.js",
