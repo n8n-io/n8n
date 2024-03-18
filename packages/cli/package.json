@@ -93,6 +93,7 @@
     "@langchain/community": "0.0.34",
     "@langchain/core": "0.1.41",
     "@langchain/openai": "0.0.16",
+    "@langchain/pinecone": "^0.0.3",
     "@n8n/client-oauth2": "workspace:*",
     "@n8n/localtunnel": "2.1.0",
     "@n8n/n8n-nodes-langchain": "workspace:*",
@@ -100,6 +101,7 @@
     "@n8n/typeorm": "0.3.20-3",
     "@n8n_io/license-sdk": "2.10.0",
     "@oclif/core": "3.18.1",
+    "@pinecone-database/pinecone": "2.1.0",
     "@rudderstack/rudder-sdk-node": "2.0.7",
     "@sentry/integrations": "7.87.0",
     "@sentry/node": "7.87.0",
@@ -180,6 +182,7 @@
     "ws": "8.12.0",
     "xml2js": "0.5.0",
     "xmllint-wasm": "3.0.1",
-    "yamljs": "0.3.0"
+    "yamljs": "0.3.0",
+    "zod": "3.22.4"
   }
 }
