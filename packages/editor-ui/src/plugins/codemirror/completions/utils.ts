@@ -1,4 +1,8 @@
-import { CREDENTIAL_EDIT_MODAL_KEY, SPLIT_IN_BATCHES_NODE_TYPE } from '@/constants';
+import {
+	CREDENTIAL_EDIT_MODAL_KEY,
+	HTTP_REQUEST_NODE_TYPE,
+	SPLIT_IN_BATCHES_NODE_TYPE,
+} from '@/constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { resolveParameter, useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -120,6 +124,14 @@ export function hasNoParams(toResolve: string) {
 
 export const isCredentialsModalOpen = () => useUIStore().modals[CREDENTIAL_EDIT_MODAL_KEY].open;
 
+export const isInHttpNodePagination = () => {
+	const ndvStore = useNDVStore();
+	return (
+		ndvStore.activeNode?.type === HTTP_REQUEST_NODE_TYPE &&
+		ndvStore.focusedInputPath.startsWith('parameters.options.pagination')
+	);
+};
+
 export const hasActiveNode = () => useNDVStore().activeNode?.name !== undefined;
 
 export const isSplitInBatchesAbsent = () =>
@@ -192,8 +204,8 @@ export const applyCompletion =
 			if (defaultArgs.length > 0) {
 				tx.selection = { anchor: from + label.indexOf('(') + 1, head: from + label.length - 1 };
 			} else if (hasArgs) {
-			const cursorPosition = from + label.length - 1;
-			tx.selection = { anchor: cursorPosition, head: cursorPosition };
+				const cursorPosition = from + label.length - 1;
+				tx.selection = { anchor: cursorPosition, head: cursorPosition };
 			}
 		}
 

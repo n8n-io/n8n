@@ -17,6 +17,8 @@ import {
 	applyCompletion,
 	sortCompletionsAlpha,
 	hasRequiredArgs,
+	getDefaultArgs,
+	insertDefaultArgs,
 } from './utils';
 import type {
 	Completion,
@@ -455,7 +457,7 @@ const applySections = ({
 	recommendedSection = RECOMMENDED_SECTION,
 }: {
 	options: Completion[];
-	recommended?: string[];
+	recommended?: Array<string | { label: string; args: unknown[] }>;
 	recommendedSection?: CompletionSection;
 	methodsSection?: CompletionSection;
 	propSection?: CompletionSection;
@@ -471,12 +473,12 @@ const applySections = ({
 		{} as Record<string, Completion>,
 	);
 	return recommended
-		.map(
-			(reco): Completion => ({
-				...optionByLabel[reco],
-				section: recommendedSection,
-			}),
-		)
+		.map((reco): Completion => {
+			const option = optionByLabel[typeof reco === 'string' ? reco : reco.label];
+			const label =
+				typeof reco === 'string' ? option.label : insertDefaultArgs(reco.label, reco.args);
+			return { ...option, label, section: recommendedSection };
+		})
 		.concat(
 			options
 				.filter((option) => !excludeRecommended || !recommendedSet.has(option.label))
@@ -523,10 +525,18 @@ const stringOptions = (input: AutocompleteInput<string>): Completion[] => {
 		});
 	}
 
-	if (VALID_EMAIL_REGEX.test(resolved) || isUrl(resolved)) {
+	if (VALID_EMAIL_REGEX.test(resolved)) {
 		return applySections({
 			options,
 			recommended: ['extractDomain()', 'isEmail()', ...STRING_RECOMMENDED_OPTIONS],
+			sections: STRING_SECTIONS,
+		});
+	}
+
+	if (isUrl(resolved)) {
+		return applySections({
+			options,
+			recommended: ['extractDomain()', 'extractUrlPath()', ...STRING_RECOMMENDED_OPTIONS],
 			sections: STRING_SECTIONS,
 		});
 	}
@@ -535,6 +545,26 @@ const stringOptions = (input: AutocompleteInput<string>): Completion[] => {
 		return applySections({
 			options,
 			recommended: ['extractEmail()', ...STRING_RECOMMENDED_OPTIONS],
+			sections: STRING_SECTIONS,
+		});
+	}
+
+	const trimmed = resolved.trim();
+	if (
+		(trimmed.startsWith('{') && trimmed.endsWith('}')) ||
+		(trimmed.startsWith('[') && trimmed.endsWith(']'))
+	) {
+		return applySections({
+			options,
+			recommended: ['parseJson()', ...STRING_RECOMMENDED_OPTIONS],
+			sections: STRING_SECTIONS,
+		});
+	}
+
+	if (resolved === 'true' || resolved === 'false') {
+		return applySections({
+			options,
+			recommended: ['toBoolean()', ...STRING_RECOMMENDED_OPTIONS],
 			sections: STRING_SECTIONS,
 		});
 	}
@@ -561,6 +591,36 @@ const numberOptions = (input: AutocompleteInput<number>): Completion[] => {
 	const ONLY_INTEGER = ['isEven()', 'isOdd()'];
 
 	if (Number.isInteger(resolved)) {
+		const nowMillis = Date.now();
+		const marginMillis = 946_707_779_000; // 30y
+		const isPlausableMillisDateTime =
+			resolved > nowMillis - marginMillis && resolved < nowMillis + marginMillis;
+
+		if (isPlausableMillisDateTime) {
+			return applySections({
+				options,
+				recommended: [{ label: 'toDateTime()', args: ['ms'] }],
+			});
+		}
+
+		const nowSeconds = nowMillis / 1000;
+		const marginSeconds = marginMillis / 1000;
+		const isPlausableSecondsDateTime =
+			resolved > nowSeconds - marginSeconds && resolved < nowSeconds + marginSeconds;
+		if (isPlausableSecondsDateTime) {
+			return applySections({
+				options,
+				recommended: [{ label: 'toDateTime()', args: ['s'] }],
+			});
+		}
+
+		if (resolved === 0 || resolved === 1) {
+			return applySections({
+				options,
+				recommended: ['toBoolean()'],
+			});
+		}
+
 		return applySections({
 			options,
 			recommended: ONLY_INTEGER,

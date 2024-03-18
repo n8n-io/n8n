@@ -281,5 +281,13 @@ describe('Data Transformation Functions', () => {
 			expect(evaluate('={{ "TRUE".toBoolean() }}')).toBe(true);
 			expect(evaluate('={{ "hello".toBoolean() }}')).toBe(true);
 		});
+
+		test('.base64Encode should work on a string', () => {
+			expect(evaluate('={{ "n8n test".base64Encode() }}')).toBe('bjhuIHRlc3Q=');
+		});
+
+		test('.base64Decode should work on a string', () => {
+			expect(evaluate('={{ "bjhuIHRlc3Q=".base64Decode() }}')).toBe('n8n test');
+		});
 	});
 });
