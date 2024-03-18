@@ -1334,8 +1334,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			const rootStore = useRootStore();
 			const projectStore = useProjectsStore();
 
-			if (projectStore.currentProject?.id) {
-				(sendData as unknown as IDataObject).projectId = projectStore.currentProject.id;
+			if (projectStore.currentProjectId) {
+				(sendData as unknown as IDataObject).projectId = projectStore.currentProjectId;
 			}
 
 			return await makeRestApiRequest(

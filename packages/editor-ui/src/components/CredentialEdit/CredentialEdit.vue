@@ -163,6 +163,7 @@ import {
 import { isValidCredentialResponse, isCredentialModalState } from '@/utils/typeGuards';
 import { isExpression, isTestableExpression } from '@/utils/expressions';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useProjectsStore } from '@/features/projects/projects.store';
 
 interface NodeAccessMap {
 	[nodeType: string]: ICredentialNodeAccess | null;
@@ -297,6 +298,7 @@ export default defineComponent({
 			useUsersStore,
 			useWorkflowsStore,
 			useNodeTypesStore,
+			useProjectsStore,
 		),
 		activeNodeType(): INodeTypeDescription | null {
 			const activeNode = this.ndvStore.activeNode;
@@ -799,7 +801,7 @@ export default defineComponent({
 			if (isNewCredential) {
 				credential = await this.createCredential(
 					credentialDetails,
-					this.$route?.params?.projectId as string | undefined,
+					this.projectsStore.currentProjectId,
 				);
 			} else {
 				if (this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {

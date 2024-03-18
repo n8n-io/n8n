@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref, watch } from 'vue';
+import { ref, watch, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import * as projectsApi from '@/features/projects/projects.api';
@@ -17,9 +17,16 @@ export const useProjectsStore = defineStore('projects', () => {
 	const projects = ref<ProjectListItem[]>([]);
 	const myProjects = ref<ProjectListItem[]>([]);
 	const personalProject = ref<Project | null>(null);
-	const currentProject = ref<Project>({} as Project);
+	const currentProject = ref<Project | null>(null);
 
-	const setCurrentProject = (project: Project) => {
+	const currentProjectId = computed(
+		() =>
+			(route.params?.projectId as string | undefined) ||
+			(route.query?.projectId as string | undefined) ||
+			currentProject.value?.id,
+	);
+
+	const setCurrentProject = (project: Project | null) => {
 		currentProject.value = project;
 	};
 
@@ -64,9 +71,14 @@ export const useProjectsStore = defineStore('projects', () => {
 	watch(
 		route,
 		async (newRoute) => {
+			if (newRoute?.path?.includes('home')) {
+				setCurrentProject(null);
+			}
+
 			if (!newRoute?.params?.projectId) {
 				return;
 			}
+
 			await getProject(newRoute.params.projectId as string);
 		},
 		{ immediate: true },
@@ -76,6 +88,7 @@ export const useProjectsStore = defineStore('projects', () => {
 		projects,
 		myProjects,
 		currentProject,
+		currentProjectId,
 		setCurrentProject,
 		getAllProjects,
 		getMyProjects,

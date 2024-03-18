@@ -73,7 +73,7 @@ const onCancel = () => {
 };
 
 const onSubmit = async () => {
-	if (isDirty.value) {
+	if (isDirty.value && projectsStore.currentProject) {
 		await projectsStore.updateProject({
 			id: projectsStore.currentProject.id,
 			name: formData.value.name,
@@ -88,7 +88,7 @@ const onSubmit = async () => {
 
 const onDelete = async () => {
 	try {
-		const projectName = projectsStore.currentProject.name ?? '';
+		const projectName = projectsStore.currentProject?.name ?? '';
 		const confirmation = await message.confirm(
 			locale.baseText('projects.settings.delete.message'),
 			locale.baseText('projects.settings.delete.title', {
@@ -100,7 +100,7 @@ const onDelete = async () => {
 			},
 		);
 
-		if (confirmation === MODAL_CONFIRM) {
+		if (confirmation === MODAL_CONFIRM && projectsStore.currentProject) {
 			await projectsStore.deleteProject(projectsStore.currentProject.id);
 			await router.push({ name: VIEWS.HOMEPAGE });
 			toast.showMessage({
