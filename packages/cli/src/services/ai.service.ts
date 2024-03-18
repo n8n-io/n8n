@@ -158,8 +158,6 @@ export class AIService {
 			paths: aggregatedPaths,
 		};
 
-		console.log('openApiDefinition:', JSON.stringify(openApiDefinition, null, 2));
-
 		const generateCurlChain = generateCurlCommandPromptTemplate
 			.pipe(this.provider.modelWithOutputParser(generateCurlSchema))
 			.pipe(this.jsonOutputParser);
