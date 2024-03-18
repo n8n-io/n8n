@@ -2,6 +2,8 @@ import { Project } from '@/databases/entities/Project';
 import { ProjectRelation } from '@/databases/entities/ProjectRelation';
 import type { ProjectRole } from '@/databases/entities/ProjectRelation';
 import type { User } from '@/databases/entities/User';
+import { SharedCredentials } from '@/databases/entities/SharedCredentials';
+import { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
 import { Not, type EntityManager } from '@n8n/typeorm';
@@ -11,11 +13,7 @@ import { In } from '@n8n/typeorm';
 import { RoleService } from './role.service';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { CredentialsService } from '@/credentials/credentials.service';
 import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
-import { WorkflowService } from '@/workflows/workflow.service';
-import { SharedCredentials } from '@/databases/entities/SharedCredentials';
-import { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
 
 @Service()
 export class ProjectService {
@@ -26,7 +24,22 @@ export class ProjectService {
 		private readonly roleService: RoleService,
 	) {}
 
+	private get workflowService() {
+		return import('@/workflows/workflow.service').then(({ WorkflowService }) =>
+			Container.get(WorkflowService),
+		);
+	}
+
+	private get credentialsService() {
+		return import('@/credentials/credentials.service').then(({ CredentialsService }) =>
+			Container.get(CredentialsService),
+		);
+	}
+
 	async deleteProject(user: User, projectId: string) {
+		const workflowService = await this.workflowService;
+		const credentialsService = await this.credentialsService;
+
 		await this.projectRelationRepository.manager.transaction(async (em) => {
 			const project = await this.getProjectWithScope(user, projectId, 'project:delete', em);
 
@@ -48,7 +61,7 @@ export class ProjectService {
 			});
 
 			for (const sharedWorkflow of ownedSharedWorkflows) {
-				await Container.get(WorkflowService).delete(user, sharedWorkflow.workflow.id, em);
+				await workflowService.delete(user, sharedWorkflow.workflow.id, em);
 			}
 
 			// 2. delete credentials owned by this project
@@ -58,7 +71,7 @@ export class ProjectService {
 			});
 
 			for (const credential of ownedCredentials) {
-				await Container.get(CredentialsService).delete(credential.credentials, em);
+				await credentialsService.delete(credential.credentials, em);
 			}
 
 			// 3. delete shared credentials into this project
