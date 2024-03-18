@@ -382,6 +382,7 @@ import { useCanvasPanning } from '@/composables/useCanvasPanning';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
+import { useProjectsStore } from '@/features/projects/projects.store';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -605,6 +606,7 @@ export default defineComponent({
 			useCollaborationStore,
 			usePushConnectionStore,
 			useSourceControlStore,
+			useProjectsStore,
 		),
 		nativelyNumberSuffixedDefaults(): string[] {
 			return this.nodeTypesStore.nativelyNumberSuffixedDefaults;
@@ -1356,7 +1358,7 @@ export default defineComponent({
 			this.workflowData =
 				(await this.workflowsStore.getNewWorkflowData(
 					data.name,
-					(this.$route?.params?.projectId ?? this.$route?.query?.projectId) as string | undefined,
+					this.projectsStore.currentProjectId,
 				)) || {};
 			this.workflowsStore.addToWorkflowMetadata({ templateId });
 			await this.$nextTick();
@@ -3536,7 +3538,7 @@ export default defineComponent({
 			this.resetWorkspace();
 			this.workflowData = await this.workflowsStore.getNewWorkflowData(
 				undefined,
-				(this.$route?.params?.projectId ?? this.$route?.query?.projectId) as string | undefined,
+				this.projectsStore.currentProjectId,
 			);
 			this.workflowsStore.currentWorkflowExecutions = [];
 			this.workflowsStore.activeWorkflowExecution = null;
