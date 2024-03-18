@@ -245,6 +245,14 @@ export const optionsProperty: INodeProperties = {
 			description: 'Whether to ignore requests from bots like link previewers and web crawlers',
 		},
 		{
+			displayName: 'IP(s) Whitelist',
+			name: 'ipWhitelist',
+			type: 'string',
+			placeholder: 'e.g. 127.0.0.1',
+			default: '',
+			description: 'Comma-separated list of IP addresses to allow. If empty, all IPs are allowed.',
+		},
+		{
 			displayName: 'No Response Body',
 			name: 'noResponseBody',
 			type: 'boolean',

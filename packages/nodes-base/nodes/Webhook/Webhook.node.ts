@@ -83,6 +83,28 @@ const setupOutputConnection = (ctx: IWebhookFunctions, method: string) => {
 	};
 };
 
+const isIpWhitelisted = (whitelist: string | string[] | undefined, ips: string[], ip?: string) => {
+	if (whitelist === undefined || whitelist === '') {
+		return true;
+	}
+
+	if (!Array.isArray(whitelist)) {
+		whitelist = whitelist.split(',').map((entry) => entry.trim());
+	}
+
+	for (const address of whitelist) {
+		if (ip && ip.includes(address)) {
+			return true;
+		}
+
+		if (ips.some((entry) => entry.includes(address))) {
+			return true;
+		}
+	}
+
+	return false;
+};
+
 export class Webhook extends Node {
 	authPropertyName = 'authentication';
 
@@ -235,10 +257,17 @@ export class Webhook extends Node {
 			ignoreBots: boolean;
 			rawBody: boolean;
 			responseData?: string;
+			ipWhitelist?: string;
 		};
 		const req = context.getRequestObject();
 		const resp = context.getResponseObject();
 		const requestMethod = context.getRequestObject().method;
+
+		if (!isIpWhitelisted(options.ipWhitelist, req.ips, req.ip)) {
+			resp.writeHead(403);
+			resp.end('IP is not whitelisted to access the webhook!');
+			return { noWebhookResponse: true };
+		}
 
 		const prepareOutput = setupOutputConnection(context, requestMethod);
 

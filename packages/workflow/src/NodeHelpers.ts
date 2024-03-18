@@ -265,6 +265,7 @@ const commonCORSParameters: INodeProperties[] = [
 		type: 'string',
 		default: '*',
 		description: 'The origin(s) to allow cross-origin non-preflight requests from in a browser',
+		hint: 'Set multiple origins by comma-separating them. Use *(default) to allow all origins.',
 	},
 ];
 

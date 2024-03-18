@@ -106,10 +106,22 @@ export const webhookRequestHandler =
 				const options = await webhookManager.findAccessControlOptions(path, requestedMethod);
 				const { allowedOrigins } = options ?? {};
 
-				res.header(
-					'Access-Control-Allow-Origin',
-					!allowedOrigins || allowedOrigins === '*' ? req.headers.origin : allowedOrigins,
-				);
+				if (allowedOrigins && allowedOrigins !== '*' && allowedOrigins !== req.headers.origin) {
+					const originsList = allowedOrigins.split(',');
+					const defaultOrigin = originsList[0];
+
+					if (originsList.length === 1) {
+						res.header('Access-Control-Allow-Origin', defaultOrigin);
+					}
+
+					if (originsList.includes(req.headers.origin as string)) {
+						res.header('Access-Control-Allow-Origin', req.headers.origin);
+					} else {
+						res.header('Access-Control-Allow-Origin', defaultOrigin);
+					}
+				} else {
+					res.header('Access-Control-Allow-Origin', req.headers.origin);
+				}
 
 				if (method === 'OPTIONS') {
 					res.header('Access-Control-Max-Age', '300');
