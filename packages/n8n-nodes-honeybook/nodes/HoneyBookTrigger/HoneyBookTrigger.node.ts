@@ -25,12 +25,7 @@ export class HoneyBookTrigger implements INodeType {
 		},
 		inputs: [],
 		outputs: ['main'],
-		credentials: [
-			{
-				name: 'honeyBookApi',
-				required: true,
-			},
-		],
+		defaultCredentials: 'honeyBookApi',
 		webhooks: [
 			{
 				name: 'default',

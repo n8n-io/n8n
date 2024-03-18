@@ -211,6 +211,8 @@ export abstract class ICredentialsHelper {
 		type: string,
 	): Promise<ICredentials>;
 
+	abstract getCredentialsByType(type: string, userId: string): Promise<ICredentials>;
+
 	abstract getDecrypted(
 		additionalData: IWorkflowExecuteAdditionalData,
 		nodeCredentials: INodeCredentialsDetails,
@@ -1718,6 +1720,7 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	outputNames?: string[];
 	properties: INodeProperties[];
 	credentials?: INodeCredentialDescription[];
+	defaultCredentials?: string;
 	maxNodes?: number; // How many nodes of that type can be created in a workflow
 	polling?: true | undefined;
 	supportsCORS?: true | undefined;

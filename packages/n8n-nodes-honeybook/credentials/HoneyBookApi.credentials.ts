@@ -12,12 +12,6 @@ export class HoneyBookApi implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
-			displayName: 'Context user',
-			name: 'ctxu',
-			type: 'string',
-			default: '',
-		},
-		{
 			displayName: 'Context company',
 			name: 'ctxc',
 			type: 'string',
@@ -29,7 +23,6 @@ export class HoneyBookApi implements ICredentialType {
 		type: 'generic',
 		properties: {
 			qs: {
-				ctxu: '={{$credentials.ctxu}}',
 				ctxc: '={{$credentials.ctxc}}',
 			},
 		},

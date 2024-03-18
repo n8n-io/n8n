@@ -273,6 +273,26 @@ export class CredentialsHelper extends ICredentialsHelper {
 		);
 	}
 
+	async getCredentialsByType(type: string, userId: string): Promise<Credentials> {
+		try {
+			const credential = await this.sharedCredentialsRepository
+				.findOneOrFail({
+					relations: ['credentials'],
+					where: { credentials: { type }, userId },
+				})
+				.then((shared) => shared.credentials);
+
+			return new Credentials(
+				{ id: credential.id, name: credential.name },
+				credential.type,
+				credential.nodesAccess,
+				credential.data,
+			);
+		} catch (error) {
+			throw new CredentialNotFoundError('default', type);
+		}
+	}
+
 	/**
 	 * Returns all the properties of the credentials with the given name
 	 */

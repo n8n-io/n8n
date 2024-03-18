@@ -1956,9 +1956,31 @@ export async function getCredentials(
 		);
 	}
 
+	if (nodeType.description.defaultCredentials) {
+		const credentials = await additionalData.credentialsHelper.getCredentialsByType(
+			type,
+			additionalData.userId,
+		);
+
+		if (!credentials) {
+			throw new NodeOperationError(node, 'Credentials not found');
+		}
+
+		node.credentials = {
+			[type]: {
+				id: credentials.id!,
+				name: credentials.name,
+			},
+		};
+	}
+
 	// Hardcode for now for security reasons that only a single node can access
 	// all credentials
-	const fullAccess = [HTTP_REQUEST_NODE_TYPE].includes(node.type);
+	// HONEYBOOK: we check defaultCredentials here so later in this function we don't get blocked by
+	// the fact that nodeType.description.credentials is undefined
+	const fullAccess =
+		nodeType.description.defaultCredentials !== undefined ||
+		[HTTP_REQUEST_NODE_TYPE].includes(node.type);
 
 	let nodeCredentialDescription: INodeCredentialDescription | undefined;
 	if (!fullAccess) {
