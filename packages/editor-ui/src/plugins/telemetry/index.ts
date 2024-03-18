@@ -76,7 +76,7 @@ export class Telemetry {
 		this.identify(instanceId, userId, versionCli);
 
 		this.flushPageEvents();
-		this.track('Session started', { push_ref: rootStore.pushRef });
+		this.track('Session started', { session_id: rootStore.pushRef });
 	}
 
 	identify(instanceId: string, userId?: string, versionCli?: string) {
@@ -150,7 +150,7 @@ export class Telemetry {
 
 	trackAskAI(event: string, properties: IDataObject = {}) {
 		if (this.rudderStack) {
-			properties.push_ref = useRootStore().pushRef;
+			properties.session_id = useRootStore().pushRef;
 			properties.ndv_session_id = useNDVStore().pushRef;
 
 			switch (event) {
