@@ -17,7 +17,7 @@ import type { IWorkflowExecutionDataProcess } from '@/Interfaces';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { VariablesService } from '@/environments/variables/variables.service.ee';
-import { EntityManager } from '@n8n/typeorm';
+import type { EntityManager } from '@n8n/typeorm';
 
 export function generateFailedExecutionFromError(
 	mode: WorkflowExecuteMode,

@@ -7,7 +7,7 @@ import { CacheService } from '@/services/cache/cache.service';
 import { VariablesRepository } from '@db/repositories/variables.repository';
 import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
 import { VariableValidationError } from '@/errors/variable-validation.error';
-import { EntityManager } from '@n8n/typeorm';
+import type { EntityManager } from '@n8n/typeorm';
 
 @Service()
 export class VariablesService {

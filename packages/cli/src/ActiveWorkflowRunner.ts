@@ -50,7 +50,7 @@ import { ActiveWorkflowsService } from '@/services/activeWorkflows.service';
 import { WorkflowExecutionService } from '@/workflows/workflowExecution.service';
 import { WorkflowStaticDataService } from '@/workflows/workflowStaticData.service';
 import { OnShutdown } from '@/decorators/OnShutdown';
-import { EntityManager } from '@n8n/typeorm';
+import type { EntityManager } from '@n8n/typeorm';
 
 interface QueuedActivation {
 	activationMode: WorkflowActivateMode;
