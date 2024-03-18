@@ -50,19 +50,7 @@ export class ProjectService {
 
 		await this.projectRelationRepository.manager.transaction(async (em) => {
 			try {
-				// 1. delete credentials owned by this project
-				const ownedCredentials = await em.find(SharedCredentials, {
-					where: { projectId: project.id, role: 'credential:owner' },
-					relations: { credentials: true },
-				});
-
-				console.log('ownedCredentials', ownedCredentials);
-
-				for (const credential of ownedCredentials) {
-					await Container.get(CredentialsService).delete(credential.credentials, em);
-				}
-
-				// 2. delete workflows owned by this project
+				// 1. delete workflows owned by this project
 				const ownedSharedWorkflows = await em.find(SharedWorkflow, {
 					where: { projectId: project.id, role: 'workflow:owner' },
 					relations: { workflow: true },
@@ -70,6 +58,16 @@ export class ProjectService {
 
 				for (const sharedWorkflow of ownedSharedWorkflows) {
 					await Container.get(WorkflowService).delete(user, sharedWorkflow.workflow.id, em);
+				}
+
+				// 2. delete credentials owned by this project
+				const ownedCredentials = await em.find(SharedCredentials, {
+					where: { projectId: project.id, role: 'credential:owner' },
+					relations: { credentials: true },
+				});
+
+				for (const credential of ownedCredentials) {
+					await Container.get(CredentialsService).delete(credential.credentials, em);
 				}
 
 				// 3. delete shared credentials into this project
