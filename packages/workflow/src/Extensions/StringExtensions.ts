@@ -1,6 +1,6 @@
 import SHA from 'jssha';
 import MD5 from 'md5';
-import { encode } from 'js-base64';
+import { toBase64, fromBase64 } from 'js-base64';
 import { titleCase } from 'title-case';
 import type { Extension, ExtensionMap } from './Extensions';
 import { transliterate } from 'transliteration';
@@ -118,7 +118,7 @@ function hash(value: string, extraArgs: string[]): string {
 	const algorithm = extraArgs[0]?.toLowerCase() ?? 'md5';
 	switch (algorithm) {
 		case 'base64':
-			return encode(value);
+			return toBase64(value);
 		case 'md5':
 			return MD5(value);
 		case 'sha1':
@@ -392,6 +392,14 @@ function toBoolean(value: string): boolean {
 	return normalized.length > 0 && !FALSY.has(normalized);
 }
 
+function base64Encode(value: string): string {
+	return toBase64(value);
+}
+
+function base64Decode(value: string): string {
+	return fromBase64(value);
+}
+
 removeMarkdown.doc = {
 	name: 'removeMarkdown',
 	description: 'Removes Markdown formatting from a string.',
@@ -638,6 +646,24 @@ parseJson.doc = {
 		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-parseJson',
 };
 
+base64Encode.doc = {
+	name: 'base64Encode',
+	description: 'Converts a UTF-8-encoded string to a Base64 string.',
+	section: 'edit',
+	returnType: 'string',
+	docURL:
+		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-base64Encode',
+};
+
+base64Decode.doc = {
+	name: 'base64Decode',
+	description: 'Converts a Base64 string to a UTF-8 string.',
+	section: 'edit',
+	returnType: 'string',
+	docURL:
+		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-base64Decode',
+};
+
 const toDecimalNumber: Extension = toFloat.bind({});
 toDecimalNumber.doc = { ...toFloat.doc, hidden: true };
 const toWholeNumber: Extension = toInt.bind({});
@@ -675,5 +701,7 @@ export const stringExtensions: ExtensionMap = {
 		extractUrl,
 		extractUrlPath,
 		parseJson,
+		base64Encode,
+		base64Decode,
 	},
 };
