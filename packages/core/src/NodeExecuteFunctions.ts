@@ -33,6 +33,7 @@ import { Agent, type AgentOptions } from 'https';
 import get from 'lodash/get';
 import isEmpty from 'lodash/isEmpty';
 import pick from 'lodash/pick';
+import { DateTime } from 'luxon';
 import { extension, lookup } from 'mime-types';
 import type {
 	BinaryHelperFunctions,
@@ -2096,7 +2097,7 @@ export async function getCredentials(
  * Clean up parameter data to make sure that only valid data gets returned
  * INFO: Currently only converts Luxon Dates as we know for sure it will not be breaking
  */
-function cleanupParameterData(inputData: NodeParameterValueType): void {
+export function cleanupParameterData(inputData: NodeParameterValueType): void {
 	if (typeof inputData !== 'object' || inputData === null) {
 		return;
 	}
@@ -2107,14 +2108,15 @@ function cleanupParameterData(inputData: NodeParameterValueType): void {
 	}
 
 	if (typeof inputData === 'object') {
-		Object.keys(inputData).forEach((key) => {
-			if (typeof inputData[key as keyof typeof inputData] === 'object') {
-				if (inputData[key as keyof typeof inputData]?.constructor.name === 'DateTime') {
+		type Key = keyof typeof inputData;
+		(Object.keys(inputData) as Key[]).forEach((key) => {
+			const value = inputData[key];
+			if (typeof value === 'object') {
+				if (value instanceof DateTime) {
 					// Is a special luxon date so convert to string
-					inputData[key as keyof typeof inputData] =
-						inputData[key as keyof typeof inputData]?.toString();
+					inputData[key] = value.toString();
 				} else {
-					cleanupParameterData(inputData[key as keyof typeof inputData]);
+					cleanupParameterData(value);
 				}
 			}
 		});
