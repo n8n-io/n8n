@@ -11,6 +11,10 @@ properties:
   saveDataSuccessExecution:
     type: string
     enum: ['all', 'none']
+  executionOrder:
+    type: string
+    enum: ['v0', 'v1']
+    default: 'v1'
   executionTimeout:
     type: number
     example: 3600
