@@ -14,6 +14,8 @@ import { RoleService } from './role.service';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
+import { rightDiff } from '@/utils';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 
 @Service()
 export class ProjectService {
@@ -47,35 +49,60 @@ export class ProjectService {
 		const credentialsService = await this.credentialsService;
 		const activeWorkflowRunner = await this.activeWorkflowRunner;
 
+		const project = await this.getProjectWithScope(user, projectId, 'project:delete');
+
+		if (!project) {
+			throw new NotFoundError(`Could not find project with ID: ${projectId}`);
+		}
+
+		// 0. check if this is a team project
+		if (project.type !== 'team') {
+			throw new ForbiddenError(
+				`Can't delete project. Project with ID "${projectId}" is not a team project.`,
+			);
+		}
+
+		// 1. disable all workflows
+
+		// NOTE: This is supposed to happen outside the transaction.
+		// We'd otherwise need to pass the em through to a lot of functions even ending up in core.
+		// See: https://github.com/n8n-io/n8n/pull/8904#discussion_r1530150510
+		const ownedSharedWorkflowsOutsideOfTransaction = await this.sharedWorkflowRepository.find({
+			where: { projectId: project.id, role: 'workflow:owner' },
+			relations: { workflow: true },
+		});
+
+		for (const sharedWorkflow of ownedSharedWorkflowsOutsideOfTransaction) {
+			await activeWorkflowRunner.remove(sharedWorkflow.workflow.id);
+		}
+
 		await this.projectRelationRepository.manager.transaction(async (em) => {
-			const project = await this.getProjectWithScope(user, projectId, 'project:delete', em);
-
-			if (!project) {
-				throw new NotFoundError(`Could not find project with ID: ${projectId}`);
-			}
-
-			// 0. check if this is a team project
-			if (project.type !== 'team') {
-				throw new ForbiddenError(
-					`Can't delete project. Project with ID "${projectId}" is not a team project.`,
-				);
-			}
-
-			// 1. delete workflows owned by this project
+			// 2. delete workflows owned by this project
 			const ownedSharedWorkflows = await em.find(SharedWorkflow, {
 				where: { projectId: project.id, role: 'workflow:owner' },
 				relations: { workflow: true },
 			});
 
+			// Make sure that no new workflows were created in the meanwhile.
+			const diff1 = rightDiff(
+				[ownedSharedWorkflowsOutsideOfTransaction, (sw) => sw.projectId + sw.workflowId],
+				[ownedSharedWorkflows, (sw) => sw.projectId + sw.workflowId],
+			);
+			const diff2 = rightDiff(
+				[ownedSharedWorkflows, (sw) => sw.projectId + sw.workflowId],
+				[ownedSharedWorkflowsOutsideOfTransaction, (sw) => sw.projectId + sw.workflowId],
+			);
+			if (diff1.length !== 0 || diff2.length !== 0) {
+				throw new ConflictError(
+					'New Workflows have been created during the deletion process. Please try again.',
+				);
+			}
+
 			for (const sharedWorkflow of ownedSharedWorkflows) {
-				// NOTE: This is supposed to happen outside the transaction.
-				// We'd otherwise need to pass the em through to a lot of functions even ending up in core.
-				// See: https://github.com/n8n-io/n8n/pull/8904#discussion_r1530150510
-				await activeWorkflowRunner.remove(sharedWorkflow.workflow.id);
 				await workflowService.deleteInactiveWorkflow(user, sharedWorkflow.workflow, em);
 			}
 
-			// 2. delete credentials owned by this project
+			// 3. delete credentials owned by this project
 			const ownedCredentials = await em.find(SharedCredentials, {
 				where: { projectId: project.id, role: 'credential:owner' },
 				relations: { credentials: true },
@@ -85,16 +112,16 @@ export class ProjectService {
 				await credentialsService.delete(credential.credentials, em);
 			}
 
-			// 3. delete shared credentials into this project
+			// 4. delete shared credentials into this project
 			// Cascading deletes take care of this.
 
-			// 4. delete shared workflows into this project
+			// 5. delete shared workflows into this project
 			// Cascading deletes take care of this.
 
-			// 5. delete project
+			// 6. delete project
 			await em.remove(project);
 
-			// 6. delete project relations
+			// 7. delete project relations
 			// Cascading deletes take care of this.
 		});
 	}
