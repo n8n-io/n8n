@@ -4,55 +4,49 @@
 	</component>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script lang="ts" setup>
+import { computed, useCssModule } from 'vue';
 
-export default defineComponent({
-	name: 'N8nHeading',
-	props: {
-		tag: {
-			type: String,
-			default: 'span',
-		},
-		bold: {
-			type: Boolean,
-			default: false,
-		},
-		size: {
-			type: String,
-			default: 'medium',
-			validator: (value: string): boolean =>
-				['2xlarge', 'xlarge', 'large', 'medium', 'small'].includes(value),
-		},
-		color: {
-			type: String,
-			validator: (value: string): boolean =>
-				['primary', 'text-dark', 'text-base', 'text-light', 'text-xlight', 'danger'].includes(
-					value,
-				),
-		},
-		align: {
-			type: String,
-			validator: (value: string): boolean => ['right', 'left', 'center'].includes(value),
-		},
-	},
-	computed: {
-		classes() {
-			const applied = [];
-			if (this.align) {
-				applied.push(`align-${this.align}`);
-			}
-			if (this.color) {
-				applied.push(this.color);
-			}
+const SIZES = ['2xlarge', 'xlarge', 'large', 'medium', 'small'] as const;
+const COLORS = [
+	'primary',
+	'text-dark',
+	'text-base',
+	'text-light',
+	'text-xlight',
+	'danger',
+] as const;
+const ALIGN = ['right', 'left', 'center'] as const;
 
-			applied.push(`size-${this.size}`);
+interface HeadingProps {
+	tag?: string;
+	bold?: boolean;
+	size?: (typeof SIZES)[number];
+	color?: (typeof COLORS)[number];
+	align?: (typeof ALIGN)[number];
+}
 
-			applied.push(this.bold ? 'bold' : 'regular');
+defineOptions({ name: 'N8nHeading' });
+const props = withDefaults(defineProps<HeadingProps>(), {
+	tag: 'span',
+	bold: false,
+	size: 'medium',
+});
 
-			return applied.map((c) => this.$style[c]);
-		},
-	},
+const $style = useCssModule();
+const classes = computed(() => {
+	const applied: string[] = [];
+	if (props.align) {
+		applied.push(`align-${props.align}`);
+	}
+	if (props.color) {
+		applied.push(props.color);
+	}
+
+	applied.push(`size-${props.size}`);
+	applied.push(props.bold ? 'bold' : 'regular');
+
+	return applied.map((c) => $style[c]);
 });
 </script>
 

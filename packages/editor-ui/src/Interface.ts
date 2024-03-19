@@ -7,7 +7,8 @@ import type {
 	REGULAR_NODE_CREATOR_VIEW,
 	AI_OTHERS_NODE_CREATOR_VIEW,
 	VIEWS,
-} from './constants';
+	ROLE,
+} from '@/constants';
 import type { IMenuItem } from 'n8n-design-system';
 import {
 	type GenericValue,
@@ -107,6 +108,10 @@ declare global {
 		};
 		// eslint-disable-next-line @typescript-eslint/naming-convention
 		Cypress: unknown;
+
+		Sentry?: {
+			captureException: (error: Error, metadata?: unknown) => void;
+		};
 	}
 }
 
@@ -684,9 +689,9 @@ export type IPersonalizationSurveyVersions =
 	| IPersonalizationSurveyAnswersV2
 	| IPersonalizationSurveyAnswersV3;
 
-export type IRole = 'default' | 'global:owner' | 'global:member' | 'global:admin';
-
-export type InvitableRoleName = 'global:member' | 'global:admin';
+export type Roles = typeof ROLE;
+export type IRole = Roles[keyof Roles];
+export type InvitableRoleName = Roles['Member' | 'Admin'];
 
 export interface IUserResponse {
 	id: string;
@@ -710,7 +715,6 @@ export interface IUser extends IUserResponse {
 	isDefaultUser: boolean;
 	isPendingUser: boolean;
 	hasRecoveryCodesLeft: boolean;
-	isOwner: boolean;
 	inviteAcceptUrl?: string;
 	fullName?: string;
 	createdAt?: string;
@@ -1102,6 +1106,7 @@ export interface RootState {
 	urlBaseEditor: string;
 	instanceId: string;
 	isNpmAvailable: boolean;
+	binaryDataMode: string;
 }
 
 export interface NodeMetadataMap {
@@ -1150,6 +1155,7 @@ export interface IRootState {
 	nodeMetadata: NodeMetadataMap;
 	isNpmAvailable: boolean;
 	subworkflowExecutionError: Error | null;
+	binaryDataMode: string;
 }
 
 export interface CommunityPackageMap {
@@ -1239,6 +1245,7 @@ export interface NDVState {
 		activeTarget: { id: string; stickyPosition: null | XYPosition } | null;
 	};
 	isMappingOnboarded: boolean;
+	isAutocompleteOnboarded: boolean;
 }
 
 export interface NotificationOptions extends Partial<ElementNotificationOptions> {

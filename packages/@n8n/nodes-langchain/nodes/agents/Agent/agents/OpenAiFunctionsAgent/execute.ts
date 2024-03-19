@@ -7,11 +7,11 @@ import {
 
 import type { AgentExecutorInput } from 'langchain/agents';
 import { AgentExecutor, OpenAIAgent } from 'langchain/agents';
-import type { BaseOutputParser } from 'langchain/schema/output_parser';
-import { PromptTemplate } from 'langchain/prompts';
+import type { BaseOutputParser } from '@langchain/core/output_parsers';
+import { PromptTemplate } from '@langchain/core/prompts';
 import { CombiningOutputParser } from 'langchain/output_parsers';
 import { BufferMemory, type BaseChatMemory } from 'langchain/memory';
-import { ChatOpenAI } from 'langchain/chat_models/openai';
+import { ChatOpenAI } from '@langchain/openai';
 import {
 	getConnectedTools,
 	getOptionalOutputParsers,

@@ -1,8 +1,10 @@
 export interface ExtensionMap {
 	typeName: string;
-	// eslint-disable-next-line @typescript-eslint/ban-types
-	functions: Record<string, Function & { doc?: DocMetadata }>;
+	functions: Record<string, Extension>;
 }
+
+// eslint-disable-next-line @typescript-eslint/ban-types
+export type Extension = Function & { doc?: DocMetadata };
 
 export type NativeDoc = {
 	typeName: string;
@@ -14,6 +16,8 @@ export type DocMetadata = {
 	name: string;
 	returnType: string;
 	description?: string;
+	section?: string;
+	hidden?: boolean;
 	aliases?: string[];
 	args?: Array<{ name: string; type?: string }>;
 	docURL?: string;

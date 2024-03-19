@@ -9,8 +9,8 @@ import type {
 } from 'n8n-workflow';
 
 import { loadSummarizationChain } from 'langchain/chains';
-import type { BaseLanguageModel } from 'langchain/dist/base_language';
-import type { Document } from 'langchain/document';
+import type { BaseLanguageModel } from '@langchain/core/language_models/base';
+import type { Document } from '@langchain/core/documents';
 import type { TextSplitter } from 'langchain/text_splitter';
 import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
 import { N8nJsonLoader } from '../../../../utils/N8nJsonLoader';

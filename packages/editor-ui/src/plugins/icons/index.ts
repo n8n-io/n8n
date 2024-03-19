@@ -130,6 +130,8 @@ import {
 	faTerminal,
 	faThLarge,
 	faThumbtack,
+	faThumbsDown,
+	faThumbsUp,
 	faTimes,
 	faTimesCircle,
 	faToolbox,
@@ -296,6 +298,8 @@ export const FontAwesomePlugin: Plugin<{}> = {
 		addIcon(faTerminal);
 		addIcon(faThLarge);
 		addIcon(faThumbtack);
+		addIcon(faThumbsDown);
+		addIcon(faThumbsUp);
 		addIcon(faTimes);
 		addIcon(faTimesCircle);
 		addIcon(faToolbox);

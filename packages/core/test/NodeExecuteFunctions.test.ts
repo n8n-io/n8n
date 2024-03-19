@@ -1,20 +1,26 @@
 import {
+	cleanupParameterData,
 	copyInputItems,
 	getBinaryDataBuffer,
 	parseIncomingMessage,
 	parseRequestObject,
 	proxyRequestToAxios,
+	removeEmptyBody,
 	setBinaryDataBuffer,
 } from '@/NodeExecuteFunctions';
+import { DateTime } from 'luxon';
 import { mkdtempSync, readFileSync } from 'fs';
 import type { IncomingMessage } from 'http';
 import { mock } from 'jest-mock-extended';
 import type {
 	IBinaryData,
 	IHttpRequestMethods,
+	IHttpRequestOptions,
 	INode,
+	IRequestOptions,
 	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
+	NodeParameterValue,
 	Workflow,
 	WorkflowHooks,
 } from 'n8n-workflow';
@@ -411,6 +417,29 @@ describe('NodeExecuteFunctions', () => {
 		});
 	});
 
+	describe('cleanupParameterData', () => {
+		it('should stringify Luxon dates in-place', () => {
+			const input = { x: 1, y: DateTime.now() as unknown as NodeParameterValue };
+			expect(typeof input.y).toBe('object');
+			cleanupParameterData(input);
+			expect(typeof input.y).toBe('string');
+		});
+
+		it('should handle objects with nameless constructors', () => {
+			const input = { x: 1, y: { constructor: {} } as NodeParameterValue };
+			expect(typeof input.y).toBe('object');
+			cleanupParameterData(input);
+			expect(typeof input.y).toBe('object');
+		});
+
+		it('should handle objects without a constructor', () => {
+			const input = { x: 1, y: { constructor: undefined } as unknown as NodeParameterValue };
+			expect(typeof input.y).toBe('object');
+			cleanupParameterData(input);
+			expect(typeof input.y).toBe('object');
+		});
+	});
+
 	describe('copyInputItems', () => {
 		it('should pick only selected properties', () => {
 			const output = copyInputItems(
@@ -457,5 +486,43 @@ describe('NodeExecuteFunctions', () => {
 			expect(output[0].a).toEqual(input.a);
 			expect(output[0].a === input.a).toEqual(false);
 		});
+	});
+
+	describe('removeEmptyBody', () => {
+		test.each(['GET', 'HEAD', 'OPTIONS'] as IHttpRequestMethods[])(
+			'Should remove empty body for %s',
+			async (method) => {
+				const requestOptions = {
+					method,
+					body: {},
+				} as IHttpRequestOptions | IRequestOptions;
+				removeEmptyBody(requestOptions);
+				expect(requestOptions.body).toEqual(undefined);
+			},
+		);
+
+		test.each(['GET', 'HEAD', 'OPTIONS'] as IHttpRequestMethods[])(
+			'Should not remove non-empty body for %s',
+			async (method) => {
+				const requestOptions = {
+					method,
+					body: { test: true },
+				} as IHttpRequestOptions | IRequestOptions;
+				removeEmptyBody(requestOptions);
+				expect(requestOptions.body).toEqual({ test: true });
+			},
+		);
+
+		test.each(['POST', 'PUT', 'PATCH', 'DELETE'] as IHttpRequestMethods[])(
+			'Should not remove empty body for %s',
+			async (method) => {
+				const requestOptions = {
+					method,
+					body: {},
+				} as IHttpRequestOptions | IRequestOptions;
+				removeEmptyBody(requestOptions);
+				expect(requestOptions.body).toEqual({});
+			},
+		);
 	});
 });
