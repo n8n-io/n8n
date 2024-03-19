@@ -561,7 +561,7 @@ const stringOptions = (input: AutocompleteInput<string>): Completion[] => {
 		});
 	}
 
-	if (resolved === 'true' || resolved === 'false') {
+	if (['true', 'false'].includes(resolved.toLocaleLowerCase())) {
 		return applySections({
 			options,
 			recommended: ['toBoolean()', ...STRING_RECOMMENDED_OPTIONS],
