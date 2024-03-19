@@ -30,6 +30,12 @@ export const customResourceOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Count',
+				value: 'count',
+				description: 'Count items',
+				action: 'Count items',
+			},
+			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new item',
@@ -201,7 +207,7 @@ export const customResourceDescription: INodeProperties[] = [
 		placeholder: 'Add condition',
 		displayOptions: {
 			show: {
-				operation: ['getAll'],
+				operation: ['getAll', 'count'],
 				resource: ['custom'],
 			},
 		},
@@ -282,6 +288,7 @@ export const customResourceDescription: INodeProperties[] = [
 			},
 		],
 	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                custom:update                               */
 	/* -------------------------------------------------------------------------- */
