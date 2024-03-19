@@ -1,5 +1,5 @@
 import Container, { Service } from 'typedi';
-import { NodeApiError } from 'n8n-workflow';
+import { ApplicationError, NodeApiError } from 'n8n-workflow';
 import pick from 'lodash/pick';
 import omit from 'lodash/omit';
 import { v4 as uuid } from 'uuid';
@@ -7,8 +7,7 @@ import { BinaryDataService } from 'n8n-core';
 
 import config from '@/config';
 import type { User } from '@db/entities/User';
-import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { ExecutionRepository } from '@db/repositories/execution.repository';
+import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowTagMappingRepository } from '@db/repositories/workflowTagMapping.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
@@ -25,12 +24,13 @@ import { Logger } from '@/Logger';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { EntityManager } from '@n8n/typeorm';
+import { ExecutionEntity } from '@/databases/entities/ExecutionEntity';
 
 @Service()
 export class WorkflowService {
 	constructor(
 		private readonly logger: Logger,
-		private readonly executionRepository: ExecutionRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowTagMappingRepository: WorkflowTagMappingRepository,
@@ -220,6 +220,29 @@ export class WorkflowService {
 		return updatedWorkflow;
 	}
 
+	async deleteInactiveWorkflow(user: User, workflow: WorkflowEntity, em?: EntityManager) {
+		em = em ?? this.workflowRepository.manager;
+
+		if (workflow.active) {
+			throw new ApplicationError('Deactivate the workflow before you delete it.');
+		}
+
+		const workflowId = workflow.id;
+
+		const idsForDeletion = await em
+			.find(ExecutionEntity, {
+				select: ['id'],
+				where: { workflowId },
+			})
+			.then((rows) => rows.map(({ id: executionId }) => ({ workflowId, executionId })));
+
+		await em.delete(WorkflowEntity, workflowId);
+		await this.binaryDataService.deleteMany(idsForDeletion);
+
+		void Container.get(InternalHooks).onWorkflowDeleted(user, workflowId, false);
+		await this.externalHooks.run('workflow.afterDelete', [workflowId]);
+	}
+
 	async delete(user: User, workflowId: string): Promise<WorkflowEntity | undefined> {
 		await this.externalHooks.run('workflow.delete', [workflowId]);
 
@@ -236,18 +259,7 @@ export class WorkflowService {
 			await this.activeWorkflowRunner.remove(workflowId);
 		}
 
-		const idsForDeletion = await this.executionRepository
-			.find({
-				select: ['id'],
-				where: { workflowId },
-			})
-			.then((rows) => rows.map(({ id: executionId }) => ({ workflowId, executionId })));
-
-		await this.workflowRepository.delete(workflowId);
-		await this.binaryDataService.deleteMany(idsForDeletion);
-
-		void Container.get(InternalHooks).onWorkflowDeleted(user, workflowId, false);
-		await this.externalHooks.run('workflow.afterDelete', [workflowId]);
+		await this.deleteInactiveWorkflow(user, workflow);
 
 		return workflow;
 	}

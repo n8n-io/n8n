@@ -2,14 +2,16 @@ import { Project } from '@/databases/entities/Project';
 import { ProjectRelation } from '@/databases/entities/ProjectRelation';
 import type { ProjectRole } from '@/databases/entities/ProjectRelation';
 import type { User } from '@/databases/entities/User';
+import { SharedCredentials } from '@/databases/entities/SharedCredentials';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
-import { Not, type EntityManager } from '@n8n/typeorm';
-import { Service } from 'typedi';
+import type { FindOptionsWhere, EntityManager } from '@n8n/typeorm';
+import Container, { Service } from 'typedi';
 import { type Scope } from '@n8n/permissions';
-import { In } from '@n8n/typeorm';
+import { In, Not } from '@n8n/typeorm';
 import { RoleService } from './role.service';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
 
 @Service()
@@ -20,6 +22,86 @@ export class ProjectService {
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly roleService: RoleService,
 	) {}
+
+	private get workflowService() {
+		return import('@/workflows/workflow.service').then(({ WorkflowService }) =>
+			Container.get(WorkflowService),
+		);
+	}
+
+	private get credentialsService() {
+		return import('@/credentials/credentials.service').then(({ CredentialsService }) =>
+			Container.get(CredentialsService),
+		);
+	}
+
+	private get activeWorkflowRunner() {
+		return import('@/ActiveWorkflowRunner').then(({ ActiveWorkflowRunner }) =>
+			Container.get(ActiveWorkflowRunner),
+		);
+	}
+
+	async deleteProject(user: User, projectId: string) {
+		const workflowService = await this.workflowService;
+		const credentialsService = await this.credentialsService;
+		const activeWorkflowRunner = await this.activeWorkflowRunner;
+
+		const project = await this.getProjectWithScope(user, projectId, 'project:delete');
+
+		if (!project) {
+			throw new NotFoundError(`Could not find project with ID: ${projectId}`);
+		}
+
+		// 0. check if this is a team project
+		if (project.type !== 'team') {
+			throw new ForbiddenError(
+				`Can't delete project. Project with ID "${projectId}" is not a team project.`,
+			);
+		}
+
+		// 1. disable all workflows
+
+		const ownedSharedWorkflows = await this.sharedWorkflowRepository.find({
+			where: { projectId: project.id, role: 'workflow:owner' },
+			relations: { workflow: true },
+		});
+
+		// NOTE: This is supposed to happen outside the transaction.
+		// We'd otherwise need to pass the em through to a lot of functions even ending up in core.
+		// See: https://github.com/n8n-io/n8n/pull/8904#discussion_r1530150510
+		for (const sharedWorkflow of ownedSharedWorkflows) {
+			await activeWorkflowRunner.remove(sharedWorkflow.workflow.id);
+		}
+
+		await this.projectRelationRepository.manager.transaction(async (em) => {
+			// 2. delete workflows owned by this project
+			for (const sharedWorkflow of ownedSharedWorkflows) {
+				await workflowService.deleteInactiveWorkflow(user, sharedWorkflow.workflow, em);
+			}
+
+			// 3. delete credentials owned by this project
+			const ownedCredentials = await em.find(SharedCredentials, {
+				where: { projectId: project.id, role: 'credential:owner' },
+				relations: { credentials: true },
+			});
+
+			for (const credential of ownedCredentials) {
+				await credentialsService.delete(credential.credentials, em);
+			}
+
+			// 4. delete shared credentials into this project
+			// Cascading deletes take care of this.
+
+			// 5. delete shared workflows into this project
+			// Cascading deletes take care of this.
+
+			// 6. delete project
+			await em.remove(project);
+
+			// 7. delete project relations
+			// Cascading deletes take care of this.
+		});
+	}
 
 	/**
 	 * Find all the projects where a workflow is accessible,
@@ -145,16 +227,24 @@ export class ProjectService {
 		entityManager?: EntityManager,
 	) {
 		const em = entityManager ?? this.projectRepository.manager;
-		const projectRoles = this.roleService.rolesWithScope('project', [scope]);
+		let where: FindOptionsWhere<Project> = {
+			id: projectId,
+		};
 
-		return await em.findOne(Project, {
-			where: {
-				id: projectId,
+		if (!user.hasGlobalScope([scope], { mode: 'allOf' })) {
+			const projectRoles = this.roleService.rolesWithScope('project', scope);
+
+			where = {
+				...where,
 				projectRelations: {
 					role: In(projectRoles),
 					userId: user.id,
 				},
-			},
+			};
+		}
+
+		return await em.findOne(Project, {
+			where,
 		});
 	}
 

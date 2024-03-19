@@ -7,6 +7,7 @@ import {
 	Licensed,
 	Patch,
 	ProjectScope,
+	Delete,
 } from '@/decorators';
 import { ProjectRequest } from '@/requests';
 import { ProjectService } from '@/services/project.service';
@@ -92,5 +93,11 @@ export class ProjectController {
 		if (req.body.relations) {
 			await this.projectsService.syncProjectRelations(req.params.projectId, req.body.relations);
 		}
+	}
+
+	@Delete('/:projectId')
+	@ProjectScope('project:delete')
+	async deleteProject(req: ProjectRequest.Delete) {
+		await this.projectsService.deleteProject(req.user, req.params.projectId);
 	}
 }

@@ -90,7 +90,7 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 		workflowId: string,
 		user: User,
 		scopes: Scope[],
-		{ includeTags = false } = {},
+		{ includeTags = false, em = this.manager } = {},
 	) {
 		let where: FindOptionsWhere<SharedWorkflow> = { workflowId };
 
@@ -110,7 +110,7 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 			};
 		}
 
-		const sharedWorkflow = await this.findOne({
+		const sharedWorkflow = await em.findOne(SharedWorkflow, {
 			where,
 			relations: {
 				workflow: {

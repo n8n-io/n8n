@@ -1,13 +1,29 @@
 import * as testDb from './shared/testDb';
 import * as utils from './shared/utils/';
-import { createOwner, createUser } from './shared/db/users';
+import { createMember, createOwner, createUser } from './shared/db/users';
+import {
+	createTeamProject,
+	linkUserToProject,
+	getPersonalProject,
+	findProject,
+	getProjectRelations,
+} from './shared/db/projects';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import Container from 'typedi';
 import type { Project } from '@/databases/entities/Project';
-import type { User } from '@/databases/entities/User';
 import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
-import type { ProjectRelation, ProjectRole } from '@/databases/entities/ProjectRelation';
-import { randomName } from './shared/random';
+import type { ProjectRole } from '@/databases/entities/ProjectRelation';
+import { EntityNotFoundError } from '@n8n/typeorm';
+import { createWorkflow, shareWorkflowWithProjects } from './shared/db/workflows';
+import {
+	getCredentialById,
+	saveCredential,
+	shareCredentialWithProjects,
+} from './shared/db/credentials';
+import { randomCredentialPayload } from './shared/random';
+import { getWorkflowById } from '@/PublicApi/v1/handlers/workflows/workflows.service';
+import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
+import { SharedCredentialsRepository } from '@/databases/repositories/sharedCredentials.repository';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['project'],
@@ -16,51 +32,6 @@ const testServer = utils.setupTestServer({
 
 let projectRepository: ProjectRepository;
 let projectRelationRepository: ProjectRelationRepository;
-
-const createTeamProject = async (name?: string) => {
-	return await projectRepository.save(
-		projectRepository.create({
-			name: name ?? randomName(),
-			type: 'team',
-		}),
-	);
-};
-
-const linkUserToProject = async (user: User, project: Project, role: ProjectRole) => {
-	await projectRelationRepository.save(
-		projectRelationRepository.create({
-			projectId: project.id,
-			userId: user.id,
-			role,
-		}),
-	);
-};
-
-const getPersonalProject = async (user: User): Promise<Project> => {
-	return await projectRepository.findOneOrFail({
-		where: {
-			projectRelations: {
-				userId: user.id,
-				role: 'project:personalOwner',
-			},
-			type: 'personal',
-		},
-	});
-};
-
-const findProject = async (id: string): Promise<Project> => {
-	return await projectRepository.findOneOrFail({
-		where: { id },
-	});
-};
-
-const getProjectRelations = async ({
-	projectId,
-	userId,
-	role,
-}: Partial<ProjectRelation>): Promise<ProjectRelation[]> => {
-	return await projectRelationRepository.find({ where: { projectId, userId, role } });
-};
 
 beforeAll(() => {
 	projectRepository = Container.get(ProjectRepository);
@@ -73,15 +44,16 @@ beforeEach(async () => {
 
 describe('GET /projects/', () => {
 	test('member should get all personal projects and team projects they are apart of', async () => {
-		const [testUser1, testUser2, testUser3, teamProject1, teamProject2] = await Promise.all([
+		const [testUser1, testUser2, testUser3] = await Promise.all([
 			createUser(),
 			createUser(),
 			createUser(),
-			createTeamProject(),
+		]);
+		const [teamProject1, teamProject2] = await Promise.all([
+			createTeamProject(undefined, testUser1),
 			createTeamProject(),
 		]);
 
-		await linkUserToProject(testUser1, teamProject1, 'project:editor');
 		const [personalProject1, personalProject2, personalProject3] = await Promise.all([
 			getPersonalProject(testUser1),
 			getPersonalProject(testUser2),
@@ -110,17 +82,17 @@ describe('GET /projects/', () => {
 	});
 
 	test('owner should get all projects', async () => {
-		const [ownerUser, testUser1, testUser2, testUser3, teamProject1, teamProject2] =
-			await Promise.all([
-				createOwner(),
-				createUser(),
-				createUser(),
-				createUser(),
-				createTeamProject(),
-				createTeamProject(),
-			]);
+		const [ownerUser, testUser1, testUser2, testUser3] = await Promise.all([
+			createOwner(),
+			createUser(),
+			createUser(),
+			createUser(),
+		]);
+		const [teamProject1, teamProject2] = await Promise.all([
+			createTeamProject(undefined, testUser1),
+			createTeamProject(),
+		]);
 
-		await linkUserToProject(testUser1, teamProject1, 'project:editor');
 		const [ownerProject, personalProject1, personalProject2, personalProject3] = await Promise.all([
 			getPersonalProject(ownerUser),
 			getPersonalProject(testUser1),
@@ -152,15 +124,16 @@ describe('GET /projects/', () => {
 
 describe('GET /projects/my-projects', () => {
 	test('member should get all projects they are apart of', async () => {
-		const [testUser1, testUser2, testUser3, teamProject1, teamProject2] = await Promise.all([
+		const [testUser1, testUser2, testUser3] = await Promise.all([
 			createUser(),
 			createUser(),
 			createUser(),
-			createTeamProject(),
+		]);
+		const [teamProject1, teamProject2] = await Promise.all([
+			createTeamProject(undefined, testUser1),
 			createTeamProject(),
 		]);
 
-		await linkUserToProject(testUser1, teamProject1, 'project:editor');
 		const [personalProject1, personalProject2, personalProject3] = await Promise.all([
 			getPersonalProject(testUser1),
 			getPersonalProject(testUser2),
@@ -189,18 +162,17 @@ describe('GET /projects/my-projects', () => {
 	});
 
 	test('owner should get all projects they are apart of', async () => {
-		const [ownerUser, testUser1, testUser2, testUser3, teamProject1, teamProject2] =
-			await Promise.all([
-				createOwner(),
-				createUser(),
-				createUser(),
-				createUser(),
-				createTeamProject(),
-				createTeamProject(),
-			]);
+		const [ownerUser, testUser1, testUser2, testUser3] = await Promise.all([
+			createOwner(),
+			createUser(),
+			createUser(),
+			createUser(),
+		]);
+		const [teamProject1, teamProject2] = await Promise.all([
+			createTeamProject(undefined, testUser1),
+			createTeamProject(undefined, ownerUser),
+		]);
 
-		await linkUserToProject(testUser1, teamProject1, 'project:editor');
-		await linkUserToProject(ownerUser, teamProject2, 'project:editor');
 		const [ownerProject, personalProject1, personalProject2, personalProject3] = await Promise.all([
 			getPersonalProject(ownerUser),
 			getPersonalProject(testUser1),
@@ -319,18 +291,17 @@ describe('PATCH /projects/:projectId', () => {
 
 describe('PATCH /projects/:projectId', () => {
 	test('should add or remove users from a project', async () => {
-		const [ownerUser, testUser1, testUser2, testUser3, teamProject1, teamProject2] =
-			await Promise.all([
-				createOwner(),
-				createUser(),
-				createUser(),
-				createUser(),
-				createTeamProject(),
-				createTeamProject(),
-			]);
+		const [ownerUser, testUser1, testUser2, testUser3] = await Promise.all([
+			createOwner(),
+			createUser(),
+			createUser(),
+			createUser(),
+		]);
+		const [teamProject1, teamProject2] = await Promise.all([
+			createTeamProject(undefined, testUser1),
+			createTeamProject(undefined, testUser2),
+		]);
 
-		await linkUserToProject(testUser1, teamProject1, 'project:admin');
-		await linkUserToProject(testUser2, teamProject1, 'project:admin');
 		await linkUserToProject(ownerUser, teamProject2, 'project:editor');
 		await linkUserToProject(testUser2, teamProject2, 'project:editor');
 
@@ -371,18 +342,18 @@ describe('PATCH /projects/:projectId', () => {
 	});
 
 	test('should not add or remove users from a project if lacking permissions', async () => {
-		const [ownerUser, testUser1, testUser2, testUser3, teamProject1, teamProject2] =
-			await Promise.all([
-				createOwner(),
-				createUser(),
-				createUser(),
-				createUser(),
-				createTeamProject(),
-				createTeamProject(),
-			]);
+		const [ownerUser, testUser1, testUser2, testUser3] = await Promise.all([
+			createOwner(),
+			createUser(),
+			createUser(),
+			createUser(),
+		]);
+		const [teamProject1, teamProject2] = await Promise.all([
+			createTeamProject(undefined, testUser2),
+			createTeamProject(),
+		]);
 
 		await linkUserToProject(testUser1, teamProject1, 'project:viewer');
-		await linkUserToProject(testUser2, teamProject1, 'project:admin');
 		await linkUserToProject(ownerUser, teamProject2, 'project:editor');
 		await linkUserToProject(testUser2, teamProject2, 'project:editor');
 
@@ -447,18 +418,18 @@ describe('PATCH /projects/:projectId', () => {
 
 describe('GET /project/:projectId', () => {
 	test('should get project details and relations', async () => {
-		const [ownerUser, testUser1, testUser2, testUser3, teamProject1, teamProject2] =
-			await Promise.all([
-				createOwner(),
-				createUser(),
-				createUser(),
-				createUser(),
-				createTeamProject(),
-				createTeamProject(),
-			]);
+		const [ownerUser, testUser1, testUser2, _testUser3] = await Promise.all([
+			createOwner(),
+			createUser(),
+			createUser(),
+			createUser(),
+		]);
+		const [teamProject1, teamProject2] = await Promise.all([
+			createTeamProject(undefined, testUser2),
+			createTeamProject(),
+		]);
 
 		await linkUserToProject(testUser1, teamProject1, 'project:viewer');
-		await linkUserToProject(testUser2, teamProject1, 'project:admin');
 		await linkUserToProject(ownerUser, teamProject2, 'project:editor');
 		await linkUserToProject(testUser2, teamProject2, 'project:editor');
 
@@ -485,5 +456,229 @@ describe('GET /project/:projectId', () => {
 			lastName: testUser2.lastName,
 			role: 'project:admin',
 		});
+	});
+});
+
+describe('DELETE /project/:projectId', () => {
+	test('allows the project:owner to delete a project', async () => {
+		const member = await createMember();
+		const project = await createTeamProject(undefined, member);
+
+		await testServer.authAgentFor(member).delete(`/projects/${project.id}`).expect(200);
+
+		const projectInDB = findProject(project.id);
+
+		await expect(projectInDB).rejects.toThrowError(EntityNotFoundError);
+	});
+
+	test('allows the instance owner to delete a team project their are not related to', async () => {
+		const owner = await createOwner();
+
+		const member = await createMember();
+		const project = await createTeamProject(undefined, member);
+
+		await testServer.authAgentFor(owner).delete(`/projects/${project.id}`).expect(200);
+
+		await expect(findProject(project.id)).rejects.toThrowError(EntityNotFoundError);
+	});
+
+	test('does not allow instance members to delete their personal project', async () => {
+		const member = await createMember();
+		const project = await getPersonalProject(member);
+
+		await testServer.authAgentFor(member).delete(`/projects/${project.id}`).expect(403);
+
+		const projectInDB = await findProject(project.id);
+
+		expect(projectInDB).toHaveProperty('id', project.id);
+	});
+
+	test('does not allow instance owners to delete their personal projects', async () => {
+		const owner = await createOwner();
+		const project = await getPersonalProject(owner);
+
+		await testServer.authAgentFor(owner).delete(`/projects/${project.id}`).expect(403);
+
+		const projectInDB = await findProject(project.id);
+
+		expect(projectInDB).toHaveProperty('id', project.id);
+	});
+
+	test.each(['project:editor', 'project:viewer'] as ProjectRole[])(
+		'does not allow users with the role %s to delete a project',
+		async (role) => {
+			const member = await createMember();
+			const project = await createTeamProject();
+
+			await linkUserToProject(member, project, role);
+
+			await testServer.authAgentFor(member).delete(`/projects/${project.id}`).expect(403);
+
+			const projectInDB = await findProject(project.id);
+
+			expect(projectInDB).toHaveProperty('id', project.id);
+		},
+	);
+
+	test('deletes all workflows and credentials it owns as well as the sharings into other projects', async () => {
+		//
+		// ARRANGE
+		//
+		const member = await createMember();
+
+		const otherProject = await createTeamProject(undefined, member);
+		const sharedWorkflow1 = await createWorkflow({}, otherProject);
+		const sharedWorkflow2 = await createWorkflow({}, otherProject);
+		const sharedCredential = await saveCredential(randomCredentialPayload(), {
+			project: otherProject,
+			role: 'credential:owner',
+		});
+
+		const projectToBeDeleted = await createTeamProject(undefined, member);
+		const ownedWorkflow = await createWorkflow({}, projectToBeDeleted);
+		const ownedCredential = await saveCredential(randomCredentialPayload(), {
+			project: projectToBeDeleted,
+			role: 'credential:owner',
+		});
+
+		await shareCredentialWithProjects(sharedCredential, [otherProject]);
+		await shareWorkflowWithProjects(sharedWorkflow1, [
+			{ project: otherProject, role: 'workflow:editor' },
+		]);
+		await shareWorkflowWithProjects(sharedWorkflow2, [
+			{ project: otherProject, role: 'workflow:user' },
+		]);
+
+		//
+		// ACT
+		//
+		await testServer.authAgentFor(member).delete(`/projects/${projectToBeDeleted.id}`).expect(200);
+
+		//
+		// ASSERT
+		//
+
+		// Make sure the project and owned workflow and credential where deleted.
+		await expect(getWorkflowById(ownedWorkflow.id)).resolves.toBeNull();
+		await expect(getCredentialById(ownedCredential.id)).resolves.toBeNull();
+		await expect(findProject(projectToBeDeleted.id)).rejects.toThrowError(EntityNotFoundError);
+
+		// Make sure the shared workflow and credential were not deleted
+		await expect(getWorkflowById(sharedWorkflow1.id)).resolves.not.toBeNull();
+		await expect(getCredentialById(sharedCredential.id)).resolves.not.toBeNull();
+
+		// Make sure the sharings for them have been deleted
+		await expect(
+			Container.get(SharedWorkflowRepository).findOneByOrFail({
+				projectId: projectToBeDeleted.id,
+				workflowId: sharedWorkflow1.id,
+			}),
+		).rejects.toThrowError(EntityNotFoundError);
+		await expect(
+			Container.get(SharedCredentialsRepository).findOneByOrFail({
+				projectId: projectToBeDeleted.id,
+				credentialsId: sharedCredential.id,
+			}),
+		).rejects.toThrowError(EntityNotFoundError);
+	});
+
+	test('unshares all workflows and credentials that were shared with the project', async () => {
+		//
+		// ARRANGE
+		//
+		const member = await createMember();
+
+		const projectToBeDeleted = await createTeamProject(undefined, member);
+		const ownedWorkflow1 = await createWorkflow({}, projectToBeDeleted);
+		const ownedWorkflow2 = await createWorkflow({}, projectToBeDeleted);
+		const ownedCredential = await saveCredential(randomCredentialPayload(), {
+			project: projectToBeDeleted,
+			role: 'credential:owner',
+		});
+
+		const otherProject = await createTeamProject(undefined, member);
+
+		await shareCredentialWithProjects(ownedCredential, [otherProject]);
+		await shareWorkflowWithProjects(ownedWorkflow1, [
+			{ project: otherProject, role: 'workflow:editor' },
+		]);
+		await shareWorkflowWithProjects(ownedWorkflow2, [
+			{ project: otherProject, role: 'workflow:user' },
+		]);
+
+		//
+		// ACT
+		//
+		await testServer.authAgentFor(member).delete(`/projects/${projectToBeDeleted.id}`).expect(200);
+
+		//
+		// ASSERT
+		//
+
+		// Make sure the project and owned workflow and credential where deleted.
+		await expect(getWorkflowById(ownedWorkflow1.id)).resolves.toBeNull();
+		await expect(getWorkflowById(ownedWorkflow2.id)).resolves.toBeNull();
+		await expect(getCredentialById(ownedCredential.id)).resolves.toBeNull();
+		await expect(findProject(projectToBeDeleted.id)).rejects.toThrowError(EntityNotFoundError);
+
+		// Make sure the sharings for them into the other project have been deleted
+		await expect(
+			Container.get(SharedWorkflowRepository).findOneByOrFail({
+				projectId: projectToBeDeleted.id,
+				workflowId: ownedWorkflow1.id,
+			}),
+		).rejects.toThrowError(EntityNotFoundError);
+		await expect(
+			Container.get(SharedWorkflowRepository).findOneByOrFail({
+				projectId: projectToBeDeleted.id,
+				workflowId: ownedWorkflow2.id,
+			}),
+		).rejects.toThrowError(EntityNotFoundError);
+		await expect(
+			Container.get(SharedCredentialsRepository).findOneByOrFail({
+				projectId: projectToBeDeleted.id,
+				credentialsId: ownedCredential.id,
+			}),
+		).rejects.toThrowError(EntityNotFoundError);
+	});
+
+	test('deletes the project relations', async () => {
+		//
+		// ARRANGE
+		//
+		const member = await createMember();
+		const editor = await createMember();
+		const viewer = await createMember();
+
+		const project = await createTeamProject(undefined, member);
+		await linkUserToProject(editor, project, 'project:editor');
+		await linkUserToProject(viewer, project, 'project:viewer');
+
+		//
+		// ACT
+		//
+		await testServer.authAgentFor(member).delete(`/projects/${project.id}`).expect(200);
+
+		//
+		// ASSERT
+		//
+		await expect(
+			Container.get(ProjectRelationRepository).findOneByOrFail({
+				projectId: project.id,
+				userId: member.id,
+			}),
+		).rejects.toThrowError(EntityNotFoundError);
+		await expect(
+			Container.get(ProjectRelationRepository).findOneByOrFail({
+				projectId: project.id,
+				userId: editor.id,
+			}),
+		).rejects.toThrowError(EntityNotFoundError);
+		await expect(
+			Container.get(ProjectRelationRepository).findOneByOrFail({
+				projectId: project.id,
+				userId: viewer.id,
+			}),
+		).rejects.toThrowError(EntityNotFoundError);
 	});
 });
