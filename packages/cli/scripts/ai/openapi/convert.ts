@@ -1,7 +1,7 @@
 import path from 'path';
 import fs from 'fs';
 import glob from 'fast-glob';
-import yaml from 'js-yaml';
+import yaml from 'yamljs';
 
 function getLatestVersionPaths(paths: string[]) {
 	const latestVersions: Record<string, { version: string; path: string }> = {};
@@ -33,7 +33,7 @@ const uniquePaths = getLatestVersionPaths(paths);
 
 uniquePaths.forEach((filePath) => {
 	const yamlContents = fs.readFileSync(filePath, 'utf8');
-	const data = yaml.load(yamlContents);
+	const data = yaml.parse(yamlContents);
 
 	const targetPath = filePath
 		.replace('.yaml', '.json')

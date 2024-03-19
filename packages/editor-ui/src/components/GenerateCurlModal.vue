@@ -1,7 +1,7 @@
 <template>
 	<Modal
 		width="700px"
-		:title="i18n.baseText('importCurlModal.title')"
+		:title="i18n.baseText('generateCurlModal.title')"
 		:event-bus="modalBus"
 		:name="GENERATE_CURL_MODAL_KEY"
 		:center="true"
@@ -21,13 +21,13 @@
 			<div :class="$style.modalFooter">
 				<N8nNotice
 					:class="$style.notice"
-					:content="i18n.baseText('ImportCurlModal.notice.content')"
+					:content="i18n.baseText('generateCurlModal.notice.content')"
 				/>
 				<div>
 					<N8nButton
 						float="right"
 						:loading="loading"
-						:label="i18n.baseText('importCurlModal.button.label')"
+						:label="i18n.baseText('generateCurlModal.button.label')"
 						@click="onGenerate"
 					/>
 				</div>
