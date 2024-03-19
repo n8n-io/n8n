@@ -3,6 +3,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { IWorkflowDataUpdate } from '@/Interface';
 import { makeRestApiRequest } from '@/utils/apiUtils';
 import { useRootStore } from '../n8nRoot.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 
 vi.mock('@/utils/apiUtils', () => ({
 	makeRestApiRequest: vi.fn(),
@@ -61,6 +62,9 @@ const MOCK_WORKFLOW_SIMPLE: IWorkflowDataUpdate = {
 describe('worklfows store', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
+
+		const projectsStore = useProjectsStore();
+		vi.spyOn(projectsStore, 'currentProjectId', 'get').mockReturnValue('1');
 	});
 
 	describe('createNewWorkflow', () => {
