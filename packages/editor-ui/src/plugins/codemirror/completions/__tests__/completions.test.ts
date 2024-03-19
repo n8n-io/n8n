@@ -636,6 +636,46 @@ describe('Resolution-based completions', () => {
 			expect(result).toContainEqual(expect.objectContaining({ label: 'arr', detail: 'array' }));
 			expect(result).toContainEqual(expect.objectContaining({ label: 'obj', detail: 'object' }));
 		});
+
+		test('should display type information for: {{ $input.item.json.| }}', () => {
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce({
+				str: 'bar',
+				empty: null,
+				arr: [],
+				obj: {},
+			});
+
+			const result = completions('{{ $json.item.json.| }}');
+			expect(result).toContainEqual(expect.objectContaining({ label: 'str', detail: 'string' }));
+			expect(result).toContainEqual(expect.objectContaining({ label: 'empty', detail: 'null' }));
+			expect(result).toContainEqual(expect.objectContaining({ label: 'arr', detail: 'array' }));
+			expect(result).toContainEqual(expect.objectContaining({ label: 'obj', detail: 'object' }));
+		});
+
+		test('should display type information for: {{ $("My Node").item.json.| }}', () => {
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce({
+				str: 'bar',
+				empty: null,
+				arr: [],
+				obj: {},
+			});
+
+			const result = completions('{{ $("My Node").item.json.| }}');
+			expect(result).toContainEqual(expect.objectContaining({ label: 'str', detail: 'string' }));
+			expect(result).toContainEqual(expect.objectContaining({ label: 'empty', detail: 'null' }));
+			expect(result).toContainEqual(expect.objectContaining({ label: 'arr', detail: 'array' }));
+			expect(result).toContainEqual(expect.objectContaining({ label: 'obj', detail: 'object' }));
+		});
+
+		test('should not display type information for other completions', () => {
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue({
+				str: 'bar',
+			});
+
+			expect(completions('{{ $execution.| }}')?.every((item) => !item.detail)).toBe(true);
+			expect(completions('{{ $input.params.| }}')?.every((item) => !item.detail)).toBe(true);
+			expect(completions('{{ $("My Node").| }}')?.every((item) => !item.detail)).toBe(true);
+		});
 	});
 });
 

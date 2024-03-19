@@ -218,9 +218,15 @@ export const getType = (value: unknown): string => {
 	return (typeof value).toLocaleLowerCase();
 };
 
+export const isInputData = (base: string): boolean => {
+	return (
+		/^\$input\..*\.json]/.test(base) || /^\$json/.test(base) || /^\$\(.*\)\..*\.json/.test(base)
+	);
+};
+
 export const getDetail = (base: string, value: unknown): string | undefined => {
 	const type = getType(value);
-	if (!base.startsWith('$json') || type === 'function') return undefined;
+	if (!isInputData(base) || type === 'function') return undefined;
 	return type;
 };
 
