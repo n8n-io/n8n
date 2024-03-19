@@ -17,7 +17,7 @@ interface RouteProps {
 }
 
 defineOptions({ name: 'N8nRoute' });
-const props = withDefaults(defineProps<RouteProps>(), {});
+const props = defineProps<RouteProps>();
 
 const useRouterLink = computed(() => {
 	if (props.newWindow) {
@@ -32,14 +32,5 @@ const useRouterLink = computed(() => {
 	return props.to !== undefined;
 });
 
-const openNewWindow = computed(() => {
-	if (props.newWindow !== undefined) {
-		return props.newWindow;
-	}
-
-	if (typeof props.to === 'string') {
-		return !props.to.startsWith('/');
-	}
-	return true;
-});
+const openNewWindow = computed(() => !useRouterLink.value);
 </script>
