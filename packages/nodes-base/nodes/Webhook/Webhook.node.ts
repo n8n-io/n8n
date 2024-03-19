@@ -265,6 +265,36 @@ export class Webhook extends Node {
 	};
 
 	async webhook(context: IWebhookFunctions): Promise<IWebhookResponseData> {
+		const nodeVersion = context.getNode().typeVersion;
+
+		if (nodeVersion >= 2) {
+			const responseMode = context.getNodeParameter('responseMode', 'onReceived') as string;
+			const connectedNodes = context.getConnectedNodes(context.getNode().name, 'children');
+			const isRespondToWebhookConnected = connectedNodes.some(
+				(node) => node.type === 'n8n-nodes-base.respondToWebhook',
+			);
+			if (!isRespondToWebhookConnected && responseMode === 'responseNode') {
+				throw new NodeOperationError(
+					context.getNode(),
+					new Error('No Respond to Webhook node found in the workflow'),
+					{
+						description:
+							'Insert a Respond to Webhook node to your workflow to respond to the webhook or choose another option for the “Respond” parameter',
+					},
+				);
+			}
+			if (isRespondToWebhookConnected && responseMode !== 'responseNode') {
+				throw new NodeOperationError(
+					context.getNode(),
+					new Error('Webhook node not correctly configured'),
+					{
+						description:
+							'Set the “Respond” parameter of the Webhook node to “Using Respond to Webhook Node” ',
+					},
+				);
+			}
+		}
+
 		const options = context.getNodeParameter('options', {}) as {
 			binaryData: boolean;
 			ignoreBots: boolean;
@@ -308,7 +338,6 @@ export class Webhook extends Node {
 			return await this.handleFormData(context, prepareOutput);
 		}
 
-		const nodeVersion = context.getNode().typeVersion;
 		if (nodeVersion > 1 && !req.body && !options.rawBody) {
 			try {
 				return await this.handleBinaryData(context, prepareOutput);

@@ -18,7 +18,7 @@ export class RespondToWebhook implements INodeType {
 		icon: 'file:webhook.svg',
 		name: 'respondToWebhook',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Returns data for Webhook',
 		defaults: {
 			name: 'Respond to Webhook',
@@ -286,6 +286,21 @@ export class RespondToWebhook implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const nodeVersion = this.getNode().typeVersion;
+
+		if (nodeVersion >= 1.1) {
+			const connectedNodes = this.getConnectedNodes(this.getNode().name, 'parents');
+			if (!connectedNodes.some((node) => node.type === 'n8n-nodes-base.webhook')) {
+				throw new NodeOperationError(
+					this.getNode(),
+					new Error('No Webhook node found in the workflow'),
+					{
+						description:
+							'Insert a Webhook node to your workflow and set the “Respond” parameter to “Using Respond to Webhook Node” ',
+					},
+				);
+			}
+		}
 		const items = this.getInputData();
 
 		const respondWith = this.getNodeParameter('respondWith', 0) as string;

@@ -824,7 +824,14 @@ export interface FunctionsBase {
 	getRestApiUrl(): string;
 	getInstanceBaseUrl(): string;
 	getInstanceId(): string;
-
+	getConnectedNodes(
+		nodeName: string,
+		dirrection: 'children' | 'parents',
+	): Array<{
+		name: string;
+		type: string;
+		typeVersion: number;
+	}>;
 	getMode?: () => WorkflowExecuteMode;
 	getActivationMode?: () => WorkflowActivateMode;
 

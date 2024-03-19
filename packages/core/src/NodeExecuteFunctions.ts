@@ -2799,7 +2799,26 @@ const getCommonWorkflowFunctions = (
 		active: workflow.active,
 	}),
 	getWorkflowStaticData: (type) => workflow.getStaticData(type, node),
+	getConnectedNodes: (nodeName: string, dirrection: 'children' | 'parents') => {
+		const output = [];
+		let nodes;
+		if (dirrection === 'children') {
+			nodes = workflow.getChildNodes(nodeName);
+		} else {
+			nodes = workflow.getParentNodes(nodeName);
+		}
 
+		for (const nodeName of nodes) {
+			const node = workflow.nodes[nodeName];
+			output.push({
+				name: node.name,
+				type: node.type,
+				typeVersion: node.typeVersion,
+			});
+		}
+
+		return output;
+	},
 	getRestApiUrl: () => additionalData.restApiUrl,
 	getInstanceBaseUrl: () => additionalData.instanceBaseUrl,
 	getInstanceId: () => Container.get(InstanceSettings).instanceId,
