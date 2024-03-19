@@ -1,14 +1,22 @@
-import type {
-	IPollFunctions,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-	ILoadOptionsFunctions,
-	INodePropertyOptions,
+import {
+	type IPollFunctions,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeDescription,
+	type ILoadOptionsFunctions,
+	type INodePropertyOptions,
+	type JsonObject,
+	NodeApiError,
+	IDataObject,
 } from 'n8n-workflow';
 
 import { DateTime } from 'luxon';
-import { salesforceApiRequest, sortOptions } from './GenericFunctions';
+import {
+	getQuery,
+	salesforceApiRequest,
+	salesforceApiRequestAllItems,
+	sortOptions,
+} from './GenericFunctions';
 
 export class SalesforceTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -19,7 +27,7 @@ export class SalesforceTrigger implements INodeType {
 		version: 1,
 		description:
 			'Fetches data from Salesforce and starts the workflow on specified polling intervals.',
-		subtitle: '={{($parameter["event"])}}',
+		subtitle: '={{($parameter["triggerOn"])}}',
 		defaults: {
 			name: 'Salesforce Trigger',
 		},
@@ -149,35 +157,24 @@ export class SalesforceTrigger implements INodeType {
 				description:
 					'Name of the custom object. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
-			{
-				displayName: 'Simplify',
-				name: 'simplify',
-				type: 'boolean',
-				default: true,
-				description: 'Limit the fields returned',
-			},
 		],
 	};
+
 	methods = {
 		loadOptions: {
-			// Get all the lead custom fields to display them to user so that they can
+			// Get all the custom objects recurrence instances to display them to user so that they can
 			// select them easily
-			async getCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+			async getCustomObjects(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const resource = this.getNodeParameter('resource', 0);
 				// TODO: find a way to filter this object to get just the lead sources instead of the whole object
-				const { fields } = await salesforceApiRequest.call(
-					this,
-					'GET',
-					`/sobjects/${resource}/describe`,
-				);
-				for (const field of fields) {
-					if (field.custom === true) {
-						const fieldName = field.label;
-						const fieldId = field.name;
+				const { sobjects: objects } = await salesforceApiRequest.call(this, 'GET', '/sobjects');
+				for (const object of objects) {
+					if (object.custom === true) {
+						const objectName = object.label;
+						const objectId = object.name;
 						returnData.push({
-							name: fieldName,
-							value: fieldId,
+							name: objectName,
+							value: objectId,
 						});
 					}
 				}
@@ -190,6 +187,10 @@ export class SalesforceTrigger implements INodeType {
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
 		const webhookData = this.getWorkflowStaticData('node');
 		let responseData;
+		const qs: IDataObject = {};
+		const triggerOn = this.getNodeParameter('triggerOn') as string;
+		const triggerResource = triggerOn.slice(0, 1).toUpperCase() + triggerOn.slice(1, -7);
+		const changeType = triggerOn.slice(-7);
 
 		const now = DateTime.now().toISO();
 		const startDate = (webhookData.lastTimeChecked as string) || now;
@@ -199,6 +200,61 @@ export class SalesforceTrigger implements INodeType {
 			const pollEndDate = endDate;
 
 			responseData = [{ json: {} }]; //await getPollResponse.call(this, pollStartDate, pollEndDate);
+
+			const options = {
+				conditionsUi: {
+					conditionValues: [] as IDataObject[],
+				},
+			};
+			if (this.getMode() !== 'manual') {
+				if (changeType === 'Created') {
+					options.conditionsUi.conditionValues.push({
+						field: 'CreatedDate',
+						operation: '>=',
+						value: pollStartDate,
+					});
+					options.conditionsUi.conditionValues.push({
+						field: 'CreatedDate',
+						operation: '<',
+						value: pollEndDate,
+					});
+				} else {
+					options.conditionsUi.conditionValues.push({
+						field: 'LastModifiedDate',
+						operation: '>=',
+						value: pollStartDate,
+					});
+					options.conditionsUi.conditionValues.push({
+						field: 'LastModifiedDate',
+						operation: '<',
+						value: pollEndDate,
+					});
+					// make sure the resource wasn't just created.
+					options.conditionsUi.conditionValues.push({
+						field: 'CreatedDate',
+						operation: '<',
+						value: pollStartDate,
+					});
+				}
+			}
+
+			try {
+				if (this.getMode() === 'manual') {
+					qs.q = getQuery(options, triggerResource, false, 1);
+				} else {
+					qs.q = getQuery(options, triggerResource, true);
+				}
+				responseData = await salesforceApiRequestAllItems.call(
+					this,
+					'records',
+					'GET',
+					'/query',
+					{},
+					qs,
+				);
+			} catch (error) {
+				throw new NodeApiError(this.getNode(), error as JsonObject);
+			}
 
 			if (!responseData?.length) {
 				webhookData.lastTimeChecked = endDate;
@@ -218,12 +274,12 @@ export class SalesforceTrigger implements INodeType {
 					error,
 				},
 			);
+			throw error;
 		}
-
 		webhookData.lastTimeChecked = endDate;
 
 		if (Array.isArray(responseData) && responseData.length) {
-			return [responseData];
+			return [this.helpers.returnJsonArray(responseData as IDataObject[])];
 		}
 
 		return null;
