@@ -85,7 +85,6 @@
 <script lang="ts" setup>
 import { computed, useCssModule } from 'vue';
 import { useRoute } from 'vue-router';
-import type { MenuItemProps } from 'element-plus';
 import { ElSubMenu, ElMenuItem } from 'element-plus';
 import N8nTooltip from '../N8nTooltip';
 import N8nIcon from '../N8nIcon';

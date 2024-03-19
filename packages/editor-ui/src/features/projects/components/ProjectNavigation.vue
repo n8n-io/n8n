@@ -5,7 +5,7 @@ import type { IMenuItem } from 'n8n-design-system/types';
 import { useI18n } from '@/composables/useI18n';
 import { VIEWS } from '@/constants';
 import { useProjectsStore } from '@/features/projects/projects.store';
-import type { Project } from '@/features/projects/projects.types';
+import type { ProjectListItem } from '@/features/projects/projects.types';
 
 type Props = {
 	collapsed: boolean;
@@ -43,7 +43,7 @@ const activeTab = computed(() =>
 
 const isActiveProject = (projectId: string) =>
 	route?.params?.projectId === projectId ? projectId : undefined;
-const getProjectMenuItem = (project: Project) => ({
+const getProjectMenuItem = (project: ProjectListItem) => ({
 	id: project.id,
 	label: project.name,
 	route: {
