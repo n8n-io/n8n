@@ -6,7 +6,7 @@ export async function honeyBookApiRequest(
 	path: string,
 	body: any = {},
 ) {
-	const response = await this.helpers.httpRequest({
+	const response = await this.helpers.httpRequestWithAuthentication.call(this, 'honeyBookApi', {
 		baseURL: 'http://localhost:8000/api/v2',
 		url: path,
 		method,

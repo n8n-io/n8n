@@ -1,9 +1,4 @@
-import type {
-	IAuthenticateGeneric,
-	ICredentialTestRequest,
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class HoneyBookApi implements ICredentialType {
 	name = 'honeyBookApi';
@@ -12,14 +7,8 @@ export class HoneyBookApi implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
-			displayName: 'Context user',
-			name: 'ctxu',
-			type: 'string',
-			default: '',
-		},
-		{
-			displayName: 'Context company',
-			name: 'ctxc',
+			displayName: 'Company ID',
+			name: 'companyId',
 			type: 'string',
 			default: '',
 		},
@@ -29,17 +18,8 @@ export class HoneyBookApi implements ICredentialType {
 		type: 'generic',
 		properties: {
 			qs: {
-				ctxu: '={{$credentials.ctxu}}',
-				ctxc: '={{$credentials.ctxc}}',
+				company_id: '={{$credentials.companyId}}',
 			},
-		},
-	};
-
-	test: ICredentialTestRequest = {
-		request: {
-			baseURL: process.env.HB_API_ENDPOINT || 'https://mocki.io',
-			url: process.env.HB_TEST_API_ENDPOINT || 'v2/n8n/test_credentials',
-			method: 'GET',
 		},
 	};
 }
