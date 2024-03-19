@@ -25,7 +25,7 @@ export const whatsappTriggerDescription: INodeProperties[] = [
 				value: 'message_template_quality_update',
 			},
 			{
-				name: 'Message_template Status Update',
+				name: 'Message Template Status Update',
 				value: 'message_template_status_update',
 			},
 			{
