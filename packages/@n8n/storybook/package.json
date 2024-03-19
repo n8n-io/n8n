@@ -1,6 +1,7 @@
 {
   "name": "@n8n/storybook",
   "private": true,
+  "version": "0.0.1",
   "devDependencies": {
     "@chromatic-com/storybook": "^1.2.18",
     "@storybook/addon-a11y": "^8.0.0",
