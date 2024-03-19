@@ -233,7 +233,8 @@ describe('POST /workflows', () => {
 		//
 		// ACT
 		//
-		await authOwnerAgent
+		await testServer
+			.authAgentFor(member)
 			.post('/workflows')
 			.send({ ...workflow, projectId: project.id })
 			//
@@ -256,12 +257,13 @@ describe('POST /workflows', () => {
 				type: 'team',
 			}),
 		);
-		await Container.get(ProjectService).addUser(project.id, owner.id, 'project:viewer');
+		await Container.get(ProjectService).addUser(project.id, member.id, 'project:viewer');
 
 		//
 		// ACT
 		//
-		await authOwnerAgent
+		await testServer
+			.authAgentFor(member)
 			.post('/workflows')
 			.send({ ...workflow, projectId: project.id })
 			//
