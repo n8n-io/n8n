@@ -8,6 +8,7 @@ import { ProjectRepository } from './project.repository';
 import type { Scope } from '@n8n/permissions';
 import type { Project } from '../entities/Project';
 import type { ProjectRole } from '../entities/ProjectRelation';
+import type { CredentialsEntity } from '../entities/CredentialsEntity';
 
 @Service()
 export class SharedCredentialsRepository extends Repository<SharedCredentials> {
@@ -69,6 +70,16 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 		return await this.update(
 			{
 				projectId: Not(project.id),
+				role: 'credential:owner',
+			},
+			{ project },
+		);
+	}
+
+	async makeOwner(credential: CredentialsEntity, project: Project) {
+		return await this.update(
+			{
+				credentialsId: credential.id,
 				role: 'credential:owner',
 			},
 			{ project },

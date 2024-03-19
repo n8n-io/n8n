@@ -1,6 +1,6 @@
 import * as testDb from './shared/testDb';
 import * as utils from './shared/utils/';
-import { createMember, createOwner, createUser } from './shared/db/users';
+import { createManyUsers, createMember, createOwner, createUser } from './shared/db/users';
 import {
 	createTeamProject,
 	linkUserToProject,
@@ -680,5 +680,113 @@ describe('DELETE /project/:projectId', () => {
 				userId: viewer.id,
 			}),
 		).rejects.toThrowError(EntityNotFoundError);
+	});
+
+	// Tests related to migrating workflows and credentials to new project:
+
+	test('does not migrate credentials and projects if the user does not have the permissions to create workflows or credentials in the target project', async () => {
+		//
+		// ARRANGE
+		//
+		const member = await createMember();
+
+		const projectToBeDeleted = await createTeamProject(undefined, member);
+		const targetProject = await createTeamProject();
+		await linkUserToProject(member, targetProject, 'project:viewer');
+
+		//
+		// ACT
+		//
+		await testServer
+			.authAgentFor(member)
+			.delete(`/projects/${projectToBeDeleted.id}`)
+			.send({ migrateToProject: targetProject.id })
+
+			//
+			// ASSERT
+			//
+			.expect(404);
+	});
+
+	test('migrates workflows and credentials to another project if `migrateToProject` is passed', async () => {
+		//
+		// ARRANGE
+		//
+		const member = await createMember();
+
+		const projectToBeDeleted = await createTeamProject(undefined, member);
+		const targetProject = await createTeamProject(undefined, member);
+		const otherProject = await createTeamProject(undefined, member);
+
+		// these should be re-owned to the targetProject
+		const ownedCredential = await saveCredential(randomCredentialPayload(), {
+			project: projectToBeDeleted,
+			role: 'credential:owner',
+		});
+		const ownedWorkflow = await createWorkflow({}, projectToBeDeleted);
+
+		// these should stay intact
+		await shareCredentialWithProjects(ownedCredential, [otherProject]);
+		await shareWorkflowWithProjects(ownedWorkflow, [
+			{ project: otherProject, role: 'workflow:editor' },
+		]);
+
+		//
+		// ACT
+		//
+		await testServer
+			.authAgentFor(member)
+			.delete(`/projects/${projectToBeDeleted.id}`)
+			.send({ migrateToProject: targetProject.id })
+			.expect(200);
+
+		//
+		// ASSERT
+		//
+
+		// projectToBeDeleted is deleted
+		await expect(findProject(projectToBeDeleted.id)).rejects.toThrowError(EntityNotFoundError);
+
+		// ownedWorkflow has not been deleted
+		await expect(getWorkflowById(ownedWorkflow.id)).resolves.toBeDefined();
+
+		// ownedCredential has not been deleted
+		await expect(getCredentialById(ownedCredential.id)).resolves.toBeDefined();
+
+		// there is a sharing for ownedWorkflow and targetProject
+		await expect(
+			Container.get(SharedCredentialsRepository).findOneByOrFail({
+				credentialsId: ownedCredential.id,
+				projectId: targetProject.id,
+				role: 'credential:owner',
+			}),
+		).resolves.toBeDefined();
+
+		// there is a sharing for ownedCredential and targetProject
+		await expect(
+			Container.get(SharedWorkflowRepository).findOneByOrFail({
+				workflowId: ownedWorkflow.id,
+				projectId: targetProject.id,
+				role: 'workflow:owner',
+			}),
+		).resolves.toBeDefined();
+
+		// there is a sharing for ownedWorkflow and otherProject
+		await expect(
+			Container.get(SharedWorkflowRepository).findOneByOrFail({
+				workflowId: ownedWorkflow.id,
+				projectId: otherProject.id,
+				role: 'workflow:editor',
+			}),
+		).resolves.toBeDefined();
+
+		// there is a sharing for ownedCredential and otherProject
+		await expect(
+			Container.get(SharedCredentialsRepository).findOneByOrFail({
+				credentialsId: ownedCredential.id,
+				projectId: otherProject.id,
+				role: 'credential:user',
+			}),
+		).resolves.toBeDefined();
 	});
 });

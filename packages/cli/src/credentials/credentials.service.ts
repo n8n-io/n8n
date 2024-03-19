@@ -214,7 +214,7 @@ export class CredentialsService {
 					: await this.projectService.getProjectWithScope(
 							user,
 							projectId,
-							'credential:create',
+							['credential:create'],
 							transactionManager,
 					  );
 
