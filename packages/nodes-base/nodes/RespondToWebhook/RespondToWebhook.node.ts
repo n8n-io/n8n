@@ -10,6 +10,7 @@ import type {
 } from 'n8n-workflow';
 import { jsonParse, BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 import set from 'lodash/set';
+import jwt from 'jsonwebtoken';
 
 export class RespondToWebhook implements INodeType {
 	description: INodeTypeDescription = {
@@ -24,7 +25,17 @@ export class RespondToWebhook implements INodeType {
 		},
 		inputs: ['main'],
 		outputs: ['main'],
-		credentials: [],
+		credentials: [
+			{
+				name: 'webhookJwtAuth',
+				required: true,
+				displayOptions: {
+					show: {
+						respondWith: ['jwt'],
+					},
+				},
+			},
+		],
 		properties: [
 			{
 				displayName:
@@ -59,6 +70,11 @@ export class RespondToWebhook implements INodeType {
 						description: 'Respond with a custom JSON body',
 					},
 					{
+						name: 'JWT Token',
+						value: 'jwt',
+						description: 'Respond with a JWT token',
+					},
+					{
 						name: 'No Data',
 						value: 'noData',
 						description: 'Respond with an empty body',
@@ -78,13 +94,24 @@ export class RespondToWebhook implements INodeType {
 				description: 'The data that should be returned',
 			},
 			{
+				displayName: 'Credentials',
+				name: 'credentials',
+				type: 'credentials',
+				default: '',
+				displayOptions: {
+					show: {
+						respondWith: ['jwt'],
+					},
+				},
+			},
+			{
 				displayName:
 					'When using expressions, note that this node will only run for the first item in the input data',
 				name: 'webhookNotice',
 				type: 'notice',
 				displayOptions: {
 					show: {
-						respondWith: ['json', 'text'],
+						respondWith: ['json', 'text', 'jwt'],
 					},
 				},
 				default: '',
@@ -118,6 +145,22 @@ export class RespondToWebhook implements INodeType {
 					rows: 4,
 				},
 				description: 'The HTTP response JSON data',
+			},
+			{
+				displayName: 'Payload',
+				name: 'payload',
+				type: 'json',
+				displayOptions: {
+					show: {
+						respondWith: ['jwt'],
+					},
+				},
+				default: '{\n  "myField": "value"\n}',
+				typeOptions: {
+					rows: 4,
+				},
+				validateType: 'object',
+				description: 'The payload to include in the JWT token',
 			},
 			{
 				displayName: 'Response Body',
@@ -276,6 +319,20 @@ export class RespondToWebhook implements INodeType {
 						});
 					}
 				}
+			}
+		} else if (respondWith === 'jwt') {
+			try {
+				const { secret, algorithm } = (await this.getCredentials('webhookJwtAuth')) as {
+					secret: string;
+					algorithm: jwt.Algorithm;
+				};
+				const payload = this.getNodeParameter('payload', 0, {}) as IDataObject;
+				const token = jwt.sign(payload, secret, { algorithm });
+				responseBody = { token };
+			} catch (error) {
+				throw new NodeOperationError(this.getNode(), error as Error, {
+					message: 'Error signing JWT token',
+				});
 			}
 		} else if (respondWith === 'allIncomingItems') {
 			const respondItems = items.map((item) => item.json);

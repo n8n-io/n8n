@@ -12,13 +12,7 @@ import type {
 	MultiPartFormData,
 	INodeParameters,
 } from 'n8n-workflow';
-import {
-	BINARY_ENCODING,
-	NodeOperationError,
-	Node,
-	NodeConnectionType,
-	jsonParse,
-} from 'n8n-workflow';
+import { BINARY_ENCODING, NodeOperationError, Node, NodeConnectionType } from 'n8n-workflow';
 
 import { v4 as uuid } from 'uuid';
 import basicAuth from 'basic-auth';
@@ -61,7 +55,13 @@ const configuredOutputs = (parameters: INodeParameters) => {
 	return outputs;
 };
 
-const setupOutputConnection = (ctx: IWebhookFunctions, method: string) => {
+const setupOutputConnection = (
+	ctx: IWebhookFunctions,
+	method: string,
+	additionalData: {
+		jwtPayload?: IDataObject;
+	},
+) => {
 	const httpMethod = ctx.getNodeParameter('httpMethod', []) as string[] | string;
 	let webhookUrl = ctx.getNodeWebhookUrl('default') as string;
 	const executionMode = ctx.getMode() === 'manual' ? 'test' : 'production';
@@ -75,6 +75,9 @@ const setupOutputConnection = (ctx: IWebhookFunctions, method: string) => {
 		return (outputData: INodeExecutionData): INodeExecutionData[][] => {
 			outputData.json.webhookUrl = webhookUrl;
 			outputData.json.executionMode = executionMode;
+			if (additionalData?.jwtPayload) {
+				outputData.json.jwtPayload = additionalData.jwtPayload;
+			}
 			return [[outputData]];
 		};
 	}
@@ -85,6 +88,9 @@ const setupOutputConnection = (ctx: IWebhookFunctions, method: string) => {
 	return (outputData: INodeExecutionData): INodeExecutionData[][] => {
 		outputData.json.webhookUrl = webhookUrl;
 		outputData.json.executionMode = executionMode;
+		if (additionalData?.jwtPayload) {
+			outputData.json.jwtPayload = additionalData.jwtPayload;
+		}
 		outputs[outputIndex] = [outputData];
 		return outputs;
 	};
@@ -276,12 +282,11 @@ export class Webhook extends Node {
 			return { noWebhookResponse: true };
 		}
 
-		const prepareOutput = setupOutputConnection(context, requestMethod);
-
+		let validationData: IDataObject | undefined;
 		try {
 			if (options.ignoreBots && isbot(req.headers['user-agent']))
 				throw new WebhookAuthorizationError(403);
-			await this.validateAuth(context);
+			validationData = await this.validateAuth(context);
 		} catch (error) {
 			if (error instanceof WebhookAuthorizationError) {
 				resp.writeHead(error.responseCode, { 'WWW-Authenticate': 'Basic realm="Webhook"' });
@@ -290,6 +295,10 @@ export class Webhook extends Node {
 			}
 			throw error;
 		}
+
+		const prepareOutput = setupOutputConnection(context, requestMethod, {
+			jwtPayload: validationData,
+		});
 
 		if (options.binaryData) {
 			return await this.handleBinaryData(context, prepareOutput);
@@ -382,12 +391,16 @@ export class Webhook extends Node {
 				throw new WebhookAuthorizationError(403);
 			}
 		} else if (authentication === 'jwtAuth') {
-			let expectedAuth: ICredentialDataDecryptedObject | undefined;
+			let expectedAuth;
+
 			try {
-				expectedAuth = await context.getCredentials('webhookJwtAuth');
+				expectedAuth = (await context.getCredentials('webhookJwtAuth')) as {
+					secret: string;
+					algorithm: jwt.Algorithm;
+				};
 			} catch {}
 
-			if (expectedAuth === undefined || !expectedAuth.tokenSecret) {
+			if (expectedAuth === undefined || !expectedAuth.secret) {
 				// Data is not defined on node so can not authenticate
 				throw new WebhookAuthorizationError(500, 'No authentication data defined on node!');
 			}
@@ -400,19 +413,9 @@ export class Webhook extends Node {
 			}
 
 			try {
-				const tokenData = jwt.verify(token, expectedAuth.tokenSecret as string, {
-					algorithms: [expectedAuth.tokenAlgorithm as jwt.Algorithm],
+				return jwt.verify(token, expectedAuth.secret, {
+					algorithms: [expectedAuth.algorithm],
 				}) as IDataObject;
-
-				if (!expectedAuth.tokenPayload) return;
-
-				const payload = jsonParse<IDataObject>(expectedAuth.tokenPayload as string);
-
-				for (const key of Object.keys(payload)) {
-					if (tokenData[key] !== payload[key]) {
-						throw new WebhookAuthorizationError(403, 'Token payload does not match');
-					}
-				}
 			} catch (error) {
 				throw new WebhookAuthorizationError(403, error.message);
 			}

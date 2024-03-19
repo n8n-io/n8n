@@ -14,7 +14,9 @@ export class WebhookJwtAuth implements ICredentialType {
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Token Secret',
-			name: 'tokenSecret',
+			description:
+				'The secret that was used to sign the JWT token. It is used to verify the signature of the token.',
+			name: 'secret',
 			type: 'string',
 			typeOptions: {
 				password: true,
@@ -22,8 +24,9 @@ export class WebhookJwtAuth implements ICredentialType {
 			default: '',
 		},
 		{
-			displayName: 'Token Algorithm',
-			name: 'tokenAlgorithm',
+			displayName: 'Algorithm',
+			description: 'The algorithm that was used to sign the JWT token',
+			name: 'algorithm',
 			type: 'options',
 			default: 'HS256',
 			options: [
@@ -80,15 +83,6 @@ export class WebhookJwtAuth implements ICredentialType {
 					value: 'none',
 				},
 			],
-		},
-		{
-			displayName: 'Token Payload',
-			name: 'tokenPayload',
-			type: 'json',
-			typeOptions: {
-				rows: 5,
-			},
-			default: '{\n  "user": "name",\n  "password": "user_passworn"\n}\n',
 		},
 	];
 }
