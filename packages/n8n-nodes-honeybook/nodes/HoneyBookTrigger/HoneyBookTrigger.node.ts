@@ -18,7 +18,7 @@ export class HoneyBookTrigger implements INodeType {
 		icon: 'file:honeybook.svg',
 		group: ['trigger', 'HoneyBook'],
 		version: 1,
-		subtitle: '={{$parameter["trigger"]}}',
+		subtitle: '={{$parameter["event"]}}',
 		description: 'Consume HB API',
 		defaults: {
 			name: 'Trigger',
@@ -42,7 +42,7 @@ export class HoneyBookTrigger implements INodeType {
 		properties: [
 			{
 				displayName: 'Trigger',
-				name: 'trigger',
+				name: 'event',
 				type: 'options',
 				noDataExpression: true,
 				options: [
@@ -90,7 +90,7 @@ export class HoneyBookTrigger implements INodeType {
 				/**
 				 * n8n calls this before creating/updating the webhook,
 				 * I think it's redundant to make 2 calls to the API every time.
-				 * the create endpoint in our API will accept an optional existingSubscriptionId param and drop it if it exists.
+				 * the create endpoint in our API will accept an optional subscription_id param and update it if it exists.
 				 * this way we always end up with the most up-to-date webhook configuration.
 				 */
 				return false;
@@ -98,11 +98,15 @@ export class HoneyBookTrigger implements INodeType {
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
-				const trigger = this.getNodeParameter('trigger') as string;
+				const event = this.getNodeParameter('event') as string;
 				const body: IDataObject = {
-					existing_subscription_id: webhookData.subscriptionId,
+					/**
+					 * n8n always calls delete before create, so in theory we should never have an existing_subscription_id
+					 * so this is a safety measure in case something goes wrong in delete.
+					 */
+					subscription_id: webhookData.subscriptionId,
 					webhook_url: webhookUrl,
-					trigger,
+					event,
 				};
 				const { _id } = await honeyBookApiRequest.call(
 					this,
