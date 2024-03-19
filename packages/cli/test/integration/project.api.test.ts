@@ -461,21 +461,43 @@ describe('GET /project/:projectId', () => {
 
 describe('DELETE /project/:projectId', () => {
 	test('allows the project:owner to delete a project', async () => {
-		const owner = await createOwner();
-		const project = await createTeamProject(undefined, owner);
+		const member = await createMember();
+		const project = await createTeamProject(undefined, member);
 
-		await testServer.authAgentFor(owner).delete(`/projects/${project.id}`).expect(200);
+		await testServer.authAgentFor(member).delete(`/projects/${project.id}`).expect(200);
 
 		const projectInDB = findProject(project.id);
 
 		await expect(projectInDB).rejects.toThrowError(EntityNotFoundError);
 	});
 
-	test('does not allow deleting of personal projects', async () => {
+	test('allows the instance owner to delete a team project their are not related to', async () => {
+		const owner = await createOwner();
+
+		const member = await createMember();
+		const project = await createTeamProject(undefined, member);
+
+		await testServer.authAgentFor(owner).delete(`/projects/${project.id}`).expect(200);
+
+		await expect(findProject(project.id)).rejects.toThrowError(EntityNotFoundError);
+	});
+
+	test('does not allow instance members to delete their personal project', async () => {
+		const member = await createMember();
+		const project = await getPersonalProject(member);
+
+		await testServer.authAgentFor(member).delete(`/projects/${project.id}`).expect(403);
+
+		const projectInDB = await findProject(project.id);
+
+		expect(projectInDB).toHaveProperty('id', project.id);
+	});
+
+	test('does not allow instance owners to delete their personal projects', async () => {
 		const owner = await createOwner();
 		const project = await getPersonalProject(owner);
 
-		await testServer.authAgentFor(owner).delete(`/projects/${project.id}`).expect(404);
+		await testServer.authAgentFor(owner).delete(`/projects/${project.id}`).expect(403);
 
 		const projectInDB = await findProject(project.id);
 
@@ -485,12 +507,12 @@ describe('DELETE /project/:projectId', () => {
 	test.each(['project:editor', 'project:viewer'] as ProjectRole[])(
 		'does not allow users with the role %s to delete a project',
 		async (role) => {
-			const owner = await createOwner();
+			const member = await createMember();
 			const project = await createTeamProject();
 
-			await linkUserToProject(owner, project, role);
+			await linkUserToProject(member, project, role);
 
-			await testServer.authAgentFor(owner).delete(`/projects/${project.id}`).expect(404);
+			await testServer.authAgentFor(member).delete(`/projects/${project.id}`).expect(403);
 
 			const projectInDB = await findProject(project.id);
 
@@ -502,9 +524,9 @@ describe('DELETE /project/:projectId', () => {
 		//
 		// ARRANGE
 		//
-		const owner = await createOwner();
+		const member = await createMember();
 
-		const otherProject = await createTeamProject(undefined, owner);
+		const otherProject = await createTeamProject(undefined, member);
 		const sharedWorkflow1 = await createWorkflow({}, otherProject);
 		const sharedWorkflow2 = await createWorkflow({}, otherProject);
 		const sharedCredential = await saveCredential(randomCredentialPayload(), {
@@ -512,7 +534,7 @@ describe('DELETE /project/:projectId', () => {
 			role: 'credential:owner',
 		});
 
-		const projectToBeDeleted = await createTeamProject(undefined, owner);
+		const projectToBeDeleted = await createTeamProject(undefined, member);
 		const ownedWorkflow = await createWorkflow({}, projectToBeDeleted);
 		const ownedCredential = await saveCredential(randomCredentialPayload(), {
 			project: projectToBeDeleted,
@@ -530,7 +552,7 @@ describe('DELETE /project/:projectId', () => {
 		//
 		// ACT
 		//
-		await testServer.authAgentFor(owner).delete(`/projects/${projectToBeDeleted.id}`).expect(200);
+		await testServer.authAgentFor(member).delete(`/projects/${projectToBeDeleted.id}`).expect(200);
 
 		//
 		// ASSERT
@@ -564,9 +586,9 @@ describe('DELETE /project/:projectId', () => {
 		//
 		// ARRANGE
 		//
-		const owner = await createOwner();
+		const member = await createMember();
 
-		const projectToBeDeleted = await createTeamProject(undefined, owner);
+		const projectToBeDeleted = await createTeamProject(undefined, member);
 		const ownedWorkflow1 = await createWorkflow({}, projectToBeDeleted);
 		const ownedWorkflow2 = await createWorkflow({}, projectToBeDeleted);
 		const ownedCredential = await saveCredential(randomCredentialPayload(), {
@@ -574,7 +596,7 @@ describe('DELETE /project/:projectId', () => {
 			role: 'credential:owner',
 		});
 
-		const otherProject = await createTeamProject(undefined, owner);
+		const otherProject = await createTeamProject(undefined, member);
 
 		await shareCredentialWithProjects(ownedCredential, [otherProject]);
 		await shareWorkflowWithProjects(ownedWorkflow1, [
@@ -587,7 +609,7 @@ describe('DELETE /project/:projectId', () => {
 		//
 		// ACT
 		//
-		await testServer.authAgentFor(owner).delete(`/projects/${projectToBeDeleted.id}`).expect(200);
+		await testServer.authAgentFor(member).delete(`/projects/${projectToBeDeleted.id}`).expect(200);
 
 		//
 		// ASSERT
@@ -624,18 +646,18 @@ describe('DELETE /project/:projectId', () => {
 		//
 		// ARRANGE
 		//
-		const owner = await createOwner();
+		const member = await createMember();
 		const editor = await createMember();
 		const viewer = await createMember();
 
-		const project = await createTeamProject(undefined, owner);
+		const project = await createTeamProject(undefined, member);
 		await linkUserToProject(editor, project, 'project:editor');
 		await linkUserToProject(viewer, project, 'project:viewer');
 
 		//
 		// ACT
 		//
-		await testServer.authAgentFor(owner).delete(`/projects/${project.id}`).expect(200);
+		await testServer.authAgentFor(member).delete(`/projects/${project.id}`).expect(200);
 
 		//
 		// ASSERT
@@ -643,7 +665,7 @@ describe('DELETE /project/:projectId', () => {
 		await expect(
 			Container.get(ProjectRelationRepository).findOneByOrFail({
 				projectId: project.id,
-				userId: owner.id,
+				userId: member.id,
 			}),
 		).rejects.toThrowError(EntityNotFoundError);
 		await expect(

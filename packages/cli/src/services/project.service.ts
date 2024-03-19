@@ -6,10 +6,10 @@ import { SharedCredentials } from '@/databases/entities/SharedCredentials';
 import { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
-import { Not, type EntityManager } from '@n8n/typeorm';
+import type { FindOptionsWhere, EntityManager } from '@n8n/typeorm';
 import Container, { Service } from 'typedi';
 import { type Scope } from '@n8n/permissions';
-import { In } from '@n8n/typeorm';
+import { In, Not } from '@n8n/typeorm';
 import { RoleService } from './role.service';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -223,16 +223,24 @@ export class ProjectService {
 		entityManager?: EntityManager,
 	) {
 		const em = entityManager ?? this.projectRepository.manager;
-		const projectRoles = this.roleService.rolesWithScope('project', [scope]);
+		let where: FindOptionsWhere<Project> = {
+			id: projectId,
+		};
 
-		return await em.findOne(Project, {
-			where: {
-				id: projectId,
+		if (!user.hasGlobalScope([scope], { mode: 'allOf' })) {
+			const projectRoles = this.roleService.rolesWithScope('project', scope);
+
+			where = {
+				...where,
 				projectRelations: {
 					role: In(projectRoles),
 					userId: user.id,
 				},
-			},
+			};
+		}
+
+		return await em.findOne(Project, {
+			where,
 		});
 	}
 
