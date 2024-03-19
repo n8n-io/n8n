@@ -87,9 +87,11 @@ export class MicrosoftOneDriveTrigger implements INodeType {
 
 			workflowData.lastTimeChecked = end.toISO();
 			if (watch === 'selectedFile') {
-				const fileId = this.getNodeParameter('fileId', '', {
-					extractValue: true,
-				}) as string;
+				const fileId = (
+					this.getNodeParameter('fileId', '', {
+						extractValue: true,
+					}) as string
+				).replace('%21', '!');
 				if (fileId) {
 					responseData = responseData.filter((item: IDataObject) => item.id === fileId);
 				}
