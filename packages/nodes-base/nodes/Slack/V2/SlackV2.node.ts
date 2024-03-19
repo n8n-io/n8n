@@ -780,20 +780,6 @@ export class SlackV2 implements INodeType {
 							body.username = sendAsUser;
 						}
 
-						const messageType = this.getNodeParameter('messageType', i, 'text');
-						if (messageType === 'blocks') {
-							const blocksJson = this.getNodeParameter('blocksUi', i, []) as string;
-
-							if (blocksJson !== '' && validateJSON(blocksJson) === undefined) {
-								throw new NodeOperationError(this.getNode(), 'Blocks it is not a valid json', {
-									itemIndex: i,
-								});
-							}
-							if (blocksJson !== '') {
-								body.blocks = blocksJson;
-							}
-						}
-
 						// Add all the other options to the request
 						const otherOptions = this.getNodeParameter('otherOptions', i) as IDataObject;
 						let action = 'postMessage';
@@ -851,27 +837,15 @@ export class SlackV2 implements INodeType {
 							{},
 							{ extractValue: true },
 						) as string;
-						const text = this.getNodeParameter('text', i) as string;
 						const ts = this.getNodeParameter('ts', i)?.toString() as string;
+						const content = getMessageContent.call(this, i, nodeVersion, instanceId);
+
 						const body: IDataObject = {
 							channel,
-							text,
-							ts
+							ts,
+							... content
 						};
 
-						const messageType = this.getNodeParameter('messageType', i, 'text');
-						if (messageType === 'blocks') {
-							const blocksJson = this.getNodeParameter('blocksUi', i, []) as string;
-
-							if (blocksJson !== '' && validateJSON(blocksJson) === undefined) {
-								throw new NodeOperationError(this.getNode(), 'Blocks it is not a valid json', {
-									itemIndex: i,
-								});
-							}
-							if (blocksJson !== '') {
-								body.blocks = blocksJson;
-							}
-						}
 						// Add all the other options to the request
 						const updateFields = this.getNodeParameter('updateFields', i);
 						Object.assign(body, updateFields);
