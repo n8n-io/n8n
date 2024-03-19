@@ -9,7 +9,12 @@ import {
 import { getPromptsData, getSettings, submitContactInfo, submitValueSurvey } from '@/api/settings';
 import { testHealthEndpoint } from '@/api/templates';
 import type { EnterpriseEditionFeature } from '@/constants';
-import { CONTACT_PROMPT_MODAL_KEY, STORES, VALUE_SURVEY_MODAL_KEY } from '@/constants';
+import {
+	CONTACT_PROMPT_MODAL_KEY,
+	STORES,
+	VALUE_SURVEY_MODAL_KEY,
+	INSECURE_CONNECTION_WARNING,
+} from '@/constants';
 import type {
 	ILdapConfig,
 	IN8nPromptResponse,
@@ -246,6 +251,15 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			}
 			if (settings.versionCli) {
 				useRootStore().setVersionCli(settings.versionCli);
+			}
+
+			if (
+				settings.authCookie.secure &&
+				location.protocol === 'http:' &&
+				!['localhost', '127.0.0.1'].includes(location.hostname)
+			) {
+				document.write(INSECURE_CONNECTION_WARNING);
+				return;
 			}
 
 			const isV1BannerDismissedPermanently = (settings.banners?.dismissed || []).includes('V1');

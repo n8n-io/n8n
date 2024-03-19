@@ -7,6 +7,7 @@ import { useTelemetryStore } from '@/stores/telemetry.store';
 import type { IN8nUISettings } from 'n8n-workflow';
 import { LOCAL_STORAGE_EXPERIMENT_OVERRIDES } from '@/constants';
 import { nextTick } from 'vue';
+import { defaultSettings } from '../../__tests__/defaults';
 
 const DEFAULT_POSTHOG_SETTINGS: IN8nUISettings['posthog'] = {
 	enabled: true,
@@ -21,6 +22,7 @@ const CURRENT_INSTANCE_ID = '456';
 
 function setSettings(overrides?: Partial<IN8nUISettings>) {
 	useSettingsStore().setSettings({
+		...defaultSettings,
 		posthog: DEFAULT_POSTHOG_SETTINGS,
 		instanceId: CURRENT_INSTANCE_ID,
 		...overrides,
