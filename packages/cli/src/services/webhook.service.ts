@@ -1,9 +1,8 @@
 import { WebhookRepository } from '@db/repositories/webhook.repository';
 import { Service } from 'typedi';
 import { CacheService } from '@/services/cache/cache.service';
-import { WebhookEntity } from '@db/entities/WebhookEntity';
+import type { WebhookEntity } from '@db/entities/WebhookEntity';
 import type { IHttpRequestMethods } from 'n8n-workflow';
-import type { EntityManager } from '@n8n/typeorm';
 
 type Method = NonNullable<IHttpRequestMethods>;
 
@@ -101,20 +100,16 @@ export class WebhookService {
 		return this.webhookRepository.create(data);
 	}
 
-	async deleteWorkflowWebhooks(workflowId: string, em?: EntityManager) {
-		em = em ?? this.webhookRepository.manager;
+	async deleteWorkflowWebhooks(workflowId: string) {
+		const webhooks = await this.webhookRepository.findBy({ workflowId });
 
-		const webhooks = await em.findBy(WebhookEntity, { workflowId });
-
-		return await this.deleteWebhooks(webhooks, em);
+		return await this.deleteWebhooks(webhooks);
 	}
 
-	private async deleteWebhooks(webhooks: WebhookEntity[], em?: EntityManager) {
-		em = em ?? this.webhookRepository.manager;
-
+	private async deleteWebhooks(webhooks: WebhookEntity[]) {
 		void this.cacheService.deleteMany(webhooks.map((w) => w.cacheKey));
 
-		return await em.remove(webhooks);
+		return await this.webhookRepository.remove(webhooks);
 	}
 
 	async getWebhookMethods(path: string) {

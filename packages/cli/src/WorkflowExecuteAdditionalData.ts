@@ -70,7 +70,6 @@ import { WorkflowRepository } from './databases/repositories/workflow.repository
 import { UrlService } from './services/url.service';
 import { WorkflowExecutionService } from './workflows/workflowExecution.service';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
-import type { EntityManager } from '@n8n/typeorm';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -954,7 +953,6 @@ export async function getBase(
 	userId?: string,
 	currentNodeParameters?: INodeParameters,
 	executionTimeoutTimestamp?: number,
-	em?: EntityManager,
 ): Promise<IWorkflowExecuteAdditionalData> {
 	const urlBaseWebhook = Container.get(UrlService).getWebhookBaseUrl();
 
@@ -964,7 +962,7 @@ export async function getBase(
 	const webhookTestBaseUrl = urlBaseWebhook + config.getEnv('endpoints.webhookTest');
 	const webhookWaitingBaseUrl = urlBaseWebhook + config.getEnv('endpoints.webhookWaiting');
 
-	const variables = await WorkflowHelpers.getVariables(em);
+	const variables = await WorkflowHelpers.getVariables();
 
 	return {
 		credentialsHelper: Container.get(CredentialsHelper),

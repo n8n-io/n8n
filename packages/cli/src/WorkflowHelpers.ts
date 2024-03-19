@@ -17,7 +17,6 @@ import type { IWorkflowExecutionDataProcess } from '@/Interfaces';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { VariablesService } from '@/environments/variables/variables.service.ee';
-import type { EntityManager } from '@n8n/typeorm';
 
 export function generateFailedExecutionFromError(
 	mode: WorkflowExecuteMode,
@@ -236,8 +235,8 @@ export function getExecutionStartNode(data: IWorkflowExecutionDataProcess, workf
 	return startNode;
 }
 
-export async function getVariables(em?: EntityManager): Promise<IDataObject> {
-	const variables = await Container.get(VariablesService).getAllCached(em);
+export async function getVariables(): Promise<IDataObject> {
+	const variables = await Container.get(VariablesService).getAllCached();
 	return Object.freeze(
 		variables.reduce((prev, curr) => {
 			prev[curr.key] = curr.value;

@@ -1,5 +1,5 @@
 import Container, { Service } from 'typedi';
-import { NodeApiError } from 'n8n-workflow';
+import { ApplicationError, NodeApiError } from 'n8n-workflow';
 import pick from 'lodash/pick';
 import omit from 'lodash/omit';
 import { v4 as uuid } from 'uuid';
@@ -220,29 +220,14 @@ export class WorkflowService {
 		return updatedWorkflow;
 	}
 
-	async delete(
-		user: User,
-		workflowId: string,
-		em?: EntityManager,
-	): Promise<WorkflowEntity | undefined> {
+	async deleteInactiveWorkflow(user: User, workflow: WorkflowEntity, em?: EntityManager) {
 		em = em ?? this.workflowRepository.manager;
-		await this.externalHooks.run('workflow.delete', [workflowId]);
-
-		const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(
-			workflowId,
-			user,
-			['workflow:delete'],
-			{ em },
-		);
-
-		if (!workflow) {
-			return;
-		}
 
 		if (workflow.active) {
-			// deactivate before deleting
-			await this.activeWorkflowRunner.remove(workflowId, em);
+			throw new ApplicationError('Deactivate the workflow before you delete it.');
 		}
+
+		const workflowId = workflow.id;
 
 		const idsForDeletion = await em
 			.find(ExecutionEntity, {
@@ -256,6 +241,25 @@ export class WorkflowService {
 
 		void Container.get(InternalHooks).onWorkflowDeleted(user, workflowId, false);
 		await this.externalHooks.run('workflow.afterDelete', [workflowId]);
+	}
+
+	async delete(user: User, workflowId: string): Promise<WorkflowEntity | undefined> {
+		await this.externalHooks.run('workflow.delete', [workflowId]);
+
+		const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(workflowId, user, [
+			'workflow:delete',
+		]);
+
+		if (!workflow) {
+			return;
+		}
+
+		if (workflow.active) {
+			// deactivate before deleting
+			await this.activeWorkflowRunner.remove(workflowId);
+		}
+
+		await this.deleteInactiveWorkflow(user, workflow);
 
 		return workflow;
 	}

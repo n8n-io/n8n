@@ -31,7 +31,7 @@ import type { IWorkflowDb } from '@/Interfaces';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 
-import { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { ExecutionService } from './executions/execution.service';
 import {
@@ -50,7 +50,6 @@ import { ActiveWorkflowsService } from '@/services/activeWorkflows.service';
 import { WorkflowExecutionService } from '@/workflows/workflowExecution.service';
 import { WorkflowStaticDataService } from '@/workflows/workflowStaticData.service';
 import { OnShutdown } from '@/decorators/OnShutdown';
-import type { EntityManager } from '@n8n/typeorm';
 
 interface QueuedActivation {
 	activationMode: WorkflowActivateMode;
@@ -227,10 +226,8 @@ export class ActiveWorkflowRunner {
 	 * Remove all webhooks of a workflow from the database, and
 	 * deregister those webhooks from external services.
 	 */
-	async clearWebhooks(workflowId: string, em?: EntityManager) {
-		em = em ?? this.workflowRepository.manager;
-
-		const workflowData = await em.findOne(WorkflowEntity, {
+	async clearWebhooks(workflowId: string) {
+		const workflowData = await this.workflowRepository.findOne({
 			where: { id: workflowId },
 			relations: ['shared', 'shared.user'],
 		});
@@ -252,12 +249,7 @@ export class ActiveWorkflowRunner {
 
 		const mode = 'internal';
 
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(
-			undefined,
-			undefined,
-			undefined,
-			em,
-		);
+		const additionalData = await WorkflowExecuteAdditionalData.getBase();
 
 		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, undefined, true);
 
@@ -265,9 +257,9 @@ export class ActiveWorkflowRunner {
 			await workflow.deleteWebhook(webhookData, NodeExecuteFunctions, mode, 'update');
 		}
 
-		await this.workflowStaticDataService.saveStaticData(workflow, em);
+		await this.workflowStaticDataService.saveStaticData(workflow);
 
-		await this.webhookService.deleteWorkflowWebhooks(workflowId, em);
+		await this.webhookService.deleteWorkflowWebhooks(workflowId);
 	}
 
 	/**
@@ -706,11 +698,12 @@ export class ActiveWorkflowRunner {
 	 *
 	 * @param {string} workflowId The id of the workflow to deactivate
 	 */
-	async remove(workflowId: string, em?: EntityManager) {
-		em = em ?? this.workflowRepository.manager;
+	// TODO: this should happen in a transaction
+	// maybe, see: https://github.com/n8n-io/n8n/pull/8904#discussion_r1530150510
+	async remove(workflowId: string) {
 		if (this.orchestrationService.isMultiMainSetupEnabled) {
 			try {
-				await this.clearWebhooks(workflowId, em);
+				await this.clearWebhooks(workflowId);
 			} catch (error) {
 				ErrorReporter.error(error);
 				this.logger.error(
@@ -724,7 +717,7 @@ export class ActiveWorkflowRunner {
 		}
 
 		try {
-			await this.clearWebhooks(workflowId, em);
+			await this.clearWebhooks(workflowId);
 		} catch (error) {
 			ErrorReporter.error(error);
 			this.logger.error(

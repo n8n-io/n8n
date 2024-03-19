@@ -36,9 +36,16 @@ export class ProjectService {
 		);
 	}
 
+	private get activeWorkflowRunner() {
+		return import('@/ActiveWorkflowRunner').then(({ ActiveWorkflowRunner }) =>
+			Container.get(ActiveWorkflowRunner),
+		);
+	}
+
 	async deleteProject(user: User, projectId: string) {
 		const workflowService = await this.workflowService;
 		const credentialsService = await this.credentialsService;
+		const activeWorkflowRunner = await this.activeWorkflowRunner;
 
 		await this.projectRelationRepository.manager.transaction(async (em) => {
 			const project = await this.getProjectWithScope(user, projectId, 'project:delete', em);
@@ -61,7 +68,11 @@ export class ProjectService {
 			});
 
 			for (const sharedWorkflow of ownedSharedWorkflows) {
-				await workflowService.delete(user, sharedWorkflow.workflow.id, em);
+				// NOTE: This is supposed to happen outside the transaction.
+				// We'd otherwise need to pass the em through to a lot of functions even ending up in core.
+				// See: https://github.com/n8n-io/n8n/pull/8904#discussion_r1530150510
+				await activeWorkflowRunner.remove(sharedWorkflow.workflow.id);
+				await workflowService.deleteInactiveWorkflow(user, sharedWorkflow.workflow, em);
 			}
 
 			// 2. delete credentials owned by this project
