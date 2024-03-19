@@ -212,6 +212,24 @@ export const extensions = (
 	return toOptions(fnToDoc, typeName, 'extension-function', includeHidden, transformLabel);
 };
 
+export const getType = (value: unknown): string => {
+	if (Array.isArray(value)) return 'array';
+	if (value === null) return 'null';
+	return (typeof value).toLocaleLowerCase();
+};
+
+export const isInputData = (base: string): boolean => {
+	return (
+		/^\$input\..*\.json]/.test(base) || /^\$json/.test(base) || /^\$\(.*\)\..*\.json/.test(base)
+	);
+};
+
+export const getDetail = (base: string, value: unknown): string | undefined => {
+	const type = getType(value);
+	if (!isInputData(base) || type === 'function') return undefined;
+	return type;
+};
+
 export const toOptions = (
 	fnToDoc: FnToDoc,
 	typeName: ExtensionTypeName,
@@ -377,6 +395,7 @@ const objectOptions = (input: AutocompleteInput<IDataObject>): Completion[] => {
 				label: isFunction ? key + '()' : key,
 				type: isFunction ? 'function' : 'keyword',
 				section: getObjectPropertySection({ name, key, isFunction }),
+				detail: getDetail(name, resolvedProp),
 				apply: applyCompletion(hasArgs, transformLabel),
 			};
 
@@ -388,7 +407,7 @@ const objectOptions = (input: AutocompleteInput<IDataObject>): Completion[] => {
 				{
 					doc: {
 						name: key,
-						returnType: typeof resolvedProp,
+						returnType: getType(resolvedProp),
 						description: i18n.proxyVars[infoKey],
 					},
 				},
@@ -651,7 +670,7 @@ export const secretOptions = (base: string) => {
 			return [];
 		}
 		return Object.entries(resolved).map(([secret, value]) =>
-			createCompletionOption('Object', secret, 'keyword', {
+			createCompletionOption('', secret, 'keyword', {
 				doc: {
 					name: secret,
 					returnType: typeof value,
