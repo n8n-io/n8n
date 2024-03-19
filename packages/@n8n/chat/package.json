@@ -45,11 +45,12 @@
     "vue-markdown-render": "^2.0.1"
   },
   "devDependencies": {
+    "@n8n/storybook": "workspace:*",
     "@iconify-json/mdi": "^1.1.54",
     "shelljs": "^0.8.5",
     "unbuild": "^2.0.0",
     "unplugin-icons": "^0.17.0",
-    "vite-plugin-dts": "^3.6.4"
+    "vite-plugin-dts": "^3.7.3"
   },
   "repository": {
     "type": "git",

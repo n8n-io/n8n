@@ -45,7 +45,7 @@
     "@types/lodash": "^4.14.195",
     "@types/luxon": "^3.2.0",
     "@types/md5": "^2.3.5",
-    "@types/xml2js": "^0.4.11"
+    "@types/xml2js": "^0.4.14"
   },
   "dependencies": {
     "@n8n/tournament": "1.0.2",
@@ -65,6 +65,6 @@
     "recast": "0.21.5",
     "title-case": "3.0.3",
     "transliteration": "2.3.5",
-    "xml2js": "0.5.0"
+    "xml2js": "0.6.2"
   }
 }

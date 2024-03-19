@@ -49,7 +49,7 @@
 				/>
 			</div>
 			<div v-if="editMode && shouldShowFooter" :class="$style.footer">
-				<N8nText size="xsmall" aligh="right">
+				<N8nText size="xsmall" align="right">
 					<span v-html="t('sticky.markdownHint')"></span>
 				</N8nText>
 			</div>
@@ -57,150 +57,120 @@
 	</div>
 </template>
 
-<script lang="ts">
+<script lang="ts" setup>
+import { computed, ref, watch } from 'vue';
 import N8nInput from '../N8nInput';
 import N8nMarkdown from '../N8nMarkdown';
-import N8nResizeWrapper from '../N8nResizeWrapper';
+import N8nResizeWrapper, { type ResizeData } from '../N8nResizeWrapper/ResizeWrapper.vue';
 import N8nText from '../N8nText';
-import Locale from '../../mixins/locale';
-import { defineComponent } from 'vue';
+import { useI18n } from '../../composables/useI18n';
 
-export default defineComponent({
-	name: 'N8nSticky',
-	components: {
-		N8nInput,
-		N8nMarkdown,
-		N8nResizeWrapper,
-		N8nText,
-	},
-	mixins: [Locale],
-	props: {
-		modelValue: {
-			type: String,
-		},
-		height: {
-			type: Number,
-			default: 180,
-		},
-		width: {
-			type: Number,
-			default: 240,
-		},
-		minHeight: {
-			type: Number,
-			default: 80,
-		},
-		minWidth: {
-			type: Number,
-			default: 150,
-		},
-		scale: {
-			type: Number,
-			default: 1,
-		},
-		gridSize: {
-			type: Number,
-			default: 20,
-		},
-		id: {
-			type: String,
-			default: '0',
-		},
-		defaultText: {
-			type: String,
-		},
-		editMode: {
-			type: Boolean,
-			default: false,
-		},
-		readOnly: {
-			type: Boolean,
-			default: false,
-		},
-		backgroundColor: {
-			value: [Number, String],
-			default: 1,
-		},
-	},
-	data() {
-		return {
-			isResizing: false,
-		};
-	},
-	computed: {
-		resHeight(): number {
-			if (this.height < this.minHeight) {
-				return this.minHeight;
-			}
-			return this.height;
-		},
-		resWidth(): number {
-			if (this.width < this.minWidth) {
-				return this.minWidth;
-			}
-			return this.width;
-		},
-		styles(): { height: string; width: string } {
-			const styles: { height: string; width: string } = {
-				height: `${this.resHeight}px`,
-				width: `${this.resWidth}px`,
-			};
+interface StickyProps {
+	modelValue?: string;
+	height?: number;
+	width?: number;
+	minHeight?: number;
+	minWidth?: number;
+	scale?: number;
+	gridSize?: number;
+	id?: string;
+	defaultText?: string;
+	editMode?: boolean;
+	readOnly?: boolean;
+	backgroundColor?: number | string;
+}
 
-			return styles;
-		},
-		shouldShowFooter(): boolean {
-			return this.resHeight > 100 && this.resWidth > 155;
-		},
-	},
-	watch: {
-		editMode(newMode, prevMode) {
-			setTimeout(() => {
-				if (newMode && !prevMode && this.$refs.input) {
-					const textarea = this.$refs.input as HTMLTextAreaElement;
-					if (this.defaultText === this.modelValue) {
-						textarea.select();
-					}
-					textarea.focus();
-				}
-			}, 100);
-		},
-	},
-	methods: {
-		onDoubleClick() {
-			if (!this.readOnly) {
-				this.$emit('edit', true);
-			}
-		},
-		onInputBlur() {
-			if (!this.isResizing) {
-				this.$emit('edit', false);
-			}
-		},
-		onUpdateModelValue(value: string) {
-			this.$emit('update:modelValue', value);
-		},
-		onMarkdownClick(link: string, event: Event) {
-			this.$emit('markdown-click', link, event);
-		},
-		onResize(values: unknown[]) {
-			this.$emit('resize', values);
-		},
-		onResizeEnd(resizeEnd: unknown) {
-			this.isResizing = false;
-			this.$emit('resizeend', resizeEnd);
-		},
-		onResizeStart() {
-			this.isResizing = true;
-			this.$emit('resizestart');
-		},
-		onInputScroll(event: WheelEvent) {
-			// Pass through zoom events but hold regular scrolling
-			if (!event.ctrlKey && !event.metaKey) {
-				event.stopPropagation();
-			}
-		},
-	},
+const props = withDefaults(defineProps<StickyProps>(), {
+	height: 180,
+	width: 240,
+	minHeight: 80,
+	minWidth: 150,
+	scale: 1,
+	gridSize: 20,
+	id: '0',
+	editMode: false,
+	readOnly: false,
+	backgroundColor: 1,
 });
+
+const $emit = defineEmits<{
+	(event: 'edit', editing: boolean);
+	(event: 'update:modelValue', value: string);
+	(event: 'markdown-click', link: string, e: Event);
+	(event: 'resize', values: ResizeData);
+	(event: 'resizestart');
+	(event: 'resizeend', value: unknown);
+}>();
+
+const { t } = useI18n();
+const isResizing = ref(false);
+const input = ref<HTMLTextAreaElement | undefined>(undefined);
+
+const resHeight = computed((): number => {
+	return props.height < props.minHeight ? props.minHeight : props.height;
+});
+
+const resWidth = computed((): number => {
+	return props.width < props.minWidth ? props.minWidth : props.width;
+});
+
+const styles = computed((): { height: string; width: string } => ({
+	height: `${resHeight.value}px`,
+	width: `${resWidth.value}px`,
+}));
+
+const shouldShowFooter = computed((): boolean => resHeight.value > 100 && resWidth.value > 155);
+
+watch(
+	() => props.editMode,
+	(newMode, prevMode) => {
+		setTimeout(() => {
+			if (newMode && !prevMode && input.value) {
+				if (props.defaultText === props.modelValue) {
+					input.value.select();
+				}
+				input.value.focus();
+			}
+		}, 100);
+	},
+);
+
+const onDoubleClick = () => {
+	if (!props.readOnly) $emit('edit', true);
+};
+
+const onInputBlur = () => {
+	if (!isResizing.value) $emit('edit', false);
+};
+
+const onUpdateModelValue = (value: string) => {
+	$emit('update:modelValue', value);
+};
+
+const onMarkdownClick = (link: string, event: Event) => {
+	$emit('markdown-click', link, event);
+};
+
+const onResize = (values: ResizeData) => {
+	$emit('resize', values);
+};
+
+const onResizeStart = () => {
+	isResizing.value = true;
+	$emit('resizestart');
+};
+
+const onResizeEnd = (resizeEnd: unknown) => {
+	isResizing.value = false;
+	$emit('resizeend', resizeEnd);
+};
+
+const onInputScroll = (event: WheelEvent) => {
+	// Pass through zoom events but hold regular scrolling
+	if (!event.ctrlKey && !event.metaKey) {
+		event.stopPropagation();
+	}
+};
 </script>
 
 <style lang="scss" module>

@@ -9,7 +9,7 @@ exports[`N8NActionBox > should render correctly 1`] = `
   <div class="description">
     <n8n-text-stub color="text-base" bold="false" size="medium" compact="false" tag="span"></n8n-text-stub>
   </div>
-  <n8n-button-stub label="Do something" type="primary" size="large" loading="false" disabled="false" outline="false" text="false" block="false" active="false" square="false" element="button"></n8n-button-stub>
+  <n8n-button-stub block="false" element="button" label="Do something" square="false" active="false" disabled="false" loading="false" outline="false" size="large" text="false" type="primary"></n8n-button-stub>
   <!--v-if-->
 </div>"
 `;

@@ -41,7 +41,7 @@
 import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
 import N8nFormInput from '../N8nFormInput';
-import type { IFormInput } from '../../types';
+import type { IFormInput, Validatable } from '../../types';
 import ResizeObserver from '../ResizeObserver';
 import type { EventBus } from '../../utils';
 import { createEventBus } from '../../utils';
@@ -83,7 +83,7 @@ export default defineComponent({
 	data() {
 		return {
 			showValidationWarnings: false,
-			values: {} as { [key: string]: unknown },
+			values: {} as { [key: string]: Validatable },
 			validity: {} as { [key: string]: boolean },
 		};
 	},
@@ -141,12 +141,15 @@ export default defineComponent({
 			this.showValidationWarnings = true;
 
 			if (this.isReadyToSubmit) {
-				const toSubmit = this.filteredInputs.reduce<{ [key: string]: unknown }>((accu, input) => {
-					if (this.values[input.name]) {
-						accu[input.name] = this.values[input.name];
-					}
-					return accu;
-				}, {});
+				const toSubmit = this.filteredInputs.reduce(
+					(accu, input) => {
+						if (this.values[input.name]) {
+							accu[input.name] = this.values[input.name];
+						}
+						return accu;
+					},
+					{} as { [key: string]: Validatable },
+				);
 				this.$emit('submit', toSubmit);
 			}
 		},

@@ -35,48 +35,27 @@
 	</div>
 </template>
 
-<script lang="ts">
+<script lang="ts" setup>
 import N8nButton from '../N8nButton';
 import N8nHeading from '../N8nHeading';
 import N8nText from '../N8nText';
-import N8nCallout from '../N8nCallout';
-import { defineComponent } from 'vue';
+import N8nCallout, { type CalloutTheme } from '../N8nCallout';
+import type { ButtonType } from '@/types/button';
 
-export default defineComponent({
-	name: 'N8nActionBox',
-	components: {
-		N8nButton,
-		N8nHeading,
-		N8nText,
-		N8nCallout,
-	},
-	props: {
-		emoji: {
-			type: String,
-		},
-		heading: {
-			type: String,
-		},
-		buttonText: {
-			type: String,
-		},
-		buttonType: {
-			type: String,
-		},
-		description: {
-			type: String,
-		},
-		calloutText: {
-			type: String,
-		},
-		calloutTheme: {
-			type: String,
-			default: 'info',
-		},
-		calloutIcon: {
-			type: String,
-		},
-	},
+interface ActionBoxProps {
+	emoji: string;
+	heading: string;
+	buttonText: string;
+	buttonType: ButtonType;
+	description: string;
+	calloutText: string;
+	calloutTheme: CalloutTheme;
+	calloutIcon: string;
+}
+
+defineOptions({ name: 'N8nActionBox' });
+withDefaults(defineProps<ActionBoxProps>(), {
+	calloutTheme: 'info',
 });
 </script>
 

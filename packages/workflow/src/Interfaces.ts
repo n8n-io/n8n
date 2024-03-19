@@ -2341,6 +2341,7 @@ export interface ResourceMapperField {
 
 export type FieldType =
 	| 'string'
+	| 'string-alphanumeric'
 	| 'number'
 	| 'dateTime'
 	| 'boolean'
@@ -2476,6 +2477,9 @@ export interface IN8nUISettings {
 	urlBaseWebhook: string;
 	urlBaseEditor: string;
 	versionCli: string;
+	authCookie: {
+		secure: boolean;
+	};
 	binaryDataMode: string;
 	releaseChannel: 'stable' | 'beta' | 'nightly' | 'dev';
 	n8nMetadata?: {
