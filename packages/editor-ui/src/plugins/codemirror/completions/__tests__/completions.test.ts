@@ -63,10 +63,16 @@ describe('Top-level completions', () => {
 		expect(result).toHaveLength(dollarOptions().length);
 
 		expect(result?.[0]).toEqual(
-			expect.objectContaining({ label: '$json', section: RECOMMENDED_SECTION }),
+			expect.objectContaining({
+				label: '$json',
+				section: RECOMMENDED_SECTION,
+			}),
 		);
 		expect(result?.[4]).toEqual(
-			expect.objectContaining({ label: '$execution', section: METADATA_SECTION }),
+			expect.objectContaining({
+				label: '$execution',
+				section: METADATA_SECTION,
+			}),
 		);
 		expect(result?.[14]).toEqual(
 			expect.objectContaining({ label: '$max()', section: METHODS_SECTION }),
@@ -612,6 +618,63 @@ describe('Resolution-based completions', () => {
 			expect(result).toHaveLength(
 				extensions('string').length + natives('string').length + STRING_RECOMMENDED_OPTIONS.length,
 			);
+		});
+	});
+
+	describe('type information', () => {
+		test('should display type information for: {{ $json.obj.| }}', () => {
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce({
+				str: 'bar',
+				empty: null,
+				arr: [],
+				obj: {},
+			});
+
+			const result = completions('{{ $json.obj.| }}');
+			expect(result).toContainEqual(expect.objectContaining({ label: 'str', detail: 'string' }));
+			expect(result).toContainEqual(expect.objectContaining({ label: 'empty', detail: 'null' }));
+			expect(result).toContainEqual(expect.objectContaining({ label: 'arr', detail: 'array' }));
+			expect(result).toContainEqual(expect.objectContaining({ label: 'obj', detail: 'object' }));
+		});
+
+		test('should display type information for: {{ $input.item.json.| }}', () => {
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce({
+				str: 'bar',
+				empty: null,
+				arr: [],
+				obj: {},
+			});
+
+			const result = completions('{{ $json.item.json.| }}');
+			expect(result).toContainEqual(expect.objectContaining({ label: 'str', detail: 'string' }));
+			expect(result).toContainEqual(expect.objectContaining({ label: 'empty', detail: 'null' }));
+			expect(result).toContainEqual(expect.objectContaining({ label: 'arr', detail: 'array' }));
+			expect(result).toContainEqual(expect.objectContaining({ label: 'obj', detail: 'object' }));
+		});
+
+		test('should display type information for: {{ $("My Node").item.json.| }}', () => {
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce({
+				str: 'bar',
+				empty: null,
+				arr: [],
+				obj: {},
+			});
+
+			const result = completions('{{ $("My Node").item.json.| }}');
+			expect(result).toContainEqual(expect.objectContaining({ label: 'str', detail: 'string' }));
+			expect(result).toContainEqual(expect.objectContaining({ label: 'empty', detail: 'null' }));
+			expect(result).toContainEqual(expect.objectContaining({ label: 'arr', detail: 'array' }));
+			expect(result).toContainEqual(expect.objectContaining({ label: 'obj', detail: 'object' }));
+		});
+
+		test('should not display type information for other completions', () => {
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue({
+				str: 'bar',
+			});
+
+			expect(completions('{{ $execution.| }}')?.every((item) => !item.detail)).toBe(true);
+			expect(completions('{{ $input.params.| }}')?.every((item) => !item.detail)).toBe(true);
+			expect(completions('{{ $("My Node").| }}')?.every((item) => !item.detail)).toBe(true);
 		});
 	});
 });
