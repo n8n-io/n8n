@@ -185,7 +185,7 @@ export class SalesforceTrigger implements INodeType {
 	};
 
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
-		const webhookData = this.getWorkflowStaticData('node');
+		const workflowData = this.getWorkflowStaticData('node');
 		let responseData;
 		const qs: IDataObject = {};
 		const triggerOn = this.getNodeParameter('triggerOn') as string;
@@ -197,13 +197,11 @@ export class SalesforceTrigger implements INodeType {
 		}
 
 		const now = DateTime.now().toISO();
-		const startDate = (webhookData.lastTimeChecked as string) || now;
+		const startDate = (workflowData.lastTimeChecked as string) || now;
 		const endDate = now;
 		try {
 			const pollStartDate = startDate;
 			const pollEndDate = endDate;
-
-			responseData = [{ json: {} }]; //await getPollResponse.call(this, pollStartDate, pollEndDate);
 
 			const options = {
 				conditionsUi: {
@@ -261,11 +259,11 @@ export class SalesforceTrigger implements INodeType {
 			}
 
 			if (!responseData?.length) {
-				webhookData.lastTimeChecked = endDate;
+				workflowData.lastTimeChecked = endDate;
 				return null;
 			}
 		} catch (error) {
-			if (this.getMode() === 'manual' || !webhookData.lastTimeChecked) {
+			if (this.getMode() === 'manual' || !workflowData.lastTimeChecked) {
 				throw error;
 			}
 			const workflow = this.getWorkflow();
@@ -280,7 +278,7 @@ export class SalesforceTrigger implements INodeType {
 			);
 			throw error;
 		}
-		webhookData.lastTimeChecked = endDate;
+		workflowData.lastTimeChecked = endDate;
 
 		if (Array.isArray(responseData) && responseData.length) {
 			return [this.helpers.returnJsonArray(responseData as IDataObject[])];
