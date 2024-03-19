@@ -15,6 +15,7 @@
     "build:frontend": "pnpm --filter=@n8n/chat --filter=n8n-design-system --filter=n8n-editor-ui build",
     "typecheck": "turbo run typecheck",
     "dev": "turbo run dev --parallel --filter=!n8n-design-system --filter=!@n8n/chat",
+    "ben-dev": "N8N_CONFIG_FILES=/Users/benco/Projects/n8n/config.dev.json N8N_CUSTOM_EXTENSIONS=/Users/benco/Projects/n8n/packages/n8n-nodes-honeybook/dist pnpm dev",
     "dev:ai": "turbo run dev --parallel --filter=@n8n/nodes-langchain --filter=n8n --filter=n8n-core",
     "clean": "turbo run clean --parallel",
     "format": "turbo run format && node scripts/format.mjs",
