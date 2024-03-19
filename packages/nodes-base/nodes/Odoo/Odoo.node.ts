@@ -31,6 +31,7 @@ import {
 	odooDelete,
 	odooGet,
 	odooGetAll,
+	odooAction,
 	odooGetDBName,
 	odooGetModelFields,
 	odooGetUserID,
@@ -536,7 +537,21 @@ export class Odoo implements INodeType {
 							processNameValueFields(fields),
 						);
 					}
-				}
+					
+					if (operation === 'action') {
+						const customResourceId = this.getNodeParameter('customResourceId', i) as string;
+						const actionName = this.getNodeParameter('actionName', i) as string;
+						responseData = await odooAction.call(
+							this,
+							db,
+							userID,
+							password,
+							customResource,
+							actionName,
+							url,
+							customResourceId,
+						);
+					}
 
 				if (resource === 'note') {
 					if (operation === 'create') {
