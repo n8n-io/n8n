@@ -123,7 +123,8 @@
     "@types/json-schema": "^7.0.15",
     "@types/temp": "^0.9.1",
     "eslint-plugin-n8n-nodes-base": "^1.16.0",
-    "gulp": "^4.0.2"
+    "gulp": "^4.0.2",
+    "n8n-core": "workspace:*"
   },
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "3.454.0",

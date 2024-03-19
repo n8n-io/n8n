@@ -113,7 +113,7 @@ importers:
         version: 6.3.4
       ts-jest:
         specifier: ^29.1.1
-        version: 29.1.1(@babel/core@7.22.9)(jest@29.6.2)(typescript@5.3.2)
+        version: 29.1.1(@babel/core@7.24.0)(jest@29.6.2)(typescript@5.3.2)
       tsc-alias:
         specifier: ^1.8.7
         version: 1.8.7
@@ -323,6 +323,9 @@ importers:
       gulp:
         specifier: ^4.0.2
         version: 4.0.2
+      n8n-core:
+        specifier: workspace:*
+        version: link:../../core
 
   packages/@n8n/permissions: {}
 
@@ -933,7 +936,7 @@ importers:
         version: 6.1.5(@types/jest@29.5.3)(jest@29.6.2)(vitest@1.3.1)
       '@testing-library/user-event':
         specifier: ^14.5.1
-        version: 14.5.1(@testing-library/dom@9.3.3)
+        version: 14.5.1(@testing-library/dom@9.3.4)
       '@testing-library/vue':
         specifier: ^8.0.1
         version: 8.0.1(@vue/compiler-sfc@3.4.21)(vue@3.4.21)
@@ -9164,13 +9167,13 @@ packages:
       vitest: 1.3.1
     dev: true
 
-  /@testing-library/user-event@14.5.1(@testing-library/dom@9.3.3):
+  /@testing-library/user-event@14.5.1(@testing-library/dom@9.3.4):
     resolution: {integrity: sha512-UCcUKrUYGj7ClomOo2SpNVvx4/fkd/2BbIHDCle8A0ax+P3bU7yJwDBDrS6ZwdTMARWTGODX1hEsCcO+7beJjg==}
     engines: {node: '>=12', npm: '>=6'}
     peerDependencies:
       '@testing-library/dom': '>=7.21.4'
     dependencies:
-      '@testing-library/dom': 9.3.3
+      '@testing-library/dom': 9.3.4
     dev: true
 
   /@testing-library/user-event@14.5.2(@testing-library/dom@9.3.4):
@@ -24548,7 +24551,7 @@ packages:
       zod: 3.22.4
     dev: false
 
-  /ts-jest@29.1.1(@babel/core@7.22.9)(jest@29.6.2)(typescript@5.3.2):
+  /ts-jest@29.1.1(@babel/core@7.24.0)(jest@29.6.2)(typescript@5.3.2):
     resolution: {integrity: sha512-D6xjnnbP17cC85nliwGiL+tpoKN0StpgE0TeOjXQTU6MVCfsB4v7aW05CgQ/1OywGb0x/oy9hHFnN+sczTiRaA==}
     engines: {node: ^14.15.0 || ^16.10.0 || >=18.0.0}
     hasBin: true
@@ -24569,7 +24572,7 @@ packages:
       esbuild:
         optional: true
     dependencies:
-      '@babel/core': 7.22.9
+      '@babel/core': 7.24.0
       bs-logger: 0.2.6
       fast-json-stable-stringify: 2.1.0
       jest: 29.6.2
@@ -25965,7 +25968,7 @@ packages:
       '@webassemblyjs/wasm-parser': 1.11.1
       acorn: 8.11.2
       acorn-import-assertions: 1.8.0(acorn@8.11.2)
-      browserslist: 4.21.9
+      browserslist: 4.23.0
       chrome-trace-event: 1.0.3
       enhanced-resolve: 5.13.0
       es-module-lexer: 0.9.3
