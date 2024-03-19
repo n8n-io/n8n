@@ -189,8 +189,12 @@ export class SalesforceTrigger implements INodeType {
 		let responseData;
 		const qs: IDataObject = {};
 		const triggerOn = this.getNodeParameter('triggerOn') as string;
-		const triggerResource = triggerOn.slice(0, 1).toUpperCase() + triggerOn.slice(1, -7);
+		let triggerResource = triggerOn.slice(0, 1).toUpperCase() + triggerOn.slice(1, -7);
 		const changeType = triggerOn.slice(-7);
+
+		if (triggerResource === 'CustomObject') {
+			triggerResource = this.getNodeParameter('customObject') as string;
+		}
 
 		const now = DateTime.now().toISO();
 		const startDate = (webhookData.lastTimeChecked as string) || now;
