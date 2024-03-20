@@ -2,9 +2,9 @@
 import { computed, ref } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 import type {
+	ProjectListItem,
 	ProjectRole,
 	ProjectSharingData,
-	ProjectListItem,
 } from '@/features/projects/projects.types';
 import ProjectSharingInfo from '@/features/projects/components/ProjectSharingInfo.vue';
 
