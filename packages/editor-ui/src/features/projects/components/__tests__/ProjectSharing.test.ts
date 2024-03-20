@@ -8,6 +8,7 @@ const renderComponent = createComponentRenderer(ProjectSharing);
 
 const homeProject = createProjectSharingData();
 const personalProjects = Array.from({ length: 3 }, createProjectListItem);
+const teamProjects = Array.from({ length: 3 }, () => createProjectListItem('team'));
 const projects = [homeProject, ...personalProjects];
 
 const getDropdownItems = async (dropdownTriggerParent: HTMLElement) => {
@@ -29,7 +30,7 @@ describe('ProjectSharing', () => {
 		const { getByTestId, queryByTestId } = renderComponent({
 			props: {
 				projects: [],
-				homeProject,
+				ignoreProject: homeProject,
 				modelValue: [],
 				multiple: true,
 			},
@@ -43,7 +44,7 @@ describe('ProjectSharing', () => {
 		const { getByTestId, getAllByTestId, queryAllByTestId } = renderComponent({
 			props: {
 				projects,
-				homeProject,
+				ignoreProject: homeProject,
 				modelValue: [personalProjects[0]],
 				multiple: true,
 			},
@@ -53,6 +54,7 @@ describe('ProjectSharing', () => {
 		expect(getAllByTestId('project-sharing-list-item')).toHaveLength(1);
 
 		const projectSelect = getByTestId('project-sharing-select');
+		const projectSelectInput = projectSelect.querySelector('input') as HTMLInputElement;
 
 		// Get the dropdown items
 		let projectSelectDropdownItems = await getDropdownItems(projectSelect);
@@ -61,6 +63,7 @@ describe('ProjectSharing', () => {
 		// Add a project (first from the dropdown list)
 		await userEvent.click(projectSelectDropdownItems[0]);
 		expect(getAllByTestId('project-sharing-list-item')).toHaveLength(2);
+		expect(projectSelectInput.value).toBe('');
 		projectSelectDropdownItems = await getDropdownItems(projectSelect);
 		await waitFor(() => expect(projectSelectDropdownItems).toHaveLength(1));
 
@@ -88,5 +91,34 @@ describe('ProjectSharing', () => {
 		expect(queryAllByTestId('project-sharing-list-item')).toHaveLength(0);
 		projectSelectDropdownItems = await getDropdownItems(projectSelect);
 		await waitFor(() => expect(projectSelectDropdownItems).toHaveLength(3));
+	});
+
+	it('should work as a simple select when no multiple is set', async () => {
+		const { getByTestId, queryByTestId } = renderComponent({
+			props: {
+				projects: teamProjects,
+				modelValue: [],
+			},
+		});
+
+		const projectSelect = getByTestId('project-sharing-select');
+		const projectSelectInput = projectSelect.querySelector('input') as HTMLInputElement;
+
+		// Get the dropdown items
+		let projectSelectDropdownItems = await getDropdownItems(projectSelect);
+		await waitFor(() => expect(projectSelectDropdownItems).toHaveLength(3));
+
+		// Select the first project from the dropdown list
+		await userEvent.click(projectSelectDropdownItems[0]);
+		expect(queryByTestId('project-sharing-list-item')).not.toBeInTheDocument();
+		projectSelectDropdownItems = await getDropdownItems(projectSelect);
+		await waitFor(() => expect(projectSelectDropdownItems).toHaveLength(3));
+		expect(projectSelectDropdownItems[0].textContent).toContain(projectSelectInput.value);
+
+		// Select another project from the dropdown list
+		await userEvent.click(projectSelectDropdownItems[1]);
+		projectSelectDropdownItems = await getDropdownItems(projectSelect);
+		await waitFor(() => expect(projectSelectDropdownItems).toHaveLength(3));
+		expect(projectSelectDropdownItems[1].textContent).toContain(projectSelectInput.value);
 	});
 });

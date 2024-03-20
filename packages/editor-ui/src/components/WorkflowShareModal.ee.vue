@@ -34,7 +34,7 @@
 					<ProjectSharing
 						v-model="sharedWithProjects"
 						:projects="projectsStore.personalProjects"
-						:home-project="workflow.homeProject"
+						:ignore-project="workflow.homeProject"
 						:readonly="!workflowPermissions.updateSharing"
 						multiple
 					/>
