@@ -33,8 +33,7 @@
 				<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
 					<ProjectSharing
 						v-model="sharedWithProjects"
-						:projects="projectsStore.personalProjects"
-						:ignore-project="workflow.homeProject"
+						:projects="projects"
 						:readonly="!workflowPermissions.updateSharing"
 						multiple
 					/>
@@ -119,7 +118,7 @@ import type { BaseTextKey } from '@/plugins/i18n';
 import { isNavigationFailure } from 'vue-router';
 import ProjectSharing from '@/features/projects/components/ProjectSharing.vue';
 import { useProjectsStore } from '@/features/projects/projects.store';
-import type { ProjectSharingData } from '@/features/projects/projects.types';
+import type { ProjectListItem, ProjectSharingData } from '@/features/projects/projects.types';
 
 export default defineComponent({
 	name: 'WorkflowShareModal',
@@ -194,6 +193,11 @@ export default defineComponent({
 		},
 		workflowOwnerName(): string {
 			return this.workflowsEEStore.getWorkflowOwnerName(`${this.workflow.id}`);
+		},
+		projects(): ProjectListItem[] {
+			return this.projectsStore.personalProjects.filter(
+				(project) => project.id !== this.workflow.homeProject?.id,
+			);
 		},
 	},
 	watch: {

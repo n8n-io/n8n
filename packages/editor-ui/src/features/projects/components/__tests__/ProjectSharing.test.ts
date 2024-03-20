@@ -1,15 +1,13 @@
 import { waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
-import { createProjectListItem, createProjectSharingData } from '@/__tests__/data/projects';
+import { createProjectListItem } from '@/__tests__/data/projects';
 import ProjectSharing from '@/features/projects/components/ProjectSharing.vue';
 
 const renderComponent = createComponentRenderer(ProjectSharing);
 
-const homeProject = createProjectSharingData();
 const personalProjects = Array.from({ length: 3 }, createProjectListItem);
 const teamProjects = Array.from({ length: 3 }, () => createProjectListItem('team'));
-const projects = [homeProject, ...personalProjects];
 
 const getDropdownItems = async (dropdownTriggerParent: HTMLElement) => {
 	await userEvent.click(within(dropdownTriggerParent).getByRole('textbox'));
@@ -30,7 +28,6 @@ describe('ProjectSharing', () => {
 		const { getByTestId, queryByTestId } = renderComponent({
 			props: {
 				projects: [],
-				ignoreProject: homeProject,
 				modelValue: [],
 				multiple: true,
 			},
@@ -43,8 +40,7 @@ describe('ProjectSharing', () => {
 	it('should filter, add and remove projects', async () => {
 		const { getByTestId, getAllByTestId, queryAllByTestId } = renderComponent({
 			props: {
-				projects,
-				ignoreProject: homeProject,
+				projects: personalProjects,
 				modelValue: [personalProjects[0]],
 				multiple: true,
 			},

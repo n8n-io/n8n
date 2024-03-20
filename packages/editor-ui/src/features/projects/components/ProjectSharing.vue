@@ -2,10 +2,9 @@
 import { computed, ref } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 import type {
-	ProjectListItem,
 	ProjectRole,
 	ProjectSharingData,
-	Project,
+	ProjectListItem,
 } from '@/features/projects/projects.types';
 import ProjectSharingInfo from '@/features/projects/components/ProjectSharingInfo.vue';
 
@@ -13,7 +12,6 @@ const locale = useI18n();
 
 type Props = {
 	projects: ProjectListItem[];
-	ignoreProject?: Project | ProjectSharingData;
 	readonly?: boolean;
 	multiple?: boolean;
 };
@@ -34,7 +32,6 @@ const filteredProjects = computed(() =>
 		.filter(
 			(project) =>
 				project.name?.toLowerCase().includes(filter.value.toLowerCase()) &&
-				project.id !== props.ignoreProject?.id &&
 				!selectedProjects.value?.find((p) => p.id === project.id && props.multiple),
 		)
 		.sort((a, b) => (a.name && b.name ? a.name.localeCompare(b.name) : 0)),
