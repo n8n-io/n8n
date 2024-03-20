@@ -48,7 +48,7 @@ const onProjectSelected = (projectId: string) => {
 	}
 
 	if (Array.isArray(model.value)) {
-		model.value.push(project);
+		model.value = [...model.value, project];
 		selectedProject.value = '';
 	} else {
 		model.value = project;
@@ -66,7 +66,7 @@ const onRoleAction = (project: ProjectSharingData, role: string) => {
 	}
 
 	if (role === 'remove') {
-		model.value?.splice(index, 1);
+		model.value = model.value.filter((p) => p.id !== project.id);
 	}
 };
 </script>

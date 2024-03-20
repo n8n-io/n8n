@@ -37,7 +37,7 @@ describe('ProjectSharing', () => {
 	});
 
 	it('should filter, add and remove projects', async () => {
-		const { getByTestId, getAllByTestId, queryAllByTestId, emitted, rerender } = renderComponent({
+		const { getByTestId, getAllByTestId, queryAllByTestId, emitted } = renderComponent({
 			props: {
 				projects: personalProjects,
 				modelValue: [personalProjects[0]],
@@ -56,6 +56,7 @@ describe('ProjectSharing', () => {
 
 		// Add a project (first from the dropdown list)
 		await userEvent.click(projectSelectDropdownItems[0]);
+		expect(emitted()['update:modelValue']).toEqual([[[expect.any(Object), expect.any(Object)]]]);
 
 		expect(getAllByTestId('project-sharing-list-item')).toHaveLength(2);
 		expect(projectSelectInput.value).toBe('');
@@ -70,6 +71,10 @@ describe('ProjectSharing', () => {
 
 		// Click on the remove action which is the second item in the dropdown
 		await userEvent.click(actionDropDownItems[1]);
+		expect(emitted()['update:modelValue']).toEqual([
+			[[expect.any(Object), expect.any(Object)]],
+			[[expect.any(Object)]],
+		]);
 
 		// Check the state
 		expect(getAllByTestId('project-sharing-list-item')).toHaveLength(1);
@@ -81,6 +86,11 @@ describe('ProjectSharing', () => {
 		expect(actionDropDownItems).toHaveLength(2);
 
 		await userEvent.click(actionDropDownItems[1]);
+		expect(emitted()['update:modelValue']).toEqual([
+			[[expect.any(Object), expect.any(Object)]],
+			[[expect.any(Object)]],
+			[[]],
+		]);
 
 		// Check the final state
 		expect(queryAllByTestId('project-sharing-list-item')).toHaveLength(0);
@@ -88,7 +98,7 @@ describe('ProjectSharing', () => {
 		expect(projectSelectDropdownItems).toHaveLength(3);
 	});
 
-	it('should work as a simple select when no multiple is set', async () => {
+	it('should work as a simple select when model is not an array', async () => {
 		const { getByTestId, queryByTestId, emitted } = renderComponent({
 			props: {
 				projects: teamProjects,
