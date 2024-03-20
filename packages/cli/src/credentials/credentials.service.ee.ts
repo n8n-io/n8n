@@ -8,7 +8,6 @@ import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { OwnershipService } from '@/services/ownership.service';
 import { Project } from '@/databases/entities/Project';
-import type { CredentialSharingRole } from '@/databases/entities/SharedCredentials';
 
 @Service()
 export class EnterpriseCredentialsService {
@@ -22,7 +21,6 @@ export class EnterpriseCredentialsService {
 		credential: CredentialsEntity,
 		shareWithIds: string[],
 		entityManager?: EntityManager,
-		{ role = 'credential:user' }: { role?: CredentialSharingRole } = {},
 	) {
 		const em = entityManager ?? this.sharedCredentialsRepository.manager;
 
@@ -39,7 +37,7 @@ export class EnterpriseCredentialsService {
 			.map((project) =>
 				this.sharedCredentialsRepository.create({
 					credentialsId: credential.id,
-					role,
+					role: 'credential:user',
 					projectId: project.id,
 				}),
 			);

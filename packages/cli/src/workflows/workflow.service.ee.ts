@@ -20,7 +20,6 @@ import type {
 import { OwnershipService } from '@/services/ownership.service';
 import { In, type EntityManager } from '@n8n/typeorm';
 import { Project } from '@/databases/entities/Project';
-import type { WorkflowSharingRole } from '@/databases/entities/SharedWorkflow';
 
 @Service()
 export class EnterpriseWorkflowService {
@@ -37,7 +36,6 @@ export class EnterpriseWorkflowService {
 		workflow: WorkflowEntity,
 		shareWithIds: string[],
 		entityManager: EntityManager,
-		{ role = 'workflow:editor' }: { role?: WorkflowSharingRole } = {},
 	) {
 		const em = entityManager ?? this.sharedWorkflowRepository.manager;
 
@@ -54,7 +52,7 @@ export class EnterpriseWorkflowService {
 			.map((project) =>
 				this.sharedWorkflowRepository.create({
 					workflowId: workflow.id,
-					role,
+					role: 'workflow:editor',
 					projectId: project.id,
 				}),
 			);
