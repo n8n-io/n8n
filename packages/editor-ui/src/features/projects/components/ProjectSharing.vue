@@ -11,15 +11,15 @@ import ProjectSharingInfo from '@/features/projects/components/ProjectSharingInf
 const locale = useI18n();
 
 type Props = {
+	modelValue: (ProjectSharingData | null) | ProjectSharingData[];
 	projects: ProjectListItem[];
 	readonly?: boolean;
-	multiple?: boolean;
 };
 
 const props = defineProps<Props>();
-const selectedProjects = defineModel<ProjectSharingData[]>({
-	required: true,
-});
+const emit = defineEmits<{
+	(e: 'update:modelValue', value: ProjectSharingData | ProjectSharingData[]): void;
+}>();
 
 const selectedProject = ref('');
 const filter = ref('');
@@ -29,10 +29,11 @@ const projectRoles = ref<Array<{ label: string; value: ProjectRole }>>([
 
 const filteredProjects = computed(() =>
 	props.projects
-		.filter(
-			(project) =>
-				project.name?.toLowerCase().includes(filter.value.toLowerCase()) &&
-				!selectedProjects.value?.find((p) => p.id === project.id && props.multiple),
+		.filter((project) =>
+			project.name?.toLowerCase().includes(filter.value.toLowerCase()) &&
+			Array.isArray(props.modelValue)
+				? !props.modelValue?.find((p) => p.id === project.id)
+				: true,
 		)
 		.sort((a, b) => (a.name && b.name ? a.name.localeCompare(b.name) : 0)),
 );
@@ -48,22 +49,24 @@ const onProjectSelected = (projectId: string) => {
 		return;
 	}
 
-	if (props.multiple) {
-		selectedProjects.value?.push(project);
+	if (Array.isArray(props.modelValue)) {
+		emit('update:modelValue', [...props.modelValue, project]);
 		selectedProject.value = '';
 	} else {
-		selectedProjects.value = [project];
+		emit('update:modelValue', project);
 	}
 };
 
 const onRoleAction = (project: ProjectSharingData, role: string) => {
-	const index = selectedProjects.value?.findIndex((p) => p.id === project.id) ?? -1;
-	if (index === -1) {
+	if (!Array.isArray(props.modelValue) || props.readonly) {
 		return;
 	}
 
 	if (role === 'remove') {
-		selectedProjects.value?.splice(index, 1);
+		emit(
+			'update:modelValue',
+			props.modelValue.filter((p) => p.id !== project.id),
+		);
 	}
 };
 </script>
@@ -93,9 +96,9 @@ const onRoleAction = (project: ProjectSharingData, role: string) => {
 				<ProjectSharingInfo :project="project" />
 			</N8nOption>
 		</N8nSelect>
-		<ul v-if="props.multiple" :class="$style.selectedProjects">
+		<ul v-if="Array.isArray(props.modelValue)" :class="$style.selectedProjects">
 			<li
-				v-for="project in selectedProjects"
+				v-for="project in props.modelValue"
 				:key="project.id"
 				:class="$style.project"
 				data-test-id="project-sharing-list-item"

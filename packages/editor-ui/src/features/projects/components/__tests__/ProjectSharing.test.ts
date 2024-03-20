@@ -29,7 +29,6 @@ describe('ProjectSharing', () => {
 			props: {
 				projects: [],
 				modelValue: [],
-				multiple: true,
 			},
 		});
 
@@ -38,11 +37,10 @@ describe('ProjectSharing', () => {
 	});
 
 	it('should filter, add and remove projects', async () => {
-		const { getByTestId, getAllByTestId, queryAllByTestId } = renderComponent({
+		const { getByTestId, getAllByTestId, queryAllByTestId, emitted, rerender } = renderComponent({
 			props: {
 				projects: personalProjects,
 				modelValue: [personalProjects[0]],
-				multiple: true,
 			},
 		});
 
@@ -54,46 +52,59 @@ describe('ProjectSharing', () => {
 
 		// Get the dropdown items
 		let projectSelectDropdownItems = await getDropdownItems(projectSelect);
-		await waitFor(() => expect(projectSelectDropdownItems).toHaveLength(2));
+		expect(projectSelectDropdownItems).toHaveLength(2);
 
 		// Add a project (first from the dropdown list)
 		await userEvent.click(projectSelectDropdownItems[0]);
+		const [[addedProjects]] = emitted()['update:modelValue'];
+		expect(addedProjects).toHaveLength(2);
+		// Rerender the component with the updated `modelValue` to simulate parent component behavior
+		await rerender({ modelValue: addedProjects });
+
 		expect(getAllByTestId('project-sharing-list-item')).toHaveLength(2);
 		expect(projectSelectInput.value).toBe('');
 		projectSelectDropdownItems = await getDropdownItems(projectSelect);
-		await waitFor(() => expect(projectSelectDropdownItems).toHaveLength(1));
+		expect(projectSelectDropdownItems).toHaveLength(1);
 
 		// Remove the project (first from the list)
 		let actionDropDownItems = await getDropdownItems(
 			getAllByTestId('project-sharing-list-item')[0],
 		);
-		await waitFor(() => expect(actionDropDownItems).toHaveLength(2));
+		expect(actionDropDownItems).toHaveLength(2);
 
 		// Click on the remove action which is the second item in the dropdown
 		await userEvent.click(actionDropDownItems[1]);
+		const [_, [deletedProjects]] = emitted()['update:modelValue'];
+		expect(deletedProjects).toHaveLength(1);
+		// Rerender the component with the updated `modelValue` to simulate parent component behavior
+		await rerender({ modelValue: deletedProjects });
 
 		// Check the state
 		expect(getAllByTestId('project-sharing-list-item')).toHaveLength(1);
 		projectSelectDropdownItems = await getDropdownItems(projectSelect);
-		await waitFor(() => expect(projectSelectDropdownItems).toHaveLength(2));
+		expect(projectSelectDropdownItems).toHaveLength(2);
 
 		// Remove the last selected project
 		actionDropDownItems = await getDropdownItems(getAllByTestId('project-sharing-list-item')[0]);
-		await waitFor(() => expect(actionDropDownItems).toHaveLength(2));
+		expect(actionDropDownItems).toHaveLength(2);
 
 		await userEvent.click(actionDropDownItems[1]);
+		const [__, ___, [emptyProjects]] = emitted()['update:modelValue'];
+		expect(emptyProjects).toHaveLength(0);
+		// Rerender the component with the updated `modelValue` to simulate parent component behavior
+		await rerender({ modelValue: emptyProjects });
 
 		// Check the final state
 		expect(queryAllByTestId('project-sharing-list-item')).toHaveLength(0);
 		projectSelectDropdownItems = await getDropdownItems(projectSelect);
-		await waitFor(() => expect(projectSelectDropdownItems).toHaveLength(3));
+		expect(projectSelectDropdownItems).toHaveLength(3);
 	});
 
 	it('should work as a simple select when no multiple is set', async () => {
-		const { getByTestId, queryByTestId } = renderComponent({
+		const { getByTestId, queryByTestId, emitted } = renderComponent({
 			props: {
 				projects: teamProjects,
-				modelValue: [],
+				modelValue: null,
 			},
 		});
 
@@ -102,19 +113,34 @@ describe('ProjectSharing', () => {
 
 		// Get the dropdown items
 		let projectSelectDropdownItems = await getDropdownItems(projectSelect);
-		await waitFor(() => expect(projectSelectDropdownItems).toHaveLength(3));
+		expect(projectSelectDropdownItems).toHaveLength(3);
 
 		// Select the first project from the dropdown list
 		await userEvent.click(projectSelectDropdownItems[0]);
 		expect(queryByTestId('project-sharing-list-item')).not.toBeInTheDocument();
 		projectSelectDropdownItems = await getDropdownItems(projectSelect);
-		await waitFor(() => expect(projectSelectDropdownItems).toHaveLength(3));
+		expect(projectSelectDropdownItems).toHaveLength(3);
 		expect(projectSelectDropdownItems[0].textContent).toContain(projectSelectInput.value);
+		expect(emitted()['update:modelValue']).toEqual([
+			[
+				expect.objectContaining({
+					name: projectSelectInput.value,
+				}),
+			],
+		]);
 
 		// Select another project from the dropdown list
 		await userEvent.click(projectSelectDropdownItems[1]);
 		projectSelectDropdownItems = await getDropdownItems(projectSelect);
-		await waitFor(() => expect(projectSelectDropdownItems).toHaveLength(3));
+		expect(projectSelectDropdownItems).toHaveLength(3);
 		expect(projectSelectDropdownItems[1].textContent).toContain(projectSelectInput.value);
+		expect(emitted()['update:modelValue']).toEqual([
+			expect.any(Array),
+			[
+				expect.objectContaining({
+					name: projectSelectInput.value,
+				}),
+			],
+		]);
 	});
 });
