@@ -17,6 +17,8 @@ import {
 	applyCompletion,
 	sortCompletionsAlpha,
 	hasRequiredArgs,
+	getDefaultArgs,
+	insertDefaultArgs,
 } from './utils';
 import type {
 	Completion,
@@ -155,6 +157,10 @@ function datatypeOptions(input: AutocompleteInput): Completion[] {
 		return stringOptions(input as AutocompleteInput<string>);
 	}
 
+	if (typeof resolved === 'boolean') {
+		return booleanOptions();
+	}
+
 	if (resolved instanceof DateTime) {
 		return luxonOptions(input as AutocompleteInput<DateTime>);
 	}
@@ -239,7 +245,7 @@ export const toOptions = (
 ) => {
 	return Object.entries(fnToDoc)
 		.sort((a, b) => a[0].localeCompare(b[0]))
-		.filter(([, docInfo]) => !docInfo.doc?.hidden || includeHidden)
+		.filter(([, docInfo]) => (docInfo.doc && !docInfo.doc?.hidden) || includeHidden)
 		.map(([fnName, docInfo]) => {
 			return createCompletionOption(typeName, fnName, optionType, docInfo, transformLabel);
 		});
@@ -258,7 +264,11 @@ const createCompletionOption = (
 		label,
 		type: optionType,
 		section: docInfo.doc?.section,
-		apply: applyCompletion(hasRequiredArgs(docInfo?.doc), transformLabel),
+		apply: applyCompletion({
+			hasArgs: hasRequiredArgs(docInfo?.doc),
+			defaultArgs: getDefaultArgs(docInfo?.doc),
+			transformLabel,
+		}),
 	};
 
 	option.info = () => {
@@ -395,8 +405,8 @@ const objectOptions = (input: AutocompleteInput<IDataObject>): Completion[] => {
 				label: isFunction ? key + '()' : key,
 				type: isFunction ? 'function' : 'keyword',
 				section: getObjectPropertySection({ name, key, isFunction }),
+				apply: applyCompletion({ hasArgs, transformLabel }),
 				detail: getDetail(name, resolvedProp),
-				apply: applyCompletion(hasArgs, transformLabel),
 			};
 
 			const infoKey = [name, key].join('.');
@@ -466,7 +476,7 @@ const applySections = ({
 	recommendedSection = RECOMMENDED_SECTION,
 }: {
 	options: Completion[];
-	recommended?: string[];
+	recommended?: Array<string | { label: string; args: unknown[] }>;
 	recommendedSection?: CompletionSection;
 	methodsSection?: CompletionSection;
 	propSection?: CompletionSection;
@@ -482,12 +492,12 @@ const applySections = ({
 		{} as Record<string, Completion>,
 	);
 	return recommended
-		.map(
-			(reco): Completion => ({
-				...optionByLabel[reco],
-				section: recommendedSection,
-			}),
-		)
+		.map((reco): Completion => {
+			const option = optionByLabel[typeof reco === 'string' ? reco : reco.label];
+			const label =
+				typeof reco === 'string' ? option.label : insertDefaultArgs(reco.label, reco.args);
+			return { ...option, label, section: recommendedSection };
+		})
 		.concat(
 			options
 				.filter((option) => !excludeRecommended || !recommendedSet.has(option.label))
@@ -529,15 +539,23 @@ const stringOptions = (input: AutocompleteInput<string>): Completion[] => {
 	if (validateFieldType('string', resolved, 'dateTime').valid) {
 		return applySections({
 			options,
-			recommended: ['toDate()'],
+			recommended: ['toDateTime()'],
 			sections: STRING_SECTIONS,
 		});
 	}
 
-	if (VALID_EMAIL_REGEX.test(resolved) || isUrl(resolved)) {
+	if (VALID_EMAIL_REGEX.test(resolved)) {
 		return applySections({
 			options,
 			recommended: ['extractDomain()', 'isEmail()', ...STRING_RECOMMENDED_OPTIONS],
+			sections: STRING_SECTIONS,
+		});
+	}
+
+	if (isUrl(resolved)) {
+		return applySections({
+			options,
+			recommended: ['extractDomain()', 'extractUrlPath()', ...STRING_RECOMMENDED_OPTIONS],
 			sections: STRING_SECTIONS,
 		});
 	}
@@ -550,10 +568,36 @@ const stringOptions = (input: AutocompleteInput<string>): Completion[] => {
 		});
 	}
 
+	const trimmed = resolved.trim();
+	if (
+		(trimmed.startsWith('{') && trimmed.endsWith('}')) ||
+		(trimmed.startsWith('[') && trimmed.endsWith(']'))
+	) {
+		return applySections({
+			options,
+			recommended: ['parseJson()', ...STRING_RECOMMENDED_OPTIONS],
+			sections: STRING_SECTIONS,
+		});
+	}
+
+	if (['true', 'false'].includes(resolved.toLocaleLowerCase())) {
+		return applySections({
+			options,
+			recommended: ['toBoolean()', ...STRING_RECOMMENDED_OPTIONS],
+			sections: STRING_SECTIONS,
+		});
+	}
+
 	return applySections({
 		options,
 		recommended: STRING_RECOMMENDED_OPTIONS,
 		sections: STRING_SECTIONS,
+	});
+};
+
+const booleanOptions = (): Completion[] => {
+	return applySections({
+		options: sortCompletionsAlpha([...natives('boolean'), ...extensions('boolean')]),
 	});
 };
 
@@ -566,6 +610,36 @@ const numberOptions = (input: AutocompleteInput<number>): Completion[] => {
 	const ONLY_INTEGER = ['isEven()', 'isOdd()'];
 
 	if (Number.isInteger(resolved)) {
+		const nowMillis = Date.now();
+		const marginMillis = 946_707_779_000; // 30y
+		const isPlausableMillisDateTime =
+			resolved > nowMillis - marginMillis && resolved < nowMillis + marginMillis;
+
+		if (isPlausableMillisDateTime) {
+			return applySections({
+				options,
+				recommended: [{ label: 'toDateTime()', args: ['ms'] }],
+			});
+		}
+
+		const nowSeconds = nowMillis / 1000;
+		const marginSeconds = marginMillis / 1000;
+		const isPlausableSecondsDateTime =
+			resolved > nowSeconds - marginSeconds && resolved < nowSeconds + marginSeconds;
+		if (isPlausableSecondsDateTime) {
+			return applySections({
+				options,
+				recommended: [{ label: 'toDateTime()', args: ['s'] }],
+			});
+		}
+
+		if (resolved === 0 || resolved === 1) {
+			return applySections({
+				options,
+				recommended: ['toBoolean()'],
+			});
+		}
+
 		return applySections({
 			options,
 			recommended: ONLY_INTEGER,
@@ -574,7 +648,7 @@ const numberOptions = (input: AutocompleteInput<number>): Completion[] => {
 		const exclude = new Set(ONLY_INTEGER);
 		return applySections({
 			options: options.filter((option) => !exclude.has(option.label)),
-			recommended: ['round()', 'floor()', 'ceil()', 'toFixed()'],
+			recommended: ['round()', 'floor()', 'ceil()'],
 		});
 	}
 };
@@ -775,7 +849,7 @@ const createLuxonAutocompleteOption = (
 		};
 	}
 
-	if (doc?.hidden && !includeHidden) {
+	if (!doc || (doc?.hidden && !includeHidden)) {
 		return null;
 	}
 
@@ -783,7 +857,11 @@ const createLuxonAutocompleteOption = (
 		label,
 		type,
 		section: doc?.section,
-		apply: applyCompletion(hasRequiredArgs(doc), transformLabel),
+		apply: applyCompletion({
+			hasArgs: hasRequiredArgs(doc),
+			defaultArgs: getDefaultArgs(doc),
+			transformLabel,
+		}),
 	};
 	option.info = createCompletionOption(
 		'DateTime',
