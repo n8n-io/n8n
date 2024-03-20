@@ -23,7 +23,7 @@ const THEME = [
 interface BadgeProps {
 	theme?: (typeof THEME)[number];
 	size?: TextSize;
-	bold: boolean;
+	bold?: boolean;
 }
 
 defineOptions({ name: 'N8nBadge' });
