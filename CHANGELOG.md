@@ -1,3 +1,36 @@
+# [1.34.0](https://github.com/n8n-io/n8n/compare/n8n@1.33.0...n8n@1.34.0) (2024-03-20)
+
+
+### Bug Fixes
+
+* Chat Trigger exclude summarization node from valid ai nodes ([#8875](https://github.com/n8n-io/n8n/issues/8875)) ([4861556](https://github.com/n8n-io/n8n/commit/4861556a1c7da643fdc924f7f65dc89a7453744a))
+* **Cohere Model Node:** Fix issue with credential test ([#8916](https://github.com/n8n-io/n8n/issues/8916)) ([4f0b52c](https://github.com/n8n-io/n8n/commit/4f0b52c45d1f165159787197fd41138059b13db6))
+* **core:** Improve handling of invalid objects in `cleanupParameterData` (no-chanhelog) ([#8910](https://github.com/n8n-io/n8n/issues/8910)) ([33ab781](https://github.com/n8n-io/n8n/commit/33ab781aef1b9107f9ecc7ec22c9b264b4eaae63))
+* **core:** Remove HTTP body for GET, HEAD, and OPTIONS requests ([#3621](https://github.com/n8n-io/n8n/issues/3621)) ([d85d0ec](https://github.com/n8n-io/n8n/commit/d85d0ecf45e8f256536bdd7cad6aab85971e8e43))
+* **core:** Update `follow-redirects` to address CVE-2024-28849 ([#8902](https://github.com/n8n-io/n8n/issues/8902)) ([a10120f](https://github.com/n8n-io/n8n/commit/a10120f74efa4c636f26eafc996e71bd372f8ee8))
+* **editor:** Add proper scroll to Environments push modal ([#8883](https://github.com/n8n-io/n8n/issues/8883)) ([bcbff76](https://github.com/n8n-io/n8n/commit/bcbff760553058f8fb43b379130db0cd064fd869))
+* **editor:** Fix an issue with an empty chat response if not in `output` property ([#8913](https://github.com/n8n-io/n8n/issues/8913)) ([024be62](https://github.com/n8n-io/n8n/commit/024be62693e96020c284116110944e90c7bcf1a8))
+* **editor:** Fix design system component props ([#8923](https://github.com/n8n-io/n8n/issues/8923)) ([7176cd1](https://github.com/n8n-io/n8n/commit/7176cd1407e028ba8c543179b128c7e2ac9c0369))
+* **editor:** Fix source control docs link in add workflow button tooltip ([#8891](https://github.com/n8n-io/n8n/issues/8891)) ([a92d8bf](https://github.com/n8n-io/n8n/commit/a92d8bfc6e2fcc4bf79fc3f6564fdb864ccd3f41))
+* **editor:** Improve expression editor performance by removing watchers ([#8900](https://github.com/n8n-io/n8n/issues/8900)) ([a5261d6](https://github.com/n8n-io/n8n/commit/a5261d6ebb8fa4ac8796b04920a4fa4bc43bb397))
+* **editor:** Remove `isOwner` from IUser interface ([#8888](https://github.com/n8n-io/n8n/issues/8888)) ([6955e89](https://github.com/n8n-io/n8n/commit/6955e8991ca2ec13e6298c3c18ec2b28853ceda4))
+* OpenAI Node function to preserve original tools after node execution ([#8872](https://github.com/n8n-io/n8n/issues/8872)) ([054a4fc](https://github.com/n8n-io/n8n/commit/054a4fce1a8163f2201efd846938b909c7d0e394))
+* Validate custom tool names for forbidden chars ([#8878](https://github.com/n8n-io/n8n/issues/8878)) ([edce632](https://github.com/n8n-io/n8n/commit/edce632ee62fdb9485d1ed07ead7dd3c0d2afcf8))
+
+
+### Features
+
+* Add AI Error Debugging using OpenAI ([#8805](https://github.com/n8n-io/n8n/issues/8805)) ([948c383](https://github.com/n8n-io/n8n/commit/948c383999726278377f74987cd36ed6a5b39b7b))
+* Add Onedrive Trigger Node ([#8742](https://github.com/n8n-io/n8n/issues/8742)) ([ff8dd4e](https://github.com/n8n-io/n8n/commit/ff8dd4e604216203800d9b12fd5f1105356cf03e))
+* **core:** Add support for SQLite connection pooling ([#8722](https://github.com/n8n-io/n8n/issues/8722)) ([c4c319d](https://github.com/n8n-io/n8n/commit/c4c319d7cfb30772cca248a0039fd8e2b1c99eb7))
+* **editor:** Add missing extension methods for expressions ([#8845](https://github.com/n8n-io/n8n/issues/8845)) ([5e84c2a](https://github.com/n8n-io/n8n/commit/5e84c2ab89c7d0e4365b32b1c94a9c10cea56cb9))
+* **editor:** Add type information to autocomplete dropdown ([#8843](https://github.com/n8n-io/n8n/issues/8843)) ([d7bfd45](https://github.com/n8n-io/n8n/commit/d7bfd45333cc9780ae5f1424f33de2093bd1a2f9))
+* **editor:** Block the frontend when trying to access n8n from another host over http ([#8906](https://github.com/n8n-io/n8n/issues/8906)) ([669bd83](https://github.com/n8n-io/n8n/commit/669bd830e9b1b0f986d8a8b4525d0bdc3e3c0bd7))
+* **editor:** Refactor expression editors and mixins to composition API ([#8894](https://github.com/n8n-io/n8n/issues/8894)) ([0c179e4](https://github.com/n8n-io/n8n/commit/0c179e4e511e4e6075d390afc025c93630ef3241))
+* **editor:** Release `@n8n/chat@0.9.1` ([#8918](https://github.com/n8n-io/n8n/issues/8918)) ([e0c303c](https://github.com/n8n-io/n8n/commit/e0c303c6c10145a2ef72daaf4142315cf65c839a))
+
+
+
 # [1.33.0](https://github.com/n8n-io/n8n/compare/n8n@1.32.0...n8n@1.33.0) (2024-03-13)
 
 
