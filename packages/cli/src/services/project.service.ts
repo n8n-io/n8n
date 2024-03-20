@@ -14,6 +14,7 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/sharedCredentials.repository';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 @Service()
 export class ProjectService {
@@ -51,6 +52,12 @@ export class ProjectService {
 		const workflowService = await this.workflowService;
 		const credentialsService = await this.credentialsService;
 		const activeWorkflowRunner = await this.activeWorkflowRunner;
+
+		if (projectId === migrateToProject) {
+			throw new BadRequestError(
+				'Request to delete a project failed because the project to delete and the project to migrate to are the same project',
+			);
+		}
 
 		const project = await this.getProjectWithScope(user, projectId, ['project:delete']);
 

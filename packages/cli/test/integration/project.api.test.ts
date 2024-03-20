@@ -684,6 +684,17 @@ describe('DELETE /project/:projectId', () => {
 
 	// Tests related to migrating workflows and credentials to new project:
 
+	test('should fail to delete if project to migrate to and the project to delete are the same', async () => {
+		const member = await createMember();
+		const project = await createTeamProject(undefined, member);
+
+		await testServer
+			.authAgentFor(member)
+			.delete(`/projects/${project.id}`)
+			.send({ migrateToProject: project.id })
+			.expect(400);
+	});
+
 	test('does not migrate credentials and projects if the user does not have the permissions to create workflows or credentials in the target project', async () => {
 		//
 		// ARRANGE
