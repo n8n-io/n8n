@@ -101,9 +101,10 @@ export class WaitTracker {
 		}
 
 		if (!['new', 'unknown', 'waiting', 'running'].includes(fullExecutionData.status)) {
-			throw new WorkflowOperationError(
-				`Only running or waiting executions can be stopped and ${executionId} is currently ${fullExecutionData.status}.`,
-			);
+			throw new ApplicationError('Cannot stop execution with this status', {
+				level: 'warning',
+				extra: { executionId, status: fullExecutionData.status },
+			});
 		}
 		// Set in execution in DB as failed and remove waitTill time
 		const error = new WorkflowOperationError('Workflow-Execution has been canceled!');
