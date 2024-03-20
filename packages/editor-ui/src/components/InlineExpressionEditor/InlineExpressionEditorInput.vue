@@ -1,11 +1,7 @@
-<template>
-	<div ref="root" :class="$style.editor" data-test-id="inline-expression-editor-input"></div>
-</template>
-
 <script setup lang="ts">
 import { startCompletion } from '@codemirror/autocomplete';
 import { history } from '@codemirror/commands';
-import { Prec } from '@codemirror/state';
+import { type EditorState, Prec, type SelectionRange } from '@codemirror/state';
 import { EditorView, keymap } from '@codemirror/view';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, toValue, watch } from 'vue';
 
@@ -42,7 +38,10 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
-	(event: 'change', value: { value: string; segments: Segment[] }): void;
+	(
+		event: 'update:model-value',
+		value: { value: string; segments: Segment[]; state: EditorState; selection: SelectionRange },
+	): void;
 	(event: 'focus'): void;
 }>();
 
@@ -64,6 +63,7 @@ const editorValue = ref<string>(removeExpressionPrefix(props.modelValue));
 const {
 	editor: editorRef,
 	segments,
+	selection,
 	readEditorValue,
 	setCursorPosition,
 	hasFocus,
@@ -105,11 +105,15 @@ watch(
 	},
 );
 
-watch(segments.display, (newSegments) => {
-	emit('change', {
-		value: '=' + readEditorValue(),
-		segments: newSegments,
-	});
+watch([segments.display, selection], ([newSegments, newSelection]) => {
+	if (editorRef.value) {
+		emit('update:model-value', {
+			value: '=' + readEditorValue(),
+			segments: newSegments,
+			state: editorRef.value.state,
+			selection: newSelection,
+		});
+	}
 });
 
 watch(hasFocus, (focused) => {
@@ -124,6 +128,10 @@ onBeforeUnmount(() => {
 	props.eventBus.off('drop', onDrop);
 });
 </script>
+
+<template>
+	<div ref="root" :class="$style.editor" data-test-id="inline-expression-editor-input"></div>
+</template>
 
 <style lang="scss" module>
 .editor div[contenteditable='false'] {

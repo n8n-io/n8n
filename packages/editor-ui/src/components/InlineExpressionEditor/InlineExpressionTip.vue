@@ -1,127 +1,169 @@
 <template>
-	<div v-if="tip === 'drag'" :class="$style.tip">
+	<div :class="[$style.tip, { [$style.drag]: tip === 'drag' }]">
 		<n8n-text size="small" :class="$style.tipText"
-			>{{ $locale.baseText('parameterInput.tip') }}:
+			>{{ i18n.baseText('parameterInput.tip') }}:
 		</n8n-text>
-		<n8n-text size="small" :class="$style.text">
-			{{ $locale.baseText('parameterInput.dragTipBeforePill') }}
-		</n8n-text>
-		<div :class="[$style.pill, { [$style.highlight]: !ndvStore.isMappingOnboarded }]">
-			{{ $locale.baseText('parameterInput.inputField') }}
+
+		<div v-if="tip === 'drag'" :class="$style.content">
+			<n8n-text size="small" :class="$style.text">
+				{{ i18n.baseText('parameterInput.dragTipBeforePill') }}
+			</n8n-text>
+			<div :class="[$style.pill, { [$style.highlight]: !ndvStore.isMappingOnboarded }]">
+				{{ i18n.baseText('parameterInput.inputField') }}
+			</div>
+			<n8n-text size="small" :class="$style.text">
+				{{ i18n.baseText('parameterInput.dragTipAfterPill') }}
+			</n8n-text>
 		</div>
-		<n8n-text size="small" :class="$style.text">
-			{{ $locale.baseText('parameterInput.dragTipAfterPill') }}
-		</n8n-text>
-	</div>
 
-	<div v-else-if="tip === 'executePrevious'" :class="$style.tip">
-		<n8n-text size="small" :class="$style.tipText"
-			>{{ $locale.baseText('parameterInput.tip') }}:
-		</n8n-text>
-		<n8n-text size="small" :class="$style.text"
-			>{{ $locale.baseText('expressionTip.noExecutionData') }}
-		</n8n-text>
-	</div>
+		<div v-else-if="tip === 'executePrevious'" :class="$style.content">
+			<span> {{ i18n.baseText('expressionTip.noExecutionData') }} </span>
+		</div>
 
-	<div v-else :class="$style.tip">
-		<n8n-text size="small" :class="$style.tipText"
-			>{{ $locale.baseText('parameterInput.tip') }}:
-		</n8n-text>
-		<n8n-text size="small" :class="$style.text">
-			{{ i18n.baseText('parameterInput.anythingInside') }}
-		</n8n-text>
-		<code v-text="`{{ }}`"></code>
-		<n8n-text size="small" :class="$style.text">
-			{{ i18n.baseText('parameterInput.isJavaScript') }}
-		</n8n-text>
-		<n8n-link
-			:class="$style['learn-more']"
-			size="small"
-			underline
-			theme="text"
-			:to="expressionsDocsUrl"
-		>
-			{{ i18n.baseText('parameterInput.learnMore') }}
-		</n8n-link>
+		<div v-else-if="tip === 'dot'" :class="$style.content">
+			<span v-html="i18n.baseText('expressionTip.typeDot')" />
+		</div>
+
+		<div v-else :class="$style.content">
+			<span v-html="i18n.baseText('expressionTip.javascript')" />
+		</div>
 	</div>
 </template>
 
 <script setup lang="ts">
 import { useI18n } from '@/composables/useI18n';
 import { useNDVStore } from '@/stores/ndv.store';
-import { computed } from 'vue';
-import { EXPRESSIONS_DOCS_URL } from '@/constants';
+import { computed, ref, watch } from 'vue';
+import { EditorSelection, EditorState, type SelectionRange } from '@codemirror/state';
+import { CompletionContext } from '@codemirror/autocomplete';
+import { datatypeCompletions } from '@/plugins/codemirror/completions/datatype.completions';
+
+type Props = {
+	tip?: 'drag' | 'default' | 'dot' | 'auto';
+	unresolvedExpression?: string;
+	editorState?: EditorState;
+	selection?: SelectionRange;
+};
+
+const props = withDefaults(defineProps<Props>(), {
+	unresolvedExpression: '',
+	tip: 'auto',
+	editorState: undefined,
+	selection: () => EditorSelection.cursor(0),
+});
 
 const i18n = useI18n();
 const ndvStore = useNDVStore();
 
-const props = defineProps<{ tip?: 'drag' | 'default' }>();
+const canAddDotToExpression = ref(false);
+
+const emptyExpression = computed(() => props.unresolvedExpression.trim().length === 0);
+
+const canDragToFocusedInput = computed(
+	() => !ndvStore.isDNVDataEmpty('input') && ndvStore.focusedMappableInput,
+);
 
 const tip = computed(() => {
 	if (!ndvStore.hasInputData) {
 		return 'executePrevious';
 	}
 
-	if (props.tip) return props.tip;
+	if (props.tip !== 'auto') return props.tip;
 
-	if (ndvStore.focusedMappableInput) return 'drag';
+	if (canAddDotToExpression.value) return 'dot';
+
+	if (canDragToFocusedInput.value && emptyExpression.value) return 'drag';
 
 	return 'default';
 });
-const expressionsDocsUrl = EXPRESSIONS_DOCS_URL;
+
+watch(tip, (newTip) => {
+	ndvStore.setHighlightDraggables(!ndvStore.isMappingOnboarded && newTip === 'drag');
+});
+
+watch(
+	() => props.selection,
+	() => {
+		if (
+			!props.editorState ||
+			!props.selection ||
+			!props.selection.empty ||
+			props.unresolvedExpression.endsWith('.')
+		) {
+			canAddDotToExpression.value = false;
+			return;
+		}
+
+		const cursor = props.selection.anchor;
+		const cursorAfterDot = cursor + 1;
+		const docWithDot =
+			props.editorState.sliceDoc(0, cursor) + '.' + props.editorState.sliceDoc(cursor);
+		const selectionWithDot = EditorSelection.create([EditorSelection.cursor(cursorAfterDot)]);
+		const stateWithDot = EditorState.create({
+			doc: docWithDot,
+			selection: selectionWithDot,
+		});
+
+		const context = new CompletionContext(stateWithDot, cursorAfterDot, true);
+
+		const result = datatypeCompletions(context);
+		canAddDotToExpression.value = !!result && result.options.length > 0;
+	},
+);
 </script>
 
 <style lang="scss" module>
 .tip {
-	display: inline-flex;
-	align-items: center;
+	display: flex;
+	align-items: flex-start;
+	gap: var(--spacing-4xs);
 	line-height: var(--font-line-height-regular);
 	color: var(--color-text-base);
 	font-size: var(--font-size-2xs);
 	padding: var(--spacing-2xs);
-	gap: var(--spacing-4xs);
+}
 
-	.tipText {
-		color: var(--color-text-dark);
-		font-weight: var(--font-weight-bold);
-	}
+.content {
+	display: inline-block;
+}
 
-	.text {
-		flex-shrink: 0;
+.tipText {
+	display: inline;
+	color: var(--color-text-dark);
+	font-weight: var(--font-weight-bold);
+}
 
-		&:last-child {
-			flex-shrink: 1;
-			white-space: nowrap;
-			min-width: 0;
-			overflow: hidden;
-			text-overflow: ellipsis;
-		}
-	}
+.drag .tipText {
+	line-height: 21px;
+}
 
-	code {
-		font-size: var(--font-size-3xs);
-		background: var(--color-background-base);
-		padding: var(--spacing-5xs);
-		border-radius: var(--border-radius-base);
-	}
+.text {
+	display: inline;
+}
 
-	.pill {
-		flex-shrink: 0;
-		display: flex;
-		align-items: center;
-		color: var(--color-text-dark);
+code {
+	font-size: var(--font-size-3xs);
+	background: var(--color-background-base);
+	padding: var(--spacing-5xs);
+	border-radius: var(--border-radius-base);
+}
 
-		border: var(--border-base);
-		border-color: var(--color-foreground-light);
-		background-color: var(--color-background-xlight);
-		padding: var(--spacing-5xs) var(--spacing-3xs);
-		border-radius: var(--border-radius-base);
-	}
+.pill {
+	display: inline-flex;
+	align-items: center;
+	color: var(--color-text-dark);
 
-	.highlight {
-		color: var(--color-primary);
-		background-color: var(--color-primary-tint-3);
-		border-color: var(--color-primary-tint-1);
-	}
+	border: var(--border-base);
+	border-color: var(--color-foreground-light);
+	background-color: var(--color-background-xlight);
+	padding: var(--spacing-5xs) var(--spacing-3xs);
+	margin: 0 var(--spacing-4xs);
+	border-radius: var(--border-radius-base);
+}
+
+.highlight {
+	color: var(--color-primary);
+	background-color: var(--color-primary-tint-3);
+	border-color: var(--color-primary-tint-1);
 }
 </style>

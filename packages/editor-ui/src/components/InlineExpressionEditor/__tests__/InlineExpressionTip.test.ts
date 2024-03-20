@@ -1,0 +1,92 @@
+import { createTestingPinia } from '@pinia/testing';
+import { renderComponent } from '@/__tests__/render';
+import InlineExpressionTip from '@/components/InlineExpressionEditor/InlineExpressionTip.vue';
+import type { useNDVStore } from '@/stores/ndv.store';
+import { EditorSelection, EditorState } from '@codemirror/state';
+import type { CompletionResult } from '@codemirror/autocomplete';
+
+let mockNdvState: Partial<ReturnType<typeof useNDVStore>>;
+let mockCompletionResult: Partial<CompletionResult>;
+
+vi.mock('@/stores/ndv.store', () => {
+	return {
+		useNDVStore: vi.fn(() => mockNdvState),
+	};
+});
+
+vi.mock('@/plugins/codemirror/completions/datatype.completions', () => {
+	return {
+		datatypeCompletions: vi.fn(() => mockCompletionResult),
+	};
+});
+
+describe('InlineExpressionTip.vue', () => {
+	beforeEach(() => {
+		mockNdvState = {
+			hasInputData: true,
+			isDNVDataEmpty: vi.fn(() => true),
+		};
+	});
+
+	test('should show the default tip', async () => {
+		const { container } = renderComponent(InlineExpressionTip, {
+			pinia: createTestingPinia(),
+		});
+		expect(container).toHaveTextContent('Tip: Anything inside {{ }} is JavaScript. Learn more');
+	});
+
+	describe('When the NDV input is not empty and a mappable input is focused', () => {
+		test('should show the drag-n-drop tip', async () => {
+			mockNdvState = {
+				hasInputData: true,
+				isDNVDataEmpty: vi.fn(() => false),
+				focusedMappableInput: 'Some Input',
+			};
+			const { container } = renderComponent(InlineExpressionTip, {
+				pinia: createTestingPinia(),
+			});
+			expect(container).toHaveTextContent('Tip: Drag aninput fieldfrom the left to use it here.');
+		});
+	});
+
+	describe('When the node has no input data', () => {
+		test('should show the execute previous nodes tip', async () => {
+			mockNdvState = {
+				hasInputData: false,
+				isDNVDataEmpty: vi.fn(() => false),
+				focusedMappableInput: 'Some Input',
+			};
+			const { container } = renderComponent(InlineExpressionTip, {
+				pinia: createTestingPinia(),
+			});
+			expect(container).toHaveTextContent('Tip: Execute previous nodes to use input data');
+		});
+	});
+
+	describe('When the expression can be autocompleted with a dot', () => {
+		test('should show the "add a dot" tip', async () => {
+			mockNdvState = {
+				hasInputData: true,
+				isDNVDataEmpty: vi.fn(() => false),
+				focusedMappableInput: 'Some Input',
+				setHighlightDraggables: vi.fn(),
+			};
+			mockCompletionResult = { options: [{ label: 'foo' }] };
+			const selection = EditorSelection.cursor(9);
+			const expression = '{{ $json }}';
+			const { rerender, container } = renderComponent(InlineExpressionTip, {
+				pinia: createTestingPinia(),
+			});
+
+			await rerender({
+				editorState: EditorState.create({
+					doc: expression,
+					selection: EditorSelection.create([selection]),
+				}),
+				selection,
+				unresolvedExpression: expression,
+			});
+			expect(container).toHaveTextContent('Tip: Type . to access all available fields and methods');
+		});
+	});
+});

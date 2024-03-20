@@ -1246,6 +1246,7 @@ export interface NDVState {
 	};
 	isMappingOnboarded: boolean;
 	isAutocompleteOnboarded: boolean;
+	highlightDraggables: boolean;
 }
 
 export interface NotificationOptions extends Partial<ElementNotificationOptions> {

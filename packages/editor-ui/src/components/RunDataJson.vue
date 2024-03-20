@@ -158,7 +158,7 @@ export default defineComponent({
 			return executionDataToJson(this.inputData);
 		},
 		highlight(): boolean {
-			return !this.ndvStore.isMappingOnboarded && Boolean(this.ndvStore.focusedMappableInput);
+			return this.ndvStore.highlightDraggables;
 		},
 	},
 	methods: {
