@@ -8,8 +8,7 @@ const renderComponent = createComponentRenderer(ProjectSharing);
 
 const homeProject = createProjectSharingData();
 const personalProjects = Array.from({ length: 3 }, createProjectListItem);
-const teamProjects = Array.from({ length: 2 }, () => createProjectListItem('team'));
-const projects = [homeProject, ...personalProjects, ...teamProjects];
+const projects = [homeProject, ...personalProjects];
 
 const getDropdownItems = async (dropdownTriggerParent: HTMLElement) => {
 	await userEvent.click(within(dropdownTriggerParent).getByRole('textbox'));

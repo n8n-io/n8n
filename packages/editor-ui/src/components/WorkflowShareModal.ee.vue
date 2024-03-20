@@ -33,7 +33,7 @@
 				<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
 					<ProjectSharing
 						v-model="sharedWithProjects"
-						:projects="projectsStore.projects"
+						:projects="projectsStore.personalProjects"
 						:home-project="workflow.homeProject"
 						:readonly="!workflowPermissions.updateSharing"
 					/>

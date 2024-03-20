@@ -26,6 +26,9 @@ export const useProjectsStore = defineStore('projects', () => {
 			currentProject.value?.id,
 	);
 
+	const personalProjects = computed(() => projects.value.filter((p) => p.type === 'personal'));
+	const teamProjects = computed(() => projects.value.filter((p) => p.type === 'team'));
+
 	const setCurrentProject = (project: Project | null) => {
 		currentProject.value = project;
 	};
@@ -89,6 +92,8 @@ export const useProjectsStore = defineStore('projects', () => {
 		myProjects,
 		currentProject,
 		currentProjectId,
+		personalProjects,
+		teamProjects,
 		setCurrentProject,
 		getAllProjects,
 		getMyProjects,

@@ -32,7 +32,6 @@ const filteredProjects = computed(() =>
 		.filter(
 			(project) =>
 				project.name?.toLowerCase().includes(filter.value.toLowerCase()) &&
-				project.type === 'personal' &&
 				project.id !== props.homeProject?.id &&
 				!selectedProjects.value?.find((p) => p.id === project.id),
 		)

@@ -58,7 +58,7 @@
 			</n8n-info-tip>
 			<ProjectSharing
 				v-model="sharedWithProjects"
-				:projects="projectsStore.projects"
+				:projects="projectsStore.personalProjects"
 				:home-project="credential.homeProject"
 				:readonly="!credentialPermissions.share"
 			/>
