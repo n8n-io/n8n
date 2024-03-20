@@ -4,7 +4,6 @@ import { DataSource, In, Not, Repository } from '@n8n/typeorm';
 import { type CredentialSharingRole, SharedCredentials } from '../entities/SharedCredentials';
 import type { User } from '../entities/User';
 import { RoleService } from '@/services/role.service';
-import { ProjectRepository } from './project.repository';
 import type { Scope } from '@n8n/permissions';
 import type { Project } from '../entities/Project';
 import type { ProjectRole } from '../entities/ProjectRelation';
@@ -14,7 +13,6 @@ import type { CredentialsEntity } from '../entities/CredentialsEntity';
 export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 	constructor(
 		dataSource: DataSource,
-		private readonly projectRepository: ProjectRepository,
 		private readonly roleService: RoleService,
 	) {
 		super(SharedCredentials, dataSource.manager);
@@ -76,16 +74,14 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 		);
 	}
 
-	async makeOwner(credential: CredentialsEntity, project: Project, em?: EntityManager) {
-		em = em ?? this.manager;
-
-		return await em.update(
-			SharedCredentials,
+	async makeOwner(credential: CredentialsEntity, project: Project) {
+		return await this.upsert(
 			{
+				projectId: project.id,
 				credentialsId: credential.id,
 				role: 'credential:owner',
 			},
-			{ projectId: project.id },
+			['projectId', 'credentialsId'],
 		);
 	}
 

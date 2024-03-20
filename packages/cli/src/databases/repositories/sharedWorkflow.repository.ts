@@ -6,7 +6,6 @@ import { type User } from '../entities/User';
 import type { Scope } from '@n8n/permissions';
 import { RoleService } from '@/services/role.service';
 import type { Project } from '../entities/Project';
-import type { WorkflowEntity } from '../entities/WorkflowEntity';
 
 @Service()
 export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
@@ -68,16 +67,14 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 		);
 	}
 
-	async makeOwner(workflow: WorkflowEntity, project: Project, em?: EntityManager) {
-		em = em ?? this.manager;
-
-		return await em.update(
-			SharedWorkflow,
+	async makeOwner(workflowId: string, project: Project) {
+		return await this.upsert(
 			{
-				workflowId: workflow.id,
+				workflowId,
+				project,
 				role: 'workflow:owner',
 			},
-			{ project },
+			['projectId', 'workflowId'],
 		);
 	}
 

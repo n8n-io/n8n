@@ -800,4 +800,54 @@ describe('DELETE /project/:projectId', () => {
 			}),
 		).resolves.toBeDefined();
 	});
+
+	// This test is testing behavior that is explicitly not enabled right now,
+	// but we want this to work if we in the future allow sharing of credentials
+	// and/or workflows between team projects.
+	test('should upgrade a projects role if the workflow/credential is already shared with it', async () => {
+		//
+		// ARRANGE
+		//
+		const member = await createMember();
+		const project = await createTeamProject(undefined, member);
+		const credential = await saveCredential(randomCredentialPayload(), {
+			project,
+			role: 'credential:owner',
+		});
+		const workflow = await createWorkflow({}, project);
+		const projectToMigrateTo = await createTeamProject(undefined, member);
+
+		await shareWorkflowWithProjects(workflow, [
+			{ project: projectToMigrateTo, role: 'workflow:editor' },
+		]);
+		await shareCredentialWithProjects(credential, [projectToMigrateTo]);
+
+		//
+		// ACT
+		//
+		await testServer
+			.authAgentFor(member)
+			.delete(`/projects/${project.id}`)
+			.send({ migrateToProject: projectToMigrateTo.id })
+			.expect(200);
+
+		//
+		// ASSERT
+		//
+
+		await expect(
+			Container.get(SharedCredentialsRepository).findOneByOrFail({
+				credentialsId: credential.id,
+				projectId: projectToMigrateTo.id,
+				role: 'credential:owner',
+			}),
+		).resolves.toBeDefined();
+		await expect(
+			Container.get(SharedWorkflowRepository).findOneByOrFail({
+				workflowId: workflow.id,
+				projectId: projectToMigrateTo.id,
+				role: 'workflow:owner',
+			}),
+		).resolves.toBeDefined();
+	});
 });

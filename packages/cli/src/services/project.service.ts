@@ -2,7 +2,6 @@ import { Project } from '@/databases/entities/Project';
 import { ProjectRelation } from '@/databases/entities/ProjectRelation';
 import type { ProjectRole } from '@/databases/entities/ProjectRelation';
 import type { User } from '@/databases/entities/User';
-import { SharedCredentials } from '@/databases/entities/SharedCredentials';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
 import type { FindOptionsWhere, EntityManager } from '@n8n/typeorm';
@@ -38,12 +37,6 @@ export class ProjectService {
 		);
 	}
 
-	private get activeWorkflowRunner() {
-		return import('@/ActiveWorkflowRunner').then(({ ActiveWorkflowRunner }) =>
-			Container.get(ActiveWorkflowRunner),
-		);
-	}
-
 	async deleteProject(
 		user: User,
 		projectId: string,
@@ -51,7 +44,6 @@ export class ProjectService {
 	) {
 		const workflowService = await this.workflowService;
 		const credentialsService = await this.credentialsService;
-		const activeWorkflowRunner = await this.activeWorkflowRunner;
 
 		if (projectId === migrateToProject) {
 			throw new BadRequestError(
@@ -60,16 +52,8 @@ export class ProjectService {
 		}
 
 		const project = await this.getProjectWithScope(user, projectId, ['project:delete']);
-
 		if (!project) {
 			throw new NotFoundError(`Could not find project with ID: ${projectId}`);
-		}
-
-		// 0. check if this is a team project
-		if (project.type !== 'team') {
-			throw new ForbiddenError(
-				`Can't delete project. Project with ID "${projectId}" is not a team project.`,
-			);
 		}
 
 		let targetProject: Project | null = null;
@@ -86,61 +70,53 @@ export class ProjectService {
 			}
 		}
 
-		// 1. disable all workflows (unless they are migrated)
+		// 0. check if this is a team project
+		if (project.type !== 'team') {
+			throw new ForbiddenError(
+				`Can't delete project. Project with ID "${projectId}" is not a team project.`,
+			);
+		}
+
+		// 1. delete or migrate workflows owned by this project
 		const ownedSharedWorkflows = await this.sharedWorkflowRepository.find({
 			where: { projectId: project.id, role: 'workflow:owner' },
-			relations: { workflow: true },
 		});
-
-		if (!targetProject) {
-			// NOTE: This is supposed to happen outside the transaction.
-			// We'd otherwise need to pass the em through to a lot of functions even ending up in core.
-			// See: https://github.com/n8n-io/n8n/pull/8904#discussion_r1530150510
-			for (const sharedWorkflow of ownedSharedWorkflows) {
-				await activeWorkflowRunner.remove(sharedWorkflow.workflow.id);
+		for (const sharedWorkflow of ownedSharedWorkflows) {
+			if (targetProject) {
+				await this.sharedWorkflowRepository.makeOwner(sharedWorkflow.workflowId, targetProject);
+			} else {
+				await workflowService.delete(user, sharedWorkflow.workflowId);
 			}
 		}
 
-		await this.projectRelationRepository.manager.transaction(async (em) => {
-			// 2. delete or migrate workflows owned by this project
-			for (const sharedWorkflow of ownedSharedWorkflows) {
-				if (targetProject) {
-					await this.sharedWorkflowRepository.makeOwner(sharedWorkflow.workflow, targetProject, em);
-				} else {
-					await workflowService.deleteInactiveWorkflow(user, sharedWorkflow.workflow, em);
-				}
-			}
-
-			// 3. delete credentials owned by this project
-			const ownedCredentials = await em.find(SharedCredentials, {
-				where: { projectId: project.id, role: 'credential:owner' },
-				relations: { credentials: true },
-			});
-
-			for (const sharedCredential of ownedCredentials) {
-				if (targetProject) {
-					await this.sharedCredentialsRepository.makeOwner(
-						sharedCredential.credentials,
-						targetProject,
-						em,
-					);
-				} else {
-					await credentialsService.delete(sharedCredential.credentials, em);
-				}
-			}
-
-			// 4. delete shared credentials into this project
-			// Cascading deletes take care of this.
-
-			// 5. delete shared workflows into this project
-			// Cascading deletes take care of this.
-
-			// 6. delete project
-			await em.remove(project);
-
-			// 7. delete project relations
-			// Cascading deletes take care of this.
+		// 2. delete credentials owned by this project
+		const ownedCredentials = await this.sharedCredentialsRepository.find({
+			where: { projectId: project.id, role: 'credential:owner' },
+			relations: { credentials: true },
 		});
+
+		for (const sharedCredential of ownedCredentials) {
+			if (targetProject) {
+				await this.sharedCredentialsRepository.makeOwner(
+					sharedCredential.credentials,
+					targetProject,
+				);
+			} else {
+				await credentialsService.delete(sharedCredential.credentials);
+			}
+		}
+
+		// 3. delete shared credentials into this project
+		// Cascading deletes take care of this.
+
+		// 4. delete shared workflows into this project
+		// Cascading deletes take care of this.
+
+		// 5. delete project
+		await this.projectRepository.remove(project);
+
+		// 6. delete project relations
+		// Cascading deletes take care of this.
 	}
 
 	/**
