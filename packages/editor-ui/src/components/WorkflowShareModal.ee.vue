@@ -36,6 +36,7 @@
 						:projects="projectsStore.personalProjects"
 						:home-project="workflow.homeProject"
 						:readonly="!workflowPermissions.updateSharing"
+						multiple
 					/>
 					<template #fallback>
 						<n8n-text>

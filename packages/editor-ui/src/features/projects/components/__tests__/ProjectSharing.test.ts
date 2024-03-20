@@ -31,6 +31,7 @@ describe('ProjectSharing', () => {
 				projects: [],
 				homeProject,
 				modelValue: [],
+				multiple: true,
 			},
 		});
 
@@ -44,6 +45,7 @@ describe('ProjectSharing', () => {
 				projects,
 				homeProject,
 				modelValue: [personalProjects[0]],
+				multiple: true,
 			},
 		});
 

@@ -61,6 +61,7 @@
 				:projects="projectsStore.personalProjects"
 				:home-project="credential.homeProject"
 				:readonly="!credentialPermissions.share"
+				multiple
 			/>
 		</div>
 	</div>

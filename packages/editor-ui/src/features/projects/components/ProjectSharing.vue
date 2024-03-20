@@ -14,6 +14,7 @@ type Props = {
 	projects: ProjectListItem[];
 	homeProject?: ProjectSharingData;
 	readonly?: boolean;
+	multiple?: boolean;
 };
 
 const props = defineProps<Props>();
@@ -33,7 +34,7 @@ const filteredProjects = computed(() =>
 			(project) =>
 				project.name?.toLowerCase().includes(filter.value.toLowerCase()) &&
 				project.id !== props.homeProject?.id &&
-				!selectedProjects.value?.find((p) => p.id === project.id),
+				!selectedProjects.value?.find((p) => p.id === project.id && props.multiple),
 		)
 		.sort((a, b) => (a.name && b.name ? a.name.localeCompare(b.name) : 0)),
 );
@@ -48,8 +49,13 @@ const onProjectSelected = (projectId: string) => {
 	if (!project) {
 		return;
 	}
-	selectedProjects.value?.push(project);
-	selectedProject.value = '';
+
+	if (props.multiple) {
+		selectedProjects.value?.push(project);
+		selectedProject.value = '';
+	} else {
+		selectedProjects.value = [project];
+	}
 };
 
 const onRoleAction = (project: ProjectSharingData, role: string) => {
@@ -89,7 +95,7 @@ const onRoleAction = (project: ProjectSharingData, role: string) => {
 				<ProjectSharingInfo :project="project" />
 			</N8nOption>
 		</N8nSelect>
-		<ul :class="$style.selectedProjects">
+		<ul v-if="props.multiple" :class="$style.selectedProjects">
 			<li
 				v-for="project in selectedProjects"
 				:key="project.id"
