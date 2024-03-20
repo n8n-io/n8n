@@ -11,7 +11,6 @@ import ProjectSharingInfo from '@/features/projects/components/ProjectSharingInf
 const locale = useI18n();
 
 type Props = {
-	modelValue: (ProjectSharingData | null) | ProjectSharingData[];
 	projects: ProjectListItem[];
 	readonly?: boolean;
 };
