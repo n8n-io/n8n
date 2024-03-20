@@ -8,7 +8,7 @@ export class HoneyBookApi implements ICredentialType {
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Company ID',
-			name: 'companyId',
+			name: 'company_id',
 			type: 'string',
 			default: '',
 		},
@@ -18,7 +18,7 @@ export class HoneyBookApi implements ICredentialType {
 		type: 'generic',
 		properties: {
 			qs: {
-				company_id: '={{$credentials.companyId}}',
+				company_id: '={{$credentials.company_id}}',
 			},
 		},
 	};
