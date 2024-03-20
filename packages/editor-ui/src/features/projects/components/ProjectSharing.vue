@@ -13,6 +13,7 @@ const locale = useI18n();
 type Props = {
 	projects: ProjectListItem[];
 	readonly?: boolean;
+	multiple?: boolean;
 };
 
 const props = defineProps<Props>();

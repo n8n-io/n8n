@@ -29,6 +29,7 @@ describe('ProjectSharing', () => {
 			props: {
 				projects: [],
 				modelValue: [],
+				multiple: true,
 			},
 		});
 
@@ -41,6 +42,7 @@ describe('ProjectSharing', () => {
 			props: {
 				projects: personalProjects,
 				modelValue: [personalProjects[0]],
+				multiple: true,
 			},
 		});
 
