@@ -56,10 +56,6 @@ describe('ProjectSharing', () => {
 
 		// Add a project (first from the dropdown list)
 		await userEvent.click(projectSelectDropdownItems[0]);
-		const [[addedProjects]] = emitted()['update:modelValue'];
-		expect(addedProjects).toHaveLength(2);
-		// Rerender the component with the updated `modelValue` to simulate parent component behavior
-		await rerender({ modelValue: addedProjects });
 
 		expect(getAllByTestId('project-sharing-list-item')).toHaveLength(2);
 		expect(projectSelectInput.value).toBe('');
@@ -74,10 +70,6 @@ describe('ProjectSharing', () => {
 
 		// Click on the remove action which is the second item in the dropdown
 		await userEvent.click(actionDropDownItems[1]);
-		const [_, [deletedProjects]] = emitted()['update:modelValue'];
-		expect(deletedProjects).toHaveLength(1);
-		// Rerender the component with the updated `modelValue` to simulate parent component behavior
-		await rerender({ modelValue: deletedProjects });
 
 		// Check the state
 		expect(getAllByTestId('project-sharing-list-item')).toHaveLength(1);
@@ -89,10 +81,6 @@ describe('ProjectSharing', () => {
 		expect(actionDropDownItems).toHaveLength(2);
 
 		await userEvent.click(actionDropDownItems[1]);
-		const [__, ___, [emptyProjects]] = emitted()['update:modelValue'];
-		expect(emptyProjects).toHaveLength(0);
-		// Rerender the component with the updated `modelValue` to simulate parent component behavior
-		await rerender({ modelValue: emptyProjects });
 
 		// Check the final state
 		expect(queryAllByTestId('project-sharing-list-item')).toHaveLength(0);
