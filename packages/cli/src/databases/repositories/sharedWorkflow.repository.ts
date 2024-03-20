@@ -6,7 +6,7 @@ import { type User } from '../entities/User';
 import type { Scope } from '@n8n/permissions';
 import { RoleService } from '@/services/role.service';
 import type { Project } from '../entities/Project';
-import { WorkflowEntity } from '../entities/WorkflowEntity';
+import type { WorkflowEntity } from '../entities/WorkflowEntity';
 
 @Service()
 export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
