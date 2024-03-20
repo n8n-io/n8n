@@ -19,8 +19,8 @@ import Avatar from 'vue-boring-avatars';
 interface AvatarProps {
 	firstName: string;
 	lastName: string;
-	size: string;
-	colors: string[];
+	size?: string;
+	colors?: string[];
 }
 
 defineOptions({ name: 'N8nAvatar' });

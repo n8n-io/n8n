@@ -5,6 +5,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { setupServer } from '@/__tests__/server';
+import { ROLE } from '@/constants';
 
 let pinia: ReturnType<typeof createPinia>;
 let settingsStore: ReturnType<typeof useSettingsStore>;
@@ -19,7 +20,7 @@ const currentUser = {
 	lastName: 'Doe',
 	email: 'joh.doe@example.com',
 	createdAt: Date().toString(),
-	isOwner: true,
+	role: ROLE.Owner,
 	isDefaultUser: false,
 	isPendingUser: false,
 	isPending: false,
