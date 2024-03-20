@@ -76,13 +76,16 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 		);
 	}
 
-	async makeOwner(credential: CredentialsEntity, project: Project) {
-		return await this.update(
+	async makeOwner(credential: CredentialsEntity, project: Project, em?: EntityManager) {
+		em = em ?? this.manager;
+
+		return await em.update(
+			SharedCredentials,
 			{
 				credentialsId: credential.id,
 				role: 'credential:owner',
 			},
-			{ project },
+			{ projectId: project.id },
 		);
 	}
 

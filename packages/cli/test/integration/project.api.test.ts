@@ -1,6 +1,6 @@
 import * as testDb from './shared/testDb';
 import * as utils from './shared/utils/';
-import { createManyUsers, createMember, createOwner, createUser } from './shared/db/users';
+import { createMember, createOwner, createUser } from './shared/db/users';
 import {
 	createTeamProject,
 	linkUserToProject,

@@ -68,8 +68,11 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 		);
 	}
 
-	async makeOwner(workflow: WorkflowEntity, project: Project) {
-		return await this.update(
+	async makeOwner(workflow: WorkflowEntity, project: Project, em?: EntityManager) {
+		em = em ?? this.manager;
+
+		return await em.update(
+			SharedWorkflow,
 			{
 				workflowId: workflow.id,
 				role: 'workflow:owner',

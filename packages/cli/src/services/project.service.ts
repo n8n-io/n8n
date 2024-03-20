@@ -22,6 +22,7 @@ export class ProjectService {
 		private readonly projectRepository: ProjectRepository,
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly roleService: RoleService,
+		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 	) {}
 
 	private get workflowService() {
@@ -97,7 +98,7 @@ export class ProjectService {
 			// 2. delete or migrate workflows owned by this project
 			for (const sharedWorkflow of ownedSharedWorkflows) {
 				if (targetProject) {
-					await this.sharedWorkflowRepository.makeOwner(sharedWorkflow.workflow, targetProject);
+					await this.sharedWorkflowRepository.makeOwner(sharedWorkflow.workflow, targetProject, em);
 				} else {
 					await workflowService.deleteInactiveWorkflow(user, sharedWorkflow.workflow, em);
 				}
@@ -109,14 +110,15 @@ export class ProjectService {
 				relations: { credentials: true },
 			});
 
-			for (const credential of ownedCredentials) {
+			for (const sharedCredential of ownedCredentials) {
 				if (targetProject) {
-					await Container.get(SharedCredentialsRepository).makeOwner(
-						credential.credentials,
+					await this.sharedCredentialsRepository.makeOwner(
+						sharedCredential.credentials,
 						targetProject,
+						em,
 					);
 				} else {
-					await credentialsService.delete(credential.credentials, em);
+					await credentialsService.delete(sharedCredential.credentials, em);
 				}
 			}
 
