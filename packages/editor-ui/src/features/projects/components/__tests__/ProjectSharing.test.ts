@@ -29,7 +29,6 @@ describe('ProjectSharing', () => {
 			props: {
 				projects: [],
 				modelValue: [],
-				multiple: true,
 			},
 		});
 
@@ -42,7 +41,6 @@ describe('ProjectSharing', () => {
 			props: {
 				projects: personalProjects,
 				modelValue: [personalProjects[0]],
-				multiple: true,
 			},
 		});
 
@@ -145,10 +143,10 @@ describe('ProjectSharing', () => {
 	});
 
 	it('should work as a simple select when no multiple is set', async () => {
-		const { getByTestId, queryByTestId } = renderComponent({
+		const { getByTestId, queryByTestId, emitted } = renderComponent({
 			props: {
 				projects: teamProjects,
-				modelValue: [],
+				modelValue: null,
 			},
 		});
 
@@ -157,14 +155,21 @@ describe('ProjectSharing', () => {
 
 		// Get the dropdown items
 		let projectSelectDropdownItems = await getDropdownItems(projectSelect);
-		await waitFor(() => expect(projectSelectDropdownItems).toHaveLength(3));
+		expect(projectSelectDropdownItems).toHaveLength(3);
 
 		// Select the first project from the dropdown list
 		await userEvent.click(projectSelectDropdownItems[0]);
 		expect(queryByTestId('project-sharing-list-item')).not.toBeInTheDocument();
 		projectSelectDropdownItems = await getDropdownItems(projectSelect);
-		await waitFor(() => expect(projectSelectDropdownItems).toHaveLength(3));
+		expect(projectSelectDropdownItems).toHaveLength(3);
 		expect(projectSelectDropdownItems[0].textContent).toContain(projectSelectInput.value);
+		expect(emitted()['update:modelValue']).toEqual([
+			[
+				expect.objectContaining({
+					name: projectSelectInput.value,
+				}),
+			],
+		]);
 
 		// Select another project from the dropdown list
 		await userEvent.click(projectSelectDropdownItems[1]);

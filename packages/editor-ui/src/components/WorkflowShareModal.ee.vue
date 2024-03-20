@@ -35,7 +35,6 @@
 						v-model="sharedWithProjects"
 						:projects="projects"
 						:readonly="!workflowPermissions.updateSharing"
-						multiple
 					/>
 					<template #fallback>
 						<n8n-text>

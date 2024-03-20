@@ -60,7 +60,6 @@
 				v-model="sharedWithProjects"
 				:projects="projects"
 				:readonly="!credentialPermissions.share"
-				multiple
 			/>
 		</div>
 	</div>
