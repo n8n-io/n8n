@@ -18,7 +18,6 @@ import type {
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 	INodeType,
-	IHttpRequestMethods,
 } from 'n8n-workflow';
 import {
 	Workflow,
@@ -158,68 +157,64 @@ export class ActiveWorkflowRunner {
 
 			path = webhookData.path;
 
-			const webhookMethods = webhookData.httpMethod.split(',') as IHttpRequestMethods[];
+			const webhook = this.webhookService.createWebhook({
+				workflowId: webhookData.workflowId,
+				webhookPath: path,
+				node: node.name,
+				method: webhookData.httpMethod,
+			});
 
-			for (const method of webhookMethods) {
-				const webhook = this.webhookService.createWebhook({
-					workflowId: webhookData.workflowId,
-					webhookPath: path,
-					node: node.name,
-					method,
-				});
+			if (webhook.webhookPath.startsWith('/')) {
+				webhook.webhookPath = webhook.webhookPath.slice(1);
+			}
+			if (webhook.webhookPath.endsWith('/')) {
+				webhook.webhookPath = webhook.webhookPath.slice(0, -1);
+			}
 
-				if (webhook.webhookPath.startsWith('/')) {
-					webhook.webhookPath = webhook.webhookPath.slice(1);
-				}
-				if (webhook.webhookPath.endsWith('/')) {
-					webhook.webhookPath = webhook.webhookPath.slice(0, -1);
-				}
+			if ((path.startsWith(':') || path.includes('/:')) && node.webhookId) {
+				webhook.webhookId = node.webhookId;
+				webhook.pathLength = webhook.webhookPath.split('/').length;
+			}
 
-				if ((path.startsWith(':') || path.includes('/:')) && node.webhookId) {
-					webhook.webhookId = node.webhookId;
-					webhook.pathLength = webhook.webhookPath.split('/').length;
+			try {
+				// TODO: this should happen in a transaction, that way we don't need to manually remove this in `catch`
+				await this.webhookService.storeWebhook(webhook);
+				await workflow.createWebhookIfNotExists(
+					webhookData,
+					NodeExecuteFunctions,
+					mode,
+					activation,
+				);
+			} catch (error) {
+				if (activation === 'init' && error.name === 'QueryFailedError') {
+					// n8n does not remove the registered webhooks on exit.
+					// This means that further initializations will always fail
+					// when inserting to database. This is why we ignore this error
+					// as it's expected to happen.
+
+					continue;
 				}
 
 				try {
-					// TODO: this should happen in a transaction, that way we don't need to manually remove this in `catch`
-					await this.webhookService.storeWebhook(webhook);
-					await workflow.createWebhookIfNotExists(
-						webhookData,
-						NodeExecuteFunctions,
-						mode,
-						activation,
+					await this.clearWebhooks(workflow.id);
+				} catch (error1) {
+					ErrorReporter.error(error1);
+					this.logger.error(
+						`Could not remove webhooks of workflow "${workflow.id}" because of error: "${error1.message}"`,
 					);
-				} catch (error) {
-					if (activation === 'init' && error.name === 'QueryFailedError') {
-						// n8n does not remove the registered webhooks on exit.
-						// This means that further initializations will always fail
-						// when inserting to database. This is why we ignore this error
-						// as it's expected to happen.
-
-						continue;
-					}
-
-					try {
-						await this.clearWebhooks(workflow.id);
-					} catch (error1) {
-						ErrorReporter.error(error1);
-						this.logger.error(
-							`Could not remove webhooks of workflow "${workflow.id}" because of error: "${error1.message}"`,
-						);
-					}
-
-					// if it's a workflow from the the insert
-					// TODO check if there is standard error code for duplicate key violation that works
-					// with all databases
-					if (error instanceof Error && error.name === 'QueryFailedError') {
-						error = new WebhookPathTakenError(webhook.node, error);
-					} else if (error.detail) {
-						// it's a error running the webhook methods (checkExists, create)
-						error.message = error.detail;
-					}
-
-					throw error;
 				}
+
+				// if it's a workflow from the the insert
+				// TODO check if there is standard error code for duplicate key violation that works
+				// with all databases
+				if (error instanceof Error && error.name === 'QueryFailedError') {
+					error = new WebhookPathTakenError(webhook.node, error);
+				} else if (error.detail) {
+					// it's a error running the webhook methods (checkExists, create)
+					error.message = error.detail;
+				}
+
+				throw error;
 			}
 		}
 		await this.webhookService.populateCache();

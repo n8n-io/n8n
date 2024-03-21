@@ -106,15 +106,11 @@ export class ActiveWebhooks implements IWebhookManager {
 			workflowData.shared[0].user.id,
 		);
 
-		const webhooks = NodeHelpers.getNodeWebhooks(
+		const webhookData = NodeHelpers.getNodeWebhooks(
 			workflow,
 			workflow.getNode(webhook.node) as INode,
 			additionalData,
-		);
-
-		const webhookData = webhooks.find(
-			(w) => w.httpMethod.includes(httpMethod) && w.path === webhook.webhookPath,
-		) as IWebhookData;
+		).find((w) => w.httpMethod === httpMethod && w.path === webhook.webhookPath) as IWebhookData;
 
 		// Get the node which has the webhook defined to know where to start from and to
 		// get additional data
@@ -149,20 +145,17 @@ export class ActiveWebhooks implements IWebhookManager {
 		});
 	}
 
-	private async findWebhook(path: string, httpMethod: IHttpRequestMethods | IHttpRequestMethods[]) {
-		if (!Array.isArray(httpMethod)) {
-			httpMethod = [httpMethod];
+	private async findWebhook(path: string, httpMethod: IHttpRequestMethods) {
+		// Remove trailing slash
+		if (path.endsWith('/')) {
+			path = path.slice(0, -1);
 		}
 
-		for (const method of httpMethod) {
-			const webhook = await this.webhookService.findWebhook(method, path);
-			if (webhook !== null) {
-				return webhook;
-			}
+		const webhook = await this.webhookService.findWebhook(httpMethod, path);
+		if (webhook === null) {
+			throw new WebhookNotFoundError({ path, httpMethod }, { hint: 'production' });
 		}
-		throw new WebhookNotFoundError(
-			{ path, httpMethod: httpMethod.join(', ') },
-			{ hint: 'production' },
-		);
+
+		return webhook;
 	}
 }

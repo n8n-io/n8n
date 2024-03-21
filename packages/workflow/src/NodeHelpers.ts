@@ -991,41 +991,37 @@ export function getNodeWebhooks(
 		) as boolean;
 		const path = getNodeWebhookPath(workflowId, node, nodeWebhookPath, isFullPath, restartWebhook);
 
-		const webhookMethods = webhookDescription.httpMethod.split(',') as IHttpRequestMethods[];
+		const httpMethod = workflow.expression.getSimpleParameterValue(
+			node,
+			webhookDescription.httpMethod,
+			mode,
+			{},
+			undefined,
+			'GET',
+		);
 
-		for (const webhookMethod of webhookMethods) {
-			const httpMethod = workflow.expression.getSimpleParameterValue(
-				node,
-				webhookMethod,
-				mode,
-				{},
-				undefined,
-				'GET',
+		if (httpMethod === undefined) {
+			// TODO: Use a proper logger
+			console.error(
+				`The webhook "${path}" for node "${node.name}" in workflow "${workflowId}" could not be added because the httpMethod is not defined.`,
 			);
-
-			if (httpMethod === undefined) {
-				// TODO: Use a proper logger
-				console.error(
-					`The webhook "${path}" for node "${node.name}" in workflow "${workflowId}" could not be added because the httpMethod is not defined.`,
-				);
-				continue;
-			}
-
-			let webhookId: string | undefined;
-			if ((path.startsWith(':') || path.includes('/:')) && node.webhookId) {
-				webhookId = node.webhookId;
-			}
-
-			returnData.push({
-				httpMethod: httpMethod.toString() as IHttpRequestMethods,
-				node: node.name,
-				path,
-				webhookDescription,
-				workflowId,
-				workflowExecuteAdditionalData: additionalData,
-				webhookId,
-			});
+			continue;
 		}
+
+		let webhookId: string | undefined;
+		if ((path.startsWith(':') || path.includes('/:')) && node.webhookId) {
+			webhookId = node.webhookId;
+		}
+
+		returnData.push({
+			httpMethod: httpMethod.toString() as IHttpRequestMethods,
+			node: node.name,
+			path,
+			webhookDescription,
+			workflowId,
+			workflowExecuteAdditionalData: additionalData,
+			webhookId,
+		});
 	}
 
 	return returnData;

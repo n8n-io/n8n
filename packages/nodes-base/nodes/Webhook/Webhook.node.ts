@@ -35,34 +35,22 @@ import {
 import { WebhookAuthorizationError } from './error';
 
 const configuredOutputs = (parameters: INodeParameters) => {
-	const httpMethod = parameters.httpMethod as string | string[];
+	const httpMethod = parameters.httpMethod as string;
 
-	if (!Array.isArray(httpMethod))
-		return [
-			{
-				type: `${NodeConnectionType.Main}`,
-				displayName: httpMethod,
-			},
-		];
-
-	const outputs = httpMethod.map((method) => {
-		return {
+	return [
+		{
 			type: `${NodeConnectionType.Main}`,
-			displayName: method,
-		};
-	});
-
-	return outputs;
+			displayName: httpMethod,
+		},
+	];
 };
 
 const setupOutputConnection = (
 	ctx: IWebhookFunctions,
-	method: string,
 	additionalData: {
 		jwtPayload?: IDataObject;
 	},
 ) => {
-	const httpMethod = ctx.getNodeParameter('httpMethod', []) as string[] | string;
 	let webhookUrl = ctx.getNodeWebhookUrl('default') as string;
 	const executionMode = ctx.getMode() === 'manual' ? 'test' : 'production';
 
@@ -70,29 +58,13 @@ const setupOutputConnection = (
 		webhookUrl = webhookUrl.replace('/webhook/', '/webhook-test/');
 	}
 
-	// before version 2, httpMethod was a string and not an array
-	if (!Array.isArray(httpMethod)) {
-		return (outputData: INodeExecutionData): INodeExecutionData[][] => {
-			outputData.json.webhookUrl = webhookUrl;
-			outputData.json.executionMode = executionMode;
-			if (additionalData?.jwtPayload) {
-				outputData.json.jwtPayload = additionalData.jwtPayload;
-			}
-			return [[outputData]];
-		};
-	}
-
-	const outputIndex = httpMethod.indexOf(method.toUpperCase());
-	const outputs: INodeExecutionData[][] = httpMethod.map(() => []);
-
 	return (outputData: INodeExecutionData): INodeExecutionData[][] => {
 		outputData.json.webhookUrl = webhookUrl;
 		outputData.json.executionMode = executionMode;
 		if (additionalData?.jwtPayload) {
 			outputData.json.jwtPayload = additionalData.jwtPayload;
 		}
-		outputs[outputIndex] = [outputData];
-		return outputs;
+		return [[outputData]];
 	};
 };
 
@@ -152,52 +124,7 @@ export class Webhook extends Node {
 		webhooks: [defaultWebhookDescription],
 		properties: [
 			authenticationProperty(this.authPropertyName),
-			{
-				...httpMethodsProperty,
-				displayOptions: {
-					show: {
-						'@version': [1, 1.1],
-					},
-				},
-			},
-			{
-				displayName: 'HTTP Methods',
-				name: 'httpMethod',
-				type: 'multiOptions',
-				options: [
-					{
-						name: 'DELETE',
-						value: 'DELETE',
-					},
-					{
-						name: 'GET',
-						value: 'GET',
-					},
-					{
-						name: 'HEAD',
-						value: 'HEAD',
-					},
-					{
-						name: 'PATCH',
-						value: 'PATCH',
-					},
-					{
-						name: 'POST',
-						value: 'POST',
-					},
-					{
-						name: 'PUT',
-						value: 'PUT',
-					},
-				],
-				default: ['GET', 'POST'],
-				description: 'The HTTP methods to listen to',
-				displayOptions: {
-					show: {
-						'@version': [{ _cnd: { gte: 2 } }],
-					},
-				},
-			},
+			httpMethodsProperty,
 			{
 				displayName: 'Path',
 				name: 'path',
@@ -265,9 +192,9 @@ export class Webhook extends Node {
 	};
 
 	async webhook(context: IWebhookFunctions): Promise<IWebhookResponseData> {
-		const nodeVersion = context.getNode().typeVersion;
+		const { typeVersion: nodeVersion, type: nodeType } = context.getNode();
 
-		if (nodeVersion >= 2) {
+		if (nodeVersion >= 2 && nodeType === 'n8n-nodes-base.webhook') {
 			const responseMode = context.getNodeParameter('responseMode', 'onReceived') as string;
 			const connectedNodes = context.getConnectedNodes(context.getNode().name, 'children');
 			const isRespondToWebhookConnected = connectedNodes.some(
@@ -304,7 +231,6 @@ export class Webhook extends Node {
 		};
 		const req = context.getRequestObject();
 		const resp = context.getResponseObject();
-		const requestMethod = context.getRequestObject().method;
 
 		if (!isIpWhitelisted(options.ipWhitelist, req.ips, req.ip)) {
 			resp.writeHead(403);
@@ -326,7 +252,7 @@ export class Webhook extends Node {
 			throw error;
 		}
 
-		const prepareOutput = setupOutputConnection(context, requestMethod, {
+		const prepareOutput = setupOutputConnection(context, {
 			jwtPayload: validationData,
 		});
 
