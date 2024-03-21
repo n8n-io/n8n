@@ -697,7 +697,7 @@ describe('DELETE /project/:projectId', () => {
 		await testServer
 			.authAgentFor(member)
 			.delete(`/projects/${project.id}`)
-			.send({ migrateToProject: project.id })
+			.query({ transferId: project.id })
 			.expect(400);
 	});
 
@@ -717,8 +717,7 @@ describe('DELETE /project/:projectId', () => {
 		await testServer
 			.authAgentFor(member)
 			.delete(`/projects/${projectToBeDeleted.id}`)
-			.send({ migrateToProject: targetProject.id })
-
+			.query({ transferId: targetProject.id })
 			//
 			// ASSERT
 			//
@@ -754,7 +753,7 @@ describe('DELETE /project/:projectId', () => {
 		await testServer
 			.authAgentFor(member)
 			.delete(`/projects/${projectToBeDeleted.id}`)
-			.send({ migrateToProject: targetProject.id })
+			.query({ transferId: targetProject.id })
 			.expect(200);
 
 		//
@@ -834,7 +833,7 @@ describe('DELETE /project/:projectId', () => {
 		await testServer
 			.authAgentFor(member)
 			.delete(`/projects/${project.id}`)
-			.send({ migrateToProject: projectToMigrateTo.id })
+			.query({ transferId: projectToMigrateTo.id })
 			.expect(200);
 
 		//
