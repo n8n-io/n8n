@@ -85,16 +85,19 @@ defineExpose({
 });
 
 async function onDrop() {
+	await nextTick();
+
 	const editor = toValue(editorRef);
 	if (!editor) return;
 
-	await nextTick();
 	focus();
 
 	setCursorPosition('lastExpression');
 
 	if (!ndvStore.isAutocompleteOnboarded) {
-		startCompletion(editor);
+		setTimeout(() => {
+			startCompletion(editor);
+		});
 	}
 }
 

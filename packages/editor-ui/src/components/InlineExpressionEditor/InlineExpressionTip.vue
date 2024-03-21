@@ -1,39 +1,3 @@
-<template>
-	<div :class="[$style.tip, { [$style.drag]: tip === 'drag' }]">
-		<n8n-text size="small" :class="$style.tipText"
-			>{{ i18n.baseText('parameterInput.tip') }}:
-		</n8n-text>
-
-		<div v-if="tip === 'drag'" :class="$style.content">
-			<n8n-text size="small" :class="$style.text">
-				{{ i18n.baseText('parameterInput.dragTipBeforePill') }}
-			</n8n-text>
-			<div :class="[$style.pill, { [$style.highlight]: !ndvStore.isMappingOnboarded }]">
-				{{ i18n.baseText('parameterInput.inputField') }}
-			</div>
-			<n8n-text size="small" :class="$style.text">
-				{{ i18n.baseText('parameterInput.dragTipAfterPill') }}
-			</n8n-text>
-		</div>
-
-		<div v-else-if="tip === 'executePrevious'" :class="$style.content">
-			<span> {{ i18n.baseText('expressionTip.noExecutionData') }} </span>
-		</div>
-
-		<div v-else-if="tip === 'dotPrimitive'" :class="$style.content">
-			<span v-html="i18n.baseText('expressionTip.typeDotPrimitive')" />
-		</div>
-
-		<div v-else-if="tip === 'dotObject'" :class="$style.content">
-			<span v-html="i18n.baseText('expressionTip.typeDotObject')" />
-		</div>
-
-		<div v-else :class="$style.content">
-			<span v-html="i18n.baseText('expressionTip.javascript')" />
-		</div>
-	</div>
-</template>
-
 <script setup lang="ts">
 import { useI18n } from '@/composables/useI18n';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -45,15 +9,15 @@ import { watchDebounced } from '@vueuse/core';
 import { FIELDS_SECTION } from '@/plugins/codemirror/completions/constants';
 import { isCompletionSection } from '@/plugins/codemirror/completions/utils';
 
+type TipId = 'executePrevious' | 'drag' | 'default' | 'dotObject' | 'dotPrimitive';
+
 type Props = {
-	tip?: 'drag' | 'default' | 'dot' | 'auto';
 	editorState?: EditorState;
 	unresolvedExpression?: string;
 	selection?: SelectionRange;
 };
 
 const props = withDefaults(defineProps<Props>(), {
-	tip: 'auto',
 	editorState: undefined,
 	unresolvedExpression: '',
 	selection: () => EditorSelection.cursor(0),
@@ -71,12 +35,10 @@ const canDragToFocusedInput = computed(
 
 const emptyExpression = computed(() => props.unresolvedExpression.trim().length === 0);
 
-const tip = computed(() => {
-	if (!ndvStore.hasInputData) {
+const tip = computed<TipId>(() => {
+	if (!ndvStore.hasInputData && ndvStore.isInputParentOfActiveNode) {
 		return 'executePrevious';
 	}
-
-	if (props.tip !== 'auto') return props.tip;
 
 	if (canAddDotToExpression.value) {
 		return resolvedExpressionHasFields.value ? 'dotObject' : 'dotPrimitive';
@@ -129,6 +91,42 @@ watchDebounced([() => props.selection, () => props.unresolvedExpression], () => 
 	);
 });
 </script>
+
+<template>
+	<div :class="[$style.tip, { [$style.drag]: tip === 'drag' }]">
+		<n8n-text size="small" :class="$style.tipText"
+			>{{ i18n.baseText('parameterInput.tip') }}:
+		</n8n-text>
+
+		<div v-if="tip === 'drag'" :class="$style.content">
+			<n8n-text size="small" :class="$style.text">
+				{{ i18n.baseText('parameterInput.dragTipBeforePill') }}
+			</n8n-text>
+			<div :class="[$style.pill, { [$style.highlight]: !ndvStore.isMappingOnboarded }]">
+				{{ i18n.baseText('parameterInput.inputField') }}
+			</div>
+			<n8n-text size="small" :class="$style.text">
+				{{ i18n.baseText('parameterInput.dragTipAfterPill') }}
+			</n8n-text>
+		</div>
+
+		<div v-else-if="tip === 'executePrevious'" :class="$style.content">
+			<span> {{ i18n.baseText('expressionTip.noExecutionData') }} </span>
+		</div>
+
+		<div v-else-if="tip === 'dotPrimitive'" :class="$style.content">
+			<span v-html="i18n.baseText('expressionTip.typeDotPrimitive')" />
+		</div>
+
+		<div v-else-if="tip === 'dotObject'" :class="$style.content">
+			<span v-html="i18n.baseText('expressionTip.typeDotObject')" />
+		</div>
+
+		<div v-else :class="$style.content">
+			<span v-html="i18n.baseText('expressionTip.javascript')" />
+		</div>
+	</div>
+</template>
 
 <style lang="scss" module>
 .tip {

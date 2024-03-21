@@ -55,7 +55,7 @@
 			</template>
 		</DraggableTarget>
 		<div v-if="showDragnDropTip" :class="$style.tip">
-			<InlineExpressionTip tip="drag" />
+			<InlineExpressionTip />
 		</div>
 		<div
 			:class="{
@@ -221,7 +221,8 @@ export default defineComponent({
 				!this.isValueExpression &&
 				!this.isDropDisabled &&
 				(!this.ndvStore.hasInputData || !this.isInputDataEmpty) &&
-				!this.ndvStore.isMappingOnboarded
+				!this.ndvStore.isMappingOnboarded &&
+				this.ndvStore.isInputParentOfActiveNode
 			);
 		},
 	},
