@@ -10,10 +10,9 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 	MultiPartFormData,
-	INodeParameters,
 	INodeProperties,
 } from 'n8n-workflow';
-import { BINARY_ENCODING, NodeOperationError, Node, NodeConnectionType } from 'n8n-workflow';
+import { BINARY_ENCODING, NodeOperationError, Node } from 'n8n-workflow';
 
 import { v4 as uuid } from 'uuid';
 import basicAuth from 'basic-auth';
@@ -34,62 +33,12 @@ import {
 	responseModeProperty,
 } from './description';
 import { WebhookAuthorizationError } from './error';
-
-const configuredOutputs = (parameters: INodeParameters) => {
-	const httpMethod = parameters.httpMethod as string;
-
-	return [
-		{
-			type: `${NodeConnectionType.Main}`,
-			displayName: httpMethod,
-		},
-	];
-};
-
-const setupOutputConnection = (
-	ctx: IWebhookFunctions,
-	additionalData: {
-		jwtPayload?: IDataObject;
-	},
-) => {
-	let webhookUrl = ctx.getNodeWebhookUrl('default') as string;
-	const executionMode = ctx.getMode() === 'manual' ? 'test' : 'production';
-
-	if (executionMode === 'test') {
-		webhookUrl = webhookUrl.replace('/webhook/', '/webhook-test/');
-	}
-
-	return (outputData: INodeExecutionData): INodeExecutionData[][] => {
-		outputData.json.webhookUrl = webhookUrl;
-		outputData.json.executionMode = executionMode;
-		if (additionalData?.jwtPayload) {
-			outputData.json.jwtPayload = additionalData.jwtPayload;
-		}
-		return [[outputData]];
-	};
-};
-
-const isIpWhitelisted = (whitelist: string | string[] | undefined, ips: string[], ip?: string) => {
-	if (whitelist === undefined || whitelist === '') {
-		return true;
-	}
-
-	if (!Array.isArray(whitelist)) {
-		whitelist = whitelist.split(',').map((entry) => entry.trim());
-	}
-
-	for (const address of whitelist) {
-		if (ip && ip.includes(address)) {
-			return true;
-		}
-
-		if (ips.some((entry) => entry.includes(address))) {
-			return true;
-		}
-	}
-
-	return false;
-};
+import {
+	checkResponseModeConfiguration,
+	configuredOutputs,
+	isIpWhitelisted,
+	setupOutputConnection,
+} from './utils';
 
 export class Webhook extends Node {
 	authPropertyName = 'authentication';
@@ -181,31 +130,7 @@ export class Webhook extends Node {
 		const { typeVersion: nodeVersion, type: nodeType } = context.getNode();
 
 		if (nodeVersion >= 2 && nodeType === 'n8n-nodes-base.webhook') {
-			const responseMode = context.getNodeParameter('responseMode', 'onReceived') as string;
-			const connectedNodes = context.getConnectedNodes(context.getNode().name, 'children');
-			const isRespondToWebhookConnected = connectedNodes.some(
-				(node) => node.type === 'n8n-nodes-base.respondToWebhook',
-			);
-			if (!isRespondToWebhookConnected && responseMode === 'responseNode') {
-				throw new NodeOperationError(
-					context.getNode(),
-					new Error('No Respond to Webhook node found in the workflow'),
-					{
-						description:
-							'Insert a Respond to Webhook node to your workflow to respond to the webhook or choose another option for the “Respond” parameter',
-					},
-				);
-			}
-			if (isRespondToWebhookConnected && responseMode !== 'responseNode') {
-				throw new NodeOperationError(
-					context.getNode(),
-					new Error('Webhook node not correctly configured'),
-					{
-						description:
-							'Set the “Respond” parameter of the Webhook node to “Using Respond to Webhook Node” ',
-					},
-				);
-			}
+			checkResponseModeConfiguration(context);
 		}
 
 		const options = context.getNodeParameter('options', {}) as {

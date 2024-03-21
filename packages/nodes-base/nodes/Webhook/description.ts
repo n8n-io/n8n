@@ -1,26 +1,5 @@
-import type {
-	IDataObject,
-	INodeProperties,
-	INodeTypeDescription,
-	IWebhookDescription,
-} from 'n8n-workflow';
-
-const getResponseCode = (parameters: IDataObject) => {
-	if (parameters.responseCode) {
-		return parameters.responseCode;
-	}
-	const { responseCode } = parameters.options as IDataObject;
-	if (responseCode && (responseCode as IDataObject).values) {
-		const { resposeCode, customCode } = (responseCode as IDataObject).values as IDataObject;
-
-		if (customCode) {
-			return customCode;
-		}
-
-		return resposeCode;
-	}
-	return 200;
-};
+import type { INodeProperties, INodeTypeDescription, IWebhookDescription } from 'n8n-workflow';
+import { getResponseCode } from './utils';
 
 export const defaultWebhookDescription: IWebhookDescription = {
 	name: 'default',
