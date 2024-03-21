@@ -85,6 +85,22 @@
 				</div>
 				<div v-if="!readOnlyEnv" :class="['text-center', 'mt-2xl', $style.actionsContainer]">
 					<n8n-card
+						v-if="userCloudAccount?.role === 'Sales'"
+						:class="$style.emptyStateCard"
+						hoverable
+						data-test-id="browse-sales-templates-card"
+						@click="openTemplateRepository('Sales')"
+					>
+						<n8n-icon :class="$style.emptyStateCardIcon" icon="hand-holding-usd" />
+						<n8n-text size="large" class="mt-xs" color="text-base">
+							{{
+								$locale.baseText('workflows.empty.browseTemplates', {
+									interpolate: { category: 'Sales' },
+								})
+							}}
+						</n8n-text>
+					</n8n-card>
+					<n8n-card
 						:class="$style.emptyStateCard"
 						hoverable
 						data-test-id="new-workflow-card"
@@ -154,6 +170,7 @@ import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
+import { useTemplatesStore } from '@/stores/templates.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
@@ -205,6 +222,7 @@ const WorkflowsView = defineComponent({
 			useCredentialsStore,
 			useSourceControlStore,
 			useTagsStore,
+			useTemplatesStore,
 		),
 		readOnlyEnv(): boolean {
 			return this.sourceControlStore.preferences.branchReadOnly;
@@ -236,6 +254,9 @@ const WorkflowsView = defineComponent({
 		},
 		suggestedTemplates() {
 			return this.uiStore.suggestedTemplates;
+		},
+		userCloudAccount() {
+			return this.usersStore.currentUserCloudInfo;
 		},
 	},
 	watch: {
@@ -271,6 +292,10 @@ const WorkflowsView = defineComponent({
 			this.$telemetry.track('User clicked add workflow button', {
 				source: 'Workflows list',
 			});
+		},
+		openTemplateRepository(category: string) {
+			const url = this.templatesStore.getWebsiteCategoryURL(category);
+			window.open(url, '_blank');
 		},
 		async initialize() {
 			await Promise.all([

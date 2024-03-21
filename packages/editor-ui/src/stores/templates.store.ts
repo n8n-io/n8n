@@ -163,7 +163,6 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 		},
 		/**
 		 * Construct the URL for the template category page on the website for a given category id
-		 * @returns {function(string): string}
 		 */
 		getWebsiteCategoryURL() {
 			return (id: string) => {
