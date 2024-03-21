@@ -1,11 +1,32 @@
-import type { INodeProperties, INodeTypeDescription, IWebhookDescription } from 'n8n-workflow';
+import type {
+	IDataObject,
+	INodeProperties,
+	INodeTypeDescription,
+	IWebhookDescription,
+} from 'n8n-workflow';
+
+const getResponseCode = (parameters: IDataObject) => {
+	if (parameters.responseCode) {
+		return parameters.responseCode;
+	}
+	const { responseCode } = parameters.options as IDataObject;
+	if (responseCode && (responseCode as IDataObject).values) {
+		const { resposeCode, customCode } = (responseCode as IDataObject).values as IDataObject;
+
+		if (customCode) {
+			return customCode;
+		}
+
+		return resposeCode;
+	}
+	return 200;
+};
 
 export const defaultWebhookDescription: IWebhookDescription = {
 	name: 'default',
 	httpMethod: '={{$parameter["httpMethod"] || "GET"}}',
 	isFullPath: true,
-	responseCode:
-		'={{$parameter["responseCode"] === "customCode" ? $parameter["customCode"] : $parameter["responseCode"]}}',
+	responseCode: `={{(${getResponseCode})($parameter)}}`,
 	responseMode: '={{$parameter["responseMode"]}}',
 	responseData:
 		'={{$parameter["responseData"] || ($parameter.options.noResponseBody ? "noData" : undefined) }}',
@@ -585,4 +606,48 @@ export const responseCodeSelector: INodeProperties = {
 	],
 	default: 200,
 	description: 'The HTTP Response code to return',
+};
+
+export const responseCodeOption: INodeProperties = {
+	displayName: 'Response Code',
+	name: 'responseCode',
+	placeholder: 'Add Response Code',
+	type: 'fixedCollection',
+	default: {
+		values: {
+			responseCode: 200,
+		},
+	},
+	options: [
+		{
+			name: 'values',
+			displayName: 'Values',
+			values: [
+				responseCodeSelector,
+				{
+					displayName: 'Code',
+					name: 'customCode',
+					type: 'number',
+					default: 200,
+					placeholder: 'e.g. 400',
+					typeOptions: {
+						minValue: 100,
+					},
+					displayOptions: {
+						show: {
+							responseCode: ['customCode'],
+						},
+					},
+				},
+			],
+		},
+	],
+	displayOptions: {
+		show: {
+			'@version': [{ _cnd: { gte: 2 } }],
+		},
+		hide: {
+			'/responseMode': ['responseNode'],
+		},
+	},
 };

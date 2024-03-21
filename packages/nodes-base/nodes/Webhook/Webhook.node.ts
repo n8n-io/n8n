@@ -11,6 +11,7 @@ import type {
 	IWebhookResponseData,
 	MultiPartFormData,
 	INodeParameters,
+	INodeProperties,
 } from 'n8n-workflow';
 import { BINARY_ENCODING, NodeOperationError, Node, NodeConnectionType } from 'n8n-workflow';
 
@@ -27,8 +28,8 @@ import {
 	httpMethodsProperty,
 	optionsProperty,
 	responseBinaryPropertyNameProperty,
+	responseCodeOption,
 	responseCodeProperty,
-	responseCodeSelector,
 	responseDataProperty,
 	responseModeProperty,
 } from './description';
@@ -158,36 +159,21 @@ export class Webhook extends Node {
 					},
 				},
 			},
-			{
-				...responseCodeSelector,
-				displayOptions: {
-					show: {
-						'@version': [{ _cnd: { gte: 2 } }],
-					},
-					hide: {
-						responseMode: ['responseNode'],
-					},
-				},
-			},
-			{
-				displayName: 'Code',
-				name: 'customCode',
-				type: 'number',
-				default: 200,
-				placeholder: 'e.g. 400',
-				typeOptions: {
-					minValue: 100,
-				},
-				displayOptions: {
-					show: {
-						responseCode: ['customCode'],
-						'@version': [{ _cnd: { gte: 2 } }],
-					},
-				},
-			},
 			responseDataProperty,
 			responseBinaryPropertyNameProperty,
-			optionsProperty,
+
+			{
+				...optionsProperty,
+				options: [...(optionsProperty.options as INodeProperties[]), responseCodeOption].sort(
+					(a, b) => {
+						const nameA = a.displayName.toUpperCase();
+						const nameB = b.displayName.toUpperCase();
+						if (nameA < nameB) return -1;
+						if (nameA > nameB) return 1;
+						return 0;
+					},
+				),
+			},
 		],
 	};
 
