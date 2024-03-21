@@ -664,6 +664,8 @@ export const ALLOWED_HTML_TAGS = [
 	'a',
 	'br',
 	'i',
+	'ul',
+	'li',
 	'em',
 	'small',
 	'details',
