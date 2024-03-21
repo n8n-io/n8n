@@ -57,7 +57,7 @@
 <script lang="ts" setup>
 import { onMounted, onUnmounted, ref } from 'vue';
 import N8nIcon from '../N8nIcon';
-import type { RouteObject } from '@/types';
+import type { RouteLocationRaw } from 'vue-router';
 
 interface TabOptions {
 	value: string;
@@ -66,7 +66,7 @@ interface TabOptions {
 	href?: string;
 	tooltip?: string;
 	align?: 'left' | 'right';
-	to?: string | RouteObject;
+	to?: RouteLocationRaw;
 }
 
 interface TabsProps {

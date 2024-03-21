@@ -118,7 +118,7 @@ export class WorkflowsController {
 					: await this.projectService.getProjectWithScope(
 							req.user,
 							projectId,
-							'workflow:create',
+							['workflow:create'],
 							transactionManager,
 					  );
 

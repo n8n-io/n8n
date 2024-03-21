@@ -25,7 +25,7 @@ import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflo
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { ProjectService } from '@/services/project.service';
 import { createTeamProject, linkUserToProject } from '../shared/db/projects';
-import { Scope } from '@n8n/permissions';
+import type { Scope } from '@n8n/permissions';
 
 let owner: User;
 let member: User;
@@ -235,7 +235,8 @@ describe('POST /workflows', () => {
 		//
 		// ACT
 		//
-		await authOwnerAgent
+		await testServer
+			.authAgentFor(member)
 			.post('/workflows')
 			.send({ ...workflow, projectId: project.id })
 			//
@@ -258,12 +259,13 @@ describe('POST /workflows', () => {
 				type: 'team',
 			}),
 		);
-		await Container.get(ProjectService).addUser(project.id, owner.id, 'project:viewer');
+		await Container.get(ProjectService).addUser(project.id, member.id, 'project:viewer');
 
 		//
 		// ACT
 		//
-		await authOwnerAgent
+		await testServer
+			.authAgentFor(member)
 			.post('/workflows')
 			.send({ ...workflow, projectId: project.id })
 			//
@@ -411,7 +413,7 @@ describe('GET /workflows', () => {
 			createWorkflow({ name: 'Second' }, member2),
 		]);
 
-		await shareWorkflowWithProjects(savedWorkflow2, [teamProject]);
+		await shareWorkflowWithProjects(savedWorkflow2, [{ project: teamProject }]);
 
 		{
 			const response = await testServer.authAgentFor(member1).get('/workflows?includeScopes=true');

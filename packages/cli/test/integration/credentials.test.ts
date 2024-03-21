@@ -307,7 +307,7 @@ describe('POST /credentials', () => {
 		//
 		// ACT
 		//
-		await authOwnerAgent
+		await authMemberAgent
 			.post('/credentials')
 			.send({ ...randomCredentialPayload(), projectId: project.id })
 			//
@@ -329,12 +329,12 @@ describe('POST /credentials', () => {
 				type: 'team',
 			}),
 		);
-		await projectService.addUser(project.id, owner.id, 'project:viewer');
+		await projectService.addUser(project.id, member.id, 'project:viewer');
 
 		//
 		// ACT
 		//
-		await authOwnerAgent
+		await authMemberAgent
 			.post('/credentials')
 			.send({ ...randomCredentialPayload(), projectId: project.id })
 			//

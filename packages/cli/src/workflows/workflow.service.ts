@@ -8,7 +8,6 @@ import { BinaryDataService } from 'n8n-core';
 import config from '@/config';
 import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowTagMappingRepository } from '@db/repositories/workflowTagMapping.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
@@ -28,12 +27,12 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { RoleService } from '@/services/role.service';
 import { WorkflowSharingService } from './workflowSharing.service';
 import { ProjectService } from '@/services/project.service';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 
 @Service()
 export class WorkflowService {
 	constructor(
 		private readonly logger: Logger,
-		private readonly executionRepository: ExecutionRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowTagMappingRepository: WorkflowTagMappingRepository,
@@ -47,6 +46,7 @@ export class WorkflowService {
 		private readonly roleService: RoleService,
 		private readonly workflowSharingService: WorkflowSharingService,
 		private readonly projectService: ProjectService,
+		private readonly executionRepository: ExecutionRepository,
 	) {}
 
 	async getMany(user: User, options?: ListQuery.Options, includeScopes?: boolean) {

@@ -24,7 +24,6 @@ beforeAll(async () => {
 
 	workflowService = new WorkflowService(
 		mock(),
-		mock(),
 		Container.get(SharedWorkflowRepository),
 		Container.get(WorkflowRepository),
 		mock(),

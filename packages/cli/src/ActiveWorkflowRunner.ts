@@ -699,6 +699,7 @@ export class ActiveWorkflowRunner {
 	 * @param {string} workflowId The id of the workflow to deactivate
 	 */
 	// TODO: this should happen in a transaction
+	// maybe, see: https://github.com/n8n-io/n8n/pull/8904#discussion_r1530150510
 	async remove(workflowId: string) {
 		if (this.orchestrationService.isMultiMainSetupEnabled) {
 			try {

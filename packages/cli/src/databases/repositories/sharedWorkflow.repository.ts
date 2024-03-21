@@ -67,6 +67,17 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 		);
 	}
 
+	async makeOwner(workflowId: string, project: Project) {
+		return await this.upsert(
+			{
+				workflowId,
+				project,
+				role: 'workflow:owner',
+			},
+			['projectId', 'workflowId'],
+		);
+	}
+
 	async findWithFields(
 		workflowIds: string[],
 		{ select }: Pick<FindManyOptions<SharedWorkflow>, 'select'>,
@@ -90,7 +101,7 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 		workflowId: string,
 		user: User,
 		scopes: Scope[],
-		{ includeTags = false } = {},
+		{ includeTags = false, em = this.manager } = {},
 	) {
 		let where: FindOptionsWhere<SharedWorkflow> = { workflowId };
 
@@ -110,7 +121,7 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 			};
 		}
 
-		const sharedWorkflow = await this.findOne({
+		const sharedWorkflow = await em.findOne(SharedWorkflow, {
 			where,
 			relations: {
 				workflow: {
