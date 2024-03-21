@@ -1032,7 +1032,7 @@ export default defineComponent({
 	font-weight: var(--font-weight-bold);
 
 	.crashed &,
-	.failed & {
+	.error & {
 		color: var(--color-danger);
 	}
 
@@ -1143,7 +1143,7 @@ export default defineComponent({
 		}
 
 		&.crashed td:first-child::before,
-		&.failed td:first-child::before {
+		&.error td:first-child::before {
 			background: var(--execution-card-border-error);
 		}
 
