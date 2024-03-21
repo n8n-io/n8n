@@ -79,8 +79,10 @@ const {
 
 defineExpose({
 	focus: () => {
-		setCursorPosition('lastExpression');
-		focus();
+		if (!hasFocus.value) {
+			setCursorPosition('lastExpression');
+			focus();
+		}
 	},
 });
 

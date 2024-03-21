@@ -54,6 +54,7 @@ describe('InlineExpressionTip.vue', () => {
 		test('should show the execute previous nodes tip', async () => {
 			mockNdvState = {
 				hasInputData: false,
+				isInputParentOfActiveNode: true,
 				isDNVDataEmpty: vi.fn(() => false),
 				focusedMappableInput: 'Some Input',
 			};
