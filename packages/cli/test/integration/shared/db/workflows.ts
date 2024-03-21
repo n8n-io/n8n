@@ -94,6 +94,17 @@ export async function shareWorkflowWithUsers(workflow: WorkflowEntity, users: Us
 	return await Container.get(SharedWorkflowRepository).save(sharedWorkflows);
 }
 
+export async function shareWorkflowWithProjects(workflow: WorkflowEntity, projects: Project[]) {
+	const sharedWorkflows: Array<DeepPartial<SharedWorkflow>> = projects.map((project) => {
+		return {
+			projectId: project.id,
+			workflowId: workflow.id,
+			role: 'workflow:editor',
+		};
+	});
+	return await Container.get(SharedWorkflowRepository).save(sharedWorkflows);
+}
+
 export async function getWorkflowSharing(workflow: WorkflowEntity) {
 	return await Container.get(SharedWorkflowRepository).findBy({
 		workflowId: workflow.id,

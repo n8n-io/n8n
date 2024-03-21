@@ -17,13 +17,15 @@ import * as testDb from '../shared/testDb';
 import { makeWorkflow, MOCK_PINDATA } from '../shared/utils/';
 import { randomCredentialPayload } from '../shared/random';
 import { saveCredential } from '../shared/db/credentials';
-import { createMember, createOwner } from '../shared/db/users';
-import { createWorkflow } from '../shared/db/workflows';
+import { createManyUsers, createMember, createOwner } from '../shared/db/users';
+import { createWorkflow, shareWorkflowWithProjects } from '../shared/db/workflows';
 import { createTag } from '../shared/db/tags';
 import { License } from '@/License';
 import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { ProjectService } from '@/services/project.service';
+import { createTeamProject, linkUserToProject } from '../shared/db/projects';
+import { Scope } from '@n8n/permissions';
 
 let owner: User;
 let member: User;
@@ -369,6 +371,131 @@ describe('GET /workflows', () => {
 		expect(found.nodes).toBeUndefined();
 		expect(found.sharedWithProjects).toHaveLength(0);
 		expect(found.usedCredentials).toBeUndefined();
+	});
+
+	test('should return workflows with scopes when ?includeScopes=true', async () => {
+		const [member1, member2] = await createManyUsers(2, {
+			role: 'global:member',
+		});
+
+		const teamProject = await createTeamProject(undefined, member1);
+		await linkUserToProject(member2, teamProject, 'project:viewer');
+
+		const credential = await saveCredential(randomCredentialPayload(), {
+			user: owner,
+			role: 'credential:owner',
+		});
+		const ownerPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
+
+		const nodes: INode[] = [
+			{
+				id: uuid(),
+				name: 'Action Network',
+				type: 'n8n-nodes-base.actionNetwork',
+				parameters: {},
+				typeVersion: 1,
+				position: [0, 0],
+				credentials: {
+					actionNetworkApi: {
+						id: credential.id,
+						name: credential.name,
+					},
+				},
+			},
+		];
+
+		const tag = await createTag({ name: 'A' });
+
+		const [savedWorkflow1, savedWorkflow2] = await Promise.all([
+			createWorkflow({ name: 'First', nodes, tags: [tag] }, teamProject),
+			createWorkflow({ name: 'Second' }, member2),
+		]);
+
+		await shareWorkflowWithProjects(savedWorkflow2, [teamProject]);
+
+		{
+			const response = await testServer.authAgentFor(member1).get('/workflows?includeScopes=true');
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data.length).toBe(2);
+
+			const workflows = response.body.data as Array<WorkflowEntity & { scopes: Scope[] }>;
+			const wf1 = workflows.find((w) => w.id === savedWorkflow1.id)!;
+			const wf2 = workflows.find((w) => w.id === savedWorkflow2.id)!;
+
+			// Team workflow
+			expect(wf1.id).toBe(savedWorkflow1.id);
+			expect(wf1.scopes).toEqual([
+				'workflow:read',
+				'workflow:update',
+				'workflow:delete',
+				'workflow:execute',
+			]);
+
+			// Shared workflow
+			expect(wf2.id).toBe(savedWorkflow2.id);
+			expect(wf2.scopes).toEqual(['workflow:read', 'workflow:update', 'workflow:execute']);
+		}
+
+		{
+			const response = await testServer.authAgentFor(member2).get('/workflows?includeScopes=true');
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data.length).toBe(2);
+
+			const workflows = response.body.data as Array<WorkflowEntity & { scopes: Scope[] }>;
+			const wf1 = workflows.find((w) => w.id === savedWorkflow1.id)!;
+			const wf2 = workflows.find((w) => w.id === savedWorkflow2.id)!;
+
+			// Team workflow
+			expect(wf1.id).toBe(savedWorkflow1.id);
+			expect(wf1.scopes).toEqual(['workflow:read']);
+
+			// Shared workflow
+			expect(wf2.id).toBe(savedWorkflow2.id);
+			expect(wf2.scopes).toEqual([
+				'workflow:read',
+				'workflow:update',
+				'workflow:delete',
+				'workflow:execute',
+				'workflow:share',
+			]);
+		}
+
+		{
+			const response = await testServer.authAgentFor(owner).get('/workflows?includeScopes=true');
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data.length).toBe(2);
+
+			const workflows = response.body.data as Array<WorkflowEntity & { scopes: Scope[] }>;
+			const wf1 = workflows.find((w) => w.id === savedWorkflow1.id)!;
+			const wf2 = workflows.find((w) => w.id === savedWorkflow2.id)!;
+
+			// Team workflow
+			expect(wf1.id).toBe(savedWorkflow1.id);
+			expect(wf1.scopes).toEqual([
+				'workflow:create',
+				'workflow:read',
+				'workflow:update',
+				'workflow:delete',
+				'workflow:list',
+				'workflow:share',
+				'workflow:execute',
+			]);
+
+			// Shared workflow
+			expect(wf2.id).toBe(savedWorkflow2.id);
+			expect(wf2.scopes).toEqual([
+				'workflow:create',
+				'workflow:read',
+				'workflow:update',
+				'workflow:delete',
+				'workflow:list',
+				'workflow:share',
+				'workflow:execute',
+			]);
+		}
 	});
 
 	describe('filter', () => {

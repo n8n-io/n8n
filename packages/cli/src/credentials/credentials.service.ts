@@ -29,6 +29,8 @@ import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { ProjectService } from '@/services/project.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { ProjectRelation } from '@/databases/entities/ProjectRelation';
+import { RoleService } from '@/services/role.service';
 
 export type CredentialsGetSharedOptions =
 	| { allowGlobalScope: true; globalScope: Scope }
@@ -46,35 +48,73 @@ export class CredentialsService {
 		private readonly credentialTypes: CredentialTypes,
 		private readonly projectRepository: ProjectRepository,
 		private readonly projectService: ProjectService,
+		private readonly roleService: RoleService,
 	) {}
 
 	async getMany(
 		user: User,
-		options: { listQueryOptions?: ListQuery.Options; onlyOwn?: boolean } = {},
+		options: {
+			listQueryOptions?: ListQuery.Options;
+			onlyOwn?: boolean;
+			includeScopes?: string;
+		} = {},
 	) {
 		const returnAll = user.hasGlobalScope('credential:list') && !options.onlyOwn;
 		const isDefaultSelect = !options.listQueryOptions?.select;
 
-		if (returnAll) {
-			const credentials = await this.credentialsRepository.findMany(options.listQueryOptions);
+		let projectRelations: ProjectRelation[] | undefined = undefined;
+		if (options.includeScopes) {
+			projectRelations = await this.projectService.getProjectRelationsForUser(user);
+		}
 
-			return isDefaultSelect
-				? credentials.map((c) => this.ownershipService.addOwnedByAndSharedWith(c))
-				: credentials;
+		if (returnAll) {
+			let credentials = await this.credentialsRepository.findMany(options.listQueryOptions);
+
+			if (isDefaultSelect) {
+				credentials = credentials.map((c) => this.ownershipService.addOwnedByAndSharedWith(c));
+			}
+
+			if (options.includeScopes) {
+				credentials = credentials.map((c) =>
+					this.roleService.addScopes(c, user, projectRelations!),
+				);
+			}
+
+			credentials.forEach((c) => {
+				// @ts-expect-error: This is to emulate the old behaviour of removing the shared
+				// field as part of `addOwnedByAndSharedWith`. We need this field in `addScopes`
+				// though. So to avoid leaking the information we just delete it.
+				delete c.shared;
+			});
+
+			return credentials;
 		}
 
 		const ids = await this.sharedCredentialsRepository.getCredentialIdsByUserAndRole([user.id], {
 			scopes: ['credential:read'],
 		});
 
-		const credentials = await this.credentialsRepository.findMany(
+		let credentials = await this.credentialsRepository.findMany(
 			options.listQueryOptions,
 			ids, // only accessible credentials
 		);
 
-		return isDefaultSelect
-			? credentials.map((c) => this.ownershipService.addOwnedByAndSharedWith(c))
-			: credentials;
+		if (isDefaultSelect) {
+			credentials = credentials.map((c) => this.ownershipService.addOwnedByAndSharedWith(c));
+		}
+
+		if (options.includeScopes) {
+			credentials = credentials.map((c) => this.roleService.addScopes(c, user, projectRelations!));
+		}
+
+		credentials.forEach((c) => {
+			// @ts-expect-error: This is to emulate the old behaviour of removing the shared
+			// field as part of `addOwnedByAndSharedWith`. We need this field in `addScopes`
+			// though. So to avoid leaking the information we just delete it.
+			delete c.shared;
+		});
+
+		return credentials;
 	}
 
 	/**

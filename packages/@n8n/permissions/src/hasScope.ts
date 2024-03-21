@@ -1,3 +1,4 @@
+import { combineScopes } from './combineScopes';
 import type { Scope, ScopeLevels, GlobalScopes, ScopeOptions, MaskLevels } from './types';
 
 export function hasScope(
@@ -22,20 +23,7 @@ export function hasScope(
 		scope = [scope];
 	}
 
-	const maskedScopes: GlobalScopes | ScopeLevels = Object.fromEntries(
-		Object.entries(userScopes).map((e) => [e[0], [...e[1]]]),
-	) as GlobalScopes | ScopeLevels;
-
-	if (masks?.sharing) {
-		if ('project' in maskedScopes) {
-			maskedScopes.project = maskedScopes.project.filter((v) => masks.sharing.includes(v));
-		}
-		if ('resource' in maskedScopes) {
-			maskedScopes.resource = maskedScopes.resource.filter((v) => masks.sharing.includes(v));
-		}
-	}
-
-	const userScopeSet = new Set(Object.values(maskedScopes).flat());
+	const userScopeSet = combineScopes(userScopes, masks);
 
 	if (options.mode === 'allOf') {
 		return !!scope.length && scope.every((s) => userScopeSet.has(s));

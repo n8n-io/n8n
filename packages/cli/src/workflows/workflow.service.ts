@@ -25,6 +25,9 @@ import { Logger } from '@/Logger';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { RoleService } from '@/services/role.service';
+import { WorkflowSharingService } from './workflowSharing.service';
+import { ProjectService } from '@/services/project.service';
 
 @Service()
 export class WorkflowService {
@@ -41,17 +44,36 @@ export class WorkflowService {
 		private readonly orchestrationService: OrchestrationService,
 		private readonly externalHooks: ExternalHooks,
 		private readonly activeWorkflowRunner: ActiveWorkflowRunner,
+		private readonly roleService: RoleService,
+		private readonly workflowSharingService: WorkflowSharingService,
+		private readonly projectService: ProjectService,
 	) {}
 
-	async getMany(sharedWorkflowIds: string[], options?: ListQuery.Options) {
-		const { workflows, count } = await this.workflowRepository.getMany(sharedWorkflowIds, options);
+	async getMany(user: User, options?: ListQuery.Options, includeScopes?: boolean) {
+		const sharedWorkflowIds = await this.workflowSharingService.getSharedWorkflowIds(user, {
+			scopes: ['workflow:read'],
+		});
 
-		return hasSharing(workflows)
-			? {
-					workflows: workflows.map((w) => this.ownershipService.addOwnedByAndSharedWith(w)),
-					count,
-			  }
-			: { workflows, count };
+		// eslint-disable-next-line prefer-const
+		let { workflows, count } = await this.workflowRepository.getMany(sharedWorkflowIds, options);
+
+		if (hasSharing(workflows)) {
+			workflows = workflows.map((w) => this.ownershipService.addOwnedByAndSharedWith(w));
+		}
+
+		if (includeScopes) {
+			const projectRelations = await this.projectService.getProjectRelationsForUser(user);
+			workflows = workflows.map((w) => this.roleService.addScopes(w, user, projectRelations));
+		}
+
+		workflows.forEach((w) => {
+			// @ts-expect-error: This is to emulate the old behaviour of removing the shared
+			// field as part of `addOwnedByAndSharedWith`. We need this field in `addScopes`
+			// though. So to avoid leaking the information we just delete it.
+			delete w.shared;
+		});
+
+		return { workflows, count };
 	}
 
 	async update(

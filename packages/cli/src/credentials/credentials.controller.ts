@@ -41,9 +41,10 @@ export class CredentialsController {
 	) {}
 
 	@Get('/', { middlewares: listQueryMiddleware })
-	async getMany(req: ListQuery.Request) {
+	async getMany(req: CredentialRequest.GetMany) {
 		return await this.credentialsService.getMany(req.user, {
 			listQueryOptions: req.listQueryOptions,
+			includeScopes: req.query.includeScopes,
 		});
 	}
 
