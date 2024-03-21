@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import type {
 	Project,
 	ProjectListItem,
@@ -15,11 +15,35 @@ type Props = {
 
 const props = defineProps<Props>();
 const visible = defineModel<boolean>();
+const emit = defineEmits<{
+	(e: 'confirmDelete', value?: string): void;
+}>();
 
 const locale = useI18n();
 
 const selectedProject = ref<ProjectSharingData | null>(null);
-const operation = ref<'transfer' | 'delete' | null>(null);
+const operation = ref<'transfer' | 'wipe' | null>(null);
+const wipeConfirmText = ref('');
+const isValid = computed(() => {
+	if (operation.value === 'transfer') {
+		return !!selectedProject.value;
+	}
+	if (operation.value === 'wipe') {
+		return (
+			wipeConfirmText.value ===
+			locale.baseText('projects.settings.delete.question.wipe.placeholder')
+		);
+	}
+	return false;
+});
+
+const onDelete = () => {
+	if (!isValid.value) {
+		return;
+	}
+
+	emit('confirmDelete', selectedProject.value?.id);
+};
 </script>
 <template>
 	<el-dialog
@@ -32,21 +56,57 @@ const operation = ref<'transfer' | 'delete' | null>(null);
 		width="500"
 	>
 		<n8n-text color="text-base">{{ locale.baseText('projects.settings.delete.message') }}</n8n-text>
-		<div>
-			<el-radio v-model="operation" value="transfer">
+		<div class="pt-l">
+			<el-radio
+				:model-value="operation"
+				label="transfer"
+				class="mb-s"
+				@update:model-value="operation = 'transfer'"
+			>
 				<n8n-text color="text-dark">{{
 					locale.baseText('projects.settings.delete.question.transfer.label')
 				}}</n8n-text>
 			</el-radio>
 			<div v-if="operation === 'transfer'" :class="$style.operation">
-				<ProjectSharing v-model="selectedProject" :projects="props.projects" />
+				<n8n-text color="text-dark">{{
+					locale.baseText('projects.settings.delete.question.transfer.title')
+				}}</n8n-text>
+				<ProjectSharing v-model="selectedProject" class="pt-2xs" :projects="props.projects" />
+			</div>
+
+			<el-radio
+				:model-value="operation"
+				label="wipe"
+				class="mb-s"
+				@update:model-value="operation = 'wipe'"
+			>
+				<n8n-text color="text-dark">{{
+					locale.baseText('projects.settings.delete.question.wipe.label')
+				}}</n8n-text>
+			</el-radio>
+			<div v-if="operation === 'wipe'" :class="$style.operation">
+				<n8n-input-label :label="locale.baseText('projects.settings.delete.question.wipe.title')">
+					<n8n-input
+						v-model="wipeConfirmText"
+						:placeholder="locale.baseText('projects.settings.delete.question.wipe.placeholder')"
+					/>
+				</n8n-input-label>
 			</div>
 		</div>
+		<template #footer>
+			<N8nButton
+				type="danger"
+				:disabled="!isValid"
+				data-test-id="project-settings-delete-confirm-button"
+				@click.stop.prevent="onDelete"
+				>{{ locale.baseText('projects.settings.title.deleteProject') }}</N8nButton
+			>
+		</template>
 	</el-dialog>
 </template>
 
 <style lang="scss" module>
 .operation {
-	padding-left: var(--spacing-l);
+	padding: 0 0 var(--spacing-l) var(--spacing-l);
 }
 </style>

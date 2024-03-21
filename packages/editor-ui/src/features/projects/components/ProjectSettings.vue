@@ -7,15 +7,14 @@ import { useI18n } from '@/composables/useI18n';
 import { useProjectsStore } from '@/features/projects/projects.store';
 import ProjectTabs from '@/features/projects/components/ProjectTabs.vue';
 import type { Project, ProjectRole, ProjectRelation } from '@/features/projects/projects.types';
-import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
+import { VIEWS } from '@/constants';
 import ProjectDeleteDialog from '@/features/projects/components/ProjectDeleteDialog.vue';
 
 const usersStore = useUsersStore();
 const locale = useI18n();
 const projectsStore = useProjectsStore();
 const toast = useToast();
-const message = useMessage();
 const router = useRouter();
 const dialogVisible = ref(false);
 
@@ -92,34 +91,26 @@ const onSubmit = async () => {
 };
 
 const onDelete = async () => {
-	// try {
-	// 	const projectName = projectsStore.currentProject?.name ?? '';
-	// 	const confirmation = await message.confirm(
-	// 		locale.baseText('projects.settings.delete.message'),
-	// 		locale.baseText('projects.settings.delete.title', {
-	// 			interpolate: { projectName },
-	// 		}),
-	// 		{
-	// 			confirmButtonText: locale.baseText('projects.settings.delete.confirm'),
-	// 			cancelButtonText: locale.baseText('projects.settings.delete.cancel'),
-	// 		},
-	// 	);
-
-	// 	if (confirmation === MODAL_CONFIRM && projectsStore.currentProject) {
-	// 		await projectsStore.deleteProject(projectsStore.currentProject.id);
-	// 		await router.push({ name: VIEWS.HOMEPAGE });
-	// 		toast.showMessage({
-	// 			title: locale.baseText('projects.settings.delete.successful.title', {
-	// 				interpolate: { projectName },
-	// 			}),
-	// 			type: 'success',
-	// 		});
-	// 	}
-	// } catch (error) {
-	// 	toast.showError(error, locale.baseText('projects.settings.delete.error.title'));
-	// }
 	await projectsStore.getAllProjects();
 	dialogVisible.value = true;
+};
+
+const onConfirmDelete = async (transferId?: string) => {
+	try {
+		if (projectsStore.currentProject) {
+			await projectsStore.deleteProject(projectsStore.currentProject.id, transferId);
+			await router.push({ name: VIEWS.HOMEPAGE });
+			toast.showMessage({
+				title: locale.baseText('projects.settings.delete.successful.title', {
+					interpolate: { projectName: projectsStore.currentProject?.name ?? '' },
+				}),
+				type: 'success',
+			});
+			dialogVisible.value = true;
+		}
+	} catch (error) {
+		toast.showError(error, locale.baseText('projects.settings.delete.error.title'));
+	}
 };
 
 watch(
@@ -232,6 +223,7 @@ onBeforeMount(async () => {
 			v-model="dialogVisible"
 			:current-project="projectsStore.currentProject"
 			:projects="projects"
+			@confirm-delete="onConfirmDelete"
 		/>
 	</div>
 </template>

@@ -66,8 +66,8 @@ export const useProjectsStore = defineStore('projects', () => {
 		}
 	};
 
-	const deleteProject = async (projectId: string): Promise<void> => {
-		await projectsApi.deleteProject(rootStore.getRestApiContext, projectId);
+	const deleteProject = async (projectId: string, transferId?: string): Promise<void> => {
+		await projectsApi.deleteProject(rootStore.getRestApiContext, projectId, transferId);
 		myProjects.value = myProjects.value.filter((p) => p.id !== projectId);
 	};
 

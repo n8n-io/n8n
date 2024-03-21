@@ -20,7 +20,7 @@ const model = defineModel<(ProjectSharingData | null) | ProjectSharingData[]>({
 	required: true,
 });
 
-const selectedProject = ref('');
+const selectedProject = ref(Array.isArray(model.value) ? '' : model.value?.id ?? '');
 const filter = ref('');
 const projectRoles = ref<Array<{ label: string; value: ProjectRole }>>([
 	{ value: 'project:editor', label: locale.baseText('projects.settings.role.editor') },
@@ -77,7 +77,11 @@ const onRoleAction = (project: ProjectSharingData, role: string) => {
 			data-test-id="project-sharing-select"
 			:filterable="true"
 			:filter-method="setFilter"
-			:placeholder="locale.baseText('projects.sharing.placeholder')"
+			:placeholder="
+				Array.isArray(model)
+					? locale.baseText('projects.sharing.placeholder')
+					: locale.baseText('projects.sharing.placeholder.single')
+			"
 			:default-first-option="true"
 			:no-data-text="locale.baseText('projects.sharing.noMatchingProjects')"
 			size="large"
