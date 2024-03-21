@@ -67,6 +67,17 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 		);
 	}
 
+	async makeOwner(workflowId: string, project: Project) {
+		return await this.upsert(
+			{
+				workflowId,
+				project,
+				role: 'workflow:owner',
+			},
+			['projectId', 'workflowId'],
+		);
+	}
+
 	async findWithFields(
 		workflowIds: string[],
 		{ select }: Pick<FindManyOptions<SharedWorkflow>, 'select'>,
