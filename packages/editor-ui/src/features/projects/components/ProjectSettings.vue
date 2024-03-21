@@ -228,7 +228,11 @@ onBeforeMount(async () => {
 				<small>{{ locale.baseText('projects.settings.message.cannotBeUndone') }}</small>
 			</fieldset>
 		</form>
-		<ProjectDeleteDialog v-model="dialogVisible" :projects="projects" />
+		<ProjectDeleteDialog
+			v-model="dialogVisible"
+			:current-project="projectsStore.currentProject"
+			:projects="projects"
+		/>
 	</div>
 </template>
 
