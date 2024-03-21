@@ -279,7 +279,11 @@ export function applySpecialNodeParameters(nodeType: INodeType): void {
 	}
 	if (nodeType.webhook && supportsCORS) {
 		const optionsProperty = properties.find(({ name }) => name === 'options');
-		if (optionsProperty) optionsProperty.options!.push(...commonCORSParameters);
+		if (optionsProperty)
+			optionsProperty.options = [
+				...commonCORSParameters,
+				...(optionsProperty.options as INodePropertyOptions[]),
+			];
 		else properties.push(...commonCORSParameters);
 	}
 }

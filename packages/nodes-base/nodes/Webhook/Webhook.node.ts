@@ -270,7 +270,7 @@ export class Webhook extends Node {
 				};
 			} catch {}
 
-			if (expectedAuth === undefined || !expectedAuth.secret || !expectedAuth.publicKey) {
+			if (expectedAuth === undefined) {
 				// Data is not defined on node so can not authenticate
 				throw new WebhookAuthorizationError(500, 'No authentication data defined on node!');
 			}
