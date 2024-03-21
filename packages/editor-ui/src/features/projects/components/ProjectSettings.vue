@@ -98,11 +98,12 @@ const onDelete = async () => {
 const onConfirmDelete = async (transferId?: string) => {
 	try {
 		if (projectsStore.currentProject) {
+			const projectName = projectsStore.currentProject?.name ?? '';
 			await projectsStore.deleteProject(projectsStore.currentProject.id, transferId);
 			await router.push({ name: VIEWS.HOMEPAGE });
 			toast.showMessage({
 				title: locale.baseText('projects.settings.delete.successful.title', {
-					interpolate: { projectName: projectsStore.currentProject?.name ?? '' },
+					interpolate: { projectName },
 				}),
 				type: 'success',
 			});
