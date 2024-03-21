@@ -1185,7 +1185,8 @@ export default defineComponent({
 	--endpoint-size-small: 14px;
 	--endpoint-size-medium: 18px;
 	--stalk-size: 40px;
-	--stalk-switch-size: 90px;
+	--stalk-medium-size: 70px;
+	--stalk-large-size: 90px;
 	--stalk-success-size: 87px;
 	--stalk-success-size-without-label: 40px;
 	--stalk-long-size: 127px;
@@ -1452,7 +1453,7 @@ export default defineComponent({
 
 	// Some nodes allow for dynamic connection labels
 	// so we need to make sure the label does not overflow
-	&.node-connection-type-main[data-endpoint-label-length='medium'] {
+	&.node-connection-type-main[data-endpoint-label-length] {
 		max-width: calc(var(--stalk-size) - var(--endpoint-size-small) - var(--spacing-4xs));
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -1517,6 +1518,10 @@ export default defineComponent({
 }
 
 [data-endpoint-label-length='medium'] {
-	--stalk-size: var(--stalk-switch-size);
+	--stalk-size: var(--stalk-medium-size);
+}
+
+[data-endpoint-label-length='large'] {
+	--stalk-size: var(--stalk-large-size);
 }
 </style>
