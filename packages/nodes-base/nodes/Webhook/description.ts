@@ -262,7 +262,7 @@ export const optionsProperty: INodeProperties = {
 			type: 'string',
 			placeholder: 'e.g. 127.0.0.1',
 			default: '',
-			description: 'Comma-separated list of IP addresses to allow. If empty, all IPs are allowed.',
+			description: 'Comma-separated list of allowed IP addresses. Leave empty to allow all IPs.',
 		},
 		{
 			displayName: 'No Response Body',
@@ -395,61 +395,18 @@ export const responseCodeSelector: INodeProperties = {
 	name: 'responseCode',
 	type: 'options',
 	options: [
-		{ name: '100', value: 100, description: 'Continue - Initial part of request received' },
-		{
-			name: '101',
-			value: 101,
-			description: 'Switching Protocols - Requester asked to switch protocols',
-		},
 		{ name: '200', value: 200, description: 'OK - Request has succeeded' },
 		{ name: '201', value: 201, description: 'Created - Request has been fulfilled' },
-		{ name: '202', value: 202, description: 'Accepted - Request received, not completed yet' },
-		{
-			name: '203',
-			value: 203,
-			description: 'Non-Authoritative Information - Request processed, info not from origin',
-		},
 		{ name: '204', value: 204, description: 'No Content - Request processed, no content returned' },
-		{
-			name: '205',
-			value: 205,
-			description: 'Reset Content - Request processed, clear form for further input',
-		},
-		{
-			name: '206',
-			value: 206,
-			description: 'Partial Content - Partial GET request was successful',
-		},
-		{
-			name: '300',
-			value: 300,
-			description: 'Multiple Choices - Requested resource has different choices',
-		},
 		{
 			name: '301',
 			value: 301,
 			description: 'Moved Permanently - Requested resource moved permanently',
 		},
 		{ name: '302', value: 302, description: 'Found - Requested resource moved temporarily' },
-		{
-			name: '303',
-			value: 303,
-			description: 'See Other - Requested resource can be found elsewhere',
-		},
 		{ name: '304', value: 304, description: 'Not Modified - Resource has not been modified' },
-		{
-			name: '305',
-			value: 305,
-			description: 'Use Proxy - Requested resource must be accessed through proxy',
-		},
-		{
-			name: '307',
-			value: 307,
-			description: 'Temporary Redirect - Resource resides temporarily under different URI',
-		},
 		{ name: '400', value: 400, description: 'Bad Request - Request could not be understood' },
 		{ name: '401', value: 401, description: 'Unauthorized - Request requires user authentication' },
-		{ name: '402', value: 402, description: 'Payment Required - Reserved for future use' },
 		{
 			name: '403',
 			value: 403,
@@ -457,133 +414,13 @@ export const responseCodeSelector: INodeProperties = {
 		},
 		{ name: '404', value: 404, description: 'Not Found - Server has not found a match' },
 		{
-			name: '405',
-			value: 405,
-			description: 'Method Not Allowed - Method not allowed for resource',
-		},
-		{
-			name: '406',
-			value: 406,
-			description: "Not Acceptable - Resource can't generate acceptable response",
-		},
-		{
-			name: '407',
-			value: 407,
-			description: 'Proxy Authentication Required - Client must authenticate with proxy',
-		},
-		{
-			name: '408',
-			value: 408,
-			description: 'Request Timeout - Server timed out waiting for request',
-		},
-		{
-			name: '409',
-			value: 409,
-			description: 'Conflict - Request could not be completed due to conflict',
-		},
-		{ name: '410', value: 410, description: 'Gone - Requested resource is no longer available' },
-		{
-			name: '411',
-			value: 411,
-			description: 'Length Required - Required Content-Length header is missing',
-		},
-		{
-			name: '412',
-			value: 412,
-			description: 'Precondition Failed - Precondition given in request failed',
-		},
-		{
-			name: '413',
-			value: 413,
-			description: 'Request Entity Too Large - Request is larger than server can handle',
-		},
-		{
-			name: '414',
-			value: 414,
-			description: 'Request-URI Too Long - URI longer than server can interpret',
-		},
-		{
-			name: '415',
-			value: 415,
-			description: 'Unsupported Media Type - Entity body in unsupported format',
-		},
-		{
-			name: '416',
-			value: 416,
-			description: 'Requested Range Not Satisfiable - Invalid Range header in request',
-		},
-		{
-			name: '417',
-			value: 417,
-			description: 'Expectation Failed - Expectation in Expect header could not be met',
-		},
-		{
-			name: '500',
-			value: 500,
-			description: 'Internal Server Error - Unexpected condition was encountered',
-		},
-		{
-			name: '501',
-			value: 501,
-			description: 'Not Implemented - Server does not support functionality',
-		},
-		{
-			name: '502',
-			value: 502,
-			description: 'Bad Gateway - Server received an invalid response',
-		},
-		{
-			name: '503',
-			value: 503,
-			description: 'Service Unavailable - Server is currently unable to handle the request',
-		},
-		{
-			name: '504',
-			value: 504,
-			description: 'Gateway Timeout - Server did not receive a timely response',
-		},
-		{
-			name: '505',
-			value: 505,
-			description: 'HTTP Version Not Supported - Server does not support the HTTP protocol version',
-		},
-		{
-			name: '506',
-			value: 506,
-			description:
-				'Variant Also Negotiates - Transparent content negotiation for the request results in a circular reference',
-		},
-		{
-			name: '507',
-			value: 507,
-			description:
-				'Insufficient Storage - The server is unable to store the representation needed to complete the request',
-		},
-		{
-			name: '508',
-			value: 508,
-			description:
-				'Loop Detected - The server detected an infinite loop while processing a request',
-		},
-		{
-			name: '510',
-			value: 510,
-			description: 'Not Extended - Further extensions are needed to fulfill the request',
-		},
-		{
-			name: '511',
-			value: 511,
-			description:
-				'Network Authentication Required - Client needs to authenticate to gain network access',
-		},
-		{
 			name: 'Custom Code',
 			value: 'customCode',
 			description: 'Write any HTTP code',
 		},
 	],
 	default: 200,
-	description: 'The HTTP Response code to return',
+	description: 'The HTTP response code to return',
 };
 
 export const responseCodeOption: INodeProperties = {

@@ -117,7 +117,7 @@ export const checkResponseModeConfiguration = (context: IWebhookFunctions) => {
 			new Error('Webhook node not correctly configured'),
 			{
 				description:
-					'Set the “Respond” parameter of the Webhook node to “Using Respond to Webhook Node” ',
+					'Set the “Respond” parameter to “Using Respond to Webhook Node” or remove the Respond to Webhook node',
 			},
 		);
 	}
