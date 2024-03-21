@@ -934,7 +934,7 @@ export const messageFields: INodeProperties[] = [
 			show: {
 				resource: ['message'],
 				operation: ['update'],
-				messageType: ["text"],
+				messageType: ['text'],
 			},
 		},
 		description:

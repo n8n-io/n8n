@@ -25,12 +25,7 @@ import { fileFields, fileOperations } from './FileDescription';
 import { reactionFields, reactionOperations } from './ReactionDescription';
 import { userGroupFields, userGroupOperations } from './UserGroupDescription';
 import { userFields, userOperations } from './UserDescription';
-import {
-	slackApiRequest,
-	slackApiRequestAllItems,
-	validateJSON,
-	getMessageContent,
-} from './GenericFunctions';
+import { slackApiRequest, slackApiRequestAllItems, getMessageContent } from './GenericFunctions';
 
 export class SlackV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -843,7 +838,7 @@ export class SlackV2 implements INodeType {
 						const body: IDataObject = {
 							channel,
 							ts,
-							... content
+							...content,
 						};
 
 						// Add all the other options to the request
