@@ -223,6 +223,7 @@ const WorkflowsView = defineComponent({
 			useSourceControlStore,
 			useTagsStore,
 			useTemplatesStore,
+			useUsersStore,
 		),
 		readOnlyEnv(): boolean {
 			return this.sourceControlStore.preferences.branchReadOnly;
@@ -295,6 +296,10 @@ const WorkflowsView = defineComponent({
 		},
 		openTemplateRepository(category: string) {
 			const url = this.templatesStore.getWebsiteCategoryURL(category);
+			this.$telemetry.track('User clicked Browse Sales Templates', {
+				role: this.usersStore.currentUserCloudInfo?.role,
+				active_workflow_count: this.workflowsStore.activeWorkflows.length,
+			});
 			window.open(url, '_blank');
 		},
 		async initialize() {
