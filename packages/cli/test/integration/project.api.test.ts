@@ -684,6 +684,12 @@ describe('DELETE /project/:projectId', () => {
 
 	// Tests related to migrating workflows and credentials to new project:
 
+	test('should fail if the project to delete does not exist', async () => {
+		const member = await createMember();
+
+		await testServer.authAgentFor(member).delete('/projects/1234').expect(403);
+	});
+
 	test('should fail to delete if project to migrate to and the project to delete are the same', async () => {
 		const member = await createMember();
 		const project = await createTeamProject(undefined, member);
