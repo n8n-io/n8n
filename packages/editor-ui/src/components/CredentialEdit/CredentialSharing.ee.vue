@@ -58,8 +58,7 @@
 			</n8n-info-tip>
 			<ProjectSharing
 				v-model="sharedWithProjects"
-				:projects="projectsStore.projects"
-				:home-project="credential.homeProject"
+				:projects="projects"
 				:readonly="!credentialPermissions.share"
 			/>
 		</div>
@@ -80,7 +79,7 @@ import { useUsageStore } from '@/stores/usage.store';
 import { EnterpriseEditionFeature, VIEWS } from '@/constants';
 import ProjectSharing from '@/features/projects/components/ProjectSharing.vue';
 import { useProjectsStore } from '@/features/projects/projects.store';
-import type { ProjectSharingData } from '@/features/projects/projects.types';
+import type { ProjectListItem, ProjectSharingData } from '@/features/projects/projects.types';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import type { IPermissions } from '@/permissions';
 import type { EventBus } from 'n8n-design-system/utils';
@@ -153,6 +152,11 @@ export default defineComponent({
 			return (this.credentialData.sharedWithProjects || []).some((sharee: IUser) => {
 				return sharee.id === this.usersStore.currentUser?.id;
 			});
+		},
+		projects(): ProjectListItem[] {
+			return this.projectsStore.personalProjects.filter(
+				(project) => project.id !== this.credential.homeProject?.id,
+			);
 		},
 	},
 	watch: {

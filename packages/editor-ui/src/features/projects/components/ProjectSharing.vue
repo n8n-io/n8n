@@ -12,12 +12,11 @@ const locale = useI18n();
 
 type Props = {
 	projects: ProjectListItem[];
-	homeProject?: ProjectSharingData;
 	readonly?: boolean;
 };
 
 const props = defineProps<Props>();
-const selectedProjects = defineModel<ProjectSharingData[]>({
+const model = defineModel<(ProjectSharingData | null) | ProjectSharingData[]>({
 	required: true,
 });
 
@@ -29,12 +28,10 @@ const projectRoles = ref<Array<{ label: string; value: ProjectRole }>>([
 
 const filteredProjects = computed(() =>
 	props.projects
-		.filter(
-			(project) =>
-				project.name?.toLowerCase().includes(filter.value.toLowerCase()) &&
-				project.type === 'personal' &&
-				project.id !== props.homeProject?.id &&
-				!selectedProjects.value?.find((p) => p.id === project.id),
+		.filter((project) =>
+			project.name?.toLowerCase().includes(filter.value.toLowerCase()) && Array.isArray(model.value)
+				? !model.value?.find((p) => p.id === project.id)
+				: true,
 		)
 		.sort((a, b) => (a.name && b.name ? a.name.localeCompare(b.name) : 0)),
 );
@@ -49,18 +46,27 @@ const onProjectSelected = (projectId: string) => {
 	if (!project) {
 		return;
 	}
-	selectedProjects.value?.push(project);
-	selectedProject.value = '';
+
+	if (Array.isArray(model.value)) {
+		model.value = [...model.value, project];
+		selectedProject.value = '';
+	} else {
+		model.value = project;
+	}
 };
 
 const onRoleAction = (project: ProjectSharingData, role: string) => {
-	const index = selectedProjects.value?.findIndex((p) => p.id === project.id) ?? -1;
+	if (!Array.isArray(model.value) || props.readonly) {
+		return;
+	}
+
+	const index = model.value?.findIndex((p) => p.id === project.id) ?? -1;
 	if (index === -1) {
 		return;
 	}
 
 	if (role === 'remove') {
-		selectedProjects.value?.splice(index, 1);
+		model.value = model.value.filter((p) => p.id !== project.id);
 	}
 };
 </script>
@@ -90,9 +96,9 @@ const onRoleAction = (project: ProjectSharingData, role: string) => {
 				<ProjectSharingInfo :project="project" />
 			</N8nOption>
 		</N8nSelect>
-		<ul :class="$style.selectedProjects">
+		<ul v-if="Array.isArray(model)" :class="$style.selectedProjects">
 			<li
-				v-for="project in selectedProjects"
+				v-for="project in model"
 				:key="project.id"
 				:class="$style.project"
 				data-test-id="project-sharing-list-item"
