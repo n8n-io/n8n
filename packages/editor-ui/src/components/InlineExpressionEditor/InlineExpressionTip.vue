@@ -20,8 +20,12 @@
 			<span> {{ i18n.baseText('expressionTip.noExecutionData') }} </span>
 		</div>
 
-		<div v-else-if="tip === 'dot'" :class="$style.content">
-			<span v-html="i18n.baseText('expressionTip.typeDot')" />
+		<div v-else-if="tip === 'dotPrimitive'" :class="$style.content">
+			<span v-html="i18n.baseText('expressionTip.typeDotPrimitive')" />
+		</div>
+
+		<div v-else-if="tip === 'dotObject'" :class="$style.content">
+			<span v-html="i18n.baseText('expressionTip.typeDotObject')" />
 		</div>
 
 		<div v-else :class="$style.content">
@@ -35,20 +39,23 @@ import { useI18n } from '@/composables/useI18n';
 import { useNDVStore } from '@/stores/ndv.store';
 import { computed, ref, watch } from 'vue';
 import { EditorSelection, EditorState, type SelectionRange } from '@codemirror/state';
-import { CompletionContext } from '@codemirror/autocomplete';
+import { type Completion, CompletionContext } from '@codemirror/autocomplete';
 import { datatypeCompletions } from '@/plugins/codemirror/completions/datatype.completions';
+import { watchDebounced } from '@vueuse/core';
+import { FIELDS_SECTION } from '@/plugins/codemirror/completions/constants';
+import { isCompletionSection } from '@/plugins/codemirror/completions/utils';
 
 type Props = {
 	tip?: 'drag' | 'default' | 'dot' | 'auto';
-	unresolvedExpression?: string;
 	editorState?: EditorState;
+	unresolvedExpression?: string;
 	selection?: SelectionRange;
 };
 
 const props = withDefaults(defineProps<Props>(), {
-	unresolvedExpression: '',
 	tip: 'auto',
 	editorState: undefined,
+	unresolvedExpression: '',
 	selection: () => EditorSelection.cursor(0),
 });
 
@@ -56,12 +63,13 @@ const i18n = useI18n();
 const ndvStore = useNDVStore();
 
 const canAddDotToExpression = ref(false);
-
-const emptyExpression = computed(() => props.unresolvedExpression.trim().length === 0);
+const resolvedExpressionHasFields = ref(false);
 
 const canDragToFocusedInput = computed(
 	() => !ndvStore.isDNVDataEmpty('input') && ndvStore.focusedMappableInput,
 );
+
+const emptyExpression = computed(() => props.unresolvedExpression.trim().length === 0);
 
 const tip = computed(() => {
 	if (!ndvStore.hasInputData) {
@@ -70,46 +78,56 @@ const tip = computed(() => {
 
 	if (props.tip !== 'auto') return props.tip;
 
-	if (canAddDotToExpression.value) return 'dot';
+	if (canAddDotToExpression.value) {
+		return resolvedExpressionHasFields.value ? 'dotObject' : 'dotPrimitive';
+	}
 
 	if (canDragToFocusedInput.value && emptyExpression.value) return 'drag';
 
 	return 'default';
 });
 
+const cursor = computed(() => props.selection.anchor);
+
+function getCompletionsWithDot(): readonly Completion[] {
+	const atCursor = cursor.value;
+	if (
+		!props.editorState ||
+		!props.selection ||
+		!props.selection.empty ||
+		!props.unresolvedExpression ||
+		props.unresolvedExpression.charAt(atCursor - 1) === '.' ||
+		props.unresolvedExpression.charAt(atCursor - 1) === ' ' ||
+		props.unresolvedExpression.charAt(atCursor) === '.'
+	) {
+		return [];
+	}
+
+	const cursorAfterDot = atCursor + 1;
+	const docWithDot =
+		props.editorState.sliceDoc(0, atCursor) + '.' + props.editorState.sliceDoc(atCursor);
+	const selectionWithDot = EditorSelection.create([EditorSelection.cursor(cursorAfterDot)]);
+	const stateWithDot = EditorState.create({
+		doc: docWithDot,
+		selection: selectionWithDot,
+	});
+
+	const context = new CompletionContext(stateWithDot, cursorAfterDot, true);
+	const completionResult = datatypeCompletions(context);
+	return completionResult?.options ?? [];
+}
+
 watch(tip, (newTip) => {
 	ndvStore.setHighlightDraggables(!ndvStore.isMappingOnboarded && newTip === 'drag');
 });
 
-watch(
-	() => props.selection,
-	() => {
-		if (
-			!props.editorState ||
-			!props.selection ||
-			!props.selection.empty ||
-			props.unresolvedExpression.endsWith('.')
-		) {
-			canAddDotToExpression.value = false;
-			return;
-		}
-
-		const cursor = props.selection.anchor;
-		const cursorAfterDot = cursor + 1;
-		const docWithDot =
-			props.editorState.sliceDoc(0, cursor) + '.' + props.editorState.sliceDoc(cursor);
-		const selectionWithDot = EditorSelection.create([EditorSelection.cursor(cursorAfterDot)]);
-		const stateWithDot = EditorState.create({
-			doc: docWithDot,
-			selection: selectionWithDot,
-		});
-
-		const context = new CompletionContext(stateWithDot, cursorAfterDot, true);
-
-		const result = datatypeCompletions(context);
-		canAddDotToExpression.value = !!result && result.options.length > 0;
-	},
-);
+watchDebounced([() => props.selection, () => props.unresolvedExpression], () => {
+	const completions = getCompletionsWithDot();
+	canAddDotToExpression.value = completions.length > 0;
+	resolvedExpressionHasFields.value = completions.some(
+		({ section }) => isCompletionSection(section) && section.name === FIELDS_SECTION.name,
+	);
+});
 </script>
 
 <style lang="scss" module>

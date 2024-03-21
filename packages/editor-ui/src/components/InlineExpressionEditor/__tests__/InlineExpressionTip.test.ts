@@ -4,6 +4,7 @@ import InlineExpressionTip from '@/components/InlineExpressionEditor/InlineExpre
 import type { useNDVStore } from '@/stores/ndv.store';
 import { EditorSelection, EditorState } from '@codemirror/state';
 import type { CompletionResult } from '@codemirror/autocomplete';
+import { FIELDS_SECTION } from '@/plugins/codemirror/completions/constants';
 
 let mockNdvState: Partial<ReturnType<typeof useNDVStore>>;
 let mockCompletionResult: Partial<CompletionResult>;
@@ -64,15 +65,15 @@ describe('InlineExpressionTip.vue', () => {
 	});
 
 	describe('When the expression can be autocompleted with a dot', () => {
-		test('should show the "add a dot" tip', async () => {
+		test('should show the correct tip for objects', async () => {
 			mockNdvState = {
 				hasInputData: true,
 				isDNVDataEmpty: vi.fn(() => false),
 				focusedMappableInput: 'Some Input',
 				setHighlightDraggables: vi.fn(),
 			};
-			mockCompletionResult = { options: [{ label: 'foo' }] };
-			const selection = EditorSelection.cursor(9);
+			mockCompletionResult = { options: [{ label: 'foo', section: FIELDS_SECTION }] };
+			const selection = EditorSelection.cursor(8);
 			const expression = '{{ $json }}';
 			const { rerender, container } = renderComponent(InlineExpressionTip, {
 				pinia: createTestingPinia(),
@@ -86,7 +87,34 @@ describe('InlineExpressionTip.vue', () => {
 				selection,
 				unresolvedExpression: expression,
 			});
-			expect(container).toHaveTextContent('Tip: Type . to access all available fields and methods');
+			expect(container).toHaveTextContent(
+				'Tip: Type . for data transformation options, or to drill down',
+			);
+		});
+
+		test('should show the correct tip for primitives', async () => {
+			mockNdvState = {
+				hasInputData: true,
+				isDNVDataEmpty: vi.fn(() => false),
+				focusedMappableInput: 'Some Input',
+				setHighlightDraggables: vi.fn(),
+			};
+			mockCompletionResult = { options: [{ label: 'foo' }] };
+			const selection = EditorSelection.cursor(12);
+			const expression = '{{ $json.foo }}';
+			const { rerender, container } = renderComponent(InlineExpressionTip, {
+				pinia: createTestingPinia(),
+			});
+
+			await rerender({
+				editorState: EditorState.create({
+					doc: expression,
+					selection: EditorSelection.create([selection]),
+				}),
+				selection,
+				unresolvedExpression: expression,
+			});
+			expect(container).toHaveTextContent('Tip: Type . for data transformation options');
 		});
 	});
 });

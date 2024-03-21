@@ -198,3 +198,9 @@ export const withSectionHeader = (section: CompletionSection): CompletionSection
 	section.header = renderSectionHeader;
 	return section;
 };
+
+export const isCompletionSection = (
+	section: CompletionSection | string | undefined,
+): section is CompletionSection => {
+	return !!section && typeof section === 'object' && 'name' in section;
+};
