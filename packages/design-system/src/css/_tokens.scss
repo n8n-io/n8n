@@ -73,6 +73,9 @@
 
 	// Canvas
 	--color-canvas-background: var(--prim-gray-10);
+	--color-canvas-background-h: var(--prim-gray-h); // Used for connectors labels background
+	--color-canvas-background-s: 47%;
+	--color-canvas-background-l: 99%;
 	--color-canvas-dot: var(--prim-gray-120);
 	--color-canvas-read-only-line: var(--prim-gray-30);
 	--color-canvas-node-background: var(--prim-gray-0);

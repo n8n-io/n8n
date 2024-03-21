@@ -1238,13 +1238,13 @@ export default defineComponent({
 	// mouse over event.
 	pointer-events: none;
 	span {
-		border-radius: 7px;
 		background-color: hsla(
 			var(--color-canvas-background-h),
 			var(--color-canvas-background-s),
 			var(--color-canvas-background-l),
 			0.85
 		);
+		border-radius: var(--border-radius-base);
 		line-height: 1.3em;
 		padding: 0px 3px;
 		white-space: nowrap;
