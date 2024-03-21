@@ -139,7 +139,10 @@ describe('WorkflowLMChatModal', () => {
 
 	it('should send and display chat message', async () => {
 		const wrapper = renderComponent({
-			pinia: await createPiniaWithAINodes(),
+			pinia: await createPiniaWithAINodes({
+				withConnections: true,
+				withAgentNode: true,
+			}),
 		});
 
 		await waitFor(() =>
