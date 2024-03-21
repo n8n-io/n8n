@@ -61,7 +61,7 @@ describe('ProjectSettings', () => {
 		);
 	});
 
-	it('should show confirmation modal before deleting project', async () => {
+	it('should show confirmation modal before deleting project and delete with transfer', async () => {
 		projectsStore.setCurrentProject({
 			id: '123',
 			type: 'team',
@@ -72,7 +72,7 @@ describe('ProjectSettings', () => {
 
 		const deleteProjectSpy = vi.spyOn(projectsStore, 'deleteProject').mockResolvedValue();
 
-		const { getByTestId, getByRole, queryByRole } = renderComponent();
+		const { getByTestId, getByRole } = renderComponent();
 		const deleteButton = getByTestId('project-settings-delete-button');
 
 		await userEvent.click(deleteButton);
@@ -90,6 +90,41 @@ describe('ProjectSettings', () => {
 
 		await userEvent.click(confirmButton);
 		expect(deleteProjectSpy).toHaveBeenCalledWith('123', expect.any(String));
+		expect(router.push).toHaveBeenCalledWith({ name: VIEWS.HOMEPAGE });
+	});
+
+	it('should show confirmation modal before deleting project and deleting without transfer', async () => {
+		projectsStore.setCurrentProject({
+			id: '123',
+			type: 'team',
+			name: 'Test Project',
+			relations: [],
+		});
+		vi.spyOn(projectsStore, 'teamProjects', 'get').mockReturnValue(teamProjects);
+
+		const deleteProjectSpy = vi.spyOn(projectsStore, 'deleteProject').mockResolvedValue();
+
+		const { getByTestId, getByRole } = renderComponent();
+		const deleteButton = getByTestId('project-settings-delete-button');
+
+		await userEvent.click(deleteButton);
+		expect(deleteProjectSpy).not.toHaveBeenCalled();
+		let modal = getByRole('dialog');
+		expect(modal).toBeVisible();
+		const confirmButton = getByTestId('project-settings-delete-confirm-button');
+		expect(confirmButton).toBeDisabled();
+
+		await userEvent.click(within(modal).getAllByRole('radio')[1]);
+		const input = within(modal).getByRole('textbox');
+
+		await userEvent.type(input, 'delete all ');
+		expect(confirmButton).toBeDisabled();
+
+		await userEvent.type(input, 'data');
+		expect(confirmButton).toBeEnabled();
+
+		await userEvent.click(confirmButton);
+		expect(deleteProjectSpy).toHaveBeenCalledWith('123', undefined);
 		expect(router.push).toHaveBeenCalledWith({ name: VIEWS.HOMEPAGE });
 	});
 });
