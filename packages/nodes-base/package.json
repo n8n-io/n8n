@@ -616,6 +616,7 @@
       "dist/nodes/Microsoft/Excel/MicrosoftExcel.node.js",
       "dist/nodes/Microsoft/GraphSecurity/MicrosoftGraphSecurity.node.js",
       "dist/nodes/Microsoft/OneDrive/MicrosoftOneDrive.node.js",
+      "dist/nodes/Microsoft/OneDrive/MicrosoftOneDriveTrigger.node.js",
       "dist/nodes/Microsoft/Outlook/MicrosoftOutlook.node.js",
       "dist/nodes/Microsoft/Outlook/MicrosoftOutlookTrigger.node.js",
       "dist/nodes/Microsoft/Sql/MicrosoftSql.node.js",
