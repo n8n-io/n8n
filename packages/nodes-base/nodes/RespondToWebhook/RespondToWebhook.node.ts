@@ -11,6 +11,7 @@ import type {
 import { jsonParse, BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 import set from 'lodash/set';
 import jwt from 'jsonwebtoken';
+import { formatPrivateKey } from '../../utils/utilities';
 
 export class RespondToWebhook implements INodeType {
 	description: INodeTypeDescription = {
@@ -27,7 +28,7 @@ export class RespondToWebhook implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'webhookJwtAuth',
+				name: 'jwtAuth',
 				required: true,
 				displayOptions: {
 					show: {
@@ -337,12 +338,24 @@ export class RespondToWebhook implements INodeType {
 			}
 		} else if (respondWith === 'jwt') {
 			try {
-				const { secret, algorithm } = (await this.getCredentials('webhookJwtAuth')) as {
+				const { keyType, secret, algorithm, privateKey } = (await this.getCredentials(
+					'jwtAuth',
+				)) as {
+					keyType: 'passphrase' | 'pemKey';
+					privateKey: string;
 					secret: string;
 					algorithm: jwt.Algorithm;
 				};
+
+				let secretOrPrivateKey;
+
+				if (keyType === 'passphrase') {
+					secretOrPrivateKey = secret;
+				} else {
+					secretOrPrivateKey = formatPrivateKey(privateKey);
+				}
 				const payload = this.getNodeParameter('payload', 0, {}) as IDataObject;
-				const token = jwt.sign(payload, secret, { algorithm });
+				const token = jwt.sign(payload, secretOrPrivateKey, { algorithm });
 				responseBody = { token };
 			} catch (error) {
 				throw new NodeOperationError(this.getNode(), error as Error, {

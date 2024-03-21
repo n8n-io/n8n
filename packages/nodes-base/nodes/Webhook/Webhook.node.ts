@@ -39,6 +39,7 @@ import {
 	isIpWhitelisted,
 	setupOutputConnection,
 } from './utils';
+import { formatPrivateKey } from '../../utils/utilities';
 
 export class Webhook extends Node {
 	authPropertyName = 'authentication';
@@ -261,13 +262,15 @@ export class Webhook extends Node {
 			let expectedAuth;
 
 			try {
-				expectedAuth = (await context.getCredentials('webhookJwtAuth')) as {
+				expectedAuth = (await context.getCredentials('jwtAuth')) as {
+					keyType: 'passphrase' | 'pemKey';
+					publicKey: string;
 					secret: string;
 					algorithm: jwt.Algorithm;
 				};
 			} catch {}
 
-			if (expectedAuth === undefined || !expectedAuth.secret) {
+			if (expectedAuth === undefined || !expectedAuth.secret || !expectedAuth.publicKey) {
 				// Data is not defined on node so can not authenticate
 				throw new WebhookAuthorizationError(500, 'No authentication data defined on node!');
 			}
@@ -279,8 +282,16 @@ export class Webhook extends Node {
 				throw new WebhookAuthorizationError(401, 'No token provided');
 			}
 
+			let secretOrPublicKey;
+
+			if (expectedAuth.keyType === 'passphrase') {
+				secretOrPublicKey = expectedAuth.secret;
+			} else {
+				secretOrPublicKey = formatPrivateKey(expectedAuth.publicKey);
+			}
+
 			try {
-				return jwt.verify(token, expectedAuth.secret, {
+				return jwt.verify(token, secretOrPublicKey, {
 					algorithms: [expectedAuth.algorithm],
 				}) as IDataObject;
 			} catch (error) {

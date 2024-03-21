@@ -37,7 +37,7 @@ export const credentialsProperty = (
 		},
 	},
 	{
-		name: 'webhookJwtAuth',
+		name: 'jwtAuth',
 		required: true,
 		displayOptions: {
 			show: {
