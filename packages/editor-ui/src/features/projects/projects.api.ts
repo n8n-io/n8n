@@ -43,6 +43,15 @@ export const updateProject = async (
 	await patch(context.baseUrl, `/projects/${id}`, { name, relations });
 };
 
-export const deleteProject = async (context: IRestApiContext, id: string): Promise<void> => {
-	await makeRestApiRequest(context, 'DELETE', `/projects/${id}`);
+export const deleteProject = async (
+	context: IRestApiContext,
+	projectId: string,
+	transferId?: string,
+): Promise<void> => {
+	await makeRestApiRequest(
+		context,
+		'DELETE',
+		`/projects/${projectId}`,
+		transferId ? { transferId } : {},
+	);
 };
