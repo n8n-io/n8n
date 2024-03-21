@@ -1,10 +1,5 @@
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
-import type {
-	IDataObject,
-	INodeParameters,
-	IWebhookFunctions,
-	INodeExecutionData,
-} from 'n8n-workflow';
+import type { IDataObject, IWebhookFunctions, INodeExecutionData } from 'n8n-workflow';
 
 export const getResponseCode = (parameters: IDataObject) => {
 	if (parameters.responseCode) {
@@ -23,7 +18,21 @@ export const getResponseCode = (parameters: IDataObject) => {
 	return 200;
 };
 
-export const configuredOutputs = (parameters: INodeParameters) => {
+export const getResponseData = (parameters: IDataObject) => {
+	const { responseData, responseMode, options } = parameters;
+	if (responseData) return responseData;
+
+	if (responseMode === 'onReceived') {
+		const data = (options as IDataObject)?.responseData as string;
+		if (data) return data;
+	}
+
+	if ((options as IDataObject)?.noResponseBody) return 'noData';
+
+	return undefined;
+};
+
+export const configuredOutputs = (parameters: IDataObject) => {
 	const httpMethod = parameters.httpMethod as string;
 
 	return [

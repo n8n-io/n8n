@@ -281,7 +281,7 @@ export async function executeWebhook(
 		200,
 	) as number;
 
-	const responseData = workflow.expression.getSimpleParameterValue(
+	const responseData = workflow.expression.getComplexParameterValue(
 		workflowStartNode,
 		webhookData.webhookDescription.responseData,
 		executionMode,
@@ -465,6 +465,12 @@ export async function executeWebhook(
 			if (responseData === 'noData') {
 				// Return without data
 				responseCallback(null, {
+					responseCode,
+				});
+			} else if (responseData) {
+				// Return the data specified in the response data option
+				responseCallback(null, {
+					data: responseData as IDataObject,
 					responseCode,
 				});
 			} else if (webhookResultData.webhookResponse !== undefined) {

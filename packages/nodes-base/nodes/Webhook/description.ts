@@ -1,5 +1,5 @@
 import type { INodeProperties, INodeTypeDescription, IWebhookDescription } from 'n8n-workflow';
-import { getResponseCode } from './utils';
+import { getResponseCode, getResponseData } from './utils';
 
 export const defaultWebhookDescription: IWebhookDescription = {
 	name: 'default',
@@ -7,8 +7,7 @@ export const defaultWebhookDescription: IWebhookDescription = {
 	isFullPath: true,
 	responseCode: `={{(${getResponseCode})($parameter)}}`,
 	responseMode: '={{$parameter["responseMode"]}}',
-	responseData:
-		'={{$parameter["responseData"] || ($parameter.options.noResponseBody ? "noData" : undefined) }}',
+	responseData: `={{(${getResponseData})($parameter)}}`,
 	responseBinaryPropertyName: '={{$parameter["responseBinaryPropertyName"]}}',
 	responseContentType: '={{$parameter["options"]["responseContentType"]}}',
 	responsePropertyName: '={{$parameter["options"]["responsePropertyName"]}}',
