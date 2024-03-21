@@ -90,7 +90,7 @@
 							:rows="getArgument('rows')"
 							:disable-expression-coloring="!isHtmlNode(node)"
 							:disable-expression-completions="!isHtmlNode(node)"
-							fill-parent
+							fullscreen
 							@update:model-value="valueChangedDebounced"
 						/>
 						<SqlEditor
@@ -99,7 +99,7 @@
 							:dialect="getArgument('sqlDialect')"
 							:is-read-only="isReadOnly"
 							:rows="getArgument('rows')"
-							fill-parent
+							fullscreen
 							@update:model-value="valueChangedDebounced"
 						/>
 						<JsEditor

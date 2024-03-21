@@ -87,7 +87,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import { EnterpriseEditionFeature, INVITE_USER_MODAL_KEY, VIEWS } from '@/constants';
+import { EnterpriseEditionFeature, INVITE_USER_MODAL_KEY, VIEWS, ROLE } from '@/constants';
 
 import type { IUser, IUserListAction, InvitableRoleName } from '@/Interface';
 import { useToast } from '@/composables/useToast';
@@ -97,7 +97,6 @@ import { useUsersStore } from '@/stores/users.store';
 import { useUsageStore } from '@/stores/usage.store';
 import { useSSOStore } from '@/stores/sso.store';
 import { hasPermission } from '@/rbac/permissions';
-import { ROLE } from '@/utils/userUtils';
 import { useClipboard } from '@/composables/useClipboard';
 import type { UpdateGlobalRolePayload } from '@/api/users';
 
@@ -324,3 +323,4 @@ export default defineComponent({
 	left: calc(50% + 100px);
 }
 </style>
+IRole,

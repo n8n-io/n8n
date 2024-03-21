@@ -63,10 +63,16 @@ describe('Top-level completions', () => {
 		expect(result).toHaveLength(dollarOptions().length);
 
 		expect(result?.[0]).toEqual(
-			expect.objectContaining({ label: '$json', section: RECOMMENDED_SECTION }),
+			expect.objectContaining({
+				label: '$json',
+				section: RECOMMENDED_SECTION,
+			}),
 		);
 		expect(result?.[4]).toEqual(
-			expect.objectContaining({ label: '$execution', section: METADATA_SECTION }),
+			expect.objectContaining({
+				label: '$execution',
+				section: METADATA_SECTION,
+			}),
 		);
 		expect(result?.[14]).toEqual(
 			expect.objectContaining({ label: '$max()', section: METHODS_SECTION }),
@@ -539,16 +545,16 @@ describe('Resolution-based completions', () => {
 	});
 
 	describe('recommended completions', () => {
-		test('should recommended toDate() for {{ "1-Feb-2024".| }}', () => {
+		test('should recommend toDateTime() for {{ "1-Feb-2024".| }}', () => {
 			// @ts-expect-error Spied function is mistyped
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce('1-Feb-2024');
 
 			expect(completions('{{ "1-Feb-2024".| }}')?.[0]).toEqual(
-				expect.objectContaining({ label: 'toDate()', section: RECOMMENDED_SECTION }),
+				expect.objectContaining({ label: 'toDateTime()', section: RECOMMENDED_SECTION }),
 			);
 		});
 
-		test('should recommended toInt(),toFloat() for: {{ "5.3".| }}', () => {
+		test('should recommend toInt(),toFloat() for: {{ "5.3".| }}', () => {
 			// @ts-expect-error Spied function is mistyped
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce('5.3');
 			const options = completions('{{ "5.3".| }}');
@@ -560,7 +566,7 @@ describe('Resolution-based completions', () => {
 			);
 		});
 
-		test('should recommended extractEmail() for: {{ "string with test@n8n.io in it".| }}', () => {
+		test('should recommend extractEmail() for: {{ "string with test@n8n.io in it".| }}', () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce(
 				// @ts-expect-error Spied function is mistyped
 				'string with test@n8n.io in it',
@@ -571,7 +577,7 @@ describe('Resolution-based completions', () => {
 			);
 		});
 
-		test('should recommended extractDomain() for: {{ "test@n8n.io".| }}', () => {
+		test('should recommend extractDomain(), isEmail() for: {{ "test@n8n.io".| }}', () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce(
 				// @ts-expect-error Spied function is mistyped
 				'test@n8n.io',
@@ -580,9 +586,26 @@ describe('Resolution-based completions', () => {
 			expect(options?.[0]).toEqual(
 				expect.objectContaining({ label: 'extractDomain()', section: RECOMMENDED_SECTION }),
 			);
+			expect(options?.[1]).toEqual(
+				expect.objectContaining({ label: 'isEmail()', section: RECOMMENDED_SECTION }),
+			);
 		});
 
-		test('should recommended round(),floor(),ceil() for: {{ (5.46).| }}', () => {
+		test('should recommend extractDomain(), extractUrlPath() for: {{ "https://n8n.io/pricing".| }}', () => {
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce(
+				// @ts-expect-error Spied function is mistyped
+				'https://n8n.io/pricing',
+			);
+			const options = completions('{{ "https://n8n.io/pricing".| }}');
+			expect(options?.[0]).toEqual(
+				expect.objectContaining({ label: 'extractDomain()', section: RECOMMENDED_SECTION }),
+			);
+			expect(options?.[1]).toEqual(
+				expect.objectContaining({ label: 'extractUrlPath()', section: RECOMMENDED_SECTION }),
+			);
+		});
+
+		test('should recommend round(),floor(),ceil() for: {{ (5.46).| }}', () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce(
 				// @ts-expect-error Spied function is mistyped
 				5.46,
@@ -596,6 +619,50 @@ describe('Resolution-based completions', () => {
 			);
 			expect(options?.[2]).toEqual(
 				expect.objectContaining({ label: 'ceil()', section: RECOMMENDED_SECTION }),
+			);
+		});
+
+		test('should recommend toDateTime("s") for: {{ (1900062210).| }}', () => {
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce(
+				// @ts-expect-error Spied function is mistyped
+				1900062210,
+			);
+			const options = completions('{{ (1900062210).| }}');
+			expect(options?.[0]).toEqual(
+				expect.objectContaining({ label: 'toDateTime("s")', section: RECOMMENDED_SECTION }),
+			);
+		});
+
+		test('should recommend toDateTime("ms") for: {{ (1900062210000).| }}', () => {
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce(
+				// @ts-expect-error Spied function is mistyped
+				1900062210000,
+			);
+			const options = completions('{{ (1900062210000).| }}');
+			expect(options?.[0]).toEqual(
+				expect.objectContaining({ label: 'toDateTime("ms")', section: RECOMMENDED_SECTION }),
+			);
+		});
+
+		test('should recommend toBoolean() for: {{ (0).| }}', () => {
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce(
+				// @ts-expect-error Spied function is mistyped
+				0,
+			);
+			const options = completions('{{ (0).| }}');
+			expect(options?.[0]).toEqual(
+				expect.objectContaining({ label: 'toBoolean()', section: RECOMMENDED_SECTION }),
+			);
+		});
+
+		test('should recommend toBoolean() for: {{ "true".| }}', () => {
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce(
+				// @ts-expect-error Spied function is mistyped
+				'true',
+			);
+			const options = completions('{{ "true".| }}');
+			expect(options?.[0]).toEqual(
+				expect.objectContaining({ label: 'toBoolean()', section: RECOMMENDED_SECTION }),
 			);
 		});
 	});
@@ -612,6 +679,63 @@ describe('Resolution-based completions', () => {
 			expect(result).toHaveLength(
 				extensions('string').length + natives('string').length + STRING_RECOMMENDED_OPTIONS.length,
 			);
+		});
+	});
+
+	describe('type information', () => {
+		test('should display type information for: {{ $json.obj.| }}', () => {
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce({
+				str: 'bar',
+				empty: null,
+				arr: [],
+				obj: {},
+			});
+
+			const result = completions('{{ $json.obj.| }}');
+			expect(result).toContainEqual(expect.objectContaining({ label: 'str', detail: 'string' }));
+			expect(result).toContainEqual(expect.objectContaining({ label: 'empty', detail: 'null' }));
+			expect(result).toContainEqual(expect.objectContaining({ label: 'arr', detail: 'array' }));
+			expect(result).toContainEqual(expect.objectContaining({ label: 'obj', detail: 'object' }));
+		});
+
+		test('should display type information for: {{ $input.item.json.| }}', () => {
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce({
+				str: 'bar',
+				empty: null,
+				arr: [],
+				obj: {},
+			});
+
+			const result = completions('{{ $json.item.json.| }}');
+			expect(result).toContainEqual(expect.objectContaining({ label: 'str', detail: 'string' }));
+			expect(result).toContainEqual(expect.objectContaining({ label: 'empty', detail: 'null' }));
+			expect(result).toContainEqual(expect.objectContaining({ label: 'arr', detail: 'array' }));
+			expect(result).toContainEqual(expect.objectContaining({ label: 'obj', detail: 'object' }));
+		});
+
+		test('should display type information for: {{ $("My Node").item.json.| }}', () => {
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce({
+				str: 'bar',
+				empty: null,
+				arr: [],
+				obj: {},
+			});
+
+			const result = completions('{{ $("My Node").item.json.| }}');
+			expect(result).toContainEqual(expect.objectContaining({ label: 'str', detail: 'string' }));
+			expect(result).toContainEqual(expect.objectContaining({ label: 'empty', detail: 'null' }));
+			expect(result).toContainEqual(expect.objectContaining({ label: 'arr', detail: 'array' }));
+			expect(result).toContainEqual(expect.objectContaining({ label: 'obj', detail: 'object' }));
+		});
+
+		test('should not display type information for other completions', () => {
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue({
+				str: 'bar',
+			});
+
+			expect(completions('{{ $execution.| }}')?.every((item) => !item.detail)).toBe(true);
+			expect(completions('{{ $input.params.| }}')?.every((item) => !item.detail)).toBe(true);
+			expect(completions('{{ $("My Node").| }}')?.every((item) => !item.detail)).toBe(true);
 		});
 	});
 });

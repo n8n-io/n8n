@@ -752,3 +752,26 @@ export const TEMPLATES_URLS = {
 	BASE_WEBSITE_URL: 'https://n8n.io/workflows',
 	UTM_QUERY: 'utm_source=n8n_app&utm_medium=template_library',
 };
+
+export const ROLE = {
+	Owner: 'global:owner',
+	Member: 'global:member',
+	Admin: 'global:admin',
+	Default: 'default', // default user with no email when setting up instance
+} as const;
+
+export const INSECURE_CONNECTION_WARNING = `
+<body style="margin-top: 20px; font-family: 'Open Sans', sans-serif; text-align: center;">
+<h1 style="font-size: 40px">&#x1F6AB;</h1>
+<h2>Your n8n server is configured to use a secure cookie, <br/>however you are visiting this via an insecure URL
+</h2>
+<br/>
+<div style="font-size: 18px; max-width: 640px; text-align: left; margin: 10px auto">
+	To fix this, please consider the following options:
+	<ul>
+		<li>Setup TLS/HTTPS (<strong>recommended</strong>), or</li>
+		<li>If you are running this locally, try using <a href="http://localhost:5678">localhost</a> instead</li>
+		<li>If you prefer to disable this security feature (<strong>not recommended</strong>), set the environment variable <code>N8N_SECURE_COOKIE</code> to <code>false</code></li>
+	</ul>
+</div>
+</body>`;

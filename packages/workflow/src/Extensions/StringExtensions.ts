@@ -1,10 +1,12 @@
 import SHA from 'jssha';
 import MD5 from 'md5';
-import { encode } from 'js-base64';
+import { toBase64, fromBase64 } from 'js-base64';
 import { titleCase } from 'title-case';
 import type { Extension, ExtensionMap } from './Extensions';
 import { transliterate } from 'transliteration';
 import { ExpressionExtensionError } from '../errors/expression-extension.error';
+import type { DateTime } from 'luxon';
+import { tryToParseDateTime } from '../TypeValidation';
 
 export const SupportedHashAlgorithms = [
 	'md5',
@@ -116,7 +118,7 @@ function hash(value: string, extraArgs: string[]): string {
 	const algorithm = extraArgs[0]?.toLowerCase() ?? 'md5';
 	switch (algorithm) {
 		case 'base64':
-			return encode(value);
+			return toBase64(value);
 		case 'md5':
 			return MD5(value);
 		case 'sha1':
@@ -212,6 +214,14 @@ function toDate(value: string): Date {
 		date.setHours(0, 0, 0);
 	}
 	return date;
+}
+
+function toDateTime(value: string): DateTime {
+	try {
+		return tryToParseDateTime(value);
+	} catch (error) {
+		throw new ExpressionExtensionError('cannot convert to Luxon DateTime');
+	}
 }
 
 function urlDecode(value: string, extraArgs: boolean[]): string {
@@ -359,6 +369,37 @@ function extractUrl(value: string) {
 	return matched[0];
 }
 
+function extractUrlPath(value: string) {
+	try {
+		const url = new URL(value);
+		return url.pathname;
+	} catch (error) {
+		return undefined;
+	}
+}
+
+function parseJson(value: string): unknown {
+	try {
+		return JSON.parse(value);
+	} catch (error) {
+		return undefined;
+	}
+}
+
+function toBoolean(value: string): boolean {
+	const normalized = value.toLowerCase();
+	const FALSY = new Set(['false', 'no', '0']);
+	return normalized.length > 0 && !FALSY.has(normalized);
+}
+
+function base64Encode(value: string): string {
+	return toBase64(value);
+}
+
+function base64Decode(value: string): string {
+	return fromBase64(value);
+}
+
 removeMarkdown.doc = {
 	name: 'removeMarkdown',
 	description: 'Removes Markdown formatting from a string.',
@@ -382,7 +423,26 @@ toDate.doc = {
 	description: 'Converts a string to a date.',
 	section: 'cast',
 	returnType: 'Date',
+	hidden: true,
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-toDate',
+};
+
+toDateTime.doc = {
+	name: 'toDateTime',
+	description: 'Converts a string to a Luxon DateTime.',
+	section: 'cast',
+	returnType: 'DateTime',
+	docURL:
+		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-toDateTime',
+};
+
+toBoolean.doc = {
+	name: 'toBoolean',
+	description: 'Converts a string to a boolean.',
+	section: 'cast',
+	returnType: 'boolean',
+	docURL:
+		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-toBoolean',
 };
 
 toFloat.doc = {
@@ -549,6 +609,15 @@ extractUrl.doc = {
 		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-extractUrl',
 };
 
+extractUrlPath.doc = {
+	name: 'extractUrlPath',
+	description: 'Extracts the path from a URL. Returns undefined if none is found.',
+	section: 'edit',
+	returnType: 'string',
+	docURL:
+		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-extractUrlPath',
+};
+
 hash.doc = {
 	name: 'hash',
 	description: 'Returns a string hashed with the given algorithm. Default algorithm is `md5`.',
@@ -567,6 +636,34 @@ quote.doc = {
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-quote',
 };
 
+parseJson.doc = {
+	name: 'parseJson',
+	description:
+		'Parses a JSON string, constructing the JavaScript value or object described by the string.',
+	section: 'cast',
+	returnType: 'any',
+	docURL:
+		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-parseJson',
+};
+
+base64Encode.doc = {
+	name: 'base64Encode',
+	description: 'Converts a UTF-8-encoded string to a Base64 string.',
+	section: 'edit',
+	returnType: 'string',
+	docURL:
+		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-base64Encode',
+};
+
+base64Decode.doc = {
+	name: 'base64Decode',
+	description: 'Converts a Base64 string to a UTF-8 string.',
+	section: 'edit',
+	returnType: 'string',
+	docURL:
+		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-base64Decode',
+};
+
 const toDecimalNumber: Extension = toFloat.bind({});
 toDecimalNumber.doc = { ...toFloat.doc, hidden: true };
 const toWholeNumber: Extension = toInt.bind({});
@@ -579,6 +676,8 @@ export const stringExtensions: ExtensionMap = {
 		removeMarkdown,
 		removeTags,
 		toDate,
+		toDateTime,
+		toBoolean,
 		toDecimalNumber,
 		toFloat,
 		toInt,
@@ -600,5 +699,9 @@ export const stringExtensions: ExtensionMap = {
 		extractEmail,
 		extractDomain,
 		extractUrl,
+		extractUrlPath,
+		parseJson,
+		base64Encode,
+		base64Decode,
 	},
 };
