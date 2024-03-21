@@ -1,8 +1,8 @@
-import { CredentialTypes } from '@/CredentialTypes';
 import { CredentialsTester } from '@/services/credentials-tester.service';
 import mock from 'jest-mock-extended/lib/Mock';
-import { ICredentialType, INodeType } from 'n8n-workflow';
-import { NodeTypes } from '@/NodeTypes';
+import type { CredentialTypes } from '@/CredentialTypes';
+import type { ICredentialType, INodeType } from 'n8n-workflow';
+import type { NodeTypes } from '@/NodeTypes';
 
 describe('CredentialsTester', () => {
 	const credentialTypes = mock<CredentialTypes>();
