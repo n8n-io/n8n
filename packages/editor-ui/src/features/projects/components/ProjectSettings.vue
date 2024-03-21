@@ -9,7 +9,7 @@ import ProjectTabs from '@/features/projects/components/ProjectTabs.vue';
 import type { Project, ProjectRole, ProjectRelation } from '@/features/projects/projects.types';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
-import { MODAL_CONFIRM, VIEWS } from '@/constants';
+import ProjectDeleteDialog from '@/features/projects/components/ProjectDeleteDialog.vue';
 
 const usersStore = useUsersStore();
 const locale = useI18n();
@@ -17,6 +17,7 @@ const projectsStore = useProjectsStore();
 const toast = useToast();
 const message = useMessage();
 const router = useRouter();
+const dialogVisible = ref(false);
 
 const isDirty = ref(false);
 const formData = ref<Pick<Project, 'name' | 'relations'>>({
@@ -37,6 +38,10 @@ const usersList = computed(() =>
 
 		return !isAlreadySharedWithUser;
 	}),
+);
+
+const projects = computed(() =>
+	projectsStore.teamProjects.filter((project) => project.id !== projectsStore.currentProjectId),
 );
 
 const onAddMember = (userId: string) => {
@@ -87,32 +92,34 @@ const onSubmit = async () => {
 };
 
 const onDelete = async () => {
-	try {
-		const projectName = projectsStore.currentProject?.name ?? '';
-		const confirmation = await message.confirm(
-			locale.baseText('projects.settings.delete.message'),
-			locale.baseText('projects.settings.delete.title', {
-				interpolate: { projectName },
-			}),
-			{
-				confirmButtonText: locale.baseText('projects.settings.delete.confirm'),
-				cancelButtonText: locale.baseText('projects.settings.delete.cancel'),
-			},
-		);
+	// try {
+	// 	const projectName = projectsStore.currentProject?.name ?? '';
+	// 	const confirmation = await message.confirm(
+	// 		locale.baseText('projects.settings.delete.message'),
+	// 		locale.baseText('projects.settings.delete.title', {
+	// 			interpolate: { projectName },
+	// 		}),
+	// 		{
+	// 			confirmButtonText: locale.baseText('projects.settings.delete.confirm'),
+	// 			cancelButtonText: locale.baseText('projects.settings.delete.cancel'),
+	// 		},
+	// 	);
 
-		if (confirmation === MODAL_CONFIRM && projectsStore.currentProject) {
-			await projectsStore.deleteProject(projectsStore.currentProject.id);
-			await router.push({ name: VIEWS.HOMEPAGE });
-			toast.showMessage({
-				title: locale.baseText('projects.settings.delete.successful.title', {
-					interpolate: { projectName },
-				}),
-				type: 'success',
-			});
-		}
-	} catch (error) {
-		toast.showError(error, locale.baseText('projects.settings.delete.error.title'));
-	}
+	// 	if (confirmation === MODAL_CONFIRM && projectsStore.currentProject) {
+	// 		await projectsStore.deleteProject(projectsStore.currentProject.id);
+	// 		await router.push({ name: VIEWS.HOMEPAGE });
+	// 		toast.showMessage({
+	// 			title: locale.baseText('projects.settings.delete.successful.title', {
+	// 				interpolate: { projectName },
+	// 			}),
+	// 			type: 'success',
+	// 		});
+	// 	}
+	// } catch (error) {
+	// 	toast.showError(error, locale.baseText('projects.settings.delete.error.title'));
+	// }
+	await projectsStore.getAllProjects();
+	dialogVisible.value = true;
 };
 
 watch(
@@ -221,6 +228,7 @@ onBeforeMount(async () => {
 				<small>{{ locale.baseText('projects.settings.message.cannotBeUndone') }}</small>
 			</fieldset>
 		</form>
+		<ProjectDeleteDialog v-model="dialogVisible" :projects="projects" />
 	</div>
 </template>
 
