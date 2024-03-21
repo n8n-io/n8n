@@ -1458,6 +1458,11 @@ export default defineComponent({
 		text-overflow: ellipsis;
 		transform: translateY(-50%) !important;
 		margin-left: var(--endpoint-size-small);
+
+		&:hover {
+			max-width: none;
+			z-index: 6;
+		}
 	}
 }
 
