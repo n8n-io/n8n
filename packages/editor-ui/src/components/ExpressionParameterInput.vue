@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 import ExpressionFunctionIcon from '@/components/ExpressionFunctionIcon.vue';
 import InlineExpressionEditorInput from '@/components/InlineExpressionEditor/InlineExpressionEditorInput.vue';
@@ -71,8 +71,6 @@ function onBlur(event?: FocusEvent | KeyboardEvent) {
 		return; // prevent blur on resizing
 	}
 
-	if (isDragging.value) return; // prevent blur on dragging
-
 	const wasFocused = isFocused.value;
 
 	isFocused.value = false;
@@ -112,6 +110,12 @@ function onValueChange({
 
 	emit('update:model-value', value);
 }
+
+watch(isDragging, (newIsDragging) => {
+	if (newIsDragging) {
+		onBlur();
+	}
+});
 
 defineExpose({ focus });
 </script>
