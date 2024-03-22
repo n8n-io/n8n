@@ -84,6 +84,27 @@
 					</n8n-text>
 				</div>
 				<div v-if="!readOnlyEnv" :class="['text-center', 'mt-2xl', $style.actionsContainer]">
+					<a
+						v-if="userCloudAccount?.role === 'Sales'"
+						:href="getTemplateRepositoryURL('Sales')"
+						:class="$style.emptyStateCard"
+						target="_blank"
+					>
+						<n8n-card
+							hoverable
+							data-test-id="browse-sales-templates-card"
+							@click="trackCategoryLinkClick('Sales')"
+						>
+							<n8n-icon :class="$style.emptyStateCardIcon" icon="hand-holding-usd" />
+							<n8n-text size="large" class="mt-xs" color="text-base">
+								{{
+									$locale.baseText('workflows.empty.browseTemplates', {
+										interpolate: { category: 'Sales' },
+									})
+								}}
+							</n8n-text>
+						</n8n-card>
+					</a>
 					<n8n-card
 						:class="$style.emptyStateCard"
 						hoverable
@@ -154,6 +175,7 @@ import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
+import { useTemplatesStore } from '@/stores/templates.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
@@ -205,6 +227,8 @@ const WorkflowsView = defineComponent({
 			useCredentialsStore,
 			useSourceControlStore,
 			useTagsStore,
+			useTemplatesStore,
+			useUsersStore,
 		),
 		readOnlyEnv(): boolean {
 			return this.sourceControlStore.preferences.branchReadOnly;
@@ -236,6 +260,9 @@ const WorkflowsView = defineComponent({
 		},
 		suggestedTemplates() {
 			return this.uiStore.suggestedTemplates;
+		},
+		userCloudAccount() {
+			return this.usersStore.currentUserCloudInfo;
 		},
 	},
 	watch: {
@@ -270,6 +297,15 @@ const WorkflowsView = defineComponent({
 
 			this.$telemetry.track('User clicked add workflow button', {
 				source: 'Workflows list',
+			});
+		},
+		getTemplateRepositoryURL(category: string) {
+			return this.templatesStore.getWebsiteCategoryURL(category);
+		},
+		trackCategoryLinkClick(category: string) {
+			this.$telemetry.track(`User clicked Browse ${category} Templates`, {
+				role: this.usersStore.currentUserCloudInfo?.role,
+				active_workflow_count: this.workflowsStore.activeWorkflows.length,
 			});
 		},
 		async initialize() {
