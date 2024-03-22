@@ -387,7 +387,10 @@ export default defineComponent({
 			});
 		},
 		trackTemplatesClick() {
-			this.$telemetry.track('User clicked on templates', {});
+			this.$telemetry.track('User clicked on templates', {
+				role: this.usersStore.currentUserCloudInfo?.role,
+				active_workflow_count: this.workflowsStore.activeWorkflows.length,
+			});
 		},
 		async onUserActionToggle(action: string) {
 			switch (action) {

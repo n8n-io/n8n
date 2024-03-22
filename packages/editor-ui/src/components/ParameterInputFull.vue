@@ -232,6 +232,7 @@ export default defineComponent({
 			if (!this.parameter.noDataExpression) {
 				this.ndvStore.setMappableNDVInputFocus(this.parameter.displayName);
 			}
+			this.ndvStore.setFocusedInputPath(this.path ?? '');
 		},
 		onBlur() {
 			this.focused = false;
@@ -241,6 +242,7 @@ export default defineComponent({
 			) {
 				this.ndvStore.setMappableNDVInputFocus('');
 			}
+			this.ndvStore.setFocusedInputPath('');
 			this.$emit('blur');
 		},
 		onMenuExpanded(expanded: boolean) {

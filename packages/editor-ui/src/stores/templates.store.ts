@@ -22,6 +22,8 @@ import {
 } from '@/api/templates';
 import { getFixedNodesList } from '@/utils/nodeViewUtils';
 import { useRootStore } from '@/stores/n8nRoot.store';
+import { useUsersStore } from './users.store';
+import { useWorkflowsStore } from './workflows.store';
 
 const TEMPLATES_PAGE_SIZE = 20;
 
@@ -116,13 +118,37 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 			return settingsStore.templatesHost !== TEMPLATES_URLS.DEFAULT_API_HOST;
 		},
 		/**
+		 * Constructs URLSearchParams object based on the default parameters for the template repository
+		 * and provided additional parameters
+		 */
+		getWebsiteTemplateRepositoryParameters() {
+			const rootStore = useRootStore();
+			const userStore = useUsersStore();
+			const workflowsStore = useWorkflowsStore();
+			const defaultParameters: Record<string, string> = {
+				...TEMPLATES_URLS.UTM_QUERY,
+				utm_instance: this.currentN8nPath,
+				utm_n8n_version: rootStore.versionCli,
+				utm_awc: String(workflowsStore.activeWorkflows.length),
+			};
+			if (userStore.currentUserCloudInfo?.role) {
+				defaultParameters.utm_user_role = userStore.currentUserCloudInfo.role;
+			}
+			return (additionalParameters: Record<string, string> = {}) => {
+				return new URLSearchParams({
+					...defaultParameters,
+					...additionalParameters,
+				});
+			};
+		},
+		/**
 		 * Construct the URL for the template repository on the website
 		 * @returns {string}
 		 */
 		getWebsiteTemplateRepositoryURL(): string {
-			return `${TEMPLATES_URLS.BASE_WEBSITE_URL}?${TEMPLATES_URLS.UTM_QUERY}&utm_instance=${
-				this.currentN8nPath
-			}&utm_n8n_version=${useRootStore().versionCli}`;
+			return `${
+				TEMPLATES_URLS.BASE_WEBSITE_URL
+			}?${this.getWebsiteTemplateRepositoryParameters().toString()}`;
 		},
 		/**
 		 * Construct the URL for the template page on the website for a given template id
@@ -130,20 +156,19 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 		 */
 		getWebsiteTemplatePageURL() {
 			return (id: string) => {
-				return `${TEMPLATES_URLS.BASE_WEBSITE_URL}/${id}?${TEMPLATES_URLS.UTM_QUERY}&utm_instance=${
-					this.currentN8nPath
-				}&utm_n8n_version=${useRootStore().versionCli}`;
+				return `${
+					TEMPLATES_URLS.BASE_WEBSITE_URL
+				}/${id}?${this.getWebsiteTemplateRepositoryParameters().toString()}`;
 			};
 		},
 		/**
 		 * Construct the URL for the template category page on the website for a given category id
-		 * @returns {function(string): string}
 		 */
 		getWebsiteCategoryURL() {
 			return (id: string) => {
-				return `${TEMPLATES_URLS.BASE_WEBSITE_URL}/?categories=${id}&${
-					TEMPLATES_URLS.UTM_QUERY
-				}&utm_instance=${this.currentN8nPath}&utm_n8n_version=${useRootStore().versionCli}`;
+				return `${TEMPLATES_URLS.BASE_WEBSITE_URL}/?${this.getWebsiteTemplateRepositoryParameters({
+					categories: id,
+				}).toString()}`;
 			};
 		},
 	},
