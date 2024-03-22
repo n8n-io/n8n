@@ -7,6 +7,9 @@ export interface ExportableCredential {
 	data: ICredentialDataDecryptedObject;
 	nodesAccess: ICredentialNodeAccess[];
 
-	/** Email of user who owns this credential to be exported. */
+	/**
+	 * Email of the user who owns this credential at the source instance.
+	 * Ownership is mirrored at target instance if user is also present there.
+	 */
 	ownedBy: string;
 }
