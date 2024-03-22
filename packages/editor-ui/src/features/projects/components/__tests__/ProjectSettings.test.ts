@@ -1,7 +1,8 @@
-import { within, waitFor } from '@testing-library/vue';
+import { within } from '@testing-library/vue';
 import { createPinia, setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
+import { getDropdownItems } from '@/__tests__/utils';
 import { useRoute, useRouter } from 'vue-router';
 import ProjectSettings from '@/features/projects/components/ProjectSettings.vue';
 import { useProjectsStore } from '@/features/projects/projects.store';
@@ -26,20 +27,6 @@ vi.mock('vue-router', () => {
 const renderComponent = createComponentRenderer(ProjectSettings);
 
 const teamProjects = Array.from({ length: 3 }, () => createProjectListItem('team'));
-
-const getDropdownItems = async (dropdownTriggerParent: HTMLElement) => {
-	await userEvent.click(within(dropdownTriggerParent).getByRole('textbox'));
-	const selectTrigger = dropdownTriggerParent.querySelector(
-		'.select-trigger[aria-describedby]',
-	) as HTMLElement;
-	await waitFor(() => expect(selectTrigger).toBeInTheDocument());
-
-	const selectDropdownId = selectTrigger.getAttribute('aria-describedby');
-	const selectDropdown = document.getElementById(selectDropdownId as string) as HTMLElement;
-	await waitFor(() => expect(selectDropdown).toBeInTheDocument());
-
-	return selectDropdown.querySelectorAll('.el-select-dropdown__item');
-};
 
 let router: ReturnType<typeof useRouter>;
 let route: ReturnType<typeof useRoute>;
