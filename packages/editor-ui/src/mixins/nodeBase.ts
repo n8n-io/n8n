@@ -57,8 +57,8 @@ const createDiamondOutputEndpointSpec = (): EndpointSpec => ({
 });
 
 const getEndpointLabelLength = (length: number): N8nEndpointLabelLength => {
-	if (length < 4) return 'small';
-	else if (length < 8) return 'medium';
+	if (length <= 2) return 'small';
+	else if (length <= 6) return 'medium';
 	return 'large';
 };
 

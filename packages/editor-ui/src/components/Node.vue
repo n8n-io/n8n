@@ -1185,7 +1185,7 @@ export default defineComponent({
 	--endpoint-size-small: 14px;
 	--endpoint-size-medium: 18px;
 	--stalk-size: 40px;
-	--stalk-medium-size: 70px;
+	--stalk-medium-size: 60px;
 	--stalk-large-size: 90px;
 	--stalk-success-size: 87px;
 	--stalk-success-size-without-label: 40px;
