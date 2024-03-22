@@ -2102,6 +2102,7 @@
 	"workflows.empty.description": "Create your first workflow",
 	"workflows.empty.description.readOnlyEnv": "No workflows here yet",
 	"workflows.empty.startFromScratch": "Start from scratch",
+	"workflows.empty.browseTemplates": "Browse {category} templates",
 	"workflows.shareModal.title": "Share '{name}'",
 	"workflows.shareModal.select.placeholder": "Add users...",
 	"workflows.shareModal.list.delete": "Remove access",
