@@ -129,7 +129,7 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 				...TEMPLATES_URLS.UTM_QUERY,
 				utm_instance: this.currentN8nPath,
 				utm_n8n_version: rootStore.versionCli,
-				utm_active_count: String(workflowsStore.activeWorkflows.length),
+				utm_awc: String(workflowsStore.activeWorkflows.length),
 			};
 			if (userStore.currentUserCloudInfo?.role) {
 				defaultParameters.utm_user_role = userStore.currentUserCloudInfo.role;
