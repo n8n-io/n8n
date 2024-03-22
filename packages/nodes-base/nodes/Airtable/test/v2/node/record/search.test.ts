@@ -4,6 +4,7 @@ import * as search from '../../../../v2/actions/record/search.operation';
 
 import * as transport from '../../../../v2/transport';
 import { createMockExecuteFunction } from '../helpers';
+import type { NodeExecutionOutput } from 'n8n-workflow';
 
 jest.mock('../../../../v2/transport', () => {
 	const originalModule = jest.requireActual('../../../../v2/transport');
@@ -107,8 +108,10 @@ describe('Test AirtableV2, search operation', () => {
 			},
 		);
 
-		expect(result).toHaveLength(2);
-		expect(result[0]).toEqual({
+		const { data } = result as NodeExecutionOutput;
+
+		expect(data).toHaveLength(2);
+		expect(data[0]).toEqual({
 			json: { id: 'recYYY', foo: 'foo 2', bar: 'bar 2' },
 			pairedItem: [
 				{
@@ -151,8 +154,10 @@ describe('Test AirtableV2, search operation', () => {
 			{ fields: ['foo', 'bar'], filterByFormula: 'foo', maxRecords: 1 },
 		);
 
-		expect(result).toHaveLength(1);
-		expect(result[0]).toEqual({
+		const { data } = result as NodeExecutionOutput;
+
+		expect(data).toHaveLength(1);
+		expect(data[0]).toEqual({
 			json: { id: 'recYYY', foo: 'foo 2', bar: 'bar 2' },
 			pairedItem: [
 				{
