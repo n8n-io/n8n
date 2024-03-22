@@ -178,20 +178,25 @@ export class UsersController {
 			target_user_old_status: userToDelete.isPending ? 'invited' : 'active',
 			target_user_id: idToDelete,
 			migration_strategy: transferId ? 'transfer_data' : 'delete_data',
-			migration_user_id: transferId,
 		};
 
 		if (transferId) {
-			const transferee = await this.userRepository.findOneBy({ id: transferId });
+			const transfereePersonalProject = await this.projectRepository.findOneBy({ id: transferId });
 
-			if (!transferee) {
+			if (!transfereePersonalProject) {
 				throw new NotFoundError(
-					'Request to delete a user failed because the transferee was not found in DB',
+					'Request to delete a user failed because the transferee project was not found in DB',
 				);
 			}
 
-			const transfereePersonalProject =
-				await this.projectRepository.getPersonalProjectForUserOrFail(transferee.id);
+			const transferee = await this.userRepository.findOneByOrFail({
+				projectRelations: {
+					projectId: transfereePersonalProject.id,
+					role: 'project:personalOwner',
+				},
+			});
+
+			telemetryData.migration_user_id = transferee.id;
 
 			await this.userService.getManager().transaction(async (trx) => {
 				// Get all shared credentials and workflows for both users

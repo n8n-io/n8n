@@ -430,7 +430,10 @@ describe('DELETE /users/:id', () => {
 		//
 		// ACT
 		//
-		await ownerAgent.delete(`/users/${member.id}`).query({ transferId: transferee.id }).expect(200);
+		await ownerAgent
+			.delete(`/users/${member.id}`)
+			.query({ transferId: transfereePersonalProject.id })
+			.expect(200);
 
 		//
 		// ASSERT
