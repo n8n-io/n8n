@@ -1,10 +1,11 @@
-import { createTestingPinia } from '@pinia/testing';
 import { renderComponent } from '@/__tests__/render';
 import InlineExpressionTip from '@/components/InlineExpressionEditor/InlineExpressionTip.vue';
-import type { useNDVStore } from '@/stores/ndv.store';
-import { EditorSelection, EditorState } from '@codemirror/state';
-import type { CompletionResult } from '@codemirror/autocomplete';
 import { FIELDS_SECTION } from '@/plugins/codemirror/completions/constants';
+import type { useNDVStore } from '@/stores/ndv.store';
+import type { CompletionResult } from '@codemirror/autocomplete';
+import { EditorSelection, EditorState } from '@codemirror/state';
+import { createTestingPinia } from '@pinia/testing';
+import { waitFor } from '@testing-library/vue';
 
 let mockNdvState: Partial<ReturnType<typeof useNDVStore>>;
 let mockCompletionResult: Partial<CompletionResult>;
@@ -88,8 +89,10 @@ describe('InlineExpressionTip.vue', () => {
 				selection,
 				unresolvedExpression: expression,
 			});
-			expect(container).toHaveTextContent(
-				'Tip: Type . for data transformation options, or to drill down',
+			await waitFor(() =>
+				expect(container).toHaveTextContent(
+					'Tip: Type . for data transformation options, or to access fields. Learn more',
+				),
 			);
 		});
 
@@ -115,7 +118,11 @@ describe('InlineExpressionTip.vue', () => {
 				selection,
 				unresolvedExpression: expression,
 			});
-			expect(container).toHaveTextContent('Tip: Type . for data transformation options');
+			await waitFor(() =>
+				expect(container).toHaveTextContent(
+					'Tip: Type . for data transformation options. Learn more',
+				),
+			);
 		});
 	});
 });
