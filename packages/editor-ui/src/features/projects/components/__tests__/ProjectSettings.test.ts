@@ -46,18 +46,19 @@ describe('ProjectSettings', () => {
 		vi.spyOn(projectsStore, 'getAllProjects').mockImplementation(
 			async () => await Promise.resolve(),
 		);
-	});
-
-	it('should show confirmation modal before deleting project and delete with transfer', async () => {
+		vi.spyOn(projectsStore, 'teamProjects', 'get').mockReturnValue(teamProjects);
 		projectsStore.setCurrentProject({
 			id: '123',
 			type: 'team',
 			name: 'Test Project',
 			relations: [],
 		});
-		vi.spyOn(projectsStore, 'teamProjects', 'get').mockReturnValue(teamProjects);
+	});
 
-		const deleteProjectSpy = vi.spyOn(projectsStore, 'deleteProject').mockResolvedValue();
+	it('should show confirmation modal before deleting project and delete with transfer', async () => {
+		const deleteProjectSpy = vi
+			.spyOn(projectsStore, 'deleteProject')
+			.mockImplementation(async () => {});
 
 		const { getByTestId, getByRole } = renderComponent();
 		const deleteButton = getByTestId('project-settings-delete-button');
@@ -81,15 +82,9 @@ describe('ProjectSettings', () => {
 	});
 
 	it('should show confirmation modal before deleting project and deleting without transfer', async () => {
-		projectsStore.setCurrentProject({
-			id: '123',
-			type: 'team',
-			name: 'Test Project',
-			relations: [],
-		});
-		vi.spyOn(projectsStore, 'teamProjects', 'get').mockReturnValue(teamProjects);
-
-		const deleteProjectSpy = vi.spyOn(projectsStore, 'deleteProject').mockResolvedValue();
+		const deleteProjectSpy = vi
+			.spyOn(projectsStore, 'deleteProject')
+			.mockImplementation(async () => {});
 
 		const { getByTestId, getByRole } = renderComponent();
 		const deleteButton = getByTestId('project-settings-delete-button');
