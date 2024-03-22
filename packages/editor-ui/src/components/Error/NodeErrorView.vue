@@ -669,7 +669,7 @@ function copySuccess() {
 		align-items: center;
 		gap: var(--spacing-xs);
 		padding: var(--spacing-xs) var(--spacing-s) var(--spacing-3xs) var(--spacing-s);
-		color: var(--color-danger);
+		color: var(--color-ndv-output-error-message);
 		font-weight: var(--font-weight-bold);
 		font-size: var(--font-size-s);
 	}
