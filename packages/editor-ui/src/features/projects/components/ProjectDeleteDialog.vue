@@ -42,6 +42,10 @@ const onDelete = () => {
 		return;
 	}
 
+	if (operation.value === 'wipe') {
+		selectedProject.value = null;
+	}
+
 	emit('confirmDelete', selectedProject.value?.id);
 };
 </script>
