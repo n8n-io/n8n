@@ -65,7 +65,7 @@ export const useExpressionEditor = ({
 	const editor = ref<EditorView>();
 	const hasFocus = ref(false);
 	const segments = ref<Segment[]>([]);
-	const selection = ref<SelectionRange>(EditorSelection.cursor(0));
+	const selection = ref<SelectionRange>(EditorSelection.cursor(0)) as Ref<SelectionRange>;
 	const customExtensions = ref<Compartment>(new Compartment());
 	const readOnlyExtensions = ref<Compartment>(new Compartment());
 	const telemetryExtensions = ref<Compartment>(new Compartment());
@@ -147,12 +147,11 @@ export const useExpressionEditor = ({
 		}
 	}
 
-	const debouncedUpdateSelection = debounce(updateSelection, 200);
 	const debouncedUpdateSegments = debounce(updateSegments, 200);
 
 	function onEditorUpdate(viewUpdate: ViewUpdate) {
 		autocompleteStatus.value = completionStatus(viewUpdate.view.state);
-		debouncedUpdateSelection(viewUpdate);
+		updateSelection(viewUpdate);
 
 		if (!viewUpdate.docChanged) return;
 

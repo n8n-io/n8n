@@ -38,10 +38,8 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
-	(
-		event: 'update:model-value',
-		value: { value: string; segments: Segment[]; state: EditorState; selection: SelectionRange },
-	): void;
+	(event: 'update:model-value', value: { value: string; segments: Segment[] }): void;
+	(event: 'update:selection', value: { state: EditorState; selection: SelectionRange }): void;
 	(event: 'focus'): void;
 }>();
 
@@ -110,11 +108,16 @@ watch(
 	},
 );
 
-watch([segments.display, selection], ([newSegments, newSelection]) => {
+watch(segments.display, (newSegments) => {
+	emit('update:model-value', {
+		value: '=' + readEditorValue(),
+		segments: newSegments,
+	});
+});
+
+watch(selection, (newSelection: SelectionRange) => {
 	if (editorRef.value) {
-		emit('update:model-value', {
-			value: '=' + readEditorValue(),
-			segments: newSegments,
+		emit('update:selection', {
 			state: editorRef.value.state,
 			selection: newSelection,
 		});

@@ -90,25 +90,24 @@ function onBlur(event?: FocusEvent | KeyboardEvent) {
 	}
 }
 
-function onValueChange({
-	value,
-	segments: newSegments,
-	state: newState,
-	selection: newSelection,
-}: {
-	value: string;
-	segments: Segment[];
-	state: EditorState;
-	selection: SelectionRange;
-}) {
+function onValueChange({ value, segments: newSegments }: { value: string; segments: Segment[] }) {
 	segments.value = newSegments;
-	editorState.value = newState;
-	selection.value = newSelection;
 
 	if (isDragging.value) return;
 	if (value === '=' + props.modelValue) return; // prevent report on change of target item
 
 	emit('update:model-value', value);
+}
+
+function onSelectionChange({
+	state: newState,
+	selection: newSelection,
+}: {
+	state: EditorState;
+	selection: SelectionRange;
+}) {
+	editorState.value = newState;
+	selection.value = newSelection;
 }
 
 watch(isDragging, (newIsDragging) => {
@@ -147,6 +146,7 @@ defineExpose({ focus });
 				@focus="onFocus"
 				@blur="onBlur"
 				@update:model-value="onValueChange"
+				@update:selection="onSelectionChange"
 			/>
 			<n8n-button
 				v-if="!isDragging"
