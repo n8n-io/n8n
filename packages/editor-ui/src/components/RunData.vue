@@ -213,7 +213,7 @@
 		>
 			<div style="display: flex; align-items: center; gap: 10px">
 				<n8n-icon :class="$style.statusIcon" icon="info-circle" size="medium" color="text-light" />
-				<div>
+				<div style="display: flex; flex-direction: column; gap: 5px">
 					<n8n-text v-for="warning in runWarnings" :key="warning" v-html="warning"></n8n-text>
 				</div>
 			</div>
