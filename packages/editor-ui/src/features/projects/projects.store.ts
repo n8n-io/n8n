@@ -16,7 +16,7 @@ export const useProjectsStore = defineStore('projects', () => {
 
 	const projects = ref<ProjectListItem[]>([]);
 	const myProjects = ref<ProjectListItem[]>([]);
-	const personalProject = ref<Project | null>(null);
+	const myPersonalProject = ref<Project | null>(null);
 	const currentProject = ref<Project | null>(null);
 
 	const currentProjectId = computed(
@@ -44,7 +44,7 @@ export const useProjectsStore = defineStore('projects', () => {
 	};
 
 	const getPersonalProject = async () => {
-		personalProject.value = await projectsApi.getPersonalProject(rootStore.getRestApiContext);
+		myPersonalProject.value = await projectsApi.getPersonalProject(rootStore.getRestApiContext);
 	};
 
 	const getProject = async (id: string) => {
@@ -90,7 +90,7 @@ export const useProjectsStore = defineStore('projects', () => {
 	return {
 		projects,
 		myProjects,
-		personalProject,
+		myPersonalProject,
 		currentProject,
 		currentProjectId,
 		isProjectHome,
