@@ -1,7 +1,7 @@
 import { deepCopy } from 'n8n-workflow';
 import config from '@/config';
 import { CredentialsService } from './credentials.service';
-import { CredentialRequest, ListQuery } from '@/requests';
+import { CredentialRequest } from '@/requests';
 import { InternalHooks } from '@/InternalHooks';
 import { Logger } from '@/Logger';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';

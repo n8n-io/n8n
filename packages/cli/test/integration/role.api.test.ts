@@ -7,7 +7,7 @@ import type { CredentialSharingRole } from '@/databases/entities/SharedCredentia
 import type { WorkflowSharingRole } from '@/databases/entities/SharedWorkflow';
 import { RoleService } from '@/services/role.service';
 import Container from 'typedi';
-import { Scope } from '@n8n/permissions';
+import type { Scope } from '@n8n/permissions';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['role'],
