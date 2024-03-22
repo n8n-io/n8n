@@ -61,6 +61,7 @@
 				:disabled="!enabled"
 				:label="$locale.baseText('settings.users.delete')"
 				float="right"
+				data-test-id="confirm-delete-user-button"
 				@click="onSubmit"
 			/>
 		</template>
