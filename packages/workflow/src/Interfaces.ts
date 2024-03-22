@@ -411,7 +411,7 @@ export interface IGetExecuteTriggerFunctions {
 }
 
 export interface IRunNodeResponse {
-	data: INodeExecutionData[][] | null | undefined;
+	data: Array<INodeExecutionData[] | NodeExecutionOutput> | null | undefined;
 	closeFunction?: CloseFunction;
 }
 export interface IGetExecuteFunctions {
@@ -1429,12 +1429,19 @@ export interface SupplyData {
 	closeFunction?: CloseFunction;
 }
 
+export type NodeExecutionOutput = {
+	data: INodeExecutionData[];
+	warnings?: string[];
+};
+
 export interface INodeType {
 	description: INodeTypeDescription;
 	supplyData?(this: IAllExecuteFunctions, itemIndex: number): Promise<SupplyData>;
 	execute?(
 		this: IExecuteFunctions,
-	): Promise<INodeExecutionData[][] | NodeExecutionWithMetadata[][] | null>;
+	): Promise<
+		Array<INodeExecutionData[] | NodeExecutionOutput> | NodeExecutionWithMetadata[][] | null
+	>;
 	poll?(this: IPollFunctions): Promise<INodeExecutionData[][] | null>;
 	trigger?(this: ITriggerFunctions): Promise<ITriggerResponse | undefined>;
 	webhook?(this: IWebhookFunctions): Promise<IWebhookResponseData>;

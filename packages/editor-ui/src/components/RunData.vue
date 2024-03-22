@@ -207,7 +207,10 @@
 			/>
 		</div>
 
-		<div :class="$style.itemsCount" v-if="hasNodeRun && !hasRunError && runWarnings.length">
+		<div
+			:class="$style.itemsCount"
+			v-if="paneType === 'output' && hasNodeRun && !hasRunError && runWarnings.length"
+		>
 			<div style="display: flex; align-items: center; gap: 10px">
 				<n8n-icon :class="$style.statusIcon" icon="info-circle" size="medium" color="text-light" />
 				<div>
@@ -881,11 +884,7 @@ export default defineComponent({
 		runWarnings(): string[] {
 			const warnings =
 				this.node && this.workflowRunData?.[this.node.name]?.[this.runIndex]?.warnings;
-			return (
-				warnings || [
-					"Warnings are messages that are attached to the output. Unlike errors, they're in additionto the output data, not instead of it.",
-				]
-			);
+			return warnings || [];
 		},
 		workflowExecution(): IExecutionResponse | null {
 			return this.workflowsStore.getWorkflowExecution;
