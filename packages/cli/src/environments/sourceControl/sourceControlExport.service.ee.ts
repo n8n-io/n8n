@@ -239,23 +239,28 @@ export class SourceControlExportService {
 				);
 			}
 			await Promise.all(
-				credentialsToBeExported.map(async (sharedCredential) => {
-					const { name, type, nodesAccess, data, id } = sharedCredential.credentials;
-					const credentialObject = new Credentials({ id, name }, type, nodesAccess, data);
-					const plainData = credentialObject.getData();
-					const sanitizedData = this.replaceCredentialData(plainData);
-					const fileName = this.getCredentialsPath(sharedCredential.credentials.id);
-					const sanitizedCredential: ExportableCredential = {
-						id: sharedCredential.credentials.id,
-						name: sharedCredential.credentials.name,
-						type: sharedCredential.credentials.type,
-						data: sanitizedData,
-						nodesAccess: sharedCredential.credentials.nodesAccess,
-					};
-					this.logger.debug(`Writing credential ${sharedCredential.credentials.id} to ${fileName}`);
-					return await fsWriteFile(fileName, JSON.stringify(sanitizedCredential, null, 2));
-				}),
+				credentialsToBeExported
+					.filter((sharing) => sharing.role === 'credential:owner')
+					.map(async (sharing) => {
+						const { name, type, nodesAccess, data, id } = sharing.credentials;
+						const credentials = new Credentials({ id, name }, type, nodesAccess, data);
+
+						const stub: ExportableCredential = {
+							id,
+							name,
+							type,
+							data: this.replaceCredentialData(credentials.getData()),
+							nodesAccess,
+							ownedBy: sharing.user.email,
+						};
+
+						const filePath = this.getCredentialsPath(id);
+						this.logger.debug(`Writing credentials stub "${name}" (ID ${id}) to: ${filePath}`);
+
+						return await fsWriteFile(filePath, JSON.stringify(stub, null, 2));
+					}),
 			);
+
 			return {
 				count: credentialsToBeExported.length,
 				folder: this.credentialExportFolder,

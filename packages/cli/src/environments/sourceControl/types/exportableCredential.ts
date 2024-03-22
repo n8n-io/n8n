@@ -6,4 +6,7 @@ export interface ExportableCredential {
 	type: string;
 	data: ICredentialDataDecryptedObject;
 	nodesAccess: ICredentialNodeAccess[];
+
+	/** Email of user who owns this credential to be exported. */
+	ownedBy: string;
 }
