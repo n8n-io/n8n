@@ -20,7 +20,7 @@ describe('Workflow templates', () => {
 		}).as('settingsRequest');
 	});
 
-	it.only('Opens website when clicking templates sidebar link', () => {
+	it('Opens website when clicking templates sidebar link', () => {
 		cy.visit(workflowsPage.url);
 		mainSidebar.getters.menuItem('Templates').should('be.visible');
 		// Templates should be a link to the website
