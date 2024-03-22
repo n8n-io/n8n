@@ -138,7 +138,12 @@ export default defineComponent({
 			return false;
 		},
 		projects(): ProjectListItem[] {
-			return this.projectsStore.personalProjects;
+			return this.projectsStore.personalProjects.filter(
+				(project) =>
+					!project.name?.includes(this.userToDelete?.firstName ?? '') &&
+					!project.name?.includes(this.userToDelete?.lastName ?? '') &&
+					!project.name?.includes(this.userToDelete?.email ?? ''),
+			);
 		},
 	},
 	async beforeMount() {
