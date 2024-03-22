@@ -8,18 +8,23 @@ import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { ExecutionService } from '@/executions/execution.service';
 
-import { getCredentialById, saveCredential } from './shared/db/credentials';
+import {
+	getCredentialById,
+	saveCredential,
+	shareCredentialWithUsers,
+} from './shared/db/credentials';
 import { createAdmin, createMember, createOwner, getUserById } from './shared/db/users';
-import { createWorkflow, getWorkflowById } from './shared/db/workflows';
+import { createWorkflow, getWorkflowById, shareWorkflowWithUsers } from './shared/db/workflows';
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
 import { validateUser } from './shared/utils/users';
-import { randomName } from './shared/random';
+import { randomCredentialPayload } from './shared/random';
 import * as utils from './shared/utils/';
 import * as testDb from './shared/testDb';
 import { mockInstance } from '../shared/mocking';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import type { Project } from '@/databases/entities/Project';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
+import { createTeamProject, getPersonalProject, linkUserToProject } from './shared/db/projects';
+import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
 
 mockInstance(ExecutionService);
 
@@ -238,96 +243,296 @@ describe('GET /users', () => {
 
 describe('DELETE /users/:id', () => {
 	let owner: User;
-	let ownerPersonalProject: Project;
-	let member: User;
-	let memberPersonalProject: Project;
 	let ownerAgent: SuperAgentTest;
 
 	beforeAll(async () => {
 		await testDb.truncate(['User']);
 
 		owner = await createOwner();
-		ownerPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
-
-		member = await createMember();
-		memberPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(member.id);
 		ownerAgent = testServer.authAgentFor(owner);
 	});
 
 	test('should delete user and their resources', async () => {
-		const savedWorkflow = await createWorkflow({ name: randomName() }, member);
+		//
+		// ARRANGE
+		//
+		// @TODO: Include active workflow and check whether webhook has been removed
 
-		const savedCredential = await saveCredential(
-			{ name: randomName(), type: '', data: {}, nodesAccess: [] },
-			{ user: member, role: 'credential:owner' },
-		);
+		const member = await createMember();
+		const memberPersonalProject = await getPersonalProject(member);
 
-		const response = await ownerAgent.delete(`/users/${member.id}`).expect(200);
+		// stays untouched
+		const teamProject = await createTeamProject();
+		// will be deleted
+		await linkUserToProject(member, teamProject, 'project:admin');
 
-		expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
+		const [savedWorkflow, savedCredential, teamWorkflow, teamCredential] = await Promise.all([
+			// personal resource -> deleted
+			createWorkflow({}, member),
+			saveCredential(randomCredentialPayload(), {
+				user: member,
+				role: 'credential:owner',
+			}),
+			// resources in a team project -> untouched
+			createWorkflow({}, teamProject),
+			saveCredential(randomCredentialPayload(), {
+				project: teamProject,
+				role: 'credential:owner',
+			}),
+		]);
+
+		//
+		// ACT
+		//
+		await ownerAgent.delete(`/users/${member.id}`).expect(200, SUCCESS_RESPONSE_BODY);
+
+		//
+		// ASSERT
+		//
+		const userRepository = Container.get(UserRepository);
+		const projectRepository = Container.get(ProjectRepository);
+		const projectRelationRepository = Container.get(ProjectRelationRepository);
+		const sharedWorkflowRepository = Container.get(SharedWorkflowRepository);
+		const sharedCredentialsRepository = Container.get(SharedCredentialsRepository);
+
+		await Promise.all([
+			// user, their personal project and their relationship to the team project is gone
+			expect(userRepository.findOneBy({ id: member.id })).resolves.toBeNull(),
+			expect(projectRepository.findOneBy({ id: memberPersonalProject.id })).resolves.toBeNull(),
+			expect(
+				projectRelationRepository.findOneBy({ userId: member.id, projectId: teamProject.id }),
+			).resolves.toBeNull(),
+
+			// their personal workflows and and credentials are gone
+			expect(
+				sharedWorkflowRepository.findOneBy({
+					workflowId: savedWorkflow.id,
+					projectId: memberPersonalProject.id,
+				}),
+			).resolves.toBeNull(),
+			expect(
+				sharedCredentialsRepository.findOneBy({
+					credentialsId: savedCredential.id,
+					projectId: memberPersonalProject.id,
+				}),
+			).resolves.toBeNull(),
+
+			// team workflows and credentials are untouched
+			expect(
+				sharedWorkflowRepository.findOneBy({
+					workflowId: teamWorkflow.id,
+					projectId: teamProject.id,
+					role: 'workflow:owner',
+				}),
+			).resolves.not.toBeNull(),
+			expect(
+				sharedCredentialsRepository.findOneBy({
+					credentialsId: teamCredential.id,
+					projectId: teamProject.id,
+					role: 'credential:owner',
+				}),
+			).resolves.not.toBeNull(),
+		]);
 
 		const user = await Container.get(UserRepository).findOneBy({ id: member.id });
-
 		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			where: { projectId: memberPersonalProject.id, role: 'workflow:owner' },
 		});
-
 		const sharedCredential = await Container.get(SharedCredentialsRepository).findOne({
 			where: { projectId: memberPersonalProject.id, role: 'credential:owner' },
 		});
-
 		const workflow = await getWorkflowById(savedWorkflow.id);
-
 		const credential = await getCredentialById(savedCredential.id);
-
-		// @TODO: Include active workflow and check whether webhook has been removed
 
 		expect(user).toBeNull();
 		expect(sharedWorkflow).toBeNull();
 		expect(sharedCredential).toBeNull();
 		expect(workflow).toBeNull();
 		expect(credential).toBeNull();
-
-		// restore
-
-		member = await createMember();
 	});
 
-	test('should delete user and transfer their resources', async () => {
-		const [savedWorkflow, savedCredential] = await Promise.all([
-			await createWorkflow({ name: randomName() }, member),
-			await saveCredential(
-				{ name: randomName(), type: '', data: {}, nodesAccess: [] },
-				{
-					user: member,
+	test('should delete user and team relations and transfer their personal resources', async () => {
+		//
+		// ARRANGE
+		//
+		const [member, transferee, otherMember] = await Promise.all([
+			createMember(),
+			createMember(),
+			createMember(),
+		]);
+
+		// stays untouched
+		const teamProject = await createTeamProject();
+		await Promise.all([
+			// will be deleted
+			linkUserToProject(member, teamProject, 'project:admin'),
+
+			// stays untouched
+			linkUserToProject(transferee, teamProject, 'project:editor'),
+		]);
+
+		const [
+			ownedWorkflow,
+			ownedCredential,
+			teamWorkflow,
+			teamCredential,
+			sharedByOtherMemberWorkflow,
+			sharedByOtherMemberCredential,
+			sharedByTransfereeWorkflow,
+			sharedByTransfereeCredential,
+		] = await Promise.all([
+			// personal resource
+			// -> transferred to transferee's personal project
+			createWorkflow({}, member),
+			saveCredential(randomCredentialPayload(), {
+				user: member,
+				role: 'credential:owner',
+			}),
+
+			// resources in a team project
+			// -> untouched
+			createWorkflow({}, teamProject),
+			saveCredential(randomCredentialPayload(), {
+				project: teamProject,
+				role: 'credential:owner',
+			}),
+
+			// credential and workflow that are shared with the user to delete
+			// -> transferred to transferee's personal project
+			createWorkflow({}, otherMember),
+			saveCredential(randomCredentialPayload(), {
+				user: otherMember,
+				role: 'credential:owner',
+			}),
+
+			// credential and workflow that are shared with the user to delete but owned by the transferee
+			// -> not transferred but deleted
+			createWorkflow({}, transferee),
+			saveCredential(randomCredentialPayload(), {
+				user: transferee,
+				role: 'credential:owner',
+			}),
+		]);
+
+		await Promise.all([
+			shareWorkflowWithUsers(sharedByOtherMemberWorkflow, [member]),
+			shareCredentialWithUsers(sharedByOtherMemberCredential, [member]),
+
+			shareWorkflowWithUsers(sharedByTransfereeWorkflow, [member]),
+			shareCredentialWithUsers(sharedByTransfereeCredential, [member]),
+		]);
+
+		const [memberPersonalProject, transfereePersonalProject] = await Promise.all([
+			getPersonalProject(member),
+			getPersonalProject(transferee),
+		]);
+
+		//
+		// ACT
+		//
+		await ownerAgent.delete(`/users/${member.id}`).query({ transferId: transferee.id }).expect(200);
+
+		//
+		// ASSERT
+		//
+		const userRepository = Container.get(UserRepository);
+		const projectRepository = Container.get(ProjectRepository);
+		const projectRelationRepository = Container.get(ProjectRelationRepository);
+		const sharedWorkflowRepository = Container.get(SharedWorkflowRepository);
+		const sharedCredentialsRepository = Container.get(SharedCredentialsRepository);
+
+		await Promise.all([
+			// user, their personal project and their relationship to the team project is gone
+			expect(userRepository.findOneBy({ id: member.id })).resolves.toBeNull(),
+			expect(projectRepository.findOneBy({ id: memberPersonalProject.id })).resolves.toBeNull(),
+			expect(
+				projectRelationRepository.findOneBy({
+					projectId: teamProject.id,
+					userId: member.id,
+				}),
+			).resolves.toBeNull(),
+
+			// their owned workflow and credential are transferred to the transferee
+			expect(
+				sharedWorkflowRepository.findOneBy({
+					workflowId: ownedWorkflow.id,
+					projectId: transfereePersonalProject.id,
+					role: 'workflow:owner',
+				}),
+			).resolves.not.toBeNull,
+			expect(
+				sharedCredentialsRepository.findOneBy({
+					credentialsId: ownedCredential.id,
+					projectId: transfereePersonalProject.id,
 					role: 'credential:owner',
-				},
+				}),
+			).resolves.not.toBeNull(),
+
+			// the credential and workflow shared with them by another member is now shared with the transferee
+			expect(
+				sharedWorkflowRepository.findOneBy({
+					workflowId: sharedByOtherMemberWorkflow.id,
+					projectId: transfereePersonalProject.id,
+					role: 'workflow:editor',
+				}),
+			).resolves.not.toBeNull(),
+			expect(
+				sharedCredentialsRepository.findOneBy({
+					credentialsId: sharedByOtherMemberCredential.id,
+					projectId: transfereePersonalProject.id,
+					role: 'credential:user',
+				}),
 			),
+
+			// the transferee is still owner of the workflow and credential they shared with the user to delete
+			expect(
+				sharedWorkflowRepository.findOneBy({
+					workflowId: sharedByTransfereeWorkflow.id,
+					projectId: transfereePersonalProject.id,
+					role: 'workflow:owner',
+				}),
+			).resolves.not.toBeNull(),
+			expect(
+				sharedCredentialsRepository.findOneBy({
+					credentialsId: sharedByTransfereeCredential.id,
+					projectId: transfereePersonalProject.id,
+					role: 'credential:owner',
+				}),
+			).resolves.not.toBeNull(),
+
+			// the transferee's relationship to the team project is unchanged
+			expect(
+				projectRepository.findOneBy({
+					id: teamProject.id,
+					projectRelations: {
+						userId: transferee.id,
+						role: 'project:editor',
+					},
+				}),
+			).resolves.not.toBeNull(),
+
+			// the sharing of the team workflow is unchanged
+			expect(
+				sharedWorkflowRepository.findOneBy({
+					workflowId: teamWorkflow.id,
+					projectId: teamProject.id,
+					role: 'workflow:owner',
+				}),
+			).resolves.not.toBeNull(),
+
+			// the sharing of the team credential is unchanged
+			expect(
+				sharedCredentialsRepository.findOneBy({
+					credentialsId: teamCredential.id,
+					projectId: teamProject.id,
+					role: 'credential:owner',
+				}),
+			).resolves.not.toBeNull(),
 		]);
-
-		await ownerAgent.delete(`/users/${member.id}`).query({ transferId: owner.id }).expect(200);
-
-		const [user, sharedWorkflow, sharedCredential] = await Promise.all([
-			await Container.get(UserRepository).findOneBy({ id: member.id }),
-			await Container.get(SharedWorkflowRepository).findOneOrFail({
-				relations: ['workflow'],
-				where: { projectId: ownerPersonalProject.id },
-			}),
-			await Container.get(SharedCredentialsRepository).findOneOrFail({
-				relations: ['credentials'],
-				where: { projectId: ownerPersonalProject.id },
-			}),
-		]);
-
-		expect(user).toBeNull();
-		expect(sharedWorkflow.workflow.id).toBe(savedWorkflow.id);
-		expect(sharedCredential.credentials.id).toBe(savedCredential.id);
 	});
 
 	test('should fail to delete self', async () => {
-		const response = await ownerAgent.delete(`/users/${owner.id}`);
-
-		expect(response.statusCode).toBe(400);
+		await ownerAgent.delete(`/users/${owner.id}`).expect(400);
 
 		const user = await getUserById(owner.id);
 
@@ -335,11 +540,9 @@ describe('DELETE /users/:id', () => {
 	});
 
 	test('should fail to delete if user to delete is transferee', async () => {
-		const response = await ownerAgent.delete(`/users/${member.id}`).query({
-			transferId: member.id,
-		});
+		const member = await createMember();
 
-		expect(response.statusCode).toBe(400);
+		await ownerAgent.delete(`/users/${member.id}`).query({ transferId: member.id }).expect(400);
 
 		const user = await Container.get(UserRepository).findOneBy({ id: member.id });
 
