@@ -9,7 +9,7 @@ export const versionDescription: INodeTypeDescription = {
 	name: 'airtable',
 	icon: 'file:airtable.svg',
 	group: ['input'],
-	version: 2,
+	version: [2, 2.1],
 	subtitle: '={{ $parameter["operation"] + ": " + $parameter["resource"] }}',
 	description: 'Read, update, write and delete data from Airtable',
 	defaults: {
