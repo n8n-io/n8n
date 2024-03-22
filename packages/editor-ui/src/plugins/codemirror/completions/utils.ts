@@ -202,5 +202,5 @@ export const withSectionHeader = (section: CompletionSection): CompletionSection
 export const isCompletionSection = (
 	section: CompletionSection | string | undefined,
 ): section is CompletionSection => {
-	return !!section && typeof section === 'object' && 'name' in section;
+	return typeof section === 'object';
 };

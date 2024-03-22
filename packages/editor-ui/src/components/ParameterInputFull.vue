@@ -209,7 +209,7 @@ export default defineComponent({
 			return this.isResourceLocator ? !hasOnlyListMode(this.parameter) : true;
 		},
 		isInputDataEmpty(): boolean {
-			return this.ndvStore.isDNVDataEmpty('input');
+			return this.ndvStore.isNDVDataEmpty('input');
 		},
 		displayMode(): IRunDataDisplayMode {
 			return this.ndvStore.inputPanelDisplayMode;

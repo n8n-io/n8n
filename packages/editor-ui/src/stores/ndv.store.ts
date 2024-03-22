@@ -129,7 +129,7 @@ export const useNDVStore = defineStore(STORES.NDV, {
 		ndvInputBranchIndex(): number | undefined {
 			return this.input.branch;
 		},
-		isDNVDataEmpty() {
+		isNDVDataEmpty() {
 			return (panel: 'input' | 'output'): boolean => this[panel].data.isEmpty;
 		},
 		isInputParentOfActiveNode(): boolean {

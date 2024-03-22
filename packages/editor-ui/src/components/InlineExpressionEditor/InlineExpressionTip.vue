@@ -30,7 +30,7 @@ const canAddDotToExpression = ref(false);
 const resolvedExpressionHasFields = ref(false);
 
 const canDragToFocusedInput = computed(
-	() => !ndvStore.isDNVDataEmpty('input') && ndvStore.focusedMappableInput,
+	() => !ndvStore.isNDVDataEmpty('input') && ndvStore.focusedMappableInput,
 );
 
 const emptyExpression = computed(() => props.unresolvedExpression.trim().length === 0);
@@ -49,26 +49,22 @@ const tip = computed<TipId>(() => {
 	return 'default';
 });
 
-const cursor = computed(() => props.selection.anchor);
-
 function getCompletionsWithDot(): readonly Completion[] {
-	const atCursor = cursor.value;
-	if (
-		!props.editorState ||
-		!props.selection ||
-		!props.selection.empty ||
-		!props.unresolvedExpression ||
-		props.unresolvedExpression.charAt(atCursor - 1) === '.' ||
-		props.unresolvedExpression.charAt(atCursor - 1) === ' ' ||
-		props.unresolvedExpression.charAt(atCursor) === '.'
-	) {
+	if (!props.editorState || !props.selection || !props.unresolvedExpression) {
 		return [];
 	}
 
-	const cursorAfterDot = atCursor + 1;
+	const cursorAfterDot = props.selection.from + 1;
 	const docWithDot =
-		props.editorState.sliceDoc(0, atCursor) + '.' + props.editorState.sliceDoc(atCursor);
+		props.editorState.sliceDoc(0, props.selection.from) +
+		'.' +
+		props.editorState.sliceDoc(props.selection.to);
 	const selectionWithDot = EditorSelection.create([EditorSelection.cursor(cursorAfterDot)]);
+
+	if (cursorAfterDot >= docWithDot.length) {
+		return [];
+	}
+
 	const stateWithDot = EditorState.create({
 		doc: docWithDot,
 		selection: selectionWithDot,
@@ -83,13 +79,17 @@ watch(tip, (newTip) => {
 	ndvStore.setHighlightDraggables(!ndvStore.isMappingOnboarded && newTip === 'drag');
 });
 
-watchDebounced([() => props.selection, () => props.unresolvedExpression], () => {
-	const completions = getCompletionsWithDot();
-	canAddDotToExpression.value = completions.length > 0;
-	resolvedExpressionHasFields.value = completions.some(
-		({ section }) => isCompletionSection(section) && section.name === FIELDS_SECTION.name,
-	);
-});
+watchDebounced(
+	[() => props.selection, () => props.unresolvedExpression],
+	() => {
+		const completions = getCompletionsWithDot();
+		canAddDotToExpression.value = completions.length > 0;
+		resolvedExpressionHasFields.value = completions.some(
+			({ section }) => isCompletionSection(section) && section.name === FIELDS_SECTION.name,
+		);
+	},
+	{ debounce: 200 },
+);
 </script>
 
 <template>
