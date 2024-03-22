@@ -84,22 +84,27 @@
 					</n8n-text>
 				</div>
 				<div v-if="!readOnlyEnv" :class="['text-center', 'mt-2xl', $style.actionsContainer]">
-					<n8n-card
+					<a
 						v-if="userCloudAccount?.role === 'Sales'"
+						:href="getTemplateRepositoryURL('Sales')"
 						:class="$style.emptyStateCard"
-						hoverable
-						data-test-id="browse-sales-templates-card"
-						@click="openTemplateRepository('Sales')"
+						target="_blank"
 					>
-						<n8n-icon :class="$style.emptyStateCardIcon" icon="hand-holding-usd" />
-						<n8n-text size="large" class="mt-xs" color="text-base">
-							{{
-								$locale.baseText('workflows.empty.browseTemplates', {
-									interpolate: { category: 'Sales' },
-								})
-							}}
-						</n8n-text>
-					</n8n-card>
+						<n8n-card
+							hoverable
+							data-test-id="browse-sales-templates-card"
+							@click="trackCategoryLinkClick('Sales')"
+						>
+							<n8n-icon :class="$style.emptyStateCardIcon" icon="hand-holding-usd" />
+							<n8n-text size="large" class="mt-xs" color="text-base">
+								{{
+									$locale.baseText('workflows.empty.browseTemplates', {
+										interpolate: { category: 'Sales' },
+									})
+								}}
+							</n8n-text>
+						</n8n-card>
+					</a>
 					<n8n-card
 						:class="$style.emptyStateCard"
 						hoverable
@@ -294,13 +299,14 @@ const WorkflowsView = defineComponent({
 				source: 'Workflows list',
 			});
 		},
-		openTemplateRepository(category: string) {
-			const url = this.templatesStore.getWebsiteCategoryURL(category);
-			this.$telemetry.track('User clicked Browse Sales Templates', {
+		getTemplateRepositoryURL(category: string) {
+			return this.templatesStore.getWebsiteCategoryURL(category);
+		},
+		trackCategoryLinkClick(category: string) {
+			this.$telemetry.track(`User clicked Browse ${category} Templates`, {
 				role: this.usersStore.currentUserCloudInfo?.role,
 				active_workflow_count: this.workflowsStore.activeWorkflows.length,
 			});
-			window.open(url, '_blank');
 		},
 		async initialize() {
 			await Promise.all([
