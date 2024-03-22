@@ -105,7 +105,6 @@ export default defineComponent({
 			operation: '',
 			deleteConfirmText: '',
 			selectedProject: null as ProjectSharingData | null,
-			ignoreIds: [this.activeId],
 		};
 	},
 	computed: {
@@ -139,9 +138,7 @@ export default defineComponent({
 			return false;
 		},
 		projects(): ProjectListItem[] {
-			return this.projectsStore.personalProjects.filter(
-				(project) => project.id !== this.projectsStore.myPersonalProject?.id,
-			);
+			return this.projectsStore.personalProjects;
 		},
 	},
 	async beforeMount() {
