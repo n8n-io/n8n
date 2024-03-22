@@ -162,7 +162,7 @@ describe('WorkflowDataProxy', () => {
 			} catch (error) {
 				expect(error).toBeInstanceOf(ExpressionError);
 				const exprError = error as ExpressionError;
-				expect(exprError.message).toEqual('"does not exist" node doesn\'t exist');
+				expect(exprError.message).toEqual("Referenced node doesn't exist");
 				done();
 			}
 		});
@@ -193,7 +193,11 @@ describe('WorkflowDataProxy', () => {
 			} catch (error) {
 				expect(error).toBeInstanceOf(ExpressionError);
 				const exprError = error as ExpressionError;
+<<<<<<< HEAD
 				expect(exprError.message).toEqual('no data, execute "Impossible" node first');
+=======
+				expect(exprError.message).toEqual('Referenced node is unexecuted');
+>>>>>>> upstream/master
 				expect(exprError.context.type).toEqual('no_node_execution_data');
 				done();
 			}
@@ -221,7 +225,11 @@ describe('WorkflowDataProxy', () => {
 			} catch (error) {
 				expect(error).toBeInstanceOf(ExpressionError);
 				const exprError = error as ExpressionError;
+<<<<<<< HEAD
 				expect(exprError.message).toEqual('no data, execute "Impossible if" node first');
+=======
+				expect(exprError.message).toEqual('Referenced node is unexecuted');
+>>>>>>> upstream/master
 				expect(exprError.context.type).toEqual('no_node_execution_data');
 				done();
 			}
@@ -263,7 +271,11 @@ describe('WorkflowDataProxy', () => {
 			} catch (error) {
 				expect(error).toBeInstanceOf(ExpressionError);
 				const exprError = error as ExpressionError;
+<<<<<<< HEAD
 				expect(exprError.message).toEqual('Can’t get data for expression');
+=======
+				expect(exprError.message).toEqual("Can't get data for expression");
+>>>>>>> upstream/master
 				expect(exprError.context.type).toEqual('paired_item_no_info');
 				done();
 			}
@@ -277,7 +289,11 @@ describe('WorkflowDataProxy', () => {
 			} catch (error) {
 				expect(error).toBeInstanceOf(ExpressionError);
 				const exprError = error as ExpressionError;
+<<<<<<< HEAD
 				expect(exprError.message).toEqual('Can’t get data for expression');
+=======
+				expect(exprError.message).toEqual("Can't get data for expression");
+>>>>>>> upstream/master
 				expect(exprError.context.type).toEqual('paired_item_invalid_info');
 				done();
 			}

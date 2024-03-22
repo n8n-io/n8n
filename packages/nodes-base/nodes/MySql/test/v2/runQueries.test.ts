@@ -42,6 +42,38 @@ describe('Test MySql V2, runQueries', () => {
 		jest.clearAllMocks();
 	});
 
+	describe('in single query batch mode', () => {
+		it('should set paired items correctly', async () => {
+			const nodeOptions = { queryBatching: BATCH_MODE.SINGLE, nodeVersion: 2 };
+			const pool = createFakePool(fakeConnection);
+			const mockExecuteFns = createMockExecuteFunction({}, mySqlMockNode);
+
+			pool.query = jest.fn(async () => [
+				[[{ finishedAt: '2023-12-30' }], [{ finishedAt: '2023-12-31' }]],
+			]);
+
+			const result = await configureQueryRunner.call(
+				mockExecuteFns,
+				nodeOptions,
+				pool,
+			)([
+				{ query: 'SELECT finishedAt FROM my_table WHERE id = ?', values: [123] },
+				{ query: 'SELECT finishedAt FROM my_table WHERE id = ?', values: [456] },
+			]);
+
+			expect(result).toEqual([
+				{
+					json: { finishedAt: '2023-12-30' },
+					pairedItem: { item: 0 },
+				},
+				{
+					json: { finishedAt: '2023-12-31' },
+					pairedItem: { item: 1 },
+				},
+			]);
+		});
+	});
+
 	it('should execute in "Single" mode, should return success true', async () => {
 		const nodeOptions: IDataObject = { queryBatching: BATCH_MODE.SINGLE, nodeVersion: 2 };
 

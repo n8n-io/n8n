@@ -176,13 +176,17 @@ export function resolveParameter(
 	};
 
 	if (activeNode?.type === HTTP_REQUEST_NODE_TYPE) {
-		// Add $response for HTTP Request-Nodes as it is used
+		const EMPTY_RESPONSE = { statusCode: 200, headers: {}, body: {} };
+		const EMPTY_REQUEST = { headers: {}, body: {}, qs: {} };
+		// Add $request,$response,$pageCount for HTTP Request-Nodes as it is used
 		// in pagination expressions
+		additionalKeys.$pageCount = 0;
 		additionalKeys.$response = get(
 			executionData,
 			['data', 'executionData', 'contextData', `node:${activeNode.name}`, 'response'],
-			{},
+			EMPTY_RESPONSE,
 		);
+		additionalKeys.$request = EMPTY_REQUEST;
 	}
 
 	let runIndexCurrent = opts?.targetItem?.runIndex ?? 0;

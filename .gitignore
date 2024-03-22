@@ -25,3 +25,5 @@ CHANGELOG-*.md
 .env
 .env.local.with.aws
 dump.rdb
+*.mdx
+build-storybook.log
