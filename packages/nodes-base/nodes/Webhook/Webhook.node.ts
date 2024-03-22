@@ -74,7 +74,6 @@ export class Webhook extends Node {
 		credentials: credentialsProperty(this.authPropertyName),
 		webhooks: [defaultWebhookDescription],
 		properties: [
-			authenticationProperty(this.authPropertyName),
 			httpMethodsProperty,
 			{
 				displayName: 'Path',
@@ -86,6 +85,7 @@ export class Webhook extends Node {
 				description:
 					"The path to listen to, dynamic values could be specified by using ':', e.g. 'your-path/:dynamic-value'. If dynamic values are set 'webhookId' would be prepended to path.",
 			},
+			authenticationProperty(this.authPropertyName),
 			responseModeProperty,
 			{
 				displayName:
