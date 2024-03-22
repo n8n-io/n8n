@@ -300,10 +300,6 @@ describe('Member', () => {
 });
 
 describe('Owner', () => {
-	beforeEach(async () => {
-		await utils.setInstanceOwnerSetUp(true);
-	});
-
 	test('PATCH /me should succeed with valid inputs', async () => {
 		const owner = await createUser({ role: 'global:owner' });
 		const authOwnerAgent = testServer.authAgentFor(owner);

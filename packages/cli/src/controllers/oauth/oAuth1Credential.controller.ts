@@ -5,7 +5,7 @@ import type { RequestOptions } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
 import { createHmac } from 'crypto';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { Authorized, Get, RestController } from '@/decorators';
+import { Get, RestController } from '@/decorators';
 import { OAuthRequest } from '@/requests';
 import { sendErrorResponse } from '@/ResponseHelper';
 import { AbstractOAuthController } from './abstractOAuth.controller';
@@ -29,7 +29,6 @@ const algorithmMap = {
 	/* eslint-enable */
 } as const;
 
-@Authorized()
 @RestController('/oauth1-credential')
 export class OAuth1CredentialController extends AbstractOAuthController {
 	override oauthVersion = 1;

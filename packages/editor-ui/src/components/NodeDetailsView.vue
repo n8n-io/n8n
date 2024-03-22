@@ -45,6 +45,7 @@
 				:has-double-width="activeNodeType?.parameterPane === 'wide'"
 				:node-type="activeNodeType"
 				@switchSelectedNode="onSwitchSelectedNode"
+				@openConnectionNodeCreator="onOpenConnectionNodeCreator"
 				@close="close"
 				@init="onPanelsInit"
 				@dragstart="onDragStart"
@@ -117,6 +118,8 @@
 						@stopExecution="onStopExecution"
 						@redrawRequired="redrawRequired = true"
 						@activate="onWorkflowActivate"
+						@switchSelectedNode="onSwitchSelectedNode"
+						@openConnectionNodeCreator="onOpenConnectionNodeCreator"
 					/>
 					<a
 						v-if="featureRequestUrl"
@@ -143,10 +146,10 @@ import type {
 	IRunData,
 	IRunExecutionData,
 	Workflow,
+	ConnectionTypes,
 } from 'n8n-workflow';
 import { jsonParse, NodeHelpers, NodeConnectionType } from 'n8n-workflow';
 import type { IExecutionResponse, INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 
 import NodeSettings from '@/components/NodeSettings.vue';
 import NDVDraggablePanels from './NDVDraggablePanels.vue';
@@ -174,6 +177,8 @@ import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useMessage } from '@/composables/useMessage';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { usePinnedData } from '@/composables/usePinnedData';
+import { useRouter } from 'vue-router';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 
 export default defineComponent({
 	name: 'NodeDetailsView',
@@ -184,7 +189,7 @@ export default defineComponent({
 		NDVDraggablePanels,
 		TriggerPanel,
 	},
-	mixins: [workflowHelpers, workflowActivate],
+	mixins: [workflowActivate],
 	props: {
 		readOnly: {
 			type: Boolean,
@@ -203,11 +208,14 @@ export default defineComponent({
 		const nodeHelpers = useNodeHelpers();
 		const { activeNode } = storeToRefs(ndvStore);
 		const pinnedData = usePinnedData(activeNode);
+		const router = useRouter();
+		const workflowHelpers = useWorkflowHelpers({ router });
 
 		return {
 			externalHooks,
 			nodeHelpers,
 			pinnedData,
+			workflowHelpers,
 			...useDeviceSupport(),
 			...useMessage(),
 			// eslint-disable-next-line @typescript-eslint/no-misused-promises
@@ -289,7 +297,7 @@ export default defineComponent({
 			);
 		},
 		workflow(): Workflow {
-			return this.getCurrentWorkflow();
+			return this.workflowHelpers.getCurrentWorkflow();
 		},
 		hasOutputConnection() {
 			if (!this.activeNode) return false;
@@ -482,7 +490,7 @@ export default defineComponent({
 					nodeSubtitle: this.nodeHelpers.getNodeSubtitle(
 						node,
 						this.activeNodeType,
-						this.getCurrentWorkflow(),
+						this.workflowHelpers.getCurrentWorkflow(),
 					),
 				});
 
@@ -660,8 +668,11 @@ export default defineComponent({
 		nodeTypeSelected(nodeTypeName: string) {
 			this.$emit('nodeTypeSelected', nodeTypeName);
 		},
-		async onSwitchSelectedNode(nodeTypeName: string) {
+		onSwitchSelectedNode(nodeTypeName: string) {
 			this.$emit('switchSelectedNode', nodeTypeName);
+		},
+		onOpenConnectionNodeCreator(nodeTypeName: string, connectionType: ConnectionTypes) {
+			this.$emit('openConnectionNodeCreator', nodeTypeName, connectionType);
 		},
 		async close() {
 			if (this.isDragging) {
@@ -776,8 +787,9 @@ export default defineComponent({
 }
 
 .data-display-wrapper {
-	height: calc(100% - var(--spacing-2xl));
+	height: calc(100% - var(--spacing-l)) !important;
 	margin-top: var(--spacing-xl) !important;
+	margin-bottom: var(--spacing-xl) !important;
 	width: 100%;
 	background: none;
 	border: none;

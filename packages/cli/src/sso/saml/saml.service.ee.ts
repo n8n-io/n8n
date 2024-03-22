@@ -287,13 +287,18 @@ export class SamlService {
 		let result: Settings;
 		if (samlPreferences) {
 			samlPreferences.value = settingsValue;
-			result = await Container.get(SettingsRepository).save(samlPreferences);
-		} else {
-			result = await Container.get(SettingsRepository).save({
-				key: SAML_PREFERENCES_DB_KEY,
-				value: settingsValue,
-				loadOnStartup: true,
+			result = await Container.get(SettingsRepository).save(samlPreferences, {
+				transaction: false,
 			});
+		} else {
+			result = await Container.get(SettingsRepository).save(
+				{
+					key: SAML_PREFERENCES_DB_KEY,
+					value: settingsValue,
+					loadOnStartup: true,
+				},
+				{ transaction: false },
+			);
 		}
 		if (result) return jsonParse<SamlPreferences>(result.value);
 		return;

@@ -99,7 +99,7 @@ const sqliteMigrations: Migration[] = [
 	DisallowOrphanExecutions1693554410387,
 	ExecutionSoftDelete1693491613982,
 	AddWorkflowMetadata1695128658538,
-	AddWorkflowEntityWithVersionMetadata1690000000040,
+  AddWorkflowEntityWithVersionMetadata1690000000040,
 	ModifyWorkflowHistoryNodesAndConnections1695829275184,
 	AddGlobalAdminRole1700571993961,
 	DropRoleMapping1705429061930,

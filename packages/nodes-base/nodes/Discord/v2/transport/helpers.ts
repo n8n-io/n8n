@@ -1,11 +1,10 @@
-import type { OptionsWithUrl } from 'request';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
+	IRequestOptions,
 } from 'n8n-workflow';
 
 export const getCredentialsType = (authentication: string) => {
@@ -28,7 +27,7 @@ export const getCredentialsType = (authentication: string) => {
 
 export async function requestApi(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	options: OptionsWithUrl,
+	options: IRequestOptions,
 	credentialType: string,
 	endpoint: string,
 ) {

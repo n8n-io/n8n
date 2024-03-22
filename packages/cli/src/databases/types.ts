@@ -36,7 +36,7 @@ export interface MigrationContext {
 		toFields?: string[],
 		batchSize?: number,
 	): Promise<void>;
-	schemaPrefix?: string;
+  schemaPrefix?: string;
 }
 
 export type MigrationFn = (ctx: MigrationContext) => Promise<void>;

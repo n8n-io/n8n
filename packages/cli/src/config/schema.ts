@@ -171,10 +171,16 @@ export const schema = {
 				env: 'DB_SQLITE_DATABASE',
 			},
 			enableWAL: {
-				doc: 'Enable SQLite WAL mode',
+				doc: 'Enable SQLite WAL mode (Always enabled for pool-size > 1)',
 				format: Boolean,
 				default: false,
 				env: 'DB_SQLITE_ENABLE_WAL',
+			},
+			poolSize: {
+				doc: 'SQLite Pool Size (Setting this to 0 disables pooling)',
+				format: Number,
+				default: 0,
+				env: 'DB_SQLITE_POOL_SIZE',
 			},
 			executeVacuumOnStartup: {
 				doc: 'Runs VACUUM operation on startup to rebuild the database. Reduces filesize and optimizes indexes. WARNING: This is a long running blocking operation. Will increase start-up time.',
@@ -234,6 +240,13 @@ export const schema = {
 	},
 
 	executions: {
+		// TODO: remove this and all usage of `executions.process` when we're sure that nobody has this in their config file anymore.
+		process: {
+			doc: 'Deprecated key, that will be removed in the future. Please remove it from your configuration and environment variables to prevent issues in the future.',
+			format: String,
+			default: '',
+			env: 'EXECUTIONS_PROCESS',
+		},
 		mode: {
 			doc: 'If it should run executions directly or via queue',
 			format: ['regular', 'queue'] as const,
@@ -530,6 +543,12 @@ export const schema = {
 		default: 'http',
 		env: 'N8N_PROTOCOL',
 		doc: 'HTTP Protocol via which n8n can be reached',
+	},
+	secure_cookie: {
+		doc: 'This sets the `Secure` flag on n8n auth cookie',
+		format: Boolean,
+		default: true,
+		env: 'N8N_SECURE_COOKIE',
 	},
 	ssl_key: {
 		format: String,
@@ -1093,7 +1112,7 @@ export const schema = {
 		saml: {
 			loginEnabled: {
 				format: Boolean,
-				default: false,
+				default: true,
 				doc: 'Whether to enable SAML SSO.',
 			},
 			loginLabel: {
@@ -1104,7 +1123,7 @@ export const schema = {
 		ldap: {
 			loginEnabled: {
 				format: Boolean,
-				default: false,
+				default: true,
 			},
 			loginLabel: {
 				format: String,
@@ -1330,6 +1349,18 @@ export const schema = {
 			format: Boolean,
 			default: false,
 			env: 'N8N_AI_ENABLED',
+		},
+		provider: {
+			doc: 'AI provider to use. Currently only "openai" is supported.',
+			format: String,
+			default: 'openai',
+			env: 'N8N_AI_PROVIDER',
+		},
+		openAIApiKey: {
+			doc: 'Enable AI features using OpenAI API key',
+			format: String,
+			default: '',
+			env: 'N8N_AI_OPENAI_API_KEY',
 		},
 	},
 

@@ -1,9 +1,9 @@
 import { Response } from 'express';
 import validator from 'validator';
 
+import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
-import { Authorized, NoAuthRequired, Post, RequireGlobalScope, RestController } from '@/decorators';
-import { issueCookie } from '@/auth/jwt';
+import { Post, GlobalScope, RestController } from '@/decorators';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { UserRequest } from '@/requests';
 import { License } from '@/License';
@@ -19,13 +19,13 @@ import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
 import { InternalHooks } from '@/InternalHooks';
 import { ExternalHooks } from '@/ExternalHooks';
 
-@Authorized()
 @RestController('/invitations')
 export class InvitationController {
 	constructor(
 		private readonly logger: Logger,
 		private readonly internalHooks: InternalHooks,
 		private readonly externalHooks: ExternalHooks,
+		private readonly authService: AuthService,
 		private readonly userService: UserService,
 		private readonly license: License,
 		private readonly passwordUtility: PasswordUtility,
@@ -38,7 +38,7 @@ export class InvitationController {
 	 */
 
 	@Post('/')
-	@RequireGlobalScope('user:create')
+	@GlobalScope('user:create')
 	async inviteUser(req: UserRequest.Invite) {
 		const isWithinUsersLimit = this.license.isWithinUsersLimit();
 
@@ -119,8 +119,7 @@ export class InvitationController {
 	/**
 	 * Fill out user shell with first name, last name, and password.
 	 */
-	@NoAuthRequired()
-	@Post('/:id/accept')
+	@Post('/:id/accept', { skipAuth: true })
 	async acceptInvitation(req: UserRequest.Update, res: Response) {
 		const { id: inviteeId } = req.params;
 
@@ -163,9 +162,9 @@ export class InvitationController {
 		invitee.lastName = lastName;
 		invitee.password = await this.passwordUtility.hash(validPassword);
 
-		const updatedUser = await this.userRepository.save(invitee);
+		const updatedUser = await this.userRepository.save(invitee, { transaction: false });
 
-		await issueCookie(res, updatedUser);
+		this.authService.issueCookie(res, updatedUser);
 
 		void this.internalHooks.onUserSignup(updatedUser, {
 			user_type: 'email',

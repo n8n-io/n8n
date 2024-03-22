@@ -5,7 +5,7 @@ import {
 } from '@/api/workflow-webhooks';
 import {
 	ABOUT_MODAL_KEY,
-	WORKFLOW_WITH_VERSION_MODAL_KEY,
+  WORKFLOW_WITH_VERSION_MODAL_KEY,
 	CHAT_EMBED_MODAL_KEY,
 	CHANGE_PASSWORD_MODAL_KEY,
 	COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
@@ -47,7 +47,6 @@ import type {
 	IFakeDoorLocation,
 	INodeUi,
 	IOnboardingCallPrompt,
-	IUser,
 	UIState,
 	UTMCampaign,
 	XYPosition,
@@ -56,6 +55,8 @@ import type {
 	ThemeOption,
 	AppliedThemeOption,
 	SuggestedTemplates,
+	NotificationOptions,
+	ModalState,
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@/stores/n8nRoot.store';
@@ -65,6 +66,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { hasPermission } from '@/rbac/permissions';
 import { useTelemetryStore } from '@/stores/telemetry.store';
+import { useUsersStore } from '@/stores/users.store';
 import { dismissBannerPermanently } from '@/api/ui';
 import type { BannerName } from 'n8n-workflow';
 import {
@@ -74,7 +76,6 @@ import {
 	isValidTheme,
 	updateTheme,
 } from './ui.utils';
-import { useUsersStore } from './users.store';
 
 let savedTheme: ThemeOption = 'system';
 try {
@@ -145,7 +146,7 @@ export const useUIStore = defineStore(STORES.UI, {
 				mode: '',
 				activeId: null,
 				showAuthSelector: false,
-			},
+			} as ModalState,
 		},
 		modalStack: [],
 		sidebarMenuCollapsed: true,
@@ -173,6 +174,7 @@ export const useUIStore = defineStore(STORES.UI, {
 		stateIsDirty: false,
 		lastSelectedNode: null,
 		lastSelectedNodeOutputIndex: null,
+		lastSelectedNodeEndpointUuid: null,
 		nodeViewOffsetPosition: [0, 0],
 		nodeViewMoveInProgress: false,
 		selectedNodes: [],
@@ -193,11 +195,10 @@ export const useUIStore = defineStore(STORES.UI, {
 		},
 		logo(): string {
 			const { releaseChannel } = useSettingsStore().settings;
-			const type = this.appliedTheme === 'dark' ? '-dark-mode.svg' : '.svg';
-
-			return releaseChannel === 'stable'
-				? `n8n-logo-expanded${type}`
-				: `n8n-${releaseChannel}-logo${type}`;
+			const suffix = this.appliedTheme === 'dark' ? '-dark.svg' : '.svg';
+			return `static/logo/${
+				releaseChannel === 'stable' ? 'expanded' : `channel/${releaseChannel}`
+			}${suffix}`;
 		},
 		contextBasedTranslationKeys() {
 			const settingsStore = useSettingsStore();
@@ -343,7 +344,6 @@ export const useUIStore = defineStore(STORES.UI, {
 				let linkUrl = '';
 
 				const searchParams = new URLSearchParams();
-				const { isInstanceOwner } = useUsersStore();
 
 				if (deploymentType === 'cloud' && hasPermission(['instanceOwner'])) {
 					const adminPanelHost = new URL(window.location.href).host.split('.').slice(1).join('.');
@@ -467,26 +467,37 @@ export const useUIStore = defineStore(STORES.UI, {
 			this.setMode(CREDENTIAL_EDIT_MODAL_KEY, 'new');
 			this.openModal(CREDENTIAL_EDIT_MODAL_KEY);
 		},
-		async getNextOnboardingPrompt(): Promise<IOnboardingCallPrompt> {
+		async getNextOnboardingPrompt(): Promise<IOnboardingCallPrompt | null> {
 			const rootStore = useRootStore();
 			const instanceId = rootStore.instanceId;
-			// TODO: current USER
-			const currentUser = {} as IUser;
-			return await fetchNextOnboardingPrompt(instanceId, currentUser);
+			const { currentUser } = useUsersStore();
+			if (currentUser) {
+				return await fetchNextOnboardingPrompt(instanceId, currentUser);
+			}
+			return null;
 		},
-		async applyForOnboardingCall(email: string): Promise<string> {
+		async applyForOnboardingCall(email: string): Promise<string | null> {
 			const rootStore = useRootStore();
 			const instanceId = rootStore.instanceId;
-			// TODO: current USER
-			const currentUser = {} as IUser;
-			return await applyForOnboardingCall(instanceId, currentUser, email);
+			const { currentUser } = useUsersStore();
+			if (currentUser) {
+				return await applyForOnboardingCall(instanceId, currentUser, email);
+			}
+			return null;
 		},
-		async submitContactEmail(email: string, agree: boolean): Promise<string> {
+		async submitContactEmail(email: string, agree: boolean): Promise<string | null> {
 			const rootStore = useRootStore();
 			const instanceId = rootStore.instanceId;
-			// TODO: current USER
-			const currentUser = {} as IUser;
-			return await submitEmailOnSignup(instanceId, currentUser, email || currentUser.email, agree);
+			const { currentUser } = useUsersStore();
+			if (currentUser) {
+				return await submitEmailOnSignup(
+					instanceId,
+					currentUser,
+					email ?? currentUser?.email,
+					agree,
+				);
+			}
+			return null;
 		},
 		openCommunityPackageUninstallConfirmModal(packageName: string) {
 			this.setActiveId(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, packageName);

@@ -6,7 +6,7 @@ import { faker } from '@faker-js/faker';
 import { STORES, VIEWS } from '@/constants';
 import ExecutionsList from '@/components/ExecutionsList.vue';
 import type { IWorkflowDb } from '@/Interface';
-import type { IExecutionsSummary } from 'n8n-workflow';
+import type { ExecutionSummary } from 'n8n-workflow';
 import { retry, SETTINGS_STORE_DEFAULT_STATE, waitAllPromises } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { RenderOptions } from '@/__tests__/render';
@@ -48,7 +48,7 @@ const workflowDataFactory = (): IWorkflowDb => ({
 	versionId: faker.number.int().toString(),
 });
 
-const executionDataFactory = (): IExecutionsSummary => ({
+const executionDataFactory = (): ExecutionSummary => ({
 	id: faker.string.uuid(),
 	finished: faker.datatype.boolean(),
 	mode: faker.helpers.arrayElement(['manual', 'trigger']),
@@ -89,7 +89,7 @@ describe('ExecutionsList.vue', () => {
 	let workflowsData: IWorkflowDb[];
 	let executionsData: Array<{
 		count: number;
-		results: IExecutionsSummary[];
+		results: ExecutionSummary[];
 		estimated: boolean;
 	}>;
 

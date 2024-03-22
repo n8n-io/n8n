@@ -209,55 +209,55 @@ export class License {
 	}
 
 	isSharingEnabled() {
-		return true;
+    return true;
 	}
 
 	isLogStreamingEnabled() {
-		return true;
+    return true;
 	}
 
 	isLdapEnabled() {
-		return true;
+    return true;
 	}
 
 	isSamlEnabled() {
-		return true;
+    return true;
 	}
 
 	isAdvancedExecutionFiltersEnabled() {
-		return true;
+    return true;
 	}
 
 	isAdvancedPermissionsLicensed() {
-		return true;
+    return true;
 	}
 
 	isDebugInEditorLicensed() {
-		return true;
+    return true;
 	}
 
 	isBinaryDataS3Licensed() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.BINARY_DATA_S3);
+    return true;
 	}
 
 	isMultipleMainInstancesLicensed() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
+    return true;
 	}
 
 	isVariablesEnabled() {
-		return true;
+    return true;
 	}
 
 	isSourceControlLicensed() {
-		return true;
+    return true;
 	}
 
 	isExternalSecretsEnabled() {
-		return true;
+    return true;
 	}
 
 	isWorkflowHistoryLicensed() {
-		return true;
+    return true;
 	}
 
 	isAPIDisabled() {
@@ -265,7 +265,7 @@ export class License {
 	}
 
 	isWorkerViewLicensed() {
-		return true;
+    return true;
 	}
 
 	getCurrentEntitlements() {

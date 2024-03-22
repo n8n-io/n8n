@@ -81,5 +81,13 @@ describe('Data Transformation Functions', () => {
 		test('.urlEncode should work on an object', () => {
 			expect(evaluate('={{ ({ test1: 1, test2: "2" }).urlEncode() }}')).toEqual('test1=1&test2=2');
 		});
+
+		test('.keys should work on an object', () => {
+			expect(evaluate('={{ ({ test1: 1, test2: "2" }).keys() }}')).toEqual(['test1', 'test2']);
+		});
+
+		test('.values should work on an object', () => {
+			expect(evaluate('={{ ({ test1: 1, test2: "2" }).values() }}')).toEqual([1, '2']);
+		});
 	});
 });

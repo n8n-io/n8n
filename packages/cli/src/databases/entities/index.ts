@@ -41,6 +41,6 @@ export const entities = {
 	WorkflowStatistics,
 	ExecutionMetadata,
 	ExecutionData,
-	WorkflowEntityWithVersion,
+  WorkflowEntityWithVersion,
 	WorkflowHistory,
 };

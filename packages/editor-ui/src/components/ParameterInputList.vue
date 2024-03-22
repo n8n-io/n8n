@@ -182,7 +182,6 @@ import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
 import FilterConditions from '@/components/FilterConditions/FilterConditions.vue';
 import AssignmentCollection from '@/components/AssignmentCollection/AssignmentCollection.vue';
 import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import {
@@ -192,6 +191,8 @@ import {
 } from '@/utils/nodeTypesUtils';
 import { get, set } from 'lodash-es';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { useRouter } from 'vue-router';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 
 const FixedCollectionParameter = defineAsyncComponent(
 	async () => await import('./FixedCollectionParameter.vue'),
@@ -212,7 +213,6 @@ export default defineComponent({
 		FilterConditions,
 		AssignmentCollection,
 	},
-	mixins: [workflowHelpers],
 	props: {
 		nodeValues: {
 			type: Object as PropType<INodeParameters>,
@@ -250,6 +250,8 @@ export default defineComponent({
 	setup() {
 		const nodeHelpers = useNodeHelpers();
 		const asyncLoadingError = ref(false);
+		const router = useRouter();
+		const workflowHelpers = useWorkflowHelpers({ router });
 
 		// This will catch errors in async components
 		onErrorCaptured((e, component) => {
@@ -274,6 +276,7 @@ export default defineComponent({
 		return {
 			nodeHelpers,
 			asyncLoadingError,
+			workflowHelpers,
 		};
 	},
 	computed: {
@@ -482,7 +485,7 @@ export default defineComponent({
 					} else {
 						// Contains probably no expression with a missing parameter so resolve
 						try {
-							nodeValues[key] = this.resolveExpression(
+							nodeValues[key] = this.workflowHelpers.resolveExpression(
 								rawValues[key],
 								nodeValues,
 							) as NodeParameterValue;
@@ -559,7 +562,7 @@ export default defineComponent({
 			// Get the resolved parameter values of the current node
 			const currentNodeParameters = this.ndvStore.activeNode?.parameters;
 			try {
-				const resolvedNodeParameters = this.resolveParameter(currentNodeParameters);
+				const resolvedNodeParameters = this.workflowHelpers.resolveParameter(currentNodeParameters);
 
 				const returnValues: string[] = [];
 				for (const parameterPath of loadOptionsDependsOn) {

@@ -6,6 +6,8 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 	NodeParameterValue,
+	IRequestOptions,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
@@ -463,7 +465,7 @@ export class Chargebee implements INodeType {
 				const resource = this.getNodeParameter('resource', i);
 				const operation = this.getNodeParameter('operation', i);
 
-				let requestMethod = 'GET';
+				let requestMethod: IHttpRequestMethods = 'GET';
 				let endpoint = '';
 				body = {};
 				qs = {};
@@ -589,7 +591,7 @@ export class Chargebee implements INodeType {
 						pass: '',
 					},
 					json: true,
-				};
+				} satisfies IRequestOptions;
 
 				let responseData;
 

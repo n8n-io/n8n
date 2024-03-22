@@ -158,6 +158,21 @@ export class WorkflowRunner {
 	): Promise<string> {
 		// Register a new execution
 		const executionId = await this.activeExecutions.add(data, restartExecutionId);
+
+		const { id: workflowId, nodes } = data.workflowData;
+		try {
+			await this.permissionChecker.check(workflowId, data.userId, nodes);
+		} catch (error) {
+			// Create a failed execution with the data for the node, save it and abort execution
+			const runData = generateFailedExecutionFromError(data.executionMode, error, error.node);
+			const workflowHooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId);
+			await workflowHooks.executeHookFunctions('workflowExecuteBefore', []);
+			await workflowHooks.executeHookFunctions('workflowExecuteAfter', [runData]);
+			responsePromise?.reject(error);
+			this.activeExecutions.remove(executionId);
+			return executionId;
+		}
+
 		if (responsePromise) {
 			this.activeExecutions.attachResponsePromise(executionId, responsePromise);
 		}
@@ -267,27 +282,7 @@ export class WorkflowRunner {
 		await this.executionRepository.updateStatus(executionId, 'running');
 
 		try {
-			additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(
-				data,
-				executionId,
-				true,
-			);
-
-			try {
-				await this.permissionChecker.check(workflow, data.userId);
-			} catch (error) {
-				ErrorReporter.error(error);
-				// Create a failed execution with the data for the node
-				// save it and abort execution
-				const failedExecution = generateFailedExecutionFromError(
-					data.executionMode,
-					error,
-					error.node,
-				);
-				await additionalData.hooks.executeHookFunctions('workflowExecuteAfter', [failedExecution]);
-				this.activeExecutions.remove(executionId, failedExecution);
-				return;
-			}
+			additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId);
 
 			additionalData.hooks.hookFunctions.sendResponse = [
 				async (response: IExecuteResponsePromiseData): Promise<void> => {
@@ -303,6 +298,7 @@ export class WorkflowRunner {
 				sessionId: data.sessionId,
 			});
 
+			await additionalData.hooks.executeHookFunctions('workflowExecuteBefore', []);
 			if (data.executionData !== undefined) {
 				this.logger.debug(`Execution ID ${executionId} had Execution data. Running with payload.`, {
 					executionId,

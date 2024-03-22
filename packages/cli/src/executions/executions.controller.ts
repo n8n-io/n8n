@@ -1,7 +1,7 @@
 import type { GetManyActiveFilter } from './execution.types';
 import { ExecutionRequest } from './execution.types';
 import { ExecutionService } from './execution.service';
-import { Authorized, Get, Post, RestController } from '@/decorators';
+import { Get, Post, RestController } from '@/decorators';
 import { EnterpriseExecutionsService } from './execution.service.ee';
 import { License } from '@/License';
 import { WorkflowSharingService } from '@/workflows/workflowSharing.service';
@@ -11,7 +11,6 @@ import { jsonParse } from 'n8n-workflow';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ActiveExecutionService } from './active-execution.service';
 
-@Authorized()
 @RestController('/executions')
 export class ExecutionsController {
 	private readonly isQueueMode = config.getEnv('executions.mode') === 'queue';

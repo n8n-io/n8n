@@ -7,7 +7,7 @@ import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { License } from '@/License';
 import { LICENSE_FEATURES, inE2ETests } from '@/constants';
-import { NoAuthRequired, Patch, Post, RestController } from '@/decorators';
+import { Patch, Post, RestController } from '@/decorators';
 import type { UserSetupPayload } from '@/requests';
 import type { BooleanLicenseFeature, IPushDataType } from '@/Interfaces';
 import { MfaService } from '@/Mfa/mfa.service';
@@ -60,7 +60,6 @@ type PushRequest = Request<
 	}
 >;
 
-@NoAuthRequired()
 @RestController('/e2e')
 export class E2EController {
 	private enabledFeatures: Record<BooleanLicenseFeature, boolean> = {
@@ -97,7 +96,7 @@ export class E2EController {
 			this.enabledFeatures[feature] ?? false;
 	}
 
-	@Post('/reset')
+	@Post('/reset', { skipAuth: true })
 	async reset(req: ResetRequest) {
 		this.resetFeatures();
 		await this.resetLogStreaming();
@@ -107,18 +106,18 @@ export class E2EController {
 		await this.setupUserManagement(req.body.owner, req.body.members, req.body.admin);
 	}
 
-	@Post('/push')
+	@Post('/push', { skipAuth: true })
 	async pushSend(req: PushRequest) {
 		this.push.broadcast(req.body.type, req.body.data);
 	}
 
-	@Patch('/feature')
+	@Patch('/feature', { skipAuth: true })
 	setFeature(req: Request<{}, {}, { feature: BooleanLicenseFeature; enabled: boolean }>) {
 		const { enabled, feature } = req.body;
 		this.enabledFeatures[feature] = enabled;
 	}
 
-	@Patch('/queue-mode')
+	@Patch('/queue-mode', { skipAuth: true })
 	async setQueueMode(req: Request<{}, {}, { enabled: boolean }>) {
 		const { enabled } = req.body;
 		config.set('executions.mode', enabled ? 'queue' : 'regular');

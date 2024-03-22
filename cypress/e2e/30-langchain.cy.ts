@@ -26,7 +26,10 @@ import {
 	clickExecuteNode,
 	clickGetBackToCanvas,
 	getOutputPanelTable,
+	getParameterInputByName,
 	setParameterInputByName,
+	setParameterSelectByContent,
+	toggleParameterCheckboxInputByName,
 } from '../composables/ndv';
 import { setCredentialValues } from '../composables/modals/credential-modal';
 import {
@@ -45,9 +48,11 @@ describe('Langchain Integration', () => {
 
 	it('should add nodes to all Agent node input types', () => {
 		addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME, true);
-		addNodeToCanvas(AGENT_NODE_NAME, true);
+		addNodeToCanvas(AGENT_NODE_NAME, true, true);
+		toggleParameterCheckboxInputByName('hasOutputParser');
+		clickGetBackToCanvas();
 
-		addLanguageModelNodeToParent(AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME, AGENT_NODE_NAME);
+		addLanguageModelNodeToParent(AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME, AGENT_NODE_NAME, true);
 		clickGetBackToCanvas();
 
 		addMemoryNodeToParent(AI_MEMORY_WINDOW_BUFFER_MEMORY_NODE_NAME, AGENT_NODE_NAME);
@@ -94,10 +99,11 @@ describe('Langchain Integration', () => {
 
 		openNode(BASIC_LLM_CHAIN_NODE_NAME);
 
+		setParameterSelectByContent('promptType', 'Define below')
 		const inputMessage = 'Hello!';
 		const outputMessage = 'Hi there! How can I assist you today?';
 
-		setParameterInputByName('prompt', inputMessage);
+		setParameterInputByName('text', inputMessage);
 
 		runMockWorkflowExcution({
 			trigger: () => clickExecuteNode(),
@@ -135,6 +141,7 @@ describe('Langchain Integration', () => {
 		const inputMessage = 'Hello!';
 		const outputMessage = 'Hi there! How can I assist you today?';
 
+		setParameterSelectByContent('promptType', 'Define below')
 		setParameterInputByName('text', inputMessage);
 
 		runMockWorkflowExcution({

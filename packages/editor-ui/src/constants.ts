@@ -131,6 +131,9 @@ export const MANUAL_TRIGGER_NODE_TYPE = 'n8n-nodes-base.manualTrigger';
 export const MANUAL_CHAT_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.manualChatTrigger';
 export const CHAT_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.chatTrigger';
 export const AGENT_NODE_TYPE = '@n8n/n8n-nodes-langchain.agent';
+export const OPEN_AI_NODE_TYPE = '@n8n/n8n-nodes-langchain.openAi';
+export const OPEN_AI_NODE_MESSAGE_ASSISTANT_TYPE =
+	'@n8n/n8n-nodes-langchain.openAi.assistant.message';
 export const OPEN_AI_ASSISTANT_NODE_TYPE = '@n8n/n8n-nodes-langchain.openAiAssistant';
 export const BASIC_CHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.chainLlm';
 export const QA_CHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.chainRetrievalQa';
@@ -179,6 +182,8 @@ export const CRYPTO_NODE_TYPE = 'n8n-nodes-base.crypto';
 export const RSS_READ_NODE_TYPE = 'n8n-nodes-base.rssFeedRead';
 export const COMPRESSION_NODE_TYPE = 'n8n-nodes-base.compression';
 export const EDIT_IMAGE_NODE_TYPE = 'n8n-nodes-base.editImage';
+export const CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE =
+	'@n8n/n8n-nodes-langchain.chainSummarization';
 
 export const CREDENTIAL_ONLY_NODE_PREFIX = 'n8n-creds-base';
 export const CREDENTIAL_ONLY_HTTP_NODE_VERSION = 4.1;
@@ -393,6 +398,7 @@ export const LOCAL_STORAGE_ACTIVATION_FLAG = 'N8N_HIDE_ACTIVATION_ALERT';
 export const LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG = 'N8N_PIN_DATA_DISCOVERY_NDV';
 export const LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG = 'N8N_PIN_DATA_DISCOVERY_CANVAS';
 export const LOCAL_STORAGE_MAPPING_IS_ONBOARDED = 'N8N_MAPPING_ONBOARDED';
+export const LOCAL_STORAGE_AUTOCOMPLETE_IS_ONBOARDED = 'N8N_AUTOCOMPLETE_ONBOARDED';
 export const LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH = 'N8N_MAIN_PANEL_RELATIVE_WIDTH';
 export const LOCAL_STORAGE_ACTIVE_MODAL = 'N8N_ACTIVE_MODAL';
 export const LOCAL_STORAGE_THEME = 'N8N_THEME';
@@ -523,7 +529,7 @@ export const enum WORKFLOW_MENU_ACTIONS {
 	PUSH = 'push',
 	SETTINGS = 'settings',
 	DELETE = 'delete',
-	VIEW_WORKFLOW_VERSIONS = 'view-workflow-versions',
+  VIEW_WORKFLOW_VERSIONS = 'view-workflow-versions',
 }
 
 /**
@@ -739,3 +745,35 @@ export const MOUSE_EVENT_BUTTONS = {
 	BROWSER_BACK: 8,
 	BROWSER_FORWARD: 16,
 } as const;
+
+/**
+ * Urls used to route users to the right template repository
+ */
+export const TEMPLATES_URLS = {
+	DEFAULT_API_HOST: 'https://api.n8n.io/api/',
+	BASE_WEBSITE_URL: 'https://n8n.io/workflows',
+	UTM_QUERY: 'utm_source=n8n_app&utm_medium=template_library',
+};
+
+export const ROLE = {
+	Owner: 'global:owner',
+	Member: 'global:member',
+	Admin: 'global:admin',
+	Default: 'default', // default user with no email when setting up instance
+} as const;
+
+export const INSECURE_CONNECTION_WARNING = `
+<body style="margin-top: 20px; font-family: 'Open Sans', sans-serif; text-align: center;">
+<h1 style="font-size: 40px">&#x1F6AB;</h1>
+<h2>Your n8n server is configured to use a secure cookie, <br/>however you are visiting this via an insecure URL
+</h2>
+<br/>
+<div style="font-size: 18px; max-width: 640px; text-align: left; margin: 10px auto">
+	To fix this, please consider the following options:
+	<ul>
+		<li>Setup TLS/HTTPS (<strong>recommended</strong>), or</li>
+		<li>If you are running this locally, try using <a href="http://localhost:5678">localhost</a> instead</li>
+		<li>If you prefer to disable this security feature (<strong>not recommended</strong>), set the environment variable <code>N8N_SECURE_COOKIE</code> to <code>false</code></li>
+	</ul>
+</div>
+</body>`;

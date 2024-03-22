@@ -43,13 +43,13 @@ export function getRedisStandardClient(
 	redisOptions?: RedisOptions,
 	redisType?: RedisClientType,
 ): Redis | Cluster {
-	const logger = Container.get(Logger);
+  const logger = Container.get(Logger);
 	let lastTimer = 0;
 	let cumulativeTimeout = 0;
-	const { host, port, username, password, db }: RedisOptions =
+  const { host, port, username, password, db }: RedisOptions =
 		parseRedisUrl() || config.getEnv('queue.bull.redis');
 	const redisConnectionTimeoutLimit = config.getEnv('queue.bull.redis.timeoutThreshold');
-	logger.debug(`Redis is configured to: host: ${host}, port: ${port}, db: ${db}`);
+  logger.debug(`Redis is configured to: host: ${host}, port: ${port}, db: ${db}`);
 
 	const sharedRedisOptions: RedisOptions = {
 		...redisOptions,
@@ -61,9 +61,8 @@ export function getRedisStandardClient(
 		enableReadyCheck: false,
 		maxRetriesPerRequest: null,
 	};
-
 	// if (config.getEnv('queue.bull.redis.tls')) sharedRedisOptions.tls = {};
-	if (host !== 'localhost' && '127.0.0.1') {
+  if (host !== 'localhost' && '127.0.0.1') {
 		// If redis is in localhost mode then there is no need to configre any ssl options
 		sharedRedisOptions['tls'] = { rejectUnauthorized: false };
 	}
@@ -104,7 +103,7 @@ export function getRedisClusterClient(
 	let lastTimer = 0;
 	let cumulativeTimeout = 0;
 	const clusterNodes = getRedisClusterNodes();
-	const { host, port, username, password, db }: RedisOptions =
+  const { host, port, username, password, db }: RedisOptions =
 		parseRedisUrl() || config.getEnv('queue.bull.redis');
 	const redisConnectionTimeoutLimit = config.getEnv('queue.bull.redis.timeoutThreshold');
 	const sharedRedisOptions: RedisOptions = {
@@ -115,14 +114,12 @@ export function getRedisClusterClient(
 		enableReadyCheck: false,
 		maxRetriesPerRequest: null,
 	};
-
-	if (host !== 'localhost' && '127.0.0.1') {
+  if (host !== 'localhost' && '127.0.0.1') {
 		// If redis is in localhost mode then there is no need to configre any ssl options
 		sharedRedisOptions['tls'] = { rejectUnauthorized: false };
 	}
 
-	if (config.getEnv('queue.bull.redis.tls')) sharedRedisOptions.tls = {};
-
+  if (config.getEnv('queue.bull.redis.tls')) sharedRedisOptions.tls = {};
 	const logger = Container.get(Logger);
 	logger.debug(
 		`Initialising Redis cluster${

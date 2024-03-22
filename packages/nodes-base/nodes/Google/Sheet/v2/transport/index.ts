@@ -1,17 +1,19 @@
-import type { OptionsWithUri } from 'request';
 import type {
 	IDataObject,
 	IExecuteFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	IPollFunctions,
+	IRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 import { getGoogleAccessToken } from '../../../GenericFunctions';
+import set from 'lodash/set';
 
 export async function apiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
@@ -24,7 +26,7 @@ export async function apiRequest(
 		0,
 		'serviceAccount',
 	) as string;
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
@@ -61,11 +63,15 @@ export async function apiRequest(
 			error.statusCode = '401';
 		}
 
-		if (error.message.includes('PERMISSION_DENIED')) {
-			const message = `Missing permissions for Google Sheet, ${error.message}}`;
-			const details = error.description ? ` Details of the error: ${error.description}.` : '';
-			const description = `Please check that the account you're using has the right permissions. (If you're trying to modify the sheet, you'll need edit access.)${details}`;
-			throw new NodeApiError(this.getNode(), error as JsonObject, { message, description });
+		if (error instanceof NodeApiError) {
+			if (error.message.includes('PERMISSION_DENIED')) {
+				const details = error.description ? ` Details of the error: ${error.description}.` : '';
+				const description = `Please check that the account you're using has the right permissions. (If you're trying to modify the sheet, you'll need edit access.)${details}`;
+
+				set(error, 'description', description);
+			}
+
+			throw error;
 		}
 
 		throw new NodeApiError(this.getNode(), error as JsonObject);
@@ -75,7 +81,7 @@ export async function apiRequest(
 export async function apiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	query: IDataObject = {},

@@ -15,7 +15,7 @@
 			<AboutModal />
 		</ModalRoot>
 
-		<ModalRoot :name="WORKFLOW_WITH_VERSION_MODAL_KEY">
+    <ModalRoot :name="WORKFLOW_WITH_VERSION_MODAL_KEY">
 			<WorkflowWithVersionModalKey />
 		</ModalRoot>
 
@@ -204,7 +204,7 @@ import {
 	WORKFLOW_SHARE_MODAL_KEY,
 	IMPORT_CURL_MODAL_KEY,
 	LOG_STREAM_MODAL_KEY,
-	WORKFLOW_WITH_VERSION_MODAL_KEY,
+  WORKFLOW_WITH_VERSION_MODAL_KEY,
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
 	SOURCE_CONTROL_PULL_MODAL_KEY,
 	EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
@@ -252,7 +252,7 @@ export default defineComponent({
 	name: 'Modals',
 	components: {
 		AboutModal,
-		WorkflowWithVersionModalKey,
+    WorkflowWithVersionModalKey,
 		ActivationModal,
 		ChatEmbedModal,
 		CommunityPackageInstallModal,
@@ -292,7 +292,7 @@ export default defineComponent({
 		CREDENTIAL_EDIT_MODAL_KEY,
 		CREDENTIAL_SELECT_MODAL_KEY,
 		ABOUT_MODAL_KEY,
-		WORKFLOW_WITH_VERSION_MODAL_KEY,
+    WORKFLOW_WITH_VERSION_MODAL_KEY,
 		CHANGE_PASSWORD_MODAL_KEY,
 		DELETE_USER_MODAL_KEY,
 		DUPLICATE_MODAL_KEY,

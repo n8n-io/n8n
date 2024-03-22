@@ -53,7 +53,6 @@ import { defineComponent } from 'vue';
 import type { INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
 import ParameterInput from '@/components/ParameterInput.vue';
 import InputHint from '@/components/ParameterInputHint.vue';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -68,9 +67,11 @@ import type {
 } from 'n8n-workflow';
 import { isResourceLocatorValue } from 'n8n-workflow';
 
-import { get } from 'lodash-es';
 import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
+import { useRouter } from 'vue-router';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { getExpressionErrorMessage, getResolvableState } from '@/utils/expressions';
 
 export default defineComponent({
 	name: 'ParameterInputWrapper',
@@ -78,7 +79,6 @@ export default defineComponent({
 		ParameterInput,
 		InputHint,
 	},
-	mixins: [workflowHelpers],
 	props: {
 		additionalExpressionData: {
 			type: Object as PropType<IDataObject>,
@@ -149,6 +149,14 @@ export default defineComponent({
 			default: () => createEventBus(),
 		},
 	},
+	setup() {
+		const router = useRouter();
+		const workflowHelpers = useWorkflowHelpers({ router });
+
+		return {
+			workflowHelpers,
+		};
+	},
 	computed: {
 		...mapStores(useNDVStore, useExternalSecretsStore, useEnvironmentsStore),
 		isValueExpression() {
@@ -209,7 +217,7 @@ export default defineComponent({
 					};
 				}
 
-				return { ok: true, result: this.resolveExpression(value, undefined, opts) };
+				return { ok: true, result: this.workflowHelpers.resolveExpression(value, undefined, opts) };
 			} catch (error) {
 				return { ok: false, error };
 			}
@@ -222,9 +230,12 @@ export default defineComponent({
 			const evaluated = this.evaluatedExpression;
 
 			if (!evaluated.ok) {
-				return `[${this.$locale.baseText('parameterInput.error')}: ${get(
-					evaluated.error,
-					'message',
+				if (getResolvableState(evaluated.error) !== 'invalid') {
+					return null;
+				}
+
+				return `[${this.$locale.baseText('parameterInput.error')}: ${getExpressionErrorMessage(
+					evaluated.error as Error,
 				)}]`;
 			}
 

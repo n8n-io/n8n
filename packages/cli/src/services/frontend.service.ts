@@ -83,6 +83,7 @@ export class FrontendService {
 		}
 
 		this.settings = {
+			previewMode: process.env.N8N_PREVIEW_MODE === 'true',
 			endpointForm: config.getEnv('endpoints.form'),
 			endpointFormTest: config.getEnv('endpoints.formTest'),
 			endpointFormWaiting: config.getEnv('endpoints.formWaiting'),
@@ -97,7 +98,11 @@ export class FrontendService {
 			timezone: config.getEnv('generic.timezone'),
 			urlBaseWebhook: this.urlService.getWebhookBaseUrl(),
 			urlBaseEditor: instanceBaseUrl,
+			binaryDataMode: config.getEnv('binaryDataManager.mode'),
 			versionCli: '',
+			authCookie: {
+				secure: config.getEnv('secure_cookie'),
+			},
 			releaseChannel: config.getEnv('generic.releaseChannel'),
 			oauthCallbackUrls: {
 				oauth1: `${instanceBaseUrl}/${restEndpoint}/oauth1-credential/callback`,
@@ -129,11 +134,11 @@ export class FrontendService {
 			},
 			sso: {
 				saml: {
-					loginEnabled: false,
+					loginEnabled: true,
 					loginLabel: '',
 				},
 				ldap: {
-					loginEnabled: false,
+					loginEnabled: true,
 					loginLabel: '',
 				},
 			},
@@ -165,21 +170,21 @@ export class FrontendService {
 				external: process.env.NODE_FUNCTION_ALLOW_EXTERNAL?.split(',') ?? undefined,
 			},
 			enterprise: {
-				sharing: false,
-				ldap: false,
-				saml: false,
-				logStreaming: false,
-				advancedExecutionFilters: false,
-				variables: false,
+				sharing: true,
+				ldap: true,
+				saml: true,
+				logStreaming: true,
+				advancedExecutionFilters: true,
+				variables: true,
 				sourceControl: false,
 				auditLogs: false,
 				externalSecrets: false,
 				showNonProdBanner: false,
-				debugInEditor: false,
+				debugInEditor: true,
 				binaryDataS3: false,
-				workflowHistory: false,
-				workerView: false,
-				advancedPermissions: false,
+				workflowHistory: true,
+				workerView: true,
+				advancedPermissions: true,
 			},
 			mfa: {
 				enabled: false,
@@ -199,6 +204,8 @@ export class FrontendService {
 			},
 			ai: {
 				enabled: config.getEnv('ai.enabled'),
+				provider: config.getEnv('ai.provider'),
+				errorDebugging: !!config.getEnv('ai.openAIApiKey'),
 			},
 			workflowHistory: {
 				pruneTime: -1,
@@ -306,6 +313,8 @@ export class FrontendService {
 		this.settings.mfa.enabled = config.get('mfa.enabled');
 
 		this.settings.executionMode = config.getEnv('executions.mode');
+
+		this.settings.binaryDataMode = config.getEnv('binaryDataManager.mode');
 
 		return this.settings;
 	}

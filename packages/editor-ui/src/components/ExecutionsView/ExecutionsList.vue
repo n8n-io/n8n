@@ -44,7 +44,7 @@ import type {
 	IWorkflowDb,
 } from '@/Interface';
 import type {
-	IExecutionsSummary,
+	ExecutionSummary,
 	IConnection,
 	IConnections,
 	IDataObject,
@@ -55,12 +55,11 @@ import { NodeHelpers } from 'n8n-workflow';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import { v4 as uuid } from 'uuid';
-import type { Route } from 'vue-router';
+import { useRouter, type Route } from 'vue-router';
 import { executionHelpers } from '@/mixins/executionsHelpers';
 import { range as _range } from 'lodash-es';
 import { NO_NETWORK_ERROR_CODE } from '@/utils/apiUtils';
 import { getNodeViewTab } from '@/utils/canvasUtils';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -69,6 +68,7 @@ import { useTagsStore } from '@/stores/tags.store';
 import { executionFilterToQueryFilter } from '@/utils/executionUtils';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useDebounce } from '@/composables/useDebounce';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 
 // Number of execution pages that are fetched before temporary execution card is shown
 const MAX_LOADING_ATTEMPTS = 5;
@@ -80,13 +80,16 @@ export default defineComponent({
 	components: {
 		ExecutionsSidebar,
 	},
-	mixins: [executionHelpers, workflowHelpers],
+	mixins: [executionHelpers],
 	setup() {
 		const externalHooks = useExternalHooks();
+		const router = useRouter();
+		const workflowHelpers = useWorkflowHelpers({ router });
 		const { callDebounced } = useDebounce();
 
 		return {
 			externalHooks,
+			workflowHelpers,
 			callDebounced,
 			...useToast(),
 			...useMessage(),
@@ -97,7 +100,7 @@ export default defineComponent({
 			loading: false,
 			loadingMore: false,
 			filter: {} as ExecutionFilterType,
-			temporaryExecution: null as IExecutionsSummary | null,
+			temporaryExecution: null as ExecutionSummary | null,
 			autoRefresh: false,
 			autoRefreshTimeout: undefined as undefined | NodeJS.Timer,
 		};
@@ -168,7 +171,7 @@ export default defineComponent({
 			);
 
 			if (confirmModal === MODAL_CONFIRM) {
-				const saved = await this.saveCurrentWorkflow({}, false);
+				const saved = await this.workflowHelpers.saveCurrentWorkflow({}, false);
 				if (saved) {
 					await this.settingsStore.fetchPromptsData();
 				}
@@ -281,7 +284,7 @@ export default defineComponent({
 			this.loading = true;
 			try {
 				const executionIndex = this.executions.findIndex(
-					(execution: IExecutionsSummary) => execution.id === this.$route.params.executionId,
+					(execution: ExecutionSummary) => execution.id === this.$route.params.executionId,
 				);
 				const nextExecution =
 					this.executions[executionIndex + 1] ||
@@ -385,8 +388,8 @@ export default defineComponent({
 		},
 		async loadAutoRefresh(): Promise<void> {
 			// Most of the auto-refresh logic is taken from the `ExecutionsList` component
-			const fetchedExecutions: IExecutionsSummary[] = await this.loadExecutions();
-			let existingExecutions: IExecutionsSummary[] = [...this.executions];
+			const fetchedExecutions: ExecutionSummary[] = await this.loadExecutions();
+			let existingExecutions: ExecutionSummary[] = [...this.executions];
 			const alreadyPresentExecutionIds = existingExecutions.map((exec) => parseInt(exec.id, 10));
 			let lastId = 0;
 			const gaps = [] as number[];
@@ -462,7 +465,7 @@ export default defineComponent({
 				}
 			}
 		},
-		async loadExecutions(): Promise<IExecutionsSummary[]> {
+		async loadExecutions(): Promise<ExecutionSummary[]> {
 			if (!this.currentWorkflow) {
 				return [];
 			}
@@ -533,7 +536,7 @@ export default defineComponent({
 					);
 					return;
 				} else {
-					this.temporaryExecution = existingExecution as IExecutionsSummary;
+					this.temporaryExecution = existingExecution as ExecutionSummary;
 				}
 			}
 			// stop if the execution wasn't found in the first 1000 lookups
@@ -713,7 +716,7 @@ export default defineComponent({
 		async loadActiveWorkflows(): Promise<void> {
 			await this.workflowsStore.fetchActiveWorkflows();
 		},
-		async onRetryExecution(payload: { execution: IExecutionsSummary; command: string }) {
+		async onRetryExecution(payload: { execution: ExecutionSummary; command: string }) {
 			const loadWorkflow = payload.command === 'current-workflow';
 
 			this.showMessage({
@@ -730,7 +733,7 @@ export default defineComponent({
 				retry_type: loadWorkflow ? 'current' : 'original',
 			});
 		},
-		async retryExecution(execution: IExecutionsSummary, loadWorkflow?: boolean) {
+		async retryExecution(execution: ExecutionSummary, loadWorkflow?: boolean) {
 			try {
 				const retrySuccessful = await this.workflowsStore.retryExecution(
 					execution.id,

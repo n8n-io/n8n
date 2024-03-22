@@ -105,7 +105,7 @@ const createContext = (queryRunner: QueryRunner, migration: Migration): Migratio
 	isMysql,
 	dbName,
 	migrationName: migration.name,
-	schemaPrefix,
+  schemaPrefix,
 	queryRunner,
 	schemaBuilder: createSchemaBuilder(tablePrefix, queryRunner),
 	nodeTypes: Container.get(NodeTypes),

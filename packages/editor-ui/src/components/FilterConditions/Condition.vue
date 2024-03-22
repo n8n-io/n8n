@@ -4,26 +4,22 @@ import InputTriple from '@/components/InputTriple/InputTriple.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import { useI18n } from '@/composables/useI18n';
-import { resolveParameter } from '@/mixins/workflowHelpers';
 import { DateTime } from 'luxon';
 import {
-	FilterError,
-	executeFilterCondition,
-	validateFieldType,
 	type FilterConditionValue,
-	type FilterOperatorType,
 	type FilterOptionsValue,
 	type INodeProperties,
-	type NodeParameterValue,
 } from 'n8n-workflow';
 import { computed, ref } from 'vue';
 import OperatorSelect from './OperatorSelect.vue';
-import { OPERATORS_BY_ID, type FilterOperatorId } from './constants';
-import type { FilterOperator } from './types';
-type ConditionResult =
-	| { status: 'resolve_error' }
-	| { status: 'validation_error'; error: string }
-	| { status: 'success'; result: boolean };
+import { type FilterOperatorId } from './constants';
+import {
+	getFilterOperator,
+	handleOperatorChange,
+	isEmptyInput,
+	operatorTypeToNodeProperty,
+	resolveCondition,
+} from './utils';
 
 interface Props {
 	path: string;
@@ -41,6 +37,7 @@ const props = withDefaults(defineProps<Props>(), {
 	canRemove: true,
 	fixedLeftValue: false,
 	readOnly: false,
+	index: 0,
 });
 
 const emit = defineEmits<{
@@ -56,62 +53,22 @@ const operatorId = computed<FilterOperatorId>(() => {
 	const { type, operation } = props.condition.operator;
 	return `${type}:${operation}` as FilterOperatorId;
 });
-const operator = computed(() => OPERATORS_BY_ID[operatorId.value] as FilterOperator);
+const operator = computed(() => getFilterOperator(operatorId.value));
 
-const operatorTypeToNodeProperty = (
-	operatorType: FilterOperatorType,
-): Pick<INodeProperties, 'type' | 'options'> => {
-	switch (operatorType) {
-		case 'boolean':
-			return {
-				type: 'options',
-				options: [
-					{ name: 'true', value: true },
-					{ name: 'false', value: false },
-				],
-			};
-		case 'array':
-		case 'object':
-		case 'any':
-			return { type: 'string' };
-		default:
-			return { type: operatorType };
+const isEmpty = computed(() => {
+	if (operator.value.singleValue) {
+		return isEmptyInput(condition.value.leftValue);
 	}
-};
 
-const conditionResult = computed<ConditionResult>(() => {
-	try {
-		const resolved = resolveParameter(
-			condition.value as unknown as NodeParameterValue,
-		) as FilterConditionValue;
-
-		if (resolved.leftValue === undefined || resolved.rightValue === undefined) {
-			return { status: 'resolve_error' };
-		}
-		try {
-			const result = executeFilterCondition(resolved, props.options, {
-				index: props.index ?? 0,
-				errorFormat: 'inline',
-			});
-			return { status: 'success', result };
-		} catch (error) {
-			let errorMessage = i18n.baseText('parameterInput.error');
-
-			if (error instanceof FilterError) {
-				errorMessage = `${error.message}.\n${error.description}`;
-			}
-			return {
-				status: 'validation_error',
-				error: errorMessage,
-			};
-		}
-	} catch (error) {
-		return { status: 'resolve_error' };
-	}
+	return isEmptyInput(condition.value.leftValue) && isEmptyInput(condition.value.rightValue);
 });
 
+const conditionResult = computed(() =>
+	resolveCondition({ condition: condition.value, options: props.options }),
+);
+
 const allIssues = computed(() => {
-	if (conditionResult.value.status === 'validation_error') {
+	if (conditionResult.value.status === 'validation_error' && !isEmpty.value) {
 		return [conditionResult.value.error];
 	}
 
@@ -131,16 +88,17 @@ const leftParameter = computed<INodeProperties>(() => ({
 	...operatorTypeToNodeProperty(operator.value.type),
 }));
 
-const rightParameter = computed<INodeProperties>(() => ({
-	name: '',
-	displayName: '',
-	default: '',
-	placeholder:
-		operator.value.type === 'dateTime'
-			? now.value
-			: i18n.baseText('filter.condition.placeholderRight'),
-	...operatorTypeToNodeProperty(operator.value.type),
-}));
+const rightParameter = computed<INodeProperties>(() => {
+	const type = operator.value.rightType ?? operator.value.type;
+	return {
+		name: '',
+		displayName: '',
+		default: '',
+		placeholder:
+			type === 'dateTime' ? now.value : i18n.baseText('filter.condition.placeholderRight'),
+		...operatorTypeToNodeProperty(type),
+	};
+});
 
 const onLeftValueChange = (update: IUpdateInformation): void => {
 	condition.value.leftValue = update.value;
@@ -150,38 +108,14 @@ const onRightValueChange = (update: IUpdateInformation): void => {
 	condition.value.rightValue = update.value;
 };
 
-const convertToType = (value: unknown, type: FilterOperatorType): unknown => {
-	if (type === 'any') return value;
-
-	const fallback = type === 'boolean' ? false : value;
-
-	return (
-		validateFieldType('filter', condition.value.leftValue, type, { parseStrings: true }).newValue ??
-		fallback
-	);
-};
-
 const onOperatorChange = (value: string): void => {
-	const newOperator = OPERATORS_BY_ID[value as FilterOperatorId] as FilterOperator;
-	const rightType = operator.value.rightType ?? operator.value.type;
-	const newRightType = newOperator.rightType ?? newOperator.type;
-	const leftTypeChanged = operator.value.type !== newOperator.type;
-	const rightTypeChanged = rightType !== newRightType;
+	const newOperator = getFilterOperator(value);
 
-	// Try to convert left & right values to operator type
-	if (leftTypeChanged) {
-		condition.value.leftValue = convertToType(condition.value.leftValue, newOperator.type);
-	}
-	if (rightTypeChanged && !newOperator.singleValue) {
-		condition.value.rightValue = convertToType(condition.value.rightValue, newRightType);
-	}
+	condition.value = handleOperatorChange({
+		condition: condition.value,
+		newOperator,
+	});
 
-	condition.value.operator = {
-		type: newOperator.type,
-		operation: newOperator.operation,
-		rightType: newOperator.rightType,
-		singleValue: newOperator.singleValue,
-	};
 	emit('update', condition.value);
 };
 
@@ -240,7 +174,7 @@ const onBlur = (): void => {
 					@operatorChange="onOperatorChange"
 				></OperatorSelect>
 			</template>
-			<template #right="{ breakpoint }" v-if="!operator.singleValue">
+			<template v-if="!operator.singleValue" #right="{ breakpoint }">
 				<ParameterInputFull
 					:key="rightParameter.type"
 					display-options
