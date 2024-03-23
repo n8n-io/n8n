@@ -373,8 +373,15 @@ export function useNodeHelpers() {
 			node.credentials !== undefined
 		) {
 			const stored = credentialsStore.getCredentialsByType(nodeCredentialType);
+			// Prevents HTTP Request node from being unusable if a sharee does not have direct
+			// access to a credential
+			const isCredentialUsedInWorkflow =
+				workflowsStore.usedCredentials?.[node.credentials?.[nodeCredentialType]?.id as string];
 
-			if (selectedCredsDoNotExist(node, nodeCredentialType, stored)) {
+			if (
+				selectedCredsDoNotExist(node, nodeCredentialType, stored) &&
+				!isCredentialUsedInWorkflow
+			) {
 				const credential = credentialsStore.getCredentialTypeByName(nodeCredentialType);
 				return credential ? reportUnsetCredential(credential) : null;
 			}

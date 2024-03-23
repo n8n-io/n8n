@@ -4,34 +4,22 @@
 	</N8nText>
 </template>
 
-<script lang="ts">
+<script lang="ts" setup>
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+import type { IconSize, IconColor } from '@/types/icon';
 import N8nText from '../N8nText';
 
-import { defineComponent } from 'vue';
+interface IconProps {
+	icon: string;
+	size?: IconSize;
+	spin?: boolean;
+	color?: IconColor;
+}
 
-export default defineComponent({
-	name: 'N8nIcon',
-	components: {
-		FontAwesomeIcon,
-		N8nText,
-	},
-	props: {
-		icon: {
-			required: true,
-		},
-		size: {
-			type: String,
-			default: 'medium',
-		},
-		spin: {
-			type: Boolean,
-			default: false,
-		},
-		color: {
-			type: String,
-		},
-	},
+defineOptions({ name: 'N8nIcon' });
+withDefaults(defineProps<IconProps>(), {
+	size: 'medium',
+	spin: false,
 });
 </script>
 

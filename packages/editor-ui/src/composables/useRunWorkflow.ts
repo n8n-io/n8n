@@ -24,7 +24,12 @@ import {
 import { useToast } from '@/composables/useToast';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
-import { FORM_TRIGGER_NODE_TYPE, WAIT_NODE_TYPE } from '@/constants';
+import {
+	CHAT_TRIGGER_NODE_TYPE,
+	FORM_TRIGGER_NODE_TYPE,
+	WAIT_NODE_TYPE,
+	WORKFLOW_LM_CHAT_MODAL_KEY,
+} from '@/constants';
 import { useTitleChange } from '@/composables/useTitleChange';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -198,6 +203,10 @@ export function useRunWorkflow(options: { router: ReturnType<typeof useRouter> }
 			);
 
 			const { startNodeNames } = consolidatedData;
+			const destinationNodeType = options.destinationNode
+				? workflowsStore.getNodeByName(options.destinationNode)?.type
+				: '';
+
 			let { runData: newRunData } = consolidatedData;
 			let executedNode: string | undefined;
 			if (
@@ -217,6 +226,27 @@ export function useRunWorkflow(options: { router: ReturnType<typeof useRouter> }
 				executedNode = options.triggerNode;
 			}
 
+			// If the destination node is specified, check if it is a chat node or has a chat parent
+			if (
+				options.destinationNode &&
+				(workflowsStore.checkIfNodeHasChatParent(options.destinationNode) ||
+					destinationNodeType === CHAT_TRIGGER_NODE_TYPE)
+			) {
+				const startNode = workflow.getStartNode(options.destinationNode);
+				if (startNode && startNode.type === CHAT_TRIGGER_NODE_TYPE) {
+					// Check if the chat node has input data or pin data
+					const chatHasInputData =
+						nodeHelpers.getNodeInputData(startNode, 0, 0, 'input')?.length > 0;
+					const chatHasPinData = !!workflowData.pinData?.[startNode.name];
+
+					// If the chat node has no input data or pin data, open the chat modal
+					// and halt the execution
+					if (!chatHasInputData && !chatHasPinData) {
+						uiStore.openModal(WORKFLOW_LM_CHAT_MODAL_KEY);
+						return;
+					}
+				}
+			}
 			const startNodes: StartNodeData[] = startNodeNames.map((name) => {
 				// Find for each start node the source data
 				let sourceData = get(runData, [name, 0, 'source', 0], null);

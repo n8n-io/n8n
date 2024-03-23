@@ -100,6 +100,9 @@ export class FrontendService {
 			urlBaseEditor: instanceBaseUrl,
 			binaryDataMode: config.getEnv('binaryDataManager.mode'),
 			versionCli: '',
+			authCookie: {
+				secure: config.getEnv('secure_cookie'),
+			},
 			releaseChannel: config.getEnv('generic.releaseChannel'),
 			oauthCallbackUrls: {
 				oauth1: `${instanceBaseUrl}/${restEndpoint}/oauth1-credential/callback`,
@@ -201,6 +204,8 @@ export class FrontendService {
 			},
 			ai: {
 				enabled: config.getEnv('ai.enabled'),
+				provider: config.getEnv('ai.provider'),
+				errorDebugging: !!config.getEnv('ai.openAIApiKey'),
 			},
 			workflowHistory: {
 				pruneTime: -1,

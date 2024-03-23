@@ -122,6 +122,7 @@ import { defineAsyncComponent, defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 
 import { useToast } from '@/composables/useToast';
+import { useMessage } from '@/composables/useMessage';
 import Modal from '@/components/Modal.vue';
 import { executionHelpers } from '@/mixins/executionsHelpers';
 import {
@@ -129,9 +130,11 @@ import {
 	AI_CATEGORY_CHAINS,
 	AI_CODE_NODE_TYPE,
 	AI_SUBCATEGORY,
+	CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE,
 	CHAT_EMBED_MODAL_KEY,
 	CHAT_TRIGGER_NODE_TYPE,
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
+	MODAL_CONFIRM,
 	WORKFLOW_LM_CHAT_MODAL_KEY,
 } from '@/constants';
 
@@ -152,6 +155,7 @@ import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useRouter } from 'vue-router';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
+import { usePinnedData } from '@/composables/usePinnedData';
 
 const RunDataAi = defineAsyncComponent(
 	async () => await import('@/components/RunDataAi/RunDataAi.vue'),
@@ -197,6 +201,7 @@ export default defineComponent({
 			externalHooks,
 			workflowHelpers,
 			...useToast(),
+			...useMessage(),
 		};
 	},
 	data() {
@@ -265,6 +270,23 @@ export default defineComponent({
 				);
 				return;
 			}
+
+			const pinnedChatData = usePinnedData(this.getTriggerNode());
+			if (pinnedChatData.hasData.value) {
+				const confirmResult = await this.confirm(
+					this.$locale.baseText('chat.window.chat.unpinAndExecute.description'),
+					this.$locale.baseText('chat.window.chat.unpinAndExecute.title'),
+					{
+						confirmButtonText: this.$locale.baseText('chat.window.chat.unpinAndExecute.confirm'),
+						cancelButtonText: this.$locale.baseText('chat.window.chat.unpinAndExecute.cancel'),
+					},
+				);
+
+				if (!(confirmResult === MODAL_CONFIRM)) return;
+
+				pinnedChatData.unsetData('unpin-and-send-chat-message-modal');
+			}
+
 			this.messages.push({
 				text: message,
 				sender: 'user',
@@ -290,6 +312,7 @@ export default defineComponent({
 			const workflow = this.workflowHelpers.getCurrentWorkflow();
 
 			const chatNode = this.workflowsStore.getNodes().find((node: INodeUi): boolean => {
+				if (node.type === CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE) return false;
 				const nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 				if (!nodeType) return false;
 
@@ -328,7 +351,7 @@ export default defineComponent({
 			if (!chatNode) {
 				this.showError(
 					new Error(
-						'Chat only works when an AI agent or chain is connected to the chat trigger node',
+						'Chat only works when an AI agent or chain(except summarization chain) is connected to the chat trigger node',
 					),
 					'Missing AI node',
 				);

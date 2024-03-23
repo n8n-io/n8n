@@ -1,4 +1,5 @@
 import {
+	CHAT_TRIGGER_NODE_TYPE,
 	DEFAULT_NEW_WORKFLOW_NAME,
 	DUPLICATE_POSTFFIX,
 	EnterpriseEditionFeature,
@@ -82,6 +83,8 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { getCredentialOnlyNodeTypeName } from '@/utils/credentialOnlyNodes';
+import { ResponseError } from '@/utils/apiUtils';
+import { i18n } from '@/plugins/i18n';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -1338,12 +1341,22 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 		async runWorkflow(startRunData: IStartRunData): Promise<IExecutionPushResponse> {
 			const rootStore = useRootStore();
-			return await makeRestApiRequest(
-				rootStore.getRestApiContext,
-				'POST',
-				'/workflows/run',
-				startRunData as unknown as IDataObject,
-			);
+			try {
+				return await makeRestApiRequest(
+					rootStore.getRestApiContext,
+					'POST',
+					'/workflows/run',
+					startRunData as unknown as IDataObject,
+				);
+			} catch (error) {
+				if (error.response?.status === 413) {
+					throw new ResponseError(i18n.baseText('workflowRun.showError.payloadTooLarge'), {
+						errorCode: 413,
+						httpStatusCode: 413,
+					});
+				}
+				throw error;
+			}
 		},
 
 		async removeTestWebhook(workflowId: string): Promise<boolean> {
@@ -1447,6 +1460,19 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 		appendChatMessage(message: string): void {
 			this.chatMessages.push(message);
+		},
+
+		checkIfNodeHasChatParent(nodeName: string): boolean {
+			const workflow = this.getCurrentWorkflow();
+			const parents = workflow.getParentNodes(nodeName, 'main');
+
+			const matchedChatNode = parents.find((parent) => {
+				const parentNodeType = this.getNodeByName(parent)?.type;
+
+				return parentNodeType === CHAT_TRIGGER_NODE_TYPE;
+			});
+
+			return !!matchedChatNode;
 		},
 	},
 });
