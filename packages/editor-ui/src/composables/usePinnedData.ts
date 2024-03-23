@@ -28,7 +28,11 @@ export type PinDataSource =
 	| 'context-menu'
 	| 'keyboard-shortcut';
 
-export type UnpinDataSource = 'unpin-and-execute-modal' | 'context-menu' | 'keyboard-shortcut';
+export type UnpinDataSource =
+	| 'unpin-and-execute-modal'
+	| 'context-menu'
+	| 'keyboard-shortcut'
+	| 'unpin-and-send-chat-message-modal';
 
 export function usePinnedData(
 	node: MaybeRef<INodeUi | null>,

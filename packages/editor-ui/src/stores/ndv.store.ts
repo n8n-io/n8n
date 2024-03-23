@@ -44,6 +44,7 @@ export const useNDVStore = defineStore(STORES.NDV, {
 			},
 		},
 		focusedMappableInput: '',
+		focusedInputPath: '',
 		mappingTelemetry: {},
 		hoveringItem: null,
 		draggable: {
@@ -267,6 +268,9 @@ export const useNDVStore = defineStore(STORES.NDV, {
 					},
 				});
 			}
+		},
+		setFocusedInputPath(path: string) {
+			this.focusedInputPath = path;
 		},
 	},
 });

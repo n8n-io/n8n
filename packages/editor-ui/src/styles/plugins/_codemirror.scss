@@ -30,15 +30,26 @@
 		li[role='option'] {
 			color: var(--color-text-base);
 			display: flex;
-			font-size: var(--font-size-2xs);
+			line-height: var(--font-line-height-xloose);
 			justify-content: space-between;
+			align-items: center;
 			padding: var(--spacing-5xs) var(--spacing-2xs);
+			gap: var(--spacing-2xs);
 			scroll-padding: 40px;
 			scroll-margin: 40px;
 		}
 
 		li .cm-completionLabel {
-			line-height: var(--font-line-height-xloose);
+			font-size: var(--font-size-2xs);
+			overflow: hidden;
+			text-overflow: ellipsis;
+		}
+
+		li .cm-completionDetail {
+			color: var(--color-text-light);
+			font-size: var(--font-size-3xs);
+			margin-left: 0;
+			font-style: normal;
 		}
 
 		li[aria-selected] {
