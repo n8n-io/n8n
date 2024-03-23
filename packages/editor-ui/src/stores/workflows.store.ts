@@ -1,4 +1,5 @@
 import {
+	CHAT_TRIGGER_NODE_TYPE,
 	DEFAULT_NEW_WORKFLOW_NAME,
 	DUPLICATE_POSTFFIX,
 	EnterpriseEditionFeature,
@@ -40,7 +41,7 @@ import type {
 	IConnection,
 	IConnections,
 	IDataObject,
-	IExecutionsSummary,
+	ExecutionSummary,
 	INode,
 	INodeConnections,
 	INodeCredentials,
@@ -83,6 +84,8 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { getCredentialOnlyNodeTypeName } from '@/utils/credentialOnlyNodes';
+import { ResponseError } from '@/utils/apiUtils';
+import { i18n } from '@/plugins/i18n';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -127,6 +130,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		executionWaitingForWebhook: false,
 		nodeMetadata: {},
 		isInDebugMode: false,
+		chatMessages: [],
 	}),
 	getters: {
 		// Workflow getters
@@ -264,11 +268,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			return (nodeName: string) => this.executingNode.includes(nodeName);
 		},
 		// Executions getters
-		getExecutionDataById(): (id: string) => IExecutionsSummary | undefined {
-			return (id: string): IExecutionsSummary | undefined =>
+		getExecutionDataById(): (id: string) => ExecutionSummary | undefined {
+			return (id: string): ExecutionSummary | undefined =>
 				this.currentWorkflowExecutions.find((execution) => execution.id === id);
 		},
-		getAllLoadedFinishedExecutions(): IExecutionsSummary[] {
+		getAllLoadedFinishedExecutions(): ExecutionSummary[] {
 			return this.currentWorkflowExecutions.filter(
 				(ex) => ex.finished === true || ex.stoppedAt !== undefined,
 			);
@@ -278,6 +282,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		},
 		getTotalFinishedExecutionsCount(): number {
 			return this.finishedExecutionsCount;
+		},
+		getPastChatMessages(): string[] {
+			return Array.from(new Set(this.chatMessages));
 		},
 	},
 	actions: {
@@ -1193,6 +1200,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				return;
 			}
 			this.activeExecutions.unshift(newActiveExecution);
+			this.activeExecutionId = newActiveExecution.id;
 		},
 		finishActiveExecution(
 			finishedActiveExecution: IPushDataExecutionFinished | IPushDataUnsavedExecutionFinished,
@@ -1335,12 +1343,22 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 		async runWorkflow(startRunData: IStartRunData): Promise<IExecutionPushResponse> {
 			const rootStore = useRootStore();
-			return await makeRestApiRequest(
-				rootStore.getRestApiContext,
-				'POST',
-				'/workflows/run',
-				startRunData as unknown as IDataObject,
-			);
+			try {
+				return await makeRestApiRequest(
+					rootStore.getRestApiContext,
+					'POST',
+					'/workflows/run',
+					startRunData as unknown as IDataObject,
+				);
+			} catch (error) {
+				if (error.response?.status === 413) {
+					throw new ResponseError(i18n.baseText('workflowRun.showError.payloadTooLarge'), {
+						errorCode: 413,
+						httpStatusCode: 413,
+					});
+				}
+				throw error;
+			}
 		},
 
 		async removeTestWebhook(workflowId: string): Promise<boolean> {
@@ -1363,7 +1381,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 		async loadCurrentWorkflowExecutions(
 			requestFilter: ExecutionsQueryFilter,
-		): Promise<IExecutionsSummary[]> {
+		): Promise<ExecutionSummary[]> {
 			let activeExecutions = [];
 
 			if (!requestFilter.workflowId) {
@@ -1389,11 +1407,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			return await getExecutionData(rootStore.getRestApiContext, executionId);
 		},
 
-		deleteExecution(execution: IExecutionsSummary): void {
+		deleteExecution(execution: ExecutionSummary): void {
 			this.currentWorkflowExecutions.splice(this.currentWorkflowExecutions.indexOf(execution), 1);
 		},
 
-		addToCurrentExecutions(executions: IExecutionsSummary[]): void {
+		addToCurrentExecutions(executions: ExecutionSummary[]): void {
 			executions.forEach((execution) => {
 				const exists = this.currentWorkflowExecutions.find((ex) => ex.id === execution.id);
 				if (!exists && execution.workflowId === this.workflowId) {
@@ -1436,6 +1454,27 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 					pristine: isPristine,
 				},
 			};
+		},
+
+		resetChatMessages(): void {
+			this.chatMessages = [];
+		},
+
+		appendChatMessage(message: string): void {
+			this.chatMessages.push(message);
+		},
+
+		checkIfNodeHasChatParent(nodeName: string): boolean {
+			const workflow = this.getCurrentWorkflow();
+			const parents = workflow.getParentNodes(nodeName, 'main');
+
+			const matchedChatNode = parents.find((parent) => {
+				const parentNodeType = this.getNodeByName(parent)?.type;
+
+				return parentNodeType === CHAT_TRIGGER_NODE_TYPE;
+			});
+
+			return !!matchedChatNode;
 		},
 	},
 });

@@ -8,9 +8,10 @@ import {
 } from 'n8n-workflow';
 
 import { RetrievalQAChain } from 'langchain/chains';
-import type { BaseLanguageModel } from 'langchain/dist/base_language';
-import type { BaseRetriever } from 'langchain/schema/retriever';
+import type { BaseLanguageModel } from '@langchain/core/language_models/base';
+import type { BaseRetriever } from '@langchain/core/retrievers';
 import { getTemplateNoticeField } from '../../../utils/sharedFields';
+import { getPromptInputByType } from '../../../utils/helpers';
 
 export class ChainRetrievalQa implements INodeType {
 	description: INodeTypeDescription = {
@@ -18,7 +19,7 @@ export class ChainRetrievalQa implements INodeType {
 		name: 'chainRetrievalQa',
 		icon: 'fa:link',
 		group: ['transform'],
-		version: [1, 1.1, 1.2],
+		version: [1, 1.1, 1.2, 1.3],
 		description: 'Answer questions about retrieved documents',
 		defaults: {
 			name: 'Question and Answer Chain',
@@ -94,6 +95,47 @@ export class ChainRetrievalQa implements INodeType {
 					},
 				},
 			},
+			{
+				displayName: 'Prompt',
+				name: 'promptType',
+				type: 'options',
+				options: [
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'Take from previous node automatically',
+						value: 'auto',
+						description: 'Looks for an input field called chatInput',
+					},
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'Define below',
+						value: 'define',
+						description:
+							'Use an expression to reference data in previous nodes or enter static text',
+					},
+				],
+				displayOptions: {
+					hide: {
+						'@version': [{ _cnd: { lte: 1.2 } }],
+					},
+				},
+				default: 'auto',
+			},
+			{
+				displayName: 'Text',
+				name: 'text',
+				type: 'string',
+				required: true,
+				default: '',
+				typeOptions: {
+					rows: 2,
+				},
+				displayOptions: {
+					show: {
+						promptType: ['define'],
+					},
+				},
+			},
 		],
 	};
 
@@ -117,7 +159,18 @@ export class ChainRetrievalQa implements INodeType {
 
 		// Run for each item
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			const query = this.getNodeParameter('query', itemIndex) as string;
+			let query;
+
+			if (this.getNode().typeVersion <= 1.2) {
+				query = this.getNodeParameter('query', itemIndex) as string;
+			} else {
+				query = getPromptInputByType({
+					ctx: this,
+					i: itemIndex,
+					inputKey: 'text',
+					promptTypeKey: 'promptType',
+				});
+			}
 
 			if (query === undefined) {
 				throw new NodeOperationError(this.getNode(), 'The ‘query‘ parameter is empty.');

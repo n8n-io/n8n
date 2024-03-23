@@ -6,7 +6,7 @@
 			:message="
 				$locale.baseText(
 					`credentialEdit.credentialConfig.pleaseCheckTheErrorsBelow${
-						credentialPermissions.isOwner ? '' : '.sharee'
+						credentialPermissions.update || credentialPermissions.isOwner ? '' : '.sharee'
 					}`,
 					{ interpolate: { owner: credentialOwnerName } },
 				)
@@ -19,7 +19,7 @@
 			:message="
 				$locale.baseText(
 					`credentialEdit.credentialConfig.couldntConnectWithTheseSettings${
-						credentialPermissions.isOwner ? '' : '.sharee'
+						credentialPermissions.update || credentialPermissions.isOwner ? '' : '.sharee'
 					}`,
 					{ interpolate: { owner: credentialOwnerName } },
 				)

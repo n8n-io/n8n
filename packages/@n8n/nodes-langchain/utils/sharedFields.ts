@@ -79,8 +79,15 @@ function determineArticle(nextWord: string): string {
 	const vowels = /^[aeiouAEIOU]/;
 	return vowels.test(nextWord) ? 'an' : 'a';
 }
+const getConnectionParameterString = (connectionType: string) => {
+	if (connectionType === '') return "data-action-parameter-creatorview='AI'";
+
+	return `data-action-parameter-connectiontype='${connectionType}'`;
+};
 const getAhref = (connectionType: { connection: string; locale: string }) =>
-	`<a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='${connectionType.connection}'>${connectionType.locale}</a>`;
+	`<a class="test" data-action='openSelectiveNodeCreator'${getConnectionParameterString(
+		connectionType.connection,
+	)}'>${connectionType.locale}</a>`;
 
 export function getConnectionHintNoticeField(
 	connectionTypes: AllowedConnectionTypes[],
@@ -105,9 +112,15 @@ export function getConnectionHintNoticeField(
 
 	if (groupedConnections.size === 1) {
 		const [[connection, locales]] = Array.from(groupedConnections);
-		displayName = `This node must be connected to ${determineArticle(
-			locales[0],
-		)} ${locales[0].toLowerCase()}. <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='${connection}'>Insert one</a>`;
+
+		displayName = `This node must be connected to ${determineArticle(locales[0])} ${locales[0]
+			.toLowerCase()
+			.replace(
+				/^ai /,
+				'AI ',
+			)}. <a data-action='openSelectiveNodeCreator' ${getConnectionParameterString(
+			connection,
+		)}>Insert one</a>`;
 	} else {
 		const ahrefs = Array.from(groupedConnections, ([connection, locales]) => {
 			// If there are multiple locales, join them with ' or '

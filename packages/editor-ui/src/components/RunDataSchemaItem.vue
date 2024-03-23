@@ -78,6 +78,8 @@ const text = computed(() =>
 	Array.isArray(props.schema.value) ? '' : shorten(props.schema.value, 600, 0),
 );
 
+const dragged = computed(() => props.draggingPath === props.schema.path);
+
 const getJsonParameterPath = (path: string): string =>
 	getMappedExpression({
 		nodeName: props.node!.name,
@@ -128,7 +130,7 @@ const displayBinaryData = (index: number, key: string) => {
 			:class="{
 				[$style.pill]: true,
 				[$style.mappable]: mappingEnabled,
-				[$style.dragged]: draggingPath === schema.path,
+				[$style.highlight]: dragged,
 			}"
 		>
 			<span
@@ -262,6 +264,25 @@ const displayBinaryData = (index: number, key: string) => {
 	}
 }
 
+:global(.highlightSchema) {
+	.pill.mappable {
+		&,
+		&:hover,
+		span,
+		&:hover span span {
+			color: var(--color-primary);
+			border-color: var(--color-primary-tint-1);
+			background-color: var(--color-primary-tint-3);
+
+			svg {
+				path {
+					fill: var(--color-primary);
+				}
+			}
+		}
+	}
+}
+
 .pill {
 	float: left;
 	display: inline-flex;
@@ -293,22 +314,6 @@ const displayBinaryData = (index: number, key: string) => {
 			span span {
 				background-color: var(--color-background-light);
 				border-color: var(--color-foreground-base);
-			}
-		}
-	}
-
-	&.dragged {
-		&,
-		&:hover,
-		span {
-			color: var(--color-primary);
-			border-color: var(--color-primary-tint-1);
-			background-color: var(--color-primary-tint-3);
-
-			svg {
-				path {
-					fill: var(--color-primary);
-				}
 			}
 		}
 	}

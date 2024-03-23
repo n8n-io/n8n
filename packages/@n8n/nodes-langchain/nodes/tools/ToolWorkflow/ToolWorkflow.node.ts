@@ -13,7 +13,7 @@ import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type { SetField, SetNodeOptions } from 'n8n-nodes-base/dist/nodes/Set/v2/helpers/interfaces';
 import * as manual from 'n8n-nodes-base/dist/nodes/Set/v2/manual.mode';
 
-import { DynamicTool } from 'langchain/tools';
+import { DynamicTool } from '@langchain/core/tools';
 import get from 'lodash/get';
 import isObject from 'lodash/isObject';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
@@ -24,7 +24,7 @@ export class ToolWorkflow implements INodeType {
 		name: 'toolWorkflow',
 		icon: 'fa:network-wired',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Uses another n8n workflow as a tool. Allows packaging any n8n node(s) as a tool.',
 		defaults: {
 			name: 'Custom n8n Workflow Tool',
@@ -50,11 +50,38 @@ export class ToolWorkflow implements INodeType {
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionType.AiAgent]),
 			{
+				displayName:
+					'See an example of a workflow to suggest meeting slots using AI <a href="/templates/1953" target="_blank">here</a>.',
+				name: 'noticeTemplateExample',
+				type: 'notice',
+				default: '',
+			},
+			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
 				default: '',
 				placeholder: 'My_Color_Tool',
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
+			},
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+				placeholder: 'e.g. My_Color_Tool',
+				validateType: 'string-alphanumeric',
+				description:
+					'The name of the function to be called, could contain letters, numbers, and underscores only',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.1 } }],
+					},
+				},
 			},
 			{
 				displayName: 'Description',

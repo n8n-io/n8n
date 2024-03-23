@@ -8,9 +8,9 @@ import type {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	IRequestOptions,
 } from 'n8n-workflow';
 
-import type { OptionsWithUri } from 'request';
 import {
 	formatFeed,
 	formatResults,
@@ -124,7 +124,7 @@ export class Splunk implements INodeType {
 
 				const endpoint = '/services/alerts/fired_alerts';
 
-				const options: OptionsWithUri = {
+				const options: IRequestOptions = {
 					headers: {
 						Authorization: `Bearer ${authToken}`,
 						'Content-Type': 'application/x-www-form-urlencoded',

@@ -7,7 +7,7 @@ import type {
 } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 
-import { Authorized, Get, Middleware, RestController } from '@/decorators';
+import { Get, Middleware, RestController } from '@/decorators';
 import { getBase } from '@/WorkflowExecuteAdditionalData';
 import { DynamicNodeParametersService } from '@/services/dynamicNodeParameters.service';
 import { DynamicNodeParametersRequest } from '@/requests';
@@ -21,17 +21,12 @@ const assertMethodName: RequestHandler = (req, res, next) => {
 	next();
 };
 
-@Authorized()
 @RestController('/dynamic-node-parameters')
 export class DynamicNodeParametersController {
 	constructor(private readonly service: DynamicNodeParametersService) {}
 
 	@Middleware()
-	parseQueryParams(
-		req: DynamicNodeParametersRequest.BaseRequest,
-		res: Response,
-		next: NextFunction,
-	) {
+	parseQueryParams(req: DynamicNodeParametersRequest.BaseRequest, _: Response, next: NextFunction) {
 		const { credentials, currentNodeParameters, nodeTypeAndVersion } = req.query;
 		if (!nodeTypeAndVersion) {
 			throw new BadRequestError('Parameter nodeTypeAndVersion is required.');

@@ -39,6 +39,10 @@ const schema = computed(() => getSchemaForExecutionData(props.data));
 
 const isDataEmpty = computed(() => isEmpty(props.data));
 
+const highlight = computed(() => {
+	return !ndvStore.isMappingOnboarded && Boolean(ndvStore.focusedMappableInput);
+});
+
 const onDragStart = (el: HTMLElement) => {
 	if (el?.dataset?.path) {
 		draggingPath.value = el.dataset.path;
@@ -66,7 +70,7 @@ const onDragEnd = (el: HTMLElement) => {
 
 		void useExternalHooks().run('runDataJson.onDragEnd', telemetryPayload);
 
-		telemetry.track('User dragged data for mapping', telemetryPayload);
+		telemetry.track('User dragged data for mapping', telemetryPayload, { withPostHog: true });
 	}, 1000); // ensure dest data gets set if drop
 };
 
@@ -76,7 +80,7 @@ const displayBinaryData = (index: number, key: string) => {
 </script>
 
 <template>
-	<div :class="$style.schemaWrapper">
+	<div :class="[$style.schemaWrapper, { highlightSchema: highlight }]">
 		<n8n-info-tip v-if="isDataEmpty">{{
 			i18n.baseText('dataMapping.schemaView.emptyData')
 		}}</n8n-info-tip>

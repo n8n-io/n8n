@@ -62,7 +62,6 @@ import { EventBusController } from '@/eventbus/eventBus.controller';
 import { EventBusControllerEE } from '@/eventbus/eventBus.controller.ee';
 import { LicenseController } from '@/license/license.controller';
 import { setupPushServer, setupPushHandler } from '@/push';
-import { setupAuthMiddlewares } from './middlewares';
 import { isLdapEnabled } from './Ldap/helpers';
 import { AbstractServer } from './AbstractServer';
 import { PostHogClient } from './posthog';
@@ -73,6 +72,7 @@ import { SamlService } from './sso/saml/saml.service.ee';
 import { VariablesController } from './environments/variables/variables.controller.ee';
 import { SourceControlService } from '@/environments/sourceControl/sourceControl.service.ee';
 import { SourceControlController } from '@/environments/sourceControl/sourceControl.controller.ee';
+import { AIController } from '@/controllers/ai.controller';
 
 import { handleMfaDisable, isMfaFeatureEnabled } from './Mfa/helpers';
 import type { FrontendService } from './services/frontend.service';
@@ -80,7 +80,7 @@ import { ActiveWorkflowsController } from './controllers/activeWorkflows.control
 import { OrchestrationController } from './controllers/orchestration.controller';
 import { WorkflowHistoryController } from './workflows/workflowHistory/workflowHistory.controller.ee';
 import { InvitationController } from './controllers/invitation.controller';
-import { CollaborationService } from './collaboration/collaboration.service';
+// import { CollaborationService } from './collaboration/collaboration.service';
 import { BadRequestError } from './errors/response-errors/bad-request.error';
 import { OrchestrationService } from '@/services/orchestration.service';
 
@@ -126,12 +126,11 @@ export class Server extends AbstractServer {
 		}
 
 		void Container.get(InternalHooks).onServerStarted();
-		Container.get(CollaborationService);
+		// Container.get(CollaborationService);
 	}
 
-	private async registerControllers(ignoredEndpoints: Readonly<string[]>) {
+	private async registerControllers() {
 		const { app } = this;
-		setupAuthMiddlewares(app, ignoredEndpoints, this.restEndpoint);
 
 		const controllers: Array<Class<object>> = [
 			EventBusController,
@@ -162,6 +161,7 @@ export class Server extends AbstractServer {
 			WorkflowsController,
 			ExecutionsController,
 			CredentialsController,
+			AIController,
 		];
 
 		if (
@@ -278,7 +278,7 @@ export class Server extends AbstractServer {
 
 		await handleMfaDisable();
 
-		await this.registerControllers(ignoredEndpoints);
+		await this.registerControllers();
 
 		// ----------------------------------------
 		// SAML

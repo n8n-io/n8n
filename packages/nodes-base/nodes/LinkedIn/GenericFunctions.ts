@@ -1,11 +1,11 @@
-import type { OptionsWithUrl } from 'request';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	JsonObject,
+	IRequestOptions,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 function resolveHeaderData(fullResponse: any) {
@@ -18,7 +18,7 @@ function resolveHeaderData(fullResponse: any) {
 
 export async function linkedInApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 
 	body: any = {},
@@ -33,7 +33,7 @@ export async function linkedInApiRequest(
 
 	const baseUrl = 'https://api.linkedin.com';
 
-	let options: OptionsWithUrl = {
+	let options: IRequestOptions = {
 		headers: {
 			Accept: 'application/json',
 			'X-Restli-Protocol-Version': '2.0.0',

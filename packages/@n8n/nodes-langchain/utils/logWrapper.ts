@@ -1,34 +1,32 @@
-import {
-	NodeOperationError,
-	type ConnectionTypes,
-	type IExecuteFunctions,
-	type INodeExecutionData,
-	NodeConnectionType,
-	jsonStringify,
-} from 'n8n-workflow';
+import { NodeOperationError, NodeConnectionType } from 'n8n-workflow';
+import type { ConnectionTypes, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
-import { Tool } from 'langchain/tools';
-import type { BaseMessage, ChatResult, InputValues } from 'langchain/schema';
-import { BaseChatMessageHistory } from 'langchain/schema';
-import { BaseChatModel } from 'langchain/chat_models/base';
-import type { CallbackManagerForLLMRun } from 'langchain/callbacks';
+import { Tool } from '@langchain/core/tools';
+import type { BaseMessage } from '@langchain/core/messages';
+import type { InputValues, MemoryVariables, OutputValues } from '@langchain/core/memory';
+import type { ChatResult } from '@langchain/core/outputs';
+import { BaseChatMessageHistory } from '@langchain/core/chat_history';
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import type {
+	CallbackManagerForLLMRun,
+	BaseCallbackConfig,
+	Callbacks,
+} from '@langchain/core/callbacks/manager';
 
-import { Embeddings } from 'langchain/embeddings/base';
-import { VectorStore } from 'langchain/vectorstores/base';
-import type { Document } from 'langchain/document';
+import { Embeddings } from '@langchain/core/embeddings';
+import { VectorStore } from '@langchain/core/vectorstores';
+import type { Document } from '@langchain/core/documents';
 import { TextSplitter } from 'langchain/text_splitter';
-import type { BaseDocumentLoader } from 'langchain/document_loaders/base';
-import type { BaseCallbackConfig, Callbacks } from 'langchain/dist/callbacks/manager';
-import { BaseLLM } from 'langchain/llms/base';
-import { BaseChatMemory } from 'langchain/memory';
-import type { MemoryVariables } from 'langchain/dist/memory/base';
-import { BaseRetriever } from 'langchain/schema/retriever';
-import type { FormatInstructionsOptions } from 'langchain/schema/output_parser';
-import { BaseOutputParser } from 'langchain/schema/output_parser';
+import { BaseLLM } from '@langchain/core/language_models/llms';
+import { BaseChatMemory } from '@langchain/community/memory/chat_memory';
+import { BaseRetriever } from '@langchain/core/retrievers';
+import type { FormatInstructionsOptions } from '@langchain/core/output_parsers';
+import { BaseOutputParser, OutputParserException } from '@langchain/core/output_parsers';
 import { isObject } from 'lodash';
+import type { BaseDocumentLoader } from 'langchain/dist/document_loaders/base';
 import { N8nJsonLoader } from './N8nJsonLoader';
 import { N8nBinaryLoader } from './N8nBinaryLoader';
-import { isChatInstance } from './helpers';
+import { isChatInstance, logAiEvent } from './helpers';
 
 const errorsMap: { [key: string]: { message: string; description: string } } = {
 	'You exceeded your current quota, please check your plan and billing details.': {
@@ -50,6 +48,10 @@ export async function callMethodAsync<T>(
 	try {
 		return await parameters.method.call(this, ...parameters.arguments);
 	} catch (e) {
+		// Langchain checks for OutputParserException to run retry chain
+		// for auto-fixing the output so skip wrapping in this case
+		if (e instanceof OutputParserException) throw e;
+
 		// Propagate errors from sub-nodes
 		if (e.functionality === 'configuration-node') throw e;
 		const connectedNode = parameters.executeFunctions.getNode();
@@ -150,35 +152,37 @@ export function logWrapper(
 							arguments: [values],
 						})) as MemoryVariables;
 
+						const chatHistory = (response?.chat_history as BaseMessage[]) ?? response;
+
 						executeFunctions.addOutputData(connectionType, index, [
-							[{ json: { action: 'loadMemoryVariables', response } }],
+							[{ json: { action: 'loadMemoryVariables', chatHistory } }],
 						]);
 						return response;
 					};
-				} else if (
-					prop === 'outputKey' &&
-					'outputKey' in target &&
-					target.constructor.name === 'BufferWindowMemory'
-				) {
-					connectionType = NodeConnectionType.AiMemory;
-					const { index } = executeFunctions.addInputData(connectionType, [
-						[{ json: { action: 'chatHistory' } }],
-					]);
-					const response = target[prop];
+				} else if (prop === 'saveContext' && 'saveContext' in target) {
+					return async (input: InputValues, output: OutputValues): Promise<MemoryVariables> => {
+						connectionType = NodeConnectionType.AiMemory;
 
-					target.chatHistory
-						.getMessages()
-						.then((messages) => {
-							executeFunctions.addOutputData(NodeConnectionType.AiMemory, index, [
-								[{ json: { action: 'chatHistory', chatHistory: messages } }],
-							]);
-						})
-						.catch((error: Error) => {
-							executeFunctions.addOutputData(NodeConnectionType.AiMemory, index, [
-								[{ json: { action: 'chatHistory', error } }],
-							]);
-						});
-					return response;
+						const { index } = executeFunctions.addInputData(connectionType, [
+							[{ json: { action: 'saveContext', input, output } }],
+						]);
+
+						const response = (await callMethodAsync.call(target, {
+							executeFunctions,
+							connectionType,
+							currentNodeRunIndex: index,
+							method: target[prop],
+							arguments: [input, output],
+						})) as MemoryVariables;
+
+						const chatHistory = await target.chatHistory.getMessages();
+
+						executeFunctions.addOutputData(connectionType, index, [
+							[{ json: { action: 'saveContext', chatHistory } }],
+						]);
+
+						return response;
+					};
 				}
 			}
 
@@ -202,10 +206,7 @@ export function logWrapper(
 						const payload = { action: 'getMessages', response };
 						executeFunctions.addOutputData(connectionType, index, [[{ json: payload }]]);
 
-						void executeFunctions.logAiEvent(
-							'n8n.ai.memory.get.messages',
-							jsonStringify({ response }),
-						);
+						void logAiEvent(executeFunctions, 'n8n.ai.memory.get.messages', { response });
 						return response;
 					};
 				} else if (prop === 'addMessage' && 'addMessage' in target) {
@@ -222,10 +223,7 @@ export function logWrapper(
 							arguments: [message],
 						});
 
-						void executeFunctions.logAiEvent(
-							'n8n.ai.memory.added.message',
-							jsonStringify({ message }),
-						);
+						void logAiEvent(executeFunctions, 'n8n.ai.memory.added.message', { message });
 						executeFunctions.addOutputData(connectionType, index, [[{ json: payload }]]);
 					};
 				}
@@ -255,18 +253,21 @@ export function logWrapper(
 									runManager,
 								],
 							})) as ChatResult;
+							const parsedMessages =
+								typeof messages === 'string'
+									? messages
+									: messages.map((message) => {
+											if (typeof message === 'string') return message;
+											if (typeof message?.toJSON === 'function') return message.toJSON();
 
-							void executeFunctions.logAiEvent(
-								'n8n.ai.llm.generated',
-								jsonStringify({
-									messages:
-										typeof messages === 'string'
-											? messages
-											: messages.map((message) => message.toJSON()),
-									options,
-									response,
-								}),
-							);
+											return message;
+									  });
+
+							void logAiEvent(executeFunctions, 'n8n.ai.llm.generated', {
+								messages: parsedMessages,
+								options,
+								response,
+							});
 							executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
 							return response;
 						} catch (error) {
@@ -299,10 +300,9 @@ export function logWrapper(
 						executeFunctions.addOutputData(connectionType, index, [
 							[{ json: { action: 'getFormatInstructions', response } }],
 						]);
-						void executeFunctions.logAiEvent(
-							'n8n.ai.output.parser.get.instructions',
-							jsonStringify({ response }),
-						);
+						void logAiEvent(executeFunctions, 'n8n.ai.output.parser.get.instructions', {
+							response,
+						});
 						return response;
 					};
 				} else if (prop === 'parse' && 'parse' in target) {
@@ -321,10 +321,7 @@ export function logWrapper(
 							arguments: [stringifiedText],
 						})) as object;
 
-						void executeFunctions.logAiEvent(
-							'n8n.ai.output.parser.parsed',
-							jsonStringify({ text, response }),
-						);
+						void logAiEvent(executeFunctions, 'n8n.ai.output.parser.parsed', { text, response });
 						executeFunctions.addOutputData(connectionType, index, [
 							[{ json: { action: 'parse', response } }],
 						]);
@@ -353,10 +350,7 @@ export function logWrapper(
 							arguments: [query, config],
 						})) as Array<Document<Record<string, any>>>;
 
-						void executeFunctions.logAiEvent(
-							'n8n.ai.retriever.get.relevant.documents',
-							jsonStringify({ query }),
-						);
+						void logAiEvent(executeFunctions, 'n8n.ai.retriever.get.relevant.documents', { query });
 						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
 						return response;
 					};
@@ -381,7 +375,7 @@ export function logWrapper(
 							arguments: [documents],
 						})) as number[][];
 
-						void executeFunctions.logAiEvent('n8n.ai.embeddings.embedded.document');
+						void logAiEvent(executeFunctions, 'n8n.ai.embeddings.embedded.document');
 						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
 						return response;
 					};
@@ -401,7 +395,7 @@ export function logWrapper(
 							method: target[prop],
 							arguments: [query],
 						})) as number[];
-						void executeFunctions.logAiEvent('n8n.ai.embeddings.embedded.query');
+						void logAiEvent(executeFunctions, 'n8n.ai.embeddings.embedded.query');
 						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
 						return response;
 					};
@@ -446,7 +440,7 @@ export function logWrapper(
 							arguments: [item, itemIndex],
 						})) as number[];
 
-						void executeFunctions.logAiEvent('n8n.ai.document.processed');
+						void logAiEvent(executeFunctions, 'n8n.ai.document.processed');
 						executeFunctions.addOutputData(connectionType, index, [
 							[{ json: { response }, pairedItem: { item: itemIndex } }],
 						]);
@@ -472,7 +466,7 @@ export function logWrapper(
 							arguments: [text],
 						})) as string[];
 
-						void executeFunctions.logAiEvent('n8n.ai.text.splitter.split');
+						void logAiEvent(executeFunctions, 'n8n.ai.text.splitter.split');
 						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
 						return response;
 					};
@@ -496,10 +490,7 @@ export function logWrapper(
 							arguments: [query],
 						})) as string;
 
-						void executeFunctions.logAiEvent(
-							'n8n.ai.tool.called',
-							jsonStringify({ query, response }),
-						);
+						void logAiEvent(executeFunctions, 'n8n.ai.tool.called', { query, response });
 						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
 						return response;
 					};
@@ -529,10 +520,7 @@ export function logWrapper(
 							arguments: [query, k, filter, _callbacks],
 						})) as Array<Document<Record<string, any>>>;
 
-						void executeFunctions.logAiEvent(
-							'n8n.ai.vector.store.searched',
-							jsonStringify({ query }),
-						);
+						void logAiEvent(executeFunctions, 'n8n.ai.vector.store.searched', { query });
 						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
 
 						return response;
@@ -540,6 +528,7 @@ export function logWrapper(
 				}
 			}
 
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 			return (target as any)[prop];
 		},
 	});

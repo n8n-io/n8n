@@ -51,6 +51,7 @@
 				:path="path"
 				:additional-expression-data="additionalExpressionData"
 				:class="{ 'ph-no-capture': shouldRedactValue }"
+				:event-bus="eventBus"
 				@update:model-value="expressionUpdated"
 				@modalOpenerClick="openExpressionEditorModal"
 				@focus="setFocus"
@@ -89,7 +90,7 @@
 							:rows="getArgument('rows')"
 							:disable-expression-coloring="!isHtmlNode(node)"
 							:disable-expression-completions="!isHtmlNode(node)"
-							fill-parent
+							fullscreen
 							@update:model-value="valueChangedDebounced"
 						/>
 						<SqlEditor
@@ -98,7 +99,7 @@
 							:dialect="getArgument('sqlDialect')"
 							:is-read-only="isReadOnly"
 							:rows="getArgument('rows')"
-							fill-parent
+							fullscreen
 							@update:model-value="valueChangedDebounced"
 						/>
 						<JsEditor
@@ -502,7 +503,6 @@ import JsEditor from '@/components/JsEditor/JsEditor.vue';
 import JsonEditor from '@/components/JsonEditor/JsonEditor.vue';
 import SqlEditor from '@/components/SqlEditor/SqlEditor.vue';
 
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { hasExpressionMapping, isValueExpression } from '@/utils/nodeTypesUtils';
 import { isResourceLocatorValue } from '@/utils/typeGuards';
 
@@ -523,6 +523,8 @@ import type { N8nInput } from 'n8n-design-system';
 import { isCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useDebounce } from '@/composables/useDebounce';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useRouter } from 'vue-router';
 
 type Picker = { $emit: (arg0: string, arg1: Date) => void };
 
@@ -541,7 +543,6 @@ export default defineComponent({
 		ResourceLocator,
 		TextEdit,
 	},
-	mixins: [workflowHelpers],
 	props: {
 		additionalExpressionData: {
 			type: Object as PropType<IDataObject>,
@@ -618,11 +619,14 @@ export default defineComponent({
 		const i18n = useI18n();
 		const nodeHelpers = useNodeHelpers();
 		const { callDebounced } = useDebounce();
+		const router = useRouter();
+		const workflowHelpers = useWorkflowHelpers({ router });
 
 		return {
 			externalHooks,
 			i18n,
 			nodeHelpers,
+			workflowHelpers,
 			callDebounced,
 		};
 	},
@@ -724,7 +728,7 @@ export default defineComponent({
 			// Get the resolved parameter values of the current node
 			const currentNodeParameters = this.ndvStore.activeNode?.parameters;
 			try {
-				const resolvedNodeParameters = this.resolveParameter(currentNodeParameters);
+				const resolvedNodeParameters = this.workflowHelpers.resolveParameter(currentNodeParameters);
 
 				const returnValues: string[] = [];
 				for (const parameterPath of loadOptionsDependsOn) {
@@ -969,7 +973,7 @@ export default defineComponent({
 			return shortPath.join('.');
 		},
 		workflow(): Workflow {
-			return this.getCurrentWorkflow();
+			return this.workflowHelpers.getCurrentWorkflow();
 		},
 		isResourceLocatorParameter(): boolean {
 			return this.parameter.type === 'resourceLocator';
@@ -1092,7 +1096,7 @@ export default defineComponent({
 
 			try {
 				const currentNodeParameters = (this.ndvStore.activeNode as INodeUi).parameters;
-				const resolvedNodeParameters = this.resolveRequiredParameters(
+				const resolvedNodeParameters = this.workflowHelpers.resolveRequiredParameters(
 					this.parameter,
 					currentNodeParameters,
 				) as INodeParameters;

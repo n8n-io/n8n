@@ -23,11 +23,10 @@ export function isJsonKeyObject(item: unknown): item is {
 export const isEmpty = (value?: unknown): boolean => {
 	if (!value && value !== 0) return true;
 	if (Array.isArray(value)) {
-		if (!value.length) return true;
-		return value.every(isEmpty);
+		return !value.length || value.every(isEmpty);
 	}
 	if (typeof value === 'object') {
-		return Object.values(value).every(isEmpty);
+		return !Object.keys(value).length || Object.values(value).every(isEmpty);
 	}
 	return false;
 };

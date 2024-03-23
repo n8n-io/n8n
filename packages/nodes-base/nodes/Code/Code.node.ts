@@ -13,20 +13,21 @@ import { PythonSandbox } from './PythonSandbox';
 import { getSandboxContext } from './Sandbox';
 import { standardizeOutput } from './utils';
 
+import set from 'lodash/set';
+
 const { CODE_ENABLE_STDOUT } = process.env;
 
 export class Code implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Code',
 		name: 'code',
-		icon: 'fa:code',
+		icon: 'file:code.svg',
 		group: ['transform'],
 		version: [1, 2],
 		defaultVersion: 2,
 		description: 'Run custom JavaScript or Python code',
 		defaults: {
 			name: 'Code',
-			color: '#FF9922',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -134,7 +135,10 @@ export class Code implements INodeType {
 			try {
 				items = (await sandbox.runCodeAllItems()) as INodeExecutionData[];
 			} catch (error) {
-				if (!this.continueOnFail()) throw error;
+				if (!this.continueOnFail()) {
+					set(error, 'node', node);
+					throw error;
+				}
 				items = [{ json: { error: error.message } }];
 			}
 
@@ -159,7 +163,10 @@ export class Code implements INodeType {
 			try {
 				result = await sandbox.runCodeEachItem();
 			} catch (error) {
-				if (!this.continueOnFail()) throw error;
+				if (!this.continueOnFail()) {
+					set(error, 'node', node);
+					throw error;
+				}
 				returnData.push({
 					json: { error: error.message },
 					pairedItem: {

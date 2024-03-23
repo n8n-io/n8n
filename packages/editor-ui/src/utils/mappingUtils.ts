@@ -1,21 +1,28 @@
 import type { INodeProperties, NodeParameterValueType } from 'n8n-workflow';
 import { isResourceLocatorValue } from 'n8n-workflow';
 
+const validJsIdNameRegex = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/;
+
+function isValidJsIdentifierName(name: string | number): boolean {
+	return validJsIdNameRegex.test(name.toString());
+}
+
 export function generatePath(root: string, path: Array<string | number>): string {
 	return path.reduce((accu: string, part: string | number) => {
 		if (typeof part === 'number') {
 			return `${accu}[${part}]`;
 		}
 
-		const special = ['-', ' ', '.', "'", '"', '`', '[', ']', '{', '}', '(', ')', ':', ',', '?'];
-		const hasSpecial = !!special.find((s) => part.includes(s));
-		if (hasSpecial) {
-			const escaped = part.replaceAll("'", "\\'");
-			return `${accu}['${escaped}']`;
+		if (!isValidJsIdentifierName(part)) {
+			return `${accu}['${escapeMappingString(part)}']`;
 		}
 
 		return `${accu}.${part}`;
 	}, root);
+}
+
+export function escapeMappingString(str: string): string {
+	return str.replace(/\'/g, "\\'");
 }
 
 export function getMappedExpression({
@@ -28,7 +35,9 @@ export function getMappedExpression({
 	path: Array<string | number> | string;
 }) {
 	const root =
-		distanceFromActive === 1 ? '$json' : generatePath(`$('${nodeName}')`, ['item', 'json']);
+		distanceFromActive === 1
+			? '$json'
+			: generatePath(`$('${escapeMappingString(nodeName)}')`, ['item', 'json']);
 
 	if (typeof path === 'string') {
 		return `{{ ${root}${path} }}`;

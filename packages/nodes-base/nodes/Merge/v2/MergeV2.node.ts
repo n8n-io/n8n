@@ -29,268 +29,7 @@ import {
 } from './GenericFunctions';
 
 import { optionsDescription } from './OptionsDescription';
-import { generatePairedItemData } from '../../../utils/utilities';
-
-const versionDescription: INodeTypeDescription = {
-	displayName: 'Merge',
-	name: 'merge',
-	icon: 'fa:code-branch',
-	group: ['transform'],
-	version: [2, 2.1, 2.2],
-	subtitle: '={{$parameter["mode"]}}',
-	description: 'Merge data of two inputs once data from both is available',
-	defaults: {
-		name: 'Merge',
-		color: '#00bbcc',
-	},
-	// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
-	inputs: ['main', 'main'],
-	outputs: ['main'],
-	inputNames: ['Input 1', 'Input 2'],
-	// If the node is of version 2.2 or if mode is chooseBranch data from both branches is required
-	// to continue, else data from any input suffices
-	requiredInputs: '={{ $parameter["mode"] === "chooseBranch" ? [0, 1] : 1 }}',
-	properties: [
-		{
-			displayName: 'Mode',
-			name: 'mode',
-			type: 'options',
-			options: [
-				{
-					name: 'Append',
-					value: 'append',
-					description: 'All items of input 1, then all items of input 2',
-				},
-				{
-					name: 'Combine',
-					value: 'combine',
-					description: 'Merge matching items together',
-				},
-				{
-					name: 'Choose Branch',
-					value: 'chooseBranch',
-					description: 'Output input data, without modifying it',
-				},
-			],
-			default: 'append',
-			description: 'How data of branches should be merged',
-		},
-		{
-			displayName: 'Combination Mode',
-			name: 'combinationMode',
-			type: 'options',
-			options: [
-				{
-					name: 'Merge By Fields',
-					value: 'mergeByFields',
-					description: 'Combine items with the same field values',
-				},
-				{
-					name: 'Merge By Position',
-					value: 'mergeByPosition',
-					description: 'Combine items based on their order',
-				},
-				{
-					name: 'Multiplex',
-					value: 'multiplex',
-					description: 'All possible item combinations (cross join)',
-				},
-			],
-			default: 'mergeByFields',
-			displayOptions: {
-				show: {
-					mode: ['combine'],
-				},
-			},
-		},
-		// mergeByFields ------------------------------------------------------------------
-		{
-			displayName: 'Fields to Match',
-			name: 'mergeByFields',
-			type: 'fixedCollection',
-			placeholder: 'Add Fields to Match',
-			default: { values: [{ field1: '', field2: '' }] },
-			typeOptions: {
-				multipleValues: true,
-			},
-			options: [
-				{
-					displayName: 'Values',
-					name: 'values',
-					values: [
-						{
-							displayName: 'Input 1 Field',
-							name: 'field1',
-							type: 'string',
-							default: '',
-							// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
-							placeholder: 'e.g. id',
-							hint: ' Enter the field name as text',
-							requiresDataPath: 'single',
-						},
-						{
-							displayName: 'Input 2 Field',
-							name: 'field2',
-							type: 'string',
-							default: '',
-							// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
-							placeholder: 'e.g. id',
-							hint: ' Enter the field name as text',
-							requiresDataPath: 'single',
-						},
-					],
-				},
-			],
-			displayOptions: {
-				show: {
-					mode: ['combine'],
-					combinationMode: ['mergeByFields'],
-				},
-			},
-		},
-		{
-			displayName: 'Output Type',
-			name: 'joinMode',
-			type: 'options',
-			// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
-			options: [
-				{
-					name: 'Keep Matches',
-					value: 'keepMatches',
-					description: 'Items that match, merged together (inner join)',
-				},
-				{
-					name: 'Keep Non-Matches',
-					value: 'keepNonMatches',
-					description: "Items that don't match",
-				},
-				{
-					name: 'Keep Everything',
-					value: 'keepEverything',
-					description: "Items that match merged together, plus items that don't match (outer join)",
-				},
-				{
-					name: 'Enrich Input 1',
-					value: 'enrichInput1',
-					description: 'All of input 1, with data from input 2 added in (left join)',
-				},
-				{
-					name: 'Enrich Input 2',
-					value: 'enrichInput2',
-					description: 'All of input 2, with data from input 1 added in (right join)',
-				},
-			],
-			default: 'keepMatches',
-			displayOptions: {
-				show: {
-					mode: ['combine'],
-					combinationMode: ['mergeByFields'],
-				},
-			},
-		},
-		{
-			displayName: 'Output Data From',
-			name: 'outputDataFrom',
-			type: 'options',
-			options: [
-				{
-					name: 'Both Inputs Merged Together',
-					value: 'both',
-				},
-				{
-					name: 'Input 1',
-					value: 'input1',
-				},
-				{
-					name: 'Input 2',
-					value: 'input2',
-				},
-			],
-			default: 'both',
-			displayOptions: {
-				show: {
-					mode: ['combine'],
-					combinationMode: ['mergeByFields'],
-					joinMode: ['keepMatches'],
-				},
-			},
-		},
-		{
-			displayName: 'Output Data From',
-			name: 'outputDataFrom',
-			type: 'options',
-			options: [
-				{
-					name: 'Both Inputs Appended Together',
-					value: 'both',
-				},
-				{
-					name: 'Input 1',
-					value: 'input1',
-				},
-				{
-					name: 'Input 2',
-					value: 'input2',
-				},
-			],
-			default: 'both',
-			displayOptions: {
-				show: {
-					mode: ['combine'],
-					combinationMode: ['mergeByFields'],
-					joinMode: ['keepNonMatches'],
-				},
-			},
-		},
-
-		// chooseBranch -----------------------------------------------------------------
-		{
-			displayName: 'Output Type',
-			name: 'chooseBranchMode',
-			type: 'options',
-			options: [
-				{
-					name: 'Wait for Both Inputs to Arrive',
-					value: 'waitForBoth',
-				},
-			],
-			default: 'waitForBoth',
-			displayOptions: {
-				show: {
-					mode: ['chooseBranch'],
-				},
-			},
-		},
-		{
-			displayName: 'Output',
-			name: 'output',
-			type: 'options',
-			options: [
-				{
-					name: 'Input 1 Data',
-					value: 'input1',
-				},
-				{
-					name: 'Input 2 Data',
-					value: 'input2',
-				},
-				{
-					name: 'A Single, Empty Item',
-					value: 'empty',
-				},
-			],
-			default: 'input1',
-			displayOptions: {
-				show: {
-					mode: ['chooseBranch'],
-					chooseBranchMode: ['waitForBoth'],
-				},
-			},
-		},
-
-		...optionsDescription,
-	],
-};
+import { preparePairedItemDataArray } from '@utils/utilities';
 
 export class MergeV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -298,7 +37,258 @@ export class MergeV2 implements INodeType {
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
-			...versionDescription,
+			version: [2, 2.1],
+			defaults: {
+				name: 'Merge',
+			},
+			// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+			inputs: ['main', 'main'],
+			outputs: ['main'],
+			inputNames: ['Input 1', 'Input 2'],
+			// If mode is chooseBranch data from both branches is required
+			// to continue, else data from any input suffices
+			requiredInputs: '={{ $parameter["mode"] === "chooseBranch" ? [0, 1] : 1 }}',
+			properties: [
+				{
+					displayName: 'Mode',
+					name: 'mode',
+					type: 'options',
+					options: [
+						{
+							name: 'Append',
+							value: 'append',
+							description: 'All items of input 1, then all items of input 2',
+						},
+						{
+							name: 'Combine',
+							value: 'combine',
+							description: 'Merge matching items together',
+						},
+						{
+							name: 'Choose Branch',
+							value: 'chooseBranch',
+							description: 'Output input data, without modifying it',
+						},
+					],
+					default: 'append',
+					description: 'How data of branches should be merged',
+				},
+				{
+					displayName: 'Combination Mode',
+					name: 'combinationMode',
+					type: 'options',
+					options: [
+						{
+							name: 'Merge By Fields',
+							value: 'mergeByFields',
+							description: 'Combine items with the same field values',
+						},
+						{
+							name: 'Merge By Position',
+							value: 'mergeByPosition',
+							description: 'Combine items based on their order',
+						},
+						{
+							name: 'Multiplex',
+							value: 'multiplex',
+							description: 'All possible item combinations (cross join)',
+						},
+					],
+					default: 'mergeByFields',
+					displayOptions: {
+						show: {
+							mode: ['combine'],
+						},
+					},
+				},
+				// mergeByFields ------------------------------------------------------------------
+				{
+					displayName: 'Fields to Match',
+					name: 'mergeByFields',
+					type: 'fixedCollection',
+					placeholder: 'Add Fields to Match',
+					default: { values: [{ field1: '', field2: '' }] },
+					typeOptions: {
+						multipleValues: true,
+					},
+					options: [
+						{
+							displayName: 'Values',
+							name: 'values',
+							values: [
+								{
+									displayName: 'Input 1 Field',
+									name: 'field1',
+									type: 'string',
+									default: '',
+									// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
+									placeholder: 'e.g. id',
+									hint: ' Enter the field name as text',
+									requiresDataPath: 'single',
+								},
+								{
+									displayName: 'Input 2 Field',
+									name: 'field2',
+									type: 'string',
+									default: '',
+									// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
+									placeholder: 'e.g. id',
+									hint: ' Enter the field name as text',
+									requiresDataPath: 'single',
+								},
+							],
+						},
+					],
+					displayOptions: {
+						show: {
+							mode: ['combine'],
+							combinationMode: ['mergeByFields'],
+						},
+					},
+				},
+				{
+					displayName: 'Output Type',
+					name: 'joinMode',
+					type: 'options',
+					// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
+					options: [
+						{
+							name: 'Keep Matches',
+							value: 'keepMatches',
+							description: 'Items that match, merged together (inner join)',
+						},
+						{
+							name: 'Keep Non-Matches',
+							value: 'keepNonMatches',
+							description: "Items that don't match",
+						},
+						{
+							name: 'Keep Everything',
+							value: 'keepEverything',
+							description:
+								"Items that match merged together, plus items that don't match (outer join)",
+						},
+						{
+							name: 'Enrich Input 1',
+							value: 'enrichInput1',
+							description: 'All of input 1, with data from input 2 added in (left join)',
+						},
+						{
+							name: 'Enrich Input 2',
+							value: 'enrichInput2',
+							description: 'All of input 2, with data from input 1 added in (right join)',
+						},
+					],
+					default: 'keepMatches',
+					displayOptions: {
+						show: {
+							mode: ['combine'],
+							combinationMode: ['mergeByFields'],
+						},
+					},
+				},
+				{
+					displayName: 'Output Data From',
+					name: 'outputDataFrom',
+					type: 'options',
+					options: [
+						{
+							name: 'Both Inputs Merged Together',
+							value: 'both',
+						},
+						{
+							name: 'Input 1',
+							value: 'input1',
+						},
+						{
+							name: 'Input 2',
+							value: 'input2',
+						},
+					],
+					default: 'both',
+					displayOptions: {
+						show: {
+							mode: ['combine'],
+							combinationMode: ['mergeByFields'],
+							joinMode: ['keepMatches'],
+						},
+					},
+				},
+				{
+					displayName: 'Output Data From',
+					name: 'outputDataFrom',
+					type: 'options',
+					options: [
+						{
+							name: 'Both Inputs Appended Together',
+							value: 'both',
+						},
+						{
+							name: 'Input 1',
+							value: 'input1',
+						},
+						{
+							name: 'Input 2',
+							value: 'input2',
+						},
+					],
+					default: 'both',
+					displayOptions: {
+						show: {
+							mode: ['combine'],
+							combinationMode: ['mergeByFields'],
+							joinMode: ['keepNonMatches'],
+						},
+					},
+				},
+
+				// chooseBranch -----------------------------------------------------------------
+				{
+					displayName: 'Output Type',
+					name: 'chooseBranchMode',
+					type: 'options',
+					options: [
+						{
+							name: 'Wait for Both Inputs to Arrive',
+							value: 'waitForBoth',
+						},
+					],
+					default: 'waitForBoth',
+					displayOptions: {
+						show: {
+							mode: ['chooseBranch'],
+						},
+					},
+				},
+				{
+					displayName: 'Output',
+					name: 'output',
+					type: 'options',
+					options: [
+						{
+							name: 'Input 1 Data',
+							value: 'input1',
+						},
+						{
+							name: 'Input 2 Data',
+							value: 'input2',
+						},
+						{
+							name: 'A Single, Empty Item',
+							value: 'empty',
+						},
+					],
+					default: 'input1',
+					displayOptions: {
+						show: {
+							mode: ['chooseBranch'],
+							chooseBranchMode: ['waitForBoth'],
+						},
+					},
+				},
+
+				...optionsDescription,
+			],
 		};
 	}
 
@@ -605,8 +595,15 @@ export class MergeV2 implements INodeType {
 					returnData.push.apply(returnData, this.getInputData(1));
 				}
 				if (output === 'empty') {
-					const itemData = generatePairedItemData(this.getInputData(0).length);
-					returnData.push({ json: {}, pairedItem: itemData });
+					const pairedItem = [
+						...this.getInputData(0).map((inputData) => inputData.pairedItem),
+						...this.getInputData(1).map((inputData) => inputData.pairedItem),
+					].flatMap(preparePairedItemDataArray);
+
+					returnData.push({
+						json: {},
+						pairedItem,
+					});
 				}
 			}
 		}

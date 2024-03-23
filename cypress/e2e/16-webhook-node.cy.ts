@@ -182,7 +182,7 @@ describe('Webhook Trigger node', async () => {
 		workflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME);
 		workflowPage.actions.openNode(EDIT_FIELDS_SET_NODE_NAME);
 		ndv.getters.assignmentCollectionAdd('assignments').click();
-		ndv.getters.assignmentName('assignments').type('data');
+		ndv.getters.assignmentName('assignments').type('data').find('input').blur();
 		ndv.getters.assignmentType('assignments').click();
 		ndv.getters.assignmentValue('assignments').paste(cowBase64);
 
@@ -313,7 +313,7 @@ const addEditFields = () => {
 	workflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME);
 	workflowPage.actions.openNode(EDIT_FIELDS_SET_NODE_NAME);
 	ndv.getters.assignmentCollectionAdd('assignments').click();
-	ndv.getters.assignmentName('assignments').type('MyValue');
+	ndv.getters.assignmentName('assignments').type('MyValue').find('input').blur();
 	ndv.getters.assignmentType('assignments').click();
 	getVisibleSelect().find('li').contains('Number').click();
 	ndv.getters.assignmentValue('assignments').type('1234');

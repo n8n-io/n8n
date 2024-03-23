@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { isEqual } from 'lodash-es';
+import { isEmpty, isEqual } from 'lodash-es';
 
 import {
 	type FilterConditionValue,
@@ -21,7 +21,7 @@ import { useI18n } from '@/composables/useI18n';
 import { useDebounce } from '@/composables/useDebounce';
 import Condition from './Condition.vue';
 import CombinatorSelect from './CombinatorSelect.vue';
-import { resolveParameter } from '@/mixins/workflowHelpers';
+import { resolveParameter } from '@/composables/useWorkflowHelpers';
 import { v4 as uuid } from 'uuid';
 
 interface Props {
@@ -40,10 +40,10 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const ndvStore = useNDVStore();
-const { callDebounced } = useDebounce();
+const { debounce } = useDebounce();
 
 function createCondition(): FilterConditionValue {
-	return { id: uuid(), leftValue: '', rightValue: '', operator: DEFAULT_OPERATOR_VALUE };
+	return { id: uuid(), leftValue: '=', rightValue: '=', operator: DEFAULT_OPERATOR_VALUE };
 }
 
 const allowedCombinators = computed<FilterTypeCombinator[]>(
@@ -92,34 +92,51 @@ watch(
 
 		if (!isEqual(state.paramValue.options, newOptions)) {
 			state.paramValue.options = newOptions;
+			debouncedEmitChange();
 		}
 	},
 	{ immediate: true },
 );
 
-watch(state.paramValue, (value) => {
-	void callDebounced(
-		() => {
-			emit('valueChanged', { name: props.path, value, node: props.node?.name as string });
-		},
-		{ debounceTime: 1000 },
-	);
-});
+watch(
+	() => props.value,
+	(value) => {
+		if (isEmpty(value) || isEqual(state.paramValue, value)) return;
+
+		state.paramValue.conditions = value.conditions;
+		state.paramValue.combinator = value.combinator;
+		state.paramValue.options = value.options;
+	},
+);
+
+function emitChange() {
+	emit('valueChanged', {
+		name: props.path,
+		value: state.paramValue,
+		node: props.node?.name as string,
+	});
+}
+
+const debouncedEmitChange = debounce(emitChange, { debounceTime: 1000 });
 
 function addCondition(): void {
 	state.paramValue.conditions.push(createCondition());
+	debouncedEmitChange();
 }
 
 function onConditionUpdate(index: number, value: FilterConditionValue): void {
 	state.paramValue.conditions[index] = value;
+	debouncedEmitChange();
 }
 
 function onCombinatorChange(combinator: FilterTypeCombinator): void {
 	state.paramValue.combinator = combinator;
+	debouncedEmitChange();
 }
 
 function onConditionRemove(index: number): void {
 	state.paramValue.conditions.splice(index, 1);
+	debouncedEmitChange();
 }
 
 function getIssues(index: number): string[] {

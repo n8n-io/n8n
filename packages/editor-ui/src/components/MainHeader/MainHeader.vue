@@ -18,7 +18,7 @@
 import { defineComponent } from 'vue';
 import type { Route, RouteLocationRaw } from 'vue-router';
 import { mapStores } from 'pinia';
-import type { IExecutionsSummary } from 'n8n-workflow';
+import type { ExecutionSummary } from 'n8n-workflow';
 import { pushConnection } from '@/mixins/pushConnection';
 import WorkflowDetails from '@/components/MainHeader/WorkflowDetails.vue';
 import TabBar from '@/components/MainHeader/TabBar.vue';
@@ -29,7 +29,6 @@ import {
 	VIEWS,
 } from '@/constants';
 import type { INodeUi, ITabBarItem } from '@/Interface';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -40,13 +39,11 @@ export default defineComponent({
 		WorkflowDetails,
 		TabBar,
 	},
-	mixins: [pushConnection, workflowHelpers],
+	mixins: [pushConnection],
 	setup(props, ctx) {
 		return {
 			// eslint-disable-next-line @typescript-eslint/no-misused-promises
 			...pushConnection.setup?.(props, ctx),
-			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...workflowHelpers.setup?.(props, ctx),
 		};
 	},
 	data() {
@@ -82,8 +79,8 @@ export default defineComponent({
 				(this.$route.meta.nodeView || this.$route.meta.keepWorkflowAlive === true)
 			);
 		},
-		activeExecution(): IExecutionsSummary {
-			return this.workflowsStore.activeWorkflowExecution as IExecutionsSummary;
+		activeExecution(): ExecutionSummary {
+			return this.workflowsStore.activeWorkflowExecution as ExecutionSummary;
 		},
 		readOnly(): boolean {
 			return this.sourceControlStore.preferences.branchReadOnly;
