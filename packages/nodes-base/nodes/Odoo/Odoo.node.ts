@@ -116,19 +116,18 @@ export class Odoo implements INodeType {
 				const userID = await odooGetUserID.call(this, db, username, password, url);
 
 				const responce = await odooGetModelFields.call(this, db, userID, password, resource, url);
-				const options = Object.values(responce).map((field) => {
-					const optionField = field as { [key: string]: string };
-					let name = '';
+        const options = Object.entries(responce).map(([key, field]) => {
+					const optionField = field as { [key: string]: string};
 					try {
-						name = capitalCase(optionField.name);
+						optionField.name = optionField.string;
 					} catch (error) {
-						name = optionField.name;
+						optionField.name = optionField.string;
 					}
 					return {
-						name,
-						value: optionField.name,
+						name: optionField.name,
+						value: key,
 						// nodelinter-ignore-next-line
-						description: `name: ${optionField?.name}, type: ${optionField?.type} required: ${optionField?.required}`,
+						description: `name: ${key}, type: ${optionField?.type} required: ${optionField?.required}`,
 					};
 				});
 
@@ -155,7 +154,7 @@ export class Odoo implements INodeType {
 							'ir.model',
 							'search_read',
 							[],
-							['name', 'model', 'modules'],
+							['name', 'model'],
 						],
 					},
 					id: Math.floor(Math.random() * 100),
@@ -167,7 +166,7 @@ export class Odoo implements INodeType {
 					return {
 						name: model.name,
 						value: model.model,
-						description: `model: ${model.model}<br> modules: ${model.modules}`,
+						description: `model: ${model.model}`,
 					};
 				});
 				return options as INodePropertyOptions[];
