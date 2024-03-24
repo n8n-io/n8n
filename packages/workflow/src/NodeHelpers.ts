@@ -272,6 +272,7 @@ const declarativeNodeOptionParameters: INodeProperties = {
 	displayName: 'Request Options',
 	name: 'requestOptions',
 	type: 'collection',
+	isNodeSetting: true,
 	placeholder: 'Add Option',
 	default: {},
 	options: [

@@ -137,6 +137,7 @@
 					:parameters="parametersSetting"
 					:node-values="nodeValues"
 					:is-read-only="isReadOnly"
+					:hide-delete="true"
 					:hidden-issues-inputs="hiddenIssuesInputs"
 					path="parameters"
 					@valueChanged="valueChanged"
