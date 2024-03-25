@@ -2,7 +2,7 @@ import { describe, test, expect } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { faker } from '@faker-js/faker';
-import ExecutionFilter from '@/components/ExecutionFilter.vue';
+import ExecutionsFilter from '@/components/executions/ExecutionsFilter.vue';
 import { STORES } from '@/constants';
 import type { IWorkflowShortResponse, ExecutionFilterType } from '@/Interface';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -50,13 +50,13 @@ const initialState = {
 	},
 };
 
-const renderComponent = createComponentRenderer(ExecutionFilter, {
+const renderComponent = createComponentRenderer(ExecutionsFilter, {
 	props: {
 		teleported: false,
 	},
 });
 
-describe('ExecutionFilter', () => {
+describe('ExecutionsFilter', () => {
 	afterAll(() => {
 		vi.clearAllMocks();
 	});

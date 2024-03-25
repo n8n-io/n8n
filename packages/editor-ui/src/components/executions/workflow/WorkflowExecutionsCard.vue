@@ -2,7 +2,7 @@
 	<div
 		:class="{
 			['execution-card']: true,
-			[$style.executionCard]: true,
+			[$style.WorkflowExecutionsCard]: true,
 			[$style.active]: isActive,
 			[$style[executionUIDetails.name]]: true,
 			[$style.highlight]: highlight,
@@ -37,7 +37,7 @@
 						size="small"
 					>
 						{{ $locale.baseText('executionDetails.runningTimeRunning') }}
-						<ExecutionTime :start-time="execution.startedAt" />
+						<ExecutionsTime :start-time="execution.startedAt" />
 					</n8n-text>
 					<n8n-text
 						v-else-if="executionUIDetails.runningTime !== ''"
@@ -83,18 +83,19 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import type { ExecutionSummary } from '@/Interface';
 import type { IExecutionUIData } from '@/mixins/executionsHelpers';
-import { executionHelpers } from '@/mixins/executionsHelpers';
 import { VIEWS } from '@/constants';
-import ExecutionTime from '@/components/ExecutionTime.vue';
+import ExecutionsTime from '@/components/executions/ExecutionsTime.vue';
+import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
+import type { ExecutionSummary } from 'n8n-workflow';
+import { mapStores } from 'pinia';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 export default defineComponent({
-	name: 'ExecutionCard',
+	name: 'WorkflowExecutionsCard',
 	components: {
-		ExecutionTime,
+		ExecutionsTime,
 	},
-	mixins: [executionHelpers],
 	props: {
 		execution: {
 			type: Object as () => ExecutionSummary,
@@ -109,12 +110,19 @@ export default defineComponent({
 			default: false,
 		},
 	},
-	data() {
+	setup() {
+		const executionHelpers = useExecutionHelpers();
+
 		return {
+			executionHelpers,
 			VIEWS,
 		};
 	},
 	computed: {
+		...mapStores(useWorkflowsStore),
+		currentWorkflow(): string {
+			return (this.$route.params.name as string) || this.workflowsStore.workflowId;
+		},
 		retryExecutionActions(): object[] {
 			return [
 				{
@@ -128,7 +136,7 @@ export default defineComponent({
 			];
 		},
 		executionUIDetails(): IExecutionUIData {
-			return this.getExecutionUIDetails(this.execution);
+			return this.executionHelpers.getUIDetails(this.execution);
 		},
 		isActive(): boolean {
 			return this.execution.id === this.$route.params.executionId;
@@ -143,7 +151,13 @@ export default defineComponent({
 </script>
 
 <style module lang="scss">
-.executionCard {
+@import '@/styles/variables';
+@import '@/styles/keyframes';
+
+.WorkflowExecutionsCard {
+	--execution-list-item-background: var(--color-foreground-xlight);
+	--execution-list-item-highlight-background: var(--color-warning-tint-1);
+
 	display: flex;
 	flex-direction: column;
 	padding-right: var(--spacing-m);
@@ -159,7 +173,7 @@ export default defineComponent({
 	&:hover,
 	&.active {
 		.executionLink {
-			background-color: var(--color-foreground-light);
+			--execution-list-item-background: var(--color-foreground-light);
 		}
 	}
 
@@ -214,6 +228,10 @@ export default defineComponent({
 }
 
 .executionLink {
+	transition: background 0.3s ease;
+	animation: execution-item-animation $executions-list-item-animation-duration ease-out;
+	animation-delay: $executions-list-item-animation-delay;
+	background: var(--execution-list-item-background);
 	display: flex;
 	width: 100%;
 	align-items: center;

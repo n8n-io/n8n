@@ -378,6 +378,7 @@ import { usePinnedData } from '@/composables/usePinnedData';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useDeviceSupport } from 'n8n-design-system';
 import { useDebounce } from '@/composables/useDebounce';
+import { useExecutionsStore } from '@/stores/executions.store';
 import { useCanvasPanning } from '@/composables/useCanvasPanning';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
@@ -605,6 +606,7 @@ export default defineComponent({
 			useCollaborationStore,
 			usePushConnectionStore,
 			useSourceControlStore,
+			useExecutionsStore,
 		),
 		nativelyNumberSuffixedDefaults(): string[] {
 			return this.nodeTypesStore.nativelyNumberSuffixedDefaults;
@@ -1317,7 +1319,7 @@ export default defineComponent({
 			this.resetWorkspace();
 
 			this.workflowsStore.currentWorkflowExecutions = [];
-			this.workflowsStore.activeWorkflowExecution = null;
+			this.executionsStore.activeExecution = null;
 
 			let data: IWorkflowTemplate | undefined;
 			try {
@@ -1369,7 +1371,7 @@ export default defineComponent({
 		async openWorkflow(workflow: IWorkflowDb) {
 			this.canvasStore.startLoading();
 
-			const selectedExecution = this.workflowsStore.activeWorkflowExecution;
+			const selectedExecution = this.executionsStore.activeExecution;
 
 			this.resetWorkspace();
 
@@ -1416,10 +1418,10 @@ export default defineComponent({
 				workflowName: workflow.name,
 			});
 			if (selectedExecution?.workflowId !== workflow.id) {
-				this.workflowsStore.activeWorkflowExecution = null;
+				this.executionsStore.activeExecution = null;
 				this.workflowsStore.currentWorkflowExecutions = [];
 			} else {
-				this.workflowsStore.activeWorkflowExecution = selectedExecution;
+				this.executionsStore.activeExecution = selectedExecution;
 			}
 			this.canvasStore.stopLoading();
 			this.collaborationStore.notifyWorkflowOpened(workflow.id);
@@ -1931,7 +1933,7 @@ export default defineComponent({
 
 			try {
 				this.stopExecutionInProgress = true;
-				await this.workflowsStore.stopCurrentExecution(executionId);
+				await this.executionsStore.stopCurrentExecution(executionId);
 			} catch (error) {
 				// Execution stop might fail when the execution has already finished. Let's treat this here.
 				const execution = await this.workflowsStore.getExecution(executionId);
@@ -3532,14 +3534,14 @@ export default defineComponent({
 			this.resetWorkspace();
 			this.workflowData = await this.workflowsStore.getNewWorkflowData();
 			this.workflowsStore.currentWorkflowExecutions = [];
-			this.workflowsStore.activeWorkflowExecution = null;
+			this.executionsStore.activeExecution = null;
 
 			this.uiStore.stateIsDirty = false;
 			this.canvasStore.setZoomLevel(1, [0, 0]);
 			await this.tryToAddWelcomeSticky();
 			this.uiStore.nodeViewInitialized = true;
 			this.historyStore.reset();
-			this.workflowsStore.activeWorkflowExecution = null;
+			this.executionsStore.activeExecution = null;
 			this.canvasStore.stopLoading();
 		},
 		async tryToAddWelcomeSticky(): Promise<void> {
@@ -4631,7 +4633,7 @@ export default defineComponent({
 						});
 					}
 				} else if (json?.command === 'setActiveExecution') {
-					this.workflowsStore.activeWorkflowExecution = json.execution;
+					this.executionsStore.activeExecution = json.execution;
 				}
 			} catch (e) {}
 		},

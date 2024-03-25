@@ -4,18 +4,18 @@ import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { faker } from '@faker-js/faker';
 import { STORES, VIEWS } from '@/constants';
-import ExecutionsList from '@/components/ExecutionsList.vue';
+import ExecutionsList from '@/components/executions/global/GlobalExecutionsList.vue';
 import type { IWorkflowDb } from '@/Interface';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { retry, SETTINGS_STORE_DEFAULT_STATE, waitAllPromises } from '@/__tests__/utils';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { RenderOptions } from '@/__tests__/render';
 import { createComponentRenderer } from '@/__tests__/render';
+import { waitFor } from '@testing-library/vue';
 
 vi.mock('vue-router', () => ({
 	useRoute: vi.fn().mockReturnValue({
 		name: VIEWS.WORKFLOW_EXECUTIONS,
 	}),
+	useRouter: vi.fn(),
 	RouterLink: vi.fn(),
 }));
 
@@ -71,22 +71,21 @@ const generateExecutionsData = () =>
 		estimated: false,
 	}));
 
-const defaultRenderOptions: RenderOptions = {
+const renderComponent = createComponentRenderer(ExecutionsList, {
 	props: {
 		autoRefreshEnabled: false,
 	},
 	global: {
-		stubs: {
-			stubs: ['font-awesome-icon'],
+		mocks: {
+			$route: {
+				params: {},
+			},
 		},
+		stubs: ['font-awesome-icon'],
 	},
-};
+});
 
-const renderComponent = createComponentRenderer(ExecutionsList, defaultRenderOptions);
-
-describe('ExecutionsList.vue', () => {
-	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
-	let workflowsData: IWorkflowDb[];
+describe('GlobalExecutionsList', () => {
 	let executionsData: Array<{
 		count: number;
 		results: ExecutionSummary[];
@@ -94,11 +93,13 @@ describe('ExecutionsList.vue', () => {
 	}>;
 
 	beforeEach(() => {
-		workflowsData = generateWorkflowsData();
 		executionsData = generateExecutionsData();
 
 		pinia = createTestingPinia({
 			initialState: {
+				[STORES.EXECUTIONS]: {
+					executions: [],
+				},
 				[STORES.SETTINGS]: {
 					settings: merge(SETTINGS_STORE_DEFAULT_STATE.settings, {
 						enterprise: {
@@ -108,22 +109,14 @@ describe('ExecutionsList.vue', () => {
 				},
 			},
 		});
-		workflowsStore = useWorkflowsStore();
-
-		vi.spyOn(workflowsStore, 'fetchAllWorkflows').mockResolvedValue(workflowsData);
-		vi.spyOn(workflowsStore, 'getActiveExecutions').mockResolvedValue([]);
 	});
 
 	it('should render empty list', async () => {
-		vi.spyOn(workflowsStore, 'getPastExecutions').mockResolvedValueOnce({
-			count: 0,
-			results: [],
-			estimated: false,
-		});
 		const { queryAllByTestId, queryByTestId, getByTestId } = renderComponent({
-			global: {
-				plugins: [pinia],
+			props: {
+				executions: [],
 			},
+			pinia,
 		});
 		await waitAllPromises();
 
@@ -138,19 +131,15 @@ describe('ExecutionsList.vue', () => {
 	it(
 		'should handle selection flow when loading more items',
 		async () => {
-			const storeSpy = vi
-				.spyOn(workflowsStore, 'getPastExecutions')
-				.mockResolvedValueOnce(executionsData[0])
-				.mockResolvedValueOnce(executionsData[1]);
-
-			const { getByTestId, getAllByTestId, queryByTestId } = renderComponent({
-				global: {
-					plugins: [pinia],
+			const { getByTestId, getAllByTestId, queryByTestId, rerender } = renderComponent({
+				props: {
+					executions: executionsData[0].results,
+					total: executionsData[0].count,
+					filteredExecutions: executionsData[0].results,
 				},
+				pinia,
 			});
 			await waitAllPromises();
-
-			expect(storeSpy).toHaveBeenCalledTimes(1);
 
 			await userEvent.click(getByTestId('select-visible-executions-checkbox'));
 
@@ -165,9 +154,12 @@ describe('ExecutionsList.vue', () => {
 			expect(getByTestId('selected-executions-info').textContent).toContain(10);
 
 			await userEvent.click(getByTestId('load-more-button'));
+			await rerender({
+				executions: executionsData[0].results.concat(executionsData[1].results),
+				filteredExecutions: executionsData[0].results.concat(executionsData[1].results),
+			});
 
-			expect(storeSpy).toHaveBeenCalledTimes(2);
-			expect(getAllByTestId('select-execution-checkbox').length).toBe(20);
+			await waitFor(() => expect(getAllByTestId('select-execution-checkbox').length).toBe(20));
 			expect(
 				getAllByTestId('select-execution-checkbox').filter((el) =>
 					el.contains(el.querySelector(':checked')),
@@ -198,16 +190,18 @@ describe('ExecutionsList.vue', () => {
 	);
 
 	it('should show "retry" data when appropriate', async () => {
-		vi.spyOn(workflowsStore, 'getPastExecutions').mockResolvedValue(executionsData[0]);
 		const retryOf = executionsData[0].results.filter((execution) => execution.retryOf);
 		const retrySuccessId = executionsData[0].results.filter(
 			(execution) => !execution.retryOf && execution.retrySuccessId,
 		);
 
 		const { queryAllByText } = renderComponent({
-			global: {
-				plugins: [pinia],
+			props: {
+				executions: executionsData[0].results,
+				total: executionsData[0].count,
+				filteredExecutions: executionsData[0].results,
 			},
+			pinia,
 		});
 		await waitAllPromises();
 

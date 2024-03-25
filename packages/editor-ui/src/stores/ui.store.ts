@@ -179,7 +179,6 @@ export const useUIStore = defineStore(STORES.UI, {
 		selectedNodes: [],
 		nodeViewInitialized: false,
 		addFirstStepOnLoad: false,
-		executionSidebarAutoRefresh: true,
 		bannersHeight: 0,
 		bannerStack: [],
 		suggestedTemplates: undefined,

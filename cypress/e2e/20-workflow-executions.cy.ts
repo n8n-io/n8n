@@ -22,6 +22,8 @@ describe('Current Workflow Executions', () => {
 
 		cy.wait(['@getExecutions', '@getActiveExecutions']);
 
+		executionsTab.getters.executionsList().scrollTo(0, 500).wait(0);
+
 		executionsTab.getters.executionListItems().should('have.length', 11);
 		executionsTab.getters.successfulExecutionListItems().should('have.length', 9);
 		executionsTab.getters.failedExecutionListItems().should('have.length', 2);
