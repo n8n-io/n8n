@@ -104,8 +104,8 @@ export class SourceControlController {
 				...req.body,
 				initRepo: false,
 				connected: undefined,
-				repositoryUrl: undefined,
 				publicKey: undefined,
+				repositoryUrl: undefined,
 			};
 			const currentPreferences = this.sourceControlPreferencesService.getPreferences();
 			await this.sourceControlPreferencesService.validateSourceControlPreferences(
