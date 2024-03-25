@@ -6,18 +6,21 @@ import type {
 	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
+	INodeParameters,
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 	IPairedItemData,
 } from 'n8n-workflow';
 
+import { NodeHelpers, NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+
 import type {
 	ClashResolveOptions,
 	MatchFieldsJoinMode,
 	MatchFieldsOptions,
 	MatchFieldsOutput,
-} from './GenericFunctions';
+} from '../v2/GenericFunctions';
 import {
 	addSourceField,
 	addSuffixToEntriesKeys,
@@ -26,25 +29,31 @@ import {
 	findMatches,
 	mergeMatched,
 	selectMergeMethod,
-} from './GenericFunctions';
+} from '../v2/GenericFunctions';
 
 import { optionsDescription } from './OptionsDescription';
 import { preparePairedItemDataArray } from '@utils/utilities';
 
-export class MergeV2 implements INodeType {
+const configuredInputs = (parameters: INodeParameters) => {
+	return Array.from({ length: parameters.numberInputs as number }, (_, i) => ({
+		type: `${NodeConnectionType.Main}`,
+		displayName: `Input ${(i + 1).toString()}`,
+	}));
+};
+
+export class MergeV3 implements INodeType {
 	description: INodeTypeDescription;
 
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
-			version: [2, 2.1],
+			version: [3],
 			defaults: {
 				name: 'Merge',
 			},
 			// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
-			inputs: ['main', 'main'],
+			inputs: `={{(${configuredInputs})($parameter)}}`,
 			outputs: ['main'],
-			inputNames: ['Input 1', 'Input 2'],
 			// If mode is chooseBranch data from both branches is required
 			// to continue, else data from any input suffices
 			requiredInputs: '={{ $parameter["mode"] === "chooseBranch" ? [0, 1] : 1 }}',
@@ -72,6 +81,16 @@ export class MergeV2 implements INodeType {
 					],
 					default: 'append',
 					description: 'How data of branches should be merged',
+				},
+				{
+					displayName: 'Number of Inputs',
+					name: 'numberInputs',
+					type: 'number',
+					default: 2,
+					typeOptions: {
+						minValue: 1,
+					},
+					description: 'How many inputs to create',
 				},
 				{
 					displayName: 'Combination Mode',
@@ -249,11 +268,11 @@ export class MergeV2 implements INodeType {
 					type: 'options',
 					options: [
 						{
-							name: 'Wait for Both Inputs to Arrive',
-							value: 'waitForBoth',
+							name: 'Wait for All Inputs to Arrive',
+							value: 'waitForAll',
 						},
 					],
-					default: 'waitForBoth',
+					default: 'waitForAll',
 					displayOptions: {
 						show: {
 							mode: ['chooseBranch'],
@@ -266,25 +285,36 @@ export class MergeV2 implements INodeType {
 					type: 'options',
 					options: [
 						{
-							name: 'Input 1 Data',
-							value: 'input1',
-						},
-						{
-							name: 'Input 2 Data',
-							value: 'input2',
+							name: 'Data of Specified Input',
+							value: 'specifiedInput',
 						},
 						{
 							name: 'A Single, Empty Item',
 							value: 'empty',
 						},
 					],
-					default: 'input1',
+					default: 'specifiedInput',
 					displayOptions: {
 						show: {
 							mode: ['chooseBranch'],
-							chooseBranchMode: ['waitForBoth'],
+							chooseBranchMode: ['waitForAll'],
 						},
 					},
+				},
+				{
+					displayName: 'Use Data of Input',
+					name: 'useDataOfInput',
+					type: 'number',
+					default: 1,
+					displayOptions: {
+						show: {
+							output: ['specifiedInput'],
+						},
+					},
+					typeOptions: {
+						minValue: 1,
+					},
+					description: 'The number of the input to use data of',
 				},
 
 				...optionsDescription,
@@ -297,8 +327,13 @@ export class MergeV2 implements INodeType {
 
 		const mode = this.getNodeParameter('mode', 0) as string;
 
+		const nodeInputs = this.getNodeInputs();
+		const inputs = NodeHelpers.getConnectionTypes(nodeInputs).filter(
+			(type) => type === NodeConnectionType.Main,
+		);
+
 		if (mode === 'append') {
-			for (let i = 0; i < 2; i++) {
+			for (let i = 0; i < inputs.length; i++) {
 				returnData.push.apply(returnData, this.getInputData(i));
 			}
 		}
@@ -585,14 +620,21 @@ export class MergeV2 implements INodeType {
 		if (mode === 'chooseBranch') {
 			const chooseBranchMode = this.getNodeParameter('chooseBranchMode', 0) as string;
 
-			if (chooseBranchMode === 'waitForBoth') {
+			if (chooseBranchMode === 'waitForAll') {
 				const output = this.getNodeParameter('output', 0) as string;
 
-				if (output === 'input1') {
-					returnData.push.apply(returnData, this.getInputData(0));
-				}
-				if (output === 'input2') {
-					returnData.push.apply(returnData, this.getInputData(1));
+				if (output === 'specifiedInput') {
+					const useDataOfInput = this.getNodeParameter('useDataOfInput', 0) as number;
+					if (useDataOfInput > inputs.length) {
+						throw new NodeOperationError(
+							this.getNode(),
+							`The input ${useDataOfInput} is not allowed.`,
+							{
+								description: `The node has only ${inputs.length} inputs, so selecting input ${useDataOfInput} is not possible.`,
+							},
+						);
+					}
+					returnData.push.apply(returnData, this.getInputData(parseInt(useDataOfInput) - 1));
 				}
 				if (output === 'empty') {
 					const pairedItem = [
