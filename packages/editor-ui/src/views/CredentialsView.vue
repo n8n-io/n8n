@@ -56,7 +56,6 @@ import type { ICredentialType } from 'n8n-workflow';
 import { CREDENTIAL_SELECT_MODAL_KEY } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
-import { useUsersStore } from '@/stores/users.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
@@ -76,8 +75,7 @@ export default defineComponent({
 		return {
 			filters: {
 				search: '',
-				ownedBy: '',
-				sharedWith: '',
+				homeProject: '',
 				type: '',
 			},
 			sourceControlStoreUnsubscribe: () => {},
@@ -88,7 +86,6 @@ export default defineComponent({
 			useCredentialsStore,
 			useNodeTypesStore,
 			useUIStore,
-			useUsersStore,
 			useSourceControlStore,
 			useExternalSecretsStore,
 		),
@@ -141,8 +138,6 @@ export default defineComponent({
 			];
 
 			await Promise.all(loadPromises);
-
-			await this.usersStore.fetchUsers(); // Can be loaded in the background, used for filtering
 		},
 		onFilter(
 			resource: ICredentialsResponse,
