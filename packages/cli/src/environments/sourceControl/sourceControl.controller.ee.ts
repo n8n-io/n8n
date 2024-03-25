@@ -239,7 +239,8 @@ export class SourceControlController {
 		try {
 			const keyPairType = req.body.keyGeneratorType;
 			const result = await this.sourceControlPreferencesService.generateAndSaveKeyPair(keyPairType);
-			return result;
+			const publicKey = await this.sourceControlPreferencesService.getPublicKey();
+			return { ...result, publicKey };
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}
