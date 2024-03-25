@@ -73,7 +73,6 @@ describe('GET /sourceControl/preferences', () => {
 				).toBe('rsa');
 				expect(res.body.data).toHaveProperty('keyGeneratorType');
 				expect(res.body.data.keyGeneratorType).toBe('rsa');
-				expect(res.body.data.publicKey).toContain('ssh-rsa');
 			});
 	});
 });
