@@ -160,12 +160,14 @@
 						interpolate: { executionId: subWorkflowData.executionId },
 					})
 				"
+				type="secondary"
 				@click.stop="displayExecution(subWorkflowData.executionId, subWorkflowData.workflowId)"
 			/>
 
 			<div v-if="itemSubWorkflowData.length">
 				<n8n-select
 					size="small"
+					:class="$style.longSelect"
 					:model-value="i18n.baseText('ndv.output.subworkflow.selectExecution')"
 					@change="displayExecution($event.metadata.executionId, $event.metadata.workflowId)"
 				>
@@ -177,7 +179,7 @@
 							i18n.baseText('ndv.output.subworkflow.selectExecutionItem', {
 								interpolate: {
 									executionId: subWorkflow.metadata.executionId,
-									itemIndex: subWorkflow.itemIndex,
+									itemIndex: subWorkflow.itemIndex.toString(),
 								},
 							})
 						"
@@ -1886,6 +1888,10 @@ export default defineComponent({
 .uiBlocker {
 	border-top-left-radius: 0;
 	border-bottom-left-radius: 0;
+}
+
+.longSelect {
+	width: 13em;
 }
 </style>
 
