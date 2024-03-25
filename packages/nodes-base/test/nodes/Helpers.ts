@@ -172,6 +172,7 @@ export function WorkflowExecuteAdditionalData(
 		connections: {},
 	};
 	return {
+		executionId: '1',
 		credentialsHelper: new CredentialsHelper(credentialTypes),
 		hooks: new WorkflowHooks(hookFunctions, 'trigger', '1', workflowData),
 		executeWorkflow: async (workflowInfo: IExecuteWorkflowInfo): Promise<any> => {},

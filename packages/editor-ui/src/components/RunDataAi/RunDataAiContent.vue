@@ -27,6 +27,17 @@
 							}}
 						</n8n-tooltip>
 					</li>
+					<li v-if="runMeta?.executionId">
+						{{ $locale.baseText('runData.aiContentBlock.executionId') }}:
+						<span
+							@click.stop="
+								executionHelpers.methods!.displayExecution(runMeta?.executionId, undefined, router)
+							"
+						>
+							<a href="#" class="link">{{ runMeta.executionId }}</a>
+						</span>
+					</li>
+
 					<li v-if="(consumedTokensSum?.totalTokens ?? 0) > 0">
 						{{
 							$locale.baseText('runData.aiContentBlock.tokens', {
@@ -84,10 +95,13 @@ import type {
 import { computed } from 'vue';
 import NodeIcon from '@/components/NodeIcon.vue';
 import AiRunContentBlock from './AiRunContentBlock.vue';
+import { executionHelpers } from '@/mixins/executionsHelpers';
+import { useRouter } from 'vue-router';
 
 interface RunMeta {
 	startTimeMs: number;
 	executionTimeMs: number;
+	executionId?: string;
 	node: INodeTypeDescription | null;
 	type: 'input' | 'output';
 	connectionType: NodeConnectionType;
@@ -99,6 +113,7 @@ const props = defineProps<{
 
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
+const router = useRouter();
 
 type TokenUsageData = {
 	completionTokens: number;
@@ -137,6 +152,7 @@ function extractRunMeta(run: IAiDataContent) {
 	const runMeta: RunMeta = {
 		startTimeMs: run.metadata.startTime,
 		executionTimeMs: run.metadata.executionTime,
+		executionId: run.metadata.executionId,
 		node: nodeType,
 		type: run.inOut,
 		connectionType: run.type,

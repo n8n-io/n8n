@@ -23,7 +23,9 @@ import type {
 	WorkflowExecuteMode,
 	ExecutionStatus,
 	ExecutionError,
+	ExecuteWorkflowData,
 	EventNamesAiNodesType,
+	ITaskMetadata,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
@@ -40,7 +42,6 @@ import { CredentialsHelper } from '@/CredentialsHelper';
 import { ExternalHooks } from '@/ExternalHooks';
 import type {
 	IPushDataExecutionFinished,
-	IWorkflowExecuteProcess,
 	IWorkflowExecutionDataProcess,
 	IWorkflowErrorData,
 	IPushDataType,
@@ -653,6 +654,7 @@ export async function getRunData(
 	workflowData: IWorkflowBase,
 	userId: string,
 	inputData?: INodeExecutionData[],
+	metadata?: ITaskMetadata,
 ): Promise<IWorkflowExecutionDataProcess> {
 	const mode = 'integrated';
 
@@ -672,6 +674,7 @@ export async function getRunData(
 		data: {
 			main: [inputData],
 		},
+		metadata,
 		source: null,
 	});
 
@@ -747,15 +750,16 @@ async function executeWorkflow(
 	workflowInfo: IExecuteWorkflowInfo,
 	additionalData: IWorkflowExecuteAdditionalData,
 	options: {
+		doNotWaitToFinish?: boolean;
 		node?: INode;
-		parentWorkflowId: string;
+		parentWorkflowId: string; // TODO: Why is this here? Does not seem to be used anywhere
 		inputData?: INodeExecutionData[];
-		parentExecutionId?: string;
 		loadedWorkflowData?: IWorkflowBase;
 		loadedRunData?: IWorkflowExecutionDataProcess;
 		parentWorkflowSettings?: IWorkflowSettings;
+		startMetadata?: ITaskMetadata;
 	},
-): Promise<Array<INodeExecutionData[] | null> | IWorkflowExecuteProcess> {
+): Promise<ExecuteWorkflowData> {
 	const internalHooks = Container.get(InternalHooks);
 	const externalHooks = Container.get(ExternalHooks);
 	await externalHooks.init();
@@ -781,151 +785,164 @@ async function executeWorkflow(
 
 	const runData =
 		options.loadedRunData ??
-		(await getRunData(workflowData, additionalData.userId, options.inputData));
-
-	let executionId;
-
-	if (options.parentExecutionId !== undefined) {
-		executionId = options.parentExecutionId;
-	} else {
-		executionId = options.parentExecutionId ?? (await activeExecutions.add(runData));
-	}
-
-	void internalHooks.onWorkflowBeforeExecute(executionId || '', runData);
-
-	let data;
-	try {
-		await Container.get(PermissionChecker).check(
-			workflowData.id,
-			additionalData.userId,
-			workflowData.nodes,
-		);
-		await Container.get(PermissionChecker).checkSubworkflowExecutePolicy(
-			workflow,
-			options.parentWorkflowId,
-			options.node,
-		);
-
-		// Create new additionalData to have different workflow loaded and to call
-		// different webhooks
-		const additionalDataIntegrated = await getBase(additionalData.userId);
-		additionalDataIntegrated.hooks = getWorkflowHooksIntegrated(
-			runData.executionMode,
-			executionId,
+		(await getRunData(
 			workflowData,
-		);
-		additionalDataIntegrated.executionId = executionId;
+			additionalData.userId,
+			options.inputData,
+			options.startMetadata,
+		));
 
-		// Make sure we pass on the original executeWorkflow function we received
-		// This one already contains changes to talk to parent process
-		// and get executionID from `activeExecutions` running on main process
-		additionalDataIntegrated.executeWorkflow = additionalData.executeWorkflow;
+	const executionId = await activeExecutions.add(runData);
 
-		let subworkflowTimeout = additionalData.executionTimeoutTimestamp;
-		const workflowSettings = workflowData.settings;
-		if (workflowSettings?.executionTimeout !== undefined && workflowSettings.executionTimeout > 0) {
-			// We might have received a max timeout timestamp from the parent workflow
-			// If we did, then we get the minimum time between the two timeouts
-			// If no timeout was given from the parent, then we use our timeout.
-			subworkflowTimeout = Math.min(
-				additionalData.executionTimeoutTimestamp || Number.MAX_SAFE_INTEGER,
-				Date.now() + workflowSettings.executionTimeout * 1000,
+	// We wrap it in another promise that we can depending on the setting return
+	// the execution ID before the execution is finished
+	const executionPromise = (async (): Promise<ExecuteWorkflowData> => {
+		void internalHooks.onWorkflowBeforeExecute(executionId || '', runData);
+
+		let data;
+		try {
+			await Container.get(PermissionChecker).check(
+				workflowData.id,
+				additionalData.userId,
+				workflowData.nodes,
+			);
+			await Container.get(PermissionChecker).checkSubworkflowExecutePolicy(
+				workflow,
+				options.parentWorkflowId,
+				options.node,
+			);
+
+			// Create new additionalData to have different workflow loaded and to call
+			// different webhooks
+			const additionalDataIntegrated = await getBase(additionalData.userId);
+			additionalDataIntegrated.hooks = getWorkflowHooksIntegrated(
+				runData.executionMode,
+				executionId,
+				workflowData,
+			);
+			additionalDataIntegrated.executionId = executionId;
+
+			// Make sure we pass on the original executeWorkflow function we received
+			// This one already contains changes to talk to parent process
+			// and get executionID from `activeExecutions` running on main process
+			additionalDataIntegrated.executeWorkflow = additionalData.executeWorkflow;
+
+			let subworkflowTimeout = additionalData.executionTimeoutTimestamp;
+			const workflowSettings = workflowData.settings;
+			if (
+				workflowSettings?.executionTimeout !== undefined &&
+				workflowSettings.executionTimeout > 0
+			) {
+				// We might have received a max timeout timestamp from the parent workflow
+				// If we did, then we get the minimum time between the two timeouts
+				// If no timeout was given from the parent, then we use our timeout.
+				subworkflowTimeout = Math.min(
+					additionalData.executionTimeoutTimestamp || Number.MAX_SAFE_INTEGER,
+					Date.now() + workflowSettings.executionTimeout * 1000,
+				);
+			}
+
+			additionalDataIntegrated.executionTimeoutTimestamp = subworkflowTimeout;
+
+			const runExecutionData = runData.executionData as IRunExecutionData;
+
+			// Execute the workflow
+			const workflowExecute = new WorkflowExecute(
+				additionalDataIntegrated,
+				runData.executionMode,
+				runExecutionData,
+			);
+
+			data = await workflowExecute.processRunExecutionData(workflow);
+		} catch (error) {
+			const executionError = error ? (error as ExecutionError) : undefined;
+			const fullRunData: IRun = {
+				data: {
+					resultData: {
+						error: executionError,
+						runData: {},
+					},
+				},
+				finished: false,
+				mode: 'integrated',
+				startedAt: new Date(),
+				stoppedAt: new Date(),
+				status: 'failed',
+			};
+			// When failing, we might not have finished the execution
+			// Therefore, database might not contain finished errors.
+			// Force an update to db as there should be no harm doing this
+
+			const fullExecutionData: ExecutionPayload = {
+				data: fullRunData.data,
+				mode: fullRunData.mode,
+				finished: fullRunData.finished ? fullRunData.finished : false,
+				startedAt: fullRunData.startedAt,
+				stoppedAt: fullRunData.stoppedAt,
+				status: fullRunData.status,
+				workflowData,
+				workflowId: workflowData.id,
+			};
+			if (workflowData.id) {
+				fullExecutionData.workflowId = workflowData.id;
+			}
+
+			// remove execution from active executions
+			activeExecutions.remove(executionId, fullRunData);
+
+			await Container.get(ExecutionRepository).updateExistingExecution(
+				executionId,
+				fullExecutionData,
+			);
+			throw objectToError(
+				{
+					...executionError,
+					stack: executionError?.stack,
+					message: executionError?.message,
+				},
+				workflow,
 			);
 		}
 
-		additionalDataIntegrated.executionTimeoutTimestamp = subworkflowTimeout;
+		await externalHooks.run('workflow.postExecute', [data, workflowData, executionId]);
 
-		const runExecutionData = runData.executionData as IRunExecutionData;
-
-		// Execute the workflow
-		const workflowExecute = new WorkflowExecute(
-			additionalDataIntegrated,
-			runData.executionMode,
-			runExecutionData,
+		void internalHooks.onWorkflowPostExecute(
+			executionId,
+			workflowData,
+			data,
+			additionalData.userId,
 		);
-		if (options.parentExecutionId !== undefined) {
-			// Must be changed to become typed
+
+		// subworkflow either finished, or is in status waiting due to a wait node, both cases are considered successes here
+		if (data.finished === true || data.status === 'waiting') {
+			// Workflow did finish successfully
+
+			activeExecutions.remove(executionId, data);
+			const returnData = WorkflowHelpers.getDataLastExecutedNodeData(data);
 			return {
-				startedAt: new Date(),
-				workflow,
-				workflowExecute,
+				executionId,
+				data: returnData!.data!.main,
 			};
 		}
-		data = await workflowExecute.processRunExecutionData(workflow);
-	} catch (error) {
-		const executionError = error ? (error as ExecutionError) : undefined;
-		const fullRunData: IRun = {
-			data: {
-				resultData: {
-					error: executionError,
-					runData: {},
-				},
-			},
-			finished: false,
-			mode: 'integrated',
-			startedAt: new Date(),
-			stoppedAt: new Date(),
-			status: 'failed',
-		};
-		// When failing, we might not have finished the execution
-		// Therefore, database might not contain finished errors.
-		// Force an update to db as there should be no harm doing this
+		activeExecutions.remove(executionId, data);
 
-		const fullExecutionData: ExecutionPayload = {
-			data: fullRunData.data,
-			mode: fullRunData.mode,
-			finished: fullRunData.finished ? fullRunData.finished : false,
-			startedAt: fullRunData.startedAt,
-			stoppedAt: fullRunData.stoppedAt,
-			status: fullRunData.status,
-			workflowData,
-			workflowId: workflowData.id,
-		};
-		if (workflowData.id) {
-			fullExecutionData.workflowId = workflowData.id;
-		}
+		// Workflow did fail
+		const { error } = data.data.resultData;
 
-		// remove execution from active executions
-		activeExecutions.remove(executionId, fullRunData);
-
-		await Container.get(ExecutionRepository).updateExistingExecution(
-			executionId,
-			fullExecutionData,
-		);
 		throw objectToError(
 			{
-				...executionError,
-				stack: executionError?.stack,
-				message: executionError?.message,
+				...error,
+				stack: error?.stack,
 			},
 			workflow,
 		);
+	})();
+
+	if (options.doNotWaitToFinish) {
+		return { executionId, data: [null] };
+	} else {
+		return await executionPromise;
 	}
-
-	await externalHooks.run('workflow.postExecute', [data, workflowData, executionId]);
-
-	void internalHooks.onWorkflowPostExecute(executionId, workflowData, data, additionalData.userId);
-
-	// subworkflow either finished, or is in status waiting due to a wait node, both cases are considered successes here
-	if (data.finished === true || data.status === 'waiting') {
-		// Workflow did finish successfully
-
-		activeExecutions.remove(executionId, data);
-		const returnData = WorkflowHelpers.getDataLastExecutedNodeData(data);
-		return returnData!.data!.main;
-	}
-	activeExecutions.remove(executionId, data);
-
-	// Workflow did fail
-	const { error } = data.data.resultData;
-
-	throw objectToError(
-		{
-			...error,
-			stack: error?.stack,
-		},
-		workflow,
-	);
 }
 
 export function setExecutionStatus(status: ExecutionStatus) {

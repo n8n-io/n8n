@@ -4,6 +4,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { i18n as locale } from '@/plugins/i18n';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { convertToDisplayDate } from '@/utils/formatters/dateFormatter';
+import { VIEWS } from '@/constants';
 
 export interface IExecutionUIData {
 	name: string;
@@ -32,6 +33,13 @@ export const executionHelpers = defineComponent({
 		},
 	},
 	methods: {
+		displayExecution(executionId: string, workflowId?: string, router?: Router) {
+			const route = (router || this.$router).resolve({
+				name: VIEWS.EXECUTION_PREVIEW,
+				params: { name: workflowId, executionId },
+			});
+			window.open(route.href, '_blank');
+		},
 		getExecutionUIDetails(execution: ExecutionSummary): IExecutionUIData {
 			const status = {
 				name: 'unknown',

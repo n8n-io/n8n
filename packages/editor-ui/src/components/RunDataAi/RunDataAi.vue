@@ -134,6 +134,7 @@ function getReferencedData(
 				metadata: {
 					executionTime: taskData.executionTime,
 					startTime: taskData.startTime,
+					executionId: taskData.metadata?.executionId,
 				},
 			});
 		});
