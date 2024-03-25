@@ -67,9 +67,8 @@ export class OwnershipService {
 	addOwnedByAndSharedWith(
 		rawEntity: ListQuery.Workflow.WithSharing | ListQuery.Credentials.WithSharing,
 	): ListQuery.Workflow.WithOwnedByAndSharedWith | ListQuery.Credentials.WithOwnedByAndSharedWith {
-		const { shared, ...rest } = rawEntity;
-
-		const entity = rest as
+		const shared = rawEntity.shared;
+		const entity = rawEntity as
 			| ListQuery.Workflow.WithOwnedByAndSharedWith
 			| ListQuery.Credentials.WithOwnedByAndSharedWith;
 

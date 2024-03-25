@@ -96,13 +96,13 @@ export async function shareWorkflowWithUsers(workflow: WorkflowEntity, users: Us
 
 export async function shareWorkflowWithProjects(
 	workflow: WorkflowEntity,
-	projectsWithRole: Array<{ project: Project; role: WorkflowSharingRole }>,
+	projectsWithRole: Array<{ project: Project; role?: WorkflowSharingRole }>,
 ) {
 	const newSharedWorkflow = await Promise.all(
 		projectsWithRole.map(async ({ project, role }) => {
 			return Container.get(SharedWorkflowRepository).create({
 				workflowId: workflow.id,
-				role,
+				role: role ?? 'workflow:editor',
 				projectId: project.id,
 			});
 		}),

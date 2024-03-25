@@ -16,7 +16,6 @@ import { TagRepository } from '@db/repositories/tag.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { validateEntity } from '@/GenericHelpers';
 import { ExternalHooks } from '@/ExternalHooks';
-import { ListQuery } from '@/requests';
 import { WorkflowService } from './workflow.service';
 import { License } from '@/License';
 import { InternalHooks } from '@/InternalHooks';
@@ -35,7 +34,6 @@ import { CredentialsService } from '../credentials/credentials.service';
 import { WorkflowRequest } from './workflow.request';
 import { EnterpriseWorkflowService } from './workflow.service.ee';
 import { WorkflowExecutionService } from './workflowExecution.service';
-import { WorkflowSharingService } from './workflowSharing.service';
 import { UserManagementMailer } from '@/UserManagement/email';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { ProjectService } from '@/services/project.service';
@@ -57,7 +55,6 @@ export class WorkflowsController {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowService: WorkflowService,
 		private readonly workflowExecutionService: WorkflowExecutionService,
-		private readonly workflowSharingService: WorkflowSharingService,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly license: License,
 		private readonly mailer: UserManagementMailer,
@@ -165,15 +162,12 @@ export class WorkflowsController {
 	}
 
 	@Get('/', { middlewares: listQueryMiddleware })
-	async getAll(req: ListQuery.Request, res: express.Response) {
+	async getAll(req: WorkflowRequest.GetMany, res: express.Response) {
 		try {
-			const sharedWorkflowIds = await this.workflowSharingService.getSharedWorkflowIds(req.user, {
-				scopes: ['workflow:read'],
-			});
-
 			const { workflows: data, count } = await this.workflowService.getMany(
-				sharedWorkflowIds,
+				req.user,
 				req.listQueryOptions,
+				!!req.query.includeScopes,
 			);
 
 			res.json({ count, data });

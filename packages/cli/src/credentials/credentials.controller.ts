@@ -1,7 +1,7 @@
 import { deepCopy } from 'n8n-workflow';
 import config from '@/config';
 import { CredentialsService } from './credentials.service';
-import { CredentialRequest, ListQuery } from '@/requests';
+import { CredentialRequest } from '@/requests';
 import { InternalHooks } from '@/InternalHooks';
 import { Logger } from '@/Logger';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -41,9 +41,10 @@ export class CredentialsController {
 	) {}
 
 	@Get('/', { middlewares: listQueryMiddleware })
-	async getMany(req: ListQuery.Request) {
+	async getMany(req: CredentialRequest.GetMany) {
 		return await this.credentialsService.getMany(req.user, {
 			listQueryOptions: req.listQueryOptions,
+			includeScopes: req.query.includeScopes,
 		});
 	}
 
