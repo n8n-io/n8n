@@ -30,6 +30,7 @@ export const MAX_TAG_NAME_LENGTH = 24;
 
 // modals
 export const ABOUT_MODAL_KEY = 'about';
+export const WORKFLOW_WITH_VERSION_MODAL_KEY = 'workflowWithVersion';
 export const CHAT_EMBED_MODAL_KEY = 'chatEmbed';
 export const CHANGE_PASSWORD_MODAL_KEY = 'changePassword';
 export const CREDENTIAL_EDIT_MODAL_KEY = 'editCredential';
@@ -528,6 +529,7 @@ export const enum WORKFLOW_MENU_ACTIONS {
 	PUSH = 'push',
 	SETTINGS = 'settings',
 	DELETE = 'delete',
+  VIEW_WORKFLOW_VERSIONS = 'view-workflow-versions',
 }
 
 /**

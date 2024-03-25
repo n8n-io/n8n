@@ -88,12 +88,12 @@ export async function downloadImage(this: IExecuteFunctions, url: string) {
 
 export async function apiTemplateIoApiRequestV2(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	qs = {},
 	body = {},
 ) {
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			'user-agent': 'n8n',
 			Accept: 'application/json',
