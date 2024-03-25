@@ -38,7 +38,6 @@ export class SourceControlPreferencesService {
 	constructor(
 		instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
-		private readonly settingsRepository: SettingsRepository,
 		private readonly cipher: Cipher,
 	) {
 		this.sshFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_SSH_FOLDER);
@@ -70,7 +69,9 @@ export class SourceControlPreferencesService {
 	}
 
 	private async getKeyPairFromDatabase() {
-		const dbSetting = await this.settingsRepository.findByKey('features.sourceControl.sshKeys');
+		const dbSetting = await Container.get(SettingsRepository).findByKey(
+			'features.sourceControl.sshKeys',
+		);
 
 		if (!dbSetting?.value) return null;
 
@@ -110,7 +111,7 @@ export class SourceControlPreferencesService {
 	async deleteKeyPair() {
 		try {
 			await fsRm(this.sshFolder, { recursive: true });
-			await this.settingsRepository.delete({ key: 'features.sourceControl.sshKeys' });
+			await Container.get(SettingsRepository).delete({ key: 'features.sourceControl.sshKeys' });
 		} catch (e) {
 			const error = e instanceof Error ? e : new Error(`${e}`);
 			this.logger.error(`Failed to delete SSH key pair: ${error.message}`);
