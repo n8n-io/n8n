@@ -47,7 +47,6 @@ export class SourceControlController {
 				...req.body,
 				initRepo: req.body.initRepo ?? true, // default to true if not specified
 				connected: undefined,
-				publicKey: undefined,
 			};
 			await this.sourceControlPreferencesService.validateSourceControlPreferences(
 				sanitizedPreferences,
@@ -103,7 +102,6 @@ export class SourceControlController {
 				...req.body,
 				initRepo: false,
 				connected: undefined,
-				publicKey: undefined,
 				repositoryUrl: undefined,
 			};
 			const currentPreferences = this.sourceControlPreferencesService.getPreferences();
