@@ -22,6 +22,10 @@ export class SourceControlPreferences {
 	branchColor: string;
 
 	@IsOptional()
+	@IsString()
+	readonly publicKey?: string;
+
+	@IsOptional()
 	@IsBoolean()
 	readonly initRepo?: boolean;
 

@@ -28,7 +28,8 @@ export class SourceControlController {
 	@Get('/preferences', { middlewares: [sourceControlLicensedMiddleware], skipAuth: true })
 	async getPreferences(): Promise<SourceControlPreferences> {
 		// returns the settings with the privateKey property redacted
-		return this.sourceControlPreferencesService.getPreferences();
+		const publicKey = await this.sourceControlPreferencesService.getPublicKey();
+		return { ...this.sourceControlPreferencesService.getPreferences(), publicKey };
 	}
 
 	@Post('/preferences', { middlewares: [sourceControlLicensedMiddleware] })
@@ -47,6 +48,7 @@ export class SourceControlController {
 				...req.body,
 				initRepo: req.body.initRepo ?? true, // default to true if not specified
 				connected: undefined,
+				publicKey: undefined,
 			};
 			await this.sourceControlPreferencesService.validateSourceControlPreferences(
 				sanitizedPreferences,
@@ -103,6 +105,7 @@ export class SourceControlController {
 				initRepo: false,
 				connected: undefined,
 				repositoryUrl: undefined,
+				publicKey: undefined,
 			};
 			const currentPreferences = this.sourceControlPreferencesService.getPreferences();
 			await this.sourceControlPreferencesService.validateSourceControlPreferences(

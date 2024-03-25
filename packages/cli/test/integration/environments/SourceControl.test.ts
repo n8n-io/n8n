@@ -71,8 +71,10 @@ describe('GET /sourceControl/preferences', () => {
 				expect(
 					Container.get(SourceControlPreferencesService).getPreferences().keyGeneratorType,
 				).toBe('rsa');
+				expect(res.body.data).toHaveProperty('publicKey');
 				expect(res.body.data).toHaveProperty('keyGeneratorType');
 				expect(res.body.data.keyGeneratorType).toBe('rsa');
+				expect(res.body.data.publicKey).toContain('ssh-rsa');
 			});
 	});
 });

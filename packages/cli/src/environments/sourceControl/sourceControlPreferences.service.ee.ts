@@ -1,5 +1,5 @@
 import os from 'node:os';
-import { writeFile, chmod } from 'node:fs/promises';
+import { writeFile, chmod, readFile } from 'node:fs/promises';
 import Container, { Service } from 'typedi';
 import { SourceControlPreferences } from './types/sourceControlPreferences';
 import type { ValidationError } from 'class-validator';
@@ -88,6 +88,14 @@ export class SourceControlPreferencesService {
 		return this.cipher.decrypt(dbKeyPair.encryptedPrivateKey);
 	}
 
+	private async getPublicKeyFromDatabase() {
+		const dbKeyPair = await this.getKeyPairFromDatabase();
+
+		if (!dbKeyPair) return null;
+
+		return dbKeyPair.publicKey;
+	}
+
 	async getPrivateKeyPath() {
 		const dbPrivateKey = await this.getPrivateKeyFromDatabase();
 
@@ -102,6 +110,20 @@ export class SourceControlPreferencesService {
 		}
 
 		return this.sshKeyName; // fall back to key in filesystem
+	}
+
+	async getPublicKey() {
+		try {
+			const dbPublicKey = await this.getPublicKeyFromDatabase();
+
+			if (dbPublicKey) return dbPublicKey;
+
+			return await readFile(this.sshKeyName + '.pub', { encoding: 'utf8' });
+		} catch (e) {
+			const error = e instanceof Error ? e : new Error(`${e}`);
+			this.logger.error(`Failed to read SSH public key: ${error.message}`);
+		}
+		return '';
 	}
 
 	hasKeyPairFiles(): boolean {
