@@ -1,5 +1,5 @@
 import os from 'node:os';
-import { writeFile } from 'node:fs/promises';
+import { writeFile, chmod } from 'node:fs/promises';
 import Container, { Service } from 'typedi';
 import { SourceControlPreferences } from './types/sourceControlPreferences';
 import type { ValidationError } from 'class-validator';
@@ -94,6 +94,8 @@ export class SourceControlPreferencesService {
 			const tempFilePath = path.join(os.tmpdir(), 'ssh_private_key_temp');
 
 			await writeFile(tempFilePath, dbPrivateKey);
+
+			await chmod(tempFilePath, 0o600);
 
 			return tempFilePath;
 		}
