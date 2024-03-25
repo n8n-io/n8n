@@ -6,11 +6,14 @@ import type {
 	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
+	INodeParameters,
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 	IPairedItemData,
 } from 'n8n-workflow';
+
+import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
 
 import type {
 	ClashResolveOptions,
@@ -31,6 +34,13 @@ import {
 import { optionsDescription } from './OptionsDescription';
 import { preparePairedItemDataArray } from '@utils/utilities';
 
+const configuredInputs = (parameters: INodeParameters) => {
+	return Array.from({ length: parameters.numberInputs as number }, (_, i) => ({
+		type: `${NodeConnectionType.Main}`,
+		displayName: `Input ${(i + 1).toString()}`,
+	}));
+};
+
 export class MergeV2 implements INodeType {
 	description: INodeTypeDescription;
 
@@ -42,9 +52,8 @@ export class MergeV2 implements INodeType {
 				name: 'Merge',
 			},
 			// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
-			inputs: ['main', 'main'],
+			inputs: `={{(${configuredInputs})($parameter)}}`,
 			outputs: ['main'],
-			inputNames: ['Input 1', 'Input 2'],
 			// If mode is chooseBranch data from both branches is required
 			// to continue, else data from any input suffices
 			requiredInputs: '={{ $parameter["mode"] === "chooseBranch" ? [0, 1] : 1 }}',
@@ -72,6 +81,13 @@ export class MergeV2 implements INodeType {
 					],
 					default: 'append',
 					description: 'How data of branches should be merged',
+				},
+				{
+					displayName: 'Number of Inputs',
+					name: 'numberInputs',
+					type: 'number',
+					default: 2,
+					description: 'How many inputs to create',
 				},
 				{
 					displayName: 'Combination Mode',
@@ -298,7 +314,11 @@ export class MergeV2 implements INodeType {
 		const mode = this.getNodeParameter('mode', 0) as string;
 
 		if (mode === 'append') {
-			for (let i = 0; i < 2; i++) {
+			const nodeInputs = this.getNodeInputs();
+			const inputs = NodeHelpers.getConnectionTypes(nodeInputs).filter(
+				(type) => type === NodeConnectionType.Main,
+			);
+			for (let i = 0; i < inputs.length; i++) {
 				returnData.push.apply(returnData, this.getInputData(i));
 			}
 		}
