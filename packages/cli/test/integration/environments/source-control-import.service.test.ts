@@ -41,8 +41,8 @@ describe('SourceControlImportService', () => {
 	});
 
 	describe('importCredentialsFromWorkFolder()', () => {
-		describe('if user specified by `ownedBy` exists at target instance', () => {
-			it('should assign credential ownership to original user ', async () => {
+		describe('if user email specified by `ownedBy` exists at target instance', () => {
+			it('should assign credential ownership to original user', async () => {
 				const [importingUser, member] = await Promise.all([getGlobalOwner(), createMember()]);
 
 				fsp.readFile = jest.fn().mockResolvedValue(Buffer.from('some-content'));
@@ -77,8 +77,44 @@ describe('SourceControlImportService', () => {
 			});
 		});
 
-		describe('if user specified by `ownedBy` does not exist at target instance', () => {
-			it('should assign credential ownership to the importing user', async () => {
+		describe('if user email specified by `ownedBy` is `null`', () => {
+			it('should assign credential ownership to importing user', async () => {
+				const importingUser = await getGlobalOwner();
+
+				fsp.readFile = jest.fn().mockResolvedValue(Buffer.from('some-content'));
+
+				const CREDENTIAL_ID = nanoid();
+
+				const stub: ExportableCredential = {
+					id: CREDENTIAL_ID,
+					name: 'My Credential',
+					type: 'someCredentialType',
+					data: {},
+					nodesAccess: [],
+					ownedBy: null,
+				};
+
+				jest.spyOn(utils, 'jsonParse').mockReturnValue(stub);
+
+				cipher.encrypt.mockReturnValue('some-encrypted-data');
+
+				await service.importCredentialsFromWorkFolder(
+					[mock<SourceControlledFile>({ id: CREDENTIAL_ID })],
+					importingUser.id,
+				);
+
+				const sharing = await Container.get(SharedCredentialsRepository).findOneBy({
+					credentialsId: CREDENTIAL_ID,
+					userId: importingUser.id,
+					role: 'credential:owner',
+				});
+
+				expect(sharing).toBeTruthy(); // original user has no email, so importing user owns credential
+			});
+		});
+
+		describe('if user email specified by `ownedBy` does not exist at target instance', () => {
+			it('should assign credential ownership to importing user', async () => {
 				const importingUser = await getGlobalOwner();
 
 				fsp.readFile = jest.fn().mockResolvedValue(Buffer.from('some-content'));

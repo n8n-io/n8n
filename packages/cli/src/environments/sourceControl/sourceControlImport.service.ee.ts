@@ -356,12 +356,14 @@ export class SourceControlImportService {
 				);
 
 				if (!isOwnedLocally) {
-					const remoteOwnerId = await Container.get(UserRepository)
-						.findOne({
-							where: { email: credential.ownedBy },
-							select: { id: true },
-						})
-						.then((user) => user?.id);
+					const remoteOwnerId = credential.ownedBy
+						? await Container.get(UserRepository)
+								.findOne({
+									where: { email: credential.ownedBy },
+									select: { id: true },
+								})
+								.then((user) => user?.id)
+						: null;
 
 					const newSharedCredential = new SharedCredentials();
 					newSharedCredential.credentialsId = newCredentialObject.id as string;
