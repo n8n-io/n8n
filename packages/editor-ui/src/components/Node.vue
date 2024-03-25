@@ -285,10 +285,7 @@ export default defineComponent({
 			return this.workflowsStore.getWorkflowResultDataByNodeName(this.data?.name || '') || [];
 		},
 		hasIssues(): boolean {
-			if (
-				this.nodeExecutionStatus &&
-				['crashed', 'error', 'failed'].includes(this.nodeExecutionStatus)
-			)
+			if (this.nodeExecutionStatus && ['crashed', 'error'].includes(this.nodeExecutionStatus))
 				return true;
 			if (this.pinnedData.hasData.value) return false;
 			if (this.data?.issues !== undefined && Object.keys(this.data.issues).length) {

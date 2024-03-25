@@ -51,7 +51,7 @@ export const executionHelpers = defineComponent({
 			} else if (execution.status === 'success') {
 				status.name = 'success';
 				status.label = this.$locale.baseText('executionsList.succeeded');
-			} else if (execution.status === 'failed' || execution.status === 'crashed') {
+			} else if (execution.status === 'error' || execution.status === 'crashed') {
 				status.name = 'error';
 				status.label = this.$locale.baseText('executionsList.error');
 			}

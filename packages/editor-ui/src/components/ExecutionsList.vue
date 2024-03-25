@@ -799,7 +799,7 @@ export default defineComponent({
 				} else if (execution.finished) {
 					status = 'success';
 				} else if (execution.stoppedAt !== null) {
-					status = 'failed';
+					status = 'error';
 				} else {
 					status = 'unknown';
 				}
@@ -825,7 +825,7 @@ export default defineComponent({
 				text = this.i18n.baseText('executionsList.running');
 			} else if (status === 'success') {
 				text = this.i18n.baseText('executionsList.succeeded');
-			} else if (status === 'failed') {
+			} else if (status === 'error') {
 				text = this.i18n.baseText('executionsList.error');
 			} else {
 				text = this.i18n.baseText('executionsList.unknown');
@@ -841,7 +841,7 @@ export default defineComponent({
 				path = 'executionsList.statusWaiting';
 			} else if (status === 'canceled') {
 				path = 'executionsList.statusCanceled';
-			} else if (['crashed', 'failed', 'success'].includes(status)) {
+			} else if (['crashed', 'error', 'success'].includes(status)) {
 				if (!entry.stoppedAt) {
 					path = 'executionsList.statusTextWithoutTime';
 				} else {
@@ -1032,7 +1032,7 @@ export default defineComponent({
 	font-weight: var(--font-weight-bold);
 
 	.crashed &,
-	.failed & {
+	.error & {
 		color: var(--color-danger);
 	}
 
@@ -1143,7 +1143,7 @@ export default defineComponent({
 		}
 
 		&.crashed td:first-child::before,
-		&.failed td:first-child::before {
+		&.error td:first-child::before {
 			background: var(--execution-card-border-error);
 		}
 
