@@ -30,6 +30,7 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import Container from 'typedi';
 import type { Agent } from 'https';
+import toPlainObject from 'lodash/toPlainObject';
 
 const temporaryDir = mkdtempSync(join(tmpdir(), 'n8n'));
 
@@ -420,6 +421,16 @@ describe('NodeExecuteFunctions', () => {
 	describe('cleanupParameterData', () => {
 		it('should stringify Luxon dates in-place', () => {
 			const input = { x: 1, y: DateTime.now() as unknown as NodeParameterValue };
+			expect(typeof input.y).toBe('object');
+			cleanupParameterData(input);
+			expect(typeof input.y).toBe('string');
+		});
+
+		it('should stringify plain Luxon dates in-place', () => {
+			const input = {
+				x: 1,
+				y: toPlainObject(DateTime.now()),
+			};
 			expect(typeof input.y).toBe('object');
 			cleanupParameterData(input);
 			expect(typeof input.y).toBe('string');
