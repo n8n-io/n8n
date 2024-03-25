@@ -31,7 +31,7 @@ export const executionFilterToQueryFilter = (
 			queryFilter.status = ['waiting'];
 			break;
 		case 'error':
-			queryFilter.status = ['failed', 'crashed', 'error'];
+			queryFilter.status = ['crashed', 'error'];
 			break;
 		case 'success':
 			queryFilter.status = ['success'];

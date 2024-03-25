@@ -575,7 +575,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		} else if (status === 'waiting') {
 			condition.status = 'waiting';
 		} else if (status === 'error') {
-			condition.status = In(['error', 'crashed', 'failed']);
+			condition.status = In(['error', 'crashed']);
 		}
 
 		return condition;
@@ -682,7 +682,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	) {
 		const where: FindOptionsWhere<ExecutionEntity> = {
 			id: In(activeExecutionIds),
-			status: Not(In(['finished', 'stopped', 'failed', 'crashed'] as ExecutionStatus[])),
+			status: Not(In(['finished', 'stopped', 'error', 'crashed'])),
 		};
 
 		if (filter) {
