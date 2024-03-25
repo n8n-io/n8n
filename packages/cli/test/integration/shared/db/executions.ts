@@ -55,7 +55,7 @@ export async function createSuccessfulExecution(workflow: WorkflowEntity) {
  */
 export async function createErrorExecution(workflow: WorkflowEntity) {
 	return await createExecution(
-		{ finished: false, stoppedAt: new Date(), status: 'failed' },
+		{ finished: false, stoppedAt: new Date(), status: 'error' },
 		workflow,
 	);
 }
