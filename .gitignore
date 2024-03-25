@@ -24,3 +24,6 @@ cypress/downloads/*
 CHANGELOG-*.md
 *.mdx
 build-storybook.log
+.env
+.env.local.with.aws
+dump.rdb

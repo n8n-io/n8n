@@ -71,6 +71,7 @@ import {
 	getNewWorkflow,
 	getWorkflow,
 	getWorkflows,
+  getWorkflowWithVersion,
 } from '@/api/workflows';
 import { useUIStore } from '@/stores/ui.store';
 import { dataPinningEventBus } from '@/event-bus';
@@ -399,6 +400,12 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			const workflow = await getWorkflow(rootStore.getRestApiContext, id);
 			this.addWorkflow(workflow);
 			return workflow;
+		},
+
+    async fetchWorkflowWithVersion(id: string): Promise<IWorkflowDb[]> {
+			const rootStore = useRootStore();
+			const workflows = await getWorkflowWithVersion(rootStore.getRestApiContext, id);
+			return workflows;
 		},
 
 		async getNewWorkflowData(name?: string): Promise<INewWorkflowData> {

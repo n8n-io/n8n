@@ -19,6 +19,10 @@
 			<ChatEmbedModal />
 		</ModalRoot>
 
+    <ModalRoot :name="WORKFLOW_WITH_VERSION_MODAL_KEY">
+			<WorkflowWithVersionModalKey />
+		</ModalRoot>
+
 		<ModalRoot :name="CREDENTIAL_SELECT_MODAL_KEY">
 			<CredentialsSelectModal />
 		</ModalRoot>
@@ -200,6 +204,7 @@ import {
 	WORKFLOW_SHARE_MODAL_KEY,
 	IMPORT_CURL_MODAL_KEY,
 	LOG_STREAM_MODAL_KEY,
+  WORKFLOW_WITH_VERSION_MODAL_KEY,
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
 	SOURCE_CONTROL_PULL_MODAL_KEY,
 	EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
@@ -211,6 +216,7 @@ import {
 } from '@/constants';
 
 import AboutModal from './AboutModal.vue';
+import WorkflowWithVersionModalKey from './WorkflowWithVersion.vue';
 import ChatEmbedModal from './ChatEmbedModal.vue';
 import CommunityPackageManageConfirmModal from './CommunityPackageManageConfirmModal.vue';
 import CommunityPackageInstallModal from './CommunityPackageInstallModal.vue';
@@ -246,6 +252,7 @@ export default defineComponent({
 	name: 'Modals',
 	components: {
 		AboutModal,
+    WorkflowWithVersionModalKey,
 		ActivationModal,
 		ChatEmbedModal,
 		CommunityPackageInstallModal,
@@ -285,6 +292,7 @@ export default defineComponent({
 		CREDENTIAL_EDIT_MODAL_KEY,
 		CREDENTIAL_SELECT_MODAL_KEY,
 		ABOUT_MODAL_KEY,
+    WORKFLOW_WITH_VERSION_MODAL_KEY,
 		CHANGE_PASSWORD_MODAL_KEY,
 		DELETE_USER_MODAL_KEY,
 		DUPLICATE_MODAL_KEY,

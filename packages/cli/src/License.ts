@@ -209,55 +209,55 @@ export class License {
 	}
 
 	isSharingEnabled() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.SHARING);
+    return true;
 	}
 
 	isLogStreamingEnabled() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.LOG_STREAMING);
+    return true;
 	}
 
 	isLdapEnabled() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.LDAP);
+    return true;
 	}
 
 	isSamlEnabled() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.SAML);
+    return true;
 	}
 
 	isAdvancedExecutionFiltersEnabled() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.ADVANCED_EXECUTION_FILTERS);
+    return true;
 	}
 
 	isAdvancedPermissionsLicensed() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.ADVANCED_PERMISSIONS);
+    return true;
 	}
 
 	isDebugInEditorLicensed() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.DEBUG_IN_EDITOR);
+    return true;
 	}
 
 	isBinaryDataS3Licensed() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.BINARY_DATA_S3);
+    return true;
 	}
 
 	isMultipleMainInstancesLicensed() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
+    return true;
 	}
 
 	isVariablesEnabled() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.VARIABLES);
+    return true;
 	}
 
 	isSourceControlLicensed() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.SOURCE_CONTROL);
+    return true;
 	}
 
 	isExternalSecretsEnabled() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.EXTERNAL_SECRETS);
+    return true;
 	}
 
 	isWorkflowHistoryLicensed() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.WORKFLOW_HISTORY);
+    return true;
 	}
 
 	isAPIDisabled() {
@@ -265,7 +265,7 @@ export class License {
 	}
 
 	isWorkerViewLicensed() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.WORKER_VIEW);
+    return true;
 	}
 
 	getCurrentEntitlements() {

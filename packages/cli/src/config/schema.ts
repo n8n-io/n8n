@@ -38,7 +38,7 @@ export const schema = {
 			enabled: {
 				doc: 'Typeorm logging enabled flag.',
 				format: Boolean,
-				default: false,
+				default: true,
 				env: 'DB_LOGGING_ENABLED',
 			},
 			options: {
@@ -88,7 +88,7 @@ export const schema = {
 			schema: {
 				doc: 'PostgresDB Schema',
 				format: String,
-				default: 'public',
+				default: 'n8n',
 				env: 'DB_POSTGRESDB_SCHEMA',
 			},
 			poolSize: {
@@ -126,7 +126,7 @@ export const schema = {
 				rejectUnauthorized: {
 					doc: 'If unauthorized SSL connections should be rejected',
 					format: Boolean,
-					default: true,
+					default: false,
 					env: 'DB_POSTGRESDB_SSL_REJECT_UNAUTHORIZED',
 				},
 			},
@@ -299,7 +299,7 @@ export const schema = {
 		saveExecutionProgress: {
 			doc: 'Whether or not to save progress for each node executed',
 			format: Boolean,
-			default: false,
+			default: true,
 			env: 'EXECUTIONS_DATA_SAVE_ON_PROGRESS',
 		},
 
@@ -323,7 +323,7 @@ export const schema = {
 		pruneData: {
 			doc: 'Delete data of past executions on a rolling basis',
 			format: Boolean,
-			default: true,
+			default: false,
 			env: 'EXECUTIONS_DATA_PRUNE',
 		},
 		pruneDataMaxAge: {
@@ -359,7 +359,7 @@ export const schema = {
 		pruneDataMaxCount: {
 			doc: "Maximum number of finished executions to keep in DB. Doesn't necessarily prune exactly to max number. 0 = no limit",
 			format: Number,
-			default: 10000,
+			default: 0,
 			env: 'EXECUTIONS_DATA_PRUNE_MAX_COUNT',
 		},
 	},
@@ -431,7 +431,7 @@ export const schema = {
 				},
 				tls: {
 					format: Boolean,
-					default: false,
+					default: true,
 					env: 'QUEUE_BULL_REDIS_TLS',
 					doc: 'Enable TLS on Redis connections. Default: false',
 				},
@@ -1154,7 +1154,7 @@ export const schema = {
 		enabled: {
 			doc: 'Whether diagnostic mode is enabled.',
 			format: Boolean,
-			default: true,
+			default: false,
 			env: 'N8N_DIAGNOSTICS_ENABLED',
 		},
 		config: {

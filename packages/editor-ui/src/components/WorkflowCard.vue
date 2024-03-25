@@ -149,12 +149,12 @@ export default defineComponent({
 				});
 			}
 
-			if (this.workflowPermissions.delete && !this.readOnly) {
-				actions.push({
-					label: this.$locale.baseText('workflows.item.delete'),
-					value: WORKFLOW_LIST_ITEM_ACTIONS.DELETE,
-				});
-			}
+			// if (this.workflowPermissions.delete && !this.readOnly) {
+			// 	actions.push({
+			// 		label: this.$locale.baseText('workflows.item.delete'),
+			// 		value: WORKFLOW_LIST_ITEM_ACTIONS.DELETE,
+			// 	});
+			// }
 
 			return actions;
 		},

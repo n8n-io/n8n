@@ -42,3 +42,13 @@ export async function getExecutions(
 export async function getExecutionData(context: IRestApiContext, executionId: string) {
 	return await makeRestApiRequest(context, 'GET', `/executions/${executionId}`);
 }
+
+export async function getWorkflowWithVersion(
+	context: IRestApiContext,
+	id: string,
+	filter?: object,
+) {
+	const sendData = filter ? { filter } : undefined;
+
+	return makeRestApiRequest(context, 'GET', `/workflows-with-versions/${id}`, sendData);
+}

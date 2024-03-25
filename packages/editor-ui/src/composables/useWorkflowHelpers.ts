@@ -1152,6 +1152,10 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		});
 	}
 
+  async function getWorkflowWithVersion(id: string) {
+    const data: IWorkflowDb = await workflowsStore.fetchWorkflowWithVersion(id);
+  }
+
 	return {
 		resolveParameter,
 		resolveRequiredParameters,
@@ -1176,6 +1180,7 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		updateNodePositions,
 		dataHasChanged,
 		removeForeignCredentialsFromWorkflow,
+    getWorkflowWithVersion,
 		workflowPermissions,
 	};
 }

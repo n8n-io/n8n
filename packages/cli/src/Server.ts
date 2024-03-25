@@ -26,6 +26,8 @@ import config from '@/config';
 import { Queue } from '@/Queue';
 
 import { WorkflowsController } from '@/workflows/workflows.controller';
+import { WorkflowsWithVersionController } from './workflowsWithVersion/workflowsWithVersion.controller';
+
 import {
 	EDITOR_UI_DIST_DIR,
 	inDevelopment,
@@ -279,6 +281,11 @@ export class Server extends AbstractServer {
 		await handleMfaDisable();
 
 		await this.registerControllers();
+
+    // ----------------------------------------
+		// Workflow with versions
+		// ----------------------------------------
+		this.app.use(`/${this.restEndpoint}/workflows-with-versions`, WorkflowsWithVersionController);
 
 		// ----------------------------------------
 		// SAML

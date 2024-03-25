@@ -93,6 +93,10 @@ const dbType = config.getEnv('database.type');
 const isMysql = ['mariadb', 'mysqldb'].includes(dbType);
 const dbName = config.getEnv(`database.${dbType === 'mariadb' ? 'mysqldb' : dbType}.database`);
 const tablePrefix = config.getEnv('database.tablePrefix');
+const schemaPrefix =
+	config.getEnv('database.type') === 'postgresdb'
+		? config.getEnv('database.postgresdb.schema')
+		: '';
 
 const createContext = (queryRunner: QueryRunner, migration: Migration): MigrationContext => ({
 	logger: Container.get(Logger),
@@ -101,6 +105,7 @@ const createContext = (queryRunner: QueryRunner, migration: Migration): Migratio
 	isMysql,
 	dbName,
 	migrationName: migration.name,
+  schemaPrefix,
 	queryRunner,
 	schemaBuilder: createSchemaBuilder(tablePrefix, queryRunner),
 	nodeTypes: Container.get(NodeTypes),

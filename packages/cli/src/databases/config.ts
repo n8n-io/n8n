@@ -14,6 +14,8 @@ import { entities } from './entities';
 import { mysqlMigrations } from './migrations/mysqldb';
 import { postgresMigrations } from './migrations/postgresdb';
 import { sqliteMigrations } from './migrations/sqlite';
+import { parsePostgresUrl } from '@/ParserHelper';
+// import { LoggerProxy as Logger } from 'n8n-workflow';
 
 const getCommonOptions = () => {
 	const entityPrefix = config.getEnv('database.tablePrefix');
@@ -40,13 +42,22 @@ const getCommonOptions = () => {
 	};
 };
 
-export const getOptionOverrides = (dbType: 'postgresdb' | 'mysqldb') => ({
-	database: config.getEnv(`database.${dbType}.database`),
-	host: config.getEnv(`database.${dbType}.host`),
-	port: config.getEnv(`database.${dbType}.port`),
-	username: config.getEnv(`database.${dbType}.user`),
-	password: config.getEnv(`database.${dbType}.password`),
-});
+export const getOptionOverrides = (dbType: 'postgresdb' | 'mysqldb') => {
+	let connectionDetails;
+	if (dbType == 'postgresdb') {
+		connectionDetails = parsePostgresUrl();
+	}
+	if (!connectionDetails) {
+		connectionDetails = {
+			database: config.getEnv(`database.${dbType}.database`),
+			host: config.getEnv(`database.${dbType}.host`),
+			port: config.getEnv(`database.${dbType}.port`),
+			username: config.getEnv(`database.${dbType}.user`),
+			password: config.getEnv(`database.${dbType}.password`),
+		}
+	}
+	return connectionDetails;
+}
 
 const getSqliteConnectionOptions = (): SqliteConnectionOptions | SqlitePooledConnectionOptions => {
 	const poolSize = config.getEnv('database.sqlite.poolSize');
@@ -76,14 +87,17 @@ const getPostgresConnectionOptions = (): PostgresConnectionOptions => {
 	const sslRejectUnauthorized = config.getEnv('database.postgresdb.ssl.rejectUnauthorized');
 
 	let ssl: TlsOptions | boolean = config.getEnv('database.postgresdb.ssl.enabled');
-	if (sslCa !== '' || sslCert !== '' || sslKey !== '' || !sslRejectUnauthorized) {
-		ssl = {
-			ca: sslCa || undefined,
-			cert: sslCert || undefined,
-			key: sslKey || undefined,
-			rejectUnauthorized: sslRejectUnauthorized,
-		};
-	}
+
+  if (!isPostgresRunningLocally()) {
+    if (sslCa !== '' || sslCert !== '' || sslKey !== '' || !sslRejectUnauthorized) {
+      ssl = {
+        ca: sslCa || undefined,
+        cert: sslCert || undefined,
+        key: sslKey || undefined,
+        rejectUnauthorized: sslRejectUnauthorized,
+      };
+    }
+  }
 
 	return {
 		type: 'postgres',
@@ -117,4 +131,15 @@ export function getConnectionOptions(): DataSourceOptions {
 		default:
 			throw new ApplicationError('Database type currently not supported', { extra: { dbType } });
 	}
+}
+
+function isPostgresRunningLocally(): Boolean {
+	let host: String | undefined;
+	const postgresConfig = parsePostgresUrl();
+	if (postgresConfig != null) {
+		host = postgresConfig.host;
+	} else {
+		host = config.getEnv('database.postgresdb.host');
+	}
+	return host === ('localhost' || '127.0.0.1');
 }
