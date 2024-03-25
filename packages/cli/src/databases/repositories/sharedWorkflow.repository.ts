@@ -67,13 +67,20 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 		);
 	}
 
-	async makeOwner(workflowId: string, project: Project) {
-		return await this.upsert(
-			{
-				workflowId,
-				project,
-				role: 'workflow:owner',
-			},
+	async makeOwner(workflowIds: string[], projectId: string, trx?: EntityManager) {
+		trx = trx ?? this.manager;
+
+		return await trx.upsert(
+			SharedWorkflow,
+			workflowIds.map(
+				(workflowId) =>
+					({
+						workflowId,
+						projectId,
+						role: 'workflow:owner',
+					}) as const,
+			),
+
 			['projectId', 'workflowId'],
 		);
 	}
@@ -90,9 +97,11 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 		});
 	}
 
-	async deleteByIds(transaction: EntityManager, sharedWorkflowIds: string[], project?: Project) {
-		return await transaction.delete(SharedWorkflow, {
-			project,
+	async deleteByIds(sharedWorkflowIds: string[], projectId: string, trx?: EntityManager) {
+		trx = trx ?? this.manager;
+
+		return await trx.delete(SharedWorkflow, {
+			projectId,
 			workflowId: In(sharedWorkflowIds),
 		});
 	}

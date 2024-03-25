@@ -81,10 +81,14 @@ export class ProjectService {
 		const ownedSharedWorkflows = await this.sharedWorkflowRepository.find({
 			where: { projectId: project.id, role: 'workflow:owner' },
 		});
-		for (const sharedWorkflow of ownedSharedWorkflows) {
-			if (targetProject) {
-				await this.sharedWorkflowRepository.makeOwner(sharedWorkflow.workflowId, targetProject);
-			} else {
+
+		if (targetProject) {
+			await this.sharedWorkflowRepository.makeOwner(
+				ownedSharedWorkflows.map((sw) => sw.workflowId),
+				targetProject.id,
+			);
+		} else {
+			for (const sharedWorkflow of ownedSharedWorkflows) {
 				await workflowService.delete(user, sharedWorkflow.workflowId);
 			}
 		}
@@ -95,13 +99,13 @@ export class ProjectService {
 			relations: { credentials: true },
 		});
 
-		for (const sharedCredential of ownedCredentials) {
-			if (targetProject) {
-				await this.sharedCredentialsRepository.makeOwner(
-					sharedCredential.credentials,
-					targetProject,
-				);
-			} else {
+		if (targetProject) {
+			await this.sharedCredentialsRepository.makeOwner(
+				ownedCredentials.map((sc) => sc.credentialsId),
+				targetProject.id,
+			);
+		} else {
+			for (const sharedCredential of ownedCredentials) {
 				await credentialsService.delete(sharedCredential.credentials);
 			}
 		}

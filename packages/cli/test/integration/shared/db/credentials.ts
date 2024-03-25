@@ -8,7 +8,6 @@ import type { ICredentialsDb } from '@/Interfaces';
 import type { CredentialPayload } from '../types';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import type { Project } from '@/databases/entities/Project';
-import { UserRepository } from '@/databases/repositories/user.repository';
 
 async function encryptCredentialData(credential: CredentialsEntity) {
 	const { createCredentialsFromCredentialsEntity } = await import('@/CredentialsHelper');
@@ -84,13 +83,8 @@ export async function saveCredential(
 		});
 	} else {
 		const project = options.project;
-		// TODO: remove this when we remove users from SharedWorkflow
-		const user = await Container.get(UserRepository).findOneByOrFail({
-			projectRelations: { projectId: project.id },
-		});
 
 		await Container.get(SharedCredentialsRepository).save({
-			user,
 			credentials: savedCredential,
 			role,
 			project,

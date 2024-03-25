@@ -7,7 +7,6 @@ import { RoleService } from '@/services/role.service';
 import type { Scope } from '@n8n/permissions';
 import type { Project } from '../entities/Project';
 import type { ProjectRole } from '../entities/ProjectRelation';
-import type { CredentialsEntity } from '../entities/CredentialsEntity';
 
 @Service()
 export class SharedCredentialsRepository extends Repository<SharedCredentials> {
@@ -74,13 +73,18 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 		);
 	}
 
-	async makeOwner(credential: CredentialsEntity, project: Project) {
-		return await this.upsert(
-			{
-				projectId: project.id,
-				credentialsId: credential.id,
-				role: 'credential:owner',
-			},
+	async makeOwner(credentialIds: string[], projectId: string, trx?: EntityManager) {
+		trx = trx ?? this.manager;
+		return await trx.upsert(
+			SharedCredentials,
+			credentialIds.map(
+				(credentialsId) =>
+					({
+						projectId,
+						credentialsId,
+						role: 'credential:owner',
+					}) as const,
+			),
 			['projectId', 'credentialsId'],
 		);
 	}
@@ -114,9 +118,11 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 		return sharings.map((s) => s.credentialsId);
 	}
 
-	async deleteByIds(transaction: EntityManager, sharedCredentialsIds: string[], project?: Project) {
-		return await transaction.delete(SharedCredentials, {
-			project,
+	async deleteByIds(sharedCredentialsIds: string[], projectId: string, trx?: EntityManager) {
+		trx = trx ?? this.manager;
+
+		return await trx.delete(SharedCredentials, {
+			projectId,
 			credentialsId: In(sharedCredentialsIds),
 		});
 	}
