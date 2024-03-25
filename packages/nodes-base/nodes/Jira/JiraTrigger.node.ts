@@ -9,7 +9,15 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { allEvents, eventExists, getId, jiraSoftwareCloudApiRequest } from './GenericFunctions';
+import { createHmac } from 'crypto';
+
+import {
+	allEvents,
+	eventExists,
+	getId,
+	jiraSoftwareCloudApiRequest,
+	generateWebhookSecret,
+} from './GenericFunctions';
 
 export class JiraTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -82,15 +90,15 @@ export class JiraTrigger implements INodeType {
 			{
 				displayName: 'Incoming Authentication',
 				name: 'incomingAuthentication',
-				type: 'options',
+				type: 'multiOptions',
 				options: [
+					{
+						name: 'HMAC Signature',
+						value: 'hmacSignature',
+					},
 					{
 						name: 'Query Auth',
 						value: 'queryAuth',
-					},
-					{
-						name: 'None',
-						value: 'none',
 					},
 				],
 				default: 'none',
@@ -392,8 +400,6 @@ export class JiraTrigger implements INodeType {
 
 				const webhookData = this.getWorkflowStaticData('node');
 
-				const incomingAuthentication = this.getNodeParameter('incomingAuthentication') as string;
-
 				if (events.includes('*')) {
 					events = allEvents;
 				}
@@ -404,6 +410,7 @@ export class JiraTrigger implements INodeType {
 					events,
 					filters: {},
 					excludeBody: false,
+					secret: '',
 				};
 
 				if (additionalFields.filter) {
@@ -418,7 +425,17 @@ export class JiraTrigger implements INodeType {
 
 				const parameters: any = {};
 
-				if (incomingAuthentication === 'queryAuth') {
+				const incomingAuthentication = this.getNodeParameter('incomingAuthentication') as string;
+
+				if (incomingAuthentication.includes('hmacSignature')) {
+					if (!webhookData.secret) {
+						// Generate a cryptographically strong random string. It should be 20 chars with the alphabet A-Z, a-z, 0-9
+						webhookData.secret = generateWebhookSecret(20);
+					}
+					body.secret = webhookData.secret as string;
+				}
+
+				if (incomingAuthentication.includes('queryAuth')) {
 					let httpQueryAuth;
 					try {
 						httpQueryAuth = await this.getCredentials('httpQueryAuth');
@@ -483,7 +500,23 @@ export class JiraTrigger implements INodeType {
 
 		const incomingAuthentication = this.getNodeParameter('incomingAuthentication') as string;
 
-		if (incomingAuthentication === 'queryAuth') {
+		if (incomingAuthentication.includes('hmacSignature')) {
+			const webhookData = this.getWorkflowStaticData('node');
+			const headers = this.getHeaderData() as IDataObject;
+			const rawBody = this.getRequestObject().rawBody;
+			const computedSignature = createHmac('sha256', webhookData.secret as string)
+				.update(rawBody)
+				.digest('hex');
+
+			if (headers['x-hub-signature'] !== `sha256=${computedSignature}`) {
+				response.status(401).json({ message: 'Signature not valid' });
+				return {
+					noWebhookResponse: true,
+				};
+			}
+		}
+
+		if (incomingAuthentication.includes('queryAuth')) {
 			let httpQueryAuth: ICredentialDataDecryptedObject | undefined;
 
 			try {
@@ -504,7 +537,7 @@ export class JiraTrigger implements INodeType {
 			const paramValue = Buffer.from(httpQueryAuth.value as string).toString('base64');
 
 			if (!queryData.hasOwnProperty(paramName) || queryData[paramName] !== paramValue) {
-				response.status(403).json({ message: 'Provided authentication data is not valid' });
+				response.status(401).json({ message: 'Provided authentication data is not valid' });
 
 				return {
 					noWebhookResponse: true,
