@@ -136,7 +136,7 @@ export class SourceControlPreferencesService {
 				});
 				await fsWriteFile(this.sshKeyName, keyPair.privateKey, { encoding: 'utf8', mode: 0o600 });
 			} catch (error) {
-				throw new ApplicationError('Failed to write key pair to disk', { cause: error });
+				throw new ApplicationError('Failed to save key pair to disk', { cause: error });
 			}
 		}
 		// update preferences only after generating key pair to prevent endless loop
@@ -165,7 +165,7 @@ export class SourceControlPreferencesService {
 	}
 
 	isSourceControlConnected(): boolean {
-		return this._sourceControlPreferences.connected ?? false;
+		return this.sourceControlPreferences.connected;
 	}
 
 	isSourceControlLicensedAndEnabled(): boolean {
@@ -173,7 +173,7 @@ export class SourceControlPreferencesService {
 	}
 
 	getBranchName(): string {
-		return this._sourceControlPreferences.branchName;
+		return this.sourceControlPreferences.branchName;
 	}
 
 	getPreferences(): SourceControlPreferences {
