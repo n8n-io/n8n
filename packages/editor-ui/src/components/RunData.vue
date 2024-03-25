@@ -156,9 +156,14 @@
 			<n8n-button
 				v-if="subWorkflowData && !(paneType === 'input' && hasInputOverwrite())"
 				:label="
-					i18n.baseText('ndv.output.subworkflow.openExecution', {
-						interpolate: { executionId: subWorkflowData.executionId },
-					})
+					i18n.baseText(
+						nodeType?.group?.includes('trigger')
+							? 'ndv.output.parentworkflow.openExecution'
+							: 'ndv.output.subworkflow.openExecution',
+						{
+							interpolate: { executionId: subWorkflowData.executionId },
+						},
+					)
 				"
 				type="secondary"
 				@click.stop="displayExecution(subWorkflowData.executionId, subWorkflowData.workflowId)"
