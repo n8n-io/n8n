@@ -4,7 +4,7 @@ import Container, { Service } from 'typedi';
 import { SourceControlPreferences } from './types/sourceControlPreferences';
 import type { ValidationError } from 'class-validator';
 import { validate } from 'class-validator';
-import { readFileSync as fsReadFileSync, existsSync as fsExistsSync } from 'fs';
+import { existsSync as fsExistsSync } from 'fs';
 import { writeFile as fsWriteFile, rm as fsRm } from 'fs/promises';
 import {
 	generateSshKeyPair,
@@ -87,14 +87,6 @@ export class SourceControlPreferencesService {
 		return this.cipher.decrypt(dbKeyPair.encryptedPrivateKey);
 	}
 
-	private async getPublicKeyFromDatabase() {
-		const dbKeyPair = await this.getKeyPairFromDatabase();
-
-		if (!dbKeyPair) return null;
-
-		return dbKeyPair.publicKey;
-	}
-
 	async getPrivateKeyPath() {
 		const dbPrivateKey = await this.getPrivateKeyFromDatabase();
 
@@ -107,20 +99,6 @@ export class SourceControlPreferencesService {
 		}
 
 		return this.sshKeyName; // fall back to key in filesystem
-	}
-
-	async getPublicKey() {
-		try {
-			const dbPublicKey = await this.getPublicKeyFromDatabase();
-
-			if (dbPublicKey) return dbPublicKey;
-
-			return fsReadFileSync(this.sshKeyName + '.pub', { encoding: 'utf8' });
-		} catch (e) {
-			const error = e instanceof Error ? e : new Error(`${e}`);
-			this.logger.error(`Failed to read SSH public key: ${error.message}`);
-		}
-		return '';
 	}
 
 	hasKeyPairFiles(): boolean {
