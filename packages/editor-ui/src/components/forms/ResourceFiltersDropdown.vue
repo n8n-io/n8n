@@ -16,7 +16,10 @@
 		</template>
 		<div :class="$style['filters-dropdown']" data-test-id="resources-list-filters-dropdown">
 			<slot :filters="modelValue" :set-key-value="setKeyValue" />
-			<enterprise-edition v-if="shareable" :features="[EnterpriseEditionFeature.Sharing]">
+			<enterprise-edition
+				v-if="shareable && projectsStore.isProjectHome"
+				:features="[EnterpriseEditionFeature.Sharing]"
+			>
 				<n8n-input-label
 					:label="$locale.baseText('projects')"
 					:bold="false"
