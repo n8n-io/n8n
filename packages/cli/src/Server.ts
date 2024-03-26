@@ -338,7 +338,7 @@ export class Server extends AbstractServer {
 				`/${this.restEndpoint}/settings`,
 				ResponseHelper.send(
 					async (req: express.Request): Promise<IN8nUISettings> =>
-						frontendService.getSettings(req.headers.sessionid as string),
+						frontendService.getSettings(req.headers['push-ref'] as string),
 				),
 			);
 		}

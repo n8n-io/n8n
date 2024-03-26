@@ -24,8 +24,8 @@ class MockWebSocket extends EventEmitter {
 const createMockWebSocket = () => new MockWebSocket() as unknown as jest.Mocked<WebSocket>;
 
 describe('WebSocketPush', () => {
-	const sessionId1 = 'test-session1';
-	const sessionId2 = 'test-session2';
+	const pushRef1 = 'test-session1';
+	const pushRef2 = 'test-session2';
 	const userId: User['id'] = 'test-user';
 
 	mockInstance(Logger);
@@ -38,7 +38,7 @@ describe('WebSocketPush', () => {
 	});
 
 	it('can add a connection', () => {
-		webSocketPush.add(sessionId1, userId, mockWebSocket1);
+		webSocketPush.add(pushRef1, userId, mockWebSocket1);
 
 		expect(mockWebSocket1.listenerCount('close')).toBe(1);
 		expect(mockWebSocket1.listenerCount('pong')).toBe(1);
@@ -46,7 +46,7 @@ describe('WebSocketPush', () => {
 	});
 
 	it('closes a connection', () => {
-		webSocketPush.add(sessionId1, userId, mockWebSocket1);
+		webSocketPush.add(pushRef1, userId, mockWebSocket1);
 
 		mockWebSocket1.emit('close');
 
@@ -56,8 +56,8 @@ describe('WebSocketPush', () => {
 	});
 
 	it('sends data to one connection', () => {
-		webSocketPush.add(sessionId1, userId, mockWebSocket1);
-		webSocketPush.add(sessionId2, userId, mockWebSocket2);
+		webSocketPush.add(pushRef1, userId, mockWebSocket1);
+		webSocketPush.add(pushRef2, userId, mockWebSocket2);
 		const data: PushDataExecutionRecovered = {
 			type: 'executionRecovered',
 			data: {
@@ -65,7 +65,7 @@ describe('WebSocketPush', () => {
 			},
 		};
 
-		webSocketPush.sendToOneSession('executionRecovered', data, sessionId1);
+		webSocketPush.sendToOneSession('executionRecovered', data, pushRef1);
 
 		expect(mockWebSocket1.send).toHaveBeenCalledWith(
 			JSON.stringify({
@@ -82,8 +82,8 @@ describe('WebSocketPush', () => {
 	});
 
 	it('sends data to all connections', () => {
-		webSocketPush.add(sessionId1, userId, mockWebSocket1);
-		webSocketPush.add(sessionId2, userId, mockWebSocket2);
+		webSocketPush.add(pushRef1, userId, mockWebSocket1);
+		webSocketPush.add(pushRef2, userId, mockWebSocket2);
 		const data: PushDataExecutionRecovered = {
 			type: 'executionRecovered',
 			data: {
@@ -91,7 +91,7 @@ describe('WebSocketPush', () => {
 			},
 		};
 
-		webSocketPush.sendToAllSessions('executionRecovered', data);
+		webSocketPush.sendToAll('executionRecovered', data);
 
 		const expectedMsg = JSON.stringify({
 			type: 'executionRecovered',
@@ -107,8 +107,8 @@ describe('WebSocketPush', () => {
 	});
 
 	it('sends data to all users connections', () => {
-		webSocketPush.add(sessionId1, userId, mockWebSocket1);
-		webSocketPush.add(sessionId2, userId, mockWebSocket2);
+		webSocketPush.add(pushRef1, userId, mockWebSocket1);
+		webSocketPush.add(pushRef2, userId, mockWebSocket2);
 		const data: PushDataExecutionRecovered = {
 			type: 'executionRecovered',
 			data: {
@@ -132,8 +132,8 @@ describe('WebSocketPush', () => {
 	});
 
 	it('pings all connections', () => {
-		webSocketPush.add(sessionId1, userId, mockWebSocket1);
-		webSocketPush.add(sessionId2, userId, mockWebSocket2);
+		webSocketPush.add(pushRef1, userId, mockWebSocket1);
+		webSocketPush.add(pushRef2, userId, mockWebSocket2);
 
 		jest.runOnlyPendingTimers();
 
@@ -144,8 +144,8 @@ describe('WebSocketPush', () => {
 	it('emits message event when connection receives data', () => {
 		const mockOnMessageReceived = jest.fn();
 		webSocketPush.on('message', mockOnMessageReceived);
-		webSocketPush.add(sessionId1, userId, mockWebSocket1);
-		webSocketPush.add(sessionId2, userId, mockWebSocket2);
+		webSocketPush.add(pushRef1, userId, mockWebSocket1);
+		webSocketPush.add(pushRef2, userId, mockWebSocket2);
 
 		const data = { test: 'data' };
 		const buffer = Buffer.from(JSON.stringify(data));
@@ -154,7 +154,7 @@ describe('WebSocketPush', () => {
 
 		expect(mockOnMessageReceived).toHaveBeenCalledWith({
 			msg: data,
-			sessionId: sessionId1,
+			pushRef: pushRef1,
 			userId,
 		});
 	});

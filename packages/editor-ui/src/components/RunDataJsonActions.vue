@@ -68,7 +68,7 @@ export default defineComponent({
 		paneType: {
 			type: String,
 		},
-		sessionId: {
+		pushRef: {
 			type: String,
 		},
 		currentOutputIndex: {
@@ -222,7 +222,7 @@ export default defineComponent({
 
 			this.$telemetry.track('User copied ndv data', {
 				node_type: this.activeNode.type,
-				session_id: this.sessionId,
+				push_ref: this.pushRef,
 				run_index: this.runIndex,
 				view: 'json',
 				copy_type: copyType,

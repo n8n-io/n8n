@@ -105,7 +105,7 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 	};
 
 	const getInstanceCurrentUsage = async () => {
-		const usage = await getCurrentUsage({ baseUrl: rootStore.getBaseUrl, sessionId: '' });
+		const usage = await getCurrentUsage({ baseUrl: rootStore.getBaseUrl, pushRef: '' });
 		state.usage = usage;
 		return usage;
 	};

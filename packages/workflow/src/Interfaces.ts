@@ -2095,7 +2095,7 @@ export type WorkflowActivateMode =
 
 export interface IWorkflowHooksOptionalParameters {
 	retryOf?: string;
-	sessionId?: string;
+	pushRef?: string;
 }
 
 export namespace WorkflowSettings {

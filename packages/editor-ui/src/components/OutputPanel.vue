@@ -9,7 +9,7 @@
 		:no-data-in-branch-message="$locale.baseText('ndv.output.noOutputDataInBranch')"
 		:is-executing="isNodeRunning"
 		:executing-message="$locale.baseText('ndv.output.executing')"
-		:session-id="sessionId"
+		:push-ref="pushRef"
 		:block-u-i="blockUI"
 		:is-production-execution-preview="isProductionExecutionPreview"
 		:is-pane-active="isPaneActive"
@@ -139,7 +139,7 @@ export default defineComponent({
 		canLinkRuns: {
 			type: Boolean,
 		},
-		sessionId: {
+		pushRef: {
 			type: String,
 		},
 		blockUI: {
@@ -300,7 +300,7 @@ export default defineComponent({
 
 				this.$telemetry.track('User clicked ndv link', {
 					workflow_id: this.workflowsStore.workflowId,
-					session_id: this.sessionId,
+					push_ref: this.pushRef,
 					node_type: this.node.type,
 					pane: 'output',
 					type: 'insert-test-data',
@@ -318,7 +318,7 @@ export default defineComponent({
 			this.$telemetry.track('User clicked ndv link', {
 				node_type: this.node.type,
 				workflow_id: this.workflowsStore.workflowId,
-				session_id: this.sessionId,
+				push_ref: this.pushRef,
 				pane: 'output',
 				type: 'settings',
 			});

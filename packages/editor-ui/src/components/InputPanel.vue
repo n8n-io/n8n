@@ -8,7 +8,7 @@
 		:no-data-in-branch-message="$locale.baseText('ndv.input.noOutputDataInBranch')"
 		:is-executing="isExecutingPrevious"
 		:executing-message="$locale.baseText('ndv.input.executingPrevious')"
-		:session-id="sessionId"
+		:push-ref="pushRef"
 		:override-outputs="connectedCurrentNodeOutputs"
 		:mapping-enabled="isMappingEnabled"
 		:distance-from-active="currentNodeDepth"
@@ -208,7 +208,7 @@ export default defineComponent({
 		canLinkRuns: {
 			type: Boolean,
 		},
-		sessionId: {
+		pushRef: {
 			type: String,
 		},
 		readOnly: {
@@ -472,7 +472,7 @@ export default defineComponent({
 				this.$telemetry.track('User clicked ndv button', {
 					node_type: this.activeNode.type,
 					workflow_id: this.workflowsStore.workflowId,
-					session_id: this.sessionId,
+					push_ref: this.pushRef,
 					pane: 'input',
 					type: 'executePrevious',
 				});
@@ -496,7 +496,7 @@ export default defineComponent({
 				this.$telemetry.track('User clicked ndv link', {
 					node_type: this.activeNode.type,
 					workflow_id: this.workflowsStore.workflowId,
-					session_id: this.sessionId,
+					push_ref: this.pushRef,
 					pane: 'input',
 					type: 'not-connected-help',
 				});

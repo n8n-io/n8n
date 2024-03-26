@@ -144,8 +144,8 @@ export class InternalHooks {
 		]);
 	}
 
-	async onFrontendSettingsAPI(sessionId?: string): Promise<void> {
-		return await this.telemetry.track('Session started', { session_id: sessionId });
+	async onFrontendSettingsAPI(pushRef?: string): Promise<void> {
+		return await this.telemetry.track('Session started', { session_id: pushRef });
 	}
 
 	async onPersonalizationSurveySubmitted(

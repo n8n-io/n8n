@@ -5,7 +5,7 @@ declare global {
 }
 
 export interface IUserNodesPanelSession {
-	sessionId: string;
+	pushRef: string;
 	data: IUserNodesPanelSessionData;
 }
 

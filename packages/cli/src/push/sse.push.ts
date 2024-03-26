@@ -17,13 +17,13 @@ export class SSEPush extends AbstractPush<Connection> {
 	constructor(logger: Logger, orchestrationService: OrchestrationService) {
 		super(logger, orchestrationService);
 
-		this.channel.on('disconnect', (channel, { req }) => {
-			this.remove(req?.query?.sessionId);
+		this.channel.on('disconnect', (_, { req }) => {
+			this.remove(req?.query?.pushRef);
 		});
 	}
 
-	add(sessionId: string, userId: User['id'], connection: Connection) {
-		super.add(sessionId, userId, connection);
+	add(pushRef: string, userId: User['id'], connection: Connection) {
+		super.add(pushRef, userId, connection);
 		this.channel.addClient(connection.req, connection.res);
 	}
 

@@ -105,7 +105,7 @@ describe('TestWebhooks', () => {
 			jest.spyOn(testWebhooks, 'getWebhookMethods').mockResolvedValue([]);
 
 			const registration = mock<TestWebhookRegistration>({
-				sessionId: 'some-session-id',
+				pushRef: 'some-session-id',
 				workflowEntity,
 			});
 

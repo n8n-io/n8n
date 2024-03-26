@@ -1145,7 +1145,7 @@ export default defineComponent({
 					parameter_field_type: this.parameter.type,
 					new_expression: !this.isValueExpression,
 					workflow_id: this.workflowsStore.workflowId,
-					session_id: this.ndvStore.sessionId,
+					push_ref: this.ndvStore.pushRef,
 					source: this.eventSource || 'ndv',
 				});
 			}
@@ -1297,7 +1297,7 @@ export default defineComponent({
 					node_type: this.node && this.node.type,
 					resource: this.node && this.node.parameters.resource,
 					is_custom: value === CUSTOM_API_CALL_KEY,
-					session_id: this.ndvStore.sessionId,
+					push_ref: this.ndvStore.pushRef,
 					parameter: this.parameter.name,
 				});
 			}

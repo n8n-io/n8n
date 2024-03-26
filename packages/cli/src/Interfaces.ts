@@ -532,7 +532,7 @@ export interface IWorkflowExecutionDataProcess {
 	runData?: IRunData;
 	pinData?: IPinData;
 	retryOf?: string;
-	sessionId?: string;
+	pushRef?: string;
 	startNodes?: StartNodeData[];
 	workflowData: IWorkflowBase;
 	userId: string;

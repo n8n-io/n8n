@@ -225,8 +225,8 @@ export class FrontendService {
 		this.writeStaticJSON('credentials', credentials);
 	}
 
-	getSettings(sessionId?: string): IN8nUISettings {
-		void this.internalHooks.onFrontendSettingsAPI(sessionId);
+	getSettings(pushRef?: string): IN8nUISettings {
+		void this.internalHooks.onFrontendSettingsAPI(pushRef);
 
 		const restEndpoint = config.getEnv('endpoints.rest');
 

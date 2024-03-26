@@ -82,8 +82,8 @@ export const pushConnection = defineComponent({
 			usePushConnectionStore,
 			useCollaborationStore,
 		),
-		sessionId(): string {
-			return this.rootStore.sessionId;
+		pushRef(): string {
+			return this.rootStore.pushRef;
 		},
 	},
 	methods: {
