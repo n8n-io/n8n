@@ -1758,6 +1758,7 @@ export declare namespace Cloud {
 		username: string;
 		email: string;
 		hasEarlyAccess?: boolean;
+		role?: string;
 	};
 }
 

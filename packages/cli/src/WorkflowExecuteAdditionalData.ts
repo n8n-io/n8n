@@ -865,7 +865,7 @@ async function executeWorkflow(
 			mode: 'integrated',
 			startedAt: new Date(),
 			stoppedAt: new Date(),
-			status: 'failed',
+			status: 'error',
 		};
 		// When failing, we might not have finished the execution
 		// Therefore, database might not contain finished errors.

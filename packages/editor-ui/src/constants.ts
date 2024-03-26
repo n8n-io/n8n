@@ -664,6 +664,8 @@ export const ALLOWED_HTML_TAGS = [
 	'a',
 	'br',
 	'i',
+	'ul',
+	'li',
 	'em',
 	'small',
 	'details',
@@ -750,7 +752,10 @@ export const MOUSE_EVENT_BUTTONS = {
 export const TEMPLATES_URLS = {
 	DEFAULT_API_HOST: 'https://api.n8n.io/api/',
 	BASE_WEBSITE_URL: 'https://n8n.io/workflows',
-	UTM_QUERY: 'utm_source=n8n_app&utm_medium=template_library',
+	UTM_QUERY: {
+		utm_source: 'n8n_app',
+		utm_medium: 'template_library',
+	},
 };
 
 export const ROLE = {
