@@ -31,7 +31,7 @@
 				:active-color="getActiveColor"
 				inactive-color="#8899AA"
 				data-test-id="workflow-activate-switch"
-				@update:modelValue="activeChanged"
+				@update:model-value="activeChanged"
 			>
 			</el-switch>
 		</n8n-tooltip>
