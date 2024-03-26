@@ -29,8 +29,10 @@ export async function getAllCredentials(
 	context: IRestApiContext,
 	filter?: object,
 ): Promise<ICredentialsResponse[]> {
-	const sendData = filter ? { filter } : undefined;
-	return await makeRestApiRequest(context, 'GET', '/credentials', sendData);
+	return await makeRestApiRequest(context, 'GET', '/credentials', {
+		includeScopes: true,
+		...(filter ?? {}),
+	});
 }
 
 export async function createNewCredential(

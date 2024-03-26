@@ -343,6 +343,7 @@ export interface ICredentialsResponse extends ICredentialsEncrypted {
 	sharedWithProjects?: ProjectSharingData[];
 	homeProject?: ProjectSharingData;
 	currentUserHasAccess?: boolean;
+	scopes?: Scope[];
 }
 
 export interface ICredentialsBase {
