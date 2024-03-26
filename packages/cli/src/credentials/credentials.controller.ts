@@ -358,7 +358,7 @@ export class CredentialsController {
 			);
 
 			if (newShareeIds.length) {
-				await this.enterpriseCredentialsService.share(trx, credential!, newShareeIds);
+				await this.enterpriseCredentialsService.share(trx, credential, newShareeIds);
 			}
 		});
 

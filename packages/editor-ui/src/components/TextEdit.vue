@@ -19,7 +19,7 @@
 							:placeholder="$locale.nodeText().placeholder(parameter, path)"
 							:read-only="isReadOnly"
 							:rows="15"
-							@update:modelValue="valueChanged"
+							@update:model-value="valueChanged"
 						/>
 					</div>
 				</n8n-input-label>

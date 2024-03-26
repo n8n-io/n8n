@@ -1,8 +1,8 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
 import glob from 'fast-glob';
-import { updateDisplayOptions } from '@utils/utilities';
 import { errorMapper } from '../helpers/utils';
+import { updateDisplayOptions } from '@utils/utilities';
 
 export const properties: INodeProperties[] = [
 	{

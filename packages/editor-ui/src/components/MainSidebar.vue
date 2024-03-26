@@ -217,7 +217,7 @@ export default defineComponent({
 							tooltip: {
 								content: this.$locale.baseText('mainSidebar.workflows.readOnlyEnv.tooltip'),
 							},
-					  }
+						}
 					: undefined,
 			};
 

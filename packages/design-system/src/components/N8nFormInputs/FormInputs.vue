@@ -27,7 +27,7 @@
 						:show-validation-warnings="showValidationWarnings"
 						:teleported="teleported"
 						:tag-size="tagSize"
-						@update:modelValue="(value) => onUpdateModelValue(input.name, value)"
+						@update:model-value="(value) => onUpdateModelValue(input.name, value)"
 						@validate="(value) => onValidate(input.name, value)"
 						@enter="onSubmit"
 					/>

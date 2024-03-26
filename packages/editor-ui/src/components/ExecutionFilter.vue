@@ -198,7 +198,7 @@ onBeforeMount(() => {
 					:model-value="filter.tags"
 					:create-enabled="false"
 					data-test-id="executions-filter-tags-select"
-					@update:modelValue="onTagsChange"
+					@update:model-value="onTagsChange"
 				/>
 			</div>
 			<div :class="$style.group">
@@ -289,7 +289,7 @@ onBeforeMount(() => {
 							:placeholder="locale.baseText('executionsFilter.savedDataKeyPlaceholder')"
 							:model-value="filter.metadata[0]?.key"
 							data-test-id="execution-filter-saved-data-key-input"
-							@update:modelValue="onFilterMetaChange(0, 'key', $event)"
+							@update:model-value="onFilterMetaChange(0, 'key', $event)"
 						/>
 					</n8n-tooltip>
 					<label for="execution-filter-saved-data-value">{{
@@ -313,7 +313,7 @@ onBeforeMount(() => {
 							:placeholder="locale.baseText('executionsFilter.savedDataValuePlaceholder')"
 							:model-value="filter.metadata[0]?.value"
 							data-test-id="execution-filter-saved-data-value-input"
-							@update:modelValue="onFilterMetaChange(0, 'value', $event)"
+							@update:model-value="onFilterMetaChange(0, 'value', $event)"
 						/>
 					</n8n-tooltip>
 				</div>

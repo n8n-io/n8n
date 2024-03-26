@@ -488,7 +488,7 @@ export class InternalHooks {
 				? this.eventBus.sendWorkflowEvent({
 						eventName: 'n8n.workflow.success',
 						payload: sharedEventPayload,
-				  })
+					})
 				: this.eventBus.sendWorkflowEvent({
 						eventName: 'n8n.workflow.failed',
 						payload: {
@@ -498,7 +498,7 @@ export class InternalHooks {
 							errorNodeId: telemetryProperties.error_node_id?.toString(),
 							errorMessage: telemetryProperties.error_message?.toString(),
 						},
-				  }),
+					}),
 		);
 
 		void Promise.all([...promises, this.telemetry.trackWorkflowExecution(telemetryProperties)]);

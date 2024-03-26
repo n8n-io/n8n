@@ -116,7 +116,7 @@ function getAiNodesBySubcategory(nodes: INodeTypeDescription[], subcategory: str
 							type: 'file',
 							icon: 'openai',
 							fileBuffer: '/static/open-ai.svg',
-					  }
+						}
 					: undefined,
 			},
 		}))
