@@ -21,7 +21,7 @@ export class Coda implements INodeType {
 		name: 'coda',
 		icon: 'file:coda.svg',
 		group: ['output'],
-		version: 1,
+		version: [1, 1.1],
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Coda API',
 		defaults: {
@@ -240,6 +240,7 @@ export class Coda implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const nodeVersion = this.getNode().typeVersion;
 		const returnData: INodeExecutionData[] = [];
 		const items = this.getInputData();
 		let responseData;
@@ -363,61 +364,83 @@ export class Coda implements INodeType {
 			}
 			// https://coda.io/developers/apis/v1beta1#operation/listRows
 			if (operation === 'getAllRows') {
-				const docId = this.getNodeParameter('docId', 0) as string;
-				const returnAll = this.getNodeParameter('returnAll', 0);
-				const tableId = this.getNodeParameter('tableId', 0) as string;
-				const options = this.getNodeParameter('options', 0);
-				const endpoint = `/docs/${docId}/tables/${tableId}/rows`;
-				if (options.useColumnNames === false) {
-					qs.useColumnNames = options.useColumnNames as boolean;
-				} else {
-					qs.useColumnNames = true;
-				}
-				if (options.valueFormat) {
-					qs.valueFormat = options.valueFormat as string;
-				}
-				if (options.sortBy) {
-					qs.sortBy = options.sortBy as string;
-				}
-				if (options.visibleOnly) {
-					qs.visibleOnly = options.visibleOnly as boolean;
-				}
-				if (options.query) {
-					qs.query = options.query as string;
-				}
-				try {
-					if (returnAll) {
-						responseData = await codaApiRequestAllItems.call(
-							this,
-							'items',
-							'GET',
-							endpoint,
-							{},
-							qs,
-						);
-					} else {
-						qs.limit = this.getNodeParameter('limit', 0);
-						responseData = await codaApiRequest.call(this, 'GET', endpoint, {}, qs);
-						responseData = responseData.items;
-					}
-				} catch (error) {
-					if (this.continueOnFail()) {
-						return [this.helpers.returnJsonArray({ error: error.message })];
-					}
-					throw new NodeApiError(this.getNode(), error as JsonObject);
+				let itemsLength = items.length ? 1 : 0;
+
+				if (nodeVersion >= 1.1) {
+					itemsLength = items.length;
 				}
 
-				if (options.rawData === true) {
-					return [this.helpers.returnJsonArray(responseData as IDataObject[])];
-				} else {
-					for (const item of responseData) {
-						returnData.push({
-							id: item.id,
-							...item.values,
-						});
+				for (let i = 0; i < itemsLength; i++) {
+					const docId = this.getNodeParameter('docId', i) as string;
+					const returnAll = this.getNodeParameter('returnAll', i);
+					const tableId = this.getNodeParameter('tableId', i) as string;
+					const options = this.getNodeParameter('options', i);
+					const endpoint = `/docs/${docId}/tables/${tableId}/rows`;
+					if (options.useColumnNames === false) {
+						qs.useColumnNames = options.useColumnNames as boolean;
+					} else {
+						qs.useColumnNames = true;
 					}
-					return [this.helpers.returnJsonArray(returnData)];
+					if (options.valueFormat) {
+						qs.valueFormat = options.valueFormat as string;
+					}
+					if (options.sortBy) {
+						qs.sortBy = options.sortBy as string;
+					}
+					if (options.visibleOnly) {
+						qs.visibleOnly = options.visibleOnly as boolean;
+					}
+					if (options.query) {
+						qs.query = options.query as string;
+					}
+					try {
+						if (returnAll) {
+							responseData = await codaApiRequestAllItems.call(
+								this,
+								'items',
+								'GET',
+								endpoint,
+								{},
+								qs,
+							);
+						} else {
+							qs.limit = this.getNodeParameter('limit', i);
+							responseData = await codaApiRequest.call(this, 'GET', endpoint, {}, qs);
+							responseData = responseData.items;
+						}
+
+						if (options.rawData === true) {
+							for (const item of responseData) {
+								returnData.push({
+									json: item,
+									pairedItem: [{ item: i }],
+								});
+							}
+						} else {
+							for (const item of responseData) {
+								returnData.push({
+									json: {
+										id: item.id,
+										...item.values,
+									},
+									pairedItem: [{ item: i }],
+								});
+							}
+						}
+					} catch (error) {
+						if (this.continueOnFail()) {
+							returnData.push({
+								json: { error: error.message },
+								pairedItem: [{ item: i }],
+							});
+							continue;
+						}
+						if (error instanceof NodeApiError) throw error;
+						throw new NodeApiError(this.getNode(), error as JsonObject);
+					}
 				}
+
+				return [returnData];
 			}
 			// https://coda.io/developers/apis/v1beta1#operation/deleteRows
 			if (operation === 'deleteRow') {
@@ -630,15 +653,15 @@ export class Coda implements INodeType {
 			}
 			//https://coda.io/developers/apis/v1beta1#operation/listControls
 			if (operation === 'getAll') {
+				const returnAll = this.getNodeParameter('returnAll', 0);
+				qs.limit = this.getNodeParameter('limit', 0);
 				for (let i = 0; i < items.length; i++) {
 					try {
-						const returnAll = this.getNodeParameter('returnAll', 0);
 						const docId = this.getNodeParameter('docId', i) as string;
 						const endpoint = `/docs/${docId}/controls`;
 						if (returnAll) {
 							responseData = await codaApiRequestAllItems.call(this, 'items', 'GET', endpoint, {});
 						} else {
-							qs.limit = this.getNodeParameter('limit', 0);
 							responseData = await codaApiRequest.call(this, 'GET', endpoint, {}, qs);
 							responseData = responseData.items;
 						}
@@ -680,15 +703,15 @@ export class Coda implements INodeType {
 			}
 			//https://coda.io/developers/apis/v1beta1#operation/listViews
 			if (operation === 'getAll') {
+				const returnAll = this.getNodeParameter('returnAll', 0);
+				qs.limit = this.getNodeParameter('limit', 0);
 				for (let i = 0; i < items.length; i++) {
 					try {
-						const returnAll = this.getNodeParameter('returnAll', 0);
 						const docId = this.getNodeParameter('docId', i) as string;
 						const endpoint = `/docs/${docId}/tables?tableTypes=view`;
 						if (returnAll) {
 							responseData = await codaApiRequestAllItems.call(this, 'items', 'GET', endpoint, {});
 						} else {
-							qs.limit = this.getNodeParameter('limit', 0);
 							responseData = await codaApiRequest.call(this, 'GET', endpoint, {}, qs);
 							responseData = responseData.items;
 						}
@@ -712,58 +735,80 @@ export class Coda implements INodeType {
 				return [returnData];
 			}
 			if (operation === 'getAllViewRows') {
-				const docId = this.getNodeParameter('docId', 0) as string;
-				const returnAll = this.getNodeParameter('returnAll', 0);
-				const viewId = this.getNodeParameter('viewId', 0) as string;
-				const options = this.getNodeParameter('options', 0);
-				const endpoint = `/docs/${docId}/tables/${viewId}/rows`;
-				if (options.useColumnNames === false) {
-					qs.useColumnNames = options.useColumnNames as boolean;
-				} else {
-					qs.useColumnNames = true;
-				}
-				if (options.valueFormat) {
-					qs.valueFormat = options.valueFormat as string;
-				}
-				if (options.sortBy) {
-					qs.sortBy = options.sortBy as string;
-				}
-				if (options.query) {
-					qs.query = options.query as string;
-				}
-				try {
-					if (returnAll) {
-						responseData = await codaApiRequestAllItems.call(
-							this,
-							'items',
-							'GET',
-							endpoint,
-							{},
-							qs,
-						);
-					} else {
-						qs.limit = this.getNodeParameter('limit', 0);
-						responseData = await codaApiRequest.call(this, 'GET', endpoint, {}, qs);
-						responseData = responseData.items;
-					}
-				} catch (error) {
-					if (this.continueOnFail()) {
-						return [this.helpers.returnJsonArray({ error: error.message })];
-					}
-					throw new NodeApiError(this.getNode(), error as JsonObject);
+				let itemsLength = items.length ? 1 : 0;
+
+				if (nodeVersion >= 1.1) {
+					itemsLength = items.length;
 				}
 
-				if (options.rawData === true) {
-					return [this.helpers.returnJsonArray(responseData as IDataObject[])];
-				} else {
-					for (const item of responseData) {
-						returnData.push({
-							id: item.id,
-							...item.values,
-						});
+				for (let i = 0; i < itemsLength; i++) {
+					const docId = this.getNodeParameter('docId', i) as string;
+					const returnAll = this.getNodeParameter('returnAll', i);
+					const viewId = this.getNodeParameter('viewId', i) as string;
+					const options = this.getNodeParameter('options', i);
+					const endpoint = `/docs/${docId}/tables/${viewId}/rows`;
+					if (options.useColumnNames === false) {
+						qs.useColumnNames = options.useColumnNames as boolean;
+					} else {
+						qs.useColumnNames = true;
 					}
-					return [this.helpers.returnJsonArray(returnData)];
+					if (options.valueFormat) {
+						qs.valueFormat = options.valueFormat as string;
+					}
+					if (options.sortBy) {
+						qs.sortBy = options.sortBy as string;
+					}
+					if (options.query) {
+						qs.query = options.query as string;
+					}
+					try {
+						if (returnAll) {
+							responseData = await codaApiRequestAllItems.call(
+								this,
+								'items',
+								'GET',
+								endpoint,
+								{},
+								qs,
+							);
+						} else {
+							qs.limit = this.getNodeParameter('limit', i);
+							responseData = await codaApiRequest.call(this, 'GET', endpoint, {}, qs);
+							responseData = responseData.items;
+						}
+
+						if (options.rawData === true) {
+							for (const item of responseData) {
+								returnData.push({
+									json: item,
+									pairedItem: [{ item: i }],
+								});
+							}
+						} else {
+							for (const item of responseData) {
+								returnData.push({
+									json: {
+										id: item.id,
+										...item.values,
+									},
+									pairedItem: [{ item: i }],
+								});
+							}
+						}
+					} catch (error) {
+						if (this.continueOnFail()) {
+							returnData.push({
+								json: { error: error.message },
+								pairedItem: [{ item: i }],
+							});
+							continue;
+						}
+						if (error instanceof NodeApiError) throw error;
+						throw new NodeApiError(this.getNode(), error as JsonObject);
+					}
 				}
+
+				return [returnData];
 			}
 			//https://coda.io/developers/apis/v1beta1#operation/deleteViewRow
 			if (operation === 'deleteViewRow') {
@@ -823,16 +868,16 @@ export class Coda implements INodeType {
 				return [returnData];
 			}
 			if (operation === 'getAllViewColumns') {
+				const returnAll = this.getNodeParameter('returnAll', 0);
+				qs.limit = this.getNodeParameter('limit', 0);
 				for (let i = 0; i < items.length; i++) {
 					try {
-						const returnAll = this.getNodeParameter('returnAll', 0);
 						const docId = this.getNodeParameter('docId', i) as string;
 						const viewId = this.getNodeParameter('viewId', i) as string;
 						const endpoint = `/docs/${docId}/tables/${viewId}/columns`;
 						if (returnAll) {
 							responseData = await codaApiRequestAllItems.call(this, 'items', 'GET', endpoint, {});
 						} else {
-							qs.limit = this.getNodeParameter('limit', 0);
 							responseData = await codaApiRequest.call(this, 'GET', endpoint, {}, qs);
 							responseData = responseData.items;
 						}
