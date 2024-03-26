@@ -36,7 +36,10 @@ RUN \
 	pnpm rebuild --dir /usr/local/lib/node_modules/n8n sqlite3 && \
 	ln -s /usr/local/lib/node_modules/n8n/bin/n8n /usr/local/bin/n8n && \
 	mkdir .n8n && \
-	chown node:node .n8n
+  mkdir .n8n/custom && \
+	chown -R node:node .n8n \
+
+COPY --chown=node packages/n8n-nodes-honeybook /usr/local/lib/node_modules/n8n/packages/n8n-nodes-honeybook
 
 ENV SHELL /bin/sh
 USER node
