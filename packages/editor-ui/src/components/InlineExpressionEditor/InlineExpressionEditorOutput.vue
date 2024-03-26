@@ -78,8 +78,8 @@ const resolvedSegments = computed<Resolved[]>(() => {
 				segment.kind === 'plaintext'
 					? segment.plaintext.length
 					: segment.resolved
-					  ? (segment.resolved as string | number | boolean).toString().length
-					  : 0;
+						? (segment.resolved as string | number | boolean).toString().length
+						: 0;
 			segment.to = cursor;
 			return segment;
 		})

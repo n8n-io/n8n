@@ -36,7 +36,7 @@
 				layout="prev, pager, next"
 				:total="totalRows"
 				:current-page="currentPage"
-				@update:currentPage="onUpdateCurrentPage"
+				@update:current-page="onUpdateCurrentPage"
 			/>
 
 			<div :class="$style.pageSizeSelector">
@@ -44,7 +44,7 @@
 					size="mini"
 					:model-value="rowsPerPage"
 					teleported
-					@update:modelValue="onRowsPerPageChange"
+					@update:model-value="onRowsPerPageChange"
 				>
 					<template #prepend>{{ t('datatable.pageSize') }}</template>
 					<N8nOption

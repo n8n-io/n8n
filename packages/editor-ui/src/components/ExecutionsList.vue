@@ -10,14 +10,14 @@
 						v-model="autoRefresh"
 						class="mr-xl"
 						data-test-id="execution-auto-refresh-checkbox"
-						@update:modelValue="handleAutoRefreshToggle"
+						@update:model-value="handleAutoRefreshToggle"
 					>
 						{{ i18n.baseText('executionsList.autoRefresh') }}
 					</el-checkbox>
 					<ExecutionFilter
 						v-show="!isMounting"
 						:workflows="workflows"
-						@filterChanged="onFilterChanged"
+						@filter-changed="onFilterChanged"
 					/>
 				</div>
 			</div>
@@ -33,7 +33,7 @@
 				"
 				:model-value="allExistingSelected"
 				data-test-id="select-all-executions-checkbox"
-				@update:modelValue="handleCheckAllExistingChange"
+				@update:model-value="handleCheckAllExistingChange"
 			/>
 
 			<div v-if="isMounting">
@@ -50,7 +50,7 @@
 								:disabled="finishedExecutionsCount < 1"
 								label=""
 								data-test-id="select-visible-executions-checkbox"
-								@update:modelValue="handleCheckAllVisibleChange"
+								@update:model-value="handleCheckAllVisibleChange"
 							/>
 						</th>
 						<th>{{ i18n.baseText('executionsList.name') }}</th>
@@ -75,7 +75,7 @@
 								:model-value="selectedItems[execution.id] || allExistingSelected"
 								label=""
 								data-test-id="select-execution-checkbox"
-								@update:modelValue="handleCheckboxChanged(execution.id)"
+								@update:model-value="handleCheckboxChanged(execution.id)"
 							/>
 						</td>
 						<td>

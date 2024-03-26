@@ -277,10 +277,8 @@ export type ExternalHooksKey = {
 	[K in keyof ExternalHooks]: `${K}.${Extract<keyof ExternalHooks[K], string>}`;
 }[keyof ExternalHooks];
 
-type ExtractHookMethodArray<
-	P extends keyof ExternalHooks,
-	S extends keyof ExternalHooks[P],
-> = ExternalHooks[P][S] extends Array<infer U> ? U : never;
+type ExtractHookMethodArray<P extends keyof ExternalHooks, S extends keyof ExternalHooks[P]> =
+	ExternalHooks[P][S] extends Array<infer U> ? U : never;
 
 type ExtractHookMethodFunction<T> = T extends ExternalHooksMethod ? T : never;
 

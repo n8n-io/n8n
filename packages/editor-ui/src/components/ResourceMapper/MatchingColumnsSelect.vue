@@ -182,7 +182,7 @@ defineExpose({
 					:custom-actions="parameterActions"
 					:loading="props.refreshInProgress"
 					:loading-message="fetchingFieldsLabel"
-					@update:modelValue="onParameterActionSelected"
+					@update:model-value="onParameterActionSelected"
 				/>
 			</template>
 			<n8n-select
@@ -191,7 +191,7 @@ defineExpose({
 				:size="props.inputSize"
 				:disabled="loading"
 				:teleported="teleported"
-				@update:modelValue="onSelectionChange"
+				@update:model-value="onSelectionChange"
 			>
 				<n8n-option
 					v-for="field in availableMatchingFields"

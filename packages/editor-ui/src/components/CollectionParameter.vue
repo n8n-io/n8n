@@ -13,7 +13,7 @@
 					:hide-delete="hideDelete"
 					:indent="true"
 					:is-read-only="isReadOnly"
-					@valueChanged="valueChanged"
+					@value-changed="valueChanged"
 				/>
 			</Suspense>
 
@@ -31,7 +31,7 @@
 						:placeholder="getPlaceholderText"
 						size="small"
 						filterable
-						@update:modelValue="optionSelected"
+						@update:model-value="optionSelected"
 					>
 						<n8n-option
 							v-for="item in parameterOptions"
