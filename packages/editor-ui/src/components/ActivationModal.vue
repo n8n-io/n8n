@@ -25,7 +25,7 @@
 
 		<template #footer="{ close }">
 			<div :class="$style.footer">
-				<el-checkbox :model-value="checked" @update:modelValue="handleCheckboxChange">{{
+				<el-checkbox :model-value="checked" @update:model-value="handleCheckboxChange">{{
 					$locale.baseText('generic.dontShowAgain')
 				}}</el-checkbox>
 				<n8n-button :label="$locale.baseText('activationModal.gotIt')" @click="close" />

@@ -70,7 +70,7 @@ export function dollarOptions(): Completion[] {
 						label: '$vars',
 						type: 'keyword',
 					},
-			  ]
+				]
 			: [];
 	}
 

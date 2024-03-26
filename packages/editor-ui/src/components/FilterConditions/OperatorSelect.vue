@@ -60,7 +60,7 @@ function onGroupSelect(group: string) {
 		size="small"
 		:model-value="selected"
 		:disabled="readOnly"
-		@update:modelValue="onOperatorChange"
+		@update:model-value="onOperatorChange"
 		@visible-change="onSelectVisibleChange"
 		@mouseenter="shouldRenderItems = true"
 	>

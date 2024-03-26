@@ -14,7 +14,7 @@
 			:event-source="eventSource || 'ndv'"
 			:is-read-only="isReadOnly"
 			:redact-values="shouldRedactValue"
-			@closeDialog="closeExpressionEditDialog"
+			@close-dialog="closeExpressionEditDialog"
 			@update:model-value="expressionUpdated"
 		></ExpressionEdit>
 		<div class="parameter-input ignore-key-press" :style="parameterInputWrapperStyle">
@@ -35,7 +35,7 @@
 				:path="path"
 				:event-bus="eventBus"
 				@update:model-value="valueChanged"
-				@modalOpenerClick="openExpressionEditorModal"
+				@modal-opener-click="openExpressionEditorModal"
 				@focus="setFocus"
 				@blur="onBlur"
 				@drop="onResourceLocatorDrop"
@@ -53,7 +53,7 @@
 				:class="{ 'ph-no-capture': shouldRedactValue }"
 				:event-bus="eventBus"
 				@update:model-value="expressionUpdated"
-				@modalOpenerClick="openExpressionEditorModal"
+				@modal-opener-click="openExpressionEditorModal"
 				@focus="setFocus"
 				@blur="onBlur"
 			/>
@@ -128,7 +128,7 @@
 					:parameter="parameter"
 					:path="path"
 					:is-read-only="isReadOnly"
-					@closeDialog="closeTextEditDialog"
+					@close-dialog="closeTextEditDialog"
 					@update:model-value="expressionUpdated"
 				></TextEdit>
 
@@ -360,10 +360,10 @@
 				:display-value="displayValue"
 				:is-read-only="isReadOnly"
 				:display-title="displayTitle"
-				@credentialSelected="credentialSelected"
+				@credential-selected="credentialSelected"
 				@update:model-value="valueChanged"
-				@setFocus="setFocus"
-				@onBlur="onBlur"
+				@set-focus="setFocus"
+				@on-blur="onBlur"
 			>
 				<template #issues-and-options>
 					<ParameterIssues :issues="getIssues" />

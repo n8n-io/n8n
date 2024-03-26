@@ -828,7 +828,7 @@ export async function executeWebhook(
 				: new ApplicationError('There was a problem executing the workflow', {
 						level: 'warning',
 						cause: e,
-				  });
+					});
 		if (didSendResponse) throw error;
 		responseCallback(error, {});
 		return;

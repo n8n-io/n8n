@@ -20,7 +20,7 @@
 					:model-value="modelValue"
 					size="xlarge"
 					:maxlength="64"
-					@update:modelValue="onNameEdit"
+					@update:model-value="onNameEdit"
 					@change="disableNameEdit"
 				/>
 			</div>

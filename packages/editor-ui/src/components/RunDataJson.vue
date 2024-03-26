@@ -30,7 +30,7 @@
 				root-path=""
 				selectable-type="single"
 				class="json-data"
-				@update:selectedValue="selectedJsonPath = $event"
+				@update:selected-value="selectedJsonPath = $event"
 			>
 				<template #renderNodeKey="{ node }">
 					<TextWithHighlights

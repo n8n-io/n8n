@@ -81,6 +81,6 @@ export function createComponentRenderer(
 							...defaultOptions.global,
 							...options.global,
 						},
-				  },
+					},
 		);
 }
