@@ -230,7 +230,7 @@ export class SourceControlExportService {
 			const credentialIds = candidates.map((e) => e.id);
 			const credentialsToBeExported = await Container.get(
 				SharedCredentialsRepository,
-			).findByCredentialIds(credentialIds);
+			).findByCredentialIds(credentialIds, 'credential:owner');
 			let missingIds: string[] = [];
 			if (credentialsToBeExported.length !== credentialIds.length) {
 				const foundCredentialIds = credentialsToBeExported.map((e) => e.credentialsId);
@@ -239,26 +239,24 @@ export class SourceControlExportService {
 				);
 			}
 			await Promise.all(
-				credentialsToBeExported
-					.filter((sharing) => sharing.role === 'credential:owner')
-					.map(async (sharing) => {
-						const { name, type, nodesAccess, data, id } = sharing.credentials;
-						const credentials = new Credentials({ id, name }, type, nodesAccess, data);
+				credentialsToBeExported.map(async (sharing) => {
+					const { name, type, nodesAccess, data, id } = sharing.credentials;
+					const credentials = new Credentials({ id, name }, type, nodesAccess, data);
 
-						const stub: ExportableCredential = {
-							id,
-							name,
-							type,
-							data: this.replaceCredentialData(credentials.getData()),
-							nodesAccess,
-							ownedBy: sharing.user.email,
-						};
+					const stub: ExportableCredential = {
+						id,
+						name,
+						type,
+						data: this.replaceCredentialData(credentials.getData()),
+						nodesAccess,
+						ownedBy: sharing.user.email,
+					};
 
-						const filePath = this.getCredentialsPath(id);
-						this.logger.debug(`Writing credentials stub "${name}" (ID ${id}) to: ${filePath}`);
+					const filePath = this.getCredentialsPath(id);
+					this.logger.debug(`Writing credentials stub "${name}" (ID ${id}) to: ${filePath}`);
 
-						return await fsWriteFile(filePath, JSON.stringify(stub, null, 2));
-					}),
+					return await fsWriteFile(filePath, JSON.stringify(stub, null, 2));
+				}),
 			);
 
 			return {
