@@ -1,20 +1,6 @@
-<template>
-	<div :class="visible ? $style.dropdown : $style.hidden">
-		<n8n-text v-if="!noInputData" size="small" compact :class="$style.header">
-			{{ i18n.baseText('parameterInput.resultForItem') }} {{ hoveringItemNumber }}
-		</n8n-text>
-		<n8n-text :class="$style.body">
-			<div ref="root" data-test-id="inline-expression-editor-output"></div>
-		</n8n-text>
-		<div :class="$style.footer">
-			<InlineExpressionTip />
-		</div>
-	</div>
-</template>
-
 <script setup lang="ts">
 import { EditorView } from '@codemirror/view';
-import { EditorState } from '@codemirror/state';
+import { EditorState, type SelectionRange } from '@codemirror/state';
 
 import { useI18n } from '@/composables/useI18n';
 import type { Plaintext, Resolved, Segment } from '@/types/expressions';
@@ -25,7 +11,10 @@ import InlineExpressionTip from './InlineExpressionTip.vue';
 
 interface InlineExpressionEditorOutputProps {
 	segments: Segment[];
+	unresolvedExpression: string;
 	hoveringItemNumber: number;
+	editorState?: EditorState;
+	selection?: SelectionRange;
 	isReadOnly?: boolean;
 	visible?: boolean;
 	noInputData?: boolean;
@@ -35,6 +24,8 @@ const props = withDefaults(defineProps<InlineExpressionEditorOutputProps>(), {
 	readOnly: false,
 	visible: false,
 	noInputData: false,
+	editorState: undefined,
+	selection: undefined,
 });
 
 const i18n = useI18n();
@@ -114,6 +105,24 @@ onBeforeUnmount(() => {
 	editor.value?.destroy();
 });
 </script>
+
+<template>
+	<div :class="visible ? $style.dropdown : $style.hidden">
+		<n8n-text v-if="!noInputData" size="small" compact :class="$style.header">
+			{{ i18n.baseText('parameterInput.resultForItem') }} {{ hoveringItemNumber }}
+		</n8n-text>
+		<n8n-text :class="$style.body">
+			<div ref="root" data-test-id="inline-expression-editor-output"></div>
+		</n8n-text>
+		<div :class="$style.footer">
+			<InlineExpressionTip
+				:editor-state="editorState"
+				:selection="selection"
+				:unresolved-expression="unresolvedExpression"
+			/>
+		</div>
+	</div>
+</template>
 
 <style lang="scss" module>
 .hidden {
