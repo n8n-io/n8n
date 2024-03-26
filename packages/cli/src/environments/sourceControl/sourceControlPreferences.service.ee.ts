@@ -4,7 +4,6 @@ import Container, { Service } from 'typedi';
 import { SourceControlPreferences } from './types/sourceControlPreferences';
 import type { ValidationError } from 'class-validator';
 import { validate } from 'class-validator';
-import { existsSync as fsExistsSync } from 'fs';
 import { writeFile as fsWriteFile, rm as fsRm } from 'fs/promises';
 import {
 	generateSshKeyPair,
@@ -126,10 +125,6 @@ export class SourceControlPreferencesService {
 		return '';
 	}
 
-	hasKeyPairFiles(): boolean {
-		return fsExistsSync(this.sshKeyName) && fsExistsSync(this.sshKeyName + '.pub');
-	}
-
 	async deleteKeyPair() {
 		try {
 			await fsRm(this.sshFolder, { recursive: true });
@@ -228,14 +223,6 @@ export class SourceControlPreferencesService {
 		preferences: Partial<SourceControlPreferences>,
 		saveToDb = true,
 	): Promise<SourceControlPreferences> {
-		sourceControlFoldersExistCheck([this.gitFolder, this.sshFolder]);
-		if (!this.hasKeyPairFiles()) {
-			const keyPairType =
-				preferences.keyGeneratorType ??
-				(config.get('sourceControl.defaultKeyPairType') as KeyPairType);
-			this.logger.debug(`No key pair files found, generating new pair using type: ${keyPairType}`);
-			await this.generateAndSaveKeyPair(keyPairType);
-		}
 		this.sourceControlPreferences = preferences;
 		if (saveToDb) {
 			const settingsValue = JSON.stringify(this._sourceControlPreferences);

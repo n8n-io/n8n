@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, writeFile, rm } from 'node:fs/promises';
 import Container from 'typedi';
 import { Cipher, InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
@@ -54,6 +54,15 @@ export class MoveSshKeysToDatabase1711390882123 implements ReversibleMigration {
 		await runQuery(
 			`INSERT INTO ${settings} (key, value) VALUES ('${this.settingsKey}', '${value}');`,
 		);
+
+		try {
+			await Promise.all([rm(this.privateKeyPath), rm(this.publicKeyPath)]);
+		} catch (e) {
+			const error = e instanceof Error ? e : new Error(`${e}`);
+			logger.error(
+				`[${migrationName}] Failed to remove SSH keys from filesystem: ${error.message}`,
+			);
+		}
 	}
 
 	async down({ escape, runQuery, logger, migrationName }: MigrationContext) {
