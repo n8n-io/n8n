@@ -34,7 +34,6 @@ import { defineStore } from 'pinia';
 import { useRootStore } from './n8nRoot.store';
 import { useNodeTypesStore } from './nodeTypes.store';
 import { useSettingsStore } from './settings.store';
-import { useUsersStore } from './users.store';
 import { isEmpty } from '@/utils/typesUtils';
 import type { ProjectSharingData } from '@/features/projects/projects.types';
 
@@ -95,12 +94,11 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 		allUsableCredentialsByType(): { [type: string]: ICredentialsResponse[] } {
 			const credentials = this.allCredentials;
 			const types = this.allCredentialTypes;
-			const usersStore = useUsersStore();
 
 			return types.reduce(
 				(accu: { [type: string]: ICredentialsResponse[] }, type: ICredentialType) => {
 					accu[type.name] = credentials.filter((cred: ICredentialsResponse) => {
-						return cred.type === type.name && usersStore.isResourceAccessible(cred);
+						return cred.type === type.name;
 					});
 
 					return accu;
