@@ -47,6 +47,7 @@ export abstract class AbstractOAuthController {
 		const credential = await this.sharedCredentialsRepository.findCredentialForUser(
 			credentialId,
 			req.user,
+			['credential:read'],
 		);
 
 		if (!credential) {

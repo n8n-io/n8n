@@ -420,7 +420,7 @@ export default defineComponent({
 			this.$telemetry.track('User opened sharing modal', {
 				workflow_id: this.currentWorkflowId,
 				user_id_sharer: this.currentUser?.id,
-				sub_view: this.$route.name === VIEWS.WORKFLOWS ? 'Workflows listing' : 'Workflow editor',
+				sub_view: 'Workflow editor',
 			});
 		},
 		onTagsEditEnable() {

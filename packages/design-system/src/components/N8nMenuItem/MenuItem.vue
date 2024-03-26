@@ -52,6 +52,7 @@
 					}"
 					data-test-id="menu-item"
 					:index="item.id"
+					:disabled="item.disabled"
 					@click="handleSelect?.(item)"
 				>
 					<N8nIcon
@@ -74,6 +75,7 @@
 							:size="item.secondaryIcon.size || 'small'"
 						/>
 					</N8nTooltip>
+					<N8nSpinner v-if="item.isLoading" :class="$style.loading" size="small" />
 				</ElMenuItem>
 			</ConditionalRouterLink>
 		</N8nTooltip>
@@ -243,6 +245,10 @@ const isItemActive = (item: IMenuItem): boolean => {
 	min-width: var(--spacing-s);
 	margin-right: var(--spacing-xs);
 	text-align: center;
+}
+
+.loading {
+	margin-left: var(--spacing-xs);
 }
 
 .secondaryIcon {

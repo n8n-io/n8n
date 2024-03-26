@@ -26,8 +26,7 @@ export default defineComponent({
 
 <style lang="scss" module>
 .wrapper {
-	display: block;
-	width: 100%;
+	display: grid;
 	height: 100%;
 }
 
@@ -40,18 +39,12 @@ export default defineComponent({
 }
 
 .list {
-	display: flex;
-	flex-direction: column;
-	width: 100%;
+	display: grid;
+	grid-template-rows: auto 1fr;
 	height: 100%;
-
-	.header {
-		flex: 0 0 auto;
-	}
-
 	.body {
-		overflow: hidden;
-		flex: 1 1;
+		position: relative;
+		height: 100%;
 	}
 }
 </style>

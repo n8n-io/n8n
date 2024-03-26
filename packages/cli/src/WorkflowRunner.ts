@@ -161,7 +161,7 @@ export class WorkflowRunner {
 
 		const { id: workflowId, nodes } = data.workflowData;
 		try {
-			await this.permissionChecker.check(workflowId, data.userId, nodes);
+			await this.permissionChecker.check(workflowId, nodes);
 		} catch (error) {
 			// Create a failed execution with the data for the node, save it and abort execution
 			const runData = generateFailedExecutionFromError(data.executionMode, error, error.node);

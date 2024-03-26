@@ -2,7 +2,7 @@
 	<n8n-card :class="$style.cardLink" @click="onClick">
 		<template #header>
 			<n8n-heading tag="h2" bold :class="$style.cardHeading" data-test-id="workflow-card-name">
-				{{ data.name }}
+				{{ data.name }}<span v-if="data.homeProject?.name"> - {{ data.homeProject.name }}</span>
 			</n8n-heading>
 		</template>
 		<div :class="$style.cardDescription">
@@ -76,6 +76,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import TimeAgo from '@/components/TimeAgo.vue';
+import type { ProjectSharingData } from '@/features/projects/projects.types';
 
 export const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -101,8 +102,8 @@ export default defineComponent({
 				connections: {},
 				nodes: [],
 				name: '',
-				sharedWith: [],
-				ownedBy: {} as IUser,
+				sharedWithProjects: [],
+				homeProject: {} as ProjectSharingData,
 				versionId: '',
 			}),
 		},
@@ -213,7 +214,7 @@ export default defineComponent({
 				this.$telemetry.track('User opened sharing modal', {
 					workflow_id: this.data.id,
 					user_id_sharer: this.currentUser.id,
-					sub_view: this.$route.name === VIEWS.WORKFLOWS ? 'Workflows listing' : 'Workflow editor',
+					sub_view: 'Workflows listing',
 				});
 			} else if (action === WORKFLOW_LIST_ITEM_ACTIONS.DELETE) {
 				const deleteConfirmed = await this.confirm(
@@ -270,6 +271,10 @@ export default defineComponent({
 	font-size: var(--font-size-s);
 	word-break: break-word;
 	padding: var(--spacing-s) 0 0 var(--spacing-s);
+
+	span {
+		color: var(--color-text-light);
+	}
 }
 
 .cardDescription {

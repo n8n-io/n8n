@@ -49,21 +49,26 @@ export class EventsService extends EventEmitter {
 			const upsertResult = await this.repository.upsertWorkflowStatistics(name, workflowId);
 
 			if (name === StatisticsNames.productionSuccess && upsertResult === 'insert') {
-				const owner = await Container.get(OwnershipService).getWorkflowOwnerCached(workflowId);
-				const metrics = {
-					user_id: owner.id,
-					workflow_id: workflowId,
-				};
+				const project = await Container.get(OwnershipService).getWorkflowProjectCached(workflowId);
+				if (project.type === 'personal') {
+					const owner = await Container.get(OwnershipService).getProjectOwnerCached(project.id);
 
-				if (!owner.settings?.userActivated) {
-					await Container.get(UserService).updateSettings(owner.id, {
-						firstSuccessfulWorkflowId: workflowId,
-						userActivated: true,
-					});
+					const metrics = {
+						project_id: project.id,
+						workflow_id: workflowId,
+						user_id: owner?.id,
+					};
+
+					if (owner && !owner.settings?.userActivated) {
+						await Container.get(UserService).updateSettings(owner.id, {
+							firstSuccessfulWorkflowId: workflowId,
+							userActivated: true,
+						});
+					}
+
+					// Send the metrics
+					this.emit('telemetry.onFirstProductionWorkflowSuccess', metrics);
 				}
-
-				// Send the metrics
-				this.emit('telemetry.onFirstProductionWorkflowSuccess', metrics);
 			}
 		} catch (error) {
 			this.logger.verbose('Unable to fire first workflow success telemetry event');
@@ -80,10 +85,12 @@ export class EventsService extends EventEmitter {
 		if (insertResult === 'failed' || insertResult === 'alreadyExists') return;
 
 		// Compile the metrics since this was a new data loaded event
-		const owner = await this.ownershipService.getWorkflowOwnerCached(workflowId);
+		const project = await this.ownershipService.getWorkflowProjectCached(workflowId);
+		const owner = await this.ownershipService.getProjectOwnerCached(project.id);
 
 		let metrics = {
-			user_id: owner.id,
+			user_id: owner?.id,
+			project_id: project.id,
 			workflow_id: workflowId,
 			node_type: node.type,
 			node_id: node.id,

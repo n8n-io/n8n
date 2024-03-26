@@ -249,9 +249,7 @@ export class ActiveWorkflowRunner {
 
 		const mode = 'internal';
 
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(
-			workflowData.shared[0].user.id,
-		);
+		const additionalData = await WorkflowExecuteAdditionalData.getBase();
 
 		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, undefined, true);
 
@@ -570,13 +568,7 @@ export class ActiveWorkflowRunner {
 				);
 			}
 
-			const sharing = dbWorkflow.shared.find((shared) => shared.role === 'workflow:owner');
-
-			if (!sharing) {
-				throw new WorkflowActivationError(`Workflow ${dbWorkflow.display()} has no owner`);
-			}
-
-			const additionalData = await WorkflowExecuteAdditionalData.getBase(sharing.user.id);
+			const additionalData = await WorkflowExecuteAdditionalData.getBase();
 
 			if (shouldAddWebhooks) {
 				await this.addWebhooks(workflow, additionalData, 'trigger', activationMode);
@@ -711,6 +703,7 @@ export class ActiveWorkflowRunner {
 	 * @param {string} workflowId The id of the workflow to deactivate
 	 */
 	// TODO: this should happen in a transaction
+	// maybe, see: https://github.com/n8n-io/n8n/pull/8904#discussion_r1530150510
 	async remove(workflowId: string) {
 		if (this.orchestrationService.isMultiMainSetupEnabled) {
 			try {

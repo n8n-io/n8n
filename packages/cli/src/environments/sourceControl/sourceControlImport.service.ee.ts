@@ -33,6 +33,7 @@ import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowTagMappingRepository } from '@db/repositories/workflowTagMapping.repository';
 import { VariablesRepository } from '@db/repositories/variables.repository';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
 
 @Service()
 export class SourceControlImportService {
@@ -211,7 +212,7 @@ export class SourceControlImportService {
 		});
 		const allSharedWorkflows = await Container.get(SharedWorkflowRepository).findWithFields(
 			candidateIds,
-			{ select: ['workflowId', 'role', 'userId'] },
+			{ select: ['workflowId', 'role', 'projectId'] },
 		);
 		const cachedOwnerIds = new Map<string, string>();
 		const importWorkflowsResult = await Promise.all(
@@ -238,6 +239,8 @@ export class SourceControlImportService {
 				// Update workflow owner to the user who exported the workflow, if that user exists
 				// in the instance, and the workflow doesn't already have an owner
 				let workflowOwnerId = userId;
+				const workflowOwnerPersonalProject =
+					await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(workflowOwnerId);
 				if (cachedOwnerIds.has(importedWorkflow.owner)) {
 					workflowOwnerId = cachedOwnerIds.get(importedWorkflow.owner) ?? userId;
 				} else {
@@ -263,7 +266,7 @@ export class SourceControlImportService {
 					// no owner exists yet, so create one
 					await Container.get(SharedWorkflowRepository).insert({
 						workflowId: importedWorkflow.id,
-						userId: workflowOwnerId,
+						projectId: workflowOwnerPersonalProject.id,
 						role: 'workflow:owner',
 					});
 				} else if (existingSharedWorkflowOwnerByRoleId) {
@@ -274,7 +277,7 @@ export class SourceControlImportService {
 					await Container.get(SharedWorkflowRepository).update(
 						{
 							workflowId: importedWorkflow.id,
-							userId: workflowOwnerId,
+							projectId: workflowOwnerPersonalProject.id,
 						},
 						{ role: 'workflow:owner' },
 					);
@@ -311,6 +314,8 @@ export class SourceControlImportService {
 	}
 
 	public async importCredentialsFromWorkFolder(candidates: SourceControlledFile[], userId: string) {
+		const personalProject =
+			await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(userId);
 		const candidateIds = candidates.map((c) => c.id);
 		const existingCredentials = await Container.get(CredentialsRepository).find({
 			where: {
@@ -319,7 +324,7 @@ export class SourceControlImportService {
 			select: ['id', 'name', 'type', 'data'],
 		});
 		const existingSharedCredentials = await Container.get(SharedCredentialsRepository).find({
-			select: ['userId', 'credentialsId', 'role'],
+			select: ['credentialsId', 'role'],
 			where: {
 				credentialsId: In(candidateIds),
 				role: 'credential:owner',
@@ -354,7 +359,7 @@ export class SourceControlImportService {
 				if (!sharedOwner) {
 					const newSharedCredential = new SharedCredentials();
 					newSharedCredential.credentialsId = newCredentialObject.id as string;
-					newSharedCredential.userId = userId;
+					newSharedCredential.projectId = personalProject.id;
 					newSharedCredential.role = 'credential:owner';
 
 					await Container.get(SharedCredentialsRepository).upsert({ ...newSharedCredential }, [
@@ -458,7 +463,7 @@ export class SourceControlImportService {
 			if (!variable.key) {
 				continue;
 			}
-			// by default no value is stored remotely, so an empty string is retuned
+			// by default no value is stored remotely, so an empty string is returned
 			// it must be changed to undefined so as to not overwrite existing values!
 			if (variable.value === '') {
 				variable.value = undefined;

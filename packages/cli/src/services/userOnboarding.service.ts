@@ -25,7 +25,12 @@ export class UserOnboardingService {
 		const ownedWorkflowsIds = await this.sharedWorkflowRepository
 			.find({
 				where: {
-					userId: user.id,
+					project: {
+						projectRelations: {
+							role: 'project:personalOwner',
+							userId: user.id,
+						},
+					},
 					role: 'workflow:owner',
 				},
 				select: ['workflowId'],

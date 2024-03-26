@@ -29,13 +29,14 @@ import type {
 	ICredentialType,
 	INodeCredentialTestResult,
 	INodeTypeDescription,
-	IUser,
 } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { useRootStore } from './n8nRoot.store';
 import { useNodeTypesStore } from './nodeTypes.store';
 import { useSettingsStore } from './settings.store';
 import { useUsersStore } from './users.store';
+import { isEmpty } from '@/utils/typesUtils';
+import type { ProjectSharingData } from '@/features/projects/projects.types';
 
 const DEFAULT_CREDENTIAL_NAME = 'Unnamed credential';
 const DEFAULT_CREDENTIAL_POSTFIX = 'account';
@@ -245,9 +246,17 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 			const credentialTypes = await getCredentialTypes(rootStore.getBaseUrl);
 			this.setCredentialTypes(credentialTypes);
 		},
-		async fetchAllCredentials(): Promise<ICredentialsResponse[]> {
+		async fetchAllCredentials(projectId?: string): Promise<ICredentialsResponse[]> {
 			const rootStore = useRootStore();
-			const credentials = await getAllCredentials(rootStore.getRestApiContext);
+
+			const filter = {
+				projectId,
+			};
+
+			const credentials = await getAllCredentials(
+				rootStore.getRestApiContext,
+				isEmpty(filter) ? undefined : filter,
+			);
 			this.setCredentials(credentials);
 			return credentials;
 		},
@@ -259,27 +268,21 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 			const rootStore = useRootStore();
 			return await getCredentialData(rootStore.getRestApiContext, id);
 		},
-		async createNewCredential(data: ICredentialsDecrypted): Promise<ICredentialsResponse> {
+		async createNewCredential(
+			data: ICredentialsDecrypted,
+			projectId?: string,
+		): Promise<ICredentialsResponse> {
 			const rootStore = useRootStore();
 			const settingsStore = useSettingsStore();
-			const credential = await createNewCredential(rootStore.getRestApiContext, data);
+			const credential = await createNewCredential(rootStore.getRestApiContext, data, projectId);
 
 			if (settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
 				this.upsertCredential(credential);
-
-				if (data.ownedBy) {
-					this.setCredentialOwnedBy({
+				if (data.sharedWithProjects) {
+					await this.setCredentialSharedWith({
 						credentialId: credential.id,
-						ownedBy: data.ownedBy,
+						sharedWithProjects: data.sharedWithProjects,
 					});
-
-					const usersStore = useUsersStore();
-					if (data.sharedWith && data.ownedBy.id === usersStore.currentUserId) {
-						await this.setCredentialSharedWith({
-							credentialId: credential.id,
-							sharedWith: data.sharedWith,
-						});
-					}
 				}
 			} else {
 				this.upsertCredential(credential);
@@ -292,21 +295,9 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 		}): Promise<ICredentialsResponse> {
 			const { id, data } = params;
 			const rootStore = useRootStore();
-			const settingsStore = useSettingsStore();
 			const credential = await updateCredential(rootStore.getRestApiContext, id, data);
 
-			if (settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
-				this.upsertCredential(credential);
-
-				if (data.ownedBy) {
-					this.setCredentialOwnedBy({
-						credentialId: credential.id,
-						ownedBy: data.ownedBy,
-					});
-				}
-			} else {
-				this.upsertCredential(credential);
-			}
+			this.upsertCredential(credential);
 
 			return credential;
 		},
@@ -349,45 +340,21 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 				return DEFAULT_CREDENTIAL_NAME;
 			}
 		},
-
-		// Enterprise edition actions
-		setCredentialOwnedBy(payload: { credentialId: string; ownedBy: Partial<IUser> }) {
-			this.credentials[payload.credentialId] = {
-				...this.credentials[payload.credentialId],
-				ownedBy: payload.ownedBy,
-			};
-		},
 		async setCredentialSharedWith(payload: {
-			sharedWith: IUser[];
+			sharedWithProjects: ProjectSharingData[];
 			credentialId: string;
 		}): Promise<ICredentialsResponse> {
 			if (useSettingsStore().isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
 				await setCredentialSharedWith(useRootStore().getRestApiContext, payload.credentialId, {
-					shareWithIds: payload.sharedWith.map((sharee) => sharee.id),
+					shareWithIds: payload.sharedWithProjects.map((project) => project.id),
 				});
 
 				this.credentials[payload.credentialId] = {
 					...this.credentials[payload.credentialId],
-					sharedWith: payload.sharedWith,
+					sharedWithProjects: payload.sharedWithProjects,
 				};
 			}
 			return this.credentials[payload.credentialId];
-		},
-		addCredentialSharee(payload: { credentialId: string; sharee: Partial<IUser> }): void {
-			this.credentials[payload.credentialId] = {
-				...this.credentials[payload.credentialId],
-				sharedWith: (this.credentials[payload.credentialId].sharedWith || []).concat([
-					payload.sharee,
-				]),
-			};
-		},
-		removeCredentialSharee(payload: { credentialId: string; sharee: Partial<IUser> }): void {
-			this.credentials[payload.credentialId] = {
-				...this.credentials[payload.credentialId],
-				sharedWith: (this.credentials[payload.credentialId].sharedWith || []).filter(
-					(sharee) => sharee.id !== payload.sharee.id,
-				),
-			};
 		},
 
 		async getCredentialTranslation(credentialType: string): Promise<object> {

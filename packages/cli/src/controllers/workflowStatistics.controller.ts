@@ -29,13 +29,15 @@ export class WorkflowStatisticsController {
 	 */
 	// TODO: move this into a new decorator `@ValidateWorkflowPermission`
 	@Middleware()
-	async hasWorkflowAccess(req: StatisticsRequest.GetOne, res: Response, next: NextFunction) {
+	async hasWorkflowAccess(req: StatisticsRequest.GetOne, _res: Response, next: NextFunction) {
 		const { user } = req;
 		const workflowId = req.params.id;
 
-		const hasAccess = await this.sharedWorkflowRepository.hasAccess(workflowId, user);
+		const workflow = await this.sharedWorkflowRepository.findWorkflowForUser(workflowId, user, [
+			'workflow:read',
+		]);
 
-		if (hasAccess) {
+		if (workflow) {
 			next();
 		} else {
 			this.logger.verbose('User attempted to read a workflow without permissions', {

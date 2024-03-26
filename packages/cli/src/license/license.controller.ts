@@ -1,4 +1,4 @@
-import { Get, Post, GlobalScope, RestController } from '@/decorators';
+import { Get, Post, RestController, GlobalScope } from '@/decorators';
 import { LicenseRequest } from '@/requests';
 import { LicenseService } from './license.service';
 

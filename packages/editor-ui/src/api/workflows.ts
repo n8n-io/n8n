@@ -2,8 +2,8 @@ import type { IExecutionsCurrentSummaryExtended, IRestApiContext } from '@/Inter
 import type { ExecutionFilters, ExecutionOptions, IDataObject } from 'n8n-workflow';
 import { makeRestApiRequest } from '@/utils/apiUtils';
 
-export async function getNewWorkflow(context: IRestApiContext, name?: string) {
-	const response = await makeRestApiRequest(context, 'GET', '/workflows/new', name ? { name } : {});
+export async function getNewWorkflow(context: IRestApiContext, data?: IDataObject) {
+	const response = await makeRestApiRequest(context, 'GET', '/workflows/new', data);
 	return {
 		name: response.name,
 		onboardingFlowEnabled: response.onboardingFlowEnabled === true,

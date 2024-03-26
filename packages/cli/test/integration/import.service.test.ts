@@ -16,16 +16,22 @@ import { createOwner } from './shared/db/users';
 import { createWorkflow, getWorkflowById } from './shared/db/workflows';
 
 import type { User } from '@db/entities/User';
+import type { Project } from '@/databases/entities/Project';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
 
 describe('ImportService', () => {
 	let importService: ImportService;
 	let tagRepository: TagRepository;
 	let owner: User;
+	let ownerPersonalProject: Project;
 
 	beforeAll(async () => {
 		await testDb.init();
 
 		owner = await createOwner();
+		ownerPersonalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
 
 		tagRepository = Container.get(TagRepository);
 
@@ -62,10 +68,14 @@ describe('ImportService', () => {
 		await importService.importWorkflows([workflowToImport], owner.id);
 
 		const dbSharing = await Container.get(SharedWorkflowRepository).findOneOrFail({
-			where: { workflowId: workflowToImport.id, userId: owner.id, role: 'workflow:owner' },
+			where: {
+				workflowId: workflowToImport.id,
+				projectId: ownerPersonalProject.id,
+				role: 'workflow:owner',
+			},
 		});
 
-		expect(dbSharing.userId).toBe(owner.id);
+		expect(dbSharing.projectId).toBe(ownerPersonalProject.id);
 	});
 
 	test('should deactivate imported workflow if active', async () => {

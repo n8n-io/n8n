@@ -5,7 +5,7 @@
 		</template>
 		<template #header>
 			<n8n-heading tag="h2" bold :class="$style.cardHeading">
-				{{ data.name }}
+				{{ data.name }}<span v-if="data.homeProject?.name"> - {{ data.homeProject.name }}</span>
 			</n8n-heading>
 		</template>
 		<div :class="$style.cardDescription">
@@ -21,11 +21,6 @@
 		</div>
 		<template #append>
 			<div ref="cardActions" :class="$style.cardActions">
-				<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
-					<n8n-badge v-if="credentialPermissions.isOwner" class="mr-xs" theme="tertiary" bold>
-						{{ $locale.baseText('credentials.item.owner') }}
-					</n8n-badge>
-				</enterprise-edition>
 				<n8n-action-toggle :actions="actions" theme="dark" @action="onAction" @click.stop />
 			</div>
 		</template>
@@ -47,6 +42,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import TimeAgo from '@/components/TimeAgo.vue';
+import type { ProjectSharingData } from '@/features/projects/projects.types';
 
 export const CREDENTIAL_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -69,8 +65,8 @@ export default defineComponent({
 				type: '',
 				name: '',
 				nodesAccess: [],
-				sharedWith: [],
-				ownedBy: {} as IUser,
+				sharedWithProjects: [],
+				homeProject: {} as ProjectSharingData,
 			}),
 		},
 		readonly: {
@@ -185,6 +181,10 @@ export default defineComponent({
 .cardHeading {
 	font-size: var(--font-size-s);
 	padding: var(--spacing-s) 0 0;
+
+	span {
+		color: var(--color-text-light);
+	}
 }
 
 .cardDescription {

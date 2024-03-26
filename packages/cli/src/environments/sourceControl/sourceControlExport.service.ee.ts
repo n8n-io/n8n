@@ -110,7 +110,17 @@ export class SourceControlExportService {
 
 			// determine owner of each workflow to be exported
 			const owners: Record<string, string> = {};
-			sharedWorkflows.forEach((e) => (owners[e.workflowId] = e.user.email));
+			sharedWorkflows.forEach((e) => {
+				const ownerRelation = e.project.projectRelations.find(
+					(pr) => pr.role === 'project:personalOwner',
+				);
+
+				if (!ownerRelation) {
+					throw new ApplicationError(`Workflow ${e.workflow.display()} has no owner`);
+				}
+
+				owners[e.workflowId] = ownerRelation.user.email;
+			});
 
 			// write the workflows to the export folder as json files
 			await this.writeExportableWorkflowsToExportFolder(workflows, owners);

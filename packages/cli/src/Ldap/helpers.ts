@@ -93,7 +93,7 @@ export const getAuthIdentityByLdapId = async (
 	idAttributeValue: string,
 ): Promise<AuthIdentity | null> => {
 	return await Container.get(AuthIdentityRepository).findOne({
-		relations: ['user'],
+		relations: { user: true },
 		where: {
 			providerId: idAttributeValue,
 			providerType: 'ldap',
@@ -140,7 +140,7 @@ export const getLdapIds = async (): Promise<string[]> => {
 
 export const getLdapUsers = async (): Promise<User[]> => {
 	const identities = await Container.get(AuthIdentityRepository).find({
-		relations: ['user'],
+		relations: { user: true },
 		where: {
 			providerType: 'ldap',
 		},

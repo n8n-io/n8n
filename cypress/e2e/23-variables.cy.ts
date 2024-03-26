@@ -25,7 +25,7 @@ describe('Variables', () => {
 
 		it('should show the licensed action box when the feature is enabled', () => {
 			variablesPage.getters.emptyResourcesList().should('be.visible');
-			variablesPage.getters.createVariableButton().should('be.visible');
+			variablesPage.getters.emptyResourcesListNewVariableButton().should('be.visible');
 		});
 
 		it('should create a new variable using empty state row', () => {

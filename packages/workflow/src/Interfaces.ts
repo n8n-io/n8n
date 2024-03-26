@@ -138,8 +138,16 @@ export interface ICredentialsDecrypted {
 	type: string;
 	nodesAccess: ICredentialNodeAccess[];
 	data?: ICredentialDataDecryptedObject;
-	ownedBy?: IUser;
-	sharedWith?: IUser[];
+	homeProject?: {
+		id: string;
+		name: string | null;
+		type: 'personal' | 'team' | 'public';
+	};
+	sharedWithProjects?: Array<{
+		id: string;
+		name: string | null;
+		type: 'personal' | 'team' | 'public';
+	}>;
 }
 
 export interface ICredentialsEncrypted {
@@ -2059,7 +2067,7 @@ export interface IWorkflowExecuteAdditionalData {
 	webhookTestBaseUrl: string;
 	currentNodeParameters?: INodeParameters;
 	executionTimeoutTimestamp?: number;
-	userId: string;
+	userId?: string;
 	variables: IDataObject;
 	secretsHelpers: SecretsHelpersBase;
 	logAiEvent: (

@@ -209,14 +209,6 @@ export class InternalHooks {
 			(note) => note.overlapping,
 		).length;
 
-		let userRole: 'owner' | 'sharee' | undefined = undefined;
-		if (user.id && workflow.id) {
-			const role = await this.sharedWorkflowRepository.findSharingRole(user.id, workflow.id);
-			if (role) {
-				userRole = role === 'workflow:owner' ? 'owner' : 'sharee';
-			}
-		}
-
 		void Promise.all([
 			this.eventBus.sendAuditEvent({
 				eventName: 'n8n.audit.workflow.updated',
@@ -235,7 +227,8 @@ export class InternalHooks {
 				version_cli: N8N_VERSION,
 				num_tags: workflow.tags?.length ?? 0,
 				public_api: publicApi,
-				sharing_role: userRole,
+				// TODO: to be decided what to put here
+				sharing_role: 'owner',
 			}),
 		]);
 	}

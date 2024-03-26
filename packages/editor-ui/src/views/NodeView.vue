@@ -382,6 +382,7 @@ import { useCanvasPanning } from '@/composables/useCanvasPanning';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
+import { useProjectsStore } from '@/features/projects/projects.store';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -605,6 +606,7 @@ export default defineComponent({
 			useCollaborationStore,
 			usePushConnectionStore,
 			useSourceControlStore,
+			useProjectsStore,
 		),
 		nativelyNumberSuffixedDefaults(): string[] {
 			return this.nodeTypesStore.nativelyNumberSuffixedDefaults;
@@ -1224,10 +1226,10 @@ export default defineComponent({
 				});
 			}
 
-			if (data.workflowData.sharedWith) {
+			if (data.workflowData.sharedWithProjects) {
 				this.workflowsEEStore.setWorkflowSharedWith({
 					workflowId: data.workflowData.id,
-					sharedWith: data.workflowData.sharedWith,
+					sharedWithProjects: data.workflowData.sharedWithProjects,
 				});
 			}
 
@@ -1353,7 +1355,11 @@ export default defineComponent({
 			await this.$router.replace({ name: VIEWS.NEW_WORKFLOW, query: { templateId } });
 
 			await this.addNodes(data.workflow.nodes, data.workflow.connections);
-			this.workflowData = (await this.workflowsStore.getNewWorkflowData(data.name)) || {};
+			this.workflowData =
+				(await this.workflowsStore.getNewWorkflowData(
+					data.name,
+					this.projectsStore.currentProjectId,
+				)) || {};
 			this.workflowsStore.addToWorkflowMetadata({ templateId });
 			await this.$nextTick();
 			this.canvasStore.zoomToFit();
@@ -1389,10 +1395,10 @@ export default defineComponent({
 				});
 			}
 
-			if (workflow.sharedWith) {
+			if (workflow.sharedWithProjects) {
 				this.workflowsEEStore.setWorkflowSharedWith({
 					workflowId: workflow.id,
-					sharedWith: workflow.sharedWith,
+					sharedWithProjects: workflow.sharedWithProjects,
 				});
 			}
 
@@ -3530,7 +3536,10 @@ export default defineComponent({
 		async newWorkflow(): Promise<void> {
 			this.canvasStore.startLoading();
 			this.resetWorkspace();
-			this.workflowData = await this.workflowsStore.getNewWorkflowData();
+			this.workflowData = await this.workflowsStore.getNewWorkflowData(
+				undefined,
+				this.projectsStore.currentProjectId,
+			);
 			this.workflowsStore.currentWorkflowExecutions = [];
 			this.workflowsStore.activeWorkflowExecution = null;
 
@@ -4848,7 +4857,7 @@ export default defineComponent({
 					this.resetWorkspace();
 					this.uiStore.stateIsDirty = false;
 
-					await this.$router.replace({ name: VIEWS.WORKFLOWS });
+					await this.$router.replace({ name: VIEWS.HOMEPAGE });
 				});
 			}
 		},
