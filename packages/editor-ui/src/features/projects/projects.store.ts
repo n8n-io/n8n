@@ -90,6 +90,7 @@ export const useProjectsStore = defineStore('projects', () => {
 	return {
 		projects,
 		myProjects,
+		personalProject,
 		currentProject,
 		currentProjectId,
 		personalProjects,
