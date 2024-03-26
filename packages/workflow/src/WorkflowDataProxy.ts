@@ -915,6 +915,7 @@ export class WorkflowDataProxy {
 					functionOverrides: {
 						message: 'Can’t get data',
 					},
+					nodeCause: sourceData.previousNode,
 					description: 'Item points to a node output which does not exist',
 					causeDetailed: `The sourceData points to a node output ‘${previousNodeOutput}‘ which does not exist on node ‘${sourceData.previousNode}‘ (output node did probably supply a wrong one)`,
 					type: 'paired_item_invalid_info',
