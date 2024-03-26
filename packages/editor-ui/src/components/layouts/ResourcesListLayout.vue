@@ -69,7 +69,7 @@
 								:placeholder="i18n.baseText(`${resourceKey}.search.placeholder`)"
 								clearable
 								data-test-id="resources-list-search"
-								@update:modelValue="onSearch"
+								@update:model-value="onSearch"
 							>
 								<template #prefix>
 									<n8n-icon icon="search" />
@@ -91,8 +91,8 @@
 									:reset="resetFilters"
 									:model-value="filtersModel"
 									:shareable="shareable"
-									@update:modelValue="$emit('update:filters', $event)"
-									@update:filtersLength="onUpdateFiltersLength"
+									@update:model-value="$emit('update:filters', $event)"
+									@update:filters-length="onUpdateFiltersLength"
 								>
 									<template #default="resourceFiltersSlotProps">
 										<slot name="filters" v-bind="resourceFiltersSlotProps" />
@@ -146,8 +146,8 @@
 						:rows="filteredAndSortedSubviewResources"
 						:current-page="currentPage"
 						:rows-per-page="rowsPerPage"
-						@update:currentPage="setCurrentPage"
-						@update:rowsPerPage="setRowsPerPage"
+						@update:current-page="setCurrentPage"
+						@update:rows-per-page="setRowsPerPage"
 					>
 						<template #row="{ columns, row }">
 							<slot :data="row" :columns="columns" />

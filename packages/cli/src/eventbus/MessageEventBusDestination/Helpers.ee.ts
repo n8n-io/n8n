@@ -26,7 +26,7 @@ export function getLabelsForEvent(event: EventMessageTypes): Record<string, stri
 							credential_type: getLabelValueForCredential(
 								event.payload.credentialType ?? 'unknown',
 							),
-					  }
+						}
 					: {};
 			}
 

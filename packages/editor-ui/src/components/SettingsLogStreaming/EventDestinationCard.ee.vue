@@ -35,7 +35,7 @@
 					active-color="#13ce66"
 					inactive-color="#8899AA"
 					data-test-id="workflow-activate-switch"
-					@update:modelValue="onEnabledSwitched($event, destination.id)"
+					@update:model-value="onEnabledSwitched($event, destination.id)"
 				>
 				</el-switch>
 

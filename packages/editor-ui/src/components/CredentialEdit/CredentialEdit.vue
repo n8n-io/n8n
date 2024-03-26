@@ -20,7 +20,7 @@
 						:readonly="!credentialPermissions.update || !credentialType"
 						type="Credential"
 						data-test-id="credential-name"
-						@update:modelValue="onNameEdit"
+						@update:model-value="onNameEdit"
 					/>
 				</div>
 				<div :class="$style.credActions">
@@ -81,8 +81,8 @@
 						@update="onDataChange"
 						@oauth="oAuthCredentialAuthorize"
 						@retest="retestCredential"
-						@scrollToTop="scrollToTop"
-						@authTypeChanged="onAuthTypeChanged"
+						@scroll-to-top="scrollToTop"
+						@auth-type-changed="onAuthTypeChanged"
 					/>
 				</div>
 				<div v-else-if="activeTab === 'sharing' && credentialType" :class="$style.mainContent">
@@ -92,7 +92,7 @@
 						:credential-id="credentialId"
 						:credential-permissions="credentialPermissions"
 						:modal-bus="modalBus"
-						@update:modelValue="onChangeSharedWith"
+						@update:model-value="onChangeSharedWith"
 					/>
 				</div>
 				<div v-else-if="activeTab === 'details' && credentialType" :class="$style.mainContent">
