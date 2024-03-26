@@ -1,3 +1,13 @@
+## [1.34.2](https://github.com/n8n-io/n8n/compare/n8n@1.34.1...n8n@1.34.2) (2024-03-26)
+
+
+### Bug Fixes
+
+* **editor:** Nodes connectors improvements ([#8945](https://github.com/n8n-io/n8n/issues/8945)) ([6310e36](https://github.com/n8n-io/n8n/commit/6310e36c8eaf331b4116666677a82b9a75f862dc))
+* **Pinecone Vector Store Node:** Fix vector store nodes execution issue ([#8968](https://github.com/n8n-io/n8n/issues/8968)) ([9bd14c0](https://github.com/n8n-io/n8n/commit/9bd14c053c8b5410a49d3a5f3354e5ed0feed3b3))
+
+
+
 ## [1.34.1](https://github.com/n8n-io/n8n/compare/n8n@1.34.0...n8n@1.34.1) (2024-03-25)
 
 
