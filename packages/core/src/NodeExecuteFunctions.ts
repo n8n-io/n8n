@@ -2112,7 +2112,7 @@ export function cleanupParameterData(inputData: NodeParameterValueType): void {
 		(Object.keys(inputData) as Key[]).forEach((key) => {
 			const value = inputData[key];
 			if (typeof value === 'object') {
-				if (value instanceof DateTime) {
+				if (DateTime.isDateTime(value)) {
 					// Is a special luxon date so convert to string
 					inputData[key] = value.toString();
 				} else {
@@ -2530,7 +2530,6 @@ const addExecutionDataFunctions = async (
 	taskData = taskData!;
 
 	if (data instanceof Error) {
-		// TODO: Or "failed", what is the difference
 		taskData.executionStatus = 'error';
 		taskData.error = data;
 	} else {
