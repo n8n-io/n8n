@@ -23,7 +23,13 @@ export class UserService {
 	) {}
 
 	async update(userId: string, data: Partial<User>) {
-		return await this.userRepository.update(userId, data);
+		const user = await this.userRepository.findOneBy({ id: userId });
+
+		if (user) {
+			await this.userRepository.save({ ...user, ...data }, { transaction: true });
+		}
+
+		return;
 	}
 
 	getManager() {

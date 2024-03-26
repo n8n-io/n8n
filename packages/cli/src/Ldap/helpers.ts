@@ -281,7 +281,11 @@ export const createLdapUserOnLocalDb = async (data: Partial<User>, ldapId: strin
 export const updateLdapUserOnLocalDb = async (identity: AuthIdentity, data: Partial<User>) => {
 	const userId = identity?.user?.id;
 	if (userId) {
-		await Container.get(UserRepository).update({ id: userId }, data);
+		const user = await Container.get(UserRepository).findOneBy({ id: userId });
+
+		if (user) {
+			await Container.get(UserRepository).save({ id: userId, ...data }, { transaction: true });
+		}
 	}
 };
 

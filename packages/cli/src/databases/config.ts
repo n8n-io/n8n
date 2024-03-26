@@ -10,7 +10,7 @@ import { InstanceSettings } from 'n8n-core';
 import { ApplicationError } from 'n8n-workflow';
 
 import config from '@/config';
-import { entities } from './entities';
+import { entities, subscribers } from './entities';
 import { mysqlMigrations } from './migrations/mysqldb';
 import { postgresMigrations } from './migrations/postgresdb';
 import { sqliteMigrations } from './migrations/sqlite';
@@ -32,6 +32,7 @@ const getCommonOptions = () => {
 	return {
 		entityPrefix,
 		entities: Object.values(entities),
+		subscribers: Object.values(subscribers),
 		migrationsTableName: `${entityPrefix}migrations`,
 		migrationsRun: false,
 		synchronize: false,
