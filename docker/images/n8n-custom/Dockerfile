@@ -39,7 +39,7 @@ RUN \
   mkdir .n8n/custom && \
 	chown -R node:node .n8n
 
-COPY --chown=node packages/n8n-nodes-honeybook /usr/local/lib/node_modules/n8n/packages/n8n-nodes-honeybook
+COPY --chown=node packages/n8n-nodes-honeybook .n8n/custom/n8n-nodes-honeybook
 
 ENV SHELL /bin/sh
 USER node
