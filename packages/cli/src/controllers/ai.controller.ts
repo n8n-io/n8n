@@ -35,4 +35,21 @@ export class AIController {
 			);
 		}
 	}
+
+	/**
+	 * Generate CURL request and additional HTTP Node metadata for given service and request
+	 */
+	@Post('/generate-curl')
+	async generateCurl(req: AIRequest.GenerateCurl): Promise<{ curl: string; metadata?: object }> {
+		const { service, request } = req.body;
+
+		try {
+			return await this.aiService.generateCurl(service, request);
+		} catch (aiServiceError) {
+			throw new FailedDependencyError(
+				(aiServiceError as Error).message ||
+					'Failed to generate HTTP Request Node parameters due to an issue with an external dependency. Please try again later.',
+			);
+		}
+	}
 }

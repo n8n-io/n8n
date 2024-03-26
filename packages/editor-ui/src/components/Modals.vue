@@ -95,6 +95,10 @@
 			<ImportCurlModal />
 		</ModalRoot>
 
+		<ModalRoot :name="GENERATE_CURL_MODAL_KEY">
+			<GenerateCurlModal />
+		</ModalRoot>
+
 		<ModalRoot :name="COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY">
 			<template #default="{ modalName, activeId, mode }">
 				<CommunityPackageManageConfirmModal
@@ -208,6 +212,7 @@ import {
 	WORKFLOW_HISTORY_VERSION_RESTORE,
 	SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY,
 	SETUP_CREDENTIALS_MODAL_KEY,
+	GENERATE_CURL_MODAL_KEY,
 } from '@/constants';
 
 import AboutModal from './AboutModal.vue';
@@ -231,6 +236,7 @@ import WorkflowSettings from './WorkflowSettings.vue';
 import DeleteUserModal from './DeleteUserModal.vue';
 import ActivationModal from './ActivationModal.vue';
 import ImportCurlModal from './ImportCurlModal.vue';
+import GenerateCurlModal from './GenerateCurlModal.vue';
 import MfaSetupModal from './MfaSetupModal.vue';
 import WorkflowShareModal from './WorkflowShareModal.ee.vue';
 import EventDestinationSettingsModal from '@/components/SettingsLogStreaming/EventDestinationSettingsModal.ee.vue';
@@ -267,6 +273,7 @@ export default defineComponent({
 		WorkflowSettings,
 		WorkflowShareModal,
 		ImportCurlModal,
+		GenerateCurlModal,
 		EventDestinationSettingsModal,
 		SourceControlPushModal,
 		SourceControlPullModal,
@@ -299,6 +306,7 @@ export default defineComponent({
 		VALUE_SURVEY_MODAL_KEY,
 		WORKFLOW_ACTIVE_MODAL_KEY,
 		IMPORT_CURL_MODAL_KEY,
+		GENERATE_CURL_MODAL_KEY,
 		LOG_STREAM_MODAL_KEY,
 		SOURCE_CONTROL_PUSH_MODAL_KEY,
 		SOURCE_CONTROL_PULL_MODAL_KEY,
