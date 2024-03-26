@@ -219,8 +219,10 @@ export async function execute(
 				json: flattenOutput(record),
 			})) as INodeExecutionData[];
 
+			const itemData = fallbackPairedItems || [{ item: i }];
+
 			const executionData = this.helpers.constructExecutionMetaData(records, {
-				itemData: fallbackPairedItems || [{ item: i }],
+				itemData,
 			});
 
 			returnData.push(...executionData);
