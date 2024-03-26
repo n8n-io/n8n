@@ -34,7 +34,7 @@ export type CommunityPackageScope = ResourceScope<
 	'communityPackage',
 	'install' | 'uninstall' | 'update' | 'list' | 'manage'
 >;
-export type CredentialScope = ResourceScope<'credential', DefaultOperations | 'share'>;
+export type CredentialScope = ResourceScope<'credential', DefaultOperations | 'share' | 'use'>;
 export type ExternalSecretScope = ResourceScope<'externalSecret', 'list' | 'use'>;
 export type ExternalSecretProviderScope = ResourceScope<
 	'externalSecretsProvider',

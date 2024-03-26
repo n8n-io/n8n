@@ -18,6 +18,7 @@ export const REGULAR_PROJECT_ADMIN_SCOPES: Scope[] = [
 	'credential:update',
 	'credential:delete',
 	'credential:list',
+	'credential:use',
 	'project:list',
 	'project:read',
 	'project:update',
@@ -38,6 +39,7 @@ export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
 	'credential:delete',
 	'credential:list',
 	'credential:share',
+	'credential:use',
 	'project:list',
 	'project:read',
 ];
@@ -54,6 +56,7 @@ export const PROJECT_EDITOR_SCOPES: Scope[] = [
 	'credential:update',
 	'credential:delete',
 	'credential:list',
+	'credential:use',
 	'project:list',
 	'project:read',
 ];

@@ -7,6 +7,7 @@ import { License } from '@/License';
 import { OwnershipService } from '@/services/ownership.service';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { ProjectService } from '@/services/project.service';
+import { RoleService } from '@/services/role.service';
 
 @Service()
 export class PermissionChecker {
@@ -15,6 +16,7 @@ export class PermissionChecker {
 		private readonly ownershipService: OwnershipService,
 		private readonly license: License,
 		private readonly projectService: ProjectService,
+		private readonly roleService: RoleService,
 	) {}
 
 	/**
@@ -31,6 +33,7 @@ export class PermissionChecker {
 		const accessable = await this.sharedCredentialsRepository.getFilteredAccessibleCredentials(
 			projectIds,
 			workflowCredIds,
+			this.roleService.rolesWithScope('credential', ['credential:use']),
 		);
 
 		for (const credentialsId of workflowCredIds) {

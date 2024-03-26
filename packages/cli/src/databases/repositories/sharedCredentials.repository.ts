@@ -130,12 +130,14 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 	async getFilteredAccessibleCredentials(
 		projectIds: string[],
 		credentialsIds: string[],
+		roles?: CredentialSharingRole[],
 	): Promise<string[]> {
 		return (
 			await this.find({
 				where: {
 					projectId: In(projectIds),
 					credentialsId: In(credentialsIds),
+					role: roles ? In(roles) : undefined,
 				},
 				select: ['credentialsId'],
 			})

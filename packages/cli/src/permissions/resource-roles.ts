@@ -5,9 +5,10 @@ export const CREDENTIALS_SHARING_OWNER_SCOPES: Scope[] = [
 	'credential:update',
 	'credential:delete',
 	'credential:share',
+	'credential:use',
 ];
 
-export const CREDENTIALS_SHARING_USER_SCOPES: Scope[] = ['credential:read'];
+export const CREDENTIALS_SHARING_USER_SCOPES: Scope[] = ['credential:read', 'credential:use'];
 
 export const WORKFLOW_SHARING_OWNER_SCOPES: Scope[] = [
 	'workflow:read',
