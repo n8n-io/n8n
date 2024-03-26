@@ -48,12 +48,12 @@ export class TwilioTrigger implements INodeType {
 					{
 						name: 'New SMS',
 						value: 'com.twilio.messaging.inbound-message.received',
-						description: 'Inbound Message Received',
+						description: 'When an SMS message is received',
 					},
 					{
 						name: 'New Call',
 						value: 'com.twilio.voice.insights.call-summary.complete',
-						description: 'Inbound Call Received',
+						description: 'When a call is received',
 					},
 				],
 				required: true,
