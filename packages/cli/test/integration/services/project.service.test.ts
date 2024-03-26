@@ -124,7 +124,7 @@ describe('ProjectService', () => {
 				const projectFromService = await projectService.getProjectWithScope(
 					projectOwner,
 					project.id,
-					scope,
+					[scope],
 				);
 
 				//
@@ -164,7 +164,7 @@ describe('ProjectService', () => {
 				const projectFromService = await projectService.getProjectWithScope(
 					projectViewer,
 					project.id,
-					scope,
+					[scope],
 				);
 
 				//
@@ -189,11 +189,9 @@ describe('ProjectService', () => {
 			//
 			// ACT
 			//
-			const projectFromService = await projectService.getProjectWithScope(
-				member,
-				project.id,
+			const projectFromService = await projectService.getProjectWithScope(member, project.id, [
 				'workflow:list',
-			);
+			]);
 
 			//
 			// ASSERT

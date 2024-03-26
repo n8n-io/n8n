@@ -382,6 +382,7 @@ import { useCanvasPanning } from '@/composables/useCanvasPanning';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
+import { useProjectsStore } from '@/features/projects/projects.store';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -605,6 +606,7 @@ export default defineComponent({
 			useCollaborationStore,
 			usePushConnectionStore,
 			useSourceControlStore,
+			useProjectsStore,
 		),
 		nativelyNumberSuffixedDefaults(): string[] {
 			return this.nodeTypesStore.nativelyNumberSuffixedDefaults;
@@ -1083,6 +1085,7 @@ export default defineComponent({
 						TelemetryHelpers.generateNodesGraph(
 							workflowData as IWorkflowBase,
 							this.workflowHelpers.getNodeTypes(),
+							{ isCloudDeployment: this.settingsStore.isCloudDeployment },
 						).nodeGraph,
 					),
 				};
@@ -1223,10 +1226,10 @@ export default defineComponent({
 				});
 			}
 
-			if (data.workflowData.sharedWith) {
+			if (data.workflowData.sharedWithProjects) {
 				this.workflowsEEStore.setWorkflowSharedWith({
 					workflowId: data.workflowData.id,
-					sharedWith: data.workflowData.sharedWith,
+					sharedWithProjects: data.workflowData.sharedWithProjects,
 				});
 			}
 
@@ -1355,7 +1358,7 @@ export default defineComponent({
 			this.workflowData =
 				(await this.workflowsStore.getNewWorkflowData(
 					data.name,
-					(this.$route?.params?.projectId ?? this.$route?.query?.projectId) as string | undefined,
+					this.projectsStore.currentProjectId,
 				)) || {};
 			this.workflowsStore.addToWorkflowMetadata({ templateId });
 			await this.$nextTick();
@@ -1392,10 +1395,10 @@ export default defineComponent({
 				});
 			}
 
-			if (workflow.sharedWith) {
+			if (workflow.sharedWithProjects) {
 				this.workflowsEEStore.setWorkflowSharedWith({
 					workflowId: workflow.id,
-					sharedWith: workflow.sharedWith,
+					sharedWithProjects: workflow.sharedWithProjects,
 				});
 			}
 
@@ -1995,6 +1998,7 @@ export default defineComponent({
 						TelemetryHelpers.generateNodesGraph(
 							workflowData as IWorkflowBase,
 							this.workflowHelpers.getNodeTypes(),
+							{ isCloudDeployment: this.settingsStore.isCloudDeployment },
 						).nodeGraph,
 					),
 				};
@@ -2151,6 +2155,7 @@ export default defineComponent({
 								workflowData.meta && workflowData.meta.instanceId !== currInstanceId
 									? workflowData.meta.instanceId
 									: '',
+							isCloudDeployment: this.settingsStore.isCloudDeployment,
 						},
 					).nodeGraph,
 				);
@@ -3533,7 +3538,7 @@ export default defineComponent({
 			this.resetWorkspace();
 			this.workflowData = await this.workflowsStore.getNewWorkflowData(
 				undefined,
-				(this.$route?.params?.projectId ?? this.$route?.query?.projectId) as string | undefined,
+				this.projectsStore.currentProjectId,
 			);
 			this.workflowsStore.currentWorkflowExecutions = [];
 			this.workflowsStore.activeWorkflowExecution = null;

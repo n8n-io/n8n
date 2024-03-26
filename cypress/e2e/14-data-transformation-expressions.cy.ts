@@ -19,6 +19,7 @@ describe('Data transformation expressions', () => {
 		const output = 'monday is TODAY';
 
 		ndv.getters.inlineExpressionEditorInput().clear().type(input);
+		ndv.getters.inlineExpressionEditorOutput().should('have.text', output);
 		ndv.actions.execute();
 		ndv.getters.outputDataContainer().should('be.visible');
 		ndv.getters.outputDataContainer().contains(output);
@@ -34,6 +35,7 @@ describe('Data transformation expressions', () => {
 		const output = 'hello@n8n.io false';
 
 		ndv.getters.inlineExpressionEditorInput().clear().type(input);
+		ndv.getters.inlineExpressionEditorOutput().should('have.text', output);
 		ndv.actions.execute();
 		ndv.getters.outputDataContainer().should('be.visible');
 		ndv.getters.outputDataContainer().contains(output);
@@ -49,6 +51,7 @@ describe('Data transformation expressions', () => {
 		const output = '9.12';
 
 		ndv.getters.inlineExpressionEditorInput().clear().type(input);
+		ndv.getters.inlineExpressionEditorOutput().should('have.text', output);
 		ndv.actions.execute();
 		ndv.getters.outputDataContainer().should('be.visible');
 		ndv.getters.outputDataContainer().contains(output);
@@ -64,6 +67,7 @@ describe('Data transformation expressions', () => {
 		const output = 'hello@n8n.io false';
 
 		ndv.getters.inlineExpressionEditorInput().clear().type(input);
+		ndv.getters.inlineExpressionEditorOutput().should('have.text', output);
 		ndv.actions.execute();
 		ndv.getters.outputDataContainer().should('be.visible');
 		ndv.getters.outputDataContainer().contains(output);
@@ -78,6 +82,7 @@ describe('Data transformation expressions', () => {
 		const output = 'true 3';
 
 		ndv.getters.inlineExpressionEditorInput().clear().type(input);
+		ndv.getters.inlineExpressionEditorOutput().should('have.text', output);
 		ndv.actions.execute();
 		ndv.getters.outputDataContainer().find('[class*=value_]').should('exist');
 		ndv.getters.outputDataContainer().find('[class*=value_]').should('contain', output);
@@ -93,6 +98,7 @@ describe('Data transformation expressions', () => {
 		const output = '1 3';
 
 		ndv.getters.inlineExpressionEditorInput().clear().type(input);
+		ndv.getters.inlineExpressionEditorOutput().should('have.text', output);
 		ndv.actions.execute();
 		ndv.getters.outputDataContainer().find('[class*=value_]').should('exist');
 		ndv.getters.outputDataContainer().find('[class*=value_]').should('contain', output);

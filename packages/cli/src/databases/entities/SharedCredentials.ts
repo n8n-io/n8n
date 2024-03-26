@@ -1,6 +1,5 @@
 import { Column, Entity, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
 import { CredentialsEntity } from './CredentialsEntity';
-import { User } from './User';
 import { WithTimestamps } from './AbstractEntity';
 import { Project } from './Project';
 
@@ -11,12 +10,6 @@ export class SharedCredentials extends WithTimestamps {
 	@Column()
 	role: CredentialSharingRole;
 
-	@ManyToOne('User', 'sharedCredentials')
-	user: User;
-
-	@PrimaryColumn()
-	userId: string;
-
 	@ManyToOne('CredentialsEntity', 'shared')
 	credentials: CredentialsEntity;
 
@@ -26,6 +19,6 @@ export class SharedCredentials extends WithTimestamps {
 	@ManyToOne('Project', 'sharedCredentials')
 	project: Project;
 
-	@Column()
+	@PrimaryColumn()
 	projectId: string;
 }

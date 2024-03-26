@@ -10,7 +10,11 @@ export class RoleController {
 		return Object.fromEntries(
 			Object.entries(this.roleService.getRoles()).map((e) => [
 				e[0],
-				(e[1] as AllRoleTypes[]).map((r) => ({ name: this.roleService.getRoleName(r), role: r })),
+				(e[1] as AllRoleTypes[]).map((r) => ({
+					name: this.roleService.getRoleName(r),
+					role: r,
+					scopes: this.roleService.getRoleScopes(r),
+				})),
 			]),
 		);
 	}

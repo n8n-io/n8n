@@ -6,7 +6,7 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import { ApplicationError, CREDENTIAL_EMPTY_VALUE, deepCopy, NodeHelpers } from 'n8n-workflow';
-import type { FindOptionsWhere } from '@n8n/typeorm';
+import type { FindOptionsRelations, FindOptionsWhere } from '@n8n/typeorm';
 import type { Scope } from '@n8n/permissions';
 import * as Db from '@/Db';
 import type { ICredentialsDb } from '@/Interfaces';
@@ -28,6 +28,9 @@ import { CredentialsTester } from '@/services/credentials-tester.service';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { ProjectService } from '@/services/project.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { ProjectRelation } from '@/databases/entities/ProjectRelation';
+import { RoleService } from '@/services/role.service';
 
 export type CredentialsGetSharedOptions =
 	| { allowGlobalScope: true; globalScope: Scope }
@@ -45,64 +48,104 @@ export class CredentialsService {
 		private readonly credentialTypes: CredentialTypes,
 		private readonly projectRepository: ProjectRepository,
 		private readonly projectService: ProjectService,
+		private readonly roleService: RoleService,
 	) {}
-
-	async get(where: FindOptionsWhere<ICredentialsDb>, options?: { relations: string[] }) {
-		return await this.credentialsRepository.findOne({
-			relations: options?.relations,
-			where,
-		});
-	}
 
 	async getMany(
 		user: User,
-		options: { listQueryOptions?: ListQuery.Options; onlyOwn?: boolean } = {},
+		options: {
+			listQueryOptions?: ListQuery.Options;
+			onlyOwn?: boolean;
+			includeScopes?: string;
+		} = {},
 	) {
 		const returnAll = user.hasGlobalScope('credential:list') && !options.onlyOwn;
 		const isDefaultSelect = !options.listQueryOptions?.select;
 
-		if (returnAll) {
-			const credentials = await this.credentialsRepository.findMany(options.listQueryOptions);
+		let projectRelations: ProjectRelation[] | undefined = undefined;
+		if (options.includeScopes) {
+			projectRelations = await this.projectService.getProjectRelationsForUser(user);
+		}
 
-			return isDefaultSelect
-				? credentials.map((c) => this.ownershipService.addOwnedByAndSharedWith(c))
-				: credentials;
+		if (returnAll) {
+			let credentials = await this.credentialsRepository.findMany(options.listQueryOptions);
+
+			if (isDefaultSelect) {
+				credentials = credentials.map((c) => this.ownershipService.addOwnedByAndSharedWith(c));
+			}
+
+			if (options.includeScopes) {
+				credentials = credentials.map((c) =>
+					this.roleService.addScopes(c, user, projectRelations!),
+				);
+			}
+
+			credentials.forEach((c) => {
+				// @ts-expect-error: This is to emulate the old behaviour of removing the shared
+				// field as part of `addOwnedByAndSharedWith`. We need this field in `addScopes`
+				// though. So to avoid leaking the information we just delete it.
+				delete c.shared;
+			});
+
+			return credentials;
 		}
 
 		const ids = await this.sharedCredentialsRepository.getCredentialIdsByUserAndRole([user.id], {
 			scopes: ['credential:read'],
 		});
 
-		const credentials = await this.credentialsRepository.findMany(
+		let credentials = await this.credentialsRepository.findMany(
 			options.listQueryOptions,
 			ids, // only accessible credentials
 		);
 
-		return isDefaultSelect
-			? credentials.map((c) => this.ownershipService.addOwnedByAndSharedWith(c))
-			: credentials;
+		if (isDefaultSelect) {
+			credentials = credentials.map((c) => this.ownershipService.addOwnedByAndSharedWith(c));
+		}
+
+		if (options.includeScopes) {
+			credentials = credentials.map((c) => this.roleService.addScopes(c, user, projectRelations!));
+		}
+
+		credentials.forEach((c) => {
+			// @ts-expect-error: This is to emulate the old behaviour of removing the shared
+			// field as part of `addOwnedByAndSharedWith`. We need this field in `addScopes`
+			// though. So to avoid leaking the information we just delete it.
+			delete c.shared;
+		});
+
+		return credentials;
 	}
 
 	/**
 	 * Retrieve the sharing that matches a user and a credential.
 	 */
+	// TODO: move to SharedCredentialsService
 	async getSharing(
 		user: User,
 		credentialId: string,
-		options: CredentialsGetSharedOptions,
-		relations: string[] = ['credentials'],
+		globalScopes: Scope[],
+		relations: FindOptionsRelations<SharedCredentials> = { credentials: true },
 	): Promise<SharedCredentials | null> {
-		const where: FindOptionsWhere<SharedCredentials> = { credentialsId: credentialId };
+		let where: FindOptionsWhere<SharedCredentials> = { credentialsId: credentialId };
 
-		// Omit user from where if the requesting user has relevant
-		// global credential permissions. This allows the user to
-		// access credentials they don't own.
-		if (!options.allowGlobalScope || !user.hasGlobalScope(options.globalScope)) {
-			where.userId = user.id;
-			where.role = 'credential:owner';
+		if (!user.hasGlobalScope(globalScopes, { mode: 'allOf' })) {
+			where = {
+				...where,
+				role: 'credential:owner',
+				project: {
+					projectRelations: {
+						role: 'project:personalOwner',
+						userId: user.id,
+					},
+				},
+			};
 		}
 
-		return await this.sharedCredentialsRepository.findOne({ where, relations });
+		return await this.sharedCredentialsRepository.findOne({
+			where,
+			relations,
+		});
 	}
 
 	async prepareCreateData(
@@ -211,7 +254,7 @@ export class CredentialsService {
 					: await this.projectService.getProjectWithScope(
 							user,
 							projectId,
-							'credential:create',
+							['credential:create'],
 							transactionManager,
 					  );
 
@@ -228,7 +271,6 @@ export class CredentialsService {
 
 			const newSharedCredential = this.sharedCredentialsRepository.create({
 				role: 'credential:owner',
-				user,
 				credentials: savedCredential,
 				projectId: project.id,
 			});
@@ -342,5 +384,44 @@ export class CredentialsService {
 		const mergedData = deepCopy(redactedData);
 		this.unredactRestoreValues(mergedData, savedData);
 		return mergedData;
+	}
+
+	async getOne(user: User, credentialId: string, includeDecryptedData: boolean) {
+		let sharing: SharedCredentials | null = null;
+		let decryptedData: ICredentialDataDecryptedObject | null = null;
+
+		sharing = includeDecryptedData
+			? // Try to get the credential with `credential:update` scope, which
+			  // are required for decrypting the data.
+			  await this.getSharing(user, credentialId, [
+					'credential:read',
+					// TODO: Enable this once the scope exists and has been added to the
+					// global:owner role.
+					// 'credential:decrypt',
+			  ])
+			: null;
+
+		if (sharing) {
+			// Decrypt the data if we found the credential with the `credential:update`
+			// scope.
+			decryptedData = this.redact(this.decrypt(sharing.credentials), sharing.credentials);
+		} else {
+			// Otherwise try to find them with only the `credential:read` scope. In
+			// that case we return them without the decrypted data.
+			sharing = await this.getSharing(user, credentialId, ['credential:read']);
+		}
+
+		if (!sharing) {
+			throw new NotFoundError(`Credential with ID "${credentialId}" could not be found.`);
+		}
+
+		const { credentials: credential } = sharing;
+
+		const { data: _, ...rest } = credential;
+
+		if (decryptedData) {
+			return { data: decryptedData, ...rest };
+		}
+		return { ...rest };
 	}
 }

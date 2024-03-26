@@ -84,7 +84,7 @@ export class ActiveWebhooks implements IWebhookManager {
 
 		const workflowData = await this.workflowRepository.findOne({
 			where: { id: webhook.workflowId },
-			relations: ['shared', 'shared.user'],
+			relations: { shared: { project: { projectRelations: true } } },
 		});
 
 		if (workflowData === null) {
@@ -102,9 +102,7 @@ export class ActiveWebhooks implements IWebhookManager {
 			settings: workflowData.settings,
 		});
 
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(
-			workflowData.shared[0].user.id,
-		);
+		const additionalData = await WorkflowExecuteAdditionalData.getBase();
 
 		const webhookData = NodeHelpers.getNodeWebhooks(
 			workflow,

@@ -21,6 +21,7 @@ export const REGULAR_PROJECT_ADMIN_SCOPES: Scope[] = [
 	'project:list',
 	'project:read',
 	'project:update',
+	'project:delete',
 ];
 
 export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [

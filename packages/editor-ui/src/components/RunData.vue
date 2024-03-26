@@ -178,7 +178,7 @@
 				((dataCount > 0 && maxRunIndex === 0) || search) &&
 				!isArtificialRecoveredEventItem
 			"
-			v-show="!editMode.enabled"
+			v-show="!editMode.enabled && !hasRunError"
 			:class="$style.itemsCount"
 			data-test-id="ndv-items-count"
 		>

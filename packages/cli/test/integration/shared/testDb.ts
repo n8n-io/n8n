@@ -59,6 +59,8 @@ const repositories = [
 	'Project',
 	'ProjectRelation',
 	'Role',
+	'Project',
+	'ProjectRelation',
 	'Settings',
 	'SharedCredentials',
 	'SharedWorkflow',

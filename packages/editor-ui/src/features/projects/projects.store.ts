@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref, watch } from 'vue';
+import { ref, watch, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import * as projectsApi from '@/features/projects/projects.api';
@@ -17,9 +17,19 @@ export const useProjectsStore = defineStore('projects', () => {
 	const projects = ref<ProjectListItem[]>([]);
 	const myProjects = ref<ProjectListItem[]>([]);
 	const personalProject = ref<Project | null>(null);
-	const currentProject = ref<Project>({} as Project);
+	const currentProject = ref<Project | null>(null);
 
-	const setCurrentProject = (project: Project) => {
+	const currentProjectId = computed(
+		() =>
+			(route.params?.projectId as string | undefined) ||
+			(route.query?.projectId as string | undefined) ||
+			currentProject.value?.id,
+	);
+
+	const personalProjects = computed(() => projects.value.filter((p) => p.type === 'personal'));
+	const teamProjects = computed(() => projects.value.filter((p) => p.type === 'team'));
+
+	const setCurrentProject = (project: Project | null) => {
 		currentProject.value = project;
 	};
 
@@ -56,12 +66,22 @@ export const useProjectsStore = defineStore('projects', () => {
 		}
 	};
 
+	const deleteProject = async (projectId: string, transferId?: string): Promise<void> => {
+		await projectsApi.deleteProject(rootStore.getRestApiContext, projectId, transferId);
+		myProjects.value = myProjects.value.filter((p) => p.id !== projectId);
+	};
+
 	watch(
 		route,
 		async (newRoute) => {
+			if (newRoute?.path?.includes('home')) {
+				setCurrentProject(null);
+			}
+
 			if (!newRoute?.params?.projectId) {
 				return;
 			}
+
 			await getProject(newRoute.params.projectId as string);
 		},
 		{ immediate: true },
@@ -71,6 +91,9 @@ export const useProjectsStore = defineStore('projects', () => {
 		projects,
 		myProjects,
 		currentProject,
+		currentProjectId,
+		personalProjects,
+		teamProjects,
 		setCurrentProject,
 		getAllProjects,
 		getMyProjects,
@@ -78,5 +101,6 @@ export const useProjectsStore = defineStore('projects', () => {
 		getProject,
 		createProject,
 		updateProject,
+		deleteProject,
 	};
 });

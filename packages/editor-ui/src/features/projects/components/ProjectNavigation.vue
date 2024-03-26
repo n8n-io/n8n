@@ -5,7 +5,7 @@ import type { IMenuItem } from 'n8n-design-system/types';
 import { useI18n } from '@/composables/useI18n';
 import { VIEWS } from '@/constants';
 import { useProjectsStore } from '@/features/projects/projects.store';
-import type { Project } from '@/features/projects/projects.types';
+import type { ProjectListItem } from '@/features/projects/projects.types';
 
 type Props = {
 	collapsed: boolean;
@@ -43,7 +43,7 @@ const activeTab = computed(() =>
 
 const isActiveProject = (projectId: string) =>
 	route?.params?.projectId === projectId ? projectId : undefined;
-const getProjectMenuItem = (project: Project) => ({
+const getProjectMenuItem = (project: ProjectListItem) => ({
 	id: project.id,
 	label: project.name,
 	route: {
@@ -79,7 +79,7 @@ const addProjectClicked = async () => {
 <template>
 	<div :class="$style.projects">
 		<ElMenu :collapse="props.collapsed" class="home">
-			<n8n-menu-item
+			<N8nMenuItem
 				:item="home"
 				:compact="props.collapsed"
 				:handle-select="homeClicked"
@@ -90,7 +90,7 @@ const addProjectClicked = async () => {
 		</ElMenu>
 		<hr class="mt-m mb-m" />
 		<ElMenu :collapse="props.collapsed" :class="$style.projectItems">
-			<n8n-menu-item
+			<N8nMenuItem
 				v-for="project in projectsStore.myProjects"
 				:key="project.id"
 				:item="getProjectMenuItem(project)"
@@ -102,7 +102,7 @@ const addProjectClicked = async () => {
 			/>
 		</ElMenu>
 		<ElMenu :collapse="props.collapsed" class="pt-s pl-xs pr-xs">
-			<n8n-menu-item
+			<N8nMenuItem
 				:item="addProject"
 				:compact="props.collapsed"
 				:handle-select="addProjectClicked"

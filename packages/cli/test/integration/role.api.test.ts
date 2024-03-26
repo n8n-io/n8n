@@ -5,6 +5,9 @@ import type { GlobalRole } from '@/databases/entities/User';
 import type { ProjectRole } from '@/databases/entities/ProjectRelation';
 import type { CredentialSharingRole } from '@/databases/entities/SharedCredentials';
 import type { WorkflowSharingRole } from '@/databases/entities/SharedWorkflow';
+import { RoleService } from '@/services/role.service';
+import Container from 'typedi';
+import type { Scope } from '@n8n/permissions';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['role'],
@@ -13,25 +16,77 @@ const testServer = utils.setupTestServer({
 let memberAgent: SuperAgentTest;
 
 const expectedCategories = ['global', 'project', 'credential', 'workflow'] as const;
-const expectedGlobalRoles: Array<{ name: string; role: GlobalRole }> = [
-	{ name: 'Owner', role: 'global:owner' },
-	{ name: 'Admin', role: 'global:admin' },
-	{ name: 'Member', role: 'global:member' },
+const expectedGlobalRoles: Array<{ name: string; role: GlobalRole; scopes: Scope[] }> = [
+	{
+		name: 'Owner',
+		role: 'global:owner',
+		scopes: Container.get(RoleService).getRoleScopes('global:owner'),
+	},
+	{
+		name: 'Admin',
+		role: 'global:admin',
+		scopes: Container.get(RoleService).getRoleScopes('global:admin'),
+	},
+	{
+		name: 'Member',
+		role: 'global:member',
+		scopes: Container.get(RoleService).getRoleScopes('global:member'),
+	},
 ];
-const expectedProjectRoles: Array<{ name: string; role: ProjectRole }> = [
-	{ name: 'Project Owner', role: 'project:personalOwner' },
-	{ name: 'Project Admin', role: 'project:admin' },
-	{ name: 'Project Editor', role: 'project:editor' },
-	{ name: 'Project Viewer', role: 'project:viewer' },
+const expectedProjectRoles: Array<{ name: string; role: ProjectRole; scopes: Scope[] }> = [
+	{
+		name: 'Project Owner',
+		role: 'project:personalOwner',
+		scopes: Container.get(RoleService).getRoleScopes('project:personalOwner'),
+	},
+	{
+		name: 'Project Admin',
+		role: 'project:admin',
+		scopes: Container.get(RoleService).getRoleScopes('project:admin'),
+	},
+	{
+		name: 'Project Editor',
+		role: 'project:editor',
+		scopes: Container.get(RoleService).getRoleScopes('project:editor'),
+	},
+	{
+		name: 'Project Viewer',
+		role: 'project:viewer',
+		scopes: Container.get(RoleService).getRoleScopes('project:viewer'),
+	},
 ];
-const expectedCredentialRoles: Array<{ name: string; role: CredentialSharingRole }> = [
-	{ name: 'Credential Owner', role: 'credential:owner' },
-	{ name: 'Credential User', role: 'credential:user' },
+const expectedCredentialRoles: Array<{
+	name: string;
+	role: CredentialSharingRole;
+	scopes: Scope[];
+}> = [
+	{
+		name: 'Credential Owner',
+		role: 'credential:owner',
+		scopes: Container.get(RoleService).getRoleScopes('credential:owner'),
+	},
+	{
+		name: 'Credential User',
+		role: 'credential:user',
+		scopes: Container.get(RoleService).getRoleScopes('credential:user'),
+	},
 ];
-const expectedWorkflowRoles: Array<{ name: string; role: WorkflowSharingRole }> = [
-	{ name: 'Workflow Owner', role: 'workflow:owner' },
-	{ name: 'Workflow Editor', role: 'workflow:editor' },
-	{ name: 'Workflow User', role: 'workflow:user' },
+const expectedWorkflowRoles: Array<{ name: string; role: WorkflowSharingRole; scopes: Scope[] }> = [
+	{
+		name: 'Workflow Owner',
+		role: 'workflow:owner',
+		scopes: Container.get(RoleService).getRoleScopes('workflow:owner'),
+	},
+	{
+		name: 'Workflow Editor',
+		role: 'workflow:editor',
+		scopes: Container.get(RoleService).getRoleScopes('workflow:editor'),
+	},
+	{
+		name: 'Workflow User',
+		role: 'workflow:user',
+		scopes: Container.get(RoleService).getRoleScopes('workflow:user'),
+	},
 ];
 
 beforeAll(async () => {

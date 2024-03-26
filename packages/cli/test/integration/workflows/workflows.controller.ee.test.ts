@@ -19,14 +19,22 @@ import { createWorkflow, getWorkflowSharing, shareWorkflowWithUsers } from '../s
 import { License } from '@/License';
 import { UserManagementMailer } from '@/UserManagement/email';
 import config from '@/config';
+import type { WorkflowWithSharingsMetaDataAndCredentials } from '@/workflows/workflows.types';
+import type { Project } from '@/databases/entities/Project';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
 
 let owner: User;
+let ownerPersonalProject: Project;
 let member: User;
+let memberPersonalProject: Project;
 let anotherMember: User;
+let anotherMemberPersonalProject: Project;
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
 let authAnotherMemberAgent: SuperAgentTest;
 let saveCredential: SaveCredentialFunction;
+
+let projectRepository: ProjectRepository;
 
 const activeWorkflowRunner = mockInstance(ActiveWorkflowRunner);
 
@@ -39,9 +47,16 @@ const license = testServer.license;
 const mailer = mockInstance(UserManagementMailer);
 
 beforeAll(async () => {
+	projectRepository = Container.get(ProjectRepository);
+
 	owner = await createUser({ role: 'global:owner' });
+	ownerPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
 	member = await createUser({ role: 'global:member' });
+	memberPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(member.id);
 	anotherMember = await createUser({ role: 'global:member' });
+	anotherMemberPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(
+		anotherMember.id,
+	);
 
 	authOwnerAgent = testServer.authAgentFor(owner);
 	authMemberAgent = testServer.authAgentFor(member);
@@ -76,14 +91,14 @@ describe('router should switch based on flag', () => {
 
 		await authOwnerAgent
 			.put(`/workflows/${savedWorkflowId}/share`)
-			.send({ shareWithIds: [member.id] })
+			.send({ shareWithIds: [memberPersonalProject.id] })
 			.expect(404);
 	});
 
 	test('when sharing is enabled', async () => {
 		await authOwnerAgent
 			.put(`/workflows/${savedWorkflowId}/share`)
-			.send({ shareWithIds: [member.id] })
+			.send({ shareWithIds: [memberPersonalProject.id] })
 			.expect(200);
 	});
 });
@@ -94,7 +109,7 @@ describe('PUT /workflows/:id', () => {
 
 		const response = await authOwnerAgent
 			.put(`/workflows/${workflow.id}/share`)
-			.send({ shareWithIds: [member.id] });
+			.send({ shareWithIds: [memberPersonalProject.id] });
 
 		expect(response.statusCode).toBe(200);
 
@@ -121,7 +136,7 @@ describe('PUT /workflows/:id', () => {
 
 		const response = await authOwnerAgent
 			.put(`/workflows/${workflow.id}/share`)
-			.send({ shareWithIds: [member.id, anotherMember.id] });
+			.send({ shareWithIds: [memberPersonalProject.id, anotherMemberPersonalProject.id] });
 
 		expect(response.statusCode).toBe(200);
 
@@ -135,7 +150,7 @@ describe('PUT /workflows/:id', () => {
 
 		const response = await authOwnerAgent
 			.put(`/workflows/${workflow.id}/share`)
-			.send({ shareWithIds: [member.id, anotherMember.id] });
+			.send({ shareWithIds: [memberPersonalProject.id, anotherMemberPersonalProject.id] });
 
 		expect(response.statusCode).toBe(200);
 
@@ -144,7 +159,7 @@ describe('PUT /workflows/:id', () => {
 
 		const secondResponse = await authOwnerAgent
 			.put(`/workflows/${workflow.id}/share`)
-			.send({ shareWithIds: [member.id] });
+			.send({ shareWithIds: [memberPersonalProject.id] });
 		expect(secondResponse.statusCode).toBe(200);
 
 		const secondSharedWorkflows = await getWorkflowSharing(workflow);
@@ -157,7 +172,7 @@ describe('PUT /workflows/:id', () => {
 
 		const response = await authMemberAgent
 			.put(`/workflows/${workflow.id}/share`)
-			.send({ shareWithIds: [anotherMember.id] });
+			.send({ shareWithIds: [anotherMemberPersonalProject.id] });
 
 		expect(response.statusCode).toBe(200);
 
@@ -171,7 +186,7 @@ describe('PUT /workflows/:id', () => {
 
 		const response = await authOwnerAgent
 			.put(`/workflows/${workflow.id}/share`)
-			.send({ shareWithIds: [anotherMember.id] });
+			.send({ shareWithIds: [anotherMemberPersonalProject.id] });
 
 		expect(response.statusCode).toBe(200);
 
@@ -187,7 +202,7 @@ describe('PUT /workflows/:id', () => {
 
 		const response = await authAnotherMemberAgent
 			.put(`/workflows/${workflow.id}/share`)
-			.send({ shareWithIds: [anotherMember.id, owner.id] });
+			.send({ shareWithIds: [anotherMemberPersonalProject.id, ownerPersonalProject.id] });
 
 		expect(response.statusCode).toBe(403);
 
@@ -201,7 +216,7 @@ describe('PUT /workflows/:id', () => {
 
 		const response = await authAnotherMemberAgent
 			.put(`/workflows/${workflow.id}/share`)
-			.send({ shareWithIds: [anotherMember.id] });
+			.send({ shareWithIds: [anotherMemberPersonalProject.id] });
 
 		expect(response.statusCode).toBe(403);
 
@@ -214,10 +229,13 @@ describe('PUT /workflows/:id', () => {
 		const workflow = await createWorkflow({}, member);
 
 		const tempUser = await createUser({ role: 'global:member' });
+		const tempUserPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(
+			tempUser.id,
+		);
 
 		const response = await authAnotherMemberAgent
 			.put(`/workflows/${workflow.id}/share`)
-			.send({ shareWithIds: [tempUser.id] });
+			.send({ shareWithIds: [tempUserPersonalProject.id] });
 
 		expect(response.statusCode).toBe(403);
 
@@ -233,7 +251,7 @@ describe('PUT /workflows/:id', () => {
 
 		const response = await authOwnerAgent
 			.put(`/workflows/${workflow.id}/share`)
-			.send({ shareWithIds: [member.id] });
+			.send({ shareWithIds: [memberPersonalProject.id] });
 
 		expect(response.statusCode).toBe(200);
 
@@ -274,39 +292,36 @@ describe('GET /workflows/:id', () => {
 	test('GET should return a workflow with owner', async () => {
 		const workflow = await createWorkflow({}, owner);
 
-		const response = await authOwnerAgent.get(`/workflows/${workflow.id}`);
+		const response = await authOwnerAgent.get(`/workflows/${workflow.id}`).expect(200);
+		const responseWorkflow: WorkflowWithSharingsMetaDataAndCredentials = response.body.data;
 
-		expect(response.statusCode).toBe(200);
-		expect(response.body.data.ownedBy).toMatchObject({
-			id: owner.id,
-			email: owner.email,
-			firstName: owner.firstName,
-			lastName: owner.lastName,
+		expect(responseWorkflow.homeProject).toMatchObject({
+			id: ownerPersonalProject.id,
+			name: 'My n8n',
+			type: 'personal',
 		});
 
-		expect(response.body.data.sharedWith).toHaveLength(0);
+		expect(responseWorkflow.sharedWithProjects).toHaveLength(0);
 	});
 
 	test('GET should return shared workflow with user data', async () => {
 		const workflow = await createWorkflow({}, owner);
 		await shareWorkflowWithUsers(workflow, [member]);
 
-		const response = await authOwnerAgent.get(`/workflows/${workflow.id}`);
+		const response = await authOwnerAgent.get(`/workflows/${workflow.id}`).expect(200);
+		const responseWorkflow: WorkflowWithSharingsMetaDataAndCredentials = response.body.data;
 
-		expect(response.statusCode).toBe(200);
-		expect(response.body.data.ownedBy).toMatchObject({
-			id: owner.id,
-			email: owner.email,
-			firstName: owner.firstName,
-			lastName: owner.lastName,
+		expect(responseWorkflow.homeProject).toMatchObject({
+			id: ownerPersonalProject.id,
+			name: 'My n8n',
+			type: 'personal',
 		});
 
-		expect(response.body.data.sharedWith).toHaveLength(1);
-		expect(response.body.data.sharedWith[0]).toMatchObject({
-			id: member.id,
-			email: member.email,
-			firstName: member.firstName,
-			lastName: member.lastName,
+		expect(responseWorkflow.sharedWithProjects).toHaveLength(1);
+		expect(responseWorkflow.sharedWithProjects[0]).toMatchObject({
+			id: memberPersonalProject.id,
+			name: 'My n8n',
+			type: 'personal',
 		});
 	});
 
@@ -314,17 +329,16 @@ describe('GET /workflows/:id', () => {
 		const workflow = await createWorkflow({}, owner);
 		await shareWorkflowWithUsers(workflow, [member, anotherMember]);
 
-		const response = await authOwnerAgent.get(`/workflows/${workflow.id}`);
+		const response = await authOwnerAgent.get(`/workflows/${workflow.id}`).expect(200);
+		const responseWorkflow: WorkflowWithSharingsMetaDataAndCredentials = response.body.data;
 
-		expect(response.statusCode).toBe(200);
-		expect(response.body.data.ownedBy).toMatchObject({
-			id: owner.id,
-			email: owner.email,
-			firstName: owner.firstName,
-			lastName: owner.lastName,
+		expect(responseWorkflow.homeProject).toMatchObject({
+			id: ownerPersonalProject.id,
+			name: 'My n8n',
+			type: 'personal',
 		});
 
-		expect(response.body.data.sharedWith).toHaveLength(2);
+		expect(responseWorkflow.sharedWithProjects).toHaveLength(2);
 	});
 
 	test('GET should return workflow with credentials owned by user', async () => {
@@ -336,10 +350,11 @@ describe('GET /workflows/:id', () => {
 		});
 		const workflow = await createWorkflow(workflowPayload, owner);
 
-		const response = await authOwnerAgent.get(`/workflows/${workflow.id}`);
+		const response = await authOwnerAgent.get(`/workflows/${workflow.id}`).expect(200);
+		const responseWorkflow: WorkflowWithSharingsMetaDataAndCredentials = response.body.data;
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.data.usedCredentials).toMatchObject([
+		expect(responseWorkflow.usedCredentials).toMatchObject([
 			{
 				id: savedCredential.id,
 				name: savedCredential.name,
@@ -347,7 +362,7 @@ describe('GET /workflows/:id', () => {
 			},
 		]);
 
-		expect(response.body.data.sharedWith).toHaveLength(0);
+		expect(responseWorkflow.sharedWithProjects).toHaveLength(0);
 	});
 
 	test('GET should return workflow with credentials saying owner does not have access when not shared', async () => {
@@ -359,10 +374,10 @@ describe('GET /workflows/:id', () => {
 		});
 		const workflow = await createWorkflow(workflowPayload, owner);
 
-		const response = await authOwnerAgent.get(`/workflows/${workflow.id}`);
+		const response = await authOwnerAgent.get(`/workflows/${workflow.id}`).expect(200);
+		const responseWorkflow: WorkflowWithSharingsMetaDataAndCredentials = response.body.data;
 
-		expect(response.statusCode).toBe(200);
-		expect(response.body.data.usedCredentials).toMatchObject([
+		expect(responseWorkflow.usedCredentials).toMatchObject([
 			{
 				id: savedCredential.id,
 				name: savedCredential.name,
@@ -370,7 +385,7 @@ describe('GET /workflows/:id', () => {
 			},
 		]);
 
-		expect(response.body.data.sharedWith).toHaveLength(0);
+		expect(responseWorkflow.sharedWithProjects).toHaveLength(0);
 	});
 
 	test('GET should return workflow with credentials for all users with or without access', async () => {
@@ -383,27 +398,31 @@ describe('GET /workflows/:id', () => {
 		const workflow = await createWorkflow(workflowPayload, member);
 		await shareWorkflowWithUsers(workflow, [anotherMember]);
 
-		const responseMember1 = await authMemberAgent.get(`/workflows/${workflow.id}`);
-		expect(responseMember1.statusCode).toBe(200);
-		expect(responseMember1.body.data.usedCredentials).toMatchObject([
+		const responseMember1 = await authMemberAgent.get(`/workflows/${workflow.id}`).expect(200);
+		const member1Workflow: WorkflowWithSharingsMetaDataAndCredentials = responseMember1.body.data;
+
+		expect(member1Workflow.usedCredentials).toMatchObject([
 			{
 				id: savedCredential.id,
 				name: savedCredential.name,
 				currentUserHasAccess: true, // one user has access
 			},
 		]);
-		expect(responseMember1.body.data.sharedWith).toHaveLength(1);
+		expect(member1Workflow.sharedWithProjects).toHaveLength(1);
 
-		const responseMember2 = await authAnotherMemberAgent.get(`/workflows/${workflow.id}`);
-		expect(responseMember2.statusCode).toBe(200);
-		expect(responseMember2.body.data.usedCredentials).toMatchObject([
+		const responseMember2 = await authAnotherMemberAgent
+			.get(`/workflows/${workflow.id}`)
+			.expect(200);
+		const member2Workflow: WorkflowWithSharingsMetaDataAndCredentials = responseMember2.body.data;
+
+		expect(member2Workflow.usedCredentials).toMatchObject([
 			{
 				id: savedCredential.id,
 				name: savedCredential.name,
 				currentUserHasAccess: false, // the other one doesn't
 			},
 		]);
-		expect(responseMember2.body.data.sharedWith).toHaveLength(1);
+		expect(member2Workflow.sharedWithProjects).toHaveLength(1);
 	});
 
 	test('GET should return workflow with credentials for all users with access', async () => {
@@ -418,27 +437,32 @@ describe('GET /workflows/:id', () => {
 		const workflow = await createWorkflow(workflowPayload, member);
 		await shareWorkflowWithUsers(workflow, [anotherMember]);
 
-		const responseMember1 = await authMemberAgent.get(`/workflows/${workflow.id}`);
-		expect(responseMember1.statusCode).toBe(200);
-		expect(responseMember1.body.data.usedCredentials).toMatchObject([
-			{
-				id: savedCredential.id,
-				name: savedCredential.name,
-				currentUserHasAccess: true,
-			},
-		]);
-		expect(responseMember1.body.data.sharedWith).toHaveLength(1);
+		const responseMember1 = await authMemberAgent.get(`/workflows/${workflow.id}`).expect(200);
+		const member1Workflow: WorkflowWithSharingsMetaDataAndCredentials = responseMember1.body.data;
 
-		const responseMember2 = await authAnotherMemberAgent.get(`/workflows/${workflow.id}`);
-		expect(responseMember2.statusCode).toBe(200);
-		expect(responseMember2.body.data.usedCredentials).toMatchObject([
+		expect(member1Workflow.usedCredentials).toMatchObject([
 			{
 				id: savedCredential.id,
 				name: savedCredential.name,
 				currentUserHasAccess: true,
 			},
 		]);
-		expect(responseMember2.body.data.sharedWith).toHaveLength(1);
+		expect(member1Workflow.sharedWithProjects).toHaveLength(1);
+
+		const responseMember2 = await authAnotherMemberAgent
+			.get(`/workflows/${workflow.id}`)
+			.expect(200);
+		const member2Workflow: WorkflowWithSharingsMetaDataAndCredentials = responseMember2.body.data;
+
+		expect(responseMember2.statusCode).toBe(200);
+		expect(member2Workflow.usedCredentials).toMatchObject([
+			{
+				id: savedCredential.id,
+				name: savedCredential.name,
+				currentUserHasAccess: true,
+			},
+		]);
+		expect(member2Workflow.sharedWithProjects).toHaveLength(1);
 	});
 });
 
@@ -813,7 +837,10 @@ describe('PATCH /workflows/:id - validate credential permissions to user', () =>
 		const createResponse = await authMemberAgent.post('/workflows').send(workflow);
 		const { id, versionId } = createResponse.body.data;
 
-		await authMemberAgent.put(`/workflows/${id}/share`).send({ shareWithIds: [anotherMember.id] });
+		await authMemberAgent
+			.put(`/workflows/${id}/share`)
+			.send({ shareWithIds: [anotherMemberPersonalProject.id] })
+			.expect(200);
 
 		const response = await authAnotherMemberAgent.patch(`/workflows/${id}`).send({
 			versionId,
@@ -831,7 +858,9 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 
 		const createResponse = await authOwnerAgent.post('/workflows').send(makeWorkflow());
 		const { id, versionId: ownerVersionId } = createResponse.body.data;
-		await authOwnerAgent.put(`/workflows/${id}/share`).send({ shareWithIds: [member.id] });
+		await authOwnerAgent
+			.put(`/workflows/${id}/share`)
+			.send({ shareWithIds: [memberPersonalProject.id] });
 
 		// member accesses and updates workflow name
 
@@ -864,7 +893,9 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 
 		const { versionId: ownerSecondVersionId } = updateResponse.body.data;
 
-		await authOwnerAgent.put(`/workflows/${id}/share`).send({ shareWithIds: [member.id] });
+		await authOwnerAgent
+			.put(`/workflows/${id}/share`)
+			.send({ shareWithIds: [memberPersonalProject.id] });
 
 		// member accesses workflow
 
@@ -892,7 +923,9 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 
 		const createResponse = await authOwnerAgent.post('/workflows').send(makeWorkflow());
 		const { id, versionId: ownerVersionId } = createResponse.body.data;
-		await authOwnerAgent.put(`/workflows/${id}/share`).send({ shareWithIds: [member.id] });
+		await authOwnerAgent
+			.put(`/workflows/${id}/share`)
+			.send({ shareWithIds: [memberPersonalProject.id] });
 
 		// member accesses and activates workflow
 
@@ -922,7 +955,9 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 			.send({ name: 'Update by owner', versionId: ownerFirstVersionId });
 		const { versionId: ownerSecondVersionId } = updateResponse.body.data;
 
-		await authOwnerAgent.put(`/workflows/${id}/share`).send({ shareWithIds: [member.id] });
+		await authOwnerAgent
+			.put(`/workflows/${id}/share`)
+			.send({ shareWithIds: [memberPersonalProject.id] });
 
 		// member accesses workflow
 
@@ -950,7 +985,9 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 
 		const createResponse = await authOwnerAgent.post('/workflows').send(makeWorkflow());
 		const { id, versionId: ownerVersionId } = createResponse.body.data;
-		await authOwnerAgent.put(`/workflows/${id}/share`).send({ shareWithIds: [member.id] });
+		await authOwnerAgent
+			.put(`/workflows/${id}/share`)
+			.send({ shareWithIds: [memberPersonalProject.id] });
 
 		// member accesses workflow
 
@@ -978,11 +1015,13 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 
 		const createResponse = await authOwnerAgent.post('/workflows').send(makeWorkflow());
 		const { id, versionId: ownerVersionId } = createResponse.body.data;
-		await authOwnerAgent.put(`/workflows/${id}/share`).send({ shareWithIds: [member.id] });
+		await authOwnerAgent
+			.put(`/workflows/${id}/share`)
+			.send({ shareWithIds: [memberPersonalProject.id] });
 
 		// member accesses workflow
 
-		const memberGetResponse = await authMemberAgent.get(`/workflows/${id}`);
+		const memberGetResponse = await authMemberAgent.get(`/workflows/${id}`).expect(200);
 		const { versionId: memberVersionId } = memberGetResponse.body.data;
 
 		// owner updates workflow settings

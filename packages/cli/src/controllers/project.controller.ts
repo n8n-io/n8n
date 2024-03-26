@@ -7,15 +7,21 @@ import {
 	Licensed,
 	Patch,
 	ProjectScope,
+	Delete,
 } from '@/decorators';
 import { ProjectRequest } from '@/requests';
 import { ProjectService } from '@/services/project.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { ProjectRole } from '@/databases/entities/ProjectRelation';
+import { combineScopes, type Scope } from '@n8n/permissions';
+import { RoleService } from '@/services/role.service';
 
 @RestController('/projects')
 export class ProjectController {
-	constructor(private projectsService: ProjectService) {}
+	constructor(
+		private projectsService: ProjectService,
+		private roleService: RoleService,
+	) {}
 
 	@Get('/')
 	async getAllProjects(req: ProjectRequest.GetAll): Promise<Project[]> {
@@ -34,7 +40,7 @@ export class ProjectController {
 	@Get('/my-projects')
 	async getMyProjects(
 		req: ProjectRequest.GetMyProjects,
-	): Promise<Array<Project & { role: ProjectRole }>> {
+	): Promise<Array<Project & { role: ProjectRole; scopes?: Scope[] }>> {
 		const relations = await this.projectsService.getProjectRelationsForUser(req.user);
 
 		return relations.map((pr) => {
@@ -48,7 +54,17 @@ export class ProjectController {
 			return {
 				...pr.project,
 				role: pr.role,
-			} as Project & { role: ProjectRole };
+				...(req.query.includeScopes
+					? {
+							scopes: [
+								...combineScopes({
+									global: this.roleService.getRoleScopes(req.user.role),
+									project: this.roleService.getRoleScopes(pr.role),
+								}),
+							],
+					  }
+					: {}),
+			} as Project & { role: ProjectRole; scopes?: Scope[] };
 		});
 	}
 
@@ -92,5 +108,13 @@ export class ProjectController {
 		if (req.body.relations) {
 			await this.projectsService.syncProjectRelations(req.params.projectId, req.body.relations);
 		}
+	}
+
+	@Delete('/:projectId')
+	@ProjectScope('project:delete')
+	async deleteProject(req: ProjectRequest.Delete) {
+		await this.projectsService.deleteProject(req.user, req.params.projectId, {
+			migrateToProject: req.query.transferId,
+		});
 	}
 }

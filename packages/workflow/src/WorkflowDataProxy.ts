@@ -28,18 +28,13 @@ import { augmentArray, augmentObject } from './AugmentObject';
 import { deepCopy } from './utils';
 import { getGlobalState } from './GlobalState';
 import { ApplicationError } from './errors/application.error';
+import { SCRIPTING_NODE_TYPES } from './Constants';
 
 export function isResourceLocatorValue(value: unknown): value is INodeParameterResourceLocator {
 	return Boolean(
 		typeof value === 'object' && value && 'mode' in value && 'value' in value && '__rl' in value,
 	);
 }
-
-const SCRIPTING_NODE_TYPES = [
-	'n8n-nodes-base.function',
-	'n8n-nodes-base.functionItem',
-	'n8n-nodes-base.code',
-];
 
 const isScriptingNode = (nodeName: string, workflow: Workflow) => {
 	const node = workflow.getNode(nodeName);

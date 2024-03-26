@@ -9,6 +9,7 @@ import type {
 	INodeParameters,
 	INodeTypeNameVersion,
 	IUser,
+	NodeError,
 } from 'n8n-workflow';
 
 import { IsBoolean, IsEmail, IsIn, IsOptional, IsString, Length } from 'class-validator';
@@ -21,6 +22,7 @@ import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { WorkflowHistory } from '@db/entities/WorkflowHistory';
 import type { Project, ProjectType } from '@db/entities/Project';
 import type { ProjectRole } from './databases/entities/ProjectRelation';
+import type { Scope } from '@n8n/permissions';
 
 export class UserUpdatePayload implements Pick<User, 'email' | 'firstName' | 'lastName'> {
 	@IsEmail()
@@ -108,6 +110,8 @@ export namespace ListQuery {
 
 		type OwnedByField = { ownedBy: SlimUser | null; homeProject: SlimProject | null };
 
+		type ScopesField = { scopes: Scope[] };
+
 		export type Plain = BaseFields;
 
 		export type WithSharing = BaseFields & SharedField;
@@ -116,27 +120,53 @@ export namespace ListQuery {
 
 		type SharedWithField = { sharedWith: SlimUser[]; sharedWithProjects: SlimProject[] };
 
-		export type WithOwnedByAndSharedWith = BaseFields & OwnedByField & SharedWithField;
+		export type WithOwnedByAndSharedWith = BaseFields &
+			OwnedByField &
+			SharedWithField &
+			SharedField;
+
+		export type WithScopes = BaseFields & ScopesField & SharedField;
 	}
 
 	export namespace Credentials {
-		type OwnedByField = { ownedBy: SlimUser | null; homeProject: SlimProject | null };
+		type OwnedByField = { homeProject: SlimProject | null };
 
-		type SharedWithField = { sharedWith: SlimUser[]; sharedWithProjects: SlimProject[] };
+		type SharedField = Partial<Pick<CredentialsEntity, 'shared'>>;
 
-		export type WithSharing = CredentialsEntity & Partial<Pick<CredentialsEntity, 'shared'>>;
+		type SharedWithField = { sharedWithProjects: SlimProject[] };
 
-		export type WithOwnedByAndSharedWith = CredentialsEntity & OwnedByField & SharedWithField;
+		type ScopesField = { scopes: Scope[] };
+
+		export type WithSharing = CredentialsEntity & SharedField;
+
+		export type WithOwnedByAndSharedWith = CredentialsEntity &
+			OwnedByField &
+			SharedWithField &
+			SharedField;
+
+		export type WithScopes = CredentialsEntity & ScopesField & SharedField;
 	}
 }
 
 type SlimUser = Pick<IUser, 'id' | 'email' | 'firstName' | 'lastName'>;
-type SlimProject = Pick<Project, 'id' | 'type' | 'name'>;
+export type SlimProject = Pick<Project, 'id' | 'type' | 'name'>;
 
 export function hasSharing(
 	workflows: ListQuery.Workflow.Plain[] | ListQuery.Workflow.WithSharing[],
 ): workflows is ListQuery.Workflow.WithSharing[] {
 	return workflows.some((w) => 'shared' in w);
+}
+
+// ----------------------------------
+//          /ai
+// ----------------------------------
+
+export declare namespace AIRequest {
+	export type DebugError = AuthenticatedRequest<{}, {}, AIDebugErrorPayload>;
+}
+
+export interface AIDebugErrorPayload {
+	error: NodeError;
 }
 
 // ----------------------------------
@@ -156,6 +186,10 @@ export declare namespace CredentialRequest {
 	type Create = AuthenticatedRequest<{}, {}, CredentialProperties>;
 
 	type Get = AuthenticatedRequest<{ credentialId: string }, {}, {}, Record<string, string>>;
+
+	type GetMany = AuthenticatedRequest<{}, {}, {}, ListQuery.Params & { includeScopes?: string }> & {
+		listQueryOptions: ListQuery.Options;
+	};
 
 	type Delete = Get;
 
@@ -520,7 +554,14 @@ export declare namespace ProjectRequest {
 		}
 	>;
 
-	type GetMyProjects = AuthenticatedRequest<{}, Array<Project & { role: ProjectRole }>>;
+	type GetMyProjects = AuthenticatedRequest<
+		{},
+		Array<Project & { role: ProjectRole }>,
+		{},
+		{
+			includeScopes?: boolean;
+		}
+	>;
 
 	type GetPersonalProject = AuthenticatedRequest<{}, Project>;
 
@@ -545,4 +586,5 @@ export declare namespace ProjectRequest {
 		{},
 		{ name?: string; relations?: ProjectRelationPayload[] }
 	>;
+	type Delete = AuthenticatedRequest<{ projectId: string }, {}, {}, { transferId?: string }>;
 }

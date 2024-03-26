@@ -4,7 +4,6 @@ import type { User } from '@db/entities/User';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { WorkflowTagMapping } from '@db/entities/WorkflowTagMapping';
 import { SharedWorkflow, type WorkflowSharingRole } from '@db/entities/SharedWorkflow';
-import config from '@/config';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import type { Project } from '@/databases/entities/Project';
@@ -13,15 +12,16 @@ import { TagRepository } from '@db/repositories/tag.repository';
 import { License } from '@/License';
 import { WorkflowSharingService } from '@/workflows/workflowSharing.service';
 import type { Scope } from '@n8n/permissions';
+import config from '@/config';
 
 function insertIf(condition: boolean, elements: string[]): string[] {
 	return condition ? elements : [];
 }
 
-export async function getSharedWorkflowIds(user: User, scope: Scope): Promise<string[]> {
+export async function getSharedWorkflowIds(user: User, scopes: Scope[]): Promise<string[]> {
 	if (Container.get(License).isSharingEnabled()) {
 		return await Container.get(WorkflowSharingService).getSharedWorkflowIds(user, {
-			scopes: [scope],
+			scopes,
 		});
 	} else {
 		return await Container.get(WorkflowSharingService).getSharedWorkflowIds(user, {

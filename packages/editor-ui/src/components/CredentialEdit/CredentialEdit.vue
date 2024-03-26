@@ -127,7 +127,6 @@ import type {
 	INodeProperties,
 	INodeTypeDescription,
 	ITelemetryTrackProperties,
-	IDataObject,
 } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 import CredentialIcon from '@/components/CredentialIcon.vue';
@@ -154,6 +153,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import type { ProjectSharingData } from '@/features/projects/projects.types';
 
 import {
 	getNodeAuthOptions,
@@ -163,6 +163,7 @@ import {
 import { isValidCredentialResponse, isCredentialModalState } from '@/utils/typeGuards';
 import { isExpression, isTestableExpression } from '@/utils/expressions';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useProjectsStore } from '@/features/projects/projects.store';
 
 interface NodeAccessMap {
 	[nodeType: string]: ICredentialNodeAccess | null;
@@ -297,6 +298,7 @@ export default defineComponent({
 			useUsersStore,
 			useWorkflowsStore,
 			useNodeTypesStore,
+			useProjectsStore,
 		),
 		activeNodeType(): INodeTypeDescription | null {
 			const activeNode = this.ndvStore.activeNode;
@@ -378,7 +380,7 @@ export default defineComponent({
 				return false;
 			}
 
-			const { ownedBy, sharedWith, ...credentialData } = this.credentialData;
+			const { ownedBy, sharedWithProjects, ...credentialData } = this.credentialData;
 			const hasUntestableExpressions = Object.values(credentialData).reduce(
 				(accu: boolean, value: CredentialInformation) =>
 					accu ||
@@ -625,16 +627,16 @@ export default defineComponent({
 				}
 
 				this.credentialData = (currentCredentials.data as ICredentialDataDecryptedObject) || {};
-				if (currentCredentials.sharedWith) {
+				if (currentCredentials.sharedWithProjects) {
 					this.credentialData = {
 						...this.credentialData,
-						sharedWith: currentCredentials.sharedWith as IDataObject[],
+						sharedWithProjects: currentCredentials.sharedWithProjects,
 					};
 				}
-				if (currentCredentials.ownedBy) {
+				if (currentCredentials.homeProject) {
 					this.credentialData = {
 						...this.credentialData,
-						ownedBy: currentCredentials.ownedBy as IDataObject[],
+						homeProject: currentCredentials.homeProject,
 					};
 				}
 
@@ -664,10 +666,10 @@ export default defineComponent({
 				sharing_enabled: EnterpriseEditionFeature.Sharing,
 			});
 		},
-		onChangeSharedWith(sharees: IDataObject[]) {
+		onChangeSharedWith(sharedWithProjects: ProjectSharingData[]) {
 			this.credentialData = {
 				...this.credentialData,
-				sharedWith: sharees,
+				sharedWithProjects,
 			};
 			this.isSharedWithChanged = true;
 			this.hasUnsavedChanges = true;
@@ -738,7 +740,7 @@ export default defineComponent({
 				return;
 			}
 
-			const { ownedBy, sharedWith, ...credentialData } = this.credentialData;
+			const { ownedBy, sharedWithProjects, ...credentialData } = this.credentialData;
 			const details: ICredentialsDecrypted = {
 				id: this.credentialId,
 				name: this.credentialName,
@@ -784,21 +786,12 @@ export default defineComponent({
 				null,
 			);
 
-			let sharedWith: IUser[] | undefined;
-			let ownedBy: IUser | undefined;
-			if (this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
-				sharedWith = this.credentialData.sharedWith as unknown as IUser[];
-				ownedBy = this.credentialData.ownedBy as unknown as IUser;
-			}
-
 			const credentialDetails: ICredentialsDecrypted = {
 				id: this.credentialId,
 				name: this.credentialName,
 				type: this.credentialTypeName!,
 				data: data as unknown as ICredentialDataDecryptedObject,
 				nodesAccess: [],
-				sharedWith,
-				ownedBy,
 			};
 
 			let credential;
@@ -808,9 +801,14 @@ export default defineComponent({
 			if (isNewCredential) {
 				credential = await this.createCredential(
 					credentialDetails,
-					this.$route?.params?.projectId as string | undefined,
+					this.projectsStore.currentProjectId,
 				);
 			} else {
+				if (this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
+					credentialDetails.sharedWithProjects = this.credentialData
+						.sharedWithProjects as ProjectSharingData[];
+				}
+
 				credential = await this.updateCredential(credentialDetails);
 			}
 
@@ -913,11 +911,11 @@ export default defineComponent({
 				if (
 					this.credentialPermissions.share &&
 					this.isSharedWithChanged &&
-					credentialDetails.sharedWith
+					credentialDetails.sharedWithProjects
 				) {
 					credential = await this.credentialsStore.setCredentialSharedWith({
 						credentialId: credentialDetails.id,
-						sharedWith: credentialDetails.sharedWith,
+						sharedWithProjects: credentialDetails.sharedWithProjects,
 					});
 					this.isSharedWithChanged = false;
 				}

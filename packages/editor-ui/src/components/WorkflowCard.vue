@@ -29,7 +29,7 @@
 			</n8n-text>
 		</div>
 		<template #append>
-			<div ref="cardActions" :class="$style.cardActions">
+			<div :class="$style.cardActions" @click.stop>
 				<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
 					<n8n-badge v-if="workflowPermissions.isOwner" class="mr-xs" theme="tertiary" bold>
 						{{ $locale.baseText('workflows.item.owner') }}
@@ -48,7 +48,6 @@
 					theme="dark"
 					data-test-id="workflow-card-actions"
 					@action="onAction"
-					@click.stop
 				/>
 			</div>
 		</template>
@@ -77,6 +76,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import TimeAgo from '@/components/TimeAgo.vue';
+import type { ProjectSharingData } from '@/features/projects/projects.types';
 
 export const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -102,8 +102,8 @@ export default defineComponent({
 				connections: {},
 				nodes: [],
 				name: '',
-				sharedWith: [],
-				ownedBy: {} as IUser,
+				sharedWithProjects: [],
+				homeProject: {} as ProjectSharingData,
 				versionId: '',
 			}),
 		},
@@ -169,15 +169,8 @@ export default defineComponent({
 		},
 	},
 	methods: {
-		async onClick(event: Event) {
-			if (
-				this.$refs.cardActions === event.target ||
-				this.$refs.cardActions?.contains(event.target)
-			) {
-				return;
-			}
-
-			if (event.metaKey || event.ctrlKey) {
+		async onClick(event?: KeyboardEvent | PointerEvent) {
+			if (event?.ctrlKey || event?.metaKey) {
 				const route = this.$router.resolve({
 					name: VIEWS.WORKFLOW,
 					params: { name: this.data.id },

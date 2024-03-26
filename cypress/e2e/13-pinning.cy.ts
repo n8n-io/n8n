@@ -195,5 +195,7 @@ function setExpressionOnStringValueInSet(expression: string) {
 	ndv.getters
 		.inlineExpressionEditorInput()
 		.clear()
-		.type(expression, { parseSpecialCharSequences: false });
+		.type(expression, { parseSpecialCharSequences: false })
+		// hide autocomplete
+		.type('{esc}');
 }

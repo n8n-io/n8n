@@ -1,5 +1,5 @@
 import type { IWorkflowDb } from '@/Interfaces';
-import type { AuthenticatedRequest } from '@/requests';
+import type { AuthenticatedRequest, ListQuery } from '@/requests';
 import type {
 	INode,
 	IConnections,
@@ -35,6 +35,10 @@ export declare namespace WorkflowRequest {
 
 	type Get = AuthenticatedRequest<{ workflowId: string }>;
 
+	type GetMany = AuthenticatedRequest<{}, {}, {}, ListQuery.Params & { includeScopes?: string }> & {
+		listQueryOptions: ListQuery.Options;
+	};
+
 	type Delete = Get;
 
 	type Update = AuthenticatedRequest<
@@ -46,7 +50,7 @@ export declare namespace WorkflowRequest {
 
 	type NewName = AuthenticatedRequest<{}, {}, {}, { name?: string }>;
 
-	type ManualRun = AuthenticatedRequest<{}, {}, ManualRunPayload>;
+	type ManualRun = AuthenticatedRequest<{ workflowId: string }, {}, ManualRunPayload>;
 
 	type Share = AuthenticatedRequest<{ workflowId: string }, {}, { shareWithIds: string[] }>;
 

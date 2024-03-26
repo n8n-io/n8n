@@ -1,11 +1,12 @@
 import { Service } from 'typedi';
-import type { EntityManager } from '@n8n/typeorm';
+import type { EntityManager, FindOptionsRelations, FindOptionsWhere } from '@n8n/typeorm';
 import { DataSource, In, Not, Repository } from '@n8n/typeorm';
 import { type CredentialSharingRole, SharedCredentials } from '../entities/SharedCredentials';
 import type { User } from '../entities/User';
-import type { Scope } from '@n8n/permissions';
-import type { ProjectRole } from '../entities/ProjectRelation';
 import { RoleService } from '@/services/role.service';
+import type { Scope } from '@n8n/permissions';
+import type { Project } from '../entities/Project';
+import type { ProjectRole } from '../entities/ProjectRelation';
 
 @Service()
 export class SharedCredentialsRepository extends Repository<SharedCredentials> {
@@ -17,12 +18,36 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 	}
 
 	/** Get a credential if it has been shared with a user */
-	async findCredentialForUser(credentialsId: string, user: User) {
+	async findCredentialForUser(
+		credentialsId: string,
+		user: User,
+		scopes: Scope[],
+		_relations?: FindOptionsRelations<SharedCredentials>,
+	) {
+		let where: FindOptionsWhere<SharedCredentials> = { credentialsId };
+
+		if (!user.hasGlobalScope(scopes, { mode: 'allOf' })) {
+			const projectRoles = this.roleService.rolesWithScope('project', scopes);
+			const credentialRoles = this.roleService.rolesWithScope('credential', scopes);
+			where = {
+				...where,
+				role: In(credentialRoles),
+				project: {
+					projectRelations: {
+						role: In(projectRoles),
+						userId: user.id,
+					},
+				},
+			};
+		}
+
 		const sharedCredential = await this.findOne({
-			relations: ['credentials'],
-			where: {
-				credentialsId,
-				...(!user.hasGlobalScope('credential:read') ? { userId: user.id } : {}),
+			where,
+			// TODO: write a small relations merger and use that one here
+			relations: {
+				credentials: {
+					shared: { project: { projectRelations: { user: true } } },
+				},
 			},
 		});
 		if (!sharedCredential) return null;
@@ -31,23 +56,37 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 
 	async findByCredentialIds(credentialIds: string[]) {
 		return await this.find({
-			relations: ['credentials', 'user'],
+			relations: { credentials: true },
 			where: {
 				credentialsId: In(credentialIds),
 			},
 		});
 	}
 
-	async makeOwnerOfAllCredentials(user: User) {
-		return await this.update({ userId: Not(user.id), role: 'credential:owner' }, { user });
+	async makeOwnerOfAllCredentials(project: Project) {
+		return await this.update(
+			{
+				projectId: Not(project.id),
+				role: 'credential:owner',
+			},
+			{ project },
+		);
 	}
 
-	/** Get the IDs of all credentials owned by a user */
-	async getOwnedCredentialIds(userIds: string[]) {
-		return await this.getCredentialIdsByUserAndRole(userIds, {
-			credentialRoles: ['credential:owner'],
-			projectRoles: ['project:personalOwner'],
-		});
+	async makeOwner(credentialIds: string[], projectId: string, trx?: EntityManager) {
+		trx = trx ?? this.manager;
+		return await trx.upsert(
+			SharedCredentials,
+			credentialIds.map(
+				(credentialsId) =>
+					({
+						projectId,
+						credentialsId,
+						role: 'credential:owner',
+					}) as const,
+			),
+			['projectId', 'credentialsId'],
+		);
 	}
 
 	async getCredentialIdsByUserAndRole(
@@ -79,10 +118,27 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 		return sharings.map((s) => s.credentialsId);
 	}
 
-	async deleteByIds(transaction: EntityManager, sharedCredentialsIds: string[], user?: User) {
-		return await transaction.delete(SharedCredentials, {
-			user,
+	async deleteByIds(sharedCredentialsIds: string[], projectId: string, trx?: EntityManager) {
+		trx = trx ?? this.manager;
+
+		return await trx.delete(SharedCredentials, {
+			projectId,
 			credentialsId: In(sharedCredentialsIds),
 		});
+	}
+
+	async getFilteredAccessibleCredentials(
+		projectIds: string[],
+		credentialsIds: string[],
+	): Promise<string[]> {
+		return (
+			await this.find({
+				where: {
+					projectId: In(projectIds),
+					credentialsId: In(credentialsIds),
+				},
+				select: ['credentialsId'],
+			})
+		).map((s) => s.credentialsId);
 	}
 }

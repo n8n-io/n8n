@@ -7,75 +7,118 @@ import { mockInstance } from '../../shared/mocking';
 import { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import { mock } from 'jest-mock-extended';
-import { mockCredential, mockProject, mockUser } from '../shared/mockObjects';
+import { Project } from '@/databases/entities/Project';
+import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
+import { ProjectRelation } from '@/databases/entities/ProjectRelation';
+import { mockCredential, mockProject } from '../shared/mockObjects';
 
 describe('OwnershipService', () => {
 	const userRepository = mockInstance(UserRepository);
 	const sharedWorkflowRepository = mockInstance(SharedWorkflowRepository);
-	const ownershipService = new OwnershipService(mock(), userRepository, sharedWorkflowRepository);
+	const projectRelationRepository = mockInstance(ProjectRelationRepository);
+	const ownershipService = new OwnershipService(
+		mock(),
+		userRepository,
+		mock(),
+		projectRelationRepository,
+		sharedWorkflowRepository,
+	);
 
 	beforeEach(() => {
 		jest.clearAllMocks();
 	});
 
-	describe('getWorkflowOwner()', () => {
-		test('should retrieve a workflow owner', async () => {
-			const mockOwner = new User();
-			const mockNonOwner = new User();
+	describe('getWorkflowProjectCached()', () => {
+		test('should retrieve a workflow owner project', async () => {
+			const mockProject = new Project();
 
 			const sharedWorkflow = Object.assign(new SharedWorkflow(), {
 				role: 'workflow:owner',
-				user: mockOwner,
+				project: mockProject,
 			});
 
 			sharedWorkflowRepository.findOneOrFail.mockResolvedValueOnce(sharedWorkflow);
 
-			const returnedOwner = await ownershipService.getWorkflowOwnerCached('some-workflow-id');
+			const returnedProject = await ownershipService.getWorkflowProjectCached('some-workflow-id');
 
-			expect(returnedOwner).toBe(mockOwner);
-			expect(returnedOwner).not.toBe(mockNonOwner);
+			expect(returnedProject).toBe(mockProject);
 		});
 
-		test('should throw if no workflow owner found', async () => {
+		test('should throw if no workflow owner project found', async () => {
 			sharedWorkflowRepository.findOneOrFail.mockRejectedValue(new Error());
 
-			await expect(ownershipService.getWorkflowOwnerCached('some-workflow-id')).rejects.toThrow();
+			await expect(ownershipService.getWorkflowProjectCached('some-workflow-id')).rejects.toThrow();
+		});
+	});
+
+	describe('getProjectOwnerCached()', () => {
+		test('should retrieve a project owner', async () => {
+			const mockProject = new Project();
+			const mockOwner = new User();
+
+			const projectRelation = Object.assign(new ProjectRelation(), {
+				role: 'project:personalOwner',
+				project: mockProject,
+				user: mockOwner,
+			});
+
+			projectRelationRepository.getPersonalProjectOwners.mockResolvedValueOnce([projectRelation]);
+
+			const returnedOwner = await ownershipService.getProjectOwnerCached('some-project-id');
+
+			expect(returnedOwner).toBe(mockOwner);
+		});
+
+		test('should not throw if no project owner found, should return null instead', async () => {
+			projectRelationRepository.getPersonalProjectOwners.mockResolvedValueOnce([]);
+
+			const owner = await ownershipService.getProjectOwnerCached('some-project-id');
+
+			expect(owner).toBeNull();
+		});
+	});
+
+	describe('getProjectOwnerCached()', () => {
+		test('should retrieve a project owner', async () => {
+			const mockProject = new Project();
+			const mockOwner = new User();
+
+			const projectRelation = Object.assign(new ProjectRelation(), {
+				role: 'project:personalOwner',
+				project: mockProject,
+				user: mockOwner,
+			});
+
+			projectRelationRepository.getPersonalProjectOwners.mockResolvedValueOnce([projectRelation]);
+
+			const returnedOwner = await ownershipService.getProjectOwnerCached('some-project-id');
+
+			expect(returnedOwner).toBe(mockOwner);
+		});
+
+		test('should not throw if no project owner found, should return null instead', async () => {
+			projectRelationRepository.getPersonalProjectOwners.mockResolvedValueOnce([]);
+
+			const owner = await ownershipService.getProjectOwnerCached('some-project-id');
+
+			expect(owner).toBeNull();
 		});
 	});
 
 	describe('addOwnedByAndSharedWith()', () => {
 		test('should add `ownedBy` and `sharedWith` to credential', async () => {
-			const owner = mockUser();
-			const editor = mockUser();
-
 			const ownerProject = mockProject();
 			const editorProject = mockProject();
 
 			const credential = mockCredential();
 
 			credential.shared = [
-				{ role: 'credential:owner', user: owner, project: ownerProject },
-				{ role: 'credential:editor', user: editor, project: editorProject },
+				{ role: 'credential:owner', project: ownerProject },
+				{ role: 'credential:editor', project: editorProject },
 			] as SharedCredentials[];
 
-			const { ownedBy, sharedWith, homeProject, sharedWithProjects } =
+			const { homeProject, sharedWithProjects } =
 				ownershipService.addOwnedByAndSharedWith(credential);
-
-			expect(ownedBy).toStrictEqual({
-				id: owner.id,
-				email: owner.email,
-				firstName: owner.firstName,
-				lastName: owner.lastName,
-			});
-
-			expect(sharedWith).toStrictEqual([
-				{
-					id: editor.id,
-					email: editor.email,
-					firstName: editor.firstName,
-					lastName: editor.lastName,
-				},
-			]);
 
 			expect(homeProject).toMatchObject({
 				id: ownerProject.id,
@@ -93,37 +136,18 @@ describe('OwnershipService', () => {
 		});
 
 		test('should add `ownedBy` and `sharedWith` to workflow', async () => {
-			const owner = mockUser();
-			const editor = mockUser();
-
 			const projectOwner = mockProject();
 			const projectEditor = mockProject();
 
 			const workflow = new WorkflowEntity();
 
 			workflow.shared = [
-				{ role: 'workflow:owner', user: owner, project: projectOwner },
-				{ role: 'workflow:editor', user: editor, project: projectEditor },
+				{ role: 'workflow:owner', project: projectOwner },
+				{ role: 'workflow:editor', project: projectEditor },
 			] as SharedWorkflow[];
 
-			const { ownedBy, sharedWith, homeProject, sharedWithProjects } =
+			const { homeProject, sharedWithProjects } =
 				ownershipService.addOwnedByAndSharedWith(workflow);
-
-			expect(ownedBy).toStrictEqual({
-				id: owner.id,
-				email: owner.email,
-				firstName: owner.firstName,
-				lastName: owner.lastName,
-			});
-
-			expect(sharedWith).toStrictEqual([
-				{
-					id: editor.id,
-					email: editor.email,
-					firstName: editor.firstName,
-					lastName: editor.lastName,
-				},
-			]);
 
 			expect(homeProject).toMatchObject({
 				id: projectOwner.id,
@@ -140,27 +164,14 @@ describe('OwnershipService', () => {
 		});
 
 		test('should produce an empty sharedWith if no sharee', async () => {
-			const owner = mockUser();
-
 			const credential = mockCredential();
 
 			const project = mockProject();
 
-			credential.shared = [
-				{ role: 'credential:owner', user: owner, project },
-			] as SharedCredentials[];
+			credential.shared = [{ role: 'credential:owner', project }] as SharedCredentials[];
 
-			const { ownedBy, sharedWith, homeProject, sharedWithProjects } =
+			const { homeProject, sharedWithProjects } =
 				ownershipService.addOwnedByAndSharedWith(credential);
-
-			expect(ownedBy).toStrictEqual({
-				id: owner.id,
-				email: owner.email,
-				firstName: owner.firstName,
-				lastName: owner.lastName,
-			});
-
-			expect(sharedWith).toHaveLength(0);
 
 			expect(homeProject).toMatchObject({
 				id: project.id,

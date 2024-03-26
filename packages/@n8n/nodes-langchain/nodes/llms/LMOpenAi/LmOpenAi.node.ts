@@ -8,8 +8,7 @@ import type {
 	ILoadOptionsFunctions,
 } from 'n8n-workflow';
 
-import type { ClientOptions } from 'openai';
-import { OpenAI } from 'langchain/llms/openai';
+import { OpenAI, type ClientOptions } from '@langchain/openai';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 

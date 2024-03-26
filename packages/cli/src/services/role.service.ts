@@ -1,7 +1,7 @@
-import type { ProjectRole } from '@/databases/entities/ProjectRelation';
+import type { ProjectRelation, ProjectRole } from '@/databases/entities/ProjectRelation';
 import type { CredentialSharingRole } from '@/databases/entities/SharedCredentials';
 import type { WorkflowSharingRole } from '@/databases/entities/SharedWorkflow';
-import type { GlobalRole } from '@/databases/entities/User';
+import type { GlobalRole, User } from '@/databases/entities/User';
 import {
 	GLOBAL_ADMIN_SCOPES,
 	GLOBAL_MEMBER_SCOPES,
@@ -19,8 +19,10 @@ import {
 	WORKFLOW_SHARING_EDITOR_SCOPES,
 	WORKFLOW_SHARING_OWNER_SCOPES,
 } from '@/permissions/resource-roles';
-import type { Scope } from '@n8n/permissions';
+import type { ListQuery } from '@/requests';
+import { combineScopes, type Scope } from '@n8n/permissions';
 import { Service } from 'typedi';
+import { ApplicationError } from 'n8n-workflow';
 
 export type RoleNamespace = 'global' | 'project' | 'credential' | 'workflow';
 
@@ -63,6 +65,10 @@ const ALL_MAPS: AllMaps = {
 	credential: CREDENTIALS_SHARING_SCOPE_MAP,
 	workflow: WORKFLOW_SHARING_SCOPE_MAP,
 } as const;
+
+const COMBINED_MAP = Object.fromEntries(
+	Object.values(ALL_MAPS).flatMap((o: Record<string, Scope[]>) => Object.entries(o)),
+) as Record<GlobalRole | ProjectRole | CredentialSharingRole | WorkflowSharingRole, Scope[]>;
 
 export interface RoleMap {
 	global: GlobalRole[];
@@ -118,5 +124,88 @@ export class RoleService {
 
 	getRoleName(role: AllRoleTypes): string {
 		return ROLE_NAMES[role];
+	}
+
+	getRoleScopes(
+		role: GlobalRole | ProjectRole | WorkflowSharingRole | CredentialSharingRole,
+	): Scope[] {
+		return COMBINED_MAP[role];
+	}
+
+	/**
+	 * Find all distinct scopes in a set of project roles.
+	 */
+	getScopesBy(projectRoles: Set<ProjectRole>) {
+		return [...projectRoles].reduce<Set<Scope>>((acc, projectRole) => {
+			for (const scope of PROJECT_SCOPE_MAP[projectRole] ?? []) {
+				acc.add(scope);
+			}
+
+			return acc;
+		}, new Set());
+	}
+
+	addScopes(
+		rawWorkflow: ListQuery.Workflow.WithSharing | ListQuery.Workflow.WithOwnedByAndSharedWith,
+		user: User,
+		userProjectRelations: ProjectRelation[],
+	): ListQuery.Workflow.WithScopes;
+	addScopes(
+		rawCredential:
+			| ListQuery.Credentials.WithSharing
+			| ListQuery.Credentials.WithOwnedByAndSharedWith,
+		user: User,
+		userProjectRelations: ProjectRelation[],
+	): ListQuery.Credentials.WithScopes;
+	addScopes(
+		rawEntity:
+			| ListQuery.Workflow.WithSharing
+			| ListQuery.Credentials.WithOwnedByAndSharedWith
+			| ListQuery.Credentials.WithSharing
+			| ListQuery.Workflow.WithOwnedByAndSharedWith,
+		user: User,
+		userProjectRelations: ProjectRelation[],
+	): ListQuery.Workflow.WithScopes | ListQuery.Credentials.WithScopes {
+		const shared = rawEntity.shared;
+		const entity = rawEntity as ListQuery.Workflow.WithScopes | ListQuery.Credentials.WithScopes;
+
+		Object.assign(entity, {
+			scopes: [],
+		});
+
+		if (shared === undefined) {
+			return entity;
+		}
+
+		if (!('active' in entity) && !('type' in entity)) {
+			throw new ApplicationError('Cannot detect if entity is a workflow or credential.');
+		}
+
+		const globalScopes = this.getRoleScopes(user.role).filter((s) =>
+			s.startsWith('active' in entity ? 'workflow:' : 'credential:'),
+		);
+		const scopesSet: Set<Scope> = new Set();
+		for (const sharedEntity of shared) {
+			const pr = userProjectRelations.find(
+				(p) => p.projectId === (sharedEntity.projectId ?? sharedEntity.project.id),
+			);
+			let projectScopes: Scope[] = [];
+			if (pr) {
+				projectScopes = this.getRoleScopes(pr.role);
+			}
+			const resourceMask = this.getRoleScopes(sharedEntity.role);
+			const mergedScopes = combineScopes(
+				{
+					global: globalScopes,
+					project: projectScopes,
+				},
+				{ sharing: resourceMask },
+			);
+			mergedScopes.forEach((s) => scopesSet.add(s));
+		}
+
+		entity.scopes = [...scopesSet];
+
+		return entity;
 	}
 }
