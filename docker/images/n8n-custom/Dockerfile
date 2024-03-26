@@ -17,11 +17,11 @@ RUN node scripts/trim-fe-packageJson.js
 RUN find . -type f -name "*.ts" -o -name "*.js.map" -o -name "*.vue" -o -name "tsconfig.json" -o -name "*.tsbuildinfo" | xargs rm -rf
 
 # Deploy the `n8n` package into /compiled
-RUN mkdir /compiled
-RUN NODE_ENV=production pnpm --filter=n8n-nodes-honeybook --prod --no-optional deploy /compiled
-
+RUN mkdir /compiled /compiled2
+RUN NODE_ENV=production pnpm --filter=n8n --prod --no-optional deploy /compiled
+RUN NODE_ENV=production pnpm --filter=n8n-nodes-honeybook --prod --no-optional deploy /compiled2
 # 2. Start with a new clean image with just the code that is needed to run n8n
-FROM n8nio/base:${NODE_VERSION}
+FROM --platform=linux/amd64 n8nio/base:${NODE_VERSION}
 ENV NODE_ENV=production
 
 ARG N8N_RELEASE_TYPE=dev
@@ -29,17 +29,14 @@ ENV N8N_RELEASE_TYPE=${N8N_RELEASE_TYPE}
 
 WORKDIR /home/node
 COPY --from=builder /compiled /usr/local/lib/node_modules/n8n
+COPY --from=builder /compiled2 .n8n/custom/n8n-nodes-honeybook
 COPY docker/images/n8n/docker-entrypoint.sh /
 COPY config.prod.json config.dev.json ./
 
 RUN \
 	pnpm rebuild --dir /usr/local/lib/node_modules/n8n sqlite3 && \
 	ln -s /usr/local/lib/node_modules/n8n/bin/n8n /usr/local/bin/n8n && \
-	mkdir .n8n && \
-  mkdir .n8n/custom && \
 	chown -R node:node .n8n
-
-#COPY --chown=node packages/n8n-nodes-honeybook .n8n/custom/n8n-nodes-honeybook
 
 ENV SHELL /bin/sh
 USER node
