@@ -1,16 +1,19 @@
-import {
-	type IHookFunctions,
-	type IWebhookFunctions,
-	type IDataObject,
-	type INodeType,
-	type INodeTypeDescription,
-	type IWebhookResponseData,
+import type {
 	INodeListSearchItems,
 	ILoadOptionsFunctions,
 	INodeListSearchResult,
 	INodePropertyOptions,
+	IHookFunctions,
+	IWebhookFunctions,
+	IDataObject,
+	INodeType,
+	INodeTypeDescription,
+	IWebhookResponseData,
+	IBinaryKeyData,
 } from 'n8n-workflow';
+
 import { slackApiRequestAllItems } from './V2/GenericFunctions';
+import { getChannelInfo, getUserInfo } from './SlackTriggerHelpers';
 
 export class SlackTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -37,19 +40,10 @@ export class SlackTrigger implements INodeType {
 		credentials: [
 			{
 				name: 'slackApi',
-				required: false,
+				required: true,
 				displayOptions: {
 					show: {
 						authentication: ['accessToken'],
-					},
-				},
-			},
-			{
-				name: 'slackOAuth2Api',
-				required: false,
-				displayOptions: {
-					show: {
-						authentication: ['oAuth2'],
 					},
 				},
 			},
@@ -89,9 +83,14 @@ export class SlackTrigger implements INodeType {
 						description: 'Triggers whenever your bot or app is mentioned in a channel',
 					},
 					{
-						name: 'File made public',
+						name: 'File Made Public',
 						value: 'file_public',
 						description: 'Triggers when a file is made public',
+					},
+					{
+						name: 'File Shared',
+						value: 'file_share',
+						description: 'Triggers when a file is shared in your workspace',
 					},
 					{
 						name: 'New Channel Created',
@@ -99,17 +98,12 @@ export class SlackTrigger implements INodeType {
 						description: 'Triggers whenever a new channel is created',
 					},
 					{
-						name: 'New File Added',
-						value: 'file_created',
-						description: 'Trigger when a new file is uploaded to your workspace',
-					},
-					{
 						name: 'New Message Posted to a Channel',
 						value: 'messageWithChannel',
 						description: 'Triggers when a new message is posted to a specific channel',
 					},
 					{
-						name: 'New Message Posted to any Channel',
+						name: 'New Message Posted to Any Channel',
 						value: 'message',
 						description: 'Triggers when a new message is posted to any channel',
 					},
@@ -125,6 +119,18 @@ export class SlackTrigger implements INodeType {
 					},
 				],
 				default: [],
+			},
+			{
+				displayName:
+					'This will use one execution for every message in any channel your bot is in, use with caution',
+				name: 'notice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						eventFilter: ['message'],
+					},
+				},
 			},
 			{
 				displayName: 'Channel',
@@ -186,6 +192,18 @@ export class SlackTrigger implements INodeType {
 				],
 			},
 			{
+				displayName: 'Download Files',
+				name: 'downloadFiles',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to download the files and add it to the output',
+				displayOptions: {
+					show: {
+						eventFilter: ['file_share'],
+					},
+				},
+			},
+			{
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
@@ -193,7 +211,14 @@ export class SlackTrigger implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Usernames or IDs to ignore',
+						displayName: 'Resolve IDs',
+						name: 'resolveIds',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to resolve the IDs to their respective names and return them',
+					},
+					{
+						displayName: 'Usernames or IDs to Ignore',
 						name: 'userIds',
 						type: 'multiOptions',
 						typeOptions: {
@@ -287,8 +312,8 @@ export class SlackTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const filters = this.getNodeParameter('eventFilter', []) as string[];
 		const req = this.getRequestObject();
-
 		const options = this.getNodeParameter('options', {}) as IDataObject;
+		const binaryData: IBinaryKeyData = {};
 
 		// Check if the request is a challenge request
 		if (req.body.type === 'url_verification') {
@@ -304,6 +329,7 @@ export class SlackTrigger implements INodeType {
 		if (
 			req.body.event.type === 'message' &&
 			!filters.includes('messageWithChannel') &&
+			!filters.includes('file_share') &&
 			(!req.body.event.type || !filters.includes(req.body.event.type as string))
 		) {
 			return {};
@@ -325,8 +351,37 @@ export class SlackTrigger implements INodeType {
 			}
 		}
 
+		if (options.resolveIds) {
+			if (req.body.event.user) {
+				if (req.body.event.reaction_added) {
+					req.body.event.user_resolved = getUserInfo(req.body.event.user);
+					req.body.event.item_user_resolved = getUserInfo(req.body.event.item_user);
+				} else {
+					req.body.event.user_resolved = getUserInfo(req.body.event.user);
+				}
+			}
+
+			if (req.body.event.channel || req.body.item.channel) {
+				req.body.event.channel_resolved = getChannelInfo(req.body.event.channel);
+			}
+		}
+		let responseData: IDataObject = {};
+
+		if (req.body.event.subtype === 'file_share' && filters.includes('file_share')) {
+			responseData = req.body.event.files;
+		} else {
+			responseData = req.body.event;
+		}
+
 		return {
-			workflowData: [this.helpers.returnJsonArray(req.body.event as IDataObject)],
+			workflowData: [
+				[
+					{
+						json: responseData,
+						binary: Object.keys(binaryData).length ? binaryData : undefined,
+					},
+				],
+			],
 		};
 	}
 }
