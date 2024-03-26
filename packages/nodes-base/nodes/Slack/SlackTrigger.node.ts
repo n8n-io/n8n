@@ -51,7 +51,7 @@ export class SlackTrigger implements INodeType {
 		properties: [
 			{
 				displayName:
-					'You must set up the webhook in Slack — instructions <a href="https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.slacktrigger/#configure-a-webhook-in-slack" target="_blank">here</a>',
+					'Set up a webhook in your Slack app to enable this node. <a href="https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.slacktrigger/#configure-a-webhook-in-slack" target="_blank">More info</a>',
 				name: 'notice',
 				type: 'notice',
 				default: '',
@@ -73,7 +73,7 @@ export class SlackTrigger implements INodeType {
 				default: 'accessToken',
 			},
 			{
-				displayName: 'Event Filter',
+				displayName: 'Trigger On',
 				name: 'eventFilter',
 				type: 'multiOptions',
 				options: [
