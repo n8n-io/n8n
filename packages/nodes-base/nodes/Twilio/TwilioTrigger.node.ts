@@ -59,6 +59,17 @@ export class TwilioTrigger implements INodeType {
 				required: true,
 				default: [],
 			},
+			{
+				displayName: "The 'New Call' event may take up to thirty minutes to be triggered",
+				name: 'callTriggerNotice',
+				type: 'notice',
+				default: ' ',
+				displayOptions: {
+					show: {
+						updates: ['com.twilio.voice.insights.call-summary.complete'],
+					},
+				},
+			},
 		],
 	};
 
