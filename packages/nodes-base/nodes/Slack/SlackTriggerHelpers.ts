@@ -31,13 +31,20 @@ export async function getChannelInfo(this: any, channelId: string) {
 }
 
 export async function downloadFile(this: IWebhookFunctions, url: string): Promise<any> {
-	//const authenticationMethod = this.getNodeParameter('authentication', 0, 'accessToken') as string;
-	const options: IHttpRequestOptions = {
+	let options: IHttpRequestOptions = {
 		method: 'GET',
 		url,
 	};
 
-	//const credentialType = authenticationMethod === 'accessToken' ? 'slackApi' : 'slackOAuth2Api';
+	const requestOptions = {
+		encoding: 'arraybuffer',
+		returnFullResponse: true,
+		json: false,
+		useStream: true,
+	};
+
+	options = Object.assign({}, options, requestOptions);
+
 	const response = await this.helpers.requestWithAuthentication.call(this, 'slackApi', options);
 
 	if (response.ok === false) {

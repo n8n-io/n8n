@@ -13,7 +13,7 @@ import type {
 } from 'n8n-workflow';
 
 import { slackApiRequestAllItems } from './V2/GenericFunctions';
-import { getChannelInfo, getUserInfo } from './SlackTriggerHelpers';
+import { downloadFile, getChannelInfo, getUserInfo } from './SlackTriggerHelpers';
 
 export class SlackTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -369,6 +369,20 @@ export class SlackTrigger implements INodeType {
 
 		if (req.body.event.subtype === 'file_share' && filters.includes('file_share')) {
 			responseData = req.body.event.files;
+			if (this.getNodeParameter('downloadFiles', false) as boolean) {
+				for (let i = 0; i < req.body.event.files.length; i++) {
+					const file = (await downloadFile.call(
+						this,
+						req.body.event.files[i].url_private_download,
+					)) as Buffer;
+
+					binaryData[`file_${i}`] = await this.helpers.prepareBinaryData(
+						file,
+						req.body.event.files[i].name,
+						req.body.event.files[i].mimetype,
+					);
+				}
+			}
 		} else {
 			responseData = req.body.event;
 		}
