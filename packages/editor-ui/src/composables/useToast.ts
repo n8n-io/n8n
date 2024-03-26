@@ -175,7 +175,7 @@ export function useToast() {
 	function showNotificationForViews(views: VIEWS[]) {
 		const notifications: NotificationOptions[] = [];
 		views.forEach((view) => {
-			notifications.push(...(uiStore.getNotificationsForView(view) as NotificationOptions[]));
+			notifications.push(...uiStore.getNotificationsForView(view));
 		});
 		if (notifications.length) {
 			notifications.forEach(async (notification) => {

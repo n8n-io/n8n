@@ -325,14 +325,14 @@ export class N8nConnector extends AbstractConnector {
 						current[2] === current[0]
 							? 0
 							: current[2] > current[0]
-							  ? paintInfo.lw / 2
-							  : -(paintInfo.lw / 2),
+								? paintInfo.lw / 2
+								: -(paintInfo.lw / 2),
 					dy =
 						current[3] === current[1]
 							? 0
 							: current[3] > current[1]
-							  ? paintInfo.lw / 2
-							  : -(paintInfo.lw / 2);
+								? paintInfo.lw / 2
+								: -(paintInfo.lw / 2);
 
 				this._addSegment(StraightSegment, {
 					x1: current[0] - dx,

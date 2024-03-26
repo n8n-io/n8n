@@ -43,7 +43,7 @@
 					:allow-parent-select="option.allowParentSelect"
 					:redact-values="redactValues"
 					class="sub-level"
-					@itemSelected="forwardItemSelected"
+					@item-selected="forwardItemSelected"
 				></variable-selector-item>
 			</div>
 		</div>

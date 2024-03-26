@@ -6,14 +6,13 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import set from 'lodash/set';
 import { javascriptCodeDescription } from './descriptions/JavascriptCodeDescription';
 import { pythonCodeDescription } from './descriptions/PythonCodeDescription';
 import { JavaScriptSandbox } from './JavaScriptSandbox';
 import { PythonSandbox } from './PythonSandbox';
 import { getSandboxContext } from './Sandbox';
 import { standardizeOutput } from './utils';
-
-import set from 'lodash/set';
 
 const { CODE_ENABLE_STDOUT } = process.env;
 
@@ -118,9 +117,9 @@ export class Code implements INodeType {
 				workflowMode === 'manual'
 					? this.sendMessageToUI
 					: CODE_ENABLE_STDOUT === 'true'
-					  ? (...args) =>
+						? (...args) =>
 								console.log(`[Workflow "${this.getWorkflow().id}"][Node "${node.name}"]`, ...args)
-					  : () => {},
+						: () => {},
 			);
 			return sandbox;
 		};
