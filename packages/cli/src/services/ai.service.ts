@@ -8,29 +8,22 @@ import { AIProviderOpenAI } from '@/services/ai/providers/openai';
 import type { BaseChatModelCallOptions } from '@langchain/core/language_models/chat_models';
 import { summarizeNodeTypeProperties } from '@/services/ai/utils/summarizeNodeTypeProperties';
 import { Pinecone } from '@pinecone-database/pinecone';
-import { PineconeStore } from '@langchain/pinecone';
 import type { z } from 'zod';
-import { retrieveOpenAPIServicePromptTemplate } from '@/services/ai/prompts/retrieveOpenAPIService';
-import { retrieveOpenAPIServiceSchema } from '@/services/ai/schemas/retrieveOpenAPIService';
-import openAPIServices from '@/services/ai/resources/openapi-services.json';
+import { retrieveServicePromptTemplate } from '@/services/ai/prompts/retrieveService';
+import { retrieveServiceSchema } from '@/services/ai/schemas/retrieveService';
+import apiKnowledgebase from '@/services/ai/resources/api-knowledgebase.json';
 import { JsonOutputFunctionsParser } from 'langchain/output_parsers';
-import { merge } from 'lodash';
 import {
 	generateCurlCommandFallbackPromptTemplate,
 	generateCurlCommandPromptTemplate,
 } from '@/services/ai/prompts/generateCurl';
 import { generateCurlSchema } from '@/services/ai/schemas/generateCurl';
+import { PineconeStore } from '@langchain/pinecone';
 
-interface OpenAPIService {
-	service: string;
-	resource?: string;
-	host?: string;
+interface APIKnowledgebaseService {
+	id: string;
 	title: string;
-	description: string;
-	securityDefinitions?: Record<string, string>;
-	components?: {
-		securitySchemes?: Record<string, string>;
-	};
+	description?: string;
 }
 
 function isN8nAIProviderType(value: string): value is N8nAIProviderType {
@@ -105,64 +98,53 @@ export class AIService {
 			return await this.generateCurlGeneric(serviceName, serviceRequest);
 		}
 
-		const services = openAPIServices as OpenAPIService[];
+		const services = apiKnowledgebase as unknown as APIKnowledgebaseService[];
 		const servicesListForPrompt = services
-			.map((service) =>
-				[
-					service.service,
-					service.resource ?? '',
-					service.title ?? '',
-					service.description ?? '',
-				].join(' | '),
-			)
+			.slice(0, 240)
+			.map((service) => [service.id, service.title ?? '', service.description ?? ''].join(' | '))
 			.join('\n');
 
-		const retrieveOpenAPIServiceChain = retrieveOpenAPIServicePromptTemplate
-			.pipe(this.provider.modelWithOutputParser(retrieveOpenAPIServiceSchema))
+		const retrieveServiceChain = retrieveServicePromptTemplate
+			.pipe(this.provider.modelWithOutputParser(retrieveServiceSchema))
 			.pipe(this.jsonOutputParser);
-		const openAPIService = (await retrieveOpenAPIServiceChain.invoke({
+
+		const matchedService = (await retrieveServiceChain.invoke({
 			services: servicesListForPrompt,
 			serviceName,
 			serviceRequest,
-		})) as z.infer<typeof retrieveOpenAPIServiceSchema>;
+		})) as z.infer<typeof retrieveServiceSchema>;
 
-		const matchedOpenAPIService = services.find(
-			(service) =>
-				service.service === openAPIService.service && service.resource === openAPIService.resource,
-		);
-
-		if (openAPIService.service === 'unknown' || !matchedOpenAPIService) {
+		const matchedServiceEntry = services.find((service) => service.id === matchedService.id);
+		if (matchedService.id === 'unknown' || !matchedService.id || !matchedServiceEntry) {
+			console.log("Didn't match any service");
 			return await this.generateCurlGeneric(serviceName, serviceRequest);
+		} else {
+			console.log('Matched service', matchedServiceEntry);
 		}
 
-		const pcIndex = this.pinecone.Index('openapi');
-
+		const pcIndex = this.pinecone.Index('api-knowledgebase');
 		const vectorStore = await PineconeStore.fromExistingIndex(this.provider.embeddings, {
-			namespace: 'apiPaths',
+			namespace: 'endpoints',
 			pineconeIndex: pcIndex,
 		});
 
 		const matchedDocuments = await vectorStore.similaritySearch(serviceRequest, 4, {
-			service: openAPIService.service,
-			resource: openAPIService.resource,
+			id: matchedService.id,
 		});
 
-		const aggregatedPaths = matchedDocuments.reduce((acc, document) => {
+		const aggregatedDocuments = matchedDocuments.reduce<unknown[]>((acc, document) => {
 			const pageData = jsonParse(document.pageContent);
 
-			return merge(acc, pageData);
-		}, {});
+			acc.push(pageData);
 
-		const openApiDefinition = {
-			...matchedOpenAPIService,
-			paths: aggregatedPaths,
-		};
+			return acc;
+		}, []);
 
 		const generateCurlChain = generateCurlCommandPromptTemplate
 			.pipe(this.provider.modelWithOutputParser(generateCurlSchema))
 			.pipe(this.jsonOutputParser);
 		return (await generateCurlChain.invoke({
-			openApi: JSON.stringify(openApiDefinition),
+			endpoints: JSON.stringify(aggregatedDocuments),
 			serviceName,
 			serviceRequest,
 		})) as z.infer<typeof generateCurlSchema>;

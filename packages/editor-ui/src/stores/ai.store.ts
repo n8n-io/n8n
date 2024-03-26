@@ -9,7 +9,8 @@ export const useAIStore = defineStore('ai', () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
 
-	const isErrorDebuggingEnabled = computed(() => settingsStore.settings.ai.errorDebugging);
+	const isErrorDebuggingEnabled = computed(() => settingsStore.settings.ai.features.errorDebugging);
+	const isGenerateCurlEnabled = computed(() => settingsStore.settings.ai.features.generateCurl);
 
 	async function debugError(payload: DebugErrorPayload) {
 		return await aiApi.debugError(rootStore.getRestApiContext, payload);
@@ -19,5 +20,5 @@ export const useAIStore = defineStore('ai', () => {
 		return await aiApi.generateCurl(rootStore.getRestApiContext, payload);
 	}
 
-	return { isErrorDebuggingEnabled, debugError, generateCurl };
+	return { isErrorDebuggingEnabled, isGenerateCurlEnabled, debugError, generateCurl };
 });

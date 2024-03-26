@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { GENERATE_CURL_MODAL_KEY, IMPORT_CURL_MODAL_KEY } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
+import { useAIStore } from '@/stores/ai.store';
 
 defineProps({
 	isReadOnly: {
@@ -10,6 +11,7 @@ defineProps({
 });
 
 const uiStore = useUIStore();
+const aiStore = useAIStore();
 
 function onImportCurlClicked() {
 	uiStore.openModal(IMPORT_CURL_MODAL_KEY);
@@ -31,6 +33,7 @@ function onGenerateCurlClicked() {
 		/>
 
 		<n8n-button
+			v-if="aiStore.isGenerateCurlEnabled"
 			class="mr-2xs"
 			type="secondary"
 			:label="$locale.baseText('generateCurlParameter.label')"
