@@ -5,7 +5,7 @@ import { CredentialsHelper } from '@/CredentialsHelper';
 import { CredentialTypes } from '@/CredentialTypes';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { CredentialTypeRequest, CredentialRequest } from '../../../types';
-import { authorize } from '../../shared/middlewares/global.middleware';
+import { projectScope } from '../../shared/middlewares/global.middleware';
 import { validCredentialsProperties, validCredentialType } from './credentials.middleware';
 
 import {
@@ -22,7 +22,6 @@ import { Container } from 'typedi';
 
 export = {
 	createCredential: [
-		authorize(['global:owner', 'global:admin', 'global:member']),
 		validCredentialType,
 		validCredentialsProperties,
 		async (
@@ -46,7 +45,7 @@ export = {
 		},
 	],
 	deleteCredential: [
-		authorize(['global:owner', 'global:admin', 'global:member']),
+		projectScope('credential:delete', 'credential'),
 		async (
 			req: CredentialRequest.Delete,
 			res: express.Response,
@@ -74,7 +73,6 @@ export = {
 	],
 
 	getCredentialType: [
-		authorize(['global:owner', 'global:admin', 'global:member']),
 		async (req: CredentialTypeRequest.Get, res: express.Response): Promise<express.Response> => {
 			const { credentialTypeName } = req.params;
 

@@ -10,18 +10,25 @@ import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.reposi
 import type { Project } from '@/databases/entities/Project';
 import { WorkflowTagMappingRepository } from '@db/repositories/workflowTagMapping.repository';
 import { TagRepository } from '@db/repositories/tag.repository';
+import { License } from '@/License';
+import { WorkflowSharingService } from '@/workflows/workflowSharing.service';
+import type { Scope } from '@n8n/permissions';
 
 function insertIf(condition: boolean, elements: string[]): string[] {
 	return condition ? elements : [];
 }
 
-export async function getSharedWorkflowIds(user: User): Promise<string[]> {
-	const where = ['global:owner', 'global:admin'].includes(user.role) ? {} : { userId: user.id };
-	const sharedWorkflows = await Container.get(SharedWorkflowRepository).find({
-		where,
-		select: ['workflowId'],
-	});
-	return sharedWorkflows.map(({ workflowId }) => workflowId);
+export async function getSharedWorkflowIds(user: User, scope: Scope): Promise<string[]> {
+	if (Container.get(License).isSharingEnabled()) {
+		return await Container.get(WorkflowSharingService).getSharedWorkflowIds(user, {
+			scopes: [scope],
+		});
+	} else {
+		return await Container.get(WorkflowSharingService).getSharedWorkflowIds(user, {
+			workflowRoles: ['workflow:owner'],
+			projectRoles: ['project:personalOwner'],
+		});
+	}
 }
 
 export async function getSharedWorkflow(

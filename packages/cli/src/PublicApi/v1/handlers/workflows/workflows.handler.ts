@@ -11,7 +11,7 @@ import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { ExternalHooks } from '@/ExternalHooks';
 import { addNodeIds, replaceInvalidCredentials } from '@/WorkflowHelpers';
 import type { WorkflowRequest } from '../../../types';
-import { authorize, validCursor } from '../../shared/middlewares/global.middleware';
+import { projectScope, validCursor } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 import {
 	getWorkflowById,
@@ -34,7 +34,6 @@ import { ProjectRepository } from '@/databases/repositories/project.repository';
 
 export = {
 	createWorkflow: [
-		authorize(['global:owner', 'global:admin', 'global:member']),
 		async (req: WorkflowRequest.Create, res: express.Response): Promise<express.Response> => {
 			const workflow = req.body;
 
@@ -63,7 +62,7 @@ export = {
 		},
 	],
 	deleteWorkflow: [
-		authorize(['global:owner', 'global:admin', 'global:member']),
+		projectScope('workflow:delete', 'workflow'),
 		async (req: WorkflowRequest.Get, res: express.Response): Promise<express.Response> => {
 			const { id: workflowId } = req.params;
 
@@ -78,7 +77,7 @@ export = {
 		},
 	],
 	getWorkflow: [
-		authorize(['global:owner', 'global:admin', 'global:member']),
+		projectScope('workflow:read', 'workflow'),
 		async (req: WorkflowRequest.Get, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 
@@ -99,7 +98,6 @@ export = {
 		},
 	],
 	getWorkflows: [
-		authorize(['global:owner', 'global:admin', 'global:member']),
 		validCursor,
 		async (req: WorkflowRequest.GetAll, res: express.Response): Promise<express.Response> => {
 			const { offset = 0, limit = 100, active, tags, name } = req.query;
@@ -164,7 +162,7 @@ export = {
 		},
 	],
 	updateWorkflow: [
-		authorize(['global:owner', 'global:admin', 'global:member']),
+		projectScope('workflow:update', 'workflow'),
 		async (req: WorkflowRequest.Update, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 			const updateData = new WorkflowEntity();
@@ -226,7 +224,7 @@ export = {
 		},
 	],
 	activateWorkflow: [
-		authorize(['global:owner', 'global:admin', 'global:member']),
+		projectScope('workflow:update', 'workflow'),
 		async (req: WorkflowRequest.Activate, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 
@@ -260,7 +258,7 @@ export = {
 		},
 	],
 	deactivateWorkflow: [
-		authorize(['global:owner', 'global:admin', 'global:member']),
+		projectScope('workflow:update', 'workflow'),
 		async (req: WorkflowRequest.Activate, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 
@@ -289,7 +287,7 @@ export = {
 		},
 	],
 	getWorkflowTags: [
-		authorize(['global:owner', 'global:admin', 'global:member']),
+		projectScope('workflow:read', 'workflow'),
 		async (req: WorkflowRequest.GetTags, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 
@@ -311,7 +309,7 @@ export = {
 		},
 	],
 	updateWorkflowTags: [
-		authorize(['global:owner', 'global:admin', 'global:member']),
+		projectScope('workflow:update', 'workflow'),
 		async (req: WorkflowRequest.UpdateTags, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 			const newTags = req.body.map((newTag) => newTag.id);

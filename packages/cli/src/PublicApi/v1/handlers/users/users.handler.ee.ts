@@ -5,7 +5,7 @@ import { clean, getAllUsersAndCount, getUser } from './users.service.ee';
 
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 import {
-	authorize,
+	globalScope,
 	validCursor,
 	validLicenseWithUserQuota,
 } from '../../shared/middlewares/global.middleware';
@@ -15,7 +15,7 @@ import { InternalHooks } from '@/InternalHooks';
 export = {
 	getUser: [
 		validLicenseWithUserQuota,
-		authorize(['global:owner', 'global:admin']),
+		globalScope('user:read'),
 		async (req: UserRequest.Get, res: express.Response) => {
 			const { includeRole = false } = req.query;
 			const { id } = req.params;
@@ -41,7 +41,7 @@ export = {
 	getUsers: [
 		validLicenseWithUserQuota,
 		validCursor,
-		authorize(['global:owner', 'global:admin']),
+		globalScope(['user:list', 'user:read']),
 		async (req: UserRequest.Get, res: express.Response) => {
 			const { offset = 0, limit = 100, includeRole = false } = req.query;
 

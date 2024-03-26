@@ -2,7 +2,7 @@ import type express from 'express';
 import { Container } from 'typedi';
 import type { StatusResult } from 'simple-git';
 import type { PublicSourceControlRequest } from '../../../types';
-import { authorize } from '../../shared/middlewares/global.middleware';
+import { globalScope } from '../../shared/middlewares/global.middleware';
 import type { ImportResult } from '@/environments/sourceControl/types/importResult';
 import { SourceControlService } from '@/environments/sourceControl/sourceControl.service.ee';
 import { SourceControlPreferencesService } from '@/environments/sourceControl/sourceControlPreferences.service.ee';
@@ -14,7 +14,7 @@ import { InternalHooks } from '@/InternalHooks';
 
 export = {
 	pull: [
-		authorize(['global:owner', 'global:admin']),
+		globalScope('sourceControl:pull'),
 		async (
 			req: PublicSourceControlRequest.Pull,
 			res: express.Response,
