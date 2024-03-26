@@ -1,3 +1,4 @@
+import type { Scope } from '@n8n/permissions';
 import type { IUserResponse } from '@/Interface';
 
 export type ProjectType = 'personal' | 'team' | 'public';
@@ -14,14 +15,15 @@ export type ProjectSharingData = {
 	id: string;
 	name: string | null;
 	type: ProjectType;
+	createdAt: string;
+	updatedAt: string;
 };
 export type Project = ProjectSharingData & {
 	relations: ProjectRelation[];
 };
 export type ProjectListItem = ProjectSharingData & {
 	role: ProjectRole;
-	createdAt: string;
-	updatedAt: string;
+	scopes?: Scope[];
 };
 export type ProjectCreateRequest = { name: string };
 export type ProjectUpdateRequest = Pick<Project, 'id' | 'name'> & {

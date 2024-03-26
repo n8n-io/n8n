@@ -296,6 +296,7 @@ export interface IWorkflowDb {
 	pinData?: IPinData;
 	sharedWithProjects?: ProjectSharingData[];
 	homeProject?: ProjectSharingData;
+	scopes?: Scope[];
 	versionId: string;
 	usedCredentials?: IUsedCredential[];
 	meta?: WorkflowMetadata;
