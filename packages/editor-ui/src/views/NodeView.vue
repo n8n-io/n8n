@@ -755,7 +755,9 @@ export default defineComponent({
 		},
 		currentProjectId(): string | undefined {
 			const projectId = this.workflowsStore.getWorkflowById(this.currentWorkflow)?.homeProject?.id;
-			return projectId ?? this.projectsStore.currentProjectId;
+			return (
+				projectId ?? this.projectsStore.currentProjectId ?? this.projectsStore.personalProject.id
+			);
 		},
 	},
 	data() {
