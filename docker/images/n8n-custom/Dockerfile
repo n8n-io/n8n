@@ -29,7 +29,7 @@ ENV N8N_RELEASE_TYPE=${N8N_RELEASE_TYPE}
 
 WORKDIR /home/node
 COPY --from=builder /compiled /usr/local/lib/node_modules/n8n
-COPY --from=builder /compiled2 .n8n/custom/n8n-nodes-honeybook
+COPY --from=builder /compiled2/dist/ .n8n/custom/n8n-nodes-honeybook
 COPY docker/images/n8n/docker-entrypoint.sh /
 COPY config.prod.json config.dev.json ./
 
