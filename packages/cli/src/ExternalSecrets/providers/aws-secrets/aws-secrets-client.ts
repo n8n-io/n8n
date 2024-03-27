@@ -49,23 +49,18 @@ export class AwsSecretsClient {
 	 * Fetch all secrets from AWS Secrets Manager.
 	 */
 	async fetchAllSecrets() {
-		const allSecretsNames = await this.fetchAllSecretsNames();
-
 		const secrets: Secret[] = [];
+
+		const allSecretsNames = await this.fetchAllSecretsNames();
 
 		const batches = this.batch(allSecretsNames);
 
 		for (const batch of batches) {
-			let nextToken: string | undefined;
+			const page = await this.fetchSecretsPage(batch);
 
-			// @TODO: Simplfiy
-			do {
-				const page = await this.fetchSecretsPage(batch, nextToken);
-				secrets.push(
-					...page.SecretValues.map((s) => ({ secretName: s.Name, secretValue: s.SecretString })),
-				);
-				nextToken = page.NextToken;
-			} while (nextToken);
+			secrets.push(
+				...page.SecretValues.map((s) => ({ secretName: s.Name, secretValue: s.SecretString })),
+			);
 		}
 
 		return secrets;

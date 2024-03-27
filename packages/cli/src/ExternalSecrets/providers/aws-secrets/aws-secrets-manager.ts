@@ -85,6 +85,7 @@ export class AwsSecretsManager implements SecretsProvider {
 		const res = await this.client.fetchAllSecrets();
 
 		console.log('res', res);
+		console.log('res.length', res.length);
 	}
 
 	async test() {
