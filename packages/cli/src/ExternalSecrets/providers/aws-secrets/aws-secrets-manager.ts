@@ -2,7 +2,7 @@ import { AwsSecretsClient } from './aws-secrets-client';
 import { UnknownAuthTypeError } from '@/errors/unknown-auth-type.error';
 import { EXTERNAL_SECRETS_NAME_REGEX } from '@/ExternalSecrets/constants';
 import type { SecretsProvider, SecretsProviderState } from '@/Interfaces';
-import type { IDataObject, INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 import type { AwsSecretsManagerContext } from './types';
 
 export class AwsSecretsManager implements SecretsProvider {
@@ -72,7 +72,7 @@ export class AwsSecretsManager implements SecretsProvider {
 		},
 	];
 
-	private cachedSecrets: Record<string, IDataObject> = {};
+	private cachedSecrets: Record<string, string> = {};
 
 	private client: AwsSecretsClient;
 
@@ -108,9 +108,9 @@ export class AwsSecretsManager implements SecretsProvider {
 
 		const supportedSecrets = secrets.filter((s) => EXTERNAL_SECRETS_NAME_REGEX.test(s.secretName));
 
-		const newCache = Object.fromEntries(supportedSecrets.map((s) => [s.secretName, s.secretValue]));
-
-		// this.cachedSecrets = newCache; // @TODO: Type mismatch
+		this.cachedSecrets = Object.fromEntries(
+			supportedSecrets.map((s) => [s.secretName, s.secretValue]),
+		);
 	}
 
 	getSecret(name: string) {
