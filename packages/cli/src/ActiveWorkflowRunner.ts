@@ -203,7 +203,7 @@ export class ActiveWorkflowRunner {
 					);
 				}
 
-				// if it's a workflow from the the insert
+				// if it's a workflow from the insert
 				// TODO check if there is standard error code for duplicate key violation that works
 				// with all databases
 				if (error instanceof Error && error.name === 'QueryFailedError') {
