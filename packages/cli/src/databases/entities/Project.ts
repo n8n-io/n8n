@@ -7,8 +7,7 @@ import type { SharedWorkflow } from './SharedWorkflow';
 import { User } from './User';
 import Container from 'typedi';
 import { ProjectRepository } from '../repositories/project.repository';
-import { ApplicationError } from 'n8n-workflow';
-import { captureException } from '@sentry/node';
+import { ApplicationError, ErrorReporterProxy } from 'n8n-workflow';
 import { Logger } from '@/Logger';
 
 export type ProjectType = 'personal' | 'team' | 'public';
@@ -63,7 +62,7 @@ export class UserSubscriber implements EntitySubscriberInterface<User> {
 						const message = "Could not update the personal project's name";
 						Container.get(Logger).warn(message, event.entity);
 						const exception = new ApplicationError(message);
-						captureException(exception, event.entity);
+						ErrorReporterProxy.warn(exception, event.entity);
 						return;
 					}
 
@@ -85,7 +84,7 @@ export class UserSubscriber implements EntitySubscriberInterface<User> {
 					const message = "Could not update the personal project's name";
 					Container.get(Logger).warn(message, event.entity);
 					const exception = new ApplicationError(message);
-					captureException(exception, event.entity);
+					ErrorReporterProxy.warn(exception, event.entity);
 				}
 			}
 		}
