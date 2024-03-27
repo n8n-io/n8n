@@ -31,7 +31,7 @@ export async function getAllCredentials(
 ): Promise<ICredentialsResponse[]> {
 	return await makeRestApiRequest(context, 'GET', '/credentials', {
 		includeScopes: true,
-		...(filter ?? {}),
+		...(filter ? { filter } : {}),
 	});
 }
 
