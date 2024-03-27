@@ -1,7 +1,8 @@
-import { within, waitFor } from '@testing-library/vue';
+import { within } from '@testing-library/vue';
 import { createPinia, setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
+import { getDropdownItems } from '@/__tests__/utils';
 import { useRoute, useRouter } from 'vue-router';
 import ProjectSettings from '@/features/projects/components/ProjectSettings.vue';
 import { useProjectsStore } from '@/features/projects/projects.store';
@@ -27,20 +28,6 @@ const renderComponent = createComponentRenderer(ProjectSettings);
 
 const teamProjects = Array.from({ length: 3 }, () => createProjectListItem('team'));
 
-const getDropdownItems = async (dropdownTriggerParent: HTMLElement) => {
-	await userEvent.click(within(dropdownTriggerParent).getByRole('textbox'));
-	const selectTrigger = dropdownTriggerParent.querySelector(
-		'.select-trigger[aria-describedby]',
-	) as HTMLElement;
-	await waitFor(() => expect(selectTrigger).toBeInTheDocument());
-
-	const selectDropdownId = selectTrigger.getAttribute('aria-describedby');
-	const selectDropdown = document.getElementById(selectDropdownId as string) as HTMLElement;
-	await waitFor(() => expect(selectDropdown).toBeInTheDocument());
-
-	return selectDropdown.querySelectorAll('.el-select-dropdown__item');
-};
-
 let router: ReturnType<typeof useRouter>;
 let route: ReturnType<typeof useRoute>;
 let projectsStore: ReturnType<typeof useProjectsStore>;
@@ -59,18 +46,19 @@ describe('ProjectSettings', () => {
 		vi.spyOn(projectsStore, 'getAllProjects').mockImplementation(
 			async () => await Promise.resolve(),
 		);
-	});
-
-	it('should show confirmation modal before deleting project and delete with transfer', async () => {
+		vi.spyOn(projectsStore, 'teamProjects', 'get').mockReturnValue(teamProjects);
 		projectsStore.setCurrentProject({
 			id: '123',
 			type: 'team',
 			name: 'Test Project',
 			relations: [],
 		});
-		vi.spyOn(projectsStore, 'teamProjects', 'get').mockReturnValue(teamProjects);
+	});
 
-		const deleteProjectSpy = vi.spyOn(projectsStore, 'deleteProject').mockResolvedValue();
+	it('should show confirmation modal before deleting project and delete with transfer', async () => {
+		const deleteProjectSpy = vi
+			.spyOn(projectsStore, 'deleteProject')
+			.mockImplementation(async () => {});
 
 		const { getByTestId, getByRole } = renderComponent();
 		const deleteButton = getByTestId('project-settings-delete-button');
@@ -94,15 +82,9 @@ describe('ProjectSettings', () => {
 	});
 
 	it('should show confirmation modal before deleting project and deleting without transfer', async () => {
-		projectsStore.setCurrentProject({
-			id: '123',
-			type: 'team',
-			name: 'Test Project',
-			relations: [],
-		});
-		vi.spyOn(projectsStore, 'teamProjects', 'get').mockReturnValue(teamProjects);
-
-		const deleteProjectSpy = vi.spyOn(projectsStore, 'deleteProject').mockResolvedValue();
+		const deleteProjectSpy = vi
+			.spyOn(projectsStore, 'deleteProject')
+			.mockImplementation(async () => {});
 
 		const { getByTestId, getByRole } = renderComponent();
 		const deleteButton = getByTestId('project-settings-delete-button');

@@ -1,3 +1,5 @@
+import { within, waitFor } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 import type { ISettingsState } from '@/Interface';
 import { UserManagementAuthenticationMethod } from '@/Interface';
 import { defaultSettings } from './defaults';
@@ -61,4 +63,18 @@ export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
 	saveDataSuccessExecution: 'all',
 	saveManualExecutions: false,
 	binaryDataMode: 'default',
+};
+
+export const getDropdownItems = async (dropdownTriggerParent: HTMLElement) => {
+	await userEvent.click(within(dropdownTriggerParent).getByRole('textbox'));
+	const selectTrigger = dropdownTriggerParent.querySelector(
+		'.select-trigger[aria-describedby]',
+	) as HTMLElement;
+	await waitFor(() => expect(selectTrigger).toBeInTheDocument());
+
+	const selectDropdownId = selectTrigger.getAttribute('aria-describedby');
+	const selectDropdown = document.getElementById(selectDropdownId as string) as HTMLElement;
+	await waitFor(() => expect(selectDropdown).toBeInTheDocument());
+
+	return selectDropdown.querySelectorAll('.el-select-dropdown__item');
 };

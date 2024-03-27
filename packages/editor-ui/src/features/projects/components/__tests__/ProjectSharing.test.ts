@@ -1,6 +1,6 @@
-import { waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
+import { getDropdownItems } from '@/__tests__/utils';
 import { createProjectListItem } from '@/__tests__/data/projects';
 import ProjectSharing from '@/features/projects/components/ProjectSharing.vue';
 
@@ -8,20 +8,6 @@ const renderComponent = createComponentRenderer(ProjectSharing);
 
 const personalProjects = Array.from({ length: 3 }, createProjectListItem);
 const teamProjects = Array.from({ length: 3 }, () => createProjectListItem('team'));
-
-const getDropdownItems = async (dropdownTriggerParent: HTMLElement) => {
-	await userEvent.click(within(dropdownTriggerParent).getByRole('textbox'));
-	const selectTrigger = dropdownTriggerParent.querySelector(
-		'.select-trigger[aria-describedby]',
-	) as HTMLElement;
-	await waitFor(() => expect(selectTrigger).toBeInTheDocument());
-
-	const selectDropdownId = selectTrigger.getAttribute('aria-describedby');
-	const selectDropdown = document.getElementById(selectDropdownId as string) as HTMLElement;
-	await waitFor(() => expect(selectDropdown).toBeInTheDocument());
-
-	return selectDropdown.querySelectorAll('.el-select-dropdown__item');
-};
 
 describe('ProjectSharing', () => {
 	it('should render empty select when projects is empty and no selected project existing', async () => {
