@@ -4,8 +4,6 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
-	ILoadOptionsFunctions,
-	INodePropertyOptions,
 } from 'n8n-workflow';
 
 import { twilioTriggerApiRequest } from './GenericFunctions';
@@ -63,7 +61,7 @@ export class TwilioTrigger implements INodeType {
 				displayName: "The 'New Call' event may take up to thirty minutes to be triggered",
 				name: 'callTriggerNotice',
 				type: 'notice',
-				default: ' ',
+				default: '',
 				displayOptions: {
 					show: {
 						updates: ['com.twilio.voice.insights.call-summary.complete'],
@@ -147,14 +145,13 @@ export class TwilioTrigger implements INodeType {
 				// if there is more than one event type add the others on the existing subscription
 				if (allowedUpdates.length > 1) {
 					for (let index = 1; index < allowedUpdates.length; index++) {
-						const body = {
-							Type: allowedUpdates[index],
-						};
 						await twilioTriggerApiRequest.call(
 							this,
 							'POST',
 							`Subscriptions/${workflowData.subscriptionId}/SubscribedEvents`,
-							body,
+							{
+								Type: allowedUpdates[index],
+							},
 						);
 					}
 				}
