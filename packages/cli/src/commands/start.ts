@@ -27,7 +27,6 @@ import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { WaitTracker } from '@/WaitTracker';
 import { BaseCommand } from './BaseCommand';
-import { AwsSecretsManager } from '@/ExternalSecrets/providers/aws-secrets/aws-secrets-manager';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -281,32 +280,6 @@ export class Start extends BaseCommand {
 		}
 
 		await this.server.start();
-
-		// working fine
-		// const awsSecretsManager = new AwsSecretsManager();
-		// const res = await awsSecretsManager.fetchSecretsPage();
-		// console.log('res', res);
-
-		// const awsSecretsManager = new AwsSecretsManager();
-		// const res = await awsSecretsManager.fetchAllSecretsNames();
-		// console.log('res', res);
-		// console.log('res.length', res.length);
-
-		// const awsSecretsManager = new AwsSecretsManager();
-		// const res = await awsSecretsManager.fetchAllSecrets();
-		// console.log('res', res);
-
-		const awsSecretsManager = new AwsSecretsManager();
-		await awsSecretsManager.init({
-			connected: true,
-			connectedAt: new Date(),
-			settings: {
-				authMethod: 'iamUser',
-				region: 'eu-west-3',
-				accessKeyId: process.env.ASM_ACCESS_KEY_ID as string,
-				secretAccessKey: process.env.ASM_SECRET_ACCESS_KEY as string,
-			},
-		});
 
 		await this.initPruning();
 
