@@ -13,7 +13,7 @@ import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 export class EmbeddingsMistralCloud implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Embeddings Mistral Cloud',
+		displayName: 'Embeddings Mistral',
 		name: 'embeddingsMistralCloud',
 		icon: 'file:mistral.svg',
 		credentials: [
@@ -24,9 +24,9 @@ export class EmbeddingsMistralCloud implements INodeType {
 		],
 		group: ['transform'],
 		version: 1,
-		description: 'Use Embeddings Mistral Cloud',
+		description: 'Use Embeddings Mistral',
 		defaults: {
-			name: 'Embeddings Mistral Cloud',
+			name: 'Embeddings Mistral',
 		},
 
 		codex: {
@@ -49,7 +49,7 @@ export class EmbeddingsMistralCloud implements INodeType {
 		outputNames: ['Embeddings'],
 		requestDefaults: {
 			ignoreHttpStatusErrors: true,
-			baseURL: 'https://api.mistral.ai/v1',
+			baseURL: '={{$credentials.endpoint}}/v1',
 		},
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionType.AiVectorStore]),
@@ -145,6 +145,7 @@ export class EmbeddingsMistralCloud implements INodeType {
 
 		const embeddings = new MistralAIEmbeddings({
 			apiKey: credentials.apiKey as string,
+			endpoint: credentials.endpoint as string,
 			modelName,
 			...options,
 		});
