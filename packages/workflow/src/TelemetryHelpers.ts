@@ -13,6 +13,7 @@ import type {
 import { ApplicationError } from './errors/application.error';
 import {
 	AGENT_LANGCHAIN_NODE_TYPE,
+	CHAIN_LLM_LANGCHAIN_NODE_TYPE,
 	CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE,
 	HTTP_REQUEST_NODE_TYPE,
 	LANGCHAIN_CUSTOM_TOOLS,
@@ -274,6 +275,11 @@ export function generateNodesGraph(
 				nodeItem.prompts = {
 					description: (node.parameters?.description as string) || '',
 				};
+			}
+
+			if (node.type === CHAIN_LLM_LANGCHAIN_NODE_TYPE) {
+				nodeItem.prompts =
+					(((node.parameters?.messages as IDataObject) || {}).messageValues as IDataObject[]) || [];
 			}
 		}
 
