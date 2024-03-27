@@ -272,14 +272,11 @@ export const createLdapAuthIdentity = async (user: User, ldapId: string) => {
 };
 
 export const createLdapUserOnLocalDb = async (data: Partial<User>, ldapId: string) => {
-	const user = await Container.get(UserRepository).save(
-		{
-			password: randomPassword(),
-			role: 'global:member',
-			...data,
-		},
-		{ transaction: false },
-	);
+	const { user } = await Container.get(UserRepository).createUserWithProject({
+		password: randomPassword(),
+		role: 'global:member',
+		...data,
+	});
 	await createLdapAuthIdentity(user, ldapId);
 	return user;
 };
