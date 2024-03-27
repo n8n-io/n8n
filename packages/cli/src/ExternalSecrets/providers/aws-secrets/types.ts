@@ -7,7 +7,6 @@ export type SecretsNamesPage = {
 
 export type SecretsPage = {
 	NextToken?: string;
-	Errors: unknown[]; // @TODO
 	SecretValues: SecretValue[];
 };
 
@@ -17,7 +16,6 @@ type SecretName = {
 	LastAccessedDate: number;
 	LastChangedDate: number;
 	Name: 'string';
-	SecretVersionsToStages: unknown; // @TODO
 	Tags: string[];
 };
 
@@ -27,7 +25,6 @@ type SecretValue = {
 	Name: string;
 	SecretString: string;
 	VersionId: string;
-	VersionStages: unknown; // @TODO
 };
 
 export type Secret = {

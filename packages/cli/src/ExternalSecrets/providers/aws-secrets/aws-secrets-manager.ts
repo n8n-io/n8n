@@ -80,13 +80,6 @@ export class AwsSecretsManager implements SecretsProvider {
 		this.assertAuthType(context);
 
 		this.client = new AwsSecretsClient(context.settings);
-
-		// @TODO
-
-		const res = await this.client.fetchAllSecrets();
-
-		console.log('res', res);
-		console.log('res.length', res.length);
 	}
 
 	async test() {
