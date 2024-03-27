@@ -19,7 +19,7 @@ import { WorkflowStatistics } from './WorkflowStatistics';
 import { ExecutionMetadata } from './ExecutionMetadata';
 import { ExecutionData } from './ExecutionData';
 import { WorkflowHistory } from './WorkflowHistory';
-import { Project } from './Project';
+import { Project, UserSubscriber } from './Project';
 import { ProjectRelation } from './ProjectRelation';
 
 export const entities = {
@@ -45,4 +45,8 @@ export const entities = {
 	WorkflowHistory,
 	Project,
 	ProjectRelation,
+};
+
+export const subscribers = {
+	UserSubscriber,
 };

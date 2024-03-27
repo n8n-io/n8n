@@ -368,7 +368,8 @@ describe('GET /resolve-signup-token', () => {
 			.query({ inviteeId });
 
 		// cause inconsistent DB state
-		await Container.get(UserRepository).update(owner.id, { email: '' });
+		owner.email = '';
+		await Container.get(UserRepository).save(owner);
 		const fifth = await authOwnerAgent
 			.get('/resolve-signup-token')
 			.query({ inviterId: owner.id })

@@ -202,7 +202,13 @@ export const processUsers = async (
 					providerId: ldapId,
 				});
 				if (authIdentity?.userId) {
-					await transactionManager.update(User, { id: authIdentity?.userId }, { disabled: true });
+					const user = await transactionManager.findOneBy(User, { id: authIdentity.userId });
+
+					if (user) {
+						user.disabled = true;
+						await transactionManager.save(user);
+					}
+
 					await transactionManager.delete(AuthIdentity, { userId: authIdentity?.userId });
 				}
 			}),
@@ -281,7 +287,11 @@ export const createLdapUserOnLocalDb = async (data: Partial<User>, ldapId: strin
 export const updateLdapUserOnLocalDb = async (identity: AuthIdentity, data: Partial<User>) => {
 	const userId = identity?.user?.id;
 	if (userId) {
-		await Container.get(UserRepository).update({ id: userId }, data);
+		const user = await Container.get(UserRepository).findOneBy({ id: userId });
+
+		if (user) {
+			await Container.get(UserRepository).save({ id: userId, ...data }, { transaction: true });
+		}
 	}
 };
 

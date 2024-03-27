@@ -23,7 +23,13 @@ export class UserService {
 	) {}
 
 	async update(userId: string, data: Partial<User>) {
-		return await this.userRepository.update(userId, data);
+		const user = await this.userRepository.findOneBy({ id: userId });
+
+		if (user) {
+			await this.userRepository.save({ ...user, ...data }, { transaction: true });
+		}
+
+		return;
 	}
 
 	getManager() {
@@ -31,9 +37,15 @@ export class UserService {
 	}
 
 	async updateSettings(userId: string, newSettings: Partial<IUserSettings>) {
-		const { settings } = await this.userRepository.findOneOrFail({ where: { id: userId } });
+		const user = await this.userRepository.findOneOrFail({ where: { id: userId } });
 
-		return await this.userRepository.update(userId, { settings: { ...settings, ...newSettings } });
+		if (user.settings) {
+			Object.assign(user.settings, newSettings);
+		} else {
+			user.settings = newSettings;
+		}
+
+		await this.userRepository.save(user);
 	}
 
 	async toPublic(
