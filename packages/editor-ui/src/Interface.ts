@@ -296,6 +296,7 @@ export interface IWorkflowDb {
 	pinData?: IPinData;
 	sharedWithProjects?: ProjectSharingData[];
 	homeProject?: ProjectSharingData;
+	scopes?: Scope[];
 	versionId: string;
 	usedCredentials?: IUsedCredential[];
 	meta?: WorkflowMetadata;
@@ -343,6 +344,7 @@ export interface ICredentialsResponse extends ICredentialsEncrypted {
 	sharedWithProjects?: ProjectSharingData[];
 	homeProject?: ProjectSharingData;
 	currentUserHasAccess?: boolean;
+	scopes?: Scope[];
 }
 
 export interface ICredentialsBase {

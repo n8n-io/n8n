@@ -13,7 +13,9 @@ export const getAllProjects = async (context: IRestApiContext): Promise<ProjectL
 };
 
 export const getMyProjects = async (context: IRestApiContext): Promise<ProjectListItem[]> => {
-	const { data } = await get(context.baseUrl, '/projects/my-projects');
+	const { data } = await get(context.baseUrl, '/projects/my-projects', {
+		includeScopes: true,
+	});
 	return data;
 };
 
