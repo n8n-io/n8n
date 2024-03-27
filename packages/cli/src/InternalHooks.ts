@@ -487,23 +487,26 @@ export class InternalHooks {
 			workflowName: workflow.name,
 			metaData: runData?.data?.resultData?.metadata,
 		};
-		promises.push(
-			telemetryProperties.success
-				? this.eventBus.sendWorkflowEvent({
-						eventName: 'n8n.workflow.success',
-						payload: sharedEventPayload,
-				  })
-				: this.eventBus.sendWorkflowEvent({
-						eventName: 'n8n.workflow.failed',
-						payload: {
-							...sharedEventPayload,
-							lastNodeExecuted: runData?.data.resultData.lastNodeExecuted,
-							errorNodeType: telemetryProperties.error_node_type,
-							errorNodeId: telemetryProperties.error_node_id?.toString(),
-							errorMessage: telemetryProperties.error_message?.toString(),
-						},
-				  }),
-		);
+		let event;
+		if (telemetryProperties.success) {
+			event = this.eventBus.sendWorkflowEvent({
+				eventName: 'n8n.workflow.success',
+				payload: sharedEventPayload,
+			});
+		} else {
+			event = this.eventBus.sendWorkflowEvent({
+				eventName: 'n8n.workflow.failed',
+				payload: {
+					...sharedEventPayload,
+					lastNodeExecuted: runData?.data.resultData.lastNodeExecuted,
+					errorNodeType: telemetryProperties.error_node_type,
+					errorNodeId: telemetryProperties.error_node_id?.toString(),
+					errorMessage: telemetryProperties.error_message?.toString(),
+				},
+			});
+		}
+
+		promises.push(event);
 
 		void Promise.all([...promises, this.telemetry.trackWorkflowExecution(telemetryProperties)]);
 	}
