@@ -1,5 +1,6 @@
 import { AwsSecretsClient } from './aws-secrets-client';
 import { UnknownAuthTypeError } from '@/errors/unknown-auth-type.error';
+import { EXTERNAL_SECRETS_NAME_REGEX } from '@/ExternalSecrets/constants';
 import type { SecretsProvider, SecretsProviderState } from '@/Interfaces';
 import type { IDataObject, INodeProperties } from 'n8n-workflow';
 import type { AwsSecretsManagerContext } from './types';
@@ -51,7 +52,7 @@ export class AwsSecretsManager implements SecretsProvider {
 			placeholder: 'e.g. ACHXUQMBAQEVTE2RKMWP',
 			displayOptions: {
 				show: {
-					authMethod: ['token'],
+					authMethod: ['iamUser'],
 				},
 			},
 		},
@@ -65,7 +66,7 @@ export class AwsSecretsManager implements SecretsProvider {
 			typeOptions: { password: true },
 			displayOptions: {
 				show: {
-					authMethod: ['token'],
+					authMethod: ['iamUser'],
 				},
 			},
 		},
@@ -105,7 +106,9 @@ export class AwsSecretsManager implements SecretsProvider {
 	async update() {
 		const secrets = await this.client.fetchAllSecrets();
 
-		const newCache = Object.fromEntries(secrets.map((s) => [s.secretName, s.secretValue]));
+		const supportedSecrets = secrets.filter((s) => EXTERNAL_SECRETS_NAME_REGEX.test(s.secretName));
+
+		const newCache = Object.fromEntries(supportedSecrets.map((s) => [s.secretName, s.secretValue]));
 
 		// this.cachedSecrets = newCache; // @TODO: Type mismatch
 	}
