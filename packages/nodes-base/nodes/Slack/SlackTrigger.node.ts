@@ -41,36 +41,21 @@ export class SlackTrigger implements INodeType {
 			{
 				name: 'slackApi',
 				required: true,
-				displayOptions: {
-					show: {
-						authentication: ['accessToken'],
-					},
-				},
 			},
 		],
 		properties: [
+			{
+				displayName: 'authentication',
+				name: 'authentication',
+				type: 'hidden',
+				default: 'accessToken',
+			},
 			{
 				displayName:
 					'Set up a webhook in your Slack app to enable this node. <a href="https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.slacktrigger/#configure-a-webhook-in-slack" target="_blank">More info</a>',
 				name: 'notice',
 				type: 'notice',
 				default: '',
-			},
-			{
-				displayName: 'Authentication',
-				name: 'authentication',
-				type: 'options',
-				options: [
-					{
-						name: 'Access Token',
-						value: 'accessToken',
-					},
-					{
-						name: 'OAuth2',
-						value: 'oAuth2',
-					},
-				],
-				default: 'accessToken',
 			},
 			{
 				displayName: 'Trigger On',
@@ -93,19 +78,14 @@ export class SlackTrigger implements INodeType {
 						description: 'Triggers when a file is shared in your workspace',
 					},
 					{
-						name: 'New Channel Created',
-						value: 'channel_created',
-						description: 'Triggers whenever a new channel is created',
-					},
-					{
-						name: 'New Message Posted to a Channel',
-						value: 'messageWithChannel',
-						description: 'Triggers when a new message is posted to a specific channel',
-					},
-					{
-						name: 'New Message Posted to Any Channel',
+						name: 'New Message Posted to Channel',
 						value: 'message',
 						description: 'Triggers when a new message is posted to any channel',
+					},
+					{
+						name: 'New Public Channel Created',
+						value: 'channel_created',
+						description: 'Triggers whenever a new public channel is created',
 					},
 					{
 						name: 'New User',
@@ -133,6 +113,17 @@ export class SlackTrigger implements INodeType {
 				},
 			},
 			{
+				displayName: 'Watch Channel',
+				name: 'watchChannel',
+				type: 'boolean',
+				default: false,
+				displayOptions: {
+					show: {
+						eventFilter: ['message', 'reaction_added', 'file_share', 'app_mention'],
+					},
+				},
+			},
+			{
 				displayName: 'Channel',
 				name: 'channelId',
 				type: 'resourceLocator',
@@ -141,7 +132,7 @@ export class SlackTrigger implements INodeType {
 				description: 'The Slack channel to listen to events from',
 				displayOptions: {
 					show: {
-						eventFilter: ['messageWithChannel'],
+						watchChannel: [true],
 					},
 				},
 				modes: [
@@ -314,6 +305,7 @@ export class SlackTrigger implements INodeType {
 		const req = this.getRequestObject();
 		const options = this.getNodeParameter('options', {}) as IDataObject;
 		const binaryData: IBinaryKeyData = {};
+		const watchChannel = this.getNodeParameter('watchChannel', false) as boolean;
 
 		// Check if the request is a challenge request
 		if (req.body.type === 'url_verification') {
@@ -328,14 +320,13 @@ export class SlackTrigger implements INodeType {
 		// Check if the event type is in the filters
 		if (
 			req.body.event.type === 'message' &&
-			!filters.includes('messageWithChannel') &&
 			!filters.includes('file_share') &&
 			(!req.body.event.type || !filters.includes(req.body.event.type as string))
 		) {
 			return {};
 		}
 
-		if (filters.includes('messageWithChannel')) {
+		if (watchChannel) {
 			if (
 				req.body.event.channel !==
 				(this.getNodeParameter('channelId', {}, { extractValue: true }) as string)
@@ -354,17 +345,21 @@ export class SlackTrigger implements INodeType {
 		if (options.resolveIds) {
 			if (req.body.event.user) {
 				if (req.body.event.reaction_added) {
-					req.body.event.user_resolved = getUserInfo(req.body.event.user);
-					req.body.event.item_user_resolved = getUserInfo(req.body.event.item_user);
+					req.body.event.user_resolved = await getUserInfo.call(this, req.body.event.user);
+					req.body.event.item_user_resolved = await getUserInfo.call(
+						this,
+						req.body.event.item_user,
+					);
 				} else {
-					req.body.event.user_resolved = getUserInfo(req.body.event.user);
+					req.body.event.user_resolved = await getUserInfo.call(this, req.body.event.user);
 				}
 			}
-
 			if (req.body.event.channel || req.body.item.channel) {
-				req.body.event.channel_resolved = getChannelInfo(req.body.event.channel);
+				const channelResolved = await getChannelInfo.call(this, req.body.event.channel);
+				req.body.event.channel_resolved = channelResolved;
 			}
 		}
+
 		let responseData: IDataObject = {};
 
 		if (req.body.event.subtype === 'file_share' && filters.includes('file_share')) {

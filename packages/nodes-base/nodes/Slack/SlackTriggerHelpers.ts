@@ -2,7 +2,7 @@ import type { IHttpRequestOptions, IWebhookFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import { slackApiRequest } from './V2/GenericFunctions';
 
-export async function getUserInfo(this: any, userId: string) {
+export async function getUserInfo(this: IWebhookFunctions, userId: string): Promise<any> {
 	const user = await slackApiRequest.call(
 		this,
 		'GET',
@@ -16,7 +16,7 @@ export async function getUserInfo(this: any, userId: string) {
 	return user.name;
 }
 
-export async function getChannelInfo(this: any, channelId: string) {
+export async function getChannelInfo(this: IWebhookFunctions, channelId: string): Promise<any> {
 	const channel = await slackApiRequest.call(
 		this,
 		'GET',
@@ -26,7 +26,6 @@ export async function getChannelInfo(this: any, channelId: string) {
 			channel: channelId,
 		},
 	);
-
 	return channel.name;
 }
 

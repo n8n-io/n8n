@@ -88,6 +88,7 @@ export async function slackApiRequest(
 		Object.assign(response, { message_timestamp: response.ts });
 		delete response.ts;
 	}
+
 	return response;
 }
 
