@@ -19,6 +19,7 @@ export class AwsSecretsManager implements SecretsProvider {
 			name: 'notice',
 			type: 'notice',
 			default: '',
+			noDataExpression: true,
 		},
 		{
 			displayName: 'Region',
@@ -27,6 +28,7 @@ export class AwsSecretsManager implements SecretsProvider {
 			default: '',
 			required: true,
 			placeholder: 'e.g. eu-west-3',
+			noDataExpression: true,
 		},
 		{
 			displayName: 'Authentication Method',
@@ -42,6 +44,7 @@ export class AwsSecretsManager implements SecretsProvider {
 			],
 			default: 'iamUser',
 			required: true,
+			noDataExpression: true,
 		},
 		{
 			displayName: 'Access Key ID',
@@ -50,6 +53,7 @@ export class AwsSecretsManager implements SecretsProvider {
 			default: '',
 			required: true,
 			placeholder: 'e.g. ACHXUQMBAQEVTE2RKMWP',
+			noDataExpression: true,
 			displayOptions: {
 				show: {
 					authMethod: ['iamUser'],
@@ -64,6 +68,7 @@ export class AwsSecretsManager implements SecretsProvider {
 			required: true,
 			placeholder: 'e.g. cbmjrH/xNAjPwlQR3i/1HRSDD+esQX/Lan3gcmBc',
 			typeOptions: { password: true },
+			noDataExpression: true,
 			displayOptions: {
 				show: {
 					authMethod: ['iamUser'],
