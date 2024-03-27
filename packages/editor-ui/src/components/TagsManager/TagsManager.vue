@@ -17,9 +17,9 @@
 					@create="onCreate"
 					@update="onUpdate"
 					@delete="onDelete"
-					@disableCreate="onDisableCreate"
+					@disable-create="onDisableCreate"
 				/>
-				<NoTagsView v-else @enableCreate="onEnableCreate" />
+				<NoTagsView v-else @enable-create="onEnableCreate" />
 			</el-row>
 		</template>
 		<template #footer="{ close }">

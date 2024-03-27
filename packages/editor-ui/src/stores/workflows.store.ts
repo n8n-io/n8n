@@ -1,4 +1,5 @@
 import {
+	CHAT_TRIGGER_NODE_TYPE,
 	DEFAULT_NEW_WORKFLOW_NAME,
 	DUPLICATE_POSTFFIX,
 	EnterpriseEditionFeature,
@@ -76,13 +77,12 @@ import { dataPinningEventBus } from '@/event-bus';
 import { isObject } from '@/utils/objectUtils';
 import { getPairedItemsMapping } from '@/utils/pairedItemUtils';
 import { isJsonKeyObject, isEmpty, stringSizeInBytes } from '@/utils/typesUtils';
-import { makeRestApiRequest, unflattenExecutionData } from '@/utils/apiUtils';
+import { makeRestApiRequest, unflattenExecutionData, ResponseError } from '@/utils/apiUtils';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { getCredentialOnlyNodeTypeName } from '@/utils/credentialOnlyNodes';
-import { ResponseError } from '@/utils/apiUtils';
 import { i18n } from '@/plugins/i18n';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
@@ -1459,6 +1459,19 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 		appendChatMessage(message: string): void {
 			this.chatMessages.push(message);
+		},
+
+		checkIfNodeHasChatParent(nodeName: string): boolean {
+			const workflow = this.getCurrentWorkflow();
+			const parents = workflow.getParentNodes(nodeName, 'main');
+
+			const matchedChatNode = parents.find((parent) => {
+				const parentNodeType = this.getNodeByName(parent)?.type;
+
+				return parentNodeType === CHAT_TRIGGER_NODE_TYPE;
+			});
+
+			return !!matchedChatNode;
 		},
 	},
 });

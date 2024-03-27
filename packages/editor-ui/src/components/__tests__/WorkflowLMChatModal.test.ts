@@ -39,7 +39,7 @@ async function createPiniaWithAINodes(options = { withConnections: true, withAge
 							],
 						],
 					},
-			  }
+				}
 			: {},
 		active: true,
 		nodes: [
@@ -53,7 +53,7 @@ async function createPiniaWithAINodes(options = { withConnections: true, withAge
 							name: 'Agent',
 							type: AGENT_NODE_TYPE,
 						}),
-				  ]
+					]
 				: []),
 		],
 	});
@@ -105,7 +105,7 @@ describe('WorkflowLMChatModal', () => {
 
 		await waitFor(() =>
 			expect(document.querySelectorAll('.el-notification')[0]).toHaveTextContent(
-				'Missing AI node Chat only works when an AI agent or chain is connected to the chat trigger node',
+				'Missing AI node Chat only works when an AI agent or chain(except summarization chain) is connected to the chat trigger node',
 			),
 		);
 	});
@@ -120,7 +120,7 @@ describe('WorkflowLMChatModal', () => {
 
 		await waitFor(() =>
 			expect(document.querySelectorAll('.el-notification')[1]).toHaveTextContent(
-				'Missing AI node Chat only works when an AI agent or chain is connected to the chat trigger node',
+				'Missing AI node Chat only works when an AI agent or chain(except summarization chain) is connected to the chat trigger node',
 			),
 		);
 	});
@@ -139,7 +139,10 @@ describe('WorkflowLMChatModal', () => {
 
 	it('should send and display chat message', async () => {
 		const wrapper = renderComponent({
-			pinia: await createPiniaWithAINodes(),
+			pinia: await createPiniaWithAINodes({
+				withConnections: true,
+				withAgentNode: true,
+			}),
 		});
 
 		await waitFor(() =>

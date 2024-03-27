@@ -1575,9 +1575,9 @@ export class WorkflowExecute {
 							// array as this shows that the parent nodes executed but they did not have any
 							// data to pass on.
 							const inputsWithData = this.runExecutionData
-								.executionData!.waitingExecution[nodeName][firstRunIndex].main.map((data, index) =>
-									data === null ? null : index,
-								)
+								.executionData!.waitingExecution[
+									nodeName
+								][firstRunIndex].main.map((data, index) => (data === null ? null : index))
 								.filter((data) => data !== null);
 
 							if (requiredInputs !== undefined) {

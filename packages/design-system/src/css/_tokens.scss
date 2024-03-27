@@ -73,6 +73,9 @@
 
 	// Canvas
 	--color-canvas-background: var(--prim-gray-10);
+	--color-canvas-background-h: var(--prim-gray-h); // Used for connectors labels background
+	--color-canvas-background-s: 47%;
+	--color-canvas-background-l: 99%;
 	--color-canvas-dot: var(--prim-gray-120);
 	--color-canvas-read-only-line: var(--prim-gray-30);
 	--color-canvas-node-background: var(--prim-gray-0);
@@ -206,7 +209,7 @@
 	--color-ndv-droppable-parameter-background: var(--prim-color-secondary-alpha-010);
 	--color-ndv-droppable-parameter-active-background: var(--prim-color-alt-a-alpha-015);
 	--color-ndv-back-font: var(--prim-gray-0);
-	--color-ndv-ouptut-error-font: var(--prim-color-alt-c);
+	--color-ndv-output-error-message: var(--prim-color-alt-c);
 
 	// Notice
 	--color-notice-warning-border: var(--color-warning-tint-1);

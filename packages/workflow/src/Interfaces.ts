@@ -2341,6 +2341,7 @@ export interface ResourceMapperField {
 
 export type FieldType =
 	| 'string'
+	| 'string-alphanumeric'
 	| 'number'
 	| 'dateTime'
 	| 'boolean'
@@ -2454,6 +2455,8 @@ export interface IPublicApiSettings {
 
 export type ExpressionEvaluatorType = 'tmpl' | 'tournament';
 
+export type N8nAIProviderType = 'openai' | 'unknown';
+
 export interface IN8nUISettings {
 	endpointForm: string;
 	endpointFormTest: string;
@@ -2474,6 +2477,9 @@ export interface IN8nUISettings {
 	urlBaseWebhook: string;
 	urlBaseEditor: string;
 	versionCli: string;
+	authCookie: {
+		secure: boolean;
+	};
 	binaryDataMode: string;
 	releaseChannel: 'stable' | 'beta' | 'nightly' | 'dev';
 	n8nMetadata?: {
@@ -2561,6 +2567,8 @@ export interface IN8nUISettings {
 	};
 	ai: {
 		enabled: boolean;
+		provider: string;
+		errorDebugging: boolean;
 	};
 	workflowHistory: {
 		pruneTime: number;

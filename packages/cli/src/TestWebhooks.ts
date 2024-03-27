@@ -108,7 +108,7 @@ export class TestWebhooks implements IWebhookManager {
 				const executionMode = 'manual';
 				const executionId = await WebhookHelpers.executeWebhook(
 					workflow,
-					webhook!,
+					webhook,
 					workflowEntity,
 					workflowStartNode,
 					executionMode,

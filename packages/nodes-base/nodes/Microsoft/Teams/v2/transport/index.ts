@@ -36,7 +36,7 @@ export async function microsoftApiRequest(
 		return await this.helpers.requestOAuth2.call(this, 'microsoftTeamsOAuth2Api', options);
 	} catch (error) {
 		const errorOptions: IDataObject = {};
-		if (error.error && error.error.error) {
+		if (error.error?.error) {
 			const httpCode = error.statusCode;
 			error = error.error.error;
 			error.statusCode = httpCode;

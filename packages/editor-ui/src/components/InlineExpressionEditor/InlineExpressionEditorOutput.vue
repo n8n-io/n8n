@@ -1,3 +1,111 @@
+<script setup lang="ts">
+import { EditorView } from '@codemirror/view';
+import { EditorState, type SelectionRange } from '@codemirror/state';
+
+import { useI18n } from '@/composables/useI18n';
+import type { Plaintext, Resolved, Segment } from '@/types/expressions';
+import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
+import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue';
+import { outputTheme } from './theme';
+import InlineExpressionTip from './InlineExpressionTip.vue';
+
+interface InlineExpressionEditorOutputProps {
+	segments: Segment[];
+	unresolvedExpression: string;
+	hoveringItemNumber: number;
+	editorState?: EditorState;
+	selection?: SelectionRange;
+	isReadOnly?: boolean;
+	visible?: boolean;
+	noInputData?: boolean;
+}
+
+const props = withDefaults(defineProps<InlineExpressionEditorOutputProps>(), {
+	readOnly: false,
+	visible: false,
+	noInputData: false,
+	editorState: undefined,
+	selection: undefined,
+});
+
+const i18n = useI18n();
+
+const editor = ref<EditorView | null>(null);
+const root = ref<HTMLElement | null>(null);
+
+const resolvedExpression = computed(() => {
+	if (props.segments.length === 0) {
+		return i18n.baseText('parameterInput.emptyString');
+	}
+
+	return props.segments.reduce((acc, segment) => {
+		acc += segment.kind === 'resolvable' ? (segment.resolved as string) : segment.plaintext;
+		return acc;
+	}, '');
+});
+
+const plaintextSegments = computed<Plaintext[]>(() => {
+	if (props.segments.length === 0) {
+		return [
+			{
+				from: 0,
+				to: resolvedExpression.value.length - 1,
+				plaintext: resolvedExpression.value,
+				kind: 'plaintext',
+			},
+		];
+	}
+
+	return props.segments.filter((s): s is Plaintext => s.kind === 'plaintext');
+});
+
+const resolvedSegments = computed<Resolved[]>(() => {
+	let cursor = 0;
+
+	return props.segments
+		.map((segment) => {
+			segment.from = cursor;
+			cursor +=
+				segment.kind === 'plaintext'
+					? segment.plaintext.length
+					: segment.resolved
+						? (segment.resolved as string | number | boolean).toString().length
+						: 0;
+			segment.to = cursor;
+			return segment;
+		})
+		.filter((segment): segment is Resolved => segment.kind === 'resolvable');
+});
+
+watch(
+	() => props.segments,
+	() => {
+		if (!editor.value) return;
+
+		editor.value.dispatch({
+			changes: { from: 0, to: editor.value.state.doc.length, insert: resolvedExpression.value },
+		});
+
+		highlighter.addColor(editor.value as EditorView, resolvedSegments.value);
+		highlighter.removeColor(editor.value as EditorView, plaintextSegments.value);
+	},
+);
+
+onMounted(() => {
+	editor.value = new EditorView({
+		parent: root.value as HTMLElement,
+		state: EditorState.create({
+			doc: resolvedExpression.value,
+			extensions: [outputTheme(), EditorState.readOnly.of(true), EditorView.lineWrapping],
+		}),
+	});
+});
+
+onBeforeUnmount(() => {
+	editor.value?.destroy();
+});
+</script>
+
 <template>
 	<div :class="visible ? $style.dropdown : $style.hidden">
 		<n8n-text v-if="!noInputData" size="small" compact :class="$style.header">
@@ -7,132 +115,14 @@
 			<div ref="root" data-test-id="inline-expression-editor-output"></div>
 		</n8n-text>
 		<div :class="$style.footer">
-			<n8n-text size="small" compact>
-				{{ i18n.baseText('parameterInput.anythingInside') }}
-			</n8n-text>
-			<div :class="$style['expression-syntax-example']" v-text="`{{ }}`"></div>
-			<n8n-text size="small" compact>
-				{{ i18n.baseText('parameterInput.isJavaScript') }}
-			</n8n-text>
-			{{ ' ' }}
-			<n8n-link
-				:class="$style['learn-more']"
-				size="small"
-				underline
-				theme="text"
-				:to="expressionsDocsUrl"
-			>
-				{{ i18n.baseText('parameterInput.learnMore') }}
-			</n8n-link>
+			<InlineExpressionTip
+				:editor-state="editorState"
+				:selection="selection"
+				:unresolved-expression="unresolvedExpression"
+			/>
 		</div>
 	</div>
 </template>
-
-<script lang="ts">
-import { EditorView } from '@codemirror/view';
-import { EditorState } from '@codemirror/state';
-
-import { defineComponent } from 'vue';
-import type { PropType } from 'vue';
-
-import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
-import { outputTheme } from './theme';
-
-import type { Plaintext, Resolved, Segment } from '@/types/expressions';
-import { EXPRESSIONS_DOCS_URL } from '@/constants';
-import { useI18n } from '@/composables/useI18n';
-
-export default defineComponent({
-	name: 'InlineExpressionEditorOutput',
-	props: {
-		segments: {
-			type: Array as PropType<Segment[]>,
-			required: true,
-		},
-		isReadOnly: {
-			type: Boolean,
-			default: false,
-		},
-		visible: {
-			type: Boolean,
-			default: false,
-		},
-		noInputData: {
-			type: Boolean,
-			default: false,
-		},
-		hoveringItemNumber: {
-			type: Number,
-			required: true,
-		},
-	},
-	setup() {
-		const i18n = useI18n();
-
-		return {
-			i18n,
-		};
-	},
-	data() {
-		return {
-			editor: null as EditorView | null,
-			expressionsDocsUrl: EXPRESSIONS_DOCS_URL,
-		};
-	},
-	computed: {
-		resolvedExpression(): string {
-			return this.segments.reduce((acc, segment) => {
-				acc += segment.kind === 'resolvable' ? segment.resolved : segment.plaintext;
-				return acc;
-			}, '');
-		},
-		plaintextSegments(): Plaintext[] {
-			return this.segments.filter((s): s is Plaintext => s.kind === 'plaintext');
-		},
-		resolvedSegments(): Resolved[] {
-			let cursor = 0;
-
-			return this.segments
-				.map((segment) => {
-					segment.from = cursor;
-					cursor +=
-						segment.kind === 'plaintext'
-							? segment.plaintext.length
-							: segment.resolved
-							  ? segment.resolved.toString().length
-							  : 0;
-					segment.to = cursor;
-					return segment;
-				})
-				.filter((segment): segment is Resolved => segment.kind === 'resolvable');
-		},
-	},
-	watch: {
-		segments() {
-			if (!this.editor) return;
-
-			this.editor.dispatch({
-				changes: { from: 0, to: this.editor.state.doc.length, insert: this.resolvedExpression },
-			});
-
-			highlighter.addColor(this.editor, this.resolvedSegments);
-			highlighter.removeColor(this.editor, this.plaintextSegments);
-		},
-	},
-	mounted() {
-		this.editor = new EditorView({
-			parent: this.$refs.root as HTMLDivElement,
-			state: EditorState.create({
-				doc: this.resolvedExpression,
-				extensions: [outputTheme(), EditorState.readOnly.of(true), EditorView.lineWrapping],
-			}),
-		});
-	},
-	beforeUnmount() {
-		this.editor?.destroy();
-	},
-});
-</script>
 
 <style lang="scss" module>
 .hidden {
@@ -157,9 +147,12 @@ export default defineComponent({
 	}
 
 	.header,
-	.body,
-	.footer {
+	.body {
 		padding: var(--spacing-3xs);
+	}
+
+	.footer {
+		border-top: var(--border-base);
 	}
 
 	.header {
@@ -176,29 +169,6 @@ export default defineComponent({
 
 		&:first-child {
 			padding-top: var(--spacing-2xs);
-		}
-	}
-
-	.footer {
-		border-top: var(--border-base);
-		padding: var(--spacing-4xs);
-		padding-left: var(--spacing-2xs);
-		padding-top: 0;
-		line-height: var(--font-line-height-regular);
-		color: var(--color-text-base);
-
-		.expression-syntax-example {
-			display: inline-block;
-			font-size: var(--font-size-2xs);
-			height: var(--font-size-m);
-			background-color: var(--color-expression-syntax-example);
-			margin-left: var(--spacing-5xs);
-			margin-right: var(--spacing-5xs);
-		}
-
-		.learn-more {
-			line-height: 1;
-			white-space: nowrap;
 		}
 	}
 }
