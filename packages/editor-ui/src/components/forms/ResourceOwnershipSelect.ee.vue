@@ -4,7 +4,7 @@
 			:items="menuItems"
 			mode="tabs"
 			:model-value="value ? 'owner' : 'all'"
-			@update:modelValue="onSelectOwner"
+			@update:model-value="onSelectOwner"
 		/>
 	</div>
 </template>

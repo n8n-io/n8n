@@ -7,7 +7,7 @@
 				:maxlength="maxLength"
 				:autofocus="true"
 				:event-bus="inputBus"
-				@update:modelValue="onInput"
+				@update:model-value="onInput"
 				@esc="onEscape"
 				@blur="onBlur"
 				@enter="submit"

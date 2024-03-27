@@ -98,8 +98,8 @@ export const useCanvasStore = defineStore('canvas', () => {
 		const sidebarWidth = isDemo.value
 			? 0
 			: uiStore.sidebarMenuCollapsed
-			  ? SIDEBAR_WIDTH
-			  : SIDEBAR_WIDTH_EXPANDED;
+				? SIDEBAR_WIDTH
+				: SIDEBAR_WIDTH_EXPANDED;
 
 		const relativeX = position[0] - sidebarWidth;
 		const relativeY = isDemo.value

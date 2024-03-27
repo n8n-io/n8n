@@ -45,7 +45,7 @@ const actionDropdownOptions = computed(() => [
 					value: 'reload',
 					label: i18n.baseText('settings.externalSecrets.card.actionDropdown.reload'),
 				},
-		  ]
+			]
 		: []),
 ]);
 

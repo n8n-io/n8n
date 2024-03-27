@@ -17,7 +17,7 @@
 				:last-item="index === workflows.length - 1 && !loading"
 				:use-workflow-button="useWorkflowButton"
 				@click="(e) => onCardClick(e, workflow.id)"
-				@useWorkflow="(e) => onUseWorkflow(e, workflow.id)"
+				@use-workflow="(e) => onUseWorkflow(e, workflow.id)"
 			/>
 			<div v-if="infiniteScrollEnabled" ref="loader" />
 			<div v-if="loading" data-test-id="templates-loading-container">
