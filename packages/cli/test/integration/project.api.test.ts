@@ -124,6 +124,9 @@ describe('GET /projects/', () => {
 
 describe('GET /projects/my-projects', () => {
 	test('member should get all projects they are apart of', async () => {
+		//
+		// ARRANGE
+		//
 		const [testUser1, testUser2, testUser3] = await Promise.all([
 			createUser(),
 			createUser(),
@@ -140,28 +143,29 @@ describe('GET /projects/my-projects', () => {
 			getPersonalProject(testUser3),
 		]);
 
-		const memberAgent = testServer.authAgentFor(testUser1);
+		//
+		// ACT
+		//
+		const resp = await testServer.authAgentFor(testUser1).get('/projects/my-projects').expect(200);
+		const respProjects: Project[] = resp.body.data;
 
-		const resp = await memberAgent.get('/projects/my-projects');
-		expect(resp.status).toBe(200);
-		const respProjects = resp.body.data as Project[];
+		//
+		// ASSERT
+		//
 		expect(respProjects.length).toBe(2);
 
-		expect(
-			[personalProject2, personalProject3].every((v) => {
-				const p = respProjects.find((p) => p.id === v.id);
-				if (!p) {
-					return true;
-				}
-				return false;
-			}),
-		).toBe(true);
-		expect(respProjects.find((p) => p.id === personalProject1.id)).not.toBeUndefined();
-		expect(respProjects.find((p) => p.id === teamProject1.id)).not.toBeUndefined();
-		expect(respProjects.find((p) => p.id === teamProject2.id)).toBeUndefined();
+		expect(respProjects).toContainEqual(expect.objectContaining({ id: teamProject1.id }));
+		expect(respProjects).not.toContainEqual(expect.objectContaining({ id: teamProject2.id }));
+
+		expect(respProjects).toContainEqual(expect.objectContaining({ id: personalProject1.id }));
+		expect(respProjects).not.toContainEqual(expect.objectContaining({ id: personalProject2.id }));
+		expect(respProjects).not.toContainEqual(expect.objectContaining({ id: personalProject3.id }));
 	});
 
 	test('owner should get all projects they are apart of', async () => {
+		//
+		// ARRANGE
+		//
 		const [ownerUser, testUser1, testUser2, testUser3] = await Promise.all([
 			createOwner(),
 			createUser(),
@@ -180,25 +184,24 @@ describe('GET /projects/my-projects', () => {
 			getPersonalProject(testUser3),
 		]);
 
-		const memberAgent = testServer.authAgentFor(ownerUser);
+		//
+		// ACT
+		//
+		const resp = await testServer.authAgentFor(ownerUser).get('/projects/my-projects').expect(200);
+		const respProjects: Project[] = resp.body.data;
 
-		const resp = await memberAgent.get('/projects/my-projects');
-		expect(resp.status).toBe(200);
-		const respProjects = resp.body.data as Project[];
-		expect(respProjects.length).toBe(2);
+		//
+		// ASSERT
+		//
+		expect(respProjects.length).toBe(3);
 
-		expect(
-			[personalProject1, personalProject2, personalProject3].every((v) => {
-				const p = respProjects.find((p) => p.id === v.id);
-				if (!p) {
-					return true;
-				}
-				return false;
-			}),
-		).toBe(true);
-		expect(respProjects.find((p) => p.id === ownerProject.id)).not.toBeUndefined();
-		expect(respProjects.find((p) => p.id === teamProject1.id)).toBeUndefined();
-		expect(respProjects.find((p) => p.id === teamProject2.id)).not.toBeUndefined();
+		expect(respProjects).toContainEqual(expect.objectContaining({ id: ownerProject.id }));
+		expect(respProjects).not.toContainEqual(expect.objectContaining({ id: personalProject1.id }));
+		expect(respProjects).not.toContainEqual(expect.objectContaining({ id: personalProject2.id }));
+		expect(respProjects).not.toContainEqual(expect.objectContaining({ id: personalProject3.id }));
+
+		expect(respProjects).toContainEqual(expect.objectContaining({ id: teamProject1.id }));
+		expect(respProjects).toContainEqual(expect.objectContaining({ id: teamProject2.id }));
 	});
 });
 

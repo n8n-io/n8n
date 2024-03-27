@@ -200,8 +200,14 @@ export class ProjectService {
 	}
 
 	async getProjectRelationsForUser(user: User): Promise<ProjectRelation[]> {
+		const where: Array<FindOptionsWhere<ProjectRelation>> = [{ userId: user.id }];
+
+		if (user.hasGlobalScope('project:read')) {
+			where.push({ project: { type: 'team' } });
+		}
+
 		return await this.projectRelationRepository.find({
-			where: { userId: user.id },
+			where,
 			relations: ['project'],
 		});
 	}
