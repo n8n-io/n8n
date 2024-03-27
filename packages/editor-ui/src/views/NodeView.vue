@@ -545,7 +545,7 @@ export default defineComponent({
 						this.resetWorkspace();
 						this.uiStore.stateIsDirty = previousDirtyState;
 					}
-					await Promise.all([this.loadCredentials(), this.initView()]);
+					await this.initView();
 					this.canvasStore.stopLoading();
 					if (this.blankRedirect) {
 						this.blankRedirect = false;
@@ -753,6 +753,12 @@ export default defineComponent({
 		isReadOnlyRoute() {
 			return this.$route?.meta?.readOnlyCanvas === true;
 		},
+		currentProjectId(): string | undefined {
+			const projectId = this.workflowsStore.getWorkflowById(this.currentWorkflow)?.homeProject?.id;
+			return (
+				projectId ?? this.projectsStore.currentProjectId ?? this.projectsStore.personalProject?.id
+			);
+		},
 	},
 	data() {
 		return {
@@ -811,7 +817,6 @@ export default defineComponent({
 				? []
 				: [
 						this.loadActiveWorkflows(),
-						this.loadCredentials(),
 						this.loadCredentialTypes(),
 						this.loadVariables(),
 						this.loadSecrets(),
@@ -3628,6 +3633,7 @@ export default defineComponent({
 					await this.newWorkflow();
 				}
 			}
+			await this.loadCredentials();
 			this.historyStore.reset();
 			this.uiStore.nodeViewInitialized = true;
 			document.addEventListener('keydown', this.keyDown);
@@ -4553,7 +4559,7 @@ export default defineComponent({
 			await this.credentialsStore.fetchCredentialTypes(true);
 		},
 		async loadCredentials(): Promise<void> {
-			await this.credentialsStore.fetchAllCredentials();
+			await this.credentialsStore.fetchAllCredentials(this.currentProjectId);
 		},
 		async loadVariables(): Promise<void> {
 			await this.environmentsStore.fetchAllVariables();
@@ -4921,14 +4927,14 @@ export default defineComponent({
 		}
 
 		try {
-			await Promise.all([this.loadCredentials(), this.loadVariables(), this.tagsStore.fetchAll()]);
+			await Promise.all([this.loadVariables(), this.tagsStore.fetchAll()]);
 
 			if (workflowId !== null && !this.uiStore.stateIsDirty) {
 				const workflow: IWorkflowDb | undefined =
 					await this.workflowsStore.fetchWorkflow(workflowId);
 				if (workflow) {
 					this.titleSet(workflow.name, 'IDLE');
-					await this.openWorkflow(workflow);
+					await Promise.all([this.openWorkflow(workflow), this.loadCredentials()]);
 				}
 			}
 		} catch (error) {
