@@ -1,7 +1,18 @@
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type { IDataObject, IWebhookFunctions, INodeExecutionData } from 'n8n-workflow';
 
-export const getResponseCode = (parameters: IDataObject) => {
+type WebhookParameters = {
+	httpMethod: string;
+	responseMode: string;
+	responseData: string;
+	responseCode?: number; //typeVersion <= 1.1
+	options?: {
+		responseCode?: number;
+		noResponseBody?: boolean;
+	};
+};
+
+export const getResponseCode = (parameters: WebhookParameters) => {
 	if (parameters.responseCode) {
 		return parameters.responseCode;
 	}
@@ -18,7 +29,7 @@ export const getResponseCode = (parameters: IDataObject) => {
 	return 200;
 };
 
-export const getResponseData = (parameters: IDataObject) => {
+export const getResponseData = (parameters: WebhookParameters) => {
 	const { responseData, responseMode, options } = parameters;
 	if (responseData) return responseData;
 
@@ -32,8 +43,8 @@ export const getResponseData = (parameters: IDataObject) => {
 	return undefined;
 };
 
-export const configuredOutputs = (parameters: IDataObject) => {
-	const httpMethod = parameters.httpMethod as string;
+export const configuredOutputs = (parameters: WebhookParameters) => {
+	const httpMethod = parameters.httpMethod;
 
 	return [
 		{
@@ -94,7 +105,7 @@ export const isIpWhitelisted = (
 
 export const checkResponseModeConfiguration = (context: IWebhookFunctions) => {
 	const responseMode = context.getNodeParameter('responseMode', 'onReceived') as string;
-	const connectedNodes = context.getConnectedNodes(context.getNode().name, 'children');
+	const connectedNodes = context.getChildNodes(context.getNode().name);
 
 	const isRespondToWebhookConnected = connectedNodes.some(
 		(node) => node.type === 'n8n-nodes-base.respondToWebhook',

@@ -290,7 +290,7 @@ export class RespondToWebhook implements INodeType {
 		const nodeVersion = this.getNode().typeVersion;
 
 		if (nodeVersion >= 1.1) {
-			const connectedNodes = this.getConnectedNodes(this.getNode().name, 'parents');
+			const connectedNodes = this.getParentNodes(this.getNode().name);
 			if (!connectedNodes.some((node) => node.type === 'n8n-nodes-base.webhook')) {
 				throw new NodeOperationError(
 					this.getNode(),

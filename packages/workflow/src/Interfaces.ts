@@ -813,6 +813,12 @@ export interface RequestHelperFunctions {
 	): Promise<any>;
 }
 
+export type NodeTypeAndVersion = {
+	name: string;
+	type: string;
+	typeVersion: number;
+};
+
 export interface FunctionsBase {
 	logger: Logger;
 	getCredentials(type: string, itemIndex?: number): Promise<ICredentialDataDecryptedObject>;
@@ -824,14 +830,8 @@ export interface FunctionsBase {
 	getRestApiUrl(): string;
 	getInstanceBaseUrl(): string;
 	getInstanceId(): string;
-	getConnectedNodes(
-		nodeName: string,
-		dirrection: 'children' | 'parents',
-	): Array<{
-		name: string;
-		type: string;
-		typeVersion: number;
-	}>;
+	getChildNodes(nodeName: string): NodeTypeAndVersion[];
+	getParentNodes(nodeName: string): NodeTypeAndVersion[];
 	getMode?: () => WorkflowExecuteMode;
 	getActivationMode?: () => WorkflowActivateMode;
 
