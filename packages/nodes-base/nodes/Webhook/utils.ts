@@ -1,5 +1,5 @@
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
-import type { IDataObject, IWebhookFunctions, INodeExecutionData } from 'n8n-workflow';
+import type { IWebhookFunctions, INodeExecutionData, IDataObject } from 'n8n-workflow';
 
 type WebhookParameters = {
 	httpMethod: string;
@@ -7,7 +7,13 @@ type WebhookParameters = {
 	responseData: string;
 	responseCode?: number; //typeVersion <= 1.1
 	options?: {
-		responseCode?: number;
+		responseData?: string;
+		responseCode?: {
+			values?: {
+				responseCode: number;
+				customCode?: number;
+			};
+		};
 		noResponseBody?: boolean;
 	};
 };
@@ -16,15 +22,15 @@ export const getResponseCode = (parameters: WebhookParameters) => {
 	if (parameters.responseCode) {
 		return parameters.responseCode;
 	}
-	const { responseCode } = parameters.options as IDataObject;
-	if (responseCode && (responseCode as IDataObject).values) {
-		const { resposeCode, customCode } = (responseCode as IDataObject).values as IDataObject;
+	const responseCodeOptions = parameters.options;
+	if (responseCodeOptions?.responseCode?.values) {
+		const { responseCode, customCode } = responseCodeOptions.responseCode.values;
 
 		if (customCode) {
 			return customCode;
 		}
 
-		return resposeCode;
+		return responseCode;
 	}
 	return 200;
 };
@@ -34,11 +40,11 @@ export const getResponseData = (parameters: WebhookParameters) => {
 	if (responseData) return responseData;
 
 	if (responseMode === 'onReceived') {
-		const data = (options as IDataObject)?.responseData as string;
+		const data = options?.responseData;
 		if (data) return data;
 	}
 
-	if ((options as IDataObject)?.noResponseBody) return 'noData';
+	if (options?.noResponseBody) return 'noData';
 
 	return undefined;
 };
