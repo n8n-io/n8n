@@ -15,7 +15,7 @@ import type {
 import { IsBoolean, IsEmail, IsIn, IsOptional, IsString, Length } from 'class-validator';
 import { NoXss } from '@db/utils/customValidators';
 import type { PublicUser, SecretsProvider, SecretsProviderState } from '@/Interfaces';
-import { AssignableRole, type User } from '@db/entities/User';
+import { AssignableRole, GlobalRole, type User } from '@db/entities/User';
 import type { Variables } from '@db/entities/Variables';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
@@ -561,6 +561,9 @@ export declare namespace ProjectRequest {
 		{
 			includeScopes?: boolean;
 		}
+	>;
+	type GetMyProjectsResponse = Array<
+		Project & { role: ProjectRole | GlobalRole; scopes?: Scope[] }
 	>;
 
 	type GetPersonalProject = AuthenticatedRequest<{}, Project>;

@@ -197,10 +197,15 @@ describe('GET /projects/my-projects', () => {
 			createUser(),
 			createUser(),
 		]);
-		const [teamProject1, teamProject2, teamProject3] = await Promise.all([
+		const [teamProject1, teamProject2, teamProject3, teamProject4] = await Promise.all([
+			// owner has no relation ship
 			createTeamProject(undefined, testUser1),
+			// owner is admin
 			createTeamProject(undefined, ownerUser),
+			// owner is viewer
 			createTeamProject(undefined, testUser2),
+			// this project has no relationship at all
+			createTeamProject(),
 		]);
 
 		await linkUserToProject(ownerUser, teamProject3, 'project:viewer');
@@ -226,7 +231,7 @@ describe('GET /projects/my-projects', () => {
 		//
 		// ASSERT
 		//
-		expect(respProjects.length).toBe(4);
+		expect(respProjects.length).toBe(5);
 
 		expect(respProjects.find((p) => p.id === ownerProject.id)).toMatchObject({
 			role: 'project:personalOwner',
@@ -259,6 +264,10 @@ describe('GET /projects/my-projects', () => {
 					...Container.get(RoleService).getRoleScopes('global:owner'),
 				]),
 			].sort(),
+		});
+		expect(respProjects.find((p) => p.id === teamProject4.id)).toMatchObject({
+			role: 'global:owner',
+			scopes: [...new Set([...Container.get(RoleService).getRoleScopes('global:owner')])].sort(),
 		});
 
 		expect(respProjects).not.toContainEqual(expect.objectContaining({ id: personalProject1.id }));

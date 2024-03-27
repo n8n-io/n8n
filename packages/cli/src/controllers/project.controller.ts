@@ -12,17 +12,18 @@ import {
 import { ProjectRequest } from '@/requests';
 import { ProjectService } from '@/services/project.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { ProjectRole } from '@/databases/entities/ProjectRelation';
 import { combineScopes } from '@n8n/permissions';
-import type { GlobalScopes, ScopeLevels, Scope } from '@n8n/permissions';
+import type { Scope } from '@n8n/permissions';
 import { RoleService } from '@/services/role.service';
-import type { GlobalRole } from '@/databases/entities/User';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
+import { In, Not } from '@n8n/typeorm';
 
 @RestController('/projects')
 export class ProjectController {
 	constructor(
-		private projectsService: ProjectService,
-		private roleService: RoleService,
+		private readonly projectsService: ProjectService,
+		private readonly roleService: RoleService,
+		private readonly projectRepository: ProjectRepository,
 	) {}
 
 	@Get('/')
@@ -42,52 +43,67 @@ export class ProjectController {
 	@Get('/my-projects')
 	async getMyProjects(
 		req: ProjectRequest.GetMyProjects,
-	): Promise<Array<Project & { role: ProjectRole | GlobalRole; scopes?: Scope[] }>> {
+	): Promise<ProjectRequest.GetMyProjectsResponse> {
 		const relations = await this.projectsService.getProjectRelationsForUser(req.user);
+		const otherTeamProject = req.user.hasGlobalScope('project:read')
+			? await this.projectRepository.findBy({
+					type: 'team',
+					id: Not(In(relations.map((pr) => pr.projectId))),
+			  })
+			: [];
 
-		const resultHash: Record<
-			string,
-			Project & { role: ProjectRole | GlobalRole; scopes?: Scope[] }
-		> = {};
+		const results: ProjectRequest.GetMyProjectsResponse = [];
 
 		for (const pr of relations) {
-			const result = resultHash[pr.projectId] ?? {
-				...pr.project,
-				// If the user has the global `project:read` scope then they may not
-				// own this relationship in that case we use the global user role
-				// instead of the relation role, which is for another user.
-				role: pr.userId === req.user.id ? pr.role : req.user.role,
-				scopes: req.query.includeScopes ? [] : undefined,
-			};
-			resultHash[pr.projectId] = result;
-
-			// If the user has a relationship to the project then that one trumps the
-			// global role of the user
-			if (pr.userId === req.user.id) {
-				result.role = pr.role;
-			}
+			const result: ProjectRequest.GetMyProjectsResponse[number] = Object.assign(
+				this.projectRepository.create(pr.project),
+				{
+					role: pr.role,
+					scopes: req.query.includeScopes ? ([] as Scope[]) : undefined,
+				},
+			);
 
 			if (result.scopes) {
-				const scopes: GlobalScopes | ScopeLevels =
-					pr.userId === req.user.id
-						? {
-								global: this.roleService.getRoleScopes(req.user.role),
-								project: this.roleService.getRoleScopes(pr.role),
-						  }
-						: { global: this.roleService.getRoleScopes(req.user.role) };
-
-				result.scopes.push(...combineScopes(scopes));
+				result.scopes.push(
+					...combineScopes({
+						global: this.roleService.getRoleScopes(req.user.role),
+						project: this.roleService.getRoleScopes(pr.role),
+					}),
+				);
 			}
+
+			results.push(result);
 		}
 
-		// Deduplicate the scopes
-		for (const result of Object.values(resultHash)) {
+		for (const project of otherTeamProject) {
+			const result: ProjectRequest.GetMyProjectsResponse[number] = Object.assign(
+				this.projectRepository.create(project),
+				{
+					// If the user has the global `project:read` scope then they may not
+					// own this relationship in that case we use the global user role
+					// instead of the relation role, which is for another user.
+					role: req.user.role,
+					scopes: req.query.includeScopes ? [] : undefined,
+				},
+			);
+
+			if (result.scopes) {
+				result.scopes.push(
+					...combineScopes({ global: this.roleService.getRoleScopes(req.user.role) }),
+				);
+			}
+
+			results.push(result);
+		}
+
+		// Deduplicate and sort scopes
+		for (const result of results) {
 			if (result.scopes) {
 				result.scopes = [...new Set(result.scopes)].sort();
 			}
 		}
 
-		return Object.values(resultHash);
+		return results;
 	}
 
 	@Get('/personal')
