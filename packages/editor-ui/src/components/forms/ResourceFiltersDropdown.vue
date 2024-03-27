@@ -21,7 +21,7 @@
 				:features="[EnterpriseEditionFeature.Sharing]"
 			>
 				<n8n-input-label
-					:label="$locale.baseText('projects')"
+					:label="$locale.baseText('forms.resourceFiltersDropdown.origin')"
 					:bold="false"
 					size="small"
 					color="text-base"
