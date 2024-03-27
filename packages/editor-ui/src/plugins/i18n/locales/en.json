@@ -706,6 +706,7 @@
 	"forgotPassword.tooManyRequests": "You’ve reached the password reset limit. Please try again in a few minutes.",
 	"forms.resourceFiltersDropdown.filters": "Filters",
 	"forms.resourceFiltersDropdown.origin": "Origin",
+	"forms.resourceFiltersDropdown.origin.placeholder": "Filter by origin",
 	"forms.resourceFiltersDropdown.reset": "Reset all",
 	"generic.oauth1Api": "OAuth1 API",
 	"generic.oauth2Api": "OAuth2 API",

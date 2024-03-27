@@ -31,6 +31,7 @@
 					v-model="selectedProject"
 					class="pt-2xs"
 					:projects="projectsStore.projects"
+					:placeholder="$locale.baseText('forms.resourceFiltersDropdown.origin.placeholder')"
 					@update:model-value="setKeyValue('homeProject', ($event as ProjectSharingData).id)"
 				/>
 			</enterprise-edition>
