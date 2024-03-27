@@ -544,8 +544,12 @@ describe('DELETE /users/:id', () => {
 
 	test('should fail to delete if user to delete is transferee', async () => {
 		const member = await createMember();
+		const personalProject = await getPersonalProject(member);
 
-		await ownerAgent.delete(`/users/${member.id}`).query({ transferId: member.id }).expect(400);
+		await ownerAgent
+			.delete(`/users/${member.id}`)
+			.query({ transferId: personalProject.id })
+			.expect(400);
 
 		const user = await Container.get(UserRepository).findOneBy({ id: member.id });
 

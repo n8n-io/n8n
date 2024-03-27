@@ -155,12 +155,6 @@ export class UsersController {
 
 		const { transferId } = req.query;
 
-		if (transferId === idToDelete) {
-			throw new BadRequestError(
-				'Request to delete a user failed because the user to delete and the transferee are the same user',
-			);
-		}
-
 		const userToDelete = await this.userRepository.findOneBy({ id: idToDelete });
 
 		if (!userToDelete) {
@@ -172,6 +166,12 @@ export class UsersController {
 		const personalProjectToDelete = await this.projectRepository.getPersonalProjectForUserOrFail(
 			userToDelete.id,
 		);
+
+		if (transferId === personalProjectToDelete.id) {
+			throw new BadRequestError(
+				'Request to delete a user failed because the user to delete and the transferee are the same user',
+			);
+		}
 
 		const telemetryData: ITelemetryUserDeletionData = {
 			user_id: req.user.id,
