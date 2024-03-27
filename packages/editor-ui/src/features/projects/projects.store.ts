@@ -25,7 +25,7 @@ export const useProjectsStore = defineStore('projects', () => {
 			(route.query?.projectId as string | undefined) ||
 			currentProject.value?.id,
 	);
-
+	const isProjectHome = computed(() => route.path.includes('home'));
 	const personalProjects = computed(() => projects.value.filter((p) => p.type === 'personal'));
 	const teamProjects = computed(() => projects.value.filter((p) => p.type === 'team'));
 
@@ -93,6 +93,7 @@ export const useProjectsStore = defineStore('projects', () => {
 		personalProject,
 		currentProject,
 		currentProjectId,
+		isProjectHome,
 		personalProjects,
 		teamProjects,
 		setCurrentProject,

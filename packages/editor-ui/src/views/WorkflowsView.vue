@@ -160,6 +160,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useTagsStore } from '@/stores/tags.store';
+import { useProjectsStore } from '@/features/projects/projects.store';
 import ProjectTabs from '@/features/projects/components/ProjectTabs.vue';
 
 type IResourcesListLayoutInstance = InstanceType<typeof ResourcesListLayout>;
@@ -192,8 +193,7 @@ const WorkflowsView = defineComponent({
 		return {
 			filters: {
 				search: '',
-				ownedBy: '',
-				sharedWith: '',
+				homeProject: '',
 				status: StatusFilter.ALL as string | boolean,
 				tags: [] as string[],
 			},
@@ -209,6 +209,7 @@ const WorkflowsView = defineComponent({
 			useCredentialsStore,
 			useSourceControlStore,
 			useTagsStore,
+			useProjectsStore,
 		),
 		readOnlyEnv(): boolean {
 			return this.sourceControlStore.preferences.branchReadOnly;
@@ -250,8 +251,8 @@ const WorkflowsView = defineComponent({
 			void this.initialize();
 		},
 	},
-	mounted() {
-		this.setFiltersFromQueryString();
+	async mounted() {
+		await this.setFiltersFromQueryString();
 
 		void this.usersStore.showPersonalizationSurvey();
 
@@ -337,32 +338,27 @@ const WorkflowsView = defineComponent({
 				query.tags = this.filters.tags.join(',');
 			}
 
-			if (this.filters.ownedBy) {
-				query.ownedBy = this.filters.ownedBy;
-			}
-
-			if (this.filters.sharedWith) {
-				query.sharedWith = this.filters.sharedWith;
+			if (this.filters.homeProject) {
+				query.homeProject = this.filters.homeProject;
 			}
 
 			void this.$router.replace({
 				query: Object.keys(query).length ? query : undefined,
 			});
 		},
-		isValidUserId(userId: string) {
-			return Object.keys(this.usersStore.users).includes(userId);
+		isValidProjectId(projectId: string) {
+			return this.projectsStore.projects.some((project) => project.id === projectId);
 		},
-		setFiltersFromQueryString() {
-			const { tags, status, search, ownedBy, sharedWith } = this.$route.query;
+		async setFiltersFromQueryString() {
+			const { tags, status, search, homeProject } = this.$route.query;
 
 			const filtersToApply: { [key: string]: string | string[] | boolean } = {};
 
-			if (ownedBy && typeof ownedBy === 'string' && this.isValidUserId(ownedBy)) {
-				filtersToApply.ownedBy = ownedBy;
-			}
-
-			if (sharedWith && typeof sharedWith === 'string' && this.isValidUserId(sharedWith)) {
-				filtersToApply.sharedWith = sharedWith;
+			if (homeProject && typeof homeProject === 'string') {
+				await this.projectsStore.getAllProjects();
+				if (this.isValidProjectId(homeProject)) {
+					filtersToApply.homeProject = homeProject;
+				}
 			}
 
 			if (search && typeof search === 'string') {

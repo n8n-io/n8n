@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 import type {
 	ProjectListItem,
@@ -13,6 +13,7 @@ const locale = useI18n();
 type Props = {
 	projects: ProjectListItem[];
 	readonly?: boolean;
+	placeholder?: string;
 };
 
 const props = defineProps<Props>();
@@ -25,7 +26,13 @@ const filter = ref('');
 const projectRoles = ref<Array<{ label: string; value: ProjectRole }>>([
 	{ value: 'project:editor', label: locale.baseText('projects.settings.role.editor') },
 ]);
-
+const selectPlaceholder = computed(
+	() =>
+		props.placeholder ??
+		(Array.isArray(model.value)
+			? locale.baseText('projects.sharing.placeholder')
+			: locale.baseText('projects.sharing.placeholder.single')),
+);
 const filteredProjects = computed(() =>
 	props.projects
 		.filter((project) =>
@@ -49,7 +56,6 @@ const onProjectSelected = (projectId: string) => {
 
 	if (Array.isArray(model.value)) {
 		model.value = [...model.value, project];
-		selectedProject.value = '';
 	} else {
 		model.value = project;
 	}
@@ -69,19 +75,27 @@ const onRoleAction = (project: ProjectSharingData, role: string) => {
 		model.value = model.value.filter((p) => p.id !== project.id);
 	}
 };
+
+watch(
+	() => model.value,
+	() => {
+		if (model.value === null || Array.isArray(model.value)) {
+			selectedProject.value = '';
+		} else {
+			selectedProject.value = model.value.id;
+		}
+	},
+	{ immediate: true },
+);
 </script>
 <template>
 	<div>
 		<N8nSelect
-			v-model="selectedProject"
+			:model-value="selectedProject"
 			data-test-id="project-sharing-select"
 			:filterable="true"
 			:filter-method="setFilter"
-			:placeholder="
-				Array.isArray(model)
-					? locale.baseText('projects.sharing.placeholder')
-					: locale.baseText('projects.sharing.placeholder.single')
-			"
+			:placeholder="selectPlaceholder"
 			:default-first-option="true"
 			:no-data-text="locale.baseText('projects.sharing.noMatchingProjects')"
 			size="large"

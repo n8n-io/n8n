@@ -40,7 +40,7 @@
 								:keys="filterKeys"
 								:reset="resetFilters"
 								:model-value="filtersModel"
-								:shareable="false"
+								:shareable="shareable"
 								@update:modelValue="$emit('update:filters', $event)"
 								@update:filtersLength="onUpdateFiltersLength"
 							>
@@ -102,14 +102,14 @@
 				<slot name="preamble" />
 
 				<div
-					v-if="filteredAndSortedSubviewResources.length > 0"
+					v-if="filteredAndSortedResources.length > 0"
 					ref="listWrapperRef"
 					:class="$style.listWrapper"
 				>
 					<n8n-recycle-scroller
 						v-if="type === 'list'"
 						data-test-id="resources-list"
-						:items="filteredAndSortedSubviewResources"
+						:items="filteredAndSortedResources"
 						:item-size="typeProps.itemSize"
 						item-key="id"
 					>
@@ -125,7 +125,7 @@
 						data-test-id="resources-table"
 						:class="$style.datatable"
 						:columns="typeProps.columns"
-						:rows="filteredAndSortedSubviewResources"
+						:rows="filteredAndSortedResources"
 						:current-page="currentPage"
 						:rows-per-page="rowsPerPage"
 						@update:currentPage="setCurrentPage"
@@ -139,23 +139,6 @@
 
 				<n8n-text v-else color="text-base" size="medium" data-test-id="resources-list-empty">
 					{{ i18n.baseText(`${resourceKey}.noResults`) }}
-					<template v-if="shouldSwitchToAllSubview">
-						<span v-if="!filtersModel.search">
-							({{ i18n.baseText(`${resourceKey}.noResults.switchToShared.preamble`) }}
-							<n8n-link @click="setOwnerSubview(false)">
-								{{ i18n.baseText(`${resourceKey}.noResults.switchToShared.link`) }} </n8n-link
-							>)
-						</span>
-
-						<span v-else>
-							({{ i18n.baseText(`${resourceKey}.noResults.withSearch.switchToShared.preamble`) }}
-							<n8n-link @click="setOwnerSubview(false)">
-								{{
-									i18n.baseText(`${resourceKey}.noResults.withSearch.switchToShared.link`)
-								}} </n8n-link
-							>)
-						</span>
-					</template>
 				</n8n-text>
 
 				<slot name="postamble" />
@@ -169,7 +152,7 @@ import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 
-import type { IUser } from '@/Interface';
+import type { ProjectSharingData } from '@/features/projects/projects.types';
 import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
 import PageViewLayoutList from '@/components/layouts/PageViewLayoutList.vue';
 import { EnterpriseEditionFeature } from '@/constants';
@@ -185,15 +168,12 @@ export interface IResource {
 	name: string;
 	updatedAt: string;
 	createdAt: string;
-	ownedBy?: Partial<IUser>;
-	sharedWith?: Array<Partial<IUser>>;
+	homeProject?: ProjectSharingData;
 }
 
 interface IFilters {
 	search: string;
-	ownedBy: string;
-	sharedWith: string;
-
+	homeProject: string;
 	[key: string]: boolean | string | string[];
 }
 
@@ -230,10 +210,11 @@ export default defineComponent({
 		},
 		filters: {
 			type: Object,
-			default: (): IFilters => ({ search: '', ownedBy: '', sharedWith: '' }),
+			default: (): IFilters => ({ search: '', homeProject: '' }),
 		},
 		additionalFiltersHandler: {
 			type: Function,
+			default: () => true,
 		},
 		shareable: {
 			type: Boolean,
@@ -274,7 +255,6 @@ export default defineComponent({
 	data() {
 		return {
 			loading: true,
-			isOwnerSubview: false,
 			sortBy: this.sortOptions[0],
 			hasFilters: false,
 			filtersModel: { ...this.filters },
@@ -286,38 +266,17 @@ export default defineComponent({
 	},
 	computed: {
 		...mapStores(useSettingsStore, useUsersStore),
-		subviewResources(): IResource[] {
-			if (!this.shareable) {
-				return this.resources as IResource[];
-			}
-
-			return (this.resources as IResource[]).filter((resource) => {
-				if (
-					this.isOwnerSubview &&
-					this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)
-				) {
-					return !!(resource.ownedBy && resource.ownedBy.id === this.usersStore.currentUser?.id);
-				}
-
-				return true;
-			});
-		},
 		filterKeys(): string[] {
 			return Object.keys(this.filtersModel);
 		},
-		filteredAndSortedSubviewResources(): IResource[] {
-			const filtered: IResource[] = this.subviewResources.filter((resource: IResource) => {
+		filteredAndSortedResources(): IResource[] {
+			const filtered: IResource[] = this.resources.filter((resource: IResource) => {
 				let matches = true;
 
-				if (this.filtersModel.ownedBy) {
-					matches =
-						matches && !!(resource.ownedBy && resource.ownedBy.id === this.filtersModel.ownedBy);
-				}
-
-				if (this.filtersModel.sharedWith) {
+				if (this.filtersModel.homeProject) {
 					matches =
 						matches &&
-						!!resource.sharedWith?.find((sharee) => sharee.id === this.filtersModel.sharedWith);
+						!!(resource.homeProject && resource.homeProject.id === this.filtersModel.homeProject);
 				}
 
 				if (this.filtersModel.search) {
@@ -356,30 +315,13 @@ export default defineComponent({
 				}
 			});
 		},
-		resourcesNotOwned(): IResource[] {
-			return (this.resources as IResource[]).filter((resource) => {
-				return resource.ownedBy && resource.ownedBy.id !== this.usersStore.currentUser?.id;
-			});
-		},
-		shouldSwitchToAllSubview(): boolean {
-			return !this.hasFilters && this.isOwnerSubview && this.resourcesNotOwned.length > 0;
-		},
 	},
 	watch: {
-		isOwnerSubview() {
-			this.sendSubviewTelemetry();
-		},
 		filters(value) {
 			this.filtersModel = value;
 		},
-		'filtersModel.ownedBy'(value) {
-			if (value) {
-				this.setOwnerSubview(false);
-			}
-			this.sendFiltersTelemetry('ownedBy');
-		},
-		'filtersModel.sharedWith'() {
-			this.sendFiltersTelemetry('sharedWith');
+		'filtersModel.homeProject'() {
+			this.sendFiltersTelemetry('homeProject');
 		},
 		'filtersModel.search'() {
 			void this.callDebounced(
@@ -437,22 +379,8 @@ export default defineComponent({
 				(this.$refs.search as SearchRef).focus();
 			}
 		},
-		setOwnerSubview(active: boolean) {
-			this.isOwnerSubview = active;
-		},
-		getTelemetrySubview(): string {
-			return this.i18n.baseText(
-				`${this.resourceKey as IResourceKeyType}.menu.${this.isOwnerSubview ? 'my' : 'all'}`,
-			);
-		},
-		sendSubviewTelemetry() {
-			this.$telemetry.track(`User changed ${this.resourceKey} sub view`, {
-				sub_view: this.getTelemetrySubview(),
-			});
-		},
 		sendSortingTelemetry() {
 			this.$telemetry.track(`User changed sorting in ${this.resourceKey} list`, {
-				sub_view: this.getTelemetrySubview(),
 				sorting: this.sortBy,
 			});
 		},
@@ -481,9 +409,8 @@ export default defineComponent({
 			this.$telemetry.track(`User set filters in ${this.resourceKey} list`, {
 				filters_set: filtersSet,
 				filter_values: filterValues,
-				sub_view: this.getTelemetrySubview(),
-				[`${this.resourceKey}_total_in_view`]: this.subviewResources.length,
-				[`${this.resourceKey}_after_filtering`]: this.filteredAndSortedSubviewResources.length,
+				[`${this.resourceKey}_total_in_view`]: this.resources.length,
+				[`${this.resourceKey}_after_filtering`]: this.filteredAndSortedResources.length,
 			});
 		},
 		onUpdateFiltersLength(length: number) {
