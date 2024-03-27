@@ -15,7 +15,7 @@ type SecretName = {
 	CreatedDate: number;
 	LastAccessedDate: number;
 	LastChangedDate: number;
-	Name: 'string';
+	Name: string;
 	Tags: string[];
 };
 
