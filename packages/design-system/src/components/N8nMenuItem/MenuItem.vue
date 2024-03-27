@@ -19,7 +19,10 @@
 					:icon="item.icon"
 					:size="item.customIconSize || 'large'"
 				/>
-				<span :class="$style.label">{{ item.label }}</span>
+				<span v-if="!compact" :class="$style.label">{{ item.label }}</span>
+				<span v-if="!item.icon && compact" :class="[$style.label, $style.compactLabel]">{{
+					getInitials(item.label)
+				}}</span>
 			</template>
 			<n8n-menu-item
 				v-for="child in availableChildren"
@@ -61,7 +64,10 @@
 						:icon="item.icon"
 						:size="item.customIconSize || 'large'"
 					/>
-					<span :class="$style.label">{{ item.label }}</span>
+					<span v-if="!compact" :class="$style.label">{{ item.label }}</span>
+					<span v-if="!item.icon && compact" :class="[$style.label, $style.compactLabel]">{{
+						getInitials(item.label)
+					}}</span>
 					<N8nTooltip
 						v-if="item.secondaryIcon"
 						:placement="item.secondaryIcon?.tooltip?.placement || 'right'"
@@ -142,6 +148,16 @@ const isItemActive = (item: IMenuItem): boolean => {
 	const hasActiveChild =
 		Array.isArray(item.children) && item.children.some((child) => isActive(child));
 	return isActive(item) || hasActiveChild;
+};
+
+const getInitials = (label: string): string => {
+	const words = label.split(' ');
+
+	if (words.length === 1) {
+		return words[0].substring(0, 2);
+	} else {
+		return words[0].charAt(0) + words[1].charAt(0);
+	}
 };
 </script>
 
@@ -239,6 +255,11 @@ const isItemActive = (item: IMenuItem): boolean => {
 	margin: 0 !important;
 	border-radius: var(--border-radius-base) !important;
 	overflow: hidden;
+
+	&.compact {
+		padding: var(--spacing-2xs) 0 !important;
+		justify-content: center;
+	}
 }
 
 .icon {
@@ -265,6 +286,10 @@ const isItemActive = (item: IMenuItem): boolean => {
 	user-select: none;
 }
 
+.compactLabel {
+	text-overflow: unset;
+}
+
 .item + .item {
 	margin-top: 8px !important;
 }
@@ -276,9 +301,6 @@ const isItemActive = (item: IMenuItem): boolean => {
 		visibility: visible !important;
 		width: initial !important;
 		height: initial !important;
-	}
-	.label {
-		display: none;
 	}
 	.secondaryIcon {
 		display: none;
