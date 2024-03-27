@@ -625,7 +625,7 @@ export class Workflow {
 			connectionsByIndex = this.connectionsByDestinationNode[nodeName][type][connectionIndex];
 			// eslint-disable-next-line @typescript-eslint/no-loop-func
 			connectionsByIndex.forEach((connection) => {
-				if (checkedNodes!.includes(connection.node)) {
+				if (checkedNodes.includes(connection.node)) {
 					// Node got checked already before
 					return;
 				}

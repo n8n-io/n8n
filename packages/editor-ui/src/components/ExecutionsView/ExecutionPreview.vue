@@ -191,11 +191,11 @@ export default defineComponent({
 				? {
 						text: this.$locale.baseText('executionsList.debug.button.copyToEditor'),
 						type: 'secondary',
-				  }
+					}
 				: {
 						text: this.$locale.baseText('executionsList.debug.button.debugInEditor'),
 						type: 'primary',
-				  };
+					};
 		},
 	},
 	methods: {

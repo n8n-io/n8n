@@ -56,6 +56,7 @@ export const useNDVStore = defineStore(STORES.NDV, {
 		},
 		isMappingOnboarded: useStorage(LOCAL_STORAGE_MAPPING_IS_ONBOARDED).value === 'true',
 		isAutocompleteOnboarded: useStorage(LOCAL_STORAGE_AUTOCOMPLETE_IS_ONBOARDED).value === 'true',
+		highlightDraggables: false,
 	}),
 	getters: {
 		activeNode(): INodeUi | null {
@@ -129,7 +130,7 @@ export const useNDVStore = defineStore(STORES.NDV, {
 		ndvInputBranchIndex(): number | undefined {
 			return this.input.branch;
 		},
-		isDNVDataEmpty() {
+		isNDVDataEmpty() {
 			return (panel: 'input' | 'output'): boolean => this[panel].data.isEmpty;
 		},
 		isInputParentOfActiveNode(): boolean {
@@ -251,6 +252,9 @@ export const useNDVStore = defineStore(STORES.NDV, {
 		setAutocompleteOnboarded() {
 			this.isAutocompleteOnboarded = true;
 			useStorage(LOCAL_STORAGE_AUTOCOMPLETE_IS_ONBOARDED).value = 'true';
+		},
+		setHighlightDraggables(highlight: boolean) {
+			this.highlightDraggables = highlight;
 		},
 		updateNodeParameterIssues(issues: INodeIssues): void {
 			const workflowsStore = useWorkflowsStore();

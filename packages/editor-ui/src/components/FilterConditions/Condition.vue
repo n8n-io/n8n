@@ -171,7 +171,7 @@ const onBlur = (): void => {
 				<OperatorSelect
 					:selected="`${operator.type}:${operator.operation}`"
 					:read-only="readOnly"
-					@operatorChange="onOperatorChange"
+					@operator-change="onOperatorChange"
 				></OperatorSelect>
 			</template>
 			<template v-if="!operator.singleValue" #right="{ breakpoint }">

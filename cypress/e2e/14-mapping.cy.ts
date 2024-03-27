@@ -255,6 +255,7 @@ describe('Data mapping', () => {
 		ndv.actions.typeIntoParameterInput('value', 'delete me');
 
 		ndv.actions.typeIntoParameterInput('name', 'test');
+		ndv.getters.parameterInput('name').find('input').blur();
 
 		ndv.actions.typeIntoParameterInput('value', 'fun');
 		ndv.actions.clearParameterInput('value'); // keep focus on param

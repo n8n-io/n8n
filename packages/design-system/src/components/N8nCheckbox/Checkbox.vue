@@ -6,7 +6,7 @@
 		:disabled="disabled"
 		:indeterminate="indeterminate"
 		:model-value="modelValue"
-		@update:modelValue="onUpdateModelValue"
+		@update:model-value="onUpdateModelValue"
 	>
 		<slot></slot>
 		<N8nInputLabel

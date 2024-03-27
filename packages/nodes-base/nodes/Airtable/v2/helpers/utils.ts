@@ -1,6 +1,6 @@
 import { ApplicationError, type IDataObject, type NodeApiError } from 'n8n-workflow';
-import type { UpdateRecord } from './interfaces';
 import set from 'lodash/set';
+import type { UpdateRecord } from './interfaces';
 
 export function removeIgnored(data: IDataObject, ignore: string | string[]) {
 	if (ignore) {
