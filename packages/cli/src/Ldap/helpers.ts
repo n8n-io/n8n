@@ -202,7 +202,13 @@ export const processUsers = async (
 					providerId: ldapId,
 				});
 				if (authIdentity?.userId) {
-					await transactionManager.update(User, { id: authIdentity?.userId }, { disabled: true });
+					const user = await transactionManager.findOneBy(User, { id: authIdentity.userId });
+
+					if (user) {
+						user.disabled = true;
+						await transactionManager.save(user);
+					}
+
 					await transactionManager.delete(AuthIdentity, { userId: authIdentity?.userId });
 				}
 			}),

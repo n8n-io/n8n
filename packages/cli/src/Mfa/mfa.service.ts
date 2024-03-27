@@ -25,10 +25,16 @@ export class MfaService {
 			secret,
 			recoveryCodes,
 		);
-		return await this.userRepository.update(userId, {
-			mfaSecret: encryptedSecret,
-			mfaRecoveryCodes: encryptedRecoveryCodes,
-		});
+
+		const user = await this.userRepository.findOneBy({ id: userId });
+		if (user) {
+			Object.assign(user, {
+				mfaSecret: encryptedSecret,
+				mfaRecoveryCodes: encryptedRecoveryCodes,
+			});
+
+			await this.userRepository.save(user);
+		}
 	}
 
 	public encryptSecretAndRecoveryCodes(rawSecret: string, rawRecoveryCodes: string[]) {
@@ -56,7 +62,12 @@ export class MfaService {
 	}
 
 	public async enableMfa(userId: string) {
-		await this.userRepository.update(userId, { mfaEnabled: true });
+		const user = await this.userRepository.findOneBy({ id: userId });
+		if (user) {
+			user.mfaEnabled = true;
+
+			await this.userRepository.save(user);
+		}
 	}
 
 	public encryptRecoveryCodes(mfaRecoveryCodes: string[]) {
@@ -64,10 +75,15 @@ export class MfaService {
 	}
 
 	public async disableMfa(userId: string) {
-		await this.userRepository.update(userId, {
-			mfaEnabled: false,
-			mfaSecret: null,
-			mfaRecoveryCodes: [],
-		});
+		const user = await this.userRepository.findOneBy({ id: userId });
+
+		if (user) {
+			Object.assign(user, {
+				mfaEnabled: false,
+				mfaSecret: null,
+				mfaRecoveryCodes: [],
+			});
+			await this.userRepository.save(user);
+		}
 	}
 }

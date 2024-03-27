@@ -63,7 +63,6 @@ export class UserSubscriber implements EntitySubscriberInterface<User> {
 						const message = "Could not update the personal project's name";
 						Container.get(Logger).warn(message, event.entity);
 						const exception = new ApplicationError(message);
-						// TODO: not sure this is the right way to report something custom to sentry
 						captureException(exception, event.entity);
 						return;
 					}
@@ -86,7 +85,6 @@ export class UserSubscriber implements EntitySubscriberInterface<User> {
 					const message = "Could not update the personal project's name";
 					Container.get(Logger).warn(message, event.entity);
 					const exception = new ApplicationError(message);
-					// TODO: not sure this is the right way to report something custom to sentry
 					captureException(exception, event.entity);
 				}
 			}
