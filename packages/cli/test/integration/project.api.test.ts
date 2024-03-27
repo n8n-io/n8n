@@ -24,6 +24,9 @@ import { randomCredentialPayload } from './shared/random';
 import { getWorkflowById } from '@/PublicApi/v1/handlers/workflows/workflows.service';
 import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/sharedCredentials.repository';
+import type { GlobalRole } from '@/databases/entities/User';
+import type { Scope } from '@n8n/permissions';
+import { RoleService } from '@/services/role.service';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['project'],
@@ -134,7 +137,7 @@ describe('GET /projects/my-projects', () => {
 		]);
 		const [teamProject1, teamProject2] = await Promise.all([
 			createTeamProject(undefined, testUser1),
-			createTeamProject(),
+			createTeamProject(undefined, testUser2),
 		]);
 
 		const [personalProject1, personalProject2, personalProject3] = await Promise.all([
@@ -146,20 +149,42 @@ describe('GET /projects/my-projects', () => {
 		//
 		// ACT
 		//
-		const resp = await testServer.authAgentFor(testUser1).get('/projects/my-projects').expect(200);
-		const respProjects: Project[] = resp.body.data;
+		const resp = await testServer
+			.authAgentFor(testUser1)
+			.get('/projects/my-projects')
+			.query({ includeScopes: true })
+			.expect(200);
+		const respProjects: Array<Project & { role: ProjectRole | GlobalRole; scopes?: Scope[] }> =
+			resp.body.data;
 
 		//
 		// ASSERT
 		//
 		expect(respProjects.length).toBe(2);
 
-		expect(respProjects).toContainEqual(expect.objectContaining({ id: teamProject1.id }));
-		expect(respProjects).not.toContainEqual(expect.objectContaining({ id: teamProject2.id }));
+		expect(respProjects.find((p) => p.id === personalProject1.id)).toMatchObject({
+			role: 'project:personalOwner',
+			scopes: [
+				...new Set([
+					...Container.get(RoleService).getRoleScopes('project:personalOwner'),
+					...Container.get(RoleService).getRoleScopes('global:member'),
+				]),
+			].sort(),
+		});
 
-		expect(respProjects).toContainEqual(expect.objectContaining({ id: personalProject1.id }));
+		expect(respProjects.find((p) => p.id === teamProject1.id)).toMatchObject({
+			role: 'project:admin',
+			scopes: [
+				...new Set([
+					...Container.get(RoleService).getRoleScopes('project:admin'),
+					...Container.get(RoleService).getRoleScopes('global:member'),
+				]),
+			].sort(),
+		});
+
 		expect(respProjects).not.toContainEqual(expect.objectContaining({ id: personalProject2.id }));
 		expect(respProjects).not.toContainEqual(expect.objectContaining({ id: personalProject3.id }));
+		expect(respProjects).not.toContainEqual(expect.objectContaining({ id: teamProject2.id }));
 	});
 
 	test('owner should get all projects they are apart of', async () => {
@@ -172,10 +197,13 @@ describe('GET /projects/my-projects', () => {
 			createUser(),
 			createUser(),
 		]);
-		const [teamProject1, teamProject2] = await Promise.all([
+		const [teamProject1, teamProject2, teamProject3] = await Promise.all([
 			createTeamProject(undefined, testUser1),
 			createTeamProject(undefined, ownerUser),
+			createTeamProject(undefined, testUser2),
 		]);
+
+		await linkUserToProject(ownerUser, teamProject3, 'project:viewer');
 
 		const [ownerProject, personalProject1, personalProject2, personalProject3] = await Promise.all([
 			getPersonalProject(ownerUser),
@@ -187,21 +215,55 @@ describe('GET /projects/my-projects', () => {
 		//
 		// ACT
 		//
-		const resp = await testServer.authAgentFor(ownerUser).get('/projects/my-projects').expect(200);
-		const respProjects: Project[] = resp.body.data;
+		const resp = await testServer
+			.authAgentFor(ownerUser)
+			.get('/projects/my-projects')
+			.query({ includeScopes: true })
+			.expect(200);
+		const respProjects: Array<Project & { role: ProjectRole | GlobalRole; scopes?: Scope[] }> =
+			resp.body.data;
 
 		//
 		// ASSERT
 		//
-		expect(respProjects.length).toBe(3);
+		expect(respProjects.length).toBe(4);
 
-		expect(respProjects).toContainEqual(expect.objectContaining({ id: ownerProject.id }));
+		expect(respProjects.find((p) => p.id === ownerProject.id)).toMatchObject({
+			role: 'project:personalOwner',
+			scopes: [
+				...new Set([
+					...Container.get(RoleService).getRoleScopes('project:personalOwner'),
+					...Container.get(RoleService).getRoleScopes('global:owner'),
+				]),
+			].sort(),
+		});
+
+		expect(respProjects.find((p) => p.id === teamProject1.id)).toMatchObject({
+			role: 'global:owner',
+			scopes: [...new Set(Container.get(RoleService).getRoleScopes('global:owner'))].sort(),
+		});
+		expect(respProjects.find((p) => p.id === teamProject2.id)).toMatchObject({
+			role: 'project:admin',
+			scopes: [
+				...new Set([
+					...Container.get(RoleService).getRoleScopes('project:admin'),
+					...Container.get(RoleService).getRoleScopes('global:owner'),
+				]),
+			].sort(),
+		});
+		expect(respProjects.find((p) => p.id === teamProject3.id)).toMatchObject({
+			role: 'project:viewer',
+			scopes: [
+				...new Set([
+					...Container.get(RoleService).getRoleScopes('project:viewer'),
+					...Container.get(RoleService).getRoleScopes('global:owner'),
+				]),
+			].sort(),
+		});
+
 		expect(respProjects).not.toContainEqual(expect.objectContaining({ id: personalProject1.id }));
 		expect(respProjects).not.toContainEqual(expect.objectContaining({ id: personalProject2.id }));
 		expect(respProjects).not.toContainEqual(expect.objectContaining({ id: personalProject3.id }));
-
-		expect(respProjects).toContainEqual(expect.objectContaining({ id: teamProject1.id }));
-		expect(respProjects).toContainEqual(expect.objectContaining({ id: teamProject2.id }));
 	});
 });
 
