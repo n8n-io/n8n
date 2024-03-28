@@ -18,7 +18,10 @@ import type {
 import { RoutingNode } from '@/RoutingNode';
 import { Workflow } from '@/Workflow';
 
+import * as utilsModule from '@/utils';
+
 import * as Helpers from './Helpers';
+import { applyDeclarativeNodeOptionParameters } from '@/NodeHelpers';
 
 const postReceiveFunction1 = async function (
 	this: IExecuteSingleFunctions,
@@ -39,6 +42,23 @@ const preSendFunction1 = async function (
 };
 
 describe('RoutingNode', () => {
+	test('applyDeclarativeNodeOptionParameters', () => {
+		const nodeTypes = Helpers.NodeTypes();
+		const nodeType = nodeTypes.getByNameAndVersion('test.setMulti');
+
+		applyDeclarativeNodeOptionParameters(nodeType);
+
+		const options = nodeType.description.properties.find(
+			(property) => property.name === 'requestOptions',
+		);
+
+		expect(options?.options).toBeDefined;
+
+		const optionNames = options!.options!.map((option) => option.name);
+
+		expect(optionNames).toEqual(['batching', 'allowUnauthorizedCerts', 'proxy', 'timeout']);
+	});
+
 	describe('getRequestOptionsFromParameters', () => {
 		const tests: Array<{
 			description: string;
@@ -724,6 +744,11 @@ describe('RoutingNode', () => {
 		const tests: Array<{
 			description: string;
 			input: {
+				specialTestOptions?: {
+					applyDeclarativeNodeOptionParameters?: boolean;
+					numberOfItems?: number;
+					sleepCalls?: number[][];
+				};
 				nodeType: {
 					properties?: INodeProperties[];
 					credentials?: INodeCredentialDescription[];
@@ -779,6 +804,7 @@ describe('RoutingNode', () => {
 									},
 									baseURL: 'http://127.0.0.1:5678',
 									returnFullResponse: true,
+									timeout: 300000,
 								},
 							},
 						},
@@ -828,6 +854,7 @@ describe('RoutingNode', () => {
 									},
 									baseURL: 'http://127.0.0.1:5678',
 									returnFullResponse: true,
+									timeout: 300000,
 								},
 							},
 						},
@@ -883,6 +910,7 @@ describe('RoutingNode', () => {
 									},
 									baseURL: 'http://127.0.0.1:5678',
 									returnFullResponse: true,
+									timeout: 300000,
 								},
 							},
 						},
@@ -938,6 +966,7 @@ describe('RoutingNode', () => {
 									},
 									baseURL: 'http://127.0.0.1:5678',
 									returnFullResponse: true,
+									timeout: 300000,
 								},
 							},
 						},
@@ -995,6 +1024,154 @@ describe('RoutingNode', () => {
 										offset: 10,
 									},
 									returnFullResponse: true,
+									timeout: 300000,
+								},
+							},
+						},
+					],
+				],
+			},
+			{
+				description: 'multiple parameters, from applyDeclarativeNodeOptionParameters',
+				input: {
+					specialTestOptions: {
+						applyDeclarativeNodeOptionParameters: true,
+						numberOfItems: 5,
+						sleepCalls: [[500], [500]],
+					},
+					node: {
+						parameters: {
+							requestOptions: {
+								allowUnauthorizedCerts: true,
+								batching: {
+									batch: {
+										batchSize: 2,
+										batchInterval: 500,
+									},
+								},
+								proxy: 'http://user:password@127.0.0.1:8080',
+								timeout: 123,
+							},
+						},
+					},
+					nodeType: {
+						properties: [],
+					},
+				},
+				output: [
+					[
+						{
+							json: {
+								headers: {},
+								statusCode: 200,
+								requestOptions: {
+									qs: {},
+									headers: {},
+									proxy: {
+										auth: {
+											username: 'user',
+											password: 'password',
+										},
+										host: '127.0.0.1',
+										protocol: 'http',
+										port: 8080,
+									},
+									body: {},
+									returnFullResponse: true,
+									skipSslCertificateValidation: true,
+									timeout: 123,
+								},
+							},
+						},
+						{
+							json: {
+								headers: {},
+								statusCode: 200,
+								requestOptions: {
+									qs: {},
+									headers: {},
+									proxy: {
+										auth: {
+											username: 'user',
+											password: 'password',
+										},
+										host: '127.0.0.1',
+										protocol: 'http',
+										port: 8080,
+									},
+									body: {},
+									returnFullResponse: true,
+									skipSslCertificateValidation: true,
+									timeout: 123,
+								},
+							},
+						},
+						{
+							json: {
+								headers: {},
+								statusCode: 200,
+								requestOptions: {
+									qs: {},
+									headers: {},
+									proxy: {
+										auth: {
+											username: 'user',
+											password: 'password',
+										},
+										host: '127.0.0.1',
+										protocol: 'http',
+										port: 8080,
+									},
+									body: {},
+									returnFullResponse: true,
+									skipSslCertificateValidation: true,
+									timeout: 123,
+								},
+							},
+						},
+						{
+							json: {
+								headers: {},
+								statusCode: 200,
+								requestOptions: {
+									qs: {},
+									headers: {},
+									proxy: {
+										auth: {
+											username: 'user',
+											password: 'password',
+										},
+										host: '127.0.0.1',
+										protocol: 'http',
+										port: 8080,
+									},
+									body: {},
+									returnFullResponse: true,
+									skipSslCertificateValidation: true,
+									timeout: 123,
+								},
+							},
+						},
+						{
+							json: {
+								headers: {},
+								statusCode: 200,
+								requestOptions: {
+									qs: {},
+									headers: {},
+									proxy: {
+										auth: {
+											username: 'user',
+											password: 'password',
+										},
+										host: '127.0.0.1',
+										protocol: 'http',
+										port: 8080,
+									},
+									body: {},
+									returnFullResponse: true,
+									skipSslCertificateValidation: true,
+									timeout: 123,
 								},
 							},
 						},
@@ -1431,6 +1608,7 @@ describe('RoutingNode', () => {
 									addedIn: 'preSendFunction1',
 								},
 								returnFullResponse: true,
+								timeout: 300000,
 							},
 						},
 					],
@@ -1526,6 +1704,7 @@ describe('RoutingNode', () => {
 											baseURL: 'http://127.0.0.1:5678',
 											url: '/test-url',
 											returnFullResponse: true,
+											timeout: 300000,
 										},
 									},
 								},
@@ -1706,15 +1885,12 @@ describe('RoutingNode', () => {
 		const runExecutionData: IRunExecutionData = { resultData: { runData: {} } };
 		const additionalData = Helpers.WorkflowExecuteAdditionalData();
 		const nodeType = nodeTypes.getByNameAndVersion(baseNode.type);
+		applyDeclarativeNodeOptionParameters(nodeType);
+
+		const propertiesOriginal = nodeType.description.properties;
 
 		const inputData: ITaskDataConnections = {
-			main: [
-				[
-					{
-						json: {},
-					},
-				],
-			],
+			main: [[]],
 		};
 
 		for (const testData of tests) {
@@ -1727,6 +1903,9 @@ describe('RoutingNode', () => {
 				};
 
 				nodeType.description = { ...testData.input.nodeType } as INodeTypeDescription;
+				if (testData.input.specialTestOptions?.applyDeclarativeNodeOptionParameters) {
+					nodeType.description.properties = propertiesOriginal;
+				}
 
 				const workflow = new Workflow({
 					nodes: workflowData.nodes,
@@ -1781,6 +1960,22 @@ describe('RoutingNode', () => {
 					},
 				};
 
+				const numberOfItems = testData.input.specialTestOptions?.numberOfItems ?? 1;
+				if (!inputData.main[0] || inputData.main[0].length !== numberOfItems) {
+					inputData.main[0] = [];
+					for (let i = 0; i < numberOfItems; i++) {
+						inputData.main[0].push({ json: {} });
+					}
+				}
+
+				const spy = jest.spyOn(utilsModule, 'sleep').mockReturnValue(
+					new Promise((resolve) => {
+						resolve();
+					}),
+				);
+
+				spy.mockClear();
+
 				const result = await routingNode.runNode(
 					inputData,
 					runIndex,
@@ -1788,6 +1983,12 @@ describe('RoutingNode', () => {
 					executeData,
 					nodeExecuteFunctions as INodeExecuteFunctions,
 				);
+
+				if (testData.input.specialTestOptions?.sleepCalls) {
+					expect(spy.mock.calls).toEqual(testData.input.specialTestOptions?.sleepCalls);
+				} else {
+					expect(spy).toHaveBeenCalledTimes(0);
+				}
 
 				expect(result).toEqual(testData.output);
 			});
@@ -1847,6 +2048,7 @@ describe('RoutingNode', () => {
 									},
 									baseURL: 'http://127.0.0.1:5678',
 									returnFullResponse: true,
+									timeout: 300000,
 								},
 							},
 						},
