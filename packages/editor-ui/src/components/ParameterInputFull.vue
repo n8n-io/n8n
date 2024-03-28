@@ -1,6 +1,6 @@
 <template>
 	<n8n-input-label
-		:class="$style.wrapper"
+		:class="[$style.wrapper, { [$style.tipVisible]: showDragnDropTip }]"
 		:label="hideLabel ? '' : i18n.nodeText().inputLabelDisplayName(parameter, path)"
 		:tooltip-text="hideLabel ? '' : i18n.nodeText().inputLabelDescription(parameter, path)"
 		:show-tooltip="focused"
@@ -355,6 +355,11 @@ export default defineComponent({
 			opacity: 1;
 		}
 	}
+}
+
+.tipVisible {
+	--input-border-bottom-left-radius: 0;
+	--input-border-bottom-right-radius: 0;
 }
 
 .tip {

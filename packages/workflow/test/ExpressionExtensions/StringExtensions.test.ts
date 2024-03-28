@@ -270,7 +270,13 @@ describe('Data Transformation Functions', () => {
 				test1: 1,
 				test2: '2',
 			});
-			expect(evaluate('={{ "hi".parseJson() }}')).toBeUndefined();
+		});
+
+		test('.parseJson should throw on invalid JSON', () => {
+			expect(() => evaluate("={{ \"{'test1':1,'test2':'2'}\".parseJson() }}")).toThrowError(
+				"Parsing failed. Check you're using double quotes",
+			);
+			expect(() => evaluate('={{ "No JSON here".parseJson() }}')).toThrowError('Parsing failed');
 		});
 
 		test('.toBoolean should work on a string', () => {

@@ -45,21 +45,24 @@ const resolvedExpression = computed(() => {
 });
 
 const plaintextSegments = computed<Plaintext[]>(() => {
-	if (props.segments.length === 0) {
-		return [
-			{
-				from: 0,
-				to: resolvedExpression.value.length - 1,
-				plaintext: resolvedExpression.value,
-				kind: 'plaintext',
-			},
-		];
-	}
-
 	return props.segments.filter((s): s is Plaintext => s.kind === 'plaintext');
 });
 
 const resolvedSegments = computed<Resolved[]>(() => {
+	if (props.segments.length === 0) {
+		const emptyExpression = resolvedExpression.value;
+		const emptySegment: Resolved = {
+			from: 0,
+			to: emptyExpression.length,
+			kind: 'resolvable',
+			error: null,
+			resolvable: '',
+			resolved: emptyExpression,
+			state: 'pending',
+		};
+		return [emptySegment];
+	}
+
 	let cursor = 0;
 
 	return props.segments
