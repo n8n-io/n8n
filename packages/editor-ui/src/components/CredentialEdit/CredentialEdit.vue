@@ -75,6 +75,7 @@
 						:parent-types="parentTypes"
 						:required-properties-filled="requiredPropertiesFilled"
 						:credential-permissions="credentialPermissions"
+						:all-o-auth2-base-properties-overridden="allOAuth2BasePropertiesOverridden"
 						:mode="mode"
 						:selected-credential="selectedCredential"
 						:show-auth-type-selector="requiredCredentials"
@@ -427,6 +428,15 @@ export default defineComponent({
 					this.parentTypes.includes('oAuth1Api'))
 			);
 		},
+		allOAuth2BasePropertiesOverridden() {
+			if (this.credentialType?.__overwrittenProperties) {
+				return (
+					this.credentialType.__overwrittenProperties.includes('clientId') &&
+					this.credentialType.__overwrittenProperties.includes('clientSecret')
+				);
+			}
+			return false;
+		},
 		isOAuthConnected(): boolean {
 			return this.isOAuthType && !!this.credentialData.oauthTokenData;
 		},
@@ -447,10 +457,8 @@ export default defineComponent({
 
 			/**
 			 * If after all credentials overrides are applied only "notice"
-			 * properties are left, do not return them. This will avoid:
-			 * 1 - Showing notices that refer to a property that was overridden.
-			 * 2 - Showing callback URL copy section when all non notice properties
-			 * are overridden.
+			 * properties are left, do not return them. This will avoid
+			 * showing notices that refer to a property that was overridden.
 			 */
 			if (properties.every((p) => p.type === 'notice')) {
 				return [];
