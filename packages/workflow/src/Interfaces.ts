@@ -2587,7 +2587,7 @@ export interface SecretsHelpersBase {
 	update(): Promise<void>;
 	waitForInit(): Promise<void>;
 
-	getSecret(provider: string, name: string): IDataObject | undefined;
+	getSecret(provider: string, name: string): unknown;
 	hasSecret(provider: string, name: string): boolean;
 	hasProvider(provider: string): boolean;
 	listProviders(): string[];
