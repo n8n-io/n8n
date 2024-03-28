@@ -4,6 +4,7 @@ import type {
 	INodeProperties,
 	NodeApiError,
 	IExecuteFunctions,
+	NodeExecutionOutput,
 } from 'n8n-workflow';
 import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
 import { apiRequestAllItems, batchUpdate } from '../../transport';
@@ -53,7 +54,7 @@ export async function execute(
 	items: INodeExecutionData[],
 	base: string,
 	table: string,
-): Promise<INodeExecutionData[]> {
+): Promise<INodeExecutionData[] | NodeExecutionOutput> {
 	const returnData: INodeExecutionData[] = [];
 
 	const endpoint = `${base}/${table}`;

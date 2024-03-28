@@ -207,6 +207,18 @@
 			/>
 		</div>
 
+		<div
+			:class="$style.itemsCount"
+			v-if="paneType === 'output' && hasNodeRun && !hasRunError && runWarnings.length"
+		>
+			<div style="display: flex; align-items: center; gap: 10px">
+				<n8n-icon :class="$style.statusIcon" icon="info-circle" size="medium" color="text-light" />
+				<div style="display: flex; flex-direction: column; gap: 5px">
+					<n8n-text v-for="warning in runWarnings" :key="warning" v-html="warning"></n8n-text>
+				</div>
+			</div>
+		</div>
+
 		<div ref="dataContainer" :class="$style.dataContainer" data-test-id="ndv-data-container">
 			<div v-if="isExecuting" :class="$style.center" data-test-id="ndv-executing">
 				<div :class="$style.spinner"><n8n-spinner type="ring" /></div>
@@ -868,6 +880,11 @@ export default defineComponent({
 		},
 		hasRunError(): boolean {
 			return Boolean(this.node && this.workflowRunData?.[this.node.name]?.[this.runIndex]?.error);
+		},
+		runWarnings(): string[] {
+			const warnings =
+				this.node && this.workflowRunData?.[this.node.name]?.[this.runIndex]?.warnings;
+			return warnings || [];
 		},
 		workflowExecution(): IExecutionResponse | null {
 			return this.workflowsStore.getWorkflowExecution;
