@@ -2320,7 +2320,6 @@
 	"projects.settings.button.deleteProject": "Delete project",
 	"projects.settings.role.admin": "Admin",
 	"projects.settings.role.editor": "Editor",
-	"projects.settings.role.viewer": "Viewer",
 	"projects.settings.removeAccess": "Remove access",
 	"projects.settings.delete.title": "Delete {projectName}",
 	"projects.settings.delete.message": "What should we do with the project data?",

@@ -53,8 +53,7 @@ export const useProjectsStore = defineStore('projects', () => {
 
 	const createProject = async (project: ProjectCreateRequest): Promise<Project> => {
 		const newProject = await projectsApi.createProject(rootStore.getRestApiContext, project);
-		const { id, name } = newProject;
-		myProjects.value.push({ id, name } as ProjectListItem);
+		myProjects.value = [...myProjects.value, newProject as unknown as ProjectListItem];
 		return newProject;
 	};
 
@@ -63,6 +62,12 @@ export const useProjectsStore = defineStore('projects', () => {
 		const projectIndex = myProjects.value.findIndex((p) => p.id === projectData.id);
 		if (projectIndex !== -1) {
 			myProjects.value[projectIndex].name = projectData.name;
+		}
+		if (currentProject.value) {
+			currentProject.value.name = projectData.name;
+		}
+		if (projectData.relations) {
+			await getProject(projectData.id);
 		}
 	};
 

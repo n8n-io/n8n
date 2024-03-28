@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { computed, ref, watch, onBeforeMount } from 'vue';
 import { useRouter } from 'vue-router';
+import { deepCopy } from 'n8n-workflow';
 import { useUsersStore } from '@/stores/users.store';
 import type { IUser } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
@@ -26,7 +27,6 @@ const formData = ref<Pick<Project, 'name' | 'relations'>>({
 const projectRoles = ref<Array<{ label: string; value: ProjectRole }>>([
 	{ value: 'project:admin', label: locale.baseText('projects.settings.role.admin') },
 	{ value: 'project:editor', label: locale.baseText('projects.settings.role.editor') },
-	{ value: 'project:viewer', label: locale.baseText('projects.settings.role.viewer') },
 ]);
 
 const usersList = computed(() =>
@@ -71,7 +71,9 @@ const onNameInput = () => {
 };
 
 const onCancel = () => {
-	formData.value.relations = projectsStore.currentProject?.relations?.slice() ?? [];
+	formData.value.relations = projectsStore.currentProject?.relations
+		? deepCopy(projectsStore.currentProject.relations)
+		: [];
 	formData.value.name = projectsStore.currentProject?.name ?? '';
 	isDirty.value = false;
 };
@@ -118,7 +120,9 @@ watch(
 	() => projectsStore.currentProject,
 	() => {
 		formData.value.name = projectsStore.currentProject?.name ?? '';
-		formData.value.relations = projectsStore.currentProject?.relations?.slice() ?? [];
+		formData.value.relations = projectsStore.currentProject?.relations
+			? deepCopy(projectsStore.currentProject.relations)
+			: [];
 	},
 	{ immediate: true },
 );
