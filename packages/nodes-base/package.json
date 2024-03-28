@@ -755,6 +755,7 @@
       "dist/nodes/Trello/TrelloTrigger.node.js",
       "dist/nodes/Twake/Twake.node.js",
       "dist/nodes/Twilio/Twilio.node.js",
+      "dist/nodes/Twilio/TwilioTrigger.node.js",
       "dist/nodes/Twist/Twist.node.js",
       "dist/nodes/Twitter/Twitter.node.js",
       "dist/nodes/Typeform/TypeformTrigger.node.js",
