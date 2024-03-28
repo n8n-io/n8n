@@ -528,6 +528,7 @@ export class GmailV2 implements INodeType {
 						let cc = '';
 						let bcc = '';
 						let replyTo = '';
+						let threadId = null;
 
 						if (options.sendTo) {
 							to += prepareEmailsInput.call(this, options.sendTo as string, 'To', i);
@@ -543,6 +544,10 @@ export class GmailV2 implements INodeType {
 
 						if (options.replyTo) {
 							replyTo = prepareEmailsInput.call(this, options.replyTo as string, 'ReplyTo', i);
+						}
+
+						if (options.threadId && typeof options.threadId === 'string') {
+							threadId = options.threadId;
 						}
 
 						let attachments: IDataObject[] = [];
@@ -574,6 +579,7 @@ export class GmailV2 implements INodeType {
 						const body = {
 							message: {
 								raw: await encodeEmail(email),
+								threadId: threadId || undefined,
 							},
 						};
 
