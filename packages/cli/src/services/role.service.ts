@@ -20,7 +20,7 @@ import {
 	WORKFLOW_SHARING_OWNER_SCOPES,
 } from '@/permissions/resource-roles';
 import type { ListQuery } from '@/requests';
-import { combineScopes, type Scope } from '@n8n/permissions';
+import { combineScopes, type Resource, type Scope } from '@n8n/permissions';
 import { Service } from 'typedi';
 import { ApplicationError } from 'n8n-workflow';
 
@@ -128,8 +128,13 @@ export class RoleService {
 
 	getRoleScopes(
 		role: GlobalRole | ProjectRole | WorkflowSharingRole | CredentialSharingRole,
+		filters?: Resource[],
 	): Scope[] {
-		return COMBINED_MAP[role];
+		let scopes = COMBINED_MAP[role];
+		if (filters) {
+			scopes = scopes.filter((s) => filters.includes(s.split(':')[0] as Resource));
+		}
+		return scopes;
 	}
 
 	/**

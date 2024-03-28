@@ -4,13 +4,20 @@ import type { RouteRecordName } from 'vue-router';
 import { useRoute } from 'vue-router';
 import { VIEWS } from '@/constants';
 import { useI18n } from '@/composables/useI18n';
+import { useProjectsStore } from '../projects.store';
+import { useUsersStore } from '@/stores/users.store';
+import { getProjectPermissions } from '@/permissions';
 
 const locale = useI18n();
 const route = useRoute();
 
+const projectsStore = useProjectsStore();
+const usersStore = useUsersStore();
+
 const selectedTab = ref<RouteRecordName | null | undefined>('');
 const options = computed(() => {
 	const projectId = route?.params?.projectId;
+	const project = projectsStore.currentProject;
 	const to = projectId
 		? {
 				workflows: {
@@ -43,7 +50,7 @@ const options = computed(() => {
 		},
 	];
 
-	if (projectId) {
+	if (projectId && project && getProjectPermissions(usersStore.currentUser, project).update) {
 		tabs.push({
 			label: locale.baseText('settings'),
 			value: VIEWS.PROJECT_SETTINGS,

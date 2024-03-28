@@ -20,6 +20,7 @@ export type ProjectSharingData = {
 };
 export type Project = ProjectSharingData & {
 	relations: ProjectRelation[];
+	scopes: Scope[];
 };
 export type ProjectListItem = ProjectSharingData & {
 	role: ProjectRole;

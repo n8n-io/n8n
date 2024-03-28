@@ -7,7 +7,8 @@
 import type { IUser, ICredentialsResponse, IWorkflowDb } from '@/Interface';
 import { hasPermission } from './rbac/permissions';
 import { isUserGlobalOwner } from './utils/userUtils';
-import type { CredentialScope, WorkflowScope } from '@n8n/permissions';
+import type { CredentialScope, ProjectScope, WorkflowScope } from '@n8n/permissions';
+import { Project } from './features/projects/projects.types';
 
 /**
  * Old permissions implementation
@@ -91,6 +92,22 @@ export const getWorkflowPermissions = (user: IUser | null, workflow: IWorkflowDb
 	const table: IPermissionsTable = workflowScopes.map((scope) => ({
 		name: scope.split(':').pop() ?? '',
 		test: () => hasPermission(['rbac'], { rbac: { scope } }) || !!workflow.scopes?.includes(scope),
+	}));
+
+	return parsePermissionsTable(user, table);
+};
+
+export const getProjectPermissions = (user: IUser | null, project: Project) => {
+	const projectScopes: ProjectScope[] = [
+		'project:create',
+		'project:read',
+		'project:update',
+		'project:delete',
+		'project:list',
+	];
+	const table: IPermissionsTable = projectScopes.map((scope) => ({
+		name: scope.split(':').pop() ?? '',
+		test: () => hasPermission(['rbac'], { rbac: { scope } }) || !!project.scopes?.includes(scope),
 	}));
 
 	return parsePermissionsTable(user, table);
