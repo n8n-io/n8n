@@ -435,7 +435,7 @@ export default defineComponent({
 				return [];
 			}
 
-			return this.credentialType.properties.filter((propertyData: INodeProperties) => {
+			const properties = this.credentialType.properties.filter((propertyData: INodeProperties) => {
 				if (!this.displayCredentialParameter(propertyData)) {
 					return false;
 				}
@@ -444,6 +444,19 @@ export default defineComponent({
 					!this.credentialType!.__overwrittenProperties.includes(propertyData.name)
 				);
 			});
+
+			/**
+			 * If after all credentials overrides are applied only "notice"
+			 * properties are left, do not return them. This will avoid:
+			 * 1 - Showing notices that refer to a property that was overridden.
+			 * 2 - Showing callback URL copy section when all non notice properties
+			 * are overridden.
+			 */
+			if (properties.every((p) => p.type === 'notice')) {
+				return [];
+			}
+
+			return properties;
 		},
 		requiredPropertiesFilled(): boolean {
 			for (const property of this.credentialProperties) {
