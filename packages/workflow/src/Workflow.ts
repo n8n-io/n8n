@@ -1332,6 +1332,12 @@ export class Workflow {
 			// The node did already fail. So throw an error here that it displays and logs it correctly.
 			// Does get used by webhook and trigger nodes in case they throw an error that it is possible
 			// to log the error and display in Editor-UI.
+			if (
+				runExecutionData.resultData.error.name === 'NodeOperationError' ||
+				runExecutionData.resultData.error.name === 'NodeApiError'
+			) {
+				throw runExecutionData.resultData.error;
+			}
 
 			const error = new Error(runExecutionData.resultData.error.message);
 			error.stack = runExecutionData.resultData.error.stack;

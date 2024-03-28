@@ -92,6 +92,7 @@ import type {
 	NodeExecutionWithMetadata,
 	NodeHelperFunctions,
 	NodeParameterValueType,
+	NodeTypeAndVersion,
 	PaginationOptions,
 	RequestHelperFunctions,
 	Workflow,
@@ -2798,7 +2799,34 @@ const getCommonWorkflowFunctions = (
 		active: workflow.active,
 	}),
 	getWorkflowStaticData: (type) => workflow.getStaticData(type, node),
+	getChildNodes: (nodeName: string) => {
+		const output: NodeTypeAndVersion[] = [];
+		const nodes = workflow.getChildNodes(nodeName);
 
+		for (const nodeName of nodes) {
+			const node = workflow.nodes[nodeName];
+			output.push({
+				name: node.name,
+				type: node.type,
+				typeVersion: node.typeVersion,
+			});
+		}
+		return output;
+	},
+	getParentNodes: (nodeName: string) => {
+		const output: NodeTypeAndVersion[] = [];
+		const nodes = workflow.getParentNodes(nodeName);
+
+		for (const nodeName of nodes) {
+			const node = workflow.nodes[nodeName];
+			output.push({
+				name: node.name,
+				type: node.type,
+				typeVersion: node.typeVersion,
+			});
+		}
+		return output;
+	},
 	getRestApiUrl: () => additionalData.restApiUrl,
 	getInstanceBaseUrl: () => additionalData.instanceBaseUrl,
 	getInstanceId: () => Container.get(InstanceSettings).instanceId,
