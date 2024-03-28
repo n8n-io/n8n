@@ -343,7 +343,7 @@ describe('GET /workflows', () => {
 					versionId: any(String),
 					homeProject: {
 						id: ownerPersonalProject.id,
-						name: 'My n8n',
+						name: owner.createPersonalProjectName(),
 						type: ownerPersonalProject.type,
 					},
 					sharedWithProjects: [],
@@ -358,7 +358,7 @@ describe('GET /workflows', () => {
 					versionId: any(String),
 					homeProject: {
 						id: ownerPersonalProject.id,
-						name: 'My n8n',
+						name: owner.createPersonalProjectName(),
 						type: ownerPersonalProject.type,
 					},
 					sharedWithProjects: [],
@@ -704,7 +704,7 @@ describe('GET /workflows', () => {
 						id: any(String),
 						homeProject: {
 							id: ownerPersonalProject.id,
-							name: 'My n8n',
+							name: owner.createPersonalProjectName(),
 							type: ownerPersonalProject.type,
 						},
 						sharedWithProjects: [],
@@ -713,7 +713,7 @@ describe('GET /workflows', () => {
 						id: any(String),
 						homeProject: {
 							id: ownerPersonalProject.id,
-							name: 'My n8n',
+							name: owner.createPersonalProjectName(),
 							type: ownerPersonalProject.type,
 						},
 						sharedWithProjects: [],

@@ -306,7 +306,7 @@ describe('InvitationController', () => {
 			});
 
 			expect(projectRelation).not.toBeUndefined();
-			expect(projectRelation.project.name).toBeNull();
+			expect(projectRelation.project.name).toBe(storedUser.createPersonalProjectName());
 			expect(projectRelation.project.type).toBe('personal');
 		});
 
