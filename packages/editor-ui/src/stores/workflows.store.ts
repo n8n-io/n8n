@@ -1,7 +1,6 @@
 import {
 	DEFAULT_NEW_WORKFLOW_NAME,
 	DUPLICATE_POSTFFIX,
-	EnterpriseEditionFeature,
 	ERROR_TRIGGER_NODE_TYPE,
 	MAX_WORKFLOW_NAME_LENGTH,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
@@ -26,7 +25,6 @@ import type {
 	IStartRunData,
 	IUpdateInformation,
 	IUsedCredential,
-	IUser,
 	IWorkflowDataUpdate,
 	IWorkflowDb,
 	IWorkflowsMap,
@@ -79,8 +77,6 @@ import { isJsonKeyObject, isEmpty, stringSizeInBytes } from '@/utils/typesUtils'
 import { makeRestApiRequest, unflattenExecutionData, ResponseError } from '@/utils/apiUtils';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useUsersStore } from '@/stores/users.store';
-import { useSettingsStore } from '@/stores/settings.store';
 import { getCredentialOnlyNodeTypeName } from '@/utils/credentialOnlyNodes';
 import { i18n } from '@/plugins/i18n';
 import { useProjectsStore } from '@/features/projects/projects.store';
@@ -437,17 +433,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		},
 
 		resetWorkflow() {
-			const usersStore = useUsersStore();
-			const settingsStore = useSettingsStore();
-
 			this.workflow = createEmptyWorkflow();
-
-			if (settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
-				this.workflow = {
-					...this.workflow,
-					ownedBy: usersStore.currentUser as IUser,
-				};
-			}
 		},
 
 		resetState(): void {

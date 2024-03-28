@@ -542,10 +542,28 @@ describe('DELETE /users/:id', () => {
 		expect(user).toBeDefined();
 	});
 
-	test('should fail to delete if user to delete is transferee', async () => {
+	test('should fail to delete a user that does not exist', async () => {
+		await ownerAgent.delete('/users/foobar').query({ transferId: '' }).expect(404);
+	});
+
+	test('should fail to transfer to a project that does not exist', async () => {
 		const member = await createMember();
 
-		await ownerAgent.delete(`/users/${member.id}`).query({ transferId: member.id }).expect(400);
+		await ownerAgent.delete(`/users/${member.id}`).query({ transferId: 'foobar' }).expect(404);
+
+		const user = await Container.get(UserRepository).findOneBy({ id: member.id });
+
+		expect(user).toBeDefined();
+	});
+
+	test('should fail to delete if user to delete is transferee', async () => {
+		const member = await createMember();
+		const personalProject = await getPersonalProject(member);
+
+		await ownerAgent
+			.delete(`/users/${member.id}`)
+			.query({ transferId: personalProject.id })
+			.expect(400);
 
 		const user = await Container.get(UserRepository).findOneBy({ id: member.id });
 

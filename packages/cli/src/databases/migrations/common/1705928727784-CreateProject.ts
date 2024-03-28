@@ -187,26 +187,37 @@ export class CreateProject1705928727784 implements IrreversibleMigration {
 		const projectRelationName = escape.tableName('project_relation');
 		const projectIdColumn = escape.columnName('projectId');
 		const userIdColumn = escape.columnName('userId');
-		const getUserQuery = `SELECT id FROM ${userTable}`;
-		await runInBatches<Pick<User, 'id'>>(getUserQuery, async (users) => {
-			await Promise.all(
-				users.map(async (user) => {
-					const projectId = generateNanoId();
-					await runQuery(`INSERT INTO ${projectName} (id, type) VALUES (:projectId, 'personal')`, {
-						projectId,
-					});
+		const firstNameColumn = escape.columnName('firstName');
+		const lastNameColumn = escape.columnName('lastName');
+		const emailColumn = escape.columnName('email');
+		const getUserQuery = `SELECT id, ${firstNameColumn}, ${lastNameColumn}, ${emailColumn} FROM ${userTable}`;
+		await runInBatches<Pick<User, 'id' | 'firstName' | 'lastName' | 'email'>>(
+			getUserQuery,
+			async (users) => {
+				await Promise.all(
+					users.map(async (user) => {
+						const projectId = generateNanoId();
+						const name = `${user.firstName} ${user.lastName} <${user.email}>`;
+						await runQuery(
+							`INSERT INTO ${projectName} (id, type, name) VALUES (:projectId, 'personal', :name)`,
+							{
+								projectId,
+								name,
+							},
+						);
 
-					await runQuery(
-						`INSERT INTO ${projectRelationName} (${projectIdColumn}, ${userIdColumn}, role) VALUES (:projectId, :userId, :projectRole)`,
-						{
-							projectId,
-							userId: user.id,
-							projectRole: projectAdminRole,
-						},
-					);
-				}),
-			);
-		});
+						await runQuery(
+							`INSERT INTO ${projectRelationName} (${projectIdColumn}, ${userIdColumn}, role) VALUES (:projectId, :userId, :projectRole)`,
+							{
+								projectId,
+								userId: user.id,
+								projectRole: projectAdminRole,
+							},
+						);
+					}),
+				);
+			},
+		);
 	}
 
 	async up(context: MigrationContext) {

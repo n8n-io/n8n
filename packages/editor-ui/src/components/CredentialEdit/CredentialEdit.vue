@@ -35,7 +35,7 @@
 						@click="deleteCredential"
 					/>
 					<SaveButton
-						v-if="(hasUnsavedChanges || credentialId) && credentialPermissions.save"
+						v-if="showSaveButton"
 						:saved="!hasUnsavedChanges && !isTesting"
 						:is-saving="isSaving || isTesting"
 						:saving-label="
@@ -85,7 +85,7 @@
 						@authTypeChanged="onAuthTypeChanged"
 					/>
 				</div>
-				<div v-else-if="activeTab === 'sharing' && credentialType" :class="$style.mainContent">
+				<div v-else-if="showSharingContent" :class="$style.mainContent">
 					<CredentialSharing
 						:credential="currentCredential"
 						:credential-data="credentialData"
@@ -227,67 +227,6 @@ export default defineComponent({
 			hasUserSpecifiedName: false,
 			isSharedWithChanged: false,
 		};
-	},
-	async mounted() {
-		this.requiredCredentials =
-			isCredentialModalState(this.uiStore.modals[CREDENTIAL_EDIT_MODAL_KEY]) &&
-			this.uiStore.modals[CREDENTIAL_EDIT_MODAL_KEY].showAuthSelector === true;
-
-		this.setupNodeAccess();
-
-		if (this.mode === 'new' && this.credentialTypeName) {
-			this.credentialName = await this.credentialsStore.getNewCredentialName({
-				credentialTypeName: this.defaultCredentialTypeName,
-			});
-
-			if (this.currentUser) {
-				this.credentialData = {
-					...this.credentialData,
-					ownedBy: {
-						id: this.currentUser.id,
-						firstName: this.currentUser.firstName,
-						lastName: this.currentUser.lastName,
-						email: this.currentUser.email,
-					},
-				};
-			}
-		} else {
-			await this.loadCurrentCredential();
-		}
-
-		if (this.credentialType) {
-			for (const property of this.credentialType.properties) {
-				if (
-					!this.credentialData.hasOwnProperty(property.name) &&
-					!this.credentialType.__overwrittenProperties?.includes(property.name)
-				) {
-					this.credentialData = {
-						...this.credentialData,
-						[property.name]: property.default as CredentialInformation,
-					};
-				}
-			}
-		}
-
-		await this.externalHooks.run('credentialsEdit.credentialModalOpened', {
-			credentialType: this.credentialTypeName,
-			isEditingCredential: this.mode === 'edit',
-			activeNode: this.ndvStore.activeNode,
-		});
-
-		setTimeout(async () => {
-			if (this.credentialId) {
-				if (!this.requiredPropertiesFilled && this.credentialPermissions.isOwner) {
-					// sharees can't see properties, so this check would always fail for them
-					// if the credential contains required fields.
-					this.showValidationWarning = true;
-				} else {
-					await this.retestCredential();
-				}
-			}
-		}, 0);
-
-		this.loading = false;
 	},
 	computed: {
 		...mapStores(
@@ -480,23 +419,29 @@ export default defineComponent({
 			);
 		},
 		sidebarItems(): IMenuItem[] {
-			return [
+			const menuItems: IMenuItem[] = [
 				{
 					id: 'connection',
 					label: this.$locale.baseText('credentialEdit.credentialEdit.connection'),
 					position: 'top',
 				},
-				{
+			];
+
+			if (this.showSharingMenu) {
+				menuItems.push({
 					id: 'sharing',
 					label: this.$locale.baseText('credentialEdit.credentialEdit.sharing'),
 					position: 'top',
-				},
-				{
-					id: 'details',
-					label: this.$locale.baseText('credentialEdit.credentialEdit.details'),
-					position: 'top',
-				},
-			];
+				});
+			}
+
+			menuItems.push({
+				id: 'details',
+				label: this.$locale.baseText('credentialEdit.credentialEdit.details'),
+				position: 'top',
+			});
+
+			return menuItems;
 		},
 		isSharingAvailable(): boolean {
 			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
@@ -510,6 +455,81 @@ export default defineComponent({
 			}
 			return credentialTypeName || '';
 		},
+		showSaveButton(): boolean {
+			return (
+				(this.hasUnsavedChanges || !!this.credentialId) &&
+				(this.credentialPermissions.create || this.credentialPermissions.update)
+			);
+		},
+		showSharingMenu(): boolean {
+			return (
+				this.credentialPermissions.share && this.currentCredential?.homeProject?.type !== 'team'
+			);
+		},
+		showSharingContent(): boolean {
+			return this.activeTab === 'sharing' && !!this.credentialType && this.showSharingMenu;
+		},
+	},
+	async mounted() {
+		this.requiredCredentials =
+			isCredentialModalState(this.uiStore.modals[CREDENTIAL_EDIT_MODAL_KEY]) &&
+			this.uiStore.modals[CREDENTIAL_EDIT_MODAL_KEY].showAuthSelector === true;
+
+		this.setupNodeAccess();
+
+		if (this.mode === 'new' && this.credentialTypeName) {
+			this.credentialName = await this.credentialsStore.getNewCredentialName({
+				credentialTypeName: this.defaultCredentialTypeName,
+			});
+
+			if (this.currentUser) {
+				this.credentialData = {
+					...this.credentialData,
+					ownedBy: {
+						id: this.currentUser.id,
+						firstName: this.currentUser.firstName,
+						lastName: this.currentUser.lastName,
+						email: this.currentUser.email,
+					},
+				};
+			}
+		} else {
+			await this.loadCurrentCredential();
+		}
+
+		if (this.credentialType) {
+			for (const property of this.credentialType.properties) {
+				if (
+					!this.credentialData.hasOwnProperty(property.name) &&
+					!this.credentialType.__overwrittenProperties?.includes(property.name)
+				) {
+					this.credentialData = {
+						...this.credentialData,
+						[property.name]: property.default as CredentialInformation,
+					};
+				}
+			}
+		}
+
+		await this.externalHooks.run('credentialsEdit.credentialModalOpened', {
+			credentialType: this.credentialTypeName,
+			isEditingCredential: this.mode === 'edit',
+			activeNode: this.ndvStore.activeNode,
+		});
+
+		setTimeout(async () => {
+			if (this.credentialId) {
+				if (!this.requiredPropertiesFilled && this.credentialPermissions.isOwner) {
+					// sharees can't see properties, so this check would always fail for them
+					// if the credential contains required fields.
+					this.showValidationWarning = true;
+				} else {
+					await this.retestCredential();
+				}
+			}
+		}, 0);
+
+		this.loading = false;
 	},
 	methods: {
 		async beforeClose() {

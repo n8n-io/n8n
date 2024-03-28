@@ -23,7 +23,7 @@
 				</n8n-text>
 			</div>
 			<div v-else :class="$style.container">
-				<n8n-info-tip v-if="!workflowPermissions.updateSharing" :bold="false" class="mb-s">
+				<n8n-info-tip v-if="!workflowPermissions.share" :bold="false" class="mb-s">
 					{{
 						$locale.baseText('workflows.shareModal.info.sharee', {
 							interpolate: { workflowOwnerName },
@@ -34,7 +34,7 @@
 					<ProjectSharing
 						v-model="sharedWithProjects"
 						:projects="projects"
-						:readonly="!workflowPermissions.updateSharing"
+						:readonly="!workflowPermissions.share"
 					/>
 					<template #fallback>
 						<n8n-text>
@@ -76,7 +76,7 @@
 					{{ $locale.baseText('workflows.shareModal.changesHint') }}
 				</n8n-text>
 				<n8n-button
-					v-show="workflowPermissions.updateSharing"
+					v-show="workflowPermissions.share"
 					:loading="loading"
 					:disabled="!isDirty"
 					data-test-id="workflow-sharing-modal-save-button"

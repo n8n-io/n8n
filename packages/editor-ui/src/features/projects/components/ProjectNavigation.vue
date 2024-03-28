@@ -149,6 +149,7 @@ const displayProjects = computed(() => {
 	grid-auto-rows: auto;
 	width: 100%;
 	overflow: hidden;
+	min-height: 300px;
 }
 
 .projectItems {
