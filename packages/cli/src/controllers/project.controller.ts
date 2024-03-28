@@ -44,7 +44,9 @@ export class ProjectController {
 	async getMyProjects(
 		req: ProjectRequest.GetMyProjects,
 	): Promise<ProjectRequest.GetMyProjectsResponse> {
-		const relations = await this.projectsService.getProjectRelationsForUser(req.user);
+		const relations = (await this.projectsService.getProjectRelationsForUser(req.user)).filter(
+			(pr) => pr.project.type === 'team',
+		);
 		const otherTeamProject = req.user.hasGlobalScope('project:read')
 			? await this.projectRepository.findBy({
 					type: 'team',
