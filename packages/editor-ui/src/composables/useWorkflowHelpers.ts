@@ -1,5 +1,4 @@
 import {
-	EnterpriseEditionFeature,
 	HTTP_REQUEST_NODE_TYPE,
 	MODAL_CONFIRM,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
@@ -992,15 +991,6 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 			const workflowData = await workflowsStore.createNewWorkflow(workflowDataRequest);
 
 			workflowsStore.addWorkflow(workflowData);
-			if (
-				useSettingsStore().isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing) &&
-				usersStore.currentUser
-			) {
-				workflowsEEStore.setWorkflowOwnedBy({
-					workflowId: workflowData.id,
-					ownedBy: usersStore.currentUser,
-				});
-			}
 
 			if (openInNewWindow) {
 				const routeData = router.resolve({

@@ -1,4 +1,3 @@
-import type { IUser } from '../Interface';
 import { setWorkflowSharedWith } from '@/api/workflows.ee';
 import { EnterpriseEditionFeature, STORES } from '@/constants';
 import { useRootStore } from '@/stores/n8nRoot.store';
@@ -26,18 +25,6 @@ export const useWorkflowsEEStore = defineStore(STORES.WORKFLOWS_EE, {
 		},
 	},
 	actions: {
-		setWorkflowOwnedBy(payload: { workflowId: string; ownedBy: Partial<IUser> }): void {
-			const workflowsStore = useWorkflowsStore();
-
-			workflowsStore.workflowsById[payload.workflowId] = {
-				...workflowsStore.workflowsById[payload.workflowId],
-				ownedBy: payload.ownedBy,
-			};
-			workflowsStore.workflow = {
-				...workflowsStore.workflow,
-				ownedBy: payload.ownedBy,
-			};
-		},
 		setWorkflowSharedWith(payload: {
 			workflowId: string;
 			sharedWithProjects: ProjectSharingData[];

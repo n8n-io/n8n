@@ -1224,13 +1224,6 @@ export default defineComponent({
 				this.workflowsStore.setWorkflowPinData(data.workflowData.pinData);
 			}
 
-			if (data.workflowData.ownedBy) {
-				this.workflowsEEStore.setWorkflowOwnedBy({
-					workflowId: data.workflowData.id,
-					ownedBy: data.workflowData.ownedBy,
-				});
-			}
-
 			if (data.workflowData.sharedWithProjects) {
 				this.workflowsEEStore.setWorkflowSharedWith({
 					workflowId: data.workflowData.id,
@@ -1392,13 +1385,6 @@ export default defineComponent({
 			this.workflowsStore.setWorkflowPinData(workflow.pinData || {});
 			this.workflowsStore.setWorkflowVersionId(workflow.versionId);
 			this.workflowsStore.setWorkflowMetadata(workflow.meta);
-
-			if (workflow.ownedBy) {
-				this.workflowsEEStore.setWorkflowOwnedBy({
-					workflowId: workflow.id,
-					ownedBy: workflow.ownedBy,
-				});
-			}
 
 			if (workflow.sharedWithProjects) {
 				this.workflowsEEStore.setWorkflowSharedWith({
