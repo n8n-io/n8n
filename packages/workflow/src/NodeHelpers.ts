@@ -264,7 +264,8 @@ const commonCORSParameters: INodeProperties[] = [
 		name: 'allowedOrigins',
 		type: 'string',
 		default: '*',
-		description: 'The origin(s) to allow cross-origin non-preflight requests from in a browser',
+		description:
+			'Comma-separated list of URLs allowed for cross-origin non-preflight requests. Use * (default) to allow all origins.',
 	},
 ];
 
@@ -278,7 +279,11 @@ export function applySpecialNodeParameters(nodeType: INodeType): void {
 	}
 	if (nodeType.webhook && supportsCORS) {
 		const optionsProperty = properties.find(({ name }) => name === 'options');
-		if (optionsProperty) optionsProperty.options!.push(...commonCORSParameters);
+		if (optionsProperty)
+			optionsProperty.options = [
+				...commonCORSParameters,
+				...(optionsProperty.options as INodePropertyOptions[]),
+			];
 		else properties.push(...commonCORSParameters);
 	}
 }
@@ -533,7 +538,7 @@ export function getParameterResolveOrder(
 	parameterDependencies: IParameterDependencies,
 ): number[] {
 	const executionOrder: number[] = [];
-	const indexToResolve = Array.from({ length: nodePropertiesArray.length }, (v, k) => k);
+	const indexToResolve = Array.from({ length: nodePropertiesArray.length }, (_, k) => k);
 	const resolvedParameters: string[] = [];
 
 	let index: number;

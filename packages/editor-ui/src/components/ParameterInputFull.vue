@@ -55,7 +55,7 @@
 			</template>
 		</DraggableTarget>
 		<div v-if="showDragnDropTip" :class="$style.tip">
-			<InlineExpressionTip tip="drag" />
+			<InlineExpressionTip />
 		</div>
 		<div
 			:class="{
@@ -209,7 +209,7 @@ export default defineComponent({
 			return this.isResourceLocator ? !hasOnlyListMode(this.parameter) : true;
 		},
 		isInputDataEmpty(): boolean {
-			return this.ndvStore.isDNVDataEmpty('input');
+			return this.ndvStore.isNDVDataEmpty('input');
 		},
 		displayMode(): IRunDataDisplayMode {
 			return this.ndvStore.inputPanelDisplayMode;
@@ -220,7 +220,9 @@ export default defineComponent({
 				(this.isInputTypeString || this.isInputTypeNumber) &&
 				!this.isValueExpression &&
 				!this.isDropDisabled &&
-				!this.ndvStore.isMappingOnboarded
+				(!this.ndvStore.hasInputData || !this.isInputDataEmpty) &&
+				!this.ndvStore.isMappingOnboarded &&
+				this.ndvStore.isInputParentOfActiveNode
 			);
 		},
 	},

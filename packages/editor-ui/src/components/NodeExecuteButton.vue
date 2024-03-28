@@ -230,7 +230,7 @@ export default defineComponent({
 
 		async onClick() {
 			// Show chat if it's a chat node or a child of a chat node with no input data
-			if (this.isChatNode || (this.isChatChild && this.ndvStore.isDNVDataEmpty('input'))) {
+			if (this.isChatNode || (this.isChatChild && this.ndvStore.isNDVDataEmpty('input'))) {
 				this.ndvStore.setActiveNodeName(null);
 				nodeViewEventBus.emit('openChat');
 			} else if (this.isListeningForEvents) {

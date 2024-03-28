@@ -468,6 +468,9 @@ importers:
       '@sentry/node':
         specifier: 7.87.0
         version: 7.87.0
+      aws4:
+        specifier: 1.11.0
+        version: 1.11.0
       axios:
         specifier: 1.6.7
         version: 1.6.7(debug@3.2.7)
@@ -706,6 +709,9 @@ importers:
       '@redocly/cli':
         specifier: ^1.6.0
         version: 1.6.0
+      '@types/aws4':
+        specifier: ^1.5.1
+        version: 1.11.2
       '@types/basic-auth':
         specifier: ^1.1.3
         version: 1.1.3
@@ -8979,7 +8985,7 @@ packages:
       ts-dedent: 2.2.0
       type-fest: 2.19.0
       vue: 3.4.21(typescript@5.4.2)
-      vue-component-type-helpers: 2.0.6
+      vue-component-type-helpers: 2.0.7
     transitivePeerDependencies:
       - encoding
       - supports-color
@@ -25647,8 +25653,8 @@ packages:
     resolution: {integrity: sha512-0vOfAtI67UjeO1G6UiX5Kd76CqaQ67wrRZiOe7UAb9Jm6GzlUr/fC7CV90XfwapJRjpCMaZFhv1V0ajWRmE9Dg==}
     dev: true
 
-  /vue-component-type-helpers@2.0.6:
-    resolution: {integrity: sha512-qdGXCtoBrwqk1BT6r2+1Wcvl583ZVkuSZ3or7Y1O2w5AvWtlvvxwjGhmz5DdPJS9xqRdDlgTJ/38ehWnEi0tFA==}
+  /vue-component-type-helpers@2.0.7:
+    resolution: {integrity: sha512-7e12Evdll7JcTIocojgnCgwocX4WzIYStGClBQ+QuWPinZo/vQolv2EMq4a3lg16TKfwWafLimG77bxb56UauA==}
     dev: true
 
   /vue-demi@0.14.5(vue@3.4.21):
