@@ -183,7 +183,7 @@ export function useRunWorkflow(options: { router: ReturnType<typeof useRouter> }
 				directParentNodes = workflow.getParentNodes(
 					options.destinationNode,
 					NodeConnectionType.Main,
-					1,
+					-1,
 				);
 			}
 
