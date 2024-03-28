@@ -1,7 +1,6 @@
 import { Container } from 'typedi';
 import { Router } from 'express';
 import type { Application, Request, Response, RequestHandler } from 'express';
-import { In } from '@n8n/typeorm';
 import { ApplicationError } from 'n8n-workflow';
 import type { Class } from 'n8n-core';
 
@@ -9,10 +8,6 @@ import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
 import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { RoleService } from '@/services/role.service';
-import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
-import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
-import { ProjectRepository } from '@db/repositories/project.repository';
 import type { BooleanLicenseFeature } from '@/Interfaces';
 import { License } from '@/License';
 import type { AuthenticatedRequest } from '@/requests';
@@ -31,6 +26,7 @@ import type {
 	RouteMetadata,
 	RouteScopeMetadata,
 } from './types';
+import { userHasScope } from '@/permissions/checkAccess';
 
 export const createLicenseMiddleware =
 	(features: BooleanLicenseFeature[]): RequestHandler =>
@@ -64,87 +60,14 @@ export const createScopedMiddleware =
 
 		if (scopes.length === 0) return next();
 
-		// Short circuit here since a global role will always
-		if (req.user.hasGlobalScope(scopes)) {
-			return next();
-		}
-
-		if (globalOnly) {
-			// The above check already failed so return an auth error
+		if (!(await userHasScope(req.user, scopes, globalOnly, req.params))) {
 			return res.status(403).json({
 				status: 'error',
 				message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE,
 			});
 		}
 
-		const { credentialId, workflowId, projectId } = req.params;
-
-		const roleService = Container.get(RoleService);
-		const projectRoles = roleService.rolesWithScope('project', scopes);
-		const userProjectIds = (
-			await Container.get(ProjectRepository).find({
-				where: {
-					projectRelations: {
-						userId: req.user.id,
-						role: In(projectRoles),
-					},
-				},
-				select: ['id'],
-			})
-		).map((p) => p.id);
-
-		if (credentialId) {
-			const exists = await Container.get(SharedCredentialsRepository).find({
-				where: {
-					projectId: In(userProjectIds),
-					credentialsId: credentialId,
-					role: In(roleService.rolesWithScope('credential', scopes)),
-				},
-			});
-
-			if (!exists.length) {
-				return res.status(403).json({
-					status: 'error',
-					message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE,
-				});
-			}
-
-			return next();
-		}
-
-		if (workflowId) {
-			const exists = await Container.get(SharedWorkflowRepository).find({
-				where: {
-					projectId: In(userProjectIds),
-					workflowId,
-					role: In(roleService.rolesWithScope('workflow', scopes)),
-				},
-			});
-
-			if (!exists.length) {
-				return res.status(403).json({
-					status: 'error',
-					message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE,
-				});
-			}
-
-			return next();
-		}
-
-		if (projectId) {
-			if (!userProjectIds.includes(projectId)) {
-				return res.status(403).json({
-					status: 'error',
-					message: RESPONSE_ERROR_MESSAGES.MISSING_SCOPE,
-				});
-			}
-
-			return next();
-		}
-
-		throw new ApplicationError(
-			"@ProjectScope decorator was used but does not have a credentialId, workflowId, or projectId in it's URL parameters. This is likely an implementation error. If you're a developer, please check you're URL is correct or that this should be using @GlobalScope.",
-		);
+		return next();
 	};
 
 export const registerController = (app: Application, controllerClass: Class<object>) => {
