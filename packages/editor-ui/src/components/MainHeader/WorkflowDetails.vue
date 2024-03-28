@@ -582,6 +582,10 @@ export default defineComponent({
 							},
 						)) as MessageBoxInputData;
 
+						if (promptResponse === 'cancel') {
+							return;
+						}
+
 						nodeViewEventBus.emit('importWorkflowUrl', { url: promptResponse.value });
 					} catch (e) {}
 					break;
