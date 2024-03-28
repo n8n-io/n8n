@@ -38,9 +38,7 @@ export const useProjectsStore = defineStore('projects', () => {
 	};
 
 	const getMyProjects = async () => {
-		myProjects.value = (await projectsApi.getMyProjects(rootStore.getRestApiContext)).filter(
-			(p) => !!p.name,
-		);
+		myProjects.value = await projectsApi.getMyProjects(rootStore.getRestApiContext);
 	};
 
 	const getPersonalProject = async () => {

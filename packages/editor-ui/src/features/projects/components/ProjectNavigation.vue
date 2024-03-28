@@ -6,6 +6,7 @@ import { useI18n } from '@/composables/useI18n';
 import { VIEWS } from '@/constants';
 import { useProjectsStore } from '@/features/projects/projects.store';
 import type { ProjectListItem } from '@/features/projects/projects.types';
+import { hasPermission } from '@/rbac/permissions';
 
 type Props = {
 	collapsed: boolean;
@@ -33,22 +34,30 @@ const addProject = ref<IMenuItem>({
 	icon: 'plus',
 });
 
-const activeTab = computed(() =>
-	route.name === VIEWS.HOMEPAGE ||
-	route.name === VIEWS.WORKFLOWS ||
-	route.name === VIEWS.CREDENTIALS
-		? 'home'
-		: undefined,
-);
+const activeTab = computed(() => {
+	let routes = [VIEWS.HOMEPAGE, VIEWS.WORKFLOWS, VIEWS.CREDENTIALS];
+	if (projectsStore.currentProjectId === undefined) {
+		routes = [
+			...routes,
+			VIEWS.NEW_WORKFLOW,
+			VIEWS.WORKFLOW_HISTORY,
+			VIEWS.WORKFLOW,
+			VIEWS.EXECUTION_HOME,
+		];
+	}
+	return routes.includes(route.name as VIEWS) ? 'home' : undefined;
+});
 
 const isActiveProject = (projectId: string) =>
-	route?.params?.projectId === projectId ? projectId : undefined;
+	route?.params?.projectId === projectId || projectsStore.currentProjectId === projectId
+		? projectId
+		: undefined;
 const getProjectMenuItem = (project: ProjectListItem) => ({
 	id: project.id,
 	label: project.name,
 	route: {
 		to: {
-			name: route?.params?.projectId ? route?.name : VIEWS.PROJECTS_WORKFLOWS,
+			name: VIEWS.PROJECTS_WORKFLOWS,
 			params: { projectId: project.id },
 		},
 	},
@@ -74,6 +83,26 @@ const addProjectClicked = async () => {
 		addProject.value.disabled = false;
 	}
 };
+
+const canCreateProjects = computed(() => {
+	return hasPermission(['rbac'], { rbac: { scope: 'project:create' } });
+});
+
+const displayProjects = computed(() => {
+	return projectsStore.myProjects
+		.filter((p) => p.type === 'team')
+		.toSorted((a, b) => {
+			if (!a.name || !b.name) {
+				return 0;
+			}
+			if (a.name > b.name) {
+				return 1;
+			} else if (a.name < b.name) {
+				return -1;
+			}
+			return 0;
+		});
+});
 </script>
 
 <template>
@@ -91,7 +120,7 @@ const addProjectClicked = async () => {
 		<hr class="mt-m mb-m" />
 		<ElMenu :collapse="props.collapsed" :class="$style.projectItems">
 			<N8nMenuItem
-				v-for="project in projectsStore.myProjects"
+				v-for="project in displayProjects"
 				:key="project.id"
 				:item="getProjectMenuItem(project)"
 				:compact="props.collapsed"
@@ -101,7 +130,7 @@ const addProjectClicked = async () => {
 				data-test-id="project-menu-item"
 			/>
 		</ElMenu>
-		<ElMenu :collapse="props.collapsed" class="pt-s pl-xs pr-xs">
+		<ElMenu v-if="canCreateProjects" :collapse="props.collapsed" class="pt-s pl-xs pr-xs">
 			<N8nMenuItem
 				:item="addProject"
 				:compact="props.collapsed"

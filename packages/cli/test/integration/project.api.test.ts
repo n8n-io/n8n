@@ -8,7 +8,6 @@ import {
 	findProject,
 	getProjectRelations,
 } from './shared/db/projects';
-import { ProjectRepository } from '@/databases/repositories/project.repository';
 import Container from 'typedi';
 import type { Project } from '@/databases/entities/Project';
 import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
@@ -26,19 +25,10 @@ import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflo
 import { SharedCredentialsRepository } from '@/databases/repositories/sharedCredentials.repository';
 import type { GlobalRole } from '@/databases/entities/User';
 import type { Scope } from '@n8n/permissions';
-import { RoleService } from '@/services/role.service';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['project'],
 	enabledFeatures: ['feat:advancedPermissions'],
-});
-
-let projectRepository: ProjectRepository;
-let projectRelationRepository: ProjectRelationRepository;
-
-beforeAll(() => {
-	projectRepository = Container.get(ProjectRepository);
-	projectRelationRepository = Container.get(ProjectRelationRepository);
 });
 
 beforeEach(async () => {
@@ -164,22 +154,12 @@ describe('GET /projects/my-projects', () => {
 
 		expect(respProjects.find((p) => p.id === personalProject1.id)).toMatchObject({
 			role: 'project:personalOwner',
-			scopes: [
-				...new Set([
-					...Container.get(RoleService).getRoleScopes('project:personalOwner'),
-					...Container.get(RoleService).getRoleScopes('global:member'),
-				]),
-			].sort(),
+			scopes: ['project:list', 'project:read'].sort(),
 		});
 
 		expect(respProjects.find((p) => p.id === teamProject1.id)).toMatchObject({
 			role: 'project:admin',
-			scopes: [
-				...new Set([
-					...Container.get(RoleService).getRoleScopes('project:admin'),
-					...Container.get(RoleService).getRoleScopes('global:member'),
-				]),
-			].sort(),
+			scopes: ['project:list', 'project:read', 'project:update', 'project:delete'].sort(),
 		});
 
 		expect(respProjects).not.toContainEqual(expect.objectContaining({ id: personalProject2.id }));
@@ -236,38 +216,53 @@ describe('GET /projects/my-projects', () => {
 		expect(respProjects.find((p) => p.id === ownerProject.id)).toMatchObject({
 			role: 'project:personalOwner',
 			scopes: [
-				...new Set([
-					...Container.get(RoleService).getRoleScopes('project:personalOwner'),
-					...Container.get(RoleService).getRoleScopes('global:owner'),
-				]),
+				'project:list',
+				'project:create',
+				'project:read',
+				'project:update',
+				'project:delete',
 			].sort(),
 		});
 
 		expect(respProjects.find((p) => p.id === teamProject1.id)).toMatchObject({
 			role: 'global:owner',
-			scopes: [...new Set(Container.get(RoleService).getRoleScopes('global:owner'))].sort(),
+			scopes: [
+				'project:list',
+				'project:create',
+				'project:read',
+				'project:update',
+				'project:delete',
+			].sort(),
 		});
 		expect(respProjects.find((p) => p.id === teamProject2.id)).toMatchObject({
 			role: 'project:admin',
 			scopes: [
-				...new Set([
-					...Container.get(RoleService).getRoleScopes('project:admin'),
-					...Container.get(RoleService).getRoleScopes('global:owner'),
-				]),
+				'project:list',
+				'project:create',
+				'project:read',
+				'project:update',
+				'project:delete',
 			].sort(),
 		});
 		expect(respProjects.find((p) => p.id === teamProject3.id)).toMatchObject({
 			role: 'project:viewer',
 			scopes: [
-				...new Set([
-					...Container.get(RoleService).getRoleScopes('project:viewer'),
-					...Container.get(RoleService).getRoleScopes('global:owner'),
-				]),
+				'project:list',
+				'project:create',
+				'project:read',
+				'project:update',
+				'project:delete',
 			].sort(),
 		});
 		expect(respProjects.find((p) => p.id === teamProject4.id)).toMatchObject({
 			role: 'global:owner',
-			scopes: [...new Set([...Container.get(RoleService).getRoleScopes('global:owner')])].sort(),
+			scopes: [
+				'project:list',
+				'project:create',
+				'project:read',
+				'project:update',
+				'project:delete',
+			].sort(),
 		});
 
 		expect(respProjects).not.toContainEqual(expect.objectContaining({ id: personalProject1.id }));

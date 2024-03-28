@@ -582,6 +582,7 @@ export declare namespace ProjectRequest {
 		name: string | undefined;
 		type: ProjectType;
 		relations: ProjectRelationResponse[];
+		scopes: Scope[];
 	};
 
 	type Get = AuthenticatedRequest<{ projectId: string }, {}>;
