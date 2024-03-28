@@ -21,6 +21,7 @@ import { createLdapUser, createUser, getAllUsers, getLdapIdentities } from '../s
 import { UserRepository } from '@db/repositories/user.repository';
 import { SettingsRepository } from '@db/repositories/settings.repository';
 import { AuthProviderSyncHistoryRepository } from '@db/repositories/authProviderSyncHistory.repository';
+import { getPersonalProject } from '../shared/db/projects';
 
 jest.mock('@/telemetry');
 
@@ -509,6 +510,8 @@ describe('POST /login', () => {
 		expect(localLdapUsers[0].firstName).toBe(ldapUser.givenName);
 		expect(localLdapIdentities[0].providerId).toBe(ldapUser.uid);
 		expect(localLdapUsers[0].disabled).toBe(false);
+
+		await expect(getPersonalProject(localLdapUsers[0])).resolves.toBeDefined();
 	};
 
 	test('should allow new LDAP user to login and synchronize data', async () => {
