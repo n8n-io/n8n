@@ -8,7 +8,7 @@ import type { IUser, ICredentialsResponse, IWorkflowDb } from '@/Interface';
 import { hasPermission } from './rbac/permissions';
 import { isUserGlobalOwner } from './utils/userUtils';
 import type { CredentialScope, ProjectScope, WorkflowScope } from '@n8n/permissions';
-import { Project } from './features/projects/projects.types';
+import type { Project } from './features/projects/projects.types';
 
 /**
  * Old permissions implementation
