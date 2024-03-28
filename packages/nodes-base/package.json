@@ -184,6 +184,7 @@
       "dist/credentials/JiraSoftwareCloudApi.credentials.js",
       "dist/credentials/JiraSoftwareServerApi.credentials.js",
       "dist/credentials/JotFormApi.credentials.js",
+      "dist/credentials/jwtAuth.credentials.js",
       "dist/credentials/Kafka.credentials.js",
       "dist/credentials/KeapOAuth2Api.credentials.js",
       "dist/credentials/KibanaApi.credentials.js",

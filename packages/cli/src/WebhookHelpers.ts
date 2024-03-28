@@ -106,10 +106,22 @@ export const webhookRequestHandler =
 				const options = await webhookManager.findAccessControlOptions(path, requestedMethod);
 				const { allowedOrigins } = options ?? {};
 
-				res.header(
-					'Access-Control-Allow-Origin',
-					!allowedOrigins || allowedOrigins === '*' ? req.headers.origin : allowedOrigins,
-				);
+				if (allowedOrigins && allowedOrigins !== '*' && allowedOrigins !== req.headers.origin) {
+					const originsList = allowedOrigins.split(',');
+					const defaultOrigin = originsList[0];
+
+					if (originsList.length === 1) {
+						res.header('Access-Control-Allow-Origin', defaultOrigin);
+					}
+
+					if (originsList.includes(req.headers.origin as string)) {
+						res.header('Access-Control-Allow-Origin', req.headers.origin);
+					} else {
+						res.header('Access-Control-Allow-Origin', defaultOrigin);
+					}
+				} else {
+					res.header('Access-Control-Allow-Origin', req.headers.origin);
+				}
 
 				if (method === 'OPTIONS') {
 					res.header('Access-Control-Max-Age', '300');
@@ -262,14 +274,14 @@ export async function executeWebhook(
 	);
 	const responseCode = workflow.expression.getSimpleParameterValue(
 		workflowStartNode,
-		webhookData.webhookDescription.responseCode,
+		webhookData.webhookDescription.responseCode as string,
 		executionMode,
 		additionalKeys,
 		undefined,
 		200,
 	) as number;
 
-	const responseData = workflow.expression.getSimpleParameterValue(
+	const responseData = workflow.expression.getComplexParameterValue(
 		workflowStartNode,
 		webhookData.webhookDescription.responseData,
 		executionMode,
@@ -324,7 +336,7 @@ export async function executeWebhook(
 					// TODO: pass a custom `fileWriteStreamHandler` to create binary data files directly
 				});
 				req.body = await new Promise((resolve) => {
-					form.parse(req, async (err, data, files) => {
+					form.parse(req, async (_err, data, files) => {
 						normalizeFormData(data);
 						normalizeFormData(files);
 						resolve({ data, files });
@@ -453,6 +465,12 @@ export async function executeWebhook(
 			if (responseData === 'noData') {
 				// Return without data
 				responseCallback(null, {
+					responseCode,
+				});
+			} else if (responseData) {
+				// Return the data specified in the response data option
+				responseCallback(null, {
+					data: responseData as IDataObject,
 					responseCode,
 				});
 			} else if (webhookResultData.webhookResponse !== undefined) {
