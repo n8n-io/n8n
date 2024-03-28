@@ -63,6 +63,7 @@
 				<div :class="$style.group">
 					<CollaborationPane />
 					<n8n-button
+						v-if="showShareButton"
 						type="secondary"
 						data-test-id="workflow-share-button"
 						@click="onShareButtonClick"
@@ -186,6 +187,7 @@ import { hasPermission } from '@/rbac/permissions';
 import { useCanvasStore } from '@/stores/canvas.store';
 import { useRouter } from 'vue-router';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useProjectsStore } from '@/features/projects/projects.store';
 
 const hasChanged = (prev: string[], curr: string[]) => {
 	if (prev.length !== curr.length) {
@@ -249,6 +251,7 @@ export default defineComponent({
 			useUsersStore,
 			useSourceControlStore,
 			useCanvasStore,
+			useProjectsStore,
 		),
 		currentUser(): IUser | null {
 			return this.usersStore.currentUser;
@@ -378,6 +381,13 @@ export default defineComponent({
 		},
 		isWorkflowHistoryButtonDisabled(): boolean {
 			return this.workflowsStore.isNewWorkflow;
+		},
+		showShareButton(): boolean {
+			const workflow = this.workflowsStore.getWorkflowById(this.currentWorkflowId);
+			return (
+				(workflow && workflow.homeProject?.type !== 'team') ||
+				(this.isNewWorkflow && this.projectsStore.currentProject?.type !== 'team')
+			);
 		},
 	},
 	watch: {
