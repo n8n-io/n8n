@@ -209,6 +209,12 @@ export class Telegram implements INodeType {
 						action: 'Delete a chat message',
 					},
 					{
+						name: 'Edit Message Caption',
+						value: 'editMessageCaption',
+						description: 'Edit a caption of message',
+						action: 'Edit a caption of test message',
+					},
+					{
 						name: 'Edit Message Text',
 						value: 'editMessageText',
 						description: 'Edit a text message',
@@ -641,7 +647,7 @@ export class Telegram implements INodeType {
 			// ----------------------------------
 
 			// ----------------------------------
-			//         message:editMessageText
+			//         message:editMessageText/editMessageCaption
 			// ----------------------------------
 
 			{
@@ -650,7 +656,7 @@ export class Telegram implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						operation: ['editMessageText'],
+						operation: ['editMessageText', 'editMessageCaption'],
 						resource: ['message'],
 					},
 				},
@@ -676,7 +682,7 @@ export class Telegram implements INodeType {
 				displayOptions: {
 					show: {
 						messageType: ['message'],
-						operation: ['editMessageText'],
+						operation: ['editMessageText', 'editMessageCaption'],
 						resource: ['message'],
 					},
 				},
@@ -741,7 +747,7 @@ export class Telegram implements INodeType {
 				displayOptions: {
 					show: {
 						messageType: ['message'],
-						operation: ['editMessageText'],
+						operation: ['editMessageText', 'editMessageCaption'],
 						resource: ['message'],
 					},
 				},
@@ -756,7 +762,7 @@ export class Telegram implements INodeType {
 				displayOptions: {
 					show: {
 						messageType: ['inlineMessage'],
-						operation: ['editMessageText'],
+						operation: ['editMessageText', 'editMessageCaption'],
 						resource: ['message'],
 					},
 				},
@@ -1122,7 +1128,7 @@ export class Telegram implements INodeType {
 			},
 
 			// ----------------------------------
-			//         message:editMessageText/sendAnimation/sendAudio/sendLocation/sendMessage/sendPhoto/sendSticker/sendVideo
+			//         message:editMessageCaption/editMessageText/sendAnimation/sendAudio/sendLocation/sendMessage/sendPhoto/sendSticker/sendVideo
 			// ----------------------------------
 
 			{
@@ -1131,6 +1137,7 @@ export class Telegram implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
+							'editMessageCaption',
 							'sendAnimation',
 							'sendDocument',
 							'sendMessage',
@@ -1451,6 +1458,7 @@ export class Telegram implements INodeType {
 				displayOptions: {
 					show: {
 						operation: [
+							'editMessageCaption',
 							'editMessageText',
 							'sendAnimation',
 							'sendAudio',
@@ -1488,6 +1496,7 @@ export class Telegram implements INodeType {
 						displayOptions: {
 							show: {
 								'/operation': [
+									'editMessageCaption',
 									'sendAnimation',
 									'sendAudio',
 									'sendDocument',
@@ -1506,7 +1515,7 @@ export class Telegram implements INodeType {
 						default: false,
 						displayOptions: {
 							hide: {
-								'/operation': ['editMessageText'],
+								'/operation': ['editMessageText', 'editMessageCaption'],
 							},
 						},
 						description:
@@ -1596,6 +1605,7 @@ export class Telegram implements INodeType {
 						displayOptions: {
 							show: {
 								'/operation': [
+									'editMessageCaption',
 									'editMessageText',
 									'sendAnimation',
 									'sendAudio',
@@ -1627,7 +1637,7 @@ export class Telegram implements INodeType {
 						type: 'number',
 						displayOptions: {
 							hide: {
-								'/operation': ['editMessageText'],
+								'/operation': ['editMessageText', 'editMessageCaption'],
 							},
 						},
 						default: 0,
@@ -1823,7 +1833,25 @@ export class Telegram implements INodeType {
 						body.file_id = this.getNodeParameter('fileId', i) as string;
 					}
 				} else if (resource === 'message') {
-					if (operation === 'editMessageText') {
+					if (operation === 'editMessageCaption') {
+						// ----------------------------------
+						//         message:editMessageCaption
+						// ----------------------------------
+
+						endpoint = 'editMessageCaption';
+
+						const messageType = this.getNodeParameter('messageType', i) as string;
+
+						if (messageType === 'inlineMessage') {
+							body.inline_message_id = this.getNodeParameter('inlineMessageId', i) as string;
+						} else {
+							body.chat_id = this.getNodeParameter('chatId', i) as string;
+							body.message_id = this.getNodeParameter('messageId', i) as string;
+						}
+
+						// Add additional fields and replyMarkup
+						addAdditionalFields.call(this, body, i);
+					} else if (operation === 'editMessageText') {
 						// ----------------------------------
 						//         message:editMessageText
 						// ----------------------------------
