@@ -67,7 +67,7 @@ describe('GET /projects/', () => {
 					return false;
 				}
 				const u = [testUser1, testUser2, testUser3][i];
-				return p.name === `${u.firstName} ${u.lastName}`;
+				return p.name === u.createPersonalProjectName();
 			}),
 		).toBe(true);
 		expect(respProjects.find((p) => p.id === teamProject1.id)).not.toBeUndefined();
@@ -107,7 +107,7 @@ describe('GET /projects/', () => {
 					return false;
 				}
 				const u = [ownerUser, testUser1, testUser2, testUser3][i];
-				return p.name === `${u.firstName} ${u.lastName}`;
+				return p.name === u.createPersonalProjectName();
 			}),
 		).toBe(true);
 		expect(respProjects.find((p) => p.id === teamProject1.id)).not.toBeUndefined();

@@ -116,7 +116,7 @@ describe('GET /credentials', () => {
 		expect(ownerCredential.homeProject).toMatchObject({
 			id: ownerPersonalProject.id,
 			type: 'personal',
-			name: 'My n8n',
+			name: owner.createPersonalProjectName(),
 		});
 
 		expect(Array.isArray(ownerCredential.sharedWithProjects)).toBe(true);
@@ -132,14 +132,13 @@ describe('GET /credentials', () => {
 			expect(sharee).toMatchObject({
 				id: orderedSharedWith[idx].id,
 				type: orderedSharedWith[idx].type,
-				name: 'My n8n',
 			});
 		});
 
 		expect(memberCredential.homeProject).toMatchObject({
 			id: member1PersonalProject.id,
 			type: member1PersonalProject.type,
-			name: 'My n8n',
+			name: member1.createPersonalProjectName(),
 		});
 
 		expect(Array.isArray(memberCredential.sharedWithProjects)).toBe(true);
@@ -177,14 +176,14 @@ describe('GET /credentials', () => {
 
 		expect(member1Credential.homeProject).toMatchObject({
 			id: member1PersonalProject.id,
-			name: 'My n8n',
+			name: member1.createPersonalProjectName(),
 			type: member1PersonalProject.type,
 		});
 
 		expect(member1Credential.sharedWithProjects).toHaveLength(1);
 		expect(member1Credential.sharedWithProjects[0]).toMatchObject({
 			id: member2PersonalProject.id,
-			name: 'My n8n',
+			name: member2.createPersonalProjectName(),
 			type: member2PersonalProject.type,
 		});
 	});
@@ -232,7 +231,7 @@ describe('GET /credentials/:id', () => {
 
 		expect(firstCredential.homeProject).toMatchObject({
 			id: ownerPersonalProject.id,
-			name: 'My n8n',
+			name: owner.createPersonalProjectName(),
 			type: ownerPersonalProject.type,
 		});
 		expect(firstCredential.sharedWithProjects).toHaveLength(0);
@@ -271,13 +270,13 @@ describe('GET /credentials/:id', () => {
 		expect(credential).toMatchObject({
 			homeProject: {
 				id: member1PersonalProject.id,
-				name: 'My n8n',
+				name: member1.createPersonalProjectName(),
 				type: member1PersonalProject.type,
 			},
 			sharedWithProjects: [
 				{
 					id: member2PersonalProject.id,
-					name: 'My n8n',
+					name: member2.createPersonalProjectName(),
 					type: member2PersonalProject.type,
 				},
 			],
@@ -322,18 +321,18 @@ describe('GET /credentials/:id', () => {
 		expect(firstCredential).toMatchObject({
 			homeProject: {
 				id: member1PersonalProject.id,
-				name: 'My n8n',
+				name: member1.createPersonalProjectName(),
 				type: 'personal',
 			},
 			sharedWithProjects: expect.arrayContaining([
 				{
 					id: member2PersonalProject.id,
-					name: 'My n8n',
+					name: member2.createPersonalProjectName(),
 					type: member2PersonalProject.type,
 				},
 				{
 					id: member3PersonalProject.id,
-					name: 'My n8n',
+					name: member3.createPersonalProjectName(),
 					type: member3PersonalProject.type,
 				},
 			]),

@@ -130,6 +130,7 @@ export class UserRepository extends Repository<User> {
 			const savedProject = await entityManager.save<Project>(
 				entityManager.create(Project, {
 					type: 'personal',
+					name: savedUser.createPersonalProjectName(),
 				}),
 			);
 			await entityManager.save<ProjectRelation>(

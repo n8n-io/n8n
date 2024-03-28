@@ -9,6 +9,7 @@ import Container from 'typedi';
 import { ProjectRepository } from '../repositories/project.repository';
 import { ApplicationError, ErrorReporterProxy } from 'n8n-workflow';
 import { Logger } from '@/Logger';
+import { UserRepository } from '../repositories/user.repository';
 
 export type ProjectType = 'personal' | 'team' | 'public';
 
@@ -49,7 +50,9 @@ export class UserSubscriber implements EntitySubscriberInterface<User> {
 					fields.includes('email')
 				) {
 					const oldUser = event.databaseEntity;
-					const name = `${newUserData.firstName} ${newUserData.lastName} <${newUserData.email}>`;
+					const name = Container.get(UserRepository)
+						.create(newUserData)
+						.createPersonalProjectName();
 
 					const project = await Container.get(ProjectRepository).getPersonalProjectForUser(
 						oldUser.id,
