@@ -902,7 +902,7 @@ const regexes = {
 	singleQuoteStringLiteral: /('.+')\.([^'{\s])*/, // 'abc'.
 	doubleQuoteStringLiteral: /(".+")\.([^"{\s])*/, // "abc".
 	dateLiteral: /\(?new Date\(\(?.*?\)\)?\.(.*)/, // new Date(). or (new Date()).
-	arrayLiteral: /(\[.*\])\.(.*)/, // [1, 2, 3].
+	arrayLiteral: /\(?(\[.*\])\)?\.(.*)/, // [1, 2, 3].
 	indexedAccess: /([^"{\s]+\[.+\])\.(.*)/, // 'abc'[0]. or 'abc'.split('')[0] or similar ones
 	objectLiteral: /\(\{.*\}\)\.(.*)/, // ({}).
 

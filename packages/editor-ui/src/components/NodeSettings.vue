@@ -14,7 +14,7 @@
 					:model-value="node.name"
 					:node-type="nodeType"
 					:read-only="isReadOnly"
-					@update:modelValue="nameChanged"
+					@update:model-value="nameChanged"
 				></NodeTitle>
 				<div v-if="isExecutable">
 					<NodeExecuteButton
@@ -25,7 +25,7 @@
 						size="small"
 						telemetry-source="parameters"
 						@execute="onNodeExecute"
-						@stopExecution="onStopExecution"
+						@stop-execution="onStopExecution"
 					/>
 				</div>
 			</div>
@@ -98,17 +98,17 @@
 					:is-read-only="isReadOnly"
 					:hidden-issues-inputs="hiddenIssuesInputs"
 					path="parameters"
-					@valueChanged="valueChanged"
+					@value-changed="valueChanged"
 					@activate="onWorkflowActivate"
-					@parameterBlur="onParameterBlur"
+					@parameter-blur="onParameterBlur"
 				>
 					<NodeCredentials
 						:node="node"
 						:readonly="isReadOnly"
 						:show-all="true"
 						:hide-issues="hiddenIssuesInputs.includes('credentials')"
-						@credentialSelected="credentialSelected"
-						@valueChanged="valueChanged"
+						@credential-selected="credentialSelected"
+						@value-changed="valueChanged"
 						@blur="onParameterBlur"
 					/>
 				</ParameterInputList>
@@ -139,8 +139,8 @@
 					:is-read-only="isReadOnly"
 					:hidden-issues-inputs="hiddenIssuesInputs"
 					path="parameters"
-					@valueChanged="valueChanged"
-					@parameterBlur="onParameterBlur"
+					@value-changed="valueChanged"
+					@parameter-blur="onParameterBlur"
 				/>
 				<ParameterInputList
 					:parameters="nodeSettings"
@@ -149,8 +149,8 @@
 					:is-read-only="isReadOnly"
 					:hidden-issues-inputs="hiddenIssuesInputs"
 					path=""
-					@valueChanged="valueChanged"
-					@parameterBlur="onParameterBlur"
+					@value-changed="valueChanged"
+					@parameter-blur="onParameterBlur"
 				/>
 				<div class="node-version" data-test-id="node-version">
 					{{
@@ -169,8 +169,8 @@
 			v-if="node"
 			ref="subConnections"
 			:root-node="node"
-			@switchSelectedNode="onSwitchSelectedNode"
-			@openConnectionNodeCreator="onOpenConnectionNodeCreator"
+			@switch-selected-node="onSwitchSelectedNode"
+			@open-connection-node-creator="onOpenConnectionNodeCreator"
 		/>
 		<n8n-block-ui :show="blockUI" />
 	</div>
@@ -376,7 +376,7 @@ export default defineComponent({
 			const credential = this.usedCredentials
 				? Object.values(this.usedCredentials).find((credential) => {
 						return credential.id === this.foreignCredentials[0];
-				  })
+					})
 				: undefined;
 
 			return this.credentialsStore.getCredentialOwnerName(credential);

@@ -56,7 +56,7 @@
 					:model-value="displayMode"
 					:options="buttons"
 					data-test-id="ndv-run-data-display-mode"
-					@update:modelValue="onDisplayModeChange"
+					@update:model-value="onDisplayModeChange"
 				/>
 				<n8n-icon-button
 					v-if="canPinData && !isReadOnlyRoute && !readOnlyEnv"
@@ -116,7 +116,7 @@
 					size="small"
 					:model-value="runIndex"
 					teleported
-					@update:modelValue="onRunIndexChange"
+					@update:model-value="onRunIndexChange"
 					@click.stop
 				>
 					<template #prepend>{{ $locale.baseText('ndv.output.run') }}</template>
@@ -160,7 +160,7 @@
 			<n8n-tabs
 				:model-value="currentOutputIndex"
 				:options="branches"
-				@update:modelValue="onBranchChange"
+				@update:model-value="onBranchChange"
 			/>
 			<RunDataSearch
 				v-if="showIOSearch"
@@ -229,7 +229,7 @@
 				<div :class="[$style.editModeBody, 'ignore-key-press']">
 					<JsonEditor
 						:model-value="editMode.value"
-						@update:modelValue="ndvStore.setOutputPanelEditModeValue($event)"
+						@update:model-value="ndvStore.setOutputPanelEditModeValue($event)"
 					/>
 				</div>
 				<div :class="$style.editModeFooter">
@@ -384,8 +384,8 @@
 					:has-default-hover-state="paneType === 'input' && !search"
 					:search="search"
 					@mounted="$emit('tableMounted', $event)"
-					@activeRowChanged="onItemHover"
-					@displayModeChange="onDisplayModeChange"
+					@active-row-changed="onItemHover"
+					@display-mode-change="onDisplayModeChange"
 				/>
 			</Suspense>
 
@@ -539,7 +539,7 @@
 					size="mini"
 					:model-value="pageSize"
 					teleported
-					@update:modelValue="onPageSizeChange"
+					@update:model-value="onPageSizeChange"
 				>
 					<template #prepend>{{ $locale.baseText('ndv.output.pageSize') }}</template>
 					<n8n-option v-for="size in pageSizes" :key="size" :label="size" :value="size">
@@ -1003,11 +1003,11 @@ export default defineComponent({
 					? this.$locale.baseText('ndv.search.items', {
 							adjustToNumber: totalItemsCount,
 							interpolate: { matched: itemsCount, total: totalItemsCount },
-					  })
+						})
 					: this.$locale.baseText('ndv.output.items', {
 							adjustToNumber: itemsCount,
 							interpolate: { count: itemsCount },
-					  });
+						});
 				let outputName = this.getOutputName(i);
 
 				if (`${outputName}` === `${i}`) {
@@ -1344,12 +1344,12 @@ export default defineComponent({
 				return Array.isArray(this.pinnedData.data.value)
 					? this.pinnedData.data.value.map((value) => ({
 							json: value,
-					  }))
+						}))
 					: [
 							{
 								json: this.pinnedData.data.value,
 							},
-					  ];
+						];
 			}
 			return inputData;
 		},

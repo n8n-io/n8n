@@ -2,8 +2,8 @@
 	<n8n-tabs
 		:options="options"
 		:model-value="modelValue"
-		@update:modelValue="onTabSelect"
-		@tooltipClick="onTooltipClick"
+		@update:model-value="onTabSelect"
+		@tooltip-click="onTooltipClick"
 	/>
 </template>
 

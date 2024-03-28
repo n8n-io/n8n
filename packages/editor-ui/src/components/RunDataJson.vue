@@ -30,7 +30,7 @@
 				root-path=""
 				selectable-type="single"
 				class="json-data"
-				@update:selectedValue="selectedJsonPath = $event"
+				@update:selected-value="selectedJsonPath = $event"
 			>
 				<template #renderNodeKey="{ node }">
 					<TextWithHighlights
@@ -158,7 +158,7 @@ export default defineComponent({
 			return executionDataToJson(this.inputData);
 		},
 		highlight(): boolean {
-			return !this.ndvStore.isMappingOnboarded && Boolean(this.ndvStore.focusedMappableInput);
+			return this.ndvStore.highlightDraggables;
 		},
 	},
 	methods: {

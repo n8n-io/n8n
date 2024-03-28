@@ -810,7 +810,7 @@ export async function proxyRequestToAxios(
 					statusCode: response.status,
 					statusMessage: response.statusText,
 					request: response.request,
-			  }
+				}
 			: body;
 	} catch (error) {
 		const { config, response } = error;
@@ -1042,7 +1042,7 @@ export function assertBinaryData(
 	propertyName: string,
 	inputIndex: number,
 ): IBinaryData {
-	const binaryKeyData = inputData.main[inputIndex]![itemIndex]!.binary;
+	const binaryKeyData = inputData.main[inputIndex]![itemIndex].binary;
 	if (binaryKeyData === undefined) {
 		throw new NodeOperationError(
 			node,
@@ -1079,7 +1079,7 @@ export async function getBinaryDataBuffer(
 	propertyName: string,
 	inputIndex: number,
 ): Promise<Buffer> {
-	const binaryData = inputData.main[inputIndex]![itemIndex]!.binary![propertyName]!;
+	const binaryData = inputData.main[inputIndex]![itemIndex].binary![propertyName];
 	return await Container.get(BinaryDataService).getAsBuffer(binaryData);
 }
 
@@ -1940,7 +1940,7 @@ export function getAdditionalKeys(
 						getAll(): Record<string, string> {
 							return getAllWorkflowExecutionMetadata(runExecutionData);
 						},
-				  }
+					}
 				: undefined,
 		},
 		$vars: additionalData.variables,
@@ -2112,7 +2112,7 @@ export function cleanupParameterData(inputData: NodeParameterValueType): void {
 		(Object.keys(inputData) as Key[]).forEach((key) => {
 			const value = inputData[key];
 			if (typeof value === 'object') {
-				if (value instanceof DateTime) {
+				if (DateTime.isDateTime(value)) {
 					// Is a special luxon date so convert to string
 					inputData[key] = value.toString();
 				} else {
@@ -2530,7 +2530,6 @@ const addExecutionDataFunctions = async (
 	taskData = taskData!;
 
 	if (data instanceof Error) {
-		// TODO: Or "failed", what is the difference
 		taskData.executionStatus = 'error';
 		taskData.error = data;
 	} else {
@@ -3205,7 +3204,7 @@ const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunctions =>
 				? new NodeOperationError(node, error, {
 						message: `The file "${String(filePath)}" could not be accessed.`,
 						level: 'warning',
-				  })
+					})
 				: error;
 		}
 		if (isFilePathBlocked(filePath as string)) {

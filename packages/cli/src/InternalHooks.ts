@@ -202,7 +202,11 @@ export class InternalHooks {
 	}
 
 	async onWorkflowSaved(user: User, workflow: IWorkflowDb, publicApi: boolean): Promise<void> {
-		const { nodeGraph } = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
+		const isCloudDeployment = config.getEnv('deployment.type') === 'cloud';
+
+		const { nodeGraph } = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes, {
+			isCloudDeployment,
+		});
 
 		const notesCount = Object.keys(nodeGraph.notes).length;
 		const overlappingCount = Object.values(nodeGraph.notes).filter(
@@ -483,23 +487,26 @@ export class InternalHooks {
 			workflowName: workflow.name,
 			metaData: runData?.data?.resultData?.metadata,
 		};
-		promises.push(
-			telemetryProperties.success
-				? this.eventBus.sendWorkflowEvent({
-						eventName: 'n8n.workflow.success',
-						payload: sharedEventPayload,
-				  })
-				: this.eventBus.sendWorkflowEvent({
-						eventName: 'n8n.workflow.failed',
-						payload: {
-							...sharedEventPayload,
-							lastNodeExecuted: runData?.data.resultData.lastNodeExecuted,
-							errorNodeType: telemetryProperties.error_node_type,
-							errorNodeId: telemetryProperties.error_node_id?.toString(),
-							errorMessage: telemetryProperties.error_message?.toString(),
-						},
-				  }),
-		);
+		let event;
+		if (telemetryProperties.success) {
+			event = this.eventBus.sendWorkflowEvent({
+				eventName: 'n8n.workflow.success',
+				payload: sharedEventPayload,
+			});
+		} else {
+			event = this.eventBus.sendWorkflowEvent({
+				eventName: 'n8n.workflow.failed',
+				payload: {
+					...sharedEventPayload,
+					lastNodeExecuted: runData?.data.resultData.lastNodeExecuted,
+					errorNodeType: telemetryProperties.error_node_type,
+					errorNodeId: telemetryProperties.error_node_id?.toString(),
+					errorMessage: telemetryProperties.error_message?.toString(),
+				},
+			});
+		}
+
+		promises.push(event);
 
 		void Promise.all([...promises, this.telemetry.trackWorkflowExecution(telemetryProperties)]);
 	}

@@ -30,8 +30,8 @@ export async function gristApiRequest(
 		planType === 'free'
 			? `https://docs.getgrist.com/api${endpoint}`
 			: planType === 'paid'
-			  ? `https://${customSubdomain}.getgrist.com/api${endpoint}`
-			  : `${selfHostedUrl}/api${endpoint}`;
+				? `https://${customSubdomain}.getgrist.com/api${endpoint}`
+				: `${selfHostedUrl}/api${endpoint}`;
 
 	const options: IRequestOptions = {
 		headers: {

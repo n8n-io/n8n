@@ -162,11 +162,11 @@ export default defineComponent({
 				? {
 						name: VIEWS.EXECUTION_PREVIEW,
 						params: { name: routeWorkflowId, executionId: this.activeExecution.id },
-				  }
+					}
 				: {
 						name: VIEWS.EXECUTION_HOME,
 						params: { name: routeWorkflowId },
-				  };
+					};
 
 			if (openInNewTab) {
 				const { href } = this.$router.resolve(routeToNavigateTo);

@@ -99,7 +99,7 @@ describe('softDeleteOnPruningCycle()', () => {
 			['unknown', { startedAt: now, stoppedAt: now }],
 			['canceled', { startedAt: now, stoppedAt: now }],
 			['crashed', { startedAt: now, stoppedAt: now }],
-			['failed', { startedAt: now, stoppedAt: now }],
+			['error', { startedAt: now, stoppedAt: now }],
 			['success', { finished: true, startedAt: now, stoppedAt: now }],
 		])('should prune %s executions', async (status, attributes) => {
 			const executions = [
@@ -192,7 +192,7 @@ describe('softDeleteOnPruningCycle()', () => {
 			['unknown', { startedAt: yesterday, stoppedAt: yesterday }],
 			['canceled', { startedAt: yesterday, stoppedAt: yesterday }],
 			['crashed', { startedAt: yesterday, stoppedAt: yesterday }],
-			['failed', { startedAt: yesterday, stoppedAt: yesterday }],
+			['error', { startedAt: yesterday, stoppedAt: yesterday }],
 			['success', { finished: true, startedAt: yesterday, stoppedAt: yesterday }],
 		])('should prune %s executions', async (status, attributes) => {
 			const execution = await createExecution({ status, ...attributes }, workflow);
