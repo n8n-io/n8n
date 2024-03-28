@@ -86,7 +86,7 @@
 							>
 						</td>
 						<td>
-							<span>{{ formatDate(execution.startedAt) }}</span>
+							<span v-if="execution.status !== 'new'">{{ formatDate(execution.startedAt) }}</span>
 						</td>
 						<td>
 							<div :class="$style.statusColumn">
@@ -820,7 +820,7 @@ export default defineComponent({
 			} else if (status === 'crashed') {
 				text = this.i18n.baseText('executionsList.error');
 			} else if (status === 'new') {
-				text = this.i18n.baseText('executionsList.running');
+				text = this.i18n.baseText('executionsList.enqueued');
 			} else if (status === 'running') {
 				text = this.i18n.baseText('executionsList.running');
 			} else if (status === 'success') {
@@ -848,7 +848,7 @@ export default defineComponent({
 					path = 'executionsList.statusText';
 				}
 			} else if (status === 'new') {
-				path = 'executionsList.statusRunning';
+				path = 'executionsList.statusTextWithoutTime';
 			} else if (status === 'running') {
 				path = 'executionsList.statusRunning';
 			} else {

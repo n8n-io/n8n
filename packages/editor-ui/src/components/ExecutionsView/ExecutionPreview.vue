@@ -10,6 +10,14 @@
 			{{ $locale.baseText('executionsList.stopExecution') }}
 		</n8n-button>
 	</div>
+	<div v-else-if="executionUIDetails?.name === 'enqueued'" :class="$style.enqueuedInfo">
+		<n8n-text :class="$style.runningMessage" color="text-light">
+			{{ $locale.baseText('executionDetails.enqueuedMessage') }}
+		</n8n-text>
+		<n8n-button class="mt-l" type="tertiary" @click="handleStopClick">
+			{{ $locale.baseText('executionsList.stopExecution') }}
+		</n8n-button>
+	</div>
 	<div v-else :class="$style.previewContainer">
 		<div
 			v-if="activeExecution"
@@ -283,7 +291,8 @@ export default defineComponent({
 	color: var(--color-danger);
 }
 
-.runningInfo {
+.runningInfo,
+.enqueuedInfo {
 	display: flex;
 	flex-direction: column;
 	align-items: center;

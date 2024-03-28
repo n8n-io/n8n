@@ -9,6 +9,7 @@ import { sep } from 'path';
 import { diff } from 'json-diff';
 import pick from 'lodash/pick';
 
+import config from '@/config';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import type { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
@@ -70,9 +71,8 @@ export class ExecuteBatch extends BaseCommand {
 				'Specifies workflow IDs to get executed, separated by a comma or a file containing the ids',
 		}),
 		concurrency: Flags.integer({
-			default: 1,
-			description:
-				'How many workflows can run in parallel. Defaults to 1 which means no concurrency.',
+			default: config.getEnv('executions.concurrency'),
+			description: 'How many workflows can run in parallel. Defaults to 10.',
 		}),
 		output: Flags.string({
 			description:
@@ -169,7 +169,7 @@ export class ExecuteBatch extends BaseCommand {
 	async run() {
 		const { flags } = await this.parse(ExecuteBatch);
 		ExecuteBatch.debug = flags.debug;
-		ExecuteBatch.concurrency = flags.concurrency || 1;
+		ExecuteBatch.concurrency = flags.concurrency;
 
 		const ids: string[] = [];
 		const skipIds: string[] = [];

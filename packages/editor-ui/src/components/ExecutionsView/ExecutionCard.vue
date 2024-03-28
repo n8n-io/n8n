@@ -185,13 +185,14 @@ export default defineComponent({
 		}
 	}
 
-	&.waiting {
+	&.waiting,
+	&.enqueued {
 		&,
 		& .executionLink {
 			border-left: var(--spacing-4xs) var(--border-style-base) var(--execution-card-border-waiting);
 		}
 		.statusLabel {
-			color: var(--color-secondary);
+			color: var(--execution-card-label-waiting);
 		}
 	}
 

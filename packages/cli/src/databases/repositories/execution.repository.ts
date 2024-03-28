@@ -523,6 +523,15 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return await this.delete({ id: In(executionIds) });
 	}
 
+	async getNewExecutionIds() {
+		return await this.findMultipleExecutions({
+			select: ['id'],
+			where: {
+				status: 'new',
+			},
+		}).then((executions) => executions.map(({ id }) => id));
+	}
+
 	async getWaitingExecutions() {
 		// Find all the executions which should be triggered in the next 70 seconds
 		const waitTill = new Date(Date.now() + 70000);

@@ -15,6 +15,7 @@ import type {
 	WorkflowHooks,
 } from 'n8n-workflow';
 import {
+	ApplicationError,
 	ErrorReporterProxy as ErrorReporter,
 	Workflow,
 	WorkflowOperationError,
@@ -39,6 +40,7 @@ import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 import { InternalHooks } from '@/InternalHooks';
 import { Logger } from '@/Logger';
 import { WorkflowStaticDataService } from '@/workflows/workflowStaticData.service';
+import { OwnershipService } from '@/services/ownership.service';
 
 @Service()
 export class WorkflowRunner {
@@ -54,10 +56,46 @@ export class WorkflowRunner {
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
 		private readonly nodeTypes: NodeTypes,
 		private readonly permissionChecker: PermissionChecker,
+		private readonly ownershipService: OwnershipService,
 	) {
 		if (this.executionsMode === 'queue') {
 			this.jobQueue = Container.get(Queue);
 		}
+	}
+
+	async init() {
+		if (this.executionsMode === 'queue') return;
+
+		const executionIds = await this.executionRepository.getNewExecutionIds();
+		for (const executionId of executionIds) {
+			this.logger.debug('Resuming enqueued execution', { executionId });
+			// Don't block here by using await
+			void this.reEnqueueExecution(executionId);
+		}
+	}
+
+	private async reEnqueueExecution(executionId: string) {
+		const fullExecutionData = await this.executionRepository.findSingleExecution(executionId, {
+			includeData: true,
+			unflattenData: true,
+		});
+
+		if (!fullExecutionData) {
+			throw new ApplicationError('Execution does not exist.', { extra: { executionId } });
+		}
+
+		const workflowId = fullExecutionData.workflowData.id;
+		const user = await this.ownershipService.getWorkflowOwnerCached(workflowId);
+
+		const data: IWorkflowExecutionDataProcess = {
+			executionMode: fullExecutionData.mode,
+			executionData: fullExecutionData.data,
+			workflowData: fullExecutionData.workflowData,
+			userId: user.id,
+		};
+		// TODO: move `enqueue` before most of the DB queries
+		await this.activeExecutions.enqueue(executionId, data, 'new');
+		await this.runMainProcess(executionId, data);
 	}
 
 	/** The process did error */
@@ -177,22 +215,18 @@ export class WorkflowRunner {
 			this.activeExecutions.attachResponsePromise(executionId, responsePromise);
 		}
 
-		if (this.executionsMode === 'queue' && data.executionMode !== 'manual') {
+		const runInMainProcess = this.executionsMode !== 'queue' || data.executionMode === 'manual';
+		if (!runInMainProcess) {
 			// Do not run "manual" executions in bull because sending events to the
 			// frontend would not be possible
 			await this.enqueueExecution(executionId, data, loadStaticData, realtime);
 		} else {
-			await this.runMainProcess(executionId, data, loadStaticData, executionId);
-			void Container.get(InternalHooks).onWorkflowBeforeExecute(executionId, data);
+			await this.runMainProcess(executionId, data, loadStaticData, restartExecutionId);
 		}
 
 		// only run these when not in queue mode or when the execution is manual,
 		// since these calls are now done by the worker directly
-		if (
-			this.executionsMode !== 'queue' ||
-			config.getEnv('generic.instanceType') === 'worker' ||
-			data.executionMode === 'manual'
-		) {
+		if (config.getEnv('generic.instanceType') === 'worker' || runInMainProcess) {
 			const postExecutePromise = this.activeExecutions.getPostExecutePromise(executionId);
 			postExecutePromise
 				.then(async (executionData) => {
@@ -380,6 +414,8 @@ export class WorkflowRunner {
 			);
 
 			throw error;
+		} finally {
+			void Container.get(InternalHooks).onWorkflowBeforeExecute(executionId, data);
 		}
 	}
 
