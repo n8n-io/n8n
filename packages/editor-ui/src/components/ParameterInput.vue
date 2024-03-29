@@ -102,9 +102,9 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
 	(event: 'focus'): void;
 	(event: 'blur'): void;
-	(event: 'drop', value: string): void;
-	(event: 'textInput', value: IUpdateInformation): void;
-	(event: 'update', value: IUpdateInformation): void;
+	(event: 'drop', expression: string): void;
+	(event: 'textInput', update: IUpdateInformation): void;
+	(event: 'update', update: IUpdateInformation): void;
 }>();
 
 const externalHooks = useExternalHooks();
@@ -217,7 +217,7 @@ const displayValue = computed<string | number | boolean | null>(() => {
 	}
 
 	if (returnValue !== undefined && returnValue !== null && props.parameter.type === 'string') {
-		const rows = getArgument('rows');
+		const rows = editorRows.value;
 		if (rows === undefined || rows === 1) {
 			returnValue = (returnValue as string).toString().replace(/\n/, '|');
 		}
@@ -397,7 +397,7 @@ const parameterInputClasses = computed(() => {
 		activeDrop: props.activeDrop,
 	};
 
-	const rows = getArgument('rows');
+	const rows = editorRows.value;
 	const isTextarea = props.parameter.type === 'string' && rows !== undefined;
 	const isSwitch = props.parameter.type === 'boolean' && !isModelValueExpression.value;
 
@@ -478,9 +478,7 @@ const modelValueExpressionEdit = computed<string>(() => {
 		: (props.modelValue as string);
 });
 
-const editorRows = computed<number>(() => {
-	return props.rows;
-});
+const editorRows = computed(() => getArgument<number>('rows'));
 
 const codeEditorMode = computed<CodeExecutionMode>(() => {
 	return node.value.parameters.mode as CodeExecutionMode;
@@ -1005,7 +1003,7 @@ onUpdated(async () => {
 							v-else-if="editorType === 'htmlEditor'"
 							:model-value="modelValueString"
 							:is-read-only="isReadOnly"
-							:rows="getArgument('rows')"
+							:rows="editorRows"
 							:disable-expression-coloring="!isHtmlNode"
 							:disable-expression-completions="!isHtmlNode"
 							fullscreen
@@ -1016,7 +1014,7 @@ onUpdated(async () => {
 							:model-value="modelValueString"
 							:dialect="getArgument('sqlDialect')"
 							:is-read-only="isReadOnly"
-							:rows="getArgument('rows')"
+							:rows="editorRows"
 							fullscreen
 							@update:model-value="valueChangedDebounced"
 						/>
@@ -1079,7 +1077,7 @@ onUpdated(async () => {
 					:key="'html-' + codeEditDialogVisible.toString()"
 					:model-value="modelValueString"
 					:is-read-only="isReadOnly"
-					:rows="getArgument<number>('rows')"
+					:rows="editorRows"
 					:disable-expression-coloring="!isHtmlNode"
 					:disable-expression-completions="!isHtmlNode"
 					@update:model-value="valueChangedDebounced"
@@ -1102,7 +1100,7 @@ onUpdated(async () => {
 					:model-value="modelValueString"
 					:dialect="getArgument('sqlDialect')"
 					:is-read-only="isReadOnly"
-					:rows="getArgument('rows')"
+					:rows="editorRows"
 					@update:model-value="valueChangedDebounced"
 				>
 					<template #suffix>
