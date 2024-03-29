@@ -96,10 +96,13 @@ export class AIService {
 
 		const fuse = new Fuse(apiKnowledgebase as unknown as APIKnowledgebaseService[], {
 			threshold: 0.25,
+			useExtendedSearch: true,
 			keys: ['id', 'title'],
 		});
 
-		const matchedServices = fuse.search(serviceName).map((result) => result.item);
+		const matchedServices = fuse
+			.search(serviceName.replace(/ +/g, '|'))
+			.map((result) => result.item);
 
 		if (matchedServices.length === 0) {
 			return await this.generateCurlGeneric(serviceName, serviceRequest);
@@ -111,11 +114,15 @@ export class AIService {
 			pineconeIndex: pcIndex,
 		});
 
-		const matchedDocuments = await vectorStore.similaritySearch(serviceRequest, 4, {
-			id: {
-				$in: matchedServices.map((service) => service.id),
+		const matchedDocuments = await vectorStore.similaritySearch(
+			`${serviceName} ${serviceRequest}`,
+			4,
+			{
+				id: {
+					$in: matchedServices.map((service) => service.id),
+				},
 			},
-		});
+		);
 
 		if (matchedDocuments.length === 0) {
 			return await this.generateCurlGeneric(serviceName, serviceRequest);
