@@ -118,13 +118,11 @@ const addTargetBlank = (html: string) =>
 	align-items: center;
 	color: var(--color-text-light);
 	padding-left: var(--spacing-4xs);
-	background-color: var(--color-background-xlight);
 	z-index: 1;
 }
 
 .options {
 	opacity: 0;
-	background-color: var(--color-background-xlight);
 	transition: opacity 250ms cubic-bezier(0.98, -0.06, 0.49, -0.2); // transition on hover out
 
 	> * {
