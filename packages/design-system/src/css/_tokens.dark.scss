@@ -135,6 +135,9 @@
 	// Notification
 	--color-notification-background: var(--prim-gray-740);
 
+	// Execution card
+	--execution-card-background-hover: var(--color-foreground-base);
+
 	// NDV
 	--color-run-data-background: var(--prim-gray-800);
 	--color-ndv-droppable-parameter: var(--prim-color-primary);
@@ -185,9 +188,6 @@
 
 	// Input Triple
 	--color-background-input-triple: var(--prim-gray-800);
-
-	// Execution Card
-	--execution-card-background-hover: var(--color-foreground-base);
 
 	// Various
 	--color-info-tint-1: var(--prim-gray-420);
