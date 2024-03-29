@@ -240,7 +240,6 @@
 
 	// Dialogs and overlays
 	--color-dialog-background: var(--prim-gray-0);
-	--color-dialog-border-color: var(--prim-gray-0);
 	--color-dialog-overlay-background: var(--prim-gray-0-alpha-075);
 	--color-dialog-overlay-background-dark: var(--prim-color-alt-j-alpha-075);
 	--color-block-ui-overlay: var(--prim-gray-820);
@@ -258,6 +257,7 @@
 	// Switch (Activation, boolean)
 	--color-switch-background: var(--prim-gray-420);
 	--color-switch-active-background: var(--prim-color-alt-i);
+	--color-switch-border-color: transparent;
 	--color-switch-toggle: var(--prim-gray-0);
 
 	// Feature Request
