@@ -26,14 +26,12 @@
 import { computed, ref } from 'vue';
 import { ElInput } from 'element-plus';
 import { uid } from '../../utils';
-
-const INPUT = ['text', 'textarea', 'number', 'password', 'email'] as const;
-const SIZE = ['mini', 'small', 'medium', 'large', 'xlarge'] as const;
+import type { InputSize, InputType } from '@/types/input';
 
 interface InputProps {
 	modelValue?: string | number;
-	type?: (typeof INPUT)[number];
-	size?: (typeof SIZE)[number];
+	type?: InputType;
+	size?: InputSize;
 	placeholder?: string;
 	disabled?: boolean;
 	readonly?: boolean;
