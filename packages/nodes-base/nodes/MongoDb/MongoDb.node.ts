@@ -108,7 +108,6 @@ export class MongoDb implements INodeType {
 
 		const mdb = client.db(database);
 
-		// let responseData: IDataObject | IDataObject[] = [];
 		let returnData: INodeExecutionData[] = [];
 
 		const items = this.getInputData();
