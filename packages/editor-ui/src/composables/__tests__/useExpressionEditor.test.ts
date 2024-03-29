@@ -21,9 +21,6 @@ vi.mock('@/stores/ndv.store', () => ({
 }));
 
 describe('useExpressionEditor', () => {
-	const originalRangeGetBoundingClientRect = Range.prototype.getBoundingClientRect;
-	const originalRangeGetClientRects = Range.prototype.getClientRects;
-
 	const mockResolveExpression = () => {
 		const mock = vi.fn();
 		vi.spyOn(workflowHelpers, 'useWorkflowHelpers').mockReturnValueOnce({
@@ -40,20 +37,6 @@ describe('useExpressionEditor', () => {
 
 	afterEach(() => {
 		vi.clearAllMocks();
-	});
-
-	beforeAll(() => {
-		Range.prototype.getBoundingClientRect = vi.fn();
-		Range.prototype.getClientRects = () => ({
-			item: vi.fn(),
-			length: 0,
-			[Symbol.iterator]: vi.fn(),
-		});
-	});
-
-	afterAll(() => {
-		Range.prototype.getBoundingClientRect = originalRangeGetBoundingClientRect;
-		Range.prototype.getClientRects = originalRangeGetClientRects;
 	});
 
 	test('should create an editor', async () => {
