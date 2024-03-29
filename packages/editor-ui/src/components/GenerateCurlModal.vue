@@ -84,7 +84,7 @@ const formInputs: IFormInput[] = [
 	},
 ];
 
-const formValues = ref({
+const formValues = ref<{ service: string; request: string }>({
 	service: uiStore.getModalData(GENERATE_CURL_MODAL_KEY)?.service ?? '',
 	request: uiStore.getModalData(GENERATE_CURL_MODAL_KEY)?.request ?? '',
 });

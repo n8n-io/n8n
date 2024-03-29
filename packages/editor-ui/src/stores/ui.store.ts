@@ -551,7 +551,16 @@ export const useUIStore = defineStore(STORES.UI, {
 		},
 		async getCurlToJson(curlCommand: string): Promise<CurlToJSONResponse> {
 			const rootStore = useRootStore();
-			return await getCurlToJson(rootStore.getRestApiContext, curlCommand);
+			const parameters = await getCurlToJson(rootStore.getRestApiContext, curlCommand);
+
+			// Normalize placeholder values
+			if (parameters['parameters.url']) {
+				parameters['parameters.url'] = parameters['parameters.url']
+					.replaceAll('%7B', '{')
+					.replaceAll('%7D', '}');
+			}
+
+			return parameters;
 		},
 		async goToUpgrade(
 			source: CloudUpdateLinkSourceType,

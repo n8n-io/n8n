@@ -1,2502 +1,2002 @@
 [
   {
     "title": "Pipedrive API v1",
-    "description": "",
-    "id": "14918448-e95333b6-f43d-43b7-8d53-c64ee5562381"
+    "id": "pipedrive.com"
   },
   {
     "title": "OpenAI API",
-    "description": "The OpenAI API can be applied to virtually any task that involves understanding or generating natural language or code. We offer a spectrum of models with different levels of power suitable for differ...",
-    "id": "90abb798-cb85-43cb-ba3a-ae7941e968da"
+    "id": "openai.com"
+  },
+  {
+    "title": "Discourse API",
+    "id": "discourse.com"
   },
   {
     "title": "Anthropic Claude API",
-    "description": "The OpenAI API can be applied to virtually any task that involves understanding or generating natural language or code. We offer a spectrum of models with different levels of power suitable for differ...",
-    "id": "90abb798-cb85-43cb-ba3a-ae7941e968da"
+    "id": "anthropic.com"
   },
   {
     "title": "Zoho CRM REST API",
-    "description": "The Zoho CRM Developers workspace represents Collections curated by the CRM Developer Relations team. Our workspace serves as a comprehensive hub for developers looking to leverage the full potential ...",
-    "id": "8522016-0a15778a-ccb1-4676-98b7-4cf1fe7fc940"
+    "id": "zoho.com-crm"
   },
   {
     "title": "Notion API",
-    "description": "Hello and welcome! To make use of this API collection collection as it's written, please duplicate this database template. Under the `Variables` tab, add your environment variables to start making ...",
-    "id": "d990f9b7-98d3-47d3-9131-4866ab9c6df2"
+    "id": "notion.so"
   },
   {
     "title": "Stripe API",
-    "description": "Stripe API Postman Collection This is a postman collection covering the Stripe API. See https://stripe.com/docs/api for more details. Prerequisites Postman Stripe Account Getting Started To get s...",
-    "id": "665823-fb030f33-dcb4-4475-a812-968d7d449fa4"
+    "id": "stripe.com"
   },
   {
     "title": "DocuSign REST API",
-    "description": "The DocuSign REST API provides you with a powerful, convenient, and simple Web services API for interacting with DocuSign.",
-    "id": "11590809-e7657ef9-6d51-4d46-a0c8-af88011e7659"
+    "id": "docusign.com"
   },
   {
     "title": "Plaid API",
-    "description": "Documentation for how to use this collection, including a Quickstart guide, is on the Plaid Postman GitHub README. There's also a full-length video tutorial and a 3 minute video tutorial for busy peo...",
-    "id": "12160321-04d27ed8-aed4-4d46-a1f8-70a72ec9a78a"
+    "id": "plaid.com"
   },
   {
     "title": "Zendesk Support API",
-    "description": "Zendesk Support API endpoints",
-    "id": "19931619-491840ed-8cea-4d36-9e4e-3cc4fc97be68"
+    "id": "zendesk.com-support"
   },
   {
     "title": "Salesforce Marketing Cloud API",
-    "description": "This is a collection of 170+ requests for the following Salesforce Marketing Cloud APIs: REST Address Assets (Content Builder) Audit ...",
-    "id": "14448118-2835a976-010c-4548-92f8-f42c0382758e"
+    "id": "salesforce.com-marketing-cloud"
   },
   {
     "title": "Spoonacular API",
-    "description": "The spoonacular Nutrition, Recipe, and Food API allows you to access over 380,000 recipes, thousands of ingredients, 800,000 food products, and 100,000 menu items. Our food ontology and semantic recip...",
-    "id": "7431899-ef0368a7-643c-4c87-975c-68399d4f0c12"
+    "id": "spoonacular.com"
   },
   {
     "title": "Datadog API Collection",
-    "description": "Datadog recommends using the Validate API key** request to ensure that you’ve correctly configured the **Datadog Authentication environment included with this collection. 1. Open the Datadog Authenti...",
-    "id": "20651290-809b13c1-4ada-46c1-af65-ab276c434068"
+    "id": "datadoghq.com"
   },
   {
     "title": "Meraki Dashboard API - v1.44.0",
-    "description": "A RESTful API to programmatically manage and monitor Cisco Meraki networks at scale. > Date: 06 March, 2024 > > Recent Updates --- API Documentation Community Support Meraki Homepage Contact Su...",
-    "id": "897512-42355ad3-0145-48c6-8e65-e4bb9f180939"
+    "id": "cisco.com-meraki"
   },
   {
     "title": "WeChatPay APIv3",
-    "description": "",
-    "id": "3391715-85f478d8-2596-420a-9f21-53376fc6ad0a"
-  },
-  {
-    "title": "Joint Quest Verifier API",
-    "description": "",
-    "id": "21922485-62ba18a5-68d9-4085-be87-cf66e87c43ab"
+    "id": "wechat.com-pay"
   },
   {
     "title": "ActiveCampaign API v3",
-    "description": "",
-    "id": "19351179-8462b05f-7843-4141-9411-376c1432026d"
+    "id": "activecampaign.com"
   },
   {
-    "title": "Feishu OpenAPI",
-    "description": "",
-    "id": "17195890-6fd42609-12b3-409b-8cbb-73656cf9d805"
+    "title": "Feishu API",
+    "id": "feishu.cn"
   },
   {
     "title": "Whatsapp Business Management API",
-    "description": "This public collection contains common queries, sample responses, and links to supporting documentation for the Business Management API. Requirements To use this collection you must have a Meta bus...",
-    "id": "13382743-2fd9b32d-f63c-4056-873e-4c398dde9d6d"
+    "id": "whatsapp.com-business-management"
   },
   {
     "title": "Brevo API",
-    "description": "Welcome 👋 Using the REST API allows you to programmatically execute a wide range of code operations which are also available through the user interface. In this guide you will find a quick start se...",
-    "id": "10612044-0ce69d14-155a-453e-b4b9-c62fe5276e04"
+    "id": "brevo.com"
   },
   {
     "title": "Salesforce Data Cloud API",
-    "description": "This is a collection of 45+ requests for the following Salesforce Data Cloud APIs: Profile APIQuery APICalculated Insights APIMetadata APIIngestion APISegmentation API The collection is divided into...",
-    "id": "14448118-8145476a-1797-4b2a-b219-37c6d438d956"
+    "id": "salesforce.com-data-cloud"
   },
   {
     "title": "Xendit API",
-    "description": "Reference - Xendit API Reference - Testing Scenarios - Implementation Guide Getting Started - Signup - Get API Keys",
-    "id": "7031449-60fe64b3-3702-4023-9650-3c50d990c667"
+    "id": "xendit.co"
   },
   {
     "title": "Amadeus for Developers API",
-    "description": "Discover the official Postman collection for Amadeus Self-Service APIs, curated by Amadeus for Developers. Dive into our comprehensive Developer Documentation to learn how to maximize the usage of Am...",
-    "id": "2672636-27471449-d2ca-a8c4-1399-6b0cfbddd079"
+    "id": "amadeus.com-developers"
   },
   {
     "title": "Pynt API",
-    "description": "Description: Pynt is an API security solution which generates automated security tests based on your existing functional test collection. Simply input your functional test collection name into the...",
-    "id": "21132333-8064f672-29e5-4d7f-bef4-3004cd6dd636"
+    "id": "pynt.io"
   },
   {
     "title": "ClickUp Public API",
-    "description": "Introduction Let's make people more productive, together. Please use our feedback board to report bugs, feature requests, and collaborate with the community. If you'd like to import our entire API...",
-    "id": "24088335-e26d3542-ac2f-4f82-89ab-2cff14a54e9a"
+    "id": "clickup.com"
   },
   {
     "title": "Twilio Messaging / SMS API",
-    "description": "Ahoy! This Postman collection serves as a toolbelt for you to work with Twilio's Programmable Messaging API. It provides functionality to interact with a subset of the Twilio API. For a more complet...",
-    "id": "12503610-194919ce-e80b-44da-8eec-45ea8e74cdfb"
+    "id": "twilio.com-messaging"
   },
   {
     "title": "Amplitude Analytics API",
-    "description": "The Amplitude Analytics API collection let you get started with Amplitude fast. To get started, fork this collection and start experimenting! Before you begin * This collection is provided as-is,...",
-    "id": "20044411-88bd70c1-9e00-483c-aaf1-2b7159f9bb2b"
+    "id": "amplitude.com-analytics"
   },
   {
     "title": "Box Platform API",
-    "description": "Box Platform provides functionality to provide access to content stored within Box. It provides endpoints for basic manipulation of files and folders, management of users within an enterprise, as well...",
-    "id": "8119550-b5ea2aeb-c82a-425d-baff-ed5dfd1d7659"
-  },
-  {
-    "title": "Valentino Artisan Coffee House API",
-    "description": "An API for managing orders and products at a coffee place named Valentino's Artisan Coffee House.",
-    "id": "2354738-e6b0fbe6-5385-4751-944f-bd836b13d6e3"
+    "id": "box.com-platform"
   },
   {
     "title": "HotelBeds Booking API",
-    "description": "`BOOKINGAPI is designed to book hotels in real time as fast as in two steps. It covers the complete booking process; it allows generating lists of hotels, confirming bookings, getting lists of booking...",
-    "id": "295910-c411a5fa-523c-4048-afef-5afd52a294b4"
+    "id": "hotelbeds.com-booking"
   },
   {
     "title": "Monday.com API",
-    "description": "",
-    "id": "17637789-b18ebc66-bc27-49b5-a950-3dfa4bfb3a21"
+    "id": "monday.com"
   },
   {
     "title": "Zoom API",
-    "description": "Done-for-You Developer API Workflows Discover programmatic workflows like authorization, creating non-login users, in-meeting control and more in this collection. --- ⚡️ Pro Tips ⚡ - Make sure t...",
-    "id": "22097587-c59615c2-f35c-4514-8ce7-809b72cd082b"
+    "id": "zoom.com"
   },
   {
     "title": "Zendesk Help Center API",
-    "description": "Help Center v2 REST API",
-    "id": "19931619-2ac64181-b4b7-470e-87b3-e7b6874746d3"
+    "id": "zendesk.com-help-center"
   },
   {
     "title": "GigaChat API",
-    "description": "GigaChat API - мультимодальная нейросетевая модель. Умеет отвечать на вопросы, вести диалог и писать код Для начала использования в личном кабинете: 1. Создайте проект GigChat API 2. В созданно...",
-    "id": "25485331-52bf7d83-c313-4517-9389-4d2eb361facd"
+    "id": "gigachat.app"
   },
   {
     "title": "Shiprocket API",
-    "description": "Welcome to Shiprocket's API Documentation. We've designed this document to help developers and Shiprocket users fully understand and integrate our API for a seamless and easy deployment. These APIs en...",
-    "id": "8407119-f5af337c-69fc-49c7-8418-e2f6ee461674"
+    "id": "shiprocket.io"
   },
   {
     "title": "Whatsapp On-Premises API",
-    "description": "WhatsApp helps more than 2 billion people connect and share with the people they care about. Currently, WhatsApp offers the following products: 1. Consumer App 2. Small Business App 3. Business API ...",
-    "id": "14291747-68ddd7f8-e8e6-4149-93dd-cecbafd3706e"
+    "id": "whatsapp.com-on-premises"
   },
   {
     "title": "Customer.io Journeys Track API",
-    "description": "Our Track API provides ways to send real-time customer data to your Customer.io workspace. Overview You're looking at our US regional endpoints The only difference in our US and European Union (E...",
-    "id": "23697545-0f7ae1e8-8177-46fc-808a-2fd363dd52b9"
+    "id": "customer.io-journeys-track"
   },
   {
     "title": "Sportmonks API 3",
-    "description": "",
-    "id": "11949411-c7a3a0a0-b5c5-4109-9bf6-f430fec65316"
+    "id": "sportmonks.com"
   },
   {
     "title": "Power BI REST API v1",
-    "description": "Power BI REST API provides service endpoints for embedding, administration, and user resources. https://docs.microsoft.com/en-us/rest/api/power-bi/",
-    "id": "3238008-1491811e-5a52-4f8d-a57e-ae193c3da2d6"
+    "id": "microsoft.com-power-bi"
   },
   {
     "title": "Flutterwave 3.0 API",
-    "description": "",
-    "id": "10066223-69053545-376e-4a06-b60c-39624153e7d5"
+    "id": "flutterwave.com"
   },
   {
     "title": "HotelBeds Content API",
-    "description": "`CONTENTAPI has been designed to retrieve all the details of the hotels available in our BOOKINGAPI. CONTENTAPI contains several methods that allow you to obtain the details of the hotels as well as l...",
-    "id": "295910-d10a935d-d8e4-40f5-a82e-72467038964e"
+    "id": "hotelbeds.com-content"
   },
   {
     "title": "Salesforce Tableau REST API",
-    "description": "Tableau REST API Collection The Tableau REST API enables you to perform many Tableau actions from scripts and programs. You can use this collection to make requests to your Tableau site and see the ...",
-    "id": "12721794-7d783742-165f-4d10-8c4c-5719fb60fba2"
+    "id": "salesforce.com-tableau"
   },
   {
-    "title": "Payment Gateway API",
-    "description": "",
-    "id": "21817211-4327e7b4-a525-40da-b1a4-cae0b2b1d974"
+    "title": "Cashfree Payment Gateway API",
+    "id": "cashfree.com-payment-gateway"
   },
   {
     "title": "Belvo API Docs",
-    "description": "👋 Introduction Belvo is an open finance API for Latin America that allows companies to access banking and fiscal information in a secure as well as agile way. Through our API, you can access: - ...",
-    "id": "14658306-af823740-067a-410a-8c71-b75166c08dc8"
+    "id": "belvo.com"
   },
   {
     "title": "Discord REST API",
-    "description": "HTTP-based API to interact with Discord",
-    "id": "23484324-a1e3b20b-fbbe-4f0b-b842-8848e7de4727"
+    "id": "discord.com"
   },
   {
     "title": "Zoom Meeting API",
-    "description": "The Zoom Meeting APIs let developers to access information from Zoom. You can use this API to build private services or public applications on the Zoom App Marketplace. To learn how to get your creden...",
-    "id": "22097587-c8edb919-3fec-41da-9b81-69176b0b4d84"
+    "id": "zoom.com-meeting"
   },
   {
     "title": "Salesforce Marketing Cloud Account Engagement (fka Pardot) API v5",
-    "description": "The Salesforce Marketing Cloud Account Engagement (formerly know as Pardot) APIs collection contains requests for the V5 Synchronous API. ⚠️ Disclaimers: - This collection is provided as-is. It's no...",
-    "id": "15828855-87a7ffa0-f397-443e-9a3d-e6a74e0e8c26"
+    "id": "salesforce.com-marketing-cloud-account-engagement"
   },
   {
     "title": "Cloudinary Upload API",
-    "description": "The Upload API is a rate-unlimited API that enables you to upload your media assets (resources) and provides a wide range of functionality, including basic and advanced asset management, metadata mana...",
-    "id": "16080251-ff1f4ea2-5f5c-4886-a185-579ed0d542d3"
+    "id": "cloudinary.com-upload"
   },
   {
     "title": "PingOne Platform API",
-    "description": "This PingOne collection contains only the requests without documentation. For the official PingOne Platform API documentation, see apidocs.pingidentity.com. PingOne Platform API collections use Postm...",
-    "id": "6549787-f9d9b0a2-a232-4748-abe3-ba89bad21e7d"
+    "id": "pingone.com"
   },
   {
     "title": "SEON API",
-    "description": "",
-    "id": "15016634-0374e41a-e09d-44d8-9dc5-b3481eb06cf0"
+    "id": "seon.io"
   },
   {
     "title": "Eden AI API",
-    "description": "Your project description",
-    "id": "23556143-3b24b061-235e-4e14-8615-f1d82bf4ba84"
+    "id": "edenai.io"
   },
   {
     "title": "Fireblocks API",
-    "description": "Contact Support: Email: support@fireblocks.com",
-    "id": "25881726-6597f15a-56e5-4c82-a75e-2befc2c5264d"
+    "id": "fireblocks.com"
   },
   {
     "title": "PagerDuty API",
-    "description": "This document describes the PagerDuty REST APIs. For guides and examples please visit our Documentation. Our REST APIs are defined in OpenAPI v3.x. You can view the schema at github.com/PagerDuty/ap...",
-    "id": "11321921-9b051f85-c9f1-4a44-bb3b-d12edcf000bf"
+    "id": "pagerduty.com"
   },
   {
     "title": "WooCommerce REST API",
-    "description": "Taken from: https://github.com/woocommerce/woocommerce-rest-api-docs Introduction WooCommerce (WC) 2.6+ is fully integrated with the WordPress REST API. This allows WC data to be created, read, upd...",
-    "id": "1319263-e1843d03-9332-4409-b6bc-c137ea4fd56c"
+    "id": "woocommerce.com"
   },
   {
     "title": "DocuSign Admin API",
-    "description": "An API for an organization administrator to manage organizations, accounts and users",
-    "id": "11590809-afb633ab-e80b-45ec-8155-49ce77c8ced7"
+    "id": "docusign.com-admin"
   },
   {
     "title": "Google Books Api",
-    "description": "",
-    "id": "14058212-d3c30656-4efa-4166-8405-86655985d94d"
+    "id": "google.com-books"
   },
   {
-    "title": "Countries & Cities API",
-    "description": "",
-    "id": "1134062-22a5430b-f72a-47aa-9858-042e09ce46fc"
+    "title": "CountriesNow Countries & Cities API",
+    "id": "countriesnow.space"
   },
   {
     "title": "Aadhaar KYC API",
-    "description": "",
-    "id": "16713878-3c2b8f6d-b4ad-4e38-9fa8-4e7741f70ffe"
+    "id": "aadhaarkyc.io"
   },
   {
     "title": "Zendesk Chat Public API",
-    "description": "Zendesk Chat Public API endpoints",
-    "id": "19931619-af76de84-f8ba-4cd6-afc5-bb151f2e7c5f"
+    "id": "zendesk.com-chat"
   },
   {
     "title": "Cloudflare R2 API",
-    "description": "",
-    "id": "20913290-14ddd8d8-3212-490d-8647-88c9dc557659"
+    "id": "cloudflare.com-r2"
   },
   {
     "title": "ScrapingBee API",
-    "description": "ScrapingBee is the most powerful web scraping API on the web. It will handle: * headless browsers * proxies * CAPTCHAs So you don't have to. But there's more. The API also allo...",
-    "id": "19660521-faef6818-896f-4127-821a-868fadcbe053"
+    "id": "scrapingbee.com"
   },
   {
     "title": "UiPath Add-ins API",
-    "description": "What is this about: The UiPath Orchestrator API is used by third-party platforms to build Add-ins as described here. Common use cases of Add-ins are to start jobs in UiPath Orchestrator or create qu...",
-    "id": "15161494-5982ed65-18b7-4d63-bb55-240c8650af41"
+    "id": "uipath.com-add-ins"
   },
   {
     "title": "Instagram API",
-    "description": "This collection will allow you to connect to Instagram's Graph API, which allows Instagram Professionals - Businesses and Creators - to manage their presence on the platform. This guide will help you ...",
-    "id": "23987686-9386f468-7714-490f-9bfc-9442db5c8f00"
+    "id": "instagram.com"
   },
   {
     "title": "PandaDoc API",
-    "description": "Generate documents and capture eSignatures by embedding them into your app, website, or using the backend API. Learn more: https://www.pandadoc.com/api/",
-    "id": "13640781-ae4eb210-2c8c-4a23-b66c-6c3ad1fbd1bc"
+    "id": "pandadoc.com"
   },
   {
     "title": "CyberArk REST API",
-    "description": "All available requests in CyberArk Identity Security Platform. DUE TO INTERNAL CYBERARK POLICY, AS OF 2/18/2024 POSTMAN WILL NO LONGER BE USED DUE TO SYNCHRONIZATION OF DATA TO THE CLOUD. NO FURTHER...",
-    "id": "998920-676230f3-7895-4a35-a20f-57bd846e1a92"
+    "id": "cyberark.com"
   },
   {
     "title": "100ms API",
-    "description": "Welcome to 100ms server APIs 100ms collection includes API for our video components like rooms, sessions, policies, etc that are packaged and ready to use with Postman, along with documentation for ...",
-    "id": "22726679-47dcd974-29d5-4965-a35b-bf9b74a8b25a"
+    "id": "100ms.live"
   },
   {
     "title": "Shopify API",
-    "description": "More than 1,000,000 merchants use Shopify to run their businesses. They come in all sizes, from all around the world, and each one is different. Shopify solves many of their hardest commerce problems ...",
-    "id": "35240-a96221e2-b43c-4973-9be0-3ec0566f4cd9"
+    "id": "shopify.com"
   },
   {
     "title": "Salesforce Commerce B2C API",
-    "description": "Salesforce Commerce APIs SCAPI End2End Shopper Journey A set of API endpoint calls from all different commerce B2C API domains. Serves as a sample set of call for a shopper journey and is connecte...",
-    "id": "15394816-b59efa68-87fd-4398-ba68-f15e931b879f"
+    "id": "salesforce.com-commerce-b2c"
   },
   {
     "title": "Adyen Checkout API (v71)",
-    "description": "Adyen Checkout API provides a simple and flexible way to initiate and authorise online payments. You can use the same integration for payments made with cards (including 3D Secure), mobile wallets, an...",
-    "id": "25716737-46ad970e-dc9e-4246-bac2-769c6083e7b5"
+    "id": "adyen.com-checkout"
   },
   {
     "title": "DoorDash Drive API",
-    "description": "Drive is our standard API offering and is the default for all developers to create and manage deliveries on-demand. Get started For a more detailed step-by-step guide on using Postman to develop ag...",
-    "id": "19023848-9a5768fb-9eb1-4a42-9f0a-78ff923dab4b"
+    "id": "doordash.com-drive"
   },
   {
-    "title": "Airwallex Public API - General Availability Suites",
-    "description": "",
-    "id": "17427103-bae9643d-b912-485c-92ca-b2300101295a"
+    "title": "Airwallex Public API",
+    "id": "airwallex.com"
   },
   {
     "title": "Snowflake SQL API V2",
-    "description": "The Snowflake SQL API is a REST API that you can use to access and update data in a Snowflake database. Contact Support: Name: Snowflake, Inc. Email: support@snowflake.com",
-    "id": "14678294-3476e36c-5847-4bca-9c7f-2ae08532da20"
+    "id": "snowflake.com-sql"
   },
   {
     "title": "Twitter Developer Labs API",
-    "description": "Twitter Developer Labs allow developers to test and share feedback on previews of new Twitter API features. The endpoints, documentation, and resources for Labs will be updated as we incorporate feedb...",
-    "id": "7360366-d0db06c4-0d92-4c14-9742-cf404327bb87"
+    "id": "twitter.com-developer-labs"
   },
   {
     "title": "Hyperledger Besu JSON-RPC API",
-    "description": "Hyperledger Besu JSON-RPC API enables interaction with a Besu Ethereum node. Refer to Besu documentation howto page to learn how to use this API.",
-    "id": "11610746-f334929f-c8c3-43ed-bb73-69a6f0d728d8"
+    "id": "hyperledger.org-besu"
   },
   {
     "title": "Plivo REST API",
-    "description": "The Plivo API uses HTTP verbs and standard HTTP status codes to make it easier for you to integrate communications into your code. To secure your requests to our servers, we server our API over HTTPS.",
-    "id": "3726534-3a2d5654-c5de-4008-ad8c-5c4b8b18f617"
+    "id": "plivo.com"
   },
   {
     "title": "Facebook API",
-    "description": "",
-    "id": "23987686-f9afb0e6-c3fd-48a4-b48a-fde4bc574cf9"
+    "id": "facebook.com"
   },
   {
     "title": "LinkedIn Content API",
-    "description": "Please note that these are versioned set of APIs and they are different than the earlier one. These must be used with the content-api-env-versioning environment. Content APIs are the APIs that are p...",
-    "id": "17563548-d647a145-ed20-464a-b414-fa596f6ed06e"
+    "id": "linkedin.com-content"
   },
   {
     "title": "Jira API",
-    "description": "",
-    "id": "35240-63247d50-9c97-4b50-a548-d9c42b2bcd17"
+    "id": "atlassian.com-jira"
   },
   {
     "title": "OneSignal API",
-    "description": "OneSignal REST API Overview OneSignal's server API provides robust features that can be used to: * Sending Messages * Export Data * Create and Delete Segments * Add and Edit Devices * C...",
-    "id": "16845437-2783b546-3051-4ef5-96b3-ab8403c94a1b"
+    "id": "onesignal.com"
   },
   {
     "title": "Immoscout24 OAuth1 API",
-    "description": "The whole API Documentation is available on https://api.immobilienscout24.de. An instruction on how to Authentication agains ImmobilienScout24 API is available on https://api.immobilienscout24.de/api...",
-    "id": "13152852-b22feed6-3f3d-482c-a762-030b7bf36b5f"
+    "id": "immoscout24.com-oauth"
   },
   {
     "title": "DocuSign eSignature REST API",
-    "description": "The DocuSign REST API provides you with a powerful, convenient, and simple Web services API for interacting with DocuSign.",
-    "id": "14257714-4f84ce44-7fbe-46ea-9b0d-4c095e78cb22"
-  },
-  {
-    "title": "Jira API Reference",
-    "description": "Jira Cloud platform REST API documentation Contact Support: Email: ecosystem@atlassian.com",
-    "id": "35240-cc40b3de-1093-44e1-94c4-498c2fe3c9bb"
+    "id": "docusign.com-esignature"
   },
   {
     "title": "Snowflake API",
-    "description": "The Snowflake SQL API is a REST API to access and update data in a Snowflake database. You can use this API to execute standard SQL queries. - The Quickstart folder walks through executing a SQL stat...",
-    "id": "13191452-d6d009f2-8cd0-48ee-9b5a-989ad77fd403"
+    "id": "snowflake.com"
   },
   {
     "title": "Zendesk Support API",
-    "description": "Zendesk Support API endpoints",
-    "id": "23026182-69a397eb-cf47-4d81-bf12-eaff0b8a89a6"
+    "id": "zendesk.com-support"
   },
   {
     "title": "Cloudinary Admin API",
-    "description": "The Admin API is a rate-limited API that provides full control of all uploaded media assets (resources), fetched social profile pictures, generated transformations and more.",
-    "id": "16080251-d28221d4-b2f8-4244-a4eb-7e77abe3a857"
+    "id": "cloudinary.com-admin"
   },
   {
     "title": "Viva Payments V2 API",
-    "description": "",
-    "id": "17199201-bb8cbae3-d205-4139-9630-914dcfe5e97b"
-  },
-  {
-    "title": "Xero Custom Connections API",
-    "description": "",
-    "id": "51764-cb584d5a-ded0-4d44-87c0-c09f97b8f564"
+    "id": "viva.com-create-payment-order"
   },
   {
     "title": "SportRadar API",
-    "description": "At Sportradar, we strive to make sure you are ready for live games. The live simulations below give you the opportunity to test your code against a simulation of live data being entered before the pre...",
-    "id": "17203961-57f86353-56c3-4418-b8aa-5fff8070c41f"
+    "id": "sportradar.com"
   },
   {
     "title": "Contentstack Content Delivery API",
-    "description": "The Content Delivery API (CDA), available at cdn.contentstack.com, is a read-only API used to retrieve content from your Contentstack account and deliver it to your web or mobile properties. The Cont...",
-    "id": "11246751-caee105e-0691-4767-922f-2666d0922a8e"
+    "id": "contentstack.io-content-delivery"
   },
   {
     "title": "TikTok Business API V1.3",
-    "description": "",
-    "id": "23207567-be0eb380-8a45-4bd4-95a4-d1698f3ff99e"
+    "id": "tiktok.com-business"
   },
   {
     "title": "F1 Formula One API",
-    "description": "This is the Postman collection with documentation for the Formula One API hosted at Ergast API. Overview All API queries require a GET request using a URL of the form: http[s]://ergast.com/api////.....",
-    "id": "19328871-63c4a82c-ae84-4a24-a58b-bd8a408b1c4e"
+    "id": "f1.com"
   },
   {
     "title": "TMDB The Movie Database API",
-    "description": "Get started > This collection was generated from TMDB API OpenAPI specification file available in the official API documentation. - Get your own API key from TMDB - Replace `your-tmdb-api-key` placeh...",
-    "id": "13191452-e12a1487-f709-47b4-9f55-c11c8e0daea2"
+    "id": "themoviedb.org"
   },
   {
     "title": "Wordpress API v2",
-    "description": "The WordPress REST API provides API endpoints for WordPress data types that allow developers to interact with sites remotely by sending and receiving JSON. Why use the WordPress REST API The WordPre...",
-    "id": "15086392-e8a0648d-b23b-4eb8-af97-93a2af65e0c0"
+    "id": "wordpress.com"
   },
   {
-    "title": "SaluteSpeech API",
-    "description": "SaluteSpeech - сервис для синтеза и распознавания речи (TTS/ASR) Вы можете использовать API, чтобы с помощью искусственного интеллекта (AI, artificial intelligence): - Превращать речь в текст и наоб...",
-    "id": "25485331-32791a10-9217-45ba-bc17-842ddc580d46"
+    "title": "SBER SaluteSpeech API",
+    "id": "sber.ru"
   },
   {
     "title": "Symbl AI API",
-    "description": "Symbl's contextual conversation intelligence platform provides scalable, secure speech recognition and contextual analytics to build differentiated experiences from voice, video or text data in realti...",
-    "id": "13497402-108cafc3-da45-4b00-97fe-4819894f58bb"
+    "id": "symbl.ai"
   },
   {
     "title": "Onfido API v3.6",
-    "description": "The Onfido API is used to submit check requests.",
-    "id": "221325-0c86bc52-c755-41d0-b7d7-135475e0a56e"
+    "id": "onfido.com"
   },
   {
     "title": "Binance Perpetual Future API",
-    "description": "Binance official supported Postman collections. - API documents: https://binance-docs.github.io/apidocs/futures/en/ - Telegram: https://t.me/binance_api_english - Open Issue at: https://github.com/bin...",
-    "id": "15523775-c14b2b01-2d74-4ef6-8d80-5f7be1f50711"
+    "id": "binance.com-futures"
   },
   {
     "title": "Reloadly API",
-    "description": "About Reloadly Reloadly's APIs facilitates connections to mobile credits, digital gift cards and fintech services to end users. You can learn more by checking out our API documentation",
-    "id": "17368362-7c653ee7-dcd3-4656-8788-7480e1e7c957"
+    "id": "reloadly.com"
   },
   {
     "title": "Nylas API v2",
-    "description": "",
-    "id": "18590405-a8a21c6a-19f6-4eaa-9c84-3b77ba6b0fbb"
+    "id": "nylas.com"
   },
   {
     "title": "Mist Cloud API 2402.1.0",
-    "description": "> Version 2402.1.0 Date: February 29, 2024 --- Available Documentation \\* Postman \\* Open API --- Useful links \\* Mist Homepage \\* Mist Documentation \\* Official API Documentation ...",
-    "id": "224925-9e18908e-6b2b-49b6-81a1-b44dd0a91814"
+    "id": "juniper.net-mist"
   },
   {
     "title": "LinkedIn Campaign Management API",
-    "description": "You must apply for access to the Marketing Developer Platform in order to use these APIs. See the** **Developer Portal** **on how to apply. This collection aims to focus on different Campaign Managem...",
-    "id": "17563548-fab92f95-bfc5-4949-a52b-e760cc56e195"
+    "id": "linkedin.com-campaign-management"
   },
   {
     "title": "Shutterstock API",
-    "description": "Getting Started The Shutterstock API provides access to Shutterstock's library of media, as well as information about customers' accounts and the contributors that provide the media. It allows custo...",
-    "id": "5517529-396ce490-181e-4bcd-a732-b6315929f478"
+    "id": "shutterstock.com"
   },
   {
     "title": "Zendesk Support API",
-    "description": "Zendesk Support API endpoints",
-    "id": "23026182-18485fca-8743-4de3-8ebb-2e7c215ce187"
+    "id": "zendesk.com-support"
   },
   {
     "title": "OpenWeatherMap API",
-    "description": "Get the current weather, daily forecast for 16 days, and a three-hour-interval forecast for 5 days for your city. Helpful stats, graphics, and this day in history charts are available for your referen...",
-    "id": "35240-4a4bcc21-8e13-4e27-9649-b162888bc6e6"
+    "id": "openweathermap.org"
   },
   {
     "title": "Whatsapp Embedded Signup API",
-    "description": "Embedded signup is a way for Business Solution Providers (BSPs) to let businesses onboard to the WhatsApp Business Platform directly from their website. This embeddable onboarding flow simplifies the ...",
-    "id": "13382743-6da4508c-c36d-4e4c-bf74-a6fb41755c26"
+    "id": "whatsapp.com-embedded-signup"
   },
   {
     "title": "IdentityNow API V3",
-    "description": "Use these APIs to interact with the IdentityNow platform to achieve repeatable, automated processes with greater scalability. We encourage you to join the SailPoint Developer Community forum at https:...",
-    "id": "23226990-3721beea-5615-44b4-9459-e858a0ca7aed"
+    "id": "sailpoint.com"
   },
   {
     "title": "ChatBot.com API",
-    "description": "Introduction ChatBot is a natural language understanding framework that allows you to create intelligent chatbots for any service. You can easily integrate your bots with favourite messaging apps an...",
-    "id": "4563465-4e1becfa-dae7-4b33-b81a-2aa0daabd4c7"
+    "id": "chatbot.com"
   },
   {
     "title": "Lob API",
-    "description": "Lob helps creators extend their applications into the physical world with automated direct mail and address verification APIs. Get started in the way that works best for you: - Watch our 10-minute v...",
-    "id": "16169677-975ecb9f-ea22-4d8f-a4f9-53a42f2aee03"
+    "id": "lob.com"
   },
   {
     "title": "Binance Spot API",
-    "description": "Binance official supported Postman collections. - API documents: https://binance-docs.github.io/apidocs/spot/en/change-log - Telegram: https://t.me/binance_api_english - Open Issue at: https://github....",
-    "id": "15523775-37c17f67-2a3c-41ca-9241-5835a6a222e2"
+    "id": "binance.com-spot"
   },
   {
     "title": "MoMo E-Wallet Payments API",
-    "description": "",
-    "id": "13795647-c480a274-0b2c-43a8-90af-a967e38a5146"
+    "id": "momo.com"
   },
   {
     "title": "Mailosaur API",
-    "description": "For API reference documentation, visit https://mailosaur.com/docs/api/",
-    "id": "6961255-6cc72dff-f576-451a-9023-b82dec84f95d"
+    "id": "mailosaur.com"
   },
   {
     "title": "Rasa Open Source HTTP API",
-    "description": "The Rasa server provides endpoints to retrieve trackers of conversations as well as endpoints to modify them. Additionally, endpoints for training and testing models are provided.",
-    "id": "16884897-8f157fff-138e-4e6f-b8cc-6db7a0473107"
+    "id": "rasa.com"
   },
   {
     "title": "DingConnect API",
-    "description": "The Ding API is a Level 0 REST web service. We have used the swagger standard to describe this service. As a result, we are able to provide this interactive documentation page. For further informatio...",
-    "id": "15978221-0abfb140-ff9a-44a6-a1e7-ffb4e43564f5"
+    "id": "dingconnect.com"
   },
   {
     "title": "Withings Health Solutions API",
-    "description": "Welcome to Withings Public API Postman collection! This collection will help you in the integration of our Public API, which allows to fetch health data from users. If you're unsure on whether inte...",
-    "id": "2955239-3c883219-6475-4ec0-b3ae-e90bb3b71911"
+    "id": "withings.com"
   },
   {
     "title": "Solid FinTech Platform API",
-    "description": "",
-    "id": "15124864-157bc3d8-c872-4103-83ce-08e530afd695"
+    "id": "solidfintech.com"
   },
   {
     "title": "Chatwoot API v1.0",
-    "description": "- create appropriate environments and populate the environment variables",
-    "id": "162770-a7462388-50fd-4035-9bfc-5750f91c00cd"
+    "id": "chatwoot.com"
   },
   {
     "title": "Kontent.ai API",
-    "description": "Kontent.ai is a headless CMS that delivers content via API. This lets developers choose how websites and applications should be built, using any frameworks, languages, or libraries they prefer. Based...",
-    "id": "6878708-927efeee-a632-465f-9101-1ff0afa4b1a4"
+    "id": "kontent.ai"
   },
   {
     "title": "Gmail API",
-    "description": "The Gmail API lets you view and manage Gmail mailbox data like threads, messages, and labels. Contact Support: Name: Google",
-    "id": "35240-0d073c40-6ad8-43d0-8baf-8ee3606819e0"
+    "id": "google.com-gmail"
   },
   {
     "title": "PayBoxMoney PaymentPage API",
-    "description": "О сервисе PayBox.money - универсальное средство приема платежей для бизнеса. Сервис предоставляет возможность приема платежей, выплат на банковские карты, а также сохранения карт. Базовые сценарии ...",
-    "id": "12142794-91401e16-5186-4cdf-bbbe-4c4e32605f09"
+    "id": "payboxmoney.com"
   },
   {
     "title": "Dropbox API",
-    "description": "The powerful, yet simple, Dropbox API allows you to manage and control content and team settings programmatically and extend Dropbox capabilities in new and powerful ways. This is a collection that in...",
-    "id": "576034-3957ea99-234e-43e6-959d-adc7312b7a80"
+    "id": "dropbox.com"
   },
   {
     "title": "Quotable API",
-    "description": "",
-    "id": "2817454-73921617-8e3d-4b03-84fd-3d5834c2f3cf"
+    "id": "quotable.io"
   },
   {
     "title": "ShipEngine API",
-    "description": "This collection is a walkthrough of basic ShipEngine functionality. Learn how to: - Create and download shipping labels - Calculate shipping costs for any package - Compare rates across UPS, FedEx, U...",
-    "id": "2261346-0abc3d46-f996-40bd-8763-4edf28304864"
+    "id": "shipengine.com"
   },
   {
     "title": "Alpaca Market Data API v2",
-    "description": "",
-    "id": "19455863-fcfa26db-2280-47af-ae00-641b46c3880a"
+    "id": "alpaca.markets"
   },
   {
     "title": "Twitter Premium API",
-    "description": "This is a Postman Collection for the Twitter Premium APIs.",
-    "id": "241622-762b2849-51a1-412f-ba94-8d4fd4f45d8c"
+    "id": "twitter.com-premium"
   },
   {
     "title": "Livechat Authorization API",
-    "description": "This collection includes Agent authorization flows and Customer authorization flows. For more, please see the documentation here.",
-    "id": "20754404-ab4b398a-f906-4431-a17c-2f6673f0b8e8"
+    "id": "livechat.com-authorization"
   },
   {
     "title": "NASA - Astronomy Picture of the Day (APOD) API",
-    "description": "One of the most popular websites at NASA is the Astronomy Picture of the Day. In fact, this website is one of the most popular websites across all federal agencies. It has the popular appeal of a Just...",
-    "id": "35240-1f917b03-4bbd-4661-877e-0291822cf062"
+    "id": "nasa.gov-apod"
   },
   {
     "title": "Bridge API v2021.06.01",
-    "description": "",
-    "id": "12300506-5c67b041-cd05-49fe-8e6f-6825ea950f8c"
+    "id": "bridgeapi.io"
   },
   {
     "title": "Contentstack Content Management API",
-    "description": "The Content Management API (CMA) Requests can be used to manage the content of your Contentstack account. The CMA Requests help you create, update, delete, and fetch content of your account. The Cont...",
-    "id": "11246751-46ebecf0-82dc-446c-92d2-fcfa13f26730"
+    "id": "contentstack.io-content-management"
   },
   {
     "title": "SportRadar Soccer v4",
-    "description": "Sportradar's Soccer API provides real-time game updates and a vast database of supplementary statistics for the largest leagues in the world. Data is collected via Sportradar on-venue scouts and in-ho...",
-    "id": "782198-098da692-3ef4-48fd-bb5d-84601f56040f"
+    "id": "sportradar.com-soccer"
   },
   {
     "title": "VIVA Payments OAuth2 Authentication API",
-    "description": "",
-    "id": "17199201-019c6dec-32f1-4ca2-980b-5fe1f7852e41"
+    "id": "viva.com-oauth"
   },
   {
     "title": "Infura Ethereum JSON-RPC API",
-    "description": "",
-    "id": "8171681-49bfbc10-85ae-466c-8cf0-91eba9298b12"
+    "id": "infura.io"
   },
   {
     "title": "Box Dev Platform API",
-    "description": "Box Platformでは、Box内に保存されているコンテンツへのアクセス権限を付与する機能が提供されています。また、ファイルとフォルダの基本操作、会社内のユーザーの管理、リーガルホールドやリテンションポリシーなどの複雑なトピックのためのエンドポイントも提供されています。",
-    "id": "8119550-73df4d75-420a-455b-97c2-d3d33103c1a4"
+    "id": "box.com"
   },
   {
     "title": "Zomato API",
-    "description": "This is a Zomato RESTful API. It gives you the freshest and most exhaustive restaurant content to power your applications with. It covers 1.5 million restaurants across 10,000 cities globally.This RES...",
-    "id": "35240-6327bead-13ec-43cc-82dd-10992b0238ae"
+    "id": "zomato.com"
   },
   {
     "title": "Temenos API",
-    "description": "To help you understand how our APIs work together, each operation organised into a typical workflow. The workflows shown are entirely optional. Choose from a wide range of banking API endpoints to bu...",
-    "id": "6745754-30313ad0-2d26-4bd3-89f1-863b1d1aa39c"
+    "id": "temenos.com"
   },
   {
-    "title": "IdentityNow Beta API",
-    "description": "Use these APIs to interact with the IdentityNow platform to achieve repeatable, automated processes with greater scalability. These APIs are in beta and are subject to change. We encourage you to join...",
-    "id": "23226990-3b87172a-cd55-40a2-9ace-1560a1158a4e"
+    "title": "SailPoint IdentityNow Beta API",
+    "id": "sailpoint.com-identitynow"
   },
   {
     "title": "Yousign API v3",
-    "description": "👋 Introduction The Squad API internal workspace is designed to provide a collaborative environment for developers and PM to thoroughly test APIs before they are released to production. This worksp...",
-    "id": "14441723-8366a6fc-21b3-47df-b62c-4f14ac7f0907"
+    "id": "yousign.com"
   },
   {
     "title": "SportRadar NBA v8",
-    "description": "Sportradar is the Official Data Provider of NBA statistics. We combine on-venue speed, detailed game and seasonal statistics, and advanced metrics for a full basketball experience. Every NBA game – in...",
-    "id": "17203961-89640c6c-af84-43c1-abd7-caf50d30a08c"
+    "id": "sportradar.com-nba"
   },
   {
     "title": "MuleSoft Anypoint Platform API",
-    "description": "Get started with these 5 minutes videos! MuleSoft Anypoint Platform APIs Every time you login into the MuleSoft Anypoint Platform using the User Interface Portal, you are implicitly calling a set ...",
-    "id": "28629827-392e7c29-e84c-4bd7-9644-39a8e57028d8"
+    "id": "mulesoft.com"
   },
   {
     "title": "YouTube API",
-    "description": "YouTube allows users to upload, view, rate, share, add to favorites, report, comment on videos, and subscribe to other users. It offers a wide variety of user-generated and corporate media videos. Ava...",
-    "id": "35240-0bdca8cb-a591-4d01-90eb-dc36f5720cac"
+    "id": "youtube.com"
   },
   {
     "title": "Duffel API",
-    "description": "A walkthrough on how to go from nothing to your first booking using the Duffel API. In order to follow this guide, you'll need to: - Sign up for a Duffel Account (it takes about 1 minute!) - Create ...",
-    "id": "15595862-cce09558-a1c8-44f9-bde8-8a18715936c1"
+    "id": "duffel.com"
   },
   {
     "title": "Sendbird Chat API",
-    "description": "Sendbird Platform API Javascript SDK https://sendbird.com/docs/chat/v3/platform-api/getting-started/prepare-to-use-api",
-    "id": "3431400-993f31ba-80a7-40bd-863d-8ef8d5d56ee4"
+    "id": "sendbird.com"
   },
   {
     "title": "Checkr.com API",
-    "description": "Introduction Checkr is a modern, RESTful API-driven background screening service. The Checkr API uses resource-oriented URLs, supports HTTPS authentication and HTTPS verbs, and leverages JSON in al...",
-    "id": "17709267-82bc3552-fc3c-4cf0-a11a-071ba6beb5bd"
+    "id": "checkr.com"
   },
   {
     "title": "LinkedIn Community Management API",
-    "description": "You must apply for access to the Marketing Developer Platform in order to use these APIs. See the** **Developer Portal** **on how to apply. This collection aims to focus on different Community Manage...",
-    "id": "17563548-ac814861-61ba-4313-9bb4-1c298b12e4ad"
+    "id": "linkedin.com-community-management"
   },
   {
     "title": "Alpaca Broker API",
-    "description": "Alpaca Broker API consists of different APIs that help you build your investment services and products depending on your needs. | Environment | URL | | ------...",
-    "id": "19455863-d72a0729-972d-486f-8aa9-2b5aede8d615"
+    "id": "alpaca.markets-broker"
   },
   {
     "title": "Twilio API",
-    "description": "",
-    "id": "12503610-e9d62e09-e708-40fc-abd7-0f45c9943d77"
+    "id": "twilio.com"
   },
   {
     "title": "Pynt API",
-    "description": "Goat by Pynt is a vulnerable application example, used to demonstrate the most critical and common API security risks. Fork Goat to your workspace and provide it as a variable to Pynt collection to d...",
-    "id": "22821296-23bb40ff-e0a6-40eb-8bf1-13016c206f8b"
+    "id": "pynt.io"
   },
   {
     "title": "Akamai Application Security API",
-    "description": "The Application Security API allows you to access and modify your Security Configurations for Kona Site Defender, Web Application Protector and Client Reputation. You can create, update, activate, and...",
-    "id": "13085889-84f94114-9504-4c96-8769-d352b85326ad"
+    "id": "akamai.com-application-security"
   },
   {
     "title": "ArcGIS Geocoding & Search API (Geolocation)",
-    "description": "📍 Geocoding API (Geolocation) The requests on this collection use the environment variables**. If you haven't followed the steps in the \"**How to set your free API key 🔑 \" section in the Postman A...",
-    "id": "15786767-53db91ae-9385-4134-9070-1900cd2ea7d5"
+    "id": "arcgis.com-geolocation"
   },
   {
     "title": "Mux API",
-    "description": "Mux is how developers build online video. This API encompasses both Mux Video and Mux Data functionality to help you build your video-related projects better and faster than ever before. Contact Supp...",
-    "id": "18282356-97f1767e-f35a-4fca-b1c5-bf612e6f8e76"
+    "id": "mux.com"
   },
   {
     "title": "Change Healthcare Medical Network Eligibility API v3",
-    "description": "Our Eligibility API solution provides complete patient profile and benefits information, to support healthcare delivery and more-efficient and accurate reimbursement. Providers get better front-end in...",
-    "id": "153940-d0fb746c-0d55-4531-b81e-aeecd9ba71e0"
+    "id": "changehealthcare.com-eligibility"
   },
   {
     "title": "Mangopay API",
-    "description": "The Mangopay API Postman Collection aims to help you test and understand how the Mangopay API works. This collection is attached to the Mangopay documentation, and is kept up to date by the Mangopay t...",
-    "id": "15344095-47c29023-1d0b-4f09-ae65-9054db181208"
+    "id": "mangopay.com"
   },
   {
     "title": "Amazon Selling Partner API for Orders",
-    "description": "The Selling Partner API for Orders helps you programmatically retrieve order information. These APIs let you develop fast, flexible, custom applications in areas like order synchronization, order rese...",
-    "id": "14782630-18170ca2-3a44-4daf-8a7b-79992fa1b7e7"
+    "id": "amazon.com-selling-partner-orders"
   },
   {
     "title": "Aisensy Campaign API",
-    "description": "",
-    "id": "8053852-582f6603-c702-4cf0-bff5-0186128cff1d"
+    "id": "aisensy.com"
   },
   {
     "title": "Akamai Property Manager API",
-    "description": "The Property Manager API (PAPI) offers a programmatic interface to manage how Akamai edge servers process requests, responses, and objects served over the Akamai platform. A distributed property confi...",
-    "id": "13085889-45cbc6e2-2315-43e6-9751-b0015757e36d"
+    "id": "akamai.com-property-manager"
   },
   {
     "title": "Sendcloud API",
-    "description": "This collection can be used to quickly onboard/test our APIs. It is automatically synced when there are changes made for our APIs. You can find our requests following the same structure that we have...",
-    "id": "17867205-42468079-d6a1-4cf8-9e9f-6d7b1f3cc111"
+    "id": "sendcloud.com"
   },
   {
     "title": "Viva Payments Request Access Token API",
-    "description": "",
-    "id": "18763635-d51d9883-2fa5-4c37-9475-2fac9507ec23"
+    "id": "viva.com-request-access-token"
   },
   {
     "title": "Akamai Fast Purge API v3",
-    "description": "The Fast Purge API provides a programmatic interface for you to purge edge content. In this version, purge your own set of URLs or ARLs (Akamai resource locators), or any content grouped under a conte...",
-    "id": "13085889-5539390c-8300-42bd-9a65-609c5ee73441"
+    "id": "akamai.com-fast-purge"
   },
   {
     "title": "Atlassian Confluence Cloud",
-    "description": "This document describes the REST API and resources provided by Confluence. The REST APIs are for developers who want to integrate Confluence into their application and for administrators who want to s...",
-    "id": "35240-a1adb5da-a0fe-4a6e-9435-7531e1b20955"
+    "id": "atlassian.com-confluence"
   },
   {
     "title": "Azure Active Directory v2.0 Protocols API",
-    "description": "A set of requests for trying out the Azure AD v2.0 endpoint, including sign-in requests and token requests. GET requests should be copy & pasted into a browser, since they'll require interactive user...",
-    "id": "11230239-b21fae30-d087-43e9-986b-526841c50434"
+    "id": "microsoft.com-aad"
   },
   {
     "title": "LinkedIn Live Events API",
-    "description": "Use the Live Events API to stream and manage Live Events with your LinkedIn network.",
-    "id": "16069442-cc0b9e49-eda7-4b43-94c8-f539829a1082"
+    "id": "linkedin.com-live-events"
   },
   {
     "title": "Strava API v3",
-    "description": "The Swagger Playground is the easiest way to familiarize yourself with the Strava API by submitting HTTP requests and observing the responses before you write any client code. It will show what a resp...",
-    "id": "35240-180f91eb-1001-48c8-8579-83b031bdc301"
+    "id": "strava.com"
   },
   {
     "title": "Creatio API",
-    "description": "This collection of Creatio API requests lets you test integrations with Creatio platform via OData 3 and OData 4. You can use this collection to work with stream data and batch requests, set up filt...",
-    "id": "10204500-bc3e9cdd-2cb8-4237-95fb-f49d0285001a"
+    "id": "creatio.com"
   },
   {
     "title": "WhatsApp Flows API",
-    "description": "Welcome to the WhatsApp Flows API from Meta. This collection contains the Graph API requests to create, manage, and send WhatsApp Flows. For the full Flows documentation, refer to https://developers.f...",
-    "id": "24926895-7bf51205-92ed-49d1-af4a-0130cf84b6f6"
+    "id": "whatsapp.com-flows"
   },
   {
     "title": "Docker HUB API",
-    "description": "Docker Hub is a service provided by Docker for finding and sharing container images with your team. It is the world's largest library and community for container images. In addition to the Docker Hub ...",
-    "id": "17990590-9574e087-2a50-4ecf-88b3-55f12a29d99e"
+    "id": "docker.com"
   },
   {
     "title": "LinkedIn Reporting & ROI API",
-    "description": "You must apply for access to the LinkedIn Advertising APIs in order to gain access to these APIs. See the** **Developer Platform** **on how to apply. LinkedIn's Reporting & ROI APIs enable you to lev...",
-    "id": "17563548-4621ff80-8cda-4470-b0c6-4b8d8172e2e7"
+    "id": "linkedin.com-reporting"
   },
   {
     "title": "Xero Accounting API",
-    "description": "All the endpoints on the Accounting API. To make requests you'll need a valid access_token and xero-tenant-id in your environment variables. These can be set by following the steps in the `Xero OAut...",
-    "id": "51764-2ea5eb8c-037c-4e23-bfeb-7678b9009019"
+    "id": "xero.com-accounting"
   },
   {
     "title": "Vonage Contact Center API",
-    "description": "Access the Vonage Contact Center API documentation.",
-    "id": "18464142-0d75ac3f-c90f-45f2-9788-ff7e4d04cf87"
+    "id": "vonage.com"
   },
   {
     "title": "AWS Amazon Web Services S3 API",
-    "description": "",
-    "id": "35240-5c55623d-8457-49a6-aa88-825447c3d4ee"
+    "id": "aws.com-s3"
   },
   {
     "title": "Google Analytics API",
-    "description": "Views and manages your Google Analytics data. Contact Support: Name: Google",
-    "id": "35240-e18c54ed-de07-493a-8be9-dff834d13517"
+    "id": "google.com-analytics"
   },
   {
     "title": "NFTPort API",
-    "description": "NFTPort API version 1.0.0 Contact Support: Name: Johannes Tammekänd, Co-Founder of NFTPort Email: johannes@nftport.xyz",
-    "id": "17004047-a8374c16-f5e7-4cce-9a61-22691971ad79"
+    "id": "nftport.com"
   },
   {
     "title": "JVLcart - MERN Ecommerce API",
-    "description": "",
-    "id": "19530322-997cf450-820a-4852-bc1f-a93c9072d6ec"
+    "id": "jvlcart.com"
   },
   {
     "title": "SendGrid API",
-    "description": "The SendGrid Web API V3 Documentation This is the entirety of the documented v3 endpoints. We have updated all the descriptions, parameters, requests, and responses. Authentication Every endpoin...",
-    "id": "35240-6135048e-d8f2-4063-a921-e9f54a73ef03"
-  },
-  {
-    "title": "Wordpress API",
-    "description": "The WordPress REST API provides API endpoints for WordPress data types that allow developers to interact with sites remotely by sending and receiving JSON.nn Why use the WordPress REST APInThe WordPre...",
-    "id": "35240-7c5e4e6c-0417-415e-83fc-53142d7e6d86"
+    "id": "sendgrid.com"
   },
   {
     "title": "YouTrack REST API",
-    "description": "Welcome to the YouTrack workspace! Here you will find a collection of requests that you can make with the YouTrack REST API. This collection is maintained by the YouTrack team. If you have any quest...",
-    "id": "24356758-33c644a2-a6e7-4fcf-b347-8f626d8a32f0"
+    "id": "youtrack.com"
   },
   {
     "title": "USPS Web Tools Address Validation API",
-    "description": "Welcome This is a community resource for developers using the USPS Web Tools APIs. It was created by Lob's developer experience team. We welcome feedback to improve these collections. Just Drop us a...",
-    "id": "16169677-e6373072-8748-4ea1-9fa7-bbe3f50b53ca"
+    "id": "usps.com"
   },
   {
     "title": "Strapi User Collection API",
-    "description": "Contact Support: Name: TEAM Email: contact-email@something.io",
-    "id": "15088051-345aee4f-ab73-4ef0-878a-bfda6d5451f6"
+    "id": "strapi.io"
   },
   {
     "title": "MicroStrategy REST API",
-    "description": "MicroStrategy platform capabilities exposed in a RESTful web service. When a user is authenticated, an authorization token and a session cookie are returned and must be provided in every subsequent r...",
-    "id": "16131298-15ac2bcb-1b3c-4be4-81b2-c3defec602ad"
-  },
-  {
-    "title": "Wordpress API v2",
-    "description": "The WordPress REST API provides API endpoints for WordPress data types that allow developers to interact with sites remotely by sending and receiving JSON. Why use the WordPress REST API The WordPre...",
-    "id": "1034536-ec65aa12-bea7-413c-9f3f-5f96d63eb62e"
+    "id": "microstrategy.com"
   },
   {
     "title": "Cisco IOS-XE API",
-    "description": "The Postman collections for Cisco IOS XE allow you to configure the HTTP-based Representational State Transfer Configuration Protocol (RESTCONF). RESTCONF provides a programmatic interface based on st...",
-    "id": "3224967-5cff0689-8d8f-4b13-b02d-dd8a8488b6e4"
+    "id": "cisco.com-ios-xe"
   },
   {
     "title": "Proxycurl API",
-    "description": "",
-    "id": "24649354-92d66859-8c04-4730-b2dd-a2609b78612e"
+    "id": "proxycurl.com"
   },
   {
     "title": "Salesforce Commerce B2B/D2C API",
-    "description": "Salesforce Commerce B2B/D2C APIs This postman collection contains API endpoints from various Salesforce Commerce B2B/D2C API domains. Get started Follow this documentation to get started with Sal...",
-    "id": "26952482-15c710fe-070a-4971-a435-14ab3856cdf9"
+    "id": "salesforce.com-commerce"
   },
   {
     "title": "Kroger Public API",
-    "description": "The following APIs are publicly available for all clients to build new products, services, or customer experiences that leverage the unique data, functions, and applications of Kroger. As a company ...",
-    "id": "4833726-924df556-59ab-452d-92a3-ffa8e3dca405"
+    "id": "kroger.com"
   },
   {
     "title": "LinkedIn Job Posting API",
-    "description": "We are making updates to our collections. If you run into any issues pulling the latest changes, simply fork the collection again. LinkedIn's Job Posting API enables authorized third parties such as ...",
-    "id": "16069442-751fa4d1-d54b-4fb7-be90-45e39047b536"
+    "id": "linkedin.com-job-posting"
   },
   {
     "title": "Twitter API v2",
-    "description": "This is a Postman Collection for the Twitter API v2 endpoints. Refer to the main Twitter API documentation for more details. If you have an API-related question, you can also discuss in the develop...",
-    "id": "9677191-ca0e5b26-8942-4206-8e68-b8978cf3e7e2"
+    "id": "twitter.com"
   },
   {
     "title": "EasyPost API",
-    "description": "Authentication Authentication and identification to the EasyPost API is done by providing an API Key on every request as your Basic Auth username (no password is required). EasyPost requires that al...",
-    "id": "11274540-3f58cfa3-ca23-4a58-a646-9e86b8f7178e"
+    "id": "easypost.com"
   },
   {
     "title": "SportMonks Football API",
-    "description": "At Sportmonks we now cover 1200+ Football/Soccer Leagues. Especially for Major Leagues, all Football Data you need is available. Whether your application requires our Livescore API, Statistics, Odds, ...",
-    "id": "11949411-b410035a-d7f8-453b-9513-5044694d0fcb"
+    "id": "sportmonks.com"
   },
   {
     "title": "Galileo Pro API",
-    "description": "Galileo Pro Program API",
-    "id": "17623523-9b856531-6124-4553-9096-4f6105168057"
+    "id": "galileo.com"
   },
   {
     "title": "Azure Setup and Authorization API",
-    "description": "",
-    "id": "13081473-e47b30e0-24e3-431c-808c-0aae73fa80ef"
+    "id": "microsoft.com-azure"
   },
   {
     "title": "Viessmann API",
-    "description": "This is a Postman collection for the Viessmann API. It contains the following sections: * Authentication * User Management * IoT For the general steps to use the API, please got to http...",
-    "id": "12055031-17157e90-a2e8-47b6-a7b8-2320c2941db3"
+    "id": "viessmann.com"
   },
   {
     "title": "Magento Enterprise API",
-    "description": "Magento Commerce is the leading provider of open omnichannel innovation.",
-    "id": "35240-71bcaea5-db45-42d9-b70f-6e41154f615d"
+    "id": "magento.com"
   },
   {
     "title": "fiserv.dev API",
-    "description": "For use with the Fiserv EMEA Developer Platform APIs (https://fiserv.dev). It contains all currently available Experience APIs with some example requests for each endpoint. Also see the attached env...",
-    "id": "20390277-2d65486c-0ea6-4392-aa1c-aa51c66adcd8"
+    "id": "fiserv.dev"
   },
   {
     "title": "Okta Admin Management API",
-    "description": "Allows customers to easily access the Okta Management APIs Contact Support: Name: Okta Developer Team Email: devex-public@okta.com",
-    "id": "4920859-c2ffbdb9-81c5-4626-9444-3792f940cb8d"
+    "id": "okta.com-admin"
   },
   {
     "title": "Amazon Selling Partner API for Authorization",
-    "description": "The Selling Partner API for Authorization helps developers manage authorizations and check the specific permissions associated with a given authorization. Contact Support: Name: Selling Partner API ...",
-    "id": "14782630-4937b543-c1db-4eaa-8682-f8bef8263bf7"
+    "id": "amazon.com-selling-partner-authorization"
   },
   {
     "title": "Dwolla Balance API",
-    "description": "This is the Dwolla API Postman collection. Click the button below which will prompt you to run the collection. ![Run in Postman](https://god.gw.postman.com/run-collection/5009345-7f6c2764-c1f0-4837-8...",
-    "id": "5009345-7f6c2764-c1f0-4837-8cf3-5e2abf41b0d4"
+    "id": "dwolla.com-balance"
   },
   {
     "title": "World News API",
-    "description": "The world's news wrapped into a single API. Contact Support: Name: David Urbansky Email: mail@worldnewsapi.com",
-    "id": "7431899-448bb687-5f8b-436e-adf5-9c8f29f8b377"
+    "id": "worldnewsapi.com"
   },
   {
     "title": "GoCardless API",
-    "description": "This is a postman collection covering the GoCardless API. See https://developer.gocardless.com/api-reference/ for more details. Prerequisites Postman GoCardless Account Getting Started 1\\. Create ...",
-    "id": "22460459-bae9db02-4aec-428e-bbe4-c36d6d199fd0"
+    "id": "gocardless.com"
   },
   {
     "title": "DocuSign Click API",
-    "description": "DocuSign Click lets you capture consent to standard agreement terms with a single click: terms and conditions, terms of service, terms of use, privacy policies, and more. The Click API lets you includ...",
-    "id": "11590809-e11dc269-34af-45fb-b72a-38d5e9c35e9b"
+    "id": "docusign.com"
   },
   {
     "title": "Rick and Morty API",
-    "description": "rick and morty image Introduction This documentation will help you get familiar with the resources of the Rick and Morty API and show you how to make different queries, so that you can get the most...",
-    "id": "1215211-d616f4dc-8fb9-4726-ab5d-05ce021b4d0e"
+    "id": "rickandmortyapi.com"
   },
   {
     "title": "DeepL API",
-    "description": "This is a Postman collection covering the DeepL API. For a more in depth look at how things work, check out the official documentation. Getting started To get started, sign up for a developer accou...",
-    "id": "27518486-e9e2969d-d589-4d3d-9df6-cc514cf3ee5e"
+    "id": "deepl.com"
   },
   {
     "title": "SportRadar NFL v7 API",
-    "description": "Sportradar’s NFL API v7 offers a comprehensive suite of game and seasonal stats. Whether you are looking for the fastest gameday updates, your favorite player’s season stats, or in-depth subjective st...",
-    "id": "782198-7634cb11-9938-4bb6-a255-4f4c94e5738c"
+    "id": "sportradar.com-nfl"
   },
   {
     "title": "Mailinator API",
-    "description": "",
-    "id": "18914905-879b0800-8741-473d-aedd-d64f02879c6d"
+    "id": "mailinator.com"
   },
   {
     "title": "WooCommerce REST API",
-    "description": "Taken from: https://github.com/woocommerce/woocommerce-rest-api-docs Introduction WooCommerce (WC) 2.6+ is fully integrated with the WordPress REST API. This allows WC data to be created, read, upd...",
-    "id": "15735736-d534dd08-bc7c-4e08-9d93-b6c6112a13da"
+    "id": "woocommerce.com"
   },
   {
     "title": "Clickpost API",
-    "description": "Clickpost APIs are RESTful and all our responses are returned in JSON",
-    "id": "23733811-8d3cc7d3-4204-47e1-ab76-b6132741961e"
+    "id": "clickpost.com"
   },
   {
     "title": "Gitlab API",
-    "description": "The platform for modern developers GitLab unifies issues, code review, CI and CD into a single UI",
-    "id": "35240-348a5e06-9e54-4595-8071-f4278adca39d"
+    "id": "gitlab.com"
   },
   {
     "title": "Lemon Markets Data API",
-    "description": "The historical market data API can be used to retrieve historical and real-time market data.",
-    "id": "17640038-2529790f-bcca-469d-8a34-210d150f17e2"
+    "id": "lemon.markets"
   },
   {
     "title": "ETG Emerging Travel Group API v3",
-    "description": "This documentation contains a general overview of the Emerging Travel Group API Partner Program. To know more about the benefits of our API integration or to sign up please check ourwebsite. Prior...",
-    "id": "4803693-64ed480c-8e66-4c01-9e7f-c98f3319622f"
+    "id": "emergingtravelgroup.com"
   },
   {
     "title": "Mailgun API",
-    "description": "Introduction ======= The Mailgun API is built on HTTP. Our API is RESTful and it: * Uses predictable, resource-oriented URLs. * Uses built-in HTTP capabilities for passing parameters and authenticat...",
-    "id": "5158941-ceac6086-8750-4e27-9a59-a6c0639e46a9"
+    "id": "mailgun.com"
   },
   {
     "title": "Livechat Agent Chat API v3.5",
-    "description": "Environment: The API version has to be edited in the environmental variables before calling API. See documentation here.",
-    "id": "20754404-5e28686f-599c-442c-b980-38cda7178698"
+    "id": "livechat.com-agent-chat"
   },
   {
     "title": "Simple Books API",
-    "description": "",
-    "id": "18551292-ab5af4da-41cd-4fa3-a443-f0f6b38ec6b6"
+    "id": "simplebooks.com"
   },
   {
     "title": "TransferWise Send Money API",
-    "description": "",
-    "id": "24215266-639bb28a-dbc1-45e6-aca1-e58a86db34a3"
+    "id": "transferwise.com-send-money"
   },
   {
     "title": "Zoho Sign API",
-    "description": "Zoho Sign APIs provides the option for users to perform document management, and template management operations directly, without accessing Zoho Sign’s web interface using our REST APIs. You may also...",
-    "id": "17442151-431d63e5-7ee6-4734-8ed5-527966c04a3c"
+    "id": "zoho.com-sign"
   },
   {
     "title": "Localazy API",
-    "description": "Localazy API can be used to fetch up-to-date translated content, modify it or upload new content for translation. You can also manipulate the source keys in the project, manage screenshots, duplicitie...",
-    "id": "25109945-af40dbd1-c8dc-4358-a2b1-c4f0573e8fd2"
+    "id": "localazy.com"
   },
   {
     "title": "Zendesk Agent Availabilities API",
-    "description": "An API for querying agent availabilities.",
-    "id": "19931619-ff70cc2e-6288-45d6-85f2-dc07f3600f0c"
+    "id": "zendesk.com-agent-availabilities"
   },
   {
     "title": "Binance Delivery Futures API",
-    "description": "Binance official supported Postman collections. - API documents: https://binance-docs.github.io/apidocs/futures/en/ - Telegram: https://t.me/binance_api_english - Open Issue at: https://github.com/bin...",
-    "id": "15523775-120d98de-5540-4b43-a949-a2af25bd9ded"
+    "id": "binance.com-delivery-futures"
   },
   {
     "title": "QuickChart API",
-    "description": "This collection includes examples of how to use the QuickChart API to generate chart images.",
-    "id": "11849833-b042ab53-b19c-4336-9862-208e4d5d82bf"
+    "id": "quickchart.com"
   },
   {
     "title": "Immoscout24 Search API",
-    "description": "Information about the Search-API and conditions is available on https://api.immobilienscout24.de/api-docs/search/introduction/",
-    "id": "13152852-36685209-a9fb-4507-9f08-4bc6f6ce8552"
+    "id": "immoscout24.com-search"
   },
   {
     "title": "Ayrshare Social Media API",
-    "description": "Getting Started With Ayrshare Ayrshare gives you the tools to schedule social media posts to X/Twitter, Facebook Pages and Groups, LinkedIn, Instagram, YouTube, Reddit, Google Business Profile (form...",
-    "id": "7602335-776bf0f9-c710-43cf-b3a2-7987801887f3"
+    "id": "ayrshare.com"
   },
   {
     "title": "Simple book API",
-    "description": "",
-    "id": "15380335-0ba66f0d-dc4d-4e33-86b7-b319fecacb17"
+    "id": "simplebook.com"
   },
   {
-    "title": "Images v3",
-    "description": "Sportradar’s Images API provides an extensive output of player headshots, venue images, team and league logos, and in-game action shots. Over 100 image collections are available from four different p...",
-    "id": "17203961-08f7791d-01a2-420a-ba94-0eb5e63a89ab"
+    "title": "SportRadar Images v3 API",
+    "id": "sportradar.com-images"
   },
   {
-    "title": "APIS DA CELCOIN  V2",
-    "description": "",
-    "id": "23735625-5c606dba-756d-48e7-a3e5-864b9af476d0"
+    "title": "Celcoin V2 API",
+    "id": "celcoin.com"
   },
   {
-    "title": "FHIR",
-    "description": "Fast Healthcare Interoperability Resources (FHIR, pronounced \"Fire\") defines a set of \"Resources\" that represent granular clinical concepts. The resources can be managed in isolation, or aggregated in...",
-    "id": "35240-c30a5371-445c-4046-af66-649b43842f3e"
+    "title": "FHIR API",
+    "id": "fhir.com"
   },
   {
     "title": "TikAPI (v3)",
-    "description": "Introduction The TikApi API is an unofficial API on top of TikTok application API. Our API is RESTful. It has predictable resource URLs. It uses HTTP response codes to indicate errors. It also acc...",
-    "id": "13698063-2f272f6e-e328-4777-b7b4-9e5d53f7bfd2"
-  },
-  {
-    "title": "1. 🔒 Get access token",
-    "description": "You can access ArcGIS location services and private data with different authentication methods to ensure that only valid, authorized users and services access protected information. Your app must pre...",
-    "id": "15786767-75e3e16c-dd5a-4052-ae8d-2c9682055e8d"
+    "id": "tikapi.io"
   },
   {
     "title": "Zendesk Jira Integration API",
-    "description": "Jira Integration API",
-    "id": "19931619-3c845a75-ae99-4b13-92bc-1f06d6776e34"
+    "id": "zendesk.com-jira-integration"
   },
   {
-    "title": "Cricket v2",
-    "description": "The Cricket API provides real-time scoring, detailed match statistics (when available), and an array of supplementary data. The API is consistent in structure, format, and behavior with the other Gen...",
-    "id": "17203961-06930599-832e-47fd-924f-5d2c6c9c2891"
+    "title": "SportRadar Cricket v2",
+    "id": "sportradar.com-cricket"
   },
   {
     "title": "Asana",
-    "description": "This is the interface for interacting with the Asana Platform. Our API reference is generated from our [OpenAPI spec] (https://raw.githubusercontent.com/Asana/openapi/master/defs/asana_oas.yaml). Con...",
-    "id": "15868387-ac0acd7c-c272-4ad0-9c8e-ade5bb40c9d0"
+    "id": "asana.com"
   },
   {
-    "title": "OAuth 2.0 and OpenID Connect",
-    "description": "This postman collection is used to try out the OpenID Connect feature of CyberArk Identity Please refer to the documentation link to setup OpenID Connect custom app in CyberArk Identity - https://doc...",
-    "id": "14719159-67a30352-c5a6-4b9a-b86a-337776f67005"
+    "title": "CyberArk OAuth 2.0 and OpenID Connect API",
+    "id": "cyberark.com-oauth-openid"
   },
   {
-    "title": "Weather DB",
-    "description": "",
-    "id": "24215605-33a2de4a-aad0-404a-8d35-cd3f77b93e46"
+    "title": "OneDrive API",
+    "id": "onedrive.com"
   },
   {
-    "title": "MyOneDriveAPICollection",
-    "description": "",
-    "id": "3943424-0b3887f9-fc8b-4966-adee-d960672b0406"
+    "title": "Qualtrics Public API",
+    "id": "qualtrics.com"
   },
   {
-    "title": "All Public API (Master Collection)",
-    "description": "Qualtrics Public APIs -- Master Collection This collection is a master collection of all Qualtrics Public APIs. You can simply fork this collection if you want easy access to all Qualtrics Public A...",
-    "id": "20176414-d6a50675-e659-4937-93b2-5b4d06865be7"
-  },
-  {
-    "title": "Object Storage Service API",
-    "description": "Common set of Object Storage and Archive Storage APIs for managing buckets, objects, and related resources. For more information, see Overview of Object Storage and Overview of Archive Storage.",
-    "id": "29850-2006f3fa-6dcd-431a-a506-bfcc097654a8"
+    "title": "Oracle Object Storage Service API",
+    "id": "oracle.com-object-storage"
   },
   {
     "title": "ShipStation API",
-    "description": "This collection contains basic functionality of ShipStation. Including create order, create labels for an order, add products to an order, and manage stores etc. Authentication The ShipStation ...",
-    "id": "14323608-324dcda9-cc54-4359-9ef5-15f8a3537caa"
+    "id": "shipstation.com"
   },
   {
-    "title": "Configuration API (v2)",
-    "description": "The Configuration API enables you to create a platform where you can onboard your users as account holders and create balance accounts, cards, and business accounts. Authentication Your Adyen contac...",
-    "id": "25716737-ffee4bcf-ac49-46ac-8963-e29f01f67a31"
+    "title": "Adyen Configuration API (v2)",
+    "id": "adyen.com-configuration"
   },
   {
-    "title": "API Documentation",
-    "description": "Welcome to Dyte REST API Documentation. To integrate Dyte into your applications, first step is to call Dyte REST APIs and use the values returned from those APIs. Let's understand these APIs and how...",
-    "id": "20897959-a72828d7-8739-49ac-b88c-c5e6ec365e21"
+    "title": "Dyte API Documentation",
+    "id": "dyte.io"
   },
   {
-    "title": "Joomla Web Services Collection For Postman",
-    "description": "100+ Endpoints Joomla Web Services Collection For Postman An attempt to help the Joomla! 4.x/5.x/6.x early adopters mainly focused for developers. It's an unofficial Postman collection of official J...",
-    "id": "7443864-c678a936-c256-497c-9894-d8f193d81e7e"
+    "title": "Joomla Web Services API",
+    "id": "joomla.com"
   },
   {
     "title": "WHOIS XML API",
-    "description": "This is a Postman Collection for the WhoisXMLAPI endpoints. Refer to the WhoisXMLAPI website for more details. If you have an API-related question, you can ask them here: https://main.whoisxmlapi.co...",
-    "id": "18021624-8b6d22b4-f63a-4067-a80a-c0f613ea48c2"
+    "id": "whoisxmlapi.com"
   },
   {
     "title": "BoldSign API",
-    "description": "BoldSign is an eSignature software with an intuitive RESTful API that can be accessed using any server-side programming language. It allows you to access and build your own application that interacts ...",
-    "id": "24291027-6fe717b2-c0aa-4d61-8d8b-cfed12eb596e"
+    "id": "boldsign.com"
   },
   {
-    "title": "API GoLogin",
-    "description": "You can connect to API and integrate GoLogin with other programs to, for instance, automate some processes by using self-written bots. Keep in mind that you must be able to program on your own to use ...",
-    "id": "21126834-c4250753-9e78-4b3c-a212-003e9759da46"
+    "title": "GoLogin API",
+    "id": "gologin.com"
   },
   {
-    "title": "API Pix",
-    "description": "Esta Postman Collection API Pix** foi desenvolvida pela **Efí, para auxilio na integração da api Pix Efí. Tenha você também uma conta digital conosco. Link para a documentação técnica: http://sejaefi...",
-    "id": "13574984-fb167143-8910-49f3-96af-e8a88695b2a9"
+    "title": "Telnyx Phone Numbers API",
+    "id": "telnyx.com-phone-numbers"
   },
   {
-    "title": "Phone Numbers",
-    "description": "",
-    "id": "19300194-3ed78399-2d3d-4a67-a4db-1d6bc07689a8"
+    "title": "Akamai Edge Compute API",
+    "id": "akamai.com-edge-compute"
   },
   {
-    "title": "Stripe API [09-20-2021]",
-    "description": "Stripe API Postman Collection This is a postman collection covering the Stripe API. See https://stripe.com/docs/api for more details. Prerequisites Postman Stripe Account Getting Started To get s...",
-    "id": "665823-7561c5b3-e6e6-46c6-9e55-6aa9d40c7088"
+    "title": "SPG Checkout API",
+    "id": "spg.com-checkout"
   },
   {
-    "title": "Edge Compute API",
-    "description": "",
-    "id": "13085889-10b6ffa0-b947-4232-b70a-60bff7ef4d8e"
+    "title": "Algorand Algod REST API",
+    "id": "algorand.com"
   },
   {
-    "title": "SPG Checkout",
-    "description": "",
-    "id": "16556944-f61413ee-fff8-4d57-a50e-a725a58580a4"
+    "title": "SentinelOne API",
+    "id": "sentinelone.com"
   },
   {
-    "title": "Mock Server Starter Kit",
-    "description": "Getting Started Using mock servers is a great way to use Postman to build an API as part of your \"API-First\" mindset. \"API-First\" is a way to define, design, document, and test your API experience b...",
-    "id": "19408657-9d050050-0cfe-4629-aac5-d99818cf4221"
-  },
-  {
-    "title": "Algod REST API.",
-    "description": "API endpoint for algod operations. Contact Support: Name: algorand Email: contact@algorand.com",
-    "id": "7417958-60ff1bfc-b5f2-42aa-83b0-6888f0d4c2f4"
-  },
-  {
-    "title": "Klaviyo API (Previous Stable) (v2023-10-15)",
-    "description": "The Klaviyo REST API. Please visit https://developers.klaviyo.com for more details. Contact Support: Name: Klaviyo Developer Experience Team Email: developers@klaviyo.com",
-    "id": "10773558-62af65e5-621f-4fff-9826-cab2261725fc"
-  },
-  {
-    "title": "SentinelOne",
-    "description": "SentinelOne Management Console API specification. Based on https://endpoint.sentinelone.net/api-doc/overview Contact Support: Name: @frikkylikeme Email: frikky@shuffler.io",
-    "id": "35240-8314fa61-90b8-405a-a1fa-c695b640a11a"
-  },
-  {
-    "title": "Humantic AI API Documentation",
-    "description": "Humantic AI APIs provide the cutting edge of psychometric analytics allowing you to understand your customers like never before and help you drive customized solutions. Humantic is proud to achieve th...",
-    "id": "11732195-cd43eb6d-f141-439a-90aa-7961ef1e4cd6"
-  },
-  {
-    "title": "Local API",
-    "description": "",
-    "id": "4096140-47743d1e-9a36-4e93-ac2e-11f938f4e5d7"
+    "title": "Humantic AI API",
+    "id": "humantic.ai"
   },
   {
     "title": "PDF Generator API 4.0.0",
-    "description": "Introduction PDF Generator API allows you easily generate transactional PDF documents and reduce the development and support costs by enabling your users to create and manage their document templates...",
-    "id": "11578263-c6546175-de49-4b35-904b-29bb52a5a69a"
+    "id": "pdfgeneratorapi.com"
   },
   {
-    "title": "MicroStrategy REST API Workflows",
-    "description": "To learn more about our workflows visit the REST API Documentation",
-    "id": "16131298-9ba9a108-18ee-438e-8f4f-df058f265f1b"
+    "title": "MicroStrategy Workflows REST API",
+    "id": "microstrategy.com-workflows"
   },
   {
-    "title": "API 101",
-    "description": "API 101 template for learning API request basics. Follow along with the webinar / video or just open the first request and hit Send! For the newer version of this learning leading to certification se...",
-    "id": "1841124-e8e57f0e-a304-4a67-a678-b73489d4d50b"
+    "title": "Alpaca Markets Trader v2 API",
+    "id": "alpaca.markets"
   },
   {
-    "title": "Trader v2 API",
-    "description": "Alpaca's Trading API is a modern platform for algorithmic trading. | Environment | URL | | ------------- |:--------------------------------:| | Paper | https://...",
-    "id": "19455863-b219fac1-0270-441b-b62c-5f4848233b8b"
+    "title": "Whereby Embedded API",
+    "id": "whereby.com"
   },
   {
-    "title": "Embedded API",
-    "description": "Hello friend! 👋 This collection lets you quickly create a Whereby room using our API. Here's what you need to do: 1. Make sure you have your Whereby API key available. If you don't have a key, log...",
-    "id": "15283449-36906103-00b9-43fa-88e4-f2ed52fdedd3"
+    "title": "Jira Cloud REST API",
+    "id": "atlassian.com-jira"
   },
   {
-    "title": "The Jira Cloud platform REST API",
-    "description": "Jira Cloud platform REST API documentation Contact Support: Email: ecosystem@atlassian.com",
-    "id": "8854915-8a5164d3-6bab-4269-a6d1-4760d09f02b8"
-  },
-  {
-    "title": "CRM API Collections",
-    "description": "The HubSpot CRM is a dynamic platform that can be greatly enhanced with our APIs. This collection is a curated collection of the CRM APIs that are particularly useful for developers who are working to...",
-    "id": "26126890-fa75a62c-7a82-4c9e-ad99-edb189d8a73e"
+    "title": "Hubspot CRM API Collections",
+    "id": "hubspot.com"
   },
   {
     "title": "FedEx Track API",
-    "description": "",
-    "id": "13191452-d69b41a8-bfd3-4f15-bfbc-efddd6942fb5"
+    "id": "fedex.com-track"
   },
   {
-    "title": "Search API",
-    "description": "The Search API allows you fine control on filtering and retrieving information on all the assets in your account with the help of query expressions in a Lucene-like query language.",
-    "id": "16080251-58a5b1d8-f57a-49c1-b26b-140d3347f556"
+    "title": "Cloudinary Search API",
+    "id": "cloudinary.com-search"
   },
   {
-    "title": "Infobip SMS",
-    "description": "Hi! This Postman collection will enable you to work with Infobip's SMS messaging API platform. For more specifics check our SMS documentation. In case there is something that requires our imminent...",
-    "id": "17249641-fa908be2-5f03-4615-931d-e9338c30fd7f"
+    "title": "Infobip SMS API",
+    "id": "infobip.com"
   },
   {
-    "title": "Tastytrade Api",
-    "description": "To start, update the Sessions/Login request with your username and password. The Login request stores your tastytrade session token in an environment variable called tt_auth_token. This auth token is ...",
-    "id": "28162391-16471503-4336-42b0-b790-7d34b10fe0e8"
+    "title": "Tastytrade API",
+    "id": "tastytrade.com"
   },
   {
-    "title": "@calcom/api: Public API for Cal.com",
-    "description": "",
-    "id": "20666831-b92a1d73-bfcc-4a5f-9ef5-cb117d49c904"
+    "title": "Cal.com API",
+    "id": "cal.com"
   },
   {
     "title": "ISS MOEX API",
-    "description": "Работа с API MOEX (Мосбиржи)",
-    "id": "18434521-d9da04ea-ae11-4f0c-9a58-f0f4077fc72f"
+    "id": "iss.moex.com"
   },
   {
-    "title": "Mist Runner Collections 0.3.14.1",
-    "description": "This Postman collection gather multiple Postman Runners to automate Juniper Mist deployment and configuration. Site Creation This collection will use a CSV Template to create multiple sites via the...",
-    "id": "12550778-499a6c92-3df7-4ed6-9cf7-fd2e06869b9d"
+    "title": "Juniper Mist Runner API 0.3.14.1",
+    "id": "juniper.net"
   },
   {
-    "title": "#APIBRASIL - Gateway V2",
-    "description": "Bem vindo, Para consumir nossos serviços é bem simples! Para consumir a API, é necessário primeiro fazer login no endpoint /auth/login ou pegar o seu Bearer Token gerado automáticamente na platafo...",
-    "id": "24382542-ba344e76-2d58-4806-9fdf-4c37056dfd7f"
+    "title": "APIBRASIL - Gateway V2 API",
+    "id": "apibrasil.com"
   },
   {
-    "title": "FatSecret Platform",
-    "description": "FatSecret Platform API For more information please refer to the online documentation All Requests to the FatSecret Platform REST API should be directed to https://platform.fatsecret.com/rest/server...",
-    "id": "25958240-f307c228-34ed-42bb-8866-79dae97523a6"
+    "title": "FatSecret API",
+    "id": "fatsecret.com"
   },
   {
-    "title": "Payment Pre-Validation Consumer API",
-    "description": "Move your app forward with the gpi APIs",
-    "id": "25313102-63c315fb-dd2d-4b53-a858-476068998500"
+    "title": "Swift Payment Pre-Validation Consumer API",
+    "id": "swift.com-payment-pre-validation"
   },
   {
-    "title": "Legal Entity Management API (v3)",
-    "description": "The Legal Entity Management API enables you to manage legal entities that contain information required for verification. Authentication Your Adyen contact will provide your API credential and an API...",
-    "id": "25716737-0a4fc86d-e9c9-4d5d-a6d5-b4167d276005"
+    "title": "Adyen Legal Entity Management API (v3)",
+    "id": "adyen.com-legal-entity"
   },
   {
-    "title": "Ebay",
-    "description": "The eBay platform offers an unprecedented opportunity to build a new eBay business or expand your current business, reach new customers, and create a potential new stream of revenue. Leverage the reso...",
-    "id": "35240-007fb30c-c8ae-4349-8a4c-36e7914a7a99"
+    "title": "Ebay API",
+    "id": "ebay.com"
   },
   {
-    "title": "Tennis v3",
-    "description": "Sportradar's Tennis API v3 provides real-time scoring, point-by-point match scoring (when available), and an array of supplementary data. Over 4,000 competitions are covered and available in one packa...",
-    "id": "17203961-4b633378-0f3c-4543-b25a-ac3ae8034ffb"
+    "title": "SportRadar Tennis v3",
+    "id": "sportradar.com-tennis"
   },
   {
-    "title": "Builder",
-    "description": "",
-    "id": "2394463-42b237e1-c603-4bf2-a9fc-c86473159d62"
+    "title": "Keystone Builder API",
+    "id": "keystone.com"
   },
   {
-    "title": "Soccer Extended v4",
-    "description": "Sportradar's Soccer API provides real-time game updates and a vast database of supplementary statistics for the largest leagues in the world. Data is collected via Sportradar on-venue scouts and in-ho...",
-    "id": "17203961-4b444667-2e12-4767-a2c7-e542efca23b5"
+    "title": "SportRadar Soccer Extended v4",
+    "id": "sportradar.com-soccer-extended"
   },
   {
     "title": "Pardot API",
-    "description": "This collection provides sample requests for the Pardot API: v3, v4 and v5. Authentication This collection doesn't use Postman's (really nice) Authentication capabilities, it uses plain Collection ...",
-    "id": "8542420-6f4eb4ac-584d-4123-a1aa-74d5cbede5cc"
+    "id": "pardot.com"
   },
   {
-    "title": "Data Driven using googlesheet",
-    "description": "Description This collection shows how to execute data driven execution without using data file. Here we use Google sheet to drive our execution. we are accessing Google sheet through Google sheet ...",
-    "id": "8296678-5dc51f3f-c7b0-4c66-a457-11af32bb1a63"
-  },
-  {
-    "title": "WooCommerce REST API - v3",
-    "description": "",
-    "id": "15735736-cc214b9d-7d58-473a-811a-8282d173bd4f"
+    "title": "WooCommerce REST API v3",
+    "id": "woocommerce.com-v3"
   },
   {
     "title": "Phyllo API",
-    "description": "Getting Started > For the full documentation, refer to https://docs.getphyllo.com. The Phyllo API is built on RESTful principles. It returns JSON encoded responses and accepts JSON payloads on HTTP...",
-    "id": "23389465-8c6aed66-7fac-4d33-b966-61383bf5b3aa"
+    "id": "getphyllo.com"
   },
   {
-    "title": "Braze Endpoints",
-    "description": "Braze API Overview Braze provides a high performance REST API to allow you to track users, send messages, export data, and more. A REST API is a way to programmatically transfer information over th...",
-    "id": "18468963-80384eba-a830-406c-9841-b3bbdfd82d20"
+    "title": "Braze API",
+    "id": "braze.com"
   },
   {
-    "title": "FortiManager",
-    "description": "FortiManager collection Here are published examples for FortiManager API.",
-    "id": "22422020-f33ce7c0-31d3-42e0-8ea3-717d84719c2d"
+    "title": "FortiManager API",
+    "id": "fortinet.com"
   },
   {
     "title": "GST Compliance API",
-    "description": "",
-    "id": "16713878-8a2e585a-ccd7-4ae6-a972-0c56ff2a15f2"
+    "id": "gst.com"
   },
   {
-    "title": "Pontomais => API de integração",
-    "description": "Introdução Esta é a documentação da API da Pontomais. Ela descreve as funcionalidades e fornece exemplos com o objetivo de servir de guia para o desenvolvimento de integrações com a API da Pontomais,...",
-    "id": "4785048-95006864-2f13-4316-9840-3ce3bc633f20"
+    "title": "SportRadar Formula 1 v2",
+    "id": "sportradar.com-formula1"
   },
   {
-    "title": "Formula 1 v2",
-    "description": "The Formula 1 API provides schedules and live coverage for all F1 Championship races. All data is collected via Sportradar’s expert operators. This API uses a descending, stage-based structure. By ch...",
-    "id": "17203961-22970a99-cd61-426d-ba44-b41776e2f7f1"
+    "title": "Revolut Business API",
+    "id": "revolut.com-business"
   },
   {
-    "title": "Business API",
-    "description": "Introduction As a Revolut Business customer, you can use the Business API to automate your own business processes. Save time, reduce your costs, and avoid errors by using the Business API. You can ...",
-    "id": "21576318-c2279e15-9a01-4d19-8b08-3632c195ea5f"
+    "title": "Oracle Core Services API",
+    "id": "oracle.com-core-services"
   },
   {
-    "title": "Core Services API",
-    "description": "API covering the Networking, Compute, and Block Volume services. Use this API to manage resources such as virtual cloud networks (VCNs), compute instances, and block storage volumes.",
-    "id": "29850-f192ebbb-2ff2-4854-8120-c0acb953c27e"
-  },
-  {
-    "title": "Payouts and third party payouts API",
-    "description": "",
-    "id": "20116326-b8c7dfa2-570f-4f8a-9fa3-5e129d73b34c"
+    "title": "TransferWise Payouts and third party payouts API",
+    "id": "transferwise.com-payouts"
   },
   {
     "title": "Typesense API",
-    "description": "Read detailed API documentation here: https://typesense.org/docs/latest/api/",
-    "id": "2777527-c9fcfb87-b849-4afa-a56f-4e2b0d86be8a"
+    "id": "typesense.com"
   },
   {
-    "title": "CoinMarketCap DEX API- Jan 2024 Soft Launch",
-    "description": "In this Postman collection, you can test our 3 new DEX APIs. For more details on how to get started, visit this link. You can find expected responses for each API in this Google Sheet. Want to get s...",
-    "id": "27765301-3b01b3d6-9934-4e39-b770-92536a0932bd"
+    "title": "CoinMarketCap DEX API",
+    "id": "coinmarketcap.com-dex"
   },
   {
     "title": "Vimeo API",
-    "description": "Contact Support: Name: No Contact Email: email@example.com",
-    "id": "35240-04551e11-ae48-4759-9d58-fef6a7b17230"
+    "id": "vimeo.com"
   },
   {
-    "title": "Messaging",
-    "description": "",
-    "id": "19300194-f48ff5b8-f4f6-4f55-b678-d737af40cf76"
+    "title": "Telnyx Messaging API",
+    "id": "telnyx.com-messaging"
   },
   {
-    "title": "Student expert",
-    "description": "DEPRECATED - please use the Postman Student Program workspace bit.ly/student-workspace Learn the skills to become a certified Postman Student Expert.",
-    "id": "1841124-dfb5d27c-7ea8-4936-a070-20b76927aea2"
-  },
-  {
-    "title": "CoinMarketCap",
-    "description": "The CoinMarketCap Professional API is a suite of high-performance RESTful JSON endpoints that are specifically designed to meet the mission-critical demands of application developers, data scientists,...",
-    "id": "35240-a7221b4a-cbb4-447e-8e62-28d49f5ff065"
-  },
-  {
-    "title": "MHSanaei",
-    "description": "The Postman collection for the MHSanaei panel (3xui) comprises a diverse array of API endpoints covering authentication, inbounds management (including listing, details retrieval, updates, deletions),...",
-    "id": "16802678-1a4c9270-ac77-40ed-959a-7aa56dc4a415"
+    "title": "CoinMarketCap API",
+    "id": "coinmarketcap.com"
   },
   {
     "title": "Cisco DNA Center API",
-    "description": "This is a collection and environment for Cisco Digital Network Architecture Center (DNA-C) There is a default environment pointing to DevNet always on sandbox. What's in this collection? - Authenti...",
-    "id": "134222-1c960677-3882-492f-8075-a31449e3a47f"
+    "id": "cisco.com-dna-center"
   },
   {
-    "title": "Paystack",
-    "description": "The OpenAPI specification of the Paystack API that merchants and developers can harness to build financial solutions in Africa.",
-    "id": "20813848-e0519972-5c06-4dc1-889f-08e93e9bc6b0"
+    "title": "Paystack API",
+    "id": "paystack.com"
   },
   {
-    "title": "DEPRECATED- Adyen Checkout API (v67)",
-    "description": "DEPRECATED Use instead the Adyen APIs workspace that includes the collections for all Adyen APIs \\~\\~\\~\\~\\~\\~\\~\\~\\~\\~\\~\\~\\~\\~\\~\\~\\~\\~\\~\\~\\~\\~\\~\\~\\~\\~\\~\\~\\~\\~\\~\\~\\~\\~\\~\\~\\~\\~\\~\\~\\~\\~\\~\\~\\~\\~\\~\\~\\~\\~\\...",
-    "id": "15135334-a472f94b-0c1c-4ebd-b9db-2338cb959bf6"
+    "title": "Google OAuth2 API",
+    "id": "google.com-oauth2"
   },
   {
-    "title": "Google OAuth2",
-    "description": "Obtains end-user authorization grants for use with other Google APIs. Contact Support: Name: No Contact Email: email@example.com",
-    "id": "35240-715d5ba5-e077-4267-9070-ac53d777f6d4"
-  },
-  {
-    "title": "IHS RME -  FHIR API",
-    "description": "",
-    "id": "19475829-32f41225-15f0-4495-b247-754b49a6eb66"
-  },
-  {
-    "title": "Postman Echo",
-    "description": "Postman Echo is service you can use to test your REST clients and make sample API calls. It provides endpoints for `GET`, `POST`, `PUT`, various auth mechanisms and other utility endpoints. The docum...",
-    "id": "1896589-f695cab7-6878-eb55-7943-ad88e1ccfd65"
+    "title": "IHS RME FHIR API",
+    "id": "ihs.com-fhir"
   },
   {
     "title": "CNPJá! API",
-    "description": "",
-    "id": "11645830-7f339c55-57ff-4c29-bb81-63dfb4022af7"
-  },
-  {
-    "title": "Postman OData Tutorial",
-    "description": "",
-    "id": "16737030-698fdeae-4db6-4d4c-8f4f-f322d109a0f1"
+    "id": "cnpja.com"
   },
   {
     "title": "AUTENTI API V2",
-    "description": "Introduction This is a workspace for realizing the governance of APIs. This is where I move forward all of my API governance work using the Postman platform. This API governance relies on the same un...",
-    "id": "3577109-4db49a04-eec7-4c87-8e06-d8f500a287b2"
+    "id": "autenti.com"
   },
   {
-    "title": "Authentication",
-    "description": "",
-    "id": "16713878-6da01e69-dc4b-40df-8732-145bdde80ef4"
+    "title": "COVID19 Tracker API",
+    "id": "covid19tracker.com"
   },
   {
-    "title": "COVID19-Tracker",
-    "description": "",
-    "id": "4074074-9889a5d4-6fd9-4168-ab42-085e2fe808b8"
-  },
-  {
-    "title": "PDF API",
-    "description": "Our REST APIs that facilitate filling and generating PDFs. All examples require an API_KEY variable set here, at the collection level. Click on the 'Variables' tab and set the API_KEY variable with y...",
-    "id": "20931116-116a9833-12f3-40ae-bcb3-f3958b7344fc"
+    "title": "Anvil PDF API",
+    "id": "anvil.com"
   },
   {
     "title": "Zepto API",
-    "description": "Website - https://www.zepto.com.au Application URLS: - Live UI: https://go.zeptopayments.com - Live API: https://api.zeptopayments.com - Sandbox UI: https://go.sandbox.zeptopayments.com - Sand...",
-    "id": "3168734-baa5ff70-4bc2-44d5-9ba6-fcb61839ff41"
+    "id": "zepto.com"
   },
   {
-    "title": "Authenticate using basic auth",
-    "description": "",
-    "id": "15699317-223d4811-f0cf-417e-80ba-f01ec275412d"
+    "title": "VIVA Payments Authenticate using basic auth API",
+    "id": "viva.com-authenticate"
   },
   {
     "title": "SwiftRef API",
-    "description": "One of SWIFT's latest delivery channels for SWIFTRef reference data are Application Programming Interfaces (APIs). APIs offer financial institutions, corporates and third party service providers an au...",
-    "id": "25313102-75b1fb29-98ca-4b31-b2ed-54f1173b7980"
+    "id": "swift.com-swiftref"
   },
   {
-    "title": "Apply Connect",
-    "description": "We are making updates to our collections. If you run into any issues pulling the latest changes, simply fork the collection again.",
-    "id": "16069442-d8748d0e-707c-43b5-9bd4-5489a29207a4"
+    "title": "LinkedIn Apply Connect",
+    "id": "linkedin.com-apply-connect"
   },
   {
-    "title": "Medical Network Professional Claims v3",
-    "description": "Professional (837P) transaction allows physicians and other medical service providers to submit healthcare claims for a medical service or encounter. A healthcare claim includes the following: - Pati...",
-    "id": "153940-0905b9a6-aff9-4448-a9d6-61aa8f703e33"
+    "title": "ChangeHealthcare Medical Network Professional Claims v3",
+    "id": "changehealthcare.com-medical-network"
   },
   {
     "title": "Auth0 Management API",
-    "description": "",
-    "id": "14270212-d7893d13-f0fd-4acf-bceb-90c996601397"
+    "id": "auth0.com-management"
   },
   {
-    "title": "API",
-    "description": "",
-    "id": "27495556-787b914f-ebeb-426a-9808-7fb0bd0d47fd"
+    "title": "Zapsign API",
+    "id": "zapsign.com"
   },
   {
-    "title": "API Getting Started",
-    "description": "[register]: https://developer.yodlee.com/user/register [dashboard]: https://developer.yodlee.com/api-dashboard Getting Started helps you quickly get an understanding of the Yodlee API. For a fuller ...",
-    "id": "5364350-eff703a4-67a7-49b7-afba-90d49cef0288"
+    "title": "Yodlee API",
+    "id": "yodlee.com"
   },
   {
-    "title": "Perenual",
-    "description": "API for perenual.com",
-    "id": "22777343-5201deb7-c168-47a5-bc9b-2693c2662f05"
+    "title": "Perenual API",
+    "id": "perenual.com"
   },
   {
-    "title": "UPS OAuthClientCredentials",
-    "description": "In general, the client credentials flow is for application-to-application authentication with no user interaction. In the UPS API implementation, it is used when your application or software will only...",
-    "id": "29542085-b27253cb-2b42-437d-9357-e0fb74d9e456"
+    "title": "UPS OAuth Client Credentials API",
+    "id": "ups.com-oauth-client-credentials"
   },
   {
-    "title": "GPI Tracker API V4",
-    "description": "",
-    "id": "25313102-548ec274-8b9f-4f21-a630-01c30e3919f8"
+    "title": "Swift GPI Tracker API V4",
+    "id": "swift.com-gpi-tracker"
   },
   {
-    "title": "FRC Events",
-    "description": "Overview *FIRST*/FMS FRC Events API is a service to return relevant information about the *FIRST* Robotics Competition (FRC). Information is made available from events operating around the world. Fo...",
-    "id": "13920602-51a3938d-2026-4a5c-9f17-d87d035584cd"
+    "title": "FRC FirstRobotics Events API",
+    "id": "firstrobotics.com-events"
   },
   {
-    "title": "Transfers API (v4)",
-    "description": ">Versions 1 and 2 of the Transfers API are deprecated. If you are just starting your implementation, use the latest version. This API provides endpoints that you can use to transfer funds, whether wh...",
-    "id": "25716737-365bdd3d-6ba6-44f5-8d93-dbcf3a075ef6"
+    "title": "Adyen Transfers API v4",
+    "id": "adyen.com-transfers"
   },
   {
-    "title": "Scrape.do Web Scraping API - Documentation",
-    "description": "",
-    "id": "24221439-ba4f74e3-ce77-4231-88e5-846a46d21f00"
+    "title": "Scrape.do Web Scraping API",
+    "id": "scrape.do"
   },
   {
     "title": "WATI API",
-    "description": "Learn how to use WATI APIs",
-    "id": "7377113-a29fe083-58b2-4d64-9cff-8717ff8b72fa"
+    "id": "wati.com"
   },
   {
     "title": "MoEngage - Data API",
-    "description": "Data APIs are used to send user data (user properties and events) from your servers to MoEngage. Data API is a collection of the following APIs - User API - Event API - Bulk Import API Learn M...",
-    "id": "3182294-d7b7056d-9745-495d-bb61-7e3d87b64b39"
+    "id": "moengage.com-data"
   },
   {
     "title": "CheapShark API",
-    "description": "CheapShark is a price comparison website for digital PC Games. We keep track of prices across multiple stores including Steam, GreenManGaming, Fanatical, and many others. We offer a fully documented ...",
-    "id": "530355-334a254b-aae7-4450-a352-b573b31403fe"
-  },
-  {
-    "title": "Online Code Editor",
-    "description": "",
-    "id": "15129893-ea5a387f-4283-4c0b-b3ee-7d8e13007d76"
-  },
-  {
-    "title": "Guacamole",
-    "description": "",
-    "id": "8259062-57a268f6-bee4-4cc8-9469-d2214982549f"
+    "id": "cheapshark.com"
   },
   {
     "title": "Kong CE Admin API V2.0",
-    "description": "This Postman Collection refers to the Kong Community Edition Admin API for running Kong configured with a database (Postgres or Cassandra). For using the Admin API for Kong in DB-less mode, please ...",
-    "id": "35240-7220de83-d124-4fe7-bf21-ae3a128a5b57"
+    "id": "kong.com-ce-admin"
   },
   {
     "title": "Tatum API",
-    "description": "Authentication -->",
-    "id": "10167180-8a0bdd11-0eef-4c51-8029-a9cf701cd972"
+    "id": "tatum.io"
   },
   {
-    "title": "API Comprehensive",
-    "description": "[register]: https://developer.yodlee.com/user/register [dashboard]: https://developer.yodlee.com/api-dashboard For a step-by-step tutorial introduction to Yodlee APIs and FastLink, see the Quickstart...",
-    "id": "2196203-3969702a-5ca5-47f1-a08f-194d8463d72e"
-  },
-  {
-    "title": "Sale Request",
-    "description": "Postman collection to make Sale and Sale form transactions through API. SHA-1 checksum (control) is generated automatically in \"Pre-request Script\" tab. Disabled parameters in request body can be s...",
-    "id": "23519287-2befe9ef-5e14-4d85-b7a8-23fc8128aa60"
+    "title": "Yodlee API",
+    "id": "yodlee.com"
   },
   {
     "title": "HyperSwitch API",
-    "description": "Get started Juspay Router provides a collection of APIs that enable you to process and manage payments. Our APIs accept and return JSON in the HTTP body, and return standard HTTP response codes. Y...",
-    "id": "25176183-e36f8e3d-078c-4067-a273-f456b6b724ed"
+    "id": "hyperswitch.com"
   },
   {
-    "title": "Instagram",
-    "description": "Description of Instagram RESTful API. Current limitations: * Instagram service does not support cross origin headers for security reasons, therefore it is not possible to use Swagger UI and make ...",
-    "id": "35240-e2e2501d-8339-4a48-97c8-c5ab15e26155"
+    "title": "Instagram API",
+    "id": "instagram.com"
   },
   {
-    "title": "Sapling Public Collection",
-    "description": "",
-    "id": "20248607-4e2eafd4-e941-4d52-88a8-b4bb90c1d26a"
+    "title": "Sapling AI API",
+    "id": "saplingai.com"
   },
   {
-    "title": "Klaviyo API (Previous Stable) (v2023-12-15)",
-    "description": "The Klaviyo REST API. Please visit https://developers.klaviyo.com for more details. Contact Support: Name: Klaviyo Developer Experience Team Email: developers@klaviyo.com",
-    "id": "10773558-7ddc1885-23b9-447e-a0e9-282e81b36fed"
+    "title": "Transfeera API",
+    "id": "transfeera.com"
   },
   {
-    "title": "Pagamentos",
-    "description": "",
-    "id": "17237061-a7384b4b-ba2f-491d-97cb-13a96b323cd5"
+    "title": "Canvas FHIR API",
+    "id": "canvasmedical.com-fhir"
   },
   {
-    "title": "Canvas FHIR",
-    "description": "Testing this collection requires access to a Canvas environment. If you don't already have one, start by creating a sandbox environment at https://docs.canvasmedical.com/docs/creating-a-sandbox-envi...",
-    "id": "16792990-3010816d-4e70-4f3d-8ba4-248d8793f915"
-  },
-  {
-    "title": "Tamara Public API v1.0",
-    "description": "1\\. Fork the Tamara POSTMAN collection 1. Sign up or log in to an account on postman.com. 2. Click on the Fork button on the top right corner 3. Name your fork and select a workspace....",
-    "id": "23788835-26f0b4f9-e7c8-4077-b7b3-508485adb53c"
+    "title": "Tamara API v1.0",
+    "id": "tamara.com"
   },
   {
     "title": "Insider API",
-    "description": "Insider's REST APIs provide you the ability to manage your user data and product catalog, send messages, and export data. You can call Insider's various APIs from your end to create, delete, update, ...",
-    "id": "14844868-d3037e4b-cb28-41b4-a2bd-337d9d2e47d3"
-  },
-  {
-    "title": "Galaxy API 101",
-    "description": "Learn API essentials by working your way through this collection! --- FORK the collection to create a copy in your own workspace. - Start by opening the `Learn APIs` folder, selecting the `Begin le...",
-    "id": "9065401-2aa44ec4-a674-4216-a451-8a3cfd98ff77"
+    "id": "useinsider.com"
   },
   {
     "title": "Salesforce Platform API",
-    "description": "The Salesforce Platform APIs collection contains 230+ requests for the following Salesforce APIs: Async QueryAuthBulk (v1 &amp; v2)CompositeConnect (Chatter)CPQEinstein Prediction ServiceGraphQLMetad...",
-    "id": "25946696-566cf1bf-db60-44ca-b904-aee334ee3bd4"
+    "id": "salesforce.com-platform"
   },
   {
-    "title": "Talk API",
-    "description": "Standalone voice application that supports the Zendesk voice product Talk, including call management via Twilio, Voice API endpoints and the Voice admin pages. Contact Support: Name: Zendesk",
-    "id": "19931619-0bb4d8a5-b2c4-4037-a362-1ea08c4f1904"
+    "title": "Zendesk Talk API",
+    "id": "zendesk.com-talk"
   },
   {
-    "title": "Zuora",
-    "description": "nn IntroductionnWelcome to the reference for the Zuora REST API!nnREST is a web-service protocol that lends itself to rapid development by using everyday HTTP and JSON technology.nnThe Zuora REST API ...",
-    "id": "35240-a22798b7-3c6b-491d-8678-9cd202d52d22"
+    "title": "Zuora API",
+    "id": "zuora.com"
   },
   {
     "title": "HrFlow.ai API",
-    "description": "By leveraging AI superpowers, we help HR Tech, Staffing Agencies, and Large employers to thrive in a high-frequency labor market. Guides : https://developers.hrflow.ai/docs API Endpoints : https://de...",
-    "id": "17392867-4fd5eb5b-f801-4ee2-8c54-dfe6e4deb9f6"
+    "id": "hrflow.ai"
   },
   {
     "title": "Speechace API",
-    "description": "Speechace is a Speech Recognition API for fluency and pronunciation assessment. Our patented technology is unique in its ability to score a learner's speech and pinpoint individual syllable and phon...",
-    "id": "2675436-2dfd3077-ca21-4629-a130-144f308ac911"
+    "id": "speechace.com"
   },
   {
     "title": "Swift Messaging API",
-    "description": "\"The Swift Messaging API enables your Back office applications to communicate with any SWIFT counterparty through Alliance Cloud by embedding SWIFT messages inside API calls, which offers easy and dir...",
-    "id": "25313102-49e90edf-f8b3-444d-92a4-c08c45df2de5"
+    "id": "swift.com-messaging"
   },
   {
-    "title": "APITEST",
-    "description": "",
-    "id": "4096140-2ea9a1bd-b94a-4b67-b42a-a7850f778f1c"
+    "title": "TalonOne Integration API",
+    "id": "talonone.com"
   },
   {
-    "title": "🚀 Integration API",
-    "description": "Integration API Use the Integration API to push data to and retrieve data from Talon.One in real time. For more background information about this API, see Integration API overview For example, us...",
-    "id": "13731019-891e074c-d860-427d-bdfb-1422e55ed376"
-  },
-  {
-    "title": "Accounts",
-    "description": "",
-    "id": "21186839-dd1eacb8-46bf-4241-a3d5-b28420d9d35d"
+    "title": "Etherscan API",
+    "id": "etherscan.io"
   },
   {
     "title": "Payoneer Mass Payout API",
-    "description": "This is a Postman Collection for the Payoneer Mass Payout API v4 endpoints. Refer to the Payoneer Mass Payout API documentation for more details. Installation Go to the Collection and click \"Run i...",
-    "id": "929795-c9b5f6c8-83f2-4c13-b7b0-dd441d03afc4"
+    "id": "payoneer.com-mass-payout"
   },
   {
     "title": "Stark Bank API v2",
-    "description": "Stark Bank API for financial services in Brazil Contact Support: Name: Stark Bank Developers Email: help@starkbank.com",
-    "id": "9810939-4ef9e0fe-257f-46f0-ab4c-9cf13da7936b"
+    "id": "starkbank.com"
   },
   {
-    "title": "Learning Activity Reports",
-    "description": "We are making updates to our collections. If you run into any issues pulling the latest changes, simply fork the collection again. The 2 main uses for the externalized LinkedIn Learning APIs are for ...",
-    "id": "16069442-2977b707-cf51-4ca1-9ffb-07051643cbd5"
+    "title": "VIVA Payments Generate webhook verification key API",
+    "id": "viva.com-webhook-verification"
   },
   {
-    "title": "Generate webhook verification key",
-    "description": "",
-    "id": "15699317-a1b6d6b4-1a8f-4e31-a0e0-12db6198bb41"
+    "title": "Customer.io Data Pipelines API",
+    "id": "customer.io"
   },
   {
-    "title": "Data Pipelines API",
-    "description": "This is a reference for the Data Pipelines API. In general, you'll consume this API through one of our source libraries—our JavaScript client library or any of our server packages. But you can also in...",
-    "id": "23697545-287dd370-3d8b-4a71-80fe-75d6b7c7ff61"
+    "title": "ZATCA API",
+    "id": "zatca.com"
   },
   {
-    "title": "Get",
-    "description": "",
-    "id": "16296330-6ac5b125-82e8-48d9-8fd4-16cdaa83ace6"
+    "title": "PingOne Authorize API",
+    "id": "pingone.com-authorize"
   },
   {
-    "title": "ZATCA",
-    "description": "Welcome to Antna's API Documentation. We've designed this document to help developers and Antna users fully understand and integrate our API for a seamless and easy deployment. These APIs enable you t...",
-    "id": "14347592-cd0d9b8c-1594-4a80-bb99-fc18830ce7a3"
-  },
-  {
-    "title": "PingOne Authorize: API Access Management Tutorials",
-    "description": "This collection contains the REST API requests for PingOne Authorize API access management tutorials. For associated documentation, see Manage API access.",
-    "id": "16822283-78762e3b-88ed-42fe-8f2f-9b295557707f"
-  },
-  {
-    "title": "B2B API v3",
-    "description": "",
-    "id": "18538161-586d1dc3-e4a1-45b6-b83d-36417b75d910"
-  },
-  {
-    "title": "GitHub Web API Reference",
-    "description": "This is generated documentation using the GitHubs OpenAPI, providing portable documentation that can be used as part of the API integration process.",
-    "id": "35240-c446a4c9-8dd6-45c4-99f2-688a96fe76ae"
+    "title": "Skyscanner B2B API v3",
+    "id": "skyscanner.com-b2b"
   },
   {
     "title": "HubSpot API",
-    "description": "Create a \"Private App\" in your HubSpot instance and give it scopes as necessary. Take the generated token and insert it into the \"token\" variable.",
-    "id": "12724346-206a97e2-4485-4081-ad5f-e862dac1bf15"
+    "id": "hubspot.com"
   },
   {
     "title": "Walmart Marketplace API",
-    "description": "The Walmart Marketplace API provides resources for seller applications to manage items, orders, prices, promotions, inventory and reports on Walmart.com. The Walmart Developer Center provides all the ...",
-    "id": "35240-2b04ade5-8838-4197-b3c0-06861796932d"
+    "id": "walmart.com-marketplace"
   },
   {
-    "title": "Focus NFe",
-    "description": "Introdução Através desta documentação deverá ser possível fazer a integração com a API do Focus NFe, caso alguma dúvida permaneça você pode entrar em contato com o suporte especializado através do e...",
-    "id": "16594649-c7e14737-9d04-42af-8d6e-ec8eb0bf0a8f"
+    "title": "Focus NFe API",
+    "id": "focusnfe.com"
   },
   {
-    "title": "Request Templates",
-    "description": "Melissa Web APIs / Cloud Services Melissa Cloud Services provide the power of our APIs with a low maintenance solution. All of the reference data is housed on Melissa maintained servers that have th...",
-    "id": "20972255-96c62b02-4f1a-4880-846f-3f8707577ea7"
+    "title": "Melissa API",
+    "id": "melissa.com"
   },
   {
-    "title": "EODHD Documentation",
-    "description": "EODHD (EODHistoricaldata.com) Documentation. Here is a quick but comprehensive guide for the most popular API endpoints to start with our Financial Data APIs. The API is built as REST API. Our API ha...",
-    "id": "11497757-963a320c-db6e-4629-96fe-adf9dac8e14d"
+    "title": "EODHD Historical Data API",
+    "id": "eodhistoricaldata.com"
   },
   {
-    "title": "ClickUp",
-    "description": "You can follow along at https://clickup20.docs.apiary.io/introduction/oauth2. You'll need your personal token for this, just change the authorization header to include it.",
-    "id": "35240-72e604f5-6257-4d0e-8b1c-bfbf148e0789"
+    "title": "ClickUp API",
+    "id": "clickup.com"
   },
   {
-    "title": "PAIEMENT MARCHAND - OM",
-    "description": "",
-    "id": "8322500-66344120-fe53-40b5-8748-75567f3f72b4"
+    "title": "Zendesk Webhook API",
+    "id": "zendesk.com-webhook"
   },
   {
-    "title": "Webhook API",
-    "description": "The Webhook API allows customers to manage their webhooks and enable subscriptions to receive notifications about zendesk events.",
-    "id": "19931619-557586b7-9791-48c1-bc2a-81c6bcb90ba4"
+    "title": "Updivision.com API",
+    "id": "updivision.com"
   },
   {
-    "title": "Laravel JSON:API",
-    "description": "About Laravel JSON:API is backend product built by Creative Tim and UPDIVISION. To find out more about the project visit our product page. JSON:API JSON:API is a specification for how a client shou...",
-    "id": "8138626-e8410c91-d19e-48d2-915d-e458c1db78b2"
+    "title": "TradingView API",
+    "id": "tradingview.com"
   },
   {
-    "title": "HP-API",
-    "description": "Introduction A simple JSON-based API for getting information on Harry Potter characters. Hosted at https://hp-api.onrender.com. GitHub repo here. Overview - Using `GET All characters`, we can vie...",
-    "id": "24483733-50d72fab-4f6e-4544-a106-a347d0630abd"
+    "title": "Chatwoot API",
+    "id": "chatwoot.com"
   },
   {
-    "title": "New Collection",
-    "description": "",
-    "id": "14896249-46476b4b-c420-48b5-8fd0-54b8f3158600"
+    "title": "Akool Faceswap Web API",
+    "id": "faceswap akool.com"
   },
   {
-    "title": "TradingView API collection",
-    "description": "Overview This API is to be implemented by the Brokers in order to connect their backend systems to TradingView, that acts as a frontend. Check the info page for more info and use the contact for...",
-    "id": "14272639-b9e415a0-1863-40aa-8d25-4909c829e161"
+    "title": "Viva Payments Retrieve transactions API V2",
+    "id": "viva.com-retrieve-transactions"
   },
   {
-    "title": "API Learner",
-    "description": "Try out sample endpoints using an API hosted on Glitch. Open each request in the collection and click Send to see it run. To view the code for the API visit the project on Glitch. Remix your own ve...",
-    "id": "1841124-369362dc-c11e-44f1-a7a9-ffe591cc2156"
+    "title": "CloudFlare API",
+    "id": "cloudflare.com"
   },
   {
-    "title": "Chatwoot Platform API",
-    "description": "- create appropriate environments and populate the environment variables",
-    "id": "162770-e5451b69-9f97-489b-b352-4ca7d8d82aff"
+    "title": "Elasticsearch API",
+    "id": "elasticsearch.com"
   },
   {
-    "title": "3. Storage Services",
-    "description": "This collection uses a different Get Bearer Token call, titled \"Get Storage Bearer Token\". It's important that you don't mix the two bearer tokens in the environment up.",
-    "id": "13081473-2718c1c7-c392-4f35-967a-2c7727bcb14c"
+    "title": "Peach Payments Checkout API",
+    "id": "peachpayments.com-checkout"
   },
   {
-    "title": "Faceswap Web API",
-    "description": "",
-    "id": "1406601-7c644fb4-681e-4615-8bb1-3b0d9a4e7d47"
-  },
-  {
-    "title": "Retrieve transactions V2",
-    "description": "",
-    "id": "17199201-8ba0418e-ac11-4203-a11f-9a0e7db91648"
-  },
-  {
-    "title": "CloudFlare",
-    "description": "Contact Support: Name: No Contact Email: email@example.com",
-    "id": "35240-d76987fb-f2f9-425d-9645-ecebd487c07d"
-  },
-  {
-    "title": "Elasticsearch API Documentation ",
-    "description": "Complete API Documentation Guide for Elasticsearch - Open Source, Distributed, RESTful Search Engine",
-    "id": "7523144-891094cd-0ddf-466c-8042-b70dc8ba4f12"
-  },
-  {
-    "title": "Checkout [Public]",
-    "description": "The Checkout collection allows you to initiate a checkout, validate it, and query its status. There are two ways to implement Checkout: - Embedded Checkout (v2) - Hosted Checkout (v1) API endp...",
-    "id": "13324425-38dd6a1b-d09c-4689-92f4-e0c4daea1301"
-  },
-  {
-    "title": "AnswerBot API",
-    "description": "This is the AnswerBot API V2",
-    "id": "19931619-fa010bae-22c3-4014-a36f-b7a9b37f6427"
+    "title": "Zendesk AnswerBot API",
+    "id": "zendesk.com-answerbot"
   },
   {
     "title": "Zoom Phone API",
-    "description": "The Zoom Phone API allows developers to access information from Zoom. You can use this API to build private services or public applications on the Zoom App Marketplace. To learn how to get your creden...",
-    "id": "22097587-823fcade-08ce-4bb1-bc68-a19520da2aa8"
+    "id": "zoom.com-phone"
   },
   {
-    "title": "Bitbucket",
-    "description": "Code against the Bitbucket API to automate simple tasks, embed Bitbucket data into your own site, build mobile or desktop apps, or even add custom UI add-ons into Bitbucket itself using the Connect fr...",
-    "id": "35240-bd1a5667-9165-48e8-9c3c-1bd94c10517b"
+    "title": "Bitbucket API",
+    "id": "bitbucket.com"
   },
   {
-    "title": "Identity and Access Management Service API",
-    "description": "APIs for managing users, groups, compartments, and policies.",
-    "id": "29850-cb1ff756-a2fa-4948-8356-1d9b4f8d99cb"
+    "title": "Oracle Identity and Access Management Service API",
+    "id": "oracle.com-identity-access-management"
   },
   {
     "title": "Flagsmith API",
-    "description": "Contact Support: Email: support@flagsmith.com",
-    "id": "14712118-a638325a-f1f4-4570-8b4d-fd2841218dfa"
+    "id": "flagsmith.com"
   },
   {
-    "title": "Authentication",
-    "description": "This postman collection is used to try out the Authentication feature of CyberArk Identity Please refer to the documentation link for a quick start on Authentication https://identity-developer.cybe...",
-    "id": "16912015-c4ed97ea-2939-4215-a807-f3697ea06d01"
+    "title": "CyberArk Identity API",
+    "id": "cyberark.com-identity"
   },
   {
     "title": "Mailjet API",
-    "description": "A complete collection of all publicly available endpoints and methods for the Mailjet API",
-    "id": "6592892-f5a433d2-5bb6-41ce-b00c-44a89ff92f1d"
+    "id": "mailjet.com"
   },
   {
-    "title": "Audiences",
-    "description": "This collection aims to focus on different Audiences use cases and should be used with the audiences-env-versioning environment. \\--All requests for the Audiences API collection are in the Restli 2.0...",
-    "id": "17563548-434db00b-d792-4a89-8939-050a01b58b94"
-  },
-  {
-    "title": "(Legacy) Ads Lead Generation",
-    "description": "These are legacy APIs that will reach end of life before July 2024.** This collection should not be used. **If you already have access to the Ads Lead Generation APIs (r_ads_leadgen_automation) then ...",
-    "id": "17563548-c1d3eed9-1423-4c8a-af09-c3ca2e67fbbe"
+    "title": "LinkedIn Audiences API",
+    "id": "linkedin.com-audiences"
   },
   {
     "title": "FedEx Ship API",
-    "description": "",
-    "id": "13191452-ec62c0f1-0c7b-4b74-a81f-cd46e1681643"
+    "id": "fedex.com-ship"
   },
   {
     "title": "FedEx Rates and Transit Times API",
-    "description": "",
-    "id": "13191452-166155a9-0bc0-432a-8a63-05c8e98119fb"
+    "id": "fedex.com-rates-transit-times"
   },
   {
-    "title": "New Request",
-    "description": "",
-    "id": "16948299-eb983f88-3a19-4149-b532-73127edfe6dc"
-  },
-  {
-    "title": "Trading API",
-    "description": "The trading API can be used to place and activate orders, manage your portfolio and access your lemon.markets account.",
-    "id": "17640038-c2661bcb-a34d-4313-b3c5-596aad1d4992"
+    "title": "Lemon Markets Trading API",
+    "id": "lemon.markets"
   },
   {
     "title": "Cisco DNA Center API",
-    "description": "This is a collection and environment for Cisco Digital Network Architecture Center (DNA-C) There is a default environment pointing to DevNet always on sandbox. What's in this collection? - Authenti...",
-    "id": "382059-634a2adf-f673-42eb-8c36-290f38e37971"
+    "id": "cisco.com-dna-center"
   },
   {
-    "title": "Postman Sherlock",
-    "description": "Enumerate social media accounts using Postman! Last updated 2021-01-24T13:01:48.387Z, with 271 service(s). Inside the `Postman Sherlock` collection, a corresponding Postman Request item is created f...",
-    "id": "5783860-db6524c8-d9a6-4d3b-89fb-53105dee60dd"
+    "title": "Telnyx Call Control API",
+    "id": "telnyx.com-call-control"
   },
   {
-    "title": "Call Control",
-    "description": "",
-    "id": "19300194-5ee1c907-e2a8-4a9c-abaf-41b16a112b03"
+    "title": "AWS Amazon Web Services Cognito Identity Provider API",
+    "id": "amazon.com-cognito-identity-provider"
   },
   {
-    "title": "Amazon Cognito Identity Provider",
-    "description": "Amazon Cognito is a service that you can use to create unique identities for your users, authenticate these identities with identity providers, and save mobile user data in the AWS Cloud.",
-    "id": "35240-8631617c-c1ed-4e14-b0cd-77e4410753c4"
+    "title": "Customer.io Journeys App API",
+    "id": "customer.io-journeys"
   },
   {
-    "title": "Journeys App API",
-    "description": "Our App API provides ways to trigger messages and retrieve information about people, campaigns, broadcasts, and more. Overview The App API provides methods to send transactional messages and trigge...",
-    "id": "23697545-2931c004-e63d-4cdc-bf4b-e685ba6da42d"
+    "title": "Adyen Management API (v3)",
+    "id": "adyen.com-management"
   },
   {
-    "title": "Management API (v3)",
-    "description": "Configure and manage your Adyen company and merchant accounts, stores, and payment terminals. Authentication Each request to the Management API must be signed with an API key. Generate your API key i...",
-    "id": "25716737-00d5d4da-fec7-4c1a-a63f-76fcd6c1532d"
+    "title": "Frontapp Core API",
+    "id": "frontapp.com-core"
   },
   {
-    "title": "Core API",
-    "description": "Contact Support: Name: Front Platform Url: https://community.front.com",
-    "id": "19393231-9e6a1f4b-fcce-4e5b-bdba-07eb52cfb25b"
-  },
-  {
-    "title": "Medical Network Claim Status v2",
-    "description": "The Claims Status API supports the X12 EDI 276 transaction. It translates this standard to JSON for developer accessibility and integration into users’ applications. The claim submitter uses a Claim ...",
-    "id": "153940-e5eaebe3-f866-4a5d-b21d-fcb4a9379c21"
-  },
-  {
-    "title": "HTTP Request",
-    "description": "",
-    "id": "25019940-bfe13016-3042-4b6f-94d2-8d27d6f4cb15"
-  },
-  {
-    "title": "Create Request",
-    "description": "",
-    "id": "5843645-6db0f31b-f30a-4caf-933c-80de93267d1d"
+    "title": "Change Healthcare Medical Network Claim Status API v2",
+    "id": "changehealthcare.com-claim-status"
   },
   {
     "title": "Call of Duty API",
-    "description": "Provided by CallOfDutyAPI.com Enjoy this runner-ready, detailed demonstration of automated transactions with the official Call of Duty API authored by @mdlindsey thanks to the original version put to...",
-    "id": "5519582-79e350aa-69ca-46c4-93e8-f8181f9e1217"
+    "id": "callofduty.com"
   },
   {
-    "title": "UPS Shipping",
-    "description": "Prepare your package for shipment, manage returns, and cancel scheduled shipments. Visit the full UPS Shipping Documentation for more details!",
-    "id": "29542085-af2f70b3-405b-4aee-af8d-1eb715e4cebc"
-  },
-  {
-    "title": "4. 🚙  Routing & Directions API",
-    "description": "🚙 Routing & Directions API The requests on this collection use the environment variables**. If you haven't followed the steps in the \"**How to set your free API key 🔑 \" section in the Postman ArcG...",
-    "id": "15786767-43590e06-a693-4e7d-8048-60e4f0459ce9"
+    "title": "UPS Shipping API",
+    "id": "ups.com-shipping"
   },
   {
     "title": "Geonode API",
-    "description": "Welcome to the Geonode API Postman Workspace! In this workspace you'll learn how to use our Proxy Services** and **Scraper API. For more in-depth information, pleaes visit our actual documentation.",
-    "id": "12740196-99b02759-3e52-49c1-9518-27904d879f88"
-  },
-  {
-    "title": "Stripe API [08-26-2021]",
-    "description": "Stripe API Postman Collection This is a postman collection covering the Stripe API. See https://stripe.com/docs/api for more details. Prerequisites Postman Stripe Account Getting Started To get s...",
-    "id": "665823-e2b20651-ea9b-45a2-b4ac-e0d779b5f543"
-  },
-  {
-    "title": "[legacy] Agent Chat API v3.4",
-    "description": "Environment: The API version has to be edited in the environmental variables before calling API. See documentation here.",
-    "id": "18768877-db1e2ed9-ca99-4fa5-8a1e-3d98a83e4171"
+    "id": "geonode.com"
   },
   {
     "title": "Gusto API",
-    "description": "Welcome to Gusto's Embedded Payroll API documentation! Contact Support: Name: Developer Relations Email: developer@gusto.com",
-    "id": "23606692-e7d39bcf-3b40-4f09-b9d0-57cdcccd063c"
+    "id": "gusto.com"
   },
   {
-    "title": "Cloudinary Examples",
-    "description": "The Cloudinary Examples are designed to showcase what can be achieved with Cloudinary and Postman. The collections include a number of folders that cover more use-case based examples of using Cloudina...",
-    "id": "16080251-204b311a-6b59-42cc-8de2-59ba8f23723e"
+    "title": "Cloudinary API",
+    "id": "cloudinary.com"
   },
   {
-    "title": "Modash.io API (Legacy)",
-    "description": "Introduction Welcome to the technical overview of the Modash API. Below we outline some best practices, error codes and how to access and use the API. If you have any questions about the process or...",
-    "id": "23402327-e69fcf1e-7158-47bb-884e-07d81d92943f"
+    "title": "Primary Trading API",
+    "id": "primary.com"
   },
   {
-    "title": "Primary API Trading - REST",
-    "description": "Trading API (protocolo REST)Permite obtener MarketData histórica y en tiempo real. También permite enviar ofertas al mercado, conocer el reporte de una cuenta y posiciones de una cuenta comitente.Prot...",
-    "id": "8746297-87ba2785-857c-41b8-b9f6-bccb5cdf85e6"
+    "title": "UPS OAuth Auth Code API",
+    "id": "ups.com-oauth-auth-code"
   },
   {
-    "title": "UPS OAuthAuthCode",
-    "description": "Auth-Code flow is for user-to-application authentication. In the UPS API implementation, it is used when your application or software enables other users to transact with UPS. For example, your shippi...",
-    "id": "29542085-f15285f0-2ffd-4895-b9e4-fcf496f8059a"
-  },
-  {
-    "title": "Selling Partner API for Catalog Items",
-    "description": "The Selling Partner API for Catalog Items provides programmatic access to information about items in the Amazon catalog. Contact Support: Name: Selling Partner API Developer Support",
-    "id": "14782630-dd3a57ff-7097-457e-a205-6c5ae7e6c893"
-  },
-  {
-    "title": "3rd Party Public API - Covid19API",
-    "description": "Access data on COVID19 through an easy API for free. Build dashboards, mobile apps or integrate in to other applications. Data is sourced from Johns Hopkins CSSE.",
-    "id": "8854915-2cde2156-2912-405d-9fb1-33516dba6375"
+    "title": "Amazon Selling Partner Catalog Items API",
+    "id": "amazon.com-selling-partner-catalog-items"
   },
   {
     "title": "SYSCOM API",
-    "description": "SYSCOM API REST | Inicio A toda persona que use esta recopilación para realizar sus peticiones, espero les sea de gran ayuda para integrar el API REST de SYSCOM a sus proyectos. No olviden establec...",
-    "id": "29307170-9bbbc49b-a15e-44ae-b6c5-b43d04ca214c"
+    "id": "syscom.com"
   },
   {
-    "title": "Google OAuth2.0",
-    "description": "This collection aims to walk through how to set up OAuth2.0 authentication to use Google API. 1. Go to Google Cloud Platform and sign into your Google account https://console.cloud.google.com/ 2. ...",
-    "id": "12689164-9400e5f3-afac-4759-afe4-630a3842b2eb"
+    "title": "Google Cloud OAuth2.0 API",
+    "id": "google.com-oauth2"
   },
   {
-    "title": "Stripe API [05-10-2022]",
-    "description": "Stripe API Postman Collection This is a postman collection covering the Stripe API. See https://stripe.com/docs/api for more details. Prerequisites Postman Stripe Account Getting Started To get s...",
-    "id": "665823-ad043062-f12b-4a72-b5a8-7ba8bf5f4898"
+    "title": "Facebook API",
+    "id": "facebook.com"
   },
   {
-    "title": "Assignment 1",
-    "description": "The API testsuite for INFO 2602 Assignment 1",
-    "id": "583570-b1c26430-4a62-4a99-ab10-4fb6f81c5622"
+    "title": "Gitlab CI CD API",
+    "id": "gitlab.com-ci-cd"
   },
   {
-    "title": "Facebook",
-    "description": "",
-    "id": "3448390-d0737f79-e001-4459-af1a-57a92b6751c0"
+    "title": "SportRadar MMA v2 API",
+    "id": "sportradar.com-mma"
   },
   {
-    "title": "GraphQL Content Delivery API - Contentstack",
-    "description": "GraphQL Content Delivery API is an efficient alternative to the Content Delivery APIs. It lets you fetch customized responses or retrieve data of nested or multiple resources through a single API requ...",
-    "id": "11246751-289717bd-8e5f-403b-a22f-015ddc8d616a"
+    "title": "HIKVISION API",
+    "id": "hikvision.com"
   },
   {
-    "title": "Gitlab",
-    "description": "The platform for modern developers. GitLab unifies issues, code review, CI and CD into a single experience. Contact Support: Name: No Contact Email: email@example.com",
-    "id": "35240-cc491087-45e6-46ba-aa93-9f2f2cc44068"
+    "title": "Productboard API",
+    "id": "productboard.com"
   },
   {
-    "title": "Day 01: API client",
-    "description": "Instructions for Day 1: API client 1. Get the challenge:** Fork the parent collection to your own **Public Workspace. 2. Read the documentation: In your fork, select the first folder `API client`. E...",
-    "id": "1559645-032fb22a-9afb-4c56-b8f0-4042db96a4f3"
+    "title": "Infobip WhatsApp API",
+    "id": "infobip.com-whatsapp"
   },
   {
-    "title": "MMA v2",
-    "description": "Sportradar's MMA API v2 provides schedules and live results for all UFC events, including Dana White's Contender Series. This API is consistent in structure, format, and behavior with other General S...",
-    "id": "17203961-ffb985e5-ae19-40b2-9cb7-bf74686f6534"
-  },
-  {
-    "title": "HIKVISION",
-    "description": "",
-    "id": "685634-6a72ecc5-f773-47e8-aa05-99ed492d59a0"
-  },
-  {
-    "title": "Stripe API [07-20-2021]",
-    "description": "Stripe API Postman Collection This is a postman collection covering the Stripe API. See https://stripe.com/docs/api for more details. Prerequisites Postman Stripe Account Getting Started To get s...",
-    "id": "665823-40d23d66-7697-4b71-a979-acfe13363420"
-  },
-  {
-    "title": "Productboard API Reference",
-    "description": "Introduction This is an API for pushing feedback to Productboard and for accessing the data stored inside. Base URL Base URL for all API requests is `https://api.productboard.com/`. For example...",
-    "id": "10775915-8e251a86-29ea-46be-8bbf-b147fd5a4847"
-  },
-  {
-    "title": "Infobip WhatsApp",
-    "description": "Hi! This Postman collection will enable you to work with Infobip's WhatsApp messaging API platform. For more specifics check our WhatsApp documentation. In case there is something that requires ou...",
-    "id": "17249641-6b991758-8684-4a06-b2e4-387a3f2862a8"
-  },
-  {
-    "title": "Drophub api",
-    "description": "",
-    "id": "3362012-01c90db5-60b4-4f5d-80bb-8eb11bfe43f3"
+    "title": "Drophub API",
+    "id": "drophub.com"
   },
   {
     "title": "AvaTax API",
-    "description": "REST interface to Avalara's enterprise tax service, AvaTax.",
-    "id": "35240-4407b1e9-6e26-4c7e-baaa-025aa228476e"
+    "id": "avalara.com"
   },
   {
-    "title": "Chatwoot Public API",
-    "description": "",
-    "id": "162770-9b283c34-96a9-494f-bb52-c5c6ab864a4a"
+    "title": "Chatwoot API",
+    "id": "chatwoot.com"
   },
   {
-    "title": "Merchant API",
-    "description": "Introduction As a Revolut Business customer, you can use the Merchant API to accept online payments (Card Not Present) by debit or credit cards, and also to manage the orders and customers. This Po...",
-    "id": "23791871-abdcb155-8c8d-4712-a16c-9ab023f59f7a"
+    "title": "Revolut Merchant API",
+    "id": "revolut.com-merchant"
   },
   {
     "title": "Wildberries API",
-    "description": "",
-    "id": "1636840-92c8536e-3d6e-4036-97a5-607a2f028ae4"
+    "id": "wildberries.com"
   },
   {
     "title": "Solcast API",
-    "description": "The Solcast ​API provides forecast, live and historical solar irradiance, PV power and weather data. For more information and our complete product specifications please visit solcast.com. Free Usag...",
-    "id": "12706422-3de9dc4c-3347-4143-a033-38a90443304c"
+    "id": "solcast.com"
   },
   {
-    "title": "AWS EC2",
-    "description": "",
-    "id": "35240-f27f798d-07bf-410e-bc36-81f925cac47d"
+    "title": "AWS Amazon Web Services EC2 API",
+    "id": "amazon.com-ec2"
   },
   {
-    "title": "Rutter API Commerce Endpoints",
-    "description": "``` markdown Run in Postman](https://god.gw.postman.com/run-collection/:collection_id)](https://god.gw.postman.com/run-collection/:collection_id) ```",
-    "id": "11323878-255ae0ac-c336-4592-b7a9-bb317d456838"
+    "title": "Rutter Commerce API",
+    "id": "rutter.com-commerce"
   },
   {
     "title": "Mastercard BIN Lookup API",
-    "description": "BIN Lookup API Customers can retrieve account range information in an easy to access API that powers automated integrations without depending on acquiring partners. The API enables multiple use cases...",
-    "id": "26843617-708110d7-328a-4df3-8041-f721ef085723"
+    "id": "mastercard.com-bin-lookup"
   },
   {
     "title": "Acronis Account Management API",
-    "description": "Automates provisioning and usage reporting of Acronis Cyber Cloud services for your customers, and serves as an identity and access management framework. Usage Guide https://developer.acronis.com/doc...",
-    "id": "5763797-5f452180-f9ac-433c-802f-b9f7d1a8088b"
+    "id": "acronis.com-account-management"
   },
   {
-    "title": "IBANAPI Docs",
-    "description": "The IBANAPI presents a freemium REST API dedicated to IBAN validation via extensive database. Integration is remarkably simple, necessitating just a handful of steps. To embark on API utilization, a n...",
-    "id": "493422-d6543f7d-1d30-4086-9608-7e1ba630663f"
+    "title": "IBANAPI API",
+    "id": "ibanapi.com"
   },
   {
-    "title": "MongoDB Data API (Unofficial) - Preview Release",
-    "description": "",
-    "id": "18219031-88ac09bc-f04e-4907-83fe-83ce7a7fcd86"
+    "title": "MongoDB Data API",
+    "id": "mongodb.com-data-api"
   },
   {
     "title": "Fastly API",
-    "description": "Via the Fastly API you can perform any of the operations that are possible within the management console, including creating services, domains, and backends; and configuring rules or uploading your ow...",
-    "id": "10146383-3ae89321-fd45-4694-880c-3081da4ef678"
-  },
-  {
-    "title": "Klaviyo API (Previous Stable) (v2023-02-22)",
-    "description": "The Klaviyo REST API. Please visit https://developers.klaviyo.com for more details. Contact Support: Name: Klaviyo Developer Experience Team Email: developers@klaviyo.com",
-    "id": "10773558-a93d7500-6dbc-45db-96d0-87107d0b9ccc"
+    "id": "fastly.com"
   },
   {
     "title": "Payoneer Mass Payout & Services API",
-    "description": "This is a Postman Collection for the Payoneer Mass Payout API v4 endpoints. Refer to the Payoneer Mass Payout & Services API documentation for more details. Installation Go to the Collection and c...",
-    "id": "929795-bd2c80cb-821d-484b-bf13-87b095334e30"
+    "id": "payoneer.com-mass-payout-services"
   },
   {
-    "title": "🇺🇸 Mastercard Open Banking US API",
-    "description": "Postman Collection for Mastercard Open Banking APIs Contact Support: Name: API Support Email: apisupport@mastercard.com",
-    "id": "26779181-9e1743cb-a29b-47cc-9869-3bcf577c5db5"
+    "title": "Mastercard Open Banking US API",
+    "id": "mastercard.com-open-banking"
   },
   {
     "title": "Durianpay Merchant API v1",
-    "description": "",
-    "id": "21542481-05002fcd-c2a2-495f-9d89-d00956f6ea23"
+    "id": "durianpay.com-merchant"
   },
   {
     "title": "Opsgenie REST API",
-    "description": "Opsgenie OpenAPI Specification",
-    "id": "35240-6ea68a43-313a-44c0-ba3c-1d169e4c1e64"
+    "id": "opsgenie.com"
   },
   {
-    "title": "Cisco-SD-WAN-AlwaysOn",
-    "description": "This public repo contains a POSTMAN environment and collection that can be used to interact with the Cisco SD-WAN vManage REST API. The environment is pre-configured to access the Cisco DevNet Always ...",
-    "id": "3224967-560fafdf-a93b-42a6-ae97-c8d88fd464a8"
+    "title": "Cisco SD WAN AlwaysOn API",
+    "id": "cisco.com-sd-wan-alwayson"
   },
   {
     "title": "Zoho Desk API",
-    "description": "This is a Postman collection covering the Zoho Desk API. Disclaimer - This collection is not by any means officially supported by Zoho Desk. - Visit Zoho Desk Developer APIs forum for any API queri...",
-    "id": "7584004-bc554b53-8d7a-43b1-a366-ed2cee6401f1"
+    "id": "zoho.com-desk"
   },
   {
-    "title": "Data.World",
-    "description": "data.world in a nutshell data.world is a productive, secure platform for modern data teamwork. We bring together your data practitioners, subject matter experts, and other stakeholders by removing ...",
-    "id": "35240-b03a023f-71a0-4ba1-9905-b5580a2efba0"
+    "title": "Data.World API",
+    "id": "data.world"
   },
   {
     "title": "Immoscout24 Import/Export API",
-    "description": "Information about the Import/Export API is available on https://api.immobilienscout24.de/api-docs/import-export/introduction/",
-    "id": "13152852-7bc0b457-38d4-4a87-bea8-4fbb9608d70c"
+    "id": "immoscout24.com-import-export"
   },
   {
-    "title": "Klaviyo API (Latest Stable) (v2024-02-15)",
-    "description": "The Klaviyo REST API. Please visit https://developers.klaviyo.com for more details. Contact Support: Name: Klaviyo Developer Experience Team Email: developers@klaviyo.com",
-    "id": "10773558-abc99b21-eec2-411e-8e68-ae7458769e0d"
+    "title": "Klaviyo API v2024-02-15",
+    "id": "klaviyo.com"
   },
   {
-    "title": "MAGENTO REST API",
-    "description": "Introduction What does your API do? Magento ALL NECESSARY API REQUIRE FOR CUSTOMER MOBLIE APP SURFING AND CHECKOUT PRODUCT Overview Things that the developers should know about Donmain variable {...",
-    "id": "8094635-4fb1f5a8-ab91-407c-b259-4e3344d9b785"
+    "title": "Magento API",
+    "id": "magento.com"
   },
   {
-    "title": "Shyft V1",
-    "description": "This API collection will enable you to speed up your web3 development on Solana.",
-    "id": "18419720-f8e4000d-066d-4476-9790-01620490471b"
+    "title": "Shyft V1 API",
+    "id": "shyft.com"
   },
   {
     "title": "Twitter Ads API",
-    "description": "This is a Postman collection for the Twitter Ads API endpoints. Please see the following documentation for more details: https://developer.twitter.com/en/docs/ads/general/overview In case you have an...",
-    "id": "7379786-16f91dc4-d94d-439c-9687-6cd4a7ad1788"
+    "id": "twitter.com-ads"
   },
   {
-    "title": "Plant.id v3",
-    "description": "Documentation for API v2 can be found here. Or see overview of changes between versions. Plant.id is a machine learning-based service to identify indoor plants, wildflowers, trees, grasses, and other...",
-    "id": "24599534-c4a4048d-ed97-4532-8980-3159ddbfe629"
-  },
-  {
-    "title": "Money Matters Frontend Assignment",
-    "description": "",
-    "id": "28254623-dcd2cdfa-4af1-49f5-bd68-a7218aedc5e7"
+    "title": "Plant.id v3 API",
+    "id": "plant.id"
   },
   {
     "title": "Immoscout24 Expose API",
-    "description": "Information about the Expose-API and conditions is available on https://api.immobilienscout24.de/api-docs/expose/overview/",
-    "id": "13152852-534b39fb-13c1-4678-8890-3d98fc5ecc3a"
+    "id": "immoscout24.com-expose"
   },
   {
     "title": "SW API",
-    "description": "SW Smarter ofrece soluciones basadas en tecnología de vanguardia para la emisión de CFDI. La colección incluye endpoints que permiten la integración de servicios de timbrado de CFDI, cancelación de CF...",
-    "id": "15933150-a79d82eb-ad8a-42c5-aaf5-6cba0d781be7"
+    "id": "sw.com"
   },
   {
     "title": "Tyk Gateway API v3.2.1",
-    "description": "The Tyk Gateway API is the primary means for integrating your application with the Tyk API Gateway system. This API is very small and has no granular permissions system. It is intended to be used...",
-    "id": "17155284-f9cc8548-5c01-4e52-98b8-2d9ac3e77c69"
+    "id": "tyk.com-gateway"
   },
   {
-    "title": "[stable] Customer Chat API v3.5",
-    "description": "Environment: The API version has to be edited in the environmental variables before calling API. See documentation here.",
-    "id": "20754404-04cdd9e2-633b-41e4-ba84-294577b9c0b0"
+    "title": "LiveChat Customer Chat API v3.5",
+    "id": "livechat.com-customer-chat"
   },
   {
-    "title": "Stripe API [06-30-2023]",
-    "description": "Stripe API Postman Collection This is a postman collection covering the Stripe API. See https://stripe.com/docs/api for more details. Prerequisites Postman Stripe Account Getting Started To get s...",
-    "id": "665823-46c56d6a-56d6-40d5-935d-fc72b76405cf"
+    "title": "Monoova Payments Platform API",
+    "id": "monoova.com"
   },
   {
-    "title": "Monoova Payments Platform",
-    "description": "Monoova has developed a powerful payments engine which allows you to receive, manage and pay funds in AUD in Australia automatically. This service is made available to Monoova’s clients through a set ...",
-    "id": "21268484-4f72cf91-d973-488a-8c19-74fb369621d2"
+    "title": "Africa's Talking Bulk SMS API",
+    "id": "africastalking.com-bulk-sms"
   },
   {
-    "title": "Africa's Talking Bulk SMS",
-    "description": "Send and receive SMS from more than 300 million mobile subscribers across Africa.",
-    "id": "15701014-44d271d3-0b48-421d-9732-40a10943d9fb"
+    "title": "DocuSign Rooms API v2",
+    "id": "docusign.com-rooms"
   },
   {
-    "title": "Epic_Sandbox",
-    "description": "",
-    "id": "8220383-9484e4b1-8299-4dc2-adf5-c4befdfb96eb"
+    "title": "Viva.com Cloud Rest API",
+    "id": "viva.com-cloud"
   },
   {
-    "title": "DocuSign Rooms API - v2",
-    "description": "An API for an integrator to access the features of DocuSign Rooms",
-    "id": "11590809-e6c5ac4a-32d7-42db-93c3-da5c302ea4d1"
+    "title": "FPL Fantasy Premier League API",
+    "id": "fantasy.premierleague.com"
   },
   {
-    "title": "Coronavirus COVID19 API",
-    "description": "",
-    "id": "10808728-1e29ed29-066c-4494-ae5d-a6174a8fc551"
+    "title": "Metapack Shipping REST API",
+    "id": "metapack.com-shipping"
   },
   {
-    "title": "Cloud Rest API",
-    "description": "",
-    "id": "18763635-9ef00dd4-fd33-4dc0-93ee-5e2d0a8b4f2d"
+    "title": "iRacing API",
+    "id": "iracing.com"
   },
   {
-    "title": "Learning Content",
-    "description": "We are making updates to our collections. If you run into any issues pulling the latest changes, simply fork the collection again. The 2 main uses for the externalized LinkedIn Learning APIs are for ...",
-    "id": "16069442-f9bca761-41ba-4938-abbe-4d8a70f2489d"
+    "title": "LinkedIn Recruiter System Connect API",
+    "id": "linkedin.com-recruiter-system-connect"
   },
   {
-    "title": "FPL endpoints",
-    "description": "",
-    "id": "15391879-32b73369-4fc4-4e48-b566-acefc7125bed"
+    "title": "Duo API",
+    "id": "duo.com"
   },
   {
-    "title": "Metapack Shipping REST API Postman Collection",
-    "description": "The collection enables you to quickly access a logical sequence of pre-written API calls that take you from creating a consignment through to manifesting.",
-    "id": "16359308-fe8fef63-1a22-4b61-876c-3e751f06c63b"
-  },
-  {
-    "title": "Postman Echo",
-    "description": "Postman Echo is service you can use to test your REST clients and make sample API calls. It provides endpoints for `GET`, `POST`, `PUT`, various auth mechanisms and other utility endpoints. The docum...",
-    "id": "35240-b4513b13-4089-4b61-87a5-efdd23a140a4"
-  },
-  {
-    "title": "iRacing",
-    "description": "MOST of these require you to follow up the initial call with a second call to AWS. The link will be held in the JSON return \"link\"",
-    "id": "17959439-4e05a913-9b96-4acc-8ccb-6e0ff09a81c0"
-  },
-  {
-    "title": "v2",
-    "description": "",
-    "id": "24161231-eb2511fb-998b-448f-b10d-00c2bf257cd7"
-  },
-  {
-    "title": "Recruiter System Connect",
-    "description": "We are making updates to our collections. If you run into any issues pulling the latest changes, simply fork the collection again.",
-    "id": "16069442-c9b49659-ee2b-4f9b-acd6-51cd58d76381"
-  },
-  {
-    "title": "Duo API for Postman",
-    "description": "Summary Postman collection implementing proper HMAC authentication to enable ad-hoc testing of the Duo API to make integration with automated security tooling easier for Security Engineers. As of 07...",
-    "id": "6074515-9a83d205-c307-4bd1-9bf7-2fe9d08d0b51"
-  },
-  {
-    "title": "Reporting API",
-    "description": "If you're using ​Akamai​ Intelligent Platform to deliver your content, you want to see how it's performing. The Reporting API provides a wide range of reports, with new reports added periodically, and...",
-    "id": "20432505-bcaf8614-8d1d-428e-8222-5478849f739d"
+    "title": "Akamai Reporting API",
+    "id": "akamai.com-reporting"
   },
   {
     "title": "Merge HRIS API",
-    "description": "The unified API for building rich integrations with multiple HR Information System platforms. Contact Support: Name: Merge Team Email: hello@merge.dev",
-    "id": "25512008-1c94f81f-d144-4cc8-80c1-a0eb5a0b11dd"
+    "id": "merge.com-hris"
   },
   {
-    "title": "Frappe / ERPNext API",
-    "description": "Contact Support: Name: ALYF GmbH Email: hallo@alyf.de",
-    "id": "10771233-e072a063-2686-439f-b2b9-c479297a07ce"
+    "title": "Frappe ERPNext API",
+    "id": "frappe.com"
   },
   {
     "title": "DHRU FUSION CLIENT API v2",
-    "description": "Introduction This documents for Dhru Fusion client side API. Authentication Required API Key to make call this api.",
-    "id": "23443351-b06ea235-ab57-4234-a15e-a27de8258e89"
+    "id": "dhru.com-fusion-client"
   },
   {
     "title": "Vultr API v2",
-    "description": "Introduction The Vultr API v2 is a set of HTTP endpoints that adhere to RESTful design principles and CRUD actions with predictable URIs. It uses standard HTTP response codes, authentication, and ve...",
-    "id": "11332653-cfdd2719-1587-42b0-a3a3-cd219f65b178"
+    "id": "vultr.com"
   },
   {
     "title": "Bigin API",
-    "description": "Bigin provides a comprehensive set of APIs that enable developers to build powerful integrations and toppings. The Bigin API collection includes REST APIs, Bulk APIs, and Notification APIs, each with ...",
-    "id": "29089811-4862a29c-75de-45ef-9283-9eeb2c504a74"
+    "id": "bigin.com"
   },
   {
     "title": "Salesforce Data Cloud Connect API",
-    "description": "Data Cloud Connect REST API creates business value by organizing and simplifying interactions with Data Cloud services. It is the preferred platform for customers to construct solutions on top of Data...",
-    "id": "12721794-fa94cb66-3cb1-41e1-ad4b-7c0ec34bb430"
+    "id": "salesforce.com-data-cloud-connect"
   },
   {
-    "title": "Odds Comparison Regular v1",
-    "description": "The Odds Comparison Regular API v1 provides aggregated odds data for pre-match, outrights, and consensus lines. Sportradar sources direct odds feeds from hundreds of bookmakers worldwide and can offer...",
-    "id": "17203961-52f01356-cdb0-4ab0-ba57-fa5924647489"
-  },
-  {
-    "title": "# Webhook Setup",
-    "description": "We use standard way to authenticate against Postman API using a `x-api-key` header. Create your own API key in your settings page.",
-    "id": "291373-4e627fc1-34ba-4797-a0e9-5009a2b99098"
+    "title": "SportRadar Odds Comparison Regular v1",
+    "id": "sportradar.com-odds-comparison-regular"
   },
   {
     "title": "Imdb API",
-    "description": "",
-    "id": "12162111-12f08f8e-a76b-4cf4-a7b9-17cb9f95dd82"
+    "id": "imdb.com"
   },
   {
     "title": "JP Hotel API",
-    "description": "Welcome This is a collection for the Hotel JP API by eJuniper. For the most up-to-date information, please review the current doc specs at Juniper XML Documentation on xml.bookingengine.es Tip: You...",
-    "id": "19143470-20bf8ead-e759-48fc-9f44-214c61f640d4"
+    "id": "jp.com-hotel"
   },
   {
-    "title": "Endpoints: v6 REST API (a.smusz)",
-    "description": "Switch views: Workspace view | Documentation view REST API V6 for Acrobat Sign See the code-generated Swagger Acrobat Sign REST API docs for additional API details. This collection is organized b...",
-    "id": "24728226-cb88389f-e067-4d14-92ec-d7ed345e854d"
+    "title": "Adobe Acrobat Sign API",
+    "id": "adobe.com-acrobat-sign"
   },
   {
-    "title": "APOD",
-    "description": "APOD One of the most popular websites at NASA is the Astronomy Picture of the Day. In fact, this website is one of the most popular websites across all federal agencies. It has the popular appeal...",
-    "id": "3419756-125f35e6-d0cb-4c30-885d-c239a5c8b3d8"
-  },
-  {
-    "title": "Etsy",
-    "description": "Bring Etsy's handmade marketplace and community into your apps. Contact Support: Name: No Contact Email: email@example.com",
-    "id": "35240-3659b137-52c3-4941-8c35-36a1a993a79b"
+    "title": "Etsy API",
+    "id": "etsy.com"
   },
   {
     "title": "Jamf Pro API (v11.2.0)",
-    "description": "",
-    "id": "1922040-5424a871-4e79-4c3a-a739-1dded0062757"
+    "id": "jamf.com-pro"
   },
   {
-    "title": "VAPIX",
-    "description": "Introduction VAPIXÃ‚Â® Network video APIs is a set of application programming interfaces (APIs) for configuration and management of Axis network video products. www.axis.com/vapix-library/",
-    "id": "19111898-dc980e34-96fa-47b1-ad1a-ec3c3e47f0a5"
+    "title": "VAPIX API",
+    "id": "vapix.com"
   },
   {
-    "title": "Wise public API",
-    "description": "This collection describes the flows of most common use cases of TransferWise public API. More on integration types and full API reference can be found at https://api-docs.transferwise.com/",
-    "id": "12156495-9cca3c9e-14bb-466a-9ac2-c4828d317dca"
+    "title": "TransferWise API",
+    "id": "wise.com"
   },
   {
-    "title": "Tokens",
-    "description": "",
-    "id": "21186839-9a73b9d5-9f5f-49b1-8b60-02dd10146c40"
+    "title": "Etherscan Tokens API",
+    "id": "etherscan.com-tokens"
   },
   {
-    "title": "[legacy] Agent Chat API v3.3",
-    "description": "Environment: The API version has to be edited in the environmental variables before calling API. See documentation here.",
-    "id": "15474443-7f5c3298-9327-4ce5-977f-a61260d950b2"
+    "title": "Firely Server API",
+    "id": "firely.com-server"
   },
   {
-    "title": "FirelyServer - Restful Examples",
-    "description": "",
-    "id": "24489118-d02c5cf2-8890-4d1b-a2d5-9c7688d56793"
+    "title": "Fine-Tuner API",
+    "id": "fine-tuner.com"
   },
   {
-    "title": "Fine-Tuner",
-    "description": "Forget lengthy development cycles and expensive machine learning teams. With Fine-Tuner you can build sophisticated, tailored AI agents without technical skills or coding - just bring your data and id...",
-    "id": "16121768-1b115327-fffb-40e5-a6d0-a19b42f435dc"
-  },
-  {
-    "title": "Commvault Rest API - Public",
-    "description": "Welcome Welcome to Commvault's Rest APIs. You can explore our APIs in Postman using the predefined requests we created The current version of this documentation is Commvault Platform Release 2023E....",
-    "id": "2046098-29e0da7b-714b-403a-ada5-faff24abf303"
+    "title": "Commvault API",
+    "id": "commvault.com"
   },
   {
     "title": "BigCommerce API V3",
-    "description": "Collection of requests for interacting with BigCommerce's V3 API Contact Support: Name: No Contact Email: email@example.com",
-    "id": "35240-6e90ddfd-d8be-45c2-9615-f4a24a1dd00f"
+    "id": "bigcommerce.com"
   },
   {
     "title": "Dropbox Sign API",
-    "description": "HelloSign's API.To get started building, add your HelloSign `api_key` and `client_id` to the collection variables. Additional information is available here.",
-    "id": "5021038-7bc2aa44-a050-410b-9b6c-0c4f95af6f50"
+    "id": "dropbox.com-sign"
   },
   {
-    "title": "Facts about cats",
-    "description": "",
-    "id": "18249768-c9bdbe6f-991b-42c1-971c-959485fc4597"
+    "title": "TransferWise Partner Account API",
+    "id": "wise.com-partner-account"
   },
   {
-    "title": "4. Wise Partner Account - Platform API's",
-    "description": "",
-    "id": "24215266-aa36f8c6-8715-4d99-afad-fc7376431dd3"
+    "title": "Stytch API",
+    "id": "stytch.com"
   },
   {
-    "title": "Stytch Consumer API [Last Updated: 2024-01-10]",
-    "description": "The official Stytch API collection",
-    "id": "19860927-986a42df-8f53-4833-98ff-b6c3ee863747"
+    "title": "Plaid Core Exchange API",
+    "id": "plaid.com-core-exchange"
   },
   {
-    "title": "Core Exchange",
-    "description": "Endpoints for the Core Exchange (CX) API for data providers. Quickly implement data access in alignment with the Financial Data Exchange (FDX) API specification. Product details: https://plaid.com/da...",
-    "id": "20285790-77110c23-da75-448b-8bf2-2c09bf560d6d"
+    "title": "Okta OpenID Connect & OAuth 2.0 API",
+    "id": "okta.com-openid-connect-oauth-2"
   },
   {
-    "title": "Public GraphQL API",
-    "description": "This is a collection of different GraphQL APIs that are completely public and do not require any authentication, making it easier for consumers to play with and understand what APIs are all about by s...",
-    "id": "8854915-bfd5d8be-afc8-4924-9f08-958c7c57163c"
+    "title": "Orange Sonatel API",
+    "id": "orange-sonatel.com"
   },
   {
-    "title": "Okta OpenID Connect & OAuth 2.0",
-    "description": "OAuth 2.0 Protocol APIs Contact Support: Name: Okta Developer Team Email: devex-public@okta.com",
-    "id": "4920859-d52826c6-a03e-475b-abb5-e2d15f5b5737"
+    "title": "SportRadar MLB v7 API",
+    "id": "sportradar.com-mlb"
   },
   {
-    "title": "CASH IN - OM",
-    "description": "",
-    "id": "8322500-c86a8401-6f90-4eb0-83bf-194c3d208075"
+    "title": "Bandwidth API V1",
+    "id": "bandwidth.com"
   },
   {
-    "title": "MLB v7",
-    "description": "Sportradar is the Official Provider of real-time MLB statistics. The data collection comes direct from the MLB operations teams on-venue. This provides lightning speed and the highest-quality stats av...",
-    "id": "782198-5d7e7f07-8334-49eb-b8ca-59a7350a989f"
+    "title": "Venus API",
+    "id": "venus.com"
+  },
+  {
+    "title": "Akamai Edge Diagnostics API",
+    "id": "akamai.com-edge-diagnostics"
+  },
+  {
+    "title": "Amazon Selling Partner Reports API",
+    "id": "amazon.com-selling-partner-reports"
+  },
+  {
+    "title": "CoinMarketCal API",
+    "id": "coinmarketcal.com"
+  },
+  {
+    "title": "SportRadar NCAA Men's Basketball v8",
+    "id": "sportradar.com-ncaa-mens-basketball"
+  },
+  {
+    "title": "Imperva API",
+    "id": "imperva.com"
+  },
+  {
+    "title": "NewsCatcher News API V2",
+    "id": "newscatcher.com"
+  },
+  {
+    "title": "Cloudflare API v4.0.0",
+    "id": "cloudflare.com"
+  },
+  {
+    "title": "Oracle Hospitality Property API",
+    "id": "oracle.com-hospitality-property"
+  },
+  {
+    "title": "Route Mobile WhatsApp Business Messaging API",
+    "id": "routemobile.com-whatsapp-business-messaging"
+  },
+  {
+    "title": "Sudo.Cards API",
+    "id": "sudo.cards"
+  },
+  {
+    "title": "Autodesk PWS Sales & Customer Success API",
+    "id": "autodesk.com-pws-sales-customer-success"
+  },
+  {
+    "title": "Google Vision API",
+    "id": "google.com-vision"
+  },
+  {
+    "title": "NetSuite API",
+    "id": "netsuite.com"
+  },
+  {
+    "title": "PayPal Payouts API",
+    "id": "paypal.com-payouts"
+  },
+  {
+    "title": "Cisco ISE ERS API",
+    "id": "cisco.com-ise-ers"
+  },
+  {
+    "title": "Huawei AppGallery Connect API",
+    "id": "huawei.com-appgallery-connect"
+  },
+  {
+    "title": "CoWIN API",
+    "id": "cowin.gov.in"
+  },
+  {
+    "title": "Veeva Vault API v23.3",
+    "id": "veeva.com-vault"
+  },
+  {
+    "title": "Swagger Petstore API",
+    "id": "swagger.io-petstore"
+  },
+  {
+    "title": "Sendbird Calls API",
+    "id": "sendbird.com-calls"
+  },
+  {
+    "title": "GP GlobalProduct API",
+    "id": "globalproduct.com"
+  },
+  {
+    "title": "Microsoft Graph Certificate Auth API",
+    "id": "microsoft.com-graph-certificate-auth"
+  },
+  {
+    "title": "Amazon Payment Services API",
+    "id": "amazonpaymentservices.com"
+  },
+  {
+    "title": "Moodle API",
+    "id": "moodle.com"
+  },
+  {
+    "title": "Oracle Cloud Infrastructure Language API",
+    "id": "oracle.com-cloud-infrastructure-language"
+  },
+  {
+    "title": "SportRadar Odds Comparison Player Props v2",
+    "id": "sportradar.com-odds-comparison-player-props"
+  },
+  {
+    "title": "Telnyx Number Lookup API",
+    "id": "telnyx.com-number-lookup"
+  },
+  {
+    "title": "Football-data.org v4 API",
+    "id": "football-data.org"
+  },
+  {
+    "title": "Nigeria Open Banking API v1",
+    "id": "openbankingnigeria.com"
+  },
+  {
+    "title": "Bitly API",
+    "id": "bitly.com"
+  },
+  {
+    "title": "dbt Cloud Object Management API",
+    "id": "dbt.com-cloud-object-management"
+  },
+  {
+    "title": "Treasury Prime API",
+    "id": "treasuryprime.com"
+  },
+  {
+    "title": "Tiktok Traffic Objective API",
+    "id": "tiktok.com-traffic-objective"
+  },
+  {
+    "title": "UPS Tracking API",
+    "id": "ups.com-tracking"
+  },
+  {
+    "title": "Loket API",
+    "id": "loket.com"
+  },
+  {
+    "title": "Signeasy eSignature API v3.0",
+    "id": "signeasy.com"
+  },
+  {
+    "title": "Bolt API",
+    "id": "bolt.com"
+  },
+  {
+    "title": "Akool Faceswap Web API",
+    "id": "akool.com-faceswap-web"
+  },
+  {
+    "title": "SmartOLT API",
+    "id": "smartolt.com"
+  },
+  {
+    "title": "TransferWise Wise for Banks API",
+    "id": "wise.com-banks"
+  },
+  {
+    "title": "Tellelabs API",
+    "id": "tellelabs.com"
+  },
+  {
+    "title": "Pagar.me API v5",
+    "id": "pagar.me"
+  },
+  {
+    "title": "Docker Engine API",
+    "id": "docker.com-engine"
+  },
+  {
+    "title": "CyberArk Identity User Management API",
+    "id": "cyberark.com-identity-user-management"
+  },
+  {
+    "title": "Gong API",
+    "id": "gong.com"
+  },
+  {
+    "title": "Google Cloud Firestore API",
+    "id": "google.com-firestore"
+  },
+  {
+    "title": "OpenWeatherMap API",
+    "id": "openweathermap.com"
+  },
+  {
+    "title": "ManageEngine - ServiceDesk plus API",
+    "id": "manageengine.com-servicedeskplus"
+  },
+  {
+    "title": "UPS Rating API",
+    "id": "ups.com-rating"
+  },
+  {
+    "title": "Pricempire.com API",
+    "id": "pricempire.com"
+  },
+  {
+    "title": "Cloudinary Upload API",
+    "id": "cloudinary.com-upload"
+  },
+  {
+    "title": "PandaScore API",
+    "id": "pandascore.com"
+  },
+  {
+    "title": "QuickBooks Online API",
+    "id": "quickbooks.com"
+  },
+  {
+    "title": "ASANA API",
+    "id": "asana.com"
+  },
+  {
+    "title": "LiveChat Configuration API v3.5",
+    "id": "livechat.com-configuration"
+  },
+  {
+    "title": "Merge Accounting API",
+    "id": "merge.com"
+  },
+  {
+    "title": "JAMF API (v10.49.0+)",
+    "id": "jamf.com"
+  },
+  {
+    "title": "vSphere Automation API",
+    "id": "vmware.com-vcenter"
+  },
+  {
+    "title": "Midjourney API V2",
+    "id": "midjourney.com"
+  },
+  {
+    "title": "LinkedIn Lead Sync API v2",
+    "id": "linkedin.com-lead-sync"
+  },
+  {
+    "title": "SailPoint IdentityNow NERM API",
+    "id": "sailpoint.com-identitynow-nerm"
   }
 ]

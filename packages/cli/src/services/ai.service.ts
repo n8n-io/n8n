@@ -9,8 +9,6 @@ import type { BaseChatModelCallOptions } from '@langchain/core/language_models/c
 import { summarizeNodeTypeProperties } from '@/services/ai/utils/summarizeNodeTypeProperties';
 import { Pinecone } from '@pinecone-database/pinecone';
 import type { z } from 'zod';
-import { retrieveServicePromptTemplate } from '@/services/ai/prompts/retrieveService';
-import { retrieveServiceSchema } from '@/services/ai/schemas/retrieveService';
 import apiKnowledgebase from '@/services/ai/resources/api-knowledgebase.json';
 import { JsonOutputFunctionsParser } from 'langchain/output_parsers';
 import {
@@ -19,6 +17,7 @@ import {
 } from '@/services/ai/prompts/generateCurl';
 import { generateCurlSchema } from '@/services/ai/schemas/generateCurl';
 import { PineconeStore } from '@langchain/pinecone';
+import Fuse from 'fuse.js';
 
 interface APIKnowledgebaseService {
 	id: string;
@@ -50,9 +49,6 @@ export class AIService {
 		if (this.providerType === 'openai') {
 			const openAIApiKey = config.getEnv('ai.openAI.apiKey');
 			const openAIModelName = config.getEnv('ai.openAI.model');
-
-			console.log('openAIApiKey:', openAIApiKey);
-			console.log('openAIModelName:', openAIModelName);
 
 			if (openAIApiKey) {
 				this.provider = new AIProviderOpenAI({ openAIApiKey, modelName: openAIModelName });
@@ -98,28 +94,15 @@ export class AIService {
 			return await this.generateCurlGeneric(serviceName, serviceRequest);
 		}
 
-		const services = apiKnowledgebase as unknown as APIKnowledgebaseService[];
-		const servicesListForPrompt = services
-			.slice(0, 240)
-			.map((service) => [service.id, service.title ?? '', service.description ?? ''].join(' | '))
-			.join('\n');
+		const fuse = new Fuse(apiKnowledgebase as unknown as APIKnowledgebaseService[], {
+			threshold: 0.25,
+			keys: ['id', 'title'],
+		});
 
-		const retrieveServiceChain = retrieveServicePromptTemplate
-			.pipe(this.provider.modelWithOutputParser(retrieveServiceSchema))
-			.pipe(this.jsonOutputParser);
+		const matchedServices = fuse.search(serviceName).map((result) => result.item);
 
-		const matchedService = (await retrieveServiceChain.invoke({
-			services: servicesListForPrompt,
-			serviceName,
-			serviceRequest,
-		})) as z.infer<typeof retrieveServiceSchema>;
-
-		const matchedServiceEntry = services.find((service) => service.id === matchedService.id);
-		if (matchedService.id === 'unknown' || !matchedService.id || !matchedServiceEntry) {
-			console.log("Didn't match any service");
+		if (matchedServices.length === 0) {
 			return await this.generateCurlGeneric(serviceName, serviceRequest);
-		} else {
-			console.log('Matched service', matchedServiceEntry);
 		}
 
 		const pcIndex = this.pinecone.Index('api-knowledgebase');
@@ -129,8 +112,14 @@ export class AIService {
 		});
 
 		const matchedDocuments = await vectorStore.similaritySearch(serviceRequest, 4, {
-			id: matchedService.id,
+			id: {
+				$in: matchedServices.map((service) => service.id),
+			},
 		});
+
+		if (matchedDocuments.length === 0) {
+			return await this.generateCurlGeneric(serviceName, serviceRequest);
+		}
 
 		const aggregatedDocuments = matchedDocuments.reduce<unknown[]>((acc, document) => {
 			const pageData = jsonParse(document.pageContent);
