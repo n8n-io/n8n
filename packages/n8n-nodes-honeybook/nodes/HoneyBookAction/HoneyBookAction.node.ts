@@ -25,7 +25,7 @@ export class HoneyBookAction implements INodeType {
 		group: ['input', 'HoneyBook'],
 		version: 1,
 		subtitle: '={{$parameter["action"]}}',
-		description: 'Consume HB API',
+		description: 'An action is something that happens when the automation runs.',
 		defaults: {
 			name: 'Action',
 		},

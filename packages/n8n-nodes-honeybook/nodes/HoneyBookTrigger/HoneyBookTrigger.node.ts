@@ -19,7 +19,7 @@ export class HoneyBookTrigger implements INodeType {
 		group: ['trigger', 'HoneyBook'],
 		version: 1,
 		subtitle: '={{$parameter["event"]}}',
-		description: 'Consume HB API',
+		description: 'A trigger is an event that causes an automation to start running.',
 		defaults: {
 			name: 'Trigger',
 		},
