@@ -5,7 +5,12 @@ import type { OpenAIToolType } from 'langchain/dist/experimental/openai_assistan
 import { OpenAI as OpenAIClient } from 'openai';
 
 import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
-import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeProperties,
+} from 'n8n-workflow';
 
 import { formatToOpenAIAssistantTool } from '../../helpers/utils';
 import { assistantRLC } from '../descriptions';
@@ -71,11 +76,26 @@ const properties: INodeProperties[] = [
 				type: 'string',
 			},
 			{
+				displayName: 'Delete Thread After Execution',
+				name: 'deleteThread',
+				default: false,
+				description: 'Whether to delete the thread after the assistant responded',
+				type: 'boolean',
+			},
+			{
 				displayName: 'Max Retries',
 				name: 'maxRetries',
 				default: 2,
 				description: 'Maximum number of retries to attempt',
 				type: 'number',
+			},
+			{
+				displayName: 'Thread ID',
+				name: 'threadId',
+				placeholder: 'e.g. thread_TV1u2u3u...',
+				default: '',
+				description: 'The ID of the thread to use, by default a new thread is created',
+				type: 'string',
 			},
 			{
 				displayName: 'Timeout',
@@ -134,8 +154,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	const options = this.getNodeParameter('options', i, {}) as {
 		baseURL?: string;
+		deleteThread?: boolean;
 		maxRetries: number;
 		timeout: number;
+		threadId?: string;
 		preserveOriginalTools?: boolean;
 	};
 
@@ -181,11 +203,21 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		tools: tools ?? [],
 	});
 
-	const response = await agentExecutor.invoke({
+	const chainValues: IDataObject = {
 		content: input,
 		signal: this.getExecutionCancelSignal(),
 		timeout: options.timeout ?? 10000,
-	});
+	};
+
+	if (options.threadId) {
+		chainValues.threadId = options.threadId;
+	}
+
+	const response = await agentExecutor.invoke(chainValues);
+
+	if (options.deleteThread && response.threadId) {
+		await client.beta.threads.del(response.threadId);
+	}
 
 	if (
 		options.preserveOriginalTools !== false &&
