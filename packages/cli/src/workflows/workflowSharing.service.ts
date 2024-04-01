@@ -30,7 +30,7 @@ export class WorkflowSharingService {
 			| { projectRoles: ProjectRole[]; workflowRoles: WorkflowSharingRole[] },
 	): Promise<string[]> {
 		if (user.hasGlobalScope('workflow:read')) {
-			const sharedWorkflows = await this.sharedWorkflowRepository.find({});
+			const sharedWorkflows = await this.sharedWorkflowRepository.find({ select: ['workflowId'] });
 			return sharedWorkflows.map(({ workflowId }) => workflowId);
 		}
 

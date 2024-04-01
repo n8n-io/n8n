@@ -13,8 +13,9 @@ export type Resource =
 	| 'logStreaming'
 	| 'orchestration'
 	| 'project'
-	| 'sourceControl'
 	| 'saml'
+	| 'securityAudit'
+	| 'sourceControl'
 	| 'tag'
 	| 'user'
 	| 'variable'
@@ -51,6 +52,7 @@ export type LogStreamingScope = ResourceScope<'logStreaming', 'manage'>;
 export type OrchestrationScope = ResourceScope<'orchestration', 'read' | 'list'>;
 export type ProjectScope = ResourceScope<'project'>;
 export type SamlScope = ResourceScope<'saml', 'manage'>;
+export type SecurityAuditScope = ResourceScope<'securityAudit', 'generate'>;
 export type SourceControlScope = ResourceScope<'sourceControl', 'pull' | 'push' | 'manage'>;
 export type TagScope = ResourceScope<'tag'>;
 export type UserScope = ResourceScope<'user', DefaultOperations | 'resetPassword' | 'changeRole'>;
@@ -73,6 +75,7 @@ export type Scope =
 	| OrchestrationScope
 	| ProjectScope
 	| SamlScope
+	| SecurityAuditScope
 	| SourceControlScope
 	| TagScope
 	| UserScope

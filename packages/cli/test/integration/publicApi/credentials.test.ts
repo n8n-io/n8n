@@ -211,7 +211,7 @@ describe('DELETE /credentials/:id', () => {
 
 		const response = await authMemberAgent.delete(`/credentials/${savedCredential.id}`);
 
-		expect(response.statusCode).toBe(404);
+		expect(response.statusCode).toBe(403);
 
 		const shellCredential = await Container.get(CredentialsRepository).findOneBy({
 			id: savedCredential.id,
