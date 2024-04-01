@@ -94,7 +94,7 @@ const properties: INodeProperties[] = [
 				name: 'threadId',
 				placeholder: 'e.g. thread_TV1u2u3u...',
 				default: '',
-				description: 'The ID of the thread to use, by default a new thread is created',
+				description: 'The ID of the thread to use',
 				type: 'string',
 			},
 			{
@@ -211,12 +211,22 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	if (options.threadId) {
 		chainValues.threadId = options.threadId;
+	} else {
+		const workflowData = this.getWorkflowStaticData('node');
+		if (workflowData.threadId) {
+			chainValues.threadId = workflowData.threadId;
+		} else {
+			chainValues.threadId = (await client.beta.threads.create()).id;
+			workflowData.threadId = chainValues.threadId;
+		}
 	}
 
 	const response = await agentExecutor.invoke(chainValues);
 
 	if (options.deleteThread && response.threadId) {
 		await client.beta.threads.del(response.threadId);
+		const workflowData = this.getWorkflowStaticData('node');
+		delete workflowData.threadId;
 	}
 
 	if (
