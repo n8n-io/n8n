@@ -263,8 +263,14 @@ export function useRunWorkflow(options: { router: ReturnType<typeof useRouter> }
 						node.type.toLowerCase().includes('trigger') &&
 						!node.disabled,
 				);
+
 				if (otherTriggers.length) {
-					workflowData.nodes.find((node) => node.type === CHAT_TRIGGER_NODE_TYPE)!.disabled = true;
+					const chatTriggerNode = workflowData.nodes.find(
+						(node) => node.type === CHAT_TRIGGER_NODE_TYPE,
+					);
+					if (chatTriggerNode) {
+						chatTriggerNode.disabled = true;
+					}
 				}
 			}
 
