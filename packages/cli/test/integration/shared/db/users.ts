@@ -141,3 +141,7 @@ export const getLdapIdentities = async () =>
 		where: { providerType: 'ldap' },
 		relations: { user: true },
 	});
+
+export async function getGlobalOwner() {
+	return await Container.get(UserRepository).findOneByOrFail({ role: 'global:owner' });
+}

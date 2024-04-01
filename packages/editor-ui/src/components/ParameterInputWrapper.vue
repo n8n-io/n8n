@@ -25,7 +25,7 @@
 			@focus="onFocus"
 			@blur="onBlur"
 			@drop="onDrop"
-			@textInput="onTextInput"
+			@text-input="onTextInput"
 			@update="onValueChanged"
 		/>
 		<div v-if="!hideHint && (expressionOutput || parameterHint)" :class="$style.hint">

@@ -66,7 +66,7 @@
 								:placeholder="i18n.baseText(`${resourceKey}.search.placeholder`)"
 								clearable
 								data-test-id="resources-list-search"
-								@update:modelValue="onSearch"
+								@update:model-value="onSearch"
 							>
 								<template #prefix>
 									<n8n-icon icon="search" />
@@ -128,8 +128,8 @@
 						:rows="filteredAndSortedResources"
 						:current-page="currentPage"
 						:rows-per-page="rowsPerPage"
-						@update:currentPage="setCurrentPage"
-						@update:rowsPerPage="setRowsPerPage"
+						@update:current-page="setCurrentPage"
+						@update:rows-per-page="setRowsPerPage"
 					>
 						<template #row="{ columns, row }">
 							<slot :data="row" :columns="columns" />

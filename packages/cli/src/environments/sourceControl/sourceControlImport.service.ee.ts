@@ -34,6 +34,7 @@ import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.reposi
 import { WorkflowTagMappingRepository } from '@db/repositories/workflowTagMapping.repository';
 import { VariablesRepository } from '@db/repositories/variables.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
+import type { Project } from '@/databases/entities/Project';
 
 @Service()
 export class SourceControlImportService {
@@ -340,9 +341,6 @@ export class SourceControlImportService {
 				const existingCredential = existingCredentials.find(
 					(e) => e.id === credential.id && e.type === credential.type,
 				);
-				const sharedOwner = existingSharedCredentials.find(
-					(e) => e.credentialsId === credential.id,
-				);
 
 				const { name, type, data, id, nodesAccess } = credential;
 				const newCredentialObject = new Credentials({ id, name }, type, []);
@@ -356,15 +354,34 @@ export class SourceControlImportService {
 				this.logger.debug(`Updating credential id ${newCredentialObject.id as string}`);
 				await Container.get(CredentialsRepository).upsert(newCredentialObject, ['id']);
 
-				if (!sharedOwner) {
+				const isOwnedLocally = existingSharedCredentials.some(
+					(c) => c.credentialsId === credential.id,
+				);
+
+				if (!isOwnedLocally) {
+					const remoteOwnerId = credential.ownedBy
+						? await Container.get(UserRepository)
+								.findOne({
+									where: { email: credential.ownedBy },
+									select: { id: true },
+								})
+								.then((user) => user?.id)
+						: null;
+
+					let remoteOwnerProject: Project | null = null;
+					if (remoteOwnerId) {
+						remoteOwnerProject =
+							await Container.get(ProjectRepository).getPersonalProjectForUser(remoteOwnerId);
+					}
+
 					const newSharedCredential = new SharedCredentials();
 					newSharedCredential.credentialsId = newCredentialObject.id as string;
-					newSharedCredential.projectId = personalProject.id;
+					newSharedCredential.projectId = remoteOwnerProject?.id ?? personalProject.id;
 					newSharedCredential.role = 'credential:owner';
 
 					await Container.get(SharedCredentialsRepository).upsert({ ...newSharedCredential }, [
 						'credentialsId',
-						'userId',
+						'projectId',
 					]);
 				}
 

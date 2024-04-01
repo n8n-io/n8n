@@ -1,4 +1,5 @@
 import {
+	CHAT_TRIGGER_NODE_TYPE,
 	DEFAULT_NEW_WORKFLOW_NAME,
 	DUPLICATE_POSTFFIX,
 	ERROR_TRIGGER_NODE_TYPE,
@@ -1468,6 +1469,19 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 		appendChatMessage(message: string): void {
 			this.chatMessages.push(message);
+		},
+
+		checkIfNodeHasChatParent(nodeName: string): boolean {
+			const workflow = this.getCurrentWorkflow();
+			const parents = workflow.getParentNodes(nodeName, 'main');
+
+			const matchedChatNode = parents.find((parent) => {
+				const parentNodeType = this.getNodeByName(parent)?.type;
+
+				return parentNodeType === CHAT_TRIGGER_NODE_TYPE;
+			});
+
+			return !!matchedChatNode;
 		},
 	},
 });

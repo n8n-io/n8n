@@ -1,13 +1,13 @@
 import type { INodeProperties, INodeTypeDescription, IWebhookDescription } from 'n8n-workflow';
+import { getResponseCode, getResponseData } from './utils';
 
 export const defaultWebhookDescription: IWebhookDescription = {
 	name: 'default',
 	httpMethod: '={{$parameter["httpMethod"] || "GET"}}',
 	isFullPath: true,
-	responseCode: '={{$parameter["responseCode"]}}',
+	responseCode: `={{(${getResponseCode})($parameter)}}`,
 	responseMode: '={{$parameter["responseMode"]}}',
-	responseData:
-		'={{$parameter["responseData"] || ($parameter.options.noResponseBody ? "noData" : undefined) }}',
+	responseData: `={{(${getResponseData})($parameter)}}`,
 	responseBinaryPropertyName: '={{$parameter["responseBinaryPropertyName"]}}',
 	responseContentType: '={{$parameter["options"]["responseContentType"]}}',
 	responsePropertyName: '={{$parameter["options"]["responsePropertyName"]}}',
@@ -36,6 +36,15 @@ export const credentialsProperty = (
 			},
 		},
 	},
+	{
+		name: 'jwtAuth',
+		required: true,
+		displayOptions: {
+			show: {
+				[propertyName]: ['jwtAuth'],
+			},
+		},
+	},
 ];
 
 export const authenticationProperty = (propertyName = 'authentication'): INodeProperties => ({
@@ -50,6 +59,10 @@ export const authenticationProperty = (propertyName = 'authentication'): INodePr
 		{
 			name: 'Header Auth',
 			value: 'headerAuth',
+		},
+		{
+			name: 'JWT Auth',
+			value: 'jwtAuth',
 		},
 		{
 			name: 'None',
@@ -244,6 +257,14 @@ export const optionsProperty: INodeProperties = {
 			description: 'Whether to ignore requests from bots like link previewers and web crawlers',
 		},
 		{
+			displayName: 'IP(s) Whitelist',
+			name: 'ipWhitelist',
+			type: 'string',
+			placeholder: 'e.g. 127.0.0.1',
+			default: '',
+			description: 'Comma-separated list of allowed IP addresses. Leave empty to allow all IPs.',
+		},
+		{
 			displayName: 'No Response Body',
 			name: 'noResponseBody',
 			type: 'boolean',
@@ -367,4 +388,81 @@ export const optionsProperty: INodeProperties = {
 			description: 'Name of the property to return the data of instead of the whole JSON',
 		},
 	],
+};
+
+export const responseCodeSelector: INodeProperties = {
+	displayName: 'Response Code',
+	name: 'responseCode',
+	type: 'options',
+	options: [
+		{ name: '200', value: 200, description: 'OK - Request has succeeded' },
+		{ name: '201', value: 201, description: 'Created - Request has been fulfilled' },
+		{ name: '204', value: 204, description: 'No Content - Request processed, no content returned' },
+		{
+			name: '301',
+			value: 301,
+			description: 'Moved Permanently - Requested resource moved permanently',
+		},
+		{ name: '302', value: 302, description: 'Found - Requested resource moved temporarily' },
+		{ name: '304', value: 304, description: 'Not Modified - Resource has not been modified' },
+		{ name: '400', value: 400, description: 'Bad Request - Request could not be understood' },
+		{ name: '401', value: 401, description: 'Unauthorized - Request requires user authentication' },
+		{
+			name: '403',
+			value: 403,
+			description: 'Forbidden - Server understood, but refuses to fulfill',
+		},
+		{ name: '404', value: 404, description: 'Not Found - Server has not found a match' },
+		{
+			name: 'Custom Code',
+			value: 'customCode',
+			description: 'Write any HTTP code',
+		},
+	],
+	default: 200,
+	description: 'The HTTP response code to return',
+};
+
+export const responseCodeOption: INodeProperties = {
+	displayName: 'Response Code',
+	name: 'responseCode',
+	placeholder: 'Add Response Code',
+	type: 'fixedCollection',
+	default: {
+		values: {
+			responseCode: 200,
+		},
+	},
+	options: [
+		{
+			name: 'values',
+			displayName: 'Values',
+			values: [
+				responseCodeSelector,
+				{
+					displayName: 'Code',
+					name: 'customCode',
+					type: 'number',
+					default: 200,
+					placeholder: 'e.g. 400',
+					typeOptions: {
+						minValue: 100,
+					},
+					displayOptions: {
+						show: {
+							responseCode: ['customCode'],
+						},
+					},
+				},
+			],
+		},
+	],
+	displayOptions: {
+		show: {
+			'@version': [{ _cnd: { gte: 2 } }],
+		},
+		hide: {
+			'/responseMode': ['responseNode'],
+		},
+	},
 };

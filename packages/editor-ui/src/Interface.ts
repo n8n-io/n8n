@@ -1238,6 +1238,7 @@ export interface NDVState {
 		};
 	};
 	focusedMappableInput: string;
+	focusedInputPath: string;
 	mappingTelemetry: { [key: string]: string | number | boolean };
 	hoveringItem: null | TargetItem;
 	draggable: {
@@ -1249,6 +1250,7 @@ export interface NDVState {
 	};
 	isMappingOnboarded: boolean;
 	isAutocompleteOnboarded: boolean;
+	highlightDraggables: boolean;
 }
 
 export interface NotificationOptions extends Partial<ElementNotificationOptions> {
@@ -1760,6 +1762,7 @@ export declare namespace Cloud {
 		username: string;
 		email: string;
 		hasEarlyAccess?: boolean;
+		role?: string;
 	};
 }
 

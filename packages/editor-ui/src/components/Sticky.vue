@@ -40,7 +40,7 @@
 					@resize="onResize"
 					@resizeend="onResizeEnd"
 					@markdown-click="onMarkdownClick"
-					@update:modelValue="onInputChange"
+					@update:model-value="onInputChange"
 				/>
 			</div>
 
@@ -257,8 +257,8 @@ export default defineComponent({
 					isOnboardingNote && isWelcomeVideo
 						? 'welcome_video'
 						: isOnboardingNote && link.getAttribute('href') === '/templates'
-						  ? 'templates'
-						  : 'other';
+							? 'templates'
+							: 'other';
 
 				this.$telemetry.track('User clicked note link', { type });
 			}

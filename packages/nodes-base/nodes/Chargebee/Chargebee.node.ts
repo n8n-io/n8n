@@ -484,7 +484,7 @@ export class Chargebee implements INodeType {
 								key === 'customProperties' &&
 								(properties.customProperties as IDataObject).property !== undefined
 							) {
-								for (const customProperty of (properties.customProperties as IDataObject)!
+								for (const customProperty of (properties.customProperties as IDataObject)
 									.property! as CustomProperty[]) {
 									qs[customProperty.name] = customProperty.value;
 								}
