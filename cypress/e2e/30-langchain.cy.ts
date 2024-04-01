@@ -64,8 +64,8 @@ describe('Langchain Integration', () => {
 		);
 		clickGetBackToCanvas();
 
-		getManualChatModal().should('not.exist');
 		clickExecuteWorkflowButton();
+		getManualChatModal().should('not.exist');
 	});
 
 	it('should disable test workflow button', () => {
