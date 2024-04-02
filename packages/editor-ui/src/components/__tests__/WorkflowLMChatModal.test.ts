@@ -39,7 +39,7 @@ async function createPiniaWithAINodes(options = { withConnections: true, withAge
 							],
 						],
 					},
-			  }
+				}
 			: {},
 		active: true,
 		nodes: [
@@ -53,7 +53,7 @@ async function createPiniaWithAINodes(options = { withConnections: true, withAge
 							name: 'Agent',
 							type: AGENT_NODE_TYPE,
 						}),
-				  ]
+					]
 				: []),
 		],
 	});
@@ -139,7 +139,10 @@ describe('WorkflowLMChatModal', () => {
 
 	it('should send and display chat message', async () => {
 		const wrapper = renderComponent({
-			pinia: await createPiniaWithAINodes(),
+			pinia: await createPiniaWithAINodes({
+				withConnections: true,
+				withAgentNode: true,
+			}),
 		});
 
 		await waitFor(() =>

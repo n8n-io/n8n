@@ -15,12 +15,12 @@
 		:is-pane-active="isPaneActive"
 		pane-type="output"
 		:data-output-type="outputMode"
-		@activatePane="activatePane"
-		@runChange="onRunIndexChange"
-		@linkRun="onLinkRun"
-		@unlinkRun="onUnlinkRun"
-		@tableMounted="$emit('tableMounted', $event)"
-		@itemHover="$emit('itemHover', $event)"
+		@activate-pane="activatePane"
+		@run-change="onRunIndexChange"
+		@link-run="onLinkRun"
+		@unlink-run="onUnlinkRun"
+		@table-mounted="$emit('tableMounted', $event)"
+		@item-hover="$emit('itemHover', $event)"
 		@search="$emit('search', $event)"
 	>
 		<template #header>
@@ -29,7 +29,7 @@
 					<n8n-radio-buttons
 						v-model="outputMode"
 						:options="outputTypes"
-						@update:modelValue="onUpdateOutputMode"
+						@update:model-value="onUpdateOutputMode"
 					/>
 				</template>
 				<span v-else :class="$style.title">

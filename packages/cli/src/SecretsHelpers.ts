@@ -1,4 +1,4 @@
-import type { IDataObject, SecretsHelpersBase } from 'n8n-workflow';
+import type { SecretsHelpersBase } from 'n8n-workflow';
 import { Service } from 'typedi';
 import { ExternalSecretsManager } from './ExternalSecrets/ExternalSecretsManager.ee';
 
@@ -19,7 +19,7 @@ export class SecretsHelper implements SecretsHelpersBase {
 		}
 	}
 
-	getSecret(provider: string, name: string): IDataObject | undefined {
+	getSecret(provider: string, name: string) {
 		return this.service.getSecret(provider, name);
 	}
 
