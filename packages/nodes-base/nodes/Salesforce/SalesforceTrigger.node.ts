@@ -1,13 +1,14 @@
-import {
-	type IPollFunctions,
-	type INodeExecutionData,
-	type INodeType,
-	type INodeTypeDescription,
-	type ILoadOptionsFunctions,
-	type INodePropertyOptions,
-	type JsonObject,
-	NodeApiError,
+import { NodeApiError } from 'n8n-workflow';
+
+import type {
 	IDataObject,
+	IPollFunctions,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+	ILoadOptionsFunctions,
+	INodePropertyOptions,
+	JsonObject,
 } from 'n8n-workflow';
 
 import { DateTime } from 'luxon';
