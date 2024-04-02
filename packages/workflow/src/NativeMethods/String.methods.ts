@@ -84,8 +84,29 @@ export const stringMethods: NativeDoc = {
 					'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/includes',
 				returnType: 'boolean',
 				args: [
-					{ name: 'searchString', type: 'string' },
-					{ name: 'position?', type: 'number' },
+					{
+						name: 'searchString',
+						type: 'string',
+						description: 'A string to be searched for. Cannot be a regex.',
+					},
+					{
+						name: 'position?',
+						type: 'number',
+						description:
+							'The position within the string at which to begin searching for `searchString`. (Defaults to `0`)',
+					},
+				],
+				examples: [
+					{
+						subject: 'Automation',
+						args: ['Auto'],
+						evaluated: true,
+					},
+					{
+						subject: 'Automation',
+						args: ['nonexistent'],
+						evaluated: false,
+					},
 				],
 			},
 		},
