@@ -917,6 +917,55 @@ export class InternalHooks {
 		]);
 	}
 
+	async onUserUpdatedCredentials(userUpdatedCredentialsData: {
+		user: User;
+		credential_name: string;
+		credential_type: string;
+		credential_id: string;
+	}): Promise<void> {
+		void Promise.all([
+			this.eventBus.sendAuditEvent({
+				eventName: 'n8n.audit.user.credentials.updated',
+				payload: {
+					...userToPayload(userUpdatedCredentialsData.user),
+					credentialName: userUpdatedCredentialsData.credential_name,
+					credentialType: userUpdatedCredentialsData.credential_type,
+					credentialId: userUpdatedCredentialsData.credential_id,
+				},
+			}),
+			this.telemetry.track('User updated credentials', {
+				user_id: userUpdatedCredentialsData.user.id,
+				credential_type: userUpdatedCredentialsData.credential_type,
+				credential_id: userUpdatedCredentialsData.credential_id,
+			}),
+		]);
+	}
+
+	async onUserDeletedCredentials(userUpdatedCredentialsData: {
+		user: User;
+		credential_name: string;
+		credential_type: string;
+		credential_id: string;
+	}): Promise<void> {
+		void Promise.all([
+			this.eventBus.sendAuditEvent({
+				eventName: 'n8n.audit.user.credentials.deleted',
+				payload: {
+					...userToPayload(userUpdatedCredentialsData.user),
+					credentialName: userUpdatedCredentialsData.credential_name,
+					credentialType: userUpdatedCredentialsData.credential_type,
+					credentialId: userUpdatedCredentialsData.credential_id,
+				},
+			}),
+			this.telemetry.track('User deleted credentials', {
+				user_id: userUpdatedCredentialsData.user.id,
+				credential_type: userUpdatedCredentialsData.credential_type,
+				credential_id: userUpdatedCredentialsData.credential_id,
+				instance_id: this.instanceSettings.instanceId,
+			}),
+		]);
+	}
+
 	/**
 	 * Community nodes backend telemetry events
 	 */
