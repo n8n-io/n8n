@@ -21,11 +21,11 @@ export class HoneyBookAction implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Action',
 		name: 'honeyBookAction',
-		icon: 'file:honeybook.svg',
+		icon: 'HBIcon:ArrowLineRight24.svg',
 		group: ['input', 'HoneyBook'],
 		version: 1,
 		subtitle: '={{$parameter["action"]}}',
-		description: 'Consume HB API',
+		description: 'An action is something that happens when the automation runs.',
 		defaults: {
 			name: 'Action',
 		},
@@ -40,6 +40,7 @@ export class HoneyBookAction implements INodeType {
 		properties: [
 			{
 				displayName: 'Action',
+				placeholder: 'Set an action in the sidebar',
 				name: 'action',
 				type: 'options',
 				noDataExpression: true,

@@ -45,7 +45,7 @@ export const sendFilesProperties: INodeProperties[] = [
 		noDataExpression: true,
 	},
 	{
-		displayName: 'Email template',
+		displayName: 'Send via email',
 		name: 'emailTemplateId',
 		type: 'options',
 		typeOptions: {
@@ -61,13 +61,14 @@ export const createTaskProperties: INodeProperties[] = [
 		displayName: 'Task',
 		name: 'description',
 		type: 'string',
+		placeholder: 'Type a task',
 		typeOptions: {
 			rows: 5,
 		},
 		default: '',
 	},
 	{
-		displayName: 'Assignee',
+		displayName: 'Assign to',
 		name: 'assigneeId',
 		type: 'options',
 		typeOptions: {
@@ -80,7 +81,7 @@ export const createTaskProperties: INodeProperties[] = [
 
 export const movePipelineStageProperties: INodeProperties[] = [
 	{
-		displayName: 'Stage',
+		displayName: 'Destination stage',
 		name: 'stageId',
 		type: 'options',
 		typeOptions: {
