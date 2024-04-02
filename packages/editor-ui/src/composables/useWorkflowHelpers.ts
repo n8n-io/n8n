@@ -59,7 +59,6 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
-import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getSourceItems } from '@/utils/pairedItemUtils';
 import { v4 as uuid } from 'uuid';
@@ -72,6 +71,7 @@ import { tryToParseNumber } from '@/utils/typesUtils';
 import { useI18n } from '@/composables/useI18n';
 import type { useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
+import { useProjectsStore } from '@/features/projects/projects.store';
 
 export function resolveParameter(
 	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
@@ -465,10 +465,10 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 	const rootStore = useRootStore();
 	const templatesStore = useTemplatesStore();
 	const workflowsStore = useWorkflowsStore();
-	const workflowsEEStore = useWorkflowsEEStore();
 	const usersStore = useUsersStore();
 	const uiStore = useUIStore();
 	const nodeHelpers = useNodeHelpers();
+	const projectsStore = useProjectsStore();
 
 	const toast = useToast();
 	const message = useMessage();
@@ -476,7 +476,11 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 	const telemetry = useTelemetry();
 
 	const workflowPermissions = computed<IPermissions>(() => {
-		return getWorkflowPermissions(usersStore.currentUser, workflowsStore.workflow);
+		return getWorkflowPermissions(
+			usersStore.currentUser,
+			projectsStore.currentProject,
+			workflowsStore.workflow,
+		);
 	});
 
 	function getNodeTypesMaxCount() {

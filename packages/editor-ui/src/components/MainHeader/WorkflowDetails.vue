@@ -304,7 +304,11 @@ export default defineComponent({
 			].includes(this.$route.name || '');
 		},
 		workflowPermissions(): IPermissions {
-			return getWorkflowPermissions(this.currentUser, this.workflow);
+			return getWorkflowPermissions(
+				this.currentUser,
+				this.projectsStore.currentProject,
+				this.workflow,
+			);
 		},
 		workflowMenuItems(): Array<{}> {
 			const actions = [

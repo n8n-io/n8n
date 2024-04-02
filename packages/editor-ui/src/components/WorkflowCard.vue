@@ -30,12 +30,6 @@
 		</div>
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
-				<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
-					<n8n-badge v-if="workflowPermissions.isOwner" class="mr-xs" theme="tertiary" bold>
-						{{ $locale.baseText('workflows.item.owner') }}
-					</n8n-badge>
-				</enterprise-edition>
-
 				<WorkflowActivator
 					class="mr-s"
 					:workflow-active="data.active"
@@ -57,13 +51,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import type { IWorkflowDb, IUser, ITag } from '@/Interface';
-import {
-	DUPLICATE_MODAL_KEY,
-	EnterpriseEditionFeature,
-	MODAL_CONFIRM,
-	VIEWS,
-	WORKFLOW_SHARE_MODAL_KEY,
-} from '@/constants';
+import { DUPLICATE_MODAL_KEY, MODAL_CONFIRM, VIEWS, WORKFLOW_SHARE_MODAL_KEY } from '@/constants';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
 import type { IPermissions } from '@/permissions';
@@ -77,6 +65,7 @@ import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import TimeAgo from '@/components/TimeAgo.vue';
 import type { ProjectSharingData } from '@/features/projects/projects.types';
+import { useProjectsStore } from '@/features/projects/projects.store';
 
 export const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -118,18 +107,13 @@ export default defineComponent({
 			...useMessage(),
 		};
 	},
-	data() {
-		return {
-			EnterpriseEditionFeature,
-		};
-	},
 	computed: {
-		...mapStores(useSettingsStore, useUIStore, useUsersStore, useWorkflowsStore),
+		...mapStores(useSettingsStore, useUIStore, useUsersStore, useWorkflowsStore, useProjectsStore),
 		currentUser(): IUser {
 			return this.usersStore.currentUser || ({} as IUser);
 		},
 		workflowPermissions(): IPermissions {
-			return getWorkflowPermissions(this.currentUser, this.data);
+			return getWorkflowPermissions(this.currentUser, this.projectsStore.currentProject, this.data);
 		},
 		actions(): Array<{ label: string; value: string }> {
 			const actions = [

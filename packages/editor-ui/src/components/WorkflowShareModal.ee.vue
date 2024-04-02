@@ -189,7 +189,11 @@ export default defineComponent({
 			return this.usersStore.currentUser;
 		},
 		workflowPermissions(): IPermissions {
-			return getWorkflowPermissions(this.usersStore.currentUser, this.workflow);
+			return getWorkflowPermissions(
+				this.usersStore.currentUser,
+				this.projectsStore.currentProject,
+				this.workflow,
+			);
 		},
 		workflowOwnerName(): string {
 			return this.workflowsEEStore.getWorkflowOwnerName(`${this.workflow.id}`);

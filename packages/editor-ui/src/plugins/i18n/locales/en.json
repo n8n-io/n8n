@@ -2065,7 +2065,6 @@
 	"workflows.item.delete": "Delete",
 	"workflows.item.updated": "Last updated",
 	"workflows.item.created": "Created",
-	"workflows.item.owner": "Owner",
 	"workflows.search.placeholder": "Search workflows...",
 	"workflows.filters": "Filters",
 	"workflows.filters.tags": "Tags",

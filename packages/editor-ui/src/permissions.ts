@@ -7,7 +7,7 @@
 import type { IUser, ICredentialsResponse, IWorkflowDb } from '@/Interface';
 import { hasPermission } from './rbac/permissions';
 import { isUserGlobalOwner } from './utils/userUtils';
-import type { CredentialScope, ProjectScope, WorkflowScope } from '@n8n/permissions';
+import type { CredentialScope, ProjectScope, Scope, WorkflowScope } from '@n8n/permissions';
 import type { Project } from './features/projects/projects.types';
 
 /**
@@ -32,6 +32,11 @@ export interface IPermissionsTableRow {
 }
 
 export type IPermissionsTable = IPermissionsTableRow[];
+
+type ExtractAfterColon<T> = T extends `${infer _Prefix}:${infer Suffix}` ? Suffix : never;
+type PermissionsMap<T> = {
+	[K in ExtractAfterColon<T>]: boolean;
+};
 
 /**
  * Returns the permissions for the given user and resource
@@ -63,7 +68,11 @@ export const parsePermissionsTable = (
  * User permissions definition
  */
 
-export const getCredentialPermissions = (user: IUser | null, credential: ICredentialsResponse) => {
+export const getCredentialPermissions = (
+	user: IUser | null,
+	project: Project | null,
+	credential: ICredentialsResponse,
+): PermissionsMap<CredentialScope> => {
 	const credentialScopes: CredentialScope[] = [
 		'credential:create',
 		'credential:read',
@@ -72,15 +81,23 @@ export const getCredentialPermissions = (user: IUser | null, credential: ICreden
 		'credential:list',
 		'credential:share',
 	];
-	const table: IPermissionsTable = credentialScopes.map((scope) => ({
-		name: scope.split(':').pop() ?? '',
-		test: () =>
-			hasPermission(['rbac'], { rbac: { scope } }) || !!credential.scopes?.includes(scope),
-	}));
-	return parsePermissionsTable(user, table);
+	const projectPermissions = getProjectPermissions(user, project);
+
+	return credentialScopes.reduce((permissions, scope: Scope) => {
+		const action = scope.split(':')[1] as keyof PermissionsMap<ProjectScope>;
+
+		return {
+			...permissions,
+			[action]: projectPermissions[action] || !!credential.scopes?.includes(scope),
+		};
+	}, {} as PermissionsMap<CredentialScope>);
 };
 
-export const getWorkflowPermissions = (user: IUser | null, workflow: IWorkflowDb) => {
+export const getWorkflowPermissions = (
+	user: IUser | null,
+	project: Project | null,
+	workflow: IWorkflowDb,
+): PermissionsMap<WorkflowScope> => {
 	const workflowScopes: WorkflowScope[] = [
 		'workflow:create',
 		'workflow:read',
@@ -89,15 +106,23 @@ export const getWorkflowPermissions = (user: IUser | null, workflow: IWorkflowDb
 		'workflow:list',
 		'workflow:share',
 	];
-	const table: IPermissionsTable = workflowScopes.map((scope) => ({
-		name: scope.split(':').pop() ?? '',
-		test: () => hasPermission(['rbac'], { rbac: { scope } }) || !!workflow.scopes?.includes(scope),
-	}));
 
-	return parsePermissionsTable(user, table);
+	const projectPermissions = getProjectPermissions(user, project);
+
+	return workflowScopes.reduce((permissions, scope: Scope) => {
+		const action = scope.split(':')[1] as keyof PermissionsMap<ProjectScope>;
+
+		return {
+			...permissions,
+			[action]: projectPermissions[action] || !!workflow.scopes?.includes(scope),
+		};
+	}, {} as PermissionsMap<WorkflowScope>);
 };
 
-export const getProjectPermissions = (user: IUser | null, project: Project) => {
+export const getProjectPermissions = (
+	user: IUser | null,
+	project: Project | null,
+): PermissionsMap<ProjectScope> => {
 	const projectScopes: ProjectScope[] = [
 		'project:create',
 		'project:read',
@@ -105,12 +130,16 @@ export const getProjectPermissions = (user: IUser | null, project: Project) => {
 		'project:delete',
 		'project:list',
 	];
-	const table: IPermissionsTable = projectScopes.map((scope) => ({
-		name: scope.split(':').pop() ?? '',
-		test: () => hasPermission(['rbac'], { rbac: { scope } }) || !!project.scopes?.includes(scope),
-	}));
 
-	return parsePermissionsTable(user, table);
+	const scopeSet = new Set([...(user?.globalScopes ?? []), ...(project?.scopes ?? [])]);
+
+	return projectScopes.reduce(
+		(permissions, scope: Scope) => ({
+			...permissions,
+			[scope.split(':')[1]]: scopeSet.has(scope),
+		}),
+		{} as PermissionsMap<ProjectScope>,
+	);
 };
 
 export const getVariablesPermissions = (user: IUser | null) => {
