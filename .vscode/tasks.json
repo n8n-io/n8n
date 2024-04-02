@@ -1,0 +1,75 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Build",
+			"type": "shell",
+			"command": "pnpm build --force",
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated"
+			},
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			}
+		},
+		{
+			"label": "Build Backend",
+			"type": "shell",
+			"command": "pnpm build:backend",
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated"
+			},
+			"group": {
+				"kind": "build"
+			}
+		},
+		{
+			"label": "Build Frontend",
+			"type": "shell",
+			"command": "pnpm build:frontend",
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated"
+			},
+			"group": {
+				"kind": "build"
+			}
+		},
+		{
+			"label": "Test Backend",
+			"type": "shell",
+			"command": "pnpm test:backend",
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated"
+			},
+			"group": {
+				"kind": "test"
+			}
+		},
+		{
+			"label": "Test Frontend",
+			"type": "shell",
+			"command": "pnpm test:frontend",
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated"
+			},
+			"group": {
+				"kind": "test"
+			}
+		},
+		{
+			"label": "Watch",
+			"type": "shell",
+			"command": "pnpm watch",
+			"presentation": {
+				"reveal": "silent",
+				"panel": "dedicated"
+			}
+		}
+	]
+}
