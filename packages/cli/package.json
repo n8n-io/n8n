@@ -124,7 +124,7 @@
     "express": "4.18.3",
     "express-async-errors": "3.1.1",
     "express-handlebars": "7.1.2",
-    "express-openapi-validator": "4.13.8",
+    "express-openapi-validator": "5.1.6",
     "express-prom-bundle": "6.6.0",
     "express-rate-limit": "7.2.0",
     "fast-glob": "3.2.12",
