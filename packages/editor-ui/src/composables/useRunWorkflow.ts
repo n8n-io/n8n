@@ -1,6 +1,7 @@
 import type {
 	IExecutionPushResponse,
 	IExecutionResponse,
+	IPushDataExecutionFinished,
 	IStartRunData,
 	IWorkflowDb,
 } from '@/Interface';
@@ -13,6 +14,7 @@ import type {
 	IWorkflowBase,
 	Workflow,
 	StartNodeData,
+	IRun,
 } from 'n8n-workflow';
 import {
 	NodeHelpers,
@@ -449,9 +451,67 @@ export function useRunWorkflow(options: { router: ReturnType<typeof useRouter> }
 		return { runData: newRunData, startNodeNames };
 	}
 
+	async function stopCurrentExecution() {
+		const executionId = workflowsStore.activeExecutionId;
+		if (executionId === null) {
+			return;
+		}
+
+		try {
+			await workflowsStore.stopCurrentExecution(executionId);
+		} catch (error) {
+			// Execution stop might fail when the execution has already finished. Let's treat this here.
+			const execution = await this.workflowsStore.getExecution(executionId);
+
+			if (execution === undefined) {
+				// execution finished but was not saved (e.g. due to low connectivity)
+				workflowsStore.finishActiveExecution({
+					executionId,
+					data: { finished: true, stoppedAt: new Date() },
+				});
+				workflowsStore.executingNode.length = 0;
+				uiStore.removeActiveAction('workflowRunning');
+
+				titleSet(workflowsStore.workflowName, 'IDLE');
+				toast.showMessage({
+					title: i18n.baseText('nodeView.showMessage.stopExecutionCatch.unsaved.title'),
+					message: i18n.baseText('nodeView.showMessage.stopExecutionCatch.unsaved.message'),
+					type: 'success',
+				});
+			} else if (execution?.finished) {
+				// execution finished before it could be stopped
+				const executedData = {
+					data: execution.data,
+					finished: execution.finished,
+					mode: execution.mode,
+					startedAt: execution.startedAt,
+					stoppedAt: execution.stoppedAt,
+				} as IRun;
+				const pushData = {
+					data: executedData,
+					executionId,
+					retryOf: execution.retryOf,
+				} as IPushDataExecutionFinished;
+				workflowsStore.finishActiveExecution(pushData);
+				titleSet(execution.workflowData.name, 'IDLE');
+				workflowsStore.executingNode.length = 0;
+				workflowsStore.setWorkflowExecutionData(executedData as IExecutionResponse);
+				uiStore.removeActiveAction('workflowRunning');
+				toast.showMessage({
+					title: i18n.baseText('nodeView.showMessage.stopExecutionCatch.title'),
+					message: i18n.baseText('nodeView.showMessage.stopExecutionCatch.message'),
+					type: 'success',
+				});
+			} else {
+				toast.showError(error, i18n.baseText('nodeView.showError.stopExecution.title'));
+			}
+		}
+	}
+
 	return {
 		consolidateRunDataAndStartNodes,
 		runWorkflow,
 		runWorkflowApi,
+		stopCurrentExecution,
 	};
 }
