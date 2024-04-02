@@ -135,6 +135,9 @@
 	// Notification
 	--color-notification-background: var(--prim-gray-740);
 
+	// Execution card
+	--execution-card-background-hover: var(--color-foreground-base);
+
 	// NDV
 	--color-run-data-background: var(--prim-gray-800);
 	--color-ndv-droppable-parameter: var(--prim-color-primary);
@@ -166,6 +169,7 @@
 	--color-callout-secondary-font: var(--prim-gray-0);
 
 	// Dialogs and overlays
+	--color-dialog-background: var(--prim-gray-800);
 	--color-dialog-overlay-background: var(--prim-color-alt-j-alpha-075);
 	--color-dialog-overlay-background-dark: var(--prim-color-alt-j-alpha-075);
 
@@ -178,6 +182,7 @@
 
 	// Switch (Activation, boolean)
 	--color-switch-background: var(--prim-gray-820);
+	--color-switch-border-color: var(--prim-gray-670);
 	--color-switch-toggle: var(--prim-gray-40);
 
 	// Action Dropdown

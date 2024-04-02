@@ -185,7 +185,7 @@ export const useExpressionEditor = ({
 		if (editor.value) {
 			editor.value.destroy();
 		}
-		editor.value = new EditorView({ parent, state });
+		editor.value = new EditorView({ parent, state, scrollTo: EditorView.scrollIntoView(0) });
 		debouncedUpdateSegments();
 	});
 
@@ -385,7 +385,8 @@ export const useExpressionEditor = ({
 	function setCursorPosition(pos: number | 'lastExpression' | 'end'): void {
 		if (pos === 'lastExpression') {
 			const END_OF_EXPRESSION = ' }}';
-			pos = Math.max(readEditorValue().lastIndexOf(END_OF_EXPRESSION), 0);
+			const endOfLastExpression = readEditorValue().lastIndexOf(END_OF_EXPRESSION);
+			pos = endOfLastExpression !== -1 ? endOfLastExpression : editor.value?.state.doc.length ?? 0;
 		} else if (pos === 'end') {
 			pos = editor.value?.state.doc.length ?? 0;
 		}
