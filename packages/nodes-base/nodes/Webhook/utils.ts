@@ -49,23 +49,46 @@ export const getResponseData = (parameters: WebhookParameters) => {
 	return undefined;
 };
 
-export const configuredOutputs = (parameters: WebhookParameters) => {
-	const httpMethod = parameters.httpMethod;
+// export const configuredOutputs = (parameters: WebhookParameters) => {
+// 	const httpMethod = parameters.httpMethod;
 
-	return [
-		{
+// 	return [
+// 		{
+// 			type: `${NodeConnectionType.Main}`,
+// 			displayName: httpMethod,
+// 		},
+// 	];
+// };
+
+export const configuredOutputs = (parameters: WebhookParameters) => {
+	const httpMethod = parameters.httpMethod as string | string[];
+
+	if (!Array.isArray(httpMethod))
+		return [
+			{
+				type: `${NodeConnectionType.Main}`,
+				displayName: httpMethod,
+			},
+		];
+
+	const outputs = httpMethod.map((method) => {
+		return {
 			type: `${NodeConnectionType.Main}`,
-			displayName: httpMethod,
-		},
-	];
+			displayName: method,
+		};
+	});
+
+	return outputs;
 };
 
 export const setupOutputConnection = (
 	ctx: IWebhookFunctions,
+	method: string,
 	additionalData: {
 		jwtPayload?: IDataObject;
 	},
 ) => {
+	const httpMethod = ctx.getNodeParameter('httpMethod', []) as string[] | string;
 	let webhookUrl = ctx.getNodeWebhookUrl('default') as string;
 	const executionMode = ctx.getMode() === 'manual' ? 'test' : 'production';
 
@@ -73,13 +96,29 @@ export const setupOutputConnection = (
 		webhookUrl = webhookUrl.replace('/webhook/', '/webhook-test/');
 	}
 
+	// before version 2.1, httpMethod was a string and not an array
+	if (!Array.isArray(httpMethod)) {
+		return (outputData: INodeExecutionData): INodeExecutionData[][] => {
+			outputData.json.webhookUrl = webhookUrl;
+			outputData.json.executionMode = executionMode;
+			if (additionalData?.jwtPayload) {
+				outputData.json.jwtPayload = additionalData.jwtPayload;
+			}
+			return [[outputData]];
+		};
+	}
+
+	const outputIndex = httpMethod.indexOf(method.toUpperCase());
+	const outputs: INodeExecutionData[][] = httpMethod.map(() => []);
+
 	return (outputData: INodeExecutionData): INodeExecutionData[][] => {
 		outputData.json.webhookUrl = webhookUrl;
 		outputData.json.executionMode = executionMode;
 		if (additionalData?.jwtPayload) {
 			outputData.json.jwtPayload = additionalData.jwtPayload;
 		}
-		return [[outputData]];
+		outputs[outputIndex] = [outputData];
+		return outputs;
 	};
 };
 

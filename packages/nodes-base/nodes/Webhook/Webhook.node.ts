@@ -49,7 +49,7 @@ export class Webhook extends Node {
 		icon: 'file:webhook.svg',
 		name: 'webhook',
 		group: ['trigger'],
-		version: [1, 1.1, 2],
+		version: [1, 1.1, 2, 2.1],
 		description: 'Starts the workflow when a webhook is called',
 		eventTriggerDescription: 'Waiting for you to call the Test URL',
 		activationMessage: 'You can now make calls to your production webhook URL.',
@@ -74,7 +74,52 @@ export class Webhook extends Node {
 		credentials: credentialsProperty(this.authPropertyName),
 		webhooks: [defaultWebhookDescription],
 		properties: [
-			httpMethodsProperty,
+			{
+				...httpMethodsProperty,
+				displayOptions: {
+					show: {
+						'@version': [1, 1.1, 2],
+					},
+				},
+			},
+			{
+				displayName: 'HTTP Methods',
+				name: 'httpMethod',
+				type: 'multiOptions',
+				options: [
+					{
+						name: 'DELETE',
+						value: 'DELETE',
+					},
+					{
+						name: 'GET',
+						value: 'GET',
+					},
+					{
+						name: 'HEAD',
+						value: 'HEAD',
+					},
+					{
+						name: 'PATCH',
+						value: 'PATCH',
+					},
+					{
+						name: 'POST',
+						value: 'POST',
+					},
+					{
+						name: 'PUT',
+						value: 'PUT',
+					},
+				],
+				default: ['GET', 'POST'],
+				description: 'The HTTP methods to listen to',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 2.1 } }],
+					},
+				},
+			},
 			{
 				displayName: 'Path',
 				name: 'path',
@@ -144,6 +189,7 @@ export class Webhook extends Node {
 		};
 		const req = context.getRequestObject();
 		const resp = context.getResponseObject();
+		const requestMethod = context.getRequestObject().method;
 
 		if (!isIpWhitelisted(options.ipWhitelist, req.ips, req.ip)) {
 			resp.writeHead(403);
@@ -165,7 +211,7 @@ export class Webhook extends Node {
 			throw error;
 		}
 
-		const prepareOutput = setupOutputConnection(context, {
+		const prepareOutput = setupOutputConnection(context, requestMethod, {
 			jwtPayload: validationData,
 		});
 
