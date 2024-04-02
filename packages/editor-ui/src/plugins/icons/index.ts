@@ -160,7 +160,6 @@ import {
 import { faVariable, faXmark, faVault } from './custom';
 import { faStickyNote } from '@fortawesome/free-regular-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-import { add } from '@jsplumb/util';
 
 function addIcon(icon: IconDefinition) {
 	library.add(icon);
