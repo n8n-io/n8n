@@ -728,6 +728,12 @@ export default defineComponent({
 			return this.containsChatNodes && this.triggerNodes.length === 1;
 		},
 		isExecutionDisabled(): boolean {
+			if (
+				this.containsChatNodes &&
+				this.triggerNodes.every((node) => node.disabled || node.type === CHAT_TRIGGER_NODE_TYPE)
+			) {
+				return true;
+			}
 			return !this.containsTrigger || this.allTriggersDisabled;
 		},
 		getNodeViewOffsetPosition(): XYPosition {
