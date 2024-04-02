@@ -95,7 +95,7 @@
 							data-test-id="browse-sales-templates-card"
 							@click="trackCategoryLinkClick('Sales')"
 						>
-							<n8n-icon :class="$style.emptyStateCardIcon" icon="hand-holding-usd" />
+							<n8n-icon :class="$style.emptyStateCardIcon" icon="handshake" />
 							<n8n-text size="large" class="mt-xs" color="text-base">
 								{{
 									$locale.baseText('workflows.empty.browseTemplates', {
@@ -299,8 +299,8 @@ const WorkflowsView = defineComponent({
 				source: 'Workflows list',
 			});
 		},
-		getTemplateRepositoryURL(category: string) {
-			return this.templatesStore.getWebsiteCategoryURL(category);
+		getTemplateRepositoryURL() {
+			return this.templatesStore.getWebsiteTemplateRepositoryURL;
 		},
 		trackCategoryLinkClick(category: string) {
 			this.$telemetry.track(`User clicked Browse ${category} Templates`, {

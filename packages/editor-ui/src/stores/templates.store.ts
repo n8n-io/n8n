@@ -131,8 +131,10 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 				utm_n8n_version: rootStore.versionCli,
 				utm_awc: String(workflowsStore.activeWorkflows.length),
 			};
-			if (userStore.currentUserCloudInfo?.role) {
-				defaultParameters.utm_user_role = userStore.currentUserCloudInfo.role;
+			const userRole: string | undefined =
+				userStore.currentUserCloudInfo?.role ?? userStore.currentUser?.personalizationAnswers?.role;
+			if (userRole) {
+				defaultParameters.utm_user_role = userRole;
 			}
 			return (additionalParameters: Record<string, string> = {}) => {
 				return new URLSearchParams({

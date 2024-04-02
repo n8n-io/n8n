@@ -77,6 +77,7 @@ import {
 	faHandHoldingUsd,
 	faHandScissors,
 	faHandPointLeft,
+	faHandshake,
 	faHashtag,
 	faHdd,
 	faHistory,
@@ -159,6 +160,7 @@ import {
 import { faVariable, faXmark, faVault } from './custom';
 import { faStickyNote } from '@fortawesome/free-regular-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+import { add } from '@jsplumb/util';
 
 function addIcon(icon: IconDefinition) {
 	library.add(icon);
@@ -240,6 +242,7 @@ export const FontAwesomePlugin: Plugin<{}> = {
 		addIcon(faGraduationCap);
 		addIcon(faHandHoldingUsd);
 		addIcon(faHandScissors);
+		addIcon(faHandshake);
 		addIcon(faHandPointLeft);
 		addIcon(faHashtag);
 		addIcon(faHdd);
