@@ -9,6 +9,7 @@ import { access as fsAccess } from 'fs/promises';
 import { promisify } from 'util';
 import cookieParser from 'cookie-parser';
 import express from 'express';
+import helmet from 'helmet';
 import { engine as expressHandlebars } from 'express-handlebars';
 import { type Class, InstanceSettings } from 'n8n-core';
 import type { IN8nUISettings } from 'n8n-workflow';
@@ -373,6 +374,20 @@ export class Server extends AbstractServer {
 			this.app.use('/icons/@:scope/:packageName/*/*.(svg|png)', serveIcons);
 			this.app.use('/icons/:packageName/*/*.(svg|png)', serveIcons);
 
+			const isTLSEnabled = this.protocol === 'https' && !!(this.sslKey && this.sslCert);
+			const securityHeadersMiddleware = helmet({
+				contentSecurityPolicy: false,
+				xFrameOptions: { action: 'sameorigin' },
+				dnsPrefetchControl: false,
+				// This is only relevant for Internet-explorer, which we do not support
+				ieNoOpen: false,
+				// This is already disabled in AbstractServer
+				xPoweredBy: false,
+				// Enable HSTS headers only when n8n handles TLS.
+				// if n8n is behind a reverse-proxy, then these headers needs to be configured there
+				strictTransportSecurity: isTLSEnabled,
+			});
+
 			// Route all UI urls to index.html to support history-api
 			const nonUIRoutes: Readonly<string[]> = [
 				'assets',
@@ -398,7 +413,9 @@ export class Server extends AbstractServer {
 				) {
 					req.url = '/index.html';
 					res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-					res.sendFile('index.html', { root: staticCacheDir, maxAge, lastModified: true });
+					securityHeadersMiddleware(req, res, () => {
+						res.sendFile('index.html', { root: staticCacheDir, maxAge, lastModified: true });
+					});
 				} else {
 					next();
 				}

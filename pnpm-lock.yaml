@@ -592,6 +592,9 @@ importers:
       handlebars:
         specifier: 4.7.8
         version: 4.7.8
+      helmet:
+        specifier: 7.1.0
+        version: 7.1.0
       infisical-node:
         specifier: 1.3.0
         version: 1.3.0
@@ -16384,6 +16387,11 @@ packages:
 
   /heap@0.2.7:
     resolution: {integrity: sha512-2bsegYkkHO+h/9MGbn6KWcE45cHZgPANo5LXF7EvWdT0yT2EguSVO1nDgU5c8+ZOPwp2vMNa7YFsJhVcDR9Sdg==}
+    dev: false
+
+  /helmet@7.1.0:
+    resolution: {integrity: sha512-g+HZqgfbpXdCkme/Cd/mZkV0aV3BZZZSugecH03kl38m/Kmdx8jKjBikpDj2cr+Iynv4KpYEviojNdTJActJAg==}
+    engines: {node: '>=16.0.0'}
     dev: false
 
   /help-me@4.2.0:
