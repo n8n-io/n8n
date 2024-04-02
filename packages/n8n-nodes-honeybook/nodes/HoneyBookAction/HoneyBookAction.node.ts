@@ -21,7 +21,7 @@ export class HoneyBookAction implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Action',
 		name: 'honeyBookAction',
-		icon: 'file:honeybook.svg',
+		icon: 'HBIcon:ArrowLineRight24.svg',
 		group: ['input', 'HoneyBook'],
 		version: 1,
 		subtitle: '={{$parameter["action"]}}',
@@ -40,6 +40,7 @@ export class HoneyBookAction implements INodeType {
 		properties: [
 			{
 				displayName: 'Action',
+				placeholder: 'Set an action in the sidebar',
 				name: 'action',
 				type: 'options',
 				noDataExpression: true,
