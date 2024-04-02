@@ -84,7 +84,7 @@ async function createApiRouter(
 							return false;
 						}
 					},
-				}
+				},
 			},
 			validateSecurity: {
 				handlers: {
