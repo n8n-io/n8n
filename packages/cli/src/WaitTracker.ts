@@ -9,6 +9,7 @@ import { WorkflowRunner } from '@/WorkflowRunner';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { OwnershipService } from './services/ownership.service';
 import { Logger } from '@/Logger';
+import { OrchestrationService } from './services/orchestration.service';
 
 @Service()
 export class WaitTracker {
@@ -26,7 +27,9 @@ export class WaitTracker {
 		private readonly executionRepository: ExecutionRepository,
 		private readonly ownershipService: OwnershipService,
 		private readonly workflowRunner: WorkflowRunner,
+		private readonly orchestrationService: OrchestrationService,
 	) {
+		if (this.orchestrationService.isFollower) return;
 		// Poll every 60 seconds a list of upcoming executions
 		this.mainTimer = setInterval(() => {
 			void this.getWaitingExecutions();
