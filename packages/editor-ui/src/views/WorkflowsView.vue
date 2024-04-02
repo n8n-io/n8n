@@ -85,8 +85,8 @@
 				</div>
 				<div v-if="!readOnlyEnv" :class="['text-center', 'mt-2xl', $style.actionsContainer]">
 					<a
-						v-if="userCloudAccount?.role === 'Sales'"
-						:href="getTemplateRepositoryURL('Sales')"
+						v-if="isSalesUser"
+						:href="getTemplateRepositoryURL()"
 						:class="$style.emptyStateCard"
 						target="_blank"
 					>
@@ -261,8 +261,14 @@ const WorkflowsView = defineComponent({
 		suggestedTemplates() {
 			return this.uiStore.suggestedTemplates;
 		},
-		userCloudAccount() {
-			return this.usersStore.currentUserCloudInfo;
+		userRole() {
+			const userRole: string | undefined =
+				this.usersStore.currentUserCloudInfo?.role ??
+				this.usersStore.currentUser?.personalizationAnswers?.role;
+			return userRole;
+		},
+		isSalesUser() {
+			return ['Sales', 'sales-and-marketing'].includes(this.userRole);
 		},
 	},
 	watch: {
