@@ -389,6 +389,7 @@
 	"codeNodeEditor.askAi.generationFailedTooLarge": "Your workflow data is too large for AI to process. Simplify the data being sent into the Code node and retry.",
 	"codeNodeEditor.tabs.askAi": "✨ Ask AI",
 	"codeNodeEditor.tabs.code": "Code",
+	"codeNodeEditor.examples": "Examples",
 	"collectionParameter.choose": "Choose...",
 	"collectionParameter.noProperties": "No properties",
 	"credentialEdit.credentialConfig.accountConnected": "Account connected",

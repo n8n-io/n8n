@@ -12,6 +12,14 @@ export type NativeDoc = {
 	functions: Record<string, { doc?: DocMetadata }>;
 };
 
+export type DocMetadataArgument = { name: string; type?: string; description?: string };
+export type DocMetadataExample = {
+	subject: unknown;
+	args: string[];
+	description?: string;
+	evaluated?: unknown;
+};
+
 export type DocMetadata = {
 	name: string;
 	returnType: string;
@@ -19,6 +27,7 @@ export type DocMetadata = {
 	section?: string;
 	hidden?: boolean;
 	aliases?: string[];
-	args?: Array<{ name: string; type?: string }>;
+	args?: DocMetadataArgument[];
+	examples?: DocMetadataExample[];
 	docURL?: string;
 };
