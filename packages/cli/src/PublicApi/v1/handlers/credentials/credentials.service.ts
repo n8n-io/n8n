@@ -41,20 +41,6 @@ export async function createCredential(
 
 	Object.assign(newCredential, properties);
 
-	if (!newCredential.nodesAccess || newCredential.nodesAccess.length === 0) {
-		newCredential.nodesAccess = [
-			{
-				nodeType: `n8n-nodes-base.${properties.type?.toLowerCase() ?? 'unknown'}`,
-				date: new Date(),
-			},
-		];
-	} else {
-		// Add the added date for node access permissions
-		newCredential.nodesAccess.forEach((nodeAccess) => {
-			nodeAccess.date = new Date();
-		});
-	}
-
 	return newCredential;
 }
 
@@ -91,11 +77,7 @@ export async function removeCredential(credentials: CredentialsEntity): Promise<
 
 export async function encryptCredential(credential: CredentialsEntity): Promise<ICredentialsDb> {
 	// Encrypt the data
-	const coreCredential = new Credentials(
-		{ id: null, name: credential.name },
-		credential.type,
-		credential.nodesAccess,
-	);
+	const coreCredential = new Credentials({ id: null, name: credential.name }, credential.type);
 
 	// @ts-ignore
 	coreCredential.setData(credential.data);
@@ -115,7 +97,7 @@ export function sanitizeCredentials(
 	const credentialsList = argIsArray ? credentials : [credentials];
 
 	const sanitizedCredentials = credentialsList.map((credential) => {
-		const { data, nodesAccess, shared, ...rest } = credential;
+		const { data, shared, ...rest } = credential;
 		return rest;
 	});
 
