@@ -10,16 +10,10 @@ import type {
 	IRunExecutionData,
 	ITaskData,
 	IPinData,
-	IWorkflowBase,
 	Workflow,
 	StartNodeData,
 } from 'n8n-workflow';
-import {
-	NodeHelpers,
-	NodeConnectionType,
-	TelemetryHelpers,
-	FORM_TRIGGER_PATH_IDENTIFIER,
-} from 'n8n-workflow';
+import { NodeConnectionType, FORM_TRIGGER_PATH_IDENTIFIER } from 'n8n-workflow';
 
 import { useToast } from '@/composables/useToast';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
@@ -40,14 +34,12 @@ import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import type { useRouter } from 'vue-router';
 import { isEmpty } from '@/utils/typesUtils';
 import { useI18n } from '@/composables/useI18n';
-import { useTelemetry } from '@/composables/useTelemetry';
 import { get } from 'lodash-es';
 
-export function useRunWorkflow(options: { router: ReturnType<typeof useRouter> }) {
+export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof useRouter> }) {
 	const nodeHelpers = useNodeHelpers();
-	const workflowHelpers = useWorkflowHelpers({ router: options.router });
+	const workflowHelpers = useWorkflowHelpers({ router: useRunWorkflowOpts.router });
 	const i18n = useI18n();
-	const telemetry = useTelemetry();
 	const toast = useToast();
 	const { titleSet } = useTitleChange();
 
@@ -104,79 +96,6 @@ export function useRunWorkflow(options: { router: ReturnType<typeof useRouter> }
 		toast.clearAllStickyNotifications();
 
 		try {
-			// Check first if the workflow has any issues before execute it
-			nodeHelpers.refreshNodeIssues();
-			const issuesExist = workflowsStore.nodesIssuesExist;
-			if (issuesExist) {
-				// If issues exist get all of the issues of all nodes
-				const workflowIssues = workflowHelpers.checkReadyForExecution(
-					workflow,
-					options.destinationNode,
-				);
-				if (workflowIssues !== null) {
-					const errorMessages = [];
-					let nodeIssues: string[];
-					const trackNodeIssues: Array<{
-						node_type: string;
-						error: string;
-					}> = [];
-					const trackErrorNodeTypes: string[] = [];
-					for (const nodeName of Object.keys(workflowIssues)) {
-						nodeIssues = NodeHelpers.nodeIssuesToString(workflowIssues[nodeName]);
-						let issueNodeType = 'UNKNOWN';
-						const issueNode = workflowsStore.getNodeByName(nodeName);
-
-						if (issueNode) {
-							issueNodeType = issueNode.type;
-						}
-
-						trackErrorNodeTypes.push(issueNodeType);
-						const trackNodeIssue = {
-							node_type: issueNodeType,
-							error: '',
-							caused_by_credential: !!workflowIssues[nodeName].credentials,
-						};
-
-						for (const nodeIssue of nodeIssues) {
-							errorMessages.push(
-								`<a data-action='openNodeDetail' data-action-parameter-node='${nodeName}'>${nodeName}</a>: ${nodeIssue}`,
-							);
-							trackNodeIssue.error = trackNodeIssue.error.concat(', ', nodeIssue);
-						}
-						trackNodeIssues.push(trackNodeIssue);
-					}
-
-					toast.showMessage({
-						title: i18n.baseText('workflowRun.showMessage.title'),
-						message: errorMessages.join('<br />'),
-						type: 'error',
-						duration: 0,
-					});
-					titleSet(workflow.name as string, 'ERROR');
-					void useExternalHooks().run('workflowRun.runError', {
-						errorMessages,
-						nodeName: options.destinationNode,
-					});
-
-					await workflowHelpers.getWorkflowDataToSave().then((workflowData) => {
-						telemetry.track('Workflow execution preflight failed', {
-							workflow_id: workflow.id,
-							workflow_name: workflow.name,
-							execution_type: options.destinationNode || options.triggerNode ? 'node' : 'workflow',
-							node_graph_string: JSON.stringify(
-								TelemetryHelpers.generateNodesGraph(
-									workflowData as IWorkflowBase,
-									workflowHelpers.getNodeTypes(),
-								).nodeGraph,
-							),
-							error_node_types: JSON.stringify(trackErrorNodeTypes),
-							errors: JSON.stringify(trackNodeIssues),
-						});
-					});
-					return;
-				}
-			}
-
 			// Get the direct parents of the node
 			let directParentNodes: string[] = [];
 			if (options.destinationNode !== undefined) {
@@ -317,7 +236,7 @@ export function useRunWorkflow(options: { router: ReturnType<typeof useRouter> }
 				executedNode,
 				data: {
 					resultData: {
-						runData: newRunData || {},
+						runData: newRunData ?? {},
 						pinData: workflowData.pinData,
 						workflowData,
 					},
@@ -370,7 +289,9 @@ export function useRunWorkflow(options: { router: ReturnType<typeof useRouter> }
 						node.parameters.resume === 'form' &&
 						runWorkflowApiResponse.executionId
 					) {
-						const workflowTriggerNodes = workflow.getTriggerNodes().map((node) => node.name);
+						const workflowTriggerNodes = workflow
+							.getTriggerNodes()
+							.map((triggerNode) => triggerNode.name);
 
 						const showForm =
 							options.destinationNode === node.name ||
@@ -381,7 +302,7 @@ export function useRunWorkflow(options: { router: ReturnType<typeof useRouter> }
 
 						if (!showForm) continue;
 
-						const { webhookSuffix } = (node.parameters.options || {}) as IDataObject;
+						const { webhookSuffix } = (node.parameters.options ?? {}) as IDataObject;
 						const suffix = webhookSuffix ? `/${webhookSuffix}` : '';
 						testUrl = `${rootStore.getFormWaitingUrl}/${runWorkflowApiResponse.executionId}${suffix}`;
 					}

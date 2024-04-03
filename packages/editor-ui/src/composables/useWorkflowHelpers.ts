@@ -515,7 +515,7 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		return count;
 	}
 
-	// Checks if everything in the workflow is complete and ready to be executed
+	/** Checks if everything in the workflow is complete and ready to be executed */
 	function checkReadyForExecution(workflow: Workflow, lastNodeName?: string) {
 		let node: INode;
 		let nodeType: INodeType | undefined;
