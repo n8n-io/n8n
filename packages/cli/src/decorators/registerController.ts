@@ -8,6 +8,7 @@ import type { Class } from 'n8n-core';
 
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
+import { inE2ETests, inTest } from '@/constants';
 import type { BooleanLicenseFeature } from '@/Interfaces';
 import { License } from '@/License';
 import type { AuthenticatedRequest } from '@/requests';
@@ -26,7 +27,6 @@ import type {
 	RouteMetadata,
 	ScopeMetadata,
 } from './types';
-import { inE2ETests, inTest } from '@/constants';
 
 const throttle = expressRateLimit({
 	windowMs: 5 * 60 * 1000, // 5 minutes
@@ -99,8 +99,6 @@ export const registerController = (app: Application, controllerClass: Class<obje
 			(Reflect.getMetadata(CONTROLLER_MIDDLEWARES, controllerClass) ?? []) as MiddlewareMetadata[]
 		).map(({ handlerName }) => controller[handlerName].bind(controller) as RequestHandler);
 
-		const authService = Container.get(AuthService);
-
 		routes.forEach(
 			({
 				method,
@@ -119,7 +117,7 @@ export const registerController = (app: Application, controllerClass: Class<obje
 					path,
 					...(!inTest && !inE2ETests && rateLimit ? [throttle] : []),
 					// eslint-disable-next-line @typescript-eslint/unbound-method
-					...(skipAuth ? [] : [authService.authMiddleware]),
+					...(skipAuth ? [] : [Container.get(AuthService).authMiddleware]),
 					...(features ? [createLicenseMiddleware(features)] : []),
 					...(scopes ? [createGlobalScopeMiddleware(scopes)] : []),
 					...controllerMiddlewares,
