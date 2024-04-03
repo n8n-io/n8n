@@ -5,7 +5,10 @@ jest.mock('@/constants', () => ({
 
 import express from 'express';
 import { agent as testAgent } from 'supertest';
+
 import { Get, RestController, registerController } from '@/decorators';
+import { AuthService } from '@/auth/auth.service';
+import { mockInstance } from '../../shared/mocking';
 
 describe('registerController', () => {
 	@RestController('/test')
@@ -17,6 +20,7 @@ describe('registerController', () => {
 		}
 	}
 
+	mockInstance(AuthService);
 	const app = express();
 	registerController(app, TestController);
 	const agent = testAgent(app);

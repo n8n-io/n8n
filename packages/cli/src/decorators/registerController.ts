@@ -99,6 +99,8 @@ export const registerController = (app: Application, controllerClass: Class<obje
 			(Reflect.getMetadata(CONTROLLER_MIDDLEWARES, controllerClass) ?? []) as MiddlewareMetadata[]
 		).map(({ handlerName }) => controller[handlerName].bind(controller) as RequestHandler);
 
+		const authService = Container.get(AuthService);
+
 		routes.forEach(
 			({
 				method,
@@ -117,7 +119,7 @@ export const registerController = (app: Application, controllerClass: Class<obje
 					path,
 					...(!inTest && !inE2ETests && rateLimit ? [throttle] : []),
 					// eslint-disable-next-line @typescript-eslint/unbound-method
-					...(skipAuth ? [] : [Container.get(AuthService).authMiddleware]),
+					...(skipAuth ? [] : [authService.authMiddleware]),
 					...(features ? [createLicenseMiddleware(features)] : []),
 					...(scopes ? [createGlobalScopeMiddleware(scopes)] : []),
 					...controllerMiddlewares,
