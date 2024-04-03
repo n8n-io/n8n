@@ -4,6 +4,7 @@ import * as aiApi from '@/api/ai';
 
 vi.mock('@/api/ai', () => ({
 	debugError: vi.fn(),
+	generateCurl: vi.fn(),
 }));
 
 vi.mock('@/stores/n8nRoot.store', () => ({
@@ -18,7 +19,10 @@ vi.mock('@/stores/settings.store', () => ({
 	useSettingsStore: () => ({
 		settings: {
 			ai: {
-				errorDebugging: false, // Default mock value
+				features: {
+					errorDebugging: false,
+					generateCurl: false,
+				},
 			},
 		},
 	}),
@@ -49,6 +53,24 @@ describe('useAIStore', () => {
 			const result = await aiStore.debugError(payload);
 
 			expect(aiApi.debugError).toHaveBeenCalledWith({}, payload);
+			expect(result).toEqual(mockResult);
+		});
+	});
+
+	describe('debugError()', () => {
+		it('calls aiApi.debugError with correct parameters and returns expected result', async () => {
+			const mockResult = { curl: 'curl -X GET https://n8n.io', metadata: {} };
+			const aiStore = useAIStore();
+			const payload = {
+				service: 'OpenAI',
+				request: 'Create user message saying "Hello World"',
+			};
+
+			vi.mocked(aiApi.generateCurl).mockResolvedValue(mockResult);
+
+			const result = await aiStore.generateCurl(payload);
+
+			expect(aiApi.generateCurl).toHaveBeenCalledWith({}, payload);
 			expect(result).toEqual(mockResult);
 		});
 	});
