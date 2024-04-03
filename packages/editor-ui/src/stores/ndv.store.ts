@@ -22,7 +22,7 @@ export const useNDVStore = defineStore(STORES.NDV, {
 	state: (): NDVState => ({
 		activeNodeName: null,
 		mainPanelDimensions: {},
-		sessionId: '',
+		pushRef: '',
 		input: {
 			displayMode: 'schema',
 			nodeName: undefined,
@@ -44,6 +44,7 @@ export const useNDVStore = defineStore(STORES.NDV, {
 			},
 		},
 		focusedMappableInput: '',
+		focusedInputPath: '',
 		mappingTelemetry: {},
 		hoveringItem: null,
 		draggable: {
@@ -55,6 +56,7 @@ export const useNDVStore = defineStore(STORES.NDV, {
 		},
 		isMappingOnboarded: useStorage(LOCAL_STORAGE_MAPPING_IS_ONBOARDED).value === 'true',
 		isAutocompleteOnboarded: useStorage(LOCAL_STORAGE_AUTOCOMPLETE_IS_ONBOARDED).value === 'true',
+		highlightDraggables: false,
 	}),
 	getters: {
 		activeNode(): INodeUi | null {
@@ -128,7 +130,7 @@ export const useNDVStore = defineStore(STORES.NDV, {
 		ndvInputBranchIndex(): number | undefined {
 			return this.input.branch;
 		},
-		isDNVDataEmpty() {
+		isNDVDataEmpty() {
 			return (panel: 'input' | 'output'): boolean => this[panel].data.isEmpty;
 		},
 		isInputParentOfActiveNode(): boolean {
@@ -182,11 +184,11 @@ export const useNDVStore = defineStore(STORES.NDV, {
 				},
 			};
 		},
-		setNDVSessionId(): void {
-			this.sessionId = `ndv-${uuid()}`;
+		setNDVPushRef(): void {
+			this.pushRef = `ndv-${uuid()}`;
 		},
-		resetNDVSessionId(): void {
-			this.sessionId = '';
+		resetNDVPushRef(): void {
+			this.pushRef = '';
 		},
 		setPanelDisplayMode(params: { pane: NodePanelType; mode: IRunDataDisplayMode }): void {
 			this[params.pane].displayMode = params.mode;
@@ -251,6 +253,9 @@ export const useNDVStore = defineStore(STORES.NDV, {
 			this.isAutocompleteOnboarded = true;
 			useStorage(LOCAL_STORAGE_AUTOCOMPLETE_IS_ONBOARDED).value = 'true';
 		},
+		setHighlightDraggables(highlight: boolean) {
+			this.highlightDraggables = highlight;
+		},
 		updateNodeParameterIssues(issues: INodeIssues): void {
 			const workflowsStore = useWorkflowsStore();
 			const activeNode = workflowsStore.getNodeByName(this.activeNodeName || '');
@@ -267,6 +272,9 @@ export const useNDVStore = defineStore(STORES.NDV, {
 					},
 				});
 			}
+		},
+		setFocusedInputPath(path: string) {
+			this.focusedInputPath = path;
 		},
 	},
 });

@@ -165,8 +165,8 @@ async function onSubmit() {
 			context: {
 				schema: schemas.parentNodesSchemas,
 				inputSchema: schemas.inputSchema!,
-				ndvSessionId: useNDVStore().sessionId,
-				sessionId: useRootStore().sessionId,
+				ndvPushRef: useNDVStore().pushRef,
+				pushRef: useRootStore().pushRef,
 			},
 			model,
 			n8nVersion: version,

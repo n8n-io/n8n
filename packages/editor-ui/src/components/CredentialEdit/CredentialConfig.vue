@@ -74,7 +74,7 @@
 			<AuthTypeSelector
 				v-if="showAuthTypeSelector && isNewCredential"
 				:credential-type="credentialType"
-				@authTypeChanged="onAuthTypeChange"
+				@auth-type-changed="onAuthTypeChange"
 			/>
 
 			<CopyInput

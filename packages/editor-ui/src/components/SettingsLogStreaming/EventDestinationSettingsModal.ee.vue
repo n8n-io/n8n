@@ -27,7 +27,7 @@
 							:readonly="isTypeAbstract"
 							type="Credential"
 							data-test-id="subtitle-showing-type"
-							@update:modelValue="onLabelChange"
+							@update:model-value="onLabelChange"
 						/>
 					</div>
 					<div :class="$style.destinationActions">
@@ -86,7 +86,7 @@
 							:placeholder="typeSelectPlaceholder"
 							data-test-id="select-destination-type"
 							name="name"
-							@update:modelValue="onTypeSelectInput"
+							@update:model-value="onTypeSelectInput"
 						>
 							<n8n-option
 								v-for="option in typeSelectOptions || []"
@@ -119,7 +119,7 @@
 								:node-values="nodeParameters"
 								:is-read-only="!canManageLogStreaming"
 								path=""
-								@valueChanged="valueChanged"
+								@value-changed="valueChanged"
 							/>
 						</template>
 						<template v-else-if="isTypeSyslog">
@@ -129,7 +129,7 @@
 								:node-values="nodeParameters"
 								:is-read-only="!canManageLogStreaming"
 								path=""
-								@valueChanged="valueChanged"
+								@value-changed="valueChanged"
 							/>
 						</template>
 						<template v-else-if="isTypeSentry">
@@ -139,7 +139,7 @@
 								:node-values="nodeParameters"
 								:is-read-only="!canManageLogStreaming"
 								path=""
-								@valueChanged="valueChanged"
+								@value-changed="valueChanged"
 							/>
 						</template>
 					</div>

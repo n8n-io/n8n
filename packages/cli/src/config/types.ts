@@ -19,7 +19,7 @@ type GetPathSegments<Traversable, Filter> = Traversable extends Filter
 	? []
 	: {
 			[K in ValidKeys<Traversable>]: [K, ...GetPathSegments<Traversable[K], Filter>];
-	  }[ValidKeys<Traversable>];
+		}[ValidKeys<Traversable>];
 
 /**
  * Transform a union of string arrays (path segments) into a union of strings (dotted paths).
@@ -31,12 +31,12 @@ type GetPathSegments<Traversable, Filter> = Traversable extends Filter
 type JoinByDotting<T extends string[]> = T extends [infer F]
 	? F
 	: T extends [infer F, ...infer R]
-	  ? F extends string
+		? F extends string
 			? R extends string[]
 				? `${F}.${JoinByDotting<R>}`
 				: never
 			: never
-	  : string;
+		: string;
 
 type ToDottedPath<T> = JoinByDotting<RemoveExcess<T>>;
 
@@ -64,14 +64,14 @@ type ConfigOptionPath =
 type ToReturnType<T extends ConfigOptionPath> = T extends NumericPath
 	? number
 	: T extends BooleanPath
-	  ? boolean
-	  : T extends StringLiteralArrayPath
-	    ? StringLiteralMap[T]
-	    : T extends keyof ExceptionPaths
-	      ? ExceptionPaths[T]
-	      : T extends StringPath
-	        ? string
-	        : unknown;
+		? boolean
+		: T extends StringLiteralArrayPath
+			? StringLiteralMap[T]
+			: T extends keyof ExceptionPaths
+				? ExceptionPaths[T]
+				: T extends StringPath
+					? string
+					: unknown;
 
 type ExceptionPaths = {
 	'queue.bull.redis': object;
@@ -86,11 +86,12 @@ type ExceptionPaths = {
 //        string literals map
 // -----------------------------------
 
-type GetPathSegmentsWithUnions<T> = T extends ReadonlyArray<infer C>
-	? [C]
-	: {
-			[K in ValidKeys<T>]: [K, ...GetPathSegmentsWithUnions<T[K]>];
-	  }[ValidKeys<T>];
+type GetPathSegmentsWithUnions<T> =
+	T extends ReadonlyArray<infer C>
+		? [C]
+		: {
+				[K in ValidKeys<T>]: [K, ...GetPathSegmentsWithUnions<T[K]>];
+			}[ValidKeys<T>];
 
 type ToPathUnionPair<T extends string[]> = T extends [...infer Path, infer Union]
 	? Path extends string[]

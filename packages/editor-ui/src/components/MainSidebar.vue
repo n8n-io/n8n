@@ -217,7 +217,7 @@ export default defineComponent({
 							tooltip: {
 								content: this.$locale.baseText('mainSidebar.workflows.readOnlyEnv.tooltip'),
 							},
-					  }
+						}
 					: undefined,
 			};
 
@@ -243,7 +243,7 @@ export default defineComponent({
 					available:
 						this.settingsStore.isTemplatesEnabled && !this.templatesStore.hasCustomTemplatesHost,
 					link: {
-						href: this.templatesStore.getWebsiteTemplateRepositoryURL,
+						href: this.templatesStore.websiteTemplateRepositoryURL,
 						target: '_blank',
 					},
 				},
@@ -387,7 +387,10 @@ export default defineComponent({
 			});
 		},
 		trackTemplatesClick() {
-			this.$telemetry.track('User clicked on templates', {});
+			this.$telemetry.track('User clicked on templates', {
+				role: this.usersStore.currentUserCloudInfo?.role,
+				active_workflow_count: this.workflowsStore.activeWorkflows.length,
+			});
 		},
 		async onUserActionToggle(action: string) {
 			switch (action) {

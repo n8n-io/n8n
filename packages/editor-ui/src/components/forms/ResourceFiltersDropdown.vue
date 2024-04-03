@@ -33,7 +33,7 @@
 					:current-user-id="usersStore.currentUser.id"
 					:model-value="modelValue.ownedBy"
 					size="medium"
-					@update:modelValue="setKeyValue('ownedBy', $event)"
+					@update:model-value="setKeyValue('ownedBy', $event)"
 				/>
 			</enterprise-edition>
 			<enterprise-edition v-if="shareable" :features="[EnterpriseEditionFeature.Sharing]">
@@ -49,7 +49,7 @@
 					:current-user-id="usersStore.currentUser.id"
 					:model-value="modelValue.sharedWith"
 					size="medium"
-					@update:modelValue="setKeyValue('sharedWith', $event)"
+					@update:model-value="setKeyValue('sharedWith', $event)"
 				/>
 			</enterprise-edition>
 			<div v-if="hasFilters" :class="[$style['filters-dropdown-footer'], 'mt-s']">

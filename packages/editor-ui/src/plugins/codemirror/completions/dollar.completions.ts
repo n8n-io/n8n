@@ -8,11 +8,12 @@ import {
 	hasActiveNode,
 	isCredentialsModalOpen,
 	applyCompletion,
+	isInHttpNodePagination,
 } from './utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { escapeMappingString } from '@/utils/mappingUtils';
-import { PREVIOUS_NODES_SECTION, ROOT_DOLLAR_COMPLETIONS } from './constants';
+import { PREVIOUS_NODES_SECTION, RECOMMENDED_SECTION, ROOT_DOLLAR_COMPLETIONS } from './constants';
 
 /**
  * Completions offered at the dollar position: `$|`
@@ -48,6 +49,15 @@ export function dollarCompletions(context: CompletionContext): CompletionResult 
 
 export function dollarOptions(): Completion[] {
 	const SKIP = new Set();
+	let recommendedCompletions: Completion[] = [];
+
+	if (isInHttpNodePagination()) {
+		recommendedCompletions = [
+			{ label: '$pageCount', section: RECOMMENDED_SECTION, info: i18n.rootVars.$pageCount },
+			{ label: '$response', section: RECOMMENDED_SECTION, info: i18n.rootVars.$response },
+			{ label: '$request', section: RECOMMENDED_SECTION, info: i18n.rootVars.$request },
+		];
+	}
 
 	if (isCredentialsModalOpen()) {
 		return useExternalSecretsStore().isEnterpriseExternalSecretsEnabled
@@ -60,7 +70,7 @@ export function dollarOptions(): Completion[] {
 						label: '$vars',
 						type: 'keyword',
 					},
-			  ]
+				]
 			: [];
 	}
 
@@ -77,7 +87,9 @@ export function dollarOptions(): Completion[] {
 		section: PREVIOUS_NODES_SECTION,
 	}));
 
-	return ROOT_DOLLAR_COMPLETIONS.filter(({ label }) => !SKIP.has(label))
+	return recommendedCompletions
+		.concat(ROOT_DOLLAR_COMPLETIONS)
+		.filter(({ label }) => !SKIP.has(label))
 		.concat(previousNodesCompletions)
 		.map((completion) => ({ ...completion, apply: applyCompletion() }));
 }

@@ -51,7 +51,7 @@ export class WorkflowService {
 			? {
 					workflows: workflows.map((w) => this.ownershipService.addOwnedByAndSharedWith(w)),
 					count,
-			  }
+				}
 			: { workflows, count };
 	}
 

@@ -687,7 +687,8 @@ export type IPersonalizationLatestVersion = IPersonalizationSurveyAnswersV4;
 export type IPersonalizationSurveyVersions =
 	| IPersonalizationSurveyAnswersV1
 	| IPersonalizationSurveyAnswersV2
-	| IPersonalizationSurveyAnswersV3;
+	| IPersonalizationSurveyAnswersV3
+	| IPersonalizationSurveyAnswersV4;
 
 export type Roles = typeof ROLE;
 export type IRole = Roles[keyof Roles];
@@ -1101,7 +1102,7 @@ export interface RootState {
 	n8nMetadata: {
 		[key: string]: string | number | undefined;
 	};
-	sessionId: string;
+	pushRef: string;
 	urlBaseWebhook: string;
 	urlBaseEditor: string;
 	instanceId: string;
@@ -1145,7 +1146,7 @@ export interface IRootState {
 	nodeViewOffsetPosition: XYPosition;
 	nodeViewMoveInProgress: boolean;
 	selectedNodes: INodeUi[];
-	sessionId: string;
+	pushRef: string;
 	urlBaseEditor: string;
 	urlBaseWebhook: string;
 	workflow: IWorkflowDb;
@@ -1213,7 +1214,7 @@ export interface TargetItem {
 export interface NDVState {
 	activeNodeName: string | null;
 	mainPanelDimensions: { [key: string]: { [key: string]: number } };
-	sessionId: string;
+	pushRef: string;
 	input: {
 		displayMode: IRunDataDisplayMode;
 		nodeName?: string;
@@ -1235,6 +1236,7 @@ export interface NDVState {
 		};
 	};
 	focusedMappableInput: string;
+	focusedInputPath: string;
 	mappingTelemetry: { [key: string]: string | number | boolean };
 	hoveringItem: null | TargetItem;
 	draggable: {
@@ -1246,6 +1248,7 @@ export interface NDVState {
 	};
 	isMappingOnboarded: boolean;
 	isAutocompleteOnboarded: boolean;
+	highlightDraggables: boolean;
 }
 
 export interface NotificationOptions extends Partial<ElementNotificationOptions> {
@@ -1425,7 +1428,7 @@ export interface CommunityNodesState {
 
 export interface IRestApiContext {
 	baseUrl: string;
-	sessionId: string;
+	pushRef: string;
 }
 
 export interface IZoomConfig {
@@ -1757,6 +1760,7 @@ export declare namespace Cloud {
 		username: string;
 		email: string;
 		hasEarlyAccess?: boolean;
+		role?: string;
 	};
 }
 

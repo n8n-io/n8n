@@ -4,7 +4,7 @@
 			<RunDataJsonActions
 				v-if="!editMode.enabled"
 				:node="node"
-				:sessio-id="sessionId"
+				:push-ref="pushRef"
 				:display-mode="displayMode"
 				:distance-from-active="distanceFromActive"
 				:selected-json-path="selectedJsonPath"
@@ -30,7 +30,7 @@
 				root-path=""
 				selectable-type="single"
 				class="json-data"
-				@update:selectedValue="selectedJsonPath = $event"
+				@update:selected-value="selectedJsonPath = $event"
 			>
 				<template #renderNodeKey="{ node }">
 					<TextWithHighlights
@@ -110,7 +110,7 @@ export default defineComponent({
 		editMode: {
 			type: Object as () => { enabled?: boolean; value?: string },
 		},
-		sessionId: {
+		pushRef: {
 			type: String,
 		},
 		paneType: {
@@ -158,7 +158,7 @@ export default defineComponent({
 			return executionDataToJson(this.inputData);
 		},
 		highlight(): boolean {
-			return !this.ndvStore.isMappingOnboarded && Boolean(this.ndvStore.focusedMappableInput);
+			return this.ndvStore.highlightDraggables;
 		},
 	},
 	methods: {
