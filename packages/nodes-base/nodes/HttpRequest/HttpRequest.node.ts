@@ -23,6 +23,7 @@ export class HttpRequest extends VersionedNodeType {
 			3: new HttpRequestV3(baseDescription),
 			4: new HttpRequestV3(baseDescription),
 			4.1: new HttpRequestV3(baseDescription),
+			4.2: new HttpRequestV3(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);
