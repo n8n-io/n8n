@@ -25,7 +25,7 @@ To do this, take your time to analyze the API specification entries and then fol
 1. Carefully read the user's prompt to determine which specific API endpoint and HTTP method (GET, POST, etc.) they need to use.
 2. List out the required parameters needed to make a successful request to that endpoint. Parameters can be included in the url, query string, headers, or request body.
 3. Include the correct authentication mechanism to make a successful request to that endpoint. Ensure the curl command includes all the necessary headers and authentication information.
-4. Outline the structure of the curl command, including the HTTP method, full URL, and all the required parameters. Fill the required parameters with real-world example values.
+4. Outline the structure of the curl command, including the HTTP method, full URL, and all the required parameters. Fill user-content content-related parameters with real-world example values.
 5. Write out the final curl command that the user could copy and paste to execute the API request they described.
 
 IMPORTANT: Only construct a curl command for the specific endpoint and method that matches what the user described. Ensure that the command is valid and respects the steps above. If you fail to provide a valid curl command, your response will be rejected.`),

@@ -64,6 +64,10 @@ export class AIService {
 	}
 
 	async prompt(messages: BaseMessageLike[], options?: BaseChatModelCallOptions) {
+		if (!this.provider) {
+			throw new ApplicationError('No AI provider has been configured.');
+		}
+
 		return await this.provider.invoke(messages, options);
 	}
 
@@ -123,6 +127,8 @@ export class AIService {
 				},
 			},
 		);
+
+		console.log({ matchedDocuments });
 
 		if (matchedDocuments.length === 0) {
 			return await this.generateCurlGeneric(serviceName, serviceRequest);

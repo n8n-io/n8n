@@ -1366,7 +1366,7 @@ export const schema = {
 			model: {
 				doc: 'OpenAI model to use',
 				format: String,
-				default: 'gpt-4-0125-preview',
+				default: 'gpt-4',
 				env: 'N8N_AI_OPENAI_MODEL',
 			},
 		},
