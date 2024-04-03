@@ -4,7 +4,7 @@
 			<RunDataJsonActions
 				v-if="!editMode.enabled"
 				:node="node"
-				:sessio-id="sessionId"
+				:push-ref="pushRef"
 				:display-mode="displayMode"
 				:distance-from-active="distanceFromActive"
 				:selected-json-path="selectedJsonPath"
@@ -110,7 +110,7 @@ export default defineComponent({
 		editMode: {
 			type: Object as () => { enabled?: boolean; value?: string },
 		},
-		sessionId: {
+		pushRef: {
 			type: String,
 		},
 		paneType: {

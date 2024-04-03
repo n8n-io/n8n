@@ -41,36 +41,36 @@ export class Push extends EventEmitter {
 		const {
 			user,
 			ws,
-			query: { sessionId },
+			query: { pushRef },
 		} = req;
 
-		if (!sessionId) {
+		if (!pushRef) {
 			if (ws) {
-				ws.send('The query parameter "sessionId" is missing!');
+				ws.send('The query parameter "pushRef" is missing!');
 				ws.close(1008);
 				return;
 			}
-			throw new BadRequestError('The query parameter "sessionId" is missing!');
+			throw new BadRequestError('The query parameter "pushRef" is missing!');
 		}
 
 		if (req.ws) {
-			(this.backend as WebSocketPush).add(sessionId, user.id, req.ws);
+			(this.backend as WebSocketPush).add(pushRef, user.id, req.ws);
 		} else if (!useWebSockets) {
-			(this.backend as SSEPush).add(sessionId, user.id, { req, res });
+			(this.backend as SSEPush).add(pushRef, user.id, { req, res });
 		} else {
 			res.status(401).send('Unauthorized');
 			return;
 		}
 
-		this.emit('editorUiConnected', sessionId);
+		this.emit('editorUiConnected', pushRef);
 	}
 
 	broadcast(type: IPushDataType, data?: unknown) {
-		this.backend.sendToAllSessions(type, data);
+		this.backend.sendToAll(type, data);
 	}
 
-	send(type: IPushDataType, data: unknown, sessionId: string) {
-		this.backend.sendToOneSession(type, data, sessionId);
+	send(type: IPushDataType, data: unknown, pushRef: string) {
+		this.backend.sendToOneSession(type, data, pushRef);
 	}
 
 	getBackend() {
