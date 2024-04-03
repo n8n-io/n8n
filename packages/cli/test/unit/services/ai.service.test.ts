@@ -8,7 +8,6 @@ import {
 	generateCurlCommandPromptTemplate,
 } from '@/services/ai/prompts/generateCurl';
 import { PineconeStore } from '@langchain/pinecone';
-import { BaseMessageLike } from '@langchain/core/messages';
 
 jest.mock('@/config', () => {
 	return {
@@ -227,13 +226,9 @@ describe('AIService', () => {
 			});
 
 			expect(service.provider.model.invoke).toHaveBeenCalled();
-			expect(
-				(
-					jest.mocked(service.provider.model.invoke).mock.calls[0][0] as {
-						messages: BaseMessageLike[];
-					}
-				).messages,
-			).toEqual(messages);
+			expect(jest.mocked(service.provider.model.invoke).mock.calls[0][0].messages).toEqual(
+				messages,
+			);
 		});
 	});
 });
