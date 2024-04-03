@@ -263,7 +263,7 @@ export default defineComponent({
 						node_type: this.nodeType ? this.nodeType.name : null,
 						workflow_id: this.workflowsStore.workflowId,
 						source: this.telemetrySource,
-						session_id: this.ndvStore.sessionId,
+						push_ref: this.ndvStore.pushRef,
 					};
 					this.$telemetry.track('User clicked execute node button', telemetryPayload);
 					await this.externalHooks.run('nodeExecuteButton.onClick', telemetryPayload);
