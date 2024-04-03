@@ -39,6 +39,7 @@ import { ApplicationError } from 'n8n-workflow';
 
 @Service()
 export class SourceControlService {
+	/** Path to SSH private key in filesystem. */
 	private sshKeyName: string;
 
 	private sshFolder: string;
@@ -112,7 +113,7 @@ export class SourceControlService {
 			});
 			await this.sourceControlExportService.deleteRepositoryFolder();
 			if (!options.keepKeyPair) {
-				await this.sourceControlPreferencesService.deleteKeyPairFiles();
+				await this.sourceControlPreferencesService.deleteKeyPair();
 			}
 			this.gitService.resetService();
 			return this.sourceControlPreferencesService.sourceControlPreferences;

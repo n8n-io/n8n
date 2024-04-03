@@ -13,11 +13,11 @@
 			<el-checkbox
 				v-model="executionsStore.autoRefresh"
 				data-test-id="auto-refresh-checkbox"
-				@update:modelValue="$emit('update:autoRefresh', $event)"
+				@update:model-value="$emit('update:autoRefresh', $event)"
 			>
 				{{ $locale.baseText('executionsList.autoRefresh') }}
 			</el-checkbox>
-			<ExecutionsFilter popover-placement="left-start" @filterChanged="onFilterChanged" />
+			<ExecutionsFilter popover-placement="left-start" @filter-changed="onFilterChanged" />
 		</div>
 		<div
 			ref="executionList"

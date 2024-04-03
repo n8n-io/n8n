@@ -55,7 +55,7 @@ const executionDataFactory = (): ExecutionSummary => ({
 	stoppedAt: faker.date.past(),
 	workflowId: faker.number.int().toString(),
 	workflowName: faker.string.sample(),
-	status: faker.helpers.arrayElement(['failed', 'success']),
+	status: faker.helpers.arrayElement(['error', 'success']),
 	nodeExecutionStatus: {},
 	retryOf: generateUndefinedNullOrString(),
 	retrySuccessId: generateUndefinedNullOrString(),

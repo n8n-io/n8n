@@ -45,7 +45,7 @@
 					:path="getPath(index)"
 					:hide-delete="hideDelete"
 					:is-read-only="isReadOnly"
-					@valueChanged="valueChanged"
+					@value-changed="valueChanged"
 				/>
 			</div>
 			<div v-else>

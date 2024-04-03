@@ -813,6 +813,12 @@ export interface RequestHelperFunctions {
 	): Promise<any>;
 }
 
+export type NodeTypeAndVersion = {
+	name: string;
+	type: string;
+	typeVersion: number;
+};
+
 export interface FunctionsBase {
 	logger: Logger;
 	getCredentials(type: string, itemIndex?: number): Promise<ICredentialDataDecryptedObject>;
@@ -824,7 +830,8 @@ export interface FunctionsBase {
 	getRestApiUrl(): string;
 	getInstanceBaseUrl(): string;
 	getInstanceId(): string;
-
+	getChildNodes(nodeName: string): NodeTypeAndVersion[];
+	getParentNodes(nodeName: string): NodeTypeAndVersion[];
 	getMode?: () => WorkflowExecuteMode;
 	getActivationMode?: () => WorkflowActivateMode;
 
@@ -2095,7 +2102,7 @@ export type WorkflowActivateMode =
 
 export interface IWorkflowHooksOptionalParameters {
 	retryOf?: string;
-	sessionId?: string;
+	pushRef?: string;
 }
 
 export namespace WorkflowSettings {
@@ -2341,6 +2348,7 @@ export interface ResourceMapperField {
 
 export type FieldType =
 	| 'string'
+	| 'string-alphanumeric'
 	| 'number'
 	| 'dateTime'
 	| 'boolean'
@@ -2454,6 +2462,8 @@ export interface IPublicApiSettings {
 
 export type ExpressionEvaluatorType = 'tmpl' | 'tournament';
 
+export type N8nAIProviderType = 'openai' | 'unknown';
+
 export interface IN8nUISettings {
 	endpointForm: string;
 	endpointFormTest: string;
@@ -2474,6 +2484,9 @@ export interface IN8nUISettings {
 	urlBaseWebhook: string;
 	urlBaseEditor: string;
 	versionCli: string;
+	authCookie: {
+		secure: boolean;
+	};
 	binaryDataMode: string;
 	releaseChannel: 'stable' | 'beta' | 'nightly' | 'dev';
 	n8nMetadata?: {
@@ -2561,6 +2574,8 @@ export interface IN8nUISettings {
 	};
 	ai: {
 		enabled: boolean;
+		provider: string;
+		errorDebugging: boolean;
 	};
 	workflowHistory: {
 		pruneTime: number;
@@ -2572,7 +2587,7 @@ export interface SecretsHelpersBase {
 	update(): Promise<void>;
 	waitForInit(): Promise<void>;
 
-	getSecret(provider: string, name: string): IDataObject | undefined;
+	getSecret(provider: string, name: string): unknown;
 	hasSecret(provider: string, name: string): boolean;
 	hasProvider(provider: string): boolean;
 	listProviders(): string[];

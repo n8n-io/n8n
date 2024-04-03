@@ -490,7 +490,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		} else if (status === 'waiting') {
 			condition.status = 'waiting';
 		} else if (status === 'error') {
-			condition.status = In(['error', 'crashed', 'failed']);
+			condition.status = In(['error', 'crashed']);
 		}
 
 		return condition;

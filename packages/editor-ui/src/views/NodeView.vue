@@ -55,14 +55,14 @@
 						:workflow="currentWorkflowObject"
 						:disable-pointer-events="!canOpenNDV"
 						:hide-node-issues="hideNodeIssues"
-						@deselectAllNodes="deselectAllNodes"
-						@deselectNode="nodeDeselectedByName"
-						@nodeSelected="nodeSelectedByName"
-						@runWorkflow="onRunNode"
+						@deselect-all-nodes="deselectAllNodes"
+						@deselect-node="nodeDeselectedByName"
+						@node-selected="nodeSelectedByName"
+						@run-workflow="onRunNode"
 						@moved="onNodeMoved"
 						@run="onNodeRun"
-						@removeNode="(name) => removeNode(name, true)"
-						@toggleDisableNode="(node) => toggleActivationNodes([node])"
+						@remove-node="(name) => removeNode(name, true)"
+						@toggle-disable-node="(node) => toggleActivationNodes([node])"
 					>
 						<template #custom-tooltip>
 							<span
@@ -81,10 +81,10 @@
 						:node-view-scale="nodeViewScale"
 						:grid-size="GRID_SIZE"
 						:hide-actions="pullConnActive"
-						@deselectAllNodes="deselectAllNodes"
-						@deselectNode="nodeDeselectedByName"
-						@nodeSelected="nodeSelectedByName"
-						@removeNode="(name) => removeNode(name, true)"
+						@deselect-all-nodes="deselectAllNodes"
+						@deselect-node="nodeDeselectedByName"
+						@node-selected="nodeSelectedByName"
+						@remove-node="(name) => removeNode(name, true)"
 					/>
 				</div>
 			</div>
@@ -92,12 +92,12 @@
 				:read-only="isReadOnlyRoute || readOnlyEnv"
 				:renaming="renamingActive"
 				:is-production-execution-preview="isProductionExecutionPreview"
-				@redrawNode="redrawNode"
-				@switchSelectedNode="onSwitchSelectedNode"
-				@openConnectionNodeCreator="onOpenConnectionNodeCreator"
-				@valueChanged="valueChanged"
-				@stopExecution="stopExecution"
-				@saveKeyboardShortcut="onSaveKeyboardShortcut"
+				@redraw-node="redrawNode"
+				@switch-selected-node="onSwitchSelectedNode"
+				@open-connection-node-creator="onOpenConnectionNodeCreator"
+				@value-changed="valueChanged"
+				@stop-execution="stopExecution"
+				@save-keyboard-shortcut="onSaveKeyboardShortcut"
 			/>
 			<Suspense>
 				<div :class="$style.setupCredentialsButtonWrapper">
@@ -109,8 +109,8 @@
 					v-if="!isReadOnlyRoute && !readOnlyEnv"
 					:create-node-active="createNodeActive"
 					:node-view-scale="nodeViewScale"
-					@toggleNodeCreator="onToggleNodeCreator"
-					@addNodes="onAddNodes"
+					@toggle-node-creator="onToggleNodeCreator"
+					@add-nodes="onAddNodes"
 				/>
 			</Suspense>
 			<Suspense>
@@ -279,7 +279,6 @@ import type {
 	INodeTypeDescription,
 	INodeTypeNameVersion,
 	IPinData,
-	IRun,
 	ITaskData,
 	ITelemetryTrackProperties,
 	IWorkflowBase,
@@ -303,7 +302,6 @@ import type {
 	IUpdateInformation,
 	IWorkflowDataUpdate,
 	XYPosition,
-	IPushDataExecutionFinished,
 	ITag,
 	INewWorkflowData,
 	IWorkflowTemplate,
@@ -493,7 +491,7 @@ export default defineComponent({
 		const { callDebounced } = useDebounce();
 		const canvasPanning = useCanvasPanning(nodeViewRootRef, { onMouseMoveEnd });
 		const workflowHelpers = useWorkflowHelpers({ router });
-		const { runWorkflow } = useRunWorkflow({ router });
+		const { runWorkflow, stopCurrentExecution } = useRunWorkflow({ router });
 
 		return {
 			locale,
@@ -510,6 +508,7 @@ export default defineComponent({
 			onMouseMoveEnd,
 			workflowHelpers,
 			runWorkflow,
+			stopCurrentExecution,
 			callDebounced,
 			...useCanvasMouseSelect(),
 			...useGlobalLinkActions(),
@@ -730,6 +729,12 @@ export default defineComponent({
 			return this.containsChatNodes && this.triggerNodes.length === 1;
 		},
 		isExecutionDisabled(): boolean {
+			if (
+				this.containsChatNodes &&
+				this.triggerNodes.every((node) => node.disabled || node.type === CHAT_TRIGGER_NODE_TYPE)
+			) {
+				return true;
+			}
 			return !this.containsTrigger || this.allTriggersDisabled;
 		},
 		getNodeViewOffsetPosition(): XYPosition {
@@ -815,7 +820,7 @@ export default defineComponent({
 						this.loadCredentialTypes(),
 						this.loadVariables(),
 						this.loadSecrets(),
-				  ];
+					];
 
 		if (this.nodeTypesStore.allNodeTypes.length === 0) {
 			loadPromises.push(this.loadNodeTypes());
@@ -1043,7 +1048,7 @@ export default defineComponent({
 						this.readOnlyEnv
 							? `readOnlyEnv.showMessage.${
 									this.isReadOnlyRoute ? 'executions' : 'workflows'
-							  }.message`
+								}.message`
 							: 'readOnly.showMessage.executions.message',
 					),
 					type: 'info',
@@ -1063,7 +1068,7 @@ export default defineComponent({
 				node_type: node ? node.type : null,
 				workflow_id: this.workflowsStore.workflowId,
 				source: 'canvas',
-				session_id: this.ndvStore.sessionId,
+				push_ref: this.ndvStore.pushRef,
 			};
 			this.$telemetry.track('User clicked execute node button', telemetryPayload);
 			void this.externalHooks.run('nodeView.onRunNode', telemetryPayload);
@@ -1986,7 +1991,6 @@ export default defineComponent({
 				}
 			}
 			this.stopExecutionInProgress = false;
-
 			void this.workflowHelpers.getWorkflowDataToSave().then((workflowData) => {
 				const trackProps = {
 					workflow_id: this.workflowsStore.workflowId,
@@ -2570,7 +2574,7 @@ export default defineComponent({
 					this.nodeTypesStore.isTriggerNode(nodeTypeName) && !this.containsTrigger
 						? this.canvasStore.canvasAddButtonPosition
 						: // If no node is active find a free spot
-						  (this.lastClickPosition as XYPosition);
+							(this.lastClickPosition as XYPosition);
 
 				newNodeData.position = NodeViewUtils.getNewNodePosition(this.nodes, position);
 			}
@@ -5224,3 +5228,4 @@ export default defineComponent({
 	);
 }
 </style>
+, IRun, IPushDataExecutionFinished

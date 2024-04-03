@@ -3,7 +3,7 @@ import { useDeviceSupport } from '@/composables/useDeviceSupport';
 describe('useDeviceSupport()', () => {
 	beforeEach(() => {
 		global.window = Object.create(window);
-		global.navigator = { userAgent: 'test-agent', maxTouchPoints: 0 };
+		global.navigator = { userAgent: 'test-agent', maxTouchPoints: 0 } as Navigator;
 	});
 
 	describe('isTouchDevice', () => {
@@ -68,13 +68,6 @@ describe('useDeviceSupport()', () => {
 			const { isCtrlKeyPressed } = useDeviceSupport();
 			const event = new KeyboardEvent('keydown', { ctrlKey: true });
 			expect(isCtrlKeyPressed(event)).toEqual(true);
-		});
-
-		it('should return true for touch device on MouseEvent', () => {
-			Object.defineProperty(window, 'ontouchstart', { value: {} });
-			const { isCtrlKeyPressed } = useDeviceSupport();
-			const mockEvent = new MouseEvent('click');
-			expect(isCtrlKeyPressed(mockEvent)).toEqual(true);
 		});
 	});
 });

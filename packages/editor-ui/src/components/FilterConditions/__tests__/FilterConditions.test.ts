@@ -43,14 +43,7 @@ describe('FilterConditions.vue', () => {
 		expect(getByTestId('filter-conditions')).toBeInTheDocument();
 		expect(await findAllByTestId('filter-condition')).toHaveLength(1);
 		expect(getByTestId('filter-condition-left')).toBeInTheDocument();
-		expect(
-			within(getByTestId('filter-condition-left')).getByTestId('inline-expression-editor-input'),
-		).toBeInTheDocument();
 		expect(getByTestId('filter-operator-select')).toBeInTheDocument();
-		expect(getByTestId('filter-condition-right')).toBeInTheDocument();
-		expect(
-			within(getByTestId('filter-condition-right')).getByTestId('inline-expression-editor-input'),
-		).toBeInTheDocument();
 
 		// Only visible when multiple conditions
 		expect(queryByTestId('filter-combinator-select')).not.toBeInTheDocument();

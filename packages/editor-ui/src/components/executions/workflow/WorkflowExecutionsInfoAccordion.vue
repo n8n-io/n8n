@@ -6,7 +6,7 @@
 		:initially-expanded="shouldExpandAccordion"
 		:header-icon="accordionIcon"
 		@click:body="onAccordionClick"
-		@tooltipClick="onItemTooltipClick"
+		@tooltip-click="onItemTooltipClick"
 	>
 		<template #customContent>
 			<footer class="mt-2xs">
@@ -110,7 +110,7 @@ export default defineComponent({
 						this.productionExecutionsStatus === 'unknown'
 							? this.$locale.baseText(
 									'executionsLandingPage.emptyState.accordion.productionExecutionsWarningTooltip',
-							  )
+								)
 							: null,
 				},
 				{

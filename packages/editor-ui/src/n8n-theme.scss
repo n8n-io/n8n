@@ -173,6 +173,9 @@
 	--node-error-output-color: #991818;
 
 	--chat--spacing: var(--spacing-s);
+
+	// Using native css variable enables us to use this value in JS
+	--header-height: 65;
 }
 
 .clickable {

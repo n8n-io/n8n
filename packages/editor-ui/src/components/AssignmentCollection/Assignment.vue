@@ -58,7 +58,7 @@ const assignmentTypeToNodeProperty = (
 
 const nameParameter = computed<INodeProperties>(() => ({
 	name: 'name',
-	displayName: '',
+	displayName: 'Name',
 	default: '',
 	requiresDataPath: 'single',
 	placeholder: 'name',
@@ -68,7 +68,7 @@ const nameParameter = computed<INodeProperties>(() => ({
 const valueParameter = computed<INodeProperties>(() => {
 	return {
 		name: 'value',
-		displayName: '',
+		displayName: 'Value',
 		default: '',
 		placeholder: 'value',
 		...assignmentTypeToNodeProperty(assignment.value.type ?? 'string'),
@@ -169,7 +169,6 @@ const onBlur = (): void => {
 						display-options
 						hide-label
 						hide-hint
-						:rows="3"
 						:is-read-only="isReadOnly"
 						:parameter="nameParameter"
 						:value="assignment.name"
@@ -196,7 +195,6 @@ const onBlur = (): void => {
 							hide-label
 							hide-issues
 							hide-hint
-							:rows="3"
 							is-assignment
 							:is-read-only="isReadOnly"
 							:options-position="breakpoint === 'default' ? 'top' : 'bottom'"

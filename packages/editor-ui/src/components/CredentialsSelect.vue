@@ -12,7 +12,7 @@
 				:title="displayTitle"
 				:disabled="isReadOnly"
 				data-test-id="credential-select"
-				@update:modelValue="(value) => $emit('update:modelValue', value)"
+				@update:model-value="(value) => $emit('update:modelValue', value)"
 				@keydown.stop
 				@focus="$emit('setFocus')"
 				@blur="$emit('onBlur')"
@@ -48,7 +48,7 @@
 			<NodeCredentials
 				:node="node"
 				:override-cred-type="node.parameters[parameter.name]"
-				@credentialSelected="(updateInformation) => $emit('credentialSelected', updateInformation)"
+				@credential-selected="(updateInformation) => $emit('credentialSelected', updateInformation)"
 			/>
 		</div>
 	</div>

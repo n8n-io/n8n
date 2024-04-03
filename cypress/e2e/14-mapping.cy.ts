@@ -253,9 +253,9 @@ describe('Data mapping', () => {
 		workflowPage.actions.openNode('Set');
 
 		ndv.actions.typeIntoParameterInput('value', 'delete me');
-		ndv.actions.dismissMappingTooltip();
 
 		ndv.actions.typeIntoParameterInput('name', 'test');
+		ndv.getters.parameterInput('name').find('input').blur();
 
 		ndv.actions.typeIntoParameterInput('value', 'fun');
 		ndv.actions.clearParameterInput('value'); // keep focus on param

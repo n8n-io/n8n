@@ -57,10 +57,10 @@
 				:is-saml-login-enabled="ssoStore.isSamlLoginEnabled"
 				@delete="onDelete"
 				@reinvite="onReinvite"
-				@copyInviteLink="onCopyInviteLink"
-				@copyPasswordResetLink="onCopyPasswordResetLink"
-				@allowSSOManualLogin="onAllowSSOManualLogin"
-				@disallowSSOManualLogin="onDisallowSSOManualLogin"
+				@copy-invite-link="onCopyInviteLink"
+				@copy-password-reset-link="onCopyPasswordResetLink"
+				@allow-s-s-o-manual-login="onAllowSSOManualLogin"
+				@disallow-s-s-o-manual-login="onDisallowSSOManualLogin"
 			>
 				<template #actions="{ user }">
 					<n8n-select
@@ -68,7 +68,7 @@
 						:model-value="user?.role || 'global:member'"
 						:disabled="!canUpdateRole"
 						data-test-id="user-role-select"
-						@update:modelValue="onRoleChange(user, $event)"
+						@update:model-value="onRoleChange(user, $event)"
 					>
 						<n8n-option
 							v-for="role in userRoles"
@@ -87,7 +87,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import { EnterpriseEditionFeature, INVITE_USER_MODAL_KEY, VIEWS } from '@/constants';
+import { EnterpriseEditionFeature, INVITE_USER_MODAL_KEY, VIEWS, ROLE } from '@/constants';
 
 import type { IUser, IUserListAction, InvitableRoleName } from '@/Interface';
 import { useToast } from '@/composables/useToast';
@@ -97,7 +97,6 @@ import { useUsersStore } from '@/stores/users.store';
 import { useUsageStore } from '@/stores/usage.store';
 import { useSSOStore } from '@/stores/sso.store';
 import { hasPermission } from '@/rbac/permissions';
-import { ROLE } from '@/utils/userUtils';
 import { useClipboard } from '@/composables/useClipboard';
 import type { UpdateGlobalRolePayload } from '@/api/users';
 

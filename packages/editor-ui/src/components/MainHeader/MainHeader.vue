@@ -18,7 +18,6 @@
 import { defineComponent } from 'vue';
 import type { Route, RouteLocationRaw } from 'vue-router';
 import { mapStores } from 'pinia';
-import type { ExecutionSummary } from 'n8n-workflow';
 import { pushConnection } from '@/mixins/pushConnection';
 import WorkflowDetails from '@/components/MainHeader/WorkflowDetails.vue';
 import TabBar from '@/components/MainHeader/TabBar.vue';
@@ -174,11 +173,11 @@ export default defineComponent({
 				? {
 						name: VIEWS.EXECUTION_PREVIEW,
 						params: { name: routeWorkflowId, executionId: executionToReturnTo },
-				  }
+					}
 				: {
 						name: VIEWS.EXECUTION_HOME,
 						params: { name: routeWorkflowId },
-				  };
+					};
 
 			if (openInNewTab) {
 				const { href } = this.$router.resolve(routeToNavigateTo);
