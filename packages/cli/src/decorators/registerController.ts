@@ -26,7 +26,7 @@ import type {
 	RouteMetadata,
 	ScopeMetadata,
 } from './types';
-import { inTest } from '@/constants';
+import { inE2ETests, inTest } from '@/constants';
 
 const throttle = expressRateLimit({
 	windowMs: 5 * 60 * 1000, // 5 minutes
@@ -117,7 +117,7 @@ export const registerController = (app: Application, controllerClass: Class<obje
 					await controller[handlerName](req, res);
 				router[method](
 					path,
-					...(!inTest && rateLimit ? [throttle] : []),
+					...(!inTest && !inE2ETests && rateLimit ? [throttle] : []),
 					// eslint-disable-next-line @typescript-eslint/unbound-method
 					...(skipAuth ? [] : [authService.authMiddleware]),
 					...(features ? [createLicenseMiddleware(features)] : []),
