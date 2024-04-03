@@ -687,7 +687,8 @@ export type IPersonalizationLatestVersion = IPersonalizationSurveyAnswersV4;
 export type IPersonalizationSurveyVersions =
 	| IPersonalizationSurveyAnswersV1
 	| IPersonalizationSurveyAnswersV2
-	| IPersonalizationSurveyAnswersV3;
+	| IPersonalizationSurveyAnswersV3
+	| IPersonalizationSurveyAnswersV4;
 
 export type Roles = typeof ROLE;
 export type IRole = Roles[keyof Roles];
