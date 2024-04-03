@@ -33,8 +33,8 @@
 						:loading="loading"
 						:use-workflow-button="true"
 						:workflows="loading ? [] : collectionWorkflows"
-						@useWorkflow="onUseWorkflow"
-						@openTemplate="onOpenTemplate"
+						@use-workflow="onUseWorkflow"
+						@open-template="onOpenTemplate"
 					/>
 				</div>
 				<div :class="$style.details">

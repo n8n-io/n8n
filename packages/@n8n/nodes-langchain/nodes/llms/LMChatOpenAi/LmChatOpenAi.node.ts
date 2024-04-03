@@ -7,8 +7,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import type { ClientOptions } from 'openai';
-import { ChatOpenAI } from 'langchain/chat_models/openai';
+import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
@@ -251,7 +250,7 @@ export class LmChatOpenAi implements INodeType {
 			modelKwargs: options.responseFormat
 				? {
 						response_format: { type: options.responseFormat },
-				  }
+					}
 				: undefined,
 		});
 

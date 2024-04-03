@@ -1,7 +1,9 @@
 /**
  * @jest-environment jsdom
  */
+import { DateTime } from 'luxon';
 import { evaluate } from './Helpers';
+import { ExpressionExtensionError } from '../../src/errors';
 
 describe('Data Transformation Functions', () => {
 	describe('String Data Transformation Functions', () => {
@@ -243,6 +245,55 @@ describe('Data Transformation Functions', () => {
 			expect(evaluate('={{ "test@example.com".isEmail() }}')).toEqual(true);
 			expect(evaluate('={{ "aaaaaaaa".isEmail() }}')).toEqual(false);
 			expect(evaluate('={{ "test @ n8n".isEmail() }}')).toEqual(false);
+		});
+
+		test('.toDateTime should work on a variety of formats', () => {
+			expect(evaluate('={{ "Wed, 21 Oct 2015 07:28:00 GMT".toDateTime() }}')).toBeInstanceOf(
+				DateTime,
+			);
+			expect(evaluate('={{ "2008-11-11".toDateTime() }}')).toBeInstanceOf(DateTime);
+			expect(evaluate('={{ "1-Feb-2024".toDateTime() }}')).toBeInstanceOf(DateTime);
+			expect(() => evaluate('={{ "hi".toDateTime() }}')).toThrowError(
+				new ExpressionExtensionError('cannot convert to Luxon DateTime'),
+			);
+		});
+
+		test('.extractUrlPath should work on a string', () => {
+			expect(
+				evaluate('={{ "https://example.com/orders/1/detail#hash?foo=bar".extractUrlPath() }}'),
+			).toEqual('/orders/1/detail');
+			expect(evaluate('={{ "hi".extractUrlPath() }}')).toBeUndefined();
+		});
+
+		test('.parseJson should work on a string', () => {
+			expect(evaluate('={{ \'{"test1":1,"test2":"2"}\'.parseJson() }}')).toEqual({
+				test1: 1,
+				test2: '2',
+			});
+		});
+
+		test('.parseJson should throw on invalid JSON', () => {
+			expect(() => evaluate("={{ \"{'test1':1,'test2':'2'}\".parseJson() }}")).toThrowError(
+				"Parsing failed. Check you're using double quotes",
+			);
+			expect(() => evaluate('={{ "No JSON here".parseJson() }}')).toThrowError('Parsing failed');
+		});
+
+		test('.toBoolean should work on a string', () => {
+			expect(evaluate('={{ "False".toBoolean() }}')).toBe(false);
+			expect(evaluate('={{ "".toBoolean() }}')).toBe(false);
+			expect(evaluate('={{ "0".toBoolean() }}')).toBe(false);
+			expect(evaluate('={{ "no".toBoolean() }}')).toBe(false);
+			expect(evaluate('={{ "TRUE".toBoolean() }}')).toBe(true);
+			expect(evaluate('={{ "hello".toBoolean() }}')).toBe(true);
+		});
+
+		test('.base64Encode should work on a string', () => {
+			expect(evaluate('={{ "n8n test".base64Encode() }}')).toBe('bjhuIHRlc3Q=');
+		});
+
+		test('.base64Decode should work on a string', () => {
+			expect(evaluate('={{ "bjhuIHRlc3Q=".base64Decode() }}')).toBe('n8n test');
 		});
 	});
 });

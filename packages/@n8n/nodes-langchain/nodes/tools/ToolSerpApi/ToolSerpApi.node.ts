@@ -6,7 +6,7 @@ import {
 	type INodeTypeDescription,
 	type SupplyData,
 } from 'n8n-workflow';
-import { SerpAPI } from 'langchain/tools';
+import { SerpAPI } from '@langchain/community/tools/serpapi';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 

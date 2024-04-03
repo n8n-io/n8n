@@ -22,7 +22,7 @@
 						<VariableSelector
 							:path="path"
 							:redact-values="redactValues"
-							@itemSelected="itemSelected"
+							@item-selected="itemSelected"
 						></VariableSelector>
 					</div>
 				</el-col>

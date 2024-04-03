@@ -6,7 +6,7 @@ import {
 	type INodeTypeDescription,
 	type SupplyData,
 } from 'n8n-workflow';
-import { GooglePaLM } from 'langchain/llms/googlepalm';
+import { GooglePaLM } from '@langchain/community/llms/googlepalm';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 

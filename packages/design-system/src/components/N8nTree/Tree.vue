@@ -17,7 +17,7 @@
 					:value="value[label]"
 					:node-class="nodeClass"
 				>
-					<template v-for="(index, name) in $slots" #[name]="data">
+					<template v-for="(_, name) in $slots" #[name]="data">
 						<slot :name="name" v-bind="data"></slot>
 					</template>
 				</n8n-tree>
@@ -26,60 +26,51 @@
 	</div>
 </template>
 
-<script lang="ts">
-import type { PropType } from 'vue';
-import { defineComponent } from 'vue';
+<script lang="ts" setup>
+import { computed, useCssModule } from 'vue';
 
-export default defineComponent({
-	name: 'N8nTree',
-	components: {},
-	props: {
-		value: {
-			type: Object as PropType<Record<string, unknown>>,
-			default: () => ({}),
-		},
-		path: {
-			type: Array as PropType<string[]>,
-			default: () => [],
-		},
-		depth: {
-			type: Number,
-			default: 0,
-		},
-		nodeClass: {
-			type: String,
-			default: '',
-		},
-	},
-	computed: {
-		classes(): Record<string, boolean> {
-			return { [this.nodeClass]: !!this.nodeClass, [this.$style.indent]: this.depth > 0 };
-		},
-	},
-	methods: {
-		isSimple(data: unknown): boolean {
-			if (data === null || data === undefined) {
-				return true;
-			}
+interface TreeProps {
+	value?: Record<string, unknown>;
+	path?: string[];
+	depth?: number;
+	nodeClass?: string;
+}
 
-			if (typeof data === 'object' && Object.keys(data).length === 0) {
-				return true;
-			}
-
-			if (Array.isArray(data) && data.length === 0) {
-				return true;
-			}
-
-			return typeof data !== 'object';
-		},
-		getPath(key: string): unknown[] {
-			if (Array.isArray(this.value)) {
-				return [...this.path, parseInt(key, 10)];
-			}
-			return [...this.path, key];
-		},
-	},
+defineOptions({ name: 'N8nTree' });
+const props = withDefaults(defineProps<TreeProps>(), {
+	value: () => ({}),
+	path: () => [],
+	depth: 0,
+	nodeClass: '',
 });
+
+const $style = useCssModule();
+const classes = computed((): Record<string, boolean> => {
+	return { [props.nodeClass]: !!props.nodeClass, [$style.indent]: props.depth > 0 };
+});
+
+const isSimple = (data: unknown): boolean => {
+	if (data === null || data === undefined) {
+		return true;
+	}
+
+	if (typeof data === 'object' && Object.keys(data).length === 0) {
+		return true;
+	}
+
+	if (Array.isArray(data) && data.length === 0) {
+		return true;
+	}
+
+	return typeof data !== 'object';
+};
+
+const getPath = (key: string): unknown[] => {
+	if (Array.isArray(props.value)) {
+		return [...props.path, parseInt(key, 10)];
+	}
+	return [...props.path, key];
+};
 </script>
 
 <style lang="scss" module>

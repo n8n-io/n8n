@@ -10,6 +10,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import set from 'lodash/set';
 import { capitalize } from '@utils/utilities';
 
 const configuredOutputs = (parameters: INodeParameters) => {
@@ -349,8 +350,10 @@ export class SwitchV3 implements INodeType {
 						} catch (error) {
 							if (!options.looseTypeValidation) {
 								error.description =
-									"Try to change the operator, switch ON the option 'Less Strict Type Validation', or change the type with an expression";
+									"Try changing the type of comparison. Alternatively you can enable 'Less Strict Type Validation' in the options.";
 							}
+							set(error, 'context.itemIndex', itemIndex);
+							set(error, 'node', this.getNode());
 							throw error;
 						}
 

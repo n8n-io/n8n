@@ -10,6 +10,8 @@ import type {
 } from 'n8n-workflow';
 import { jsonParse, BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 import set from 'lodash/set';
+import jwt from 'jsonwebtoken';
+import { formatPrivateKey } from '../../utils/utilities';
 
 export class RespondToWebhook implements INodeType {
 	description: INodeTypeDescription = {
@@ -17,14 +19,24 @@ export class RespondToWebhook implements INodeType {
 		icon: 'file:webhook.svg',
 		name: 'respondToWebhook',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Returns data for Webhook',
 		defaults: {
 			name: 'Respond to Webhook',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
-		credentials: [],
+		credentials: [
+			{
+				name: 'jwtAuth',
+				required: true,
+				displayOptions: {
+					show: {
+						respondWith: ['jwt'],
+					},
+				},
+			},
+		],
 		properties: [
 			{
 				displayName:
@@ -59,6 +71,11 @@ export class RespondToWebhook implements INodeType {
 						description: 'Respond with a custom JSON body',
 					},
 					{
+						name: 'JWT Token',
+						value: 'jwt',
+						description: 'Respond with a JWT token',
+					},
+					{
 						name: 'No Data',
 						value: 'noData',
 						description: 'Respond with an empty body',
@@ -78,13 +95,24 @@ export class RespondToWebhook implements INodeType {
 				description: 'The data that should be returned',
 			},
 			{
+				displayName: 'Credentials',
+				name: 'credentials',
+				type: 'credentials',
+				default: '',
+				displayOptions: {
+					show: {
+						respondWith: ['jwt'],
+					},
+				},
+			},
+			{
 				displayName:
 					'When using expressions, note that this node will only run for the first item in the input data',
 				name: 'webhookNotice',
 				type: 'notice',
 				displayOptions: {
 					show: {
-						respondWith: ['json', 'text'],
+						respondWith: ['json', 'text', 'jwt'],
 					},
 				},
 				default: '',
@@ -118,6 +146,22 @@ export class RespondToWebhook implements INodeType {
 					rows: 4,
 				},
 				description: 'The HTTP response JSON data',
+			},
+			{
+				displayName: 'Payload',
+				name: 'payload',
+				type: 'json',
+				displayOptions: {
+					show: {
+						respondWith: ['jwt'],
+					},
+				},
+				default: '{\n  "myField": "value"\n}',
+				typeOptions: {
+					rows: 4,
+				},
+				validateType: 'object',
+				description: 'The payload to include in the JWT token',
 			},
 			{
 				displayName: 'Response Body',
@@ -243,6 +287,21 @@ export class RespondToWebhook implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const nodeVersion = this.getNode().typeVersion;
+
+		if (nodeVersion >= 1.1) {
+			const connectedNodes = this.getParentNodes(this.getNode().name);
+			if (!connectedNodes.some((node) => node.type === 'n8n-nodes-base.webhook')) {
+				throw new NodeOperationError(
+					this.getNode(),
+					new Error('No Webhook node found in the workflow'),
+					{
+						description:
+							'Insert a Webhook node to your workflow and set the “Respond” parameter to “Using Respond to Webhook Node” ',
+					},
+				);
+			}
+		}
 		const items = this.getInputData();
 
 		const respondWith = this.getNodeParameter('respondWith', 0) as string;
@@ -276,6 +335,32 @@ export class RespondToWebhook implements INodeType {
 						});
 					}
 				}
+			}
+		} else if (respondWith === 'jwt') {
+			try {
+				const { keyType, secret, algorithm, privateKey } = (await this.getCredentials(
+					'jwtAuth',
+				)) as {
+					keyType: 'passphrase' | 'pemKey';
+					privateKey: string;
+					secret: string;
+					algorithm: jwt.Algorithm;
+				};
+
+				let secretOrPrivateKey;
+
+				if (keyType === 'passphrase') {
+					secretOrPrivateKey = secret;
+				} else {
+					secretOrPrivateKey = formatPrivateKey(privateKey);
+				}
+				const payload = this.getNodeParameter('payload', 0, {}) as IDataObject;
+				const token = jwt.sign(payload, secretOrPrivateKey, { algorithm });
+				responseBody = { token };
+			} catch (error) {
+				throw new NodeOperationError(this.getNode(), error as Error, {
+					message: 'Error signing JWT token',
+				});
 			}
 		} else if (respondWith === 'allIncomingItems') {
 			const respondItems = items.map((item) => item.json);

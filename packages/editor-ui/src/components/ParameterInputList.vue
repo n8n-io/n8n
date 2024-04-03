@@ -18,14 +18,14 @@
 					:node-values="nodeValues"
 					:path="getPath(parameter.name)"
 					:is-read-only="isReadOnly"
-					@valueChanged="valueChanged"
+					@value-changed="valueChanged"
 				/>
 			</div>
 
 			<ImportParameter
 				v-else-if="parameter.type === 'curlImport'"
 				:is-read-only="isReadOnly"
-				@valueChanged="valueChanged"
+				@value-changed="valueChanged"
 			/>
 
 			<n8n-notice
@@ -74,7 +74,7 @@
 							:node-values="nodeValues"
 							:path="getPath(parameter.name)"
 							:is-read-only="isReadOnly"
-							@valueChanged="valueChanged"
+							@value-changed="valueChanged"
 						/>
 						<FixedCollectionParameter
 							v-else-if="parameter.type === 'fixedCollection'"
@@ -83,7 +83,7 @@
 							:node-values="nodeValues"
 							:path="getPath(parameter.name)"
 							:is-read-only="isReadOnly"
-							@valueChanged="valueChanged"
+							@value-changed="valueChanged"
 						/>
 					</template>
 					<template #fallback>
@@ -106,7 +106,7 @@
 				:dependent-parameters-values="getDependentParametersValues(parameter)"
 				input-size="small"
 				label-size="small"
-				@valueChanged="valueChanged"
+				@value-changed="valueChanged"
 			/>
 			<FilterConditions
 				v-else-if="parameter.type === 'filter'"
@@ -115,7 +115,7 @@
 				:path="getPath(parameter.name)"
 				:node="node"
 				:read-only="isReadOnly"
-				@valueChanged="valueChanged"
+				@value-changed="valueChanged"
 			/>
 			<AssignmentCollection
 				v-else-if="parameter.type === 'assignmentCollection'"
@@ -124,7 +124,7 @@
 				:path="getPath(parameter.name)"
 				:node="node"
 				:is-read-only="isReadOnly"
-				@valueChanged="valueChanged"
+				@value-changed="valueChanged"
 			/>
 			<div
 				v-else-if="displayNodeParameter(parameter) && credentialsParameterIndex !== index"

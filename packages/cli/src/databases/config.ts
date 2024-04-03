@@ -3,6 +3,7 @@ import { Container } from 'typedi';
 import type { TlsOptions } from 'tls';
 import type { DataSourceOptions, LoggerOptions } from '@n8n/typeorm';
 import type { SqliteConnectionOptions } from '@n8n/typeorm/driver/sqlite/SqliteConnectionOptions';
+import type { SqlitePooledConnectionOptions } from '@n8n/typeorm/driver/sqlite-pooled/SqlitePooledConnectionOptions';
 import type { PostgresConnectionOptions } from '@n8n/typeorm/driver/postgres/PostgresConnectionOptions';
 import type { MysqlConnectionOptions } from '@n8n/typeorm/driver/mysql/MysqlConnectionOptions';
 import { InstanceSettings } from 'n8n-core';
@@ -47,16 +48,26 @@ export const getOptionOverrides = (dbType: 'postgresdb' | 'mysqldb') => ({
 	password: config.getEnv(`database.${dbType}.password`),
 });
 
-const getSqliteConnectionOptions = (): SqliteConnectionOptions => ({
-	type: 'sqlite',
-	...getCommonOptions(),
-	database: path.resolve(
-		Container.get(InstanceSettings).n8nFolder,
-		config.getEnv('database.sqlite.database'),
-	),
-	enableWAL: config.getEnv('database.sqlite.enableWAL'),
-	migrations: sqliteMigrations,
-});
+const getSqliteConnectionOptions = (): SqliteConnectionOptions | SqlitePooledConnectionOptions => {
+	const poolSize = config.getEnv('database.sqlite.poolSize');
+	const commonOptions = {
+		...getCommonOptions(),
+		database: path.resolve(
+			Container.get(InstanceSettings).n8nFolder,
+			config.getEnv('database.sqlite.database'),
+		),
+		migrations: sqliteMigrations,
+	};
+	if (poolSize > 0) {
+		return { type: 'sqlite-pooled', poolSize, enableWAL: true, ...commonOptions };
+	} else {
+		return {
+			type: 'sqlite',
+			enableWAL: config.getEnv('database.sqlite.enableWAL'),
+			...commonOptions,
+		};
+	}
+};
 
 const getPostgresConnectionOptions = (): PostgresConnectionOptions => {
 	const sslCa = config.getEnv('database.postgresdb.ssl.ca');

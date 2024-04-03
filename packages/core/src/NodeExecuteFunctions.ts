@@ -31,7 +31,9 @@ import { access as fsAccess, writeFile as fsWriteFile } from 'fs/promises';
 import { IncomingMessage, type IncomingHttpHeaders } from 'http';
 import { Agent, type AgentOptions } from 'https';
 import get from 'lodash/get';
+import isEmpty from 'lodash/isEmpty';
 import pick from 'lodash/pick';
+import { DateTime } from 'luxon';
 import { extension, lookup } from 'mime-types';
 import type {
 	BinaryHelperFunctions,
@@ -90,6 +92,7 @@ import type {
 	NodeExecutionWithMetadata,
 	NodeHelperFunctions,
 	NodeParameterValueType,
+	NodeTypeAndVersion,
 	PaginationOptions,
 	RequestHelperFunctions,
 	Workflow,
@@ -808,7 +811,7 @@ export async function proxyRequestToAxios(
 					statusCode: response.status,
 					statusMessage: response.statusText,
 					request: response.request,
-			  }
+				}
 			: body;
 	} catch (error) {
 		const { config, response } = error;
@@ -962,9 +965,21 @@ function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequest
 	return axiosRequest;
 }
 
+const NoBodyHttpMethods = ['GET', 'HEAD', 'OPTIONS'];
+
+/** Remove empty request body on GET, HEAD, and OPTIONS requests */
+export const removeEmptyBody = (requestOptions: IHttpRequestOptions | IRequestOptions) => {
+	const method = requestOptions.method || 'GET';
+	if (NoBodyHttpMethods.includes(method) && isEmpty(requestOptions.body)) {
+		delete requestOptions.body;
+	}
+};
+
 async function httpRequest(
 	requestOptions: IHttpRequestOptions,
 ): Promise<IN8nHttpFullResponse | IN8nHttpResponse> {
+	removeEmptyBody(requestOptions);
+
 	let axiosRequest = convertN8nRequestToAxios(requestOptions);
 	if (
 		axiosRequest.data === undefined ||
@@ -972,6 +987,7 @@ async function httpRequest(
 	) {
 		delete axiosRequest.data;
 	}
+
 	let result: AxiosResponse<any>;
 	try {
 		result = await axios(axiosRequest);
@@ -1027,7 +1043,7 @@ export function assertBinaryData(
 	propertyName: string,
 	inputIndex: number,
 ): IBinaryData {
-	const binaryKeyData = inputData.main[inputIndex]![itemIndex]!.binary;
+	const binaryKeyData = inputData.main[inputIndex]![itemIndex].binary;
 	if (binaryKeyData === undefined) {
 		throw new NodeOperationError(
 			node,
@@ -1064,7 +1080,7 @@ export async function getBinaryDataBuffer(
 	propertyName: string,
 	inputIndex: number,
 ): Promise<Buffer> {
-	const binaryData = inputData.main[inputIndex]![itemIndex]!.binary![propertyName]!;
+	const binaryData = inputData.main[inputIndex]![itemIndex].binary![propertyName];
 	return await Container.get(BinaryDataService).getAsBuffer(binaryData);
 }
 
@@ -1276,6 +1292,8 @@ export async function requestOAuth2(
 	oAuth2Options?: IOAuth2Options,
 	isN8nRequest = false,
 ) {
+	removeEmptyBody(requestOptions);
+
 	const credentials = (await this.getCredentials(
 		credentialsType,
 	)) as unknown as OAuth2CredentialData;
@@ -1511,6 +1529,8 @@ export async function requestOAuth1(
 	requestOptions: IHttpRequestOptions | IRequestOptions,
 	isN8nRequest = false,
 ) {
+	removeEmptyBody(requestOptions);
+
 	const credentials = await this.getCredentials(credentialsType);
 
 	if (credentials === undefined) {
@@ -1584,9 +1604,12 @@ export async function httpRequestWithAuthentication(
 	additionalData: IWorkflowExecuteAdditionalData,
 	additionalCredentialOptions?: IAdditionalCredentialOptions,
 ) {
+	removeEmptyBody(requestOptions);
+
 	let credentialsDecrypted: ICredentialDataDecryptedObject | undefined;
 	try {
 		const parentTypes = additionalData.credentialsHelper.getParentTypes(credentialsType);
+
 		if (parentTypes.includes('oAuth1Api')) {
 			return await requestOAuth1.call(this, credentialsType, requestOptions, true);
 		}
@@ -1777,6 +1800,8 @@ export async function requestWithAuthentication(
 	additionalCredentialOptions?: IAdditionalCredentialOptions,
 	itemIndex?: number,
 ) {
+	removeEmptyBody(requestOptions);
+
 	let credentialsDecrypted: ICredentialDataDecryptedObject | undefined;
 
 	try {
@@ -1916,7 +1941,7 @@ export function getAdditionalKeys(
 						getAll(): Record<string, string> {
 							return getAllWorkflowExecutionMetadata(runExecutionData);
 						},
-				  }
+					}
 				: undefined,
 		},
 		$vars: additionalData.variables,
@@ -2073,7 +2098,7 @@ export async function getCredentials(
  * Clean up parameter data to make sure that only valid data gets returned
  * INFO: Currently only converts Luxon Dates as we know for sure it will not be breaking
  */
-function cleanupParameterData(inputData: NodeParameterValueType): void {
+export function cleanupParameterData(inputData: NodeParameterValueType): void {
 	if (typeof inputData !== 'object' || inputData === null) {
 		return;
 	}
@@ -2084,14 +2109,15 @@ function cleanupParameterData(inputData: NodeParameterValueType): void {
 	}
 
 	if (typeof inputData === 'object') {
-		Object.keys(inputData).forEach((key) => {
-			if (typeof inputData[key as keyof typeof inputData] === 'object') {
-				if (inputData[key as keyof typeof inputData]?.constructor.name === 'DateTime') {
+		type Key = keyof typeof inputData;
+		(Object.keys(inputData) as Key[]).forEach((key) => {
+			const value = inputData[key];
+			if (typeof value === 'object') {
+				if (DateTime.isDateTime(value)) {
 					// Is a special luxon date so convert to string
-					inputData[key as keyof typeof inputData] =
-						inputData[key as keyof typeof inputData]?.toString();
+					inputData[key] = value.toString();
 				} else {
-					cleanupParameterData(inputData[key as keyof typeof inputData]);
+					cleanupParameterData(value);
 				}
 			}
 		});
@@ -2505,7 +2531,6 @@ const addExecutionDataFunctions = async (
 	taskData = taskData!;
 
 	if (data instanceof Error) {
-		// TODO: Or "failed", what is the difference
 		taskData.executionStatus = 'error';
 		taskData.error = data;
 	} else {
@@ -2774,7 +2799,34 @@ const getCommonWorkflowFunctions = (
 		active: workflow.active,
 	}),
 	getWorkflowStaticData: (type) => workflow.getStaticData(type, node),
+	getChildNodes: (nodeName: string) => {
+		const output: NodeTypeAndVersion[] = [];
+		const nodes = workflow.getChildNodes(nodeName);
 
+		for (const nodeName of nodes) {
+			const node = workflow.nodes[nodeName];
+			output.push({
+				name: node.name,
+				type: node.type,
+				typeVersion: node.typeVersion,
+			});
+		}
+		return output;
+	},
+	getParentNodes: (nodeName: string) => {
+		const output: NodeTypeAndVersion[] = [];
+		const nodes = workflow.getParentNodes(nodeName);
+
+		for (const nodeName of nodes) {
+			const node = workflow.nodes[nodeName];
+			output.push({
+				name: node.name,
+				type: node.type,
+				typeVersion: node.typeVersion,
+			});
+		}
+		return output;
+	},
 	getRestApiUrl: () => additionalData.restApiUrl,
 	getInstanceBaseUrl: () => additionalData.instanceBaseUrl,
 	getInstanceId: () => Container.get(InstanceSettings).instanceId,
@@ -3180,7 +3232,7 @@ const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunctions =>
 				? new NodeOperationError(node, error, {
 						message: `The file "${String(filePath)}" could not be accessed.`,
 						level: 'warning',
-				  })
+					})
 				: error;
 		}
 		if (isFilePathBlocked(filePath as string)) {

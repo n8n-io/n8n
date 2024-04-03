@@ -8,8 +8,8 @@ import {
 	NodeConnectionType,
 } from 'n8n-workflow';
 import { BufferMemory } from 'langchain/memory';
-import type { RedisChatMessageHistoryInput } from 'langchain/stores/message/redis';
-import { RedisChatMessageHistory } from 'langchain/stores/message/redis';
+import type { RedisChatMessageHistoryInput } from '@langchain/redis';
+import { RedisChatMessageHistory } from '@langchain/redis';
 import type { RedisClientOptions } from 'redis';
 import { createClient } from 'redis';
 import { logWrapper } from '../../../utils/logWrapper';

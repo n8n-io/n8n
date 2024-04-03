@@ -227,15 +227,19 @@ export class RoutingNode {
 					continue;
 				}
 
+				if (error instanceof NodeApiError) {
+					set(error, 'context.itemIndex', i);
+					set(error, 'context.runIndex', runIndex);
+					throw error;
+				}
+
 				interface AxiosError extends NodeError {
 					isAxiosError: boolean;
 					description: string | undefined;
 					response?: { status: number };
 				}
 
-				let routingError = error as AxiosError;
-
-				if (error instanceof NodeApiError && error.cause) routingError = error.cause as AxiosError;
+				const routingError = error as AxiosError;
 
 				throw new NodeApiError(this.node, error as JsonObject, {
 					runIndex,
@@ -840,7 +844,7 @@ export class RoutingNode {
 
 						if (nodeProperties.routing.send.propertyInDotNotation === false) {
 							// eslint-disable-next-line @typescript-eslint/no-explicit-any
-							(returnData.options.body as Record<string, any>)![propertyName] = value;
+							(returnData.options.body as Record<string, any>)[propertyName] = value;
 						} else {
 							set(returnData.options.body as object, propertyName, value);
 						}

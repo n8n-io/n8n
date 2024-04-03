@@ -1,6 +1,6 @@
 import { v4 as uuid } from 'uuid';
 import { getVisibleSelect } from '../utils';
-import { MANUAL_TRIGGER_NODE_DISPLAY_NAME, AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME } from '../constants';
+import { MANUAL_TRIGGER_NODE_DISPLAY_NAME } from '../constants';
 import { NDV, WorkflowPage } from '../pages';
 import { NodeCreator } from '../pages/features/node-creator';
 
@@ -485,13 +485,13 @@ describe('NDV', () => {
 			const connectionGroups = [
 				{
 					title: 'Language Models',
-					id: 'ai_languageModel'
+					id: 'ai_languageModel',
 				},
 				{
 					title: 'Tools',
-					id: 'ai_tool'
+					id: 'ai_tool',
 				},
-			]
+			];
 
 			workflowPage.actions.addInitialNodeToCanvas('AI Agent', { keepNdvOpen: true });
 
@@ -513,13 +513,16 @@ describe('NDV', () => {
 					cy.getByTestId(`add-subnode-${group.id}`).click();
 					nodeCreator.getters.getNthCreatorItem(1).click();
 					getFloatingNodeByPosition('outputSub').click({ force: true });
-					cy.getByTestId('subnode-connection-group-ai_tool').findChildByTestId('floating-subnode').should('have.length', 2);
+					cy.getByTestId('subnode-connection-group-ai_tool')
+						.findChildByTestId('floating-subnode')
+						.should('have.length', 2);
 				}
 			});
 
 			// Since language model has no credentials set, it should show an error
-			cy.get('[class*=hasIssues]').should('have.length', 1);
-		})
+			// Sinse code tool require alphanumeric tool name it would also show an error(2 errors, 1 for each tool node)
+			cy.get('[class*=hasIssues]').should('have.length', 3);
+		});
 	});
 
 	it('should show node name and version in settings', () => {
@@ -631,5 +634,28 @@ describe('NDV', () => {
 		ndv.actions.setRLCValue('documentId', TEST_DOC_ID);
 		ndv.actions.changeNodeOperation('Update Row');
 		ndv.getters.resourceLocatorInput('documentId').find('input').should('have.value', TEST_DOC_ID);
+	});
+
+	it('Should open appropriate node creator after clicking on connection hint link', () => {
+		const nodeCreator = new NodeCreator();
+		const hintMapper = {
+			Memory: 'AI Nodes',
+			'Output Parser': 'AI Nodes',
+			'Token Splitter': 'Document Loaders',
+			Tool: 'AI Nodes',
+			Embeddings: 'Vector Stores',
+			'Vector Store': 'Retrievers',
+		};
+		cy.createFixtureWorkflow(
+			'open_node_creator_for_connection.json',
+			`open_node_creator_for_connection ${uuid()}`,
+		);
+
+		Object.entries(hintMapper).forEach(([node, group]) => {
+			workflowPage.actions.openNode(node);
+			cy.get('[data-action=openSelectiveNodeCreator]').contains('Insert one').click();
+			nodeCreator.getters.activeSubcategory().should('contain', group);
+			cy.realPress('Escape');
+		});
 	});
 });

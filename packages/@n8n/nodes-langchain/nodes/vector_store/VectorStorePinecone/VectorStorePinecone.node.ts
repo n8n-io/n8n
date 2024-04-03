@@ -1,6 +1,6 @@
 import { NodeOperationError, type INodeProperties } from 'n8n-workflow';
-import type { PineconeLibArgs } from 'langchain/vectorstores/pinecone';
-import { PineconeStore } from 'langchain/vectorstores/pinecone';
+import type { PineconeStoreParams } from '@langchain/pinecone';
+import { PineconeStore } from '@langchain/pinecone';
 import { Pinecone } from '@pinecone-database/pinecone';
 import { createVectorStoreNode } from '../shared/createVectorStoreNode';
 import { metadataFilterField } from '../../../utils/sharedFields';
@@ -87,11 +87,10 @@ export const VectorStorePinecone = createVectorStoreNode({
 
 		const client = new Pinecone({
 			apiKey: credentials.apiKey as string,
-			environment: credentials.environment as string,
 		});
 
 		const pineconeIndex = client.Index(index);
-		const config: PineconeLibArgs = {
+		const config: PineconeStoreParams = {
 			namespace: options.pineconeNamespace ?? undefined,
 			pineconeIndex,
 			filter,
@@ -111,10 +110,9 @@ export const VectorStorePinecone = createVectorStoreNode({
 
 		const client = new Pinecone({
 			apiKey: credentials.apiKey as string,
-			environment: credentials.environment as string,
 		});
 
-		const indexes = (await client.listIndexes()).map((i) => i.name);
+		const indexes = ((await client.listIndexes()).indexes ?? []).map((i) => i.name);
 
 		if (!indexes.includes(index)) {
 			throw new NodeOperationError(context.getNode(), `Index ${index} not found`, {
@@ -126,7 +124,13 @@ export const VectorStorePinecone = createVectorStoreNode({
 		const pineconeIndex = client.Index(index);
 
 		if (options.pineconeNamespace && options.clearNamespace) {
-			await pineconeIndex.namespace(options.pineconeNamespace).deleteAll();
+			const namespace = pineconeIndex.namespace(options.pineconeNamespace);
+			try {
+				await namespace.deleteAll();
+			} catch (error) {
+				// Namespace doesn't exist yet
+				context.logger.info(`Namespace ${options.pineconeNamespace} does not exist yet`);
+			}
 		}
 
 		await PineconeStore.fromDocuments(documents, embeddings, {

@@ -7,7 +7,11 @@ import type {
 	XYPosition,
 } from '@/Interface';
 import { useStorage } from '@/composables/useStorage';
-import { LOCAL_STORAGE_MAPPING_IS_ONBOARDED, STORES } from '@/constants';
+import {
+	LOCAL_STORAGE_AUTOCOMPLETE_IS_ONBOARDED,
+	LOCAL_STORAGE_MAPPING_IS_ONBOARDED,
+	STORES,
+} from '@/constants';
 import type { INodeExecutionData, INodeIssues } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 import { defineStore } from 'pinia';
@@ -40,6 +44,7 @@ export const useNDVStore = defineStore(STORES.NDV, {
 			},
 		},
 		focusedMappableInput: '',
+		focusedInputPath: '',
 		mappingTelemetry: {},
 		hoveringItem: null,
 		draggable: {
@@ -50,6 +55,8 @@ export const useNDVStore = defineStore(STORES.NDV, {
 			activeTarget: null,
 		},
 		isMappingOnboarded: useStorage(LOCAL_STORAGE_MAPPING_IS_ONBOARDED).value === 'true',
+		isAutocompleteOnboarded: useStorage(LOCAL_STORAGE_AUTOCOMPLETE_IS_ONBOARDED).value === 'true',
+		highlightDraggables: false,
 	}),
 	getters: {
 		activeNode(): INodeUi | null {
@@ -77,7 +84,9 @@ export const useNDVStore = defineStore(STORES.NDV, {
 		},
 		hasInputData(): boolean {
 			const data = this.ndvInputData;
-			return data && data.length > 0;
+			const pinData =
+				this.ndvInputNodeName && useWorkflowsStore().pinDataByNodeName(this.ndvInputNodeName);
+			return !!(data && data.length > 0) || !!(pinData && pinData.length > 0);
 		},
 		getPanelDisplayMode() {
 			return (panel: NodePanelType) => this[panel].displayMode;
@@ -121,7 +130,7 @@ export const useNDVStore = defineStore(STORES.NDV, {
 		ndvInputBranchIndex(): number | undefined {
 			return this.input.branch;
 		},
-		isDNVDataEmpty() {
+		isNDVDataEmpty() {
 			return (panel: 'input' | 'output'): boolean => this[panel].data.isEmpty;
 		},
 		isInputParentOfActiveNode(): boolean {
@@ -236,11 +245,16 @@ export const useNDVStore = defineStore(STORES.NDV, {
 		setNDVPanelDataIsEmpty(payload: { panel: 'input' | 'output'; isEmpty: boolean }): void {
 			this[payload.panel].data.isEmpty = payload.isEmpty;
 		},
-		disableMappingHint(store = true) {
+		setMappingOnboarded() {
 			this.isMappingOnboarded = true;
-			if (store) {
-				useStorage(LOCAL_STORAGE_MAPPING_IS_ONBOARDED).value = 'true';
-			}
+			useStorage(LOCAL_STORAGE_MAPPING_IS_ONBOARDED).value = 'true';
+		},
+		setAutocompleteOnboarded() {
+			this.isAutocompleteOnboarded = true;
+			useStorage(LOCAL_STORAGE_AUTOCOMPLETE_IS_ONBOARDED).value = 'true';
+		},
+		setHighlightDraggables(highlight: boolean) {
+			this.highlightDraggables = highlight;
 		},
 		updateNodeParameterIssues(issues: INodeIssues): void {
 			const workflowsStore = useWorkflowsStore();
@@ -258,6 +272,9 @@ export const useNDVStore = defineStore(STORES.NDV, {
 					},
 				});
 			}
+		},
+		setFocusedInputPath(path: string) {
+			this.focusedInputPath = path;
 		},
 	},
 });
