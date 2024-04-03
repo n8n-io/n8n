@@ -163,6 +163,20 @@ export const useActions = () => {
 		};
 	}
 
+	/**
+	 * Checks if added nodes contain trigger followed by another node
+	 * In this case, we should connect the trigger with the following node
+	 */
+	function shouldConnectWithExistingTrigger(addedNodes: AddedNode[]): boolean {
+		const { selectedView } = useNodeCreatorStore();
+		if (selectedView === TRIGGER_NODE_CREATOR_VIEW && addedNodes.length === 2) {
+			const isTriggerNode = useNodeTypesStore().isTriggerNode(addedNodes[0].type);
+			console.log('isTriggerNode', isTriggerNode, addedNodes[0].type);
+			return isTriggerNode;
+		}
+		return false;
+	}
+
 	function shouldPrependManualTrigger(addedNodes: AddedNode[]): boolean {
 		const { selectedView, openSource } = useNodeCreatorStore();
 		const { workflowTriggerNodes } = useWorkflowsStore();
@@ -224,6 +238,11 @@ export const useActions = () => {
 			});
 		} else if (shouldPrependManualTrigger(addedNodes)) {
 			addedNodes.unshift({ type: MANUAL_TRIGGER_NODE_TYPE, isAutoAdd: true });
+			connections.push({
+				from: { nodeIndex: 0 },
+				to: { nodeIndex: 1 },
+			});
+		} else if (shouldConnectWithExistingTrigger(addedNodes)) {
 			connections.push({
 				from: { nodeIndex: 0 },
 				to: { nodeIndex: 1 },
