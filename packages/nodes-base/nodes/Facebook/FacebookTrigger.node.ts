@@ -64,16 +64,13 @@ export class FacebookTrigger implements INodeType {
 				description: 'Facebook APP ID',
 			},
 			{
-				displayName:
-					'To watch Whatsapp business account events use the Whatsapp trigger node',
+				displayName: 'To watch Whatsapp business account events use the Whatsapp trigger node',
 				name: 'whatsappBusinessAccountNotice',
 				type: 'notice',
 				default: '',
-				displayOptions:{
-					show:	{
-						object: [
-							'whatsappBusinessAccount',
-						],
+				displayOptions: {
+					show: {
+						object: ['whatsappBusinessAccount'],
 					},
 				},
 			},

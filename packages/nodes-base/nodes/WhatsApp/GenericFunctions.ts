@@ -9,7 +9,10 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
-import { WhatsAppAppWebhookSubscriptionsResponse, WhatsAppAppWebhookSubscription } from './types';
+import type {
+	WhatsAppAppWebhookSubscriptionsResponse,
+	WhatsAppAppWebhookSubscription,
+} from './types';
 
 export async function whatsAppApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
