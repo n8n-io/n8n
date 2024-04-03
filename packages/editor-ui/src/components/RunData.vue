@@ -218,6 +218,7 @@
 					<JsonEditor
 						:model-value="editMode.value"
 						@update:model-value="ndvStore.setOutputPanelEditModeValue($event)"
+						:fill-parent="true"
 					/>
 				</div>
 				<div :class="$style.editModeFooter">
