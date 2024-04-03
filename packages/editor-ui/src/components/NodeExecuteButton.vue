@@ -77,18 +77,20 @@ export default defineComponent({
 			type: Boolean,
 		},
 	},
+	emits: ['stopExecution', 'execute'],
 	setup(props) {
 		const router = useRouter();
 		const workflowsStore = useWorkflowsStore();
 		const node = workflowsStore.getNodeByName(props.nodeName);
 		const pinnedData = usePinnedData(node);
 		const externalHooks = useExternalHooks();
-		const { runWorkflow } = useRunWorkflow({ router });
+		const { runWorkflow, stopCurrentExecution } = useRunWorkflow({ router });
 
 		return {
 			externalHooks,
 			pinnedData,
 			runWorkflow,
+			stopCurrentExecution,
 			...useToast(),
 			...useMessage(),
 		};
@@ -236,6 +238,7 @@ export default defineComponent({
 			} else if (this.isListeningForEvents) {
 				await this.stopWaitingForWebhook();
 			} else if (this.isListeningForWorkflowEvents) {
+				await this.stopCurrentExecution();
 				this.$emit('stopExecution');
 			} else {
 				let shouldUnpinAndExecute = false;
