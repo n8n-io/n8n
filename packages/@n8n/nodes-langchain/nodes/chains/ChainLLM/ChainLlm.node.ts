@@ -21,6 +21,7 @@ import { CombiningOutputParser } from 'langchain/output_parsers';
 import { LLMChain } from 'langchain/chains';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { HumanMessage } from '@langchain/core/messages';
+import type { CallbackManager } from '@langchain/core/callbacks/manager';
 import { getTemplateNoticeField } from '../../../utils/sharedFields';
 import {
 	getOptionalOutputParsers,
@@ -151,12 +152,20 @@ async function createSimpleLLMChain(
 	query: string,
 	prompt: ChatPromptTemplate | PromptTemplate,
 ): Promise<string[]> {
+	const parentRunManager = context.getParentRunManager
+		? (context.getParentRunManager() as { tools: CallbackManager })
+		: undefined;
+
 	const chain = new LLMChain({
 		llm,
 		prompt,
+	}).withConfig({
+		runName: context.getNode().name,
+		callbacks: parentRunManager?.tools,
+		metadata: { execution_id: context.getExecutionId() },
 	});
 
-	const response = (await chain.call({
+	const response = (await chain.invoke({
 		query,
 		signal: context.getExecutionCancelSignal(),
 	})) as string[];
@@ -203,8 +212,17 @@ async function getChain(
 	);
 
 	const chain = prompt.pipe(llm).pipe(combinedOutputParser);
+	const parentRunManager = context.getParentRunManager
+		? (context.getParentRunManager() as { tools: CallbackManager })
+		: undefined;
 
-	const response = (await chain.invoke({ query })) as string | string[];
+	const response = (await chain
+		.withConfig({
+			runName: context.getNode().name,
+			callbacks: parentRunManager?.tools,
+			metadata: { execution_id: context.getExecutionId() },
+		})
+		.invoke({ query })) as string | string[];
 
 	return Array.isArray(response) ? response : [response];
 }

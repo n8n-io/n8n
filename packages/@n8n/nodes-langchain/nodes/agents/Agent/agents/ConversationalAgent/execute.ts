@@ -1,15 +1,12 @@
-import {
-	type IExecuteFunctions,
-	type INodeExecutionData,
-	NodeConnectionType,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import { initializeAgentExecutorWithOptions } from 'langchain/agents';
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import type { BaseOutputParser } from '@langchain/core/output_parsers';
 import { PromptTemplate } from '@langchain/core/prompts';
 import { CombiningOutputParser } from 'langchain/output_parsers';
+import type { CallbackManager } from '@langchain/core/callbacks/manager';
 import {
 	isChatInstance,
 	getPromptInputByType,
@@ -22,7 +19,12 @@ export async function conversationalAgentExecute(
 	nodeVersion: number,
 ): Promise<INodeExecutionData[][]> {
 	this.logger.verbose('Executing Conversational Agent');
-
+	const parentRunManager = this.getParentRunManager
+		? (this.getParentRunManager() as { tools: CallbackManager })
+		: undefined;
+	if (parentRunManager) {
+		console.log(parentRunManager.tools);
+	}
 	const model = await this.getInputConnectionData(NodeConnectionType.AiLanguageModel, 0);
 
 	if (!isChatInstance(model)) {
@@ -57,6 +59,7 @@ export async function conversationalAgentExecute(
 			systemMessage: options.systemMessage,
 			humanMessage: options.humanMessage,
 		},
+		// callbacks: parentRunManager?.tools ? [parentRunManager.tools] : undefined,
 	});
 
 	const returnData: INodeExecutionData[] = [];
@@ -104,7 +107,13 @@ export async function conversationalAgentExecute(
 			input = (await prompt.invoke({ input })).value;
 		}
 
-		let response = await agentExecutor.call({ input, outputParsers });
+		let response = await agentExecutor
+			.withConfig({
+				runName: this.getNode().name,
+				metadata: { execution_id: this.getExecutionId() },
+				callbacks: parentRunManager?.tools,
+			})
+			.invoke({ input, outputParsers });
 
 		if (outputParser) {
 			response = { output: await outputParser.parse(response.output as string) };

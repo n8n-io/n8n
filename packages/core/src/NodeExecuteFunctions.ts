@@ -3482,6 +3482,7 @@ export function getExecuteFunctions(
 			async executeWorkflow(
 				workflowInfo: IExecuteWorkflowInfo,
 				inputData?: INodeExecutionData[],
+				tools?: IDataObject,
 			): Promise<any> {
 				return await additionalData
 					.executeWorkflow(workflowInfo, additionalData, {
@@ -3489,6 +3490,7 @@ export function getExecuteFunctions(
 						inputData,
 						parentWorkflowSettings: workflow.settings,
 						node,
+						tools,
 					})
 					.then(
 						async (result) =>
@@ -3713,6 +3715,9 @@ export function getExecuteFunctions(
 					workflowId: workflow.id ?? 'unsaved-workflow',
 					msg,
 				});
+			},
+			getParentRunManager: () => {
+				return additionalData.tools;
 			},
 		};
 	})(workflow, runExecutionData, connectionInputData, inputData, node) as IExecuteFunctions;

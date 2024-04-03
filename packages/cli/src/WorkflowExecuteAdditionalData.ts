@@ -754,6 +754,7 @@ async function executeWorkflow(
 		loadedWorkflowData?: IWorkflowBase;
 		loadedRunData?: IWorkflowExecutionDataProcess;
 		parentWorkflowSettings?: IWorkflowSettings;
+		tools?: IDataObject;
 	},
 ): Promise<Array<INodeExecutionData[] | null> | IWorkflowExecuteProcess> {
 	const internalHooks = Container.get(InternalHooks);
@@ -815,6 +816,7 @@ async function executeWorkflow(
 			workflowData,
 		);
 		additionalDataIntegrated.executionId = executionId;
+		additionalDataIntegrated.tools = options.tools;
 
 		// Make sure we pass on the original executeWorkflow function we received
 		// This one already contains changes to talk to parent process

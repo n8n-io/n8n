@@ -863,6 +863,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		executeWorkflow(
 			workflowInfo: IExecuteWorkflowInfo,
 			inputData?: INodeExecutionData[],
+			tools?: IDataObject,
 		): Promise<any>;
 		getInputConnectionData(
 			inputName: ConnectionTypes,
@@ -902,6 +903,8 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 				getBinaryDataBuffer(itemIndex: number, propertyName: string): Promise<Buffer>;
 				copyInputItems(items: INodeExecutionData[], properties: string[]): IDataObject[];
 			};
+
+		getParentRunManager(): IDataObject | undefined;
 	};
 
 export interface IExecuteSingleFunctions extends BaseExecutionFunctions {
@@ -2049,6 +2052,7 @@ export interface IWorkflowExecuteAdditionalData {
 			loadedWorkflowData?: IWorkflowBase;
 			loadedRunData?: any;
 			parentWorkflowSettings?: IWorkflowSettings;
+			tools?: IDataObject;
 		},
 	) => Promise<any>;
 	executionId?: string;
@@ -2080,6 +2084,7 @@ export interface IWorkflowExecuteAdditionalData {
 			nodeType?: string;
 		},
 	) => Promise<void>;
+	tools?: IDataObject;
 }
 
 export type WorkflowExecuteMode =
