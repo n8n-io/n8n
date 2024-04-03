@@ -1066,7 +1066,7 @@ export default defineComponent({
 				node_type: node ? node.type : null,
 				workflow_id: this.workflowsStore.workflowId,
 				source: 'canvas',
-				session_id: this.ndvStore.sessionId,
+				push_ref: this.ndvStore.pushRef,
 			};
 			this.$telemetry.track('User clicked execute node button', telemetryPayload);
 			void this.externalHooks.run('nodeView.onRunNode', telemetryPayload);

@@ -196,11 +196,11 @@ export async function handleCommandMessageMain(messageString: string) {
 				 * Do not debounce this - all events share the same message name.
 				 */
 
-				const { type, args, sessionId } = message.payload;
+				const { type, args, pushRef } = message.payload;
 
-				if (!push.getBackend().hasSessionId(sessionId)) break;
+				if (!push.getBackend().hasPushRef(pushRef)) break;
 
-				push.send(type, args, sessionId);
+				push.send(type, args, pushRef);
 
 				break;
 			}
@@ -212,9 +212,9 @@ export async function handleCommandMessageMain(messageString: string) {
 					return message;
 				}
 
-				const { webhookKey, workflowEntity, sessionId } = message.payload;
+				const { webhookKey, workflowEntity, pushRef } = message.payload;
 
-				if (!push.getBackend().hasSessionId(sessionId)) break;
+				if (!push.getBackend().hasPushRef(pushRef)) break;
 
 				const testWebhooks = Container.get(TestWebhooks);
 
