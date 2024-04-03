@@ -27,7 +27,8 @@ interface RadioOption {
 interface RadioButtonsProps {
 	modelValue?: string;
 	options?: RadioOption[];
-	size: 'small' | 'medium';
+	/** @default medium */
+	size?: 'small' | 'medium';
 	disabled?: boolean;
 }
 
