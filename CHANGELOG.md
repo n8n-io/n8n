@@ -1,3 +1,28 @@
+# [1.36.0](https://github.com/n8n-io/n8n/compare/n8n@1.35.0...n8n@1.36.0) (2024-04-03)
+
+
+### Bug Fixes
+
+* **editor:**  Issue with JSON editor getting cut off ([#9000](https://github.com/n8n-io/n8n/issues/9000)) ([4668db2](https://github.com/n8n-io/n8n/commit/4668db20fb6a47b4e417ab8f31407d13af9c70f8))
+* **editor:** Fix canvas selection for touch devices that use mouse ([#9036](https://github.com/n8n-io/n8n/issues/9036)) ([286fa5c](https://github.com/n8n-io/n8n/commit/286fa5cd7eb5052d2c166145447f53b33174b62c))
+* **editor:** Fix execution debug button ([#9018](https://github.com/n8n-io/n8n/issues/9018)) ([aac77e1](https://github.com/n8n-io/n8n/commit/aac77e1668d2b3fd96c2e77b4626b7b0ae7bf233))
+* **editor:** Hover and active states not showing in execution list on dark mode ([#9002](https://github.com/n8n-io/n8n/issues/9002)) ([bead7eb](https://github.com/n8n-io/n8n/commit/bead7eb840b3c6c074364c6a44d001ea561fee1f))
+* **editor:** UI enhancements and fixes for expression inputs ([#8996](https://github.com/n8n-io/n8n/issues/8996)) ([8788e2a](https://github.com/n8n-io/n8n/commit/8788e2a35bed261e13da5c92ee31bbb414d019a4))
+* Prevent chat modal opening on 'Test workflow' click ([#9009](https://github.com/n8n-io/n8n/issues/9009)) ([3fd97e4](https://github.com/n8n-io/n8n/commit/3fd97e4c7299928a498e359b16f6f21eed9f0878))
+* Stop listening button not working in NDV ([#9023](https://github.com/n8n-io/n8n/issues/9023)) ([02219dd](https://github.com/n8n-io/n8n/commit/02219dde2fa3c16145c3985272567b334b69dd54))
+
+
+### Features
+
+* Add Salesforce Trigger Node ([#8920](https://github.com/n8n-io/n8n/issues/8920)) ([571b613](https://github.com/n8n-io/n8n/commit/571b6135dd41ef983a822f210c09e3623e8ee605))
+* Add Twilio Trigger Node ([#8859](https://github.com/n8n-io/n8n/issues/8859)) ([c204995](https://github.com/n8n-io/n8n/commit/c204995d9c5683d92cc7c7bd89c530ad3318b06d))
+* **core:** Introduce AWS secrets manager as external secrets store ([#8982](https://github.com/n8n-io/n8n/issues/8982)) ([2aab78b](https://github.com/n8n-io/n8n/commit/2aab78b058f46c7b1692503a2b3b6bfb8939c128))
+* **core:** Rate-limit login endpoint to mitigate brute force password guessing attacks ([#9028](https://github.com/n8n-io/n8n/issues/9028)) ([a6446fe](https://github.com/n8n-io/n8n/commit/a6446fe057749536344c4170395ce149340cd889))
+* **editor:** Update templates links ([#9024](https://github.com/n8n-io/n8n/issues/9024)) ([4619dec](https://github.com/n8n-io/n8n/commit/4619dec285da14bb097df225a5682ed8babd82dd))
+* **Webhook Node:** Overhaul ([#8889](https://github.com/n8n-io/n8n/issues/8889)) ([e84c27c](https://github.com/n8n-io/n8n/commit/e84c27c0cebd6fba135298ea18844045dcf55b4c))
+
+
+
 # [1.35.0](https://github.com/n8n-io/n8n/compare/n8n@1.33.0...n8n@1.35.0) (2024-03-27)
 
 
