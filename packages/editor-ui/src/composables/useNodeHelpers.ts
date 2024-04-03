@@ -577,16 +577,7 @@ export function useNodeHelpers() {
 		outputIndex: number,
 		connectionType: ConnectionTypes = NodeConnectionType.Main,
 	): INodeExecutionData[] {
-		if (
-			!connectionsData ||
-			!connectionsData.hasOwnProperty(connectionType) ||
-			connectionsData[connectionType] === undefined ||
-			connectionsData[connectionType].length < outputIndex ||
-			connectionsData[connectionType][outputIndex] === null
-		) {
-			return [];
-		}
-		return connectionsData[connectionType][outputIndex] as INodeExecutionData[];
+		return connectionsData?.[connectionType]?.[outputIndex] ?? [];
 	}
 
 	function getBinaryData(
