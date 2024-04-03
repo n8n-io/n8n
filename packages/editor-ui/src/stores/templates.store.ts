@@ -153,20 +153,9 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 			}?${this.websiteTemplateRepositoryParameters().toString()}`;
 		},
 		/**
-		 * Construct the URL for the template page on the website for a given template id
-		 * @returns {function(string): string}
-		 */
-		websiteTemplatePageURL() {
-			return (id: string) => {
-				return `${
-					TEMPLATES_URLS.BASE_WEBSITE_URL
-				}/${id}?${this.websiteTemplateRepositoryParameters().toString()}`;
-			};
-		},
-		/**
 		 * Construct the URL for the template category page on the website for a given category id
 		 */
-		websiteCategoryURL() {
+		getWebsiteCategoryURL() {
 			return (id: string) => {
 				return `${TEMPLATES_URLS.BASE_WEBSITE_URL}/?${this.websiteTemplateRepositoryParameters({
 					categories: id,
