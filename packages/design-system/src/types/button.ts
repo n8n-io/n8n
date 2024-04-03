@@ -13,7 +13,7 @@ export interface IconButtonProps {
 	active?: boolean;
 	disabled?: boolean;
 	float?: TextFloat;
-	icon?: string;
+	icon?: string | string[];
 	loading?: boolean;
 	outline?: boolean;
 	size?: ButtonSize;
