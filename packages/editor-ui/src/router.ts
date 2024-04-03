@@ -187,7 +187,7 @@ export const routes = [
 		beforeEnter: (_to, _from, next) => {
 			const templatesStore = useTemplatesStore();
 			if (!templatesStore.hasCustomTemplatesHost) {
-				window.location.href = templatesStore.getWebsiteTemplateRepositoryURL;
+				window.location.href = templatesStore.websiteTemplateRepositoryURL;
 			} else {
 				next();
 			}

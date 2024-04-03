@@ -121,7 +121,7 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 		 * Constructs URLSearchParams object based on the default parameters for the template repository
 		 * and provided additional parameters
 		 */
-		getWebsiteTemplateRepositoryParameters() {
+		websiteTemplateRepositoryParameters() {
 			const rootStore = useRootStore();
 			const userStore = useUsersStore();
 			const workflowsStore = useWorkflowsStore();
@@ -147,28 +147,28 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 		 * Construct the URL for the template repository on the website
 		 * @returns {string}
 		 */
-		getWebsiteTemplateRepositoryURL(): string {
+		websiteTemplateRepositoryURL(): string {
 			return `${
 				TEMPLATES_URLS.BASE_WEBSITE_URL
-			}?${this.getWebsiteTemplateRepositoryParameters().toString()}`;
+			}?${this.websiteTemplateRepositoryParameters().toString()}`;
 		},
 		/**
 		 * Construct the URL for the template page on the website for a given template id
 		 * @returns {function(string): string}
 		 */
-		getWebsiteTemplatePageURL() {
+		websiteTemplatePageURL() {
 			return (id: string) => {
 				return `${
 					TEMPLATES_URLS.BASE_WEBSITE_URL
-				}/${id}?${this.getWebsiteTemplateRepositoryParameters().toString()}`;
+				}/${id}?${this.websiteTemplateRepositoryParameters().toString()}`;
 			};
 		},
 		/**
 		 * Construct the URL for the template category page on the website for a given category id
 		 */
-		getWebsiteCategoryURL() {
+		websiteCategoryURL() {
 			return (id: string) => {
-				return `${TEMPLATES_URLS.BASE_WEBSITE_URL}/?${this.getWebsiteTemplateRepositoryParameters({
+				return `${TEMPLATES_URLS.BASE_WEBSITE_URL}/?${this.websiteTemplateRepositoryParameters({
 					categories: id,
 				}).toString()}`;
 			};

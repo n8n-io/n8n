@@ -306,7 +306,7 @@ const WorkflowsView = defineComponent({
 			});
 		},
 		getTemplateRepositoryURL() {
-			return this.templatesStore.getWebsiteTemplateRepositoryURL;
+			return this.templatesStore.websiteTemplateRepositoryURL;
 		},
 		trackCategoryLinkClick(category: string) {
 			this.$telemetry.track(`User clicked Browse ${category} Templates`, {
