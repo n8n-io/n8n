@@ -22,7 +22,7 @@ export class NDV extends BasePage {
 			this.getters.outputPanel().findChildByTestId('ndv-run-data-display-mode').first(),
 		pinDataButton: () => cy.getByTestId('ndv-pin-data'),
 		editPinnedDataButton: () => cy.getByTestId('ndv-edit-pinned-data'),
-		pinnedDataEditor: () => this.getters.outputPanel().find('.cm-editor .cm-scroller'),
+		pinnedDataEditor: () => this.getters.outputPanel().find('.cm-editor .cm-scroller .cm-content'),
 		runDataPaneHeader: () => cy.getByTestId('run-data-pane-header'),
 		nodeOutputHint: () => cy.getByTestId('ndv-output-run-node-hint'),
 		savePinnedDataButton: () =>
