@@ -78,7 +78,7 @@
 			/>
 
 			<CopyInput
-				v-if="isOAuthType && credentialProperties.length"
+				v-if="isOAuthType && !allOAuth2BasePropertiesOverridden"
 				:label="$locale.baseText('credentialEdit.credentialConfig.oAuthRedirectUrl')"
 				:value="oAuthCallbackUrl"
 				:copy-button-text="$locale.baseText('credentialEdit.credentialConfig.clickToCopy')"
@@ -202,6 +202,9 @@ export default defineComponent({
 			type: Boolean,
 		},
 		isOAuthType: {
+			type: Boolean,
+		},
+		allOAuth2BasePropertiesOverridden: {
 			type: Boolean,
 		},
 		isOAuthConnected: {
