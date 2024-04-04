@@ -319,7 +319,7 @@ export const pushConnection = defineComponent({
 				const workflow = this.workflowHelpers.getCurrentWorkflow();
 				if (runDataExecuted.waitTill !== undefined) {
 					const workflowSettings = this.workflowsStore.workflowSettings;
-					const saveManualExecutions = this.rootStore.saveManualExecutions;
+					const saveManualExecutions = this.settingsStore.saveManualExecutions;
 
 					const isSavingExecutions =
 						workflowSettings.saveManualExecutions === undefined
