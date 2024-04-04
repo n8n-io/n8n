@@ -6,25 +6,19 @@ import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import type { BaseOutputParser } from '@langchain/core/output_parsers';
 import { PromptTemplate } from '@langchain/core/prompts';
 import { CombiningOutputParser } from 'langchain/output_parsers';
-import type { CallbackManager } from '@langchain/core/callbacks/manager';
 import {
 	isChatInstance,
 	getPromptInputByType,
 	getOptionalOutputParsers,
 	getConnectedTools,
 } from '../../../../../utils/helpers';
+import { getTracingConfig } from '../../../../../utils/tracing';
 
 export async function conversationalAgentExecute(
 	this: IExecuteFunctions,
 	nodeVersion: number,
 ): Promise<INodeExecutionData[][]> {
 	this.logger.verbose('Executing Conversational Agent');
-	const parentRunManager = this.getParentRunManager
-		? (this.getParentRunManager() as { tools: CallbackManager })
-		: undefined;
-	if (parentRunManager) {
-		console.log(parentRunManager.tools);
-	}
 	const model = await this.getInputConnectionData(NodeConnectionType.AiLanguageModel, 0);
 
 	if (!isChatInstance(model)) {
@@ -59,7 +53,6 @@ export async function conversationalAgentExecute(
 			systemMessage: options.systemMessage,
 			humanMessage: options.humanMessage,
 		},
-		// callbacks: parentRunManager?.tools ? [parentRunManager.tools] : undefined,
 	});
 
 	const returnData: INodeExecutionData[] = [];
@@ -108,11 +101,7 @@ export async function conversationalAgentExecute(
 		}
 
 		let response = await agentExecutor
-			.withConfig({
-				runName: this.getNode().name,
-				metadata: { execution_id: this.getExecutionId() },
-				callbacks: parentRunManager?.tools,
-			})
+			.withConfig(getTracingConfig(this))
 			.invoke({ input, outputParsers });
 
 		if (outputParser) {
