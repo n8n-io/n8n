@@ -252,9 +252,6 @@ test('should report security settings', async () => {
 			templatesEnabled: true,
 			publicApiEnabled: false,
 		},
-		auth: {
-			authExcludeEndpoints: 'none',
-		},
 		nodes: { nodesExclude: 'none', nodesInclude: 'none' },
 		telemetry: { diagnosticsEnabled: true },
 	});

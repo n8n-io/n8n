@@ -35,7 +35,6 @@ properties:
     $ref: './workflowSettings.yml'
   staticData:
     example: { lastId: 1 }
-    nullable: true
     anyOf:
       - type: string
         format: 'jsonString'
