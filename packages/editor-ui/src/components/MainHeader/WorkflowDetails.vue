@@ -501,13 +501,17 @@ export default defineComponent({
 				cb(true);
 				return;
 			}
-			this.uiStore.addActiveAction('workflowSaving');
-			const saved = await this.workflowHelpers.saveCurrentWorkflow({ name });
-			if (saved) {
-				this.isNameEditEnabled = false;
+			try {
+				this.uiStore.addActiveAction('workflowSaving');
+				const saved = await this.workflowHelpers.saveCurrentWorkflow({ name });
+				if (saved) {
+					this.isNameEditEnabled = false;
+				}
+				// Exception is handled in the helper function
+			} finally {
+				this.uiStore.removeActiveAction('workflowSaving');
+				cb(saved);
 			}
-			this.uiStore.removeActiveAction('workflowSaving');
-			cb(saved);
 		},
 		async handleFileImport(): Promise<void> {
 			const inputRef = this.$refs.importFile as HTMLInputElement | undefined;
