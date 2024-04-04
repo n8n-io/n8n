@@ -55,7 +55,9 @@ export type AuthlessRequest<
 	ResponseBody = {},
 	RequestBody = {},
 	RequestQuery = {},
-> = express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery>;
+> = express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery> & {
+	browserId?: string;
+};
 
 export type AuthenticatedRequest<
 	RouteParams = {},
@@ -68,6 +70,7 @@ export type AuthenticatedRequest<
 > & {
 	user: User;
 	cookies: Record<string, string | undefined>;
+	browserId?: string;
 };
 
 // ----------------------------------
