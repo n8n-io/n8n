@@ -200,6 +200,16 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				return {};
 			};
 		},
+		clearNodeOutgoingConnections() {
+			const uiStore = useUIStore();
+			return (nodeName: string): void => {
+				if (this.workflow.connections.hasOwnProperty(nodeName)) {
+					this.workflow.connections[nodeName] = {};
+					uiStore.stateIsDirty = true;
+					return;
+				}
+			};
+		},
 		isNodeInOutgoingNodeConnections() {
 			return (firstNode: string, secondNode: string): boolean => {
 				const firstNodeConnections = this.outgoingConnectionsByNodeName(firstNode);
