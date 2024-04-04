@@ -177,7 +177,7 @@ export class Jwt implements INodeType {
 				type: 'string',
 				typeOptions: { password: true },
 				default: '',
-				description: 'The token to verify',
+				description: 'The token to verify or decode',
 				displayOptions: {
 					show: {
 						operation: ['verify', 'decode'],
