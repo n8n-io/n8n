@@ -18,7 +18,7 @@
 			loading-text="..."
 			popper-class="tags-dropdown"
 			data-test-id="tags-dropdown"
-			@update:modelValue="onTagsUpdated"
+			@update:model-value="onTagsUpdated"
 			@visible-change="onVisibleChange"
 			@remove-tag="onRemoveTag"
 		>

@@ -64,7 +64,7 @@ function onSelected(item: INodeCreateElement) {
 							icon: item.properties.icon,
 							iconType: 'icon',
 						},
-				  }
+					}
 				: {}),
 			...(item.properties.panelClass ? { panelClass: item.properties.panelClass } : {}),
 			rootView: activeViewStack.value.rootView,
@@ -218,8 +218,8 @@ registerKeyHook('MainViewArrowLeft', {
 					:root-view="activeViewStack.rootView"
 					show-icon
 					show-request
-					@addWebhookNode="selectNodeType([WEBHOOK_NODE_TYPE])"
-					@addHttpNode="selectNodeType([HTTP_REQUEST_NODE_TYPE])"
+					@add-webhook-node="selectNodeType([WEBHOOK_NODE_TYPE])"
+					@add-http-node="selectNodeType([HTTP_REQUEST_NODE_TYPE])"
 				/>
 			</template>
 		</ItemsRenderer>

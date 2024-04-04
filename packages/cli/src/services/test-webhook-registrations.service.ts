@@ -1,11 +1,11 @@
 import { Service } from 'typedi';
 import { CacheService } from '@/services/cache/cache.service';
-import { type IWebhookData } from 'n8n-workflow';
+import type { IWebhookData } from 'n8n-workflow';
 import type { IWorkflowDb } from '@/Interfaces';
 import { TEST_WEBHOOK_TIMEOUT, TEST_WEBHOOK_TIMEOUT_BUFFER } from '@/constants';
 
 export type TestWebhookRegistration = {
-	sessionId?: string;
+	pushRef?: string;
 	workflowEntity: IWorkflowDb;
 	destinationNode?: string;
 	webhook: IWebhookData;

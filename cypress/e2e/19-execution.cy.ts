@@ -592,4 +592,31 @@ describe('Execution', () => {
 		cy.wait(100);
 		workflowPage.getters.errorToast({ timeout: 1 }).should('not.exist');
 	});
+
+	it('should execute workflow partially up to the node that has issues', () => {
+		cy.createFixtureWorkflow(
+			'Test_workflow_partial_execution_with_missing_credentials.json',
+			'My test workflow',
+		);
+
+		cy.intercept('POST', '/rest/workflows/run').as('workflowRun');
+
+		workflowPage.getters.zoomToFitButton().click();
+		workflowPage.getters.executeWorkflowButton().click();
+
+		// Wait for the execution to return.
+		cy.wait('@workflowRun');
+
+		// Check that the previous nodes executed successfully
+		workflowPage.getters
+			.canvasNodeByName('DebugHelper')
+			.within(() => cy.get('.fa-check'))
+			.should('exist');
+		workflowPage.getters
+			.canvasNodeByName('Filter')
+			.within(() => cy.get('.fa-check'))
+			.should('exist');
+
+		workflowPage.getters.errorToast().should('contain', `Problem in node ‘Telegram‘`);
+	});
 });

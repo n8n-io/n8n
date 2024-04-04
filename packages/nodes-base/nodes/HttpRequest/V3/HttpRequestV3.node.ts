@@ -24,6 +24,7 @@ import {
 	sleep,
 } from 'n8n-workflow';
 
+import set from 'lodash/set';
 import type { BodyParameter, IAuthDataSanitizeKeys } from '../GenericFunctions';
 import {
 	binaryContentTypes,
@@ -34,7 +35,6 @@ import {
 	sanitizeUiMessage,
 } from '../GenericFunctions';
 import { keysToLowercase } from '@utils/utilities';
-import set from 'lodash/set';
 
 function toText<T>(data: T) {
 	if (typeof data === 'object' && data !== null) {

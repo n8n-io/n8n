@@ -20,7 +20,7 @@
 						:readonly="!credentialPermissions.update || !credentialType"
 						type="Credential"
 						data-test-id="credential-name"
-						@update:modelValue="onNameEdit"
+						@update:model-value="onNameEdit"
 					/>
 				</div>
 				<div :class="$style.credActions">
@@ -75,14 +75,15 @@
 						:parent-types="parentTypes"
 						:required-properties-filled="requiredPropertiesFilled"
 						:credential-permissions="credentialPermissions"
+						:all-o-auth2-base-properties-overridden="allOAuth2BasePropertiesOverridden"
 						:mode="mode"
 						:selected-credential="selectedCredential"
 						:show-auth-type-selector="requiredCredentials"
 						@update="onDataChange"
 						@oauth="oAuthCredentialAuthorize"
 						@retest="retestCredential"
-						@scrollToTop="scrollToTop"
-						@authTypeChanged="onAuthTypeChanged"
+						@scroll-to-top="scrollToTop"
+						@auth-type-changed="onAuthTypeChanged"
 					/>
 				</div>
 				<div v-else-if="activeTab === 'sharing' && credentialType" :class="$style.mainContent">
@@ -92,7 +93,7 @@
 						:credential-id="credentialId"
 						:credential-permissions="credentialPermissions"
 						:modal-bus="modalBus"
-						@update:modelValue="onChangeSharedWith"
+						@update:model-value="onChangeSharedWith"
 					/>
 				</div>
 				<div v-else-if="activeTab === 'details' && credentialType" :class="$style.mainContent">
@@ -427,6 +428,15 @@ export default defineComponent({
 					this.parentTypes.includes('oAuth1Api'))
 			);
 		},
+		allOAuth2BasePropertiesOverridden() {
+			if (this.credentialType?.__overwrittenProperties) {
+				return (
+					this.credentialType.__overwrittenProperties.includes('clientId') &&
+					this.credentialType.__overwrittenProperties.includes('clientSecret')
+				);
+			}
+			return false;
+		},
 		isOAuthConnected(): boolean {
 			return this.isOAuthType && !!this.credentialData.oauthTokenData;
 		},
@@ -435,7 +445,7 @@ export default defineComponent({
 				return [];
 			}
 
-			return this.credentialType.properties.filter((propertyData: INodeProperties) => {
+			const properties = this.credentialType.properties.filter((propertyData: INodeProperties) => {
 				if (!this.displayCredentialParameter(propertyData)) {
 					return false;
 				}
@@ -444,6 +454,17 @@ export default defineComponent({
 					!this.credentialType!.__overwrittenProperties.includes(propertyData.name)
 				);
 			});
+
+			/**
+			 * If after all credentials overrides are applied only "notice"
+			 * properties are left, do not return them. This will avoid
+			 * showing notices that refer to a property that was overridden.
+			 */
+			if (properties.every((p) => p.type === 'notice')) {
+				return [];
+			}
+
+			return properties;
 		},
 		requiredPropertiesFilled(): boolean {
 			for (const property of this.credentialProperties) {

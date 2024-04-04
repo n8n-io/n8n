@@ -156,7 +156,6 @@ const onBlur = (): void => {
 					hide-label
 					hide-hint
 					hide-issues
-					:rows="3"
 					:is-read-only="readOnly"
 					:parameter="leftParameter"
 					:value="condition.leftValue"
@@ -171,7 +170,7 @@ const onBlur = (): void => {
 				<OperatorSelect
 					:selected="`${operator.type}:${operator.operation}`"
 					:read-only="readOnly"
-					@operatorChange="onOperatorChange"
+					@operator-change="onOperatorChange"
 				></OperatorSelect>
 			</template>
 			<template v-if="!operator.singleValue" #right="{ breakpoint }">
@@ -181,7 +180,6 @@ const onBlur = (): void => {
 					hide-label
 					hide-hint
 					hide-issues
-					:rows="3"
 					:is-read-only="readOnly"
 					:options-position="breakpoint === 'default' ? 'top' : 'bottom'"
 					:parameter="rightParameter"
