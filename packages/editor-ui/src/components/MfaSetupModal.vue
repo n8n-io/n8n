@@ -2,7 +2,7 @@
 	<Modal
 		width="460px"
 		height="80%"
-		maxHeight="640px"
+		max-height="640px"
 		:title="
 			!showRecoveryCodes
 				? $locale.baseText('mfa.setup.step1.title')
@@ -75,7 +75,7 @@
 				</div>
 				<div :class="$style.recoveryCodesContainer">
 					<div v-for="recoveryCode in recoveryCodes" :key="recoveryCode">
-						<n8n-text size="medium">{{ recoveryCode }}</n8n-text>
+						<n8n-text size="medium">xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</n8n-text>
 					</div>
 				</div>
 				<n8n-info-tip :bold="false" :class="$style['edit-mode-footer-infotip']">
