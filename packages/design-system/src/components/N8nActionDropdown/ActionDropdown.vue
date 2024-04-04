@@ -4,7 +4,7 @@
 			ref="elementDropdown"
 			:placement="placement"
 			:trigger="trigger"
-			:popper-class="{ [$style.shadow]: true, [$style.hideArrow]: hideArrow }"
+			:popper-class="popperClass"
 			@command="onSelect"
 			@visible-change="onVisibleChange"
 		>
@@ -57,7 +57,7 @@
 // by Element UI dropdown component).
 // It can be used in different parts of editor UI while ActionToggle
 // is designed to be used in card components.
-import { ref, useCssModule, useAttrs } from 'vue';
+import { ref, useCssModule, useAttrs, computed } from 'vue';
 import { ElDropdown, ElDropdownMenu, ElDropdownItem, type Placement } from 'element-plus';
 import N8nIcon from '../N8nIcon';
 import { N8nKeyboardShortcut } from '../N8nKeyboardShortcut';
@@ -86,7 +86,7 @@ interface ActionDropdownProps {
 	hideArrow?: boolean;
 }
 
-withDefaults(defineProps<ActionDropdownProps>(), {
+const props = withDefaults(defineProps<ActionDropdownProps>(), {
 	placement: 'bottom',
 	activatorIcon: 'ellipsis-h',
 	activatorSize: 'medium',
@@ -110,6 +110,10 @@ const getItemClasses = (item: IActionDropdownItem): Record<string, boolean> => {
 
 const $emit = defineEmits(['select', 'visibleChange']);
 const elementDropdown = ref<InstanceType<typeof ElDropdown>>();
+
+const popperClass = computed(
+	() => `${$style.shadow}${props.hideArrow ? ` ${$style.hideArrow}` : ''}`,
+);
 
 const onSelect = (action: string) => $emit('select', action);
 const onVisibleChange = (open: boolean) => $emit('visibleChange', open);

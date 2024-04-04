@@ -248,7 +248,7 @@ const onSelectSshKeyType = async (sshKeyType: TupleToUnion<SshKeyTypes>) => {
 						:options="sourceControlStore.sshKeyTypesWithLabel"
 						:model-value="sourceControlStore.preferences.keyGeneratorType"
 						@validate="(value) => onValidate('keyGeneratorType', value)"
-						@update:modelValue="onSelectSshKeyType"
+						@update:model-value="onSelectSshKeyType"
 					/>
 					<CopyInput
 						:class="$style.copyInput"
@@ -309,7 +309,7 @@ const onSelectSshKeyType = async (sshKeyType: TupleToUnion<SshKeyTypes>) => {
 							:options="branchNameOptions"
 							:model-value="sourceControlStore.preferences.branchName"
 							@validate="(value) => onValidate('branchName', value)"
-							@update:modelValue="onSelect"
+							@update:model-value="onSelect"
 						/>
 						<n8n-tooltip placement="top">
 							<template #content>

@@ -18,9 +18,9 @@
 			:error-view="currentQueryError"
 			:width="width"
 			:event-bus="eventBus"
-			@update:modelValue="onListItemSelected"
+			@update:model-value="onListItemSelected"
 			@filter="onSearchFilter"
-			@loadMore="loadResourcesDebounced"
+			@load-more="loadResourcesDebounced"
 		>
 			<template #error>
 				<div :class="$style.error" data-test-id="rlc-error-container">
@@ -52,7 +52,7 @@
 						:disabled="isReadOnly"
 						:placeholder="$locale.baseText('resourceLocator.modeSelector.placeholder')"
 						data-test-id="rlc-mode-selector"
-						@update:modelValue="onModeSelected"
+						@update:model-value="onModeSelected"
 					>
 						<n8n-option
 							v-for="mode in parameter.modes"
@@ -94,8 +94,8 @@
 									:model-value="expressionDisplayValue"
 									:path="path"
 									:rows="3"
-									@update:modelValue="onInputChange"
-									@modalOpenerClick="$emit('modalOpenerClick')"
+									@update:model-value="onInputChange"
+									@modal-opener-click="$emit('modalOpenerClick')"
 								/>
 								<n8n-input
 									v-else
@@ -109,7 +109,7 @@
 									:placeholder="inputPlaceholder"
 									type="text"
 									data-test-id="rlc-input"
-									@update:modelValue="onInputChange"
+									@update:model-value="onInputChange"
 									@focus="onInputFocus"
 									@blur="onInputBlur"
 								>

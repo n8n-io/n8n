@@ -22,6 +22,7 @@ import { sanitizeHtml } from '@/utils/htmlUtils';
 import { useAIStore } from '@/stores/ai.store';
 import { MAX_DISPLAY_DATA_SIZE } from '@/constants';
 import VueMarkdown from 'vue-markdown-render';
+import type { BaseTextKey } from '@/plugins/i18n';
 
 const props = defineProps({
 	error: {
@@ -188,6 +189,21 @@ function getErrorDescription(): string {
 				}),
 		);
 	}
+
+	if (props.error.context?.descriptionKey) {
+		const interpolate = {
+			nodeCause: props.error.context.nodeCause as string,
+			runIndex: (props.error.context.runIndex as string) ?? '0',
+			itemIndex: (props.error.context.itemIndex as string) ?? '0',
+		};
+		return sanitizeHtml(
+			i18n.baseText(
+				`nodeErrorView.description.${props.error.context.descriptionKey as string}` as BaseTextKey,
+				{ interpolate },
+			),
+		);
+	}
+
 	if (!props.error.context?.descriptionTemplate) {
 		return sanitizeHtml(props.error.description ?? '');
 	}
@@ -397,7 +413,7 @@ function copySuccess() {
 				</N8nButton>
 			</div>
 			<div
-				v-if="error.description"
+				v-if="error.description || error.context?.descriptionKey"
 				class="node-error-view__header-description"
 				v-html="getErrorDescription()"
 			></div>
@@ -653,7 +669,7 @@ function copySuccess() {
 		align-items: center;
 		gap: var(--spacing-xs);
 		padding: var(--spacing-xs) var(--spacing-s) var(--spacing-3xs) var(--spacing-s);
-		color: var(--color-danger);
+		color: var(--color-ndv-output-error-message);
 		font-weight: var(--font-weight-bold);
 		font-size: var(--font-size-s);
 	}
@@ -661,6 +677,19 @@ function copySuccess() {
 	&__header-description {
 		padding: 0 var(--spacing-s) var(--spacing-3xs) var(--spacing-s);
 		font-size: var(--font-size-xs);
+
+		ul {
+			padding: var(--spacing-s) 0;
+			padding-left: var(--spacing-l);
+		}
+
+		code {
+			font-size: var(--font-size-xs);
+			color: var(--color-text-base);
+			background: var(--color-background-base);
+			padding: var(--spacing-5xs);
+			border-radius: var(--border-radius-base);
+		}
 	}
 
 	&__debugging {

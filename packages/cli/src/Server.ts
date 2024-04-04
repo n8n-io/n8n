@@ -4,7 +4,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Container, Service } from 'typedi';
-import assert from 'assert';
 import { exec as callbackExec } from 'child_process';
 import { access as fsAccess } from 'fs/promises';
 import { join as pathJoin } from 'path';
@@ -224,22 +223,6 @@ export class Server extends AbstractServer {
 		await Container.get(PostHogClient).init();
 
 		const publicApiEndpoint = config.getEnv('publicApi.path');
-		const excludeEndpoints = config.getEnv('security.excludeEndpoints');
-
-		const ignoredEndpoints: Readonly<string[]> = [
-			'assets',
-			'healthz',
-			'metrics',
-			'e2e',
-			this.endpointPresetCredentials,
-			isApiEnabled() ? '' : publicApiEndpoint,
-			...excludeEndpoints.split(':'),
-		].filter((u) => !!u);
-
-		assert(
-			!ignoredEndpoints.includes(this.restEndpoint),
-			`REST endpoint cannot be set to any of these values: ${ignoredEndpoints.join()} `,
-		);
 
 		// ----------------------------------------
 		// Public API
@@ -258,15 +241,24 @@ export class Server extends AbstractServer {
 		const { restEndpoint, app } = this;
 		setupPushHandler(restEndpoint, app);
 
+		const nonUIRoutes: Readonly<string[]> = [
+			'assets',
+			'healthz',
+			'metrics',
+			'e2e',
+			this.restEndpoint,
+			this.endpointPresetCredentials,
+			isApiEnabled() ? '' : publicApiEndpoint,
+		].filter((u) => !!u);
+		const nonUIRoutesRegex = new RegExp(`^/(${nonUIRoutes.join('|')})/?.*$`);
+
 		// Make sure that Vue history mode works properly
 		this.app.use(
 			history({
 				rewrites: [
 					{
-						from: new RegExp(`^/(${[this.restEndpoint, ...ignoredEndpoints].join('|')})/?.*$`),
-						to: (context) => {
-							return context.parsedUrl.pathname!.toString();
-						},
+						from: nonUIRoutesRegex,
+						to: ({ parsedUrl }) => parsedUrl.pathname!.toString(),
 					},
 				],
 			}),
@@ -338,7 +330,7 @@ export class Server extends AbstractServer {
 				`/${this.restEndpoint}/settings`,
 				ResponseHelper.send(
 					async (req: express.Request): Promise<IN8nUISettings> =>
-						frontendService.getSettings(req.headers.sessionid as string),
+						frontendService.getSettings(req.headers['push-ref'] as string),
 				),
 			);
 		}

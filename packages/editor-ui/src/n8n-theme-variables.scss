@@ -34,10 +34,6 @@ $badge-warning-color: var(--color-text-dark);
 // Warning tooltip
 $warning-tooltip-color: var(--color-danger);
 
-:root {
-	// Using native css variable enables us to use this value in JS
-	--header-height: 65;
-}
 // sass variable is used for scss files
 $header-height: calc(var(--header-height) * 1px);
 

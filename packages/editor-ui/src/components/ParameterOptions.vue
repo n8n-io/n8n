@@ -33,7 +33,7 @@
 					{ label: $locale.baseText('parameterInput.fixed'), value: 'fixed' },
 					{ label: $locale.baseText('parameterInput.expression'), value: 'expression' },
 				]"
-				@update:modelValue="onViewSelected"
+				@update:model-value="onViewSelected"
 			/>
 		</div>
 	</div>

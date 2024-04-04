@@ -5,11 +5,9 @@ import { setActivePinia } from 'pinia';
 import type { IStartRunData, IWorkflowData } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useUIStore } from '@/stores/ui.store';
-import { useToast } from '@/composables/useToast';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useRouter } from 'vue-router';
-import type { IPinData, IRunData, Workflow } from 'n8n-workflow';
+import { ExpressionError, type IPinData, type IRunData, type Workflow } from 'n8n-workflow';
 
 vi.mock('@/stores/n8nRoot.store', () => ({
 	useRootStore: vi.fn().mockReturnValue({ pushConnectionActive: true }),
@@ -70,7 +68,6 @@ vi.mock('@/composables/useWorkflowHelpers', () => ({
 
 vi.mock('@/composables/useNodeHelpers', () => ({
 	useNodeHelpers: vi.fn().mockReturnValue({
-		refreshNodeIssues: vi.fn(),
 		updateNodesExecutionIssues: vi.fn(),
 	}),
 }));
@@ -94,9 +91,7 @@ describe('useRunWorkflow({ router })', () => {
 	let uiStore: ReturnType<typeof useUIStore>;
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let router: ReturnType<typeof useRouter>;
-	let toast: ReturnType<typeof useToast>;
 	let workflowHelpers: ReturnType<typeof useWorkflowHelpers>;
-	let nodeHelpers: ReturnType<typeof useNodeHelpers>;
 
 	beforeAll(() => {
 		const pinia = createTestingPinia();
@@ -108,9 +103,7 @@ describe('useRunWorkflow({ router })', () => {
 		workflowsStore = useWorkflowsStore();
 
 		router = useRouter();
-		toast = useToast();
 		workflowHelpers = useWorkflowHelpers({ router });
-		nodeHelpers = useNodeHelpers();
 	});
 
 	describe('runWorkflowApi()', () => {
@@ -170,22 +163,26 @@ describe('useRunWorkflow({ router })', () => {
 			expect(result).toBeUndefined();
 		});
 
-		it('should handle workflow issues correctly', async () => {
+		it('should execute workflow even if it has issues', async () => {
+			const mockExecutionResponse = { executionId: '123' };
 			const { runWorkflow } = useRunWorkflow({ router });
 
 			vi.mocked(uiStore).isActionActive.mockReturnValue(false);
 			vi.mocked(workflowHelpers).getCurrentWorkflow.mockReturnValue({
 				name: 'Test Workflow',
 			} as unknown as Workflow);
+			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
 			vi.mocked(workflowsStore).nodesIssuesExist = true;
-			vi.mocked(nodeHelpers).refreshNodeIssues.mockImplementation(() => {});
-			vi.mocked(workflowHelpers).checkReadyForExecution.mockReturnValue({
-				someNode: { issues: { input: ['issue'] } },
-			});
+			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue({
+				id: 'workflowId',
+				nodes: [],
+			} as unknown as IWorkflowData);
+			vi.mocked(workflowsStore).getWorkflowRunData = {
+				NodeName: [],
+			};
 
 			const result = await runWorkflow({});
-			expect(result).toBeUndefined();
-			expect(toast.showMessage).toHaveBeenCalled();
+			expect(result).toEqual(mockExecutionResponse);
 		});
 
 		it('should execute workflow successfully', async () => {
@@ -198,7 +195,6 @@ describe('useRunWorkflow({ router })', () => {
 			vi.mocked(workflowHelpers).getCurrentWorkflow.mockReturnValue({
 				name: 'Test Workflow',
 			} as Workflow);
-			vi.mocked(nodeHelpers).refreshNodeIssues.mockImplementation(() => {});
 			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue({
 				id: 'workflowId',
 				nodes: [],
@@ -284,6 +280,35 @@ describe('useRunWorkflow({ router })', () => {
 
 			expect(result.startNodeNames).toContain('node1');
 			expect(result.runData).toBeUndefined();
+		});
+
+		it('should rerun failed parent nodes, adding them to the returned list of start nodes and not adding their result to runData', () => {
+			const { consolidateRunDataAndStartNodes } = useRunWorkflow({ router });
+			const directParentNodes = ['node1'];
+			const runData = {
+				node1: [
+					{
+						error: new ExpressionError('error'),
+					},
+				],
+			} as unknown as IRunData;
+			const workflowMock = {
+				getParentNodes: vi.fn().mockReturnValue([]),
+				nodes: {
+					node1: { disabled: false },
+					node2: { disabled: false },
+				},
+			} as unknown as Workflow;
+
+			const result = consolidateRunDataAndStartNodes(
+				directParentNodes,
+				runData,
+				undefined,
+				workflowMock,
+			);
+
+			expect(result.startNodeNames).toContain('node1');
+			expect(result.runData).toEqual(undefined);
 		});
 	});
 });

@@ -84,6 +84,27 @@
 					</n8n-text>
 				</div>
 				<div v-if="!readOnlyEnv" :class="['text-center', 'mt-2xl', $style.actionsContainer]">
+					<a
+						v-if="isSalesUser"
+						:href="getTemplateRepositoryURL()"
+						:class="$style.emptyStateCard"
+						target="_blank"
+					>
+						<n8n-card
+							hoverable
+							data-test-id="browse-sales-templates-card"
+							@click="trackCategoryLinkClick('Sales')"
+						>
+							<n8n-icon :class="$style.emptyStateCardIcon" icon="handshake" />
+							<n8n-text size="large" class="mt-xs" color="text-base">
+								{{
+									$locale.baseText('workflows.empty.browseTemplates', {
+										interpolate: { category: 'Sales' },
+									})
+								}}
+							</n8n-text>
+						</n8n-card>
+					</a>
 					<n8n-card
 						:class="$style.emptyStateCard"
 						hoverable
@@ -111,7 +132,7 @@
 					:placeholder="$locale.baseText('workflowOpen.filterWorkflows')"
 					:model-value="filters.tags"
 					:create-enabled="false"
-					@update:modelValue="setKeyValue('tags', $event)"
+					@update:model-value="setKeyValue('tags', $event)"
 				/>
 			</div>
 			<div class="mb-s">
@@ -125,7 +146,7 @@
 				<n8n-select
 					data-test-id="status-dropdown"
 					:model-value="filters.status"
-					@update:modelValue="setKeyValue('status', $event)"
+					@update:model-value="setKeyValue('status', $event)"
 				>
 					<n8n-option
 						v-for="option in statusFilterOptions"
@@ -154,6 +175,7 @@ import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
+import { useTemplatesStore } from '@/stores/templates.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
@@ -205,6 +227,8 @@ const WorkflowsView = defineComponent({
 			useCredentialsStore,
 			useSourceControlStore,
 			useTagsStore,
+			useTemplatesStore,
+			useUsersStore,
 		),
 		readOnlyEnv(): boolean {
 			return this.sourceControlStore.preferences.branchReadOnly;
@@ -236,6 +260,15 @@ const WorkflowsView = defineComponent({
 		},
 		suggestedTemplates() {
 			return this.uiStore.suggestedTemplates;
+		},
+		userRole() {
+			const userRole: string | undefined =
+				this.usersStore.currentUserCloudInfo?.role ??
+				this.usersStore.currentUser?.personalizationAnswers?.role;
+			return userRole;
+		},
+		isSalesUser() {
+			return ['Sales', 'sales-and-marketing'].includes(this.userRole);
 		},
 	},
 	watch: {
@@ -272,6 +305,15 @@ const WorkflowsView = defineComponent({
 				source: 'Workflows list',
 			});
 		},
+		getTemplateRepositoryURL() {
+			return this.templatesStore.websiteTemplateRepositoryURL;
+		},
+		trackCategoryLinkClick(category: string) {
+			this.$telemetry.track(`User clicked Browse ${category} Templates`, {
+				role: this.usersStore.currentUserCloudInfo?.role,
+				active_workflow_count: this.workflowsStore.activeWorkflows.length,
+			});
+		},
 		async initialize() {
 			await Promise.all([
 				this.usersStore.fetchUsers(),
@@ -293,13 +335,12 @@ const WorkflowsView = defineComponent({
 			if (this.settingsStore.areTagsEnabled && filters.tags.length > 0) {
 				matches =
 					matches &&
-					filters.tags.every(
-						(tag) =>
-							(resource.tags as ITag[])?.find((resourceTag) =>
-								typeof resourceTag === 'object'
-									? `${resourceTag.id}` === `${tag}`
-									: `${resourceTag}` === `${tag}`,
-							),
+					filters.tags.every((tag) =>
+						(resource.tags as ITag[])?.find((resourceTag) =>
+							typeof resourceTag === 'object'
+								? `${resourceTag.id}` === `${tag}`
+								: `${resourceTag}` === `${tag}`,
+						),
 					);
 			}
 

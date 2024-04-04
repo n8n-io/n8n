@@ -119,7 +119,7 @@ export const useUsageStore = defineStore('usage', () => {
 			state.data.usage.executions.limit < 0
 				? false
 				: executionCount.value / executionLimit.value >=
-				  state.data.usage.executions.warningThreshold,
+					state.data.usage.executions.warningThreshold,
 		),
 		viewPlansUrl: computed(
 			() => `${subscriptionAppUrl.value}?${commonSubscriptionAppUrlQueryParams.value}`,

@@ -100,6 +100,9 @@ export class FrontendService {
 			urlBaseEditor: instanceBaseUrl,
 			binaryDataMode: config.getEnv('binaryDataManager.mode'),
 			versionCli: '',
+			authCookie: {
+				secure: config.getEnv('secure_cookie'),
+			},
 			releaseChannel: config.getEnv('generic.releaseChannel'),
 			oauthCallbackUrls: {
 				oauth1: `${instanceBaseUrl}/${restEndpoint}/oauth1-credential/callback`,
@@ -222,8 +225,8 @@ export class FrontendService {
 		this.writeStaticJSON('credentials', credentials);
 	}
 
-	getSettings(sessionId?: string): IN8nUISettings {
-		void this.internalHooks.onFrontendSettingsAPI(sessionId);
+	getSettings(pushRef?: string): IN8nUISettings {
+		void this.internalHooks.onFrontendSettingsAPI(pushRef);
 
 		const restEndpoint = config.getEnv('endpoints.rest');
 

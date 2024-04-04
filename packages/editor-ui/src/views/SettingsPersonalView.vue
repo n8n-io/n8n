@@ -89,7 +89,7 @@
 						size="small"
 						:model-value="currentTheme"
 						filterable
-						@update:modelValue="selectTheme"
+						@update:model-value="selectTheme"
 					>
 						<n8n-option
 							v-for="item in themeOptions"

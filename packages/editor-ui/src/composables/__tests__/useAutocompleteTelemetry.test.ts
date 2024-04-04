@@ -28,29 +28,12 @@ vi.mock('@/stores/n8nRoot.store', () => ({
 }));
 
 describe('useAutocompleteTelemetry', () => {
-	const originalRangeGetBoundingClientRect = Range.prototype.getBoundingClientRect;
-	const originalRangeGetClientRects = Range.prototype.getClientRects;
-
 	beforeEach(() => {
 		setActivePinia(createTestingPinia());
 	});
 
 	afterEach(() => {
 		vi.clearAllMocks();
-	});
-
-	beforeAll(() => {
-		Range.prototype.getBoundingClientRect = vi.fn();
-		Range.prototype.getClientRects = () => ({
-			item: vi.fn(),
-			length: 0,
-			[Symbol.iterator]: vi.fn(),
-		});
-	});
-
-	afterAll(() => {
-		Range.prototype.getBoundingClientRect = originalRangeGetBoundingClientRect;
-		Range.prototype.getClientRects = originalRangeGetClientRects;
 	});
 
 	const getEditor = (defaultDoc = '') => {
