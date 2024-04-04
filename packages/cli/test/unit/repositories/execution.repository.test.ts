@@ -1,6 +1,6 @@
 import { mock } from 'jest-mock-extended';
 import Container from 'typedi';
-import type { EntityMetadata } from '@n8n/typeorm';
+import type { EntityMetadata, SelectQueryBuilder } from '@n8n/typeorm';
 import { EntityManager, DataSource, Not, LessThanOrEqual } from '@n8n/typeorm';
 
 import config from '@/config';
@@ -8,10 +8,13 @@ import { ExecutionEntity } from '@db/entities/ExecutionEntity';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 
 import { mockInstance } from '../../shared/mocking';
+import { BinaryDataService } from 'n8n-core';
+import { nanoid } from 'nanoid';
 
 describe('ExecutionRepository', () => {
 	const entityManager = mockInstance(EntityManager);
 	const dataSource = mockInstance(DataSource, { manager: entityManager });
+	const binaryDataService = mockInstance(BinaryDataService);
 	dataSource.getMetadata.mockReturnValue(mock<EntityMetadata>({ target: ExecutionEntity }));
 	Object.assign(entityManager, { connection: dataSource });
 
@@ -48,5 +51,23 @@ describe('ExecutionRepository', () => {
 				});
 			},
 		);
+	});
+
+	describe('deleteExecutionsByFilter', () => {
+		test('should delete binary data', async () => {
+			const workflowId = nanoid();
+
+			jest.spyOn(executionRepository, 'createQueryBuilder').mockReturnValue(
+				mock<SelectQueryBuilder<ExecutionEntity>>({
+					select: jest.fn().mockReturnThis(),
+					andWhere: jest.fn().mockReturnThis(),
+					getMany: jest.fn().mockResolvedValue([{ id: '1', workflowId }]),
+				}),
+			);
+
+			await executionRepository.deleteExecutionsByFilter({ id: '1' }, ['1'], { ids: ['1'] });
+
+			expect(binaryDataService.deleteMany).toHaveBeenCalledWith([{ executionId: '1', workflowId }]);
+		});
 	});
 });
