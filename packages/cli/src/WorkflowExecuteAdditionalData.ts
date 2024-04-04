@@ -851,7 +851,9 @@ async function executeWorkflow(
 				workflowExecute,
 			};
 		}
-		data = await workflowExecute.processRunExecutionData(workflow);
+		const execution = workflowExecute.processRunExecutionData(workflow);
+		activeExecutions.attachWorkflowExecution(executionId, execution);
+		data = await execution;
 	} catch (error) {
 		const executionError = error ? (error as ExecutionError) : undefined;
 		const fullRunData: IRun = {
