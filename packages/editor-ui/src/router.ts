@@ -1,5 +1,3 @@
-import { useStorage } from '@/composables/useStorage';
-
 import type {
 	NavigationGuardNext,
 	RouteLocation,
