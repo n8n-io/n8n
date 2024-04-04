@@ -848,6 +848,11 @@ export async function proxyRequestToAxios(
 				error.message = `${response.status as number} - ${JSON.stringify(responseData)}`;
 				throw Object.assign(error, {
 					statusCode: response.status,
+					/**
+					 * Axios adds `status` when serializing, causing `status` to be available only to the client.
+					 * Hence we add it explicitly to allow the backend to use it when resolving expressions.
+					 */
+					status: response.status,
 					error: responseData,
 					response: pick(response, ['headers', 'status', 'statusText']),
 				});
