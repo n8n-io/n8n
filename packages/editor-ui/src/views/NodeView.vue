@@ -809,16 +809,22 @@ export default defineComponent({
 		this.clipboard.onPaste.value = this.onClipboardPasteEvent;
 
 		this.canvasStore.startLoading();
-		const loadPromises =
-			this.settingsStore.isPreviewMode && this.isDemo
-				? []
-				: [
-						this.loadActiveWorkflows(),
-						this.loadCredentials(),
-						this.loadCredentialTypes(),
-						this.loadVariables(),
-						this.loadSecrets(),
-					];
+
+		const loadPromises = (() => {
+			if (this.settingsStore.isPreviewMode && this.isDemo) return [];
+			const promises = [
+				this.loadActiveWorkflows(),
+				this.loadCredentials(),
+				this.loadCredentialTypes(),
+			];
+			if (this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Variables)) {
+				promises.push(this.loadVariables());
+			}
+			if (this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.ExternalSecrets)) {
+				promises.push(this.loadSecrets());
+			}
+			return promises;
+		})();
 
 		if (this.nodeTypesStore.allNodeTypes.length === 0) {
 			loadPromises.push(this.loadNodeTypes());
