@@ -243,6 +243,16 @@ describe('NodeExecuteFunctions', () => {
 			hooks.executeHookFunctions.mockClear();
 		});
 
+		test('should rethrow an error with `status` property', async () => {
+			nock(baseUrl).get('/test').reply(400);
+
+			try {
+				await proxyRequestToAxios(workflow, additionalData, node, `${baseUrl}/test`);
+			} catch (error) {
+				expect(error.status).toEqual(400);
+			}
+		});
+
 		test('should not throw if the response status is 200', async () => {
 			nock(baseUrl).get('/test').reply(200);
 			await proxyRequestToAxios(workflow, additionalData, node, `${baseUrl}/test`);

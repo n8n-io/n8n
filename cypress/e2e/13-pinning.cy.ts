@@ -69,6 +69,16 @@ describe('Data pinning', () => {
 		ndv.getters.outputTbodyCell(1, 0).should('include.text', 1);
 	});
 
+	it('should display pin data edit button for Webhook node', () => {
+		workflowPage.actions.addInitialNodeToCanvas('Webhook', { keepNdvOpen: true });
+
+		ndv.getters
+			.runDataPaneHeader()
+			.find('button')
+			.filter(':visible')
+			.should('have.attr', 'title', 'Edit Output');
+	});
+
 	it('Should be duplicating pin data when duplicating node', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Schedule Trigger');
 		workflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME, true, true);
