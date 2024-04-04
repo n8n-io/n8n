@@ -39,6 +39,9 @@ export class OrchestrationService {
 		return config.getEnv('redis.queueModeId');
 	}
 
+	/**
+	 * Whether this instance is the leader in a multi-main setup. Always `true` in single-main setup.
+	 */
 	get isLeader() {
 		return config.getEnv('multiMainSetup.instanceType') === 'leader';
 	}
