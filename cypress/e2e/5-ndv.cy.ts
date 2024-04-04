@@ -658,4 +658,18 @@ describe('NDV', () => {
 			cy.realPress('Escape');
 		});
 	});
+
+	it('Stop listening for trigger event from NDV', () => {
+		workflowPage.actions.addInitialNodeToCanvas('Local File Trigger', {
+			keepNdvOpen: true,
+			action: 'On Changes To A Specific File',
+			isTrigger: true,
+		});
+		ndv.getters.triggerPanelExecuteButton().should('exist');
+		ndv.getters.triggerPanelExecuteButton().click();
+		ndv.getters.triggerPanelExecuteButton().should('contain', 'Stop Listening');
+		ndv.getters.triggerPanelExecuteButton().click();
+		ndv.getters.triggerPanelExecuteButton().should('contain', 'Test step');
+		workflowPage.getters.successToast().should('exist');
+	});
 });

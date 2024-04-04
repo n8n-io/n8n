@@ -14,7 +14,7 @@ import type { OrchestrationService } from '@/services/orchestration.service';
 export abstract class AbstractPush<T> extends EventEmitter {
 	protected connections: Record<string, T> = {};
 
-	protected userIdBySessionId: Record<string, string> = {};
+	protected userIdByPushRef: Record<string, string> = {};
 
 	protected abstract close(connection: T): void;
 	protected abstract sendToOneConnection(connection: T, data: string): void;
@@ -26,100 +26,100 @@ export abstract class AbstractPush<T> extends EventEmitter {
 		super();
 	}
 
-	protected add(sessionId: string, userId: User['id'], connection: T) {
-		const { connections, userIdBySessionId: userIdsBySessionId } = this;
-		this.logger.debug('Add editor-UI session', { sessionId });
+	protected add(pushRef: string, userId: User['id'], connection: T) {
+		const { connections, userIdByPushRef } = this;
+		this.logger.debug('Add editor-UI session', { pushRef });
 
-		const existingConnection = connections[sessionId];
+		const existingConnection = connections[pushRef];
 
 		if (existingConnection) {
 			// Make sure to remove existing connection with the same ID
 			this.close(existingConnection);
 		}
 
-		connections[sessionId] = connection;
-		userIdsBySessionId[sessionId] = userId;
+		connections[pushRef] = connection;
+		userIdByPushRef[pushRef] = userId;
 	}
 
-	protected onMessageReceived(sessionId: string, msg: unknown) {
-		this.logger.debug('Received message from editor-UI', { sessionId, msg });
+	protected onMessageReceived(pushRef: string, msg: unknown) {
+		this.logger.debug('Received message from editor-UI', { pushRef, msg });
 
-		const userId = this.userIdBySessionId[sessionId];
+		const userId = this.userIdByPushRef[pushRef];
 
-		this.emit('message', { sessionId, userId, msg });
+		this.emit('message', { pushRef, userId, msg });
 	}
 
-	protected remove(sessionId?: string) {
-		if (!sessionId) return;
+	protected remove(pushRef?: string) {
+		if (!pushRef) return;
 
-		this.logger.debug('Removed editor-UI session', { sessionId });
+		this.logger.debug('Removed editor-UI session', { pushRef });
 
-		delete this.connections[sessionId];
-		delete this.userIdBySessionId[sessionId];
+		delete this.connections[pushRef];
+		delete this.userIdByPushRef[pushRef];
 	}
 
-	private sendToSessions(type: IPushDataType, data: unknown, sessionIds: string[]) {
+	private sendTo(type: IPushDataType, data: unknown, pushRefs: string[]) {
 		this.logger.debug(`Send data of type "${type}" to editor-UI`, {
 			dataType: type,
-			sessionIds: sessionIds.join(', '),
+			pushRefs: pushRefs.join(', '),
 		});
 
 		const stringifiedPayload = jsonStringify({ type, data }, { replaceCircularRefs: true });
 
-		for (const sessionId of sessionIds) {
-			const connection = this.connections[sessionId];
+		for (const pushRef of pushRefs) {
+			const connection = this.connections[pushRef];
 			assert(connection);
 			this.sendToOneConnection(connection, stringifiedPayload);
 		}
 	}
 
-	sendToAllSessions(type: IPushDataType, data?: unknown) {
-		this.sendToSessions(type, data, Object.keys(this.connections));
+	sendToAll(type: IPushDataType, data?: unknown) {
+		this.sendTo(type, data, Object.keys(this.connections));
 	}
 
-	sendToOneSession(type: IPushDataType, data: unknown, sessionId: string) {
+	sendToOneSession(type: IPushDataType, data: unknown, pushRef: string) {
 		/**
 		 * Multi-main setup: In a manual webhook execution, the main process that
 		 * handles a webhook might not be the same as the main process that created
 		 * the webhook. If so, the handler process commands the creator process to
-		 * relay the former's execution lifecyle events to the creator's frontend.
+		 * relay the former's execution lifecycle events to the creator's frontend.
 		 */
-		if (this.orchestrationService.isMultiMainSetupEnabled && !this.hasSessionId(sessionId)) {
-			const payload = { type, args: data, sessionId };
+		if (this.orchestrationService.isMultiMainSetupEnabled && !this.hasPushRef(pushRef)) {
+			const payload = { type, args: data, pushRef };
 
 			void this.orchestrationService.publish('relay-execution-lifecycle-event', payload);
 
 			return;
 		}
 
-		if (this.connections[sessionId] === undefined) {
-			this.logger.error(`The session "${sessionId}" is not registered.`, { sessionId });
+		if (this.connections[pushRef] === undefined) {
+			this.logger.error(`The session "${pushRef}" is not registered.`, { pushRef });
 			return;
 		}
 
-		this.sendToSessions(type, data, [sessionId]);
+		this.sendTo(type, data, [pushRef]);
 	}
 
 	sendToUsers(type: IPushDataType, data: unknown, userIds: Array<User['id']>) {
 		const { connections } = this;
-		const userSessionIds = Object.keys(connections).filter((sessionId) =>
-			userIds.includes(this.userIdBySessionId[sessionId]),
+		const userPushRefs = Object.keys(connections).filter((pushRef) =>
+			userIds.includes(this.userIdByPushRef[pushRef]),
 		);
 
-		this.sendToSessions(type, data, userSessionIds);
+		this.sendTo(type, data, userPushRefs);
 	}
 
 	closeAllConnections() {
-		for (const sessionId in this.connections) {
+		for (const pushRef in this.connections) {
 			// Signal the connection that we want to close it.
 			// We are not removing the sessions here because it should be
 			// the implementation's responsibility to do so once the connection
 			// has actually closed.
-			this.close(this.connections[sessionId]);
+			this.close(this.connections[pushRef]);
 		}
 	}
 
-	hasSessionId(sessionId: string) {
-		return this.connections[sessionId] !== undefined;
+	hasPushRef(pushRef: string) {
+		return this.connections[pushRef] !== undefined;
 	}
 }
