@@ -9,7 +9,7 @@ import { useToast } from '@/composables/useToast';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useRouter } from 'vue-router';
-import type { IPinData, IRunData, Workflow } from 'n8n-workflow';
+import { ExpressionError, type IPinData, type IRunData, type Workflow } from 'n8n-workflow';
 
 vi.mock('@/stores/n8nRoot.store', () => ({
 	useRootStore: vi.fn().mockReturnValue({ pushConnectionActive: true }),
@@ -284,6 +284,35 @@ describe('useRunWorkflow({ router })', () => {
 
 			expect(result.startNodeNames).toContain('node1');
 			expect(result.runData).toBeUndefined();
+		});
+
+		it('should rerun failed parent nodes, adding them to the returned list of start nodes and not adding their result to runData', () => {
+			const { consolidateRunDataAndStartNodes } = useRunWorkflow({ router });
+			const directParentNodes = ['node1'];
+			const runData = {
+				node1: [
+					{
+						error: new ExpressionError('error'),
+					},
+				],
+			} as unknown as IRunData;
+			const workflowMock = {
+				getParentNodes: vi.fn().mockReturnValue([]),
+				nodes: {
+					node1: { disabled: false },
+					node2: { disabled: false },
+				},
+			} as unknown as Workflow;
+
+			const result = consolidateRunDataAndStartNodes(
+				directParentNodes,
+				runData,
+				undefined,
+				workflowMock,
+			);
+
+			expect(result.startNodeNames).toContain('node1');
+			expect(result.runData).toEqual(undefined);
 		});
 	});
 });
