@@ -2,11 +2,17 @@ import { WaitTracker } from '@/WaitTracker';
 import { mock } from 'jest-mock-extended';
 import type { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import type { IExecutionResponse } from '@/Interfaces';
+import type { OrchestrationService } from '@/services/orchestration.service';
+import type { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
 
 jest.useFakeTimers();
 
 describe('WaitTracker', () => {
 	const executionRepository = mock<ExecutionRepository>();
+	const orchestrationService = mock<OrchestrationService>({
+		isLeader: true,
+		isMultiMainSetupEnabled: false,
+	});
 
 	const execution = mock<IExecutionResponse>({
 		id: '123',
@@ -21,7 +27,7 @@ describe('WaitTracker', () => {
 		it('should query DB for waiting executions', async () => {
 			executionRepository.getWaitingExecutions.mockResolvedValue([execution]);
 
-			new WaitTracker(mock(), executionRepository, mock(), mock());
+			new WaitTracker(mock(), executionRepository, mock(), mock(), orchestrationService);
 
 			expect(executionRepository.getWaitingExecutions).toHaveBeenCalledTimes(1);
 		});
@@ -29,7 +35,7 @@ describe('WaitTracker', () => {
 		it('if no executions to start, should do nothing', () => {
 			executionRepository.getWaitingExecutions.mockResolvedValue([]);
 
-			new WaitTracker(mock(), executionRepository, mock(), mock());
+			new WaitTracker(mock(), executionRepository, mock(), mock(), orchestrationService);
 
 			expect(executionRepository.findSingleExecution).not.toHaveBeenCalled();
 		});
@@ -37,7 +43,13 @@ describe('WaitTracker', () => {
 		describe('if execution to start', () => {
 			it('if not enough time passed, should not start execution', async () => {
 				executionRepository.getWaitingExecutions.mockResolvedValue([execution]);
-				const waitTracker = new WaitTracker(mock(), executionRepository, mock(), mock());
+				const waitTracker = new WaitTracker(
+					mock(),
+					executionRepository,
+					mock(),
+					mock(),
+					orchestrationService,
+				);
 
 				executionRepository.getWaitingExecutions.mockResolvedValue([execution]);
 				await waitTracker.getWaitingExecutions();
@@ -51,7 +63,13 @@ describe('WaitTracker', () => {
 
 			it('if enough time passed, should start execution', async () => {
 				executionRepository.getWaitingExecutions.mockResolvedValue([]);
-				const waitTracker = new WaitTracker(mock(), executionRepository, mock(), mock());
+				const waitTracker = new WaitTracker(
+					mock(),
+					executionRepository,
+					mock(),
+					mock(),
+					orchestrationService,
+				);
 
 				executionRepository.getWaitingExecutions.mockResolvedValue([execution]);
 				await waitTracker.getWaitingExecutions();
@@ -68,7 +86,13 @@ describe('WaitTracker', () => {
 	describe('startExecution()', () => {
 		it('should query for execution to start', async () => {
 			executionRepository.getWaitingExecutions.mockResolvedValue([]);
-			const waitTracker = new WaitTracker(mock(), executionRepository, mock(), mock());
+			const waitTracker = new WaitTracker(
+				mock(),
+				executionRepository,
+				mock(),
+				mock(),
+				orchestrationService,
+			);
 
 			executionRepository.findSingleExecution.mockResolvedValue(execution);
 			waitTracker.startExecution(execution.id);
@@ -78,6 +102,36 @@ describe('WaitTracker', () => {
 				includeData: true,
 				unflattenData: true,
 			});
+		});
+	});
+
+	describe('multi-main setup', () => {
+		it('should start tracking if leader', () => {
+			const orchestrationService = mock<OrchestrationService>({
+				isLeader: true,
+				isMultiMainSetupEnabled: true,
+				multiMainSetup: mock<MultiMainSetup>({ on: jest.fn().mockReturnThis() }),
+			});
+
+			executionRepository.getWaitingExecutions.mockResolvedValue([]);
+
+			new WaitTracker(mock(), executionRepository, mock(), mock(), orchestrationService);
+
+			expect(executionRepository.getWaitingExecutions).toHaveBeenCalledTimes(1);
+		});
+
+		it('should not start tracking if follower', () => {
+			const orchestrationService = mock<OrchestrationService>({
+				isLeader: false,
+				isMultiMainSetupEnabled: true,
+				multiMainSetup: mock<MultiMainSetup>({ on: jest.fn().mockReturnThis() }),
+			});
+
+			executionRepository.getWaitingExecutions.mockResolvedValue([]);
+
+			new WaitTracker(mock(), executionRepository, mock(), mock(), orchestrationService);
+
+			expect(executionRepository.getWaitingExecutions).not.toHaveBeenCalled();
 		});
 	});
 });
