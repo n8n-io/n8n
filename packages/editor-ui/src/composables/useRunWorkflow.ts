@@ -349,14 +349,19 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 				parentNodes.push(directParentNode);
 
 				for (const parentNode of parentNodes) {
-					if (!runData[parentNode]?.length && !pinData?.[parentNode]?.length) {
+					// We want to execute nodes that don't have run data neither pin data
+					// in addition, if a node failed we want to execute it again
+					if (
+						(!runData[parentNode]?.length && !pinData?.[parentNode]?.length) ||
+						runData[parentNode]?.[0]?.error !== undefined
+					) {
 						// When we hit a node which has no data we stop and set it
 						// as a start node the execution from and then go on with other
 						// direct input nodes
 						startNodeNames.push(parentNode);
 						break;
 					}
-					if (runData[parentNode]) {
+					if (runData[parentNode] && !runData[parentNode]?.[0]?.error) {
 						newRunData[parentNode] = runData[parentNode]?.slice(0, 1);
 					}
 				}
