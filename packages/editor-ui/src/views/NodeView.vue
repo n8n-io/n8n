@@ -820,7 +820,7 @@ export default defineComponent({
 			if (this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Variables)) {
 				promises.push(this.loadVariables());
 			}
-			if (this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.SourceControl)) {
+			if (this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.ExternalSecrets)) {
 				promises.push(this.loadSecrets());
 			}
 			return promises;
