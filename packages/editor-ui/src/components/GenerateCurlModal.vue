@@ -59,10 +59,13 @@ const aiStore = useAIStore();
 const modalBus = createEventBus();
 const formBus = createEventBus();
 
+const initialServiceValue = uiStore.getModalData(GENERATE_CURL_MODAL_KEY)?.service as string;
+const initialRequestValue = uiStore.getModalData(GENERATE_CURL_MODAL_KEY)?.request as string;
+
 const formInputs: IFormInput[] = [
 	{
 		name: 'service',
-		initialValue: uiStore.getModalData(GENERATE_CURL_MODAL_KEY)?.service,
+		initialValue: initialServiceValue,
 		properties: {
 			label: i18n.baseText('generateCurlModal.service.label'),
 			placeholder: i18n.baseText('generateCurlModal.service.placeholder'),
@@ -73,7 +76,7 @@ const formInputs: IFormInput[] = [
 	},
 	{
 		name: 'request',
-		initialValue: uiStore.getModalData(GENERATE_CURL_MODAL_KEY)?.request,
+		initialValue: initialRequestValue,
 		properties: {
 			label: i18n.baseText('generateCurlModal.request.label'),
 			placeholder: i18n.baseText('generateCurlModal.request.placeholder'),
@@ -85,8 +88,8 @@ const formInputs: IFormInput[] = [
 ];
 
 const formValues = ref<{ service: string; request: string }>({
-	service: uiStore.getModalData(GENERATE_CURL_MODAL_KEY)?.service ?? '',
-	request: uiStore.getModalData(GENERATE_CURL_MODAL_KEY)?.request ?? '',
+	service: initialServiceValue ?? '',
+	request: initialRequestValue ?? '',
 });
 
 const loading = ref(false);
@@ -95,6 +98,12 @@ const { importCurlCommand } = useImportCurlCommand({
 	onImportSuccess,
 	onImportFailure,
 	onAfterImport,
+	i18n: {
+		invalidCurCommand: {
+			title: 'generateCurlModal.invalidCurlCommand.title',
+			message: 'generateCurlModal.invalidCurlCommand.message',
+		},
+	},
 });
 
 function closeDialog(): void {

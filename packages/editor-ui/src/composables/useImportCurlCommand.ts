@@ -5,15 +5,30 @@ import { useToast } from '@/composables/useToast';
 import { useUIStore } from '@/stores/ui.store';
 import { useI18n } from '@/composables/useI18n';
 import { importCurlEventBus } from '@/event-bus';
+import type { BaseTextKey } from '@/plugins/i18n';
 
 export function useImportCurlCommand(options?: {
 	onImportSuccess?: () => void;
 	onImportFailure?: (data: { invalidProtocol: boolean; protocol?: string }) => void;
 	onAfterImport?: () => void;
+	i18n?: {
+		invalidCurCommand: {
+			title: string;
+			message: string;
+		};
+	};
 }) {
 	const uiStore = useUIStore();
 	const toast = useToast();
 	const i18n = useI18n();
+
+	const translationStrings = {
+		invalidCurCommand: {
+			title: 'importCurlParameter.showError.invalidCurlCommand.title',
+			message: 'importCurlParameter.showError.invalidCurlCommand.message',
+		},
+		...options?.i18n,
+	};
 
 	async function importCurlCommand(curlCommandRef: MaybeRef<string>): Promise<void> {
 		const curlCommand = unref(curlCommandRef);
@@ -91,8 +106,8 @@ export function useImportCurlCommand(options?: {
 
 	function showInvalidcURLCommandError(): void {
 		toast.showToast({
-			title: i18n.baseText('importCurlParameter.showError.invalidCurlCommand.title'),
-			message: i18n.baseText('importCurlParameter.showError.invalidCurlCommand.message'),
+			title: i18n.baseText(translationStrings.invalidCurCommand.title as BaseTextKey),
+			message: i18n.baseText(translationStrings.invalidCurCommand.message as BaseTextKey),
 			type: 'error',
 			duration: 0,
 		});

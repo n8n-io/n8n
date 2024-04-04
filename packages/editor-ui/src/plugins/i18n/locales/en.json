@@ -2147,6 +2147,8 @@
 	"generateCurlModal.service.placeholder": "Enter the name of the service",
 	"generateCurlModal.request.label": "Request",
 	"generateCurlModal.request.placeholder": "Describe the request you want to make",
+	"generateCurlModal.invalidCurlCommand.title": "Generation failed",
+	"generateCurlModal.invalidCurlCommand.message": "The AI couldn't process your request",
 	"variables.heading": "Variables",
 	"variables.add": "Add variable",
 	"variables.add.unavailable": "Upgrade plan to keep using variables",

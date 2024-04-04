@@ -18,6 +18,7 @@ import {
 import { generateCurlSchema } from '@/services/ai/schemas/generateCurl';
 import { PineconeStore } from '@langchain/pinecone';
 import Fuse from 'fuse.js';
+import { FailedDependencyError } from '@/errors/response-errors/failed-dependency.error';
 
 interface APIKnowledgebaseService {
 	id: string;
@@ -89,6 +90,18 @@ export class AIService {
 		return this.provider.mapResponse(result);
 	}
 
+	validateCurl(result: { curl: string }) {
+		if (!result.curl.startsWith('curl')) {
+			throw new ApplicationError(
+				'Failed to generate HTTP Request Node parameters. Please try again later.',
+			);
+		}
+
+		result.curl = result.curl.replace(/": (\{\{[A-Za-z0-9_]+}}|\{[A-Za-z0-9_]+})/g, '": "$1"');
+
+		return result;
+	}
+
 	async generateCurl(serviceName: string, serviceRequest: string) {
 		if (!this.provider) {
 			throw new ApplicationError('No AI provider has been configured.');
@@ -128,8 +141,6 @@ export class AIService {
 			},
 		);
 
-		console.log({ matchedDocuments });
-
 		if (matchedDocuments.length === 0) {
 			return await this.generateCurlGeneric(serviceName, serviceRequest);
 		}
@@ -145,11 +156,13 @@ export class AIService {
 		const generateCurlChain = generateCurlCommandPromptTemplate
 			.pipe(this.provider.modelWithOutputParser(generateCurlSchema))
 			.pipe(this.jsonOutputParser);
-		return (await generateCurlChain.invoke({
+		const result = (await generateCurlChain.invoke({
 			endpoints: JSON.stringify(aggregatedDocuments),
 			serviceName,
 			serviceRequest,
 		})) as z.infer<typeof generateCurlSchema>;
+
+		return this.validateCurl(result);
 	}
 
 	async generateCurlGeneric(serviceName: string, serviceRequest: string) {
@@ -160,9 +173,11 @@ export class AIService {
 		const generateCurlFallbackChain = generateCurlCommandFallbackPromptTemplate
 			.pipe(this.provider.modelWithOutputParser(generateCurlSchema))
 			.pipe(this.jsonOutputParser);
-		return (await generateCurlFallbackChain.invoke({
+		const result = (await generateCurlFallbackChain.invoke({
 			serviceName,
 			serviceRequest,
 		})) as z.infer<typeof generateCurlSchema>;
+
+		return this.validateCurl(result);
 	}
 }
