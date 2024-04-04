@@ -1,6 +1,8 @@
 <template>
 	<Modal
 		width="460px"
+		height="80%"
+		maxHeight="640px"
 		:title="
 			!showRecoveryCodes
 				? $locale.baseText('mfa.setup.step1.title')
@@ -274,6 +276,12 @@ export default defineComponent({
 </script>
 
 <style module lang="scss">
+.container {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+}
+
 .container > * {
 	overflow: visible;
 	margin-bottom: var(--spacing-s);
@@ -303,7 +311,6 @@ export default defineComponent({
 	text-align: center;
 }
 .recoveryCodesContainer {
-	height: 140px;
 	display: flex;
 	flex-direction: column;
 	background-color: var(--color-background-base);
@@ -316,7 +323,7 @@ export default defineComponent({
 	padding-bottom: var(--spacing-xs);
 	gap: var(--spacing-xs);
 	margin-bottom: var(--spacing-2xs);
-	overflow-y: scroll;
+	overflow-y: auto;
 }
 
 .recoveryCodesContainer span {
@@ -361,9 +368,5 @@ export default defineComponent({
 
 .notice {
 	margin: 0;
-}
-
-.modalContent {
-	overflow: hidden;
 }
 </style>
