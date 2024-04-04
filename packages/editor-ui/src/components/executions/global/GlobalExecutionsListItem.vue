@@ -80,7 +80,7 @@ const formattedStoppedAtDate = computed(() => {
 				new Date(props.execution.stoppedAt).getTime() -
 					new Date(props.execution.startedAt).getTime(),
 				true,
-		  )
+			)
 		: '';
 });
 
@@ -105,7 +105,7 @@ const statusText = computed(() => {
 			return i18n.baseText('executionsList.running');
 		case 'success':
 			return i18n.baseText('executionsList.succeeded');
-		case 'failed':
+		case 'error':
 			return i18n.baseText('executionsList.error');
 		default:
 			return i18n.baseText('executionsList.unknown');
@@ -119,7 +119,7 @@ const statusTextTranslationPath = computed(() => {
 		case 'canceled':
 			return 'executionsList.statusCanceled';
 		case 'crashed':
-		case 'failed':
+		case 'error':
 		case 'success':
 			if (!props.execution.stoppedAt) {
 				return 'executionsList.statusTextWithoutTime';
@@ -335,7 +335,7 @@ async function handleActionItemClick(commandData: 'retrySaved' | 'retryOriginal'
 	}
 
 	&.crashed td:first-child::before,
-	&.failed td:first-child::before {
+	&.error td:first-child::before {
 		background: var(--execution-card-border-error);
 	}
 
@@ -385,7 +385,7 @@ async function handleActionItemClick(commandData: 'retrySaved' | 'retryOriginal'
 	font-weight: var(--font-weight-bold);
 
 	.crashed &,
-	.failed & {
+	.error & {
 		color: var(--color-danger);
 	}
 

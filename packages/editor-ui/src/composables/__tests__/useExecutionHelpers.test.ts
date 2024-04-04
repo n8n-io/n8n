@@ -11,7 +11,7 @@ describe('useExecutionHelpers()', () => {
 			['running', 'running', i18n.baseText('executionsList.running')],
 			['new', 'running', i18n.baseText('executionsList.running')],
 			['success', 'success', i18n.baseText('executionsList.succeeded')],
-			['failed', 'error', i18n.baseText('executionsList.error')],
+			['error', 'error', i18n.baseText('executionsList.error')],
 			['crashed', 'error', i18n.baseText('executionsList.error')],
 			[undefined, 'unknown', 'Status unknown'],
 		])(

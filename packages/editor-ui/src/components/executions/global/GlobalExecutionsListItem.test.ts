@@ -46,7 +46,7 @@ describe('GlobalExecutionsListItem', () => {
 		const { getByTestId, emitted } = renderComponent({
 			props: {
 				execution: {
-					status: 'failed',
+					status: 'error',
 					id: 123,
 					stoppedAt: '01-01-2024',
 					finished: false,
@@ -68,7 +68,7 @@ describe('GlobalExecutionsListItem', () => {
 		const { getByTestId, emitted } = renderComponent({
 			props: {
 				execution: {
-					status: 'failed',
+					status: 'error',
 					id: 123,
 					stoppedAt: undefined,
 				},

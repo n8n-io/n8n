@@ -31,7 +31,7 @@ export function useExecutionHelpers() {
 		} else if (execution.status === 'success') {
 			status.name = 'success';
 			status.label = i18n.baseText('executionsList.succeeded');
-		} else if (execution.status === 'failed' || execution.status === 'crashed') {
+		} else if (execution.status === 'error' || execution.status === 'crashed') {
 			status.name = 'error';
 			status.label = i18n.baseText('executionsList.error');
 		}

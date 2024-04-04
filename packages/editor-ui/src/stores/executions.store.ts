@@ -121,7 +121,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 			} else if (execution.finished) {
 				return 'success';
 			} else if (execution.stoppedAt !== null) {
-				return 'failed';
+				return 'error';
 			} else {
 				return 'unknown';
 			}
@@ -217,7 +217,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 			loadWorkflow
 				? {
 						loadWorkflow: true,
-				  }
+					}
 				: undefined,
 		);
 	}
