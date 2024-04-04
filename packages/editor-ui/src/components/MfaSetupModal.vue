@@ -348,7 +348,7 @@ export default defineComponent({
 }
 
 .loseAccessText {
-	color: var(--color-danger);
+	color: var(--color-mfa-lose-access-text-color);
 }
 
 .error input {
