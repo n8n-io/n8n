@@ -13,44 +13,62 @@ before(() => {
 });
 
 describe('Import workflow', () => {
-	it('should allow importing workflow via URL', () => {
-		workflowPage.actions.visit(true);
-		workflowPage.getters.workflowMenu().click();
-		workflowPage.getters.workflowMenuItemImportFromURLItem().click();
+	describe('From URL', () => {
+		it('should import workflow', () => {
+			workflowPage.actions.visit(true);
+			workflowPage.getters.workflowMenu().click();
+			workflowPage.getters.workflowMenuItemImportFromURLItem().click();
 
-		messageBox.getters.modal().should('be.visible');
+			messageBox.getters.modal().should('be.visible');
 
-		messageBox.getters.content().type('https://fakepage.com/workflow.json');
+			messageBox.getters.content().type('https://fakepage.com/workflow.json');
 
-		messageBox.getters.confirm().click();
+			messageBox.getters.confirm().click();
 
-		workflowPage.actions.zoomToFit();
+			workflowPage.actions.zoomToFit();
 
-		workflowPage.getters.canvasNodes().should('have.length', 4);
+			workflowPage.getters.canvasNodes().should('have.length', 4);
 
-		workflowPage.getters.errorToast().should('not.exist');
+			workflowPage.getters.errorToast().should('not.exist');
 
-		workflowPage.getters.successToast().should('not.exist');
+			workflowPage.getters.successToast().should('not.exist');
+		});
+
+		it('clicking outside modal should not show error toast', () => {
+			workflowPage.actions.visit(true);
+
+			workflowPage.getters.workflowMenu().click();
+			workflowPage.getters.workflowMenuItemImportFromURLItem().click();
+
+			cy.get('body').click(0, 0);
+
+			workflowPage.getters.errorToast().should('not.exist');
+		});
+
+		it('canceling modal should not show error toast', () => {
+			workflowPage.actions.visit(true);
+
+			workflowPage.getters.workflowMenu().click();
+			workflowPage.getters.workflowMenuItemImportFromURLItem().click();
+			messageBox.getters.cancel().click();
+
+			workflowPage.getters.errorToast().should('not.exist');
+		});
 	});
 
-	it('clicking outside import workflow by URL modal should not show error toast', () => {
-		workflowPage.actions.visit(true);
+	describe('From File', () => {
+		it('should import workflow', () => {
+			workflowPage.actions.visit(true);
 
-		workflowPage.getters.workflowMenu().click();
-		workflowPage.getters.workflowMenuItemImportFromURLItem().click();
-
-		cy.get('body').click(0, 0);
-
-		workflowPage.getters.errorToast().should('not.exist');
-	});
-
-	it('canceling workflow by URL modal should not show error toast', () => {
-		workflowPage.actions.visit(true);
-
-		workflowPage.getters.workflowMenu().click();
-		workflowPage.getters.workflowMenuItemImportFromURLItem().click();
-		messageBox.getters.cancel().click();
-
-		workflowPage.getters.errorToast().should('not.exist');
+			workflowPage.getters.workflowMenu().click();
+			workflowPage.getters.workflowMenuItemImportFromFile().click();
+			workflowPage.getters
+				.workflowImportInput()
+				.selectFile('cypress/fixtures/Test_workflow-actions_paste-data.json', { force: true });
+			cy.waitForLoad(false);
+			workflowPage.actions.zoomToFit();
+			workflowPage.getters.canvasNodes().should('have.length', 5);
+			workflowPage.getters.nodeConnections().should('have.length', 5);
+		});
 	});
 });
