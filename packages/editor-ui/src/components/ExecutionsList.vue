@@ -896,10 +896,9 @@ export default defineComponent({
 		},
 		isExecutionRetriable(execution: ExecutionSummary): boolean {
 			return (
-				execution.stoppedAt !== undefined &&
-				!execution.finished &&
-				execution.retryOf === undefined &&
-				execution.retrySuccessId === undefined &&
+				['crashed', 'error'].includes(execution.status ?? '') &&
+				!execution.retryOf &&
+				!execution.retrySuccessId &&
 				!execution.waitTill
 			);
 		},
