@@ -313,7 +313,7 @@ export default defineComponent({
 .recoveryCodesContainer {
 	display: flex;
 	flex-direction: column;
-	background-color: var(--color-background-base);
+	background-color: var(--color-mfa-recovery-code-background);
 	text-align: center;
 	flex-wrap: nowrap;
 	justify-content: space-between;
@@ -330,7 +330,7 @@ export default defineComponent({
 	font-size: var(--font-size-s);
 	font-weight: var(--font-weight-regular);
 	line-height: var(--spacing-m);
-	color: #7d7d87;
+	color: var(--color-mfa-recovery-code-color);
 }
 
 .form:first-child span {
