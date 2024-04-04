@@ -168,10 +168,8 @@ export const useActions = () => {
 	 * In this case, we should connect the trigger with the following node
 	 */
 	function shouldConnectWithExistingTrigger(addedNodes: AddedNode[]): boolean {
-		const { selectedView } = useNodeCreatorStore();
-		if (selectedView === TRIGGER_NODE_CREATOR_VIEW && addedNodes.length === 2) {
+		if (addedNodes.length === 2) {
 			const isTriggerNode = useNodeTypesStore().isTriggerNode(addedNodes[0].type);
-			console.log('isTriggerNode', isTriggerNode, addedNodes[0].type);
 			return isTriggerNode;
 		}
 		return false;
