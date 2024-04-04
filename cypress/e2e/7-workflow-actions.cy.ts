@@ -108,6 +108,23 @@ describe('Workflow Actions', () => {
 		cy.wait('@saveWorkflow');
 		cy.wrap(null).then(() => expect(interceptCalledCount).to.eq(1));
 	});
+
+	it('should not save workflow twice when save is in progress', () => {
+		// This happens when users click save button from workflow name input
+		// In this case blur on the input saves the workflow and then click on the button saves it again
+		WorkflowPage.actions.visit();
+		WorkflowPage.getters.workflowNameInput().invoke('val').then((oldName) => {
+			WorkflowPage.getters.workflowNameInputContainer().click();
+			WorkflowPage.getters.workflowNameInput().type('{selectall}');
+			WorkflowPage.getters.workflowNameInput().type('Test');
+			WorkflowPage.getters.saveButton().click();
+			WorkflowPage.getters.workflowNameInput().should('have.value', 'Test');
+			cy.visit(WorkflowPages.url);
+			// There should be no workflow with the old name (duplicate save)
+			WorkflowPages.getters.workflowCards().contains(String(oldName)).should('not.exist');
+		});
+	});
+
 	it('should copy nodes', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
