@@ -388,6 +388,10 @@ export default defineComponent({
 	},
 	methods: {
 		async onSaveButtonClick() {
+			// If the workflow is saving, do not allow another save
+			if (this.isWorkflowSaving) {
+				return;
+			}
 			let currentId = undefined;
 			if (this.currentWorkflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 				currentId = this.currentWorkflowId;
@@ -497,11 +501,12 @@ export default defineComponent({
 				cb(true);
 				return;
 			}
-
+			this.uiStore.addActiveAction('workflowSaving');
 			const saved = await this.workflowHelpers.saveCurrentWorkflow({ name });
 			if (saved) {
 				this.isNameEditEnabled = false;
 			}
+			this.uiStore.removeActiveAction('workflowSaving');
 			cb(saved);
 		},
 		async handleFileImport(): Promise<void> {
