@@ -18,6 +18,8 @@ import { computed, unref } from 'vue';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { storeToRefs } from 'pinia';
 import { useNodeType } from '@/composables/useNodeType';
+import { useDataSchema } from './useDataSchema';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 export type PinDataSource =
 	| 'pin-icon-click'
@@ -47,6 +49,7 @@ export function usePinnedData(
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
 	const externalHooks = useExternalHooks();
+	const { getInputDataWithPinned } = useDataSchema();
 
 	const { pushRef } = storeToRefs(rootStore);
 	const { isSubNodeType, isMultipleOutputsNodeType } = useNodeType({
@@ -71,6 +74,16 @@ export function usePinnedData(
 			!isMultipleOutputsNodeType.value &&
 			!PIN_DATA_NODE_TYPES_DENYLIST.includes(targetNode.type)
 		);
+	});
+
+	const canPinNode = computed(() => {
+		const targetNode = unref(node);
+		if (targetNode === null) return false;
+
+		const nodeType = useNodeTypesStore().getNodeType(targetNode.type, targetNode.typeVersion);
+		const dataToPin = getInputDataWithPinned(targetNode);
+		if (!nodeType || dataToPin.length === 0) return false;
+		return nodeType.outputs.length === 1 && !PIN_DATA_NODE_TYPES_DENYLIST.includes(targetNode.type);
 	});
 
 	function isValidJSON(data: string): boolean {
@@ -246,6 +259,7 @@ export function usePinnedData(
 		data,
 		hasData,
 		isValidNodeType,
+		canPinNode,
 		setData,
 		onSetDataSuccess,
 		onSetDataError,

@@ -217,8 +217,8 @@
 				<div :class="[$style.editModeBody, 'ignore-key-press']">
 					<JsonEditor
 						:model-value="editMode.value"
-						@update:model-value="ndvStore.setOutputPanelEditModeValue($event)"
 						:fill-parent="true"
+						@update:model-value="ndvStore.setOutputPanelEditModeValue($event)"
 					/>
 				</div>
 				<div :class="$style.editModeFooter">
@@ -803,21 +803,14 @@ export default defineComponent({
 			return this.nodeTypesStore.isTriggerNode(this.node.type);
 		},
 		canPinData(): boolean {
-			// Only "main" inputs can pin data
-
 			if (this.node === null) {
 				return false;
 			}
 
-			const workflow = this.workflowsStore.getCurrentWorkflow();
-			const workflowNode = workflow.getNode(this.node.name);
-			const inputs = NodeHelpers.getNodeInputs(workflow, workflowNode!, this.nodeType!);
-			const inputNames = NodeHelpers.getConnectionTypes(inputs);
-
-			const nonMainInputs = !!inputNames.find((inputName) => inputName !== NodeConnectionType.Main);
+			const canPinNode = usePinnedData(this.node).canPinNode.value;
 
 			return (
-				!nonMainInputs &&
+				canPinNode &&
 				!this.isPaneTypeInput &&
 				this.pinnedData.isValidNodeType.value &&
 				!(this.binaryData && this.binaryData.length > 0)
