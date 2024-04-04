@@ -155,7 +155,7 @@ async function handleDeleteSelected() {
 				? { deleteBefore: props.executions[0].startedAt }
 				: {
 						ids: Object.keys(selectedItems.value),
-				  }),
+					}),
 		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('executionsList.showError.handleDeleteSelected.title'));
@@ -367,9 +367,6 @@ async function onAutoRefreshToggle(value: boolean) {
 						<th></th>
 					</tr>
 				</thead>
-				{{
-					alreadyAnimated
-				}}
 				<TransitionGroup tag="tbody" :name="animationsEnabled ? 'executions-list' : undefined">
 					<GlobalExecutionsListItem
 						v-for="execution in executions"
