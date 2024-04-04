@@ -134,13 +134,11 @@ describe('ExecutionsFilter', () => {
 	);
 
 	test('state change', async () => {
-		const { html, getByTestId, queryByTestId, emitted } = renderComponent({
+		const { getByTestId, queryByTestId, emitted } = renderComponent({
 			pinia: createTestingPinia({ initialState }),
 		});
 
-		const filterChangedEvent = emitted().filterChanged;
-		expect(filterChangedEvent).toHaveLength(1);
-		expect(filterChangedEvent[0]).toEqual([defaultFilterState]);
+		let filterChangedEvent = emitted().filterChanged;
 
 		expect(getByTestId('execution-filter-form')).not.toBeVisible();
 		expect(queryByTestId('executions-filter-reset-button')).not.toBeInTheDocument();
@@ -152,15 +150,18 @@ describe('ExecutionsFilter', () => {
 		await userEvent.click(getByTestId('executions-filter-status-select'));
 
 		await userEvent.click(getByTestId('executions-filter-status-select').querySelectorAll('li')[1]);
+		filterChangedEvent = emitted().filterChanged;
 
-		expect(emitted().filterChanged).toHaveLength(2);
-		expect(filterChangedEvent[1]).toEqual([{ ...defaultFilterState, status: 'error' }]);
+		expect(filterChangedEvent).toHaveLength(1);
+		expect(filterChangedEvent[0]).toEqual([{ ...defaultFilterState, status: 'error' }]);
 		expect(getByTestId('executions-filter-reset-button')).toBeInTheDocument();
 		expect(getByTestId('execution-filter-badge')).toBeInTheDocument();
 
 		await userEvent.click(getByTestId('executions-filter-reset-button'));
-		expect(emitted().filterChanged).toHaveLength(3);
-		expect(filterChangedEvent[2]).toEqual([defaultFilterState]);
+		filterChangedEvent = emitted().filterChanged;
+
+		expect(filterChangedEvent).toHaveLength(2);
+		expect(filterChangedEvent[1]).toEqual([defaultFilterState]);
 		expect(queryByTestId('executions-filter-reset-button')).not.toBeInTheDocument();
 		expect(queryByTestId('execution-filter-badge')).not.toBeInTheDocument();
 	});

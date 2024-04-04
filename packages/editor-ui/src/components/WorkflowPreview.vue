@@ -27,7 +27,6 @@ import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
 import type { IWorkflowDb } from '@/Interface';
 import { useRootStore } from '@/stores/n8nRoot.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useExecutionsStore } from '@/stores/executions.store';
 
 const props = withDefaults(
@@ -57,7 +56,6 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const toast = useToast();
 const rootStore = useRootStore();
-const workflowsStore = useWorkflowsStore();
 const executionsStore = useExecutionsStore();
 
 const iframeRef = ref<HTMLIFrameElement | null>(null);

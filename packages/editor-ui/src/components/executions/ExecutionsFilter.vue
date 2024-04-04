@@ -149,7 +149,6 @@ const goToUpgrade = () => {
 
 onBeforeMount(() => {
 	isCustomDataFilterTracked.value = false;
-	// emit('filterChanged', filter);
 });
 </script>
 <template>

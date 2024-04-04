@@ -582,7 +582,7 @@
 	"executionsList.confirmMessage.headline": "Delete Executions?",
 	"executionsList.confirmMessage.message": "Are you sure that you want to delete the {count} selected execution(s)?",
 	"executionsList.clearSelection": "Clear selection",
-	"executionsList.error": "Failed",
+	"executionsList.error": "Error",
 	"executionsList.filters": "Filters",
 	"executionsList.loadMore": "Load more",
 	"executionsList.empty": "No executions",
