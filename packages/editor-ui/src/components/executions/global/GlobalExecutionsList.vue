@@ -490,20 +490,6 @@ async function onAutoRefreshToggle(value: boolean) {
 	}
 }
 
-.buttonCell {
-	overflow: hidden;
-
-	button {
-		transform: translateX(1000%);
-		transition: transform 0s;
-
-		&:focus-visible,
-		.execRow:hover & {
-			transform: translateX(0);
-		}
-	}
-}
-
 .execTable {
 	/*
 	  Table height needs to be set to 0 in order to use height 100% for elements in table cells

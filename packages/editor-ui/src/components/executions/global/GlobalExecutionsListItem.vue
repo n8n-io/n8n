@@ -406,4 +406,18 @@ async function handleActionItemClick(commandData: 'retrySaved' | 'retryOriginal'
 		color: var(--color-background-dark);
 	}
 }
+
+.buttonCell {
+	overflow: hidden;
+
+	button {
+		transform: translateX(1000%);
+		transition: transform 0s;
+
+		&:focus-visible,
+		.executionListItem:hover & {
+			transform: translateX(0);
+		}
+	}
+}
 </style>
