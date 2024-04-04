@@ -30,6 +30,7 @@ async function checkWorkflowId(workflowId: string, user: User): Promise<boolean>
 			  })
 			: await Db.collections.SharedWorkflow.findOne({
 					relations: ['workflow'],
+					where: { ['workflow']: { id: workflowId } },
 			  });
 
 	if (!shared) {

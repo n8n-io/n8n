@@ -199,17 +199,24 @@ workflowsController.get(
 			relations = relations.filter((relation) => relation !== 'workflow.tags');
 		}
 
-		const shared = await Db.collections.SharedWorkflow.findOne({
-			relations,
-			where: whereClause({
-				user: req.user,
-				entityType: 'workflow',
-				entityId: workflowId,
-				roles: ['owner'],
-			}),
-		});
+		const shared =
+			process.env.ONLY_OWNER_OR_ADMIN_CAN_ACCESS_WORKFLOW === 'true'
+				? await Db.collections.SharedWorkflow.findOne({
+						relations,
+						where: whereClause({
+							user: req.user,
+							entityType: 'workflow',
+							entityId: workflowId,
+							roles: ['owner'],
+						}),
+				  })
+				: await Db.collections.SharedWorkflow.findOne({
+						relations,
+						where: { ['workflow']: { id: workflowId } },
+				  });
 
 		if (!shared) {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
 			LoggerProxy.verbose('User attempted to access a workflow without permissions', {
 				workflowId,
 				userId: req.user.id,

@@ -727,6 +727,7 @@ class Server extends AbstractServer {
 						  })
 						: await Db.collections.SharedWorkflow.findOne({
 								relations: ['workflow'],
+								where: { ['workflow']: { id: workflowId } },
 						  });
 
 				if (!shared) {
