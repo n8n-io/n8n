@@ -823,11 +823,12 @@ export default defineComponent({
 			if (this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.SourceControl)) {
 				promises.push(this.loadSecrets());
 			}
-			if (this.nodeTypesStore.allNodeTypes.length === 0) {
-				promises.push(this.loadNodeTypes());
-			}
 			return promises;
 		})();
+
+		if (this.nodeTypesStore.allNodeTypes.length === 0) {
+			loadPromises.push(this.loadNodeTypes());
+		}
 
 		try {
 			await Promise.all(loadPromises);
