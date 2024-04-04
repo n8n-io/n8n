@@ -1,3 +1,22 @@
+## [1.36.1](https://github.com/n8n-io/n8n/compare/n8n@1.36.0...n8n@1.36.1) (2024-04-04)
+
+
+### Bug Fixes
+
+* **core:** Ensure `status` on Axios errors is available to the BE ([#9015](https://github.com/n8n-io/n8n/issues/9015)) ([39002b0](https://github.com/n8n-io/n8n/commit/39002b068e0c098609d076ca195be8933153a3a6))
+* **core:** Ensure only leader handles waiting executions ([#9014](https://github.com/n8n-io/n8n/issues/9014)) ([52b6947](https://github.com/n8n-io/n8n/commit/52b6947db419347e25c6d8fd5d909f6834e1db12))
+* **editor:** Add fallback for expression resolution in multi-output case ([#9045](https://github.com/n8n-io/n8n/issues/9045)) ([e22ef2a](https://github.com/n8n-io/n8n/commit/e22ef2a3ef39d8a697a1d4c50207a8bec7cfd7c4))
+* **editor:** Canvas showing error toast when clicking outside of "import workflow by url" modal ([#9001](https://github.com/n8n-io/n8n/issues/9001)) ([cb2e460](https://github.com/n8n-io/n8n/commit/cb2e460f199ab0915c1c7ff5c7ea2b77c2c351e5))
+* **editor:** Fix execution with wait node ([#9051](https://github.com/n8n-io/n8n/issues/9051)) ([0fba0bf](https://github.com/n8n-io/n8n/commit/0fba0bfb9e9fb4671a09a725790f391ad3936892))
+* **editor:** Issue showing Auth2 callback section when all properties are overriden ([#8999](https://github.com/n8n-io/n8n/issues/8999)) ([10eea2b](https://github.com/n8n-io/n8n/commit/10eea2bea7cffb6ce573a3f339ca3ab0e961c622))
+* **editor:** Make share modal content scrollable ([#9025](https://github.com/n8n-io/n8n/issues/9025)) ([46aec96](https://github.com/n8n-io/n8n/commit/46aec961013b1ff3b47828507d0776f1017775a7))
+* **editor:** Make Webhook node pinnable ([#9047](https://github.com/n8n-io/n8n/issues/9047)) ([8cbe2bf](https://github.com/n8n-io/n8n/commit/8cbe2bf241eed40b12ace147758265e96c5c7197))
+* **editor:** Prevent saving workflow while another save is in progress ([#9048](https://github.com/n8n-io/n8n/issues/9048)) ([8fa755a](https://github.com/n8n-io/n8n/commit/8fa755a90f43b11bc1a4121f8c8e5a38f1cfa938))
+* **editor:** Rerun failed nodes in manual executions ([#9050](https://github.com/n8n-io/n8n/issues/9050)) ([a30e02d](https://github.com/n8n-io/n8n/commit/a30e02dd3844adac4b10faaa3c4a4f94e1ba1097))
+* Workflows executed from other workflows not stopping ([#9010](https://github.com/n8n-io/n8n/issues/9010)) ([09e397b](https://github.com/n8n-io/n8n/commit/09e397b79e3e97d598def7ede8f48ec9ddd56518))
+
+
+
 # [1.36.0](https://github.com/n8n-io/n8n/compare/n8n@1.35.0...n8n@1.36.0) (2024-04-03)
 
 
