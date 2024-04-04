@@ -715,16 +715,23 @@ class Server extends AbstractServer {
 			ResponseHelper.send(async (req: WorkflowRequest.GetAllActivationErrors) => {
 				const { id: workflowId } = req.params;
 
-				const shared = await Db.collections.SharedWorkflow.findOne({
-					relations: ['workflow'],
-					where: whereClause({
-						user: req.user,
-						entityType: 'workflow',
-						entityId: workflowId,
-					}),
-				});
+				const shared =
+					process.env.ONLY_OWNER_OR_ADMIN_CAN_ACCESS_WORKFLOW === 'true'
+						? await Db.collections.SharedWorkflow.findOne({
+								relations: ['workflow'],
+								where: whereClause({
+									user: req.user,
+									entityType: 'workflow',
+									entityId: workflowId,
+								}),
+						  })
+						: await Db.collections.SharedWorkflow.findOne({
+								relations: ['workflow'],
+								where: { ['workflow']: { id: workflowId } },
+						  });
 
 				if (!shared) {
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 					LoggerProxy.verbose('User attempted to access workflow errors without permissions', {
 						workflowId,
 						userId: req.user.id,

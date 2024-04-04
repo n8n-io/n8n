@@ -18,16 +18,23 @@ export const workflowStatsController = express.Router();
 // Helper function that validates the ID, return a flag stating whether the request is allowed
 async function checkWorkflowId(workflowId: string, user: User): Promise<boolean> {
 	// Check permissions
-	const shared = await Db.collections.SharedWorkflow.findOne({
-		relations: ['workflow'],
-		where: whereClause({
-			user,
-			entityType: 'workflow',
-			entityId: workflowId,
-		}),
-	});
+	const shared =
+		process.env.ONLY_OWNER_OR_ADMIN_CAN_ACCESS_WORKFLOW === 'true'
+			? await Db.collections.SharedWorkflow.findOne({
+					relations: ['workflow'],
+					where: whereClause({
+						user,
+						entityType: 'workflow',
+						entityId: workflowId,
+					}),
+			  })
+			: await Db.collections.SharedWorkflow.findOne({
+					relations: ['workflow'],
+					where: { ['workflow']: { id: workflowId } },
+			  });
 
 	if (!shared) {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
 		LoggerProxy.verbose('User attempted to read a workflow without permissions', {
 			workflowId,
 			userId: user.id,

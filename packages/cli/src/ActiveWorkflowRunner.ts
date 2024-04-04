@@ -384,13 +384,18 @@ export class ActiveWorkflowRunner {
 				where: { active: true },
 			});
 		} else {
-			const shared = await Db.collections.SharedWorkflow.find({
-				relations: ['workflow'],
-				where: whereClause({
-					user,
-					entityType: 'workflow',
-				}),
-			});
+			const shared =
+				process.env.ONLY_OWNER_OR_ADMIN_CAN_ACCESS_WORKFLOW === 'true'
+					? await Db.collections.SharedWorkflow.find({
+							relations: ['workflow'],
+							where: whereClause({
+								user,
+								entityType: 'workflow',
+							}),
+					  })
+					: await Db.collections.SharedWorkflow.find({
+							relations: ['workflow'],
+					  });
 
 			activeWorkflows = shared.reduce<WorkflowEntity[]>((acc, cur) => {
 				if (cur.workflow.active) acc.push(cur.workflow);
