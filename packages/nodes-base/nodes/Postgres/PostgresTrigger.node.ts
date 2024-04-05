@@ -209,6 +209,40 @@ export class PostgresTrigger implements INodeType {
 					},
 				],
 			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				options: [
+					{
+						displayName: 'Connection Timeout',
+						name: 'connectionTimeout',
+						type: 'number',
+						default: 30,
+						description: 'Number of seconds reserved for connecting to the database',
+					},
+					{
+						displayName: 'Delay Closing Idle Connection',
+						name: 'delayClosingIdleConnection',
+						type: 'number',
+						default: 0,
+						description:
+							'Number of seconds to wait before idle connection would be eligible for closing',
+						typeOptions: {
+							minValue: 0,
+						},
+					},
+					{
+						displayName: 'Keep Alive',
+						name: 'keepAlive',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to keep the connection alive',
+					},
+				],
+			},
 		],
 	};
 

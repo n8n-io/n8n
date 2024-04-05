@@ -87,6 +87,11 @@ export async function pgTriggerFunction(
 
 export async function initDB(this: ITriggerFunctions | ILoadOptionsFunctions) {
 	const credentials = await this.getCredentials('postgres');
+	const options = this.getNodeParameter('options', {}) as {
+		connectionTimeout?: number;
+		delayClosingIdleConnection?: number;
+		keepAlive?: boolean;
+	};
 	const pgp = pgPromise({
 		// prevent spam in console "WARNING: Creating a duplicate database object for the same connection."
 		noWarnings: true,
@@ -98,6 +103,18 @@ export async function initDB(this: ITriggerFunctions | ILoadOptionsFunctions) {
 		user: credentials.user as string,
 		password: credentials.password as string,
 	};
+
+	if (options.connectionTimeout) {
+		config.connectionTimeoutMillis = options.connectionTimeout * 1000;
+	}
+
+	if (options.keepAlive) {
+		config.keepAlive = options.keepAlive;
+	}
+
+	if (options.delayClosingIdleConnection) {
+		config.keepAliveInitialDelayMillis = options.delayClosingIdleConnection * 1000;
+	}
 
 	if (credentials.allowUnauthorizedCerts === true) {
 		config.ssl = {
