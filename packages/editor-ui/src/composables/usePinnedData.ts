@@ -1,7 +1,7 @@
 import { useToast } from '@/composables/useToast';
 import { useI18n } from '@/composables/useI18n';
 import type { INodeExecutionData, IPinData } from 'n8n-workflow';
-import { jsonParse, jsonStringify } from 'n8n-workflow';
+import { jsonParse, jsonStringify, NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 import {
 	MAX_EXPECTED_REQUEST_SIZE,
 	MAX_PINNED_DATA_SIZE,
@@ -82,8 +82,18 @@ export function usePinnedData(
 
 		const nodeType = useNodeTypesStore().getNodeType(targetNode.type, targetNode.typeVersion);
 		const dataToPin = getInputDataWithPinned(targetNode);
+
 		if (!nodeType || (checkDataEmpty && dataToPin.length === 0)) return false;
-		return nodeType.outputs.length === 1 && !PIN_DATA_NODE_TYPES_DENYLIST.includes(targetNode.type);
+
+		const workflow = workflowsStore.getCurrentWorkflow();
+		const outputs = NodeHelpers.getNodeOutputs(workflow, targetNode, nodeType);
+		const mainOutputs = outputs.filter((output) =>
+			typeof output === 'string'
+				? output === NodeConnectionType.Main
+				: output.type === NodeConnectionType.Main,
+		);
+
+		return mainOutputs.length === 1 && !PIN_DATA_NODE_TYPES_DENYLIST.includes(targetNode.type);
 	}
 
 	function isValidJSON(data: string): boolean {
