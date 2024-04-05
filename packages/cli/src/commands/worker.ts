@@ -366,6 +366,12 @@ export class Worker extends BaseCommand {
 				process.exit(2);
 			} else {
 				this.logger.error('Error from queue: ', error);
+
+				if (error.message.includes('job stalled more than maxStalledCount')) {
+					error.message =
+						'The execution has reached the maximum number of attempts and will no longer retry.';
+				}
+
 				throw error;
 			}
 		});
