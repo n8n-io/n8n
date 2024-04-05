@@ -898,8 +898,7 @@ export default defineComponent({
 			return (
 				['crashed', 'error'].includes(execution.status ?? '') &&
 				!execution.retryOf &&
-				!execution.retrySuccessId &&
-				!execution.waitTill
+				!execution.retrySuccessId
 			);
 		},
 		async deleteExecution(execution: ExecutionSummary) {

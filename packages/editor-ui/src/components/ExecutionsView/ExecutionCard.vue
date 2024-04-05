@@ -137,8 +137,7 @@ export default defineComponent({
 			return (
 				['crashed', 'error'].includes(this.execution.status ?? '') &&
 				!this.execution.retryOf &&
-				!this.execution.retrySuccessId &&
-				!this.execution.waitTill
+				!this.execution.retrySuccessId
 			);
 		},
 	},
