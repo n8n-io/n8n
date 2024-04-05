@@ -1294,10 +1294,10 @@ export default defineComponent({
 
 	&.error {
 		path {
-			fill: var(--node-error-output-color);
+			fill: var(--color-danger);
 		}
 		rect {
-			stroke: var(--node-error-output-color);
+			stroke: var(--color-danger);
 		}
 	}
 
@@ -1436,7 +1436,7 @@ export default defineComponent({
 }
 
 .node-output-endpoint-label.node-connection-category-error {
-	color: var(--node-error-output-color);
+	color: var(--color-node-error-output-text-color);
 }
 
 .node-output-endpoint-label {
