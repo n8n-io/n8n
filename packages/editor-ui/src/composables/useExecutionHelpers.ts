@@ -54,8 +54,17 @@ export function useExecutionHelpers() {
 		return i18n.baseText('executionsList.started', { interpolate: { time, date } });
 	}
 
+	function isExecutionRetriable(execution: ExecutionSummary): boolean {
+		return (
+			['crashed', 'error'].includes(execution.status ?? '') &&
+			!execution.retryOf &&
+			!execution.retrySuccessId
+		);
+	}
+
 	return {
 		getUIDetails,
 		formatDate,
+		isExecutionRetriable,
 	};
 }

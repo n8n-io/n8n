@@ -8,6 +8,7 @@ import { useRouter } from 'vue-router';
 import { convertToDisplayDate } from '@/utils/formatters/dateFormatter';
 import { i18n as locale } from '@/plugins/i18n';
 import ExecutionsTime from '@/components/executions/ExecutionsTime.vue';
+import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
 
 const emit = defineEmits(['stop', 'select', 'retrySaved', 'retryOriginal', 'delete']);
 
@@ -33,6 +34,7 @@ const props = defineProps({
 const style = useCssModule();
 const i18n = useI18n();
 const router = useRouter();
+const executionHelpers = useExecutionHelpers();
 
 const isStopping = ref(false);
 
@@ -48,15 +50,7 @@ const isWaitTillIndefinite = computed(() => {
 	return new Date(props.execution.waitTill).toISOString() === WAIT_TIME_UNLIMITED;
 });
 
-const isExecutionRetriable = computed(() => {
-	return (
-		!!props.execution.stoppedAt &&
-		!props.execution.finished &&
-		!props.execution.retryOf &&
-		!props.execution.retrySuccessId &&
-		!props.execution.waitTill
-	);
-});
+const isRetriable = computed(() => executionHelpers.isExecutionRetriable(props.execution));
 
 const classes = computed(() => {
 	return {
@@ -262,11 +256,11 @@ async function handleActionItemClick(commandData: 'retrySaved' | 'retryOriginal'
 					<ElDropdownMenu
 						:class="{
 							[$style.actions]: true,
-							[$style.deleteOnly]: !isExecutionRetriable,
+							[$style.deleteOnly]: !isRetriable,
 						}"
 					>
 						<ElDropdownItem
-							v-if="isExecutionRetriable"
+							v-if="isRetriable"
 							data-test-id="execution-retry-saved-dropdown-item"
 							:class="$style.retryAction"
 							command="retrySaved"
@@ -274,7 +268,7 @@ async function handleActionItemClick(commandData: 'retrySaved' | 'retryOriginal'
 							{{ i18n.baseText('executionsList.retryWithCurrentlySavedWorkflow') }}
 						</ElDropdownItem>
 						<ElDropdownItem
-							v-if="isExecutionRetriable"
+							v-if="isRetriable"
 							data-test-id="execution-retry-original-dropdown-item"
 							:class="$style.retryAction"
 							command="retryOriginal"

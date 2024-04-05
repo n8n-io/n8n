@@ -59,7 +59,7 @@
 			</div>
 			<div :class="$style.icons">
 				<n8n-action-dropdown
-					v-if="executionUIDetails.name === 'error'"
+					v-if="isRetriable"
 					:class="[$style.icon, $style.retry]"
 					:items="retryExecutionActions"
 					activator-icon="redo"
@@ -83,7 +83,7 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import type { IExecutionUIData } from '@/mixins/executionsHelpers';
+import type { IExecutionUIData } from '@/composables/useExecutionHelpers';
 import { VIEWS } from '@/constants';
 import ExecutionsTime from '@/components/executions/ExecutionsTime.vue';
 import { useExecutionHelpers } from '@/composables/useExecutionHelpers';
@@ -140,6 +140,9 @@ export default defineComponent({
 		},
 		isActive(): boolean {
 			return this.execution.id === this.$route.params.executionId;
+		},
+		isRetriable(): boolean {
+			return this.executionHelpers.isExecutionRetriable(this.execution);
 		},
 	},
 	methods: {
