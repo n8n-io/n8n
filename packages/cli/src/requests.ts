@@ -50,7 +50,7 @@ export class UserRoleChangePayload {
 	newRoleName: AssignableRole;
 }
 
-export type AuthlessRequest<
+export type APIRequest<
 	RouteParams = {},
 	ResponseBody = {},
 	RequestBody = {},
@@ -59,18 +59,23 @@ export type AuthlessRequest<
 	browserId?: string;
 };
 
+export type AuthlessRequest<
+	RouteParams = {},
+	ResponseBody = {},
+	RequestBody = {},
+	RequestQuery = {},
+> = APIRequest<RouteParams, ResponseBody, RequestBody, RequestQuery> & {
+	user: never;
+};
+
 export type AuthenticatedRequest<
 	RouteParams = {},
 	ResponseBody = {},
 	RequestBody = {},
 	RequestQuery = {},
-> = Omit<
-	express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery>,
-	'user' | 'cookies'
-> & {
+> = Omit<APIRequest<RouteParams, ResponseBody, RequestBody, RequestQuery>, 'user' | 'cookies'> & {
 	user: User;
 	cookies: Record<string, string | undefined>;
-	browserId?: string;
 };
 
 // ----------------------------------

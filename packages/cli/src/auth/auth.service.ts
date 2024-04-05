@@ -52,8 +52,6 @@ export class AuthService {
 		const token = req.cookies[AUTH_COOKIE_NAME];
 		if (token) {
 			try {
-				// TODO: set this on `skipAuth` endpoints as well
-				req.browserId = req.headers['browser-id'] as string;
 				req.user = await this.resolveJwt(token, req, res);
 			} catch (error) {
 				if (error instanceof JsonWebTokenError || error instanceof AuthError) {

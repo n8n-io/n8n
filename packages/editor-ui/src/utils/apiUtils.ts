@@ -91,7 +91,7 @@ export async function request(config: {
 		method,
 		url: endpoint,
 		baseURL,
-		headers: { ...headers, 'Browser-Id': browserId },
+		headers: { ...headers, 'browser-id': browserId },
 	};
 	if (
 		import.meta.env.NODE_ENV !== 'production' &&
