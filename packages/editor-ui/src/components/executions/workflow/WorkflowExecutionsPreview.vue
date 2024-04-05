@@ -96,7 +96,7 @@
 				</n8n-button>
 
 				<ElDropdown
-					v-if="executionUIDetails?.name === 'error'"
+					v-if="isRetriable"
 					ref="retryDropdown"
 					trigger="click"
 					class="mr-xs"
@@ -200,6 +200,9 @@ export default defineComponent({
 						text: this.$locale.baseText('executionsList.debug.button.debugInEditor'),
 						type: 'primary',
 					};
+		},
+		isRetriable(): boolean {
+			return !!this.execution && this.executionHelpers.isExecutionRetriable(this.execution);
 		},
 	},
 	methods: {
