@@ -356,7 +356,7 @@ export class ExecutionService {
 	 */
 	async findAllActiveAndLatestFinished(query: ExecutionSummaries.RangeQuery) {
 		const active: ExecutionStatus[] = ['new', 'running', 'waiting'];
-		const finished: ExecutionStatus[] = ['success', 'error'];
+		const finished: ExecutionStatus[] = ['success', 'error', 'canceled'];
 
 		const [activeResult, finishedResult] = await Promise.all([
 			this.findRangeWithCount({ ...query, status: active }),
