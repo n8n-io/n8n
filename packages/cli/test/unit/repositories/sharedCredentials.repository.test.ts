@@ -7,10 +7,10 @@ import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { memberPermissions, ownerPermissions } from '@/permissions/roles';
-import { mockDBConnection } from '../../shared/mocking';
+import { mockEntityManager } from '../../shared/mocking';
 
 describe('SharedCredentialsRepository', () => {
-	const entityManager = mockDBConnection(SharedCredentials);
+	const entityManager = mockEntityManager(SharedCredentials);
 	const repository = Container.get(SharedCredentialsRepository);
 
 	describe('findCredentialForUser', () => {

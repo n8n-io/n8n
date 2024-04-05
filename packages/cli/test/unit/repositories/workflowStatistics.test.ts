@@ -5,10 +5,10 @@ import { mock, mockClear } from 'jest-mock-extended';
 import { StatisticsNames, WorkflowStatistics } from '@db/entities/WorkflowStatistics';
 import { WorkflowStatisticsRepository } from '@db/repositories/workflowStatistics.repository';
 
-import { mockDBConnection } from '../../shared/mocking';
+import { mockEntityManager } from '../../shared/mocking';
 
 describe('insertWorkflowStatistics', () => {
-	const entityManager = mockDBConnection(WorkflowStatistics);
+	const entityManager = mockEntityManager(WorkflowStatistics);
 	const workflowStatisticsRepository = Container.get(WorkflowStatisticsRepository);
 
 	beforeEach(() => {
