@@ -2356,7 +2356,8 @@ export type FieldType =
 	| 'array'
 	| 'object'
 	| 'options'
-	| 'url';
+	| 'url'
+	| 'jwt';
 
 export type ValidationResult = {
 	valid: boolean;

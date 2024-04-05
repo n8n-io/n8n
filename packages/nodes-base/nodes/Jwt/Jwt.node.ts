@@ -28,6 +28,19 @@ const prettifyOperation = (operation: string) => {
 	return operation;
 };
 
+const getToken = (ctx: IExecuteFunctions, itemIndex = 0) => {
+	const token = ctx.getNodeParameter('token', itemIndex) as string;
+
+	if (!token) {
+		throw new NodeOperationError(ctx.getNode(), 'The JWT token was not provided', {
+			itemIndex,
+			description: 'Be sure to add a valid JWT token to the “Token” parameter',
+		});
+	}
+
+	return token;
+};
+
 export class Jwt implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'JWT',
@@ -176,6 +189,8 @@ export class Jwt implements INodeType {
 				name: 'token',
 				type: 'string',
 				typeOptions: { password: true },
+				required: true,
+				validateType: 'jwt',
 				default: '',
 				description: 'The token to verify or decode',
 				displayOptions: {
@@ -371,7 +386,7 @@ export class Jwt implements INodeType {
 				}
 
 				if (operation === 'verify') {
-					const token = this.getNodeParameter('token', itemIndex) as string;
+					const token = getToken(this, itemIndex);
 
 					let secretOrPublicKey;
 
@@ -391,7 +406,7 @@ export class Jwt implements INodeType {
 						complete,
 					});
 
-					const json = options.complete ? (data as IDataObject) : { payload: data };
+					const json = options.complete && data ? (data as IDataObject) : { payload: data };
 
 					returnData.push({
 						json,
@@ -400,11 +415,11 @@ export class Jwt implements INodeType {
 				}
 
 				if (operation === 'decode') {
-					const token = this.getNodeParameter('token', itemIndex) as string;
+					const token = getToken(this, itemIndex);
 
 					const data = jwt.decode(token, { complete: options.complete });
 
-					const json = options.complete ? (data as IDataObject) : { payload: data };
+					const json = options.complete && data ? (data as IDataObject) : { payload: data };
 
 					returnData.push({
 						json,
@@ -412,6 +427,13 @@ export class Jwt implements INodeType {
 					});
 				}
 			} catch (error) {
+				if (error.message === 'invalid signature') {
+					error = new NodeOperationError(this.getNode(), "The JWT token can't be verified", {
+						itemIndex,
+						description:
+							'Be sure that the provided JWT token is correctly encoded and matches the selected credentials',
+					});
+				}
 				if (this.continueOnFail()) {
 					returnData.push({
 						json: this.getInputData(itemIndex)[0].json,
