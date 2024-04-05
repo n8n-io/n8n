@@ -1294,10 +1294,10 @@ export default defineComponent({
 
 	&.error {
 		path {
-			fill: var(--color-danger);
+			fill: var(--color-node-error-output-text-color);
 		}
 		rect {
-			stroke: var(--color-danger);
+			stroke: var(--color-node-error-output-text-color);
 		}
 	}
 
