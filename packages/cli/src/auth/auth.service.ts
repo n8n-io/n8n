@@ -2,6 +2,7 @@ import { Service } from 'typedi';
 import type { NextFunction, Response } from 'express';
 import { createHash } from 'crypto';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
+import { Cipher } from 'n8n-core';
 
 import config from '@/config';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES, Time } from '@/constants';
@@ -37,6 +38,7 @@ interface PasswordResetToken {
 export class AuthService {
 	constructor(
 		private readonly logger: Logger,
+		private readonly cipher: Cipher,
 		private readonly license: License,
 		private readonly jwtService: JwtService,
 		private readonly urlService: UrlService,
@@ -95,7 +97,7 @@ export class AuthService {
 		const payload: AuthJwtPayload = {
 			id: user.id,
 			hash: this.createJWTHash(user),
-			browserId,
+			browserId: browserId && this.cipher.encrypt(browserId),
 		};
 		return this.jwtService.sign(payload, {
 			expiresIn: this.jwtExpiration,
@@ -120,7 +122,7 @@ export class AuthService {
 			// or, If the email or password has been updated
 			jwtPayload.hash !== this.createJWTHash(user) ||
 			// If the token was issued for another browser session
-			(jwtPayload.browserId && jwtPayload.browserId !== req.browserId)
+			(jwtPayload.browserId && this.cipher.decrypt(jwtPayload.browserId) !== req.browserId)
 		) {
 			throw new AuthError('Unauthorized');
 		}
