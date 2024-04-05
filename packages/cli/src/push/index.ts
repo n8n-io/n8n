@@ -117,7 +117,6 @@ export const setupPushHandler = (restEndpoint: string, app: Application) => {
 	app.use(
 		endpoint,
 		// eslint-disable-next-line @typescript-eslint/unbound-method
-		// TODO: handle the missing browserId on WebSocket requests
 		authService.authMiddleware,
 		(req: SSEPushRequest | WebSocketPushRequest, res: PushResponse) => push.handleRequest(req, res),
 	);

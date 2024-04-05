@@ -34,6 +34,8 @@ interface PasswordResetToken {
 	hash: string;
 }
 
+const pushEndpoint = `/${config.get('endpoints.rest')}/push`;
+
 @Service()
 export class AuthService {
 	constructor(
@@ -120,7 +122,11 @@ export class AuthService {
 			// or, If the email or password has been updated
 			jwtPayload.hash !== this.createJWTHash(user) ||
 			// If the token was issued for another browser session
-			(jwtPayload.browserId && this.cipher.decrypt(jwtPayload.browserId) !== req.browserId)
+			// NOTE: we need to exclude push endpoint from this check because we can't send custom header on websocket requests
+			// TODO: Implement a custom handshake for push, to avoid having to send any data on querystring or headers
+			(req.baseUrl !== pushEndpoint &&
+				jwtPayload.browserId &&
+				this.cipher.decrypt(jwtPayload.browserId) !== req.browserId)
 		) {
 			throw new AuthError('Unauthorized');
 		}
