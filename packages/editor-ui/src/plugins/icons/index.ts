@@ -77,6 +77,7 @@ import {
 	faHandHoldingUsd,
 	faHandScissors,
 	faHandPointLeft,
+	faHandshake,
 	faHashtag,
 	faHdd,
 	faHistory,
@@ -240,6 +241,7 @@ export const FontAwesomePlugin: Plugin<{}> = {
 		addIcon(faGraduationCap);
 		addIcon(faHandHoldingUsd);
 		addIcon(faHandScissors);
+		addIcon(faHandshake);
 		addIcon(faHandPointLeft);
 		addIcon(faHashtag);
 		addIcon(faHdd);

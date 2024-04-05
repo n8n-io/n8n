@@ -6,8 +6,6 @@ import { setActivePinia } from 'pinia';
 import { waitFor } from '@testing-library/vue';
 
 describe('ExpressionParameterInput', () => {
-	const originalRangeGetBoundingClientRect = Range.prototype.getBoundingClientRect;
-	const originalRangeGetClientRects = Range.prototype.getClientRects;
 	const renderComponent = createComponentRenderer(ExpressionEditorModalInput);
 	let pinia: TestingPinia;
 
@@ -16,19 +14,6 @@ describe('ExpressionParameterInput', () => {
 		setActivePinia(pinia);
 	});
 
-	beforeAll(() => {
-		Range.prototype.getBoundingClientRect = vi.fn();
-		Range.prototype.getClientRects = () => ({
-			item: vi.fn(),
-			length: 0,
-			[Symbol.iterator]: vi.fn(),
-		});
-	});
-
-	afterAll(() => {
-		Range.prototype.getBoundingClientRect = originalRangeGetBoundingClientRect;
-		Range.prototype.getClientRects = originalRangeGetClientRects;
-	});
 	test.each([
 		['not be editable', 'readonly', true, ''],
 		['be editable', 'not readonly', false, 'test'],

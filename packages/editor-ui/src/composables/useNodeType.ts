@@ -36,7 +36,13 @@ export function useNodeType(
 			: false;
 	});
 
-	const isMultipleOutputsNodeType = computed(() => (nodeType.value?.outputs ?? []).length > 1);
+	const isMultipleOutputsNodeType = computed(() => {
+		const outputs = nodeType.value?.outputs;
+
+		if (typeof outputs === 'string') return false; // e.g. Webhook node
+
+		return (outputs ?? []).length > 1;
+	});
 
 	return {
 		nodeType,
