@@ -5,23 +5,10 @@ import type { IExecutionFlattedResponse, IExecutionResponse, IRestApiContext } f
 import { parse } from 'flatted';
 
 const BROWSER_ID_STORAGE_KEY = 'n8n-browserId';
-let browserId = sessionStorage.getItem(BROWSER_ID_STORAGE_KEY);
-if (!browserId) {
-	const encoder = new TextEncoder();
-	const data = encoder.encode(
-		JSON.stringify([
-			navigator.userAgent,
-			[screen.height, screen.width, screen.colorDepth].join('x'),
-			new Date().getTimezoneOffset(),
-			[...navigator.plugins].map((p) => p.name).join(','),
-		]),
-	);
-	crypto.subtle.digest('SHA-256', data).then((arrayBuffer) => {
-		sessionStorage.setItem(
-			BROWSER_ID_STORAGE_KEY,
-			btoa(String.fromCharCode(...new Uint8Array(arrayBuffer))),
-		);
-	});
+let browserId = localStorage.getItem(BROWSER_ID_STORAGE_KEY);
+if (!browserId && 'randomUUID' in crypto) {
+	browserId = crypto.randomUUID();
+	localStorage.setItem(BROWSER_ID_STORAGE_KEY, browserId);
 }
 
 export const NO_NETWORK_ERROR_CODE = 999;
@@ -91,8 +78,11 @@ export async function request(config: {
 		method,
 		url: endpoint,
 		baseURL,
-		headers: { ...headers, 'browser-id': browserId },
+		headers: headers ?? {},
 	};
+	if (browserId) {
+		options.headers!['browser-id'] = browserId;
+	}
 	if (
 		import.meta.env.NODE_ENV !== 'production' &&
 		!baseURL.includes('api.n8n.io') &&
