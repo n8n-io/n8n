@@ -34,7 +34,7 @@ const getToken = (ctx: IExecuteFunctions, itemIndex = 0) => {
 	if (!token) {
 		throw new NodeOperationError(ctx.getNode(), 'The JWT token was not provided', {
 			itemIndex,
-			description: 'Be sure to add a valid JWT token to the “Token” parameter',
+			description: "Be sure to add a valid JWT token to the 'Token' parameter",
 		});
 	}
 
