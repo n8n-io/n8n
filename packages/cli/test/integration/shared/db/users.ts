@@ -100,7 +100,11 @@ export async function createManyUsers(
 	amount: number,
 	attributes: Partial<User> = {},
 ): Promise<User[]> {
-	const users = await Promise.all([...Array(amount)].map(async () => await newUser(attributes)));
+	const users = await Promise.all(
+		Array(amount)
+			.fill(0)
+			.map(async () => await newUser(attributes)),
+	);
 	return await Container.get(UserRepository).save(users);
 }
 
