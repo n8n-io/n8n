@@ -59,7 +59,7 @@
 			</div>
 			<div :class="$style.icons">
 				<n8n-action-dropdown
-					v-if="isExecutionRetriable(execution)"
+					v-if="isRetriable"
 					:class="[$style.icon, $style.retry]"
 					:items="retryExecutionActions"
 					activator-icon="redo"
@@ -132,6 +132,9 @@ export default defineComponent({
 		},
 		isActive(): boolean {
 			return this.execution.id === this.$route.params.executionId;
+		},
+		isRetriable(): boolean {
+			return this.isExecutionRetriable(this.execution);
 		},
 	},
 	methods: {
