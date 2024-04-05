@@ -369,7 +369,7 @@ export class Worker extends BaseCommand {
 				this.logger.error('Error from queue: ', error);
 
 				if (error.message.includes('job stalled more than maxStalledCount')) {
-					throw new MaxStalledCountError(error.cause);
+					throw new MaxStalledCountError(error);
 				}
 
 				throw error;
