@@ -894,13 +894,6 @@ export default defineComponent({
 				this.showError(error, this.i18n.baseText('executionsList.showError.stopExecution.title'));
 			}
 		},
-		isExecutionRetriable(execution: ExecutionSummary): boolean {
-			return (
-				['crashed', 'error'].includes(execution.status ?? '') &&
-				!execution.retryOf &&
-				!execution.retrySuccessId
-			);
-		},
 		async deleteExecution(execution: ExecutionSummary) {
 			this.isDataLoading = true;
 			try {
