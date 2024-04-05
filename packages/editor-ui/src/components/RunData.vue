@@ -768,7 +768,7 @@ export default defineComponent({
 				return false;
 			}
 
-			const canPinNode = usePinnedData(this.node).canPinNode.value;
+			const canPinNode = usePinnedData(this.node).canPinNode(false);
 
 			return (
 				canPinNode &&

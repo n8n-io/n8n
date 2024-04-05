@@ -76,15 +76,15 @@ export function usePinnedData(
 		);
 	});
 
-	const canPinNode = computed(() => {
+	function canPinNode(checkDataEmpty = false) {
 		const targetNode = unref(node);
 		if (targetNode === null) return false;
 
 		const nodeType = useNodeTypesStore().getNodeType(targetNode.type, targetNode.typeVersion);
 		const dataToPin = getInputDataWithPinned(targetNode);
-		if (!nodeType || dataToPin.length === 0) return false;
+		if (!nodeType || (checkDataEmpty && dataToPin.length === 0)) return false;
 		return nodeType.outputs.length === 1 && !PIN_DATA_NODE_TYPES_DENYLIST.includes(targetNode.type);
-	});
+	}
 
 	function isValidJSON(data: string): boolean {
 		try {

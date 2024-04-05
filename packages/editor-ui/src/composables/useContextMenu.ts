@@ -162,7 +162,7 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 						? i18n.baseText('contextMenu.unpin', i18nOptions)
 						: i18n.baseText('contextMenu.pin', i18nOptions),
 					shortcut: { keys: ['p'] },
-					disabled: isReadOnly.value || !nodes.every((n) => usePinnedData(n).canPinNode.value),
+					disabled: isReadOnly.value || !nodes.every((n) => usePinnedData(n).canPinNode(true)),
 				},
 				{
 					id: 'copy',
