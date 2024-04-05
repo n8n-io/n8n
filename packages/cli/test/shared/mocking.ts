@@ -13,7 +13,7 @@ export const mockInstance = <T>(
 	return instance;
 };
 
-export const mockEntityManager = (entityClass: Function) => {
+export const mockEntityManager = (entityClass: Class) => {
 	const entityManager = mockInstance(EntityManager);
 	const dataSource = mockInstance(DataSource, {
 		manager: entityManager,
