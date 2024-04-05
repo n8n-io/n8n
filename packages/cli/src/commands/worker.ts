@@ -29,6 +29,7 @@ import { OrchestrationWorkerService } from '@/services/orchestration/worker/orch
 import type { WorkerJobStatusSummary } from '@/services/orchestration/worker/types';
 import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 import { BaseCommand } from './BaseCommand';
+import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
 
 export class Worker extends BaseCommand {
 	static description = '\nStarts a n8n worker';
@@ -368,8 +369,7 @@ export class Worker extends BaseCommand {
 				this.logger.error('Error from queue: ', error);
 
 				if (error.message.includes('job stalled more than maxStalledCount')) {
-					error.message =
-						'The execution has reached the maximum number of attempts and will no longer retry.';
+					throw new MaxStalledCountError(error.cause);
 				}
 
 				throw error;
