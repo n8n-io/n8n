@@ -5,7 +5,7 @@ import type {
 	INodePropertyOptions,
 	ResourceMapperFields,
 } from 'n8n-workflow';
-import { jsonParse } from 'n8n-workflow';
+import { NodeOperationError, jsonParse } from 'n8n-workflow';
 
 import { Get, Middleware, RestController } from '@/decorators';
 import { getBase } from '@/WorkflowExecuteAdditionalData';
@@ -82,16 +82,24 @@ export class DynamicNodeParametersController {
 		const { path, methodName, filter, paginationToken } = req.query;
 		const { credentials, currentNodeParameters, nodeTypeAndVersion } = req.params;
 		const additionalData = await getBase(req.user.id, currentNodeParameters);
-		return await this.service.getResourceLocatorResults(
-			methodName,
-			path,
-			additionalData,
-			nodeTypeAndVersion,
-			currentNodeParameters,
-			credentials,
-			filter,
-			paginationToken,
-		);
+		try {
+			return await this.service.getResourceLocatorResults(
+				methodName,
+				path,
+				additionalData,
+				nodeTypeAndVersion,
+				currentNodeParameters,
+				credentials,
+				filter,
+				paginationToken,
+			);
+		} catch (error) {
+			if (error instanceof NodeOperationError) {
+				throw new BadRequestError(error.message);
+			}
+
+			throw error;
+		}
 	}
 
 	@Get('/resource-mapper-fields', { middlewares: [assertMethodName] })
