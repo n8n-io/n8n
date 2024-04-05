@@ -112,6 +112,7 @@ const initialize = async () => {
 };
 
 onMounted(async () => {
+	if (!sourceControlStore.isEnterpriseSourceControlEnabled) return;
 	await initialize();
 });
 
