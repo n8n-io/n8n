@@ -1,0 +1,123 @@
+{
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "cb484ba7b742928a2048bf8829668bed5b5ad9787579adea888f05980292a4a7"
+  },
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "bcd3c9b2-bbba-4070-a7b3-d6a8afd3013a",
+      "name": "When clicking \"Execute Workflow\"",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [280, 780]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "mergeByFields": {
+          "values": [
+            {
+              "field1": "test",
+              "field2": "test"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "bba1639f-4f0d-4d73-b9ba-3429ab0c9398",
+      "name": "Merge",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [900, 860]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "871813af-958a-4b96-bd73-6a23dadde35c",
+      "name": "Set Input 1",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [480, 780]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "57bb71ae-ea8e-4110-add6-7c265de7284b",
+      "name": "Set Input 2",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [480, 940]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "f8f9abe9-3362-4047-96aa-de63a0735d1d",
+      "name": "Set Output",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [1060, 860]
+    }
+  ],
+  "connections": {
+    "When clicking \"Execute Workflow\"": {
+      "main": [
+        [
+          {
+            "node": "Set Input 2",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Set Input 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Set Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Input 1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Input 2": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {
+    "When clicking \"Execute Workflow\"": [
+      {
+        "test": 123
+      }
+    ]
+  }
+}
