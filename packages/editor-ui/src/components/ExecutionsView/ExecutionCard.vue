@@ -83,7 +83,7 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import type { ExecutionSummary } from '@/Interface';
+import type { ExecutionSummary } from 'n8n-workflow';
 import type { IExecutionUIData } from '@/mixins/executionsHelpers';
 import { executionHelpers } from '@/mixins/executionsHelpers';
 import { VIEWS } from '@/constants';
