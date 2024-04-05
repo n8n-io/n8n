@@ -45,13 +45,13 @@ jest.mock('@pinecone-database/pinecone', () => ({
 }));
 
 jest.mock('@/services/ai/providers/openai', () => {
-	const modelInvoke = jest.fn();
+	const modelInvoke = jest.fn().mockImplementation(() => ({ curl: 'curl -X GET https://n8n.io' }));
 
 	return {
 		AIProviderOpenAI: jest.fn().mockImplementation(() => {
 			return {
 				mapResponse: jest.fn((v) => v),
-				invoke: jest.fn(),
+				invoke: modelInvoke,
 				model: {
 					invoke: modelInvoke,
 				},
@@ -91,8 +91,6 @@ describe('AIService', () => {
 
 			const service = new AIService();
 			await service.prompt(['message']);
-
-			console.log(service.provider);
 
 			expect(service.provider.invoke).toHaveBeenCalled();
 		});
@@ -143,6 +141,7 @@ describe('AIService', () => {
 
 			const service = new AIService();
 			const generateCurlGenericSpy = jest.spyOn(service, 'generateCurlGeneric');
+			service.validateCurl = (v) => v;
 
 			const serviceName = 'Service Name';
 			const serviceRequest = 'Please make a request';
@@ -157,6 +156,7 @@ describe('AIService', () => {
 
 			const service = new AIService();
 			const generateCurlGenericSpy = jest.spyOn(service, 'generateCurlGeneric');
+			service.validateCurl = (v) => v;
 
 			const serviceName = 'NoMatchedServiceName';
 			const serviceRequest = 'Please make a request';
@@ -171,6 +171,7 @@ describe('AIService', () => {
 
 			const service = new AIService();
 			const generateCurlGenericSpy = jest.spyOn(service, 'generateCurlGeneric');
+			service.validateCurl = (v) => v;
 
 			const serviceName = 'OpenAI';
 			const serviceRequest = 'Please make a request';
@@ -197,6 +198,7 @@ describe('AIService', () => {
 				.mockImplementation(async () => endpoints);
 
 			const service = new AIService();
+			service.validateCurl = (v) => v;
 
 			await service.generateCurl(serviceName, serviceRequest);
 
@@ -213,10 +215,11 @@ describe('AIService', () => {
 
 	describe('generateCurlGeneric', () => {
 		test('should call prompt with serviceName and serviceRequest', async () => {
-			const service = new AIService();
-
 			const serviceName = 'Service Name';
 			const serviceRequest = 'Please make a request';
+
+			const service = new AIService();
+			service.validateCurl = (v) => v;
 
 			await service.generateCurlGeneric(serviceName, serviceRequest);
 
@@ -229,6 +232,29 @@ describe('AIService', () => {
 			expect(jest.mocked(service.provider.model.invoke).mock.calls[0][0].messages).toEqual(
 				messages,
 			);
+		});
+	});
+
+	describe('validateCurl', () => {
+		it('should return the result if curl command starts with "curl"', () => {
+			const aiService = new AIService();
+			const result = { curl: 'curl -X GET https://n8n.io' };
+			const validatedResult = aiService.validateCurl(result);
+			expect(validatedResult).toEqual(result);
+		});
+
+		it('should replace boolean and number placeholders in the curl command', () => {
+			const aiService = new AIService();
+			const result = { curl: 'curl -X GET https://n8n.io -d "{ "key": {{value}} }"' };
+			const expected = { curl: 'curl -X GET https://n8n.io -d "{ "key": "{{value}}" }"' };
+			const validatedResult = aiService.validateCurl(result);
+			expect(validatedResult).toEqual(expected);
+		});
+
+		it('should throw an error if curl command does not start with "curl"', () => {
+			const aiService = new AIService();
+			const result = { curl: 'wget -O - https://n8n.io' };
+			expect(() => aiService.validateCurl(result)).toThrow(ApplicationError);
 		});
 	});
 });

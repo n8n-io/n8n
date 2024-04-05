@@ -18,7 +18,6 @@ import {
 import { generateCurlSchema } from '@/services/ai/schemas/generateCurl';
 import { PineconeStore } from '@langchain/pinecone';
 import Fuse from 'fuse.js';
-import { FailedDependencyError } from '@/errors/response-errors/failed-dependency.error';
 
 interface APIKnowledgebaseService {
 	id: string;
