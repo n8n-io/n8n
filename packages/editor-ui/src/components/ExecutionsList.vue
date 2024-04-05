@@ -1151,6 +1151,7 @@ export default defineComponent({
 			background: var(--execution-card-border-waiting);
 		}
 
+		&.canceled td:first-child::before,
 		&.unknown td:first-child::before {
 			background: var(--execution-card-border-unknown);
 		}
