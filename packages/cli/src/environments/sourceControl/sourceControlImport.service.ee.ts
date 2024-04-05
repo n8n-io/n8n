@@ -142,13 +142,12 @@ export class SourceControlImportService {
 		Array<ExportableCredential & { filename: string }>
 	> {
 		const localCredentials = await Container.get(CredentialsRepository).find({
-			select: ['id', 'name', 'type', 'nodesAccess'],
+			select: ['id', 'name', 'type'],
 		});
 		return localCredentials.map((local) => ({
 			id: local.id,
 			name: local.name,
 			type: local.type,
-			nodesAccess: local.nodesAccess,
 			filename: getCredentialExportPath(local.id, this.credentialExportFolder),
 		})) as Array<ExportableCredential & { filename: string }>;
 	}
@@ -339,14 +338,13 @@ export class SourceControlImportService {
 					(e) => e.id === credential.id && e.type === credential.type,
 				);
 
-				const { name, type, data, id, nodesAccess } = credential;
-				const newCredentialObject = new Credentials({ id, name }, type, []);
+				const { name, type, data, id } = credential;
+				const newCredentialObject = new Credentials({ id, name }, type);
 				if (existingCredential?.data) {
 					newCredentialObject.data = existingCredential.data;
 				} else {
 					newCredentialObject.setData(data);
 				}
-				newCredentialObject.nodesAccess = nodesAccess || existingCredential?.nodesAccess || [];
 
 				this.logger.debug(`Updating credential id ${newCredentialObject.id as string}`);
 				await Container.get(CredentialsRepository).upsert(newCredentialObject, ['id']);
