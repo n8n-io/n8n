@@ -102,6 +102,7 @@ export class CodeFlow {
 		// Reference: https://tools.ietf.org/html/rfc6749#section-3.2.1
 		if (options.clientSecret) {
 			headers.Authorization = auth(options.clientId, options.clientSecret);
+			body.client_id = options.clientId;
 		} else {
 			body.client_id = options.clientId;
 		}
