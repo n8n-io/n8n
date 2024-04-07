@@ -55,14 +55,14 @@
 						:workflow="currentWorkflowObject"
 						:disable-pointer-events="!canOpenNDV"
 						:hide-node-issues="hideNodeIssues"
-						@deselectAllNodes="deselectAllNodes"
-						@deselectNode="nodeDeselectedByName"
-						@nodeSelected="nodeSelectedByName"
-						@runWorkflow="onRunNode"
+						@deselect-all-nodes="deselectAllNodes"
+						@deselect-node="nodeDeselectedByName"
+						@node-selected="nodeSelectedByName"
+						@run-workflow="onRunNode"
 						@moved="onNodeMoved"
 						@run="onNodeRun"
-						@removeNode="(name) => removeNode(name, true)"
-						@toggleDisableNode="(node) => toggleActivationNodes([node])"
+						@remove-node="(name) => removeNode(name, true)"
+						@toggle-disable-node="(node) => toggleActivationNodes([node])"
 					>
 						<template #custom-tooltip>
 							<span
@@ -81,10 +81,10 @@
 						:node-view-scale="nodeViewScale"
 						:grid-size="GRID_SIZE"
 						:hide-actions="pullConnActive"
-						@deselectAllNodes="deselectAllNodes"
-						@deselectNode="nodeDeselectedByName"
-						@nodeSelected="nodeSelectedByName"
-						@removeNode="(name) => removeNode(name, true)"
+						@deselect-all-nodes="deselectAllNodes"
+						@deselect-node="nodeDeselectedByName"
+						@node-selected="nodeSelectedByName"
+						@remove-node="(name) => removeNode(name, true)"
 					/>
 				</div>
 			</div>
@@ -92,12 +92,12 @@
 				:read-only="isReadOnlyRoute || readOnlyEnv"
 				:renaming="renamingActive"
 				:is-production-execution-preview="isProductionExecutionPreview"
-				@redrawNode="redrawNode"
-				@switchSelectedNode="onSwitchSelectedNode"
-				@openConnectionNodeCreator="onOpenConnectionNodeCreator"
-				@valueChanged="valueChanged"
-				@stopExecution="stopExecution"
-				@saveKeyboardShortcut="onSaveKeyboardShortcut"
+				@redraw-node="redrawNode"
+				@switch-selected-node="onSwitchSelectedNode"
+				@open-connection-node-creator="onOpenConnectionNodeCreator"
+				@value-changed="valueChanged"
+				@stop-execution="stopExecution"
+				@save-keyboard-shortcut="onSaveKeyboardShortcut"
 			/>
 			<Suspense>
 				<div :class="$style.setupCredentialsButtonWrapper">
@@ -109,8 +109,8 @@
 					v-if="!isReadOnlyRoute && !readOnlyEnv"
 					:create-node-active="createNodeActive"
 					:node-view-scale="nodeViewScale"
-					@toggleNodeCreator="onToggleNodeCreator"
-					@addNodes="onAddNodes"
+					@toggle-node-creator="onToggleNodeCreator"
+					@add-nodes="onAddNodes"
 				/>
 			</Suspense>
 			<Suspense>
@@ -279,7 +279,6 @@ import type {
 	INodeTypeDescription,
 	INodeTypeNameVersion,
 	IPinData,
-	IRun,
 	ITaskData,
 	ITelemetryTrackProperties,
 	IWorkflowBase,
@@ -303,7 +302,6 @@ import type {
 	IUpdateInformation,
 	IWorkflowDataUpdate,
 	XYPosition,
-	IPushDataExecutionFinished,
 	ITag,
 	INewWorkflowData,
 	IWorkflowTemplate,
@@ -492,7 +490,7 @@ export default defineComponent({
 		const { callDebounced } = useDebounce();
 		const canvasPanning = useCanvasPanning(nodeViewRootRef, { onMouseMoveEnd });
 		const workflowHelpers = useWorkflowHelpers({ router });
-		const { runWorkflow } = useRunWorkflow({ router });
+		const { runWorkflow, stopCurrentExecution } = useRunWorkflow({ router });
 
 		return {
 			locale,
@@ -509,6 +507,7 @@ export default defineComponent({
 			onMouseMoveEnd,
 			workflowHelpers,
 			runWorkflow,
+			stopCurrentExecution,
 			callDebounced,
 			...useCanvasMouseSelect(),
 			...useGlobalLinkActions(),
@@ -728,6 +727,12 @@ export default defineComponent({
 			return this.containsChatNodes && this.triggerNodes.length === 1;
 		},
 		isExecutionDisabled(): boolean {
+			if (
+				this.containsChatNodes &&
+				this.triggerNodes.every((node) => node.disabled || node.type === CHAT_TRIGGER_NODE_TYPE)
+			) {
+				return true;
+			}
 			return !this.containsTrigger || this.allTriggersDisabled;
 		},
 		getNodeViewOffsetPosition(): XYPosition {
@@ -804,16 +809,22 @@ export default defineComponent({
 		this.clipboard.onPaste.value = this.onClipboardPasteEvent;
 
 		this.canvasStore.startLoading();
-		const loadPromises =
-			this.settingsStore.isPreviewMode && this.isDemo
-				? []
-				: [
-						this.loadActiveWorkflows(),
-						this.loadCredentials(),
-						this.loadCredentialTypes(),
-						this.loadVariables(),
-						this.loadSecrets(),
-				  ];
+
+		const loadPromises = (() => {
+			if (this.settingsStore.isPreviewMode && this.isDemo) return [];
+			const promises = [
+				this.loadActiveWorkflows(),
+				this.loadCredentials(),
+				this.loadCredentialTypes(),
+			];
+			if (this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Variables)) {
+				promises.push(this.loadVariables());
+			}
+			if (this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.ExternalSecrets)) {
+				promises.push(this.loadSecrets());
+			}
+			return promises;
+		})();
 
 		if (this.nodeTypesStore.allNodeTypes.length === 0) {
 			loadPromises.push(this.loadNodeTypes());
@@ -1041,7 +1052,7 @@ export default defineComponent({
 						this.readOnlyEnv
 							? `readOnlyEnv.showMessage.${
 									this.isReadOnlyRoute ? 'executions' : 'workflows'
-							  }.message`
+								}.message`
 							: 'readOnly.showMessage.executions.message',
 					),
 					type: 'info',
@@ -1061,7 +1072,7 @@ export default defineComponent({
 				node_type: node ? node.type : null,
 				workflow_id: this.workflowsStore.workflowId,
 				source: 'canvas',
-				session_id: this.ndvStore.sessionId,
+				push_ref: this.ndvStore.pushRef,
 			};
 			this.$telemetry.track('User clicked execute node button', telemetryPayload);
 			void this.externalHooks.run('nodeView.onRunNode', telemetryPayload);
@@ -1924,67 +1935,8 @@ export default defineComponent({
 			});
 		},
 		async stopExecution() {
-			const executionId = this.workflowsStore.activeExecutionId;
-			if (executionId === null) {
-				return;
-			}
-
-			try {
-				this.stopExecutionInProgress = true;
-				await this.workflowsStore.stopCurrentExecution(executionId);
-			} catch (error) {
-				// Execution stop might fail when the execution has already finished. Let's treat this here.
-				const execution = await this.workflowsStore.getExecution(executionId);
-
-				if (execution === undefined) {
-					// execution finished but was not saved (e.g. due to low connectivity)
-
-					this.workflowsStore.finishActiveExecution({
-						executionId,
-						data: { finished: true, stoppedAt: new Date() },
-					});
-					this.workflowsStore.executingNode.length = 0;
-					this.uiStore.removeActiveAction('workflowRunning');
-
-					this.titleSet(this.workflowsStore.workflowName, 'IDLE');
-					this.showMessage({
-						title: this.$locale.baseText('nodeView.showMessage.stopExecutionCatch.unsaved.title'),
-						message: this.$locale.baseText(
-							'nodeView.showMessage.stopExecutionCatch.unsaved.message',
-						),
-						type: 'success',
-					});
-				} else if (execution?.finished) {
-					// execution finished before it could be stopped
-
-					const executedData = {
-						data: execution.data,
-						finished: execution.finished,
-						mode: execution.mode,
-						startedAt: execution.startedAt,
-						stoppedAt: execution.stoppedAt,
-					} as IRun;
-					const pushData = {
-						data: executedData,
-						executionId,
-						retryOf: execution.retryOf,
-					} as IPushDataExecutionFinished;
-					this.workflowsStore.finishActiveExecution(pushData);
-					this.titleSet(execution.workflowData.name, 'IDLE');
-					this.workflowsStore.executingNode.length = 0;
-					this.workflowsStore.setWorkflowExecutionData(executedData as IExecutionResponse);
-					this.uiStore.removeActiveAction('workflowRunning');
-					this.showMessage({
-						title: this.$locale.baseText('nodeView.showMessage.stopExecutionCatch.title'),
-						message: this.$locale.baseText('nodeView.showMessage.stopExecutionCatch.message'),
-						type: 'success',
-					});
-				} else {
-					this.showError(error, this.$locale.baseText('nodeView.showError.stopExecution.title'));
-				}
-			}
+			await this.stopCurrentExecution();
 			this.stopExecutionInProgress = false;
-
 			void this.workflowHelpers.getWorkflowDataToSave().then((workflowData) => {
 				const trackProps = {
 					workflow_id: this.workflowsStore.workflowId,
@@ -2568,7 +2520,7 @@ export default defineComponent({
 					this.nodeTypesStore.isTriggerNode(nodeTypeName) && !this.containsTrigger
 						? this.canvasStore.canvasAddButtonPosition
 						: // If no node is active find a free spot
-						  (this.lastClickPosition as XYPosition);
+							(this.lastClickPosition as XYPosition);
 
 				newNodeData.position = NodeViewUtils.getNewNodePosition(this.nodes, position);
 			}

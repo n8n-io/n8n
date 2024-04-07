@@ -22,7 +22,7 @@ export class NDV extends BasePage {
 			this.getters.outputPanel().findChildByTestId('ndv-run-data-display-mode').first(),
 		pinDataButton: () => cy.getByTestId('ndv-pin-data'),
 		editPinnedDataButton: () => cy.getByTestId('ndv-edit-pinned-data'),
-		pinnedDataEditor: () => this.getters.outputPanel().find('.cm-editor .cm-scroller'),
+		pinnedDataEditor: () => this.getters.outputPanel().find('.cm-editor .cm-scroller .cm-content'),
 		runDataPaneHeader: () => cy.getByTestId('run-data-pane-header'),
 		nodeOutputHint: () => cy.getByTestId('ndv-output-run-node-hint'),
 		savePinnedDataButton: () =>
@@ -152,6 +152,17 @@ export class NDV extends BasePage {
 						delay: 0,
 					},
 				);
+
+			this.actions.savePinnedData();
+		},
+		pastePinnedData: (data: object) => {
+			this.getters.editPinnedDataButton().click();
+
+			this.getters.pinnedDataEditor().click();
+			this.getters
+				.pinnedDataEditor()
+				.type('{selectall}{backspace}', { delay: 0 })
+				.paste(JSON.stringify(data));
 
 			this.actions.savePinnedData();
 		},

@@ -590,12 +590,6 @@ export const schema = {
 				env: 'N8N_SECURITY_AUDIT_DAYS_ABANDONED_WORKFLOW',
 			},
 		},
-		excludeEndpoints: {
-			doc: 'Additional endpoints to exclude auth checks. Multiple endpoints can be separated by colon (":")',
-			format: String,
-			default: '',
-			env: 'N8N_AUTH_EXCLUDE_ENDPOINTS',
-		},
 	},
 
 	endpoints: {

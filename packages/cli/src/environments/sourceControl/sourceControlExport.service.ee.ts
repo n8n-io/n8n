@@ -230,7 +230,7 @@ export class SourceControlExportService {
 			const credentialIds = candidates.map((e) => e.id);
 			const credentialsToBeExported = await Container.get(
 				SharedCredentialsRepository,
-			).findByCredentialIds(credentialIds);
+			).findByCredentialIds(credentialIds, 'credential:owner');
 			let missingIds: string[] = [];
 			if (credentialsToBeExported.length !== credentialIds.length) {
 				const foundCredentialIds = credentialsToBeExported.map((e) => e.credentialsId);
@@ -239,23 +239,25 @@ export class SourceControlExportService {
 				);
 			}
 			await Promise.all(
-				credentialsToBeExported.map(async (sharedCredential) => {
-					const { name, type, nodesAccess, data, id } = sharedCredential.credentials;
-					const credentialObject = new Credentials({ id, name }, type, nodesAccess, data);
-					const plainData = credentialObject.getData();
-					const sanitizedData = this.replaceCredentialData(plainData);
-					const fileName = this.getCredentialsPath(sharedCredential.credentials.id);
-					const sanitizedCredential: ExportableCredential = {
-						id: sharedCredential.credentials.id,
-						name: sharedCredential.credentials.name,
-						type: sharedCredential.credentials.type,
-						data: sanitizedData,
-						nodesAccess: sharedCredential.credentials.nodesAccess,
+				credentialsToBeExported.map(async (sharing) => {
+					const { name, type, data, id } = sharing.credentials;
+					const credentials = new Credentials({ id, name }, type, data);
+
+					const stub: ExportableCredential = {
+						id,
+						name,
+						type,
+						data: this.replaceCredentialData(credentials.getData()),
+						ownedBy: sharing.user.email,
 					};
-					this.logger.debug(`Writing credential ${sharedCredential.credentials.id} to ${fileName}`);
-					return await fsWriteFile(fileName, JSON.stringify(sanitizedCredential, null, 2));
+
+					const filePath = this.getCredentialsPath(id);
+					this.logger.debug(`Writing credentials stub "${name}" (ID ${id}) to: ${filePath}`);
+
+					return await fsWriteFile(filePath, JSON.stringify(stub, null, 2));
 				}),
 			);
+
 			return {
 				count: credentialsToBeExported.length,
 				folder: this.credentialExportFolder,

@@ -68,7 +68,6 @@ export default defineComponent({
 				updatedAt: '',
 				type: '',
 				name: '',
-				nodesAccess: [],
 				sharedWith: [],
 				ownedBy: {} as IUser,
 			}),
@@ -116,7 +115,7 @@ export default defineComponent({
 								label: this.$locale.baseText('credentials.item.delete'),
 								value: CREDENTIAL_LIST_ITEM_ACTIONS.DELETE,
 							},
-					  ]
+						]
 					: [],
 			);
 		},

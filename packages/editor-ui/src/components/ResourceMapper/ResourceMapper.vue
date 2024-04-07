@@ -189,7 +189,7 @@ const defaultSelectedMatchingColumns = computed<string[]>(() => {
 					acc.push(field.id);
 				}
 				return acc;
-		  }, [] as string[]);
+			}, [] as string[]);
 });
 
 const pluralFieldWord = computed<string>(() => {
@@ -461,8 +461,8 @@ defineExpose({
 			:loading-error="state.loadingError"
 			:fields-to-map="state.paramValue.schema"
 			:teleported="teleported"
-			@modeChanged="onModeChanged"
-			@retryFetch="initFetching"
+			@mode-changed="onModeChanged"
+			@retry-fetch="initFetching"
 		/>
 		<MatchingColumnsSelect
 			v-if="showMatchingColumnsSelector"
@@ -476,8 +476,8 @@ defineExpose({
 			:service-name="nodeType?.displayName || locale.baseText('generic.service')"
 			:teleported="teleported"
 			:refresh-in-progress="state.refreshInProgress"
-			@matchingColumnsChanged="onMatchingColumnsChanged"
-			@refreshFieldList="initFetching(true)"
+			@matching-columns-changed="onMatchingColumnsChanged"
+			@refresh-field-list="initFetching(true)"
 		/>
 		<n8n-text v-if="!showMappingModeSelect && state.loading" size="small">
 			<n8n-icon icon="sync-alt" size="xsmall" :spin="true" />
@@ -502,10 +502,10 @@ defineExpose({
 			:loading="state.loading"
 			:teleported="teleported"
 			:refresh-in-progress="state.refreshInProgress"
-			@fieldValueChanged="fieldValueChanged"
-			@removeField="removeField"
-			@addField="addField"
-			@refreshFieldList="initFetching(true)"
+			@field-value-changed="fieldValueChanged"
+			@remove-field="removeField"
+			@add-field="addField"
+			@refresh-field-list="initFetching(true)"
 		/>
 		<n8n-notice
 			v-if="state.paramValue.mappingMode === 'autoMapInputData' && hasAvailableMatchingColumns"

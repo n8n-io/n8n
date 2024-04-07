@@ -1,11 +1,12 @@
 import { Service } from 'typedi';
 import { CacheService } from '@/services/cache/cache.service';
-import { type IWebhookData } from 'n8n-workflow';
+import type { IWebhookData } from 'n8n-workflow';
 import type { IWorkflowDb } from '@/Interfaces';
 import { TEST_WEBHOOK_TIMEOUT, TEST_WEBHOOK_TIMEOUT_BUFFER } from '@/constants';
+import { OrchestrationService } from './orchestration.service';
 
 export type TestWebhookRegistration = {
-	sessionId?: string;
+	pushRef?: string;
 	workflowEntity: IWorkflowDb;
 	destinationNode?: string;
 	webhook: IWebhookData;
@@ -13,7 +14,10 @@ export type TestWebhookRegistration = {
 
 @Service()
 export class TestWebhookRegistrationsService {
-	constructor(private readonly cacheService: CacheService) {}
+	constructor(
+		private readonly cacheService: CacheService,
+		private readonly orchestrationService: OrchestrationService,
+	) {}
 
 	private readonly cacheKey = 'test-webhooks';
 
@@ -21,6 +25,8 @@ export class TestWebhookRegistrationsService {
 		const hashKey = this.toKey(registration.webhook);
 
 		await this.cacheService.setHash(this.cacheKey, { [hashKey]: registration });
+
+		if (!this.orchestrationService.isMultiMainSetupEnabled) return;
 
 		/**
 		 * Multi-main setup: In a manual webhook execution, the main process that

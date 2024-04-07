@@ -6,18 +6,18 @@
 			:loading-more="loadingMore"
 			:temporary-execution="temporaryExecution"
 			:auto-refresh="autoRefresh"
-			@update:autoRefresh="onAutoRefreshToggle"
-			@reloadExecutions="setExecutions"
-			@filterUpdated="onFilterUpdated"
-			@loadMore="onLoadMore"
-			@retryExecution="onRetryExecution"
+			@update:auto-refresh="onAutoRefreshToggle"
+			@reload-executions="setExecutions"
+			@filter-updated="onFilterUpdated"
+			@load-more="onLoadMore"
+			@retry-execution="onRetryExecution"
 		/>
 		<div v-if="!hidePreview" :class="$style.content">
 			<router-view
 				name="executionPreview"
-				@deleteCurrentExecution="onDeleteCurrentExecution"
-				@retryExecution="onRetryExecution"
-				@stopExecution="onStopExecution"
+				@delete-current-execution="onDeleteCurrentExecution"
+				@retry-execution="onRetryExecution"
+				@stop-execution="onStopExecution"
 			/>
 		</div>
 	</div>

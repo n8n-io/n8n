@@ -24,15 +24,17 @@ export async function initializeCore() {
 	const versionsStore = useVersionsStore();
 
 	await settingsStore.initialize();
-	await usersStore.initialize();
+	if (!settingsStore.isPreviewMode) {
+		await usersStore.initialize();
 
-	void versionsStore.checkForNewVersions();
+		void versionsStore.checkForNewVersions();
 
-	if (settingsStore.isCloudDeployment) {
-		try {
-			await initializeCloudHooks();
-		} catch (e) {
-			console.error('Failed to initialize cloud hooks:', e);
+		if (settingsStore.isCloudDeployment) {
+			try {
+				await initializeCloudHooks();
+			} catch (e) {
+				console.error('Failed to initialize cloud hooks:', e);
+			}
 		}
 	}
 

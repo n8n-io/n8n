@@ -18,7 +18,7 @@
 			loading-text="..."
 			popper-class="tags-dropdown"
 			data-test-id="tags-dropdown"
-			@update:modelValue="onTagsUpdated"
+			@update:model-value="onTagsUpdated"
 			@visible-change="onVisibleChange"
 			@remove-tag="onRemoveTag"
 		>
@@ -124,9 +124,7 @@ export default defineComponent({
 		});
 
 		const options = computed<ITag[]>(() => {
-			return allTags.value.filter(
-				(tag: ITag) => tag && tag.name.toLowerCase().includes(filter.value.toLowerCase()),
-			);
+			return allTags.value.filter((tag: ITag) => tag && tag.name.includes(filter.value));
 		});
 
 		const appliedTags = computed<string[]>(() => {
@@ -182,7 +180,7 @@ export default defineComponent({
 		}
 
 		function filterOptions(value = '') {
-			filter.value = value.trim();
+			filter.value = value;
 			void nextTick(() => focusFirstOption());
 		}
 
