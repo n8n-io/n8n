@@ -45,7 +45,7 @@ export class SlackTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'authentication',
+				displayName: 'Authentication',
 				name: 'authentication',
 				type: 'hidden',
 				default: 'accessToken',
@@ -355,7 +355,8 @@ export class SlackTrigger implements INodeType {
 				}
 			}
 			if (req.body.event.channel || req.body.item.channel) {
-				const channelResolved = await getChannelInfo.call(this, req.body.event.channel);
+				const channel = await getChannelInfo.call(this, req.body.event.channel);
+				const channelResolved = channel;
 				req.body.event.channel_resolved = channelResolved;
 			}
 		}
