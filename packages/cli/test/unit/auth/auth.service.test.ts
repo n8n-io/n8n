@@ -1,7 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { mock } from 'jest-mock-extended';
 import type { NextFunction, Response } from 'express';
-import type { Cipher } from 'n8n-core';
 
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
@@ -15,6 +14,7 @@ import type { AuthenticatedRequest } from '@/requests';
 describe('AuthService', () => {
 	config.set('userManagement.jwtSecret', 'random-secret');
 
+	const browserId = 'test-browser-id';
 	const userData = {
 		id: '123',
 		email: 'test@example.com',
@@ -22,34 +22,23 @@ describe('AuthService', () => {
 		disabled: false,
 		mfaEnabled: false,
 	};
-	const validToken =
-		'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMyIsImhhc2giOiJtSkFZeDRXYjdrIiwiYnJvd3NlcklkIjoiZW5jcnlwdGVkIiwiaWF0IjoxNzA2NzUwNjI1LCJleHAiOjE3MDczNTU0MjV9.sL__QUGt0MqidQrSgZ_y4AQSos_k4xsN6wKhn0D2drM';
-
-	const browserId = 'test-browser-id';
 	const user = mock<User>(userData);
-	const cipher = mock<Cipher>();
 	const jwtService = new JwtService(mock());
 	const urlService = mock<UrlService>();
 	const userRepository = mock<UserRepository>();
-	const authService = new AuthService(
-		mock(),
-		cipher,
-		mock(),
-		jwtService,
-		urlService,
-		userRepository,
-	);
+	const authService = new AuthService(mock(), mock(), jwtService, urlService, userRepository);
 
-	jest.useFakeTimers();
 	const now = new Date('2024-02-01T01:23:45.678Z');
+	jest.useFakeTimers({ now });
+
+	const validToken =
+		'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMyIsImhhc2giOiJtSkFZeDRXYjdrIiwiYnJvd3NlcklkIjoiOFpDVXE1YU1uSFhnMFZvcURLcm9hMHNaZ0NwdWlPQ1AzLzB2UmZKUXU0MD0iLCJpYXQiOjE3MDY3NTA2MjUsImV4cCI6MTcwNzM1NTQyNX0.YE-ZGGIQRNQ4DzUe9rjXvOOFFN9ufU34WibsCxAsc4o'; // Generated using `authService.issueJWT(user, browserId)`
+
 	beforeEach(() => {
 		jest.clearAllMocks();
 		jest.setSystemTime(now);
 		config.set('userManagement.jwtSessionDurationHours', 168);
 		config.set('userManagement.jwtRefreshTimeoutHours', 0);
-
-		cipher.encrypt.calledWith(browserId).mockReturnValue('encrypted');
-		cipher.decrypt.calledWith('encrypted').mockReturnValue(browserId);
 	});
 
 	describe('createJWTHash', () => {

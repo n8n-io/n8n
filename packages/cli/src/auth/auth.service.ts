@@ -2,7 +2,6 @@ import { Service } from 'typedi';
 import type { NextFunction, Response } from 'express';
 import { createHash } from 'crypto';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
-import { Cipher } from 'n8n-core';
 
 import config from '@/config';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES, Time } from '@/constants';
@@ -40,7 +39,6 @@ const pushEndpoint = `/${config.get('endpoints.rest')}/push`;
 export class AuthService {
 	constructor(
 		private readonly logger: Logger,
-		private readonly cipher: Cipher,
 		private readonly license: License,
 		private readonly jwtService: JwtService,
 		private readonly urlService: UrlService,
@@ -97,7 +95,7 @@ export class AuthService {
 		const payload: AuthJwtPayload = {
 			id: user.id,
 			hash: this.createJWTHash(user),
-			browserId: browserId && this.cipher.encrypt(browserId),
+			browserId: browserId && this.hash(browserId),
 		};
 		return this.jwtService.sign(payload, {
 			expiresIn: this.jwtExpiration,
@@ -126,7 +124,7 @@ export class AuthService {
 			// TODO: Implement a custom handshake for push, to avoid having to send any data on querystring or headers
 			(req.baseUrl !== pushEndpoint &&
 				jwtPayload.browserId &&
-				this.cipher.decrypt(jwtPayload.browserId) !== req.browserId)
+				(!req.browserId || jwtPayload.browserId !== this.hash(req.browserId)))
 		) {
 			throw new AuthError('Unauthorized');
 		}
@@ -189,10 +187,11 @@ export class AuthService {
 	}
 
 	createJWTHash({ email, password }: User) {
-		const hash = createHash('sha256')
-			.update(email + ':' + password)
-			.digest('base64');
-		return hash.substring(0, 10);
+		return this.hash(email + ':' + password).substring(0, 10);
+	}
+
+	private hash(input: string) {
+		return createHash('sha256').update(input).digest('base64');
 	}
 
 	/** How many **milliseconds** before expiration should a JWT be renewed */
