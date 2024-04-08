@@ -1,0 +1,33 @@
+{
+  "name": "codemirror-lang-n8n-expression",
+  "version": "0.2.0",
+  "description": "n8n expression language support for CodeMirror 6",
+  "scripts": {
+    "test": "npm run prepare && mocha test/test.js",
+    "prepare": "rollup -c"
+  },
+  "type": "module",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "exports": {
+    "import": "./dist/index.js",
+    "require": "./dist/index.cjs"
+  },
+  "types": "dist/index.d.ts",
+  "sideEffects": false,
+  "dependencies": {
+    "@codemirror/autocomplete": "^6.3.0",
+    "@codemirror/language": "^6.0.0",
+    "@lezer/highlight": "^1.0.0",
+    "@lezer/lr": "^1.0.0"
+  },
+  "devDependencies": {
+    "@lezer/generator": "^1.0.0",
+    "mocha": "^9.0.1",
+    "rollup": "^2.60.2",
+    "rollup-plugin-dts": "^4.0.1",
+    "rollup-plugin-ts": "^3.0.2",
+    "typescript": "^4.3.4"
+  },
+  "license": "MIT"
+}
