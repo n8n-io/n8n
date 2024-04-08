@@ -542,6 +542,23 @@ describe('Resolution-based completions', () => {
 				expect(found.map((c) => c.label).every((l) => l.endsWith(']')));
 			});
 		});
+
+		test('should give completions for keys that need bracket access', () => {
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue({
+				foo: 'bar',
+				'Key with spaces': 1,
+				'Key with spaces and \'quotes"': 1,
+			});
+
+			const found = completions('{{ $json.| }}');
+			if (!found) throw new Error('Expected to find completions');
+			expect(
+				found.find((completion) => completion.label === 'Key with spaces'),
+			).not.toBeUndefined();
+			expect(
+				found.find((completion) => completion.label === 'Key with spaces and \'quotes"'),
+			).not.toBeUndefined();
+		});
 	});
 
 	describe('recommended completions', () => {
