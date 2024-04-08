@@ -98,6 +98,7 @@ import type {
 	Workflow,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
+	CallbackManager,
 } from 'n8n-workflow';
 import {
 	ExpressionError,
@@ -3487,7 +3488,7 @@ export function getExecuteFunctions(
 			async executeWorkflow(
 				workflowInfo: IExecuteWorkflowInfo,
 				inputData?: INodeExecutionData[],
-				tools?: IDataObject,
+				parentCallbackManager?: CallbackManager,
 			): Promise<any> {
 				return await additionalData
 					.executeWorkflow(workflowInfo, additionalData, {
@@ -3495,7 +3496,7 @@ export function getExecuteFunctions(
 						inputData,
 						parentWorkflowSettings: workflow.settings,
 						node,
-						tools,
+						parentCallbackManager,
 					})
 					.then(
 						async (result) =>
@@ -3721,9 +3722,7 @@ export function getExecuteFunctions(
 					msg,
 				});
 			},
-			getParentRunManager: () => {
-				return additionalData.tools;
-			},
+			getParentCallbackManager: () => additionalData.parentCallbackManager,
 		};
 	})(workflow, runExecutionData, connectionInputData, inputData, node) as IExecuteFunctions;
 }

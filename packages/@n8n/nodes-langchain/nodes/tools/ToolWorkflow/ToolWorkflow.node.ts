@@ -390,9 +390,11 @@ export class ToolWorkflow implements INodeType {
 			let receivedData: INodeExecutionData;
 			console.log('About to pass runManager to executeWorkflow', runManager?.runId);
 			try {
-				receivedData = (await this.executeWorkflow(workflowInfo, items, {
-					tools: runManager?.getChild(),
-				})) as INodeExecutionData;
+				receivedData = (await this.executeWorkflow(
+					workflowInfo,
+					items,
+					runManager?.getChild(),
+				)) as INodeExecutionData;
 			} catch (error) {
 				// Make sure a valid error gets returned that can by json-serialized else it will
 				// not show up in the frontend

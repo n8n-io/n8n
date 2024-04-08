@@ -292,7 +292,6 @@ export class RetrieverWorkflow implements INodeType {
 				query: string,
 				config?: CallbackManagerForRetrieverRun,
 			): Promise<Document[]> {
-				console.log('🚀 ~ WorkflowRetriever ~ getRelevantDocuments ~ callback:', config);
 				const source = this.executeFunctions.getNodeParameter('source', itemIndex) as string;
 
 				const baseMetadata: IDataObject = {
@@ -362,9 +361,11 @@ export class RetrieverWorkflow implements INodeType {
 
 				let receivedItems: INodeExecutionData[][];
 				try {
-					receivedItems = (await this.executeFunctions.executeWorkflow(workflowInfo, items, {
-						tools: config?.getChild(),
-					})) as INodeExecutionData[][];
+					receivedItems = (await this.executeFunctions.executeWorkflow(
+						workflowInfo,
+						items,
+						config?.getChild(),
+					)) as INodeExecutionData[][];
 				} catch (error) {
 					// Make sure a valid error gets returned that can by json-serialized else it will
 					// not show up in the frontend
