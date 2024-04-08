@@ -9,6 +9,7 @@ import {
 	AI_TOOL_CODE_NODE_NAME,
 	AI_TOOL_WIKIPEDIA_NODE_NAME,
 	BASIC_LLM_CHAIN_NODE_NAME,
+	EDIT_FIELDS_SET_NODE_NAME,
 } from './../constants';
 import { createMockNodeExecutionData, runMockWorkflowExcution } from '../utils';
 import {
@@ -17,7 +18,10 @@ import {
 	addNodeToCanvas,
 	addOutputParserNodeToParent,
 	addToolNodeToParent,
+	clickExecuteWorkflowButton,
 	clickManualChatButton,
+	disableNode,
+	getExecuteWorkflowButton,
 	navigateToNewWorkflowPage,
 	openNode,
 } from '../composables/workflow';
@@ -32,6 +36,7 @@ import {
 	closeManualChatModal,
 	getManualChatDialog,
 	getManualChatMessages,
+	getManualChatModal,
 	getManualChatModalLogs,
 	getManualChatModalLogsEntries,
 	getManualChatModalLogsTree,
@@ -43,13 +48,58 @@ describe('Langchain Integration', () => {
 		navigateToNewWorkflowPage();
 	});
 
+	it('should not open chat modal', () => {
+		addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME, true);
+		addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME, true);
+
+		clickGetBackToCanvas();
+
+		addNodeToCanvas(AGENT_NODE_NAME, true, true);
+		clickGetBackToCanvas();
+
+		addLanguageModelNodeToParent(
+			AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME,
+			AGENT_NODE_NAME,
+			true,
+		);
+		clickGetBackToCanvas();
+
+		clickExecuteWorkflowButton();
+		getManualChatModal().should('not.exist');
+	});
+
+	it('should disable test workflow button', () => {
+		addNodeToCanvas('Schedule Trigger', true);
+		addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME, true);
+
+		clickGetBackToCanvas();
+
+		addNodeToCanvas(AGENT_NODE_NAME, true, true);
+		clickGetBackToCanvas();
+
+		addLanguageModelNodeToParent(
+			AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME,
+			AGENT_NODE_NAME,
+			true,
+		);
+		clickGetBackToCanvas();
+
+		disableNode('Schedule Trigger');
+
+		getExecuteWorkflowButton().should('be.disabled');
+	});
+
 	it('should add nodes to all Agent node input types', () => {
 		addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME, true);
 		addNodeToCanvas(AGENT_NODE_NAME, true, true);
 		toggleParameterCheckboxInputByName('hasOutputParser');
 		clickGetBackToCanvas();
 
-		addLanguageModelNodeToParent(AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME, AGENT_NODE_NAME, true);
+		addLanguageModelNodeToParent(
+			AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME,
+			AGENT_NODE_NAME,
+			true,
+		);
 		clickGetBackToCanvas();
 
 		addMemoryNodeToParent(AI_MEMORY_WINDOW_BUFFER_MEMORY_NODE_NAME, AGENT_NODE_NAME);
@@ -85,7 +135,7 @@ describe('Langchain Integration', () => {
 		addLanguageModelNodeToParent(
 			AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME,
 			BASIC_LLM_CHAIN_NODE_NAME,
-			true
+			true,
 		);
 
 		clickCreateNewCredential();
@@ -98,7 +148,7 @@ describe('Langchain Integration', () => {
 		const inputMessage = 'Hello!';
 		const outputMessage = 'Hi there! How can I assist you today?';
 
-		clickExecuteNode()
+		clickExecuteNode();
 		runMockWorkflowExcution({
 			trigger: () => sendManualChatMessage(inputMessage),
 			runData: [
@@ -121,7 +171,11 @@ describe('Langchain Integration', () => {
 		addNodeToCanvas(MANUAL_CHAT_TRIGGER_NODE_NAME, true);
 		addNodeToCanvas(AGENT_NODE_NAME, true);
 
-		addLanguageModelNodeToParent(AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME, AGENT_NODE_NAME, true);
+		addLanguageModelNodeToParent(
+			AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME,
+			AGENT_NODE_NAME,
+			true,
+		);
 
 		clickCreateNewCredential();
 		setCredentialValues({
@@ -134,7 +188,7 @@ describe('Langchain Integration', () => {
 		const inputMessage = 'Hello!';
 		const outputMessage = 'Hi there! How can I assist you today?';
 
-		clickExecuteNode()
+		clickExecuteNode();
 		runMockWorkflowExcution({
 			trigger: () => sendManualChatMessage(inputMessage),
 			runData: [
@@ -157,7 +211,11 @@ describe('Langchain Integration', () => {
 		addNodeToCanvas(MANUAL_CHAT_TRIGGER_NODE_NAME, true);
 		addNodeToCanvas(AGENT_NODE_NAME, true);
 
-		addLanguageModelNodeToParent(AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME, AGENT_NODE_NAME, true);
+		addLanguageModelNodeToParent(
+			AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME,
+			AGENT_NODE_NAME,
+			true,
+		);
 
 		clickCreateNewCredential();
 		setCredentialValues({

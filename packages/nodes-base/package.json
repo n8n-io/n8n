@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "1.34.1",
+  "version": "1.36.0",
   "description": "Base nodes of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -700,6 +700,7 @@
       "dist/nodes/Rundeck/Rundeck.node.js",
       "dist/nodes/S3/S3.node.js",
       "dist/nodes/Salesforce/Salesforce.node.js",
+      "dist/nodes/Salesforce/SalesforceTrigger.node.js",
       "dist/nodes/Salesmate/Salesmate.node.js",
       "dist/nodes/Schedule/ScheduleTrigger.node.js",
       "dist/nodes/SeaTable/SeaTable.node.js",

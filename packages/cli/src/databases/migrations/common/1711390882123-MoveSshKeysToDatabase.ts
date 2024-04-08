@@ -51,6 +51,11 @@ export class MoveSshKeysToDatabase1711390882123 implements ReversibleMigration {
 			return;
 		}
 
+		if (!privateKey) {
+			logger.error(`[${migrationName}] No private key found, skipping`);
+			return;
+		}
+
 		const value = JSON.stringify({
 			encryptedPrivateKey: this.cipher.encrypt(privateKey),
 			publicKey,

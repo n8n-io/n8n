@@ -55,7 +55,6 @@ describe('SourceControlImportService', () => {
 					name: 'My Credential',
 					type: 'someCredentialType',
 					data: {},
-					nodesAccess: [],
 					ownedBy: member.email, // user at source instance owns credential
 				};
 
@@ -93,7 +92,6 @@ describe('SourceControlImportService', () => {
 					name: 'My Credential',
 					type: 'someCredentialType',
 					data: {},
-					nodesAccess: [],
 					ownedBy: null,
 				};
 
@@ -131,7 +129,6 @@ describe('SourceControlImportService', () => {
 					name: 'My Credential',
 					type: 'someCredentialType',
 					data: {},
-					nodesAccess: [],
 					ownedBy: 'user@test.com', // user at source instance owns credential
 				};
 

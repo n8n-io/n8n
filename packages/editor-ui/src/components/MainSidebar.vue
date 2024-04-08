@@ -229,7 +229,7 @@ export default defineComponent({
 					available:
 						this.settingsStore.isTemplatesEnabled && !this.templatesStore.hasCustomTemplatesHost,
 					link: {
-						href: this.templatesStore.getWebsiteTemplateRepositoryURL,
+						href: this.templatesStore.websiteTemplateRepositoryURL,
 						target: '_blank',
 					},
 				},

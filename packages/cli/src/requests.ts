@@ -2,7 +2,6 @@ import type express from 'express';
 import type {
 	BannerName,
 	ICredentialDataDecryptedObject,
-	ICredentialNodeAccess,
 	IDataObject,
 	INodeCredentialTestRequest,
 	INodeCredentials,
@@ -179,7 +178,6 @@ export declare namespace CredentialRequest {
 		id: string; // deleted if sent
 		name: string;
 		type: string;
-		nodesAccess: ICredentialNodeAccess[];
 		data: ICredentialDataDecryptedObject;
 		projectId?: string;
 	}>;

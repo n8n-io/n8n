@@ -24,6 +24,7 @@ export interface RouteMetadata {
 	middlewares: RequestHandler[];
 	usesTemplates: boolean;
 	skipAuth: boolean;
+	rateLimit: boolean;
 }
 
 export type Controller = Record<

@@ -222,7 +222,7 @@ export async function executeWebhook(
 	workflowData: IWorkflowDb,
 	workflowStartNode: INode,
 	executionMode: WorkflowExecuteMode,
-	sessionId: string | undefined,
+	pushRef: string | undefined,
 	runExecutionData: IRunExecutionData | undefined,
 	executionId: string | undefined,
 	req: WebhookRequest,
@@ -533,7 +533,7 @@ export async function executeWebhook(
 		const runData: IWorkflowExecutionDataProcess = {
 			executionMode,
 			executionData: runExecutionData,
-			sessionId,
+			pushRef,
 			workflowData,
 			pinData,
 			projectId: project?.id,

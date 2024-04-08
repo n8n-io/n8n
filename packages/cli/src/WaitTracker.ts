@@ -7,8 +7,9 @@ import { Container, Service } from 'typedi';
 import type { IExecutionsStopData, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
-import { OwnershipService } from './services/ownership.service';
+import { OwnershipService } from '@/services/ownership.service';
 import { Logger } from '@/Logger';
+import { OrchestrationService } from '@/services/orchestration.service';
 
 @Service()
 export class WaitTracker {
@@ -26,7 +27,22 @@ export class WaitTracker {
 		private readonly executionRepository: ExecutionRepository,
 		private readonly ownershipService: OwnershipService,
 		private readonly workflowRunner: WorkflowRunner,
+		readonly orchestrationService: OrchestrationService,
 	) {
+		const { isLeader, isMultiMainSetupEnabled, multiMainSetup } = orchestrationService;
+
+		if (isLeader) this.startTracking();
+
+		if (isMultiMainSetupEnabled) {
+			multiMainSetup
+				.on('leader-takeover', () => this.startTracking())
+				.on('leader-stepdown', () => this.stopTracking());
+		}
+	}
+
+	startTracking() {
+		this.logger.debug('Wait tracker started tracking waiting executions');
+
 		// Poll every 60 seconds a list of upcoming executions
 		this.mainTimer = setInterval(() => {
 			void this.getWaitingExecutions();
@@ -174,7 +190,9 @@ export class WaitTracker {
 		});
 	}
 
-	shutdown() {
+	stopTracking() {
+		this.logger.debug('Wait tracker shutting down');
+
 		clearInterval(this.mainTimer);
 		Object.keys(this.waitingExecutions).forEach((executionId) => {
 			clearTimeout(this.waitingExecutions[executionId].timer);

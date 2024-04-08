@@ -295,7 +295,7 @@ export class WorkflowRunner {
 			});
 
 			additionalData.sendDataToUI = WorkflowExecuteAdditionalData.sendDataToUI.bind({
-				sessionId: data.sessionId,
+				pushRef: data.pushRef,
 			});
 
 			await additionalData.hooks.executeHookFunctions('workflowExecuteBefore', []);

@@ -12,12 +12,10 @@ import { randomApiKey, randomEmail, randomName, randomValidPassword } from '../r
 // pre-computed bcrypt hash for the string 'password', using `await hash('password', 10)`
 const passwordHash = '$2a$10$njedH7S6V5898mj6p0Jr..IGY9Ms.qNwR7RbSzzX9yubJocKfvGGK';
 
-/**
- * Store a user in the DB, defaulting to a `member`.
- */
-export async function createUser(attributes: Partial<User> = {}): Promise<User> {
+/** Store a new user object, defaulting to a `member` */
+export async function newUser(attributes: Partial<User> = {}): Promise<User> {
 	const { email, password, firstName, lastName, role, ...rest } = attributes;
-	const { user } = await Container.get(UserRepository).createUserWithProject({
+	return Container.get(UserRepository).create({
 		email: email ?? randomEmail(),
 		password: password ? await hash(password, 1) : passwordHash,
 		firstName: firstName ?? randomName(),
@@ -25,6 +23,12 @@ export async function createUser(attributes: Partial<User> = {}): Promise<User> 
 		role: role ?? 'global:member',
 		...rest,
 	});
+}
+
+/** Store a user object in the DB */
+export async function createUser(attributes: Partial<User> = {}): Promise<User> {
+	const userInstance = await newUser(attributes);
+	const { user } = await Container.get(UserRepository).createUserWithProject(userInstance);
 	user.computeIsOwner();
 	return user;
 }
@@ -98,26 +102,15 @@ export async function createManyUsers(
 	amount: number,
 	attributes: Partial<User> = {},
 ): Promise<User[]> {
-	let { email, password, firstName, lastName, role, ...rest } = attributes;
-
-	return await Container.get(UserRepository).manager.transaction(async (transactionManager) => {
-		return await Promise.all(
-			[...Array(amount)].map(async () => {
-				const { user } = await Container.get(UserRepository).createUserWithProject(
-					{
-						email: email ?? randomEmail(),
-						password: password ? await hash(password, 1) : passwordHash,
-						firstName: firstName ?? randomName(),
-						lastName: lastName ?? randomName(),
-						role: role ?? 'global:member',
-						...rest,
-					},
-					transactionManager,
-				);
-				return user;
+	const result = await Promise.all(
+		Array(amount)
+			.fill(0)
+			.map(async () => {
+				const userInstance = await newUser(attributes);
+				return await Container.get(UserRepository).createUserWithProject(userInstance);
 			}),
-		);
-	});
+	);
+	return result.map((result) => result.user);
 }
 
 export async function addApiKey(user: User): Promise<User> {

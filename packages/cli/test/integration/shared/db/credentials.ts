@@ -23,7 +23,6 @@ const emptyAttributes = {
 	name: 'test',
 	type: 'test',
 	data: '',
-	nodesAccess: [],
 };
 
 export async function createManyCredentials(

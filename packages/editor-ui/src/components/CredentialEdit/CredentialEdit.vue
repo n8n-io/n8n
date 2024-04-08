@@ -75,6 +75,7 @@
 						:parent-types="parentTypes"
 						:required-properties-filled="requiredPropertiesFilled"
 						:credential-permissions="credentialPermissions"
+						:all-o-auth2-base-properties-overridden="allOAuth2BasePropertiesOverridden"
 						:mode="mode"
 						:selected-credential="selectedCredential"
 						:show-auth-type-selector="requiredCredentials"
@@ -118,7 +119,6 @@ import type { ICredentialsResponse, IUser } from '@/Interface';
 import type {
 	CredentialInformation,
 	ICredentialDataDecryptedObject,
-	ICredentialNodeAccess,
 	ICredentialsDecrypted,
 	ICredentialType,
 	INode,
@@ -165,10 +165,6 @@ import { isExpression, isTestableExpression } from '@/utils/expressions';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useProjectsStore } from '@/features/projects/projects.store';
 
-interface NodeAccessMap {
-	[nodeType: string]: ICredentialNodeAccess | null;
-}
-
 export default defineComponent({
 	name: 'CredentialEdit',
 	components: {
@@ -212,7 +208,6 @@ export default defineComponent({
 			credentialName: '',
 			credentialData: {} as ICredentialDataDecryptedObject,
 			modalBus: createEventBus(),
-			nodeAccess: {} as NodeAccessMap,
 			isDeleting: false,
 			isSaving: false,
 			isTesting: false,
@@ -228,6 +223,68 @@ export default defineComponent({
 			isSharedWithChanged: false,
 		};
 	},
+<<<<<<< HEAD
+=======
+	async mounted() {
+		this.requiredCredentials =
+			isCredentialModalState(this.uiStore.modals[CREDENTIAL_EDIT_MODAL_KEY]) &&
+			this.uiStore.modals[CREDENTIAL_EDIT_MODAL_KEY].showAuthSelector === true;
+
+		if (this.mode === 'new' && this.credentialTypeName) {
+			this.credentialName = await this.credentialsStore.getNewCredentialName({
+				credentialTypeName: this.defaultCredentialTypeName,
+			});
+
+			if (this.currentUser) {
+				this.credentialData = {
+					...this.credentialData,
+					ownedBy: {
+						id: this.currentUser.id,
+						firstName: this.currentUser.firstName,
+						lastName: this.currentUser.lastName,
+						email: this.currentUser.email,
+					},
+				};
+			}
+		} else {
+			await this.loadCurrentCredential();
+		}
+
+		if (this.credentialType) {
+			for (const property of this.credentialType.properties) {
+				if (
+					!this.credentialData.hasOwnProperty(property.name) &&
+					!this.credentialType.__overwrittenProperties?.includes(property.name)
+				) {
+					this.credentialData = {
+						...this.credentialData,
+						[property.name]: property.default as CredentialInformation,
+					};
+				}
+			}
+		}
+
+		await this.externalHooks.run('credentialsEdit.credentialModalOpened', {
+			credentialType: this.credentialTypeName,
+			isEditingCredential: this.mode === 'edit',
+			activeNode: this.ndvStore.activeNode,
+		});
+
+		setTimeout(async () => {
+			if (this.credentialId) {
+				if (!this.requiredPropertiesFilled && this.credentialPermissions.isOwner) {
+					// sharees can't see properties, so this check would always fail for them
+					// if the credential contains required fields.
+					this.showValidationWarning = true;
+				} else {
+					await this.retestCredential();
+				}
+			}
+		}, 0);
+
+		this.loading = false;
+	},
+>>>>>>> origin/master
 	computed: {
 		...mapStores(
 			useCredentialsStore,
@@ -368,6 +425,15 @@ export default defineComponent({
 					this.parentTypes.includes('oAuth1Api'))
 			);
 		},
+		allOAuth2BasePropertiesOverridden() {
+			if (this.credentialType?.__overwrittenProperties) {
+				return (
+					this.credentialType.__overwrittenProperties.includes('clientId') &&
+					this.credentialType.__overwrittenProperties.includes('clientSecret')
+				);
+			}
+			return false;
+		},
 		isOAuthConnected(): boolean {
 			return this.isOAuthType && !!this.credentialData.oauthTokenData;
 		},
@@ -376,7 +442,7 @@ export default defineComponent({
 				return [];
 			}
 
-			return this.credentialType.properties.filter((propertyData: INodeProperties) => {
+			const properties = this.credentialType.properties.filter((propertyData: INodeProperties) => {
 				if (!this.displayCredentialParameter(propertyData)) {
 					return false;
 				}
@@ -385,6 +451,17 @@ export default defineComponent({
 					!this.credentialType!.__overwrittenProperties.includes(propertyData.name)
 				);
 			});
+
+			/**
+			 * If after all credentials overrides are applied only "notice"
+			 * properties are left, do not return them. This will avoid
+			 * showing notices that refer to a property that was overridden.
+			 */
+			if (properties.every((p) => p.type === 'notice')) {
+				return [];
+			}
+
+			return properties;
 		},
 		requiredPropertiesFilled(): boolean {
 			for (const property of this.credentialProperties) {
@@ -766,7 +843,6 @@ export default defineComponent({
 				name: this.credentialName,
 				type: this.credentialTypeName!,
 				data: credentialData,
-				nodesAccess: [],
 			};
 
 			this.isRetesting = true;
@@ -811,7 +887,12 @@ export default defineComponent({
 				name: this.credentialName,
 				type: this.credentialTypeName!,
 				data: data as unknown as ICredentialDataDecryptedObject,
+<<<<<<< HEAD
 				nodesAccess: [],
+=======
+				sharedWith,
+				ownedBy,
+>>>>>>> origin/master
 			};
 
 			let credential;
@@ -1092,7 +1173,6 @@ export default defineComponent({
 			if (credentialsForType) {
 				this.selectedCredential = credentialsForType.name;
 				this.resetCredentialData();
-				this.setupNodeAccess();
 				// Update current node auth type so credentials dropdown can be displayed properly
 				updateNodeAuthType(this.ndvStore.activeNode, type);
 				// Also update credential name but only if the default name is still used
@@ -1103,9 +1183,6 @@ export default defineComponent({
 					this.credentialName = newDefaultName;
 				}
 			}
-		},
-		setupNodeAccess(): void {
-			this.nodeAccess = {};
 		},
 		resetCredentialData(): void {
 			if (!this.credentialType) {

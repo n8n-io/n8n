@@ -209,21 +209,16 @@ describe('POST /credentials', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const { id, name, type, nodesAccess, data: encryptedData } = response.body.data;
+		const { id, name, type, data: encryptedData } = response.body.data;
 
 		expect(name).toBe(payload.name);
 		expect(type).toBe(payload.type);
-		if (!payload.nodesAccess) {
-			fail('Payload did not contain a nodesAccess array');
-		}
-		expect(nodesAccess[0].nodeType).toBe(payload.nodesAccess[0].nodeType);
 		expect(encryptedData).not.toBe(payload.data);
 
 		const credential = await Container.get(CredentialsRepository).findOneByOrFail({ id });
 
 		expect(credential.name).toBe(payload.name);
 		expect(credential.type).toBe(payload.type);
-		expect(credential.nodesAccess[0].nodeType).toBe(payload.nodesAccess[0].nodeType);
 		expect(credential.data).not.toBe(payload.data);
 
 		const sharedCredential = await Container.get(SharedCredentialsRepository).findOneOrFail({
@@ -461,14 +456,10 @@ describe('PATCH /credentials/:id', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const { id, name, type, nodesAccess, data: encryptedData } = response.body.data;
+		const { id, name, type, data: encryptedData } = response.body.data;
 
 		expect(name).toBe(patchPayload.name);
 		expect(type).toBe(patchPayload.type);
-		if (!patchPayload.nodesAccess) {
-			fail('Payload did not contain a nodesAccess array');
-		}
-		expect(nodesAccess[0].nodeType).toBe(patchPayload.nodesAccess[0].nodeType);
 
 		expect(encryptedData).not.toBe(patchPayload.data);
 
@@ -476,7 +467,6 @@ describe('PATCH /credentials/:id', () => {
 
 		expect(credential.name).toBe(patchPayload.name);
 		expect(credential.type).toBe(patchPayload.type);
-		expect(credential.nodesAccess[0].nodeType).toBe(patchPayload.nodesAccess[0].nodeType);
 		expect(credential.data).not.toBe(patchPayload.data);
 
 		const sharedCredential = await Container.get(SharedCredentialsRepository).findOneOrFail({
@@ -507,7 +497,6 @@ describe('PATCH /credentials/:id', () => {
 		const credentialObject = new Credentials(
 			{ id: credential.id, name: credential.name },
 			credential.type,
-			credential.nodesAccess,
 			credential.data,
 		);
 		expect(credentialObject.getData()).toStrictEqual(patchPayload.data);
@@ -530,15 +519,10 @@ describe('PATCH /credentials/:id', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const { id, name, type, nodesAccess, data: encryptedData } = response.body.data;
+		const { id, name, type, data: encryptedData } = response.body.data;
 
 		expect(name).toBe(patchPayload.name);
 		expect(type).toBe(patchPayload.type);
-
-		if (!patchPayload.nodesAccess) {
-			fail('Payload did not contain a nodesAccess array');
-		}
-		expect(nodesAccess[0].nodeType).toBe(patchPayload.nodesAccess[0].nodeType);
 
 		expect(encryptedData).not.toBe(patchPayload.data);
 
@@ -546,7 +530,6 @@ describe('PATCH /credentials/:id', () => {
 
 		expect(credential.name).toBe(patchPayload.name);
 		expect(credential.type).toBe(patchPayload.type);
-		expect(credential.nodesAccess[0].nodeType).toBe(patchPayload.nodesAccess[0].nodeType);
 		expect(credential.data).not.toBe(patchPayload.data);
 
 		const sharedCredential = await Container.get(SharedCredentialsRepository).findOneOrFail({
@@ -756,11 +739,10 @@ describe('GET /credentials/:id', () => {
 });
 
 function validateMainCredentialData(credential: ListQuery.Credentials.WithOwnedByAndSharedWith) {
-	const { name, type, nodesAccess, sharedWithProjects, homeProject } = credential;
+	const { name, type, sharedWithProjects, homeProject } = credential;
 
 	expect(typeof name).toBe('string');
 	expect(typeof type).toBe('string');
-	expect(typeof nodesAccess?.[0].nodeType).toBe('string');
 
 	if (sharedWithProjects) {
 		expect(Array.isArray(sharedWithProjects)).toBe(true);
@@ -778,23 +760,15 @@ function validateMainCredentialData(credential: ListQuery.Credentials.WithOwnedB
 const INVALID_PAYLOADS = [
 	{
 		type: randomName(),
-		nodesAccess: [{ nodeType: randomName() }],
 		data: { accessToken: randomString(6, 16) },
 	},
 	{
 		name: randomName(),
-		nodesAccess: [{ nodeType: randomName() }],
-		data: { accessToken: randomString(6, 16) },
-	},
-	{
-		name: randomName(),
-		type: randomName(),
 		data: { accessToken: randomString(6, 16) },
 	},
 	{
 		name: randomName(),
 		type: randomName(),
-		nodesAccess: [{ nodeType: randomName() }],
 	},
 	{},
 	undefined,

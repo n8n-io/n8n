@@ -266,7 +266,6 @@ const credentialPayload = (): CredentialPayload => ({
 
 const dbCredential = () => {
 	const credential = credentialPayload();
-	credential.nodesAccess = [{ nodeType: credential.type }];
 
 	return credential;
 };
@@ -283,13 +282,6 @@ const INVALID_PAYLOADS = [
 	{
 		name: randomName(),
 		type: randomName(),
-	},
-	{
-		name: randomName(),
-		type: 'ftp',
-		data: {
-			username: randomName(),
-		},
 	},
 	{},
 	[],

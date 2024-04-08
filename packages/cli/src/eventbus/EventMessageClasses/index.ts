@@ -27,6 +27,8 @@ export const eventNamesAudit = [
 	'n8n.audit.user.reset',
 	'n8n.audit.user.credentials.created',
 	'n8n.audit.user.credentials.shared',
+	'n8n.audit.user.credentials.updated',
+	'n8n.audit.user.credentials.deleted',
 	'n8n.audit.user.api.created',
 	'n8n.audit.user.api.deleted',
 	'n8n.audit.package.installed',
