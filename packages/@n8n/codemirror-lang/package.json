@@ -2,13 +2,7 @@
   "name": "@n8n/codemirror-lang",
   "version": "0.2.0",
   "description": "n8n expression language support for CodeMirror 6",
-  "scripts": {
-    "build": "rollup -c",
-    "test": "npm run build && mocha test/test.js",
-    "lint": "eslint . --ext .js,.ts,.vue --quiet",
-    "lintfix": "eslint . --ext .js,.ts,.vue --fix",
-    "format": "prettier --write src/"
-  },
+  "private": "true",
   "type": "module",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
@@ -18,18 +12,22 @@
   },
   "types": "dist/index.d.ts",
   "sideEffects": false,
+  "scripts": {
+    "generate": "lezer-generator --typeScript --output src/syntax.grammar.ts src/syntax.grammar",
+    "build": "tsc",
+    "test": "npm run build && mocha test/test.js",
+    "lint": "eslint . --ext .js,.ts,.vue --quiet",
+    "lintfix": "eslint . --ext .js,.ts,.vue --fix",
+    "format": "prettier --write src/"
+  },
   "dependencies": {
-    "@codemirror/autocomplete": "^6.3.0",
-    "@codemirror/language": "^6.0.0",
-    "@lezer/highlight": "^1.0.0",
-    "@lezer/lr": "^1.0.0"
+    "@codemirror/autocomplete": "^6.15.0",
+    "@codemirror/language": "^6.10.1",
+    "@lezer/highlight": "^1.2.0",
+    "@lezer/lr": "^1.4.0"
   },
   "devDependencies": {
-    "@lezer/generator": "^1.0.0",
-    "mocha": "^9.0.1",
-    "rollup": "^2.60.2",
-    "rollup-plugin-dts": "^4.0.1",
-    "rollup-plugin-ts": "^3.0.2",
-    "typescript": "^4.3.4"
+    "@lezer/generator": "^1.7.0",
+    "mocha": "^10.4.0"
   }
 }

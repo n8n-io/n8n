@@ -3,4 +3,5 @@ package-lock.json
 /dist
 /src/*.js
 /src/*.d.ts
+src/syntax.grammar*.ts
 .DS_Store

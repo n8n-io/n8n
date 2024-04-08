@@ -1,7 +1,6 @@
 import { completeFromList } from '@codemirror/autocomplete';
 import { LRLanguage, LanguageSupport, foldNodeProp, foldInside } from '@codemirror/language';
 import { styleTags, tags as t } from '@lezer/highlight';
-//@ts-expect-error tsc does not know how to handle this
 import { parser } from './syntax.grammar';
 
 export const parserWithMetaData = parser.configure({
