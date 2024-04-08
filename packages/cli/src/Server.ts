@@ -375,9 +375,10 @@ export class Server extends AbstractServer {
 			this.app.use('/icons/:packageName/*/*.(svg|png)', serveIcons);
 
 			const isTLSEnabled = this.protocol === 'https' && !!(this.sslKey && this.sslCert);
+			const isPreviewMode = process.env.N8N_PREVIEW_MODE === 'true';
 			const securityHeadersMiddleware = helmet({
 				contentSecurityPolicy: false,
-				xFrameOptions: { action: 'sameorigin' },
+				xFrameOptions: isPreviewMode ? false : { action: 'sameorigin' },
 				dnsPrefetchControl: false,
 				// This is only relevant for Internet-explorer, which we do not support
 				ieNoOpen: false,
