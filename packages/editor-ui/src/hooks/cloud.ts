@@ -46,7 +46,7 @@ export const n8nCloudHooks: PartialDeep<ExternalHooks> = {
 				const segmentStore = useSegment();
 				const eventData = {
 					source: meta.source,
-					nodes_panel_session_id: nodesPanelSession.sessionId,
+					nodes_panel_session_id: nodesPanelSession.pushRef,
 				};
 
 				hooksResetNodesPanelSession();
@@ -61,7 +61,7 @@ export const n8nCloudHooks: PartialDeep<ExternalHooks> = {
 					eventName: 'User added node to workflow canvas',
 					properties: {
 						node_type: meta.nodeTypeName.split('.')[1],
-						nodes_panel_session_id: nodesPanelSession.sessionId,
+						nodes_panel_session_id: nodesPanelSession.pushRef,
 					},
 				};
 
@@ -473,7 +473,7 @@ export const n8nCloudHooks: PartialDeep<ExternalHooks> = {
 					properties: {
 						old_filter: meta.oldValue,
 						new_filter: meta.newValue,
-						nodes_panel_session_id: nodesPanelSession.sessionId,
+						nodes_panel_session_id: nodesPanelSession.pushRef,
 					},
 				};
 				nodesPanelSession.data.filterMode = meta.newValue;
