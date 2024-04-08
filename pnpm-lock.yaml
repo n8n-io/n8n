@@ -1515,6 +1515,9 @@ importers:
 
   packages/workflow:
     dependencies:
+      '@langchain/core':
+        specifier: 0.1.41
+        version: 0.1.41
       '@n8n/tournament':
         specifier: 1.0.2
         version: 1.0.2
