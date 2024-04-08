@@ -1,4 +1,4 @@
-# codemirror-lang-n8n-expression
+# @n8n/codemirror-lang
 
 n8n expression language support for CodeMirror 6.
 
@@ -7,7 +7,7 @@ n8n expression language support for CodeMirror 6.
 Install n8n expression language support:
 
 ```sh
-npm i codemirror-lang-n8n-expression
+npm i @n8n/codemirror-lang
 ```
 
 Install setup dependencies:
@@ -19,7 +19,7 @@ npm i @codemirror/language @lezer/common @lezer/javascript
 Set up language support:
 
 ```js
-import { parserWithMetaData as n8nParser } from 'codemirror-lang-n8n-expression';
+import { parserWithMetaData as n8nParser } from '@n8n/codemirror-lang';
 import { LanguageSupport, LRLanguage } from '@codemirror/language';
 import { parseMixed } from '@lezer/common';
 import { parser as jsParser } from '@lezer/javascript';
@@ -40,11 +40,3 @@ export function n8nExpressionLanguageSupport() {
 	return new LanguageSupport(n8nLanguage);
 }
 ```
-
-## Author
-
-© 2022 [Iván Ovejero](https://github.com/ivov)
-
-## License
-
-Distributed under the [MIT License](LICENSE.md).

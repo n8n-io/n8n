@@ -1,10 +1,13 @@
 {
-  "name": "codemirror-lang-n8n-expression",
+  "name": "@n8n/codemirror-lang",
   "version": "0.2.0",
   "description": "n8n expression language support for CodeMirror 6",
   "scripts": {
-    "test": "npm run prepare && mocha test/test.js",
-    "prepare": "rollup -c"
+    "build": "rollup -c",
+    "test": "npm run build && mocha test/test.js",
+    "lint": "eslint . --ext .js,.ts,.vue --quiet",
+    "lintfix": "eslint . --ext .js,.ts,.vue --fix",
+    "format": "prettier --write src/"
   },
   "type": "module",
   "main": "dist/index.cjs",
@@ -28,6 +31,5 @@
     "rollup-plugin-dts": "^4.0.1",
     "rollup-plugin-ts": "^3.0.2",
     "typescript": "^4.3.4"
-  },
-  "license": "MIT"
+  }
 }
