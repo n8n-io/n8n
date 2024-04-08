@@ -64,7 +64,7 @@ function onSelected(item: INodeCreateElement) {
 							icon: item.properties.icon,
 							iconType: 'icon',
 						},
-					}
+				  }
 				: {}),
 			...(item.properties.panelClass ? { panelClass: item.properties.panelClass } : {}),
 			rootView: activeViewStack.value.rootView,

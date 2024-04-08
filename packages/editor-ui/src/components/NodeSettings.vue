@@ -376,7 +376,7 @@ export default defineComponent({
 			const credential = this.usedCredentials
 				? Object.values(this.usedCredentials).find((credential) => {
 						return credential.id === this.foreignCredentials[0];
-					})
+				  })
 				: undefined;
 
 			return this.credentialsStore.getCredentialOwnerName(credential);

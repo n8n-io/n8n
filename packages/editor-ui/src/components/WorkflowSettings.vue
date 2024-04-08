@@ -609,7 +609,7 @@ export default defineComponent({
 								owner: this.workflowPermissions.isOwner
 									? this.$locale.baseText(
 											'workflowSettings.callerPolicy.options.workflowsFromSameOwner.owner',
-										)
+									  )
 									: this.workflowOwnerName,
 							},
 						},
@@ -639,7 +639,7 @@ export default defineComponent({
 										? this.$locale.baseText('workflowSettings.saveDataErrorExecutionOptions.save')
 										: this.$locale.baseText(
 												'workflowSettings.saveDataErrorExecutionOptions.doNotSave',
-											),
+										  ),
 							},
 						},
 					),
@@ -668,7 +668,7 @@ export default defineComponent({
 										? this.$locale.baseText('workflowSettings.saveDataSuccessExecutionOptions.save')
 										: this.$locale.baseText(
 												'workflowSettings.saveDataSuccessExecutionOptions.doNotSave',
-											),
+										  ),
 							},
 						},
 					),
@@ -698,7 +698,7 @@ export default defineComponent({
 									? this.$locale.baseText('workflowSettings.saveExecutionProgressOptions.save')
 									: this.$locale.baseText(
 											'workflowSettings.saveExecutionProgressOptions.doNotSave',
-										),
+									  ),
 							},
 						},
 					),

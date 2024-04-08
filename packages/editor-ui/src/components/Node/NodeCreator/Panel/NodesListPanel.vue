@@ -33,7 +33,7 @@ const searchPlaceholder = computed(() =>
 	isActionsMode.value
 		? i18n.baseText('nodeCreator.actionsCategory.searchActions', {
 				interpolate: { node: activeViewStack.value.title as string },
-			})
+		  })
 		: i18n.baseText('nodeCreator.searchBar.searchNodes'),
 );
 

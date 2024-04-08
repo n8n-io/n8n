@@ -189,7 +189,7 @@ const defaultSelectedMatchingColumns = computed<string[]>(() => {
 					acc.push(field.id);
 				}
 				return acc;
-			}, [] as string[]);
+		  }, [] as string[]);
 });
 
 const pluralFieldWord = computed<string>(() => {
