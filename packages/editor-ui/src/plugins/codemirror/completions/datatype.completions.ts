@@ -60,7 +60,6 @@ import {
 } from './constants';
 import { VALID_EMAIL_REGEX } from '@/constants';
 import { uniqBy } from 'lodash-es';
-import { escapeMappingString } from '../../../utils/mappingUtils';
 
 /**
  * Resolution-based completions offered according to datatype.
