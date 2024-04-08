@@ -59,7 +59,6 @@ export const randomName = () => randomString(4, 8);
 export const randomCredentialPayload = (): CredentialPayload => ({
 	name: randomName(),
 	type: randomName(),
-	nodesAccess: [{ nodeType: randomName() }],
 	data: { accessToken: randomString(6, 16) },
 });
 
