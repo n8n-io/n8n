@@ -167,8 +167,8 @@ async function handleActionItemClick(commandData: 'retrySaved' | 'retryOriginal'
 			/>
 		</td>
 		<td>
-			<span @click.stop="displayExecution">
-				<a href="#" :class="$style.link">{{ execution.workflowName || workflowName }}</a>
+			<span :class="$style.link" @click.stop="displayExecution">
+				{{ execution.workflowName || workflowName }}
 			</span>
 		</td>
 		<td>
@@ -361,6 +361,7 @@ async function handleActionItemClick(commandData: 'retrySaved' | 'retryOriginal'
 .link {
 	color: var(--color-text-base);
 	text-decoration: underline;
+	cursor: pointer;
 }
 
 .statusColumn {
