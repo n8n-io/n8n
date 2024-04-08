@@ -31,54 +31,12 @@
 						})
 					}}
 				</n8n-info-tip>
-<<<<<<< HEAD
-				<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
+				<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]" :class="$style.content">
 					<ProjectSharing
 						v-model="sharedWithProjects"
 						:projects="projects"
 						:readonly="!workflowPermissions.share"
 					/>
-=======
-				<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]" :class="$style.content">
-					<n8n-user-select
-						v-if="workflowPermissions.updateSharing"
-						class="mb-s"
-						size="large"
-						:users="usersList"
-						:current-user-id="currentUser.id"
-						:placeholder="$locale.baseText('workflows.shareModal.select.placeholder')"
-						data-test-id="workflow-sharing-modal-users-select"
-						@update:model-value="onAddSharee"
-					>
-						<template #prefix>
-							<n8n-icon icon="search" />
-						</template>
-					</n8n-user-select>
-					<n8n-users-list
-						:actions="[]"
-						:users="sharedWithList"
-						:current-user-id="currentUser.id"
-						:delete-label="$locale.baseText('workflows.shareModal.list.delete')"
-						:readonly="!workflowPermissions.updateSharing"
-						:class="$style.usersList"
-					>
-						<template #actions="{ user }">
-							<n8n-select
-								:class="$style.roleSelect"
-								model-value="editor"
-								size="small"
-								@update:model-value="onRoleAction(user, $event)"
-							>
-								<n8n-option :label="$locale.baseText('workflows.roles.editor')" value="editor" />
-								<n8n-option :class="$style.roleSelectRemoveOption" value="remove">
-									<n8n-text color="danger">{{
-										$locale.baseText('workflows.shareModal.list.delete')
-									}}</n8n-text>
-								</n8n-option>
-							</n8n-select>
-						</template>
-					</n8n-users-list>
->>>>>>> origin/master
 					<template #fallback>
 						<n8n-text>
 							<i18n-t

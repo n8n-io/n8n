@@ -817,25 +817,10 @@ export default defineComponent({
 		this.clipboard.onPaste.value = this.onClipboardPasteEvent;
 
 		this.canvasStore.startLoading();
-<<<<<<< HEAD
-		const loadPromises =
-			this.settingsStore.isPreviewMode && this.isDemo
-				? []
-				: [
-						this.loadActiveWorkflows(),
-						this.loadCredentialTypes(),
-						this.loadVariables(),
-						this.loadSecrets(),
-					];
-=======
 
 		const loadPromises = (() => {
 			if (this.settingsStore.isPreviewMode && this.isDemo) return [];
-			const promises = [
-				this.loadActiveWorkflows(),
-				this.loadCredentials(),
-				this.loadCredentialTypes(),
-			];
+			const promises = [this.loadActiveWorkflows(), this.loadCredentialTypes()];
 			if (this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Variables)) {
 				promises.push(this.loadVariables());
 			}
@@ -844,7 +829,6 @@ export default defineComponent({
 			}
 			return promises;
 		})();
->>>>>>> origin/master
 
 		if (this.nodeTypesStore.allNodeTypes.length === 0) {
 			loadPromises.push(this.loadNodeTypes());
@@ -1072,7 +1056,7 @@ export default defineComponent({
 						this.readOnlyEnv
 							? `readOnlyEnv.showMessage.${
 									this.isReadOnlyRoute ? 'executions' : 'workflows'
-								}.message`
+							  }.message`
 							: 'readOnly.showMessage.executions.message',
 					),
 					type: 'info',
@@ -2530,7 +2514,7 @@ export default defineComponent({
 					this.nodeTypesStore.isTriggerNode(nodeTypeName) && !this.containsTrigger
 						? this.canvasStore.canvasAddButtonPosition
 						: // If no node is active find a free spot
-							(this.lastClickPosition as XYPosition);
+						  (this.lastClickPosition as XYPosition);
 
 				newNodeData.position = NodeViewUtils.getNewNodePosition(this.nodes, position);
 			}

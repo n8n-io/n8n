@@ -223,68 +223,6 @@ export default defineComponent({
 			isSharedWithChanged: false,
 		};
 	},
-<<<<<<< HEAD
-=======
-	async mounted() {
-		this.requiredCredentials =
-			isCredentialModalState(this.uiStore.modals[CREDENTIAL_EDIT_MODAL_KEY]) &&
-			this.uiStore.modals[CREDENTIAL_EDIT_MODAL_KEY].showAuthSelector === true;
-
-		if (this.mode === 'new' && this.credentialTypeName) {
-			this.credentialName = await this.credentialsStore.getNewCredentialName({
-				credentialTypeName: this.defaultCredentialTypeName,
-			});
-
-			if (this.currentUser) {
-				this.credentialData = {
-					...this.credentialData,
-					ownedBy: {
-						id: this.currentUser.id,
-						firstName: this.currentUser.firstName,
-						lastName: this.currentUser.lastName,
-						email: this.currentUser.email,
-					},
-				};
-			}
-		} else {
-			await this.loadCurrentCredential();
-		}
-
-		if (this.credentialType) {
-			for (const property of this.credentialType.properties) {
-				if (
-					!this.credentialData.hasOwnProperty(property.name) &&
-					!this.credentialType.__overwrittenProperties?.includes(property.name)
-				) {
-					this.credentialData = {
-						...this.credentialData,
-						[property.name]: property.default as CredentialInformation,
-					};
-				}
-			}
-		}
-
-		await this.externalHooks.run('credentialsEdit.credentialModalOpened', {
-			credentialType: this.credentialTypeName,
-			isEditingCredential: this.mode === 'edit',
-			activeNode: this.ndvStore.activeNode,
-		});
-
-		setTimeout(async () => {
-			if (this.credentialId) {
-				if (!this.requiredPropertiesFilled && this.credentialPermissions.isOwner) {
-					// sharees can't see properties, so this check would always fail for them
-					// if the credential contains required fields.
-					this.showValidationWarning = true;
-				} else {
-					await this.retestCredential();
-				}
-			}
-		}, 0);
-
-		this.loading = false;
-	},
->>>>>>> origin/master
 	computed: {
 		...mapStores(
 			useCredentialsStore,
@@ -552,24 +490,10 @@ export default defineComponent({
 			isCredentialModalState(this.uiStore.modals[CREDENTIAL_EDIT_MODAL_KEY]) &&
 			this.uiStore.modals[CREDENTIAL_EDIT_MODAL_KEY].showAuthSelector === true;
 
-		this.setupNodeAccess();
-
 		if (this.mode === 'new' && this.credentialTypeName) {
 			this.credentialName = await this.credentialsStore.getNewCredentialName({
 				credentialTypeName: this.defaultCredentialTypeName,
 			});
-
-			if (this.currentUser) {
-				this.credentialData = {
-					...this.credentialData,
-					ownedBy: {
-						id: this.currentUser.id,
-						firstName: this.currentUser.firstName,
-						lastName: this.currentUser.lastName,
-						email: this.currentUser.email,
-					},
-				};
-			}
 		} else {
 			await this.loadCurrentCredential();
 		}
@@ -887,12 +811,7 @@ export default defineComponent({
 				name: this.credentialName,
 				type: this.credentialTypeName!,
 				data: data as unknown as ICredentialDataDecryptedObject,
-<<<<<<< HEAD
 				nodesAccess: [],
-=======
-				sharedWith,
-				ownedBy,
->>>>>>> origin/master
 			};
 
 			let credential;

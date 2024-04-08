@@ -64,14 +64,9 @@ export default defineComponent({
 				updatedAt: '',
 				type: '',
 				name: '',
-<<<<<<< HEAD
 				nodesAccess: [],
 				sharedWithProjects: [],
 				homeProject: {} as ProjectSharingData,
-=======
-				sharedWith: [],
-				ownedBy: {} as IUser,
->>>>>>> origin/master
 			}),
 		},
 		readonly: {
@@ -117,7 +112,7 @@ export default defineComponent({
 								label: this.$locale.baseText('credentials.item.delete'),
 								value: CREDENTIAL_LIST_ITEM_ACTIONS.DELETE,
 							},
-						]
+					  ]
 					: [],
 			);
 		},
