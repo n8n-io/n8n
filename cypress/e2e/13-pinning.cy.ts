@@ -134,7 +134,7 @@ describe('Data pinning', () => {
 		ndv.getters.pinDataButton().should('not.exist');
 		ndv.getters.editPinnedDataButton().should('be.visible');
 
-		ndv.actions.setPinnedData([
+		ndv.actions.pastePinnedData([
 			{
 				test: '1'.repeat(Cypress.env('MAX_PINNED_DATA_SIZE')),
 			},
