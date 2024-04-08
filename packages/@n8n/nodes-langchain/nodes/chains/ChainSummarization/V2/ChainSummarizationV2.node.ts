@@ -18,6 +18,7 @@ import { N8nBinaryLoader } from '../../../../utils/N8nBinaryLoader';
 import { getTemplateNoticeField } from '../../../../utils/sharedFields';
 import { REFINE_PROMPT_TEMPLATE, DEFAULT_PROMPT_TEMPLATE } from '../prompt';
 import { getChainPromptsArgs } from '../helpers';
+import { getTracingConfig } from '../../../../utils/tracing';
 
 function getInputs(parameters: IDataObject) {
 	const chunkingMode = parameters?.chunkingMode;
@@ -364,7 +365,7 @@ export class ChainSummarizationV2 implements INodeType {
 					? await documentInput.processItem(item, itemIndex)
 					: documentInput;
 
-				const response = await chain.call({
+				const response = await chain.withConfig(getTracingConfig(this)).invoke({
 					input_documents: processedDocuments,
 				});
 

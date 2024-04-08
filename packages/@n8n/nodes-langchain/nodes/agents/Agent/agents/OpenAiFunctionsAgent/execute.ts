@@ -17,6 +17,7 @@ import {
 	getOptionalOutputParsers,
 	getPromptInputByType,
 } from '../../../../../utils/helpers';
+import { getTracingConfig } from '../../../../../utils/tracing';
 
 export async function openAiFunctionsAgentExecute(
 	this: IExecuteFunctions,
@@ -104,7 +105,9 @@ export async function openAiFunctionsAgentExecute(
 			input = (await prompt.invoke({ input })).value;
 		}
 
-		let response = await agentExecutor.call({ input, outputParsers });
+		let response = await agentExecutor
+			.withConfig(getTracingConfig(this))
+			.invoke({ input, outputParsers });
 
 		if (outputParser) {
 			response = { output: await outputParser.parse(response.output as string) };
