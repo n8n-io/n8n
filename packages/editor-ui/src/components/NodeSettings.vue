@@ -859,9 +859,9 @@ export default defineComponent({
 
 				if (
 					parameterData.type &&
-					SHOULD_CLEAR_NODE_OUTPUTS[nodeType.name] &&
-					SHOULD_CLEAR_NODE_OUTPUTS[nodeType.name].eventTypes.includes(parameterData.type) &&
-					SHOULD_CLEAR_NODE_OUTPUTS[nodeType.name].parameterPaths.includes(parameterData.name)
+					this.workflowsStore.nodeHasOutputConnection(node.name) &&
+					SHOULD_CLEAR_NODE_OUTPUTS[nodeType.name]?.eventTypes.includes(parameterData.type) &&
+					SHOULD_CLEAR_NODE_OUTPUTS[nodeType.name]?.parameterPaths.includes(parameterData.name)
 				) {
 					this.workflowsStore.clearNodeOutgoingConnections(node.name);
 					this.showMessage({

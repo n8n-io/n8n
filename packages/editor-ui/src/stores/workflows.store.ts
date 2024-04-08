@@ -200,14 +200,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				return {};
 			};
 		},
-		clearNodeOutgoingConnections() {
-			const uiStore = useUIStore();
-			return (nodeName: string): void => {
-				if (this.workflow.connections.hasOwnProperty(nodeName)) {
-					this.workflow.connections[nodeName] = {};
-					uiStore.stateIsDirty = true;
-					return;
-				}
+		nodeHasOutputConnection() {
+			return (nodeName: string): boolean => {
+				if (this.workflow.connections.hasOwnProperty(nodeName)) return true;
+				return false;
 			};
 		},
 		isNodeInOutgoingNodeConnections() {
@@ -295,6 +291,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		},
 	},
 	actions: {
+		clearNodeOutgoingConnections(nodeName: string) {
+			if (this.workflow.connections.hasOwnProperty(nodeName)) {
+				delete this.workflow.connections[nodeName];
+				useUIStore().stateIsDirty = true;
+			}
+			return;
+		},
 		getPinDataSize(pinData: Record<string, string | INodeExecutionData[]> = {}): number {
 			return Object.values(pinData).reduce<number>((acc, value) => {
 				return acc + stringSizeInBytes(value);
