@@ -19,6 +19,7 @@ const sortedProviders = computed(() => {
 });
 
 onMounted(() => {
+	if (!externalSecretsStore.isEnterpriseExternalSecretsEnabled) return;
 	try {
 		void externalSecretsStore.fetchAllSecrets();
 		void externalSecretsStore.getProviders();
