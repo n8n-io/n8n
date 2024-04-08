@@ -75,10 +75,19 @@ export class Webhook extends Node {
 		webhooks: [defaultWebhookDescription],
 		properties: [
 			{
+				displayName: 'Multiple Methods',
+				name: 'multipleMethods',
+				type: 'boolean',
+				default: false,
+				isNodeSetting: true,
+				description:
+					'Whether multiple methods could be used at the same time to listen to the webhook',
+			},
+			{
 				...httpMethodsProperty,
 				displayOptions: {
 					show: {
-						'@version': [1, 1.1, 2],
+						multipleMethods: [false],
 					},
 				},
 			},
@@ -116,7 +125,7 @@ export class Webhook extends Node {
 				description: 'The HTTP methods to listen to',
 				displayOptions: {
 					show: {
-						'@version': [{ _cnd: { gte: 2.1 } }],
+						multipleMethods: [true],
 					},
 				},
 			},

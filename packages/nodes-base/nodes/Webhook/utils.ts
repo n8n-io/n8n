@@ -96,7 +96,7 @@ export const setupOutputConnection = (
 		webhookUrl = webhookUrl.replace('/webhook/', '/webhook-test/');
 	}
 
-	// before version 2.1, httpMethod was a string and not an array
+	// multi methods could be set in settings of node, so we need to check if it's an array
 	if (!Array.isArray(httpMethod)) {
 		return (outputData: INodeExecutionData): INodeExecutionData[][] => {
 			outputData.json.webhookUrl = webhookUrl;
