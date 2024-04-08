@@ -59,9 +59,14 @@ export class SlackTrigger implements INodeType {
 			},
 			{
 				displayName: 'Trigger On',
-				name: 'eventFilter',
+				name: 'trigger',
 				type: 'multiOptions',
 				options: [
+					{
+						name: 'Any Event',
+						value: 'any_event',
+						description: 'Triggers on any event',
+					},
 					{
 						name: 'Bot / App Mention',
 						value: 'app_mention',
@@ -108,7 +113,7 @@ export class SlackTrigger implements INodeType {
 				default: '',
 				displayOptions: {
 					show: {
-						eventFilter: ['message'],
+						trigger: ['any_event', 'message'],
 					},
 				},
 			},
@@ -119,7 +124,7 @@ export class SlackTrigger implements INodeType {
 				default: false,
 				displayOptions: {
 					show: {
-						eventFilter: ['message', 'reaction_added', 'file_share', 'app_mention'],
+						trigger: ['any_event', 'message', 'reaction_added', 'file_share', 'app_mention'],
 					},
 				},
 			},
@@ -190,7 +195,7 @@ export class SlackTrigger implements INodeType {
 				description: 'Whether to download the files and add it to the output',
 				displayOptions: {
 					show: {
-						eventFilter: ['file_share'],
+						trigger: ['any_event', 'file_share'],
 					},
 				},
 			},
@@ -301,7 +306,7 @@ export class SlackTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
-		const filters = this.getNodeParameter('eventFilter', []) as string[];
+		const filters = this.getNodeParameter('trigger', []) as string[];
 		const req = this.getRequestObject();
 		const options = this.getNodeParameter('options', {}) as IDataObject;
 		const binaryData: IBinaryKeyData = {};
@@ -318,10 +323,12 @@ export class SlackTrigger implements INodeType {
 		}
 
 		// Check if the event type is in the filters
+		const eventType = req.body.event.type as string;
+
 		if (
-			req.body.event.type === 'message' &&
+			eventType === 'message' &&
 			!filters.includes('file_share') &&
-			(!req.body.event.type || !filters.includes(req.body.event.type as string))
+			!filters.includes('any_event')
 		) {
 			return {};
 		}
@@ -344,7 +351,7 @@ export class SlackTrigger implements INodeType {
 
 		if (options.resolveIds) {
 			if (req.body.event.user) {
-				if (req.body.event.reaction_added) {
+				if (req.body.event.type === 'reaction_added') {
 					req.body.event.user_resolved = await getUserInfo.call(this, req.body.event.user);
 					req.body.event.item_user_resolved = await getUserInfo.call(
 						this,
@@ -354,8 +361,9 @@ export class SlackTrigger implements INodeType {
 					req.body.event.user_resolved = await getUserInfo.call(this, req.body.event.user);
 				}
 			}
-			if (req.body.event.channel || req.body.item.channel) {
-				const channel = await getChannelInfo.call(this, req.body.event.channel);
+			const eventChannel = req.body.event.channel ?? req.body.event.item.channel;
+			if (eventChannel) {
+				const channel = await getChannelInfo.call(this, eventChannel);
 				const channelResolved = channel;
 				req.body.event.channel_resolved = channelResolved;
 			}
@@ -363,7 +371,10 @@ export class SlackTrigger implements INodeType {
 
 		let responseData: IDataObject = {};
 
-		if (req.body.event.subtype === 'file_share' && filters.includes('file_share')) {
+		if (
+			req.body.event.subtype === 'file_share' &&
+			(filters.includes('file_share') || filters.includes('any_event'))
+		) {
 			responseData = req.body.event.files;
 			if (this.getNodeParameter('downloadFiles', false) as boolean) {
 				for (let i = 0; i < req.body.event.files.length; i++) {

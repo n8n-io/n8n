@@ -26,6 +26,7 @@ export async function getChannelInfo(this: IWebhookFunctions, channelId: string)
 			channel: channelId,
 		},
 	);
+
 	return channel.channel.name;
 }
 
