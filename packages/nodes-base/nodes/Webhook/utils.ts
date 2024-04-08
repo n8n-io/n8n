@@ -49,17 +49,6 @@ export const getResponseData = (parameters: WebhookParameters) => {
 	return undefined;
 };
 
-// export const configuredOutputs = (parameters: WebhookParameters) => {
-// 	const httpMethod = parameters.httpMethod;
-
-// 	return [
-// 		{
-// 			type: `${NodeConnectionType.Main}`,
-// 			displayName: httpMethod,
-// 		},
-// 	];
-// };
-
 export const configuredOutputs = (parameters: WebhookParameters) => {
 	const httpMethod = parameters.httpMethod as string | string[];
 

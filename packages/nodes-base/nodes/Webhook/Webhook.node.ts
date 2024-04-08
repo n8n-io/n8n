@@ -49,7 +49,7 @@ export class Webhook extends Node {
 		icon: 'file:webhook.svg',
 		name: 'webhook',
 		group: ['trigger'],
-		version: [1, 1.1, 2, 2.1],
+		version: [1, 1.1, 2],
 		description: 'Starts the workflow when a webhook is called',
 		eventTriggerDescription: 'Waiting for you to call the Test URL',
 		activationMessage: 'You can now make calls to your production webhook URL.',
