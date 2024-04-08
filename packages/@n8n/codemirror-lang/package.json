@@ -2,7 +2,7 @@
   "name": "@n8n/codemirror-lang",
   "version": "0.3.0",
   "description": "n8n expression language support for CodeMirror 6",
-  "private": "true",
+  "private": true,
   "sideEffects": false,
   "main": "dist/index.js",
   "module": "src/index.ts",
