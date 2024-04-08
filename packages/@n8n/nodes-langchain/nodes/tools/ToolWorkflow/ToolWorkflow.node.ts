@@ -388,7 +388,6 @@ export class ToolWorkflow implements INodeType {
 			const items = [newItem] as INodeExecutionData[];
 
 			let receivedData: INodeExecutionData;
-			console.log('About to pass runManager to executeWorkflow', runManager?.runId);
 			try {
 				receivedData = (await this.executeWorkflow(
 					workflowInfo,
