@@ -72,14 +72,11 @@ export async function configurePostgres(
 		database: credentials.database,
 		user: credentials.user,
 		password: credentials.password,
+		keepAlive: true,
 	};
 
 	if (options.connectionTimeout) {
 		dbConfig.connectionTimeoutMillis = options.connectionTimeout * 1000;
-	}
-
-	if (options.keepAlive) {
-		dbConfig.keepAlive = options.keepAlive;
 	}
 
 	if (options.delayClosingIdleConnection) {

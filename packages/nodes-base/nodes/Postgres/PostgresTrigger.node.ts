@@ -234,13 +234,6 @@ export class PostgresTrigger implements INodeType {
 							minValue: 0,
 						},
 					},
-					{
-						displayName: 'Keep Alive',
-						name: 'keepAlive',
-						type: 'boolean',
-						default: false,
-						description: 'Whether to keep the connection alive',
-					},
 				],
 			},
 		],

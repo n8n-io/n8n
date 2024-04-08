@@ -41,13 +41,6 @@ export const optionsCollection: INodeProperties = {
 			},
 		},
 		{
-			displayName: 'Keep Alive',
-			name: 'keepAlive',
-			type: 'boolean',
-			default: false,
-			description: 'Whether to keep the connection alive',
-		},
-		{
 			displayName: 'Query Batching',
 			name: 'queryBatching',
 			type: 'options',

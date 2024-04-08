@@ -90,7 +90,6 @@ export async function initDB(this: ITriggerFunctions | ILoadOptionsFunctions) {
 	const options = this.getNodeParameter('options', {}) as {
 		connectionTimeout?: number;
 		delayClosingIdleConnection?: number;
-		keepAlive?: boolean;
 	};
 	const pgp = pgPromise({
 		// prevent spam in console "WARNING: Creating a duplicate database object for the same connection."
@@ -102,14 +101,11 @@ export async function initDB(this: ITriggerFunctions | ILoadOptionsFunctions) {
 		database: credentials.database as string,
 		user: credentials.user as string,
 		password: credentials.password as string,
+		keepAlive: true,
 	};
 
 	if (options.connectionTimeout) {
 		config.connectionTimeoutMillis = options.connectionTimeout * 1000;
-	}
-
-	if (options.keepAlive) {
-		config.keepAlive = options.keepAlive;
 	}
 
 	if (options.delayClosingIdleConnection) {

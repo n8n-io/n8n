@@ -42,7 +42,6 @@ export type PostgresNodeOptions = {
 	cascade?: boolean;
 	connectionTimeout?: number;
 	delayClosingIdleConnection?: number;
-	keepAlive?: boolean;
 	queryBatching?: QueryMode;
 	queryReplacement?: string;
 	outputColumns?: string[];
