@@ -1,11 +1,9 @@
 @top Program { entity* }
 
-entity { Plaintext | Resolvable | BrokenResolvable }
+entity { Plaintext | Resolvable }
 
 @tokens {
   Plaintext { ![{] Plaintext? | "{" (@eof | ![{] Plaintext?) }
-
-  BrokenResolvable { "{{" ![}]* "}"? }
 
   OpenMarker[closedBy="CloseMarker"] { "{{" }
 
@@ -17,9 +15,7 @@ entity { Plaintext | Resolvable | BrokenResolvable }
 
   resolvableChar { unicodeChar | "}" ![}] | "\\}}" }
 
-  unicodeChar { $[\u0000-\u007C] | $[\u007E-\u06FF] }
-
-  @precedence { BrokenResolvable, Resolvable }
+  unicodeChar { $[\u0000-\u007C] | $[\u007E-\u1FFF] | $[\u20A0-\u20CF] | $[\u{1F300}-\u{1F64F}] }
 }
 
 @detectDelim

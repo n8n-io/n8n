@@ -214,38 +214,6 @@ Program(Plaintext)
 
 Program(Plaintext)
 
-# BrokenResolvable of two opening braces
-
-{{
-
-==>
-
-Program(BrokenResolvable)
-
-# BrokenResolvable of two opening braces and text
-
-{{text
-
-==>
-
-Program(BrokenResolvable)
-
-# BrokenResolvable of two opening braces and one closing brace
-
-{{ }
-
-==>
-
-Program(BrokenResolvable)
-
-# BrokenResolvable of two opening braces, text and one closing brace
-
-{{ abc }
-
-==>
-
-Program(BrokenResolvable)
-
 # Plaintext then Resolvable with non-ASCII chars then Plaintext
 
 a {{ 'áßи' }} a
@@ -253,3 +221,35 @@ a {{ 'áßи' }} a
 ==>
 
 Program(Plaintext, Resolvable, Plaintext)
+
+# Resolvable with currency symbol
+
+{{ '€' }}
+
+==>
+
+Program(Resolvable)
+
+# Resolvable with cyrillic char
+
+{{ 'л' }}
+
+==>
+
+Program(Resolvable)
+
+# Resolvable with Pictographs char
+
+{{ '🎉' }}
+
+==>
+
+Program(Resolvable)
+
+# Resolvable with Emoticons char
+
+{{ '😎' }}
+
+==>
+
+Program(Resolvable)

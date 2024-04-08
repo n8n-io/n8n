@@ -1,21 +1,26 @@
 {
   "name": "@n8n/codemirror-lang",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "n8n expression language support for CodeMirror 6",
   "private": "true",
-  "type": "module",
-  "main": "dist/index.cjs",
-  "module": "dist/index.js",
-  "exports": {
-    "import": "./dist/index.js",
-    "require": "./dist/index.cjs"
-  },
-  "types": "dist/index.d.ts",
   "sideEffects": false,
+  "main": "dist/index.js",
+  "module": "src/index.ts",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "require": "./dist/index.js",
+      "import": "./src/index.ts",
+      "types": "./dist/index.d.ts"
+    },
+    "./*": "./*"
+  },
   "scripts": {
+    "clean": "rimraf dist .turbo",
+    "typecheck": "tsc",
     "generate": "lezer-generator --typeScript --output src/syntax.grammar.ts src/syntax.grammar",
-    "build": "tsc",
-    "test": "npm run build && mocha test/test.js",
+    "build": "pnpm generate && tsc -p tsconfig.build.json",
+    "test": "jest",
     "lint": "eslint . --ext .js,.ts,.vue --quiet",
     "lintfix": "eslint . --ext .js,.ts,.vue --fix",
     "format": "prettier --write src/"
@@ -23,11 +28,9 @@
   "dependencies": {
     "@codemirror/autocomplete": "^6.15.0",
     "@codemirror/language": "^6.10.1",
-    "@lezer/highlight": "^1.2.0",
-    "@lezer/lr": "^1.4.0"
+    "@lezer/highlight": "^1.2.0"
   },
   "devDependencies": {
-    "@lezer/generator": "^1.7.0",
-    "mocha": "^10.4.0"
+    "@lezer/generator": "^1.7.0"
   }
 }

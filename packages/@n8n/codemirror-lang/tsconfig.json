@@ -1,12 +1,9 @@
 {
 	"extends": "../../../tsconfig.json",
 	"compilerOptions": {
-		"rootDir": "src",
-		"outDir": "dist",
-		"tsBuildInfoFile": "dist/build.tsbuildinfo",
-		"target": "esnext",
-		"module": "esnext",
-		"declaration": true
+		"rootDir": ".",
+		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
+		"strict": true
 	},
-	"include": ["src/index.ts"]
+	"include": ["src/**/*.ts", "test/**/*.ts"]
 }
