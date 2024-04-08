@@ -18,16 +18,16 @@
   "scripts": {
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc",
-    "generate": "lezer-generator --typeScript --output src/syntax.grammar.ts src/syntax.grammar",
-    "build": "pnpm generate && tsc -p tsconfig.build.json",
+    "generate:expressions:grammar": "lezer-generator --typeScript --output src/expressions/syntax.ts src/expressions/syntax.grammar",
+    "build": "pnpm generate:expressions:grammar && tsc -p tsconfig.build.json",
     "test": "jest",
     "lint": "eslint . --ext .js,.ts,.vue --quiet",
     "lintfix": "eslint . --ext .js,.ts,.vue --fix",
     "format": "prettier --write src/"
   },
-  "dependencies": {
-    "@codemirror/autocomplete": "^6.15.0",
-    "@codemirror/language": "^6.10.1",
+  "peerDependencies": {
+    "@codemirror/autocomplete": "*",
+    "@codemirror/language": "*",
     "@lezer/highlight": "^1.2.0"
   },
   "devDependencies": {

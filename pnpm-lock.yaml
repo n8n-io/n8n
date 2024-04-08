@@ -182,10 +182,10 @@ importers:
   packages/@n8n/codemirror-lang:
     dependencies:
       '@codemirror/autocomplete':
-        specifier: ^6.15.0
+        specifier: '*'
         version: 6.15.0(@codemirror/language@6.10.1)(@codemirror/state@6.4.1)(@codemirror/view@6.26.1)(@lezer/common@1.1.0)
       '@codemirror/language':
-        specifier: ^6.10.1
+        specifier: '*'
         version: 6.10.1
       '@lezer/highlight':
         specifier: ^1.2.0

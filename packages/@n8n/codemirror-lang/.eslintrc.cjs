@@ -7,4 +7,8 @@ module.exports = {
 	extends: ['@n8n_io/eslint-config/frontend'],
 
 	...sharedOptions(__dirname, 'frontend'),
+
+	ignorePatterns: [
+		'src/expressions/syntax*.ts'
+	]
 };
