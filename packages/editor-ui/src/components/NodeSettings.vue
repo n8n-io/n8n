@@ -863,7 +863,7 @@ export default defineComponent({
 					SHOULD_CLEAR_NODE_OUTPUTS[nodeType.name]?.eventTypes.includes(parameterData.type) &&
 					SHOULD_CLEAR_NODE_OUTPUTS[nodeType.name]?.parameterPaths.includes(parameterData.name)
 				) {
-					this.workflowsStore.clearNodeOutgoingConnections(node.name);
+					this.workflowsStore.removeAllNodeConnection(node, { preserveInputConnections: true });
 					this.showMessage({
 						type: 'warning',
 						title: this.$locale.baseText('nodeSettings.outputCleared.title'),
