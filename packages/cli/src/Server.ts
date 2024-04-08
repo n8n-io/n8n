@@ -386,7 +386,11 @@ export class Server extends AbstractServer {
 				xPoweredBy: false,
 				// Enable HSTS headers only when n8n handles TLS.
 				// if n8n is behind a reverse-proxy, then these headers needs to be configured there
-				strictTransportSecurity: isTLSEnabled,
+				strictTransportSecurity: isTLSEnabled ? {
+					maxAge: 180 * Time.days.toSeconds,
+					includeSubDomains: false,
+					preload: false,
+				} : false,
 			});
 
 			// Route all UI urls to index.html to support history-api
