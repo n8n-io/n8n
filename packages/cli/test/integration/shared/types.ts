@@ -1,5 +1,5 @@
 import type { Application } from 'express';
-import type { ICredentialDataDecryptedObject, ICredentialNodeAccess } from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import type { SuperAgentTest } from 'supertest';
 import type { Server } from 'http';
 
@@ -52,7 +52,6 @@ export interface TestServer {
 export type CredentialPayload = {
 	name: string;
 	type: string;
-	nodesAccess?: ICredentialNodeAccess[];
 	data: ICredentialDataDecryptedObject;
 };
 
