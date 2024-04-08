@@ -12,7 +12,7 @@ export class WorkflowHooks {
 
 	executionId: string;
 
-	sessionId?: string;
+	pushRef?: string;
 
 	retryOf?: string;
 
@@ -32,7 +32,7 @@ export class WorkflowHooks {
 		this.mode = mode;
 		this.executionId = executionId;
 		this.workflowData = workflowData;
-		this.sessionId = optionalParameters.sessionId;
+		this.pushRef = optionalParameters.pushRef;
 		// retryOf might be `null` from TypeORM
 		this.retryOf = optionalParameters.retryOf ?? undefined;
 	}

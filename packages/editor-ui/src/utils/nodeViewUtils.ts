@@ -113,7 +113,7 @@ export const CONNECTOR_PAINT_STYLE_DATA: PaintStyle = {
 
 export const getConnectorColor = (type: ConnectionTypes, category?: string): string => {
 	if (category === 'error') {
-		return '--node-error-output-color';
+		return '--color-node-error-output-text-color';
 	}
 
 	if (type === NodeConnectionType.Main) {

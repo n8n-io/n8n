@@ -1,6 +1,7 @@
 <template>
 	<Modal
 		width="460px"
+		max-height="75%"
 		:title="modalTitle"
 		:event-bus="modalBus"
 		:name="WORKFLOW_SHARE_MODAL_KEY"
@@ -30,7 +31,7 @@
 						})
 					}}
 				</n8n-info-tip>
-				<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
+				<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]" :class="$style.content">
 					<n8n-user-select
 						v-if="workflowPermissions.updateSharing"
 						class="mb-s"
@@ -51,6 +52,7 @@
 						:current-user-id="currentUser.id"
 						:delete-label="$locale.baseText('workflows.shareModal.list.delete')"
 						:readonly="!workflowPermissions.updateSharing"
+						:class="$style.usersList"
 					>
 						<template #actions="{ user }">
 							<n8n-select
@@ -486,8 +488,26 @@ export default defineComponent({
 </script>
 
 <style module lang="scss">
+.container {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+}
+
 .container > * {
 	overflow-wrap: break-word;
+}
+
+.content {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	overflow-y: auto;
+}
+
+.usersList {
+	height: 100%;
+	overflow-y: auto;
 }
 
 .actionButtons {

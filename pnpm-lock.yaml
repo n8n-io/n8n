@@ -520,23 +520,23 @@ importers:
         specifier: 8.6.0
         version: 8.6.0
       express:
-        specifier: 4.18.3
-        version: 4.18.3
+        specifier: 4.19.2
+        version: 4.19.2
       express-async-errors:
         specifier: 3.1.1
-        version: 3.1.1(express@4.18.3)
+        version: 3.1.1(express@4.19.2)
       express-handlebars:
         specifier: 7.1.2
         version: 7.1.2
       express-openapi-validator:
-        specifier: 4.13.8
-        version: 4.13.8
+        specifier: 5.1.6
+        version: 5.1.6
       express-prom-bundle:
         specifier: 6.6.0
         version: 6.6.0(prom-client@13.2.0)
       express-rate-limit:
         specifier: 7.2.0
-        version: 7.2.0(express@4.18.3)
+        version: 7.2.0(express@4.19.2)
       fast-glob:
         specifier: 3.2.12
         version: 3.2.12
@@ -677,7 +677,7 @@ importers:
         version: 1.17.0
       swagger-ui-express:
         specifier: 5.0.0
-        version: 5.0.0(express@4.18.3)
+        version: 5.0.0(express@4.19.2)
       syslog-client:
         specifier: 1.1.1
         version: 1.1.1
@@ -1667,8 +1667,8 @@ packages:
       - supports-color
     dev: false
 
-  /@apidevtools/json-schema-ref-parser@9.0.9:
-    resolution: {integrity: sha512-GBD2Le9w2+lVFoc4vswGI/TjkNIZSVp7+9xPf+X3uidBfWnAeUWmquteSyt0+VCrhNMWj/FTABISQrD3Z/YA+w==}
+  /@apidevtools/json-schema-ref-parser@9.1.2:
+    resolution: {integrity: sha512-r1w81DpR+KyRWd3f+rk6TNqMgedmAxZP5v5KWlXQWlgMUUtyEJch0DKEci1SorPMiSeM8XPl7MZ3miJ60JIpQg==}
     dependencies:
       '@jsdevtools/ono': 7.1.3
       '@types/json-schema': 7.0.15
@@ -8476,7 +8476,7 @@ packages:
       ejs: 3.1.9
       esbuild: 0.19.8
       esbuild-plugin-alias: 0.2.1
-      express: 4.18.3
+      express: 4.19.2
       fs-extra: 11.1.1
       process: 0.11.10
       util: 0.12.5
@@ -8512,7 +8512,7 @@ packages:
       '@types/find-cache-dir': 3.2.1
       browser-assert: 1.2.1
       es-module-lexer: 0.9.3
-      express: 4.18.3
+      express: 4.19.2
       find-cache-dir: 3.3.2
       fs-extra: 11.1.1
       magic-string: 0.30.8
@@ -8704,7 +8704,7 @@ packages:
       cli-table3: 0.6.3
       compression: 1.7.4
       detect-port: 1.5.1
-      express: 4.18.3
+      express: 4.19.2
       fs-extra: 11.1.1
       globby: 11.1.0
       ip: 2.0.1
@@ -10903,6 +10903,28 @@ packages:
       clean-stack: 2.2.0
       indent-string: 4.0.0
 
+  /ajv-draft-04@1.0.0(ajv@8.12.0):
+    resolution: {integrity: sha512-mv00Te6nmYbRp5DCwclxtt7yV/joXJPGS7nM+97GdxvuttCOfgI3K4U25zboyeX0O+myI8ERluxQe5wljMmVIw==}
+    peerDependencies:
+      ajv: ^8.5.0
+    peerDependenciesMeta:
+      ajv:
+        optional: true
+    dependencies:
+      ajv: 8.12.0
+    dev: false
+
+  /ajv-formats@2.1.1(ajv@8.12.0):
+    resolution: {integrity: sha512-Wx0Kx52hxE7C18hkMEggYlEifqWZtYaRgouJor+WMdPnQyEK13vgEWyVNup7SoeeoLMsr4kf5h6dOW11I15MUA==}
+    peerDependencies:
+      ajv: ^8.0.0
+    peerDependenciesMeta:
+      ajv:
+        optional: true
+    dependencies:
+      ajv: 8.12.0
+    dev: false
+
   /ajv-keywords@3.5.2(ajv@6.12.6):
     resolution: {integrity: sha512-5p6WTN0DdTGVQk6VjcEju19IgaHudalcfabD7yhDGeA6bcQnmL+CpveLJq/3hvfwd1aof6L386Ougkx6RfyMIQ==}
     peerDependencies:
@@ -10918,6 +10940,7 @@ packages:
       fast-json-stable-stringify: 2.1.0
       json-schema-traverse: 0.4.1
       uri-js: 4.4.1
+    dev: true
 
   /ajv@8.12.0:
     resolution: {integrity: sha512-sRu1kpcO9yLtYxBKvqfTeh9KzZEwO3STyX1HT+4CaDzC6HpTGYhIhPIzj9XuKU7KYDwnaeh5hcOwjy1QuJzBPA==}
@@ -12045,7 +12068,7 @@ packages:
     resolution: {integrity: sha512-7O+FbCihrB5WGbFYesctwmTKae6rOiIzmz1icreWJ+0aA7LJfuqhEso2T9ncpcFtzMQtzXf2QGGueWJGTYsqrA==}
     dependencies:
       function-bind: 1.1.2
-      get-intrinsic: 1.2.1
+      get-intrinsic: 1.2.4
 
   /call-bind@1.0.7:
     resolution: {integrity: sha512-GHTSNSYICQ7scH7sZ+M2rFopRoLh8t2bLSW6BbgrtLsahOIB5iyAVJf9GjWK3cYTDaMj4XdBpM1cA6pIS0Kv2w==}
@@ -12784,6 +12807,7 @@ packages:
   /content-type@1.0.4:
     resolution: {integrity: sha512-hIP3EEPs8tB9AT1L+NUqtwOAps4mk2Zob89MWXMHjHWg9milF/j4osnnQLXBCBFBk/tvIG/tUc9mOUJiPBhPXA==}
     engines: {node: '>= 0.6'}
+    dev: false
 
   /content-type@1.0.5:
     resolution: {integrity: sha512-nTjqfcBFEipKdXCv4YDQWCfmcLZKm81ldF0pAopTvyrFGVbcR6P/VAAd5G7N+0tTr8QqiU0tFadD6FK4NtJwOA==}
@@ -12826,8 +12850,8 @@ packages:
     engines: {node: '>= 0.6'}
     dev: false
 
-  /cookie@0.5.0:
-    resolution: {integrity: sha512-YZ3GUyn/o8gfKJlnlX7g7xq4gyO6OSuhGPKaaGssGB2qgDUS0gPgtTvoyZLTt9Ab6dC4hfc9dV5arkvc/OCmrw==}
+  /cookie@0.6.0:
+    resolution: {integrity: sha512-U71cyTamuh1CRNCfpGY6to28lxvNwPG4Guz/EVjgf3Jmzv0vlDp1atT9eS5dDjMYHucpHbWns6Lwf3BKz6svdw==}
     engines: {node: '>= 0.6'}
 
   /cookiejar@2.1.4:
@@ -13451,7 +13475,7 @@ packages:
     resolution: {integrity: sha512-xvqAVKGfT1+UAvPwKTVw/njhdQ8ZhXK4lI0bCIuCMrp2up9nPnaDftrLtmpTazqd1o+UY4zgzU+avtMbDP+ldA==}
     engines: {node: '>= 0.4'}
     dependencies:
-      has-property-descriptors: 1.0.0
+      has-property-descriptors: 1.0.2
       object-keys: 1.1.1
 
   /define-properties@1.2.1:
@@ -13952,8 +13976,8 @@ packages:
       globalthis: 1.0.3
       gopd: 1.0.1
       has: 1.0.3
-      has-property-descriptors: 1.0.0
-      has-proto: 1.0.1
+      has-property-descriptors: 1.0.2
+      has-proto: 1.0.3
       has-symbols: 1.0.3
       internal-slot: 1.0.5
       is-array-buffer: 3.0.2
@@ -13964,7 +13988,7 @@ packages:
       is-string: 1.0.7
       is-typed-array: 1.1.10
       is-weakref: 1.0.2
-      object-inspect: 1.12.3
+      object-inspect: 1.13.1
       object-keys: 1.1.1
       object.assign: 4.1.5
       regexp.prototype.flags: 1.5.0
@@ -14054,8 +14078,8 @@ packages:
   /es-get-iterator@1.1.3:
     resolution: {integrity: sha512-sPZmqHBe6JIiTfN5q2pEi//TwxmAFHwj/XEuYjTuse78i8KxaqMTTzxPoFKuzRpDpTJ+0NAbpfenkmH2rePtuw==}
     dependencies:
-      call-bind: 1.0.2
-      get-intrinsic: 1.2.1
+      call-bind: 1.0.7
+      get-intrinsic: 1.2.4
       has-symbols: 1.0.3
       is-arguments: 1.1.1
       is-map: 2.0.2
@@ -14762,12 +14786,12 @@ packages:
     resolution: {integrity: sha512-4EMSHGOPSwAfBiibw3ndnP0AvjDWLsMvGOvWEZ2F96IGk0bIVdjQisOHxReSkE13mHcfbuCiXw+G4y0zv6N8Eg==}
     dev: false
 
-  /express-async-errors@3.1.1(express@4.18.3):
+  /express-async-errors@3.1.1(express@4.19.2):
     resolution: {integrity: sha512-h6aK1da4tpqWSbyCa3FxB/V6Ehd4EEB15zyQq9qe75OZBp0krinNKuH4rAY+S/U/2I36vdLAUFSjQJ+TFmODng==}
     peerDependencies:
       express: ^4.16.2
     dependencies:
-      express: 4.18.3
+      express: 4.19.2
     dev: false
 
   /express-handlebars@7.1.2:
@@ -14779,17 +14803,18 @@ packages:
       handlebars: 4.7.8
     dev: false
 
-  /express-openapi-validator@4.13.8:
-    resolution: {integrity: sha512-89/sdkq+BKBuIyykaMl/vR9grFc3WFUPTjFo0THHbu+5g+q8rA7fKeoMfz+h84yOQIBcztmJ5ZJdk5uhEls31A==}
+  /express-openapi-validator@5.1.6:
+    resolution: {integrity: sha512-CF24Pef5uThjdsCbjo1UP2mYx2YCkQl1HFoikCFFafFpZBCZ0YErD/RbqlcnKbKM9tMwXZsjAuuO84b2hmdF4g==}
     dependencies:
+      '@apidevtools/json-schema-ref-parser': 9.1.2
       '@types/multer': 1.4.7
-      ajv: 6.12.6
-      content-type: 1.0.4
-      json-schema-ref-parser: 9.0.9
+      ajv: 8.12.0
+      ajv-draft-04: 1.0.0(ajv@8.12.0)
+      ajv-formats: 2.1.1(ajv@8.12.0)
+      content-type: 1.0.5
+      json-schema-traverse: 1.0.0
       lodash.clonedeep: 4.5.0
       lodash.get: 4.4.2
-      lodash.uniq: 4.5.0
-      lodash.zipobject: 4.1.3
       media-typer: 1.1.0
       multer: 1.4.5-lts.1
       ono: 7.1.3
@@ -14807,25 +14832,25 @@ packages:
       url-value-parser: 2.2.0
     dev: false
 
-  /express-rate-limit@7.2.0(express@4.18.3):
+  /express-rate-limit@7.2.0(express@4.19.2):
     resolution: {integrity: sha512-T7nul1t4TNyfZMJ7pKRKkdeVJWa2CqB8NA1P8BwYaoDI5QSBZARv5oMS43J7b7I5P+4asjVXjb7ONuwDKucahg==}
     engines: {node: '>= 16'}
     peerDependencies:
       express: 4 || 5 || ^5.0.0-beta.1
     dependencies:
-      express: 4.18.3
+      express: 4.19.2
     dev: false
 
-  /express@4.18.3:
-    resolution: {integrity: sha512-6VyCijWQ+9O7WuVMTRBTl+cjNNIzD5cY5mQ1WM8r/LEkI2u8EYpOotESNwzNlyCn3g+dmjKYI6BmNneSr/FSRw==}
+  /express@4.19.2:
+    resolution: {integrity: sha512-5T6nhjsT+EOMzuck8JjBHARTHfMht0POzlA60WV2pMD3gyXw2LZnZ+ueGdNxG+0calOJcWKbpFcuzLZ91YWq9Q==}
     engines: {node: '>= 0.10.0'}
     dependencies:
       accepts: 1.3.8
       array-flatten: 1.1.1
       body-parser: 1.20.2
       content-disposition: 0.5.4
-      content-type: 1.0.4
-      cookie: 0.5.0
+      content-type: 1.0.5
+      cookie: 0.6.0
       cookie-signature: 1.0.6
       debug: 2.6.9
       depd: 2.0.0
@@ -16005,11 +16030,6 @@ packages:
     resolution: {integrity: sha512-EykJT/Q1KjTWctppgIAgfSO0tKVuZUjhgMr17kqTumMl6Afv3EISleU7qZUzoXDFTAHTDC4NOoG/ZxU3EvlMPQ==}
     engines: {node: '>=8'}
 
-  /has-property-descriptors@1.0.0:
-    resolution: {integrity: sha512-62DVLZGoiEBDHQyqG4w9xCuZ7eJEwNmJRWw2VY84Oedb7WFcA27fiEVe8oUQx9hAUJ4ekurquucTGwsyO1XGdQ==}
-    dependencies:
-      get-intrinsic: 1.2.4
-
   /has-property-descriptors@1.0.2:
     resolution: {integrity: sha512-55JNKuIW+vq4Ke1BjOTjM2YctQIvCT7GFzHwmfZPGo5wnrgkid0YQtnAleFSqumZm4az3n2BS+erby5ipJdgrg==}
     dependencies:
@@ -16566,14 +16586,14 @@ packages:
     resolution: {integrity: sha512-8Q7EARjzEnKpt/PCD7e1cgUS0a6X8u5tdSiMqXhojOdoV9TsMsiO+9VLC5vAmO8N7/GmXn7yjR8qnA6bVAEzfA==}
     engines: {node: '>= 0.4'}
     dependencies:
-      call-bind: 1.0.2
+      call-bind: 1.0.7
       has-tostringtag: 1.0.0
 
   /is-array-buffer@3.0.2:
     resolution: {integrity: sha512-y+FyyR/w8vfIRq4eQcM1EYgSTnmHXPqaF+IgzgraytCFq5Xh8lllDVmAZolPJiZttZLeFSINPYMaEJ7/vWUa1w==}
     dependencies:
-      call-bind: 1.0.2
-      get-intrinsic: 1.2.1
+      call-bind: 1.0.7
+      get-intrinsic: 1.2.4
       is-typed-array: 1.1.10
 
   /is-array-buffer@3.0.4:
@@ -16860,7 +16880,7 @@ packages:
     resolution: {integrity: sha512-kvRdxDsxZjhzUX07ZnLydzS1TU/TJlTUHHY4YLL87e37oUA49DfkLqgy+VjFocowy29cKvcSiu+kIv728jTTVg==}
     engines: {node: '>= 0.4'}
     dependencies:
-      call-bind: 1.0.2
+      call-bind: 1.0.7
       has-tostringtag: 1.0.0
 
   /is-relative@1.0.0:
@@ -16881,7 +16901,7 @@ packages:
   /is-shared-array-buffer@1.0.2:
     resolution: {integrity: sha512-sqN2UDu1/0y6uvXyStCOzyhAjCSlHceFoMKJW8W9EU9cvic/QdsZ0kEU93HEy3IUEFZIiH/3w+AH/UQbPHNdhA==}
     dependencies:
-      call-bind: 1.0.2
+      call-bind: 1.0.7
 
   /is-shared-array-buffer@1.0.3:
     resolution: {integrity: sha512-nA2hv5XIhLR3uVzDDfCIknerhx8XUKnstuOERPNNIinXG7v9u+ohXF67vxm4TPTEPU6lm61ZkwP3c9PCB97rhg==}
@@ -17903,14 +17923,6 @@ packages:
       foreach: 2.0.6
     dev: true
 
-  /json-schema-ref-parser@9.0.9:
-    resolution: {integrity: sha512-qcP2lmGy+JUoQJ4DOQeLaZDqH9qSkeGCK3suKWxJXS82dg728Mn3j97azDMaOUmJAN4uCq91LdPx4K7E8F1a7Q==}
-    engines: {node: '>=10'}
-    deprecated: Please switch to @apidevtools/json-schema-ref-parser
-    dependencies:
-      '@apidevtools/json-schema-ref-parser': 9.0.9
-    dev: false
-
   /json-schema-to-zod@2.0.14:
     resolution: {integrity: sha512-Pp9wg1/AcMw5KA1RA7t6ybUTIes1yX0vp8PeE48cPnddHb+ZZWbAKPaFXVf4Pif4XSbo9u9i/hIzBcS1UHK/TA==}
     hasBin: true
@@ -17918,6 +17930,7 @@ packages:
 
   /json-schema-traverse@0.4.1:
     resolution: {integrity: sha512-xbbCH5dCYU5T8LcEhhuh7HJ88HXuW3qsI3Y0zOZFKfZEHcpWiHU/Jxzk629Brsab/mMiHQti9wMP+845RPe3Vg==}
+    dev: true
 
   /json-schema-traverse@1.0.0:
     resolution: {integrity: sha512-NM8/P9n3XjXhIZn1lLhkFaACTOURQXjWhV4BA/RnOv8xvgqtqpAX9IO4mRQxSx1Rlo4tqzeqb0sOlruaOy3dug==}
@@ -18950,10 +18963,7 @@ packages:
 
   /lodash.uniq@4.5.0:
     resolution: {integrity: sha512-xfBaXQd9ryd9dlSDvnvI0lvxfLJlYAZzXomUYzLKtUeOQvOP5piqAWuGtrhWeqaXK9hhoM/iyJc5AV+XfsX3HQ==}
-
-  /lodash.zipobject@4.1.3:
-    resolution: {integrity: sha512-A9SzX4hMKWS25MyalwcOnNoplyHbkNVsjidhTp8ru0Sj23wY9GWBKS8gAIGDSAqeWjIjvE4KBEl24XXAs+v4wQ==}
-    dev: false
+    dev: true
 
   /lodash@4.17.21:
     resolution: {integrity: sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg==}
@@ -20367,7 +20377,7 @@ packages:
     resolution: {integrity: sha512-3cyDsyHgtmi7I7DfSSI2LDp6SK2lwvtbg0p0R1e0RvTqF5ceGx+K2dfSjm1bKDMVCFEDAQvy+o8c6a7VujOddw==}
     engines: {node: '>= 0.4'}
     dependencies:
-      call-bind: 1.0.2
+      call-bind: 1.0.7
       define-properties: 1.2.0
 
   /object-keys@1.1.1:
@@ -20390,7 +20400,7 @@ packages:
     resolution: {integrity: sha512-1mxKf0e58bvyjSCtKYY4sRe9itRk3PJpquJOjeIkz885CczcI4IvJJDLPS72oowuSh+pBxUFROpX+TU++hxhZQ==}
     engines: {node: '>= 0.4'}
     dependencies:
-      call-bind: 1.0.2
+      call-bind: 1.0.7
       define-properties: 1.2.0
       has-symbols: 1.0.3
       object-keys: 1.1.1
@@ -22439,7 +22449,7 @@ packages:
     resolution: {integrity: sha512-0SutC3pNudRKgquxGoRGIz946MZVHqbNfPjBdxeOhBrdgDKlRoXmYLQN9xRbrR09ZXWeGAdPuif7egofn6v5LA==}
     engines: {node: '>= 0.4'}
     dependencies:
-      call-bind: 1.0.2
+      call-bind: 1.0.7
       define-properties: 1.2.0
       functions-have-names: 1.2.3
 
@@ -24053,13 +24063,13 @@ packages:
     resolution: {integrity: sha512-j0PIATqQSEFGOLmiJOJZj1X1Jt6bFIur3JpY7+ghliUnfZs0fpWDdHEkn9q7QUlBtKbkn6TepvSxTqnE8l3s0A==}
     dev: false
 
-  /swagger-ui-express@5.0.0(express@4.18.3):
+  /swagger-ui-express@5.0.0(express@4.19.2):
     resolution: {integrity: sha512-tsU9tODVvhyfkNSvf03E6FAk+z+5cU3lXAzMy6Pv4av2Gt2xA0++fogwC4qo19XuFf6hdxevPuVCSKFuMHJhFA==}
     engines: {node: '>= v0.10.32'}
     peerDependencies:
       express: '>=4.0.0 || >=5.0.0-beta'
     dependencies:
-      express: 4.18.3
+      express: 4.19.2
       swagger-ui-dist: 5.11.0
     dev: false
 
@@ -26053,7 +26063,7 @@ packages:
     engines: {node: '>= 0.4'}
     dependencies:
       available-typed-arrays: 1.0.5
-      call-bind: 1.0.2
+      call-bind: 1.0.7
       for-each: 0.3.3
       gopd: 1.0.1
       has-tostringtag: 1.0.0

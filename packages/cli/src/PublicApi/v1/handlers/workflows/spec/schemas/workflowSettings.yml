@@ -22,3 +22,6 @@ properties:
   timezone:
     type: string
     example: America/New_York
+  executionOrder:
+    type: string
+    example: v1
