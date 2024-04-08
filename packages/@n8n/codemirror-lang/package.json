@@ -28,7 +28,7 @@
   "peerDependencies": {
     "@codemirror/autocomplete": "*",
     "@codemirror/language": "*",
-    "@lezer/highlight": "^1.2.0"
+    "@lezer/highlight": "*"
   },
   "devDependencies": {
     "@lezer/generator": "^1.7.0"
