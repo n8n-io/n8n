@@ -56,6 +56,26 @@ describe('NDV', () => {
 		cy.shouldNotHaveConsoleErrors();
 	});
 
+	it('should disconect Switch outputs if rules order was changed', () => {
+		cy.createFixtureWorkflow('NDV-test-switch_reorder.json', `NDV test switch reorder`);
+		workflowPage.actions.zoomToFit();
+
+		workflowPage.actions.executeWorkflow();
+		workflowPage.actions.openNode('Merge');
+		ndv.getters.outputPanel().contains('2 items').should('exist');
+		cy.contains('span', 'first').should('exist');
+		ndv.getters.backToCanvas().click();
+
+		workflowPage.actions.openNode('Switch');
+		cy.get('.cm-line').realMouseMove(100, 100);
+		cy.get('.fa-angle-down').click();
+		ndv.getters.backToCanvas().click();
+		workflowPage.actions.executeWorkflow();
+		workflowPage.actions.openNode('Merge');
+		ndv.getters.outputPanel().contains('1 item').should('exist');
+		cy.contains('span', 'zero').should('exist');
+	});
+
 	it('should show correct validation state for resource locator params', () => {
 		workflowPage.actions.addNodeToCanvas('Typeform', true, true);
 		ndv.getters.container().should('be.visible');
