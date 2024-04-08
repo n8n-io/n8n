@@ -180,6 +180,7 @@ export default defineComponent({
 		}
 	}
 
+	&.new,
 	&.running {
 		.spinner {
 			position: relative;

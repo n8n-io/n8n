@@ -149,7 +149,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 
 			currentExecutionsById.value = {};
 			data.results.forEach((execution) => {
-				if (['running'].includes(execution.status as string)) {
+				if (['new', 'running'].includes(execution.status as string)) {
 					addCurrentExecution(execution);
 				} else {
 					addExecution(execution);
