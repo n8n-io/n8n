@@ -112,7 +112,7 @@ export default defineComponent({
 								label: this.$locale.baseText('credentials.item.delete'),
 								value: CREDENTIAL_LIST_ITEM_ACTIONS.DELETE,
 							},
-					  ]
+						]
 					: [],
 			);
 		},
