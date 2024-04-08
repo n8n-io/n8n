@@ -110,7 +110,7 @@ export default defineComponent({
 						this.productionExecutionsStatus === 'unknown'
 							? this.$locale.baseText(
 									'executionsLandingPage.emptyState.accordion.productionExecutionsWarningTooltip',
-							  )
+								)
 							: null,
 				},
 				{

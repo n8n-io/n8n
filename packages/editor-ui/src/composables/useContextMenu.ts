@@ -199,7 +199,7 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 								label: i18n.baseText('contextMenu.changeColor'),
 								disabled: isReadOnly.value,
 							},
-					  ]
+						]
 					: [
 							{
 								id: 'open',
@@ -217,7 +217,7 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 								shortcut: { keys: ['F2'] },
 								disabled: isReadOnly.value,
 							},
-					  ];
+						];
 				// Add actions only available for a single node
 				menuActions.unshift(...singleNodeActions);
 			}

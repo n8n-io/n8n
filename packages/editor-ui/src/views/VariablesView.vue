@@ -74,7 +74,7 @@ const datatableColumns = computed<DatatableColumn[]>(() => [
 					path: 'actions',
 					label: '',
 				},
-		  ]
+			]
 		: []),
 ]);
 
