@@ -71,9 +71,7 @@ describe('Owner shell', () => {
 				ProjectRepository,
 			).getPersonalProjectForUserOrFail(storedOwnerShell.id);
 
-			expect(storedPersonalProject.name).toBe(
-				`${storedOwnerShell.firstName} ${storedOwnerShell.lastName} <${storedOwnerShell.email}>`,
-			);
+			expect(storedPersonalProject.name).toBe(storedOwnerShell.createPersonalProjectName());
 		}
 	});
 
@@ -91,7 +89,7 @@ describe('Owner shell', () => {
 				ProjectRepository,
 			).getPersonalProjectForUserOrFail(storedOwnerShell.id);
 
-			expect(storedPersonalProject.name).toBeNull();
+			expect(storedPersonalProject.name).toBe(storedOwnerShell.createPersonalProjectName());
 		}
 	});
 
@@ -224,9 +222,7 @@ describe('Member', () => {
 			const storedPersonalProject =
 				await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(id);
 
-			expect(storedPersonalProject.name).toBe(
-				`${storedMember.firstName} ${storedMember.lastName} <${storedMember.email}>`,
-			);
+			expect(storedPersonalProject.name).toBe(storedMember.createPersonalProjectName());
 		}
 	});
 
@@ -244,7 +240,7 @@ describe('Member', () => {
 				ProjectRepository,
 			).getPersonalProjectForUserOrFail(storedMember.id);
 
-			expect(storedPersonalProject.name).toBeNull();
+			expect(storedPersonalProject.name).toBe(storedMember.createPersonalProjectName());
 		}
 	});
 
@@ -367,9 +363,7 @@ describe('Owner', () => {
 				ProjectRepository,
 			).getPersonalProjectForUserOrFail(storedOwner.id);
 
-			expect(storedPersonalProject.name).toBe(
-				`${storedOwner.firstName} ${storedOwner.lastName} <${storedOwner.email}>`,
-			);
+			expect(storedPersonalProject.name).toBe(storedOwner.createPersonalProjectName());
 		}
 	});
 });
