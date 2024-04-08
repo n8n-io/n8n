@@ -1069,8 +1069,8 @@ importers:
         specifier: ^1.0.0
         version: 1.0.0
       codemirror-lang-n8n-expression:
-        specifier: ^0.2.0
-        version: 0.2.0(@codemirror/state@6.3.3)(@codemirror/view@6.22.3)(@lezer/common@1.1.0)
+        specifier: ^0.3.0
+        version: 0.3.0(@codemirror/state@6.3.3)(@codemirror/view@6.22.3)(@lezer/common@1.1.0)
       dateformat:
         specifier: ^3.0.3
         version: 3.0.3
@@ -8985,7 +8985,7 @@ packages:
       ts-dedent: 2.2.0
       type-fest: 2.19.0
       vue: 3.4.21(typescript@5.4.2)
-      vue-component-type-helpers: 2.0.7
+      vue-component-type-helpers: 2.0.11
     transitivePeerDependencies:
       - encoding
       - supports-color
@@ -12510,8 +12510,8 @@ packages:
       '@lezer/lr': 1.2.3
     dev: false
 
-  /codemirror-lang-n8n-expression@0.2.0(@codemirror/state@6.3.3)(@codemirror/view@6.22.3)(@lezer/common@1.1.0):
-    resolution: {integrity: sha512-kdlpzevdCpWcpbNcwES9YZy+rDFwWOdO6Z78SWxT6jMhCPmdHQmO+gJ39aXAXlUI7OGLfOBtg1/ONxPjRpEIYQ==}
+  /codemirror-lang-n8n-expression@0.3.0(@codemirror/state@6.3.3)(@codemirror/view@6.22.3)(@lezer/common@1.1.0):
+    resolution: {integrity: sha512-lY3qD+FB0/JCotK9hV40YhE+jC98iyC8L667pnguq7gxgIU3Kgy2RHy+PAxz/GpLR7BYtUMyVumZU7dJnjiXbw==}
     dependencies:
       '@codemirror/autocomplete': 6.11.1(@codemirror/language@6.9.3)(@codemirror/state@6.3.3)(@codemirror/view@6.22.3)(@lezer/common@1.1.0)
       '@codemirror/language': 6.9.3
@@ -12803,11 +12803,6 @@ packages:
     engines: {node: '>= 0.6'}
     dependencies:
       safe-buffer: 5.2.1
-
-  /content-type@1.0.4:
-    resolution: {integrity: sha512-hIP3EEPs8tB9AT1L+NUqtwOAps4mk2Zob89MWXMHjHWg9milF/j4osnnQLXBCBFBk/tvIG/tUc9mOUJiPBhPXA==}
-    engines: {node: '>= 0.6'}
-    dev: false
 
   /content-type@1.0.5:
     resolution: {integrity: sha512-nTjqfcBFEipKdXCv4YDQWCfmcLZKm81ldF0pAopTvyrFGVbcR6P/VAAd5G7N+0tTr8QqiU0tFadD6FK4NtJwOA==}
@@ -25663,8 +25658,8 @@ packages:
     resolution: {integrity: sha512-0vOfAtI67UjeO1G6UiX5Kd76CqaQ67wrRZiOe7UAb9Jm6GzlUr/fC7CV90XfwapJRjpCMaZFhv1V0ajWRmE9Dg==}
     dev: true
 
-  /vue-component-type-helpers@2.0.7:
-    resolution: {integrity: sha512-7e12Evdll7JcTIocojgnCgwocX4WzIYStGClBQ+QuWPinZo/vQolv2EMq4a3lg16TKfwWafLimG77bxb56UauA==}
+  /vue-component-type-helpers@2.0.11:
+    resolution: {integrity: sha512-8aluKz5oVC8PvVQAYgyIefOlqzKVmAOTCx2imbrFBVLbF7mnJvyMsE2A7rqX/4f4uT6ee9o8u3GcoRpUWc0xsw==}
     dev: true
 
   /vue-demi@0.14.5(vue@3.4.21):
