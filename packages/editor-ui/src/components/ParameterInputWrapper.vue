@@ -71,7 +71,7 @@ import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useRouter } from 'vue-router';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { getExpressionErrorMessage, getResolvableState } from '@/utils/expressions';
+import { stringifyExpressionResult } from '@/utils/expressions';
 
 export default defineComponent({
 	name: 'ParameterInputWrapper',
@@ -227,28 +227,7 @@ export default defineComponent({
 			return evaluated.ok ? evaluated.result : null;
 		},
 		evaluatedExpressionString(): string | null {
-			const evaluated = this.evaluatedExpression;
-
-			if (!evaluated.ok) {
-				if (getResolvableState(evaluated.error) !== 'invalid') {
-					return null;
-				}
-
-				return `[${this.$locale.baseText('parameterInput.error')}: ${getExpressionErrorMessage(
-					evaluated.error as Error,
-				)}]`;
-			}
-
-			if (evaluated.result === null) {
-				return null;
-			}
-
-			if (typeof evaluated.result === 'string' && evaluated.result.length === 0) {
-				return this.$locale.baseText('parameterInput.emptyString');
-			}
-			return typeof evaluated.result === 'string'
-				? evaluated.result
-				: JSON.stringify(evaluated.result);
+			return stringifyExpressionResult(this.evaluatedExpression);
 		},
 		expressionOutput(): string | null {
 			if (this.isValueExpression && this.evaluatedExpressionString) {
