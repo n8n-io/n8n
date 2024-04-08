@@ -10,6 +10,7 @@ import type {
 } from 'n8n-workflow';
 import type { OpenAIToolType } from 'langchain/dist/experimental/openai_assistant/schema';
 import { getConnectedTools } from '../../../utils/helpers';
+import { getTracingConfig } from '../../../utils/tracing';
 import { formatToOpenAIAssistantTool } from './utils';
 
 export class OpenAiAssistant implements INodeType {
@@ -373,7 +374,7 @@ export class OpenAiAssistant implements INodeType {
 				tools,
 			});
 
-			const response = await agentExecutor.call({
+			const response = await agentExecutor.withConfig(getTracingConfig(this)).invoke({
 				content: input,
 				signal: this.getExecutionCancelSignal(),
 				timeout: options.timeout ?? 10000,

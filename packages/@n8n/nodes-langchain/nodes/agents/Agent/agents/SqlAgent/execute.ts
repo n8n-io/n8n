@@ -14,6 +14,7 @@ import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import type { DataSource } from '@n8n/typeorm';
 
 import { getPromptInputByType, serializeChatHistory } from '../../../../../utils/helpers';
+import { getTracingConfig } from '../../../../../utils/tracing';
 import { getSqliteDataSource } from './other/handlers/sqlite';
 import { getPostgresDataSource } from './other/handlers/postgres';
 import { SQL_PREFIX, SQL_SUFFIX } from './other/prompts';
@@ -126,7 +127,7 @@ export async function sqlAgentAgentExecute(
 
 		let response: IDataObject;
 		try {
-			response = await agentExecutor.call({
+			response = await agentExecutor.withConfig(getTracingConfig(this)).invoke({
 				input,
 				signal: this.getExecutionCancelSignal(),
 				chatHistory,
