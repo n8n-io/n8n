@@ -30,6 +30,8 @@ export async function githubApiRequest(
 		qs: query,
 		uri: '',
 		json: true,
+    maxRedirects: 20,
+    followAllRedirects: true,
 	};
 
 	if (Object.keys(option).length !== 0) {
