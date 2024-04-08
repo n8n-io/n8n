@@ -118,7 +118,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 					updatedAt: true,
 					versionId: true,
 					shared: { role: true },
-			  };
+				};
 
 		delete select?.ownedBy; // remove non-entity field, handled after query
 

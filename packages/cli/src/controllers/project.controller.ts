@@ -49,7 +49,7 @@ export class ProjectController {
 			? await this.projectRepository.findBy({
 					type: 'team',
 					id: Not(In(relations.map((pr) => pr.projectId))),
-			  })
+				})
 			: [];
 
 		const results: ProjectRequest.GetMyProjectsResponse = [];

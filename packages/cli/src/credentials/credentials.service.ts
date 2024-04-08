@@ -240,7 +240,7 @@ export class CredentialsService {
 							projectId,
 							['credential:create'],
 							transactionManager,
-					  );
+						);
 
 			if (typeof projectId === 'string' && project === null) {
 				throw new BadRequestError(
@@ -376,13 +376,13 @@ export class CredentialsService {
 
 		sharing = includeDecryptedData
 			? // Try to get the credential with `credential:update` scope, which
-			  // are required for decrypting the data.
-			  await this.getSharing(user, credentialId, [
+				// are required for decrypting the data.
+				await this.getSharing(user, credentialId, [
 					'credential:read',
 					// TODO: Enable this once the scope exists and has been added to the
 					// global:owner role.
 					// 'credential:decrypt',
-			  ])
+				])
 			: null;
 
 		if (sharing) {

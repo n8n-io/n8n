@@ -119,7 +119,7 @@ export class WorkflowsController {
 							projectId,
 							['workflow:create'],
 							transactionManager,
-					  );
+						);
 
 			if (typeof projectId === 'string' && project === null) {
 				throw new BadRequestError(

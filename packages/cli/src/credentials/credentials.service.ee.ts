@@ -51,14 +51,14 @@ export class EnterpriseCredentialsService {
 
 		credential = includeDecryptedData
 			? // Try to get the credential with `credential:update` scope, which
-			  // are required for decrypting the data.
-			  await this.sharedCredentialsRepository.findCredentialForUser(
+				// are required for decrypting the data.
+				await this.sharedCredentialsRepository.findCredentialForUser(
 					credentialId,
 					user,
 					// TODO: replace credential:update with credential:decrypt once it lands
 					// see: https://n8nio.slack.com/archives/C062YRE7EG4/p1708531433206069?thread_ts=1708525972.054149&cid=C062YRE7EG4
 					['credential:read', 'credential:update'],
-			  )
+				)
 			: null;
 
 		if (credential) {

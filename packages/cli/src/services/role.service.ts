@@ -108,7 +108,7 @@ export class RoleService {
 		}
 
 		return Object.keys(ALL_MAPS[namespace]).filter((k) => {
-			return (scopes as Scope[]).every((s) =>
+			return scopes.every((s) =>
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
 				((ALL_MAPS[namespace] as any)[k] as Scope[]).includes(s),
 			);
