@@ -2,9 +2,10 @@ import type { ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
 
 import { getTableSchema } from '../helpers/utils';
 import { configurePostgres } from '../transport';
+import type { PostgresNodeCredentials } from '../helpers/interfaces';
 
 export async function getColumns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	const credentials = await this.getCredentials('postgres');
+	const credentials = (await this.getCredentials('postgres')) as PostgresNodeCredentials;
 	const options = { nodeVersion: this.getNode().typeVersion };
 
 	const { db, sshClient } = await configurePostgres(credentials, options);
