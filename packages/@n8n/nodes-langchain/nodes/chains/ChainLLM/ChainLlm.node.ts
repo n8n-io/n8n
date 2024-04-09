@@ -27,6 +27,7 @@ import {
 	getPromptInputByType,
 	isChatInstance,
 } from '../../../utils/helpers';
+import { getTracingConfig } from '../../../utils/tracing';
 
 interface MessagesTemplate {
 	type: string;
@@ -154,9 +155,9 @@ async function createSimpleLLMChain(
 	const chain = new LLMChain({
 		llm,
 		prompt,
-	});
+	}).withConfig(getTracingConfig(context));
 
-	const response = (await chain.call({
+	const response = (await chain.invoke({
 		query,
 		signal: context.getExecutionCancelSignal(),
 	})) as string[];
@@ -203,8 +204,9 @@ async function getChain(
 	);
 
 	const chain = prompt.pipe(llm).pipe(combinedOutputParser);
-
-	const response = (await chain.invoke({ query })) as string | string[];
+	const response = (await chain.withConfig(getTracingConfig(context)).invoke({ query })) as
+		| string
+		| string[];
 
 	return Array.isArray(response) ? response : [response];
 }
