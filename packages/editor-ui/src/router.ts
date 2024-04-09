@@ -478,10 +478,7 @@ export const routes = [
 					middlewareOptions: {
 						custom: () => {
 							const settingsStore = useSettingsStore();
-							return !(
-								settingsStore.settings.hideUsagePage ||
-								settingsStore.settings.deployment?.type === 'cloud'
-							);
+							return !settingsStore.settings.hideUsagePage;
 						},
 					},
 					telemetry: {
