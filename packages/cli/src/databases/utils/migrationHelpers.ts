@@ -176,26 +176,31 @@ const createContext = (queryRunner: QueryRunner, migration: Migration): Migratio
 
 export const wrapMigration = (migration: Migration) => {
 	const { up, down } = migration.prototype;
-	Object.assign(migration.prototype, {
-		async up(this: BaseMigration, queryRunner: QueryRunner) {
-			logMigrationStart(migration.name);
-			const context = createContext(queryRunner, migration);
-			if (this.transaction === false) {
-				await runDisablingForeignKeys(this, context, up);
-			} else {
-				await up.call(this, context);
-			}
-			logMigrationEnd(migration.name);
-		},
-		async down(this: BaseMigration, queryRunner: QueryRunner) {
-			if (down) {
+	if (up) {
+		Object.assign(migration.prototype, {
+			async up(this: BaseMigration, queryRunner: QueryRunner) {
+				logMigrationStart(migration.name);
+				const context = createContext(queryRunner, migration);
+				if (this.transaction === false) {
+					await runDisablingForeignKeys(this, context, up);
+				} else {
+					await up.call(this, context);
+				}
+				logMigrationEnd(migration.name);
+			},
+		});
+	}
+	if (down) {
+		Object.assign(migration.prototype, {
+			async down(this: BaseMigration, queryRunner: QueryRunner) {
+				console.log('down');
 				const context = createContext(queryRunner, migration);
 				if (this.transaction === false) {
 					await runDisablingForeignKeys(this, context, down);
 				} else {
 					await down.call(this, context);
 				}
-			}
-		},
-	});
+			},
+		});
+	}
 };
