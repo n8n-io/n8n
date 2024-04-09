@@ -83,7 +83,7 @@ export class OwnerController {
 
 		this.logger.debug('Setting isInstanceOwnerSetUp updated successfully');
 
-		this.authService.issueCookie(res, owner);
+		this.authService.issueCookie(res, owner, req.browserId);
 
 		void this.internalHooks.onInstanceOwnerSetup({ user_id: owner.id });
 
