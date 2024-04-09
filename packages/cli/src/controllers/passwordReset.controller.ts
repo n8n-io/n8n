@@ -208,7 +208,7 @@ export class PasswordResetController {
 
 		this.logger.info('User password updated successfully', { userId: user.id });
 
-		this.authService.issueCookie(res, user);
+		this.authService.issueCookie(res, user, req.browserId);
 
 		void this.internalHooks.onUserUpdate({
 			user,
