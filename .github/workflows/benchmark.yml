@@ -1,0 +1,43 @@
+name: benchmark
+
+on:
+  push:
+    branches:
+      - 'master'
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  benchmarks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.1.1
+        with:
+          repository: n8n-io/n8n
+          ref: ${{ inputs.ref }}
+
+      - run: corepack enable
+      - name: Use Node.js ${{ inputs.nodeVersion }}
+        uses: actions/setup-node@v4.0.1
+        with:
+          node-version: ${{ inputs.nodeVersion }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        if: ${{ inputs.cacheKey == '' }}
+        run: pnpm build
+
+      - name: Restore cached build artifacts
+        if: ${{ inputs.cacheKey != '' }}
+        uses: actions/cache/restore@v4.0.0
+        with:
+          path: ./packages/**/dist
+          key: ${{ inputs.cacheKey }}
+
+      - name: Benchmark
+        uses: CodSpeedHQ/action@v2
+        with:
+          run: pnpm benchmark
