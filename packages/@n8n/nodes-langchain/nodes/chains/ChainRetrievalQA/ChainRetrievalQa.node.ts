@@ -12,6 +12,7 @@ import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import type { BaseRetriever } from '@langchain/core/retrievers';
 import { getTemplateNoticeField } from '../../../utils/sharedFields';
 import { getPromptInputByType } from '../../../utils/helpers';
+import { getTracingConfig } from '../../../utils/tracing';
 
 export class ChainRetrievalQa implements INodeType {
 	description: INodeTypeDescription = {
@@ -176,7 +177,7 @@ export class ChainRetrievalQa implements INodeType {
 				throw new NodeOperationError(this.getNode(), 'The ‘query‘ parameter is empty.');
 			}
 
-			const response = await chain.call({ query });
+			const response = await chain.withConfig(getTracingConfig(this)).invoke({ query });
 			returnData.push({ json: { response } });
 		}
 		return await this.prepareOutputData(returnData);

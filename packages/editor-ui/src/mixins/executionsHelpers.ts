@@ -74,5 +74,12 @@ export const executionHelpers = defineComponent({
 			const { date, time } = convertToDisplayDate(fullDate);
 			return locale.baseText('executionsList.started', { interpolate: { time, date } });
 		},
+		isExecutionRetriable(execution: ExecutionSummary): boolean {
+			return (
+				['crashed', 'error'].includes(execution.status ?? '') &&
+				!execution.retryOf &&
+				!execution.retrySuccessId
+			);
+		},
 	},
 });

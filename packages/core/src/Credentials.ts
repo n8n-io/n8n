@@ -7,19 +7,6 @@ export class Credentials extends ICredentials {
 	private readonly cipher = Container.get(Cipher);
 
 	/**
-	 * Returns if the given nodeType has access to data
-	 */
-	hasNodeAccess(nodeType: string): boolean {
-		for (const accessData of this.nodesAccess) {
-			if (accessData.nodeType === nodeType) {
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-	/**
 	 * Sets new credential object
 	 */
 	setData(data: ICredentialDataDecryptedObject): void {
@@ -29,14 +16,7 @@ export class Credentials extends ICredentials {
 	/**
 	 * Returns the decrypted credential object
 	 */
-	getData(nodeType?: string): ICredentialDataDecryptedObject {
-		if (nodeType && !this.hasNodeAccess(nodeType)) {
-			throw new ApplicationError('Node does not have access to credential', {
-				tags: { nodeType, credentialType: this.type },
-				extra: { credentialName: this.name },
-			});
-		}
-
+	getData(): ICredentialDataDecryptedObject {
 		if (this.data === undefined) {
 			throw new ApplicationError('No data is set so nothing can be returned.');
 		}
@@ -65,7 +45,6 @@ export class Credentials extends ICredentials {
 			name: this.name,
 			type: this.type,
 			data: this.data,
-			nodesAccess: this.nodesAccess,
 		};
 	}
 }

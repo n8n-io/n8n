@@ -407,7 +407,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		}
 
 		const query = this.createQueryBuilder('execution')
-			.select(['execution.id'])
+			.select(['execution.id', 'execution.workflowId'])
 			.andWhere('execution.workflowId IN (:...accessibleWorkflowIds)', { accessibleWorkflowIds });
 
 		if (deleteConditions.deleteBefore) {
@@ -433,12 +433,19 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			return;
 		}
 
-		const executionIds = executions.map(({ id }) => id);
+		const ids = executions.map(({ id, workflowId }) => ({
+			executionId: id,
+			workflowId,
+		}));
+
 		do {
 			// Delete in batches to avoid "SQLITE_ERROR: Expression tree is too large (maximum depth 1000)" error
-			const batch = executionIds.splice(0, this.hardDeletionBatchSize);
-			await this.delete(batch);
-		} while (executionIds.length > 0);
+			const batch = ids.splice(0, this.hardDeletionBatchSize);
+			await Promise.all([
+				this.delete(batch.map(({ executionId }) => executionId)),
+				this.binaryDataService.deleteMany(batch),
+			]);
+		} while (ids.length > 0);
 	}
 
 	async getIdsSince(date: Date) {
