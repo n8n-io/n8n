@@ -191,21 +191,7 @@
     "Webhook": [
       {
         "json": {
-          "headers": {
-            "host": "localhost:5678",
-            "user-agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:122.0) Gecko/20100101 Firefox/122.0",
-            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-            "accept-language": "en-US,en;q=0.5",
-            "accept-encoding": "gzip, deflate, br",
-            "connection": "keep-alive",
-            "cookie": "n8n-auth=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImQ1YWQzODQ1LWFmMTAtNDc2OC04ZDU4LTBmNDE3YTVlNDkxNSIsImVtYWlsIjoiamFuQG44bi5pbyIsInBhc3N3b3JkIjoiMzhjMTFiMDEwMjRlMDhiZTE0ZGExZjhmOWVjNGFmOTQxZmQwOGUyMzJmNWEzYmMyNjBmOTI1ZjIxNTBhNTZlYSIsImlhdCI6MTcwNzA3ODgxMSwiZXhwIjoxNzA3NjgzNjExfQ.bhbh8gCbLYAY87kPqZSGZeMBq7_4d9IgKnsrJ0UV4Iw",
-            "upgrade-insecure-requests": "1",
-            "sec-fetch-dest": "document",
-            "sec-fetch-mode": "navigate",
-            "sec-fetch-site": "none",
-            "sec-fetch-user": "?1",
-            "if-none-match": "W/\"22-6OS7cK0FzqnV2NeDHdOSGS1bVUs\""
-          },
+          "headers": {},
           "params": {},
           "query": {},
           "body": {}

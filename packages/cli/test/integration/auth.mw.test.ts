@@ -12,14 +12,14 @@ describe('Auth Middleware', () => {
 		endpointGroups: ['me', 'auth', 'owner', 'users', 'invitations'],
 	});
 
-	/** Routes requiring a valid `n8n-auth` cookie for a user, either owner or member. */
+	/** Routes requiring a valid auth cookie for a user, either owner or member. */
 	const ROUTES_REQUIRING_AUTHENTICATION: Readonly<Array<[string, string]>> = [
 		['PATCH', '/me'],
 		['PATCH', '/me/password'],
 		['POST', '/me/survey'],
 	];
 
-	/** Routes requiring a valid `n8n-auth` cookie for an owner. */
+	/** Routes requiring a valid auth cookie for an owner. */
 	const ROUTES_REQUIRING_AUTHORIZATION: Readonly<Array<[string, string]>> = [
 		['POST', '/invitations'],
 		['DELETE', '/users/123'],

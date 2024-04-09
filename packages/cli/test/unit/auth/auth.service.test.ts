@@ -92,7 +92,7 @@ describe('AuthService', () => {
 
 			await authService.authMiddleware(req, res, next);
 			expect(next).toHaveBeenCalled();
-			expect(res.cookie).toHaveBeenCalledWith('n8n-auth', expect.any(String), {
+			expect(res.cookie).toHaveBeenCalledWith('__HOST-n8n-auth', expect.any(String), {
 				httpOnly: true,
 				maxAge: 604800000,
 				sameSite: 'lax',
@@ -196,7 +196,7 @@ describe('AuthService', () => {
 
 			jest.advanceTimersByTime(6 * Time.days.toMilliseconds); // 6 Days
 			expect(await authService.resolveJwt(validToken, req, res)).toEqual(user);
-			expect(res.cookie).toHaveBeenCalledWith('n8n-auth', expect.any(String), {
+			expect(res.cookie).toHaveBeenCalledWith('__HOST-n8n-auth', expect.any(String), {
 				httpOnly: true,
 				maxAge: 604800000,
 				sameSite: 'lax',

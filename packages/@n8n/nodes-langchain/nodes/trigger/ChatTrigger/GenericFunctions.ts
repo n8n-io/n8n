@@ -43,7 +43,7 @@ export async function validateAuth(context: IWebhookFunctions) {
 			return '';
 		}
 
-		const authCookie = getCookie('n8n-auth');
+		const authCookie = getCookie('__HOST-n8n-auth');
 		if (!authCookie && webhookName !== 'setup') {
 			// Data is not defined on node so can not authenticate
 			throw new ChatTriggerAuthorizationError(500, 'User not authenticated!');
