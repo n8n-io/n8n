@@ -254,6 +254,7 @@ export default defineComponent({
 			const parameterData = {
 				name: this.getPropertyPath(optionName),
 				value: this.mutableValues[optionName],
+				type: 'optionsOrderChanged',
 			};
 
 			this.$emit('valueChanged', parameterData);
@@ -270,6 +271,7 @@ export default defineComponent({
 			const parameterData = {
 				name: this.getPropertyPath(optionName),
 				value: this.mutableValues[optionName],
+				type: 'optionsOrderChanged',
 			};
 
 			this.$emit('valueChanged', parameterData);
