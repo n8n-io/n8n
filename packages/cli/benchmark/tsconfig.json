@@ -1,8 +1,0 @@
-{
-	"extends": "../../../tsconfig.json",
-	"compilerOptions": {
-		"rootDir": ".",
-		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo"
-	},
-	"include": ["src/**/*.ts"]
-}
