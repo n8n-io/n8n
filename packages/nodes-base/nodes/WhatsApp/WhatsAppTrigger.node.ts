@@ -32,7 +32,7 @@ export class WhatsAppTrigger implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'whatsAppOAuth2Api',
+				name: 'whatsAppTriggerApi',
 				required: true,
 			},
 		],
@@ -66,7 +66,7 @@ export class WhatsAppTrigger implements INodeType {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
-				const credentials = await this.getCredentials('whatsAppOAuth2Api');
+				const credentials = await this.getCredentials('whatsAppTriggerApi');
 				const updates = this.getNodeParameter('updates', []) as IDataObject[];
 				const subscribedEvents = updates.sort().join(',');
 				const appId = credentials.clientId as string;
@@ -109,7 +109,7 @@ export class WhatsAppTrigger implements INodeType {
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
-				const credentials = await this.getCredentials('whatsAppOAuth2Api');
+				const credentials = await this.getCredentials('whatsAppTriggerApi');
 				const appId = credentials.clientId as string;
 				const updates = this.getNodeParameter('updates', []) as IDataObject[];
 				const verifyToken = this.getNode().id;
@@ -125,7 +125,7 @@ export class WhatsAppTrigger implements INodeType {
 				return true;
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
-				const credentials = await this.getCredentials('whatsAppOAuth2Api');
+				const credentials = await this.getCredentials('whatsAppTriggerApi');
 				const appId = credentials.clientId as string;
 
 				await appWebhookSubscriptionDelete.call(this, appId, 'whatsapp_business_account');
@@ -141,7 +141,7 @@ export class WhatsAppTrigger implements INodeType {
 		const res = this.getResponseObject();
 		const req = this.getRequestObject();
 		const headerData = this.getHeaderData() as IDataObject;
-		const credentials = await this.getCredentials('whatsAppOAuth2Api');
+		const credentials = await this.getCredentials('whatsAppTriggerApi');
 
 		// Check if we're getting facebook's challenge request (https://developers.facebook.com/docs/graph-api/webhooks/getting-started)
 		if (this.getWebhookName() === 'setup') {
