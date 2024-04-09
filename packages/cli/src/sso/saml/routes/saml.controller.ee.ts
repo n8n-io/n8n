@@ -138,7 +138,7 @@ export class SamlController {
 				});
 				// Only sign in user if SAML is enabled, otherwise treat as test connection
 				if (isSamlLicensedAndEnabled()) {
-					this.authService.issueCookie(res, loginResult.authenticatedUser);
+					this.authService.issueCookie(res, loginResult.authenticatedUser, req.browserId);
 					if (loginResult.onboardingRequired) {
 						return res.redirect(this.urlService.getInstanceBaseUrl() + SamlUrls.samlOnboarding);
 					} else {
