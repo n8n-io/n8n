@@ -155,7 +155,6 @@ export default defineComponent({
 
 <style module lang="scss">
 @import '@/styles/variables';
-@import '@/styles/keyframes';
 
 .WorkflowExecutionsCard {
 	--execution-list-item-background: var(--color-foreground-xlight);
@@ -232,9 +231,6 @@ export default defineComponent({
 }
 
 .executionLink {
-	transition: background 0.3s ease;
-	animation: execution-item-animation $executions-list-item-animation-duration ease-out;
-	animation-delay: $executions-list-item-animation-delay;
 	background: var(--execution-list-item-background);
 	display: flex;
 	width: 100%;

@@ -37,23 +37,13 @@ onMounted(async () => {
 	setPageTitle(`n8n - ${i18n.baseText('executionsList.workflowExecutions')}`);
 	document.addEventListener('visibilitychange', onDocumentVisibilityChange);
 
-	await initialize();
+	await executionsStore.initialize();
 });
 
 onBeforeUnmount(() => {
 	executionsStore.reset();
 	document.removeEventListener('visibilitychange', onDocumentVisibilityChange);
 });
-
-async function initialize() {
-	setAnimationsEnabled(false);
-	await executionsStore.initialize();
-	setAnimationsEnabled(true);
-}
-
-function setAnimationsEnabled(value: boolean) {
-	animationsEnabled.value = value;
-}
 
 async function loadWorkflows() {
 	try {
@@ -82,7 +72,7 @@ async function onRefreshData() {
 async function onUpdateFilters(newFilters: ExecutionFilterType) {
 	executionsStore.reset();
 	executionsStore.setFilters(newFilters);
-	await initialize();
+	await executionsStore.initialize();
 }
 
 async function onExecutionStop() {
@@ -95,10 +85,7 @@ async function onExecutionStop() {
 		:filters="filters"
 		:total="executionsCount"
 		:estimated-total="executionsCountEstimated"
-		:animations-enabled="animationsEnabled"
 		@execution:stop="onExecutionStop"
 		@update:filters="onUpdateFilters"
-		@load-more:start="setAnimationsEnabled(false)"
-		@load-more:complete="setAnimationsEnabled(true)"
 	/>
 </template>

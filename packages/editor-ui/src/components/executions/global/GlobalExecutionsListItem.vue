@@ -25,10 +25,6 @@ const props = defineProps({
 		type: String,
 		default: undefined,
 	},
-	animationsEnabled: {
-		type: Boolean,
-		default: true,
-	},
 });
 
 const style = useCssModule();
@@ -56,7 +52,6 @@ const classes = computed(() => {
 	return {
 		[style.executionListItem]: true,
 		[style[props.execution.status ?? '']]: !!props.execution.status,
-		[style.animated]: props.animationsEnabled,
 	};
 });
 
@@ -291,7 +286,6 @@ async function handleActionItemClick(commandData: 'retrySaved' | 'retryOriginal'
 
 <style lang="scss" module>
 @import '@/styles/variables';
-@import '@/styles/keyframes';
 
 .executionListItem {
 	--execution-list-item-background: var(--color-table-row-background);
@@ -299,7 +293,6 @@ async function handleActionItemClick(commandData: 'retrySaved' | 'retryOriginal'
 	color: var(--color-text-base);
 
 	td {
-		transition: background 0.3s ease;
 		background: var(--execution-list-item-background);
 	}
 
@@ -348,13 +341,6 @@ async function handleActionItemClick(commandData: 'retrySaved' | 'retryOriginal'
 
 	&.unknown td:first-child::before {
 		background: var(--execution-card-border-unknown);
-	}
-}
-
-.animated {
-	td {
-		animation: execution-item-animation $executions-list-item-animation-duration ease-out;
-		animation-delay: $executions-list-item-animation-delay;
 	}
 }
 
