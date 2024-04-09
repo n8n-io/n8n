@@ -133,12 +133,12 @@ export class SamlController {
 				// Only sign in user if SAML is enabled, otherwise treat as test connection
 				if (isSamlLicensedAndEnabled()) {
 					this.authService.issueCookie(res, loginResult.authenticatedUser, req.browserId);
-					if (loginResult.onboardingRequired) {
-						return res.redirect(this.urlService.getInstanceBaseUrl() + '/saml/onboarding');
-					} else {
-						const redirectUrl = req.body?.RelayState ?? '/';
-						return res.redirect(this.urlService.getInstanceBaseUrl() + redirectUrl);
-					}
+					const redirectUrl =
+						this.urlService.getInstanceBaseUrl() +
+						(loginResult.onboardingRequired ? '/saml/onboarding' : req.body?.RelayState ?? '/');
+					// Use only relative URLs for redirects
+					const relativeUrl = redirectUrl.substring(new URL(redirectUrl).origin.length);
+					res.redirect(relativeUrl);
 				} else {
 					return res.status(202).send(loginResult.attributes);
 				}
