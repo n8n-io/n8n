@@ -68,7 +68,7 @@ export class LmChatAwsBedrock implements INodeType {
 						routing: {
 							request: {
 								method: 'GET',
-								url: '/foundation-models?&byOutputModality=TEXT',
+								url: '/foundation-models?&byOutputModality=TEXT&byInferenceType=ON_DEMAND',
 							},
 							output: {
 								postReceive: [
@@ -76,13 +76,6 @@ export class LmChatAwsBedrock implements INodeType {
 										type: 'rootProperty',
 										properties: {
 											property: 'modelSummaries',
-										},
-									},
-									{
-										type: 'filter',
-										properties: {
-											// Not a foundational model
-											pass: "={{ !['anthropic.claude-instant-v1-100k'].includes($responseItem.modelId) }}",
 										},
 									},
 									{
