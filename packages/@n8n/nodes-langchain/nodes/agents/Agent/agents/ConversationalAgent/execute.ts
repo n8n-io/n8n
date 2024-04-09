@@ -1,9 +1,5 @@
-import {
-	type IExecuteFunctions,
-	type INodeExecutionData,
-	NodeConnectionType,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import { initializeAgentExecutorWithOptions } from 'langchain/agents';
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
@@ -16,13 +12,13 @@ import {
 	getOptionalOutputParsers,
 	getConnectedTools,
 } from '../../../../../utils/helpers';
+import { getTracingConfig } from '../../../../../utils/tracing';
 
 export async function conversationalAgentExecute(
 	this: IExecuteFunctions,
 	nodeVersion: number,
 ): Promise<INodeExecutionData[][]> {
 	this.logger.verbose('Executing Conversational Agent');
-
 	const model = await this.getInputConnectionData(NodeConnectionType.AiLanguageModel, 0);
 
 	if (!isChatInstance(model)) {
@@ -104,7 +100,9 @@ export async function conversationalAgentExecute(
 			input = (await prompt.invoke({ input })).value;
 		}
 
-		let response = await agentExecutor.call({ input, outputParsers });
+		let response = await agentExecutor
+			.withConfig(getTracingConfig(this))
+			.invoke({ input, outputParsers });
 
 		if (outputParser) {
 			response = { output: await outputParser.parse(response.output as string) };

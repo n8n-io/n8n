@@ -182,7 +182,7 @@ importers:
     dependencies:
       '@codemirror/autocomplete':
         specifier: '*'
-        version: 6.15.0(@codemirror/language@6.10.1)(@codemirror/state@6.4.1)(@codemirror/view@6.26.1)(@lezer/common@1.1.0)
+        version: 6.15.0(@codemirror/language@6.10.1)(@codemirror/state@6.4.1)(@codemirror/view@6.26.2)(@lezer/common@1.1.0)
       '@codemirror/language':
         specifier: '*'
         version: 6.10.1
@@ -193,6 +193,37 @@ importers:
       '@lezer/generator':
         specifier: ^1.7.0
         version: 1.7.0
+
+  packages/@n8n/imap:
+    dependencies:
+      iconv-lite:
+        specifier: 0.6.3
+        version: 0.6.3
+      imap:
+        specifier: 0.8.19
+        version: 0.8.19
+      quoted-printable:
+        specifier: 1.0.1
+        version: 1.0.1
+      utf8:
+        specifier: 3.0.0
+        version: 3.0.0
+      uuencode:
+        specifier: 0.0.4
+        version: 0.0.4
+    devDependencies:
+      '@types/imap':
+        specifier: ^0.8.40
+        version: 0.8.40
+      '@types/quoted-printable':
+        specifier: ^1.0.2
+        version: 1.0.2
+      '@types/utf8':
+        specifier: ^3.0.3
+        version: 3.0.3
+      '@types/uuencode':
+        specifier: ^0.0.3
+        version: 0.0.3
 
   packages/@n8n/nodes-langchain:
     dependencies:
@@ -1002,7 +1033,7 @@ importers:
     dependencies:
       '@codemirror/autocomplete':
         specifier: ^6.15.0
-        version: 6.15.0(@codemirror/language@6.10.1)(@codemirror/state@6.4.1)(@codemirror/view@6.26.1)(@lezer/common@1.1.0)
+        version: 6.15.0(@codemirror/language@6.10.1)(@codemirror/state@6.4.1)(@codemirror/view@6.26.2)(@lezer/common@1.1.0)
       '@codemirror/commands':
         specifier: ^6.3.3
         version: 6.3.3
@@ -1014,7 +1045,7 @@ importers:
         version: 6.0.1
       '@codemirror/lang-python':
         specifier: ^6.1.5
-        version: 6.1.5(@codemirror/view@6.26.1)
+        version: 6.1.5(@codemirror/view@6.26.2)
       '@codemirror/language':
         specifier: ^6.10.1
         version: 6.10.1
@@ -1026,7 +1057,7 @@ importers:
         version: 6.4.1
       '@codemirror/view':
         specifier: ^6.26.1
-        version: 6.26.1
+        version: 6.26.2
       '@fontsource/open-sans':
         specifier: ^4.5.0
         version: 4.5.12
@@ -1068,7 +1099,7 @@ importers:
         version: link:../@n8n/codemirror-lang
       '@n8n/codemirror-lang-sql':
         specifier: ^1.0.2
-        version: 1.0.2(@codemirror/view@6.26.1)(@lezer/common@1.1.0)
+        version: 1.0.2(@codemirror/view@6.26.2)(@lezer/common@1.1.0)
       '@n8n/permissions':
         specifier: workspace:*
         version: link:../@n8n/permissions
@@ -1248,6 +1279,9 @@ importers:
       '@kafkajs/confluent-schema-registry':
         specifier: 1.0.6
         version: 1.0.6
+      '@n8n/imap':
+        specifier: workspace:*
+        version: link:../@n8n/imap
       '@n8n/vm2':
         specifier: 3.9.20
         version: 3.9.20
@@ -1302,9 +1336,6 @@ importers:
       ics:
         specifier: 2.40.0
         version: 2.40.0
-      imap-simple:
-        specifier: 4.3.0
-        version: 4.3.0
       isbot:
         specifier: 3.6.13
         version: 3.6.13
@@ -1465,9 +1496,6 @@ importers:
       '@types/html-to-text':
         specifier: ^9.0.1
         version: 9.0.4
-      '@types/imap-simple':
-        specifier: ^4.2.0
-        version: 4.2.5
       '@types/js-nacl':
         specifier: ^1.3.0
         version: 1.3.0
@@ -1531,6 +1559,9 @@ importers:
 
   packages/workflow:
     dependencies:
+      '@langchain/core':
+        specifier: 0.1.41
+        version: 0.1.41
       '@n8n/tournament':
         specifier: 1.0.2
         version: 1.0.2
@@ -4586,7 +4617,7 @@ packages:
       - react
     dev: true
 
-  /@codemirror/autocomplete@6.15.0(@codemirror/language@6.10.1)(@codemirror/state@6.4.1)(@codemirror/view@6.26.1)(@lezer/common@1.1.0):
+  /@codemirror/autocomplete@6.15.0(@codemirror/language@6.10.1)(@codemirror/state@6.4.1)(@codemirror/view@6.26.2)(@lezer/common@1.1.0):
     resolution: {integrity: sha512-G2Zm0mXznxz97JhaaOdoEG2cVupn4JjPaS4AcNvZzhOsnnG9YVN68VzfoUw6dYTsIxT6a/cmoFEN47KAWhXaOg==}
     peerDependencies:
       '@codemirror/language': ^6.0.0
@@ -4596,11 +4627,11 @@ packages:
     dependencies:
       '@codemirror/language': 6.10.1
       '@codemirror/state': 6.4.1
-      '@codemirror/view': 6.26.1
+      '@codemirror/view': 6.26.2
       '@lezer/common': 1.1.0
     dev: false
 
-  /@codemirror/autocomplete@6.15.0(@codemirror/language@6.10.1)(@codemirror/state@6.4.1)(@codemirror/view@6.26.1)(@lezer/common@1.2.1):
+  /@codemirror/autocomplete@6.15.0(@codemirror/language@6.10.1)(@codemirror/state@6.4.1)(@codemirror/view@6.26.2)(@lezer/common@1.2.1):
     resolution: {integrity: sha512-G2Zm0mXznxz97JhaaOdoEG2cVupn4JjPaS4AcNvZzhOsnnG9YVN68VzfoUw6dYTsIxT6a/cmoFEN47KAWhXaOg==}
     peerDependencies:
       '@codemirror/language': ^6.0.0
@@ -4610,7 +4641,7 @@ packages:
     dependencies:
       '@codemirror/language': 6.10.1
       '@codemirror/state': 6.4.1
-      '@codemirror/view': 6.26.1
+      '@codemirror/view': 6.26.2
       '@lezer/common': 1.2.1
     dev: false
 
@@ -4619,14 +4650,14 @@ packages:
     dependencies:
       '@codemirror/language': 6.10.1
       '@codemirror/state': 6.4.1
-      '@codemirror/view': 6.26.1
+      '@codemirror/view': 6.26.2
       '@lezer/common': 1.1.0
     dev: false
 
-  /@codemirror/lang-css@6.0.1(@codemirror/view@6.26.1)(@lezer/common@1.1.0):
+  /@codemirror/lang-css@6.0.1(@codemirror/view@6.26.2)(@lezer/common@1.1.0):
     resolution: {integrity: sha512-rlLq1Dt0WJl+2epLQeAsfqIsx3lGu4HStHCJu95nGGuz2P2fNugbU3dQYafr2VRjM4eMC9HviI6jvS98CNtG5w==}
     dependencies:
-      '@codemirror/autocomplete': 6.15.0(@codemirror/language@6.10.1)(@codemirror/state@6.4.1)(@codemirror/view@6.26.1)(@lezer/common@1.1.0)
+      '@codemirror/autocomplete': 6.15.0(@codemirror/language@6.10.1)(@codemirror/state@6.4.1)(@codemirror/view@6.26.2)(@lezer/common@1.1.0)
       '@codemirror/language': 6.10.1
       '@codemirror/state': 6.4.1
       '@lezer/css': 1.1.1
@@ -4638,11 +4669,11 @@ packages:
   /@codemirror/lang-javascript@6.2.2:
     resolution: {integrity: sha512-VGQfY+FCc285AhWuwjYxQyUQcYurWlxdKYT4bqwr3Twnd5wP5WSeu52t4tvvuWmljT4EmgEgZCqSieokhtY8hg==}
     dependencies:
-      '@codemirror/autocomplete': 6.15.0(@codemirror/language@6.10.1)(@codemirror/state@6.4.1)(@codemirror/view@6.26.1)(@lezer/common@1.1.0)
+      '@codemirror/autocomplete': 6.15.0(@codemirror/language@6.10.1)(@codemirror/state@6.4.1)(@codemirror/view@6.26.2)(@lezer/common@1.1.0)
       '@codemirror/language': 6.10.1
       '@codemirror/lint': 6.5.0
       '@codemirror/state': 6.4.1
-      '@codemirror/view': 6.26.1
+      '@codemirror/view': 6.26.2
       '@lezer/common': 1.1.0
       '@lezer/javascript': 1.0.2
     dev: false
@@ -4654,10 +4685,10 @@ packages:
       '@lezer/json': 1.0.0
     dev: false
 
-  /@codemirror/lang-python@6.1.5(@codemirror/view@6.26.1):
+  /@codemirror/lang-python@6.1.5(@codemirror/view@6.26.2):
     resolution: {integrity: sha512-hCm+8X6wrnXJCGf+QhmFu1AXkdTVG7dHy0Ly6SI1N3SRPptaMvwX6oNQonOXOMPvmcjiB0xq342KAxX3BYpijw==}
     dependencies:
-      '@codemirror/autocomplete': 6.15.0(@codemirror/language@6.10.1)(@codemirror/state@6.4.1)(@codemirror/view@6.26.1)(@lezer/common@1.2.1)
+      '@codemirror/autocomplete': 6.15.0(@codemirror/language@6.10.1)(@codemirror/state@6.4.1)(@codemirror/view@6.26.2)(@lezer/common@1.2.1)
       '@codemirror/language': 6.10.1
       '@codemirror/state': 6.4.1
       '@lezer/common': 1.2.1
@@ -4670,7 +4701,7 @@ packages:
     resolution: {integrity: sha512-5GrXzrhq6k+gL5fjkAwt90nYDmjlzTIJV8THnxNFtNKWotMIlzzN+CpqxqwXOECnUdOndmSeWntVrVcv5axWRQ==}
     dependencies:
       '@codemirror/state': 6.4.1
-      '@codemirror/view': 6.26.1
+      '@codemirror/view': 6.26.2
       '@lezer/common': 1.1.0
       '@lezer/highlight': 1.1.1
       '@lezer/lr': 1.2.3
@@ -4681,7 +4712,7 @@ packages:
     resolution: {integrity: sha512-+5YyicIaaAZKU8K43IQi8TBy6mF6giGeWAH7N96Z5LC30Wm5JMjqxOYIE9mxwMG1NbhT2mA3l9hA4uuKUM3E5g==}
     dependencies:
       '@codemirror/state': 6.4.1
-      '@codemirror/view': 6.26.1
+      '@codemirror/view': 6.26.2
       crelt: 1.0.5
     dev: false
 
@@ -4689,8 +4720,8 @@ packages:
     resolution: {integrity: sha512-QkEyUiLhsJoZkbumGZlswmAhA7CBU02Wrz7zvH4SrcifbsqwlXShVXg65f3v/ts57W3dqyamEriMhij1Z3Zz4A==}
     dev: false
 
-  /@codemirror/view@6.26.1:
-    resolution: {integrity: sha512-wLw0t3R9AwOSQThdZ5Onw8QQtem5asE7+bPlnzc57eubPqiuJKIzwjMZ+C42vQett+iva+J8VgFV4RYWDBh5FA==}
+  /@codemirror/view@6.26.2:
+    resolution: {integrity: sha512-j6V48PlFC/O7ERAR5vRW5QKDdchzmyyfojDdt+zPsB0YXoWgcjlC1IWjmlYfx08aQZ3HN5BtALcgGgtSKGMe7A==}
     dependencies:
       '@codemirror/state': 6.4.1
       style-mod: 4.1.0
@@ -6492,10 +6523,10 @@ packages:
     dev: false
     optional: true
 
-  /@n8n/codemirror-lang-sql@1.0.2(@codemirror/view@6.26.1)(@lezer/common@1.1.0):
+  /@n8n/codemirror-lang-sql@1.0.2(@codemirror/view@6.26.2)(@lezer/common@1.1.0):
     resolution: {integrity: sha512-sOf/KyewSu3Ikij0CkRtzJJDhRDZcwNCEYl8UdH4U/riL0/XZGcBD7MYofCCcKszanJZiEWRZ2KU1sRp234iMg==}
     dependencies:
-      '@codemirror/autocomplete': 6.15.0(@codemirror/language@6.10.1)(@codemirror/state@6.4.1)(@codemirror/view@6.26.1)(@lezer/common@1.1.0)
+      '@codemirror/autocomplete': 6.15.0(@codemirror/language@6.10.1)(@codemirror/state@6.4.1)(@codemirror/view@6.26.2)(@lezer/common@1.1.0)
       '@codemirror/language': 6.10.1
       '@codemirror/state': 6.4.1
       '@lezer/highlight': 1.1.1
@@ -9518,15 +9549,8 @@ packages:
     resolution: {integrity: sha512-K3e+NZlpCKd6Bd/EIdqjFJRFHbrq5TzPPLwREk5Iv/YoIjQrs6ljdAUCo+Lb2xFlGNOjGSE0dqsVD19cZL137w==}
     dev: true
 
-  /@types/imap-simple@4.2.5:
-    resolution: {integrity: sha512-Sfu70sdFXzVIhivsflpanlED8gZr4VRzz2AVU9i1ARU8gskr9nDd4tVGkqYtxfwajQfZDklkXbeHSOZYEeJmTQ==}
-    dependencies:
-      '@types/imap': 0.8.35
-      '@types/node': 18.16.16
-    dev: true
-
-  /@types/imap@0.8.35:
-    resolution: {integrity: sha512-4Tk8lGFvRFYCEaHxb2BZFZPs2XiYBSboEbb1Kq1oBqA2aRqPV0pjzyXGpMKi9jILsDPlrG7s0EFnnh8qb3h3ww==}
+  /@types/imap@0.8.40:
+    resolution: {integrity: sha512-kWFwOc88CGwWZlHqCnZiceS6EralsAHdjpQyk1+fIA875NQdIHvLpdD5NU3Pi1yZ8FKFdOF81UDNAo8/XS6HiQ==}
     dependencies:
       '@types/node': 18.16.16
     dev: true
@@ -9760,6 +9784,10 @@ packages:
   /@types/qs@6.9.7:
     resolution: {integrity: sha512-FGa1F62FT09qcrueBA6qYTrJPVDzah9a+493+o2PCXsesWHIn27G98TsSMs3WPNbZIEj4+VJf6saSFpvD+3Zsw==}
 
+  /@types/quoted-printable@1.0.2:
+    resolution: {integrity: sha512-3B28oB1rRaZNb3N5dlxysm8lH1ujzvReDuYBiIO4jvpTIg9ksrILCNgPxSGVyTWE/qwuxzgHaVehwMK3CVqAtA==}
+    dev: true
+
   /@types/range-parser@1.2.4:
     resolution: {integrity: sha512-EEhsLsD6UsDM1yFhAvy0Cjr6VwmpMWqFBCb9w07wVugF7w9nfajxLuVmngTIpgS6svCnm6Vaw+MZhoDCKnOfsw==}
 
@@ -9956,6 +9984,16 @@ packages:
 
   /@types/unist@3.0.2:
     resolution: {integrity: sha512-dqId9J8K/vGi5Zr7oo212BGii5m3q5Hxlkwy3WpYuKPklmBEvsbMYYyLxAQpSffdLl/gdW0XUpKWFvYmyoWCoQ==}
+    dev: true
+
+  /@types/utf8@3.0.3:
+    resolution: {integrity: sha512-+lqLGxWZsEe4Z6OrzBI7Ym4SMUTaMS5yOrHZ0/IL0bpIye1Qbs4PpobJL2mLDbftUXlPFZR7fu6d1yM+bHLX1w==}
+    dev: true
+
+  /@types/uuencode@0.0.3:
+    resolution: {integrity: sha512-NaBWHPPQvcXqiSaMAGa2Ea/XaFcK/nHwGe2akwJBXRLkCNa2+izx/F1aKJrzFH+L68D88VLYIATTYP7B2k4zVA==}
+    dependencies:
+      '@types/node': 18.16.16
     dev: true
 
   /@types/uuid@8.3.4:
@@ -12544,12 +12582,12 @@ packages:
   /codemirror-lang-html-n8n@1.0.0:
     resolution: {integrity: sha512-ofNP6VTDGJ5rue+kTCZlDZdF1PnE0sl2cAkfrsCAd5MlBgDmqTwuFJIkTI6KXOJXs0ucdTYH6QLhy9BSW7EaOQ==}
     dependencies:
-      '@codemirror/autocomplete': 6.15.0(@codemirror/language@6.10.1)(@codemirror/state@6.4.1)(@codemirror/view@6.26.1)(@lezer/common@1.1.0)
-      '@codemirror/lang-css': 6.0.1(@codemirror/view@6.26.1)(@lezer/common@1.1.0)
+      '@codemirror/autocomplete': 6.15.0(@codemirror/language@6.10.1)(@codemirror/state@6.4.1)(@codemirror/view@6.26.2)(@lezer/common@1.1.0)
+      '@codemirror/lang-css': 6.0.1(@codemirror/view@6.26.2)(@lezer/common@1.1.0)
       '@codemirror/lang-javascript': 6.2.2
       '@codemirror/language': 6.10.1
       '@codemirror/state': 6.4.1
-      '@codemirror/view': 6.26.1
+      '@codemirror/view': 6.26.2
       '@lezer/common': 1.1.0
       '@lezer/css': 1.1.1
       '@lezer/highlight': 1.1.1
@@ -16398,17 +16436,6 @@ packages:
     resolution: {integrity: sha512-MAb38BcSbH0eHNBxn7ql2NH/kX33OkB3lZ1BNdh7ENeRChHTYsTvWrMubiIAMNS2llXEEgZ1MUOBtXChP3kaFQ==}
     engines: {node: '>= 4'}
 
-  /imap-simple@4.3.0:
-    resolution: {integrity: sha512-SW3LtfEJFjlJKS/h2CmpX2IKpya2RXobR3ENJJW4iMQ3QYPxWxf5oeaz1K3P4eGUwfGEndkqt7uVDKnEyG9zeQ==}
-    dependencies:
-      iconv-lite: 0.4.24
-      imap: 0.8.19
-      nodeify: 1.0.1
-      quoted-printable: 1.0.1
-      utf8: 2.1.2
-      uuencode: 0.0.4
-    dev: false
-
   /imap@0.8.19:
     resolution: {integrity: sha512-z5DxEA1uRnZG73UcPA4ES5NSCGnPuuouUx43OPX7KZx1yzq3N8/vx2mtXEShT5inxB3pRgnfG1hijfu7XN2YMw==}
     engines: {node: '>=0.8.0'}
@@ -16886,10 +16913,6 @@ packages:
   /is-potential-custom-element-name@1.0.1:
     resolution: {integrity: sha512-bCYeRA2rVibKZd+s2625gGnGF/t7DSqDs4dP7CrLA1m7jKWz6pps0LpYLJN8Q64HtmPKJ1hrN3nzPNKFEKOUiQ==}
     dev: true
-
-  /is-promise@1.0.1:
-    resolution: {integrity: sha512-mjWH5XxnhMA8cFnDchr6qRP9S/kLntKuEfIYku+PaN1CnS8v+OG9O/BKpRCVRJvpIkgAZm0Pf5Is3iSSOILlcg==}
-    dev: false
 
   /is-promise@2.2.2:
     resolution: {integrity: sha512-+lP4/6lKUBfQjZ2pdxThZvLUAafmZb8OAxFb8XXtiQmS35INgr85hdOGoEs124ez1FCnZJt6jau/T+alh58QFQ==}
@@ -20166,13 +20189,6 @@ packages:
       ssh2: 1.11.0
     dev: false
 
-  /nodeify@1.0.1:
-    resolution: {integrity: sha512-n7C2NyEze8GCo/z73KdbjRsBiLbv6eBn1FxwYKQ23IqGo7pQY3mhQan61Sv7eEDJCiyUjTVrVkXTzJCo1dW7Aw==}
-    dependencies:
-      is-promise: 1.0.1
-      promise: 1.3.0
-    dev: false
-
   /nodemailer@6.9.9:
     resolution: {integrity: sha512-dexTll8zqQoVJEZPwQAKzxxtFn0qTnjdQTchoU6Re9BUUGBJiOy3YMn/0ShTW6J5M0dfQ1NeDeRTTl4oIWgQMA==}
     engines: {node: '>=6.0.0'}
@@ -21780,12 +21796,6 @@ packages:
     dependencies:
       err-code: 2.0.3
       retry: 0.12.0
-    dev: false
-
-  /promise@1.3.0:
-    resolution: {integrity: sha512-R9WrbTF3EPkVtWjp7B7umQGVndpsi+rsDAfrR4xAALQpFLa/+2OriecLhawxzvii2gd9+DZFwROWDuUUaqS5yA==}
-    dependencies:
-      is-promise: 1.0.1
     dev: false
 
   /promise@7.3.1:
@@ -25271,6 +25281,10 @@ packages:
 
   /utf8@2.1.2:
     resolution: {integrity: sha512-QXo+O/QkLP/x1nyi54uQiG0XrODxdysuQvE5dtVqv7F5K2Qb6FsN+qbr6KhF5wQ20tfcV3VQp0/2x1e1MRSPWg==}
+    dev: false
+
+  /utf8@3.0.0:
+    resolution: {integrity: sha512-E8VjFIQ/TyQgp+TZfS6l8yp/xWppSAHzidGiRrqe4bK4XP9pTRyKFgGJpO3SN7zdX4DeomTrwaseCHovfpFcqQ==}
     dev: false
 
   /util-deprecate@1.0.2:
