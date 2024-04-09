@@ -378,7 +378,7 @@ export class Server extends AbstractServer {
 			const isPreviewMode = process.env.N8N_PREVIEW_MODE === 'true';
 			const securityHeadersMiddleware = helmet({
 				contentSecurityPolicy: false,
-				xFrameOptions: isPreviewMode ? false : { action: 'sameorigin' },
+				xFrameOptions: isPreviewMode || inE2ETests ? false : { action: 'sameorigin' },
 				dnsPrefetchControl: false,
 				// This is only relevant for Internet-explorer, which we do not support
 				ieNoOpen: false,
