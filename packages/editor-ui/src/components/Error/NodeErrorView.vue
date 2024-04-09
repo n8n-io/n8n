@@ -129,6 +129,15 @@ const prepareRawMessages = computed(() => {
 async function onDebugError() {
 	try {
 		isLoadingErrorDebugging.value = true;
+		telemetry.track(
+			'User clicked AI error helper button',
+			{
+				node_type: props.error.node?.type,
+				error_title: props.error.message,
+			},
+			{ withPostHog: true },
+		);
+
 		const { message } = await aiStore.debugError({ error: props.error });
 		errorDebuggingMessage.value = message;
 	} catch (error) {
