@@ -91,7 +91,7 @@
     "ts-essentials": "^7.0.3"
   },
   "dependencies": {
-    "@langchain/community": "0.0.34",
+    "@langchain/community": "0.0.44",
     "@langchain/core": "0.1.41",
     "@langchain/openai": "0.0.16",
     "@n8n/client-oauth2": "workspace:*",
