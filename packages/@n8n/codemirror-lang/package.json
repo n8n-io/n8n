@@ -1,7 +1,7 @@
 {
   "name": "@n8n/codemirror-lang",
   "version": "0.3.0",
-  "description": "n8n expression language support for CodeMirror 6",
+  "description": "Language support package for CodeMirror 6 in n8n",
   "private": true,
   "sideEffects": false,
   "main": "dist/index.js",
@@ -17,13 +17,14 @@
   },
   "scripts": {
     "clean": "rimraf dist .turbo",
-    "typecheck": "tsc",
-    "generate:expressions:grammar": "lezer-generator --typeScript --output src/expressions/syntax.ts src/expressions/syntax.grammar",
-    "build": "pnpm generate:expressions:grammar && tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "generate:expressions:grammar": "lezer-generator --typeScript --output src/expressions/grammar.ts src/expressions/expressions.grammar",
+    "generate": "pnpm generate:expressions:grammar && pnpm format",
+    "build": "tsc -p tsconfig.build.json",
     "test": "jest",
-    "lint": "eslint . --ext .js,.ts,.vue --quiet",
-    "lintfix": "eslint . --ext .js,.ts,.vue --fix",
-    "format": "prettier --write src/"
+    "lint": "eslint . --ext .ts --quiet",
+    "lintfix": "eslint . --ext .ts --fix",
+    "format": "prettier --write --ignore-path ../../.prettierignore src test"
   },
   "peerDependencies": {
     "@codemirror/autocomplete": "*",

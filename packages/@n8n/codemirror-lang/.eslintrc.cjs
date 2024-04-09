@@ -4,11 +4,11 @@ const sharedOptions = require('@n8n_io/eslint-config/shared');
  * @type {import('@types/eslint').ESLint.ConfigData}
  */
 module.exports = {
-	extends: ['@n8n_io/eslint-config/frontend'],
+	extends: ['@n8n_io/eslint-config/base'],
 
-	...sharedOptions(__dirname, 'frontend'),
+	...sharedOptions(__dirname),
 
 	ignorePatterns: [
-		'src/expressions/syntax*.ts'
+		'src/expressions/grammar*.ts'
 	]
 };

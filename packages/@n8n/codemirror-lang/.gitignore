@@ -1,7 +1,0 @@
-/node_modules
-package-lock.json
-/dist
-/src/*.js
-/src/*.d.ts
-src/expressions/syntax*.ts
-.DS_Store
