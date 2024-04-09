@@ -51,6 +51,7 @@ import { AddGlobalAdminRole1700571993961 } from '../common/1700571993961-AddGlob
 import { DropRoleMapping1705429061930 } from './1705429061930-DropRoleMapping';
 import { RemoveFailedExecutionStatus1711018413374 } from '../common/1711018413374-RemoveFailedExecutionStatus';
 import { MoveSshKeysToDatabase1711390882123 } from '../common/1711390882123-MoveSshKeysToDatabase';
+import { RemoveNodesAccess1712044305787 } from '../common/1712044305787-RemoveNodesAccess';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -105,6 +106,7 @@ const sqliteMigrations: Migration[] = [
 	DropRoleMapping1705429061930,
 	RemoveFailedExecutionStatus1711018413374,
 	MoveSshKeysToDatabase1711390882123,
+	RemoveNodesAccess1712044305787,
 ];
 
 export { sqliteMigrations };

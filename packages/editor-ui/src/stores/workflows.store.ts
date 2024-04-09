@@ -200,6 +200,12 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				return {};
 			};
 		},
+		nodeHasOutputConnection() {
+			return (nodeName: string): boolean => {
+				if (this.workflow.connections.hasOwnProperty(nodeName)) return true;
+				return false;
+			};
+		},
 		isNodeInOutgoingNodeConnections() {
 			return (firstNode: string, secondNode: string): boolean => {
 				const firstNodeConnections = this.outgoingConnectionsByNodeName(firstNode);
@@ -841,15 +847,19 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			this.workflow.connections = {};
 		},
 
-		removeAllNodeConnection(node: INodeUi): void {
+		removeAllNodeConnection(
+			node: INodeUi,
+			{ preserveInputConnections = false, preserveOutputConnections = false } = {},
+		): void {
 			const uiStore = useUIStore();
 			uiStore.stateIsDirty = true;
 			// Remove all source connections
-			if (this.workflow.connections.hasOwnProperty(node.name)) {
+			if (!preserveOutputConnections && this.workflow.connections.hasOwnProperty(node.name)) {
 				delete this.workflow.connections[node.name];
 			}
 
 			// Remove all destination connections
+			if (preserveInputConnections) return;
 			const indexesToRemove = [];
 			let sourceNode: string,
 				type: string,
