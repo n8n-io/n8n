@@ -1,8 +1,8 @@
 import { createComponentRenderer } from '@/__tests__/render';
-import ExecutionCard from '@/components/ExecutionsView/ExecutionCard.vue';
+import WorkflowExecutionsCard from '@/components/executions/workflow/WorkflowExecutionsCard.vue';
 import { createPinia, setActivePinia } from 'pinia';
 
-const renderComponent = createComponentRenderer(ExecutionCard, {
+const renderComponent = createComponentRenderer(WorkflowExecutionsCard, {
 	global: {
 		stubs: {
 			'router-link': {
@@ -17,7 +17,7 @@ const renderComponent = createComponentRenderer(ExecutionCard, {
 	},
 });
 
-describe('ExecutionCard', () => {
+describe('WorkflowExecutionsCard', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
 	});
