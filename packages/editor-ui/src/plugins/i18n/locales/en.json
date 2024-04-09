@@ -390,6 +390,7 @@
 	"codeNodeEditor.tabs.askAi": "✨ Ask AI",
 	"codeNodeEditor.tabs.code": "Code",
 	"codeNodeEditor.examples": "Examples",
+	"codeNodeEditor.parameters": "Parameters",
 	"collectionParameter.choose": "Choose...",
 	"collectionParameter.noProperties": "No properties",
 	"credentialEdit.credentialConfig.accountConnected": "Account connected",

@@ -3,7 +3,7 @@ import { VALID_EMAIL_REGEX } from '@/constants';
 import { i18n } from '@/plugins/i18n';
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
-import { sanitizeHtml } from '@/utils/htmlUtils';
+
 import type {
 	Completion,
 	CompletionContext,
@@ -51,6 +51,7 @@ import {
 	splitBaseTail,
 	stripExcessParens,
 } from './utils';
+import { createInfoBoxRenderer } from './infoBoxRenderer';
 
 /**
  * Resolution-based completions offered according to datatype.
@@ -69,15 +70,15 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 	const isCredential = isCredentialsModalOpen();
 
 	if (base === 'DateTime') {
-		options = luxonStaticOptions(base).map(stripExcessParens(context));
+		options = luxonStaticOptions().map(stripExcessParens(context));
 	} else if (base === 'Object') {
 		options = objectGlobalOptions().map(stripExcessParens(context));
 	} else if (base === '$vars') {
-		options = variablesOptions(base);
+		options = variablesOptions();
 	} else if (/\$secrets\./.test(base) && isCredential) {
 		options = secretOptions(base).map(stripExcessParens(context));
 	} else if (base === '$secrets' && isCredential) {
-		options = secretProvidersOptions(base);
+		options = secretProvidersOptions();
 	} else {
 		let resolved: Resolved;
 
@@ -151,7 +152,7 @@ function datatypeOptions(input: AutocompleteInput): Completion[] {
 	}
 
 	if (typeof resolved === 'boolean') {
-		return booleanOptions(input as AutocompleteInput<boolean>);
+		return booleanOptions();
 	}
 
 	if (resolved instanceof DateTime) {
@@ -175,11 +176,9 @@ function datatypeOptions(input: AutocompleteInput): Completion[] {
 
 export const natives = ({
 	typeName,
-	base,
 	transformLabel = (label) => label,
 }: {
 	typeName: ExtensionTypeName;
-	base: string;
 	transformLabel?: (label: string) => string;
 }): Completion[] => {
 	const nativeDocs: NativeDoc = NativeMethods.find((ee) => ee.typeName.toLowerCase() === typeName);
@@ -189,7 +188,6 @@ export const natives = ({
 	const nativeProps = nativeDocs.properties
 		? toOptions({
 				fnToDoc: nativeDocs.properties,
-				base,
 				includeHidden: false,
 				isFunction: false,
 				transformLabel,
@@ -198,7 +196,6 @@ export const natives = ({
 
 	const nativeMethods = toOptions({
 		fnToDoc: nativeDocs.functions,
-		base,
 		includeHidden: false,
 		isFunction: true,
 		transformLabel,
@@ -209,16 +206,14 @@ export const natives = ({
 
 export const extensions = ({
 	typeName,
-	base,
 	includeHidden = false,
 	transformLabel = (label) => label,
 }: {
 	typeName: ExtensionTypeName;
-	base: string;
 	includeHidden?: boolean;
 	transformLabel?: (label: string) => string;
 }) => {
-	const expressionExtensions: Extension = ExpressionExtensions.find(
+	const expressionExtensions = ExpressionExtensions.find(
 		(ee) => ee.typeName.toLowerCase() === typeName,
 	);
 
@@ -231,7 +226,7 @@ export const extensions = ({
 		{},
 	);
 
-	return toOptions({ fnToDoc, base, isFunction: true, includeHidden, transformLabel });
+	return toOptions({ fnToDoc, isFunction: true, includeHidden, transformLabel });
 };
 
 export const getType = (value: unknown): string => {
@@ -254,13 +249,11 @@ export const getDetail = (base: string, value: unknown): string | undefined => {
 
 export const toOptions = ({
 	fnToDoc,
-	base,
 	isFunction = false,
 	includeHidden = false,
 	transformLabel = (label) => label,
 }: {
 	fnToDoc: FnToDoc;
-	base: string;
 	isFunction?: boolean;
 	includeHidden?: boolean;
 	transformLabel?: (label: string) => string;
@@ -270,7 +263,6 @@ export const toOptions = ({
 		.filter(([, docInfo]) => Boolean(docInfo.doc && !docInfo.doc?.hidden) || includeHidden)
 		.map(([fnName, docInfo]) => {
 			return createCompletionOption({
-				base,
 				name: fnName,
 				doc: docInfo.doc,
 				isFunction,
@@ -280,13 +272,11 @@ export const toOptions = ({
 };
 
 const createCompletionOption = ({
-	base,
 	name,
 	doc,
 	isFunction = false,
 	transformLabel = (label) => label,
 }: {
-	base: string;
 	name: string;
 	doc?: DocMetadata;
 	isFunction?: boolean;
@@ -302,189 +292,9 @@ const createCompletionOption = ({
 			transformLabel,
 		}),
 	};
-	option.info = () => {
-		const tooltipContainer = document.createElement('div');
-		tooltipContainer.classList.add('autocomplete-info-container');
-		const mainContent = document.createElement('div');
-		mainContent.classList.add('autocomplete-info-main');
-		tooltipContainer.appendChild(mainContent);
-
-		if (!doc) return null;
-
-		const { examples, args } = doc;
-
-		const header = isFunction ? createFunctionHeader(base, doc) : createPropHeader(base, doc);
-		header.classList.add('autocomplete-info-header');
-		mainContent.appendChild(header);
-
-		if (doc.description) {
-			const descriptionBody = document.createElement('div');
-			descriptionBody.classList.add('autocomplete-info-description');
-			const descriptionText = document.createElement('p');
-			descriptionText.innerHTML = sanitizeHtml(
-				doc.description.replace(/`(.*?)`/g, '<code>$1</code>'),
-			);
-			descriptionBody.appendChild(descriptionText);
-
-			if (doc.docURL) {
-				const descriptionLink = document.createElement('a');
-				descriptionLink.setAttribute('target', '_blank');
-				descriptionLink.setAttribute('href', doc.docURL);
-				descriptionLink.innerText =
-					i18n.autocompleteUIValues.docLinkLabel ?? i18n.baseText('generic.learnMore');
-				descriptionLink.addEventListener('mousedown', (event: MouseEvent) => {
-					// This will prevent documentation popup closing before click
-					// event gets to links
-					event.preventDefault();
-				});
-				descriptionLink.classList.add('autocomplete-info-doc-link');
-				descriptionText.appendChild(descriptionLink);
-			}
-			mainContent.appendChild(descriptionBody);
-		}
-
-		if (args && args.length > 0) {
-			const argsList = document.createElement('ul');
-			argsList.classList.add('autocomplete-info-args');
-
-			for (const arg of args) {
-				const argItem = document.createElement('li');
-				const argName = document.createElement('span');
-				argName.classList.add('autocomplete-info-arg-name');
-				argName.textContent = arg.name;
-				argItem.appendChild(argName);
-
-				if (arg.type) {
-					const argType = document.createElement('span');
-					argType.classList.add('autocomplete-info-arg-type');
-					argType.textContent = `: ${arg.type}`;
-					argItem.appendChild(argType);
-				}
-
-				if (arg.description) {
-					const argDescription = document.createElement('span');
-					argDescription.classList.add('autocomplete-info-arg-description');
-					argDescription.innerHTML = `- ${sanitizeHtml(
-						arg.description.replace(/`(.*?)`/g, '<code>$1</code>'),
-					)}`;
-
-					argItem.appendChild(argDescription);
-				}
-
-				argsList.appendChild(argItem);
-			}
-
-			mainContent.appendChild(argsList);
-		}
-
-		if (examples && examples.length > 0) {
-			const examplesWrapper = document.createElement('div');
-			examplesWrapper.classList.add('autocomplete-info-examples-wrapper');
-
-			const examplesContainer = document.createElement('div');
-			examplesContainer.classList.add('autocomplete-info-examples');
-
-			const examplesTitle = document.createElement('div');
-			examplesTitle.classList.add('autocomplete-info-examples-title');
-			examplesTitle.textContent = i18n.baseText('codeNodeEditor.examples');
-			examplesContainer.appendChild(examplesTitle);
-
-			const examplePre = document.createElement('pre');
-			const exampleCode = document.createElement('code');
-			examplePre.appendChild(exampleCode);
-			examplesContainer.appendChild(examplePre);
-			examplesWrapper.appendChild(examplesContainer);
-
-			examples.forEach((example, index) => {
-				if (example.description) {
-					const exampleComment = document.createElement('span');
-					exampleComment.classList.add('autocomplete-info-example-comment');
-					exampleComment.textContent = `// ${example.description}\n`;
-					exampleCode.appendChild(exampleComment);
-				}
-
-				const exampleExpression = document.createElement('span');
-				exampleExpression.classList.add('autocomplete-info-example-expr');
-				exampleExpression.textContent = `${JSON.stringify(example.subject)}.${doc.name}(${example.args.map((arg) => JSON.stringify(arg)).join(', ')})\n`;
-				exampleCode.appendChild(exampleExpression);
-
-				if (example.evaluated !== undefined) {
-					const exampleEvaluated = document.createElement('span');
-					exampleEvaluated.textContent = `// => ${example.evaluated}\n`;
-					exampleCode.appendChild(exampleEvaluated);
-				}
-
-				if (index !== examples.length - 1) {
-					exampleCode.textContent += '\n';
-				}
-			});
-
-			tooltipContainer.appendChild(examplesWrapper);
-		}
-
-		return tooltipContainer;
-	};
+	option.info = createInfoBoxRenderer(doc, isFunction);
 
 	return option;
-};
-
-const createFunctionHeader = (base: string, doc?: DocMetadata) => {
-	const header = document.createElement('div');
-	if (doc) {
-		const shortBase = base.split('.').pop() ?? base;
-		const baseSpan = document.createElement('span');
-		baseSpan.textContent = shortBase + '.';
-		header.appendChild(baseSpan);
-
-		const functionNameSpan = document.createElement('span');
-		functionNameSpan.classList.add('autocomplete-info-name');
-		functionNameSpan.textContent = doc.name;
-		header.appendChild(functionNameSpan);
-
-		const openBracketsSpan = document.createElement('span');
-		openBracketsSpan.textContent = '(';
-		header.appendChild(openBracketsSpan);
-
-		const argsSpan = document.createElement('span');
-		doc.args?.forEach((arg, index, array) => {
-			const argSpan = document.createElement('span');
-			argSpan.textContent = arg.name;
-			argSpan.classList.add('autocomplete-info-arg');
-			argsSpan.appendChild(argSpan);
-
-			if (index !== array.length - 1) {
-				const separatorSpan = document.createElement('span');
-				separatorSpan.textContent = ', ';
-				argsSpan.appendChild(separatorSpan);
-			}
-		});
-		header.appendChild(argsSpan);
-
-		const closeBracketsSpan = document.createElement('span');
-		closeBracketsSpan.textContent = ')';
-		header.appendChild(closeBracketsSpan);
-	}
-	return header;
-};
-
-const createPropHeader = (typeName: string, doc?: DocMetadata) => {
-	const header = document.createElement('div');
-	if (doc) {
-		const typeNameSpan = document.createElement('span');
-		typeNameSpan.innerHTML = typeName.slice(0, 1).toUpperCase() + typeName.slice(1) + '.';
-
-		const propNameSpan = document.createElement('span');
-		propNameSpan.classList.add('autocomplete-info-name');
-		propNameSpan.innerText = doc.name;
-
-		const returnTypeSpan = document.createElement('span');
-		returnTypeSpan.innerHTML = ': ' + doc.returnType;
-
-		header.appendChild(typeNameSpan);
-		header.appendChild(propNameSpan);
-		header.appendChild(returnTypeSpan);
-	}
-	return header;
 };
 
 const objectOptions = (input: AutocompleteInput<IDataObject>): Completion[] => {
@@ -529,7 +339,6 @@ const objectOptions = (input: AutocompleteInput<IDataObject>): Completion[] => {
 			const infoKey = [name, key].join('.');
 			option.info = createCompletionOption({
 				name: key,
-				base,
 				doc: {
 					name: key,
 					returnType: getType(resolvedProp),
@@ -550,14 +359,14 @@ const objectOptions = (input: AutocompleteInput<IDataObject>): Completion[] => {
 		base === 'Math';
 
 	if (skipObjectExtensions) {
-		return sortCompletionsAlpha([...localKeys, ...natives({ base, typeName: 'object' })]);
+		return sortCompletionsAlpha([...localKeys, ...natives({ typeName: 'object' })]);
 	}
 
 	return applySections({
 		options: sortCompletionsAlpha([
 			...localKeys,
-			...natives({ base, typeName: 'object' }),
-			...extensions({ base, typeName: 'object' }),
+			...natives({ typeName: 'object' }),
+			...extensions({ typeName: 'object' }),
 		]),
 		recommended: OBJECT_RECOMMENDED_OPTIONS,
 		recommendedSection: RECOMMENDED_METHODS_SECTION,
@@ -640,10 +449,10 @@ const isUrl = (url: string): boolean => {
 };
 
 const stringOptions = (input: AutocompleteInput<string>): Completion[] => {
-	const { base, resolved, transformLabel } = input;
+	const { resolved, transformLabel } = input;
 	const options = sortCompletionsAlpha([
-		...natives({ typeName: 'string', base, transformLabel }),
-		...extensions({ typeName: 'string', base, includeHidden: false, transformLabel }),
+		...natives({ typeName: 'string', transformLabel }),
+		...extensions({ typeName: 'string', includeHidden: false, transformLabel }),
 	]);
 
 	if (validateFieldType('string', resolved, 'number').valid) {
@@ -713,20 +522,20 @@ const stringOptions = (input: AutocompleteInput<string>): Completion[] => {
 	});
 };
 
-const booleanOptions = (input: AutocompleteInput<boolean>): Completion[] => {
+const booleanOptions = (): Completion[] => {
 	return applySections({
 		options: sortCompletionsAlpha([
-			...natives({ typeName: 'boolean', base: input.base }),
-			...extensions({ typeName: 'boolean', base: input.base }),
+			...natives({ typeName: 'boolean' }),
+			...extensions({ typeName: 'boolean' }),
 		]),
 	});
 };
 
 const numberOptions = (input: AutocompleteInput<number>): Completion[] => {
-	const { base, resolved, transformLabel } = input;
+	const { resolved, transformLabel } = input;
 	const options = sortCompletionsAlpha([
-		...natives({ typeName: 'number', base, transformLabel }),
-		...extensions({ typeName: 'number', base, includeHidden: false, transformLabel }),
+		...natives({ typeName: 'number', transformLabel }),
+		...extensions({ typeName: 'number', includeHidden: false, transformLabel }),
 	]);
 	const ONLY_INTEGER = ['isEven()', 'isOdd()'];
 
@@ -775,24 +584,24 @@ const numberOptions = (input: AutocompleteInput<number>): Completion[] => {
 };
 
 const dateOptions = (input: AutocompleteInput<Date>): Completion[] => {
-	const { transformLabel, base } = input;
+	const { transformLabel } = input;
 	return applySections({
 		options: sortCompletionsAlpha([
-			...natives({ typeName: 'date', base, transformLabel }),
-			...extensions({ typeName: 'date', base, includeHidden: true, transformLabel }),
+			...natives({ typeName: 'date', transformLabel }),
+			...extensions({ typeName: 'date', includeHidden: true, transformLabel }),
 		]),
 		recommended: DATE_RECOMMENDED_OPTIONS,
 	});
 };
 
 const luxonOptions = (input: AutocompleteInput<DateTime>): Completion[] => {
-	const { transformLabel, base } = input;
+	const { transformLabel } = input;
 	return applySections({
 		options: sortCompletionsAlpha(
 			uniqBy(
 				[
-					...extensions({ typeName: 'date', base, includeHidden: false, transformLabel }),
-					...luxonInstanceOptions({ base, includeHidden: false, transformLabel }),
+					...extensions({ typeName: 'date', includeHidden: false, transformLabel }),
+					...luxonInstanceOptions({ includeHidden: false, transformLabel }),
 				],
 				(option) => option.label,
 			),
@@ -803,11 +612,11 @@ const luxonOptions = (input: AutocompleteInput<DateTime>): Completion[] => {
 };
 
 const arrayOptions = (input: AutocompleteInput<unknown[]>): Completion[] => {
-	const { base, resolved, transformLabel } = input;
+	const { resolved, transformLabel } = input;
 	const options = applySections({
 		options: sortCompletionsAlpha([
-			...natives({ typeName: 'array', base, transformLabel }),
-			...extensions({ typeName: 'array', base, includeHidden: false, transformLabel }),
+			...natives({ typeName: 'array', transformLabel }),
+			...extensions({ typeName: 'array', includeHidden: false, transformLabel }),
 		]),
 		recommended: ARRAY_RECOMMENDED_OPTIONS,
 		methodsSection: OTHER_SECTION,
@@ -832,13 +641,12 @@ function ensureKeyCanBeResolved(obj: IDataObject, key: string) {
 	}
 }
 
-export const variablesOptions = (base: string) => {
+export const variablesOptions = () => {
 	const environmentsStore = useEnvironmentsStore();
 	const variables = environmentsStore.variables;
 
 	return variables.map((variable) =>
 		createCompletionOption({
-			base,
 			name: variable.key,
 			doc: {
 				name: variable.key,
@@ -870,7 +678,6 @@ export const secretOptions = (base: string) => {
 		}
 		return Object.entries(resolved).map(([secret, value]) =>
 			createCompletionOption({
-				base,
 				name: secret,
 				doc: {
 					name: secret,
@@ -885,12 +692,11 @@ export const secretOptions = (base: string) => {
 	}
 };
 
-export const secretProvidersOptions = (base: string) => {
+export const secretProvidersOptions = () => {
 	const externalSecretsStore = useExternalSecretsStore();
 
 	return Object.keys(externalSecretsStore.secretsAsObject).map((provider) =>
 		createCompletionOption({
-			base,
 			name: provider,
 			doc: {
 				name: provider,
@@ -906,11 +712,9 @@ export const secretProvidersOptions = (base: string) => {
  * Methods and fields defined on a Luxon `DateTime` class instance.
  */
 export const luxonInstanceOptions = ({
-	base,
 	includeHidden = false,
 	transformLabel = (label) => label,
 }: {
-	base: string;
 	includeHidden?: boolean;
 	transformLabel?: (label: string) => string;
 }) => {
@@ -922,7 +726,6 @@ export const luxonInstanceOptions = ({
 		.map(([key, descriptor]) => {
 			const isFunction = typeof descriptor.value === 'function';
 			return createLuxonAutocompleteOption({
-				base,
 				name: key,
 				isFunction,
 				docs: luxonInstanceDocs,
@@ -937,7 +740,7 @@ export const luxonInstanceOptions = ({
 /**
  * Methods defined on a Luxon `DateTime` class.
  */
-export const luxonStaticOptions = (base: string) => {
+export const luxonStaticOptions = () => {
 	const SKIP = new Set(['prototype', 'name', 'length', 'invalid']);
 
 	return sortCompletionsAlpha(
@@ -945,7 +748,6 @@ export const luxonStaticOptions = (base: string) => {
 			.filter((key) => !SKIP.has(key) && !key.includes('_'))
 			.map((key) => {
 				return createLuxonAutocompleteOption({
-					base,
 					name: key,
 					isFunction: true,
 					docs: luxonStaticDocs,
@@ -958,7 +760,6 @@ export const luxonStaticOptions = (base: string) => {
 
 const createLuxonAutocompleteOption = ({
 	name,
-	base,
 	docs,
 	translations,
 	isFunction = false,
@@ -966,7 +767,6 @@ const createLuxonAutocompleteOption = ({
 	transformLabel = (label) => label,
 }: {
 	name: string;
-	base: string;
 	docs: NativeDoc;
 	translations: Record<string, string | undefined>;
 	isFunction?: boolean;
@@ -1006,7 +806,6 @@ const createLuxonAutocompleteOption = ({
 		}),
 	};
 	option.info = createCompletionOption({
-		base,
 		name,
 		isFunction,
 		// Add translated description

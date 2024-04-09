@@ -12,7 +12,12 @@ export type NativeDoc = {
 	functions: Record<string, { doc?: DocMetadata }>;
 };
 
-export type DocMetadataArgument = { name: string; type?: string; description?: string };
+export type DocMetadataArgument = {
+	name: string;
+	type?: string;
+	description?: string;
+	default?: unknown;
+};
 export type DocMetadataExample = {
 	subject: unknown;
 	args: string[];

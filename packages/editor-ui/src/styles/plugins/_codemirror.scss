@@ -90,11 +90,11 @@
 	}
 }
 
-.autocomplete-info-main {
+.autocomplete-info-container {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-2xs);
-	padding: var(--spacing-xs) var(--spacing-xs) var(--spacing-s) var(--spacing-xs);
+	gap: var(--spacing-s);
+	padding: var(--spacing-xs) var(--spacing-xs);
 }
 
 .ͼ2 .cm-tooltip.cm-completionInfo {
@@ -123,7 +123,6 @@
 		font-weight: var(--font-weight-bold);
 		font-family: var(--font-family-monospace);
 		line-height: var(--font-line-height-compact);
-		margin-bottom: var(--spacing-4xs);
 	}
 
 	.autocomplete-info-name {
@@ -134,13 +133,15 @@
 		color: var(--color-text-base);
 		font-weight: var(--font-weight-regular);
 		display: inline-block;
-		padding-left: var(--spacing-5xs);
-		padding-right: var(--spacing-5xs);
 	}
 
 	.autocomplete-info-description {
 		color: var(--color-text-dark);
 		font-size: var(--font-size-2xs);
+
+		.autocomplete-info-example {
+			margin-top: var(--spacing-3xs);
+		}
 
 		code {
 			color: var(--color-text-base);
@@ -160,7 +161,6 @@
 
 	.autocomplete-info-args {
 		list-style: none;
-		margin-top: var(--spacing-3xs);
 
 		li {
 			text-indent: calc(var(--spacing-2xs) * -1);
@@ -183,6 +183,7 @@
 	.autocomplete-info-arg-description {
 		color: var(--color-text-dark);
 		margin-left: var(--spacing-4xs);
+		font-size: var(--font-size-2xs);
 
 		code {
 			color: var(--color-text-base);
@@ -192,14 +193,7 @@
 		}
 	}
 
-	.autocomplete-info-examples-wrapper {
-		background-color: var(--color-background-light);
-	}
-
 	.autocomplete-info-examples {
-		border-top: var(--border-base);
-		padding: var(--spacing-xs);
-
 		pre {
 			line-height: 1;
 		}
@@ -209,7 +203,11 @@
 		}
 	}
 
-	.autocomplete-info-examples-title {
+	.autocomplete-info-example + .autocomplete-info-example {
+		margin-top: var(--spacing-2xs);
+	}
+
+	.autocomplete-info-section-title {
 		text-transform: uppercase;
 		color: var(--color-text-dark);
 		font-size: var(--font-size-3xs);
