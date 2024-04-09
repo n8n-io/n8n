@@ -119,7 +119,6 @@ import type { ICredentialsResponse, IUser } from '@/Interface';
 import type {
 	CredentialInformation,
 	ICredentialDataDecryptedObject,
-	ICredentialNodeAccess,
 	ICredentialsDecrypted,
 	ICredentialType,
 	INode,
@@ -165,10 +164,6 @@ import { isValidCredentialResponse, isCredentialModalState } from '@/utils/typeG
 import { isExpression, isTestableExpression } from '@/utils/expressions';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 
-interface NodeAccessMap {
-	[nodeType: string]: ICredentialNodeAccess | null;
-}
-
 export default defineComponent({
 	name: 'CredentialEdit',
 	components: {
@@ -212,7 +207,6 @@ export default defineComponent({
 			credentialName: '',
 			credentialData: {} as ICredentialDataDecryptedObject,
 			modalBus: createEventBus(),
-			nodeAccess: {} as NodeAccessMap,
 			isDeleting: false,
 			isSaving: false,
 			isTesting: false,
@@ -232,8 +226,6 @@ export default defineComponent({
 		this.requiredCredentials =
 			isCredentialModalState(this.uiStore.modals[CREDENTIAL_EDIT_MODAL_KEY]) &&
 			this.uiStore.modals[CREDENTIAL_EDIT_MODAL_KEY].showAuthSelector === true;
-
-		this.setupNodeAccess();
 
 		if (this.mode === 'new' && this.credentialTypeName) {
 			this.credentialName = await this.credentialsStore.getNewCredentialName({
@@ -765,7 +757,6 @@ export default defineComponent({
 				name: this.credentialName,
 				type: this.credentialTypeName!,
 				data: credentialData,
-				nodesAccess: [],
 			};
 
 			this.isRetesting = true;
@@ -817,7 +808,6 @@ export default defineComponent({
 				name: this.credentialName,
 				type: this.credentialTypeName!,
 				data: data as unknown as ICredentialDataDecryptedObject,
-				nodesAccess: [],
 				sharedWith,
 				ownedBy,
 			};
@@ -1091,7 +1081,6 @@ export default defineComponent({
 			if (credentialsForType) {
 				this.selectedCredential = credentialsForType.name;
 				this.resetCredentialData();
-				this.setupNodeAccess();
 				// Update current node auth type so credentials dropdown can be displayed properly
 				updateNodeAuthType(this.ndvStore.activeNode, type);
 				// Also update credential name but only if the default name is still used
@@ -1102,9 +1091,6 @@ export default defineComponent({
 					this.credentialName = newDefaultName;
 				}
 			}
-		},
-		setupNodeAccess(): void {
-			this.nodeAccess = {};
 		},
 		resetCredentialData(): void {
 			if (!this.credentialType) {
