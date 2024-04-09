@@ -1093,6 +1093,8 @@
 	"nodeSettings.latest": "Latest",
 	"nodeSettings.deprecated": "Deprecated",
 	"nodeSettings.latestVersion": "Latest version: {version}",
+	"nodeSettings.outputCleared.title": "Parameters changed",
+	"nodeSettings.outputCleared.message": "Order of parameters changed, outgoing connections were cleared",
 	"nodeSettings.nodeVersion": "{node} node version {version}",
 	"nodeView.addNode": "Add node",
 	"nodeView.openNodesPanel": "Open nodes panel",
