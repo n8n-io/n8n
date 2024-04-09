@@ -600,7 +600,7 @@ export const nodeBase = defineComponent({
 								nodeTypeData,
 								this.__getEndpointColor(NodeConnectionType.Main),
 							),
-							fill: 'var(--node-error-output-color)',
+							fill: 'var(--color-danger)',
 						},
 						cssClass: `dot-${type}-endpoint`,
 					};
