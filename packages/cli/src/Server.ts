@@ -418,7 +418,6 @@ export class Server extends AbstractServer {
 					(accept.includes('text/html') || accept.includes('*/*')) &&
 					!nonUIRoutesRegex.test(req.path)
 				) {
-					req.url = '/index.html';
 					res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
 					securityHeadersMiddleware(req, res, () => {
 						res.sendFile('index.html', { root: staticCacheDir, maxAge, lastModified: true });
