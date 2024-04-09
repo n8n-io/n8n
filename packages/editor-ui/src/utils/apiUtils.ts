@@ -1,8 +1,15 @@
-import type { AxiosRequestConfig, Method } from 'axios';
+import type { AxiosRequestConfig, Method, RawAxiosRequestHeaders } from 'axios';
 import axios from 'axios';
 import type { IDataObject } from 'n8n-workflow';
 import type { IExecutionFlattedResponse, IExecutionResponse, IRestApiContext } from '@/Interface';
 import { parse } from 'flatted';
+
+const BROWSER_ID_STORAGE_KEY = 'n8n-browserId';
+let browserId = localStorage.getItem(BROWSER_ID_STORAGE_KEY);
+if (!browserId && 'randomUUID' in crypto) {
+	browserId = crypto.randomUUID();
+	localStorage.setItem(BROWSER_ID_STORAGE_KEY, browserId);
+}
 
 export const NO_NETWORK_ERROR_CODE = 999;
 
@@ -62,7 +69,7 @@ export async function request(config: {
 	method: Method;
 	baseURL: string;
 	endpoint: string;
-	headers?: IDataObject;
+	headers?: RawAxiosRequestHeaders;
 	data?: IDataObject | IDataObject[];
 	withCredentials?: boolean;
 }) {
@@ -121,11 +128,15 @@ export async function makeRestApiRequest<T>(
 	endpoint: string,
 	data?: IDataObject | IDataObject[],
 ) {
+	const headers: RawAxiosRequestHeaders = { 'push-ref': context.pushRef };
+	if (browserId) {
+		headers['browser-id'] = browserId;
+	}
 	const response = await request({
 		method,
 		baseURL: context.baseUrl,
 		endpoint,
-		headers: { 'push-ref': context.pushRef },
+		headers,
 		data,
 	});
 
@@ -137,7 +148,7 @@ export async function get(
 	baseURL: string,
 	endpoint: string,
 	params?: IDataObject,
-	headers?: IDataObject,
+	headers?: RawAxiosRequestHeaders,
 ) {
 	return await request({ method: 'GET', baseURL, endpoint, headers, data: params });
 }
@@ -146,7 +157,7 @@ export async function post(
 	baseURL: string,
 	endpoint: string,
 	params?: IDataObject,
-	headers?: IDataObject,
+	headers?: RawAxiosRequestHeaders,
 ) {
 	return await request({ method: 'POST', baseURL, endpoint, headers, data: params });
 }

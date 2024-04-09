@@ -1,6 +1,8 @@
 <template>
 	<Modal
 		width="460px"
+		height="80%"
+		max-height="640px"
 		:title="
 			!showRecoveryCodes
 				? $locale.baseText('mfa.setup.step1.title')
@@ -274,6 +276,12 @@ export default defineComponent({
 </script>
 
 <style module lang="scss">
+.container {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+}
+
 .container > * {
 	overflow: visible;
 	margin-bottom: var(--spacing-s);
@@ -303,10 +311,9 @@ export default defineComponent({
 	text-align: center;
 }
 .recoveryCodesContainer {
-	height: 140px;
 	display: flex;
 	flex-direction: column;
-	background-color: var(--color-background-base);
+	background-color: var(--color-mfa-recovery-code-background);
 	text-align: center;
 	flex-wrap: nowrap;
 	justify-content: space-between;
@@ -316,14 +323,14 @@ export default defineComponent({
 	padding-bottom: var(--spacing-xs);
 	gap: var(--spacing-xs);
 	margin-bottom: var(--spacing-2xs);
-	overflow-y: scroll;
+	overflow-y: auto;
 }
 
 .recoveryCodesContainer span {
 	font-size: var(--font-size-s);
 	font-weight: var(--font-weight-regular);
 	line-height: var(--spacing-m);
-	color: #7d7d87;
+	color: var(--color-mfa-recovery-code-color);
 }
 
 .form:first-child span {
@@ -341,7 +348,7 @@ export default defineComponent({
 }
 
 .loseAccessText {
-	color: var(--color-danger);
+	color: var(--color-mfa-lose-access-text-color);
 }
 
 .error input {
@@ -361,9 +368,5 @@ export default defineComponent({
 
 .notice {
 	margin: 0;
-}
-
-.modalContent {
-	overflow: hidden;
 }
 </style>
