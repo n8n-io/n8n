@@ -62,7 +62,11 @@ Cypress.Commands.add('signinAsOwner', () => {
 });
 
 Cypress.Commands.add('signout', () => {
-	cy.request('POST', `${BACKEND_BASE_URL}/rest/logout`);
+	cy.request({
+		method: 'POST',
+		url: `${BACKEND_BASE_URL}/rest/logout`,
+		headers: { 'browser-id': localStorage.getItem('n8n-browserId') }
+	});
 	cy.getCookie(N8N_AUTH_COOKIE).should('not.exist');
 });
 

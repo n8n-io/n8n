@@ -16,6 +16,8 @@ import { UserRepository } from '@/databases/repositories/user.repository';
 import { badPasswords } from '../shared/testData';
 import { mockInstance } from '../../shared/mocking';
 
+const browserId = 'test-browser-id';
+
 describe('MeController', () => {
 	const externalHooks = mockInstance(ExternalHooks);
 	const internalHooks = mockInstance(InternalHooks);
@@ -47,7 +49,7 @@ describe('MeController', () => {
 				role: 'global:owner',
 			});
 			const reqBody = { email: 'valid@email.com', firstName: 'John', lastName: 'Potato' };
-			const req = mock<MeRequest.UserUpdate>({ user, body: reqBody });
+			const req = mock<MeRequest.UserUpdate>({ user, body: reqBody, browserId });
 			const res = mock<Response>();
 			userRepository.findOneOrFail.mockResolvedValue(user);
 			jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
@@ -88,7 +90,7 @@ describe('MeController', () => {
 				role: 'global:owner',
 			});
 			const reqBody = { email: 'valid@email.com', firstName: 'John', lastName: 'Potato' };
-			const req = mock<MeRequest.UserUpdate>({ user, body: reqBody });
+			const req = mock<MeRequest.UserUpdate>({ user, body: reqBody, browserId });
 			const res = mock<Response>();
 			userRepository.findOneOrFail.mockResolvedValue(user);
 			jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
@@ -160,6 +162,7 @@ describe('MeController', () => {
 					const req = mock<MeRequest.Password>({
 						user: mock({ password: passwordHash }),
 						body: { currentPassword: 'old_password', newPassword },
+						browserId,
 					});
 					await expect(controller.updatePassword(req, mock())).rejects.toThrowError(
 						new BadRequestError(errorMessage),
@@ -172,6 +175,7 @@ describe('MeController', () => {
 			const req = mock<MeRequest.Password>({
 				user: mock({ password: passwordHash }),
 				body: { currentPassword: 'old_password', newPassword: 'NewPassword123' },
+				browserId,
 			});
 			const res = mock<Response>();
 			userRepository.save.calledWith(req.user).mockResolvedValue(req.user);
