@@ -26,6 +26,7 @@ const ForgotMyPasswordView = async () => await import('./views/ForgotMyPasswordV
 const MainHeader = async () => await import('@/components/MainHeader/MainHeader.vue');
 const MainSidebar = async () => await import('@/components/MainSidebar.vue');
 const NodeView = async () => await import('@/views/NodeView.vue');
+const NodeViewV2 = async () => await import('@/views/NodeView.v2.vue');
 const WorkflowExecutionsList = async () =>
 	await import('@/components/ExecutionsView/ExecutionsList.vue');
 const ExecutionsLandingPage = async () =>
@@ -386,6 +387,18 @@ export const routes = [
 	{
 		path: '/workflow',
 		redirect: '/workflow/new',
+	},
+	{
+		path: '/workflow-v2/:workflowId',
+		name: VIEWS.WORKFLOW,
+		components: {
+			default: NodeViewV2,
+			header: MainHeader,
+			sidebar: MainSidebar,
+		},
+		meta: {
+			middleware: ['authenticated'],
+		},
 	},
 	{
 		path: '/signin',

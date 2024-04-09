@@ -1,4 +1,4 @@
-import type { IExecutionsCurrentSummaryExtended, IRestApiContext } from '@/Interface';
+import type { IExecutionsCurrentSummaryExtended, IRestApiContext, IWorkflowDb } from '@/Interface';
 import type { ExecutionFilters, ExecutionOptions, IDataObject } from 'n8n-workflow';
 import { makeRestApiRequest } from '@/utils/apiUtils';
 
@@ -14,7 +14,7 @@ export async function getNewWorkflow(context: IRestApiContext, name?: string) {
 export async function getWorkflow(context: IRestApiContext, id: string, filter?: object) {
 	const sendData = filter ? { filter } : undefined;
 
-	return await makeRestApiRequest(context, 'GET', `/workflows/${id}`, sendData);
+	return await makeRestApiRequest<IWorkflowDb>(context, 'GET', `/workflows/${id}`, sendData);
 }
 
 export async function getWorkflows(context: IRestApiContext, filter?: object) {

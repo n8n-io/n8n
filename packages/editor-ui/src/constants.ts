@@ -595,6 +595,7 @@ export const enum STORES {
 	UI = 'ui',
 	USERS = 'users',
 	WORKFLOWS = 'workflows',
+	WORKFLOWS_V2 = 'workflowsV2',
 	WORKFLOWS_EE = 'workflowsEE',
 	NDV = 'ndv',
 	TEMPLATES = 'templates',
