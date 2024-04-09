@@ -15,7 +15,6 @@ const cssClasses = {
 	validResolvable: 'cm-valid-resolvable',
 	invalidResolvable: 'cm-invalid-resolvable',
 	pendingResolvable: 'cm-pending-resolvable',
-	brokenResolvable: 'cm-broken-resolvable',
 	plaintext: 'cm-plaintext',
 };
 
@@ -128,10 +127,6 @@ const resolvableStyle = syntaxHighlighting(
 		{
 			tag: tags.content,
 			class: cssClasses.plaintext,
-		},
-		{
-			tag: tags.className,
-			class: cssClasses.brokenResolvable,
 		},
 		/**
 		 * CSS classes for valid and invalid resolvables
