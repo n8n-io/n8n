@@ -7,6 +7,9 @@ export function start(bench: Bench) {
 		const args: string[] = [];
 		const config = new Config({ root: __dirname });
 
-		await new Start(args, config).run();
+		const startCommand = new Start(args, config);
+
+		await startCommand.init();
+		await startCommand.run();
 	});
 }
