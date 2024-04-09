@@ -78,8 +78,11 @@ export async function request(config: {
 		method,
 		url: endpoint,
 		baseURL,
-		headers,
+		headers: headers ?? {},
 	};
+	if (baseURL.startsWith('/') && browserId) {
+		options.headers!['browser-id'] = browserId;
+	}
 	if (
 		import.meta.env.NODE_ENV !== 'production' &&
 		!baseURL.includes('api.n8n.io') &&
@@ -128,15 +131,11 @@ export async function makeRestApiRequest<T>(
 	endpoint: string,
 	data?: IDataObject | IDataObject[],
 ) {
-	const headers: RawAxiosRequestHeaders = { 'push-ref': context.pushRef };
-	if (browserId) {
-		headers['browser-id'] = browserId;
-	}
 	const response = await request({
 		method,
 		baseURL: context.baseUrl,
 		endpoint,
-		headers,
+		headers: { 'push-ref': context.pushRef },
 		data,
 	});
 
