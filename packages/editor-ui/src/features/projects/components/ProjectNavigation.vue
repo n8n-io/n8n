@@ -117,7 +117,7 @@ const displayProjects = computed(() => {
 				data-test-id="project-home-menu-item"
 			/>
 		</ElMenu>
-		<hr class="mt-m mb-m" />
+		<hr v-if="displayProjects.length || canCreateProjects" class="mt-m mb-m" />
 		<ElMenu v-if="displayProjects.length" :collapse="props.collapsed" :class="$style.projectItems">
 			<N8nMenuItem
 				v-for="project in displayProjects"
@@ -139,7 +139,7 @@ const displayProjects = computed(() => {
 				data-test-id="add-project-menu-item"
 			/>
 		</ElMenu>
-		<hr class="mt-m mb-m" />
+		<hr v-if="displayProjects.length || canCreateProjects" class="mt-m mb-m" />
 	</div>
 </template>
 
