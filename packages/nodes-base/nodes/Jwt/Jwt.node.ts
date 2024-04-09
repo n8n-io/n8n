@@ -393,7 +393,7 @@ export class Jwt implements INodeType {
 					if (credentials.keyType === 'passphrase') {
 						secretOrPublicKey = credentials.secret;
 					} else {
-						secretOrPublicKey = formatPrivateKey(credentials.publicKey);
+						secretOrPublicKey = formatPrivateKey(credentials.publicKey, true);
 					}
 
 					const { ignoreExpiration, ignoreNotBefore, clockTolerance, complete } = options;

@@ -12,7 +12,7 @@
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.jwt/"
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.jwt/"
 			}
 		]
 	}
