@@ -1,5 +1,5 @@
 import type { IRestApiContext } from '@/Interface';
-import { get, post, patch, makeRestApiRequest } from '@/utils/apiUtils';
+import { makeRestApiRequest } from '@/utils/apiUtils';
 import type {
 	Project,
 	ProjectCreateRequest,
@@ -8,33 +8,28 @@ import type {
 } from '@/features/projects/projects.types';
 
 export const getAllProjects = async (context: IRestApiContext): Promise<ProjectListItem[]> => {
-	const { data } = await get(context.baseUrl, '/projects');
-	return data;
+	return await makeRestApiRequest(context, 'GET', '/projects');
 };
 
 export const getMyProjects = async (context: IRestApiContext): Promise<ProjectListItem[]> => {
-	const { data } = await get(context.baseUrl, '/projects/my-projects', {
+	return await makeRestApiRequest(context, 'GET', '/projects/my-projects', {
 		includeScopes: true,
 	});
-	return data;
 };
 
 export const getPersonalProject = async (context: IRestApiContext): Promise<Project> => {
-	const { data } = await get(context.baseUrl, '/projects/personal');
-	return data;
+	return await makeRestApiRequest(context, 'GET', '/projects/personal');
 };
 
 export const getProject = async (context: IRestApiContext, id: string): Promise<Project> => {
-	const { data } = await get(context.baseUrl, `/projects/${id}`);
-	return data;
+	return await makeRestApiRequest(context, 'GET', `/projects/${id}`);
 };
 
 export const createProject = async (
 	context: IRestApiContext,
 	req: ProjectCreateRequest,
 ): Promise<Project> => {
-	const { data } = await post(context.baseUrl, '/projects', req);
-	return data;
+	return await makeRestApiRequest(context, 'POST', '/projects', req);
 };
 
 export const updateProject = async (
@@ -42,7 +37,7 @@ export const updateProject = async (
 	req: ProjectUpdateRequest,
 ): Promise<void> => {
 	const { id, name, relations } = req;
-	await patch(context.baseUrl, `/projects/${id}`, { name, relations });
+	await makeRestApiRequest(context, 'PATCH', `/projects/${id}`, { name, relations });
 };
 
 export const deleteProject = async (
