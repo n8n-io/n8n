@@ -574,6 +574,7 @@
       "dist/nodes/Jira/Jira.node.js",
       "dist/nodes/Jira/JiraTrigger.node.js",
       "dist/nodes/JotForm/JotFormTrigger.node.js",
+      "dist/nodes/Jwt/Jwt.node.js",
       "dist/nodes/Kafka/Kafka.node.js",
       "dist/nodes/Kafka/KafkaTrigger.node.js",
       "dist/nodes/Keap/Keap.node.js",

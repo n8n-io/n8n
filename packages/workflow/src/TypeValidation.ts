@@ -158,6 +158,20 @@ export const tryToParseUrl = (value: unknown): string => {
 	return String(value);
 };
 
+export const tryToParseJwt = (value: unknown): string => {
+	const error = new ApplicationError(`The value "${String(value)}" is not a valid JWT token.`, {
+		extra: { value },
+	});
+
+	if (!value) throw error;
+
+	const jwtPattern = /^[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_.+/=]*$/;
+
+	if (!jwtPattern.test(String(value))) throw error;
+
+	return String(value);
+};
+
 type ValidateFieldTypeOptions = Partial<{
 	valueOptions: INodePropertyOptions[];
 	strict: boolean;
@@ -277,6 +291,16 @@ export const validateFieldType = (
 				return { valid: true, newValue: tryToParseUrl(value) };
 			} catch (e) {
 				return { valid: false, errorMessage: defaultErrorMessage };
+			}
+		}
+		case 'jwt': {
+			try {
+				return { valid: true, newValue: tryToParseJwt(value) };
+			} catch (e) {
+				return {
+					valid: false,
+					errorMessage: 'Value is not a valid JWT token',
+				};
 			}
 		}
 		default: {
