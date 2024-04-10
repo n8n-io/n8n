@@ -34,6 +34,7 @@ import type {
 	WorkflowExecuteMode,
 	CloseFunction,
 	StartNodeData,
+	ExecutionOrderVersion,
 } from 'n8n-workflow';
 import {
 	LoggerProxy as Logger,
@@ -44,13 +45,21 @@ import {
 } from 'n8n-workflow';
 import get from 'lodash/get';
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
+import { AbstractExecutionOrder } from './ExecutionOrder/AbstractExecutionOrder';
+import { V0ExecutionOrder } from './ExecutionOrder/V0ExecutionOrder';
+import { V1ExecutionOrder } from './ExecutionOrder/V1ExecutionOrder';
+
+const executionOrders: Record<ExecutionOrderVersion, new (w: Workflow) => AbstractExecutionOrder> = {
+	v0: V0ExecutionOrder,
+	v1: V1ExecutionOrder,
+}
 
 export class WorkflowExecute {
 	private status: ExecutionStatus = 'new';
 
 	private readonly abortController = new AbortController();
 
-	private readonly forceInputNodeExecution = this.workflow.settings.executionOrder !== 'v1';
+	private readonly executionOrder = new executionOrders[this.workflow.settings.executionOrder || 'v1'](this.workflow);
 
 	constructor(
 		private readonly workflow: Workflow,
@@ -363,6 +372,99 @@ export class WorkflowExecute {
 		}
 	}
 
+	// TODO: move this into ExecutionOrder classes
+	/** Add the nodes to which the current node has an output connection to that they can be executed next */
+	private addNextNodes(executionNode: INode, runIndex: number, nodeSuccessData?: INodeExecutionData[][] | null) {
+		const { workflow } = this;
+		if (workflow.connectionsBySourceNode.hasOwnProperty(executionNode.name)) {
+			if (workflow.connectionsBySourceNode[executionNode.name].hasOwnProperty('main')) {
+				let outputIndex: string;
+				let connectionData: IConnection;
+				// Iterate over all the outputs
+
+				const nodesToAdd: Array<{
+					position: [number, number];
+					connection: IConnection;
+					outputIndex: number;
+				}> = [];
+
+				// Add the nodes to be executed
+				const outputConnections = workflow.connectionsBySourceNode[executionNode.name].main;
+				// eslint-disable-next-line @typescript-eslint/no-for-in-array
+				for (outputIndex in outputConnections) {
+					if (!outputConnections.hasOwnProperty(outputIndex)) {
+						continue;
+					}
+
+					// Iterate over all the different connections of this output
+					for (connectionData of outputConnections[outputIndex]) {
+						if (!workflow.nodes.hasOwnProperty(connectionData.node)) {
+							throw new ApplicationError('Destination node not found', {
+								extra: {
+									sourceNodeName: executionNode.name,
+									destinationNodeName: connectionData.node,
+								},
+							});
+						}
+
+						if (
+							nodeSuccessData![outputIndex] &&
+							(nodeSuccessData![outputIndex].length !== 0 ||
+								(connectionData.index > 0 && this.executionOrder.forceInputNodeExecution))
+						) {
+							// Add the node only if it did execute or if connected to second "optional" input
+							if (workflow.settings.executionOrder === 'v1') {
+								const nodeToAdd = workflow.getNode(connectionData.node);
+								nodesToAdd.push({
+									position: nodeToAdd?.position || [0, 0],
+									connection: connectionData,
+									outputIndex: parseInt(outputIndex, 10),
+								});
+							} else {
+								this.addNodeToBeExecuted(
+									connectionData,
+									parseInt(outputIndex, 10),
+									executionNode.name,
+									nodeSuccessData!,
+									runIndex,
+								);
+							}
+						}
+					}
+				}
+
+				if (workflow.settings.executionOrder === 'v1') {
+					// Always execute the node that is more to the top-left first
+					nodesToAdd.sort((a, b) => {
+						if (a.position[1] < b.position[1]) {
+							return 1;
+						}
+						if (a.position[1] > b.position[1]) {
+							return -1;
+						}
+
+						if (a.position[0] > b.position[0]) {
+							return -1;
+						}
+
+						return 0;
+					});
+
+					for (const nodeData of nodesToAdd) {
+						this.addNodeToBeExecuted(
+							nodeData.connection,
+							nodeData.outputIndex,
+							executionNode.name,
+							nodeSuccessData!,
+							runIndex,
+						);
+					}
+				}
+			}
+		}
+	}
+
+	// TODO: move this into ExecutionOrder classes
 	// eslint-disable-next-line complexity
 	private addNodeToBeExecuted(
 		connectionData: IConnection,
@@ -371,9 +473,9 @@ export class WorkflowExecute {
 		nodeSuccessData: INodeExecutionData[][],
 		runIndex: number,
 	): void {
-		const { workflow, forceInputNodeExecution } = this;
+		const { workflow } = this;
 		let stillDataMissing = false;
-		const enqueueFn = workflow.settings.executionOrder === 'v1' ? 'unshift' : 'push';
+		const { enqueueFn } = this.executionOrder;
 		let waitingNodeIndex: number | undefined;
 
 		// Check if node has multiple inputs as then we have to wait for all input data
@@ -584,7 +686,7 @@ export class WorkflowExecute {
 							continue;
 						}
 
-						if (!forceInputNodeExecution) {
+						if (!this.executionOrder.forceInputNodeExecution) {
 							// Do not automatically follow all incoming nodes and force them
 							// to execute
 							continue;
@@ -740,14 +842,13 @@ export class WorkflowExecute {
 
 	/**
 	 * Runs the given execution data.
-	 *
 	 */
 	// IMPORTANT: Do not add "async" to this function, it will then convert the
 	//            PCancelable to a regular Promise and does so not allow canceling
 	//            active executions anymore
 	// eslint-disable-next-line @typescript-eslint/promise-function-async
 	processRunExecutionData(): PCancelable<IRun> {
-		const { workflow, forceInputNodeExecution } = this;
+		const { workflow } = this;
 		Logger.verbose('Workflow execution started', { workflowId: workflow.id });
 
 		const startedAt = new Date();
@@ -957,7 +1058,7 @@ export class WorkflowExecute {
 									continue executionLoop;
 								}
 
-								if (forceInputNodeExecution) {
+								if (this.executionOrder.forceInputNodeExecution) {
 									// Check if it has the data for all the inputs
 									// The most nodes just have one but merge node for example has two and data
 									// of both inputs has to be available to be able to process the node.
@@ -1372,94 +1473,7 @@ export class WorkflowExecute {
 						continue;
 					}
 
-					// Add the nodes to which the current node has an output connection to that they can
-					// be executed next
-					if (workflow.connectionsBySourceNode.hasOwnProperty(executionNode.name)) {
-						if (workflow.connectionsBySourceNode[executionNode.name].hasOwnProperty('main')) {
-							let outputIndex: string;
-							let connectionData: IConnection;
-							// Iterate over all the outputs
-
-							const nodesToAdd: Array<{
-								position: [number, number];
-								connection: IConnection;
-								outputIndex: number;
-							}> = [];
-
-							// Add the nodes to be executed
-							const outputConnections = workflow.connectionsBySourceNode[executionNode.name].main;
-							// eslint-disable-next-line @typescript-eslint/no-for-in-array
-							for (outputIndex in outputConnections) {
-								if (!outputConnections.hasOwnProperty(outputIndex)) {
-									continue;
-								}
-
-								// Iterate over all the different connections of this output
-								for (connectionData of outputConnections[outputIndex]) {
-									if (!workflow.nodes.hasOwnProperty(connectionData.node)) {
-										throw new ApplicationError('Destination node not found', {
-											extra: {
-												sourceNodeName: executionNode.name,
-												destinationNodeName: connectionData.node,
-											},
-										});
-									}
-
-									if (
-										nodeSuccessData![outputIndex] &&
-										(nodeSuccessData![outputIndex].length !== 0 ||
-											(connectionData.index > 0 && forceInputNodeExecution))
-									) {
-										// Add the node only if it did execute or if connected to second "optional" input
-										if (workflow.settings.executionOrder === 'v1') {
-											const nodeToAdd = workflow.getNode(connectionData.node);
-											nodesToAdd.push({
-												position: nodeToAdd?.position || [0, 0],
-												connection: connectionData,
-												outputIndex: parseInt(outputIndex, 10),
-											});
-										} else {
-											this.addNodeToBeExecuted(
-												connectionData,
-												parseInt(outputIndex, 10),
-												executionNode.name,
-												nodeSuccessData!,
-												runIndex,
-											);
-										}
-									}
-								}
-							}
-
-							if (workflow.settings.executionOrder === 'v1') {
-								// Always execute the node that is more to the top-left first
-								nodesToAdd.sort((a, b) => {
-									if (a.position[1] < b.position[1]) {
-										return 1;
-									}
-									if (a.position[1] > b.position[1]) {
-										return -1;
-									}
-
-									if (a.position[0] > b.position[0]) {
-										return -1;
-									}
-
-									return 0;
-								});
-
-								for (const nodeData of nodesToAdd) {
-									this.addNodeToBeExecuted(
-										nodeData.connection,
-										nodeData.outputIndex,
-										executionNode.name,
-										nodeSuccessData!,
-										runIndex,
-									);
-								}
-							}
-						}
-					}
+					this.addNextNodes(executionNode, runIndex, nodeSuccessData)
 
 					// If we got here, it means that we did not stop executing from manual executions / destination.
 					// Execute hooks now to make sure that all hooks are executed properly
