@@ -50,6 +50,8 @@ export class WorkflowExecute {
 
 	private readonly abortController = new AbortController();
 
+	private readonly forceInputNodeExecution = this.workflow.settings.executionOrder !== 'v1';
+
 	constructor(
 		private readonly workflow: Workflow,
 		private readonly additionalData: IWorkflowExecuteAdditionalData,
@@ -138,10 +140,6 @@ export class WorkflowExecute {
 		};
 
 		return this.processRunExecutionData();
-	}
-
-	forceInputNodeExecution(): boolean {
-		return this.workflow.settings.executionOrder !== 'v1';
 	}
 
 	/**
@@ -378,7 +376,7 @@ export class WorkflowExecute {
 		nodeSuccessData: INodeExecutionData[][],
 		runIndex: number,
 	): void {
-		const { workflow } = this;
+		const { workflow, forceInputNodeExecution } = this;
 		let stillDataMissing = false;
 		const enqueueFn = workflow.settings.executionOrder === 'v1' ? 'unshift' : 'push';
 		let waitingNodeIndex: number | undefined;
@@ -555,9 +553,6 @@ export class WorkflowExecute {
 				// checked. So we have to go through all the inputs and check if they
 				// are already on the list to be processed.
 				// If that is not the case add it.
-
-				const forceInputNodeExecution = this.forceInputNodeExecution();
-
 				for (
 					let inputIndex = 0;
 					inputIndex < workflow.connectionsByDestinationNode[connectionData.node].main.length;
@@ -772,11 +767,10 @@ export class WorkflowExecute {
 	//            active executions anymore
 	// eslint-disable-next-line @typescript-eslint/promise-function-async
 	processRunExecutionData(): PCancelable<IRun> {
-		const { workflow } = this;
+		const { workflow, forceInputNodeExecution } = this;
 		Logger.verbose('Workflow execution started', { workflowId: workflow.id });
 
 		const startedAt = new Date();
-		const forceInputNodeExecution = this.forceInputNodeExecution();
 
 		this.status = 'running';
 
