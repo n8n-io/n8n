@@ -1360,7 +1360,7 @@ export const schema = {
 			model: {
 				doc: 'OpenAI model to use',
 				format: String,
-				default: 'gpt-4',
+				default: 'gpt-4-turbo',
 				env: 'N8N_AI_OPENAI_MODEL',
 			},
 		},
