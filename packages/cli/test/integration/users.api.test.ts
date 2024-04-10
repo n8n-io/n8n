@@ -25,6 +25,7 @@ import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { createTeamProject, getPersonalProject, linkUserToProject } from './shared/db/projects';
 import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
+import { CacheService } from '@/services/cache/cache.service';
 
 mockInstance(ExecutionService);
 
@@ -427,6 +428,8 @@ describe('DELETE /users/:id', () => {
 			getPersonalProject(transferee),
 		]);
 
+		const deleteSpy = jest.spyOn(Container.get(CacheService), 'deleteMany');
+
 		//
 		// ACT
 		//
@@ -438,6 +441,13 @@ describe('DELETE /users/:id', () => {
 		//
 		// ASSERT
 		//
+
+		expect(deleteSpy).toBeCalledWith([
+			`credential-can-use-secrets:${sharedByTransfereeCredential.id}`,
+			`credential-can-use-secrets:${ownedCredential.id}`,
+		]);
+		deleteSpy.mockClear();
+
 		const userRepository = Container.get(UserRepository);
 		const projectRepository = Container.get(ProjectRepository);
 		const projectRelationRepository = Container.get(ProjectRelationRepository);

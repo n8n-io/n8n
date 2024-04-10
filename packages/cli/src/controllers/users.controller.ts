@@ -30,6 +30,7 @@ import { Project } from '@/databases/entities/Project';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { In } from '@n8n/typeorm';
+import { ProjectService } from '@/services/project.service';
 
 @RestController('/users')
 export class UsersController {
@@ -45,6 +46,7 @@ export class UsersController {
 		private readonly projectRepository: ProjectRepository,
 		private readonly workflowService: WorkflowService,
 		private readonly credentialsService: CredentialsService,
+		private readonly projectService: ProjectService,
 	) {}
 
 	static ERROR_MESSAGES = {
@@ -295,6 +297,10 @@ export class UsersController {
 					),
 				]);
 			});
+
+			await this.projectService.clearCredentialCanUseExternalSecretsCache(
+				transfereePersonalProject.id,
+			);
 		}
 
 		const [ownedSharedWorkflows, ownedSharedCredentials] = await Promise.all([
