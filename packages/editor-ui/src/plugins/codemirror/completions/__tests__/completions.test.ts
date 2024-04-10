@@ -552,12 +552,32 @@ describe('Resolution-based completions', () => {
 
 			const found = completions('{{ $json.| }}');
 			if (!found) throw new Error('Expected to find completions');
-			expect(
-				found.find((completion) => completion.label === 'Key with spaces'),
-			).not.toBeUndefined();
-			expect(
-				found.find((completion) => completion.label === 'Key with spaces and \'quotes"'),
-			).not.toBeUndefined();
+			expect(found).toContainEqual(
+				expect.objectContaining({
+					label: 'Key with spaces',
+					apply: utils.applyBracketAccessCompletion,
+				}),
+			);
+			expect(found).toContainEqual(
+				expect.objectContaining({
+					label: 'Key with spaces and \'quotes"',
+					apply: utils.applyBracketAccessCompletion,
+				}),
+			);
+		});
+
+		test('should escape keys with quotes', () => {
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue({
+				'Key with spaces and \'quotes"': 1,
+			});
+
+			const found = completions('{{ $json[| }}');
+			if (!found) throw new Error('Expected to find completions');
+			expect(found).toContainEqual(
+				expect.objectContaining({
+					label: "'Key with spaces and \\'quotes\"']",
+				}),
+			);
 		});
 	});
 
