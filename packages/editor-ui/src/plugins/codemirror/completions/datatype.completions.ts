@@ -585,13 +585,9 @@ const numberOptions = (input: AutocompleteInput<number>): Completion[] => {
 
 const dateOptions = (input: AutocompleteInput<Date>): Completion[] => {
 	const { transformLabel } = input;
-	return applySections({
-		options: sortCompletionsAlpha([
-			...natives({ typeName: 'date', transformLabel }),
-			...extensions({ typeName: 'date', includeHidden: true, transformLabel }),
-		]),
-		recommended: DATE_RECOMMENDED_OPTIONS,
-	});
+	return extensions({ typeName: 'date', includeHidden: true, transformLabel }).filter(
+		(ext) => ext.label === 'toDateTime()',
+	);
 };
 
 const luxonOptions = (input: AutocompleteInput<DateTime>): Completion[] => {

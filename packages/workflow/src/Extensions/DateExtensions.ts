@@ -304,6 +304,7 @@ isBetween.doc = {
 
 isInLast.doc = {
 	name: 'isInLast',
+	hidden: true,
 	description: 'Checks if a Date is within a given time period. Default unit is `minute`.',
 	section: 'query',
 	returnType: 'boolean',

@@ -53,6 +53,7 @@ export const arrayMethods: NativeDoc = {
 		findIndex: {
 			doc: {
 				name: 'findIndex',
+				hidden: true,
 				description:
 					'Returns the index of the first element in an array that passes the test `fn`. If none are found, -1 is returned.',
 				docURL:
@@ -64,6 +65,7 @@ export const arrayMethods: NativeDoc = {
 		findLast: {
 			doc: {
 				name: 'findLast',
+				hidden: true,
 				description: 'Returns the value of the last element that passes the test `fn`.',
 				docURL:
 					'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/findLast',
@@ -74,6 +76,7 @@ export const arrayMethods: NativeDoc = {
 		findLastIndex: {
 			doc: {
 				name: 'findLastIndex',
+				hidden: true,
 				description:
 					'Returns the index of the last element that satisfies the provided testing function. If none are found, -1 is returned.',
 				docURL:
@@ -183,6 +186,7 @@ export const arrayMethods: NativeDoc = {
 				docURL:
 					'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/splice',
 				returnType: 'Array',
+				hidden: true,
 				args: [
 					{ name: 'start', type: 'number' },
 					{ name: 'deleteCount?', type: 'number' },
@@ -195,10 +199,21 @@ export const arrayMethods: NativeDoc = {
 		toString: {
 			doc: {
 				name: 'toString',
+				hidden: true,
 				description: 'Returns a string representing the specified array and its elements.',
 				docURL:
 					'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/toString',
 				returnType: 'string',
+			},
+		},
+		toSpliced: {
+			doc: {
+				name: 'toSpliced',
+				description:
+					'Returns a new array with some elements removed and/or replaced at a given index. <code>toSpliced()</code> is the copying version of the <code>splice()</code> method',
+				docURL:
+					'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/toSpliced',
+				returnType: 'Array',
 			},
 		},
 	},

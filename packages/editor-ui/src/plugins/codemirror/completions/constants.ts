@@ -143,7 +143,6 @@ export const STRING_RECOMMENDED_OPTIONS = [
 	'length',
 ];
 
-export const DATE_RECOMMENDED_OPTIONS = ['format()', 'minus()', 'plus()', 'extract()'];
 export const LUXON_RECOMMENDED_OPTIONS = ['format()', 'minus()', 'plus()', 'diff()', 'extract()'];
 export const OBJECT_RECOMMENDED_OPTIONS = ['keys()', 'values()', 'isEmpty()', 'hasField()'];
 export const ARRAY_RECOMMENDED_OPTIONS = ['length', 'last()', 'includes()', 'map()', 'filter()'];
