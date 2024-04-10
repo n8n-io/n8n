@@ -26,6 +26,7 @@ import { ProjectRepository } from '@/databases/repositories/project.repository';
 import { createTeamProject, getPersonalProject, linkUserToProject } from './shared/db/projects';
 import { ProjectRelationRepository } from '@/databases/repositories/projectRelation.repository';
 import { CacheService } from '@/services/cache/cache.service';
+import { v4 as uuid } from 'uuid';
 
 mockInstance(ExecutionService);
 
@@ -553,7 +554,7 @@ describe('DELETE /users/:id', () => {
 	});
 
 	test('should fail to delete a user that does not exist', async () => {
-		await ownerAgent.delete('/users/foobar').query({ transferId: '' }).expect(404);
+		await ownerAgent.delete(`/users/${uuid()}`).query({ transferId: '' }).expect(404);
 	});
 
 	test('should fail to transfer to a project that does not exist', async () => {

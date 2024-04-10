@@ -115,6 +115,7 @@ const STATUS_CODE_MESSAGES: IStatusCodeMessages = {
 export class NodeApiError extends NodeError {
 	httpCode: string | null;
 
+	// eslint-disable-next-line complexity
 	constructor(
 		node: INode,
 		errorResponse: JsonObject,

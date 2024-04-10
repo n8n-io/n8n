@@ -166,6 +166,7 @@ export class CredentialsTester {
 		return undefined;
 	}
 
+	// eslint-disable-next-line complexity
 	async testCredentials(
 		user: User,
 		credentialType: string,

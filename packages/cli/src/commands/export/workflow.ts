@@ -41,6 +41,7 @@ export class ExportWorkflowsCommand extends BaseCommand {
 		}),
 	};
 
+	// eslint-disable-next-line complexity
 	async run() {
 		const { flags } = await this.parse(ExportWorkflowsCommand);
 

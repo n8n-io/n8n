@@ -894,15 +894,6 @@ export default defineComponent({
 				this.showError(error, this.i18n.baseText('executionsList.showError.stopExecution.title'));
 			}
 		},
-		isExecutionRetriable(execution: ExecutionSummary): boolean {
-			return (
-				execution.stoppedAt !== undefined &&
-				!execution.finished &&
-				execution.retryOf === undefined &&
-				execution.retrySuccessId === undefined &&
-				!execution.waitTill
-			);
-		},
 		async deleteExecution(execution: ExecutionSummary) {
 			this.isDataLoading = true;
 			try {
@@ -1160,6 +1151,7 @@ export default defineComponent({
 			background: var(--execution-card-border-waiting);
 		}
 
+		&.canceled td:first-child::before,
 		&.unknown td:first-child::before {
 			background: var(--execution-card-border-unknown);
 		}

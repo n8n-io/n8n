@@ -28,7 +28,7 @@ const options = computed(() => {
 					name: VIEWS.PROJECTS_CREDENTIALS,
 					params: { projectId },
 				},
-		  }
+			}
 		: {
 				workflows: {
 					name: VIEWS.WORKFLOWS,
@@ -36,7 +36,7 @@ const options = computed(() => {
 				credentials: {
 					name: VIEWS.CREDENTIALS,
 				},
-		  };
+			};
 	const tabs = [
 		{
 			label: locale.baseText('mainSidebar.workflows'),

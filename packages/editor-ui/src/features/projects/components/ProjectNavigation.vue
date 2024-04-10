@@ -117,8 +117,8 @@ const displayProjects = computed(() => {
 				data-test-id="project-home-menu-item"
 			/>
 		</ElMenu>
-		<hr class="mt-m mb-m" />
-		<ElMenu :collapse="props.collapsed" :class="$style.projectItems">
+		<hr v-if="displayProjects.length || canCreateProjects" class="mt-m mb-m" />
+		<ElMenu v-if="displayProjects.length" :collapse="props.collapsed" :class="$style.projectItems">
 			<N8nMenuItem
 				v-for="project in displayProjects"
 				:key="project.id"
@@ -130,7 +130,7 @@ const displayProjects = computed(() => {
 				data-test-id="project-menu-item"
 			/>
 		</ElMenu>
-		<ElMenu v-if="canCreateProjects" :collapse="props.collapsed" class="pt-s pl-xs pr-xs">
+		<ElMenu v-if="canCreateProjects" :collapse="props.collapsed" class="pl-xs pr-xs">
 			<N8nMenuItem
 				:item="addProject"
 				:compact="props.collapsed"
@@ -139,7 +139,7 @@ const displayProjects = computed(() => {
 				data-test-id="add-project-menu-item"
 			/>
 		</ElMenu>
-		<hr class="mt-m mb-m" />
+		<hr v-if="displayProjects.length || canCreateProjects" class="mt-m mb-m" />
 	</div>
 </template>
 
@@ -149,12 +149,12 @@ const displayProjects = computed(() => {
 	grid-auto-rows: auto;
 	width: 100%;
 	overflow: hidden;
-	min-height: 300px;
+	align-items: start;
 }
 
 .projectItems {
 	height: 100%;
-	padding: 0 var(--spacing-xs);
+	padding: 0 var(--spacing-xs) var(--spacing-s);
 	overflow: auto;
 }
 </style>

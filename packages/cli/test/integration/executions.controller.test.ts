@@ -1,16 +1,10 @@
 import type { User } from '@db/entities/User';
-import { EnterpriseExecutionsService } from '@/executions/execution.service.ee';
-import { WaitTracker } from '@/WaitTracker';
 
 import { createSuccessfulExecution, getAllExecutions } from './shared/db/executions';
 import { createMember, createOwner } from './shared/db/users';
 import { createWorkflow, shareWorkflowWithUsers } from './shared/db/workflows';
 import * as testDb from './shared/testDb';
 import { setupTestServer } from './shared/utils';
-import { mockInstance } from '../shared/mocking';
-
-mockInstance(EnterpriseExecutionsService);
-mockInstance(WaitTracker);
 
 const testServer = setupTestServer({ endpointGroups: ['executions'] });
 
@@ -42,6 +36,25 @@ describe('GET /executions', () => {
 
 		const response2 = await testServer.authAgentFor(member).get('/executions').expect(200);
 		expect(response2.body.data.count).toBe(1);
+	});
+});
+
+describe('GET /executions/:id', () => {
+	test('only returns executions of shared workflows if sharing is enabled', async () => {
+		const workflow = await createWorkflow({}, owner);
+		await shareWorkflowWithUsers(workflow, [member]);
+		const execution = await createSuccessfulExecution(workflow);
+
+		await testServer.authAgentFor(member).get(`/executions/${execution.id}`).expect(404);
+
+		testServer.license.enable('feat:sharing');
+
+		const response = await testServer
+			.authAgentFor(member)
+			.get(`/executions/${execution.id}`)
+			.expect(200);
+
+		expect(response.body.data.id).toBe(execution.id);
 	});
 });
 

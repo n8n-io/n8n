@@ -297,7 +297,7 @@ describe('GET /workflows/:id', () => {
 
 		expect(responseWorkflow.homeProject).toMatchObject({
 			id: ownerPersonalProject.id,
-			name: 'My n8n',
+			name: owner.createPersonalProjectName(),
 			type: 'personal',
 		});
 
@@ -313,14 +313,14 @@ describe('GET /workflows/:id', () => {
 
 		expect(responseWorkflow.homeProject).toMatchObject({
 			id: ownerPersonalProject.id,
-			name: 'My n8n',
+			name: owner.createPersonalProjectName(),
 			type: 'personal',
 		});
 
 		expect(responseWorkflow.sharedWithProjects).toHaveLength(1);
 		expect(responseWorkflow.sharedWithProjects[0]).toMatchObject({
 			id: memberPersonalProject.id,
-			name: 'My n8n',
+			name: member.createPersonalProjectName(),
 			type: 'personal',
 		});
 	});
@@ -334,7 +334,7 @@ describe('GET /workflows/:id', () => {
 
 		expect(responseWorkflow.homeProject).toMatchObject({
 			id: ownerPersonalProject.id,
-			name: 'My n8n',
+			name: owner.createPersonalProjectName(),
 			type: 'personal',
 		});
 

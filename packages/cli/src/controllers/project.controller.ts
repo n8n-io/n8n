@@ -66,8 +66,8 @@ export class ProjectController {
 			if (result.scopes) {
 				result.scopes.push(
 					...combineScopes({
-						global: this.roleService.getRoleScopes(req.user.role, ['project']),
-						project: this.roleService.getRoleScopes(pr.role, ['project']),
+						global: this.roleService.getRoleScopes(req.user.role),
+						project: this.roleService.getRoleScopes(pr.role),
 					}),
 				);
 			}
@@ -89,7 +89,7 @@ export class ProjectController {
 
 			if (result.scopes) {
 				result.scopes.push(
-					...combineScopes({ global: this.roleService.getRoleScopes(req.user.role, ['project']) }),
+					...combineScopes({ global: this.roleService.getRoleScopes(req.user.role) }),
 				);
 			}
 
@@ -137,10 +137,8 @@ export class ProjectController {
 			})),
 			scopes: [
 				...combineScopes({
-					global: this.roleService.getRoleScopes(req.user.role, ['project']),
-					...(myRelation
-						? { project: this.roleService.getRoleScopes(myRelation.role, ['project']) }
-						: {}),
+					global: this.roleService.getRoleScopes(req.user.role),
+					...(myRelation ? { project: this.roleService.getRoleScopes(myRelation.role) } : {}),
 				}),
 			],
 		};

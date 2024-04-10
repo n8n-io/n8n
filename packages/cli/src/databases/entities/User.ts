@@ -155,4 +155,14 @@ export class User extends WithTimestamps implements IUser {
 		const { password, apiKey, mfaSecret, mfaRecoveryCodes, ...rest } = this;
 		return rest;
 	}
+
+	createPersonalProjectName() {
+		if (this.firstName && this.lastName && this.email) {
+			return `${this.firstName} ${this.lastName} <${this.email}>`;
+		} else if (this.email) {
+			return `<${this.email}>`;
+		} else {
+			return 'Unnamed Project';
+		}
+	}
 }

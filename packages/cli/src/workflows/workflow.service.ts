@@ -76,6 +76,7 @@ export class WorkflowService {
 		return { workflows, count };
 	}
 
+	// eslint-disable-next-line complexity
 	async update(
 		user: User,
 		workflowUpdateData: WorkflowEntity,
