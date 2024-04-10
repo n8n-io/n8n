@@ -371,6 +371,7 @@ export default defineComponent({
 				'node-wrapper--trigger': this.isTriggerNode,
 				'node-wrapper--configurable': this.isConfigurableNode,
 				'node-wrapper--config': this.isConfigNode,
+				executing: this.isExecuting,
 			};
 
 			if (this.outputs.length) {
@@ -788,6 +789,7 @@ export default defineComponent({
 	position: absolute;
 	width: var(--node-width);
 	height: var(--node-height);
+	transition: transform 0.3s ease-out;
 
 	.node-description {
 		position: absolute;
@@ -829,6 +831,10 @@ export default defineComponent({
 		.node-options {
 			opacity: 1;
 		}
+	}
+
+	&.executing {
+		transform: scale(1.1);
 	}
 
 	.node-options {
