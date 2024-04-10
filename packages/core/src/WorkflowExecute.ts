@@ -51,6 +51,7 @@ export class WorkflowExecute {
 	private readonly abortController = new AbortController();
 
 	constructor(
+		private readonly workflow: Workflow,
 		private readonly additionalData: IWorkflowExecuteAdditionalData,
 		private readonly mode: WorkflowExecuteMode,
 		private runExecutionData: IRunExecutionData = {
@@ -72,8 +73,7 @@ export class WorkflowExecute {
 	/**
 	 * Executes the given workflow.
 	 *
-	 * @param {Workflow} workflow The workflow to execute
-	 * @param {INode[]} [startNodes] Node to start execution from
+	 * @param {INode[]} [startNode] Node to start execution from
 	 * @param {string} [destinationNode] Node to stop execution at
 	 */
 	// IMPORTANT: Do not add "async" to this function, it will then convert the
@@ -81,11 +81,11 @@ export class WorkflowExecute {
 	//            active executions anymore
 	// eslint-disable-next-line @typescript-eslint/promise-function-async
 	run(
-		workflow: Workflow,
 		startNode?: INode,
 		destinationNode?: string,
 		pinData?: IPinData,
 	): PCancelable<IRun> {
+		const { workflow } = this;
 		this.status = 'running';
 
 		// Get the nodes to start workflow execution from
@@ -137,17 +137,16 @@ export class WorkflowExecute {
 			},
 		};
 
-		return this.processRunExecutionData(workflow);
+		return this.processRunExecutionData();
 	}
 
-	forceInputNodeExecution(workflow: Workflow): boolean {
-		return workflow.settings.executionOrder !== 'v1';
+	forceInputNodeExecution(): boolean {
+		return this.workflow.settings.executionOrder !== 'v1';
 	}
 
 	/**
 	 * Executes the given workflow but only
 	 *
-	 * @param {Workflow} workflow The workflow to execute
 	 * @param {string[]} startNodes Nodes to start execution from
 	 * @param {string} destinationNode Node to stop execution at
 	 */
@@ -156,12 +155,12 @@ export class WorkflowExecute {
 	//            active executions anymore
 	// eslint-disable-next-line @typescript-eslint/promise-function-async, complexity
 	runPartialWorkflow(
-		workflow: Workflow,
 		runData: IRunData,
 		startNodes: StartNodeData[],
 		destinationNode?: string,
 		pinData?: IPinData,
 	): PCancelable<IRun> {
+		const { workflow } = this;
 		let incomingNodeConnections: INodeConnections | undefined;
 		let connection: IConnection;
 
@@ -294,7 +293,7 @@ export class WorkflowExecute {
 			},
 		};
 
-		return this.processRunExecutionData(workflow);
+		return this.processRunExecutionData();
 	}
 
 	/**
@@ -373,13 +372,13 @@ export class WorkflowExecute {
 
 	// eslint-disable-next-line complexity
 	addNodeToBeExecuted(
-		workflow: Workflow,
 		connectionData: IConnection,
 		outputIndex: number,
 		parentNodeName: string,
 		nodeSuccessData: INodeExecutionData[][],
 		runIndex: number,
 	): void {
+		const { workflow } = this;
 		let stillDataMissing = false;
 		const enqueueFn = workflow.settings.executionOrder === 'v1' ? 'unshift' : 'push';
 		let waitingNodeIndex: number | undefined;
@@ -557,7 +556,7 @@ export class WorkflowExecute {
 				// are already on the list to be processed.
 				// If that is not the case add it.
 
-				const forceInputNodeExecution = this.forceInputNodeExecution(workflow);
+				const forceInputNodeExecution = this.forceInputNodeExecution();
 
 				for (
 					let inputIndex = 0;
@@ -772,11 +771,12 @@ export class WorkflowExecute {
 	//            PCancelable to a regular Promise and does so not allow canceling
 	//            active executions anymore
 	// eslint-disable-next-line @typescript-eslint/promise-function-async
-	processRunExecutionData(workflow: Workflow): PCancelable<IRun> {
+	processRunExecutionData(): PCancelable<IRun> {
+		const { workflow } = this;
 		Logger.verbose('Workflow execution started', { workflowId: workflow.id });
 
 		const startedAt = new Date();
-		const forceInputNodeExecution = this.forceInputNodeExecution(workflow);
+		const forceInputNodeExecution = this.forceInputNodeExecution();
 
 		this.status = 'running';
 
@@ -1450,7 +1450,6 @@ export class WorkflowExecute {
 											});
 										} else {
 											this.addNodeToBeExecuted(
-												workflow,
 												connectionData,
 												parseInt(outputIndex, 10),
 												executionNode.name,
@@ -1481,7 +1480,6 @@ export class WorkflowExecute {
 
 								for (const nodeData of nodesToAdd) {
 									this.addNodeToBeExecuted(
-										workflow,
 										nodeData.connection,
 										nodeData.outputIndex,
 										executionNode.name,
@@ -1669,14 +1667,12 @@ export class WorkflowExecute {
 					if (this.status === 'canceled' && executionError === undefined) {
 						return await this.processSuccessExecution(
 							startedAt,
-							workflow,
 							new WorkflowOperationError('Workflow has been canceled or timed out!'),
 							closeFunction,
 						);
 					}
 					return await this.processSuccessExecution(
 						startedAt,
-						workflow,
 						executionError,
 						closeFunction,
 					);
@@ -1729,10 +1725,10 @@ export class WorkflowExecute {
 
 	async processSuccessExecution(
 		startedAt: Date,
-		workflow: Workflow,
 		executionError?: ExecutionBaseError,
 		closeFunction?: Promise<void>,
 	): Promise<IRun> {
+		const { workflow } = this;
 		const fullRunData = this.getFullRunData(startedAt);
 
 		if (executionError !== undefined) {

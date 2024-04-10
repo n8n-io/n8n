@@ -32,9 +32,9 @@ describe('WorkflowExecute', () => {
 					nodeExecutionOrder,
 				);
 
-				const workflowExecute = new WorkflowExecute(additionalData, executionMode);
+				const workflowExecute = new WorkflowExecute(workflowInstance, additionalData, executionMode);
 
-				const executionData = await workflowExecute.run(workflowInstance);
+				const executionData = await workflowExecute.run();
 
 				const result = await waitPromise.promise();
 
@@ -95,9 +95,9 @@ describe('WorkflowExecute', () => {
 					nodeExecutionOrder,
 				);
 
-				const workflowExecute = new WorkflowExecute(additionalData, executionMode);
+				const workflowExecute = new WorkflowExecute(workflowInstance, additionalData, executionMode);
 
-				const executionData = await workflowExecute.run(workflowInstance);
+				const executionData = await workflowExecute.run();
 
 				const result = await waitPromise.promise();
 
@@ -159,9 +159,9 @@ describe('WorkflowExecute', () => {
 					nodeExecutionOrder,
 				);
 
-				const workflowExecute = new WorkflowExecute(additionalData, executionMode);
+				const workflowExecute = new WorkflowExecute(workflowInstance, additionalData, executionMode);
 
-				const executionData = await workflowExecute.run(workflowInstance);
+				const executionData = await workflowExecute.run();
 
 				const result = await waitPromise.promise();
 
