@@ -864,4 +864,40 @@ describe('PATCH /users/:id/role', () => {
 			adminAgent = testServer.authAgentFor(admin);
 		});
 	});
+
+	test("should clear credential external secrets usability cache when changing a user's role", async () => {
+		const user = await createAdmin();
+
+		const [project1, project2] = await Promise.all([
+			createTeamProject(undefined, user),
+			createTeamProject(),
+		]);
+
+		const [credential1, credential2, credential3] = await Promise.all([
+			saveCredential(randomCredentialPayload(), {
+				user,
+				role: 'credential:owner',
+			}),
+			saveCredential(randomCredentialPayload(), {
+				project: project1,
+				role: 'credential:owner',
+			}),
+			saveCredential(randomCredentialPayload(), {
+				project: project2,
+				role: 'credential:owner',
+			}),
+			linkUserToProject(user, project2, 'project:editor'),
+		]);
+
+		const deleteSpy = jest.spyOn(Container.get(CacheService), 'deleteMany');
+		const response = await ownerAgent.patch(`/users/${user.id}/role`).send({
+			newRoleName: 'global:member',
+		});
+
+		expect(deleteSpy).toBeCalledTimes(2);
+		deleteSpy.mockClear();
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toStrictEqual({ success: true });
+	});
 });

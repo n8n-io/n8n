@@ -230,9 +230,11 @@ export class ProjectService {
 			},
 			select: ['credentialsId'],
 		});
-		await this.cacheService.deleteMany(
-			shares.map((share) => `credential-can-use-secrets:${share.credentialsId}`),
-		);
+		if (shares.length) {
+			await this.cacheService.deleteMany(
+				shares.map((share) => `credential-can-use-secrets:${share.credentialsId}`),
+			);
+		}
 	}
 
 	async pruneRelations(em: EntityManager, project: Project) {
@@ -304,6 +306,17 @@ export class ProjectService {
 		return await this.projectRelationRepository.find({
 			where: { projectId },
 			relations: { user: true },
+		});
+	}
+
+	async getUserOwnedOrAdminProjects(userId: string): Promise<Project[]> {
+		return await this.projectRepository.find({
+			where: {
+				projectRelations: {
+					userId,
+					role: In(['project:personalOwner', 'project:admin']),
+				},
+			},
 		});
 	}
 }

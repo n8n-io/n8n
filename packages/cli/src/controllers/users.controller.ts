@@ -375,6 +375,13 @@ export class UsersController {
 			public_api: false,
 		});
 
+		const projects = await this.projectService.getUserOwnedOrAdminProjects(targetUser.id);
+		await Promise.all(
+			projects.map(
+				async (p) => await this.projectService.clearCredentialCanUseExternalSecretsCache(p.id),
+			),
+		);
+
 		return { success: true };
 	}
 }
