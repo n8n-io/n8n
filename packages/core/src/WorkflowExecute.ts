@@ -82,11 +82,7 @@ export class WorkflowExecute {
 	//            PCancelable to a regular Promise and does so not allow canceling
 	//            active executions anymore
 	// eslint-disable-next-line @typescript-eslint/promise-function-async
-	run(
-		startNode?: INode,
-		destinationNode?: string,
-		pinData?: IPinData,
-	): PCancelable<IRun> {
+	run(startNode?: INode, destinationNode?: string, pinData?: IPinData): PCancelable<IRun> {
 		const { workflow } = this;
 		this.status = 'running';
 
@@ -347,7 +343,8 @@ export class WorkflowExecute {
 		return true;
 	}
 
-	prepareWaitingToExecution(nodeName: string, numberOfConnections: number, runIndex: number) {
+	private prepareWaitingToExecution(nodeName: string, runIndex: number) {
+		const numberOfConnections = this.workflow.connectionsByDestinationNode[nodeName].main.length;
 		if (!this.runExecutionData.executionData!.waitingExecutionSource) {
 			this.runExecutionData.executionData!.waitingExecutionSource = {};
 		}
@@ -436,11 +433,7 @@ export class WorkflowExecute {
 				// There is currently no node waiting that does not already have data for
 				// the given input, so create a new entry
 
-				this.prepareWaitingToExecution(
-					connectionData.node,
-					workflow.connectionsByDestinationNode[connectionData.node].main.length,
-					waitingNodeIndex,
-				);
+				this.prepareWaitingToExecution(connectionData.node, waitingNodeIndex);
 			}
 
 			// Add the new data
@@ -720,11 +713,7 @@ export class WorkflowExecute {
 			waitingNodeIndex = waitingNodeIndex!;
 
 			// Additional data is needed to run node so add it to waiting
-			this.prepareWaitingToExecution(
-				connectionData.node,
-				workflow.connectionsByDestinationNode[connectionData.node].main.length,
-				waitingNodeIndex,
-			);
+			this.prepareWaitingToExecution(connectionData.node, waitingNodeIndex);
 
 			this.runExecutionData.executionData!.waitingExecution[connectionData.node][waitingNodeIndex] =
 				{
@@ -818,7 +807,7 @@ export class WorkflowExecute {
 		let lastExecutionTry = '';
 		let closeFunction: Promise<void> | undefined;
 
-		return new PCancelable(async (resolve, reject, onCancel) => {
+		return new PCancelable(async (resolve, _, onCancel) => {
 			// Let as many nodes listen to the abort signal, without getting the MaxListenersExceededWarning
 			setMaxListeners(Infinity, this.abortController.signal);
 
@@ -1235,7 +1224,7 @@ export class WorkflowExecute {
 										if (!inputData) {
 											return;
 										}
-										inputData.forEach((item, itemIndex) => {
+										inputData.forEach((_, itemIndex) => {
 											pairedItem.push({
 												item: itemIndex,
 												input: inputIndex,
@@ -1590,7 +1579,7 @@ export class WorkflowExecute {
 										continue;
 									}
 								} else {
-									// A certain amout of inputs are required (amount of inputs)
+									// A certain amount of inputs are required (amount of inputs)
 									if (inputsWithData.length < requiredInputs) {
 										continue;
 									}

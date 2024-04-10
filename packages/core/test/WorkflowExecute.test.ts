@@ -32,7 +32,11 @@ describe('WorkflowExecute', () => {
 					nodeExecutionOrder,
 				);
 
-				const workflowExecute = new WorkflowExecute(workflowInstance, additionalData, executionMode);
+				const workflowExecute = new WorkflowExecute(
+					workflowInstance,
+					additionalData,
+					executionMode,
+				);
 
 				const executionData = await workflowExecute.run();
 
@@ -95,7 +99,11 @@ describe('WorkflowExecute', () => {
 					nodeExecutionOrder,
 				);
 
-				const workflowExecute = new WorkflowExecute(workflowInstance, additionalData, executionMode);
+				const workflowExecute = new WorkflowExecute(
+					workflowInstance,
+					additionalData,
+					executionMode,
+				);
 
 				const executionData = await workflowExecute.run();
 
@@ -159,7 +167,11 @@ describe('WorkflowExecute', () => {
 					nodeExecutionOrder,
 				);
 
-				const workflowExecute = new WorkflowExecute(workflowInstance, additionalData, executionMode);
+				const workflowExecute = new WorkflowExecute(
+					workflowInstance,
+					additionalData,
+					executionMode,
+				);
 
 				const executionData = await workflowExecute.run();
 
