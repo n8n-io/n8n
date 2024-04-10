@@ -84,6 +84,10 @@ const n8nVersion = computed(() => {
 	return rootStore.versionCli + ` (${instanceType})`;
 });
 
+const hasManyInputItems = computed(() => {
+	return ndvStore.ndvInputData.length > 1;
+});
+
 const nodeDefaultName = computed(() => {
 	const node = props.error?.node;
 	if (!node) {
@@ -125,6 +129,15 @@ const prepareRawMessages = computed(() => {
 async function onDebugError() {
 	try {
 		isLoadingErrorDebugging.value = true;
+		telemetry.track(
+			'User clicked AI error helper button',
+			{
+				node_type: props.error.node?.type,
+				error_title: props.error.message,
+			},
+			{ withPostHog: true },
+		);
+
 		const { message } = await aiStore.debugError({ error: props.error });
 		errorDebuggingMessage.value = message;
 	} catch (error) {
@@ -214,33 +227,48 @@ function getErrorDescription(): string {
 	);
 }
 
+function addItemIndexSuffix(message: string): string {
+	let itemIndexSuffix = '';
+
+	const ITEM_INDEX_SUFFIX_TEXT = '[item ';
+
+	if (
+		hasManyInputItems.value &&
+		!message.includes(ITEM_INDEX_SUFFIX_TEXT) &&
+		props.error?.context?.itemIndex !== undefined
+	) {
+		itemIndexSuffix = ` [item ${props.error.context.itemIndex}]`;
+	}
+
+	return message + itemIndexSuffix;
+}
+
 function getErrorMessage(): string {
 	const baseErrorMessage = '';
+	let message = '';
 
 	const isSubNodeError =
 		props.error.name === 'NodeOperationError' &&
 		(props.error as NodeOperationError).functionality === 'configuration-node';
 
 	if (isSubNodeError) {
-		const baseErrorMessageSubNode = i18n.baseText('nodeErrorView.errorSubNode', {
+		message = i18n.baseText('nodeErrorView.errorSubNode', {
 			interpolate: { node: props.error.node.name },
 		});
-		return baseErrorMessageSubNode;
+	} else if (
+		props.error.message === props.error.description ||
+		!props.error.context?.messageTemplate
+	) {
+		message = baseErrorMessage + props.error.message;
+	} else {
+		const parameterName = parameterDisplayName(props.error.context.parameter as string);
+
+		message =
+			baseErrorMessage +
+			(props.error.context.messageTemplate as string).replace(/%%PARAMETER%%/g, parameterName);
 	}
 
-	if (props.error.message === props.error.description) {
-		return baseErrorMessage;
-	}
-	if (!props.error.context?.messageTemplate) {
-		return baseErrorMessage + props.error.message;
-	}
-
-	const parameterName = parameterDisplayName(props.error.context.parameter as string);
-
-	return (
-		baseErrorMessage +
-		(props.error.context.messageTemplate as string).replace(/%%PARAMETER%%/g, parameterName)
-	);
+	return addItemIndexSuffix(message);
 }
 
 function parameterDisplayName(path: string, fullPath = true) {

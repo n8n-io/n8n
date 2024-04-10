@@ -16,8 +16,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import type { ImapSimple, ImapSimpleOptions, Message } from 'imap-simple';
-import { connect as imapConnect, getParts } from 'imap-simple';
+import type { ImapSimple, ImapSimpleOptions, Message, MessagePart } from '@n8n/imap';
+import { connect as imapConnect, getParts } from '@n8n/imap';
 import type { Source as ParserSource } from 'mailparser';
 import { simpleParser } from 'mailparser';
 import rfc2047 from 'rfc2047';
@@ -298,15 +298,14 @@ export class EmailReadImapV2 implements INodeType {
 
 		// Returns the email text
 
-		const getText = async (parts: IDataObject[], message: Message, subtype: string) => {
+		const getText = async (parts: MessagePart[], message: Message, subtype: string) => {
 			if (!message.attributes.struct) {
 				return '';
 			}
 
 			const textParts = parts.filter((part) => {
 				return (
-					(part.type as string).toUpperCase() === 'TEXT' &&
-					(part.subtype as string).toUpperCase() === subtype.toUpperCase()
+					part.type.toUpperCase() === 'TEXT' && part.subtype.toUpperCase() === subtype.toUpperCase()
 				);
 			});
 
@@ -315,7 +314,7 @@ export class EmailReadImapV2 implements INodeType {
 			}
 
 			try {
-				return (await connection.getPartData(message, textParts[0])) as string;
+				return await connection.getPartData(message, textParts[0]);
 			} catch {
 				return '';
 			}
@@ -324,7 +323,7 @@ export class EmailReadImapV2 implements INodeType {
 		// Returns the email attachments
 		const getAttachment = async (
 			imapConnection: ImapSimple,
-			parts: IDataObject[],
+			parts: MessagePart[],
 			message: Message,
 		): Promise<IBinaryData[]> => {
 			if (!message.attributes.struct) {
@@ -332,12 +331,9 @@ export class EmailReadImapV2 implements INodeType {
 			}
 
 			// Check if the message has attachments and if so get them
-			const attachmentParts = parts.filter((part) => {
-				return (
-					part.disposition &&
-					((part.disposition as IDataObject)?.type as string).toUpperCase() === 'ATTACHMENT'
-				);
-			});
+			const attachmentParts = parts.filter(
+				(part) => part.disposition?.type?.toUpperCase() === 'ATTACHMENT',
+			);
 
 			const decodeFilename = (filename: string) => {
 				const regex = /=\?([\w-]+)\?Q\?.*\?=/i;
@@ -359,7 +355,7 @@ export class EmailReadImapV2 implements INodeType {
 								?.filename as string,
 						);
 						// Return it in the format n8n expects
-						return await this.helpers.prepareBinaryData(partData as Buffer, fileName);
+						return await this.helpers.prepareBinaryData(Buffer.from(partData), fileName);
 					});
 
 				attachmentPromises.push(attachmentPromise);
@@ -394,7 +390,7 @@ export class EmailReadImapV2 implements INodeType {
 			const results = await imapConnection.search(searchCriteria, fetchOptions);
 
 			const newEmails: INodeExecutionData[] = [];
-			let newEmail: INodeExecutionData, messageHeader, messageBody;
+			let newEmail: INodeExecutionData;
 			let attachments: IBinaryData[];
 			let propertyName: string;
 
@@ -456,7 +452,7 @@ export class EmailReadImapV2 implements INodeType {
 					) {
 						staticData.lastMessageUid = message.attributes.uid;
 					}
-					const parts = getParts(message.attributes.struct as IDataObject[]) as IDataObject[];
+					const parts = getParts(message.attributes.struct as IDataObject[]);
 
 					newEmail = {
 						json: {
@@ -466,19 +462,16 @@ export class EmailReadImapV2 implements INodeType {
 						},
 					};
 
-					messageHeader = message.parts.filter((part) => {
-						return part.which === 'HEADER';
-					});
+					const messageHeader = message.parts.filter((part) => part.which === 'HEADER');
 
-					messageBody = messageHeader[0].body as IDataObject;
+					const messageBody = messageHeader[0].body as Record<string, string[]>;
 					for (propertyName of Object.keys(messageBody)) {
-						if ((messageBody[propertyName] as IDataObject[]).length) {
+						if (messageBody[propertyName].length) {
 							if (topLevelProperties.includes(propertyName)) {
-								newEmail.json[propertyName] = (messageBody[propertyName] as string[])[0];
+								newEmail.json[propertyName] = messageBody[propertyName][0];
 							} else {
-								(newEmail.json.metadata as IDataObject)[propertyName] = (
-									messageBody[propertyName] as string[]
-								)[0];
+								(newEmail.json.metadata as IDataObject)[propertyName] =
+									messageBody[propertyName][0];
 							}
 						}
 					}
@@ -559,7 +552,7 @@ export class EmailReadImapV2 implements INodeType {
 					tls: credentials.secure,
 					authTimeout: 20000,
 				},
-				onmail: async () => {
+				onMail: async () => {
 					if (connection) {
 						if (staticData.lastMessageUid !== undefined) {
 							searchCriteria.push(['UID', `${staticData.lastMessageUid as number}:*`]);
@@ -597,8 +590,8 @@ export class EmailReadImapV2 implements INodeType {
 						}
 					}
 				},
-				onupdate: async (seqno: number, info) => {
-					this.logger.verbose(`Email Read Imap:update ${seqno}`, info as IDataObject);
+				onUpdate: async (seqNo: number, info) => {
+					this.logger.verbose(`Email Read Imap:update ${seqNo}`, info);
 				},
 			};
 

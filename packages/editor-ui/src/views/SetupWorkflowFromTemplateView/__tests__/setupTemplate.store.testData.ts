@@ -51,7 +51,6 @@ export const newCredential = (
 	updatedAt: faker.date.past().toISOString(),
 	id: faker.string.alphanumeric({ length: 16 }),
 	name: faker.commerce.productName(),
-	nodesAccess: [],
 	...opts,
 });
 
@@ -61,16 +60,6 @@ export const credentialsTelegram1: ICredentialsResponse = {
 	id: 'YaSKdvEcT1TSFrrr1',
 	name: 'Telegram account',
 	type: 'telegramApi',
-	nodesAccess: [
-		{
-			nodeType: 'n8n-nodes-base.telegram',
-			date: new Date('2023-11-23T14:26:07.962Z'),
-		},
-		{
-			nodeType: 'n8n-nodes-base.telegramTrigger',
-			date: new Date('2023-11-23T14:26:07.962Z'),
-		},
-	],
 	ownedBy: {
 		id: '713ef3e7-9e65-4b0a-893c-8a653cbb2c4f',
 		email: 'user@n8n.io',
@@ -86,16 +75,6 @@ export const credentialsTelegram2: ICredentialsResponse = {
 	id: 'YaSKdvEcT1TSFrrr2',
 	name: 'Telegram account',
 	type: 'telegramApi',
-	nodesAccess: [
-		{
-			nodeType: 'n8n-nodes-base.telegram',
-			date: new Date('2023-11-23T14:26:07.962Z'),
-		},
-		{
-			nodeType: 'n8n-nodes-base.telegramTrigger',
-			date: new Date('2023-11-23T14:26:07.962Z'),
-		},
-	],
 	ownedBy: {
 		id: '713ef3e7-9e65-4b0a-893c-8a653cbb2c4f',
 		email: 'user@n8n.io',

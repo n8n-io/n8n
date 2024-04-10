@@ -199,6 +199,7 @@ import {
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 	CUSTOM_NODES_DOCS_URL,
 	MAIN_NODE_PANEL_WIDTH,
+	SHOULD_CLEAR_NODE_OUTPUTS,
 } from '@/constants';
 
 import NodeTitle from '@/components/NodeTitle.vue';
@@ -223,6 +224,7 @@ import type { EventBus } from 'n8n-design-system';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { importCurlEventBus } from '@/event-bus';
+import { useToast } from '@/composables/useToast';
 
 export default defineComponent({
 	name: 'NodeSettings',
@@ -238,10 +240,12 @@ export default defineComponent({
 	setup() {
 		const nodeHelpers = useNodeHelpers();
 		const externalHooks = useExternalHooks();
+		const { showMessage } = useToast();
 
 		return {
 			externalHooks,
 			nodeHelpers,
+			showMessage,
 		};
 	},
 	computed: {
@@ -837,6 +841,20 @@ export default defineComponent({
 				const nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 				if (!nodeType) {
 					return;
+				}
+
+				if (
+					parameterData.type &&
+					this.workflowsStore.nodeHasOutputConnection(node.name) &&
+					SHOULD_CLEAR_NODE_OUTPUTS[nodeType.name]?.eventTypes.includes(parameterData.type) &&
+					SHOULD_CLEAR_NODE_OUTPUTS[nodeType.name]?.parameterPaths.includes(parameterData.name)
+				) {
+					this.workflowsStore.removeAllNodeConnection(node, { preserveInputConnections: true });
+					this.showMessage({
+						type: 'warning',
+						title: this.$locale.baseText('nodeSettings.outputCleared.title'),
+						message: this.$locale.baseText('nodeSettings.outputCleared.message'),
+					});
 				}
 
 				// Get only the parameters which are different to the defaults

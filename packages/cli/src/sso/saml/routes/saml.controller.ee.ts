@@ -12,7 +12,6 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { UrlService } from '@/services/url.service';
 
-import { SamlUrls } from '../constants';
 import {
 	getServiceProviderConfigTestReturnUrl,
 	getServiceProviderEntityId,
@@ -39,7 +38,7 @@ export class SamlController {
 		private readonly internalHooks: InternalHooks,
 	) {}
 
-	@Get(SamlUrls.metadata, { skipAuth: true })
+	@Get('/metadata', { skipAuth: true })
 	async getServiceProviderMetadata(_: express.Request, res: express.Response) {
 		return res
 			.header('Content-Type', 'text/xml')
@@ -47,10 +46,9 @@ export class SamlController {
 	}
 
 	/**
-	 * GET /sso/saml/config
 	 * Return SAML config
 	 */
-	@Get(SamlUrls.config, { middlewares: [samlLicensedMiddleware] })
+	@Get('/config', { middlewares: [samlLicensedMiddleware] })
 	async configGet() {
 		const prefs = this.samlService.samlPreferences;
 		return {
@@ -61,10 +59,9 @@ export class SamlController {
 	}
 
 	/**
-	 * POST /sso/saml/config
 	 * Set SAML config
 	 */
-	@Post(SamlUrls.config, { middlewares: [samlLicensedMiddleware] })
+	@Post('/config', { middlewares: [samlLicensedMiddleware] })
 	@GlobalScope('saml:manage')
 	async configPost(req: SamlConfiguration.Update) {
 		const validationResult = await validate(req.body);
@@ -80,10 +77,9 @@ export class SamlController {
 	}
 
 	/**
-	 * POST /sso/saml/config/toggle
-	 * Set SAML config
+	 * Toggle SAML status
 	 */
-	@Post(SamlUrls.configToggleEnabled, { middlewares: [samlLicensedMiddleware] })
+	@Post('/config/toggle', { middlewares: [samlLicensedMiddleware] })
 	@GlobalScope('saml:manage')
 	async toggleEnabledPost(req: SamlConfiguration.Toggle, res: express.Response) {
 		if (req.body.loginEnabled === undefined) {
@@ -94,19 +90,17 @@ export class SamlController {
 	}
 
 	/**
-	 * GET /sso/saml/acs
 	 * Assertion Consumer Service endpoint
 	 */
-	@Get(SamlUrls.acs, { middlewares: [samlLicensedMiddleware], skipAuth: true })
+	@Get('/acs', { middlewares: [samlLicensedMiddleware], skipAuth: true })
 	async acsGet(req: SamlConfiguration.AcsRequest, res: express.Response) {
 		return await this.acsHandler(req, res, 'redirect');
 	}
 
 	/**
-	 * POST /sso/saml/acs
 	 * Assertion Consumer Service endpoint
 	 */
-	@Post(SamlUrls.acs, { middlewares: [samlLicensedMiddleware], skipAuth: true })
+	@Post('/acs', { middlewares: [samlLicensedMiddleware], skipAuth: true })
 	async acsPost(req: SamlConfiguration.AcsRequest, res: express.Response) {
 		return await this.acsHandler(req, res, 'post');
 	}
@@ -138,11 +132,11 @@ export class SamlController {
 				});
 				// Only sign in user if SAML is enabled, otherwise treat as test connection
 				if (isSamlLicensedAndEnabled()) {
-					this.authService.issueCookie(res, loginResult.authenticatedUser);
+					this.authService.issueCookie(res, loginResult.authenticatedUser, req.browserId);
 					if (loginResult.onboardingRequired) {
-						return res.redirect(this.urlService.getInstanceBaseUrl() + SamlUrls.samlOnboarding);
+						return res.redirect(this.urlService.getInstanceBaseUrl() + '/saml/onboarding');
 					} else {
-						const redirectUrl = req.body?.RelayState ?? SamlUrls.defaultRedirect;
+						const redirectUrl = req.body?.RelayState ?? '/';
 						return res.redirect(this.urlService.getInstanceBaseUrl() + redirectUrl);
 					}
 				} else {
@@ -167,11 +161,10 @@ export class SamlController {
 	}
 
 	/**
-	 * GET /sso/saml/initsso
 	 * Access URL for implementing SP-init SSO
 	 * This endpoint is available if SAML is licensed and enabled
 	 */
-	@Get(SamlUrls.initSSO, { middlewares: [samlLicensedAndEnabledMiddleware], skipAuth: true })
+	@Get('/initsso', { middlewares: [samlLicensedAndEnabledMiddleware], skipAuth: true })
 	async initSsoGet(req: express.Request, res: express.Response) {
 		let redirectUrl = '';
 		try {
@@ -192,13 +185,12 @@ export class SamlController {
 	}
 
 	/**
-	 * GET /sso/saml/config/test
 	 * Test SAML config
 	 * This endpoint is available if SAML is licensed and the requestor is an instance owner
 	 */
-	@Get(SamlUrls.configTest, { middlewares: [samlLicensedMiddleware] })
+	@Get('/config/test', { middlewares: [samlLicensedMiddleware] })
 	@GlobalScope('saml:manage')
-	async configTestGet(req: AuthenticatedRequest, res: express.Response) {
+	async configTestGet(_: AuthenticatedRequest, res: express.Response) {
 		return await this.handleInitSSO(res, getServiceProviderConfigTestReturnUrl());
 	}
 
