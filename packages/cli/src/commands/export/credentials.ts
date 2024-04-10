@@ -48,6 +48,7 @@ export class ExportCredentialsCommand extends BaseCommand {
 		}),
 	};
 
+	// eslint-disable-next-line complexity
 	async run() {
 		const { flags } = await this.parse(ExportCredentialsCommand);
 

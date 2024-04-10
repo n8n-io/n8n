@@ -178,6 +178,7 @@ type ValidateFieldTypeOptions = Partial<{
 	parseStrings: boolean;
 }>;
 // Validates field against the schema and tries to parse it to the correct type
+// eslint-disable-next-line complexity
 export const validateFieldType = (
 	fieldName: string,
 	value: unknown,

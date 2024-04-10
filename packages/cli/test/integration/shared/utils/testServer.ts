@@ -95,6 +95,7 @@ export const setupTestServer = ({
 		license: new LicenseMocker(),
 	};
 
+	// eslint-disable-next-line complexity
 	beforeAll(async () => {
 		await testDb.init();
 
