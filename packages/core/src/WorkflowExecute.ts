@@ -1659,17 +1659,9 @@ export class WorkflowExecute {
 			})()
 				.then(async () => {
 					if (this.status === 'canceled' && executionError === undefined) {
-						return await this.processSuccessExecution(
-							startedAt,
-							new WorkflowOperationError('Workflow has been canceled or timed out!'),
-							closeFunction,
-						);
+						executionError = new WorkflowOperationError('Workflow has been canceled or timed out!');
 					}
-					return await this.processSuccessExecution(
-						startedAt,
-						executionError,
-						closeFunction,
-					);
+					return await this.processSuccessExecution(startedAt, executionError, closeFunction);
 				})
 				.catch(async (error) => {
 					const fullRunData = this.getFullRunData(startedAt);
@@ -1717,7 +1709,7 @@ export class WorkflowExecute {
 		});
 	}
 
-	async processSuccessExecution(
+	private async processSuccessExecution(
 		startedAt: Date,
 		executionError?: ExecutionBaseError,
 		closeFunction?: Promise<void>,
