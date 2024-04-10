@@ -56,10 +56,8 @@ const renderDescription = ({
 	description,
 	docUrl,
 	example,
-	fnName,
 }: {
 	description: string;
-	fnName: string;
 	docUrl?: string;
 	example?: DocMetadataExample;
 }): HTMLElement => {
@@ -85,7 +83,7 @@ const renderDescription = ({
 	}
 
 	if (example) {
-		const renderedExample = renderExample(example, fnName);
+		const renderedExample = renderExample(example);
 		descriptionBody.appendChild(renderedExample);
 	}
 
@@ -109,6 +107,8 @@ const renderArgs = (args: DocMetadataArgument[]): HTMLElement => {
 		const argName = document.createElement('span');
 		argName.classList.add('autocomplete-info-arg-name');
 		argName.textContent = arg.name;
+		if (arg.optional === true) argName.textContent += '?';
+
 		argItem.appendChild(argName);
 
 		if (arg.type) {
@@ -135,22 +135,15 @@ const renderArgs = (args: DocMetadataArgument[]): HTMLElement => {
 	return argsContainer;
 };
 
-const renderExample = (example: DocMetadataExample, fnName: string): HTMLElement => {
+const renderExample = (example: DocMetadataExample): HTMLElement => {
 	const examplePre = document.createElement('pre');
 	examplePre.classList.add('autocomplete-info-example');
 	const exampleCode = document.createElement('code');
 	examplePre.appendChild(exampleCode);
 
-	if (example.description) {
-		const exampleComment = document.createElement('span');
-		exampleComment.classList.add('autocomplete-info-example-comment');
-		exampleComment.textContent = `// ${example.description}\n`;
-		exampleCode.appendChild(exampleComment);
-	}
-
 	const exampleExpression = document.createElement('span');
 	exampleExpression.classList.add('autocomplete-info-example-expr');
-	exampleExpression.textContent = `${JSON.stringify(example.subject)}.${fnName}(${example.args.map((arg) => JSON.stringify(arg)).join(', ')})\n`;
+	exampleExpression.textContent = example.example + '\n';
 	exampleCode.appendChild(exampleExpression);
 
 	if (example.evaluated !== undefined) {
@@ -162,7 +155,7 @@ const renderExample = (example: DocMetadataExample, fnName: string): HTMLElement
 	return examplePre;
 };
 
-const renderExamples = (examples: DocMetadataExample[], fnName: string): HTMLElement => {
+const renderExamples = (examples: DocMetadataExample[]): HTMLElement => {
 	const examplesContainer = document.createElement('div');
 	examplesContainer.classList.add('autocomplete-info-examples');
 
@@ -172,7 +165,7 @@ const renderExamples = (examples: DocMetadataExample[], fnName: string): HTMLEle
 	examplesContainer.appendChild(examplesTitle);
 
 	for (const example of examples) {
-		const renderedExample = renderExample(example, fnName);
+		const renderedExample = renderExample(example);
 		examplesContainer.appendChild(renderedExample);
 	}
 
@@ -195,10 +188,9 @@ export const createInfoBoxRenderer =
 
 		if (doc.description) {
 			const descriptionBody = renderDescription({
-				fnName: doc.name,
 				description: doc.description,
 				docUrl: doc.docURL,
-				example: doc.examples?.[0],
+				example: doc.args && doc.args.length > 0 ? doc.examples?.[0] : undefined,
 			});
 			tooltipContainer.appendChild(descriptionBody);
 		}
@@ -209,7 +201,7 @@ export const createInfoBoxRenderer =
 		}
 
 		if (examples && examples.length > 0) {
-			const examplesContainer = renderExamples(examples, doc.name);
+			const examplesContainer = renderExamples(examples);
 			tooltipContainer.appendChild(examplesContainer);
 		}
 

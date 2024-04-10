@@ -98,14 +98,12 @@ export const stringMethods: NativeDoc = {
 				],
 				examples: [
 					{
-						subject: 'Automation',
-						args: ['Auto'],
-						evaluated: true,
+						example: '"Automation".includes("Auto")',
+						evaluated: 'true',
 					},
 					{
-						subject: 'Automation',
-						args: ['nonexistent'],
-						evaluated: false,
+						example: '"Automation".includes("nonexistent")',
+						evaluated: 'false',
 					},
 				],
 			},

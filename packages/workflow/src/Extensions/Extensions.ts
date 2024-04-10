@@ -15,14 +15,13 @@ export type NativeDoc = {
 export type DocMetadataArgument = {
 	name: string;
 	type?: string;
+	optional?: boolean;
 	description?: string;
-	default?: unknown;
+	default?: string;
 };
 export type DocMetadataExample = {
-	subject: unknown;
-	args: string[];
-	description?: string;
-	evaluated?: unknown;
+	example: string;
+	evaluated?: string;
 };
 
 export type DocMetadata = {

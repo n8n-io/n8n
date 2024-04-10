@@ -203,6 +203,11 @@
 		}
 	}
 
+	.autocomplete-info-example code {
+		font-size: var(--font-size-3xs);
+		font-family: var(--font-family-monospace);
+	}
+
 	.autocomplete-info-example + .autocomplete-info-example {
 		margin-top: var(--spacing-2xs);
 	}
