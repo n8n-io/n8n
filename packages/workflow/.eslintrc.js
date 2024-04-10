@@ -9,6 +9,8 @@ module.exports = {
 	...sharedOptions(__dirname),
 
 	rules: {
+		complexity: 'error',
+
 		// TODO: remove these
 		'import/order': 'off',
 		'@typescript-eslint/no-base-to-string': 'warn',

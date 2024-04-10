@@ -262,6 +262,7 @@ const mapCookies = (cookies: CurlJson['cookies']): { cookie: string } | {} => {
 	};
 };
 
+// eslint-disable-next-line complexity
 export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters => {
 	const curlJson = curlToJson(curlCommand);
 

@@ -12,6 +12,7 @@ import { Logger } from '@/Logger';
 import { N8N_VERSION } from '@/constants';
 
 export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHandlerOptions) {
+	// eslint-disable-next-line complexity
 	return async (channel: string, messageString: string) => {
 		if (channel === COMMAND_REDIS_CHANNEL) {
 			if (!messageString) return;

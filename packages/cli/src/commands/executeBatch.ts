@@ -166,6 +166,7 @@ export class ExecuteBatch extends BaseCommand {
 		await this.initExternalHooks();
 	}
 
+	// eslint-disable-next-line complexity
 	async run() {
 		const { flags } = await this.parse(ExecuteBatch);
 		ExecuteBatch.debug = flags.debug;
