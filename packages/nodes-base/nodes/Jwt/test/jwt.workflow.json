@@ -1,0 +1,412 @@
+{
+  "name": "My workflow 31",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "fcc3e9dc-90c9-4b26-9b44-e661e0ebf658",
+      "name": "When clicking \"Test workflow\"",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        780,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "claims": {
+          "audience": "test",
+          "issuer": "test",
+          "jwtid": "123",
+          "subject": "test"
+        },
+        "options": {}
+      },
+      "id": "6b1ba38f-60d8-482a-a7d4-4fee7054334b",
+      "name": "JWT",
+      "type": "n8n-nodes-base.jwt",
+      "typeVersion": 1,
+      "position": [
+        1000,
+        380
+      ],
+      "credentials": {
+        "jwtAuth": {
+          "id": "AosB7WdhmVA3be8t",
+          "name": "JWT Auth test"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "decode",
+        "token": "={{ $json.token }}",
+        "options": {}
+      },
+      "id": "d07b9335-29a0-41bc-a6c4-0232d94a0559",
+      "name": "JWT1",
+      "type": "n8n-nodes-base.jwt",
+      "typeVersion": 1,
+      "position": [
+        1260,
+        220
+      ],
+      "credentials": {
+        "jwtAuth": {
+          "id": "AosB7WdhmVA3be8t",
+          "name": "JWT Auth test"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "verify",
+        "token": "={{ $json.token }}",
+        "options": {
+          "complete": true,
+          "ignoreExpiration": true,
+          "ignoreNotBefore": true
+        }
+      },
+      "id": "b6228805-f0c1-479d-bbec-cefcde7298e3",
+      "name": "JWT2",
+      "type": "n8n-nodes-base.jwt",
+      "typeVersion": 1,
+      "position": [
+        1280,
+        440
+      ],
+      "credentials": {
+        "jwtAuth": {
+          "id": "AosB7WdhmVA3be8t",
+          "name": "JWT Auth test"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "useJson": true,
+        "options": {}
+      },
+      "id": "56ede43f-6771-4341-8c17-ba4b9185711a",
+      "name": "JWT3",
+      "type": "n8n-nodes-base.jwt",
+      "typeVersion": 1,
+      "position": [
+        1000,
+        640
+      ],
+      "credentials": {
+        "jwtAuth": {
+          "id": "G45TOKX5kBEraTr1",
+          "name": "JWT Auth test PEM"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "decode",
+        "token": "={{ $json.token }}",
+        "options": {}
+      },
+      "id": "1b57af10-710f-4b86-9020-e1fc43a222cd",
+      "name": "JWT4",
+      "type": "n8n-nodes-base.jwt",
+      "typeVersion": 1,
+      "position": [
+        1280,
+        640
+      ],
+      "credentials": {
+        "jwtAuth": {
+          "id": "G45TOKX5kBEraTr1",
+          "name": "JWT Auth test PEM"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "verify",
+        "token": "={{ $json.token }}",
+        "options": {}
+      },
+      "id": "9a658330-ecc3-4007-9524-534ad15a3a40",
+      "name": "JWT5",
+      "type": "n8n-nodes-base.jwt",
+      "typeVersion": 1,
+      "position": [
+        1280,
+        860
+      ],
+      "credentials": {
+        "jwtAuth": {
+          "id": "G45TOKX5kBEraTr1",
+          "name": "JWT Auth test PEM"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1289f607-d46f-45f5-953a-1492f3b50bbd",
+              "name": "payload.audience",
+              "value": "={{ $json.payload.audience }}",
+              "type": "string"
+            },
+            {
+              "id": "e32ae71b-62ca-45e5-8351-2fd9ab7451ef",
+              "name": "payload.jwtid",
+              "value": "={{ $json.payload.jwtid }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "51a6c4b9-ebae-4ffa-a870-9915c3304cd5",
+      "name": "Edit Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        1500,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3ff845d5-9c2c-4744-bc33-a7318b4741fc",
+              "name": "payload.audience",
+              "value": "={{ $json.payload.audience }}",
+              "type": "string"
+            },
+            {
+              "id": "d1206579-634e-472a-9190-a176cf2477a1",
+              "name": "payload.jwtid",
+              "value": "={{ $json.payload.jwtid }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "9e97ea34-ec32-4935-b116-e40815567e1c",
+      "name": "Edit Fields1",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        1520,
+        440
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "46ed5c03-d41a-4387-988e-2ed3821f32d4",
+              "name": "payload.my_field_1",
+              "value": "={{ $json.payload.my_field_1 }}",
+              "type": "string"
+            },
+            {
+              "id": "0007786e-3f93-4146-8e10-32ab8e088b81",
+              "name": "payload.my_field_2",
+              "value": "={{ $json.payload.my_field_2 }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f205e447-2a98-48ef-bba5-12e9aecab90e",
+      "name": "Edit Fields2",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        1520,
+        860
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "fe90f817-1b89-409c-992c-e42070fc67bf",
+              "name": "payload.my_field_1",
+              "value": "={{ $json.payload.my_field_1 }}",
+              "type": "string"
+            },
+            {
+              "id": "1b80e8b3-3004-4959-8c6c-0d36176579ea",
+              "name": "payload.my_field_2",
+              "value": "={{ $json.payload.my_field_2 }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0788f03e-0c1c-4e21-a408-9441930cd82f",
+      "name": "Edit Fields3",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        1520,
+        640
+      ]
+    }
+  ],
+  "pinData": {
+    "Edit Fields": [
+      {
+        "json": {
+          "payload": {
+            "audience": "test",
+            "jwtid": "123"
+          }
+        }
+      }
+    ],
+    "Edit Fields1": [
+      {
+        "json": {
+          "payload": {
+            "audience": "test",
+            "jwtid": "123"
+          }
+        }
+      }
+    ],
+    "Edit Fields3": [
+      {
+        "json": {
+          "payload": {
+            "my_field_1": "value 1",
+            "my_field_2": "value 2"
+          }
+        }
+      }
+    ],
+    "Edit Fields2": [
+      {
+        "json": {
+          "payload": {
+            "my_field_1": "value 1",
+            "my_field_2": "value 2"
+          }
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When clicking \"Test workflow\"": {
+      "main": [
+        [
+          {
+            "node": "JWT",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "JWT3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "JWT": {
+      "main": [
+        [
+          {
+            "node": "JWT1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "JWT2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "JWT3": {
+      "main": [
+        [
+          {
+            "node": "JWT4",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "JWT5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "JWT1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "JWT2": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "JWT4": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "JWT5": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "f70ffef1-3c5d-4991-a3aa-b4141b93e4cb",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "be251a83c052a9862eeac953816fbb1464f89dfbf79d7ac490a8e336a8cc8bfd"
+  },
+  "id": "H0sZEXDuE7VIP5vz",
+  "tags": []
+}

@@ -250,6 +250,7 @@ export class MessageEventBusDestinationWebhook
 		return null;
 	}
 
+	// eslint-disable-next-line complexity
 	async receiveFromEventBus(emitterPayload: MessageWithCallback): Promise<boolean> {
 		const { msg, confirmCallback } = emitterPayload;
 		let sendResult = false;

@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "1.36.0",
+  "version": "1.37.0",
   "description": "Base nodes of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -574,6 +574,7 @@
       "dist/nodes/Jira/Jira.node.js",
       "dist/nodes/Jira/JiraTrigger.node.js",
       "dist/nodes/JotForm/JotFormTrigger.node.js",
+      "dist/nodes/Jwt/Jwt.node.js",
       "dist/nodes/Kafka/Kafka.node.js",
       "dist/nodes/Kafka/KafkaTrigger.node.js",
       "dist/nodes/Keap/Keap.node.js",
