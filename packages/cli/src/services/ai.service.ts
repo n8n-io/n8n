@@ -96,7 +96,9 @@ export class AIService {
 			);
 		}
 
-		result.curl = result.curl.replace(/": (\{\{[A-Za-z0-9_]+}}|\{[A-Za-z0-9_]+})/g, '": "$1"');
+		result.curl = result.curl
+			.replace(/": (\{\{[A-Za-z0-9_]+}}|\{[A-Za-z0-9_]+})/g, '": "$1"') // Fix for placeholders `curl -d '{ "key": {VALUE} }'`
+			.replace(/(-d '[^']+')}/, '$1'); // Fix for rogue curly bracket `curl -d '{ "key": "value" }'}`
 
 		return result;
 	}

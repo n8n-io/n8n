@@ -2149,6 +2149,8 @@
 	"generateCurlModal.request.placeholder": "Describe the request you want to make",
 	"generateCurlModal.invalidCurlCommand.title": "Generation failed",
 	"generateCurlModal.invalidCurlCommand.message": "The AI couldn't process your request",
+	"generateCurlModal.success.title": "HTTP Request filled out",
+	"generateCurlModal.success.message": "Please check carefully as AI content can be inaccurate",
 	"variables.heading": "Variables",
 	"variables.add": "Add variable",
 	"variables.add.unavailable": "Upgrade plan to keep using variables",

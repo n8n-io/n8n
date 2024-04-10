@@ -113,12 +113,25 @@ function closeDialog(): void {
 }
 
 function onImportSuccess() {
-	sendTelemetry();
+	sendImportCurlTelemetry();
+	sendGenerateCurlTelemetry({
+		valid: true,
+	});
+
+	toast.showMessage({
+		title: i18n.baseText('generateCurlModal.success.title'),
+		message: i18n.baseText('generateCurlModal.success.message'),
+		type: 'success',
+	});
+
 	closeDialog();
 }
 
 function onImportFailure(data: { invalidProtocol: boolean; protocol?: string }) {
-	sendTelemetry({ success: false, ...data });
+	sendImportCurlTelemetry({ success: false, ...data });
+	sendGenerateCurlTelemetry({
+		valid: false,
+	});
 }
 
 function onAfterImport() {
@@ -131,7 +144,7 @@ function onAfterImport() {
 	});
 }
 
-function sendTelemetry(
+function sendImportCurlTelemetry(
 	data: { success: boolean; invalidProtocol: boolean; protocol?: string } = {
 		success: true,
 		invalidProtocol: false,
@@ -169,30 +182,17 @@ async function onSubmit() {
 		});
 
 		await importCurlCommand(data.curl);
-
-		sendGenerateCurlTelemetry(service, request, {
-			valid: true,
-		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('error'));
-
-		sendGenerateCurlTelemetry(service, request, {
-			valid: false,
-		});
 	} finally {
 		loading.value = false;
 	}
 }
 
-function sendGenerateCurlTelemetry(
-	service: string,
-	request: string,
-	{
-		valid,
-	}: {
-		valid: boolean;
-	},
-) {
+function sendGenerateCurlTelemetry({ valid }: { valid: boolean }) {
+	const service = formValues.value.service;
+	const request = formValues.value.request;
+
 	telemetry.track('User generated curl command using AI', {
 		request,
 		request_service_name: service,
