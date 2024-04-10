@@ -1,9 +1,17 @@
 import fs from 'fs';
 import path from 'path';
+import { LRLanguage } from '@codemirror/language';
 import { fileTests as runTestFile } from '@lezer/generator/dist/test';
-import { n8nLanguage } from '../../src/expressions/index';
+import { parserWithMetaData } from '../../src/expressions/index';
 
 describe('expressions language', () => {
+	const n8nLanguage = LRLanguage.define({
+		parser: parserWithMetaData,
+		languageData: {
+			commentTokens: { line: ';' },
+		},
+	});
+
 	const CASES_DIR = __dirname;
 	for (const testFile of fs.readdirSync(CASES_DIR)) {
 		if (!/\.txt$/.test(testFile)) continue;

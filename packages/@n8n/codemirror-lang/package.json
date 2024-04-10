@@ -27,7 +27,6 @@
     "format": "prettier --write --ignore-path ../../.prettierignore src test"
   },
   "peerDependencies": {
-    "@codemirror/autocomplete": "*",
     "@codemirror/language": "*",
     "@lezer/highlight": "*"
   },
