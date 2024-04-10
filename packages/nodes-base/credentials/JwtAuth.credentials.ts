@@ -56,13 +56,13 @@ const algorithms: INodePropertyOptions[] = [
 ];
 
 // eslint-disable-next-line n8n-nodes-base/cred-class-name-unsuffixed
-export class jwtAuth implements ICredentialType {
+export class JwtAuth implements ICredentialType {
 	// eslint-disable-next-line n8n-nodes-base/cred-class-field-name-unsuffixed
 	name = 'jwtAuth';
 
 	displayName = 'JWT Auth';
 
-	documentationUrl = 'jwtAuth';
+	documentationUrl = 'jwt';
 
 	icon = 'file:icons/jwt.svg';
 
