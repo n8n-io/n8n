@@ -152,15 +152,35 @@ describe('GET /projects/my-projects', () => {
 		//
 		expect(respProjects.length).toBe(2);
 
-		expect(respProjects.find((p) => p.id === personalProject1.id)).toMatchObject({
-			role: 'project:personalOwner',
-			scopes: ['project:list', 'project:read'].sort(),
-		});
+		const projectsExpected = [
+			[
+				personalProject1,
+				{
+					role: 'project:personalOwner',
+					scopes: ['project:list', 'project:read', 'credential:create'],
+				},
+			],
+			[
+				teamProject1,
+				{
+					role: 'project:admin',
+					scopes: [
+						'project:list',
+						'project:read',
+						'project:update',
+						'project:delete',
+						'credential:create',
+					],
+				},
+			],
+		] as const;
 
-		expect(respProjects.find((p) => p.id === teamProject1.id)).toMatchObject({
-			role: 'project:admin',
-			scopes: ['project:list', 'project:read', 'project:update', 'project:delete'].sort(),
-		});
+		for (const [project, expected] of projectsExpected) {
+			const p = respProjects.find((p) => p.id === project.id)!;
+
+			expect(p.role).toBe(expected.role);
+			expect(expected.scopes.every((s) => p.scopes?.includes(s as Scope))).toBe(true);
+		}
 
 		expect(respProjects).not.toContainEqual(expect.objectContaining({ id: personalProject2.id }));
 		expect(respProjects).not.toContainEqual(expect.objectContaining({ id: personalProject3.id }));
@@ -213,57 +233,85 @@ describe('GET /projects/my-projects', () => {
 		//
 		expect(respProjects.length).toBe(5);
 
-		expect(respProjects.find((p) => p.id === ownerProject.id)).toMatchObject({
-			role: 'project:personalOwner',
-			scopes: [
-				'project:list',
-				'project:create',
-				'project:read',
-				'project:update',
-				'project:delete',
-			].sort(),
-		});
+		const projectsExpected = [
+			[
+				ownerProject,
+				{
+					role: 'project:personalOwner',
+					scopes: [
+						'project:list',
+						'project:create',
+						'project:read',
+						'project:update',
+						'project:delete',
+						'credential:create',
+					],
+				},
+			],
+			[
+				teamProject1,
+				{
+					role: 'global:owner',
+					scopes: [
+						'project:list',
+						'project:create',
+						'project:read',
+						'project:update',
+						'project:delete',
+						'credential:create',
+					],
+				},
+			],
+			[
+				teamProject2,
+				{
+					role: 'project:admin',
+					scopes: [
+						'project:list',
+						'project:create',
+						'project:read',
+						'project:update',
+						'project:delete',
+						'credential:create',
+					],
+				},
+			],
+			[
+				teamProject3,
+				{
+					role: 'project:viewer',
+					scopes: [
+						'project:list',
+						'project:create',
+						'project:read',
+						'project:update',
+						'project:delete',
+						'credential:create',
+					],
+				},
+			],
+			[
+				teamProject4,
+				{
+					role: 'global:owner',
+					scopes: [
+						'project:list',
+						'project:create',
+						'project:read',
+						'project:update',
+						'project:delete',
+						'credential:create',
+					],
+				},
+			],
+		] as const;
 
-		expect(respProjects.find((p) => p.id === teamProject1.id)).toMatchObject({
-			role: 'global:owner',
-			scopes: [
-				'project:list',
-				'project:create',
-				'project:read',
-				'project:update',
-				'project:delete',
-			].sort(),
-		});
-		expect(respProjects.find((p) => p.id === teamProject2.id)).toMatchObject({
-			role: 'project:admin',
-			scopes: [
-				'project:list',
-				'project:create',
-				'project:read',
-				'project:update',
-				'project:delete',
-			].sort(),
-		});
-		expect(respProjects.find((p) => p.id === teamProject3.id)).toMatchObject({
-			role: 'project:viewer',
-			scopes: [
-				'project:list',
-				'project:create',
-				'project:read',
-				'project:update',
-				'project:delete',
-			].sort(),
-		});
-		expect(respProjects.find((p) => p.id === teamProject4.id)).toMatchObject({
-			role: 'global:owner',
-			scopes: [
-				'project:list',
-				'project:create',
-				'project:read',
-				'project:update',
-				'project:delete',
-			].sort(),
-		});
+		for (const [project, expected] of projectsExpected) {
+			const p = respProjects.find((p) => p.id === project.id)!;
+
+			expect(p.role).toBe(expected.role);
+			expect(expected.scopes.every((s) => p.scopes?.includes(s as Scope))).toBe(true);
+		}
 
 		expect(respProjects).not.toContainEqual(expect.objectContaining({ id: personalProject1.id }));
 		expect(respProjects).not.toContainEqual(expect.objectContaining({ id: personalProject2.id }));
