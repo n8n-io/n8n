@@ -384,6 +384,7 @@ import { tryToParseNumber } from '@/utils/typesUtils';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
 import { useProjectsStore } from '@/features/projects/projects.store';
+import type { ProjectSharingData } from '@/features/projects/projects.types';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -3535,6 +3536,16 @@ export default defineComponent({
 			// Clear the interval to prevent the notification from being sent
 			clearTimeout(this.unloadTimeout);
 		},
+		setHomeProjectForNewWorkflow() {
+			const { currentProject, personalProject } = this.projectsStore;
+			this.workflowsStore.workflow.homeProject = (
+				currentProject
+					? { id: currentProject.id, name: currentProject.name, type: currentProject.type }
+					: personalProject
+						? { id: personalProject.id, name: personalProject.name, type: personalProject.type }
+						: {}
+			) as ProjectSharingData;
+		},
 		async newWorkflow(): Promise<void> {
 			this.canvasStore.startLoading();
 			this.resetWorkspace();
@@ -3551,6 +3562,7 @@ export default defineComponent({
 			this.uiStore.nodeViewInitialized = true;
 			this.historyStore.reset();
 			this.executionsStore.activeExecution = null;
+			this.setHomeProjectForNewWorkflow();
 			this.canvasStore.stopLoading();
 		},
 		async tryToAddWelcomeSticky(): Promise<void> {
