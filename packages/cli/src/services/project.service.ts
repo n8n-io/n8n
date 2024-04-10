@@ -14,6 +14,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
 import { SharedCredentialsRepository } from '@/databases/repositories/sharedCredentials.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { CacheService } from './cache/cache.service';
 
 @Service()
 export class ProjectService {
@@ -23,6 +24,7 @@ export class ProjectService {
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly roleService: RoleService,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
+		private readonly cacheService: CacheService,
 	) {}
 
 	private get workflowService() {
@@ -217,6 +219,20 @@ export class ProjectService {
 			await this.pruneRelations(em, project);
 			await this.addManyRelations(em, project, relations);
 		});
+		await this.clearCredentialCanUseExternalSecretsCache(projectId);
+	}
+
+	async clearCredentialCanUseExternalSecretsCache(projectId: string) {
+		const shares = await this.sharedCredentialsRepository.find({
+			where: {
+				projectId,
+				role: 'credential:owner',
+			},
+			select: ['credentialsId'],
+		});
+		await this.cacheService.deleteMany(
+			shares.map((share) => `credential-can-use-secrets:${share.credentialsId}`),
+		);
 	}
 
 	async pruneRelations(em: EntityManager, project: Project) {

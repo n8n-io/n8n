@@ -328,7 +328,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 		await additionalData?.secretsHelpers?.waitForInit();
 
-		const canUseSecrets = await this.credentialOwnedBySuperUsers(nodeCredentials);
+		const canUseSecrets = await this.credentialCanUseExternalSecrets(nodeCredentials);
 
 		return this.applyDefaultsAndOverwrites(
 			additionalData,
@@ -447,7 +447,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		await this.credentialsRepository.update(findQuery, newCredentialsData);
 	}
 
-	async credentialOwnedBySuperUsers(nodeCredential: INodeCredentialsDetails): Promise<boolean> {
+	async credentialCanUseExternalSecrets(nodeCredential: INodeCredentialsDetails): Promise<boolean> {
 		if (!nodeCredential.id) {
 			return false;
 		}

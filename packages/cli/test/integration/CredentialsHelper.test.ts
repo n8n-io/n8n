@@ -61,7 +61,7 @@ describe('CredentialsHelper', () => {
 				role: credentialRole,
 			});
 
-			const result = await credentialHelper.credentialOwnedBySuperUsers(credential);
+			const result = await credentialHelper.credentialCanUseExternalSecrets(credential);
 
 			expect(result).toBe(expectedResult);
 		});
@@ -77,7 +77,7 @@ describe('CredentialsHelper', () => {
 				await linkUserToProject(member, teamProject, 'project:admin'),
 			]);
 
-			const result = await credentialHelper.credentialOwnedBySuperUsers(credential);
+			const result = await credentialHelper.credentialCanUseExternalSecrets(credential);
 
 			expect(result).toBe(true);
 		});
@@ -93,7 +93,7 @@ describe('CredentialsHelper', () => {
 				await linkUserToProject(member, teamProject, 'project:admin'),
 			]);
 
-			const result = await credentialHelper.credentialOwnedBySuperUsers(credential);
+			const result = await credentialHelper.credentialCanUseExternalSecrets(credential);
 
 			expect(result).toBe(true);
 		});
@@ -109,7 +109,7 @@ describe('CredentialsHelper', () => {
 				await linkUserToProject(member, teamProject, 'project:admin'),
 			]);
 
-			const result = await credentialHelper.credentialOwnedBySuperUsers(credential);
+			const result = await credentialHelper.credentialCanUseExternalSecrets(credential);
 
 			expect(result).toBe(false);
 		});
@@ -125,7 +125,7 @@ describe('CredentialsHelper', () => {
 				await linkUserToProject(member, teamProject, 'project:admin'),
 			]);
 
-			const result = await credentialHelper.credentialOwnedBySuperUsers(credential);
+			const result = await credentialHelper.credentialCanUseExternalSecrets(credential);
 
 			expect(result).toBe(false);
 		});
@@ -140,7 +140,7 @@ describe('CredentialsHelper', () => {
 				await linkUserToProject(member, teamProject, 'project:admin'),
 			]);
 
-			const result = await credentialHelper.credentialOwnedBySuperUsers(credential);
+			const result = await credentialHelper.credentialCanUseExternalSecrets(credential);
 
 			expect(result).toBe(false);
 		});
