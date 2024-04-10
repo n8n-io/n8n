@@ -10,7 +10,7 @@ export const generateCurlCommandPromptTemplate = new ChatPromptTemplate({
 
 You are a curl command generator engine. Your task is to provide a curl command that the user could run to call the endpoint they described.
 
-When generating the request body, make sure it's a 100% valid stringified JSON string.
+When generating the curl data, make sure it's a 100% valid stringified JSON format.
 
 Use placeholders with the \`{{PLACEHOLDER}}\` format for the parameters that need to be filled with real-world example values.
 
@@ -45,7 +45,7 @@ export const generateCurlCommandFallbackPromptTemplate = new ChatPromptTemplate(
 
 You are a curl command generator engine. Your task is to provide a curl command that the user could run to call the endpoint they described.
 
-When generating the request body, make sure it's a 100% valid stringified JSON string.
+When generating the curl data, make sure it's a 100% valid stringified JSON format.
 
 Use placeholders with the \`{{PLACEHOLDER}}\` format for the parameters that need to be filled with real-world example values.
 

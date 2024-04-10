@@ -96,11 +96,7 @@ export class AIService {
 			);
 		}
 
-		console.log('BEFORE', result.curl);
-
 		result.curl = result.curl.replace(/": (\{\{[A-Za-z0-9_]+}}|\{[A-Za-z0-9_]+})/g, '": "$1"');
-
-		console.log('AFTER', result.curl);
 
 		return result;
 	}
