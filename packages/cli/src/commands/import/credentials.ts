@@ -15,6 +15,7 @@ import type { ICredentialsEncrypted } from 'n8n-workflow';
 import { ApplicationError, jsonParse } from 'n8n-workflow';
 import { UM_FIX_INSTRUCTION } from '@/constants';
 import { UserRepository } from '@db/repositories/user.repository';
+import { SharedCredentialsRepository } from '@/databases/repositories/sharedCredentials.repository';
 
 export class ImportCredentialsCommand extends BaseCommand {
 	static description = 'Import credentials';
@@ -89,6 +90,17 @@ export class ImportCredentialsCommand extends BaseCommand {
 					const credential = jsonParse<ICredentialsEncrypted>(
 						fs.readFileSync(file, { encoding: 'utf8' }),
 					);
+
+					if (credential.id && flags.userId) {
+						const credentialOwner = await this.getCredentialOwner(credential.id);
+
+						if (credentialOwner && credentialOwner !== flags.userId) {
+							throw new ApplicationError(
+								`The credential with id "${credential.id}" is already owned by the user with the id "${credentialOwner}". It can't be re-owned by the user with the id "${flags.userId}"`,
+							);
+						}
+					}
+
 					if (typeof credential.data === 'object') {
 						// plain data / decrypted input. Should be encrypted first.
 						credential.data = cipher.encrypt(credential.data);
@@ -116,6 +128,15 @@ export class ImportCredentialsCommand extends BaseCommand {
 		await Db.getConnection().transaction(async (transactionManager) => {
 			this.transactionManager = transactionManager;
 			for (const credential of credentials) {
+				if (credential.id && flags.userId) {
+					const credentialOwner = await this.getCredentialOwner(credential.id);
+					if (credentialOwner && credentialOwner !== flags.userId) {
+						throw new ApplicationError(
+							`The credential with id "${credential.id}" is already owned by the user with the id "${credentialOwner}". It can't be re-owned by the user with the id "${flags.userId}"`,
+						);
+					}
+				}
+
 				if (typeof credential.data === 'object') {
 					// plain data / decrypted input. Should be encrypted first.
 					credential.data = cipher.encrypt(credential.data);
@@ -142,15 +163,23 @@ export class ImportCredentialsCommand extends BaseCommand {
 
 	private async storeCredential(credential: Partial<CredentialsEntity>, user: User) {
 		const result = await this.transactionManager.upsert(CredentialsEntity, credential, ['id']);
-		await this.transactionManager.upsert(
-			SharedCredentials,
-			{
-				credentialsId: result.identifiers[0].id as string,
-				userId: user.id,
-				role: 'credential:owner',
-			},
-			['credentialsId', 'userId'],
-		);
+
+		const sharingExists = await this.transactionManager.existsBy(SharedCredentials, {
+			credentialsId: credential.id,
+			role: 'credential:owner',
+		});
+
+		if (!sharingExists) {
+			await this.transactionManager.upsert(
+				SharedCredentials,
+				{
+					credentialsId: result.identifiers[0].id as string,
+					userId: user.id,
+					role: 'credential:owner',
+				},
+				['credentialsId', 'userId'],
+			);
+		}
 	}
 
 	private async getOwner() {
@@ -170,5 +199,14 @@ export class ImportCredentialsCommand extends BaseCommand {
 		}
 
 		return user;
+	}
+
+	private async getCredentialOwner(credentialsId: string) {
+		const sharedCredential = await Container.get(SharedCredentialsRepository).findOneBy({
+			credentialsId,
+			role: 'credential:owner',
+		});
+
+		return sharedCredential?.userId;
 	}
 }
