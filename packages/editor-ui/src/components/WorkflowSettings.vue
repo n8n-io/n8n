@@ -379,7 +379,8 @@ import { useRootStore } from '@/stores/n8nRoot.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createEventBus } from 'n8n-design-system/utils';
-import type { IPermissions } from '@/permissions';
+import type { PermissionsMap } from '@/permissions';
+import type { WorkflowScope } from '@n8n/permissions';
 import { getWorkflowPermissions } from '@/permissions';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
@@ -489,7 +490,7 @@ export default defineComponent({
 
 			return this.workflowsEEStore.getWorkflowOwnerName(`${this.workflowId}`, fallback);
 		},
-		workflowPermissions(): IPermissions {
+		workflowPermissions(): PermissionsMap<WorkflowScope> {
 			return getWorkflowPermissions(
 				this.currentUser,
 				this.projectsStore.currentProject,

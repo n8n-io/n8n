@@ -54,7 +54,8 @@ import type { IWorkflowDb, IUser, ITag } from '@/Interface';
 import { DUPLICATE_MODAL_KEY, MODAL_CONFIRM, VIEWS, WORKFLOW_SHARE_MODAL_KEY } from '@/constants';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
-import type { IPermissions } from '@/permissions';
+import type { PermissionsMap } from '@/permissions';
+import type { WorkflowScope } from '@n8n/permissions';
 import { getWorkflowPermissions } from '@/permissions';
 import dateformat from 'dateformat';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
@@ -112,7 +113,7 @@ export default defineComponent({
 		currentUser(): IUser {
 			return this.usersStore.currentUser || ({} as IUser);
 		},
-		workflowPermissions(): IPermissions {
+		workflowPermissions(): PermissionsMap<WorkflowScope> {
 			return getWorkflowPermissions(this.currentUser, this.projectsStore.currentProject, this.data);
 		},
 		actions(): Array<{ label: string; value: string }> {

@@ -179,7 +179,8 @@ import { useUIStore } from '@/stores/ui.store';
 import { useUsageStore } from '@/stores/usage.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { IPermissions } from '@/permissions';
+import type { PermissionsMap } from '@/permissions';
+import type { WorkflowScope } from '@n8n/permissions';
 import { getWorkflowPermissions } from '@/permissions';
 import { createEventBus } from 'n8n-design-system/utils';
 import { nodeViewEventBus } from '@/event-bus';
@@ -303,7 +304,7 @@ export default defineComponent({
 				VIEWS.EXECUTION_PREVIEW,
 			].includes(this.$route.name || '');
 		},
-		workflowPermissions(): IPermissions {
+		workflowPermissions(): PermissionsMap<WorkflowScope> {
 			return getWorkflowPermissions(
 				this.currentUser,
 				this.projectsStore.currentProject,

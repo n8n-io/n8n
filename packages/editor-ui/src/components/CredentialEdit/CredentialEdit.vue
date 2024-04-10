@@ -142,7 +142,7 @@ import Modal from '@/components/Modal.vue';
 import InlineNameEdit from '@/components/InlineNameEdit.vue';
 import { CREDENTIAL_EDIT_MODAL_KEY, EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
 import FeatureComingSoon from '@/components/FeatureComingSoon.vue';
-import type { IPermissions } from '@/permissions';
+import type { PermissionsMap } from '@/permissions';
 import { getCredentialPermissions } from '@/permissions';
 import type { IMenuItem } from 'n8n-design-system';
 import { createEventBus } from 'n8n-design-system/utils';
@@ -164,6 +164,7 @@ import { isValidCredentialResponse, isCredentialModalState } from '@/utils/typeG
 import { isExpression, isTestableExpression } from '@/utils/expressions';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useProjectsStore } from '@/features/projects/projects.store';
+import type { CredentialScope } from '@n8n/permissions';
 
 export default defineComponent({
 	name: 'CredentialEdit',
@@ -306,16 +307,11 @@ export default defineComponent({
 			};
 		},
 		isCredentialTestable(): boolean {
-			// Sharees can always test since they can't see the data.
-			if (!this.credentialPermissions.isOwner) {
-				return true;
-			}
 			if (this.isOAuthType || !this.requiredPropertiesFilled) {
 				return false;
 			}
 
-			const { ownedBy, sharedWithProjects, ...credentialData } = this.credentialData;
-			const hasUntestableExpressions = Object.values(credentialData).reduce(
+			const hasUntestableExpressions = Object.values(this.credentialData).reduce(
 				(accu: boolean, value: CredentialInformation) =>
 					accu ||
 					(typeof value === 'string' && isExpression(value) && !isTestableExpression(value)),
@@ -423,9 +419,9 @@ export default defineComponent({
 			}
 			return true;
 		},
-		credentialPermissions(): IPermissions {
+		credentialPermissions(): PermissionsMap<CredentialScope> {
 			if (this.loading) {
-				return {};
+				return {} as PermissionsMap<CredentialScope>;
 			}
 
 			return getCredentialPermissions(
@@ -495,6 +491,26 @@ export default defineComponent({
 			this.credentialName = await this.credentialsStore.getNewCredentialName({
 				credentialTypeName: this.defaultCredentialTypeName,
 			});
+
+			const { currentProject, personalProject } = this.projectsStore;
+			const scopes = currentProject?.scopes ?? [
+				'credential:create',
+				'credential:read',
+				'credential:update',
+				'credential:delete',
+				'credential:share',
+			];
+			const homeProject = currentProject
+				? { id: currentProject.id, name: currentProject.name, type: currentProject.type }
+				: personalProject
+					? { id: personalProject.id, name: personalProject.name, type: personalProject.type }
+					: {};
+
+			this.credentialData = {
+				...this.credentialData,
+				scopes,
+				homeProject,
+			};
 		} else {
 			await this.loadCurrentCredential();
 		}
@@ -633,12 +649,12 @@ export default defineComponent({
 		},
 
 		async loadCurrentCredential() {
-			this.credentialId = this.activeId;
+			this.credentialId = (this.activeId ?? '') as string;
 
 			try {
-				const currentCredentials = await this.credentialsStore.getCredentialData({
+				const currentCredentials = (await this.credentialsStore.getCredentialData({
 					id: this.credentialId,
-				});
+				})) as unknown as ICredentialDataDecryptedObject;
 
 				if (!currentCredentials) {
 					throw new Error(
@@ -648,7 +664,7 @@ export default defineComponent({
 					);
 				}
 
-				this.credentialData = (currentCredentials.data as ICredentialDataDecryptedObject) || {};
+				this.credentialData = currentCredentials || {};
 				if (currentCredentials.sharedWithProjects) {
 					this.credentialData = {
 						...this.credentialData,
@@ -662,7 +678,7 @@ export default defineComponent({
 					};
 				}
 
-				this.credentialName = currentCredentials.name;
+				this.credentialName = currentCredentials.name as string;
 			} catch (error) {
 				this.showError(
 					error,

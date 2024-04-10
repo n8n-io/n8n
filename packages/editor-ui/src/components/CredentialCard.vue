@@ -34,7 +34,7 @@ import type { ICredentialType } from 'n8n-workflow';
 import { MODAL_CONFIRM } from '@/constants';
 import { useMessage } from '@/composables/useMessage';
 import CredentialIcon from '@/components/CredentialIcon.vue';
-import type { IPermissions } from '@/permissions';
+import type { PermissionsMap } from '@/permissions';
 import { getCredentialPermissions } from '@/permissions';
 import dateformat from 'dateformat';
 import { mapStores } from 'pinia';
@@ -44,6 +44,7 @@ import { useCredentialsStore } from '@/stores/credentials.store';
 import TimeAgo from '@/components/TimeAgo.vue';
 import type { ProjectSharingData } from '@/features/projects/projects.types';
 import { useProjectsStore } from '@/features/projects/projects.store';
+import type { CredentialScope } from '@n8n/permissions';
 
 export const CREDENTIAL_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -88,7 +89,7 @@ export default defineComponent({
 		credentialType(): ICredentialType | undefined {
 			return this.credentialsStore.getCredentialTypeByName(this.data.type);
 		},
-		credentialPermissions(): IPermissions | null {
+		credentialPermissions(): PermissionsMap<CredentialScope> | null {
 			return !this.currentUser
 				? null
 				: getCredentialPermissions(this.currentUser, this.projectsStore.currentProject, this.data);

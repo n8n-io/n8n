@@ -9,7 +9,7 @@ import type {
 import type { Project } from './features/projects/projects.types';
 
 type ExtractAfterColon<T> = T extends `${infer _Prefix}:${infer Suffix}` ? Suffix : never;
-type PermissionsMap<T> = {
+export type PermissionsMap<T> = {
 	[K in ExtractAfterColon<T>]: boolean;
 };
 

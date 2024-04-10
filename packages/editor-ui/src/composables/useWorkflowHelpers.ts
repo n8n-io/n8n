@@ -50,7 +50,8 @@ import { useNodeHelpers } from '@/composables/useNodeHelpers';
 
 import { get, isEqual } from 'lodash-es';
 
-import type { IPermissions } from '@/permissions';
+import type { PermissionsMap } from '@/permissions';
+import type { WorkflowScope } from '@n8n/permissions';
 import { getWorkflowPermissions } from '@/permissions';
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
@@ -475,7 +476,7 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
 
-	const workflowPermissions = computed<IPermissions>(() => {
+	const workflowPermissions = computed<PermissionsMap<WorkflowScope>>(() => {
 		return getWorkflowPermissions(
 			usersStore.currentUser,
 			projectsStore.currentProject,
