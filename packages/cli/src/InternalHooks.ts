@@ -339,6 +339,7 @@ export class InternalHooks {
 		]);
 	}
 
+	// eslint-disable-next-line complexity
 	async onWorkflowPostExecute(
 		executionId: string,
 		workflow: IWorkflowBase,

@@ -121,6 +121,7 @@ function parseRegexPattern(pattern: string): RegExp {
 	return regex;
 }
 
+// eslint-disable-next-line complexity
 export function executeFilterCondition(
 	condition: FilterConditionValue,
 	filterOptions: FilterOptionsValue,
