@@ -1264,6 +1264,7 @@ export class Workflow {
 	 * Executes the given node.
 	 *
 	 */
+	// eslint-disable-next-line complexity
 	async runNode(
 		executionData: IExecuteData,
 		runExecutionData: IRunExecutionData,
