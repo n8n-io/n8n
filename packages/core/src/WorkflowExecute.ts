@@ -292,10 +292,9 @@ export class WorkflowExecute {
 
 	/**
 	 * Executes the hook with the given name
-	 *
 	 */
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	async executeHook(hookName: string, parameters: any[]): Promise<void> {
+	private async executeHook(hookName: string, parameters: any[]): Promise<void> {
 		if (this.additionalData.hooks === undefined) {
 			return;
 		}
@@ -303,7 +302,7 @@ export class WorkflowExecute {
 		return await this.additionalData.hooks.executeHookFunctions(hookName, parameters);
 	}
 
-	moveNodeMetadata(): void {
+	private moveNodeMetadata(): void {
 		const metadata = get(this.runExecutionData, 'executionData.metadata');
 
 		if (metadata) {
@@ -322,12 +321,11 @@ export class WorkflowExecute {
 	/**
 	 * Checks the incoming connection does not receive any data
 	 */
-	incomingConnectionIsEmpty(
+	private incomingConnectionIsEmpty(
 		runData: IRunData,
 		inputConnections: IConnection[],
 		runIndex: number,
 	): boolean {
-		// for (const inputConnection of workflow.connectionsByDestinationNode[nodeToAdd].main[0]) {
 		for (const inputConnection of inputConnections) {
 			const nodeIncomingData = get(runData, [
 				inputConnection.node,
@@ -344,7 +342,7 @@ export class WorkflowExecute {
 	}
 
 	private prepareWaitingToExecution(nodeName: string, runIndex: number) {
-		const numberOfConnections = this.workflow.connectionsByDestinationNode[nodeName].main.length;
+		const inputConnections = this.workflow.connectionsByDestinationNode[nodeName].main;
 		if (!this.runExecutionData.executionData!.waitingExecutionSource) {
 			this.runExecutionData.executionData!.waitingExecutionSource = {};
 		}
@@ -356,7 +354,7 @@ export class WorkflowExecute {
 			main: [],
 		};
 
-		for (let i = 0; i < numberOfConnections; i++) {
+		for (let i = 0; i < inputConnections.length; i++) {
 			this.runExecutionData.executionData!.waitingExecution[nodeName][runIndex].main.push(null);
 
 			this.runExecutionData.executionData!.waitingExecutionSource[nodeName][runIndex].main.push(
@@ -366,7 +364,7 @@ export class WorkflowExecute {
 	}
 
 	// eslint-disable-next-line complexity
-	addNodeToBeExecuted(
+	private addNodeToBeExecuted(
 		connectionData: IConnection,
 		outputIndex: number,
 		parentNodeName: string,
@@ -380,7 +378,8 @@ export class WorkflowExecute {
 
 		// Check if node has multiple inputs as then we have to wait for all input data
 		// to be present before we can add it to the node-execution-stack
-		if (workflow.connectionsByDestinationNode[connectionData.node].main.length > 1) {
+		const inputConnections = workflow.connectionsByDestinationNode[connectionData.node].main;
+		if (inputConnections.length > 1) {
 			// Node has multiple inputs
 			let nodeWasWaiting = true;
 
@@ -528,16 +527,13 @@ export class WorkflowExecute {
 			if (!nodeWasWaiting) {
 				// Get a list of all the output nodes that we can check for siblings easier
 				const checkOutputNodes = [];
+				const outputConnections = workflow.connectionsBySourceNode[parentNodeName].main;
 				// eslint-disable-next-line @typescript-eslint/no-for-in-array
-				for (const outputIndexParent in workflow.connectionsBySourceNode[parentNodeName].main) {
-					if (
-						!workflow.connectionsBySourceNode[parentNodeName].main.hasOwnProperty(outputIndexParent)
-					) {
+				for (const outputIndexParent in outputConnections) {
+					if (!outputConnections.hasOwnProperty(outputIndexParent)) {
 						continue;
 					}
-					for (const connectionDataCheck of workflow.connectionsBySourceNode[parentNodeName].main[
-						outputIndexParent
-					]) {
+					for (const connectionDataCheck of outputConnections[outputIndexParent]) {
 						checkOutputNodes.push(connectionDataCheck.node);
 					}
 				}
@@ -546,14 +542,8 @@ export class WorkflowExecute {
 				// checked. So we have to go through all the inputs and check if they
 				// are already on the list to be processed.
 				// If that is not the case add it.
-				for (
-					let inputIndex = 0;
-					inputIndex < workflow.connectionsByDestinationNode[connectionData.node].main.length;
-					inputIndex++
-				) {
-					for (const inputData of workflow.connectionsByDestinationNode[connectionData.node].main[
-						inputIndex
-					]) {
+				for (let inputIndex = 0; inputIndex < inputConnections.length; inputIndex++) {
+					for (const inputData of inputConnections[inputIndex]) {
 						if (inputData.node === parentNodeName) {
 							// Is the node we come from so its data will be available for sure
 							continue;
@@ -652,13 +642,14 @@ export class WorkflowExecute {
 
 						let addEmptyItem = false;
 
-						if (workflow.connectionsByDestinationNode[nodeToAdd] === undefined) {
+						const connections = workflow.connectionsByDestinationNode[nodeToAdd];
+						if (connections === undefined) {
 							// Add empty item if the node does not have any input connections
 							addEmptyItem = true;
 						} else if (
 							this.incomingConnectionIsEmpty(
 								this.runExecutionData.resultData.runData,
-								workflow.connectionsByDestinationNode[nodeToAdd].main[0],
+								connections.main[0],
 								runIndex,
 							)
 						) {
@@ -936,12 +927,13 @@ export class WorkflowExecute {
 					// Check if all the data which is needed to run the node is available
 					if (workflow.connectionsByDestinationNode.hasOwnProperty(executionNode.name)) {
 						// Check if the node has incoming connections
-						if (workflow.connectionsByDestinationNode[executionNode.name].hasOwnProperty('main')) {
+						const connections = workflow.connectionsByDestinationNode[executionNode.name];
+						if (connections.hasOwnProperty('main')) {
 							let inputConnections: IConnection[][];
 							let connectionIndex: number;
 
 							// eslint-disable-next-line prefer-const
-							inputConnections = workflow.connectionsByDestinationNode[executionNode.name].main;
+							inputConnections = connections.main;
 
 							for (
 								connectionIndex = 0;
@@ -1224,7 +1216,7 @@ export class WorkflowExecute {
 										if (!inputData) {
 											return;
 										}
-										inputData.forEach((_, itemIndex) => {
+										inputData.forEach((_item, itemIndex) => {
 											pairedItem.push({
 												item: itemIndex,
 												input: inputIndex,
@@ -1395,20 +1387,15 @@ export class WorkflowExecute {
 							}> = [];
 
 							// Add the nodes to be executed
+							const outputConnections = workflow.connectionsBySourceNode[executionNode.name].main;
 							// eslint-disable-next-line @typescript-eslint/no-for-in-array
-							for (outputIndex in workflow.connectionsBySourceNode[executionNode.name].main) {
-								if (
-									!workflow.connectionsBySourceNode[executionNode.name].main.hasOwnProperty(
-										outputIndex,
-									)
-								) {
+							for (outputIndex in outputConnections) {
+								if (!outputConnections.hasOwnProperty(outputIndex)) {
 									continue;
 								}
 
 								// Iterate over all the different connections of this output
-								for (connectionData of workflow.connectionsBySourceNode[executionNode.name].main[
-									outputIndex
-								]) {
+								for (connectionData of outputConnections[outputIndex]) {
 									if (!workflow.nodes.hasOwnProperty(connectionData.node)) {
 										throw new ApplicationError('Destination node not found', {
 											extra: {
@@ -1760,15 +1747,13 @@ export class WorkflowExecute {
 		return fullRunData;
 	}
 
-	getFullRunData(startedAt: Date): IRun {
-		const fullRunData: IRun = {
+	private getFullRunData(startedAt: Date): IRun {
+		return {
 			data: this.runExecutionData,
 			mode: this.mode,
 			startedAt,
 			stoppedAt: new Date(),
 			status: this.status,
 		};
-
-		return fullRunData;
 	}
 }
