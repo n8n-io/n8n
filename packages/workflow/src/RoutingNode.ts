@@ -743,6 +743,7 @@ export class RoutingNode {
 		return parameterValue;
 	}
 
+	// eslint-disable-next-line complexity
 	getRequestOptionsFromParameters(
 		executeSingleFunctions: IExecuteSingleFunctions,
 		nodeProperties: INodeProperties | INodePropertyOptions,

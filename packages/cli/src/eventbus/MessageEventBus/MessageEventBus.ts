@@ -85,6 +85,7 @@ export class MessageEventBus extends EventEmitter {
 	 *
 	 * Sets `isInitialized` to `true` once finished.
 	 */
+	// eslint-disable-next-line complexity
 	async initialize(options?: MessageEventBusInitializeOptions): Promise<void> {
 		if (this.isInitialized) {
 			return;

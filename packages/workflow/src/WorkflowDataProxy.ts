@@ -738,6 +738,7 @@ export class WorkflowDataProxy {
 			});
 		};
 
+		// eslint-disable-next-line complexity
 		const getPairedItem = (
 			destinationNodeName: string,
 			incomingSourceData: ISourceData | null,
