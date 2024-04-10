@@ -3536,15 +3536,26 @@ export default defineComponent({
 			// Clear the interval to prevent the notification from being sent
 			clearTimeout(this.unloadTimeout);
 		},
-		setHomeProjectForNewWorkflow() {
+		makeNewWorkflowShareable() {
 			const { currentProject, personalProject } = this.projectsStore;
-			this.workflowsStore.workflow.homeProject = (
+			const homeProject = (
 				currentProject
 					? { id: currentProject.id, name: currentProject.name, type: currentProject.type }
 					: personalProject
 						? { id: personalProject.id, name: personalProject.name, type: personalProject.type }
 						: {}
 			) as ProjectSharingData;
+			const scopes = currentProject?.scopes ?? [
+				'workflow:create',
+				'workflow:read',
+				'workflow:update',
+				'workflow:delete',
+				'workflow:share',
+				'workflow:execute',
+			];
+
+			this.workflowsStore.workflow.homeProject = homeProject;
+			this.workflowsStore.workflow.scopes = scopes;
 		},
 		async newWorkflow(): Promise<void> {
 			this.canvasStore.startLoading();
@@ -3562,7 +3573,7 @@ export default defineComponent({
 			this.uiStore.nodeViewInitialized = true;
 			this.historyStore.reset();
 			this.executionsStore.activeExecution = null;
-			this.setHomeProjectForNewWorkflow();
+			this.makeNewWorkflowShareable();
 			this.canvasStore.stopLoading();
 		},
 		async tryToAddWelcomeSticky(): Promise<void> {

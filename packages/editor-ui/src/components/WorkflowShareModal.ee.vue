@@ -190,6 +190,8 @@ export default defineComponent({
 			return this.usersStore.currentUser;
 		},
 		workflowPermissions(): PermissionsMap<WorkflowScope> {
+			console.log(this.workflow);
+
 			return getWorkflowPermissions(
 				this.usersStore.currentUser,
 				this.projectsStore.currentProject,
