@@ -2,7 +2,6 @@ import type express from 'express';
 import type {
 	BannerName,
 	ICredentialDataDecryptedObject,
-	ICredentialNodeAccess,
 	IDataObject,
 	INodeCredentialTestRequest,
 	INodeCredentials,
@@ -51,22 +50,30 @@ export class UserRoleChangePayload {
 	newRoleName: AssignableRole;
 }
 
+export type APIRequest<
+	RouteParams = {},
+	ResponseBody = {},
+	RequestBody = {},
+	RequestQuery = {},
+> = express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery> & {
+	browserId?: string;
+};
+
 export type AuthlessRequest<
 	RouteParams = {},
 	ResponseBody = {},
 	RequestBody = {},
 	RequestQuery = {},
-> = express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery>;
+> = APIRequest<RouteParams, ResponseBody, RequestBody, RequestQuery> & {
+	user: never;
+};
 
 export type AuthenticatedRequest<
 	RouteParams = {},
 	ResponseBody = {},
 	RequestBody = {},
 	RequestQuery = {},
-> = Omit<
-	express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery>,
-	'user' | 'cookies'
-> & {
+> = Omit<APIRequest<RouteParams, ResponseBody, RequestBody, RequestQuery>, 'user' | 'cookies'> & {
 	user: User;
 	cookies: Record<string, string | undefined>;
 };
@@ -158,7 +165,6 @@ export declare namespace CredentialRequest {
 		id: string; // delete if sent
 		name: string;
 		type: string;
-		nodesAccess: ICredentialNodeAccess[];
 		data: ICredentialDataDecryptedObject;
 	}>;
 

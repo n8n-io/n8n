@@ -56,6 +56,26 @@ describe('NDV', () => {
 		cy.shouldNotHaveConsoleErrors();
 	});
 
+	it('should disconect Switch outputs if rules order was changed', () => {
+		cy.createFixtureWorkflow('NDV-test-switch_reorder.json', `NDV test switch reorder`);
+		workflowPage.actions.zoomToFit();
+
+		workflowPage.actions.executeWorkflow();
+		workflowPage.actions.openNode('Merge');
+		ndv.getters.outputPanel().contains('2 items').should('exist');
+		cy.contains('span', 'first').should('exist');
+		ndv.getters.backToCanvas().click();
+
+		workflowPage.actions.openNode('Switch');
+		cy.get('.cm-line').realMouseMove(100, 100);
+		cy.get('.fa-angle-down').click();
+		ndv.getters.backToCanvas().click();
+		workflowPage.actions.executeWorkflow();
+		workflowPage.actions.openNode('Merge');
+		ndv.getters.outputPanel().contains('1 item').should('exist');
+		cy.contains('span', 'zero').should('exist');
+	});
+
 	it('should show correct validation state for resource locator params', () => {
 		workflowPage.actions.addNodeToCanvas('Typeform', true, true);
 		ndv.getters.container().should('be.visible');
@@ -656,6 +676,23 @@ describe('NDV', () => {
 			cy.get('[data-action=openSelectiveNodeCreator]').contains('Insert one').click();
 			nodeCreator.getters.activeSubcategory().should('contain', group);
 			cy.realPress('Escape');
+		});
+	});
+
+	it('Stop listening for trigger event from NDV', () => {
+		cy.intercept('POST', '/rest/workflows/run').as('workflowRun');
+		workflowPage.actions.addInitialNodeToCanvas('Local File Trigger', {
+			keepNdvOpen: true,
+			action: 'On Changes To A Specific File',
+			isTrigger: true,
+		});
+		ndv.getters.triggerPanelExecuteButton().should('exist');
+		ndv.getters.triggerPanelExecuteButton().realClick();
+		ndv.getters.triggerPanelExecuteButton().should('contain', 'Stop Listening');
+		ndv.getters.triggerPanelExecuteButton().realClick();
+		cy.wait('@workflowRun').then(() => {
+			ndv.getters.triggerPanelExecuteButton().should('contain', 'Test step');
+			workflowPage.getters.successToast().should('exist');
 		});
 	});
 });

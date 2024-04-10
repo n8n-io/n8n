@@ -18,6 +18,7 @@ import { N8nBinaryLoader } from '../../../../utils/N8nBinaryLoader';
 import { getTemplateNoticeField } from '../../../../utils/sharedFields';
 import { REFINE_PROMPT_TEMPLATE, DEFAULT_PROMPT_TEMPLATE } from '../prompt';
 import { getChainPromptsArgs } from '../helpers';
+import { getTracingConfig } from '../../../../utils/tracing';
 
 function getInputs(parameters: IDataObject) {
 	const chunkingMode = parameters?.chunkingMode;
@@ -211,10 +212,10 @@ export class ChainSummarizationV2 implements INodeType {
 											],
 										},
 										{
-											displayName: 'Final Prompt to Combine',
+											displayName: 'Individual Summary Prompt',
 											name: 'combineMapPrompt',
 											type: 'string',
-											hint: 'The prompt to combine individual summaries',
+											hint: 'The prompt to summarize an individual document (or chunk)',
 											displayOptions: {
 												hide: {
 													'/options.summarizationMethodAndPrompts.values.summarizationMethod': [
@@ -229,11 +230,11 @@ export class ChainSummarizationV2 implements INodeType {
 											},
 										},
 										{
-											displayName: 'Individual Summary Prompt',
+											displayName: 'Final Prompt to Combine',
 											name: 'prompt',
 											type: 'string',
 											default: DEFAULT_PROMPT_TEMPLATE,
-											hint: 'The prompt to summarize an individual document (or chunk)',
+											hint: 'The prompt to combine individual summaries',
 											displayOptions: {
 												hide: {
 													'/options.summarizationMethodAndPrompts.values.summarizationMethod': [
@@ -328,90 +329,99 @@ export class ChainSummarizationV2 implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			const summarizationMethodAndPrompts = this.getNodeParameter(
-				'options.summarizationMethodAndPrompts.values',
-				itemIndex,
-				{},
-			) as {
-				prompt?: string;
-				refineQuestionPrompt?: string;
-				refinePrompt?: string;
-				summarizationMethod: 'map_reduce' | 'stuff' | 'refine';
-				combineMapPrompt?: string;
-			};
+			try {
+				const summarizationMethodAndPrompts = this.getNodeParameter(
+					'options.summarizationMethodAndPrompts.values',
+					itemIndex,
+					{},
+				) as {
+					prompt?: string;
+					refineQuestionPrompt?: string;
+					refinePrompt?: string;
+					summarizationMethod: 'map_reduce' | 'stuff' | 'refine';
+					combineMapPrompt?: string;
+				};
 
-			const chainArgs = getChainPromptsArgs(
-				summarizationMethodAndPrompts.summarizationMethod ?? 'map_reduce',
-				summarizationMethodAndPrompts,
-			);
+				const chainArgs = getChainPromptsArgs(
+					summarizationMethodAndPrompts.summarizationMethod ?? 'map_reduce',
+					summarizationMethodAndPrompts,
+				);
 
-			const chain = loadSummarizationChain(model, chainArgs);
-			const item = items[itemIndex];
+				const chain = loadSummarizationChain(model, chainArgs);
+				const item = items[itemIndex];
 
-			let processedDocuments: Document[];
+				let processedDocuments: Document[];
 
-			// Use dedicated document loader input to load documents
-			if (operationMode === 'documentLoader') {
-				const documentInput = (await this.getInputConnectionData(
-					NodeConnectionType.AiDocument,
-					0,
-				)) as N8nJsonLoader | Array<Document<Record<string, unknown>>>;
+				// Use dedicated document loader input to load documents
+				if (operationMode === 'documentLoader') {
+					const documentInput = (await this.getInputConnectionData(
+						NodeConnectionType.AiDocument,
+						0,
+					)) as N8nJsonLoader | Array<Document<Record<string, unknown>>>;
 
-				const isN8nLoader =
-					documentInput instanceof N8nJsonLoader || documentInput instanceof N8nBinaryLoader;
+					const isN8nLoader =
+						documentInput instanceof N8nJsonLoader || documentInput instanceof N8nBinaryLoader;
 
-				processedDocuments = isN8nLoader
-					? await documentInput.processItem(item, itemIndex)
-					: documentInput;
+					processedDocuments = isN8nLoader
+						? await documentInput.processItem(item, itemIndex)
+						: documentInput;
 
-				const response = await chain.call({
-					input_documents: processedDocuments,
-				});
+					const response = await chain.withConfig(getTracingConfig(this)).invoke({
+						input_documents: processedDocuments,
+					});
 
-				returnData.push({ json: { response } });
-			}
-
-			// Take the input and use binary or json loader
-			if (['nodeInputJson', 'nodeInputBinary'].includes(operationMode)) {
-				let textSplitter: TextSplitter | undefined;
-
-				switch (chunkingMode) {
-					// In simple mode we use recursive character splitter with default settings
-					case 'simple':
-						const chunkSize = this.getNodeParameter('chunkSize', itemIndex, 1000) as number;
-						const chunkOverlap = this.getNodeParameter('chunkOverlap', itemIndex, 200) as number;
-
-						textSplitter = new RecursiveCharacterTextSplitter({ chunkOverlap, chunkSize });
-						break;
-
-					// In advanced mode user can connect text splitter node so we just retrieve it
-					case 'advanced':
-						textSplitter = (await this.getInputConnectionData(
-							NodeConnectionType.AiTextSplitter,
-							0,
-						)) as TextSplitter | undefined;
-						break;
-					default:
-						break;
+					returnData.push({ json: { response } });
 				}
 
-				let processor: N8nJsonLoader | N8nBinaryLoader;
-				if (operationMode === 'nodeInputBinary') {
-					const binaryDataKey = this.getNodeParameter(
-						'options.binaryDataKey',
-						itemIndex,
-						'data',
-					) as string;
-					processor = new N8nBinaryLoader(this, 'options.', binaryDataKey, textSplitter);
-				} else {
-					processor = new N8nJsonLoader(this, 'options.', textSplitter);
+				// Take the input and use binary or json loader
+				if (['nodeInputJson', 'nodeInputBinary'].includes(operationMode)) {
+					let textSplitter: TextSplitter | undefined;
+
+					switch (chunkingMode) {
+						// In simple mode we use recursive character splitter with default settings
+						case 'simple':
+							const chunkSize = this.getNodeParameter('chunkSize', itemIndex, 1000) as number;
+							const chunkOverlap = this.getNodeParameter('chunkOverlap', itemIndex, 200) as number;
+
+							textSplitter = new RecursiveCharacterTextSplitter({ chunkOverlap, chunkSize });
+							break;
+
+						// In advanced mode user can connect text splitter node so we just retrieve it
+						case 'advanced':
+							textSplitter = (await this.getInputConnectionData(
+								NodeConnectionType.AiTextSplitter,
+								0,
+							)) as TextSplitter | undefined;
+							break;
+						default:
+							break;
+					}
+
+					let processor: N8nJsonLoader | N8nBinaryLoader;
+					if (operationMode === 'nodeInputBinary') {
+						const binaryDataKey = this.getNodeParameter(
+							'options.binaryDataKey',
+							itemIndex,
+							'data',
+						) as string;
+						processor = new N8nBinaryLoader(this, 'options.', binaryDataKey, textSplitter);
+					} else {
+						processor = new N8nJsonLoader(this, 'options.', textSplitter);
+					}
+
+					const processedItem = await processor.processItem(item, itemIndex);
+					const response = await chain.call({
+						input_documents: processedItem,
+					});
+					returnData.push({ json: { response } });
+				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
+					continue;
 				}
 
-				const processedItem = await processor.processItem(item, itemIndex);
-				const response = await chain.call({
-					input_documents: processedItem,
-				});
-				returnData.push({ json: { response } });
+				throw error;
 			}
 		}
 

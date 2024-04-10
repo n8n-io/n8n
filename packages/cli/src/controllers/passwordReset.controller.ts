@@ -1,5 +1,4 @@
 import { Response } from 'express';
-import { rateLimit } from 'express-rate-limit';
 import validator from 'validator';
 
 import { AuthService } from '@/auth/auth.service';
@@ -10,7 +9,7 @@ import { PasswordResetRequest } from '@/requests';
 import { isSamlCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
 import { UserService } from '@/services/user.service';
 import { License } from '@/License';
-import { RESPONSE_ERROR_MESSAGES, inTest } from '@/constants';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { MfaService } from '@/Mfa/mfa.service';
 import { Logger } from '@/Logger';
 import { ExternalHooks } from '@/ExternalHooks';
@@ -22,12 +21,6 @@ import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import { UserRepository } from '@/databases/repositories/user.repository';
-
-const throttle = rateLimit({
-	windowMs: 5 * 60 * 1000, // 5 minutes
-	limit: 5, // Limit each IP to 5 requests per `window` (here, per 5 minutes).
-	message: { message: 'Too many requests' },
-});
 
 @RestController()
 export class PasswordResetController {
@@ -48,10 +41,7 @@ export class PasswordResetController {
 	/**
 	 * Send a password reset email.
 	 */
-	@Post('/forgot-password', {
-		middlewares: !inTest ? [throttle] : [],
-		skipAuth: true,
-	})
+	@Post('/forgot-password', { skipAuth: true, rateLimit: true })
 	async forgotPassword(req: PasswordResetRequest.Email) {
 		if (!this.mailer.isEmailSetUp) {
 			this.logger.debug(
@@ -218,7 +208,7 @@ export class PasswordResetController {
 
 		this.logger.info('User password updated successfully', { userId: user.id });
 
-		this.authService.issueCookie(res, user);
+		this.authService.issueCookie(res, user, req.browserId);
 
 		void this.internalHooks.onUserUpdate({
 			user,

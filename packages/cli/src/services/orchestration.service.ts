@@ -33,12 +33,19 @@ export class OrchestrationService {
 		);
 	}
 
+	get isSingleMainSetup() {
+		return !this.isMultiMainSetupEnabled;
+	}
+
 	redisPublisher: RedisServicePubSubPublisher;
 
 	get instanceId() {
 		return config.getEnv('redis.queueModeId');
 	}
 
+	/**
+	 * Whether this instance is the leader in a multi-main setup. Always `false` in single-main setup.
+	 */
 	get isLeader() {
 		return config.getEnv('multiMainSetup.instanceType') === 'leader';
 	}
