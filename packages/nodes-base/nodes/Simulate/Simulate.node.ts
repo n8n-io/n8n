@@ -5,17 +5,19 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	IDataObject,
+	ILoadOptionsFunctions,
+	INodePropertyOptions,
 } from 'n8n-workflow';
 
 export class Simulate implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Simulate',
 		name: 'simulate',
-		icon: 'fa:arrow-right',
 		group: ['organization'],
 		version: 1,
 		description: 'Simulate a node',
 		subtitle: '={{$parameter.subtitle || undefined}}',
+		icon: 'fa:arrow-right',
 		defaults: {
 			name: 'Simulate',
 			color: '#b0b0b0',
@@ -24,11 +26,16 @@ export class Simulate implements INodeType {
 		outputs: ['main'],
 		properties: [
 			{
-				displayName: 'Icon',
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+				displayName: 'Icon to Display on Canvas',
 				name: 'icon',
 				type: 'options',
-				default: '',
-				options: [],
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
+				description: 'Select a type of node to show corresponding icon',
+				default: 'n8n-nodes-base.noOp',
+				typeOptions: {
+					loadOptionsMethod: 'getNodeTypes',
+				},
 			},
 			{
 				displayName: 'Subtitle',
@@ -45,18 +52,18 @@ export class Simulate implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'All',
-						description: 'Returns all the input items',
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'Returns all input items',
 						value: 'all',
 					},
 					{
-						name: 'Specify',
-						description: 'Specify how many of input items to return',
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'Specify how many of input items to return',
 						value: 'specify',
 					},
 					{
-						name: 'Custom',
-						description: 'Specify output as JSON',
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'Specify output as JSON',
 						value: 'custom',
 					},
 				],
@@ -103,6 +110,29 @@ export class Simulate implements INodeType {
 				},
 			},
 		],
+	};
+
+	methods = {
+		loadOptions: {
+			async getNodeTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const types = this.getKnownNodeTypes() as {
+					[key: string]: {
+						className: string;
+					};
+				};
+
+				const returnData: INodePropertyOptions[] = [];
+
+				for (const type of Object.keys(types)) {
+					returnData.push({
+						name: types[type].className,
+						value: type,
+					});
+				}
+
+				return returnData;
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
