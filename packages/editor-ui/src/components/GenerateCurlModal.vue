@@ -193,13 +193,18 @@ function sendGenerateCurlTelemetry({ valid }: { valid: boolean }) {
 	const service = formValues.value.service;
 	const request = formValues.value.request;
 
-	telemetry.track('User generated curl command using AI', {
-		request,
-		request_service_name: service,
-		valid_curl_response: valid,
-		api_docs_returned: false,
-		node_id: ndvStore.activeNode?.id,
-	});
+	telemetry.track(
+		'User generated curl command using AI',
+		{
+			request,
+			request_service_name: service,
+			valid_curl_response: valid,
+			api_docs_returned: false,
+			node_type: ndvStore.activeNode?.type,
+			node_name: ndvStore.activeNode?.name,
+		},
+		{ withPostHog: true },
+	);
 }
 </script>
 
