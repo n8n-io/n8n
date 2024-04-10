@@ -72,6 +72,7 @@ export class Column {
 		return this;
 	}
 
+	// eslint-disable-next-line complexity
 	toOptions(driver: Driver): TableColumnOptions {
 		const { name, type, isNullable, isPrimary, isGenerated, length } = this;
 		const isMysql = 'mysql' in driver;

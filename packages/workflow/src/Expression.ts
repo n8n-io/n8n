@@ -104,6 +104,7 @@ export class Expression {
 	 * @param {boolean} [returnObjectAsString=false]
 	 */
 	// TODO: Clean that up at some point and move all the options into an options object
+	// eslint-disable-next-line complexity
 	resolveSimpleParameterValue(
 		parameterValue: NodeParameterValue,
 		siblingParameters: INodeParameters,

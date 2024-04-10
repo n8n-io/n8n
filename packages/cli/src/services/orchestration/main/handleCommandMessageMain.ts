@@ -11,6 +11,7 @@ import { TestWebhooks } from '@/TestWebhooks';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 
+// eslint-disable-next-line complexity
 export async function handleCommandMessageMain(messageString: string) {
 	const queueModeId = config.getEnv('redis.queueModeId');
 	const isMainInstance = config.getEnv('generic.instanceType') === 'main';
