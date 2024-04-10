@@ -12,6 +12,7 @@ import type {
 export class Simulate implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Simulate',
+		hidden: true,
 		name: 'simulate',
 		group: ['organization'],
 		version: 1,
