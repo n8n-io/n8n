@@ -304,11 +304,12 @@ export class WorkflowRunner {
 					executionId,
 				});
 				const workflowExecute = new WorkflowExecute(
+					workflow,
 					additionalData,
 					data.executionMode,
 					data.executionData,
 				);
-				workflowExecution = workflowExecute.processRunExecutionData(workflow);
+				workflowExecution = workflowExecute.processRunExecutionData();
 			} else if (
 				data.runData === undefined ||
 				data.startNodes === undefined ||
@@ -322,9 +323,8 @@ export class WorkflowRunner {
 				const startNode = WorkflowHelpers.getExecutionStartNode(data, workflow);
 
 				// Can execute without webhook so go on
-				const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
+				const workflowExecute = new WorkflowExecute(workflow, additionalData, data.executionMode);
 				workflowExecution = workflowExecute.run(
-					workflow,
 					startNode,
 					data.destinationNode,
 					data.pinData,
@@ -332,9 +332,8 @@ export class WorkflowRunner {
 			} else {
 				this.logger.debug(`Execution ID ${executionId} is a partial execution.`, { executionId });
 				// Execute only the nodes between start and destination nodes
-				const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
+				const workflowExecute = new WorkflowExecute(workflow, additionalData, data.executionMode);
 				workflowExecution = workflowExecute.runPartialWorkflow(
-					workflow,
 					data.runData,
 					data.startNodes,
 					data.destinationNode,

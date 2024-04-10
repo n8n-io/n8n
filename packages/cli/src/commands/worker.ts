@@ -194,16 +194,17 @@ export class Worker extends BaseCommand {
 		let workflowRun: PCancelable<IRun>;
 		if (fullExecutionData.data !== undefined) {
 			workflowExecute = new WorkflowExecute(
+				workflow,
 				additionalData,
 				fullExecutionData.mode,
 				fullExecutionData.data,
 			);
-			workflowRun = workflowExecute.processRunExecutionData(workflow);
+			workflowRun = workflowExecute.processRunExecutionData();
 		} else {
 			// Execute all nodes
 			// Can execute without webhook so go on
-			workflowExecute = new WorkflowExecute(additionalData, fullExecutionData.mode);
-			workflowRun = workflowExecute.run(workflow);
+			workflowExecute = new WorkflowExecute(workflow, additionalData, fullExecutionData.mode);
+			workflowRun = workflowExecute.run();
 		}
 
 		Worker.runningJobs[job.id] = workflowRun;

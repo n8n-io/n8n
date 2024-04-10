@@ -842,6 +842,7 @@ async function executeWorkflow(
 
 		// Execute the workflow
 		const workflowExecute = new WorkflowExecute(
+			workflow,
 			additionalDataIntegrated,
 			runData.executionMode,
 			runExecutionData,
@@ -854,7 +855,7 @@ async function executeWorkflow(
 				workflowExecute,
 			};
 		}
-		const execution = workflowExecute.processRunExecutionData(workflow);
+		const execution = workflowExecute.processRunExecutionData();
 		activeExecutions.attachWorkflowExecution(executionId, execution);
 		data = await execution;
 	} catch (error) {
