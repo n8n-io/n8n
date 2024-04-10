@@ -37,6 +37,7 @@ import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { CredentialNotFoundError } from './errors/credential-not-found.error';
 import { In } from '@n8n/typeorm';
+import { CacheService } from './services/cache/cache.service';
 
 const mockNode = {
 	name: '',
@@ -76,6 +77,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		private readonly credentialsOverwrites: CredentialsOverwrites,
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
+		private readonly cacheService: CacheService,
 	) {
 		super();
 	}
@@ -326,7 +328,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 		await additionalData?.secretsHelpers?.waitForInit();
 
-		const canUseSecrets = await this.credentialOwnedBySuperUsers(nodeCredentials);
+		const canUseSecrets = await this.credentialCanUseExternalSecrets(nodeCredentials);
 
 		return this.applyDefaultsAndOverwrites(
 			additionalData,
@@ -445,33 +447,39 @@ export class CredentialsHelper extends ICredentialsHelper {
 		await this.credentialsRepository.update(findQuery, newCredentialsData);
 	}
 
-	async credentialOwnedBySuperUsers(nodeCredential: INodeCredentialsDetails): Promise<boolean> {
+	async credentialCanUseExternalSecrets(nodeCredential: INodeCredentialsDetails): Promise<boolean> {
 		if (!nodeCredential.id) {
 			return false;
 		}
 
-		const credential = await this.sharedCredentialsRepository.findOne({
-			where: {
-				role: 'credential:owner',
-				project: {
-					projectRelations: {
-						role: 'project:personalOwner',
-						user: {
-							role: In(['global:owner', 'global:admin']),
+		return (
+			(await this.cacheService.get(`credential-can-use-secrets:${nodeCredential.id}`, {
+				refreshFn: async () => {
+					const credential = await this.sharedCredentialsRepository.findOne({
+						where: {
+							role: 'credential:owner',
+							project: {
+								projectRelations: {
+									role: In(['project:personalOwner', 'project:admin']),
+									user: {
+										role: In(['global:owner', 'global:admin']),
+									},
+								},
+							},
+							credentials: {
+								id: nodeCredential.id!,
+							},
 						},
-					},
-				},
-				credentials: {
-					id: nodeCredential.id,
-				},
-			},
-		});
+					});
 
-		if (!credential) {
-			return false;
-		}
+					if (!credential) {
+						return false;
+					}
 
-		return true;
+					return true;
+				},
+			})) ?? false
+		);
 	}
 }
 

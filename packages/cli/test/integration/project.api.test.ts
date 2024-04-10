@@ -25,6 +25,7 @@ import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflo
 import { SharedCredentialsRepository } from '@/databases/repositories/sharedCredentials.repository';
 import type { GlobalRole } from '@/databases/entities/User';
 import type { Scope } from '@n8n/permissions';
+import { CacheService } from '@/services/cache/cache.service';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['project'],
@@ -418,12 +419,28 @@ describe('PATCH /projects/:projectId', () => {
 			createTeamProject(undefined, testUser1),
 			createTeamProject(undefined, testUser2),
 		]);
+		const [credential1, credential2] = await Promise.all([
+			saveCredential(randomCredentialPayload(), {
+				role: 'credential:owner',
+				project: teamProject1,
+			}),
+			saveCredential(randomCredentialPayload(), {
+				role: 'credential:owner',
+				project: teamProject2,
+			}),
+			saveCredential(randomCredentialPayload(), {
+				role: 'credential:owner',
+				project: teamProject2,
+			}),
+		]);
+		await shareCredentialWithProjects(credential2, [teamProject1]);
 
 		await linkUserToProject(ownerUser, teamProject2, 'project:editor');
 		await linkUserToProject(testUser2, teamProject2, 'project:editor');
 
 		const memberAgent = testServer.authAgentFor(testUser1);
 
+		const deleteSpy = jest.spyOn(Container.get(CacheService), 'deleteMany');
 		const resp = await memberAgent.patch(`/projects/${teamProject1.id}`).send({
 			name: teamProject1.name,
 			relations: [
@@ -436,6 +453,9 @@ describe('PATCH /projects/:projectId', () => {
 			}>,
 		});
 		expect(resp.status).toBe(200);
+
+		expect(deleteSpy).toBeCalledWith([`credential-can-use-secrets:${credential1.id}`]);
+		deleteSpy.mockClear();
 
 		const [tp1Relations, tp2Relations] = await Promise.all([
 			getProjectRelations({ projectId: teamProject1.id }),

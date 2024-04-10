@@ -6,6 +6,7 @@ import { createOwner, createAdmin, createMember } from './shared/db/users';
 import type { User } from '@/databases/entities/User';
 import { saveCredential } from './shared/db/credentials';
 import { randomCredentialPayload } from './shared/random';
+import { createTeamProject, linkUserToProject } from './shared/db/projects';
 
 let credentialHelper: CredentialsHelper;
 let owner: User;
@@ -60,9 +61,88 @@ describe('CredentialsHelper', () => {
 				role: credentialRole,
 			});
 
-			const result = await credentialHelper.credentialOwnedBySuperUsers(credential);
+			const result = await credentialHelper.credentialCanUseExternalSecrets(credential);
 
 			expect(result).toBe(expectedResult);
+		});
+
+		test('credential in team project with instance owner as an admin can use external secrets', async () => {
+			const teamProject = await createTeamProject();
+			const [credential] = await Promise.all([
+				await saveCredential(randomCredentialPayload(), {
+					project: teamProject,
+					role: 'credential:owner',
+				}),
+				await linkUserToProject(owner, teamProject, 'project:admin'),
+				await linkUserToProject(member, teamProject, 'project:admin'),
+			]);
+
+			const result = await credentialHelper.credentialCanUseExternalSecrets(credential);
+
+			expect(result).toBe(true);
+		});
+
+		test('credential in team project with instance admin as an admin can use external secrets', async () => {
+			const teamProject = await createTeamProject();
+			const [credential] = await Promise.all([
+				await saveCredential(randomCredentialPayload(), {
+					project: teamProject,
+					role: 'credential:owner',
+				}),
+				await linkUserToProject(admin, teamProject, 'project:admin'),
+				await linkUserToProject(member, teamProject, 'project:admin'),
+			]);
+
+			const result = await credentialHelper.credentialCanUseExternalSecrets(credential);
+
+			expect(result).toBe(true);
+		});
+
+		test('credential in team project with instance owner as an editor cannot use external secrets', async () => {
+			const teamProject = await createTeamProject();
+			const [credential] = await Promise.all([
+				await saveCredential(randomCredentialPayload(), {
+					project: teamProject,
+					role: 'credential:owner',
+				}),
+				await linkUserToProject(owner, teamProject, 'project:editor'),
+				await linkUserToProject(member, teamProject, 'project:admin'),
+			]);
+
+			const result = await credentialHelper.credentialCanUseExternalSecrets(credential);
+
+			expect(result).toBe(false);
+		});
+
+		test('credential in team project with instance admin as an editor cannot use external secrets', async () => {
+			const teamProject = await createTeamProject();
+			const [credential] = await Promise.all([
+				await saveCredential(randomCredentialPayload(), {
+					project: teamProject,
+					role: 'credential:owner',
+				}),
+				await linkUserToProject(admin, teamProject, 'project:editor'),
+				await linkUserToProject(member, teamProject, 'project:admin'),
+			]);
+
+			const result = await credentialHelper.credentialCanUseExternalSecrets(credential);
+
+			expect(result).toBe(false);
+		});
+
+		test('credential in team project with no instance admin or owner as part of the project cannot use external secrets', async () => {
+			const teamProject = await createTeamProject();
+			const [credential] = await Promise.all([
+				await saveCredential(randomCredentialPayload(), {
+					project: teamProject,
+					role: 'credential:owner',
+				}),
+				await linkUserToProject(member, teamProject, 'project:admin'),
+			]);
+
+			const result = await credentialHelper.credentialCanUseExternalSecrets(credential);
+
+			expect(result).toBe(false);
 		});
 	});
 });
