@@ -72,9 +72,7 @@ export class AIService {
 	}
 
 	async debugError(error: NodeError, nodeType?: INodeType) {
-		if (!this.provider) {
-			throw new ApplicationError('No AI provider has been configured.');
-		}
+		this.checkRequirements();
 
 		const chain = debugErrorPromptTemplate.pipe(this.provider.model);
 		const result = await chain.invoke({
@@ -104,9 +102,7 @@ export class AIService {
 	}
 
 	async generateCurl(serviceName: string, serviceRequest: string) {
-		if (!this.provider) {
-			throw new ApplicationError('No AI provider has been configured.');
-		}
+		this.checkRequirements();
 
 		if (!this.pinecone) {
 			return await this.generateCurlGeneric(serviceName, serviceRequest);
@@ -167,9 +163,7 @@ export class AIService {
 	}
 
 	async generateCurlGeneric(serviceName: string, serviceRequest: string) {
-		if (!this.provider) {
-			throw new ApplicationError('No AI provider has been configured.');
-		}
+		this.checkRequirements();
 
 		const generateCurlFallbackChain = generateCurlCommandFallbackPromptTemplate
 			.pipe(this.provider.modelWithOutputParser(generateCurlSchema))
@@ -180,5 +174,11 @@ export class AIService {
 		})) as z.infer<typeof generateCurlSchema>;
 
 		return this.validateCurl(result);
+	}
+
+	checkRequirements() {
+		if (!this.provider) {
+			throw new ApplicationError('No AI provider has been configured.');
+		}
 	}
 }
