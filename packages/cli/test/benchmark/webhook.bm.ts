@@ -1,7 +1,6 @@
 import type Bench from 'tinybench';
-// import { init } from './init';
 
-export const testDbPrefix = 'n8n_test_';
+import { init } from './init';
 
 export function webhook(bench: Bench) {
 	bench.add(
@@ -14,7 +13,7 @@ export function webhook(bench: Bench) {
 			beforeAll: async () => {
 				console.log('beforeAll start');
 
-				// await init.startCommand();
+				await init.startCommand();
 				// await init.database();
 
 				console.log('beforeAll end');

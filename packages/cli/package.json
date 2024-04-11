@@ -20,7 +20,7 @@
     "bin": "n8n"
   },
   "scripts": {
-    "benchmark": "tsc -p tsconfig.benchmark.json && tsc-alias -p tsconfig.benchmark.json && node dist/benchmark/main.js",
+    "benchmark": "tsc -p tsconfig.benchmark.json && tsc-alias -p tsconfig.benchmark.json && node dist/test/benchmark/main.js",
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc",
     "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json && node scripts/build.mjs",
