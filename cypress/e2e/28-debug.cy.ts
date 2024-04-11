@@ -65,7 +65,7 @@ describe('Debug', () => {
 
 		executionsTab.actions.switchToExecutionsTab();
 
-		cy.wait(['@getExecutions', '@getActiveExecutions']);
+		cy.wait(['@getExecutions']);
 
 		executionsTab.getters.executionListItems().should('have.length', 2).first().click();
 		cy.wait(['@getExecution']);
@@ -76,7 +76,7 @@ describe('Debug', () => {
 		confirmDialog.find('li').should('have.length', 2);
 		confirmDialog.get('.btn--cancel').click();
 
-		cy.wait(['@getExecutions', '@getActiveExecutions']);
+		cy.wait(['@getExecutions']);
 
 		executionsTab.getters.executionListItems().should('have.length', 2).first().click();
 		cy.wait(['@getExecution']);
@@ -107,7 +107,7 @@ describe('Debug', () => {
 		cy.url().should('not.include', '/debug');
 
 		executionsTab.actions.switchToExecutionsTab();
-		cy.wait(['@getExecutions', '@getActiveExecutions']);
+		cy.wait(['@getExecutions']);
 		executionsTab.getters.executionDebugButton().should('have.text', 'Copy to editor').click();
 
 		confirmDialog = cy.get('.matching-pinned-nodes-confirmation').filter(':visible');
@@ -129,7 +129,7 @@ describe('Debug', () => {
 		workflowPage.actions.deleteNode(IF_NODE_NAME);
 
 		executionsTab.actions.switchToExecutionsTab();
-		cy.wait(['@getExecutions', '@getActiveExecutions']);
+		cy.wait(['@getExecutions']);
 		executionsTab.getters.executionListItems().should('have.length', 3).first().click();
 		cy.wait(['@getExecution']);
 		executionsTab.getters.executionDebugButton().should('have.text', 'Copy to editor').click();
