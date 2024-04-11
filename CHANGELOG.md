@@ -1,3 +1,17 @@
+## [1.37.1](https://github.com/n8n-io/n8n/compare/n8n@1.37.0...n8n@1.37.1) (2024-04-11)
+
+
+### Bug Fixes
+
+* **core:** Don't revert irreversibble migrations ([#9105](https://github.com/n8n-io/n8n/issues/9105)) ([4326d59](https://github.com/n8n-io/n8n/commit/4326d59be9e7068c6c906db1c209530309fea2de))
+* **core:** Support MySQL in `MoveSshKeysToDatabase` migration ([#9120](https://github.com/n8n-io/n8n/issues/9120)) ([19ba645](https://github.com/n8n-io/n8n/commit/19ba6455f44439879db4a16f158136485f1fd0fe))
+* **editor:** Do not show overlapping trash icon in the node's settings ([#9119](https://github.com/n8n-io/n8n/issues/9119)) ([27de031](https://github.com/n8n-io/n8n/commit/27de0317a9c5e2e9674769625ad667eb0ce647c0))
+* **editor:** Open links from embedded chat in new tab ([#9121](https://github.com/n8n-io/n8n/issues/9121)) ([9e1e799](https://github.com/n8n-io/n8n/commit/9e1e7995cd3adb7bf5646ddaa972f187a8f27268))
+* **editor:** Render dates correctly in parameter hint ([#9089](https://github.com/n8n-io/n8n/issues/9089)) ([daacc42](https://github.com/n8n-io/n8n/commit/daacc4293f5e51a345e548ed22c6a0a4c93e6618))
+* **Respond to Webhook Node:** Continue on fail and error branch support ([#9115](https://github.com/n8n-io/n8n/issues/9115)) ([779b4a7](https://github.com/n8n-io/n8n/commit/779b4a79b3310021514a0fd41c426993c85bf0a8))
+
+
+
 # [1.37.0](https://github.com/n8n-io/n8n/compare/n8n@1.36.0...n8n@1.37.0) (2024-04-10)
 
 
