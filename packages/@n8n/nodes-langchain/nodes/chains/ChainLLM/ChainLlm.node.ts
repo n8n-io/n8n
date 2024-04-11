@@ -21,6 +21,7 @@ import { CombiningOutputParser } from 'langchain/output_parsers';
 import { LLMChain } from 'langchain/chains';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { HumanMessage } from '@langchain/core/messages';
+import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { getTemplateNoticeField } from '../../../utils/sharedFields';
 import {
 	getOptionalOutputParsers,
@@ -28,8 +29,6 @@ import {
 	isChatInstance,
 } from '../../../utils/helpers';
 import { getTracingConfig } from '../../../utils/tracing';
-import { ChatOpenAI } from '@langchain/openai';
-import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 
 interface MessagesTemplate {
 	type: string;

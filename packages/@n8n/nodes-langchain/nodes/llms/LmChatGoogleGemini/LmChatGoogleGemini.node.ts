@@ -6,10 +6,10 @@ import {
 	type INodeTypeDescription,
 	type SupplyData,
 } from 'n8n-workflow';
+import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
+import type { HarmBlockThreshold, HarmCategory, SafetySetting } from '@google/generative-ai';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
-import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
-import { HarmBlockThreshold, HarmCategory, SafetySetting } from '@google/generative-ai';
 import { harmCategories, harmThresholds } from './options';
 
 export class LmChatGoogleGemini implements INodeType {
@@ -32,7 +32,7 @@ export class LmChatGoogleGemini implements INodeType {
 			resources: {
 				primaryDocumentation: [
 					{
-						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatgooglepalm/',
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatgooglegemini/',
 					},
 				],
 			},
