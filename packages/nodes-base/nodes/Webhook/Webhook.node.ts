@@ -287,7 +287,7 @@ export class Webhook extends Node {
 			if (expectedAuth.keyType === 'passphrase') {
 				secretOrPublicKey = expectedAuth.secret;
 			} else {
-				secretOrPublicKey = formatPrivateKey(expectedAuth.publicKey);
+				secretOrPublicKey = formatPrivateKey(expectedAuth.publicKey, true);
 			}
 
 			try {

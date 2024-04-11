@@ -33,7 +33,16 @@ interface PasswordResetToken {
 	hash: string;
 }
 
-const pushEndpoint = `/${config.get('endpoints.rest')}/push`;
+const restEndpoint = config.get('endpoints.rest');
+// The browser-id check needs to be skipped on these endpoints
+const skipBrowserIdCheckEndpoints = [
+	// we need to exclude push endpoint because we can't send custom header on websocket requests
+	// TODO: Implement a custom handshake for push, to avoid having to send any data on querystring or headers
+	`/${restEndpoint}/push`,
+
+	// We need to exclude binary-data downloading endpoint because we can't send custom headers on `<embed>` tags
+	`/${restEndpoint}/binary-data`,
+];
 
 @Service()
 export class AuthService {
@@ -120,9 +129,7 @@ export class AuthService {
 			// or, If the email or password has been updated
 			jwtPayload.hash !== this.createJWTHash(user) ||
 			// If the token was issued for another browser session
-			// NOTE: we need to exclude push endpoint from this check because we can't send custom header on websocket requests
-			// TODO: Implement a custom handshake for push, to avoid having to send any data on querystring or headers
-			(req.baseUrl !== pushEndpoint &&
+			(!skipBrowserIdCheckEndpoints.includes(req.baseUrl) &&
 				jwtPayload.browserId &&
 				(!req.browserId || jwtPayload.browserId !== this.hash(req.browserId)))
 		) {
