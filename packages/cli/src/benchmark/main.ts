@@ -1,23 +1,26 @@
-import 'reflect-metadata';
+/* eslint-disable import/no-extraneous-dependencies */ // @TODO: Remove
 
-/* eslint-disable import/no-extraneous-dependencies */ // @TODO
+import 'reflect-metadata';
 
 import { Bench } from 'tinybench';
 import { withCodSpeed } from '@codspeed/tinybench-plugin';
-// import { example } from './example.bm';
-import { start } from './start.bm';
+
+import { webhook } from './webhook.bm';
 
 function registerBenchmarks(bench: Bench) {
-	// example(bench);
-	start(bench);
+	webhook(bench);
 }
 
 async function main() {
-	const bench = withCodSpeed(new Bench());
+	const bench = withCodSpeed(
+		new Bench(
+			{ time: 0, iterations: 1 }, // @TEMP: Remove
+		),
+	);
 
 	registerBenchmarks(bench);
 
-	await bench.warmup();
+	// await bench.warmup(); // @TODO: Restore
 	await bench.run();
 
 	console.table(bench.table());
