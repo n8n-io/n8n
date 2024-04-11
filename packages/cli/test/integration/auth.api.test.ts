@@ -158,6 +158,7 @@ describe('GET /login', () => {
 	});
 
 	test('should return 401 Unauthorized if invalid cookie', async () => {
+		// @ts-ignore
 		testServer.authlessAgent.jar.setCookie(`${AUTH_COOKIE_NAME}=invalid`);
 
 		const response = await testServer.authlessAgent.get('/login');

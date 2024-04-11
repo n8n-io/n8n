@@ -147,7 +147,10 @@ describe('Orchestration Service', () => {
 			}),
 		);
 		expect(helpers.debounceMessageReceiver).toHaveBeenCalledTimes(2);
+
+		// @ts-ignore
 		expect(res1!.payload).toBeUndefined();
+		// @ts-ignore
 		expect(res2!.payload!.result).toEqual('debounced');
 	});
 

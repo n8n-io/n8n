@@ -89,8 +89,11 @@ export const setupTestServer = ({
 	const testServer: TestServer = {
 		app,
 		httpServer: app.listen(0),
+		// @ts-ignore
 		authAgentFor: (user: User) => createAgent(app, { auth: true, user }),
+		// @ts-ignore
 		authlessAgent: createAgent(app),
+		// @ts-ignore
 		publicApiAgentFor: (user) => publicApiAgent(app, { user }),
 		license: new LicenseMocker(),
 	};

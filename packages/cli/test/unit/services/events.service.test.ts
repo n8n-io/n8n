@@ -107,7 +107,7 @@ describe('EventsService', () => {
 			};
 			const runData: IRun = {
 				finished: false,
-				status: 'failed',
+				status: 'error',
 				data: { resultData: { runData: {} } },
 				mode: 'internal' as WorkflowExecuteMode,
 				startedAt: new Date(),
@@ -193,7 +193,7 @@ describe('EventsService', () => {
 
 		test('should not send metrics for entries that already have the flag set', async () => {
 			// Fetch data for workflow 2 which is set up to not be altered in the mocks
-			entityManager.insert.mockRejectedValueOnce(new QueryFailedError('', undefined, ''));
+			entityManager.insert.mockRejectedValueOnce(new QueryFailedError('', undefined, new Error()));
 			const workflowId = '1';
 			const node = {
 				id: 'abcde',

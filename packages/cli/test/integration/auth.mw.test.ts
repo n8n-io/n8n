@@ -29,6 +29,7 @@ describe('Auth Middleware', () => {
 		ROUTES_REQUIRING_AUTHENTICATION.concat(ROUTES_REQUIRING_AUTHORIZATION).forEach(
 			([method, endpoint]) => {
 				test(`${method} ${endpoint} should return 401 Unauthorized if no cookie`, async () => {
+					// @ts-ignore
 					const { statusCode } = await testServer.authlessAgent[method.toLowerCase()](endpoint);
 					expect(statusCode).toBe(401);
 				});
@@ -45,6 +46,7 @@ describe('Auth Middleware', () => {
 
 		ROUTES_REQUIRING_AUTHORIZATION.forEach(async ([method, endpoint]) => {
 			test(`${method} ${endpoint} should return 403 Forbidden for member`, async () => {
+				// @ts-ignore
 				const { statusCode } = await authMemberAgent[method.toLowerCase()](endpoint);
 				expect(statusCode).toBe(403);
 			});

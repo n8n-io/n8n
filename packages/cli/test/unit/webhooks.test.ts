@@ -1,4 +1,4 @@
-import type { SuperAgentTest } from 'supertest';
+import type TestAgent from 'supertest/lib/agent';
 import { agent as testAgent } from 'supertest';
 import { mock } from 'jest-mock-extended';
 
@@ -14,7 +14,7 @@ import type { IResponseCallbackData } from '@/Interfaces';
 
 import { mockInstance } from '../shared/mocking';
 
-let agent: SuperAgentTest;
+let agent: TestAgent;
 
 describe('WebhookServer', () => {
 	mockInstance(ExternalHooks);

@@ -1,5 +1,5 @@
 import { readFileSync } from 'fs';
-import type { SuperAgentTest } from 'supertest';
+import type TestAgent from 'supertest/lib/agent';
 import { agent as testAgent } from 'supertest';
 import type { INodeType, INodeTypeDescription, IWebhookFunctions } from 'n8n-workflow';
 
@@ -21,7 +21,7 @@ describe('Webhook API', () => {
 	mockInstance(InternalHooks);
 	mockInstance(Push);
 
-	let agent: SuperAgentTest;
+	let agent: TestAgent;
 
 	beforeAll(async () => {
 		await testDb.init();

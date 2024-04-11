@@ -15,8 +15,10 @@ describe('Telemetry', () => {
 	const spyTrack = jest.spyOn(Telemetry.prototype, 'track').mockName('track');
 
 	const mockRudderStack: Pick<RudderStack, 'flush' | 'identify' | 'track'> = {
-		flush: (resolve) => resolve?.(),
+		flush: async (resolve) => resolve?.(),
+		// @ts-ignore
 		identify: (data, resolve) => resolve?.(),
+		// @ts-ignore
 		track: (data, resolve) => resolve?.(),
 	};
 
