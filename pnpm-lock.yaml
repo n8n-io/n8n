@@ -143,6 +143,9 @@ importers:
       highlight.js:
         specifier: ^11.8.0
         version: 11.9.0
+      markdown-it-link-attributes:
+        specifier: ^4.0.1
+        version: 4.0.1
       uuid:
         specifier: ^8.3.2
         version: 8.3.2
@@ -150,8 +153,8 @@ importers:
         specifier: ^3.3.4
         version: 3.3.4
       vue-markdown-render:
-        specifier: ^2.0.1
-        version: 2.0.1
+        specifier: ^2.1.1
+        version: 2.1.1(vue@3.3.4)
     devDependencies:
       '@iconify-json/mdi':
         specifier: ^1.1.54
@@ -159,6 +162,9 @@ importers:
       '@n8n/storybook':
         specifier: workspace:*
         version: link:../storybook
+      '@types/markdown-it':
+        specifier: ^12.2.3
+        version: 12.2.3
       shelljs:
         specifier: ^0.8.5
         version: 0.8.5
@@ -26000,13 +26006,6 @@ packages:
       vue: 3.4.21(typescript@5.4.2)
     dev: false
 
-  /vue-markdown-render@2.0.1:
-    resolution: {integrity: sha512-/UBCu0OrZ9zzEDtiZVwlV/CQ+CgcwViServGis3TRXSVc6+6lJxcaOcD43vRoQzYfPa9r9WDt0Q7GyupOmpEWA==}
-    dependencies:
-      markdown-it: 12.3.2
-      vue: 3.3.4
-    dev: false
-
   /vue-markdown-render@2.0.1(typescript@5.4.2):
     resolution: {integrity: sha512-/UBCu0OrZ9zzEDtiZVwlV/CQ+CgcwViServGis3TRXSVc6+6lJxcaOcD43vRoQzYfPa9r9WDt0Q7GyupOmpEWA==}
     dependencies:
@@ -26014,6 +26013,15 @@ packages:
       vue: 3.4.21(typescript@5.4.2)
     transitivePeerDependencies:
       - typescript
+    dev: false
+
+  /vue-markdown-render@2.1.1(vue@3.3.4):
+    resolution: {integrity: sha512-szuJVbCwgIpVsggd8IHGB2lLo8BH8Ojd+wakaOTASNxdYcccKxoMcvDqUsLoGwgKDY8yJf0U/+ppffEYxsEHkA==}
+    peerDependencies:
+      vue: ^3.3.4
+    dependencies:
+      markdown-it: 12.3.2
+      vue: 3.3.4
     dev: false
 
   /vue-router@4.2.2(vue@3.4.21):
