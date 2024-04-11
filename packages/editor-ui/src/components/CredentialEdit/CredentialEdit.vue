@@ -527,7 +527,7 @@ export default defineComponent({
 
 		setTimeout(async () => {
 			if (this.credentialId) {
-				if (!this.requiredPropertiesFilled && this.credentialPermissions.isOwner) {
+				if (!this.requiredPropertiesFilled && this.credentialPermissions.update) {
 					// sharees can't see properties, so this check would always fail for them
 					// if the credential contains required fields.
 					this.showValidationWarning = true;
@@ -563,7 +563,7 @@ export default defineComponent({
 					},
 				);
 				keepEditing = confirmAction === MODAL_CONFIRM;
-			} else if (this.credentialPermissions.isOwner && this.isOAuthType && !this.isOAuthConnected) {
+			} else if (this.isOAuthType && !this.isOAuthConnected) {
 				const confirmAction = await this.confirm(
 					this.$locale.baseText(
 						'credentialEdit.credentialEdit.confirmMessage.beforeClose2.message',

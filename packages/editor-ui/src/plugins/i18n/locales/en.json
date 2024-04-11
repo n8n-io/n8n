@@ -449,7 +449,6 @@
 	"credentialEdit.credentialInfo.lastModified": "Last modified",
 	"credentialEdit.oAuthButton.connectMyAccount": "Connect my account",
 	"credentialEdit.oAuthButton.signInWithGoogle": "Sign in with Google",
-	"credentialEdit.credentialSharing.info.owner": "Sharing a credential allows people to use it in their workflows. They cannot access credential details.",
 	"credentialEdit.credentialSharing.info.reader": "You can view this credential because you have permission to read and share (and rename or delete it too).{notShared}",
 	"credentialEdit.credentialSharing.info.notShared": "You can share it with yourself or other users to use it in a workflow.",
 	"credentialEdit.credentialSharing.info.sharee": "Only {credentialOwnerName} can change who this credential is shared with",
