@@ -98,14 +98,16 @@ const outputTypeParsers: {
 							text?: string;
 							image_url?: {
 								url: string;
-							};
+							} | string;
 						}
 						let message = content.kwargs.content;
 						if (Array.isArray(message)) {
 							message = (message as MessageContent[])
 								.map((item) => {
-									if (item?.type === 'image_url') {
+									if (item?.type === 'image_url' && typeof item.image_url.url === 'string') {
 										return `![Input image](${item.image_url?.url})`;
+									} else if (typeof item?.image_url === 'string') {
+										return `![Input image](${item.image_url})`;
 									}
 									return item.text;
 								})

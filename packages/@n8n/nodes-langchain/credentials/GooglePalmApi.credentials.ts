@@ -41,7 +41,7 @@ export class GooglePalmApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: '={{$credentials.host}}/v1beta3/models',
+			baseURL: '={{$credentials.host}}/v1beta/models',
 		},
 	};
 }

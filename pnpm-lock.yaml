@@ -229,6 +229,9 @@ importers:
       '@google-ai/generativelanguage':
         specifier: 0.2.1
         version: 0.2.1
+      '@google/generative-ai':
+        specifier: ^0.5.0
+        version: 0.5.0
       '@huggingface/inference':
         specifier: 2.6.4
         version: 2.6.4
@@ -244,6 +247,9 @@ importers:
       '@langchain/core':
         specifier: 0.1.41
         version: 0.1.41
+      '@langchain/google-genai':
+        specifier: ^0.0.11
+        version: 0.0.11
       '@langchain/mistralai':
         specifier: 0.0.13
         version: 0.0.13
@@ -5203,6 +5209,16 @@ packages:
       - supports-color
     dev: false
 
+  /@google/generative-ai@0.1.3:
+    resolution: {integrity: sha512-Cm4uJX1sKarpm1mje/MiOIinM7zdUUrQp/5/qGPAgznbdd/B9zup5ehT6c1qGqycFcSopTA1J1HpqHS5kJR8hQ==}
+    engines: {node: '>=18.0.0'}
+    dev: false
+
+  /@google/generative-ai@0.5.0:
+    resolution: {integrity: sha512-uxfN3mROgVxb+9KrlVHIiglcWgNE86pVTS9TRkGS6hMvQoZ5TrB1TIMcW5ZYWxlRhMwtmEdJnNMUxSqM3Qp/Ag==}
+    engines: {node: '>=18.0.0'}
+    dev: false
+
   /@grpc/grpc-js@1.8.21:
     resolution: {integrity: sha512-KeyQeZpxeEBSqFVTi3q2K7PiPXmgBfECc4updA1ejCLjYmoAlvvM3ZMp5ztTDUCUQmoY3CpDxvchjO1+rFkoHg==}
     engines: {node: ^8.13.0 || >=10.10.0}
@@ -6348,6 +6364,14 @@ packages:
       uuid: 9.0.0
       zod: 3.22.4
       zod-to-json-schema: 3.22.4(zod@3.22.4)
+    dev: false
+
+  /@langchain/google-genai@0.0.11:
+    resolution: {integrity: sha512-o4+r+ETmcPqcrRTJeJQQ0c796IAx1dvVkZvFsUqLhTIteIQuAc2KenY/UDGQxZVghw6fZf4irN/PvkNHJjfgWw==}
+    engines: {node: '>=18'}
+    dependencies:
+      '@google/generative-ai': 0.1.3
+      '@langchain/core': 0.1.41
     dev: false
 
   /@langchain/mistralai@0.0.13:

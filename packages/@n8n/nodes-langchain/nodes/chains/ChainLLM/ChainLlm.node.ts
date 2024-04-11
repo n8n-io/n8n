@@ -28,6 +28,8 @@ import {
 	isChatInstance,
 } from '../../../utils/helpers';
 import { getTracingConfig } from '../../../utils/tracing';
+import { ChatOpenAI } from '@langchain/openai';
+import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 
 interface MessagesTemplate {
 	type: string;
@@ -74,14 +76,19 @@ async function getImageMessage(
 	}
 
 	const bufferData = await context.helpers.getBinaryDataBuffer(itemIndex, binaryDataKey);
+	const model = (await context.getInputConnectionData(
+		NodeConnectionType.AiLanguageModel,
+		0,
+	)) as BaseLanguageModel;
+	const dataURI = `data:image/jpeg;base64,${bufferData.toString('base64')}`;
+
+	const imageUrl = model instanceof ChatGoogleGenerativeAI ? dataURI : { url: dataURI, detail };
+
 	return new HumanMessage({
 		content: [
 			{
 				type: 'image_url',
-				image_url: {
-					url: `data:image/jpeg;base64,${bufferData.toString('base64')}`,
-					detail,
-				},
+				image_url: imageUrl,
 			},
 		],
 	});
