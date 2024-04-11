@@ -8,6 +8,7 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import type {
 	PgpDatabase,
+	PostgresNodeOptions,
 	QueriesRunner,
 	QueryValues,
 	QueryWithValues,
@@ -194,7 +195,7 @@ export async function execute(
 	this: IExecuteFunctions,
 	runQueries: QueriesRunner,
 	items: INodeExecutionData[],
-	nodeOptions: IDataObject,
+	nodeOptions: PostgresNodeOptions,
 	db: PgpDatabase,
 ): Promise<INodeExecutionData[]> {
 	items = replaceEmptyStringsByNulls(items, nodeOptions.replaceEmptyStrings as boolean);
@@ -279,7 +280,7 @@ export async function execute(
 			const rowExists = await doesRowExist(db, schema, table, matchValues);
 			if (!rowExists) {
 				const descriptionValues: string[] = [];
-				matchValues.forEach((val, index) => {
+				matchValues.forEach((_, index) => {
 					if (index % 2 === 0) {
 						descriptionValues.push(`${matchValues[index]}=${matchValues[index + 1]}`);
 					}

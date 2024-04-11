@@ -12,7 +12,7 @@
 					:label="buttonLabel"
 					:type="type"
 					:size="size"
-					:icon="!isListeningForEvents && !hideIcon && 'flask'"
+					:icon="!isListeningForEvents && !hideIcon ? 'flask' : undefined"
 					:transparent-background="transparent"
 					:title="!isTriggerNode ? $locale.baseText('ndv.execute.testNode.description') : ''"
 					@click="onClick"

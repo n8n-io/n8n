@@ -45,6 +45,5 @@ test('import:credentials should import a credential', async () => {
 	expect(after.length).toBe(1);
 	expect(after[0].name).toBe('cred-aws-test');
 	expect(after[0].id).toBe('123');
-	expect(after[0].nodesAccess).toStrictEqual([]);
 	mockExit.mockRestore();
 });

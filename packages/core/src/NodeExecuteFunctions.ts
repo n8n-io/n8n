@@ -98,6 +98,7 @@ import type {
 	Workflow,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
+	CallbackManager,
 } from 'n8n-workflow';
 import {
 	ExpressionError,
@@ -273,6 +274,7 @@ const getBeforeRedirectFn =
 		}
 	};
 
+// eslint-disable-next-line complexity
 export async function parseRequestObject(requestObject: IRequestOptions) {
 	// This function is a temporary implementation
 	// That translates all http requests done via
@@ -865,6 +867,7 @@ export async function proxyRequestToAxios(
 	}
 }
 
+// eslint-disable-next-line complexity
 function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequestConfig {
 	// Destructure properties with the same name first.
 	const { headers, method, timeout, auth, proxy, url } = n8nRequest;
@@ -1174,6 +1177,7 @@ export async function copyBinaryFile(
  * Takes a buffer and converts it into the format n8n uses. It encodes the binary data as
  * base64 and adds metadata.
  */
+// eslint-disable-next-line complexity
 async function prepareBinaryData(
 	binaryData: Buffer | Readable,
 	executionId: string,
@@ -2893,6 +2897,7 @@ const getRequestHelperFunctions = (
 
 	return {
 		httpRequest,
+		// eslint-disable-next-line complexity
 		async requestWithAuthenticationPaginated(
 			this: IExecuteFunctions,
 			requestOptions: IRequestOptions,
@@ -3487,6 +3492,7 @@ export function getExecuteFunctions(
 			async executeWorkflow(
 				workflowInfo: IExecuteWorkflowInfo,
 				inputData?: INodeExecutionData[],
+				parentCallbackManager?: CallbackManager,
 			): Promise<any> {
 				return await additionalData
 					.executeWorkflow(workflowInfo, additionalData, {
@@ -3494,6 +3500,7 @@ export function getExecuteFunctions(
 						inputData,
 						parentWorkflowSettings: workflow.settings,
 						node,
+						parentCallbackManager,
 					})
 					.then(
 						async (result) =>
@@ -3719,6 +3726,7 @@ export function getExecuteFunctions(
 					msg,
 				});
 			},
+			getParentCallbackManager: () => additionalData.parentCallbackManager,
 		};
 	})(workflow, runExecutionData, connectionInputData, inputData, node) as IExecuteFunctions;
 }

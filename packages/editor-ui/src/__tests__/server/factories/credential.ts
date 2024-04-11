@@ -12,9 +12,6 @@ export const credentialFactory = Factory.extend<ICredentialsResponse>({
 	name() {
 		return faker.company.name();
 	},
-	nodesAccess() {
-		return [];
-	},
 	type() {
 		return 'notionApi';
 	},
