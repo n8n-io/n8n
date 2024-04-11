@@ -1,18 +1,58 @@
 import 'reflect-metadata';
-import { BenchmarkSuite } from './benchmark-suite';
-import { webhook } from './webhook.benchmarks';
+import path from 'node:path';
+import glob from 'fast-glob';
+import Bench from 'tinybench';
+import { withCodSpeed } from '@codspeed/tinybench-plugin';
+import type { Task } from './types';
+import { hooks } from './hooks';
+
+const tasks: Task[] = [];
+
+export function task(description: string, operation: Task['operation']) {
+	tasks.push({ description, operation });
+}
+
+async function loadTasks() {
+	const files = await glob('**/*.tasks.js', {
+		cwd: path.join('dist', 'test', 'benchmarks'),
+		absolute: true,
+	});
+
+	for (const file of files) {
+		await import(file);
+	}
+}
 
 async function main() {
-	process.env.NODE_ENV = 'test';
+	await loadTasks();
 
-	const webhookSuite = new BenchmarkSuite().add(webhook);
+	if (tasks.length === 0) {
+		console.log('No benchmarking tasks found');
+		return;
+	}
 
-	// const webhookSuite = new BenchmarkSuite({ setup, register });
+	await hooks.setup();
 
-	// await suite.warmup(); // @TODO: Restore
-	await webhookSuite.run();
+	const _bench = new Bench({
+		time: 0, // @TODO: Temp value
+		iterations: 1, // @TODO: Temp value
+	});
 
-	webhookSuite.logResults();
+	const bench = process.env.CI === 'true' ? withCodSpeed(_bench) : _bench;
+
+	for (const task of tasks) {
+		bench.add(task.description, task.operation);
+	}
+
+	console.log(`Running ${tasks.length} benchmarking tasks...`);
+
+	// await this.warmup(); // @TODO: Restore
+
+	await bench.run();
+
+	console.table(bench.table());
+
+	await hooks.teardown();
 }
 
 void main();

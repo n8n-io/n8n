@@ -8,6 +8,7 @@ import { TOTPService } from '@/Mfa/totp.service';
 import { MfaService } from '@/Mfa/mfa.service';
 
 import { randomApiKey, randomEmail, randomName, randomValidPassword } from '../random';
+import { IsNull } from '@n8n/typeorm';
 
 // pre-computed bcrypt hash for the string 'password', using `await hash('password', 10)`
 const passwordHash = '$2a$10$njedH7S6V5898mj6p0Jr..IGY9Ms.qNwR7RbSzzX9yubJocKfvGGK';
@@ -132,4 +133,8 @@ export const getLdapIdentities = async () =>
 
 export async function getGlobalOwner() {
 	return await Container.get(UserRepository).findOneByOrFail({ role: 'global:owner' });
+}
+
+export async function deleteOwnerShell() {
+	await Container.get(UserRepository).delete({ role: 'global:owner', email: IsNull() });
 }
