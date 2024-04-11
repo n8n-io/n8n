@@ -1,7 +1,8 @@
 import fsp from 'node:fs/promises';
 import { Readable } from 'node:stream';
 import { BinaryDataService, FileNotFoundError } from 'n8n-core';
-import type { SuperAgentTest } from 'supertest';
+import type { Test } from 'supertest';
+import type TestAgent from 'supertest/lib/agent';
 
 import { mockInstance } from '../shared/mocking';
 import { setupTestServer } from './shared/utils';
@@ -15,7 +16,7 @@ const throwFileNotFound = () => {
 
 const binaryDataService = mockInstance(BinaryDataService);
 let testServer = setupTestServer({ endpointGroups: ['binaryData'] });
-let authOwnerAgent: SuperAgentTest;
+let authOwnerAgent: TestAgent<Test>;
 
 beforeAll(async () => {
 	const owner = await createOwner();

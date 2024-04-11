@@ -1,5 +1,6 @@
 import { Container } from 'typedi';
-import type { SuperAgentTest } from 'supertest';
+import type { Test } from 'supertest';
+import type TestAgent from 'supertest/lib/agent';
 import type { AuthenticationMethod } from 'n8n-workflow';
 import type { User } from '@db/entities/User';
 import { setSamlLoginEnabled } from '@/sso/saml/samlHelpers';
@@ -15,8 +16,8 @@ import { createOwner, createUser } from '../shared/db/users';
 
 let someUser: User;
 let owner: User;
-let authMemberAgent: SuperAgentTest;
-let authOwnerAgent: SuperAgentTest;
+let authMemberAgent: TestAgent<Test>;
+let authOwnerAgent: TestAgent<Test>;
 
 async function enableSaml(enable: boolean) {
 	await setSamlLoginEnabled(enable);

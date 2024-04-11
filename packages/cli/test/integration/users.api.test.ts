@@ -1,5 +1,6 @@
 import Container from 'typedi';
-import type { SuperAgentTest } from 'supertest';
+import type TestAgent from 'supertest/lib/agent';
+import type { Test } from 'supertest';
 
 import { UsersController } from '@/controllers/users.controller';
 import type { User } from '@db/entities/User';
@@ -28,7 +29,7 @@ const testServer = utils.setupTestServer({
 describe('GET /users', () => {
 	let owner: User;
 	let member: User;
-	let ownerAgent: SuperAgentTest;
+	let ownerAgent: TestAgent<Test>;
 
 	beforeAll(async () => {
 		await testDb.truncate(['User']);
@@ -230,7 +231,7 @@ describe('GET /users', () => {
 describe('DELETE /users/:id', () => {
 	let owner: User;
 	let member: User;
-	let ownerAgent: SuperAgentTest;
+	let ownerAgent: TestAgent<Test>;
 
 	beforeAll(async () => {
 		await testDb.truncate(['User']);
@@ -347,10 +348,10 @@ describe('PATCH /users/:id/role', () => {
 	let member: User;
 	let otherMember: User;
 
-	let ownerAgent: SuperAgentTest;
-	let adminAgent: SuperAgentTest;
-	let memberAgent: SuperAgentTest;
-	let authlessAgent: SuperAgentTest;
+	let ownerAgent: TestAgent<Test>;
+	let adminAgent: TestAgent<Test>;
+	let memberAgent: TestAgent<Test>;
+	let authlessAgent: TestAgent<Test>;
 
 	const { NO_ADMIN_ON_OWNER, NO_USER, NO_OWNER_ON_OWNER } =
 		UsersController.ERROR_MESSAGES.CHANGE_ROLE;

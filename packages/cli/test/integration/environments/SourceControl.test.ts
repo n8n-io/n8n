@@ -1,5 +1,6 @@
 import { Container } from 'typedi';
-import type { SuperAgentTest } from 'supertest';
+import type Test from 'supertest/lib/test';
+import type TestAgent from 'supertest/lib/agent';
 
 import type { User } from '@db/entities/User';
 import config from '@/config';
@@ -10,7 +11,7 @@ import type { SourceControlledFile } from '@/environments/sourceControl/types/so
 import * as utils from '../shared/utils/';
 import { createUser } from '../shared/db/users';
 
-let authOwnerAgent: SuperAgentTest;
+let authOwnerAgent: TestAgent<Test>;
 let owner: User;
 
 const testServer = utils.setupTestServer({

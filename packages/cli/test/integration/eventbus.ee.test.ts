@@ -3,7 +3,8 @@ import config from '@/config';
 import axios from 'axios';
 import syslog from 'syslog-client';
 import { v4 as uuid } from 'uuid';
-import type { SuperAgentTest } from 'supertest';
+import type { Test } from 'supertest';
+import type TestAgent from 'supertest/lib/agent';
 import type {
 	MessageEventBusDestinationSentryOptions,
 	MessageEventBusDestinationSyslogOptions,
@@ -38,7 +39,7 @@ jest.mock('syslog-client');
 const mockedSyslog = syslog as jest.Mocked<typeof syslog>;
 
 let owner: User;
-let authOwnerAgent: SuperAgentTest;
+let authOwnerAgent: TestAgent<Test>;
 
 const testSyslogDestination: MessageEventBusDestinationSyslogOptions = {
 	...defaultMessageEventBusDestinationSyslogOptions,

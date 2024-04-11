@@ -1,5 +1,6 @@
 import path from 'path';
-import type { SuperAgentTest } from 'supertest';
+import type { Test } from 'supertest';
+import type TestAgent from 'supertest/lib/agent';
 
 import type { InstalledPackages } from '@db/entities/InstalledPackages';
 import type { InstalledNodes } from '@db/entities/InstalledNodes';
@@ -30,7 +31,7 @@ const parsedNpmPackageName = {
 	rawString: 'test',
 };
 
-let authAgent: SuperAgentTest;
+let authAgent: TestAgent<Test>;
 
 beforeAll(async () => {
 	const ownerShell = await createOwner();

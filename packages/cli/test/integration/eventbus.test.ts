@@ -1,4 +1,5 @@
-import type { SuperAgentTest } from 'supertest';
+import type { Test } from 'supertest';
+import type TestAgent from 'supertest/lib/agent';
 
 import type { User } from '@db/entities/User';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
@@ -15,7 +16,7 @@ import { mockInstance } from '../shared/mocking';
  */
 
 let owner: User;
-let authOwnerAgent: SuperAgentTest;
+let authOwnerAgent: TestAgent<Test>;
 
 mockInstance(MessageEventBus);
 mockInstance(ExecutionDataRecoveryService);

@@ -1,5 +1,6 @@
 import { Container } from 'typedi';
-import type { SuperAgentTest } from 'supertest';
+import type { Test } from 'supertest';
+import type TestAgent from 'supertest/lib/agent';
 
 import config from '@/config';
 import type { ListQuery } from '@/requests';
@@ -23,8 +24,8 @@ const testServer = utils.setupTestServer({ endpointGroups: ['credentials'] });
 let owner: User;
 let member: User;
 let secondMember: User;
-let authOwnerAgent: SuperAgentTest;
-let authMemberAgent: SuperAgentTest;
+let authOwnerAgent: TestAgent<Test>;
+let authMemberAgent: TestAgent<Test>;
 let saveCredential: SaveCredentialFunction;
 
 beforeAll(async () => {

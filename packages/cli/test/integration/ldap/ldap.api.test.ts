@@ -1,5 +1,6 @@
 import Container from 'typedi';
-import type { SuperAgentTest } from 'supertest';
+import type { Test } from 'supertest';
+import type TestAgent from 'supertest/lib/agent';
 import type { Entry as LdapUser } from 'ldapts';
 import { Not } from '@n8n/typeorm';
 import { jsonParse } from 'n8n-workflow';
@@ -25,7 +26,7 @@ import { AuthProviderSyncHistoryRepository } from '@db/repositories/authProvider
 jest.mock('@/telemetry');
 
 let owner: User;
-let authOwnerAgent: SuperAgentTest;
+let authOwnerAgent: TestAgent<Test>;
 
 const defaultLdapConfig = {
 	...LDAP_DEFAULT_CONFIGURATION,

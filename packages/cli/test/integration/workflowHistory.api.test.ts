@@ -1,4 +1,5 @@
-import type { SuperAgentTest } from 'supertest';
+import type { Test } from 'supertest';
+import type TestAgent from 'supertest/lib/agent';
 import type { User } from '@db/entities/User';
 
 import * as testDb from './shared/testDb';
@@ -8,9 +9,9 @@ import { createWorkflow } from './shared/db/workflows';
 import { createWorkflowHistoryItem } from './shared/db/workflowHistory';
 
 let owner: User;
-let authOwnerAgent: SuperAgentTest;
+let authOwnerAgent: TestAgent<Test>;
 let member: User;
-let authMemberAgent: SuperAgentTest;
+let authMemberAgent: TestAgent<Test>;
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['workflowHistory'],

@@ -1,5 +1,6 @@
 import Container from 'typedi';
-import type { SuperAgentTest } from 'supertest';
+import type { Test } from 'supertest';
+import type TestAgent from 'supertest/lib/agent';
 import type { Variables } from '@db/entities/Variables';
 import { VariablesRepository } from '@db/repositories/variables.repository';
 import { generateNanoId } from '@db/utils/generators';
@@ -9,8 +10,8 @@ import * as testDb from './shared/testDb';
 import * as utils from './shared/utils/';
 import { createOwner, createUser } from './shared/db/users';
 
-let authOwnerAgent: SuperAgentTest;
-let authMemberAgent: SuperAgentTest;
+let authOwnerAgent: TestAgent<Test>;
+let authMemberAgent: TestAgent<Test>;
 
 const testServer = utils.setupTestServer({ endpointGroups: ['variables'] });
 const license = testServer.license;

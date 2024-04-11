@@ -1,4 +1,5 @@
-import type { SuperAgentTest } from 'supertest';
+import type { Test } from 'supertest';
+import type TestAgent from 'supertest/lib/agent';
 import { Container } from 'typedi';
 import validator from 'validator';
 import config from '@/config';
@@ -13,7 +14,7 @@ import { UserRepository } from '@db/repositories/user.repository';
 import { MfaService } from '@/Mfa/mfa.service';
 
 let owner: User;
-let authOwnerAgent: SuperAgentTest;
+let authOwnerAgent: TestAgent<Test>;
 const ownerPassword = randomValidPassword();
 
 const testServer = utils.setupTestServer({ endpointGroups: ['auth'] });
@@ -158,7 +159,6 @@ describe('GET /login', () => {
 	});
 
 	test('should return 401 Unauthorized if invalid cookie', async () => {
-		// @ts-ignore
 		testServer.authlessAgent.jar.setCookie(`${AUTH_COOKIE_NAME}=invalid`);
 
 		const response = await testServer.authlessAgent.get('/login');

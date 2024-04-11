@@ -1,4 +1,5 @@
-import type { SuperAgentTest } from 'supertest';
+import type { Test } from 'supertest';
+import type TestAgent from 'supertest/lib/agent';
 import type { User } from '@db/entities/User';
 
 import { randomApiKey, randomName, randomString } from '../shared/random';
@@ -13,8 +14,8 @@ import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.
 
 let owner: User;
 let member: User;
-let authOwnerAgent: SuperAgentTest;
-let authMemberAgent: SuperAgentTest;
+let authOwnerAgent: TestAgent<Test>;
+let authMemberAgent: TestAgent<Test>;
 
 let saveCredential: SaveCredentialFunction;
 

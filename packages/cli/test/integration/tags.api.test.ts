@@ -1,11 +1,12 @@
 import * as utils from './shared/utils/';
 import * as testDb from './shared/testDb';
-import type { SuperAgentTest } from 'supertest';
+import type { Test } from 'supertest';
+import type TestAgent from 'supertest/lib/agent';
 import { TagRepository } from '@db/repositories/tag.repository';
 import Container from 'typedi';
 import { createUserShell } from './shared/db/users';
 
-let authOwnerAgent: SuperAgentTest;
+let authOwnerAgent: TestAgent<Test>;
 const testServer = utils.setupTestServer({ endpointGroups: ['tags'] });
 
 beforeAll(async () => {

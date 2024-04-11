@@ -1,4 +1,5 @@
-import type { SuperAgentTest } from 'supertest';
+import type { Test } from 'supertest';
+import type TestAgent from 'supertest/lib/agent';
 import Container from 'typedi';
 import type { User } from '@db/entities/User';
 import { TagRepository } from '@db/repositories/tag.repository';
@@ -11,8 +12,8 @@ import { createTag } from '../shared/db/tags';
 
 let owner: User;
 let member: User;
-let authOwnerAgent: SuperAgentTest;
-let authMemberAgent: SuperAgentTest;
+let authOwnerAgent: TestAgent<Test>;
+let authMemberAgent: TestAgent<Test>;
 
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 
@@ -37,7 +38,6 @@ beforeEach(async () => {
 
 const testWithAPIKey =
 	(method: 'get' | 'post' | 'put' | 'delete', url: string, apiKey: string | null) => async () => {
-		// @ts-ignore
 		void authOwnerAgent.set({ 'X-N8N-API-KEY': apiKey });
 		const response = await authOwnerAgent[method](url);
 		expect(response.statusCode).toBe(401);
