@@ -37,13 +37,6 @@ test('import:workflow should import active workflow and deactivate it', async ()
 	//
 	const owner = await createOwner();
 
-	const before = {
-		workflows: await getAllWorkflows(),
-		sharings: await getAllSharedWorkflows(),
-	};
-	expect(before.workflows).toHaveLength(0);
-	expect(before.sharings).toHaveLength(0);
-
 	//
 	// ACT
 	//
@@ -76,13 +69,6 @@ test('import:workflow should import active workflow from combined file and deact
 	// ARRANGE
 	//
 	const owner = await createOwner();
-
-	const before = {
-		workflows: await getAllWorkflows(),
-		sharings: await getAllSharedWorkflows(),
-	};
-	expect(before.workflows).toHaveLength(0);
-	expect(before.sharings).toHaveLength(0);
 
 	//
 	// ACT

@@ -11,6 +11,12 @@ import { createMember, createOwner } from '../shared/db/users';
 
 const oclifConfig = new Config({ root: __dirname });
 
+async function importCredential(argv: string[]) {
+	const importer = new ImportCredentialsCommand(argv, oclifConfig);
+	await importer.init();
+	await importer.run();
+}
+
 beforeAll(async () => {
 	mockInstance(InternalHooks);
 	mockInstance(LoadNodesAndCredentials);
@@ -26,28 +32,31 @@ afterAll(async () => {
 });
 
 test('import:credentials should import a credential', async () => {
-	await createOwner();
-	const before = await getAllCredentials();
-	expect(before.length).toBe(0);
-	const importer = new ImportCredentialsCommand(
-		['--input=./test/integration/commands/importCredentials/credentials.json'],
-		oclifConfig,
-	);
-	const mockExit = jest.spyOn(process, 'exit').mockImplementation(() => {
-		throw new Error('process.exit');
-	});
+	//
+	// ARRANGE
+	//
+	const owner = await createOwner();
 
-	await importer.init();
-	try {
-		await importer.run();
-	} catch (error) {
-		expect(error.message).toBe('process.exit');
-	}
-	const after = await getAllCredentials();
-	expect(after.length).toBe(1);
-	expect(after[0].name).toBe('cred-aws-test');
-	expect(after[0].id).toBe('123');
-	mockExit.mockRestore();
+	//
+	// ACT
+	//
+	await importCredential([
+		'--input=./test/integration/commands/importCredentials/credentials.json',
+	]);
+
+	//
+	// ASSERT
+	//
+	const after = {
+		credentials: await getAllCredentials(),
+		sharings: await getAllSharedCredentials(),
+	};
+	expect(after).toMatchObject({
+		credentials: [expect.objectContaining({ id: '123', name: 'cred-aws-test' })],
+		sharings: [
+			expect.objectContaining({ credentialsId: '123', userId: owner.id, role: 'credential:owner' }),
+		],
+	});
 });
 
 test('import:credentials should import a credential from separated files', async () => {
@@ -60,12 +69,10 @@ test('import:credentials should import a credential from separated files', async
 	// ACT
 	//
 	// import credential the first time, assigning it to the owner
-	const importer = new ImportCredentialsCommand(
-		['--separate', '--input=./test/integration/commands/importCredentials/separate'],
-		oclifConfig,
-	);
-	await importer.init();
-	await importer.run();
+	await importCredential([
+		'--separate',
+		'--input=./test/integration/commands/importCredentials/separate',
+	]);
 
 	//
 	// ASSERT
@@ -100,15 +107,10 @@ test('`import:credentials --userId ...` should fail if the credential exists alr
 	const member = await createMember();
 
 	// import credential the first time, assigning it to the owner
-	const importer1 = new ImportCredentialsCommand(
-		[
-			'--input=./test/integration/commands/importCredentials/credentials.json',
-			`--userId=${owner.id}`,
-		],
-		oclifConfig,
-	);
-	await importer1.init();
-	await importer1.run();
+	await importCredential([
+		'--input=./test/integration/commands/importCredentials/credentials.json',
+		`--userId=${owner.id}`,
+	]);
 
 	// making sure the import worked
 	const before = {
@@ -126,21 +128,18 @@ test('`import:credentials --userId ...` should fail if the credential exists alr
 		],
 	});
 
-	// Prepare the second import, while updating the name we try to assign the
-	// credential to another user.
-	const importer2 = new ImportCredentialsCommand(
-		[
-			'--input=./test/integration/commands/importCredentials/credentials-updated.json',
-			`--userId=${member.id}`,
-		],
-		oclifConfig,
-	);
-	await importer2.init();
-
 	//
 	// ACT
 	//
-	await expect(importer2.run()).rejects.toThrowError(
+
+	// Import again while updating the name we try to assign the
+	// credential to another user.
+	await expect(
+		importCredential([
+			'--input=./test/integration/commands/importCredentials/credentials-updated.json',
+			`--userId=${member.id}`,
+		]),
+	).rejects.toThrowError(
 		`The credential with id "123" is already owned by the user with the id "${owner.id}". It can't be re-owned by the user with the id "${member.id}"`,
 	);
 
@@ -178,15 +177,10 @@ test("only update credential, don't create or update owner if `--userId` is not 
 	const member = await createMember();
 
 	// import credential the first time, assigning it to a member
-	const importer1 = new ImportCredentialsCommand(
-		[
-			'--input=./test/integration/commands/importCredentials/credentials.json',
-			`--userId=${member.id}`,
-		],
-		oclifConfig,
-	);
-	await importer1.init();
-	await importer1.run();
+	await importCredential([
+		'--input=./test/integration/commands/importCredentials/credentials.json',
+		`--userId=${member.id}`,
+	]);
 
 	// making sure the import worked
 	const before = {
@@ -204,17 +198,13 @@ test("only update credential, don't create or update owner if `--userId` is not 
 		],
 	});
 
-	// prepare the second import, only updating the name and omitting `--userId`
-	const importer2 = new ImportCredentialsCommand(
-		['--input=./test/integration/commands/importCredentials/credentials-updated.json'],
-		oclifConfig,
-	);
-	await importer2.init();
-
 	//
 	// ACT
 	//
-	await importer2.run();
+	// Import again only updating the name and omitting `--userId`
+	await importCredential([
+		'--input=./test/integration/commands/importCredentials/credentials-updated.json',
+	]);
 
 	//
 	// ASSERT
