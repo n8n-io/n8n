@@ -10,8 +10,7 @@ jest.useFakeTimers();
 describe('WaitTracker', () => {
 	const executionRepository = mock<ExecutionRepository>();
 	const orchestrationService = mock<OrchestrationService>({
-		isLeader: true,
-		isMultiMainSetupEnabled: false,
+		isSingleMainSetup: true,
 	});
 
 	const execution = mock<IExecutionResponse>({
@@ -105,11 +104,21 @@ describe('WaitTracker', () => {
 		});
 	});
 
+	describe('single-main setup', () => {
+		it('should start tracking', () => {
+			executionRepository.getWaitingExecutions.mockResolvedValue([]);
+
+			new WaitTracker(mock(), executionRepository, mock(), mock(), orchestrationService);
+
+			expect(executionRepository.getWaitingExecutions).toHaveBeenCalledTimes(1);
+		});
+	});
+
 	describe('multi-main setup', () => {
 		it('should start tracking if leader', () => {
 			const orchestrationService = mock<OrchestrationService>({
 				isLeader: true,
-				isMultiMainSetupEnabled: true,
+				isSingleMainSetup: false,
 				multiMainSetup: mock<MultiMainSetup>({ on: jest.fn().mockReturnThis() }),
 			});
 
@@ -123,7 +132,7 @@ describe('WaitTracker', () => {
 		it('should not start tracking if follower', () => {
 			const orchestrationService = mock<OrchestrationService>({
 				isLeader: false,
-				isMultiMainSetupEnabled: true,
+				isSingleMainSetup: false,
 				multiMainSetup: mock<MultiMainSetup>({ on: jest.fn().mockReturnThis() }),
 			});
 

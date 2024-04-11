@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "0.21.0",
+  "version": "0.22.0",
   "description": "",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -127,14 +127,14 @@
     "n8n-core": "workspace:*"
   },
   "dependencies": {
-    "@aws-sdk/client-bedrock-runtime": "3.454.0",
-    "@aws-sdk/credential-provider-node": "3.451.0",
+    "@aws-sdk/client-bedrock-runtime": "3.549.0",
+    "@aws-sdk/credential-provider-node": "3.549.0",
     "@getzep/zep-js": "0.9.0",
     "@google-ai/generativelanguage": "0.2.1",
     "@huggingface/inference": "2.6.4",
     "@langchain/anthropic": "^0.1.3",
     "@langchain/cohere": "^0.0.5",
-    "@langchain/community": "^0.0.34",
+    "@langchain/community": "0.0.44",
     "@langchain/core": "0.1.41",
     "@langchain/mistralai": "0.0.13",
     "@langchain/openai": "^0.0.16",

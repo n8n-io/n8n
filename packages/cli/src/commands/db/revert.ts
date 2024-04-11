@@ -9,6 +9,38 @@ import type { Migration } from '@db/types';
 import { wrapMigration } from '@db/utils/migrationHelpers';
 import config from '@/config';
 
+// This function is extracted to make it easier to unit test it.
+// Mocking turned into a mess due to this command using typeorm and the db
+// config directly and customizing and monkey patching parts.
+export async function main(
+	connectionOptions: ConnectionOptions,
+	logger: Logger,
+	DataSource: typeof Connection,
+) {
+	const dbType = config.getEnv('database.type');
+
+	(connectionOptions.migrations as Migration[]).forEach(wrapMigration);
+
+	const connection = new DataSource(connectionOptions);
+	await connection.initialize();
+	if (dbType === 'postgresdb') await setSchema(connection);
+
+	const lastMigration = connection.migrations.at(-1);
+
+	if (lastMigration === undefined) {
+		logger.error('There is no migration to reverse.');
+		return;
+	}
+
+	if (!lastMigration.down) {
+		logger.error('The last migration was irreversible and cannot be reverted.');
+		return;
+	}
+
+	await connection.undoLastMigration();
+	await connection.destroy();
+}
+
 export class DbRevertMigrationCommand extends Command {
 	static description = 'Revert last database migration';
 
@@ -27,7 +59,6 @@ export class DbRevertMigrationCommand extends Command {
 	}
 
 	async run() {
-		const dbType = config.getEnv('database.type');
 		const connectionOptions: ConnectionOptions = {
 			...getConnectionOptions(),
 			subscribers: [],
@@ -37,13 +68,7 @@ export class DbRevertMigrationCommand extends Command {
 			logging: ['query', 'error', 'schema'],
 		};
 
-		(connectionOptions.migrations as Migration[]).forEach(wrapMigration);
-
-		this.connection = new Connection(connectionOptions);
-		await this.connection.initialize();
-		if (dbType === 'postgresdb') await setSchema(this.connection);
-		await this.connection.undoLastMigration();
-		await this.connection.destroy();
+		return await main(connectionOptions, this.logger, Connection);
 	}
 
 	async catch(error: Error) {

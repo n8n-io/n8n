@@ -71,8 +71,7 @@ export class jwtAuth implements ICredentialType {
 			displayName: 'Key Type',
 			name: 'keyType',
 			type: 'options',
-			description:
-				'Choose either the secret passphrase for PEM encoded public keys for RSA and ECDSA',
+			description: 'Choose either the secret passphrase or PEM encoded public keys',
 			options: [
 				{
 					name: 'Passphrase',
