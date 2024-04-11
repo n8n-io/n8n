@@ -1602,10 +1602,10 @@ export class HttpRequestV3 implements INodeType {
 			if (httpSslAuth !== undefined) {
 				const agentOptions = {
 					requestCert: true,
-					cert: formatPrivateKey(httpSslAuth.cert),
-					ca: formatPrivateKey(httpSslAuth.ca),
-					key: formatPrivateKey(httpSslAuth.key),
-					passphrase: httpSslAuth.passphrase,
+					cert: httpSslAuth.cert ? formatPrivateKey(httpSslAuth.cert) : undefined,
+					ca: httpSslAuth.ca ? formatPrivateKey(httpSslAuth.ca) : undefined,
+					key: httpSslAuth.key ? formatPrivateKey(httpSslAuth.key) : undefined,
+					passphrase: httpSslAuth.passphrase || undefined,
 				};
 
 				authDataKeys.agentOptions = Object.keys(agentOptions);
