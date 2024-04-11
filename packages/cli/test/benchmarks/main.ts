@@ -7,8 +7,6 @@ async function main() {
 
 	const webhookSuite = new BenchmarkSuite().register(webhook);
 
-	process.env.NODE_ENV = 'test';
-
 	// await suite.warmup(); // @TODO: Restore
 	await webhookSuite.run();
 
