@@ -1,6 +1,6 @@
 import { Service } from 'typedi';
 import { v4 as uuid } from 'uuid';
-import { type INode, type INodeCredentialsDetails } from 'n8n-workflow';
+import { ApplicationError, type INode, type INodeCredentialsDetails } from 'n8n-workflow';
 
 import { Logger } from '@/Logger';
 import * as Db from '@/Db';
@@ -12,6 +12,7 @@ import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { WorkflowTagMapping } from '@db/entities/WorkflowTagMapping';
 import type { TagEntity } from '@db/entities/TagEntity';
 import type { ICredentialsDb } from '@/Interfaces';
+import { User } from '@/databases/entities/User';
 
 @Service()
 export class ImportService {
@@ -30,7 +31,7 @@ export class ImportService {
 		this.dbTags = await this.tagRepository.find();
 	}
 
-	async importWorkflows(workflows: WorkflowEntity[], userId: string) {
+	async importWorkflows(workflows: WorkflowEntity[], userId?: string) {
 		await this.initRecords();
 
 		for (const workflow of workflows) {
@@ -57,10 +58,16 @@ export class ImportService {
 
 				const workflowId = upsertResult.identifiers.at(0)?.id as string;
 
-				await tx.upsert(SharedWorkflow, { workflowId, userId, role: 'workflow:owner' }, [
-					'workflowId',
-					'userId',
-				]);
+				if (userId) {
+					if (!(await tx.existsBy(User, { id: userId }))) {
+						throw new ApplicationError('Failed to find user', { extra: { userId } });
+					}
+
+					await tx.upsert(SharedWorkflow, { workflowId, userId, role: 'workflow:owner' }, [
+						'workflowId',
+						'userId',
+					]);
+				}
 
 				if (!workflow.tags?.length) continue;
 

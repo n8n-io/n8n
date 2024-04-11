@@ -68,6 +68,19 @@ describe('ImportService', () => {
 		expect(dbSharing.userId).toBe(owner.id);
 	});
 
+	test('should not create a new owner if `userId` is not passed in', async () => {
+		const workflowToImport = await createWorkflow();
+
+		await importService.importWorkflows([workflowToImport]);
+
+		const dbSharing = await Container.get(SharedWorkflowRepository).findOneBy({
+			workflowId: workflowToImport.id,
+			role: 'workflow:owner',
+		});
+
+		expect(dbSharing).toBeNull();
+	});
+
 	test('should deactivate imported workflow if active', async () => {
 		const workflowToImport = await createWorkflow({ active: true });
 

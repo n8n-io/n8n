@@ -121,5 +121,9 @@ export async function getAllWorkflows() {
 	return await Container.get(WorkflowRepository).find();
 }
 
+export async function getAllSharedWorkflows() {
+	return await Container.get(SharedWorkflowRepository).find();
+}
+
 export const getWorkflowById = async (id: string) =>
 	await Container.get(WorkflowRepository).findOneBy({ id });
