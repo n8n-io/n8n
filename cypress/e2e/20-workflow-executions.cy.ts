@@ -16,11 +16,10 @@ describe('Current Workflow Executions', () => {
 	it('should render executions tab correctly', () => {
 		createMockExecutions();
 		cy.intercept('GET', '/rest/executions?filter=*').as('getExecutions');
-		cy.intercept('GET', '/rest/executions/active?filter=*').as('getActiveExecutions');
 
 		executionsTab.actions.switchToExecutionsTab();
 
-		cy.wait(['@getExecutions', '@getActiveExecutions']);
+		cy.wait(['@getExecutions']);
 
 		executionsTab.getters.executionsList().scrollTo(0, 500).wait(0);
 

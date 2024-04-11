@@ -19,7 +19,6 @@ describe('Debug', () => {
 	it('should be able to debug executions', () => {
 		cy.intercept('GET', '/rest/executions?filter=*').as('getExecutions');
 		cy.intercept('GET', '/rest/executions/*').as('getExecution');
-		cy.intercept('GET', '/rest/executions/active?filter=*').as('getActiveExecutions');
 		cy.intercept('POST', '/rest/workflows/run').as('postWorkflowRun');
 
 		cy.signin({ email: INSTANCE_OWNER.email, password: INSTANCE_OWNER.password });
@@ -41,7 +40,7 @@ describe('Debug', () => {
 
 		executionsTab.actions.switchToExecutionsTab();
 
-		cy.wait(['@getExecutions', '@getActiveExecutions']);
+		cy.wait(['@getExecutions']);
 
 		executionsTab.getters.executionDebugButton().should('have.text', 'Debug in editor').click();
 		cy.url().should('include', '/debug');
