@@ -1,16 +1,16 @@
 import { withCodSpeed } from '@codspeed/tinybench-plugin';
 import { ApplicationError } from 'n8n-workflow';
 import Bench from 'tinybench';
+import type { Benchmark } from './types';
 
 export class BenchmarkSuite {
-	private readonly suite: Bench;
+	private suite: Bench;
 
-	constructor() {
-		this.suite = withCodSpeed(new Bench({ time: 0, iterations: 1 })); // @TEMP: Update constructor arg
-	}
+	add({ register, setup, teardown }: Benchmark) {
+		// @TEMP: Update time and iterations
+		this.suite = withCodSpeed(new Bench({ time: 0, iterations: 1, setup, teardown }));
 
-	register(registerFn: (bench: Bench) => void) {
-		registerFn(this.suite);
+		register(this.suite);
 
 		return this;
 	}

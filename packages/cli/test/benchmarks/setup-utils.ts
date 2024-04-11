@@ -1,22 +1,12 @@
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
-
 import { Config } from '@oclif/core';
+import { InstanceSettings } from 'n8n-core';
 import { Start } from '@/commands/start';
 import Container from 'typedi';
-import { InstanceSettings } from 'n8n-core';
 
-export class BenchmarkSetup {
-	/** Setup to run before all iterations of a single benchmark. */
-	static beforeAll() {
-		return async () => {
-			this.n8nDir();
-
-			await this.mainProcess();
-		};
-	}
-
+export class SetupUtils {
 	static n8nDir() {
 		const baseDir = path.join(tmpdir(), 'n8n-benchmarks/');
 
