@@ -13,7 +13,7 @@ import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflo
 import * as testDb from './shared/testDb';
 import { mockInstance } from '../shared/mocking';
 import { createOwner } from './shared/db/users';
-import { createWorkflow, getWorkflowById } from './shared/db/workflows';
+import { createWorkflow, getWorkflowById, newWorkflow } from './shared/db/workflows';
 
 import type { User } from '@db/entities/User';
 
@@ -57,7 +57,7 @@ describe('ImportService', () => {
 	});
 
 	test('should make user owner of imported workflow', async () => {
-		const workflowToImport = await createWorkflow();
+		const workflowToImport = newWorkflow();
 
 		await importService.importWorkflows([workflowToImport], owner.id);
 
@@ -66,19 +66,6 @@ describe('ImportService', () => {
 		});
 
 		expect(dbSharing.userId).toBe(owner.id);
-	});
-
-	test('should not create a new owner if `userId` is not passed in', async () => {
-		const workflowToImport = await createWorkflow();
-
-		await importService.importWorkflows([workflowToImport]);
-
-		const dbSharing = await Container.get(SharedWorkflowRepository).findOneBy({
-			workflowId: workflowToImport.id,
-			role: 'workflow:owner',
-		});
-
-		expect(dbSharing).toBeNull();
 	});
 
 	test('should deactivate imported workflow if active', async () => {

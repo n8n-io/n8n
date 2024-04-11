@@ -12,6 +12,8 @@ import type { IWorkflowToImport } from '@/Interfaces';
 import { ImportService } from '@/services/import.service';
 import { BaseCommand } from '../BaseCommand';
 import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
+import { UM_FIX_INSTRUCTION } from '@/constants';
 
 function assertHasWorkflowsToImport(workflows: unknown): asserts workflows is IWorkflowToImport[] {
 	if (!Array.isArray(workflows)) {
@@ -77,6 +79,8 @@ export class ImportWorkflowsCommand extends BaseCommand {
 			}
 		}
 
+		const owner = await this.getOwner();
+
 		const workflows = await this.readWorkflows(flags.input, flags.separate);
 
 		const result = await this.checkRelations(workflows, flags.userId);
@@ -86,7 +90,7 @@ export class ImportWorkflowsCommand extends BaseCommand {
 
 		this.logger.info(`Importing ${workflows.length} workflows...`);
 
-		await Container.get(ImportService).importWorkflows(workflows, flags.userId);
+		await Container.get(ImportService).importWorkflows(workflows, flags.userId ?? owner.id);
 
 		this.reportSuccess(workflows.length);
 	}
@@ -130,6 +134,15 @@ export class ImportWorkflowsCommand extends BaseCommand {
 		});
 
 		return sharing?.userId;
+	}
+
+	private async getOwner() {
+		const owner = await Container.get(UserRepository).findOneBy({ role: 'global:owner' });
+		if (!owner) {
+			throw new ApplicationError(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
+		}
+
+		return owner;
 	}
 
 	private async workflowExists(workflow: WorkflowEntity) {

@@ -31,7 +31,7 @@ export class ImportService {
 		this.dbTags = await this.tagRepository.find();
 	}
 
-	async importWorkflows(workflows: WorkflowEntity[], userId?: string) {
+	async importWorkflows(workflows: WorkflowEntity[], userId: string) {
 		await this.initRecords();
 
 		for (const workflow of workflows) {
@@ -54,15 +54,13 @@ export class ImportService {
 					this.logger.info(`Deactivating workflow "${workflow.name}". Remember to activate later.`);
 				}
 
-				const upsertResult = await tx.upsert(WorkflowEntity, workflow, ['id']);
+				const exists = workflow.id ? await tx.existsBy(WorkflowEntity, { id: workflow.id }) : false;
 
+				const upsertResult = await tx.upsert(WorkflowEntity, workflow, ['id']);
 				const workflowId = upsertResult.identifiers.at(0)?.id as string;
 
-				if (userId) {
-					if (!(await tx.existsBy(User, { id: userId }))) {
-						throw new ApplicationError('Failed to find user', { extra: { userId } });
-					}
-
+				// Create relationship if the workflow was inserted instead of updated.
+				if (!exists) {
 					await tx.upsert(SharedWorkflow, { workflowId, userId, role: 'workflow:owner' }, [
 						'workflowId',
 						'userId',
