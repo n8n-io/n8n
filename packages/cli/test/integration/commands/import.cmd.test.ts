@@ -11,6 +11,12 @@ import { createMember, createOwner } from '../shared/db/users';
 
 const oclifConfig = new Config({ root: __dirname });
 
+async function importWorkflow(argv: string[]) {
+	const importer = new ImportWorkflowsCommand(argv, oclifConfig);
+	await importer.init();
+	await importer.run();
+}
+
 beforeAll(async () => {
 	mockInstance(InternalHooks);
 	mockInstance(LoadNodesAndCredentials);
@@ -18,7 +24,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['Workflow']);
+	await testDb.truncate(['Workflow', 'SharedWorkflow', 'User']);
 });
 
 afterAll(async () => {
@@ -26,62 +32,83 @@ afterAll(async () => {
 });
 
 test('import:workflow should import active workflow and deactivate it', async () => {
-	const before = await getAllWorkflows();
-	expect(before.length).toBe(0);
-	const importer = new ImportWorkflowsCommand(
-		['--separate', '--input=./test/integration/commands/importWorkflows/separate'],
-		oclifConfig,
-	);
-	const mockExit = jest.spyOn(process, 'exit').mockImplementation(() => {
-		throw new Error('process.exit');
-	});
+	//
+	// ARRANGE
+	//
+	const owner = await createOwner();
 
-	await importer.init();
-	try {
-		await importer.run();
-	} catch (error) {
-		expect(error.message).toBe('process.exit');
-	}
-	const after = await getAllWorkflows();
-	expect(after.length).toBe(2);
-	expect(after[0].name).toBe('active-workflow');
-	expect(after[0].active).toBe(false);
-	expect(after[1].name).toBe('inactive-workflow');
-	expect(after[1].active).toBe(false);
-	mockExit.mockRestore();
+	const before = {
+		workflows: await getAllWorkflows(),
+		sharings: await getAllSharedWorkflows(),
+	};
+	expect(before.workflows).toHaveLength(0);
+	expect(before.sharings).toHaveLength(0);
+
+	//
+	// ACT
+	//
+	await importWorkflow([
+		'--separate',
+		'--input=./test/integration/commands/importWorkflows/separate',
+	]);
+
+	//
+	// ASSERT
+	//
+	const after = {
+		workflows: await getAllWorkflows(),
+		sharings: await getAllSharedWorkflows(),
+	};
+	expect(after).toMatchObject({
+		workflows: [
+			expect.objectContaining({ name: 'active-workflow', active: false }),
+			expect.objectContaining({ name: 'inactive-workflow', active: false }),
+		],
+		sharings: [
+			expect.objectContaining({ workflowId: '998', userId: owner.id, role: 'workflow:owner' }),
+			expect.objectContaining({ workflowId: '999', userId: owner.id, role: 'workflow:owner' }),
+		],
+	});
 });
 
 test('import:workflow should import active workflow from combined file and deactivate it', async () => {
-	const before = await getAllWorkflows();
-	expect(before.length).toBe(0);
-	const importer = new ImportWorkflowsCommand(
-		['--input=./test/integration/commands/importWorkflows/combined/combined.json'],
-		oclifConfig,
-	);
-	const mockExit = jest.spyOn(process, 'exit').mockImplementation(() => {
-		throw new Error('process.exit');
+	//
+	// ARRANGE
+	//
+	const owner = await createOwner();
+
+	const before = {
+		workflows: await getAllWorkflows(),
+		sharings: await getAllSharedWorkflows(),
+	};
+	expect(before.workflows).toHaveLength(0);
+	expect(before.sharings).toHaveLength(0);
+
+	//
+	// ACT
+	//
+	await importWorkflow([
+		'--input=./test/integration/commands/importWorkflows/combined/combined.json',
+	]);
+
+	//
+	// ASSERT
+	//
+	const after = {
+		workflows: await getAllWorkflows(),
+		sharings: await getAllSharedWorkflows(),
+	};
+	expect(after).toMatchObject({
+		workflows: [
+			expect.objectContaining({ name: 'active-workflow', active: false }),
+			expect.objectContaining({ name: 'inactive-workflow', active: false }),
+		],
+		sharings: [
+			expect.objectContaining({ workflowId: '998', userId: owner.id, role: 'workflow:owner' }),
+			expect.objectContaining({ workflowId: '999', userId: owner.id, role: 'workflow:owner' }),
+		],
 	});
-
-	await importer.init();
-	try {
-		await importer.run();
-	} catch (error) {
-		expect(error.message).toBe('process.exit');
-	}
-	const after = await getAllWorkflows();
-	expect(after.length).toBe(2);
-	expect(after[0].name).toBe('active-workflow');
-	expect(after[0].active).toBe(false);
-	expect(after[1].name).toBe('inactive-workflow');
-	expect(after[1].active).toBe(false);
-	mockExit.mockRestore();
 });
-
-async function importWorkflow(argv: string[]) {
-	const importer = new ImportWorkflowsCommand(argv, oclifConfig);
-	await importer.init();
-	await importer.run();
-}
 
 test('`import:workflow --userId ...` should fail if the workflow exists already and is owned by somebody else', async () => {
 	//
@@ -150,6 +177,7 @@ test("only update the workflow, don't create or update the owner if `--userId` i
 	//
 	// ARRANGE
 	//
+	await createOwner();
 	const member = await createMember();
 
 	// Import workflow the first time, assigning it to a member.

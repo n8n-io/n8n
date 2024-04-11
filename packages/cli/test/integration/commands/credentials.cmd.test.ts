@@ -18,7 +18,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['Credentials']);
+	await testDb.truncate(['Credentials', 'SharedCredentials', 'User']);
 });
 
 afterAll(async () => {
@@ -26,6 +26,7 @@ afterAll(async () => {
 });
 
 test('import:credentials should import a credential', async () => {
+	await createOwner();
 	const before = await getAllCredentials();
 	expect(before.length).toBe(0);
 	const importer = new ImportCredentialsCommand(
@@ -47,6 +48,48 @@ test('import:credentials should import a credential', async () => {
 	expect(after[0].name).toBe('cred-aws-test');
 	expect(after[0].id).toBe('123');
 	mockExit.mockRestore();
+});
+
+test('import:credentials should import a credential from separated files', async () => {
+	//
+	// ARRANGE
+	//
+	const owner = await createOwner();
+
+	//
+	// ACT
+	//
+	// import credential the first time, assigning it to the owner
+	const importer = new ImportCredentialsCommand(
+		['--separate', '--input=./test/integration/commands/importCredentials/separate'],
+		oclifConfig,
+	);
+	await importer.init();
+	await importer.run();
+
+	//
+	// ASSERT
+	//
+	const after = {
+		credentials: await getAllCredentials(),
+		sharings: await getAllSharedCredentials(),
+	};
+
+	expect(after).toMatchObject({
+		credentials: [
+			expect.objectContaining({
+				id: '123',
+				name: 'cred-aws-test',
+			}),
+		],
+		sharings: [
+			expect.objectContaining({
+				credentialsId: '123',
+				userId: owner.id,
+				role: 'credential:owner',
+			}),
+		],
+	});
 });
 
 test('`import:credentials --userId ...` should fail if the credential exists already and is owned by somebody else', async () => {
@@ -127,162 +170,11 @@ test('`import:credentials --userId ...` should fail if the credential exists alr
 	});
 });
 
-test('`import:credentials --separate --userId ...` should fail if the credential exists already and is owned by somebody else', async () => {
-	//
-	// ARRANGE
-	//
-	const owner = await createOwner();
-	const member = await createMember();
-
-	// import credential the first time, assigning it to the owner
-	const importer1 = new ImportCredentialsCommand(
-		[
-			'--separate',
-			'--input=./test/integration/commands/importCredentials/separate',
-			`--userId=${owner.id}`,
-		],
-		oclifConfig,
-	);
-	await importer1.init();
-	await importer1.run();
-
-	// making sure the import worked
-	const before = {
-		credentials: await getAllCredentials(),
-		sharings: await getAllSharedCredentials(),
-	};
-	expect(before).toMatchObject({
-		credentials: [expect.objectContaining({ id: '123', name: 'cred-aws-test' })],
-		sharings: [
-			expect.objectContaining({
-				credentialsId: '123',
-				userId: owner.id,
-				role: 'credential:owner',
-			}),
-		],
-	});
-
-	// Prepare the second import, while updating the name we try to assign the
-	// credential to another user.
-	const importer2 = new ImportCredentialsCommand(
-		[
-			'--separate',
-			'--input=./test/integration/commands/importCredentials/separate-updated',
-			`--userId=${member.id}`,
-		],
-		oclifConfig,
-	);
-	await importer2.init();
-
-	//
-	// ACT
-	//
-	await expect(importer2.run()).rejects.toThrowError(
-		`The credential with id "123" is already owned by the user with the id "${owner.id}". It can't be re-owned by the user with the id "${member.id}"`,
-	);
-
-	//
-	// ASSERT
-	//
-	const after = {
-		credentials: await getAllCredentials(),
-		sharings: await getAllSharedCredentials(),
-	};
-
-	// nothing should have changed
-	expect(after).toMatchObject({
-		credentials: [
-			expect.objectContaining({
-				id: '123',
-				name: 'cred-aws-test',
-			}),
-		],
-		sharings: [
-			expect.objectContaining({
-				credentialsId: '123',
-				userId: owner.id,
-				role: 'credential:owner',
-			}),
-		],
-	});
-});
-
-test("only update the credential, don't create or update the owner if `--userId` is not passed, while using `--separate`", async () => {
-	//
-	// ARRANGE
-	//
-	const member = await createMember();
-
-	// import credential the first time, assigning it to a member
-	const importer1 = new ImportCredentialsCommand(
-		[
-			'--separate',
-			'--input=./test/integration/commands/importCredentials/separate',
-			`--userId=${member.id}`,
-		],
-		oclifConfig,
-	);
-	await importer1.init();
-	await importer1.run();
-
-	// making sure the import worked
-	const before = {
-		credentials: await getAllCredentials(),
-		sharings: await getAllSharedCredentials(),
-	};
-	expect(before).toMatchObject({
-		credentials: [expect.objectContaining({ id: '123', name: 'cred-aws-test' })],
-		sharings: [
-			expect.objectContaining({
-				credentialsId: '123',
-				userId: member.id,
-				role: 'credential:owner',
-			}),
-		],
-	});
-
-	// prepare the second import, trying to assign the same credential to another user
-	const importer2 = new ImportCredentialsCommand(
-		['--separate', '--input=./test/integration/commands/importCredentials/separate-updated'],
-		oclifConfig,
-	);
-	await importer2.init();
-
-	//
-	// ACT
-	//
-	await importer2.run();
-
-	//
-	// ASSERT
-	//
-	const after = {
-		credentials: await getAllCredentials(),
-		sharings: await getAllSharedCredentials(),
-	};
-
-	expect(after).toMatchObject({
-		credentials: [
-			expect.objectContaining({
-				id: '123',
-				// only the name was updated
-				name: 'cred-aws-prod',
-			}),
-		],
-		sharings: [
-			expect.objectContaining({
-				credentialsId: '123',
-				userId: member.id,
-				role: 'credential:owner',
-			}),
-		],
-	});
-});
-
 test("only update credential, don't create or update owner if `--userId` is not passed", async () => {
 	//
 	// ARRANGE
 	//
+	await createOwner();
 	const member = await createMember();
 
 	// import credential the first time, assigning it to a member
