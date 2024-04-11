@@ -49,7 +49,7 @@ test('import:credentials should import a credential', async () => {
 	mockExit.mockRestore();
 });
 
-test('`import:credentials --userId ...` should fail if the credential is exists already and is owned by somebody else', async () => {
+test('`import:credentials --userId ...` should fail if the credential exists already and is owned by somebody else', async () => {
 	//
 	// ARRANGE
 	//
@@ -127,7 +127,7 @@ test('`import:credentials --userId ...` should fail if the credential is exists 
 	});
 });
 
-test('`import:credentials --separate --userId ...` should fail if the credential is exists already and is owned by somebody else', async () => {
+test('`import:credentials --separate --userId ...` should fail if the credential exists already and is owned by somebody else', async () => {
 	//
 	// ARRANGE
 	//
@@ -207,7 +207,7 @@ test('`import:credentials --separate --userId ...` should fail if the credential
 	});
 });
 
-test("only update credential, don't create or update owner if `--userId` is not passed, while using `--separate`", async () => {
+test("only update the credential, don't create or update the owner if `--userId` is not passed, while using `--separate`", async () => {
 	//
 	// ARRANGE
 	//
