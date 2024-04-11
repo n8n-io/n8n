@@ -337,11 +337,11 @@ export interface ICredentialData {
 }
 
 // The encrypted credentials which the nodes can access
-export type CredentialInformation = string | number | boolean | IDataObject | IDataObject[];
+export type CredentialInformation = string | number | boolean | IDataObject;
 
 // The encrypted credentials which the nodes can access
 export interface ICredentialDataDecryptedObject {
-	[key: string]: CredentialInformation;
+	[key: string]: CredentialInformation | CredentialInformation[];
 }
 
 // First array index: The output/input-index (if node has multiple inputs/outputs of the same type)

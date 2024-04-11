@@ -3545,14 +3545,7 @@ export default defineComponent({
 						? { id: personalProject.id, name: personalProject.name, type: personalProject.type }
 						: {}
 			) as ProjectSharingData;
-			const scopes = currentProject?.scopes ?? [
-				'workflow:create',
-				'workflow:read',
-				'workflow:update',
-				'workflow:delete',
-				'workflow:share',
-				'workflow:execute',
-			];
+			const scopes = currentProject?.scopes ?? personalProject?.scopes ?? [];
 
 			this.workflowsStore.workflow.homeProject = homeProject;
 			this.workflowsStore.workflow.scopes = scopes;
