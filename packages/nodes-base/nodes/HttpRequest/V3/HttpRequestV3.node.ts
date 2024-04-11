@@ -34,7 +34,7 @@ import {
 	replaceNullValues,
 	sanitizeUiMessage,
 } from '../GenericFunctions';
-import { keysToLowercase } from '@utils/utilities';
+import { formatPrivateKey, keysToLowercase } from '@utils/utilities';
 
 function toText<T>(data: T) {
 	if (typeof data === 'object' && data !== null) {
@@ -1218,6 +1218,7 @@ export class HttpRequestV3 implements INodeType {
 		let httpDigestAuth;
 		let httpHeaderAuth;
 		let httpQueryAuth;
+		let httpSslAuth;
 		let httpCustomAuth;
 		let oAuth1Api;
 		let oAuth2Api;
@@ -1275,6 +1276,13 @@ export class HttpRequestV3 implements INodeType {
 					oAuth1Api = await this.getCredentials('oAuth1Api', itemIndex);
 				} else if (genericCredentialType === 'oAuth2Api') {
 					oAuth2Api = await this.getCredentials('oAuth2Api', itemIndex);
+				} else if (genericCredentialType === 'httpSslAuth') {
+					httpSslAuth = (await this.getCredentials('httpSslAuth', itemIndex)) as {
+						ca: string;
+						cert: string;
+						key: string;
+						passphrase: string;
+					};
 				}
 			} else if (authentication === 'predefinedCredentialType') {
 				nodeCredentialType = this.getNodeParameter('nodeCredentialType', itemIndex) as string;
@@ -1590,6 +1598,19 @@ export class HttpRequestV3 implements INodeType {
 				}
 				requestOptions.qs[httpQueryAuth.name as string] = httpQueryAuth.value;
 				authDataKeys.qs = [httpQueryAuth.name as string];
+			}
+			if (httpSslAuth !== undefined) {
+				const agentOptions = {
+					requestCert: true,
+					cert: formatPrivateKey(httpSslAuth.cert),
+					ca: formatPrivateKey(httpSslAuth.ca),
+					key: formatPrivateKey(httpSslAuth.key),
+					passphrase: httpSslAuth.passphrase,
+				};
+
+				authDataKeys.agentOptions = Object.keys(agentOptions);
+
+				requestOptions.agentOptions = agentOptions;
 			}
 			if (httpDigestAuth !== undefined) {
 				requestOptions.auth = {

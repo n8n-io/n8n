@@ -505,7 +505,15 @@ export async function parseRequestObject(requestObject: IRequestOptions) {
 		agentOptions.rejectUnauthorized = false;
 		agentOptions.secureOptions = crypto.constants.SSL_OP_LEGACY_SERVER_CONNECT;
 	}
-	axiosConfig.httpsAgent = new Agent(agentOptions);
+
+	if (requestObject.agentOptions) {
+		axiosConfig.httpsAgent = new Agent({
+			...agentOptions,
+			...requestObject.agentOptions,
+		});
+	} else {
+		axiosConfig.httpsAgent = new Agent(agentOptions);
+	}
 
 	axiosConfig.beforeRedirect = getBeforeRedirectFn(agentOptions, axiosConfig);
 
