@@ -942,7 +942,7 @@ onUpdated(async () => {
 				:display-title="displayTitle"
 				:expression-display-value="expressionDisplayValue"
 				:expression-computed-value="expressionEvaluated"
-				:is-value-expression="isValueExpression"
+				:is-value-expression="isModelValueExpression"
 				:is-read-only="isReadOnly"
 				:parameter-issues="getIssues"
 				:droppable="droppable"
@@ -1190,7 +1190,7 @@ onUpdated(async () => {
 							class="edit-window-button textarea-modal-opener"
 							:class="{
 								focused: isFocused,
-								invalid: !isFocused && getIssues.length > 0 && !isValueExpression,
+								invalid: !isFocused && getIssues.length > 0 && !isModelValueExpression,
 							}"
 							:title="i18n.baseText('parameterInput.openEditWindow')"
 							@click="displayEditDialog()"
