@@ -158,6 +158,7 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 	// object in the JSON Schema definition. This allows us
 	// to later validate that only this properties are set in
 	// the credentials sent in the API call.
+	// eslint-disable-next-line complexity
 	properties.forEach((property) => {
 		if (property.required) {
 			requiredFields.push(property.name);

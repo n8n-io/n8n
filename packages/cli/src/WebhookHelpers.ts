@@ -217,6 +217,7 @@ const normalizeFormData = <T>(values: Record<string, T | T[]>) => {
 /**
  * Executes a webhook
  */
+// eslint-disable-next-line complexity
 export async function executeWebhook(
 	workflow: Workflow,
 	webhookData: IWebhookData,
@@ -625,6 +626,7 @@ export async function executeWebhook(
 				executionId,
 			) as Promise<IExecutionDb | undefined>;
 			executePromise
+				// eslint-disable-next-line complexity
 				.then(async (data) => {
 					if (data === undefined) {
 						if (!didSendResponse) {

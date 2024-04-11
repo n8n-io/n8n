@@ -256,6 +256,7 @@ export class Server extends AbstractServer {
 			this.restEndpoint,
 			this.endpointPresetCredentials,
 			isApiEnabled() ? '' : publicApiEndpoint,
+			...config.getEnv('endpoints.additionalNonUIRoutes').split(':'),
 		].filter((u) => !!u);
 		const nonUIRoutesRegex = new RegExp(`^/(${nonUIRoutes.join('|')})/?.*$`);
 
