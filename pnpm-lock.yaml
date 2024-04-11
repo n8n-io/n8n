@@ -143,6 +143,9 @@ importers:
       highlight.js:
         specifier: ^11.8.0
         version: 11.9.0
+      markdown-it-link-attributes:
+        specifier: ^4.0.1
+        version: 4.0.1
       uuid:
         specifier: ^8.3.2
         version: 8.3.2
@@ -159,6 +162,9 @@ importers:
       '@n8n/storybook':
         specifier: workspace:*
         version: link:../storybook
+      '@types/markdown-it':
+        specifier: ^12.2.3
+        version: 12.2.3
       shelljs:
         specifier: ^0.8.5
         version: 0.8.5
