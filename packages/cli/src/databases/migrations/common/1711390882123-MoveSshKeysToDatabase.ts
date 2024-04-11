@@ -106,6 +106,6 @@ export class MoveSshKeysToDatabase1711390882123 implements ReversibleMigration {
 			return;
 		}
 
-		await runQuery(`DELETE ${settings} WHERE \`key\` = 'features.sourceControl.sshKeys';`);
+		await runQuery(`DELETE FROM ${settings} WHERE \`key\` = 'features.sourceControl.sshKeys';`);
 	}
 }
