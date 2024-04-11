@@ -34,13 +34,18 @@ const i18n = useI18n();
 const editor = ref<EditorView | null>(null);
 const root = ref<HTMLElement | null>(null);
 
+function addSegment(str: string, segment: Segment): string {
+	const text = segment.kind === 'resolvable' ? String(segment.resolved) : segment.plaintext;
+	return str.substring(0, segment.from) + text + str.substring(segment.to + 1);
+}
+
 const resolvedExpression = computed(() => {
 	if (props.segments.length === 0) {
 		return i18n.baseText('parameterInput.emptyString');
 	}
 
 	return props.segments.reduce((acc, segment) => {
-		acc += segment.kind === 'resolvable' ? (segment.resolved as string) : segment.plaintext;
+		acc = addSegment(acc, segment);
 		return acc;
 	}, '');
 });
