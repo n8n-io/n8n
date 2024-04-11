@@ -494,11 +494,7 @@ export default defineComponent({
 
 			const { currentProject, personalProject } = this.projectsStore;
 			const scopes = currentProject?.scopes ?? personalProject?.scopes ?? [];
-			const homeProject = currentProject
-				? { id: currentProject.id, name: currentProject.name, type: currentProject.type }
-				: personalProject
-					? { id: personalProject.id, name: personalProject.name, type: personalProject.type }
-					: {};
+			const homeProject = currentProject ?? personalProject ?? {};
 
 			this.credentialData = {
 				...this.credentialData,

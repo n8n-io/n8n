@@ -3538,16 +3538,10 @@ export default defineComponent({
 		},
 		makeNewWorkflowShareable() {
 			const { currentProject, personalProject } = this.projectsStore;
-			const homeProject = (
-				currentProject
-					? { id: currentProject.id, name: currentProject.name, type: currentProject.type }
-					: personalProject
-						? { id: personalProject.id, name: personalProject.name, type: personalProject.type }
-						: {}
-			) as ProjectSharingData;
+			const homeProject = currentProject ?? personalProject ?? {};
 			const scopes = currentProject?.scopes ?? personalProject?.scopes ?? [];
 
-			this.workflowsStore.workflow.homeProject = homeProject;
+			this.workflowsStore.workflow.homeProject = homeProject as ProjectSharingData;
 			this.workflowsStore.workflow.scopes = scopes;
 		},
 		async newWorkflow(): Promise<void> {
