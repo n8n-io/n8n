@@ -1,3 +1,32 @@
+## [1.36.2](https://github.com/n8n-io/n8n/compare/n8n@1.36.1...n8n@1.36.2) (2024-04-11)
+
+
+### Bug Fixes
+
+* **API:** Accept `settings.executionOrder` in workflow creation ([#9072](https://github.com/n8n-io/n8n/issues/9072)) ([4579fc8](https://github.com/n8n-io/n8n/commit/4579fc8b4b295a219e08d3caaa608f47b0c4f654))
+* **AWS Bedrock Chat Model Node:** Improve filtering of Bedrock models & fix Claude 3 ([#9085](https://github.com/n8n-io/n8n/issues/9085)) ([3992ae7](https://github.com/n8n-io/n8n/commit/3992ae7be6751ecfc64dc354a63fb9d7833188ac))
+* **core:** Don't revert irreversibble migrations ([#9105](https://github.com/n8n-io/n8n/issues/9105)) ([a1870b3](https://github.com/n8n-io/n8n/commit/a1870b3de43b24e35ee9c99994edc8911fd81706))
+* **core:** Ensure TTL safeguard for test webhooks applies only to multi-main setup ([#9062](https://github.com/n8n-io/n8n/issues/9062)) ([89755c4](https://github.com/n8n-io/n8n/commit/89755c4ebc0ae7954b34b0e6b0a357f0ce43779a))
+* **core:** Fix `isLeader` check in `WaitTracker` constructor ([#9100](https://github.com/n8n-io/n8n/issues/9100)) ([549e8f7](https://github.com/n8n-io/n8n/commit/549e8f79e97ccfcacc890ecdb8f785cfdbfefc71))
+* **core:** Support MySQL in `MoveSshKeysToDatabase` migration ([#9120](https://github.com/n8n-io/n8n/issues/9120)) ([3a51593](https://github.com/n8n-io/n8n/commit/3a51593ecc215172eaef412195aef14ba0dae3f5))
+* **editor:** Allow pinning of AI root nodes ([#9060](https://github.com/n8n-io/n8n/issues/9060)) ([2489009](https://github.com/n8n-io/n8n/commit/24890092fb42096c2cb139dc942dbd425957add7))
+* **editor:** Connecting nodes to triggers when adding them together ([#9042](https://github.com/n8n-io/n8n/issues/9042)) ([ae26b8f](https://github.com/n8n-io/n8n/commit/ae26b8f3dcab6003ac1aee169a4ecc751a59aca2))
+* **editor:** Do not show overlapping trash icon in the node's settings ([#9119](https://github.com/n8n-io/n8n/issues/9119)) ([5308159](https://github.com/n8n-io/n8n/commit/5308159d627a729732319226645514b4ba22592a))
+* **editor:** Drop outgoing connections on order changed event for nodes with dynamic outputs ([#9055](https://github.com/n8n-io/n8n/issues/9055)) ([b3adec3](https://github.com/n8n-io/n8n/commit/b3adec3c339d971ef477abfd4b77657aa2d06615))
+* **editor:** Expand range of allowed characters in expressions ([#9083](https://github.com/n8n-io/n8n/issues/9083)) ([e947f39](https://github.com/n8n-io/n8n/commit/e947f39b0200ddeede4fb788693dcafbdcbcfc4e))
+* **editor:** Fix displaying logic of execution retry button ([#9061](https://github.com/n8n-io/n8n/issues/9061)) ([c3a5ed1](https://github.com/n8n-io/n8n/commit/c3a5ed19018fe8f9a5106e2a31ac26d7570e77fd))
+* **editor:** Fix issue with case insensitive tags ([#9071](https://github.com/n8n-io/n8n/issues/9071)) ([9a9b49a](https://github.com/n8n-io/n8n/commit/9a9b49a69b05c71578c884c9074d4e2332293ae6))
+* **editor:** Fix issues in dark mode ([#9068](https://github.com/n8n-io/n8n/issues/9068)) ([c101ec8](https://github.com/n8n-io/n8n/commit/c101ec8c8ed8a8012ee5a30fcbdeceda44e1357d))
+* **editor:** Open links from embedded chat in new tab ([#9121](https://github.com/n8n-io/n8n/issues/9121)) ([252dc97](https://github.com/n8n-io/n8n/commit/252dc97787ed05b7771aeed3410590e012e1992c))
+* **editor:** Render dates correctly in parameter hint ([#9089](https://github.com/n8n-io/n8n/issues/9089)) ([0e88b89](https://github.com/n8n-io/n8n/commit/0e88b89f4f6237e68fa9e904439f314c59290907))
+* **editor:** UX improvements to mfa setup modal ([#9059](https://github.com/n8n-io/n8n/issues/9059)) ([f8d825e](https://github.com/n8n-io/n8n/commit/f8d825e69e44669f8e7caed1eb78575d78e41170))
+* **HTTP Request Node:** Duplicate key names support for form data  ([#9040](https://github.com/n8n-io/n8n/issues/9040)) ([3fb532d](https://github.com/n8n-io/n8n/commit/3fb532d0e48119d48d0f531b3a0240bf441914f6))
+* **MySQL Node:** Query Parameters parse string to number ([#9011](https://github.com/n8n-io/n8n/issues/9011)) ([f50d4db](https://github.com/n8n-io/n8n/commit/f50d4db83629604fe8aee7b3f030d7a6b510df8b))
+* **Respond to Webhook Node:** Continue on fail and error branch support ([#9115](https://github.com/n8n-io/n8n/issues/9115)) ([dedd5c1](https://github.com/n8n-io/n8n/commit/dedd5c10f879ae0eb575cf9311fbc79564253b80))
+* **Summarization Chain Node:** 'Final Prompt to Combine' and 'Individual Summary Prompt' options ([#8391](https://github.com/n8n-io/n8n/issues/8391)) ([e4c05e4](https://github.com/n8n-io/n8n/commit/e4c05e408e28561d87ebbeb3caaecc94b83f506a))
+
+
+
 ## [1.36.1](https://github.com/n8n-io/n8n/compare/n8n@1.36.0...n8n@1.36.1) (2024-04-04)
 
 
