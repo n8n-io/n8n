@@ -4,6 +4,8 @@ import type { PropType } from 'vue';
 import { computed, toRefs } from 'vue';
 import VueMarkdown from 'vue-markdown-render';
 import hljs from 'highlight.js/lib/core';
+import markdownLink from 'markdown-it-link-attributes';
+import type MarkdownIt from 'markdown-it';
 import type { ChatMessage } from '@n8n/chat/types';
 
 const props = defineProps({
@@ -26,6 +28,15 @@ const classes = computed(() => {
 	};
 });
 
+const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
+	vueMarkdownItInstance.use(markdownLink, {
+		attrs: {
+			target: '_blank',
+			rel: 'noopener',
+		},
+	});
+};
+
 const markdownOptions = {
 	highlight(str: string, lang: string) {
 		if (lang && hljs.getLanguage(lang)) {
@@ -41,7 +52,12 @@ const markdownOptions = {
 <template>
 	<div class="chat-message" :class="classes">
 		<slot>
-			<VueMarkdown class="chat-message-markdown" :source="messageText" :options="markdownOptions" />
+			<VueMarkdown
+				class="chat-message-markdown"
+				:source="messageText"
+				:options="markdownOptions"
+				:plugins="[linksNewTabPlugin]"
+			/>
 		</slot>
 	</div>
 </template>

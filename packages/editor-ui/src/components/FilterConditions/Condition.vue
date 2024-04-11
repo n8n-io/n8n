@@ -156,7 +156,6 @@ const onBlur = (): void => {
 					hide-label
 					hide-hint
 					hide-issues
-					:rows="3"
 					:is-read-only="readOnly"
 					:parameter="leftParameter"
 					:value="condition.leftValue"
@@ -181,7 +180,6 @@ const onBlur = (): void => {
 					hide-label
 					hide-hint
 					hide-issues
-					:rows="3"
 					:is-read-only="readOnly"
 					:options-position="breakpoint === 'default' ? 'top' : 'bottom'"
 					:parameter="rightParameter"

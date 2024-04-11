@@ -28,6 +28,7 @@ jobs:
       - run: |
           echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
           npm dist-tag add n8n@${{ github.event.inputs.version }} ${{ github.event.inputs.release-channel }}
+          npm dist-tag add n8n-workflow@${{ github.event.inputs.version }} ${{ github.event.inputs.release-channel }}
 
   release-to-docker-hub:
     name: Release to DockerHub

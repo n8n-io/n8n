@@ -601,7 +601,7 @@ function trackExpressionEditOpen() {
 			parameter_field_type: props.parameter.type,
 			new_expression: !isModelValueExpression.value,
 			workflow_id: workflowsStore.workflowId,
-			session_id: ndvStore.sessionId,
+			push_ref: ndvStore.pushRef,
 			source: props.eventSource ?? 'ndv',
 		});
 	}
@@ -756,7 +756,7 @@ function valueChanged(value: NodeParameterValueType | {} | Date) {
 			node_type: node.value?.type,
 			resource: node.value && node.value.parameters.resource,
 			is_custom: value === CUSTOM_API_CALL_KEY,
-			session_id: ndvStore.sessionId,
+			push_ref: ndvStore.pushRef,
 			parameter: props.parameter.name,
 		});
 	}

@@ -39,7 +39,7 @@ export class AuthController {
 	) {}
 
 	/** Log in a user */
-	@Post('/login', { skipAuth: true })
+	@Post('/login', { skipAuth: true, rateLimit: true })
 	async login(req: LoginRequest, res: Response): Promise<PublicUser | undefined> {
 		const { email, password, mfaToken, mfaRecoveryCode } = req.body;
 		if (!email) throw new ApplicationError('Email is required to log in');
@@ -94,7 +94,7 @@ export class AuthController {
 				}
 			}
 
-			this.authService.issueCookie(res, user);
+			this.authService.issueCookie(res, user, req.browserId);
 			void this.internalHooks.onUserLoginSuccess({
 				user,
 				authenticationMethod: usedAuthenticationMethod,

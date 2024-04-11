@@ -52,7 +52,7 @@
 					v-touch:tap="deleteNode"
 					class="option"
 					data-test-id="delete-sticky"
-					:title="$locale.baseText('node.deleteNode')"
+					:title="$locale.baseText('node.delete')"
 				>
 					<font-awesome-icon icon="trash" />
 				</div>

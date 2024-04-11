@@ -22,7 +22,7 @@ export const useNDVStore = defineStore(STORES.NDV, {
 	state: (): NDVState => ({
 		activeNodeName: null,
 		mainPanelDimensions: {},
-		sessionId: '',
+		pushRef: '',
 		input: {
 			displayMode: 'schema',
 			nodeName: undefined,
@@ -184,11 +184,11 @@ export const useNDVStore = defineStore(STORES.NDV, {
 				},
 			};
 		},
-		setNDVSessionId(): void {
-			this.sessionId = `ndv-${uuid()}`;
+		setNDVPushRef(): void {
+			this.pushRef = `ndv-${uuid()}`;
 		},
-		resetNDVSessionId(): void {
-			this.sessionId = '';
+		resetNDVPushRef(): void {
+			this.pushRef = '';
 		},
 		setPanelDisplayMode(params: { pane: NodePanelType; mode: IRunDataDisplayMode }): void {
 			this[params.pane].displayMode = params.mode;

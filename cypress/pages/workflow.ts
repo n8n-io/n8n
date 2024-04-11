@@ -145,19 +145,20 @@ export class WorkflowPage extends BasePage {
 		},
 		addInitialNodeToCanvas: (
 			nodeDisplayName: string,
-			opts?: { keepNdvOpen?: boolean; action?: string },
+			opts?: { keepNdvOpen?: boolean; action?: string, isTrigger?: boolean},
 		) => {
 			this.getters.canvasPlusButton().click();
 			this.getters.nodeCreatorSearchBar().type(nodeDisplayName);
 			this.getters.nodeCreatorSearchBar().type('{enter}');
 			if (opts?.action) {
+				const itemId = opts.isTrigger ? 'Triggers' : 'Actions';
 				// Expand actions category if it's collapsed
 				nodeCreator.getters
-					.getCategoryItem('Actions')
+					.getCategoryItem(itemId)
 					.parent()
 					.then(($el) => {
 						if ($el.attr('data-category-collapsed') === 'true') {
-							nodeCreator.getters.getCategoryItem('Actions').click();
+							nodeCreator.getters.getCategoryItem(itemId).click();
 						}
 					});
 				nodeCreator.getters.getCreatorItem(opts.action).click();

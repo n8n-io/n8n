@@ -55,7 +55,7 @@ type PushRequest = Request<
 	{},
 	{
 		type: IPushDataType;
-		sessionId: string;
+		pushRef: string;
 		data: object;
 	}
 >;

@@ -25,7 +25,7 @@ export const useRootStore = defineStore(STORES.ROOT, {
 		versionCli: '0.0.0',
 		oauthCallbackUrls: {},
 		n8nMetadata: {},
-		sessionId: Math.random().toString(36).substring(2, 15),
+		pushRef: Math.random().toString(36).substring(2, 15),
 		urlBaseWebhook: 'http://localhost:5678/',
 		urlBaseEditor: 'http://localhost:5678',
 		isNpmAvailable: false,
@@ -66,14 +66,14 @@ export const useRootStore = defineStore(STORES.ROOT, {
 				baseUrl: window.location.host.includes('stage-app.n8n.cloud')
 					? CLOUD_BASE_URL_STAGING
 					: CLOUD_BASE_URL_PRODUCTION,
-				sessionId: '',
+				pushRef: '',
 			};
 		},
 
 		getRestApiContext(): IRestApiContext {
 			return {
 				baseUrl: this.getRestUrl,
-				sessionId: this.sessionId,
+				pushRef: this.pushRef,
 			};
 		},
 	},

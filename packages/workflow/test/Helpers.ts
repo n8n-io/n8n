@@ -46,10 +46,6 @@ export interface INodeTypesObject {
 }
 
 export class Credentials extends ICredentials {
-	hasNodeAccess() {
-		return true;
-	}
-
 	setData(data: ICredentialDataDecryptedObject) {
 		this.data = JSON.stringify(data);
 	}
@@ -71,7 +67,6 @@ export class Credentials extends ICredentials {
 			name: this.name,
 			type: this.type,
 			data: this.data,
-			nodesAccess: this.nodesAccess,
 		};
 	}
 }

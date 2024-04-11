@@ -33,8 +33,10 @@ assert.ok(
 	'No changes found since the last release',
 );
 
-// Keep the monorepo version up to date with the released version
-packageMap['monorepo-root'].version = packageMap['n8n'].version;
+// Keep the monorepo and n8n-workflow version up to date with the released version
+const { version } = packageMap['n8n'];
+packageMap['monorepo-root'].version = version;
+packageMap['n8n-workflow'].version = version;
 
 for (const packageName in packageMap) {
 	const { path, version, isDirty } = packageMap[packageName];

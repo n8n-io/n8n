@@ -16,6 +16,7 @@ import { Document } from '@langchain/core/documents';
 
 import type { SetField, SetNodeOptions } from 'n8n-nodes-base/dist/nodes/Set/v2/helpers/interfaces';
 import * as manual from 'n8n-nodes-base/dist/nodes/Set/v2/manual.mode';
+import type { CallbackManagerForRetrieverRun } from '@langchain/core/callbacks/manager';
 import { logWrapper } from '../../../utils/logWrapper';
 
 function objectToString(obj: Record<string, string> | IDataObject, level = 0) {
@@ -287,7 +288,10 @@ export class RetrieverWorkflow implements INodeType {
 				this.executeFunctions = executeFunctions;
 			}
 
-			async getRelevantDocuments(query: string): Promise<Document[]> {
+			async _getRelevantDocuments(
+				query: string,
+				config?: CallbackManagerForRetrieverRun,
+			): Promise<Document[]> {
 				const source = this.executeFunctions.getNodeParameter('source', itemIndex) as string;
 
 				const baseMetadata: IDataObject = {
@@ -360,6 +364,7 @@ export class RetrieverWorkflow implements INodeType {
 					receivedItems = (await this.executeFunctions.executeWorkflow(
 						workflowInfo,
 						items,
+						config?.getChild(),
 					)) as INodeExecutionData[][];
 				} catch (error) {
 					// Make sure a valid error gets returned that can by json-serialized else it will

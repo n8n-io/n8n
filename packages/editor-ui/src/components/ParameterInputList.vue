@@ -49,7 +49,7 @@
 				class="multi-parameter"
 			>
 				<n8n-icon-button
-					v-if="hideDelete !== true && !isReadOnly"
+					v-if="hideDelete !== true && !isReadOnly && !parameter.isNodeSetting"
 					type="tertiary"
 					text
 					size="mini"
@@ -131,7 +131,7 @@
 				class="parameter-item"
 			>
 				<n8n-icon-button
-					v-if="hideDelete !== true && !isReadOnly"
+					v-if="hideDelete !== true && !isReadOnly && !parameter.isNodeSetting"
 					type="tertiary"
 					text
 					size="mini"

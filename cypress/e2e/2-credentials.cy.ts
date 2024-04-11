@@ -236,4 +236,29 @@ describe('Credentials', () => {
 			.find('input')
 			.should('have.value', NEW_QUERY_AUTH_ACCOUNT_NAME);
 	});
+
+	it('should not show OAuth redirect URL section when OAuth2 credentials are overridden', () => {
+		cy.intercept('/types/credentials.json', { middleware: true }, (req) => {
+			req.headers['cache-control'] = 'no-cache, no-store';
+
+			req.on('response', (res) => {
+				const credentials = res.body || [];
+
+				const index = credentials.findIndex((c) => c.name === 'slackOAuth2Api');
+
+				credentials[index] = {
+					...credentials[index],
+					__overwrittenProperties: ['clientId', 'clientSecret'],
+				};
+			});
+		});
+
+		workflowPage.actions.visit(true);
+		workflowPage.actions.addNodeToCanvas('Slack');
+		workflowPage.actions.openNode('Slack');
+		workflowPage.getters.nodeCredentialsSelect().click();
+		getVisibleSelect().find('li').last().click();
+		credentialsModal.getters.credentialAuthTypeRadioButtons().first().click();
+		nodeDetailsView.getters.copyInput().should('not.exist');
+	});
 });
