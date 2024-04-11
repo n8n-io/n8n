@@ -12,13 +12,14 @@ export function webhook(bench: Bench) {
 			beforeAll: async () => {
 				console.log('beforeAll start');
 
-				await init.database();
+				init.n8nDir();
+				await init.database(); // @TODO: Test with Postgres
 				await init.mainProcess();
 
 				console.log('beforeAll end');
 			},
 			afterAll: () => {
-				// stop process // @TODO
+				// @TODO stop main process gracefully
 			},
 		},
 	);

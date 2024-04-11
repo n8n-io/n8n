@@ -9,6 +9,8 @@ async function main() {
 	const _bench = new Bench({ time: 0, iterations: 1 }); // @TEMP: Remove arg
 	const bench = withCodSpeed(_bench);
 
+	process.env.NODE_ENV = 'test';
+
 	register(bench);
 
 	// await bench.warmup(); // @TODO: Restore
