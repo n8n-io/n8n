@@ -878,9 +878,9 @@ onBeforeUnmount(() => {
 });
 
 watch(
-	node,
-	(newNode) => {
-		if (hasRemoteMethod.value && newNode) {
+	() => node.value.credentials,
+	() => {
+		if (hasRemoteMethod.value && node.value) {
 			void loadRemoteParameterOptions();
 		}
 	},
