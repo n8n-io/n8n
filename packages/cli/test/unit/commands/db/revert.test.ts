@@ -103,3 +103,32 @@ test('revert the last migration if it has a down migration', async () => {
 	expect(dataSource.undoLastMigration).toHaveBeenCalled();
 	expect(dataSource.destroy).toHaveBeenCalled();
 });
+
+test('throw if a migration is invalid, e.g. has no `up` method', async () => {
+	//
+	// ARRANGE
+	//
+	class TestMigration {}
+
+	const connectionOptions = DbConfig.getConnectionOptions();
+	// @ts-expect-error property is readonly
+	connectionOptions.migrations = [TestMigration];
+	const dataSource = mock<DataSource>({ migrations: [new TestMigration()] });
+
+	//
+	// ACT
+	//
+	await expect(
+		main(connectionOptions, logger, function () {
+			return dataSource;
+		} as never),
+	).rejects.toThrowError(
+		'At least on migration is missing the method `up`. Make sure all migrations are valid.',
+	);
+
+	//
+	// ASSERT
+	//
+	expect(dataSource.undoLastMigration).not.toHaveBeenCalled();
+	expect(dataSource.destroy).not.toHaveBeenCalled();
+});

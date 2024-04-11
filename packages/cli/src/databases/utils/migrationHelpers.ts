@@ -189,6 +189,10 @@ export const wrapMigration = (migration: Migration) => {
 				logMigrationEnd(migration.name);
 			},
 		});
+	} else {
+		throw new ApplicationError(
+			'At least on migration is missing the method `up`. Make sure all migrations are valid.',
+		);
 	}
 	if (down) {
 		Object.assign(migration.prototype, {
