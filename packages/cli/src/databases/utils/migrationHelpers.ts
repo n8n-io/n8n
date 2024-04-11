@@ -193,7 +193,6 @@ export const wrapMigration = (migration: Migration) => {
 	if (down) {
 		Object.assign(migration.prototype, {
 			async down(this: BaseMigration, queryRunner: QueryRunner) {
-				console.log('down');
 				const context = createContext(queryRunner, migration);
 				if (this.transaction === false) {
 					await runDisablingForeignKeys(this, context, down);
