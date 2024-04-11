@@ -1,6 +1,6 @@
 import { Service } from 'typedi';
 import { v4 as uuid } from 'uuid';
-import { ApplicationError, type INode, type INodeCredentialsDetails } from 'n8n-workflow';
+import { type INode, type INodeCredentialsDetails } from 'n8n-workflow';
 
 import { Logger } from '@/Logger';
 import * as Db from '@/Db';
@@ -12,7 +12,6 @@ import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { WorkflowTagMapping } from '@db/entities/WorkflowTagMapping';
 import type { TagEntity } from '@db/entities/TagEntity';
 import type { ICredentialsDb } from '@/Interfaces';
-import { User } from '@/databases/entities/User';
 
 @Service()
 export class ImportService {
