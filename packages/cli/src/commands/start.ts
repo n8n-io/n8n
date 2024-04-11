@@ -289,35 +289,37 @@ export class Start extends BaseCommand {
 		const editorUrl = Container.get(UrlService).baseUrl;
 		this.log(`\nEditor is now accessible via:\n${editorUrl}`);
 
+		console.log('hello');
+
 		// Allow to open n8n editor by pressing "o"
-		if (Boolean(process.stdout.isTTY) && process.stdin.setRawMode) {
-			process.stdin.setRawMode(true);
-			process.stdin.resume();
-			process.stdin.setEncoding('utf8');
+		// if (Boolean(process.stdout.isTTY) && process.stdin.setRawMode) {
+		// 	process.stdin.setRawMode(true);
+		// 	process.stdin.resume();
+		// 	process.stdin.setEncoding('utf8');
 
-			if (flags.open) {
-				this.openBrowser();
-			}
-			this.log('\nPress "o" to open in Browser.');
-			process.stdin.on('data', (key: string) => {
-				if (key === 'o') {
-					this.openBrowser();
-				} else if (key.charCodeAt(0) === 3) {
-					// Ctrl + c got pressed
-					void this.stopProcess();
-				} else {
-					// When anything else got pressed, record it and send it on enter into the child process
+		// 	if (flags.open) {
+		// 		this.openBrowser();
+		// 	}
+		// 	this.log('\nPress "o" to open in Browser.');
+		// 	process.stdin.on('data', (key: string) => {
+		// 		if (key === 'o') {
+		// 			this.openBrowser();
+		// 		} else if (key.charCodeAt(0) === 3) {
+		// 			// Ctrl + c got pressed
+		// 			void this.stopProcess();
+		// 		} else {
+		// 			// When anything else got pressed, record it and send it on enter into the child process
 
-					if (key.charCodeAt(0) === 13) {
-						// send to child process and print in terminal
-						process.stdout.write('\n');
-					} else {
-						// record it and write into terminal
-						process.stdout.write(key);
-					}
-				}
-			});
-		}
+		// 			if (key.charCodeAt(0) === 13) {
+		// 				// send to child process and print in terminal
+		// 				process.stdout.write('\n');
+		// 			} else {
+		// 				// record it and write into terminal
+		// 				process.stdout.write(key);
+		// 			}
+		// 		}
+		// 	});
+		// }
 	}
 
 	async initPruning() {

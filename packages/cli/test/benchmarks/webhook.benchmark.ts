@@ -6,17 +6,19 @@ export function webhook(bench: Bench) {
 	bench.add(
 		'`start` command',
 		async () => {
-			// console.log('ended');
-			console.log(bench.iterations);
+			console.log('iteration');
 		},
 		{
 			beforeAll: async () => {
 				console.log('beforeAll start');
 
-				await init.startCommand();
-				// await init.database();
+				await init.database();
+				await init.mainProcess();
 
 				console.log('beforeAll end');
+			},
+			afterAll: () => {
+				// stop process // @TODO
 			},
 		},
 	);
