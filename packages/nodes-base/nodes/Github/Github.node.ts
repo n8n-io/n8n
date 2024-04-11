@@ -240,12 +240,6 @@ export class Github implements INodeType {
 						action: 'Get issues of a repository',
 					},
 					{
-						name: 'Get Pull Requests',
-						value: 'getPullRequests',
-						description: 'Returns pull requests of a repository',
-						action: 'Get pull requests of a repository',
-					},
-					{
 						name: 'Get License',
 						value: 'getLicense',
 						description:
@@ -258,6 +252,12 @@ export class Github implements INodeType {
 						description:
 							'Get the community profile of a repository with metrics, health score, description, license, etc',
 						action: 'Get the profile of a repository',
+					},
+					{
+						name: 'Get Pull Requests',
+						value: 'getPullRequests',
+						description: 'Returns pull requests of a repository',
+						action: 'Get pull requests of a repository',
 					},
 					{
 						name: 'List Popular Paths',
@@ -1503,7 +1503,8 @@ export class Github implements INodeType {
 							{
 								name: 'Long-Running',
 								value: 'long-running',
-								description: 'long-running will sort by date created and will limit the results to pull requests that have been open for more than a month and have had activity within the past month.',
+								description:
+									'Sort by date created and will limit the results to pull requests that have been open for more than a month and have had activity within the past month',
 							},
 						],
 						default: 'created',
