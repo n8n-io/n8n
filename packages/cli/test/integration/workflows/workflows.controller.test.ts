@@ -32,6 +32,7 @@ let member: User;
 let anotherMember: User;
 
 let authOwnerAgent: SuperAgentTest;
+let authMemberAgent: SuperAgentTest;
 
 jest.spyOn(License.prototype, 'isSharingEnabled').mockReturnValue(false);
 
@@ -49,6 +50,7 @@ beforeAll(async () => {
 	owner = await createOwner();
 	authOwnerAgent = testServer.authAgentFor(owner);
 	member = await createMember();
+	authMemberAgent = testServer.authAgentFor(member);
 	anotherMember = await createMember();
 });
 
@@ -73,6 +75,52 @@ describe('POST /workflows', () => {
 	test('should set pin data to null if no pin data', async () => {
 		const pinData = await testWithPinData(false);
 		expect(pinData).toBeNull();
+	});
+
+	test('should return scopes on created workflow', async () => {
+		const payload = {
+			name: 'testing',
+			nodes: [
+				{
+					id: 'uuid-1234',
+					parameters: {},
+					name: 'Start',
+					type: 'n8n-nodes-base.start',
+					typeVersion: 1,
+					position: [240, 300],
+				},
+			],
+			connections: {},
+			staticData: null,
+			settings: {
+				saveExecutionProgress: true,
+				saveManualExecutions: true,
+				saveDataErrorExecution: 'all',
+				saveDataSuccessExecution: 'all',
+				executionTimeout: 3600,
+				timezone: 'America/New_York',
+			},
+			active: false,
+		};
+
+		const response = await authMemberAgent.post('/workflows').send(payload);
+
+		expect(response.statusCode).toBe(200);
+
+		const {
+			data: { id, scopes },
+		} = response.body;
+
+		expect(id).toBeDefined();
+		expect(scopes).toEqual(
+			[
+				'workflow:delete',
+				'workflow:execute',
+				'workflow:read',
+				'workflow:share',
+				'workflow:update',
+			].sort(),
+		);
 	});
 
 	test('should create workflow history version when licensed', async () => {
@@ -459,16 +507,13 @@ describe('GET /workflows', () => {
 
 			// Team workflow
 			expect(wf1.id).toBe(savedWorkflow1.id);
-			expect(wf1.scopes).toEqual([
-				'workflow:read',
-				'workflow:update',
-				'workflow:delete',
-				'workflow:execute',
-			]);
+			expect(wf1.scopes).toEqual(
+				['workflow:read', 'workflow:update', 'workflow:delete', 'workflow:execute'].sort(),
+			);
 
 			// Shared workflow
 			expect(wf2.id).toBe(savedWorkflow2.id);
-			expect(wf2.scopes).toEqual(['workflow:read', 'workflow:update', 'workflow:execute']);
+			expect(wf2.scopes).toEqual(['workflow:read', 'workflow:update', 'workflow:execute'].sort());
 		}
 
 		{
@@ -487,13 +532,15 @@ describe('GET /workflows', () => {
 
 			// Shared workflow
 			expect(wf2.id).toBe(savedWorkflow2.id);
-			expect(wf2.scopes).toEqual([
-				'workflow:read',
-				'workflow:update',
-				'workflow:delete',
-				'workflow:execute',
-				'workflow:share',
-			]);
+			expect(wf2.scopes).toEqual(
+				[
+					'workflow:read',
+					'workflow:update',
+					'workflow:delete',
+					'workflow:execute',
+					'workflow:share',
+				].sort(),
+			);
 		}
 
 		{
@@ -508,27 +555,31 @@ describe('GET /workflows', () => {
 
 			// Team workflow
 			expect(wf1.id).toBe(savedWorkflow1.id);
-			expect(wf1.scopes).toEqual([
-				'workflow:create',
-				'workflow:read',
-				'workflow:update',
-				'workflow:delete',
-				'workflow:list',
-				'workflow:share',
-				'workflow:execute',
-			]);
+			expect(wf1.scopes).toEqual(
+				[
+					'workflow:create',
+					'workflow:read',
+					'workflow:update',
+					'workflow:delete',
+					'workflow:list',
+					'workflow:share',
+					'workflow:execute',
+				].sort(),
+			);
 
 			// Shared workflow
 			expect(wf2.id).toBe(savedWorkflow2.id);
-			expect(wf2.scopes).toEqual([
-				'workflow:create',
-				'workflow:read',
-				'workflow:update',
-				'workflow:delete',
-				'workflow:list',
-				'workflow:share',
-				'workflow:execute',
-			]);
+			expect(wf2.scopes).toEqual(
+				[
+					'workflow:create',
+					'workflow:read',
+					'workflow:update',
+					'workflow:delete',
+					'workflow:list',
+					'workflow:share',
+					'workflow:execute',
+				].sort(),
+			);
 		}
 	});
 

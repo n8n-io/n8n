@@ -28,6 +28,8 @@ import { RoleService } from '@/services/role.service';
 import { WorkflowSharingService } from './workflowSharing.service';
 import { ProjectService } from '@/services/project.service';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import { In } from '@n8n/typeorm';
+import type { Scope } from '@n8n/permissions';
 
 @Service()
 export class WorkflowService {
@@ -273,5 +275,16 @@ export class WorkflowService {
 		await this.externalHooks.run('workflow.afterDelete', [workflowId]);
 
 		return workflow;
+	}
+
+	async getWorkflowScopes(user: User, workflowId: string): Promise<Scope[]> {
+		const userProjectRelations = await this.projectService.getProjectRelationsForUser(user);
+		const shared = await this.sharedWorkflowRepository.find({
+			where: {
+				projectId: In([...new Set(userProjectRelations.map((pr) => pr.projectId))]),
+				workflowId,
+			},
+		});
+		return this.roleService.combineResourceScopes('workflow', user, shared, userProjectRelations);
 	}
 }

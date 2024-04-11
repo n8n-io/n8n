@@ -6,7 +6,7 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import { ApplicationError, CREDENTIAL_EMPTY_VALUE, deepCopy, NodeHelpers } from 'n8n-workflow';
-import type { FindOptionsRelations, FindOptionsWhere } from '@n8n/typeorm';
+import { In, type FindOptionsRelations, type FindOptionsWhere } from '@n8n/typeorm';
 import type { Scope } from '@n8n/permissions';
 import * as Db from '@/Db';
 import type { ICredentialsDb } from '@/Interfaces';
@@ -407,5 +407,16 @@ export class CredentialsService {
 			return { data: decryptedData, ...rest };
 		}
 		return { ...rest };
+	}
+
+	async getCredentialScopes(user: User, credentialId: string): Promise<Scope[]> {
+		const userProjectRelations = await this.projectService.getProjectRelationsForUser(user);
+		const shared = await this.sharedCredentialsRepository.find({
+			where: {
+				projectId: In([...new Set(userProjectRelations.map((pr) => pr.projectId))]),
+				credentialsId: credentialId,
+			},
+		});
+		return this.roleService.combineResourceScopes('credential', user, shared, userProjectRelations);
 	}
 }
