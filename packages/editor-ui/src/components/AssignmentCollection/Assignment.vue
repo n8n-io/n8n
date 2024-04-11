@@ -56,21 +56,6 @@ const assignmentTypeToNodeProperty = (
 	}
 };
 
-function getExpressionResult(value: string): Result<unknown, unknown> {
-	try {
-		const resolvedValue = resolveExpression(value, {
-			targetItem: ndvStore.hoveringItem ?? undefined,
-			inputNodeName: ndvStore.ndvInputNodeName,
-			inputRunIndex: ndvStore.ndvInputRunIndex,
-			inputBranchIndex: ndvStore.ndvInputBranchIndex,
-		}) as unknown;
-
-		return { ok: true, result: resolvedValue };
-	} catch (error) {
-		return { ok: false, error };
-	}
-}
-
 const nameParameter = computed<INodeProperties>(() => ({
 	name: 'name',
 	displayName: 'Name',
@@ -95,7 +80,22 @@ const hint = computed(() => {
 	if (typeof value !== 'string' || !value.startsWith('=')) {
 		return '';
 	}
-	return stringifyExpressionResult(getExpressionResult(value));
+
+	let result: Result<unknown, Error>;
+	try {
+		const resolvedValue = resolveExpression(value, undefined, {
+			targetItem: ndvStore.hoveringItem ?? undefined,
+			inputNodeName: ndvStore.ndvInputNodeName,
+			inputRunIndex: ndvStore.ndvInputRunIndex,
+			inputBranchIndex: ndvStore.ndvInputBranchIndex,
+		}) as unknown;
+
+		result = { ok: true, result: resolvedValue };
+	} catch (error) {
+		result = { ok: false, error };
+	}
+
+	return stringifyExpressionResult(result);
 });
 
 const highlightHint = computed(() =>

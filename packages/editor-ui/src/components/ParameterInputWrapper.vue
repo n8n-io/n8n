@@ -197,12 +197,13 @@ export default defineComponent({
 		isInputParentOfActiveNode(): boolean {
 			return this.ndvStore.isInputParentOfActiveNode;
 		},
-		evaluatedExpression(): Result<unknown, unknown> {
+		evaluatedExpression(): Result<unknown, Error> {
 			const value = isResourceLocatorValue(this.modelValue)
 				? this.modelValue.value
 				: this.modelValue;
+
 			if (!this.activeNode || !this.isValueExpression || typeof value !== 'string') {
-				return { ok: false, error: '' };
+				return { ok: false, error: new Error() };
 			}
 
 			try {

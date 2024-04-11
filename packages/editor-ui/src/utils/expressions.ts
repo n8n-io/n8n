@@ -111,15 +111,13 @@ export const getExpressionErrorMessage = (error: Error): string => {
 	return error.message;
 };
 
-export const stringifyExpressionResult = (result: Result<unknown, unknown>): string => {
+export const stringifyExpressionResult = (result: Result<unknown, Error>): string => {
 	if (!result.ok) {
 		if (getResolvableState(result.error) !== 'invalid') {
 			return '';
 		}
 
-		return `[${i18n.baseText('parameterInput.error')}: ${getExpressionErrorMessage(
-			result.error as Error,
-		)}]`;
+		return `[${i18n.baseText('parameterInput.error')}: ${getExpressionErrorMessage(result.error)}]`;
 	}
 
 	if (result.result === null) {
