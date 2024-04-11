@@ -12,6 +12,8 @@ export function webhook(bench: Bench) {
 			beforeAll: async () => {
 				console.log('beforeAll start');
 
+				await import('../../src/constants');
+
 				init.n8nDir();
 				await init.database(); // @TODO: Test with Postgres
 				await init.mainProcess();
