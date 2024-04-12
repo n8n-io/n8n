@@ -147,7 +147,7 @@ export default defineComponent({
 			return isTemporary ? this.execution : undefined;
 		},
 		hidePreview(): boolean {
-			return this.loading || !this.execution;
+			return this.loading || (!this.execution && this.executions.length);
 		},
 		filterApplied(): boolean {
 			return this.filters.status !== 'all';
