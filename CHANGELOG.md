@@ -1,3 +1,12 @@
+## [1.36.3](https://github.com/n8n-io/n8n/compare/n8n@1.36.2...n8n@1.36.3) (2024-04-12)
+
+
+### Bug Fixes
+
+* **core:** Don't create multiple owners when importing credentials or workflows ([#9112](https://github.com/n8n-io/n8n/issues/9112)) ([a5d47db](https://github.com/n8n-io/n8n/commit/a5d47db14b3b732109ea283fdeda6f18fd9ae9ed))
+
+
+
 ## [1.36.2](https://github.com/n8n-io/n8n/compare/n8n@1.36.1...n8n@1.36.2) (2024-04-11)
 
 
