@@ -70,58 +70,47 @@ export class SlackTrigger implements INodeType {
 					{
 						name: 'Bot / App Mention',
 						value: 'app_mention',
-						description: 'Triggers whenever your bot or app is mentioned in a channel',
+						description: 'Whenever your bot or app is mentioned in a channel',
 					},
 					{
 						name: 'File Made Public',
 						value: 'file_public',
-						description: 'Triggers when a file is made public',
+						description: 'When a file is made public',
 					},
 					{
 						name: 'File Shared',
 						value: 'file_share',
-						description: 'Triggers when a file is shared in your workspace',
+						description: 'When a file is shared in your workspace',
 					},
 					{
 						name: 'New Message Posted to Channel',
 						value: 'message',
-						description: 'Triggers when a new message is posted to any channel',
+						description: 'When a new message is posted to any channel',
 					},
 					{
 						name: 'New Public Channel Created',
 						value: 'channel_created',
-						description: 'Triggers whenever a new public channel is created',
+						description: 'Whenever a new public channel is created',
 					},
 					{
 						name: 'New User',
 						value: 'team_join',
-						description: 'Triggers when a new user is added to Slack',
+						description: 'When a new user is added to Slack',
 					},
 					{
 						name: 'Reaction Added',
 						value: 'reaction_added',
-						description: 'Triggers when a reaction is added to a message',
+						description: 'When a reaction is added to a message',
 					},
 				],
 				default: [],
 			},
 			{
-				displayName:
-					'This will use one execution for every message in any channel your bot is in, use with caution',
-				name: 'notice',
-				type: 'notice',
-				default: '',
-				displayOptions: {
-					show: {
-						trigger: ['any_event', 'message'],
-					},
-				},
-			},
-			{
-				displayName: 'Watch Channel',
+				displayName: 'Watch Whole Workspace',
 				name: 'watchChannel',
 				type: 'boolean',
 				default: false,
+				description: 'Whether to watch for the event in the whole workspace, rather than a specific channel',
 				displayOptions: {
 					show: {
 						trigger: ['any_event', 'message', 'reaction_added', 'file_share', 'app_mention'],
@@ -129,15 +118,28 @@ export class SlackTrigger implements INodeType {
 				},
 			},
 			{
-				displayName: 'Channel',
+				displayName:
+					'This will use one execution for every event in any channel your bot is in, use with caution',
+				name: 'notice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						trigger: ['any_event', 'message', 'reaction_added', 'file_share', 'app_mention'],
+						watchChannel: [true],
+					},
+				},
+			},
+			{
+				displayName: 'Channel to Watch',
 				name: 'channelId',
 				type: 'resourceLocator',
 				default: { mode: 'list', value: '' },
 				placeholder: 'Select a channel...',
-				description: 'The Slack channel to listen to events from',
+				description: 'The Slack channel to listen to events from. Applies to events: Bot/App mention, File Shared, New Message Posted on Channel, Reaction Added.',
 				displayOptions: {
 					show: {
-						watchChannel: [true],
+						watchChannel: [false],
 					},
 				},
 				modes: [
