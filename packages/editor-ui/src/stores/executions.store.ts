@@ -106,6 +106,9 @@ export const useExecutionsStore = defineStore('executions', () => {
 	}
 
 	async function initialize(workflowId?: string) {
+		if (workflowId) {
+			filters.value.workflowId = workflowId;
+		}
 		await fetchExecutions();
 		await startAutoRefreshInterval(workflowId);
 	}

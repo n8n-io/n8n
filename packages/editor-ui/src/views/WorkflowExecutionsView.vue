@@ -173,7 +173,7 @@ async function onRefreshData() {
 async function onUpdateFilters(newFilters: ExecutionFilterType) {
 	executionsStore.reset();
 	executionsStore.setFilters(newFilters);
-	await executionsStore.initialize();
+	await executionsStore.initialize(workflowId.value);
 }
 
 async function onExecutionStop(id: string) {
