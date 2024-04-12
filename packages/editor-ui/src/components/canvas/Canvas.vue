@@ -38,10 +38,6 @@ function onNodesChange(e: NodeChange[]) {
 function onConnectionsChange(e: EdgeChange[]) {
 	console.log('onConnectionsChange', e);
 }
-
-async function resetViewport() {
-	await setViewport({ x: 0, y: 0, zoom: 1 });
-}
 </script>
 
 <template>
