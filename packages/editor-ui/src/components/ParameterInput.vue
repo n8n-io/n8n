@@ -731,7 +731,7 @@ const dependentParametersValues = computed<string | null>(() => {
 	}
 });
 
-const node = computed(() => ndvStore.activeNode as INodeUi);
+const node = computed(() => ndvStore.activeNode ?? undefined);
 
 const displayTitle = computed<string>(() => {
 	const interpolation = { interpolate: { shortPath: shortPath.value } };
@@ -765,7 +765,7 @@ const getStringInputType = computed(() => {
 });
 
 const getIssues = computed<string[]>(() => {
-	if (props.hideIssues || node.value === null) {
+	if (props.hideIssues || !node.value) {
 		return [];
 	}
 
@@ -946,12 +946,14 @@ const modelValueExpressionEdit = computed<string>(() => {
 const editorRows = computed(() => getArgument<number>('rows'));
 
 const codeEditorMode = computed<CodeExecutionMode>(() => {
-	return node.value.parameters.mode as CodeExecutionMode;
+	return node.value?.parameters.mode as CodeExecutionMode;
 });
 
-const isCodeNode = computed(() => NODES_USING_CODE_NODE_EDITOR.includes(node.value.type));
+const isCodeNode = computed(
+	() => !!node.value && NODES_USING_CODE_NODE_EDITOR.includes(node.value.type),
+);
 
-const isHtmlNode = computed(() => node.value.type === HTML_NODE_TYPE);
+const isHtmlNode = computed(() => !!node.value && node.value.type === HTML_NODE_TYPE);
 
 function isRemoteParameterOption(option: INodePropertyOptions) {
 	return remoteParameterOptionsKeys.value.includes(option.name);
@@ -998,7 +1000,7 @@ function getOptionsOptionDescription(option: INodePropertyOptions): string {
 
 async function loadRemoteParameterOptions() {
 	if (
-		node.value === null ||
+		!node.value ||
 		!hasRemoteMethod.value ||
 		remoteParameterOptionsLoading.value ||
 		!props.parameter
@@ -1127,7 +1129,7 @@ async function setFocus() {
 		return;
 	}
 
-	if (node.value !== null) {
+	if (node.value) {
 		// When an event like mouse-click removes the active node while
 		// editing is active it does not know where to save the value to.
 		// For that reason do we save the node-name here. We could probably
@@ -1169,7 +1171,7 @@ function rgbaToHex(value: string): string | null {
 }
 function onTextInputChange(value: string) {
 	const parameterData = {
-		node: node.value !== null ? node.value.name : nodeName.value,
+		node: node.value ? node.value.name : nodeName.value,
 		name: props.path,
 		value,
 	};
@@ -1208,7 +1210,7 @@ function valueChanged(value: NodeParameterValueType | {} | Date) {
 	}
 
 	const parameterData = {
-		node: node.value !== null ? node.value.name : nodeName.value,
+		node: node.value ? node.value.name : nodeName.value,
 		name: props.path,
 		value,
 	};
@@ -1312,7 +1314,7 @@ onMounted(() => {
 
 	tempValue.value = displayValue.value as string;
 
-	if (node.value !== null) {
+	if (node.value) {
 		nodeName.value = node.value.name;
 	}
 
@@ -1343,7 +1345,7 @@ onBeforeUnmount(() => {
 });
 
 watch(
-	() => node.value.credentials,
+	() => node.value?.credentials,
 	() => {
 		if (hasRemoteMethod.value && node.value) {
 			void loadRemoteParameterOptions();
