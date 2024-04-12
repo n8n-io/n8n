@@ -91,3 +91,7 @@ export async function getAllCredentials() {
 
 export const getCredentialById = async (id: string) =>
 	await Container.get(CredentialsRepository).findOneBy({ id });
+
+export async function getAllSharedCredentials() {
+	return await Container.get(SharedCredentialsRepository).find();
+}
