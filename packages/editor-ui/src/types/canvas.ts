@@ -1,36 +1,38 @@
 /* eslint-disable @typescript-eslint/no-redundant-type-constituents */
 import type { ConnectionTypes } from 'n8n-workflow';
-import { JsPlumbInstance } from '@jsplumb/core';
 import type { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
+import type { DefaultEdge, Node, Position } from '@vue-flow/core';
+import type { INodeUi } from '@/Interface';
 
 export type CanvasElementType = 'node' | 'note';
 
-export type CanvasConnectionEndpointType = ConnectionTypes;
+export type CanvasConnectionPortType = ConnectionTypes;
 
-export type CanvasElementEndpoint = {
-	type: CanvasConnectionEndpointType;
-	port: number;
+export type CanvasConnectionPort = {
+	type: CanvasConnectionPortType;
+	index: number;
 };
 
-export interface CanvasElement {
-	id: string;
-	type: CanvasElementType;
-	position: [number, number];
-	metadata: unknown;
-	inputs: CanvasElementEndpoint[];
-	outputs: CanvasElementEndpoint[];
+export interface CanvasElementPortWithPosition extends CanvasConnectionPort {
+	position: Position;
+	offset?: { top?: number | string; left?: number | string };
 }
 
-export interface CanvasConnectionEndpoint {
-	id: string;
-	type: CanvasConnectionEndpointType;
-	port: number;
+export interface CanvasElementData {
+	type: INodeUi['type'];
+	typeVersion: INodeUi['typeVersion'];
+	inputs: CanvasConnectionPort[];
+	outputs: CanvasConnectionPort[];
 }
 
-export interface CanvasConnection {
-	source: CanvasConnectionEndpoint;
-	target: CanvasConnectionEndpoint;
+export type CanvasElement = Node<CanvasElementData>;
+
+export interface CanvasConnectionData {
+	source: CanvasConnectionPort;
+	target: CanvasConnectionPort;
 }
+
+export type CanvasConnection = DefaultEdge<CanvasConnectionData>;
 
 export interface CanvasPluginContext {
 	instance: BrowserJsPlumbInstance;

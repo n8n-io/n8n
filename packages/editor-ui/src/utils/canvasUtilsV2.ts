@@ -1,10 +1,7 @@
 import type { IConnections, INodeTypeDescription } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
-import type {
-	CanvasConnection,
-	CanvasConnectionEndpointType,
-	CanvasElementEndpoint,
-} from '@/types';
+import type { CanvasConnection, CanvasConnectionPortType, CanvasConnectionPort } from '@/types';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 
 export function mapLegacyConnections(
 	legacyConnections: IConnections,
@@ -24,15 +21,20 @@ export function mapLegacyConnections(
 
 					if (fromId && toId) {
 						mappedConnections.push({
-							source: {
-								id: fromId,
-								port: fromPort,
-								type: fromConnectionType as CanvasConnectionEndpointType,
-							},
-							target: {
-								id: toId,
-								port: toPort,
-								type: toConnectionType as CanvasConnectionEndpointType,
+							id: `[${fromId}/${fromConnectionType}/${fromPort}][${toId}/${toConnectionType}/${toPort}]`,
+							source: fromId,
+							target: toId,
+							sourceHandle: `outputs/${fromConnectionType}/${fromPort}`,
+							targetHandle: `inputs/${toConnectionType}/${toPort}`,
+							data: {
+								source: {
+									index: fromPort,
+									type: fromConnectionType as CanvasConnectionPortType,
+								},
+								target: {
+									index: toPort,
+									type: toConnectionType as CanvasConnectionPortType,
+								},
 							},
 						});
 					}
@@ -46,9 +48,9 @@ export function mapLegacyConnections(
 
 export function normalizeElementEndpoints(
 	endpoints: INodeTypeDescription['inputs'],
-): CanvasElementEndpoint[] {
-	// @TODO Handle string case
+): CanvasConnectionPort[] {
 	if (typeof endpoints === 'string') {
+		console.warn('Node endpoints have not been evaluated', endpoints);
 		return [];
 	}
 
@@ -57,12 +59,12 @@ export function normalizeElementEndpoints(
 			const port = endpoints.slice(0, index).filter((e) => e === endpoint).length;
 			return {
 				type: endpoint,
-				port,
+				index: port,
 			};
 		} else {
 			return {
 				type: endpoint.type,
-				port: 0,
+				index: 0,
 			};
 		}
 	});

@@ -1,192 +1,59 @@
 <script lang="ts" setup>
-import { computed, onMounted, ref } from 'vue';
-import type { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
-import { ready, newInstance } from '@jsplumb/browser-ui';
-import type {
-	CanvasConnection,
-	CanvasConnectionEndpoint,
-	CanvasElement,
-	CanvasElementEndpoint,
-	CanvasPlugin,
-} from '@/types';
-import { canvasPan, canvasZoom } from '@/components/canvas/plugins';
+import type { CanvasConnection, CanvasConnectionPort, CanvasElement } from '@/types';
+import type { EdgeChange, NodeChange } from '@vue-flow/core';
+import { useVueFlow, VueFlow } from '@vue-flow/core';
+import CanvasNode from './elements/CanvasNode.vue';
+
+const emit = defineEmits(['update:modelValue']);
 
 const props = withDefaults(
 	defineProps<{
+		id: string;
 		elements: CanvasElement[];
 		connections: CanvasConnection[];
-		plugins: CanvasPlugin[];
 	}>(),
 	{
+		id: 'canvas',
 		elements: () => [],
 		connections: () => [],
-		plugins: () => [canvasPan, canvasZoom],
 	},
 );
 
-const instance = ref<BrowserJsPlumbInstance | undefined>();
+const { onInit } = useVueFlow({ id: props.id });
 
-const canvasRef = ref<HTMLDivElement | undefined>();
-const elementRefs = ref<HTMLElement[]>([]);
-const elementRefsById = computed(() =>
-	elementRefs.value.reduce<Record<string, HTMLElement>>((acc, elementRef) => {
-		acc[elementRef.id] = elementRef as HTMLElement;
-		return acc;
-	}, {}),
-);
-
-onMounted(() => {
-	ready(() => {
-		if (!canvasRef.value) {
-			return;
-		}
-
-		instance.value = newInstance({
-			container: canvasRef.value,
-		});
-
-		render();
-	});
+onInit((instance) => {
+	console.log(instance);
 });
 
-function render() {
-	instance.value?.setSuspendDrawing(true);
-
-	renderElements();
-	renderConnections();
-
-	registerPlugins();
-
-	instance.value?.setSuspendDrawing(false, true);
+function onNodesChange(e: NodeChange[]) {
+	console.log('onNodesChange', e);
 }
 
-function renderElements() {
-	props.elements.forEach((element) => {
-		const elementRef = getElementById(element.id);
-		if (!elementRef) {
-			return;
-		}
-
-		setElementPosition(element.id, element.position);
-
-		element.inputs.forEach((input) => {
-			addElementInputEndpoint(element.id, input);
-		});
-
-		element.outputs.forEach((output) => {
-			addElementOutputEndpoint(element.id, output);
-		});
-	});
-}
-
-function renderConnections() {
-	props.connections.forEach((connection) => {
-		addConnection(connection);
-	});
-}
-
-function registerPlugins() {
-	props.plugins.forEach((plugin) => {
-		if (!instance.value) {
-			return;
-		}
-
-		plugin({
-			instance: instance.value,
-		});
-	});
-}
-
-function getElementById(id: string) {
-	return elementRefsById.value[`element-${id}`];
-}
-
-function getInputEndpoint(endpoint: CanvasConnectionEndpoint) {
-	return instance.value?.getEndpoint(`${endpoint.id}/inputs/${endpoint.type}/${endpoint.port}`);
-}
-
-function getOutputEndpoint(endpoint: CanvasConnectionEndpoint) {
-	return instance.value?.getEndpoint(`${endpoint.id}/outputs/${endpoint.type}/${endpoint.port}`);
-}
-
-function setElementPosition(id: string, position: [number, number]) {
-	const elementRef = getElementById(id);
-	if (!elementRef) {
-		return;
-	}
-
-	elementRef.style.left = `${position[0]}px`;
-	elementRef.style.top = `${position[1]}px`;
-}
-
-function addElementInputEndpoint(id: string, endpoint: CanvasElementEndpoint) {
-	const elementRef = getElementById(id);
-	if (!elementRef) {
-		return;
-	}
-
-	instance.value?.addEndpoint(elementRef, {
-		uuid: `${id}/inputs/${endpoint.type}/${endpoint.port}`,
-		endpoint: 'Dot',
-		target: true,
-		maxConnections: -1,
-		anchor: 'Left', // @TODO Adjust anchor based on endpoint name
-	});
-}
-
-function addElementOutputEndpoint(id: string, endpoint: CanvasElementEndpoint) {
-	const elementRef = getElementById(id);
-	if (!elementRef) {
-		return;
-	}
-
-	instance.value?.addEndpoint(elementRef, {
-		uuid: `${id}/outputs/${endpoint.type}/${endpoint.port}`,
-		endpoint: 'Rectangle',
-		source: true,
-		maxConnections: -1,
-		anchor: 'Right', // @TODO Adjust anchor based on endpoint name
-	});
-}
-
-function addConnection(connection: CanvasConnection) {
-	console.log(connection);
-	const sourceElementRef = getElementById(connection.source.id);
-	const targetElementRef = getElementById(connection.target.id);
-	if (!sourceElementRef || !targetElementRef) {
-		return;
-	}
-
-	const sourceEndpoint = getOutputEndpoint(connection.source);
-	const targetEndpoint = getInputEndpoint(connection.target);
-
-	instance.value?.connect({
-		source: sourceEndpoint,
-		target: targetEndpoint,
-		anchor: 'Continuous',
-		connector: 'Bezier',
-		overlays: [
-			{ type: 'Label', options: { label: 'X Items', location: 0.5 } },
-			{ type: 'Arrow', options: { location: 1 } },
-		],
-	});
+function onConnectionsChange(e: EdgeChange[]) {
+	console.log('onConnectionsChange', e);
 }
 </script>
 
 <template>
 	<div class="canvas-wrapper">
-		<div class="canvas-anchor">
-			<div ref="canvasRef" class="canvas">
-				<template v-for="element in props.elements" :key="element.id">
-					<div
-						v-if="element.type === 'node'"
-						:id="`element-${element.id}`"
-						ref="elementRefs"
-						class="element box"
-					/>
-				</template>
-			</div>
-		</div>
+		<VueFlow
+			:id="id"
+			:nodes="elements"
+			:edges="connections"
+			fit-view-on-init
+			:apply-changes="false"
+			@nodes-change="onNodesChange"
+			@edges-change="onConnectionsChange"
+		>
+			<template #node-canvas-node="canvasNodeProps">
+				<CanvasNode v-bind="canvasNodeProps" />
+			</template>
+
+			<!--			&lt;!&ndash; bind your custom edge type to a component by using slots, slot names are always `edge-<type>` &ndash;&gt;-->
+			<!--			<template #edge-special="specialEdgeProps">-->
+			<!--				<SpecialEdge v-bind="specialEdgeProps" />-->
+			<!--			</template>-->
+		</VueFlow>
 	</div>
 </template>
 
@@ -196,27 +63,5 @@ function addConnection(connection: CanvasConnection) {
 	height: 100%;
 	position: relative;
 	display: block;
-}
-
-.canvas-anchor {
-	position: fixed;
-}
-
-.canvas {
-	position: relative;
-	width: 100%;
-	height: 100%;
-	transform-origin: 0 0;
-	z-index: -1;
-}
-
-.element {
-	position: absolute;
-}
-
-.box {
-	width: 100px;
-	height: 100px;
-	background: gray;
 }
 </style>

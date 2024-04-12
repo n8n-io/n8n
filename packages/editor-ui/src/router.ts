@@ -390,7 +390,7 @@ export const routes = [
 	},
 	{
 		path: '/workflow-v2/:workflowId',
-		name: VIEWS.WORKFLOW,
+		name: VIEWS.WORKFLOW_V2,
 		components: {
 			default: NodeViewV2,
 			header: MainHeader,
