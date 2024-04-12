@@ -194,6 +194,7 @@ import {
 	isINodePropertyCollectionList,
 	isINodePropertiesList,
 	isINodePropertyOptionsList,
+	displayParameter,
 } from 'n8n-workflow';
 import type {
 	INodeUi,
@@ -997,15 +998,16 @@ export default defineComponent({
 				if (!nodeParameterValues?.hasOwnProperty(prop.name) || !displayOptions || !prop.options) {
 					return;
 				}
-				// Only process the parameters that should be hidden
+				// Only process the parameters that depend on the updated parameter
 				const showCondition = displayOptions.show?.[updatedParameter.name];
 				const hideCondition = displayOptions.hide?.[updatedParameter.name];
 				if (showCondition === undefined && hideCondition === undefined) {
 					return;
 				}
-				// Every value should be a possible option
+
 				let hasValidOptions = true;
 
+				// Every value should be a possible option
 				if (isINodePropertyCollectionList(prop.options) || isINodePropertiesList(prop.options)) {
 					hasValidOptions = Object.keys(nodeParameterValues).every(
 						(key) => (prop.options ?? []).find((option) => option.name === key) !== undefined,
@@ -1016,11 +1018,7 @@ export default defineComponent({
 					);
 				}
 
-				if (
-					!hasValidOptions ||
-					(showCondition && !showCondition.includes(updatedParameter.value)) ||
-					(hideCondition && hideCondition.includes(updatedParameter.value))
-				) {
+				if (!hasValidOptions && displayParameter(nodeParameterValues, prop, this.node)) {
 					unset(nodeParameterValues as object, prop.name);
 				}
 			});
