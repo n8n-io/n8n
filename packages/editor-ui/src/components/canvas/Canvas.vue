@@ -2,6 +2,9 @@
 import type { CanvasConnection, CanvasElement } from '@/types';
 import type { EdgeChange, NodeChange } from '@vue-flow/core';
 import { useVueFlow, VueFlow } from '@vue-flow/core';
+import { Background } from '@vue-flow/background';
+import { ControlButton, Controls } from '@vue-flow/controls';
+import { MiniMap } from '@vue-flow/minimap';
 import CanvasNode from './elements/CanvasNode.vue';
 import { useCssModule } from 'vue';
 
@@ -22,7 +25,7 @@ const props = withDefaults(
 	},
 );
 
-const { onInit } = useVueFlow({ id: props.id });
+const { onInit, setViewport } = useVueFlow({ id: props.id });
 
 onInit((instance) => {
 	console.log(instance);
@@ -35,6 +38,10 @@ function onNodesChange(e: NodeChange[]) {
 function onConnectionsChange(e: EdgeChange[]) {
 	console.log('onConnectionsChange', e);
 }
+
+async function resetViewport() {
+	await setViewport({ x: 0, y: 0, zoom: 1 });
+}
 </script>
 
 <template>
@@ -43,8 +50,10 @@ function onConnectionsChange(e: EdgeChange[]) {
 			:id="id"
 			:nodes="elements"
 			:edges="connections"
-			fit-view-on-init
 			:apply-changes="false"
+			fit-view-on-init
+			:min-zoom="0.2"
+			:max-zoom="4"
 			@nodes-change="onNodesChange"
 			@edges-change="onConnectionsChange"
 		>
@@ -56,6 +65,12 @@ function onConnectionsChange(e: EdgeChange[]) {
 			<!--			<template #edge-special="specialEdgeProps">-->
 			<!--				<SpecialEdge v-bind="specialEdgeProps" />-->
 			<!--			</template>-->
+
+			<Background pattern-color="#aaa" :gap="16" />
+
+			<MiniMap />
+
+			<Controls :class="$style.canvasControls" position="bottom-left"></Controls>
 		</VueFlow>
 	</div>
 </template>
@@ -66,5 +81,9 @@ function onConnectionsChange(e: EdgeChange[]) {
 	height: 100%;
 	position: relative;
 	display: block;
+}
+
+.canvasControls {
+	display: flex;
 }
 </style>

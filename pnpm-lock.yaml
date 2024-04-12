@@ -1053,9 +1053,18 @@ importers:
       '@n8n/permissions':
         specifier: workspace:*
         version: link:../@n8n/permissions
+      '@vue-flow/background':
+        specifier: ^1.3.0
+        version: 1.3.0(@vue-flow/core@1.33.5)(vue@3.4.21)
+      '@vue-flow/controls':
+        specifier: ^1.1.1
+        version: 1.1.1(@vue-flow/core@1.33.5)(vue@3.4.21)
       '@vue-flow/core':
         specifier: ^1.33.5
         version: 1.33.5(vue@3.4.21)
+      '@vue-flow/minimap':
+        specifier: ^1.4.0
+        version: 1.4.0(@vue-flow/core@1.33.5)(vue@3.4.21)
       '@vueuse/components':
         specifier: ^10.5.0
         version: 10.5.0(vue@3.4.21)
@@ -8988,7 +8997,7 @@ packages:
       ts-dedent: 2.2.0
       type-fest: 2.19.0
       vue: 3.4.21(typescript@5.4.2)
-      vue-component-type-helpers: 2.0.12
+      vue-component-type-helpers: 2.0.13
     transitivePeerDependencies:
       - encoding
       - supports-color
@@ -10335,6 +10344,26 @@ packages:
       path-browserify: 1.0.1
     dev: true
 
+  /@vue-flow/background@1.3.0(@vue-flow/core@1.33.5)(vue@3.4.21):
+    resolution: {integrity: sha512-fu/8s9wzSOQIitnSTI10XT3bzTtagh4h8EF2SWwtlDklOZjAaKy75lqv4htHa3wigy/r4LGCOGwLw3Pk88/AxA==}
+    peerDependencies:
+      '@vue-flow/core': ^1.23.0
+      vue: ^3.3.0
+    dependencies:
+      '@vue-flow/core': 1.33.5(vue@3.4.21)
+      vue: 3.4.21(typescript@5.4.2)
+    dev: false
+
+  /@vue-flow/controls@1.1.1(@vue-flow/core@1.33.5)(vue@3.4.21):
+    resolution: {integrity: sha512-TCoRD5aYZQsM/N7QlPJcIILg1Gxm0O/zoUikxaeadcom1OlKFHutY72agsySJEWM6fTlyb7w8DYCbB4T8YbFoQ==}
+    peerDependencies:
+      '@vue-flow/core': ^1.23.0
+      vue: ^3.3.0
+    dependencies:
+      '@vue-flow/core': 1.33.5(vue@3.4.21)
+      vue: 3.4.21(typescript@5.4.2)
+    dev: false
+
   /@vue-flow/core@1.33.5(vue@3.4.21):
     resolution: {integrity: sha512-Obo+KHmcww/NYGARMqVH1dhd42QeFzV+TNwytrjVgYCoMVCNjs/blCh437TYTsNy4vgX1NKpNwTbQrS+keurgA==}
     peerDependencies:
@@ -10347,6 +10376,18 @@ packages:
       vue: 3.4.21(typescript@5.4.2)
     transitivePeerDependencies:
       - '@vue/composition-api'
+    dev: false
+
+  /@vue-flow/minimap@1.4.0(@vue-flow/core@1.33.5)(vue@3.4.21):
+    resolution: {integrity: sha512-GetmN8uOQxIx4ja85VDnIwpZO5SnGIOfYSqUw8MRMbc8CdACun2M2e3FRaMZRaWapclU2ssXms4xHMWrA3YWpw==}
+    peerDependencies:
+      '@vue-flow/core': ^1.23.0
+      vue: ^3.3.0
+    dependencies:
+      '@vue-flow/core': 1.33.5(vue@3.4.21)
+      d3-selection: 3.0.0
+      d3-zoom: 3.0.0
+      vue: 3.4.21(typescript@5.4.2)
     dev: false
 
   /@vue/compiler-core@3.3.4:
@@ -25740,8 +25781,8 @@ packages:
     resolution: {integrity: sha512-0vOfAtI67UjeO1G6UiX5Kd76CqaQ67wrRZiOe7UAb9Jm6GzlUr/fC7CV90XfwapJRjpCMaZFhv1V0ajWRmE9Dg==}
     dev: true
 
-  /vue-component-type-helpers@2.0.12:
-    resolution: {integrity: sha512-iVJugClQdu3ZyF0N4CF3Egi+gWYfnxlIPPGtFXZG29rF3kQIuziP+k7rVGCCHiibIOQ1SlspKjrh+LRYzMpwTA==}
+  /vue-component-type-helpers@2.0.13:
+    resolution: {integrity: sha512-xNO5B7DstNWETnoYflLkVgh8dK8h2ZDgxY1M2O0zrqGeBNq5yAZ8a10yCS9+HnixouNGYNX+ggU9MQQq86HTpg==}
     dev: true
 
   /vue-demi@0.14.5(vue@3.4.21):
