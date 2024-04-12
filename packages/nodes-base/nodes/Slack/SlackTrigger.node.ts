@@ -70,7 +70,7 @@ export class SlackTrigger implements INodeType {
 					{
 						name: 'Bot / App Mention',
 						value: 'app_mention',
-						description: 'Whenever your bot or app is mentioned in a channel',
+						description: 'When your bot or app is mentioned in a channel the app is added to',
 					},
 					{
 						name: 'File Made Public',
@@ -80,17 +80,17 @@ export class SlackTrigger implements INodeType {
 					{
 						name: 'File Shared',
 						value: 'file_share',
-						description: 'When a file is shared in your workspace',
+						description: 'When a file is shared in a channel the app is added to',
 					},
 					{
 						name: 'New Message Posted to Channel',
 						value: 'message',
-						description: 'When a new message is posted to any channel',
+						description: 'When a message is posted to a channel the app is added to',
 					},
 					{
 						name: 'New Public Channel Created',
 						value: 'channel_created',
-						description: 'Whenever a new public channel is created',
+						description: 'When a new public channel is created',
 					},
 					{
 						name: 'New User',
@@ -100,7 +100,7 @@ export class SlackTrigger implements INodeType {
 					{
 						name: 'Reaction Added',
 						value: 'reaction_added',
-						description: 'When a reaction is added to a message',
+						description: 'When a reaction is added to a message the app is added to',
 					},
 				],
 				default: [],
