@@ -11,8 +11,8 @@ import InlineExpressionTip from './InlineExpressionTip.vue';
 
 interface InlineExpressionEditorOutputProps {
 	segments: Segment[];
-	unresolvedExpression: string;
 	hoveringItemNumber: number;
+	unresolvedExpression?: string;
 	editorState?: EditorState;
 	selection?: SelectionRange;
 	isReadOnly?: boolean;
@@ -26,6 +26,7 @@ const props = withDefaults(defineProps<InlineExpressionEditorOutputProps>(), {
 	noInputData: false,
 	editorState: undefined,
 	selection: undefined,
+	unresolvedExpression: undefined,
 });
 
 const i18n = useI18n();

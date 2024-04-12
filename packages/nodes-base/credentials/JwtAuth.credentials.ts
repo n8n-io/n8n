@@ -56,13 +56,13 @@ const algorithms: INodePropertyOptions[] = [
 ];
 
 // eslint-disable-next-line n8n-nodes-base/cred-class-name-unsuffixed
-export class jwtAuth implements ICredentialType {
+export class JwtAuth implements ICredentialType {
 	// eslint-disable-next-line n8n-nodes-base/cred-class-field-name-unsuffixed
 	name = 'jwtAuth';
 
 	displayName = 'JWT Auth';
 
-	documentationUrl = 'jwtAuth';
+	documentationUrl = 'jwt';
 
 	icon = 'file:icons/jwt.svg';
 
@@ -71,8 +71,7 @@ export class jwtAuth implements ICredentialType {
 			displayName: 'Key Type',
 			name: 'keyType',
 			type: 'options',
-			description:
-				'Choose either the secret passphrase for PEM encoded public keys for RSA and ECDSA',
+			description: 'Choose either the secret passphrase or PEM encoded public keys',
 			options: [
 				{
 					name: 'Passphrase',

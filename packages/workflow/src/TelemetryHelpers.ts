@@ -151,6 +151,7 @@ export function generateNodesGraph(
 		};
 	});
 
+	// eslint-disable-next-line complexity
 	otherNodes.forEach((node: INode, index: number) => {
 		nodeGraph.node_types.push(node.type);
 		const nodeItem: INodeGraphItem = {

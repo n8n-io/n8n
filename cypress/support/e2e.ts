@@ -14,6 +14,10 @@ beforeEach(() => {
 		cy.signin({ email: INSTANCE_OWNER.email, password: INSTANCE_OWNER.password });
 	}
 
+	cy.window().then((win): void => {
+		win.localStorage.setItem('N8N_THEME', 'light');
+	});
+
 	cy.intercept('GET', '/rest/settings').as('loadSettings');
 	cy.intercept('GET', '/types/nodes.json').as('loadNodeTypes');
 
