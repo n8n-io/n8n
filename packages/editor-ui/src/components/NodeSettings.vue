@@ -187,7 +187,14 @@ import type {
 	NodeParameterValue,
 	ConnectionTypes,
 } from 'n8n-workflow';
-import { NodeHelpers, NodeConnectionType, deepCopy } from 'n8n-workflow';
+import {
+	NodeHelpers,
+	NodeConnectionType,
+	deepCopy,
+	isINodePropertyCollectionList,
+	isINodePropertiesList,
+	isINodePropertyOptionsList,
+} from 'n8n-workflow';
 import type {
 	INodeUi,
 	INodeUpdatePropertiesInformation,
@@ -997,13 +1004,22 @@ export default defineComponent({
 					return;
 				}
 				// Every value should be a possible option
-				const hasValidOptions = Object.keys(nodeParameterValues).every(
-					(key) => (prop.options ?? []).find((option) => option.name === key) !== undefined,
-				);
+				let hasValidOptions = true;
+
+				if (isINodePropertyCollectionList(prop.options) || isINodePropertiesList(prop.options)) {
+					hasValidOptions = Object.keys(nodeParameterValues).every(
+						(key) => (prop.options ?? []).find((option) => option.name === key) !== undefined,
+					);
+				} else if (isINodePropertyOptionsList(prop.options)) {
+					hasValidOptions = !!prop.options.find(
+						(option) => option.value === nodeParameterValues[prop.name],
+					);
+				}
+
 				if (
 					!hasValidOptions ||
-					showCondition !== updatedParameter.value ||
-					hideCondition === updatedParameter.value
+					(showCondition && !showCondition.includes(updatedParameter.value)) ||
+					(hideCondition && hideCondition.includes(updatedParameter.value))
 				) {
 					unset(nodeParameterValues as object, prop.name);
 				}
