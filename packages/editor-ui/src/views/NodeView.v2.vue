@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import Canvas from '@/components/canvas/Canvas.vue';
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, useCssModule } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useWorkflowsStoreV2 } from '@/stores/workflows.store.v2';
 import type { CanvasConnection, CanvasElement, CanvasElementData } from '@/types';
 import { mapLegacyConnections, normalizeElementEndpoints } from '@/utils/canvasUtilsV2';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { NodeHelpers } from 'n8n-workflow';
+
+const $style = useCssModule();
 
 const route = useRoute();
 
@@ -77,13 +79,13 @@ async function initialize() {
 </script>
 
 <template>
-	<div id="node-view">
+	<div :class="$style.nodeView">
 		<Canvas v-if="workflow" :elements="elements" :connections="connections" />
 	</div>
 </template>
 
-<style lang="scss">
-#node-view {
+<style lang="scss" module>
+.nodeView {
 	display: block;
 	position: relative;
 	width: 100%;

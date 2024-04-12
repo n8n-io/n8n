@@ -1,10 +1,13 @@
 <script lang="ts" setup>
-import type { CanvasConnection, CanvasConnectionPort, CanvasElement } from '@/types';
+import type { CanvasConnection, CanvasElement } from '@/types';
 import type { EdgeChange, NodeChange } from '@vue-flow/core';
 import { useVueFlow, VueFlow } from '@vue-flow/core';
 import CanvasNode from './elements/CanvasNode.vue';
+import { useCssModule } from 'vue';
 
-const emit = defineEmits(['update:modelValue']);
+const $style = useCssModule();
+
+const $emit = defineEmits(['update:modelValue']);
 
 const props = withDefaults(
 	defineProps<{
@@ -35,7 +38,7 @@ function onConnectionsChange(e: EdgeChange[]) {
 </script>
 
 <template>
-	<div class="canvas-wrapper">
+	<div :class="$style.canvasWrapper">
 		<VueFlow
 			:id="id"
 			:nodes="elements"
@@ -57,8 +60,8 @@ function onConnectionsChange(e: EdgeChange[]) {
 	</div>
 </template>
 
-<style lang="scss">
-.canvas-wrapper {
+<style lang="scss" module>
+.canvasWrapper {
 	width: 100%;
 	height: 100%;
 	position: relative;

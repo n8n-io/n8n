@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { Handle, Position } from '@vue-flow/core';
-import { computed } from 'vue';
+import { computed, useCssModule } from 'vue';
 import type {
 	CanvasElementData,
 	CanvasConnectionPort,
@@ -10,11 +10,13 @@ import NodeIcon from '@/components/NodeIcon.vue';
 import { NodeConnectionType } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
-const nodeTypesStore = useNodeTypesStore();
+const $style = useCssModule();
 
 const props = defineProps<{
 	data: CanvasElementData;
 }>();
+
+const nodeTypesStore = useNodeTypesStore();
 
 const nodeType = computed(() => {
 	return nodeTypesStore.getNodeType(props.data.type, props.data.typeVersion);
@@ -64,7 +66,7 @@ const mapEndpointWithPosition =
 </script>
 
 <template>
-	<div class="canvas-node">
+	<div :class="$style.canvasNode">
 		<template v-for="source in outputsWithPosition" :key="`${source.type}/${source.index}`">
 			<Handle
 				:id="`outputs/${source.type}/${source.index}`"
@@ -89,8 +91,8 @@ const mapEndpointWithPosition =
 	</div>
 </template>
 
-<style scoped>
-.canvas-node {
+<style lang="scss" module>
+.canvasNode {
 	height: 100px;
 	width: 100px;
 	display: flex;
