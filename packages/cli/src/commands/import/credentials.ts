@@ -85,6 +85,49 @@ export class ImportCredentialsCommand extends BaseCommand {
 		this.reportSuccess(credentials.length);
 	}
 
+	async catch(error: Error) {
+		this.logger.error(
+			'An error occurred while importing credentials. See log messages for details.',
+		);
+		this.logger.error(error.message);
+	}
+
+	private reportSuccess(total: number) {
+		this.logger.info(
+			`Successfully imported ${total} ${total === 1 ? 'credential.' : 'credentials.'}`,
+		);
+	}
+
+	private async storeCredential(credential: Partial<CredentialsEntity>, user: User) {
+		const result = await this.transactionManager.upsert(CredentialsEntity, credential, ['id']);
+
+		const sharingExists = await this.transactionManager.existsBy(SharedCredentials, {
+			credentialsId: credential.id,
+			role: 'credential:owner',
+		});
+
+		if (!sharingExists) {
+			await this.transactionManager.upsert(
+				SharedCredentials,
+				{
+					credentialsId: result.identifiers[0].id as string,
+					userId: user.id,
+					role: 'credential:owner',
+				},
+				['credentialsId', 'userId'],
+			);
+		}
+	}
+
+	private async getOwner() {
+		const owner = await Container.get(UserRepository).findOneBy({ role: 'global:owner' });
+		if (!owner) {
+			throw new ApplicationError(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
+		}
+
+		return owner;
+	}
+
 	private async checkRelations(credentials: ICredentialsEncrypted[], userId?: string) {
 		if (!userId) {
 			return {
@@ -161,49 +204,6 @@ export class ImportCredentialsCommand extends BaseCommand {
 
 			return credential;
 		});
-	}
-
-	async catch(error: Error) {
-		this.logger.error(
-			'An error occurred while importing credentials. See log messages for details.',
-		);
-		this.logger.error(error.message);
-	}
-
-	private reportSuccess(total: number) {
-		this.logger.info(
-			`Successfully imported ${total} ${total === 1 ? 'credential.' : 'credentials.'}`,
-		);
-	}
-
-	private async storeCredential(credential: Partial<CredentialsEntity>, user: User) {
-		const result = await this.transactionManager.upsert(CredentialsEntity, credential, ['id']);
-
-		const sharingExists = await this.transactionManager.existsBy(SharedCredentials, {
-			credentialsId: credential.id,
-			role: 'credential:owner',
-		});
-
-		if (!sharingExists) {
-			await this.transactionManager.upsert(
-				SharedCredentials,
-				{
-					credentialsId: result.identifiers[0].id as string,
-					userId: user.id,
-					role: 'credential:owner',
-				},
-				['credentialsId', 'userId'],
-			);
-		}
-	}
-
-	private async getOwner() {
-		const owner = await Container.get(UserRepository).findOneBy({ role: 'global:owner' });
-		if (!owner) {
-			throw new ApplicationError(`Failed to find owner. ${UM_FIX_INSTRUCTION}`);
-		}
-
-		return owner;
 	}
 
 	private async getAssignee(userId: string) {
