@@ -94,7 +94,7 @@ const countSelectedFilterProps = computed(() => {
 	if (filter.status !== 'all') {
 		count++;
 	}
-	if (filter.workflowId !== 'all') {
+	if (filter.workflowId !== 'all' && props.workflows.length) {
 		count++;
 	}
 	if (!isEmpty(filter.tags)) {
