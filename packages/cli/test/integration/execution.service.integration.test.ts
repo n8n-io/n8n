@@ -325,9 +325,9 @@ describe('ExecutionService', () => {
 			const totalFinished = 21;
 
 			await Promise.all([
-				createExecution({ status: 'waiting' }, workflow),
-				createExecution({ status: 'waiting' }, workflow),
-				createExecution({ status: 'waiting' }, workflow),
+				createExecution({ status: 'running' }, workflow),
+				createExecution({ status: 'running' }, workflow),
+				createExecution({ status: 'running' }, workflow),
 				...new Array(totalFinished)
 					.fill(null)
 					.map(async () => await createExecution({ status: 'success' }, workflow)),
@@ -374,9 +374,9 @@ describe('ExecutionService', () => {
 			const workflow = await createWorkflow();
 
 			await Promise.all([
-				createExecution({ status: 'waiting' }, workflow),
-				createExecution({ status: 'waiting' }, workflow),
-				createExecution({ status: 'waiting' }, workflow),
+				createExecution({ status: 'running' }, workflow),
+				createExecution({ status: 'running' }, workflow),
+				createExecution({ status: 'running' }, workflow),
 			]);
 
 			const query: ExecutionSummaries.RangeQuery = {
