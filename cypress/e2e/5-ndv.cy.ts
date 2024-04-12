@@ -635,7 +635,7 @@ describe('NDV', () => {
 		ndv.getters.nodeRunErrorIndicator().should('exist');
 	});
 
-	it.only('Should clear mismatched collection parameters', () => {
+	it('Should clear mismatched collection parameters', () => {
 		workflowPage.actions.addInitialNodeToCanvas('LDAP', {
 			keepNdvOpen: true,
 			action: 'Create a new entry',
@@ -647,7 +647,7 @@ describe('NDV', () => {
 		cy.getByTestId('parameter-item').contains('Currently no items exist').should('exist');
 	});
 
-	it.only('Should keep RLC values after operation change', () => {
+	it('Should keep RLC values after operation change', () => {
 		const TEST_DOC_ID = '1111';
 		workflowPage.actions.addInitialNodeToCanvas('Google Sheets', {
 			keepNdvOpen: true,
@@ -658,7 +658,7 @@ describe('NDV', () => {
 		ndv.getters.resourceLocatorInput('documentId').find('input').should('have.value', TEST_DOC_ID);
 	});
 
-	it.only('Should not clear resource/operation after credential change', () => {
+	it('Should not clear resource/operation after credential change', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Discord', {
 			keepNdvOpen: true,
 			action: 'Send a message',
