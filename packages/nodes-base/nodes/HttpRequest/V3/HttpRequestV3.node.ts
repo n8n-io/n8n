@@ -56,7 +56,17 @@ export class HttpRequestV3 implements INodeType {
 			},
 			inputs: ['main'],
 			outputs: ['main'],
-			credentials: [],
+			credentials: [
+				{
+					name: 'httpSslAuth',
+					required: true,
+					displayOptions: {
+						show: {
+							provideSslCertificates: [true],
+						},
+					},
+				},
+			],
 			properties: [
 				{
 					displayName: '',
@@ -170,6 +180,23 @@ export class HttpRequestV3 implements INodeType {
 					displayOptions: {
 						show: {
 							authentication: ['genericCredentialType'],
+						},
+					},
+				},
+				{
+					displayName: 'Provide SSL Certificates',
+					name: 'provideSslCertificates',
+					type: 'boolean',
+					default: false,
+				},
+				{
+					displayName: 'SSL Certificate',
+					name: 'sslCertificate',
+					type: 'credentials',
+					default: '',
+					displayOptions: {
+						show: {
+							provideSslCertificates: [true],
 						},
 					},
 				},
@@ -1218,10 +1245,10 @@ export class HttpRequestV3 implements INodeType {
 		let httpDigestAuth;
 		let httpHeaderAuth;
 		let httpQueryAuth;
-		let httpSslAuth;
 		let httpCustomAuth;
 		let oAuth1Api;
 		let oAuth2Api;
+		let sslCertificates;
 		let nodeCredentialType: string | undefined;
 		let genericCredentialType: string | undefined;
 
@@ -1276,16 +1303,24 @@ export class HttpRequestV3 implements INodeType {
 					oAuth1Api = await this.getCredentials('oAuth1Api', itemIndex);
 				} else if (genericCredentialType === 'oAuth2Api') {
 					oAuth2Api = await this.getCredentials('oAuth2Api', itemIndex);
-				} else if (genericCredentialType === 'httpSslAuth') {
-					httpSslAuth = (await this.getCredentials('httpSslAuth', itemIndex)) as {
-						ca: string;
-						cert: string;
-						key: string;
-						passphrase: string;
-					};
 				}
 			} else if (authentication === 'predefinedCredentialType') {
 				nodeCredentialType = this.getNodeParameter('nodeCredentialType', itemIndex) as string;
+			}
+
+			const provideSslCertificates = this.getNodeParameter(
+				'provideSslCertificates',
+				itemIndex,
+				false,
+			);
+
+			if (provideSslCertificates) {
+				sslCertificates = (await this.getCredentials('httpSslAuth', itemIndex)) as {
+					ca: string;
+					cert: string;
+					key: string;
+					passphrase: string;
+				};
 			}
 
 			const requestMethod = this.getNodeParameter('method', itemIndex) as IHttpRequestMethods;
@@ -1599,19 +1634,7 @@ export class HttpRequestV3 implements INodeType {
 				requestOptions.qs[httpQueryAuth.name as string] = httpQueryAuth.value;
 				authDataKeys.qs = [httpQueryAuth.name as string];
 			}
-			if (httpSslAuth !== undefined) {
-				const agentOptions = {
-					requestCert: true,
-					cert: httpSslAuth.cert ? formatPrivateKey(httpSslAuth.cert) : undefined,
-					ca: httpSslAuth.ca ? formatPrivateKey(httpSslAuth.ca) : undefined,
-					key: httpSslAuth.key ? formatPrivateKey(httpSslAuth.key) : undefined,
-					passphrase: httpSslAuth.passphrase || undefined,
-				};
 
-				authDataKeys.agentOptions = Object.keys(agentOptions);
-
-				requestOptions.agentOptions = agentOptions;
-			}
 			if (httpDigestAuth !== undefined) {
 				requestOptions.auth = {
 					user: httpDigestAuth.user as string,
@@ -1637,6 +1660,21 @@ export class HttpRequestV3 implements INodeType {
 					requestOptions.qs = { ...requestOptions.qs, ...customAuth.qs };
 					authDataKeys.qs = Object.keys(customAuth.qs);
 				}
+			}
+
+			// Add SSL Certificates if provided
+			if (sslCertificates) {
+				const agentOptions = {
+					requestCert: true,
+					cert: sslCertificates.cert ? formatPrivateKey(sslCertificates.cert) : undefined,
+					ca: sslCertificates.ca ? formatPrivateKey(sslCertificates.ca) : undefined,
+					key: sslCertificates.key ? formatPrivateKey(sslCertificates.key) : undefined,
+					passphrase: sslCertificates.passphrase || undefined,
+				};
+
+				authDataKeys.agentOptions = Object.keys(agentOptions);
+
+				requestOptions.agentOptions = agentOptions;
 			}
 
 			if (requestOptions.headers!.accept === undefined) {

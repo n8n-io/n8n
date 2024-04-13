@@ -5,11 +5,9 @@ import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 export class HttpSslAuth implements ICredentialType {
 	name = 'httpSslAuth';
 
-	displayName = 'SSL Auth';
+	displayName = 'SSL Certificates';
 
 	documentationUrl = 'httpRequest';
-
-	genericAuth = true;
 
 	icon = 'node:n8n-nodes-base.httpRequest';
 
