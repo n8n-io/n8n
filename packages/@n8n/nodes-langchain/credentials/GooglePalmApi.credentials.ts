@@ -8,7 +8,7 @@ import type {
 export class GooglePalmApi implements ICredentialType {
 	name = 'googlePalmApi';
 
-	displayName = 'GooglePaLMApi';
+	displayName = 'Google Gemini(PaLM) Api';
 
 	documentationUrl = 'google';
 
