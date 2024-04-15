@@ -184,7 +184,7 @@ export class HttpRequestV3 implements INodeType {
 					},
 				},
 				{
-					displayName: 'Provide SSL Certificates',
+					displayName: 'SSL Certificates',
 					name: 'provideSslCertificates',
 					type: 'boolean',
 					default: false,
