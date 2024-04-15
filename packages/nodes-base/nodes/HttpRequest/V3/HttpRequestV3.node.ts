@@ -1665,7 +1665,6 @@ export class HttpRequestV3 implements INodeType {
 			// Add SSL Certificates if provided
 			if (sslCertificates) {
 				const agentOptions = {
-					requestCert: true,
 					cert: sslCertificates.cert ? formatPrivateKey(sslCertificates.cert) : undefined,
 					ca: sslCertificates.ca ? formatPrivateKey(sslCertificates.ca) : undefined,
 					key: sslCertificates.key ? formatPrivateKey(sslCertificates.key) : undefined,

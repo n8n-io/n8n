@@ -13,16 +13,17 @@ export class HttpSslAuth implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
-			displayName: 'CA Certificate',
+			displayName: 'CA',
 			name: 'ca',
 			type: 'string',
+			description: 'Certificate Authority certificate',
 			typeOptions: {
 				password: true,
 			},
 			default: '',
 		},
 		{
-			displayName: 'Public Client Certificate',
+			displayName: 'Certificate',
 			name: 'cert',
 			type: 'string',
 			typeOptions: {
@@ -31,7 +32,7 @@ export class HttpSslAuth implements ICredentialType {
 			default: '',
 		},
 		{
-			displayName: 'Private Client Key',
+			displayName: 'Private Key',
 			name: 'key',
 			type: 'string',
 			typeOptions: {
@@ -43,6 +44,7 @@ export class HttpSslAuth implements ICredentialType {
 			displayName: 'Passphrase',
 			name: 'passphrase',
 			type: 'string',
+			description: 'Optional passphrase for the private key, if the private key is encrypted',
 			typeOptions: {
 				password: true,
 			},
