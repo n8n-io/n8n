@@ -1,6 +1,6 @@
 import type { ICredentialType } from 'n8n-workflow';
 import { z } from 'zod';
-import { credentialSchema } from '../utils/CredentialSchema';
+import { credentialSchema, toNodeProperties } from '../utils/CredentialSchema';
 
 enum SSLOption {
 	Allow = 'allow',
@@ -15,7 +15,7 @@ enum SSLAuthOption {
 	'Private Key' = 'privateKey',
 }
 
-export const PostgresCredentialSchema = credentialSchema.object({
+export const PostgresCredentialSchema = z.object({
 	host: credentialSchema.string().displayName('Host').default('localhost'),
 	database: credentialSchema.string().displayName('Database').default('postgres'),
 	user: credentialSchema.string().displayName('User').default('postgres'),
@@ -123,5 +123,5 @@ export class Postgres implements ICredentialType {
 
 	documentationUrl = 'postgres';
 
-	properties = PostgresCredentialSchema.toNodeProperties();
+	properties = toNodeProperties(PostgresCredentialSchema);
 }

@@ -1,4 +1,5 @@
 import { PostgresCredentialSchema } from '../credentials/Postgres.credentials';
+import { toNodeProperties } from './CredentialSchema';
 
 describe('Credential Schema', () => {
 	describe('toNodeProperties', () => {
@@ -194,7 +195,7 @@ describe('Credential Schema', () => {
 				},
 			];
 
-			expect(PostgresCredentialSchema.toNodeProperties()).toEqual(expected);
+			expect(toNodeProperties(PostgresCredentialSchema)).toEqual(expected);
 		});
 	});
 });
