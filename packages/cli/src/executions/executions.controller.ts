@@ -10,6 +10,8 @@ import config from '@/config';
 import { jsonParse } from 'n8n-workflow';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ActiveExecutionService } from './active-execution.service';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import { Not } from '@n8n/typeorm';
 
 @RestController('/executions')
 export class ExecutionsController {
@@ -17,6 +19,7 @@ export class ExecutionsController {
 
 	constructor(
 		private readonly executionService: ExecutionService,
+		private readonly executionRepository: ExecutionRepository,
 		private readonly enterpriseExecutionService: EnterpriseExecutionsService,
 		private readonly workflowSharingService: WorkflowSharingService,
 		private readonly activeExecutionService: ActiveExecutionService,
@@ -36,6 +39,20 @@ export class ExecutionsController {
 		if (workflowIds.length === 0) return { count: 0, estimated: false, results: [] };
 
 		return await this.executionService.findMany(req, workflowIds);
+	}
+
+	@Get('/:id/custom-data/values')
+	async getCustomData(req: ExecutionRequest.GetOne) {
+		const workflowIds = await this.getAccessibleWorkflowIds(req.user);
+
+		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
+
+		const executions = await this.executionRepository.find({
+			where: { workflowId: req.params.id },
+			select: { metadata: { key: true } },
+		});
+
+		return [...new Set(executions.flatMap((e) => e.metadata.map((m) => m.key)))];
 	}
 
 	@Get('/active')

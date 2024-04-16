@@ -128,6 +128,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		nodeMetadata: {},
 		isInDebugMode: false,
 		chatMessages: [],
+		executionDataKeys: [],
 	}),
 	getters: {
 		// Workflow getters
@@ -396,8 +397,25 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			const rootStore = useRootStore();
 			const workflows = await getWorkflows(rootStore.getRestApiContext);
 			this.setWorkflows(workflows);
-			console.log(workflows)
+			console.log(workflows);
 			return workflows;
+		},
+
+		async fetchExecutionDataKeys(id: string): Promise<string[]> {
+			const rootStore = useRootStore();
+
+			const keys = (await makeRestApiRequest(
+				rootStore.getRestApiContext,
+				'GET',
+				`/workflows/${id}/custom-data/keys`,
+			)) as string[];
+
+			this.setExecutionDataKeys(keys);
+			return keys;
+		},
+
+		setExecutionDataKeys(keys: string[]): void {
+			this.executionDataKeys = keys;
 		},
 
 		async fetchWorkflow(id: string): Promise<IWorkflowDb> {

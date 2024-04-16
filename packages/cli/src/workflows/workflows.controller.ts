@@ -37,10 +37,12 @@ import { EnterpriseWorkflowService } from './workflow.service.ee';
 import { WorkflowExecutionService } from './workflowExecution.service';
 import { WorkflowSharingService } from './workflowSharing.service';
 import { UserManagementMailer } from '@/UserManagement/email';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 
 @RestController('/workflows')
 export class WorkflowsController {
 	constructor(
+		private readonly executionRepository: ExecutionRepository,
 		private readonly logger: Logger,
 		private readonly internalHooks: InternalHooks,
 		private readonly externalHooks: ExternalHooks,
@@ -262,6 +264,19 @@ export class WorkflowsController {
 		}
 
 		return shared.workflow;
+	}
+
+	@Get('/:id/custom-data/keys')
+	async getCustomData(req: WorkflowRequest.Get) {
+		const executions = await this.executionRepository.find({
+			where: { workflowId: req.params.id },
+			select: { metadata: { key: true } },
+			relations: { metadata: true },
+		});
+
+		console.log(executions);
+
+		return [...new Set(executions.flatMap((e) => e.metadata.map((m) => m.key)))];
 	}
 
 	@Patch('/:id')

@@ -7,6 +7,7 @@ import type {
 } from '@/Interface';
 import { i18n as locale } from '@/plugins/i18n';
 import TagsDropdown from '@/components/TagsDropdown.vue';
+import CustomDataDropwdown from './CustomDataDropwdown.vue';
 import { getObjectKeys, isEmpty } from '@/utils/typesUtils';
 import { EnterpriseEditionFeature } from '@/constants';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -14,12 +15,15 @@ import { useUIStore } from '@/stores/ui.store';
 import { useTelemetry } from '@/composables/useTelemetry';
 import type { Placement } from '@floating-ui/core';
 import { useDebounce } from '@/composables/useDebounce';
+import { useRoute } from 'vue-router';
 
 export type ExecutionFilterProps = {
 	workflows?: IWorkflowShortResponse[];
 	popoverPlacement?: Placement;
 	teleported?: boolean;
 };
+
+const route = useRoute();
 
 const DATE_TIME_MASK = 'YYYY-MM-DD HH:mm';
 
@@ -243,6 +247,19 @@ onBeforeMount(() => {
 				</div>
 			</div>
 			<div :class="$style.group">
+				<div v-if="showTags" :class="$style.group">
+					<label for="execution-filter-tags">Custom Data</label>
+					<CustomDataDropwdown
+						id="execution-filter-tags"
+						:placeholder="locale.baseText('workflowOpen.filterWorkflows')"
+						:model-value="filter.tags"
+						:create-enabled="false"
+						:workflow-id="route.params.name"
+						data-test-id="executions-filter-tags-select"
+						@update:model-value="onTagsChange"
+					/>
+				</div>
+
 				<n8n-tooltip placement="right">
 					<template #content>
 						<i18n-t tag="span" keypath="executionsFilter.customData.docsTooltip">
