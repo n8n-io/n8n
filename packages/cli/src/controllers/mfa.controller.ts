@@ -1,4 +1,4 @@
-import { Delete, Get, Post, RestController } from '@/decorators';
+import { Delete, Get, Patch, Post, RestController } from '@/decorators';
 import { AuthenticatedRequest, MFA } from '@/requests';
 import { MfaService } from '@/Mfa/mfa.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -22,6 +22,7 @@ let credentialDevicetype: CredentialDeviceType;
 let credentialBackedup: boolean;
 
 let securityKeys: Array<{
+	rawId: string;
 	id: string;
 	credentialId: Uint8Array;
 	credentialPublicKey: Uint8Array;
@@ -53,6 +54,15 @@ export class MFAController {
 		return;
 	}
 
+	@Patch('/security-keys/:id')
+	async updateSecurityKeyName(req: AuthenticatedRequest, res: Response) {
+		const index = securityKeys.findIndex((securityKey) => securityKey.id === req.params.id);
+		//@ts-ignore
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+		securityKeys[index].name = req.body.name;
+		return;
+	}
+
 	@Get('/challenge')
 	async getChallenge(req: AuthenticatedRequest, res: Response) {
 		// const challenge = Math.random().toString(36).substring(2);
@@ -65,6 +75,10 @@ export class MFAController {
 			// Don't prompt users for additional information about the authenticator
 			// (Recommended for smoother UX)
 			attestationType: 'none',
+			excludeCredentials: securityKeys.map((securityKey) => ({
+				id: securityKey.credentialId,
+				type: 'public-key',
+			})),
 			// attestationFormat: 'fido-u2f',
 			// Prevent users from re-registering existing authenticators
 			// See "Guiding use of authenticators via authenticatorSelection" below
@@ -105,7 +119,7 @@ export class MFAController {
 			requireUserVerification: false,
 		});
 
-		console.log(verification);
+		// console.log(verification);
 
 		if (verification.verified && verification.registrationInfo) {
 			const {
