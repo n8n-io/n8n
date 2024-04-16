@@ -154,7 +154,7 @@ export class WorkflowExecute {
 	// IMPORTANT: Do not add "async" to this function, it will then convert the
 	//            PCancelable to a regular Promise and does so not allow canceling
 	//            active executions anymore
-	// eslint-disable-next-line @typescript-eslint/promise-function-async
+	// eslint-disable-next-line @typescript-eslint/promise-function-async, complexity
 	runPartialWorkflow(
 		workflow: Workflow,
 		runData: IRunData,
@@ -371,6 +371,7 @@ export class WorkflowExecute {
 		}
 	}
 
+	// eslint-disable-next-line complexity
 	addNodeToBeExecuted(
 		workflow: Workflow,
 		connectionData: IConnection,
@@ -836,6 +837,7 @@ export class WorkflowExecute {
 				setTimeout(() => resolve(fullRunData), 10);
 			});
 
+			// eslint-disable-next-line complexity
 			const returnPromise = (async () => {
 				try {
 					if (!this.additionalData.restartExecutionId) {

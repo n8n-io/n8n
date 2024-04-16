@@ -81,6 +81,13 @@ export async function execute(
 
 		const preparedQuery = prepareQueryAndReplacements(rawQuery, values);
 
+		if ((nodeOptions.nodeVersion as number) >= 2.3) {
+			const parsedNumbers = preparedQuery.values.map((value) => {
+				return Number(value) ? Number(value) : value;
+			});
+			preparedQuery.values = parsedNumbers;
+		}
+
 		queries.push(preparedQuery);
 	}
 

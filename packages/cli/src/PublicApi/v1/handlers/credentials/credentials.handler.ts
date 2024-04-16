@@ -69,7 +69,7 @@ export = {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			await removeCredential(credential);
+			await removeCredential(req.user, credential);
 			return res.json(sanitizeCredentials(credential));
 		},
 	],

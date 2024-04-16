@@ -127,6 +127,7 @@ export const extendTransform = (expression: string): { code: string } | undefine
 
 		// Polyfill optional chaining
 		visit(ast, {
+			// eslint-disable-next-line complexity
 			visitChainExpression(path) {
 				this.traverse(path);
 				const chainNumber = currentChain;

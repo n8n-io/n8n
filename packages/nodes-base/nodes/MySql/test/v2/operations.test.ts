@@ -254,6 +254,47 @@ describe('Test MySql V2, operations', () => {
 		);
 		expect(connectionQuerySpy).toBeCalledWith('select * from `test_table`');
 	});
+	it('executeQuery, should parse numbers', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'executeQuery',
+			query: 'SELECT * FROM users LIMIT $1, $2',
+			options: {
+				queryBatching: 'independently',
+				queryReplacement: '2, 5',
+				nodeVersion: 2.3,
+			},
+		};
+
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		const fakeConnectionCopy = { ...fakeConnection };
+
+		fakeConnectionCopy.query = jest.fn(async (query?: string) => {
+			return [{ query }];
+		});
+		const pool = createFakePool(fakeConnectionCopy);
+
+		const connectionQuerySpy = jest.spyOn(fakeConnectionCopy, 'query');
+
+		const fakeExecuteFunction = createMockExecuteFunction(nodeParameters, mySqlMockNode);
+
+		const runQueries: QueryRunner = configureQueryRunner.call(
+			fakeExecuteFunction,
+			nodeOptions,
+			pool,
+		);
+
+		const result = await executeQuery.execute.call(
+			fakeExecuteFunction,
+			emptyInputItems,
+			runQueries,
+			nodeOptions,
+		);
+
+		expect(result).toBeDefined();
+
+		expect(connectionQuerySpy).toBeCalledWith('SELECT * FROM users LIMIT 2, 5');
+	});
 
 	it('select, should call runQueries with', async () => {
 		const nodeParameters: IDataObject = {

@@ -33,6 +33,10 @@ export class OrchestrationService {
 		);
 	}
 
+	get isSingleMainSetup() {
+		return !this.isMultiMainSetupEnabled;
+	}
+
 	redisPublisher: RedisServicePubSubPublisher;
 
 	get instanceId() {
@@ -40,7 +44,7 @@ export class OrchestrationService {
 	}
 
 	/**
-	 * Whether this instance is the leader in a multi-main setup. Always `true` in single-main setup.
+	 * Whether this instance is the leader in a multi-main setup. Always `false` in single-main setup.
 	 */
 	get isLeader() {
 		return config.getEnv('multiMainSetup.instanceType') === 'leader';

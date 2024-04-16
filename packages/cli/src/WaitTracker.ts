@@ -29,15 +29,18 @@ export class WaitTracker {
 		private readonly workflowRunner: WorkflowRunner,
 		readonly orchestrationService: OrchestrationService,
 	) {
-		const { isLeader, isMultiMainSetupEnabled, multiMainSetup } = orchestrationService;
+		const { isSingleMainSetup, isLeader, multiMainSetup } = orchestrationService;
+
+		if (isSingleMainSetup) {
+			this.startTracking();
+			return;
+		}
 
 		if (isLeader) this.startTracking();
 
-		if (isMultiMainSetupEnabled) {
-			multiMainSetup
-				.on('leader-takeover', () => this.startTracking())
-				.on('leader-stepdown', () => this.stopTracking());
-		}
+		multiMainSetup
+			.on('leader-takeover', () => this.startTracking())
+			.on('leader-stepdown', () => this.stopTracking());
 	}
 
 	startTracking() {
