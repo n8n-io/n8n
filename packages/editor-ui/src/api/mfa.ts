@@ -34,6 +34,22 @@ export async function startAuthentication(context: IRestApiContext): Promise<voi
 	return await makeRestApiRequest(context, 'GET', '/mfa/start-authentication');
 }
 
+export async function getSecurityKeys(context: IRestApiContext): Promise<void> {
+	return await makeRestApiRequest(context, 'GET', '/mfa/security-keys');
+}
+
+export async function deleteSecurityKey(context: IRestApiContext, id: string): Promise<void> {
+	return await makeRestApiRequest(context, 'DELETE', `/mfa/security-keys/${id}`);
+}
+
+export async function updateSecurityKeyName(
+	context: IRestApiContext,
+	id: string,
+	name: string,
+): Promise<void> {
+	return await makeRestApiRequest(context, 'PATCH', `/mfa/security-keys/${id}`, { name });
+}
+
 export async function verifyAuthentication(
 	context: IRestApiContext,
 	data: any,
