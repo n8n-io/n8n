@@ -48,6 +48,9 @@ import {
 	registerDevice,
 	startAuthentication,
 	verifyAuthentication,
+	getSecurityKeys,
+	deleteSecurityKey,
+	updateSecurityKeyName,
 } from '@/api/mfa';
 import { confirmEmail, getCloudUserInfo } from '@/api/cloudPlans';
 import { useRBACStore } from '@/stores/rbac.store';
@@ -374,6 +377,18 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		async registerDevice(data: any) {
 			const rootStore = useRootStore();
 			return await registerDevice(rootStore.getRestApiContext, data);
+		},
+		async getSecurityKeys() {
+			const rootStore = useRootStore();
+			return await getSecurityKeys(rootStore.getRestApiContext);
+		},
+		async deleteSecurityKey(id: string) {
+			const rootStore = useRootStore();
+			return await deleteSecurityKey(rootStore.getRestApiContext, id);
+		},
+		async updateSecurityKeyName(id: string, name: string) {
+			const rootStore = useRootStore();
+			return await updateSecurityKeyName(rootStore.getRestApiContext, id, name);
 		},
 		async verifyAuthentication(data: any) {
 			const rootStore = useRootStore();
