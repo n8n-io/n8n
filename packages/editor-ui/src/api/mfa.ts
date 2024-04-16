@@ -1,4 +1,4 @@
-import type { CurrentUserResponse, IRestApiContext } from '@/Interface';
+import type { CurrentUserResponse, IRestApiContext, SecurityKey } from '@/Interface';
 import { makeRestApiRequest } from '@/utils/apiUtils';
 
 export async function getMfaQR(
@@ -34,7 +34,7 @@ export async function startAuthentication(context: IRestApiContext): Promise<voi
 	return await makeRestApiRequest(context, 'GET', '/mfa/start-authentication');
 }
 
-export async function getSecurityKeys(context: IRestApiContext): Promise<void> {
+export async function getSecurityKeys(context: IRestApiContext): Promise<SecurityKey[]> {
 	return await makeRestApiRequest(context, 'GET', '/mfa/security-keys');
 }
 
@@ -42,12 +42,12 @@ export async function deleteSecurityKey(context: IRestApiContext, id: string): P
 	return await makeRestApiRequest(context, 'DELETE', `/mfa/security-keys/${id}`);
 }
 
-export async function updateSecurityKeyName(
+export async function updateSecurityKeyLabel(
 	context: IRestApiContext,
 	id: string,
-	name: string,
+	label: string,
 ): Promise<void> {
-	return await makeRestApiRequest(context, 'PATCH', `/mfa/security-keys/${id}`, { name });
+	return await makeRestApiRequest(context, 'PATCH', `/mfa/security-keys/${id}`, { label });
 }
 
 export async function verifyAuthentication(

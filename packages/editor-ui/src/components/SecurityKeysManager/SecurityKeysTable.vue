@@ -7,7 +7,7 @@
 						<span v-if="scope.row.delete">{{
 							$locale.baseText('securityKeysModal.table.confirmDelete')
 						}}</span>
-						<span v-else>{{ scope.row.id }}</span>
+						<span v-else :class="$style.idCell" :title="scope.row.id">{{ scope.row.id }}</span>
 					</transition>
 				</template>
 			</el-table-column>
@@ -116,6 +116,11 @@ const apply = () => {
 <style module lang="scss">
 .container {
 	display: flex;
+}
+
+.idCell {
+	overflow: hidden;
+	white-space: nowrap;
 }
 
 .actions {

@@ -27,7 +27,7 @@ let securityKeys: Array<{
 	credentialId: Uint8Array;
 	credentialPublicKey: Uint8Array;
 	credentialDevicetype: CredentialDeviceType;
-	name?: string;
+	label?: string;
 }> = [];
 
 @RestController('/mfa')
@@ -43,7 +43,7 @@ export class MFAController {
 	async getSecurityKeys(req: AuthenticatedRequest, res: Response) {
 		return securityKeys.map((securityKey) => ({
 			id: securityKey.id,
-			name: securityKey.name ?? '',
+			label: securityKey.label ?? '',
 		}));
 	}
 
@@ -59,7 +59,7 @@ export class MFAController {
 		const index = securityKeys.findIndex((securityKey) => securityKey.id === req.params.id);
 		//@ts-ignore
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-		securityKeys[index].name = req.body.name;
+		securityKeys[index].label = req.body.label;
 		return;
 	}
 

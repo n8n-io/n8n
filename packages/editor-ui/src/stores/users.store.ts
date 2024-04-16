@@ -30,6 +30,7 @@ import type {
 	IUsersState,
 	CurrentUserResponse,
 	InvitableRoleName,
+	SecurityKey,
 } from '@/Interface';
 import { getCredentialPermissions } from '@/permissions';
 import { getPersonalizedNodeTypes } from '@/utils/userUtils';
@@ -51,6 +52,7 @@ import {
 	getSecurityKeys,
 	deleteSecurityKey,
 	updateSecurityKeyName,
+	updateSecurityKeyLabel,
 } from '@/api/mfa';
 import { confirmEmail, getCloudUserInfo } from '@/api/cloudPlans';
 import { useRBACStore } from '@/stores/rbac.store';
@@ -378,7 +380,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			const rootStore = useRootStore();
 			return await registerDevice(rootStore.getRestApiContext, data);
 		},
-		async getSecurityKeys() {
+		async getSecurityKeys(): Promise<SecurityKey[]> {
 			const rootStore = useRootStore();
 			return await getSecurityKeys(rootStore.getRestApiContext);
 		},
@@ -386,9 +388,9 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			const rootStore = useRootStore();
 			return await deleteSecurityKey(rootStore.getRestApiContext, id);
 		},
-		async updateSecurityKeyName(id: string, name: string) {
+		async updateSecurityKeyLabel(id: string, name: string) {
 			const rootStore = useRootStore();
-			return await updateSecurityKeyName(rootStore.getRestApiContext, id, name);
+			return await updateSecurityKeyLabel(rootStore.getRestApiContext, id, name);
 		},
 		async verifyAuthentication(data: any) {
 			const rootStore = useRootStore();

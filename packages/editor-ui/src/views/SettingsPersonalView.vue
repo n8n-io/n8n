@@ -76,8 +76,10 @@
 						<template #header>
 							<div :class="$style.headerpapa">
 								<n8n-text bold="true">Security keys</n8n-text>
-								<n8n-badge theme="primary">configured</n8n-badge>
-								<n8n-badge theme="secondary">1 key</n8n-badge>
+								<n8n-badge v-if="securityKeys.length > 0" theme="primary">configured</n8n-badge>
+								<n8n-badge v-if="securityKeys.length > 0" theme="secondary"
+									>{{ securityKeys.length }} keys</n8n-badge
+								>
 							</div>
 						</template>
 						<n8n-text color="text-light" size="xsmall" class="mt-2xs mb-2xs">
@@ -173,14 +175,18 @@
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
 import type { IFormInputs, IUser, ThemeOption } from '@/Interface';
-import { CHANGE_PASSWORD_MODAL_KEY, MFA_DOCS_URL, MFA_SETUP_MODAL_KEY, SECURITY_KEYS_MODAL_KEY } from '@/constants';
+import {
+	CHANGE_PASSWORD_MODAL_KEY,
+	MFA_DOCS_URL,
+	MFA_SETUP_MODAL_KEY,
+	SECURITY_KEYS_MODAL_KEY,
+} from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { mapStores } from 'pinia';
 import { defineComponent } from 'vue';
 import { createEventBus } from 'n8n-design-system/utils';
-import { startRegistration } from '@simplewebauthn/browser';
 
 export default defineComponent({
 	name: 'SettingsPersonalView',
@@ -194,6 +200,7 @@ export default defineComponent({
 	},
 	data() {
 		return {
+			securityKeys: [] as Array<{ id: string; label: string }>,
 			hasAnyChanges: false,
 			formInputs: null as null | IFormInputs,
 			formBus: createEventBus(),
@@ -215,7 +222,7 @@ export default defineComponent({
 			] as Array<{ name: ThemeOption; label: string }>,
 		};
 	},
-	mounted() {
+	async mounted() {
 		this.formInputs = [
 			{
 				name: 'firstName',
@@ -255,6 +262,8 @@ export default defineComponent({
 				},
 			},
 		];
+
+		this.securityKeys = await this.usersStore.getSecurityKeys();
 	},
 	computed: {
 		...mapStores(useUIStore, useUsersStore, useSettingsStore),
@@ -296,11 +305,11 @@ export default defineComponent({
 				}
 			} else if (method === 'securityKeys') {
 				switch (action) {
-					case 'register':
-						const registrationOptions = await this.usersStore.getChallenge();
-						const registration = await startRegistration(registrationOptions);
-						await this.usersStore.registerDevice(registration);
-						break;
+					// case 'register':
+					// 	const registrationOptions = await this.usersStore.getChallenge();
+					// 	const registration = await startRegistration(registrationOptions);
+					// 	await this.usersStore.registerDevice(registration);
+					// 	break;
 					case 'edit':
 						this.uiStore.openModal(SECURITY_KEYS_MODAL_KEY);
 						break;
