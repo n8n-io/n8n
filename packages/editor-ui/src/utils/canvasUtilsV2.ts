@@ -65,6 +65,7 @@ export function normalizeElementEndpoints(
 			return {
 				type: endpoint.type,
 				index: 0,
+				...(endpoint.required ? { required: endpoint.required } : {}),
 			};
 		}
 	});

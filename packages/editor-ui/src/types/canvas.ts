@@ -10,6 +10,7 @@ export type CanvasConnectionPortType = ConnectionTypes;
 
 export type CanvasConnectionPort = {
 	type: CanvasConnectionPortType;
+	required?: boolean;
 	index: number;
 };
 

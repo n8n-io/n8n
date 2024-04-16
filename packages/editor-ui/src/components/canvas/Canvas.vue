@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import type { CanvasConnection, CanvasElement } from '@/types';
-import type { EdgeChange, NodeChange } from '@vue-flow/core';
+import type { EdgeChange, NodeChange, PanelPositionType } from '@vue-flow/core';
 import { useVueFlow, VueFlow } from '@vue-flow/core';
 import { Background } from '@vue-flow/background';
 import { ControlButton, Controls } from '@vue-flow/controls';
@@ -17,11 +17,13 @@ const props = withDefaults(
 		id: string;
 		elements: CanvasElement[];
 		connections: CanvasConnection[];
+		controlsPosition: PanelPositionType;
 	}>(),
 	{
 		id: 'canvas',
 		elements: () => [],
 		connections: () => [],
+		controlsPosition: 'bottom-left',
 	},
 );
 
@@ -66,7 +68,7 @@ function onConnectionsChange(e: EdgeChange[]) {
 
 			<MiniMap />
 
-			<Controls :class="$style.canvasControls" position="bottom-left"></Controls>
+			<Controls :class="$style.canvasControls" :position="controlsPosition"></Controls>
 		</VueFlow>
 	</div>
 </template>
