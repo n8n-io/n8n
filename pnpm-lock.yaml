@@ -182,7 +182,7 @@ importers:
     dependencies:
       axios:
         specifier: 1.6.7
-        version: 1.6.7(debug@4.3.4)
+        version: 1.6.7(debug@3.2.7)
 
   packages/@n8n/imap:
     dependencies:
@@ -516,7 +516,7 @@ importers:
         version: 1.11.0
       axios:
         specifier: 1.6.7
-        version: 1.6.7(debug@4.3.4)
+        version: 1.6.7(debug@3.2.7)
       basic-auth:
         specifier: 2.0.1
         version: 2.0.1
@@ -847,7 +847,7 @@ importers:
         version: 1.11.0
       axios:
         specifier: 1.6.7
-        version: 1.6.7(debug@4.3.4)
+        version: 1.6.7(debug@3.2.7)
       concat-stream:
         specifier: 2.0.0
         version: 2.0.0
@@ -899,6 +899,9 @@ importers:
       xml2js:
         specifier: 0.6.2
         version: 0.6.2
+      zod:
+        specifier: 3.22.4
+        version: 3.22.4
     devDependencies:
       '@types/aws4':
         specifier: ^1.5.1
@@ -1104,7 +1107,7 @@ importers:
         version: 10.5.0(vue@3.4.21)
       axios:
         specifier: 1.6.7
-        version: 1.6.7(debug@4.3.4)
+        version: 1.6.7(debug@3.2.7)
       chart.js:
         specifier: ^4.4.0
         version: 4.4.0
@@ -1572,7 +1575,7 @@ importers:
         version: 0.15.2
       axios:
         specifier: 1.6.7
-        version: 1.6.7(debug@4.3.4)
+        version: 1.6.7(debug@3.2.7)
       callsites:
         specifier: 3.1.0
         version: 3.1.0
@@ -11747,7 +11750,7 @@ packages:
   /axios@1.6.7:
     resolution: {integrity: sha512-/hDJGff6/c7u0hDkvkGxR/oy6CbCs8ziCsC7SqmhjfozqiJGc8Z11wrv9z9lYfY4K8l+H9TpjcMDX0xOZmx+RA==}
     dependencies:
-      follow-redirects: 1.15.6(debug@4.3.4)
+      follow-redirects: 1.15.6(debug@3.2.7)
       form-data: 4.0.0
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
