@@ -113,15 +113,6 @@
 						</n8n-info-tip>
 					</div>
 
-					<div v-if="showFiltersDropdown" v-show="hasFilters" class="mt-xs">
-						<n8n-info-tip :bold="false">
-							{{ i18n.baseText(`${resourceKey}.filters.active`) }}
-							<n8n-link data-test-id="workflows-filter-reset" size="small" @click="resetFilters">
-								{{ i18n.baseText(`${resourceKey}.filters.active.reset`) }}
-							</n8n-link>
-						</n8n-info-tip>
-					</div>
-
 					<div class="pb-xs" />
 				</template>
 
