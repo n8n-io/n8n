@@ -40,6 +40,7 @@ import { useCollaborationStore } from '@/stores/collaboration.store';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useRouter } from 'vue-router';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useWorkflowsStoreV2 } from '@/stores/workflows.store.v2';
 
 export const pushConnection = defineComponent({
 	setup() {
@@ -81,6 +82,7 @@ export const pushConnection = defineComponent({
 			useOrchestrationStore,
 			usePushConnectionStore,
 			useCollaborationStore,
+			useWorkflowsStoreV2,
 		),
 		pushRef(): string {
 			return this.rootStore.pushRef;
@@ -279,6 +281,7 @@ export const pushConnection = defineComponent({
 						}
 					}
 					this.workflowsStore.finishActiveExecution(pushData);
+					this.workflowsStoreV2.finishActiveExecution(receivedData.data.workflowId, pushData);
 				}
 
 				if (!this.uiStore.isActionActive('workflowRunning')) {
