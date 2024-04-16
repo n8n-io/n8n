@@ -1,17 +1,4 @@
 import type { ICredentialType, INodeProperties } from 'n8n-workflow';
-import { z } from 'zod';
-
-export const GoogleOAuth2ApiSchema = z.object({
-	grantType: z.string().default('authorizationCode'),
-	authorizationUrl: z.string().url().default('https://accounts.google.com/o/oauth2/v2/auth'),
-	accessTokenUrl: z.string().url().default('https://oauth2.googleapis.com/token'),
-	authQueryParameters: z
-		.record(z.string(), z.string())
-		.default({ access_type: 'offline', prompt: 'consent' }),
-	authentication: z.string().default('body'),
-});
-
-export type GoogleOauth2ApiType = z.infer<typeof GoogleOAuth2ApiSchema>;
 
 export class GoogleOAuth2Api implements ICredentialType {
 	name = 'googleOAuth2Api';
