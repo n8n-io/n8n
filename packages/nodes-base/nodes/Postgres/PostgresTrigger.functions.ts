@@ -8,6 +8,7 @@ import type {
 } from 'n8n-workflow';
 import pgPromise from 'pg-promise';
 import type pg from 'pg-promise/typescript/pg-subset';
+import { PostgresCredentialType } from '../../credentials/Postgres.credentials';
 
 export function prepareNames(id: string, mode: string, additionalFields: IDataObject) {
 	let suffix = id.replace(/-/g, '_');
@@ -86,7 +87,7 @@ export async function pgTriggerFunction(
 }
 
 export async function initDB(this: ITriggerFunctions | ILoadOptionsFunctions) {
-	const credentials = await this.getCredentials('postgres');
+	const credentials = await this.getCredentials<PostgresCredentialType>('postgres');
 	const options = this.getNodeParameter('options', {}) as {
 		connectionTimeout?: number;
 		delayClosingIdleConnection?: number;
@@ -96,11 +97,11 @@ export async function initDB(this: ITriggerFunctions | ILoadOptionsFunctions) {
 		noWarnings: true,
 	});
 	const config: IDataObject = {
-		host: credentials.host as string,
-		port: credentials.port as number,
-		database: credentials.database as string,
-		user: credentials.user as string,
-		password: credentials.password as string,
+		host: credentials.host,
+		port: credentials.port,
+		database: credentials.database,
+		user: credentials.user,
+		password: credentials.password,
 		keepAlive: true,
 	};
 
@@ -117,8 +118,8 @@ export async function initDB(this: ITriggerFunctions | ILoadOptionsFunctions) {
 			rejectUnauthorized: false,
 		};
 	} else {
-		config.ssl = !['disable', undefined].includes(credentials.ssl as string | undefined);
-		config.sslmode = (credentials.ssl as string) || 'disable';
+		config.ssl = !['disable', undefined].includes(credentials.ssl);
+		config.sslmode = credentials.ssl || 'disable';
 	}
 
 	const db = pgp(config);

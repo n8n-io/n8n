@@ -1,4 +1,6 @@
 import type { ICredentialType, INodeProperties } from 'n8n-workflow';
+import { z } from 'zod';
+import { GoogleOAuth2ApiSchema } from './GoogleOAuth2Api.credentials';
 
 const scopes = [
 	'https://www.googleapis.com/auth/gmail.labels',
@@ -8,6 +10,12 @@ const scopes = [
 	'https://www.googleapis.com/auth/gmail.modify',
 	'https://www.googleapis.com/auth/gmail.compose',
 ];
+
+export const GmailOAuth2ApiSchema = GoogleOAuth2ApiSchema.extend({
+	scope: z.array(z.string()).default(scopes),
+});
+
+export type GmailOAuth2ApiType = z.infer<typeof GmailOAuth2ApiSchema>;
 
 export class GmailOAuth2Api implements ICredentialType {
 	name = 'gmailOAuth2';

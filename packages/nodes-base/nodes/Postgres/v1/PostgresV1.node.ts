@@ -17,6 +17,7 @@ import pgPromise from 'pg-promise';
 import { pgInsertV2, pgQueryV2, pgUpdate, wrapData } from './genericFunctions';
 
 import { oldVersionNotice } from '@utils/descriptions';
+import { PostgresCredentialType } from '../../../credentials/Postgres.credentials';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Postgres',
@@ -338,7 +339,7 @@ export class PostgresV1 implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const credentials = await this.getCredentials('postgres');
+		const credentials = await this.getCredentials<PostgresCredentialType>('postgres');
 		const largeNumbersOutput = this.getNodeParameter(
 			'additionalFields.largeNumbersOutput',
 			0,
@@ -357,11 +358,11 @@ export class PostgresV1 implements INodeType {
 		}
 
 		const config: IDataObject = {
-			host: credentials.host as string,
-			port: credentials.port as number,
-			database: credentials.database as string,
-			user: credentials.user as string,
-			password: credentials.password as string,
+			host: credentials.host,
+			port: credentials.port,
+			database: credentials.database,
+			user: credentials.user,
+			password: credentials.password,
 		};
 
 		if (credentials.allowUnauthorizedCerts === true) {
@@ -369,8 +370,8 @@ export class PostgresV1 implements INodeType {
 				rejectUnauthorized: false,
 			};
 		} else {
-			config.ssl = !['disable', undefined].includes(credentials.ssl as string | undefined);
-			config.sslmode = (credentials.ssl as string) || 'disable';
+			config.ssl = !['disable', undefined].includes(credentials.ssl);
+			config.sslmode = credentials.ssl || 'disable';
 		}
 
 		const db = pgp(config);

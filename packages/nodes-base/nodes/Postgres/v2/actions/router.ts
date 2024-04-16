@@ -6,7 +6,8 @@ import { configureQueryRunner } from '../helpers/utils';
 import type { PostgresType } from './node.type';
 
 import * as database from './database/Database.resource';
-import type { PostgresNodeCredentials, PostgresNodeOptions } from '../helpers/interfaces';
+import type { PostgresNodeOptions } from '../helpers/interfaces';
+import { PostgresCredentialType } from '../../../../credentials/Postgres.credentials';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	let returnData: INodeExecutionData[] = [];
@@ -15,7 +16,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 	const resource = this.getNodeParameter<PostgresType>('resource', 0);
 	const operation = this.getNodeParameter('operation', 0);
 
-	const credentials = (await this.getCredentials('postgres')) as PostgresNodeCredentials;
+	const credentials = await this.getCredentials<PostgresCredentialType>('postgres');
 	const options = this.getNodeParameter('options', 0, {}) as PostgresNodeOptions;
 	options.nodeVersion = this.getNode().typeVersion;
 	options.operation = operation;

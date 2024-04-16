@@ -1,4 +1,26 @@
 import type { ICredentialType, INodeProperties } from 'n8n-workflow';
+import { z } from 'zod';
+
+export const PostgresCredentialSchema = z.object({
+	host: z.string().default('localhost'),
+	database: z.string().default('postgres'),
+	user: z.string().default('postgres'),
+	password: z.string(),
+	allowUnauthorizedCerts: z.boolean().default(false),
+	ssl: z.enum(['allow', 'disable', 'require', 'verify', 'verify-full']).default('disable'),
+	port: z.number().default(5432),
+	sshTunnel: z.boolean().default(false),
+	sshAuthenticateWith: z.enum(['password', 'privateKey']).default('password'),
+	sshHost: z.string().default('localhost'),
+	sshPort: z.number().default(22),
+	sshPostgresPort: z.number().default(5432),
+	sshUser: z.string().default('root'),
+	privateKey: z.string(),
+	sshPassword: z.string(),
+	passphrase: z.string(),
+});
+
+export type PostgresCredentialType = z.infer<typeof PostgresCredentialSchema>;
 
 export class Postgres implements ICredentialType {
 	name = 'postgres';

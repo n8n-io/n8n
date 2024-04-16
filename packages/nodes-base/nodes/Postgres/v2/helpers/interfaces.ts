@@ -49,22 +49,3 @@ export type PostgresNodeOptions = {
 	skipOnConflict?: boolean;
 	replaceEmptyStrings?: boolean;
 };
-
-export type PostgresNodeCredentials = {
-	sshAuthenticateWith: 'password' | 'privateKey';
-	host: string;
-	port: number;
-	database: string;
-	user: string;
-	password: string;
-	allowUnauthorizedCerts?: boolean;
-	ssl?: 'disable' | 'allow' | 'require' | 'verify' | 'verify-full';
-	sshTunnel?: boolean;
-	sshHost?: string;
-	sshPort?: number;
-	sshPostgresPort?: number;
-	sshUser?: string;
-	sshPassword?: string;
-	privateKey?: string;
-	passphrase?: string;
-};

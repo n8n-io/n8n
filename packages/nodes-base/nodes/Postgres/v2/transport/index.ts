@@ -6,14 +6,11 @@ import type { ConnectConfig } from 'ssh2';
 import type { IDataObject } from 'n8n-workflow';
 
 import pgPromise from 'pg-promise';
-import type {
-	PgpDatabase,
-	PostgresNodeCredentials,
-	PostgresNodeOptions,
-} from '../helpers/interfaces';
+import type { PgpDatabase, PostgresNodeOptions } from '../helpers/interfaces';
 import { formatPrivateKey } from '@utils/utilities';
+import { PostgresCredentialType } from '../../../../credentials/Postgres.credentials';
 
-async function createSshConnectConfig(credentials: PostgresNodeCredentials) {
+async function createSshConnectConfig(credentials: PostgresCredentialType) {
 	if (credentials.sshAuthenticateWith === 'password') {
 		return {
 			host: credentials.sshHost as string,
@@ -38,7 +35,7 @@ async function createSshConnectConfig(credentials: PostgresNodeCredentials) {
 }
 
 export async function configurePostgres(
-	credentials: PostgresNodeCredentials,
+	credentials: PostgresCredentialType,
 	options: PostgresNodeOptions = {},
 	createdSshClient?: Client,
 ) {
