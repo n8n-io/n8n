@@ -1469,7 +1469,7 @@ importers:
         version: 0.6.2
       zod:
         specifier: 3.22.4
-        version: 3.22.4
+        version: link:../../../../FOSS/zod
     devDependencies:
       '@types/amqplib':
         specifier: ^0.10.1

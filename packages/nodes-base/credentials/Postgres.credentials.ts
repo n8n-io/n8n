@@ -1,6 +1,6 @@
 import type { ICredentialType } from 'n8n-workflow';
 import { z } from 'zod';
-import { credentialSchema, toNodeProperties } from '../utils/CredentialSchema';
+import { toNodeProperties } from '../utils/CredentialSchema';
 
 enum SSLOption {
 	Allow = 'allow',
@@ -16,16 +16,16 @@ enum SSLAuthOption {
 }
 
 export const PostgresCredentialSchema = z.object({
-	host: credentialSchema.string().displayName('Host').default('localhost'),
-	database: credentialSchema.string().displayName('Database').default('postgres'),
-	user: credentialSchema.string().displayName('User').default('postgres'),
-	password: credentialSchema.string().displayName('Password').sensitive(),
-	allowUnauthorizedCerts: credentialSchema
+	host: z.string().displayName('Host').default('localhost'),
+	database: z.string().displayName('Database').default('postgres'),
+	user: z.string().displayName('User').default('postgres'),
+	password: z.string().displayName('Password').sensitive(),
+	allowUnauthorizedCerts: z
 		.boolean()
 		.describe('Whether to connect even if SSL certificate validation is not possible')
 		.displayName('Ignore SSL Issues')
 		.default(false),
-	ssl: credentialSchema
+	ssl: z
 		.nativeEnum(SSLOption)
 		.displayOptions({
 			show: {
@@ -33,10 +33,10 @@ export const PostgresCredentialSchema = z.object({
 			},
 		})
 		.displayName('SSL')
-		.default('disable'),
-	port: credentialSchema.number().displayName('Port').default(5432),
-	sshTunnel: credentialSchema.boolean().displayName('SSH Tunnel').default(false),
-	sshAuthenticateWith: credentialSchema
+		.default(SSLOption.Disable),
+	port: z.number().displayName('Port').default(5432),
+	sshTunnel: z.boolean().displayName('SSH Tunnel').default(false),
+	sshAuthenticateWith: z
 		.nativeEnum(SSLAuthOption)
 		.displayName('SSH Authenticate with')
 		.displayOptions({
@@ -44,8 +44,8 @@ export const PostgresCredentialSchema = z.object({
 				sshTunnel: [true],
 			},
 		})
-		.default('password'),
-	sshHost: credentialSchema
+		.default(SSLAuthOption.Password),
+	sshHost: z
 		.string()
 		.displayName('SSH Host')
 		.displayOptions({
@@ -54,7 +54,7 @@ export const PostgresCredentialSchema = z.object({
 			},
 		})
 		.default('localhost'),
-	sshPort: credentialSchema
+	sshPort: z
 		.number()
 		.displayName('SSH Port')
 		.displayOptions({
@@ -63,7 +63,7 @@ export const PostgresCredentialSchema = z.object({
 			},
 		})
 		.default(22),
-	sshPostgresPort: credentialSchema
+	sshPostgresPort: z
 		.number()
 		.displayName('SSH Postgres Port')
 		.displayOptions({
@@ -72,7 +72,7 @@ export const PostgresCredentialSchema = z.object({
 			},
 		})
 		.default(5432),
-	sshUser: credentialSchema
+	sshUser: z
 		.string()
 		.displayName('SSH User')
 		.displayOptions({
@@ -81,7 +81,7 @@ export const PostgresCredentialSchema = z.object({
 			},
 		})
 		.default('root'),
-	sshPassword: credentialSchema
+	sshPassword: z
 		.string()
 		.sensitive()
 		.displayName('SSH Password')
@@ -91,7 +91,7 @@ export const PostgresCredentialSchema = z.object({
 				sshAuthenticateWith: ['password'],
 			},
 		}),
-	privateKey: credentialSchema
+	privateKey: z
 		.string()
 		.displayName('Private Key')
 		.sensitive()
@@ -102,7 +102,7 @@ export const PostgresCredentialSchema = z.object({
 				sshAuthenticateWith: ['privateKey'],
 			},
 		}),
-	passphrase: credentialSchema
+	passphrase: z
 		.string()
 		.describe('Passphase used to create the key, if no passphase was used leave empty')
 		.displayName('Passphrase')
