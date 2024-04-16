@@ -267,6 +267,9 @@ onBeforeMount(() => {
 					</span>
 				</n8n-tooltip>
 				<div :class="$style.subGroup">
+					<label for="execution-filter-saved-data-key">{{
+						locale.baseText('executionsFilter.savedDataKey')
+					}}</label>
 					<CustomDataDropwdown
 						id="execution-filter-tags"
 						:placeholder="locale.baseText('workflowOpen.filterWorkflows')"
@@ -276,19 +279,6 @@ onBeforeMount(() => {
 						data-test-id="executions-filter-tags-select"
 						@update:model-value="onFilterMetaChange(0, 'key', $event[0])"
 					/>
-
-					<CustomDataDropwdownValues
-						id="execution-filter-tags"
-						:placeholder="locale.baseText('workflowOpen.filterWorkflows')"
-						:model-value="filter.tags"
-						:create-enabled="false"
-						:workflow-id="route.params.name"
-						data-test-id="executions-filter-tags-select"
-						@update:model-value="onFilterMetaChange(0, 'value', $event[0])"
-					/>
-					<label for="execution-filter-saved-data-key">{{
-						locale.baseText('executionsFilter.savedDataKey')
-					}}</label>
 					<n8n-tooltip :disabled="isAdvancedExecutionFilterEnabled" placement="top">
 						<template #content>
 							<i18n-t tag="span" keypath="executionsFilter.customData.inputTooltip">
@@ -321,9 +311,20 @@ onBeforeMount(() => {
 						<!-- 	@update:model-value="setKeyValue('tags', $event)" -->
 						<!-- /> -->
 					</n8n-tooltip>
+
 					<label for="execution-filter-saved-data-value">{{
 						locale.baseText('executionsFilter.savedDataValue')
 					}}</label>
+
+					<CustomDataDropwdownValues
+						id="execution-filter-tags"
+						:placeholder="locale.baseText('workflowOpen.filterWorkflows')"
+						:model-value="filter.tags"
+						:create-enabled="false"
+						:workflow-id="route.params.name"
+						data-test-id="executions-filter-tags-select"
+						@update:model-value="onFilterMetaChange(0, 'value', $event[0])"
+					/>
 					<n8n-tooltip :disabled="isAdvancedExecutionFilterEnabled" placement="top">
 						<template #content>
 							<i18n-t tag="span" keypath="executionsFilter.customData.inputTooltip">
