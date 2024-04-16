@@ -58,6 +58,7 @@ export const MFA_SETUP_MODAL_KEY = 'mfaSetup';
 export const WORKFLOW_HISTORY_VERSION_RESTORE = 'workflowHistoryVersionRestore';
 export const SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY = 'suggestedTemplatePreview';
 export const SETUP_CREDENTIALS_MODAL_KEY = 'setupCredentials';
+export const SECURITY_KEYS_MODAL_KEY = 'securityKeys';
 
 export const EXTERNAL_SECRETS_PROVIDER_MODAL_KEY = 'externalSecretsProvider';
 

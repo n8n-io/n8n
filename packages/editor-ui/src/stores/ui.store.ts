@@ -39,6 +39,7 @@ import {
 	WORKFLOW_HISTORY_VERSION_RESTORE,
 	SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY,
 	SETUP_CREDENTIALS_MODAL_KEY,
+	SECURITY_KEYS_MODAL_KEY,
 } from '@/constants';
 import type {
 	CloudUpdateLinkSourceType,
@@ -120,6 +121,7 @@ export const useUIStore = defineStore(STORES.UI, {
 					WORKFLOW_HISTORY_VERSION_RESTORE,
 					SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY,
 					SETUP_CREDENTIALS_MODAL_KEY,
+					SECURITY_KEYS_MODAL_KEY,
 				].map((modalKey) => [modalKey, { open: false }]),
 			),
 			[DELETE_USER_MODAL_KEY]: {

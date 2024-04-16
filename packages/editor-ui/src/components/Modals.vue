@@ -172,6 +172,12 @@
 				/>
 			</template>
 		</ModalRoot>
+
+		<ModalRoot :name="SECURITY_KEYS_MODAL_KEY">
+			<template #default="{ modalName }">
+				<SecurityKeysModal :modal-name="modalName" />
+			</template>
+		</ModalRoot>
 	</div>
 </template>
 
@@ -208,6 +214,7 @@ import {
 	WORKFLOW_HISTORY_VERSION_RESTORE,
 	SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY,
 	SETUP_CREDENTIALS_MODAL_KEY,
+	SECURITY_KEYS_MODAL_KEY,
 } from '@/constants';
 
 import AboutModal from './AboutModal.vue';
@@ -241,6 +248,7 @@ import DebugPaywallModal from '@/components/DebugPaywallModal.vue';
 import WorkflowHistoryVersionRestoreModal from '@/components/WorkflowHistory/WorkflowHistoryVersionRestoreModal.vue';
 import SuggestedTemplatesPreviewModal from '@/components/SuggestedTemplates/SuggestedTemplatesPreviewModal.vue';
 import SetupWorkflowCredentialsModal from '@/components/SetupWorkflowCredentialsModal/SetupWorkflowCredentialsModal.vue';
+import SecurityKeysModal from '@/components/SecurityKeysManager/SecurityKeysModal.vue';
 
 export default defineComponent({
 	name: 'Modals',
@@ -276,6 +284,7 @@ export default defineComponent({
 		WorkflowHistoryVersionRestoreModal,
 		SuggestedTemplatesPreviewModal,
 		SetupWorkflowCredentialsModal,
+		SecurityKeysModal,
 	},
 	data: () => ({
 		CHAT_EMBED_MODAL_KEY,
@@ -308,6 +317,7 @@ export default defineComponent({
 		WORKFLOW_HISTORY_VERSION_RESTORE,
 		SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY,
 		SETUP_CREDENTIALS_MODAL_KEY,
+		SECURITY_KEYS_MODAL_KEY,
 	}),
 });
 </script>

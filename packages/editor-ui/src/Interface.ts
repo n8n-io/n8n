@@ -1889,3 +1889,8 @@ export type SuggestedTemplatesWorkflowPreview = {
 	preview: IWorkflowData;
 	nodes: Array<Pick<ITemplatesNode, 'id' | 'displayName' | 'icon' | 'defaults' | 'iconData'>>;
 };
+
+export type SecurityKey = {
+	id: string;
+	label: string;
+};

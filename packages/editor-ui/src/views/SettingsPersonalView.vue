@@ -173,7 +173,7 @@
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
 import type { IFormInputs, IUser, ThemeOption } from '@/Interface';
-import { CHANGE_PASSWORD_MODAL_KEY, MFA_DOCS_URL, MFA_SETUP_MODAL_KEY } from '@/constants';
+import { CHANGE_PASSWORD_MODAL_KEY, MFA_DOCS_URL, MFA_SETUP_MODAL_KEY, SECURITY_KEYS_MODAL_KEY } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -295,12 +295,18 @@ export default defineComponent({
 					this.onMfaEnableClick();
 				}
 			} else if (method === 'securityKeys') {
-				if (action === 'register') {
-					const registrationOptions = await this.usersStore.getChallenge();
-
-					const registration = await startRegistration(registrationOptions);
-
-					await this.usersStore.registerDevice(registration);
+				switch (action) {
+					case 'register':
+						const registrationOptions = await this.usersStore.getChallenge();
+						const registration = await startRegistration(registrationOptions);
+						await this.usersStore.registerDevice(registration);
+						break;
+					case 'edit':
+						this.uiStore.openModal(SECURITY_KEYS_MODAL_KEY);
+						break;
+					case 'default':
+						this.uiStore.openModal(SECURITY_KEYS_MODAL_KEY);
+						break;
 				}
 			}
 		},
