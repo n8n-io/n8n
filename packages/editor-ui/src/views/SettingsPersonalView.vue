@@ -298,9 +298,17 @@ export default defineComponent({
 				if (action === 'register') {
 					const registrationOptions = await this.usersStore.getChallenge();
 
-					const registration = await startRegistration(registrationOptions);
-
-					await this.usersStore.registerDevice(registration);
+					try {
+						const registration = await startRegistration(registrationOptions);
+						await this.usersStore.registerDevice(registration);
+					} catch (e) {
+						if (e.name === 'InvalidStateError') {
+							useToast().showMessage({
+								message: 'Security key already registered',
+								type: 'error',
+							});
+						}
+					}
 				}
 			}
 		},
