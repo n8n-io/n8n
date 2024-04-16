@@ -9,7 +9,6 @@ import { Response } from 'express';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import type { CredentialDeviceType } from '@simplewebauthn/server/script/deps';
 import { AuthService } from '@/auth/auth.service';
-import { NotFound } from 'express-openapi-validator/dist/openapi.validator';
 import { UserService } from '@/services/user.service';
 
 let challenge = '';
@@ -22,6 +21,14 @@ let credentialDevicetype: CredentialDeviceType;
 
 let credentialBackedup: boolean;
 
+let securityKeys: Array<{
+	id: string;
+	credentialId: Uint8Array;
+	credentialPublicKey: Uint8Array;
+	credentialDevicetype: CredentialDeviceType;
+	name?: string;
+}> = [];
+
 @RestController('/mfa')
 export class MFAController {
 	constructor(
@@ -30,6 +37,21 @@ export class MFAController {
 		private authService: AuthService,
 		private userService: UserService,
 	) {}
+
+	@Get('/security-keys')
+	async getSecurityKeys(req: AuthenticatedRequest, res: Response) {
+		return securityKeys.map((securityKey) => ({
+			id: securityKey.id,
+			name: securityKey.name ?? '',
+		}));
+	}
+
+	@Delete('/security-keys/:id')
+	async deleteSecurityKeys(req: AuthenticatedRequest, res: Response) {
+		const index = securityKeys.findIndex((securityKey) => securityKey.id === req.params.id);
+		securityKeys.splice(index, 1);
+		return;
+	}
 
 	@Get('/challenge')
 	async getChallenge(req: AuthenticatedRequest, res: Response) {
@@ -104,12 +126,19 @@ export class MFAController {
 			// console.log(isoUint8Array.toUTF8String(credentialID));
 			// console.log(counter);
 
-			credentialId = credentialID;
-			credentialPublickey = credentialPublicKey;
-			credentialBackedup = credentialBackedUp;
-			credentialDevicetype = credentialDeviceType;
+			// credentialId = credentialID;
+			// credentialPublickey = credentialPublicKey;
+			// credentialBackedup = credentialBackedUp;
+			// credentialDevicetype = credentialDeviceType;
 
 			await this.userRepository.update(req.user.id, { mfaEnabled: true });
+
+			securityKeys.push({
+				id: isoUint8Array.toHex(credentialID),
+				credentialId: credentialID,
+				credentialPublicKey,
+				credentialDevicetype: credentialDeviceType,
+			});
 		}
 
 		return { verified: verification.verified };
@@ -117,6 +146,12 @@ export class MFAController {
 
 	@Get('/start-authentication', { skipAuth: true })
 	async startAuthentication(req: AuthenticatedRequest, res: Response) {
+		const allowCredentials = securityKeys.map((securityKey) => ({
+			id: securityKey.credentialId,
+			type: 'public-key',
+			transport: [],
+		})) as PublicKeyCredentialDescriptor[];
+
 		// const challenge = Math.random().toString(36).substring(2);
 
 		// const user = await this.userRepository.findOne({ where: {} });
@@ -124,13 +159,7 @@ export class MFAController {
 		const options = await SimpleWebAuthnServer.generateAuthenticationOptions({
 			rpID: 'localhost',
 			// Require users to use a previously-registered authenticator
-			allowCredentials: [
-				{
-					id: credentialId,
-					type: 'public-key',
-					transports: [],
-				},
-			],
+			allowCredentials,
 			userVerification: 'preferred',
 		});
 
@@ -147,31 +176,29 @@ export class MFAController {
 	async verifyAuthentication(req: AuthenticatedRequest, res: Response) {
 		const user = await this.userRepository.findOne({ where: {}, relations: ['authIdentities'] });
 
-		console.log(user);
-
 		if (!user) {
 			throw new BadRequestError('User not found');
 		}
 
-		const verification = await SimpleWebAuthnServer.verifyAuthenticationResponse({
-			//@ts-ignore
-			response: req.body,
-			expectedChallenge: challenge,
-			expectedOrigin: 'http://localhost:8080',
-			expectedRPID: 'localhost',
-			requireUserVerification: false,
-			authenticator: {
-				credentialID: credentialId,
-				credentialPublicKey: credentialPublickey,
-				// counter: user?.securityKey?.counter ?? 0,
-			},
-		});
+		for (const securityKey of securityKeys) {
+			const verification = await SimpleWebAuthnServer.verifyAuthenticationResponse({
+				//@ts-ignore
+				response: req.body,
+				expectedChallenge: challenge,
+				expectedOrigin: 'http://localhost:8080',
+				expectedRPID: 'localhost',
+				requireUserVerification: false,
+				authenticator: {
+					credentialID: securityKey.credentialId,
+					credentialPublicKey: securityKey.credentialPublicKey,
+					counter: 0,
+				},
+			});
 
-		console.log(verification);
-
-		if (verification.verified) {
-			this.authService.issueCookie(res, user, req.browserId);
-			return await this.userService.toPublic(user, { withScopes: true });
+			if (verification.verified) {
+				this.authService.issueCookie(res, user, req.browserId);
+				return await this.userService.toPublic(user, { withScopes: true });
+			}
 		}
 
 		return {};
