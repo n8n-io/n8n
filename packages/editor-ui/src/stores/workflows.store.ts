@@ -414,8 +414,29 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			return keys;
 		},
 
+		async fetchExecutionDataValues(workflowId: string, key: string): Promise<string[]> {
+			const rootStore = useRootStore();
+
+			const keys = (await makeRestApiRequest(
+				rootStore.getRestApiContext,
+				'GET',
+				`/workflows/${workflowId}/custom-data/keys/${key}/values`,
+			)) as string[];
+
+			this.setExecutionDataValues(keys);
+			return keys;
+		},
+
 		setExecutionDataKeys(keys: string[]): void {
 			this.executionDataKeys = keys;
+		},
+
+		setExecutionDataValues(values: string[]): void {
+			this.executionDataValues = values;
+		},
+
+		setSelectedKey(key: string): void {
+			this.selectedKey = key;
 		},
 
 		async fetchWorkflow(id: string): Promise<IWorkflowDb> {

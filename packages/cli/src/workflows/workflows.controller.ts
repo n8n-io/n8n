@@ -266,6 +266,21 @@ export class WorkflowsController {
 		return shared.workflow;
 	}
 
+	@Get('/:id/custom-data/keys/:id2/values')
+	async getCustomDataValues(req: WorkflowRequest.Get) {
+		const executions = await this.executionRepository.find({
+			where: { workflowId: req.params.id, metadata: { key: req.params.id2 } },
+			select: { metadata: { key: true, value: true } },
+			relations: { metadata: true },
+		});
+
+		const foo = executions.flatMap((e) => e.metadata.map((m) => m));
+
+		console.trace(foo);
+
+		return [...new Set(executions.flatMap((e) => e.metadata.map((m) => m.value)))];
+	}
+
 	@Get('/:id/custom-data/keys')
 	async getCustomData(req: WorkflowRequest.Get) {
 		const executions = await this.executionRepository.find({
@@ -274,7 +289,7 @@ export class WorkflowsController {
 			relations: { metadata: true },
 		});
 
-		console.log(executions);
+		// console.log(executions);
 
 		return [...new Set(executions.flatMap((e) => e.metadata.map((m) => m.key)))];
 	}

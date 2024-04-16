@@ -23,7 +23,7 @@
 		>
 			<!-- key is id+index for keyboard navigation to work well with filter -->
 			<n8n-option
-				v-for="(key, i) in executionDataKeys"
+				v-for="(key, i) in executionDataValues"
 				:key="key + '_' + i"
 				ref="tagRefs"
 				:value="key"
@@ -75,6 +75,9 @@ export default defineComponent({
 			type: Object as PropType<EventBus>,
 		},
 		workflowId: {
+			type: String,
+		},
+		executionDataKey: {
 			type: String,
 		},
 	},
@@ -129,8 +132,8 @@ export default defineComponent({
 			return res as Array<NonNullable<(typeof res)[number]>>;
 		});
 
-		const executionDataKeys = computed(() => {
-			return workflowsStore.executionDataKeys;
+		const executionDataValues = computed(() => {
+			return workflowsStore.executionDataValues;
 		});
 
 		const appliedNodes = computed<string[]>(() => {
@@ -224,9 +227,6 @@ export default defineComponent({
 					if (!preventUpdate.value) {
 						emit('update:modelValue', selected);
 					}
-
-					workflowsStore.setSelectedKey(selected[0]);
-					void workflowsStore.fetchExecutionDataValues(props.workflowId!, selected[0]);
 					preventUpdate.value = false;
 				}, 0);
 			}
@@ -306,7 +306,7 @@ export default defineComponent({
 			onVisibleChange,
 			onRemoveTag,
 			onClickOutside,
-			executionDataKeys,
+			executionDataValues,
 			...useToast(),
 		};
 	},

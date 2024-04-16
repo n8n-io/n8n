@@ -16,6 +16,7 @@ import { useTelemetry } from '@/composables/useTelemetry';
 import type { Placement } from '@floating-ui/core';
 import { useDebounce } from '@/composables/useDebounce';
 import { useRoute } from 'vue-router';
+import CustomDataDropwdownValues from './CustomDataDropwdownValues.vue';
 
 export type ExecutionFilterProps = {
 	workflows?: IWorkflowShortResponse[];
@@ -127,7 +128,7 @@ const onFilterMetaChange = (index: number, prop: keyof ExecutionFilterMetadata, 
 		isCustomDataFilterTracked.value = true;
 	}
 
-	debouncedEmit('filterChanged', filter);
+	emit('filterChanged', filter);
 };
 
 // Can't use v-model on TagsDropdown component and thus vModel.tags is useless
@@ -247,19 +248,6 @@ onBeforeMount(() => {
 				</div>
 			</div>
 			<div :class="$style.group">
-				<div v-if="showTags" :class="$style.group">
-					<label for="execution-filter-tags">Custom Data</label>
-					<CustomDataDropwdown
-						id="execution-filter-tags"
-						:placeholder="locale.baseText('workflowOpen.filterWorkflows')"
-						:model-value="filter.tags"
-						:create-enabled="false"
-						:workflow-id="route.params.name"
-						data-test-id="executions-filter-tags-select"
-						@update:model-value="onTagsChange"
-					/>
-				</div>
-
 				<n8n-tooltip placement="right">
 					<template #content>
 						<i18n-t tag="span" keypath="executionsFilter.customData.docsTooltip">
@@ -279,6 +267,25 @@ onBeforeMount(() => {
 					</span>
 				</n8n-tooltip>
 				<div :class="$style.subGroup">
+					<CustomDataDropwdown
+						id="execution-filter-tags"
+						:placeholder="locale.baseText('workflowOpen.filterWorkflows')"
+						:model-value="filter.tags"
+						:create-enabled="false"
+						:workflow-id="route.params.name"
+						data-test-id="executions-filter-tags-select"
+						@update:model-value="onFilterMetaChange(0, 'key', $event[0])"
+					/>
+
+					<CustomDataDropwdownValues
+						id="execution-filter-tags"
+						:placeholder="locale.baseText('workflowOpen.filterWorkflows')"
+						:model-value="filter.tags"
+						:create-enabled="false"
+						:workflow-id="route.params.name"
+						data-test-id="executions-filter-tags-select"
+						@update:model-value="onFilterMetaChange(0, 'value', $event[0])"
+					/>
 					<label for="execution-filter-saved-data-key">{{
 						locale.baseText('executionsFilter.savedDataKey')
 					}}</label>
@@ -306,6 +313,7 @@ onBeforeMount(() => {
 							data-test-id="execution-filter-saved-data-key-input"
 							@update:model-value="onFilterMetaChange(0, 'key', $event)"
 						/>
+
 						<!-- <TagsDropdown -->
 						<!-- 	:placeholder="$locale.baseText('workflowOpen.filterWorkflows')" -->
 						<!-- 	:model-value="filters.tags" -->
