@@ -80,8 +80,7 @@ export class Webhook extends Node {
 				type: 'boolean',
 				default: false,
 				isNodeSetting: true,
-				description:
-					'Whether to allow the webhook to listen for multiple HTTP methods',
+				description: 'Whether to allow the webhook to listen for multiple HTTP methods',
 			},
 			{
 				...httpMethodsProperty,
