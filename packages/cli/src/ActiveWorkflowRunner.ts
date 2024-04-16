@@ -87,6 +87,7 @@ export class ActiveWorkflowRunner {
 		await this.webhookService.populateCache();
 
 		if (config.getEnv('executions.maxMemory') >= 1) {
+			console.log('Memory watcher enabled');
 			setInterval(async () => await this.memoryWatcher(), 0);
 		}
 	}
@@ -95,7 +96,12 @@ export class ActiveWorkflowRunner {
 		const execs = this.activeExecutions.getActiveExecutions();
 		const memory = process.memoryUsage();
 
+		if (execs.length > 0) {
+			console.log(memory);
+		}
+
 		if (memory.rss > config.getEnv('executions.maxMemory')) {
+			console.log('Killing executions');
 			for (const exec of execs) {
 				await this.activeExecutions.stopExecution(exec.id);
 			}
