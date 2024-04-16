@@ -6,6 +6,7 @@ import type { PathLike } from 'fs';
 import type { IncomingHttpHeaders } from 'http';
 import type { Readable } from 'stream';
 import type { URLSearchParams } from 'url';
+import type { ZodType } from 'zod';
 
 import type { AuthenticationMethod } from './Authentication';
 import type { CODE_EXECUTION_MODES, CODE_LANGUAGES, LOG_LEVELS } from './Constants';
@@ -302,6 +303,7 @@ export interface ICredentialType {
 	iconUrl?: string;
 	extends?: string[];
 	properties: INodeProperties[];
+	schema?: ZodType<any>;
 	documentationUrl?: string;
 	__overwrittenProperties?: string[];
 	authenticate?: IAuthenticate;

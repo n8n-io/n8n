@@ -19,7 +19,7 @@ export const PostgresCredentialSchema = z.object({
 	host: z.string().displayName('Host').default('localhost'),
 	database: z.string().displayName('Database').default('postgres'),
 	user: z.string().displayName('User').default('postgres'),
-	password: z.string().displayName('Password').sensitive(),
+	password: z.string().displayName('Password').sensitive().optional(),
 	allowUnauthorizedCerts: z
 		.boolean()
 		.describe('Whether to connect even if SSL certificate validation is not possible')
@@ -34,7 +34,7 @@ export const PostgresCredentialSchema = z.object({
 		})
 		.displayName('SSL')
 		.default(SSLOption.Disable),
-	port: z.number().displayName('Port').default(5432),
+	port: z.number().gt(0).displayName('Port').default(5432),
 	sshTunnel: z.boolean().displayName('SSH Tunnel').default(false),
 	sshAuthenticateWith: z
 		.nativeEnum(SSLAuthOption)
@@ -90,7 +90,8 @@ export const PostgresCredentialSchema = z.object({
 				sshTunnel: [true],
 				sshAuthenticateWith: ['password'],
 			},
-		}),
+		})
+		.optional(),
 	privateKey: z
 		.string()
 		.displayName('Private Key')
@@ -101,7 +102,8 @@ export const PostgresCredentialSchema = z.object({
 				sshTunnel: [true],
 				sshAuthenticateWith: ['privateKey'],
 			},
-		}),
+		})
+		.optional(),
 	passphrase: z
 		.string()
 		.describe('Passphase used to create the key, if no passphase was used leave empty')
@@ -111,7 +113,8 @@ export const PostgresCredentialSchema = z.object({
 				sshTunnel: [true],
 				sshAuthenticateWith: ['privateKey'],
 			},
-		}),
+		})
+		.optional(),
 });
 
 export type PostgresCredentialType = z.infer<typeof PostgresCredentialSchema>;
@@ -124,4 +127,6 @@ export class Postgres implements ICredentialType {
 	documentationUrl = 'postgres';
 
 	properties = toNodeProperties(PostgresCredentialSchema);
+
+	schema = PostgresCredentialSchema;
 }

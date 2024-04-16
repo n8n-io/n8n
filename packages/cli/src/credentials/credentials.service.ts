@@ -1,3 +1,4 @@
+import type { z } from 'zod';
 import { Credentials } from 'n8n-core';
 import type {
 	ICredentialDataDecryptedObject,
@@ -25,6 +26,7 @@ import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { Service } from 'typedi';
 import { CredentialsTester } from '@/services/credentials-tester.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 export type CredentialsGetSharedOptions =
 	| { allowGlobalScope: true; globalScope: Scope }
@@ -98,9 +100,21 @@ export class CredentialsService {
 		return await this.sharedCredentialsRepository.findOne({ where, relations });
 	}
 
+	private validateAgainstSchema({ data, type }: CredentialRequest.CredentialProperties) {
+		const credentialType = this.credentialTypes.getByName(type!);
+		if (credentialType.schema) {
+			try {
+				credentialType.schema.parse(data);
+			} catch (e) {
+				throw new BadRequestError('Failed schema check', undefined, (e as z.ZodError).toString());
+			}
+		}
+	}
+
 	async prepareCreateData(
 		data: CredentialRequest.CredentialProperties,
 	): Promise<CredentialsEntity> {
+		this.validateAgainstSchema(data);
 		const { id, ...rest } = data;
 
 		// This saves us a merge but requires some type casting. These
@@ -116,6 +130,7 @@ export class CredentialsService {
 		data: CredentialRequest.CredentialProperties,
 		decryptedData: ICredentialDataDecryptedObject,
 	): Promise<CredentialsEntity> {
+		this.validateAgainstSchema(data);
 		const mergedData = deepCopy(data);
 		if (mergedData.data) {
 			mergedData.data = this.unredact(mergedData.data, decryptedData);
