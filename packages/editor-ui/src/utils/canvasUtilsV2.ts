@@ -1,7 +1,6 @@
 import type { IConnections, INodeTypeDescription } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import type { CanvasConnection, CanvasConnectionPortType, CanvasConnectionPort } from '@/types';
-import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 
 export function mapLegacyConnections(
 	legacyConnections: IConnections,
@@ -9,30 +8,34 @@ export function mapLegacyConnections(
 ): CanvasConnection[] {
 	const mappedConnections: CanvasConnection[] = [];
 
+	console.log(legacyConnections);
+
 	Object.keys(legacyConnections).forEach((fromNodeName) => {
 		const fromId = nodes.find((node) => node.name === fromNodeName)?.id;
+		const fromConnectionTypes = Object.keys(legacyConnections[fromNodeName]);
 
-		Object.keys(legacyConnections[fromNodeName]).forEach((fromConnectionType) => {
-			legacyConnections[fromNodeName][fromConnectionType].forEach((portTargets, fromPort) => {
-				portTargets.forEach((portTarget) => {
-					const toId = nodes.find((node) => node.name === portTarget.node)?.id;
-					const toPort = portTarget.index;
-					const toConnectionType = portTarget.type;
+		fromConnectionTypes.forEach((fromConnectionType) => {
+			const fromPorts = legacyConnections[fromNodeName][fromConnectionType];
+			fromPorts.forEach((toPorts, fromIndex) => {
+				toPorts.forEach((toPort) => {
+					const toId = nodes.find((node) => node.name === toPort.node)?.id;
+					const toConnectionType = toPort.type;
+					const toIndex = toPort.index;
 
 					if (fromId && toId) {
 						mappedConnections.push({
-							id: `[${fromId}/${fromConnectionType}/${fromPort}][${toId}/${toConnectionType}/${toPort}]`,
+							id: `[${fromId}/${fromConnectionType}/${fromIndex}][${toId}/${toConnectionType}/${toIndex}]`,
 							source: fromId,
 							target: toId,
-							sourceHandle: `outputs/${fromConnectionType}/${fromPort}`,
-							targetHandle: `inputs/${toConnectionType}/${toPort}`,
+							sourceHandle: `outputs/${fromConnectionType}/${fromIndex}`,
+							targetHandle: `inputs/${toConnectionType}/${toIndex}`,
 							data: {
 								source: {
-									index: fromPort,
+									index: fromIndex,
 									type: fromConnectionType as CanvasConnectionPortType,
 								},
 								target: {
-									index: toPort,
+									index: toIndex,
 									type: toConnectionType as CanvasConnectionPortType,
 								},
 							},
@@ -54,19 +57,18 @@ export function normalizeElementEndpoints(
 		return [];
 	}
 
-	return endpoints.map((endpoint, index) => {
-		if (typeof endpoint === 'string') {
-			const port = endpoints.slice(0, index).filter((e) => e === endpoint).length;
-			return {
-				type: endpoint,
-				index: port,
-			};
-		} else {
-			return {
-				type: endpoint.type,
-				index: 0,
-				...(endpoint.required ? { required: endpoint.required } : {}),
-			};
-		}
+	return endpoints.map((endpoint, endpointIndex) => {
+		const type = typeof endpoint === 'string' ? endpoint : endpoint.type;
+		const index =
+			endpoints
+				.slice(0, endpointIndex + 1)
+				.filter((e) => (typeof e === 'string' ? e : e.type) === type).length - 1;
+		const required = typeof endpoint === 'string' ? false : endpoint.required;
+
+		return {
+			type,
+			index,
+			...(required ? { required } : {}),
+		};
 	});
 }

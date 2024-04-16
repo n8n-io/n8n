@@ -1,11 +1,12 @@
 <script lang="ts" setup>
 import type { CanvasConnection, CanvasElement } from '@/types';
-import type { EdgeChange, NodeChange, PanelPositionType } from '@vue-flow/core';
-import { useVueFlow, VueFlow } from '@vue-flow/core';
+import type { EdgeChange, NodeChange } from '@vue-flow/core';
+import { useVueFlow, VueFlow, PanelPosition } from '@vue-flow/core';
 import { Background } from '@vue-flow/background';
-import { ControlButton, Controls } from '@vue-flow/controls';
+import { Controls } from '@vue-flow/controls';
 import { MiniMap } from '@vue-flow/minimap';
-import CanvasNode from './elements/CanvasNode.vue';
+import CanvasNode from './elements/nodes/CanvasNode.vue';
+import CanvasEdge from './elements/edges/CanvasEdge.vue';
 import { useCssModule } from 'vue';
 
 const $style = useCssModule();
@@ -14,16 +15,16 @@ const $emit = defineEmits(['update:modelValue']);
 
 const props = withDefaults(
 	defineProps<{
-		id: string;
+		id?: string;
 		elements: CanvasElement[];
 		connections: CanvasConnection[];
-		controlsPosition: PanelPositionType;
+		controlsPosition?: PanelPosition;
 	}>(),
 	{
 		id: 'canvas',
 		elements: () => [],
 		connections: () => [],
-		controlsPosition: 'bottom-left',
+		controlsPosition: PanelPosition.BottomLeft,
 	},
 );
 
@@ -59,14 +60,13 @@ function onConnectionsChange(e: EdgeChange[]) {
 				<CanvasNode v-bind="canvasNodeProps" />
 			</template>
 
-			<!--			&lt;!&ndash; bind your custom edge type to a component by using slots, slot names are always `edge-<type>` &ndash;&gt;-->
-			<!--			<template #edge-special="specialEdgeProps">-->
-			<!--				<SpecialEdge v-bind="specialEdgeProps" />-->
-			<!--			</template>-->
+			<template #edge-canvas-edge="canvasEdgeProps">
+				<CanvasEdge v-bind="canvasEdgeProps" />
+			</template>
 
 			<Background pattern-color="#aaa" :gap="16" />
 
-			<MiniMap />
+			<MiniMap pannable />
 
 			<Controls :class="$style.canvasControls" :position="controlsPosition"></Controls>
 		</VueFlow>

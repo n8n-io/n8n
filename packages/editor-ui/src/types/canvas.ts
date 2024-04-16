@@ -24,6 +24,7 @@ export interface CanvasElementData {
 	typeVersion: INodeUi['typeVersion'];
 	inputs: CanvasConnectionPort[];
 	outputs: CanvasConnectionPort[];
+	renderType: 'default' | 'trigger' | 'configuration' | 'configurable';
 }
 
 export type CanvasElement = Node<CanvasElementData>;

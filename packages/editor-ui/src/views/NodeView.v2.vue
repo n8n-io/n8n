@@ -19,9 +19,18 @@ const workflowId = computed<string>(() => route.params.workflowId as string);
 const workflow = computed(() => workflowsStoreV2.workflowsById[workflowId.value]);
 const workflowObject = computed(() => workflowsStoreV2.getWorkflowObject(workflowId.value));
 
-const connections = computed<CanvasConnection[]>(() =>
-	mapLegacyConnections(workflow.value?.connections ?? [], workflow.value?.nodes ?? []),
-);
+const connections = computed<CanvasConnection[]>(() => {
+	const mappedConnections = mapLegacyConnections(
+		workflow.value?.connections ?? [],
+		workflow.value?.nodes ?? [],
+	);
+
+	return mappedConnections.map((connection) => ({
+		...connection,
+		type: 'canvas-edge',
+		updatable: true,
+	}));
+});
 
 const elements = computed<CanvasElement[]>(() => [
 	...workflow.value?.nodes.map<CanvasElement>((node) => {
@@ -50,11 +59,25 @@ const elements = computed<CanvasElement[]>(() => [
 					)
 				: [];
 
+		let renderType: CanvasElementData['renderType'] = 'default';
+		switch (true) {
+			case nodeTypesStore.isTriggerNode(node.type):
+				renderType = 'trigger';
+				break;
+			case nodeTypesStore.isConfigNode(workflowObject.value, node, node.type):
+				renderType = 'configuration';
+				break;
+			case nodeTypesStore.isConfigurableNode(workflowObject.value, node, node.type):
+				renderType = 'configurable';
+				break;
+		}
+
 		const data: CanvasElementData = {
 			type: node.type,
 			typeVersion: node.typeVersion,
 			inputs,
 			outputs,
+			renderType,
 		};
 
 		return {
