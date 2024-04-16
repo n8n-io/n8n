@@ -88,23 +88,29 @@ export class ActiveWorkflowRunner {
 
 		if (config.getEnv('executions.maxMemory') > 0) {
 			console.log('Memory watcher enabled');
-			setInterval(async () => await this.memoryWatcher(), 1);
+			await this.memoryWatcher();
 		}
 	}
 
 	async memoryWatcher() {
-		const execs = this.activeExecutions.getActiveExecutions();
-		const rss = process.memoryUsage.rss();
+		try {
+			const execs = this.activeExecutions.getActiveExecutions();
+			const rss = process.memoryUsage.rss();
 
-		if (execs.length > 0) {
-			console.log(rss);
-		}
-
-		if (rss > config.getEnv('executions.maxMemory')) {
-			console.log('Killing executions');
-			for (const exec of execs) {
-				await this.activeExecutions.stopExecution(exec.id);
+			if (rss > config.getEnv('executions.maxMemory')) {
+				for (const exec of execs) {
+					if (exec.status === 'running') {
+						console.log(
+							`OOMWatch Near memory limit: Killing execution ${exec.id} (workflow: ${exec.workflowId})`,
+						);
+						await this.activeExecutions.stopExecution(exec.id);
+					}
+				}
 			}
+		} catch {
+			// noop
+		} finally {
+			setImmediate(async () => await this.memoryWatcher());
 		}
 	}
 
