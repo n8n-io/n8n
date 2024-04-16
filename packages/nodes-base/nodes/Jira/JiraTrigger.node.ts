@@ -487,7 +487,7 @@ export class JiraTrigger implements INodeType {
 			let httpQueryAuth: ICredentialDataDecryptedObject | undefined;
 
 			try {
-				httpQueryAuth = await this.getCredentials('httpQueryAuth');
+				httpQueryAuth = await this.getCredentials<ICredentialDataDecryptedObject>('httpQueryAuth');
 			} catch (error) {}
 
 			if (httpQueryAuth === undefined || !httpQueryAuth.name || !httpQueryAuth.value) {

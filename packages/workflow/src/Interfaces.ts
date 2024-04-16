@@ -690,7 +690,7 @@ export interface IExecuteWorkflowInfo {
 
 export type ICredentialTestFunction = (
 	this: ICredentialTestFunctions,
-	credential: ICredentialsDecrypted,
+	credential: ICredentialsDecrypted<ICredentialDataDecryptedObject>,
 ) => Promise<INodeCredentialTestResult>;
 
 export interface ICredentialTestFunctions {

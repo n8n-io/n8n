@@ -14,7 +14,7 @@ export async function validateAuth(context: IWebhookFunctions) {
 		// Basic authorization is needed to call webhook
 		let expectedAuth: ICredentialDataDecryptedObject | undefined;
 		try {
-			expectedAuth = await context.getCredentials('httpBasicAuth');
+			expectedAuth = await context.getCredentials<ICredentialDataDecryptedObject>('httpBasicAuth');
 		} catch {}
 
 		if (expectedAuth === undefined || !expectedAuth.user || !expectedAuth.password) {

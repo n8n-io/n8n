@@ -7,13 +7,14 @@ import type {
 import { Client } from 'ssh2';
 import { configurePostgres } from '../transport';
 
-import type { PgpClient, PostgresNodeCredentials } from '../helpers/interfaces';
+import type { PgpClient } from '../helpers/interfaces';
+import type { PostgresCredentialType } from '../../../../credentials/Postgres.credentials';
 
 export async function postgresConnectionTest(
 	this: ICredentialTestFunctions,
 	credential: ICredentialsDecrypted,
 ): Promise<INodeCredentialTestResult> {
-	const credentials = credential.data as PostgresNodeCredentials;
+	const credentials = credential.data as PostgresCredentialType;
 
 	let sshClientCreated: Client | undefined = new Client();
 	let pgpClientCreated: PgpClient | undefined;
