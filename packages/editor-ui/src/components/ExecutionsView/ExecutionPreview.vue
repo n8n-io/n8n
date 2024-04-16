@@ -79,14 +79,7 @@
 				</n8n-text>
 			</div>
 			<div>
-				<n8n-button
-					size="medium"
-					:type="debugButtonData.type"
-					:class="{
-						[$style.debugLink]: true,
-						[$style.secondary]: debugButtonData.type === 'secondary',
-					}"
-				>
+				<n8n-button size="medium" :type="debugButtonData.type" :class="$style.debugLink">
 					<router-link
 						:to="{
 							name: VIEWS.EXECUTION_DEBUG,
@@ -103,7 +96,7 @@
 				</n8n-button>
 
 				<ElDropdown
-					v-if="executionUIDetails?.name === 'error'"
+					v-if="isRetriable"
 					ref="retryDropdown"
 					trigger="click"
 					class="mr-xs"
@@ -191,11 +184,14 @@ export default defineComponent({
 				? {
 						text: this.$locale.baseText('executionsList.debug.button.copyToEditor'),
 						type: 'secondary',
-				  }
+					}
 				: {
 						text: this.$locale.baseText('executionsList.debug.button.debugInEditor'),
 						type: 'primary',
-				  };
+					};
+		},
+		isRetriable(): boolean {
+			return !!this.activeExecution && this.isExecutionRetriable(this.activeExecution);
 		},
 	},
 	methods: {
@@ -297,7 +293,13 @@ export default defineComponent({
 }
 
 .debugLink {
-	height: 42px;
 	margin-right: var(--spacing-xs);
+	padding: 0;
+
+	a > span {
+		display: block;
+		padding: var(--button-padding-vertical, var(--spacing-xs))
+			var(--button-padding-horizontal, var(--spacing-m));
+	}
 }
 </style>

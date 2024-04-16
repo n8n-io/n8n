@@ -31,7 +31,7 @@ export class InstalledPackagesRepository extends Repository<InstalledPackages> {
 
 			installedPackage.installedNodes = [];
 
-			return loadedNodes.map(async (loadedNode) => {
+			for (const loadedNode of loadedNodes) {
 				const installedNode = this.installedNodesRepository.create({
 					name: nodeTypes[loadedNode.name].type.description.displayName,
 					type: loadedNode.name,
@@ -41,8 +41,8 @@ export class InstalledPackagesRepository extends Repository<InstalledPackages> {
 
 				installedPackage.installedNodes.push(installedNode);
 
-				return await manager.save(installedNode);
-			});
+				await manager.save(installedNode);
+			}
 		});
 
 		return installedPackage!;

@@ -29,7 +29,7 @@
 					multiple
 					filterable
 					:class="$style['type-input']"
-					@update:modelValue="setKeyValue('type', $event)"
+					@update:model-value="setKeyValue('type', $event)"
 				>
 					<n8n-option
 						v-for="credentialType in allCredentialTypes"

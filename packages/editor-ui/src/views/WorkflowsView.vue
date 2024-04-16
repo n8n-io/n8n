@@ -85,8 +85,8 @@
 				</div>
 				<div v-if="!readOnlyEnv" :class="['text-center', 'mt-2xl', $style.actionsContainer]">
 					<a
-						v-if="userCloudAccount?.role === 'Sales'"
-						:href="getTemplateRepositoryURL('Sales')"
+						v-if="isSalesUser"
+						:href="getTemplateRepositoryURL()"
 						:class="$style.emptyStateCard"
 						target="_blank"
 					>
@@ -95,7 +95,7 @@
 							data-test-id="browse-sales-templates-card"
 							@click="trackCategoryLinkClick('Sales')"
 						>
-							<n8n-icon :class="$style.emptyStateCardIcon" icon="hand-holding-usd" />
+							<n8n-icon :class="$style.emptyStateCardIcon" icon="handshake" />
 							<n8n-text size="large" class="mt-xs" color="text-base">
 								{{
 									$locale.baseText('workflows.empty.browseTemplates', {
@@ -132,7 +132,7 @@
 					:placeholder="$locale.baseText('workflowOpen.filterWorkflows')"
 					:model-value="filters.tags"
 					:create-enabled="false"
-					@update:modelValue="setKeyValue('tags', $event)"
+					@update:model-value="setKeyValue('tags', $event)"
 				/>
 			</div>
 			<div class="mb-s">
@@ -146,7 +146,7 @@
 				<n8n-select
 					data-test-id="status-dropdown"
 					:model-value="filters.status"
-					@update:modelValue="setKeyValue('status', $event)"
+					@update:model-value="setKeyValue('status', $event)"
 				>
 					<n8n-option
 						v-for="option in statusFilterOptions"
@@ -261,8 +261,14 @@ const WorkflowsView = defineComponent({
 		suggestedTemplates() {
 			return this.uiStore.suggestedTemplates;
 		},
-		userCloudAccount() {
-			return this.usersStore.currentUserCloudInfo;
+		userRole() {
+			const userRole: string | undefined =
+				this.usersStore.currentUserCloudInfo?.role ??
+				this.usersStore.currentUser?.personalizationAnswers?.role;
+			return userRole;
+		},
+		isSalesUser() {
+			return ['Sales', 'sales-and-marketing'].includes(this.userRole);
 		},
 	},
 	watch: {
@@ -299,8 +305,8 @@ const WorkflowsView = defineComponent({
 				source: 'Workflows list',
 			});
 		},
-		getTemplateRepositoryURL(category: string) {
-			return this.templatesStore.getWebsiteCategoryURL(category);
+		getTemplateRepositoryURL() {
+			return this.templatesStore.websiteTemplateRepositoryURL;
 		},
 		trackCategoryLinkClick(category: string) {
 			this.$telemetry.track(`User clicked Browse ${category} Templates`, {
@@ -329,13 +335,12 @@ const WorkflowsView = defineComponent({
 			if (this.settingsStore.areTagsEnabled && filters.tags.length > 0) {
 				matches =
 					matches &&
-					filters.tags.every(
-						(tag) =>
-							(resource.tags as ITag[])?.find((resourceTag) =>
-								typeof resourceTag === 'object'
-									? `${resourceTag.id}` === `${tag}`
-									: `${resourceTag}` === `${tag}`,
-							),
+					filters.tags.every((tag) =>
+						(resource.tags as ITag[])?.find((resourceTag) =>
+							typeof resourceTag === 'object'
+								? `${resourceTag.id}` === `${tag}`
+								: `${resourceTag}` === `${tag}`,
+						),
 					);
 			}
 

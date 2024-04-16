@@ -32,7 +32,7 @@
 				<AskAI
 					:key="activeTab"
 					:has-changes="hasChanges"
-					@replaceCode="onReplaceCode"
+					@replace-code="onReplaceCode"
 					@started-loading="isLoadingAIResponse = true"
 					@finished-loading="isLoadingAIResponse = false"
 				/>

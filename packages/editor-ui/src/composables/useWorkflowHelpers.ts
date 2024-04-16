@@ -197,7 +197,12 @@ export function resolveParameter(
 	) {
 		runIndexCurrent = workflowRunData[contextNode!.name].length - 1;
 	}
-	const _executeData = executeData(parentNode, contextNode!.name, inputName, runIndexCurrent);
+	let _executeData = executeData(parentNode, contextNode!.name, inputName, runIndexCurrent);
+
+	if (!_executeData.source) {
+		// fallback to parent's run index for multi-output case
+		_executeData = executeData(parentNode, contextNode!.name, inputName, runIndexParent);
+	}
 
 	ExpressionEvaluatorProxy.setEvaluator(
 		useSettingsStore().settings.expressions?.evaluator ?? 'tmpl',
@@ -515,7 +520,7 @@ export function useWorkflowHelpers(options: { router: ReturnType<typeof useRoute
 		return count;
 	}
 
-	// Checks if everything in the workflow is complete and ready to be executed
+	/** Checks if everything in the workflow is complete and ready to be executed */
 	function checkReadyForExecution(workflow: Workflow, lastNodeName?: string) {
 		let node: INode;
 		let nodeType: INodeType | undefined;

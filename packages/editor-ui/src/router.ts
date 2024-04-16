@@ -1,5 +1,3 @@
-import { useStorage } from '@/composables/useStorage';
-
 import type {
 	NavigationGuardNext,
 	RouteLocation,
@@ -59,7 +57,6 @@ const SignoutView = async () => await import('@/views/SignoutView.vue');
 const SamlOnboarding = async () => await import('@/views/SamlOnboarding.vue');
 const SettingsSourceControl = async () => await import('./views/SettingsSourceControl.vue');
 const SettingsExternalSecrets = async () => await import('./views/SettingsExternalSecrets.vue');
-const SettingsAuditLogs = async () => await import('./views/SettingsAuditLogs.vue');
 const WorkerView = async () => await import('./views/WorkerView.vue');
 const WorkflowHistory = async () => await import('@/views/WorkflowHistory.vue');
 const WorkflowOnboardingView = async () => await import('@/views/WorkflowOnboardingView.vue');
@@ -187,7 +184,7 @@ export const routes = [
 		beforeEnter: (_to, _from, next) => {
 			const templatesStore = useTemplatesStore();
 			if (!templatesStore.hasCustomTemplatesHost) {
-				window.location.href = templatesStore.getWebsiteTemplateRepositoryURL;
+				window.location.href = templatesStore.websiteTemplateRepositoryURL;
 			} else {
 				next();
 			}
@@ -481,10 +478,7 @@ export const routes = [
 					middlewareOptions: {
 						custom: () => {
 							const settingsStore = useSettingsStore();
-							return !(
-								settingsStore.settings.hideUsagePage ||
-								settingsStore.settings.deployment?.type === 'cloud'
-							);
+							return !settingsStore.settings.hideUsagePage;
 						},
 					},
 					telemetry: {
@@ -708,32 +702,6 @@ export const routes = [
 					middlewareOptions: {
 						rbac: {
 							scope: 'ldap:manage',
-						},
-					},
-				},
-			},
-			{
-				path: 'audit-logs',
-				name: VIEWS.AUDIT_LOGS,
-				components: {
-					settingsView: SettingsAuditLogs,
-				},
-				meta: {
-					middleware: ['authenticated', 'rbac', 'custom'],
-					middlewareOptions: {
-						custom: () => {
-							return !!useStorage('audit-logs').value;
-						},
-						rbac: {
-							scope: 'auditLogs:manage',
-						},
-					},
-					telemetry: {
-						pageCategory: 'settings',
-						getProperties(route: RouteLocation) {
-							return {
-								feature: 'audit-logs',
-							};
 						},
 					},
 				},

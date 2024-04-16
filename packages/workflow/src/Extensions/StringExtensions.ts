@@ -313,7 +313,7 @@ function toSentenceCase(value: string) {
 		const charIndex = current.search(CHAR_TEST_REGEXP);
 		current =
 			current.slice(0, charIndex) +
-			current[charIndex]!.toLocaleUpperCase() +
+			current[charIndex].toLocaleUpperCase() +
 			current.slice(charIndex + 1).toLocaleLowerCase();
 		const puncIndex = current.search(PUNC_TEST_REGEXP);
 		if (puncIndex === -1) {
@@ -382,7 +382,10 @@ function parseJson(value: string): unknown {
 	try {
 		return JSON.parse(value);
 	} catch (error) {
-		return undefined;
+		if (value.includes("'")) {
+			throw new ExpressionExtensionError("Parsing failed. Check you're using double quotes");
+		}
+		throw new ExpressionExtensionError('Parsing failed');
 	}
 }
 

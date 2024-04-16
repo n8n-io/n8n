@@ -260,7 +260,7 @@ export default defineComponent({
 			return this.ndvStore.focusedMappableInput;
 		},
 		highlight(): boolean {
-			return !this.ndvStore.isMappingOnboarded && Boolean(this.ndvStore.focusedMappableInput);
+			return this.ndvStore.highlightDraggables;
 		},
 	},
 	methods: {

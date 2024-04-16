@@ -22,7 +22,7 @@
 						<VariableSelector
 							:path="path"
 							:redact-values="redactValues"
-							@itemSelected="itemSelected"
+							@item-selected="itemSelected"
 						></VariableSelector>
 					</div>
 				</el-col>
@@ -177,7 +177,7 @@ export default defineComponent({
 					this.segments,
 					this.modelValue,
 					this.workflowsStore.workflowId,
-					this.ndvStore.sessionId,
+					this.ndvStore.pushRef,
 					this.ndvStore.activeNode?.type ?? '',
 				);
 

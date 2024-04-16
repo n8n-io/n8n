@@ -30,6 +30,7 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import Container from 'typedi';
 import type { Agent } from 'https';
+import toPlainObject from 'lodash/toPlainObject';
 
 const temporaryDir = mkdtempSync(join(tmpdir(), 'n8n'));
 
@@ -242,6 +243,16 @@ describe('NodeExecuteFunctions', () => {
 			hooks.executeHookFunctions.mockClear();
 		});
 
+		test('should rethrow an error with `status` property', async () => {
+			nock(baseUrl).get('/test').reply(400);
+
+			try {
+				await proxyRequestToAxios(workflow, additionalData, node, `${baseUrl}/test`);
+			} catch (error) {
+				expect(error.status).toEqual(400);
+			}
+		});
+
 		test('should not throw if the response status is 200', async () => {
 			nock(baseUrl).get('/test').reply(200);
 			await proxyRequestToAxios(workflow, additionalData, node, `${baseUrl}/test`);
@@ -420,6 +431,16 @@ describe('NodeExecuteFunctions', () => {
 	describe('cleanupParameterData', () => {
 		it('should stringify Luxon dates in-place', () => {
 			const input = { x: 1, y: DateTime.now() as unknown as NodeParameterValue };
+			expect(typeof input.y).toBe('object');
+			cleanupParameterData(input);
+			expect(typeof input.y).toBe('string');
+		});
+
+		it('should stringify plain Luxon dates in-place', () => {
+			const input = {
+				x: 1,
+				y: toPlainObject(DateTime.now()),
+			};
 			expect(typeof input.y).toBe('object');
 			cleanupParameterData(input);
 			expect(typeof input.y).toBe('string');

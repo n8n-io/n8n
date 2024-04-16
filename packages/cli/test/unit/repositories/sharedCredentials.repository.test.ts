@@ -1,21 +1,16 @@
 import { Container } from 'typedi';
-import { DataSource, EntityManager, type EntityMetadata } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
+import { hasScope } from '@n8n/permissions';
+
 import type { User } from '@db/entities/User';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
-import { mockInstance } from '../../shared/mocking';
 import { memberPermissions, ownerPermissions } from '@/permissions/roles';
-import { hasScope } from '@n8n/permissions';
+import { mockEntityManager } from '../../shared/mocking';
 
 describe('SharedCredentialsRepository', () => {
-	const entityManager = mockInstance(EntityManager);
-	const dataSource = mockInstance(DataSource, {
-		manager: entityManager,
-		getMetadata: () => mock<EntityMetadata>({ target: SharedCredentials }),
-	});
-	Object.assign(entityManager, { connection: dataSource });
+	const entityManager = mockEntityManager(SharedCredentials);
 	const repository = Container.get(SharedCredentialsRepository);
 
 	describe('findCredentialForUser', () => {

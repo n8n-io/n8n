@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "1.33.0",
+  "version": "1.37.0",
   "description": "n8n Workflow Automation Tool",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -61,6 +61,7 @@
   ],
   "devDependencies": {
     "@redocly/cli": "^1.6.0",
+    "@types/aws4": "^1.5.1",
     "@types/basic-auth": "^1.1.3",
     "@types/bcryptjs": "^2.4.2",
     "@types/compression": "1.0.1",
@@ -90,7 +91,7 @@
     "ts-essentials": "^7.0.3"
   },
   "dependencies": {
-    "@langchain/community": "0.0.34",
+    "@langchain/community": "0.0.44",
     "@langchain/core": "0.1.41",
     "@langchain/openai": "0.0.16",
     "@n8n/client-oauth2": "workspace:*",
@@ -103,6 +104,7 @@
     "@rudderstack/rudder-sdk-node": "2.0.7",
     "@sentry/integrations": "7.87.0",
     "@sentry/node": "7.87.0",
+    "aws4": "1.11.0",
     "axios": "1.6.7",
     "basic-auth": "2.0.1",
     "bcryptjs": "2.4.3",
@@ -119,10 +121,10 @@
     "csrf": "3.1.0",
     "curlconverter": "3.21.0",
     "dotenv": "8.6.0",
-    "express": "4.18.3",
+    "express": "4.19.2",
     "express-async-errors": "3.1.1",
     "express-handlebars": "7.1.2",
-    "express-openapi-validator": "4.13.8",
+    "express-openapi-validator": "5.1.6",
     "express-prom-bundle": "6.6.0",
     "express-rate-limit": "7.2.0",
     "fast-glob": "3.2.12",

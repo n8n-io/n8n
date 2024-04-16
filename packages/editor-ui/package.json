@@ -1,6 +1,6 @@
 {
   "name": "n8n-editor-ui",
-  "version": "1.33.0",
+  "version": "1.37.0",
   "description": "Workflow Editor UI for n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -50,7 +50,7 @@
     "axios": "1.6.7",
     "chart.js": "^4.4.0",
     "codemirror-lang-html-n8n": "^1.0.0",
-    "codemirror-lang-n8n-expression": "^0.2.0",
+    "codemirror-lang-n8n-expression": "^0.3.0",
     "dateformat": "^3.0.3",
     "email-providers": "^2.0.1",
     "esprima-next": "5.8.4",

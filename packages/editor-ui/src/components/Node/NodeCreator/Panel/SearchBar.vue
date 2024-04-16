@@ -130,7 +130,7 @@ defineExpose({
 }
 
 .clear {
-	background-color: $node-creator-search-clear-color;
+	background-color: transparent;
 	padding: 0;
 	border: none;
 	cursor: pointer;

@@ -4,7 +4,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Container, Service } from 'typedi';
-import assert from 'assert';
 import { exec as callbackExec } from 'child_process';
 import { access as fsAccess } from 'fs/promises';
 import { join as pathJoin } from 'path';
@@ -34,7 +33,7 @@ import {
 	TEMPLATES_DIR,
 } from '@/constants';
 import { CredentialsController } from '@/credentials/credentials.controller';
-import type { CurlHelper } from '@/requests';
+import type { APIRequest, CurlHelper } from '@/requests';
 import { registerController } from '@/decorators';
 import { AuthController } from '@/controllers/auth.controller';
 import { BinaryDataController } from '@/controllers/binaryData.controller';
@@ -224,22 +223,6 @@ export class Server extends AbstractServer {
 		await Container.get(PostHogClient).init();
 
 		const publicApiEndpoint = config.getEnv('publicApi.path');
-		const excludeEndpoints = config.getEnv('security.excludeEndpoints');
-
-		const ignoredEndpoints: Readonly<string[]> = [
-			'assets',
-			'healthz',
-			'metrics',
-			'e2e',
-			this.endpointPresetCredentials,
-			isApiEnabled() ? '' : publicApiEndpoint,
-			...excludeEndpoints.split(':'),
-		].filter((u) => !!u);
-
-		assert(
-			!ignoredEndpoints.includes(this.restEndpoint),
-			`REST endpoint cannot be set to any of these values: ${ignoredEndpoints.join()} `,
-		);
 
 		// ----------------------------------------
 		// Public API
@@ -252,21 +235,38 @@ export class Server extends AbstractServer {
 				frontendService.settings.publicApi.latestVersion = apiLatestVersion;
 			}
 		}
+
+		// Extract BrowserId from headers
+		this.app.use((req: APIRequest, _, next) => {
+			req.browserId = req.headers['browser-id'] as string;
+			next();
+		});
+
 		// Parse cookies for easier access
 		this.app.use(cookieParser());
 
 		const { restEndpoint, app } = this;
 		setupPushHandler(restEndpoint, app);
 
+		const nonUIRoutes: Readonly<string[]> = [
+			'assets',
+			'healthz',
+			'metrics',
+			'e2e',
+			this.restEndpoint,
+			this.endpointPresetCredentials,
+			isApiEnabled() ? '' : publicApiEndpoint,
+			...config.getEnv('endpoints.additionalNonUIRoutes').split(':'),
+		].filter((u) => !!u);
+		const nonUIRoutesRegex = new RegExp(`^/(${nonUIRoutes.join('|')})/?.*$`);
+
 		// Make sure that Vue history mode works properly
 		this.app.use(
 			history({
 				rewrites: [
 					{
-						from: new RegExp(`^/(${[this.restEndpoint, ...ignoredEndpoints].join('|')})/?.*$`),
-						to: (context) => {
-							return context.parsedUrl.pathname!.toString();
-						},
+						from: nonUIRoutesRegex,
+						to: ({ parsedUrl }) => parsedUrl.pathname!.toString(),
 					},
 				],
 			}),
@@ -338,7 +338,7 @@ export class Server extends AbstractServer {
 				`/${this.restEndpoint}/settings`,
 				ResponseHelper.send(
 					async (req: express.Request): Promise<IN8nUISettings> =>
-						frontendService.getSettings(req.headers.sessionid as string),
+						frontendService.getSettings(req.headers['push-ref'] as string),
 				),
 			);
 		}

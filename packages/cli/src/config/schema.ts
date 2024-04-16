@@ -590,12 +590,6 @@ export const schema = {
 				env: 'N8N_SECURITY_AUDIT_DAYS_ABANDONED_WORKFLOW',
 			},
 		},
-		excludeEndpoints: {
-			doc: 'Additional endpoints to exclude auth checks. Multiple endpoints can be separated by colon (":")',
-			format: String,
-			default: '',
-			env: 'N8N_AUTH_EXCLUDE_ENDPOINTS',
-		},
 	},
 
 	endpoints: {
@@ -732,6 +726,12 @@ export const schema = {
 			default: false,
 			env: 'N8N_DISABLE_PRODUCTION_MAIN_PROCESS',
 			doc: 'Disable production webhooks from main process. This helps ensures no http traffic load to main process when using webhook-specific processes.',
+		},
+		additionalNonUIRoutes: {
+			doc: 'Additional endpoints to not open the UI on. Multiple endpoints can be separated by colon (":")',
+			format: String,
+			default: '',
+			env: 'N8N_ADDITIONAL_NON_UI_ROUTES',
 		},
 	},
 

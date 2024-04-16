@@ -13,7 +13,7 @@
 				@mousedown="onMouseDown"
 				@mouseup="onMouseUp"
 			>
-				<NodesListPanel @nodeTypeSelected="onNodeTypeSelected" />
+				<NodesListPanel @node-type-selected="onNodeTypeSelected" />
 			</div>
 		</SlideTransition>
 	</div>

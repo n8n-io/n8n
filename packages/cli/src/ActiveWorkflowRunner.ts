@@ -1,6 +1,5 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+
 import { Service } from 'typedi';
 import { ActiveWorkflows, NodeExecuteFunctions } from 'n8n-core';
 
@@ -211,6 +210,7 @@ export class ActiveWorkflowRunner {
 					error = new WebhookPathTakenError(webhook.node, error);
 				} else if (error.detail) {
 					// it's a error running the webhook methods (checkExists, create)
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					error.message = error.detail;
 				}
 
@@ -400,7 +400,7 @@ export class ActiveWorkflowRunner {
 		error: ExecutionError,
 		workflowData: IWorkflowBase,
 		mode: WorkflowExecuteMode,
-	): void {
+	) {
 		const fullRunData: IRun = {
 			data: {
 				resultData: {
@@ -465,6 +465,7 @@ export class ActiveWorkflowRunner {
 				this.executeErrorWorkflow(error, dbWorkflow, 'internal');
 
 				// do not keep trying to activate on authorization error
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 				if (error.message.includes('Authorization')) continue;
 
 				this.addQueuedWorkflowActivation('init', dbWorkflow);
@@ -629,7 +630,10 @@ export class ActiveWorkflowRunner {
 	 * Meaning it will keep on trying to activate it in regular
 	 * amounts indefinitely.
 	 */
-	addQueuedWorkflowActivation(activationMode: WorkflowActivateMode, workflowData: WorkflowEntity) {
+	private addQueuedWorkflowActivation(
+		activationMode: WorkflowActivateMode,
+		workflowData: WorkflowEntity,
+	) {
 		const workflowId = workflowData.id;
 		const workflowName = workflowData.name;
 
@@ -685,7 +689,7 @@ export class ActiveWorkflowRunner {
 	/**
 	 * Remove a workflow from the activation queue
 	 */
-	removeQueuedWorkflowActivation(workflowId: string) {
+	private removeQueuedWorkflowActivation(workflowId: string) {
 		if (this.queuedActivations[workflowId]) {
 			clearTimeout(this.queuedActivations[workflowId].timeout);
 			delete this.queuedActivations[workflowId];

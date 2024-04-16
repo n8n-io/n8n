@@ -19,7 +19,7 @@
 							ref="nameInput"
 							:model-value="newName"
 							:maxlength="maxLength"
-							@update:modelValue="onNewNameChange"
+							@update:model-value="onNewNameChange"
 						></n8n-input>
 						<span v-else-if="scope.row.delete">
 							<span>{{ $locale.baseText('tagsTable.areYouSureYouWantToDeleteThisTag') }}</span>

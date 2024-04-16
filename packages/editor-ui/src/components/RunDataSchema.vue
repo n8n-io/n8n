@@ -35,9 +35,7 @@ const schema = computed(() => getSchemaForExecutionData(props.data));
 
 const isDataEmpty = computed(() => isEmpty(props.data));
 
-const highlight = computed(() => {
-	return !ndvStore.isMappingOnboarded && Boolean(ndvStore.focusedMappableInput);
-});
+const highlight = computed(() => ndvStore.highlightDraggables);
 
 const onDragStart = (el: HTMLElement) => {
 	if (el?.dataset?.path) {

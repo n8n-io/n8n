@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "1.33.0",
+  "version": "1.37.0",
   "private": true,
   "homepage": "https://n8n.io",
   "engines": {
@@ -26,8 +26,8 @@
     "start:tunnel": "./packages/cli/bin/n8n start --tunnel",
     "start:windows": "cd packages/cli/bin && n8n",
     "test": "turbo run test",
-    "test:backend": "pnpm --filter=!@n8n/chat --filter=!n8n-design-system --filter=!n8n-editor-ui  --filter=!n8n-nodes-base test",
-    "test:nodes": "pnpm --filter=n8n-nodes-base test",
+    "test:backend": "pnpm --filter=!@n8n/chat --filter=!n8n-design-system --filter=!n8n-editor-ui --filter=!n8n-nodes-base --filter=!@n8n/n8n-nodes-langchain test",
+    "test:nodes": "pnpm --filter=n8n-nodes-base --filter=@n8n/n8n-nodes-langchain test",
     "test:frontend": "pnpm --filter=@n8n/chat --filter=n8n-design-system --filter=n8n-editor-ui test",
     "watch": "turbo run watch --parallel",
     "webhook": "./packages/cli/bin/n8n webhook",
@@ -83,12 +83,11 @@
       "axios": "1.6.7",
       "chokidar": "3.5.2",
       "formidable": "3.5.1",
-      "ip": "2.0.1",
-      "prettier": "^3.1.0",
+      "prettier": "^3.2.5",
       "semver": "^7.5.4",
-      "tslib": "^2.6.1",
+      "tslib": "^2.6.2",
       "tsconfig-paths": "^4.2.0",
-      "typescript": "^5.3.0"
+      "typescript": "^5.4.2"
     },
     "patchedDependencies": {
       "typedi@0.10.0": "patches/typedi@0.10.0.patch",

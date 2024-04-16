@@ -18,8 +18,8 @@ export async function generateCodeForPrompt(
 		context: {
 			schema: Array<{ nodeName: string; schema: Schema }>;
 			inputSchema: { nodeName: string; schema: Schema };
-			sessionId: string;
-			ndvSessionId: string;
+			pushRef: string;
+			ndvPushRef: string;
 		};
 		model: string;
 		n8nVersion: string;

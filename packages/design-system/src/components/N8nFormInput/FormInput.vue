@@ -3,7 +3,7 @@
 		v-if="type === 'checkbox'"
 		v-bind="$props"
 		ref="inputRef"
-		@update:modelValue="onUpdateModelValue"
+		@update:model-value="onUpdateModelValue"
 		@focus="onFocus"
 	/>
 	<N8nInputLabel
@@ -20,7 +20,7 @@
 			:model-value="modelValue"
 			:active-color="activeColor"
 			:inactive-color="inactiveColor"
-			@update:modelValue="onUpdateModelValue"
+			@update:model-value="onUpdateModelValue"
 		></ElSwitch>
 	</N8nInputLabel>
 	<N8nInputLabel
@@ -42,7 +42,7 @@
 				:disabled="disabled"
 				:name="name"
 				:teleported="teleported"
-				@update:modelValue="onUpdateModelValue"
+				@update:model-value="onUpdateModelValue"
 				@focus="onFocus"
 				@blur="onBlur"
 			>
@@ -65,7 +65,7 @@
 				:maxlength="maxlength"
 				:autocomplete="autocomplete"
 				:disabled="disabled"
-				@update:modelValue="onUpdateModelValue"
+				@update:model-value="onUpdateModelValue"
 				@blur="onBlur"
 				@focus="onFocus"
 			/>

@@ -59,7 +59,7 @@ export const executionHelpers = defineComponent({
 			} else if (execution.status === 'success') {
 				status.name = 'success';
 				status.label = this.$locale.baseText('executionsList.succeeded');
-			} else if (execution.status === 'failed' || execution.status === 'crashed') {
+			} else if (execution.status === 'error' || execution.status === 'crashed') {
 				status.name = 'error';
 				status.label = this.$locale.baseText('executionsList.error');
 			}
@@ -81,6 +81,13 @@ export const executionHelpers = defineComponent({
 		formatDate(fullDate: Date | string | number) {
 			const { date, time } = convertToDisplayDate(fullDate);
 			return locale.baseText('executionsList.started', { interpolate: { time, date } });
+		},
+		isExecutionRetriable(execution: ExecutionSummary): boolean {
+			return (
+				['crashed', 'error'].includes(execution.status ?? '') &&
+				!execution.retryOf &&
+				!execution.retrySuccessId
+			);
 		},
 	},
 });
