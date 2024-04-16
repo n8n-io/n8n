@@ -21,3 +21,19 @@ export async function verifyMfaToken(
 export async function disableMfa(context: IRestApiContext): Promise<void> {
 	return await makeRestApiRequest(context, 'DELETE', '/mfa/disable');
 }
+
+export async function getChallenge(context: IRestApiContext): Promise<void> {
+	return await makeRestApiRequest(context, 'GET', '/mfa/challenge');
+}
+
+export async function registerDevice(context: IRestApiContext, data: any): Promise<void> {
+	return await makeRestApiRequest(context, 'POST', '/mfa/verify-challenge', data);
+}
+
+export async function startAuthentication(context: IRestApiContext): Promise<void> {
+	return await makeRestApiRequest(context, 'GET', '/mfa/start-authentication');
+}
+
+export async function verifyAuthentication(context: IRestApiContext, data: any): Promise<void> {
+	return await makeRestApiRequest(context, 'POST', '/mfa//verify-authentication', data);
+}

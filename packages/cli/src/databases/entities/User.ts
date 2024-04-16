@@ -98,6 +98,13 @@ export class User extends WithTimestamps implements IUser {
 	@Index({ unique: true })
 	apiKey?: string | null;
 
+	@Column({
+		type: jsonColumnType,
+		nullable: true,
+		transformer: objectRetriever,
+	})
+	securityKey: { credentialPublicKey: string; credentialID: string; counter: number } | null;
+
 	@Column({ type: Boolean, default: false })
 	mfaEnabled: boolean;
 

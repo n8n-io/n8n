@@ -2,10 +2,173 @@ import { Delete, Get, Post, RestController } from '@/decorators';
 import { AuthenticatedRequest, MFA } from '@/requests';
 import { MfaService } from '@/Mfa/mfa.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import * as SimpleWebAuthnServer from '@simplewebauthn/server';
+import { isoUint8Array } from '@simplewebauthn/server/helpers';
+
+import { Response } from 'express';
+import { UserRepository } from '@/databases/repositories/user.repository';
+import type { CredentialDeviceType } from '@simplewebauthn/server/script/deps';
+
+let challenge = '';
+
+let credentialId: Uint8Array;
+
+let credentialPublickey: Uint8Array;
+
+let credentialDevicetype: CredentialDeviceType;
+
+let credentialBackedup: boolean;
 
 @RestController('/mfa')
 export class MFAController {
-	constructor(private mfaService: MfaService) {}
+	constructor(
+		private mfaService: MfaService,
+		private userRepository: UserRepository,
+	) {}
+
+	@Get('/challenge')
+	async getChallenge(req: AuthenticatedRequest, res: Response) {
+		// const challenge = Math.random().toString(36).substring(2);
+
+		const options = await SimpleWebAuthnServer.generateRegistrationOptions({
+			rpName: 'n8n',
+			rpID: 'localhost',
+			userID: '123',
+			userName: 'ricardo123',
+			// Don't prompt users for additional information about the authenticator
+			// (Recommended for smoother UX)
+			attestationType: 'none',
+			// attestationFormat: 'fido-u2f',
+			// Prevent users from re-registering existing authenticators
+			// See "Guiding use of authenticators via authenticatorSelection" below
+			authenticatorSelection: {
+				// Defaults
+				residentKey: 'preferred',
+				userVerification: 'preferred',
+				// Optional
+				authenticatorAttachment: 'cross-platform',
+			},
+		});
+
+		challenge = options.challenge;
+
+		return options;
+	}
+
+	@Post('/verify-challenge')
+	async verifyChallenge(req: AuthenticatedRequest, res: Response) {
+		console.log('este es el session');
+		console.log(SimpleWebAuthnServer);
+
+		console.log(req.body);
+
+		// const verified = await SimpleWebAuthnServer.verifyRegistrationResponse({
+		// 	response: req.body,
+		// 	expectedChallenge: challenge,
+		// 	expectedOrigin: 'http://localhost:8080',
+		// 	// expectedRPID: 'localhost',
+		// });
+
+		const verification = await SimpleWebAuthnServer.verifyRegistrationResponse({
+			//@ts-ignore
+			response: req.body,
+			expectedChallenge: challenge,
+			expectedOrigin: 'http://localhost:8080',
+			expectedRPID: 'localhost',
+			requireUserVerification: false,
+		});
+
+		console.log(verification);
+
+		if (verification.verified && verification.registrationInfo) {
+			const {
+				credentialPublicKey,
+				credentialID,
+				counter,
+				credentialDeviceType,
+				credentialBackedUp,
+			} = verification.registrationInfo;
+			// console.log(new TextDecoder().decode(credentialID));
+			// console.log(credentialPublicKey);
+			// console.log(credentialPublicKey.toString());
+			// console.log(credentialID.toString());
+			// console.log(counter);
+
+			// console.log(isoUint8Array.toHex(credentialPublicKey));
+			// console.log(isoUint8Array.toHex(credentialID));
+			// console.log(isoUint8Array.toUTF8String(credentialID));
+			// console.log(counter);
+
+			credentialId = credentialID;
+			credentialPublickey = credentialPublicKey;
+			credentialBackedup = credentialBackedUp;
+			credentialDevicetype = credentialDeviceType;
+
+			// await this.userRepository.update(req.user.id, {
+			// 	securityKey: {
+			// 		credentialPublicKey: isoUint8Array.toHex(credentialPublicKey),
+			// 		credentialID: isoUint8Array.toHex(credentialID),
+			// 		counter,
+			// 	},
+			// });
+		}
+
+		return { verified: verification.verified };
+	}
+
+	@Get('/start-authentication', { skipAuth: true })
+	async startAuthentication(req: AuthenticatedRequest, res: Response) {
+		// const challenge = Math.random().toString(36).substring(2);
+
+		// const user = await this.userRepository.findOne({ where: {} });
+
+		const options = await SimpleWebAuthnServer.generateAuthenticationOptions({
+			rpID: 'localhost',
+			// Require users to use a previously-registered authenticator
+			allowCredentials: [
+				{
+					id: credentialId,
+					type: 'public-key',
+					transports: [],
+				},
+			],
+			userVerification: 'preferred',
+		});
+
+		challenge = options.challenge;
+
+		console.log('devolviendo challengue');
+
+		console.log(challenge);
+
+		return options;
+	}
+
+	@Post('/verify-authentication', { skipAuth: true })
+	async verifyAuthentication(req: AuthenticatedRequest, res: Response) {
+		const user = await this.userRepository.findOne({ where: {} });
+
+		const verification = await SimpleWebAuthnServer.verifyAuthenticationResponse({
+			//@ts-ignore
+			response: req.body,
+			expectedChallenge: challenge,
+			expectedOrigin: 'http://localhost:8080',
+			expectedRPID: 'localhost',
+			requireUserVerification: false,
+			authenticator: {
+				credentialID: credentialId,
+				credentialPublicKey: credentialPublickey,
+				counter: user?.securityKey?.counter ?? 0,
+			},
+		});
+
+		console.log(verification);
+
+		if (verification.verified) {
+		}
+
+		return {};
+	}
 
 	@Get('/qr')
 	async getQRCode(req: AuthenticatedRequest) {

@@ -11,7 +11,17 @@
 						: $locale.baseText('mfa.code.modal.title')
 				}}</n8n-heading>
 			</div>
-			<div :class="[$style.formContainer, reportError ? $style.formError : '']">
+			<div :class="$style.titlepapa">
+				<h2>Security key</h2>
+				<span>When you are ready, authenticate using the button below</span>
+			</div>
+			<n8n-button
+				:class="$style.usepapa"
+				label="Use Security Key"
+				size="large"
+				@click="onUseSecurityKey"
+			/>
+			<!-- <div :class="[$style.formContainer, reportError ? $style.formError : '']">
 				<n8n-form-inputs
 					v-if="formInputs"
 					data-test-id="mfa-login-form"
@@ -63,7 +73,7 @@
 					type="tertiary"
 					@click="onBackClick"
 				/>
-			</div>
+			</div> -->
 		</n8n-card>
 	</div>
 </template>
@@ -80,6 +90,7 @@ import { mapStores } from 'pinia';
 import { mfaEventBus } from '@/event-bus';
 import { defineComponent } from 'vue';
 import { useToast } from '@/composables/useToast';
+import { startAuthentication } from '@simplewebauthn/browser';
 
 export const FORM = {
 	MFA_TOKEN: 'MFA_TOKEN',
@@ -116,6 +127,13 @@ export default defineComponent({
 		...mapStores(useUsersStore),
 	},
 	methods: {
+		async onUseSecurityKey() {
+			const registrationOptions = await this.usersStore.startAuthentication();
+
+			const asseResp = await startAuthentication(registrationOptions);
+
+			await this.usersStore.verifyAuthentication(asseResp);
+		},
 		onRecoveryCodeClick() {
 			this.formError = '';
 			this.showRecoveryCodeForm = true;
@@ -232,6 +250,17 @@ body {
 
 .recoveryCodeLink {
 	text-decoration: underline;
+}
+
+.titlepapa {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 20px;
+}
+
+.usepapa {
+	margin-top: 20px;
 }
 
 .infoBox {

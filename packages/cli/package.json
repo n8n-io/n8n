@@ -104,6 +104,7 @@
     "@rudderstack/rudder-sdk-node": "2.0.7",
     "@sentry/integrations": "7.87.0",
     "@sentry/node": "7.87.0",
+    "@simplewebauthn/server": "^9.0.3",
     "aws4": "1.11.0",
     "axios": "1.6.7",
     "basic-auth": "2.0.1",

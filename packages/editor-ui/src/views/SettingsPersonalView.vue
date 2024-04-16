@@ -43,21 +43,75 @@
 					}}</n8n-link>
 				</n8n-input-label>
 			</div>
+
 			<div v-if="isMfaFeatureEnabled">
-				<div class="mb-xs">
-					<n8n-input-label :label="$locale.baseText('settings.personal.mfa.section.title')" />
-					<n8n-text :bold="false" :class="$style.infoText">
-						{{
-							mfaDisabled
-								? $locale.baseText('settings.personal.mfa.button.disabled.infobox')
-								: $locale.baseText('settings.personal.mfa.button.enabled.infobox')
-						}}
-						<n8n-link :to="mfaDocsUrl" size="small" :bold="true">
-							{{ $locale.baseText('generic.learnMore') }}
-						</n8n-link>
-					</n8n-text>
+				<n8n-input-label :label="$locale.baseText('settings.personal.mfa.section.title')" />
+
+				<div :class="$style.mfa">
+					<n8n-card>
+						<template #prepend><n8n-icon icon="mobile" size="large" /></template>
+						<template #header>
+							<div :class="$style.headerpapa">
+								<n8n-text bold="true">Authenticator app</n8n-text>
+								<n8n-badge theme="primary">configured</n8n-badge>
+							</div>
+						</template>
+						<n8n-text color="text-light" size="xsmall" class="mt-2xs mb-2xs">
+							Use an authentication app or browser extension to get two-factor authentication codes
+							when prompted.
+						</n8n-text>
+						<template #append>
+							<n8n-action-toggle
+								:actions="{
+									0: { label: 'Disable', value: 'disable' },
+									1: { label: 'Configure', value: 'configure' },
+									2: { label: 'Set as default', value: 'default' },
+									3: { label: 'Enabled', value: 'enable' },
+								}"
+								@action="(action: string) => onActionDropdownClick('totp', action)"
+						/></template>
+					</n8n-card>
+					<n8n-card>
+						<template #prepend><n8n-icon icon="user-shield" size="large" /></template>
+						<template #header>
+							<div :class="$style.headerpapa">
+								<n8n-text bold="true">Security keys</n8n-text>
+								<n8n-badge theme="primary">configured</n8n-badge>
+								<n8n-badge theme="secondary">1 key</n8n-badge>
+							</div>
+						</template>
+						<n8n-text color="text-light" size="xsmall" class="mt-2xs mb-2xs">
+							Security keys are hardware devices that can be used as your second factor of
+							authentication.
+						</n8n-text>
+						<template #append>
+							<n8n-action-toggle
+								:actions="{
+									0: { label: 'Edit', value: 'edit' },
+									1: { label: 'Set as default', value: 'default' },
+									2: { label: 'Register security key', value: 'register' },
+								}"
+								@action="(action: string) => onActionDropdownClick('securityKeys', action)"
+						/></template>
+					</n8n-card>
 				</div>
-				<n8n-button
+				<!-- <div :class="$style.list">
+					<div :class="$style.listItem">
+						<n8n-icon icon="mobile" size="xsmall" class="mr-5xs" />
+						<div :class="$style.listItemDescription">
+							<n8n-text bold="true">Authenticator app</n8n-text>
+							<p>
+								Use an authentication app or browser extension to get two-factor authentication
+								codes when prompted.
+							</p>
+						</div>
+					</div>
+					<div :class="$style.listItem">
+						<div>Security keys</div>
+					</div>
+				</div> -->
+
+				<!-- <n8n-button
 					v-if="mfaDisabled"
 					:class="$style.button"
 					type="tertiary"
@@ -72,7 +126,7 @@
 					:label="$locale.baseText('settings.personal.mfa.button.disabled')"
 					data-test-id="disable-mfa-button"
 					@click="onMfaDisableClick"
-				/>
+				/> -->
 			</div>
 		</div>
 		<div>
@@ -126,6 +180,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { mapStores } from 'pinia';
 import { defineComponent } from 'vue';
 import { createEventBus } from 'n8n-design-system/utils';
+import { startRegistration } from '@simplewebauthn/browser';
 
 export default defineComponent({
 	name: 'SettingsPersonalView',
@@ -231,6 +286,24 @@ export default defineComponent({
 		selectTheme(theme: ThemeOption) {
 			this.uiStore.setTheme(theme);
 		},
+		async onActionDropdownClick(method: string, action: string) {
+			console.log(method, action);
+			if (method === 'totp') {
+				if (action === 'disable') {
+					this.onMfaDisableClick();
+				} else if (action === 'enable') {
+					this.onMfaEnableClick();
+				}
+			} else if (method === 'securityKeys') {
+				if (action === 'register') {
+					const registrationOptions = await this.usersStore.getChallenge();
+
+					const registration = await startRegistration(registrationOptions);
+
+					await this.usersStore.registerDevice(registration);
+				}
+			}
+		},
 		onInput() {
 			this.hasAnyChanges = true;
 		},
@@ -288,6 +361,33 @@ export default defineComponent({
 </script>
 
 <style lang="scss" module>
+.headerpapa {
+	display: flex;
+	gap: 5px;
+}
+
+.list {
+	display: flex;
+	flex-direction: column;
+}
+
+.listItem {
+	display: flex;
+	flex-direction: row;
+	// background-color: white;
+}
+
+.mfa {
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+}
+
+.listItemDescription {
+	display: flex;
+	flex-direction: column;
+}
+
 .container {
 	> * {
 		margin-bottom: var(--spacing-2xl);

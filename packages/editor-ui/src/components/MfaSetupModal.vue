@@ -163,6 +163,7 @@ export default defineComponent({
 	},
 	data() {
 		return {
+			choosingMfaMethod: true,
 			modalBus: mfaEventBus,
 			MFA_SETUP_MODAL_KEY,
 			secret: '',
@@ -182,6 +183,26 @@ export default defineComponent({
 	},
 	async mounted() {
 		await this.getMfaQR();
+
+		// const username = 'rciardo';
+
+		// // Simulate the server response with registration options
+		// const registrationOptions = {
+		// 	challenge: new Uint8Array(32),
+		// 	rp: { name: 'Example Corp', domain: 'example.com' },
+		// 	user: {
+		// 		id: new TextEncoder().encode(username),
+		// 		name: username,
+		// 		displayName: username,
+		// 	},
+		// 	pubKeyCredParams: [{ type: 'public-key', alg: -7 }],
+		// };
+
+		// // Use the WebAuthn API to create a new credential
+		// const credential = await navigator.credentials.create({ publicKey: registrationOptions });
+
+		// // Simulate sending the new credential to the server for verification and storage
+		// console.log('Credential:', credential);
 	},
 	methods: {
 		closeDialog(): void {
