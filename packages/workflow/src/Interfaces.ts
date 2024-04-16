@@ -85,7 +85,7 @@ export interface IGetCredentials {
 	get(type: string, id: string | null): Promise<ICredentialsEncrypted>;
 }
 
-export abstract class ICredentials {
+export abstract class ICredentials<T extends object = ICredentialDataDecryptedObject> {
 	id?: string;
 
 	name: string;
@@ -101,11 +101,11 @@ export abstract class ICredentials {
 		this.data = data;
 	}
 
-	abstract getData(nodeType?: string): ICredentialDataDecryptedObject;
+	abstract getData(nodeType?: string): T;
 
 	abstract getDataToSave(): ICredentialsEncrypted;
 
-	abstract setData(data: ICredentialDataDecryptedObject): void;
+	abstract setData(data: T): void;
 }
 
 export interface IUser {
@@ -115,11 +115,11 @@ export interface IUser {
 	lastName: string;
 }
 
-export interface ICredentialsDecrypted {
+export interface ICredentialsDecrypted<T extends object = ICredentialDataDecryptedObject> {
 	id: string;
 	name: string;
 	type: string;
-	data?: ICredentialDataDecryptedObject;
+	data?: T;
 	ownedBy?: IUser;
 	sharedWith?: IUser[];
 }
@@ -801,7 +801,10 @@ export type NodeTypeAndVersion = {
 
 export interface FunctionsBase {
 	logger: Logger;
-	getCredentials<T = object>(type: string, itemIndex?: number): Promise<T>;
+	getCredentials<T extends object = ICredentialDataDecryptedObject>(
+		type: string,
+		itemIndex?: number,
+	): Promise<T>;
 	getExecutionId(): string;
 	getNode(): INode;
 	getWorkflow(): IWorkflowMetadata;
