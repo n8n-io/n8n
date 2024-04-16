@@ -19,6 +19,7 @@ import type { WorkflowHooks } from './WorkflowHooks';
 import type { NodeOperationError } from './errors/node-operation.error';
 import type { NodeApiError } from './errors/node-api.error';
 import type { AxiosProxyConfig } from 'axios';
+import type { CallbackManager as CallbackManagerLC } from '@langchain/core/callbacks/manager';
 
 export interface IAdditionalCredentialOptions {
 	oauth2?: IOAuth2Options;
@@ -93,26 +94,16 @@ export abstract class ICredentials {
 
 	data: string | undefined;
 
-	nodesAccess: ICredentialNodeAccess[];
-
-	constructor(
-		nodeCredentials: INodeCredentialsDetails,
-		type: string,
-		nodesAccess: ICredentialNodeAccess[],
-		data?: string,
-	) {
+	constructor(nodeCredentials: INodeCredentialsDetails, type: string, data?: string) {
 		this.id = nodeCredentials.id ?? undefined;
 		this.name = nodeCredentials.name;
 		this.type = type;
-		this.nodesAccess = nodesAccess;
 		this.data = data;
 	}
 
 	abstract getData(nodeType?: string): ICredentialDataDecryptedObject;
 
 	abstract getDataToSave(): ICredentialsEncrypted;
-
-	abstract hasNodeAccess(nodeType: string): boolean;
 
 	abstract setData(data: ICredentialDataDecryptedObject): void;
 }
@@ -124,19 +115,10 @@ export interface IUser {
 	lastName: string;
 }
 
-// Defines which nodes are allowed to access the credentials and
-// when that access got granted from which user
-export interface ICredentialNodeAccess {
-	nodeType: string;
-	user?: string;
-	date?: Date;
-}
-
 export interface ICredentialsDecrypted {
 	id: string;
 	name: string;
 	type: string;
-	nodesAccess: ICredentialNodeAccess[];
 	data?: ICredentialDataDecryptedObject;
 	ownedBy?: IUser;
 	sharedWith?: IUser[];
@@ -146,7 +128,6 @@ export interface ICredentialsEncrypted {
 	id?: string;
 	name: string;
 	type: string;
-	nodesAccess: ICredentialNodeAccess[];
 	data?: string;
 }
 
@@ -345,7 +326,6 @@ export interface ICredentialData {
 	id?: string;
 	name: string;
 	data: string; // Contains the access data as encrypted JSON string
-	nodesAccess: ICredentialNodeAccess[];
 }
 
 // The encrypted credentials which the nodes can access
@@ -863,6 +843,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		executeWorkflow(
 			workflowInfo: IExecuteWorkflowInfo,
 			inputData?: INodeExecutionData[],
+			parentCallbackManager?: CallbackManager,
 		): Promise<any>;
 		getInputConnectionData(
 			inputName: ConnectionTypes,
@@ -902,6 +883,8 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 				getBinaryDataBuffer(itemIndex: number, propertyName: string): Promise<Buffer>;
 				copyInputItems(items: INodeExecutionData[], properties: string[]): IDataObject[];
 			};
+
+		getParentCallbackManager(): CallbackManager | undefined;
 	};
 
 export interface IExecuteSingleFunctions extends BaseExecutionFunctions {
@@ -2049,6 +2032,7 @@ export interface IWorkflowExecuteAdditionalData {
 			loadedWorkflowData?: IWorkflowBase;
 			loadedRunData?: any;
 			parentWorkflowSettings?: IWorkflowSettings;
+			parentCallbackManager?: CallbackManager;
 		},
 	) => Promise<any>;
 	executionId?: string;
@@ -2080,6 +2064,7 @@ export interface IWorkflowExecuteAdditionalData {
 			nodeType?: string;
 		},
 	) => Promise<void>;
+	parentCallbackManager?: CallbackManager;
 }
 
 export type WorkflowExecuteMode =
@@ -2356,7 +2341,8 @@ export type FieldType =
 	| 'array'
 	| 'object'
 	| 'options'
-	| 'url';
+	| 'url'
+	| 'jwt';
 
 export type ValidationResult = {
 	valid: boolean;
@@ -2604,3 +2590,5 @@ export type BannerName =
 export type Functionality = 'regular' | 'configuration-node' | 'pairedItem';
 
 export type Result<T, E> = { ok: true; result: T } | { ok: false; error: E };
+
+export type CallbackManager = CallbackManagerLC;

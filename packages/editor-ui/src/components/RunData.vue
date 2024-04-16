@@ -217,8 +217,8 @@
 				<div :class="[$style.editModeBody, 'ignore-key-press']">
 					<JsonEditor
 						:model-value="editMode.value"
-						@update:model-value="ndvStore.setOutputPanelEditModeValue($event)"
 						:fill-parent="true"
+						@update:model-value="ndvStore.setOutputPanelEditModeValue($event)"
 					/>
 				</div>
 				<div :class="$style.editModeFooter">
@@ -725,45 +725,6 @@ export default defineComponent({
 			search: '',
 		};
 	},
-	mounted() {
-		this.init();
-
-		if (!this.isPaneTypeInput) {
-			this.showPinDataDiscoveryTooltip(this.jsonData);
-		}
-		this.ndvStore.setNDVBranchIndex({
-			pane: this.paneType as 'input' | 'output',
-			branchIndex: this.currentOutputIndex,
-		});
-
-		if (this.paneType === 'output') {
-			this.setDisplayMode();
-			this.activatePane();
-		}
-
-		if (this.hasRunError) {
-			const error = this.workflowRunData?.[this.node.name]?.[this.runIndex]?.error;
-			const errorsToTrack = ['unknown error'];
-
-			if (error && errorsToTrack.some((e) => error.message.toLowerCase().includes(e))) {
-				this.$telemetry.track(
-					`User encountered an error: "${error.message}"`,
-					{
-						node: this.node.type,
-						errorMessage: error.message,
-						nodeVersion: this.node.typeVersion,
-						n8nVersion: this.rootStore.versionCli,
-					},
-					{
-						withPostHog: true,
-					},
-				);
-			}
-		}
-	},
-	beforeUnmount() {
-		this.hidePinDataDiscoveryTooltip();
-	},
 	computed: {
 		...mapStores(
 			useNodeTypesStore,
@@ -803,21 +764,14 @@ export default defineComponent({
 			return this.nodeTypesStore.isTriggerNode(this.node.type);
 		},
 		canPinData(): boolean {
-			// Only "main" inputs can pin data
-
 			if (this.node === null) {
 				return false;
 			}
 
-			const workflow = this.workflowsStore.getCurrentWorkflow();
-			const workflowNode = workflow.getNode(this.node.name);
-			const inputs = NodeHelpers.getNodeInputs(workflow, workflowNode!, this.nodeType!);
-			const inputNames = NodeHelpers.getConnectionTypes(inputs);
-
-			const nonMainInputs = !!inputNames.find((inputName) => inputName !== NodeConnectionType.Main);
+			const canPinNode = usePinnedData(this.node).canPinNode(false);
 
 			return (
-				!nonMainInputs &&
+				canPinNode &&
 				!this.isPaneTypeInput &&
 				this.pinnedData.isValidNodeType.value &&
 				!(this.binaryData && this.binaryData.length > 0)
@@ -1034,6 +988,87 @@ export default defineComponent({
 		showIoSearchNoMatchContent(): boolean {
 			return this.hasNodeRun && !this.inputData.length && this.search;
 		},
+	},
+	watch: {
+		node(newNode: INodeUi, prevNode: INodeUi) {
+			if (newNode.id === prevNode.id) return;
+			this.init();
+		},
+		hasNodeRun() {
+			if (this.paneType === 'output') this.setDisplayMode();
+		},
+		inputDataPage: {
+			handler(data: INodeExecutionData[]) {
+				if (this.paneType && data) {
+					this.ndvStore.setNDVPanelDataIsEmpty({
+						panel: this.paneType as 'input' | 'output',
+						isEmpty: data.every((item) => isEmpty(item.json)),
+					});
+				}
+			},
+			immediate: true,
+			deep: true,
+		},
+		jsonData(data: IDataObject[], prevData: IDataObject[]) {
+			if (isEqual(data, prevData)) return;
+			this.refreshDataSize();
+			this.showPinDataDiscoveryTooltip(data);
+		},
+		binaryData(newData: IBinaryKeyData[], prevData: IBinaryKeyData[]) {
+			if (newData.length && !prevData.length && this.displayMode !== 'binary') {
+				this.switchToBinary();
+			} else if (!newData.length && this.displayMode === 'binary') {
+				this.onDisplayModeChange('table');
+			}
+		},
+		currentOutputIndex(branchIndex: number) {
+			this.ndvStore.setNDVBranchIndex({
+				pane: this.paneType as 'input' | 'output',
+				branchIndex,
+			});
+		},
+		search(newSearch: string) {
+			this.$emit('search', newSearch);
+		},
+	},
+	mounted() {
+		this.init();
+
+		if (!this.isPaneTypeInput) {
+			this.showPinDataDiscoveryTooltip(this.jsonData);
+		}
+		this.ndvStore.setNDVBranchIndex({
+			pane: this.paneType as 'input' | 'output',
+			branchIndex: this.currentOutputIndex,
+		});
+
+		if (this.paneType === 'output') {
+			this.setDisplayMode();
+			this.activatePane();
+		}
+
+		if (this.hasRunError) {
+			const error = this.workflowRunData?.[this.node.name]?.[this.runIndex]?.error;
+			const errorsToTrack = ['unknown error'];
+
+			if (error && errorsToTrack.some((e) => error.message.toLowerCase().includes(e))) {
+				this.$telemetry.track(
+					`User encountered an error: "${error.message}"`,
+					{
+						node: this.node.type,
+						errorMessage: error.message,
+						nodeVersion: this.node.typeVersion,
+						n8nVersion: this.rootStore.versionCli,
+					},
+					{
+						withPostHog: true,
+					},
+				);
+			}
+		}
+	},
+	beforeUnmount() {
+		this.hidePinDataDiscoveryTooltip();
 	},
 	methods: {
 		getResolvedNodeOutputs() {
@@ -1498,48 +1533,6 @@ export default defineComponent({
 		onSearchClear() {
 			this.search = '';
 			document.dispatchEvent(new KeyboardEvent('keyup', { key: '/' }));
-		},
-	},
-	watch: {
-		node(newNode: INodeUi, prevNode: INodeUi) {
-			if (newNode.id === prevNode.id) return;
-			this.init();
-		},
-		hasNodeRun() {
-			if (this.paneType === 'output') this.setDisplayMode();
-		},
-		inputDataPage: {
-			handler(data: INodeExecutionData[]) {
-				if (this.paneType && data) {
-					this.ndvStore.setNDVPanelDataIsEmpty({
-						panel: this.paneType as 'input' | 'output',
-						isEmpty: data.every((item) => isEmpty(item.json)),
-					});
-				}
-			},
-			immediate: true,
-			deep: true,
-		},
-		jsonData(data: IDataObject[], prevData: IDataObject[]) {
-			if (isEqual(data, prevData)) return;
-			this.refreshDataSize();
-			this.showPinDataDiscoveryTooltip(data);
-		},
-		binaryData(newData: IBinaryKeyData[], prevData: IBinaryKeyData[]) {
-			if (newData.length && !prevData.length && this.displayMode !== 'binary') {
-				this.switchToBinary();
-			} else if (!newData.length && this.displayMode === 'binary') {
-				this.onDisplayModeChange('table');
-			}
-		},
-		currentOutputIndex(branchIndex: number) {
-			this.ndvStore.setNDVBranchIndex({
-				pane: this.paneType as 'input' | 'output',
-				branchIndex,
-			});
-		},
-		search(newSearch: string) {
-			this.$emit('search', newSearch);
 		},
 	},
 });

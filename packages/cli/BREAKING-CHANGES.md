@@ -2,11 +2,21 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 1.37.0
+
+### What changed?
+
+The `--file` flag for the `execute` CLI command has been removed.
+
+### When is action necessary?
+
+If you have scripts relying on the `--file` flag for the `execute` CLI command, update them to first import the workflow and then execute it using the `--id` flag.
+
 ## 1.32.0
 
 ### What changed?
 
-N8n auth cookie has `Secure` flag set by default now.
+n8n auth cookie has `Secure` flag set by default now.
 
 ### When is action necessary?
 

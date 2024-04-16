@@ -33,7 +33,7 @@ import {
 	TEMPLATES_DIR,
 } from '@/constants';
 import { CredentialsController } from '@/credentials/credentials.controller';
-import type { CurlHelper } from '@/requests';
+import type { APIRequest, CurlHelper } from '@/requests';
 import { registerController } from '@/decorators';
 import { AuthController } from '@/controllers/auth.controller';
 import { BinaryDataController } from '@/controllers/binaryData.controller';
@@ -235,6 +235,13 @@ export class Server extends AbstractServer {
 				frontendService.settings.publicApi.latestVersion = apiLatestVersion;
 			}
 		}
+
+		// Extract BrowserId from headers
+		this.app.use((req: APIRequest, _, next) => {
+			req.browserId = req.headers['browser-id'] as string;
+			next();
+		});
+
 		// Parse cookies for easier access
 		this.app.use(cookieParser());
 
@@ -249,6 +256,7 @@ export class Server extends AbstractServer {
 			this.restEndpoint,
 			this.endpointPresetCredentials,
 			isApiEnabled() ? '' : publicApiEndpoint,
+			...config.getEnv('endpoints.additionalNonUIRoutes').split(':'),
 		].filter((u) => !!u);
 		const nonUIRoutesRegex = new RegExp(`^/(${nonUIRoutes.join('|')})/?.*$`);
 

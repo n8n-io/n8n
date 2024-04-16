@@ -206,7 +206,7 @@ describe('Data mapping', () => {
 		workflowPage.actions.addInitialNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		workflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 		workflowPage.actions.openNode(MANUAL_TRIGGER_NODE_DISPLAY_NAME);
-		ndv.actions.setPinnedData([
+		ndv.actions.pastePinnedData([
 			{
 				input: [
 					{

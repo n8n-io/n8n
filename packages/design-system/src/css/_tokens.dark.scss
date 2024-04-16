@@ -96,7 +96,7 @@
 	--color-json-boolean: var(--prim-color-alt-a);
 	--color-json-number: var(--prim-color-alt-a);
 	--color-json-string: var(--prim-color-secondary-tint-200);
-	--color-json-key: var(--prim-gray-670);
+	--color-json-key: var(--color-text-dark);
 	--color-json-brackets: var(--prim-gray-670);
 	--color-json-brackets-hover: var(--prim-color-alt-e);
 	--color-json-line: var(--prim-gray-200);
@@ -190,6 +190,14 @@
 
 	// Input Triple
 	--color-background-input-triple: var(--prim-gray-800);
+
+	// Node error
+	--color-node-error-output-text-color: var(--prim-color-alt-c-tint-150);
+
+	// MFA Recovery codes
+	--color-mfa-recovery-code-background: var(--color-background-xlight);
+	--color-mfa-recovery-code-color: var(--color-text-dark);
+	--color-mfa-lose-access-text-color: var(--prim-color-alt-c-tint-150);
 
 	// Various
 	--color-info-tint-1: var(--prim-gray-420);

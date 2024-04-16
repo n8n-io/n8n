@@ -324,7 +324,7 @@ describe('NDV', () => {
 		];
 		/* prettier-ignore */
 		workflowPage.actions.openNode('Get thread details1');
-		ndv.actions.setPinnedData(PINNED_DATA);
+		ndv.actions.pastePinnedData(PINNED_DATA);
 		ndv.actions.close();
 
 		workflowPage.actions.executeWorkflow();

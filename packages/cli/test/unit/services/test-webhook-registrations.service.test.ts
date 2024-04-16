@@ -1,11 +1,15 @@
 import type { CacheService } from '@/services/cache/cache.service';
+import type { OrchestrationService } from '@/services/orchestration.service';
 import type { TestWebhookRegistration } from '@/services/test-webhook-registrations.service';
 import { TestWebhookRegistrationsService } from '@/services/test-webhook-registrations.service';
 import { mock } from 'jest-mock-extended';
 
 describe('TestWebhookRegistrationsService', () => {
 	const cacheService = mock<CacheService>();
-	const registrations = new TestWebhookRegistrationsService(cacheService);
+	const registrations = new TestWebhookRegistrationsService(
+		cacheService,
+		mock<OrchestrationService>({ isMultiMainSetupEnabled: false }),
+	);
 
 	const registration = mock<TestWebhookRegistration>({
 		webhook: { httpMethod: 'GET', path: 'hello', webhookId: undefined },
@@ -19,6 +23,12 @@ describe('TestWebhookRegistrationsService', () => {
 			await registrations.register(registration);
 
 			expect(cacheService.setHash).toHaveBeenCalledWith(cacheKey, { [webhookKey]: registration });
+		});
+
+		test('should skip setting TTL in single-main setup', async () => {
+			await registrations.register(registration);
+
+			expect(cacheService.expire).not.toHaveBeenCalled();
 		});
 	});
 
