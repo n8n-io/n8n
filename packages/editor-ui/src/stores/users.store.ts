@@ -377,7 +377,11 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		},
 		async verifyAuthentication(data: any) {
 			const rootStore = useRootStore();
-			return await verifyAuthentication(rootStore.getRestApiContext, data);
+			const user = await verifyAuthentication(rootStore.getRestApiContext, data);
+			console.log(user);
+			if (!user) return;
+			this.setCurrentUser(user);
+			return;
 		},
 		async disabledMfa() {
 			const rootStore = useRootStore();

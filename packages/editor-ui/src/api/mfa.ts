@@ -1,4 +1,4 @@
-import type { IRestApiContext } from '@/Interface';
+import type { CurrentUserResponse, IRestApiContext } from '@/Interface';
 import { makeRestApiRequest } from '@/utils/apiUtils';
 
 export async function getMfaQR(
@@ -34,6 +34,9 @@ export async function startAuthentication(context: IRestApiContext): Promise<voi
 	return await makeRestApiRequest(context, 'GET', '/mfa/start-authentication');
 }
 
-export async function verifyAuthentication(context: IRestApiContext, data: any): Promise<void> {
+export async function verifyAuthentication(
+	context: IRestApiContext,
+	data: any,
+): Promise<CurrentUserResponse | null> {
 	return await makeRestApiRequest(context, 'POST', '/mfa//verify-authentication', data);
 }

@@ -8,6 +8,9 @@ import { isoUint8Array } from '@simplewebauthn/server/helpers';
 import { Response } from 'express';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import type { CredentialDeviceType } from '@simplewebauthn/server/script/deps';
+import { AuthService } from '@/auth/auth.service';
+import { NotFound } from 'express-openapi-validator/dist/openapi.validator';
+import { UserService } from '@/services/user.service';
 
 let challenge = '';
 
@@ -24,6 +27,8 @@ export class MFAController {
 	constructor(
 		private mfaService: MfaService,
 		private userRepository: UserRepository,
+		private authService: AuthService,
+		private userService: UserService,
 	) {}
 
 	@Get('/challenge')
@@ -104,13 +109,7 @@ export class MFAController {
 			credentialBackedup = credentialBackedUp;
 			credentialDevicetype = credentialDeviceType;
 
-			// await this.userRepository.update(req.user.id, {
-			// 	securityKey: {
-			// 		credentialPublicKey: isoUint8Array.toHex(credentialPublicKey),
-			// 		credentialID: isoUint8Array.toHex(credentialID),
-			// 		counter,
-			// 	},
-			// });
+			await this.userRepository.update(req.user.id, { mfaEnabled: true });
 		}
 
 		return { verified: verification.verified };
@@ -146,7 +145,13 @@ export class MFAController {
 
 	@Post('/verify-authentication', { skipAuth: true })
 	async verifyAuthentication(req: AuthenticatedRequest, res: Response) {
-		const user = await this.userRepository.findOne({ where: {} });
+		const user = await this.userRepository.findOne({ where: {}, relations: ['authIdentities'] });
+
+		console.log(user);
+
+		if (!user) {
+			throw new BadRequestError('User not found');
+		}
 
 		const verification = await SimpleWebAuthnServer.verifyAuthenticationResponse({
 			//@ts-ignore
@@ -158,13 +163,15 @@ export class MFAController {
 			authenticator: {
 				credentialID: credentialId,
 				credentialPublicKey: credentialPublickey,
-				counter: user?.securityKey?.counter ?? 0,
+				// counter: user?.securityKey?.counter ?? 0,
 			},
 		});
 
 		console.log(verification);
 
 		if (verification.verified) {
+			this.authService.issueCookie(res, user, req.browserId);
+			return await this.userService.toPublic(user, { withScopes: true });
 		}
 
 		return {};

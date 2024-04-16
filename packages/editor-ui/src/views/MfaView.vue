@@ -84,6 +84,7 @@ import Logo from '../components/Logo.vue';
 import {
 	MFA_AUTHENTICATION_RECOVERY_CODE_INPUT_MAX_LENGTH,
 	MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH,
+	VIEWS,
 } from '@/constants';
 import { useUsersStore } from '@/stores/users.store';
 import { mapStores } from 'pinia';
@@ -132,7 +133,12 @@ export default defineComponent({
 
 			const asseResp = await startAuthentication(registrationOptions);
 
-			await this.usersStore.verifyAuthentication(asseResp);
+			try {
+				await this.usersStore.verifyAuthentication(asseResp);
+				await this.$router.push({ name: VIEWS.WORKFLOWS });
+			} catch (e) {
+				useToast().showMessage({ message: 'Invalid security key', type: 'error' });
+			}
 		},
 		onRecoveryCodeClick() {
 			this.formError = '';
