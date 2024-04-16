@@ -337,6 +337,7 @@ export class WorkflowExecutionService {
 			connections: workflow.connections,
 			active: workflow.active,
 			nodeTypes: this.nodeTypes,
+			staticData: workflow.staticData,
 		}).getParentNodes(firstStartNodeName);
 
 		if (parentNodeNames.length > 0) {

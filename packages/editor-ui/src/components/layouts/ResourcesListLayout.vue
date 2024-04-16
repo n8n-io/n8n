@@ -456,6 +456,11 @@ export default defineComponent({
 			this.sendFiltersTelemetry('reset');
 			this.$emit('update:filters', this.filtersModel);
 		},
+		resetFilter(key: keyof (typeof this)['filtersModel']) {
+			const value = this.filtersModel[key];
+			this.filtersModel[key] = Array.isArray(value) ? [] : '';
+			this.$emit('update:filters', this.filtersModel);
+		},
 		focusSearchInput() {
 			if (this.$refs.search) {
 				(this.$refs.search as SearchRef).focus();

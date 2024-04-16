@@ -135,6 +135,21 @@
 					@update:model-value="setKeyValue('tags', $event)"
 				/>
 			</div>
+			<div>
+				<n8n-input-label
+					label="Nodes"
+					:bold="false"
+					size="small"
+					color="text-base"
+					class="mb-3xs"
+				/>
+				<NodesDropwdown
+					placeholder="Filter by Nodes"
+					:model-value="filters.nodes"
+					:create-enabled="false"
+					@update:model-value="setKeyValue('nodes', $event)"
+				/>
+			</div>
 			<div class="mb-s">
 				<n8n-input-label
 					:label="$locale.baseText('workflows.filters.status')"
@@ -169,6 +184,7 @@ import WorkflowCard from '@/components/WorkflowCard.vue';
 import { EnterpriseEditionFeature, VIEWS } from '@/constants';
 import type { ITag, IUser, IWorkflowDb } from '@/Interface';
 import TagsDropdown from '@/components/TagsDropdown.vue';
+import NodesDropwdown from '@/components/NodesDropwdown.vue';
 import SuggestedTemplatesPage from '@/components/SuggestedTemplates/SuggestedTemplatesPage.vue';
 import SuggestedTemplatesSection from '@/components/SuggestedTemplates/SuggestedTemplatesSection.vue';
 import { mapStores } from 'pinia';
@@ -189,6 +205,7 @@ interface Filters {
 	sharedWith: string;
 	status: string | boolean;
 	tags: string[];
+	nodes: string[];
 }
 
 const StatusFilter = {
@@ -203,6 +220,7 @@ const WorkflowsView = defineComponent({
 		ResourcesListLayout,
 		WorkflowCard,
 		TagsDropdown,
+		NodesDropwdown,
 		SuggestedTemplatesPage,
 		SuggestedTemplatesSection,
 	},
@@ -214,6 +232,7 @@ const WorkflowsView = defineComponent({
 				sharedWith: '',
 				status: StatusFilter.ALL as string | boolean,
 				tags: [] as string[],
+				nodes: [] as string[],
 			},
 			sourceControlStoreUnsubscribe: () => {},
 		};
@@ -329,7 +348,7 @@ const WorkflowsView = defineComponent({
 		},
 		onFilter(
 			resource: IWorkflowDb,
-			filters: { tags: string[]; search: string; status: string | boolean },
+			filters: { nodes: string[]; tags: string[]; search: string; status: string | boolean },
 			matches: boolean,
 		): boolean {
 			if (this.settingsStore.areTagsEnabled && filters.tags.length > 0) {
@@ -342,6 +361,10 @@ const WorkflowsView = defineComponent({
 								: `${resourceTag}` === `${tag}`,
 						),
 					);
+			}
+
+			if (filters.nodes.length > 0) {
+				matches = matches && resource.nodes.some((node) => filters.nodes.includes(node.type));
 			}
 
 			if (filters.status !== '') {

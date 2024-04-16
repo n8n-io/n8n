@@ -1,4 +1,5 @@
 <template>
+	<!-- add :visible="prop" to show and hide it -->
 	<n8n-popover trigger="click" width="304" size="large">
 		<template #reference>
 			<n8n-button

@@ -396,6 +396,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			const rootStore = useRootStore();
 			const workflows = await getWorkflows(rootStore.getRestApiContext);
 			this.setWorkflows(workflows);
+			console.log(workflows)
 			return workflows;
 		},
 

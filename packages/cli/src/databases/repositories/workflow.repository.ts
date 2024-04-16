@@ -135,8 +135,11 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 					createdAt: true,
 					updatedAt: true,
 					versionId: true,
+					nodes: true,
 					shared: { userId: true, role: true },
 				};
+
+		console.log('select', select);
 
 		delete select?.ownedBy; // remove non-entity field, handled after query
 
@@ -163,6 +166,8 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			where,
 		};
 
+		console.log('findManyOptions', findManyOptions);
+
 		if (isDefaultSelect || options?.select?.updatedAt === true) {
 			findManyOptions.order = { updatedAt: 'ASC' };
 		}
@@ -180,6 +185,8 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			ListQuery.Workflow.Plain[] | ListQuery.Workflow.WithSharing[],
 			number,
 		];
+
+		console.log(workflows[0]);
 
 		return { workflows, count };
 	}

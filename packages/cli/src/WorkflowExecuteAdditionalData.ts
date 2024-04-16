@@ -417,19 +417,26 @@ function hookFunctionsSave(): IWorkflowExecuteHooks {
 					workflowId: this.workflowData.id,
 				});
 
+				console.log('was here');
+
 				await restoreBinaryDataId(fullRunData, this.executionId, this.mode);
 
-				const isManualMode = this.mode === 'manual';
+				const isManualMode = false; //this.mode === 'manual';
+
+				console.log(isManualMode, isWorkflowIdValid(this.workflowData.id), newStaticData);
 
 				try {
 					if (!isManualMode && isWorkflowIdValid(this.workflowData.id) && newStaticData) {
+						console.log('do it');
 						// Workflow is saved so update in database
 						try {
+							console.log('try it');
 							await Container.get(WorkflowStaticDataService).saveStaticDataById(
 								this.workflowData.id,
 								newStaticData,
 							);
 						} catch (e) {
+							console.log(e);
 							ErrorReporter.error(e);
 							logger.error(
 								`There was a problem saving the workflow with id "${this.workflowData.id}" to save changed staticData: "${e.message}" (hookFunctionsSave)`,

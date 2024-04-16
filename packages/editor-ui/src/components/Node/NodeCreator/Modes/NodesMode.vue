@@ -42,7 +42,9 @@ const { pushViewStack, popViewStack } = useViewStacks();
 
 const { registerKeyHook } = useKeyboardNavigation();
 
-const activeViewStack = computed(() => useViewStacks().activeViewStack);
+const activeViewStack = computed(() => {
+	return useViewStacks().activeViewStack;
+});
 const globalSearchItemsDiff = computed(() => useViewStacks().globalSearchItemsDiff);
 
 function selectNodeType(nodeTypes: string[]) {

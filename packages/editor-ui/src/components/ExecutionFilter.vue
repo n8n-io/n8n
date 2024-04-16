@@ -44,7 +44,7 @@ const isCustomDataFilterTracked = ref(false);
 const isAdvancedExecutionFilterEnabled = computed(() =>
 	settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.AdvancedExecutionFilters),
 );
-const showTags = computed(() => false);
+const showTags = computed(() => true);
 
 const getDefaultFilter = (): ExecutionFilterType => ({
 	status: 'all',
@@ -65,9 +65,6 @@ const vModel = reactive(
 					return filter[key];
 				},
 				set(value) {
-					// TODO: find out what exactly is typechecker complaining about
-
-					// @ts-ignore
 					filter[key] = value;
 					emit('filterChanged', filter);
 				},
@@ -281,6 +278,7 @@ onBeforeMount(() => {
 								</template>
 							</i18n-t>
 						</template>
+						<!-- replace with TagsDropdown -->
 						<n8n-input
 							id="execution-filter-saved-data-key"
 							name="execution-filter-saved-data-key"
@@ -291,6 +289,12 @@ onBeforeMount(() => {
 							data-test-id="execution-filter-saved-data-key-input"
 							@update:model-value="onFilterMetaChange(0, 'key', $event)"
 						/>
+						<!-- <TagsDropdown -->
+						<!-- 	:placeholder="$locale.baseText('workflowOpen.filterWorkflows')" -->
+						<!-- 	:model-value="filters.tags" -->
+						<!-- 	:create-enabled="false" -->
+						<!-- 	@update:model-value="setKeyValue('tags', $event)" -->
+						<!-- /> -->
 					</n8n-tooltip>
 					<label for="execution-filter-saved-data-value">{{
 						locale.baseText('executionsFilter.savedDataValue')
@@ -305,6 +309,7 @@ onBeforeMount(() => {
 								</template>
 							</i18n-t>
 						</template>
+						<!-- replace with TagsDropdown -->
 						<n8n-input
 							id="execution-filter-saved-data-value"
 							name="execution-filter-saved-data-value"

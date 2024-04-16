@@ -327,6 +327,12 @@ export class WorkflowsController {
 			}
 		}
 
+		const workflow = await this.workflowRepository.findOneByOrFail({
+			id: req.body.workflowData.id,
+		});
+
+		req.body.workflowData.staticData = workflow.staticData;
+
 		return await this.workflowExecutionService.executeManually(
 			req.body,
 			req.user,
