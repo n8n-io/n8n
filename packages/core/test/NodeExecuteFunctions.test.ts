@@ -387,6 +387,29 @@ describe('NodeExecuteFunctions', () => {
 			expect((axiosOptions.httpsAgent as Agent).options.servername).toEqual('example.de');
 		});
 
+		test('should set ssl certificates', async () => {
+			const axiosOptions = await parseRequestObject({
+				method: 'GET',
+				uri: 'https://example.de',
+				agentOptions: {
+					cert: undefined,
+					ca: '-----BEGIN CERTIFICATE-----\nTEST\n-----END CERTIFICATE-----',
+					key: undefined,
+					passphrase: undefined,
+				},
+			});
+
+			expect((axiosOptions.httpsAgent as Agent).options).toEqual({
+				servername: 'example.de',
+				cert: undefined,
+				ca: '-----BEGIN CERTIFICATE-----\nTEST\n-----END CERTIFICATE-----',
+				key: undefined,
+				passphrase: undefined,
+				noDelay: true,
+				path: null,
+			});
+		});
+
 		describe('when followRedirect is true', () => {
 			test.each(['GET', 'HEAD'] as IHttpRequestMethods[])(
 				'should set maxRedirects on %s ',
