@@ -94,7 +94,7 @@ export class AuthController {
 				}
 			}
 
-			this.authService.issueCookie(res, user);
+			this.authService.issueCookie(res, user, req.browserId);
 			void this.internalHooks.onUserLoginSuccess({
 				user,
 				authenticationMethod: usedAuthenticationMethod,

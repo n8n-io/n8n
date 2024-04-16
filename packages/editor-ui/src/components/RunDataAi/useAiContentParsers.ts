@@ -84,7 +84,9 @@ const outputTypeParsers: {
 	[NodeConnectionType.AiAgent]: fallbackParser,
 	[NodeConnectionType.AiMemory](execData: IDataObject) {
 		const chatHistory =
-			execData.chatHistory ?? execData.messages ?? execData?.response?.chat_history;
+			execData.chatHistory ??
+			execData.messages ??
+			(execData?.response as IDataObject)?.chat_history;
 		if (Array.isArray(chatHistory)) {
 			const responseText = chatHistory
 				.map((content: MemoryMessage) => {
@@ -96,16 +98,25 @@ const outputTypeParsers: {
 						interface MessageContent {
 							type: string;
 							text?: string;
-							image_url?: {
-								url: string;
-							};
+							image_url?:
+								| {
+										url: string;
+								  }
+								| string;
 						}
 						let message = content.kwargs.content;
 						if (Array.isArray(message)) {
 							message = (message as MessageContent[])
 								.map((item) => {
-									if (item?.type === 'image_url') {
-										return `![Input image](${item.image_url?.url})`;
+									const { type, image_url } = item;
+									if (
+										type === 'image_url' &&
+										typeof image_url === 'object' &&
+										typeof image_url.url === 'string'
+									) {
+										return `![Input image](${image_url.url})`;
+									} else if (typeof image_url === 'string') {
+										return `![Input image](${image_url})`;
 									}
 									return item.text;
 								})
@@ -115,7 +126,7 @@ const outputTypeParsers: {
 							message += ` (${JSON.stringify(content.kwargs.additional_kwargs)})`;
 						}
 						if (content.id.includes('HumanMessage')) {
-							message = `**Human:** ${message.trim()}`;
+							message = `**Human:** ${String(message).trim()}`;
 						} else if (content.id.includes('AIMessage')) {
 							message = `**AI:** ${message}`;
 						} else if (content.id.includes('SystemMessage')) {

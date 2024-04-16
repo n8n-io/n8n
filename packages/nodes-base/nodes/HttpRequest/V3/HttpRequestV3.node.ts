@@ -49,7 +49,7 @@ export class HttpRequestV3 implements INodeType {
 		this.description = {
 			...baseDescription,
 			subtitle: '={{$parameter["method"] + ": " + $parameter["url"]}}',
-			version: [3, 4, 4.1],
+			version: [3, 4, 4.1, 4.2],
 			defaults: {
 				name: 'HTTP Request',
 				color: '#0004F5',

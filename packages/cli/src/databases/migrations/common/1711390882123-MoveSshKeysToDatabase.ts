@@ -36,9 +36,11 @@ export class MoveSshKeysToDatabase1711390882123 implements ReversibleMigration {
 		}
 
 		const settings = escape.tableName('settings');
+		const key = escape.columnName('key');
+		const value = escape.columnName('value');
 
 		const rows: Array<{ value: string }> = await runQuery(
-			`SELECT value FROM ${settings} WHERE key = '${this.settingsKey}';`,
+			`SELECT value FROM ${settings} WHERE ${key} = '${this.settingsKey}';`,
 		);
 
 		if (rows.length === 1) {
@@ -51,13 +53,13 @@ export class MoveSshKeysToDatabase1711390882123 implements ReversibleMigration {
 			return;
 		}
 
-		const value = JSON.stringify({
+		const settingsValue = JSON.stringify({
 			encryptedPrivateKey: this.cipher.encrypt(privateKey),
 			publicKey,
 		});
 
 		await runQuery(
-			`INSERT INTO ${settings} (key, value) VALUES ('${this.settingsKey}', '${value}');`,
+			`INSERT INTO ${settings} (${key}, ${value}) VALUES ('${this.settingsKey}', '${settingsValue}');`,
 		);
 
 		try {
@@ -72,9 +74,10 @@ export class MoveSshKeysToDatabase1711390882123 implements ReversibleMigration {
 
 	async down({ escape, runQuery, logger, migrationName }: MigrationContext) {
 		const settings = escape.tableName('settings');
+		const key = escape.columnName('key');
 
 		const rows: Array<{ value: string }> = await runQuery(
-			`SELECT value FROM ${settings} WHERE key = '${this.settingsKey}';`,
+			`SELECT value FROM ${settings} WHERE ${key} = '${this.settingsKey}';`,
 		);
 
 		if (rows.length !== 1) {
@@ -106,6 +109,6 @@ export class MoveSshKeysToDatabase1711390882123 implements ReversibleMigration {
 			return;
 		}
 
-		await runQuery(`DELETE ${settings} WHERE WHERE key = 'features.sourceControl.sshKeys';`);
+		await runQuery(`DELETE FROM ${settings} WHERE ${key} = 'features.sourceControl.sshKeys';`);
 	}
 }

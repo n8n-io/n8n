@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "1.36.0",
+  "version": "1.37.0",
   "description": "n8n Workflow Automation Tool",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -91,7 +91,7 @@
     "ts-essentials": "^7.0.3"
   },
   "dependencies": {
-    "@langchain/community": "0.0.34",
+    "@langchain/community": "0.0.44",
     "@langchain/core": "0.1.41",
     "@langchain/openai": "0.0.16",
     "@n8n/client-oauth2": "workspace:*",
