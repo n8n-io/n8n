@@ -8,6 +8,8 @@ import type {
 import set from 'lodash/set';
 
 import FormData from 'form-data';
+import type { HttpSslAuthCredentials } from './interfaces';
+import { formatPrivateKey } from '../../utils/utilities';
 
 export type BodyParameter = {
 	name: string;
@@ -192,5 +194,21 @@ export const prepareRequestBody = async (
 		return formData;
 	} else {
 		return await reduceAsync(parameters, defaultReducer);
+	}
+};
+
+export const setAgentOptions = (
+	requestOptions: IRequestOptions,
+	sslCertificates: HttpSslAuthCredentials | undefined,
+) => {
+	if (sslCertificates) {
+		const agentOptions = {
+			cert: sslCertificates.cert ? formatPrivateKey(sslCertificates.cert) : undefined,
+			ca: sslCertificates.ca ? formatPrivateKey(sslCertificates.ca) : undefined,
+			key: sslCertificates.key ? formatPrivateKey(sslCertificates.key) : undefined,
+			passphrase: sslCertificates.passphrase || undefined,
+		};
+
+		requestOptions.agentOptions = agentOptions;
 	}
 };

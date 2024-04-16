@@ -33,8 +33,10 @@ import {
 	reduceAsync,
 	replaceNullValues,
 	sanitizeUiMessage,
+	setAgentOptions,
 } from '../GenericFunctions';
-import { formatPrivateKey, keysToLowercase } from '@utils/utilities';
+import { keysToLowercase } from '@utils/utilities';
+import type { HttpSslAuthCredentials } from '../interfaces';
 
 function toText<T>(data: T) {
 	if (typeof data === 'object' && data !== null) {
@@ -1315,12 +1317,10 @@ export class HttpRequestV3 implements INodeType {
 			);
 
 			if (provideSslCertificates) {
-				sslCertificates = (await this.getCredentials('httpSslAuth', itemIndex)) as {
-					ca: string;
-					cert: string;
-					key: string;
-					passphrase: string;
-				};
+				sslCertificates = (await this.getCredentials(
+					'httpSslAuth',
+					itemIndex,
+				)) as HttpSslAuthCredentials;
 			}
 
 			const requestMethod = this.getNodeParameter('method', itemIndex) as IHttpRequestMethods;
@@ -1615,6 +1615,12 @@ export class HttpRequestV3 implements INodeType {
 
 			const authDataKeys: IAuthDataSanitizeKeys = {};
 
+			// Add SSL certificates if any are set
+			setAgentOptions(requestOptions, sslCertificates);
+			if (requestOptions.agentOptions) {
+				authDataKeys.agentOptions = Object.keys(requestOptions.agentOptions);
+			}
+
 			// Add credentials if any are set
 			if (httpBasicAuth !== undefined) {
 				requestOptions.auth = {
@@ -1660,20 +1666,6 @@ export class HttpRequestV3 implements INodeType {
 					requestOptions.qs = { ...requestOptions.qs, ...customAuth.qs };
 					authDataKeys.qs = Object.keys(customAuth.qs);
 				}
-			}
-
-			// Add SSL Certificates if provided
-			if (sslCertificates) {
-				const agentOptions = {
-					cert: sslCertificates.cert ? formatPrivateKey(sslCertificates.cert) : undefined,
-					ca: sslCertificates.ca ? formatPrivateKey(sslCertificates.ca) : undefined,
-					key: sslCertificates.key ? formatPrivateKey(sslCertificates.key) : undefined,
-					passphrase: sslCertificates.passphrase || undefined,
-				};
-
-				authDataKeys.agentOptions = Object.keys(agentOptions);
-
-				requestOptions.agentOptions = agentOptions;
 			}
 
 			if (requestOptions.headers!.accept === undefined) {
