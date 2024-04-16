@@ -6,10 +6,14 @@ import {
 	STORES,
 } from '@/constants';
 import { computed, ref } from 'vue';
-import type { IWorkflowDb } from '@/Interface';
+import type {
+	IPushDataExecutionFinished,
+	IPushDataUnsavedExecutionFinished,
+	IWorkflowDb,
+} from '@/Interface';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import * as workflowsApi from '@/api/workflows';
-import type { INodeType, INodeTypes } from 'n8n-workflow';
+import type { INodeType, INodeTypes, ITaskData } from 'n8n-workflow';
 import { deepCopy, Workflow } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
@@ -162,6 +166,33 @@ export const useWorkflowsStoreV2 = defineStore(STORES.WORKFLOWS_V2, () => {
 		return workflowsById.value[id].pinData;
 	}
 
+	async function runWorkflow(
+		workflowId: string,
+		options: {
+			destinationNode?: string;
+			triggerNode?: string;
+			nodeData?: ITaskData;
+			source?: string;
+		},
+	) {
+		const workflow = workflowsById.value[workflowId];
+		console.log('runWorkflow', workflow);
+		console.log('options', options);
+		// TODO: Implement behavior from 'runWorkflow' in useRunWorkflow.ts using the new workflow store
+	}
+
+	function finishActiveExecution(
+		workflowId: string,
+		finishedActiveExecution: IPushDataExecutionFinished | IPushDataUnsavedExecutionFinished,
+	) {
+		const workflow = workflowsById.value[workflowId];
+		console.log('workflow', workflow);
+		console.log('finishedActiveExecution', finishedActiveExecution);
+		// TODO: Implement behavior from old workflows store
+		// Execution data should be stored in the executions store and not in the workflows store
+		// The workflow store should only be responsible for the workflow data itself
+	}
+
 	return {
 		workflowsById,
 		workflows,
@@ -169,5 +200,7 @@ export const useWorkflowsStoreV2 = defineStore(STORES.WORKFLOWS_V2, () => {
 		removeWorkflow,
 		fetchWorkflow,
 		getWorkflowObject: getWorkflowInstance,
+		runWorkflow,
+		finishActiveExecution,
 	};
 });
