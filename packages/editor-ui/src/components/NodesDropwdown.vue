@@ -118,16 +118,17 @@ export default defineComponent({
 			const types = [...new Set(allWorkflows.value.flatMap((wf) => wf.nodes.map((n) => n.type)))];
 
 			const res: Array<INodeTypeDescription> = types
-				.map((type) => {
+				.map((type): INodeTypeDescription => {
 					const moreInfo = allNodeTypes.value.get(type);
 
 					if (!moreInfo) {
-						return;
+						return undefined as any;
 					}
 
 					return moreInfo;
 				})
-				.filter((id) => id) as any;
+				.filter((id) => id)
+				.sort((a, b) => a.displayName.localeCompare(b.displayName));
 
 			return res;
 		});
