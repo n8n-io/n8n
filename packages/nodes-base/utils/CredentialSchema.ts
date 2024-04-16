@@ -3,49 +3,46 @@ import { z } from 'zod';
 
 type GConstructor<T = {}> = new (...args: any[]) => T;
 
-type CredentialSchemaDef = z.ZodStringDef & {
-	metadata: {
-		hidden: boolean;
-		sensitive: boolean;
-		displayName: string;
-		displayOptions: IDisplayOptions;
-	};
+type CredentialSchemaMetadata = {
+	hidden: boolean;
+	sensitive: boolean;
+	displayName: string;
+	displayOptions: IDisplayOptions;
 };
 
-function credentialSchemaMixin<TBase extends GConstructor<z.ZodString>>(Base: TBase) {
+function credentialSchemaMixin<
+	TBase extends GConstructor<z.ZodType & { _parse: z.ZodString['_parse'] }>,
+>(Base: TBase) {
 	return class CredentialSchema extends Base {
-		override _def: CredentialSchemaDef;
+		metadata: CredentialSchemaMetadata;
 
 		constructor(...args: any[]) {
 			super(...args);
-			this._def = {
-				...super['_def'],
-				metadata: { hidden: false, sensitive: false, displayName: '', displayOptions: {} },
-			};
+			this.metadata = { hidden: false, sensitive: false, displayName: '', displayOptions: {} };
 		}
 
 		displayName(name: string) {
-			this._def.metadata.displayName = name;
+			this.metadata.displayName = name;
 			return this;
 		}
 
 		hidden(hidden = true) {
-			this._def.metadata.hidden = hidden;
+			this.metadata.hidden = hidden;
 			return this;
 		}
 
 		sensitive(sensitive = true) {
-			this._def.metadata.sensitive = sensitive;
+			this.metadata.sensitive = sensitive;
 			return this;
 		}
 
 		displayWhen<T, K extends keyof T>(object: Record<K, T[K][]>) {
-			this._def.metadata.displayOptions.show = object as IDisplayOptions['show'];
+			this.metadata.displayOptions.show = object as IDisplayOptions['show'];
 			return this;
 		}
 
 		hideWhen<T, K extends keyof T>(object: Record<K, T[K][]>) {
-			this._def.metadata.displayOptions.hide = object as IDisplayOptions['hide'];
+			this.metadata.displayOptions.hide = object as IDisplayOptions['hide'];
 			return this;
 		}
 	};
@@ -59,6 +56,13 @@ export const credentialSchema = {
 			checks: [],
 			typeName: z.ZodFirstPartyTypeKind.ZodString,
 			coerce: false,
+		});
+	},
+	enum: <U extends string, T extends [U, ...U[]]>(values: T) => {
+		const EnumProperty = credentialSchemaMixin(z.ZodEnum<T>);
+		return new EnumProperty({
+			values,
+			typeName: z.ZodFirstPartyTypeKind.ZodEnum,
 		});
 	},
 };
