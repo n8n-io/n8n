@@ -9,6 +9,7 @@ import type {
 import NodeIcon from '@/components/NodeIcon.vue';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import CanvasNodeRenderer from '@/components/canvas/elements/nodes/CanvasNodeRenderer.vue';
+import HandleRenderer from '@/components/canvas/elements/handles/HandleRenderer.vue';
 import { useNodeConnections } from '@/composables/useNodeConnections';
 
 const $style = useCssModule();
@@ -78,22 +79,22 @@ const mapEndpointWithPosition =
 <template>
 	<div :class="$style.canvasNode">
 		<template v-for="source in outputsWithPosition" :key="`${source.type}/${source.index}`">
-			<Handle
-				:id="`outputs/${source.type}/${source.index}`"
-				:class="[$style.canvasOutputHandle, $style[`canvasOutputHandle--${source.type}`]]"
-				type="source"
+			<HandleRenderer
+				mode="output"
+				:type="source.type"
+				:index="source.index"
 				:position="source.position"
-				:style="source.offset"
+				:offset="source.offset"
 			/>
 		</template>
 
 		<template v-for="target in inputsWithPosition" :key="`${target.type}/${target.index}`">
-			<Handle
-				:id="`inputs/${target.type}/${target.index}`"
-				:class="[$style.canvasInputHandle, $style[`canvasInputHandle--${target.type}`]]"
-				type="target"
+			<HandleRenderer
+				mode="input"
+				:type="target.type"
+				:index="target.index"
 				:position="target.position"
-				:style="target.offset"
+				:offset="target.offset"
 			/>
 		</template>
 
@@ -105,33 +106,4 @@ const mapEndpointWithPosition =
 	</div>
 </template>
 
-<style lang="scss" module>
-.canvasNode {
-}
-
-.canvasInputHandle,
-.canvasOutputHandle {
-	background: var(--node-type-main-color);
-	border: 0;
-
-	&:hover {
-		background: var(--color-primary);
-	}
-}
-
-.canvasOutputHandle {
-	width: 14px;
-	height: 14px;
-}
-
-.canvasInputHandle {
-	width: 8px;
-	height: 20px;
-	border-radius: 0;
-}
-
-@each $node-type in $supplemental-node-types {
-	.canvasInputHandle__#{$node-type} {
-	}
-}
-</style>
+<style lang="scss" module></style>

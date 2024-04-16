@@ -16,7 +16,7 @@ export type CanvasConnectionPort = {
 
 export interface CanvasElementPortWithPosition extends CanvasConnectionPort {
 	position: Position;
-	offset?: { top?: number | string; left?: number | string };
+	offset?: { top?: string; left?: string };
 }
 
 export interface CanvasElementData {
