@@ -30,6 +30,7 @@ export function mapLegacyConnections(
 							sourceHandle: `outputs/${fromConnectionType}/${fromIndex}`,
 							targetHandle: `inputs/${toConnectionType}/${toIndex}`,
 							data: {
+								fromNodeName,
 								source: {
 									index: fromIndex,
 									type: fromConnectionType as CanvasConnectionPortType,

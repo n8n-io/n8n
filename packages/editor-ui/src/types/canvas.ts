@@ -32,6 +32,7 @@ export type CanvasElement = Node<CanvasElementData>;
 export interface CanvasConnectionData {
 	source: CanvasConnectionPort;
 	target: CanvasConnectionPort;
+	fromNodeName?: string;
 }
 
 export type CanvasConnection = DefaultEdge<CanvasConnectionData>;

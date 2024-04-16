@@ -38,11 +38,20 @@ const connections = computed<CanvasConnection[]>(() => {
 		workflow.value?.nodes ?? [],
 	);
 
-	return mappedConnections.map((connection) => ({
-		...connection,
-		type: 'canvas-edge',
-		updatable: true,
-	}));
+	return mappedConnections.map((connection) => {
+		const pinDataLength = workflow.value.pinData?.[connection.data?.fromNodeName ?? '']?.length;
+		return {
+			...connection,
+			type: 'canvas-edge',
+			updatable: true,
+			label: pinDataLength
+				? locale.baseText('ndv.output.items', {
+						adjustToNumber: pinDataLength,
+						interpolate: { count: String(pinDataLength) },
+					})
+				: '',
+		};
+	});
 });
 
 const elements = computed<CanvasElement[]>(() => [
