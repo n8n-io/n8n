@@ -2,6 +2,14 @@ import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 import { z } from 'zod';
 import { credentialSchema } from '../utils/CredentialSchema';
 
+enum SSLOption {
+	Allow = 'allow',
+	Disable = 'disable',
+	Require = 'require',
+	'Verify (Not Implemented)' = 'verify',
+	'Verify-Full (Not Implemented)' = 'verify-full',
+}
+
 export const PostgresCredentialSchema = z.object({
 	host: z.string().default('localhost'),
 	database: z.string().default('postgres'),
@@ -9,7 +17,12 @@ export const PostgresCredentialSchema = z.object({
 	password: credentialSchema.string().sensitive(),
 	allowUnauthorizedCerts: z.boolean().default(false),
 	ssl: credentialSchema
-		.enum(['allow', 'disable', 'require', 'verify', 'verify-full'])
+		.nativeEnum(SSLOption)
+		.displayOptions({
+			show: {
+				allowUnauthorizedCerts: [false],
+			},
+		})
 		.default('disable'),
 	port: z.number().default(5432),
 	sshTunnel: z.boolean().default(false),

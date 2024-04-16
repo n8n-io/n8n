@@ -10,18 +10,10 @@ type CredentialSchemaMetadata = {
 	displayOptions: IDisplayOptions;
 };
 
-interface ICredentialSchema {
-	displayName(name: string): ICredentialSchema;
-	hidden(): ICredentialSchema;
-	sensitive(): ICredentialSchema;
-	hideWhen<T, K extends keyof T>(object: Record<K, T[K][]>): ICredentialSchema;
-	showWhen<T, K extends keyof T>(object: Record<K, T[K][]>): ICredentialSchema;
-}
-
 function credentialSchemaMixin<
 	TBase extends GConstructor<z.ZodType & { _parse: z.ZodString['_parse'] }>,
 >(Base: TBase) {
-	return class CredentialSchema extends Base implements ICredentialSchema {
+	return class CredentialSchema extends Base {
 		metadata: CredentialSchemaMetadata;
 
 		constructor(...args: any[]) {
@@ -44,36 +36,37 @@ function credentialSchemaMixin<
 			return this;
 		}
 
-		showWhen<T, K extends keyof T>(object: Record<K, T[K][]>) {
-			this.metadata.displayOptions.show = object as IDisplayOptions['show'];
+		displayOptions(options: IDisplayOptions) {
+			this.metadata.displayOptions = options;
 			return this;
-		}
-
-		hideWhen<T, K extends keyof T>(object: Record<K, T[K][]>) {
-			this.metadata.displayOptions.hide = object as IDisplayOptions['hide'];
-			return this;
-		}
-		// @ts-ignore
-		default(def: any) {
-			return super.default(def) as unknown as z.ZodDefault<any> & ICredentialSchema;
 		}
 	};
 }
 
 const StringProperty = credentialSchemaMixin(z.ZodString);
+// @ts-ignore
+class EnumProperty<T> extends credentialSchemaMixin(z.ZodEnum<T>) {}
+// @ts-ignore
+class NativeEnumProperty<T> extends credentialSchemaMixin(z.ZodNativeEnum<T>) {}
 
 export const credentialSchema = {
-	string: (): z.ZodString & ICredentialSchema => {
+	string: () => {
 		return new StringProperty({
 			checks: [],
 			typeName: z.ZodFirstPartyTypeKind.ZodString,
 			coerce: false,
 		});
 	},
-	enum: <U extends string, T extends [U, ...U[]]>(values: T): z.ZodEnum<T> & ICredentialSchema => {
-		return new (credentialSchemaMixin(z.ZodEnum<T>))({
+	enum: <U extends string, T extends [U, ...U[]]>(values: T) => {
+		return new EnumProperty<T>({
 			values,
 			typeName: z.ZodFirstPartyTypeKind.ZodEnum,
+		});
+	},
+	nativeEnum: <T extends z.EnumLike>(values: T) => {
+		return new NativeEnumProperty<T>({
+			values,
+			typeName: z.ZodFirstPartyTypeKind.ZodNativeEnum,
 		});
 	},
 };
