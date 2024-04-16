@@ -277,6 +277,12 @@ export const schema = {
 			default: 3600,
 			env: 'EXECUTIONS_TIMEOUT_MAX',
 		},
+		maxMemory: {
+			doc: 'Max memory usage shared for all workflow executions. (0 is no limit)',
+			format: Number,
+			default: 0,
+			env: 'EXECUTIONS_MEMORY_MAX',
+		},
 
 		// If a workflow executes all the data gets saved by default. This
 		// could be a problem when a workflow gets executed a lot and processes

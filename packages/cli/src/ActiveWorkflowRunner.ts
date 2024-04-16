@@ -49,6 +49,7 @@ import { ActiveWorkflowsService } from '@/services/activeWorkflows.service';
 import { WorkflowExecutionService } from '@/workflows/workflowExecution.service';
 import { WorkflowStaticDataService } from '@/workflows/workflowStaticData.service';
 import { OnShutdown } from '@/decorators/OnShutdown';
+import config from '@/config';
 
 interface QueuedActivation {
 	activationMode: WorkflowActivateMode;
@@ -84,6 +85,21 @@ export class ActiveWorkflowRunner {
 
 		await this.externalHooks.run('activeWorkflows.initialized', []);
 		await this.webhookService.populateCache();
+
+		if (config.getEnv('executions.maxMemory') >= 1) {
+			setInterval(async () => await this.memoryWatcher(), 0);
+		}
+	}
+
+	async memoryWatcher() {
+		const execs = this.activeExecutions.getActiveExecutions();
+		const memory = process.memoryUsage();
+
+		if (memory.rss > config.getEnv('executions.maxMemory')) {
+			for (const exec of execs) {
+				await this.activeExecutions.stopExecution(exec.id);
+			}
+		}
 	}
 
 	async getAllWorkflowActivationErrors() {
