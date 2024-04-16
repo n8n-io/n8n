@@ -56,6 +56,7 @@ import type { PropType } from 'vue';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import NodeIcon from '@/components/NodeIcon.vue';
+import { INodeTypeDescription } from 'n8n-workflow';
 
 type SelectRef = InstanceType<typeof N8nSelect>;
 type TagRef = InstanceType<typeof N8nOption>;
@@ -114,10 +115,11 @@ export default defineComponent({
 		});
 
 		const allNodes = computed(() => {
-			const res = allWorkflows.value
-				.flatMap((wf) => wf.nodes)
-				.map((n) => {
-					const moreInfo = allNodeTypes.value.get(n.type);
+			const types = [...new Set(allWorkflows.value.flatMap((wf) => wf.nodes.map((n) => n.type)))];
+
+			const res: Array<INodeTypeDescription> = types
+				.map((type) => {
+					const moreInfo = allNodeTypes.value.get(type);
 
 					if (!moreInfo) {
 						return;
@@ -125,11 +127,9 @@ export default defineComponent({
 
 					return moreInfo;
 				})
-				.filter((id) => id);
+				.filter((id) => id) as any;
 
-			console.log(res);
-
-			return res as Array<NonNullable<(typeof res)[number]>>;
+			return res;
 		});
 
 		// const hasTags = computed<boolean>(() => {
