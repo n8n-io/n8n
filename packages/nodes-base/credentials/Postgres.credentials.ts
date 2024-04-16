@@ -8,7 +8,6 @@ export const PostgresCredentialSchema = z.object({
 	user: z.string().default('postgres'),
 	password: credentialSchema.string().sensitive(),
 	allowUnauthorizedCerts: z.boolean().default(false),
-	// ssl: z.enum(['allow', 'disable', 'require', 'verify', 'verify-full']).default('disable'),
 	ssl: credentialSchema
 		.enum(['allow', 'disable', 'require', 'verify', 'verify-full'])
 		.default('disable'),
