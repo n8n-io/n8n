@@ -1,4 +1,4 @@
-import type { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType } from 'n8n-workflow';
 import { z } from 'zod';
 import { credentialSchema } from '../utils/CredentialSchema';
 
@@ -10,12 +10,21 @@ enum SSLOption {
 	'Verify-Full (Not Implemented)' = 'verify-full',
 }
 
-export const PostgresCredentialSchema = z.object({
-	host: z.string().default('localhost'),
-	database: z.string().default('postgres'),
-	user: z.string().default('postgres'),
-	password: credentialSchema.string().sensitive(),
-	allowUnauthorizedCerts: z.boolean().default(false),
+enum SSLAuthOption {
+	Password = 'password',
+	'Private Key' = 'privateKey',
+}
+
+export const PostgresCredentialSchema = credentialSchema.object({
+	host: credentialSchema.string().displayName('Host').default('localhost'),
+	database: credentialSchema.string().displayName('Database').default('postgres'),
+	user: credentialSchema.string().displayName('User').default('postgres'),
+	password: credentialSchema.string().displayName('Password').sensitive(),
+	allowUnauthorizedCerts: credentialSchema
+		.boolean()
+		.describe('Whether to connect even if SSL certificate validation is not possible')
+		.displayName('Ignore SSL Issues')
+		.default(false),
 	ssl: credentialSchema
 		.nativeEnum(SSLOption)
 		.displayOptions({
@@ -23,17 +32,86 @@ export const PostgresCredentialSchema = z.object({
 				allowUnauthorizedCerts: [false],
 			},
 		})
+		.displayName('SSL')
 		.default('disable'),
-	port: z.number().default(5432),
-	sshTunnel: z.boolean().default(false),
-	sshAuthenticateWith: z.enum(['password', 'privateKey']).default('password'),
-	sshHost: z.string().default('localhost'),
-	sshPort: z.number().default(22),
-	sshPostgresPort: z.number().default(5432),
-	sshUser: z.string().default('root'),
-	privateKey: z.string(),
-	sshPassword: z.string(),
-	passphrase: z.string(),
+	port: credentialSchema.number().displayName('Port').default(5432),
+	sshTunnel: credentialSchema.boolean().displayName('SSH Tunnel').default(false),
+	sshAuthenticateWith: credentialSchema
+		.nativeEnum(SSLAuthOption)
+		.displayName('SSH Authenticate with')
+		.displayOptions({
+			show: {
+				sshTunnel: [true],
+			},
+		})
+		.default('password'),
+	sshHost: credentialSchema
+		.string()
+		.displayName('SSH Host')
+		.displayOptions({
+			show: {
+				sshTunnel: [true],
+			},
+		})
+		.default('localhost'),
+	sshPort: credentialSchema
+		.number()
+		.displayName('SSH Port')
+		.displayOptions({
+			show: {
+				sshTunnel: [true],
+			},
+		})
+		.default(22),
+	sshPostgresPort: credentialSchema
+		.number()
+		.displayName('SSH Postgres Port')
+		.displayOptions({
+			show: {
+				sshTunnel: [true],
+			},
+		})
+		.default(5432),
+	sshUser: credentialSchema
+		.string()
+		.displayName('SSH User')
+		.displayOptions({
+			show: {
+				sshTunnel: [true],
+			},
+		})
+		.default('root'),
+	sshPassword: credentialSchema
+		.string()
+		.sensitive()
+		.displayName('SSH Password')
+		.displayOptions({
+			show: {
+				sshTunnel: [true],
+				sshAuthenticateWith: ['password'],
+			},
+		}),
+	privateKey: credentialSchema
+		.string()
+		.displayName('Private Key')
+		.sensitive()
+		.editorRows(4)
+		.displayOptions({
+			show: {
+				sshTunnel: [true],
+				sshAuthenticateWith: ['privateKey'],
+			},
+		}),
+	passphrase: credentialSchema
+		.string()
+		.describe('Passphase used to create the key, if no passphase was used leave empty')
+		.displayName('Passphrase')
+		.displayOptions({
+			show: {
+				sshTunnel: [true],
+				sshAuthenticateWith: ['privateKey'],
+			},
+		}),
 });
 
 export type PostgresCredentialType = z.infer<typeof PostgresCredentialSchema>;
@@ -45,194 +123,5 @@ export class Postgres implements ICredentialType {
 
 	documentationUrl = 'postgres';
 
-	properties: INodeProperties[] = [
-		{
-			displayName: 'Host',
-			name: 'host',
-			type: 'string',
-			default: 'localhost',
-		},
-		{
-			displayName: 'Database',
-			name: 'database',
-			type: 'string',
-			default: 'postgres',
-		},
-		{
-			displayName: 'User',
-			name: 'user',
-			type: 'string',
-			default: 'postgres',
-		},
-		{
-			displayName: 'Password',
-			name: 'password',
-			type: 'string',
-			typeOptions: {
-				password: true,
-			},
-			default: '',
-		},
-		{
-			displayName: 'Ignore SSL Issues',
-			name: 'allowUnauthorizedCerts',
-			type: 'boolean',
-			default: false,
-			description: 'Whether to connect even if SSL certificate validation is not possible',
-		},
-		{
-			displayName: 'SSL',
-			name: 'ssl',
-			type: 'options',
-			displayOptions: {
-				show: {
-					allowUnauthorizedCerts: [false],
-				},
-			},
-			options: [
-				{
-					name: 'Allow',
-					value: 'allow',
-				},
-				{
-					name: 'Disable',
-					value: 'disable',
-				},
-				{
-					name: 'Require',
-					value: 'require',
-				},
-				{
-					name: 'Verify (Not Implemented)',
-					value: 'verify',
-				},
-				{
-					name: 'Verify-Full (Not Implemented)',
-					value: 'verify-full',
-				},
-			],
-			default: 'disable',
-		},
-		{
-			displayName: 'Port',
-			name: 'port',
-			type: 'number',
-			default: 5432,
-		},
-		{
-			displayName: 'SSH Tunnel',
-			name: 'sshTunnel',
-			type: 'boolean',
-			default: false,
-		},
-		{
-			displayName: 'SSH Authenticate with',
-			name: 'sshAuthenticateWith',
-			type: 'options',
-			default: 'password',
-			options: [
-				{
-					name: 'Password',
-					value: 'password',
-				},
-				{
-					name: 'Private Key',
-					value: 'privateKey',
-				},
-			],
-			displayOptions: {
-				show: {
-					sshTunnel: [true],
-				},
-			},
-		},
-		{
-			displayName: 'SSH Host',
-			name: 'sshHost',
-			type: 'string',
-			default: 'localhost',
-			displayOptions: {
-				show: {
-					sshTunnel: [true],
-				},
-			},
-		},
-		{
-			displayName: 'SSH Port',
-			name: 'sshPort',
-			type: 'number',
-			default: 22,
-			displayOptions: {
-				show: {
-					sshTunnel: [true],
-				},
-			},
-		},
-		{
-			displayName: 'SSH Postgres Port',
-			name: 'sshPostgresPort',
-			type: 'number',
-			default: 5432,
-			displayOptions: {
-				show: {
-					sshTunnel: [true],
-				},
-			},
-		},
-		{
-			displayName: 'SSH User',
-			name: 'sshUser',
-			type: 'string',
-			default: 'root',
-			displayOptions: {
-				show: {
-					sshTunnel: [true],
-				},
-			},
-		},
-		{
-			displayName: 'SSH Password',
-			name: 'sshPassword',
-			type: 'string',
-			typeOptions: {
-				password: true,
-			},
-			default: '',
-			displayOptions: {
-				show: {
-					sshTunnel: [true],
-					sshAuthenticateWith: ['password'],
-				},
-			},
-		},
-		{
-			displayName: 'Private Key',
-			name: 'privateKey',
-			type: 'string',
-			typeOptions: {
-				rows: 4,
-				password: true,
-			},
-			default: '',
-			displayOptions: {
-				show: {
-					sshTunnel: [true],
-					sshAuthenticateWith: ['privateKey'],
-				},
-			},
-		},
-		{
-			displayName: 'Passphrase',
-			name: 'passphrase',
-			type: 'string',
-			default: '',
-			description: 'Passphase used to create the key, if no passphase was used leave empty',
-			displayOptions: {
-				show: {
-					sshTunnel: [true],
-					sshAuthenticateWith: ['privateKey'],
-				},
-			},
-		},
-	];
+	properties = PostgresCredentialSchema.toNodeProperties();
 }
