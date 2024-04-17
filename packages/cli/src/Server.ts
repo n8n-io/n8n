@@ -355,6 +355,7 @@ export class Server extends AbstractServer {
 		}
 
 		const maxAge = Time.days.toMilliseconds;
+		const cacheOptions = inE2ETests ? {} : { maxAge };
 		const { staticCacheDir } = Container.get(InstanceSettings);
 		if (frontendService) {
 			const serveIcons: express.RequestHandler = async (req, res) => {
@@ -365,7 +366,7 @@ export class Server extends AbstractServer {
 				if (filePath) {
 					try {
 						await fsAccess(filePath);
-						return res.sendFile(filePath, { maxAge, immutable: true });
+						return res.sendFile(filePath, cacheOptions);
 					} catch {}
 				}
 				res.sendStatus(404);
@@ -398,6 +399,7 @@ export class Server extends AbstractServer {
 			// Route all UI urls to index.html to support history-api
 			const nonUIRoutes: Readonly<string[]> = [
 				'assets',
+				'types',
 				'healthz',
 				'metrics',
 				'e2e',
@@ -429,12 +431,12 @@ export class Server extends AbstractServer {
 
 			this.app.use(
 				'/',
-				express.static(staticCacheDir, { maxAge }),
-				express.static(EDITOR_UI_DIST_DIR, { maxAge, immutable: true }),
+				express.static(staticCacheDir, cacheOptions),
+				express.static(EDITOR_UI_DIST_DIR, cacheOptions),
 				historyApiHandler,
 			);
 		} else {
-			this.app.use('/', express.static(staticCacheDir, { maxAge }));
+			this.app.use('/', express.static(staticCacheDir, cacheOptions));
 		}
 	}
 
