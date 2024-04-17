@@ -1,30 +1,38 @@
 export class ConcurrencyQueue {
-	private waiting: Array<[string, () => void]> = [];
+	private readonly enqueued: Array<[executionId: string, resolveFn: () => void]> = [];
 
 	constructor(private capacity: number) {}
 
-	async enqueue(id: string) {
+	/** Prevent executions from starting if the max concurrency has exceeded */
+	async enqueue(executionId: string) {
 		this.capacity--;
 		if (this.capacity < 0) {
 			// eslint-disable-next-line @typescript-eslint/return-await
-			return new Promise<void>((resolve) => this.waiting.push([id, resolve]));
+			return new Promise<void>((resolve) => this.enqueued.push([executionId, resolve]));
 		}
 	}
 
+	/** Release capacity back, and resume the next execution (if any) */
 	dequeue(): void {
 		this.capacity++;
-		this.next();
-	}
-
-	remove(id: string) {
-		const index = this.waiting.findIndex((item) => item[0] === id);
-		if (index > -1) {
-			this.waiting.splice(index, 1);
-			this.next();
+		if (this.capacity > 0) {
+			this.resumeNext();
 		}
 	}
 
-	private next() {
-		this.waiting.shift()?.[1]();
+	/** Remove an execution from the queue, irrespective of it's execution status */
+	remove(executionId: string) {
+		const index = this.enqueued.findIndex((item) => item[0] === executionId);
+		if (index > -1) {
+			this.enqueued.splice(index, 1);
+			this.capacity++;
+			if (this.capacity > 0) {
+				this.resumeNext();
+			}
+		}
+	}
+
+	private resumeNext() {
+		this.enqueued.shift()?.[1]();
 	}
 }

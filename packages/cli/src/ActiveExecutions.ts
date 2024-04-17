@@ -201,11 +201,6 @@ export class ActiveExecutions {
 		return returnData;
 	}
 
-	getRunningExecutionIds() {
-		const executions = Object.entries(this.activeExecutions);
-		return executions.filter(([, value]) => value.status === 'running').map(([id]) => id);
-	}
-
 	setStatus(executionId: string, status: ExecutionStatus) {
 		this.getExecution(executionId).status = status;
 	}
