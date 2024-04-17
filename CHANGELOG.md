@@ -1,3 +1,10 @@
+## [1.37.2](https://github.com/n8n-io/n8n/compare/n8n@1.37.1...n8n@1.37.2) (2024-04-17)
+
+### Bug Fixes
+
+* **core:** Fix the backend dependency tree to address the issue of user-defined timezone not being used ([#9139](https://github.com/n8n-io/n8n/issues/9139)) ([cd04069](https://github.com/n8n-io/n8n/commit/cd0406904ea798ee0f33ce0be76240138f12a5ea))
+
+
 ## [1.37.1](https://github.com/n8n-io/n8n/compare/n8n@1.37.0...n8n@1.37.1) (2024-04-11)
 
 
