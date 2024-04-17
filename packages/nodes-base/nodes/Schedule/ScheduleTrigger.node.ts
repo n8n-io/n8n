@@ -10,7 +10,7 @@ import { NodeOperationError } from 'n8n-workflow';
 import { CronJob } from 'cron';
 import moment from 'moment-timezone';
 import type { IRecurencyRule } from './SchedulerInterface';
-import { convertToUnixFormat, recurencyCheck } from './GenericFunctions';
+import { addFallbackValue, convertToUnixFormat, recurencyCheck } from './GenericFunctions';
 
 export class ScheduleTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -424,6 +424,7 @@ export class ScheduleTrigger implements INodeType {
 		if (!staticData.recurrencyRules) {
 			staticData.recurrencyRules = [];
 		}
+		const fallbackToZero = addFallbackValue(nodeVersion >= 1.2, '0');
 		const executeTrigger = async (recurency: IRecurencyRule) => {
 			const resultData = {
 				timestamp: moment.tz(timezone).toISOString(true),
@@ -494,10 +495,8 @@ export class ScheduleTrigger implements INodeType {
 
 			if (interval[i].field === 'hours') {
 				const hour = interval[i].hoursInterval as number;
-				let minute = interval[i].triggerAtMinute?.toString() as string;
-				if (!minute && nodeVersion >= 1.2) {
-					minute = '0';
-				}
+				const minute = fallbackToZero(interval[i].triggerAtMinute?.toString() as string);
+
 				const cronTimes: string[] = [minute, '*', '*', '*', '*'];
 				const cronExpression: string = cronTimes.join(' ');
 				if (hour === 1) {
@@ -530,7 +529,7 @@ export class ScheduleTrigger implements INodeType {
 			if (interval[i].field === 'days') {
 				const day = interval[i].daysInterval as number;
 				const hour = interval[i].triggerAtHour?.toString() as string;
-				const minute = interval[i].triggerAtMinute?.toString() as string;
+				const minute = fallbackToZero(interval[i].triggerAtMinute?.toString() as string);
 				const cronTimes: string[] = [minute, hour, '*', '*', '*'];
 				const cronExpression: string = cronTimes.join(' ');
 				if (day === 1) {
@@ -562,7 +561,7 @@ export class ScheduleTrigger implements INodeType {
 
 			if (interval[i].field === 'weeks') {
 				const hour = interval[i].triggerAtHour?.toString() as string;
-				const minute = interval[i].triggerAtMinute?.toString() as string;
+				const minute = fallbackToZero(interval[i].triggerAtMinute?.toString() as string);
 				const week = interval[i].weeksInterval as number;
 				const days = interval[i].triggerAtDay as IDataObject[];
 				const day = days.length === 0 ? '*' : days.join(',');
@@ -599,7 +598,7 @@ export class ScheduleTrigger implements INodeType {
 				const month = interval[i].monthsInterval;
 				const day = interval[i].triggerAtDayOfMonth?.toString() as string;
 				const hour = interval[i].triggerAtHour?.toString() as string;
-				const minute = interval[i].triggerAtMinute?.toString() as string;
+				const minute = fallbackToZero(interval[i].triggerAtMinute?.toString() as string);
 				const cronTimes: string[] = [minute, hour, day, '*', '*'];
 				const cronExpression: string = cronTimes.join(' ');
 				if (month === 1) {
