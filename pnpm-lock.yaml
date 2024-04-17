@@ -474,7 +474,7 @@ importers:
     dependencies:
       '@langchain/community':
         specifier: 0.0.44
-        version: 0.0.44(ioredis@5.3.2)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mysql2@2.3.3)(pg@8.11.3)(ws@8.14.2)
+        version: 0.0.44(ioredis@5.3.2)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mysql2@3.9.5)(pg@8.11.3)(ws@8.14.2)
       '@langchain/core':
         specifier: 0.1.41
         version: 0.1.41
@@ -495,7 +495,7 @@ importers:
         version: link:../@n8n/permissions
       '@n8n/typeorm':
         specifier: 0.3.20-7
-        version: 0.3.20-7(@sentry/node@7.87.0)(ioredis@5.3.2)(mysql2@2.3.3)(pg@8.11.3)(sqlite3@5.1.7)
+        version: 0.3.20-7(@sentry/node@7.87.0)(ioredis@5.3.2)(mysql2@3.9.5)(pg@8.11.3)(sqlite3@5.1.7)
       '@n8n_io/license-sdk':
         specifier: 2.10.0
         version: 2.10.0
@@ -618,7 +618,7 @@ importers:
         version: 9.0.2
       langchain:
         specifier: 0.1.25
-        version: 0.1.25(axios@1.6.7)(handlebars@4.7.8)(ioredis@5.3.2)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mysql2@2.3.3)(pg@8.11.3)(ws@8.14.2)
+        version: 0.1.25(axios@1.6.7)(handlebars@4.7.8)(ioredis@5.3.2)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mysql2@3.9.5)(pg@8.11.3)(ws@8.14.2)
       ldapts:
         specifier: 4.2.6
         version: 4.2.6
@@ -629,8 +629,8 @@ importers:
         specifier: 3.3.0
         version: 3.3.0
       mysql2:
-        specifier: 2.3.3
-        version: 2.3.3
+        specifier: 3.9.5
+        version: 3.9.5
       n8n-core:
         specifier: workspace:*
         version: link:../core
@@ -1378,8 +1378,8 @@ importers:
         specifier: 10.0.2
         version: 10.0.2
       mysql2:
-        specifier: 2.3.3
-        version: 2.3.3
+        specifier: 3.9.5
+        version: 3.9.5
       n8n-workflow:
         specifier: workspace:*
         version: link:../workflow
@@ -6051,7 +6051,7 @@ packages:
       - supports-color
     dev: false
 
-  /@langchain/community@0.0.44(ioredis@5.3.2)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mysql2@2.3.3)(pg@8.11.3)(ws@8.14.2):
+  /@langchain/community@0.0.44(ioredis@5.3.2)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mysql2@3.9.5)(pg@8.11.3)(ws@8.14.2):
     resolution: {integrity: sha512-II9Hz90jJmfWRICtxTg1auQWzFw0npqacWiiOpaxNhzs6rptdf56gyfC48Z6n1ii4R8FfAlfX6YxhOE7lGGKXg==}
     engines: {node: '>=18'}
     peerDependencies:
@@ -6338,7 +6338,7 @@ packages:
       jsonwebtoken: 9.0.2
       langsmith: 0.1.12
       lodash: 4.17.21
-      mysql2: 2.3.3
+      mysql2: 3.9.5
       pg: 8.11.3
       uuid: 9.0.1
       ws: 8.14.2
@@ -6643,7 +6643,7 @@ packages:
       recast: 0.22.0
     dev: false
 
-  /@n8n/typeorm@0.3.20-7(@sentry/node@7.87.0)(ioredis@5.3.2)(mysql2@2.3.3)(pg@8.11.3)(sqlite3@5.1.7):
+  /@n8n/typeorm@0.3.20-7(@sentry/node@7.87.0)(ioredis@5.3.2)(mysql2@3.9.5)(pg@8.11.3)(sqlite3@5.1.7):
     resolution: {integrity: sha512-f4A9RGOnB3kCkusNAr1QDCGOVq1HU1YCBKoIGr2of+P3CVS3I+1vW7neOhlr/ic5S1F14Qy5TU8Lb78mRBYRSw==}
     engines: {node: '>=16.13.0'}
     hasBin: true
@@ -6719,7 +6719,7 @@ packages:
       glob: 10.3.10
       ioredis: 5.3.2
       mkdirp: 2.1.3
-      mysql2: 2.3.3
+      mysql2: 3.9.5
       pg: 8.11.3
       reflect-metadata: 0.2.1
       sha.js: 2.4.11
@@ -9237,7 +9237,7 @@ packages:
       ts-dedent: 2.2.0
       type-fest: 2.19.0
       vue: 3.4.21(typescript@5.4.2)
-      vue-component-type-helpers: 2.0.12
+      vue-component-type-helpers: 2.0.13
     transitivePeerDependencies:
       - encoding
       - supports-color
@@ -18618,7 +18618,7 @@ packages:
       - voy-search
     dev: false
 
-  /langchain@0.1.25(axios@1.6.7)(handlebars@4.7.8)(ioredis@5.3.2)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mysql2@2.3.3)(pg@8.11.3)(ws@8.14.2):
+  /langchain@0.1.25(axios@1.6.7)(handlebars@4.7.8)(ioredis@5.3.2)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mysql2@3.9.5)(pg@8.11.3)(ws@8.14.2):
     resolution: {integrity: sha512-sfEChvr4H2CklHdSByNBbytwBrFhgtA5kPOnwcBrxuXGg1iOaTzhVxQA0QcNcQucI3hZrsNbZjxGp+Can1ooZQ==}
     engines: {node: '>=18'}
     peerDependencies:
@@ -18778,7 +18778,7 @@ packages:
         optional: true
     dependencies:
       '@anthropic-ai/sdk': 0.9.1
-      '@langchain/community': 0.0.44(ioredis@5.3.2)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mysql2@2.3.3)(pg@8.11.3)(ws@8.14.2)
+      '@langchain/community': 0.0.44(ioredis@5.3.2)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mysql2@3.9.5)(pg@8.11.3)(ws@8.14.2)
       '@langchain/core': 0.1.41
       '@langchain/openai': 0.0.16
       axios: 1.6.7
@@ -19312,7 +19312,6 @@ packages:
   /lru-cache@8.0.5:
     resolution: {integrity: sha512-MhWWlVnuab1RG5/zMRRcVGXZLCXrZTgfwMikgzCegsPnG62yDQo5JnqKkrK4jO5iKqDAZGItAqN5CtKBCBWRUA==}
     engines: {node: '>=16.14'}
-    dev: true
 
   /lru-cache@9.1.2:
     resolution: {integrity: sha512-ERJq3FOzJTxBbFjZ7iDs+NiK4VI9Wz+RdrrAB8dio1oV+YvdPzUEE4QNiT2VD51DkIbCYRUUzCRkssXCHqSnKQ==}
@@ -20127,25 +20126,25 @@ packages:
     engines: {node: '>=12.0.0'}
     dev: true
 
-  /mysql2@2.3.3:
-    resolution: {integrity: sha512-wxJUev6LgMSgACDkb/InIFxDprRa6T95+VEoR+xPvtngtccNH2dGjEB/fVZ8yg1gWv1510c9CvXuJHi5zUm0ZA==}
+  /mysql2@3.9.5:
+    resolution: {integrity: sha512-idfCjWgJEIU2zToiAsy1UO9RQ+VvCrbfB9458LrComY7mJmAIvjdD+/58VmNLFUeQpKE4xZZqD+yZe3tlu62NQ==}
     engines: {node: '>= 8.0'}
     dependencies:
       denque: 2.1.0
       generate-function: 2.3.1
       iconv-lite: 0.6.3
-      long: 4.0.0
-      lru-cache: 6.0.0
-      named-placeholders: 1.1.2
+      long: 5.2.3
+      lru-cache: 8.0.5
+      named-placeholders: 1.1.3
       seq-queue: 0.0.5
       sqlstring: 2.3.3
     dev: false
 
-  /named-placeholders@1.1.2:
-    resolution: {integrity: sha512-wiFWqxoLL3PGVReSZpjLVxyJ1bRqe+KKJVbr4hGs1KWfTZTQyezHFBbuKj9hsizHyGV2ne7EMjHdxEGAybD5SA==}
-    engines: {node: '>=6.0.0'}
+  /named-placeholders@1.1.3:
+    resolution: {integrity: sha512-eLoBxg6wE/rZkJPhU/xRX1WTpkFEwDJEN96oxFrTsqBdbT5ec295Q+CoHrL9IT0DipqKhmGcaZmwOt8OON5x1w==}
+    engines: {node: '>=12.0.0'}
     dependencies:
-      lru-cache: 4.1.5
+      lru-cache: 7.18.3
     dev: false
 
   /nan@2.17.0:
@@ -25931,8 +25930,8 @@ packages:
     resolution: {integrity: sha512-0vOfAtI67UjeO1G6UiX5Kd76CqaQ67wrRZiOe7UAb9Jm6GzlUr/fC7CV90XfwapJRjpCMaZFhv1V0ajWRmE9Dg==}
     dev: true
 
-  /vue-component-type-helpers@2.0.12:
-    resolution: {integrity: sha512-iVJugClQdu3ZyF0N4CF3Egi+gWYfnxlIPPGtFXZG29rF3kQIuziP+k7rVGCCHiibIOQ1SlspKjrh+LRYzMpwTA==}
+  /vue-component-type-helpers@2.0.13:
+    resolution: {integrity: sha512-xNO5B7DstNWETnoYflLkVgh8dK8h2ZDgxY1M2O0zrqGeBNq5yAZ8a10yCS9+HnixouNGYNX+ggU9MQQq86HTpg==}
     dev: true
 
   /vue-demi@0.14.5(vue@3.4.21):
