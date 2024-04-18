@@ -539,24 +539,33 @@ export const convertArraysToPostgresFormat = (
 						return entry;
 					}
 
+					if (typeof entry === 'boolean') {
+						entry = String(entry);
+					}
+
 					if (typeof entry === 'object') {
 						entry = JSON.stringify(entry);
 					}
 
-					//escape double quotes
-					return `"${entry.replace(/"/g, '\\"')}"`;
+					if (typeof entry === 'string') {
+						return `"${entry.replace(/"/g, '\\"')}"`; //escape double quotes
+					}
+
+					return entry;
 				});
 
 				//wrap in {} instead of [] as postgres does and join with ,
 				data[columnInfo.column_name] = `{${arrayEntries.join(',')}}`;
 			} else {
-				throw new NodeOperationError(
-					node,
-					`Column '${columnInfo.column_name}' has to be an array`,
-					{
-						itemIndex,
-					},
-				);
+				if (columnInfo.is_nullable === 'NO') {
+					throw new NodeOperationError(
+						node,
+						`Column '${columnInfo.column_name}' has to be an array`,
+						{
+							itemIndex,
+						},
+					);
+				}
 			}
 		}
 	}
