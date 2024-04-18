@@ -21,6 +21,7 @@ import {
 	doesRowExist,
 	getTableSchema,
 	prepareItem,
+	convertArraysToPostgresFormat,
 	replaceEmptyStringsByNulls,
 } from '../../helpers/utils';
 
@@ -300,6 +301,8 @@ export async function execute(
 		}
 
 		tableSchema = await updateTableSchema(db, tableSchema, schema, table);
+
+		convertArraysToPostgresFormat(item, tableSchema, this.getNode(), i);
 
 		item = checkItemAgainstSchema(this.getNode(), item, tableSchema, i);
 

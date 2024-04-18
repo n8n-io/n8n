@@ -21,6 +21,7 @@ import {
 	prepareItem,
 	replaceEmptyStringsByNulls,
 	configureTableSchemaUpdater,
+	convertArraysToPostgresFormat,
 } from '../../helpers/utils';
 
 import { optionsCollection } from '../common.descriptions';
@@ -269,6 +270,8 @@ export async function execute(
 		}
 
 		tableSchema = await updateTableSchema(db, tableSchema, schema, table);
+
+		convertArraysToPostgresFormat(item, tableSchema, this.getNode(), i);
 
 		item = checkItemAgainstSchema(this.getNode(), item, tableSchema, i);
 
