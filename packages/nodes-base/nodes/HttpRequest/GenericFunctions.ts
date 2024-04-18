@@ -1,3 +1,4 @@
+import type { SecureContextOptions } from 'tls';
 import type {
 	IDataObject,
 	INodeExecutionData,
@@ -202,13 +203,13 @@ export const setAgentOptions = (
 	sslCertificates: HttpSslAuthCredentials | undefined,
 ) => {
 	if (sslCertificates) {
-		const agentOptions = {
+		const agentOptions: SecureContextOptions = {
 			cert: sslCertificates.cert ? formatPrivateKey(sslCertificates.cert) : undefined,
 			ca: sslCertificates.ca ? formatPrivateKey(sslCertificates.ca) : undefined,
 			key: sslCertificates.key ? formatPrivateKey(sslCertificates.key) : undefined,
 			passphrase: sslCertificates.passphrase || undefined,
 		};
 
-		requestOptions.agentOptions = agentOptions;
+		requestOptions.agentOptions = { ...agentOptions };
 	}
 };
