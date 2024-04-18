@@ -544,9 +544,6 @@ importers:
       compression:
         specifier: 1.7.4
         version: 1.7.4
-      connect-history-api-fallback:
-        specifier: 1.6.0
-        version: 1.6.0
       convict:
         specifier: 6.2.4
         version: 6.2.4
@@ -595,6 +592,9 @@ importers:
       handlebars:
         specifier: 4.7.8
         version: 4.7.8
+      helmet:
+        specifier: 7.1.0
+        version: 7.1.0
       infisical-node:
         specifier: 1.3.0
         version: 1.3.0
@@ -764,9 +764,6 @@ importers:
       '@types/compression':
         specifier: 1.0.1
         version: 1.0.1
-      '@types/connect-history-api-fallback':
-        specifier: ^1.3.1
-        version: 1.3.5
       '@types/convict':
         specifier: ^6.1.1
         version: 6.1.1
@@ -9555,13 +9552,6 @@ packages:
       '@types/node': 18.16.16
     dev: true
 
-  /@types/connect-history-api-fallback@1.3.5:
-    resolution: {integrity: sha512-h8QJa8xSb1WD4fpKBDcATDNGXghFj6/3GRWG6dhmRcu0RX1Ubasur2Uvx5aeEwlf0MwblEC2bMzzMQntxnw/Cw==}
-    dependencies:
-      '@types/express-serve-static-core': 4.17.43
-      '@types/node': 18.16.16
-    dev: true
-
   /@types/connect@3.4.35:
     resolution: {integrity: sha512-cdeYyv4KWoEgpBISTxWvqYsVy444DOqehiF3fM3ne10AmJ62RSyNkUnxMJXHQWRQQX2eR94m5y1IZyDwBjV9FQ==}
     dependencies:
@@ -13027,11 +13017,6 @@ packages:
     resolution: {integrity: sha512-JsPKdmh8ZkmnHxDk55FZ1TqVLvEQTvoByJZRN9jzI0UjxK/QgAmsphz7PGtqgPieQZ/CQcHWXCR7ATDNhGe+YA==}
     dev: true
 
-  /connect-history-api-fallback@1.6.0:
-    resolution: {integrity: sha512-e54B99q/OUoH64zYYRf3HBP5z24G38h5D3qXu23JGRoigpX5Ss4r9ZnDk3g0Z8uQC2x2lPaJ+UlWBc1ZWBWdLg==}
-    engines: {node: '>=0.8'}
-    dev: false
-
   /consola@3.2.3:
     resolution: {integrity: sha512-I5qxpzLv+sJhTVEoLYNcTW+bThDCPsit0vLNKShZx6rLtpilNpmmeTPaeqJb9ZE9dV3DGaeby6Vuhrw38WjeyQ==}
     engines: {node: ^14.18.0 || >=16.10.0}
@@ -16402,6 +16387,11 @@ packages:
 
   /heap@0.2.7:
     resolution: {integrity: sha512-2bsegYkkHO+h/9MGbn6KWcE45cHZgPANo5LXF7EvWdT0yT2EguSVO1nDgU5c8+ZOPwp2vMNa7YFsJhVcDR9Sdg==}
+    dev: false
+
+  /helmet@7.1.0:
+    resolution: {integrity: sha512-g+HZqgfbpXdCkme/Cd/mZkV0aV3BZZZSugecH03kl38m/Kmdx8jKjBikpDj2cr+Iynv4KpYEviojNdTJActJAg==}
+    engines: {node: '>=16.0.0'}
     dev: false
 
   /help-me@4.2.0:
