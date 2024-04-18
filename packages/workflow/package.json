@@ -40,7 +40,7 @@
   ],
   "devDependencies": {
     "@types/deep-equal": "^1.0.1",
-    "@types/express": "^4.17.6",
+    "@types/express": "^4.17.21",
     "@types/jmespath": "^0.15.0",
     "@types/lodash": "^4.14.195",
     "@types/luxon": "^3.2.0",
