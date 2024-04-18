@@ -95,13 +95,9 @@
 							data-test-id="browse-sales-templates-card"
 							@click="trackCategoryLinkClick('Sales')"
 						>
-							<n8n-icon :class="$style.emptyStateCardIcon" icon="handshake" />
+							<n8n-icon :class="$style.emptyStateCardIcon" icon="box-open" />
 							<n8n-text size="large" class="mt-xs" color="text-base">
-								{{
-									$locale.baseText('workflows.empty.browseTemplates', {
-										interpolate: { category: 'Sales' },
-									})
-								}}
+								{{ $locale.baseText('workflows.empty.browseTemplates') }}
 							</n8n-text>
 						</n8n-card>
 					</a>
@@ -268,6 +264,9 @@ const WorkflowsView = defineComponent({
 			return userRole;
 		},
 		isSalesUser() {
+			if (!this.userRole) {
+				return false;
+			}
 			return ['Sales', 'sales-and-marketing'].includes(this.userRole);
 		},
 	},
