@@ -17,6 +17,7 @@ import { loadOptions } from './methods';
 
 export class SimulateTrigger implements INodeType {
 	description: INodeTypeDescription = {
+		hidden: true,
 		displayName: 'Simulate Trigger',
 		name: 'simulateTrigger',
 		subtitle: '={{$parameter.subtitle || undefined}}',
@@ -24,13 +25,10 @@ export class SimulateTrigger implements INodeType {
 		group: ['trigger'],
 		version: 1,
 		description: 'Simulate a trigger node',
-		eventTriggerDescription: '',
-		maxNodes: 1,
 		defaults: {
 			name: 'Simulate Trigger',
 			color: '#b0b0b0',
 		},
-
 		inputs: [],
 		outputs: ['main'],
 		properties: [

@@ -187,6 +187,7 @@ import {
 	NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS,
 	NOT_DUPLICATABE_NODE_TYPES,
 	SIMULATE_NODE_TYPE,
+	SIMULATE_TRIGGER_NODE_TYPE,
 	WAIT_TIME_UNLIMITED,
 } from '@/constants';
 import { nodeBase } from '@/mixins/nodeBase';
@@ -588,7 +589,10 @@ export default defineComponent({
 			);
 		},
 		iconNodeType() {
-			if (this.data?.type === SIMULATE_NODE_TYPE) {
+			if (
+				this.data?.type === SIMULATE_NODE_TYPE ||
+				this.data?.type === SIMULATE_TRIGGER_NODE_TYPE
+			) {
 				const icon = this.data.parameters?.icon as string;
 				const iconNodeType = this.workflow.expression.getSimpleParameterValue(
 					this.data,
