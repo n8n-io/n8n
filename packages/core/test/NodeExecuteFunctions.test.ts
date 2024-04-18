@@ -411,6 +411,7 @@ describe('NodeExecuteFunctions', () => {
 			test('on redirected requests', async () => {
 				const axiosOptions = await parseRequestObject(requestObject);
 				expect(axiosOptions.beforeRedirect).toBeDefined;
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 				const redirectOptions: Record<string, any> = { agents: {}, hostname: 'example.de' };
 				axiosOptions.beforeRedirect!(redirectOptions, mock());
 				expect(redirectOptions.agent).toEqual(redirectOptions.agents.https);
