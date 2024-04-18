@@ -11,55 +11,90 @@ describe('InlineExpressionEditorOutput.vue', () => {
 				segments: [
 					{
 						from: 0,
-						to: 6,
-						plaintext: 'SELECT',
-						kind: 'plaintext',
-					},
-					{
-						from: 6,
-						to: 7,
-						plaintext: ' ',
-						kind: 'plaintext',
-					},
-					{
-						from: 7,
-						to: 12,
+						to: 5,
 						plaintext: '[1,2]',
 						kind: 'plaintext',
 					},
 					{
-						from: 7,
-						to: 8,
+						from: 0,
+						to: 1,
 						plaintext: '[',
 						kind: 'plaintext',
 					},
 					{
-						from: 8,
-						to: 9,
+						from: 1,
+						to: 2,
 						plaintext: '1',
 						kind: 'plaintext',
 					},
 					{
-						from: 9,
-						to: 10,
+						from: 2,
+						to: 3,
 						plaintext: ',',
 						kind: 'plaintext',
 					},
 					{
-						from: 10,
-						to: 11,
+						from: 3,
+						to: 4,
 						plaintext: '2',
 						kind: 'plaintext',
 					},
 					{
-						from: 11,
-						to: 12,
+						from: 4,
+						to: 5,
 						plaintext: ']',
 						kind: 'plaintext',
 					},
 				],
 			},
 		});
-		expect(getByTestId('inline-expression-editor-output')).toHaveTextContent('SELECT [1,2]');
+		expect(getByTestId('inline-expression-editor-output')).toHaveTextContent('[1,2]');
+	});
+
+	test('should render segments with resolved expressions', () => {
+		const { getByTestId } = renderComponent(InlineExpressionEditorOutput, {
+			pinia: createTestingPinia(),
+			props: {
+				hoveringItemNumber: 0,
+				segments: [
+					{
+						kind: 'plaintext',
+						from: 0,
+						to: 6,
+						plaintext: 'before>',
+					},
+					{
+						kind: 'plaintext',
+						from: 6,
+						to: 7,
+						plaintext: ' ',
+					},
+					{
+						kind: 'resolvable',
+						from: 7,
+						to: 17,
+						resolvable: '{{ $now }}',
+						resolved: '[Object: "2024-04-18T09:03:26.651-04:00"]',
+						state: 'valid',
+						error: null,
+					},
+					{
+						kind: 'plaintext',
+						from: 17,
+						to: 18,
+						plaintext: ' ',
+					},
+					{
+						kind: 'plaintext',
+						from: 18,
+						to: 24,
+						plaintext: '<after',
+					},
+				],
+			},
+		});
+		expect(getByTestId('inline-expression-editor-output')).toHaveTextContent(
+			'before> [Object: "2024-04-18T09:03:26.651-04:00"] <after',
+		);
 	});
 });
