@@ -5,9 +5,15 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	IDataObject,
-	ILoadOptionsFunctions,
-	INodePropertyOptions,
 } from 'n8n-workflow';
+
+import { loadOptions } from './methods';
+import {
+	executionDurationProperty,
+	iconSelector,
+	jsonOutputProperty,
+	subtitleProperty,
+} from './descriptions';
 
 export class Simulate implements INodeType {
 	description: INodeTypeDescription = {
@@ -26,25 +32,8 @@ export class Simulate implements INodeType {
 		inputs: ['main'],
 		outputs: ['main'],
 		properties: [
-			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-				displayName: 'Icon to Display on Canvas',
-				name: 'icon',
-				type: 'options',
-				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
-				description: 'Select a type of node to show corresponding icon',
-				default: 'n8n-nodes-base.noOp',
-				typeOptions: {
-					loadOptionsMethod: 'getNodeTypes',
-				},
-			},
-			{
-				displayName: 'Subtitle',
-				name: 'subtitle',
-				type: 'string',
-				default: '',
-				placeholder: "e.g. 'record: read'",
-			},
+			iconSelector,
+			subtitleProperty,
 			{
 				displayName: 'Output',
 				name: 'output',
@@ -86,55 +75,18 @@ export class Simulate implements INodeType {
 				},
 			},
 			{
-				displayName: 'JSON',
-				name: 'jsonOutput',
-				type: 'json',
-				typeOptions: {
-					rows: 5,
-				},
-				default: '[\n  {\n  "my_field_1": "value",\n  "my_field_2": 1\n  }\n]',
-				validateType: 'array',
+				...jsonOutputProperty,
 				displayOptions: {
 					show: {
 						output: ['custom'],
 					},
 				},
 			},
-			{
-				displayName: 'Execution Duration (MS)',
-				name: 'executionDuration',
-				type: 'number',
-				default: 150,
-				description: 'Execution duration in milliseconds',
-				typeOptions: {
-					minValue: 0,
-				},
-			},
+			executionDurationProperty,
 		],
 	};
 
-	methods = {
-		loadOptions: {
-			async getNodeTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const types = this.getKnownNodeTypes() as {
-					[key: string]: {
-						className: string;
-					};
-				};
-
-				const returnData: INodePropertyOptions[] = [];
-
-				for (const type of Object.keys(types)) {
-					returnData.push({
-						name: types[type].className,
-						value: type,
-					});
-				}
-
-				return returnData;
-			},
-		},
-	};
+	methods = { loadOptions };
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
