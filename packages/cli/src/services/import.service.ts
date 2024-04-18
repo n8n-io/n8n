@@ -54,18 +54,22 @@ export class ImportService {
 					this.logger.info(`Deactivating workflow "${workflow.name}". Remember to activate later.`);
 				}
 
-				const upsertResult = await tx.upsert(WorkflowEntity, workflow, ['id']);
+				const exists = workflow.id ? await tx.existsBy(WorkflowEntity, { id: workflow.id }) : false;
 
+				const upsertResult = await tx.upsert(WorkflowEntity, workflow, ['id']);
 				const workflowId = upsertResult.identifiers.at(0)?.id as string;
 
 				const personalProject =
 					await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(userId);
 
-				await tx.upsert(
-					SharedWorkflow,
-					{ workflowId, projectId: personalProject.id, role: 'workflow:owner' },
-					['workflowId', 'projectId'],
-				);
+				// Create relationship if the workflow was inserted instead of updated.
+				if (!exists) {
+					await tx.upsert(
+						SharedWorkflow,
+						{ workflowId, projectId: personalProject.id, role: 'workflow:owner' },
+						['workflowId', 'projectId'],
+					);
+				}
 
 				if (!workflow.tags?.length) continue;
 

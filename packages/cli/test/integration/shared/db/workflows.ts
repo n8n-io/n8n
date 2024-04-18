@@ -21,15 +21,7 @@ export async function createManyWorkflows(
 	return await Promise.all(workflowRequests);
 }
 
-/**
- * Store a workflow in the DB (without a trigger) and optionally assign it to a user.
- * @param attributes workflow attributes
- * @param user user to assign the workflow to
- */
-export async function createWorkflow(
-	attributes: Partial<WorkflowEntity> = {},
-	userOrProject?: User | Project,
-) {
+export function newWorkflow(attributes: Partial<WorkflowEntity> = {}): WorkflowEntity {
 	const { active, name, nodes, connections, versionId } = attributes;
 
 	const workflowEntity = Container.get(WorkflowRepository).create({
@@ -50,7 +42,19 @@ export async function createWorkflow(
 		...attributes,
 	});
 
-	const workflow = await Container.get(WorkflowRepository).save(workflowEntity);
+	return workflowEntity;
+}
+
+/**
+ * Store a workflow in the DB (without a trigger) and optionally assign it to a user.
+ * @param attributes workflow attributes
+ * @param user user to assign the workflow to
+ */
+export async function createWorkflow(
+	attributes: Partial<WorkflowEntity> = {},
+	userOrProject?: User | Project,
+) {
+	const workflow = await Container.get(WorkflowRepository).save(newWorkflow(attributes));
 
 	if (userOrProject instanceof User) {
 		const user = userOrProject;
@@ -164,6 +168,10 @@ export async function createWorkflowWithTrigger(
 
 export async function getAllWorkflows() {
 	return await Container.get(WorkflowRepository).find();
+}
+
+export async function getAllSharedWorkflows() {
+	return await Container.get(SharedWorkflowRepository).find();
 }
 
 export const getWorkflowById = async (id: string) =>
