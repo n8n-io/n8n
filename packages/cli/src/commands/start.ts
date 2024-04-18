@@ -27,6 +27,7 @@ import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { WaitTracker } from '@/WaitTracker';
 import { BaseCommand } from './BaseCommand';
+import { BackupService } from '@/BackupService';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -189,6 +190,8 @@ export class Start extends BaseCommand {
 		if (!config.getEnv('endpoints.disableUi')) {
 			await this.generateStaticAssets();
 		}
+
+		Container.get(BackupService);
 	}
 
 	async initOrchestration() {
