@@ -1,3 +1,15 @@
+## [1.37.3](https://github.com/n8n-io/n8n/compare/n8n@1.37.2...n8n@1.37.3) (2024-04-18)
+
+
+### Bug Fixes
+
+* **core:** Don't create multiple owners when importing credentials or workflows ([#9112](https://github.com/n8n-io/n8n/issues/9112)) ([32db869](https://github.com/n8n-io/n8n/commit/32db869ef45f674c1ec9a8dbabe28c4545192792))
+* **core:** Exclude oAuth callback urls from browser-id checks ([#9158](https://github.com/n8n-io/n8n/issues/9158)) ([58b6a9d](https://github.com/n8n-io/n8n/commit/58b6a9d4aeebfb7ff93bff275af2d558b3e67046))
+* **core:** Improve browserId checks, and add logging ([#9161](https://github.com/n8n-io/n8n/issues/9161)) ([cff50fb](https://github.com/n8n-io/n8n/commit/cff50fb59dc6800f0fbbc4804262be8aaa78beef))
+* Fix issue with Crowdstrike credential not working correctly ([#9108](https://github.com/n8n-io/n8n/issues/9108)) ([d11ca79](https://github.com/n8n-io/n8n/commit/d11ca79adbaf7cba86213723be92b7da769c89f5))
+
+
+
 ## [1.37.2](https://github.com/n8n-io/n8n/compare/n8n@1.37.1...n8n@1.37.2) (2024-04-17)
 
 ### Bug Fixes
