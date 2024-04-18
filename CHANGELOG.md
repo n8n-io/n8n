@@ -1,3 +1,16 @@
+## [1.38.1](https://github.com/n8n-io/n8n/compare/n8n@1.38.0...n8n@1.38.1) (2024-04-18)
+
+
+### Bug Fixes
+
+* **core:** Exclude oAuth callback urls from browser-id checks ([#9158](https://github.com/n8n-io/n8n/issues/9158)) ([c1d07fb](https://github.com/n8n-io/n8n/commit/c1d07fbd5bae634b6c2502a692dbc6c97d72593b))
+* **core:** Improve browserId checks, and add logging ([#9161](https://github.com/n8n-io/n8n/issues/9161)) ([e16d18c](https://github.com/n8n-io/n8n/commit/e16d18c326c847a34f2c0ddf1bf918b5feee255c))
+* **editor:** Fix parameter reset on credential change in Discord node ([#9137](https://github.com/n8n-io/n8n/issues/9137)) ([336344f](https://github.com/n8n-io/n8n/commit/336344ff5aff61de54a6bdba9b4c6ed715eede9d))
+* **Postgres Node:** Convert js arrays to postgres type, if column type is ARRAY ([#9160](https://github.com/n8n-io/n8n/issues/9160)) ([ee0c685](https://github.com/n8n-io/n8n/commit/ee0c6856d427ec24cacf19a1fc6c534798a96e85))
+* **Schedule Trigger Node:** Default to 0 minute if falsy on hourly run ([#9146](https://github.com/n8n-io/n8n/issues/9146)) ([3d6455e](https://github.com/n8n-io/n8n/commit/3d6455ebf4d15ac46ed0b424c20a876806ff2e9c))
+
+
+
 # [1.38.0](https://github.com/n8n-io/n8n/compare/n8n@1.37.0...n8n@1.38.0) (2024-04-17)
 
 
