@@ -8,7 +8,12 @@ import type {
 	WorkflowExecuteMode,
 	ExecutionStatus,
 } from 'n8n-workflow';
-import { ApplicationError, Workflow, WorkflowOperationError } from 'n8n-workflow';
+import {
+	ApplicationError,
+	ExecutionStatusList,
+	Workflow,
+	WorkflowOperationError,
+} from 'n8n-workflow';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import type {
 	ExecutionPayload,
@@ -354,15 +359,17 @@ export class ExecutionService {
 	 * and whether the total is an estimate or not. Active executions are excluded
 	 * from the total and count for pagination purposes.
 	 */
-	async findAllActiveAndLatestFinished(query: ExecutionSummaries.RangeQuery) {
-		const active: ExecutionStatus[] = ['new', 'running'];
-		const finished: ExecutionStatus[] = ['success', 'error', 'canceled'];
+	async findAllRunningAndLatest(query: ExecutionSummaries.RangeQuery) {
+		const currentlyRunningStatuses: ExecutionStatus[] = ['new', 'running'];
+		const allStatuses = new Set(ExecutionStatusList);
+		currentlyRunningStatuses.forEach((status) => allStatuses.delete(status));
+		const notRunningStatuses: ExecutionStatus[] = Array.from(allStatuses);
 
 		const [activeResult, finishedResult] = await Promise.all([
-			this.findRangeWithCount({ ...query, status: active }),
+			this.findRangeWithCount({ ...query, status: currentlyRunningStatuses }),
 			this.findRangeWithCount({
 				...query,
-				status: finished,
+				status: notRunningStatuses,
 				order: { stoppedAt: 'DESC' },
 			}),
 		]);

@@ -339,7 +339,7 @@ describe('ExecutionService', () => {
 				accessibleWorkflowIds: [workflow.id],
 			};
 
-			const output = await executionService.findAllActiveAndLatestFinished(query);
+			const output = await executionService.findAllRunningAndLatest(query);
 
 			expect(output.results).toHaveLength(23); // 3 active + 20 finished (excludes 21st)
 			expect(output.count).toBe(totalFinished); // 21 finished, excludes active
@@ -363,7 +363,7 @@ describe('ExecutionService', () => {
 				accessibleWorkflowIds: [workflow.id],
 			};
 
-			const output = await executionService.findAllActiveAndLatestFinished(query);
+			const output = await executionService.findAllRunningAndLatest(query);
 
 			expect(output.results).toHaveLength(totalFinished); // 5 finished
 			expect(output.count).toBe(totalFinished); // 5 finished, excludes active
@@ -385,7 +385,7 @@ describe('ExecutionService', () => {
 				accessibleWorkflowIds: [workflow.id],
 			};
 
-			const output = await executionService.findAllActiveAndLatestFinished(query);
+			const output = await executionService.findAllRunningAndLatest(query);
 
 			expect(output.results).toHaveLength(3); // 3 finished
 			expect(output.count).toBe(0); // 0 finished, excludes active
@@ -401,7 +401,7 @@ describe('ExecutionService', () => {
 				accessibleWorkflowIds: [workflow.id],
 			};
 
-			const output = await executionService.findAllActiveAndLatestFinished(query);
+			const output = await executionService.findAllRunningAndLatest(query);
 
 			expect(output.results).toHaveLength(0);
 			expect(output.count).toBe(0);
