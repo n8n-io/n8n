@@ -158,7 +158,7 @@ export class ImportCredentialsCommand extends BaseCommand {
 			if (ownerId !== userId) {
 				return {
 					success: false as const,
-					message: `The credential with id "${credential.id}" is already owned by the user with the id "${ownerId}". It can't be re-owned by the user with the id "${userId}"`,
+					message: `The credential with id "${credential.id}" is already owned by the project with the id "${ownerId}". It can't be re-owned by the user with the id "${userId}"`,
 				};
 			}
 		}
@@ -227,7 +227,7 @@ export class ImportCredentialsCommand extends BaseCommand {
 			role: 'credential:owner',
 		});
 
-		return sharedCredential?.userId;
+		return sharedCredential?.projectId;
 	}
 
 	private async credentialExists(credentialId: string) {

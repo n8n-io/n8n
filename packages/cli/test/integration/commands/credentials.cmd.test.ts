@@ -8,6 +8,7 @@ import { mockInstance } from '../../shared/mocking';
 import * as testDb from '../shared/testDb';
 import { getAllCredentials, getAllSharedCredentials } from '../shared/db/credentials';
 import { createMember, createOwner } from '../shared/db/users';
+import { getPersonalProject } from '../shared/db/projects';
 
 const oclifConfig = new Config({ root: __dirname });
 
@@ -36,6 +37,7 @@ test('import:credentials should import a credential', async () => {
 	// ARRANGE
 	//
 	const owner = await createOwner();
+	const ownerProject = await getPersonalProject(owner);
 
 	//
 	// ACT
@@ -54,7 +56,11 @@ test('import:credentials should import a credential', async () => {
 	expect(after).toMatchObject({
 		credentials: [expect.objectContaining({ id: '123', name: 'cred-aws-test' })],
 		sharings: [
-			expect.objectContaining({ credentialsId: '123', userId: owner.id, role: 'credential:owner' }),
+			expect.objectContaining({
+				credentialsId: '123',
+				projectId: ownerProject.id,
+				role: 'credential:owner',
+			}),
 		],
 	});
 });
@@ -64,6 +70,7 @@ test('import:credentials should import a credential from separated files', async
 	// ARRANGE
 	//
 	const owner = await createOwner();
+	const ownerProject = await getPersonalProject(owner);
 
 	//
 	// ACT
@@ -92,7 +99,7 @@ test('import:credentials should import a credential from separated files', async
 		sharings: [
 			expect.objectContaining({
 				credentialsId: '123',
-				userId: owner.id,
+				projectId: ownerProject.id,
 				role: 'credential:owner',
 			}),
 		],
@@ -104,6 +111,7 @@ test('`import:credentials --userId ...` should fail if the credential exists alr
 	// ARRANGE
 	//
 	const owner = await createOwner();
+	const ownerProject = await getPersonalProject(owner);
 	const member = await createMember();
 
 	// import credential the first time, assigning it to the owner
@@ -122,7 +130,7 @@ test('`import:credentials --userId ...` should fail if the credential exists alr
 		sharings: [
 			expect.objectContaining({
 				credentialsId: '123',
-				userId: owner.id,
+				projectId: ownerProject.id,
 				role: 'credential:owner',
 			}),
 		],
@@ -140,7 +148,7 @@ test('`import:credentials --userId ...` should fail if the credential exists alr
 			`--userId=${member.id}`,
 		]),
 	).rejects.toThrowError(
-		`The credential with id "123" is already owned by the user with the id "${owner.id}". It can't be re-owned by the user with the id "${member.id}"`,
+		`The credential with id "123" is already owned by the project with the id "${ownerProject.id}". It can't be re-owned by the user with the id "${member.id}"`,
 	);
 
 	//
@@ -162,7 +170,7 @@ test('`import:credentials --userId ...` should fail if the credential exists alr
 		sharings: [
 			expect.objectContaining({
 				credentialsId: '123',
-				userId: owner.id,
+				projectId: ownerProject.id,
 				role: 'credential:owner',
 			}),
 		],
@@ -175,6 +183,7 @@ test("only update credential, don't create or update owner if `--userId` is not 
 	//
 	await createOwner();
 	const member = await createMember();
+	const memberProject = await getPersonalProject(member);
 
 	// import credential the first time, assigning it to a member
 	await importCredential([
@@ -192,7 +201,7 @@ test("only update credential, don't create or update owner if `--userId` is not 
 		sharings: [
 			expect.objectContaining({
 				credentialsId: '123',
-				userId: member.id,
+				projectId: memberProject.id,
 				role: 'credential:owner',
 			}),
 		],
@@ -225,7 +234,7 @@ test("only update credential, don't create or update owner if `--userId` is not 
 		sharings: [
 			expect.objectContaining({
 				credentialsId: '123',
-				userId: member.id,
+				projectId: memberProject.id,
 				role: 'credential:owner',
 			}),
 		],

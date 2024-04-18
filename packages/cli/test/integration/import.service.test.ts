@@ -94,7 +94,7 @@ describe('ImportService', () => {
 		expect(sharings).toMatchObject([
 			expect.objectContaining({
 				workflowId: workflowToImport.id,
-				userId: owner.id,
+				projectId: ownerPersonalProject.id,
 				role: 'workflow:owner',
 			}),
 		]);

@@ -116,7 +116,7 @@ export class ImportWorkflowsCommand extends BaseCommand {
 			if (ownerId !== userId) {
 				return {
 					success: false as const,
-					message: `The credential with id "${workflow.id}" is already owned by the user with the id "${ownerId}". It can't be re-owned by the user with the id "${userId}"`,
+					message: `The credential with id "${workflow.id}" is already owned by the project with the id "${ownerId}". It can't be re-owned by the user with the id "${userId}"`,
 				};
 			}
 		}
@@ -151,7 +151,7 @@ export class ImportWorkflowsCommand extends BaseCommand {
 			role: 'workflow:owner',
 		});
 
-		return sharing?.userId;
+		return sharing?.projectId;
 	}
 
 	private async workflowExists(workflow: WorkflowEntity) {

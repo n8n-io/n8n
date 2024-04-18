@@ -8,6 +8,7 @@ import { mockInstance } from '../../shared/mocking';
 import * as testDb from '../shared/testDb';
 import { getAllSharedWorkflows, getAllWorkflows } from '../shared/db/workflows';
 import { createMember, createOwner } from '../shared/db/users';
+import { getPersonalProject } from '../shared/db/projects';
 
 const oclifConfig = new Config({ root: __dirname });
 
@@ -36,6 +37,7 @@ test('import:workflow should import active workflow and deactivate it', async ()
 	// ARRANGE
 	//
 	const owner = await createOwner();
+	const ownerProject = await getPersonalProject(owner);
 
 	//
 	// ACT
@@ -58,8 +60,16 @@ test('import:workflow should import active workflow and deactivate it', async ()
 			expect.objectContaining({ name: 'inactive-workflow', active: false }),
 		],
 		sharings: [
-			expect.objectContaining({ workflowId: '998', userId: owner.id, role: 'workflow:owner' }),
-			expect.objectContaining({ workflowId: '999', userId: owner.id, role: 'workflow:owner' }),
+			expect.objectContaining({
+				workflowId: '998',
+				projectId: ownerProject.id,
+				role: 'workflow:owner',
+			}),
+			expect.objectContaining({
+				workflowId: '999',
+				projectId: ownerProject.id,
+				role: 'workflow:owner',
+			}),
 		],
 	});
 });
@@ -69,6 +79,7 @@ test('import:workflow should import active workflow from combined file and deact
 	// ARRANGE
 	//
 	const owner = await createOwner();
+	const ownerProject = await getPersonalProject(owner);
 
 	//
 	// ACT
@@ -90,8 +101,16 @@ test('import:workflow should import active workflow from combined file and deact
 			expect.objectContaining({ name: 'inactive-workflow', active: false }),
 		],
 		sharings: [
-			expect.objectContaining({ workflowId: '998', userId: owner.id, role: 'workflow:owner' }),
-			expect.objectContaining({ workflowId: '999', userId: owner.id, role: 'workflow:owner' }),
+			expect.objectContaining({
+				workflowId: '998',
+				projectId: ownerProject.id,
+				role: 'workflow:owner',
+			}),
+			expect.objectContaining({
+				workflowId: '999',
+				projectId: ownerProject.id,
+				role: 'workflow:owner',
+			}),
 		],
 	});
 });
@@ -101,6 +120,7 @@ test('`import:workflow --userId ...` should fail if the workflow exists already 
 	// ARRANGE
 	//
 	const owner = await createOwner();
+	const ownerProject = await getPersonalProject(owner);
 	const member = await createMember();
 
 	// Import workflow the first time, assigning it to a member.
@@ -119,7 +139,7 @@ test('`import:workflow --userId ...` should fail if the workflow exists already 
 		sharings: [
 			expect.objectContaining({
 				workflowId: '998',
-				userId: owner.id,
+				projectId: ownerProject.id,
 				role: 'workflow:owner',
 			}),
 		],
@@ -136,7 +156,7 @@ test('`import:workflow --userId ...` should fail if the workflow exists already 
 			`--userId=${member.id}`,
 		]),
 	).rejects.toThrowError(
-		`The credential with id "998" is already owned by the user with the id "${owner.id}". It can't be re-owned by the user with the id "${member.id}"`,
+		`The credential with id "998" is already owned by the project with the id "${ownerProject.id}". It can't be re-owned by the user with the id "${member.id}"`,
 	);
 
 	//
@@ -152,7 +172,7 @@ test('`import:workflow --userId ...` should fail if the workflow exists already 
 		sharings: [
 			expect.objectContaining({
 				workflowId: '998',
-				userId: owner.id,
+				projectId: ownerProject.id,
 				role: 'workflow:owner',
 			}),
 		],
@@ -165,6 +185,7 @@ test("only update the workflow, don't create or update the owner if `--userId` i
 	//
 	await createOwner();
 	const member = await createMember();
+	const memberProject = await getPersonalProject(member);
 
 	// Import workflow the first time, assigning it to a member.
 	await importWorkflow([
@@ -182,7 +203,7 @@ test("only update the workflow, don't create or update the owner if `--userId` i
 		sharings: [
 			expect.objectContaining({
 				workflowId: '998',
-				userId: member.id,
+				projectId: memberProject.id,
 				role: 'workflow:owner',
 			}),
 		],
@@ -209,7 +230,7 @@ test("only update the workflow, don't create or update the owner if `--userId` i
 		sharings: [
 			expect.objectContaining({
 				workflowId: '998',
-				userId: member.id,
+				projectId: memberProject.id,
 				role: 'workflow:owner',
 			}),
 		],
