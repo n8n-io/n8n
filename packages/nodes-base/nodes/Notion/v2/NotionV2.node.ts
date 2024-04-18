@@ -23,6 +23,7 @@ import {
 	notionApiRequest,
 	notionApiRequestAllItems,
 	notionApiRequestGetBlockChildrens,
+	prepareNotionError,
 	simplifyBlocksOutput,
 	simplifyObjects,
 	validateJSON,
@@ -91,7 +92,7 @@ export class NotionV2 implements INodeType {
 								pairedItem: { item: i },
 							});
 						} else {
-							throw error;
+							throw prepareNotionError(this.getNode(), error, i);
 						}
 					}
 				}
@@ -166,7 +167,7 @@ export class NotionV2 implements INodeType {
 								pairedItem: { item: i },
 							});
 						} else {
-							throw error;
+							throw prepareNotionError(this.getNode(), error, i);
 						}
 					}
 				}
@@ -198,7 +199,7 @@ export class NotionV2 implements INodeType {
 								pairedItem: { item: i },
 							});
 						} else {
-							throw error;
+							throw prepareNotionError(this.getNode(), error, i);
 						}
 					}
 				}
@@ -241,7 +242,7 @@ export class NotionV2 implements INodeType {
 								pairedItem: { item: i },
 							});
 						} else {
-							throw error;
+							throw prepareNotionError(this.getNode(), error, i);
 						}
 					}
 				}
@@ -304,7 +305,7 @@ export class NotionV2 implements INodeType {
 								pairedItem: { item: i },
 							});
 						} else {
-							throw error;
+							throw prepareNotionError(this.getNode(), error, i);
 						}
 					}
 				}
@@ -391,7 +392,7 @@ export class NotionV2 implements INodeType {
 								pairedItem: { item: i },
 							});
 						} else {
-							throw error;
+							throw prepareNotionError(this.getNode(), error, i);
 						}
 					}
 				}
@@ -421,7 +422,7 @@ export class NotionV2 implements INodeType {
 								pairedItem: { item: i },
 							});
 						} else {
-							throw error;
+							throw prepareNotionError(this.getNode(), error, i);
 						}
 					}
 				}
@@ -459,9 +460,13 @@ export class NotionV2 implements INodeType {
 							if (validateJSON(filterJson) !== undefined) {
 								body.filter = jsonParse(filterJson);
 							} else {
-								throw new NodeApiError(this.getNode(), {
-									message: 'Filters (JSON) must be a valid json',
-								});
+								throw new NodeApiError(
+									this.getNode(),
+									{
+										message: 'Filters (JSON) must be a valid json',
+									},
+									{ itemIndex: i },
+								);
 							}
 						}
 
@@ -512,7 +517,7 @@ export class NotionV2 implements INodeType {
 								pairedItem: { item: i },
 							});
 						} else {
-							throw error;
+							throw prepareNotionError(this.getNode(), error, i);
 						}
 					}
 				}
@@ -564,7 +569,7 @@ export class NotionV2 implements INodeType {
 								pairedItem: { item: i },
 							});
 						} else {
-							throw error;
+							throw prepareNotionError(this.getNode(), error, i);
 						}
 					}
 				}
@@ -590,7 +595,7 @@ export class NotionV2 implements INodeType {
 								pairedItem: { item: i },
 							});
 						} else {
-							throw error;
+							throw prepareNotionError(this.getNode(), error, i);
 						}
 					}
 				}
@@ -619,7 +624,7 @@ export class NotionV2 implements INodeType {
 								pairedItem: { item: i },
 							});
 						} else {
-							throw error;
+							throw prepareNotionError(this.getNode(), error, i);
 						}
 					}
 				}
@@ -653,7 +658,7 @@ export class NotionV2 implements INodeType {
 								pairedItem: { item: i },
 							});
 						} else {
-							throw error;
+							throw prepareNotionError(this.getNode(), error, i);
 						}
 					}
 				}
@@ -705,7 +710,7 @@ export class NotionV2 implements INodeType {
 								pairedItem: { item: i },
 							});
 						} else {
-							throw error;
+							throw prepareNotionError(this.getNode(), error, i);
 						}
 					}
 				}
@@ -767,7 +772,7 @@ export class NotionV2 implements INodeType {
 								pairedItem: { item: i },
 							});
 						} else {
-							throw error;
+							throw prepareNotionError(this.getNode(), error, i);
 						}
 					}
 				}

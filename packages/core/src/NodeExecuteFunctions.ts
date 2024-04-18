@@ -526,8 +526,9 @@ export async function parseRequestObject(requestObject: IRequestOptions) {
 		if (typeof requestObject.proxy === 'string') {
 			try {
 				const url = new URL(requestObject.proxy);
+				const host = url.hostname.startsWith('[') ? url.hostname.slice(1, -1) : url.hostname;
 				axiosConfig.proxy = {
-					host: url.hostname,
+					host,
 					port: parseInt(url.port, 10),
 					protocol: url.protocol,
 				};
@@ -552,8 +553,9 @@ export async function parseRequestObject(requestObject: IRequestOptions) {
 					const [userpass, hostport] = requestObject.proxy.split('@');
 					const [username, password] = userpass.split(':');
 					const [hostname, port] = hostport.split(':');
+					const host = hostname.startsWith('[') ? hostname.slice(1, -1) : hostname;
 					axiosConfig.proxy = {
-						host: hostname,
+						host,
 						port: parseInt(port, 10),
 						protocol: 'http',
 						auth: {
