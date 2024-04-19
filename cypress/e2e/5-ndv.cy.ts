@@ -3,6 +3,8 @@ import { getVisibleSelect } from '../utils';
 import { MANUAL_TRIGGER_NODE_DISPLAY_NAME } from '../constants';
 import { NDV, WorkflowPage } from '../pages';
 import { NodeCreator } from '../pages/features/node-creator';
+import { clickCreateNewCredential } from '../composables/ndv';
+import { setCredentialValues } from '../composables/modals/credential-modal';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
@@ -633,7 +635,7 @@ describe('NDV', () => {
 		ndv.getters.nodeRunErrorIndicator().should('exist');
 	});
 
-	it('Should handle mismatched option attributes', () => {
+	it('Should clear mismatched collection parameters', () => {
 		workflowPage.actions.addInitialNodeToCanvas('LDAP', {
 			keepNdvOpen: true,
 			action: 'Create a new entry',
@@ -654,6 +656,21 @@ describe('NDV', () => {
 		ndv.actions.setRLCValue('documentId', TEST_DOC_ID);
 		ndv.actions.changeNodeOperation('Update Row');
 		ndv.getters.resourceLocatorInput('documentId').find('input').should('have.value', TEST_DOC_ID);
+	});
+
+	it('Should not clear resource/operation after credential change', () => {
+		workflowPage.actions.addInitialNodeToCanvas('Discord', {
+			keepNdvOpen: true,
+			action: 'Delete a message',
+		});
+
+		clickCreateNewCredential();
+		setCredentialValues({
+			botToken: 'sk_test_123',
+		});
+
+		ndv.getters.parameterInput('resource').find('input').should('have.value', 'Message');
+		ndv.getters.parameterInput('operation').find('input').should('have.value', 'Delete');
 	});
 
 	it('Should open appropriate node creator after clicking on connection hint link', () => {

@@ -15,7 +15,7 @@ services:
         hard: 46677
 
   postgres:
-    image: postgres:11
+    image: postgres:16
     restart: always
     environment:
       - POSTGRES_DB=n8n
