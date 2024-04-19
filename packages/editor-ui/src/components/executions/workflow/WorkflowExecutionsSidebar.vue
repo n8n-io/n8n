@@ -11,13 +11,13 @@
 		</div>
 		<div :class="$style.controls">
 			<el-checkbox
-				:model-value="autoRefresh"
+				v-model="executionsStore.autoRefresh"
 				data-test-id="auto-refresh-checkbox"
 				@update:model-value="$emit('update:autoRefresh', $event)"
 			>
 				{{ $locale.baseText('executionsList.autoRefresh') }}
 			</el-checkbox>
-			<ExecutionFilter popover-placement="left-start" @filter-changed="onFilterChanged" />
+			<ExecutionsFilter popover-placement="left-start" @filter-changed="onFilterChanged" />
 		</div>
 		<div
 			ref="executionList"
@@ -28,12 +28,16 @@
 			<div v-if="loading" class="mr-l">
 				<n8n-loading variant="rect" />
 			</div>
-			<div v-if="!loading && executions.length === 0" :class="$style.noResultsContainer">
+			<div
+				v-if="!loading && executions.length === 0"
+				:class="$style.noResultsContainer"
+				data-test-id="execution-list-empty"
+			>
 				<n8n-text color="text-base" size="medium" align="center">
 					{{ $locale.baseText('executionsLandingPage.noResults') }}
 				</n8n-text>
 			</div>
-			<ExecutionCard
+			<WorkflowExecutionsCard
 				v-else-if="temporaryExecution"
 				:ref="`execution-${temporaryExecution.id}`"
 				:execution="temporaryExecution"
@@ -41,52 +45,50 @@
 				:show-gap="true"
 				@retry-execution="onRetryExecution"
 			/>
-			<ExecutionCard
-				v-for="execution in executions"
-				:key="execution.id"
-				:ref="`execution-${execution.id}`"
-				:execution="execution"
-				:data-test-id="`execution-details-${execution.id}`"
-				@retry-execution="onRetryExecution"
-			/>
+			<TransitionGroup name="executions-list">
+				<WorkflowExecutionsCard
+					v-for="execution in executions"
+					:key="execution.id"
+					:ref="`execution-${execution.id}`"
+					:execution="execution"
+					:data-test-id="`execution-details-${execution.id}`"
+					@retry-execution="onRetryExecution"
+				/>
+			</TransitionGroup>
 			<div v-if="loadingMore" class="mr-m">
 				<n8n-loading variant="p" :rows="1" />
 			</div>
 		</div>
 		<div :class="$style.infoAccordion">
-			<ExecutionsInfoAccordion :initially-expanded="false" />
+			<WorkflowExecutionsInfoAccordion :initially-expanded="false" />
 		</div>
 	</div>
 </template>
 
 <script lang="ts">
-import ExecutionCard from '@/components/ExecutionsView/ExecutionCard.vue';
-import ExecutionsInfoAccordion from '@/components/ExecutionsView/ExecutionsInfoAccordion.vue';
-import ExecutionFilter from '@/components/ExecutionFilter.vue';
+import WorkflowExecutionsCard from '@/components/executions/workflow/WorkflowExecutionsCard.vue';
+import WorkflowExecutionsInfoAccordion from '@/components/executions/workflow/WorkflowExecutionsInfoAccordion.vue';
+import ExecutionsFilter from '@/components/executions/ExecutionsFilter.vue';
 import { VIEWS } from '@/constants';
 import type { ExecutionSummary } from 'n8n-workflow';
 import type { Route } from 'vue-router';
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui.store';
+import { useExecutionsStore } from '@/stores/executions.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { ExecutionFilterType } from '@/Interface';
 
-type ExecutionCardRef = InstanceType<typeof ExecutionCard>;
+type WorkflowExecutionsCardRef = InstanceType<typeof WorkflowExecutionsCard>;
 
 export default defineComponent({
-	name: 'ExecutionsSidebar',
+	name: 'WorkflowExecutionsSidebar',
 	components: {
-		ExecutionCard,
-		ExecutionsInfoAccordion,
-		ExecutionFilter,
+		WorkflowExecutionsCard,
+		WorkflowExecutionsInfoAccordion,
+		ExecutionsFilter,
 	},
 	props: {
-		autoRefresh: {
-			type: Boolean,
-			default: false,
-		},
 		executions: {
 			type: Array as PropType<ExecutionSummary[]>,
 			required: true,
@@ -111,7 +113,7 @@ export default defineComponent({
 		};
 	},
 	computed: {
-		...mapStores(useUIStore, useWorkflowsStore),
+		...mapStores(useExecutionsStore, useWorkflowsStore),
 	},
 	watch: {
 		$route(to: Route, from: Route) {
@@ -125,7 +127,9 @@ export default defineComponent({
 		// On larger screens, we need to load more then first page of executions
 		// for the scroll bar to appear and infinite scrolling is enabled
 		this.checkListSize();
-		this.scrollToActiveCard();
+		setTimeout(() => {
+			this.scrollToActiveCard();
+		}, 1000);
 	},
 	methods: {
 		loadMore(limit = 20): void {
@@ -155,14 +159,14 @@ export default defineComponent({
 		},
 		checkListSize(): void {
 			const sidebarContainerRef = this.$refs.container as HTMLElement | undefined;
-			const currentExecutionCardRefs = this.$refs[
-				`execution-${this.workflowsStore.activeWorkflowExecution?.id}`
-			] as ExecutionCardRef[] | undefined;
+			const currentWorkflowExecutionsCardRefs = this.$refs[
+				`execution-${this.executionsStore.activeExecution?.id}`
+			] as WorkflowExecutionsCardRef[] | undefined;
 
 			// Find out how many execution card can fit into list
 			// and load more if needed
-			if (sidebarContainerRef && currentExecutionCardRefs?.length) {
-				const cardElement = currentExecutionCardRefs[0].$el as HTMLElement;
+			if (sidebarContainerRef && currentWorkflowExecutionsCardRefs?.length) {
+				const cardElement = currentWorkflowExecutionsCardRefs[0].$el as HTMLElement;
 				const listCapacity = Math.ceil(sidebarContainerRef.clientHeight / cardElement.clientHeight);
 
 				if (listCapacity > this.executions.length) {
@@ -172,16 +176,16 @@ export default defineComponent({
 		},
 		scrollToActiveCard(): void {
 			const executionsListRef = this.$refs.executionList as HTMLElement | undefined;
-			const currentExecutionCardRefs = this.$refs[
-				`execution-${this.workflowsStore.activeWorkflowExecution?.id}`
-			] as ExecutionCardRef[] | undefined;
+			const currentWorkflowExecutionsCardRefs = this.$refs[
+				`execution-${this.executionsStore.activeExecution?.id}`
+			] as WorkflowExecutionsCardRef[] | undefined;
 
 			if (
 				executionsListRef &&
-				currentExecutionCardRefs?.length &&
-				this.workflowsStore.activeWorkflowExecution
+				currentWorkflowExecutionsCardRefs?.length &&
+				this.executionsStore.activeExecution
 			) {
-				const cardElement = currentExecutionCardRefs[0].$el as HTMLElement;
+				const cardElement = currentWorkflowExecutionsCardRefs[0].$el as HTMLElement;
 				const cardRect = cardElement.getBoundingClientRect();
 				const LIST_HEADER_OFFSET = 200;
 				if (cardRect.top > executionsListRef.offsetHeight) {

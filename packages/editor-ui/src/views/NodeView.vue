@@ -285,6 +285,7 @@ import type {
 	Workflow,
 	ConnectionTypes,
 	INodeOutputConfiguration,
+	IRun,
 } from 'n8n-workflow';
 import {
 	deepCopy,
@@ -311,6 +312,7 @@ import type {
 	NodeCreatorOpenSource,
 	AddedNodesAndConnections,
 	ToggleNodeCreatorOptions,
+	IPushDataExecutionFinished,
 } from '@/Interface';
 
 import { type Route, type RawLocation, useRouter } from 'vue-router';
@@ -376,6 +378,7 @@ import { usePinnedData } from '@/composables/usePinnedData';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useDeviceSupport } from 'n8n-design-system';
 import { useDebounce } from '@/composables/useDebounce';
+import { useExecutionsStore } from '@/stores/executions.store';
 import { useCanvasPanning } from '@/composables/useCanvasPanning';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
@@ -605,6 +608,7 @@ export default defineComponent({
 			useCollaborationStore,
 			usePushConnectionStore,
 			useSourceControlStore,
+			useExecutionsStore,
 			useProjectsStore,
 		),
 		nativelyNumberSuffixedDefaults(): string[] {
@@ -1325,7 +1329,7 @@ export default defineComponent({
 			this.resetWorkspace();
 
 			this.workflowsStore.currentWorkflowExecutions = [];
-			this.workflowsStore.activeWorkflowExecution = null;
+			this.executionsStore.activeExecution = null;
 
 			let data: IWorkflowTemplate | undefined;
 			try {
@@ -1381,7 +1385,7 @@ export default defineComponent({
 		async openWorkflow(workflow: IWorkflowDb) {
 			this.canvasStore.startLoading();
 
-			const selectedExecution = this.workflowsStore.activeWorkflowExecution;
+			const selectedExecution = this.executionsStore.activeExecution;
 
 			this.resetWorkspace();
 
@@ -1421,10 +1425,10 @@ export default defineComponent({
 				workflowName: workflow.name,
 			});
 			if (selectedExecution?.workflowId !== workflow.id) {
-				this.workflowsStore.activeWorkflowExecution = null;
+				this.executionsStore.activeExecution = null;
 				this.workflowsStore.currentWorkflowExecutions = [];
 			} else {
-				this.workflowsStore.activeWorkflowExecution = selectedExecution;
+				this.executionsStore.activeExecution = selectedExecution;
 			}
 			this.canvasStore.stopLoading();
 			this.collaborationStore.notifyWorkflowOpened(workflow.id);
@@ -1929,7 +1933,65 @@ export default defineComponent({
 			});
 		},
 		async stopExecution() {
-			await this.stopCurrentExecution();
+			const executionId = this.workflowsStore.activeExecutionId;
+			if (executionId === null) {
+				return;
+			}
+
+			try {
+				this.stopExecutionInProgress = true;
+				await this.executionsStore.stopCurrentExecution(executionId);
+			} catch (error) {
+				// Execution stop might fail when the execution has already finished. Let's treat this here.
+				const execution = await this.workflowsStore.getExecution(executionId);
+
+				if (execution === undefined) {
+					// execution finished but was not saved (e.g. due to low connectivity)
+
+					this.workflowsStore.finishActiveExecution({
+						executionId,
+						data: { finished: true, stoppedAt: new Date() },
+					});
+					this.workflowsStore.executingNode.length = 0;
+					this.uiStore.removeActiveAction('workflowRunning');
+
+					this.titleSet(this.workflowsStore.workflowName, 'IDLE');
+					this.showMessage({
+						title: this.$locale.baseText('nodeView.showMessage.stopExecutionCatch.unsaved.title'),
+						message: this.$locale.baseText(
+							'nodeView.showMessage.stopExecutionCatch.unsaved.message',
+						),
+						type: 'success',
+					});
+				} else if (execution?.finished) {
+					// execution finished before it could be stopped
+
+					const executedData = {
+						data: execution.data,
+						finished: execution.finished,
+						mode: execution.mode,
+						startedAt: execution.startedAt,
+						stoppedAt: execution.stoppedAt,
+					} as IRun;
+					const pushData = {
+						data: executedData,
+						executionId,
+						retryOf: execution.retryOf,
+					} as IPushDataExecutionFinished;
+					this.workflowsStore.finishActiveExecution(pushData);
+					this.titleSet(execution.workflowData.name, 'IDLE');
+					this.workflowsStore.executingNode.length = 0;
+					this.workflowsStore.setWorkflowExecutionData(executedData as IExecutionResponse);
+					this.uiStore.removeActiveAction('workflowRunning');
+					this.showMessage({
+						title: this.$locale.baseText('nodeView.showMessage.stopExecutionCatch.title'),
+						message: this.$locale.baseText('nodeView.showMessage.stopExecutionCatch.message'),
+						type: 'success',
+					});
+				} else {
+					this.showError(error, this.$locale.baseText('nodeView.showError.stopExecution.title'));
+				}
+			}
 			this.stopExecutionInProgress = false;
 			void this.workflowHelpers.getWorkflowDataToSave().then((workflowData) => {
 				const trackProps = {
@@ -3481,14 +3543,14 @@ export default defineComponent({
 				this.projectsStore.currentProjectId,
 			);
 			this.workflowsStore.currentWorkflowExecutions = [];
-			this.workflowsStore.activeWorkflowExecution = null;
+			this.executionsStore.activeExecution = null;
 
 			this.uiStore.stateIsDirty = false;
 			this.canvasStore.setZoomLevel(1, [0, 0]);
 			await this.tryToAddWelcomeSticky();
 			this.uiStore.nodeViewInitialized = true;
 			this.historyStore.reset();
-			this.workflowsStore.activeWorkflowExecution = null;
+			this.executionsStore.activeExecution = null;
 			this.canvasStore.stopLoading();
 		},
 		async tryToAddWelcomeSticky(): Promise<void> {
@@ -4581,7 +4643,7 @@ export default defineComponent({
 						});
 					}
 				} else if (json?.command === 'setActiveExecution') {
-					this.workflowsStore.activeWorkflowExecution = json.execution;
+					this.executionsStore.activeExecution = json.execution;
 				}
 			} catch (e) {}
 		},
@@ -5172,3 +5234,4 @@ export default defineComponent({
 	);
 }
 </style>
+, IRun, IPushDataExecutionFinished
