@@ -595,6 +595,7 @@ export const enum STORES {
 	USERS = 'users',
 	WORKFLOWS = 'workflows',
 	WORKFLOWS_EE = 'workflowsEE',
+	EXECUTIONS = 'executions',
 	NDV = 'ndv',
 	TEMPLATES = 'templates',
 	NODE_TYPES = 'nodeTypes',

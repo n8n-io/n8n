@@ -171,7 +171,7 @@ export interface IExecutionsListResponse {
 	estimated: boolean;
 }
 
-export interface IExecutionsStopData {
+export interface ExecutionStopResult {
 	finished?: boolean;
 	mode: WorkflowExecuteMode;
 	startedAt: Date;
