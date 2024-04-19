@@ -1,12 +1,13 @@
 import 'reflect-metadata';
 import path from 'node:path';
 import glob from 'fast-glob';
-// eslint-disable-next-line import/no-extraneous-dependencies
-import Bench from 'tinybench';
-// eslint-disable-next-line import/no-extraneous-dependencies
-import { withCodSpeed } from '@codspeed/tinybench-plugin';
 import type { Task } from './types';
 import { hooks } from './hooks';
+
+/* eslint-disable import/no-extraneous-dependencies */
+import { withCodSpeed } from '@codspeed/tinybench-plugin';
+import Bench from 'tinybench';
+/* eslint-ensable import/no-extraneous-dependencies */
 
 const tasks: Task[] = [];
 
@@ -16,7 +17,7 @@ export function task(description: string, operation: Task['operation']) {
 
 async function loadTasks() {
 	const files = await glob('**/*.tasks.js', {
-		cwd: path.join('dist', 'benchmarks'),
+		cwd: path.join('dist', 'benchmark'),
 		absolute: true,
 	});
 

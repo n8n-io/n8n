@@ -20,10 +20,11 @@
     "bin": "n8n"
   },
   "scripts": {
-    "benchmark": "pnpm build && NODE_ENV=benchmark node dist/benchmarks/main.js",
+    "benchmark": "pnpm build:benchmark && NODE_ENV=benchmark node dist/benchmarks/main.js",
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc",
     "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json && node scripts/build.mjs",
+    "build:benchmark": "tsc -p tsconfig.benchmark.json && tsc-alias -p tsconfig.benchmark.json && node scripts/build.mjs",
     "buildAndDev": "pnpm run build && pnpm run dev",
     "dev": "concurrently -k -n \"TypeScript,Node\" -c \"yellow.bold,cyan.bold\" \"npm run watch\" \"nodemon\"",
     "dev:worker": "concurrently -k -n \"TypeScript,Node\" -c \"yellow.bold,cyan.bold\" \"npm run watch\" \"nodemon worker\"",
