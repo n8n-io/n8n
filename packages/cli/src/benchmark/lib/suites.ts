@@ -17,17 +17,6 @@ export function suiteCount() {
 	return Object.keys(suites).length;
 }
 
-function suiteFilePath() {
-	const filePath = callsites()
-		.map((site) => site.getFileName())
-		.filter((site): site is string => site !== null)
-		.find((site) => site.endsWith('.tasks.js'));
-
-	assert(filePath !== undefined);
-
-	return filePath;
-}
-
 export async function collectSuites() {
 	const files = await glob('**/*.tasks.js', {
 		cwd: path.join('dist', 'benchmark'),
@@ -51,6 +40,17 @@ export function registerSuites(bench: Bench) {
 			bench.add(t.description, t.operation, options);
 		}
 	}
+}
+
+function suiteFilePath() {
+	const filePath = callsites()
+		.map((site) => site.getFileName())
+		.filter((site): site is string => site !== null)
+		.find((site) => site.endsWith('.tasks.js'));
+
+	assert(filePath !== undefined);
+
+	return filePath;
 }
 
 /**

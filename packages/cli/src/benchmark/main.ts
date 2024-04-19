@@ -1,10 +1,10 @@
 import 'reflect-metadata';
 import { globalHooks } from './hooks';
+import { collectSuites, registerSuites, suiteCount } from './lib/suites';
 
 /* eslint-disable import/no-extraneous-dependencies */
-import { withCodSpeed } from '@codspeed/tinybench-plugin';
 import Bench from 'tinybench';
-import { collectSuites, registerSuites, suiteCount } from './lib/suites';
+import { withCodSpeed } from '@codspeed/tinybench-plugin';
 /* eslint-enable import/no-extraneous-dependencies */
 
 export { beforeEach, task } from './lib/suites';
