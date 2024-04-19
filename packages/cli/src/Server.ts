@@ -355,7 +355,7 @@ export class Server extends AbstractServer {
 		}
 
 		const maxAge = Time.days.toMilliseconds;
-		const cacheOptions = inE2ETests ? {} : { maxAge };
+		const cacheOptions = inE2ETests || inDevelopment ? {} : { maxAge };
 		const { staticCacheDir } = Container.get(InstanceSettings);
 		if (frontendService) {
 			const serveIcons: express.RequestHandler = async (req, res) => {
