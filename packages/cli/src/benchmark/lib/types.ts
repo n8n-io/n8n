@@ -1,6 +1,6 @@
 export type Suites = {
 	[suiteFilepath: string]: {
-		hooks: Partial<{ beforeEach: () => Promise<void> }>;
+		hooks: Partial<{ beforeEach: Callback }>;
 		tasks: Task[];
 	};
 };
@@ -8,7 +8,7 @@ export type Suites = {
 /** A benchmarking task, i.e. a single operation whose performance to measure. */
 export type Task = {
 	description: string;
-	operation: () => Promise<void>;
+	operation: Callback;
 };
 
 export type Callback = () => void | Promise<void>;

@@ -4,7 +4,8 @@ import type Bench from 'tinybench';
 import { assert } from 'n8n-workflow';
 import glob from 'fast-glob';
 import callsites from 'callsites';
-import type { Suites, Task } from './types';
+import type { Suites, Task, Callback } from './types';
+import { DuplicateHookError } from './duplicate-hook.error';
 
 export const suites: Suites = {};
 
@@ -18,8 +19,8 @@ export async function collectSuites() {
 		absolute: true,
 	});
 
-	for (const file of files) {
-		await import(file);
+	for (const f of files) {
+		await import(f);
 	}
 }
 
@@ -53,11 +54,19 @@ function suiteFilePath() {
  */
 
 export function task(description: string, operation: Task['operation']) {
-	suites[suiteFilePath()] ||= { hooks: {}, tasks: [] };
-	suites[suiteFilePath()].tasks.push({ description, operation });
+	const filePath = suiteFilePath();
+
+	suites[filePath] ||= { hooks: {}, tasks: [] };
+	suites[filePath].tasks.push({ description, operation });
 }
 
-export function beforeEach(fn: () => Promise<void>) {
-	suites[suiteFilePath()] ||= { hooks: {}, tasks: [] };
-	suites[suiteFilePath()].hooks.beforeEach = fn;
+export function beforeEach(fn: Callback) {
+	const filePath = suiteFilePath();
+
+	if (suites[filePath]?.hooks.beforeEach) {
+		throw new DuplicateHookError('beforeEach', filePath);
+	}
+
+	suites[filePath] ||= { hooks: {}, tasks: [] };
+	suites[filePath].hooks.beforeEach = fn;
 }
