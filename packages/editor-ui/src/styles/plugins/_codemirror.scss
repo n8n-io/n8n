@@ -94,7 +94,7 @@
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing-s);
-	padding: var(--spacing-xs) var(--spacing-xs);
+	padding: var(--spacing-xs) 0;
 }
 
 .ͼ2 .cm-tooltip.cm-completionInfo {
@@ -118,6 +118,7 @@
 	z-index: -1;
 
 	.autocomplete-info-header {
+		padding: 0 var(--spacing-xs);
 		color: var(--color-text-dark);
 		font-size: var(--font-size-xs);
 		font-weight: var(--font-weight-bold);
@@ -136,6 +137,7 @@
 	}
 
 	.autocomplete-info-description {
+		padding: 0 var(--spacing-xs);
 		color: var(--color-text-dark);
 		font-size: var(--font-size-2xs);
 
@@ -160,6 +162,7 @@
 	}
 
 	.autocomplete-info-args {
+		padding: 0 var(--spacing-xs);
 		list-style: none;
 
 		li {
@@ -201,23 +204,35 @@
 		code {
 			background: inherit;
 		}
+
+		.autocomplete-info-example {
+			padding: 0 var(--spacing-xs);
+		}
 	}
 
 	.autocomplete-info-example code {
+		display: block;
 		font-size: var(--font-size-3xs);
 		font-family: var(--font-family-monospace);
+		line-height: var(--font-line-height-compact);
+
+		word-break: break-all;
+		white-space: pre-wrap;
+		word-wrap: break-word;
 	}
 
 	.autocomplete-info-example + .autocomplete-info-example {
-		margin-top: var(--spacing-2xs);
+		margin-top: var(--spacing-4xs);
 	}
 
 	.autocomplete-info-section-title {
+		margin-bottom: var(--spacing-3xs);
+		padding: 0 var(--spacing-xs) var(--spacing-3xs) var(--spacing-xs);
+		border-bottom: 1px solid var(--color-autocomplete-section-header-border);
 		text-transform: uppercase;
 		color: var(--color-text-dark);
 		font-size: var(--font-size-3xs);
 		font-weight: var(--font-weight-bold);
-		margin-bottom: var(--spacing-4xs);
 	}
 
 	.autocomplete-info-examples-list {
