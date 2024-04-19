@@ -158,7 +158,7 @@ export class Splunk implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
@@ -457,7 +457,7 @@ export class Splunk implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.cause.error });
+					returnData.push({ json: { error: error.cause.error }, pairedItem: { item: i } });
 					continue;
 				}
 
@@ -469,14 +469,18 @@ export class Splunk implements INodeType {
 					set(error, 'context.itemIndex', i);
 				}
 
-				throw error;
+				throw new NodeOperationError(this.getNode(), error, { itemIndex: i });
 			}
 
-			Array.isArray(responseData)
-				? returnData.push(...(responseData as IDataObject[]))
-				: returnData.push(responseData as IDataObject);
+			if (Array.isArray(responseData)) {
+				for (const item of responseData) {
+					returnData.push({ json: item, pairedItem: { item: i } });
+				}
+			} else {
+				returnData.push({ json: responseData, pairedItem: { item: i } });
+			}
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return [responseData];
 	}
 }
