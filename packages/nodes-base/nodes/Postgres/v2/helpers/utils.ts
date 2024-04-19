@@ -5,7 +5,7 @@ import type {
 	INodeExecutionData,
 	INodePropertyOptions,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, jsonParse } from 'n8n-workflow';
 
 import { generatePairedItemData } from '../../../../utils/utilities';
 import type {
@@ -509,4 +509,64 @@ export const configureTableSchemaUpdater = (initialSchema: string, initialTable:
 		}
 		return tableSchema;
 	};
+};
+
+/**
+ * If postgress column type is array we need to convert it to fornmat that postgres understands, original object data would be modified
+ * @param data the object with keys representing column names and values
+ * @param schema table schema
+ * @param node INode
+ * @param itemIndex the index of the current item
+ */
+export const convertArraysToPostgresFormat = (
+	data: IDataObject,
+	schema: ColumnInfo[],
+	node: INode,
+	itemIndex = 0,
+) => {
+	for (const columnInfo of schema) {
+		//in case column type is array we need to convert it to fornmat that postgres understands
+		if (columnInfo.data_type.toUpperCase() === 'ARRAY') {
+			let columnValue = data[columnInfo.column_name];
+
+			if (typeof columnValue === 'string') {
+				columnValue = jsonParse(columnValue);
+			}
+
+			if (Array.isArray(columnValue)) {
+				const arrayEntries = columnValue.map((entry) => {
+					if (typeof entry === 'number') {
+						return entry;
+					}
+
+					if (typeof entry === 'boolean') {
+						entry = String(entry);
+					}
+
+					if (typeof entry === 'object') {
+						entry = JSON.stringify(entry);
+					}
+
+					if (typeof entry === 'string') {
+						return `"${entry.replace(/"/g, '\\"')}"`; //escape double quotes
+					}
+
+					return entry;
+				});
+
+				//wrap in {} instead of [] as postgres does and join with ,
+				data[columnInfo.column_name] = `{${arrayEntries.join(',')}}`;
+			} else {
+				if (columnInfo.is_nullable === 'NO') {
+					throw new NodeOperationError(
+						node,
+						`Column '${columnInfo.column_name}' has to be an array`,
+						{
+							itemIndex,
+						},
+					);
+				}
+			}
+		}
+	}
 };

@@ -49,7 +49,7 @@ export class HttpRequestV3 implements INodeType {
 		this.description = {
 			...baseDescription,
 			subtitle: '={{$parameter["method"] + ": " + $parameter["url"]}}',
-			version: [3, 4, 4.1],
+			version: [3, 4, 4.1, 4.2],
 			defaults: {
 				name: 'HTTP Request',
 				color: '#0004F5',
@@ -1527,7 +1527,10 @@ export class HttpRequestV3 implements INodeType {
 			if (sendHeaders && headerParameters) {
 				let additionalHeaders: IDataObject = {};
 				if (specifyHeaders === 'keypair') {
-					additionalHeaders = await reduceAsync(headerParameters, parametersToKeyValue);
+					additionalHeaders = await reduceAsync(
+						headerParameters.filter((header) => header.name),
+						parametersToKeyValue,
+					);
 				} else if (specifyHeaders === 'json') {
 					// body is specified using JSON
 					try {

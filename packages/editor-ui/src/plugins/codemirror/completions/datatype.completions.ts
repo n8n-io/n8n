@@ -4,6 +4,25 @@ import { i18n } from '@/plugins/i18n';
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 
+import {
+	setRank,
+	hasNoParams,
+	prefixMatch,
+	isAllowedInDotNotation,
+	isSplitInBatchesAbsent,
+	longestCommonPrefix,
+	splitBaseTail,
+	isPseudoParam,
+	stripExcessParens,
+	isCredentialsModalOpen,
+	applyCompletion,
+	sortCompletionsAlpha,
+	hasRequiredArgs,
+	getDefaultArgs,
+	insertDefaultArgs,
+	applyBracketAccessCompletion,
+	applyBracketAccess,
+} from './utils';
 import type {
 	Completion,
 	CompletionContext,
@@ -298,7 +317,7 @@ const createCompletionOption = ({
 };
 
 const objectOptions = (input: AutocompleteInput<IDataObject>): Completion[] => {
-	const { base, resolved, transformLabel } = input;
+	const { base, resolved, transformLabel = (label) => label } = input;
 	const rank = setRank(['item', 'all', 'first', 'last']);
 	const SKIP = new Set(['__ob__', 'pairedItem']);
 
@@ -320,9 +339,10 @@ const objectOptions = (input: AutocompleteInput<IDataObject>): Completion[] => {
 	}
 
 	const localKeys = rank(rawKeys)
-		.filter((key) => !SKIP.has(key) && isAllowedInDotNotation(key) && !isPseudoParam(key))
+		.filter((key) => !SKIP.has(key) && !isPseudoParam(key))
 		.map((key) => {
 			ensureKeyCanBeResolved(resolved, key);
+			const needsBracketAccess = !isAllowedInDotNotation(key);
 			const resolvedProp = resolved[key];
 
 			const isFunction = typeof resolvedProp === 'function';
@@ -330,17 +350,22 @@ const objectOptions = (input: AutocompleteInput<IDataObject>): Completion[] => {
 
 			const option: Completion = {
 				label: isFunction ? key + '()' : key,
-				type: isFunction ? 'function' : 'keyword',
 				section: getObjectPropertySection({ name, key, isFunction }),
-				apply: applyCompletion({ hasArgs, transformLabel }),
+				apply: needsBracketAccess
+					? applyBracketAccessCompletion
+					: applyCompletion({
+							hasArgs,
+							transformLabel,
+						}),
 				detail: getDetail(name, resolvedProp),
 			};
 
 			const infoKey = [name, key].join('.');
+			const infoName = needsBracketAccess ? applyBracketAccess(key) : key;
 			option.info = createCompletionOption({
-				name: key,
+				name: infoName,
 				doc: {
-					name: key,
+					name: infoName,
 					returnType: getType(resolvedProp),
 					description: i18n.proxyVars[infoKey],
 				},

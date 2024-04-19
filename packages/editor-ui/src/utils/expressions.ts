@@ -1,5 +1,5 @@
 import type { ResolvableState } from '@/types/expressions';
-import { ExpressionError, ExpressionParser } from 'n8n-workflow';
+import { ExpressionError, ExpressionParser, type Result } from 'n8n-workflow';
 import { i18n } from '@/plugins/i18n';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 
@@ -109,4 +109,24 @@ export const getExpressionErrorMessage = (error: Error): string => {
 	}
 
 	return error.message;
+};
+
+export const stringifyExpressionResult = (result: Result<unknown, Error>): string => {
+	if (!result.ok) {
+		if (getResolvableState(result.error) !== 'invalid') {
+			return '';
+		}
+
+		return `[${i18n.baseText('parameterInput.error')}: ${getExpressionErrorMessage(result.error)}]`;
+	}
+
+	if (result.result === null) {
+		return '';
+	}
+
+	if (typeof result.result === 'string' && result.result.length === 0) {
+		return i18n.baseText('parameterInput.emptyString');
+	}
+
+	return typeof result.result === 'string' ? result.result : JSON.stringify(result.result);
 };

@@ -41,7 +41,7 @@ export function createPage({
 		? loadPreviousSession
 		: 'notSupported';
 
-	return `<doctype html>
+	return `<!doctype html>
 	<html lang="en">
 		<head>
 			<meta charset="utf-8">
@@ -60,7 +60,8 @@ export function createPage({
 					if (authentication === 'n8nUserAuth') {
 						try {
 							const response = await fetch('/rest/login', {
-									method: 'GET'
+									method: 'GET',
+									headers: { 'browser-id': localStorage.getItem('n8n-browserId') }
 							});
 
 							if (response.status !== 200) {

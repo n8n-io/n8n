@@ -11,12 +11,10 @@ import {
 } from '@/constants';
 import type {
 	ExecutionsQueryFilter,
-	IExecutionDeleteFilter,
 	IExecutionPushResponse,
 	IExecutionResponse,
 	IExecutionsCurrentSummaryExtended,
 	IExecutionsListResponse,
-	IExecutionsStopData,
 	INewWorkflowData,
 	INodeMetadata,
 	INodeUi,
@@ -198,6 +196,12 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 					return this.workflow.connections[nodeName];
 				}
 				return {};
+			};
+		},
+		nodeHasOutputConnection() {
+			return (nodeName: string): boolean => {
+				if (this.workflow.connections.hasOwnProperty(nodeName)) return true;
+				return false;
 			};
 		},
 		isNodeInOutgoingNodeConnections() {
@@ -841,15 +845,19 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			this.workflow.connections = {};
 		},
 
-		removeAllNodeConnection(node: INodeUi): void {
+		removeAllNodeConnection(
+			node: INodeUi,
+			{ preserveInputConnections = false, preserveOutputConnections = false } = {},
+		): void {
 			const uiStore = useUIStore();
 			uiStore.stateIsDirty = true;
 			// Remove all source connections
-			if (this.workflow.connections.hasOwnProperty(node.name)) {
+			if (!preserveOutputConnections && this.workflow.connections.hasOwnProperty(node.name)) {
 				delete this.workflow.connections[node.name];
 			}
 
 			// Remove all destination connections
+			if (preserveInputConnections) return;
 			const indexesToRemove = [];
 			let sourceNode: string,
 				type: string,
@@ -1235,34 +1243,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		setActiveExecutions(newActiveExecutions: IExecutionsCurrentSummaryExtended[]): void {
 			this.activeExecutions = newActiveExecutions;
 		},
-
-		async retryExecution(id: string, loadWorkflow?: boolean): Promise<boolean> {
-			let sendData;
-			if (loadWorkflow === true) {
-				sendData = {
-					loadWorkflow: true,
-				};
-			}
-			const rootStore = useRootStore();
-			return await makeRestApiRequest(
-				rootStore.getRestApiContext,
-				'POST',
-				`/executions/${id}/retry`,
-				sendData,
-			);
-		},
-
-		// Deletes executions
-		async deleteExecutions(sendData: IExecutionDeleteFilter): Promise<void> {
-			const rootStore = useRootStore();
-			return await makeRestApiRequest(
-				rootStore.getRestApiContext,
-				'POST',
-				'/executions/delete',
-				sendData as unknown as IDataObject,
-			);
-		},
-
 		// TODO: For sure needs some kind of default filter like last day, with max 10 results, ...
 		async getPastExecutions(
 			filter: IDataObject,
@@ -1291,12 +1271,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				};
 			}
 			const rootStore = useRootStore();
-			return await makeRestApiRequest(
+			const output = await makeRestApiRequest(
 				rootStore.getRestApiContext,
 				'GET',
-				'/executions/active',
+				'/executions',
 				sendData,
 			);
+
+			return output.results;
 		},
 
 		async getExecution(id: string): Promise<IExecutionResponse | undefined> {
@@ -1366,16 +1348,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				`/test-webhook/${workflowId}`,
 			);
 		},
-
-		async stopCurrentExecution(executionId: string): Promise<IExecutionsStopData> {
-			const rootStore = useRootStore();
-			return await makeRestApiRequest(
-				rootStore.getRestApiContext,
-				'POST',
-				`/executions/active/${executionId}/stop`,
-			);
-		},
-
 		async loadCurrentWorkflowExecutions(
 			requestFilter: ExecutionsQueryFilter,
 		): Promise<ExecutionSummary[]> {

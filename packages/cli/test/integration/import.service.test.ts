@@ -12,8 +12,13 @@ import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflo
 
 import * as testDb from './shared/testDb';
 import { mockInstance } from '../shared/mocking';
-import { createOwner } from './shared/db/users';
-import { createWorkflow, getWorkflowById } from './shared/db/workflows';
+import { createMember, createOwner } from './shared/db/users';
+import {
+	createWorkflow,
+	getAllSharedWorkflows,
+	getWorkflowById,
+	newWorkflow,
+} from './shared/db/workflows';
 
 import type { User } from '@db/entities/User';
 
@@ -57,7 +62,7 @@ describe('ImportService', () => {
 	});
 
 	test('should make user owner of imported workflow', async () => {
-		const workflowToImport = await createWorkflow();
+		const workflowToImport = newWorkflow();
 
 		await importService.importWorkflows([workflowToImport], owner.id);
 
@@ -66,6 +71,23 @@ describe('ImportService', () => {
 		});
 
 		expect(dbSharing.userId).toBe(owner.id);
+	});
+
+	test('should not change the owner if it already exists', async () => {
+		const member = await createMember();
+		const workflowToImport = await createWorkflow(undefined, owner);
+
+		await importService.importWorkflows([workflowToImport], member.id);
+
+		const sharings = await getAllSharedWorkflows();
+
+		expect(sharings).toMatchObject([
+			expect.objectContaining({
+				workflowId: workflowToImport.id,
+				userId: owner.id,
+				role: 'workflow:owner',
+			}),
+		]);
 	});
 
 	test('should deactivate imported workflow if active', async () => {

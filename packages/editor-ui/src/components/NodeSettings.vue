@@ -187,7 +187,15 @@ import type {
 	NodeParameterValue,
 	ConnectionTypes,
 } from 'n8n-workflow';
-import { NodeHelpers, NodeConnectionType, deepCopy } from 'n8n-workflow';
+import {
+	NodeHelpers,
+	NodeConnectionType,
+	deepCopy,
+	isINodePropertyCollectionList,
+	isINodePropertiesList,
+	isINodePropertyOptionsList,
+	displayParameter,
+} from 'n8n-workflow';
 import type {
 	INodeUi,
 	INodeUpdatePropertiesInformation,
@@ -200,6 +208,7 @@ import {
 	CUSTOM_NODES_DOCS_URL,
 	MAIN_NODE_PANEL_WIDTH,
 	IMPORT_CURL_MODAL_KEY,
+	SHOULD_CLEAR_NODE_OUTPUTS,
 } from '@/constants';
 
 import NodeTitle from '@/components/NodeTitle.vue';
@@ -223,6 +232,7 @@ import { useCredentialsStore } from '@/stores/credentials.store';
 import type { EventBus } from 'n8n-design-system';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { useToast } from '@/composables/useToast';
 
 export default defineComponent({
 	name: 'NodeSettings',
@@ -238,10 +248,12 @@ export default defineComponent({
 	setup() {
 		const nodeHelpers = useNodeHelpers();
 		const externalHooks = useExternalHooks();
+		const { showMessage } = useToast();
 
 		return {
 			externalHooks,
 			nodeHelpers,
+			showMessage,
 		};
 	},
 	computed: {
@@ -853,6 +865,20 @@ export default defineComponent({
 					return;
 				}
 
+				if (
+					parameterData.type &&
+					this.workflowsStore.nodeHasOutputConnection(node.name) &&
+					SHOULD_CLEAR_NODE_OUTPUTS[nodeType.name]?.eventTypes.includes(parameterData.type) &&
+					SHOULD_CLEAR_NODE_OUTPUTS[nodeType.name]?.parameterPaths.includes(parameterData.name)
+				) {
+					this.workflowsStore.removeAllNodeConnection(node, { preserveInputConnections: true });
+					this.showMessage({
+						type: 'warning',
+						title: this.$locale.baseText('nodeSettings.outputCleared.title'),
+						message: this.$locale.baseText('nodeSettings.outputCleared.message'),
+					});
+				}
+
 				// Get only the parameters which are different to the defaults
 				let nodeParameters = NodeHelpers.getNodeParameters(
 					nodeType.properties,
@@ -972,21 +998,27 @@ export default defineComponent({
 				if (!nodeParameterValues?.hasOwnProperty(prop.name) || !displayOptions || !prop.options) {
 					return;
 				}
-				// Only process the parameters that should be hidden
+				// Only process the parameters that depend on the updated parameter
 				const showCondition = displayOptions.show?.[updatedParameter.name];
 				const hideCondition = displayOptions.hide?.[updatedParameter.name];
 				if (showCondition === undefined && hideCondition === undefined) {
 					return;
 				}
+
+				let hasValidOptions = true;
+
 				// Every value should be a possible option
-				const hasValidOptions = Object.keys(nodeParameterValues).every(
-					(key) => (prop.options ?? []).find((option) => option.name === key) !== undefined,
-				);
-				if (
-					!hasValidOptions ||
-					showCondition !== updatedParameter.value ||
-					hideCondition === updatedParameter.value
-				) {
+				if (isINodePropertyCollectionList(prop.options) || isINodePropertiesList(prop.options)) {
+					hasValidOptions = Object.keys(nodeParameterValues).every(
+						(key) => (prop.options ?? []).find((option) => option.name === key) !== undefined,
+					);
+				} else if (isINodePropertyOptionsList(prop.options)) {
+					hasValidOptions = !!prop.options.find(
+						(option) => option.value === nodeParameterValues[prop.name],
+					);
+				}
+
+				if (!hasValidOptions && displayParameter(nodeParameterValues, prop, this.node)) {
 					unset(nodeParameterValues as object, prop.name);
 				}
 			});

@@ -14,6 +14,7 @@ import {
 	fieldValueGetter,
 	splitData,
 } from './utils';
+import { generatePairedItemData } from '../../../utils/utilities';
 
 export class Summarize implements INodeType {
 	description: INodeTypeDescription = {
@@ -240,6 +241,14 @@ export class Summarize implements INodeType {
 				default: {},
 				options: [
 					{
+						displayName: 'Continue if Field Not Found',
+						name: 'continueIfFieldNotFound',
+						type: 'boolean',
+						default: false,
+						description:
+							"Whether to continue if field to summarize can't be found in any items and return single empty item, owerwise an error would be thrown",
+					},
+					{
 						displayName: 'Disable Dot Notation',
 						name: 'disableDotNotation',
 						type: 'boolean',
@@ -304,7 +313,17 @@ export class Summarize implements INodeType {
 		const nodeVersion = this.getNode().typeVersion;
 
 		if (nodeVersion < 2.1) {
-			checkIfFieldExists.call(this, newItems, fieldsToSummarize, getValue);
+			try {
+				checkIfFieldExists.call(this, newItems, fieldsToSummarize, getValue);
+			} catch (error) {
+				if (options.continueIfFieldNotFound) {
+					const itemData = generatePairedItemData(items.length);
+
+					return [[{ json: {}, pairedItem: itemData }]];
+				} else {
+					throw error;
+				}
+			}
 		}
 
 		const aggregationResult = splitData(

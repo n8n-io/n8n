@@ -82,6 +82,7 @@ describe('OwnerController', () => {
 				role: 'global:owner',
 				authIdentities: [],
 			});
+			const browserId = 'test-browser-id';
 			const req = mock<OwnerRequest.Post>({
 				body: {
 					email: 'valid@email.com',
@@ -90,6 +91,7 @@ describe('OwnerController', () => {
 					lastName: 'Doe',
 				},
 				user,
+				browserId,
 			});
 			const res = mock<Response>();
 			configGetSpy.mockReturnValue(false);
@@ -103,7 +105,7 @@ describe('OwnerController', () => {
 				where: { role: 'global:owner' },
 			});
 			expect(userRepository.save).toHaveBeenCalledWith(user, { transaction: false });
-			expect(authService.issueCookie).toHaveBeenCalledWith(res, user);
+			expect(authService.issueCookie).toHaveBeenCalledWith(res, user, browserId);
 		});
 	});
 });

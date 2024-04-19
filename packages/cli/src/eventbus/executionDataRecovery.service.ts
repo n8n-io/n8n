@@ -16,6 +16,7 @@ export class ExecutionDataRecoveryService {
 		private readonly executionRepository: ExecutionRepository,
 	) {}
 
+	// eslint-disable-next-line complexity
 	async recoverExecutionData(
 		executionId: string,
 		messages: EventMessageTypes[],

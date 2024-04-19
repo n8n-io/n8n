@@ -595,6 +595,7 @@ export const enum STORES {
 	USERS = 'users',
 	WORKFLOWS = 'workflows',
 	WORKFLOWS_EE = 'workflowsEE',
+	EXECUTIONS = 'executions',
 	NDV = 'ndv',
 	TEMPLATES = 'templates',
 	NODE_TYPES = 'nodeTypes',
@@ -652,6 +653,20 @@ export const MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH = 6;
 export const MFA_AUTHENTICATION_RECOVERY_CODE_INPUT_MAX_LENGTH = 36;
 
 export const NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND = [FILTER_NODE_TYPE, SWITCH_NODE_TYPE];
+
+type ClearOutgoingConnectonsEvents = {
+	[nodeName: string]: {
+		parameterPaths: string[];
+		eventTypes: string[];
+	};
+};
+
+export const SHOULD_CLEAR_NODE_OUTPUTS: ClearOutgoingConnectonsEvents = {
+	[SWITCH_NODE_TYPE]: {
+		parameterPaths: ['parameters.rules.values'],
+		eventTypes: ['optionsOrderChanged'],
+	},
+};
 
 export const ALLOWED_HTML_ATTRIBUTES = ['href', 'name', 'target', 'title', 'class', 'id', 'style'];
 
