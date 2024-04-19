@@ -276,7 +276,7 @@ async function onAutoRefreshToggle(value: boolean) {
 </script>
 
 <template>
-	<div :class="['executions-list', $style.execListWrapper]">
+	<div :class="$style.execListWrapper">
 		<div :class="$style.execList">
 			<div :class="$style.execListHeader">
 				<N8nHeading tag="h1" size="2xlarge">
