@@ -1,6 +1,9 @@
 export type Suites = {
 	[suiteFilepath: string]: {
-		hooks: Partial<{ beforeEach: Callback }>;
+		hooks: {
+			beforeEach?: Callback;
+			afterEach?: Callback;
+		};
 		tasks: Task[];
 	};
 };

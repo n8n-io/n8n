@@ -1,7 +1,11 @@
-import { task, beforeEach } from '../main.js';
+import { task, beforeEach, afterEach } from '../main.js';
 
 beforeEach(async () => {
 	console.log('[[[beforeEach]]] for example.tasks.ts');
+});
+
+afterEach(async () => {
+	console.log('[[[afterEach]]] for example.tasks.ts');
 });
 
 task('[example] Should do something', async () => {

@@ -25,14 +25,22 @@ export async function collectSuites() {
 }
 
 export function registerSuites(bench: Bench) {
-	for (const { tasks, hooks } of Object.values(suites)) {
-		for (const t of tasks) {
-			/**
-			 * `beforeAll` in tinybench is called once before all iterations of a single operation.
-			 * This is functionally equivalent to `beforeEach` in jest and vitest.
-			 */
-			const options = hooks.beforeEach ? { beforeAll: hooks.beforeEach } : {};
+	for (const { hooks, tasks } of Object.values(suites)) {
+		/**
+		 * In tinybench, `beforeAll` and `afterAll` refer to all iterations of
+		 * a single task, while `beforeEach` and `afterEach` refer to each iteration.
+		 *
+		 * In jest and vitest, `beforeAll` and `afterAll` refer to all tests in a suite,
+		 * while `beforeEach` and `afterEach` refer to each individual test.
+		 *
+		 * The API renames tinybench's hooks to prevent confusion from this difference.
+		 */
+		const options: Record<string, Callback> = {};
 
+		if (hooks.beforeEach) options.beforeAll = hooks.beforeEach;
+		if (hooks.afterEach) options.afterAll = hooks.afterEach;
+
+		for (const t of tasks) {
 			bench.add(t.description, t.operation, options);
 		}
 	}
@@ -69,4 +77,15 @@ export function beforeEach(fn: Callback) {
 
 	suites[filePath] ||= { hooks: {}, tasks: [] };
 	suites[filePath].hooks.beforeEach = fn;
+}
+
+export function afterEach(fn: Callback) {
+	const filePath = suiteFilePath();
+
+	if (suites[filePath]?.hooks.afterEach) {
+		throw new DuplicateHookError('afterEach', filePath);
+	}
+
+	suites[filePath] ||= { hooks: {}, tasks: [] };
+	suites[filePath].hooks.afterEach = fn;
 }
