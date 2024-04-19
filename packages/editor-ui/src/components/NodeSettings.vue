@@ -187,7 +187,15 @@ import type {
 	NodeParameterValue,
 	ConnectionTypes,
 } from 'n8n-workflow';
-import { NodeHelpers, NodeConnectionType, deepCopy } from 'n8n-workflow';
+import {
+	NodeHelpers,
+	NodeConnectionType,
+	deepCopy,
+	isINodePropertyCollectionList,
+	isINodePropertiesList,
+	isINodePropertyOptionsList,
+	displayParameter,
+} from 'n8n-workflow';
 import type {
 	INodeUi,
 	INodeUpdatePropertiesInformation,
@@ -990,21 +998,27 @@ export default defineComponent({
 				if (!nodeParameterValues?.hasOwnProperty(prop.name) || !displayOptions || !prop.options) {
 					return;
 				}
-				// Only process the parameters that should be hidden
+				// Only process the parameters that depend on the updated parameter
 				const showCondition = displayOptions.show?.[updatedParameter.name];
 				const hideCondition = displayOptions.hide?.[updatedParameter.name];
 				if (showCondition === undefined && hideCondition === undefined) {
 					return;
 				}
+
+				let hasValidOptions = true;
+
 				// Every value should be a possible option
-				const hasValidOptions = Object.keys(nodeParameterValues).every(
-					(key) => (prop.options ?? []).find((option) => option.name === key) !== undefined,
-				);
-				if (
-					!hasValidOptions ||
-					showCondition !== updatedParameter.value ||
-					hideCondition === updatedParameter.value
-				) {
+				if (isINodePropertyCollectionList(prop.options) || isINodePropertiesList(prop.options)) {
+					hasValidOptions = Object.keys(nodeParameterValues).every(
+						(key) => (prop.options ?? []).find((option) => option.name === key) !== undefined,
+					);
+				} else if (isINodePropertyOptionsList(prop.options)) {
+					hasValidOptions = !!prop.options.find(
+						(option) => option.value === nodeParameterValues[prop.name],
+					);
+				}
+
+				if (!hasValidOptions && displayParameter(nodeParameterValues, prop, this.node)) {
 					unset(nodeParameterValues as object, prop.name);
 				}
 			});

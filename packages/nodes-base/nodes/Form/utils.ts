@@ -10,6 +10,7 @@ export const prepareFormData = (
 	testRun: boolean,
 	instanceId?: string,
 	useResponseData?: boolean,
+	appendAttribution = true,
 ) => {
 	const validForm = formFields.length > 0;
 	const utm_campaign = instanceId ? `&utm_campaign=${instanceId}` : '';
@@ -28,6 +29,7 @@ export const prepareFormData = (
 		n8nWebsiteLink,
 		formFields: [],
 		useResponseData,
+		appendAttribution,
 	};
 
 	if (redirectUrl) {
@@ -90,6 +92,7 @@ export async function formWebhook(context: IWebhookFunctions) {
 
 		let formSubmittedText;
 		let redirectUrl;
+		let appendAttribution = true;
 
 		if (options.respondWithOptions) {
 			const values = (options.respondWithOptions as IDataObject).values as IDataObject;
@@ -103,6 +106,10 @@ export async function formWebhook(context: IWebhookFunctions) {
 			formSubmittedText = options.formSubmittedText as string;
 		}
 
+		if (options.appendAttribution === false) {
+			appendAttribution = false;
+		}
+
 		const useResponseData = responseMode === 'responseNode';
 
 		const data = prepareFormData(
@@ -114,6 +121,7 @@ export async function formWebhook(context: IWebhookFunctions) {
 			mode === 'test',
 			instanceId,
 			useResponseData,
+			appendAttribution,
 		);
 
 		const res = context.getResponseObject();
