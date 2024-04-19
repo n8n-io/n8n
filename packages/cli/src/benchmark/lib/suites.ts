@@ -4,14 +4,9 @@ import type Bench from 'tinybench';
 import { assert } from 'n8n-workflow';
 import glob from 'fast-glob';
 import callsites from 'callsites';
-import type { Task } from '../types';
+import type { Suites, Task } from '../types';
 
-export const suites: {
-	[suiteFilepath: string]: {
-		hooks: Partial<{ beforeEach: () => Promise<void> }>;
-		tasks: Task[];
-	};
-} = {};
+export const suites: Suites = {};
 
 export function suiteCount() {
 	return Object.keys(suites).length;
