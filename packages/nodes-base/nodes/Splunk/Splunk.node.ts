@@ -1,14 +1,16 @@
-import type {
-	IExecuteFunctions,
-	ICredentialsDecrypted,
-	ICredentialTestFunctions,
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodeCredentialTestResult,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-	IRequestOptions,
+import {
+	type IExecuteFunctions,
+	type ICredentialsDecrypted,
+	type ICredentialTestFunctions,
+	type IDataObject,
+	type ILoadOptionsFunctions,
+	type INodeCredentialTestResult,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeDescription,
+	type IRequestOptions,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -35,6 +37,7 @@ import {
 } from './descriptions';
 
 import type { SplunkCredentials, SplunkFeedResponse } from './types';
+import set from 'lodash/set';
 
 export class Splunk implements INodeType {
 	description: INodeTypeDescription = {
@@ -456,6 +459,14 @@ export class Splunk implements INodeType {
 				if (this.continueOnFail()) {
 					returnData.push({ error: error.cause.error });
 					continue;
+				}
+
+				if (error instanceof NodeApiError) {
+					set(error, 'context.itemIndex', i);
+				}
+
+				if (error instanceof NodeOperationError && error?.context?.itemIndex === undefined) {
+					set(error, 'context.itemIndex', i);
 				}
 
 				throw error;
