@@ -3,3 +3,5 @@ export type Task = {
 	description: string;
 	operation: () => Promise<void>;
 };
+
+export type Callback = () => void | Promise<void>;
