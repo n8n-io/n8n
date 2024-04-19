@@ -18,7 +18,6 @@
 import { defineComponent } from 'vue';
 import type { Route, RouteLocationRaw } from 'vue-router';
 import { mapStores } from 'pinia';
-import type { ExecutionSummary } from 'n8n-workflow';
 import { pushConnection } from '@/mixins/pushConnection';
 import WorkflowDetails from '@/components/MainHeader/WorkflowDetails.vue';
 import TabBar from '@/components/MainHeader/TabBar.vue';
@@ -32,6 +31,8 @@ import type { INodeUi, ITabBarItem } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useExecutionsStore } from '@/stores/executions.store';
 
 export default defineComponent({
 	name: 'MainHeader',
@@ -50,11 +51,18 @@ export default defineComponent({
 		return {
 			activeHeaderTab: MAIN_HEADER_TABS.WORKFLOW,
 			workflowToReturnTo: '',
+			executionToReturnTo: '',
 			dirtyState: false,
 		};
 	},
 	computed: {
-		...mapStores(useNDVStore, useUIStore, useSourceControlStore),
+		...mapStores(
+			useNDVStore,
+			useUIStore,
+			useSourceControlStore,
+			useWorkflowsStore,
+			useExecutionsStore,
+		),
 		tabBarItems(): ITabBarItem[] {
 			return [
 				{ value: MAIN_HEADER_TABS.WORKFLOW, label: this.$locale.baseText('generic.editor') },
@@ -79,16 +87,13 @@ export default defineComponent({
 				(this.$route.meta.nodeView || this.$route.meta.keepWorkflowAlive === true)
 			);
 		},
-		activeExecution(): ExecutionSummary {
-			return this.workflowsStore.activeWorkflowExecution as ExecutionSummary;
-		},
 		readOnly(): boolean {
 			return this.sourceControlStore.preferences.branchReadOnly;
 		},
 	},
 	watch: {
 		$route(to, from) {
-			this.syncTabsWithRoute(to);
+			this.syncTabsWithRoute(to, from);
 		},
 	},
 	mounted() {
@@ -96,23 +101,27 @@ export default defineComponent({
 		this.syncTabsWithRoute(this.$route);
 	},
 	methods: {
-		syncTabsWithRoute(route: Route): void {
+		syncTabsWithRoute(to: Route, from?: Route): void {
 			if (
-				route.name === VIEWS.EXECUTION_HOME ||
-				route.name === VIEWS.WORKFLOW_EXECUTIONS ||
-				route.name === VIEWS.EXECUTION_PREVIEW
+				to.name === VIEWS.EXECUTION_HOME ||
+				to.name === VIEWS.WORKFLOW_EXECUTIONS ||
+				to.name === VIEWS.EXECUTION_PREVIEW
 			) {
 				this.activeHeaderTab = MAIN_HEADER_TABS.EXECUTIONS;
 			} else if (
-				route.name === VIEWS.WORKFLOW ||
-				route.name === VIEWS.NEW_WORKFLOW ||
-				route.name === VIEWS.EXECUTION_DEBUG
+				to.name === VIEWS.WORKFLOW ||
+				to.name === VIEWS.NEW_WORKFLOW ||
+				to.name === VIEWS.EXECUTION_DEBUG
 			) {
 				this.activeHeaderTab = MAIN_HEADER_TABS.WORKFLOW;
 			}
-			const workflowName = route.params.name;
-			if (workflowName !== 'new') {
-				this.workflowToReturnTo = workflowName;
+
+			if (to.params.name !== 'new') {
+				this.workflowToReturnTo = to.params.name;
+			}
+
+			if (from?.name === VIEWS.EXECUTION_PREVIEW && to.params.name === from.params.name) {
+				this.executionToReturnTo = from.params.executionId;
 			}
 		},
 		onTabSelected(tab: MAIN_HEADER_TABS, event: MouseEvent) {
@@ -158,10 +167,12 @@ export default defineComponent({
 		async navigateToExecutionsView(openInNewTab: boolean) {
 			const routeWorkflowId =
 				this.currentWorkflow === PLACEHOLDER_EMPTY_WORKFLOW_ID ? 'new' : this.currentWorkflow;
-			const routeToNavigateTo: RouteLocationRaw = this.activeExecution
+			const executionToReturnTo =
+				this.executionsStore.activeExecution?.id || this.executionToReturnTo;
+			const routeToNavigateTo: RouteLocationRaw = executionToReturnTo
 				? {
 						name: VIEWS.EXECUTION_PREVIEW,
-						params: { name: routeWorkflowId, executionId: this.activeExecution.id },
+						params: { name: routeWorkflowId, executionId: executionToReturnTo },
 					}
 				: {
 						name: VIEWS.EXECUTION_HOME,

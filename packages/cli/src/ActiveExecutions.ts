@@ -21,6 +21,9 @@ import { Logger } from '@/Logger';
 
 @Service()
 export class ActiveExecutions {
+	/**
+	 * Active executions in the current process, not globally.
+	 */
 	private activeExecutions: {
 		[executionId: string]: IExecutingWorkflowData;
 	} = {};
