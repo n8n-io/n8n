@@ -290,10 +290,12 @@ export class RespondToWebhook implements INodeType {
 		const items = this.getInputData();
 		const nodeVersion = this.getNode().typeVersion;
 
+		const WEBHOOK_NODE_TYPES = ['n8n-nodes-base.webhook', 'n8n-nodes-base.formTrigger'];
+
 		try {
 			if (nodeVersion >= 1.1) {
 				const connectedNodes = this.getParentNodes(this.getNode().name);
-				if (!connectedNodes.some((node) => node.type === 'n8n-nodes-base.webhook')) {
+				if (!connectedNodes.some(({ type }) => WEBHOOK_NODE_TYPES.includes(type))) {
 					throw new NodeOperationError(
 						this.getNode(),
 						new Error('No Webhook node found in the workflow'),
