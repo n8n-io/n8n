@@ -568,7 +568,7 @@ export class AirtableV1 implements INodeType {
 		if (authentication === 'airtableApi') {
 			throw new NodeOperationError(
 				this.getNode(),
-				'Airtable deprecated API Keys and they could not be used anymore. Please use OAuth2 or Token Authentication instead.',
+				'The API Key connection was deprecated by Airtable, please use Access Token or OAuth2 instead.',
 			);
 		}
 		const items = this.getInputData();
