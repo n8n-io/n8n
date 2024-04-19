@@ -289,8 +289,6 @@ export class Start extends BaseCommand {
 		const editorUrl = Container.get(UrlService).baseUrl;
 		this.log(`\nEditor is now accessible via:\n${editorUrl}`);
 
-		console.log('hello');
-
 		// Allow to open n8n editor by pressing "o"
 		// if (Boolean(process.stdout.isTTY) && process.stdin.setRawMode) {
 		// 	process.stdin.setRawMode(true);

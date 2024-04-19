@@ -7,6 +7,7 @@ const { NODE_ENV, E2E_TESTS } = process.env;
 export const inProduction = NODE_ENV === 'production';
 export const inDevelopment = !NODE_ENV || NODE_ENV === 'development';
 export const inTest = NODE_ENV === 'test';
+export const inBenchmark = NODE_ENV === 'benchmark';
 export const inE2ETests = E2E_TESTS === 'true';
 
 export const CUSTOM_API_CALL_NAME = 'Custom API Call';

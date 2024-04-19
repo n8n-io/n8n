@@ -4,6 +4,7 @@ import Container from 'typedi';
 import { Cipher, InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import type { MigrationContext, ReversibleMigration } from '@db/types';
+import { inBenchmark } from '@/constants';
 
 /**
  * Move SSH key pair from file system to database, to enable SSH connections
@@ -31,7 +32,7 @@ export class MoveSshKeysToDatabase1711390882123 implements ReversibleMigration {
 				readFile(this.publicKeyPath, { encoding: 'utf8' }),
 			]);
 		} catch {
-			logger.info(`[${migrationName}] No SSH keys in filesystem, skipping`);
+			if (!inBenchmark) logger.info(`[${migrationName}] No SSH keys in filesystem, skipping`);
 			return;
 		}
 

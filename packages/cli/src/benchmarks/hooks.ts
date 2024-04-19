@@ -8,12 +8,13 @@ import Container from 'typedi';
 import { createOwner, deleteOwnerShell } from './db/users';
 
 function n8nDir() {
-	const baseDir = path.join(tmpdir(), 'n8n-benchmarks/');
+	const baseDirPath = path.join(tmpdir(), 'n8n-benchmarks/');
 
-	mkdirSync(baseDir, { recursive: true });
+	mkdirSync(baseDirPath, { recursive: true });
 
-	const subDir = mkdtempSync(baseDir);
-	const _n8nDir = path.join(subDir, '.n8n');
+	const userDir = mkdtempSync(baseDirPath);
+
+	const _n8nDir = path.join(userDir, '.n8n');
 
 	mkdirSync(_n8nDir);
 
@@ -23,11 +24,14 @@ function n8nDir() {
 		'utf-8',
 	);
 
+	/**
+	 * @TODO Better approach? Setting N8N_USER_FOLDER has no effect
+	 */
 	const instanceSettings = Container.get(InstanceSettings);
 	instanceSettings.n8nFolder = _n8nDir;
 	Container.set(InstanceSettings, instanceSettings);
 
-	console.log('n8nDir', _n8nDir);
+	console.info('.n8n dir', _n8nDir);
 }
 
 let main: Start;

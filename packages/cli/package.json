@@ -20,7 +20,7 @@
     "bin": "n8n"
   },
   "scripts": {
-    "benchmark": "pnpm build && node dist/benchmarks/main.js",
+    "benchmark": "pnpm build && NODE_ENV=benchmark node dist/benchmarks/main.js",
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc",
     "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json && node scripts/build.mjs",
