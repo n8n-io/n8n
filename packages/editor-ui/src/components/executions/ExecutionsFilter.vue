@@ -4,6 +4,7 @@ import type {
 	ExecutionFilterType,
 	ExecutionFilterMetadata,
 	IWorkflowShortResponse,
+	IWorkflowDb,
 } from '@/Interface';
 import { i18n as locale } from '@/plugins/i18n';
 import TagsDropdown from '@/components/TagsDropdown.vue';
@@ -16,7 +17,7 @@ import type { Placement } from '@floating-ui/core';
 import { useDebounce } from '@/composables/useDebounce';
 
 export type ExecutionFilterProps = {
-	workflows?: IWorkflowShortResponse[];
+	workflows?: Array<IWorkflowDb | IWorkflowShortResponse>;
 	popoverPlacement?: Placement;
 	teleported?: boolean;
 };
@@ -30,6 +31,7 @@ const { debounce } = useDebounce();
 const telemetry = useTelemetry();
 
 const props = withDefaults(defineProps<ExecutionFilterProps>(), {
+	workflows: [] as Array<IWorkflowDb | IWorkflowShortResponse>,
 	popoverPlacement: 'bottom' as Placement,
 	teleported: true,
 });
@@ -92,7 +94,7 @@ const countSelectedFilterProps = computed(() => {
 	if (filter.status !== 'all') {
 		count++;
 	}
-	if (filter.workflowId !== 'all') {
+	if (filter.workflowId !== 'all' && props.workflows.length) {
 		count++;
 	}
 	if (!isEmpty(filter.tags)) {
@@ -147,7 +149,6 @@ const goToUpgrade = () => {
 
 onBeforeMount(() => {
 	isCustomDataFilterTracked.value = false;
-	emit('filterChanged', filter);
 });
 </script>
 <template>

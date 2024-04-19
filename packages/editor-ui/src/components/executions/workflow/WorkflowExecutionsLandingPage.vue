@@ -16,7 +16,7 @@
 				<n8n-heading tag="h2" size="xlarge" color="text-dark" class="mb-2xs">
 					{{ $locale.baseText('executionsLandingPage.emptyState.heading') }}
 				</n8n-heading>
-				<ExecutionsInfoAccordion />
+				<WorkflowExecutionsInfoAccordion />
 			</div>
 		</div>
 	</div>
@@ -28,12 +28,12 @@ import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { mapStores } from 'pinia';
 import { defineComponent } from 'vue';
-import ExecutionsInfoAccordion from './ExecutionsInfoAccordion.vue';
+import WorkflowExecutionsInfoAccordion from './WorkflowExecutionsInfoAccordion.vue';
 
 export default defineComponent({
 	name: 'ExecutionsLandingPage',
 	components: {
-		ExecutionsInfoAccordion,
+		WorkflowExecutionsInfoAccordion,
 	},
 	computed: {
 		...mapStores(useUIStore, useWorkflowsStore),

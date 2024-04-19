@@ -37,6 +37,7 @@ import type { useRouter } from 'vue-router';
 import { isEmpty } from '@/utils/typesUtils';
 import { useI18n } from '@/composables/useI18n';
 import { get } from 'lodash-es';
+import { useExecutionsStore } from '@/stores/executions.store';
 
 export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof useRouter> }) {
 	const nodeHelpers = useNodeHelpers();
@@ -48,6 +49,7 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 	const rootStore = useRootStore();
 	const uiStore = useUIStore();
 	const workflowsStore = useWorkflowsStore();
+	const executionsStore = useExecutionsStore();
 
 	// Starts to execute a workflow on server
 	async function runWorkflowApi(runData: IStartRunData): Promise<IExecutionPushResponse> {
@@ -384,10 +386,10 @@ export function useRunWorkflow(useRunWorkflowOpts: { router: ReturnType<typeof u
 		}
 
 		try {
-			await workflowsStore.stopCurrentExecution(executionId);
+			await executionsStore.stopCurrentExecution(executionId);
 		} catch (error) {
 			// Execution stop might fail when the execution has already finished. Let's treat this here.
-			const execution = await this.workflowsStore.getExecution(executionId);
+			const execution = await workflowsStore.getExecution(executionId);
 
 			if (execution === undefined) {
 				// execution finished but was not saved (e.g. due to low connectivity)
