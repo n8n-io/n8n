@@ -19,6 +19,7 @@ import { fieldCannotBeDeleted, parseResourceMapperFieldName } from '@/utils/node
 import { isResourceMapperValue } from '@/utils/typeGuards';
 import { i18n as locale } from '@/plugins/i18n';
 import { useNDVStore } from '@/stores/ndv.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 type Props = {
 	parameter: INodeProperties;
@@ -32,6 +33,7 @@ type Props = {
 
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
+const workflowsStore = useWorkflowsStore();
 
 const props = withDefaults(defineProps<Props>(), {
 	teleported: true,
@@ -67,6 +69,16 @@ watch(
 			emitValueChanged();
 			await initFetching();
 			setDefaultFieldValues(true);
+		}
+	},
+);
+
+// Reload fields to map when node is executed
+watch(
+	() => workflowsStore.getWorkflowExecution,
+	async (data) => {
+		if (data?.status === 'success') {
+			await initFetching();
 		}
 	},
 );
