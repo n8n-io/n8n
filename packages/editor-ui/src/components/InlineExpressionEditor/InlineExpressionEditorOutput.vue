@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { EditorState, type SelectionRange } from '@codemirror/state';
+import type { EditorState, SelectionRange } from '@codemirror/state';
 
 import { useI18n } from '@/composables/useI18n';
 import type { Segment } from '@/types/expressions';

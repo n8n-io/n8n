@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { EditorState, Extension } from '@codemirror/state';
+import { EditorState, type Extension } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 
 import { useI18n } from '@/composables/useI18n';
