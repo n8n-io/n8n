@@ -41,7 +41,11 @@ const skipBrowserIdCheckEndpoints = [
 	`/${restEndpoint}/push`,
 
 	// We need to exclude binary-data downloading endpoint because we can't send custom headers on `<embed>` tags
-	`/${restEndpoint}/binary-data`,
+	`/${restEndpoint}/binary-data/`,
+
+	// oAuth callback urls aren't called by the frontend. therefore we can't send custom header on these requests
+	`/${restEndpoint}/oauth1-credential/callback`,
+	`/${restEndpoint}/oauth2-credential/callback`,
 ];
 
 @Service()
@@ -127,12 +131,20 @@ export class AuthService {
 			// or, If the user has been deactivated (i.e. LDAP users)
 			user.disabled ||
 			// or, If the email or password has been updated
-			jwtPayload.hash !== this.createJWTHash(user) ||
-			// If the token was issued for another browser session
-			(!skipBrowserIdCheckEndpoints.includes(req.baseUrl) &&
-				jwtPayload.browserId &&
-				(!req.browserId || jwtPayload.browserId !== this.hash(req.browserId)))
+			jwtPayload.hash !== this.createJWTHash(user)
 		) {
+			throw new AuthError('Unauthorized');
+		}
+
+		// Check if the token was issued for another browser session, ignoring the endpoints that can't send custom headers
+		const endpoint = req.route ? `${req.baseUrl}${req.route.path}` : req.baseUrl;
+		if (req.method === 'GET' && skipBrowserIdCheckEndpoints.includes(endpoint)) {
+			this.logger.debug(`Skipped browserId check on ${endpoint}`);
+		} else if (
+			jwtPayload.browserId &&
+			(!req.browserId || jwtPayload.browserId !== this.hash(req.browserId))
+		) {
+			this.logger.warn(`browserId check failed on ${endpoint}`);
 			throw new AuthError('Unauthorized');
 		}
 
