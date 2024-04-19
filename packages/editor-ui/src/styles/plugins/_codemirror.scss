@@ -210,13 +210,17 @@
 		}
 	}
 
+	.autocomplete-info-example-comment {
+		color: var(--color-text-light);
+	}
+
 	.autocomplete-info-example code {
 		display: block;
 		font-size: var(--font-size-3xs);
 		font-family: var(--font-family-monospace);
 		line-height: var(--font-line-height-compact);
 
-		word-break: break-all;
+		word-break: break-word;
 		white-space: pre-wrap;
 		word-wrap: break-word;
 	}

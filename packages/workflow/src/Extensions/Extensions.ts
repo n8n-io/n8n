@@ -22,6 +22,7 @@ export type DocMetadataArgument = {
 export type DocMetadataExample = {
 	example: string;
 	evaluated?: string;
+	description?: string;
 };
 
 export type DocMetadata = {

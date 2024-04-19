@@ -141,13 +141,21 @@ const renderExample = (example: DocMetadataExample): HTMLElement => {
 	const exampleCode = document.createElement('code');
 	examplePre.appendChild(exampleCode);
 
+	if (example.description) {
+		const exampleDescription = document.createElement('span');
+		exampleDescription.classList.add('autocomplete-info-example-comment');
+		exampleDescription.textContent = `// ${example.description}\n`;
+		exampleCode.appendChild(exampleDescription);
+	}
+
 	const exampleExpression = document.createElement('span');
 	exampleExpression.classList.add('autocomplete-info-example-expr');
 	exampleExpression.textContent = example.example + '\n';
 	exampleCode.appendChild(exampleExpression);
 
-	if (example.evaluated !== undefined) {
+	if (example.evaluated) {
 		const exampleEvaluated = document.createElement('span');
+		exampleEvaluated.classList.add('autocomplete-info-example-comment');
 		exampleEvaluated.textContent = `// => ${example.evaluated}\n`;
 		exampleCode.appendChild(exampleEvaluated);
 	}
@@ -181,6 +189,8 @@ export const createInfoBoxRenderer =
 		if (!doc) return null;
 
 		const { examples, args } = doc;
+		const hasArgs = args && args.length > 0;
+		const hasExamples = examples && examples.length > 0;
 
 		const header = isFunction ? renderFunctionHeader(doc) : renderPropHeader(doc);
 		header.classList.add('autocomplete-info-header');
@@ -190,17 +200,17 @@ export const createInfoBoxRenderer =
 			const descriptionBody = renderDescription({
 				description: doc.description,
 				docUrl: doc.docURL,
-				example: doc.args && doc.args.length > 0 ? doc.examples?.[0] : undefined,
+				example: hasArgs && hasExamples ? examples[0] : undefined,
 			});
 			tooltipContainer.appendChild(descriptionBody);
 		}
 
-		if (args && args.length > 0) {
+		if (hasArgs) {
 			const argsContainer = renderArgs(args);
 			tooltipContainer.appendChild(argsContainer);
 		}
 
-		if (examples && examples.length > 0) {
+		if (hasExamples && (examples.length > 1 || !hasArgs)) {
 			const examplesContainer = renderExamples(examples);
 			tooltipContainer.appendChild(examplesContainer);
 		}

@@ -461,7 +461,7 @@ toDateTime.doc = {
 toBoolean.doc = {
 	name: 'toBoolean',
 	description:
-		'Converts the string to a boolean value. <code>0</code>, <code>"false"</code> and <code>"no"</code> resolve to <code>false</code>, everything else to <code>true</code>.',
+		'Converts the string to a boolean value. <code>0</code>, <code>false</code> and <code>no</code> resolve to <code>false</code>, everything else to <code>true</code>. Case-insensitive.',
 	section: 'cast',
 	returnType: 'boolean',
 	docURL:
@@ -521,7 +521,7 @@ toSnakeCase.doc = {
 toTitleCase.doc = {
 	name: 'toTitleCase',
 	description:
-		'Changes the capitalization of the string to title case. The first letter of each word is capitalized and the others left unchanged. Short prepositions and conjunctions aren’t capitalized (e.g. ‘a’, ‘the’).',
+		"Changes the capitalization of the string to title case. The first letter of each word is capitalized and the others left unchanged. Short prepositions and conjunctions aren't capitalized (e.g. 'a', 'the').",
 	examples: [{ example: '"quick a brown FOX".toTitleCase()', evaluated: '"Quick a Brown Fox"' }],
 	section: 'case',
 	returnType: 'string',
@@ -789,7 +789,8 @@ parseJson.doc = {
 
 base64Encode.doc = {
 	name: 'base64Encode',
-	description: 'Converts a UTF-8-encoded string to a Base64 string.',
+	description: 'Converts plain text to a base64-encoded string',
+	examples: [{ example: '"hello".base64Encode()', evaluated: '"aGVsbG8="' }],
 	section: 'edit',
 	returnType: 'string',
 	docURL:
@@ -798,7 +799,8 @@ base64Encode.doc = {
 
 base64Decode.doc = {
 	name: 'base64Decode',
-	description: 'Converts a Base64 string to a UTF-8 string.',
+	description: 'Converts a base64-encoded string to plain text',
+	examples: [{ example: '"aGVsbG8=".base64Decode()', evaluated: '"hello"' }],
 	section: 'edit',
 	returnType: 'string',
 	docURL:
@@ -812,7 +814,10 @@ toNumber.doc = {
 	section: 'cast',
 	returnType: 'number',
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-toNumber',
-	examples: [{ example: '"123".toNumber()' }, { example: '123\n"1.23E10".toNumber()' }],
+	examples: [
+		{ example: '"123".toNumber()', evaluated: '123' },
+		{ example: '"1.23E10".toNumber()', evaluated: '12300000000' },
+	],
 };
 
 const toDecimalNumber: Extension = toFloat.bind({});
