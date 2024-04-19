@@ -1,9 +1,9 @@
+import { getAllUsers } from '../db/users.js';
 import { task } from '../main.js';
-import { getAllUsers } from '../../integration/shared/db/users.js';
 
 task('Production workflow with webhook node that responds immediately', async () => {
 	const users = await getAllUsers();
-	console.log('users', users);
+	// console.log('users', users);
 	console.log('[first] Task 1 executed');
 });
 

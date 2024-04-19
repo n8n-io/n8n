@@ -1,7 +1,9 @@
 import 'reflect-metadata';
 import path from 'node:path';
 import glob from 'fast-glob';
+// eslint-disable-next-line import/no-extraneous-dependencies
 import Bench from 'tinybench';
+// eslint-disable-next-line import/no-extraneous-dependencies
 import { withCodSpeed } from '@codspeed/tinybench-plugin';
 import type { Task } from './types';
 import { hooks } from './hooks';
@@ -14,7 +16,7 @@ export function task(description: string, operation: Task['operation']) {
 
 async function loadTasks() {
 	const files = await glob('**/*.tasks.js', {
-		cwd: path.join('dist', 'test', 'benchmarks'),
+		cwd: path.join('dist', 'benchmarks'),
 		absolute: true,
 	});
 
@@ -40,8 +42,8 @@ async function main() {
 
 	const bench = process.env.CI === 'true' ? withCodSpeed(_bench) : _bench;
 
-	for (const task of tasks) {
-		bench.add(task.description, task.operation);
+	for (const t of tasks) {
+		bench.add(t.description, t.operation);
 	}
 
 	console.log(`Running ${tasks.length} benchmarking tasks...`);

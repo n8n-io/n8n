@@ -5,7 +5,7 @@ import { Config } from '@oclif/core';
 import { InstanceSettings } from 'n8n-core';
 import { Start } from '@/commands/start';
 import Container from 'typedi';
-import { createOwner, deleteOwnerShell } from '../integration/shared/db/users';
+import { createOwner, deleteOwnerShell } from './db/users';
 
 function n8nDir() {
 	const baseDir = path.join(tmpdir(), 'n8n-benchmarks/');
@@ -13,21 +13,21 @@ function n8nDir() {
 	mkdirSync(baseDir, { recursive: true });
 
 	const subDir = mkdtempSync(baseDir);
-	const n8nDir = path.join(subDir, '.n8n');
+	const _n8nDir = path.join(subDir, '.n8n');
 
-	mkdirSync(n8nDir);
+	mkdirSync(_n8nDir);
 
 	writeFileSync(
-		path.join(n8nDir, 'config'),
+		path.join(_n8nDir, 'config'),
 		JSON.stringify({ encryptionKey: 'temp_encryption_key', instanceId: '123' }),
 		'utf-8',
 	);
 
 	const instanceSettings = Container.get(InstanceSettings);
-	instanceSettings.n8nFolder = n8nDir;
+	instanceSettings.n8nFolder = _n8nDir;
 	Container.set(InstanceSettings, instanceSettings);
 
-	console.log('n8nDir', n8nDir);
+	console.log('n8nDir', _n8nDir);
 }
 
 let main: Start;
