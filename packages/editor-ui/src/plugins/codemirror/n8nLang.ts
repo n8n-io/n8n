@@ -25,4 +25,4 @@ export function n8nLang() {
 	]);
 }
 
-export const n8nAutocompletion = () => autocompletion({ icons: false, closeOnBlur: false });
+export const n8nAutocompletion = () => autocompletion({ icons: false });
