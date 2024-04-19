@@ -20,12 +20,12 @@ function n8nDir() {
 
 	writeFileSync(
 		path.join(_n8nDir, 'config'),
-		JSON.stringify({ encryptionKey: 'temp_encryption_key', instanceId: '123' }),
+		JSON.stringify({ encryptionKey: 'temp_encryption_key', instanceId: 'temp-123' }),
 		'utf-8',
 	);
 
 	/**
-	 * @TODO Better approach? Setting N8N_USER_FOLDER has no effect
+	 * @TODO Better approach than overriding? Setting N8N_USER_FOLDER has no effect
 	 */
 	const instanceSettings = Container.get(InstanceSettings);
 	instanceSettings.n8nFolder = _n8nDir;
@@ -46,7 +46,7 @@ async function mainProcess() {
 	await main.run();
 }
 
-async function setup() {
+export async function setup() {
 	n8nDir();
 
 	await mainProcess();
@@ -56,9 +56,6 @@ async function setup() {
 	await createOwner();
 }
 
-async function teardown() {
+export async function teardown() {
 	await main.stopProcess();
 }
-
-/** Lifecycle hooks to run once before and after all benchmarking tasks. */
-export const globalHooks = { setup, teardown };
