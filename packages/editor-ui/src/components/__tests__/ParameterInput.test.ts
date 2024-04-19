@@ -4,11 +4,11 @@ import type { useNDVStore } from '@/stores/ndv.store';
 import type { CompletionResult } from '@codemirror/autocomplete';
 import { createTestingPinia } from '@pinia/testing';
 import { faker } from '@faker-js/faker';
+import { waitFor } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 
 let mockNdvState: Partial<ReturnType<typeof useNDVStore>>;
 let mockCompletionResult: Partial<CompletionResult>;
-import { waitFor } from '@testing-library/vue';
-import userEvent from '@testing-library/user-event';
 
 vi.mock('@/stores/ndv.store', () => {
 	return {
@@ -28,6 +28,7 @@ vi.mock('vue-router', () => {
 		useRouter: () => ({
 			push,
 		}),
+		useRoute: () => ({}),
 		RouterLink: vi.fn(),
 	};
 });
