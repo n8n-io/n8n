@@ -61,4 +61,4 @@ async function teardown() {
 }
 
 /** Lifecycle hooks to run once before and after all benchmarking tasks. */
-export const hooks = { setup, teardown };
+export const globalHooks = { setup, teardown };
