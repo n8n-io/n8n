@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { globalHooks } from './hooks';
+import { globalHooks } from './lib/global-hooks';
 import { collectSuites, registerSuites, suiteCount } from './lib/suites';
 
 /* eslint-disable import/no-extraneous-dependencies */

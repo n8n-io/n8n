@@ -4,7 +4,7 @@ import type Bench from 'tinybench';
 import { assert } from 'n8n-workflow';
 import glob from 'fast-glob';
 import callsites from 'callsites';
-import type { Suites, Task } from '../types';
+import type { Suites, Task } from './types';
 
 export const suites: Suites = {};
 

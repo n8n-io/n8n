@@ -5,7 +5,7 @@ import { Config } from '@oclif/core';
 import { InstanceSettings } from 'n8n-core';
 import { Start } from '@/commands/start';
 import Container from 'typedi';
-import { createOwner, deleteOwnerShell } from './db/users';
+import { createOwner, deleteOwnerShell } from '../db/users';
 
 function n8nDir() {
 	const baseDirPath = path.join(tmpdir(), 'n8n-benchmarks/');
