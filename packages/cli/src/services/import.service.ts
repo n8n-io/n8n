@@ -31,7 +31,7 @@ export class ImportService {
 		this.dbTags = await this.tagRepository.find();
 	}
 
-	async importWorkflows(workflows: WorkflowEntity[], userId: string) {
+	async importWorkflows(workflows: WorkflowEntity[], projectId: string) {
 		await this.initRecords();
 
 		for (const workflow of workflows) {
@@ -59,8 +59,9 @@ export class ImportService {
 				const upsertResult = await tx.upsert(WorkflowEntity, workflow, ['id']);
 				const workflowId = upsertResult.identifiers.at(0)?.id as string;
 
-				const personalProject =
-					await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(userId);
+				const personalProject = await Container.get(ProjectRepository).findOneByOrFail({
+					id: projectId,
+				});
 
 				// Create relationship if the workflow was inserted instead of updated.
 				if (!exists) {
