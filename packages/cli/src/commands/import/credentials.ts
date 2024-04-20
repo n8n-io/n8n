@@ -97,12 +97,6 @@ export class ImportCredentialsCommand extends BaseCommand {
 	}
 
 	async getProject(userId?: string, projectId?: string) {
-		if (userId && projectId) {
-			throw new ApplicationError(
-				'You cannot use `--userId` and `--projectId` together. Use one or the other.',
-			);
-		}
-
 		if (projectId) {
 			return await Container.get(ProjectRepository).findOneByOrFail({ id: projectId });
 		}
