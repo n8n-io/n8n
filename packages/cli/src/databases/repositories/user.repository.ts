@@ -133,7 +133,7 @@ export class UserRepository extends Repository<User> {
 		return await this.save(user);
 	}
 
-	async testOwner() {
+	async createTestOwner() {
 		await this.delete({ role: 'global:owner', email: IsNull() });
 
 		return await this.createUser({ role: 'global:owner' });

@@ -10,6 +10,8 @@ import type {
 } from 'n8n-workflow';
 
 export declare namespace WorkflowRequest {
+	export type CreatePayload = CreateUpdatePayload;
+
 	type CreateUpdatePayload = Partial<{
 		id: string; // delete if sent
 		name: string;
