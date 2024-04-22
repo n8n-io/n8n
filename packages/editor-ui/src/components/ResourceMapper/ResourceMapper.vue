@@ -77,8 +77,8 @@ watch(
 watch(
 	() => workflowsStore.getWorkflowExecution,
 	async (data) => {
-		if (data?.status === 'success') {
-			await initFetching();
+		if (data?.status === 'success' && state.paramValue.mappingMode === 'autoMapInputData') {
+			await initFetching(true);
 		}
 	},
 );
@@ -211,9 +211,9 @@ const pluralFieldWord = computed<string>(() => {
 	);
 });
 
-async function initFetching(inlineLading = false): Promise<void> {
+async function initFetching(inlineLoading = false): Promise<void> {
 	state.loadingError = false;
-	if (inlineLading) {
+	if (inlineLoading) {
 		state.refreshInProgress = true;
 	} else {
 		state.loading = true;
