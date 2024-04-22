@@ -1,5 +1,4 @@
-import type { Test } from 'supertest';
-import type TestAgent from 'supertest/lib/agent';
+import type { SuperAgentTest } from 'supertest';
 import config from '@/config';
 import type { User } from '@db/entities/User';
 import type { ILicensePostResponse, ILicenseReadResponse } from '@/Interfaces';
@@ -13,8 +12,8 @@ const MOCK_RENEW_OFFSET = 259200;
 
 let owner: User;
 let member: User;
-let authOwnerAgent: TestAgent<Test>;
-let authMemberAgent: TestAgent<Test>;
+let authOwnerAgent: SuperAgentTest;
+let authMemberAgent: SuperAgentTest;
 
 const testServer = utils.setupTestServer({ endpointGroups: ['license'] });
 

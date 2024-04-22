@@ -1,5 +1,4 @@
 packages:
   - packages/*
-  - packages/cli/benchmark
   - packages/@n8n/*
   - packages/@n8n_io/*

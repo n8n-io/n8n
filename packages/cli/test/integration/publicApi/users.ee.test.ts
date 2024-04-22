@@ -1,5 +1,4 @@
-import type { Test } from 'supertest';
-import type TestAgent from 'supertest/lib/agent';
+import type { SuperAgentTest } from 'supertest';
 import validator from 'validator';
 import { v4 as uuid } from 'uuid';
 
@@ -203,7 +202,7 @@ describe('With license unlimited quota:users', () => {
 });
 
 describe('With license without quota:users', () => {
-	let authOwnerAgent: TestAgent<Test>;
+	let authOwnerAgent: SuperAgentTest;
 
 	beforeEach(async () => {
 		mockInstance(License, { getUsersLimit: jest.fn().mockReturnValue(null) });

@@ -96,7 +96,6 @@ export async function initBinaryDataService(mode: 'default' | 'filesystem' = 'de
  * Extract the value (token) of the auth cookie in a response.
  */
 export function getAuthToken(response: request.Response, authCookieName = AUTH_COOKIE_NAME) {
-	// @ts-ignore
 	const cookies: string[] = response.headers['set-cookie'];
 
 	if (!cookies) return undefined;

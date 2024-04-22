@@ -1,5 +1,4 @@
-import type { Test } from 'supertest';
-import type TestAgent from 'supertest/lib/agent';
+import type { SuperAgentTest } from 'supertest';
 import config from '@/config';
 import Container from 'typedi';
 import type { INode } from 'n8n-workflow';
@@ -21,8 +20,8 @@ import { mockInstance } from '../../shared/mocking';
 
 let owner: User;
 let member: User;
-let authOwnerAgent: TestAgent<Test>;
-let authMemberAgent: TestAgent<Test>;
+let authOwnerAgent: SuperAgentTest;
+let authMemberAgent: SuperAgentTest;
 let workflowRunner: ActiveWorkflowRunner;
 
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
@@ -68,7 +67,6 @@ afterEach(async () => {
 
 const testWithAPIKey =
 	(method: 'get' | 'post' | 'put' | 'delete', url: string, apiKey: string | null) => async () => {
-		// @ts-ignore
 		void authOwnerAgent.set({ 'X-N8N-API-KEY': apiKey });
 		const response = await authOwnerAgent[method](url);
 		expect(response.statusCode).toBe(401);

@@ -1,5 +1,4 @@
-import type { Test } from 'supertest';
-import type TestAgent from 'supertest/lib/agent';
+import type { SuperAgentTest } from 'supertest';
 import { License } from '@/License';
 import type { ExternalSecretsSettings, SecretsProviderState } from '@/Interfaces';
 import { Cipher } from 'n8n-core';
@@ -22,8 +21,8 @@ import {
 	TestFailProvider,
 } from '../../shared/ExternalSecrets/utils';
 
-let authOwnerAgent: TestAgent<Test>;
-let authMemberAgent: TestAgent<Test>;
+let authOwnerAgent: SuperAgentTest;
+let authMemberAgent: SuperAgentTest;
 
 const mockProvidersInstance = new MockProviders();
 mockInstance(ExternalSecretsProviders, mockProvidersInstance);

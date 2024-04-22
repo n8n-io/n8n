@@ -1,5 +1,4 @@
-import type { Test } from 'supertest';
-import type TestAgent from 'supertest/lib/agent';
+import type { SuperAgentTest } from 'supertest';
 import type { User } from '@db/entities/User';
 import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 
@@ -22,9 +21,9 @@ import {
 let owner: User;
 let user1: User;
 let user2: User;
-let authOwnerAgent: TestAgent<Test>;
-let authUser1Agent: TestAgent<Test>;
-let authUser2Agent: TestAgent<Test>;
+let authOwnerAgent: SuperAgentTest;
+let authUser1Agent: SuperAgentTest;
+let authUser2Agent: SuperAgentTest;
 let workflowRunner: ActiveWorkflowRunner;
 
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
@@ -62,7 +61,6 @@ afterEach(async () => {
 
 const testWithAPIKey =
 	(method: 'get' | 'post' | 'put' | 'delete', url: string, apiKey: string | null) => async () => {
-		// @ts-ignore
 		void authOwnerAgent.set({ 'X-N8N-API-KEY': apiKey });
 		const response = await authOwnerAgent[method](url);
 		expect(response.statusCode).toBe(401);

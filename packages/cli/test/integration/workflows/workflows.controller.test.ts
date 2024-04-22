@@ -1,6 +1,5 @@
 import Container from 'typedi';
-import type { Test } from 'supertest';
-import type TestAgent from 'supertest/lib/agent';
+import type { SuperAgentTest } from 'supertest';
 import { v4 as uuid } from 'uuid';
 import type { INode, IPinData } from 'n8n-workflow';
 
@@ -24,7 +23,7 @@ import { createTag } from '../shared/db/tags';
 import { License } from '@/License';
 
 let owner: User;
-let authOwnerAgent: TestAgent<Test>;
+let authOwnerAgent: SuperAgentTest;
 
 jest.spyOn(License.prototype, 'isSharingEnabled').mockReturnValue(false);
 

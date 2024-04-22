@@ -1,5 +1,4 @@
-import type { Test } from 'supertest';
-import type TestAgent from 'supertest/lib/agent';
+import type { SuperAgentTest } from 'supertest';
 import { IsNull } from '@n8n/typeorm';
 import validator from 'validator';
 import type { User } from '@db/entities/User';
@@ -25,7 +24,7 @@ beforeEach(async () => {
 
 describe('Owner shell', () => {
 	let ownerShell: User;
-	let authOwnerShellAgent: TestAgent<Test>;
+	let authOwnerShellAgent: SuperAgentTest;
 
 	beforeEach(async () => {
 		ownerShell = await createUserShell('global:owner');
@@ -162,7 +161,7 @@ describe('Owner shell', () => {
 describe('Member', () => {
 	const memberPassword = randomValidPassword();
 	let member: User;
-	let authMemberAgent: TestAgent<Test>;
+	let authMemberAgent: SuperAgentTest;
 
 	beforeEach(async () => {
 		member = await createUser({

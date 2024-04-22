@@ -5,8 +5,7 @@ import { randomName } from './shared/random';
 import { generateNanoId } from '@/databases/utils/generators';
 import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
 import { setupTestServer } from './shared/utils';
-import type { Test } from 'supertest';
-import type TestAgent from 'supertest/lib/agent';
+import type { SuperAgentTest } from 'supertest';
 import { createOwner } from './shared/db/users';
 import { OrchestrationService } from '@/services/orchestration.service';
 import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
@@ -16,7 +15,7 @@ describe('DebugController', () => {
 	const activeWorkflowRunner = mockInstance(ActiveWorkflowRunner);
 
 	let testServer = setupTestServer({ endpointGroups: ['debug'] });
-	let ownerAgent: TestAgent<Test>;
+	let ownerAgent: SuperAgentTest;
 
 	beforeAll(async () => {
 		const owner = await createOwner();

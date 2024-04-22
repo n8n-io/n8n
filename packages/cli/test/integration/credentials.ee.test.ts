@@ -1,6 +1,5 @@
 import { Container } from 'typedi';
-import type { Test } from 'supertest';
-import type TestAgent from 'supertest/lib/agent';
+import type { SuperAgentTest } from 'supertest';
 import { In } from '@n8n/typeorm';
 import type { IUser } from 'n8n-workflow';
 
@@ -27,8 +26,8 @@ const testServer = utils.setupTestServer({
 let owner: User;
 let member: User;
 let anotherMember: User;
-let authOwnerAgent: TestAgent<Test>;
-let authAnotherMemberAgent: TestAgent<Test>;
+let authOwnerAgent: SuperAgentTest;
+let authAnotherMemberAgent: SuperAgentTest;
 let saveCredential: SaveCredentialFunction;
 const mailer = mockInstance(UserManagementMailer);
 

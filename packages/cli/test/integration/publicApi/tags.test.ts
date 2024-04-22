@@ -1,5 +1,4 @@
-import type { Test } from 'supertest';
-import type TestAgent from 'supertest/lib/agent';
+import type { SuperAgentTest } from 'supertest';
 import Container from 'typedi';
 import type { User } from '@db/entities/User';
 import { TagRepository } from '@db/repositories/tag.repository';
@@ -12,8 +11,8 @@ import { createTag } from '../shared/db/tags';
 
 let owner: User;
 let member: User;
-let authOwnerAgent: TestAgent<Test>;
-let authMemberAgent: TestAgent<Test>;
+let authOwnerAgent: SuperAgentTest;
+let authMemberAgent: SuperAgentTest;
 
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 

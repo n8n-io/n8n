@@ -1,6 +1,5 @@
 import Container from 'typedi';
-import type { Test } from 'supertest';
-import type TestAgent from 'supertest/lib/agent';
+import type { SuperAgentTest } from 'supertest';
 import { v4 as uuid } from 'uuid';
 import type { INode } from 'n8n-workflow';
 
@@ -25,9 +24,9 @@ import config from '@/config';
 let owner: User;
 let member: User;
 let anotherMember: User;
-let authOwnerAgent: TestAgent<Test>;
-let authMemberAgent: TestAgent<Test>;
-let authAnotherMemberAgent: TestAgent<Test>;
+let authOwnerAgent: SuperAgentTest;
+let authMemberAgent: SuperAgentTest;
+let authAnotherMemberAgent: SuperAgentTest;
 let saveCredential: SaveCredentialFunction;
 
 const activeWorkflowRunner = mockInstance(ActiveWorkflowRunner);

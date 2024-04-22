@@ -1,5 +1,4 @@
-import type { Test } from 'supertest';
-import type TestAgent from 'supertest/lib/agent';
+import type { SuperAgentTest } from 'supertest';
 import { Container } from 'typedi';
 import validator from 'validator';
 import config from '@/config';
@@ -14,7 +13,7 @@ import { UserRepository } from '@db/repositories/user.repository';
 import { MfaService } from '@/Mfa/mfa.service';
 
 let owner: User;
-let authOwnerAgent: TestAgent<Test>;
+let authOwnerAgent: SuperAgentTest;
 const ownerPassword = randomValidPassword();
 
 const testServer = utils.setupTestServer({ endpointGroups: ['auth'] });
