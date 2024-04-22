@@ -13,9 +13,9 @@ import { BaseCommand } from '../BaseCommand';
 import type { ICredentialsEncrypted } from 'n8n-workflow';
 import { ApplicationError, jsonParse } from 'n8n-workflow';
 import { UM_FIX_INSTRUCTION } from '@/constants';
+import { UserRepository } from '@db/repositories/user.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import type { Project } from '@/databases/entities/Project';
-import { UserRepository } from '@/databases/repositories/user.repository';
 
 export class ImportCredentialsCommand extends BaseCommand {
 	static description = 'Import credentials';
