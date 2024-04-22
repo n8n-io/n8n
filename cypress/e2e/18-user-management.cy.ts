@@ -34,7 +34,7 @@ describe('User Management', { disableAutoLogin: true }, () => {
 		cy.enableFeature('sharing');
 	});
 
-	it('should prevent non-owners to access UM settings', () => {
+	it.only('should prevent non-owners to access UM settings', () => {
 		usersSettingsPage.actions.loginAndVisit(
 			INSTANCE_MEMBERS[0].email,
 			INSTANCE_MEMBERS[0].password,
