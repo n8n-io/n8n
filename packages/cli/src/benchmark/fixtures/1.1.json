@@ -1,0 +1,25 @@
+{
+	"name": "1.1",
+	"nodes": [
+		{
+			"parameters": {
+				"path": "d58b0160-2370-417b-bc0e-f3050b0c7adf",
+				"options": {}
+			},
+			"id": "000012bb-d534-4e81-a7e4-e62edf816582",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [580, 280],
+			"webhookId": "d58b0160-2370-417b-bc0e-f3050b0c7adf"
+		}
+	],
+	"pinData": {},
+	"connections": {},
+	"active": true,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "0cea62e0-b011-46f1-bd03-0011f648d7e9",
+	"tags": []
+}

@@ -5,7 +5,11 @@ import { Config } from '@oclif/core';
 import { InstanceSettings } from 'n8n-core';
 import { Start } from '@/commands/start';
 import Container from 'typedi';
-import { createOwner, deleteOwnerShell } from '../db/users';
+import FixtureWorkflow2fZ from '../fixtures/1.1.json';
+import { WorkflowsController } from '@/workflows/workflows.controller';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
+import type { User } from '@/databases/entities/User';
 
 function n8nDir() {
 	const baseDirPath = path.join(tmpdir(), 'n8n-benchmarks/');
@@ -46,14 +50,23 @@ async function mainProcess() {
 	await main.run();
 }
 
+async function loadFixtures(owner: User) {
+	// @ts-ignore
+	await Container.get(WorkflowsController).create({ body: FixtureWorkflow2fZ, user: owner });
+
+	const allActive = await Container.get(WorkflowRepository).getAllActive();
+	console.log('allActive', allActive);
+}
+
 export async function setup() {
 	n8nDir();
 
 	await mainProcess();
 	// @TODO: Postgres?
 
-	await deleteOwnerShell();
-	await createOwner();
+	const owner = await Container.get(UserRepository).testOwner();
+
+	await loadFixtures(owner);
 }
 
 export async function teardown() {
