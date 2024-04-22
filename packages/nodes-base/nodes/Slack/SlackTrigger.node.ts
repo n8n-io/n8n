@@ -107,10 +107,11 @@ export class SlackTrigger implements INodeType {
 			},
 			{
 				displayName: 'Watch Whole Workspace',
-				name: 'watchChannel',
+				name: 'watchWorkspace',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to watch for the event in the whole workspace, rather than a specific channel',
+				description:
+					'Whether to watch for the event in the whole workspace, rather than a specific channel',
 				displayOptions: {
 					show: {
 						trigger: ['any_event', 'message', 'reaction_added', 'file_share', 'app_mention'],
@@ -126,7 +127,7 @@ export class SlackTrigger implements INodeType {
 				displayOptions: {
 					show: {
 						trigger: ['any_event', 'message', 'reaction_added', 'file_share', 'app_mention'],
-						watchChannel: [true],
+						watchWorkspace: [true],
 					},
 				},
 			},
@@ -136,10 +137,11 @@ export class SlackTrigger implements INodeType {
 				type: 'resourceLocator',
 				default: { mode: 'list', value: '' },
 				placeholder: 'Select a channel...',
-				description: 'The Slack channel to listen to events from. Applies to events: Bot/App mention, File Shared, New Message Posted on Channel, Reaction Added.',
+				description:
+					'The Slack channel to listen to events from. Applies to events: Bot/App mention, File Shared, New Message Posted on Channel, Reaction Added.',
 				displayOptions: {
 					show: {
-						watchChannel: [false],
+						watchWorkspace: [false],
 					},
 				},
 				modes: [
@@ -268,13 +270,16 @@ export class SlackTrigger implements INodeType {
 		loadOptions: {
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const users = await slackApiRequestAllItems.call(this, 'members', 'GET', '/users.list');
+				const users = (await slackApiRequestAllItems.call(
+					this,
+					'members',
+					'GET',
+					'/users.list',
+				)) as Array<{ id: string; name: string }>;
 				for (const user of users) {
-					const userName = user.name;
-					const userId = user.id;
 					returnData.push({
-						name: userName,
-						value: userId,
+						name: user.name,
+						value: user.id,
 					});
 				}
 
@@ -312,7 +317,7 @@ export class SlackTrigger implements INodeType {
 		const req = this.getRequestObject();
 		const options = this.getNodeParameter('options', {}) as IDataObject;
 		const binaryData: IBinaryKeyData = {};
-		const watchChannel = this.getNodeParameter('watchChannel', false) as boolean;
+		const watchWorkspace = this.getNodeParameter('watchWorkspace', false) as boolean;
 
 		// Check if the request is a challenge request
 		if (req.body.type === 'url_verification') {
@@ -335,7 +340,7 @@ export class SlackTrigger implements INodeType {
 			return {};
 		}
 
-		if (watchChannel) {
+		if (!watchWorkspace) {
 			if (
 				req.body.event.channel !==
 				(this.getNodeParameter('channelId', {}, { extractValue: true }) as string)
