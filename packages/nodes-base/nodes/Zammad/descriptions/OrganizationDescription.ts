@@ -139,7 +139,7 @@ export const organizationDescription: INodeProperties[] = [
 			},
 			{
 				displayName: 'Domain Assignment',
-				name: 'domainAssignment',
+				name: 'domain_assignment',
 				type: 'boolean',
 				default: true,
 				description: 'Whether to assign users based on their email domain',
@@ -232,7 +232,7 @@ export const organizationDescription: INodeProperties[] = [
 			},
 			{
 				displayName: 'Domain Assignment',
-				name: 'domainAssignment',
+				name: 'domain_assignment',
 				type: 'boolean',
 				default: true,
 				description: 'Whether to assign users based on their email domain',
