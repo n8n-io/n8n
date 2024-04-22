@@ -94,7 +94,7 @@ export class Start extends BaseCommand {
 			// Stop with trying to activate workflows that could not be activated
 			this.activeWorkflowRunner.removeAllQueuedWorkflowActivations();
 
-			Container.get(WaitTracker).shutdown();
+			Container.get(WaitTracker).stopTracking();
 
 			await this.externalHooks?.run('n8n.stop', []);
 

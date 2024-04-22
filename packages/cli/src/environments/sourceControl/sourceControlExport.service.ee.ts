@@ -240,15 +240,14 @@ export class SourceControlExportService {
 			}
 			await Promise.all(
 				credentialsToBeExported.map(async (sharing) => {
-					const { name, type, nodesAccess, data, id } = sharing.credentials;
-					const credentials = new Credentials({ id, name }, type, nodesAccess, data);
+					const { name, type, data, id } = sharing.credentials;
+					const credentials = new Credentials({ id, name }, type, data);
 
 					const stub: ExportableCredential = {
 						id,
 						name,
 						type,
 						data: this.replaceCredentialData(credentials.getData()),
-						nodesAccess,
 						ownedBy: sharing.user.email,
 					};
 

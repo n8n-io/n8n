@@ -13,7 +13,7 @@ export async function getUserInfo(this: IWebhookFunctions, userId: string): Prom
 		},
 	);
 
-	return user.name;
+	return user.user.name;
 }
 
 export async function getChannelInfo(this: IWebhookFunctions, channelId: string): Promise<any> {
@@ -26,7 +26,8 @@ export async function getChannelInfo(this: IWebhookFunctions, channelId: string)
 			channel: channelId,
 		},
 	);
-	return channel.name;
+
+	return channel.channel.name;
 }
 
 export async function downloadFile(this: IWebhookFunctions, url: string): Promise<any> {

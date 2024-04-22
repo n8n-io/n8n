@@ -45,7 +45,7 @@ export class SlackTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'authentication',
+				displayName: 'Authentication',
 				name: 'authentication',
 				type: 'hidden',
 				default: 'accessToken',
@@ -59,80 +59,87 @@ export class SlackTrigger implements INodeType {
 			},
 			{
 				displayName: 'Trigger On',
-				name: 'eventFilter',
+				name: 'trigger',
 				type: 'multiOptions',
 				options: [
 					{
+						name: 'Any Event',
+						value: 'any_event',
+						description: 'Triggers on any event',
+					},
+					{
 						name: 'Bot / App Mention',
 						value: 'app_mention',
-						description: 'Triggers whenever your bot or app is mentioned in a channel',
+						description: 'When your bot or app is mentioned in a channel the app is added to',
 					},
 					{
 						name: 'File Made Public',
 						value: 'file_public',
-						description: 'Triggers when a file is made public',
+						description: 'When a file is made public',
 					},
 					{
 						name: 'File Shared',
 						value: 'file_share',
-						description: 'Triggers when a file is shared in your workspace',
+						description: 'When a file is shared in a channel the app is added to',
 					},
 					{
 						name: 'New Message Posted to Channel',
 						value: 'message',
-						description: 'Triggers when a new message is posted to any channel',
+						description: 'When a message is posted to a channel the app is added to',
 					},
 					{
 						name: 'New Public Channel Created',
 						value: 'channel_created',
-						description: 'Triggers whenever a new public channel is created',
+						description: 'When a new public channel is created',
 					},
 					{
 						name: 'New User',
 						value: 'team_join',
-						description: 'Triggers when a new user is added to Slack',
+						description: 'When a new user is added to Slack',
 					},
 					{
 						name: 'Reaction Added',
 						value: 'reaction_added',
-						description: 'Triggers when a reaction is added to a message',
+						description: 'When a reaction is added to a message the app is added to',
 					},
 				],
 				default: [],
 			},
 			{
+				displayName: 'Watch Whole Workspace',
+				name: 'watchChannel',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to watch for the event in the whole workspace, rather than a specific channel',
+				displayOptions: {
+					show: {
+						trigger: ['any_event', 'message', 'reaction_added', 'file_share', 'app_mention'],
+					},
+				},
+			},
+			{
 				displayName:
-					'This will use one execution for every message in any channel your bot is in, use with caution',
+					'This will use one execution for every event in any channel your bot is in, use with caution',
 				name: 'notice',
 				type: 'notice',
 				default: '',
 				displayOptions: {
 					show: {
-						eventFilter: ['message'],
+						trigger: ['any_event', 'message', 'reaction_added', 'file_share', 'app_mention'],
+						watchChannel: [true],
 					},
 				},
 			},
 			{
-				displayName: 'Watch Channel',
-				name: 'watchChannel',
-				type: 'boolean',
-				default: false,
-				displayOptions: {
-					show: {
-						eventFilter: ['message', 'reaction_added', 'file_share', 'app_mention'],
-					},
-				},
-			},
-			{
-				displayName: 'Channel',
+				displayName: 'Channel to Watch',
 				name: 'channelId',
 				type: 'resourceLocator',
 				default: { mode: 'list', value: '' },
 				placeholder: 'Select a channel...',
-				description: 'The Slack channel to listen to events from',
+				description: 'The Slack channel to listen to events from. Applies to events: Bot/App mention, File Shared, New Message Posted on Channel, Reaction Added.',
 				displayOptions: {
 					show: {
-						watchChannel: [true],
+						watchChannel: [false],
 					},
 				},
 				modes: [
@@ -190,7 +197,7 @@ export class SlackTrigger implements INodeType {
 				description: 'Whether to download the files and add it to the output',
 				displayOptions: {
 					show: {
-						eventFilter: ['file_share'],
+						trigger: ['any_event', 'file_share'],
 					},
 				},
 			},
@@ -301,7 +308,7 @@ export class SlackTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
-		const filters = this.getNodeParameter('eventFilter', []) as string[];
+		const filters = this.getNodeParameter('trigger', []) as string[];
 		const req = this.getRequestObject();
 		const options = this.getNodeParameter('options', {}) as IDataObject;
 		const binaryData: IBinaryKeyData = {};
@@ -318,10 +325,12 @@ export class SlackTrigger implements INodeType {
 		}
 
 		// Check if the event type is in the filters
+		const eventType = req.body.event.type as string;
+
 		if (
-			req.body.event.type === 'message' &&
+			eventType === 'message' &&
 			!filters.includes('file_share') &&
-			(!req.body.event.type || !filters.includes(req.body.event.type as string))
+			!filters.includes('any_event')
 		) {
 			return {};
 		}
@@ -344,7 +353,7 @@ export class SlackTrigger implements INodeType {
 
 		if (options.resolveIds) {
 			if (req.body.event.user) {
-				if (req.body.event.reaction_added) {
+				if (req.body.event.type === 'reaction_added') {
 					req.body.event.user_resolved = await getUserInfo.call(this, req.body.event.user);
 					req.body.event.item_user_resolved = await getUserInfo.call(
 						this,
@@ -354,15 +363,20 @@ export class SlackTrigger implements INodeType {
 					req.body.event.user_resolved = await getUserInfo.call(this, req.body.event.user);
 				}
 			}
-			if (req.body.event.channel || req.body.item.channel) {
-				const channelResolved = await getChannelInfo.call(this, req.body.event.channel);
+			const eventChannel = req.body.event.channel ?? req.body.event.item.channel;
+			if (eventChannel) {
+				const channel = await getChannelInfo.call(this, eventChannel);
+				const channelResolved = channel;
 				req.body.event.channel_resolved = channelResolved;
 			}
 		}
 
 		let responseData: IDataObject = {};
 
-		if (req.body.event.subtype === 'file_share' && filters.includes('file_share')) {
+		if (
+			req.body.event.subtype === 'file_share' &&
+			(filters.includes('file_share') || filters.includes('any_event'))
+		) {
 			responseData = req.body.event.files;
 			if (this.getNodeParameter('downloadFiles', false) as boolean) {
 				for (let i = 0; i < req.body.event.files.length; i++) {
