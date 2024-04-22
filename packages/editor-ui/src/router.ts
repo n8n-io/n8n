@@ -24,12 +24,11 @@ const ForgotMyPasswordView = async () => await import('./views/ForgotMyPasswordV
 const MainHeader = async () => await import('@/components/MainHeader/MainHeader.vue');
 const MainSidebar = async () => await import('@/components/MainSidebar.vue');
 const NodeView = async () => await import('@/views/NodeView.vue');
-const WorkflowExecutionsList = async () =>
-	await import('@/components/ExecutionsView/ExecutionsList.vue');
-const ExecutionsLandingPage = async () =>
-	await import('@/components/ExecutionsView/ExecutionsLandingPage.vue');
-const ExecutionPreview = async () =>
-	await import('@/components/ExecutionsView/ExecutionPreview.vue');
+const WorkflowExecutionsView = async () => await import('@/views/WorkflowExecutionsView.vue');
+const WorkflowExecutionsLandingPage = async () =>
+	await import('@/components/executions/workflow/WorkflowExecutionsLandingPage.vue');
+const WorkflowExecutionsPreview = async () =>
+	await import('@/components/executions/workflow/WorkflowExecutionsPreview.vue');
 const SettingsView = async () => await import('./views/SettingsView.vue');
 const SettingsLdapView = async () => await import('./views/SettingsLdapView.vue');
 const SettingsPersonalView = async () => await import('./views/SettingsPersonalView.vue');
@@ -255,7 +254,7 @@ export const routes = [
 		path: '/workflow/:name/executions',
 		name: VIEWS.WORKFLOW_EXECUTIONS,
 		components: {
-			default: WorkflowExecutionsList,
+			default: WorkflowExecutionsView,
 			header: MainHeader,
 			sidebar: MainSidebar,
 		},
@@ -268,7 +267,7 @@ export const routes = [
 				path: '',
 				name: VIEWS.EXECUTION_HOME,
 				components: {
-					executionPreview: ExecutionsLandingPage,
+					executionPreview: WorkflowExecutionsLandingPage,
 				},
 				meta: {
 					keepWorkflowAlive: true,
@@ -279,7 +278,7 @@ export const routes = [
 				path: ':executionId',
 				name: VIEWS.EXECUTION_PREVIEW,
 				components: {
-					executionPreview: ExecutionPreview,
+					executionPreview: WorkflowExecutionsPreview,
 				},
 				meta: {
 					keepWorkflowAlive: true,

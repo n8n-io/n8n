@@ -83,12 +83,18 @@ const hint = computed(() => {
 
 	let result: Result<unknown, Error>;
 	try {
-		const resolvedValue = resolveExpression(value, undefined, {
-			targetItem: ndvStore.hoveringItem ?? undefined,
-			inputNodeName: ndvStore.ndvInputNodeName,
-			inputRunIndex: ndvStore.ndvInputRunIndex,
-			inputBranchIndex: ndvStore.ndvInputBranchIndex,
-		}) as unknown;
+		const resolvedValue = resolveExpression(
+			value,
+			undefined,
+			ndvStore.isInputParentOfActiveNode
+				? {
+						targetItem: ndvStore.hoveringItem ?? undefined,
+						inputNodeName: ndvStore.ndvInputNodeName,
+						inputRunIndex: ndvStore.ndvInputRunIndex,
+						inputBranchIndex: ndvStore.ndvInputBranchIndex,
+					}
+				: {},
+		) as unknown;
 
 		result = { ok: true, result: resolvedValue };
 	} catch (error) {

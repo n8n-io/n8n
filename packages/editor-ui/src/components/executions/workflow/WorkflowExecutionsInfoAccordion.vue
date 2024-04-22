@@ -38,6 +38,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
+import { useRouter } from 'vue-router';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -46,7 +47,6 @@ import { PLACEHOLDER_EMPTY_WORKFLOW_ID, WORKFLOW_SETTINGS_MODAL_KEY } from '@/co
 import type { IWorkflowSettings } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { useRouter } from 'vue-router';
 
 interface IWorkflowSaveSettings {
 	saveFailedExecutions: boolean;
@@ -55,7 +55,7 @@ interface IWorkflowSaveSettings {
 }
 
 export default defineComponent({
-	name: 'ExecutionsInfoAccordion',
+	name: 'WorkflowExecutionsInfoAccordion',
 	props: {
 		initiallyExpanded: {
 			type: Boolean,

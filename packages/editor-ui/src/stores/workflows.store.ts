@@ -11,12 +11,10 @@ import {
 } from '@/constants';
 import type {
 	ExecutionsQueryFilter,
-	IExecutionDeleteFilter,
 	IExecutionPushResponse,
 	IExecutionResponse,
 	IExecutionsCurrentSummaryExtended,
 	IExecutionsListResponse,
-	IExecutionsStopData,
 	INewWorkflowData,
 	INodeMetadata,
 	INodeUi,
@@ -1245,34 +1243,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		setActiveExecutions(newActiveExecutions: IExecutionsCurrentSummaryExtended[]): void {
 			this.activeExecutions = newActiveExecutions;
 		},
-
-		async retryExecution(id: string, loadWorkflow?: boolean): Promise<boolean> {
-			let sendData;
-			if (loadWorkflow === true) {
-				sendData = {
-					loadWorkflow: true,
-				};
-			}
-			const rootStore = useRootStore();
-			return await makeRestApiRequest(
-				rootStore.getRestApiContext,
-				'POST',
-				`/executions/${id}/retry`,
-				sendData,
-			);
-		},
-
-		// Deletes executions
-		async deleteExecutions(sendData: IExecutionDeleteFilter): Promise<void> {
-			const rootStore = useRootStore();
-			return await makeRestApiRequest(
-				rootStore.getRestApiContext,
-				'POST',
-				'/executions/delete',
-				sendData as unknown as IDataObject,
-			);
-		},
-
 		// TODO: For sure needs some kind of default filter like last day, with max 10 results, ...
 		async getPastExecutions(
 			filter: IDataObject,
@@ -1301,12 +1271,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				};
 			}
 			const rootStore = useRootStore();
-			return await makeRestApiRequest(
+			const output = await makeRestApiRequest(
 				rootStore.getRestApiContext,
 				'GET',
-				'/executions/active',
+				'/executions',
 				sendData,
 			);
+
+			return output.results;
 		},
 
 		async getExecution(id: string): Promise<IExecutionResponse | undefined> {
@@ -1376,16 +1348,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				`/test-webhook/${workflowId}`,
 			);
 		},
-
-		async stopCurrentExecution(executionId: string): Promise<IExecutionsStopData> {
-			const rootStore = useRootStore();
-			return await makeRestApiRequest(
-				rootStore.getRestApiContext,
-				'POST',
-				`/executions/active/${executionId}/stop`,
-			);
-		},
-
 		async loadCurrentWorkflowExecutions(
 			requestFilter: ExecutionsQueryFilter,
 		): Promise<ExecutionSummary[]> {
