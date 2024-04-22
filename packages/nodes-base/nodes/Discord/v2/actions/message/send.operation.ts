@@ -153,7 +153,7 @@ export async function execute(
 		};
 
 		if (embeds) {
-			body.embeds = prepareEmbeds.call(this, embeds, i);
+			body.embeds = prepareEmbeds.call(this, embeds);
 		}
 
 		try {
@@ -183,7 +183,10 @@ export async function execute(
 				throw new NodeOperationError(this.getNode(), 'Channel ID is required');
 			}
 
-			if (isOAuth2) await checkAccessToChannel.call(this, channelId, userGuilds, i);
+			// no need to check if sendTo === 'user' because access to guild was checked before in router
+			if (isOAuth2 && sendTo === 'channel') {
+				await checkAccessToChannel.call(this, channelId, userGuilds, i);
+			}
 
 			let response: IDataObject[] = [];
 

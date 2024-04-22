@@ -124,7 +124,7 @@ export async function categorySearch(this: ILoadOptionsFunctions): Promise<INode
 
 export async function userSearch(
 	this: ILoadOptionsFunctions,
-	filter?: string,
+	_filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
 	const guildId = await getGuildId.call(this);
