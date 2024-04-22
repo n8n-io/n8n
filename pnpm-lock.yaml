@@ -18,6 +18,7 @@ overrides:
   tslib: ^2.6.2
   tsconfig-paths: ^4.2.0
   typescript: ^5.4.2
+  '@google/generative-ai': 0.7.1
 
 patchedDependencies:
   '@sentry/cli@2.17.0':
@@ -233,8 +234,8 @@ importers:
         specifier: 0.2.1
         version: 0.2.1
       '@google/generative-ai':
-        specifier: ^0.5.0
-        version: 0.5.0
+        specifier: 0.7.1
+        version: 0.7.1
       '@huggingface/inference':
         specifier: 2.6.4
         version: 2.6.4
@@ -5209,13 +5210,8 @@ packages:
       - supports-color
     dev: false
 
-  /@google/generative-ai@0.1.3:
-    resolution: {integrity: sha512-Cm4uJX1sKarpm1mje/MiOIinM7zdUUrQp/5/qGPAgznbdd/B9zup5ehT6c1qGqycFcSopTA1J1HpqHS5kJR8hQ==}
-    engines: {node: '>=18.0.0'}
-    dev: false
-
-  /@google/generative-ai@0.5.0:
-    resolution: {integrity: sha512-uxfN3mROgVxb+9KrlVHIiglcWgNE86pVTS9TRkGS6hMvQoZ5TrB1TIMcW5ZYWxlRhMwtmEdJnNMUxSqM3Qp/Ag==}
+  /@google/generative-ai@0.7.1:
+    resolution: {integrity: sha512-WTjMLLYL/xfA5BW6xAycRPiAX7FNHKAxrid/ayqC1QMam0KAK0NbMeS9Lubw80gVg5xFMLE+H7pw4wdNzTOlxw==}
     engines: {node: '>=18.0.0'}
     dev: false
 
@@ -6370,7 +6366,7 @@ packages:
     resolution: {integrity: sha512-o4+r+ETmcPqcrRTJeJQQ0c796IAx1dvVkZvFsUqLhTIteIQuAc2KenY/UDGQxZVghw6fZf4irN/PvkNHJjfgWw==}
     engines: {node: '>=18'}
     dependencies:
-      '@google/generative-ai': 0.1.3
+      '@google/generative-ai': 0.7.1
       '@langchain/core': 0.1.41
     dev: false
 
@@ -9237,7 +9233,7 @@ packages:
       ts-dedent: 2.2.0
       type-fest: 2.19.0
       vue: 3.4.21(typescript@5.4.2)
-      vue-component-type-helpers: 2.0.13
+      vue-component-type-helpers: 2.0.14
     transitivePeerDependencies:
       - encoding
       - supports-color
@@ -25914,8 +25910,8 @@ packages:
     resolution: {integrity: sha512-0vOfAtI67UjeO1G6UiX5Kd76CqaQ67wrRZiOe7UAb9Jm6GzlUr/fC7CV90XfwapJRjpCMaZFhv1V0ajWRmE9Dg==}
     dev: true
 
-  /vue-component-type-helpers@2.0.13:
-    resolution: {integrity: sha512-xNO5B7DstNWETnoYflLkVgh8dK8h2ZDgxY1M2O0zrqGeBNq5yAZ8a10yCS9+HnixouNGYNX+ggU9MQQq86HTpg==}
+  /vue-component-type-helpers@2.0.14:
+    resolution: {integrity: sha512-DInfgOyXlMyliyqAAD9frK28tTfch0+tMi4qoWJcZlRxUf+NFAtraJBnAsKLep+FOyLMiajkhfyEb3xLK08i7w==}
     dev: true
 
   /vue-demi@0.14.5(vue@3.4.21):
