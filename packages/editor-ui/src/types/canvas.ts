@@ -12,6 +12,7 @@ export type CanvasConnectionPort = {
 	type: CanvasConnectionPortType;
 	required?: boolean;
 	index: number;
+	label?: string;
 };
 
 export interface CanvasElementPortWithPosition extends CanvasConnectionPort {

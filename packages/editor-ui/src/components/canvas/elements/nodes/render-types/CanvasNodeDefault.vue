@@ -38,7 +38,7 @@ const styles = computed(() => {
 
 <style lang="scss" module>
 .canvasNode {
-	height: calc(100px + max(0, var(--node-main-output-count, 1) - 4) * 20px);
+	height: calc(100px + max(0, var(--node-main-output-count, 1) - 4) * 50px);
 	width: 100px;
 	display: flex;
 	align-items: center;

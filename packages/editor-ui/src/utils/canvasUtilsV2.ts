@@ -8,8 +8,6 @@ export function mapLegacyConnections(
 ): CanvasConnection[] {
 	const mappedConnections: CanvasConnection[] = [];
 
-	console.log(legacyConnections);
-
 	Object.keys(legacyConnections).forEach((fromNodeName) => {
 		const fromId = nodes.find((node) => node.name === fromNodeName)?.id;
 		const fromConnectionTypes = Object.keys(legacyConnections[fromNodeName]);
@@ -60,6 +58,7 @@ export function normalizeElementEndpoints(
 
 	return endpoints.map((endpoint, endpointIndex) => {
 		const type = typeof endpoint === 'string' ? endpoint : endpoint.type;
+		const label = typeof endpoint === 'string' ? undefined : endpoint.displayName;
 		const index =
 			endpoints
 				.slice(0, endpointIndex + 1)
@@ -69,6 +68,7 @@ export function normalizeElementEndpoints(
 		return {
 			type,
 			index,
+			label,
 			...(required ? { required } : {}),
 		};
 	});

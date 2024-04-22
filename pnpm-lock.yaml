@@ -1108,6 +1108,9 @@ importers:
       '@vue-flow/minimap':
         specifier: ^1.4.0
         version: 1.4.0(@vue-flow/core@1.33.5)(vue@3.4.21)
+      '@vue-flow/node-toolbar':
+        specifier: ^1.1.0
+        version: 1.1.0(@vue-flow/core@1.33.5)
       '@vueuse/components':
         specifier: ^10.5.0
         version: 10.5.0(vue@3.4.21)
@@ -10647,6 +10650,14 @@ packages:
       d3-selection: 3.0.0
       d3-zoom: 3.0.0
       vue: 3.4.21(typescript@5.4.2)
+    dev: false
+
+  /@vue-flow/node-toolbar@1.1.0(@vue-flow/core@1.33.5):
+    resolution: {integrity: sha512-6RVDHgY+x8m1cXPaEkqPa/RMR90AC1hPHYBK/QVh8k6lJnFPgwJ9PSiYoC4amsUiDK0mF0Py+PlztLJY1ty+4A==}
+    peerDependencies:
+      '@vue-flow/core': ^1.12.2
+    dependencies:
+      '@vue-flow/core': 1.33.5(vue@3.4.21)
     dev: false
 
   /@vue/compiler-core@3.3.4:

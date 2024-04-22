@@ -49,6 +49,7 @@
     "@vue-flow/controls": "^1.1.1",
     "@vue-flow/core": "^1.33.5",
     "@vue-flow/minimap": "^1.4.0",
+    "@vue-flow/node-toolbar": "^1.1.0",
     "@vueuse/components": "^10.5.0",
     "@vueuse/core": "^10.5.0",
     "axios": "1.6.7",

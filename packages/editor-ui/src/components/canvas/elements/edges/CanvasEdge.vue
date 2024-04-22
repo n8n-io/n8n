@@ -1,6 +1,6 @@
 <script lang="ts" setup>
-import { BaseEdge, getBezierPath } from '@vue-flow/core';
-import { computed } from 'vue';
+import { BaseEdge, getBezierPath, Position } from '@vue-flow/core';
+import { computed, PropType } from 'vue';
 
 const props = defineProps({
 	id: {
@@ -24,11 +24,11 @@ const props = defineProps({
 		required: true,
 	},
 	sourcePosition: {
-		type: String,
+		type: String as PropType<Position>,
 		required: true,
 	},
 	targetPosition: {
-		type: String,
+		type: String as PropType<Position>,
 		required: true,
 	},
 	data: {
@@ -45,16 +45,30 @@ const props = defineProps({
 	},
 });
 
-const path = computed(() => getBezierPath(props));
+const edgeStyle = computed(() => ({
+	strokeWidth: 2,
+	...props.style,
+}));
+
+const path = computed(() =>
+	getBezierPath({
+		sourceX: props.sourceX,
+		sourceY: props.sourceY,
+		sourcePosition: props.sourcePosition,
+		targetX: props.targetX,
+		targetY: props.targetY,
+		targetPosition: props.targetPosition,
+	}),
+);
 </script>
 
 <template>
 	<BaseEdge
 		:id="id"
-		:style="style"
+		:style="edgeStyle"
 		:path="path[0]"
 		:marker-end="markerEnd"
-		:label="data.text"
+		:label="data?.label"
 		:label-x="path[1]"
 		:label-y="path[2]"
 		:label-style="{ fill: 'white' }"

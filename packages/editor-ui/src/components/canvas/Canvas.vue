@@ -11,7 +11,7 @@ import { useCssModule } from 'vue';
 
 const $style = useCssModule();
 
-const $emit = defineEmits(['update:modelValue']);
+defineEmits(['update:modelValue']);
 
 const props = withDefaults(
 	defineProps<{
@@ -44,44 +44,67 @@ function onConnectionsChange(e: EdgeChange[]) {
 </script>
 
 <template>
-	<div :class="$style.canvasWrapper">
-		<VueFlow
-			:id="id"
-			:nodes="elements"
-			:edges="connections"
-			:apply-changes="false"
-			fit-view-on-init
-			:min-zoom="0.2"
-			:max-zoom="4"
-			@nodes-change="onNodesChange"
-			@edges-change="onConnectionsChange"
-		>
-			<template #node-canvas-node="canvasNodeProps">
-				<CanvasNode v-bind="canvasNodeProps" />
-			</template>
+	<VueFlow
+		:id="id"
+		:nodes="elements"
+		:edges="connections"
+		:apply-changes="false"
+		fit-view-on-init
+		pan-on-scroll
+		:min-zoom="0.2"
+		:max-zoom="4"
+		@nodes-change="onNodesChange"
+		@edges-change="onConnectionsChange"
+	>
+		<template #node-canvas-node="canvasNodeProps">
+			<CanvasNode v-bind="canvasNodeProps" />
+		</template>
 
-			<template #edge-canvas-edge="canvasEdgeProps">
-				<CanvasEdge v-bind="canvasEdgeProps" />
-			</template>
+		<template #edge-canvas-edge="canvasEdgeProps">
+			<CanvasEdge v-bind="canvasEdgeProps" />
+		</template>
 
-			<Background pattern-color="#aaa" :gap="16" />
+		<Background pattern-color="#aaa" :gap="16" />
 
-			<MiniMap pannable />
+		<MiniMap pannable />
 
-			<Controls :class="$style.canvasControls" :position="controlsPosition"></Controls>
-		</VueFlow>
-	</div>
+		<Controls :class="$style.canvasControls" :position="controlsPosition"></Controls>
+	</VueFlow>
 </template>
 
-<style lang="scss" module>
-.canvasWrapper {
-	width: 100%;
-	height: 100%;
-	position: relative;
-	display: block;
+<style lang="scss">
+.vue-flow__controls {
+	display: flex;
+	gap: var(--spacing-2xs);
+	box-shadow: none;
 }
 
-.canvasControls {
-	display: flex;
+.vue-flow__controls-button {
+	width: 42px;
+	height: 42px;
+	border: var(--border-base);
+	border-radius: var(--border-radius-base);
+	padding: 0;
+	transition-property: transform, background, border, color;
+	transition-duration: 300ms;
+	transition-timing-function: ease;
+
+	&:hover {
+		border-color: var(--color-button-secondary-hover-active-border);
+		background-color: var(--color-button-secondary-active-background);
+		transform: scale(1.1);
+
+		svg {
+			fill: var(--color-primary);
+		}
+	}
+
+	svg {
+		max-height: 16px;
+		max-width: 16px;
+		transition-property: fill;
+		transition-duration: 300ms;
+		transition-timing-function: ease;
+	}
 }
 </style>

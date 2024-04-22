@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { Handle, Position } from '@vue-flow/core';
+import { NodeToolbar } from '@vue-flow/node-toolbar';
 import { computed, useCssModule } from 'vue';
 import type {
 	CanvasElementData,
@@ -8,6 +9,7 @@ import type {
 } from '@/types';
 import NodeIcon from '@/components/NodeIcon.vue';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import CanvasNodeToolbar from '@/components/canvas/elements/nodes/CanvasNodeToolbar.vue';
 import CanvasNodeRenderer from '@/components/canvas/elements/nodes/CanvasNodeRenderer.vue';
 import HandleRenderer from '@/components/canvas/elements/handles/HandleRenderer.vue';
 import { useNodeConnections } from '@/composables/useNodeConnections';
@@ -81,7 +83,9 @@ const mapEndpointWithPosition =
 		<template v-for="source in outputsWithPosition" :key="`${source.type}/${source.index}`">
 			<HandleRenderer
 				mode="output"
+				:source="true"
 				:type="source.type"
+				:label="source.label"
 				:index="source.index"
 				:position="source.position"
 				:offset="source.offset"
@@ -91,12 +95,21 @@ const mapEndpointWithPosition =
 		<template v-for="target in inputsWithPosition" :key="`${target.type}/${target.index}`">
 			<HandleRenderer
 				mode="input"
+				:source="false"
 				:type="target.type"
+				:label="target.label"
 				:index="target.index"
 				:position="target.position"
 				:offset="target.offset"
 			/>
 		</template>
+
+		<CanvasNodeToolbar
+			v-if="nodeType"
+			:class="$style.canvasNodeToolbar"
+			:node-type="nodeType"
+			:data="data"
+		/>
 
 		<CanvasNodeRenderer v-if="nodeType" :node-type="nodeType" :data="data">
 			<NodeIcon :node-type="nodeType" :size="40" :shrink="false" />
@@ -106,4 +119,23 @@ const mapEndpointWithPosition =
 	</div>
 </template>
 
-<style lang="scss" module></style>
+<style lang="scss" module>
+.canvasNode {
+	&:hover {
+		.canvasNodeToolbar {
+			display: flex;
+			opacity: 1;
+		}
+	}
+}
+
+.canvasNodeToolbar {
+	display: none;
+	position: absolute;
+	top: 0;
+	left: 50%;
+	transform: translate(-50%, -100%);
+	opacity: 0;
+	transition: opacity 0.3s ease;
+}
+</style>
