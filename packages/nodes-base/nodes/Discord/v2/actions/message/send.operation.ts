@@ -16,6 +16,7 @@ import {
 
 import {
 	checkAccessToChannel,
+	checkIfUserGuildMember,
 	parseDiscordError,
 	prepareEmbeds,
 	prepareErrorData,
@@ -166,11 +167,23 @@ export async function execute(
 					extractValue: true,
 				}) as string;
 
+				if (isOAuth2) {
+					await checkIfUserGuildMember.call(this, guildId, userId, i);
+				}
+
 				channelId = (
 					(await discordApiRequest.call(this, 'POST', '/users/@me/channels', {
 						recipient_id: userId,
 					})) as IDataObject
 				).id as string;
+
+				if (!channelId) {
+					throw new NodeOperationError(
+						this.getNode(),
+						'Could not create a channel to send direct message to',
+						{ itemIndex: i },
+					);
+				}
 			}
 
 			if (sendTo === 'channel') {
@@ -179,13 +192,12 @@ export async function execute(
 				}) as string;
 			}
 
-			if (!channelId) {
-				throw new NodeOperationError(this.getNode(), 'Channel ID is required');
+			if (isOAuth2 && sendTo !== 'user') {
+				await checkAccessToChannel.call(this, channelId, userGuilds, i);
 			}
 
-			// no need to check if sendTo === 'user' because access to guild was checked before in router
-			if (isOAuth2 && sendTo === 'channel') {
-				await checkAccessToChannel.call(this, channelId, userGuilds, i);
+			if (!channelId) {
+				throw new NodeOperationError(this.getNode(), 'Channel ID is required', { itemIndex: i });
 			}
 
 			let response: IDataObject[] = [];

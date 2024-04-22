@@ -271,6 +271,37 @@ export async function checkAccessToChannel(
 	checkAccessToGuild(this.getNode(), guildId, userGuilds, itemIndex);
 }
 
+export async function checkIfUserGuildMember(
+	this: IExecuteFunctions,
+	guildId: string,
+	userId: string,
+	itemIndex = 0,
+) {
+	let lastUserId;
+	let members;
+
+	while (true) {
+		members = (await discordApiRequest.call(this, 'GET', `/guilds/${guildId}/members`, undefined, {
+			limit: 100,
+			after: lastUserId,
+		})) as Array<{ user: { id: string } }>;
+
+		if (!members?.length) {
+			throw new NodeOperationError(
+				this.getNode(),
+				`User with the id ${userId} is not a member of the selected guild`,
+				{
+					itemIndex,
+				},
+			);
+		} else if (members.some((member) => member.user.id === userId)) {
+			break;
+		} else {
+			lastUserId = members[members.length - 1].user.id;
+		}
+	}
+}
+
 export async function setupChannelGetter(this: IExecuteFunctions, userGuilds: IDataObject[]) {
 	const isOAuth2 = this.getNodeParameter('authentication', 0) === 'oAuth2';
 
