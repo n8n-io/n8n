@@ -272,7 +272,6 @@ export const luxonInstanceDocs: Required<NativeDoc> = {
 			doc: {
 				name: 'diff',
 				section: 'compare',
-				hidden: true,
 				docURL: 'https://moment.github.io/luxon/api-docs/index.html#datetimediff',
 				returnType: 'Duration',
 				args: [

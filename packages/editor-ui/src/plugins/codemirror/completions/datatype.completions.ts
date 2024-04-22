@@ -4,25 +4,6 @@ import { i18n } from '@/plugins/i18n';
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 
-import {
-	setRank,
-	hasNoParams,
-	prefixMatch,
-	isAllowedInDotNotation,
-	isSplitInBatchesAbsent,
-	longestCommonPrefix,
-	splitBaseTail,
-	isPseudoParam,
-	stripExcessParens,
-	isCredentialsModalOpen,
-	applyCompletion,
-	sortCompletionsAlpha,
-	hasRequiredArgs,
-	getDefaultArgs,
-	insertDefaultArgs,
-	applyBracketAccessCompletion,
-	applyBracketAccess,
-} from './utils';
 import type {
 	Completion,
 	CompletionContext,
@@ -36,7 +17,6 @@ import { Expression, ExpressionExtensions, NativeMethods, validateFieldType } fr
 import {
 	ARRAY_NUMBER_ONLY_METHODS,
 	ARRAY_RECOMMENDED_OPTIONS,
-	DATE_RECOMMENDED_OPTIONS,
 	FIELDS_SECTION,
 	LUXON_RECOMMENDED_OPTIONS,
 	LUXON_SECTIONS,
@@ -50,10 +30,13 @@ import {
 	STRING_RECOMMENDED_OPTIONS,
 	STRING_SECTIONS,
 } from './constants';
+import { createInfoBoxRenderer } from './infoBoxRenderer';
 import { luxonInstanceDocs } from './nativesAutocompleteDocs/luxon.instance.docs';
 import { luxonStaticDocs } from './nativesAutocompleteDocs/luxon.static.docs';
 import type { AutocompleteInput, ExtensionTypeName, FnToDoc, Resolved } from './types';
 import {
+	applyBracketAccess,
+	applyBracketAccessCompletion,
 	applyCompletion,
 	getDefaultArgs,
 	hasNoParams,
@@ -70,7 +53,6 @@ import {
 	splitBaseTail,
 	stripExcessParens,
 } from './utils';
-import { createInfoBoxRenderer } from './infoBoxRenderer';
 
 /**
  * Resolution-based completions offered according to datatype.
@@ -103,7 +85,7 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 
 		try {
 			resolved = resolveParameter(`={{ ${base} }}`);
-		} catch {
+		} catch (error) {
 			return null;
 		}
 
@@ -111,7 +93,7 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 
 		try {
 			options = datatypeOptions({ resolved, base, tail }).map(stripExcessParens(context));
-		} catch {
+		} catch (error) {
 			return null;
 		}
 	}
@@ -174,7 +156,7 @@ function datatypeOptions(input: AutocompleteInput): Completion[] {
 		return booleanOptions();
 	}
 
-	if (resolved instanceof DateTime) {
+	if (DateTime.isDateTime(resolved)) {
 		return luxonOptions(input as AutocompleteInput<DateTime>);
 	}
 
@@ -483,7 +465,7 @@ const stringOptions = (input: AutocompleteInput<string>): Completion[] => {
 	if (validateFieldType('string', resolved, 'number').valid) {
 		return applySections({
 			options,
-			recommended: ['toInt()', 'toFloat()'],
+			recommended: ['toNumber()'],
 			sections: STRING_SECTIONS,
 		});
 	}
@@ -573,7 +555,7 @@ const numberOptions = (input: AutocompleteInput<number>): Completion[] => {
 		if (isPlausableMillisDateTime) {
 			return applySections({
 				options,
-				recommended: [{ label: 'toDateTime()', args: ['ms'] }],
+				recommended: [{ label: 'toDateTime()', args: ["'ms'"] }],
 			});
 		}
 
@@ -584,7 +566,7 @@ const numberOptions = (input: AutocompleteInput<number>): Completion[] => {
 		if (isPlausableSecondsDateTime) {
 			return applySections({
 				options,
-				recommended: [{ label: 'toDateTime()', args: ['s'] }],
+				recommended: [{ label: 'toDateTime()', args: ["'s'"] }],
 			});
 		}
 
@@ -617,7 +599,7 @@ const dateOptions = (input: AutocompleteInput<Date>): Completion[] => {
 
 const luxonOptions = (input: AutocompleteInput<DateTime>): Completion[] => {
 	const { transformLabel } = input;
-	return applySections({
+	const result = applySections({
 		options: sortCompletionsAlpha(
 			uniqBy(
 				[
@@ -630,6 +612,8 @@ const luxonOptions = (input: AutocompleteInput<DateTime>): Completion[] => {
 		recommended: LUXON_RECOMMENDED_OPTIONS,
 		sections: LUXON_SECTIONS,
 	});
+
+	return result;
 };
 
 const arrayOptions = (input: AutocompleteInput<unknown[]>): Completion[] => {
@@ -738,7 +722,7 @@ export const luxonInstanceOptions = ({
 }: {
 	includeHidden?: boolean;
 	transformLabel?: (label: string) => string;
-}) => {
+} = {}) => {
 	const SKIP = new Set(['constructor', 'get', 'invalidExplanation', 'invalidReason']);
 
 	return Object.entries(Object.getOwnPropertyDescriptors(DateTime.prototype))
