@@ -107,18 +107,6 @@ export class ImportWorkflowsCommand extends BaseCommand {
 		this.reportSuccess(workflows.length);
 	}
 
-	async getProject(userId?: string, projectId?: string) {
-		if (projectId) {
-			return await Container.get(ProjectRepository).findOneByOrFail({ id: projectId });
-		}
-
-		if (userId) {
-			return await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(userId);
-		}
-
-		return await this.getOwnerProject();
-	}
-
 	private async checkRelations(workflows: WorkflowEntity[], projectId?: string, userId?: string) {
 		// The credential is not supposed to be re-owned.
 		if (!userId && !projectId) {
@@ -239,5 +227,17 @@ export class ImportWorkflowsCommand extends BaseCommand {
 
 			return workflowInstances;
 		}
+	}
+
+	private async getProject(userId?: string, projectId?: string) {
+		if (projectId) {
+			return await Container.get(ProjectRepository).findOneByOrFail({ id: projectId });
+		}
+
+		if (userId) {
+			return await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(userId);
+		}
+
+		return await this.getOwnerProject();
 	}
 }

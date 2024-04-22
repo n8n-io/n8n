@@ -96,18 +96,6 @@ export class ImportCredentialsCommand extends BaseCommand {
 		this.reportSuccess(credentials.length);
 	}
 
-	async getProject(userId?: string, projectId?: string) {
-		if (projectId) {
-			return await Container.get(ProjectRepository).findOneByOrFail({ id: projectId });
-		}
-
-		if (userId) {
-			return await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(userId);
-		}
-
-		return await this.getOwnerProject();
-	}
-
 	async catch(error: Error) {
 		this.logger.error(
 			'An error occurred while importing credentials. See log messages for details.',
@@ -271,5 +259,17 @@ export class ImportCredentialsCommand extends BaseCommand {
 
 	private async credentialExists(credentialId: string) {
 		return await this.transactionManager.existsBy(CredentialsEntity, { id: credentialId });
+	}
+
+	private async getProject(userId?: string, projectId?: string) {
+		if (projectId) {
+			return await Container.get(ProjectRepository).findOneByOrFail({ id: projectId });
+		}
+
+		if (userId) {
+			return await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(userId);
+		}
+
+		return await this.getOwnerProject();
 	}
 }
