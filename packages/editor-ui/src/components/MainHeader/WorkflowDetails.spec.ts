@@ -1,4 +1,3 @@
-import { describe, it, expect, vi } from 'vitest';
 import WorkflowDetails from '@/components/MainHeader/WorkflowDetails.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { STORES } from '@/constants';
