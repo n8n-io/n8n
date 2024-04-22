@@ -14,7 +14,7 @@ import config from '@/config';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { Server } from '@/Server';
-import { EDITOR_UI_DIST_DIR, LICENSE_FEATURES } from '@/constants';
+import { EDITOR_UI_DIST_DIR, LICENSE_FEATURES, inBenchmark } from '@/constants';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { InternalHooks } from '@/InternalHooks';
 import { License } from '@/License';
@@ -88,7 +88,7 @@ export class Start extends BaseCommand {
 	 * get removed.
 	 */
 	async stopProcess() {
-		this.logger.info('\nStopping n8n...');
+		if (!inBenchmark) this.logger.info('\nStopping n8n...');
 
 		try {
 			// Stop with trying to activate workflows that could not be activated

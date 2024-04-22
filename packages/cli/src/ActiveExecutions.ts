@@ -18,6 +18,7 @@ import type {
 import { isWorkflowIdValid } from '@/utils';
 import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { Logger } from '@/Logger';
+import { inBenchmark } from './constants';
 
 @Service()
 export class ActiveExecutions {
@@ -201,7 +202,9 @@ export class ActiveExecutions {
 		let count = 0;
 		while (executionIds.length !== 0) {
 			if (count++ % 4 === 0) {
-				this.logger.info(`Waiting for ${executionIds.length} active executions to finish...`);
+				if (!inBenchmark) {
+					this.logger.info(`Waiting for ${executionIds.length} active executions to finish...`);
+				}
 			}
 
 			await sleep(500);

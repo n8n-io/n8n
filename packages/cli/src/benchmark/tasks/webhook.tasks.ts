@@ -1,31 +1,23 @@
 import axios from 'axios';
 import { task, beforeEach } from '../main.js';
 
-async function login() {
-	const client = axios.create({
-		baseURL: 'http://localhost:5678/',
-	});
+const client = axios.create({
+	baseURL: 'http://localhost:5678/',
+});
 
+beforeEach(async () => {
 	await client.post('/rest/login', {
 		email: 'test@test.com',
 		password: 'password',
 	});
-}
-
-beforeEach(async () => {
-	await login();
 });
 
-task('Production workflow - webhook node - no auth - respond immediately', async () => {
-	// @TODO: setup for this task
-
-	// const wf = Container.get(WorkflowRepository).create(
-	// 	ProductionWorkflow as unknown as WorkflowEntity,
-	// );
-	// await Container.get(WorkflowRepository).save(wf);
-	// console.log('wf', wf);
-	console.log('[first] Task 1 executed');
-});
+task(
+	'1.1. Production workflow with authless webhook node with "Respond immediately" mode',
+	async () => {
+		await client.get('/webhook/d58b0160-2370-417b-bc0e-f3050b0c7adf');
+	},
+);
 
 task('[first] Task 2 should do something else', async () => {
 	console.log('[first] Task 2 executed');

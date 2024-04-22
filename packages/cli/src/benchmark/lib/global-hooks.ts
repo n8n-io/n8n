@@ -6,13 +6,13 @@ import { InstanceSettings } from 'n8n-core';
 import { Start } from '@/commands/start';
 import Container from 'typedi';
 import { WorkflowsController } from '@/workflows/workflows.controller';
-import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { UserRepository } from '@/databases/repositories/user.repository';
 import type { User } from '@/databases/entities/User';
 import glob from 'fast-glob';
 import { jsonParse } from 'n8n-workflow';
 import { readFile } from 'fs/promises';
 import type { WorkflowRequest } from '@/workflows/workflow.request';
+import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 
 function n8nDir() {
 	const baseDirPath = path.join(tmpdir(), 'n8n-benchmarks/');
@@ -67,12 +67,17 @@ async function loadFixtures(owner: User) {
 	}
 
 	for (const fixture of fixtures) {
-		// @ts-ignore @TODO Fix typing
-		await Container.get(WorkflowsController).create({ body: fixture, user: owner });
+		try {
+			// @ts-ignore @TODO Fix typing
+			await Container.get(WorkflowsController).create({ body: fixture, user: owner });
+			await Container.get(ActiveWorkflowRunner).add(fixture.id as string, 'activate');
+		} catch (e) {
+			console.log(e);
+		}
 	}
 
-	const allActive = await Container.get(WorkflowRepository).getAllActive();
-	console.log('allActive', allActive);
+	// const allActive = await Container.get(WorkflowRepository).getAllActive();
+	// console.log('allActive', allActive);
 }
 
 export async function setup() {
