@@ -274,6 +274,7 @@ const getBeforeRedirectFn =
 		}
 	};
 
+// eslint-disable-next-line complexity
 export async function parseRequestObject(requestObject: IRequestOptions) {
 	// This function is a temporary implementation
 	// That translates all http requests done via
@@ -517,8 +518,9 @@ export async function parseRequestObject(requestObject: IRequestOptions) {
 		if (typeof requestObject.proxy === 'string') {
 			try {
 				const url = new URL(requestObject.proxy);
+				const host = url.hostname.startsWith('[') ? url.hostname.slice(1, -1) : url.hostname;
 				axiosConfig.proxy = {
-					host: url.hostname,
+					host,
 					port: parseInt(url.port, 10),
 					protocol: url.protocol,
 				};
@@ -543,8 +545,9 @@ export async function parseRequestObject(requestObject: IRequestOptions) {
 					const [userpass, hostport] = requestObject.proxy.split('@');
 					const [username, password] = userpass.split(':');
 					const [hostname, port] = hostport.split(':');
+					const host = hostname.startsWith('[') ? hostname.slice(1, -1) : hostname;
 					axiosConfig.proxy = {
-						host: hostname,
+						host,
 						port: parseInt(port, 10),
 						protocol: 'http',
 						auth: {
@@ -866,6 +869,7 @@ export async function proxyRequestToAxios(
 	}
 }
 
+// eslint-disable-next-line complexity
 function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequestConfig {
 	// Destructure properties with the same name first.
 	const { headers, method, timeout, auth, proxy, url } = n8nRequest;
@@ -1175,6 +1179,7 @@ export async function copyBinaryFile(
  * Takes a buffer and converts it into the format n8n uses. It encodes the binary data as
  * base64 and adds metadata.
  */
+// eslint-disable-next-line complexity
 async function prepareBinaryData(
 	binaryData: Buffer | Readable,
 	executionId: string,
@@ -2894,6 +2899,7 @@ const getRequestHelperFunctions = (
 
 	return {
 		httpRequest,
+		// eslint-disable-next-line complexity
 		async requestWithAuthenticationPaginated(
 			this: IExecuteFunctions,
 			requestOptions: IRequestOptions,

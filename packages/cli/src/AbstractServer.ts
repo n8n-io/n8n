@@ -32,7 +32,7 @@ export abstract class AbstractServer {
 
 	protected externalHooks: ExternalHooks;
 
-	protected protocol: string;
+	protected protocol = config.getEnv('protocol');
 
 	protected sslKey: string;
 
@@ -65,7 +65,6 @@ export abstract class AbstractServer {
 		const proxyHops = config.getEnv('proxy_hops');
 		if (proxyHops > 0) this.app.set('trust proxy', proxyHops);
 
-		this.protocol = config.getEnv('protocol');
 		this.sslKey = config.getEnv('ssl_key');
 		this.sslCert = config.getEnv('ssl_cert');
 
