@@ -19,6 +19,13 @@ task(
 	},
 );
 
+task(
+	'1.2. Production workflow with authless webhook node using "When last node finishes" mode',
+	async () => {
+		await client.get('/webhook/a669d108-7de3-4e72-b332-919a11b2328b');
+	},
+);
+
 task('[first] Task 2 should do something else', async () => {
 	console.log('[first] Task 2 executed');
 });

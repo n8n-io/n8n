@@ -1,0 +1,48 @@
+{
+	"name": "1.2",
+	"nodes": [
+		{
+			"parameters": {
+				"jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.myNewField = 1;\n}\n\nreturn $input.all();"
+			},
+			"id": "81af5f75-b4d4-4a99-8f3c-f86e307d75a3",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [780, 280]
+		},
+		{
+			"parameters": {
+				"path": "a669d108-7de3-4e72-b332-919a11b2328b",
+				"responseMode": "lastNode",
+				"options": {}
+			},
+			"id": "5d3512bd-6f6d-4b67-a01e-1e2d9735e4f1",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [580, 280],
+			"webhookId": "a669d108-7de3-4e72-b332-919a11b2328b"
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "45e84048-db98-4754-80c2-0be5b141de0f",
+	"tags": []
+}
