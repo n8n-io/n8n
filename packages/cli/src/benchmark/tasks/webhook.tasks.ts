@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { task, suite } from '../main';
+import { task, suite } from '../lib';
 
 // @TODO: Rename file?
 

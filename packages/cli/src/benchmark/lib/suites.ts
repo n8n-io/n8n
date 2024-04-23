@@ -8,11 +8,7 @@ import type { Suites, Task, Callback } from './types';
 import { DuplicateHookError } from './errors/duplicate-hook.error';
 import { DuplicateSuiteError } from './errors/duplicate-suite.error';
 
-export const suites: Suites = {};
-
-export function suiteCount() {
-	return Object.keys(suites).length;
-}
+const suites: Suites = {};
 
 export async function collectSuites() {
 	const files = await glob('**/*.tasks.js', {
@@ -23,6 +19,8 @@ export async function collectSuites() {
 	for (const f of files) {
 		await import(f);
 	}
+
+	return suites;
 }
 
 export function registerSuites(bench: Bench) {

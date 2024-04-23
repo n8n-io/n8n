@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import * as hooks from './lib/hooks';
-import { collectSuites, registerSuites, suiteCount } from './lib/suites';
+import { collectSuites, registerSuites } from './lib/suites';
 import config from '@/config';
 import { UnsupportedDatabaseError } from './lib/errors/unsupported-database.error';
 import { Logger } from '@/Logger';
@@ -11,16 +11,14 @@ import Bench from 'tinybench';
 import { withCodSpeed } from '@codspeed/tinybench-plugin';
 /* eslint-enable import/no-extraneous-dependencies */
 
-export { suite, task, beforeEach, afterEach } from './lib/suites';
-
 async function main() {
 	const dbType = config.getEnv('database.type');
 
 	if (dbType !== 'sqlite') throw new UnsupportedDatabaseError();
 
-	await collectSuites();
+	const suites = await collectSuites();
 
-	const count = suiteCount();
+	const count = Object.keys(suites).length;
 
 	const logger = Container.get(Logger);
 

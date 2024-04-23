@@ -1,6 +1,6 @@
 # Benchmark
 
-To run benchmarks locally in `cli`:
+To run benchmarks locally in sqlite:
 
 ```sh
 pnpm benchmark:sqlite
@@ -10,12 +10,18 @@ pnpm benchmark:sqlite
 
 To create a benchmark, @TODO
 
-## Listing
+## List
 
-All workflows with default settings unless otherwise specified.
+> **Note**: All workflows with default settings unless otherwise specified.
+
+<!-- BENCHMARK_SUITES_LIST -->
 
 ### 1. Production workflow with authless webhook node
 
-1.1. using "Respond immediately" mode
-1.2. using "When last node finishes" mode
-1.3. using 'Respond to Webhook' node mode
+Suite file: `webhook.tasks.js`
+
+(1.1) using "Respond immediately" mode
+(1.2) using "When last node finishes" mode
+(1.3) using "Respond to Webhook" node mode
+
+<!-- /BENCHMARK_SUITES_LIST -->
