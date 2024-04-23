@@ -6,11 +6,11 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { jsonParse } from 'n8n-workflow';
 
 import {
 	mispApiRequest,
 	mispApiRequestAllItems,
+	mispApiRestSearch,
 	throwOnEmptyUpdate,
 	throwOnInvalidUrl,
 	throwOnMissingSharingGroup,
@@ -29,6 +29,8 @@ import {
 	galaxyOperations,
 	noticelistFields,
 	noticelistOperations,
+	objectOperations,
+	objectFields,
 	organisationFields,
 	organisationOperations,
 	tagFields,
@@ -93,6 +95,10 @@ export class Misp implements INodeType {
 						value: 'noticelist',
 					},
 					{
+						name: 'Object',
+						value: 'object',
+					},
+					{
 						name: 'Organisation',
 						value: 'organisation',
 					},
@@ -123,6 +129,8 @@ export class Misp implements INodeType {
 			...galaxyFields,
 			...noticelistOperations,
 			...noticelistFields,
+			...objectOperations,
+			...objectFields,
 			...organisationOperations,
 			...organisationFields,
 			...tagOperations,
@@ -238,35 +246,8 @@ export class Misp implements INodeType {
 						// ----------------------------------------
 						//            attribute: search
 						// ----------------------------------------
-						let body: IDataObject = {};
-						const useJson = this.getNodeParameter('useJson', i) as boolean;
 
-						if (useJson) {
-							const json = this.getNodeParameter('jsonOutput', i);
-							if (typeof json === 'string') {
-								body = jsonParse(json);
-							} else {
-								body = json as IDataObject;
-							}
-						} else {
-							const value = this.getNodeParameter('value', i) as string;
-							const additionalFields = this.getNodeParameter('additionalFields', i);
-
-							body.value = value;
-
-							if (Object.keys(additionalFields).length) {
-								if (additionalFields.tags) {
-									additionalFields.tags = (additionalFields.tags as string)
-										.split(',')
-										.map((tag) => tag.trim());
-								}
-								Object.assign(body, additionalFields);
-							}
-						}
-
-						const endpoint = '/attributes/restSearch';
-						const { response } = await mispApiRequest.call(this, 'POST', endpoint, body);
-						responseData = response?.Attribute || [];
+						responseData = await mispApiRestSearch.call(this, 'attributes', i);
 					} else if (operation === 'update') {
 						// ----------------------------------------
 						//            attribute: update
@@ -334,6 +315,12 @@ export class Misp implements INodeType {
 						// ----------------------------------------
 
 						responseData = await mispApiRequestAllItems.call(this, '/events');
+					} else if (operation === 'search') {
+						// ----------------------------------------
+						//            event: search
+						// ----------------------------------------
+
+						responseData = await mispApiRestSearch.call(this, 'events', i);
 					} else if (operation === 'publish') {
 						// ----------------------------------------
 						//              event: publish
@@ -533,6 +520,17 @@ export class Misp implements INodeType {
 							Noticelist: unknown;
 						}>;
 						responseData = responseData.map((entry) => entry.Noticelist);
+					}
+				} else if (resource === 'object') {
+					// **********************************************************************
+					//                                    object
+					// **********************************************************************
+					if (operation === 'search') {
+						// ----------------------------------------
+						//            attribute: search
+						// ----------------------------------------
+
+						responseData = await mispApiRestSearch.call(this, 'objects', i);
 					}
 				} else if (resource === 'organisation') {
 					// **********************************************************************
