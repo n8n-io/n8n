@@ -1,6 +1,10 @@
 import 'reflect-metadata';
-import * as globalHooks from './lib/global-hooks';
+import * as hooks from './lib/hooks';
 import { collectSuites, registerSuites, suiteCount } from './lib/suites';
+import config from '@/config';
+import { UnsupportedDatabaseError } from './lib/errors/unsupported-database.error';
+import { Logger } from '@/Logger';
+import Container from 'typedi';
 
 /* eslint-disable import/no-extraneous-dependencies */
 import Bench from 'tinybench';
@@ -10,16 +14,24 @@ import { withCodSpeed } from '@codspeed/tinybench-plugin';
 export { beforeEach, afterEach, task } from './lib/suites';
 
 async function main() {
+	const dbType = config.getEnv('database.type');
+
+	if (dbType !== 'sqlite') throw new UnsupportedDatabaseError();
+
 	await collectSuites();
 
 	const count = suiteCount();
 
+	const logger = Container.get(Logger);
+
 	if (count === 0) {
-		console.log('No benchmarking suites found');
+		logger.info('No benchmarking suites found. Exiting...');
 		return;
 	}
 
-	await globalHooks.setup();
+	logger.info(`Running ${count} benchmarking ${count === 1 ? 'suite' : 'suites'}...`);
+
+	await hooks.globalSetup();
 
 	const _bench = new Bench({
 		time: 0, // @TODO: Temp value
@@ -30,13 +42,11 @@ async function main() {
 
 	registerSuites(bench);
 
-	console.log(`Running ${count} benchmarking suites...`);
-
 	await bench.run();
 
-	console.table(bench.table());
+	console.table(bench.table()); // @TODO: Output properly? Ref. Codspeed
 
-	await globalHooks.teardown();
+	await hooks.globalTeardown();
 }
 
 void main();

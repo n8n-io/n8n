@@ -5,7 +5,7 @@ import { assert } from 'n8n-workflow';
 import glob from 'fast-glob';
 import callsites from 'callsites';
 import type { Suites, Task, Callback } from './types';
-import { DuplicateHookError } from './duplicate-hook.error';
+import { DuplicateHookError } from './errors/duplicate-hook.error';
 
 export const suites: Suites = {};
 
@@ -33,7 +33,7 @@ export function registerSuites(bench: Bench) {
 		 * In jest and vitest, `beforeAll` and `afterAll` refer to all tests in a suite,
 		 * while `beforeEach` and `afterEach` refer to each individual test.
 		 *
-		 * The API renames tinybench's hooks to prevent confusion from this difference.
+		 * We rename tinybench's hooks to prevent confusion from this difference.
 		 */
 		const options: Record<string, Callback> = {};
 
@@ -58,9 +58,8 @@ function suiteFilePath() {
 }
 
 /**
- * Benchmarking API
+ * Run a benchmarking task, i.e. a single operation whose performance to measure.
  */
-
 export function task(description: string, operation: Task['operation']) {
 	const filePath = suiteFilePath();
 
@@ -68,6 +67,10 @@ export function task(description: string, operation: Task['operation']) {
 	suites[filePath].tasks.push({ description, operation });
 }
 
+/**
+ * Setup step to run once before each benchmarking task in a suite.
+ * Only one `beforeEach` is allowed per suite.
+ */
 export function beforeEach(fn: Callback) {
 	const filePath = suiteFilePath();
 
@@ -79,6 +82,10 @@ export function beforeEach(fn: Callback) {
 	suites[filePath].hooks.beforeEach = fn;
 }
 
+/**
+ * Teardown step to run once after each benchmarking task in a suite.
+ * Only one `afterEach` is allowed per suite.
+ */
 export function afterEach(fn: Callback) {
 	const filePath = suiteFilePath();
 

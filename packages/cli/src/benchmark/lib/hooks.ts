@@ -13,7 +13,11 @@ import { jsonParse } from 'n8n-workflow';
 import { readFile } from 'fs/promises';
 import type { WorkflowRequest } from '@/workflows/workflow.request';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import { Logger } from '@/Logger';
 
+/**
+ * Create a temp `.n8n` dir for encryption key, sqlite DB, etc.
+ */
 function n8nDir() {
 	const baseDirPath = path.join(tmpdir(), 'n8n-benchmarks/');
 
@@ -31,18 +35,43 @@ function n8nDir() {
 		'utf-8',
 	);
 
-	/**
-	 * @TODO Better approach than overriding? Setting N8N_USER_FOLDER has no effect
-	 */
+	// @TODO: Find better approach than overriding like this
+	// Setting N8N_USER_FOLDER has no effect
 	const instanceSettings = Container.get(InstanceSettings);
 	instanceSettings.n8nFolder = _n8nDir;
 	Container.set(InstanceSettings, instanceSettings);
 
-	console.info('.n8n dir', _n8nDir);
+	Container.get(Logger).info(`Temp .n8n dir location: ${instanceSettings.n8nFolder}`);
+}
+
+/**
+ * Load into DB and activate in memory all workflows to use in benchmarks.
+ */
+async function prepareWorkflows(owner: User) {
+	const files = await glob('workflows/*.json', {
+		cwd: path.join('dist', 'benchmark'),
+		absolute: true,
+	});
+
+	const workflows: WorkflowRequest.CreatePayload[] = [];
+
+	for (const file of files) {
+		const content = await readFile(file, 'utf8');
+		workflows.push(jsonParse<WorkflowRequest.CreatePayload>(content));
+	}
+
+	for (const workflow of workflows) {
+		// @ts-ignore @TODO Fix typing
+		await Container.get(WorkflowsController).create({ body: workflow, user: owner });
+		await Container.get(ActiveWorkflowRunner).add(workflow.id as string, 'activate');
+	}
 }
 
 let main: Start;
 
+/**
+ * Start the main n8n process to use in benchmarks.
+ */
 async function mainProcess() {
 	const args: string[] = [];
 	const _config = new Config({ root: __dirname });
@@ -53,44 +82,22 @@ async function mainProcess() {
 	await main.run();
 }
 
-async function loadFixtures(owner: User) {
-	const files = await glob('fixtures/*.json', {
-		cwd: path.join('dist', 'benchmark'),
-		absolute: true,
-	});
-
-	const fixtures: WorkflowRequest.CreatePayload[] = [];
-
-	for (const file of files) {
-		const content = await readFile(file, 'utf8');
-		fixtures.push(jsonParse<WorkflowRequest.CreatePayload>(content));
-	}
-
-	for (const fixture of fixtures) {
-		try {
-			// @ts-ignore @TODO Fix typing
-			await Container.get(WorkflowsController).create({ body: fixture, user: owner });
-			await Container.get(ActiveWorkflowRunner).add(fixture.id as string, 'activate');
-		} catch (e) {
-			console.log(e);
-		}
-	}
-
-	// const allActive = await Container.get(WorkflowRepository).getAllActive();
-	// console.log('allActive', allActive);
-}
-
-export async function setup() {
+/**
+ * Setup to run before once all benchmarks.
+ */
+export async function globalSetup() {
 	n8nDir();
 
 	await mainProcess();
-	// @TODO: Postgres?
 
 	const owner = await Container.get(UserRepository).createTestOwner();
 
-	await loadFixtures(owner);
+	await prepareWorkflows(owner);
 }
 
-export async function teardown() {
+/**
+ * Teardown to run before after all benchmarks.
+ */
+export async function globalTeardown() {
 	await main.stopProcess();
 }
