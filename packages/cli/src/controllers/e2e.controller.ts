@@ -28,6 +28,8 @@ const tablesToTruncate = [
 	'execution_entity',
 	'installed_nodes',
 	'installed_packages',
+	'project',
+	'project_relation',
 	'settings',
 	'shared_credentials',
 	'shared_workflow',
