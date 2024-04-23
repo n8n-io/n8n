@@ -184,6 +184,7 @@ export const createInfoBoxRenderer =
 	(doc?: DocMetadata, isFunction = false) =>
 	(): HTMLElement | null => {
 		const tooltipContainer = document.createElement('div');
+		tooltipContainer.setAttribute('tabindex', '-1');
 		tooltipContainer.classList.add('autocomplete-info-container');
 
 		if (!doc) return null;
