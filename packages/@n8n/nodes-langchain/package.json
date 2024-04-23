@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "0.22.0",
+  "version": "1.38.0",
   "description": "",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -120,7 +120,7 @@
   "devDependencies": {
     "@aws-sdk/types": "3.357.0",
     "@types/basic-auth": "^1.1.3",
-    "@types/express": "^4.17.6",
+    "@types/express": "^4.17.21",
     "@types/html-to-text": "^9.0.1",
     "@types/json-schema": "^7.0.15",
     "@types/temp": "^0.9.1",
@@ -144,7 +144,7 @@
     "@langchain/openai": "^0.0.16",
     "@langchain/pinecone": "^0.0.3",
     "@langchain/redis": "^0.0.2",
-    "@n8n/typeorm": "0.3.20-7",
+    "@n8n/typeorm": "0.3.20-8",
     "@n8n/vm2": "3.9.20",
     "@pinecone-database/pinecone": "2.1.0",
     "@qdrant/js-client-rest": "1.7.0",

@@ -23,6 +23,9 @@ patchedDependencies:
   '@sentry/cli@2.17.0':
     hash: nchnoezkq6p37qaiku3vrpwraq
     path: patches/@sentry__cli@2.17.0.patch
+  '@types/express-serve-static-core@4.17.43':
+    hash: 5orrj4qleu2iko5t27vl44u4we
+    path: patches/@types__express-serve-static-core@4.17.43.patch
   '@types/ws@8.5.4':
     hash: nbzuqaoyqbrfwipijj5qriqqju
     path: patches/@types__ws@8.5.4.patch
@@ -263,8 +266,8 @@ importers:
         specifier: ^0.0.2
         version: 0.0.2
       '@n8n/typeorm':
-        specifier: 0.3.20-7
-        version: 0.3.20-7(pg@8.11.3)(redis@4.6.12)(sqlite3@5.1.7)
+        specifier: 0.3.20-8
+        version: 0.3.20-8(pg@8.11.3)(redis@4.6.12)(sqlite3@5.1.7)
       '@n8n/vm2':
         specifier: 3.9.20
         version: 3.9.20
@@ -351,8 +354,8 @@ importers:
         specifier: ^1.1.3
         version: 1.1.3
       '@types/express':
-        specifier: ^4.17.6
-        version: 4.17.14
+        specifier: ^4.17.21
+        version: 4.17.21
       '@types/html-to-text':
         specifier: ^9.0.1
         version: 9.0.4
@@ -474,7 +477,7 @@ importers:
     dependencies:
       '@langchain/community':
         specifier: 0.0.44
-        version: 0.0.44(ioredis@5.3.2)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mysql2@2.3.3)(pg@8.11.3)(ws@8.14.2)
+        version: 0.0.44(ioredis@5.3.2)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mysql2@3.9.5)(pg@8.11.3)(ws@8.14.2)
       '@langchain/core':
         specifier: 0.1.41
         version: 0.1.41
@@ -494,8 +497,8 @@ importers:
         specifier: workspace:*
         version: link:../@n8n/permissions
       '@n8n/typeorm':
-        specifier: 0.3.20-7
-        version: 0.3.20-7(@sentry/node@7.87.0)(ioredis@5.3.2)(mysql2@2.3.3)(pg@8.11.3)(sqlite3@5.1.7)
+        specifier: 0.3.20-8
+        version: 0.3.20-8(@sentry/node@7.87.0)(ioredis@5.3.2)(mysql2@3.9.5)(pg@8.11.3)(sqlite3@5.1.7)
       '@n8n_io/license-sdk':
         specifier: 2.10.0
         version: 2.10.0
@@ -544,9 +547,6 @@ importers:
       compression:
         specifier: 1.7.4
         version: 1.7.4
-      connect-history-api-fallback:
-        specifier: 1.6.0
-        version: 1.6.0
       convict:
         specifier: 6.2.4
         version: 6.2.4
@@ -595,6 +595,9 @@ importers:
       handlebars:
         specifier: 4.7.8
         version: 4.7.8
+      helmet:
+        specifier: 7.1.0
+        version: 7.1.0
       infisical-node:
         specifier: 1.3.0
         version: 1.3.0
@@ -618,7 +621,7 @@ importers:
         version: 9.0.2
       langchain:
         specifier: 0.1.25
-        version: 0.1.25(axios@1.6.7)(handlebars@4.7.8)(ioredis@5.3.2)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mysql2@2.3.3)(pg@8.11.3)(ws@8.14.2)
+        version: 0.1.25(axios@1.6.7)(handlebars@4.7.8)(ioredis@5.3.2)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mysql2@3.9.5)(pg@8.11.3)(ws@8.14.2)
       ldapts:
         specifier: 4.2.6
         version: 4.2.6
@@ -629,8 +632,8 @@ importers:
         specifier: 3.3.0
         version: 3.3.0
       mysql2:
-        specifier: 2.3.3
-        version: 2.3.3
+        specifier: 3.9.5
+        version: 3.9.5
       n8n-core:
         specifier: workspace:*
         version: link:../core
@@ -764,9 +767,6 @@ importers:
       '@types/compression':
         specifier: 1.0.1
         version: 1.0.1
-      '@types/connect-history-api-fallback':
-        specifier: ^1.3.1
-        version: 1.3.5
       '@types/convict':
         specifier: ^6.1.1
         version: 6.1.1
@@ -910,8 +910,8 @@ importers:
         specifier: ~1.7.1
         version: 1.7.3
       '@types/express':
-        specifier: ^4.17.6
-        version: 4.17.14
+        specifier: ^4.17.21
+        version: 4.17.21
       '@types/lodash':
         specifier: ^4.14.195
         version: 4.14.195
@@ -1378,8 +1378,8 @@ importers:
         specifier: 10.0.2
         version: 10.0.2
       mysql2:
-        specifier: 2.3.3
-        version: 2.3.3
+        specifier: 3.9.5
+        version: 3.9.5
       n8n-workflow:
         specifier: workspace:*
         version: link:../workflow
@@ -1484,8 +1484,8 @@ importers:
         specifier: ^1.1.2
         version: 1.1.9
       '@types/express':
-        specifier: ^4.17.6
-        version: 4.17.14
+        specifier: ^4.17.21
+        version: 4.17.21
       '@types/gm':
         specifier: ^1.25.0
         version: 1.25.0
@@ -1617,8 +1617,8 @@ importers:
         specifier: ^1.0.1
         version: 1.0.1
       '@types/express':
-        specifier: ^4.17.6
-        version: 4.17.14
+        specifier: ^4.17.21
+        version: 4.17.21
       '@types/jmespath':
         specifier: ^0.15.0
         version: 0.15.0
@@ -5355,7 +5355,7 @@ packages:
     dependencies:
       string-width: 5.1.2
       string-width-cjs: /string-width@4.2.3
-      strip-ansi: 7.0.1
+      strip-ansi: 7.1.0
       strip-ansi-cjs: /strip-ansi@6.0.1
       wrap-ansi: 8.1.0
       wrap-ansi-cjs: /wrap-ansi@7.0.0
@@ -6051,7 +6051,7 @@ packages:
       - supports-color
     dev: false
 
-  /@langchain/community@0.0.44(ioredis@5.3.2)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mysql2@2.3.3)(pg@8.11.3)(ws@8.14.2):
+  /@langchain/community@0.0.44(ioredis@5.3.2)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mysql2@3.9.5)(pg@8.11.3)(ws@8.14.2):
     resolution: {integrity: sha512-II9Hz90jJmfWRICtxTg1auQWzFw0npqacWiiOpaxNhzs6rptdf56gyfC48Z6n1ii4R8FfAlfX6YxhOE7lGGKXg==}
     engines: {node: '>=18'}
     peerDependencies:
@@ -6338,7 +6338,7 @@ packages:
       jsonwebtoken: 9.0.2
       langsmith: 0.1.12
       lodash: 4.17.21
-      mysql2: 2.3.3
+      mysql2: 3.9.5
       pg: 8.11.3
       uuid: 9.0.1
       ws: 8.14.2
@@ -6643,8 +6643,8 @@ packages:
       recast: 0.22.0
     dev: false
 
-  /@n8n/typeorm@0.3.20-7(@sentry/node@7.87.0)(ioredis@5.3.2)(mysql2@2.3.3)(pg@8.11.3)(sqlite3@5.1.7):
-    resolution: {integrity: sha512-f4A9RGOnB3kCkusNAr1QDCGOVq1HU1YCBKoIGr2of+P3CVS3I+1vW7neOhlr/ic5S1F14Qy5TU8Lb78mRBYRSw==}
+  /@n8n/typeorm@0.3.20-8(@sentry/node@7.87.0)(ioredis@5.3.2)(mysql2@3.9.5)(pg@8.11.3)(sqlite3@5.1.7):
+    resolution: {integrity: sha512-WJFa9Pg6BJVS1dEe1xFRQcLtvjKx2O1KTgI6pFrTTcH7zZMy3qNww7A3HIrW/LvzCu0+rnSfHU4GvDg5/oJhlg==}
     engines: {node: '>=16.13.0'}
     hasBin: true
     peerDependencies:
@@ -6719,21 +6719,21 @@ packages:
       glob: 10.3.10
       ioredis: 5.3.2
       mkdirp: 2.1.3
-      mysql2: 2.3.3
+      mysql2: 3.9.5
       pg: 8.11.3
       reflect-metadata: 0.2.1
       sha.js: 2.4.11
       sqlite3: 5.1.7
       tarn: 3.0.2
       tslib: 2.6.2
-      uuid: 9.0.0
+      uuid: 9.0.1
       yargs: 17.7.2
     transitivePeerDependencies:
       - supports-color
     dev: false
 
-  /@n8n/typeorm@0.3.20-7(pg@8.11.3)(redis@4.6.12)(sqlite3@5.1.7):
-    resolution: {integrity: sha512-f4A9RGOnB3kCkusNAr1QDCGOVq1HU1YCBKoIGr2of+P3CVS3I+1vW7neOhlr/ic5S1F14Qy5TU8Lb78mRBYRSw==}
+  /@n8n/typeorm@0.3.20-8(pg@8.11.3)(redis@4.6.12)(sqlite3@5.1.7):
+    resolution: {integrity: sha512-WJFa9Pg6BJVS1dEe1xFRQcLtvjKx2O1KTgI6pFrTTcH7zZMy3qNww7A3HIrW/LvzCu0+rnSfHU4GvDg5/oJhlg==}
     engines: {node: '>=16.13.0'}
     hasBin: true
     peerDependencies:
@@ -6813,7 +6813,7 @@ packages:
       sqlite3: 5.1.7
       tarn: 3.0.2
       tslib: 2.6.2
-      uuid: 9.0.0
+      uuid: 9.0.1
       yargs: 17.7.2
     transitivePeerDependencies:
       - supports-color
@@ -9237,7 +9237,7 @@ packages:
       ts-dedent: 2.2.0
       type-fest: 2.19.0
       vue: 3.4.21(typescript@5.4.2)
-      vue-component-type-helpers: 2.0.12
+      vue-component-type-helpers: 2.0.13
     transitivePeerDependencies:
       - encoding
       - supports-color
@@ -9555,13 +9555,6 @@ packages:
       '@types/node': 18.16.16
     dev: true
 
-  /@types/connect-history-api-fallback@1.3.5:
-    resolution: {integrity: sha512-h8QJa8xSb1WD4fpKBDcATDNGXghFj6/3GRWG6dhmRcu0RX1Ubasur2Uvx5aeEwlf0MwblEC2bMzzMQntxnw/Cw==}
-    dependencies:
-      '@types/express-serve-static-core': 4.17.43
-      '@types/node': 18.16.16
-    dev: true
-
   /@types/connect@3.4.35:
     resolution: {integrity: sha512-cdeYyv4KWoEgpBISTxWvqYsVy444DOqehiF3fM3ne10AmJ62RSyNkUnxMJXHQWRQQX2eR94m5y1IZyDwBjV9FQ==}
     dependencies:
@@ -9646,28 +9639,20 @@ packages:
     resolution: {integrity: sha512-F3K4oyM12o8W9jxuJmW+1sc8kdw0Hj0t+26urwkcolPJTgkfppEfIdftdcXmUU2QPBIwcrYO6diqgIqgCDf1FA==}
     dev: true
 
-  /@types/express-serve-static-core@4.17.43:
+  /@types/express-serve-static-core@4.17.43(patch_hash=5orrj4qleu2iko5t27vl44u4we):
     resolution: {integrity: sha512-oaYtiBirUOPQGSWNGPWnzyAFJ0BP3cwvN4oWZQY+zUBwpVIGsKUkpBpSztp74drYcjavs7SKFZ4DX1V2QeN8rg==}
     dependencies:
       '@types/node': 18.16.16
       '@types/qs': 6.9.7
       '@types/range-parser': 1.2.4
       '@types/send': 0.17.4
-
-  /@types/express@4.17.14:
-    resolution: {integrity: sha512-TEbt+vaPFQ+xpxFLFssxUDXj5cWCxZJjIcB7Yg0k0GMHGtgtQgpvx/MUQUeAkNbA9AAGrwkAsoeItdTgS7FMyg==}
-    dependencies:
-      '@types/body-parser': 1.19.2
-      '@types/express-serve-static-core': 4.17.43
-      '@types/qs': 6.9.7
-      '@types/serve-static': 1.15.0
-    dev: true
+    patched: true
 
   /@types/express@4.17.21:
     resolution: {integrity: sha512-ejlPM315qwLpaQlQDTjPdsUFSc6ZsP4AN6AlWnogPjQ7CVi7PYF3YVz+CY3jE2pwYf7E/7HlDAN0rV2GxTG0HQ==}
     dependencies:
       '@types/body-parser': 1.19.2
-      '@types/express-serve-static-core': 4.17.43
+      '@types/express-serve-static-core': 4.17.43(patch_hash=5orrj4qleu2iko5t27vl44u4we)
       '@types/qs': 6.9.7
       '@types/serve-static': 1.15.0
 
@@ -13026,11 +13011,6 @@ packages:
   /confusing-browser-globals@1.0.11:
     resolution: {integrity: sha512-JsPKdmh8ZkmnHxDk55FZ1TqVLvEQTvoByJZRN9jzI0UjxK/QgAmsphz7PGtqgPieQZ/CQcHWXCR7ATDNhGe+YA==}
     dev: true
-
-  /connect-history-api-fallback@1.6.0:
-    resolution: {integrity: sha512-e54B99q/OUoH64zYYRf3HBP5z24G38h5D3qXu23JGRoigpX5Ss4r9ZnDk3g0Z8uQC2x2lPaJ+UlWBc1ZWBWdLg==}
-    engines: {node: '>=0.8'}
-    dev: false
 
   /consola@3.2.3:
     resolution: {integrity: sha512-I5qxpzLv+sJhTVEoLYNcTW+bThDCPsit0vLNKShZx6rLtpilNpmmeTPaeqJb9ZE9dV3DGaeby6Vuhrw38WjeyQ==}
@@ -16404,6 +16384,11 @@ packages:
     resolution: {integrity: sha512-2bsegYkkHO+h/9MGbn6KWcE45cHZgPANo5LXF7EvWdT0yT2EguSVO1nDgU5c8+ZOPwp2vMNa7YFsJhVcDR9Sdg==}
     dev: false
 
+  /helmet@7.1.0:
+    resolution: {integrity: sha512-g+HZqgfbpXdCkme/Cd/mZkV0aV3BZZZSugecH03kl38m/Kmdx8jKjBikpDj2cr+Iynv4KpYEviojNdTJActJAg==}
+    engines: {node: '>=16.0.0'}
+    dev: false
+
   /help-me@4.2.0:
     resolution: {integrity: sha512-TAOnTB8Tz5Dw8penUuzHVrKNKlCIbwwbHnXraNJxPwf8LRtE2HlM84RYuezMFcwOJmoYOCWVDyJ8TQGxn9PgxA==}
     dependencies:
@@ -18618,7 +18603,7 @@ packages:
       - voy-search
     dev: false
 
-  /langchain@0.1.25(axios@1.6.7)(handlebars@4.7.8)(ioredis@5.3.2)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mysql2@2.3.3)(pg@8.11.3)(ws@8.14.2):
+  /langchain@0.1.25(axios@1.6.7)(handlebars@4.7.8)(ioredis@5.3.2)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mysql2@3.9.5)(pg@8.11.3)(ws@8.14.2):
     resolution: {integrity: sha512-sfEChvr4H2CklHdSByNBbytwBrFhgtA5kPOnwcBrxuXGg1iOaTzhVxQA0QcNcQucI3hZrsNbZjxGp+Can1ooZQ==}
     engines: {node: '>=18'}
     peerDependencies:
@@ -18778,7 +18763,7 @@ packages:
         optional: true
     dependencies:
       '@anthropic-ai/sdk': 0.9.1
-      '@langchain/community': 0.0.44(ioredis@5.3.2)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mysql2@2.3.3)(pg@8.11.3)(ws@8.14.2)
+      '@langchain/community': 0.0.44(ioredis@5.3.2)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mysql2@3.9.5)(pg@8.11.3)(ws@8.14.2)
       '@langchain/core': 0.1.41
       '@langchain/openai': 0.0.16
       axios: 1.6.7
@@ -19312,7 +19297,6 @@ packages:
   /lru-cache@8.0.5:
     resolution: {integrity: sha512-MhWWlVnuab1RG5/zMRRcVGXZLCXrZTgfwMikgzCegsPnG62yDQo5JnqKkrK4jO5iKqDAZGItAqN5CtKBCBWRUA==}
     engines: {node: '>=16.14'}
-    dev: true
 
   /lru-cache@9.1.2:
     resolution: {integrity: sha512-ERJq3FOzJTxBbFjZ7iDs+NiK4VI9Wz+RdrrAB8dio1oV+YvdPzUEE4QNiT2VD51DkIbCYRUUzCRkssXCHqSnKQ==}
@@ -20127,25 +20111,25 @@ packages:
     engines: {node: '>=12.0.0'}
     dev: true
 
-  /mysql2@2.3.3:
-    resolution: {integrity: sha512-wxJUev6LgMSgACDkb/InIFxDprRa6T95+VEoR+xPvtngtccNH2dGjEB/fVZ8yg1gWv1510c9CvXuJHi5zUm0ZA==}
+  /mysql2@3.9.5:
+    resolution: {integrity: sha512-idfCjWgJEIU2zToiAsy1UO9RQ+VvCrbfB9458LrComY7mJmAIvjdD+/58VmNLFUeQpKE4xZZqD+yZe3tlu62NQ==}
     engines: {node: '>= 8.0'}
     dependencies:
       denque: 2.1.0
       generate-function: 2.3.1
       iconv-lite: 0.6.3
-      long: 4.0.0
-      lru-cache: 6.0.0
-      named-placeholders: 1.1.2
+      long: 5.2.3
+      lru-cache: 8.0.5
+      named-placeholders: 1.1.3
       seq-queue: 0.0.5
       sqlstring: 2.3.3
     dev: false
 
-  /named-placeholders@1.1.2:
-    resolution: {integrity: sha512-wiFWqxoLL3PGVReSZpjLVxyJ1bRqe+KKJVbr4hGs1KWfTZTQyezHFBbuKj9hsizHyGV2ne7EMjHdxEGAybD5SA==}
-    engines: {node: '>=6.0.0'}
+  /named-placeholders@1.1.3:
+    resolution: {integrity: sha512-eLoBxg6wE/rZkJPhU/xRX1WTpkFEwDJEN96oxFrTsqBdbT5ec295Q+CoHrL9IT0DipqKhmGcaZmwOt8OON5x1w==}
+    engines: {node: '>=12.0.0'}
     dependencies:
-      lru-cache: 4.1.5
+      lru-cache: 7.18.3
     dev: false
 
   /nan@2.17.0:
@@ -24035,7 +24019,7 @@ packages:
     dependencies:
       eastasianwidth: 0.2.0
       emoji-regex: 9.2.2
-      strip-ansi: 7.0.1
+      strip-ansi: 7.1.0
 
   /string.prototype.startswith@1.0.0:
     resolution: {integrity: sha512-VHhsDkuf8gsw4JNRK9cIZjYe6r7PsVUutVohaBhqYAoPaRADoQH+mMgUg7Cs/TgQeDGEvI+PzPEMOdvdsCMvpg==}
@@ -24129,7 +24113,6 @@ packages:
     engines: {node: '>=12'}
     dependencies:
       ansi-regex: 6.0.1
-    dev: true
 
   /strip-bom@2.0.0:
     resolution: {integrity: sha512-kwrX1y7czp1E69n2ajbG65mIo9dqvJ+8aBQXOGVxqwvNbsXdFM6Lq37dLAY3mknUwru8CfcCbfOLL/gMo+fi3g==}
@@ -24438,7 +24421,7 @@ packages:
       https-proxy-agent: 5.0.1
       node-fetch: 2.7.0(encoding@0.1.13)
       stream-events: 1.0.5
-      uuid: 9.0.0
+      uuid: 9.0.1
     transitivePeerDependencies:
       - encoding
       - supports-color
@@ -25931,8 +25914,8 @@ packages:
     resolution: {integrity: sha512-0vOfAtI67UjeO1G6UiX5Kd76CqaQ67wrRZiOe7UAb9Jm6GzlUr/fC7CV90XfwapJRjpCMaZFhv1V0ajWRmE9Dg==}
     dev: true
 
-  /vue-component-type-helpers@2.0.12:
-    resolution: {integrity: sha512-iVJugClQdu3ZyF0N4CF3Egi+gWYfnxlIPPGtFXZG29rF3kQIuziP+k7rVGCCHiibIOQ1SlspKjrh+LRYzMpwTA==}
+  /vue-component-type-helpers@2.0.13:
+    resolution: {integrity: sha512-xNO5B7DstNWETnoYflLkVgh8dK8h2ZDgxY1M2O0zrqGeBNq5yAZ8a10yCS9+HnixouNGYNX+ggU9MQQq86HTpg==}
     dev: true
 
   /vue-demi@0.14.5(vue@3.4.21):
