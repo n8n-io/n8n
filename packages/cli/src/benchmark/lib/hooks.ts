@@ -92,7 +92,7 @@ export async function globalSetup() {
 
 	const owner = await Container.get(UserRepository).createTestOwner();
 
-	await prepareWorkflows(owner);
+	await prepareWorkflows(owner); // @TODO: Load all here or as part of each benchmark's `beforeEach`?
 }
 
 /**
