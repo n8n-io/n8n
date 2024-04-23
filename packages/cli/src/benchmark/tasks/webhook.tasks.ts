@@ -13,7 +13,7 @@ beforeEach(async () => {
 });
 
 task(
-	'1.1. Production workflow with authless webhook node with "Respond immediately" mode',
+	'1.1. Production workflow with authless webhook node using "Respond immediately" mode',
 	async () => {
 		await client.get('/webhook/d58b0160-2370-417b-bc0e-f3050b0c7adf');
 	},
