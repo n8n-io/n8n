@@ -6,6 +6,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 
 import {
 	mispApiRequest,
@@ -233,6 +234,39 @@ export class Misp implements INodeType {
 						// ----------------------------------------
 
 						responseData = await mispApiRequestAllItems.call(this, '/attributes');
+					} else if (operation === 'search') {
+						// ----------------------------------------
+						//            attribute: search
+						// ----------------------------------------
+						let body: IDataObject = {};
+						const useJson = this.getNodeParameter('useJson', i) as boolean;
+
+						if (useJson) {
+							const json = this.getNodeParameter('jsonOutput', i);
+							if (typeof json === 'string') {
+								body = jsonParse(json);
+							} else {
+								body = json as IDataObject;
+							}
+						} else {
+							const value = this.getNodeParameter('value', i) as string;
+							const additionalFields = this.getNodeParameter('additionalFields', i);
+
+							body.value = value;
+
+							if (Object.keys(additionalFields).length) {
+								if (additionalFields.tags) {
+									additionalFields.tags = (additionalFields.tags as string)
+										.split(',')
+										.map((tag) => tag.trim());
+								}
+								Object.assign(body, additionalFields);
+							}
+						}
+
+						const endpoint = '/attributes/restSearch';
+						const { response } = await mispApiRequest.call(this, 'POST', endpoint, body);
+						responseData = response?.Attribute || [];
 					} else if (operation === 'update') {
 						// ----------------------------------------
 						//            attribute: update
