@@ -39,10 +39,11 @@
     }
   },
   "dependencies": {
+    "@vueuse/core": "^10.5.0",
     "highlight.js": "^11.8.0",
     "markdown-it-link-attributes": "^4.0.1",
     "uuid": "^8.3.2",
-    "vue": "^3.3.4",
+    "vue": "^3.4.21",
     "vue-markdown-render": "^2.1.1"
   },
   "devDependencies": {

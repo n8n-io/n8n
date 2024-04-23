@@ -150,10 +150,17 @@ export function hasSharing(
 
 export declare namespace AIRequest {
 	export type DebugError = AuthenticatedRequest<{}, {}, AIDebugErrorPayload>;
+	export type DebugChat = AuthenticatedRequest<{}, {}, AIDebugChatPayload>;
 }
 
 export interface AIDebugErrorPayload {
 	error: NodeError;
+}
+
+export interface AIDebugChatPayload {
+	text: string;
+	sessionId: string;
+	error?: NodeError;
 }
 
 // ----------------------------------

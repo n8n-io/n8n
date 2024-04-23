@@ -1,5 +1,6 @@
 <template>
 	<div ref="nodeViewRootRef" :class="$style['content']">
+		<AIFlow @add-nodes="onAddNodes" />
 		<div
 			id="node-view-root"
 			class="node-view-root do-not-select"
@@ -381,6 +382,7 @@ import { useCanvasPanning } from '@/composables/useCanvasPanning';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
+import AIFlow from './AIFlow/AIFlow.vue';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -411,6 +413,7 @@ export default defineComponent({
 		CanvasControls,
 		ContextMenu,
 		SetupWorkflowCredentialsButton,
+		AIFlow,
 	},
 	async beforeRouteLeave(to, from, next) {
 		if (

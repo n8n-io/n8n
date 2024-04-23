@@ -20,6 +20,10 @@ import type { NodeOperationError } from './errors/node-operation.error';
 import type { NodeApiError } from './errors/node-api.error';
 import type { AxiosProxyConfig } from 'axios';
 import type { CallbackManager as CallbackManagerLC } from '@langchain/core/callbacks/manager';
+import type {
+	BaseMessage as BaseMessageLC,
+	AIMessageChunk as AIMessageChunkLC,
+} from '@langchain/core/messages';
 
 export interface IAdditionalCredentialOptions {
 	oauth2?: IOAuth2Options;
@@ -2592,3 +2596,7 @@ export type Functionality = 'regular' | 'configuration-node' | 'pairedItem';
 export type Result<T, E> = { ok: true; result: T } | { ok: false; error: E };
 
 export type CallbackManager = CallbackManagerLC;
+
+export type BaseMessage = BaseMessageLC;
+
+export type AIMessageChunk = AIMessageChunkLC;

@@ -1,3 +1,5 @@
+import type { Component } from 'vue';
+
 export interface ChatOptions {
 	webhookUrl: string;
 	webhookConfig?: {
@@ -25,4 +27,5 @@ export interface ChatOptions {
 		}
 	>;
 	theme?: {};
+	messageComponents?: Record<string, Component>;
 }

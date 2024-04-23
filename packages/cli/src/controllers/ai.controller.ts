@@ -3,6 +3,14 @@ import { AIRequest } from '@/requests';
 import { AIService } from '@/services/ai.service';
 import { NodeTypes } from '@/NodeTypes';
 import { FailedDependencyError } from '@/errors/response-errors/failed-dependency.error';
+import express from 'express';
+import { HumanMessage, SystemMessage } from '@langchain/core/messages';
+import { ChatMessageHistory } from 'langchain/stores/message/in_memory';
+import { ChatPromptTemplate, MessagesPlaceholder } from '@langchain/core/prompts';
+import { ChatOpenAI } from '@langchain/openai';
+import { RunnableWithMessageHistory } from '@langchain/core/runnables';
+
+const memorySessions = new Map<string, ChatMessageHistory>();
 
 @RestController('/ai')
 export class AIController {
@@ -34,5 +42,64 @@ export class AIController {
 					'Failed to debug error due to an issue with an external dependency. Please try again later.',
 			);
 		}
+	}
+
+	@Post('/debug-chat')
+	async debugChat(req: AIRequest.DebugChat, res: express.Response) {
+		const { sessionId, text } = req.body;
+
+		let chatMessageHistory = memorySessions.get(sessionId);
+		if (!chatMessageHistory) {
+			chatMessageHistory = new ChatMessageHistory();
+			memorySessions.set(sessionId, chatMessageHistory);
+
+			await chatMessageHistory.addMessage(
+				new SystemMessage(
+					"You're an assistant n8n expert assistant. Your role is to help users with n8n-related questions. You can answer questions, provide suggestions, and help users troubleshoot issues. You can also ask questions to gather more information. Please provide a concise a helpful suggestions without going too much into detail.",
+				),
+			);
+		}
+
+		const model = new ChatOpenAI({
+			openAIApiKey: process.env.N8N_AI_OPENAI_API_KEY,
+			modelName: 'gpt-4-turbo-2024-04-09',
+			streaming: true,
+		});
+
+		const prompt = ChatPromptTemplate.fromMessages([
+			new MessagesPlaceholder('history'),
+			['human', '{question}'],
+		]);
+
+		const chain = prompt.pipe(model);
+
+		const chainWithHistory = new RunnableWithMessageHistory({
+			runnable: chain,
+			getMessageHistory: async () => chatMessageHistory,
+			inputMessagesKey: 'question',
+			historyMessagesKey: 'history',
+		});
+		await chatMessageHistory.addMessage(new HumanMessage(text));
+
+		const chainStream = chainWithHistory.stream(
+			{ question: text },
+			{ configurable: { sessionId } },
+		);
+
+		try {
+			for await (const output of await chainStream) {
+				res.write(output.content.toString().replace(/\n/g, '\\n'));
+			}
+			console.log('Final messages: ', chatMessageHistory.getMessages());
+			res.end('__END__');
+		} catch (error) {
+			console.error('Error during streaming:', error);
+			res.end(JSON.stringify({ error: 'An error occurred during streaming' }) + '\n');
+		}
+
+		// Handle client closing the connection
+		req.on('close', () => {
+			res.end();
+		});
 	}
 }

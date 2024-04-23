@@ -3,7 +3,7 @@
 import IconChat from 'virtual:icons/mdi/chat';
 // eslint-disable-next-line import/no-unresolved
 import IconChevronDown from 'virtual:icons/mdi/chevron-down';
-import { nextTick, ref } from 'vue';
+import { nextTick, ref, onMounted, onBeforeUnmount } from 'vue';
 import Chat from '@n8n/chat/components/Chat.vue';
 import { chatEventBus } from '@n8n/chat/event-buses';
 
@@ -18,6 +18,21 @@ function toggle() {
 		});
 	}
 }
+function openChat() {
+	isOpen.value = true;
+}
+function closeChat() {
+	isOpen.value = false;
+}
+onMounted(() => {
+	chatEventBus.on('open', openChat);
+	chatEventBus.on('close', closeChat);
+});
+
+onBeforeUnmount(() => {
+	chatEventBus.off('open', openChat);
+	chatEventBus.off('close', closeChat);
+});
 </script>
 
 <template>

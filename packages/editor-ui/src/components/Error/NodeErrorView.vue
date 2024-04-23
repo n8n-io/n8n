@@ -138,8 +138,8 @@ async function onDebugError() {
 			{ withPostHog: true },
 		);
 
-		const { message } = await aiStore.debugError({ error: props.error });
-		errorDebuggingMessage.value = message;
+		await aiStore.startNewDebugSession(props.error);
+		// errorDebuggingMessage.value = message;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('generic.error'));
 	} finally {
