@@ -2,25 +2,31 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { writeFileSync } from 'node:fs';
 import { collectSuites } from '../lib';
-import type { Suites } from '../lib/types';
+import type { Suites } from '../lib';
 
 function toSuitesList(suites: Suites) {
 	let list = '';
 
 	for (const [fullPath, suite] of Object.entries(suites)) {
-		list += `\n### ${suite.name}` + '\n\n';
+		const suiteId = fullPath.split('/').pop()?.split('-').shift() ?? '';
 
-		list += 'Suite file: `' + fullPath.split('/').pop() + '`\n\n';
+		list += `\n### ${suiteId} - ${suite.name}\n\n`;
 
-		for (const task of suite.tasks) {
-			list += task.description.replace(suite.name, '').trim() + '\n';
+		for (let i = 0; i < suite.tasks.length; i++) {
+			const suiteName = suite.tasks[i].name.replace(suite.name, '').trim();
+			const workflowPath = `./suites/workflows/${suiteId}-${i + 1}.json`;
+
+			list += `- [${suiteName}](${workflowPath})\n`;
 		}
 	}
 
 	return list;
 }
 
-async function documentSuites() {
+/**
+ * Insert an auto-generated list of benchmarking suites into `benchmark.md`.
+ */
+async function listSuites() {
 	const filePath = path.resolve('src', 'benchmark', 'benchmark.md');
 	const oldDoc = await fs.readFile(filePath, 'utf8');
 
@@ -38,4 +44,4 @@ async function documentSuites() {
 	writeFileSync(filePath, newDoc);
 }
 
-void documentSuites();
+void listSuites();

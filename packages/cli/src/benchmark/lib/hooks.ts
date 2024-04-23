@@ -15,10 +15,9 @@ import type { WorkflowRequest } from '@/workflows/workflow.request';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { Logger } from '@/Logger';
 
-/**
- * Create a temp `.n8n` dir for encryption key, sqlite DB, etc.
- */
-function n8nDir() {
+const logger = Container.get(Logger);
+
+function tempN8nDir() {
 	const baseDirPath = path.join(tmpdir(), 'n8n-benchmarks/');
 
 	mkdirSync(baseDirPath, { recursive: true });
@@ -41,14 +40,11 @@ function n8nDir() {
 	instanceSettings.n8nFolder = _n8nDir;
 	Container.set(InstanceSettings, instanceSettings);
 
-	Container.get(Logger).info(`Temp .n8n dir location: ${instanceSettings.n8nFolder}`);
+	logger.info(`[Benchmarking] Temp .n8n dir location: ${instanceSettings.n8nFolder}`);
 }
 
-/**
- * Load into DB and activate in memory all workflows to use in benchmarks.
- */
-async function prepareWorkflows(owner: User) {
-	const files = await glob('workflows/*.json', {
+async function loadWorkflows(owner: User) {
+	const files = await glob('suites/workflows/*.json', {
 		cwd: path.join('dist', 'benchmark'),
 		absolute: true,
 	});
@@ -64,41 +60,25 @@ async function prepareWorkflows(owner: User) {
 		// @ts-ignore @TODO Fix typing
 		await Container.get(WorkflowsController).create({ body: workflow, user: owner });
 	}
-
-	await Container.get(ActiveWorkflowRunner).init();
 }
 
 let main: Start;
 
-/**
- * Start the main n8n process to use in benchmarks.
- */
-async function mainProcess() {
-	const args: string[] = [];
-	const _config = new Config({ root: __dirname });
+export async function globalSetup() {
+	tempN8nDir();
 
-	main = new Start(args, _config);
+	main = new Start([], new Config({ root: __dirname }));
 
 	await main.init();
 	await main.run();
-}
-
-/**
- * Setup to run before once all benchmarks.
- */
-export async function globalSetup() {
-	n8nDir();
-
-	await mainProcess();
 
 	const owner = await Container.get(UserRepository).createTestOwner();
 
-	await prepareWorkflows(owner); // @TODO: Load all here or as part of each benchmark's `beforeEach`?
+	await loadWorkflows(owner);
+
+	await Container.get(ActiveWorkflowRunner).init();
 }
 
-/**
- * Teardown to run after all benchmarks.
- */
 export async function globalTeardown() {
 	await main.stopProcess();
 }

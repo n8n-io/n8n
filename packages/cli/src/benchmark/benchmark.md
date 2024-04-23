@@ -16,12 +16,10 @@ To create a benchmark, @TODO
 
 <!-- BENCHMARK_SUITES_LIST -->
 
-### 1. Production workflow with authless webhook node
+### 001 - Production workflow with authless webhook node
 
-Suite file: `webhook.tasks.js`
-
-(1.1) using "Respond immediately" mode
-(1.2) using "When last node finishes" mode
-(1.3) using "Respond to Webhook" node mode
+- [using "Respond immediately" mode](./suites/workflows/001-1.json)
+- [using "When last node finishes" mode](./suites/workflows/001-2.json)
+- [using "Respond to Webhook" node mode](./suites/workflows/001-3.json)
 
 <!-- /BENCHMARK_SUITES_LIST -->

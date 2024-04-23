@@ -1,10 +1,10 @@
 import 'reflect-metadata';
-import * as hooks from './lib/hooks';
-import { collectSuites, registerSuites } from './lib/suites';
-import config from '@/config';
-import { UnsupportedDatabaseError } from './lib/errors/unsupported-database.error';
-import { Logger } from '@/Logger';
 import Container from 'typedi';
+import config from '@/config';
+import { Logger } from '@/Logger';
+import * as hooks from './lib/hooks';
+import { collectSuites, registerSuites } from './lib';
+import { UnsupportedDatabaseError } from './lib/errors/unsupported-db.error';
 
 /* eslint-disable import/no-extraneous-dependencies */
 import Bench from 'tinybench';
@@ -23,11 +23,11 @@ async function main() {
 	const logger = Container.get(Logger);
 
 	if (count === 0) {
-		logger.info('No benchmarking suites found. Exiting...');
+		logger.info('[Benchmarking] Found no suites. Exiting...');
 		return;
 	}
 
-	logger.info(`Running ${count} benchmarking ${count === 1 ? 'suite' : 'suites'}...`);
+	logger.info(`[Benchmarking] Running ${count} ${count === 1 ? 'suite' : 'suites'}...`);
 
 	await hooks.globalSetup();
 

@@ -1,8 +1,8 @@
 /**
- * Benchmarking suites, i.e. `*.tasks.ts` files containing benchmarking tasks.
+ * Benchmarking suites, i.e. `*.suite.ts` files containing benchmarking tasks.
  */
 export type Suites = {
-	[suiteFilepath: string]: {
+	[suiteFilePath: string]: {
 		name: string;
 		hooks: {
 			beforeEach?: Callback;
@@ -16,7 +16,7 @@ export type Suites = {
  * A benchmarking task, i.e. a single operation whose performance to measure.
  */
 export type Task = {
-	description: string;
+	name: string;
 	operation: Callback;
 };
 
