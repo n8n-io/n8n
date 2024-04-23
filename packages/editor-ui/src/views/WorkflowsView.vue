@@ -174,7 +174,6 @@ import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useCredentialsStore } from '@/stores/credentials.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useTagsStore } from '@/stores/tags.store';
 import { useProjectsStore } from '@/features/projects/projects.store';
@@ -223,7 +222,6 @@ const WorkflowsView = defineComponent({
 			useUIStore,
 			useUsersStore,
 			useWorkflowsStore,
-			useCredentialsStore,
 			useSourceControlStore,
 			useTagsStore,
 			useProjectsStore,
@@ -326,7 +324,6 @@ const WorkflowsView = defineComponent({
 				this.usersStore.fetchUsers(),
 				this.workflowsStore.fetchAllWorkflows(this.$route?.params?.projectId as string | undefined),
 				this.workflowsStore.fetchActiveWorkflows(),
-				this.credentialsStore.fetchAllCredentials(),
 			]);
 		},
 		onClickTag(tagId: string, event: PointerEvent) {
