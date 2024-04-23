@@ -244,7 +244,7 @@ describe('Canvas Actions', () => {
 			});
 	});
 
-	it('Empty sticky should not generate error when activating workflow', () => {
+	it('Empty sticky should not error when activating workflow', () => {
 		workflowPage.actions.addSticky();
 
 		workflowPage.getters.stickies().should('have.length', 1);
