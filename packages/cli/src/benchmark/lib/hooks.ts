@@ -96,7 +96,7 @@ export async function globalSetup() {
 }
 
 /**
- * Teardown to run before after all benchmarks.
+ * Teardown to run after all benchmarks.
  */
 export async function globalTeardown() {
 	await main.stopProcess();
