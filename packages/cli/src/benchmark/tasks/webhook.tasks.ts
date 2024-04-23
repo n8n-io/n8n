@@ -26,6 +26,9 @@ task(
 	},
 );
 
-task('[first] Task 2 should do something else', async () => {
-	console.log('[first] Task 2 executed');
-});
+task(
+	'1.3. Production workflow with authless webhook node using "Using \'Respond to Webhook\' node" mode',
+	async () => {
+		await client.get('/webhook/c143e038-b0bd-46ca-9708-33b868499c61');
+	},
+);

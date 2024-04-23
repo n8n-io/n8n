@@ -1,5 +1,6 @@
 {
 	"name": "1.2",
+	"active": true,
 	"nodes": [
 		{
 			"parameters": {
@@ -39,7 +40,6 @@
 			]
 		}
 	},
-	"active": false,
 	"settings": {
 		"executionOrder": "v1"
 	},

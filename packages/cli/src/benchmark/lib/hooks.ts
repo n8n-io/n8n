@@ -63,9 +63,9 @@ async function prepareWorkflows(owner: User) {
 	for (const workflow of workflows) {
 		// @ts-ignore @TODO Fix typing
 		await Container.get(WorkflowsController).create({ body: workflow, user: owner });
-		await Container.get(ActiveWorkflowRunner).add(workflow.id as string, 'activate');
-		// @TODO: Solve race condition when adding webhooks
 	}
+
+	await Container.get(ActiveWorkflowRunner).init();
 }
 
 let main: Start;

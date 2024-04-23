@@ -1,5 +1,6 @@
 {
 	"name": "1.1",
+	"active": true,
 	"nodes": [
 		{
 			"parameters": {
@@ -16,7 +17,6 @@
 	],
 	"pinData": {},
 	"connections": {},
-	"active": true,
 	"settings": {
 		"executionOrder": "v1"
 	},

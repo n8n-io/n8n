@@ -1,0 +1,50 @@
+{
+	"name": "1.3",
+	"active": true,
+	"nodes": [
+		{
+			"parameters": {
+				"respondWith": "text",
+				"responseBody": "Responding from \"Respond to Webhook\" node",
+				"options": {}
+			},
+			"id": "5716bed4-c3b1-40f0-b5cb-62a14e622fcb",
+			"name": "Respond to Webhook",
+			"type": "n8n-nodes-base.respondToWebhook",
+			"typeVersion": 1.1,
+			"position": [700, 280]
+		},
+		{
+			"parameters": {
+				"path": "c143e038-b0bd-46ca-9708-33b868499c61",
+				"responseMode": "responseNode",
+				"options": {}
+			},
+			"id": "65892623-8bea-42ba-b7ed-d0298f498bce",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [500, 280],
+			"webhookId": "c143e038-b0bd-46ca-9708-33b868499c61"
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Respond to Webhook",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "08698a35-a4e4-4630-8b3c-3949e78f8620",
+	"tags": []
+}
