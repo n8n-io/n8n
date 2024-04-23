@@ -11,7 +11,7 @@ import Bench from 'tinybench';
 import { withCodSpeed } from '@codspeed/tinybench-plugin';
 /* eslint-enable import/no-extraneous-dependencies */
 
-export { describe, task, beforeEach, afterEach } from './lib/suites';
+export { suite, task, beforeEach, afterEach } from './lib/suites';
 
 async function main() {
 	const dbType = config.getEnv('database.type');

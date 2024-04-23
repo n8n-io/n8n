@@ -1,9 +1,9 @@
 import axios from 'axios';
-import { task, describe } from '../main';
+import { task, suite } from '../main';
 
 // @TODO: Rename file?
 
-describe('1. Production workflow with authless webhook node', () => {
+suite('1. Production workflow with authless webhook node', () => {
 	const client = axios.create({ baseURL: 'http://localhost:5678/' });
 
 	task('(1.1) using "Respond immediately" mode', async () => {

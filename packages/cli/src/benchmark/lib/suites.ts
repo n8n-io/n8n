@@ -58,7 +58,7 @@ function suiteFilePath() {
 	return filePath;
 }
 
-export function describe(suiteName: string, suiteFn: () => void) {
+export function suite(suiteName: string, suiteFn: () => void) {
 	const filePath = suiteFilePath();
 
 	if (suites[filePath]) throw new DuplicateSuiteError(filePath);
