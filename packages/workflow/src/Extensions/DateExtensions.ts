@@ -318,7 +318,6 @@ isInLast.doc = {
 toDateTime.doc = {
 	name: 'toDateTime',
 	description: 'Convert a JavaScript Date to a Luxon DateTime.',
-	section: 'query',
 	returnType: 'DateTime',
 	hidden: true,
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-toDateTime',
