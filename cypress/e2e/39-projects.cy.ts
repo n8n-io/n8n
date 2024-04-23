@@ -1,4 +1,4 @@
-import { INSTANCE_ADMIN } from '../constants';
+import { INSTANCE_ADMIN, INSTANCE_MEMBERS } from '../constants';
 import { WorkflowsPage, WorkflowPage, CredentialsModal, CredentialsPage } from '../pages';
 import * as projects from '../composables/projects';
 
@@ -8,11 +8,13 @@ const credentialsPage = new CredentialsPage();
 const credentialsModal = new CredentialsModal();
 
 describe('Projects', () => {
-	before(() => {
+	beforeEach(() => {
+		cy.resetDatabase();
 		cy.enableFeature('advancedPermissions');
 	});
 
 	it('should handle workflows and credentials', () => {
+		cy.signin(INSTANCE_ADMIN);
 		cy.visit(workflowsPage.url);
 		projects.getProjectTabs().should('have.length', 2);
 		workflowsPage.getters.workflowCards().should('not.have.length');
@@ -52,25 +54,21 @@ describe('Projects', () => {
 
 		projects.getMenuItems().should('not.have.length');
 
+		cy.intercept('POST', '/rest/projects').as('projectCreate');
 		projects.getAddProjectButton().click();
+		cy.wait('@projectCreate');
 		projects.getMenuItems().should('have.length', 1);
 		projects.getProjectTabs().should('have.length', 3);
 
-		cy.get('input[name="name"]').type(' 1');
-		projects.addProjectMember(INSTANCE_ADMIN.email);
+		cy.get('input[name="name"]').type(' no.1');
+		projects.addProjectMember(INSTANCE_MEMBERS[0].email);
 
 		cy.intercept('PATCH', '/rest/projects/*').as('projectSettingsSave');
 		projects.getProjectSettingsSaveButton().click();
 		cy.wait('@projectSettingsSave').then((interception) => {
-			expect(interception.request.body).to.have.property('name').and.to.contain('My project 1');
+			expect(interception.request.body).to.have.property('name').and.to.contain('My project no.1');
 			expect(interception.request.body).to.have.property('relations').to.have.lengthOf(2);
 		});
-	});
-
-	it('should show correct projects, workflows and credentials for admin user', () => {
-		cy.signin(INSTANCE_ADMIN);
-		cy.visit('/');
-		projects.getMenuItems().should('have.length', 1);
 
 		projects.getMenuItems().first().click();
 		workflowsPage.getters.workflowCards().should('not.have.length');
@@ -109,6 +107,7 @@ describe('Projects', () => {
 		projects.getMenuItems().should('have.length', 2);
 
 		let projectId: string;
+		projects.getMenuItems().first().click();
 		cy.intercept('GET', '/rest/credentials*').as('credentialsList');
 		projects.getProjectTabCredentials().click();
 		cy.wait('@credentialsList').then((interception) => {
@@ -122,8 +121,9 @@ describe('Projects', () => {
 			}
 		});
 
+		projects.getMenuItems().last().click();
 		cy.intercept('GET', '/rest/credentials*').as('credentialsList');
-		projects.getMenuItems().first().click();
+		projects.getProjectTabCredentials().click();
 		cy.wait('@credentialsList').then((interception) => {
 			const url = new URL(interception.request.url);
 			const queryParams = new URLSearchParams(url.search);
