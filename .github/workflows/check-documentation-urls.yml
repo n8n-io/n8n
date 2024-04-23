@@ -12,6 +12,7 @@ jobs:
     runs-on: ubuntu-latest
 
     timeout-minutes: 5
+    if: ${{github.repository == 'n8n-io/n8n' || github.event_name != 'schedule'}}
 
     steps:
       - uses: actions/checkout@v4.1.1

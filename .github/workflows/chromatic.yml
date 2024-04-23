@@ -8,6 +8,7 @@ on:
 jobs:
   chromatic:
     runs-on: ubuntu-latest
+    if: ${{github.repository == 'n8n-io/n8n' || github.event_name != 'schedule'}}
     steps:
       - uses: actions/checkout@v4.1.1
         with:
