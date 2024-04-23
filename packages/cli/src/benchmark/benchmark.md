@@ -1,4 +1,4 @@
-# Benchmarks
+# Benchmark
 
 To run benchmarks locally in `cli`:
 
