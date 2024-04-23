@@ -34,7 +34,7 @@ describe('Node IO Filter', () => {
 		cy.get('.highlight').its('length').should('be.gt', 0);
 	});
 
-	it.only('should filter input/output data separately', () => {
+	it('should filter input/output data separately', () => {
 		workflowPage.getters.canvasNodes().eq(1).dblclick();
 		cy.wait(500);
 		ndv.getters.outputDataContainer().should('be.visible');
