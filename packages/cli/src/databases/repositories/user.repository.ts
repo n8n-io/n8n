@@ -109,6 +109,8 @@ export class UserRepository extends Repository<User> {
 	//           test utils
 	// ----------------------------------
 
+	// @TODO: Deduplicate with /packages/cli/test/integration/shared/db/users.ts
+
 	async createTestUser(attributes: Partial<User> = {}): Promise<User> {
 		const { email, password, firstName, lastName, role, ...rest } = attributes;
 
