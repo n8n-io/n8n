@@ -23,6 +23,7 @@
 		height: min(250px, 50vh);
 		max-height: none;
 		max-width: 200px;
+		scrollbar-width: none;
 
 		border: var(--border-base);
 		border-top-left-radius: var(--border-radius-base);
@@ -95,12 +96,15 @@
 	flex-direction: column;
 	gap: var(--spacing-s);
 	padding: var(--spacing-xs) 0;
+	height: 100%;
+	overflow-y: auto;
 }
 
 .ͼ2 .cm-tooltip.cm-completionInfo {
 	background-color: var(--color-background-xlight);
 	border: var(--border-base);
 	box-shadow: var(--box-shadow-light);
+	clip-path: inset(-12px -12px -12px 0); // Clip box-shadow on the left
 	border-left: none;
 	border-bottom-right-radius: var(--border-radius-base);
 	border-top-right-radius: var(--border-radius-base);
@@ -108,14 +112,13 @@
 	border-bottom-left-radius: 0;
 	line-height: var(--font-line-height-loose);
 	padding: 0;
+
 	// Overwrite codemirror positioning
 	top: 0 !important;
 	left: 100% !important;
 	right: auto !important;
 	max-width: 320px !important;
 	height: 100%;
-	overflow-y: auto;
-	z-index: -1;
 
 	.autocomplete-info-header {
 		padding: 0 var(--spacing-xs);
