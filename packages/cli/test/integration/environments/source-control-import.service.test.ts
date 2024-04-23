@@ -13,7 +13,8 @@ import { SharedCredentialsRepository } from '@/databases/repositories/sharedCred
 import { mockInstance } from '../../shared/mocking';
 import type { SourceControlledFile } from '@/environments/sourceControl/types/sourceControlledFile';
 import type { ExportableCredential } from '@/environments/sourceControl/types/exportableCredential';
-import { getPersonalProject } from '../shared/db/projects';
+import { createTeamProject, getPersonalProject } from '../shared/db/projects';
+import { ProjectRepository } from '@/databases/repositories/project.repository';
 
 describe('SourceControlImportService', () => {
 	let service: SourceControlImportService;
@@ -151,6 +152,143 @@ describe('SourceControlImportService', () => {
 
 				expect(sharing).toBeTruthy(); // original user missing, so importing user owns credential
 			});
+		});
+	});
+
+	describe('if owner specified by `ownedBy` does not exist at target instance', () => {
+		it('should assign credential ownership to importing user if personal owner is not found', async () => {
+			const importingUser = await getGlobalOwner();
+
+			fsp.readFile = jest.fn().mockResolvedValue(Buffer.from('some-content'));
+
+			const CREDENTIAL_ID = nanoid();
+
+			const stub: ExportableCredential = {
+				id: CREDENTIAL_ID,
+				name: 'My Credential',
+				type: 'someCredentialType',
+				data: {},
+				ownedBy: {
+					type: 'personal',
+					personalEmail: 'test@example.com',
+				}, // user at source instance owns credential
+			};
+
+			jest.spyOn(utils, 'jsonParse').mockReturnValue(stub);
+
+			cipher.encrypt.mockReturnValue('some-encrypted-data');
+
+			await service.importCredentialsFromWorkFolder(
+				[mock<SourceControlledFile>({ id: CREDENTIAL_ID })],
+				importingUser.id,
+			);
+
+			const personalProject = await getPersonalProject(importingUser);
+
+			const sharing = await Container.get(SharedCredentialsRepository).findOneBy({
+				credentialsId: CREDENTIAL_ID,
+				projectId: personalProject.id,
+				role: 'credential:owner',
+			});
+
+			expect(sharing).toBeTruthy(); // original user missing, so importing user owns credential
+		});
+
+		it('should create a new team project if credential owning project is not found', async () => {
+			const importingUser = await getGlobalOwner();
+
+			fsp.readFile = jest.fn().mockResolvedValue(Buffer.from('some-content'));
+
+			const CREDENTIAL_ID = nanoid();
+
+			const stub: ExportableCredential = {
+				id: CREDENTIAL_ID,
+				name: 'My Credential',
+				type: 'someCredentialType',
+				data: {},
+				ownedBy: {
+					type: 'team',
+					teamId: '1234-asdf',
+					teamName: 'Marketing',
+				}, // user at source instance owns credential
+			};
+
+			jest.spyOn(utils, 'jsonParse').mockReturnValue(stub);
+
+			cipher.encrypt.mockReturnValue('some-encrypted-data');
+
+			{
+				const project = await Container.get(ProjectRepository).findOne({
+					where: [
+						{
+							id: '1234-asdf',
+						},
+						{ name: 'Marketing' },
+					],
+				});
+
+				expect(project?.id).not.toBe('1234-asdf');
+				expect(project?.name).not.toBe('Marketing');
+			}
+
+			await service.importCredentialsFromWorkFolder(
+				[mock<SourceControlledFile>({ id: CREDENTIAL_ID })],
+				importingUser.id,
+			);
+
+			const sharing = await Container.get(SharedCredentialsRepository).findOne({
+				where: {
+					credentialsId: CREDENTIAL_ID,
+					role: 'credential:owner',
+				},
+				relations: { project: true },
+			});
+
+			expect(sharing?.project.id).toBe('1234-asdf');
+			expect(sharing?.project.name).toBe('Marketing');
+
+			expect(sharing).toBeTruthy(); // original user missing, so importing user owns credential
+		});
+	});
+
+	describe('if owner specified by `ownedBy` does exist at target instance', () => {
+		it('should use the existing team project if credential owning project is found', async () => {
+			const importingUser = await getGlobalOwner();
+
+			fsp.readFile = jest.fn().mockResolvedValue(Buffer.from('some-content'));
+
+			const CREDENTIAL_ID = nanoid();
+
+			const project = await createTeamProject('Sales');
+
+			const stub: ExportableCredential = {
+				id: CREDENTIAL_ID,
+				name: 'My Credential',
+				type: 'someCredentialType',
+				data: {},
+				ownedBy: {
+					type: 'team',
+					teamId: project.id,
+					teamName: 'Sales',
+				}, // user at source instance owns credential
+			};
+
+			jest.spyOn(utils, 'jsonParse').mockReturnValue(stub);
+
+			cipher.encrypt.mockReturnValue('some-encrypted-data');
+
+			await service.importCredentialsFromWorkFolder(
+				[mock<SourceControlledFile>({ id: CREDENTIAL_ID })],
+				importingUser.id,
+			);
+
+			const sharing = await Container.get(SharedCredentialsRepository).findOneBy({
+				credentialsId: CREDENTIAL_ID,
+				projectId: project.id,
+				role: 'credential:owner',
+			});
+
+			expect(sharing).toBeTruthy(); // original user missing, so importing user owns credential
 		});
 	});
 });
