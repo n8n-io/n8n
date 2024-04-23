@@ -3,6 +3,7 @@
  */
 export type Suites = {
 	[suiteFilepath: string]: {
+		name: string;
 		hooks: {
 			beforeEach?: Callback;
 			afterEach?: Callback;

@@ -18,4 +18,4 @@ All workflows with default settings unless otherwise specified.
 
 1.1. using "Respond immediately" mode
 1.2. using "When last node finishes" mode
-1.3. using "Using 'Respond to Webhook' node" mode
+1.3. using 'Respond to Webhook' node mode
