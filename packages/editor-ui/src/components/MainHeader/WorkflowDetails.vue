@@ -44,7 +44,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { computed, ref, useCssModule, watch } from 'vue';
 import type {
-	IActionDropdownItem,
+	ActionDropdownItem,
 	IWorkflowDataUpdate,
 	IWorkflowDb,
 	IWorkflowToShare,
@@ -125,8 +125,8 @@ const workflowPermissions = computed(() => {
 	return getWorkflowPermissions(usersStore.currentUser, props.workflow);
 });
 
-const workflowMenuItems = computed<IActionDropdownItem[]>(() => {
-	const actions: IActionDropdownItem[] = [
+const workflowMenuItems = computed<ActionDropdownItem[]>(() => {
+	const actions: ActionDropdownItem[] = [
 		{
 			id: WORKFLOW_MENU_ACTIONS.DOWNLOAD,
 			label: locale.baseText('menuActions.download'),
