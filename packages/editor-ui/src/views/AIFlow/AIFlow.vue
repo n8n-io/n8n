@@ -13,6 +13,7 @@ import type { AddedNodesAndConnections } from '@/Interface';
 import MessageWithActions from './MessageWithActions.vue';
 import QuickReplies from './QuickReplies.vue';
 import { useAIStore } from '@/stores/ai.store';
+import MessageWithSuggestions from './MessageWithSuggestions.vue';
 
 const emit = defineEmits<{
 	(event: 'addNodes', value: AddedNodesAndConnections): void;
@@ -42,6 +43,7 @@ const chatOptions: ChatOptions = {
 	messageComponents: {
 		MessageWithActions,
 		QuickReplies,
+		MessageWithSuggestions,
 	},
 };
 

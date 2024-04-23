@@ -9,8 +9,29 @@ import { ChatMessageHistory } from 'langchain/stores/message/in_memory';
 import { ChatPromptTemplate, MessagesPlaceholder } from '@langchain/core/prompts';
 import { ChatOpenAI } from '@langchain/openai';
 import { RunnableWithMessageHistory } from '@langchain/core/runnables';
+import { z } from 'zod';
+import { zodToJsonSchema } from 'zod-to-json-schema';
+import { JsonOutputFunctionsParser } from 'langchain/output_parsers';
 
 const memorySessions = new Map<string, ChatMessageHistory>();
+
+const suggestionTodos = z.array(
+	z.object({
+		title: z.string(),
+		description: z.string(),
+	}),
+);
+
+const errorSuggestionsSchema = z.object({
+	suggestions: z.array(
+		z.object({
+			title: z.string().describe('The title of the suggestion'),
+			description: z.string().describe('Concise description of the suggestion'),
+			key: z.string(),
+			todos: suggestionTodos,
+		}),
+	),
+});
 
 @RestController('/ai')
 export class AIController {
@@ -55,23 +76,36 @@ export class AIController {
 
 			await chatMessageHistory.addMessage(
 				new SystemMessage(
-					"You're an assistant n8n expert assistant. Your role is to help users with n8n-related questions. You can answer questions, provide suggestions, and help users troubleshoot issues. You can also ask questions to gather more information. Please provide a concise a helpful suggestions without going too much into detail.",
+					"You're an assistant n8n expert assistant. Your role is to help users with n8n-related questions. You can answer questions, provide suggestions, and help users troubleshoot issues. You can also ask questions to gather more information. Please provide a concise a helpful suggestions without going too much into detail. Always provide at least 3 suggestions!",
 				),
 			);
 		}
 
 		const model = new ChatOpenAI({
+			temperature: 0.3,
 			openAIApiKey: process.env.N8N_AI_OPENAI_API_KEY,
 			modelName: 'gpt-4-turbo-2024-04-09',
 			streaming: true,
 		});
 
+		const modelWithOutputParser = model.bind({
+			functions: [
+				{
+					name: 'output_formatter',
+					description: 'Should always be used to properly format output',
+					parameters: zodToJsonSchema(errorSuggestionsSchema),
+				},
+			],
+			function_call: { name: 'output_formatter' },
+		});
+
+		const outputParser = new JsonOutputFunctionsParser();
 		const prompt = ChatPromptTemplate.fromMessages([
 			new MessagesPlaceholder('history'),
 			['human', '{question}'],
 		]);
 
-		const chain = prompt.pipe(model);
+		const chain = prompt.pipe(modelWithOutputParser).pipe(outputParser);
 
 		const chainWithHistory = new RunnableWithMessageHistory({
 			runnable: chain,
@@ -81,17 +115,18 @@ export class AIController {
 		});
 		await chatMessageHistory.addMessage(new HumanMessage(text));
 
-		const chainStream = chainWithHistory.stream(
+		const chainStream = await chainWithHistory.stream(
 			{ question: text },
 			{ configurable: { sessionId } },
 		);
 
 		try {
-			for await (const output of await chainStream) {
-				res.write(output.content.toString().replace(/\n/g, '\\n'));
+			for await (const output of chainStream) {
+				// console.log('🚀 ~ AIController ~ forawait ~ output:', output);
+				res.write(JSON.stringify(output) + '\n');
 			}
 			console.log('Final messages: ', chatMessageHistory.getMessages());
-			res.end('__END__');
+			// res.end('__END__');
 		} catch (error) {
 			console.error('Error during streaming:', error);
 			res.end(JSON.stringify({ error: 'An error occurred during streaming' }) + '\n');

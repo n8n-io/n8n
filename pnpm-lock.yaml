@@ -757,6 +757,9 @@ importers:
       zod:
         specifier: 3.22.4
         version: 3.22.4
+      zod-to-json-schema:
+        specifier: 3.22.4
+        version: 3.22.4(zod@3.22.4)
     devDependencies:
       '@redocly/cli':
         specifier: ^1.6.0

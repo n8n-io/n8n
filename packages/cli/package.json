@@ -182,6 +182,7 @@
     "xml2js": "0.6.2",
     "xmllint-wasm": "3.0.1",
     "yamljs": "0.3.0",
-    "zod": "3.22.4"
+    "zod": "3.22.4",
+    "zod-to-json-schema": "3.22.4"
   }
 }

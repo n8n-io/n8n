@@ -6,7 +6,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { chatEventBus } from '@n8n/chat/event-buses';
 import type { ChatMessage } from '@n8n/chat/types';
 import { computed, ref } from 'vue';
-import type { IUser, NodeError } from 'n8n-workflow';
+import { jsonParse, type IUser, type NodeError } from 'n8n-workflow';
 import { useUsersStore } from './users.store';
 
 export const useAIStore = defineStore('ai', () => {
@@ -104,6 +104,33 @@ export const useAIStore = defineStore('ai', () => {
 			chatEventBus.emit('scrollToBottom');
 		}
 	}
+	function onMessageSuggestionReceived(messageChunk: string) {
+		waitingForResponse.value = false;
+		if (messageChunk.length === 0) return;
+		if (messageChunk === '__END__') return;
+
+		const parsedMessage = jsonParse<Record<string, unknown>>(messageChunk);
+		if (getLastMessage()?.sender !== 'bot') {
+			messages.value.push({
+				createdAt: new Date().toISOString(),
+				sender: 'bot',
+				key: 'MessageWithSuggestions',
+				type: 'component',
+				id: Math.random().toString(),
+				arguments: {
+					...parsedMessage,
+				},
+			});
+			return;
+		}
+
+		const lastMessage = getLastMessage();
+
+		if (lastMessage.type === 'component') {
+			lastMessage.arguments = parsedMessage;
+			chatEventBus.emit('scrollToBottom');
+		}
+	}
 
 	async function debugChat(payload: DebugChatPayload) {
 		waitingForResponse.value = true;
@@ -114,6 +141,7 @@ export const useAIStore = defineStore('ai', () => {
 		const usersStore = useUsersStore();
 		const currentUser = usersStore.currentUser ?? ({} as IUser);
 
+		messages.value = [];
 		currentSessionId.value = `${currentUser.id}-${error.node.id}`;
 		chatTitle.value = error.message;
 		chatEventBus.emit('open');
@@ -121,7 +149,7 @@ export const useAIStore = defineStore('ai', () => {
 		return await aiApi.debugChat(
 			rootStore.getRestApiContext,
 			{ text: JSON.stringify(error), sessionId: currentSessionId.value },
-			onMessageReceived,
+			onMessageSuggestionReceived,
 		);
 		// currentSessionId.value = sessionId;
 	}
