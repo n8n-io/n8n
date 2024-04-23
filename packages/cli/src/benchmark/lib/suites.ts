@@ -6,6 +6,7 @@ import glob from 'fast-glob';
 import callsites from 'callsites';
 import type { Suites, Task, Callback } from './types';
 import { DuplicateHookError } from './errors/duplicate-hook.error';
+import { DuplicateSuiteError } from './errors/duplicate-suite.error';
 
 export const suites: Suites = {};
 
@@ -59,6 +60,8 @@ function suiteFilePath() {
 
 export function describe(suiteName: string, suiteFn: () => void) {
 	const filePath = suiteFilePath();
+
+	if (suites[filePath]) throw new DuplicateSuiteError(filePath);
 
 	suites[filePath] = { name: suiteName, hooks: {}, tasks: [] };
 
