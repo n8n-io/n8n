@@ -348,9 +348,10 @@ const objectOptions = (input: AutocompleteInput<IDataObject>): Completion[] => {
 				name: infoName,
 				doc: {
 					name: infoName,
-					returnType: getType(resolvedProp),
+					returnType: isFunction ? 'any' : getType(resolvedProp),
 					description: i18n.proxyVars[infoKey],
 				},
+				isFunction,
 				transformLabel,
 			}).info;
 
@@ -462,7 +463,7 @@ const stringOptions = (input: AutocompleteInput<string>): Completion[] => {
 		...extensions({ typeName: 'string', includeHidden: false, transformLabel }),
 	]);
 
-	if (validateFieldType('string', resolved, 'number').valid) {
+	if (resolved && validateFieldType('string', resolved, 'number').valid) {
 		return applySections({
 			options,
 			recommended: ['toNumber()'],
@@ -843,8 +844,8 @@ const regexes = {
 	selectorRef: /\$\(['"][\S\s]+['"]\)\.(.*)/, // $('nodeName').
 
 	numberLiteral: /\((\d+)\.?(\d*)\)\.(.*)/, // (123). or (123.4).
-	singleQuoteStringLiteral: /('.+')\.([^'{\s])*/, // 'abc'.
-	doubleQuoteStringLiteral: /(".+")\.([^"{\s])*/, // "abc".
+	singleQuoteStringLiteral: /('.*')\.([^'{\s])*/, // 'abc'.
+	doubleQuoteStringLiteral: /(".*")\.([^"{\s])*/, // "abc".
 	dateLiteral: /\(?new Date\(\(?.*?\)\)?\.(.*)/, // new Date(). or (new Date()).
 	arrayLiteral: /\(?(\[.*\])\)?\.(.*)/, // [1, 2, 3].
 	indexedAccess: /([^"{\s]+\[.+\])\.(.*)/, // 'abc'[0]. or 'abc'.split('')[0] or similar ones

@@ -16,8 +16,14 @@ const renderFunctionHeader = (doc?: DocMetadata) => {
 
 		const argsSpan = document.createElement('span');
 		doc.args?.forEach((arg, index, array) => {
+			const optional = arg.optional || arg.name.endsWith('?');
 			const argSpan = document.createElement('span');
 			argSpan.textContent = arg.name;
+
+			if (optional) {
+				argSpan.textContent += '?';
+			}
+
 			argSpan.classList.add('autocomplete-info-arg');
 			argsSpan.appendChild(argSpan);
 
@@ -64,7 +70,9 @@ const renderDescription = ({
 	const descriptionBody = document.createElement('div');
 	descriptionBody.classList.add('autocomplete-info-description');
 	const descriptionText = document.createElement('p');
-	descriptionText.innerHTML = sanitizeHtml(description.replace(/`(.*?)`/g, '<code>$1</code>'));
+	descriptionText.innerHTML = sanitizeHtml(
+		description.replace(/`(.*?)`/g, '<code>$1</code>') + ' ',
+	);
 	descriptionBody.appendChild(descriptionText);
 
 	if (docUrl) {

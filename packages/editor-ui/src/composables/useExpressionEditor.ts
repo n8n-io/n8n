@@ -7,6 +7,7 @@ import {
 	type Ref,
 	toValue,
 	watch,
+	onMounted,
 } from 'vue';
 
 import { ensureSyntaxTree } from '@codemirror/language';
@@ -24,7 +25,7 @@ import {
 	getResolvableState,
 	isEmptyExpression,
 } from '@/utils/expressions';
-import { completionStatus } from '@codemirror/autocomplete';
+import { closeCompletion, completionStatus } from '@codemirror/autocomplete';
 import {
 	Compartment,
 	EditorState,
@@ -158,6 +159,19 @@ export const useExpressionEditor = ({
 		debouncedUpdateSegments();
 	}
 
+	function blur() {
+		if (editor.value) {
+			editor.value.contentDOM.blur();
+			closeCompletion(editor.value);
+		}
+	}
+
+	function blurOnClickOutside(event: MouseEvent) {
+		if (event.target && !editor.value?.dom.contains(event.target as Node)) {
+			blur();
+		}
+	}
+
 	watch(editorRef, () => {
 		const parent = toValue(editorRef);
 
@@ -176,6 +190,10 @@ export const useExpressionEditor = ({
 				EditorView.focusChangeEffect.of((_, newHasFocus) => {
 					hasFocus.value = newHasFocus;
 					selection.value = state.selection.ranges[0];
+					if (!newHasFocus) {
+						autocompleteStatus.value = null;
+						debouncedUpdateSegments();
+					}
 					return null;
 				}),
 				EditorView.contentAttributes.of({ 'data-gramm': 'false' }), // disable grammarly
@@ -231,7 +249,12 @@ export const useExpressionEditor = ({
 		});
 	});
 
+	onMounted(() => {
+		document.addEventListener('click', blurOnClickOutside);
+	});
+
 	onBeforeUnmount(() => {
+		document.removeEventListener('click', blurOnClickOutside);
 		editor.value?.destroy();
 	});
 
