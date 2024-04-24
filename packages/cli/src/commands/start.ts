@@ -173,10 +173,10 @@ export class Start extends BaseCommand {
 		await super.init();
 		this.activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
 
-		await this.initLicense();
-
 		await this.initOrchestration();
-		this.logger.debug('Orchestration init complete');
+		console.log('Orchestration init complete');
+		await this.initLicense();
+		console.log('License init complete');
 		await this.initBinaryDataService();
 		this.logger.debug('Binary data service init complete');
 		await this.initExternalHooks();
@@ -192,8 +192,6 @@ export class Start extends BaseCommand {
 	}
 
 	async initOrchestration() {
-		if (config.getEnv('executions.mode') !== 'queue') return;
-
 		if (
 			config.getEnv('multiMainSetup.enabled') &&
 			!Container.get(License).isMultipleMainInstancesLicensed()

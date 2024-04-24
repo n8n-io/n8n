@@ -51,18 +51,19 @@ export class License {
 			return;
 		}
 
-		const isMainInstance = instanceType === 'main';
+		const isLeaderMain = instanceType === 'main' && this.orchestrationService.isLeader;
+
 		const server = config.getEnv('license.serverUrl');
-		const autoRenewEnabled = isMainInstance && config.getEnv('license.autoRenewEnabled');
-		const offlineMode = !isMainInstance;
+		const autoRenewEnabled = isLeaderMain && config.getEnv('license.autoRenewEnabled');
+		const offlineMode = !isLeaderMain;
 		const autoRenewOffset = config.getEnv('license.autoRenewOffset');
-		const saveCertStr = isMainInstance
+		const saveCertStr = isLeaderMain
 			? async (value: TLicenseBlock) => await this.saveCertStr(value)
 			: async () => {};
-		const onFeatureChange = isMainInstance
+		const onFeatureChange = isLeaderMain
 			? async (features: TFeatures) => await this.onFeatureChange(features)
 			: async () => {};
-		const collectUsageMetrics = isMainInstance
+		const collectUsageMetrics = isLeaderMain
 			? async () => await this.usageMetricsService.collectUsageMetrics()
 			: async () => [];
 

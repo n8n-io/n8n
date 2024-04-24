@@ -44,7 +44,8 @@ export class OrchestrationService {
 	}
 
 	/**
-	 * Whether this instance is the leader in a multi-main setup. Always `false` in single-main setup.
+	 * Whether this instance is the leader. This is always `true` in single-main setup,
+	 * once `OrchestrationService` has been initialized.
 	 */
 	get isLeader() {
 		return config.getEnv('multiMainSetup.instanceType') === 'leader';
