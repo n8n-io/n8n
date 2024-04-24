@@ -1,16 +1,21 @@
 # Benchmark
 
-To run benchmarks locally in sqlite:
+To run all benchmark suites locally in sqlite:
 
 ```sh
 pnpm benchmark:sqlite
 ```
 
-## Creating
+## Creating a benchmark suite
 
-To create a benchmark, @TODO
+To create a benchmark suite:
 
-## List
+- Add a file to `./suites` following the pattern: `{id}-{description}`
+- Add workflows to `./suites/workflows`. These will all be loaded to the temp DB during setup. If a workflow is triggered by webhook, set the filename as its path for clarity.
+- Use `suite()` for the scenario to benchmark and `task()` for operations in that scenario. Ensure `task()` contains only the specific operation whose execution time will be measured. Move any setup and teardown to `beforeEachTask()` and `afterEachTask()` in the suite.
+- Run `build:benchmark` to add it to the list below.
+
+## Benchmark suites list
 
 > **Note**: All workflows with default settings unless otherwise specified.
 
