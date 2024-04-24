@@ -2,8 +2,6 @@ export type ResourceOwner =
 	| string
 	| {
 			type: 'personal';
-			// personalFirstName: string | null;
-			// personalLastName: string | null;
 			personalEmail: string;
 	  }
 	| {
