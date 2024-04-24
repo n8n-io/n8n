@@ -41,8 +41,8 @@
 								:reset="resetFilters"
 								:model-value="filtersModel"
 								:shareable="shareable"
-								@update:modelValue="$emit('update:filters', $event)"
-								@update:filtersLength="onUpdateFiltersLength"
+								@update:model-value="$emit('update:filters', $event)"
+								@update:filters-length="onUpdateFiltersLength"
 							>
 								<template #default="resourceFiltersSlotProps">
 									<slot name="filters" v-bind="resourceFiltersSlotProps" />
@@ -214,7 +214,8 @@ export default defineComponent({
 		},
 		additionalFiltersHandler: {
 			type: Function,
-			default: () => true,
+			required: false,
+			default: undefined,
 		},
 		shareable: {
 			type: Boolean,
