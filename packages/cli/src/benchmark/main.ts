@@ -2,9 +2,7 @@ import 'reflect-metadata';
 import Container from 'typedi';
 import config from '@/config';
 import { Logger } from '@/Logger';
-import * as hooks from './lib/hooks';
-import { collectSuites, registerSuites } from './lib';
-import { UnsupportedDatabaseError } from './lib/errors/unsupported-db.error';
+import { collectSuites, registerSuites, UnsupportedDatabaseError, hooks } from './lib';
 
 /* eslint-disable import/no-extraneous-dependencies */
 import Bench from 'tinybench';
