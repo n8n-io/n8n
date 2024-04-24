@@ -32,7 +32,7 @@ export function registerSuites(bench: Bench) {
 		 * In jest and vitest, `beforeAll` and `afterAll` refer to all _tests_,
 		 * while `beforeEach` and `afterEach` refer to each _test_.
 		 *
-		 * We rename tinybench's hooks to prevent confusion from familiarity with jest.
+		 * This API renames tinybench's hooks to prevent confusion from familiarity with jest.
 		 */
 		const options: Record<string, Callback> = {};
 
