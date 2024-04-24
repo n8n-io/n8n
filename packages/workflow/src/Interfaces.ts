@@ -2127,7 +2127,7 @@ export interface WorkflowTestData {
 			[key: string]: any[][];
 		};
 	};
-	nock: {
+	nock?: {
 		baseUrl: string;
 		mocks: Array<{
 			method: string;
