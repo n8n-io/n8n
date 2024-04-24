@@ -129,7 +129,7 @@ export function wrapData(data: IDataObject | IDataObject[]): INodeExecutionData[
 	}));
 }
 
-export function prepareOutput(
+function prepareOutput(
 	response: IDataObject[],
 	options: IDataObject,
 	statements: string[],
@@ -190,6 +190,11 @@ export function prepareOutput(
 
 	return returnData;
 }
+const END_OF_STATMENT = /;(?=(?:[^'\\]|'[^']*?'|\\[\s\S])*?$)/g;
+const splitQueryToStatements = (query: string, filterOutEmpty = true) => {
+	const statements = query.replace(/\n/g, '').split(END_OF_STATMENT);
+	return filterOutEmpty ? statements.filter((statement) => statement !== '') : statements;
+};
 
 export function configureQueryRunner(
 	this: IExecuteFunctions,
@@ -225,10 +230,15 @@ export function configureQueryRunner(
 
 				if (!response) return [];
 
-				const statements = singleQuery
-					.replace(/\n/g, '')
-					.split(';')
-					.filter((statement) => statement !== '');
+				let statements;
+				if ((options?.nodeVersion as number) <= 2.3) {
+					statements = singleQuery
+						.replace(/\n/g, '')
+						.split(';')
+						.filter((statement) => statement !== '');
+				} else {
+					statements = splitQueryToStatements(singleQuery);
+				}
 
 				if (Array.isArray(response)) {
 					if (statements.length === 1) response = [response];
@@ -261,7 +271,13 @@ export function configureQueryRunner(
 					try {
 						const { query, values } = queryWithValues;
 						formatedQuery = connection.format(query, values);
-						const statements = formatedQuery.split(';').map((q) => q.trim());
+
+						let statements;
+						if ((options?.nodeVersion as number) <= 2.3) {
+							statements = formatedQuery.split(';').map((q) => q.trim());
+						} else {
+							statements = splitQueryToStatements(formatedQuery, false);
+						}
 
 						const responses: IDataObject[] = [];
 						for (const statement of statements) {
@@ -300,7 +316,13 @@ export function configureQueryRunner(
 					try {
 						const { query, values } = queryWithValues;
 						formatedQuery = connection.format(query, values);
-						const statements = formatedQuery.split(';').map((q) => q.trim());
+
+						let statements;
+						if ((options?.nodeVersion as number) <= 2.3) {
+							statements = formatedQuery.split(';').map((q) => q.trim());
+						} else {
+							statements = splitQueryToStatements(formatedQuery, false);
+						}
 
 						const responses: IDataObject[] = [];
 						for (const statement of statements) {
