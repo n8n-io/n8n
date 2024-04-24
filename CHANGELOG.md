@@ -1,3 +1,35 @@
+# [1.39.0](https://github.com/n8n-io/n8n/compare/n8n@1.38.0...n8n@1.39.0) (2024-04-24)
+
+
+### Bug Fixes
+
+* **core:** Exclude oAuth callback urls from browser-id checks ([#9158](https://github.com/n8n-io/n8n/issues/9158)) ([46e432b](https://github.com/n8n-io/n8n/commit/46e432b177b4f1ae437f598674f188fb11ee1f20))
+* **core:** Improve browserId checks, and add logging ([#9161](https://github.com/n8n-io/n8n/issues/9161)) ([ff9ae54](https://github.com/n8n-io/n8n/commit/ff9ae549fdc6962e9990987c54804d2570da6a12))
+* **core:** Upgrade mysql2 to address CVE-2024-21511 ([#9206](https://github.com/n8n-io/n8n/issues/9206)) ([3996d28](https://github.com/n8n-io/n8n/commit/3996d2852a2e2a056af008a8f1a1c6cec9ba6084))
+* **editor:** Fix expression preview when previous node is selected ([#9140](https://github.com/n8n-io/n8n/issues/9140)) ([85780ea](https://github.com/n8n-io/n8n/commit/85780eade57f30e6870c314fa465d523e3646005))
+* **editor:** Fix parameter reset on credential change in Discord node ([#9137](https://github.com/n8n-io/n8n/issues/9137)) ([135ef75](https://github.com/n8n-io/n8n/commit/135ef75add8a42ce5163cce934ac5b2757ca4fe3))
+* **editor:** Fix sessionId for manual chat trigger execution ([#9187](https://github.com/n8n-io/n8n/issues/9187)) ([f5ccb5f](https://github.com/n8n-io/n8n/commit/f5ccb5fe33392654a292de34b9ed8319901d303b))
+* **editor:** Make sticky node content parameter non require to support empty stickies ([#9192](https://github.com/n8n-io/n8n/issues/9192)) ([f6142ff](https://github.com/n8n-io/n8n/commit/f6142ff275abb443940e9d8a4694c7f54c77a183))
+* **editor:** Prevent duplicate values in preview for SQL editor ([#9129](https://github.com/n8n-io/n8n/issues/9129)) ([5acbfb4](https://github.com/n8n-io/n8n/commit/5acbfb423436b94e58af0e532e567bdc3783a622))
+* **Google Sheets Node:** Fix "Append or Update" on an empty sheet ([#9175](https://github.com/n8n-io/n8n/issues/9175)) ([29ee4fa](https://github.com/n8n-io/n8n/commit/29ee4fab61c2f364b249b91c7561b176e78f37ac))
+* **Notion Node:** Add itemIndex to API and operation errors ([#9150](https://github.com/n8n-io/n8n/issues/9150)) ([946f09f](https://github.com/n8n-io/n8n/commit/946f09f62842c963e94d97555d1b5bf7789a1b99))
+* **Postgres Node:** Convert js arrays to postgres type, if column type is ARRAY ([#9160](https://github.com/n8n-io/n8n/issues/9160)) ([08e3502](https://github.com/n8n-io/n8n/commit/08e35027f1d4f483670dce44e8026c77aa4e6c3f))
+* **Respond to Webhook Node:** Fix issue stopping form trigger response ([#9157](https://github.com/n8n-io/n8n/issues/9157)) ([6c63cd9](https://github.com/n8n-io/n8n/commit/6c63cd971162d3f018b210d221ffc2a56535550a))
+* **Schedule Trigger Node:** Default to 0 minute if falsy on hourly run ([#9146](https://github.com/n8n-io/n8n/issues/9146)) ([d756609](https://github.com/n8n-io/n8n/commit/d75660982636389516cd97305e3c19912b77ea9c))
+* **Splunk Node:** Retry attempts if no response from API call, better error with suggestion to use Retry On Fail  ([#9176](https://github.com/n8n-io/n8n/issues/9176)) ([05a569c](https://github.com/n8n-io/n8n/commit/05a569c1cd1f2ecf40987c5f677dad61fd6324e5))
+
+
+### Features
+
+* Add WhatsApp Business Trigger Node ([#8840](https://github.com/n8n-io/n8n/issues/8840)) ([23a2dd0](https://github.com/n8n-io/n8n/commit/23a2dd08b6e5391b61b73bdd4496cdb2f6fa9205))
+* **core:** Setup helmet.js for setting security headers ([#9027](https://github.com/n8n-io/n8n/issues/9027)) ([0ed4671](https://github.com/n8n-io/n8n/commit/0ed46711f426f7edf5fa7833673b6b07348a3bd7))
+* **core:** Upgrade mysql2 to address CVE-2024-21507, CVE-2024-21508, and CVE-2024-21509 ([#9154](https://github.com/n8n-io/n8n/issues/9154)) ([9bd8e10](https://github.com/n8n-io/n8n/commit/9bd8e10b356ab965bfee5d13bf339f057bcfdb14))
+* **n8n Form Trigger Node:** Option to remove attribution ([#9162](https://github.com/n8n-io/n8n/issues/9162)) ([699fd70](https://github.com/n8n-io/n8n/commit/699fd70c2427397455939391f95a5cd65521afb3))
+* **Webhook Node:** Setting to enable multiple outputs/methods ([#9086](https://github.com/n8n-io/n8n/issues/9086)) ([2bf0a39](https://github.com/n8n-io/n8n/commit/2bf0a3933e0d7da46be73b8671e72e69d7d472df))
+* **Zammad Node:** Add more options to the Organizations endpoint  ([#9180](https://github.com/n8n-io/n8n/issues/9180)) ([15c88d6](https://github.com/n8n-io/n8n/commit/15c88d6839fb0b59fe5112b846ba61a29e9e3e45))
+
+
+
 # [1.38.0](https://github.com/n8n-io/n8n/compare/n8n@1.37.0...n8n@1.38.0) (2024-04-17)
 
 
