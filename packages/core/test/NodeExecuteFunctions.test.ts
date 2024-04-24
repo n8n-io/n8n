@@ -1,3 +1,4 @@
+import type { SecureContextOptions } from 'tls';
 import {
 	cleanupParameterData,
 	copyInputItems,
@@ -385,6 +386,42 @@ describe('NodeExecuteFunctions', () => {
 				headers: { Host: 'other.host.com' },
 			});
 			expect((axiosOptions.httpsAgent as Agent).options.servername).toEqual('example.de');
+		});
+
+		describe('should set SSL certificates', () => {
+			const agentOptions: SecureContextOptions = {
+				ca: '-----BEGIN CERTIFICATE-----\nTEST\n-----END CERTIFICATE-----',
+			};
+			const requestObject: IRequestOptions = {
+				method: 'GET',
+				uri: 'https://example.de',
+				agentOptions,
+			};
+
+			test('on regular requests', async () => {
+				const axiosOptions = await parseRequestObject(requestObject);
+				expect((axiosOptions.httpsAgent as Agent).options).toEqual({
+					servername: 'example.de',
+					...agentOptions,
+					noDelay: true,
+					path: null,
+				});
+			});
+
+			test('on redirected requests', async () => {
+				const axiosOptions = await parseRequestObject(requestObject);
+				expect(axiosOptions.beforeRedirect).toBeDefined;
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				const redirectOptions: Record<string, any> = { agents: {}, hostname: 'example.de' };
+				axiosOptions.beforeRedirect!(redirectOptions, mock());
+				expect(redirectOptions.agent).toEqual(redirectOptions.agents.https);
+				expect((redirectOptions.agent as Agent).options).toEqual({
+					servername: 'example.de',
+					...agentOptions,
+					noDelay: true,
+					path: null,
+				});
+			});
 		});
 
 		describe('when followRedirect is true', () => {

@@ -168,6 +168,7 @@
       "dist/credentials/HttpHeaderAuth.credentials.js",
       "dist/credentials/HttpCustomAuth.credentials.js",
       "dist/credentials/HttpQueryAuth.credentials.js",
+      "dist/credentials/HttpSslAuth.credentials.js",
       "dist/credentials/HubspotApi.credentials.js",
       "dist/credentials/HubspotAppToken.credentials.js",
       "dist/credentials/HubspotDeveloperApi.credentials.js",

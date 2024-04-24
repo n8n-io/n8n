@@ -497,7 +497,7 @@ export async function parseRequestObject(requestObject: IRequestOptions) {
 	}
 
 	const host = getHostFromRequestObject(requestObject);
-	const agentOptions: AgentOptions = {};
+	const agentOptions: AgentOptions = { ...requestObject.agentOptions };
 	if (host) {
 		agentOptions.servername = host;
 	}
@@ -505,6 +505,7 @@ export async function parseRequestObject(requestObject: IRequestOptions) {
 		agentOptions.rejectUnauthorized = false;
 		agentOptions.secureOptions = crypto.constants.SSL_OP_LEGACY_SERVER_CONNECT;
 	}
+
 	axiosConfig.httpsAgent = new Agent(agentOptions);
 
 	axiosConfig.beforeRedirect = getBeforeRedirectFn(agentOptions, axiosConfig);
