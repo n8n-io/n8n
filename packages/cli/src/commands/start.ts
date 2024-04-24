@@ -174,9 +174,9 @@ export class Start extends BaseCommand {
 		this.activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
 
 		await this.initOrchestration();
-		console.log('Orchestration init complete');
+		this.logger.debug('Orchestration init complete');
 		await this.initLicense();
-		console.log('License init complete');
+		this.logger.debug('License init complete');
 		await this.initBinaryDataService();
 		this.logger.debug('Binary data service init complete');
 		await this.initExternalHooks();
