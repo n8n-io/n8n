@@ -426,7 +426,7 @@ export default defineComponent({
 
 			return getCredentialPermissions(
 				this.currentUser,
-				this.projectsStore.currentProject,
+				this.projectsStore.currentProject || this.projectsStore.personalProject,
 				(this.credentialId ? this.currentCredential : this.credentialData) as ICredentialsResponse,
 			);
 		},
