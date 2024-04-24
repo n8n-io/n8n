@@ -4,7 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { discordApiMultiPartRequest, discordApiRequest } from '../../transport';
 import {
@@ -16,7 +16,6 @@ import {
 
 import {
 	checkAccessToChannel,
-	checkIfUserGuildMember,
 	parseDiscordError,
 	prepareEmbeds,
 	prepareErrorData,
@@ -168,7 +167,23 @@ export async function execute(
 				}) as string;
 
 				if (isOAuth2) {
-					await checkIfUserGuildMember.call(this, guildId, userId, i);
+					try {
+						await discordApiRequest.call(this, 'GET', `/guilds/${guildId}/members/${userId}`);
+					} catch (error) {
+						if (error instanceof NodeApiError && error.httpCode === '404') {
+							throw new NodeOperationError(
+								this.getNode(),
+								`User with the id ${userId} is not a member of the selected guild`,
+								{
+									itemIndex: i,
+								},
+							);
+						}
+
+						throw new NodeOperationError(this.getNode(), error, {
+							itemIndex: i,
+						});
+					}
 				}
 
 				channelId = (
