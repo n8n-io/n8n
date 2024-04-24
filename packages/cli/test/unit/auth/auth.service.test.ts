@@ -202,6 +202,10 @@ describe('AuthService', () => {
 				sameSite: 'lax',
 				secure: false,
 			});
+
+			const newToken = res.cookie.mock.calls[0].at(1);
+			expect(newToken).not.toBe(validToken);
+			expect(await authService.resolveJwt(newToken, req, res)).toEqual(user);
 		});
 
 		it('should refresh the cookie only if less than 1/4th of time is left', async () => {
