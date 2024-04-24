@@ -16,7 +16,7 @@ export type ProjectType = 'personal' | 'team';
 @Entity()
 export class Project extends WithTimestampsAndStringId {
 	@Column({ length: 255, nullable: true })
-	name?: string;
+	name: string;
 
 	@Column({ length: 36 })
 	type: ProjectType;

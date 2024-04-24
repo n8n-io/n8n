@@ -23,7 +23,7 @@ export class CreateProject1705928727784 implements IrreversibleMigration {
 	async setupTables({ schemaBuilder: { createTable, column } }: MigrationContext) {
 		await createTable(projectTable).withColumns(
 			column('id').varchar(36).primary.notNull,
-			column('name').varchar(255),
+			column('name').varchar(255).notNull,
 			column('type').varchar(36),
 		).withTimestamps;
 

@@ -387,7 +387,6 @@ describe('GET /workflows', () => {
 			user: owner,
 			role: 'credential:owner',
 		});
-		const ownerPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
 
 		const nodes: INode[] = [
 			{

@@ -145,27 +145,6 @@ export class ProjectService {
 		return await this.projectRelationRepository.getPersonalProjectOwners(projectIds);
 	}
 
-	async guaranteeProjectNames(projects: Project[]): Promise<Array<Project & { name: string }>> {
-		const projectOwnerRelations = await this.getPersonalProjectOwners(projects.map((p) => p.id));
-
-		return projects.map((p) => {
-			if (p.name) {
-				return p;
-			}
-			const pr = projectOwnerRelations.find((r) => r.projectId === p.id);
-			let name = `Unclaimed Personal Project (${p.id})`;
-			if (pr && !pr.user.isPending) {
-				name = `${pr.user.firstName} ${pr.user.lastName}`;
-			} else if (pr) {
-				name = pr.user.email;
-			}
-			return this.projectRepository.create({
-				...p,
-				name,
-			});
-		}) as Array<Project & { name: string }>;
-	}
-
 	async createTeamProject(name: string, adminUser: User): Promise<Project> {
 		const project = await this.projectRepository.save(
 			this.projectRepository.create({
