@@ -139,7 +139,7 @@
     "@langchain/cohere": "^0.0.5",
     "@langchain/community": "0.0.44",
     "@langchain/core": "0.1.41",
-    "@langchain/google-genai": "^0.0.11",
+    "@langchain/google-genai": "^0.0.12",
     "@langchain/mistralai": "0.0.13",
     "@langchain/openai": "^0.0.16",
     "@langchain/pinecone": "^0.0.3",

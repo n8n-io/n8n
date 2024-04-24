@@ -18,7 +18,6 @@ overrides:
   tslib: ^2.6.2
   tsconfig-paths: ^4.2.0
   typescript: ^5.4.2
-  '@google/generative-ai': 0.7.1
 
 patchedDependencies:
   '@sentry/cli@2.17.0':
@@ -252,8 +251,8 @@ importers:
         specifier: 0.1.41
         version: 0.1.41
       '@langchain/google-genai':
-        specifier: ^0.0.11
-        version: 0.0.11
+        specifier: ^0.0.12
+        version: 0.0.12
       '@langchain/mistralai':
         specifier: 0.0.13
         version: 0.0.13
@@ -6362,8 +6361,8 @@ packages:
       zod-to-json-schema: 3.22.4(zod@3.22.4)
     dev: false
 
-  /@langchain/google-genai@0.0.11:
-    resolution: {integrity: sha512-o4+r+ETmcPqcrRTJeJQQ0c796IAx1dvVkZvFsUqLhTIteIQuAc2KenY/UDGQxZVghw6fZf4irN/PvkNHJjfgWw==}
+  /@langchain/google-genai@0.0.12:
+    resolution: {integrity: sha512-NDARJ+ZxjlkTHDvNroiG6V+3gW0u0OlMvbDEYAAXR6wFGIV09//ekolr+bA290ZCN77Ei+BEOsd6Ax1wBk3Z4w==}
     engines: {node: '>=18'}
     dependencies:
       '@google/generative-ai': 0.7.1
