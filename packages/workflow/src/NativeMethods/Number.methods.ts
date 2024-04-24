@@ -29,18 +29,61 @@ export const numberMethods: NativeDoc = {
 		toString: {
 			doc: {
 				name: 'toString',
-				description: 'Returns a string representing this number value.',
+				description:
+					'Converts the number to a simple textual representation. For more formatting options, see <code>toLocaleString()</code>.',
+				examples: [
+					{ example: '(500000.125).toString()', evaluated: "'500000.125'" },
+					{ example: '(500000.125).toString(16)', evaluated: "'7a120.2'" },
+				],
 				docURL:
 					'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/toString',
+				args: [
+					{
+						name: 'radix',
+						optional: true,
+						description:
+							'The base to use. Must be an integer between 2 and 36. E.g. base <code>2</code> is binary and base <code>16</code> is hexadecimal.',
+						default: '10',
+						type: 'number',
+					},
+				],
 				returnType: 'string',
 			},
 		},
 		toLocaleString: {
 			doc: {
 				name: 'toLocaleString',
-				description: 'Returns a string with a language-sensitive representation of this number.',
+				description:
+					"Returns a localised string representing the number, i.e. in the language and format corresponding to its locale. Defaults to the system's locale if none specified.",
+				examples: [
+					{
+						example: '(500000.125).toLocaleString()',
+						evaluated: "'500,000.125' (if in US English locale)",
+					},
+					{ example: "(500000.125).toLocaleString('fr-FR')", evaluated: "'500 000,125'" },
+					{
+						example: "(500000.125).toLocaleString('fr-FR', {style:'currency', currency:'EUR'})",
+						evaluated: "'500 000,13 €'",
+					},
+				],
 				docURL:
 					'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/toLocaleString',
+				args: [
+					{
+						name: 'locales',
+						optional: true,
+						description:
+							'The locale to assign, e.g. \'en-GB\' for British English or \'pt-BR\' for Brazilian Portuguese. See <a target="_blank" href="https://www.localeplanet.com/icu/">full list</a> (unofficial). Also accepts an array of locales. Defaults to the system locale if not specified.',
+						type: 'string|array<string>',
+					},
+					{
+						name: 'options',
+						optional: true,
+						description:
+							'An object with <a target="_blank" href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/NumberFormat/NumberFormat#parameters">formatting options</a>',
+						type: 'object',
+					},
+				],
 				returnType: 'string',
 			},
 		},

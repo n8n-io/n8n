@@ -6,7 +6,12 @@ export const booleanMethods: NativeDoc = {
 		toString: {
 			doc: {
 				name: 'toString',
-				description: 'returns a string representing this boolean value.',
+				description:
+					"Converts <code>true</code> to the string 'true' and <code>false</code> to the string 'false' ",
+				examples: [
+					{ example: 'true.toString()', evaluated: "'true'" },
+					{ example: 'false.toString()', evaluated: "'false'" },
+				],
 				docURL:
 					'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean/toString',
 				returnType: 'string',
