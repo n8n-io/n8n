@@ -129,7 +129,7 @@ export function wrapData(data: IDataObject | IDataObject[]): INodeExecutionData[
 	}));
 }
 
-function prepareOutput(
+export function prepareOutput(
 	response: IDataObject[],
 	options: IDataObject,
 	statements: string[],
@@ -191,8 +191,11 @@ function prepareOutput(
 	return returnData;
 }
 const END_OF_STATMENT = /;(?=(?:[^'\\]|'[^']*?'|\\[\s\S])*?$)/g;
-const splitQueryToStatements = (query: string, filterOutEmpty = true) => {
-	const statements = query.replace(/\n/g, '').split(END_OF_STATMENT);
+export const splitQueryToStatements = (query: string, filterOutEmpty = true) => {
+	const statements = query
+		.replace(/\n/g, '')
+		.split(END_OF_STATMENT)
+		.map((statement) => statement.trim());
 	return filterOutEmpty ? statements.filter((statement) => statement !== '') : statements;
 };
 
