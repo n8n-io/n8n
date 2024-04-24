@@ -4,7 +4,7 @@ const variablesPage = new VariablesPage();
 
 describe('Variables', () => {
 	it('should show the unlicensed action box when the feature is disabled', () => {
-		cy.disableFeature('variables', false);
+		cy.disableFeature('variables');
 		cy.visit(variablesPage.url);
 
 		variablesPage.getters.unavailableResourcesList().should('be.visible');
