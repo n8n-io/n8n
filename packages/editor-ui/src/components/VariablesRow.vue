@@ -29,7 +29,7 @@ const props = defineProps({
 	},
 });
 
-const permissions = getVariablesPermissions(usersStore.currentUser);
+const permissions = computed(() => getVariablesPermissions(usersStore.currentUser));
 const modelValue = ref<EnvironmentVariable>({ ...props.data });
 
 const formValidationStatus = ref<Record<string, boolean>>({
