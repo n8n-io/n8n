@@ -96,6 +96,8 @@ export class JiraTrigger implements INodeType {
 				name: 'authenticateWebhook',
 				type: 'boolean',
 				default: false,
+				description:
+					'Whether authentication should be activated for the incoming webhooks (makes it more secure)',
 				displayOptions: {
 					show: {
 						'@version': [{ _cnd: { gte: 1.1 } }],
