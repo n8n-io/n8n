@@ -194,7 +194,7 @@ export class HttpRequestV3 implements INodeType {
 				},
 				{
 					displayName: "Provide certificates in node's 'Credential for SSL Certificates' parameter",
-					name: 'provideSslCertificates',
+					name: 'provideSslCertificatesNotice',
 					type: 'notice',
 					default: '',
 					isNodeSetting: true,
