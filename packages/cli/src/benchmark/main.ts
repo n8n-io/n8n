@@ -32,6 +32,7 @@ async function main() {
 	const _bench = new Bench({
 		time: 0, // @TODO: Temp value
 		iterations: 1, // @TODO: Temp value
+		throws: true,
 	});
 
 	const bench = process.env.CI === 'true' ? withCodSpeed(_bench) : _bench;
