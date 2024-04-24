@@ -481,6 +481,6 @@ export class Splunk implements INodeType {
 			}
 		}
 
-		return [responseData];
+		return [returnData];
 	}
 }
