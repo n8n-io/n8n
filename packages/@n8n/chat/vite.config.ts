@@ -28,6 +28,7 @@ export default defineConfig({
 		alias: {
 			'@': srcPath,
 			'@n8n/chat': srcPath,
+			lodash: 'lodash-es',
 		},
 	},
 	define: {

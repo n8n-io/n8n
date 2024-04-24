@@ -6,7 +6,7 @@ import {
 	type INodeTypeDescription,
 	type SupplyData,
 } from 'n8n-workflow';
-import type { VectorStore } from 'langchain/vectorstores/base';
+import type { VectorStore } from '@langchain/core/vectorstores';
 import { logWrapper } from '../../../utils/logWrapper';
 
 export class RetrieverVectorStore implements INodeType {

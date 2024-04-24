@@ -26,7 +26,7 @@
 					size="xlarge"
 					:model-value="selected"
 					data-test-id="new-credential-type-select"
-					@update:modelValue="onSelect"
+					@update:model-value="onSelect"
 				>
 					<template #prefix>
 						<font-awesome-icon icon="search" />

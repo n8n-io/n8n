@@ -61,7 +61,7 @@ export function generateFailedExecutionFromError(
 		mode,
 		startedAt: new Date(),
 		stoppedAt: new Date(),
-		status: 'failed',
+		status: 'error',
 	};
 }
 

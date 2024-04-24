@@ -7,8 +7,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { ChatOllama } from 'langchain/chat_models/ollama';
-// import { ChatAnthropic } from 'langchain/chat_models/anthropic';
+import { ChatOllama } from '@langchain/community/chat_models/ollama';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 import { ollamaModel, ollamaOptions, ollamaDescription } from '../LMOllama/description';

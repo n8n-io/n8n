@@ -497,7 +497,7 @@ describe('POST /login', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(response.headers['set-cookie']).toBeDefined();
-		expect(response.headers['set-cookie'][0] as string).toContain('n8n-auth=');
+		expect(response.headers['set-cookie'][0]).toContain('n8n-auth=');
 
 		// Make sure the changes in the "LDAP server" were persisted in the database
 		const localLdapIdentities = await getLdapIdentities();

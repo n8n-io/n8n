@@ -6,7 +6,7 @@ import {
 	type INodeTypeDescription,
 	type SupplyData,
 } from 'n8n-workflow';
-import { ZepMemory } from 'langchain/memory/zep';
+import { ZepMemory } from '@langchain/community/memory/zep';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 import { sessionIdOption, sessionKeyProperty } from '../descriptions';

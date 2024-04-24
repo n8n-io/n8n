@@ -24,6 +24,7 @@ import {
 	sleep,
 } from 'n8n-workflow';
 
+import set from 'lodash/set';
 import type { BodyParameter, IAuthDataSanitizeKeys } from '../GenericFunctions';
 import {
 	binaryContentTypes,
@@ -32,8 +33,10 @@ import {
 	reduceAsync,
 	replaceNullValues,
 	sanitizeUiMessage,
+	setAgentOptions,
 } from '../GenericFunctions';
 import { keysToLowercase } from '@utils/utilities';
+import type { HttpSslAuthCredentials } from '../interfaces';
 
 function toText<T>(data: T) {
 	if (typeof data === 'object' && data !== null) {
@@ -48,14 +51,24 @@ export class HttpRequestV3 implements INodeType {
 		this.description = {
 			...baseDescription,
 			subtitle: '={{$parameter["method"] + ": " + $parameter["url"]}}',
-			version: [3, 4, 4.1],
+			version: [3, 4, 4.1, 4.2],
 			defaults: {
 				name: 'HTTP Request',
 				color: '#0004F5',
 			},
 			inputs: ['main'],
 			outputs: ['main'],
-			credentials: [],
+			credentials: [
+				{
+					name: 'httpSslAuth',
+					required: true,
+					displayOptions: {
+						show: {
+							provideSslCertificates: [true],
+						},
+					},
+				},
+			],
 			properties: [
 				{
 					displayName: '',
@@ -169,6 +182,36 @@ export class HttpRequestV3 implements INodeType {
 					displayOptions: {
 						show: {
 							authentication: ['genericCredentialType'],
+						},
+					},
+				},
+				{
+					displayName: 'SSL Certificates',
+					name: 'provideSslCertificates',
+					type: 'boolean',
+					default: false,
+					isNodeSetting: true,
+				},
+				{
+					displayName: "Provide certificates in node's 'Credential for SSL Certificates' parameter",
+					name: 'provideSslCertificatesNotice',
+					type: 'notice',
+					default: '',
+					isNodeSetting: true,
+					displayOptions: {
+						show: {
+							provideSslCertificates: [true],
+						},
+					},
+				},
+				{
+					displayName: 'SSL Certificate',
+					name: 'sslCertificate',
+					type: 'credentials',
+					default: '',
+					displayOptions: {
+						show: {
+							provideSslCertificates: [true],
 						},
 					},
 				},
@@ -1220,6 +1263,7 @@ export class HttpRequestV3 implements INodeType {
 		let httpCustomAuth;
 		let oAuth1Api;
 		let oAuth2Api;
+		let sslCertificates;
 		let nodeCredentialType: string | undefined;
 		let genericCredentialType: string | undefined;
 
@@ -1255,6 +1299,7 @@ export class HttpRequestV3 implements INodeType {
 			requestInterval: number;
 		};
 
+		const sanitazedRequests: IDataObject[] = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			if (authentication === 'genericCredentialType') {
 				genericCredentialType = this.getNodeParameter('genericAuthType', 0) as string;
@@ -1276,6 +1321,19 @@ export class HttpRequestV3 implements INodeType {
 				}
 			} else if (authentication === 'predefinedCredentialType') {
 				nodeCredentialType = this.getNodeParameter('nodeCredentialType', itemIndex) as string;
+			}
+
+			const provideSslCertificates = this.getNodeParameter(
+				'provideSslCertificates',
+				itemIndex,
+				false,
+			);
+
+			if (provideSslCertificates) {
+				sslCertificates = (await this.getCredentials(
+					'httpSslAuth',
+					itemIndex,
+				)) as HttpSslAuthCredentials;
 			}
 
 			const requestMethod = this.getNodeParameter('method', itemIndex) as IHttpRequestMethods;
@@ -1525,7 +1583,10 @@ export class HttpRequestV3 implements INodeType {
 			if (sendHeaders && headerParameters) {
 				let additionalHeaders: IDataObject = {};
 				if (specifyHeaders === 'keypair') {
-					additionalHeaders = await reduceAsync(headerParameters, parametersToKeyValue);
+					additionalHeaders = await reduceAsync(
+						headerParameters.filter((header) => header.name),
+						parametersToKeyValue,
+					);
 				} else if (specifyHeaders === 'json') {
 					// body is specified using JSON
 					try {
@@ -1570,6 +1631,12 @@ export class HttpRequestV3 implements INodeType {
 
 			const authDataKeys: IAuthDataSanitizeKeys = {};
 
+			// Add SSL certificates if any are set
+			setAgentOptions(requestOptions, sslCertificates);
+			if (requestOptions.agentOptions) {
+				authDataKeys.agentOptions = Object.keys(requestOptions.agentOptions);
+			}
+
 			// Add credentials if any are set
 			if (httpBasicAuth !== undefined) {
 				requestOptions.auth = {
@@ -1589,6 +1656,7 @@ export class HttpRequestV3 implements INodeType {
 				requestOptions.qs[httpQueryAuth.name as string] = httpQueryAuth.value;
 				authDataKeys.qs = [httpQueryAuth.name as string];
 			}
+
 			if (httpDigestAuth !== undefined) {
 				requestOptions.auth = {
 					user: httpDigestAuth.user as string,
@@ -1627,8 +1695,11 @@ export class HttpRequestV3 implements INodeType {
 						'application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, image/*;q=0.8, */*;q=0.7';
 				}
 			}
+
 			try {
-				this.sendMessageToUI(sanitizeUiMessage(requestOptions, authDataKeys));
+				const sanitazedRequestOptions = sanitizeUiMessage(requestOptions, authDataKeys);
+				this.sendMessageToUI(sanitazedRequestOptions);
+				sanitazedRequests.push(sanitazedRequestOptions);
 			} catch (e) {}
 
 			if (pagination && pagination.paginationMode !== 'off') {
@@ -1770,7 +1841,9 @@ export class HttpRequestV3 implements INodeType {
 					if (autoDetectResponseFormat && responseData.reason.error instanceof Buffer) {
 						responseData.reason.error = Buffer.from(responseData.reason.error as Buffer).toString();
 					}
-					throw new NodeApiError(this.getNode(), responseData as JsonObject, { itemIndex });
+					const error = new NodeApiError(this.getNode(), responseData as JsonObject, { itemIndex });
+					set(error, 'context.request', sanitazedRequests[itemIndex]);
+					throw error;
 				} else {
 					removeCircularRefs(responseData.reason as JsonObject);
 					// Return the actual reason as error

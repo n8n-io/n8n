@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { mock } from 'jest-mock-extended';
-import { type NextFunction, type Response } from 'express';
+import type { NextFunction, Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
@@ -14,6 +14,7 @@ import type { AuthenticatedRequest } from '@/requests';
 describe('AuthService', () => {
 	config.set('userManagement.jwtSecret', 'random-secret');
 
+	const browserId = 'test-browser-id';
 	const userData = {
 		id: '123',
 		email: 'test@example.com',
@@ -21,17 +22,18 @@ describe('AuthService', () => {
 		disabled: false,
 		mfaEnabled: false,
 	};
-	const validToken =
-		'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMyIsImVtYWlsIjoidGVzdEBleGFtcGxlLmNvbSIsInBhc3N3b3JkIjoiMzE1MTNjNWE5ZTNjNWFmZTVjMDZkNTY3NWFjZTc0ZThiYzNmYWRkOTc0NGFiNWQ4OWMzMTFmMmE2MmNjYmQzOSIsImlhdCI6MTcwNjc1MDYyNSwiZXhwIjoxNzA3MzU1NDI1fQ.mtXKUwQDHOhiHn0YNuCeybmxevtNG6LXTAv_sQL63Zc';
-
 	const user = mock<User>(userData);
 	const jwtService = new JwtService(mock());
 	const urlService = mock<UrlService>();
 	const userRepository = mock<UserRepository>();
 	const authService = new AuthService(mock(), mock(), jwtService, urlService, userRepository);
 
-	jest.useFakeTimers();
 	const now = new Date('2024-02-01T01:23:45.678Z');
+	jest.useFakeTimers({ now });
+
+	const validToken =
+		'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMyIsImhhc2giOiJtSkFZeDRXYjdrIiwiYnJvd3NlcklkIjoiOFpDVXE1YU1uSFhnMFZvcURLcm9hMHNaZ0NwdWlPQ1AzLzB2UmZKUXU0MD0iLCJpYXQiOjE3MDY3NTA2MjUsImV4cCI6MTcwNzM1NTQyNX0.YE-ZGGIQRNQ4DzUe9rjXvOOFFN9ufU34WibsCxAsc4o'; // Generated using `authService.issueJWT(user, browserId)`
+
 	beforeEach(() => {
 		jest.clearAllMocks();
 		jest.setSystemTime(now);
@@ -39,8 +41,26 @@ describe('AuthService', () => {
 		config.set('userManagement.jwtRefreshTimeoutHours', 0);
 	});
 
+	describe('createJWTHash', () => {
+		it('should generate unique hashes', () => {
+			expect(authService.createJWTHash(user)).toEqual('mJAYx4Wb7k');
+			expect(
+				authService.createJWTHash(mock<User>({ email: user.email, password: 'newPasswordHash' })),
+			).toEqual('FVALtU7AE0');
+			expect(
+				authService.createJWTHash(
+					mock<User>({ email: 'test1@example.com', password: user.password }),
+				),
+			).toEqual('y8ha6X01jd');
+		});
+	});
+
 	describe('authMiddleware', () => {
-		const req = mock<AuthenticatedRequest>({ cookies: {}, user: undefined });
+		const req = mock<AuthenticatedRequest>({
+			cookies: {},
+			user: undefined,
+			browserId,
+		});
 		const res = mock<Response>();
 		const next = jest.fn() as NextFunction;
 
@@ -76,6 +96,7 @@ describe('AuthService', () => {
 				httpOnly: true,
 				maxAge: 604800000,
 				sameSite: 'lax',
+				secure: false,
 			});
 		});
 	});
@@ -84,7 +105,7 @@ describe('AuthService', () => {
 		describe('when not setting userManagement.jwtSessionDuration', () => {
 			it('should default to expire in 7 days', () => {
 				const defaultInSeconds = 7 * Time.days.toSeconds;
-				const token = authService.issueJWT(user);
+				const token = authService.issueJWT(user, browserId);
 
 				expect(authService.jwtExpiration).toBe(defaultInSeconds);
 				const decodedToken = jwtService.verify(token);
@@ -102,7 +123,7 @@ describe('AuthService', () => {
 
 			it('should apply it to tokens', () => {
 				config.set('userManagement.jwtSessionDurationHours', testDurationHours);
-				const token = authService.issueJWT(user);
+				const token = authService.issueJWT(user, browserId);
 
 				const decodedToken = jwtService.verify(token);
 				if (decodedToken.exp === undefined || decodedToken.iat === undefined) {
@@ -114,24 +135,40 @@ describe('AuthService', () => {
 	});
 
 	describe('resolveJwt', () => {
+		const req = mock<AuthenticatedRequest>({
+			cookies: {},
+			user: undefined,
+			browserId,
+		});
 		const res = mock<Response>();
 
 		it('should throw on invalid tokens', async () => {
-			await expect(authService.resolveJwt('random-string', res)).rejects.toThrow('jwt malformed');
+			await expect(authService.resolveJwt('random-string', req, res)).rejects.toThrow(
+				'jwt malformed',
+			);
 			expect(res.cookie).not.toHaveBeenCalled();
 		});
 
 		it('should throw on expired tokens', async () => {
 			jest.advanceTimersByTime(365 * Time.days.toMilliseconds);
 
-			await expect(authService.resolveJwt(validToken, res)).rejects.toThrow('jwt expired');
+			await expect(authService.resolveJwt(validToken, req, res)).rejects.toThrow('jwt expired');
 			expect(res.cookie).not.toHaveBeenCalled();
 		});
 
 		it('should throw on tampered tokens', async () => {
 			const [header, payload, signature] = validToken.split('.');
 			const tamperedToken = [header, payload, signature + '123'].join('.');
-			await expect(authService.resolveJwt(tamperedToken, res)).rejects.toThrow('invalid signature');
+			await expect(authService.resolveJwt(tamperedToken, req, res)).rejects.toThrow(
+				'invalid signature',
+			);
+			expect(res.cookie).not.toHaveBeenCalled();
+		});
+
+		it('should throw on hijacked tokens', async () => {
+			userRepository.findOne.mockResolvedValue(user);
+			const req = mock<AuthenticatedRequest>({ browserId: 'another-browser' });
+			await expect(authService.resolveJwt(validToken, req, res)).rejects.toThrow('Unauthorized');
 			expect(res.cookie).not.toHaveBeenCalled();
 		});
 
@@ -148,35 +185,43 @@ describe('AuthService', () => {
 			],
 		])('should throw if %s', async (_, data) => {
 			userRepository.findOne.mockResolvedValueOnce(data && mock<User>(data));
-			await expect(authService.resolveJwt(validToken, res)).rejects.toThrow('Unauthorized');
+			await expect(authService.resolveJwt(validToken, req, res)).rejects.toThrow('Unauthorized');
 			expect(res.cookie).not.toHaveBeenCalled();
 		});
 
 		it('should refresh the cookie before it expires', async () => {
 			userRepository.findOne.mockResolvedValue(user);
-			expect(await authService.resolveJwt(validToken, res)).toEqual(user);
+			expect(await authService.resolveJwt(validToken, req, res)).toEqual(user);
 			expect(res.cookie).not.toHaveBeenCalled();
 
 			jest.advanceTimersByTime(6 * Time.days.toMilliseconds); // 6 Days
-			expect(await authService.resolveJwt(validToken, res)).toEqual(user);
+			expect(await authService.resolveJwt(validToken, req, res)).toEqual(user);
 			expect(res.cookie).toHaveBeenCalledWith('n8n-auth', expect.any(String), {
 				httpOnly: true,
 				maxAge: 604800000,
 				sameSite: 'lax',
+				secure: false,
 			});
+
+			const newToken = res.cookie.mock.calls[0].at(1);
+			expect(newToken).not.toBe(validToken);
+			expect(await authService.resolveJwt(newToken, req, res)).toEqual(user);
+			expect((jwt.decode(newToken) as jwt.JwtPayload).browserId).toEqual(
+				(jwt.decode(validToken) as jwt.JwtPayload).browserId,
+			);
 		});
 
 		it('should refresh the cookie only if less than 1/4th of time is left', async () => {
 			userRepository.findOne.mockResolvedValue(user);
-			expect(await authService.resolveJwt(validToken, res)).toEqual(user);
+			expect(await authService.resolveJwt(validToken, req, res)).toEqual(user);
 			expect(res.cookie).not.toHaveBeenCalled();
 
 			jest.advanceTimersByTime(5 * Time.days.toMilliseconds);
-			expect(await authService.resolveJwt(validToken, res)).toEqual(user);
+			expect(await authService.resolveJwt(validToken, req, res)).toEqual(user);
 			expect(res.cookie).not.toHaveBeenCalled();
 
 			jest.advanceTimersByTime(1 * Time.days.toMilliseconds);
-			expect(await authService.resolveJwt(validToken, res)).toEqual(user);
+			expect(await authService.resolveJwt(validToken, req, res)).toEqual(user);
 			expect(res.cookie).toHaveBeenCalled();
 		});
 
@@ -184,11 +229,11 @@ describe('AuthService', () => {
 			config.set('userManagement.jwtRefreshTimeoutHours', -1);
 
 			userRepository.findOne.mockResolvedValue(user);
-			expect(await authService.resolveJwt(validToken, res)).toEqual(user);
+			expect(await authService.resolveJwt(validToken, req, res)).toEqual(user);
 			expect(res.cookie).not.toHaveBeenCalled();
 
 			jest.advanceTimersByTime(6 * Time.days.toMilliseconds); // 6 Days
-			expect(await authService.resolveJwt(validToken, res)).toEqual(user);
+			expect(await authService.resolveJwt(validToken, req, res)).toEqual(user);
 			expect(res.cookie).not.toHaveBeenCalled();
 		});
 	});
@@ -198,7 +243,7 @@ describe('AuthService', () => {
 			urlService.getInstanceBaseUrl.mockReturnValue('https://n8n.instance');
 			const url = authService.generatePasswordResetUrl(user);
 			expect(url).toEqual(
-				'https://n8n.instance/change-password?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjMiLCJwYXNzd29yZFNoYSI6IjMxNTEzYzVhOWUzYzVhZmU1YzA2ZDU2NzVhY2U3NGU4YmMzZmFkZDk3NDRhYjVkODljMzExZjJhNjJjY2JkMzkiLCJpYXQiOjE3MDY3NTA2MjUsImV4cCI6MTcwNjc1MTgyNX0.wsdEpbK2zhFucaPwga7f8EOcwiJcv0iW23HcnvJs-s8&mfaEnabled=false',
+				'https://n8n.instance/change-password?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjMiLCJoYXNoIjoibUpBWXg0V2I3ayIsImlhdCI6MTcwNjc1MDYyNSwiZXhwIjoxNzA2NzUxODI1fQ.rg90I7MKjc_KC77mov59XYAeRc-CoW9ka4mt1dCfrnk&mfaEnabled=false',
 			);
 		});
 	});
@@ -214,9 +259,7 @@ describe('AuthService', () => {
 
 			expect(decoded.sub).toEqual(user.id);
 			expect(decoded.exp - decoded.iat).toEqual(1200); // Expires in 20 minutes
-			expect(decoded.passwordSha).toEqual(
-				'31513c5a9e3c5afe5c06d5675ace74e8bc3fadd9744ab5d89c311f2a62ccbd39',
-			);
+			expect(decoded.hash).toEqual('mJAYx4Wb7k');
 		});
 	});
 

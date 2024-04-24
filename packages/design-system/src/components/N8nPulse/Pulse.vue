@@ -8,12 +8,8 @@
 	</div>
 </template>
 
-<script>
-import { defineComponent } from 'vue';
-
-export default defineComponent({
-	name: 'N8nPulse',
-});
+<script lang="ts" setup>
+defineOptions({ name: 'N8nPulse' });
 </script>
 
 <style lang="scss" module>

@@ -7,7 +7,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { MotorheadMemory } from 'langchain/memory';
+import { MotorheadMemory } from '@langchain/community/memory/motorhead_memory';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 import { sessionIdOption, sessionKeyProperty } from '../descriptions';

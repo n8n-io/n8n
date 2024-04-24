@@ -4,23 +4,18 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Container, Service } from 'typedi';
-import assert from 'assert';
 import { exec as callbackExec } from 'child_process';
 import { access as fsAccess } from 'fs/promises';
-import { join as pathJoin } from 'path';
 import { promisify } from 'util';
 import cookieParser from 'cookie-parser';
 import express from 'express';
+import helmet from 'helmet';
 import { engine as expressHandlebars } from 'express-handlebars';
-import type { ServeStaticOptions } from 'serve-static';
-
 import { type Class, InstanceSettings } from 'n8n-core';
-
 import type { IN8nUISettings } from 'n8n-workflow';
 
 // @ts-ignore
 import timezones from 'google-timezones-json';
-import history from 'connect-history-api-fallback';
 
 import config from '@/config';
 import { Queue } from '@/Queue';
@@ -32,9 +27,10 @@ import {
 	inE2ETests,
 	N8N_VERSION,
 	TEMPLATES_DIR,
+	Time,
 } from '@/constants';
 import { CredentialsController } from '@/credentials/credentials.controller';
-import type { CurlHelper } from '@/requests';
+import type { APIRequest, CurlHelper } from '@/requests';
 import { registerController } from '@/decorators';
 import { AuthController } from '@/controllers/auth.controller';
 import { BinaryDataController } from '@/controllers/binaryData.controller';
@@ -72,6 +68,7 @@ import { SamlService } from './sso/saml/saml.service.ee';
 import { VariablesController } from './environments/variables/variables.controller.ee';
 import { SourceControlService } from '@/environments/sourceControl/sourceControl.service.ee';
 import { SourceControlController } from '@/environments/sourceControl/sourceControl.controller.ee';
+import { AIController } from '@/controllers/ai.controller';
 
 import { handleMfaDisable, isMfaFeatureEnabled } from './Mfa/helpers';
 import type { FrontendService } from './services/frontend.service';
@@ -79,7 +76,7 @@ import { ActiveWorkflowsController } from './controllers/activeWorkflows.control
 import { OrchestrationController } from './controllers/orchestration.controller';
 import { WorkflowHistoryController } from './workflows/workflowHistory/workflowHistory.controller.ee';
 import { InvitationController } from './controllers/invitation.controller';
-import { CollaborationService } from './collaboration/collaboration.service';
+// import { CollaborationService } from './collaboration/collaboration.service';
 import { BadRequestError } from './errors/response-errors/bad-request.error';
 import { OrchestrationService } from '@/services/orchestration.service';
 
@@ -125,7 +122,7 @@ export class Server extends AbstractServer {
 		}
 
 		void Container.get(InternalHooks).onServerStarted();
-		Container.get(CollaborationService);
+		// Container.get(CollaborationService);
 	}
 
 	private async registerControllers() {
@@ -160,6 +157,7 @@ export class Server extends AbstractServer {
 			WorkflowsController,
 			ExecutionsController,
 			CredentialsController,
+			AIController,
 		];
 
 		if (
@@ -222,22 +220,6 @@ export class Server extends AbstractServer {
 		await Container.get(PostHogClient).init();
 
 		const publicApiEndpoint = config.getEnv('publicApi.path');
-		const excludeEndpoints = config.getEnv('security.excludeEndpoints');
-
-		const ignoredEndpoints: Readonly<string[]> = [
-			'assets',
-			'healthz',
-			'metrics',
-			'e2e',
-			this.endpointPresetCredentials,
-			isApiEnabled() ? '' : publicApiEndpoint,
-			...excludeEndpoints.split(':'),
-		].filter((u) => !!u);
-
-		assert(
-			!ignoredEndpoints.includes(this.restEndpoint),
-			`REST endpoint cannot be set to any of these values: ${ignoredEndpoints.join()} `,
-		);
 
 		// ----------------------------------------
 		// Public API
@@ -250,25 +232,18 @@ export class Server extends AbstractServer {
 				frontendService.settings.publicApi.latestVersion = apiLatestVersion;
 			}
 		}
+
+		// Extract BrowserId from headers
+		this.app.use((req: APIRequest, _, next) => {
+			req.browserId = req.headers['browser-id'] as string;
+			next();
+		});
+
 		// Parse cookies for easier access
 		this.app.use(cookieParser());
 
 		const { restEndpoint, app } = this;
 		setupPushHandler(restEndpoint, app);
-
-		// Make sure that Vue history mode works properly
-		this.app.use(
-			history({
-				rewrites: [
-					{
-						from: new RegExp(`^/(${[this.restEndpoint, ...ignoredEndpoints].join('|')})/?.*$`),
-						to: (context) => {
-							return context.parsedUrl.pathname!.toString();
-						},
-					},
-				],
-			}),
-		);
 
 		if (config.getEnv('executions.mode') === 'queue') {
 			await Container.get(Queue).init();
@@ -336,7 +311,7 @@ export class Server extends AbstractServer {
 				`/${this.restEndpoint}/settings`,
 				ResponseHelper.send(
 					async (req: express.Request): Promise<IN8nUISettings> =>
-						frontendService.getSettings(req.headers.sessionid as string),
+						frontendService.getSettings(req.headers['push-ref'] as string),
 				),
 			);
 		}
@@ -379,19 +354,10 @@ export class Server extends AbstractServer {
 			);
 		}
 
+		const maxAge = Time.days.toMilliseconds;
+		const cacheOptions = inE2ETests || inDevelopment ? {} : { maxAge };
 		const { staticCacheDir } = Container.get(InstanceSettings);
 		if (frontendService) {
-			const staticOptions: ServeStaticOptions = {
-				cacheControl: false,
-				setHeaders: (res: express.Response, path: string) => {
-					const isIndex = path === pathJoin(staticCacheDir, 'index.html');
-					const cacheControl = isIndex
-						? 'no-cache, no-store, must-revalidate'
-						: 'max-age=86400, immutable';
-					res.header('Cache-Control', cacheControl);
-				},
-			};
-
 			const serveIcons: express.RequestHandler = async (req, res) => {
 				// eslint-disable-next-line prefer-const
 				let { scope, packageName } = req.params;
@@ -400,7 +366,7 @@ export class Server extends AbstractServer {
 				if (filePath) {
 					try {
 						await fsAccess(filePath);
-						return res.sendFile(filePath);
+						return res.sendFile(filePath, cacheOptions);
 					} catch {}
 				}
 				res.sendStatus(404);
@@ -409,19 +375,68 @@ export class Server extends AbstractServer {
 			this.app.use('/icons/@:scope/:packageName/*/*.(svg|png)', serveIcons);
 			this.app.use('/icons/:packageName/*/*.(svg|png)', serveIcons);
 
+			const isTLSEnabled = this.protocol === 'https' && !!(this.sslKey && this.sslCert);
+			const isPreviewMode = process.env.N8N_PREVIEW_MODE === 'true';
+			const securityHeadersMiddleware = helmet({
+				contentSecurityPolicy: false,
+				xFrameOptions: isPreviewMode || inE2ETests ? false : { action: 'sameorigin' },
+				dnsPrefetchControl: false,
+				// This is only relevant for Internet-explorer, which we do not support
+				ieNoOpen: false,
+				// This is already disabled in AbstractServer
+				xPoweredBy: false,
+				// Enable HSTS headers only when n8n handles TLS.
+				// if n8n is behind a reverse-proxy, then these headers needs to be configured there
+				strictTransportSecurity: isTLSEnabled
+					? {
+							maxAge: 180 * Time.days.toSeconds,
+							includeSubDomains: false,
+							preload: false,
+						}
+					: false,
+			});
+
+			// Route all UI urls to index.html to support history-api
+			const nonUIRoutes: Readonly<string[]> = [
+				'assets',
+				'types',
+				'healthz',
+				'metrics',
+				'e2e',
+				this.restEndpoint,
+				this.endpointPresetCredentials,
+				isApiEnabled() ? '' : publicApiEndpoint,
+				...config.getEnv('endpoints.additionalNonUIRoutes').split(':'),
+			].filter((u) => !!u);
+			const nonUIRoutesRegex = new RegExp(`^/(${nonUIRoutes.join('|')})/?.*$`);
+			const historyApiHandler: express.RequestHandler = (req, res, next) => {
+				const {
+					method,
+					headers: { accept },
+				} = req;
+				if (
+					method === 'GET' &&
+					accept &&
+					(accept.includes('text/html') || accept.includes('*/*')) &&
+					!nonUIRoutesRegex.test(req.path)
+				) {
+					res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+					securityHeadersMiddleware(req, res, () => {
+						res.sendFile('index.html', { root: staticCacheDir, maxAge, lastModified: true });
+					});
+				} else {
+					next();
+				}
+			};
+
 			this.app.use(
 				'/',
-				express.static(staticCacheDir),
-				express.static(EDITOR_UI_DIST_DIR, staticOptions),
+				express.static(staticCacheDir, cacheOptions),
+				express.static(EDITOR_UI_DIST_DIR, cacheOptions),
+				historyApiHandler,
 			);
-
-			const startTime = new Date().toUTCString();
-			this.app.use('/index.html', (req, res, next) => {
-				res.setHeader('Last-Modified', startTime);
-				next();
-			});
 		} else {
-			this.app.use('/', express.static(staticCacheDir));
+			this.app.use('/', express.static(staticCacheDir, cacheOptions));
 		}
 	}
 

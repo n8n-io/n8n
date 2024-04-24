@@ -758,10 +758,10 @@ export class SlackV2 implements INodeType {
 							select === 'channel'
 								? (this.getNodeParameter('channelId', i, undefined, {
 										extractValue: true,
-								  }) as string)
+									}) as string)
 								: (this.getNodeParameter('user', i, undefined, {
 										extractValue: true,
-								  }) as string);
+									}) as string);
 
 						if (
 							select === 'user' &&
@@ -869,10 +869,10 @@ export class SlackV2 implements INodeType {
 							select === 'channel'
 								? (this.getNodeParameter('channelId', i, undefined, {
 										extractValue: true,
-								  }) as string)
+									}) as string)
 								: (this.getNodeParameter('user', i, undefined, {
 										extractValue: true,
-								  }) as string);
+									}) as string);
 
 						if (
 							select === 'user' &&

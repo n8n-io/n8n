@@ -36,7 +36,7 @@ export class MicrosoftOutlookTrigger implements INodeType {
 		outputs: ['main'],
 		properties: [
 			{
-				displayName: 'Event',
+				displayName: 'Trigger On',
 				name: 'event',
 				type: 'options',
 				default: 'messageReceived',

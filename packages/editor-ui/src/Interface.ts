@@ -7,7 +7,8 @@ import type {
 	REGULAR_NODE_CREATOR_VIEW,
 	AI_OTHERS_NODE_CREATOR_VIEW,
 	VIEWS,
-} from './constants';
+	ROLE,
+} from '@/constants';
 import type { IMenuItem } from 'n8n-design-system';
 import {
 	type GenericValue,
@@ -107,6 +108,10 @@ declare global {
 		};
 		// eslint-disable-next-line @typescript-eslint/naming-convention
 		Cypress: unknown;
+
+		Sentry?: {
+			captureException: (error: Error, metadata?: unknown) => void;
+		};
 	}
 }
 
@@ -134,6 +139,7 @@ export interface IUpdateInformation {
 		| INodeParameters; // with null makes problems in NodeSettings.vue
 	node?: string;
 	oldValue?: string | number;
+	type?: 'optionsOrderChanged';
 }
 
 export interface INodeUpdatePropertiesInformation {
@@ -682,11 +688,12 @@ export type IPersonalizationLatestVersion = IPersonalizationSurveyAnswersV4;
 export type IPersonalizationSurveyVersions =
 	| IPersonalizationSurveyAnswersV1
 	| IPersonalizationSurveyAnswersV2
-	| IPersonalizationSurveyAnswersV3;
+	| IPersonalizationSurveyAnswersV3
+	| IPersonalizationSurveyAnswersV4;
 
-export type IRole = 'default' | 'global:owner' | 'global:member' | 'global:admin';
-
-export type InvitableRoleName = 'global:member' | 'global:admin';
+export type Roles = typeof ROLE;
+export type IRole = Roles[keyof Roles];
+export type InvitableRoleName = Roles['Member' | 'Admin'];
 
 export interface IUserResponse {
 	id: string;
@@ -710,7 +717,6 @@ export interface IUser extends IUserResponse {
 	isDefaultUser: boolean;
 	isPendingUser: boolean;
 	hasRecoveryCodesLeft: boolean;
-	isOwner: boolean;
 	inviteAcceptUrl?: string;
 	fullName?: string;
 	createdAt?: string;
@@ -1097,11 +1103,12 @@ export interface RootState {
 	n8nMetadata: {
 		[key: string]: string | number | undefined;
 	};
-	sessionId: string;
+	pushRef: string;
 	urlBaseWebhook: string;
 	urlBaseEditor: string;
 	instanceId: string;
 	isNpmAvailable: boolean;
+	binaryDataMode: string;
 }
 
 export interface NodeMetadataMap {
@@ -1140,7 +1147,7 @@ export interface IRootState {
 	nodeViewOffsetPosition: XYPosition;
 	nodeViewMoveInProgress: boolean;
 	selectedNodes: INodeUi[];
-	sessionId: string;
+	pushRef: string;
 	urlBaseEditor: string;
 	urlBaseWebhook: string;
 	workflow: IWorkflowDb;
@@ -1150,6 +1157,7 @@ export interface IRootState {
 	nodeMetadata: NodeMetadataMap;
 	isNpmAvailable: boolean;
 	subworkflowExecutionError: Error | null;
+	binaryDataMode: string;
 }
 
 export interface CommunityPackageMap {
@@ -1207,7 +1215,7 @@ export interface TargetItem {
 export interface NDVState {
 	activeNodeName: string | null;
 	mainPanelDimensions: { [key: string]: { [key: string]: number } };
-	sessionId: string;
+	pushRef: string;
 	input: {
 		displayMode: IRunDataDisplayMode;
 		nodeName?: string;
@@ -1229,6 +1237,7 @@ export interface NDVState {
 		};
 	};
 	focusedMappableInput: string;
+	focusedInputPath: string;
 	mappingTelemetry: { [key: string]: string | number | boolean };
 	hoveringItem: null | TargetItem;
 	draggable: {
@@ -1239,6 +1248,8 @@ export interface NDVState {
 		activeTarget: { id: string; stickyPosition: null | XYPosition } | null;
 	};
 	isMappingOnboarded: boolean;
+	isAutocompleteOnboarded: boolean;
+	highlightDraggables: boolean;
 }
 
 export interface NotificationOptions extends Partial<ElementNotificationOptions> {
@@ -1271,7 +1282,6 @@ export interface UIState {
 	selectedNodes: INodeUi[];
 	nodeViewInitialized: boolean;
 	addFirstStepOnLoad: boolean;
-	executionSidebarAutoRefresh: boolean;
 	bannersHeight: number;
 	bannerStack: BannerName[];
 	theme: ThemeOption;
@@ -1418,7 +1428,7 @@ export interface CommunityNodesState {
 
 export interface IRestApiContext {
 	baseUrl: string;
-	sessionId: string;
+	pushRef: string;
 }
 
 export interface IZoomConfig {
@@ -1750,6 +1760,7 @@ export declare namespace Cloud {
 		username: string;
 		email: string;
 		hasEarlyAccess?: boolean;
+		role?: string;
 	};
 }
 

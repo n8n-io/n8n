@@ -6,8 +6,7 @@
 </template>
 
 <script lang="ts">
-import { autocompletion } from '@codemirror/autocomplete';
-import { history, redo, toggleComment, undo } from '@codemirror/commands';
+import { history, toggleComment } from '@codemirror/commands';
 import { javascript } from '@codemirror/lang-javascript';
 import { foldGutter, indentOnInput } from '@codemirror/language';
 import { lintGutter } from '@codemirror/lint';
@@ -24,8 +23,14 @@ import {
 } from '@codemirror/view';
 import { defineComponent } from 'vue';
 
-import { enterKeyMap, tabKeyMap } from '../CodeNodeEditor/baseExtensions';
 import { codeNodeEditorTheme } from '../CodeNodeEditor/theme';
+import {
+	autocompleteKeyMap,
+	enterKeyMap,
+	historyKeyMap,
+	tabKeyMap,
+} from '@/plugins/codemirror/keymap';
+import { n8nAutocompletion } from '@/plugins/codemirror/n8nLang';
 
 export default defineComponent({
 	name: 'JsEditor',
@@ -77,15 +82,15 @@ export default defineComponent({
 					history(),
 					Prec.highest(
 						keymap.of([
-							...tabKeyMap,
+							...tabKeyMap(),
 							...enterKeyMap,
-							{ key: 'Mod-z', run: undo },
-							{ key: 'Mod-Shift-z', run: redo },
+							...historyKeyMap,
+							...autocompleteKeyMap,
 							{ key: 'Mod-/', run: toggleComment },
 						]),
 					),
 					lintGutter(),
-					autocompletion(),
+					n8nAutocompletion(),
 					indentOnInput(),
 					highlightActiveLine(),
 					highlightActiveLineGutter(),

@@ -2,10 +2,12 @@ import type { SecretsProvider } from '@/Interfaces';
 import { Service } from 'typedi';
 import { InfisicalProvider } from './providers/infisical';
 import { VaultProvider } from './providers/vault';
+import { AwsSecretsManager } from './providers/aws-secrets/aws-secrets-manager';
 
 @Service()
 export class ExternalSecretsProviders {
 	providers: Record<string, { new (): SecretsProvider }> = {
+		awsSecretsManager: AwsSecretsManager,
 		infisical: InfisicalProvider,
 		vault: VaultProvider,
 	};

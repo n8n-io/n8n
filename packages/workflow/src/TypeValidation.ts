@@ -26,7 +26,14 @@ export const tryToParseString = (value: unknown): string => {
 
 	return String(value);
 };
-
+export const tryToParseAlphanumericString = (value: unknown): string => {
+	const parsed = tryToParseString(value);
+	const regex = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+	if (!regex.test(parsed)) {
+		throw new ApplicationError('Value is not a valid alphanumeric string', { extra: { value } });
+	}
+	return parsed;
+};
 export const tryToParseBoolean = (value: unknown): value is boolean => {
 	if (typeof value === 'boolean') {
 		return value;
@@ -151,12 +158,27 @@ export const tryToParseUrl = (value: unknown): string => {
 	return String(value);
 };
 
+export const tryToParseJwt = (value: unknown): string => {
+	const error = new ApplicationError(`The value "${String(value)}" is not a valid JWT token.`, {
+		extra: { value },
+	});
+
+	if (!value) throw error;
+
+	const jwtPattern = /^[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_.+/=]*$/;
+
+	if (!jwtPattern.test(String(value))) throw error;
+
+	return String(value);
+};
+
 type ValidateFieldTypeOptions = Partial<{
 	valueOptions: INodePropertyOptions[];
 	strict: boolean;
 	parseStrings: boolean;
 }>;
 // Validates field against the schema and tries to parse it to the correct type
+// eslint-disable-next-line complexity
 export const validateFieldType = (
 	fieldName: string,
 	value: unknown,
@@ -178,6 +200,17 @@ export const validateFieldType = (
 				return { valid: true, newValue: tryToParseString(value) };
 			} catch (e) {
 				return { valid: false, errorMessage: defaultErrorMessage };
+			}
+		}
+		case 'string-alphanumeric': {
+			try {
+				return { valid: true, newValue: tryToParseAlphanumericString(value) };
+			} catch (e) {
+				return {
+					valid: false,
+					errorMessage:
+						'Value is not a valid alphanumeric string, only letters, numbers and underscore allowed',
+				};
 			}
 		}
 		case 'number': {
@@ -259,6 +292,16 @@ export const validateFieldType = (
 				return { valid: true, newValue: tryToParseUrl(value) };
 			} catch (e) {
 				return { valid: false, errorMessage: defaultErrorMessage };
+			}
+		}
+		case 'jwt': {
+			try {
+				return { valid: true, newValue: tryToParseJwt(value) };
+			} catch (e) {
+				return {
+					valid: false,
+					errorMessage: 'Value is not a valid JWT token',
+				};
 			}
 		}
 		default: {

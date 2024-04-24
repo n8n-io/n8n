@@ -30,15 +30,10 @@
 
 <script lang="ts">
 import { ElSelect } from 'element-plus';
-import { defineComponent } from 'vue';
+import { type PropType, defineComponent } from 'vue';
+import type { SelectSize } from '@/types';
 
 type InnerSelectRef = InstanceType<typeof ElSelect>;
-
-export interface IProps {
-	size?: string;
-	limitPopperWidth?: string;
-	popperClass?: string;
-}
 
 export default defineComponent({
 	name: 'N8nSelect',
@@ -49,10 +44,8 @@ export default defineComponent({
 		...ElSelect.props,
 		modelValue: {},
 		size: {
-			type: String,
+			type: String as PropType<SelectSize>,
 			default: 'large',
-			validator: (value: string): boolean =>
-				['mini', 'small', 'medium', 'large', 'xlarge'].includes(value),
 		},
 		placeholder: {
 			type: String,
@@ -101,7 +94,7 @@ export default defineComponent({
 				return acc;
 			}, {});
 		},
-		computedSize(): string | undefined {
+		computedSize(): InnerSelectRef['$props']['size'] {
 			if (this.size === 'medium') {
 				return 'default';
 			}

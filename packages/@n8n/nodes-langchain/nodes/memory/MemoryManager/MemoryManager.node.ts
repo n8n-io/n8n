@@ -7,8 +7,8 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import type { BaseChatMemory } from 'langchain/memory';
-import { AIMessage, SystemMessage, HumanMessage, type BaseMessage } from 'langchain/schema';
+import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
+import { AIMessage, SystemMessage, HumanMessage, type BaseMessage } from '@langchain/core/messages';
 
 type MessageRole = 'ai' | 'system' | 'user';
 interface MessageRecord {

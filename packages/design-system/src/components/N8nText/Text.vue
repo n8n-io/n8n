@@ -4,69 +4,45 @@
 	</component>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
-export default defineComponent({
-	name: 'N8nText',
-	props: {
-		bold: {
-			type: Boolean,
-			default: false,
-		},
-		size: {
-			type: String,
-			default: 'medium',
-			validator: (value: string): boolean =>
-				['xsmall', 'small', 'mini', 'medium', 'large', 'xlarge'].includes(value),
-		},
-		color: {
-			type: String,
-			validator: (value: string): boolean =>
-				[
-					'primary',
-					'text-dark',
-					'text-base',
-					'text-light',
-					'text-xlight',
-					'danger',
-					'success',
-					'warning',
-				].includes(value),
-		},
-		align: {
-			type: String,
-			validator: (value: string): boolean => ['right', 'left', 'center'].includes(value),
-		},
-		compact: {
-			type: Boolean,
-			default: false,
-		},
-		tag: {
-			type: String,
-			default: 'span',
-		},
-	},
-	computed: {
-		classes() {
-			const applied = [];
-			if (this.align) {
-				applied.push(`align-${this.align}`);
-			}
-			if (this.color) {
-				applied.push(this.color);
-			}
+<script lang="ts" setup>
+import { computed, useCssModule } from 'vue';
+import type { TextSize, TextColor, TextAlign } from '@/types/text';
 
-			if (this.compact) {
-				applied.push('compact');
-			}
+interface TextProps {
+	bold?: boolean;
+	size?: TextSize;
+	color?: TextColor;
+	align?: TextAlign;
+	compact?: boolean;
+	tag?: string;
+}
 
-			applied.push(`size-${this.size}`);
+defineOptions({ name: 'N8nText' });
+const props = withDefaults(defineProps<TextProps>(), {
+	bold: false,
+	size: 'medium',
+	compact: false,
+	tag: 'span',
+});
 
-			applied.push(this.bold ? 'bold' : 'regular');
+const $style = useCssModule();
+const classes = computed(() => {
+	const applied: string[] = [];
+	if (props.align) {
+		applied.push(`align-${props.align}`);
+	}
+	if (props.color) {
+		applied.push(props.color);
+	}
 
-			return applied.map((c) => this.$style[c]);
-		},
-	},
+	if (props.compact) {
+		applied.push('compact');
+	}
+
+	applied.push(`size-${props.size}`);
+	applied.push(props.bold ? 'bold' : 'regular');
+
+	return applied.map((c) => $style[c]);
 });
 </script>
 

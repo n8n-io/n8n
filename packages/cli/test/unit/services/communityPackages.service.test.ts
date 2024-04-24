@@ -27,6 +27,8 @@ import {
 } from '../../integration/shared/constants';
 import { randomName } from '../../integration/shared/random';
 import { mockPackageName, mockPackagePair } from '../../integration/shared/utils';
+import { InstanceSettings, PackageDirectoryLoader } from 'n8n-core';
+import { Logger } from '@/Logger';
 
 jest.mock('fs/promises');
 jest.mock('child_process');
@@ -364,4 +366,64 @@ describe('CommunityPackagesService', () => {
 	const setMissingPackages = (missingPackages: string[]) => {
 		Object.assign(communityPackagesService, { missingPackages });
 	};
+
+	describe('updateNpmModule', () => {
+		let packageDirectoryLoader: PackageDirectoryLoader;
+		let communityPackagesService: CommunityPackagesService;
+
+		beforeEach(async () => {
+			jest.restoreAllMocks();
+
+			packageDirectoryLoader = mockInstance(PackageDirectoryLoader);
+			const loadNodesAndCredentials = mockInstance(LoadNodesAndCredentials);
+			loadNodesAndCredentials.loadPackage.mockResolvedValue(packageDirectoryLoader);
+			const instanceSettings = mockInstance(InstanceSettings);
+			const logger = mockInstance(Logger);
+			const installedPackagesRepository = mockInstance(InstalledPackagesRepository);
+
+			communityPackagesService = new CommunityPackagesService(
+				instanceSettings,
+				logger,
+				installedPackagesRepository,
+				loadNodesAndCredentials,
+			);
+		});
+
+		afterEach(async () => {
+			jest.restoreAllMocks();
+		});
+
+		test('should call `exec` with the correct command ', async () => {
+			//
+			// ARRANGE
+			//
+			const nodeName = randomName();
+			packageDirectoryLoader.loadedNodes = [{ name: nodeName, version: 1 }];
+
+			const installedPackage = new InstalledPackages();
+			installedPackage.packageName = mockPackageName();
+
+			mocked(exec).mockImplementation(execMock);
+
+			//
+			// ACT
+			//
+			await communityPackagesService.updateNpmModule(
+				installedPackage.packageName,
+				installedPackage,
+			);
+
+			//
+			// ASSERT
+			//
+
+			expect(exec).toHaveBeenCalledTimes(1);
+			expect(exec).toHaveBeenNthCalledWith(
+				1,
+				`npm install ${installedPackage.packageName}@latest`,
+				expect.any(Object),
+				expect.any(Function),
+			);
+		});
+	});
 });

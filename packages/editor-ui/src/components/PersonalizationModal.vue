@@ -726,6 +726,10 @@ export default defineComponent({
 				if (this.registerForEnterpriseTrial && this.canRegisterForEnterpriseTrial) {
 					await this.usageStore.requestEnterpriseLicenseTrial();
 					licenseRequestSucceeded = true;
+					this.$telemetry.track('User registered for self serve trial', {
+						email: this.usersStore.currentUser?.email,
+						instance_id: this.rootStore.instanceId,
+					});
 				}
 			} catch (e) {
 				this.showError(

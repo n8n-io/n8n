@@ -9,9 +9,9 @@ import {
 
 import type { SummarizationChainParams } from 'langchain/chains';
 import { loadSummarizationChain } from 'langchain/chains';
-import type { BaseLanguageModel } from 'langchain/dist/base_language';
-import type { Document } from 'langchain/document';
-import { PromptTemplate } from 'langchain/prompts';
+import type { BaseLanguageModel } from '@langchain/core/language_models/base';
+import type { Document } from '@langchain/core/documents';
+import { PromptTemplate } from '@langchain/core/prompts';
 import { N8nJsonLoader } from '../../../../utils/N8nJsonLoader';
 import { N8nBinaryLoader } from '../../../../utils/N8nBinaryLoader';
 import { getTemplateNoticeField } from '../../../../utils/sharedFields';

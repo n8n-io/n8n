@@ -12,8 +12,8 @@ import type {
 } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 
-import { oldVersionNotice } from '@utils/descriptions';
 import { generatePairedItemData } from '../../../utils/utilities';
+import { oldVersionNotice } from '@utils/descriptions';
 
 export class MergeV1 implements INodeType {
 	description: INodeTypeDescription;

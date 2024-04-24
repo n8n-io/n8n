@@ -83,7 +83,7 @@ export class DocumentGithubLoader implements INodeType {
 					},
 					{
 						displayName: 'Ignore Paths',
-						name: 'recursive',
+						name: 'ignorePaths',
 						type: 'string',
 						description: 'Comma-separated list of paths to ignore, e.g. "docs, src/tests',
 						default: '',

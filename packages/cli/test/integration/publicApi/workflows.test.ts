@@ -696,6 +696,7 @@ describe('POST /workflows', () => {
 				saveDataSuccessExecution: 'all',
 				executionTimeout: 3600,
 				timezone: 'America/New_York',
+				executionOrder: 'v1',
 			},
 		};
 

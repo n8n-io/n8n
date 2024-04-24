@@ -171,7 +171,7 @@ export interface IExecutionsListResponse {
 	estimated: boolean;
 }
 
-export interface IExecutionsStopData {
+export interface ExecutionStopResult {
 	finished?: boolean;
 	mode: WorkflowExecuteMode;
 	startedAt: Date;
@@ -532,7 +532,7 @@ export interface IWorkflowExecutionDataProcess {
 	runData?: IRunData;
 	pinData?: IPinData;
 	retryOf?: string;
-	sessionId?: string;
+	pushRef?: string;
 	startNodes?: StartNodeData[];
 	workflowData: IWorkflowBase;
 	userId: string;
@@ -669,7 +669,7 @@ export abstract class SecretsProvider {
 	abstract disconnect(): Promise<void>;
 	abstract update(): Promise<void>;
 	abstract test(): Promise<[boolean] | [boolean, string]>;
-	abstract getSecret(name: string): IDataObject | undefined;
+	abstract getSecret(name: string): unknown;
 	abstract hasSecret(name: string): boolean;
 	abstract getSecretNames(): string[];
 }

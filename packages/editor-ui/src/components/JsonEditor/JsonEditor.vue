@@ -6,8 +6,7 @@
 </template>
 
 <script lang="ts">
-import { autocompletion } from '@codemirror/autocomplete';
-import { history, redo, undo } from '@codemirror/commands';
+import { history } from '@codemirror/commands';
 import { json, jsonParseLinter } from '@codemirror/lang-json';
 import { bracketMatching, foldGutter, indentOnInput } from '@codemirror/language';
 import { linter as createLinter, lintGutter } from '@codemirror/lint';
@@ -24,8 +23,14 @@ import {
 } from '@codemirror/view';
 import { defineComponent } from 'vue';
 
-import { enterKeyMap, tabKeyMap } from '../CodeNodeEditor/baseExtensions';
 import { codeNodeEditorTheme } from '../CodeNodeEditor/theme';
+import {
+	autocompleteKeyMap,
+	enterKeyMap,
+	historyKeyMap,
+	tabKeyMap,
+} from '@/plugins/codemirror/keymap';
+import { n8nAutocompletion } from '@/plugins/codemirror/n8nLang';
 
 export default defineComponent({
 	name: 'JsonEditor',
@@ -76,16 +81,11 @@ export default defineComponent({
 				extensions.push(
 					history(),
 					Prec.highest(
-						keymap.of([
-							...tabKeyMap,
-							...enterKeyMap,
-							{ key: 'Mod-z', run: undo },
-							{ key: 'Mod-Shift-z', run: redo },
-						]),
+						keymap.of([...tabKeyMap(), ...enterKeyMap, ...historyKeyMap, ...autocompleteKeyMap]),
 					),
 					createLinter(jsonParseLinter()),
 					lintGutter(),
-					autocompletion(),
+					n8nAutocompletion(),
 					indentOnInput(),
 					highlightActiveLine(),
 					highlightActiveLineGutter(),

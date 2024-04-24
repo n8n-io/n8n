@@ -179,7 +179,6 @@ export const useUIStore = defineStore(STORES.UI, {
 		selectedNodes: [],
 		nodeViewInitialized: false,
 		addFirstStepOnLoad: false,
-		executionSidebarAutoRefresh: true,
 		bannersHeight: 0,
 		bannerStack: [],
 		suggestedTemplates: undefined,
@@ -343,7 +342,6 @@ export const useUIStore = defineStore(STORES.UI, {
 				let linkUrl = '';
 
 				const searchParams = new URLSearchParams();
-				const { isInstanceOwner } = useUsersStore();
 
 				if (deploymentType === 'cloud' && hasPermission(['instanceOwner'])) {
 					const adminPanelHost = new URL(window.location.href).host.split('.').slice(1).join('.');

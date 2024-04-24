@@ -1,8 +1,10 @@
 import { v4 as uuid } from 'uuid';
 import { getVisibleSelect } from '../utils';
-import { MANUAL_TRIGGER_NODE_DISPLAY_NAME, AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME } from '../constants';
+import { MANUAL_TRIGGER_NODE_DISPLAY_NAME } from '../constants';
 import { NDV, WorkflowPage } from '../pages';
 import { NodeCreator } from '../pages/features/node-creator';
+import { clickCreateNewCredential } from '../composables/ndv';
+import { setCredentialValues } from '../composables/modals/credential-modal';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
@@ -54,6 +56,26 @@ describe('NDV', () => {
 		ndv.getters.backToCanvas().click();
 		ndv.getters.container().should('not.be.visible');
 		cy.shouldNotHaveConsoleErrors();
+	});
+
+	it('should disconect Switch outputs if rules order was changed', () => {
+		cy.createFixtureWorkflow('NDV-test-switch_reorder.json', `NDV test switch reorder`);
+		workflowPage.actions.zoomToFit();
+
+		workflowPage.actions.executeWorkflow();
+		workflowPage.actions.openNode('Merge');
+		ndv.getters.outputPanel().contains('2 items').should('exist');
+		cy.contains('span', 'first').should('exist');
+		ndv.getters.backToCanvas().click();
+
+		workflowPage.actions.openNode('Switch');
+		cy.get('.cm-line').realMouseMove(100, 100);
+		cy.get('.fa-angle-down').click();
+		ndv.getters.backToCanvas().click();
+		workflowPage.actions.executeWorkflow();
+		workflowPage.actions.openNode('Merge');
+		ndv.getters.outputPanel().contains('1 item').should('exist');
+		cy.contains('span', 'zero').should('exist');
 	});
 
 	it('should show correct validation state for resource locator params', () => {
@@ -485,13 +507,13 @@ describe('NDV', () => {
 			const connectionGroups = [
 				{
 					title: 'Language Models',
-					id: 'ai_languageModel'
+					id: 'ai_languageModel',
 				},
 				{
 					title: 'Tools',
-					id: 'ai_tool'
+					id: 'ai_tool',
 				},
-			]
+			];
 
 			workflowPage.actions.addInitialNodeToCanvas('AI Agent', { keepNdvOpen: true });
 
@@ -513,13 +535,16 @@ describe('NDV', () => {
 					cy.getByTestId(`add-subnode-${group.id}`).click();
 					nodeCreator.getters.getNthCreatorItem(1).click();
 					getFloatingNodeByPosition('outputSub').click({ force: true });
-					cy.getByTestId('subnode-connection-group-ai_tool').findChildByTestId('floating-subnode').should('have.length', 2);
+					cy.getByTestId('subnode-connection-group-ai_tool')
+						.findChildByTestId('floating-subnode')
+						.should('have.length', 2);
 				}
 			});
 
 			// Since language model has no credentials set, it should show an error
-			cy.get('[class*=hasIssues]').should('have.length', 1);
-		})
+			// Sinse code tool require alphanumeric tool name it would also show an error(2 errors, 1 for each tool node)
+			cy.get('[class*=hasIssues]').should('have.length', 3);
+		});
 	});
 
 	it('should show node name and version in settings', () => {
@@ -610,7 +635,7 @@ describe('NDV', () => {
 		ndv.getters.nodeRunErrorIndicator().should('exist');
 	});
 
-	it('Should handle mismatched option attributes', () => {
+	it('Should clear mismatched collection parameters', () => {
 		workflowPage.actions.addInitialNodeToCanvas('LDAP', {
 			keepNdvOpen: true,
 			action: 'Create a new entry',
@@ -631,5 +656,60 @@ describe('NDV', () => {
 		ndv.actions.setRLCValue('documentId', TEST_DOC_ID);
 		ndv.actions.changeNodeOperation('Update Row');
 		ndv.getters.resourceLocatorInput('documentId').find('input').should('have.value', TEST_DOC_ID);
+	});
+
+	it('Should not clear resource/operation after credential change', () => {
+		workflowPage.actions.addInitialNodeToCanvas('Discord', {
+			keepNdvOpen: true,
+			action: 'Delete a message',
+		});
+
+		clickCreateNewCredential();
+		setCredentialValues({
+			botToken: 'sk_test_123',
+		});
+
+		ndv.getters.parameterInput('resource').find('input').should('have.value', 'Message');
+		ndv.getters.parameterInput('operation').find('input').should('have.value', 'Delete');
+	});
+
+	it('Should open appropriate node creator after clicking on connection hint link', () => {
+		const nodeCreator = new NodeCreator();
+		const hintMapper = {
+			Memory: 'AI Nodes',
+			'Output Parser': 'AI Nodes',
+			'Token Splitter': 'Document Loaders',
+			Tool: 'AI Nodes',
+			Embeddings: 'Vector Stores',
+			'Vector Store': 'Retrievers',
+		};
+		cy.createFixtureWorkflow(
+			'open_node_creator_for_connection.json',
+			`open_node_creator_for_connection ${uuid()}`,
+		);
+
+		Object.entries(hintMapper).forEach(([node, group]) => {
+			workflowPage.actions.openNode(node);
+			cy.get('[data-action=openSelectiveNodeCreator]').contains('Insert one').click();
+			nodeCreator.getters.activeSubcategory().should('contain', group);
+			cy.realPress('Escape');
+		});
+	});
+
+	it('Stop listening for trigger event from NDV', () => {
+		cy.intercept('POST', '/rest/workflows/run').as('workflowRun');
+		workflowPage.actions.addInitialNodeToCanvas('Local File Trigger', {
+			keepNdvOpen: true,
+			action: 'On Changes To A Specific File',
+			isTrigger: true,
+		});
+		ndv.getters.triggerPanelExecuteButton().should('exist');
+		ndv.getters.triggerPanelExecuteButton().realClick();
+		ndv.getters.triggerPanelExecuteButton().should('contain', 'Stop Listening');
+		ndv.getters.triggerPanelExecuteButton().realClick();
+		cy.wait('@workflowRun').then(() => {
+			ndv.getters.triggerPanelExecuteButton().should('contain', 'Test step');
+			workflowPage.getters.successToast().should('exist');
+		});
 	});
 });

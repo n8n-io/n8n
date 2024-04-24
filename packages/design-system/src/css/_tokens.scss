@@ -73,6 +73,9 @@
 
 	// Canvas
 	--color-canvas-background: var(--prim-gray-10);
+	--color-canvas-background-h: var(--prim-gray-h); // Used for connectors labels background
+	--color-canvas-background-s: 47%;
+	--color-canvas-background-l: 99%;
 	--color-canvas-dot: var(--prim-gray-120);
 	--color-canvas-read-only-line: var(--prim-gray-30);
 	--color-canvas-node-background: var(--prim-gray-0);
@@ -102,7 +105,7 @@
 	--color-sticky-background-7: var(--prim-gray-10);
 	--color-sticky-border-7: var(--prim-gray-120);
 
-	// Expressions
+	// Expressions and autocomplete
 	--color-valid-resolvable-foreground: var(--prim-color-alt-a);
 	--color-valid-resolvable-background: var(--prim-color-alt-a-tint-500);
 	--color-invalid-resolvable-foreground: var(--prim-color-alt-c);
@@ -111,6 +114,8 @@
 	--color-pending-resolvable-background: var(--prim-gray-40);
 	--color-expression-editor-background: var(--prim-gray-0);
 	--color-expression-syntax-example: var(--prim-gray-40);
+	--color-autocomplete-item-selected: var(--color-secondary);
+	--color-autocomplete-section-header-border: var(--color-foreground-light);
 
 	// Code
 	--color-code-tags-string: var(--prim-color-alt-f);
@@ -138,8 +143,6 @@
 	--color-code-gutterBackground: var(--prim-gray-0);
 	--color-code-gutterForeground: var(--prim-gray-320);
 	--color-code-tags-comment: var(--prim-gray-420);
-	--color-autocomplete-selected-background: var(--prim-color-alt-e);
-	--color-autocomplete-selected-font: var(--prim-gray-0);
 
 	// Variables
 	--color-variables-usage-font: var(--color-success);
@@ -189,6 +192,7 @@
 	--color-table-row-background: var(--color-background-xlight);
 	--color-table-row-even-background: var(--color-background-light);
 	--color-table-row-hover-background: var(--color-primary-tint-3);
+	--color-table-row-highlight-background: var(--color-warning-tint-1);
 
 	// Notification
 	--color-notification-background: var(--color-background-xlight);
@@ -199,6 +203,7 @@
 	--execution-card-border-waiting: var(--prim-color-secondary-tint-300);
 	--execution-card-border-running: var(--prim-color-alt-b-tint-250);
 	--execution-card-border-unknown: var(--prim-gray-120);
+	--execution-card-background-hover: var(--color-foreground-light);
 
 	// NDV
 	--color-run-data-background: var(--color-background-base);
@@ -206,7 +211,7 @@
 	--color-ndv-droppable-parameter-background: var(--prim-color-secondary-alpha-010);
 	--color-ndv-droppable-parameter-active-background: var(--prim-color-alt-a-alpha-015);
 	--color-ndv-back-font: var(--prim-gray-0);
-	--color-ndv-ouptut-error-font: var(--prim-color-alt-c);
+	--color-ndv-output-error-message: var(--prim-color-alt-c);
 
 	// Notice
 	--color-notice-warning-border: var(--color-warning-tint-1);
@@ -236,6 +241,7 @@
 	--color-callout-secondary-icon: var(--color-secondary);
 
 	// Dialogs and overlays
+	--color-dialog-background: var(--prim-gray-0);
 	--color-dialog-overlay-background: var(--prim-gray-0-alpha-075);
 	--color-dialog-overlay-background-dark: var(--prim-color-alt-j-alpha-075);
 	--color-block-ui-overlay: var(--prim-gray-820);
@@ -249,9 +255,11 @@
 
 	// Action Dropdown
 	--color-action-dropdown-item-active-background: var(--color-background-base);
+
 	// Switch (Activation, boolean)
 	--color-switch-background: var(--prim-gray-420);
 	--color-switch-active-background: var(--prim-color-alt-i);
+	--color-switch-border-color: transparent;
 	--color-switch-toggle: var(--prim-gray-0);
 
 	// Feature Request
@@ -259,6 +267,14 @@
 
 	// Input Triple
 	--color-background-input-triple: var(--color-background-light);
+
+	// Node error
+	--color-node-error-output-text-color: var(--color-danger);
+
+	// MFA Recovery codes
+	--color-mfa-recovery-code-background: var(--color-background-base);
+	--color-mfa-recovery-code-color: var(--prim-gray-490);
+	--color-mfa-lose-access-text-color: var(--color-danger);
 
 	// Various
 	--color-avatar-accent-1: var(--prim-gray-120);

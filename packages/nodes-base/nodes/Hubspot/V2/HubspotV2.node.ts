@@ -15,9 +15,10 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { snakeCase } from 'change-case';
+import set from 'lodash/set';
 import { generatePairedItemData } from '../../../utils/utilities';
 import {
 	clean,
@@ -3058,21 +3059,17 @@ export class HubspotV2 implements INodeType {
 						error.cause.error?.validationResults &&
 						error.cause.error.validationResults[0].error === 'INVALID_EMAIL'
 					) {
-						throw new NodeOperationError(
-							this.getNode(),
-							error.cause.error.validationResults[0].message as string,
-						);
+						const message = error.cause.error.validationResults[0].message as string;
+						set(error, 'message', message);
 					}
 					if (error.cause.error?.message !== 'The resource you are requesting could not be found') {
 						if (error.httpCode === '404' && error.description === 'resource not found') {
-							throw new NodeOperationError(
-								this.getNode(),
-								`${error.node.parameters.resource} #${
-									error.node.parameters[`${error.node.parameters.resource}Id`].value
-								} could not be found. Check your ${error.node.parameters.resource} ID is correct`,
-							);
+							const message = `${error.node.parameters.resource} #${
+								error.node.parameters[`${error.node.parameters.resource}Id`].value
+							} could not be found. Check your ${error.node.parameters.resource} ID is correct`;
+
+							set(error, 'message', message);
 						}
-						throw new NodeOperationError(this.getNode(), error as string);
 					}
 					if (this.continueOnFail()) {
 						returnData.push({
@@ -3080,6 +3077,9 @@ export class HubspotV2 implements INodeType {
 							pairedItem: { item: i },
 						});
 						continue;
+					}
+					if (error instanceof NodeApiError) {
+						set(error, 'context.itemIndex', i);
 					}
 					throw error;
 				}

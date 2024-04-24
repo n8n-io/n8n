@@ -6,6 +6,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { within } from '@testing-library/vue';
+import { getFilterOperator } from '../utils';
 
 const DEFAULT_SETUP = {
 	pinia: createTestingPinia({
@@ -62,29 +63,22 @@ describe('FilterConditions.vue', () => {
 						{
 							leftValue: '={{ $json.tags }}',
 							rightValue: 'exotic',
-							operator: {
-								type: 'array',
-								operation: 'contains',
-								rightType: 'any',
-							},
+							operator: getFilterOperator('array:contains'),
 						},
 						{
 							leftValue: '={{ $json.meta }}',
 							rightValue: '',
-							operator: {
-								type: 'object',
-								operation: 'notEmpty',
-								singleValue: true,
-							},
+							operator: getFilterOperator('object:notEmpty'),
 						},
 						{
-							leftValue: '={{ $json.test }}',
-							rightValue: 'other',
-							operator: {
-								type: 'string',
-								operation: 'equals',
-								singleValue: true,
-							},
+							leftValue: '={{ $json.name }}',
+							rightValue: 'John',
+							operator: getFilterOperator('string:equals'),
+						},
+						{
+							leftValue: '={{ $json.tags }}',
+							rightValue: 5,
+							operator: getFilterOperator('array:lengthGte'),
 						},
 					],
 					combinator: 'or',
@@ -95,31 +89,53 @@ describe('FilterConditions.vue', () => {
 		const conditions = await findAllByTestId('filter-condition');
 		const combinators = await findAllByTestId('filter-combinator-select');
 
-		expect(combinators).toHaveLength(2);
-		expect(combinators[0].querySelector('input')?.value).toEqual('OR');
+		expect(combinators).toHaveLength(3);
+		expect(combinators[0].querySelector('input')).toHaveValue('OR');
 		expect(combinators[1]).toHaveTextContent('OR');
 
-		expect(conditions).toHaveLength(3);
-		expect(conditions[0].querySelector('[data-test-id="filter-condition-left"]')).toHaveTextContent(
+		expect(conditions).toHaveLength(4);
+
+		// array:contains
+		expect(within(conditions[0]).getByTestId('filter-condition-left')).toHaveTextContent(
 			'{{ $json.tags }}',
 		);
 		expect(
-			conditions[0].querySelector('[data-test-id="filter-operator-select"]')?.querySelector('input')
-				?.value,
-		).toEqual('contains');
+			within(conditions[0]).getByTestId('filter-operator-select').querySelector('input'),
+		).toHaveValue('contains');
 		expect(
-			conditions[0].querySelector('[data-test-id="filter-condition-right"]')?.querySelector('input')
-				?.value,
-		).toEqual('exotic');
+			within(conditions[0]).getByTestId('filter-condition-right').querySelector('input'),
+		).toHaveValue('exotic');
 
-		expect(conditions[1].querySelector('[data-test-id="filter-condition-left"]')).toHaveTextContent(
+		// object:notEmpty
+		expect(within(conditions[1]).getByTestId('filter-condition-left')).toHaveTextContent(
 			'{{ $json.meta }}',
 		);
 		expect(
-			conditions[1].querySelector('[data-test-id="filter-operator-select"]')?.querySelector('input')
-				?.value,
-		).toEqual('is not empty');
-		expect(conditions[1].querySelector('[data-test-id="filter-condition-right"]')).toBeNull();
+			within(conditions[1]).getByTestId('filter-operator-select').querySelector('input'),
+		).toHaveValue('is not empty');
+		expect(within(conditions[1]).queryByTestId('filter-condition-right')).not.toBeInTheDocument();
+
+		// string:equals
+		expect(within(conditions[2]).getByTestId('filter-condition-left')).toHaveTextContent(
+			'{{ $json.name }}',
+		);
+		expect(
+			within(conditions[2]).getByTestId('filter-operator-select').querySelector('input'),
+		).toHaveValue('is equal to');
+		expect(
+			within(conditions[2]).getByTestId('filter-condition-right').querySelector('input'),
+		).toHaveValue('John');
+
+		// array:lengthGte
+		expect(within(conditions[3]).getByTestId('filter-condition-left')).toHaveTextContent(
+			'{{ $json.tags }}',
+		);
+		expect(
+			within(conditions[3]).getByTestId('filter-operator-select').querySelector('input'),
+		).toHaveValue('length greater than or equal to');
+		expect(
+			within(conditions[3]).getByTestId('filter-condition-right').querySelector('input'),
+		).toHaveValue(5);
 	});
 
 	it('renders parameter issues', async () => {
@@ -137,18 +153,12 @@ describe('FilterConditions.vue', () => {
 						{
 							leftValue: '={{ $json.num }}',
 							rightValue: '5',
-							operator: {
-								type: 'number',
-								operation: 'equals',
-							},
+							operator: getFilterOperator('number:equals'),
 						},
 						{
 							leftValue: '={{ $json.num }}',
 							rightValue: 'not a number',
-							operator: {
-								type: 'number',
-								operation: 'equals',
-							},
+							operator: getFilterOperator('number:equals'),
 						},
 					],
 				},
@@ -199,12 +209,12 @@ describe('FilterConditions.vue', () => {
 					conditions: [
 						{
 							leftValue: 'foo',
-							operator: { type: 'string', operation: 'equals' },
+							operator: getFilterOperator('string:equals'),
 							rightValue: 'bar',
 						},
 						{
 							leftValue: 'foo',
-							operator: { type: 'string', operation: 'equals' },
+							operator: getFilterOperator('string:equals'),
 							rightValue: 'bar',
 						},
 					],
@@ -272,12 +282,12 @@ describe('FilterConditions.vue', () => {
 					conditions: [
 						{
 							leftValue: 'foo',
-							operator: { type: 'string', operation: 'equals' },
+							operator: getFilterOperator('string:equals'),
 							rightValue: 'bar',
 						},
 						{
 							leftValue: 'foo',
-							operator: { type: 'string', operation: 'equals' },
+							operator: getFilterOperator('string:equals'),
 							rightValue: 'bar',
 						},
 					],
@@ -316,10 +326,7 @@ describe('FilterConditions.vue', () => {
 							id: '1',
 							leftValue: 'foo',
 							rightValue: 'bar',
-							operator: {
-								type: 'string',
-								operation: 'equals',
-							},
+							operator: getFilterOperator('string:equals'),
 						},
 					],
 					combinator: 'and',
@@ -335,19 +342,13 @@ describe('FilterConditions.vue', () => {
 						id: '2',
 						leftValue: 'quz',
 						rightValue: 'qux',
-						operator: {
-							type: 'string',
-							operation: 'notEquals',
-						},
+						operator: getFilterOperator('string:notEquals'),
 					},
 					{
 						id: '3',
 						leftValue: 5,
 						rightValue: 6,
-						operator: {
-							type: 'number',
-							operation: 'gt',
-						},
+						operator: getFilterOperator('number:gt'),
 					},
 				],
 				combinator: 'and',

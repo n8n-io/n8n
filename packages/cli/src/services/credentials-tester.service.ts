@@ -84,7 +84,7 @@ export class CredentialsTester {
 		return 'access_token' in oauthTokenData;
 	}
 
-	private getCredentialTestFunction(
+	getCredentialTestFunction(
 		credentialType: string,
 	): ICredentialTestFunction | ICredentialTestRequestData | undefined {
 		// Check if test is defined on credentials
@@ -116,7 +116,8 @@ export class CredentialsTester {
 				for (const { name, testedBy } of nodeType.description.credentials ?? []) {
 					if (
 						name === credentialType &&
-						this.credentialTypes.getParentTypes(name).includes('oAuth2Api')
+						(this.credentialTypes.getParentTypes(name).includes('oAuth2Api') ||
+							name === 'oAuth2Api')
 					) {
 						return async function oauth2CredTest(
 							this: ICredentialTestFunctions,
@@ -126,11 +127,11 @@ export class CredentialsTester {
 								? {
 										status: 'OK',
 										message: OAUTH2_CREDENTIAL_TEST_SUCCEEDED,
-								  }
+									}
 								: {
 										status: 'Error',
 										message: OAUTH2_CREDENTIAL_TEST_FAILED,
-								  };
+									};
 						};
 					}
 
@@ -165,6 +166,7 @@ export class CredentialsTester {
 		return undefined;
 	}
 
+	// eslint-disable-next-line complexity
 	async testCredentials(
 		user: User,
 		credentialType: string,

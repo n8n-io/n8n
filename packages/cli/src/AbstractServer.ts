@@ -32,7 +32,7 @@ export abstract class AbstractServer {
 
 	protected externalHooks: ExternalHooks;
 
-	protected protocol: string;
+	protected protocol = config.getEnv('protocol');
 
 	protected sslKey: string;
 
@@ -65,7 +65,6 @@ export abstract class AbstractServer {
 		const proxyHops = config.getEnv('proxy_hops');
 		if (proxyHops > 0) this.app.set('trust proxy', proxyHops);
 
-		this.protocol = config.getEnv('protocol');
 		this.sslKey = config.getEnv('ssl_key');
 		this.sslCert = config.getEnv('ssl_cert');
 
@@ -115,12 +114,12 @@ export abstract class AbstractServer {
 
 	private async setupHealthCheck() {
 		// health check should not care about DB connections
-		this.app.get('/healthz', async (req, res) => {
+		this.app.get('/healthz', async (_req, res) => {
 			res.send({ status: 'ok' });
 		});
 
 		const { connectionState } = Db;
-		this.app.use((req, res, next) => {
+		this.app.use((_req, res, next) => {
 			if (connectionState.connected) {
 				if (connectionState.migrated) next();
 				else res.send('n8n is starting up. Please wait');

@@ -22,6 +22,7 @@ import { PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from '../constants';
 import type { SetupProps, TestServer } from '../types';
 import { LicenseMocker } from '../license';
 import { AuthService } from '@/auth/auth.service';
+import type { APIRequest } from '@/requests';
 
 /**
  * Plugin to prefix a path segment into a request URL pathname.
@@ -43,11 +44,12 @@ function prefix(pathSegment: string) {
 	};
 }
 
+const browserId = 'test-browser-id';
 function createAgent(app: express.Application, options?: { auth: boolean; user: User }) {
 	const agent = request.agent(app);
 	void agent.use(prefix(REST_PATH_SEGMENT));
 	if (options?.auth && options?.user) {
-		const token = Container.get(AuthService).issueJWT(options.user);
+		const token = Container.get(AuthService).issueJWT(options.user, browserId);
 		agent.jar.setCookie(`${AUTH_COOKIE_NAME}=${token}`);
 	}
 	return agent;
@@ -73,6 +75,10 @@ export const setupTestServer = ({
 	const app = express();
 	app.use(rawBodyReader);
 	app.use(cookieParser());
+	app.use((req: APIRequest, _, next) => {
+		req.browserId = browserId;
+		next();
+	});
 
 	// Mock all telemetry and logging
 	mockInstance(Logger);
@@ -89,6 +95,7 @@ export const setupTestServer = ({
 		license: new LicenseMocker(),
 	};
 
+	// eslint-disable-next-line complexity
 	beforeAll(async () => {
 		await testDb.init();
 

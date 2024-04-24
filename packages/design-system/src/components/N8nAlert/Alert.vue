@@ -57,20 +57,20 @@ const icon = computed(() => {
 	}
 });
 
-const style = useCssModule();
+const $style = useCssModule();
 const alertBoxClassNames = computed(() => {
-	const classNames = ['n8n-alert', style.alert];
+	const classNames = ['n8n-alert', $style.alert];
 	if (props.type) {
-		classNames.push(style[props.type]);
+		classNames.push($style[props.type]);
 	}
 	if (props.effect) {
-		classNames.push(style[props.effect]);
+		classNames.push($style[props.effect]);
 	}
 	if (props.center) {
-		classNames.push(style.center);
+		classNames.push($style.center);
 	}
 	if (props.background) {
-		classNames.push(style.background);
+		classNames.push($style.background);
 	}
 	return classNames;
 });

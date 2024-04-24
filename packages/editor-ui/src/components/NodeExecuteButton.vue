@@ -12,7 +12,7 @@
 					:label="buttonLabel"
 					:type="type"
 					:size="size"
-					:icon="!isListeningForEvents && !hideIcon && 'flask'"
+					:icon="!isListeningForEvents && !hideIcon ? 'flask' : undefined"
 					:transparent-background="transparent"
 					:title="!isTriggerNode ? $locale.baseText('ndv.execute.testNode.description') : ''"
 					@click="onClick"
@@ -77,18 +77,20 @@ export default defineComponent({
 			type: Boolean,
 		},
 	},
+	emits: ['stopExecution', 'execute'],
 	setup(props) {
 		const router = useRouter();
 		const workflowsStore = useWorkflowsStore();
 		const node = workflowsStore.getNodeByName(props.nodeName);
 		const pinnedData = usePinnedData(node);
 		const externalHooks = useExternalHooks();
-		const { runWorkflow } = useRunWorkflow({ router });
+		const { runWorkflow, stopCurrentExecution } = useRunWorkflow({ router });
 
 		return {
 			externalHooks,
 			pinnedData,
 			runWorkflow,
+			stopCurrentExecution,
 			...useToast(),
 			...useMessage(),
 		};
@@ -125,6 +127,9 @@ export default defineComponent({
 		},
 		isChatNode(): boolean {
 			return Boolean(this.nodeType && this.nodeType.name === CHAT_TRIGGER_NODE_TYPE);
+		},
+		isChatChild(): boolean {
+			return this.workflowsStore.checkIfNodeHasChatParent(this.nodeName);
 		},
 		isFormTriggerNode(): boolean {
 			return Boolean(this.nodeType && this.nodeType.name === FORM_TRIGGER_NODE_TYPE);
@@ -226,12 +231,14 @@ export default defineComponent({
 		},
 
 		async onClick() {
-			if (this.isChatNode) {
+			// Show chat if it's a chat node or a child of a chat node with no input data
+			if (this.isChatNode || (this.isChatChild && this.ndvStore.isNDVDataEmpty('input'))) {
 				this.ndvStore.setActiveNodeName(null);
 				nodeViewEventBus.emit('openChat');
 			} else if (this.isListeningForEvents) {
 				await this.stopWaitingForWebhook();
 			} else if (this.isListeningForWorkflowEvents) {
+				await this.stopCurrentExecution();
 				this.$emit('stopExecution');
 			} else {
 				let shouldUnpinAndExecute = false;
@@ -256,7 +263,7 @@ export default defineComponent({
 						node_type: this.nodeType ? this.nodeType.name : null,
 						workflow_id: this.workflowsStore.workflowId,
 						source: this.telemetrySource,
-						session_id: this.ndvStore.sessionId,
+						push_ref: this.ndvStore.pushRef,
 					};
 					this.$telemetry.track('User clicked execute node button', telemetryPayload);
 					await this.externalHooks.run('nodeExecuteButton.onClick', telemetryPayload);

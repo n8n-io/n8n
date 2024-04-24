@@ -32,75 +32,63 @@
 	</div>
 </template>
 
-<script lang="ts">
+<script lang="ts" setup>
+import { computed } from 'vue';
+import type { Placement } from 'element-plus';
 import N8nIcon from '../N8nIcon';
 import N8nTooltip from '../N8nTooltip';
 
-import { defineComponent } from 'vue';
+const THEME = ['info', 'info-light', 'warning', 'danger', 'success'] as const;
+const TYPE = ['note', 'tooltip'] as const;
 
-export default defineComponent({
-	name: 'N8nInfoTip',
-	components: {
-		N8nIcon,
-		N8nTooltip,
-	},
-	props: {
-		theme: {
-			type: String,
-			default: 'info',
-			validator: (value: string): boolean =>
-				['info', 'info-light', 'warning', 'danger', 'success'].includes(value),
-		},
-		type: {
-			type: String,
-			default: 'note',
-			validator: (value: string): boolean => ['note', 'tooltip'].includes(value),
-		},
-		bold: {
-			type: Boolean,
-			default: true,
-		},
-		tooltipPlacement: {
-			type: String,
-			default: 'top',
-		},
-	},
-	computed: {
-		iconData(): { icon: string; color: string } {
-			switch (this.theme) {
-				case 'info':
-					return {
-						icon: 'info-circle',
-						color: '--color-text-light)',
-					};
-				case 'info-light':
-					return {
-						icon: 'info-circle',
-						color: 'var(--color-foreground-dark)',
-					};
-				case 'warning':
-					return {
-						icon: 'exclamation-triangle',
-						color: 'var(--color-warning)',
-					};
-				case 'danger':
-					return {
-						icon: 'exclamation-triangle',
-						color: 'var(--color-danger)',
-					};
-				case 'success':
-					return {
-						icon: 'check-circle',
-						color: 'var(--color-success)',
-					};
-				default:
-					return {
-						icon: 'info-circle',
-						color: '--color-text-light)',
-					};
-			}
-		},
-	},
+interface InfoTipProps {
+	theme?: (typeof THEME)[number];
+	type?: (typeof TYPE)[number];
+	bold?: boolean;
+	tooltipPlacement?: Placement;
+}
+
+defineOptions({ name: 'N8nInfoTip' });
+const props = withDefaults(defineProps<InfoTipProps>(), {
+	theme: 'info',
+	type: 'note',
+	bold: true,
+	tooltipPlacement: 'top',
+});
+
+const iconData = computed((): { icon: string; color: string } => {
+	switch (props.theme) {
+		case 'info':
+			return {
+				icon: 'info-circle',
+				color: '--color-text-light)',
+			};
+		case 'info-light':
+			return {
+				icon: 'info-circle',
+				color: 'var(--color-foreground-dark)',
+			};
+		case 'warning':
+			return {
+				icon: 'exclamation-triangle',
+				color: 'var(--color-warning)',
+			};
+		case 'danger':
+			return {
+				icon: 'exclamation-triangle',
+				color: 'var(--color-danger)',
+			};
+		case 'success':
+			return {
+				icon: 'check-circle',
+				color: 'var(--color-success)',
+			};
+		default:
+			return {
+				icon: 'info-circle',
+				color: '--color-text-light)',
+			};
+	}
 });
 </script>
 

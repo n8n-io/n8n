@@ -235,6 +235,7 @@ async function commitAndPush() {
 		:title="i18n.baseText('settings.sourceControl.modals.push.title')"
 		:event-bus="data.eventBus"
 		:name="SOURCE_CONTROL_PUSH_MODAL_KEY"
+		max-height="80%"
 	>
 		<template #content>
 			<div :class="$style.container">
@@ -251,7 +252,7 @@ async function commitAndPush() {
 							<n8n-checkbox
 								:indeterminate="selectAllIndeterminate"
 								:model-value="selectAll"
-								@update:modelValue="onToggleSelectAll"
+								@update:model-value="onToggleSelectAll"
 							>
 								<n8n-text bold tag="strong">
 									{{ i18n.baseText('settings.sourceControl.modals.push.workflowsToCommit') }}
@@ -272,7 +273,7 @@ async function commitAndPush() {
 								<n8n-checkbox
 									:model-value="staged[file.file]"
 									:class="$style.listItemCheckbox"
-									@update:modelValue="setStagedStatus(file, !staged[file.file])"
+									@update:model-value="setStagedStatus(file, !staged[file.file])"
 								/>
 								<div>
 									<n8n-text v-if="file.status === 'deleted'" color="text-light">

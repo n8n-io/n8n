@@ -7,7 +7,7 @@
 			[$style.container]: true,
 			[$style.hoverable]: !disabled,
 		}"
-		aria-checked="true"
+		:aria-checked="active"
 	>
 		<div
 			:class="{
@@ -23,33 +23,19 @@
 	</label>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script lang="ts" setup>
+interface RadioButtonProps {
+	label: string;
+	value: string;
+	active?: boolean;
+	disabled?: boolean;
+	size?: 'small' | 'medium';
+}
 
-export default defineComponent({
-	name: 'N8nRadioButton',
-	props: {
-		label: {
-			type: String,
-			required: true,
-		},
-		value: {
-			type: String,
-			required: true,
-		},
-		active: {
-			type: Boolean,
-			default: false,
-		},
-		size: {
-			type: String,
-			default: 'medium',
-			validator: (value: string): boolean => ['small', 'medium'].includes(value),
-		},
-		disabled: {
-			type: Boolean,
-		},
-	},
+withDefaults(defineProps<RadioButtonProps>(), {
+	active: false,
+	disabled: false,
+	size: 'medium',
 });
 </script>
 

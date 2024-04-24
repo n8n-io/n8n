@@ -67,7 +67,7 @@ function onOpenCollection({ id }: { event: Event; id: number }) {
 				:show-item-count="false"
 				:show-navigation="false"
 				cards-width="24%"
-				@openCollection="onOpenCollection"
+				@open-collection="onOpenCollection"
 			/>
 		</div>
 	</div>

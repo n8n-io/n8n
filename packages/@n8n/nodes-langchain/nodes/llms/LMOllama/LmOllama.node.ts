@@ -7,7 +7,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { Ollama } from 'langchain/llms/ollama';
+import { Ollama } from '@langchain/community/llms/ollama';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 import { ollamaDescription, ollamaModel, ollamaOptions } from './description';

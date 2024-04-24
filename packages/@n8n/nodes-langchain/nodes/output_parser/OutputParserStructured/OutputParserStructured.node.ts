@@ -13,7 +13,7 @@ import { parseSchema } from 'json-schema-to-zod';
 import { z } from 'zod';
 import type { JSONSchema7 } from 'json-schema';
 import { StructuredOutputParser } from 'langchain/output_parsers';
-import { OutputParserException } from 'langchain/schema/output_parser';
+import { OutputParserException } from '@langchain/core/output_parsers';
 import get from 'lodash/get';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';

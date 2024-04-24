@@ -1,7 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
-import { XataChatMessageHistory } from 'langchain/stores/message/xata';
+import { XataChatMessageHistory } from '@langchain/community/stores/message/xata';
 import { BufferMemory } from 'langchain/memory';
 import { BaseClient } from '@xata.io/client';
 import { logWrapper } from '../../../utils/logWrapper';

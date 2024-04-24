@@ -114,7 +114,7 @@
 								:placeholder="$locale.baseText('workflowSettings.callerIds.placeholder')"
 								type="text"
 								data-test-id="workflow-caller-policy-workflow-ids"
-								@update:modelValue="onCallerIdsInput"
+								@update:model-value="onCallerIdsInput"
 							/>
 						</el-col>
 					</el-row>
@@ -282,7 +282,7 @@
 								:model-value="workflowSettings.executionTimeout > -1"
 								active-color="#13ce66"
 								data-test-id="workflow-settings-timeout-workflow"
-								@update:modelValue="toggleTimeout"
+								@update:model-value="toggleTimeout"
 							></el-switch>
 						</div>
 					</el-col>
@@ -306,7 +306,7 @@
 								:disabled="readOnlyEnv"
 								:model-value="timeoutHMS.hours"
 								:min="0"
-								@update:modelValue="(value) => setTimeout('hours', value)"
+								@update:model-value="(value) => setTimeout('hours', value)"
 							>
 								<template #append>{{ $locale.baseText('workflowSettings.hours') }}</template>
 							</n8n-input>
@@ -317,7 +317,7 @@
 								:model-value="timeoutHMS.minutes"
 								:min="0"
 								:max="60"
-								@update:modelValue="(value) => setTimeout('minutes', value)"
+								@update:model-value="(value) => setTimeout('minutes', value)"
 							>
 								<template #append>{{ $locale.baseText('workflowSettings.minutes') }}</template>
 							</n8n-input>
@@ -328,7 +328,7 @@
 								:model-value="timeoutHMS.seconds"
 								:min="0"
 								:max="60"
-								@update:modelValue="(value) => setTimeout('seconds', value)"
+								@update:model-value="(value) => setTimeout('seconds', value)"
 							>
 								<template #append>{{ $locale.baseText('workflowSettings.seconds') }}</template>
 							</n8n-input>
@@ -609,7 +609,7 @@ export default defineComponent({
 								owner: this.workflowPermissions.isOwner
 									? this.$locale.baseText(
 											'workflowSettings.callerPolicy.options.workflowsFromSameOwner.owner',
-									  )
+										)
 									: this.workflowOwnerName,
 							},
 						},
@@ -639,7 +639,7 @@ export default defineComponent({
 										? this.$locale.baseText('workflowSettings.saveDataErrorExecutionOptions.save')
 										: this.$locale.baseText(
 												'workflowSettings.saveDataErrorExecutionOptions.doNotSave',
-										  ),
+											),
 							},
 						},
 					),
@@ -668,7 +668,7 @@ export default defineComponent({
 										? this.$locale.baseText('workflowSettings.saveDataSuccessExecutionOptions.save')
 										: this.$locale.baseText(
 												'workflowSettings.saveDataSuccessExecutionOptions.doNotSave',
-										  ),
+											),
 							},
 						},
 					),
@@ -698,7 +698,7 @@ export default defineComponent({
 									? this.$locale.baseText('workflowSettings.saveExecutionProgressOptions.save')
 									: this.$locale.baseText(
 											'workflowSettings.saveExecutionProgressOptions.doNotSave',
-									  ),
+										),
 							},
 						},
 					),

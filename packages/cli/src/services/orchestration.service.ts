@@ -33,12 +33,19 @@ export class OrchestrationService {
 		);
 	}
 
+	get isSingleMainSetup() {
+		return !this.isMultiMainSetupEnabled;
+	}
+
 	redisPublisher: RedisServicePubSubPublisher;
 
 	get instanceId() {
 		return config.getEnv('redis.queueModeId');
 	}
 
+	/**
+	 * Whether this instance is the leader in a multi-main setup. Always `false` in single-main setup.
+	 */
 	get isLeader() {
 		return config.getEnv('multiMainSetup.instanceType') === 'leader';
 	}
@@ -128,7 +135,11 @@ export class OrchestrationService {
 	 * Whether this instance may add webhooks to the `webhook_entity` table.
 	 */
 	shouldAddWebhooks(activationMode: WorkflowActivateMode) {
-		if (activationMode === 'init') return false;
+		// Always try to populate the webhook entity table as well as register the webhooks
+		// to prevent issues with users upgrading from a version < 1.15, where the webhook entity
+		// was cleared on shutdown to anything past 1.28.0, where we stopped populating it on init,
+		// causing all webhooks to break
+		if (activationMode === 'init') return true;
 
 		if (activationMode === 'leadershipChange') return false;
 

@@ -1,25 +1,29 @@
 import { NodeOperationError, NodeConnectionType } from 'n8n-workflow';
 import type { ConnectionTypes, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
-import { Tool } from 'langchain/tools';
-import type { ChatResult, InputValues, BaseMessage } from 'langchain/schema';
-import { BaseChatMessageHistory } from 'langchain/schema';
-import type { BaseChatModel } from 'langchain/chat_models/base';
-import type { CallbackManagerForLLMRun } from 'langchain/callbacks';
+import { Tool } from '@langchain/core/tools';
+import type { BaseMessage } from '@langchain/core/messages';
+import type { InputValues, MemoryVariables, OutputValues } from '@langchain/core/memory';
+import type { ChatResult } from '@langchain/core/outputs';
+import { BaseChatMessageHistory } from '@langchain/core/chat_history';
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import type {
+	CallbackManagerForLLMRun,
+	BaseCallbackConfig,
+	Callbacks,
+} from '@langchain/core/callbacks/manager';
 
-import { Embeddings } from 'langchain/embeddings/base';
-import { VectorStore } from 'langchain/vectorstores/base';
-import type { Document } from 'langchain/document';
+import { Embeddings } from '@langchain/core/embeddings';
+import { VectorStore } from '@langchain/core/vectorstores';
+import type { Document } from '@langchain/core/documents';
 import { TextSplitter } from 'langchain/text_splitter';
-import type { BaseDocumentLoader } from 'langchain/document_loaders/base';
-import type { BaseCallbackConfig, Callbacks } from 'langchain/dist/callbacks/manager';
-import { BaseLLM } from 'langchain/llms/base';
-import { BaseChatMemory } from 'langchain/memory';
-import type { MemoryVariables } from 'langchain/dist/memory/base';
-import { BaseRetriever } from 'langchain/schema/retriever';
-import type { FormatInstructionsOptions } from 'langchain/schema/output_parser';
-import { BaseOutputParser, OutputParserException } from 'langchain/schema/output_parser';
+import { BaseLLM } from '@langchain/core/language_models/llms';
+import { BaseChatMemory } from '@langchain/community/memory/chat_memory';
+import { BaseRetriever } from '@langchain/core/retrievers';
+import type { FormatInstructionsOptions } from '@langchain/core/output_parsers';
+import { BaseOutputParser, OutputParserException } from '@langchain/core/output_parsers';
 import { isObject } from 'lodash';
+import type { BaseDocumentLoader } from 'langchain/dist/document_loaders/base';
 import { N8nJsonLoader } from './N8nJsonLoader';
 import { N8nBinaryLoader } from './N8nBinaryLoader';
 import { isChatInstance, logAiEvent } from './helpers';
@@ -148,35 +152,37 @@ export function logWrapper(
 							arguments: [values],
 						})) as MemoryVariables;
 
+						const chatHistory = (response?.chat_history as BaseMessage[]) ?? response;
+
 						executeFunctions.addOutputData(connectionType, index, [
-							[{ json: { action: 'loadMemoryVariables', response } }],
+							[{ json: { action: 'loadMemoryVariables', chatHistory } }],
 						]);
 						return response;
 					};
-				} else if (
-					prop === 'outputKey' &&
-					'outputKey' in target &&
-					target.constructor.name === 'BufferWindowMemory'
-				) {
-					connectionType = NodeConnectionType.AiMemory;
-					const { index } = executeFunctions.addInputData(connectionType, [
-						[{ json: { action: 'chatHistory' } }],
-					]);
-					const response = target[prop];
+				} else if (prop === 'saveContext' && 'saveContext' in target) {
+					return async (input: InputValues, output: OutputValues): Promise<MemoryVariables> => {
+						connectionType = NodeConnectionType.AiMemory;
 
-					target.chatHistory
-						.getMessages()
-						.then((messages) => {
-							executeFunctions.addOutputData(NodeConnectionType.AiMemory, index, [
-								[{ json: { action: 'chatHistory', chatHistory: messages } }],
-							]);
-						})
-						.catch((error: Error) => {
-							executeFunctions.addOutputData(NodeConnectionType.AiMemory, index, [
-								[{ json: { action: 'chatHistory', error } }],
-							]);
-						});
-					return response;
+						const { index } = executeFunctions.addInputData(connectionType, [
+							[{ json: { action: 'saveContext', input, output } }],
+						]);
+
+						const response = (await callMethodAsync.call(target, {
+							executeFunctions,
+							connectionType,
+							currentNodeRunIndex: index,
+							method: target[prop],
+							arguments: [input, output],
+						})) as MemoryVariables;
+
+						const chatHistory = await target.chatHistory.getMessages();
+
+						executeFunctions.addOutputData(connectionType, index, [
+							[{ json: { action: 'saveContext', chatHistory } }],
+						]);
+
+						return response;
+					};
 				}
 			}
 
@@ -522,6 +528,7 @@ export function logWrapper(
 				}
 			}
 
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 			return (target as any)[prop];
 		},
 	});

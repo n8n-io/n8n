@@ -13,6 +13,7 @@ import { Logger } from '@/Logger';
 import { Push } from '@/push';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { mockInstance } from '../../shared/mocking';
+import type { WorkflowActivateMode } from 'n8n-workflow';
 
 const os = Container.get(OrchestrationService);
 const handler = Container.get(OrchestrationHandlerMainService);
@@ -148,5 +149,39 @@ describe('Orchestration Service', () => {
 		expect(helpers.debounceMessageReceiver).toHaveBeenCalledTimes(2);
 		expect(res1!.payload).toBeUndefined();
 		expect(res2!.payload!.result).toEqual('debounced');
+	});
+
+	describe('shouldAddWebhooks', () => {
+		beforeEach(() => {
+			config.set('multiMainSetup.instanceType', 'leader');
+		});
+		test('should return true for init', () => {
+			// We want to ensure that webhooks are populated on init
+			// more https://github.com/n8n-io/n8n/pull/8830
+			const result = os.shouldAddWebhooks('init');
+			expect(result).toBe(true);
+		});
+
+		test('should return false for leadershipChange', () => {
+			const result = os.shouldAddWebhooks('leadershipChange');
+			expect(result).toBe(false);
+		});
+
+		test('should return true for update or activate when is leader', () => {
+			const modes = ['update', 'activate'] as WorkflowActivateMode[];
+			for (const mode of modes) {
+				const result = os.shouldAddWebhooks(mode);
+				expect(result).toBe(true);
+			}
+		});
+
+		test('should return false for update or activate when not leader', () => {
+			config.set('multiMainSetup.instanceType', 'follower');
+			const modes = ['update', 'activate'] as WorkflowActivateMode[];
+			for (const mode of modes) {
+				const result = os.shouldAddWebhooks(mode);
+				expect(result).toBe(false);
+			}
+		});
 	});
 });

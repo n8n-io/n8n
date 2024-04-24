@@ -109,11 +109,6 @@ export class CredentialsService {
 
 		await validateEntity(newCredentials);
 
-		// Add the date for newly added node access permissions
-		for (const nodeAccess of newCredentials.nodesAccess) {
-			nodeAccess.date = new Date();
-		}
-
 		return newCredentials;
 	}
 
@@ -132,13 +127,6 @@ export class CredentialsService {
 
 		await validateEntity(updateData);
 
-		// Add the date for newly added node access permissions
-		for (const nodeAccess of updateData.nodesAccess) {
-			if (!nodeAccess.date) {
-				nodeAccess.date = new Date();
-			}
-		}
-
 		// Do not overwrite the oauth data else data like the access or refresh token would get lost
 		// everytime anybody changes anything on the credentials even if it is just the name.
 		if (decryptedData.oauthTokenData) {
@@ -149,11 +137,7 @@ export class CredentialsService {
 	}
 
 	createEncryptedData(credentialId: string | null, data: CredentialsEntity): ICredentialsDb {
-		const credentials = new Credentials(
-			{ id: credentialId, name: data.name },
-			data.type,
-			data.nodesAccess,
-		);
+		const credentials = new Credentials({ id: credentialId, name: data.name }, data.type);
 
 		credentials.setData(data.data as unknown as ICredentialDataDecryptedObject);
 

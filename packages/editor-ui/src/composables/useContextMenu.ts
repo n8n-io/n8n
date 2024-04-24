@@ -1,9 +1,5 @@
 import type { XYPosition } from '@/Interface';
-import {
-	NOT_DUPLICATABE_NODE_TYPES,
-	PIN_DATA_NODE_TYPES_DENYLIST,
-	STICKY_NODE_TYPE,
-} from '@/constants';
+import { NOT_DUPLICATABE_NODE_TYPES, STICKY_NODE_TYPE } from '@/constants';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -13,7 +9,7 @@ import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import { computed, ref, watch } from 'vue';
 import { getMousePosition } from '../utils/nodeViewUtils';
 import { useI18n } from './useI18n';
-import { useDataSchema } from './useDataSchema';
+import { usePinnedData } from './usePinnedData';
 
 export type ContextMenuTarget =
 	| { source: 'canvas' }
@@ -46,7 +42,7 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowsStore = useWorkflowsStore();
 	const sourceControlStore = useSourceControlStore();
-	const { getInputDataWithPinned } = useDataSchema();
+
 	const i18n = useI18n();
 
 	const isReadOnly = computed(
@@ -80,13 +76,6 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 		if (NOT_DUPLICATABE_NODE_TYPES.includes(nodeType.name)) return false;
 
 		return canAddNodeOfType(nodeType);
-	};
-
-	const canPinNode = (node: INode): boolean => {
-		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
-		const dataToPin = getInputDataWithPinned(node);
-		if (!nodeType || dataToPin.length === 0) return false;
-		return nodeType.outputs.length === 1 && !PIN_DATA_NODE_TYPES_DENYLIST.includes(node.type);
 	};
 
 	const hasPinData = (node: INode): boolean => {
@@ -173,7 +162,7 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 						? i18n.baseText('contextMenu.unpin', i18nOptions)
 						: i18n.baseText('contextMenu.pin', i18nOptions),
 					shortcut: { keys: ['p'] },
-					disabled: isReadOnly.value || !nodes.every(canPinNode),
+					disabled: isReadOnly.value || !nodes.every((n) => usePinnedData(n).canPinNode(true)),
 				},
 				{
 					id: 'copy',
@@ -210,7 +199,7 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 								label: i18n.baseText('contextMenu.changeColor'),
 								disabled: isReadOnly.value,
 							},
-					  ]
+						]
 					: [
 							{
 								id: 'open',
@@ -228,7 +217,7 @@ export const useContextMenu = (onAction: ContextMenuActionCallback = () => {}) =
 								shortcut: { keys: ['F2'] },
 								disabled: isReadOnly.value,
 							},
-					  ];
+						];
 				// Add actions only available for a single node
 				menuActions.unshift(...singleNodeActions);
 			}

@@ -8,25 +8,27 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import type { BaseLanguageModel } from 'langchain/base_language';
+import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import {
 	AIMessagePromptTemplate,
 	PromptTemplate,
 	SystemMessagePromptTemplate,
 	HumanMessagePromptTemplate,
 	ChatPromptTemplate,
-} from 'langchain/prompts';
-import type { BaseOutputParser } from 'langchain/schema/output_parser';
+} from '@langchain/core/prompts';
+import type { BaseOutputParser } from '@langchain/core/output_parsers';
 import { CombiningOutputParser } from 'langchain/output_parsers';
 import { LLMChain } from 'langchain/chains';
-import type { BaseChatModel } from 'langchain/chat_models/base';
-import { HumanMessage } from 'langchain/schema';
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import { HumanMessage } from '@langchain/core/messages';
+import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { getTemplateNoticeField } from '../../../utils/sharedFields';
 import {
 	getOptionalOutputParsers,
 	getPromptInputByType,
 	isChatInstance,
 } from '../../../utils/helpers';
+import { getTracingConfig } from '../../../utils/tracing';
 
 interface MessagesTemplate {
 	type: string;
@@ -73,14 +75,19 @@ async function getImageMessage(
 	}
 
 	const bufferData = await context.helpers.getBinaryDataBuffer(itemIndex, binaryDataKey);
+	const model = (await context.getInputConnectionData(
+		NodeConnectionType.AiLanguageModel,
+		0,
+	)) as BaseLanguageModel;
+	const dataURI = `data:image/jpeg;base64,${bufferData.toString('base64')}`;
+
+	const imageUrl = model instanceof ChatGoogleGenerativeAI ? dataURI : { url: dataURI, detail };
+
 	return new HumanMessage({
 		content: [
 			{
 				type: 'image_url',
-				image_url: {
-					url: `data:image/jpeg;base64,${bufferData.toString('base64')}`,
-					detail,
-				},
+				image_url: imageUrl,
 			},
 		],
 	});
@@ -92,6 +99,7 @@ async function getChainPromptTemplate(
 	llm: BaseLanguageModel | BaseChatModel,
 	messages?: MessagesTemplate[],
 	formatInstructions?: string,
+	query?: string,
 ) {
 	const queryTemplate = new PromptTemplate({
 		template: `{query}${formatInstructions ? '\n{formatInstructions}' : ''}`,
@@ -129,7 +137,15 @@ async function getChainPromptTemplate(
 			}),
 		);
 
-		parsedMessages.push(new HumanMessagePromptTemplate(queryTemplate));
+		const lastMessage = parsedMessages[parsedMessages.length - 1];
+		// If the last message is a human message and it has an array of content, we need to add the query to the last message
+		if (lastMessage instanceof HumanMessage && Array.isArray(lastMessage.content)) {
+			const humanMessage = new HumanMessagePromptTemplate(queryTemplate);
+			const test = await humanMessage.format({ query });
+			lastMessage.content.push({ text: test.content.toString(), type: 'text' });
+		} else {
+			parsedMessages.push(new HumanMessagePromptTemplate(queryTemplate));
+		}
 		return ChatPromptTemplate.fromMessages(parsedMessages);
 	}
 
@@ -145,8 +161,9 @@ async function createSimpleLLMChain(
 	const chain = new LLMChain({
 		llm,
 		prompt,
-	});
-	const response = (await chain.call({
+	}).withConfig(getTracingConfig(context));
+
+	const response = (await chain.invoke({
 		query,
 		signal: context.getExecutionCancelSignal(),
 	})) as string[];
@@ -167,6 +184,8 @@ async function getChain(
 		itemIndex,
 		llm,
 		messages,
+		undefined,
+		query,
 	);
 
 	// If there are no output parsers, create a simple LLM chain and execute the query
@@ -187,11 +206,13 @@ async function getChain(
 		llm,
 		messages,
 		formatInstructions,
+		query,
 	);
 
 	const chain = prompt.pipe(llm).pipe(combinedOutputParser);
-
-	const response = (await chain.invoke({ query })) as string | string[];
+	const response = (await chain.withConfig(getTracingConfig(context)).invoke({ query })) as
+		| string
+		| string[];
 
 	return Array.isArray(response) ? response : [response];
 }
@@ -330,6 +351,7 @@ export class ChainLlm implements INodeType {
 				name: 'hasOutputParser',
 				type: 'boolean',
 				default: false,
+				noDataExpression: true,
 				displayOptions: {
 					hide: {
 						'@version': [1, 1.1, 1.3],
@@ -503,55 +525,64 @@ export class ChainLlm implements INodeType {
 		const outputParsers = await getOptionalOutputParsers(this);
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			let prompt: string;
-			if (this.getNode().typeVersion <= 1.2) {
-				prompt = this.getNodeParameter('prompt', itemIndex) as string;
-			} else {
-				prompt = getPromptInputByType({
-					ctx: this,
-					i: itemIndex,
-					inputKey: 'text',
-					promptTypeKey: 'promptType',
-				});
-			}
-			const messages = this.getNodeParameter(
-				'messages.messageValues',
-				itemIndex,
-				[],
-			) as MessagesTemplate[];
-
-			if (prompt === undefined) {
-				throw new NodeOperationError(this.getNode(), 'The ‘prompt’ parameter is empty.');
-			}
-
-			const responses = await getChain(this, itemIndex, prompt, llm, outputParsers, messages);
-
-			responses.forEach((response) => {
-				let data: IDataObject;
-				if (typeof response === 'string') {
-					data = {
-						response: {
-							text: response.trim(),
-						},
-					};
-				} else if (Array.isArray(response)) {
-					data = {
-						data: response,
-					};
-				} else if (response instanceof Object) {
-					data = response as IDataObject;
+			try {
+				let prompt: string;
+				if (this.getNode().typeVersion <= 1.3) {
+					prompt = this.getNodeParameter('prompt', itemIndex) as string;
 				} else {
-					data = {
-						response: {
-							text: response,
-						},
-					};
+					prompt = getPromptInputByType({
+						ctx: this,
+						i: itemIndex,
+						inputKey: 'text',
+						promptTypeKey: 'promptType',
+					});
+				}
+				const messages = this.getNodeParameter(
+					'messages.messageValues',
+					itemIndex,
+					[],
+				) as MessagesTemplate[];
+
+				if (prompt === undefined) {
+					throw new NodeOperationError(this.getNode(), "The 'prompt' parameter is empty.");
 				}
 
-				returnData.push({
-					json: data,
+				const responses = await getChain(this, itemIndex, prompt, llm, outputParsers, messages);
+
+				responses.forEach((response) => {
+					let data: IDataObject;
+					if (typeof response === 'string') {
+						data = {
+							response: {
+								text: response.trim(),
+							},
+						};
+					} else if (Array.isArray(response)) {
+						data = {
+							data: response,
+						};
+					} else if (response instanceof Object) {
+						data = response as IDataObject;
+					} else {
+						data = {
+							response: {
+								text: response,
+							},
+						};
+					}
+
+					returnData.push({
+						json: data,
+					});
 				});
-			});
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
+					continue;
+				}
+
+				throw error;
+			}
 		}
 
 		return [returnData];
