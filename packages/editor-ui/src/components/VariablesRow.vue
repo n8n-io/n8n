@@ -49,10 +49,6 @@ const isFeatureEnabled = computed(() =>
 	settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Variables),
 );
 
-const showActions = computed(
-	() => isFeatureEnabled.value && (permissions.edit || permissions.delete),
-);
-
 onMounted(() => {
 	focusFirstInput();
 });
