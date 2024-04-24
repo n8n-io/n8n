@@ -4,7 +4,18 @@ import { writeFileSync } from 'node:fs';
 import { collectSuites } from '../lib';
 import type { Suites } from '../lib';
 
-function toSuitesList(suites: Suites) {
+async function exists(filePath: string) {
+	const fullPath = path.resolve('src', 'benchmark', filePath);
+
+	try {
+		await fs.access(fullPath);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+async function toSuitesList(suites: Suites) {
 	let list = '';
 
 	for (const [fullPath, suite] of Object.entries(suites)) {
@@ -16,7 +27,9 @@ function toSuitesList(suites: Suites) {
 			const suiteName = suite.tasks[i].name.replace(suite.name, '').trim();
 			const workflowPath = `./suites/workflows/${suiteId}-${i + 1}.json`;
 
-			list += `- [${suiteName}](${workflowPath})\n`;
+			list += (await exists(workflowPath))
+				? `- [${suiteName}](${workflowPath})\n`
+				: `- ${suiteName}\n`;
 		}
 	}
 
@@ -37,7 +50,7 @@ async function listSuites() {
 	const after = oldDoc.slice(oldDoc.indexOf(MARK_END));
 
 	const suites = await collectSuites();
-	const suitesList = toSuitesList(suites);
+	const suitesList = await toSuitesList(suites);
 
 	const newDoc = [before, suitesList, after].join('\n');
 
