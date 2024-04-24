@@ -233,8 +233,8 @@ importers:
         specifier: 0.2.1
         version: 0.2.1
       '@google/generative-ai':
-        specifier: 0.7.1
-        version: 0.7.1
+        specifier: 0.8.0
+        version: 0.8.0
       '@huggingface/inference':
         specifier: 2.6.4
         version: 2.6.4
@@ -5211,6 +5211,11 @@ packages:
 
   /@google/generative-ai@0.7.1:
     resolution: {integrity: sha512-WTjMLLYL/xfA5BW6xAycRPiAX7FNHKAxrid/ayqC1QMam0KAK0NbMeS9Lubw80gVg5xFMLE+H7pw4wdNzTOlxw==}
+    engines: {node: '>=18.0.0'}
+    dev: false
+
+  /@google/generative-ai@0.8.0:
+    resolution: {integrity: sha512-O55FgK1Jvl2JuJP1cnRHEAM8A4Lr3yKtjQrCn2QXOXVT+L5+o/nFQcx0/oIo3oq1Kq9TjjgewXyb9BBrK+Wd0A==}
     engines: {node: '>=18.0.0'}
     dev: false
 

@@ -133,7 +133,7 @@
     "@aws-sdk/credential-provider-node": "3.549.0",
     "@getzep/zep-js": "0.9.0",
     "@google-ai/generativelanguage": "0.2.1",
-    "@google/generative-ai": "0.7.1",
+    "@google/generative-ai": "0.8.0",
     "@huggingface/inference": "2.6.4",
     "@langchain/anthropic": "^0.1.3",
     "@langchain/cohere": "^0.0.5",
