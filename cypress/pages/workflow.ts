@@ -419,6 +419,9 @@ export class WorkflowPage extends BasePage {
 		editSticky: (content: string) => {
 			this.getters.stickies().dblclick().find('textarea').clear().type(content).type('{esc}');
 		},
+		clearSticky: () => {
+			this.getters.stickies().dblclick().find('textarea').clear().type('{esc}');
+		},
 		shouldHaveWorkflowName: (name: string) => {
 			this.getters.workflowNameInputContainer().invoke('attr', 'title').should('include', name);
 		},
