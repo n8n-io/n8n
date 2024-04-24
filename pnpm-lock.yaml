@@ -233,8 +233,8 @@ importers:
         specifier: 0.2.1
         version: 0.2.1
       '@google/generative-ai':
-        specifier: ^0.5.0
-        version: 0.5.0
+        specifier: 0.8.0
+        version: 0.8.0
       '@huggingface/inference':
         specifier: 2.6.4
         version: 2.6.4
@@ -251,8 +251,8 @@ importers:
         specifier: 0.1.41
         version: 0.1.41
       '@langchain/google-genai':
-        specifier: ^0.0.11
-        version: 0.0.11
+        specifier: ^0.0.12
+        version: 0.0.12
       '@langchain/mistralai':
         specifier: 0.0.13
         version: 0.0.13
@@ -5209,13 +5209,13 @@ packages:
       - supports-color
     dev: false
 
-  /@google/generative-ai@0.1.3:
-    resolution: {integrity: sha512-Cm4uJX1sKarpm1mje/MiOIinM7zdUUrQp/5/qGPAgznbdd/B9zup5ehT6c1qGqycFcSopTA1J1HpqHS5kJR8hQ==}
+  /@google/generative-ai@0.7.1:
+    resolution: {integrity: sha512-WTjMLLYL/xfA5BW6xAycRPiAX7FNHKAxrid/ayqC1QMam0KAK0NbMeS9Lubw80gVg5xFMLE+H7pw4wdNzTOlxw==}
     engines: {node: '>=18.0.0'}
     dev: false
 
-  /@google/generative-ai@0.5.0:
-    resolution: {integrity: sha512-uxfN3mROgVxb+9KrlVHIiglcWgNE86pVTS9TRkGS6hMvQoZ5TrB1TIMcW5ZYWxlRhMwtmEdJnNMUxSqM3Qp/Ag==}
+  /@google/generative-ai@0.8.0:
+    resolution: {integrity: sha512-O55FgK1Jvl2JuJP1cnRHEAM8A4Lr3yKtjQrCn2QXOXVT+L5+o/nFQcx0/oIo3oq1Kq9TjjgewXyb9BBrK+Wd0A==}
     engines: {node: '>=18.0.0'}
     dev: false
 
@@ -6366,11 +6366,11 @@ packages:
       zod-to-json-schema: 3.22.4(zod@3.22.4)
     dev: false
 
-  /@langchain/google-genai@0.0.11:
-    resolution: {integrity: sha512-o4+r+ETmcPqcrRTJeJQQ0c796IAx1dvVkZvFsUqLhTIteIQuAc2KenY/UDGQxZVghw6fZf4irN/PvkNHJjfgWw==}
+  /@langchain/google-genai@0.0.12:
+    resolution: {integrity: sha512-NDARJ+ZxjlkTHDvNroiG6V+3gW0u0OlMvbDEYAAXR6wFGIV09//ekolr+bA290ZCN77Ei+BEOsd6Ax1wBk3Z4w==}
     engines: {node: '>=18'}
     dependencies:
-      '@google/generative-ai': 0.1.3
+      '@google/generative-ai': 0.7.1
       '@langchain/core': 0.1.41
     dev: false
 
