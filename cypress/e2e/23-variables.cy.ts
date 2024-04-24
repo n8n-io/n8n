@@ -18,9 +18,10 @@ describe('Variables', () => {
 
 		beforeEach(() => {
 			cy.intercept('GET', '/rest/variables').as('loadVariables');
+			cy.intercept('GET', '/rest/login').as('login');
 
 			cy.visit(variablesPage.url);
-			cy.wait(['@loadVariables', '@loadSettings']);
+			cy.wait(['@loadVariables', '@loadSettings', '@login']);
 		});
 
 		it('should show the licensed action box when the feature is enabled', () => {
