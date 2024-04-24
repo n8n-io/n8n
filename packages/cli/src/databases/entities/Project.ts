@@ -11,7 +11,7 @@ import { ApplicationError, ErrorReporterProxy } from 'n8n-workflow';
 import { Logger } from '@/Logger';
 import { UserRepository } from '../repositories/user.repository';
 
-export type ProjectType = 'personal' | 'team' | 'public';
+export type ProjectType = 'personal' | 'team';
 
 @Entity()
 export class Project extends WithTimestampsAndStringId {

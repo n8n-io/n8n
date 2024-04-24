@@ -26,7 +26,6 @@ import type { SourceControlledFile } from './types/sourceControlledFile';
 import { VariablesService } from '../variables/variables.service.ee';
 import { TagRepository } from '@db/repositories/tag.repository';
 import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import { UserRepository } from '@db/repositories/user.repository';
 import { Logger } from '@/Logger';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
@@ -35,6 +34,9 @@ import { WorkflowTagMappingRepository } from '@db/repositories/workflowTagMappin
 import { VariablesRepository } from '@db/repositories/variables.repository';
 import { ProjectRepository } from '@/databases/repositories/project.repository';
 import type { Project } from '@/databases/entities/Project';
+import type { ResourceOwner } from './types/resourceOwner';
+import { assertNever } from '@/utils';
+import { UserRepository } from '@/databases/repositories/user.repository';
 
 @Service()
 export class SourceControlImportService {
@@ -205,6 +207,8 @@ export class SourceControlImportService {
 	}
 
 	public async importWorkflowFromWorkFolder(candidates: SourceControlledFile[], userId: string) {
+		const personalProject =
+			await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(userId);
 		const workflowRunner = this.activeWorkflowRunner;
 		const candidateIds = candidates.map((c) => c.id);
 		const existingWorkflows = await Container.get(WorkflowRepository).findByIds(candidateIds, {
@@ -214,7 +218,6 @@ export class SourceControlImportService {
 			candidateIds,
 			{ select: ['workflowId', 'role', 'projectId'] },
 		);
-		const cachedOwnerIds = new Map<string, string>();
 		const importWorkflowsResult = await Promise.all(
 			candidates.map(async (candidate) => {
 				this.logger.debug(`Parsing workflow file ${candidate.file}`);
@@ -236,52 +239,26 @@ export class SourceControlImportService {
 						extra: { workflowId: importedWorkflow.id ?? 'new' },
 					});
 				}
-				// Update workflow owner to the user who exported the workflow, if that user exists
-				// in the instance, and the workflow doesn't already have an owner
-				let workflowOwnerId = userId;
-				const workflowOwnerPersonalProject =
-					await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(workflowOwnerId);
-				if (cachedOwnerIds.has(importedWorkflow.owner)) {
-					workflowOwnerId = cachedOwnerIds.get(importedWorkflow.owner) ?? userId;
-				} else {
-					const foundUser = await Container.get(UserRepository).findOne({
-						where: {
-							email: importedWorkflow.owner,
-						},
-						select: ['id'],
-					});
-					if (foundUser) {
-						cachedOwnerIds.set(importedWorkflow.owner, foundUser.id);
-						workflowOwnerId = foundUser.id;
-					}
-				}
 
-				const existingSharedWorkflowOwnerByRoleId = allSharedWorkflows.find(
-					(e) => e.workflowId === importedWorkflow.id && e.role === 'workflow:owner',
+				const isOwnedLocally = allSharedWorkflows.some(
+					(w) => w.workflowId === importedWorkflow.id && w.role === 'workflow:owner',
 				);
-				const existingSharedWorkflowOwnerByUserId = allSharedWorkflows.find(
-					(e) => e.workflowId === importedWorkflow.id && e.role === 'workflow:owner',
-				);
-				if (!existingSharedWorkflowOwnerByUserId && !existingSharedWorkflowOwnerByRoleId) {
-					// no owner exists yet, so create one
-					await Container.get(SharedWorkflowRepository).insert({
-						workflowId: importedWorkflow.id,
-						projectId: workflowOwnerPersonalProject.id,
-						role: 'workflow:owner',
-					});
-				} else if (existingSharedWorkflowOwnerByRoleId) {
-					// skip, because the workflow already has a global owner
-				} else if (existingSharedWorkflowOwnerByUserId && !existingSharedWorkflowOwnerByRoleId) {
-					// if the workflow has a non-global owner that is referenced by the owner file,
-					// and no existing global owner, update the owner to the user referenced in the owner file
-					await Container.get(SharedWorkflowRepository).update(
+
+				if (!isOwnedLocally) {
+					const remoteOwnerProject: Project | null = importedWorkflow.owner
+						? await this.findOrCreateOwnerProject(importedWorkflow.owner)
+						: null;
+
+					await Container.get(SharedWorkflowRepository).upsert(
 						{
 							workflowId: importedWorkflow.id,
-							projectId: workflowOwnerPersonalProject.id,
+							projectId: remoteOwnerProject?.id ?? personalProject.id,
+							role: 'workflow:owner',
 						},
-						{ role: 'workflow:owner' },
+						['workflowId', 'projectId'],
 					);
 				}
+
 				if (existingWorkflow?.active) {
 					try {
 						// remove active pre-import workflow
@@ -353,24 +330,13 @@ export class SourceControlImportService {
 				await Container.get(CredentialsRepository).upsert(newCredentialObject, ['id']);
 
 				const isOwnedLocally = existingSharedCredentials.some(
-					(c) => c.credentialsId === credential.id,
+					(c) => c.credentialsId === credential.id && c.role === 'credential:owner',
 				);
 
 				if (!isOwnedLocally) {
-					const remoteOwnerId = credential.ownedBy
-						? await Container.get(UserRepository)
-								.findOne({
-									where: { email: credential.ownedBy },
-									select: { id: true },
-								})
-								.then((user) => user?.id)
+					const remoteOwnerProject: Project | null = credential.ownedBy
+						? await this.findOrCreateOwnerProject(credential.ownedBy)
 						: null;
-
-					let remoteOwnerProject: Project | null = null;
-					if (remoteOwnerId) {
-						remoteOwnerProject =
-							await Container.get(ProjectRepository).getPersonalProjectForUser(remoteOwnerId);
-					}
 
 					const newSharedCredential = new SharedCredentials();
 					newSharedCredential.credentialsId = newCredentialObject.id as string;
@@ -519,5 +485,41 @@ export class SourceControlImportService {
 		await this.variablesService.updateCache();
 
 		return result;
+	}
+
+	private async findOrCreateOwnerProject(owner: ResourceOwner): Promise<Project | null> {
+		const projectRepository = Container.get(ProjectRepository);
+		const userRepository = Container.get(UserRepository);
+		if (typeof owner === 'string' || owner.type === 'personal') {
+			const email = typeof owner === 'string' ? owner : owner.personalEmail;
+			const user = await userRepository.findOne({
+				where: { email },
+			});
+			if (!user) {
+				return null;
+			}
+			return await projectRepository.getPersonalProjectForUserOrFail(user.id);
+		} else if (owner.type === 'team') {
+			let teamProject = await projectRepository.findOne({
+				where: { id: owner.teamId },
+			});
+			if (!teamProject) {
+				teamProject = await projectRepository.save(
+					projectRepository.create({
+						id: owner.teamId,
+						name: owner.teamName,
+					}),
+				);
+			}
+
+			return teamProject;
+		}
+
+		assertNever(owner);
+
+		const errorOwner = owner as ResourceOwner;
+		throw new ApplicationError(
+			`Unknown resource owner type "${typeof errorOwner !== 'string' ? errorOwner.type : 'UNKNOWN'}" found when importing from source controller`,
+		);
 	}
 }
