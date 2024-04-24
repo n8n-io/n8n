@@ -1,6 +1,6 @@
 export type HttpSslAuthCredentials = {
-	ca: string;
-	cert: string;
-	key: string;
-	passphrase: string;
+	ca?: string;
+	cert?: string;
+	key?: string;
+	passphrase?: string;
 };

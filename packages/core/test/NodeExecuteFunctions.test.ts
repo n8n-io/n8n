@@ -1,3 +1,4 @@
+import type { SecureContextOptions } from 'tls';
 import {
 	cleanupParameterData,
 	copyInputItems,
@@ -387,26 +388,39 @@ describe('NodeExecuteFunctions', () => {
 			expect((axiosOptions.httpsAgent as Agent).options.servername).toEqual('example.de');
 		});
 
-		test('should set ssl certificates', async () => {
-			const axiosOptions = await parseRequestObject({
+		describe('should set SSL certificates', () => {
+			const agentOptions: SecureContextOptions = {
+				ca: '-----BEGIN CERTIFICATE-----\nTEST\n-----END CERTIFICATE-----',
+			};
+			const requestObject: IRequestOptions = {
 				method: 'GET',
 				uri: 'https://example.de',
-				agentOptions: {
-					cert: undefined,
-					ca: '-----BEGIN CERTIFICATE-----\nTEST\n-----END CERTIFICATE-----',
-					key: undefined,
-					passphrase: undefined,
-				},
+				agentOptions,
+			};
+
+			test('on regular requests', async () => {
+				const axiosOptions = await parseRequestObject(requestObject);
+				expect((axiosOptions.httpsAgent as Agent).options).toEqual({
+					servername: 'example.de',
+					...agentOptions,
+					noDelay: true,
+					path: null,
+				});
 			});
 
-			expect((axiosOptions.httpsAgent as Agent).options).toEqual({
-				servername: 'example.de',
-				cert: undefined,
-				ca: '-----BEGIN CERTIFICATE-----\nTEST\n-----END CERTIFICATE-----',
-				key: undefined,
-				passphrase: undefined,
-				noDelay: true,
-				path: null,
+			test('on redirected requests', async () => {
+				const axiosOptions = await parseRequestObject(requestObject);
+				expect(axiosOptions.beforeRedirect).toBeDefined;
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				const redirectOptions: Record<string, any> = { agents: {}, hostname: 'example.de' };
+				axiosOptions.beforeRedirect!(redirectOptions, mock());
+				expect(redirectOptions.agent).toEqual(redirectOptions.agents.https);
+				expect((redirectOptions.agent as Agent).options).toEqual({
+					servername: 'example.de',
+					...agentOptions,
+					noDelay: true,
+					path: null,
+				});
 			});
 		});
 
