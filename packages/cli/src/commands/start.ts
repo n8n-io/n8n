@@ -203,6 +203,8 @@ export class Start extends BaseCommand {
 
 		await orchestrationService.init();
 
+		if (config.getEnv('executions.mode') !== 'queue') return;
+
 		await Container.get(OrchestrationHandlerMainService).init();
 
 		if (!orchestrationService.isMultiMainSetupEnabled) return;
