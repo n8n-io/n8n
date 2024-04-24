@@ -26,18 +26,18 @@ export async function collectSuites() {
 export function registerSuites(bench: Bench) {
 	for (const { hooks, tasks } of Object.values(suites)) {
 		/**
-		 * In tinybench, `beforeAll` and `afterAll` refer to all iterations of
-		 * a single task, while `beforeEach` and `afterEach` refer to each iteration.
+		 * In tinybench, `beforeAll` and `afterAll` refer to all _iterations_ of
+		 * a single task, while `beforeEach` and `afterEach` refer to each _iteration_.
 		 *
-		 * In jest and vitest, `beforeAll` and `afterAll` refer to all tests in a suite,
-		 * while `beforeEach` and `afterEach` refer to each individual test.
+		 * In jest and vitest, `beforeAll` and `afterAll` refer to all _tests_,
+		 * while `beforeEach` and `afterEach` refer to each _test_.
 		 *
-		 * We rename tinybench's hooks to prevent confusion from this difference.
+		 * We rename tinybench's hooks to prevent confusion from familiarity with jest.
 		 */
 		const options: Record<string, Callback> = {};
 
-		if (hooks.beforeEach) options.beforeAll = hooks.beforeEach;
-		if (hooks.afterEach) options.afterAll = hooks.afterEach;
+		if (hooks.beforeEachTask) options.beforeAll = hooks.beforeEachTask;
+		if (hooks.afterEachTask) options.afterAll = hooks.afterEachTask;
 
 		for (const t of tasks) {
 			bench.add(t.name, t.operation, options);
@@ -76,30 +76,28 @@ export function task(taskName: string, operation: Task['operation']) {
 	});
 }
 
-// @TODO: Rename `beforeEach` and `afteEach` to dismbiguate? e.g. `beforeEachTask`, `afterEachTask`
-
 /**
  * Setup step to run once before all iterations of each benchmarking task in a suite.
  */
-export function beforeEach(fn: Callback) {
+export function beforeEachTask(fn: Callback) {
 	const filePath = suiteFilePath();
 
-	if (suites[filePath]?.hooks.beforeEach) {
+	if (suites[filePath]?.hooks.beforeEachTask) {
 		throw new DuplicateHookError('beforeEach', filePath);
 	}
 
-	suites[filePath].hooks.beforeEach = fn;
+	suites[filePath].hooks.beforeEachTask = fn;
 }
 
 /**
  * Teardown step to run once after all iterations of each benchmarking task in a suite.
  */
-export function afterEach(fn: Callback) {
+export function afterEachTask(fn: Callback) {
 	const filePath = suiteFilePath();
 
-	if (suites[filePath]?.hooks.afterEach) {
+	if (suites[filePath]?.hooks.afterEachTask) {
 		throw new DuplicateHookError('afterEach', filePath);
 	}
 
-	suites[filePath].hooks.afterEach = fn;
+	suites[filePath].hooks.afterEachTask = fn;
 }

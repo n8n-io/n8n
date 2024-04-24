@@ -5,8 +5,8 @@ export type Suites = {
 	[suiteFilePath: string]: {
 		name: string;
 		hooks: {
-			beforeEach?: Callback;
-			afterEach?: Callback;
+			beforeEachTask?: Callback;
+			afterEachTask?: Callback;
 		};
 		tasks: Task[];
 	};
