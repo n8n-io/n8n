@@ -33,8 +33,10 @@ import {
 	reduceAsync,
 	replaceNullValues,
 	sanitizeUiMessage,
+	setAgentOptions,
 } from '../GenericFunctions';
 import { keysToLowercase } from '@utils/utilities';
+import type { HttpSslAuthCredentials } from '../interfaces';
 
 function toText<T>(data: T) {
 	if (typeof data === 'object' && data !== null) {
@@ -56,7 +58,17 @@ export class HttpRequestV3 implements INodeType {
 			},
 			inputs: ['main'],
 			outputs: ['main'],
-			credentials: [],
+			credentials: [
+				{
+					name: 'httpSslAuth',
+					required: true,
+					displayOptions: {
+						show: {
+							provideSslCertificates: [true],
+						},
+					},
+				},
+			],
 			properties: [
 				{
 					displayName: '',
@@ -170,6 +182,36 @@ export class HttpRequestV3 implements INodeType {
 					displayOptions: {
 						show: {
 							authentication: ['genericCredentialType'],
+						},
+					},
+				},
+				{
+					displayName: 'SSL Certificates',
+					name: 'provideSslCertificates',
+					type: 'boolean',
+					default: false,
+					isNodeSetting: true,
+				},
+				{
+					displayName: "Provide certificates in node's 'Credential for SSL Certificates' parameter",
+					name: 'provideSslCertificatesNotice',
+					type: 'notice',
+					default: '',
+					isNodeSetting: true,
+					displayOptions: {
+						show: {
+							provideSslCertificates: [true],
+						},
+					},
+				},
+				{
+					displayName: 'SSL Certificate',
+					name: 'sslCertificate',
+					type: 'credentials',
+					default: '',
+					displayOptions: {
+						show: {
+							provideSslCertificates: [true],
 						},
 					},
 				},
@@ -1221,6 +1263,7 @@ export class HttpRequestV3 implements INodeType {
 		let httpCustomAuth;
 		let oAuth1Api;
 		let oAuth2Api;
+		let sslCertificates;
 		let nodeCredentialType: string | undefined;
 		let genericCredentialType: string | undefined;
 
@@ -1278,6 +1321,19 @@ export class HttpRequestV3 implements INodeType {
 				}
 			} else if (authentication === 'predefinedCredentialType') {
 				nodeCredentialType = this.getNodeParameter('nodeCredentialType', itemIndex) as string;
+			}
+
+			const provideSslCertificates = this.getNodeParameter(
+				'provideSslCertificates',
+				itemIndex,
+				false,
+			);
+
+			if (provideSslCertificates) {
+				sslCertificates = (await this.getCredentials(
+					'httpSslAuth',
+					itemIndex,
+				)) as HttpSslAuthCredentials;
 			}
 
 			const requestMethod = this.getNodeParameter('method', itemIndex) as IHttpRequestMethods;
@@ -1575,6 +1631,12 @@ export class HttpRequestV3 implements INodeType {
 
 			const authDataKeys: IAuthDataSanitizeKeys = {};
 
+			// Add SSL certificates if any are set
+			setAgentOptions(requestOptions, sslCertificates);
+			if (requestOptions.agentOptions) {
+				authDataKeys.agentOptions = Object.keys(requestOptions.agentOptions);
+			}
+
 			// Add credentials if any are set
 			if (httpBasicAuth !== undefined) {
 				requestOptions.auth = {
@@ -1594,6 +1656,7 @@ export class HttpRequestV3 implements INodeType {
 				requestOptions.qs[httpQueryAuth.name as string] = httpQueryAuth.value;
 				authDataKeys.qs = [httpQueryAuth.name as string];
 			}
+
 			if (httpDigestAuth !== undefined) {
 				requestOptions.auth = {
 					user: httpDigestAuth.user as string,
