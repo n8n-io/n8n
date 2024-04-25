@@ -34,8 +34,10 @@
 				<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]" :class="$style.content">
 					<ProjectSharing
 						v-model="sharedWithProjects"
+						:home-project="workflow.homeProject"
 						:projects="projects"
 						:readonly="!workflowPermissions.share"
+						:placeholder="$locale.baseText('workflows.shareModal.select.placeholder')"
 					/>
 					<template #fallback>
 						<n8n-text>
@@ -190,11 +192,9 @@ export default defineComponent({
 			return this.usersStore.currentUser;
 		},
 		workflowPermissions(): PermissionsMap<WorkflowScope> {
-			console.log(this.workflow);
-
 			return getWorkflowPermissions(
 				this.usersStore.currentUser,
-				this.projectsStore.currentProject,
+				this.projectsStore.currentProject || this.projectsStore.personalProject,
 				this.workflow,
 			);
 		},

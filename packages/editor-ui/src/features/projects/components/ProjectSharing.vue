@@ -12,6 +12,7 @@ const locale = useI18n();
 
 type Props = {
 	projects: ProjectListItem[];
+	homeProject?: ProjectSharingData;
 	readonly?: boolean;
 	placeholder?: string;
 };
@@ -115,6 +116,13 @@ watch(
 			</N8nOption>
 		</N8nSelect>
 		<ul v-if="Array.isArray(model)" :class="$style.selectedProjects">
+			<li v-if="props.homeProject">
+				<ProjectSharingInfo :project="props.homeProject">
+					<N8nBadge theme="tertiary" bold>
+						{{ locale.baseText('auth.roles.owner') }}
+					</N8nBadge></ProjectSharingInfo
+				>
+			</li>
 			<li
 				v-for="project in model"
 				:key="project.id"
@@ -137,7 +145,7 @@ watch(
 					/>
 					<N8nOption value="remove">
 						<N8nText color="danger">{{
-							$locale.baseText('projects.settings.removeAccess')
+							locale.baseText('projects.settings.removeAccess')
 						}}</N8nText>
 					</N8nOption>
 				</N8nSelect>
