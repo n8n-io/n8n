@@ -8,6 +8,7 @@ const renderComponent = createComponentRenderer(ProjectSharing);
 
 const personalProjects = Array.from({ length: 3 }, createProjectListItem);
 const teamProjects = Array.from({ length: 3 }, () => createProjectListItem('team'));
+const homeProject = createProjectSharingData('personal');
 
 describe('ProjectSharing', () => {
 	it('should render empty select when projects is empty and no selected project existing', async () => {
@@ -20,6 +21,7 @@ describe('ProjectSharing', () => {
 
 		expect(getByTestId('project-sharing-select')).toBeInTheDocument();
 		expect(queryByTestId('project-sharing-list-item')).not.toBeInTheDocument();
+		expect(queryByTestId('project-sharing-owner')).not.toBeInTheDocument();
 	});
 
 	it('should filter, add and remove projects', async () => {
@@ -30,6 +32,7 @@ describe('ProjectSharing', () => {
 			},
 		});
 
+		expect(queryByTestId('project-sharing-owner')).not.toBeInTheDocument();
 		// Check the initial state (one selected project comes from the modelValue prop)
 		expect(getAllByTestId('project-sharing-list-item')).toHaveLength(1);
 
@@ -91,6 +94,7 @@ describe('ProjectSharing', () => {
 				modelValue: null,
 			},
 		});
+		expect(queryByTestId('project-sharing-owner')).not.toBeInTheDocument();
 
 		const projectSelect = getByTestId('project-sharing-select');
 		const projectSelectInput = projectSelect.querySelector('input') as HTMLInputElement;
@@ -126,5 +130,19 @@ describe('ProjectSharing', () => {
 				}),
 			],
 		]);
+	});
+
+	it('should render home project as owner when defined', async () => {
+		const { getByTestId, queryByTestId } = renderComponent({
+			props: {
+				projects: personalProjects,
+				modelValue: [],
+				homeProject,
+			},
+		});
+
+		expect(getByTestId('project-sharing-select')).toBeInTheDocument();
+		expect(queryByTestId('project-sharing-list-item')).not.toBeInTheDocument();
+		expect(getByTestId('project-sharing-owner')).toBeInTheDocument();
 	});
 });

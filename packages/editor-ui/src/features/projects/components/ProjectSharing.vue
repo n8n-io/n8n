@@ -116,7 +116,7 @@ watch(
 			</N8nOption>
 		</N8nSelect>
 		<ul v-if="Array.isArray(model)" :class="$style.selectedProjects">
-			<li v-if="props.homeProject">
+			<li v-if="props.homeProject" :class="$style.project" data-test-id="project-sharing-owner">
 				<ProjectSharingInfo :project="props.homeProject">
 					<N8nBadge theme="tertiary" bold>
 						{{ locale.baseText('auth.roles.owner') }}
