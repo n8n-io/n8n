@@ -115,7 +115,7 @@ isOdd.doc = {
 format.doc = {
 	name: 'format',
 	description:
-		'Returns a formatted string of a number based on the given `LanguageCode` and `FormatOptions`. When no arguments are given, transforms the number in a like format `1.234`.',
+		'Returns a formatted string of a number based on the given `LanguageCode` and `FormatOptions`. When no arguments are given, transforms the number in a format like `1.234`.',
 	returnType: 'string',
 	args: [
 		{ name: 'locales?', type: 'LanguageCode' },

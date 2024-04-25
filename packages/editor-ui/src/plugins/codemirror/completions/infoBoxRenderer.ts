@@ -16,7 +16,7 @@ const renderFunctionHeader = (doc?: DocMetadata) => {
 
 		const argsSpan = document.createElement('span');
 		doc.args?.forEach((arg, index, array) => {
-			const optional = arg.optional || arg.name.endsWith('?');
+			const optional = arg.optional && !arg.name.endsWith('?');
 			const argSpan = document.createElement('span');
 			argSpan.textContent = arg.name;
 
@@ -115,7 +115,7 @@ const renderArgs = (args: DocMetadataArgument[]) => {
 		const argName = document.createElement('span');
 		argName.classList.add('autocomplete-info-arg-name');
 		argName.textContent = arg.name;
-		if (arg.optional === true) argName.textContent += '?';
+		if (arg.optional === true && !arg.name.endsWith('?')) argName.textContent += '?';
 
 		argItem.appendChild(argName);
 
