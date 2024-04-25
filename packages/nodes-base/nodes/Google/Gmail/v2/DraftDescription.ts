@@ -152,7 +152,7 @@ export const draftFields: INodeProperties[] = [
 				description: 'The email address that the reply message is sent to',
 			},
 			{
-				displayName: 'Attach to Thread',
+				displayName: 'Thread ID',
 				name: 'threadId',
 				type: 'string',
 				placeholder: '18cc573e2431878f',
