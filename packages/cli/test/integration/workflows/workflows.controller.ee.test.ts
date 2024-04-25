@@ -302,6 +302,8 @@ describe('GET /workflows/:id', () => {
 		});
 
 		expect(responseWorkflow.sharedWithProjects).toHaveLength(0);
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		expect((responseWorkflow as any).shared).toBeUndefined();
 	});
 
 	test('GET should return shared workflow with user data', async () => {

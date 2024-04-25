@@ -66,6 +66,9 @@ export class WorkflowsController {
 	@Post('/')
 	async create(req: WorkflowRequest.Create) {
 		delete req.body.id; // delete if sent
+		// @ts-expect-error: We shouldn't accept this because it can
+		// mess with relations of other workflows
+		delete req.body.shared;
 
 		const newWorkflow = new WorkflowEntity();
 
@@ -258,6 +261,10 @@ export class WorkflowsController {
 			const workflowWithMetaData = enterpriseWorkflowService.addOwnerAndSharings(workflow);
 
 			await enterpriseWorkflowService.addCredentialsToWorkflow(workflowWithMetaData, req.user);
+
+			// @ts-expect-error: This is added as part of addOwnerAndSharings but
+			// shouldn't be returned to the frontend
+			delete workflowWithMetaData.shared;
 
 			return workflowWithMetaData;
 		}
