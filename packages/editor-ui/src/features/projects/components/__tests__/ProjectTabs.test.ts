@@ -47,7 +47,7 @@ describe('ProjectTabs', () => {
 
 		expect(getByText('Workflows')).toBeInTheDocument();
 		expect(getByText('Credentials')).toBeInTheDocument();
-		expect(queryByText('Settings')).not.toBeInTheDocument();
+		expect(queryByText('Project settings')).not.toBeInTheDocument();
 	});
 
 	it('should render project tabs if use has permissions', () => {
@@ -67,7 +67,7 @@ describe('ProjectTabs', () => {
 
 		expect(getByText('Workflows')).toBeInTheDocument();
 		expect(getByText('Credentials')).toBeInTheDocument();
-		expect(getByText('Settings')).toBeInTheDocument();
+		expect(getByText('Project settings')).toBeInTheDocument();
 	});
 
 	it('should render project tabs', () => {
@@ -87,6 +87,6 @@ describe('ProjectTabs', () => {
 
 		expect(getByText('Workflows')).toBeInTheDocument();
 		expect(getByText('Credentials')).toBeInTheDocument();
-		expect(queryByText('Settings')).not.toBeInTheDocument();
+		expect(queryByText('Project settings')).not.toBeInTheDocument();
 	});
 });
