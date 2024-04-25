@@ -1,4 +1,3 @@
-import os from 'node:os';
 import { writeFile, chmod, readFile } from 'node:fs/promises';
 import Container, { Service } from 'typedi';
 import { SourceControlPreferences } from './types/sourceControlPreferences';
@@ -31,7 +30,7 @@ export class SourceControlPreferencesService {
 	readonly gitFolder: string;
 
 	constructor(
-		instanceSettings: InstanceSettings,
+		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
 		private readonly cipher: Cipher,
 	) {
@@ -94,7 +93,7 @@ export class SourceControlPreferencesService {
 	async getPrivateKeyPath() {
 		const dbPrivateKey = await this.getPrivateKeyFromDatabase();
 
-		const tempFilePath = path.join(os.tmpdir(), 'ssh_private_key_temp');
+		const tempFilePath = path.join(this.instanceSettings.n8nFolder, 'ssh_private_key_temp');
 
 		await writeFile(tempFilePath, dbPrivateKey);
 
