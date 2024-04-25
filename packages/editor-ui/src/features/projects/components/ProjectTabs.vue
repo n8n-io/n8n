@@ -17,7 +17,6 @@ const usersStore = useUsersStore();
 const selectedTab = ref<RouteRecordName | null | undefined>('');
 const options = computed(() => {
 	const projectId = route?.params?.projectId;
-	const project = projectsStore.currentProject;
 	const to = projectId
 		? {
 				workflows: {
@@ -50,7 +49,10 @@ const options = computed(() => {
 		},
 	];
 
-	if (projectId && project && getProjectPermissions(usersStore.currentUser, project).update) {
+	if (
+		projectId &&
+		getProjectPermissions(usersStore.currentUser, projectsStore.currentProject).update
+	) {
 		tabs.push({
 			label: locale.baseText('settings'),
 			value: VIEWS.PROJECT_SETTINGS,

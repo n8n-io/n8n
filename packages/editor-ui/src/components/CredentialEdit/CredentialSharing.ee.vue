@@ -31,9 +31,6 @@
 			/>
 		</div>
 		<div v-else>
-			<n8n-info-tip v-if="credentialPermissions.isOwner" :bold="false" class="mb-s">
-				{{ $locale.baseText('credentialEdit.credentialSharing.info.owner') }}
-			</n8n-info-tip>
 			<n8n-info-tip v-if="!credentialPermissions.share" :bold="false" class="mb-s">
 				{{
 					$locale.baseText('credentialEdit.credentialSharing.info.sharee', {
@@ -81,7 +78,8 @@ import ProjectSharing from '@/features/projects/components/ProjectSharing.vue';
 import { useProjectsStore } from '@/features/projects/projects.store';
 import type { ProjectListItem, ProjectSharingData } from '@/features/projects/projects.types';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
-import type { IPermissions } from '@/permissions';
+import type { PermissionsMap } from '@/permissions';
+import type { CredentialScope } from '@n8n/permissions';
 import type { EventBus } from 'n8n-design-system/utils';
 
 export default defineComponent({
@@ -103,7 +101,7 @@ export default defineComponent({
 			required: true,
 		},
 		credentialPermissions: {
-			type: Object as PropType<IPermissions>,
+			type: Object as PropType<PermissionsMap<CredentialScope>>,
 			required: true,
 		},
 		modalBus: {
@@ -119,7 +117,7 @@ export default defineComponent({
 	},
 	data() {
 		return {
-			sharedWithProjects: [...(this.credential?.sharedWithProjects || [])] as ProjectSharingData[],
+			sharedWithProjects: [...(this.credential?.sharedWithProjects ?? [])] as ProjectSharingData[],
 		};
 	},
 	computed: {
@@ -155,7 +153,9 @@ export default defineComponent({
 		},
 		projects(): ProjectListItem[] {
 			return this.projectsStore.personalProjects.filter(
-				(project) => project.id !== this.credential.homeProject?.id,
+				(project) =>
+					project.id !== this.credential?.homeProject?.id &&
+					project.id !== this.credentialData?.homeProject?.id,
 			);
 		},
 	},

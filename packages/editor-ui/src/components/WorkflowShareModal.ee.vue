@@ -104,7 +104,8 @@ import {
 	WORKFLOW_SHARE_MODAL_KEY,
 } from '@/constants';
 import type { IUser, IWorkflowDb } from '@/Interface';
-import type { IPermissions } from '@/permissions';
+import type { PermissionsMap } from '@/permissions';
+import type { WorkflowScope } from '@n8n/permissions';
 import { getWorkflowPermissions } from '@/permissions';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
@@ -188,8 +189,14 @@ export default defineComponent({
 		currentUser(): IUser | null {
 			return this.usersStore.currentUser;
 		},
-		workflowPermissions(): IPermissions {
-			return getWorkflowPermissions(this.usersStore.currentUser, this.workflow);
+		workflowPermissions(): PermissionsMap<WorkflowScope> {
+			console.log(this.workflow);
+
+			return getWorkflowPermissions(
+				this.usersStore.currentUser,
+				this.projectsStore.currentProject,
+				this.workflow,
+			);
 		},
 		workflowOwnerName(): string {
 			return this.workflowsEEStore.getWorkflowOwnerName(`${this.workflow.id}`);
@@ -336,4 +343,3 @@ export default defineComponent({
 	border-top: 1px solid var(--color-foreground-base);
 }
 </style>
-import { ProjectSharingData } from '@/features/projects/projects.types';
