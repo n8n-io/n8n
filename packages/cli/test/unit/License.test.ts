@@ -175,3 +175,27 @@ describe('License', () => {
 		expect(mainPlan).toBeUndefined();
 	});
 });
+
+describe('License', () => {
+	describe('init', () => {
+		test('should auto-renew if leader', async () => {
+			const orchestrationService = mock<OrchestrationService>({ isLeader: true });
+
+			await new License(mock(), mock(), orchestrationService, mock(), mock()).init();
+
+			expect(LicenseManager).toHaveBeenCalledWith(
+				expect.objectContaining({ autoRenewEnabled: true }),
+			);
+		});
+
+		test('should not auto-renew if follower', async () => {
+			const orchestrationService = mock<OrchestrationService>({ isLeader: false });
+
+			await new License(mock(), mock(), orchestrationService, mock(), mock()).init();
+
+			expect(LicenseManager).toHaveBeenCalledWith(
+				expect.objectContaining({ autoRenewEnabled: false }),
+			);
+		});
+	});
+});
