@@ -39,17 +39,16 @@
 }
 
 @function joinVarName($list) {
-  $name: '--' + 'el';
-  @each $item in $list {
-    @if $item != '' {
-      $name: $name + '-' + $item;
-    }
-  }
-  @return $name;
+	$name: '--' + 'el';
+	@each $item in $list {
+		@if $item != '' {
+			$name: $name + '-' + $item;
+		}
+	}
+	@return $name;
 }
 
 // getCssVarName('button', 'text-color') => '--el-button-text-color'
 @function getCssVarName($args...) {
-  @return joinVarName($args);
+	@return joinVarName($args);
 }
-

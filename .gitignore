@@ -19,5 +19,8 @@ packages/**/.turbo
 *.tsbuildinfo
 cypress/videos/*
 cypress/screenshots/*
+cypress/downloads/*
 *.swp
 CHANGELOG-*.md
+*.mdx
+build-storybook.log

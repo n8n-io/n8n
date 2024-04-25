@@ -1,14 +1,12 @@
 import type {
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
 	IDataObject,
 	INodePropertyOptions,
 	JsonObject,
+	IRequestOptions,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
-
-import type { OptionsWithUri } from 'request';
+import { ApplicationError, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 interface ScriptsOptions {
 	script?: any;
@@ -30,9 +28,7 @@ interface ScriptObject {
 	folderScriptNames?: LayoutObject[];
 }
 
-export async function getToken(
-	this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions,
-): Promise<any> {
+export async function getToken(this: ILoadOptionsFunctions | IExecuteFunctions): Promise<any> {
 	const credentials = await this.getCredentials('fileMaker');
 
 	const host = credentials.host as string;
@@ -43,7 +39,7 @@ export async function getToken(
 	const url = `https://${host}/fmi/data/v1/databases/${db}/sessions`;
 
 	// Reset all values
-	const requestOptions: OptionsWithUri = {
+	const requestOptions: IRequestOptions = {
 		uri: url,
 		headers: {},
 		method: 'POST',
@@ -84,7 +80,7 @@ export async function getToken(
 		} else {
 			message = error.message;
 		}
-		throw new Error(message);
+		throw new ApplicationError(message, { level: 'warning' });
 	}
 }
 
@@ -108,7 +104,7 @@ function parseLayouts(layouts: LayoutObject[]): INodePropertyOptions[] {
  *
  */
 export async function layoutsApiRequest(
-	this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions,
+	this: ILoadOptionsFunctions | IExecuteFunctions,
 ): Promise<INodePropertyOptions[]> {
 	const token = await getToken.call(this);
 	const credentials = await this.getCredentials('fileMaker');
@@ -117,7 +113,7 @@ export async function layoutsApiRequest(
 	const db = credentials.db as string;
 
 	const url = `https://${host}/fmi/data/v1/databases/${db}/layouts`;
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			Authorization: `Bearer ${token}`,
 		},
@@ -149,7 +145,7 @@ export async function getFields(this: ILoadOptionsFunctions): Promise<any> {
 	const db = credentials.db as string;
 
 	const url = `https://${host}/fmi/data/v1/databases/${db}/layouts/${layout}`;
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			Authorization: `Bearer ${token}`,
 		},
@@ -180,7 +176,7 @@ export async function getPortals(this: ILoadOptionsFunctions): Promise<any> {
 	const db = credentials.db as string;
 
 	const url = `https://${host}/fmi/data/v1/databases/${db}/layouts/${layout}`;
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			Authorization: `Bearer ${token}`,
 		},
@@ -225,7 +221,7 @@ export async function getScripts(this: ILoadOptionsFunctions): Promise<any> {
 	const db = credentials.db as string;
 
 	const url = `https://${host}/fmi/data/v1/databases/${db}/scripts`;
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			Authorization: `Bearer ${token}`,
 		},
@@ -246,7 +242,7 @@ export async function getScripts(this: ILoadOptionsFunctions): Promise<any> {
 }
 
 export async function logout(
-	this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions,
+	this: ILoadOptionsFunctions | IExecuteFunctions,
 	token: string,
 ): Promise<any> {
 	const credentials = await this.getCredentials('fileMaker');
@@ -257,7 +253,7 @@ export async function logout(
 	const url = `https://${host}/fmi/data/v1/databases/${db}/sessions/${token}`;
 
 	// Reset all values
-	const requestOptions: OptionsWithUri = {
+	const requestOptions: IRequestOptions = {
 		uri: url,
 		headers: {},
 		method: 'DELETE',

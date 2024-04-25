@@ -1,5 +1,5 @@
-import { License } from '@/License';
 import { Container } from 'typedi';
+import { License } from '@/License';
 import { BaseCommand } from '../BaseCommand';
 
 export class LicenseInfoCommand extends BaseCommand {
@@ -9,7 +9,7 @@ export class LicenseInfoCommand extends BaseCommand {
 
 	async run() {
 		const license = Container.get(License);
-		await license.init(this.instanceId);
+		await license.init();
 
 		this.logger.info('Printing license information:\n' + license.getInfo());
 	}

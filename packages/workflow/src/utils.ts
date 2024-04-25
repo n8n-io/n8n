@@ -1,5 +1,8 @@
 import FormData from 'form-data';
-import type { BinaryFileType, JsonObject } from './Interfaces';
+import type { BinaryFileType, IDisplayOptions, INodeProperties, JsonObject } from './Interfaces';
+import { ApplicationError } from './errors/application.error';
+
+import { merge } from 'lodash';
 
 const readStreamClasses = new Set(['ReadStream', 'Readable', 'ReadableStream']);
 
@@ -77,7 +80,7 @@ export const jsonParse = <T>(jsonString: string, options?: JSONParseOptions<T>):
 		if (options?.fallbackValue !== undefined) {
 			return options.fallbackValue;
 		} else if (options?.errorMessage) {
-			throw new Error(options.errorMessage);
+			throw new ApplicationError(options.errorMessage);
 		}
 
 		throw error;
@@ -88,7 +91,7 @@ type JSONStringifyOptions = {
 	replaceCircularRefs?: boolean;
 };
 
-const replaceCircularReferences = <T>(value: T, knownObjects = new WeakSet()): T => {
+export const replaceCircularReferences = <T>(value: T, knownObjects = new WeakSet()): T => {
 	if (typeof value !== 'object' || value === null || value instanceof RegExp) return value;
 	if ('toJSON' in value && typeof value.toJSON === 'function') return value.toJSON() as T;
 	if (knownObjects.has(value)) return '[Circular Reference]' as T;
@@ -106,15 +109,18 @@ export const jsonStringify = (obj: unknown, options: JSONStringifyOptions = {}):
 };
 
 export const sleep = async (ms: number): Promise<void> =>
-	new Promise((resolve) => {
+	await new Promise((resolve) => {
 		setTimeout(resolve, ms);
 	});
 
 export function fileTypeFromMimeType(mimeType: string): BinaryFileType | undefined {
 	if (mimeType.startsWith('application/json')) return 'json';
+	if (mimeType.startsWith('text/html')) return 'html';
 	if (mimeType.startsWith('image/')) return 'image';
+	if (mimeType.startsWith('audio/')) return 'audio';
 	if (mimeType.startsWith('video/')) return 'video';
-	if (mimeType.startsWith('text/')) return 'text';
+	if (mimeType.startsWith('text/') || mimeType.startsWith('application/javascript')) return 'text';
+	if (mimeType.startsWith('application/pdf')) return 'pdf';
 	return;
 }
 
@@ -161,3 +167,15 @@ export const removeCircularRefs = (obj: JsonObject, seen = new Set()) => {
 		}
 	});
 };
+
+export function updateDisplayOptions(
+	displayOptions: IDisplayOptions,
+	properties: INodeProperties[],
+) {
+	return properties.map((nodeProperty) => {
+		return {
+			...nodeProperty,
+			displayOptions: merge({}, nodeProperty.displayOptions, displayOptions),
+		};
+	});
+}

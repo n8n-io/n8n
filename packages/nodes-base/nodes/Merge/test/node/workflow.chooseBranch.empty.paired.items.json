@@ -1,0 +1,145 @@
+{
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8d731d98fab18fb8e68289d44c50faa5d5c5378aedc3f892abdd7d5d3b7061c5"
+  },
+  "nodes": [
+    {
+      "parameters": {
+        "fields": {
+          "values": [
+            {
+              "name": "one",
+              "stringValue": "={{ $('Code').item.json.id }}"
+            },
+            {
+              "name": "two",
+              "stringValue": "={{ $('Code1').item.json.id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "853f9e11-e59b-4f21-81ba-08ec2d69c87a",
+      "name": "Edit Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.2,
+      "position": [
+        900,
+        580
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "8310a9da-b02b-4a77-80d4-7c2de5bcbae8",
+      "name": "When clicking \"Execute Workflow\"",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        180,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  {id: 1},\n];"
+      },
+      "id": "0f1fb40d-0c6c-455d-bb3b-0c0fa818e063",
+      "name": "Code",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        420,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  {id: 2},\n];"
+      },
+      "id": "873fcccc-86c1-40fd-bdae-2bb31e971382",
+      "name": "Code1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        420,
+        680
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "chooseBranch",
+        "output": "empty"
+      },
+      "id": "b81a2372-9f8b-4899-b2fd-c581bcf930d8",
+      "name": "Merge3",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [
+        700,
+        580
+      ]
+    }
+  ],
+  "connections": {
+    "When clicking \"Execute Workflow\"": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Merge3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        [
+          {
+            "node": "Merge3",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge3": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {
+    "Edit Fields": [
+			{
+				"json": {
+					"one": "1",
+					"two": "2"
+				}
+			}
+    ]
+  }
+}

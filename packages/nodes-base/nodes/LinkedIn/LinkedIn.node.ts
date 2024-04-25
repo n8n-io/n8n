@@ -28,9 +28,39 @@ export class LinkedIn implements INodeType {
 			{
 				name: 'linkedInOAuth2Api',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['standard'],
+					},
+				},
+			},
+			{
+				name: 'linkedInCommunityManagementOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['communityManagement'],
+					},
+				},
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Standard',
+						value: 'standard',
+					},
+					{
+						name: 'Community Management',
+						value: 'communityManagement',
+					},
+				],
+				default: 'standard',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -55,12 +85,24 @@ export class LinkedIn implements INodeType {
 			// Get Person URN which has to be used with other LinkedIn API Requests
 			// https://docs.microsoft.com/en-us/linkedin/consumer/integrations/self-serve/sign-in-with-linkedin
 			async getPersonUrn(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const person = await linkedInApiRequest.call(this, 'GET', '/me', {});
-				returnData.push({
-					name: `${person.localizedFirstName} ${person.localizedLastName}`,
-					value: person.id,
-				});
+				const authentication = this.getNodeParameter('authentication', 0);
+				let endpoint = '/me';
+				if (authentication === 'standard') {
+					const { legacy } = await this.getCredentials('linkedInOAuth2Api');
+					if (!legacy) {
+						endpoint = '/v2/userinfo';
+					}
+				}
+				const person = await linkedInApiRequest.call(this, 'GET', endpoint, {});
+				const firstName = person.localizedFirstName ?? person.given_name;
+				const lastName = person.localizedLastName ?? person.family_name;
+				const name = `${firstName} ${lastName}`;
+				const returnData: INodePropertyOptions[] = [
+					{
+						name,
+						value: person.id ?? person.sub,
+					},
+				];
 				return returnData;
 			},
 		},
@@ -167,6 +209,30 @@ export class LinkedIn implements INodeType {
 								},
 								commentary: text,
 							};
+
+							if (additionalFields.thumbnailBinaryPropertyName) {
+								const registerRequest = {
+									initializeUploadRequest: {
+										owner: authorUrn,
+									},
+								};
+
+								const registerObject = await linkedInApiRequest.call(
+									this,
+									'POST',
+									'/images?action=initializeUpload',
+									registerRequest,
+								);
+
+								const binaryPropertyName = additionalFields.thumbnailBinaryPropertyName as string;
+								this.helpers.assertBinaryData(i, binaryPropertyName);
+
+								const buffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+								const { uploadUrl, image } = registerObject.value;
+								await linkedInApiRequest.call(this, 'POST', uploadUrl as string, buffer, true);
+								Object.assign(articleBody.content.article, { thumbnail: image });
+							}
+
 							Object.assign(body, articleBody);
 							if (description === '') {
 								delete body.description;
@@ -200,6 +266,6 @@ export class LinkedIn implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

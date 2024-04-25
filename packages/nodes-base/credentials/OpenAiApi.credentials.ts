@@ -22,10 +22,11 @@ export class OpenAiApi implements ICredentialType {
 			default: '',
 		},
 		{
-			displayName: 'Organization ID',
+			displayName: 'Organization ID (optional)',
 			name: 'organizationId',
 			type: 'string',
 			default: '',
+			hint: 'Only required if you belong to multiple organisations',
 			description:
 				"For users who belong to multiple organizations, you can set which organization is used for an API request. Usage from these API requests will count against the specified organization's subscription quota.",
 		},

@@ -1,4 +1,5 @@
 import { BasePage } from '../base';
+import { getVisibleSelect } from '../../utils';
 
 export class CredentialsModal extends BasePage {
 	getters = {
@@ -30,11 +31,7 @@ export class CredentialsModal extends BasePage {
 	actions = {
 		addUser: (email: string) => {
 			this.getters.usersSelect().click();
-			this.getters
-				.usersSelect()
-				.get('.el-select-dropdown__item')
-				.contains(email.toLowerCase())
-				.click();
+			getVisibleSelect().contains(email.toLowerCase()).click();
 		},
 		setName: (name: string) => {
 			this.getters.name().click();
@@ -46,6 +43,12 @@ export class CredentialsModal extends BasePage {
 
 			cy.wait('@saveCredential');
 			if (test) cy.wait('@testCredential');
+			this.getters.saveButton().should('contain.text', 'Saved');
+		},
+		saveSharing: (test = false) => {
+			cy.intercept('PUT', '/rest/credentials/*/share').as('shareCredential');
+			this.getters.saveButton().click({ force: true });
+			cy.wait('@shareCredential');
 			this.getters.saveButton().should('contain.text', 'Saved');
 		},
 		close: () => {

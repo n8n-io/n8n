@@ -1,13 +1,10 @@
+import { isObjectLiteral } from '@/utils';
 import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import type { MigrationContext, IrreversibleMigration } from '@db/types';
 
 type OldPinnedData = { [nodeName: string]: IDataObject[] };
 type NewPinnedData = { [nodeName: string]: INodeExecutionData[] };
 type Workflow = { id: number; pinData: string | OldPinnedData };
-
-function isObjectLiteral(item: unknown): item is { [key: string]: string } {
-	return typeof item === 'object' && item !== null && !Array.isArray(item);
-}
 
 function isJsonKeyObject(item: unknown): item is {
 	json: unknown;
@@ -29,11 +26,12 @@ export class AddJsonKeyPinData1659888469333 implements IrreversibleMigration {
 		const selectQuery = `SELECT id, ${columnName} FROM ${tableName} WHERE ${columnName} IS NOT NULL`;
 		await runInBatches<Workflow>(selectQuery, async (workflows) => {
 			await Promise.all(
-				this.makeUpdateParams(workflows).map(async (workflow) =>
-					runQuery(`UPDATE ${tableName} SET ${columnName} = :pinData WHERE id = :id;`, {
-						pinData: workflow.pinData,
-						id: workflow.id,
-					}),
+				this.makeUpdateParams(workflows).map(
+					async (workflow) =>
+						await runQuery(`UPDATE ${tableName} SET ${columnName} = :pinData WHERE id = :id;`, {
+							pinData: workflow.pinData,
+							id: workflow.id,
+						}),
 				),
 			);
 		});

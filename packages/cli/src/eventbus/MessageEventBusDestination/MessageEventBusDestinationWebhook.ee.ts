@@ -1,29 +1,24 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 
 import { MessageEventBusDestination } from './MessageEventBusDestination.ee';
 import axios from 'axios';
 import type { AxiosRequestConfig, Method } from 'axios';
-import {
-	jsonParse,
-	LoggerProxy,
-	MessageEventBusDestinationTypeNames,
-	MessageEventBusDestinationWebhookOptions,
-} from 'n8n-workflow';
+import { jsonParse, MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import type {
 	MessageEventBusDestinationOptions,
 	MessageEventBusDestinationWebhookParameterItem,
 	MessageEventBusDestinationWebhookParameterOptions,
+	IWorkflowExecuteAdditionalData,
+	MessageEventBusDestinationWebhookOptions,
 } from 'n8n-workflow';
 import { CredentialsHelper } from '@/CredentialsHelper';
-import { UserSettings } from 'n8n-core';
 import { Agent as HTTPSAgent } from 'https';
-import config from '@/config';
 import { isLogStreamingEnabled } from '../MessageEventBus/MessageEventBusHelper';
 import { eventMessageGenericDestinationTestEvent } from '../EventMessageClasses/EventMessageGeneric';
-import { MessageEventBus } from '../MessageEventBus/MessageEventBus';
-import type { MessageWithCallback } from '../MessageEventBus/MessageEventBus';
+import type { MessageEventBus, MessageWithCallback } from '../MessageEventBus/MessageEventBus';
+import * as SecretsHelpers from '@/ExternalSecrets/externalSecretsHelper.ee';
+import Container from 'typedi';
 
 export const isMessageEventBusDestinationWebhookOptions = (
 	candidate: unknown,
@@ -100,18 +95,18 @@ export class MessageEventBusDestinationWebhook
 		if (options.sendPayload) this.sendPayload = options.sendPayload;
 		if (options.options) this.options = options.options;
 
-		LoggerProxy.debug(`MessageEventBusDestinationWebhook with id ${this.getId()} initialized`);
+		this.logger.debug(`MessageEventBusDestinationWebhook with id ${this.getId()} initialized`);
 	}
 
 	async matchDecryptedCredentialType(credentialType: string) {
 		const foundCredential = Object.entries(this.credentials).find((e) => e[0] === credentialType);
 		if (foundCredential) {
-			const timezone = config.getEnv('generic.timezone');
 			const credentialsDecrypted = await this.credentialsHelper?.getDecrypted(
+				{ secretsHelpers: SecretsHelpers } as unknown as IWorkflowExecuteAdditionalData,
 				foundCredential[1],
 				foundCredential[0],
 				'internal',
-				timezone,
+				undefined,
 				true,
 			);
 			return credentialsDecrypted;
@@ -132,18 +127,11 @@ export class MessageEventBusDestinationWebhook
 		} as AxiosRequestConfig;
 
 		if (this.credentialsHelper === undefined) {
-			let encryptionKey: string | undefined;
-			try {
-				encryptionKey = await UserSettings.getEncryptionKey();
-			} catch {}
-			if (encryptionKey) {
-				this.credentialsHelper = new CredentialsHelper(encryptionKey);
-			}
+			this.credentialsHelper = Container.get(CredentialsHelper);
 		}
 
 		const sendQuery = this.sendQuery;
 		const specifyQuery = this.specifyQuery;
-		const sendPayload = this.sendPayload;
 		const sendHeaders = this.sendHeaders;
 		const specifyHeaders = this.specifyHeaders;
 
@@ -172,7 +160,6 @@ export class MessageEventBusDestinationWebhook
 		}
 
 		const parametersToKeyValue = async (
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			acc: Promise<{ [key: string]: any }>,
 			cur: { name: string; value: string; parameterType?: string; inputDataFieldName?: string },
 		) => {
@@ -263,6 +250,7 @@ export class MessageEventBusDestinationWebhook
 		return null;
 	}
 
+	// eslint-disable-next-line complexity
 	async receiveFromEventBus(emitterPayload: MessageWithCallback): Promise<boolean> {
 		const { msg, confirmCallback } = emitterPayload;
 		let sendResult = false;
@@ -298,8 +286,6 @@ export class MessageEventBusDestinationWebhook
 		let httpDigestAuth;
 		let httpHeaderAuth;
 		let httpQueryAuth;
-		let oAuth1Api;
-		let oAuth2Api;
 
 		if (this.authentication === 'genericCredentialType') {
 			if (this.genericAuthType === 'httpBasicAuth') {
@@ -318,14 +304,6 @@ export class MessageEventBusDestinationWebhook
 				try {
 					httpQueryAuth = await this.matchDecryptedCredentialType('httpQueryAuth');
 				} catch {}
-			} else if (this.genericAuthType === 'oAuth1Api') {
-				try {
-					oAuth1Api = await this.matchDecryptedCredentialType('oAuth1Api');
-				} catch {}
-			} else if (this.genericAuthType === 'oAuth2Api') {
-				try {
-					oAuth2Api = await this.matchDecryptedCredentialType('oAuth2Api');
-				} catch {}
 			}
 		}
 
@@ -336,9 +314,15 @@ export class MessageEventBusDestinationWebhook
 				password: httpBasicAuth.password as string,
 			};
 		} else if (httpHeaderAuth) {
-			this.axiosRequestOptions.headers[httpHeaderAuth.name as string] = httpHeaderAuth.value;
+			this.axiosRequestOptions.headers = {
+				...this.axiosRequestOptions.headers,
+				[httpHeaderAuth.name as string]: httpHeaderAuth.value as string,
+			};
 		} else if (httpQueryAuth) {
-			this.axiosRequestOptions.params[httpQueryAuth.name as string] = httpQueryAuth.value;
+			this.axiosRequestOptions.params = {
+				...this.axiosRequestOptions.params,
+				[httpQueryAuth.name as string]: httpQueryAuth.value as string,
+			};
 		} else if (httpDigestAuth) {
 			this.axiosRequestOptions.auth = {
 				username: httpDigestAuth.user as string,
@@ -362,7 +346,7 @@ export class MessageEventBusDestinationWebhook
 				}
 			}
 		} catch (error) {
-			LoggerProxy.warn(
+			this.logger.warn(
 				`Webhook destination ${this.label} failed to send message to: ${this.url} - ${
 					(error as Error).message
 				}`,

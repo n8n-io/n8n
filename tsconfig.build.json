@@ -2,8 +2,9 @@
 	"compilerOptions": {
 		"types": ["node"],
 		"noEmit": false,
-		"declaration": true,
-		"tsBuildInfoFile": "dist/build.tsbuildinfo"
+		"noUnusedLocals": false,
+		"noUnusedParameters": false,
+		"declaration": true
 	},
 	"tsc-alias": {
 		"replacers": {

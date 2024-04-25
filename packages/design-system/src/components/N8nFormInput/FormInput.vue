@@ -1,90 +1,91 @@
 <template>
-	<n8n-checkbox
+	<N8nCheckbox
 		v-if="type === 'checkbox'"
 		v-bind="$props"
-		@update:modelValue="onUpdateModelValue"
-		@focus="onFocus"
 		ref="inputRef"
+		@update:model-value="onUpdateModelValue"
+		@focus="onFocus"
 	/>
-	<n8n-input-label
+	<N8nInputLabel
 		v-else-if="type === 'toggle'"
-		:inputName="name"
+		:input-name="name"
 		:label="label"
-		:tooltipText="tooltipText"
+		:tooltip-text="tooltipText"
 		:required="required && showRequiredAsterisk"
 	>
 		<template #content>
 			{{ tooltipText }}
 		</template>
-		<el-switch
-			:modelValue="modelValue"
+		<ElSwitch
+			:model-value="modelValue"
 			:active-color="activeColor"
 			:inactive-color="inactiveColor"
-			@update:modelValue="onUpdateModelValue"
-		></el-switch>
-	</n8n-input-label>
-	<n8n-input-label
+			@update:model-value="onUpdateModelValue"
+		></ElSwitch>
+	</N8nInputLabel>
+	<N8nInputLabel
 		v-else
-		:inputName="name"
+		:input-name="name"
 		:label="label"
-		:tooltipText="tooltipText"
+		:tooltip-text="tooltipText"
 		:required="required && showRequiredAsterisk"
 	>
 		<div :class="showErrors ? $style.errorInput : ''" @keydown.stop @keydown.enter="onEnter">
 			<slot v-if="hasDefaultSlot" />
-			<n8n-select
-				:class="{ [$style.multiSelectSmallTags]: tagSize === 'small' }"
+			<N8nSelect
 				v-else-if="type === 'select' || type === 'multi-select'"
-				:modelValue="modelValue"
+				ref="inputRef"
+				:class="{ [$style.multiSelectSmallTags]: tagSize === 'small' }"
+				:model-value="modelValue"
 				:placeholder="placeholder"
 				:multiple="type === 'multi-select'"
 				:disabled="disabled"
-				@update:modelValue="onUpdateModelValue"
-				@focus="onFocus"
-				@blur="onBlur"
 				:name="name"
 				:teleported="teleported"
-				ref="inputRef"
+				@update:model-value="onUpdateModelValue"
+				@focus="onFocus"
+				@blur="onBlur"
 			>
-				<n8n-option
+				<N8nOption
 					v-for="option in options || []"
 					:key="option.value"
 					:value="option.value"
 					:label="option.label"
+					:disabled="!!option.disabled"
 					size="small"
 				/>
-			</n8n-select>
-			<n8n-input
+			</N8nSelect>
+			<N8nInput
 				v-else
+				ref="inputRef"
 				:name="name"
 				:type="type"
 				:placeholder="placeholder"
-				:modelValue="modelValue"
+				:model-value="modelValue"
 				:maxlength="maxlength"
 				:autocomplete="autocomplete"
 				:disabled="disabled"
-				@update:modelValue="onUpdateModelValue"
+				@update:model-value="onUpdateModelValue"
 				@blur="onBlur"
 				@focus="onFocus"
-				ref="inputRef"
 			/>
 		</div>
-		<div :class="$style.errors" v-if="showErrors">
+		<div v-if="showErrors" :class="$style.errors">
 			<span v-text="validationError" />
 			<n8n-link
 				v-if="documentationUrl && documentationText"
 				:to="documentationUrl"
-				:newWindow="true"
+				:new-window="true"
 				size="small"
 				theme="danger"
 			>
 				{{ documentationText }}
 			</n8n-link>
 		</div>
-		<div :class="$style.infoText" v-else-if="infoText">
+		<div v-else-if="infoText" :class="$style.infoText">
 			<span size="small" v-text="infoText" />
 		</div>
-	</n8n-input-label>
+	</N8nInputLabel>
 </template>
 
 <script lang="ts" setup>
@@ -118,7 +119,7 @@ export interface Props {
 	validationRules?: Array<Rule | RuleGroup>;
 	validators?: { [key: string]: IValidator | RuleGroup };
 	maxlength?: number;
-	options?: Array<{ value: string | number; label: string }>;
+	options?: Array<{ value: string | number; label: string; disabled?: boolean }>;
 	autocomplete?: string;
 	name?: string;
 	focusInitially?: boolean;
@@ -142,7 +143,7 @@ const props = withDefaults(defineProps<Props>(), {
 	tagSize: 'small',
 });
 
-const emit = defineEmits<{
+const $emit = defineEmits<{
 	(event: 'validate', shouldValidate: boolean): void;
 	(event: 'update:modelValue', value: unknown): void;
 	(event: 'focus'): void;
@@ -202,22 +203,22 @@ function getInputValidationError(): ReturnType<IValidator['validate']> {
 function onBlur() {
 	state.hasBlurred = true;
 	state.isTyping = false;
-	emit('blur');
+	$emit('blur');
 }
 
 function onUpdateModelValue(value: FormState) {
 	state.isTyping = true;
-	emit('update:modelValue', value);
+	$emit('update:modelValue', value);
 }
 
 function onFocus() {
-	emit('focus');
+	$emit('focus');
 }
 
 function onEnter(event: Event) {
 	event.stopPropagation();
 	event.preventDefault();
-	emit('enter');
+	$emit('enter');
 }
 
 const validationError = computed<string | null>(() => {
@@ -243,14 +244,14 @@ const showErrors = computed(
 );
 
 onMounted(() => {
-	emit('validate', !validationError.value);
+	$emit('validate', !validationError.value);
 
 	if (props.focusInitially && inputRef.value) inputRef.value.focus();
 });
 
 watch(
 	() => validationError.value,
-	(error) => emit('validate', !error),
+	(error) => $emit('validate', !error),
 );
 
 defineExpose({ inputRef });

@@ -7,7 +7,7 @@
 <script lang="ts">
 import type { LocaleFunc } from 'timeago.js';
 import { format, register } from 'timeago.js';
-import { convertToHumanReadableDate } from '@/utils';
+import { convertToHumanReadableDate } from '@/utils/typesUtils';
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import { useRootStore } from '@/stores/n8nRoot.store';

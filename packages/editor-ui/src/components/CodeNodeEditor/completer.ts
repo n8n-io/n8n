@@ -37,6 +37,7 @@ export const completerExtension = defineComponent({
 			}
 
 			return autocompletion({
+				icons: false,
 				compareCompletions: (a: Completion, b: Completion) => {
 					if (/\.json$|id$|id['"]\]$/.test(a.label)) return 0;
 
@@ -172,6 +173,7 @@ export const completerExtension = defineComponent({
 
 				if (value === '$execution') return this.executionCompletions(context, variable);
 				if (value === '$vars') return this.variablesCompletions(context, variable);
+
 				if (value === '$workflow') return this.workflowCompletions(context, variable);
 				if (value === '$prevNode') return this.prevNodeCompletions(context, variable);
 

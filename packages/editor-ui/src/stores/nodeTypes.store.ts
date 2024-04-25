@@ -6,31 +6,33 @@ import {
 	getResourceLocatorResults,
 	getResourceMapperFields,
 } from '@/api/nodeTypes';
-import { DEFAULT_NODETYPE_VERSION, STORES } from '@/constants';
-import type {
-	INodeTypesState,
-	IResourceLocatorReqParams,
-	ResourceMapperReqParams,
-} from '@/Interface';
+import { HTTP_REQUEST_NODE_TYPE, STORES, CREDENTIAL_ONLY_HTTP_NODE_VERSION } from '@/constants';
+import type { INodeTypesState, DynamicNodeParameters } from '@/Interface';
 import { addHeaders, addNodeTranslation } from '@/plugins/i18n';
-import { omit } from '@/utils';
+import { omit } from '@/utils/typesUtils';
 import type {
-	ILoadOptions,
-	INodeCredentials,
+	ConnectionTypes,
+	INode,
 	INodeListSearchResult,
-	INodeParameters,
+	INodeOutputConfiguration,
 	INodePropertyOptions,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
 	ResourceMapperFields,
+	Workflow,
 } from 'n8n-workflow';
+import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { useCredentialsStore } from './credentials.store';
 import { useRootStore } from './n8nRoot.store';
+import {
+	getCredentialOnlyNodeType,
+	getCredentialTypeName,
+	isCredentialOnlyNodeType,
+} from '@/utils/credentialOnlyNodes';
+import { groupNodeTypesByNameAndType } from '@/utils/nodeTypes/nodeTypeTransforms';
 
-function getNodeVersions(nodeType: INodeTypeDescription) {
-	return Array.isArray(nodeType.version) ? nodeType.version : [nodeType.version];
-}
+export type NodeTypesStore = ReturnType<typeof useNodeTypesStore>;
 
 export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 	state: (): INodeTypesState => ({
@@ -63,14 +65,64 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 		},
 		getNodeType() {
 			return (nodeTypeName: string, version?: number): INodeTypeDescription | null => {
+				if (isCredentialOnlyNodeType(nodeTypeName)) {
+					return this.getCredentialOnlyNodeType(nodeTypeName, version);
+				}
+
 				const nodeVersions = this.nodeTypes[nodeTypeName];
 
 				if (!nodeVersions) return null;
 
 				const versionNumbers = Object.keys(nodeVersions).map(Number);
-				const nodeType = nodeVersions[version || Math.max(...versionNumbers)];
+				const nodeType = nodeVersions[version ?? Math.max(...versionNumbers)];
+				return nodeType ?? null;
+			};
+		},
+		getNodeVersions() {
+			return (nodeTypeName: string): number[] => {
+				return Object.keys(this.nodeTypes[nodeTypeName] ?? {}).map(Number);
+			};
+		},
+		getCredentialOnlyNodeType() {
+			return (nodeTypeName: string, version?: number): INodeTypeDescription | null => {
+				const credentialName = getCredentialTypeName(nodeTypeName);
+				const httpNode = this.getNodeType(
+					HTTP_REQUEST_NODE_TYPE,
+					version ?? CREDENTIAL_ONLY_HTTP_NODE_VERSION,
+				);
+				const credential = useCredentialsStore().getCredentialTypeByName(credentialName);
+				return getCredentialOnlyNodeType(httpNode, credential) ?? null;
+			};
+		},
+		isConfigNode() {
+			return (workflow: Workflow, node: INode, nodeTypeName: string): boolean => {
+				if (!workflow.nodes[node.name]) {
+					return false;
+				}
+				const nodeType = this.getNodeType(nodeTypeName);
+				if (!nodeType) {
+					return false;
+				}
+				const outputs = NodeHelpers.getNodeOutputs(workflow, node, nodeType);
+				const outputTypes = NodeHelpers.getConnectionTypes(outputs);
 
-				return nodeType || null;
+				return outputTypes
+					? outputTypes.filter((output) => output !== NodeConnectionType.Main).length > 0
+					: false;
+			};
+		},
+		isConfigurableNode() {
+			return (workflow: Workflow, node: INode, nodeTypeName: string): boolean => {
+				const nodeType = this.getNodeType(nodeTypeName);
+				if (nodeType === null) {
+					return false;
+				}
+				const inputs = NodeHelpers.getNodeInputs(workflow, node, nodeType);
+				const inputTypes = NodeHelpers.getConnectionTypes(inputs);
+
+				return inputTypes
+					? inputTypes.filter((input) => input !== NodeConnectionType.Main).length > 0
+					: false;
 			};
 		},
 		isTriggerNode() {
@@ -96,39 +148,76 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 				return acc;
 			}, []);
 		},
-	},
-	actions: {
-		setNodeTypes(newNodeTypes: INodeTypeDescription[] = []): void {
-			const nodeTypes = newNodeTypes.reduce<Record<string, Record<string, INodeTypeDescription>>>(
-				(acc, newNodeType) => {
-					const newNodeVersions = getNodeVersions(newNodeType);
-
-					if (newNodeVersions.length === 0) {
-						const singleVersion = { [DEFAULT_NODETYPE_VERSION]: newNodeType };
-
-						acc[newNodeType.name] = singleVersion;
-						return acc;
-					}
-
-					for (const version of newNodeVersions) {
-						// Node exists with the same name
-						if (acc[newNodeType.name]) {
-							acc[newNodeType.name][version] = Object.assign(
-								acc[newNodeType.name][version] ?? {},
-								newNodeType,
-							);
-						} else {
-							acc[newNodeType.name] = Object.assign(acc[newNodeType.name] ?? {}, {
-								[version]: newNodeType,
-							});
-						}
+		visibleNodeTypesByOutputConnectionTypeNames(): { [key: string]: string[] } {
+			const nodesByOutputType = this.visibleNodeTypes.reduce(
+				(acc, node) => {
+					const outputTypes = node.outputs;
+					if (Array.isArray(outputTypes)) {
+						outputTypes.forEach((value: ConnectionTypes | INodeOutputConfiguration) => {
+							const outputType = typeof value === 'string' ? value : value.type;
+							if (!acc[outputType]) {
+								acc[outputType] = [];
+							}
+							acc[outputType].push(node.name);
+						});
+					} else {
+						// If outputs is not an array, it must be a string expression
+						// in which case we'll try to match all possible non-main output types that are supported
+						const connectorTypes: ConnectionTypes[] = [
+							NodeConnectionType.AiVectorStore,
+							NodeConnectionType.AiChain,
+							NodeConnectionType.AiDocument,
+							NodeConnectionType.AiEmbedding,
+							NodeConnectionType.AiLanguageModel,
+							NodeConnectionType.AiMemory,
+							NodeConnectionType.AiOutputParser,
+							NodeConnectionType.AiTextSplitter,
+							NodeConnectionType.AiTool,
+						];
+						connectorTypes.forEach((outputType: ConnectionTypes) => {
+							if (outputTypes.includes(outputType)) {
+								acc[outputType] = acc[outputType] || [];
+								acc[outputType].push(node.name);
+							}
+						});
 					}
 
 					return acc;
 				},
-				{ ...this.nodeTypes },
+				{} as { [key: string]: string[] },
 			);
-			this.nodeTypes = nodeTypes;
+
+			return nodesByOutputType;
+		},
+		visibleNodeTypesByInputConnectionTypeNames(): { [key: string]: string[] } {
+			const nodesByOutputType = this.visibleNodeTypes.reduce(
+				(acc, node) => {
+					const inputTypes = node.inputs;
+					if (Array.isArray(inputTypes)) {
+						inputTypes.forEach((value: ConnectionTypes | INodeOutputConfiguration) => {
+							const outputType = typeof value === 'string' ? value : value.type;
+							if (!acc[outputType]) {
+								acc[outputType] = [];
+							}
+							acc[outputType].push(node.name);
+						});
+					}
+
+					return acc;
+				},
+				{} as { [key: string]: string[] },
+			);
+
+			return nodesByOutputType;
+		},
+	},
+	actions: {
+		setNodeTypes(newNodeTypes: INodeTypeDescription[] = []): void {
+			const nodeTypes = groupNodeTypesByNameAndType(newNodeTypes);
+			this.nodeTypes = {
+				...this.nodeTypes,
+				...nodeTypes,
+			};
 		},
 		removeNodeTypes(nodeTypesToRemove: INodeTypeDescription[]): void {
 			this.nodeTypes = nodeTypesToRemove.reduce(
@@ -166,6 +255,14 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 				this.setNodeTypes(nodeTypes);
 			}
 		},
+		/**
+		 * Loads node types if they haven't been loaded yet
+		 */
+		async loadNodeTypesIfNotLoaded(): Promise<void> {
+			if (Object.keys(this.nodeTypes).length === 0) {
+				await this.getNodeTypes();
+			}
+		},
 		async getNodeTranslationHeaders(): Promise<void> {
 			const rootStore = useRootStore();
 			const headers = await getNodeTranslationHeaders(rootStore.getRestApiContext);
@@ -174,25 +271,20 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 				addHeaders(headers, rootStore.defaultLocale);
 			}
 		},
-		async getNodeParameterOptions(sendData: {
-			nodeTypeAndVersion: INodeTypeNameVersion;
-			path: string;
-			methodName?: string;
-			loadOptions?: ILoadOptions;
-			currentNodeParameters: INodeParameters;
-			credentials?: INodeCredentials;
-		}): Promise<INodePropertyOptions[]> {
+		async getNodeParameterOptions(
+			sendData: DynamicNodeParameters.OptionsRequest,
+		): Promise<INodePropertyOptions[]> {
 			const rootStore = useRootStore();
-			return getNodeParameterOptions(rootStore.getRestApiContext, sendData);
+			return await getNodeParameterOptions(rootStore.getRestApiContext, sendData);
 		},
 		async getResourceLocatorResults(
-			sendData: IResourceLocatorReqParams,
+			sendData: DynamicNodeParameters.ResourceLocatorResultsRequest,
 		): Promise<INodeListSearchResult> {
 			const rootStore = useRootStore();
-			return getResourceLocatorResults(rootStore.getRestApiContext, sendData);
+			return await getResourceLocatorResults(rootStore.getRestApiContext, sendData);
 		},
 		async getResourceMapperFields(
-			sendData: ResourceMapperReqParams,
+			sendData: DynamicNodeParameters.ResourceMapperFieldsRequest,
 		): Promise<ResourceMapperFields | null> {
 			const rootStore = useRootStore();
 			try {

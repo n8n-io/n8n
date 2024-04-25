@@ -1,10 +1,11 @@
+import { ApplicationError } from 'n8n-workflow';
 import type { ICredentialDataDecryptedObject, IDataObject } from 'n8n-workflow';
-import { formatPrivateKey } from '@utils/utilities';
 
 import mysql2 from 'mysql2/promise';
 import type { Client, ConnectConfig } from 'ssh2';
 
 import type { Mysql2Pool } from '../helpers/interfaces';
+import { formatPrivateKey } from '@utils/utilities';
 
 async function createSshConnectConfig(credentials: IDataObject) {
 	if (credentials.sshAuthenticateWith === 'password') {
@@ -36,7 +37,9 @@ export async function createPool(
 	sshClient?: Client,
 ): Promise<Mysql2Pool> {
 	if (credentials === undefined) {
-		throw new Error('Credentials not selected, select or add new credentials');
+		throw new ApplicationError('Credentials not selected, select or add new credentials', {
+			level: 'warning',
+		});
 	}
 	const {
 		ssl,
@@ -94,7 +97,9 @@ export async function createPool(
 		return mysql2.createPool(connectionOptions);
 	} else {
 		if (!sshClient) {
-			throw new Error('SSH Tunnel is enabled but no SSH Client was provided');
+			throw new ApplicationError('SSH Tunnel is enabled but no SSH Client was provided', {
+				level: 'warning',
+			});
 		}
 
 		const tunnelConfig = await createSshConnectConfig(credentials);
@@ -128,6 +133,6 @@ export async function createPool(
 				.connect(tunnelConfig);
 		});
 
-		return poolSetup;
+		return await poolSetup;
 	}
 }

@@ -11,7 +11,10 @@ export async function searchWorkbooks(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	const q = filter ? encodeURI(`.xlsx AND ${filter}`) : '.xlsx';
+	const fileExtensions = ['.xlsx', '.xlsm', '.xlst'];
+	const extensionFilter = fileExtensions.join(' OR ');
+
+	const q = filter || extensionFilter;
 
 	let response: IDataObject = {};
 
@@ -37,10 +40,22 @@ export async function searchWorkbooks(
 		);
 	}
 
+	if (response.value && filter) {
+		response.value = (response.value as IDataObject[]).filter((workbook: IDataObject) => {
+			return fileExtensions.some((extension) => (workbook.name as string).includes(extension));
+		});
+	}
+
 	return {
 		results: (response.value as IDataObject[]).map((workbook: IDataObject) => {
+			for (const extension of fileExtensions) {
+				if ((workbook.name as string).includes(extension)) {
+					workbook.name = (workbook.name as string).replace(extension, '');
+					break;
+				}
+			}
 			return {
-				name: (workbook.name as string).replace('.xlsx', ''),
+				name: workbook.name as string,
 				value: workbook.id as string,
 				url: workbook.webUrl as string,
 			};
@@ -54,7 +69,7 @@ export async function getWorksheetsList(
 ): Promise<INodeListSearchResult> {
 	const workbookRLC = this.getNodeParameter('workbook') as IDataObject;
 	const workbookId = workbookRLC.value as string;
-	let workbookURL = workbookRLC.cachedResultUrl as string;
+	let workbookURL = (workbookRLC.cachedResultUrl as string) ?? '';
 
 	if (workbookURL.includes('1drv.ms')) {
 		workbookURL = `https://onedrive.live.com/edit.aspx?resid=${workbookId}`;
@@ -76,7 +91,9 @@ export async function getWorksheetsList(
 		results: (response.value as IDataObject[]).map((worksheet: IDataObject) => ({
 			name: worksheet.name as string,
 			value: worksheet.id as string,
-			url: `${workbookURL}&activeCell=${encodeURIComponent(worksheet.name as string)}!A1`,
+			url: workbookURL
+				? `${workbookURL}&activeCell=${encodeURIComponent(worksheet.name as string)}!A1`
+				: undefined,
 		})),
 	};
 }
@@ -86,7 +103,7 @@ export async function getWorksheetTables(
 ): Promise<INodeListSearchResult> {
 	const workbookRLC = this.getNodeParameter('workbook') as IDataObject;
 	const workbookId = workbookRLC.value as string;
-	let workbookURL = workbookRLC.cachedResultUrl as string;
+	let workbookURL = (workbookRLC.cachedResultUrl as string) ?? '';
 
 	if (workbookURL.includes('1drv.ms')) {
 		workbookURL = `https://onedrive.live.com/edit.aspx?resid=${workbookId}`;
@@ -123,9 +140,12 @@ export async function getWorksheetTables(
 
 		const [sheetName, sheetRange] = address.split('!' as string);
 
-		const url = `${workbookURL}&activeCell=${encodeURIComponent(sheetName as string)}${
-			sheetRange ? '!' + (sheetRange as string) : ''
-		}`;
+		let url;
+		if (workbookURL) {
+			url = `${workbookURL}&activeCell=${encodeURIComponent(sheetName as string)}${
+				sheetRange ? '!' + (sheetRange as string) : ''
+			}`;
+		}
 
 		results.push({ name, value, url });
 	}

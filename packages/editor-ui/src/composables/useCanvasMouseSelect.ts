@@ -1,16 +1,12 @@
 import type { INodeUi, XYPosition } from '@/Interface';
 
-import useDeviceSupport from './useDeviceSupport';
+import { useDeviceSupport } from 'n8n-design-system';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import {
-	getMousePosition,
-	getRelativePosition,
-	SIDEBAR_WIDTH,
-	SIDEBAR_WIDTH_EXPANDED,
-} from '@/utils/nodeViewUtils';
+import { getMousePosition, getRelativePosition } from '@/utils/nodeViewUtils';
 import { ref, onMounted, computed } from 'vue';
 import { useCanvasStore } from '@/stores/canvas.store';
+import { useContextMenu } from './useContextMenu';
 
 interface ExtendedHTMLSpanElement extends HTMLSpanElement {
 	x: number;
@@ -25,6 +21,7 @@ export default function useCanvasMouseSelect() {
 	const uiStore = useUIStore();
 	const canvasStore = useCanvasStore();
 	const workflowsStore = useWorkflowsStore();
+	const { isOpen: isContextMenuOpen } = useContextMenu();
 
 	function _setSelectBoxStyle(styles: Record<string, string>) {
 		Object.assign(selectBox.value.style, styles);
@@ -132,8 +129,11 @@ export default function useCanvasMouseSelect() {
 	}
 
 	function mouseUpMouseSelect(e: MouseEvent) {
-		if (selectActive.value === false) {
-			if (isTouchDevice === true && e.target instanceof HTMLElement) {
+		// Ignore right-click
+		if (e.button === 2 || isContextMenuOpen.value) return;
+
+		if (!selectActive.value) {
+			if (isTouchDevice && e.target instanceof HTMLElement) {
 				if (e.target && e.target.id.includes('node-view')) {
 					// Deselect all nodes
 					deselectAllNodes();
@@ -161,7 +161,7 @@ export default function useCanvasMouseSelect() {
 		_hideSelectBox();
 	}
 	function mouseDownMouseSelect(e: MouseEvent, moveButtonPressed: boolean) {
-		if (isCtrlKeyPressed(e) === true || moveButtonPressed) {
+		if (isCtrlKeyPressed(e) || moveButtonPressed || e.button === 2) {
 			// We only care about it when the ctrl key is not pressed at the same time.
 			// So we exit when it is pressed.
 			return;
@@ -179,18 +179,9 @@ export default function useCanvasMouseSelect() {
 	}
 
 	function getMousePositionWithinNodeView(event: MouseEvent | TouchEvent): XYPosition {
-		const [mouseX, mouseY] = getMousePosition(event);
+		const mousePosition = getMousePosition(event);
 
-		const sidebarWidth = canvasStore.isDemo
-			? 0
-			: uiStore.sidebarMenuCollapsed
-			? SIDEBAR_WIDTH
-			: SIDEBAR_WIDTH_EXPANDED;
-
-		const relativeX = mouseX - sidebarWidth;
-		const relativeY = canvasStore.isDemo
-			? mouseY
-			: mouseY - uiStore.bannersHeight - uiStore.headerHeight;
+		const [relativeX, relativeY] = canvasStore.canvasPositionFromPagePosition(mousePosition);
 		const nodeViewScale = canvasStore.nodeViewScale;
 		const nodeViewOffsetPosition = uiStore.nodeViewOffsetPosition;
 

@@ -2,7 +2,7 @@
 	<div>
 		<n8n-loading :loading="loading" :rows="5" variant="p" />
 
-		<template-details-block v-if="!loading && template.nodes.length > 0" :title="blockTitle">
+		<TemplateDetailsBlock v-if="!loading && template.nodes.length > 0" :title="blockTitle">
 			<div :class="$style.icons">
 				<div
 					v-for="node in filterTemplateNodes(template.nodes)"
@@ -10,23 +10,23 @@
 					:class="$style.icon"
 				>
 					<NodeIcon
-						:nodeType="node"
+						:node-type="node"
 						:size="24"
-						:showTooltip="true"
+						:show-tooltip="true"
 						@click="redirectToSearchPage(node)"
 					/>
 				</div>
 			</div>
-		</template-details-block>
+		</TemplateDetailsBlock>
 
-		<template-details-block
+		<TemplateDetailsBlock
 			v-if="!loading && template?.categories.length > 0"
 			:title="$locale.baseText('template.details.categories')"
 		>
 			<n8n-tags :tags="template.categories" @click:tag="redirectToCategory" />
-		</template-details-block>
+		</TemplateDetailsBlock>
 
-		<template-details-block v-if="!loading" :title="$locale.baseText('template.details.details')">
+		<TemplateDetailsBlock v-if="!loading" :title="$locale.baseText('template.details.details')">
 			<div :class="$style.text">
 				<n8n-text size="small" color="text-base">
 					{{ $locale.baseText('template.details.created') }}
@@ -42,15 +42,17 @@
 					{{ $locale.baseText('template.details.times') }}
 				</n8n-text>
 			</div>
-		</template-details-block>
+		</TemplateDetailsBlock>
 	</div>
 </template>
+
 <script lang="ts">
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import TemplateDetailsBlock from '@/components/TemplateDetailsBlock.vue';
 import NodeIcon from '@/components/NodeIcon.vue';
-import { abbreviateNumber, filterTemplateNodes } from '@/utils';
+import { filterTemplateNodes } from '@/utils/nodeTypesUtils';
+import { abbreviateNumber } from '@/utils/typesUtils';
 import type { ITemplatesNode, ITemplatesWorkflow, ITemplatesWorkflowFull } from '@/Interface';
 import { mapStores } from 'pinia';
 import { useTemplatesStore } from '@/stores/templates.store';
@@ -58,6 +60,11 @@ import TimeAgo from '@/components/TimeAgo.vue';
 
 export default defineComponent({
 	name: 'TemplateDetails',
+	components: {
+		NodeIcon,
+		TemplateDetailsBlock,
+		TimeAgo,
+	},
 	props: {
 		blockTitle: {
 			type: String,
@@ -68,11 +75,6 @@ export default defineComponent({
 		template: {
 			type: Object as PropType<ITemplatesWorkflow | ITemplatesWorkflowFull>,
 		},
-	},
-	components: {
-		NodeIcon,
-		TemplateDetailsBlock,
-		TimeAgo,
 	},
 	computed: {
 		...mapStores(useTemplatesStore),

@@ -1,17 +1,17 @@
-import { Service } from 'typedi';
+import os from 'node:os';
+import { writeFile, chmod, readFile } from 'node:fs/promises';
+import Container, { Service } from 'typedi';
 import { SourceControlPreferences } from './types/sourceControlPreferences';
 import type { ValidationError } from 'class-validator';
 import { validate } from 'class-validator';
-import { readFileSync as fsReadFileSync, existsSync as fsExistsSync } from 'fs';
 import { writeFile as fsWriteFile, rm as fsRm } from 'fs/promises';
 import {
 	generateSshKeyPair,
 	isSourceControlLicensed,
 	sourceControlFoldersExistCheck,
 } from './sourceControlHelper.ee';
-import { UserSettings } from 'n8n-core';
-import { LoggerProxy, jsonParse } from 'n8n-workflow';
-import * as Db from '@/Db';
+import { Cipher, InstanceSettings } from 'n8n-core';
+import { ApplicationError, jsonParse } from 'n8n-workflow';
 import {
 	SOURCE_CONTROL_SSH_FOLDER,
 	SOURCE_CONTROL_GIT_FOLDER,
@@ -19,21 +19,28 @@ import {
 	SOURCE_CONTROL_PREFERENCES_DB_KEY,
 } from './constants';
 import path from 'path';
+import type { KeyPairType } from './types/keyPairType';
+import config from '@/config';
+import { Logger } from '@/Logger';
+import { SettingsRepository } from '@db/repositories/settings.repository';
 
 @Service()
 export class SourceControlPreferencesService {
 	private _sourceControlPreferences: SourceControlPreferences = new SourceControlPreferences();
 
-	private sshKeyName: string;
+	readonly sshKeyName: string;
 
-	private sshFolder: string;
+	readonly sshFolder: string;
 
-	private gitFolder: string;
+	readonly gitFolder: string;
 
-	constructor() {
-		const userFolder = UserSettings.getUserN8nFolderPath();
-		this.sshFolder = path.join(userFolder, SOURCE_CONTROL_SSH_FOLDER);
-		this.gitFolder = path.join(userFolder, SOURCE_CONTROL_GIT_FOLDER);
+	constructor(
+		instanceSettings: InstanceSettings,
+		private readonly logger: Logger,
+		private readonly cipher: Cipher,
+	) {
+		this.sshFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_SSH_FOLDER);
+		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
 		this.sshKeyName = path.join(this.sshFolder, SOURCE_CONTROL_SSH_KEY_NAME);
 	}
 
@@ -41,7 +48,6 @@ export class SourceControlPreferencesService {
 		return {
 			...this._sourceControlPreferences,
 			connected: this._sourceControlPreferences.connected ?? false,
-			publicKey: this.getPublicKey(),
 		};
 	}
 
@@ -61,24 +67,71 @@ export class SourceControlPreferencesService {
 		);
 	}
 
-	getPublicKey(): string {
+	private async getKeyPairFromDatabase() {
+		const dbSetting = await Container.get(SettingsRepository).findByKey(
+			'features.sourceControl.sshKeys',
+		);
+
+		if (!dbSetting?.value) return null;
+
+		type KeyPair = { publicKey: string; encryptedPrivateKey: string };
+
+		return jsonParse<KeyPair | null>(dbSetting.value, { fallbackValue: null });
+	}
+
+	private async getPrivateKeyFromDatabase() {
+		const dbKeyPair = await this.getKeyPairFromDatabase();
+
+		if (!dbKeyPair) return null;
+
+		return this.cipher.decrypt(dbKeyPair.encryptedPrivateKey);
+	}
+
+	private async getPublicKeyFromDatabase() {
+		const dbKeyPair = await this.getKeyPairFromDatabase();
+
+		if (!dbKeyPair) return null;
+
+		return dbKeyPair.publicKey;
+	}
+
+	async getPrivateKeyPath() {
+		const dbPrivateKey = await this.getPrivateKeyFromDatabase();
+
+		if (dbPrivateKey) {
+			const tempFilePath = path.join(os.tmpdir(), 'ssh_private_key_temp');
+
+			await writeFile(tempFilePath, dbPrivateKey);
+
+			await chmod(tempFilePath, 0o600);
+
+			return tempFilePath;
+		}
+
+		return this.sshKeyName; // fall back to key in filesystem
+	}
+
+	async getPublicKey() {
 		try {
-			return fsReadFileSync(this.sshKeyName + '.pub', { encoding: 'utf8' });
-		} catch (error) {
-			LoggerProxy.error(`Failed to read public key: ${(error as Error).message}`);
+			const dbPublicKey = await this.getPublicKeyFromDatabase();
+
+			if (dbPublicKey) return dbPublicKey;
+
+			return await readFile(this.sshKeyName + '.pub', { encoding: 'utf8' });
+		} catch (e) {
+			const error = e instanceof Error ? e : new Error(`${e}`);
+			this.logger.error(`Failed to read SSH public key: ${error.message}`);
 		}
 		return '';
 	}
 
-	hasKeyPairFiles(): boolean {
-		return fsExistsSync(this.sshKeyName) && fsExistsSync(this.sshKeyName + '.pub');
-	}
-
-	async deleteKeyPairFiles(): Promise<void> {
+	async deleteKeyPair() {
 		try {
 			await fsRm(this.sshFolder, { recursive: true });
-		} catch (error) {
-			LoggerProxy.error(`Failed to delete ssh folder: ${(error as Error).message}`);
+			await Container.get(SettingsRepository).delete({ key: 'features.sourceControl.sshKeys' });
+		} catch (e) {
+			const error = e instanceof Error ? e : new Error(`${e}`);
+			this.logger.error(`Failed to delete SSH key pair: ${error.message}`);
 		}
 	}
 
@@ -86,9 +139,15 @@ export class SourceControlPreferencesService {
 	 * Will generate an ed25519 key pair and save it to the database and the file system
 	 * Note: this will overwrite any existing key pair
 	 */
-	async generateAndSaveKeyPair(): Promise<SourceControlPreferences> {
+	async generateAndSaveKeyPair(keyPairType?: KeyPairType): Promise<SourceControlPreferences> {
 		sourceControlFoldersExistCheck([this.gitFolder, this.sshFolder]);
-		const keyPair = await generateSshKeyPair('ed25519');
+		if (!keyPairType) {
+			keyPairType =
+				this.getPreferences().keyGeneratorType ??
+				(config.get('sourceControl.defaultKeyPairType') as KeyPairType) ??
+				'ed25519';
+		}
+		const keyPair = await generateSshKeyPair(keyPairType);
 		if (keyPair.publicKey && keyPair.privateKey) {
 			try {
 				await fsWriteFile(this.sshKeyName + '.pub', keyPair.publicKey, {
@@ -97,9 +156,27 @@ export class SourceControlPreferencesService {
 				});
 				await fsWriteFile(this.sshKeyName, keyPair.privateKey, { encoding: 'utf8', mode: 0o600 });
 			} catch (error) {
-				throw Error(`Failed to save key pair: ${(error as Error).message}`);
+				throw new ApplicationError('Failed to save key pair to disk', { cause: error });
 			}
 		}
+		// update preferences only after generating key pair to prevent endless loop
+		if (keyPairType !== this.getPreferences().keyGeneratorType) {
+			await this.setPreferences({ keyGeneratorType: keyPairType });
+		}
+
+		try {
+			await Container.get(SettingsRepository).save({
+				key: 'features.sourceControl.sshKeys',
+				value: JSON.stringify({
+					encryptedPrivateKey: this.cipher.encrypt(keyPair.privateKey),
+					publicKey: keyPair.publicKey,
+				}),
+				loadOnStartup: true,
+			});
+		} catch (error) {
+			throw new ApplicationError('Failed to write key pair to database', { cause: error });
+		}
+
 		return this.getPreferences();
 	}
 
@@ -135,7 +212,9 @@ export class SourceControlPreferencesService {
 			validationError: { target: false },
 		});
 		if (validationResult.length > 0) {
-			throw new Error(`Invalid source control preferences: ${JSON.stringify(validationResult)}`);
+			throw new ApplicationError('Invalid source control preferences', {
+				extra: { preferences: validationResult },
+			});
 		}
 		return validationResult;
 	}
@@ -144,22 +223,20 @@ export class SourceControlPreferencesService {
 		preferences: Partial<SourceControlPreferences>,
 		saveToDb = true,
 	): Promise<SourceControlPreferences> {
-		sourceControlFoldersExistCheck([this.gitFolder, this.sshFolder]);
-		if (!this.hasKeyPairFiles()) {
-			LoggerProxy.debug('No key pair files found, generating new pair');
-			await this.generateAndSaveKeyPair();
-		}
 		this.sourceControlPreferences = preferences;
 		if (saveToDb) {
 			const settingsValue = JSON.stringify(this._sourceControlPreferences);
 			try {
-				await Db.collections.Settings.save({
-					key: SOURCE_CONTROL_PREFERENCES_DB_KEY,
-					value: settingsValue,
-					loadOnStartup: true,
-				});
+				await Container.get(SettingsRepository).save(
+					{
+						key: SOURCE_CONTROL_PREFERENCES_DB_KEY,
+						value: settingsValue,
+						loadOnStartup: true,
+					},
+					{ transaction: false },
+				);
 			} catch (error) {
-				throw new Error(`Failed to save source control preferences: ${(error as Error).message}`);
+				throw new ApplicationError('Failed to save source control preferences', { cause: error });
 			}
 		}
 		return this.sourceControlPreferences;
@@ -168,7 +245,7 @@ export class SourceControlPreferencesService {
 	async loadFromDbAndApplySourceControlPreferences(): Promise<
 		SourceControlPreferences | undefined
 	> {
-		const loadedPreferences = await Db.collections.Settings.findOne({
+		const loadedPreferences = await Container.get(SettingsRepository).findOne({
 			where: { key: SOURCE_CONTROL_PREFERENCES_DB_KEY },
 		});
 		if (loadedPreferences) {
@@ -180,7 +257,7 @@ export class SourceControlPreferencesService {
 					return preferences;
 				}
 			} catch (error) {
-				LoggerProxy.warn(
+				this.logger.warn(
 					`Could not parse Source Control settings from database: ${(error as Error).message}`,
 				);
 			}

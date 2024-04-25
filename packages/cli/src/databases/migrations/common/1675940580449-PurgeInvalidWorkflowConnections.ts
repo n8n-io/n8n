@@ -47,10 +47,12 @@ export class PurgeInvalidWorkflowConnections1675940580449 implements Irreversibl
 				});
 
 				// Update database with new connections
-				return runQuery(
+				return await runQuery(
 					`UPDATE ${workflowsTable} SET connections = :connections WHERE id = :id`,
-					{ connections: JSON.stringify(connections) },
-					{ id: workflow.id },
+					{
+						connections: JSON.stringify(connections),
+						id: workflow.id,
+					},
 				);
 			}),
 		);

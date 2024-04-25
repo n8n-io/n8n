@@ -6,11 +6,10 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
 import { spontitApiRequest } from './GenericFunctions';
 
 import { pushFields, pushOperations } from './PushDescription';
-
-import moment from 'moment';
 
 export class Spontit implements INodeType {
 	description: INodeTypeDescription = {

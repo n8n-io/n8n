@@ -9,6 +9,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
+import { capitalCase } from 'change-case';
 import {
 	adjustAddresses,
 	getFilterQuery,
@@ -36,8 +37,6 @@ import type {
 	NewProduct,
 	Search,
 } from './types';
-
-import { capitalCase } from 'change-case';
 
 export class Magento2 implements INodeType {
 	description: INodeTypeDescription = {
@@ -278,10 +277,10 @@ export class Magento2 implements INodeType {
 			async getFilterableCustomerAttributes(
 				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
-				return getProductAttributes.call(this, (attribute) => attribute.is_filterable);
+				return await getProductAttributes.call(this, (attribute) => attribute.is_filterable);
 			},
 			async getProductAttributes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				return getProductAttributes.call(this);
+				return await getProductAttributes.call(this);
 			},
 			// async getProductAttributesFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 			// 	return getProductAttributes.call(this, undefined, { name: '*', value: '*', description: 'All properties' });
@@ -289,12 +288,15 @@ export class Magento2 implements INodeType {
 			async getFilterableProductAttributes(
 				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
-				return getProductAttributes.call(this, (attribute) => attribute.is_searchable === '1');
+				return await getProductAttributes.call(
+					this,
+					(attribute) => attribute.is_searchable === '1',
+				);
 			},
 			async getSortableProductAttributes(
 				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
-				return getProductAttributes.call(this, (attribute) => attribute.used_for_sort_by);
+				return await getProductAttributes.call(this, (attribute) => attribute.used_for_sort_by);
 			},
 			async getOrderAttributes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				return getOrderFields()
@@ -810,6 +812,6 @@ export class Magento2 implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

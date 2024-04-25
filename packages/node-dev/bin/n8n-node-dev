@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
-require('@oclif/command').run()
-.then(require('@oclif/command/flush'))
-.catch(require('@oclif/errors/handle'));
+(async () => {
+	const oclif = await import('@oclif/core');
+	await oclif.execute({});
+})();

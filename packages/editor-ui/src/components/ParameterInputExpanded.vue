@@ -1,43 +1,43 @@
 <template>
 	<n8n-input-label
 		:label="$locale.credText().inputLabelDisplayName(parameter)"
-		:tooltipText="$locale.credText().inputLabelDescription(parameter)"
+		:tooltip-text="$locale.credText().inputLabelDescription(parameter)"
 		:required="parameter.required"
-		:showTooltip="focused"
-		:showOptions="menuExpanded"
+		:show-tooltip="focused"
+		:show-options="menuExpanded"
 		:data-test-id="parameter.name"
 		:size="label.size"
 	>
 		<template #options>
-			<parameter-options
+			<ParameterOptions
 				:parameter="parameter"
 				:value="value"
-				:isReadOnly="false"
-				:showOptions="true"
-				:isValueExpression="isValueExpression"
-				@update:modelValue="optionSelected"
+				:is-read-only="false"
+				:show-options="true"
+				:is-value-expression="isValueExpression"
+				@update:model-value="optionSelected"
 				@menu-expanded="onMenuExpanded"
 			/>
 		</template>
-		<parameter-input-wrapper
+		<ParameterInputWrapper
 			ref="param"
-			inputSize="large"
+			input-size="large"
 			:parameter="parameter"
-			:modelValue="value"
+			:model-value="value"
 			:path="parameter.name"
-			:hideIssues="true"
-			:documentationUrl="documentationUrl"
-			:errorHighlight="showRequiredErrors"
-			:isForCredential="true"
-			:eventSource="eventSource"
+			:hide-issues="true"
+			:documentation-url="documentationUrl"
+			:error-highlight="showRequiredErrors"
+			:is-for-credential="true"
+			:event-source="eventSource"
 			:hint="!showRequiredErrors ? hint : ''"
 			:event-bus="eventBus"
 			@focus="onFocus"
 			@blur="onBlur"
-			@textInput="valueChanged"
+			@text-input="valueChanged"
 			@update="valueChanged"
 		/>
-		<div :class="$style.errors" v-if="showRequiredErrors">
+		<div v-if="showRequiredErrors" :class="$style.errors">
 			<n8n-text color="danger" size="small">
 				{{ $locale.baseText('parameterInputExpanded.thisFieldIsRequired') }}
 				<n8n-link
@@ -60,16 +60,14 @@ import ParameterOptions from './ParameterOptions.vue';
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import ParameterInputWrapper from './ParameterInputWrapper.vue';
-import { isValueExpression } from '@/utils';
+import { isValueExpression } from '@/utils/nodeTypesUtils';
 import type { INodeParameterResourceLocator, INodeProperties, IParameterLabel } from 'n8n-workflow';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createEventBus } from 'n8n-design-system/utils';
 
-type ParamRef = InstanceType<typeof ParameterInputWrapper>;
-
 export default defineComponent({
-	name: 'parameter-input-expanded',
+	name: 'ParameterInputExpanded',
 	components: {
 		ParameterOptions,
 		ParameterInputWrapper,
@@ -116,6 +114,10 @@ export default defineComponent({
 				}
 
 				if (this.parameter.type === 'number') {
+					if (typeof this.value === 'string' && this.value.startsWith('=')) {
+						return false;
+					}
+
 					return typeof this.value !== 'number';
 				}
 			}

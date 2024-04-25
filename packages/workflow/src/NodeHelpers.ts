@@ -10,12 +10,14 @@
 
 import get from 'lodash/get';
 import isEqual from 'lodash/isEqual';
+import uniqBy from 'lodash/uniqBy';
 
 import type {
+	FieldType,
 	IContextObject,
+	IHttpRequestMethods,
 	INode,
 	INodeCredentialDescription,
-	INodeExecutionData,
 	INodeIssueObjectProperty,
 	INodeIssues,
 	INodeParameterResourceLocator,
@@ -24,25 +26,34 @@ import type {
 	INodePropertyCollection,
 	INodePropertyMode,
 	INodePropertyModeValidation,
+	INodePropertyOptions,
 	INodePropertyRegexValidation,
 	INodeType,
-	IVersionedNodeType,
 	IParameterDependencies,
 	IRunExecutionData,
+	IVersionedNodeType,
 	IWebhookData,
 	IWorkflowExecuteAdditionalData,
 	NodeParameterValue,
-	IHttpRequestMethods,
-	FieldType,
-	INodePropertyOptions,
 	ResourceMapperValue,
-	ValidationResult,
+	ConnectionTypes,
+	INodeTypeDescription,
+	INodeOutputConfiguration,
+	INodeInputConfiguration,
+	GenericValue,
+	DisplayCondition,
 } from './Interfaces';
-import { isResourceMapperValue, isValidResourceLocatorParameterValue } from './type-guards';
+import {
+	isFilterValue,
+	isResourceMapperValue,
+	isValidResourceLocatorParameterValue,
+} from './type-guards';
 import { deepCopy } from './utils';
 
 import type { Workflow } from './Workflow';
-import { DateTime } from 'luxon';
+import { validateFilterParameter } from './NodeParameters/FilterParameter';
+import { validateFieldType } from './TypeValidation';
+import { ApplicationError } from './errors/application.error';
 
 export const cronNodeOptions: INodePropertyCollection[] = [
 	{
@@ -231,7 +242,7 @@ export const cronNodeOptions: INodePropertyCollection[] = [
 	},
 ];
 
-const specialNodeParameters: INodeProperties[] = [
+const commonPollingParameters: INodeProperties[] = [
 	{
 		displayName: 'Poll Times',
 		name: 'pollTimes',
@@ -247,14 +258,119 @@ const specialNodeParameters: INodeProperties[] = [
 	},
 ];
 
+const commonCORSParameters: INodeProperties[] = [
+	{
+		displayName: 'Allowed Origins (CORS)',
+		name: 'allowedOrigins',
+		type: 'string',
+		default: '*',
+		description:
+			'Comma-separated list of URLs allowed for cross-origin non-preflight requests. Use * (default) to allow all origins.',
+	},
+];
+
 /**
  * Apply special parameters which should be added to nodeTypes depending on their type or configuration
  */
 export function applySpecialNodeParameters(nodeType: INodeType): void {
-	if (nodeType.description.polling === true) {
-		nodeType.description.properties.unshift(...specialNodeParameters);
+	const { properties, polling, supportsCORS } = nodeType.description;
+	if (polling) {
+		properties.unshift(...commonPollingParameters);
+	}
+	if (nodeType.webhook && supportsCORS) {
+		const optionsProperty = properties.find(({ name }) => name === 'options');
+		if (optionsProperty)
+			optionsProperty.options = [
+				...commonCORSParameters,
+				...(optionsProperty.options as INodePropertyOptions[]),
+			];
+		else properties.push(...commonCORSParameters);
 	}
 }
+
+const getPropertyValues = (
+	nodeValues: INodeParameters,
+	propertyName: string,
+	node: Pick<INode, 'typeVersion'> | null,
+	nodeValuesRoot: INodeParameters,
+) => {
+	let value;
+	if (propertyName.charAt(0) === '/') {
+		// Get the value from the root of the node
+		value = get(nodeValuesRoot, propertyName.slice(1));
+	} else if (propertyName === '@version') {
+		value = node?.typeVersion || 0;
+	} else {
+		// Get the value from current level
+		value = get(nodeValues, propertyName);
+	}
+
+	if (value && typeof value === 'object' && '__rl' in value && value.__rl) {
+		value = value.value;
+	}
+
+	if (!Array.isArray(value)) {
+		return [value as NodeParameterValue];
+	} else {
+		return value as NodeParameterValue[];
+	}
+};
+
+const checkConditions = (
+	conditions: Array<NodeParameterValue | DisplayCondition>,
+	actualValues: NodeParameterValue[],
+) => {
+	return conditions.some((condition) => {
+		if (
+			condition &&
+			typeof condition === 'object' &&
+			condition._cnd &&
+			Object.keys(condition).length === 1
+		) {
+			const [key, targetValue] = Object.entries(condition._cnd)[0];
+
+			return actualValues.every((propertyValue) => {
+				if (key === 'eq') {
+					return isEqual(propertyValue, targetValue);
+				}
+				if (key === 'not') {
+					return !isEqual(propertyValue, targetValue);
+				}
+				if (key === 'gte') {
+					return (propertyValue as number) >= targetValue;
+				}
+				if (key === 'lte') {
+					return (propertyValue as number) <= targetValue;
+				}
+				if (key === 'gt') {
+					return (propertyValue as number) > targetValue;
+				}
+				if (key === 'lt') {
+					return (propertyValue as number) < targetValue;
+				}
+				if (key === 'between') {
+					const { from, to } = targetValue as { from: number; to: number };
+					return (propertyValue as number) >= from && (propertyValue as number) <= to;
+				}
+				if (key === 'includes') {
+					return (propertyValue as string).includes(targetValue);
+				}
+				if (key === 'startsWith') {
+					return (propertyValue as string).startsWith(targetValue);
+				}
+				if (key === 'endsWith') {
+					return (propertyValue as string).endsWith(targetValue);
+				}
+				if (key === 'regex') {
+					return new RegExp(targetValue as string).test(propertyValue as string);
+				}
+				return false;
+			});
+		}
+
+		return actualValues.includes(condition as NodeParameterValue);
+	});
+};
 
 /**
  * Returns if the parameter should be displayed or not
@@ -267,83 +383,38 @@ export function applySpecialNodeParameters(nodeType: INodeType): void {
 export function displayParameter(
 	nodeValues: INodeParameters,
 	parameter: INodeProperties | INodeCredentialDescription,
-	node: INode | null, // Allow null as it does also get used by credentials and they do not have versioning yet
+	node: Pick<INode, 'typeVersion'> | null, // Allow null as it does also get used by credentials and they do not have versioning yet
 	nodeValuesRoot?: INodeParameters,
 ) {
 	if (!parameter.displayOptions) {
 		return true;
 	}
 
+	const { show, hide } = parameter.displayOptions;
+
 	nodeValuesRoot = nodeValuesRoot || nodeValues;
 
-	let value;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const values: any[] = [];
-	if (parameter.displayOptions.show) {
+	if (show) {
 		// All the defined rules have to match to display parameter
-		for (const propertyName of Object.keys(parameter.displayOptions.show)) {
-			if (propertyName.charAt(0) === '/') {
-				// Get the value from the root of the node
-				value = get(nodeValuesRoot, propertyName.slice(1));
-			} else if (propertyName === '@version') {
-				value = node?.typeVersion || 0;
-			} else {
-				// Get the value from current level
-				value = get(nodeValues, propertyName);
-			}
-
-			if (value && typeof value === 'object' && '__rl' in value && value.__rl) {
-				value = value.value;
-			}
-
-			values.length = 0;
-			if (!Array.isArray(value)) {
-				values.push(value);
-			} else {
-				values.push.apply(values, value);
-			}
+		for (const propertyName of Object.keys(show)) {
+			const values = getPropertyValues(nodeValues, propertyName, node, nodeValuesRoot);
 
 			if (values.some((v) => typeof v === 'string' && v.charAt(0) === '=')) {
 				return true;
 			}
 
-			if (
-				values.length === 0 ||
-				!parameter.displayOptions.show[propertyName]!.some((v) => values.includes(v))
-			) {
+			if (values.length === 0 || !checkConditions(show[propertyName]!, values)) {
 				return false;
 			}
 		}
 	}
 
-	if (parameter.displayOptions.hide) {
+	if (hide) {
 		// Any of the defined hide rules have to match to hide the parameter
-		for (const propertyName of Object.keys(parameter.displayOptions.hide)) {
-			if (propertyName.charAt(0) === '/') {
-				// Get the value from the root of the node
-				value = get(nodeValuesRoot, propertyName.slice(1));
-			} else if (propertyName === '@version') {
-				value = node?.typeVersion || 0;
-			} else {
-				// Get the value from current level
-				value = get(nodeValues, propertyName);
-			}
+		for (const propertyName of Object.keys(hide)) {
+			const values = getPropertyValues(nodeValues, propertyName, node, nodeValuesRoot);
 
-			if (value && typeof value === 'object' && '__rl' in value && value.__rl) {
-				value = value.value;
-			}
-
-			values.length = 0;
-			if (!Array.isArray(value)) {
-				values.push(value);
-			} else {
-				values.push.apply(values, value);
-			}
-
-			if (
-				values.length !== 0 &&
-				parameter.displayOptions.hide[propertyName]!.some((v) => values.includes(v))
-			) {
+			if (values.length !== 0 && checkConditions(hide[propertyName]!, values)) {
 				return false;
 			}
 		}
@@ -365,7 +436,7 @@ export function displayParameterPath(
 	nodeValues: INodeParameters,
 	parameter: INodeProperties | INodeCredentialDescription,
 	path: string,
-	node: INode | null,
+	node: Pick<INode, 'typeVersion'> | null,
 ) {
 	let resolvedNodeValues = nodeValues;
 	if (path !== '') {
@@ -395,7 +466,7 @@ export function getContext(
 ): IContextObject {
 	if (runExecutionData.executionData === undefined) {
 		// TODO: Should not happen leave it for test now
-		throw new Error('The "executionData" is not initialized!');
+		throw new ApplicationError('`executionData` is not initialized');
 	}
 
 	let key: string;
@@ -403,11 +474,16 @@ export function getContext(
 		key = 'flow';
 	} else if (type === 'node') {
 		if (node === undefined) {
-			throw new Error('The request data of context type "node" the node parameter has to be set!');
+			// @TODO: What does this mean?
+			throw new ApplicationError(
+				'The request data of context type "node" the node parameter has to be set!',
+			);
 		}
 		key = `node:${node.name}`;
 	} else {
-		throw new Error(`The context type "${type}" is not know. Only "flow" and node" are supported!`);
+		throw new ApplicationError('Unknown context type. Only `flow` and `node` are supported.', {
+			extra: { contextType: type },
+		});
 	}
 
 	if (runExecutionData.executionData.contextData[key] === undefined) {
@@ -462,7 +538,7 @@ export function getParameterResolveOrder(
 	parameterDependencies: IParameterDependencies,
 ): number[] {
 	const executionOrder: number[] = [];
-	const indexToResolve = Array.from({ length: nodePropertiesArray.length }, (v, k) => k);
+	const indexToResolve = Array.from({ length: nodePropertiesArray.length }, (_, k) => k);
 	const resolvedParameters: string[] = [];
 
 	let index: number;
@@ -509,7 +585,7 @@ export function getParameterResolveOrder(
 		}
 
 		if (iterations > lastIndexReduction + nodePropertiesArray.length) {
-			throw new Error(
+			throw new ApplicationError(
 				'Could not resolve parameter dependencies. Max iterations reached! Hint: If `displayOptions` are specified in any child parameter of a parent `collection` or `fixedCollection`, remove the `displayOptions` from the child parameter.',
 			);
 		}
@@ -531,12 +607,13 @@ export function getParameterResolveOrder(
  * @param {boolean} [dataIsResolved=false] If nodeValues are already fully resolved (so that all default values got added already)
  * @param {INodeParameters} [nodeValuesRoot] The root node-parameter-data
  */
+// eslint-disable-next-line complexity
 export function getNodeParameters(
 	nodePropertiesArray: INodeProperties[],
-	nodeValues: INodeParameters,
+	nodeValues: INodeParameters | null,
 	returnDefaults: boolean,
 	returnNoneDisplayed: boolean,
-	node: INode | null,
+	node: Pick<INode, 'typeVersion'> | null,
 	onlySimpleTypes = false,
 	dataIsResolved = false,
 	nodeValuesRoot?: INodeParameters,
@@ -583,16 +660,17 @@ export function getNodeParameters(
 	nodeValuesRoot = nodeValuesRoot || nodeValuesDisplayCheck;
 
 	// Go through the parameters in order of their dependencies
-	const parameterItterationOrderIndex = getParameterResolveOrder(
+	const parameterIterationOrderIndex = getParameterResolveOrder(
 		nodePropertiesArray,
 		parameterDependencies,
 	);
 
-	for (const parameterIndex of parameterItterationOrderIndex) {
+	for (const parameterIndex of parameterIterationOrderIndex) {
 		const nodeProperties = nodePropertiesArray[parameterIndex];
 		if (
-			nodeValues[nodeProperties.name] === undefined &&
-			(!returnDefaults || parentType === 'collection')
+			!nodeValues ||
+			(nodeValues[nodeProperties.name] === undefined &&
+				(!returnDefaults || parentType === 'collection'))
 		) {
 			// The value is not defined so go to the next
 			continue;
@@ -751,9 +829,9 @@ export function getNodeParameters(
 						) as INodePropertyCollection;
 
 						if (nodePropertyOptions === undefined) {
-							throw new Error(
-								`Could not find property option "${itemName}" for "${nodeProperties.name}"`,
-							);
+							throw new ApplicationError('Could not find property option', {
+								extra: { propertyOption: itemName, property: nodeProperties.name },
+							});
 						}
 
 						tempNodePropertiesArray = nodePropertyOptions.values!;
@@ -848,27 +926,6 @@ export function getNodeParameters(
 }
 
 /**
- * Brings the output data in a format that can be returned from a node
- *
- * @param {number} [outputIndex=0]
- */
-export async function prepareOutputData(
-	outputData: INodeExecutionData[],
-	outputIndex = 0,
-): Promise<INodeExecutionData[][]> {
-	// TODO: Check if node has output with that index
-	const returnData = [];
-
-	for (let i = 0; i < outputIndex; i++) {
-		returnData.push([]);
-	}
-
-	returnData.push(outputData);
-
-	return returnData;
-}
-
-/**
  * Returns all the webhooks which should be created for the give node
  */
 export function getNodeWebhooks(
@@ -902,7 +959,6 @@ export function getNodeWebhooks(
 			node,
 			webhookDescription.path,
 			mode,
-			additionalData.timezone,
 			{},
 		);
 		if (nodeWebhookPath === undefined) {
@@ -926,7 +982,6 @@ export function getNodeWebhooks(
 			node,
 			webhookDescription.isFullPath,
 			'internal',
-			additionalData.timezone,
 			{},
 			undefined,
 			false,
@@ -935,24 +990,22 @@ export function getNodeWebhooks(
 			node,
 			webhookDescription.restartWebhook,
 			'internal',
-			additionalData.timezone,
 			{},
 			undefined,
 			false,
 		) as boolean;
 		const path = getNodeWebhookPath(workflowId, node, nodeWebhookPath, isFullPath, restartWebhook);
 
-		const httpMethod = workflow.expression.getSimpleParameterValue(
+		const webhookMethods = workflow.expression.getSimpleParameterValue(
 			node,
 			webhookDescription.httpMethod,
 			mode,
-			additionalData.timezone,
 			{},
 			undefined,
 			'GET',
 		);
 
-		if (httpMethod === undefined) {
+		if (webhookMethods === undefined) {
 			// TODO: Use a proper logger
 			console.error(
 				`The webhook "${path}" for node "${node.name}" in workflow "${workflowId}" could not be added because the httpMethod is not defined.`,
@@ -965,15 +1018,20 @@ export function getNodeWebhooks(
 			webhookId = node.webhookId;
 		}
 
-		returnData.push({
-			httpMethod: httpMethod.toString() as IHttpRequestMethods,
-			node: node.name,
-			path,
-			webhookDescription,
-			workflowId,
-			workflowExecuteAdditionalData: additionalData,
-			webhookId,
-		});
+		String(webhookMethods)
+			.split(',')
+			.forEach((httpMethod) => {
+				if (!httpMethod) return;
+				returnData.push({
+					httpMethod: httpMethod.trim() as IHttpRequestMethods,
+					node: node.name,
+					path,
+					webhookDescription,
+					workflowId,
+					workflowExecuteAdditionalData: additionalData,
+					webhookId,
+				});
+			});
 	}
 
 	return returnData;
@@ -1026,6 +1084,91 @@ export function getNodeWebhookUrl(
 	return `${baseUrl}/${getNodeWebhookPath(workflowId, node, path, isFullPath)}`;
 }
 
+export function getConnectionTypes(
+	connections: Array<ConnectionTypes | INodeInputConfiguration | INodeOutputConfiguration>,
+): ConnectionTypes[] {
+	return connections
+		.map((connection) => {
+			if (typeof connection === 'string') {
+				return connection;
+			}
+			return connection.type;
+		})
+		.filter((connection) => connection !== undefined);
+}
+
+export function getNodeInputs(
+	workflow: Workflow,
+	node: INode,
+	nodeTypeData: INodeTypeDescription,
+): Array<ConnectionTypes | INodeInputConfiguration> {
+	if (Array.isArray(nodeTypeData?.inputs)) {
+		return nodeTypeData.inputs;
+	}
+
+	// Calculate the outputs dynamically
+	try {
+		return (workflow.expression.getSimpleParameterValue(
+			node,
+			nodeTypeData.inputs,
+			'internal',
+			{},
+		) || []) as ConnectionTypes[];
+	} catch (e) {
+		console.warn('Could not calculate inputs dynamically for node: ', node.name);
+		return [];
+	}
+}
+
+export function getNodeOutputs(
+	workflow: Workflow,
+	node: INode,
+	nodeTypeData: INodeTypeDescription,
+): Array<ConnectionTypes | INodeOutputConfiguration> {
+	let outputs: Array<ConnectionTypes | INodeOutputConfiguration> = [];
+
+	if (Array.isArray(nodeTypeData.outputs)) {
+		outputs = nodeTypeData.outputs;
+	} else {
+		// Calculate the outputs dynamically
+		try {
+			outputs = (workflow.expression.getSimpleParameterValue(
+				node,
+				nodeTypeData.outputs,
+				'internal',
+				{},
+			) || []) as ConnectionTypes[];
+		} catch (e) {
+			console.warn('Could not calculate outputs dynamically for node: ', node.name);
+		}
+	}
+
+	if (node.onError === 'continueErrorOutput') {
+		// Copy the data to make sure that we do not change the data of the
+		// node type and so change the displayNames for all nodes in the flow
+		outputs = deepCopy(outputs);
+		if (outputs.length === 1) {
+			// Set the displayName to "Success"
+			if (typeof outputs[0] === 'string') {
+				outputs[0] = {
+					type: outputs[0],
+				};
+			}
+			outputs[0].displayName = 'Success';
+		}
+		return [
+			...outputs,
+			{
+				category: 'error',
+				type: 'main',
+				displayName: 'Error',
+			},
+		];
+	}
+
+	return outputs;
+}
+
 /**
  * Returns all the parameter-issues of the node
  *
@@ -1070,7 +1213,7 @@ export function nodeIssuesToString(issues: INodeIssues, node?: INode): string[] 
 		nodeIssues.push('Execution Error.');
 	}
 
-	const objectProperties = ['parameters', 'credentials'];
+	const objectProperties = ['parameters', 'credentials', 'input'];
 
 	let issueText: string;
 	let parameterName: string;
@@ -1094,172 +1237,6 @@ export function nodeIssuesToString(issues: INodeIssues, node?: INode): string[] 
 
 	return nodeIssues;
 }
-
-// Validates field against the schema and tries to parse it to the correct type
-export const validateFieldType = (
-	fieldName: string,
-	value: unknown,
-	type: FieldType,
-	options?: INodePropertyOptions[],
-): ValidationResult => {
-	if (value === null || value === undefined) return { valid: true };
-	const defaultErrorMessage = `'${fieldName}' expects a ${type} but we got '${String(value)}'.`;
-	switch (type.toLowerCase()) {
-		case 'number': {
-			try {
-				return { valid: true, newValue: tryToParseNumber(value) };
-			} catch (e) {
-				return { valid: false, errorMessage: defaultErrorMessage };
-			}
-		}
-		case 'boolean': {
-			try {
-				return { valid: true, newValue: tryToParseBoolean(value) };
-			} catch (e) {
-				return { valid: false, errorMessage: defaultErrorMessage };
-			}
-		}
-		case 'datetime': {
-			try {
-				return { valid: true, newValue: tryToParseDateTime(value) };
-			} catch (e) {
-				const luxonDocsURL =
-					'https://moment.github.io/luxon/api-docs/index.html#datetimefromformat';
-				const errorMessage = `${defaultErrorMessage} <br/><br/> Consider using <a href="${luxonDocsURL}" target="_blank"><code>DateTime.fromFormat</code></a> to work with custom date formats.`;
-				return { valid: false, errorMessage };
-			}
-		}
-		case 'time': {
-			try {
-				return { valid: true, newValue: tryToParseTime(value) };
-			} catch (e) {
-				return {
-					valid: false,
-					errorMessage: `'${fieldName}' expects time (hh:mm:(:ss)) but we got '${String(value)}'.`,
-				};
-			}
-		}
-		case 'object': {
-			try {
-				return { valid: true, newValue: tryToParseObject(value) };
-			} catch (e) {
-				return { valid: false, errorMessage: defaultErrorMessage };
-			}
-		}
-		case 'array': {
-			try {
-				return { valid: true, newValue: tryToParseArray(value) };
-			} catch (e) {
-				return { valid: false, errorMessage: defaultErrorMessage };
-			}
-		}
-		case 'options': {
-			const validOptions = options?.map((option) => option.value).join(', ') || '';
-			const isValidOption = options?.some((option) => option.value === value) || false;
-
-			if (!isValidOption) {
-				return {
-					valid: false,
-					errorMessage: `'${fieldName}' expects one of the following values: [${validOptions}] but we got '${String(
-						value,
-					)}'`,
-				};
-			}
-			return { valid: true, newValue: value };
-		}
-		default: {
-			return { valid: true, newValue: value };
-		}
-	}
-};
-
-export const tryToParseNumber = (value: unknown): number => {
-	const isValidNumber = !isNaN(Number(value));
-
-	if (!isValidNumber) {
-		throw new Error(`Could not parse '${String(value)}' to number.`);
-	}
-	return Number(value);
-};
-
-export const tryToParseBoolean = (value: unknown): value is boolean => {
-	if (typeof value === 'boolean') {
-		return value;
-	}
-
-	if (typeof value === 'string' && ['true', 'false'].includes(value.toLowerCase())) {
-		return value.toLowerCase() === 'true';
-	}
-
-	const num = Number(value);
-	if (num === 0) {
-		return false;
-	} else if (num === 1) {
-		return true;
-	}
-	throw new Error(`Could not parse '${String(value)}' to boolean.`);
-};
-
-export const tryToParseDateTime = (value: unknown): DateTime => {
-	const dateString = String(value).trim();
-
-	// Rely on luxon to parse different date formats
-	const isoDate = DateTime.fromISO(dateString, { setZone: true });
-	if (isoDate.isValid) {
-		return isoDate;
-	}
-	const httpDate = DateTime.fromHTTP(dateString, { setZone: true });
-	if (httpDate.isValid) {
-		return httpDate;
-	}
-	const rfc2822Date = DateTime.fromRFC2822(dateString, { setZone: true });
-	if (rfc2822Date.isValid) {
-		return rfc2822Date;
-	}
-	const sqlDate = DateTime.fromSQL(dateString, { setZone: true });
-	if (sqlDate.isValid) {
-		return sqlDate;
-	}
-
-	throw new Error(`The value "${dateString}" is not a valid date.`);
-};
-
-export const tryToParseTime = (value: unknown): string => {
-	const isTimeInput = /^\d{2}:\d{2}(:\d{2})?((\-|\+)\d{4})?((\-|\+)\d{1,2}(:\d{2})?)?$/s.test(
-		String(value),
-	);
-	if (!isTimeInput) {
-		throw new Error(`The value "${String(value)}" is not a valid time.`);
-	}
-	return String(value);
-};
-
-export const tryToParseArray = (value: unknown): unknown[] => {
-	try {
-		const parsed = JSON.parse(String(value));
-		if (!Array.isArray(parsed)) {
-			throw new Error(`The value "${String(value)}" is not a valid array.`);
-		}
-		return parsed;
-	} catch (e) {
-		throw new Error(`The value "${String(value)}" is not a valid array.`);
-	}
-};
-
-export const tryToParseObject = (value: unknown): object => {
-	if (value && typeof value === 'object' && !Array.isArray(value)) {
-		return value;
-	}
-	try {
-		const o = JSON.parse(String(value));
-		if (typeof o !== 'object' || Array.isArray(o)) {
-			throw new Error(`The value "${String(value)}" is not a valid object.`);
-		}
-		return o;
-	} catch (e) {
-		throw new Error(`The value "${String(value)}" is not a valid object.`);
-	}
-};
 
 /*
  * Validates resource locator node parameters based on validation ruled defined in each parameter mode
@@ -1301,6 +1278,11 @@ export const validateResourceMapperParameter = (
 	value: ResourceMapperValue,
 	skipRequiredCheck = false,
 ): Record<string, string[]> => {
+	// No issues to raise in automatic mapping mode, no user input to validate
+	if (value.mappingMode === 'autoMapInputData') {
+		return {};
+	}
+
 	const issues: Record<string, string[]> = {};
 	let fieldWordSingular =
 		nodeProperties.typeOptions?.resourceMapper?.fieldWords?.singular || 'Field';
@@ -1316,7 +1298,9 @@ export const validateResourceMapperParameter = (
 			}
 		}
 		if (!fieldValue?.toString().startsWith('=') && field.type) {
-			const validationResult = validateFieldType(field.id, fieldValue, field.type, field.options);
+			const validationResult = validateFieldType(field.id, fieldValue, field.type, {
+				valueOptions: field.options,
+			});
 			if (!validationResult.valid && validationResult.errorMessage) {
 				fieldErrors.push(validationResult.errorMessage);
 			}
@@ -1326,6 +1310,27 @@ export const validateResourceMapperParameter = (
 		}
 	});
 	return issues;
+};
+
+export const validateParameter = (
+	nodeProperties: INodeProperties,
+	value: GenericValue,
+	type: FieldType,
+): string | undefined => {
+	const nodeName = nodeProperties.name;
+	const options = type === 'options' ? nodeProperties.options : undefined;
+
+	if (!value?.toString().startsWith('=')) {
+		const validationResult = validateFieldType(nodeName, value, type, {
+			valueOptions: options as INodePropertyOptions[],
+		});
+
+		if (!validationResult.valid && validationResult.errorMessage) {
+			return validationResult.errorMessage;
+		}
+	}
+
+	return undefined;
 };
 
 /**
@@ -1389,6 +1394,7 @@ function isINodeParameterResourceLocator(value: unknown): value is INodeParamete
  * @param {INodeParameters} nodeValues The values of the node
  * @param {string} path The path to the properties
  */
+// eslint-disable-next-line complexity
 export function getParameterIssues(
 	nodeProperties: INodeProperties,
 	nodeValues: INodeParameters,
@@ -1451,6 +1457,27 @@ export function getParameterIssues(
 				}
 				foundIssues.parameters = { ...foundIssues.parameters, ...issues };
 			}
+		}
+	} else if (nodeProperties.type === 'filter' && isDisplayed) {
+		const value = getParameterValueByPath(nodeValues, nodeProperties.name, path);
+		if (isFilterValue(value)) {
+			const issues = validateFilterParameter(nodeProperties, value);
+			if (Object.keys(issues).length > 0) {
+				foundIssues.parameters = { ...foundIssues.parameters, ...issues };
+			}
+		}
+	} else if (nodeProperties.validateType) {
+		const value = getParameterValueByPath(nodeValues, nodeProperties.name, path);
+		const error = validateParameter(nodeProperties, value, nodeProperties.validateType);
+		if (error) {
+			if (foundIssues.parameters === undefined) {
+				foundIssues.parameters = {};
+			}
+			if (foundIssues.parameters[nodeProperties.name] === undefined) {
+				foundIssues.parameters[nodeProperties.name] = [];
+			}
+
+			foundIssues.parameters[nodeProperties.name].push(error);
 		}
 	}
 
@@ -1619,10 +1646,34 @@ export function getVersionedNodeType(
 
 export function getVersionedNodeTypeAll(object: IVersionedNodeType | INodeType): INodeType[] {
 	if ('nodeVersions' in object) {
-		return Object.values(object.nodeVersions).map((element) => {
-			element.description.name = object.description.name;
-			return element;
-		});
+		return uniqBy(
+			Object.values(object.nodeVersions)
+				.map((element) => {
+					element.description.name = object.description.name;
+					element.description.codex = object.description.codex;
+					return element;
+				})
+				.reverse(),
+			(node) => {
+				const { version } = node.description;
+				return Array.isArray(version) ? version.join(',') : version.toString();
+			},
+		);
 	}
 	return [object];
+}
+
+export function getCredentialsForNode(
+	object: IVersionedNodeType | INodeType,
+): INodeCredentialDescription[] {
+	if ('nodeVersions' in object) {
+		return uniqBy(
+			Object.values(object.nodeVersions).flatMap(
+				(version) => version.description.credentials ?? [],
+			),
+			'name',
+		);
+	}
+
+	return object.description.credentials ?? [];
 }

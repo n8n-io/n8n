@@ -42,11 +42,10 @@ export class UpdateWorkflowCredentials1630330987096 implements ReversibleMigrati
 					}
 				});
 				if (credentialsUpdated) {
-					await runQuery(
-						`UPDATE ${workflowsTable} SET nodes = :nodes WHERE id = :id`,
-						{ nodes: JSON.stringify(nodes) },
-						{ id: workflow.id },
-					);
+					await runQuery(`UPDATE ${workflowsTable} SET nodes = :nodes WHERE id = :id`, {
+						nodes: JSON.stringify(nodes),
+						id: workflow.id,
+					});
 				}
 			});
 		});
@@ -79,8 +78,7 @@ export class UpdateWorkflowCredentials1630330987096 implements ReversibleMigrati
 					await runQuery(
 						`UPDATE ${executionsTable}
 						 SET ${escape.columnName('workflowData')} = :data WHERE id = :id`,
-						{ data: JSON.stringify(workflowData) },
-						{ id: execution.id },
+						{ data: JSON.stringify(workflowData), id: execution.id },
 					);
 				}
 			});
@@ -114,8 +112,7 @@ export class UpdateWorkflowCredentials1630330987096 implements ReversibleMigrati
 				await runQuery(
 					`UPDATE ${executionsTable}
 					 SET ${escape.columnName('workflowData')} = :data WHERE id = :id`,
-					{ data: JSON.stringify(workflowData) },
-					{ id: execution.id },
+					{ data: JSON.stringify(workflowData), id: execution.id },
 				);
 			}
 		});
@@ -160,11 +157,10 @@ export class UpdateWorkflowCredentials1630330987096 implements ReversibleMigrati
 					}
 				});
 				if (credentialsUpdated) {
-					await runQuery(
-						`UPDATE ${workflowsTable} SET nodes = :nodes WHERE id = :id`,
-						{ nodes: JSON.stringify(nodes) },
-						{ id: workflow.id },
-					);
+					await runQuery(`UPDATE ${workflowsTable} SET nodes = :nodes WHERE id = :id`, {
+						nodes: JSON.stringify(nodes),
+						id: workflow.id,
+					});
 				}
 			});
 		});
@@ -206,8 +202,7 @@ export class UpdateWorkflowCredentials1630330987096 implements ReversibleMigrati
 					await runQuery(
 						`UPDATE ${executionsTable}
 						 SET ${escape.columnName('workflowData')} = :data WHERE id = :id`,
-						{ data: JSON.stringify(workflowData) },
-						{ id: execution.id },
+						{ data: JSON.stringify(workflowData), id: execution.id },
 					);
 				}
 			});
@@ -249,8 +244,7 @@ export class UpdateWorkflowCredentials1630330987096 implements ReversibleMigrati
 				await runQuery(
 					`UPDATE ${executionsTable}
 					 SET ${escape.columnName('workflowData')} = :data WHERE id = :id`,
-					{ data: JSON.stringify(workflowData) },
-					{ id: execution.id },
+					{ data: JSON.stringify(workflowData), id: execution.id },
 				);
 			}
 		});

@@ -1,6 +1,6 @@
 <template>
 	<span>
-		<div class="push-connection-lost primary-color" v-if="!rootStore.pushConnectionActive">
+		<div v-if="!rootStore.pushConnectionActive" class="push-connection-lost primary-color">
 			<n8n-tooltip placement="bottom-end">
 				<template #content>
 					<div v-html="$locale.baseText('pushConnectionTracker.cannotConnectToServer')"></div>

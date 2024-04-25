@@ -8,6 +8,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
 import { orbitApiRequest, orbitApiRequestAllItems, resolveIdentities } from './GenericFunctions';
 
 import { activityFields, activityOperations } from './ActivityDescription';
@@ -18,7 +19,6 @@ import { noteFields, noteOperations } from './NoteDescription';
 
 import { postFields, postOperations } from './PostDescription';
 
-import moment from 'moment';
 import type { IRelation } from './Interfaces';
 
 export class Orbit implements INodeType {
@@ -542,6 +542,6 @@ export class Orbit implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

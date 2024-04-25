@@ -1,10 +1,10 @@
 <template>
 	<ModalDrawer
 		:name="VALUE_SURVEY_MODAL_KEY"
-		:eventBus="modalBus"
-		:beforeClose="closeDialog"
+		:event-bus="modalBus"
+		:before-close="closeDialog"
 		:modal="false"
-		:wrapperClosable="false"
+		:wrapper-closable="false"
 		direction="btt"
 		width="120px"
 		:class="$style.valueSurvey"
@@ -22,8 +22,8 @@
 							<n8n-button
 								type="tertiary"
 								:label="(value - 1).toString()"
-								@click="selectSurveyValue((value - 1).toString())"
 								square
+								@click="selectSurveyValue((value - 1).toString())"
 							/>
 						</div>
 					</div>
@@ -37,10 +37,10 @@
 						<n8n-input
 							v-model="form.email"
 							placeholder="Your email address"
-							@update:modelValue="onInputChange"
+							@update:model-value="onInputChange"
 						/>
 						<div :class="$style.button">
-							<n8n-button label="Send" float="right" @click="send" :disabled="!isEmailValid" />
+							<n8n-button label="Send" float="right" :disabled="!isEmailValid" @click="send" />
 						</div>
 					</div>
 					<div :class="$style.disclaimer">
@@ -62,11 +62,10 @@ import type { IN8nPromptResponse } from '@/Interface';
 
 import ModalDrawer from '@/components/ModalDrawer.vue';
 
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { createEventBus } from 'n8n-design-system/utils';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 
 const DEFAULT_TITLE = 'How likely are you to recommend n8n to a friend or colleague?';
 const GREAT_FEEDBACK_TITLE =
@@ -76,11 +75,10 @@ const DEFAULT_FEEDBACK_TITLE =
 
 export default defineComponent({
 	name: 'ValueSurvey',
-	mixins: [workflowHelpers],
-	props: ['isActive'],
 	components: {
 		ModalDrawer,
 	},
+	props: ['isActive'],
 	setup() {
 		return {
 			...useToast(),
@@ -200,6 +198,10 @@ export default defineComponent({
 		margin-top: 10px;
 		padding: 0 15px;
 	}
+
+	h2 {
+		color: var(--color-value-survey-font);
+	}
 }
 
 .content {
@@ -214,6 +216,9 @@ export default defineComponent({
 .wrapper {
 	display: flex;
 	flex-direction: column;
+	.text span {
+		color: var(--color-value-survey-font);
+	}
 }
 
 .buttons {
@@ -256,7 +261,7 @@ export default defineComponent({
 }
 
 .valueSurvey {
-	background: var(--color-background-dark);
+	background: var(--color-value-survey-background);
 	height: 120px;
 	top: auto;
 
@@ -278,7 +283,7 @@ export default defineComponent({
 			right: 16px;
 			position: absolute;
 			font-weight: var(--font-weight-bold);
-			color: var(--color-text-xlight);
+			color: var(--color-value-survey-font);
 
 			@media (max-width: $breakpoint-xs) {
 				top: 2px;

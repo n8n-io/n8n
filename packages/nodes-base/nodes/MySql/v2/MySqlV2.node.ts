@@ -25,6 +25,6 @@ export class MySqlV2 implements INodeType {
 	methods = { listSearch, loadOptions, credentialTest };
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		return router.call(this);
+		return await router.call(this);
 	}
 }

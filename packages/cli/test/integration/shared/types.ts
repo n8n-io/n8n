@@ -1,15 +1,14 @@
 import type { Application } from 'express';
-import type { ICredentialDataDecryptedObject, ICredentialNodeAccess } from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import type { SuperAgentTest } from 'supertest';
 import type { Server } from 'http';
 
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { User } from '@db/entities/User';
-import type { BooleanLicenseFeature, ICredentialsDb, IDatabaseCollections } from '@/Interfaces';
+import type { BooleanLicenseFeature, ICredentialsDb, NumericLicenseFeature } from '@/Interfaces';
+import type { LicenseMocker } from './license';
 
-export type CollectionName = keyof IDatabaseCollections;
-
-export type EndpointGroup =
+type EndpointGroup =
 	| 'me'
 	| 'users'
 	| 'auth'
@@ -18,7 +17,7 @@ export type EndpointGroup =
 	| 'credentials'
 	| 'workflows'
 	| 'publicApi'
-	| 'nodes'
+	| 'community-packages'
 	| 'ldap'
 	| 'saml'
 	| 'sourceControl'
@@ -26,12 +25,19 @@ export type EndpointGroup =
 	| 'license'
 	| 'variables'
 	| 'tags'
-	| 'metrics';
+	| 'externalSecrets'
+	| 'mfa'
+	| 'metrics'
+	| 'executions'
+	| 'workflowHistory'
+	| 'binaryData'
+	| 'invitations'
+	| 'debug';
 
 export interface SetupProps {
-	applyAuth?: boolean;
 	endpointGroups?: EndpointGroup[];
 	enabledFeatures?: BooleanLicenseFeature[];
+	quotas?: Partial<{ [K in NumericLicenseFeature]: number }>;
 }
 
 export interface TestServer {
@@ -40,12 +46,12 @@ export interface TestServer {
 	authAgentFor: (user: User) => SuperAgentTest;
 	publicApiAgentFor: (user: User) => SuperAgentTest;
 	authlessAgent: SuperAgentTest;
+	license: LicenseMocker;
 }
 
 export type CredentialPayload = {
 	name: string;
 	type: string;
-	nodesAccess?: ICredentialNodeAccess[];
 	data: ICredentialDataDecryptedObject;
 };
 
@@ -53,19 +59,3 @@ export type SaveCredentialFunction = (
 	credentialPayload: CredentialPayload,
 	{ user }: { user: User },
 ) => Promise<CredentialsEntity & ICredentialsDb>;
-
-export type PostgresSchemaSection = {
-	[K in 'host' | 'port' | 'schema' | 'user' | 'password']: { env: string };
-};
-
-export type InstalledPackagePayload = {
-	packageName: string;
-	installedVersion: string;
-};
-
-export type InstalledNodePayload = {
-	name: string;
-	type: string;
-	latestVersion: number;
-	package: string;
-};

@@ -3,6 +3,7 @@ export interface ILead {
 	Company?: string;
 	LastName?: string;
 	Email?: string;
+	Fax?: number;
 	City?: string;
 	Phone?: string;
 	State?: string;
@@ -25,4 +26,5 @@ export interface ILead {
 	NumberOfEmployees?: number;
 	MobilePhone?: string;
 	HasOptedOutOfEmail?: boolean;
+	HasOptedOutOfFax?: boolean;
 }

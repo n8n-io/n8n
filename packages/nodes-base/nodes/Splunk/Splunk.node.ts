@@ -1,13 +1,16 @@
-import type {
-	IExecuteFunctions,
-	ICredentialsDecrypted,
-	ICredentialTestFunctions,
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodeCredentialTestResult,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
+import {
+	type IExecuteFunctions,
+	type ICredentialsDecrypted,
+	type ICredentialTestFunctions,
+	type IDataObject,
+	type ILoadOptionsFunctions,
+	type INodeCredentialTestResult,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeDescription,
+	type IRequestOptions,
+	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -34,8 +37,7 @@ import {
 } from './descriptions';
 
 import type { SplunkCredentials, SplunkFeedResponse } from './types';
-
-import type { OptionsWithUri } from 'request';
+import set from 'lodash/set';
 
 export class Splunk implements INodeType {
 	description: INodeTypeDescription = {
@@ -125,7 +127,7 @@ export class Splunk implements INodeType {
 
 				const endpoint = '/services/alerts/fired_alerts';
 
-				const options: OptionsWithUri = {
+				const options: IRequestOptions = {
 					headers: {
 						Authorization: `Bearer ${authToken}`,
 						'Content-Type': 'application/x-www-form-urlencoded',
@@ -156,7 +158,7 @@ export class Splunk implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
@@ -455,18 +457,30 @@ export class Splunk implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.cause.error });
+					returnData.push({ json: { error: error.cause.error }, pairedItem: { item: i } });
 					continue;
 				}
 
-				throw error;
+				if (error instanceof NodeApiError) {
+					set(error, 'context.itemIndex', i);
+				}
+
+				if (error instanceof NodeOperationError && error?.context?.itemIndex === undefined) {
+					set(error, 'context.itemIndex', i);
+				}
+
+				throw new NodeOperationError(this.getNode(), error, { itemIndex: i });
 			}
 
-			Array.isArray(responseData)
-				? returnData.push(...(responseData as IDataObject[]))
-				: returnData.push(responseData as IDataObject);
+			if (Array.isArray(responseData)) {
+				for (const item of responseData) {
+					returnData.push({ json: item, pairedItem: { item: i } });
+				}
+			} else {
+				returnData.push({ json: responseData, pairedItem: { item: i } });
+			}
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return [returnData];
 	}
 }

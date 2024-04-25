@@ -71,3 +71,62 @@ customStyling.args = {
 		},
 	],
 };
+
+export const keyboardShortcuts = template.bind({});
+keyboardShortcuts.args = {
+	items: [
+		{
+			id: 'open',
+			label: 'Open node...',
+			shortcut: { keys: ['↵'] },
+		},
+		{
+			id: 'execute',
+			label: 'Execute node',
+		},
+		{
+			id: 'rename',
+			label: 'Rename node',
+			shortcut: { keys: ['F2'] },
+		},
+		{
+			id: 'toggle_activation',
+			label: 'Deactivate node',
+			shortcut: { keys: ['D'] },
+		},
+		{
+			id: 'toggle_pin',
+			label: 'Pin node',
+			shortcut: { keys: ['p'] },
+			disabled: true,
+		},
+		{
+			id: 'copy',
+			label: 'Copy node',
+			shortcut: { metaKey: true, keys: ['C'] },
+		},
+		{
+			id: 'duplicate',
+			label: 'Duplicate node',
+			shortcut: { metaKey: true, keys: ['D'] },
+		},
+		{
+			id: 'select_all',
+			divided: true,
+			// always plural
+			label: 'Select all nodes',
+			shortcut: { metaKey: true, keys: ['A'] },
+		},
+		{
+			id: 'deselect_all',
+			label: 'Clear selection',
+			disabled: true,
+		},
+		{
+			id: 'delete',
+			divided: true,
+			label: 'Delete node',
+			shortcut: { keys: ['Del'] },
+		},
+	],
+};

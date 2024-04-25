@@ -1,6 +1,7 @@
 import { statSync } from 'fs';
 import path from 'path';
-import { UserSettings } from 'n8n-core';
+import { Container } from 'typedi';
+import { InstanceSettings } from 'n8n-core';
 import type { MigrationContext, IrreversibleMigration } from '@db/types';
 import config from '@/config';
 
@@ -191,7 +192,7 @@ const migrationsPruningEnabled = process.env.MIGRATIONS_PRUNING_ENABLED === 'tru
 
 function getSqliteDbFileSize(): number {
 	const filename = path.resolve(
-		UserSettings.getUserN8nFolderPath(),
+		Container.get(InstanceSettings).n8nFolder,
 		config.getEnv('database.sqlite.database'),
 	);
 	const { size } = statSync(filename);
@@ -207,20 +208,24 @@ const pruneExecutionsData = async ({ queryRunner, tablePrefix, logger }: Migrati
 		}
 
 		console.time('pruningData');
-		const counting = (await queryRunner.query(
-			`select count(id) as rows from "${tablePrefix}execution_entity";`,
-		)) as Array<{ rows: number }>;
+		const [{ rowCount }] = (await queryRunner.query(
+			`select count(id) as rowCount from "${tablePrefix}execution_entity";`,
+		)) as Array<{ rowCount: number }>;
 
-		const averageExecutionSize = dbFileSize / counting[0].rows;
-		const numberOfExecutionsToKeep = Math.floor(DESIRED_DATABASE_FILE_SIZE / averageExecutionSize);
+		if (rowCount > 0) {
+			const averageExecutionSize = dbFileSize / rowCount;
+			const numberOfExecutionsToKeep = Math.floor(
+				DESIRED_DATABASE_FILE_SIZE / averageExecutionSize,
+			);
 
-		const query = `SELECT id FROM "${tablePrefix}execution_entity" ORDER BY id DESC limit ${numberOfExecutionsToKeep}, 1`;
-		const idToKeep = await queryRunner
-			.query(query)
-			.then((rows: Array<{ id: number }>) => rows[0].id);
+			const query = `SELECT id FROM "${tablePrefix}execution_entity" ORDER BY id DESC limit ${numberOfExecutionsToKeep}, 1`;
+			const idToKeep = await queryRunner
+				.query(query)
+				.then((rows: Array<{ id: number }>) => rows[0].id);
 
-		const removalQuery = `DELETE FROM "${tablePrefix}execution_entity" WHERE id < ${idToKeep} and status IN ('success')`;
-		await queryRunner.query(removalQuery);
+			const removalQuery = `DELETE FROM "${tablePrefix}execution_entity" WHERE id < ${idToKeep} and status IN ('success')`;
+			await queryRunner.query(removalQuery);
+		}
 		console.timeEnd('pruningData');
 	} else {
 		logger.debug('Pruning was requested, but was not enabled');

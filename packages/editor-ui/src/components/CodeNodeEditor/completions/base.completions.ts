@@ -5,6 +5,7 @@ import type { Completion, CompletionContext, CompletionResult } from '@codemirro
 import type { INodeUi } from '@/Interface';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { escapeMappingString } from '@/utils/mappingUtils';
 
 function getAutoCompletableNodeNames(nodes: INodeUi[]) {
 	return nodes
@@ -44,7 +45,7 @@ export const baseCompletions = defineComponent({
 
 		/**
 		 * - Complete `$` to `$execution $input $prevNode $runIndex $workflow $now $today
-		 * $jmespath $('nodeName')` in both modes.
+		 * $jmespath $ifEmpt $('nodeName')` in both modes.
 		 * - Complete `$` to `$json $binary $itemIndex` in single-item mode.
 		 */
 		baseCompletions(context: CompletionContext): CompletionResult | null {
@@ -57,6 +58,10 @@ export const baseCompletions = defineComponent({
 				{
 					label: `${prefix}execution`,
 					info: this.$locale.baseText('codeNodeEditor.completer.$execution'),
+				},
+				{
+					label: `${prefix}ifEmpty()`,
+					info: this.$locale.baseText('codeNodeEditor.completer.$ifEmpty'),
 				},
 				{ label: `${prefix}input`, info: this.$locale.baseText('codeNodeEditor.completer.$input') },
 				{
@@ -94,7 +99,7 @@ export const baseCompletions = defineComponent({
 			options.push(
 				...getAutoCompletableNodeNames(this.workflowsStore.allNodes).map((nodeName) => {
 					return {
-						label: `${prefix}('${nodeName}')`,
+						label: `${prefix}('${escapeMappingString(nodeName)}')`,
 						type: 'variable',
 						info: this.$locale.baseText('codeNodeEditor.completer.$()', {
 							interpolate: { nodeName },
@@ -134,7 +139,7 @@ export const baseCompletions = defineComponent({
 			const options: Completion[] = getAutoCompletableNodeNames(this.workflowsStore.allNodes).map(
 				(nodeName) => {
 					return {
-						label: `${prefix}('${nodeName}')`,
+						label: `${prefix}('${escapeMappingString(nodeName)}')`,
 						type: 'variable',
 						info: this.$locale.baseText('codeNodeEditor.completer.$()', {
 							interpolate: { nodeName },

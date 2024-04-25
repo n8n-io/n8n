@@ -3,17 +3,18 @@ import { defineComponent } from 'vue';
 import { ElPagination } from 'element-plus';
 
 export default defineComponent({
-	props: {
-		...ElPagination.props,
-	},
+	name: 'N8nPagination',
 	components: {
 		ElPagination,
+	},
+	props: {
+		...ElPagination.props,
 	},
 });
 </script>
 
 <template>
-	<el-pagination
+	<ElPagination
 		class="is-background"
 		layout="prev, pager, next"
 		v-bind="{ ...$props, ...$attrs }"

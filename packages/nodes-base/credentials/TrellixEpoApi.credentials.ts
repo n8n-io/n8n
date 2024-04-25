@@ -9,6 +9,12 @@ export class TrellixEpoApi implements ICredentialType {
 
 	icon = 'file:icons/Trellix.svg';
 
+	httpRequestNode = {
+		name: 'Trellix (McAfee) ePolicy Orchestrator',
+		docsUrl: 'https://docs.trellix.com/en/bundle/epolicy-orchestrator-web-api-reference-guide',
+		apiBaseUrl: '',
+	};
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Username',

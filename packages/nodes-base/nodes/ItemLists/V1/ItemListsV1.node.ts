@@ -1,6 +1,3 @@
-import type { NodeVMOptions } from 'vm2';
-import { NodeVM } from 'vm2';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -60,6 +57,7 @@ const shuffleArray = (array: any[]) => {
 	}
 };
 
+import { sortByCode } from '../V3/helpers/utils';
 import * as summarize from './summarize.operation';
 
 export class ItemListsV1 implements INodeType {
@@ -598,7 +596,7 @@ export class ItemListsV1 implements INodeType {
 					type: 'string',
 					typeOptions: {
 						alwaysOpenEditWindow: true,
-						editor: 'code',
+						editor: 'jsEditor',
 						rows: 10,
 					},
 					default: `// The two items to compare are in the variables a and b
@@ -922,7 +920,7 @@ return 0;`,
 					}
 				}
 
-				return this.prepareOutputData(returnData);
+				return [returnData];
 			} else if (operation === 'aggregateItems') {
 				const aggregate = this.getNodeParameter('aggregate', 0, '') as string;
 
@@ -1062,7 +1060,7 @@ return 0;`,
 
 					returnData.push(newItem);
 
-					return this.prepareOutputData(returnData);
+					return [returnData];
 				} else {
 					let newItems: IDataObject[] = items.map((item) => item.json);
 					const destinationFieldName = this.getNodeParameter('destinationFieldName', 0) as string;
@@ -1098,9 +1096,7 @@ return 0;`,
 						}, [] as IDataObject[]);
 					}
 
-					const output: INodeExecutionData = { json: { [destinationFieldName]: newItems } };
-
-					return this.prepareOutputData([output]);
+					return [[{ json: { [destinationFieldName]: newItems } }]];
 				}
 			} else if (operation === 'removeDuplicates') {
 				const compare = this.getNodeParameter('compare', 0) as string;
@@ -1247,7 +1243,7 @@ return 0;`,
 				}
 
 				// return the filtered items
-				return this.prepareOutputData(data);
+				return [data];
 			} else if (operation === 'sort') {
 				let newItems = [...items];
 				const type = this.getNodeParameter('type', 0) as string;
@@ -1259,7 +1255,7 @@ return 0;`,
 
 				if (type === 'random') {
 					shuffleArray(newItems);
-					return this.prepareOutputData(newItems);
+					return [newItems];
 				}
 
 				if (type === 'simple') {
@@ -1369,45 +1365,16 @@ return 0;`,
 						return result;
 					});
 				} else {
-					const code = this.getNodeParameter('code', 0) as string;
-					const regexCheck = /\breturn\b/g.exec(code);
-
-					if (regexCheck?.length) {
-						const sandbox = {
-							newItems,
-						};
-						const mode = this.getMode();
-						const options = {
-							console: mode === 'manual' ? 'redirect' : 'inherit',
-							sandbox,
-						};
-						const vm = new NodeVM(options as unknown as NodeVMOptions);
-
-						newItems = await vm.run(
-							`
-						module.exports = async function() {
-							newItems.sort( (a,b) => {
-								${code}
-							})
-							return newItems;
-						}()`,
-							__dirname,
-						);
-					} else {
-						throw new NodeOperationError(
-							this.getNode(),
-							"Sort code doesn't return. Please add a 'return' statement to your code",
-						);
-					}
+					newItems = sortByCode.call(this, newItems);
 				}
-				return this.prepareOutputData(newItems);
+				return [newItems];
 			} else if (operation === 'limit') {
 				let newItems = items;
 				const maxItems = this.getNodeParameter('maxItems', 0) as number;
 				const keep = this.getNodeParameter('keep', 0) as string;
 
 				if (maxItems > items.length) {
-					return this.prepareOutputData(newItems);
+					return [newItems];
 				}
 
 				if (keep === 'firstItems') {
@@ -1415,9 +1382,9 @@ return 0;`,
 				} else {
 					newItems = items.slice(items.length - maxItems, items.length);
 				}
-				return this.prepareOutputData(newItems);
+				return [newItems];
 			} else if (operation === 'summarize') {
-				return summarize.execute.call(this, items);
+				return await summarize.execute.call(this, items);
 			} else {
 				throw new NodeOperationError(this.getNode(), `Operation '${operation}' is not recognized`);
 			}

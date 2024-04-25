@@ -26,6 +26,6 @@ export class GoogleSheetsV2 implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions) {
-		return router.call(this);
+		return await router.call(this);
 	}
 }

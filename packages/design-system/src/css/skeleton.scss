@@ -40,6 +40,7 @@
 	-ms-flex-pack: center;
 	justify-content: center;
 	border-radius: 8px !important;
+	color: var(--color-foreground-dark);
 }
 
 .el-skeleton__image svg {
@@ -58,11 +59,16 @@
 		linear,
 		left top,
 		right top,
-		color-stop(25%, #f2f2f2),
-		color-stop(37%, #e6e6e6),
-		color-stop(63%, #f2f2f2)
+		color-stop(25%, var(--color-background-base)),
+		color-stop(37%, var(--color-background-medium)),
+		color-stop(63%, var(--color-background-base))
 	);
-	background: linear-gradient(90deg, #f2f2f2 25%, #e6e6e6 37%, #f2f2f2 63%);
+	background: linear-gradient(
+		90deg,
+		var(--color-background-base) 25%,
+		var(--color-background-medium) 37%,
+		var(--color-background-base) 63%
+	);
 	background-size: 400% 100%;
 	-webkit-animation: el-skeleton-loading 1.4s ease infinite;
 	animation: el-skeleton-loading 1.4s ease infinite;

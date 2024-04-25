@@ -11,15 +11,15 @@ post:
     content:
       application/json:
         schema:
-          $ref: "../schemas/pull.yml"
+          $ref: '../schemas/pull.yml'
   responses:
-    "200":
+    '200':
       description: Import result
       content:
         application/json:
           schema:
-            $ref: "../schemas/importResult.yml"
-    "400":
-      $ref: "../../../../shared/spec/responses/badRequest.yml"
-    "409":
-      $ref: "../../../../shared/spec/responses/conflict.yml"
+            $ref: '../schemas/importResult.yml'
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '409':
+      $ref: '../../../../shared/spec/responses/conflict.yml'

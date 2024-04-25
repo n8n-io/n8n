@@ -10,10 +10,10 @@ export class MessageBox extends BasePage {
 	};
 	actions = {
 		confirm: () => {
-			this.getters.confirm().click({ force: true});
+			this.getters.confirm().click({ force: true });
 		},
 		cancel: () => {
-			this.getters.cancel().click({ force: true});
+			this.getters.cancel().click({ force: true });
 		},
 	};
 }

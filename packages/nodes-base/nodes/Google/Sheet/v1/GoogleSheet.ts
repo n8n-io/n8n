@@ -1,11 +1,10 @@
 import type { IExecuteFunctions, ILoadOptionsFunctions, IDataObject } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { googleApiRequest } from './GenericFunctions';
-
 import { utils as xlsxUtils } from 'xlsx';
 
 import get from 'lodash/get';
+import { googleApiRequest } from './GenericFunctions';
 
 export interface ISheetOptions {
 	scope: string[];
@@ -282,7 +281,7 @@ export class GoogleSheet {
 			keyRowIndex,
 			usePathForKeyRow,
 		);
-		return this.appendData(range, data, valueInputMode);
+		return await this.appendData(range, data, valueInputMode);
 	}
 
 	getColumnWithOffset(startColumn: string, offset: number): string {
@@ -457,7 +456,7 @@ export class GoogleSheet {
 			}
 		}
 
-		return this.batchUpdate(updateData, valueInputMode);
+		return await this.batchUpdate(updateData, valueInputMode);
 	}
 
 	/**

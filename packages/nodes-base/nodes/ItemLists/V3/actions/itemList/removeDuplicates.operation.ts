@@ -1,15 +1,14 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { updateDisplayOptions } from '@utils/utilities';
-
 import get from 'lodash/get';
 import isEqual from 'lodash/isEqual';
 import lt from 'lodash/lt';
 import pick from 'lodash/pick';
 
-import { compareItems, flattenKeys, prepareFieldsArray } from '../../helpers/utils';
+import { compareItems, flattenKeys, prepareFieldsArray, typeToNumber } from '../../helpers/utils';
 import { disableDotNotationBoolean } from '../common.descriptions';
+import { updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	{
@@ -106,6 +105,7 @@ export async function execute(
 		false,
 	) as boolean;
 	const removeOtherFields = this.getNodeParameter('options.removeOtherFields', 0, false) as boolean;
+	const nodeVersion = this.getNode().typeVersion;
 
 	let keys = disableDotNotation
 		? Object.keys(items[0].json)
@@ -164,24 +164,28 @@ export async function execute(
 				pairedItem: { item: index },
 			}) as INodeExecutionData,
 	);
+
 	//sort items using the compare keys
 	newItems.sort((a, b) => {
 		let result = 0;
 
 		for (const key of keys) {
-			let equal;
-			if (!disableDotNotation) {
-				equal = isEqual(get(a.json, key), get(b.json, key));
-			} else {
-				equal = isEqual(a.json[key], b.json[key]);
-			}
-			if (!equal) {
-				let lessThan;
-				if (!disableDotNotation) {
-					lessThan = lt(get(a.json, key), get(b.json, key));
-				} else {
-					lessThan = lt(a.json[key], b.json[key]);
+			const a_value = disableDotNotation ? a.json[key] : get(a.json, key);
+			const b_value = disableDotNotation ? b.json[key] : get(b.json, key);
+
+			if (nodeVersion >= 3.1) {
+				const a_value_tnum = typeToNumber(a_value);
+				const b_value_tnum = typeToNumber(b_value);
+				if (a_value_tnum !== b_value_tnum) {
+					result = a_value_tnum - b_value_tnum;
+					break;
 				}
+			}
+
+			const equal = isEqual(a_value, b_value);
+
+			if (!equal) {
+				const lessThan = lt(a_value, b_value);
 				result = lessThan ? -1 : 1;
 				break;
 			}
@@ -211,7 +215,7 @@ export async function execute(
 					`'${key}' field is missing from some input items`,
 				);
 			}
-			if (type !== undefined && value !== undefined && type !== typeof value) {
+			if (nodeVersion < 3.1 && type !== undefined && value !== undefined && type !== typeof value) {
 				throw new NodeOperationError(this.getNode(), `'${key}' isn't always the same type`, {
 					description: 'The type of this field varies between items',
 				});

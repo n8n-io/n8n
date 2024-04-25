@@ -1,0 +1,335 @@
+{
+	"name": "Filter v2",
+	"nodes": [
+	  {
+		"parameters": {
+		  "jsCode": "return [\n  {\n    id: 1,\n    name: 'Adam',\n    subscribed: false,\n    updatedAt: '2011-10-05T14:48:00.000Z',\n    notes: null,\n    email: 'adam@mail.com',\n  },\n  {\n    id: 2,\n    name: 'Victor',\n    subscribed: true,\n    updatedAt: '2020-10-05T14:48:00.000Z',\n    notes: 'some notes',\n    email: 'victor@mail.com',\n  },\n  {\n    id: 3,\n    name: 'Sam',\n    subscribed: true,\n    updatedAt: '2021-10-05T14:48:00.000Z',\n    notes: 'other notes',\n    email: 'sam@mail.com',\n  },  \n];"
+		},
+		"id": "d8f7d6a2-02f5-40f6-83ca-540467f80ad8",
+		"name": "Code",
+		"type": "n8n-nodes-base.code",
+		"typeVersion": 1,
+		"position": [
+		  2480,
+		  1080
+		]
+	  },
+	  {
+		"parameters": {},
+		"id": "e112277f-9c6a-404f-a8f2-9b69fd88db16",
+		"name": "When clicking \"Execute Workflow\"",
+		"type": "n8n-nodes-base.manualTrigger",
+		"typeVersion": 1,
+		"position": [
+		  2320,
+		  1080
+		]
+	  },
+	  {
+		"parameters": {
+		  "conditions": {
+			"options": {
+			  "caseSensitive": true,
+			  "leftValue": "",
+			  "typeValidation": "strict"
+			},
+			"conditions": [
+			  {
+				"id": "b65a0fbd-abdb-4622-8312-c12496444ad3",
+				"leftValue": "={{ $json.subscribed }}",
+				"rightValue": "",
+				"operator": {
+				  "type": "boolean",
+				  "operation": "true",
+				  "singleValue": true
+				}
+			  },
+			  {
+				"id": "adf82766-a27f-450e-84a9-9616c5be5191",
+				"leftValue": "={{ $json.notes }}",
+				"rightValue": "",
+				"operator": {
+				  "type": "string",
+				  "operation": "exists",
+				  "singleValue": true
+				}
+			  }
+			],
+			"combinator": "and"
+		  },
+		  "options": {}
+		},
+		"id": "daaa1445-f279-4edb-b2d6-b6415cb5fb55",
+		"name": "Filter Boolean",
+		"type": "n8n-nodes-base.filter",
+		"typeVersion": 2,
+		"position": [
+		  2700,
+		  800
+		]
+	  },
+	  {
+		"parameters": {
+		  "conditions": {
+			"options": {
+			  "caseSensitive": true,
+			  "leftValue": "",
+			  "typeValidation": "strict"
+			},
+			"conditions": [
+			  {
+				"id": "480a5f38-0e31-44c5-9f61-5c34344d265e",
+				"leftValue": "={{ $json.updatedAt }}",
+				"rightValue": "2018-12-31T22:00:00",
+				"operator": {
+				  "type": "dateTime",
+				  "operation": "after"
+				}
+			  },
+			  {
+				"id": "a9240497-a583-4a6a-97e5-a4197036e04d",
+				"leftValue": "={{ $json.updatedAt }}",
+				"rightValue": "2021-08-03T03:30:08",
+				"operator": {
+				  "type": "dateTime",
+				  "operation": "before"
+				}
+			  }
+			],
+			"combinator": "and"
+		  },
+		  "options": {}
+		},
+		"id": "816b4bac-2213-4057-b50e-1f7f39542476",
+		"name": "Filter Date",
+		"type": "n8n-nodes-base.filter",
+		"typeVersion": 2,
+		"position": [
+		  2700,
+		  960
+		]
+	  },
+	  {
+		"parameters": {
+		  "conditions": {
+			"options": {
+			  "caseSensitive": true,
+			  "leftValue": "",
+			  "typeValidation": "loose"
+			},
+			"conditions": [
+			  {
+				"id": "21265681-4230-4648-ba79-5513b3d9260f",
+				"leftValue": "={{ $json.id }}",
+				"rightValue": 1,
+				"operator": {
+				  "type": "number",
+				  "operation": "gt"
+				}
+			  },
+			  {
+				"id": "b4f736a7-d60d-4acd-abc4-04c324581ccf",
+				"leftValue": "={{ $json.id }}",
+				"rightValue": 3,
+				"operator": {
+				  "type": "number",
+				  "operation": "lte"
+				}
+			  },
+			  {
+				"id": "8b29b1da-8dc3-42b0-9440-7394709e3619",
+				"leftValue": "={{ $json.id }}",
+				"rightValue": "",
+				"operator": {
+				  "type": "string",
+				  "operation": "exists",
+				  "singleValue": true
+				}
+			  }
+			],
+			"combinator": "and"
+		  },
+		  "options": {
+			"looseTypeValidation": true
+		  }
+		},
+		"id": "66fe5d53-2652-4860-8d31-cb033af3a7c3",
+		"name": "Filter Number",
+		"type": "n8n-nodes-base.filter",
+		"typeVersion": 2,
+		"position": [
+		  2700,
+		  1120
+		]
+	  },
+	  {
+		"parameters": {
+		  "conditions": {
+			"options": {
+			  "caseSensitive": false,
+			  "leftValue": "",
+			  "typeValidation": "strict"
+			},
+			"conditions": [
+			  {
+				"id": "dafeb20d-80ae-4bb5-8375-ff61002f1bdd",
+				"leftValue": "={{ $json.name }}",
+				"rightValue": "v",
+				"operator": {
+				  "type": "string",
+				  "operation": "startsWith"
+				}
+			  },
+			  {
+				"id": "8bb39457-005a-427d-9584-6985a05b589d",
+				"leftValue": "={{ $json.name }}",
+				"rightValue": "s",
+				"operator": {
+				  "type": "string",
+				  "operation": "notContains"
+				}
+			  }
+			],
+			"combinator": "or"
+		  },
+		  "options": {
+			"ignoreCase": true
+		  }
+		},
+		"id": "b625a4d4-4bd7-4480-a76a-622d460f4392",
+		"name": "Filter String",
+		"type": "n8n-nodes-base.filter",
+		"typeVersion": 2,
+		"position": [
+		  2700,
+		  1280
+		]
+	  }
+	],
+	"pinData": {
+	  "Filter Boolean": [
+		{
+		  "json": {
+			"id": 2,
+			"name": "Victor",
+			"subscribed": true,
+			"updatedAt": "2020-10-05T14:48:00.000Z",
+			"notes": "some notes",
+			"email": "victor@mail.com"
+		  }
+		},
+		{
+		  "json": {
+			"id": 3,
+			"name": "Sam",
+			"subscribed": true,
+			"updatedAt": "2021-10-05T14:48:00.000Z",
+			"notes": "other notes",
+			"email": "sam@mail.com"
+		  }
+		}
+	  ],
+	  "Filter Date": [
+		{
+		  "json": {
+			"id": 2,
+			"name": "Victor",
+			"subscribed": true,
+			"updatedAt": "2020-10-05T14:48:00.000Z",
+			"notes": "some notes",
+			"email": "victor@mail.com"
+		  }
+		}
+	  ],
+	  "Filter Number": [
+		{
+		  "json": {
+			"id": 2,
+			"name": "Victor",
+			"subscribed": true,
+			"updatedAt": "2020-10-05T14:48:00.000Z",
+			"notes": "some notes",
+			"email": "victor@mail.com"
+		  }
+		},
+		{
+		  "json": {
+			"id": 3,
+			"name": "Sam",
+			"subscribed": true,
+			"updatedAt": "2021-10-05T14:48:00.000Z",
+			"notes": "other notes",
+			"email": "sam@mail.com"
+		  }
+		}
+	  ],
+	  "Filter String": [
+		{
+		  "json": {
+			"id": 1,
+			"name": "Adam",
+			"subscribed": false,
+			"updatedAt": "2011-10-05T14:48:00.000Z",
+			"notes": null,
+			"email": "adam@mail.com"
+		  }
+		},
+		{
+		  "json": {
+			"id": 2,
+			"name": "Victor",
+			"subscribed": true,
+			"updatedAt": "2020-10-05T14:48:00.000Z",
+			"notes": "some notes",
+			"email": "victor@mail.com"
+		  }
+		}
+	  ]
+	},
+	"connections": {
+	  "Code": {
+		"main": [
+		  [
+			{
+			  "node": "Filter Boolean",
+			  "type": "main",
+			  "index": 0
+			},
+			{
+			  "node": "Filter Date",
+			  "type": "main",
+			  "index": 0
+			},
+			{
+			  "node": "Filter Number",
+			  "type": "main",
+			  "index": 0
+			},
+			{
+			  "node": "Filter String",
+			  "type": "main",
+			  "index": 0
+			}
+		  ]
+		]
+	  },
+	  "When clicking \"Execute Workflow\"": {
+		"main": [
+		  [
+			{
+			  "node": "Code",
+			  "type": "main",
+			  "index": 0
+			}
+		  ]
+		]
+	  }
+	},
+	"active": false,
+	"settings": {
+	  "executionOrder": "v1"
+	},
+	"versionId": "1c680397-66f2-4ec1-a8a6-bb60d6d564d7",
+	"id": "0nx3Xwa3s9uIqflV",
+	"tags": []
+  }

@@ -51,13 +51,50 @@ const properties: INodeProperties[] = [
 			{
 				name: 'Text',
 				value: 'text',
+				description: 'Send email as plain text',
+			},
+			{
+				name: 'HTML',
+				value: 'html',
+				description: 'Send email as HTML',
+			},
+			{
+				name: 'Both',
+				value: 'both',
+				description: "Send both formats, recipient's client selects version to display",
+			},
+		],
+		default: 'html',
+		displayOptions: {
+			hide: {
+				'@version': [2],
+			},
+		},
+	},
+	{
+		displayName: 'Email Format',
+		name: 'emailFormat',
+		type: 'options',
+		options: [
+			{
+				name: 'Text',
+				value: 'text',
 			},
 			{
 				name: 'HTML',
 				value: 'html',
 			},
+			{
+				name: 'Both',
+				value: 'both',
+			},
 		],
 		default: 'text',
+		displayOptions: {
+			show: {
+				'@version': [2],
+			},
+		},
 	},
 	{
 		displayName: 'Text',
@@ -70,7 +107,7 @@ const properties: INodeProperties[] = [
 		description: 'Plain text message of email',
 		displayOptions: {
 			show: {
-				emailFormat: ['text'],
+				emailFormat: ['text', 'both'],
 			},
 		},
 	},
@@ -85,7 +122,7 @@ const properties: INodeProperties[] = [
 		description: 'HTML text message of email',
 		displayOptions: {
 			show: {
-				emailFormat: ['html'],
+				emailFormat: ['html', 'both'],
 			},
 		},
 	},
@@ -96,6 +133,15 @@ const properties: INodeProperties[] = [
 		placeholder: 'Add Option',
 		default: {},
 		options: [
+			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+				displayName: 'Append n8n Attribution',
+				name: 'appendAttribution',
+				type: 'boolean',
+				default: true,
+				description:
+					'Whether to include the phrase “This email was sent automatically with n8n” to the end of the email',
+			},
 			{
 				displayName: 'Attachments',
 				name: 'attachments',
@@ -149,6 +195,7 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 type EmailSendOptions = {
+	appendAttribution?: boolean;
 	allowUnauthorizedCerts?: boolean;
 	attachments?: string;
 	ccEmail?: string;
@@ -181,6 +228,8 @@ function configureTransport(credentials: IDataObject, options: EmailSendOptions)
 
 export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const items = this.getInputData();
+	const nodeVersion = this.getNode().typeVersion;
+	const instanceId = this.getInstanceId();
 
 	const returnData: INodeExecutionData[] = [];
 	let item: INodeExecutionData;
@@ -208,12 +257,36 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				replyTo: options.replyTo,
 			};
 
-			if (emailFormat === 'text') {
+			if (emailFormat === 'text' || emailFormat === 'both') {
 				mailOptions.text = this.getNodeParameter('text', itemIndex, '');
 			}
 
-			if (emailFormat === 'html') {
+			if (emailFormat === 'html' || emailFormat === 'both') {
 				mailOptions.html = this.getNodeParameter('html', itemIndex, '');
+			}
+
+			let appendAttribution = options.appendAttribution;
+			if (appendAttribution === undefined) {
+				appendAttribution = nodeVersion >= 2.1;
+			}
+
+			if (appendAttribution) {
+				const attributionText = 'This email was sent automatically with ';
+				const link = `https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=${encodeURIComponent(
+					'n8n-nodes-base.emailSend',
+				)}${instanceId ? '_' + instanceId : ''}`;
+				if (emailFormat === 'html' || (emailFormat === 'both' && mailOptions.html)) {
+					mailOptions.html = `
+					${mailOptions.html}
+					<br>
+					<br>
+					---
+					<br>
+					<em>${attributionText}<a href="${link}" target="_blank">n8n</a></em>
+					`;
+				} else {
+					mailOptions.text = `${mailOptions.text}\n\n---\n${attributionText}n8n\n${'https://n8n.io'}`;
+				}
 			}
 
 			if (options.attachments && item.binary) {
@@ -263,5 +336,5 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 		}
 	}
 
-	return this.prepareOutputData(returnData);
+	return [returnData];
 }

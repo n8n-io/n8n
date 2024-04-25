@@ -6,9 +6,9 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { updateDisplayOptions } from '@utils/utilities';
 import { googleApiRequest } from '../../transport';
 import { fileRLC } from '../common.descriptions';
+import { updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	{
@@ -23,13 +23,13 @@ const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Binary Property',
+				displayName: 'Put Output File in Field',
 				name: 'binaryPropertyName',
 				type: 'string',
 				placeholder: 'e.g. data',
 				default: 'data',
 				description: 'Use this field name in the following nodes, to use the binary file data',
-				hint: 'The name of the output field to put the binary file data in',
+				hint: 'The name of the output binary field to put the file in',
 			},
 			{
 				displayName: 'Google File Conversion',
@@ -192,8 +192,8 @@ export async function execute(
 
 	const requestOptions = {
 		useStream: true,
-		resolveWithFullResponse: true,
-		encoding: null,
+		returnFullResponse: true,
+		encoding: 'arraybuffer',
 		json: false,
 	};
 
@@ -202,7 +202,7 @@ export async function execute(
 		'GET',
 		`/drive/v3/files/${fileId}`,
 		{},
-		{ fields: 'mimeType,name', supportsTeamDrives: true },
+		{ fields: 'mimeType,name', supportsTeamDrives: true, supportsAllDrives: true },
 	);
 	let response;
 
@@ -236,7 +236,7 @@ export async function execute(
 			'GET',
 			`/drive/v3/files/${fileId}/export`,
 			{},
-			{ mimeType: mime },
+			{ mimeType: mime, supportsAllDrives: true },
 			undefined,
 			requestOptions,
 		);
@@ -246,7 +246,7 @@ export async function execute(
 			'GET',
 			`/drive/v3/files/${fileId}`,
 			{},
-			{ alt: 'media' },
+			{ alt: 'media', supportsAllDrives: true },
 			undefined,
 			requestOptions,
 		);

@@ -706,7 +706,7 @@ describe('RoutingNode', () => {
 					mode,
 				);
 
-				const result = await routingNode.getRequestOptionsFromParameters(
+				const result = routingNode.getRequestOptionsFromParameters(
 					executeSingleFunctions,
 					testData.input.nodeTypeProperties,
 					itemIndex,

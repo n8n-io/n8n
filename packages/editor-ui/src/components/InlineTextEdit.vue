@@ -1,21 +1,21 @@
 <template>
-	<span @keydown.stop class="inline-edit">
+	<span class="inline-edit" @keydown.stop>
 		<span v-if="isEditEnabled && !isDisabled">
 			<ExpandableInputEdit
 				:placeholder="placeholder"
-				:modelValue="newValue"
+				:model-value="newValue"
 				:maxlength="maxLength"
 				:autofocus="true"
-				:eventBus="inputBus"
-				@update:modelValue="onInput"
+				:event-bus="inputBus"
+				@update:model-value="onInput"
 				@esc="onEscape"
 				@blur="onBlur"
 				@enter="submit"
 			/>
 		</span>
 
-		<span @click="onClick" class="preview" v-else>
-			<ExpandableInputPreview :modelValue="previewValue || modelValue" />
+		<span v-else class="preview" @click="onClick">
+			<ExpandableInputPreview :model-value="previewValue || modelValue" />
 		</span>
 	</span>
 </template>
@@ -62,6 +62,11 @@ export default defineComponent({
 			escPressed: false,
 			inputBus: createEventBus(),
 		};
+	},
+	watch: {
+		disabled(value) {
+			this.isDisabled = value;
+		},
 	},
 	methods: {
 		onInput(newValue: string) {
@@ -112,11 +117,6 @@ export default defineComponent({
 
 			this.escPressed = true;
 			this.$emit('toggle');
-		},
-	},
-	watch: {
-		disabled(value) {
-			this.isDisabled = value;
 		},
 	},
 });

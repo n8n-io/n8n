@@ -9,6 +9,7 @@ import type {
 	ViewCreateElement,
 	LabelCreateElement,
 	ActionCreateElement,
+	SectionCreateElement,
 } from '@/Interface';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -74,14 +75,15 @@ const mockLabelItemProps = (overrides?: Partial<LabelItemProps>): LabelItemProps
 });
 
 export const mockNodeCreateElement = (
-	subcategory?: string,
-	overrides?: Partial<SimplifiedNodeType>,
+	overrides?: Partial<NodeCreateElement>,
+	nodeTypeOverrides?: Partial<SimplifiedNodeType>,
 ): NodeCreateElement => ({
 	uuid: uuidv4(),
 	key: uuidv4(),
 	type: 'node',
-	subcategory: subcategory || 'sampleSubcategory',
-	properties: mockSimplifiedNodeType(overrides),
+	subcategory: 'sampleSubcategory',
+	properties: mockSimplifiedNodeType(nodeTypeOverrides),
+	...overrides,
 });
 
 export const mockSubcategoryCreateElement = (
@@ -91,6 +93,17 @@ export const mockSubcategoryCreateElement = (
 	key: uuidv4(),
 	type: 'subcategory',
 	properties: mockSubcategoryItemProps(overrides),
+});
+
+export const mockSectionCreateElement = (
+	overrides?: Partial<SectionCreateElement>,
+): SectionCreateElement => ({
+	uuid: uuidv4(),
+	key: 'popular',
+	type: 'section',
+	title: 'Popular',
+	children: [mockNodeCreateElement(), mockNodeCreateElement()],
+	...overrides,
 });
 
 export const mockViewCreateElement = (

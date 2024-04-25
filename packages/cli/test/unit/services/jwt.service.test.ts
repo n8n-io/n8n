@@ -1,42 +1,62 @@
+import jwt from 'jsonwebtoken';
+import type { InstanceSettings } from 'n8n-core';
+import { mock } from 'jest-mock-extended';
 import config from '@/config';
 import { JwtService } from '@/services/jwt.service';
-import { randomString } from '../../integration/shared/random';
-import * as jwt from 'jsonwebtoken';
 
 describe('JwtService', () => {
-	config.set('userManagement.jwtSecret', randomString(5, 10));
+	const iat = 1699984313;
+	const jwtSecret = 'random-string';
+	const payload = { sub: 1 };
+	const signedToken =
+		'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsImlhdCI6MTY5OTk4NDMxM30.xNZOAmcidW5ovEF_mwIOzCWkJ70FEO6MFNLK2QRDOeQ';
 
-	const jwtService = new JwtService();
+	const instanceSettings = mock<InstanceSettings>({ encryptionKey: 'test-key' });
 
 	beforeEach(() => {
 		jest.clearAllMocks();
 	});
 
-	test('Should sign input with user management secret', async () => {
-		const userId = 1;
+	describe('secret initialization', () => {
+		it('should read the secret from config, when set', () => {
+			config.set('userManagement.jwtSecret', jwtSecret);
+			const jwtService = new JwtService(instanceSettings);
+			expect(jwtService.jwtSecret).toEqual(jwtSecret);
+		});
 
-		const token = jwtService.signData({ sub: userId });
-		expect(typeof token).toBe('string');
-
-		const secret = config.get('userManagement.jwtSecret');
-
-		const decodedToken = jwt.verify(token, secret);
-
-		expect(decodedToken).toHaveProperty('sub');
-		expect(decodedToken).toHaveProperty('iat');
-		expect(decodedToken?.sub).toBe(userId);
+		it('should derive the secret from encryption key when not set in config', () => {
+			config.set('userManagement.jwtSecret', '');
+			const jwtService = new JwtService(instanceSettings);
+			expect(jwtService.jwtSecret).toEqual(
+				'e9e2975005eddefbd31b2c04a0b0f2d9c37d9d718cf3676cddf76d65dec555cb',
+			);
+		});
 	});
 
-	test('Should verify token with user management secret', async () => {
-		const userId = 1;
+	describe('with a secret set', () => {
+		config.set('userManagement.jwtSecret', jwtSecret);
+		const jwtService = new JwtService(instanceSettings);
 
-		const secret = config.get('userManagement.jwtSecret');
+		beforeAll(() => {
+			jest.useFakeTimers().setSystemTime(new Date(iat * 1000));
+		});
 
-		const token = jwt.sign({ sub: userId }, secret);
+		afterAll(() => jest.useRealTimers());
 
-		const decodedToken = jwt.verify(token, secret);
+		it('should sign', () => {
+			const token = jwtService.sign(payload);
+			expect(token).toEqual(signedToken);
+		});
 
-		expect(decodedToken).toHaveProperty('sub');
-		expect(decodedToken?.sub).toBe(userId);
+		it('should decode and verify payload', () => {
+			const decodedToken = jwtService.verify(signedToken);
+			expect(decodedToken.sub).toEqual(1);
+			expect(decodedToken.iat).toEqual(iat);
+		});
+
+		it('should throw an error on verify if the token is expired', () => {
+			const expiredToken = jwt.sign(payload, jwtSecret, { expiresIn: -10 });
+			expect(() => jwtService.verify(expiredToken)).toThrow(jwt.TokenExpiredError);
+		});
 	});
 });

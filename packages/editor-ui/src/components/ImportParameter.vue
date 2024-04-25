@@ -17,7 +17,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { mapStores } from 'pinia';
 
 export default defineComponent({
-	name: 'import-parameter',
+	name: 'ImportParameter',
 	props: {
 		isReadOnly: {
 			type: Boolean,

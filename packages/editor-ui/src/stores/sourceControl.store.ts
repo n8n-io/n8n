@@ -3,25 +3,22 @@ import { defineStore } from 'pinia';
 import { EnterpriseEditionFeature } from '@/constants';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
-import { useUsersStore } from '@/stores/users.store';
 import * as vcApi from '@/api/sourceControl';
-import type { SourceControlPreferences } from '@/Interface';
+import type { SourceControlPreferences, SshKeyTypes } from '@/Interface';
+import type { TupleToUnion } from '@/utils/typeHelpers';
 
 export const useSourceControlStore = defineStore('sourceControl', () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
-	const usersStore = useUsersStore();
 
 	const isEnterpriseSourceControlEnabled = computed(() =>
 		settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.SourceControl),
 	);
-	const defaultAuthor = computed(() => {
-		const user = usersStore.currentUser;
-		return {
-			name: user?.fullName ?? `${user?.firstName} ${user?.lastName}`.trim(),
-			email: user?.email ?? '',
-		};
-	});
+
+	const sshKeyTypes: SshKeyTypes = ['ed25519', 'rsa'];
+	const sshKeyTypesWithLabel = reactive(
+		sshKeyTypes.map((value) => ({ value, label: value.toUpperCase() })),
+	);
 
 	const preferences = reactive<SourceControlPreferences>({
 		branchName: '',
@@ -31,6 +28,7 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 		branchColor: '#5296D6',
 		connected: false,
 		publicKey: '',
+		keyGeneratorType: 'ed25519',
 	});
 
 	const state = reactive<{
@@ -62,7 +60,7 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 	};
 
 	const pullWorkfolder = async (force: boolean) => {
-		return vcApi.pullWorkfolder(rootStore.getRestApiContext, { force });
+		return await vcApi.pullWorkfolder(rootStore.getRestApiContext, { force });
 	};
 
 	const setPreferences = (data: Partial<SourceControlPreferences>) => {
@@ -95,8 +93,8 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 		setPreferences({ connected: false, branches: [] });
 	};
 
-	const generateKeyPair = async () => {
-		await vcApi.generateKeyPair(rootStore.getRestApiContext);
+	const generateKeyPair = async (keyGeneratorType?: TupleToUnion<SshKeyTypes>) => {
+		await vcApi.generateKeyPair(rootStore.getRestApiContext, keyGeneratorType);
 		const data = await vcApi.getPreferences(rootStore.getRestApiContext); // To be removed once the API is updated
 
 		preferences.publicKey = data.publicKey;
@@ -105,11 +103,11 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 	};
 
 	const getStatus = async () => {
-		return vcApi.getStatus(rootStore.getRestApiContext);
+		return await vcApi.getStatus(rootStore.getRestApiContext);
 	};
 
 	const getAggregatedStatus = async () => {
-		return vcApi.getAggregatedStatus(rootStore.getRestApiContext);
+		return await vcApi.getAggregatedStatus(rootStore.getRestApiContext);
 	};
 
 	return {
@@ -127,5 +125,6 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 		disconnect,
 		getStatus,
 		getAggregatedStatus,
+		sshKeyTypesWithLabel,
 	};
 });

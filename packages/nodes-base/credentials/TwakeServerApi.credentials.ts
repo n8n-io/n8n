@@ -5,7 +5,15 @@ export class TwakeServerApi implements ICredentialType {
 
 	displayName = 'Twake Server API';
 
+	icon = 'file:icons/Twake.png';
+
 	documentationUrl = 'twake';
+
+	httpRequestNode = {
+		name: 'Twake Server',
+		docsUrl: 'https://doc.twake.app/developers-api/home',
+		apiBaseUrl: '',
+	};
 
 	properties: INodeProperties[] = [
 		{

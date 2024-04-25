@@ -8,11 +8,17 @@ import type {
 export class VirusTotalApi implements ICredentialType {
 	name = 'virusTotalApi';
 
-	displayName = 'Virus Total API';
+	displayName = 'VirusTotal API';
 
 	documentationUrl = 'virustotal';
 
 	icon = 'file:icons/VirusTotal.svg';
+
+	httpRequestNode = {
+		name: 'VirusTotal',
+		docsUrl: 'https://developers.virustotal.com/reference/overview',
+		apiBaseUrl: 'https://www.virustotal.com/api/v3/',
+	};
 
 	properties: INodeProperties[] = [
 		{

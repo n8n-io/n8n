@@ -1,8 +1,10 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 import type { INodeUi, Schema } from '@/Interface';
-import { checkExhaustive, shorten } from '@/utils';
+import { checkExhaustive } from '@/utils/typeGuards';
+import { shorten } from '@/utils/typesUtils';
 import { getMappedExpression } from '@/utils/mappingUtils';
+import TextWithHighlights from './TextWithHighlights.vue';
 
 type Props = {
 	schema: Schema;
@@ -14,6 +16,7 @@ type Props = {
 	draggingPath: string;
 	distanceFromActive: number;
 	node: INodeUi | null;
+	search: string;
 };
 
 const props = defineProps<Props>();
@@ -26,15 +29,17 @@ const isFlat = computed(
 		Array.isArray(props.schema.value) &&
 		props.schema.value.every((v) => !Array.isArray(v.value)),
 );
-const key = computed((): string | undefined =>
-	isSchemaParentTypeArray.value ? `[${props.schema.key}]` : props.schema.key,
-);
+const key = computed((): string | undefined => {
+	return isSchemaParentTypeArray.value ? `[${props.schema.key}]` : props.schema.key;
+});
 const schemaName = computed(() =>
 	isSchemaParentTypeArray.value ? `${props.schema.type}[${props.schema.key}]` : props.schema.key,
 );
 const text = computed(() =>
 	Array.isArray(props.schema.value) ? '' : shorten(props.schema.value, 600, 0),
 );
+
+const dragged = computed(() => props.draggingPath === props.schema.path);
 
 const getJsonParameterPath = (path: string): string =>
 	getMappedExpression({
@@ -80,7 +85,7 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 			:class="{
 				[$style.pill]: true,
 				[$style.mappable]: mappingEnabled,
-				[$style.dragged]: draggingPath === schema.path,
+				[$style.highlight]: dragged,
 			}"
 		>
 			<span
@@ -92,8 +97,17 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 				data-target="mappable"
 			>
 				<font-awesome-icon :icon="getIconBySchemaType(schema.type)" size="sm" />
-				<span v-if="isSchemaParentTypeArray">{{ parent.key }}</span>
-				<span v-if="key" :class="{ [$style.arrayIndex]: isSchemaParentTypeArray }">{{ key }}</span>
+				<TextWithHighlights
+					v-if="isSchemaParentTypeArray"
+					:content="props.parent?.key"
+					:search="props.search"
+				/>
+				<TextWithHighlights
+					v-if="key"
+					:class="{ [$style.arrayIndex]: isSchemaParentTypeArray }"
+					:content="key"
+					:search="props.search"
+				/>
 			</span>
 		</div>
 		<span v-if="text" :class="$style.text">{{ text }}</span>
@@ -108,20 +122,21 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 				:schema="s"
 				:level="level + 1"
 				:parent="schema"
-				:paneType="paneType"
-				:subKey="`${paneType}_${s.type}-${level}-${i}`"
-				:mappingEnabled="mappingEnabled"
-				:draggingPath="draggingPath"
-				:distanceFromActive="distanceFromActive"
+				:pane-type="paneType"
+				:sub-key="`${paneType}_${s.type}-${level}-${i}`"
+				:mapping-enabled="mappingEnabled"
+				:dragging-path="draggingPath"
+				:distance-from-active="distanceFromActive"
 				:node="node"
 				:style="{ transitionDelay: transitionDelay(i) }"
+				:search="search"
 			/>
 		</div>
 	</div>
 </template>
 
 <style lang="scss" module>
-@import '@/styles/css-animation-helpers.scss';
+@import '@/styles/variables';
 
 .item {
 	display: block;
@@ -190,6 +205,25 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 	}
 }
 
+:global(.highlightSchema) {
+	.pill.mappable {
+		&,
+		&:hover,
+		span,
+		&:hover span span {
+			color: var(--color-primary);
+			border-color: var(--color-primary-tint-1);
+			background-color: var(--color-primary-tint-3);
+
+			svg {
+				path {
+					fill: var(--color-primary);
+				}
+			}
+		}
+	}
+}
+
 .pill {
 	float: left;
 	display: inline-flex;
@@ -221,22 +255,6 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 			span span {
 				background-color: var(--color-background-light);
 				border-color: var(--color-foreground-base);
-			}
-		}
-	}
-
-	&.dragged {
-		&,
-		&:hover,
-		span {
-			color: var(--color-primary);
-			border-color: var(--color-primary-tint-1);
-			background-color: var(--color-primary-tint-3);
-
-			svg {
-				path {
-					fill: var(--color-primary);
-				}
 			}
 		}
 	}

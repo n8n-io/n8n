@@ -5,10 +5,9 @@ import type {
 	IPushDataExecutionFinished,
 } from '@/Interface';
 
-import { externalHooks } from '@/mixins/externalHooks';
-import { nodeHelpers } from '@/mixins/nodeHelpers';
-import { useTitleChange, useToast } from '@/composables';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
+import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { useTitleChange } from '@/composables/useTitleChange';
+import { useToast } from '@/composables/useToast';
 
 import type {
 	ExpressionError,
@@ -19,11 +18,12 @@ import type {
 	IWorkflowBase,
 	SubworkflowOperationError,
 	IExecuteContextData,
+	NodeOperationError,
 } from 'n8n-workflow';
 import { TelemetryHelpers } from 'n8n-workflow';
 
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
-import { getTriggerNodeServiceName } from '@/utils';
+import { getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
 import { codeNodeEditorEventBus, globalLinkActionsEventBus } from '@/event-bus';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
@@ -34,24 +34,41 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { parse } from 'flatted';
 import { useSegment } from '@/stores/segment.store';
 import { defineComponent } from 'vue';
+import { useOrchestrationStore } from '@/stores/orchestration.store';
+import { usePushConnectionStore } from '@/stores/pushConnection.store';
+import { useCollaborationStore } from '@/stores/collaboration.store';
+import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useRouter } from 'vue-router';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 
 export const pushConnection = defineComponent({
 	setup() {
+		const router = useRouter();
+		const workflowHelpers = useWorkflowHelpers({ router });
+		const nodeHelpers = useNodeHelpers();
 		return {
 			...useTitleChange(),
 			...useToast(),
+			nodeHelpers,
+			workflowHelpers,
 		};
 	},
-	mixins: [externalHooks, nodeHelpers, workflowHelpers],
 	data() {
 		return {
-			pushSource: null as WebSocket | EventSource | null,
-			reconnectTimeout: null as NodeJS.Timeout | null,
 			retryTimeout: null as NodeJS.Timeout | null,
-			pushMessageQueue: [] as Array<{ event: Event; retriesLeft: number }>,
-			connectRetries: 0,
-			lostConnection: false,
+			pushMessageQueue: [] as Array<{ message: IPushData; retriesLeft: number }>,
+			removeEventListener: null as (() => void) | null,
 		};
+	},
+	created() {
+		this.removeEventListener = this.pushStore.addEventListener((message) => {
+			void this.pushMessageReceived(message);
+		});
+	},
+	unmounted() {
+		if (typeof this.removeEventListener === 'function') {
+			this.removeEventListener();
+		}
 	},
 	computed: {
 		...mapStores(
@@ -61,92 +78,23 @@ export const pushConnection = defineComponent({
 			useWorkflowsStore,
 			useSettingsStore,
 			useSegment,
+			useOrchestrationStore,
+			usePushConnectionStore,
+			useCollaborationStore,
 		),
-		sessionId(): string {
-			return this.rootStore.sessionId;
+		pushRef(): string {
+			return this.rootStore.pushRef;
 		},
 	},
 	methods: {
-		attemptReconnect() {
-			this.pushConnect();
-		},
-
-		/**
-		 * Connect to server to receive data via a WebSocket or EventSource
-		 */
-		pushConnect(): void {
-			// always close the previous connection so that we do not end up with multiple connections
-			this.pushDisconnect();
-
-			if (this.reconnectTimeout) {
-				clearTimeout(this.reconnectTimeout);
-				this.reconnectTimeout = null;
-			}
-
-			const useWebSockets = this.settingsStore.pushBackend === 'websocket';
-
-			const { getRestUrl: restUrl } = this.rootStore;
-			const url = `/push?sessionId=${this.sessionId}`;
-
-			if (useWebSockets) {
-				const { protocol, host } = window.location;
-				const baseUrl = restUrl.startsWith('http')
-					? restUrl.replace(/^http/, 'ws')
-					: `${protocol === 'https:' ? 'wss' : 'ws'}://${host + restUrl}`;
-				this.pushSource = new WebSocket(`${baseUrl}${url}`);
-			} else {
-				this.pushSource = new EventSource(`${restUrl}${url}`, { withCredentials: true });
-			}
-
-			this.pushSource.addEventListener('open', this.onConnectionSuccess, false);
-			this.pushSource.addEventListener('message', this.pushMessageReceived, false);
-			this.pushSource.addEventListener(
-				useWebSockets ? 'close' : 'error',
-				this.onConnectionError,
-				false,
-			);
-		},
-
-		onConnectionSuccess() {
-			this.connectRetries = 0;
-			this.lostConnection = false;
-			this.rootStore.pushConnectionActive = true;
-			this.clearAllStickyNotifications();
-			this.pushSource?.removeEventListener('open', this.onConnectionSuccess);
-		},
-
-		onConnectionError() {
-			this.pushDisconnect();
-			this.connectRetries++;
-			this.reconnectTimeout = setTimeout(
-				this.attemptReconnect,
-				Math.min(this.connectRetries * 2000, 8000), // maximum 8 seconds backoff
-			);
-		},
-
-		/**
-		 * Close connection to server
-		 */
-		pushDisconnect(): void {
-			if (this.pushSource !== null) {
-				this.pushSource.removeEventListener('error', this.onConnectionError);
-				this.pushSource.removeEventListener('close', this.onConnectionError);
-				this.pushSource.removeEventListener('message', this.pushMessageReceived);
-				if (this.pushSource.readyState < 2) this.pushSource.close();
-				this.pushSource = null;
-			}
-
-			this.rootStore.pushConnectionActive = false;
-		},
-
 		/**
 		 * Sometimes the push message is faster as the result from
 		 * the REST API so we do not know yet what execution ID
 		 * is currently active. So internally resend the message
 		 * a few more times
 		 */
-		queuePushMessage(event: Event, retryAttempts: number) {
-			this.pushMessageQueue.push({ event, retriesLeft: retryAttempts });
+		queuePushMessage(event: IPushData, retryAttempts: number) {
+			this.pushMessageQueue.push({ message: event, retriesLeft: retryAttempts });
 
 			if (this.retryTimeout === null) {
 				this.retryTimeout = setTimeout(this.processWaitingPushMessages, 20);
@@ -156,7 +104,7 @@ export const pushConnection = defineComponent({
 		/**
 		 * Process the push messages which are waiting in the queue
 		 */
-		processWaitingPushMessages() {
+		async processWaitingPushMessages() {
 			if (this.retryTimeout !== null) {
 				clearTimeout(this.retryTimeout);
 				this.retryTimeout = null;
@@ -166,7 +114,8 @@ export const pushConnection = defineComponent({
 			for (let i = 0; i < queueLength; i++) {
 				const messageData = this.pushMessageQueue.shift();
 
-				if (this.pushMessageReceived(messageData!.event, true) === false) {
+				const result = await this.pushMessageReceived(messageData!.message, true);
+				if (!result) {
 					// Was not successful
 					messageData!.retriesLeft -= 1;
 
@@ -186,14 +135,13 @@ export const pushConnection = defineComponent({
 		/**
 		 * Process a newly received message
 		 */
-		async pushMessageReceived(event: Event, isRetry?: boolean): Promise<boolean> {
+		async pushMessageReceived(receivedData: IPushData, isRetry?: boolean): Promise<boolean> {
 			const retryAttempts = 5;
-			let receivedData: IPushData;
-			try {
-				// @ts-ignore
-				receivedData = JSON.parse(event.data);
-			} catch (error) {
-				return false;
+
+			if (receivedData.type === 'sendWorkerStatusMessage') {
+				const pushData = receivedData.data;
+				this.orchestrationManagerStore.updateWorkerStatus(pushData.status);
+				return true;
 			}
 
 			if (receivedData.type === 'sendConsoleMessage') {
@@ -209,7 +157,7 @@ export const pushConnection = defineComponent({
 			) {
 				// If there are already messages in the queue add the new one that all of them
 				// get executed in order
-				this.queuePushMessage(event, retryAttempts);
+				this.queuePushMessage(receivedData, retryAttempts);
 				return false;
 			}
 
@@ -280,16 +228,44 @@ export const pushConnection = defineComponent({
 				}
 			}
 
+			if (
+				receivedData.type === 'workflowFailedToActivate' &&
+				this.workflowsStore.workflowId === receivedData.data.workflowId
+			) {
+				this.workflowsStore.setWorkflowInactive(receivedData.data.workflowId);
+				this.workflowsStore.setActive(false);
+
+				this.showError(
+					new Error(receivedData.data.errorMessage),
+					this.$locale.baseText('workflowActivator.showError.title', {
+						interpolate: { newStateName: 'activated' },
+					}) + ':',
+				);
+
+				return true;
+			}
+
+			if (receivedData.type === 'workflowActivated') {
+				this.workflowsStore.setWorkflowActive(receivedData.data.workflowId);
+				return true;
+			}
+
+			if (receivedData.type === 'workflowDeactivated') {
+				this.workflowsStore.setWorkflowInactive(receivedData.data.workflowId);
+				return true;
+			}
+
 			if (receivedData.type === 'executionFinished' || receivedData.type === 'executionRecovered') {
 				// The workflow finished executing
 				let pushData: IPushDataExecutionFinished;
 				if (receivedData.type === 'executionRecovered' && recoveredPushData !== undefined) {
-					pushData = recoveredPushData as IPushDataExecutionFinished;
+					pushData = recoveredPushData;
 				} else {
 					pushData = receivedData.data as IPushDataExecutionFinished;
 				}
 
-				if (this.workflowsStore.activeExecutionId === pushData.executionId) {
+				const { activeExecutionId } = this.workflowsStore;
+				if (activeExecutionId === pushData.executionId) {
 					const activeRunData =
 						this.workflowsStore.workflowExecutionData?.data?.resultData?.runData;
 					if (activeRunData) {
@@ -310,7 +286,7 @@ export const pushConnection = defineComponent({
 					return false;
 				}
 
-				if (this.workflowsStore.activeExecutionId !== pushData.executionId) {
+				if (activeExecutionId !== pushData.executionId) {
 					// The workflow which did finish execution did either not get started
 					// by this session or we do not have the execution id yet.
 					if (isRetry !== true) {
@@ -323,26 +299,27 @@ export const pushConnection = defineComponent({
 
 				let runDataExecutedErrorMessage = this.getExecutionError(runDataExecuted.data);
 
-				if (pushData.data.status === 'crashed') {
+				if (runDataExecuted.status === 'crashed') {
 					runDataExecutedErrorMessage = this.$locale.baseText(
 						'pushConnection.executionFailed.message',
 					);
+				} else if (runDataExecuted.status === 'canceled') {
+					runDataExecutedErrorMessage = this.$locale.baseText(
+						'executionsList.showMessage.stopExecution.message',
+						{
+							interpolate: { activeExecutionId },
+						},
+					);
 				}
 
-				const lineNumber =
-					runDataExecuted &&
-					runDataExecuted.data &&
-					runDataExecuted.data.resultData &&
-					runDataExecuted.data.resultData.error &&
-					runDataExecuted.data.resultData.error.lineNumber;
+				const lineNumber = runDataExecuted?.data?.resultData?.error?.lineNumber;
 
 				codeNodeEditorEventBus.emit('error-line-number', lineNumber || 'final');
 
-				const workflow = this.getCurrentWorkflow();
+				const workflow = this.workflowHelpers.getCurrentWorkflow();
 				if (runDataExecuted.waitTill !== undefined) {
-					const activeExecutionId = this.workflowsStore.activeExecutionId;
 					const workflowSettings = this.workflowsStore.workflowSettings;
-					const saveManualExecutions = this.rootStore.saveManualExecutions;
+					const saveManualExecutions = this.settingsStore.saveManualExecutions;
 
 					const isSavingExecutions =
 						workflowSettings.saveManualExecutions === undefined
@@ -354,7 +331,8 @@ export const pushConnection = defineComponent({
 						globalLinkActionsEventBus.emit('registerGlobalLinkAction', {
 							key: 'open-settings',
 							action: async () => {
-								if (this.workflowsStore.isNewWorkflow) await this.saveAsNewWorkflow();
+								if (this.workflowsStore.isNewWorkflow)
+									await this.workflowHelpers.saveAsNewWorkflow();
 								this.uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 							},
 						});
@@ -383,7 +361,7 @@ export const pushConnection = defineComponent({
 					) {
 						const error = runDataExecuted.data.resultData.error as ExpressionError;
 
-						void this.getWorkflowDataToSave().then((workflowData) => {
+						void this.workflowHelpers.getWorkflowDataToSave().then((workflowData) => {
 							const eventData: IDataObject = {
 								caused_by_credential: false,
 								error_message: error.description,
@@ -392,7 +370,7 @@ export const pushConnection = defineComponent({
 								node_graph_string: JSON.stringify(
 									TelemetryHelpers.generateNodesGraph(
 										workflowData as IWorkflowBase,
-										this.getNodeTypes(),
+										this.workflowHelpers.getNodeTypes(),
 									).nodeGraph,
 								),
 								workflow_id: this.workflowsStore.workflowId,
@@ -400,7 +378,9 @@ export const pushConnection = defineComponent({
 
 							if (
 								error.context.nodeCause &&
-								['no pairing info', 'invalid pairing info'].includes(error.context.type as string)
+								['paired_item_no_info', 'paired_item_invalid_info'].includes(
+									error.context.type as string,
+								)
 							) {
 								const node = workflow.getNode(error.context.nodeCause as string);
 
@@ -413,7 +393,9 @@ export const pushConnection = defineComponent({
 								}
 							}
 
-							this.$telemetry.track('Instance FE emitted paired item error', eventData);
+							this.$telemetry.track('Instance FE emitted paired item error', eventData, {
+								withPostHog: true,
+							});
 						});
 					}
 
@@ -428,38 +410,73 @@ export const pushConnection = defineComponent({
 							type: 'error',
 							duration: 0,
 						});
-					} else {
+					} else if (
+						runDataExecuted.data.resultData.error?.name === 'NodeOperationError' &&
+						(runDataExecuted.data.resultData.error as NodeOperationError).functionality ===
+							'configuration-node'
+					) {
+						// If the error is a configuration error of the node itself doesn't get executed so we can't use lastNodeExecuted for the title
 						let title: string;
-						if (runDataExecuted.data.resultData.lastNodeExecuted) {
-							title = `Problem in node ‘${runDataExecuted.data.resultData.lastNodeExecuted}‘`;
+						const nodeError = runDataExecuted.data.resultData.error as NodeOperationError;
+						if (nodeError.node.name) {
+							title = `Error in sub-node ‘${nodeError.node.name}‘`;
 						} else {
 							title = 'Problem executing workflow';
 						}
 
 						this.showMessage({
 							title,
-							message: runDataExecutedErrorMessage,
+							message:
+								(nodeError?.description ?? runDataExecutedErrorMessage) +
+								this.$locale.baseText('pushConnection.executionError.openNode', {
+									interpolate: {
+										node: nodeError.node.name,
+									},
+								}),
 							type: 'error',
 							duration: 0,
 							dangerouslyUseHTMLString: true,
 						});
+					} else {
+						let title: string;
+						const isManualExecutionCancelled =
+							runDataExecuted.mode === 'manual' && runDataExecuted.status === 'canceled';
+
+						// Do not show the error message if the workflow got canceled manually
+						if (isManualExecutionCancelled) {
+							this.showMessage({
+								title: this.$locale.baseText('nodeView.showMessage.stopExecutionTry.title'),
+								type: 'success',
+							});
+						} else {
+							if (runDataExecuted.data.resultData.lastNodeExecuted) {
+								title = `Problem in node ‘${runDataExecuted.data.resultData.lastNodeExecuted}‘`;
+							} else {
+								title = 'Problem executing workflow';
+							}
+
+							this.showMessage({
+								title,
+								message: runDataExecutedErrorMessage,
+								type: 'error',
+								duration: 0,
+								dangerouslyUseHTMLString: true,
+							});
+						}
 					}
 				} else {
 					// Workflow did execute without a problem
 					this.titleSet(workflow.name as string, 'IDLE');
 
 					const execution = this.workflowsStore.getWorkflowExecution;
-					if (execution && execution.executedNode) {
+					if (execution?.executedNode) {
 						const node = this.workflowsStore.getNodeByName(execution.executedNode);
 						const nodeType = node && this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 						const nodeOutput =
 							execution &&
 							execution.executedNode &&
-							execution.data &&
-							execution.data.resultData &&
-							execution.data.resultData.runData &&
-							execution.data.resultData.runData[execution.executedNode];
-						if (nodeType && nodeType.polling && !nodeOutput) {
+							execution.data?.resultData?.runData?.[execution.executedNode];
+						if (nodeType?.polling && !nodeOutput) {
 							this.showMessage({
 								title: this.$locale.baseText('pushConnection.pollingNode.dataNotFound', {
 									interpolate: {
@@ -494,28 +511,27 @@ export const pushConnection = defineComponent({
 					runDataExecuted.data.resultData.runData = this.workflowsStore.getWorkflowRunData;
 				}
 
-				this.workflowsStore.executingNode = null;
+				this.workflowsStore.executingNode.length = 0;
 				this.workflowsStore.setWorkflowExecutionData(runDataExecuted as IExecutionResponse);
 				this.uiStore.removeActiveAction('workflowRunning');
 
 				// Set the node execution issues on all the nodes which produced an error so that
 				// it can be displayed in the node-view
-				this.updateNodesExecutionIssues();
+				this.nodeHelpers.updateNodesExecutionIssues();
 
 				const lastNodeExecuted: string | undefined =
 					runDataExecuted.data.resultData.lastNodeExecuted;
 				let itemsCount = 0;
 				if (
 					lastNodeExecuted &&
-					runDataExecuted.data.resultData.runData[lastNodeExecuted as string] &&
+					runDataExecuted.data.resultData.runData[lastNodeExecuted] &&
 					!runDataExecutedErrorMessage
 				) {
 					itemsCount =
-						runDataExecuted.data.resultData.runData[lastNodeExecuted as string][0].data!.main[0]!
-							.length;
+						runDataExecuted.data.resultData.runData[lastNodeExecuted][0].data!.main[0]!.length;
 				}
 
-				void this.$externalHooks().run('pushConnection.executionFinished', {
+				void useExternalHooks().run('pushConnection.executionFinished', {
 					itemsCount,
 					nodeName: runDataExecuted.data.resultData.lastNodeExecuted,
 					errorMessage: runDataExecutedErrorMessage,
@@ -543,10 +559,11 @@ export const pushConnection = defineComponent({
 				// A node finished to execute. Add its data
 				const pushData = receivedData.data;
 				this.workflowsStore.addNodeExecutionData(pushData);
+				this.workflowsStore.removeExecutingNode(pushData.nodeName);
 			} else if (receivedData.type === 'nodeExecuteBefore') {
 				// A node started to be executed. Set it as executing.
 				const pushData = receivedData.data;
-				this.workflowsStore.executingNode = pushData.nodeName;
+				this.workflowsStore.addExecutingNode(pushData.nodeName);
 			} else if (receivedData.type === 'testWebhookDeleted') {
 				// A test-webhook was deleted
 				const pushData = receivedData.data;
@@ -564,7 +581,7 @@ export const pushConnection = defineComponent({
 					this.workflowsStore.activeExecutionId = pushData.executionId;
 				}
 
-				this.processWaitingPushMessages();
+				void this.processWaitingPushMessages();
 			} else if (receivedData.type === 'reloadNodeType') {
 				await this.nodeTypesStore.getNodeTypes();
 				await this.nodeTypesStore.getFullNodesProperties([receivedData.data]);
@@ -595,7 +612,7 @@ export const pushConnection = defineComponent({
 					interpolate: { error: '!' },
 				});
 
-				if (error && error.message) {
+				if (error?.message) {
 					let nodeName: string | undefined;
 					if ('node' in error) {
 						nodeName = typeof error.node === 'string' ? error.node : error.node!.name;

@@ -12,11 +12,10 @@ export class AddWorkflowVersionIdColumn1669739707124 implements ReversibleMigrat
 
 		const workflowIds: Workflow[] = await runQuery(`SELECT id FROM ${tableName}`);
 		for (const { id } of workflowIds) {
-			await runQuery(
-				`UPDATE ${tableName} SET ${columnName} = :versionId WHERE id = :id`,
-				{ versionId: uuidv4() },
-				{ id },
-			);
+			await runQuery(`UPDATE ${tableName} SET ${columnName} = :versionId WHERE id = :id`, {
+				versionId: uuidv4(),
+				id,
+			});
 		}
 	}
 

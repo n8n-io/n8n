@@ -7,7 +7,7 @@ Execution:
 Node:
   $ref: './../../../handlers/workflows/spec/schemas/node.yml'
 Tag:
-  $ref: './../../../handlers/workflows/spec/schemas/tag.yml'
+  $ref: './../../../handlers/tags/spec/schemas/tag.yml'
 Workflow:
   $ref: './../../../handlers/workflows/spec/schemas/workflow.yml'
 WorkflowSettings:
@@ -23,9 +23,9 @@ CredentialType:
 Audit:
   $ref: './../../../handlers/audit/spec/schemas/audit.yml'
 Pull:
-  $ref: "./../../../handlers/sourceControl/spec/schemas/pull.yml"
+  $ref: './../../../handlers/sourceControl/spec/schemas/pull.yml'
 ImportResult:
-  $ref: "./../../../handlers/sourceControl/spec/schemas/importResult.yml"
+  $ref: './../../../handlers/sourceControl/spec/schemas/importResult.yml'
 UserList:
   $ref: './../../../handlers/users/spec/schemas/userList.yml'
 User:

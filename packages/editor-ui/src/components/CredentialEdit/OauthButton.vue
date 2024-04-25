@@ -1,11 +1,10 @@
 <template>
 	<div :class="$style.container">
-		<GoogleAuthButton v-if="isGoogleOAuthType" @click="$emit('click')" />
+		<GoogleAuthButton v-if="isGoogleOAuthType" />
 		<n8n-button
 			v-else
 			:label="$locale.baseText('credentialEdit.oAuthButton.connectMyAccount')"
 			size="large"
-			@click.stop="$emit('click')"
 		/>
 	</div>
 </template>

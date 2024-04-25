@@ -1,391 +1,131 @@
-import { v4 as uuid } from 'uuid';
-import { Container } from 'typedi';
-import type { ICredentialTypes, INodeTypes } from 'n8n-workflow';
-import { SubworkflowOperationError, Workflow } from 'n8n-workflow';
-
-import config from '@/config';
-import * as Db from '@/Db';
-import { Role } from '@db/entities/Role';
-import { User } from '@db/entities/User';
-import { SharedWorkflow } from '@db/entities/SharedWorkflow';
-import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
-import { NodeTypes } from '@/NodeTypes';
-import { UserService } from '@/user/user.service';
+import type { INode } from 'n8n-workflow';
+import { mock } from 'jest-mock-extended';
+import type { User } from '@db/entities/User';
+import type { UserRepository } from '@db/repositories/user.repository';
+import type { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+import type { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+import type { License } from '@/License';
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
-import * as UserManagementHelper from '@/UserManagement/UserManagementHelper';
-import { WorkflowsService } from '@/workflows/workflows.services';
 
-import {
-	randomCredentialPayload as randomCred,
-	randomPositiveDigit,
-} from '../integration/shared/random';
-import * as testDb from '../integration/shared/testDb';
-import { mockNodeTypesData } from './Helpers';
-import type { SaveCredentialFunction } from '../integration/shared/types';
-import { mockInstance } from '../integration/shared/utils/';
-import { OwnershipService } from '@/services/ownership.service';
+describe('PermissionChecker', () => {
+	const user = mock<User>();
+	const userRepo = mock<UserRepository>();
+	const sharedCredentialsRepo = mock<SharedCredentialsRepository>();
+	const sharedWorkflowRepo = mock<SharedWorkflowRepository>();
+	const license = mock<License>();
+	const permissionChecker = new PermissionChecker(
+		userRepo,
+		sharedCredentialsRepo,
+		sharedWorkflowRepo,
+		mock(),
+		license,
+	);
 
-let mockNodeTypes: INodeTypes;
-let credentialOwnerRole: Role;
-let workflowOwnerRole: Role;
-let saveCredential: SaveCredentialFunction;
-
-const MOCK_NODE_TYPES_DATA = mockNodeTypesData(['start', 'actionNetwork']);
-mockInstance(LoadNodesAndCredentials, {
-	loaded: {
-		nodes: MOCK_NODE_TYPES_DATA,
-		credentials: {},
-	},
-	known: { nodes: {}, credentials: {} },
-	credentialTypes: {} as ICredentialTypes,
-});
-
-beforeAll(async () => {
-	await testDb.init();
-
-	mockNodeTypes = Container.get(NodeTypes);
-
-	credentialOwnerRole = await testDb.getCredentialOwnerRole();
-	workflowOwnerRole = await testDb.getWorkflowOwnerRole();
-
-	saveCredential = testDb.affixRoleToSaveCredential(credentialOwnerRole);
-});
-
-beforeEach(async () => {
-	await testDb.truncate(['SharedWorkflow', 'SharedCredentials', 'Workflow', 'Credentials', 'User']);
-});
-
-afterAll(async () => {
-	await testDb.terminate();
-});
-
-describe('PermissionChecker.check()', () => {
-	test('should allow if workflow has no creds', async () => {
-		const userId = uuid();
-
-		const workflow = new Workflow({
-			id: randomPositiveDigit().toString(),
-			name: 'test',
-			active: false,
-			connections: {},
-			nodeTypes: mockNodeTypes,
-			nodes: [
-				{
-					id: uuid(),
-					name: 'Start',
-					type: 'n8n-nodes-base.start',
-					typeVersion: 1,
-					parameters: {},
-					position: [0, 0],
+	const workflowId = '1';
+	const nodes: INode[] = [
+		{
+			id: 'node-id',
+			name: 'HTTP Request',
+			type: 'n8n-nodes-base.httpRequest',
+			parameters: {},
+			typeVersion: 1,
+			position: [0, 0],
+			credentials: {
+				oAuth2Api: {
+					id: 'cred-id',
+					name: 'Custom oAuth2',
 				},
-			],
+			},
+		},
+	];
+
+	beforeEach(() => jest.clearAllMocks());
+
+	describe('check', () => {
+		it('should throw if no user is found', async () => {
+			userRepo.findOneOrFail.mockRejectedValue(new Error('Fail'));
+			await expect(permissionChecker.check(workflowId, '123', nodes)).rejects.toThrow();
+			expect(license.isSharingEnabled).not.toHaveBeenCalled();
+			expect(sharedWorkflowRepo.getSharedUserIds).not.toBeCalled();
+			expect(sharedCredentialsRepo.getOwnedCredentialIds).not.toHaveBeenCalled();
+			expect(sharedCredentialsRepo.getAccessibleCredentialIds).not.toHaveBeenCalled();
 		});
 
-		expect(async () => PermissionChecker.check(workflow, userId)).not.toThrow();
-	});
-
-	test('should allow if requesting user is instance owner', async () => {
-		const owner = await testDb.createOwner();
-
-		const workflow = new Workflow({
-			id: randomPositiveDigit().toString(),
-			name: 'test',
-			active: false,
-			connections: {},
-			nodeTypes: mockNodeTypes,
-			nodes: [
-				{
-					id: uuid(),
-					name: 'Action Network',
-					type: 'n8n-nodes-base.actionNetwork',
-					parameters: {},
-					typeVersion: 1,
-					position: [0, 0],
-					credentials: {
-						actionNetworkApi: {
-							id: randomPositiveDigit().toString(),
-							name: 'Action Network Account',
-						},
-					},
-				},
-			],
+		it('should allow a user if they have a global `workflow:execute` scope', async () => {
+			userRepo.findOneOrFail.mockResolvedValue(user);
+			user.hasGlobalScope.calledWith('workflow:execute').mockReturnValue(true);
+			await expect(permissionChecker.check(workflowId, user.id, nodes)).resolves.not.toThrow();
+			expect(license.isSharingEnabled).not.toHaveBeenCalled();
+			expect(sharedWorkflowRepo.getSharedUserIds).not.toBeCalled();
+			expect(sharedCredentialsRepo.getOwnedCredentialIds).not.toHaveBeenCalled();
+			expect(sharedCredentialsRepo.getAccessibleCredentialIds).not.toHaveBeenCalled();
 		});
 
-		expect(async () => PermissionChecker.check(workflow, owner.id)).not.toThrow();
-	});
-
-	test('should allow if workflow creds are valid subset', async () => {
-		const [owner, member] = await Promise.all([testDb.createOwner(), testDb.createUser()]);
-
-		const ownerCred = await saveCredential(randomCred(), { user: owner });
-		const memberCred = await saveCredential(randomCred(), { user: member });
-
-		const workflow = new Workflow({
-			id: randomPositiveDigit().toString(),
-			name: 'test',
-			active: false,
-			connections: {},
-			nodeTypes: mockNodeTypes,
-			nodes: [
-				{
-					id: uuid(),
-					name: 'Action Network',
-					type: 'n8n-nodes-base.actionNetwork',
-					parameters: {},
-					typeVersion: 1,
-					position: [0, 0],
-					credentials: {
-						actionNetworkApi: {
-							id: ownerCred.id,
-							name: ownerCred.name,
-						},
-					},
-				},
-				{
-					id: uuid(),
-					name: 'Action Network 2',
-					type: 'n8n-nodes-base.actionNetwork',
-					parameters: {},
-					typeVersion: 1,
-					position: [0, 0],
-					credentials: {
-						actionNetworkApi: {
-							id: memberCred.id,
-							name: memberCred.name,
-						},
-					},
-				},
-			],
-		});
-
-		expect(async () => PermissionChecker.check(workflow, owner.id)).not.toThrow();
-	});
-
-	test('should deny if workflow creds are not valid subset', async () => {
-		const member = await testDb.createUser();
-
-		const memberCred = await saveCredential(randomCred(), { user: member });
-
-		const workflowDetails = {
-			id: randomPositiveDigit().toString(),
-			name: 'test',
-			active: false,
-			connections: {},
-			nodeTypes: mockNodeTypes,
-			nodes: [
-				{
-					id: uuid(),
-					name: 'Action Network',
-					type: 'n8n-nodes-base.actionNetwork',
-					parameters: {},
-					typeVersion: 1,
-					position: [0, 0] as [number, number],
-					credentials: {
-						actionNetworkApi: {
-							id: memberCred.id,
-							name: memberCred.name,
-						},
-					},
-				},
-				{
-					id: uuid(),
-					name: 'Action Network 2',
-					type: 'n8n-nodes-base.actionNetwork',
-					parameters: {},
-					typeVersion: 1,
-					position: [0, 0] as [number, number],
-					credentials: {
-						actionNetworkApi: {
-							id: 'non-existing-credential-id',
-							name: 'Non-existing credential name',
-						},
-					},
-				},
-			],
-		};
-
-		const workflowEntity = await Db.collections.Workflow.save(workflowDetails);
-
-		await Db.collections.SharedWorkflow.save({
-			workflow: workflowEntity,
-			user: member,
-			role: workflowOwnerRole,
-		});
-
-		const workflow = new Workflow(workflowDetails);
-
-		await expect(PermissionChecker.check(workflow, member.id)).rejects.toThrow();
-	});
-});
-
-describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
-	const userId = uuid();
-	const fakeUser = new User();
-	fakeUser.id = userId;
-	const ownershipService = mockInstance(OwnershipService);
-
-	const ownerMockRole = new Role();
-	ownerMockRole.name = 'owner';
-	const sharedWorkflowOwner = new SharedWorkflow();
-	sharedWorkflowOwner.role = ownerMockRole;
-
-	const nonOwnerMockRole = new Role();
-	nonOwnerMockRole.name = 'editor';
-	const sharedWorkflowNotOwner = new SharedWorkflow();
-	sharedWorkflowNotOwner.role = nonOwnerMockRole;
-
-	test('sets default policy from environment when subworkflow has none', async () => {
-		config.set('workflows.callerPolicyDefaultOption', 'none');
-		jest
-			.spyOn(ownershipService, 'getWorkflowOwnerCached')
-			.mockImplementation(async (workflowId) => {
-				return fakeUser;
+		describe('When sharing is disabled', () => {
+			beforeEach(() => {
+				userRepo.findOneOrFail.mockResolvedValue(user);
+				user.hasGlobalScope.calledWith('workflow:execute').mockReturnValue(false);
+				license.isSharingEnabled.mockReturnValue(false);
 			});
-		jest.spyOn(UserManagementHelper, 'isSharingEnabled').mockReturnValue(true);
 
-		const subworkflow = new Workflow({
-			nodes: [],
-			connections: {},
-			active: false,
-			nodeTypes: mockNodeTypes,
-			id: '2',
-		});
-		await expect(
-			PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, userId),
-		).rejects.toThrow(`Target workflow ID ${subworkflow.id} may not be called`);
-	});
+			it('should validate credential access using only owned credentials', async () => {
+				sharedCredentialsRepo.getOwnedCredentialIds.mockResolvedValue(['cred-id']);
 
-	test('if sharing is disabled, ensures that workflows are owner by same user', async () => {
-		jest
-			.spyOn(ownershipService, 'getWorkflowOwnerCached')
-			.mockImplementation(async (workflowId) => fakeUser);
-		jest.spyOn(UserManagementHelper, 'isSharingEnabled').mockReturnValue(false);
-		jest.spyOn(UserService, 'get').mockImplementation(async () => fakeUser);
-		jest.spyOn(WorkflowsService, 'getSharing').mockImplementation(async () => {
-			return sharedWorkflowNotOwner;
-		});
+				await expect(permissionChecker.check(workflowId, user.id, nodes)).resolves.not.toThrow();
 
-		const subworkflow = new Workflow({
-			nodes: [],
-			connections: {},
-			active: false,
-			nodeTypes: mockNodeTypes,
-			id: '2',
-		});
-		await expect(
-			PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, userId),
-		).rejects.toThrow(`Target workflow ID ${subworkflow.id} may not be called`);
+				expect(sharedWorkflowRepo.getSharedUserIds).not.toBeCalled();
+				expect(sharedCredentialsRepo.getOwnedCredentialIds).toBeCalledWith([user.id]);
+				expect(sharedCredentialsRepo.getAccessibleCredentialIds).not.toHaveBeenCalled();
+			});
 
-		// Check description
-		try {
-			await PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, '', 'abcde');
-		} catch (error) {
-			if (error instanceof SubworkflowOperationError) {
-				expect(error.description).toBe(
-					`${fakeUser.firstName} (${fakeUser.email}) can make this change. You may need to tell them the ID of this workflow, which is ${subworkflow.id}`,
+			it('should throw when the user does not have access to the credential', async () => {
+				sharedCredentialsRepo.getOwnedCredentialIds.mockResolvedValue(['cred-id2']);
+
+				await expect(permissionChecker.check(workflowId, user.id, nodes)).rejects.toThrow(
+					'Node has no access to credential',
 				);
-			}
-		}
-	});
 
-	test('list of ids must include the parent workflow id', async () => {
-		const invalidParentWorkflowId = uuid();
-		jest
-			.spyOn(ownershipService, 'getWorkflowOwnerCached')
-			.mockImplementation(async (workflowId) => fakeUser);
-		jest.spyOn(UserManagementHelper, 'isSharingEnabled').mockReturnValue(true);
-		jest.spyOn(UserService, 'get').mockImplementation(async () => fakeUser);
-		jest.spyOn(WorkflowsService, 'getSharing').mockImplementation(async () => {
-			return sharedWorkflowNotOwner;
+				expect(sharedWorkflowRepo.getSharedUserIds).not.toBeCalled();
+				expect(sharedCredentialsRepo.getOwnedCredentialIds).toBeCalledWith([user.id]);
+				expect(sharedCredentialsRepo.getAccessibleCredentialIds).not.toHaveBeenCalled();
+			});
 		});
 
-		const subworkflow = new Workflow({
-			nodes: [],
-			connections: {},
-			active: false,
-			nodeTypes: mockNodeTypes,
-			id: '2',
-			settings: {
-				callerPolicy: 'workflowsFromAList',
-				callerIds: '123,456,bcdef  ',
-			},
-		});
-		await expect(
-			PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, userId, invalidParentWorkflowId),
-		).rejects.toThrow(`Target workflow ID ${subworkflow.id} may not be called`);
-	});
+		describe('When sharing is enabled', () => {
+			beforeEach(() => {
+				userRepo.findOneOrFail.mockResolvedValue(user);
+				user.hasGlobalScope.calledWith('workflow:execute').mockReturnValue(false);
+				license.isSharingEnabled.mockReturnValue(true);
+				sharedWorkflowRepo.getSharedUserIds.mockResolvedValue([user.id, 'another-user']);
+			});
 
-	test('sameOwner passes when both workflows are owned by the same user', async () => {
-		jest
-			.spyOn(ownershipService, 'getWorkflowOwnerCached')
-			.mockImplementation(async (workflowId) => fakeUser);
-		jest.spyOn(UserManagementHelper, 'isSharingEnabled').mockReturnValue(false);
-		jest.spyOn(UserService, 'get').mockImplementation(async () => fakeUser);
-		jest.spyOn(WorkflowsService, 'getSharing').mockImplementation(async () => {
-			return sharedWorkflowOwner;
-		});
+			it('should validate credential access using only owned credentials', async () => {
+				sharedCredentialsRepo.getAccessibleCredentialIds.mockResolvedValue(['cred-id']);
 
-		const subworkflow = new Workflow({
-			nodes: [],
-			connections: {},
-			active: false,
-			nodeTypes: mockNodeTypes,
-			id: '2',
-		});
-		await expect(
-			PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, userId, userId),
-		).resolves.not.toThrow();
-	});
+				await expect(permissionChecker.check(workflowId, user.id, nodes)).resolves.not.toThrow();
 
-	test('workflowsFromAList works when the list contains the parent id', async () => {
-		const workflowId = uuid();
-		jest
-			.spyOn(ownershipService, 'getWorkflowOwnerCached')
-			.mockImplementation(async (workflowId) => fakeUser);
-		jest.spyOn(UserManagementHelper, 'isSharingEnabled').mockReturnValue(true);
-		jest.spyOn(UserService, 'get').mockImplementation(async () => fakeUser);
-		jest.spyOn(WorkflowsService, 'getSharing').mockImplementation(async () => {
-			return sharedWorkflowNotOwner;
-		});
+				expect(sharedWorkflowRepo.getSharedUserIds).toBeCalledWith(workflowId);
+				expect(sharedCredentialsRepo.getAccessibleCredentialIds).toBeCalledWith([
+					user.id,
+					'another-user',
+				]);
+				expect(sharedCredentialsRepo.getOwnedCredentialIds).not.toHaveBeenCalled();
+			});
 
-		const subworkflow = new Workflow({
-			nodes: [],
-			connections: {},
-			active: false,
-			nodeTypes: mockNodeTypes,
-			id: '2',
-			settings: {
-				callerPolicy: 'workflowsFromAList',
-				callerIds: `123,456,bcdef,  ${workflowId}`,
-			},
-		});
-		await expect(
-			PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, userId, workflowId),
-		).resolves.not.toThrow();
-	});
+			it('should throw when the user does not have access to the credential', async () => {
+				sharedCredentialsRepo.getAccessibleCredentialIds.mockResolvedValue(['cred-id2']);
 
-	test('should not throw when workflow policy is set to any', async () => {
-		jest
-			.spyOn(ownershipService, 'getWorkflowOwnerCached')
-			.mockImplementation(async (workflowId) => fakeUser);
-		jest.spyOn(UserManagementHelper, 'isSharingEnabled').mockReturnValue(true);
-		jest.spyOn(UserService, 'get').mockImplementation(async () => fakeUser);
-		jest.spyOn(WorkflowsService, 'getSharing').mockImplementation(async () => {
-			return sharedWorkflowNotOwner;
-		});
+				await expect(permissionChecker.check(workflowId, user.id, nodes)).rejects.toThrow(
+					'Node has no access to credential',
+				);
 
-		const subworkflow = new Workflow({
-			nodes: [],
-			connections: {},
-			active: false,
-			nodeTypes: mockNodeTypes,
-			id: '2',
-			settings: {
-				callerPolicy: 'any',
-			},
+				expect(sharedWorkflowRepo.find).not.toBeCalled();
+				expect(sharedCredentialsRepo.getAccessibleCredentialIds).toBeCalledWith([
+					user.id,
+					'another-user',
+				]);
+				expect(sharedCredentialsRepo.getOwnedCredentialIds).not.toHaveBeenCalled();
+			});
 		});
-		await expect(
-			PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, userId),
-		).resolves.not.toThrow();
 	});
 });

@@ -6,6 +6,7 @@ import type {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
@@ -56,7 +57,7 @@ function addAdditionalFields(body: IDataObject, additionalFields: IDataObject) {
 			key === 'customProperties' &&
 			(additionalFields.customProperties as IDataObject).property !== undefined
 		) {
-			for (const customProperty of (additionalFields.customProperties as IDataObject)!
+			for (const customProperty of (additionalFields.customProperties as IDataObject)
 				.property! as CustomProperty[]) {
 				body[customProperty.name] = customProperty.value;
 			}
@@ -285,13 +286,15 @@ export class ActiveCampaign implements INodeType {
 			// select them easily
 			async getTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const { tags } = await activeCampaignApiRequest.call(
+				const tags = await activeCampaignApiRequestAllItems.call(
 					this,
 					'GET',
 					'/api/3/tags',
 					{},
 					{ limit: 100 },
+					'tags',
 				);
+
 				for (const tag of tags) {
 					returnData.push({
 						name: tag.tag,
@@ -315,7 +318,7 @@ export class ActiveCampaign implements INodeType {
 		// For Query string
 		let qs: IDataObject;
 
-		let requestMethod: string;
+		let requestMethod: IHttpRequestMethods;
 		let endpoint: string;
 		let returnAll = false;
 		let dataKey: string | undefined;
@@ -1199,6 +1202,6 @@ export class ActiveCampaign implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

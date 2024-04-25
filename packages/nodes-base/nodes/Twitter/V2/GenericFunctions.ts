@@ -1,19 +1,18 @@
-import type { OptionsWithUrl } from 'request';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	INodeParameterResourceLocator,
 	JsonObject,
+	IRequestOptions,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { ApplicationError, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 export async function twitterApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IHookFunctions,
-	method: string,
+	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
+	method: IHttpRequestMethods,
 	resource: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
@@ -21,7 +20,7 @@ export async function twitterApiRequest(
 	uri?: string,
 	option: IDataObject = {},
 ) {
-	let options: OptionsWithUrl = {
+	let options: IRequestOptions = {
 		method,
 		body,
 		qs,
@@ -60,7 +59,7 @@ export async function twitterApiRequest(
 export async function twitterApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	query: IDataObject = {},
@@ -91,7 +90,7 @@ export function returnId(tweetId: INodeParameterResourceLocator) {
 
 		return tweetIdMatch?.[3] as string;
 	} else {
-		throw new Error(`The mode ${tweetId.mode} is not valid!`);
+		throw new ApplicationError(`The mode ${tweetId.mode} is not valid!`, { level: 'warning' });
 	}
 }
 
@@ -121,5 +120,8 @@ export async function returnIdFromUsername(
 			{},
 		)) as { id: string };
 		return list.id;
-	} else throw new Error(`The username mode ${usernameRlc.mode} is not valid!`);
+	} else
+		throw new ApplicationError(`The username mode ${usernameRlc.mode} is not valid!`, {
+			level: 'warning',
+		});
 }

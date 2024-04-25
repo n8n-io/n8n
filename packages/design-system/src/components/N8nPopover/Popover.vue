@@ -4,22 +4,22 @@ import { defineComponent } from 'vue';
 
 export default defineComponent({
 	name: 'N8nPopover',
-	props: {
-		...ElPopover.props,
-	},
 	components: {
 		ElPopover,
+	},
+	props: {
+		...ElPopover.props,
 	},
 });
 </script>
 
 <template>
 	<span>
-		<el-popover v-bind="{ ...$props, ...$attrs }">
+		<ElPopover v-bind="{ ...$props, ...$attrs }">
 			<template #reference>
 				<slot name="reference" />
 			</template>
 			<slot />
-		</el-popover>
+		</ElPopover>
 	</span>
 </template>

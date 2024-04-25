@@ -3,7 +3,7 @@
 		<div v-for="color in colors" :key="color" :class="$style.container">
 			<div :class="$style.circle" :style="{ backgroundColor: `var(${color})` }"></div>
 			<span>{{ color }}</span>
-			<span :class="$style.hsl">{{ hsl[color] }}</span>
+			<span :class="$style.hsl">{{ getHSLValue(color) }}</span>
 			<span :class="$style.color">{{ getHexValue(color) }}</span>
 		</div>
 	</div>
@@ -26,7 +26,22 @@ function hslToHex(h: number, s: number, l: number): string {
 	return `#${f(0)}${f(8)}${f(4)}`;
 }
 
+function resolveHSLCalc(hslString: string): string {
+	const calcRegex = /calc\(([^)]+)\)/;
+	const matchCalc = hslString.match(calcRegex);
+	if (!matchCalc) {
+		return hslString;
+	}
+	const expression = matchCalc[1];
+	const noPercentageExpression = expression.replace(/%/g, '');
+	const evaluation: number = eval(noPercentageExpression);
+	const finalPercentage = evaluation.toString() + '%';
+	const resolvedHslString = hslString.replace(calcRegex, finalPercentage);
+	return resolvedHslString;
+}
+
 function getHex(hsl: string): string {
+	hsl = resolveHSLCalc(hsl);
 	const colors = hsl
 		.replace('hsl(', '')
 		.replace(')', '')
@@ -38,18 +53,18 @@ function getHex(hsl: string): string {
 }
 
 export default defineComponent({
-	name: 'color-circles',
-	data() {
-		return {
-			observer: null as null | MutationObserver,
-			hsl: {} as { [color: string]: string },
-		};
-	},
+	name: 'ColorCircles',
 	props: {
 		colors: {
 			type: Array as PropType<string[]>,
 			required: true,
 		},
+	},
+	data() {
+		return {
+			observer: null as null | MutationObserver,
+			hsl: {} as { [color: string]: string },
+		};
 	},
 	created() {
 		const setColors = () => {
@@ -86,6 +101,9 @@ export default defineComponent({
 	methods: {
 		getHexValue(color: string) {
 			return getHex(this.hsl[color]);
+		},
+		getHSLValue(color: string) {
+			return resolveHSLCalc(this.hsl[color]);
 		},
 	},
 });

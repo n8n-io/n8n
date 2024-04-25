@@ -10,6 +10,7 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 
+import ISO6391 from 'iso-639-1';
 import { directMessageFields, directMessageOperations } from './DirectMessageDescription';
 
 import { tweetFields, tweetOperations } from './TweetDescription';
@@ -21,8 +22,6 @@ import {
 } from './GenericFunctions';
 
 import type { ITweet, ITweetCreate } from './TweetInterface';
-
-import ISO6391 from 'iso-639-1';
 
 export class TwitterV1 implements INodeType {
 	description: INodeTypeDescription;
@@ -332,6 +331,6 @@ export class TwitterV1 implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

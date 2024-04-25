@@ -1,4 +1,5 @@
-import { ExpressionExtensionError } from '../ExpressionError';
+import { ExpressionError } from '../errors/expression.error';
+import { ExpressionExtensionError } from '../errors/expression-extension.error';
 import { average as aAverage } from './ArrayExtensions';
 
 const min = Math.min;
@@ -39,6 +40,36 @@ const not = (value: unknown): boolean => {
 	return !value;
 };
 
+function ifEmpty<T, V>(value: V, defaultValue: T) {
+	if (arguments.length !== 2) {
+		throw new ExpressionError('expected two arguments (value, defaultValue) for this function');
+	}
+	if (value === undefined || value === null || value === '') {
+		return defaultValue;
+	}
+	if (typeof value === 'object') {
+		if (Array.isArray(value) && !value.length) {
+			return defaultValue;
+		}
+		if (!Object.keys(value).length) {
+			return defaultValue;
+		}
+	}
+	return value;
+}
+
+ifEmpty.doc = {
+	name: 'ifEmpty',
+	description:
+		'Returns the default value if the value is empty. Empty values are undefined, null, empty strings, arrays without elements and objects without keys.',
+	returnType: 'any',
+	args: [
+		{ name: 'value', type: 'any' },
+		{ name: 'defaultValue', type: 'any' },
+	],
+	docURL: 'https://docs.n8n.io/code/builtin/convenience',
+};
+
 export const extendedFunctions = {
 	min,
 	max,
@@ -50,4 +81,5 @@ export const extendedFunctions = {
 	$max: max,
 	$average: average,
 	$not: not,
+	$ifEmpty: ifEmpty,
 };

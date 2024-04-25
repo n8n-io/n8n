@@ -1,0 +1,82 @@
+name: Bug Report
+description: Create a bug report to help us improve
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report!
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is
+      placeholder: Tell us what you see!
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: To Reproduce
+      description: Steps to reproduce the behavior
+      placeholder: |
+        1. Go to '...'
+        2. Click on '....'
+        3. Scroll down to '....'
+        4. See error
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: A clear and concise description of what you expected to happen
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: '## Environment'
+  - type: input
+    id: os
+    attributes:
+      label: Operating System
+      placeholder: ex. Ubuntu Linux 22.04
+    validations:
+      required: true
+  - type: input
+    id: n8n-version
+    attributes:
+      label: n8n Version
+      placeholder: ex. 1.25.0
+    validations:
+      required: true
+  - type: input
+    id: nodejs-version
+    attributes:
+      label: Node.js Version
+      placeholder: ex. 18.16.0
+    validations:
+      required: true
+  - type: dropdown
+    id: db
+    attributes:
+      label: Database
+      options:
+        - SQLite (default)
+        - PostgreSQL
+        - MySQL
+        - MariaDB
+      default: 0
+    validations:
+      required: true
+  - type: dropdown
+    id: execution-mode
+    attributes:
+      label: Execution mode
+      description: '[Info](https://docs.n8n.io/hosting/scaling/execution-modes-processes/)'
+      options:
+        - main (default)
+        - queue
+        - own (deprecated)
+      default: 0
+    validations:
+      required: true

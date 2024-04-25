@@ -1,14 +1,17 @@
-import type {
-	IExecuteFunctions,
-	IDataObject,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
+import {
+	Node,
+	NodeApiError,
+	type IExecuteFunctions,
+	type INodeExecutionData,
+	type INodeTypeDescription,
+	type JsonObject,
 } from 'n8n-workflow';
 
-import { peekalinkApiRequest } from './GenericFunctions';
+export const apiUrl = 'https://api.peekalink.io';
 
-export class Peekalink implements INodeType {
+type Operation = 'preview' | 'isAvailable';
+
+export class Peekalink extends Node {
 	description: INodeTypeDescription = {
 		displayName: 'Peekalink',
 		name: 'peekalink',
@@ -61,44 +64,31 @@ export class Peekalink implements INodeType {
 		],
 	};
 
-	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
-		const length = items.length;
-		let responseData;
-		const operation = this.getNodeParameter('operation', 0);
+	async execute(context: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const items = context.getInputData();
+		const operation = context.getNodeParameter('operation', 0) as Operation;
+		const credentials = await context.getCredentials('peekalinkApi');
 
-		for (let i = 0; i < length; i++) {
-			try {
-				if (operation === 'isAvailable') {
-					const url = this.getNodeParameter('url', i) as string;
-					const body: IDataObject = {
-						link: url,
-					};
-
-					responseData = await peekalinkApiRequest.call(this, 'POST', '/is-available/', body);
+		const returnData = await Promise.all(
+			items.map(async (_, i) => {
+				try {
+					const link = context.getNodeParameter('url', i) as string;
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+					return await context.helpers.request({
+						method: 'POST',
+						uri: operation === 'preview' ? apiUrl : `${apiUrl}/is-available/`,
+						body: { link },
+						headers: { 'X-API-Key': credentials.apiKey },
+						json: true,
+					});
+				} catch (error) {
+					if (context.continueOnFail()) {
+						return { error: error.message };
+					}
+					throw new NodeApiError(context.getNode(), error as JsonObject);
 				}
-				if (operation === 'preview') {
-					const url = this.getNodeParameter('url', i) as string;
-					const body: IDataObject = {
-						link: url,
-					};
-
-					responseData = await peekalinkApiRequest.call(this, 'POST', '/', body);
-				}
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else {
-					returnData.push(responseData as IDataObject);
-				}
-			} catch (error) {
-				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
-					continue;
-				}
-				throw error;
-			}
-		}
-		return [this.helpers.returnJsonArray(returnData)];
+			}),
+		);
+		return [context.helpers.returnJsonArray(returnData)];
 	}
 }

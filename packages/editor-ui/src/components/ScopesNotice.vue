@@ -1,5 +1,5 @@
 <template>
-	<n8n-notice :content="scopesShortContent" :fullContent="scopesFullContent" />
+	<n8n-notice :content="scopesShortContent" :full-content="scopesFullContent" />
 </template>
 
 <script lang="ts">
@@ -35,10 +35,12 @@ export default defineComponent({
 			const oauth1Api = this.$locale.baseText('generic.oauth1Api');
 			const oauth2Api = this.$locale.baseText('generic.oauth2Api');
 
-			return this.credentialsStore
-				.getCredentialTypeByName(this.activeCredentialType)
-				.displayName.replace(new RegExp(`${oauth1Api}|${oauth2Api}`), '')
-				.trim();
+			return (
+				this.credentialsStore
+					.getCredentialTypeByName(this.activeCredentialType)
+					?.displayName.replace(new RegExp(`${oauth1Api}|${oauth2Api}`), '')
+					.trim() || ''
+			);
 		},
 	},
 });

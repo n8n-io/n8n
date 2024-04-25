@@ -1,8 +1,9 @@
 import type Redis from 'ioredis';
 import type { Cluster, RedisOptions } from 'ioredis';
 import config from '@/config';
-import { LoggerProxy } from 'n8n-workflow';
 import type { RedisClientType } from './RedisServiceBaseClasses';
+import Container from 'typedi';
+import { Logger } from '@/Logger';
 
 export const EVENT_BUS_REDIS_STREAM = 'n8n:eventstream';
 export const COMMAND_REDIS_STREAM = 'n8n:commandstream';
@@ -55,7 +56,10 @@ export function getRedisStandardClient(
 		enableReadyCheck: false,
 		maxRetriesPerRequest: null,
 	};
-	LoggerProxy.debug(
+	if (config.getEnv('queue.bull.redis.tls')) sharedRedisOptions.tls = {};
+
+	const logger = Container.get(Logger);
+	logger.debug(
 		`Initialising Redis client${redisType ? ` of type ${redisType}` : ''} connection with host: ${
 			host ?? 'localhost'
 		} and port: ${port ?? '6379'}`,
@@ -72,7 +76,7 @@ export function getRedisStandardClient(
 				cumulativeTimeout += now - lastTimer;
 				lastTimer = now;
 				if (cumulativeTimeout > redisConnectionTimeoutLimit) {
-					LoggerProxy.error(
+					logger.error(
 						`Unable to connect to Redis after ${redisConnectionTimeoutLimit}. Exiting process.`,
 					);
 					process.exit(1);
@@ -101,7 +105,10 @@ export function getRedisClusterClient(
 		enableReadyCheck: false,
 		maxRetriesPerRequest: null,
 	};
-	LoggerProxy.debug(
+	if (config.getEnv('queue.bull.redis.tls')) sharedRedisOptions.tls = {};
+
+	const logger = Container.get(Logger);
+	logger.debug(
 		`Initialising Redis cluster${
 			redisType ? ` of type ${redisType}` : ''
 		} connection with nodes: ${clusterNodes.map((e) => `${e.host}:${e.port}`).join(',')}`,
@@ -120,7 +127,7 @@ export function getRedisClusterClient(
 					cumulativeTimeout += now - lastTimer;
 					lastTimer = now;
 					if (cumulativeTimeout > redisConnectionTimeoutLimit) {
-						LoggerProxy.error(
+						logger.error(
 							`Unable to connect to Redis after ${redisConnectionTimeoutLimit}. Exiting process.`,
 						);
 						process.exit(1);
@@ -136,7 +143,6 @@ export async function getDefaultRedisClient(
 	additionalRedisOptions?: RedisOptions,
 	redisType?: RedisClientType,
 ): Promise<Redis | Cluster> {
-	// eslint-disable-next-line @typescript-eslint/naming-convention
 	const { default: Redis } = await import('ioredis');
 	const clusterNodes = getRedisClusterNodes();
 	const usesRedisCluster = clusterNodes.length > 0;

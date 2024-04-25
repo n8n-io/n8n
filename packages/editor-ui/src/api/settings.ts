@@ -9,11 +9,11 @@ import { N8N_IO_BASE_URL, NPM_COMMUNITY_NODE_SEARCH_API_URL } from '@/constants'
 import type { IN8nUISettings } from 'n8n-workflow';
 
 export async function getSettings(context: IRestApiContext): Promise<IN8nUISettings> {
-	return makeRestApiRequest(context, 'GET', '/settings');
+	return await makeRestApiRequest(context, 'GET', '/settings');
 }
 
 export async function getPromptsData(instanceId: string, userId: string): Promise<IN8nPrompts> {
-	return get(
+	return await get(
 		N8N_IO_BASE_URL,
 		'/prompts',
 		{},
@@ -26,7 +26,7 @@ export async function submitContactInfo(
 	userId: string,
 	email: string,
 ): Promise<IN8nPromptResponse> {
-	return post(
+	return await post(
 		N8N_IO_BASE_URL,
 		'/prompt',
 		{ email },
@@ -39,7 +39,7 @@ export async function submitValueSurvey(
 	userId: string,
 	params: IN8nValueSurveyData,
 ): Promise<IN8nPromptResponse> {
-	return post(N8N_IO_BASE_URL, '/value-survey', params, {
+	return await post(N8N_IO_BASE_URL, '/value-survey', params, {
 		'n8n-instance-id': instanceId,
 		'n8n-user-id': userId,
 	});

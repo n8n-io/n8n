@@ -11,19 +11,19 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 
-import { directMessageOperations, directMessageFields } from './DirectMessageDescription';
-import { listOperations, listFields } from './ListDescription';
-import { tweetFields, tweetOperations } from './TweetDescription';
-import { userOperations, userFields } from './UserDescription';
-
 import ISO6391 from 'iso-639-1';
+import { DateTime } from 'luxon';
+import { directMessageFields, directMessageOperations } from './DirectMessageDescription';
+import { listFields, listOperations } from './ListDescription';
+import { tweetFields, tweetOperations } from './TweetDescription';
+import { userFields, userOperations } from './UserDescription';
+
 import {
 	returnId,
 	returnIdFromUsername,
 	twitterApiRequest,
 	twitterApiRequestAllItems,
 } from './GenericFunctions';
-import { DateTime } from 'luxon';
 
 export class TwitterV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -36,7 +36,7 @@ export class TwitterV2 implements INodeType {
 				'Post, like, and search tweets, send messages, search users, and add users to lists',
 			subtitle: '={{$parameter["operation"] + ":" + $parameter["resource"]}}',
 			defaults: {
-				name: 'Twitter',
+				name: 'X',
 			},
 			inputs: ['main'],
 			outputs: ['main'],
@@ -360,6 +360,6 @@ export class TwitterV2 implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

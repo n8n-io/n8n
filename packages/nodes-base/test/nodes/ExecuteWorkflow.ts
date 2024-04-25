@@ -1,3 +1,4 @@
+import nock from 'nock';
 import { WorkflowExecute } from 'n8n-core';
 import type { INodeTypes, IRun, IRunExecutionData } from 'n8n-workflow';
 import { createDeferredPromise, Workflow } from 'n8n-workflow';
@@ -5,6 +6,13 @@ import * as Helpers from './Helpers';
 import type { WorkflowTestData } from './types';
 
 export async function executeWorkflow(testData: WorkflowTestData, nodeTypes: INodeTypes) {
+	if (testData.nock) {
+		const { baseUrl, mocks } = testData.nock;
+		const agent = nock(baseUrl);
+		mocks.forEach(({ method, path, statusCode, responseBody }) =>
+			agent[method](path).reply(statusCode, responseBody),
+		);
+	}
 	const executionMode = testData.trigger?.mode ?? 'manual';
 	const workflowInstance = new Workflow({
 		id: 'test',

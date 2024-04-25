@@ -1,4 +1,5 @@
 import { IsBoolean, IsHexColor, IsOptional, IsString } from 'class-validator';
+import { KeyPairType } from './keyPairType';
 
 export class SourceControlPreferences {
 	constructor(preferences: Partial<SourceControlPreferences> | undefined = undefined) {
@@ -28,6 +29,10 @@ export class SourceControlPreferences {
 	@IsBoolean()
 	readonly initRepo?: boolean;
 
+	@IsOptional()
+	@IsString()
+	readonly keyGeneratorType?: KeyPairType;
+
 	static fromJSON(json: Partial<SourceControlPreferences>): SourceControlPreferences {
 		return new SourceControlPreferences(json);
 	}
@@ -42,6 +47,7 @@ export class SourceControlPreferences {
 			branchName: preferences.branchName ?? defaultPreferences.branchName,
 			branchReadOnly: preferences.branchReadOnly ?? defaultPreferences.branchReadOnly,
 			branchColor: preferences.branchColor ?? defaultPreferences.branchColor,
+			keyGeneratorType: preferences.keyGeneratorType ?? defaultPreferences.keyGeneratorType,
 		});
 	}
 }

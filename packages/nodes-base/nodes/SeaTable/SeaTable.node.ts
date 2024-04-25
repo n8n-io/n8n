@@ -446,6 +446,6 @@ export class SeaTable implements INodeType {
 				throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not known!`);
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

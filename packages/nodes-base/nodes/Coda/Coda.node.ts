@@ -359,7 +359,7 @@ export class Coda implements INodeType {
 					}
 				}
 
-				return this.prepareOutputData(returnData);
+				return [returnData];
 			}
 			// https://coda.io/developers/apis/v1beta1#operation/listRows
 			if (operation === 'getAllRows') {
@@ -535,7 +535,7 @@ export class Coda implements INodeType {
 						throw error;
 					}
 				}
-				return this.prepareOutputData(returnData);
+				return [returnData];
 			}
 		}
 		if (resource === 'formula') {
@@ -564,7 +564,7 @@ export class Coda implements INodeType {
 						throw error;
 					}
 				}
-				return this.prepareOutputData(returnData);
+				return [returnData];
 			}
 			//https://coda.io/developers/apis/v1beta1#operation/listFormulas
 			if (operation === 'getAll') {
@@ -597,7 +597,7 @@ export class Coda implements INodeType {
 						throw error;
 					}
 				}
-				return this.prepareOutputData(returnData);
+				return [returnData];
 			}
 		}
 		if (resource === 'control') {
@@ -626,7 +626,7 @@ export class Coda implements INodeType {
 						throw error;
 					}
 				}
-				return this.prepareOutputData(returnData);
+				return [returnData];
 			}
 			//https://coda.io/developers/apis/v1beta1#operation/listControls
 			if (operation === 'getAll') {
@@ -659,7 +659,7 @@ export class Coda implements INodeType {
 						throw error;
 					}
 				}
-				return this.prepareOutputData(returnData);
+				return [returnData];
 			}
 		}
 		if (resource === 'view') {
@@ -676,7 +676,7 @@ export class Coda implements INodeType {
 					);
 					returnData.push(...executionData);
 				}
-				return this.prepareOutputData(returnData);
+				return [returnData];
 			}
 			//https://coda.io/developers/apis/v1beta1#operation/listViews
 			if (operation === 'getAll') {
@@ -709,7 +709,7 @@ export class Coda implements INodeType {
 						throw error;
 					}
 				}
-				return this.prepareOutputData(returnData);
+				return [returnData];
 			}
 			if (operation === 'getAllViewRows') {
 				const docId = this.getNodeParameter('docId', 0) as string;
@@ -791,7 +791,7 @@ export class Coda implements INodeType {
 						throw error;
 					}
 				}
-				return this.prepareOutputData(returnData);
+				return [returnData];
 			}
 			//https://coda.io/developers/apis/v1beta1#operation/pushViewButton
 			if (operation === 'pushViewButton') {
@@ -820,7 +820,7 @@ export class Coda implements INodeType {
 						throw error;
 					}
 				}
-				return this.prepareOutputData(returnData);
+				return [returnData];
 			}
 			if (operation === 'getAllViewColumns') {
 				for (let i = 0; i < items.length; i++) {
@@ -853,7 +853,7 @@ export class Coda implements INodeType {
 						throw error;
 					}
 				}
-				return this.prepareOutputData(returnData);
+				return [returnData];
 			}
 			//https://coda.io/developers/apis/v1beta1#operation/updateViewRow
 			if (operation === 'updateViewRow') {

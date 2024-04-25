@@ -14,6 +14,12 @@ export class KibanaApi implements ICredentialType {
 
 	icon = 'file:icons/Kibana.svg';
 
+	httpRequestNode = {
+		name: 'Kibana',
+		docsUrl: 'https://www.elastic.co/guide/en/kibana/current/api.html',
+		apiBaseUrl: '',
+	};
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'URL',

@@ -7,13 +7,12 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import isEmpty from 'lodash/isEmpty';
 import { emeliaApiTest, emeliaGraphqlRequest, loadResource } from './GenericFunctions';
 
 import { campaignFields, campaignOperations } from './CampaignDescription';
 
 import { contactListFields, contactListOperations } from './ContactListDescription';
-
-import isEmpty from 'lodash/isEmpty';
 
 export class Emelia implements INodeType {
 	description: INodeTypeDescription = {
@@ -69,11 +68,11 @@ export class Emelia implements INodeType {
 
 		loadOptions: {
 			async getCampaigns(this: ILoadOptionsFunctions) {
-				return loadResource.call(this, 'campaign');
+				return await loadResource.call(this, 'campaign');
 			},
 
 			async getContactLists(this: ILoadOptionsFunctions) {
-				return loadResource.call(this, 'contactList');
+				return await loadResource.call(this, 'contactList');
 			},
 		},
 	};
@@ -441,6 +440,6 @@ export class Emelia implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

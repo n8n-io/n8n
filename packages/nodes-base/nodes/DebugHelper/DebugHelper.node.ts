@@ -4,7 +4,8 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { ApplicationError, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { setSeed, array as mfArray } from 'minifaker';
 import {
 	generateCreditCard,
 	generateIPv4,
@@ -19,7 +20,6 @@ import {
 	generateUUID,
 	generateVersion,
 } from './randomData';
-import { setSeed, array as mfArray } from 'minifaker';
 import { generateGarbageMemory, runGarbageCollector } from './functions';
 
 export class DebugHelper implements INodeType {
@@ -273,7 +273,7 @@ export class DebugHelper implements INodeType {
 								});
 							case 'Error':
 								// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
-								throw new Error(throwErrorMessage);
+								throw new ApplicationError(throwErrorMessage);
 							default:
 								break;
 						}
@@ -369,6 +369,6 @@ export class DebugHelper implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

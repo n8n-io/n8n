@@ -8,11 +8,10 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
 import { egoiApiRequest, egoiApiRequestAllItems, simplify } from './GenericFunctions';
 
 import type { ICreateMemberBody } from './Interfaces';
-
-import moment from 'moment-timezone';
 
 export class Egoi implements INodeType {
 	description: INodeTypeDescription = {
@@ -753,6 +752,6 @@ export class Egoi implements INodeType {
 			);
 			returnData.push(...executionData);
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

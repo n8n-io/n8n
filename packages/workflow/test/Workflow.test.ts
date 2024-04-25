@@ -1182,7 +1182,6 @@ describe('Workflow', () => {
 		];
 
 		const nodeTypes = Helpers.NodeTypes();
-		const timezone = 'America/New_York';
 
 		for (const testData of tests) {
 			test(testData.description, () => {
@@ -1296,7 +1295,7 @@ describe('Workflow', () => {
 				const itemIndex = 0;
 				const runIndex = 0;
 				const connectionInputData: INodeExecutionData[] =
-					runExecutionData.resultData.runData.Node1[0]!.data!.main[0]!;
+					runExecutionData.resultData.runData.Node1[0].data!.main[0]!;
 
 				for (const parameterName of Object.keys(testData.output)) {
 					const parameterValue = nodes.find((node) => node.name === activeNodeName)!.parameters[
@@ -1310,7 +1309,6 @@ describe('Workflow', () => {
 						activeNodeName,
 						connectionInputData,
 						'manual',
-						timezone,
 						{},
 					);
 					expect(result).toEqual(testData.output[parameterName]);
@@ -1451,7 +1449,7 @@ describe('Workflow', () => {
 			const itemIndex = 0;
 			const runIndex = 0;
 			const connectionInputData: INodeExecutionData[] =
-				runExecutionData.resultData.runData.Node1[0]!.data!.main[0]!;
+				runExecutionData.resultData.runData.Node1[0].data!.main[0]!;
 			const parameterName = 'values';
 
 			const parameterValue = nodes.find((node) => node.name === activeNodeName)!.parameters[
@@ -1465,7 +1463,6 @@ describe('Workflow', () => {
 				activeNodeName,
 				connectionInputData,
 				'manual',
-				timezone,
 				{},
 			);
 

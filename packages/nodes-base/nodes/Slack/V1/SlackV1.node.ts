@@ -11,6 +11,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
 import { channelFields, channelOperations } from './ChannelDescription';
 import { messageFields, messageOperations } from './MessageDescription';
 import { starFields, starOperations } from './StarDescription';
@@ -23,8 +24,6 @@ import { slackApiRequest, slackApiRequestAllItems, validateJSON } from './Generi
 import type { IAttachment } from './MessageInterface';
 
 import { oldVersionNotice } from '@utils/descriptions';
-
-import moment from 'moment';
 
 interface Attachment {
 	fields: {
@@ -1380,6 +1379,6 @@ export class SlackV1 implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

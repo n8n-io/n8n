@@ -2,22 +2,24 @@
 	<!-- Node Item is draggable only if it doesn't contain actions -->
 	<n8n-node-creator-node
 		:draggable="!showActionArrow"
-		@dragstart="onDragStart"
-		@dragend="onDragEnd"
 		:class="$style.nodeItem"
-		:description="subcategory !== DEFAULT_SUBCATEGORY ? description : ''"
+		:description="description"
 		:title="displayName"
 		:show-action-arrow="showActionArrow"
 		:is-trigger="isTrigger"
 		:data-test-id="dataTestId"
+		@dragstart="onDragStart"
+		@dragend="onDragEnd"
 	>
 		<template #icon>
-			<node-icon :nodeType="nodeType" />
+			<div v-if="isSubNodeType" :class="$style.subNodeBackground"></div>
+			<NodeIcon :class="$style.nodeIcon" :node-type="nodeType" />
 		</template>
 
-		<template #tooltip v-if="isCommunityNode">
+		<template v-if="isCommunityNode" #tooltip>
 			<p
 				:class="$style.communityNodeIcon"
+				@click="onCommunityNodeTooltipClick"
 				v-html="
 					i18n.baseText('generic.communityNode.tooltip', {
 						interpolate: {
@@ -26,13 +28,12 @@
 						},
 					})
 				"
-				@click="onCommunityNodeTooltipClick"
 			/>
 		</template>
 		<template #dragContent>
-			<div :class="$style.draggableDataTransfer" ref="draggableDataTransfer" />
-			<div :class="$style.draggable" :style="draggableStyle" v-show="dragging">
-				<node-icon :nodeType="nodeType" @click.capture.stop :size="40" :shrink="false" />
+			<div ref="draggableDataTransfer" :class="$style.draggableDataTransfer" />
+			<div v-show="dragging" :class="$style.draggable" :style="draggableStyle">
+				<NodeIcon :node-type="nodeType" :size="40" :shrink="false" @click.capture.stop />
 			</div>
 		</template>
 	</n8n-node-creator-node>
@@ -41,15 +42,22 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import type { SimplifiedNodeType } from '@/Interface';
-import { COMMUNITY_NODES_INSTALLATION_DOCS_URL, DEFAULT_SUBCATEGORY } from '@/constants';
+import {
+	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
+	CREDENTIAL_ONLY_NODE_PREFIX,
+	DEFAULT_SUBCATEGORY,
+	DRAG_EVENT_DATA_KEY,
+} from '@/constants';
 
-import { isCommunityPackageName } from '@/utils';
+import { isCommunityPackageName } from '@/utils/nodeTypesUtils';
 import { getNewNodePosition, NODE_SIZE } from '@/utils/nodeViewUtils';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import NodeIcon from '@/components/NodeIcon.vue';
 
 import { useActions } from '../composables/useActions';
-import { useI18n, useTelemetry } from '@/composables';
+import { useI18n } from '@/composables/useI18n';
+import { useTelemetry } from '@/composables/useTelemetry';
+import { useNodeType } from '@/composables/useNodeType';
 
 export interface Props {
 	nodeType: SimplifiedNodeType;
@@ -65,17 +73,27 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 
 const { actions } = useNodeCreatorStore();
-const { getNodeTypesWithManualTrigger } = useActions();
+const { getAddedNodesAndConnections } = useActions();
+const { isSubNodeType } = useNodeType({
+	nodeType: props.nodeType,
+});
 
 const dragging = ref(false);
 const draggablePosition = ref({ x: -100, y: -100 });
 const draggableDataTransfer = ref(null as Element | null);
 
 const description = computed<string>(() => {
+	if (
+		props.subcategory === DEFAULT_SUBCATEGORY &&
+		!props.nodeType.name.startsWith(CREDENTIAL_ONLY_NODE_PREFIX)
+	) {
+		return '';
+	}
+
 	return i18n.headerText({
 		key: `headers.${shortNodeType.value}.description`,
 		fallback: props.nodeType.description,
-	}) as string;
+	});
 });
 const showActionArrow = computed(() => hasActions.value);
 const dataTestId = computed(() =>
@@ -100,7 +118,7 @@ const draggableStyle = computed<{ top: string; left: string }>(() => ({
 
 const isCommunityNode = computed<boolean>(() => isCommunityPackageName(props.nodeType.name));
 
-const displayName = computed<any>(() => {
+const displayName = computed<string>(() => {
 	const displayName = props.nodeType.displayName.trimEnd();
 
 	return i18n.headerText({
@@ -112,6 +130,7 @@ const displayName = computed<any>(() => {
 const isTrigger = computed<boolean>(() => {
 	return props.nodeType.group.includes('trigger') && !hasActions.value;
 });
+
 function onDragStart(event: DragEvent): void {
 	/**
 	 * Workaround for firefox, that doesn't attach the pageX and pageY coordinates to "ondrag" event.
@@ -127,8 +146,8 @@ function onDragStart(event: DragEvent): void {
 		event.dataTransfer.dropEffect = 'copy';
 		event.dataTransfer.setDragImage(draggableDataTransfer.value as Element, 0, 0);
 		event.dataTransfer.setData(
-			'nodeTypeName',
-			getNodeTypesWithManualTrigger(props.nodeType.name).join(','),
+			DRAG_EVENT_DATA_KEY,
+			JSON.stringify(getAddedNodesAndConnections([{ type: props.nodeType.name }])),
 		);
 	}
 
@@ -170,6 +189,19 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 	user-select: none;
 }
 
+.nodeIcon {
+	z-index: 2;
+}
+
+.subNodeBackground {
+	background-color: var(--node-type-supplemental-background);
+	border-radius: 50%;
+	height: 40px;
+	position: absolute;
+	transform: translate(-7px, -7px);
+	width: 40px;
+	z-index: 1;
+}
 .communityNodeIcon {
 	vertical-align: top;
 }

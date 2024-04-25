@@ -18,13 +18,13 @@ export class RemoveWorkflowDataLoadedFlag1671726148419 implements ReversibleMigr
 		await Promise.all(
 			workflowIds.map(
 				async ({ id, dataLoaded }) =>
-					dataLoaded &&
-					runQuery(
-						`INSERT INTO ${statisticsTableName}
+					await (dataLoaded &&
+						runQuery(
+							`INSERT INTO ${statisticsTableName}
 						(${escape.columnName('workflowId')}, name, count, ${escape.columnName('latestEvent')})
 						VALUES (:id, :name, 1, ${now})`,
-						{ id, name: StatisticsNames.dataLoaded },
-					),
+							{ id, name: StatisticsNames.dataLoaded },
+						)),
 			),
 		);
 
@@ -47,10 +47,11 @@ export class RemoveWorkflowDataLoadedFlag1671726148419 implements ReversibleMigr
 		);
 
 		await Promise.all(
-			workflowsIds.map(async ({ workflowId }) =>
-				runQuery(`UPDATE ${workflowTableName} SET ${columnName} = true WHERE id = :id`, {
-					id: workflowId,
-				}),
+			workflowsIds.map(
+				async ({ workflowId }) =>
+					await runQuery(`UPDATE ${workflowTableName} SET ${columnName} = true WHERE id = :id`, {
+						id: workflowId,
+					}),
 			),
 		);
 

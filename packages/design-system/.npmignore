@@ -12,4 +12,3 @@ vite.config.ts
 
 *.md
 *.stories.js
-*.mdx

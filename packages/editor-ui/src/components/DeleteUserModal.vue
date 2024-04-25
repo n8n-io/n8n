@@ -1,11 +1,11 @@
 <template>
 	<Modal
 		:name="modalName"
-		@enter="onSubmit"
 		:title="title"
 		:center="true"
 		width="460px"
-		:eventBus="modalBus"
+		:event-bus="modalBus"
+		@enter="onSubmit"
 	>
 		<template #content>
 			<div>
@@ -14,51 +14,51 @@
 						$locale.baseText('settings.users.confirmUserDeletion')
 					}}</n8n-text>
 				</div>
-				<div :class="$style.content" v-else>
+				<div v-else :class="$style.content">
 					<div>
 						<n8n-text color="text-base">{{
 							$locale.baseText('settings.users.confirmDataHandlingAfterDeletion')
 						}}</n8n-text>
 					</div>
 					<el-radio
-						:modelValue="operation"
+						:model-value="operation"
 						label="transfer"
-						@update:modelValue="() => setOperation('transfer')"
+						@update:model-value="() => setOperation('transfer')"
 					>
 						<n8n-text color="text-dark">{{
 							$locale.baseText('settings.users.transferWorkflowsAndCredentials')
 						}}</n8n-text>
 					</el-radio>
-					<div :class="$style.optionInput" v-if="operation === 'transfer'">
+					<div v-if="operation === 'transfer'" :class="$style.optionInput">
 						<n8n-input-label :label="$locale.baseText('settings.users.userToTransferTo')">
 							<n8n-user-select
 								:users="usersStore.allUsers"
-								:modelValue="transferId"
-								:ignoreIds="ignoreIds"
-								:currentUserId="usersStore.currentUserId"
-								@update:modelValue="setTransferId"
+								:model-value="transferId"
+								:ignore-ids="ignoreIds"
+								:current-user-id="usersStore.currentUserId"
+								@update:model-value="setTransferId"
 							/>
 						</n8n-input-label>
 					</div>
 					<el-radio
-						:modelValue="operation"
+						:model-value="operation"
 						label="delete"
-						@update:modelValue="() => setOperation('delete')"
+						@update:model-value="() => setOperation('delete')"
 					>
 						<n8n-text color="text-dark">{{
 							$locale.baseText('settings.users.deleteWorkflowsAndCredentials')
 						}}</n8n-text>
 					</el-radio>
 					<div
-						:class="$style.optionInput"
 						v-if="operation === 'delete'"
+						:class="$style.optionInput"
 						data-test-id="delete-data-input"
 					>
 						<n8n-input-label :label="$locale.baseText('settings.users.deleteConfirmationMessage')">
 							<n8n-input
-								:modelValue="deleteConfirmText"
+								:model-value="deleteConfirmText"
 								:placeholder="$locale.baseText('settings.users.deleteConfirmationText')"
-								@update:modelValue="setConfirmText"
+								@update:model-value="setConfirmText"
 							/>
 						</n8n-input-label>
 					</div>
@@ -70,8 +70,8 @@
 				:loading="loading"
 				:disabled="!enabled"
 				:label="$locale.baseText('settings.users.delete')"
-				@click="onSubmit"
 				float="right"
+				@click="onSubmit"
 			/>
 		</template>
 	</Modal>
@@ -79,7 +79,7 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import { useToast } from '@/composables';
+import { useToast } from '@/composables/useToast';
 import Modal from '@/components/Modal.vue';
 import type { IUser } from '@/Interface';
 import { mapStores } from 'pinia';

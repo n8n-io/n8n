@@ -5,8 +5,9 @@ import type {
 	INodeExecutionData,
 	INodePropertyOptions,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, jsonParse } from 'n8n-workflow';
 
+import { generatePairedItemData } from '../../../../utils/utilities';
 import type {
 	ColumnInfo,
 	EnumInfo,
@@ -199,6 +200,15 @@ export function addReturning(
 	return [`${query} RETURNING $${replacementIndex}:name`, [...replacements, outputColumns]];
 }
 
+const isSelectQuery = (query: string) => {
+	return query
+		.replace(/\/\*.*?\*\//g, '') // remove multiline comments
+		.replace(/\n/g, '')
+		.split(';')
+		.filter((statement) => statement && !statement.startsWith('--')) // remove comments and empty statements
+		.every((statement) => statement.trim().toLowerCase().startsWith('select'));
+};
+
 export function configureQueryRunner(
 	this: IExecuteFunctions,
 	node: INode,
@@ -208,7 +218,8 @@ export function configureQueryRunner(
 ) {
 	return async (queries: QueryWithValues[], items: INodeExecutionData[], options: IDataObject) => {
 		let returnData: INodeExecutionData[] = [];
-		const emptyReturnData = options.operation === 'select' ? [] : [{ json: { success: true } }];
+		const emptyReturnData: INodeExecutionData[] =
+			options.operation === 'select' ? [] : [{ json: { success: true } }];
 
 		const queryBatching = (options.queryBatching as QueryMode) || 'single';
 
@@ -221,7 +232,21 @@ export function configureQueryRunner(
 						});
 					})
 					.flat();
-				returnData = returnData.length ? returnData : emptyReturnData;
+
+				if (!returnData.length) {
+					const pairedItem = generatePairedItemData(queries.length);
+
+					if ((options?.nodeVersion as number) < 2.3) {
+						if (emptyReturnData.length) {
+							emptyReturnData[0].pairedItem = pairedItem;
+						}
+						returnData = emptyReturnData;
+					} else {
+						returnData = queries.every((query) => isSelectQuery(query.query))
+							? []
+							: [{ json: { success: true }, pairedItem }];
+					}
+				}
 			} catch (err) {
 				const error = parsePostgresError(node, err, queries);
 				if (!continueOnFail) throw error;
@@ -242,13 +267,26 @@ export function configureQueryRunner(
 				const result: INodeExecutionData[] = [];
 				for (let i = 0; i < queries.length; i++) {
 					try {
-						const transactionResult: IDataObject[] = await transaction.any(
-							queries[i].query,
-							queries[i].values,
-						);
+						const query = queries[i].query;
+						const values = queries[i].values;
+
+						let transactionResults;
+						if ((options?.nodeVersion as number) < 2.3) {
+							transactionResults = await transaction.any(query, values);
+						} else {
+							transactionResults = (await transaction.multi(query, values)).flat();
+						}
+
+						if (!transactionResults.length) {
+							if ((options?.nodeVersion as number) < 2.3) {
+								transactionResults = emptyReturnData;
+							} else {
+								transactionResults = isSelectQuery(query) ? [] : [{ success: true }];
+							}
+						}
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							wrapData(transactionResult.length ? transactionResult : emptyReturnData),
+							wrapData(transactionResults),
 							{ itemData: { item: i } },
 						);
 
@@ -265,17 +303,30 @@ export function configureQueryRunner(
 		}
 
 		if (queryBatching === 'independently') {
-			returnData = await db.task(async (t) => {
+			returnData = await db.task(async (task) => {
 				const result: INodeExecutionData[] = [];
 				for (let i = 0; i < queries.length; i++) {
 					try {
-						const transactionResult: IDataObject[] = await t.any(
-							queries[i].query,
-							queries[i].values,
-						);
+						const query = queries[i].query;
+						const values = queries[i].values;
+
+						let transactionResults;
+						if ((options?.nodeVersion as number) < 2.3) {
+							transactionResults = await task.any(query, values);
+						} else {
+							transactionResults = (await task.multi(query, values)).flat();
+						}
+
+						if (!transactionResults.length) {
+							if ((options?.nodeVersion as number) < 2.3) {
+								transactionResults = emptyReturnData;
+							} else {
+								transactionResults = isSelectQuery(query) ? [] : [{ success: true }];
+							}
+						}
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							wrapData(transactionResult.length ? transactionResult : emptyReturnData),
+							wrapData(transactionResults),
 							{ itemData: { item: i } },
 						);
 
@@ -325,13 +376,45 @@ export function prepareItem(values: IDataObject[]) {
 	return item;
 }
 
+export async function columnFeatureSupport(
+	db: PgpDatabase,
+): Promise<{ identity_generation: boolean; is_generated: boolean }> {
+	const result = await db.any(
+		`SELECT EXISTS (
+			SELECT 1 FROM information_schema.columns WHERE table_name = 'columns' AND table_schema = 'information_schema' AND column_name = 'is_generated'
+		) as is_generated,
+		EXISTS (
+			SELECT 1 FROM information_schema.columns WHERE table_name = 'columns' AND table_schema = 'information_schema' AND column_name = 'identity_generation'
+		) as identity_generation;`,
+	);
+
+	return result[0];
+}
+
 export async function getTableSchema(
 	db: PgpDatabase,
 	schema: string,
 	table: string,
+	options?: { getColumnsForResourceMapper?: boolean },
 ): Promise<ColumnInfo[]> {
+	const select = ['column_name', 'data_type', 'is_nullable', 'udt_name', 'column_default'];
+
+	if (options?.getColumnsForResourceMapper) {
+		// Check if columns exist before querying (identity_generation was added in v10, is_generated in v12)
+		const supported = await columnFeatureSupport(db);
+
+		if (supported.identity_generation) {
+			select.push('identity_generation');
+		}
+
+		if (supported.is_generated) {
+			select.push('is_generated');
+		}
+	}
+
+	const selectString = select.join(', ');
 	const columns = await db.any(
-		'SELECT column_name, data_type, is_nullable, udt_name, column_default FROM information_schema.columns WHERE table_schema = $1 AND table_name = $2',
+		`SELECT ${selectString} FROM information_schema.columns WHERE table_schema = $1 AND table_name = $2`,
 		[schema, table],
 	);
 
@@ -414,3 +497,76 @@ export function checkItemAgainstSchema(
 
 	return item;
 }
+
+export const configureTableSchemaUpdater = (initialSchema: string, initialTable: string) => {
+	let currentSchema = initialSchema;
+	let currentTable = initialTable;
+	return async (db: PgpDatabase, tableSchema: ColumnInfo[], schema: string, table: string) => {
+		if (currentSchema !== schema || currentTable !== table) {
+			currentSchema = schema;
+			currentTable = table;
+			tableSchema = await getTableSchema(db, schema, table);
+		}
+		return tableSchema;
+	};
+};
+
+/**
+ * If postgress column type is array we need to convert it to fornmat that postgres understands, original object data would be modified
+ * @param data the object with keys representing column names and values
+ * @param schema table schema
+ * @param node INode
+ * @param itemIndex the index of the current item
+ */
+export const convertArraysToPostgresFormat = (
+	data: IDataObject,
+	schema: ColumnInfo[],
+	node: INode,
+	itemIndex = 0,
+) => {
+	for (const columnInfo of schema) {
+		//in case column type is array we need to convert it to fornmat that postgres understands
+		if (columnInfo.data_type.toUpperCase() === 'ARRAY') {
+			let columnValue = data[columnInfo.column_name];
+
+			if (typeof columnValue === 'string') {
+				columnValue = jsonParse(columnValue);
+			}
+
+			if (Array.isArray(columnValue)) {
+				const arrayEntries = columnValue.map((entry) => {
+					if (typeof entry === 'number') {
+						return entry;
+					}
+
+					if (typeof entry === 'boolean') {
+						entry = String(entry);
+					}
+
+					if (typeof entry === 'object') {
+						entry = JSON.stringify(entry);
+					}
+
+					if (typeof entry === 'string') {
+						return `"${entry.replace(/"/g, '\\"')}"`; //escape double quotes
+					}
+
+					return entry;
+				});
+
+				//wrap in {} instead of [] as postgres does and join with ,
+				data[columnInfo.column_name] = `{${arrayEntries.join(',')}}`;
+			} else {
+				if (columnInfo.is_nullable === 'NO') {
+					throw new NodeOperationError(
+						node,
+						`Column '${columnInfo.column_name}' has to be an array`,
+						{
+							itemIndex,
+						},
+					);
+				}
+			}
+		}
+	}
+};

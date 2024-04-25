@@ -3,19 +3,22 @@ import {
 	MANUAL_TRIGGER_NODE_NAME,
 	META_KEY,
 	SCHEDULE_TRIGGER_NODE_NAME,
+	EDIT_FIELDS_SET_NODE_NAME,
+	INSTANCE_MEMBERS,
+	INSTANCE_OWNER,
 } from '../constants';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 import { WorkflowsPage as WorkflowsPageClass } from '../pages/workflows';
-import { getVisibleDropdown, getVisibleSelect } from '../utils';
+import { getVisibleSelect } from '../utils';
+import { WorkflowExecutionsTab } from '../pages';
 
 const NEW_WORKFLOW_NAME = 'Something else';
-const IMPORT_WORKFLOW_URL =
-	'https://gist.githubusercontent.com/OlegIvaniv/010bd3f45c8a94f8eb7012e663a8b671/raw/3afea1aec15573cc168d9af7e79395bd76082906/test-workflow.json';
 const DUPLICATE_WORKFLOW_NAME = 'Duplicated workflow';
 const DUPLICATE_WORKFLOW_TAG = 'Duplicate';
 
 const WorkflowPage = new WorkflowPageClass();
 const WorkflowPages = new WorkflowsPageClass();
+const executionsTab = new WorkflowExecutionsTab();
 
 describe('Workflow Actions', () => {
 	beforeEach(() => {
@@ -97,11 +100,32 @@ describe('Workflow Actions', () => {
 		cy.get('body').type(META_KEY, { release: false }).type('s');
 		cy.get('body').type(META_KEY, { release: false }).type('s');
 		cy.wrap(null).then(() => expect(interceptCalledCount).to.eq(0));
+		cy.waitForLoad();
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		cy.get('body').type(META_KEY, { release: false }).type('s');
 		cy.wait('@saveWorkflow');
 		cy.wrap(null).then(() => expect(interceptCalledCount).to.eq(1));
 	});
+
+	it('should not save workflow twice when save is in progress', () => {
+		// This happens when users click save button from workflow name input
+		// In this case blur on the input saves the workflow and then click on the button saves it again
+		WorkflowPage.actions.visit();
+		WorkflowPage.getters
+			.workflowNameInput()
+			.invoke('val')
+			.then((oldName) => {
+				WorkflowPage.getters.workflowNameInputContainer().click();
+				WorkflowPage.getters.workflowNameInput().type('{selectall}');
+				WorkflowPage.getters.workflowNameInput().type('Test');
+				WorkflowPage.getters.saveButton().click();
+				WorkflowPage.getters.workflowNameInput().should('have.value', 'Test');
+				cy.visit(WorkflowPages.url);
+				// There should be no workflow with the old name (duplicate save)
+				WorkflowPages.getters.workflowCards().contains(String(oldName)).should('not.exist');
+			});
+	});
+
 	it('should copy nodes', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
@@ -114,35 +138,13 @@ describe('Workflow Actions', () => {
 		WorkflowPage.getters.successToast().should('exist');
 	});
 
-	it('should paste nodes', () => {
+	it('should paste nodes (both current and old node versions)', () => {
 		cy.fixture('Test_workflow-actions_paste-data.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
-			WorkflowPage.getters.canvasNodes().should('have.have.length', 2);
+			WorkflowPage.actions.zoomToFit();
+			WorkflowPage.getters.canvasNodes().should('have.length', 5);
+			WorkflowPage.getters.nodeConnections().should('have.length', 5);
 		});
-	});
-
-	it('should import workflow from url', () => {
-		WorkflowPage.getters.workflowMenu().should('be.visible');
-		WorkflowPage.getters.workflowMenu().click();
-		WorkflowPage.getters.workflowMenuItemImportFromURLItem().should('be.visible');
-		WorkflowPage.getters.workflowMenuItemImportFromURLItem().click();
-		cy.get('.el-message-box').should('be.visible');
-		cy.get('.el-message-box').find('input').type(IMPORT_WORKFLOW_URL);
-		cy.get('body').type('{enter}');
-		cy.waitForLoad(false);
-		WorkflowPage.actions.zoomToFit();
-		WorkflowPage.getters.canvasNodes().should('have.length', 2);
-		WorkflowPage.getters.nodeConnections().should('have.length', 1);
-	});
-
-	it('should import workflow from file', () => {
-		WorkflowPage.getters
-			.workflowImportInput()
-			.selectFile('cypress/fixtures/Test_workflow-actions_paste-data.json', { force: true });
-		cy.waitForLoad(false);
-		WorkflowPage.actions.zoomToFit();
-		WorkflowPage.getters.canvasNodes().should('have.length', 2);
-		WorkflowPage.getters.nodeConnections().should('have.length', 1);
 	});
 
 	it('should update workflow settings', () => {
@@ -249,5 +251,41 @@ describe('Workflow Actions', () => {
 			WorkflowPage.actions.saveWorkflowOnButtonClick();
 			duplicateWorkflow();
 		});
+	});
+
+	it('should keep endpoint click working when switching between execution and editor tab', () => {
+		cy.intercept('GET', '/rest/executions?filter=*').as('getExecutions');
+
+		WorkflowPage.actions.addInitialNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME);
+		WorkflowPage.actions.saveWorkflowOnButtonClick();
+
+		WorkflowPage.getters.canvasNodePlusEndpointByName(EDIT_FIELDS_SET_NODE_NAME).click();
+		WorkflowPage.getters.nodeCreatorSearchBar().should('be.visible');
+		cy.get('body').type('{esc}');
+
+		executionsTab.actions.switchToExecutionsTab();
+		cy.wait(['@getExecutions']);
+		cy.wait(500);
+		executionsTab.actions.switchToEditorTab();
+
+		WorkflowPage.getters.canvasNodePlusEndpointByName(EDIT_FIELDS_SET_NODE_NAME).click();
+		WorkflowPage.getters.nodeCreatorSearchBar().should('be.visible');
+	});
+});
+
+describe('Menu entry Push To Git', () => {
+	it('should not show up in the menu for members', () => {
+		cy.signin(INSTANCE_MEMBERS[0]);
+		cy.visit(WorkflowPages.url);
+		WorkflowPage.actions.visit();
+		WorkflowPage.getters.workflowMenuItemGitPush().should('not.exist');
+	});
+
+	it('should show up for owners', () => {
+		cy.signin(INSTANCE_OWNER);
+		cy.visit(WorkflowPages.url);
+		WorkflowPage.actions.visit();
+		WorkflowPage.getters.workflowMenuItemGitPush().should('exist');
 	});
 });

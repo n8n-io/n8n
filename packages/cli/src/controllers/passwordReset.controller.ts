@@ -1,84 +1,49 @@
-import { IsNull, Not } from 'typeorm';
-import validator from 'validator';
-import { Get, Post, RestController } from '@/decorators';
-import {
-	BadRequestError,
-	InternalServerError,
-	NotFoundError,
-	UnauthorizedError,
-	UnprocessableRequestError,
-} from '@/ResponseHelper';
-import {
-	getInstanceBaseUrl,
-	hashPassword,
-	validatePassword,
-} from '@/UserManagement/UserManagementHelper';
-import type { UserManagementMailer } from '@/UserManagement/email';
-
 import { Response } from 'express';
-import type { ILogger } from 'n8n-workflow';
-import type { Config } from '@/config';
-import type { UserRepository } from '@db/repositories';
+import validator from 'validator';
+
+import { AuthService } from '@/auth/auth.service';
+import { Get, Post, RestController } from '@/decorators';
+import { PasswordUtility } from '@/services/password.utility';
+import { UserManagementMailer } from '@/UserManagement/email';
 import { PasswordResetRequest } from '@/requests';
-import type { IDatabaseCollections, IExternalHooksClass, IInternalHooksClass } from '@/Interfaces';
-import { issueCookie } from '@/auth/jwt';
-import { isLdapEnabled } from '@/Ldap/helpers';
 import { isSamlCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
-import { UserService } from '@/user/user.service';
+import { UserService } from '@/services/user.service';
 import { License } from '@/License';
-import { Container } from 'typedi';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { TokenExpiredError } from 'jsonwebtoken';
-import type { JwtService, JwtPayload } from '@/services/jwt.service';
+import { MfaService } from '@/Mfa/mfa.service';
+import { Logger } from '@/Logger';
+import { ExternalHooks } from '@/ExternalHooks';
+import { InternalHooks } from '@/InternalHooks';
+import { UrlService } from '@/services/url.service';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
+import { UserRepository } from '@/databases/repositories/user.repository';
 
 @RestController()
 export class PasswordResetController {
-	private readonly config: Config;
-
-	private readonly logger: ILogger;
-
-	private readonly externalHooks: IExternalHooksClass;
-
-	private readonly internalHooks: IInternalHooksClass;
-
-	private readonly mailer: UserManagementMailer;
-
-	private readonly userRepository: UserRepository;
-
-	private readonly jwtService: JwtService;
-
-	constructor({
-		config,
-		logger,
-		externalHooks,
-		internalHooks,
-		mailer,
-		repositories,
-		jwtService,
-	}: {
-		config: Config;
-		logger: ILogger;
-		externalHooks: IExternalHooksClass;
-		internalHooks: IInternalHooksClass;
-		mailer: UserManagementMailer;
-		repositories: Pick<IDatabaseCollections, 'User'>;
-		jwtService: JwtService;
-	}) {
-		this.config = config;
-		this.logger = logger;
-		this.externalHooks = externalHooks;
-		this.internalHooks = internalHooks;
-		this.mailer = mailer;
-		this.userRepository = repositories.User;
-		this.jwtService = jwtService;
-	}
+	constructor(
+		private readonly logger: Logger,
+		private readonly externalHooks: ExternalHooks,
+		private readonly internalHooks: InternalHooks,
+		private readonly mailer: UserManagementMailer,
+		private readonly authService: AuthService,
+		private readonly userService: UserService,
+		private readonly mfaService: MfaService,
+		private readonly urlService: UrlService,
+		private readonly license: License,
+		private readonly passwordUtility: PasswordUtility,
+		private readonly userRepository: UserRepository,
+	) {}
 
 	/**
 	 * Send a password reset email.
 	 */
-	@Post('/forgot-password')
+	@Post('/forgot-password', { skipAuth: true, rateLimit: true })
 	async forgotPassword(req: PasswordResetRequest.Email) {
-		if (this.config.getEnv('userManagement.emails.mode') === '') {
+		if (!this.mailer.isEmailSetUp) {
 			this.logger.debug(
 				'Request to send password reset email failed because emailing was not set up',
 			);
@@ -105,15 +70,9 @@ export class PasswordResetController {
 		}
 
 		// User should just be able to reset password if one is already present
-		const user = await this.userRepository.findOne({
-			where: {
-				email,
-				password: Not(IsNull()),
-			},
-			relations: ['authIdentities', 'globalRole'],
-		});
+		const user = await this.userRepository.findNonShellUser(email);
 
-		if (!user?.isOwner && !Container.get(License).isWithinUsersLimit()) {
+		if (!user?.isOwner && !this.license.isWithinUsersLimit()) {
 			this.logger.debug(
 				'Request to send password reset email failed because the user limit was reached',
 			);
@@ -121,7 +80,10 @@ export class PasswordResetController {
 		}
 		if (
 			isSamlCurrentAuthenticationMethod() &&
-			!(user?.globalRole.name === 'owner' || user?.settings?.allowSSOManualLogin === true)
+			!(
+				(user && user.hasGlobalScope('user:resetPassword')) === true ||
+				user?.settings?.allowSSOManualLogin === true
+			)
 		) {
 			this.logger.debug(
 				'Request to send password reset email failed because login is handled by SAML',
@@ -140,29 +102,20 @@ export class PasswordResetController {
 			return;
 		}
 
-		if (isLdapEnabled() && ldapIdentity) {
+		if (this.license.isLdapEnabled() && ldapIdentity) {
 			throw new UnprocessableRequestError('forgotPassword.ldapUserPasswordResetUnavailable');
 		}
 
-		const baseUrl = getInstanceBaseUrl();
+		const url = this.authService.generatePasswordResetUrl(user);
+
 		const { id, firstName, lastName } = user;
-
-		const resetPasswordToken = this.jwtService.signData(
-			{ sub: id },
-			{
-				expiresIn: '1d',
-			},
-		);
-
-		const url = await UserService.generatePasswordResetUrl(baseUrl, resetPasswordToken);
-
 		try {
 			await this.mailer.passwordReset({
 				email,
 				firstName,
 				lastName,
 				passwordResetUrl: url,
-				domain: baseUrl,
+				domain: this.urlService.getInstanceBaseUrl(),
 			});
 		} catch (error) {
 			void this.internalHooks.onEmailFailed({
@@ -188,11 +141,11 @@ export class PasswordResetController {
 	/**
 	 * Verify password reset token and user ID.
 	 */
-	@Get('/resolve-password-token')
+	@Get('/resolve-password-token', { skipAuth: true })
 	async resolvePasswordToken(req: PasswordResetRequest.Credentials) {
-		const { token: resetPasswordToken } = req.query;
+		const { token } = req.query;
 
-		if (!resetPasswordToken) {
+		if (!token) {
 			this.logger.debug(
 				'Request to resolve password token failed because of missing password reset token',
 				{
@@ -202,32 +155,15 @@ export class PasswordResetController {
 			throw new BadRequestError('');
 		}
 
-		const decodedToken = this.verifyResetPasswordToken(resetPasswordToken);
+		const user = await this.authService.resolvePasswordResetToken(token);
+		if (!user) throw new NotFoundError('');
 
-		const user = await this.userRepository.findOne({
-			where: {
-				id: decodedToken.sub,
-			},
-			relations: ['globalRole'],
-		});
-
-		if (!user?.isOwner && !Container.get(License).isWithinUsersLimit()) {
+		if (!user?.isOwner && !this.license.isWithinUsersLimit()) {
 			this.logger.debug(
 				'Request to resolve password token failed because the user limit was reached',
-				{ userId: decodedToken.sub },
+				{ userId: user.id },
 			);
 			throw new UnauthorizedError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
-		}
-
-		if (!user) {
-			this.logger.debug(
-				'Request to resolve password token failed because no user was found for the provided user ID',
-				{
-					userId: decodedToken.sub,
-					resetPasswordToken,
-				},
-			);
-			throw new NotFoundError('');
 		}
 
 		this.logger.info('Reset-password token resolved successfully', { userId: user.id });
@@ -237,11 +173,11 @@ export class PasswordResetController {
 	/**
 	 * Verify password reset token and update password.
 	 */
-	@Post('/change-password')
+	@Post('/change-password', { skipAuth: true })
 	async changePassword(req: PasswordResetRequest.NewPassword, res: Response) {
-		const { token: resetPasswordToken, password } = req.body;
+		const { token, password, mfaToken } = req.body;
 
-		if (!resetPasswordToken || !password) {
+		if (!token || !password) {
 			this.logger.debug(
 				'Request to change password failed because of missing user ID or password or reset password token in payload',
 				{
@@ -251,34 +187,28 @@ export class PasswordResetController {
 			throw new BadRequestError('Missing user ID or password or reset password token');
 		}
 
-		const validPassword = validatePassword(password);
+		const validPassword = this.passwordUtility.validate(password);
 
-		const decodedToken = this.verifyResetPasswordToken(resetPasswordToken);
+		const user = await this.authService.resolvePasswordResetToken(token);
+		if (!user) throw new NotFoundError('');
 
-		const user = await this.userRepository.findOne({
-			where: { id: decodedToken.sub },
-			relations: ['authIdentities'],
-		});
+		if (user.mfaEnabled) {
+			if (!mfaToken) throw new BadRequestError('If MFA enabled, mfaToken is required.');
 
-		if (!user) {
-			this.logger.debug(
-				'Request to resolve password token failed because no user was found for the provided user ID',
-				{
-					resetPasswordToken,
-				},
-			);
-			throw new NotFoundError('');
+			const { decryptedSecret: secret } = await this.mfaService.getSecretAndRecoveryCodes(user.id);
+
+			const validToken = this.mfaService.totp.verifySecret({ secret, token: mfaToken });
+
+			if (!validToken) throw new BadRequestError('Invalid MFA token.');
 		}
 
-		const passwordHash = await hashPassword(validPassword);
+		const passwordHash = await this.passwordUtility.hash(validPassword);
 
-		await this.userRepository.update(user.id, {
-			password: passwordHash,
-		});
+		await this.userService.update(user.id, { password: passwordHash });
 
 		this.logger.info('User password updated successfully', { userId: user.id });
 
-		await issueCookie(res, user);
+		this.authService.issueCookie(res, user, req.browserId);
 
 		void this.internalHooks.onUserUpdate({
 			user,
@@ -295,24 +225,5 @@ export class PasswordResetController {
 		}
 
 		await this.externalHooks.run('user.password.update', [user.email, passwordHash]);
-	}
-
-	private verifyResetPasswordToken(resetPasswordToken: string) {
-		let decodedToken: JwtPayload;
-		try {
-			decodedToken = this.jwtService.verifyToken(resetPasswordToken);
-			return decodedToken;
-		} catch (e) {
-			if (e instanceof TokenExpiredError) {
-				this.logger.debug('Reset password token expired', {
-					resetPasswordToken,
-				});
-				throw new NotFoundError('');
-			}
-			this.logger.debug('Error verifying token', {
-				resetPasswordToken,
-			});
-			throw new BadRequestError('');
-		}
 	}
 }

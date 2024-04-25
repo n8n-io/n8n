@@ -1,7 +1,7 @@
 <template>
 	<div>
 		<slot v-if="canAccess" />
-		<slot name="fallback" v-else />
+		<slot v-else name="fallback" />
 	</div>
 </template>
 

@@ -1,10 +1,10 @@
-import type { OptionsWithUri } from 'request';
 import type {
 	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
 	IOAuth2Options,
+	IHttpRequestMethods,
+	IRequestOptions,
 } from 'n8n-workflow';
 
 import { NodeOperationError, jsonParse } from 'n8n-workflow';
@@ -12,17 +12,17 @@ import { NodeOperationError, jsonParse } from 'n8n-workflow';
 import get from 'lodash/get';
 
 export async function slackApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	method: string,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
 	resource: string,
 	body: object = {},
-	query: object = {},
+	query: IDataObject = {},
 	headers: {} | undefined = undefined,
 	option: {} = {},
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'accessToken') as string;
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		method,
 		headers: headers ?? {
 			'Content-Type': 'application/json; charset=utf-8',
@@ -65,6 +65,7 @@ export async function slackApiRequest(
 				{
 					description:
 						'Hint: Upgrade to a Slack plan that includes the functionality you want to use.',
+					level: 'warning',
 				},
 			);
 		} else if (response.error === 'missing_scope') {
@@ -73,6 +74,7 @@ export async function slackApiRequest(
 				'Your Slack credential is missing required Oauth Scopes',
 				{
 					description: `Add the following scope(s) to your Slack App: ${response.needed}`,
+					level: 'warning',
 				},
 			);
 		}
@@ -91,7 +93,7 @@ export async function slackApiRequest(
 export async function slackApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	// tslint:disable-next-line:no-any
 	body: any = {},
@@ -131,11 +133,11 @@ export async function slackApiRequestAllItems(
 }
 
 export function getMessageContent(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	i: number,
+	nodeVersion: number,
+	instanceId?: string,
 ) {
-	const nodeVersion = this.getNode().typeVersion;
-
 	const includeLinkToWorkflow = this.getNodeParameter(
 		'otherOptions.includeLinkToWorkflow',
 		i,
@@ -143,7 +145,9 @@ export function getMessageContent(
 	) as IDataObject;
 
 	const { id } = this.getWorkflow();
-	const automatedMessage = `_Automated with this <${this.getInstanceBaseUrl()}workflow/${id}?utm_source=n8n&utm_medium=slackNode|n8n workflow>_`;
+	const automatedMessage = `_Automated with this <${this.getInstanceBaseUrl()}workflow/${id}?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=${encodeURIComponent(
+		'n8n-nodes-base.slack',
+	)}${instanceId ? '_' + instanceId : ''}|n8n workflow>_`;
 	const messageType = this.getNodeParameter('messageType', i) as string;
 
 	let content: IDataObject = {};
@@ -171,7 +175,21 @@ export function getMessageContent(
 			}
 			break;
 		case 'attachment':
-			content = { attachments: this.getNodeParameter('attachments', i) } as IDataObject;
+			const attachmentsUI = this.getNodeParameter('attachments', i) as IDataObject[];
+
+			const attachments: IDataObject[] = [];
+
+			for (const attachment of attachmentsUI) {
+				if (attachment.fields !== undefined) {
+					if ((attachment?.fields as IDataObject)?.item) {
+						attachment.fields = (attachment?.fields as IDataObject)?.item as IDataObject[];
+					}
+				}
+				attachments.push(attachment);
+			}
+
+			content = { attachments } as IDataObject;
+
 			if (includeLinkToWorkflow && Array.isArray(content.attachments)) {
 				content.attachments.push({
 					text: automatedMessage,

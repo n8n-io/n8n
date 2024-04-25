@@ -1,8 +1,10 @@
 NotFound:
-  $ref: "./notFound.yml"
+  $ref: './notFound.yml'
 Unauthorized:
-  $ref: "./unauthorized.yml"
+  $ref: './unauthorized.yml'
 BadRequest:
-  $ref: "./badRequest.yml"
+  $ref: './badRequest.yml'
 Conflict:
-  $ref: "./conflict.yml"
+  $ref: './conflict.yml'
+Forbidden:
+  $ref: './forbidden.yml'

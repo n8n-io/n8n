@@ -1,0 +1,72 @@
+name: Reusable units test workflow
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: 'GitHub ref to test.'
+        required: false
+        type: string
+        default: 'master'
+      nodeVersion:
+        description: 'Version of node to use.'
+        required: false
+        type: string
+        default: '18.x'
+      cacheKey:
+        description: 'Cache key for modules and build artifacts.'
+        required: false
+        default: ''
+        type: string
+      collectCoverage:
+        required: false
+        default: 'false'
+        type: string
+
+jobs:
+  unit-test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    env:
+      COVERAGE_ENABLED: ${{ inputs.collectCoverage }}
+    steps:
+      - uses: actions/checkout@v4.1.1
+        with:
+          repository: n8n-io/n8n
+          ref: ${{ inputs.ref }}
+
+      - run: corepack enable
+      - name: Use Node.js ${{ inputs.nodeVersion }}
+        uses: actions/setup-node@v4.0.1
+        with:
+          node-version: ${{ inputs.nodeVersion }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        if: ${{ inputs.cacheKey == '' }}
+        run: pnpm build
+
+      - name: Restore cached build artifacts
+        if: ${{ inputs.cacheKey != '' }}
+        uses: actions/cache/restore@v4.0.0
+        with:
+          path: ./packages/**/dist
+          key: ${{ inputs.cacheKey }}
+
+      - name: Test Backend
+        run: pnpm test:backend
+
+      - name: Test Nodes
+        run: pnpm test:nodes
+
+      - name: Test Frontend
+        run: pnpm test:frontend
+
+      - name: Upload coverage to Codecov
+        if: ${{ inputs.collectCoverage == 'true' }}
+        uses: codecov/codecov-action@v3
+        with:
+          files: packages/@n8n/chat/coverage/cobertura-coverage.xml,packages/@n8n/nodes-langchain/coverage/cobertura-coverage.xml,packages/@n8n/permissions/coverage/cobertura-coverage.xml,packages/@n8n/client-oauth2/coverage/cobertura-coverage.xml,packages/cli/coverage/cobertura-coverage.xml,packages/core/coverage/cobertura-coverage.xml,packages/design-system/coverage/cobertura-coverage.xml,packages/editor-ui/coverage/cobertura-coverage.xml,packages/nodes-base/coverage/cobertura-coverage.xml,packages/workflow/coverage/cobertura-coverage.xml

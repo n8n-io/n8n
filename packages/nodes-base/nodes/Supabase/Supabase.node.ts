@@ -310,12 +310,18 @@ export class Supabase implements INodeType {
 						qs.limit = this.getNodeParameter('limit', 0);
 					}
 
-					let rows;
+					let rows: IDataObject[] = [];
 
 					try {
-						rows = await supabaseApiRequest.call(this, 'GET', endpoint, {}, qs);
+						let responseLength = 0;
+						do {
+							const newRows = await supabaseApiRequest.call(this, 'GET', endpoint, {}, qs);
+							responseLength = newRows.length;
+							rows = rows.concat(newRows);
+							qs.offset = rows.length;
+						} while (responseLength >= 1000);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(rows as IDataObject[]),
+							this.helpers.returnJsonArray(rows),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -409,6 +415,6 @@ export class Supabase implements INodeType {
 				}
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

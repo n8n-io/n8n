@@ -1,5 +1,3 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
@@ -7,6 +5,8 @@ import type {
 	IHookFunctions,
 	IWebhookFunctions,
 	JsonObject,
+	IHttpRequestMethods,
+	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
@@ -14,7 +14,7 @@ import { snakeCase } from 'change-case';
 
 export async function bannerbearApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 
 	body: any = {},
@@ -24,7 +24,7 @@ export async function bannerbearApiRequest(
 ): Promise<any> {
 	const credentials = await this.getCredentials('bannerbearApi');
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			Accept: 'application/json',
 			Authorization: `Bearer ${credentials.apiKey}`,

@@ -14,6 +14,12 @@ export class AlienVaultApi implements ICredentialType {
 
 	icon = 'file:icons/AlienVault.png';
 
+	httpRequestNode = {
+		name: 'AlienVault',
+		docsUrl: 'https://otx.alienvault.com/api',
+		apiBaseUrl: 'https://otx.alienvault.com/api/v1/',
+	};
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'OTX Key',

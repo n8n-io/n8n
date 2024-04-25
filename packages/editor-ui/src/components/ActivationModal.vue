@@ -25,10 +25,10 @@
 
 		<template #footer="{ close }">
 			<div :class="$style.footer">
-				<el-checkbox :modelValue="checked" @update:modelValue="handleCheckboxChange">{{
+				<el-checkbox :model-value="checked" @update:model-value="handleCheckboxChange">{{
 					$locale.baseText('generic.dontShowAgain')
 				}}</el-checkbox>
-				<n8n-button @click="close" :label="$locale.baseText('activationModal.gotIt')" />
+				<n8n-button :label="$locale.baseText('activationModal.gotIt')" @click="close" />
 			</div>
 		</template>
 	</Modal>
@@ -46,10 +46,12 @@ import {
 	LOCAL_STORAGE_ACTIVATION_FLAG,
 	VIEWS,
 } from '../constants';
-import { getActivatableTriggerNodes, getTriggerNodeServiceName } from '@/utils';
+import { getActivatableTriggerNodes, getTriggerNodeServiceName } from '@/utils/nodeTypesUtils';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useStorage } from '@/composables/useStorage';
+import { useExecutionsStore } from '@/stores/executions.store';
 
 export default defineComponent({
 	name: 'ActivationModal',
@@ -66,7 +68,7 @@ export default defineComponent({
 	},
 	methods: {
 		async showExecutionsList() {
-			const activeExecution = this.workflowsStore.activeWorkflowExecution;
+			const activeExecution = this.executionsStore.activeExecution;
 			const currentWorkflow = this.workflowsStore.workflowId;
 
 			if (activeExecution) {
@@ -88,11 +90,11 @@ export default defineComponent({
 		},
 		handleCheckboxChange(checkboxValue: boolean) {
 			this.checked = checkboxValue;
-			window.localStorage.setItem(LOCAL_STORAGE_ACTIVATION_FLAG, checkboxValue.toString());
+			useStorage(LOCAL_STORAGE_ACTIVATION_FLAG).value = checkboxValue.toString();
 		},
 	},
 	computed: {
-		...mapStores(useNodeTypesStore, useUIStore, useWorkflowsStore),
+		...mapStores(useNodeTypesStore, useUIStore, useWorkflowsStore, useExecutionsStore),
 		triggerContent(): string {
 			const foundTriggers = getActivatableTriggerNodes(this.workflowsStore.workflowTriggerNodes);
 			if (!foundTriggers.length) {

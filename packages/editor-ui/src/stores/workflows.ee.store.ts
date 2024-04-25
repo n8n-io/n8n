@@ -18,7 +18,7 @@ export const useWorkflowsEEStore = defineStore(STORES.WORKFLOWS_EE, {
 				fallback = i18n.baseText('workflows.shareModal.info.sharee.fallback'),
 			): string => {
 				const workflow = useWorkflowsStore().getWorkflowById(workflowId);
-				return workflow && workflow.ownedBy && workflow.ownedBy.firstName
+				return workflow?.ownedBy?.firstName
 					? `${workflow.ownedBy.firstName} ${workflow.ownedBy.lastName} (${workflow.ownedBy.email})`
 					: fallback;
 			};

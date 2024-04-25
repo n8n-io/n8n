@@ -3,12 +3,17 @@ import {
 	autocompletableNodeNames,
 	receivesNoBinaryData,
 	longestCommonPrefix,
-	setRank,
 	prefixMatch,
 	stripExcessParens,
 	hasActiveNode,
+	isCredentialsModalOpen,
+	applyCompletion,
+	isInHttpNodePagination,
 } from './utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
+import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
+import { escapeMappingString } from '@/utils/mappingUtils';
+import { PREVIOUS_NODES_SECTION, RECOMMENDED_SECTION, ROOT_DOLLAR_COMPLETIONS } from './constants';
 
 /**
  * Completions offered at the dollar position: `$|`
@@ -42,38 +47,49 @@ export function dollarCompletions(context: CompletionContext): CompletionResult 
 	};
 }
 
-export function dollarOptions() {
-	const rank = setRank(['$json', '$input']);
+export function dollarOptions(): Completion[] {
 	const SKIP = new Set();
-	const DOLLAR_FUNCTIONS = ['$jmespath'];
+	let recommendedCompletions: Completion[] = [];
 
-	if (!hasActiveNode()) return []; // e.g. credential modal
+	if (isInHttpNodePagination()) {
+		recommendedCompletions = [
+			{ label: '$pageCount', section: RECOMMENDED_SECTION, info: i18n.rootVars.$pageCount },
+			{ label: '$response', section: RECOMMENDED_SECTION, info: i18n.rootVars.$response },
+			{ label: '$request', section: RECOMMENDED_SECTION, info: i18n.rootVars.$request },
+		];
+	}
+
+	if (isCredentialsModalOpen()) {
+		return useExternalSecretsStore().isEnterpriseExternalSecretsEnabled
+			? [
+					{
+						label: '$secrets',
+						type: 'keyword',
+					},
+					{
+						label: '$vars',
+						type: 'keyword',
+					},
+				]
+			: [];
+	}
+
+	if (!hasActiveNode()) {
+		return [];
+	}
 
 	if (receivesNoBinaryData()) SKIP.add('$binary');
 
-	const keys = Object.keys(i18n.rootVars).sort((a, b) => a.localeCompare(b));
+	const previousNodesCompletions = autocompletableNodeNames().map((nodeName) => ({
+		label: `$('${escapeMappingString(nodeName)}')`,
+		type: 'keyword',
+		info: i18n.baseText('codeNodeEditor.completer.$()', { interpolate: { nodeName } }),
+		section: PREVIOUS_NODES_SECTION,
+	}));
 
-	return rank(keys)
-		.filter((key) => !SKIP.has(key))
-		.map((key) => {
-			const isFunction = DOLLAR_FUNCTIONS.includes(key);
-
-			const option: Completion = {
-				label: isFunction ? key + '()' : key,
-				type: isFunction ? 'function' : 'keyword',
-			};
-
-			const info = i18n.rootVars[key];
-
-			if (info) option.info = info;
-
-			return option;
-		})
-		.concat(
-			autocompletableNodeNames().map((nodeName) => ({
-				label: `$('${nodeName}')`,
-				type: 'keyword',
-				info: i18n.baseText('codeNodeEditor.completer.$()', { interpolate: { nodeName } }),
-			})),
-		);
+	return recommendedCompletions
+		.concat(ROOT_DOLLAR_COMPLETIONS)
+		.filter(({ label }) => !SKIP.has(label))
+		.concat(previousNodesCompletions)
+		.map((completion) => ({ ...completion, apply: applyCompletion() }));
 }

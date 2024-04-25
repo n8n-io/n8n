@@ -1,5 +1,3 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IExecuteFunctions,
 	ICredentialsDecrypted,
@@ -11,9 +9,11 @@ import type {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	IRequestOptions,
 } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 
+import { capitalCase } from 'change-case';
 import {
 	contactDescription,
 	contactOperations,
@@ -39,7 +39,6 @@ import {
 	processNameValueFields,
 } from './GenericFunctions';
 
-import { capitalCase } from 'change-case';
 export class Odoo implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Odoo',
@@ -256,7 +255,7 @@ export class Odoo implements INodeType {
 						id: Math.floor(Math.random() * 100),
 					};
 
-					const options: OptionsWithUri = {
+					const options: IRequestOptions = {
 						headers: {
 							'User-Agent': 'n8n',
 							Connection: 'keep-alive',
@@ -765,6 +764,6 @@ export class Odoo implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

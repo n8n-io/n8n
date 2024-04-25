@@ -1,11 +1,11 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	IPollFunctions,
 	JsonObject,
+	IHttpRequestMethods,
+	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
@@ -49,7 +49,7 @@ export async function getBaseAccessToken(
 		return;
 	}
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			Authorization: `Token ${ctx?.credentials?.token}`,
 		},
@@ -76,7 +76,7 @@ function endpointCtxExpr(ctx: ICtx, endpoint: string): string {
 export async function seaTableApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	ctx: ICtx,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 
 	body: any = {},
@@ -90,7 +90,7 @@ export async function seaTableApiRequest(
 
 	await getBaseAccessToken.call(this, ctx);
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			Authorization: `Token ${ctx?.base?.access_token}`,
 		},
@@ -120,7 +120,7 @@ export async function setableApiRequestAllItems(
 	this: IExecuteFunctions | IPollFunctions,
 	ctx: ICtx,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject,
 	query?: IDataObject,

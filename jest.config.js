@@ -1,5 +1,6 @@
 const { compilerOptions } = require('./tsconfig.json');
 
+/** @type {import('ts-jest').TsJestGlobalOptions} */
 const tsJestOptions = {
 	isolatedModules: true,
 	tsconfig: {
@@ -29,8 +30,8 @@ const config = {
 		return acc;
 	}, {}),
 	setupFilesAfterEnv: ['jest-expect-message'],
-	collectCoverage: true,
-	coverageReporters: [process.env.COVERAGE_REPORT === 'true' ? 'text' : 'text-summary'],
+	collectCoverage: process.env.COVERAGE_ENABLED === 'true',
+	coverageReporters: ['text-summary'],
 	collectCoverageFrom: ['src/**/*.ts'],
 };
 
