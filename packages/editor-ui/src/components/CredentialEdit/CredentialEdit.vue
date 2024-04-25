@@ -654,7 +654,7 @@ export default defineComponent({
 					);
 				}
 
-				this.credentialData = currentCredentials || {};
+				this.credentialData = (currentCredentials.data as ICredentialDataDecryptedObject) || {};
 				if (currentCredentials.sharedWithProjects) {
 					this.credentialData = {
 						...this.credentialData,
