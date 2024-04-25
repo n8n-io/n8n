@@ -26,11 +26,15 @@ import { SharedCredentialsRepository } from '@/databases/repositories/sharedCred
 import type { GlobalRole } from '@/databases/entities/User';
 import type { Scope } from '@n8n/permissions';
 import { CacheService } from '@/services/cache/cache.service';
+import { mockInstance } from '../shared/mocking';
+import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['project'],
 	enabledFeatures: ['feat:advancedPermissions'],
 });
+
+mockInstance(ActiveWorkflowRunner);
 
 beforeEach(async () => {
 	await testDb.truncate(['User', 'Project']);
@@ -329,8 +333,9 @@ describe('GET /projects/personal', () => {
 
 		const resp = await memberAgent.get('/projects/personal');
 		expect(resp.status).toBe(200);
-		const respProject = resp.body.data as Project;
+		const respProject = resp.body.data as Project & { scopes: Scope[] };
 		expect(respProject.id).toEqual(project.id);
+		expect(respProject.scopes).not.toBeUndefined();
 	});
 
 	test("should return 404 if user doesn't have a personal project", async () => {
