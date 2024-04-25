@@ -211,8 +211,8 @@ export class Telegram implements INodeType {
 					{
 						name: 'Edit Message Caption',
 						value: 'editMessageCaption',
-						description: 'Edit a caption of message',
-						action: 'Edit a caption of test message',
+						description: 'Edit the caption of a message',
+						action: 'Edit the caption of a message',
 					},
 					{
 						name: 'Edit Message Text',
