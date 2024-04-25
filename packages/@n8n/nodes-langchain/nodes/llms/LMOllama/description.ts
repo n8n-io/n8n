@@ -76,24 +76,25 @@ export const ollamaOptions: INodeProperties = {
 			default: 0.7,
 			typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 1 },
 			description:
-				'Controls the randomness of the generated text. Lower values make the output more focused and deterministic, while higher values make it more diverse and random. Recommended range is 0.7 to 1.0.',
+				'Controls the randomness of the generated text. Lower values make the output more focused and deterministic, while higher values make it more diverse and random.',
 			type: 'number',
 		},
 		{
 			displayName: 'Top K',
 			name: 'topK',
-			default: 40,
+			default: -1,
+			typeOptions: { maxValue: 100, minValue: -1, numberPrecision: 1 },
 			description:
-				'Limits the number of highest probability vocabulary tokens to consider at each step. A higher value increases diversity but may reduce coherence. Set to -1 to disable. Recommended value is 40.',
+				'Limits the number of highest probability vocabulary tokens to consider at each step. A higher value increases diversity but may reduce coherence. Set to -1 to disable.',
 			type: 'number',
 		},
 		{
 			displayName: 'Top P',
 			name: 'topP',
-			default: 0.95,
-			typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 2 },
+			default: 1,
+			typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 1 },
 			description:
-				'Chooses from the smallest possible set of tokens whose cumulative probability exceeds the probability top_p. Helps generate more human-like text by reducing repetitions. Recommended value is 0.95.',
+				'Chooses from the smallest possible set of tokens whose cumulative probability exceeds the probability top_p. Helps generate more human-like text by reducing repetitions.',
 			type: 'number',
 		},
 		{
