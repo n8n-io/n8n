@@ -1,14 +1,14 @@
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import { getDropdownItems } from '@/__tests__/utils';
-import { createProjectListItem } from '@/__tests__/data/projects';
+import { createProjectListItem, createProjectSharingData } from '@/__tests__/data/projects';
 import ProjectSharing from '@/features/projects/components/ProjectSharing.vue';
 
 const renderComponent = createComponentRenderer(ProjectSharing);
 
 const personalProjects = Array.from({ length: 3 }, createProjectListItem);
 const teamProjects = Array.from({ length: 3 }, () => createProjectListItem('team'));
-const homeProject = createProjectSharingData('personal');
+const homeProject = createProjectSharingData();
 
 describe('ProjectSharing', () => {
 	it('should render empty select when projects is empty and no selected project existing', async () => {
