@@ -1,3 +1,12 @@
+## [1.37.4](https://github.com/n8n-io/n8n/compare/n8n@1.37.3...n8n@1.37.4) (2024-04-25)
+
+
+### Bug Fixes
+
+* **core:** Stop relying on filesystem for SSH keys ([#9217](https://github.com/n8n-io/n8n/issues/9217)) ([1818e81](https://github.com/n8n-io/n8n/commit/1818e81ba4c89978accb1ece713c45eca6944ff6))
+
+
+
 ## [1.37.3](https://github.com/n8n-io/n8n/compare/n8n@1.37.2...n8n@1.37.3) (2024-04-18)
 
 
