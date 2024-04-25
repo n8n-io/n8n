@@ -190,11 +190,11 @@ export function prepareOutput(
 
 	return returnData;
 }
-const END_OF_STATMENT = /;(?=(?:[^'\\]|'[^']*?'|\\[\s\S])*?$)/g;
+const END_OF_STATEMENT = /;(?=(?:[^'\\]|'[^']*?'|\\[\s\S])*?$)/g;
 export const splitQueryToStatements = (query: string, filterOutEmpty = true) => {
 	const statements = query
 		.replace(/\n/g, '')
-		.split(END_OF_STATMENT)
+		.split(END_OF_STATEMENT)
 		.map((statement) => statement.trim());
 	return filterOutEmpty ? statements.filter((statement) => statement !== '') : statements;
 };
