@@ -34,6 +34,8 @@ const testServer = utils.setupTestServer({
 	enabledFeatures: ['feat:advancedPermissions'],
 });
 
+// The `ActiveWorkflowRunner` keeps the event loop alive, which in turn leads to jest not shutting down cleanly.
+// We don't need it for the tests here, so we can mock it and make the tests exit cleanly.
 mockInstance(ActiveWorkflowRunner);
 
 beforeEach(async () => {
