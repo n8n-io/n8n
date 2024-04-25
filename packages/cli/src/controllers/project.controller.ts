@@ -105,12 +105,21 @@ export class ProjectController {
 	}
 
 	@Get('/personal')
-	async getPersonalProject(req: ProjectRequest.GetPersonalProject): Promise<Project> {
+	async getPersonalProject(req: ProjectRequest.GetPersonalProject) {
 		const project = await this.projectsService.getPersonalProject(req.user);
 		if (!project) {
 			throw new NotFoundError('Could not find a personal project for this user');
 		}
-		return project;
+		const scopes: Scope[] = [
+			...combineScopes({
+				global: this.roleService.getRoleScopes(req.user.role),
+				project: this.roleService.getRoleScopes('project:personalOwner'),
+			}),
+		];
+		return {
+			...project,
+			scopes,
+		};
 	}
 
 	@Get('/:projectId')

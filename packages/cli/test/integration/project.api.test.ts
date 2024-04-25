@@ -26,11 +26,17 @@ import { SharedCredentialsRepository } from '@/databases/repositories/sharedCred
 import type { GlobalRole } from '@/databases/entities/User';
 import type { Scope } from '@n8n/permissions';
 import { CacheService } from '@/services/cache/cache.service';
+import { mockInstance } from '../shared/mocking';
+import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['project'],
 	enabledFeatures: ['feat:advancedPermissions'],
 });
+
+// The `ActiveWorkflowRunner` keeps the event loop alive, which in turn leads to jest not shutting down cleanly.
+// We don't need it for the tests here, so we can mock it and make the tests exit cleanly.
+mockInstance(ActiveWorkflowRunner);
 
 beforeEach(async () => {
 	await testDb.truncate(['User', 'Project']);
@@ -329,8 +335,9 @@ describe('GET /projects/personal', () => {
 
 		const resp = await memberAgent.get('/projects/personal');
 		expect(resp.status).toBe(200);
-		const respProject = resp.body.data as Project;
+		const respProject = resp.body.data as Project & { scopes: Scope[] };
 		expect(respProject.id).toEqual(project.id);
+		expect(respProject.scopes).not.toBeUndefined();
 	});
 
 	test("should return 404 if user doesn't have a personal project", async () => {
