@@ -157,7 +157,7 @@ export const draftFields: INodeProperties[] = [
 				type: 'string',
 				placeholder: '18cc573e2431878f',
 				default: '',
-				description: 'The identifier of the thread to which to attach the reply email',
+				description: 'The identifier of the thread to attach the draft',
 			},
 			{
 				displayName: 'Attachments',
