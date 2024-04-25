@@ -233,8 +233,8 @@ importers:
         specifier: 0.2.1
         version: 0.2.1
       '@google/generative-ai':
-        specifier: ^0.5.0
-        version: 0.5.0
+        specifier: 0.8.0
+        version: 0.8.0
       '@huggingface/inference':
         specifier: 2.6.4
         version: 2.6.4
@@ -251,8 +251,8 @@ importers:
         specifier: 0.1.41
         version: 0.1.41
       '@langchain/google-genai':
-        specifier: ^0.0.11
-        version: 0.0.11
+        specifier: ^0.0.12
+        version: 0.0.12
       '@langchain/mistralai':
         specifier: 0.0.13
         version: 0.0.13
@@ -477,7 +477,7 @@ importers:
     dependencies:
       '@langchain/community':
         specifier: 0.0.44
-        version: 0.0.44(ioredis@5.3.2)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mysql2@3.9.5)(pg@8.11.3)(ws@8.14.2)
+        version: 0.0.44(ioredis@5.3.2)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mysql2@3.9.7)(pg@8.11.3)(ws@8.14.2)
       '@langchain/core':
         specifier: 0.1.41
         version: 0.1.41
@@ -498,7 +498,7 @@ importers:
         version: link:../@n8n/permissions
       '@n8n/typeorm':
         specifier: 0.3.20-8
-        version: 0.3.20-8(@sentry/node@7.87.0)(ioredis@5.3.2)(mysql2@3.9.5)(pg@8.11.3)(sqlite3@5.1.7)
+        version: 0.3.20-8(@sentry/node@7.87.0)(ioredis@5.3.2)(mysql2@3.9.7)(pg@8.11.3)(sqlite3@5.1.7)
       '@n8n_io/license-sdk':
         specifier: 2.10.0
         version: 2.10.0
@@ -621,7 +621,7 @@ importers:
         version: 9.0.2
       langchain:
         specifier: 0.1.25
-        version: 0.1.25(axios@1.6.7)(handlebars@4.7.8)(ioredis@5.3.2)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mysql2@3.9.5)(pg@8.11.3)(ws@8.14.2)
+        version: 0.1.25(axios@1.6.7)(handlebars@4.7.8)(ioredis@5.3.2)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mysql2@3.9.7)(pg@8.11.3)(ws@8.14.2)
       ldapts:
         specifier: 4.2.6
         version: 4.2.6
@@ -632,8 +632,8 @@ importers:
         specifier: 3.3.0
         version: 3.3.0
       mysql2:
-        specifier: 3.9.5
-        version: 3.9.5
+        specifier: 3.9.7
+        version: 3.9.7
       n8n-core:
         specifier: workspace:*
         version: link:../core
@@ -1378,8 +1378,8 @@ importers:
         specifier: 10.0.2
         version: 10.0.2
       mysql2:
-        specifier: 3.9.5
-        version: 3.9.5
+        specifier: 3.9.7
+        version: 3.9.7
       n8n-workflow:
         specifier: workspace:*
         version: link:../workflow
@@ -5209,13 +5209,13 @@ packages:
       - supports-color
     dev: false
 
-  /@google/generative-ai@0.1.3:
-    resolution: {integrity: sha512-Cm4uJX1sKarpm1mje/MiOIinM7zdUUrQp/5/qGPAgznbdd/B9zup5ehT6c1qGqycFcSopTA1J1HpqHS5kJR8hQ==}
+  /@google/generative-ai@0.7.1:
+    resolution: {integrity: sha512-WTjMLLYL/xfA5BW6xAycRPiAX7FNHKAxrid/ayqC1QMam0KAK0NbMeS9Lubw80gVg5xFMLE+H7pw4wdNzTOlxw==}
     engines: {node: '>=18.0.0'}
     dev: false
 
-  /@google/generative-ai@0.5.0:
-    resolution: {integrity: sha512-uxfN3mROgVxb+9KrlVHIiglcWgNE86pVTS9TRkGS6hMvQoZ5TrB1TIMcW5ZYWxlRhMwtmEdJnNMUxSqM3Qp/Ag==}
+  /@google/generative-ai@0.8.0:
+    resolution: {integrity: sha512-O55FgK1Jvl2JuJP1cnRHEAM8A4Lr3yKtjQrCn2QXOXVT+L5+o/nFQcx0/oIo3oq1Kq9TjjgewXyb9BBrK+Wd0A==}
     engines: {node: '>=18.0.0'}
     dev: false
 
@@ -6051,7 +6051,7 @@ packages:
       - supports-color
     dev: false
 
-  /@langchain/community@0.0.44(ioredis@5.3.2)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mysql2@3.9.5)(pg@8.11.3)(ws@8.14.2):
+  /@langchain/community@0.0.44(ioredis@5.3.2)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mysql2@3.9.7)(pg@8.11.3)(ws@8.14.2):
     resolution: {integrity: sha512-II9Hz90jJmfWRICtxTg1auQWzFw0npqacWiiOpaxNhzs6rptdf56gyfC48Z6n1ii4R8FfAlfX6YxhOE7lGGKXg==}
     engines: {node: '>=18'}
     peerDependencies:
@@ -6338,7 +6338,7 @@ packages:
       jsonwebtoken: 9.0.2
       langsmith: 0.1.12
       lodash: 4.17.21
-      mysql2: 3.9.5
+      mysql2: 3.9.7
       pg: 8.11.3
       uuid: 9.0.1
       ws: 8.14.2
@@ -6366,11 +6366,11 @@ packages:
       zod-to-json-schema: 3.22.4(zod@3.22.4)
     dev: false
 
-  /@langchain/google-genai@0.0.11:
-    resolution: {integrity: sha512-o4+r+ETmcPqcrRTJeJQQ0c796IAx1dvVkZvFsUqLhTIteIQuAc2KenY/UDGQxZVghw6fZf4irN/PvkNHJjfgWw==}
+  /@langchain/google-genai@0.0.12:
+    resolution: {integrity: sha512-NDARJ+ZxjlkTHDvNroiG6V+3gW0u0OlMvbDEYAAXR6wFGIV09//ekolr+bA290ZCN77Ei+BEOsd6Ax1wBk3Z4w==}
     engines: {node: '>=18'}
     dependencies:
-      '@google/generative-ai': 0.1.3
+      '@google/generative-ai': 0.7.1
       '@langchain/core': 0.1.41
     dev: false
 
@@ -6643,7 +6643,7 @@ packages:
       recast: 0.22.0
     dev: false
 
-  /@n8n/typeorm@0.3.20-8(@sentry/node@7.87.0)(ioredis@5.3.2)(mysql2@3.9.5)(pg@8.11.3)(sqlite3@5.1.7):
+  /@n8n/typeorm@0.3.20-8(@sentry/node@7.87.0)(ioredis@5.3.2)(mysql2@3.9.7)(pg@8.11.3)(sqlite3@5.1.7):
     resolution: {integrity: sha512-WJFa9Pg6BJVS1dEe1xFRQcLtvjKx2O1KTgI6pFrTTcH7zZMy3qNww7A3HIrW/LvzCu0+rnSfHU4GvDg5/oJhlg==}
     engines: {node: '>=16.13.0'}
     hasBin: true
@@ -6719,7 +6719,7 @@ packages:
       glob: 10.3.10
       ioredis: 5.3.2
       mkdirp: 2.1.3
-      mysql2: 3.9.5
+      mysql2: 3.9.7
       pg: 8.11.3
       reflect-metadata: 0.2.1
       sha.js: 2.4.11
@@ -9237,7 +9237,7 @@ packages:
       ts-dedent: 2.2.0
       type-fest: 2.19.0
       vue: 3.4.21(typescript@5.4.2)
-      vue-component-type-helpers: 2.0.13
+      vue-component-type-helpers: 2.0.14
     transitivePeerDependencies:
       - encoding
       - supports-color
@@ -18603,7 +18603,7 @@ packages:
       - voy-search
     dev: false
 
-  /langchain@0.1.25(axios@1.6.7)(handlebars@4.7.8)(ioredis@5.3.2)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mysql2@3.9.5)(pg@8.11.3)(ws@8.14.2):
+  /langchain@0.1.25(axios@1.6.7)(handlebars@4.7.8)(ioredis@5.3.2)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mysql2@3.9.7)(pg@8.11.3)(ws@8.14.2):
     resolution: {integrity: sha512-sfEChvr4H2CklHdSByNBbytwBrFhgtA5kPOnwcBrxuXGg1iOaTzhVxQA0QcNcQucI3hZrsNbZjxGp+Can1ooZQ==}
     engines: {node: '>=18'}
     peerDependencies:
@@ -18763,7 +18763,7 @@ packages:
         optional: true
     dependencies:
       '@anthropic-ai/sdk': 0.9.1
-      '@langchain/community': 0.0.44(ioredis@5.3.2)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mysql2@3.9.5)(pg@8.11.3)(ws@8.14.2)
+      '@langchain/community': 0.0.44(ioredis@5.3.2)(jsonwebtoken@9.0.2)(lodash@4.17.21)(mysql2@3.9.7)(pg@8.11.3)(ws@8.14.2)
       '@langchain/core': 0.1.41
       '@langchain/openai': 0.0.16
       axios: 1.6.7
@@ -20111,8 +20111,8 @@ packages:
     engines: {node: '>=12.0.0'}
     dev: true
 
-  /mysql2@3.9.5:
-    resolution: {integrity: sha512-idfCjWgJEIU2zToiAsy1UO9RQ+VvCrbfB9458LrComY7mJmAIvjdD+/58VmNLFUeQpKE4xZZqD+yZe3tlu62NQ==}
+  /mysql2@3.9.7:
+    resolution: {integrity: sha512-KnJT8vYRcNAZv73uf9zpXqNbvBG7DJrs+1nACsjZP1HMJ1TgXEy8wnNilXAn/5i57JizXKtrUtwDB7HxT9DDpw==}
     engines: {node: '>= 8.0'}
     dependencies:
       denque: 2.1.0
@@ -25914,8 +25914,8 @@ packages:
     resolution: {integrity: sha512-0vOfAtI67UjeO1G6UiX5Kd76CqaQ67wrRZiOe7UAb9Jm6GzlUr/fC7CV90XfwapJRjpCMaZFhv1V0ajWRmE9Dg==}
     dev: true
 
-  /vue-component-type-helpers@2.0.13:
-    resolution: {integrity: sha512-xNO5B7DstNWETnoYflLkVgh8dK8h2ZDgxY1M2O0zrqGeBNq5yAZ8a10yCS9+HnixouNGYNX+ggU9MQQq86HTpg==}
+  /vue-component-type-helpers@2.0.14:
+    resolution: {integrity: sha512-DInfgOyXlMyliyqAAD9frK28tTfch0+tMi4qoWJcZlRxUf+NFAtraJBnAsKLep+FOyLMiajkhfyEb3xLK08i7w==}
     dev: true
 
   /vue-demi@0.14.5(vue@3.4.21):

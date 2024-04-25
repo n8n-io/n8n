@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "1.38.0",
+  "version": "1.39.0",
   "description": "n8n Workflow Automation Tool",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -142,7 +142,7 @@
     "ldapts": "4.2.6",
     "lodash": "4.17.21",
     "luxon": "3.3.0",
-    "mysql2": "3.9.5",
+    "mysql2": "3.9.7",
     "n8n-core": "workspace:*",
     "n8n-editor-ui": "workspace:*",
     "n8n-nodes-base": "workspace:*",
