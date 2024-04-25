@@ -25,12 +25,13 @@ describe('ProjectSharing', () => {
 	});
 
 	it('should filter, add and remove projects', async () => {
-		const { getByTestId, getAllByTestId, queryAllByTestId, emitted } = renderComponent({
-			props: {
-				projects: personalProjects,
-				modelValue: [personalProjects[0]],
-			},
-		});
+		const { getByTestId, getAllByTestId, queryByTestId, queryAllByTestId, emitted } =
+			renderComponent({
+				props: {
+					projects: personalProjects,
+					modelValue: [personalProjects[0]],
+				},
+			});
 
 		expect(queryByTestId('project-sharing-owner')).not.toBeInTheDocument();
 		// Check the initial state (one selected project comes from the modelValue prop)
