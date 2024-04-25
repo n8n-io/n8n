@@ -199,24 +199,24 @@ export class GmailV2 implements INodeType {
 			},
 
 			async getGmailAliases(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				try {
-					const responseData = await googleApiRequest.call(
-						this,
-						'GET',
-						'/gmail/v1/users/me/settings/sendAs',
-					);
+				const returnData: INodePropertyOptions[] = [];
+				const { sendAs } = await googleApiRequest.call(
+					this,
+					'GET',
+					'/gmail/v1/users/me/settings/sendAs',
+				);
 
-					const aliases = responseData.sendAs.map((alias: IDataObject) => {
-						const displayName = alias.isDefault
-							? `${alias.sendAsEmail} (Default)`
-							: alias.sendAsEmail;
-						return { name: displayName, value: alias.sendAsEmail };
+				for (const alias of sendAs || []) {
+					const displayName = alias.isDefault
+						? `${alias.sendAsEmail} (Default)`
+						: alias.sendAsEmail;
+					returnData.push({
+						name: displayName,
+						value: alias.sendAsEmail,
 					});
-
-					return aliases;
-				} catch (error) {
-					throw new NodeOperationError(this.getNode(), 'Failed to fetch Gmail aliases', error);
 				}
+
+				return returnData;
 			},
 		},
 	};
@@ -549,6 +549,7 @@ export class GmailV2 implements INodeType {
 						let cc = '';
 						let bcc = '';
 						let replyTo = '';
+						let fromAlias = '';
 
 						if (options.sendTo) {
 							to += prepareEmailsInput.call(this, options.sendTo as string, 'To', i);
@@ -566,6 +567,10 @@ export class GmailV2 implements INodeType {
 							replyTo = prepareEmailsInput.call(this, options.replyTo as string, 'ReplyTo', i);
 						}
 
+						if (options.fromAlias) {
+							fromAlias = options.fromAlias as string;
+						}
+
 						let attachments: IDataObject[] = [];
 						if (options.attachmentsUi) {
 							attachments = await prepareEmailAttachments.call(
@@ -581,8 +586,6 @@ export class GmailV2 implements INodeType {
 								};
 							}
 						}
-
-						const fromAlias = this.getNodeParameter('fromAlias', i) as string;
 
 						const email: IEmail = {
 							from: fromAlias,
