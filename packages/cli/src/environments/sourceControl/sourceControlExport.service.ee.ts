@@ -133,8 +133,7 @@ export class SourceControlExportService {
 					owners[e.workflowId] = {
 						type: 'team',
 						teamId: project.id,
-						// TODO: remove when project name is not nullable
-						teamName: project.name!,
+						teamName: project.name,
 					};
 				} else {
 					throw new ApplicationError(
@@ -289,8 +288,7 @@ export class SourceControlExportService {
 						owner = {
 							type: 'team',
 							teamId: sharing.project.id,
-							// TODO: remove when project name is not nullable
-							teamName: sharing.project.name!,
+							teamName: sharing.project.name,
 						};
 					}
 

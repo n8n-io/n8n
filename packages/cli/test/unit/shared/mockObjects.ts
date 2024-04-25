@@ -25,4 +25,5 @@ export const mockProject = (): Project =>
 	Object.assign(new Project(), {
 		id: uniqueId(),
 		type: 'personal',
+		name: 'Nathan Fillion <nathan.fillion@n8n.io>',
 	});

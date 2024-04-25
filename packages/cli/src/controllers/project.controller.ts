@@ -28,9 +28,7 @@ export class ProjectController {
 
 	@Get('/')
 	async getAllProjects(req: ProjectRequest.GetAll): Promise<Project[]> {
-		const projects = await this.projectsService.getAccessibleProjects(req.user);
-
-		return await this.projectsService.guaranteeProjectNames(projects);
+		return await this.projectsService.getAccessibleProjects(req.user);
 	}
 
 	@Post('/')

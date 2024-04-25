@@ -122,14 +122,14 @@ describe('OwnershipService', () => {
 
 			expect(homeProject).toMatchObject({
 				id: ownerProject.id,
-				name: 'My n8n',
+				name: ownerProject.name,
 				type: ownerProject.type,
 			});
 
 			expect(sharedWithProjects).toMatchObject([
 				{
 					id: editorProject.id,
-					name: 'My n8n',
+					name: editorProject.name,
 					type: editorProject.type,
 				},
 			]);
@@ -151,13 +151,13 @@ describe('OwnershipService', () => {
 
 			expect(homeProject).toMatchObject({
 				id: projectOwner.id,
-				name: 'My n8n',
+				name: projectOwner.name,
 				type: projectOwner.type,
 			});
 			expect(sharedWithProjects).toMatchObject([
 				{
 					id: projectEditor.id,
-					name: 'My n8n',
+					name: projectEditor.name,
 					type: projectEditor.type,
 				},
 			]);
@@ -175,7 +175,7 @@ describe('OwnershipService', () => {
 
 			expect(homeProject).toMatchObject({
 				id: project.id,
-				name: 'My n8n',
+				name: project.name,
 				type: project.type,
 			});
 
