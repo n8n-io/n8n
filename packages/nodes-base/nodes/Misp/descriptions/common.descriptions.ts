@@ -64,6 +64,19 @@ export const searchProperties: INodeProperties[] = [
 				default: false,
 			},
 			{
+				displayName: 'Search All',
+				name: 'searchall',
+				type: 'string',
+				description:
+					'Search by matching any tag names, event descriptions, attribute values or attribute comments',
+				default: '',
+				displayOptions: {
+					hide: {
+						'/resource': ['attribute'],
+					},
+				},
+			},
+			{
 				displayName: 'Tags',
 				name: 'tags',
 				type: 'string',
