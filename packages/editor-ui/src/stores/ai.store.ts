@@ -5,9 +5,13 @@ import { useRootStore } from '@/stores/n8nRoot.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { chatEventBus } from '@n8n/chat/event-buses';
 import type { ChatMessage } from '@n8n/chat/types';
-import { computed, ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 import { jsonParse, type IUser, type NodeError } from 'n8n-workflow';
 import { useUsersStore } from './users.store';
+import { useNDVStore } from './ndv.store';
+import { useWorkflowsStore } from './workflows.store';
+import { useDataSchema } from '@/composables/useDataSchema';
+import { executionDataToJson } from '@/utils/nodeTypesUtils';
 
 export const useAIStore = defineStore('ai', () => {
 	const rootStore = useRootStore();
@@ -114,14 +118,14 @@ export const useAIStore = defineStore('ai', () => {
 			chatEventBus.emit('scrollToBottom');
 		}
 	}
-	function onMessageSuggestionReceived(messageChunk: string) {
+	async function onMessageSuggestionReceived(messageChunk: string) {
 		waitingForResponse.value = false;
 		if (messageChunk.length === 0) return;
 		if (messageChunk === '__END__') {
 			const lastMessage = getLastMessage();
 			// If last message is a component, then show the follow-up actions
 			if (lastMessage.type === 'component') {
-				const followUpQuestion : string = lastMessage.arguments.suggestions[0].followUpQuestion;
+				const followUpQuestion: string = lastMessage.arguments.suggestions[0].followUpQuestion;
 				// TODO: Think about using MessageWithActions instead of text + QuickReplies
 				messages.value.push({
 					createdAt: new Date().toISOString(),
@@ -159,7 +163,7 @@ export const useAIStore = defineStore('ai', () => {
 				chatEventBus.emit('scrollToBottom');
 			}
 			return;
-		};
+		}
 
 		const parsedMessage = jsonParse<Record<string, unknown>>(messageChunk);
 		if (getLastMessage()?.sender !== 'bot') {
@@ -173,6 +177,7 @@ export const useAIStore = defineStore('ai', () => {
 					...parsedMessage,
 				},
 			});
+			chatEventBus.emit('scrollToBottom');
 			return;
 		}
 
@@ -180,6 +185,8 @@ export const useAIStore = defineStore('ai', () => {
 
 		if (lastMessage.type === 'component') {
 			lastMessage.arguments = parsedMessage;
+			await nextTick();
+			await nextTick();
 			chatEventBus.emit('scrollToBottom');
 		}
 	}
@@ -190,19 +197,46 @@ export const useAIStore = defineStore('ai', () => {
 	}
 
 	async function startNewDebugSession(error: NodeError) {
-		const currentUser = usersStore.currentUser ?? ({} as IUser);
+		const currentNode = useNDVStore().activeNode;
+		const workflowNodes = useWorkflowsStore().allNodes;
 
+		const schemas = workflowNodes.map((node) => {
+			const { getSchemaForExecutionData, getInputDataWithPinned } = useDataSchema();
+			const schema = getSchemaForExecutionData(
+				executionDataToJson(getInputDataWithPinned(node)),
+				true,
+			);
+			return {
+				node_name: node.name,
+				schema,
+			};
+		});
+
+		const currentNodeParameters = currentNode?.parameters ?? {};
+		const currentUser = usersStore.currentUser ?? ({} as IUser);
+		// return;
 		messages.value = [];
-		currentSessionId.value = `${currentUser.id}-${error.node.id}`;
+		currentSessionId.value = `${currentUser.id}-${error.timestamp}`;
 		chatTitle.value = error.message;
+		delete error.stack;
 		chatEventBus.emit('open');
+
+		const promptText = `
+			## Error:
+				${JSON.stringify(error).trim()};
+		`;
 
 		return await aiApi.debugChat(
 			rootStore.getRestApiContext,
-			{ text: JSON.stringify(error), sessionId: currentSessionId.value },
+			{
+				error,
+				sessionId: currentSessionId.value,
+				schemas,
+				nodes: workflowNodes.map((n) => n.name),
+				parameters: currentNodeParameters,
+			},
 			onMessageSuggestionReceived,
 		);
-		// currentSessionId.value = sessionId;
 	}
 	return {
 		debugError,

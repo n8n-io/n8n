@@ -156,11 +156,27 @@ export declare namespace AIRequest {
 export interface AIDebugErrorPayload {
 	error: NodeError;
 }
+export type SchemaType =
+	| 'string'
+	| 'number'
+	| 'boolean'
+	| 'bigint'
+	| 'symbol'
+	| 'array'
+	| 'object'
+	| 'function'
+	| 'null'
+	| 'undefined';
+
+export type Schema = { type: SchemaType; key?: string; value: string | Schema[]; path: string };
 
 export interface AIDebugChatPayload {
-	text: string;
+	text?: string;
 	sessionId: string;
 	error?: NodeError;
+	schemas?: Array<{ node_name: string; schema: Schema }>;
+	nodes?: string[];
+	parameters?: IDataObject;
 }
 
 // ----------------------------------

@@ -4,9 +4,12 @@ import { AIService } from '@/services/ai.service';
 import { NodeTypes } from '@/NodeTypes';
 import { FailedDependencyError } from '@/errors/response-errors/failed-dependency.error';
 import express from 'express';
-import { HumanMessage, SystemMessage } from '@langchain/core/messages';
 import { ChatMessageHistory } from 'langchain/stores/message/in_memory';
-import { ChatPromptTemplate, MessagesPlaceholder } from '@langchain/core/prompts';
+import {
+	ChatPromptTemplate,
+	MessagesPlaceholder,
+	SystemMessagePromptTemplate,
+} from '@langchain/core/prompts';
 import { ChatOpenAI } from '@langchain/openai';
 import { RunnableWithMessageHistory } from '@langchain/core/runnables';
 import { z } from 'zod';
@@ -34,6 +37,8 @@ const errorSuggestionsSchema = z.object({
 		}),
 	),
 });
+
+const stringifyAndTrim = (obj: object) => JSON.stringify(obj).trim();
 
 @RestController('/ai')
 export class AIController {
@@ -69,29 +74,45 @@ export class AIController {
 
 	@Post('/debug-chat')
 	async debugChat(req: AIRequest.DebugChat, res: express.Response) {
-		const { sessionId, text } = req.body;
+		const { sessionId, text, schemas, nodes, parameters, error } = req.body;
 
 		let chatMessageHistory = memorySessions.get(sessionId);
 		if (!chatMessageHistory) {
 			chatMessageHistory = new ChatMessageHistory();
 			memorySessions.set(sessionId, chatMessageHistory);
 
-			await chatMessageHistory.addMessage(
-				new SystemMessage(
-					`You're an assistant n8n expert assistant. Your role is to help users with n8n-related questions.
-					You can answer questions, provide suggestions, and help users troubleshoot issues. You can also
-					ask questions to gather more information. Please provide a concise a helpful suggestions without
-					going too much into detail. Always provide only one suggestion which is actionable and most relevant for the user.
-					Make sure to end the suggestion with a follow-up question that should be answered by the user. This question should
-					be in the for of 'Would you like...?'. For example: 'Would you like me to provide more information on this?
-					Also, please provide a short follow-up answer that will be used as user's next step in the conversation.
-					It should be in the form: 'Yes, help me ...' and must start with 'Yes, help me'. For example: 'Yes, help me fix this issue'`
-				),
-			);
+			const messages =
+				SystemMessagePromptTemplate.fromTemplate(`You're an assistant n8n expert assistant. Your role is to help users with n8n-related questions.
+			You can answer questions, provide suggestions, and help users troubleshoot issues. You can also
+			ask questions to gather more information. Please provide a concise yet detailed, helpful suggestions. Always provide only one suggestion which is actionable and most relevant for the user. If you know the specific node parameter that might be causing the issue, you can provide a suggestion on how to fix it.
+			Make sure to end the suggestion with a follow-up question that should be answered by the user. This question should be in the format of 'Would you like...?'. For example: 'Would you like me to provide more information on this?
+			When suggesting fixes to expressions which are referencing other nodes(or input data), carefully check the provided schema, if the node contains the referenced data.
+			Also, please provide a short follow-up answer that will be used as user's next step in the conversation.
+			It should be in the form: 'Yes, help me ...' and must start with 'Yes, help me'. For example: 'Yes, help me fix this issue'
+
+			## Workflow context
+
+			### Workflow nodes:
+				{nodes}
+
+			### All workflow nodes schemas:
+				{schemas}
+
+			### Current node parameters:
+				{parameters}
+			`);
+
+			const formattedMessage = await messages.format({
+				nodes,
+				schemas: JSON.stringify(schemas),
+				parameters: JSON.stringify(parameters),
+			});
+
+			await chatMessageHistory.addMessage(formattedMessage);
 		}
 
 		const model = new ChatOpenAI({
-			temperature: 0.3,
+			temperature: 0.8,
 			openAIApiKey: process.env.N8N_AI_OPENAI_API_KEY,
 			modelName: 'gpt-4-turbo-2024-04-09',
 			streaming: true,
@@ -109,9 +130,10 @@ export class AIController {
 		});
 
 		const outputParser = new JsonOutputFunctionsParser();
+
 		const prompt = ChatPromptTemplate.fromMessages([
 			new MessagesPlaceholder('history'),
-			['human', '{question}'],
+			['human', '{question} \n\n Error: {error}'],
 		]);
 
 		const chain = prompt.pipe(modelWithOutputParser).pipe(outputParser);
@@ -122,10 +144,12 @@ export class AIController {
 			inputMessagesKey: 'question',
 			historyMessagesKey: 'history',
 		});
-		await chatMessageHistory.addMessage(new HumanMessage(text));
 
 		const chainStream = await chainWithHistory.stream(
-			{ question: text },
+			{
+				question: text ?? 'Please suggest solutions for the error below',
+				error: JSON.stringify(error),
+			},
 			{ configurable: { sessionId } },
 		);
 
@@ -134,11 +158,11 @@ export class AIController {
 				// console.log('🚀 ~ AIController ~ forawait ~ output:', output);
 				res.write(JSON.stringify(output) + '\n');
 			}
-			console.log('Final messages: ', chatMessageHistory.getMessages());
+			// console.log('Final messages: ', chatMessageHistory.getMessages());
 			res.end('__END__');
-		} catch (error) {
-			console.error('Error during streaming:', error);
-			res.end(JSON.stringify({ error: 'An error occurred during streaming' }) + '\n');
+		} catch (err) {
+			console.error('Error during streaming:', err);
+			res.end(JSON.stringify({ err: 'An error occurred during streaming' }) + '\n');
 		}
 
 		// Handle client closing the connection

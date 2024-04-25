@@ -58,7 +58,7 @@ async function onSubmitKeydown(event: KeyboardEvent) {
 			<textarea
 				v-model="input"
 				rows="1"
-				:placeholder="t('inputPlaceholder')"
+				:placeholder="t('inputPlaceholder') ?? ''"
 				@keydown.enter="onSubmitKeydown"
 			/>
 			<button

@@ -1,14 +1,14 @@
-import { useOptions } from '@n8n/chat/composables/useOptions';
 import { isRef } from 'vue';
+import { useOptions } from '@n8n/chat/composables/useOptions';
 
 export function useI18n() {
 	const { options } = useOptions();
 	const language = options?.defaultLanguage ?? 'en';
 
-	function t(key: string): unknown {
+	function t(key: string): string {
 		const val = options?.i18n?.[language]?.[key];
 		if (isRef(val)) {
-			return val.value;
+			return val.value as string;
 		}
 		return val ?? key;
 	}

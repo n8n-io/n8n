@@ -1,14 +1,17 @@
 import type { IRestApiContext, Schema } from '@/Interface';
 import { makeRestApiRequest } from '@/utils/apiUtils';
-import { AIMessageChunk, jsonParse, type IDataObject } from 'n8n-workflow';
+import type { NodeError, type IDataObject } from 'n8n-workflow';
 
 export interface DebugErrorPayload {
 	error: Error;
 }
 export interface DebugChatPayload {
 	text?: string;
-	error?: Error;
 	sessionId: string;
+	error?: NodeError;
+	schemas?: Array<{ node_name: string; schema: Schema }>;
+	nodes?: string[];
+	parameters?: IDataObject;
 }
 
 export async function generateCodeForPrompt(
