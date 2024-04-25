@@ -1,3 +1,16 @@
+## [1.39.1](https://github.com/n8n-io/n8n/compare/n8n@1.39.0...n8n@1.39.1) (2024-04-25)
+
+
+### Bug Fixes
+
+* **core:** Fix browser session refreshes not working ([#9212](https://github.com/n8n-io/n8n/issues/9212)) ([a67246c](https://github.com/n8n-io/n8n/commit/a67246c2f87b3f4a8c333812b255b0f67e3d886e))
+* **core:** Stop relying on filesystem for SSH keys ([#9217](https://github.com/n8n-io/n8n/issues/9217)) ([3418dfb](https://github.com/n8n-io/n8n/commit/3418dfb246014adf1ee700a1ef82347699769041))
+* **Discord Node:** When using OAuth2 authentication, check if user is a guild member when sending direct message ([#9183](https://github.com/n8n-io/n8n/issues/9183)) ([d0250b2](https://github.com/n8n-io/n8n/commit/d0250b2d67ba17eb2eb4c1991e862c96b4bb4216))
+* **Google Drive Node:** Create from text operation ([#9185](https://github.com/n8n-io/n8n/issues/9185)) ([44bcc03](https://github.com/n8n-io/n8n/commit/44bcc033974a255a4da0f1f0cc18c3438255ce31))
+* **MySQL Node:** Query to statements splitting fix ([#9207](https://github.com/n8n-io/n8n/issues/9207)) ([67c92dc](https://github.com/n8n-io/n8n/commit/67c92dc728f15dcc93e58617fb31114a89de746a))
+
+
+
 # [1.39.0](https://github.com/n8n-io/n8n/compare/n8n@1.38.0...n8n@1.39.0) (2024-04-24)
 
 
