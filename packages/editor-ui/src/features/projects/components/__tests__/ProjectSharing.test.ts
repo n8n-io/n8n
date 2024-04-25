@@ -1,13 +1,14 @@
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import { getDropdownItems } from '@/__tests__/utils';
-import { createProjectListItem } from '@/__tests__/data/projects';
+import { createProjectListItem, createProjectSharingData } from '@/__tests__/data/projects';
 import ProjectSharing from '@/features/projects/components/ProjectSharing.vue';
 
 const renderComponent = createComponentRenderer(ProjectSharing);
 
 const personalProjects = Array.from({ length: 3 }, createProjectListItem);
 const teamProjects = Array.from({ length: 3 }, () => createProjectListItem('team'));
+const homeProject = createProjectSharingData();
 
 describe('ProjectSharing', () => {
 	it('should render empty select when projects is empty and no selected project existing', async () => {
@@ -20,16 +21,19 @@ describe('ProjectSharing', () => {
 
 		expect(getByTestId('project-sharing-select')).toBeInTheDocument();
 		expect(queryByTestId('project-sharing-list-item')).not.toBeInTheDocument();
+		expect(queryByTestId('project-sharing-owner')).not.toBeInTheDocument();
 	});
 
 	it('should filter, add and remove projects', async () => {
-		const { getByTestId, getAllByTestId, queryAllByTestId, emitted } = renderComponent({
-			props: {
-				projects: personalProjects,
-				modelValue: [personalProjects[0]],
-			},
-		});
+		const { getByTestId, getAllByTestId, queryByTestId, queryAllByTestId, emitted } =
+			renderComponent({
+				props: {
+					projects: personalProjects,
+					modelValue: [personalProjects[0]],
+				},
+			});
 
+		expect(queryByTestId('project-sharing-owner')).not.toBeInTheDocument();
 		// Check the initial state (one selected project comes from the modelValue prop)
 		expect(getAllByTestId('project-sharing-list-item')).toHaveLength(1);
 
@@ -91,6 +95,7 @@ describe('ProjectSharing', () => {
 				modelValue: null,
 			},
 		});
+		expect(queryByTestId('project-sharing-owner')).not.toBeInTheDocument();
 
 		const projectSelect = getByTestId('project-sharing-select');
 		const projectSelectInput = projectSelect.querySelector('input') as HTMLInputElement;
@@ -126,5 +131,19 @@ describe('ProjectSharing', () => {
 				}),
 			],
 		]);
+	});
+
+	it('should render home project as owner when defined', async () => {
+		const { getByTestId, queryByTestId } = renderComponent({
+			props: {
+				projects: personalProjects,
+				modelValue: [],
+				homeProject,
+			},
+		});
+
+		expect(getByTestId('project-sharing-select')).toBeInTheDocument();
+		expect(queryByTestId('project-sharing-list-item')).not.toBeInTheDocument();
+		expect(getByTestId('project-sharing-owner')).toBeInTheDocument();
 	});
 });

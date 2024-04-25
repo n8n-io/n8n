@@ -54,7 +54,7 @@ const options = computed(() => {
 		getProjectPermissions(usersStore.currentUser, projectsStore.currentProject).update
 	) {
 		tabs.push({
-			label: locale.baseText('settings'),
+			label: locale.baseText('projects.settings'),
 			value: VIEWS.PROJECT_SETTINGS,
 			to: { name: VIEWS.PROJECT_SETTINGS, params: { projectId } },
 		});

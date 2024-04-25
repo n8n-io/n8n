@@ -136,7 +136,7 @@ const onSelect = (item: IMenuItem): void => {
 .menuHeader {
 	display: flex;
 	flex-direction: column;
-	flex: 1 1 auto;
+	flex: 0 1 auto;
 	overflow-y: auto;
 }
 
@@ -144,7 +144,7 @@ const onSelect = (item: IMenuItem): void => {
 	display: flex;
 	flex-direction: column;
 	justify-content: space-between;
-	flex: 0 1 auto;
+	flex: 1 1 auto;
 
 	& > div > :global(.el-menu) {
 		background: none;

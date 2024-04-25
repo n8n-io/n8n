@@ -140,8 +140,15 @@ export default defineComponent({
 			try {
 				let workflowToUpdate: IWorkflowDataUpdate | undefined;
 				if (currentWorkflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-					const { createdAt, updatedAt, usedCredentials, ...workflow } =
-						await this.workflowsStore.fetchWorkflow(this.data.id);
+					const {
+						createdAt,
+						updatedAt,
+						usedCredentials,
+						id,
+						homeProject,
+						sharedWithProjects,
+						...workflow
+					} = await this.workflowsStore.fetchWorkflow(this.data.id);
 					workflowToUpdate = workflow;
 
 					this.workflowHelpers.removeForeignCredentialsFromWorkflow(

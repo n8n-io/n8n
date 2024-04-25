@@ -56,7 +56,9 @@
 			<ProjectSharing
 				v-model="sharedWithProjects"
 				:projects="projects"
+				:home-project="credential.homeProject"
 				:readonly="!credentialPermissions.share"
+				:placeholder="$locale.baseText('workflows.shareModal.select.placeholder')"
 			/>
 		</div>
 	</div>

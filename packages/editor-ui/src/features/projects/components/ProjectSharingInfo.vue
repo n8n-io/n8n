@@ -13,11 +13,16 @@ const processedName = computed(() => splitName(props.project.name ?? ''));
 </script>
 <template>
 	<div :class="$style.projectInfo">
-		<N8nAvatar :first-name="processedName.firstName" :last-name="processedName.lastName" />
 		<div>
-			<p>{{ processedName.firstName }} {{ processedName.lastName }}</p>
-			<small>{{ processedName.email }}</small>
+			<N8nAvatar :first-name="processedName.firstName" :last-name="processedName.lastName" />
+			<div>
+				<p v-if="processedName.firstName || processedName.lastName">
+					{{ processedName.firstName }} {{ processedName.lastName }}
+				</p>
+				<small>{{ processedName.email }}</small>
+			</div>
 		</div>
+		<slot></slot>
 	</div>
 </template>
 
@@ -28,6 +33,13 @@ const processedName = computed(() => splitName(props.project.name ?? ''));
 	width: 100%;
 	padding: var(--spacing-2xs) 0;
 	gap: 8px;
+	justify-content: space-between;
+
+	> div {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
 
 	p {
 		font-size: var(--font-size-s);

@@ -616,7 +616,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			let newName = `${currentWorkflowName}${DUPLICATE_POSTFFIX}`;
 			try {
 				const rootStore = useRootStore();
-				const newWorkflow = await getNewWorkflow(rootStore.getRestApiContext, newName);
+				const newWorkflow = await getNewWorkflow(rootStore.getRestApiContext, { name: newName });
 				newName = newWorkflow.name;
 			} catch (e) {}
 			return newName;
