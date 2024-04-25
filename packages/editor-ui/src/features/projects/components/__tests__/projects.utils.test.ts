@@ -11,6 +11,22 @@ describe('splitName', () => {
 			},
 		],
 		[
+			'First Last Third <email@domain.com>',
+			{
+				firstName: 'First Last',
+				lastName: 'Third',
+				email: 'email@domain.com',
+			},
+		],
+		[
+			'First Last Third Fourth <email@domain.com>',
+			{
+				firstName: 'First Last Third',
+				lastName: 'Fourth',
+				email: 'email@domain.com',
+			},
+		],
+		[
 			'<email@domain.com>',
 			{
 				firstName: undefined,
