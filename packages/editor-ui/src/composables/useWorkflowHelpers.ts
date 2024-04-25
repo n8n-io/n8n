@@ -37,6 +37,7 @@ import type {
 	INodeTypesMaxCount,
 	INodeUi,
 	ITag,
+	IUpdateInformation,
 	IWorkflowData,
 	IWorkflowDataUpdate,
 	IWorkflowDb,
@@ -70,7 +71,7 @@ import { useCanvasStore } from '@/stores/canvas.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { useI18n } from '@/composables/useI18n';
-import type { Router } from 'vue-router';
+import type { useRouter } from 'vue-router';
 import { useTelemetry } from '@/composables/useTelemetry';
 
 export function resolveParameter(
@@ -175,13 +176,17 @@ export function resolveParameter(
 	};
 
 	if (activeNode?.type === HTTP_REQUEST_NODE_TYPE) {
-		// Add $response for HTTP Request-Nodes as it is used
+		const EMPTY_RESPONSE = { statusCode: 200, headers: {}, body: {} };
+		const EMPTY_REQUEST = { headers: {}, body: {}, qs: {} };
+		// Add $request,$response,$pageCount for HTTP Request-Nodes as it is used
 		// in pagination expressions
+		additionalKeys.$pageCount = 0;
 		additionalKeys.$response = get(
 			executionData,
 			['data', 'executionData', 'contextData', `node:${activeNode.name}`, 'response'],
-			{},
+			EMPTY_RESPONSE,
 		);
+		additionalKeys.$request = EMPTY_REQUEST;
 	}
 
 	let runIndexCurrent = opts?.targetItem?.runIndex ?? 0;
@@ -192,7 +197,12 @@ export function resolveParameter(
 	) {
 		runIndexCurrent = workflowRunData[contextNode!.name].length - 1;
 	}
-	const _executeData = executeData(parentNode, contextNode!.name, inputName, runIndexCurrent);
+	let _executeData = executeData(parentNode, contextNode!.name, inputName, runIndexCurrent);
+
+	if (!_executeData.source) {
+		// fallback to parent's run index for multi-output case
+		_executeData = executeData(parentNode, contextNode!.name, inputName, runIndexParent);
+	}
 
 	ExpressionEvaluatorProxy.setEvaluator(
 		useSettingsStore().settings.expressions?.evaluator ?? 'tmpl',
@@ -450,7 +460,8 @@ export function executeData(
 	return executeData;
 }
 
-export function useWorkflowHelpers(router: Router) {
+export function useWorkflowHelpers(options: { router: ReturnType<typeof useRouter> }) {
+	const router = options.router;
 	const nodeTypesStore = useNodeTypesStore();
 	const rootStore = useRootStore();
 	const templatesStore = useTemplatesStore();
@@ -509,7 +520,7 @@ export function useWorkflowHelpers(router: Router) {
 		return count;
 	}
 
-	// Checks if everything in the workflow is complete and ready to be executed
+	/** Checks if everything in the workflow is complete and ready to be executed */
 	function checkReadyForExecution(workflow: Workflow, lastNodeName?: string) {
 		let node: INode;
 		let nodeType: INodeType | undefined;
@@ -727,12 +738,21 @@ export function useWorkflowHelpers(router: Router) {
 		return nodeData;
 	}
 
-	function getWebhookExpressionValue(webhookData: IWebhookDescription, key: string): string {
+	function getWebhookExpressionValue(
+		webhookData: IWebhookDescription,
+		key: string,
+		stringify = true,
+	): string {
 		if (webhookData[key] === undefined) {
 			return 'empty';
 		}
 		try {
-			return resolveExpression(webhookData[key] as string) as string;
+			return resolveExpression(
+				webhookData[key] as string,
+				undefined,
+				undefined,
+				stringify,
+			) as string;
 		} catch (e) {
 			return i18n.baseText('nodeWebhooks.invalidExpression');
 		}
@@ -774,6 +794,7 @@ export function useWorkflowHelpers(router: Router) {
 			c?: number;
 			additionalKeys?: IWorkflowDataProxyAdditionalKeys;
 		} = {},
+		stringifyObject = true,
 	) {
 		const parameters = {
 			__xxxxxxx__: expression,
@@ -785,7 +806,7 @@ export function useWorkflowHelpers(router: Router) {
 		}
 
 		const obj = returnData.__xxxxxxx__;
-		if (typeof obj === 'object') {
+		if (typeof obj === 'object' && stringifyObject) {
 			const proxy = obj as { isProxy: boolean; toJSON?: () => unknown } | null;
 			if (proxy?.isProxy && proxy.toJSON) return JSON.stringify(proxy.toJSON());
 			const workflow = getCurrentWorkflow();
@@ -1021,7 +1042,7 @@ export function useWorkflowHelpers(router: Router) {
 					key: 'webhookId',
 					value: changedNodes[nodeName],
 					name: nodeName,
-				};
+				} as IUpdateInformation;
 				workflowsStore.setNodeValue(changes);
 			});
 

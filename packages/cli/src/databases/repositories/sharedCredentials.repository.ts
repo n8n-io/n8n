@@ -23,11 +23,12 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 		return sharedCredential.credentials;
 	}
 
-	async findByCredentialIds(credentialIds: string[]) {
+	async findByCredentialIds(credentialIds: string[], role: CredentialSharingRole) {
 		return await this.find({
 			relations: ['credentials', 'user'],
 			where: {
 				credentialsId: In(credentialIds),
+				role,
 			},
 		});
 	}

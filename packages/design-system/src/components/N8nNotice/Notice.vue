@@ -7,7 +7,7 @@
 						:id="`${id}-content`"
 						:class="showFullContent ? $style['expanded'] : $style['truncated']"
 						role="region"
-						v-html="sanitizeHtml(showFullContent ? fullContent : content)"
+						v-html="displayContent"
 					/>
 				</slot>
 			</N8nText>
@@ -15,89 +15,70 @@
 	</div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
-import sanitizeHtml from 'sanitize-html';
+<script lang="ts" setup>
+import { computed, ref, useCssModule } from 'vue';
+import sanitize from 'sanitize-html';
 import N8nText from '../../components/N8nText';
-import Locale from '../../mixins/locale';
 import { uid } from '../../utils';
 
-export default defineComponent({
-	name: 'N8nNotice',
-	directives: {},
-	components: {
-		N8nText,
-	},
-	mixins: [Locale],
-	props: {
-		id: {
-			type: String,
-			default: () => uid('notice'),
-		},
-		theme: {
-			type: String,
-			default: 'warning',
-		},
-		content: {
-			type: String,
-			default: '',
-		},
-		fullContent: {
-			type: String,
-			default: '',
-		},
-	},
-	data() {
-		return {
-			showFullContent: false,
-		};
-	},
-	computed: {
-		classes(): string[] {
-			return ['notice', this.$style.notice, this.$style[this.theme]];
-		},
-		canTruncate(): boolean {
-			return this.fullContent !== undefined;
-		},
-	},
-	methods: {
-		toggleExpanded() {
-			this.showFullContent = !this.showFullContent;
-		},
-		sanitizeHtml(text: string): string {
-			return sanitizeHtml(text, {
-				allowedAttributes: {
-					a: [
-						'data-key',
-						'href',
-						'target',
-						'data-action',
-						'data-action-parameter-connectiontype',
-						'data-action-parameter-creatorview',
-					],
-				},
-			});
-		},
-		onClick(event: MouseEvent) {
-			if (!(event.target instanceof HTMLElement)) return;
+interface NoticeProps {
+	id?: string;
+	theme?: 'success' | 'warning' | 'danger' | 'info';
+	content?: string;
+	fullContent?: string;
+}
 
-			if (event.target.localName !== 'a') return;
-
-			if (event.target.dataset?.key) {
-				event.stopPropagation();
-				event.preventDefault();
-
-				if (event.target.dataset.key === 'show-less') {
-					this.showFullContent = false;
-				} else if (this.canTruncate && event.target.dataset.key === 'toggle-expand') {
-					this.showFullContent = !this.showFullContent;
-				} else {
-					this.$emit('action', event.target.dataset.key);
-				}
-			}
-		},
-	},
+const props = withDefaults(defineProps<NoticeProps>(), {
+	id: () => uid('notice'),
+	theme: 'warning',
+	content: '',
+	fullContent: '',
 });
+
+const $emit = defineEmits<{
+	(event: 'action', key: string): void;
+}>();
+
+const $style = useCssModule();
+
+const classes = computed(() => ['notice', $style.notice, $style[props.theme]]);
+const canTruncate = computed(() => props.fullContent !== undefined);
+
+const showFullContent = ref(false);
+const displayContent = computed(() =>
+	sanitize(showFullContent.value ? props.fullContent : props.content, {
+		allowedAttributes: {
+			a: [
+				'data-key',
+				'href',
+				'target',
+				'data-action',
+				'data-action-parameter-connectiontype',
+				'data-action-parameter-creatorview',
+			],
+		},
+	}),
+);
+
+const onClick = (event: MouseEvent) => {
+	if (!(event.target instanceof HTMLElement)) return;
+
+	if (event.target.localName !== 'a') return;
+
+	const anchorKey = event.target.dataset?.key;
+	if (anchorKey) {
+		event.stopPropagation();
+		event.preventDefault();
+
+		if (anchorKey === 'show-less') {
+			showFullContent.value = false;
+		} else if (canTruncate.value && anchorKey === 'toggle-expand') {
+			showFullContent.value = !showFullContent.value;
+		} else {
+			$emit('action', anchorKey);
+		}
+	}
+};
 </script>
 
 <style lang="scss" module>

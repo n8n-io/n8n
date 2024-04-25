@@ -16,81 +16,81 @@ exports[`components > N8nDatatable > should render correctly 1`] = `
         <td class=""><span>1</span></td>
         <td class=""><span>Richard Hendricks</span></td>
         <td class=""><span>29</span></td>
-        <td class=""><button class="button button primary medium" aria-live="polite" column="[object Object]">
-            <!--v-if--><span>Button 1</span>
-          </button></td>
+        <td class="">
+          <n8n-button-stub block="false" element="button" label="" square="false" active="false" disabled="false" loading="false" outline="false" size="medium" text="false" type="primary" column="[object Object]"></n8n-button-stub>
+        </td>
       </tr>
       <tr>
         <td class=""><span>2</span></td>
         <td class=""><span>Bertram Gilfoyle</span></td>
         <td class=""><span>44</span></td>
-        <td class=""><button class="button button primary medium" aria-live="polite" column="[object Object]">
-            <!--v-if--><span>Button 2</span>
-          </button></td>
+        <td class="">
+          <n8n-button-stub block="false" element="button" label="" square="false" active="false" disabled="false" loading="false" outline="false" size="medium" text="false" type="primary" column="[object Object]"></n8n-button-stub>
+        </td>
       </tr>
       <tr>
         <td class=""><span>3</span></td>
         <td class=""><span>Dinesh Chugtai</span></td>
         <td class=""><span>31</span></td>
-        <td class=""><button class="button button primary medium" aria-live="polite" column="[object Object]">
-            <!--v-if--><span>Button 3</span>
-          </button></td>
+        <td class="">
+          <n8n-button-stub block="false" element="button" label="" square="false" active="false" disabled="false" loading="false" outline="false" size="medium" text="false" type="primary" column="[object Object]"></n8n-button-stub>
+        </td>
       </tr>
       <tr>
         <td class=""><span>4</span></td>
         <td class=""><span>Jared Dunn </span></td>
         <td class=""><span>38</span></td>
-        <td class=""><button class="button button primary medium" aria-live="polite" column="[object Object]">
-            <!--v-if--><span>Button 4</span>
-          </button></td>
+        <td class="">
+          <n8n-button-stub block="false" element="button" label="" square="false" active="false" disabled="false" loading="false" outline="false" size="medium" text="false" type="primary" column="[object Object]"></n8n-button-stub>
+        </td>
       </tr>
       <tr>
         <td class=""><span>5</span></td>
         <td class=""><span>Richard Hendricks</span></td>
         <td class=""><span>29</span></td>
-        <td class=""><button class="button button primary medium" aria-live="polite" column="[object Object]">
-            <!--v-if--><span>Button 5</span>
-          </button></td>
+        <td class="">
+          <n8n-button-stub block="false" element="button" label="" square="false" active="false" disabled="false" loading="false" outline="false" size="medium" text="false" type="primary" column="[object Object]"></n8n-button-stub>
+        </td>
       </tr>
       <tr>
         <td class=""><span>6</span></td>
         <td class=""><span>Bertram Gilfoyle</span></td>
         <td class=""><span>44</span></td>
-        <td class=""><button class="button button primary medium" aria-live="polite" column="[object Object]">
-            <!--v-if--><span>Button 6</span>
-          </button></td>
+        <td class="">
+          <n8n-button-stub block="false" element="button" label="" square="false" active="false" disabled="false" loading="false" outline="false" size="medium" text="false" type="primary" column="[object Object]"></n8n-button-stub>
+        </td>
       </tr>
       <tr>
         <td class=""><span>7</span></td>
         <td class=""><span>Dinesh Chugtai</span></td>
         <td class=""><span>31</span></td>
-        <td class=""><button class="button button primary medium" aria-live="polite" column="[object Object]">
-            <!--v-if--><span>Button 7</span>
-          </button></td>
+        <td class="">
+          <n8n-button-stub block="false" element="button" label="" square="false" active="false" disabled="false" loading="false" outline="false" size="medium" text="false" type="primary" column="[object Object]"></n8n-button-stub>
+        </td>
       </tr>
       <tr>
         <td class=""><span>8</span></td>
         <td class=""><span>Jared Dunn </span></td>
         <td class=""><span>38</span></td>
-        <td class=""><button class="button button primary medium" aria-live="polite" column="[object Object]">
-            <!--v-if--><span>Button 8</span>
-          </button></td>
+        <td class="">
+          <n8n-button-stub block="false" element="button" label="" square="false" active="false" disabled="false" loading="false" outline="false" size="medium" text="false" type="primary" column="[object Object]"></n8n-button-stub>
+        </td>
       </tr>
       <tr>
         <td class=""><span>9</span></td>
         <td class=""><span>Richard Hendricks</span></td>
         <td class=""><span>29</span></td>
-        <td class=""><button class="button button primary medium" aria-live="polite" column="[object Object]">
-            <!--v-if--><span>Button 9</span>
-          </button></td>
+        <td class="">
+          <n8n-button-stub block="false" element="button" label="" square="false" active="false" disabled="false" loading="false" outline="false" size="medium" text="false" type="primary" column="[object Object]"></n8n-button-stub>
+        </td>
       </tr>
       <tr>
         <td class=""><span>10</span></td>
         <td class=""><span>Bertram Gilfoyle</span></td>
         <td class=""><span>44</span></td>
-        <td class=""><button class="button button primary medium" aria-live="polite" column="[object Object]">
-            <!--v-if--><span>Button 10</span>
-          </button></td>
+        <td class="">
+          <n8n-button-stub block="false" element="button" label="" square="false" active="false" disabled="false" loading="false" outline="false" size="medium" text="false" type="primary" column="[object Object]"></n8n-button-stub>
+        </td>
       </tr>
     </tbody>
   </table>

@@ -114,9 +114,9 @@ export function prepareOptions(options: IDataObject, guildId?: string) {
 	return options;
 }
 
-export function prepareEmbeds(this: IExecuteFunctions, embeds: IDataObject[], i = 0) {
+export function prepareEmbeds(this: IExecuteFunctions, embeds: IDataObject[]) {
 	return embeds
-		.map((embed, index) => {
+		.map((embed) => {
 			let embedReturnData: IDataObject = {};
 
 			if (embed.inputMethod === 'json') {
@@ -261,7 +261,7 @@ export async function checkAccessToChannel(
 	if (!guildId) {
 		throw new NodeOperationError(
 			this.getNode(),
-			`Could not fing server for channel with the id ${channelId}`,
+			`Could not find server for channel with the id ${channelId}`,
 			{
 				itemIndex,
 			},

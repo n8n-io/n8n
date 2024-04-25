@@ -53,104 +53,76 @@
 	</div>
 </template>
 
-<script lang="ts">
+<script lang="ts" setup>
+import { computed, onMounted, ref } from 'vue';
+import { useRoute } from 'vue-router';
 import { ElMenu } from 'element-plus';
 import N8nMenuItem from '../N8nMenuItem';
-import type { PropType } from 'vue';
-import { defineComponent } from 'vue';
-import type { IMenuItem, RouteObject } from '../../types';
+import type { IMenuItem } from '../../types';
 import { doesMenuItemMatchCurrentRoute } from '../N8nMenuItem/routerUtil';
 
-export default defineComponent({
-	name: 'N8nMenu',
-	components: {
-		ElMenu,
-		N8nMenuItem,
-	},
-	props: {
-		type: {
-			type: String,
-			default: 'primary',
-			validator: (value: string): boolean => ['primary', 'secondary'].includes(value),
-		},
-		defaultActive: {
-			type: String,
-		},
-		collapsed: {
-			type: Boolean,
-			default: false,
-		},
-		transparentBackground: {
-			type: Boolean,
-			default: false,
-		},
-		mode: {
-			type: String,
-			default: 'router',
-			validator: (value: string): boolean => ['router', 'tabs'].includes(value),
-		},
-		tooltipDelay: {
-			type: Number,
-			default: 300,
-		},
-		items: {
-			type: Array as PropType<IMenuItem[]>,
-			default: (): IMenuItem[] => [],
-		},
-		modelValue: {
-			type: [String, Boolean],
-			default: '',
-		},
-	},
-	data() {
-		return {
-			activeTab: this.value,
-		};
-	},
-	computed: {
-		upperMenuItems(): IMenuItem[] {
-			return this.items.filter(
-				(item: IMenuItem) => item.position === 'top' && item.available !== false,
-			);
-		},
-		lowerMenuItems(): IMenuItem[] {
-			return this.items.filter(
-				(item: IMenuItem) => item.position === 'bottom' && item.available !== false,
-			);
-		},
-		currentRoute(): RouteObject {
-			return (
-				(this as typeof this & { $route: RouteObject }).$route || {
-					name: '',
-					path: '',
-				}
-			);
-		},
-	},
-	mounted() {
-		if (this.mode === 'router') {
-			const found = this.items.find((item) =>
-				doesMenuItemMatchCurrentRoute(item, this.currentRoute),
-			);
+interface MenuProps {
+	type?: 'primary' | 'secondary';
+	defaultActive?: string;
+	collapsed?: boolean;
+	transparentBackground?: boolean;
+	mode?: 'router' | 'tabs';
+	tooltipDelay?: number;
+	items?: IMenuItem[];
+	modelValue?: string;
+}
 
-			this.activeTab = found ? found.id : '';
-		} else {
-			this.activeTab = this.items.length > 0 ? this.items[0].id : '';
-		}
-
-		this.$emit('update:modelValue', this.activeTab);
-	},
-	methods: {
-		onSelect(item: IMenuItem): void {
-			if (this.mode === 'tabs') {
-				this.activeTab = item.id;
-			}
-
-			this.$emit('select', item.id);
-			this.$emit('update:modelValue', item.id);
-		},
-	},
+const props = withDefaults(defineProps<MenuProps>(), {
+	type: 'primary',
+	collapsed: false,
+	transparentBackground: false,
+	mode: 'router',
+	tooltipDelay: 300,
+	items: () => [],
 });
+const $route = useRoute();
+
+const $emit = defineEmits<{
+	(event: 'select', itemId: string);
+	(event: 'update:modelValue', itemId: string);
+}>();
+
+const activeTab = ref(props.modelValue);
+
+const upperMenuItems = computed(() =>
+	props.items.filter((item: IMenuItem) => item.position === 'top' && item.available !== false),
+);
+
+const lowerMenuItems = computed(() =>
+	props.items.filter((item: IMenuItem) => item.position === 'bottom' && item.available !== false),
+);
+
+const currentRoute = computed(() => {
+	return $route ?? { name: '', path: '' };
+});
+
+onMounted(() => {
+	if (props.mode === 'router') {
+		const found = props.items.find((item) =>
+			doesMenuItemMatchCurrentRoute(item, currentRoute.value),
+		);
+
+		activeTab.value = found ? found.id : '';
+	} else {
+		activeTab.value = props.items.length > 0 ? props.items[0].id : '';
+	}
+
+	$emit('update:modelValue', activeTab.value);
+});
+
+const onSelect = (item: IMenuItem): void => {
+	if (props.mode === 'tabs') {
+		activeTab.value = item.id;
+	}
+
+	$emit('select', item.id);
+	$emit('update:modelValue', item.id);
+};
 </script>
 
 <style lang="scss" module>

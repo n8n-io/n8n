@@ -20,6 +20,10 @@ export class NodeOperationError extends NodeError {
 		}
 		super(node, error);
 
+		if (error instanceof NodeError && error?.messages?.length) {
+			error.messages.forEach((message) => this.addToMessages(message));
+		}
+
 		if (options.message) this.message = options.message;
 		if (options.level) this.level = options.level;
 		if (options.functionality) this.functionality = options.functionality;
@@ -32,9 +36,9 @@ export class NodeOperationError extends NodeError {
 			this.description = undefined;
 		}
 
-		[this.message, this.description] = this.setDescriptiveErrorMessage(
+		[this.message, this.messages] = this.setDescriptiveErrorMessage(
 			this.message,
-			this.description,
+			this.messages,
 			undefined,
 			options.messageMapping,
 		);

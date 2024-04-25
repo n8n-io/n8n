@@ -35,7 +35,7 @@ export function getSecretsProxy(additionalData: IWorkflowExecuteAdditionalData):
 					return new Proxy(
 						{},
 						{
-							get(target2, secretName): IDataObject | undefined {
+							get(target2, secretName) {
 								if (typeof secretName !== 'string') {
 									return;
 								}
@@ -47,7 +47,7 @@ export function getSecretsProxy(additionalData: IWorkflowExecuteAdditionalData):
 								}
 								const retValue = secretsHelpers.getSecret(providerName, secretName);
 								if (typeof retValue === 'object' && retValue !== null) {
-									return buildSecretsValueProxy(retValue) as IDataObject;
+									return buildSecretsValueProxy(retValue as IDataObject);
 								}
 								return retValue;
 							},

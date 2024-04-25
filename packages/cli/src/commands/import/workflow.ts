@@ -13,6 +13,7 @@ import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import type { IWorkflowToImport } from '@/Interfaces';
 import { ImportService } from '@/services/import.service';
 import { BaseCommand } from '../BaseCommand';
+import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 
 function assertHasWorkflowsToImport(workflows: unknown): asserts workflows is IWorkflowToImport[] {
 	if (!Array.isArray(workflows)) {
@@ -78,53 +79,52 @@ export class ImportWorkflowsCommand extends BaseCommand {
 			}
 		}
 
-		const user = flags.userId ? await this.getAssignee(flags.userId) : await this.getOwner();
+		const owner = await this.getOwner();
 
-		let totalImported = 0;
+		const workflows = await this.readWorkflows(flags.input, flags.separate);
 
-		if (flags.separate) {
-			let { input: inputPath } = flags;
-
-			if (process.platform === 'win32') {
-				inputPath = inputPath.replace(/\\/g, '/');
-			}
-
-			const files = await glob('*.json', {
-				cwd: inputPath,
-				absolute: true,
-			});
-
-			totalImported = files.length;
-			this.logger.info(`Importing ${totalImported} workflows...`);
-
-			for (const file of files) {
-				const workflow = jsonParse<IWorkflowToImport>(fs.readFileSync(file, { encoding: 'utf8' }));
-				if (!workflow.id) {
-					workflow.id = generateNanoId();
-				}
-
-				const _workflow = Container.get(WorkflowRepository).create(workflow);
-
-				await Container.get(ImportService).importWorkflows([_workflow], user.id);
-			}
-
-			this.reportSuccess(totalImported);
-			process.exit();
+		const result = await this.checkRelations(workflows, flags.userId);
+		if (!result.success) {
+			throw new ApplicationError(result.message);
 		}
 
-		const workflows = jsonParse<IWorkflowToImport[]>(
-			fs.readFileSync(flags.input, { encoding: 'utf8' }),
-		);
+		this.logger.info(`Importing ${workflows.length} workflows...`);
 
-		const _workflows = workflows.map((w) => Container.get(WorkflowRepository).create(w));
+		await Container.get(ImportService).importWorkflows(workflows, flags.userId ?? owner.id);
 
-		assertHasWorkflowsToImport(workflows);
+		this.reportSuccess(workflows.length);
+	}
 
-		totalImported = workflows.length;
+	private async checkRelations(workflows: WorkflowEntity[], userId: string | undefined) {
+		if (!userId) {
+			return {
+				success: true as const,
+				message: undefined,
+			};
+		}
 
-		await Container.get(ImportService).importWorkflows(_workflows, user.id);
+		for (const workflow of workflows) {
+			if (!(await this.workflowExists(workflow))) {
+				continue;
+			}
 
-		this.reportSuccess(totalImported);
+			const ownerId = await this.getWorkflowOwner(workflow);
+			if (!ownerId) {
+				continue;
+			}
+
+			if (ownerId !== userId) {
+				return {
+					success: false as const,
+					message: `The credential with id "${workflow.id}" is already owned by the user with the id "${ownerId}". It can't be re-owned by the user with the id "${userId}"`,
+				};
+			}
+		}
+
+		return {
+			success: true as const,
+			message: undefined,
+		};
 	}
 
 	async catch(error: Error) {
@@ -145,13 +145,48 @@ export class ImportWorkflowsCommand extends BaseCommand {
 		return owner;
 	}
 
-	private async getAssignee(userId: string) {
-		const user = await Container.get(UserRepository).findOneBy({ id: userId });
+	private async getWorkflowOwner(workflow: WorkflowEntity) {
+		const sharing = await Container.get(SharedWorkflowRepository).findOneBy({
+			workflowId: workflow.id,
+			role: 'workflow:owner',
+		});
 
-		if (!user) {
-			throw new ApplicationError('Failed to find user', { extra: { userId } });
+		return sharing?.userId;
+	}
+
+	private async workflowExists(workflow: WorkflowEntity) {
+		return await Container.get(WorkflowRepository).existsBy({ id: workflow.id });
+	}
+
+	private async readWorkflows(path: string, separate: boolean): Promise<WorkflowEntity[]> {
+		if (process.platform === 'win32') {
+			path = path.replace(/\\/g, '/');
 		}
 
-		return user;
+		if (separate) {
+			const files = await glob('*.json', {
+				cwd: path,
+				absolute: true,
+			});
+			const workflowInstances = files.map((file) => {
+				const workflow = jsonParse<IWorkflowToImport>(fs.readFileSync(file, { encoding: 'utf8' }));
+				if (!workflow.id) {
+					workflow.id = generateNanoId();
+				}
+
+				const workflowInstance = Container.get(WorkflowRepository).create(workflow);
+
+				return workflowInstance;
+			});
+
+			return workflowInstances;
+		} else {
+			const workflows = jsonParse<IWorkflowToImport[]>(fs.readFileSync(path, { encoding: 'utf8' }));
+
+			const workflowInstances = workflows.map((w) => Container.get(WorkflowRepository).create(w));
+			assertHasWorkflowsToImport(workflows);
+
+			return workflowInstances;
+		}
 	}
 }

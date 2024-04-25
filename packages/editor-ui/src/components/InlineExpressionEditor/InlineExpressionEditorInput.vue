@@ -1,151 +1,145 @@
-<template>
-	<div ref="root" :class="$style.editor" data-test-id="inline-expression-editor-input"></div>
-</template>
-
-<script lang="ts">
-import { acceptCompletion, autocompletion, completionStatus } from '@codemirror/autocomplete';
-import { history, redo, undo } from '@codemirror/commands';
-import { Compartment, EditorState, Prec } from '@codemirror/state';
+<script setup lang="ts">
+import { startCompletion } from '@codemirror/autocomplete';
+import { history } from '@codemirror/commands';
+import { type EditorState, Prec, type SelectionRange } from '@codemirror/state';
 import { EditorView, keymap } from '@codemirror/view';
-import type { PropType } from 'vue';
-import { defineComponent } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, toValue, watch } from 'vue';
 
-import { completionManager } from '@/mixins/completionManager';
-import { expressionManager } from '@/mixins/expressionManager';
+import { useExpressionEditor } from '@/composables/useExpressionEditor';
 import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
-import { n8nLang } from '@/plugins/codemirror/n8nLang';
-import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
-import { isEqual } from 'lodash-es';
+import {
+	autocompleteKeyMap,
+	enterKeyMap,
+	historyKeyMap,
+	tabKeyMap,
+} from '@/plugins/codemirror/keymap';
+import { n8nAutocompletion, n8nLang } from '@/plugins/codemirror/n8nLang';
+import { useNDVStore } from '@/stores/ndv.store';
+import type { Segment } from '@/types/expressions';
+import { removeExpressionPrefix } from '@/utils/expressions';
+import { createEventBus, type EventBus } from 'n8n-design-system/utils';
 import type { IDataObject } from 'n8n-workflow';
 import { inputTheme } from './theme';
 
-const editableConf = new Compartment();
+type Props = {
+	modelValue: string;
+	path: string;
+	rows?: number;
+	isReadonly?: boolean;
+	additionalData?: IDataObject;
+	eventBus?: EventBus;
+};
 
-export default defineComponent({
-	name: 'InlineExpressionEditorInput',
-	mixins: [completionManager, expressionManager],
-	props: {
-		modelValue: {
-			type: String,
-			required: true,
-		},
-		isReadOnly: {
-			type: Boolean,
-			default: false,
-		},
-		rows: {
-			type: Number,
-			default: 5,
-		},
-		path: {
-			type: String,
-			required: true,
-		},
-		additionalData: {
-			type: Object as PropType<IDataObject>,
-			default: () => ({}),
-		},
-	},
-	watch: {
-		isReadOnly(newValue: boolean) {
-			this.editor?.dispatch({
-				effects: editableConf.reconfigure(EditorView.editable.of(!newValue)),
-			});
-		},
-		modelValue(newValue) {
-			const isInternalChange = newValue === this.editor?.state.doc.toString();
+const props = withDefaults(defineProps<Props>(), {
+	rows: 5,
+	isReadonly: false,
+	additionalData: () => ({}),
+	eventBus: () => createEventBus(),
+});
 
-			if (isInternalChange) return;
+const emit = defineEmits<{
+	(event: 'update:model-value', value: { value: string; segments: Segment[] }): void;
+	(event: 'update:selection', value: { state: EditorState; selection: SelectionRange }): void;
+	(event: 'focus'): void;
+}>();
 
-			// manual update on external change, e.g. from expression modal or mapping drop
+const ndvStore = useNDVStore();
 
-			this.editor?.dispatch({
-				changes: {
-					from: 0,
-					to: this.editor?.state.doc.length,
-					insert: newValue,
-				},
-			});
-		},
-		displayableSegments(segments, newSegments) {
-			if (isEqual(segments, newSegments)) return;
+const root = ref<HTMLElement>();
+const extensions = computed(() => [
+	Prec.highest(
+		keymap.of([...tabKeyMap(true), ...enterKeyMap, ...autocompleteKeyMap, ...historyKeyMap]),
+	),
+	n8nLang(),
+	n8nAutocompletion(),
+	inputTheme({ rows: props.rows }),
+	history(),
+	expressionInputHandler(),
+	EditorView.lineWrapping,
+]);
+const editorValue = ref<string>(removeExpressionPrefix(props.modelValue));
+const {
+	editor: editorRef,
+	segments,
+	selection,
+	readEditorValue,
+	setCursorPosition,
+	hasFocus,
+	focus,
+} = useExpressionEditor({
+	editorRef: root,
+	editorValue,
+	extensions,
+	isReadOnly: props.isReadonly,
+	autocompleteTelemetry: { enabled: true, parameterPath: props.path },
+	additionalData: props.additionalData,
+});
 
-			highlighter.removeColor(this.editor, this.plaintextSegments);
-			highlighter.addColor(this.editor, this.resolvableSegments);
-
-			this.$emit('change', {
-				value: this.unresolvedExpression,
-				segments: this.displayableSegments,
-			});
-		},
-	},
-	mounted() {
-		const extensions = [
-			n8nLang(),
-			inputTheme({ rows: this.rows }),
-			Prec.highest(
-				keymap.of([
-					{ key: 'Tab', run: acceptCompletion },
-					{
-						any(view: EditorView, event: KeyboardEvent) {
-							if (event.key === 'Escape' && completionStatus(view.state) !== null) {
-								event.stopPropagation();
-							}
-
-							return false;
-						},
-					},
-					{ key: 'Mod-z', run: undo },
-					{ key: 'Mod-Shift-z', run: redo },
-				]),
-			),
-			autocompletion(),
-			history(),
-			expressionInputHandler(),
-			EditorView.lineWrapping,
-			editableConf.of(EditorView.editable.of(!this.isReadOnly)),
-			EditorView.contentAttributes.of({ 'data-gramm': 'false' }), // disable grammarly
-			EditorView.domEventHandlers({
-				focus: () => {
-					this.$emit('focus');
-				},
-			}),
-			EditorView.updateListener.of((viewUpdate) => {
-				if (!this.editor || !viewUpdate.docChanged) return;
-
-				// Force segments value update by keeping track of editor state
-				this.editorState = this.editor.state;
-
-				setTimeout(() => {
-					try {
-						this.trackCompletion(viewUpdate, this.path);
-					} catch {}
-				});
-			}),
-		];
-
-		this.editor = new EditorView({
-			parent: this.$refs.root as HTMLDivElement,
-			state: EditorState.create({
-				doc: this.modelValue.startsWith('=') ? this.modelValue.slice(1) : this.modelValue,
-				extensions,
-			}),
-		});
-
-		this.editorState = this.editor.state;
-
-		highlighter.addColor(this.editor, this.resolvableSegments);
-	},
-	beforeUnmount() {
-		this.editor?.destroy();
-	},
-	methods: {
-		focus() {
-			this.editor?.focus();
-		},
+defineExpose({
+	focus: () => {
+		if (!hasFocus.value) {
+			setCursorPosition('lastExpression');
+			focus();
+		}
 	},
 });
+
+async function onDrop() {
+	await nextTick();
+
+	const editor = toValue(editorRef);
+	if (!editor) return;
+
+	focus();
+
+	setCursorPosition('lastExpression');
+
+	if (!ndvStore.isAutocompleteOnboarded) {
+		setTimeout(() => {
+			startCompletion(editor);
+		});
+	}
+}
+
+watch(
+	() => props.modelValue,
+	(newValue) => {
+		editorValue.value = removeExpressionPrefix(newValue);
+	},
+);
+
+watch(segments.display, (newSegments) => {
+	emit('update:model-value', {
+		value: '=' + readEditorValue(),
+		segments: newSegments,
+	});
+});
+
+watch(selection, (newSelection: SelectionRange) => {
+	if (editorRef.value) {
+		emit('update:selection', {
+			state: editorRef.value.state,
+			selection: newSelection,
+		});
+	}
+});
+
+watch(hasFocus, (focused) => {
+	if (focused) emit('focus');
+});
+
+onMounted(() => {
+	props.eventBus.on('drop', onDrop);
+});
+
+onBeforeUnmount(() => {
+	props.eventBus.off('drop', onDrop);
+});
 </script>
+
+<template>
+	<div ref="root" :class="$style.editor" data-test-id="inline-expression-editor-input"></div>
+</template>
 
 <style lang="scss" module>
 .editor div[contenteditable='false'] {

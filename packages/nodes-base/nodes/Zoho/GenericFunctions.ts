@@ -80,7 +80,7 @@ export async function zohoApiRequest(
 			? {
 					message: error.cause.data.message || 'The Zoho API returned an error.',
 					description: JSON.stringify(error.cause.data, null, 2),
-			  }
+				}
 			: undefined;
 		throw new NodeApiError(this.getNode(), error as JsonObject, args);
 	}

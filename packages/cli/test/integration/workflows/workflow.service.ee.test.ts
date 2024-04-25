@@ -28,6 +28,7 @@ describe('EnterpriseWorkflowService', () => {
 			Container.get(SharedWorkflowRepository),
 			Container.get(WorkflowRepository),
 			Container.get(CredentialsRepository),
+			mock(),
 		);
 	});
 

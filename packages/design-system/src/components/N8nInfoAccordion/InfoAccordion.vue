@@ -38,75 +38,53 @@
 	</div>
 </template>
 
-<script lang="ts">
+<script lang="ts" setup>
+import { onMounted, ref } from 'vue';
 import N8nText from '../N8nText';
 import N8nIcon from '../N8nIcon';
-import type { PropType } from 'vue';
-import { defineComponent } from 'vue';
-import type { EventBus } from '../../utils';
-import { createEventBus } from '../../utils';
+import type { IconColor } from '@/types/icon';
+import { createEventBus, type EventBus } from '../../utils';
 
-export interface IAccordionItem {
+interface IAccordionItem {
 	id: string;
 	label: string;
 	icon: string;
-	iconColor?: string;
+	iconColor?: IconColor;
 	tooltip?: string;
 }
 
-export default defineComponent({
-	name: 'N8nInfoAccordion',
-	components: {
-		N8nText,
-		N8nIcon,
-	},
-	props: {
-		title: {
-			type: String,
-		},
-		description: {
-			type: String,
-		},
-		items: {
-			type: Array as PropType<IAccordionItem[]>,
-			default: () => [],
-		},
-		initiallyExpanded: {
-			type: Boolean,
-			default: false,
-		},
-		headerIcon: {
-			type: Object as PropType<{ icon: string; color: string }>,
-			required: false,
-		},
-		eventBus: {
-			type: Object as PropType<EventBus>,
-			default: () => createEventBus(),
-		},
-	},
-	data() {
-		return {
-			expanded: false,
-		};
-	},
-	mounted() {
-		this.eventBus.on('expand', () => {
-			this.expanded = true;
-		});
-		this.expanded = this.initiallyExpanded;
-	},
-	methods: {
-		toggle() {
-			this.expanded = !this.expanded;
-		},
-		onClick(e: MouseEvent) {
-			this.$emit('click:body', e);
-		},
-		onTooltipClick(item: string, event: MouseEvent) {
-			this.$emit('tooltipClick', item, event);
-		},
-	},
+interface InfoAccordionProps {
+	title?: string;
+	description?: string;
+	items?: IAccordionItem[];
+	initiallyExpanded?: boolean;
+	headerIcon?: { icon: string; color: IconColor };
+	eventBus?: EventBus;
+}
+
+defineOptions({ name: 'N8nInfoAccordion' });
+const props = withDefaults(defineProps<InfoAccordionProps>(), {
+	items: () => [],
+	initiallyExpanded: false,
+	eventBus: () => createEventBus(),
 });
+const $emit = defineEmits(['click:body', 'tooltipClick']);
+
+const expanded = ref(false);
+onMounted(() => {
+	props.eventBus.on('expand', () => {
+		expanded.value = true;
+	});
+	expanded.value = props.initiallyExpanded;
+});
+
+const toggle = () => {
+	expanded.value = !expanded.value;
+};
+
+const onClick = (e: MouseEvent) => $emit('click:body', e);
+
+const onTooltipClick = (item: string, event: MouseEvent) => $emit('tooltipClick', item, event);
 </script>
 
 <style lang="scss" module>

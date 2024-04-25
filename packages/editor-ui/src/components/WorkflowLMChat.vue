@@ -122,20 +122,22 @@ import { defineAsyncComponent, defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 
 import { useToast } from '@/composables/useToast';
+import { useMessage } from '@/composables/useMessage';
 import Modal from '@/components/Modal.vue';
 import {
 	AI_CATEGORY_AGENTS,
 	AI_CATEGORY_CHAINS,
 	AI_CODE_NODE_TYPE,
 	AI_SUBCATEGORY,
+	CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE,
 	CHAT_EMBED_MODAL_KEY,
 	CHAT_TRIGGER_NODE_TYPE,
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
+	MODAL_CONFIRM,
 	VIEWS,
 	WORKFLOW_LM_CHAT_MODAL_KEY,
 } from '@/constants';
 
-import { workflowRun } from '@/mixins/workflowRun';
 import { get, last } from 'lodash-es';
 
 import { useUIStore } from '@/stores/ui.store';
@@ -152,6 +154,8 @@ import MessageTyping from '@n8n/chat/components/MessageTyping.vue';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useRouter } from 'vue-router';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useRunWorkflow } from '@/composables/useRunWorkflow';
+import { usePinnedData } from '@/composables/usePinnedData';
 
 const RunDataAi = defineAsyncComponent(
 	async () => await import('@/components/RunDataAi/RunDataAi.vue'),
@@ -171,6 +175,10 @@ interface LangChainMessage {
 	};
 }
 
+interface MemoryOutput {
+	action: string;
+	chatHistory?: LangChainMessage[];
+}
 // TODO:
 // - display additional information like execution time, tokens used, ...
 // - display errors better
@@ -181,18 +189,18 @@ export default defineComponent({
 		MessageTyping,
 		RunDataAi,
 	},
-	mixins: [workflowRun],
-	setup(props, ctx) {
+	setup() {
 		const router = useRouter();
 		const externalHooks = useExternalHooks();
-		const workflowHelpers = useWorkflowHelpers(router);
+		const workflowHelpers = useWorkflowHelpers({ router });
+		const { runWorkflow } = useRunWorkflow({ router });
 
 		return {
+			runWorkflow,
 			externalHooks,
 			workflowHelpers,
 			...useToast(),
-			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...workflowRun.setup?.(props, ctx),
+			...useMessage(),
 		};
 	},
 	data() {
@@ -218,7 +226,10 @@ export default defineComponent({
 		this.messages = this.getChatMessages();
 		this.setNode();
 
-		setTimeout(() => this.$refs.inputField?.focus(), 0);
+		setTimeout(() => {
+			this.scrollToLatestMessage();
+			this.$refs.inputField?.focus();
+		}, 0);
 	},
 	methods: {
 		displayExecution(executionId: string) {
@@ -266,6 +277,23 @@ export default defineComponent({
 				);
 				return;
 			}
+
+			const pinnedChatData = usePinnedData(this.getTriggerNode());
+			if (pinnedChatData.hasData.value) {
+				const confirmResult = await this.confirm(
+					this.$locale.baseText('chat.window.chat.unpinAndExecute.description'),
+					this.$locale.baseText('chat.window.chat.unpinAndExecute.title'),
+					{
+						confirmButtonText: this.$locale.baseText('chat.window.chat.unpinAndExecute.confirm'),
+						cancelButtonText: this.$locale.baseText('chat.window.chat.unpinAndExecute.cancel'),
+					},
+				);
+
+				if (!(confirmResult === MODAL_CONFIRM)) return;
+
+				pinnedChatData.unsetData('unpin-and-send-chat-message-modal');
+			}
+
 			this.messages.push({
 				text: message,
 				sender: 'user',
@@ -291,6 +319,7 @@ export default defineComponent({
 			const workflow = this.workflowHelpers.getCurrentWorkflow();
 
 			const chatNode = this.workflowsStore.getNodes().find((node: INodeUi): boolean => {
+				if (node.type === CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE) return false;
 				const nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 				if (!nodeType) return false;
 
@@ -329,7 +358,7 @@ export default defineComponent({
 			if (!chatNode) {
 				this.showError(
 					new Error(
-						'Chat only works when an AI agent or chain is connected to the chat trigger node',
+						'Chat only works when an AI agent or chain(except summarization chain) is connected to the chat trigger node',
 					),
 					'Missing AI node',
 				);
@@ -350,36 +379,17 @@ export default defineComponent({
 
 			if (!memoryConnection) return [];
 
-			const nodeResultData = this.workflowsStore?.getWorkflowResultDataByNodeName(
+			const nodeResultData = this.workflowsStore.getWorkflowResultDataByNodeName(
 				memoryConnection.node,
 			);
 
-			const memoryOutputData = nodeResultData
-				?.map(
-					(
-						data,
-					): {
-						action: string;
-						chatHistory?: unknown[];
-						response?: {
-							sessionId?: unknown[];
-						};
-					} => get(data, ['data', NodeConnectionType.AiMemory, 0, 0, 'json'])!,
+			const memoryOutputData = (nodeResultData ?? [])
+				.map(
+					(data) => get(data, ['data', NodeConnectionType.AiMemory, 0, 0, 'json']) as MemoryOutput,
 				)
-				?.find((data) =>
-					['chatHistory', 'loadMemoryVariables'].includes(data?.action) ? data : undefined,
-				);
+				.find((data) => data.action === 'saveContext');
 
-			let chatHistory: LangChainMessage[];
-			if (memoryOutputData?.chatHistory) {
-				chatHistory = memoryOutputData?.chatHistory as LangChainMessage[];
-			} else if (memoryOutputData?.response) {
-				chatHistory = memoryOutputData?.response.sessionId as LangChainMessage[];
-			} else {
-				return [];
-			}
-
-			return (chatHistory || []).map((message) => {
+			return (memoryOutputData?.chatHistory ?? []).map((message) => {
 				return {
 					text: message.kwargs.content,
 					sender: last(message.id) === 'HumanMessage' ? 'user' : 'bot',

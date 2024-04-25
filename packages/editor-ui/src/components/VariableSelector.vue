@@ -17,7 +17,7 @@
 				:item="option"
 				:extend-all="extendAll"
 				:redact-values="redactValues"
-				@itemSelected="forwardItemSelected"
+				@item-selected="forwardItemSelected"
 			></VariableSelectorItem>
 		</div>
 	</div>
@@ -63,7 +63,7 @@ export default defineComponent({
 	props: ['path', 'redactValues'],
 	setup() {
 		const router = useRouter();
-		const workflowHelpers = useWorkflowHelpers(router);
+		const workflowHelpers = useWorkflowHelpers({ router });
 
 		return {
 			workflowHelpers,

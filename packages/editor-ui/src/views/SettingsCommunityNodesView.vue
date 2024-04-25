@@ -157,13 +157,13 @@ export default defineComponent({
 						interpolate: {
 							docURL: COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 						},
-				  })
+					})
 				: this.$locale.baseText('settings.communityNodes.empty.description', {
 						interpolate: {
 							docURL: COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 							count: (Math.floor(packageCount / 10) * 10).toString(),
 						},
-				  });
+					});
 		},
 		getEmptyStateButtonText(): string {
 			if (this.settingsStore.isDesktopDeployment) {

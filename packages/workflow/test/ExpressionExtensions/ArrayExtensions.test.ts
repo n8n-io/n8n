@@ -2,6 +2,7 @@
  * @jest-environment jsdom
  */
 
+import { arrayExtensions } from '../../src/Extensions/ArrayExtensions';
 import { evaluate } from './Helpers';
 
 describe('Data Transformation Functions', () => {
@@ -233,6 +234,28 @@ describe('Data Transformation Functions', () => {
 				[11, 12, 13, 14, 15],
 				[16, 17, 18, 19, 20],
 			]);
+		});
+
+		test('.toJsonString() should work on an array', () => {
+			expect(evaluate('={{ [true, 1, "one", {foo: "bar"}].toJsonString() }}')).toEqual(
+				'[true,1,"one",{"foo":"bar"}]',
+			);
+		});
+
+		describe('Conversion methods', () => {
+			test('should exist but return undefined (to not break expressions with mixed data)', () => {
+				expect(evaluate('={{ numberList(1, 20).toInt() }}')).toBeUndefined();
+				expect(evaluate('={{ numberList(1, 20).toFloat() }}')).toBeUndefined();
+				expect(evaluate('={{ numberList(1, 20).toBoolean() }}')).toBeUndefined();
+				expect(evaluate('={{ numberList(1, 20).toDateTime() }}')).toBeUndefined();
+			});
+
+			test('should not have a doc (hidden from autocomplete)', () => {
+				expect(arrayExtensions.functions.toInt.doc).toBeUndefined();
+				expect(arrayExtensions.functions.toFloat.doc).toBeUndefined();
+				expect(arrayExtensions.functions.toBoolean.doc).toBeUndefined();
+				expect(arrayExtensions.functions.toDateTime.doc).toBeUndefined();
+			});
 		});
 	});
 });

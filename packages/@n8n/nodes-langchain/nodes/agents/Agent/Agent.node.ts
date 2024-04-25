@@ -9,9 +9,9 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { getTemplateNoticeField } from '../../../utils/sharedFields';
+import { promptTypeOptions, textInput } from '../../../utils/descriptions';
 import { conversationalAgentProperties } from './agents/ConversationalAgent/description';
 import { conversationalAgentExecute } from './agents/ConversationalAgent/execute';
-
 import { openAiFunctionsAgentProperties } from './agents/OpenAiFunctionsAgent/description';
 import { openAiFunctionsAgentExecute } from './agents/OpenAiFunctionsAgent/execute';
 import { planAndExecuteAgentProperties } from './agents/PlanAndExecuteAgent/description';
@@ -20,6 +20,7 @@ import { reActAgentAgentProperties } from './agents/ReActAgent/description';
 import { reActAgentAgentExecute } from './agents/ReActAgent/execute';
 import { sqlAgentAgentProperties } from './agents/SqlAgent/description';
 import { sqlAgentAgentExecute } from './agents/SqlAgent/execute';
+
 // Function used in the inputs expression to figure out which inputs to
 // display based on the agent type
 function getInputs(
@@ -74,6 +75,7 @@ function getInputs(
 						'@n8n/n8n-nodes-langchain.lmChatOllama',
 						'@n8n/n8n-nodes-langchain.lmChatOpenAi',
 						'@n8n/n8n-nodes-langchain.lmChatGooglePalm',
+						'@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
 						'@n8n/n8n-nodes-langchain.lmChatMistralCloud',
 						'@n8n/n8n-nodes-langchain.lmChatAzureOpenAi',
 					],
@@ -128,6 +130,9 @@ function getInputs(
 			{
 				type: NodeConnectionType.AiLanguageModel,
 			},
+			{
+				type: NodeConnectionType.AiMemory,
+			},
 		];
 	} else if (agent === 'planAndExecuteAgent') {
 		specialInputs = [
@@ -157,10 +162,10 @@ export class Agent implements INodeType {
 		name: 'agent',
 		icon: 'fa:robot',
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3],
+		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5],
 		description: 'Generates an action plan and executes it. Can use external tools.',
 		subtitle:
-			"={{ {	conversationalAgent: 'Conversational Agent', openAiFunctionsAgent: 'OpenAI Functions Agent', reactAgent: 'ReAct Agent', sqlAgent: 'SQL Agent' }[$parameter.agent] }}",
+			"={{ {	conversationalAgent: 'Conversational Agent', openAiFunctionsAgent: 'OpenAI Functions Agent', reActAgent: 'ReAct Agent', sqlAgent: 'SQL Agent', planAndExecuteAgent: 'Plan and Execute Agent' }[$parameter.agent] }}",
 		defaults: {
 			name: 'AI Agent',
 			color: '#404040',
@@ -257,44 +262,22 @@ export class Agent implements INodeType {
 				default: 'conversationalAgent',
 			},
 			{
-				displayName: 'Prompt',
-				name: 'promptType',
-				type: 'options',
-				options: [
-					{
-						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-						name: 'Take from previous node automatically',
-						value: 'auto',
-						description: 'Looks for an input field called chatInput',
-					},
-					{
-						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-						name: 'Define below',
-						value: 'define',
-						description:
-							'Use an expression to reference data in previous nodes or enter static text',
-					},
-				],
+				...promptTypeOptions,
 				displayOptions: {
 					hide: {
 						'@version': [{ _cnd: { lte: 1.2 } }],
+						agent: ['sqlAgent'],
 					},
 				},
-				default: 'auto',
 			},
 			{
-				displayName: 'Text',
-				name: 'text',
-				type: 'string',
-				required: true,
-				default: '',
-				placeholder: 'e.g. Hello, how can you help me?',
-				typeOptions: {
-					rows: 2,
-				},
+				...textInput,
 				displayOptions: {
 					show: {
 						promptType: ['define'],
+					},
+					hide: {
+						agent: ['sqlAgent'],
 					},
 				},
 			},
@@ -303,6 +286,7 @@ export class Agent implements INodeType {
 				name: 'hasOutputParser',
 				type: 'boolean',
 				default: false,
+				noDataExpression: true,
 				displayOptions: {
 					hide: {
 						'@version': [{ _cnd: { lte: 1.2 } }],
@@ -332,17 +316,18 @@ export class Agent implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const agentType = this.getNodeParameter('agent', 0, '') as string;
+		const nodeVersion = this.getNode().typeVersion;
 
 		if (agentType === 'conversationalAgent') {
-			return await conversationalAgentExecute.call(this);
+			return await conversationalAgentExecute.call(this, nodeVersion);
 		} else if (agentType === 'openAiFunctionsAgent') {
-			return await openAiFunctionsAgentExecute.call(this);
+			return await openAiFunctionsAgentExecute.call(this, nodeVersion);
 		} else if (agentType === 'reActAgent') {
-			return await reActAgentAgentExecute.call(this);
+			return await reActAgentAgentExecute.call(this, nodeVersion);
 		} else if (agentType === 'sqlAgent') {
-			return await sqlAgentAgentExecute.call(this);
+			return await sqlAgentAgentExecute.call(this, nodeVersion);
 		} else if (agentType === 'planAndExecuteAgent') {
-			return await planAndExecuteAgentExecute.call(this);
+			return await planAndExecuteAgentExecute.call(this, nodeVersion);
 		}
 
 		throw new NodeOperationError(this.getNode(), `The agent type "${agentType}" is not supported`);

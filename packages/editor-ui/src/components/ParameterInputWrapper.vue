@@ -25,7 +25,7 @@
 			@focus="onFocus"
 			@blur="onBlur"
 			@drop="onDrop"
-			@textInput="onTextInput"
+			@text-input="onTextInput"
 			@update="onValueChanged"
 		/>
 		<div v-if="!hideHint && (expressionOutput || parameterHint)" :class="$style.hint">
@@ -67,11 +67,11 @@ import type {
 } from 'n8n-workflow';
 import { isResourceLocatorValue } from 'n8n-workflow';
 
-import { get } from 'lodash-es';
 import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
 import { useRouter } from 'vue-router';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { stringifyExpressionResult } from '@/utils/expressions';
 
 export default defineComponent({
 	name: 'ParameterInputWrapper',
@@ -151,7 +151,7 @@ export default defineComponent({
 	},
 	setup() {
 		const router = useRouter();
-		const workflowHelpers = useWorkflowHelpers(router);
+		const workflowHelpers = useWorkflowHelpers({ router });
 
 		return {
 			workflowHelpers,
@@ -197,12 +197,13 @@ export default defineComponent({
 		isInputParentOfActiveNode(): boolean {
 			return this.ndvStore.isInputParentOfActiveNode;
 		},
-		evaluatedExpression(): Result<unknown, unknown> {
+		evaluatedExpression(): Result<unknown, Error> {
 			const value = isResourceLocatorValue(this.modelValue)
 				? this.modelValue.value
 				: this.modelValue;
+
 			if (!this.activeNode || !this.isValueExpression || typeof value !== 'string') {
-				return { ok: false, error: '' };
+				return { ok: false, error: new Error() };
 			}
 
 			try {
@@ -227,25 +228,7 @@ export default defineComponent({
 			return evaluated.ok ? evaluated.result : null;
 		},
 		evaluatedExpressionString(): string | null {
-			const evaluated = this.evaluatedExpression;
-
-			if (!evaluated.ok) {
-				return `[${this.$locale.baseText('parameterInput.error')}: ${get(
-					evaluated.error,
-					'message',
-				)}]`;
-			}
-
-			if (evaluated.result === null) {
-				return null;
-			}
-
-			if (typeof evaluated.result === 'string' && evaluated.result.length === 0) {
-				return this.$locale.baseText('parameterInput.emptyString');
-			}
-			return typeof evaluated.result === 'string'
-				? evaluated.result
-				: JSON.stringify(evaluated.result);
+			return stringifyExpressionResult(this.evaluatedExpression);
 		},
 		expressionOutput(): string | null {
 			if (this.isValueExpression && this.evaluatedExpressionString) {

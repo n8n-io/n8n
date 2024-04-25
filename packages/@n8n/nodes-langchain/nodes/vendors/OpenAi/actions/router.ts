@@ -1,4 +1,9 @@
-import { NodeOperationError, type IExecuteFunctions, type INodeExecutionData } from 'n8n-workflow';
+import {
+	NodeOperationError,
+	type IExecuteFunctions,
+	type INodeExecutionData,
+	NodeApiError,
+} from 'n8n-workflow';
 
 import * as assistant from './assistant';
 import * as audio from './audio';
@@ -54,6 +59,15 @@ export async function router(this: IExecuteFunctions) {
 				returnData.push({ json: { error: error.message }, pairedItem: { item: i } });
 				continue;
 			}
+
+			if (error instanceof NodeApiError) {
+				error.context = {
+					itemIndex: i,
+				};
+
+				throw error;
+			}
+
 			throw new NodeOperationError(this.getNode(), error, {
 				itemIndex: i,
 				description: error.description,

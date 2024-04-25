@@ -116,7 +116,7 @@ describe('FilterParameter', () => {
 							}),
 						),
 					).toThrowError(
-						"The provided values '15' and 'true' in condition 1 are not of the expected type 'number' [item 0]",
+						"Wrong type: '15' is a string but was expecting a number [condition 0, item 0]",
 					);
 				});
 
@@ -136,7 +136,7 @@ describe('FilterParameter', () => {
 							}),
 						),
 					).toThrowError(
-						"The provided value 1 '[]' in condition 1 is not of the expected type 'array' [item 0]",
+						"Wrong type: '[]' is a string but was expecting an array [condition 0, item 0]",
 					);
 				});
 
@@ -155,7 +155,7 @@ describe('FilterParameter', () => {
 							}),
 						),
 					).toThrowError(
-						"The provided value 1 '{}' in condition 1 is not of the expected type 'object' [item 0]",
+						"Wrong type: '{}' is a string but was expecting an object [condition 0, item 0]",
 					);
 				});
 			});
@@ -201,7 +201,7 @@ describe('FilterParameter', () => {
 							}),
 						),
 					).toThrowError(
-						"The provided values 'a string' and '15' in condition 1 cannot be converted to the expected type 'boolean'",
+						"Conversion error: the string 'a string' can't be converted to a boolean [condition 0, item 0]",
 					);
 				});
 			});
@@ -1011,8 +1011,8 @@ describe('FilterParameter', () => {
 				it.each([
 					{ left: {}, expected: true },
 					{ left: { foo: 'bar' }, expected: false },
-					{ left: undefined, expected: false },
-					{ left: null, expected: false },
+					{ left: undefined, expected: true },
+					{ left: null, expected: true },
 				])('object:empty($left) === $expected', ({ left, expected }) => {
 					const result = executeFilter(
 						filterFactory({

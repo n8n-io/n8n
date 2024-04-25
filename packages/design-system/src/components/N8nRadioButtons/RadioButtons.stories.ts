@@ -54,3 +54,19 @@ Example.args = {
 		},
 	],
 };
+
+export const Disabled = Template.bind({});
+Disabled.args = {
+	modelValue: 'enabled',
+	options: [
+		{
+			label: 'Enabled',
+			value: 'enabled',
+		},
+		{
+			label: 'Disabled',
+			value: 'disabled',
+			disabled: true,
+		},
+	],
+};

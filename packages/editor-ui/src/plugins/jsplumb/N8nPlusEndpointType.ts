@@ -10,11 +10,12 @@ import {
 } from '@jsplumb/browser-ui';
 
 export type ComputedN8nPlusEndpoint = [number, number, number, number, number];
+export type N8nEndpointLabelLength = 'small' | 'medium' | 'large';
 interface N8nPlusEndpointParams extends EndpointRepresentationParams {
 	dimensions: number;
 	connectedEndpoint: Endpoint;
 	hoverMessage: string;
-	endpointLabelLength: 'small' | 'medium';
+	endpointLabelLength: N8nEndpointLabelLength;
 	size: 'small' | 'medium';
 	showOutputLabel: boolean;
 }

@@ -15,7 +15,7 @@
 						type="textarea"
 						:rows="5"
 						:placeholder="$locale.baseText('importCurlModal.input.placeholder')"
-						@update:modelValue="onInput"
+						@update:model-value="onInput"
 						@focus="$event.target.select()"
 					/>
 				</n8n-input-label>

@@ -85,8 +85,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	} catch (error) {
 		if (
 			error.message.includes('Bad request') &&
-			error.description &&
-			error.description.includes('Expected file to have JSONL format')
+			error.description?.includes('Expected file to have JSONL format')
 		) {
 			throw new NodeOperationError(this.getNode(), 'The file content is not in JSONL format', {
 				description:

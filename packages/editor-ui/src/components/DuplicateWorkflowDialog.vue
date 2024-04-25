@@ -71,7 +71,7 @@ export default defineComponent({
 	props: ['modalName', 'isActive', 'data'],
 	setup() {
 		const router = useRouter();
-		const workflowHelpers = useWorkflowHelpers(router);
+		const workflowHelpers = useWorkflowHelpers({ router });
 
 		return {
 			...useToast(),

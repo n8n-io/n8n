@@ -1,7 +1,7 @@
 import callsites from 'callsites';
 import type { Event } from '@sentry/node';
 
-type Level = 'warning' | 'error' | 'fatal' | 'info';
+export type Level = 'warning' | 'error' | 'fatal' | 'info';
 
 export type ReportingOptions = {
 	level?: Level;

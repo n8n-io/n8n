@@ -1,10 +1,13 @@
-import type { IMenuItem, RouteObject } from '@/types';
-import type { RouteLocationRaw } from 'vue-router';
+import type { IMenuItem } from '@/types';
+import type { RouteLocationNormalizedLoaded, RouteLocationRaw } from 'vue-router';
 
 /**
  * Checks if the given menu item matches the current route.
  */
-export function doesMenuItemMatchCurrentRoute(item: IMenuItem, currentRoute: RouteObject) {
+export function doesMenuItemMatchCurrentRoute(
+	item: IMenuItem,
+	currentRoute: RouteLocationNormalizedLoaded,
+) {
 	let activateOnRouteNames: string[] = [];
 	if (Array.isArray(item.activateOnRouteNames)) {
 		activateOnRouteNames = item.activateOnRouteNames;
@@ -20,7 +23,7 @@ export function doesMenuItemMatchCurrentRoute(item: IMenuItem, currentRoute: Rou
 	}
 
 	return (
-		activateOnRouteNames.includes(currentRoute.name ?? '') ||
+		activateOnRouteNames.includes((currentRoute.name as string) ?? '') ||
 		activateOnRoutePaths.includes(currentRoute.path)
 	);
 }

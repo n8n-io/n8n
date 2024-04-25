@@ -15,7 +15,7 @@ import {
 import { getSandboxContext } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
 import { JavaScriptSandbox } from 'n8n-nodes-base/dist/nodes/Code/JavaScriptSandbox';
 import { standardizeOutput } from 'n8n-nodes-base/dist/nodes/Code/utils';
-import type { Tool } from 'langchain/tools';
+import type { Tool } from '@langchain/core/tools';
 import { makeResolverFromLegacyOptions } from '@n8n/vm2';
 import { logWrapper } from '../../utils/logWrapper';
 
@@ -36,7 +36,7 @@ const connectorTypes = {
 	[NodeConnectionType.Main]: 'Main',
 };
 
-const defaultCodeExecute = `const { PromptTemplate } = require('langchain/prompts');
+const defaultCodeExecute = `const { PromptTemplate } = require('@langchain/core/prompts');
 
 const query = 'Tell me a joke';
 const prompt = PromptTemplate.fromTemplate(query);

@@ -171,10 +171,16 @@ export const schema = {
 				env: 'DB_SQLITE_DATABASE',
 			},
 			enableWAL: {
-				doc: 'Enable SQLite WAL mode',
+				doc: 'Enable SQLite WAL mode (Always enabled for pool-size > 1)',
 				format: Boolean,
 				default: false,
 				env: 'DB_SQLITE_ENABLE_WAL',
+			},
+			poolSize: {
+				doc: 'SQLite Pool Size (Setting this to 0 disables pooling)',
+				format: Number,
+				default: 0,
+				env: 'DB_SQLITE_POOL_SIZE',
 			},
 			executeVacuumOnStartup: {
 				doc: 'Runs VACUUM operation on startup to rebuild the database. Reduces filesize and optimizes indexes. WARNING: This is a long running blocking operation. Will increase start-up time.',
@@ -538,6 +544,12 @@ export const schema = {
 		env: 'N8N_PROTOCOL',
 		doc: 'HTTP Protocol via which n8n can be reached',
 	},
+	secure_cookie: {
+		doc: 'This sets the `Secure` flag on n8n auth cookie',
+		format: Boolean,
+		default: true,
+		env: 'N8N_SECURE_COOKIE',
+	},
 	ssl_key: {
 		format: String,
 		default: '',
@@ -577,12 +589,6 @@ export const schema = {
 				default: 90,
 				env: 'N8N_SECURITY_AUDIT_DAYS_ABANDONED_WORKFLOW',
 			},
-		},
-		excludeEndpoints: {
-			doc: 'Additional endpoints to exclude auth checks. Multiple endpoints can be separated by colon (":")',
-			format: String,
-			default: '',
-			env: 'N8N_AUTH_EXCLUDE_ENDPOINTS',
 		},
 	},
 
@@ -720,6 +726,12 @@ export const schema = {
 			default: false,
 			env: 'N8N_DISABLE_PRODUCTION_MAIN_PROCESS',
 			doc: 'Disable production webhooks from main process. This helps ensures no http traffic load to main process when using webhook-specific processes.',
+		},
+		additionalNonUIRoutes: {
+			doc: 'Additional endpoints to not open the UI on. Multiple endpoints can be separated by colon (":")',
+			format: String,
+			default: '',
+			env: 'N8N_ADDITIONAL_NON_UI_ROUTES',
 		},
 	},
 
@@ -1337,6 +1349,18 @@ export const schema = {
 			format: Boolean,
 			default: false,
 			env: 'N8N_AI_ENABLED',
+		},
+		provider: {
+			doc: 'AI provider to use. Currently only "openai" is supported.',
+			format: String,
+			default: 'openai',
+			env: 'N8N_AI_PROVIDER',
+		},
+		openAIApiKey: {
+			doc: 'Enable AI features using OpenAI API key',
+			format: String,
+			default: '',
+			env: 'N8N_AI_OPENAI_API_KEY',
 		},
 	},
 

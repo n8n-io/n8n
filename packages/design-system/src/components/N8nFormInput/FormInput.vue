@@ -3,7 +3,7 @@
 		v-if="type === 'checkbox'"
 		v-bind="$props"
 		ref="inputRef"
-		@update:modelValue="onUpdateModelValue"
+		@update:model-value="onUpdateModelValue"
 		@focus="onFocus"
 	/>
 	<N8nInputLabel
@@ -20,7 +20,7 @@
 			:model-value="modelValue"
 			:active-color="activeColor"
 			:inactive-color="inactiveColor"
-			@update:modelValue="onUpdateModelValue"
+			@update:model-value="onUpdateModelValue"
 		></ElSwitch>
 	</N8nInputLabel>
 	<N8nInputLabel
@@ -34,15 +34,15 @@
 			<slot v-if="hasDefaultSlot" />
 			<N8nSelect
 				v-else-if="type === 'select' || type === 'multi-select'"
+				ref="inputRef"
 				:class="{ [$style.multiSelectSmallTags]: tagSize === 'small' }"
 				:model-value="modelValue"
 				:placeholder="placeholder"
 				:multiple="type === 'multi-select'"
-				ref="inputRef"
 				:disabled="disabled"
 				:name="name"
 				:teleported="teleported"
-				@update:modelValue="onUpdateModelValue"
+				@update:model-value="onUpdateModelValue"
 				@focus="onFocus"
 				@blur="onBlur"
 			>
@@ -57,15 +57,15 @@
 			</N8nSelect>
 			<N8nInput
 				v-else
-				:name="name"
 				ref="inputRef"
+				:name="name"
 				:type="type"
 				:placeholder="placeholder"
 				:model-value="modelValue"
 				:maxlength="maxlength"
 				:autocomplete="autocomplete"
 				:disabled="disabled"
-				@update:modelValue="onUpdateModelValue"
+				@update:model-value="onUpdateModelValue"
 				@blur="onBlur"
 				@focus="onFocus"
 			/>
@@ -143,7 +143,7 @@ const props = withDefaults(defineProps<Props>(), {
 	tagSize: 'small',
 });
 
-const emit = defineEmits<{
+const $emit = defineEmits<{
 	(event: 'validate', shouldValidate: boolean): void;
 	(event: 'update:modelValue', value: unknown): void;
 	(event: 'focus'): void;
@@ -203,22 +203,22 @@ function getInputValidationError(): ReturnType<IValidator['validate']> {
 function onBlur() {
 	state.hasBlurred = true;
 	state.isTyping = false;
-	emit('blur');
+	$emit('blur');
 }
 
 function onUpdateModelValue(value: FormState) {
 	state.isTyping = true;
-	emit('update:modelValue', value);
+	$emit('update:modelValue', value);
 }
 
 function onFocus() {
-	emit('focus');
+	$emit('focus');
 }
 
 function onEnter(event: Event) {
 	event.stopPropagation();
 	event.preventDefault();
-	emit('enter');
+	$emit('enter');
 }
 
 const validationError = computed<string | null>(() => {
@@ -244,14 +244,14 @@ const showErrors = computed(
 );
 
 onMounted(() => {
-	emit('validate', !validationError.value);
+	$emit('validate', !validationError.value);
 
 	if (props.focusInitially && inputRef.value) inputRef.value.focus();
 });
 
 watch(
 	() => validationError.value,
-	(error) => emit('validate', !error),
+	(error) => $emit('validate', !error),
 );
 
 defineExpose({ inputRef });

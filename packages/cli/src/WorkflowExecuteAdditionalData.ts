@@ -24,6 +24,7 @@ import type {
 	ExecutionStatus,
 	ExecutionError,
 	EventNamesAiNodesType,
+	CallbackManager,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
@@ -244,50 +245,50 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 	return {
 		nodeExecuteBefore: [
 			async function (this: WorkflowHooks, nodeName: string): Promise<void> {
-				const { sessionId, executionId } = this;
+				const { pushRef, executionId } = this;
 				// Push data to session which started workflow before each
 				// node which starts rendering
-				if (sessionId === undefined) {
+				if (pushRef === undefined) {
 					return;
 				}
 
 				logger.debug(`Executing hook on node "${nodeName}" (hookFunctionsPush)`, {
 					executionId,
-					sessionId,
+					pushRef,
 					workflowId: this.workflowData.id,
 				});
 
-				pushInstance.send('nodeExecuteBefore', { executionId, nodeName }, sessionId);
+				pushInstance.send('nodeExecuteBefore', { executionId, nodeName }, pushRef);
 			},
 		],
 		nodeExecuteAfter: [
 			async function (this: WorkflowHooks, nodeName: string, data: ITaskData): Promise<void> {
-				const { sessionId, executionId } = this;
+				const { pushRef, executionId } = this;
 				// Push data to session which started workflow after each rendered node
-				if (sessionId === undefined) {
+				if (pushRef === undefined) {
 					return;
 				}
 
 				logger.debug(`Executing hook on node "${nodeName}" (hookFunctionsPush)`, {
 					executionId,
-					sessionId,
+					pushRef,
 					workflowId: this.workflowData.id,
 				});
 
-				pushInstance.send('nodeExecuteAfter', { executionId, nodeName, data }, sessionId);
+				pushInstance.send('nodeExecuteAfter', { executionId, nodeName, data }, pushRef);
 			},
 		],
 		workflowExecuteBefore: [
 			async function (this: WorkflowHooks): Promise<void> {
-				const { sessionId, executionId } = this;
+				const { pushRef, executionId } = this;
 				const { id: workflowId, name: workflowName } = this.workflowData;
 				logger.debug('Executing hook (hookFunctionsPush)', {
 					executionId,
-					sessionId,
+					pushRef,
 					workflowId,
 				});
 				// Push data to session which started the workflow
-				if (sessionId === undefined) {
+				if (pushRef === undefined) {
 					return;
 				}
 				pushInstance.send(
@@ -298,24 +299,24 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 						startedAt: new Date(),
 						retryOf: this.retryOf,
 						workflowId,
-						sessionId,
+						pushRef,
 						workflowName,
 					},
-					sessionId,
+					pushRef,
 				);
 			},
 		],
 		workflowExecuteAfter: [
 			async function (this: WorkflowHooks, fullRunData: IRun): Promise<void> {
-				const { sessionId, executionId, retryOf } = this;
+				const { pushRef, executionId, retryOf } = this;
 				const { id: workflowId } = this.workflowData;
 				logger.debug('Executing hook (hookFunctionsPush)', {
 					executionId,
-					sessionId,
+					pushRef,
 					workflowId,
 				});
 				// Push data to session which started the workflow
-				if (sessionId === undefined) {
+				if (pushRef === undefined) {
 					return;
 				}
 
@@ -351,7 +352,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 					retryOf,
 				};
 
-				pushInstance.send('executionFinished', sendData, sessionId);
+				pushInstance.send('executionFinished', sendData, pushRef);
 			},
 		],
 	};
@@ -378,7 +379,7 @@ export function hookFunctionsPreExecute(): IWorkflowExecuteHooks {
 					nodeName,
 					data,
 					executionData,
-					this.sessionId,
+					this.pushRef,
 				);
 			},
 		],
@@ -578,7 +579,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 							ErrorReporter.error(e);
 							logger.error(
 								`There was a problem saving the workflow with id "${this.workflowData.id}" to save changed staticData: "${e.message}" (workflowExecuteAfter)`,
-								{ sessionId: this.sessionId, workflowId: this.workflowData.id },
+								{ pushRef: this.pushRef, workflowId: this.workflowData.id },
 							);
 						}
 					}
@@ -754,6 +755,7 @@ async function executeWorkflow(
 		loadedWorkflowData?: IWorkflowBase;
 		loadedRunData?: IWorkflowExecutionDataProcess;
 		parentWorkflowSettings?: IWorkflowSettings;
+		parentCallbackManager?: CallbackManager;
 	},
 ): Promise<Array<INodeExecutionData[] | null> | IWorkflowExecuteProcess> {
 	const internalHooks = Container.get(InternalHooks);
@@ -815,6 +817,7 @@ async function executeWorkflow(
 			workflowData,
 		);
 		additionalDataIntegrated.executionId = executionId;
+		additionalDataIntegrated.parentCallbackManager = options.parentCallbackManager;
 
 		// Make sure we pass on the original executeWorkflow function we received
 		// This one already contains changes to talk to parent process
@@ -851,7 +854,9 @@ async function executeWorkflow(
 				workflowExecute,
 			};
 		}
-		data = await workflowExecute.processRunExecutionData(workflow);
+		const execution = workflowExecute.processRunExecutionData(workflow);
+		activeExecutions.attachWorkflowExecution(executionId, execution);
+		data = await execution;
 	} catch (error) {
 		const executionError = error ? (error as ExecutionError) : undefined;
 		const fullRunData: IRun = {
@@ -865,7 +870,7 @@ async function executeWorkflow(
 			mode: 'integrated',
 			startedAt: new Date(),
 			stoppedAt: new Date(),
-			status: 'failed',
+			status: 'error',
 		};
 		// When failing, we might not have finished the execution
 		// Therefore, database might not contain finished errors.
@@ -939,15 +944,15 @@ export function setExecutionStatus(status: ExecutionStatus) {
 }
 
 export function sendDataToUI(type: string, data: IDataObject | IDataObject[]) {
-	const { sessionId } = this;
-	if (sessionId === undefined) {
+	const { pushRef } = this;
+	if (pushRef === undefined) {
 		return;
 	}
 
 	// Push data to session which started workflow
 	try {
 		const pushInstance = Container.get(Push);
-		pushInstance.send(type as IPushDataType, data, sessionId);
+		pushInstance.send(type as IPushDataType, data, pushRef);
 	} catch (error) {
 		const logger = Container.get(Logger);
 		logger.warn(`There was a problem sending message to UI: ${error.message}`);
@@ -1128,7 +1133,7 @@ export function getWorkflowHooksMain(
 	if (!hookFunctions.nodeExecuteAfter) hookFunctions.nodeExecuteAfter = [];
 
 	return new WorkflowHooks(hookFunctions, data.executionMode, executionId, data.workflowData, {
-		sessionId: data.sessionId,
+		pushRef: data.pushRef,
 		retryOf: data.retryOf as string,
 	});
 }

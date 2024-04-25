@@ -4,13 +4,14 @@ import type {
 	INodeExecutionData,
 	IDataObject,
 } from 'n8n-workflow';
-import { NodeConnectionType, updateDisplayOptions } from 'n8n-workflow';
-
-import type { Tool } from 'langchain/tools';
+import { jsonParse, updateDisplayOptions } from 'n8n-workflow';
+import type { Tool } from '@langchain/core/tools';
 import { apiRequest } from '../../transport';
 import type { ChatCompletion } from '../../helpers/interfaces';
 import { formatToOpenAIAssistantTool } from '../../helpers/utils';
 import { modelRLC } from '../descriptions';
+import { getConnectedTools } from '../../../../../utils/helpers';
+import { MODELS_NOT_SUPPORT_FUNCTION_CALLS } from '../../helpers/constants';
 
 const properties: INodeProperties[] = [
 	modelRLC,
@@ -85,10 +86,27 @@ const properties: INodeProperties[] = [
 		default: false,
 	},
 	{
+		displayName: 'Hide Tools',
+		name: 'hideTools',
+		type: 'hidden',
+		default: 'hide',
+		displayOptions: {
+			show: {
+				modelId: MODELS_NOT_SUPPORT_FUNCTION_CALLS,
+				'@version': [{ _cnd: { gte: 1.2 } }],
+			},
+		},
+	},
+	{
 		displayName: 'Connect your own custom n8n tools to this node on the canvas',
 		name: 'noticeTools',
 		type: 'notice',
 		default: '',
+		displayOptions: {
+			hide: {
+				hideTools: ['hide'],
+			},
+		},
 	},
 	{
 		displayName: 'Options',
@@ -166,10 +184,21 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
+	const nodeVersion = this.getNode().typeVersion;
 	const model = this.getNodeParameter('modelId', i, '', { extractValue: true });
 	let messages = this.getNodeParameter('messages.values', i, []) as IDataObject[];
 	const options = this.getNodeParameter('options', i, {});
 	const jsonOutput = this.getNodeParameter('jsonOutput', i, false) as boolean;
+
+	if (options.maxTokens !== undefined) {
+		options.max_tokens = options.maxTokens;
+		delete options.maxTokens;
+	}
+
+	if (options.topP !== undefined) {
+		options.top_p = options.topP;
+		delete options.topP;
+	}
 
 	let response_format;
 	if (jsonOutput) {
@@ -183,9 +212,15 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		];
 	}
 
-	const externalTools =
-		((await this.getInputConnectionData(NodeConnectionType.AiTool, 0)) as Tool[]) || [];
+	const hideTools = this.getNodeParameter('hideTools', i, '') as string;
+
 	let tools;
+	let externalTools: Tool[] = [];
+
+	if (hideTools !== 'hide') {
+		const enforceUniqueNames = nodeVersion > 1;
+		externalTools = await getConnectedTools(this, enforceUniqueNames);
+	}
 
 	if (externalTools.length) {
 		tools = externalTools.length ? externalTools?.map(formatToOpenAIAssistantTool) : undefined;
@@ -217,7 +252,9 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			let functionResponse;
 			for (const tool of externalTools ?? []) {
 				if (tool.name === functionName) {
-					functionResponse = await tool.invoke(functionArgs);
+					const parsedArgs: { input: string } = jsonParse(functionArgs);
+					const functionInput = parsedArgs.input ?? functionArgs;
+					functionResponse = await tool.invoke(functionInput);
 				}
 			}
 

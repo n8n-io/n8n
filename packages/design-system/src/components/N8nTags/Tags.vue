@@ -13,68 +13,55 @@
 			size="small"
 			@click.stop.prevent="onExpand"
 		>
-			{{ t('tags.showMore', `${hiddenTagsLength}`) }}
+			{{ t('tags.showMore', [`${hiddenTagsLength}`]) }}
 		</N8nLink>
 	</div>
 </template>
 
-<script lang="ts">
+<script lang="ts" setup>
+import { computed, ref } from 'vue';
 import N8nTag from '../N8nTag';
 import N8nLink from '../N8nLink';
-import Locale from '../../mixins/locale';
-import type { PropType } from 'vue';
-import { defineComponent } from 'vue';
+import { useI18n } from '../../composables/useI18n';
 
 export interface ITag {
 	id: string;
 	name: string;
 }
 
-export default defineComponent({
-	name: 'N8nTags',
-	components: {
-		N8nTag,
-		N8nLink,
-	},
-	mixins: [Locale],
-	props: {
-		tags: {
-			type: Array as PropType<ITag[]>,
-			default: () => [],
-		},
-		truncate: {
-			type: Boolean,
-			default: false,
-		},
-		truncateAt: {
-			type: Number,
-			default: 3,
-		},
-	},
-	data() {
-		return {
-			showAll: false,
-		};
-	},
-	computed: {
-		visibleTags(): ITag[] {
-			if (this.truncate && !this.showAll && this.tags.length > this.truncateAt) {
-				return this.tags.slice(0, this.truncateAt);
-			}
+interface TagsProp {
+	tags?: ITag[];
+	truncate?: boolean;
+	truncateAt?: number;
+}
 
-			return this.tags;
-		},
-		hiddenTagsLength(): number {
-			return this.tags.length - this.truncateAt;
-		},
-	},
-	methods: {
-		onExpand() {
-			this.showAll = true;
-			this.$emit('expand', true);
-		},
-	},
+defineOptions({ name: 'N8nTags' });
+const props = withDefaults(defineProps<TagsProp>(), {
+	tags: () => [],
+	truncate: false,
+	truncateAt: 3,
 });
+
+const $emit = defineEmits(['expand', 'click:tag']);
+
+const { t } = useI18n();
+
+const showAll = ref(false);
+
+const visibleTags = computed((): ITag[] => {
+	const { tags, truncate, truncateAt } = props;
+	if (truncate && !showAll.value && tags.length > truncateAt) {
+		return tags.slice(0, truncateAt);
+	}
+	return tags;
+});
+
+const hiddenTagsLength = computed((): number => props.tags.length - props.truncateAt);
+
+const onExpand = () => {
+	showAll.value = true;
+	$emit('expand', true);
+};
 </script>
 
 <style lang="scss" module>

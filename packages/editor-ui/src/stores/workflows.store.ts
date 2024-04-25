@@ -1,4 +1,5 @@
 import {
+	CHAT_TRIGGER_NODE_TYPE,
 	DEFAULT_NEW_WORKFLOW_NAME,
 	DUPLICATE_POSTFFIX,
 	EnterpriseEditionFeature,
@@ -10,12 +11,10 @@ import {
 } from '@/constants';
 import type {
 	ExecutionsQueryFilter,
-	IExecutionDeleteFilter,
 	IExecutionPushResponse,
 	IExecutionResponse,
 	IExecutionsCurrentSummaryExtended,
 	IExecutionsListResponse,
-	IExecutionsStopData,
 	INewWorkflowData,
 	INodeMetadata,
 	INodeUi,
@@ -40,7 +39,7 @@ import type {
 	IConnection,
 	IConnections,
 	IDataObject,
-	IExecutionsSummary,
+	ExecutionSummary,
 	INode,
 	INodeConnections,
 	INodeCredentials,
@@ -76,12 +75,13 @@ import { dataPinningEventBus } from '@/event-bus';
 import { isObject } from '@/utils/objectUtils';
 import { getPairedItemsMapping } from '@/utils/pairedItemUtils';
 import { isJsonKeyObject, isEmpty, stringSizeInBytes } from '@/utils/typesUtils';
-import { makeRestApiRequest, unflattenExecutionData } from '@/utils/apiUtils';
+import { makeRestApiRequest, unflattenExecutionData, ResponseError } from '@/utils/apiUtils';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { getCredentialOnlyNodeTypeName } from '@/utils/credentialOnlyNodes';
+import { i18n } from '@/plugins/i18n';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -198,6 +198,12 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				return {};
 			};
 		},
+		nodeHasOutputConnection() {
+			return (nodeName: string): boolean => {
+				if (this.workflow.connections.hasOwnProperty(nodeName)) return true;
+				return false;
+			};
+		},
 		isNodeInOutgoingNodeConnections() {
 			return (firstNode: string, secondNode: string): boolean => {
 				const firstNodeConnections = this.outgoingConnectionsByNodeName(firstNode);
@@ -263,11 +269,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			return (nodeName: string) => this.executingNode.includes(nodeName);
 		},
 		// Executions getters
-		getExecutionDataById(): (id: string) => IExecutionsSummary | undefined {
-			return (id: string): IExecutionsSummary | undefined =>
+		getExecutionDataById(): (id: string) => ExecutionSummary | undefined {
+			return (id: string): ExecutionSummary | undefined =>
 				this.currentWorkflowExecutions.find((execution) => execution.id === id);
 		},
-		getAllLoadedFinishedExecutions(): IExecutionsSummary[] {
+		getAllLoadedFinishedExecutions(): ExecutionSummary[] {
 			return this.currentWorkflowExecutions.filter(
 				(ex) => ex.finished === true || ex.stoppedAt !== undefined,
 			);
@@ -839,15 +845,19 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			this.workflow.connections = {};
 		},
 
-		removeAllNodeConnection(node: INodeUi): void {
+		removeAllNodeConnection(
+			node: INodeUi,
+			{ preserveInputConnections = false, preserveOutputConnections = false } = {},
+		): void {
 			const uiStore = useUIStore();
 			uiStore.stateIsDirty = true;
 			// Remove all source connections
-			if (this.workflow.connections.hasOwnProperty(node.name)) {
+			if (!preserveOutputConnections && this.workflow.connections.hasOwnProperty(node.name)) {
 				delete this.workflow.connections[node.name];
 			}
 
 			// Remove all destination connections
+			if (preserveInputConnections) return;
 			const indexesToRemove = [];
 			let sourceNode: string,
 				type: string,
@@ -1233,34 +1243,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		setActiveExecutions(newActiveExecutions: IExecutionsCurrentSummaryExtended[]): void {
 			this.activeExecutions = newActiveExecutions;
 		},
-
-		async retryExecution(id: string, loadWorkflow?: boolean): Promise<boolean> {
-			let sendData;
-			if (loadWorkflow === true) {
-				sendData = {
-					loadWorkflow: true,
-				};
-			}
-			const rootStore = useRootStore();
-			return await makeRestApiRequest(
-				rootStore.getRestApiContext,
-				'POST',
-				`/executions/${id}/retry`,
-				sendData,
-			);
-		},
-
-		// Deletes executions
-		async deleteExecutions(sendData: IExecutionDeleteFilter): Promise<void> {
-			const rootStore = useRootStore();
-			return await makeRestApiRequest(
-				rootStore.getRestApiContext,
-				'POST',
-				'/executions/delete',
-				sendData as unknown as IDataObject,
-			);
-		},
-
 		// TODO: For sure needs some kind of default filter like last day, with max 10 results, ...
 		async getPastExecutions(
 			filter: IDataObject,
@@ -1289,12 +1271,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				};
 			}
 			const rootStore = useRootStore();
-			return await makeRestApiRequest(
+			const output = await makeRestApiRequest(
 				rootStore.getRestApiContext,
 				'GET',
-				'/executions/active',
+				'/executions',
 				sendData,
 			);
+
+			return output.results;
 		},
 
 		async getExecution(id: string): Promise<IExecutionResponse | undefined> {
@@ -1338,12 +1322,22 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 		async runWorkflow(startRunData: IStartRunData): Promise<IExecutionPushResponse> {
 			const rootStore = useRootStore();
-			return await makeRestApiRequest(
-				rootStore.getRestApiContext,
-				'POST',
-				'/workflows/run',
-				startRunData as unknown as IDataObject,
-			);
+			try {
+				return await makeRestApiRequest(
+					rootStore.getRestApiContext,
+					'POST',
+					'/workflows/run',
+					startRunData as unknown as IDataObject,
+				);
+			} catch (error) {
+				if (error.response?.status === 413) {
+					throw new ResponseError(i18n.baseText('workflowRun.showError.payloadTooLarge'), {
+						errorCode: 413,
+						httpStatusCode: 413,
+					});
+				}
+				throw error;
+			}
 		},
 
 		async removeTestWebhook(workflowId: string): Promise<boolean> {
@@ -1354,19 +1348,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				`/test-webhook/${workflowId}`,
 			);
 		},
-
-		async stopCurrentExecution(executionId: string): Promise<IExecutionsStopData> {
-			const rootStore = useRootStore();
-			return await makeRestApiRequest(
-				rootStore.getRestApiContext,
-				'POST',
-				`/executions/active/${executionId}/stop`,
-			);
-		},
-
 		async loadCurrentWorkflowExecutions(
 			requestFilter: ExecutionsQueryFilter,
-		): Promise<IExecutionsSummary[]> {
+		): Promise<ExecutionSummary[]> {
 			let activeExecutions = [];
 
 			if (!requestFilter.workflowId) {
@@ -1392,11 +1376,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			return await getExecutionData(rootStore.getRestApiContext, executionId);
 		},
 
-		deleteExecution(execution: IExecutionsSummary): void {
+		deleteExecution(execution: ExecutionSummary): void {
 			this.currentWorkflowExecutions.splice(this.currentWorkflowExecutions.indexOf(execution), 1);
 		},
 
-		addToCurrentExecutions(executions: IExecutionsSummary[]): void {
+		addToCurrentExecutions(executions: ExecutionSummary[]): void {
 			executions.forEach((execution) => {
 				const exists = this.currentWorkflowExecutions.find((ex) => ex.id === execution.id);
 				if (!exists && execution.workflowId === this.workflowId) {
@@ -1447,6 +1431,19 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 		appendChatMessage(message: string): void {
 			this.chatMessages.push(message);
+		},
+
+		checkIfNodeHasChatParent(nodeName: string): boolean {
+			const workflow = this.getCurrentWorkflow();
+			const parents = workflow.getParentNodes(nodeName, 'main');
+
+			const matchedChatNode = parents.find((parent) => {
+				const parentNodeType = this.getNodeByName(parent)?.type;
+
+				return parentNodeType === CHAT_TRIGGER_NODE_TYPE;
+			});
+
+			return !!matchedChatNode;
 		},
 	},
 });

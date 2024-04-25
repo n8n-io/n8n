@@ -1,5 +1,4 @@
 import validator from 'validator';
-import type { SuperAgentTest } from 'supertest';
 
 import config from '@/config';
 import type { User } from '@db/entities/User';
@@ -18,11 +17,9 @@ import Container from 'typedi';
 const testServer = utils.setupTestServer({ endpointGroups: ['owner'] });
 
 let ownerShell: User;
-let authOwnerShellAgent: SuperAgentTest;
 
 beforeEach(async () => {
 	ownerShell = await createUserShell('global:owner');
-	authOwnerShellAgent = testServer.authAgentFor(ownerShell);
 	config.set('userManagement.isInstanceOwnerSetUp', false);
 });
 
@@ -39,7 +36,7 @@ describe('POST /owner/setup', () => {
 			password: randomValidPassword(),
 		};
 
-		const response = await authOwnerShellAgent.post('/owner/setup').send(newOwnerData);
+		const response = await testServer.authlessAgent.post('/owner/setup').send(newOwnerData);
 
 		expect(response.statusCode).toBe(200);
 
@@ -88,7 +85,7 @@ describe('POST /owner/setup', () => {
 			password: randomValidPassword(),
 		};
 
-		const response = await authOwnerShellAgent.post('/owner/setup').send(newOwnerData);
+		const response = await testServer.authlessAgent.post('/owner/setup').send(newOwnerData);
 
 		expect(response.statusCode).toBe(200);
 
@@ -150,7 +147,7 @@ describe('POST /owner/setup', () => {
 
 	test('should fail with invalid inputs', async () => {
 		for (const invalidPayload of INVALID_POST_OWNER_PAYLOADS) {
-			const response = await authOwnerShellAgent.post('/owner/setup').send(invalidPayload);
+			const response = await testServer.authlessAgent.post('/owner/setup').send(invalidPayload);
 			expect(response.statusCode).toBe(400);
 		}
 	});

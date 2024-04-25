@@ -37,6 +37,7 @@ export const completerExtension = defineComponent({
 			}
 
 			return autocompletion({
+				icons: false,
 				compareCompletions: (a: Completion, b: Completion) => {
 					if (/\.json$|id$|id['"]\]$/.test(a.label)) return 0;
 

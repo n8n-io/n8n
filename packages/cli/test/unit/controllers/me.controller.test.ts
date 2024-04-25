@@ -1,7 +1,7 @@
-import type { CookieOptions, Response } from 'express';
+import type { Response } from 'express';
 import { Container } from 'typedi';
 import jwt from 'jsonwebtoken';
-import { mock, anyObject, captor } from 'jest-mock-extended';
+import { mock, anyObject } from 'jest-mock-extended';
 import type { PublicUser } from '@/Interfaces';
 import type { User } from '@db/entities/User';
 import { MeController } from '@/controllers/me.controller';
@@ -11,10 +11,12 @@ import { UserService } from '@/services/user.service';
 import { ExternalHooks } from '@/ExternalHooks';
 import { InternalHooks } from '@/InternalHooks';
 import { License } from '@/License';
-import { badPasswords } from '../shared/testData';
-import { mockInstance } from '../../shared/mocking';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { UserRepository } from '@/databases/repositories/user.repository';
+import { badPasswords } from '../shared/testData';
+import { mockInstance } from '../../shared/mocking';
+
+const browserId = 'test-browser-id';
 
 describe('MeController', () => {
 	const externalHooks = mockInstance(ExternalHooks);
@@ -47,7 +49,7 @@ describe('MeController', () => {
 				role: 'global:owner',
 			});
 			const reqBody = { email: 'valid@email.com', firstName: 'John', lastName: 'Potato' };
-			const req = mock<MeRequest.UserUpdate>({ user, body: reqBody });
+			const req = mock<MeRequest.UserUpdate>({ user, body: reqBody, browserId });
 			const res = mock<Response>();
 			userRepository.findOneOrFail.mockResolvedValue(user);
 			jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
@@ -63,10 +65,16 @@ describe('MeController', () => {
 
 			expect(userService.update).toHaveBeenCalled();
 
-			const cookieOptions = captor<CookieOptions>();
-			expect(res.cookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME, 'signed-token', cookieOptions);
-			expect(cookieOptions.value.httpOnly).toBe(true);
-			expect(cookieOptions.value.sameSite).toBe('lax');
+			expect(res.cookie).toHaveBeenCalledWith(
+				AUTH_COOKIE_NAME,
+				'signed-token',
+				expect.objectContaining({
+					maxAge: expect.any(Number),
+					httpOnly: true,
+					sameSite: 'lax',
+					secure: false,
+				}),
+			);
 
 			expect(externalHooks.run).toHaveBeenCalledWith('user.profile.update', [
 				user.email,
@@ -82,7 +90,7 @@ describe('MeController', () => {
 				role: 'global:owner',
 			});
 			const reqBody = { email: 'valid@email.com', firstName: 'John', lastName: 'Potato' };
-			const req = mock<MeRequest.UserUpdate>({ user, body: reqBody });
+			const req = mock<MeRequest.UserUpdate>({ user, body: reqBody, browserId });
 			const res = mock<Response>();
 			userRepository.findOneOrFail.mockResolvedValue(user);
 			jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
@@ -154,6 +162,7 @@ describe('MeController', () => {
 					const req = mock<MeRequest.Password>({
 						user: mock({ password: passwordHash }),
 						body: { currentPassword: 'old_password', newPassword },
+						browserId,
 					});
 					await expect(controller.updatePassword(req, mock())).rejects.toThrowError(
 						new BadRequestError(errorMessage),
@@ -166,6 +175,7 @@ describe('MeController', () => {
 			const req = mock<MeRequest.Password>({
 				user: mock({ password: passwordHash }),
 				body: { currentPassword: 'old_password', newPassword: 'NewPassword123' },
+				browserId,
 			});
 			const res = mock<Response>();
 			userRepository.save.calledWith(req.user).mockResolvedValue(req.user);
@@ -175,10 +185,16 @@ describe('MeController', () => {
 
 			expect(req.user.password).not.toBe(passwordHash);
 
-			const cookieOptions = captor<CookieOptions>();
-			expect(res.cookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME, 'new-signed-token', cookieOptions);
-			expect(cookieOptions.value.httpOnly).toBe(true);
-			expect(cookieOptions.value.sameSite).toBe('lax');
+			expect(res.cookie).toHaveBeenCalledWith(
+				AUTH_COOKIE_NAME,
+				'new-signed-token',
+				expect.objectContaining({
+					maxAge: expect.any(Number),
+					httpOnly: true,
+					sameSite: 'lax',
+					secure: false,
+				}),
+			);
 
 			expect(externalHooks.run).toHaveBeenCalledWith('user.password.update', [
 				req.user.email,

@@ -38,16 +38,14 @@ import { deepCopy } from '@/utils';
 import { getGlobalState } from '@/GlobalState';
 import { ApplicationError } from '@/errors/application.error';
 import { NodeTypes as NodeTypesClass } from './NodeTypes';
+import { readFileSync } from 'fs';
+import path from 'path';
 
 export interface INodeTypesObject {
 	[key: string]: INodeType;
 }
 
 export class Credentials extends ICredentials {
-	hasNodeAccess() {
-		return true;
-	}
-
 	setData(data: ICredentialDataDecryptedObject) {
 		this.data = JSON.stringify(data);
 	}
@@ -69,7 +67,6 @@ export class Credentials extends ICredentials {
 			name: this.name,
 			type: this.type,
 			data: this.data,
-			nodesAccess: this.nodesAccess,
 		};
 	}
 }
@@ -558,3 +555,7 @@ export function WorkflowExecuteAdditionalData(): IWorkflowExecuteAdditionalData 
 		userId: '123',
 	};
 }
+
+const BASE_DIR = path.resolve(__dirname, '..');
+export const readJsonFileSync = <T>(filePath: string) =>
+	JSON.parse(readFileSync(path.join(BASE_DIR, filePath), 'utf-8')) as T;

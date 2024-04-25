@@ -3,6 +3,7 @@ import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
+	IPollFunctions,
 	JsonObject,
 } from 'n8n-workflow';
 import { ApplicationError, jsonParse, NodeApiError } from 'n8n-workflow';
@@ -278,7 +279,7 @@ export function prepareFilterString(filters: IDataObject) {
 }
 
 export function prepareApiError(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
 	error: IDataObject,
 	itemIndex = 0,
 ) {

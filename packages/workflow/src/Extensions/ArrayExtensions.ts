@@ -320,6 +320,26 @@ function intersection(value: unknown[], extraArgs: unknown[][]): unknown[] {
 	return unique(newArr, []);
 }
 
+export function toJsonString(value: unknown[]) {
+	return JSON.stringify(value);
+}
+
+export function toInt() {
+	return undefined;
+}
+
+export function toFloat() {
+	return undefined;
+}
+
+export function toBoolean() {
+	return undefined;
+}
+
+export function toDateTime() {
+	return undefined;
+}
+
 average.doc = {
 	name: 'average',
 	description: 'Returns the mean average of all values in the array.',
@@ -483,6 +503,14 @@ unique.doc = {
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-unique',
 };
 
+toJsonString.doc = {
+	name: 'toJsonString',
+	description: 'Converts an array to a JSON string',
+	docURL:
+		'https://docs.n8n.io/code/builtin/data-transformation-functions/arrays/#array-toJsonString',
+	returnType: 'string',
+};
+
 export const arrayExtensions: ExtensionMap = {
 	typeName: 'Array',
 	functions: {
@@ -506,5 +534,10 @@ export const arrayExtensions: ExtensionMap = {
 		union,
 		difference,
 		intersection,
+		toJsonString,
+		toInt,
+		toFloat,
+		toBoolean,
+		toDateTime,
 	},
 };

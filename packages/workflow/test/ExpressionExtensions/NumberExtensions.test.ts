@@ -55,6 +55,52 @@ describe('Data Transformation Functions', () => {
 			expect(() => evaluate('={{ (NaN).isEven() }}')).toThrow();
 			expect(() => evaluate('={{ (9.2).isEven() }}')).toThrow();
 		});
+
+		describe('toDateTime', () => {
+			test('from milliseconds (default)', () => {
+				expect(evaluate('={{ (1704085200000).toDateTime().toISO() }}')).toEqual(
+					'2024-01-01T00:00:00.000-05:00',
+				);
+				expect(evaluate('={{ (1704085200000).toDateTime("ms").toISO() }}')).toEqual(
+					'2024-01-01T00:00:00.000-05:00',
+				);
+			});
+
+			test('from seconds', () => {
+				expect(evaluate('={{ (1704085200).toDateTime("s").toISO() }}')).toEqual(
+					'2024-01-01T00:00:00.000-05:00',
+				);
+			});
+
+			test('from Excel 1900 format', () => {
+				expect(evaluate('={{ (42144).toDateTime("excel").toISO() }}')).toEqual(
+					'2015-05-19T20:00:00.000-04:00',
+				);
+			});
+		});
+
+		describe('toInt', () => {
+			test('should round numbers', () => {
+				expect(evaluate('={{ (42144).toInt() }}')).toEqual(42144);
+				expect(evaluate('={{ (42144.345).toInt() }}')).toEqual(42144);
+				expect(evaluate('={{ (42144.545).toInt() }}')).toEqual(42145);
+			});
+		});
+
+		describe('toFloat', () => {
+			test('should return itself', () => {
+				expect(evaluate('={{ (42144).toFloat() }}')).toEqual(42144);
+				expect(evaluate('={{ (42144.345).toFloat() }}')).toEqual(42144.345);
+			});
+		});
+
+		describe('toBoolean', () => {
+			test('should return false for 0, 1 for other numbers', () => {
+				expect(evaluate('={{ (42144).toBoolean() }}')).toBe(true);
+				expect(evaluate('={{ (-1.549).toBoolean() }}')).toBe(true);
+				expect(evaluate('={{ (0).toBoolean() }}')).toBe(false);
+			});
+		});
 	});
 
 	describe('Multiple expressions', () => {
