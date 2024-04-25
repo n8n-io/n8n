@@ -197,7 +197,7 @@ export class CreateProject1705928727784 implements IrreversibleMigration {
 				await Promise.all(
 					users.map(async (user) => {
 						const projectId = generateNanoId();
-						const name = `${user.firstName} ${user.lastName} <${user.email}>`;
+						const name = this.createPersonalProjectName(user.firstName, user.lastName, user.email);
 						await runQuery(
 							`INSERT INTO ${projectName} (id, type, name) VALUES (:projectId, 'personal', :name)`,
 							{
@@ -218,6 +218,20 @@ export class CreateProject1705928727784 implements IrreversibleMigration {
 				);
 			},
 		);
+	}
+
+	// Duplicated from packages/cli/src/databases/entities/User.ts
+	// Reason:
+	// This migration should work the same even if we refactor the function in
+	// `User.ts`.
+	createPersonalProjectName(firstName?: string, lastName?: string, email?: string) {
+		if (firstName && lastName && email) {
+			return `${firstName} ${lastName} <${email}>`;
+		} else if (email) {
+			return `<${email}>`;
+		} else {
+			return 'Unnamed Project';
+		}
 	}
 
 	async up(context: MigrationContext) {
