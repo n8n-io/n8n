@@ -5,15 +5,16 @@
 			:key="suggestion.key"
 			:class="$style.sugestions"
 		>
-			<p :class="$style.messageTitle">#{{ index + 1 }} {{ suggestion.title }}</p>
-			<!-- <p :class="$style.messageDescription">{{ suggestion.description }}</p> -->
-			<ul :class="$style.messageTodos">
+			<!-- <p :class="$style.messageTitle">#{{ index + 1 }} {{ suggestion.title }}</p> -->
+			<p :class="$style.messageDescription">{{ suggestion.description }}</p>
+			<!-- For now render only description -->
+			<!-- <ul :class="$style.messageTodos">
 				<li v-for="todo in suggestion.todos" :key="todo.title">
 					<input :id="'todo-' + index + '-' + todo.title" type="checkbox" />
 					<label :for="'todo-' + index + '-' + todo.title">{{ todo.title }}</label>
 					<p>{{ todo.description }}</p>
 				</li>
-			</ul>
+			</ul> -->
 		</div>
 	</div>
 </template>

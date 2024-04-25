@@ -11,30 +11,40 @@ import { useUsersStore } from './users.store';
 
 export const useAIStore = defineStore('ai', () => {
 	const rootStore = useRootStore();
+	const usersStore = useUsersStore();
 	const settingsStore = useSettingsStore();
 	const currentSessionId = ref<string>('Whatever');
 	const waitingForResponse = ref(false);
 	const chatTitle = ref('');
 
+	const userName = computed(() => usersStore.currentUser?.firstName ?? 'there');
+
 	const initialMessages = ref<ChatMessage[]>([
 		{
 			id: '1',
-			type: 'component',
-			key: 'MessageWithActions',
+			type: 'text',
 			sender: 'bot',
 			createdAt: new Date().toISOString(),
-			arguments: {
-				message: 'Hello, I am a bot. How can I help you?',
-				actions: [
-					{ label: 'Fix issues', action: 'fix_issues' },
-					{ label: 'Generate node', action: 'generate_node' },
-				],
-				onActionSelected({ action, label }: { action: string; label: string }) {
-					// console.log('🚀 ~ onActionSelected ~ action:', action);
-					void sendMessage(label);
-				},
-			},
+			text: `Hi ${userName.value}! I have a few ideas on what the issue might be. Here's my top suggestion 👇`,
 		},
+		// {
+		// 	id: '1',
+		// 	type: 'component',
+		// 	key: 'MessageWithActions',
+		// 	sender: 'bot',
+		// 	createdAt: new Date().toISOString(),
+		// 	arguments: {
+		// 		message: 'Hello, I am a bot. How can I help you?',
+		// 		actions: [
+		// 			{ label: 'Fix issues', action: 'fix_issues' },
+		// 			{ label: 'Generate node', action: 'generate_node' },
+		// 		],
+		// 		onActionSelected({ action, label }: { action: string; label: string }) {
+		// 			// console.log('🚀 ~ onActionSelected ~ action:', action);
+		// 			void sendMessage(label);
+		// 		},
+		// 	},
+		// },
 	]);
 
 	const messages = ref<ChatMessage[]>([
@@ -107,7 +117,49 @@ export const useAIStore = defineStore('ai', () => {
 	function onMessageSuggestionReceived(messageChunk: string) {
 		waitingForResponse.value = false;
 		if (messageChunk.length === 0) return;
-		if (messageChunk === '__END__') return;
+		if (messageChunk === '__END__') {
+			const lastMessage = getLastMessage();
+			// If last message is a component, then show the follow-up actions
+			if (lastMessage.type === 'component') {
+				const followUpQuestion : string = lastMessage.arguments.suggestions[0].followUpQuestion;
+				// TODO: Think about using MessageWithActions instead of text + QuickReplies
+				messages.value.push({
+					createdAt: new Date().toISOString(),
+					sender: 'bot',
+					type: 'text',
+					id: Math.random().toString(),
+					text: followUpQuestion,
+				});
+				const followUpActions = lastMessage.arguments.suggestions.map((suggestion) => {
+					return {
+						label: suggestion.followUpAction,
+						key: suggestion.followUpAction,
+					};
+				});
+				followUpActions.push({ label: 'No, try another suggestion', key: 'ask_question' });
+				const newMessageId = Math.random().toString();
+				messages.value.push({
+					createdAt: new Date().toISOString(),
+					transparent: true,
+					key: 'QuickReplies',
+					sender: 'bot',
+					type: 'component',
+					id: newMessageId,
+					arguments: {
+						suggestions: followUpActions,
+						async onReplySelected({ label }: { action: string; label: string }) {
+							await sendMessage(label);
+							// Remove the quick replies so only user message is shown
+							messages.value = messages.value.filter((message) => {
+								return message.id !== newMessageId;
+							});
+						},
+					},
+				});
+				chatEventBus.emit('scrollToBottom');
+			}
+			return;
+		};
 
 		const parsedMessage = jsonParse<Record<string, unknown>>(messageChunk);
 		if (getLastMessage()?.sender !== 'bot') {
@@ -134,11 +186,10 @@ export const useAIStore = defineStore('ai', () => {
 
 	async function debugChat(payload: DebugChatPayload) {
 		waitingForResponse.value = true;
-		return await aiApi.debugChat(rootStore.getRestApiContext, payload, onMessageReceived);
+		return await aiApi.debugChat(rootStore.getRestApiContext, payload, onMessageSuggestionReceived);
 	}
 
 	async function startNewDebugSession(error: NodeError) {
-		const usersStore = useUsersStore();
 		const currentUser = usersStore.currentUser ?? ({} as IUser);
 
 		messages.value = [];

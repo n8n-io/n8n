@@ -61,6 +61,10 @@ onBeforeUnmount(() => {
 		padding: var(--chat--header--padding, var(--chat--spacing));
 		background: var(--chat--header--background, var(--chat--color-dark));
 		color: var(--chat--header--color, var(--chat--color-light));
+		h1 {
+			font-size: 1.2rem;
+			color: inherit;
+		}
 	}
 
 	.chat-body {

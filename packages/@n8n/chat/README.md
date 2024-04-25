@@ -208,7 +208,7 @@ The Chat window is entirely customizable using CSS variables.
 	--chat--transition-duration: 0.15s;
 
 	--chat--window--width: 400px;
-	--chat--window--height: 600px;
+	--chat--window--height: 70vh;
 
 	--chat--textarea--height: 50px;
 

@@ -29,6 +29,8 @@ const errorSuggestionsSchema = z.object({
 			description: z.string().describe('Concise description of the suggestion'),
 			key: z.string(),
 			todos: suggestionTodos,
+			followUpQuestion: z.string().describe('The follow-up question to be asked to the user'),
+			followUpAction: z.string().describe('The follow-up action to be taken by the user'),
 		}),
 	),
 });
@@ -76,7 +78,14 @@ export class AIController {
 
 			await chatMessageHistory.addMessage(
 				new SystemMessage(
-					"You're an assistant n8n expert assistant. Your role is to help users with n8n-related questions. You can answer questions, provide suggestions, and help users troubleshoot issues. You can also ask questions to gather more information. Please provide a concise a helpful suggestions without going too much into detail. Always provide at least 3 suggestions!",
+					`You're an assistant n8n expert assistant. Your role is to help users with n8n-related questions.
+					You can answer questions, provide suggestions, and help users troubleshoot issues. You can also
+					ask questions to gather more information. Please provide a concise a helpful suggestions without
+					going too much into detail. Always provide only one suggestion which is actionable and most relevant for the user.
+					Make sure to end the suggestion with a follow-up question that should be answered by the user. This question should
+					be in the for of 'Would you like...?'. For example: 'Would you like me to provide more information on this?
+					Also, please provide a short follow-up answer that will be used as user's next step in the conversation.
+					It should be in the form: 'Yes, help me ...' and must start with 'Yes, help me'. For example: 'Yes, help me fix this issue'`
 				),
 			);
 		}
@@ -126,7 +135,7 @@ export class AIController {
 				res.write(JSON.stringify(output) + '\n');
 			}
 			console.log('Final messages: ', chatMessageHistory.getMessages());
-			// res.end('__END__');
+			res.end('__END__');
 		} catch (error) {
 			console.error('Error during streaming:', error);
 			res.end(JSON.stringify({ error: 'An error occurred during streaming' }) + '\n');
