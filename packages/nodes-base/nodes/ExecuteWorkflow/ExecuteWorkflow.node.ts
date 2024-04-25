@@ -260,11 +260,19 @@ export class ExecuteWorkflow implements INodeType {
 					items,
 				);
 
-				const pairedItem = generatePairedItemData(items.length);
+				const fallbackPairedItemData = generatePairedItemData(items.length);
 
 				for (const output of workflowResult) {
-					for (const item of output) {
-						item.pairedItem = pairedItem;
+					const sameLength = output.length === items.length;
+
+					for (const [itemIndex, item] of output.entries()) {
+						if (item.pairedItem) continue;
+
+						if (sameLength) {
+							item.pairedItem = { item: itemIndex };
+						} else {
+							item.pairedItem = fallbackPairedItemData;
+						}
 					}
 				}
 

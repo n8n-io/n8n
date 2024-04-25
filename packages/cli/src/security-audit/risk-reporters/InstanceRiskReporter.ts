@@ -88,10 +88,6 @@ export class InstanceRiskReporter implements RiskReporter {
 			publicApiEnabled: isApiEnabled(),
 		};
 
-		settings.auth = {
-			authExcludeEndpoints: config.getEnv('security.excludeEndpoints') || 'none',
-		};
-
 		settings.nodes = {
 			nodesExclude: config.getEnv('nodes.exclude') ?? 'none',
 			nodesInclude: config.getEnv('nodes.include') ?? 'none',

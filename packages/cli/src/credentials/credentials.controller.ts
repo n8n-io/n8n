@@ -252,6 +252,13 @@ export class CredentialsController {
 
 		this.logger.verbose('Credential updated', { credentialId });
 
+		void this.internalHooks.onUserUpdatedCredentials({
+			user: req.user,
+			credential_name: credential.name,
+			credential_type: credential.type,
+			credential_id: credential.id,
+		});
+
 		return { ...rest };
 	}
 
@@ -290,6 +297,13 @@ export class CredentialsController {
 		const { credentials: credential } = sharing;
 
 		await this.credentialsService.delete(credential);
+
+		void this.internalHooks.onUserDeletedCredentials({
+			user: req.user,
+			credential_name: credential.name,
+			credential_type: credential.type,
+			credential_id: credential.id,
+		});
 
 		return true;
 	}
@@ -358,7 +372,7 @@ export class CredentialsController {
 			);
 
 			if (newShareeIds.length) {
-				await this.enterpriseCredentialsService.share(trx, credential!, newShareeIds);
+				await this.enterpriseCredentialsService.share(trx, credential, newShareeIds);
 			}
 		});
 

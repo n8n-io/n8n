@@ -21,7 +21,7 @@ export class ToolCode implements INodeType {
 		name: 'toolCode',
 		icon: 'fa:code',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Write a tool in JS or Python',
 		defaults: {
 			name: 'Custom Code Tool',
@@ -59,6 +59,26 @@ export class ToolCode implements INodeType {
 				type: 'string',
 				default: '',
 				placeholder: 'My_Tool',
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
+			},
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+				placeholder: 'e.g. My_Tool',
+				validateType: 'string-alphanumeric',
+				description:
+					'The name of the function to be called, could contain letters, numbers, and underscores only',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.1 } }],
+					},
+				},
 			},
 			{
 				displayName: 'Description',

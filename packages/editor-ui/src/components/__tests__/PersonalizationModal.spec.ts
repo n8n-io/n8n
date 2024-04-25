@@ -1,7 +1,7 @@
 import PersonalizationModal from '@/components/PersonalizationModal.vue';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { PERSONALIZATION_MODAL_KEY, STORES, VIEWS } from '@/constants';
+import { PERSONALIZATION_MODAL_KEY, ROLE, STORES, VIEWS } from '@/constants';
 import { retry } from '@/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
 import { fireEvent } from '@testing-library/vue';
@@ -31,7 +31,7 @@ const pinia = createTestingPinia({
 					isDefaultUser: false,
 					isPendingUser: false,
 					hasRecoveryCodesLeft: true,
-					isOwner: true,
+					role: ROLE.Owner,
 					mfaEnabled: false,
 				},
 			},
@@ -74,7 +74,7 @@ describe('PersonalizationModal.vue', () => {
 		);
 
 		for (const index of [3, 4, 5, 6]) {
-			const select = wrapper.container.querySelectorAll('.n8n-select')[1]!;
+			const select = wrapper.container.querySelectorAll('.n8n-select')[1];
 
 			await fireEvent.click(select);
 
@@ -96,7 +96,7 @@ describe('PersonalizationModal.vue', () => {
 			expect(wrapper.container.querySelector('.modal-content')).toBeInTheDocument(),
 		);
 
-		const select = wrapper.container.querySelectorAll('.n8n-select')[3]!;
+		const select = wrapper.container.querySelectorAll('.n8n-select')[3];
 		await fireEvent.click(select);
 
 		const item = select.querySelectorAll('.el-select-dropdown__item')[3];
@@ -120,7 +120,7 @@ describe('PersonalizationModal.vue', () => {
 			expect(wrapper.container.querySelector('.modal-content')).toBeInTheDocument(),
 		);
 
-		const select = wrapper.container.querySelectorAll('.n8n-select')[3]!;
+		const select = wrapper.container.querySelectorAll('.n8n-select')[3];
 		await fireEvent.click(select);
 
 		const item = select.querySelectorAll('.el-select-dropdown__item')[3];
@@ -129,7 +129,7 @@ describe('PersonalizationModal.vue', () => {
 		const agreeCheckbox = wrapper.container.querySelector('.n8n-checkbox')!;
 		await fireEvent.click(agreeCheckbox);
 
-		const submitButton = wrapper.getByRole('button')!;
+		const submitButton = wrapper.getByRole('button');
 		await userEvent.click(submitButton);
 
 		await retry(() => expect(spyLicenseTrial).toHaveBeenCalled());

@@ -12,12 +12,10 @@ import { randomApiKey, randomEmail, randomName, randomValidPassword } from '../r
 // pre-computed bcrypt hash for the string 'password', using `await hash('password', 10)`
 const passwordHash = '$2a$10$njedH7S6V5898mj6p0Jr..IGY9Ms.qNwR7RbSzzX9yubJocKfvGGK';
 
-/**
- * Store a user in the DB, defaulting to a `member`.
- */
-export async function createUser(attributes: Partial<User> = {}): Promise<User> {
+/** Store a new user object, defaulting to a `member` */
+export async function newUser(attributes: Partial<User> = {}): Promise<User> {
 	const { email, password, firstName, lastName, role, ...rest } = attributes;
-	const user = Container.get(UserRepository).create({
+	return Container.get(UserRepository).create({
 		email: email ?? randomEmail(),
 		password: password ? await hash(password, 1) : passwordHash,
 		firstName: firstName ?? randomName(),
@@ -25,8 +23,12 @@ export async function createUser(attributes: Partial<User> = {}): Promise<User> 
 		role: role ?? 'global:member',
 		...rest,
 	});
-	user.computeIsOwner();
+}
 
+/** Store a user object in the DB */
+export async function createUser(attributes: Partial<User> = {}): Promise<User> {
+	const user = await newUser(attributes);
+	user.computeIsOwner();
 	return await Container.get(UserRepository).save(user);
 }
 
@@ -98,21 +100,11 @@ export async function createManyUsers(
 	amount: number,
 	attributes: Partial<User> = {},
 ): Promise<User[]> {
-	let { email, password, firstName, lastName, role, ...rest } = attributes;
-
 	const users = await Promise.all(
-		[...Array(amount)].map(async () =>
-			Container.get(UserRepository).create({
-				email: email ?? randomEmail(),
-				password: password ? await hash(password, 1) : passwordHash,
-				firstName: firstName ?? randomName(),
-				lastName: lastName ?? randomName(),
-				role: role ?? 'global:member',
-				...rest,
-			}),
-		),
+		Array(amount)
+			.fill(0)
+			.map(async () => await newUser(attributes)),
 	);
-
 	return await Container.get(UserRepository).save(users);
 }
 
@@ -137,3 +129,7 @@ export const getLdapIdentities = async () =>
 		where: { providerType: 'ldap' },
 		relations: ['user'],
 	});
+
+export async function getGlobalOwner() {
+	return await Container.get(UserRepository).findOneByOrFail({ role: 'global:owner' });
+}

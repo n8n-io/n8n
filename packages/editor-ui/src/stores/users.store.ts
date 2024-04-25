@@ -18,7 +18,7 @@ import {
 	validateSignupToken,
 	updateGlobalRole,
 } from '@/api/users';
-import { PERSONALIZATION_MODAL_KEY, STORES } from '@/constants';
+import { PERSONALIZATION_MODAL_KEY, STORES, ROLE } from '@/constants';
 import type {
 	Cloud,
 	ICredentialsResponse,
@@ -46,7 +46,7 @@ import type { Scope } from '@n8n/permissions';
 import { inviteUsers, acceptInvitation } from '@/api/invitation';
 
 const isPendingUser = (user: IUserResponse | null) => !!user?.isPending;
-const isInstanceOwner = (user: IUserResponse | null) => user?.role === 'global:owner';
+const isInstanceOwner = (user: IUserResponse | null) => user?.role === ROLE.Owner;
 const isDefaultUser = (user: IUserResponse | null) => isInstanceOwner(user) && isPendingUser(user);
 
 export const useUsersStore = defineStore(STORES.USERS, {
@@ -139,7 +139,6 @@ export const useUsersStore = defineStore(STORES.USERS, {
 						: undefined,
 					isDefaultUser: isDefaultUser(updatedUser),
 					isPendingUser: isPendingUser(updatedUser),
-					isOwner: isInstanceOwner(updatedUser),
 				};
 
 				this.users = {

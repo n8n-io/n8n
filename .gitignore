@@ -22,3 +22,5 @@ cypress/screenshots/*
 cypress/downloads/*
 *.swp
 CHANGELOG-*.md
+*.mdx
+build-storybook.log

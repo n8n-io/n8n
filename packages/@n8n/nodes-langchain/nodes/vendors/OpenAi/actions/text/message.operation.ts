@@ -4,12 +4,14 @@ import type {
 	INodeExecutionData,
 	IDataObject,
 } from 'n8n-workflow';
-import { updateDisplayOptions } from 'n8n-workflow';
+import { jsonParse, updateDisplayOptions } from 'n8n-workflow';
+import type { Tool } from '@langchain/core/tools';
 import { apiRequest } from '../../transport';
 import type { ChatCompletion } from '../../helpers/interfaces';
 import { formatToOpenAIAssistantTool } from '../../helpers/utils';
 import { modelRLC } from '../descriptions';
 import { getConnectedTools } from '../../../../../utils/helpers';
+import { MODELS_NOT_SUPPORT_FUNCTION_CALLS } from '../../helpers/constants';
 
 const properties: INodeProperties[] = [
 	modelRLC,
@@ -84,10 +86,27 @@ const properties: INodeProperties[] = [
 		default: false,
 	},
 	{
+		displayName: 'Hide Tools',
+		name: 'hideTools',
+		type: 'hidden',
+		default: 'hide',
+		displayOptions: {
+			show: {
+				modelId: MODELS_NOT_SUPPORT_FUNCTION_CALLS,
+				'@version': [{ _cnd: { gte: 1.2 } }],
+			},
+		},
+	},
+	{
 		displayName: 'Connect your own custom n8n tools to this node on the canvas',
 		name: 'noticeTools',
 		type: 'notice',
 		default: '',
+		displayOptions: {
+			hide: {
+				hideTools: ['hide'],
+			},
+		},
 	},
 	{
 		displayName: 'Options',
@@ -193,8 +212,15 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		];
 	}
 
-	const externalTools = await getConnectedTools(this, nodeVersion > 1);
+	const hideTools = this.getNodeParameter('hideTools', i, '') as string;
+
 	let tools;
+	let externalTools: Tool[] = [];
+
+	if (hideTools !== 'hide') {
+		const enforceUniqueNames = nodeVersion > 1;
+		externalTools = await getConnectedTools(this, enforceUniqueNames);
+	}
 
 	if (externalTools.length) {
 		tools = externalTools.length ? externalTools?.map(formatToOpenAIAssistantTool) : undefined;
@@ -226,7 +252,9 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			let functionResponse;
 			for (const tool of externalTools ?? []) {
 				if (tool.name === functionName) {
-					functionResponse = await tool.invoke(functionArgs);
+					const parsedArgs: { input: string } = jsonParse(functionArgs);
+					const functionInput = parsedArgs.input ?? functionArgs;
+					functionResponse = await tool.invoke(functionInput);
 				}
 			}
 

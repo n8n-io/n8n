@@ -244,7 +244,7 @@ describe('DELETE /users/:id', () => {
 		const savedWorkflow = await createWorkflow({ name: randomName() }, member);
 
 		const savedCredential = await saveCredential(
-			{ name: randomName(), type: '', data: {}, nodesAccess: [] },
+			{ name: randomName(), type: '', data: {} },
 			{ user: member, role: 'credential:owner' },
 		);
 
@@ -286,7 +286,7 @@ describe('DELETE /users/:id', () => {
 		const [savedWorkflow, savedCredential] = await Promise.all([
 			await createWorkflow({ name: randomName() }, member),
 			await saveCredential(
-				{ name: randomName(), type: '', data: {}, nodesAccess: [] },
+				{ name: randomName(), type: '', data: {} },
 				{
 					user: member,
 					role: 'credential:owner',

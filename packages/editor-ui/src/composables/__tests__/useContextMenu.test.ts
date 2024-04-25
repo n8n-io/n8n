@@ -1,11 +1,13 @@
 import type { INodeUi } from '@/Interface';
 import { useContextMenu } from '@/composables/useContextMenu';
-import { NO_OP_NODE_TYPE, STICKY_NODE_TYPE, STORES } from '@/constants';
+import { BASIC_CHAIN_NODE_TYPE, NO_OP_NODE_TYPE, STICKY_NODE_TYPE, STORES } from '@/constants';
 import { faker } from '@faker-js/faker';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { NodeHelpers } from 'n8n-workflow';
 
 const nodeFactory = (data: Partial<INodeUi> = {}): INodeUi => ({
 	id: faker.string.uuid(),
@@ -20,6 +22,7 @@ const nodeFactory = (data: Partial<INodeUi> = {}): INodeUi => ({
 describe('useContextMenu', () => {
 	let sourceControlStore: ReturnType<typeof useSourceControlStore>;
 	let uiStore: ReturnType<typeof useUIStore>;
+	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	const nodes = [nodeFactory(), nodeFactory(), nodeFactory()];
 	const selectedNodes = nodes.slice(0, 2);
 
@@ -34,10 +37,19 @@ describe('useContextMenu', () => {
 		);
 		sourceControlStore = useSourceControlStore();
 		uiStore = useUIStore();
+		workflowsStore = useWorkflowsStore();
 		vi.spyOn(uiStore, 'isReadOnlyView', 'get').mockReturnValue(false);
 		vi.spyOn(sourceControlStore, 'preferences', 'get').mockReturnValue({
 			branchReadOnly: false,
 		} as never);
+		vi.spyOn(workflowsStore, 'getCurrentWorkflow').mockReturnValue({
+			nodes,
+			getNode: (_: string) => {
+				return {};
+			},
+		} as never);
+
+		vi.spyOn(NodeHelpers, 'getNodeInputs').mockReturnValue([]);
 	});
 
 	afterEach(() => {
@@ -78,6 +90,17 @@ describe('useContextMenu', () => {
 		expect(isOpen.value).toBe(true);
 		expect(actions.value).toMatchSnapshot();
 		expect(targetNodes.value).toEqual([sticky]);
+	});
+
+	it('should disable pinning for node that has other inputs then "main"', () => {
+		const { open, isOpen, actions, targetNodes } = useContextMenu();
+		const basicChain = nodeFactory({ type: BASIC_CHAIN_NODE_TYPE });
+		vi.spyOn(NodeHelpers, 'getConnectionTypes').mockReturnValue(['main', 'ai_languageModel']);
+		open(mockEvent, { source: 'node-right-click', node: basicChain });
+
+		expect(isOpen.value).toBe(true);
+		expect(actions.value.find((action) => action.id === 'toggle_pin')?.disabled).toBe(true);
+		expect(targetNodes.value).toEqual([basicChain]);
 	});
 
 	it('should return the correct actions when right clicking a Node', () => {

@@ -8,8 +8,8 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
-import { getGoogleAccessToken } from '../../../GenericFunctions';
 import set from 'lodash/set';
+import { getGoogleAccessToken } from '../../../GenericFunctions';
 
 export async function apiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,

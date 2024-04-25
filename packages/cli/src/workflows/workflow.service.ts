@@ -51,10 +51,11 @@ export class WorkflowService {
 			? {
 					workflows: workflows.map((w) => this.ownershipService.addOwnedByAndSharedWith(w)),
 					count,
-			  }
+				}
 			: { workflows, count };
 	}
 
+	// eslint-disable-next-line complexity
 	async update(
 		user: User,
 		workflow: WorkflowEntity,

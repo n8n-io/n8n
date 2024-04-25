@@ -673,7 +673,7 @@ $switch-button-size: 16px;
 
 /* Dialog
 -------------------------- */
-$dialog-background-color: $color-white;
+$dialog-background-color: var(--color-dialog-background);
 $dialog-box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 /// fontSize||Font|1
 $dialog-content-font-size: 14px;

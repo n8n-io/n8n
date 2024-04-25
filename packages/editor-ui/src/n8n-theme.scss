@@ -1,5 +1,5 @@
 @import '@n8n/chat/css';
-@import 'styles/plugins';
+@import 'styles';
 
 :root {
 	--node-type-background-l: 95%;
@@ -170,9 +170,11 @@
 		var(--node-type-ai_vectorStore-color-s),
 		var(--node-type-background-l)
 	);
-	--node-error-output-color: #991818;
 
 	--chat--spacing: var(--spacing-s);
+
+	// Using native css variable enables us to use this value in JS
+	--header-height: 65;
 }
 
 .clickable {

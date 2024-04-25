@@ -285,10 +285,7 @@ export default defineComponent({
 			return this.workflowsStore.getWorkflowResultDataByNodeName(this.data?.name || '') || [];
 		},
 		hasIssues(): boolean {
-			if (
-				this.nodeExecutionStatus &&
-				['crashed', 'error', 'failed'].includes(this.nodeExecutionStatus)
-			)
+			if (this.nodeExecutionStatus && ['crashed', 'error'].includes(this.nodeExecutionStatus))
 				return true;
 			if (this.pinnedData.hasData.value) return false;
 			if (this.data?.issues !== undefined && Object.keys(this.data.issues).length) {
@@ -1185,7 +1182,8 @@ export default defineComponent({
 	--endpoint-size-small: 14px;
 	--endpoint-size-medium: 18px;
 	--stalk-size: 40px;
-	--stalk-switch-size: 60px;
+	--stalk-medium-size: 60px;
+	--stalk-large-size: 90px;
 	--stalk-success-size: 87px;
 	--stalk-success-size-without-label: 40px;
 	--stalk-long-size: 127px;
@@ -1238,13 +1236,13 @@ export default defineComponent({
 	// mouse over event.
 	pointer-events: none;
 	span {
-		border-radius: 7px;
 		background-color: hsla(
 			var(--color-canvas-background-h),
 			var(--color-canvas-background-s),
 			var(--color-canvas-background-l),
 			0.85
 		);
+		border-radius: var(--border-radius-base);
 		line-height: 1.3em;
 		padding: 0px 3px;
 		white-space: nowrap;
@@ -1296,10 +1294,10 @@ export default defineComponent({
 
 	&.error {
 		path {
-			fill: var(--node-error-output-color);
+			fill: var(--color-node-error-output-text-color);
 		}
 		rect {
-			stroke: var(--node-error-output-color);
+			stroke: var(--color-node-error-output-text-color);
 		}
 	}
 
@@ -1424,9 +1422,9 @@ export default defineComponent({
 		var(--color-canvas-background-l),
 		0.85
 	);
-	border-radius: 7px;
-	font-size: 0.7em;
-	padding: 2px;
+	border-radius: var(--border-radius-large);
+	font-size: var(--font-size-3xs);
+	padding: var(--spacing-5xs) var(--spacing-4xs);
 	white-space: nowrap;
 	transition: color var(--node-endpoint-label--transition-duration) ease;
 
@@ -1438,7 +1436,7 @@ export default defineComponent({
 }
 
 .node-output-endpoint-label.node-connection-category-error {
-	color: var(--node-error-output-color);
+	color: var(--color-node-error-output-text-color);
 }
 
 .node-output-endpoint-label {
@@ -1452,11 +1450,12 @@ export default defineComponent({
 
 	// Some nodes allow for dynamic connection labels
 	// so we need to make sure the label does not overflow
-	&.node-connection-type-main[data-endpoint-label-length='medium'] {
-		max-width: calc(var(--stalk-size) - (var(--endpoint-size-small)));
+	&.node-connection-type-main[data-endpoint-label-length] {
+		max-width: calc(var(--stalk-size) - var(--endpoint-size-small) - var(--spacing-4xs));
 		overflow: hidden;
 		text-overflow: ellipsis;
-		margin-left: calc(var(--endpoint-size-small) + var(--spacing-2xs) + 10px);
+		transform: translateY(-50%) !important;
+		margin-left: var(--endpoint-size-small);
 	}
 }
 
@@ -1511,6 +1510,10 @@ export default defineComponent({
 }
 
 [data-endpoint-label-length='medium'] {
-	--stalk-size: var(--stalk-switch-size);
+	--stalk-size: var(--stalk-medium-size);
+}
+
+[data-endpoint-label-length='large'] {
+	--stalk-size: var(--stalk-large-size);
 }
 </style>

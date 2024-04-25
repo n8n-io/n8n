@@ -88,6 +88,26 @@ export function urlEncode(value: object) {
 	return new URLSearchParams(value as Record<string, string>).toString();
 }
 
+export function toJsonString(value: object) {
+	return JSON.stringify(value);
+}
+
+export function toInt() {
+	return undefined;
+}
+
+export function toFloat() {
+	return undefined;
+}
+
+export function toBoolean() {
+	return undefined;
+}
+
+export function toDateTime() {
+	return undefined;
+}
+
 isEmpty.doc = {
 	name: 'isEmpty',
 	description: 'Checks if the Object has no key-value pairs.',
@@ -168,6 +188,14 @@ values.doc = {
 	returnType: 'Array',
 };
 
+toJsonString.doc = {
+	name: 'toJsonString',
+	description: 'Converts an object to a JSON string',
+	docURL:
+		'https://docs.n8n.io/code/builtin/data-transformation-functions/objects/#object-toJsonString',
+	returnType: 'string',
+};
+
 export const objectExtensions: ExtensionMap = {
 	typeName: 'Object',
 	functions: {
@@ -181,5 +209,10 @@ export const objectExtensions: ExtensionMap = {
 		urlEncode,
 		keys,
 		values,
+		toJsonString,
+		toInt,
+		toFloat,
+		toBoolean,
+		toDateTime,
 	},
 };

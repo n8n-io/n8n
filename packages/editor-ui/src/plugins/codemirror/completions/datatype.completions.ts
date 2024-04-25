@@ -17,6 +17,10 @@ import {
 	applyCompletion,
 	sortCompletionsAlpha,
 	hasRequiredArgs,
+	getDefaultArgs,
+	insertDefaultArgs,
+	applyBracketAccessCompletion,
+	applyBracketAccess,
 } from './utils';
 import type {
 	Completion,
@@ -67,8 +71,7 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 
 	if (word.from === word.to && !context.explicit) return null;
 
-	// eslint-disable-next-line prefer-const
-	let [base, tail] = splitBaseTail(word.text);
+	const [base, tail] = splitBaseTail(word.text);
 
 	let options: Completion[] = [];
 
@@ -102,14 +105,23 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 		}
 	}
 
-	if (options.length === 0) return null;
-
 	if (tail !== '') {
 		options = options.filter((o) => prefixMatch(o.label, tail) && o.label !== tail);
 	}
 
+	let from = word.to - tail.length;
+
+	// When autocomplete is explicitely opened (by Ctrl+Space or programatically), add completions for the current word with '.' prefix
+	// example: {{ $json.str| }} -> ['length', 'includes()'...] (would usually need a '.' suffix)
+	if (context.explicit && !word.text.endsWith('.') && options.length === 0) {
+		options = explicitDataTypeOptions(word.text);
+		from = word.to;
+	}
+
+	if (options.length === 0) return null;
+
 	return {
-		from: word.to - tail.length,
+		from,
 		options,
 		filter: false,
 		getMatch(completion: Completion) {
@@ -118,6 +130,20 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 			return [0, lcp.length];
 		},
 	};
+}
+
+function explicitDataTypeOptions(expression: string): Completion[] {
+	try {
+		const resolved = resolveParameter(`={{ ${expression} }}`);
+		return datatypeOptions({
+			resolved,
+			base: expression,
+			tail: '',
+			transformLabel: (label) => '.' + label,
+		});
+	} catch {
+		return [];
+	}
 }
 
 function datatypeOptions(input: AutocompleteInput): Completion[] {
@@ -133,12 +159,16 @@ function datatypeOptions(input: AutocompleteInput): Completion[] {
 		return stringOptions(input as AutocompleteInput<string>);
 	}
 
+	if (typeof resolved === 'boolean') {
+		return booleanOptions();
+	}
+
 	if (resolved instanceof DateTime) {
-		return luxonOptions();
+		return luxonOptions(input as AutocompleteInput<DateTime>);
 	}
 
 	if (resolved instanceof Date) {
-		return dateOptions();
+		return dateOptions(input as AutocompleteInput<Date>);
 	}
 
 	if (Array.isArray(resolved)) {
@@ -152,18 +182,33 @@ function datatypeOptions(input: AutocompleteInput): Completion[] {
 	return [];
 }
 
-export const natives = (typeName: ExtensionTypeName): Completion[] => {
+export const natives = (
+	typeName: ExtensionTypeName,
+	transformLabel: (label: string) => string = (label) => label,
+): Completion[] => {
 	const natives: NativeDoc = NativeMethods.find((ee) => ee.typeName.toLowerCase() === typeName);
 
 	if (!natives) return [];
 
-	const nativeProps = natives.properties ? toOptions(natives.properties, typeName, 'keyword') : [];
-	const nativeMethods = toOptions(natives.functions, typeName, 'native-function');
+	const nativeProps = natives.properties
+		? toOptions(natives.properties, typeName, 'keyword', false, transformLabel)
+		: [];
+	const nativeMethods = toOptions(
+		natives.functions,
+		typeName,
+		'native-function',
+		false,
+		transformLabel,
+	);
 
 	return [...nativeProps, ...nativeMethods];
 };
 
-export const extensions = (typeName: ExtensionTypeName, includeHidden = false) => {
+export const extensions = (
+	typeName: ExtensionTypeName,
+	includeHidden = false,
+	transformLabel: (label: string) => string = (label) => label,
+) => {
 	const extensions = ExpressionExtensions.find((ee) => ee.typeName.toLowerCase() === typeName);
 
 	if (!extensions) return [];
@@ -172,7 +217,25 @@ export const extensions = (typeName: ExtensionTypeName, includeHidden = false) =
 		return { ...acc, [fnName]: { doc: fn.doc } };
 	}, {});
 
-	return toOptions(fnToDoc, typeName, 'extension-function', includeHidden);
+	return toOptions(fnToDoc, typeName, 'extension-function', includeHidden, transformLabel);
+};
+
+export const getType = (value: unknown): string => {
+	if (Array.isArray(value)) return 'array';
+	if (value === null) return 'null';
+	return (typeof value).toLocaleLowerCase();
+};
+
+export const isInputData = (base: string): boolean => {
+	return (
+		/^\$input\..*\.json]/.test(base) || /^\$json/.test(base) || /^\$\(.*\)\..*\.json/.test(base)
+	);
+};
+
+export const getDetail = (base: string, value: unknown): string | undefined => {
+	const type = getType(value);
+	if (!isInputData(base) || type === 'function') return undefined;
+	return type;
 };
 
 export const toOptions = (
@@ -180,12 +243,13 @@ export const toOptions = (
 	typeName: ExtensionTypeName,
 	optionType: AutocompleteOptionType = 'native-function',
 	includeHidden = false,
+	transformLabel: (label: string) => string = (label) => label,
 ) => {
 	return Object.entries(fnToDoc)
 		.sort((a, b) => a[0].localeCompare(b[0]))
-		.filter(([, docInfo]) => !docInfo.doc?.hidden || includeHidden)
+		.filter(([, docInfo]) => (docInfo.doc && !docInfo.doc?.hidden) || includeHidden)
 		.map(([fnName, docInfo]) => {
-			return createCompletionOption(typeName, fnName, optionType, docInfo);
+			return createCompletionOption(typeName, fnName, optionType, docInfo, transformLabel);
 		});
 };
 
@@ -194,6 +258,7 @@ const createCompletionOption = (
 	name: string,
 	optionType: AutocompleteOptionType,
 	docInfo: { doc?: DocMetadata | undefined },
+	transformLabel: (label: string) => string = (label) => label,
 ): Completion => {
 	const isFunction = isFunctionOption(optionType);
 	const label = isFunction ? name + '()' : name;
@@ -201,7 +266,11 @@ const createCompletionOption = (
 		label,
 		type: optionType,
 		section: docInfo.doc?.section,
-		apply: applyCompletion(hasRequiredArgs(docInfo?.doc)),
+		apply: applyCompletion({
+			hasArgs: hasRequiredArgs(docInfo?.doc),
+			defaultArgs: getDefaultArgs(docInfo?.doc),
+			transformLabel,
+		}),
 	};
 
 	option.info = () => {
@@ -287,7 +356,11 @@ const createPropHeader = (typeName: string, property: { doc?: DocMetadata | unde
 	const header = document.createElement('div');
 	if (property.doc) {
 		const typeNameSpan = document.createElement('span');
-		typeNameSpan.innerHTML = typeName.slice(0, 1).toUpperCase() + typeName.slice(1) + '.';
+		typeNameSpan.innerHTML = typeName.charAt(0).toUpperCase() + typeName.slice(1);
+
+		if (!property.doc.name.startsWith("['")) {
+			typeNameSpan.innerHTML += '.';
+		}
 
 		const propNameSpan = document.createElement('span');
 		propNameSpan.classList.add('autocomplete-info-name');
@@ -304,7 +377,7 @@ const createPropHeader = (typeName: string, property: { doc?: DocMetadata | unde
 };
 
 const objectOptions = (input: AutocompleteInput<IDataObject>): Completion[] => {
-	const { base, resolved } = input;
+	const { base, resolved, transformLabel = (label) => label } = input;
 	const rank = setRank(['item', 'all', 'first', 'last']);
 	const SKIP = new Set(['__ob__', 'pairedItem']);
 
@@ -326,9 +399,10 @@ const objectOptions = (input: AutocompleteInput<IDataObject>): Completion[] => {
 	}
 
 	const localKeys = rank(rawKeys)
-		.filter((key) => !SKIP.has(key) && isAllowedInDotNotation(key) && !isPseudoParam(key))
+		.filter((key) => !SKIP.has(key) && !isPseudoParam(key))
 		.map((key) => {
 			ensureKeyCanBeResolved(resolved, key);
+			const needsBracketAccess = !isAllowedInDotNotation(key);
 			const resolvedProp = resolved[key];
 
 			const isFunction = typeof resolvedProp === 'function';
@@ -336,19 +410,31 @@ const objectOptions = (input: AutocompleteInput<IDataObject>): Completion[] => {
 
 			const option: Completion = {
 				label: isFunction ? key + '()' : key,
-				type: isFunction ? 'function' : 'keyword',
 				section: getObjectPropertySection({ name, key, isFunction }),
-				apply: applyCompletion(hasArgs),
+				apply: needsBracketAccess
+					? applyBracketAccessCompletion
+					: applyCompletion({
+							hasArgs,
+							transformLabel,
+						}),
+				detail: getDetail(name, resolvedProp),
 			};
 
 			const infoKey = [name, key].join('.');
-			option.info = createCompletionOption('', key, isFunction ? 'native-function' : 'keyword', {
-				doc: {
-					name: key,
-					returnType: typeof resolvedProp,
-					description: i18n.proxyVars[infoKey],
+			const infoName = needsBracketAccess ? applyBracketAccess(key) : key;
+			option.info = createCompletionOption(
+				'',
+				infoName,
+				isFunction ? 'native-function' : 'keyword',
+				{
+					doc: {
+						name: infoName,
+						returnType: getType(resolvedProp),
+						description: i18n.proxyVars[infoKey],
+					},
 				},
-			}).info;
+				transformLabel,
+			).info;
 
 			return option;
 		});
@@ -402,7 +488,7 @@ const applySections = ({
 	recommendedSection = RECOMMENDED_SECTION,
 }: {
 	options: Completion[];
-	recommended?: string[];
+	recommended?: Array<string | { label: string; args: unknown[] }>;
 	recommendedSection?: CompletionSection;
 	methodsSection?: CompletionSection;
 	propSection?: CompletionSection;
@@ -418,12 +504,12 @@ const applySections = ({
 		{} as Record<string, Completion>,
 	);
 	return recommended
-		.map(
-			(reco): Completion => ({
-				...optionByLabel[reco],
-				section: recommendedSection,
-			}),
-		)
+		.map((reco): Completion => {
+			const option = optionByLabel[typeof reco === 'string' ? reco : reco.label];
+			const label =
+				typeof reco === 'string' ? option.label : insertDefaultArgs(reco.label, reco.args);
+			return { ...option, label, section: recommendedSection };
+		})
 		.concat(
 			options
 				.filter((option) => !excludeRecommended || !recommendedSet.has(option.label))
@@ -448,8 +534,11 @@ const isUrl = (url: string): boolean => {
 };
 
 const stringOptions = (input: AutocompleteInput<string>): Completion[] => {
-	const { resolved, tail } = input;
-	const options = sortCompletionsAlpha([...natives('string'), ...extensions('string')]);
+	const { resolved, transformLabel } = input;
+	const options = sortCompletionsAlpha([
+		...natives('string', transformLabel),
+		...extensions('string', false, transformLabel),
+	]);
 
 	if (validateFieldType('string', resolved, 'number').valid) {
 		return applySections({
@@ -462,15 +551,23 @@ const stringOptions = (input: AutocompleteInput<string>): Completion[] => {
 	if (validateFieldType('string', resolved, 'dateTime').valid) {
 		return applySections({
 			options,
-			recommended: ['toDate()'],
+			recommended: ['toDateTime()'],
 			sections: STRING_SECTIONS,
 		});
 	}
 
-	if (VALID_EMAIL_REGEX.test(resolved) || isUrl(resolved)) {
+	if (VALID_EMAIL_REGEX.test(resolved)) {
 		return applySections({
 			options,
 			recommended: ['extractDomain()', 'isEmail()', ...STRING_RECOMMENDED_OPTIONS],
+			sections: STRING_SECTIONS,
+		});
+	}
+
+	if (isUrl(resolved)) {
+		return applySections({
+			options,
+			recommended: ['extractDomain()', 'extractUrlPath()', ...STRING_RECOMMENDED_OPTIONS],
 			sections: STRING_SECTIONS,
 		});
 	}
@@ -483,6 +580,26 @@ const stringOptions = (input: AutocompleteInput<string>): Completion[] => {
 		});
 	}
 
+	const trimmed = resolved.trim();
+	if (
+		(trimmed.startsWith('{') && trimmed.endsWith('}')) ||
+		(trimmed.startsWith('[') && trimmed.endsWith(']'))
+	) {
+		return applySections({
+			options,
+			recommended: ['parseJson()', ...STRING_RECOMMENDED_OPTIONS],
+			sections: STRING_SECTIONS,
+		});
+	}
+
+	if (['true', 'false'].includes(resolved.toLocaleLowerCase())) {
+		return applySections({
+			options,
+			recommended: ['toBoolean()', ...STRING_RECOMMENDED_OPTIONS],
+			sections: STRING_SECTIONS,
+		});
+	}
+
 	return applySections({
 		options,
 		recommended: STRING_RECOMMENDED_OPTIONS,
@@ -490,12 +607,51 @@ const stringOptions = (input: AutocompleteInput<string>): Completion[] => {
 	});
 };
 
+const booleanOptions = (): Completion[] => {
+	return applySections({
+		options: sortCompletionsAlpha([...natives('boolean'), ...extensions('boolean')]),
+	});
+};
+
 const numberOptions = (input: AutocompleteInput<number>): Completion[] => {
-	const { resolved } = input;
-	const options = sortCompletionsAlpha([...natives('number'), ...extensions('number')]);
+	const { resolved, transformLabel } = input;
+	const options = sortCompletionsAlpha([
+		...natives('number', transformLabel),
+		...extensions('number', false, transformLabel),
+	]);
 	const ONLY_INTEGER = ['isEven()', 'isOdd()'];
 
 	if (Number.isInteger(resolved)) {
+		const nowMillis = Date.now();
+		const marginMillis = 946_707_779_000; // 30y
+		const isPlausableMillisDateTime =
+			resolved > nowMillis - marginMillis && resolved < nowMillis + marginMillis;
+
+		if (isPlausableMillisDateTime) {
+			return applySections({
+				options,
+				recommended: [{ label: 'toDateTime()', args: ['ms'] }],
+			});
+		}
+
+		const nowSeconds = nowMillis / 1000;
+		const marginSeconds = marginMillis / 1000;
+		const isPlausableSecondsDateTime =
+			resolved > nowSeconds - marginSeconds && resolved < nowSeconds + marginSeconds;
+		if (isPlausableSecondsDateTime) {
+			return applySections({
+				options,
+				recommended: [{ label: 'toDateTime()', args: ['s'] }],
+			});
+		}
+
+		if (resolved === 0 || resolved === 1) {
+			return applySections({
+				options,
+				recommended: ['toBoolean()'],
+			});
+		}
+
 		return applySections({
 			options,
 			recommended: ONLY_INTEGER,
@@ -504,22 +660,31 @@ const numberOptions = (input: AutocompleteInput<number>): Completion[] => {
 		const exclude = new Set(ONLY_INTEGER);
 		return applySections({
 			options: options.filter((option) => !exclude.has(option.label)),
-			recommended: ['round()', 'floor()', 'ceil()', 'toFixed()'],
+			recommended: ['round()', 'floor()', 'ceil()'],
 		});
 	}
 };
 
-const dateOptions = (): Completion[] => {
+const dateOptions = (input: AutocompleteInput<Date>): Completion[] => {
 	return applySections({
-		options: sortCompletionsAlpha([...natives('date'), ...extensions('date', true)]),
+		options: sortCompletionsAlpha([
+			...natives('date', input.transformLabel),
+			...extensions('date', true, input.transformLabel),
+		]),
 		recommended: DATE_RECOMMENDED_OPTIONS,
 	});
 };
 
-const luxonOptions = (): Completion[] => {
+const luxonOptions = (input: AutocompleteInput<DateTime>): Completion[] => {
 	return applySections({
 		options: sortCompletionsAlpha(
-			uniqBy([...extensions('date'), ...luxonInstanceOptions()], (option) => option.label),
+			uniqBy(
+				[
+					...extensions('date', false, input.transformLabel),
+					...luxonInstanceOptions(false, input.transformLabel),
+				],
+				(option) => option.label,
+			),
 		),
 		recommended: LUXON_RECOMMENDED_OPTIONS,
 		sections: LUXON_SECTIONS,
@@ -527,9 +692,12 @@ const luxonOptions = (): Completion[] => {
 };
 
 const arrayOptions = (input: AutocompleteInput<unknown[]>): Completion[] => {
-	const { resolved } = input;
+	const { resolved, transformLabel } = input;
 	const options = applySections({
-		options: sortCompletionsAlpha([...natives('array'), ...extensions('array')]),
+		options: sortCompletionsAlpha([
+			...natives('array', transformLabel),
+			...extensions('array', false, transformLabel),
+		]),
 		recommended: ARRAY_RECOMMENDED_OPTIONS,
 		methodsSection: OTHER_SECTION,
 		propSection: OTHER_SECTION,
@@ -588,7 +756,7 @@ export const secretOptions = (base: string) => {
 			return [];
 		}
 		return Object.entries(resolved).map(([secret, value]) =>
-			createCompletionOption('Object', secret, 'keyword', {
+			createCompletionOption('', secret, 'keyword', {
 				doc: {
 					name: secret,
 					returnType: typeof value,
@@ -620,7 +788,10 @@ export const secretProvidersOptions = () => {
 /**
  * Methods and fields defined on a Luxon `DateTime` class instance.
  */
-export const luxonInstanceOptions = (includeHidden = false) => {
+export const luxonInstanceOptions = (
+	includeHidden = false,
+	transformLabel: (label: string) => string = (label) => label,
+) => {
 	const SKIP = new Set(['constructor', 'get', 'invalidExplanation', 'invalidReason']);
 
 	return Object.entries(Object.getOwnPropertyDescriptors(DateTime.prototype))
@@ -635,6 +806,7 @@ export const luxonInstanceOptions = (includeHidden = false) => {
 				luxonInstanceDocs,
 				i18n.luxonInstance,
 				includeHidden,
+				transformLabel,
 			) as Completion;
 		})
 		.filter(Boolean);
@@ -667,6 +839,7 @@ const createLuxonAutocompleteOption = (
 	docDefinition: NativeDoc,
 	translations: Record<string, string | undefined>,
 	includeHidden = false,
+	transformLabel: (label: string) => string = (label) => label,
 ): Completion | null => {
 	const isFunction = isFunctionOption(type);
 	const label = isFunction ? name + '()' : name;
@@ -688,7 +861,7 @@ const createLuxonAutocompleteOption = (
 		};
 	}
 
-	if (doc?.hidden && !includeHidden) {
+	if (!doc || (doc?.hidden && !includeHidden)) {
 		return null;
 	}
 
@@ -696,12 +869,22 @@ const createLuxonAutocompleteOption = (
 		label,
 		type,
 		section: doc?.section,
-		apply: applyCompletion(hasRequiredArgs(doc)),
+		apply: applyCompletion({
+			hasArgs: hasRequiredArgs(doc),
+			defaultArgs: getDefaultArgs(doc),
+			transformLabel,
+		}),
 	};
-	option.info = createCompletionOption('DateTime', name, type, {
-		// Add translated description
-		doc: { ...doc, description: translations[name] } as DocMetadata,
-	}).info;
+	option.info = createCompletionOption(
+		'DateTime',
+		name,
+		type,
+		{
+			// Add translated description
+			doc: { ...doc, description: translations[name] } as DocMetadata,
+		},
+		transformLabel,
+	).info;
 	return option;
 };
 
@@ -731,7 +914,7 @@ const regexes = {
 	singleQuoteStringLiteral: /('.+')\.([^'{\s])*/, // 'abc'.
 	doubleQuoteStringLiteral: /(".+")\.([^"{\s])*/, // "abc".
 	dateLiteral: /\(?new Date\(\(?.*?\)\)?\.(.*)/, // new Date(). or (new Date()).
-	arrayLiteral: /(\[.*\])\.(.*)/, // [1, 2, 3].
+	arrayLiteral: /\(?(\[.*\])\)?\.(.*)/, // [1, 2, 3].
 	indexedAccess: /([^"{\s]+\[.+\])\.(.*)/, // 'abc'[0]. or 'abc'.split('')[0] or similar ones
 	objectLiteral: /\(\{.*\}\)\.(.*)/, // ({}).
 

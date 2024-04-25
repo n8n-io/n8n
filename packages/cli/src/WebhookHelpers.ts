@@ -106,10 +106,22 @@ export const webhookRequestHandler =
 				const options = await webhookManager.findAccessControlOptions(path, requestedMethod);
 				const { allowedOrigins } = options ?? {};
 
-				res.header(
-					'Access-Control-Allow-Origin',
-					!allowedOrigins || allowedOrigins === '*' ? req.headers.origin : allowedOrigins,
-				);
+				if (allowedOrigins && allowedOrigins !== '*' && allowedOrigins !== req.headers.origin) {
+					const originsList = allowedOrigins.split(',');
+					const defaultOrigin = originsList[0];
+
+					if (originsList.length === 1) {
+						res.header('Access-Control-Allow-Origin', defaultOrigin);
+					}
+
+					if (originsList.includes(req.headers.origin as string)) {
+						res.header('Access-Control-Allow-Origin', req.headers.origin);
+					} else {
+						res.header('Access-Control-Allow-Origin', defaultOrigin);
+					}
+				} else {
+					res.header('Access-Control-Allow-Origin', req.headers.origin);
+				}
 
 				if (method === 'OPTIONS') {
 					res.header('Access-Control-Max-Age', '300');
@@ -205,13 +217,14 @@ const normalizeFormData = <T>(values: Record<string, T | T[]>) => {
 /**
  * Executes a webhook
  */
+// eslint-disable-next-line complexity
 export async function executeWebhook(
 	workflow: Workflow,
 	webhookData: IWebhookData,
 	workflowData: IWorkflowDb,
 	workflowStartNode: INode,
 	executionMode: WorkflowExecuteMode,
-	sessionId: string | undefined,
+	pushRef: string | undefined,
 	runExecutionData: IRunExecutionData | undefined,
 	executionId: string | undefined,
 	req: WebhookRequest,
@@ -262,14 +275,14 @@ export async function executeWebhook(
 	);
 	const responseCode = workflow.expression.getSimpleParameterValue(
 		workflowStartNode,
-		webhookData.webhookDescription.responseCode,
+		webhookData.webhookDescription.responseCode as string,
 		executionMode,
 		additionalKeys,
 		undefined,
 		200,
 	) as number;
 
-	const responseData = workflow.expression.getSimpleParameterValue(
+	const responseData = workflow.expression.getComplexParameterValue(
 		workflowStartNode,
 		webhookData.webhookDescription.responseData,
 		executionMode,
@@ -324,7 +337,7 @@ export async function executeWebhook(
 					// TODO: pass a custom `fileWriteStreamHandler` to create binary data files directly
 				});
 				req.body = await new Promise((resolve) => {
-					form.parse(req, async (err, data, files) => {
+					form.parse(req, async (_err, data, files) => {
 						normalizeFormData(data);
 						normalizeFormData(files);
 						resolve({ data, files });
@@ -455,6 +468,12 @@ export async function executeWebhook(
 				responseCallback(null, {
 					responseCode,
 				});
+			} else if (responseData) {
+				// Return the data specified in the response data option
+				responseCallback(null, {
+					data: responseData as IDataObject,
+					responseCode,
+				});
 			} else if (webhookResultData.webhookResponse !== undefined) {
 				// Data to respond with is given
 				responseCallback(null, {
@@ -523,7 +542,7 @@ export async function executeWebhook(
 		const runData: IWorkflowExecutionDataProcess = {
 			executionMode,
 			executionData: runExecutionData,
-			sessionId,
+			pushRef,
 			workflowData,
 			pinData,
 			userId: user.id,
@@ -607,6 +626,7 @@ export async function executeWebhook(
 				executionId,
 			) as Promise<IExecutionDb | undefined>;
 			executePromise
+				// eslint-disable-next-line complexity
 				.then(async (data) => {
 					if (data === undefined) {
 						if (!didSendResponse) {
@@ -828,7 +848,7 @@ export async function executeWebhook(
 				: new ApplicationError('There was a problem executing the workflow', {
 						level: 'warning',
 						cause: e,
-				  });
+					});
 		if (didSendResponse) throw error;
 		responseCallback(error, {});
 		return;

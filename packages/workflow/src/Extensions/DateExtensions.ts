@@ -216,6 +216,25 @@ function plus(
 	return DateTime.fromJSDate(date).plus(duration).toJSDate();
 }
 
+function toDateTime(date: Date | DateTime): DateTime {
+	if (isDateTime(date)) return date;
+
+	return DateTime.fromJSDate(date);
+}
+
+function toInt(date: Date | DateTime): number {
+	if (isDateTime(date)) {
+		return date.toMillis();
+	}
+	return date.getTime();
+}
+
+const toFloat = toInt;
+
+function toBoolean() {
+	return undefined;
+}
+
 endOfMonth.doc = {
 	name: 'endOfMonth',
 	returnType: 'Date',
@@ -267,7 +286,7 @@ format.doc = {
 	description: 'Formats a Date in the given structure.',
 	returnType: 'string',
 	section: 'format',
-	args: [{ name: 'fmt', type: 'TimeFormat' }],
+	args: [{ name: 'fmt', default: 'yyyy-MM-dd', type: 'TimeFormat' }],
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-format',
 };
 
@@ -293,6 +312,15 @@ isInLast.doc = {
 		{ name: 'unit?', type: 'DurationUnit' },
 	],
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-isInLast',
+};
+
+toDateTime.doc = {
+	name: 'toDateTime',
+	description: 'Convert a JavaScript Date to a Luxon DateTime.',
+	section: 'query',
+	returnType: 'DateTime',
+	hidden: true,
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-toDateTime',
 };
 
 minus.doc = {
@@ -332,5 +360,9 @@ export const dateExtensions: ExtensionMap = {
 		minus,
 		plus,
 		format,
+		toDateTime,
+		toInt,
+		toFloat,
+		toBoolean,
 	},
 };

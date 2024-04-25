@@ -93,7 +93,7 @@ export async function activityPresend(
 								username: (un) => keyValueToObj(un.itemChoice as any[]),
 								emails: transformSingleProp('email'),
 							},
-					  )
+						)
 					: v,
 		},
 	);

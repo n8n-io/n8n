@@ -85,7 +85,7 @@ export class MeController {
 
 		this.logger.info('User updated successfully', { userId });
 
-		this.authService.issueCookie(res, user);
+		this.authService.issueCookie(res, user, req.browserId);
 
 		const updatedKeys = Object.keys(payload);
 		void this.internalHooks.onUserUpdate({
@@ -138,7 +138,7 @@ export class MeController {
 		const updatedUser = await this.userRepository.save(user, { transaction: false });
 		this.logger.info('Password updated successfully', { userId: user.id });
 
-		this.authService.issueCookie(res, updatedUser);
+		this.authService.issueCookie(res, updatedUser, req.browserId);
 
 		void this.internalHooks.onUserUpdate({
 			user: updatedUser,

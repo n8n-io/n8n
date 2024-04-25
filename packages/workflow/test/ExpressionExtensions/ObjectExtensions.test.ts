@@ -1,3 +1,4 @@
+import { objectExtensions } from '../../src/Extensions/ObjectExtensions';
 import { evaluate } from './Helpers';
 
 describe('Data Transformation Functions', () => {
@@ -88,6 +89,28 @@ describe('Data Transformation Functions', () => {
 
 		test('.values should work on an object', () => {
 			expect(evaluate('={{ ({ test1: 1, test2: "2" }).values() }}')).toEqual([1, '2']);
+		});
+
+		test('.toJsonString() should work on an object', () => {
+			expect(evaluate('={{ ({ test1: 1, test2: "2" }).toJsonString() }}')).toEqual(
+				'{"test1":1,"test2":"2"}',
+			);
+		});
+
+		describe('Conversion methods', () => {
+			test('should exist but return undefined (to not break expressions with mixed data)', () => {
+				expect(evaluate('={{ ({ test1: 1, test2: "2" }).toInt() }}')).toBeUndefined();
+				expect(evaluate('={{ ({ test1: 1, test2: "2" }).toFloat() }}')).toBeUndefined();
+				expect(evaluate('={{ ({ test1: 1, test2: "2" }).toBoolean() }}')).toBeUndefined();
+				expect(evaluate('={{ ({ test1: 1, test2: "2" }).toDateTime() }}')).toBeUndefined();
+			});
+
+			it('should not have a doc (hidden from autocomplete)', () => {
+				expect(objectExtensions.functions.toInt.doc).toBeUndefined();
+				expect(objectExtensions.functions.toFloat.doc).toBeUndefined();
+				expect(objectExtensions.functions.toBoolean.doc).toBeUndefined();
+				expect(objectExtensions.functions.toDateTime.doc).toBeUndefined();
+			});
 		});
 	});
 });

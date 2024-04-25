@@ -186,6 +186,7 @@ describe('NDV', () => {
 
 		ndv.getters.inputTableRow(1).invoke('attr', 'data-test-id').should('equal', 'hovering-item');
 		ndv.getters.inputTableRow(1).realHover();
+		cy.wait(100);
 		ndv.getters.outputHoveringItem().should('not.exist');
 		ndv.getters.parameterExpressionPreview('value').should('include.text', '1111');
 
@@ -200,6 +201,7 @@ describe('NDV', () => {
 		ndv.actions.selectInputNode('Code');
 
 		ndv.getters.inputTableRow(1).realHover();
+		cy.wait(100);
 		ndv.getters.inputTableRow(1).should('have.text', '6666');
 
 		ndv.getters.inputTableRow(1).invoke('attr', 'data-test-id').should('equal', 'hovering-item');
@@ -322,7 +324,7 @@ describe('NDV', () => {
 		];
 		/* prettier-ignore */
 		workflowPage.actions.openNode('Get thread details1');
-		ndv.actions.setPinnedData(PINNED_DATA);
+		ndv.actions.pastePinnedData(PINNED_DATA);
 		ndv.actions.close();
 
 		workflowPage.actions.executeWorkflow();

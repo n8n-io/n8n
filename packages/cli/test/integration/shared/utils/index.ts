@@ -18,7 +18,6 @@ import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { Push } from '@/push';
 import { OrchestrationService } from '@/services/orchestration.service';
 
-import { mockNodeTypesData } from '../../../unit/Helpers';
 import { mockInstance } from '../../../shared/mocking';
 
 export { setupTestServer } from './testServer';
@@ -177,15 +176,3 @@ export function makeWorkflow(options?: {
 }
 
 export const MOCK_PINDATA = { Spotify: [{ json: { myKey: 'myValue' } }] };
-
-export function setSchedulerAsLoadedNode() {
-	const nodesAndCredentials = mockInstance(LoadNodesAndCredentials);
-
-	Object.assign(nodesAndCredentials, {
-		loadedNodes: mockNodeTypesData(['scheduleTrigger'], {
-			addTrigger: true,
-		}),
-		known: { nodes: {}, credentials: {} },
-		types: { nodes: [], credentials: [] },
-	});
-}

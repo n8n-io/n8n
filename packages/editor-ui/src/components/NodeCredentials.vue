@@ -32,7 +32,7 @@
 						:model-value="getSelectedId(credentialTypeDescription.name)"
 						:placeholder="getSelectPlaceholder(credentialTypeDescription.name, issues)"
 						size="small"
-						@update:modelValue="
+						@update:model-value="
 							(value) =>
 								onCredentialSelected(
 									credentialTypeDescription.name,
@@ -369,7 +369,7 @@ export default defineComponent({
 			return issues.length && this.getSelectedName(type)
 				? this.$locale.baseText('nodeCredentials.selectedCredentialUnavailable', {
 						interpolate: { name: this.getSelectedName(type) },
-				  })
+					})
 				: this.$locale.baseText('nodeCredentials.selectCredential');
 		},
 		credentialInputWrapperStyle(credentialType: string) {

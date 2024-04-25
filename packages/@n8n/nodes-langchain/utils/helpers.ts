@@ -1,9 +1,10 @@
 import { NodeConnectionType, NodeOperationError, jsonStringify } from 'n8n-workflow';
 import type { EventNamesAiNodesType, IDataObject, IExecuteFunctions } from 'n8n-workflow';
-import { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { BaseOutputParser } from '@langchain/core/output_parsers';
 import type { BaseMessage } from '@langchain/core/messages';
 import { DynamicTool, type Tool } from '@langchain/core/tools';
+import type { BaseLLM } from '@langchain/core/language_models/llms';
 
 export function getMetadataFiltersValues(
 	ctx: IExecuteFunctions,
@@ -20,10 +21,10 @@ export function getMetadataFiltersValues(
 	return undefined;
 }
 
-// TODO: Remove this function once langchain package is updated to 0.1.x
-// eslint-disable-next-line @typescript-eslint/no-duplicate-type-constituents
-export function isChatInstance(model: any): model is BaseChatModel {
-	return model instanceof BaseChatModel;
+export function isChatInstance(model: unknown): model is BaseChatModel {
+	const namespace = (model as BaseLLM | BaseChatModel)?.lc_namespace ?? [];
+
+	return namespace.includes('chat_models');
 }
 
 export async function getOptionalOutputParsers(

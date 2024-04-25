@@ -1,4 +1,8 @@
-import { CREDENTIAL_EDIT_MODAL_KEY, SPLIT_IN_BATCHES_NODE_TYPE } from '@/constants';
+import {
+	CREDENTIAL_EDIT_MODAL_KEY,
+	HTTP_REQUEST_NODE_TYPE,
+	SPLIT_IN_BATCHES_NODE_TYPE,
+} from '@/constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { resolveParameter, useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -16,6 +20,7 @@ import type { SyntaxNode } from '@lezer/common';
 import { javascriptLanguage } from '@codemirror/lang-javascript';
 import { useRouter } from 'vue-router';
 import type { DocMetadata } from 'n8n-workflow';
+import { escapeMappingString } from '@/utils/mappingUtils';
 
 /**
  * Split user input into base (to resolve) and tail (to filter).
@@ -120,6 +125,14 @@ export function hasNoParams(toResolve: string) {
 
 export const isCredentialsModalOpen = () => useUIStore().modals[CREDENTIAL_EDIT_MODAL_KEY].open;
 
+export const isInHttpNodePagination = () => {
+	const ndvStore = useNDVStore();
+	return (
+		ndvStore.activeNode?.type === HTTP_REQUEST_NODE_TYPE &&
+		ndvStore.focusedInputPath.startsWith('parameters.options.pagination')
+	);
+};
+
 export const hasActiveNode = () => useNDVStore().activeNode?.name !== undefined;
 
 export const isSplitInBatchesAbsent = () =>
@@ -151,26 +164,78 @@ export const stripExcessParens = (context: CompletionContext) => (option: Comple
 	return option;
 };
 
+export const getDefaultArgs = (doc?: DocMetadata): unknown[] => {
+	return doc?.args?.map((arg) => arg.default).filter(Boolean) ?? [];
+};
+
+export const insertDefaultArgs = (label: string, args: unknown[]): string => {
+	if (!label.endsWith('()')) return label;
+	const argList = args.map((arg) => JSON.stringify(arg)).join(', ');
+	const fnName = label.replace('()', '');
+
+	return `${fnName}(${argList})`;
+};
+
 /**
  * When a function completion is selected, set the cursor correctly
- * @example `.includes()` -> `.includes(<cursor>)`
+ *
+ *  @example `.includes()` -> `.includes(<cursor>)`
  *  @example `$max()` -> `$max()<cursor>`
  */
 export const applyCompletion =
-	(hasArgs = true) =>
+	({
+		hasArgs = true,
+		defaultArgs = [],
+		transformLabel = (label) => label,
+	}: {
+		hasArgs?: boolean;
+		defaultArgs?: unknown[];
+		transformLabel?: (label: string) => string;
+	} = {}) =>
 	(view: EditorView, completion: Completion, from: number, to: number): void => {
+		const isFunction = completion.label.endsWith('()');
+		const label = insertDefaultArgs(transformLabel(completion.label), defaultArgs);
 		const tx: TransactionSpec = {
-			...insertCompletionText(view.state, completion.label, from, to),
+			...insertCompletionText(view.state, label, from, to),
 			annotations: pickedCompletion.of(completion),
 		};
 
-		if (completion.label.endsWith('()') && hasArgs) {
-			const cursorPosition = from + completion.label.length - 1;
-			tx.selection = { anchor: cursorPosition, head: cursorPosition };
+		if (isFunction) {
+			if (defaultArgs.length > 0) {
+				tx.selection = { anchor: from + label.indexOf('(') + 1, head: from + label.length - 1 };
+			} else if (hasArgs) {
+				const cursorPosition = from + label.length - 1;
+				tx.selection = { anchor: cursorPosition, head: cursorPosition };
+			}
 		}
 
 		view.dispatch(tx);
 	};
+
+export const applyBracketAccess = (key: string): string => {
+	return `['${escapeMappingString(key)}']`;
+};
+
+/**
+ * Apply a bracket-access completion
+ *
+ *  @example `$json.` -> `$json['key with spaces']`
+ *  @example `$json` -> `$json['key with spaces']`
+ */
+export const applyBracketAccessCompletion = (
+	view: EditorView,
+	completion: Completion,
+	from: number,
+	to: number,
+): void => {
+	const label = applyBracketAccess(completion.label);
+	const completionAtDot = view.state.sliceDoc(from - 1, from) === '.';
+
+	view.dispatch({
+		...insertCompletionText(view.state, label, completionAtDot ? from - 1 : from, to),
+		annotations: pickedCompletion.of(completion),
+	});
+};
 
 export const hasRequiredArgs = (doc?: DocMetadata): boolean => {
 	if (!doc) return false;
@@ -196,4 +261,10 @@ export const renderSectionHeader = (section: CompletionSection): HTMLElement => 
 export const withSectionHeader = (section: CompletionSection): CompletionSection => {
 	section.header = renderSectionHeader;
 	return section;
+};
+
+export const isCompletionSection = (
+	section: CompletionSection | string | undefined,
+): section is CompletionSection => {
+	return typeof section === 'object';
 };

@@ -1,17 +1,20 @@
 import type { INodeProperties, NodeParameterValueType } from 'n8n-workflow';
 import { isResourceLocatorValue } from 'n8n-workflow';
 
+const validJsIdNameRegex = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/;
+
+function isValidJsIdentifierName(name: string | number): boolean {
+	return validJsIdNameRegex.test(name.toString());
+}
+
 export function generatePath(root: string, path: Array<string | number>): string {
 	return path.reduce((accu: string, part: string | number) => {
 		if (typeof part === 'number') {
 			return `${accu}[${part}]`;
 		}
 
-		const special = ['-', ' ', '.', "'", '"', '`', '[', ']', '{', '}', '(', ')', ':', ',', '?'];
-		const hasSpecial = !!special.find((s) => part.includes(s));
-		if (hasSpecial) {
-			const escaped = part.replaceAll("'", "\\'");
-			return `${accu}['${escaped}']`;
+		if (!isValidJsIdentifierName(part)) {
+			return `${accu}['${escapeMappingString(part)}']`;
 		}
 
 		return `${accu}.${part}`;

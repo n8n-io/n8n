@@ -23,8 +23,8 @@ export default function () {
 			args = {} as unknown as Array<string | object>;
 		}
 
-		return str.replace(RE_NARGS, (match, prefix, i, index: number) => {
-			let result;
+		return str.replace(RE_NARGS, (match, _, i, index: number) => {
+			let result: string | object | null;
 
 			if (str[index - 1] === '{' && str[index + match.length] === '}') {
 				return i;

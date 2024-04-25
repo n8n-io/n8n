@@ -250,7 +250,7 @@ export class LmChatOpenAi implements INodeType {
 			modelKwargs: options.responseFormat
 				? {
 						response_format: { type: options.responseFormat },
-				  }
+					}
 				: undefined,
 		});
 

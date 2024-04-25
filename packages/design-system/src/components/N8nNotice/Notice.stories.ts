@@ -58,18 +58,17 @@ Sanitized.args = {
 		'<script>alert(1)</script> This content contains a script tag and is <strong>sanitized</strong>.',
 };
 
-export const Truncated = PropTemplate.bind({});
-Truncated.args = {
+export const FullContent = PropTemplate.bind({});
+FullContent.args = {
 	theme: 'warning',
-	truncate: true,
-	content:
-		'This content is long and will be truncated at 150 characters. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
+	content: 'This is just the summary. <a data-key="toggle-expand">Show more</a>',
+	fullContent:
+		'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod ut labore et dolore magna aliqua. <a data-key="show-less">Show less</a>',
 };
 
 export const HtmlEdgeCase = PropTemplate.bind({});
 HtmlEdgeCase.args = {
 	theme: 'warning',
-	truncate: true,
 	content:
 		'This content is long and will be truncated at 150 characters. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod <a href="">read the documentation</a> ut labore et dolore magna aliqua.',
 };

@@ -1,9 +1,8 @@
 import { roleMiddleware } from '@/rbac/middleware/role';
 import { useUsersStore } from '@/stores/users.store';
-import { ROLE } from '@/utils/userUtils';
 import type { IUser } from '@/Interface';
 import type { RouteLocationNormalized } from 'vue-router';
-import { VIEWS } from '@/constants';
+import { VIEWS, ROLE } from '@/constants';
 
 vi.mock('@/stores/users.store', () => ({
 	useUsersStore: vi.fn(),
@@ -15,7 +14,7 @@ describe('Middleware', () => {
 			vi.mocked(useUsersStore).mockReturnValue({
 				currentUser: {
 					isDefaultUser: false,
-					role: 'global:owner',
+					role: ROLE.Owner,
 				} as IUser,
 			} as ReturnType<typeof useUsersStore>);
 
@@ -54,7 +53,7 @@ describe('Middleware', () => {
 			vi.mocked(useUsersStore).mockReturnValue({
 				currentUser: {
 					isDefaultUser: false,
-					role: 'global:owner',
+					role: ROLE.Owner,
 				} as IUser,
 			} as ReturnType<typeof useUsersStore>);
 

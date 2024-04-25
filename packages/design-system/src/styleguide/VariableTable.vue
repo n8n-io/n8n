@@ -15,61 +15,52 @@
 	</table>
 </template>
 
-<script lang="ts">
-import type { PropType } from 'vue';
-import { defineComponent } from 'vue';
+<script lang="ts" setup>
+import { onMounted, onUnmounted } from 'vue';
 
-export default defineComponent({
-	name: 'VariableTable',
-	props: {
-		variables: {
-			type: Array as PropType<string[]>,
-			required: true,
-		},
-		attr: {
-			type: String,
-			default: '',
-		},
-	},
-	data() {
-		return {
-			observer: null as null | MutationObserver,
-			values: {} as Record<string, string>,
-		};
-	},
-	created() {
-		const setValues = () => {
-			this.variables.forEach((variable) => {
-				const style = getComputedStyle(document.body);
-				const value = style.getPropertyValue(variable);
+interface VariableTableProps {
+	variables: string[];
+	attr?: string;
+}
 
-				this.values = {
-					...this.values,
-					[variable]: value,
-				};
-			});
-		};
+const props = withDefaults(defineProps<VariableTableProps>(), {
+	attr: '',
+});
 
-		setValues();
+let observer: MutationObserver | null = null;
+let values: Record<string, string> = {};
 
-		// when theme class is added or removed, reset color values
-		this.observer = new MutationObserver((mutationsList) => {
-			for (const mutation of mutationsList) {
-				if (mutation.type === 'attributes') {
-					setValues();
-				}
-			}
+onMounted(() => {
+	const setValues = () => {
+		props.variables.forEach((variable) => {
+			const style = getComputedStyle(document.body);
+			const value = style.getPropertyValue(variable);
+
+			values = {
+				...values,
+				[variable]: value,
+			};
 		});
-		const body = document.querySelector('body');
-		if (body) {
-			this.observer.observe(body, { attributes: true });
+	};
+
+	setValues();
+
+	// when theme class is added or removed, reset color values
+	observer = new MutationObserver((mutationsList) => {
+		for (const mutation of mutationsList) {
+			if (mutation.type === 'attributes') {
+				setValues();
+			}
 		}
-	},
-	unmounted() {
-		if (this.observer) {
-			this.observer.disconnect();
-		}
-	},
+	});
+	const body = document.querySelector('body');
+	if (body) {
+		observer.observe(body, { attributes: true });
+	}
+});
+
+onUnmounted(() => {
+	observer?.disconnect();
 });
 </script>
 

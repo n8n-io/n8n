@@ -8,6 +8,7 @@ import type { IUser, ICredentialsResponse, IWorkflowDb } from '@/Interface';
 import { EnterpriseEditionFeature, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import { useSettingsStore } from '@/stores/settings.store';
 import { hasPermission } from './rbac/permissions';
+import { isUserGlobalOwner } from './utils/userUtils';
 
 /**
  * Old permissions implementation
@@ -43,7 +44,7 @@ export const parsePermissionsTable = (
 	table: IPermissionsTable,
 ): IPermissions => {
 	const genericTable: IPermissionsTable = [
-		{ name: UserRole.InstanceOwner, test: () => !!user?.isOwner },
+		{ name: UserRole.InstanceOwner, test: () => (user ? isUserGlobalOwner(user) : false) },
 	];
 
 	return [...genericTable, ...table].reduce(

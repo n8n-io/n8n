@@ -120,7 +120,8 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: "Add custom n8n tools when using the 'Message Assistant' operation",
+		displayName:
+			'Add custom n8n tools when you <i>message</i> your assistant (rather than when creating it)',
 		name: 'noticeTools',
 		type: 'notice',
 		default: '',

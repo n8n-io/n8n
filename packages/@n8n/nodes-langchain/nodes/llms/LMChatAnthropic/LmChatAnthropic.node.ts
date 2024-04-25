@@ -27,6 +27,10 @@ const modelField: INodeProperties = {
 			value: 'claude-3-sonnet-20240229',
 		},
 		{
+			name: 'Claude 3 Haiku(20240307)',
+			value: 'claude-3-haiku-20240307',
+		},
+		{
 			name: 'LEGACY: Claude 2',
 			value: 'claude-2',
 		},
