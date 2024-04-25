@@ -50,7 +50,7 @@ const renderPropHeader = (doc?: DocMetadata) => {
 		propNameSpan.innerText = doc.name;
 
 		const returnTypeSpan = document.createElement('span');
-		returnTypeSpan.innerHTML = ': ' + doc.returnType;
+		returnTypeSpan.textContent = ': ' + doc.returnType;
 
 		header.appendChild(propNameSpan);
 		header.appendChild(returnTypeSpan);
