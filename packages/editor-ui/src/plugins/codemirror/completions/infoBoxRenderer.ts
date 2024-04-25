@@ -66,7 +66,7 @@ const renderDescription = ({
 	description: string;
 	docUrl?: string;
 	example?: DocMetadataExample;
-}): HTMLElement => {
+}) => {
 	const descriptionBody = document.createElement('div');
 	descriptionBody.classList.add('autocomplete-info-description');
 	const descriptionText = document.createElement('p');
@@ -98,7 +98,7 @@ const renderDescription = ({
 	return descriptionBody;
 };
 
-const renderArgs = (args: DocMetadataArgument[]): HTMLElement => {
+const renderArgs = (args: DocMetadataArgument[]) => {
 	const argsContainer = document.createElement('div');
 	argsContainer.classList.add('autocomplete-info-args-container');
 
@@ -143,7 +143,7 @@ const renderArgs = (args: DocMetadataArgument[]): HTMLElement => {
 	return argsContainer;
 };
 
-const renderExample = (example: DocMetadataExample): HTMLElement => {
+const renderExample = (example: DocMetadataExample) => {
 	const examplePre = document.createElement('pre');
 	examplePre.classList.add('autocomplete-info-example');
 	const exampleCode = document.createElement('code');
@@ -171,7 +171,7 @@ const renderExample = (example: DocMetadataExample): HTMLElement => {
 	return examplePre;
 };
 
-const renderExamples = (examples: DocMetadataExample[]): HTMLElement => {
+const renderExamples = (examples: DocMetadataExample[]) => {
 	const examplesContainer = document.createElement('div');
 	examplesContainer.classList.add('autocomplete-info-examples');
 
@@ -190,7 +190,7 @@ const renderExamples = (examples: DocMetadataExample[]): HTMLElement => {
 
 export const createInfoBoxRenderer =
 	(doc?: DocMetadata, isFunction = false) =>
-	(): HTMLElement | null => {
+	() => {
 		const tooltipContainer = document.createElement('div');
 		tooltipContainer.setAttribute('tabindex', '-1');
 		tooltipContainer.classList.add('autocomplete-info-container');
