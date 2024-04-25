@@ -104,7 +104,7 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	guildId: string,
+	_guildId: string,
 	userGuilds: IDataObject[],
 ): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
