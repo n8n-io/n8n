@@ -13,9 +13,10 @@ import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type { SetField, SetNodeOptions } from 'n8n-nodes-base/dist/nodes/Set/v2/helpers/interfaces';
 import * as manual from 'n8n-nodes-base/dist/nodes/Set/v2/manual.mode';
 
-import { DynamicTool } from 'langchain/tools';
+import { DynamicTool } from '@langchain/core/tools';
 import get from 'lodash/get';
 import isObject from 'lodash/isObject';
+import type { CallbackManagerForToolRun } from '@langchain/core/callbacks/manager';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 export class ToolWorkflow implements INodeType {
@@ -24,7 +25,7 @@ export class ToolWorkflow implements INodeType {
 		name: 'toolWorkflow',
 		icon: 'fa:network-wired',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Uses another n8n workflow as a tool. Allows packaging any n8n node(s) as a tool.',
 		defaults: {
 			name: 'Custom n8n Workflow Tool',
@@ -62,6 +63,26 @@ export class ToolWorkflow implements INodeType {
 				type: 'string',
 				default: '',
 				placeholder: 'My_Color_Tool',
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
+			},
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+				placeholder: 'e.g. My_Color_Tool',
+				validateType: 'string-alphanumeric',
+				description:
+					'The name of the function to be called, could contain letters, numbers, and underscores only',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.1 } }],
+					},
+				},
 			},
 			{
 				displayName: 'Description',
@@ -300,7 +321,10 @@ export class ToolWorkflow implements INodeType {
 		const name = this.getNodeParameter('name', itemIndex) as string;
 		const description = this.getNodeParameter('description', itemIndex) as string;
 
-		const runFunction = async (query: string): Promise<string> => {
+		const runFunction = async (
+			query: string,
+			runManager?: CallbackManagerForToolRun,
+		): Promise<string> => {
 			const source = this.getNodeParameter('source', itemIndex) as string;
 			const responsePropertyName = this.getNodeParameter(
 				'responsePropertyName',
@@ -365,7 +389,11 @@ export class ToolWorkflow implements INodeType {
 
 			let receivedData: INodeExecutionData;
 			try {
-				receivedData = (await this.executeWorkflow(workflowInfo, items)) as INodeExecutionData;
+				receivedData = (await this.executeWorkflow(
+					workflowInfo,
+					items,
+					runManager?.getChild(),
+				)) as INodeExecutionData;
 			} catch (error) {
 				// Make sure a valid error gets returned that can by json-serialized else it will
 				// not show up in the frontend
@@ -393,13 +421,13 @@ export class ToolWorkflow implements INodeType {
 				name,
 				description,
 
-				func: async (query: string): Promise<string> => {
+				func: async (query: string, runManager?: CallbackManagerForToolRun): Promise<string> => {
 					const { index } = this.addInputData(NodeConnectionType.AiTool, [[{ json: { query } }]]);
 
 					let response: string = '';
 					let executionError: ExecutionError | undefined;
 					try {
-						response = await runFunction(query);
+						response = await runFunction(query, runManager);
 					} catch (error) {
 						// TODO: Do some more testing. Issues here should actually fail the workflow
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment

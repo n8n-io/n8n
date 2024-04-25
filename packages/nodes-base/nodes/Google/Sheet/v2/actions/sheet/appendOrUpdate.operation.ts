@@ -249,18 +249,23 @@ export async function execute(
 		}
 	}
 
+	const dataMode =
+		nodeVersion < 4
+			? (this.getNodeParameter('dataMode', 0) as string)
+			: (this.getNodeParameter('columns.mappingMode', 0) as string);
+
 	let columnNames: string[] = [];
 
-	const sheetData = await sheet.getData(sheetName, 'FORMATTED_VALUE');
+	const sheetData = (await sheet.getData(sheetName, 'FORMATTED_VALUE')) ?? [];
 
-	if (sheetData?.[headerRow] === undefined) {
+	if (!sheetData[headerRow] && dataMode !== 'autoMapInputData') {
 		throw new NodeOperationError(
 			this.getNode(),
 			`Could not retrieve the column names from row ${headerRow + 1}`,
 		);
 	}
 
-	columnNames = sheetData[headerRow];
+	columnNames = sheetData[headerRow] ?? [];
 
 	const newColumns = new Set<string>();
 
@@ -268,11 +273,6 @@ export async function execute(
 		nodeVersion < 4
 			? [this.getNodeParameter('columnToMatchOn', 0) as string]
 			: (this.getNodeParameter('columns.matchingColumns', 0) as string[]);
-
-	const dataMode =
-		nodeVersion < 4
-			? (this.getNodeParameter('dataMode', 0) as string)
-			: (this.getNodeParameter('columns.mappingMode', 0) as string);
 
 	// TODO: Add support for multiple columns to match on in the next overhaul
 	const keyIndex = columnNames.indexOf(columnsToMatchOn[0]);
@@ -379,6 +379,7 @@ export async function execute(
 				headerRow + 1,
 			);
 			columnNames = newColumnNames;
+			sheetData[headerRow] = newColumnNames;
 			newColumns.clear();
 		}
 

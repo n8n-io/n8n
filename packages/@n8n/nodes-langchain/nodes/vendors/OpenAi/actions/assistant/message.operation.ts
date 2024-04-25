@@ -1,14 +1,17 @@
 import { AgentExecutor } from 'langchain/agents';
-import type { Tool } from 'langchain/tools';
+
 import { OpenAIAssistantRunnable } from 'langchain/experimental/openai_assistant';
 import type { OpenAIToolType } from 'langchain/dist/experimental/openai_assistant/schema';
 import { OpenAI as OpenAIClient } from 'openai';
 
-import { NodeConnectionType, NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
+import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
 import { formatToOpenAIAssistantTool } from '../../helpers/utils';
 import { assistantRLC } from '../descriptions';
+
+import { getConnectedTools } from '../../../../../utils/helpers';
+import { getTracingConfig } from '../../../../../utils/tracing';
 
 const properties: INodeProperties[] = [
 	assistantRLC,
@@ -82,6 +85,19 @@ const properties: INodeProperties[] = [
 				description: 'Maximum amount of time a request is allowed to take in milliseconds',
 				type: 'number',
 			},
+			{
+				displayName: 'Preserve Original Tools',
+				name: 'preserveOriginalTools',
+				type: 'boolean',
+				default: true,
+				description:
+					'Whether to preserve the original tools of the assistant after the execution of this node, otherwise the tools will be replaced with the connected tools, if any, default is true',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.3 } }],
+					},
+				},
+			},
 		],
 	},
 ];
@@ -97,6 +113,7 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const credentials = await this.getCredentials('openAiApi');
+	const nodeVersion = this.getNode().typeVersion;
 
 	const prompt = this.getNodeParameter('prompt', i) as string;
 
@@ -120,6 +137,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		baseURL?: string;
 		maxRetries: number;
 		timeout: number;
+		preserveOriginalTools?: boolean;
 	};
 
 	const client = new OpenAIClient({
@@ -131,22 +149,23 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	const agent = new OpenAIAssistantRunnable({ assistantId, client, asAgent: true });
 
-	const tools = ((await this.getInputConnectionData(NodeConnectionType.AiTool, 0)) as Tool[]) || [];
+	const tools = await getConnectedTools(this, nodeVersion > 1);
+	let assistantTools;
 
 	if (tools.length) {
 		const transformedConnectedTools = tools?.map(formatToOpenAIAssistantTool) ?? [];
 		const nativeToolsParsed: OpenAIToolType = [];
 
-		const assistant = await client.beta.assistants.retrieve(assistantId);
+		assistantTools = (await client.beta.assistants.retrieve(assistantId)).tools;
 
-		const useCodeInterpreter = assistant.tools.some((tool) => tool.type === 'code_interpreter');
+		const useCodeInterpreter = assistantTools.some((tool) => tool.type === 'code_interpreter');
 		if (useCodeInterpreter) {
 			nativeToolsParsed.push({
 				type: 'code_interpreter',
 			});
 		}
 
-		const useRetrieval = assistant.tools.some((tool) => tool.type === 'retrieval');
+		const useRetrieval = assistantTools.some((tool) => tool.type === 'retrieval');
 		if (useRetrieval) {
 			nativeToolsParsed.push({
 				type: 'retrieval',
@@ -163,11 +182,21 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		tools: tools ?? [],
 	});
 
-	const response = await agentExecutor.call({
+	const response = await agentExecutor.withConfig(getTracingConfig(this)).invoke({
 		content: input,
 		signal: this.getExecutionCancelSignal(),
 		timeout: options.timeout ?? 10000,
 	});
+
+	if (
+		options.preserveOriginalTools !== false &&
+		nodeVersion >= 1.3 &&
+		(assistantTools ?? [])?.length
+	) {
+		await client.beta.assistants.update(assistantId, {
+			tools: assistantTools,
+		});
+	}
 
 	return [{ json: response, pairedItem: { item: i } }];
 }

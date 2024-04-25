@@ -254,6 +254,12 @@ export class Github implements INodeType {
 						action: 'Get the profile of a repository',
 					},
 					{
+						name: 'Get Pull Requests',
+						value: 'getPullRequests',
+						description: 'Returns pull requests of a repository',
+						action: 'Get pull requests of a repository',
+					},
+					{
 						name: 'List Popular Paths',
 						value: 'listPopularPaths',
 						description: 'Get the top 10 popular content paths over the last 14 days',
@@ -1322,7 +1328,7 @@ export class Github implements INodeType {
 						type: 'string',
 						default: '',
 						description:
-							'Return only issues with the given labels. Multiple lables can be separated by comma.',
+							'Return only issues with the given labels. Multiple labels can be separated by comma.',
 					},
 					{
 						displayName: 'Updated Since',
@@ -1401,6 +1407,130 @@ export class Github implements INodeType {
 				],
 			},
 
+			// ----------------------------------
+			//         repository:getPullRequests
+			// ----------------------------------
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: ['repository'],
+						operation: ['getPullRequests'],
+					},
+				},
+				default: false,
+				description: 'Whether to return all results or only up to a given limit',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: ['repository'],
+						operation: ['getPullRequests'],
+						returnAll: [false],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 100,
+				},
+				default: 50,
+				description: 'Max number of results to return',
+			},
+			{
+				displayName: 'Filters',
+				name: 'getRepositoryPullRequestsFilters',
+				type: 'collection',
+				typeOptions: {
+					multipleValueButtonText: 'Add Filter',
+				},
+				displayOptions: {
+					show: {
+						operation: ['getPullRequests'],
+						resource: ['repository'],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'State',
+						name: 'state',
+						type: 'options',
+						options: [
+							{
+								name: 'All',
+								value: 'all',
+								description: 'Returns pull requests with any state',
+							},
+							{
+								name: 'Closed',
+								value: 'closed',
+								description: 'Return pull requests with "closed" state',
+							},
+							{
+								name: 'Open',
+								value: 'open',
+								description: 'Return pull requests with "open" state',
+							},
+						],
+						default: 'open',
+						description: 'The state to set',
+					},
+					{
+						displayName: 'Sort',
+						name: 'sort',
+						type: 'options',
+						options: [
+							{
+								name: 'Created',
+								value: 'created',
+								description: 'Sort by created date',
+							},
+							{
+								name: 'Updated',
+								value: 'updated',
+								description: 'Sort by updated date',
+							},
+							{
+								name: 'Popularity',
+								value: 'popularity',
+								description: 'Sort by number of comments',
+							},
+							{
+								name: 'Long-Running',
+								value: 'long-running',
+								description:
+									'Sort by date created and will limit the results to pull requests that have been open for more than a month and have had activity within the past month',
+							},
+						],
+						default: 'created',
+						description: 'The order the pull requests should be returned in',
+					},
+					{
+						displayName: 'Direction',
+						name: 'direction',
+						type: 'options',
+						options: [
+							{
+								name: 'Ascending',
+								value: 'asc',
+								description: 'Sort in ascending order',
+							},
+							{
+								name: 'Descending',
+								value: 'desc',
+								description: 'Sort in descending order',
+							},
+						],
+						default: 'desc',
+						description: 'The sort order',
+					},
+				],
+			},
 			// ----------------------------------
 			//         rerview
 			// ----------------------------------
@@ -1734,6 +1864,7 @@ export class Github implements INodeType {
 		const overwriteDataOperationsArray = [
 			'file:list',
 			'repository:getIssues',
+			'repository:getPullRequests',
 			'repository:listPopularPaths',
 			'repository:listReferrers',
 			'user:getRepositories',
@@ -2069,6 +2200,22 @@ export class Github implements INodeType {
 						qs = this.getNodeParameter('getRepositoryIssuesFilters', i) as IDataObject;
 
 						endpoint = `/repos/${owner}/${repository}/issues`;
+
+						returnAll = this.getNodeParameter('returnAll', 0);
+
+						if (!returnAll) {
+							qs.per_page = this.getNodeParameter('limit', 0);
+						}
+					} else if (operation === 'getPullRequests') {
+						// ----------------------------------
+						//         getPullRequests
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						qs = this.getNodeParameter('getRepositoryPullRequestsFilters', i) as IDataObject;
+
+						endpoint = `/repos/${owner}/${repository}/pulls`;
 
 						returnAll = this.getNodeParameter('returnAll', 0);
 

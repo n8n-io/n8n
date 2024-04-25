@@ -216,19 +216,19 @@ describe('Mapping Utils', () => {
 			expect(result).toBe("{{ $('nodeName').item.json.sample[0].path }}");
 		});
 
-		it('should generate a mapped expression with special characters in array path', () => {
+		it('should generate a mapped expression with invalid identifier names in array path', () => {
 			const input = {
 				nodeName: 'nodeName',
 				distanceFromActive: 2,
-				path: ['sample', 'path with-space', 'path-with-hyphen'],
+				path: ['sample', 'path with-space', 'path-with-hyphen', '2iStartWithANumber'],
 			};
 			const result = getMappedExpression(input);
 			expect(result).toBe(
-				"{{ $('nodeName').item.json.sample['path with-space']['path-with-hyphen'] }}",
+				"{{ $('nodeName').item.json.sample['path with-space']['path-with-hyphen']['2iStartWithANumber'] }}",
 			);
 		});
 
-		it('should handle paths with special characters', () => {
+		it('should handle paths with invalid identifier names', () => {
 			const input = {
 				nodeName: 'nodeName',
 				distanceFromActive: 2,
@@ -243,11 +243,12 @@ describe('Mapping Utils', () => {
 					'test,',
 					'test:',
 					'path.',
+					'2iStartWithANumber',
 				],
 			};
 			const result = getMappedExpression(input);
 			expect(result).toBe(
-				"{{ $('nodeName').item.json.sample['\"Execute\"']['`Execute`']['\\'Execute\\'']['[Execute]']['{Execute}']['execute?']['test,']['test:']['path.'] }}",
+				"{{ $('nodeName').item.json.sample['\"Execute\"']['`Execute`']['\\'Execute\\'']['[Execute]']['{Execute}']['execute?']['test,']['test:']['path.']['2iStartWithANumber'] }}",
 			);
 		});
 

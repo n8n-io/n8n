@@ -139,11 +139,8 @@ export class GoogleSheet {
 		});
 
 		if (!foundItem?.properties?.title) {
-			throw new NodeOperationError(
-				node,
-				`Sheet with ${mode === 'name' ? 'name' : 'ID'} ${value} not found`,
-				{ level: 'warning' },
-			);
+			const error = new Error(`Sheet with ${mode === 'name' ? 'name' : 'ID'} ${value} not found`);
+			throw new NodeOperationError(node, error, { level: 'warning' });
 		}
 
 		return foundItem.properties;
@@ -479,7 +476,7 @@ export class GoogleSheet {
 
 		const keyIndex = columnNames.indexOf(indexKey);
 
-		if (keyIndex === -1) {
+		if (keyIndex === -1 && !upsert) {
 			throw new NodeOperationError(
 				this.executeFunctions.getNode(),
 				`Could not find column for key "${indexKey}"`,

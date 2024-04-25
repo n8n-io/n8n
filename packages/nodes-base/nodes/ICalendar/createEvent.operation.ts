@@ -1,3 +1,4 @@
+import { promisify } from 'util';
 import {
 	type IExecuteFunctions,
 	type IDataObject,
@@ -8,7 +9,6 @@ import {
 
 import moment from 'moment-timezone';
 import * as ics from 'ics';
-import { promisify } from 'util';
 
 const createEvent = promisify(ics.createEvent);
 

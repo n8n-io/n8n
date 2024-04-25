@@ -3,12 +3,11 @@ import { v4 as uuid } from 'uuid';
 import axios from 'axios';
 
 import * as Db from '@/Db';
-import * as GenericHelpers from '@/GenericHelpers';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import type { IWorkflowResponse } from '@/Interfaces';
 import config from '@/config';
-import { Authorized, Delete, Get, Patch, Post, Put, RestController } from '@/decorators';
+import { Delete, Get, Patch, Post, Put, RestController } from '@/decorators';
 import { SharedWorkflow, type WorkflowSharingRole } from '@db/entities/SharedWorkflow';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
@@ -39,7 +38,6 @@ import { WorkflowExecutionService } from './workflowExecution.service';
 import { WorkflowSharingService } from './workflowSharing.service';
 import { UserManagementMailer } from '@/UserManagement/email';
 
-@Authorized()
 @RestController('/workflows')
 export class WorkflowsController {
 	constructor(
@@ -332,7 +330,7 @@ export class WorkflowsController {
 		return await this.workflowExecutionService.executeManually(
 			req.body,
 			req.user,
-			GenericHelpers.getSessionId(req),
+			req.headers['push-ref'] as string,
 		);
 	}
 
@@ -394,7 +392,7 @@ export class WorkflowsController {
 
 			if (newShareeIds.length) {
 				const users = await this.userRepository.getByIds(trx, newShareeIds);
-				await this.sharedWorkflowRepository.share(trx, workflow!, users);
+				await this.sharedWorkflowRepository.share(trx, workflow, users);
 			}
 		});
 

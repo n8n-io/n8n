@@ -7,7 +7,7 @@ import {
 	NodeConnectionType,
 } from 'n8n-workflow';
 import { pick } from 'lodash';
-import type { BaseChatMemory } from 'langchain/memory';
+import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import { createPage } from './templates';
 import { validateAuth } from './GenericFunctions';
 import type { LoadPreviousSessionChatOption } from './types';

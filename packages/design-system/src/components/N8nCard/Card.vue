@@ -20,28 +20,24 @@
 	</div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
+<script lang="ts" setup>
+import { computed, useCssModule } from 'vue';
 
-export default defineComponent({
-	name: 'N8nCard',
-	inheritAttrs: true,
-	props: {
-		hoverable: {
-			type: Boolean,
-			default: false,
-		},
-	},
-	computed: {
-		classes(): Record<string, boolean> {
-			return {
-				card: true,
-				[this.$style.card]: true,
-				[this.$style.hoverable]: this.hoverable,
-			};
-		},
-	},
+interface CardProps {
+	hoverable?: boolean;
+}
+
+defineOptions({ name: 'N8nCard' });
+const props = withDefaults(defineProps<CardProps>(), {
+	hoverable: false,
 });
+
+const $style = useCssModule();
+const classes = computed(() => ({
+	card: true,
+	[$style.card]: true,
+	[$style.hoverable]: props.hoverable,
+}));
 </script>
 
 <style lang="scss" module>

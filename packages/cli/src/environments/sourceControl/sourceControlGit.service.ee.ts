@@ -23,6 +23,7 @@ import type { User } from '@db/entities/User';
 import { Logger } from '@/Logger';
 import { ApplicationError } from 'n8n-workflow';
 import { OwnershipService } from '@/services/ownership.service';
+import { SourceControlPreferencesService } from './sourceControlPreferences.service.ee';
 
 @Service()
 export class SourceControlGitService {
@@ -33,6 +34,7 @@ export class SourceControlGitService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly ownershipService: OwnershipService,
+		private readonly sourceControlPreferencesService: SourceControlPreferencesService,
 	) {}
 
 	/**
@@ -66,12 +68,7 @@ export class SourceControlGitService {
 		sshFolder: string;
 		sshKeyName: string;
 	}): Promise<void> {
-		const {
-			sourceControlPreferences: sourceControlPreferences,
-			gitFolder,
-			sshKeyName,
-			sshFolder,
-		} = options;
+		const { sourceControlPreferences: sourceControlPreferences, gitFolder, sshFolder } = options;
 		this.logger.debug('GitService.init');
 		if (this.git !== null) {
 			return;
@@ -82,8 +79,10 @@ export class SourceControlGitService {
 
 		sourceControlFoldersExistCheck([gitFolder, sshFolder]);
 
+		const privateKeyPath = await this.sourceControlPreferencesService.getPrivateKeyPath();
+
 		const sshKnownHosts = path.join(sshFolder, 'known_hosts');
-		const sshCommand = `ssh -o UserKnownHostsFile=${sshKnownHosts} -o StrictHostKeyChecking=no -i ${sshKeyName}`;
+		const sshCommand = `ssh -o UserKnownHostsFile=${sshKnownHosts} -o StrictHostKeyChecking=no -i ${privateKeyPath}`;
 
 		this.gitOptions = {
 			baseDir: gitFolder,

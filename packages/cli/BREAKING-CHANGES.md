@@ -2,6 +2,26 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 1.37.0
+
+### What changed?
+
+The `--file` flag for the `execute` CLI command has been removed.
+
+### When is action necessary?
+
+If you have scripts relying on the `--file` flag for the `execute` CLI command, update them to first import the workflow and then execute it using the `--id` flag.
+
+## 1.32.0
+
+### What changed?
+
+n8n auth cookie has `Secure` flag set by default now.
+
+### When is action necessary?
+
+If you are running n8n without HTTP**S** on a domain other than `localhost`, you need to either setup HTTPS, or you can disable the secure flag by setting the env variable `N8N_SECURE_COOKIE` to `false`.
+
 ## 1.27.0
 
 ### What changed?

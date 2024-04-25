@@ -1,16 +1,16 @@
 import { vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { waitFor } from '@testing-library/vue';
-import type { IExecutionsSummary } from 'n8n-workflow';
+import type { ExecutionSummary } from 'n8n-workflow';
 import { createComponentRenderer } from '@/__tests__/render';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useExecutionsStore } from '@/stores/executions.store';
 
 const renderComponent = createComponentRenderer(WorkflowPreview);
 
 let pinia: ReturnType<typeof createPinia>;
-let workflowsStore: ReturnType<typeof useWorkflowsStore>;
+let executionsStore: ReturnType<typeof useExecutionsStore>;
 let postMessageSpy: vi.SpyInstance;
 let consoleErrorSpy: vi.SpyInstance;
 
@@ -22,7 +22,7 @@ describe('WorkflowPreview', () => {
 	beforeEach(() => {
 		pinia = createPinia();
 		setActivePinia(pinia);
-		workflowsStore = useWorkflowsStore();
+		executionsStore = useExecutionsStore();
 
 		consoleErrorSpy = vi.spyOn(console, 'error');
 		postMessageSpy = vi.fn();
@@ -150,9 +150,9 @@ describe('WorkflowPreview', () => {
 	});
 
 	it('should call also iframe postMessage with "setActiveExecution" if active execution is set', async () => {
-		vi.spyOn(workflowsStore, 'activeWorkflowExecution', 'get').mockReturnValue({
+		vi.spyOn(executionsStore, 'activeExecution', 'get').mockReturnValue({
 			id: 'abc',
-		} as IExecutionsSummary);
+		} as ExecutionSummary);
 
 		const executionId = '123';
 		renderComponent({

@@ -33,7 +33,7 @@ const searchPlaceholder = computed(() =>
 	isActionsMode.value
 		? i18n.baseText('nodeCreator.actionsCategory.searchActions', {
 				interpolate: { node: activeViewStack.value.title as string },
-		  })
+			})
 		: i18n.baseText('nodeCreator.searchBar.searchNodes'),
 );
 
@@ -118,7 +118,7 @@ function onBackButton() {
 	<transition
 		v-if="viewStacks.length > 0"
 		:name="`panel-slide-${activeViewStack.transitionDirection}`"
-		@afterLeave="onTransitionEnd"
+		@after-leave="onTransitionEnd"
 	>
 		<aside
 			:key="`${activeViewStack.uuid}`"
@@ -169,7 +169,7 @@ function onBackButton() {
 						: $locale.baseText('nodeCreator.searchBar.searchNodes')
 				"
 				:model-value="activeViewStack.search"
-				@update:modelValue="onSearch"
+				@update:model-value="onSearch"
 			/>
 			<div :class="$style.renderedItems">
 				<n8n-notice

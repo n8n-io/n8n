@@ -62,7 +62,7 @@
 								:path="getPropertyPath(property.name, index)"
 								:hide-delete="true"
 								:is-read-only="isReadOnly"
-								@valueChanged="valueChanged"
+								@value-changed="valueChanged"
 							/>
 						</Suspense>
 					</div>
@@ -87,7 +87,7 @@
 						:is-read-only="isReadOnly"
 						class="parameter-item"
 						:hide-delete="true"
-						@valueChanged="valueChanged"
+						@value-changed="valueChanged"
 					/>
 				</div>
 			</div>
@@ -107,7 +107,7 @@
 					:placeholder="getPlaceholderText"
 					size="small"
 					filterable
-					@update:modelValue="optionSelected"
+					@update:model-value="optionSelected"
 				>
 					<n8n-option
 						v-for="item in parameterOptions"
@@ -254,6 +254,7 @@ export default defineComponent({
 			const parameterData = {
 				name: this.getPropertyPath(optionName),
 				value: this.mutableValues[optionName],
+				type: 'optionsOrderChanged',
 			};
 
 			this.$emit('valueChanged', parameterData);
@@ -270,6 +271,7 @@ export default defineComponent({
 			const parameterData = {
 				name: this.getPropertyPath(optionName),
 				value: this.mutableValues[optionName],
+				type: 'optionsOrderChanged',
 			};
 
 			this.$emit('valueChanged', parameterData);

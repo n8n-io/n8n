@@ -159,9 +159,9 @@ export function prepareOutput(
 	} else {
 		response
 			.filter((entry) => Array.isArray(entry))
-			.forEach((entry) => {
+			.forEach((entry, index) => {
 				const executionData = constructExecutionHelper(wrapData(entry), {
-					itemData,
+					itemData: Array.isArray(itemData) ? itemData[index] : itemData,
 				});
 
 				returnData.push(...executionData);

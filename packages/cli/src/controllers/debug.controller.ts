@@ -11,7 +11,7 @@ export class DebugController {
 		private readonly workflowRepository: WorkflowRepository,
 	) {}
 
-	@Get('/multi-main-setup')
+	@Get('/multi-main-setup', { skipAuth: true })
 	async getMultiMainSetupDetails() {
 		const leaderKey = await this.orchestrationService.multiMainSetup.fetchLeaderKey();
 

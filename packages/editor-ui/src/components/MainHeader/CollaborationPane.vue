@@ -4,6 +4,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useCollaborationStore } from '@/stores/collaboration.store';
 import { onBeforeUnmount, onMounted, computed, ref } from 'vue';
 import { TIME } from '@/constants';
+import { isUserGlobalOwner } from '@/utils/userUtils';
 
 const collaborationStore = useCollaborationStore();
 const usersStore = useUsersStore();
@@ -16,7 +17,7 @@ const activeUsersSorted = computed(() => {
 	const currentWorkflowUsers = (collaborationStore.getUsersForCurrentWorkflow ?? []).map(
 		(userInfo) => userInfo.user,
 	);
-	const owner = currentWorkflowUsers.find((user) => user.role === 'global:owner');
+	const owner = currentWorkflowUsers.find(isUserGlobalOwner);
 	return {
 		defaultGroup: owner
 			? [owner, ...currentWorkflowUsers.filter((user) => user.id !== owner.id)]

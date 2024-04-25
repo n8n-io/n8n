@@ -157,18 +157,6 @@ describe('GET /login', () => {
 		expect(authToken).toBeUndefined();
 	});
 
-	test('should return cookie if UM is disabled and no cookie is already set', async () => {
-		await createUserShell('global:owner');
-		await utils.setInstanceOwnerSetUp(false);
-
-		const response = await testServer.authlessAgent.get('/login');
-
-		expect(response.statusCode).toBe(200);
-
-		const authToken = utils.getAuthToken(response);
-		expect(authToken).toBeDefined();
-	});
-
 	test('should return 401 Unauthorized if invalid cookie', async () => {
 		testServer.authlessAgent.jar.setCookie(`${AUTH_COOKIE_NAME}=invalid`);
 

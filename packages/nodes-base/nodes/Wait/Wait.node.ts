@@ -32,6 +32,44 @@ import { formWebhook } from '../Form/utils';
 import { updateDisplayOptions } from '../../utils/utilities';
 import { Webhook } from '../Webhook/Webhook.node';
 
+const toWaitAmount: INodeProperties = {
+	displayName: 'Wait Amount',
+	name: 'amount',
+	type: 'number',
+	typeOptions: {
+		minValue: 0,
+		numberPrecision: 2,
+	},
+	default: 1,
+	description: 'The time to wait',
+};
+
+const unitSelector: INodeProperties = {
+	displayName: 'Wait Unit',
+	name: 'unit',
+	type: 'options',
+	options: [
+		{
+			name: 'Seconds',
+			value: 'seconds',
+		},
+		{
+			name: 'Minutes',
+			value: 'minutes',
+		},
+		{
+			name: 'Hours',
+			value: 'hours',
+		},
+		{
+			name: 'Days',
+			value: 'days',
+		},
+	],
+	default: 'hours',
+	description: 'The time unit of the Wait Amount value',
+};
+
 const waitTimeProperties: INodeProperties[] = [
 	{
 		displayName: 'Limit Wait Time',
@@ -189,7 +227,7 @@ export class Wait extends Webhook {
 		name: 'wait',
 		icon: 'fa:pause-circle',
 		group: ['organization'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Wait before continue with execution',
 		defaults: {
 			name: 'Wait',
@@ -282,50 +320,46 @@ export class Wait extends Webhook {
 			//         resume:timeInterval
 			// ----------------------------------
 			{
-				displayName: 'Wait Amount',
-				name: 'amount',
-				type: 'number',
+				...toWaitAmount,
 				displayOptions: {
 					show: {
 						resume: ['timeInterval'],
+						'@version': [1],
 					},
 				},
-				typeOptions: {
-					minValue: 0,
-					numberPrecision: 2,
-				},
-				default: 1,
-				description: 'The time to wait',
 			},
 			{
-				displayName: 'Wait Unit',
-				name: 'unit',
-				type: 'options',
+				...toWaitAmount,
+				default: 5,
 				displayOptions: {
 					show: {
 						resume: ['timeInterval'],
 					},
+					hide: {
+						'@version': [1],
+					},
 				},
-				options: [
-					{
-						name: 'Seconds',
-						value: 'seconds',
+			},
+			{
+				...unitSelector,
+				displayOptions: {
+					show: {
+						resume: ['timeInterval'],
+						'@version': [1],
 					},
-					{
-						name: 'Minutes',
-						value: 'minutes',
+				},
+			},
+			{
+				...unitSelector,
+				default: 'seconds',
+				displayOptions: {
+					show: {
+						resume: ['timeInterval'],
 					},
-					{
-						name: 'Hours',
-						value: 'hours',
+					hide: {
+						'@version': [1],
 					},
-					{
-						name: 'Days',
-						value: 'days',
-					},
-				],
-				default: 'hours',
-				description: 'The time unit of the Wait Amount value',
+				},
 			},
 
 			// ----------------------------------

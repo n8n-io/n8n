@@ -181,6 +181,8 @@ export const CRYPTO_NODE_TYPE = 'n8n-nodes-base.crypto';
 export const RSS_READ_NODE_TYPE = 'n8n-nodes-base.rssFeedRead';
 export const COMPRESSION_NODE_TYPE = 'n8n-nodes-base.compression';
 export const EDIT_IMAGE_NODE_TYPE = 'n8n-nodes-base.editImage';
+export const CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE =
+	'@n8n/n8n-nodes-langchain.chainSummarization';
 
 export const CREDENTIAL_ONLY_NODE_PREFIX = 'n8n-creds-base';
 export const CREDENTIAL_ONLY_HTTP_NODE_VERSION = 4.1;
@@ -395,6 +397,7 @@ export const LOCAL_STORAGE_ACTIVATION_FLAG = 'N8N_HIDE_ACTIVATION_ALERT';
 export const LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG = 'N8N_PIN_DATA_DISCOVERY_NDV';
 export const LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG = 'N8N_PIN_DATA_DISCOVERY_CANVAS';
 export const LOCAL_STORAGE_MAPPING_IS_ONBOARDED = 'N8N_MAPPING_ONBOARDED';
+export const LOCAL_STORAGE_AUTOCOMPLETE_IS_ONBOARDED = 'N8N_AUTOCOMPLETE_ONBOARDED';
 export const LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH = 'N8N_MAIN_PANEL_RELATIVE_WIDTH';
 export const LOCAL_STORAGE_ACTIVE_MODAL = 'N8N_ACTIVE_MODAL';
 export const LOCAL_STORAGE_THEME = 'N8N_THEME';
@@ -463,7 +466,6 @@ export const enum VIEWS {
 	EXTERNAL_SECRETS_SETTINGS = 'ExternalSecretsSettings',
 	SAML_ONBOARDING = 'SamlOnboarding',
 	SOURCE_CONTROL = 'SourceControl',
-	AUDIT_LOGS = 'AuditLogs',
 	MFA_VIEW = 'MfaView',
 	WORKFLOW_HISTORY = 'WorkflowHistory',
 	WORKER_VIEW = 'WorkerView',
@@ -593,6 +595,7 @@ export const enum STORES {
 	USERS = 'users',
 	WORKFLOWS = 'workflows',
 	WORKFLOWS_EE = 'workflowsEE',
+	EXECUTIONS = 'executions',
 	NDV = 'ndv',
 	TEMPLATES = 'templates',
 	NODE_TYPES = 'nodeTypes',
@@ -651,6 +654,20 @@ export const MFA_AUTHENTICATION_RECOVERY_CODE_INPUT_MAX_LENGTH = 36;
 
 export const NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND = [FILTER_NODE_TYPE, SWITCH_NODE_TYPE];
 
+type ClearOutgoingConnectonsEvents = {
+	[nodeName: string]: {
+		parameterPaths: string[];
+		eventTypes: string[];
+	};
+};
+
+export const SHOULD_CLEAR_NODE_OUTPUTS: ClearOutgoingConnectonsEvents = {
+	[SWITCH_NODE_TYPE]: {
+		parameterPaths: ['parameters.rules.values'],
+		eventTypes: ['optionsOrderChanged'],
+	},
+};
+
 export const ALLOWED_HTML_ATTRIBUTES = ['href', 'name', 'target', 'title', 'class', 'id', 'style'];
 
 export const ALLOWED_HTML_TAGS = [
@@ -661,6 +678,8 @@ export const ALLOWED_HTML_TAGS = [
 	'a',
 	'br',
 	'i',
+	'ul',
+	'li',
 	'em',
 	'small',
 	'details',
@@ -747,5 +766,31 @@ export const MOUSE_EVENT_BUTTONS = {
 export const TEMPLATES_URLS = {
 	DEFAULT_API_HOST: 'https://api.n8n.io/api/',
 	BASE_WEBSITE_URL: 'https://n8n.io/workflows',
-	UTM_QUERY: 'utm_source=n8n_app&utm_medium=template_library',
+	UTM_QUERY: {
+		utm_source: 'n8n_app',
+		utm_medium: 'template_library',
+	},
 };
+
+export const ROLE = {
+	Owner: 'global:owner',
+	Member: 'global:member',
+	Admin: 'global:admin',
+	Default: 'default', // default user with no email when setting up instance
+} as const;
+
+export const INSECURE_CONNECTION_WARNING = `
+<body style="margin-top: 20px; font-family: 'Open Sans', sans-serif; text-align: center;">
+<h1 style="font-size: 40px">&#x1F6AB;</h1>
+<h2>Your n8n server is configured to use a secure cookie, <br/>however you are visiting this via an insecure URL
+</h2>
+<br/>
+<div style="font-size: 18px; max-width: 640px; text-align: left; margin: 10px auto">
+	To fix this, please consider the following options:
+	<ul>
+		<li>Setup TLS/HTTPS (<strong>recommended</strong>), or</li>
+		<li>If you are running this locally, try using <a href="http://localhost:5678">localhost</a> instead</li>
+		<li>If you prefer to disable this security feature (<strong>not recommended</strong>), set the environment variable <code>N8N_SECURE_COOKIE</code> to <code>false</code></li>
+	</ul>
+</div>
+</body>`;

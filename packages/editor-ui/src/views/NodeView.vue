@@ -55,14 +55,14 @@
 						:workflow="currentWorkflowObject"
 						:disable-pointer-events="!canOpenNDV"
 						:hide-node-issues="hideNodeIssues"
-						@deselectAllNodes="deselectAllNodes"
-						@deselectNode="nodeDeselectedByName"
-						@nodeSelected="nodeSelectedByName"
-						@runWorkflow="onRunNode"
+						@deselect-all-nodes="deselectAllNodes"
+						@deselect-node="nodeDeselectedByName"
+						@node-selected="nodeSelectedByName"
+						@run-workflow="onRunNode"
 						@moved="onNodeMoved"
 						@run="onNodeRun"
-						@removeNode="(name) => removeNode(name, true)"
-						@toggleDisableNode="(node) => toggleActivationNodes([node])"
+						@remove-node="(name) => removeNode(name, true)"
+						@toggle-disable-node="(node) => toggleActivationNodes([node])"
 					>
 						<template #custom-tooltip>
 							<span
@@ -81,10 +81,10 @@
 						:node-view-scale="nodeViewScale"
 						:grid-size="GRID_SIZE"
 						:hide-actions="pullConnActive"
-						@deselectAllNodes="deselectAllNodes"
-						@deselectNode="nodeDeselectedByName"
-						@nodeSelected="nodeSelectedByName"
-						@removeNode="(name) => removeNode(name, true)"
+						@deselect-all-nodes="deselectAllNodes"
+						@deselect-node="nodeDeselectedByName"
+						@node-selected="nodeSelectedByName"
+						@remove-node="(name) => removeNode(name, true)"
 					/>
 				</div>
 			</div>
@@ -92,12 +92,12 @@
 				:read-only="isReadOnlyRoute || readOnlyEnv"
 				:renaming="renamingActive"
 				:is-production-execution-preview="isProductionExecutionPreview"
-				@redrawNode="redrawNode"
-				@switchSelectedNode="onSwitchSelectedNode"
-				@openConnectionNodeCreator="onOpenConnectionNodeCreator"
-				@valueChanged="valueChanged"
-				@stopExecution="stopExecution"
-				@saveKeyboardShortcut="onSaveKeyboardShortcut"
+				@redraw-node="redrawNode"
+				@switch-selected-node="onSwitchSelectedNode"
+				@open-connection-node-creator="onOpenConnectionNodeCreator"
+				@value-changed="valueChanged"
+				@stop-execution="stopExecution"
+				@save-keyboard-shortcut="onSaveKeyboardShortcut"
 			/>
 			<Suspense>
 				<div :class="$style.setupCredentialsButtonWrapper">
@@ -109,8 +109,8 @@
 					v-if="!isReadOnlyRoute && !readOnlyEnv"
 					:create-node-active="createNodeActive"
 					:node-view-scale="nodeViewScale"
-					@toggleNodeCreator="onToggleNodeCreator"
-					@addNodes="onAddNodes"
+					@toggle-node-creator="onToggleNodeCreator"
+					@add-nodes="onAddNodes"
 				/>
 			</Suspense>
 			<Suspense>
@@ -259,7 +259,6 @@ import { useUniqueNodeName } from '@/composables/useUniqueNodeName';
 import { useI18n } from '@/composables/useI18n';
 import { useMessage } from '@/composables/useMessage';
 import { useToast } from '@/composables/useToast';
-import { workflowRun } from '@/mixins/workflowRun';
 
 import NodeDetailsView from '@/components/NodeDetailsView.vue';
 import ContextMenu from '@/components/ContextMenu/ContextMenu.vue';
@@ -272,7 +271,7 @@ import type {
 	IConnection,
 	IConnections,
 	IDataObject,
-	IExecutionsSummary,
+	ExecutionSummary,
 	INode,
 	INodeConnections,
 	INodeCredentialsDetails,
@@ -280,7 +279,6 @@ import type {
 	INodeTypeDescription,
 	INodeTypeNameVersion,
 	IPinData,
-	IRun,
 	ITaskData,
 	ITelemetryTrackProperties,
 	IWorkflowBase,
@@ -304,7 +302,6 @@ import type {
 	IUpdateInformation,
 	IWorkflowDataUpdate,
 	XYPosition,
-	IPushDataExecutionFinished,
 	ITag,
 	INewWorkflowData,
 	IWorkflowTemplate,
@@ -379,9 +376,11 @@ import { usePinnedData } from '@/composables/usePinnedData';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useDeviceSupport } from 'n8n-design-system';
 import { useDebounce } from '@/composables/useDebounce';
+import { useExecutionsStore } from '@/stores/executions.store';
 import { useCanvasPanning } from '@/composables/useCanvasPanning';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useRunWorkflow } from '@/composables/useRunWorkflow';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -413,7 +412,6 @@ export default defineComponent({
 		ContextMenu,
 		SetupWorkflowCredentialsButton,
 	},
-	mixins: [workflowRun],
 	async beforeRouteLeave(to, from, next) {
 		if (
 			getNodeViewTab(to) === MAIN_HEADER_TABS.EXECUTIONS ||
@@ -474,7 +472,7 @@ export default defineComponent({
 			next();
 		}
 	},
-	setup(props, ctx) {
+	setup() {
 		const nodeViewRootRef = ref(null);
 		const nodeViewRef = ref(null);
 		const onMouseMoveEnd = ref(null);
@@ -492,7 +490,8 @@ export default defineComponent({
 		const deviceSupport = useDeviceSupport();
 		const { callDebounced } = useDebounce();
 		const canvasPanning = useCanvasPanning(nodeViewRootRef, { onMouseMoveEnd });
-		const workflowHelpers = useWorkflowHelpers(router);
+		const workflowHelpers = useWorkflowHelpers({ router });
+		const { runWorkflow, stopCurrentExecution } = useRunWorkflow({ router });
 
 		return {
 			locale,
@@ -508,6 +507,8 @@ export default defineComponent({
 			nodeViewRef,
 			onMouseMoveEnd,
 			workflowHelpers,
+			runWorkflow,
+			stopCurrentExecution,
 			callDebounced,
 			...useCanvasMouseSelect(),
 			...useGlobalLinkActions(),
@@ -516,8 +517,6 @@ export default defineComponent({
 			...useMessage(),
 			...useUniqueNodeName(),
 			...useExecutionDebugging(),
-			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...workflowRun.setup?.(props, ctx),
 		};
 	},
 	watch: {
@@ -606,6 +605,7 @@ export default defineComponent({
 			useCollaborationStore,
 			usePushConnectionStore,
 			useSourceControlStore,
+			useExecutionsStore,
 		),
 		nativelyNumberSuffixedDefaults(): string[] {
 			return this.nodeTypesStore.nativelyNumberSuffixedDefaults;
@@ -729,6 +729,12 @@ export default defineComponent({
 			return this.containsChatNodes && this.triggerNodes.length === 1;
 		},
 		isExecutionDisabled(): boolean {
+			if (
+				this.containsChatNodes &&
+				this.triggerNodes.every((node) => node.disabled || node.type === CHAT_TRIGGER_NODE_TYPE)
+			) {
+				return true;
+			}
 			return !this.containsTrigger || this.allTriggersDisabled;
 		},
 		getNodeViewOffsetPosition(): XYPosition {
@@ -805,13 +811,22 @@ export default defineComponent({
 		this.clipboard.onPaste.value = this.onClipboardPasteEvent;
 
 		this.canvasStore.startLoading();
-		const loadPromises = [
-			this.loadActiveWorkflows(),
-			this.loadCredentials(),
-			this.loadCredentialTypes(),
-			this.loadVariables(),
-			this.loadSecrets(),
-		];
+
+		const loadPromises = (() => {
+			if (this.settingsStore.isPreviewMode && this.isDemo) return [];
+			const promises = [
+				this.loadActiveWorkflows(),
+				this.loadCredentials(),
+				this.loadCredentialTypes(),
+			];
+			if (this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Variables)) {
+				promises.push(this.loadVariables());
+			}
+			if (this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.ExternalSecrets)) {
+				promises.push(this.loadSecrets());
+			}
+			return promises;
+		})();
 
 		if (this.nodeTypesStore.allNodeTypes.length === 0) {
 			loadPromises.push(this.loadNodeTypes());
@@ -866,9 +881,9 @@ export default defineComponent({
 		) {
 			const onboardingResponse = await this.uiStore.getNextOnboardingPrompt();
 			const promptTimeout =
-				onboardingResponse.toast_sequence_number === 1 ? FIRST_ONBOARDING_PROMPT_TIMEOUT : 1000;
+				onboardingResponse?.toast_sequence_number === 1 ? FIRST_ONBOARDING_PROMPT_TIMEOUT : 1000;
 
-			if (onboardingResponse.title && onboardingResponse.description) {
+			if (onboardingResponse?.title && onboardingResponse?.description) {
 				setTimeout(async () => {
 					this.showToast({
 						type: 'info',
@@ -1039,7 +1054,7 @@ export default defineComponent({
 						this.readOnlyEnv
 							? `readOnlyEnv.showMessage.${
 									this.isReadOnlyRoute ? 'executions' : 'workflows'
-							  }.message`
+								}.message`
 							: 'readOnly.showMessage.executions.message',
 					),
 					type: 'info',
@@ -1059,7 +1074,7 @@ export default defineComponent({
 				node_type: node ? node.type : null,
 				workflow_id: this.workflowsStore.workflowId,
 				source: 'canvas',
-				session_id: this.ndvStore.sessionId,
+				push_ref: this.ndvStore.pushRef,
 			};
 			this.$telemetry.track('User clicked execute node button', telemetryPayload);
 			void this.externalHooks.run('nodeView.onRunNode', telemetryPayload);
@@ -1081,6 +1096,7 @@ export default defineComponent({
 						TelemetryHelpers.generateNodesGraph(
 							workflowData as IWorkflowBase,
 							this.workflowHelpers.getNodeTypes(),
+							{ isCloudDeployment: this.settingsStore.isCloudDeployment },
 						).nodeGraph,
 					),
 				};
@@ -1277,7 +1293,7 @@ export default defineComponent({
 					});
 				}
 			}
-			if ((data as IExecutionsSummary).waitTill) {
+			if ((data as ExecutionSummary).waitTill) {
 				this.showMessage({
 					title: this.$locale.baseText('nodeView.thisExecutionHasntFinishedYet'),
 					message: `<a data-action="reload">${this.$locale.baseText(
@@ -1314,7 +1330,7 @@ export default defineComponent({
 			this.resetWorkspace();
 
 			this.workflowsStore.currentWorkflowExecutions = [];
-			this.workflowsStore.activeWorkflowExecution = null;
+			this.executionsStore.activeExecution = null;
 
 			let data: IWorkflowTemplate | undefined;
 			try {
@@ -1366,7 +1382,7 @@ export default defineComponent({
 		async openWorkflow(workflow: IWorkflowDb) {
 			this.canvasStore.startLoading();
 
-			const selectedExecution = this.workflowsStore.activeWorkflowExecution;
+			const selectedExecution = this.executionsStore.activeExecution;
 
 			this.resetWorkspace();
 
@@ -1413,10 +1429,10 @@ export default defineComponent({
 				workflowName: workflow.name,
 			});
 			if (selectedExecution?.workflowId !== workflow.id) {
-				this.workflowsStore.activeWorkflowExecution = null;
+				this.executionsStore.activeExecution = null;
 				this.workflowsStore.currentWorkflowExecutions = [];
 			} else {
-				this.workflowsStore.activeWorkflowExecution = selectedExecution;
+				this.executionsStore.activeExecution = selectedExecution;
 			}
 			this.canvasStore.stopLoading();
 			this.collaborationStore.notifyWorkflowOpened(workflow.id);
@@ -1904,7 +1920,7 @@ export default defineComponent({
 
 				const nodeData = JSON.stringify(workflowToCopy, null, 2);
 
-				this.clipboard.copy(nodeData);
+				void this.clipboard.copy(nodeData);
 				if (data.nodes.length > 0) {
 					if (!isCut) {
 						this.showMessage({
@@ -1928,7 +1944,7 @@ export default defineComponent({
 
 			try {
 				this.stopExecutionInProgress = true;
-				await this.workflowsStore.stopCurrentExecution(executionId);
+				await this.executionsStore.stopCurrentExecution(executionId);
 			} catch (error) {
 				// Execution stop might fail when the execution has already finished. Let's treat this here.
 				const execution = await this.workflowsStore.getExecution(executionId);
@@ -1981,7 +1997,6 @@ export default defineComponent({
 				}
 			}
 			this.stopExecutionInProgress = false;
-
 			void this.workflowHelpers.getWorkflowDataToSave().then((workflowData) => {
 				const trackProps = {
 					workflow_id: this.workflowsStore.workflowId,
@@ -1989,6 +2004,7 @@ export default defineComponent({
 						TelemetryHelpers.generateNodesGraph(
 							workflowData as IWorkflowBase,
 							this.workflowHelpers.getNodeTypes(),
+							{ isCloudDeployment: this.settingsStore.isCloudDeployment },
 						).nodeGraph,
 					),
 				};
@@ -2145,6 +2161,7 @@ export default defineComponent({
 								workflowData.meta && workflowData.meta.instanceId !== currInstanceId
 									? workflowData.meta.instanceId
 									: '',
+							isCloudDeployment: this.settingsStore.isCloudDeployment,
 						},
 					).nodeGraph,
 				);
@@ -2563,7 +2580,7 @@ export default defineComponent({
 					this.nodeTypesStore.isTriggerNode(nodeTypeName) && !this.containsTrigger
 						? this.canvasStore.canvasAddButtonPosition
 						: // If no node is active find a free spot
-						  (this.lastClickPosition as XYPosition);
+							(this.lastClickPosition as XYPosition);
 
 				newNodeData.position = NodeViewUtils.getNewNodePosition(this.nodes, position);
 			}
@@ -3527,14 +3544,14 @@ export default defineComponent({
 			this.resetWorkspace();
 			this.workflowData = await this.workflowsStore.getNewWorkflowData();
 			this.workflowsStore.currentWorkflowExecutions = [];
-			this.workflowsStore.activeWorkflowExecution = null;
+			this.executionsStore.activeExecution = null;
 
 			this.uiStore.stateIsDirty = false;
 			this.canvasStore.setZoomLevel(1, [0, 0]);
 			await this.tryToAddWelcomeSticky();
 			this.uiStore.nodeViewInitialized = true;
 			this.historyStore.reset();
-			this.workflowsStore.activeWorkflowExecution = null;
+			this.executionsStore.activeExecution = null;
 			this.canvasStore.stopLoading();
 		},
 		async tryToAddWelcomeSticky(): Promise<void> {
@@ -4626,7 +4643,7 @@ export default defineComponent({
 						});
 					}
 				} else if (json?.command === 'setActiveExecution') {
-					this.workflowsStore.activeWorkflowExecution = json.execution;
+					this.executionsStore.activeExecution = json.execution;
 				}
 			} catch (e) {}
 		},
@@ -5217,3 +5234,4 @@ export default defineComponent({
 	);
 }
 </style>
+, IRun, IPushDataExecutionFinished

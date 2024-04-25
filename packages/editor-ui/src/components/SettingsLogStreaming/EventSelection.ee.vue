@@ -10,7 +10,7 @@
 				:model-value="group.selected"
 				:indeterminate="!group.selected && group.indeterminate"
 				:disabled="readonly"
-				@update:modelValue="onInput"
+				@update:model-value="onInput"
 				@change="onCheckboxChecked(group.name, $event)"
 			>
 				<strong>{{ groupLabelName(group.name) }}</strong>
@@ -30,7 +30,7 @@
 				v-if="group.name === 'n8n.audit'"
 				:model-value="logStreamingStore.items[destinationId]?.destination.anonymizeAuditMessages"
 				:disabled="readonly"
-				@update:modelValue="onInput"
+				@update:model-value="onInput"
 				@change="anonymizeAuditMessagesChanged"
 			>
 				{{ $locale.baseText('settings.log-streaming.tab.events.anonymize') }}
@@ -52,7 +52,7 @@
 						:model-value="event.selected || group.selected"
 						:indeterminate="event.indeterminate"
 						:disabled="group.selected || readonly"
-						@update:modelValue="onInput"
+						@update:model-value="onInput"
 						@change="onCheckboxChecked(event.name, $event)"
 					>
 						{{ event.label }}

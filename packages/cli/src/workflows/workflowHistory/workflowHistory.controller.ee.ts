@@ -1,4 +1,4 @@
-import { Authorized, RestController, Get, Middleware } from '@/decorators';
+import { RestController, Get, Middleware } from '@/decorators';
 import { WorkflowHistoryRequest } from '@/requests';
 import { WorkflowHistoryService } from './workflowHistory.service.ee';
 import { Request, Response, NextFunction } from 'express';
@@ -11,7 +11,6 @@ import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-v
 
 const DEFAULT_TAKE = 20;
 
-@Authorized()
 @RestController('/workflow-history')
 export class WorkflowHistoryController {
 	constructor(private readonly historyService: WorkflowHistoryService) {}

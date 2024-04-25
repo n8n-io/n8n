@@ -168,7 +168,7 @@ function getIssues(index: number): string[] {
 						:options="allowedCombinators"
 						:selected="state.paramValue.combinator"
 						:class="$style.combinator"
-						@combinatorChange="onCombinatorChange"
+						@combinator-change="onCombinatorChange"
 					/>
 
 					<Condition

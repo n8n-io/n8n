@@ -2,7 +2,7 @@ import express from 'express';
 import type { IRunExecutionData } from 'n8n-workflow';
 import { EventMessageTypeNames } from 'n8n-workflow';
 
-import { RestController, Get, Post, Authorized, RequireGlobalScope } from '@/decorators';
+import { RestController, Get, Post, GlobalScope } from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import { isEventMessageOptions } from './EventMessageClasses/AbstractEventMessage';
@@ -33,7 +33,6 @@ const isWithQueryString = (candidate: unknown): candidate is { query: string } =
 // Controller
 // ----------------------------------------
 
-@Authorized()
 @RestController('/eventbus')
 export class EventBusController {
 	constructor(
@@ -45,7 +44,7 @@ export class EventBusController {
 	// Events
 	// ----------------------------------------
 	@Get('/event')
-	@RequireGlobalScope('eventBusEvent:query')
+	@GlobalScope('eventBusEvent:query')
 	async getEvents(
 		req: express.Request,
 	): Promise<EventMessageTypes[] | Record<string, EventMessageTypes[]>> {
@@ -67,14 +66,14 @@ export class EventBusController {
 	}
 
 	@Get('/failed')
-	@RequireGlobalScope('eventBusEvent:list')
+	@GlobalScope('eventBusEvent:list')
 	async getFailedEvents(req: express.Request): Promise<FailedEventSummary[]> {
 		const amount = parseInt(req.query?.amount as string) ?? 5;
 		return await this.eventBus.getEventsFailed(amount);
 	}
 
 	@Get('/execution/:id')
-	@RequireGlobalScope('eventBusEvent:read')
+	@GlobalScope('eventBusEvent:read')
 	async getEventForExecutionId(req: express.Request): Promise<EventMessageTypes[] | undefined> {
 		if (req.params?.id) {
 			let logHistory;
@@ -87,7 +86,7 @@ export class EventBusController {
 	}
 
 	@Get('/execution-recover/:id')
-	@RequireGlobalScope('eventBusEvent:read')
+	@GlobalScope('eventBusEvent:read')
 	async getRecoveryForExecutionId(req: express.Request): Promise<IRunExecutionData | undefined> {
 		const { id } = req.params;
 		if (req.params?.id) {
@@ -102,7 +101,7 @@ export class EventBusController {
 	}
 
 	@Post('/event')
-	@RequireGlobalScope('eventBusEvent:create')
+	@GlobalScope('eventBusEvent:create')
 	async postEvent(req: express.Request): Promise<EventMessageTypes | undefined> {
 		let msg: EventMessageTypes | undefined;
 		if (isEventMessageOptions(req.body)) {

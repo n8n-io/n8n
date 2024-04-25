@@ -8,8 +8,8 @@ import {
 } from 'n8n-workflow';
 
 import { MultiQueryRetriever } from 'langchain/retrievers/multi_query';
-import type { BaseLanguageModel } from 'langchain/base_language';
-import type { BaseRetriever } from 'langchain/schema/retriever';
+import type { BaseLanguageModel } from '@langchain/core/language_models/base';
+import type { BaseRetriever } from '@langchain/core/retrievers';
 
 import { logWrapper } from '../../../utils/logWrapper';
 

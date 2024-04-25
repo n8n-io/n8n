@@ -277,7 +277,6 @@ function onPlusClick(connectionType: ConnectionTypes) {
 }
 
 function showNodeInputsIssues() {
-	console.log('showNodeInputsIssues');
 	shouldShowNodeInputIssues.value = false;
 	// Reset animation
 	setTimeout(() => {

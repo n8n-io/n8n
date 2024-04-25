@@ -142,13 +142,12 @@ export class SourceControlImportService {
 		Array<ExportableCredential & { filename: string }>
 	> {
 		const localCredentials = await Container.get(CredentialsRepository).find({
-			select: ['id', 'name', 'type', 'nodesAccess'],
+			select: ['id', 'name', 'type'],
 		});
 		return localCredentials.map((local) => ({
 			id: local.id,
 			name: local.name,
 			type: local.type,
-			nodesAccess: local.nodesAccess,
 			filename: getCredentialExportPath(local.id, this.credentialExportFolder),
 		})) as Array<ExportableCredential & { filename: string }>;
 	}
@@ -310,7 +309,10 @@ export class SourceControlImportService {
 		}>;
 	}
 
-	public async importCredentialsFromWorkFolder(candidates: SourceControlledFile[], userId: string) {
+	public async importCredentialsFromWorkFolder(
+		candidates: SourceControlledFile[],
+		importingUserId: string,
+	) {
 		const candidateIds = candidates.map((c) => c.id);
 		const existingCredentials = await Container.get(CredentialsRepository).find({
 			where: {
@@ -335,26 +337,35 @@ export class SourceControlImportService {
 				const existingCredential = existingCredentials.find(
 					(e) => e.id === credential.id && e.type === credential.type,
 				);
-				const sharedOwner = existingSharedCredentials.find(
-					(e) => e.credentialsId === credential.id,
-				);
 
-				const { name, type, data, id, nodesAccess } = credential;
-				const newCredentialObject = new Credentials({ id, name }, type, []);
+				const { name, type, data, id } = credential;
+				const newCredentialObject = new Credentials({ id, name }, type);
 				if (existingCredential?.data) {
 					newCredentialObject.data = existingCredential.data;
 				} else {
 					newCredentialObject.setData(data);
 				}
-				newCredentialObject.nodesAccess = nodesAccess || existingCredential?.nodesAccess || [];
 
 				this.logger.debug(`Updating credential id ${newCredentialObject.id as string}`);
 				await Container.get(CredentialsRepository).upsert(newCredentialObject, ['id']);
 
-				if (!sharedOwner) {
+				const isOwnedLocally = existingSharedCredentials.some(
+					(c) => c.credentialsId === credential.id,
+				);
+
+				if (!isOwnedLocally) {
+					const remoteOwnerId = credential.ownedBy
+						? await Container.get(UserRepository)
+								.findOne({
+									where: { email: credential.ownedBy },
+									select: { id: true },
+								})
+								.then((user) => user?.id)
+						: null;
+
 					const newSharedCredential = new SharedCredentials();
 					newSharedCredential.credentialsId = newCredentialObject.id as string;
-					newSharedCredential.userId = userId;
+					newSharedCredential.userId = remoteOwnerId ?? importingUserId;
 					newSharedCredential.role = 'credential:owner';
 
 					await Container.get(SharedCredentialsRepository).upsert({ ...newSharedCredential }, [

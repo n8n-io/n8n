@@ -264,11 +264,10 @@ describe('GET /credentials', () => {
 });
 
 function validateCredential(credential: ListQuery.Credentials.WithOwnedByAndSharedWith) {
-	const { name, type, nodesAccess, sharedWith, ownedBy } = credential;
+	const { name, type, sharedWith, ownedBy } = credential;
 
 	expect(typeof name).toBe('string');
 	expect(typeof type).toBe('string');
-	expect(typeof nodesAccess[0].nodeType).toBe('string');
 	expect('data' in credential).toBe(false);
 
 	if (sharedWith) expect(Array.isArray(sharedWith)).toBe(true);

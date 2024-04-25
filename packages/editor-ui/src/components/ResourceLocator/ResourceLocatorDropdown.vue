@@ -17,7 +17,7 @@
 				:clearable="true"
 				:placeholder="$locale.baseText('resourceLocator.search.placeholder')"
 				data-test-id="rlc-search"
-				@update:modelValue="onFilterInput"
+				@update:model-value="onFilterInput"
 			>
 				<template #prefix>
 					<font-awesome-icon :class="$style.searchIcon" icon="search" />

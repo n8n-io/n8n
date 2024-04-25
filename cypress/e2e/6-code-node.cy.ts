@@ -121,7 +121,7 @@ describe('Code node', () => {
 					.its('request.body')
 					.should('have.keys', ['question', 'model', 'context', 'n8nVersion']);
 
-				askAiReq.its('context').should('have.keys', ['schema', 'ndvSessionId', 'sessionId']);
+				askAiReq.its('context').should('have.keys', ['schema', 'ndvPushRef', 'pushRef']);
 
 				cy.contains('Code generation completed').should('be.visible');
 				cy.getByTestId('code-node-tab-code').should('contain.text', 'console.log("Hello World")');

@@ -18,7 +18,6 @@ n8n is an extendable workflow automation tool. With a [fair-code](https://fairco
   - [Persist data](#persist-data)
     - [Start with other Database](#start-with-other-database)
       - [Use with PostgresDB](#use-with-postgresdb)
-      - [Use with MySQL](#use-with-mysql)
   - [Passing Sensitive Data via File](#passing-sensitive-data-via-file)
   - [Example Setup with Lets Encrypt](#example-setup-with-lets-encrypt)
   - [Updating a running docker-compose instance](#updating-a-running-docker-compose-instance)
@@ -95,10 +94,9 @@ docker run -it --rm \
 ### Start with other Database
 
 By default n8n uses SQLite to save credentials, past executions and workflows.
-n8n however also supports PostgresDB, MySQL and MariaDB. To use them simply a few
-environment variables have to be set.
+n8n however also supports PostgresDB.
 
-It is important to still persist the data in the `/root/.n8n` folder. The reason
+It is important to still persist the data in the `/home/node/.n8n` folder. The reason
 is that it contains n8n user data. That is the name of the webhook
 (in case) the n8n tunnel gets used and even more important the encryption key
 for the credentials. If none gets found n8n creates automatically one on
@@ -128,36 +126,10 @@ docker run -it --rm \
  -e DB_POSTGRESDB_SCHEMA=<POSTGRES_SCHEMA> \
  -e DB_POSTGRESDB_PASSWORD=<POSTGRES_PASSWORD> \
  -v ~/.n8n:/home/node/.n8n \
- docker.n8n.io/n8nio/n8n \
- n8n start
+ docker.n8n.io/n8nio/n8n
 ```
 
 A full working setup with docker-compose can be found [here](https://github.com/n8n-io/n8n/blob/master/docker/compose/withPostgres/README.md)
-
-#### Use with MySQL
-
-Replace the following placeholders with the actual data:
-
-- MYSQLDB_DATABASE
-- MYSQLDB_HOST
-- MYSQLDB_PASSWORD
-- MYSQLDB_PORT
-- MYSQLDB_USER
-
-```bash
-docker run -it --rm \
- --name n8n \
- -p 5678:5678 \
- -e DB_TYPE=mysqldb \
- -e DB_MYSQLDB_DATABASE=<MYSQLDB_DATABASE> \
- -e DB_MYSQLDB_HOST=<MYSQLDB_HOST> \
- -e DB_MYSQLDB_PORT=<MYSQLDB_PORT> \
- -e DB_MYSQLDB_USER=<MYSQLDB_USER> \
- -e DB_MYSQLDB_PASSWORD=<MYSQLDB_PASSWORD> \
- -v ~/.n8n:/home/node/.n8n \
- docker.n8n.io/n8nio/n8n \
- n8n start
-```
 
 ## Passing Sensitive Data via File
 
@@ -222,7 +194,7 @@ docker run -it --rm \
 docker buildx build --platform linux/amd64,linux/arm64 --build-arg N8N_VERSION=<VERSION> -t n8n:<VERSION> .
 
 # For example:
-docker buildx build --platform linux/amd64,linux/arm64 --build-arg N8N_VERSION=0.114.0 -t n8n:0.114.0 .
+docker buildx build --platform linux/amd64,linux/arm64 --build-arg N8N_VERSION=1.30.1 -t n8n:1.30.1 .
 ```
 
 ## What does n8n mean and how do you pronounce it?

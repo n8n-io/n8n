@@ -19,6 +19,7 @@ export class SourceControlPullWorkFolder {
 }
 
 export class SourceControllPullOptions {
+	/** ID of user performing a source control pull. */
 	userId: string;
 
 	force?: boolean;

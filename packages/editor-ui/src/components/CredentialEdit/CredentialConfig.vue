@@ -6,7 +6,7 @@
 			:message="
 				$locale.baseText(
 					`credentialEdit.credentialConfig.pleaseCheckTheErrorsBelow${
-						credentialPermissions.isOwner ? '' : '.sharee'
+						credentialPermissions.update || credentialPermissions.isOwner ? '' : '.sharee'
 					}`,
 					{ interpolate: { owner: credentialOwnerName } },
 				)
@@ -19,7 +19,7 @@
 			:message="
 				$locale.baseText(
 					`credentialEdit.credentialConfig.couldntConnectWithTheseSettings${
-						credentialPermissions.isOwner ? '' : '.sharee'
+						credentialPermissions.update || credentialPermissions.isOwner ? '' : '.sharee'
 					}`,
 					{ interpolate: { owner: credentialOwnerName } },
 				)
@@ -74,11 +74,11 @@
 			<AuthTypeSelector
 				v-if="showAuthTypeSelector && isNewCredential"
 				:credential-type="credentialType"
-				@authTypeChanged="onAuthTypeChange"
+				@auth-type-changed="onAuthTypeChange"
 			/>
 
 			<CopyInput
-				v-if="isOAuthType && credentialProperties.length"
+				v-if="isOAuthType && !allOAuth2BasePropertiesOverridden"
 				:label="$locale.baseText('credentialEdit.credentialConfig.oAuthRedirectUrl')"
 				:value="oAuthCallbackUrl"
 				:copy-button-text="$locale.baseText('credentialEdit.credentialConfig.clickToCopy')"
@@ -202,6 +202,9 @@ export default defineComponent({
 			type: Boolean,
 		},
 		isOAuthType: {
+			type: Boolean,
+		},
+		allOAuth2BasePropertiesOverridden: {
 			type: Boolean,
 		},
 		isOAuthConnected: {

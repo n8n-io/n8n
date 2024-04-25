@@ -185,6 +185,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 				fileContent,
 				{
 					uploadType: 'media',
+					supportsAllDrives: true,
 				},
 				undefined,
 				{
@@ -200,7 +201,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 				'PATCH',
 				`/upload/drive/v3/files/${fileId}`,
 				undefined,
-				{ uploadType: 'resumable' },
+				{ uploadType: 'resumable', supportsAllDrives: true },
 				undefined,
 				{
 					returnFullResponse: true,

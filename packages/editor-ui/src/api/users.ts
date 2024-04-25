@@ -2,8 +2,8 @@ import type {
 	CurrentUserResponse,
 	IPersonalizationLatestVersion,
 	IRestApiContext,
-	IRole,
 	IUserResponse,
+	InvitableRoleName,
 } from '@/Interface';
 import type { IDataObject } from 'n8n-workflow';
 import { makeRestApiRequest } from '@/utils/apiUtils';
@@ -157,7 +157,7 @@ export async function submitPersonalizationSurvey(
 
 export interface UpdateGlobalRolePayload {
 	id: string;
-	newRoleName: Exclude<IRole, 'default' | 'global:owner'>;
+	newRoleName: InvitableRoleName;
 }
 
 export async function updateGlobalRole(

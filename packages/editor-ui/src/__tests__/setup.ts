@@ -12,3 +12,10 @@ window.ResizeObserver =
 	}));
 
 Element.prototype.scrollIntoView = vi.fn();
+
+Range.prototype.getBoundingClientRect = vi.fn();
+Range.prototype.getClientRects = vi.fn(() => ({
+	item: vi.fn(),
+	length: 0,
+	[Symbol.iterator]: vi.fn(),
+}));

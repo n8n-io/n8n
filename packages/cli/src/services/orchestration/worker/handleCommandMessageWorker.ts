@@ -12,6 +12,7 @@ import { Logger } from '@/Logger';
 import { N8N_VERSION } from '@/constants';
 
 export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHandlerOptions) {
+	// eslint-disable-next-line complexity
 	return async (channel: string, messageString: string) => {
 		if (channel === COMMAND_REDIS_CHANNEL) {
 			if (!messageString) return;
@@ -49,13 +50,12 @@ export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHa
 								arch: os.arch(),
 								platform: os.platform(),
 								hostname: os.hostname(),
-								interfaces: Object.values(os.networkInterfaces()).flatMap(
-									(interfaces) =>
-										(interfaces ?? [])?.map((net) => ({
-											family: net.family,
-											address: net.address,
-											internal: net.internal,
-										})),
+								interfaces: Object.values(os.networkInterfaces()).flatMap((interfaces) =>
+									(interfaces ?? [])?.map((net) => ({
+										family: net.family,
+										address: net.address,
+										internal: net.internal,
+									})),
 								),
 								version: N8N_VERSION,
 							},

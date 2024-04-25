@@ -137,8 +137,8 @@ function nodeTypeSelected(nodeTypes: string[]) {
 		<Suspense>
 			<NodeCreator
 				:active="createNodeActive"
-				@nodeTypeSelected="nodeTypeSelected"
-				@closeNodeCreator="closeNodeCreator"
+				@node-type-selected="nodeTypeSelected"
+				@close-node-creator="closeNodeCreator"
 			/>
 		</Suspense>
 	</div>

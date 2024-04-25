@@ -4,7 +4,7 @@ import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError, BINARY_ENCODING } from 'n8n-workflow';
 
 import type { TextSplitter } from 'langchain/text_splitter';
-import type { Document } from 'langchain/document';
+import type { Document } from '@langchain/core/documents';
 import { CSVLoader } from 'langchain/document_loaders/fs/csv';
 import { DocxLoader } from 'langchain/document_loaders/fs/docx';
 import { JSONLoader } from 'langchain/document_loaders/fs/json';

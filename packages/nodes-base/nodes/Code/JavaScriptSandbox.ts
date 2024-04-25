@@ -14,7 +14,7 @@ export const vmResolver = makeResolverFromLegacyOptions({
 		? {
 				modules: external.split(','),
 				transitive: false,
-		  }
+			}
 		: false,
 	builtin: builtIn?.split(',') ?? [],
 });

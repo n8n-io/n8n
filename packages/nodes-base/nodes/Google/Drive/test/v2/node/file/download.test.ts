@@ -50,13 +50,13 @@ describe('test GoogleDriveV2: file download', () => {
 			'GET',
 			'/drive/v3/files/fileIDxxxxxx',
 			{},
-			{ fields: 'mimeType,name', supportsTeamDrives: true },
+			{ fields: 'mimeType,name', supportsTeamDrives: true, supportsAllDrives: true },
 		);
 		expect(transport.googleApiRequest).toHaveBeenCalledWith(
 			'GET',
 			'/drive/v3/files/fileIDxxxxxx',
 			{},
-			{ alt: 'media' },
+			{ alt: 'media', supportsAllDrives: true },
 			undefined,
 			{ encoding: 'arraybuffer', json: false, returnFullResponse: true, useStream: true },
 		);

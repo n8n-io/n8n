@@ -35,52 +35,37 @@
 	</ElSkeleton>
 </template>
 
-<script lang="ts">
+<script lang="ts" setup>
 import { ElSkeleton, ElSkeletonItem } from 'element-plus';
-import { defineComponent } from 'vue';
 
-export default defineComponent({
-	name: 'N8nLoading',
-	components: {
-		ElSkeleton,
-		ElSkeletonItem,
-	},
-	props: {
-		animated: {
-			type: Boolean,
-			default: true,
-		},
-		loading: {
-			type: Boolean,
-			default: true,
-		},
-		rows: {
-			type: Number,
-			default: 1,
-		},
-		shrinkLast: {
-			type: Boolean,
-			default: true,
-		},
-		variant: {
-			type: String,
-			default: 'p',
-			validator: (value: string): boolean =>
-				[
-					'custom',
-					'p',
-					'text',
-					'h1',
-					'h3',
-					'text',
-					'caption',
-					'button',
-					'image',
-					'circle',
-					'rect',
-				].includes(value),
-		},
-	},
+const VARIANT = [
+	'custom',
+	'p',
+	'text',
+	'h1',
+	'h3',
+	'text',
+	'caption',
+	'button',
+	'image',
+	'circle',
+	'rect',
+] as const;
+
+interface LoadingProps {
+	animated?: boolean;
+	loading?: boolean;
+	rows?: number;
+	shrinkLast?: boolean;
+	variant?: (typeof VARIANT)[number];
+}
+
+withDefaults(defineProps<LoadingProps>(), {
+	animated: true,
+	loading: true,
+	rows: 1,
+	shrinkLast: true,
+	variant: 'p',
 });
 </script>
 
