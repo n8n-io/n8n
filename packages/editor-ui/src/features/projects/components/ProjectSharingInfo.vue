@@ -16,7 +16,9 @@ const processedName = computed(() => splitName(props.project.name ?? ''));
 		<div>
 			<N8nAvatar :first-name="processedName.firstName" :last-name="processedName.lastName" />
 			<div>
-				<p>{{ processedName.firstName }} {{ processedName.lastName }}</p>
+				<p v-if="processedName.firstName || processedName.lastName">
+					{{ processedName.firstName }} {{ processedName.lastName }}
+				</p>
 				<small>{{ processedName.email }}</small>
 			</div>
 		</div>

@@ -6,14 +6,14 @@ export const splitName = (
 	lastName?: string;
 	email?: string;
 } => {
-	const regex = /^(.+)\s+<([^>]+)>$/;
+	const regex = /^(.+)?\s?<([^>]+)>$/;
 	const match = projectName.match(regex);
 
 	if (match) {
 		const [_, fullName, email] = match;
-		const nameParts = fullName.trim().split(/\s+/);
-		const lastName = nameParts.pop();
-		const firstName = nameParts.join(' ');
+		const nameParts = fullName?.trim().split(/\s+/);
+		const lastName = nameParts?.pop();
+		const firstName = nameParts?.join(' ');
 		return { firstName, lastName, email };
 	} else {
 		const nameParts = projectName.split(/\s+/) ?? [];
