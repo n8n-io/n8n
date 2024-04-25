@@ -10,29 +10,35 @@ import type {
 } from 'luxon';
 import type { ExtensionMap } from './Extensions';
 import { convertToDateTime } from './utils';
+import { toDateTime as stringToDateTime } from './StringExtensions';
 
-type DurationUnit =
-	| 'milliseconds'
-	| 'seconds'
-	| 'minutes'
-	| 'hours'
-	| 'days'
-	| 'weeks'
-	| 'months'
-	| 'quarter'
-	| 'years';
-type DatePart =
-	| 'day'
-	| 'week'
-	| 'month'
-	| 'year'
-	| 'hour'
-	| 'minute'
-	| 'second'
-	| 'millisecond'
-	| 'weekNumber'
-	| 'yearDayNumber'
-	| 'weekday';
+const durationUnits = [
+	'milliseconds',
+	'seconds',
+	'minutes',
+	'hours',
+	'days',
+	'weeks',
+	'months',
+	'quarters',
+	'years',
+] as const;
+type DurationUnit = (typeof durationUnits)[number];
+
+const dateParts = [
+	'day',
+	'week',
+	'month',
+	'year',
+	'hour',
+	'minute',
+	'second',
+	'millisecond',
+	'weekNumber',
+	'yearDayNumber',
+	'weekday',
+] as const;
+type DatePart = (typeof dateParts)[number];
 
 const DURATION_MAP: Record<string, DurationUnit> = {
 	day: 'days',
@@ -216,8 +222,45 @@ function plus(
 	return DateTime.fromJSDate(date).plus(duration).toJSDate();
 }
 
-function toDateTime(date: Date | DateTime): DateTime {
+function diffTo(date: DateTime, args: [string | Date | DateTime, DurationUnit | DurationUnit[]]) {
+	const [otherDate, unit = 'days'] = args;
+	let units = Array.isArray(unit) ? unit : [unit];
+
+	if (units.length === 0) {
+		units = ['days'];
+	}
+
+	const allowedUnitSet = new Set([...dateParts, ...durationUnits]);
+	const errorUnit = units.find((u) => !allowedUnitSet.has(u));
+
+	if (errorUnit) {
+		throw new ExpressionExtensionError(
+			`Unsupported unit '${String(errorUnit)}'. Supported: ${durationUnits
+				.map((u) => `'${u}'`)
+				.join(', ')}.`,
+		);
+	}
+
+	const diffResult = date.diff(toDateTime(otherDate), units);
+
+	if (units.length > 1) {
+		return diffResult.toObject();
+	}
+
+	return diffResult.as(units[0]);
+}
+
+function diffToNow(date: DateTime, args: [DurationUnit | DurationUnit[]]) {
+	const [unit] = args;
+	return diffTo(date, [DateTime.now(), unit]);
+}
+
+function toDateTime(date: string | Date | DateTime): DateTime {
 	if (isDateTime(date)) return date;
+
+	if (typeof date === 'string') {
+		return stringToDateTime(date);
+	}
 
 	return DateTime.fromJSDate(date);
 }
@@ -317,7 +360,14 @@ isInLast.doc = {
 
 toDateTime.doc = {
 	name: 'toDateTime',
-	description: 'Convert a JavaScript Date to a Luxon DateTime.',
+	description:
+		'Converts a JavaScript Date to a Luxon DateTime. The DateTime contains the same information, but is easier to manipulate.',
+	examples: [
+		{
+			example: "new Date('2024-03-30T18:49').toDateTime().plus(5, 'days')",
+			evaluated: '2024-05-05T18:49',
+		},
+	],
 	returnType: 'DateTime',
 	hidden: true,
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-toDateTime',
@@ -347,6 +397,66 @@ plus.doc = {
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-plus',
 };
 
+diffTo.doc = {
+	name: 'diffTo',
+	description: 'Returns the difference between two DateTimes, in the given unit(s)',
+	examples: [
+		{
+			example: "'2025-01-01'.toDateTime().diffTo('2024-03-30T18:49:07.234', 'days')",
+			evaluated: '276.21',
+		},
+		{
+			example:
+				"dt1 = '2024-03-30T18:49:07.234'.toDateTime();\ndt2 = '2025-01-01T00:00:00.000'.toDateTime();\ndt1.diffTo(dt2, ['months', 'days'])",
+			evaluated: '{ months: , days: }',
+		},
+	],
+	section: 'compare',
+	returnType: 'number | Record<DurationUnit, number>',
+	args: [
+		{
+			name: 'otherDateTime',
+			default: '$now',
+			description:
+				'The moment to subtract the base DateTime from. Can be an ISO date string or a Luxon DateTime.',
+			type: 'string | DateTime',
+		},
+		{
+			name: 'unit',
+			default: "'days'",
+			description:
+				'The unit, or array of units, to return the result in. Possible values: <code>years</code>, <code>months</code>, <code>weeks</code>, <code>days</code>, <code>hours</code>, <code>minutes</code>, <code>seconds</code>, <code>milliseconds</code>.',
+			type: 'string | string[]',
+		},
+	],
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-diffTo',
+};
+
+diffToNow.doc = {
+	name: 'diffToNow',
+	description:
+		'Returns the difference between the current moment and the DateTime, in the given unit(s). For a textual representation, use <code>toRelative()</code> instead.',
+	examples: [
+		{ example: "'2023-03-30T18:49:07.234'.toDateTime().diffToNow('days')", evaluated: '371.9' },
+		{
+			example: "'2023-03-30T18:49:07.234'.toDateTime().diffToNow(['months', 'days'])",
+			evaluated: '{ months: 12, days: 5.9 }',
+		},
+	],
+	section: 'compare',
+	returnType: 'number | Record<DurationUnit, number>',
+	args: [
+		{
+			name: 'unit',
+			description:
+				'The unit, or array of units, to return the result in. Possible values: <code>years</code>, <code>months</code>, <code>weeks</code>, <code>days</code>, <code>hours</code>, <code>minutes</code>, <code>seconds</code>, <code>milliseconds</code>.',
+			default: "'days'",
+			type: 'string | string[]',
+		},
+	],
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-diffToNow',
+};
+
 export const dateExtensions: ExtensionMap = {
 	typeName: 'Date',
 	functions: {
@@ -361,6 +471,8 @@ export const dateExtensions: ExtensionMap = {
 		plus,
 		format,
 		toDateTime,
+		diffTo,
+		diffToNow,
 		toInt,
 		toFloat,
 		toBoolean,

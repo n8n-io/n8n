@@ -216,7 +216,7 @@ function toDate(value: string): Date {
 	return date;
 }
 
-function toDateTime(value: string): DateTime {
+export function toDateTime(value: string): DateTime {
 	try {
 		return tryToParseDateTime(value);
 	} catch (error) {
