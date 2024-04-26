@@ -41,7 +41,7 @@ async function main() {
 
 	await bench.run();
 
-	console.table(bench.table()); // @TODO: Output properly? Ref. Codspeed
+	if (process.env.CI !== 'true') console.table(bench.table());
 
 	await hooks.globalTeardown();
 }

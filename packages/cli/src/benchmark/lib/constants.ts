@@ -1,6 +1,6 @@
-// localhost refuses connections on GH Actions runners
+// localhost on GH Actions runners refuses connections
 export const BACKEND_BASE_URL = 'http://127.0.0.1:5678';
 
-// https://stackoverflow.com/a/72785693
+export const INSTANCE_ONWER_EMAIL = 'test@test.com';
 
-// https://stackoverflow.com/a/75881555
+export const INSTANCE_ONWER_PASSWORD = 'password';

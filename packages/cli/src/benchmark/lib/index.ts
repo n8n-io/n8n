@@ -10,5 +10,6 @@ export {
 	registerSuites,
 } from './registration';
 export * as hooks from './hooks';
+export { agent } from './agent';
 export type { Suites } from './types';
 export { UnsupportedDatabaseError } from './errors/unsupported-db.error';

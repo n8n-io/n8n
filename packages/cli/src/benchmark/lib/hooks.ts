@@ -5,15 +5,14 @@ import { Config } from '@oclif/core';
 import { InstanceSettings } from 'n8n-core';
 import { Start } from '@/commands/start';
 import Container from 'typedi';
-import { WorkflowsController } from '@/workflows/workflows.controller';
 import { UserRepository } from '@/databases/repositories/user.repository';
-import type { User } from '@/databases/entities/User';
 import glob from 'fast-glob';
 import { jsonParse } from 'n8n-workflow';
 import { readFile } from 'fs/promises';
 import type { WorkflowRequest } from '@/workflows/workflow.request';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { Logger } from '@/Logger';
+import { agent, authenticateAgent } from './agent';
 
 const logger = Container.get(Logger);
 
@@ -43,7 +42,7 @@ function tempN8nDir() {
 	logger.info(`[Benchmarking] Temp .n8n dir location: ${instanceSettings.n8nFolder}`);
 }
 
-async function loadWorkflows(owner: User) {
+async function loadWorkflows() {
 	const files = await glob('suites/workflows/*.json', {
 		cwd: path.join('dist', 'benchmark'),
 		absolute: true,
@@ -56,9 +55,10 @@ async function loadWorkflows(owner: User) {
 		workflows.push(jsonParse<WorkflowRequest.CreatePayload>(content));
 	}
 
+	await authenticateAgent();
+
 	for (const workflow of workflows) {
-		// @ts-ignore @TODO Fix typing
-		await Container.get(WorkflowsController).create({ body: workflow, user: owner });
+		await agent.post('/rest/workflows', workflow);
 	}
 }
 
@@ -72,9 +72,9 @@ export async function globalSetup() {
 	await main.init();
 	await main.run();
 
-	const owner = await Container.get(UserRepository).createTestOwner();
+	await Container.get(UserRepository).createTestOwner();
 
-	await loadWorkflows(owner);
+	await loadWorkflows();
 
 	await Container.get(ActiveWorkflowRunner).init();
 }
