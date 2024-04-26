@@ -252,7 +252,7 @@ export default defineComponent({
 					id: 'cloud-admin',
 					position: 'bottom',
 					label: 'Admin Panel',
-					icon: 'home',
+					icon: 'cloud',
 					available: this.settingsStore.isCloudDeployment && hasPermission(['instanceOwner']),
 				},
 				{
