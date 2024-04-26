@@ -1315,7 +1315,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			const rootStore = useRootStore();
 
 			if (data.settings === null) {
-				EventReporter.info('Detected workflow payload with settings as null', { extra: { data } });
+				EventReporter.info('Detected workflow payload with settings as null');
 				data.settings = undefined;
 			}
 
@@ -1331,9 +1331,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			const rootStore = useRootStore();
 
 			if (startRunData.workflowData.settings === null) {
-				EventReporter.info('Detected workflow payload with settings as null', {
-					extra: { startRunData },
-				});
+				EventReporter.info('Detected workflow payload with settings as null');
 				startRunData.workflowData.settings = undefined;
 			}
 
