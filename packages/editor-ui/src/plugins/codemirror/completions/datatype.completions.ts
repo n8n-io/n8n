@@ -76,6 +76,10 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 		options = objectGlobalOptions().map(stripExcessParens(context));
 	} else if (base === '$vars') {
 		options = variablesOptions();
+	} else if (base === '$execution') {
+		options = executionOptions();
+	} else if (base === '$execution.customData') {
+		options = customDataOptions();
 	} else if (base === '$response') {
 		options = responseOptions();
 	} else if (/\$secrets\./.test(base) && isCredential) {
@@ -689,6 +693,125 @@ export const responseOptions = () => {
 	].map((doc) => createCompletionOption({ name: doc.name, doc }));
 };
 
+export const executionOptions = () => {
+	return [
+		{
+			name: 'id',
+			returnType: 'string',
+			description: i18n.baseText('codeNodeEditor.completer.$execution.id'),
+		},
+		{
+			name: 'mode',
+			returnType: 'string',
+			description: i18n.baseText('codeNodeEditor.completer.$execution.mode'),
+		},
+
+		{
+			name: 'resumeUrl',
+			returnType: 'string',
+			docURL: 'https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/',
+			description: i18n.baseText('codeNodeEditor.completer.$execution.resumeUrl'),
+		},
+		{
+			name: 'resumeFormUrl',
+			returnType: 'string',
+			docURL: 'https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/',
+			description: i18n.baseText('codeNodeEditor.completer.$execution.resumeFormUrl'),
+		},
+		{
+			name: 'customData',
+			returnType: 'CustomData',
+			docURL: 'https://docs.n8n.io/workflows/executions/custom-executions-data/',
+			description: i18n.baseText('codeNodeEditor.completer.$execution.customData'),
+		},
+	].map((doc) => createCompletionOption({ name: doc.name, doc }));
+};
+
+export const customDataOptions = () => {
+	return [
+		{
+			name: 'get',
+			returnType: 'any',
+			docURL: 'https://docs.n8n.io/workflows/executions/custom-executions-data/',
+			args: [
+				{
+					name: 'key',
+					description: 'The key (identifier) under which the data is stored',
+					type: 'string',
+				},
+			],
+			description: i18n.baseText('codeNodeEditor.completer.$execution.customData.get'),
+			examples: [
+				{
+					description: i18n.baseText(
+						'codeNodeEditor.completer.$execution.customData.get.examples.1',
+					),
+					example: '$execution.customData.get("user_email")',
+					evaluated: '"me@example.com"',
+				},
+			],
+		},
+		{
+			name: 'set',
+			returnType: 'void',
+			args: [
+				{
+					name: 'key',
+					description: i18n.baseText('codeNodeEditor.completer.$execution.customData.set.args.key'),
+					type: 'string',
+				},
+				{
+					name: 'value',
+					description: i18n.baseText(
+						'codeNodeEditor.completer.$execution.customData.set.args.value',
+					),
+					type: 'any',
+				},
+			],
+			docURL: 'https://docs.n8n.io/workflows/executions/custom-executions-data/',
+			description: i18n.baseText('codeNodeEditor.completer.$execution.customData.set'),
+			examples: [
+				{
+					description: i18n.baseText(
+						'codeNodeEditor.completer.$execution.customData.set.examples.1',
+					),
+					example: '$execution.customData.set("user_email", "me@example.com")',
+				},
+			],
+		},
+		{
+			name: 'getAll',
+			returnType: 'object',
+			docURL: 'https://docs.n8n.io/workflows/executions/custom-executions-data/',
+			description: i18n.baseText('codeNodeEditor.completer.$execution.customData.getAll'),
+			examples: [
+				{
+					example: '$execution.customData.getAll()',
+					evaluated: '{ user_email: "me@example.com", id: 1234 }',
+				},
+			],
+		},
+		{
+			name: 'setAll',
+			returnType: 'void',
+			args: [
+				{
+					name: 'obj',
+					description: i18n.baseText(
+						'codeNodeEditor.completer.$execution.customData.setAll.args.obj',
+					),
+					type: 'object',
+				},
+			],
+			docURL: 'https://docs.n8n.io/workflows/executions/custom-executions-data/',
+			description: i18n.baseText('codeNodeEditor.completer.$execution.customData.setAll'),
+			examples: [
+				{ example: '$execution.customData.setAll({ user_email: "me@example.com", id: 1234 })' },
+			],
+		},
+	].map((doc) => createCompletionOption({ name: doc.name, doc, isFunction: true }));
+};
+
 export const secretOptions = (base: string) => {
 	const externalSecretsStore = useExternalSecretsStore();
 	let resolved: Resolved;
@@ -854,6 +977,28 @@ export const objectGlobalOptions = () => {
 		{
 			name: 'assign',
 			description: i18n.baseText('codeNodeEditor.completer.globalObject.assign'),
+			args: [
+				{
+					name: 'object1',
+					type: 'object',
+				},
+				{
+					name: 'object2',
+					optional: true,
+					type: 'object',
+				},
+				{
+					name: 'objectN',
+					optional: true,
+					type: 'object',
+				},
+			],
+			examples: [
+				{
+					example: "Object.assign(\n  {},\n  { id: 1, name: 'Apple' },\n  { name: 'Banana' }\n);",
+					evaluated: "{ id: 1, name: 'Banana' }",
+				},
+			],
 			returnType: 'object',
 			docURL:
 				'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/assign',
@@ -861,12 +1006,36 @@ export const objectGlobalOptions = () => {
 		{
 			name: 'entries',
 			returnType: 'Array<[string, any]>',
+			args: [
+				{
+					name: 'obj',
+					type: 'object',
+				},
+			],
+			examples: [
+				{
+					example: "Object.entries({ id: 1, name: 'Apple' })",
+					evaluated: "[['id', 1], ['name', 'Apple']]",
+				},
+			],
 			description: i18n.baseText('codeNodeEditor.completer.globalObject.entries'),
 			docURL:
 				'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/entries',
 		},
 		{
 			name: 'keys',
+			args: [
+				{
+					name: 'obj',
+					type: 'object',
+				},
+			],
+			examples: [
+				{
+					example: "Object.keys({ id: 1, name: 'Apple' })",
+					evaluated: "['id', 'name']",
+				},
+			],
 			returnType: 'string[]',
 			description: i18n.baseText('codeNodeEditor.completer.globalObject.keys'),
 			docURL:
@@ -874,6 +1043,18 @@ export const objectGlobalOptions = () => {
 		},
 		{
 			name: 'values',
+			args: [
+				{
+					name: 'obj',
+					type: 'object',
+				},
+			],
+			examples: [
+				{
+					example: "Object.values({ id: 1, name: 'Apple' })",
+					evaluated: "[1, 'Apple']",
+				},
+			],
 			description: i18n.baseText('codeNodeEditor.completer.globalObject.values'),
 			returnType: 'any[]',
 			docURL:
