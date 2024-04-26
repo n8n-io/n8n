@@ -2,7 +2,7 @@
 	<div>
 		<div :class="{ 'main-header': true, expanded: !uiStore.sidebarMenuCollapsed }">
 			<div v-show="!hideMenuBar" class="top-menu">
-				<WorkflowDetails :workflow="workflow" :read-only="readOnly" />
+				<WorkflowDetails v-if="workflow?.name" :workflow="workflow" :read-only="readOnly" />
 				<TabBar
 					v-if="onWorkflowPage"
 					:items="tabBarItems"

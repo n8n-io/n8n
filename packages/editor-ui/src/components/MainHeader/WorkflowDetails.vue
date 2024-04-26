@@ -519,7 +519,7 @@ function goToUpgrade() {
 </script>
 
 <template>
-	<div v-if="workflow" class="container">
+	<div class="container">
 		<BreakpointsObserver :value-x-s="15" :value-s-m="25" :value-m-d="50" class="name-container">
 			<template #default="{ value }">
 				<ShortenName
