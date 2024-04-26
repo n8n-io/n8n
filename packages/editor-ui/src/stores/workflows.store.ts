@@ -82,6 +82,7 @@ import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { getCredentialOnlyNodeTypeName } from '@/utils/credentialOnlyNodes';
 import { i18n } from '@/plugins/i18n';
+import { ErrorReporterProxy as EventReporter } from 'n8n-workflow';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -1312,6 +1313,12 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			forceSave = false,
 		): Promise<IWorkflowDb> {
 			const rootStore = useRootStore();
+
+			if (data.settings === null) {
+				EventReporter.info('Detected workflow payload with settings as null');
+				data.settings = undefined;
+			}
+
 			return await makeRestApiRequest(
 				rootStore.getRestApiContext,
 				'PATCH',
@@ -1322,6 +1329,12 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 		async runWorkflow(startRunData: IStartRunData): Promise<IExecutionPushResponse> {
 			const rootStore = useRootStore();
+
+			if (startRunData.workflowData.settings === null) {
+				EventReporter.info('Detected workflow payload with settings as null');
+				startRunData.workflowData.settings = undefined;
+			}
+
 			try {
 				return await makeRestApiRequest(
 					rootStore.getRestApiContext,
