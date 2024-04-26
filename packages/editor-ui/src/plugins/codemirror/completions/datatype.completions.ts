@@ -737,7 +737,6 @@ export const luxonInstanceOptions = ({
 				name: key,
 				isFunction,
 				docs: luxonInstanceDocs,
-				translations: i18n.luxonInstance,
 				includeHidden,
 				transformLabel,
 			}) as Completion;
@@ -759,7 +758,6 @@ export const luxonStaticOptions = () => {
 					name: key,
 					isFunction: true,
 					docs: luxonStaticDocs,
-					translations: i18n.luxonStatic,
 				}) as Completion;
 			})
 			.filter(Boolean),
@@ -769,14 +767,12 @@ export const luxonStaticOptions = () => {
 const createLuxonAutocompleteOption = ({
 	name,
 	docs,
-	translations,
 	isFunction = false,
 	includeHidden = false,
 	transformLabel = (label) => label,
 }: {
 	name: string;
 	docs: NativeDoc;
-	translations: Record<string, string | undefined>;
 	isFunction?: boolean;
 	includeHidden?: boolean;
 	transformLabel?: (label: string) => string;
@@ -816,8 +812,7 @@ const createLuxonAutocompleteOption = ({
 	option.info = createCompletionOption({
 		name,
 		isFunction,
-		// Add translated description
-		doc: { ...doc, description: translations[name] } as DocMetadata,
+		doc,
 		transformLabel,
 	}).info;
 	return option;
