@@ -266,8 +266,8 @@ importers:
         specifier: ^0.0.2
         version: 0.0.2
       '@n8n/typeorm':
-        specifier: 0.3.20-8
-        version: 0.3.20-8(pg@8.11.3)(redis@4.6.12)(sqlite3@5.1.7)
+        specifier: 0.3.20-9
+        version: 0.3.20-9(pg@8.11.3)(redis@4.6.12)(sqlite3@5.1.7)
       '@n8n/vm2':
         specifier: 3.9.20
         version: 3.9.20
@@ -497,8 +497,8 @@ importers:
         specifier: workspace:*
         version: link:../@n8n/permissions
       '@n8n/typeorm':
-        specifier: 0.3.20-8
-        version: 0.3.20-8(@sentry/node@7.87.0)(ioredis@5.3.2)(mysql2@3.9.7)(pg@8.11.3)(sqlite3@5.1.7)
+        specifier: 0.3.20-9
+        version: 0.3.20-9(@sentry/node@7.87.0)(ioredis@5.3.2)(mysql2@3.9.7)(pg@8.11.3)(sqlite3@5.1.7)
       '@n8n_io/license-sdk':
         specifier: 2.10.0
         version: 2.10.0
@@ -6643,8 +6643,8 @@ packages:
       recast: 0.22.0
     dev: false
 
-  /@n8n/typeorm@0.3.20-8(@sentry/node@7.87.0)(ioredis@5.3.2)(mysql2@3.9.7)(pg@8.11.3)(sqlite3@5.1.7):
-    resolution: {integrity: sha512-WJFa9Pg6BJVS1dEe1xFRQcLtvjKx2O1KTgI6pFrTTcH7zZMy3qNww7A3HIrW/LvzCu0+rnSfHU4GvDg5/oJhlg==}
+  /@n8n/typeorm@0.3.20-9(@sentry/node@7.87.0)(ioredis@5.3.2)(mysql2@3.9.7)(pg@8.11.3)(sqlite3@5.1.7):
+    resolution: {integrity: sha512-m9HrksvTftGQ2h6JLB3nq8uIaX19OPoa9MYLRqces4Y18r4b5mmdXH/qTrjxFiA1z4SP/KNCsvq90iRnT1pb1w==}
     engines: {node: '>=16.13.0'}
     hasBin: true
     peerDependencies:
@@ -6711,6 +6711,7 @@ packages:
       '@sentry/node': 7.87.0
       '@sqltools/formatter': 1.2.5
       app-root-path: 3.1.0
+      async-mutex: 0.5.0
       buffer: 6.0.3
       chalk: 4.1.2
       dayjs: 1.11.10
@@ -6732,8 +6733,8 @@ packages:
       - supports-color
     dev: false
 
-  /@n8n/typeorm@0.3.20-8(pg@8.11.3)(redis@4.6.12)(sqlite3@5.1.7):
-    resolution: {integrity: sha512-WJFa9Pg6BJVS1dEe1xFRQcLtvjKx2O1KTgI6pFrTTcH7zZMy3qNww7A3HIrW/LvzCu0+rnSfHU4GvDg5/oJhlg==}
+  /@n8n/typeorm@0.3.20-9(pg@8.11.3)(redis@4.6.12)(sqlite3@5.1.7):
+    resolution: {integrity: sha512-m9HrksvTftGQ2h6JLB3nq8uIaX19OPoa9MYLRqces4Y18r4b5mmdXH/qTrjxFiA1z4SP/KNCsvq90iRnT1pb1w==}
     engines: {node: '>=16.13.0'}
     hasBin: true
     peerDependencies:
@@ -6799,6 +6800,7 @@ packages:
       '@n8n/p-retry': 6.2.0-2
       '@sqltools/formatter': 1.2.5
       app-root-path: 3.1.0
+      async-mutex: 0.5.0
       buffer: 6.0.3
       chalk: 4.1.2
       dayjs: 1.11.10
@@ -11625,6 +11627,12 @@ packages:
       process-nextick-args: 2.0.1
       stream-exhaust: 1.0.2
     dev: true
+
+  /async-mutex@0.5.0:
+    resolution: {integrity: sha512-1A94B18jkJ3DYq284ohPxoXbfTA5HsQ7/Mf4DEhcyLx3Bz27Rh59iScbB6EPiP+B+joue6YCxcMXSbFC1tZKwA==}
+    dependencies:
+      tslib: 2.6.2
+    dev: false
 
   /async-retry@1.3.3:
     resolution: {integrity: sha512-wfr/jstw9xNi/0teMHrRW7dsz3Lt5ARhYNZ2ewpadnhaIp5mbALhOAP+EAdsC7t4Z6wqsDVv9+W6gm1Dk9mEyw==}
@@ -24102,12 +24110,6 @@ packages:
     dependencies:
       ansi-regex: 5.0.1
 
-  /strip-ansi@7.0.1:
-    resolution: {integrity: sha512-cXNxvT8dFNRVfhVME3JAe98mkXDYN2O1l7jmcwMnOslDeESg1rF/OZMtK0nRAhiari1unG5cD4jG3rapUAkLbw==}
-    engines: {node: '>=12'}
-    dependencies:
-      ansi-regex: 6.0.1
-
   /strip-ansi@7.1.0:
     resolution: {integrity: sha512-iq6eVVI64nQQTRYq2KtEg2d2uU7LElhTJwsH4YzIHZshxlgZms/wIc4VoDQTlG/IvVIrBKG06CrZnp0qv7hkcQ==}
     engines: {node: '>=12'}
@@ -26441,7 +26443,7 @@ packages:
     dependencies:
       ansi-styles: 6.2.1
       string-width: 5.1.2
-      strip-ansi: 7.0.1
+      strip-ansi: 7.1.0
 
   /wrappy@1.0.2:
     resolution: {integrity: sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==}
