@@ -30,16 +30,16 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # - name: Build
-      #   if: ${{ inputs.cacheKey == '' }}
-      #   run: pnpm build
+      - name: Build
+        if: ${{ inputs.cacheKey == '' }}
+        run: pnpm build
 
-      # - name: Restore cached build artifacts
-      #   if: ${{ inputs.cacheKey != '' }}
-      #   uses: actions/cache/restore@v4.0.0
-      #   with:
-      #     path: ./packages/**/dist
-      #     key: ${{ inputs.cacheKey }}
+      - name: Restore cached build artifacts
+        if: ${{ inputs.cacheKey != '' }}
+        uses: actions/cache/restore@v4.0.0
+        with:
+          path: ./packages/**/dist
+          key: ${{ inputs.cacheKey }}
 
       - name: Benchmark
         uses: CodSpeedHQ/action@v2
