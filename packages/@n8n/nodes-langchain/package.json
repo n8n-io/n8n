@@ -96,6 +96,7 @@
       "dist/nodes/text_splitters/TextSplitterTokenSplitter/TextSplitterTokenSplitter.node.js",
       "dist/nodes/tools/ToolCalculator/ToolCalculator.node.js",
       "dist/nodes/tools/ToolCode/ToolCode.node.js",
+      "dist/nodes/tools/ToolHttpRequest/ToolHttpRequest.node.js",
       "dist/nodes/tools/ToolSerpApi/ToolSerpApi.node.js",
       "dist/nodes/tools/ToolWikipedia/ToolWikipedia.node.js",
       "dist/nodes/tools/ToolWolframAlpha/ToolWolframAlpha.node.js",
