@@ -13,7 +13,7 @@
 		@update:filters="onFiltersUpdated"
 	>
 		<template #header>
-			<ProjectTabs />
+			<ProjectTabs v-if="showProjectTabs" />
 		</template>
 		<template #add-button="{ disabled }">
 			<n8n-tooltip :disabled="!readOnlyEnv">
@@ -268,6 +268,9 @@ const WorkflowsView = defineComponent({
 				return false;
 			}
 			return ['Sales', 'sales-and-marketing'].includes(this.userRole);
+		},
+		showProjectTabs() {
+			return !!this.$route.params.projectId || !!this.allWorkflows.length;
 		},
 	},
 	watch: {
