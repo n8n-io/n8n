@@ -3,33 +3,55 @@ import type { ProjectRole } from '@/databases/entities/ProjectRelation';
 import type { User } from '@/databases/entities/User';
 import { generateNanoId } from '@/databases/utils/generators';
 import { ApplicationError } from 'n8n-workflow';
+import { nanoid } from 'nanoid';
 
 const projectAdminRole: ProjectRole = 'project:personalOwner';
-const projectTable = 'project';
-const userTable = 'user';
-const projectRelationTable = 'project_relation';
 
-const sharedCredentials = 'shared_credentials';
-const sharedCredentialsTemp = 'shared_credentials_2';
-const sharedWorkflow = 'shared_workflow';
-const sharedWorkflowTemp = 'shared_workflow_2';
+type RelationTable = 'shared_workflow' | 'shared_credentials';
 
-type Table = 'shared_workflow' | 'shared_credentials';
+const table = {
+	sharedCredentials: 'shared_credentials',
+	sharedCredentialsTemp: 'shared_credentials_2',
+	sharedWorkflow: 'shared_workflow',
+	sharedWorkflowTemp: 'shared_workflow_2',
+	project: 'project',
+	user: 'user',
+	projectRelation: 'project_relation',
+} as const;
 
-// const resourceIdColumns: Record<Table, string> = {
-// 	shared_credentials: 'credentialsId',
-// 	shared_workflow: 'workflowId',
-// };
+function escapeNames(escape: MigrationContext['escape']) {
+	const t = {
+		project: escape.tableName(table.project),
+		projectRelation: escape.tableName(table.projectRelation),
+		sharedCredentials: escape.tableName(table.sharedCredentials),
+		sharedCredentialsTemp: escape.tableName(table.sharedCredentialsTemp),
+		sharedWorkflow: escape.tableName(table.sharedWorkflow),
+		sharedWorkflowTemp: escape.tableName(table.sharedWorkflowTemp),
+		user: escape.tableName(table.user),
+	};
+	const c = {
+		createdAt: escape.columnName('createdAt'),
+		updatedAt: escape.columnName('updatedAt'),
+		workflowId: escape.columnName('workflowId'),
+		credentialsId: escape.columnName('credentialsId'),
+		userId: escape.columnName('userId'),
+		projectId: escape.columnName('projectId'),
+		firstName: escape.columnName('firstName'),
+		lastName: escape.columnName('lastName'),
+	};
+
+	return { t, c };
+}
 
 export class CreateProject1705928727784 implements ReversibleMigration {
 	async setupTables({ schemaBuilder: { createTable, column } }: MigrationContext) {
-		await createTable(projectTable).withColumns(
+		await createTable(table.project).withColumns(
 			column('id').varchar(36).primary.notNull,
 			column('name').varchar(255).notNull,
 			column('type').varchar(36),
 		).withTimestamps;
 
-		await createTable(projectRelationTable)
+		await createTable(table.projectRelation)
 			.withColumns(
 				column('projectId').varchar(36).primary.notNull,
 				column('userId').uuid.primary.notNull,
@@ -38,7 +60,7 @@ export class CreateProject1705928727784 implements ReversibleMigration {
 			.withIndexOn('projectId')
 			.withIndexOn('userId')
 			.withForeignKey('projectId', {
-				tableName: projectTable,
+				tableName: table.project,
 				columnName: 'id',
 				onDelete: 'CASCADE',
 			})
@@ -50,7 +72,7 @@ export class CreateProject1705928727784 implements ReversibleMigration {
 	}
 
 	async alterSharedTable(
-		table: Table,
+		relationTableName: RelationTable,
 		{
 			escape,
 			isMysql,
@@ -58,44 +80,39 @@ export class CreateProject1705928727784 implements ReversibleMigration {
 			schemaBuilder: { addForeignKey, addColumns, addNotNull, createIndex, column },
 		}: MigrationContext,
 	) {
-		// Add projectId column, this is set to a blank string by default because it's a primary key
 		const projectIdColumn = column('projectId').varchar(36).default('NULL');
-		const projectIdColumnName = escape.columnName('projectId');
-		const userIdColumnName = escape.columnName('userId');
-		await addColumns(table, [projectIdColumn]);
+		await addColumns(relationTableName, [projectIdColumn]);
 
-		const tableName = escape.tableName(table);
-		const projectName = escape.tableName(projectTable);
-		const relationTableName = escape.tableName(projectRelationTable);
-		// const resourceIdColumn = resourceIdColumns[table];
+		const relationTable = escape.tableName(relationTableName);
+		const { t, c } = escapeNames(escape);
 
 		// Populate projectId
 		const subQuery = `
-				SELECT P.id as ${projectIdColumnName}, T.${userIdColumnName}
-				FROM ${relationTableName} T
-				LEFT JOIN ${projectName} P
-				ON T.${projectIdColumnName} = P.id AND P.type = 'personal'
-				LEFT JOIN ${tableName} S
-				ON T.${userIdColumnName} = S.${userIdColumnName}
+				SELECT P.id as ${c.projectId}, T.${c.userId}
+				FROM ${t.projectRelation} T
+				LEFT JOIN ${t.project} P
+				ON T.${c.projectId} = P.id AND P.type = 'personal'
+				LEFT JOIN ${relationTable} S
+				ON T.${c.userId} = S.${c.userId}
 				WHERE P.id IS NOT NULL
 		`;
 		const swQuery = isMysql
-			? `UPDATE ${tableName}, (${subQuery}) as mapping
-				    SET ${tableName}.${projectIdColumnName} = mapping.${projectIdColumnName}
-				    WHERE ${tableName}.${userIdColumnName} = mapping.${userIdColumnName}`
-			: `UPDATE ${tableName}
-						SET ${projectIdColumnName} = mapping.${projectIdColumnName}
+			? `UPDATE ${relationTable}, (${subQuery}) as mapping
+				    SET ${relationTable}.${c.projectId} = mapping.${c.projectId}
+				    WHERE ${relationTable}.${c.userId} = mapping.${c.userId}`
+			: `UPDATE ${relationTable}
+						SET ${c.projectId} = mapping.${c.projectId}
 				    FROM (${subQuery}) as mapping
-				    WHERE ${tableName}.${userIdColumnName} = mapping.${userIdColumnName}`;
+				    WHERE ${relationTable}.${c.userId} = mapping.${c.userId}`;
 
 		await runQuery(swQuery);
 
-		await addForeignKey(table, 'projectId', ['project', 'id']);
+		await addForeignKey(relationTableName, 'projectId', ['project', 'id']);
 
-		await addNotNull(table, 'projectId');
+		await addNotNull(relationTableName, 'projectId');
 
 		// Index the new projectId column
-		await createIndex(table, ['projectId']);
+		await createIndex(relationTableName, ['projectId']);
 	}
 
 	async alterSharedCredentials({
@@ -103,7 +120,7 @@ export class CreateProject1705928727784 implements ReversibleMigration {
 		runQuery,
 		schemaBuilder: { column, createTable, dropTable },
 	}: MigrationContext) {
-		await createTable(sharedCredentialsTemp)
+		await createTable(table.sharedCredentialsTemp)
 			.withColumns(
 				column('credentialsId').varchar(36).notNull.primary,
 				column('projectId').varchar(36).notNull.primary,
@@ -115,32 +132,20 @@ export class CreateProject1705928727784 implements ReversibleMigration {
 				onDelete: 'CASCADE',
 			})
 			.withForeignKey('projectId', {
-				tableName: projectTable,
+				tableName: table.project,
 				columnName: 'id',
 				onDelete: 'CASCADE',
 			}).withTimestamps;
 
-		const updatedAtColumnName = escape.columnName('updatedAt');
-		const createdAtColumnName = escape.columnName('createdAt');
-		const credentialsIdColumnName = escape.columnName('credentialsId');
-		const projectIdColumnName = escape.columnName('projectId');
-		const roleColumnName = escape.columnName('role');
+		const { c, t } = escapeNames(escape);
 
 		await runQuery(`
-			INSERT INTO ${escape.tableName(
-				sharedCredentialsTemp,
-			)} (${createdAtColumnName}, ${updatedAtColumnName}, ${credentialsIdColumnName}, ${projectIdColumnName}, ${roleColumnName})
-			SELECT ${createdAtColumnName}, ${updatedAtColumnName}, ${credentialsIdColumnName}, ${projectIdColumnName}, ${roleColumnName} FROM ${escape.tableName(
-				sharedCredentials,
-			)};
+			INSERT INTO ${t.sharedCredentialsTemp} (${c.createdAt}, ${c.updatedAt}, ${c.credentialsId}, ${c.projectId}, role)
+			SELECT ${c.createdAt}, ${c.updatedAt}, ${c.credentialsId}, ${c.projectId}, role FROM ${t.sharedCredentials};
 		`);
 
-		await dropTable(sharedCredentials);
-		await runQuery(
-			`ALTER TABLE ${escape.tableName(sharedCredentialsTemp)} RENAME TO ${escape.tableName(
-				sharedCredentials,
-			)};`,
-		);
+		await dropTable(table.sharedCredentials);
+		await runQuery(`ALTER TABLE ${t.sharedCredentialsTemp} RENAME TO ${t.sharedCredentials};`);
 	}
 
 	async alterSharedWorkflow({
@@ -148,7 +153,7 @@ export class CreateProject1705928727784 implements ReversibleMigration {
 		runQuery,
 		schemaBuilder: { column, createTable, dropTable },
 	}: MigrationContext) {
-		await createTable(sharedWorkflowTemp)
+		await createTable(table.sharedWorkflowTemp)
 			.withColumns(
 				column('workflowId').varchar(36).notNull.primary,
 				column('projectId').varchar(36).notNull.primary,
@@ -160,39 +165,25 @@ export class CreateProject1705928727784 implements ReversibleMigration {
 				onDelete: 'CASCADE',
 			})
 			.withForeignKey('projectId', {
-				tableName: projectTable,
+				tableName: table.project,
 				columnName: 'id',
 				onDelete: 'CASCADE',
 			}).withTimestamps;
 
-		const updatedAtColumnName = escape.columnName('updatedAt');
-		const createdAtColumnName = escape.columnName('createdAt');
-		const workflowIdColumnName = escape.columnName('workflowId');
-		const projectIdColumnName = escape.columnName('projectId');
-		const roleColumnName = escape.columnName('role');
-
-		const escapedSharedWorkflowTemp = escape.tableName(sharedWorkflowTemp);
-		const escapedTableName = escape.tableName(sharedWorkflow);
+		const { c, t } = escapeNames(escape);
 
 		await runQuery(`
-			INSERT INTO ${escapedSharedWorkflowTemp} (${createdAtColumnName}, ${updatedAtColumnName}, ${workflowIdColumnName}, ${projectIdColumnName}, ${roleColumnName})
-			SELECT ${createdAtColumnName}, ${updatedAtColumnName}, ${workflowIdColumnName}, ${projectIdColumnName}, ${roleColumnName} FROM ${escapedTableName};
+			INSERT INTO ${t.sharedWorkflowTemp} (${c.createdAt}, ${c.updatedAt}, ${c.workflowId}, ${c.projectId}, role)
+			SELECT ${c.createdAt}, ${c.updatedAt}, ${c.workflowId}, ${c.projectId}, role FROM ${t.sharedWorkflow};
 		`);
 
-		await dropTable(sharedWorkflow);
-		await runQuery(`ALTER TABLE ${escapedSharedWorkflowTemp} RENAME TO ${escapedTableName};`);
+		await dropTable(table.sharedWorkflow);
+		await runQuery(`ALTER TABLE ${t.sharedWorkflowTemp} RENAME TO ${t.sharedWorkflow};`);
 	}
 
 	async createUserPersonalProjects({ runQuery, runInBatches, escape }: MigrationContext) {
-		const userTable = escape.tableName('user');
-		const projectName = escape.tableName(projectTable);
-		const projectRelationName = escape.tableName('project_relation');
-		const projectIdColumn = escape.columnName('projectId');
-		const userIdColumn = escape.columnName('userId');
-		const firstNameColumn = escape.columnName('firstName');
-		const lastNameColumn = escape.columnName('lastName');
-		const emailColumn = escape.columnName('email');
-		const getUserQuery = `SELECT id, ${firstNameColumn}, ${lastNameColumn}, ${emailColumn} FROM ${userTable}`;
+		const { c, t } = escapeNames(escape);
+		const getUserQuery = `SELECT id, ${c.firstName}, ${c.lastName}, email FROM ${t.user}`;
 		await runInBatches<Pick<User, 'id' | 'firstName' | 'lastName' | 'email'>>(
 			getUserQuery,
 			async (users) => {
@@ -201,7 +192,7 @@ export class CreateProject1705928727784 implements ReversibleMigration {
 						const projectId = generateNanoId();
 						const name = this.createPersonalProjectName(user.firstName, user.lastName, user.email);
 						await runQuery(
-							`INSERT INTO ${projectName} (id, type, name) VALUES (:projectId, 'personal', :name)`,
+							`INSERT INTO ${t.project} (id, type, name) VALUES (:projectId, 'personal', :name)`,
 							{
 								projectId,
 								name,
@@ -209,7 +200,7 @@ export class CreateProject1705928727784 implements ReversibleMigration {
 						);
 
 						await runQuery(
-							`INSERT INTO ${projectRelationName} (${projectIdColumn}, ${userIdColumn}, role) VALUES (:projectId, :userId, :projectRole)`,
+							`INSERT INTO ${t.projectRelation} (${c.projectId}, ${c.userId}, role) VALUES (:projectId, :userId, :projectRole)`,
 							{
 								projectId,
 								userId: user.id,
@@ -239,27 +230,18 @@ export class CreateProject1705928727784 implements ReversibleMigration {
 	async up(context: MigrationContext) {
 		await this.setupTables(context);
 		await this.createUserPersonalProjects(context);
-		await this.alterSharedTable('shared_credentials', context);
+		await this.alterSharedTable(table.sharedCredentials, context);
 		await this.alterSharedCredentials(context);
-		await this.alterSharedTable('shared_workflow', context);
+		await this.alterSharedTable(table.sharedWorkflow, context);
 		await this.alterSharedWorkflow(context);
 	}
 
-	async down({ logger, escape, runQuery, schemaBuilder: sb }: MigrationContext) {
-		const c = {
-			createdAt: escape.columnName('createdAt'),
-			updatedAt: escape.columnName('updatedAt'),
-			workflowId: escape.columnName('workflowId'),
-			credentialsId: escape.columnName('credentialsId'),
-			role: escape.columnName('role'),
-			userId: escape.columnName('userId'),
-			projectId: escape.columnName('projectId'),
-			type: escape.columnName('type'),
-		};
+	async down({ isMysql, logger, escape, runQuery, schemaBuilder: sb }: MigrationContext) {
+		const { t, c } = escapeNames(escape);
 
 		// 0. check if all projects are personal projects
 		const [{ count: nonPersonalProjects }] = await runQuery<[{ count: number }]>(
-			`SELECT COUNT(*) FROM ${projectTable} WHERE ${c.type} <> 'personal';`,
+			`SELECT COUNT(*) FROM ${t.project} WHERE type <> 'personal';`,
 		);
 
 		if (nonPersonalProjects > 0) {
@@ -269,9 +251,11 @@ export class CreateProject1705928727784 implements ReversibleMigration {
 			throw new ApplicationError(message);
 		}
 
+		console.log('create temp table');
+
 		// 1. create temp table for shared workflows
 		await sb
-			.createTable(sharedWorkflowTemp)
+			.createTable(table.sharedWorkflowTemp)
 			.withColumns(
 				sb.column('workflowId').varchar(36).notNull.primary,
 				// sb.column('userId').varchar().notNull.primary,
@@ -283,34 +267,41 @@ export class CreateProject1705928727784 implements ReversibleMigration {
 				tableName: 'workflow_entity',
 				columnName: 'id',
 				onDelete: 'CASCADE',
+				// In MySQL foreignKey names must be unique across all tables and
+				// TypeORM creates predictable names based on the columnName.
+				// So the current shared_workflow table's foreignKey for workflowId would
+				// clash with this one if we don't create a random name.
+				name: isMysql ? nanoid() : undefined,
 			})
 			.withForeignKey('userId', {
-				tableName: userTable,
+				tableName: table.user,
 				columnName: 'id',
 				onDelete: 'CASCADE',
 			}).withTimestamps;
 
+		console.log('done creating table');
+
 		// 2. migrate data into temp table
 		await runQuery(`
-			INSERT INTO ${sharedWorkflowTemp} (${c.createdAt}, ${c.updatedAt}, ${c.workflowId}, ${c.role}, ${c.userId})
-			SELECT SW.${c.createdAt}, SW.${c.updatedAt}, SW.${c.workflowId}, SW.${c.role}, PR.${c.userId}
-			FROM ${sharedWorkflow} SW
-			LEFT JOIN project_relation PR on SW.${c.projectId} = PR.${c.projectId} AND PR.${c.role} = 'project:personalOwner'
+			INSERT INTO ${t.sharedWorkflowTemp} (${c.createdAt}, ${c.updatedAt}, ${c.workflowId}, role, ${c.userId})
+			SELECT SW.${c.createdAt}, SW.${c.updatedAt}, SW.${c.workflowId}, SW.role, PR.${c.userId}
+			FROM ${t.sharedWorkflow} SW
+			LEFT JOIN project_relation PR on SW.${c.projectId} = PR.${c.projectId} AND PR.role = 'project:personalOwner'
 		`);
 
+		console.log('done inserting');
+
 		// 3. drop shared workflow table
-		await sb.dropTable(sharedWorkflow);
+		await sb.dropTable(table.sharedWorkflow);
 
 		// 4. rename temp table
-		await runQuery(`ALTER TABLE ${sharedWorkflowTemp} RENAME TO ${sharedWorkflow};`);
+		await runQuery(`ALTER TABLE ${t.sharedWorkflowTemp} RENAME TO ${t.sharedWorkflow};`);
 
 		// 5. same for shared creds
 		await sb
-			.createTable(sharedCredentialsTemp)
+			.createTable(table.sharedCredentialsTemp)
 			.withColumns(
 				sb.column('credentialsId').varchar(36).notNull.primary,
-				// sb.column('userId').varchar().notNull.primary,
-				// TODO: does this still work with sqlite?
 				sb.column('userId').uuid.notNull.primary,
 				sb.column('role').text.notNull,
 			)
@@ -318,23 +309,28 @@ export class CreateProject1705928727784 implements ReversibleMigration {
 				tableName: 'credentials_entity',
 				columnName: 'id',
 				onDelete: 'CASCADE',
+				// In MySQL foreignKey names must be unique across all tables and
+				// TypeORM creates predictable names based on the columnName.
+				// So the current shared_credentials table's foreignKey for credentialsId would
+				// clash with this one if we don't create a random name.
+				name: isMysql ? nanoid() : undefined,
 			})
 			.withForeignKey('userId', {
-				tableName: userTable,
+				tableName: table.user,
 				columnName: 'id',
 				onDelete: 'CASCADE',
 			}).withTimestamps;
 		await runQuery(`
-			INSERT INTO ${sharedCredentialsTemp} (${c.createdAt}, ${c.updatedAt}, ${c.credentialsId}, ${c.role}, ${c.userId})
-			SELECT SC.${c.createdAt}, SC.${c.updatedAt}, SC.${c.credentialsId}, SC.${c.role}, PR.${c.userId}
-			FROM ${sharedCredentials} SC
-			LEFT JOIN project_relation PR on SC.${c.projectId} = PR.${c.projectId} AND PR.${c.role} = 'project:personalOwner'
+			INSERT INTO ${t.sharedCredentialsTemp} (${c.createdAt}, ${c.updatedAt}, ${c.credentialsId}, role, ${c.userId})
+			SELECT SC.${c.createdAt}, SC.${c.updatedAt}, SC.${c.credentialsId}, SC.role, PR.${c.userId}
+			FROM ${t.sharedCredentials} SC
+			LEFT JOIN project_relation PR on SC.${c.projectId} = PR.${c.projectId} AND PR.role = 'project:personalOwner'
 		`);
-		await sb.dropTable(sharedCredentials);
-		await runQuery(`ALTER TABLE ${sharedCredentialsTemp} RENAME TO ${sharedCredentials};`);
+		await sb.dropTable(table.sharedCredentials);
+		await runQuery(`ALTER TABLE ${t.sharedCredentialsTemp} RENAME TO ${t.sharedCredentials};`);
 
 		// 6. drop project and project relation table
-		await sb.dropTable(projectRelationTable);
-		await sb.dropTable(projectTable);
+		await sb.dropTable(table.projectRelation);
+		await sb.dropTable(table.project);
 	}
 }
