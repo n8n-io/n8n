@@ -76,6 +76,8 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 		options = objectGlobalOptions().map(stripExcessParens(context));
 	} else if (base === '$vars') {
 		options = variablesOptions();
+	} else if (base === '$response') {
+		options = responseOptions();
 	} else if (/\$secrets\./.test(base) && isCredential) {
 		options = secretOptions(base).map(stripExcessParens(context));
 	} else if (base === '$secrets' && isCredential) {
@@ -344,14 +346,12 @@ const objectOptions = (input: AutocompleteInput<IDataObject>): Completion[] => {
 				detail: getDetail(name, resolvedProp),
 			};
 
-			const infoKey = [name, key].join('.');
 			const infoName = needsBracketAccess ? applyBracketAccess(key) : key;
 			option.info = createCompletionOption({
 				name: infoName,
 				doc: {
 					name: infoName,
 					returnType: isFunction ? 'any' : getType(resolvedProp),
-					description: i18n.proxyVars[infoKey],
 				},
 				isFunction,
 				transformLabel,
@@ -666,6 +666,29 @@ export const variablesOptions = () => {
 	);
 };
 
+export const responseOptions = () => {
+	return [
+		{
+			name: 'headers',
+			returnType: 'object',
+			docURL: 'https://docs.n8n.io/code/builtin/http-node-variables/',
+			description: i18n.baseText('codeNodeEditor.completer.$response.headers'),
+		},
+		{
+			name: 'statusCode',
+			returnType: 'number',
+			docURL: 'https://docs.n8n.io/code/builtin/http-node-variables/',
+			description: i18n.baseText('codeNodeEditor.completer.$response.statusCode'),
+		},
+		{
+			name: 'body',
+			returnType: 'object',
+			docURL: 'https://docs.n8n.io/code/builtin/http-node-variables/',
+			description: i18n.baseText('codeNodeEditor.completer.$response.body'),
+		},
+	].map((doc) => createCompletionOption({ name: doc.name, doc }));
+};
+
 export const secretOptions = (base: string) => {
 	const externalSecretsStore = useExternalSecretsStore();
 	let resolved: Resolved;
@@ -827,18 +850,36 @@ const createLuxonAutocompleteOption = ({
  * Methods defined on the global `Object`.
  */
 export const objectGlobalOptions = () => {
-	return ['assign', 'entries', 'keys', 'values'].map((key) => {
-		const option: Completion = {
-			label: key + '()',
-			type: 'function',
-		};
-
-		const info = i18n.globalObject[key];
-
-		if (info) option.info = info;
-
-		return option;
-	});
+	return [
+		{
+			name: 'assign',
+			description: i18n.baseText('codeNodeEditor.completer.globalObject.assign'),
+			returnType: 'object',
+			docURL:
+				'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/assign',
+		},
+		{
+			name: 'entries',
+			returnType: 'Array<[string, any]>',
+			description: i18n.baseText('codeNodeEditor.completer.globalObject.entries'),
+			docURL:
+				'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/entries',
+		},
+		{
+			name: 'keys',
+			returnType: 'string[]',
+			description: i18n.baseText('codeNodeEditor.completer.globalObject.keys'),
+			docURL:
+				'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/keys',
+		},
+		{
+			name: 'values',
+			description: i18n.baseText('codeNodeEditor.completer.globalObject.values'),
+			returnType: 'any[]',
+			docURL:
+				'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/values',
+		},
+	].map((doc) => createCompletionOption({ name: doc.name, doc, isFunction: true }));
 };
 
 const regexes = {
