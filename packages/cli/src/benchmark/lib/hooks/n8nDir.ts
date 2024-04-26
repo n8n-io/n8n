@@ -3,32 +3,32 @@ import path from 'node:path';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import Container from 'typedi';
 import { InstanceSettings } from 'n8n-core';
-import { Logger } from '@/Logger';
 
+/**
+ * Create a temp .n8n user dir for benchmarking.
+ */
 export function n8nDir() {
-	const baseDirPath = path.join(tmpdir(), 'n8n-benchmarks/');
+	const tempBaseDir = path.join(tmpdir(), 'n8n-benchmarks/');
 
-	mkdirSync(baseDirPath, { recursive: true });
+	mkdirSync(tempBaseDir, { recursive: true });
 
-	const userDir = mkdtempSync(baseDirPath);
+	const tempUserHomeDir = mkdtempSync(tempBaseDir);
 
-	const n8nDirPath = path.join(userDir, '.n8n');
+	const tempN8nDir = path.join(tempUserHomeDir, '.n8n');
 
-	mkdirSync(n8nDirPath);
+	mkdirSync(tempN8nDir);
 
 	writeFileSync(
-		path.join(n8nDirPath, 'config'),
+		path.join(tempN8nDir, 'config'),
 		JSON.stringify({ encryptionKey: 'temp_encryption_key', instanceId: 'temp-123' }),
 		'utf-8',
 	);
 
-	// @TODO: Find better approach than overriding like this
-	// Setting N8N_USER_FOLDER has no effect
-	const instanceSettings = Container.get(InstanceSettings);
-	instanceSettings.n8nFolder = n8nDirPath;
-	Container.set(InstanceSettings, instanceSettings);
+	process.env.N8N_USER_FOLDER = tempUserHomeDir;
 
-	Container.get(Logger).info(
-		`[Benchmarking] Temp .n8n dir location: ${instanceSettings.n8nFolder}`,
-	);
+	/**
+	 * `typedi` has already instantiated `InstanceSettings` using the default user home,
+	 * so re-instantiate it to ensure it picks up the temp user home dir path.
+	 */
+	Container.set(InstanceSettings, new InstanceSettings());
 }

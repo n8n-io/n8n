@@ -21,7 +21,7 @@ export class InstanceSettings {
 	private readonly userHome = this.getUserHome();
 
 	/** The path to the n8n folder in which all n8n related data gets saved */
-	n8nFolder = path.join(this.userHome, '.n8n'); // @TODO: Solution that keeps this readonly
+	readonly n8nFolder = path.join(this.userHome, '.n8n'); // @TODO: Solution that keeps this readonly
 
 	/** The path to the folder where all generated static assets are copied to */
 	readonly staticCacheDir = path.join(this.userHome, '.cache/n8n/public');

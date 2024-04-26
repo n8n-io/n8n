@@ -25,6 +25,6 @@ To create a benchmark suite:
 
 - [using "Respond immediately" mode](./suites/workflows/001-1.json)
 - [using "When last node finishes" mode](./suites/workflows/001-2.json)
-- [using "Respond to Webhook" node mode](./suites/workflows/001-3.json)
+- [using "Respond to Webhook node" mode](./suites/workflows/001-3.json)
 
 <!-- /BENCHMARK_SUITES_LIST -->
