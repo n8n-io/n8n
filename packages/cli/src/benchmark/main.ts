@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import Container from 'typedi';
 import { Logger } from '@/Logger';
 import { collectSuites, registerSuites, setup, teardown } from './lib';
+import config from '@/config';
 
 /* eslint-disable import/no-extraneous-dependencies */
 import Bench from 'tinybench';
@@ -24,11 +25,15 @@ async function main() {
 
 	await setup();
 
-	// @TODO: Make these values configurable
 	const _bench = new Bench({
-		time: 0, // @TODO: Temp value
-		iterations: 1, // @TODO: Temp value
-		throws: true,
+		// @TODO: Temp values
+		time: 0,
+		iterations: 1,
+		// time: config.getEnv('benchmark.time'),
+		// iterations: config.getEnv('benchmark.iterations'),
+		throws: config.getEnv('benchmark.stopOnError'),
+		warmupTime: config.getEnv('benchmark.warmupTime'),
+		warmupIterations: config.getEnv('benchmark.warmupIterations'),
 	});
 
 	const bench = process.env.CI === 'true' ? withCodSpeed(_bench) : _bench;
