@@ -1,10 +1,12 @@
-import type { MigrationContext, IrreversibleMigration } from '@db/types';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 import type { ProjectRole } from '@/databases/entities/ProjectRelation';
 import type { User } from '@/databases/entities/User';
 import { generateNanoId } from '@/databases/utils/generators';
+import { ApplicationError } from 'n8n-workflow';
 
 const projectAdminRole: ProjectRole = 'project:personalOwner';
 const projectTable = 'project';
+const userTable = 'user';
 const projectRelationTable = 'project_relation';
 
 const sharedCredentials = 'shared_credentials';
@@ -19,7 +21,7 @@ type Table = 'shared_workflow' | 'shared_credentials';
 // 	shared_workflow: 'workflowId',
 // };
 
-export class CreateProject1705928727784 implements IrreversibleMigration {
+export class CreateProject1705928727784 implements ReversibleMigration {
 	async setupTables({ schemaBuilder: { createTable, column } }: MigrationContext) {
 		await createTable(projectTable).withColumns(
 			column('id').varchar(36).primary.notNull,
@@ -243,5 +245,96 @@ export class CreateProject1705928727784 implements IrreversibleMigration {
 		await this.alterSharedWorkflow(context);
 	}
 
-	// TODO down migration
+	async down({ logger, escape, runQuery, schemaBuilder: sb }: MigrationContext) {
+		const c = {
+			createdAt: escape.columnName('createdAt'),
+			updatedAt: escape.columnName('updatedAt'),
+			workflowId: escape.columnName('workflowId'),
+			credentialsId: escape.columnName('credentialsId'),
+			role: escape.columnName('role'),
+			userId: escape.columnName('userId'),
+			projectId: escape.columnName('projectId'),
+			type: escape.columnName('type'),
+		};
+
+		// 0. check if all projects are personal projects
+		const [{ count: nonPersonalProjects }] = await runQuery<[{ count: number }]>(
+			`SELECT COUNT(*) FROM ${projectTable} WHERE ${c.type} <> 'personal';`,
+		);
+
+		if (nonPersonalProjects > 0) {
+			const message =
+				'Down migration only possible if there are only personal projects. Please delete all team projects.';
+			logger.error(message);
+			throw new ApplicationError(message);
+		}
+
+		// 1. create temp table for shared workflows
+		await sb
+			.createTable(sharedWorkflowTemp)
+			.withColumns(
+				sb.column('workflowId').varchar(36).notNull.primary,
+				// sb.column('userId').varchar().notNull.primary,
+				// TODO: does this still work with sqlite?
+				sb.column('userId').uuid.notNull.primary,
+				sb.column('role').text.notNull,
+			)
+			.withForeignKey('workflowId', {
+				tableName: 'workflow_entity',
+				columnName: 'id',
+				onDelete: 'CASCADE',
+			})
+			.withForeignKey('userId', {
+				tableName: userTable,
+				columnName: 'id',
+				onDelete: 'CASCADE',
+			}).withTimestamps;
+
+		// 2. migrate data into temp table
+		await runQuery(`
+			INSERT INTO ${sharedWorkflowTemp} (${c.createdAt}, ${c.updatedAt}, ${c.workflowId}, ${c.role}, ${c.userId})
+			SELECT SW.${c.createdAt}, SW.${c.updatedAt}, SW.${c.workflowId}, SW.${c.role}, PR.${c.userId}
+			FROM ${sharedWorkflow} SW
+			LEFT JOIN project_relation PR on SW.${c.projectId} = PR.${c.projectId} AND PR.${c.role} = 'project:personalOwner'
+		`);
+
+		// 3. drop shared workflow table
+		await sb.dropTable(sharedWorkflow);
+
+		// 4. rename temp table
+		await runQuery(`ALTER TABLE ${sharedWorkflowTemp} RENAME TO ${sharedWorkflow};`);
+
+		// 5. same for shared creds
+		await sb
+			.createTable(sharedCredentialsTemp)
+			.withColumns(
+				sb.column('credentialsId').varchar(36).notNull.primary,
+				// sb.column('userId').varchar().notNull.primary,
+				// TODO: does this still work with sqlite?
+				sb.column('userId').uuid.notNull.primary,
+				sb.column('role').text.notNull,
+			)
+			.withForeignKey('credentialsId', {
+				tableName: 'credentials_entity',
+				columnName: 'id',
+				onDelete: 'CASCADE',
+			})
+			.withForeignKey('userId', {
+				tableName: userTable,
+				columnName: 'id',
+				onDelete: 'CASCADE',
+			}).withTimestamps;
+		await runQuery(`
+			INSERT INTO ${sharedCredentialsTemp} (${c.createdAt}, ${c.updatedAt}, ${c.credentialsId}, ${c.role}, ${c.userId})
+			SELECT SC.${c.createdAt}, SC.${c.updatedAt}, SC.${c.credentialsId}, SC.${c.role}, PR.${c.userId}
+			FROM ${sharedCredentials} SC
+			LEFT JOIN project_relation PR on SC.${c.projectId} = PR.${c.projectId} AND PR.${c.role} = 'project:personalOwner'
+		`);
+		await sb.dropTable(sharedCredentials);
+		await runQuery(`ALTER TABLE ${sharedCredentialsTemp} RENAME TO ${sharedCredentials};`);
+
+		// 6. drop project and project relation table
+		await sb.dropTable(projectRelationTable);
+		await sb.dropTable(projectTable);
+	}
 }
