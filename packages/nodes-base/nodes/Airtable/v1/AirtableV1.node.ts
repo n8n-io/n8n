@@ -63,10 +63,6 @@ const versionDescription: INodeTypeDescription = {
 			type: 'options',
 			options: [
 				{
-					name: 'API Key',
-					value: 'airtableApi',
-				},
-				{
 					name: 'Access Token',
 					value: 'airtableTokenApi',
 				},
@@ -74,10 +70,26 @@ const versionDescription: INodeTypeDescription = {
 					name: 'OAuth2',
 					value: 'airtableOAuth2Api',
 				},
+				{
+					name: 'API Key (Deprecated)',
+					value: 'airtableApi',
+				},
 			],
 			default: 'airtableApi',
 		},
 		oldVersionNotice,
+		{
+			displayName:
+				"This type of connection (API Key) was deprecated and can't be used anymore. Please create a new credential of type 'Access Token' instead.",
+			name: 'deprecated',
+			type: 'notice',
+			default: '',
+			displayOptions: {
+				show: {
+					authentication: ['airtableApi'],
+				},
+			},
+		},
 		{
 			displayName: 'Operation',
 			name: 'operation',
@@ -552,6 +564,13 @@ export class AirtableV1 implements INodeType {
 	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const authentication = this.getNodeParameter('authentication', 0);
+		if (authentication === 'airtableApi') {
+			throw new NodeOperationError(
+				this.getNode(),
+				'The API Key connection was deprecated by Airtable, please use Access Token or OAuth2 instead.',
+			);
+		}
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 		let responseData;
