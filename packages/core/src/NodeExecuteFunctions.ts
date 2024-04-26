@@ -1995,7 +1995,9 @@ export async function getCredentials(
 
 	// Hardcode for now for security reasons that only a single node can access
 	// all credentials
-	const fullAccess = [HTTP_REQUEST_NODE_TYPE].includes(node.type);
+	const fullAccess = [HTTP_REQUEST_NODE_TYPE, '@n8n/n8n-nodes-langchain.toolHttpRequest'].includes(
+		node.type,
+	);
 
 	let nodeCredentialDescription: INodeCredentialDescription | undefined;
 	if (!fullAccess) {

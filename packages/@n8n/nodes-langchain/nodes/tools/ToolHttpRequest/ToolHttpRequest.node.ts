@@ -9,6 +9,7 @@ import type {
 	IDataObject,
 	IHttpRequestOptions,
 	IHttpRequestMethods,
+	IRequestOptionsSimplified,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError, jsonParse } from 'n8n-workflow';
 
@@ -30,6 +31,8 @@ const prepareParameters = (parameters: ToolParameter[]) => {
 	let description = '';
 
 	for (const parameter of parameters) {
+		if (!parameter.name) continue;
+
 		description += `
 		\n
 		---
@@ -94,9 +97,92 @@ const prepareToolDescription = (
 	return description;
 };
 
+const configureHttpRequestFunction = async (
+	ctx: IExecuteFunctions,
+	auth: 'predefinedCredentialType' | 'genericCredentialType' | 'none',
+	itemIndex: number,
+) => {
+	if (auth === 'genericCredentialType') {
+		const genericCredentialType = ctx.getNodeParameter('genericAuthType', itemIndex) as string;
+
+		if (genericCredentialType === 'httpBasicAuth' || genericCredentialType === 'httpDigestAuth') {
+			const httpBasicAuth = await ctx.getCredentials('httpBasicAuth', itemIndex);
+			const sendImmediately = genericCredentialType === 'httpDigestAuth' ? false : undefined;
+			return async (requestOptions: IHttpRequestOptions) => {
+				requestOptions.auth = {
+					username: httpBasicAuth.user as string,
+					password: httpBasicAuth.password as string,
+					sendImmediately,
+				};
+				return await ctx.helpers.httpRequest(requestOptions);
+			};
+		} else if (genericCredentialType === 'httpHeaderAuth') {
+			const httpHeaderAuth = await ctx.getCredentials('httpHeaderAuth', itemIndex);
+			return async (requestOptions: IHttpRequestOptions) => {
+				requestOptions.headers![httpHeaderAuth.name as string] = httpHeaderAuth.value;
+				return await ctx.helpers.httpRequest(requestOptions);
+			};
+		} else if (genericCredentialType === 'httpQueryAuth') {
+			const httpQueryAuth = await ctx.getCredentials('httpQueryAuth', itemIndex);
+			return async (requestOptions: IHttpRequestOptions) => {
+				if (!requestOptions.qs) {
+					requestOptions.qs = {};
+				}
+				requestOptions.qs[httpQueryAuth.name as string] = httpQueryAuth.value;
+				return await ctx.helpers.httpRequest(requestOptions);
+			};
+		} else if (genericCredentialType === 'httpCustomAuth') {
+			const httpCustomAuth = await ctx.getCredentials('httpCustomAuth', itemIndex);
+			return async (requestOptions: IHttpRequestOptions) => {
+				const customAuth = jsonParse<IRequestOptionsSimplified>(
+					(httpCustomAuth.json as string) || '{}',
+					{ errorMessage: 'Invalid Custom Auth JSON' },
+				);
+				if (customAuth.headers) {
+					requestOptions.headers = { ...requestOptions.headers, ...customAuth.headers };
+				}
+				if (customAuth.body) {
+					requestOptions.body = { ...(requestOptions.body as IDataObject), ...customAuth.body };
+				}
+				if (customAuth.qs) {
+					requestOptions.qs = { ...requestOptions.qs, ...customAuth.qs };
+				}
+				return await ctx.helpers.httpRequest(requestOptions);
+			};
+		} else if (genericCredentialType === 'oAuth1Api') {
+			return async (requestOptions: IHttpRequestOptions) => {
+				return await ctx.helpers.requestOAuth1.call(ctx, 'oAuth1Api', requestOptions);
+			};
+		} else if (genericCredentialType === 'oAuth2Api') {
+			return async (requestOptions: IHttpRequestOptions) => {
+				return await ctx.helpers.requestOAuth2.call(ctx, 'oAuth1Api', requestOptions, {
+					tokenType: 'Bearer',
+				});
+			};
+		}
+	} else if (auth === 'predefinedCredentialType') {
+		const nodeCredentialType = ctx.getNodeParameter('nodeCredentialType', itemIndex) as string;
+
+		return async (requestOptions: IHttpRequestOptions) => {
+			return await ctx.helpers.requestWithAuthentication.call(
+				ctx,
+				nodeCredentialType,
+				requestOptions,
+				// additionalOAuth2Options && { oauth2: additionalOAuth2Options },
+				undefined,
+				itemIndex,
+			);
+		};
+	}
+
+	return async (requestOptions: IHttpRequestOptions) => {
+		return await ctx.helpers.httpRequest(requestOptions);
+	};
+};
+
 type ToolParameter = {
 	name: string;
-	type: 'fromDescription' | 'string' | 'number' | 'boolean' | 'array';
+	type: 'fromDescription' | 'string' | 'number' | 'boolean' | 'enum';
 	description: string;
 	enumOptions?: string;
 };
@@ -191,6 +277,7 @@ export class ToolHttpRequest implements INodeType {
 		defaults: {
 			name: 'HTTP Request',
 		},
+		credentials: [],
 		codex: {
 			categories: ['AI'],
 			subcategories: {
@@ -263,7 +350,70 @@ export class ToolHttpRequest implements INodeType {
 				validateType: 'url',
 			},
 			{
-				displayName: 'Send in Path',
+				displayName: 'Authentication',
+				name: 'authentication',
+				noDataExpression: true,
+				type: 'options',
+				options: [
+					{
+						name: 'None',
+						value: 'none',
+					},
+					{
+						name: 'Predefined Credential Type',
+						value: 'predefinedCredentialType',
+						description:
+							"We've already implemented auth for many services so that you don't have to set it up manually",
+					},
+					{
+						name: 'Generic Credential Type',
+						value: 'genericCredentialType',
+						description: 'Fully customizable. Choose between basic, header, OAuth2, etc.',
+					},
+				],
+				default: 'none',
+			},
+			{
+				displayName: 'Credential Type',
+				name: 'nodeCredentialType',
+				type: 'credentialsSelect',
+				noDataExpression: true,
+				required: true,
+				default: '',
+				credentialTypes: ['extends:oAuth2Api', 'extends:oAuth1Api', 'has:authenticate'],
+				displayOptions: {
+					show: {
+						authentication: ['predefinedCredentialType'],
+					},
+				},
+			},
+			{
+				displayName:
+					'Make sure you have specified the scope(s) for the Service Account in the credential',
+				name: 'googleApiWarning',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						nodeCredentialType: ['googleApi'],
+					},
+				},
+			},
+			{
+				displayName: 'Generic Auth Type',
+				name: 'genericAuthType',
+				type: 'credentialsSelect',
+				required: true,
+				default: '',
+				credentialTypes: ['has:genericAuth'],
+				displayOptions: {
+					show: {
+						authentication: ['genericCredentialType'],
+					},
+				},
+			},
+			{
+				displayName: 'Define Path Parameters',
 				name: 'sendInPath',
 				type: 'boolean',
 				default: false,
@@ -295,7 +445,7 @@ export class ToolHttpRequest implements INodeType {
 				},
 			},
 			{
-				displayName: 'Send in Query',
+				displayName: 'Define Query Parameters',
 				name: 'sendInQuery',
 				type: 'boolean',
 				default: false,
@@ -313,7 +463,7 @@ export class ToolHttpRequest implements INodeType {
 				},
 			},
 			{
-				displayName: 'Send in Body',
+				displayName: 'Define Body Parameters',
 				name: 'sendInBody',
 				type: 'boolean',
 				default: false,
@@ -341,6 +491,12 @@ export class ToolHttpRequest implements INodeType {
 		const toolDescription = this.getNodeParameter('toolDescription', itemIndex) as string;
 		const method = this.getNodeParameter('method', itemIndex) as IHttpRequestMethods;
 		const baseUrl = this.getNodeParameter('url', itemIndex) as string;
+		const authentication = this.getNodeParameter('authentication', itemIndex, 'none') as
+			| 'predefinedCredentialType'
+			| 'genericCredentialType'
+			| 'none';
+
+		const httpRequestFunction = await configureHttpRequestFunction(this, authentication, itemIndex);
 
 		const sendInPath = this.getNodeParameter('sendInPath', itemIndex) as boolean;
 		const sendInQuery = this.getNodeParameter('sendInQuery', itemIndex) as boolean;
@@ -354,6 +510,15 @@ export class ToolHttpRequest implements INodeType {
 		if (sendInPath) {
 			pathParameters = this.getNodeParameter('pathParameters.values', itemIndex) as ToolParameter[];
 			path = this.getNodeParameter('path', itemIndex) as string;
+
+			for (const parameter of pathParameters) {
+				if (path.indexOf(`{${parameter.name}}`) === -1) {
+					throw new NodeOperationError(
+						this.getNode(),
+						`'Path' does not contain parameter '${parameter.name}', remove it from 'Path Parameters' or include in 'Path' as {${parameter.name}}`,
+					);
+				}
+			}
 		}
 
 		if (sendInQuery) {
@@ -433,7 +598,7 @@ export class ToolHttpRequest implements INodeType {
 							httpRequestOptions.body = body;
 						}
 
-						const responseData = await this.helpers.httpRequest(httpRequestOptions);
+						const responseData = await httpRequestFunction(httpRequestOptions);
 
 						if (responseData && typeof responseData === 'object') {
 							response = JSON.stringify(responseData, null, 2);
