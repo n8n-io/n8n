@@ -3,9 +3,6 @@ import { hash } from 'bcryptjs';
 import { UserRepository as ProductionUserRepository } from '@/databases/repositories/user.repository';
 import { INSTANCE_ONWER_EMAIL, INSTANCE_ONWER_PASSWORD } from '../constants';
 
-/**
- * User repository for use in benchmarking suites only.
- */
 @Service()
 export class UserRepository extends ProductionUserRepository {
 	async createInstanceOwner() {

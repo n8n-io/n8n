@@ -1,8 +1,7 @@
 import 'reflect-metadata';
 import Container from 'typedi';
-import config from '@/config';
 import { Logger } from '@/Logger';
-import { collectSuites, registerSuites, UnsupportedDatabaseError, hooks } from './lib';
+import { collectSuites, registerSuites, setup, teardown } from './lib';
 
 /* eslint-disable import/no-extraneous-dependencies */
 import Bench from 'tinybench';
@@ -10,10 +9,6 @@ import { withCodSpeed } from '@codspeed/tinybench-plugin';
 /* eslint-enable import/no-extraneous-dependencies */
 
 async function main() {
-	const dbType = config.getEnv('database.type');
-
-	if (dbType !== 'sqlite') throw new UnsupportedDatabaseError();
-
 	const suites = await collectSuites();
 
 	const count = Object.keys(suites).length;
@@ -27,7 +22,7 @@ async function main() {
 
 	logger.info(`[Benchmarking] Running ${count} ${count === 1 ? 'suite' : 'suites'}...`);
 
-	await hooks.globalSetup();
+	await setup();
 
 	// @TODO: Make these values configurable
 	const _bench = new Bench({
@@ -44,7 +39,7 @@ async function main() {
 
 	if (process.env.CI !== 'true') console.table(bench.table());
 
-	await hooks.globalTeardown();
+	await teardown();
 }
 
 void main();

@@ -1,6 +1,5 @@
 import 'reflect-metadata';
 
-export { BACKEND_BASE_URL } from './constants';
 export {
 	suite,
 	task,
@@ -9,7 +8,9 @@ export {
 	collectSuites,
 	registerSuites,
 } from './registration';
-export * as hooks from './hooks';
+
 export { agent } from './agent';
+
 export type { Suites } from './types';
-export { UnsupportedDatabaseError } from './errors/unsupported-db.error';
+
+export { setup, teardown } from './hooks/setup-and-teardown';

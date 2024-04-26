@@ -76,27 +76,21 @@ export function task(taskName: string, operation: Task['operation']) {
 	});
 }
 
-/**
- * Setup step to run once before all iterations of each benchmarking task in a suite.
- */
 export function beforeEachTask(fn: Callback) {
 	const filePath = suiteFilePath();
 
 	if (suites[filePath]?.hooks.beforeEachTask) {
-		throw new DuplicateHookError('beforeEach', filePath);
+		throw new DuplicateHookError('beforeEachTask', filePath);
 	}
 
 	suites[filePath].hooks.beforeEachTask = fn;
 }
 
-/**
- * Teardown step to run once after all iterations of each benchmarking task in a suite.
- */
 export function afterEachTask(fn: Callback) {
 	const filePath = suiteFilePath();
 
 	if (suites[filePath]?.hooks.afterEachTask) {
-		throw new DuplicateHookError('afterEach', filePath);
+		throw new DuplicateHookError('afterEachTask', filePath);
 	}
 
 	suites[filePath].hooks.afterEachTask = fn;
