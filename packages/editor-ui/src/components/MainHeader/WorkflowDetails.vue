@@ -83,10 +83,11 @@ const workflowHelpers = useWorkflowHelpers({ router });
 const isTagsEditEnabled = ref(false);
 const isNameEditEnabled = ref(false);
 const appliedTagIds = ref<string[]>([]);
-const tagsEditBus = createEventBus();
 const tagsSaving = ref(false);
 const importFileRef = ref<HTMLInputElement | undefined>();
-const eventBus = createEventBus();
+
+const tagsEventBus = createEventBus();
+const sourceControlModalEventBus = createEventBus();
 
 const hasChanged = (prev: string[], curr: string[]) => {
 	if (prev.length !== curr.length) {
@@ -265,7 +266,7 @@ function onTagsEditEnable() {
 	setTimeout(() => {
 		// allow name update to occur before disabling name edit
 		isNameEditEnabled.value = false;
-		tagsEditBus.emit('focus');
+		tagsEventBus.emit('focus');
 	}, 0);
 }
 
@@ -445,7 +446,7 @@ async function onWorkflowMenuSelect(action: string): Promise<void> {
 
 				uiStore.openModalWithData({
 					name: SOURCE_CONTROL_PUSH_MODAL_KEY,
-					data: { eventBus, status },
+					data: { eventBus: sourceControlModalEventBus, status },
 				});
 			} catch (error) {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
@@ -551,7 +552,7 @@ function goToUpgrade() {
 				ref="dropdown"
 				v-model="appliedTagIds"
 				:create-enabled="true"
-				:event-bus="tagsEditBus"
+				:event-bus="tagsEventBus"
 				:placeholder="$locale.baseText('workflowDetails.chooseOrCreateATag')"
 				class="tags-edit"
 				data-test-id="workflow-tags-dropdown"
