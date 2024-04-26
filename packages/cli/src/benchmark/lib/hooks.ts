@@ -5,7 +5,6 @@ import { Config } from '@oclif/core';
 import { InstanceSettings } from 'n8n-core';
 import { Start } from '@/commands/start';
 import Container from 'typedi';
-import { UserRepository } from '@/databases/repositories/user.repository';
 import glob from 'fast-glob';
 import { jsonParse } from 'n8n-workflow';
 import { readFile } from 'fs/promises';
@@ -13,6 +12,7 @@ import type { WorkflowRequest } from '@/workflows/workflow.request';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { Logger } from '@/Logger';
 import { agent, authenticateAgent } from './agent';
+import { UserRepository } from './repositories/user.benchmark-repository';
 
 const logger = Container.get(Logger);
 
@@ -72,7 +72,8 @@ export async function globalSetup() {
 	await main.init();
 	await main.run();
 
-	await Container.get(UserRepository).createTestOwner();
+	await Container.get(UserRepository).deleteInstanceOwner();
+	await Container.get(UserRepository).createInstanceOwner();
 
 	await loadWorkflows();
 

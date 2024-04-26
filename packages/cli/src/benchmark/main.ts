@@ -29,6 +29,7 @@ async function main() {
 
 	await hooks.globalSetup();
 
+	// @TODO: Make these values configurable
 	const _bench = new Bench({
 		time: 0, // @TODO: Temp value
 		iterations: 1, // @TODO: Temp value

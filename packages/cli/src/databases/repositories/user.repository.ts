@@ -105,39 +105,7 @@ export class UserRepository extends Repository<User> {
 		});
 	}
 
-	// ----------------------------------
-	//           test utils
-	// ----------------------------------
-
-	// @TODO: Deduplicate with /packages/cli/test/integration/shared/db/users.ts
-
-	async createTestUser(attributes: Partial<User> = {}): Promise<User> {
-		const { email, password, firstName, lastName, role, ...rest } = attributes;
-
-		// pre-computed bcrypt hash for the string 'password', using `await hash('password', 10)`
-		const passwordHash = '$2a$10$njedH7S6V5898mj6p0Jr..IGY9Ms.qNwR7RbSzzX9yubJocKfvGGK';
-
-		return this.create({
-			email: 'test@test.com',
-			password: passwordHash,
-			firstName: 'John',
-			lastName: 'Smith',
-			role: role ?? 'global:member',
-			...rest,
-		});
-	}
-
-	async createUser(attributes: Partial<User> = {}): Promise<User> {
-		const user = await this.createTestUser(attributes);
-
-		user.computeIsOwner();
-
-		return await this.save(user);
-	}
-
-	async createTestOwner() {
+	async deleteInstanceOwner() {
 		await this.delete({ role: 'global:owner', email: IsNull() });
-
-		return await this.createUser({ role: 'global:owner' });
 	}
 }
