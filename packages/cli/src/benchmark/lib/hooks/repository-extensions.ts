@@ -1,10 +1,14 @@
 import { Service } from 'typedi';
 import { hash } from 'bcryptjs';
-import { UserRepository as ProductionUserRepository } from '@/databases/repositories/user.repository';
+import { UserRepository } from '@/databases/repositories/user.repository';
 import { INSTANCE_ONWER } from '../constants';
 
 @Service()
-export class UserRepository extends ProductionUserRepository {
+export class UserRepositoryExtension extends UserRepository {
+	async deleteAll() {
+		await this.delete({});
+	}
+
 	async createInstanceOwner() {
 		const user = this.create({
 			email: INSTANCE_ONWER.EMAIL,

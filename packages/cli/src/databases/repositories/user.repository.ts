@@ -104,8 +104,4 @@ export class UserRepository extends Repository<User> {
 			where: { id: In(userIds), password: Not(IsNull()) },
 		});
 	}
-
-	async deleteInstanceOwner() {
-		await this.delete({ role: 'global:owner', email: IsNull() });
-	}
 }

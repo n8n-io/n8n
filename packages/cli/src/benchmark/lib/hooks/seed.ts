@@ -5,11 +5,11 @@ import { readFile } from 'fs/promises';
 import type { WorkflowRequest } from '@/workflows/workflow.request';
 import { agent, authenticateAgent } from '../agent';
 import Container from 'typedi';
-import { UserRepository } from '../repositories/user.benchmark-repository';
+import { UserRepositoryExtension } from './repository-extensions';
 
 export async function seedInstanceOwner() {
-	await Container.get(UserRepository).deleteInstanceOwner();
-	await Container.get(UserRepository).createInstanceOwner();
+	await Container.get(UserRepositoryExtension).deleteAll();
+	await Container.get(UserRepositoryExtension).createInstanceOwner();
 }
 
 export async function seedWorkflows() {

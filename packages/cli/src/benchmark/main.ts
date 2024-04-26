@@ -23,7 +23,7 @@ async function main() {
 
 	logger.info(`[Benchmarking] Running ${count} ${count === 1 ? 'suite' : 'suites'}...`);
 
-	await setup();
+	await setup(); // 1. create a benchmark postgres DB
 
 	const _bench = new Bench({
 		// @TODO: Temp values
@@ -38,13 +38,19 @@ async function main() {
 
 	const bench = process.env.CI === 'true' ? withCodSpeed(_bench) : _bench;
 
-	registerSuites(bench);
+	registerSuites(bench); // 2. rename all suites to have a `[sqlite]` prefix
+
+	// 3. duplicate all suites
+	// - add a `[postgres]` prefix to each suite name
+	// - add a `beforeEachTask` hook to each new task, containing `config.set('database.type', 'postgresdb')`
+
+	// await bench.warmup(); // @TODO: Restore
 
 	await bench.run();
 
-	if (process.env.CI !== 'true') console.table(bench.table());
+	if (!process.env.CI) console.table(bench.table());
 
-	await teardown();
+	await teardown(); // 4. remove benchmark postgres DB
 }
 
 void main();

@@ -1,10 +1,6 @@
 name: Benchmarks
 
 on:
-  # @TODO: Do we need both push and pull_request?
-  push:
-    branches:
-      - '**'
   pull_request:
     paths:
       - 'packages/cli/**'
