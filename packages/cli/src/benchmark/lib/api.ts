@@ -56,7 +56,6 @@ function suiteFilePath() {
 	return filePath;
 }
 
-// @TODO: Support async suiteFn
 export function suite(suiteName: string, suiteFn: () => void) {
 	const filePath = suiteFilePath();
 
