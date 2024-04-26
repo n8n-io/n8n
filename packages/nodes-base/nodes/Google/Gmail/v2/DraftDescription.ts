@@ -152,6 +152,14 @@ export const draftFields: INodeProperties[] = [
 				description: 'The email address that the reply message is sent to',
 			},
 			{
+				displayName: 'Thread ID',
+				name: 'threadId',
+				type: 'string',
+				placeholder: '18cc573e2431878f',
+				default: '',
+				description: 'The identifier of the thread to attach the draft',
+			},
+			{
 				displayName: 'Attachments',
 				name: 'attachmentsUi',
 				placeholder: 'Add Attachment',
@@ -177,6 +185,52 @@ export const draftFields: INodeProperties[] = [
 				],
 				default: {},
 				description: 'Array of supported attachments to add to the message',
+			},
+			{
+				displayName: 'BCC',
+				name: 'bccList',
+				type: 'string',
+				description:
+					'The email addresses of the blind copy recipients. Multiple addresses can be separated by a comma. e.g. jay@getsby.com, jon@smith.com.',
+				placeholder: 'info@example.com',
+				default: '',
+			},
+			{
+				displayName: 'CC',
+				name: 'ccList',
+				type: 'string',
+				description:
+					'The email addresses of the copy recipients. Multiple addresses can be separated by a comma. e.g. jay@getsby.com, jon@smith.com.',
+				placeholder: 'info@example.com',
+				default: '',
+			},
+			{
+				displayName: 'From Alias Name or ID',
+				name: 'fromAlias',
+				type: 'options',
+				default: '',
+				description:
+					'Select the alias to send the email from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				typeOptions: {
+					loadOptionsMethod: 'getGmailAliases',
+				},
+			},
+			{
+				displayName: 'Send Replies To',
+				name: 'replyTo',
+				type: 'string',
+				placeholder: 'reply@example.com',
+				default: '',
+				description: 'The email address that the reply message is sent to',
+			},
+			{
+				displayName: 'To Email',
+				name: 'sendTo',
+				type: 'string',
+				default: '',
+				placeholder: 'info@example.com',
+				description:
+					'The email addresses of the recipients. Multiple addresses can be separated by a comma. e.g. jay@getsby.com, jon@smith.com.',
 			},
 		],
 	},
