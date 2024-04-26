@@ -204,7 +204,7 @@ const isWorkflowHistoryButtonDisabled = computed(() => {
 });
 
 watch(
-	() => props.workflow,
+	() => props.workflow.id,
 	() => {
 		isTagsEditEnabled.value = false;
 		isNameEditEnabled.value = false;
@@ -311,11 +311,12 @@ function onNameToggle() {
 
 async function onNameSubmit({
 	name,
-	onSubmit: cb,
+	onSubmit,
 }: {
 	name: string;
 	onSubmit: (saved: boolean) => void;
 }) {
+	console.log(onSubmit);
 	const newName = name.trim();
 	if (!newName) {
 		toast.showMessage({
@@ -324,14 +325,14 @@ async function onNameSubmit({
 			type: 'error',
 		});
 
-		cb(false);
+		onSubmit(false);
 		return;
 	}
 
 	if (newName === props.workflow.name) {
 		isNameEditEnabled.value = false;
 
-		cb(true);
+		onSubmit(true);
 		return;
 	}
 
@@ -341,7 +342,7 @@ async function onNameSubmit({
 		isNameEditEnabled.value = false;
 	}
 	uiStore.removeActiveAction('workflowSaving');
-	cb(saved);
+	onSubmit(saved);
 }
 
 async function handleFileImport(): Promise<void> {
