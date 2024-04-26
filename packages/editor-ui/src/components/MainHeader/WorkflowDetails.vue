@@ -317,7 +317,6 @@ async function onNameSubmit({
 	name: string;
 	onSubmit: (saved: boolean) => void;
 }) {
-	console.log(onSubmit);
 	const newName = name.trim();
 	if (!newName) {
 		toast.showMessage({
