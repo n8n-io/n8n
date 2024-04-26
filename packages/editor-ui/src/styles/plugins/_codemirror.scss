@@ -1,11 +1,15 @@
-.cm-tooltip-autocomplete:after {
-	padding: var(--spacing-2xs) var(--spacing-s);
-	border-top: 1px solid var(--color-foreground-dark);
-}
-
 .code-node-editor .cm-tooltip-autocomplete:after {
+	padding: var(--spacing-2xs) var(--spacing-s);
+	border: var(--border-base);
+	border-bottom-left-radius: var(--border-radius-base);
 	display: block;
 	content: 'n8n supports all JavaScript functions, including those not listed.';
+}
+
+.code-node-editor .ͼ2 .cm-tooltip-autocomplete > ul[role='listbox'] {
+	border-bottom: none;
+	border-bottom-left-radius: 0;
+	border-bottom-right-radius: 0;
 }
 
 .ͼ2 .cm-tooltip-autocomplete {
@@ -111,6 +115,11 @@
 	border-bottom-left-radius: 0;
 	line-height: var(--font-line-height-loose);
 	padding: 0;
+
+	// Add padding when infobox only contains text
+	&:not(:has(div)) {
+		padding: var(--spacing-xs);
+	}
 
 	// Overwrite codemirror positioning
 	top: 0 !important;
