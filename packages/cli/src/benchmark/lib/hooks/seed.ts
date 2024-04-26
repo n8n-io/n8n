@@ -6,7 +6,6 @@ import type { WorkflowRequest } from '@/workflows/workflow.request';
 import { agent, authenticateAgent } from '../agent';
 import Container from 'typedi';
 import { UserRepository } from '../repositories/user.benchmark-repository';
-// @TODO: @benchmark path
 
 export async function seedInstanceOwner() {
 	await Container.get(UserRepository).deleteInstanceOwner();
@@ -19,17 +18,17 @@ export async function seedWorkflows() {
 		absolute: true,
 	});
 
-	const workflowpayloads: WorkflowRequest.CreateUpdatePayload[] = [];
+	const payloads: WorkflowRequest.CreateUpdatePayload[] = [];
 
 	for (const file of files) {
 		const json = await readFile(file, 'utf8');
 		const payload = jsonParse<WorkflowRequest.CreatePayload>(json);
-		workflowpayloads.push(payload);
+		payloads.push(payload);
 	}
 
 	await authenticateAgent();
 
-	for (const workflow of workflowpayloads) {
-		await agent.post('/rest/workflows', workflow);
+	for (const p of payloads) {
+		await agent.post('/rest/workflows', p);
 	}
 }
