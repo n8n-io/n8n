@@ -144,7 +144,7 @@
     "@langchain/openai": "^0.0.16",
     "@langchain/pinecone": "^0.0.3",
     "@langchain/redis": "^0.0.2",
-    "@n8n/typeorm": "0.3.20-8",
+    "@n8n/typeorm": "0.3.20-9",
     "@n8n/vm2": "3.9.20",
     "@pinecone-database/pinecone": "2.1.0",
     "@qdrant/js-client-rest": "1.7.0",
