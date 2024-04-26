@@ -474,9 +474,7 @@ export default defineComponent({
 			);
 		},
 		showSharingMenu(): boolean {
-			return (
-				this.credentialPermissions.share && this.currentCredential?.homeProject?.type !== 'team'
-			);
+			return !this.$route.params.projectId;
 		},
 		showSharingContent(): boolean {
 			return this.activeTab === 'sharing' && !!this.credentialType && this.showSharingMenu;
