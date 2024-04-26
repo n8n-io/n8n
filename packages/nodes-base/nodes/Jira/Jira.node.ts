@@ -1167,7 +1167,7 @@ export class Jira implements INodeType {
 		}
 
 		if (resource === 'issueComment') {
-			const apiVersion = jiraVersion === 'server' ? '2' : ('3' as string);
+			let apiVersion = jiraVersion === 'server' ? '2' : ('3' as string);
 
 			//https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-comments/#api-rest-api-3-issue-issueidorkey-comment-post
 			if (operation === 'add') {
@@ -1175,6 +1175,11 @@ export class Jira implements INodeType {
 					const jsonParameters = this.getNodeParameter('jsonParameters', 0);
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
 					const options = this.getNodeParameter('options', i);
+
+					if (options.wikiMarkup) {
+						apiVersion = '2';
+					}
+
 					const body: IDataObject = {};
 					if (options.expand) {
 						qs.expand = options.expand as string;
@@ -1184,7 +1189,7 @@ export class Jira implements INodeType {
 					Object.assign(body, options);
 					if (!jsonParameters) {
 						const comment = this.getNodeParameter('comment', i) as string;
-						if (jiraVersion === 'server') {
+						if (jiraVersion === 'server' || options.wikiMarkup) {
 							Object.assign(body, { body: comment });
 						} else {
 							Object.assign(body, {
@@ -1327,10 +1332,15 @@ export class Jira implements INodeType {
 						qs.expand = options.expand as string;
 						delete options.expand;
 					}
+
+					if (options.wikiMarkup) {
+						apiVersion = '2';
+					}
+
 					Object.assign(qs, options);
 					if (!jsonParameters) {
 						const comment = this.getNodeParameter('comment', i) as string;
-						if (jiraVersion === 'server') {
+						if (jiraVersion === 'server' || options.wikiMarkup) {
 							Object.assign(body, { body: comment });
 						} else {
 							Object.assign(body, {

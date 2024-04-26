@@ -48,7 +48,7 @@ export async function discordApiRequest(
 		if (remaining === 0) {
 			await sleep(resetAfter);
 		} else {
-			await sleep(20); //prevent excing global rate limit of 50 requests per second
+			await sleep(20); //prevent exceeding global rate limit of 50 requests per second
 		}
 
 		return response.body || { success: true };
@@ -91,7 +91,7 @@ export async function discordApiMultiPartRequest(
 		if (remaining === 0) {
 			await sleep(resetAfter);
 		} else {
-			await sleep(20); //prevent excing global rate limit of 50 requests per second
+			await sleep(20); //prevent exceeding global rate limit of 50 requests per second
 		}
 
 		return jsonParse<IDataObject[]>(response.body);
