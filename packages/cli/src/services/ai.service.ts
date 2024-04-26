@@ -18,6 +18,7 @@ import {
 import { generateCurlSchema } from '@/services/ai/schemas/generateCurl';
 import { PineconeStore } from '@langchain/pinecone';
 import Fuse from 'fuse.js';
+import { N8N_DOCS_URL } from '@/constants';
 
 interface APIKnowledgebaseService {
 	id: string;
@@ -81,7 +82,7 @@ export class AIService {
 			properties: JSON.stringify(
 				summarizeNodeTypeProperties(nodeType?.description.properties ?? []),
 			),
-			documentationUrl: nodeType?.description.documentationUrl ?? 'https://docs.n8n.io',
+			documentationUrl: nodeType?.description.documentationUrl ?? N8N_DOCS_URL,
 		});
 
 		return this.provider.mapResponse(result);
@@ -90,7 +91,7 @@ export class AIService {
 	validateCurl(result: { curl: string }) {
 		if (!result.curl.startsWith('curl')) {
 			throw new ApplicationError(
-				'Failed to generate HTTP Request Node parameters. Please try again later.',
+				'The generated HTTP Request Node parameters format is incorrect. Please adjust your request and try again.',
 			);
 		}
 
