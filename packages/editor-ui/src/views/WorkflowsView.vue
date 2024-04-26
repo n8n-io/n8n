@@ -270,7 +270,11 @@ const WorkflowsView = defineComponent({
 			return ['Sales', 'sales-and-marketing'].includes(this.userRole);
 		},
 		showProjectTabs() {
-			return !!this.$route.params.projectId || !!this.allWorkflows.length;
+			return (
+				!!this.$route.params.projectId ||
+				!!this.allWorkflows.length ||
+				!!this.projectsStore.myProjects.length
+			);
 		},
 	},
 	watch: {
