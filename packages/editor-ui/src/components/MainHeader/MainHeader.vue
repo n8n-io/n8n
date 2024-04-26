@@ -6,8 +6,8 @@
 				<TabBar
 					v-if="onWorkflowPage"
 					:items="tabBarItems"
-					:active-tab="activeHeaderTab"
-					@select="onTabSelected"
+					:model-value="activeHeaderTab"
+					@update:model-value="onTabSelected"
 				/>
 			</div>
 		</div>
