@@ -48,6 +48,6 @@ function onGenerateCurlClicked() {
 .importSection {
 	display: flex;
 	flex-direction: row-reverse;
-	margin-top: 10px;
+	margin-top: var(--spacing-xs);
 }
 </style>
