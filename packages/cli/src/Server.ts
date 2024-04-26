@@ -20,13 +20,7 @@ import config from '@/config';
 import { Queue } from '@/Queue';
 
 import { WorkflowsController } from '@/workflows/workflows.controller';
-import {
-	EDITOR_UI_DIST_DIR,
-	inDevelopment,
-	inE2ETests,
-	N8N_VERSION,
-	Time,
-} from '@/constants';
+import { EDITOR_UI_DIST_DIR, inDevelopment, inE2ETests, N8N_VERSION, Time } from '@/constants';
 import { CredentialsController } from '@/credentials/credentials.controller';
 import type { APIRequest, CurlHelper } from '@/requests';
 import { registerController } from '@/decorators';

@@ -7,12 +7,7 @@ import compression from 'compression';
 import isbot from 'isbot';
 
 import config from '@/config';
-import {
-	N8N_VERSION,
-	TEMPLATES_DIR,
-	inDevelopment,
-	inTest,
-} from '@/constants';
+import { N8N_VERSION, TEMPLATES_DIR, inDevelopment, inTest } from '@/constants';
 import * as Db from '@/Db';
 import { N8nInstanceType } from '@/Interfaces';
 import { ExternalHooks } from '@/ExternalHooks';
