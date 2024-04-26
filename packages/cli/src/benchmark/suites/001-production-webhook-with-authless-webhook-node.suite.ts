@@ -9,7 +9,7 @@ suite('Production workflow with authless webhook node', () => {
 		await agent.get('/webhook/001-2');
 	});
 
-	task('using "Respond to Webhook" node mode', async () => {
+	task('using "Respond to Webhook node" mode', async () => {
 		await agent.get('/webhook/001-3');
 	});
 });
