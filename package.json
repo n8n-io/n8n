@@ -10,7 +10,7 @@
   "packageManager": "pnpm@8.14.3",
   "scripts": {
     "preinstall": "node scripts/block-npm-install.js",
-    "benchmark": "pnpm --filter=n8n benchmark:sqlite",
+    "benchmark": "pnpm --filter=n8n benchmark",
     "build": "turbo run build",
     "build:backend": "pnpm --filter=!@n8n/chat --filter=!n8n-design-system --filter=!n8n-editor-ui build",
     "build:frontend": "pnpm --filter=@n8n/chat --filter=n8n-design-system --filter=n8n-editor-ui build",

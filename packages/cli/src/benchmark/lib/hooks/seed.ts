@@ -6,22 +6,26 @@ import type { WorkflowRequest } from '@/workflows/workflow.request';
 import { agent, authenticateAgent } from '../agent';
 import Container from 'typedi';
 import { UserRepositoryExtension } from './repository-extensions';
+import { log } from '../log';
 
 export async function seedInstanceOwner() {
 	await Container.get(UserRepositoryExtension).deleteAll();
-	await Container.get(UserRepositoryExtension).createInstanceOwner();
+
+	const user = await Container.get(UserRepositoryExtension).createInstanceOwner();
+
+	log('Seeded user', user.email);
 }
 
 export async function seedWorkflows() {
-	const files = await glob('suites/workflows/*.json', {
+	const _files = await glob('suites/workflows/*.json', {
 		cwd: path.join('dist', 'benchmark'),
 		absolute: true,
 	});
 
 	const payloads: WorkflowRequest.CreateUpdatePayload[] = [];
 
-	for (const file of files) {
-		const json = await readFile(file, 'utf8');
+	for (const f of _files) {
+		const json = await readFile(f, 'utf8');
 		const payload = jsonParse<WorkflowRequest.CreatePayload>(json);
 		payloads.push(payload);
 	}
@@ -31,4 +35,10 @@ export async function seedWorkflows() {
 	for (const p of payloads) {
 		await agent.post('/rest/workflows', p);
 	}
+
+	const files = _files.map((f) => f.replace(/.*workflows\//, '')).join(' ');
+
+	log('Seeded workflows', files);
+
+	return files;
 }

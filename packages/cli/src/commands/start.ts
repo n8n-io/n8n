@@ -88,7 +88,7 @@ export class Start extends BaseCommand {
 	 * get removed.
 	 */
 	async stopProcess() {
-		if (!inBenchmark) this.logger.info('\nStopping n8n...');
+		this.logger.info('\nStopping n8n...');
 
 		try {
 			// Stop with trying to activate workflows that could not be activated
@@ -287,7 +287,7 @@ export class Start extends BaseCommand {
 		await this.activeWorkflowRunner.init();
 
 		const editorUrl = Container.get(UrlService).baseUrl;
-		this.log(`\nEditor is now accessible via:\n${editorUrl}`);
+		this.logger.info(`\nEditor is now accessible via:\n${editorUrl}`);
 
 		if (inBenchmark) return;
 

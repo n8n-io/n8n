@@ -2,7 +2,7 @@ import path from 'path';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { createHash, randomBytes } from 'crypto';
 import { Service } from 'typedi';
-import { ApplicationError, jsonParse } from 'n8n-workflow';
+import { ApplicationError, jsonParse, LoggerProxy as Logger } from 'n8n-workflow';
 
 interface ReadOnlySettings {
 	encryptionKey: string;
@@ -72,7 +72,7 @@ export class InstanceSettings {
 			});
 
 			// @TODO: Remove first two logs in benchmark run
-			if (!inTest) console.info(`User settings loaded from: ${this.settingsFile}`);
+			if (!inTest) Logger.info(`User settings loaded from: ${this.settingsFile}`);
 
 			const { encryptionKey, tunnelSubdomain } = settings;
 

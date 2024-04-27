@@ -3,6 +3,7 @@ import path from 'node:path';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import Container from 'typedi';
 import { InstanceSettings } from 'n8n-core';
+import { log } from '../log';
 
 /**
  * Create a temp .n8n user dir for benchmarking.
@@ -31,4 +32,6 @@ export function n8nDir() {
 	 * so re-instantiate it to ensure it picks up the temp user home dir path.
 	 */
 	Container.set(InstanceSettings, new InstanceSettings());
+
+	log('Created temp dir', tempN8nDir);
 }

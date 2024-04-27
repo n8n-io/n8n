@@ -19,4 +19,5 @@ export async function authenticateAgent() {
 	const [cookie] = cookies;
 
 	agent.defaults.headers.Cookie = cookie;
+	agent.defaults.headers['x-n8n-api-key'] = INSTANCE_ONWER.API_KEY;
 }

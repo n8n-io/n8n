@@ -3,7 +3,7 @@
 To run all benchmark suites locally in sqlite:
 
 ```sh
-pnpm benchmark:sqlite
+pnpm benchmark
 ```
 
 ## Creating a benchmark suite

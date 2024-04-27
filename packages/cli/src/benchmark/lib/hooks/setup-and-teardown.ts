@@ -4,6 +4,7 @@ import { Start } from '@/commands/start';
 import { n8nDir } from './n8nDir';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { seedInstanceOwner, seedWorkflows } from './seed';
+import { log } from '../log';
 
 let main: Start;
 
@@ -16,9 +17,11 @@ export async function setup() {
 	await main.run();
 
 	await seedInstanceOwner();
-	await seedWorkflows();
+	const files = await seedWorkflows();
 
 	await Container.get(ActiveWorkflowRunner).init();
+
+	log('Activated workflows', files);
 }
 
 export async function teardown() {

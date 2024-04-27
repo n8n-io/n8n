@@ -5,7 +5,7 @@ import type { ObjectLiteral } from '@n8n/typeorm';
 import type { QueryRunner } from '@n8n/typeorm/query-runner/QueryRunner';
 import { ApplicationError, jsonParse } from 'n8n-workflow';
 import config from '@/config';
-import { inBenchmark, inTest } from '@/constants';
+import { inTest } from '@/constants';
 import type { BaseMigration, Migration, MigrationContext, MigrationFn } from '@db/types';
 import { createSchemaBuilder } from '@db/dsl';
 import { NodeTypes } from '@/NodeTypes';
@@ -44,7 +44,7 @@ function loadSurveyFromDisk(): string | null {
 let runningMigrations = false;
 
 function logMigrationStart(migrationName: string): void {
-	if (inTest || inBenchmark) return;
+	if (inTest) return;
 
 	const logger = Container.get(Logger);
 	if (!runningMigrations) {
@@ -56,7 +56,7 @@ function logMigrationStart(migrationName: string): void {
 }
 
 function logMigrationEnd(migrationName: string): void {
-	if (inTest || inBenchmark) return;
+	if (inTest) return;
 
 	const logger = Container.get(Logger);
 	logger.info(`Finished migration ${migrationName}`);

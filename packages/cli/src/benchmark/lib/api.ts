@@ -53,7 +53,7 @@ function suiteKey() {
 
 	assert(key !== undefined);
 
-	return key.replace(/^.*benchmark\//, '').replace(/\.suite\.js$/, '');
+	return key.replace(/^.*benchmark\//, '').replace(/\.js$/, '.ts');
 }
 
 export function suite(suiteName: string, suiteFn: () => void) {
@@ -61,7 +61,7 @@ export function suite(suiteName: string, suiteFn: () => void) {
 
 	if (suites[key]) throw new DuplicateSuiteError(key);
 
-	suites[key] = { name: suiteName, hooks: {}, tasks: [] };
+	suites[key] = { name: suiteName, hooks: {}, tasks: [], db: 'sqlite' };
 
 	suiteFn();
 }

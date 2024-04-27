@@ -149,7 +149,7 @@ export abstract class AbstractServer {
 
 		this.server.on('error', (error: Error & { code: string }) => {
 			if (error.code === 'EADDRINUSE') {
-				console.log(
+				this.logger.info(
 					`n8n's port ${PORT} is already in use. Do you have another instance of n8n running already?`,
 				);
 				process.exit(1);
@@ -162,7 +162,7 @@ export abstract class AbstractServer {
 
 		await this.setupHealthCheck();
 
-		console.log(`n8n ready on ${ADDRESS}, port ${PORT}`);
+		this.logger.info(`n8n ready on ${ADDRESS}, port ${PORT}`);
 	}
 
 	async start(): Promise<void> {
@@ -231,11 +231,11 @@ export abstract class AbstractServer {
 		await this.configure();
 
 		if (!inTest) {
-			console.log(`Version: ${N8N_VERSION}`);
+			this.logger.info(`Version: ${N8N_VERSION}`);
 
 			const defaultLocale = config.getEnv('defaultLocale');
 			if (defaultLocale !== 'en') {
-				console.log(`Locale: ${defaultLocale}`);
+				this.logger.info(`Locale: ${defaultLocale}`);
 			}
 
 			await this.externalHooks.run('n8n.ready', [this, config]);
