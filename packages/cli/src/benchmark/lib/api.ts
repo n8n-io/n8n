@@ -45,52 +45,52 @@ export function registerSuites(bench: Bench) {
 	}
 }
 
-function suiteFilePath() {
-	const filePath = callsites()
+function suiteKey() {
+	const key = callsites()
 		.map((site) => site.getFileName())
 		.filter((site): site is string => site !== null)
 		.find((site) => site.endsWith('.suite.js'));
 
-	assert(filePath !== undefined);
+	assert(key !== undefined);
 
-	return filePath;
+	return key.replace(/^.*benchmark\//, '').replace(/\.suite\.js$/, '');
 }
 
 export function suite(suiteName: string, suiteFn: () => void) {
-	const filePath = suiteFilePath();
+	const key = suiteKey();
 
-	if (suites[filePath]) throw new DuplicateSuiteError(filePath);
+	if (suites[key]) throw new DuplicateSuiteError(key);
 
-	suites[filePath] = { name: suiteName, hooks: {}, tasks: [] };
+	suites[key] = { name: suiteName, hooks: {}, tasks: [] };
 
 	suiteFn();
 }
 
 export function task(taskName: string, operation: Task['operation']) {
-	const filePath = suiteFilePath();
+	const key = suiteKey();
 
-	suites[filePath].tasks.push({
-		name: suites[filePath].name + ' ' + taskName,
+	suites[key].tasks.push({
+		name: taskName,
 		operation,
 	});
 }
 
 export function beforeEachTask(fn: Callback) {
-	const filePath = suiteFilePath();
+	const key = suiteKey();
 
-	if (suites[filePath]?.hooks.beforeEachTask) {
-		throw new DuplicateHookError('beforeEachTask', filePath);
+	if (suites[key]?.hooks.beforeEachTask) {
+		throw new DuplicateHookError('beforeEachTask', key);
 	}
 
-	suites[filePath].hooks.beforeEachTask = fn;
+	suites[key].hooks.beforeEachTask = fn;
 }
 
 export function afterEachTask(fn: Callback) {
-	const filePath = suiteFilePath();
+	const key = suiteKey();
 
-	if (suites[filePath]?.hooks.afterEachTask) {
-		throw new DuplicateHookError('afterEachTask', filePath);
+	if (suites[key]?.hooks.afterEachTask) {
+		throw new DuplicateHookError('afterEachTask', key);
 	}
 
-	suites[filePath].hooks.afterEachTask = fn;
+	suites[key].hooks.afterEachTask = fn;
 }

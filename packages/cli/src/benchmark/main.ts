@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import Container from 'typedi';
 import { Logger } from '@/Logger';
-import { collectSuites, registerSuites, setup, teardown } from './lib';
+import { collectSuites, display, registerSuites, setup, teardown } from './lib';
 import config from '@/config';
 
 /* eslint-disable import/no-extraneous-dependencies */
@@ -10,7 +10,7 @@ import { withCodSpeed } from '@codspeed/tinybench-plugin';
 /* eslint-enable import/no-extraneous-dependencies */
 
 async function main() {
-	const suites = await collectSuites();
+	const suites = await collectSuites(); // @TODO: --filter suites
 
 	const count = Object.keys(suites).length;
 
@@ -48,7 +48,9 @@ async function main() {
 
 	await bench.run();
 
-	if (!process.env.CI) console.table(bench.table());
+	if (process.env.CI !== 'true') display(suites, bench.results);
+	// console.table(bench.table());
+	// console.log(bench.results);
 
 	await teardown(); // 4. remove benchmark postgres DB
 }

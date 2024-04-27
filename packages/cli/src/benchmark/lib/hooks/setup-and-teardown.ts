@@ -10,7 +10,7 @@ let main: Start;
 export async function setup() {
 	n8nDir();
 
-	main = new Start([], new Config({ root: __dirname }));
+	main = new Start([], new Config({ root: __dirname })); // @TODO: Silence stdout
 
 	await main.init();
 	await main.run();
