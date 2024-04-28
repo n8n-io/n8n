@@ -31,7 +31,11 @@ const indentation = {
 function truncate(n: number, decimalPlaces = 3) {
 	const nStr = n.toString();
 
-	return nStr.slice(0, nStr.indexOf('.') + decimalPlaces + 1);
+	const truncated = nStr.slice(0, nStr.indexOf('.') + decimalPlaces + 1);
+
+	if (truncated.length === 5) return '0' + truncated;
+
+	return truncated;
 }
 
 const toDirsAndFileName = (key: string) => {
@@ -65,7 +69,7 @@ export function logResults(suites: Suites, results: Bench['results']) {
 
 			assert(result !== undefined);
 
-			const { totalTime, samples, sd, hz, moe, sem, variance } = result;
+			const { totalTime, samples, sd, hz, moe, sem } = result;
 
 			const zerothLine = [
 				indentation.second + pico.dim('·'),
@@ -73,7 +77,7 @@ export function logResults(suites: Suites, results: Bench['results']) {
 				pico.magenta(samples.length),
 				pico.dim('iterations in'),
 				pico.magenta(truncate(totalTime) + ' ms'),
-				pico.dim('at'),
+				pico.dim('at a rate of'),
 				pico.magenta(truncate(hz) + ' op/s'),
 			].join(' ');
 
@@ -113,25 +117,17 @@ export function logResults(suites: Suites, results: Bench['results']) {
 
 			const thirdLine = [
 				indentation.second + pico.dim('·'),
-				pico.dim('margin of error'),
-				pico.magenta('±' + truncate(moe) + '%'),
+				pico.dim('MoE'),
+				pico.magenta('±' + truncate(moe, 1) + '%'),
 				columnDivider,
-				pico.dim('std error'),
+				pico.dim('std err'),
 				pico.magenta(truncate(sem) + ' ms'),
-			].join(' ');
-
-			console.log(thirdLine);
-
-			const fourthLine = [
-				indentation.second + pico.dim('·'),
-				pico.dim('std deviation'),
-				pico.magenta(truncate(sd) + ' ms'),
 				columnDivider,
-				pico.dim('variance'),
-				pico.magenta(truncate(variance) + ' ms²'),
+				pico.dim('std dev'),
+				pico.magenta(truncate(sd) + ' ms'),
 			].join(' ');
 
-			console.log(fourthLine + '\n');
+			console.log(thirdLine + '\n');
 		}
 	}
 }
