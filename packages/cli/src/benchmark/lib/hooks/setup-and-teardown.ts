@@ -7,6 +7,7 @@ import { seedInstanceOwner, seedWorkflows } from './seed';
 import { log } from '../log';
 import { postgresSetup, postgresTeardown } from './postgres';
 import * as Db from '@/Db';
+import config from '@/config';
 
 let main: Start;
 
@@ -19,6 +20,8 @@ export async function setup() {
 
 	await main.init();
 	await main.run();
+
+	log('Set DB', config.getEnv('database.type'));
 
 	await seedInstanceOwner();
 	const files = await seedWorkflows();
