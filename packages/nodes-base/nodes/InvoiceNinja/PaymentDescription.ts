@@ -359,6 +359,44 @@ export const paymentFields: INodeProperties[] = [
 				],
 				default: 'client',
 			},
+			{
+				displayName: 'Status',
+				name: 'status',
+				type: 'options',
+				options: [
+					{
+						name: 'Active',
+						value: 'active',
+					},
+					{
+						name: 'Archived',
+						value: 'archived',
+					},
+					{
+						name: 'Deleted',
+						value: 'deleted',
+					},
+				],
+				default: 'active',
+			},
+			{
+				displayName: 'Created at',
+				name: 'created_at',
+				type: 'dateTime',
+				default: '',
+			},
+			{
+				displayName: 'Updated at',
+				name: 'updated_at',
+				type: 'dateTime',
+				default: '',
+			},
+			{
+				displayName: 'Is deleted',
+				name: 'is_deleted',
+				type: 'boolean',
+				default: 'false',
+			},
 		],
 	},
 ];
