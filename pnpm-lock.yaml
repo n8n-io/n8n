@@ -8,7 +8,6 @@ onlyBuiltDependencies:
   - sqlite3
 
 overrides:
-  '@langchain/core': 0.1.61
   '@types/node': ^18.16.16
   axios: 1.6.7
   chokidar: 3.5.2
