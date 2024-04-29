@@ -154,7 +154,7 @@
 
 		.autocomplete-info-example {
 			color: var(--color-text-dark);
-			margin-top: var(--spacing-3xs);
+			margin-top: var(--spacing-xs);
 		}
 
 		code {
@@ -221,7 +221,7 @@
 	}
 
 	.autocomplete-info-example code {
-		color: var(--color-text-dark);
+		color: var(--color-text-base);
 		display: block;
 		font-size: var(--font-size-3xs);
 		font-family: var(--font-family-monospace);
