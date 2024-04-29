@@ -156,6 +156,7 @@
     "epub2": "3.0.2",
     "form-data": "4.0.0",
     "html-to-text": "9.0.5",
+    "jest-mock-extended": "^3.0.4",
     "json-schema-to-zod": "2.0.14",
     "langchain": "0.1.25",
     "lodash": "4.17.21",
