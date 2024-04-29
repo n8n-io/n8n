@@ -22,6 +22,7 @@ import { LLMChain } from 'langchain/chains';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { HumanMessage } from '@langchain/core/messages';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
+import { ChatOllama } from '@langchain/community/chat_models/ollama';
 import { getTemplateNoticeField } from '../../../utils/sharedFields';
 import {
 	getOptionalOutputParsers,
@@ -81,7 +82,10 @@ async function getImageMessage(
 	)) as BaseLanguageModel;
 	const dataURI = `data:image/jpeg;base64,${bufferData.toString('base64')}`;
 
-	const imageUrl = model instanceof ChatGoogleGenerativeAI ? dataURI : { url: dataURI, detail };
+	const directUriModels = [ChatGoogleGenerativeAI, ChatOllama];
+	const imageUrl = directUriModels.some((i) => model instanceof i)
+		? dataURI
+		: { url: dataURI, detail };
 
 	return new HumanMessage({
 		content: [
