@@ -66,6 +66,7 @@ export class ToolHttpRequest implements INodeType {
 				displayName: 'Description',
 				name: 'toolDescription',
 				type: 'string',
+				placeholder: 'e.g. Get the current weather in the requested city',
 				default: '',
 				typeOptions: {
 					rows: 3,
@@ -113,16 +114,6 @@ export class ToolHttpRequest implements INodeType {
 				description: 'Whether the llm should provide path parameters',
 			},
 			{
-				...parametersCollection,
-				displayName: 'Path Parameters',
-				name: 'pathParameters',
-				displayOptions: {
-					show: {
-						sendInPath: [true],
-					},
-				},
-			},
-			{
 				displayName: 'Path',
 				name: 'path',
 				type: 'string',
@@ -130,6 +121,16 @@ export class ToolHttpRequest implements INodeType {
 				required: true,
 				placeholder: 'e.g. /weather/{latitude}/{longitude}',
 				hint: "Use {parameter_name} to indicate where the parameter's value should be inserted",
+				displayOptions: {
+					show: {
+						sendInPath: [true],
+					},
+				},
+			},
+			{
+				...parametersCollection,
+				displayName: 'Path Parameters',
+				name: 'pathParameters',
 				displayOptions: {
 					show: {
 						sendInPath: [true],
@@ -172,6 +173,46 @@ export class ToolHttpRequest implements INodeType {
 					},
 				},
 			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				placeholder: 'Add Option',
+				description: 'Additional options to add',
+				type: 'collection',
+				default: {},
+				options: [
+					{
+						displayName: 'Headers',
+						name: 'headers',
+						type: 'json',
+						typeOptions: {
+							rows: 2,
+						},
+						default: '{\n  "Authorization": "Bearer my_token"\n}\n',
+						validateType: 'object',
+					},
+					{
+						displayName: 'Extra Body Parameters',
+						name: 'bodyParameters',
+						type: 'json',
+						typeOptions: {
+							rows: 2,
+						},
+						default: '{\n  "id": "some id"\n}\n',
+						validateType: 'object',
+					},
+					{
+						displayName: 'Extra Query Parameters',
+						name: 'queryParameters',
+						type: 'json',
+						typeOptions: {
+							rows: 2,
+						},
+						default: '{\n  "limit": 20\n}\n',
+						validateType: 'object',
+					},
+				],
+			},
 		],
 	};
 
@@ -182,31 +223,58 @@ export class ToolHttpRequest implements INodeType {
 		const name = this.getNodeParameter('name', itemIndex) as string;
 		const toolDescription = this.getNodeParameter('toolDescription', itemIndex) as string;
 		const method = this.getNodeParameter('method', itemIndex, 'GET') as IHttpRequestMethods;
-		const baseUrl = this.getNodeParameter('url', itemIndex) as string;
+		const url = this.getNodeParameter('url', itemIndex) as string;
 		const authentication = this.getNodeParameter('authentication', itemIndex, 'none') as
 			| 'predefinedCredentialType'
 			| 'genericCredentialType'
 			| 'none';
+		const options = this.getNodeParameter('options', itemIndex, {});
+
+		let headers = (options?.headers as IDataObject) ?? {};
+		let body = (options?.bodyParameters as IDataObject) ?? {};
+		let qs = (options?.queryParameters as IDataObject) ?? {};
+
+		if (typeof headers === 'string') {
+			headers = jsonParse<IDataObject>(headers, {
+				errorMessage: 'Invalid JSON in "Extra Request Options -> Headers" field',
+			});
+		}
+
+		if (typeof body === 'string') {
+			body = jsonParse<IDataObject>(body, {
+				errorMessage: 'Invalid JSON in "Extra Request Options -> Body Parameters" field',
+			});
+		}
+
+		if (typeof qs === 'string') {
+			qs = jsonParse<IDataObject>(qs, {
+				errorMessage: 'Invalid JSON in "Extra Request Options -> Query Parameters" field',
+			});
+		}
 
 		const httpRequestFunction = await configureHttpRequestFunction(this, authentication, itemIndex);
 
-		const sendInPath = this.getNodeParameter('sendInPath', itemIndex, false) as boolean;
-		const sendInQuery = this.getNodeParameter('sendInQuery', itemIndex, false) as boolean;
-		const sendInBody = this.getNodeParameter('sendInBody', itemIndex, false) as boolean;
+		let path = this.getNodeParameter('path', itemIndex, '') as string;
+		if (path && path[0] !== '/') {
+			path = '/' + path;
+		}
+		const pathParameters = this.getNodeParameter(
+			'pathParameters.values',
+			itemIndex,
+			[],
+		) as ToolParameter[];
+		const queryParameters = this.getNodeParameter(
+			'queryParameters.values',
+			itemIndex,
+			[],
+		) as ToolParameter[];
+		const bodyParameters = this.getNodeParameter(
+			'bodyParameters.values',
+			itemIndex,
+			[],
+		) as ToolParameter[];
 
-		let pathParameters: ToolParameter[] = [];
-		let path = '';
-		let queryParameters: ToolParameter[] = [];
-		let bodyParameters: ToolParameter[] = [];
-
-		if (sendInPath) {
-			pathParameters = this.getNodeParameter(
-				'pathParameters.values',
-				itemIndex,
-				[],
-			) as ToolParameter[];
-			path = this.getNodeParameter('path', itemIndex) as string;
-
+		if (pathParameters.length) {
 			for (const parameter of pathParameters) {
 				if (path.indexOf(`{${parameter.name}}`) === -1) {
 					throw new NodeOperationError(
@@ -217,28 +285,12 @@ export class ToolHttpRequest implements INodeType {
 			}
 		}
 
-		if (sendInQuery) {
-			queryParameters = this.getNodeParameter(
-				'queryParameters.values',
-				itemIndex,
-				[],
-			) as ToolParameter[];
-		}
-
-		if (sendInBody) {
-			bodyParameters = this.getNodeParameter(
-				'bodyParameters.values',
-				itemIndex,
-				[],
-			) as ToolParameter[];
-		}
-
 		const parameters = [...pathParameters, ...queryParameters, ...bodyParameters];
 
 		let description = toolDescription;
 		if (parameters.length) {
 			description +=
-				` extract from prompt ${parameters.map((parameter) => `${parameter.name}(description: ${parameter.description}, type: ${parameter.type})`).join(', ')}` +
+				` extract from prompt ${parameters.map((parameter) => `${parameter.name}(description: ${parameter.description}, type: ${parameter.type === 'any' ? 'infer from description' : parameter.type})`).join(', ')}` +
 				'send as JSON';
 		}
 
@@ -263,44 +315,44 @@ export class ToolHttpRequest implements INodeType {
 
 						const httpRequestOptions: IHttpRequestOptions = {
 							method,
-							url: baseUrl,
+							url,
 						};
 
-						if (sendInPath) {
+						if (pathParameters.length) {
 							for (const parameter of pathParameters) {
 								const parameterName = parameter.name;
 								const parameterValue = encodeURIComponent(toolParameters[parameterName] as string);
 								path = path.replace(`{${parameterName}}`, parameterValue);
 							}
-
-							if (path[0] !== '/') {
-								path = '/' + path;
-							}
-
-							httpRequestOptions.url += path;
 						}
 
-						if (sendInQuery) {
-							const qs: IDataObject = {};
-
+						if (queryParameters.length) {
 							for (const parameter of queryParameters) {
 								const parameterName = parameter.name;
 								const parameterValue = toolParameters[parameterName];
 								qs[parameterName] = parameterValue;
 							}
-
-							httpRequestOptions.qs = qs;
 						}
 
-						if (sendInBody) {
-							const body: IDataObject = {};
-
+						if (bodyParameters.length) {
 							for (const parameter of bodyParameters) {
 								const parameterName = parameter.name;
 								const parameterValue = toolParameters[parameterName];
 								body[parameterName] = parameterValue;
 							}
+						}
 
+						httpRequestOptions.url += path;
+
+						if (Object.keys(headers).length) {
+							httpRequestOptions.headers = headers;
+						}
+
+						if (Object.keys(qs).length) {
+							httpRequestOptions.qs = qs;
+						}
+
+						if (Object.keys(body)) {
 							httpRequestOptions.body = body;
 						}
 

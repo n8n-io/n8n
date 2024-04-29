@@ -9,9 +9,8 @@ import { jsonParse } from 'n8n-workflow';
 
 export type ToolParameter = {
 	name: string;
-	type: 'fromDescription' | 'string' | 'number' | 'boolean' | 'enum';
+	type: 'any' | 'string' | 'number' | 'boolean';
 	description: string;
-	enumOptions?: string;
 };
 
 export const getOAuth2AdditionalParameters = (nodeCredentialType: string) => {

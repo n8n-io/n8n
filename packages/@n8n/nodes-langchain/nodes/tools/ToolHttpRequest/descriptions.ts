@@ -28,20 +28,16 @@ export const parametersCollection: INodeProperties = {
 					type: 'string',
 					default: '',
 					description: 'Describe to llm what the parameter is for',
-					typeOptions: {
-						rows: 2,
-					},
 				},
 				{
 					displayName: 'Type',
 					name: 'type',
 					type: 'options',
-					default: 'fromDescription',
-					// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
+					default: 'string',
 					options: [
 						{
-							name: 'Infer From Description',
-							value: 'fromDescription',
+							name: 'Any',
+							value: 'any',
 						},
 						{
 							name: 'Boolean',
