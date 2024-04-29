@@ -15,12 +15,7 @@ import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 import { DynamicTool } from '@langchain/core/tools';
 
-import {
-	type ToolParameter,
-	configureHttpRequestFunction,
-	prepareToolDescription,
-	prettifyToolName,
-} from './utils';
+import { type ToolParameter, configureHttpRequestFunction, prettifyToolName } from './utils';
 
 import { authenticationProperties, parametersCollection } from './descriptions';
 
@@ -240,7 +235,12 @@ export class ToolHttpRequest implements INodeType {
 
 		const parameters = [...pathParameters, ...queryParameters, ...bodyParameters];
 
-		const description = prepareToolDescription(toolDescription, parameters);
+		let description = toolDescription;
+		if (parameters.length) {
+			description +=
+				` extract from prompt ${parameters.map((parameter) => `${parameter.name}(description: ${parameter.description}, type: ${parameter.type})`).join(', ')}` +
+				'send as JSON';
+		}
 
 		return {
 			response: new DynamicTool({
@@ -255,7 +255,11 @@ export class ToolHttpRequest implements INodeType {
 						let toolParameters: IDataObject = {};
 						try {
 							toolParameters = jsonParse<IDataObject>(query);
-						} catch (error) {}
+						} catch (error) {
+							if (parameters.length === 1) {
+								toolParameters = { [parameters[0].name]: query };
+							}
+						}
 
 						const httpRequestOptions: IHttpRequestOptions = {
 							method,
