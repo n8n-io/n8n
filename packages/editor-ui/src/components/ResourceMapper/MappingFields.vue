@@ -289,18 +289,18 @@ defineExpose({
 			:label="valuesLabel"
 			:underline="true"
 			:size="labelSize"
-			:showOptions="true"
-			:showExpressionSelector="false"
-			inputName="columns"
+			:show-options="true"
+			:show-expression-selector="false"
+			input-name="columns"
 			color="text-dark"
 		>
 			<template #options>
-				<parameter-options
+				<ParameterOptions
 					:parameter="parameter"
-					:customActions="parameterActions"
+					:custom-actions="parameterActions"
 					:loading="props.refreshInProgress"
-					:loadingMessage="fetchingFieldsLabel"
-					@update:modelValue="onParameterActionSelected"
+					:loading-message="fetchingFieldsLabel"
+					@update:model-value="onParameterActionSelected"
 				/>
 			</template>
 		</n8n-input-label>
@@ -360,19 +360,19 @@ defineExpose({
 				></n8n-icon-button>
 			</div>
 			<div :class="$style.parameterInput">
-				<parameter-input-full
+				<ParameterInputFull
 					:parameter="field"
 					:value="getParameterValue(field.name)"
-					:displayOptions="true"
+					:display-options="true"
 					:path="`${props.path}.${field.name}`"
-					:isReadOnly="refreshInProgress || field.readOnly"
-					:hideIssues="true"
-					:nodeValues="nodeValues"
+					:is-read-only="refreshInProgress || field.readOnly"
+					:hide-issues="true"
+					:node-values="nodeValues"
 					:class="$style.parameterInputFull"
 					@update="onValueChanged"
 				/>
 			</div>
-			<parameter-issues
+			<ParameterIssues
 				v-if="getFieldIssues(field).length > 0"
 				:issues="getFieldIssues(field)"
 				:class="[$style.parameterIssues, 'ml-5xs']"
@@ -388,7 +388,7 @@ defineExpose({
 				size="small"
 				:teleported="teleported"
 				:disabled="addFieldOptions.length == 0"
-				@update:modelValue="addField"
+				@update:model-value="addField"
 			>
 				<n8n-option
 					v-for="item in addFieldOptions"

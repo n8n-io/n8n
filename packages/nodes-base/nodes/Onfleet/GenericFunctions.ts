@@ -2,20 +2,20 @@ import type {
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
+	IRequestOptions,
 	IWebhookFunctions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import type { OptionsWithUri } from 'request';
-
 import moment from 'moment-timezone';
 
 export async function onfleetApiRequest(
 	this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 
 	body: any = {},
@@ -25,7 +25,7 @@ export async function onfleetApiRequest(
 ): Promise<any> {
 	const credentials = await this.getCredentials('onfleetApi');
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 			'User-Agent': 'n8n-onfleet',
@@ -50,7 +50,7 @@ export async function onfleetApiRequest(
 export async function onfleetApiRequestAllItems(
 	this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 
 	body: any = {},

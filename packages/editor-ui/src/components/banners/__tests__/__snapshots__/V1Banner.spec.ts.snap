@@ -6,8 +6,8 @@ exports[`V1 Banner > should render banner 1`] = `
     class="v1container"
     data-test-id="banners-V1"
     icon="info-circle"
-    iconsize="medium"
-    roundcorners="false"
+    icon-size="medium"
+    round-corners="false"
     theme="warning"
   >
     <div
@@ -37,8 +37,8 @@ exports[`V1 Banner > should render banner with dismiss call if user is owner 1`]
     class="v1container"
     data-test-id="banners-V1"
     icon="info-circle"
-    iconsize="medium"
-    roundcorners="false"
+    icon-size="medium"
+    round-corners="false"
     theme="warning"
   >
     <div

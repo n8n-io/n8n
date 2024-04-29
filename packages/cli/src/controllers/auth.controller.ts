@@ -1,14 +1,12 @@
 import validator from 'validator';
-import { In } from 'typeorm';
-import { Service } from 'typedi';
-import { Authorized, Get, Post, RestController } from '@/decorators';
-import { issueCookie, resolveJwt } from '@/auth/jwt';
-import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
+
+import { AuthService } from '@/auth/auth.service';
+import { Get, Post, RestController } from '@/decorators';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { Request, Response } from 'express';
 import type { User } from '@db/entities/User';
-import { LoginRequest, UserRequest } from '@/requests';
+import { AuthenticatedRequest, LoginRequest, UserRequest } from '@/requests';
 import type { PublicUser } from '@/Interfaces';
-import config from '@/config';
 import { handleEmailLogin, handleLdapLogin } from '@/auth';
 import { PostHogClient } from '@/posthog';
 import {
@@ -22,27 +20,26 @@ import { UserService } from '@/services/user.service';
 import { MfaService } from '@/Mfa/mfa.service';
 import { Logger } from '@/Logger';
 import { AuthError } from '@/errors/response-errors/auth.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { UnauthorizedError } from '@/errors/response-errors/unauthorized.error';
 import { ApplicationError } from 'n8n-workflow';
+import { UserRepository } from '@/databases/repositories/user.repository';
 
-@Service()
 @RestController()
 export class AuthController {
 	constructor(
 		private readonly logger: Logger,
 		private readonly internalHooks: InternalHooks,
+		private readonly authService: AuthService,
 		private readonly mfaService: MfaService,
 		private readonly userService: UserService,
 		private readonly license: License,
+		private readonly userRepository: UserRepository,
 		private readonly postHog?: PostHogClient,
 	) {}
 
-	/**
-	 * Log in a user.
-	 */
-	@Post('/login')
+	/** Log in a user */
+	@Post('/login', { skipAuth: true, rateLimit: true })
 	async login(req: LoginRequest, res: Response): Promise<PublicUser | undefined> {
 		const { email, password, mfaToken, mfaRecoveryCode } = req.body;
 		if (!email) throw new ApplicationError('Email is required to log in');
@@ -56,7 +53,7 @@ export class AuthController {
 			const preliminaryUser = await handleEmailLogin(email, password);
 			// if the user is an owner, continue with the login
 			if (
-				preliminaryUser?.globalRole?.name === 'owner' ||
+				preliminaryUser?.role === 'global:owner' ||
 				preliminaryUser?.settings?.allowSSOManualLogin
 			) {
 				user = preliminaryUser;
@@ -66,7 +63,7 @@ export class AuthController {
 			}
 		} else if (isLdapCurrentAuthenticationMethod()) {
 			const preliminaryUser = await handleEmailLogin(email, password);
-			if (preliminaryUser?.globalRole?.name === 'owner') {
+			if (preliminaryUser?.role === 'global:owner') {
 				user = preliminaryUser;
 				usedAuthenticationMethod = 'email';
 			} else {
@@ -97,13 +94,13 @@ export class AuthController {
 				}
 			}
 
-			await issueCookie(res, user);
+			this.authService.issueCookie(res, user, req.browserId);
 			void this.internalHooks.onUserLoginSuccess({
 				user,
 				authenticationMethod: usedAuthenticationMethod,
 			});
 
-			return this.userService.toPublic(user, { posthog: this.postHog, withScopes: true });
+			return await this.userService.toPublic(user, { posthog: this.postHog, withScopes: true });
 		}
 		void this.internalHooks.onUserLoginFailed({
 			user: email,
@@ -113,51 +110,17 @@ export class AuthController {
 		throw new AuthError('Wrong username or password. Do you have caps lock on?');
 	}
 
-	/**
-	 * Manually check the `n8n-auth` cookie.
-	 */
+	/** Check if the user is already logged in */
 	@Get('/login')
-	async currentUser(req: Request, res: Response): Promise<PublicUser> {
-		// Manually check the existing cookie.
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-		const cookieContents = req.cookies?.[AUTH_COOKIE_NAME] as string | undefined;
-
-		let user: User;
-		if (cookieContents) {
-			// If logged in, return user
-			try {
-				user = await resolveJwt(cookieContents);
-
-				return await this.userService.toPublic(user, { posthog: this.postHog, withScopes: true });
-			} catch (error) {
-				res.clearCookie(AUTH_COOKIE_NAME);
-			}
-		}
-
-		if (config.getEnv('userManagement.isInstanceOwnerSetUp')) {
-			throw new AuthError('Not logged in');
-		}
-
-		try {
-			user = await this.userService.findOneOrFail({ where: {} });
-		} catch (error) {
-			throw new InternalServerError(
-				'No users found in database - did you wipe the users table? Create at least one user.',
-			);
-		}
-
-		if (user.email || user.password) {
-			throw new InternalServerError('Invalid database state - user has password set.');
-		}
-
-		await issueCookie(res, user);
-		return this.userService.toPublic(user, { posthog: this.postHog, withScopes: true });
+	async currentUser(req: AuthenticatedRequest): Promise<PublicUser> {
+		return await this.userService.toPublic(req.user, {
+			posthog: this.postHog,
+			withScopes: true,
+		});
 	}
 
-	/**
-	 * Validate invite token to enable invitee to set up their account.
-	 */
-	@Get('/resolve-signup-token')
+	/** Validate invite token to enable invitee to set up their account */
+	@Get('/resolve-signup-token', { skipAuth: true })
 	async resolveSignupToken(req: UserRequest.ResolveSignUp) {
 		const { inviterId, inviteeId } = req.query;
 		const isWithinUsersLimit = this.license.isWithinUsersLimit();
@@ -188,10 +151,8 @@ export class AuthController {
 			}
 		}
 
-		const users = await this.userService.findMany({
-			where: { id: In([inviterId, inviteeId]) },
-			relations: ['globalRole'],
-		});
+		const users = await this.userRepository.findManyByIds([inviterId, inviteeId]);
+
 		if (users.length !== 2) {
 			this.logger.debug(
 				'Request to resolve signup token failed because the ID of the inviter and/or the ID of the invitee were not found in database',
@@ -226,13 +187,10 @@ export class AuthController {
 		return { inviter: { firstName, lastName } };
 	}
 
-	/**
-	 * Log out a user.
-	 */
-	@Authorized()
+	/** Log out a user */
 	@Post('/logout')
-	logout(req: Request, res: Response) {
-		res.clearCookie(AUTH_COOKIE_NAME);
+	logout(_: Request, res: Response) {
+		this.authService.clearCookie(res);
 		return { loggedOut: true };
 	}
 

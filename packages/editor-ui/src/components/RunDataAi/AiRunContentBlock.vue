@@ -8,10 +8,10 @@
 			<!-- @click.stop to prevent event from bubbling to blockHeader and toggling expanded state when clicking on rawSwitch -->
 			<el-switch
 				v-if="contentParsed"
-				@click.stop
+				v-model="isShowRaw"
 				:class="$style.rawSwitch"
 				active-text="RAW JSON"
-				v-model="isShowRaw"
+				@click.stop
 			/>
 		</header>
 		<main
@@ -21,24 +21,24 @@
 			}"
 		>
 			<div
-				:key="index"
 				v-for="({ parsedContent, raw }, index) in parsedRun"
+				:key="index"
 				:class="$style.contentText"
 				:data-content-type="parsedContent?.type"
 			>
 				<template v-if="parsedContent && !isShowRaw">
 					<template v-if="parsedContent.type === 'json'">
-						<vue-markdown
+						<VueMarkdown
 							:source="jsonToMarkdown(parsedContent.data as JsonMarkdown)"
 							:class="$style.markdown"
 						/>
 					</template>
 					<template v-if="parsedContent.type === 'markdown'">
-						<vue-markdown :source="parsedContent.data" :class="$style.markdown" />
+						<VueMarkdown :source="parsedContent.data" :class="$style.markdown" />
 					</template>
 					<p
-						:class="$style.runText"
 						v-if="parsedContent.type === 'text'"
+						:class="$style.runText"
 						v-text="parsedContent.data"
 					/>
 				</template>
@@ -49,11 +49,11 @@
 							size="small"
 							:class="$style.copyToClipboard"
 							type="secondary"
-							@click="copyToClipboard(raw)"
 							:title="$locale.baseText('nodeErrorView.copyToClipboard')"
 							icon="copy"
+							@click="onCopyToClipboard(raw)"
 						/>
-						<vue-markdown :source="jsonToMarkdown(raw as JsonMarkdown)" :class="$style.markdown" />
+						<VueMarkdown :source="jsonToMarkdown(raw as JsonMarkdown)" :class="$style.markdown" />
 					</div>
 				</template>
 			</div>
@@ -68,7 +68,7 @@ import { ref, onMounted } from 'vue';
 import type { ParsedAiContent } from './useAiContentParsers';
 import { useAiContentParsers } from './useAiContentParsers';
 import VueMarkdown from 'vue-markdown-render';
-import { useCopyToClipboard } from '@/composables/useCopyToClipboard';
+import { useClipboard } from '@/composables/useClipboard';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
 import { NodeConnectionType, type IDataObject } from 'n8n-workflow';
@@ -78,13 +78,15 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
+const clipboard = useClipboard();
+const { showMessage } = useToast();
 const contentParsers = useAiContentParsers();
+
 // eslint-disable-next-line @typescript-eslint/no-use-before-define
 const isExpanded = ref(getInitialExpandedState());
 const isShowRaw = ref(false);
 const contentParsed = ref(false);
 const parsedRun = ref(undefined as ParsedAiContent | undefined);
-
 function getInitialExpandedState() {
 	const collapsedTypes = {
 		input: [NodeConnectionType.AiDocument, NodeConnectionType.AiTextSplitter],
@@ -155,12 +157,9 @@ function onBlockHeaderClick() {
 	isExpanded.value = !isExpanded.value;
 }
 
-function copyToClipboard(content: IDataObject | IDataObject[]) {
-	const copyToClipboardFn = useCopyToClipboard();
-	const { showMessage } = useToast();
-
+function onCopyToClipboard(content: IDataObject | IDataObject[]) {
 	try {
-		copyToClipboardFn(JSON.stringify(content, undefined, 2));
+		void clipboard.copy(JSON.stringify(content, undefined, 2));
 		showMessage({
 			title: i18n.baseText('generic.copiedToClipboard'),
 			type: 'success',

@@ -1,10 +1,12 @@
 <script lang="ts" setup>
 /* eslint-disable @typescript-eslint/naming-convention */
-import type { ChatMessage } from '@/types';
 import type { PropType } from 'vue';
 import { computed, toRefs } from 'vue';
 import VueMarkdown from 'vue-markdown-render';
 import hljs from 'highlight.js/lib/core';
+import markdownLink from 'markdown-it-link-attributes';
+import type MarkdownIt from 'markdown-it';
+import type { ChatMessage } from '@n8n/chat/types';
 
 const props = defineProps({
 	message: {
@@ -15,12 +17,25 @@ const props = defineProps({
 
 const { message } = toRefs(props);
 
+const messageText = computed(() => {
+	return message.value.text || '&lt;Empty response&gt;';
+});
+
 const classes = computed(() => {
 	return {
 		'chat-message-from-user': message.value.sender === 'user',
 		'chat-message-from-bot': message.value.sender === 'bot',
 	};
 });
+
+const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
+	vueMarkdownItInstance.use(markdownLink, {
+		attrs: {
+			target: '_blank',
+			rel: 'noopener',
+		},
+	});
+};
 
 const markdownOptions = {
 	highlight(str: string, lang: string) {
@@ -37,10 +52,11 @@ const markdownOptions = {
 <template>
 	<div class="chat-message" :class="classes">
 		<slot>
-			<vue-markdown
+			<VueMarkdown
 				class="chat-message-markdown"
-				:source="message.text"
+				:source="messageText"
 				:options="markdownOptions"
+				:plugins="[linksNewTabPlugin]"
 			/>
 		</slot>
 	</div>

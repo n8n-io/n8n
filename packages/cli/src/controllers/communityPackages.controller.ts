@@ -1,4 +1,3 @@
-import { Service } from 'typedi';
 import { Request, Response, NextFunction } from 'express';
 import config from '@/config';
 import {
@@ -6,16 +5,7 @@ import {
 	STARTER_TEMPLATE_NAME,
 	UNKNOWN_FAILURE_REASON,
 } from '@/constants';
-import {
-	Authorized,
-	Delete,
-	Get,
-	Middleware,
-	Patch,
-	Post,
-	RestController,
-	RequireGlobalScope,
-} from '@/decorators';
+import { Delete, Get, Middleware, Patch, Post, RestController, GlobalScope } from '@/decorators';
 import { NodeRequest } from '@/requests';
 import type { InstalledPackages } from '@db/entities/InstalledPackages';
 import type { CommunityPackages } from '@/Interfaces';
@@ -42,14 +32,12 @@ export function isNpmError(error: unknown): error is { code: number; stdout: str
 	return typeof error === 'object' && error !== null && 'code' in error && 'stdout' in error;
 }
 
-@Service()
-@Authorized()
 @RestController('/community-packages')
 export class CommunityPackagesController {
 	constructor(
-		private push: Push,
-		private internalHooks: InternalHooks,
-		private communityPackagesService: CommunityPackagesService,
+		private readonly push: Push,
+		private readonly internalHooks: InternalHooks,
+		private readonly communityPackagesService: CommunityPackagesService,
 	) {}
 
 	// TODO: move this into a new decorator `@IfConfig('executions.mode', 'queue')`
@@ -64,7 +52,7 @@ export class CommunityPackagesController {
 	}
 
 	@Post('/')
-	@RequireGlobalScope('communityPackage:install')
+	@GlobalScope('communityPackage:install')
 	async installPackage(req: NodeRequest.Post) {
 		const { name } = req.body;
 
@@ -161,7 +149,7 @@ export class CommunityPackagesController {
 	}
 
 	@Get('/')
-	@RequireGlobalScope('communityPackage:list')
+	@GlobalScope('communityPackage:list')
 	async getInstalledPackages() {
 		const installedPackages = await this.communityPackagesService.getAllInstalledPackages();
 
@@ -196,7 +184,7 @@ export class CommunityPackagesController {
 	}
 
 	@Delete('/')
-	@RequireGlobalScope('communityPackage:uninstall')
+	@GlobalScope('communityPackage:uninstall')
 	async uninstallPackage(req: NodeRequest.Delete) {
 		const { name } = req.query;
 
@@ -248,7 +236,7 @@ export class CommunityPackagesController {
 	}
 
 	@Patch('/')
-	@RequireGlobalScope('communityPackage:update')
+	@GlobalScope('communityPackage:update')
 	async updatePackage(req: NodeRequest.Update) {
 		const { name } = req.body;
 

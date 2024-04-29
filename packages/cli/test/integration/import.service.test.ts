@@ -6,15 +6,19 @@ import type { INode } from 'n8n-workflow';
 import { CredentialsRepository } from '@/databases/repositories/credentials.repository';
 import { TagRepository } from '@/databases/repositories/tag.repository';
 import { ImportService } from '@/services/import.service';
-import { RoleService } from '@/services/role.service';
 import { TagEntity } from '@/databases/entities/TagEntity';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflow.repository';
 
 import * as testDb from './shared/testDb';
 import { mockInstance } from '../shared/mocking';
-import { createOwner } from './shared/db/users';
-import { createWorkflow, getWorkflowById } from './shared/db/workflows';
+import { createMember, createOwner } from './shared/db/users';
+import {
+	createWorkflow,
+	getAllSharedWorkflows,
+	getWorkflowById,
+	newWorkflow,
+} from './shared/db/workflows';
 
 import type { User } from '@db/entities/User';
 
@@ -34,12 +38,7 @@ describe('ImportService', () => {
 
 		credentialsRepository.find.mockResolvedValue([]);
 
-		importService = new ImportService(
-			mock(),
-			credentialsRepository,
-			tagRepository,
-			Container.get(RoleService),
-		);
+		importService = new ImportService(mock(), credentialsRepository, tagRepository);
 	});
 
 	afterEach(async () => {
@@ -63,17 +62,32 @@ describe('ImportService', () => {
 	});
 
 	test('should make user owner of imported workflow', async () => {
-		const workflowToImport = await createWorkflow();
+		const workflowToImport = newWorkflow();
 
 		await importService.importWorkflows([workflowToImport], owner.id);
 
-		const workflowOwnerRole = await Container.get(RoleService).findWorkflowOwnerRole();
-
 		const dbSharing = await Container.get(SharedWorkflowRepository).findOneOrFail({
-			where: { workflowId: workflowToImport.id, userId: owner.id, roleId: workflowOwnerRole.id },
+			where: { workflowId: workflowToImport.id, userId: owner.id, role: 'workflow:owner' },
 		});
 
 		expect(dbSharing.userId).toBe(owner.id);
+	});
+
+	test('should not change the owner if it already exists', async () => {
+		const member = await createMember();
+		const workflowToImport = await createWorkflow(undefined, owner);
+
+		await importService.importWorkflows([workflowToImport], member.id);
+
+		const sharings = await getAllSharedWorkflows();
+
+		expect(sharings).toMatchObject([
+			expect.objectContaining({
+				workflowId: workflowToImport.id,
+				userId: owner.id,
+				role: 'workflow:owner',
+			}),
+		]);
 	});
 
 	test('should deactivate imported workflow if active', async () => {

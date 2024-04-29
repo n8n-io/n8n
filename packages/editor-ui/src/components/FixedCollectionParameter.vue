@@ -1,5 +1,5 @@
 <template>
-	<div @keydown.stop class="fixed-collection-parameter">
+	<div class="fixed-collection-parameter" @keydown.stop>
 		<div v-if="getProperties.length === 0" class="no-items-exist">
 			<n8n-text size="small">{{
 				$locale.baseText('fixedCollectionParameter.currentlyNoItemsExist')
@@ -27,7 +27,7 @@
 					<div
 						:class="index ? 'border-top-dashed parameter-item-wrapper ' : 'parameter-item-wrapper'"
 					>
-						<div class="delete-option" v-if="!isReadOnly">
+						<div v-if="!isReadOnly" class="delete-option">
 							<n8n-icon-button
 								type="tertiary"
 								text
@@ -56,13 +56,13 @@
 							></n8n-icon-button>
 						</div>
 						<Suspense>
-							<parameter-input-list
+							<ParameterInputList
 								:parameters="property.values"
-								:nodeValues="nodeValues"
+								:node-values="nodeValues"
 								:path="getPropertyPath(property.name, index)"
-								:hideDelete="true"
-								:isReadOnly="isReadOnly"
-								@valueChanged="valueChanged"
+								:hide-delete="true"
+								:is-read-only="isReadOnly"
+								@value-changed="valueChanged"
 							/>
 						</Suspense>
 					</div>
@@ -70,7 +70,7 @@
 			</div>
 			<div v-else class="parameter-item">
 				<div class="parameter-item-wrapper">
-					<div class="delete-option" v-if="!isReadOnly">
+					<div v-if="!isReadOnly" class="delete-option">
 						<n8n-icon-button
 							type="tertiary"
 							text
@@ -80,34 +80,34 @@
 							@click="deleteOption(property.name)"
 						></n8n-icon-button>
 					</div>
-					<parameter-input-list
+					<ParameterInputList
 						:parameters="property.values"
-						:nodeValues="nodeValues"
+						:node-values="nodeValues"
 						:path="getPropertyPath(property.name)"
-						:isReadOnly="isReadOnly"
+						:is-read-only="isReadOnly"
 						class="parameter-item"
-						@valueChanged="valueChanged"
-						:hideDelete="true"
+						:hide-delete="true"
+						@value-changed="valueChanged"
 					/>
 				</div>
 			</div>
 		</div>
 
-		<div class="controls" v-if="parameterOptions.length > 0 && !isReadOnly">
+		<div v-if="parameterOptions.length > 0 && !isReadOnly" class="controls">
 			<n8n-button
 				v-if="parameter.options.length === 1"
 				type="tertiary"
 				block
-				@click="optionSelected(parameter.options[0].name)"
 				:label="getPlaceholderText"
+				@click="optionSelected(parameter.options[0].name)"
 			/>
 			<div v-else class="add-option">
 				<n8n-select
 					v-model="selectedOption"
 					:placeholder="getPlaceholderText"
 					size="small"
-					@update:modelValue="optionSelected"
 					filterable
+					@update:model-value="optionSelected"
 				>
 					<n8n-option
 						v-for="item in parameterOptions"
@@ -122,7 +122,7 @@
 </template>
 
 <script lang="ts">
-import { defineAsyncComponent, defineComponent } from 'vue';
+import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import type { IUpdateInformation } from '@/Interface';
 
@@ -135,8 +135,6 @@ import type {
 import { deepCopy, isINodePropertyCollectionList } from 'n8n-workflow';
 
 import { get } from 'lodash-es';
-
-const ParameterInputList = defineAsyncComponent(async () => import('./ParameterInputList.vue'));
 
 export default defineComponent({
 	name: 'FixedCollectionParameter',
@@ -162,25 +160,11 @@ export default defineComponent({
 			default: false,
 		},
 	},
-	components: {
-		ParameterInputList,
-	},
 	data() {
 		return {
 			selectedOption: undefined,
 			mutableValues: {} as Record<string, INodeParameters[]>,
 		};
-	},
-	watch: {
-		values: {
-			handler(newValues: Record<string, INodeParameters[]>) {
-				this.mutableValues = deepCopy(newValues);
-			},
-			deep: true,
-		},
-	},
-	created() {
-		this.mutableValues = deepCopy(this.values);
 	},
 	computed: {
 		getPlaceholderText(): string {
@@ -201,7 +185,6 @@ export default defineComponent({
 		multipleValues(): boolean {
 			return !!this.parameter.typeOptions?.multipleValues;
 		},
-
 		parameterOptions(): INodePropertyCollection[] {
 			if (this.multipleValues && isINodePropertyCollectionList(this.parameter.options)) {
 				return this.parameter.options;
@@ -217,6 +200,17 @@ export default defineComponent({
 		sortable(): boolean {
 			return !!this.parameter.typeOptions?.sortable;
 		},
+	},
+	watch: {
+		values: {
+			handler(newValues: Record<string, INodeParameters[]>) {
+				this.mutableValues = deepCopy(newValues);
+			},
+			deep: true,
+		},
+	},
+	created() {
+		this.mutableValues = deepCopy(this.values);
 	},
 	methods: {
 		deleteOption(optionName: string, index?: number) {
@@ -260,6 +254,7 @@ export default defineComponent({
 			const parameterData = {
 				name: this.getPropertyPath(optionName),
 				value: this.mutableValues[optionName],
+				type: 'optionsOrderChanged',
 			};
 
 			this.$emit('valueChanged', parameterData);
@@ -276,6 +271,7 @@ export default defineComponent({
 			const parameterData = {
 				name: this.getPropertyPath(optionName),
 				value: this.mutableValues[optionName],
+				type: 'optionsOrderChanged',
 			};
 
 			this.$emit('valueChanged', parameterData);
@@ -303,7 +299,7 @@ export default defineComponent({
 					// Multiple values are allowed so append option to array
 					newParameterValue[optionParameter.name] = get(
 						this.nodeValues,
-						`${this.path}.${optionParameter.name}`,
+						[this.path, optionParameter.name],
 						[],
 					);
 					if (Array.isArray(optionParameter.default)) {

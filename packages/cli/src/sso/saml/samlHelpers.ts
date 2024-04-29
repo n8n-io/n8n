@@ -17,7 +17,6 @@ import {
 } from '../ssoHelpers';
 import { getServiceProviderConfigTestReturnUrl } from './serviceProvider.ee';
 import type { SamlConfiguration } from './types/requests';
-import { RoleService } from '@/services/role.service';
 import { UserRepository } from '@db/repositories/user.repository';
 import { AuthIdentityRepository } from '@db/repositories/authIdentity.repository';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
@@ -104,16 +103,18 @@ export async function createUserFromSamlAttributes(attributes: SamlUserAttribute
 	user.email = lowerCasedEmail;
 	user.firstName = attributes.firstName;
 	user.lastName = attributes.lastName;
-	user.globalRole = await Container.get(RoleService).findGlobalMemberRole();
+	user.role = 'global:member';
 	// generates a password that is not used or known to the user
 	user.password = await Container.get(PasswordUtility).hash(generatePassword());
 	authIdentity.providerId = attributes.userPrincipalName;
 	authIdentity.providerType = 'saml';
 	authIdentity.user = user;
-	const resultAuthIdentity = await Container.get(AuthIdentityRepository).save(authIdentity);
+	const resultAuthIdentity = await Container.get(AuthIdentityRepository).save(authIdentity, {
+		transaction: false,
+	});
 	if (!resultAuthIdentity) throw new AuthError('Could not create AuthIdentity');
 	user.authIdentities = [authIdentity];
-	const resultUser = await Container.get(UserRepository).save(user);
+	const resultUser = await Container.get(UserRepository).save(user, { transaction: false });
 	if (!resultUser) throw new AuthError('Could not create User');
 	return resultUser;
 }
@@ -134,10 +135,10 @@ export async function updateUserFromSamlAttributes(
 	} else {
 		samlAuthIdentity.providerId = attributes.userPrincipalName;
 	}
-	await Container.get(AuthIdentityRepository).save(samlAuthIdentity);
+	await Container.get(AuthIdentityRepository).save(samlAuthIdentity, { transaction: false });
 	user.firstName = attributes.firstName;
 	user.lastName = attributes.lastName;
-	const resultUser = await Container.get(UserRepository).save(user);
+	const resultUser = await Container.get(UserRepository).save(user, { transaction: false });
 	if (!resultUser) throw new AuthError('Could not create User');
 	return resultUser;
 }

@@ -17,7 +17,7 @@ describe('NamingService', () => {
 
 	describe('getUniqueWorkflowName()', () => {
 		test('should return requested name if already unique', async () => {
-			workflowRepository.find.mockResolvedValue([]);
+			workflowRepository.findStartingWith.mockResolvedValue([]);
 
 			const name = await namingService.getUniqueWorkflowName('foo');
 
@@ -25,7 +25,7 @@ describe('NamingService', () => {
 		});
 
 		test('should return requested name suffixed if already existing once', async () => {
-			workflowRepository.find.mockResolvedValue([{ name: 'foo' }] as WorkflowEntity[]);
+			workflowRepository.findStartingWith.mockResolvedValue([{ name: 'foo' }] as WorkflowEntity[]);
 
 			const name = await namingService.getUniqueWorkflowName('foo');
 
@@ -35,7 +35,7 @@ describe('NamingService', () => {
 		test('should return requested name with incremented suffix if already suffixed', async () => {
 			const existingNames = [{ name: 'foo' }, { name: 'foo 2' }] as WorkflowEntity[];
 
-			workflowRepository.find.mockResolvedValue(existingNames);
+			workflowRepository.findStartingWith.mockResolvedValue(existingNames);
 
 			const name = await namingService.getUniqueWorkflowName('foo');
 
@@ -51,7 +51,7 @@ describe('NamingService', () => {
 
 	describe('getUniqueCredentialName()', () => {
 		test('should return requested name if already unique', async () => {
-			credentialsRepository.find.mockResolvedValue([]);
+			credentialsRepository.findStartingWith.mockResolvedValue([]);
 
 			const name = await namingService.getUniqueCredentialName('foo');
 
@@ -59,7 +59,9 @@ describe('NamingService', () => {
 		});
 
 		test('should return requested name suffixed if already existing once', async () => {
-			credentialsRepository.find.mockResolvedValue([{ name: 'foo' }] as CredentialsEntity[]);
+			credentialsRepository.findStartingWith.mockResolvedValue([
+				{ name: 'foo' },
+			] as CredentialsEntity[]);
 
 			const name = await namingService.getUniqueCredentialName('foo');
 
@@ -69,7 +71,7 @@ describe('NamingService', () => {
 		test('should return requested name with incremented suffix if already suffixed', async () => {
 			const existingNames = [{ name: 'foo' }, { name: 'foo 2' }] as CredentialsEntity[];
 
-			credentialsRepository.find.mockResolvedValue(existingNames);
+			credentialsRepository.findStartingWith.mockResolvedValue(existingNames);
 
 			const name = await namingService.getUniqueCredentialName('foo');
 

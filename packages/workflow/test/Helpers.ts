@@ -20,9 +20,6 @@ import type {
 	INodeExecutionData,
 	INodeParameters,
 	INodeType,
-	INodeTypeData,
-	INodeTypes,
-	IVersionedNodeType,
 	IRunExecutionData,
 	ITaskDataConnections,
 	IWorkflowBase,
@@ -40,16 +37,15 @@ import * as NodeHelpers from '@/NodeHelpers';
 import { deepCopy } from '@/utils';
 import { getGlobalState } from '@/GlobalState';
 import { ApplicationError } from '@/errors/application.error';
+import { NodeTypes as NodeTypesClass } from './NodeTypes';
+import { readFileSync } from 'fs';
+import path from 'path';
 
 export interface INodeTypesObject {
 	[key: string]: INodeType;
 }
 
 export class Credentials extends ICredentials {
-	hasNodeAccess() {
-		return true;
-	}
-
 	setData(data: ICredentialDataDecryptedObject) {
 		this.data = JSON.stringify(data);
 	}
@@ -71,7 +67,6 @@ export class Credentials extends ICredentials {
 			name: this.name,
 			type: this.type,
 			data: this.data,
-			nodesAccess: this.nodesAccess,
 		};
 	}
 }
@@ -191,7 +186,7 @@ export function getExecuteFunctions(
 				workflowInfo: IExecuteWorkflowInfo,
 				inputData?: INodeExecutionData[],
 			): Promise<any> {
-				return additionalData.executeWorkflow(workflowInfo, additionalData, { inputData });
+				return await additionalData.executeWorkflow(workflowInfo, additionalData, { inputData });
 			},
 			getContext(type: string): IContextObject {
 				return NodeHelpers.getContext(runExecutionData, type, node);
@@ -528,135 +523,6 @@ export function getExecuteSingleFunctions(
 	})(workflow, runExecutionData, connectionInputData, inputData, node, itemIndex);
 }
 
-class NodeTypesClass implements INodeTypes {
-	nodeTypes: INodeTypeData = {
-		'test.set': {
-			sourcePath: '',
-			type: {
-				description: {
-					displayName: 'Set',
-					name: 'set',
-					group: ['input'],
-					version: 1,
-					description: 'Sets a value',
-					defaults: {
-						name: 'Set',
-						color: '#0000FF',
-					},
-					inputs: ['main'],
-					outputs: ['main'],
-					properties: [
-						{
-							displayName: 'Value1',
-							name: 'value1',
-							type: 'string',
-							default: 'default-value1',
-						},
-						{
-							displayName: 'Value2',
-							name: 'value2',
-							type: 'string',
-							default: 'default-value2',
-						},
-					],
-				},
-			},
-		},
-		'test.setMulti': {
-			sourcePath: '',
-			type: {
-				description: {
-					displayName: 'Set Multi',
-					name: 'setMulti',
-					group: ['input'],
-					version: 1,
-					description: 'Sets multiple values',
-					defaults: {
-						name: 'Set Multi',
-						color: '#0000FF',
-					},
-					inputs: ['main'],
-					outputs: ['main'],
-					properties: [
-						{
-							displayName: 'Values',
-							name: 'values',
-							type: 'fixedCollection',
-							typeOptions: {
-								multipleValues: true,
-							},
-							default: {},
-							options: [
-								{
-									name: 'string',
-									displayName: 'String',
-									values: [
-										{
-											displayName: 'Name',
-											name: 'name',
-											type: 'string',
-											default: 'propertyName',
-											placeholder: 'Name of the property to write data to.',
-										},
-										{
-											displayName: 'Value',
-											name: 'value',
-											type: 'string',
-											default: '',
-											placeholder: 'The string value to write in the property.',
-										},
-									],
-								},
-							],
-						},
-					],
-				},
-			},
-		},
-		'test.switch': {
-			sourcePath: '',
-			type: {
-				description: {
-					displayName: 'Set',
-					name: 'set',
-					group: ['input'],
-					version: 1,
-					description: 'Switches',
-					defaults: {
-						name: 'Switch',
-						color: '#0000FF',
-					},
-					inputs: ['main'],
-					outputs: ['main', 'main', 'main', 'main'],
-					outputNames: ['0', '1', '2', '3'],
-					properties: [
-						{
-							displayName: 'Value1',
-							name: 'value1',
-							type: 'string',
-							default: 'default-value1',
-						},
-						{
-							displayName: 'Value2',
-							name: 'value2',
-							type: 'string',
-							default: 'default-value2',
-						},
-					],
-				},
-			},
-		},
-	};
-
-	getByName(nodeType: string): INodeType | IVersionedNodeType {
-		return this.nodeTypes[nodeType].type;
-	}
-
-	getByNameAndVersion(nodeType: string, version?: number): INodeType {
-		return NodeHelpers.getVersionedNodeType(this.nodeTypes[nodeType].type, version);
-	}
-}
-
 let nodeTypesInstance: NodeTypesClass | undefined;
 
 export function NodeTypes(): NodeTypesClass {
@@ -689,3 +555,7 @@ export function WorkflowExecuteAdditionalData(): IWorkflowExecuteAdditionalData 
 		userId: '123',
 	};
 }
+
+const BASE_DIR = path.resolve(__dirname, '..');
+export const readJsonFileSync = <T>(filePath: string) =>
+	JSON.parse(readFileSync(path.join(BASE_DIR, filePath), 'utf-8')) as T;

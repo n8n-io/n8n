@@ -30,20 +30,20 @@
 			</div>
 		</div>
 		<div
-			:class="$style.divider"
 			v-if="version.description || (version.nodes && version.nodes.length)"
+			:class="$style.divider"
 		></div>
 		<div>
 			<div
 				v-if="version.description"
-				v-html="version.description"
 				:class="$style.description"
+				v-html="version.description"
 			></div>
 			<div v-if="version.nodes && version.nodes.length > 0" :class="$style.nodes">
 				<NodeIcon
 					v-for="node in version.nodes"
 					:key="node.name"
-					:nodeType="node"
+					:node-type="node"
 					:title="$options.nodeName(node)"
 				/>
 			</div>

@@ -10,7 +10,7 @@
 			}"
 		>
 			<div id="banners" :class="$style.banners">
-				<banner-stack v-if="!isDemoMode" />
+				<BannerStack v-if="!isDemoMode" />
 			</div>
 			<div id="header" :class="$style.header">
 				<router-view name="header"></router-view>
@@ -23,7 +23,7 @@
 					<keep-alive v-if="$route.meta.keepWorkflowAlive" include="NodeView" :max="1">
 						<component :is="Component" />
 					</keep-alive>
-					<component v-else :is="Component" />
+					<component :is="Component" v-else />
 				</router-view>
 			</div>
 			<Modals />
@@ -102,11 +102,15 @@ export default defineComponent({
 			loading: true,
 		};
 	},
-	methods: {
-		logHiringBanner() {
-			if (this.settingsStore.isHiringBannerEnabled && !this.isDemoMode) {
-				console.log(HIRING_BANNER);
+	watch: {
+		// eslint-disable-next-line @typescript-eslint/naming-convention
+		async 'usersStore.currentUser'(currentValue, previousValue) {
+			if (currentValue && !previousValue) {
+				await initializeAuthenticatedFeatures();
 			}
+		},
+		defaultLocale(newLocale) {
+			void loadLanguage(newLocale);
 		},
 	},
 	async mounted() {
@@ -117,15 +121,11 @@ export default defineComponent({
 		void useExternalHooks().run('app.mount');
 		this.loading = false;
 	},
-	watch: {
-		// eslint-disable-next-line @typescript-eslint/naming-convention
-		async 'usersStore.currentUser'(currentValue, previousValue) {
-			if (currentValue && !previousValue) {
-				await initializeAuthenticatedFeatures();
+	methods: {
+		logHiringBanner() {
+			if (this.settingsStore.isHiringBannerEnabled && !this.isDemoMode) {
+				console.log(HIRING_BANNER);
 			}
-		},
-		defaultLocale(newLocale) {
-			void loadLanguage(newLocale);
 		},
 	},
 });

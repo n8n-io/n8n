@@ -1,21 +1,18 @@
 import { Request } from 'express';
-import { Container, Service } from 'typedi';
 import { v4 as uuid } from 'uuid';
 import config from '@/config';
-import type { Role } from '@db/entities/Role';
-import { RoleRepository } from '@db/repositories/role.repository';
 import { SettingsRepository } from '@db/repositories/settings.repository';
 import { UserRepository } from '@db/repositories/user.repository';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
-import { eventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
+import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { License } from '@/License';
 import { LICENSE_FEATURES, inE2ETests } from '@/constants';
-import { NoAuthRequired, Patch, Post, RestController } from '@/decorators';
+import { Patch, Post, RestController } from '@/decorators';
 import type { UserSetupPayload } from '@/requests';
 import type { BooleanLicenseFeature, IPushDataType } from '@/Interfaces';
 import { MfaService } from '@/Mfa/mfa.service';
 import { Push } from '@/push';
-import { CacheService } from '@/services/cache.service';
+import { CacheService } from '@/services/cache/cache.service';
 import { PasswordUtility } from '@/services/password.utility';
 
 if (!inE2ETests) {
@@ -40,7 +37,6 @@ const tablesToTruncate = [
 	'installed_packages',
 	'installed_nodes',
 	'user',
-	'role',
 	'variables',
 ];
 
@@ -59,13 +55,11 @@ type PushRequest = Request<
 	{},
 	{
 		type: IPushDataType;
-		sessionId: string;
+		pushRef: string;
 		data: object;
 	}
 >;
 
-@Service()
-@NoAuthRequired()
 @RestController('/e2e')
 export class E2EController {
 	private enabledFeatures: Record<BooleanLicenseFeature, boolean> = {
@@ -89,19 +83,20 @@ export class E2EController {
 
 	constructor(
 		license: License,
-		private roleRepo: RoleRepository,
-		private settingsRepo: SettingsRepository,
-		private userRepo: UserRepository,
-		private workflowRunner: ActiveWorkflowRunner,
-		private mfaService: MfaService,
-		private cacheService: CacheService,
+		private readonly settingsRepo: SettingsRepository,
+		private readonly userRepo: UserRepository,
+		private readonly workflowRunner: ActiveWorkflowRunner,
+		private readonly mfaService: MfaService,
+		private readonly cacheService: CacheService,
+		private readonly push: Push,
 		private readonly passwordUtility: PasswordUtility,
+		private readonly eventBus: MessageEventBus,
 	) {
 		license.isFeatureEnabled = (feature: BooleanLicenseFeature) =>
 			this.enabledFeatures[feature] ?? false;
 	}
 
-	@Post('/reset')
+	@Post('/reset', { skipAuth: true })
 	async reset(req: ResetRequest) {
 		this.resetFeatures();
 		await this.resetLogStreaming();
@@ -111,24 +106,18 @@ export class E2EController {
 		await this.setupUserManagement(req.body.owner, req.body.members, req.body.admin);
 	}
 
-	@Post('/push')
-	async push(req: PushRequest) {
-		const pushInstance = Container.get(Push);
-
-		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-		// @ts-ignore
-		const sessionId = Object.keys(pushInstance.getBackend().connections as object)[0];
-
-		pushInstance.send(req.body.type, req.body.data, sessionId);
+	@Post('/push', { skipAuth: true })
+	async pushSend(req: PushRequest) {
+		this.push.broadcast(req.body.type, req.body.data);
 	}
 
-	@Patch('/feature')
+	@Patch('/feature', { skipAuth: true })
 	setFeature(req: Request<{}, {}, { feature: BooleanLicenseFeature; enabled: boolean }>) {
 		const { enabled, feature } = req.body;
 		this.enabledFeatures[feature] = enabled;
 	}
 
-	@Patch('/queue-mode')
+	@Patch('/queue-mode', { skipAuth: true })
 	async setQueueMode(req: Request<{}, {}, { enabled: boolean }>) {
 		const { enabled } = req.body;
 		config.set('executions.mode', enabled ? 'queue' : 'regular');
@@ -147,15 +136,15 @@ export class E2EController {
 	}
 
 	private async resetLogStreaming() {
-		for (const id in eventBus.destinations) {
-			await eventBus.removeDestination(id, false);
+		for (const id in this.eventBus.destinations) {
+			await this.eventBus.removeDestination(id, false);
 		}
 	}
 
 	private async truncateAll() {
 		for (const table of tablesToTruncate) {
 			try {
-				const { connection } = this.roleRepo.manager;
+				const { connection } = this.settingsRepo.manager;
 				await connection.query(
 					`DELETE FROM ${table}; DELETE FROM sqlite_sequence WHERE name=${table};`,
 				);
@@ -170,27 +159,12 @@ export class E2EController {
 		members: UserSetupPayload[],
 		admin: UserSetupPayload,
 	) {
-		const roles: Array<[Role['name'], Role['scope']]> = [
-			['owner', 'global'],
-			['member', 'global'],
-			['admin', 'global'],
-			['owner', 'workflow'],
-			['owner', 'credential'],
-			['user', 'credential'],
-			['editor', 'workflow'],
-		];
-
-		const [{ id: globalOwnerRoleId }, { id: globalMemberRoleId }, { id: globalAdminRoleId }] =
-			await this.roleRepo.save(
-				roles.map(([name, scope], index) => ({ name, scope, id: (index + 1).toString() })),
-			);
-
-		const instanceOwner = {
+		const instanceOwner = this.userRepo.create({
 			id: uuid(),
 			...owner,
 			password: await this.passwordUtility.hash(owner.password),
-			globalRoleId: globalOwnerRoleId,
-		};
+			role: 'global:owner',
+		});
 
 		if (owner?.mfaSecret && owner.mfaRecoveryCodes?.length) {
 			const { encryptedRecoveryCodes, encryptedSecret } =
@@ -199,12 +173,12 @@ export class E2EController {
 			instanceOwner.mfaRecoveryCodes = encryptedRecoveryCodes;
 		}
 
-		const adminUser = {
+		const adminUser = this.userRepo.create({
 			id: uuid(),
 			...admin,
 			password: await this.passwordUtility.hash(admin.password),
-			globalRoleId: globalAdminRoleId,
-		};
+			role: 'global:admin',
+		});
 
 		const users = [];
 
@@ -216,7 +190,7 @@ export class E2EController {
 					id: uuid(),
 					...payload,
 					password: await this.passwordUtility.hash(password),
-					globalRoleId: globalMemberRoleId,
+					role: 'global:member',
 				}),
 			);
 		}

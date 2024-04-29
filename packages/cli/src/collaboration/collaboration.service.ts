@@ -10,6 +10,7 @@ import type { IActiveWorkflowUsersChanged } from '../Interfaces';
 import type { OnPushMessageEvent } from '@/push/types';
 import { CollaborationState } from '@/collaboration/collaboration.state';
 import { TIME } from '@/constants';
+import { UserRepository } from '@/databases/repositories/user.repository';
 
 /**
  * After how many minutes of inactivity a user should be removed
@@ -28,6 +29,7 @@ export class CollaborationService {
 		private readonly push: Push,
 		private readonly state: CollaborationState,
 		private readonly userService: UserService,
+		private readonly userRepository: UserRepository,
 	) {
 		if (!push.isBidirectional) {
 			logger.warn(
@@ -89,7 +91,10 @@ export class CollaborationService {
 		if (workflowUserIds.length === 0) {
 			return;
 		}
-		const users = await this.userService.getByIds(this.userService.getManager(), workflowUserIds);
+		const users = await this.userRepository.getByIds(
+			this.userService.getManager(),
+			workflowUserIds,
+		);
 
 		const msgData: IActiveWorkflowUsersChanged = {
 			workflowId,

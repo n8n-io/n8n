@@ -1,11 +1,12 @@
 <template>
 	<Modal
 		width="460px"
+		max-height="75%"
 		:title="modalTitle"
-		:eventBus="modalBus"
+		:event-bus="modalBus"
 		:name="WORKFLOW_SHARE_MODAL_KEY"
 		:center="true"
-		:beforeClose="onCloseModal"
+		:before-close="onCloseModal"
 	>
 		<template #content>
 			<div v-if="!isSharingEnabled" :class="$style.container">
@@ -30,16 +31,16 @@
 						})
 					}}
 				</n8n-info-tip>
-				<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
+				<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]" :class="$style.content">
 					<n8n-user-select
 						v-if="workflowPermissions.updateSharing"
 						class="mb-s"
 						size="large"
 						:users="usersList"
-						:currentUserId="currentUser.id"
+						:current-user-id="currentUser.id"
 						:placeholder="$locale.baseText('workflows.shareModal.select.placeholder')"
 						data-test-id="workflow-sharing-modal-users-select"
-						@update:modelValue="onAddSharee"
+						@update:model-value="onAddSharee"
 					>
 						<template #prefix>
 							<n8n-icon icon="search" />
@@ -48,16 +49,17 @@
 					<n8n-users-list
 						:actions="[]"
 						:users="sharedWithList"
-						:currentUserId="currentUser.id"
+						:current-user-id="currentUser.id"
 						:delete-label="$locale.baseText('workflows.shareModal.list.delete')"
 						:readonly="!workflowPermissions.updateSharing"
+						:class="$style.usersList"
 					>
 						<template #actions="{ user }">
 							<n8n-select
 								:class="$style.roleSelect"
-								modelValue="editor"
+								model-value="editor"
 								size="small"
-								@update:modelValue="onRoleAction(user, $event)"
+								@update:model-value="onRoleAction(user, $event)"
 							>
 								<n8n-option :label="$locale.baseText('workflows.roles.editor')" value="editor" />
 								<n8n-option :class="$style.roleSelectRemoveOption" value="remove">
@@ -151,7 +153,7 @@ import type { BaseTextKey } from '@/plugins/i18n';
 import { isNavigationFailure } from 'vue-router';
 
 export default defineComponent({
-	name: 'workflow-share-modal',
+	name: 'WorkflowShareModal',
 	components: {
 		Modal,
 	},
@@ -253,6 +255,16 @@ export default defineComponent({
 			);
 		},
 	},
+	watch: {
+		workflow(workflow) {
+			if (workflow.sharedWith) {
+				this.sharedWith = workflow.sharedWith;
+			}
+		},
+	},
+	mounted() {
+		void this.initialize();
+	},
 	methods: {
 		async onSave() {
 			if (this.loading) {
@@ -262,7 +274,7 @@ export default defineComponent({
 			this.loading = true;
 
 			const saveWorkflowPromise = async () => {
-				return new Promise<string>((resolve) => {
+				return await new Promise<string>((resolve) => {
 					if (this.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 						nodeViewEventBus.emit('saveWorkflow', () => {
 							resolve(this.workflow.id);
@@ -429,7 +441,7 @@ export default defineComponent({
 				);
 
 				if (shouldSave === MODAL_CONFIRM) {
-					return this.onSave();
+					return await this.onSave();
 				}
 			}
 
@@ -472,22 +484,30 @@ export default defineComponent({
 			this.loading = false;
 		},
 	},
-	mounted() {
-		void this.initialize();
-	},
-	watch: {
-		workflow(workflow) {
-			if (workflow.sharedWith) {
-				this.sharedWith = workflow.sharedWith;
-			}
-		},
-	},
 });
 </script>
 
 <style module lang="scss">
+.container {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+}
+
 .container > * {
 	overflow-wrap: break-word;
+}
+
+.content {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	overflow-y: auto;
+}
+
+.usersList {
+	height: 100%;
+	overflow-y: auto;
 }
 
 .actionButtons {

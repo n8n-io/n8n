@@ -1,3 +1,4 @@
+import { DateTime } from 'luxon';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -29,8 +30,45 @@ import {
 } from '../Form/common.descriptions';
 import { formWebhook } from '../Form/utils';
 import { updateDisplayOptions } from '../../utils/utilities';
-
 import { Webhook } from '../Webhook/Webhook.node';
+
+const toWaitAmount: INodeProperties = {
+	displayName: 'Wait Amount',
+	name: 'amount',
+	type: 'number',
+	typeOptions: {
+		minValue: 0,
+		numberPrecision: 2,
+	},
+	default: 1,
+	description: 'The time to wait',
+};
+
+const unitSelector: INodeProperties = {
+	displayName: 'Wait Unit',
+	name: 'unit',
+	type: 'options',
+	options: [
+		{
+			name: 'Seconds',
+			value: 'seconds',
+		},
+		{
+			name: 'Minutes',
+			value: 'minutes',
+		},
+		{
+			name: 'Hours',
+			value: 'hours',
+		},
+		{
+			name: 'Days',
+			value: 'days',
+		},
+	],
+	default: 'hours',
+	description: 'The time unit of the Wait Amount value',
+};
 
 const waitTimeProperties: INodeProperties[] = [
 	{
@@ -189,7 +227,7 @@ export class Wait extends Webhook {
 		name: 'wait',
 		icon: 'fa:pause-circle',
 		group: ['organization'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Wait before continue with execution',
 		defaults: {
 			name: 'Wait',
@@ -282,50 +320,46 @@ export class Wait extends Webhook {
 			//         resume:timeInterval
 			// ----------------------------------
 			{
-				displayName: 'Wait Amount',
-				name: 'amount',
-				type: 'number',
+				...toWaitAmount,
 				displayOptions: {
 					show: {
 						resume: ['timeInterval'],
+						'@version': [1],
 					},
 				},
-				typeOptions: {
-					minValue: 0,
-					numberPrecision: 2,
-				},
-				default: 1,
-				description: 'The time to wait',
 			},
 			{
-				displayName: 'Wait Unit',
-				name: 'unit',
-				type: 'options',
+				...toWaitAmount,
+				default: 5,
 				displayOptions: {
 					show: {
 						resume: ['timeInterval'],
 					},
+					hide: {
+						'@version': [1],
+					},
 				},
-				options: [
-					{
-						name: 'Seconds',
-						value: 'seconds',
+			},
+			{
+				...unitSelector,
+				displayOptions: {
+					show: {
+						resume: ['timeInterval'],
+						'@version': [1],
 					},
-					{
-						name: 'Minutes',
-						value: 'minutes',
+				},
+			},
+			{
+				...unitSelector,
+				default: 'seconds',
+				displayOptions: {
+					show: {
+						resume: ['timeInterval'],
 					},
-					{
-						name: 'Hours',
-						value: 'hours',
+					hide: {
+						'@version': [1],
 					},
-					{
-						name: 'Days',
-						value: 'days',
-					},
-				],
-				default: 'hours',
-				description: 'The time unit of the Wait Amount value',
+				},
 			},
 
 			// ----------------------------------
@@ -392,15 +426,15 @@ export class Wait extends Webhook {
 
 	async webhook(context: IWebhookFunctions) {
 		const resume = context.getNodeParameter('resume', 0) as string;
-		if (resume === 'form') return formWebhook(context);
-		return super.webhook(context);
+		if (resume === 'form') return await formWebhook(context);
+		return await super.webhook(context);
 	}
 
 	async execute(context: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const resume = context.getNodeParameter('resume', 0) as string;
 
 		if (['webhook', 'form'].includes(resume)) {
-			return this.configureAndPutToWait(context);
+			return await this.configureAndPutToWait(context);
 		}
 
 		let waitTill: Date;
@@ -420,12 +454,17 @@ export class Wait extends Webhook {
 
 			waitAmount *= 1000;
 
+			// Timezone does not change relative dates, since they are just
+			// a number of seconds added to the current timestamp
 			waitTill = new Date(new Date().getTime() + waitAmount);
 		} else {
-			// resume: dateTime
-			const dateTime = context.getNodeParameter('dateTime', 0) as string;
+			const dateTimeStr = context.getNodeParameter('dateTime', 0) as string;
 
-			waitTill = new Date(dateTime);
+			waitTill = DateTime.fromFormat(dateTimeStr, "yyyy-MM-dd'T'HH:mm:ss", {
+				zone: context.getTimezone(),
+			})
+				.toUTC()
+				.toJSDate();
 		}
 
 		const waitValue = Math.max(waitTill.getTime() - new Date().getTime(), 0);
@@ -433,14 +472,14 @@ export class Wait extends Webhook {
 		if (waitValue < 65000) {
 			// If wait time is shorter than 65 seconds leave execution active because
 			// we just check the database every 60 seconds.
-			return new Promise((resolve) => {
+			return await new Promise((resolve) => {
 				const timer = setTimeout(() => resolve([context.getInputData()]), waitValue);
 				context.onExecutionCancellation(() => clearTimeout(timer));
 			});
 		}
 
 		// If longer than 65 seconds put execution to wait
-		return this.putToWait(context, waitTill);
+		return await this.putToWait(context, waitTill);
 	}
 
 	private async configureAndPutToWait(context: IExecuteFunctions) {
@@ -471,7 +510,7 @@ export class Wait extends Webhook {
 			}
 		}
 
-		return this.putToWait(context, waitTill);
+		return await this.putToWait(context, waitTill);
 	}
 
 	private async putToWait(context: IExecuteFunctions, waitTill: Date) {

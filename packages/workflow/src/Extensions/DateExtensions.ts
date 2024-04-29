@@ -216,30 +216,57 @@ function plus(
 	return DateTime.fromJSDate(date).plus(duration).toJSDate();
 }
 
+function toDateTime(date: Date | DateTime): DateTime {
+	if (isDateTime(date)) return date;
+
+	return DateTime.fromJSDate(date);
+}
+
+function toInt(date: Date | DateTime): number {
+	if (isDateTime(date)) {
+		return date.toMillis();
+	}
+	return date.getTime();
+}
+
+const toFloat = toInt;
+
+function toBoolean() {
+	return undefined;
+}
+
 endOfMonth.doc = {
 	name: 'endOfMonth',
 	returnType: 'Date',
+	hidden: true,
 	description: 'Transforms a date to the last possible moment that lies within the month.',
+	section: 'edit',
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-endOfMonth',
 };
 
 isDst.doc = {
 	name: 'isDst',
 	returnType: 'boolean',
+	hidden: true,
 	description: 'Checks if a Date is within Daylight Savings Time.',
+	section: 'query',
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-isDst',
 };
 
 isWeekend.doc = {
 	name: 'isWeekend',
 	returnType: 'boolean',
+	hidden: true,
 	description: 'Checks if the Date falls on a Saturday or Sunday.',
+	section: 'query',
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-isWeekend',
 };
 
 beginningOf.doc = {
 	name: 'beginningOf',
 	description: 'Transform a Date to the start of the given time period. Default unit is `week`.',
+	section: 'edit',
+	hidden: true,
 	returnType: 'Date',
 	args: [{ name: 'unit?', type: 'DurationUnit' }],
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-beginningOf',
@@ -248,6 +275,7 @@ beginningOf.doc = {
 extract.doc = {
 	name: 'extract',
 	description: 'Extracts the part defined in `datePart` from a Date. Default unit is `week`.',
+	section: 'query',
 	returnType: 'number',
 	args: [{ name: 'datePart?', type: 'DurationUnit' }],
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-extract',
@@ -257,13 +285,15 @@ format.doc = {
 	name: 'format',
 	description: 'Formats a Date in the given structure.',
 	returnType: 'string',
-	args: [{ name: 'fmt', type: 'TimeFormat' }],
+	section: 'format',
+	args: [{ name: 'fmt', default: 'yyyy-MM-dd', type: 'TimeFormat' }],
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-format',
 };
 
 isBetween.doc = {
 	name: 'isBetween',
 	description: 'Checks if a Date is between two given dates.',
+	section: 'query',
 	returnType: 'boolean',
 	args: [
 		{ name: 'date1', type: 'Date|string' },
@@ -275,6 +305,7 @@ isBetween.doc = {
 isInLast.doc = {
 	name: 'isInLast',
 	description: 'Checks if a Date is within a given time period. Default unit is `minute`.',
+	section: 'query',
 	returnType: 'boolean',
 	args: [
 		{ name: 'n', type: 'number' },
@@ -283,9 +314,19 @@ isInLast.doc = {
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-isInLast',
 };
 
+toDateTime.doc = {
+	name: 'toDateTime',
+	description: 'Convert a JavaScript Date to a Luxon DateTime.',
+	section: 'query',
+	returnType: 'DateTime',
+	hidden: true,
+	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/dates/#date-toDateTime',
+};
+
 minus.doc = {
 	name: 'minus',
-	description: 'Subtracts a given time period from a Date. Default unit is `minute`.',
+	description: 'Subtracts a given time period from a Date. Default unit is `milliseconds`.',
+	section: 'edit',
 	returnType: 'Date',
 	args: [
 		{ name: 'n', type: 'number' },
@@ -296,7 +337,8 @@ minus.doc = {
 
 plus.doc = {
 	name: 'plus',
-	description: 'Adds a given time period to a Date. Default unit is `minute`.',
+	description: 'Adds a given time period to a Date. Default unit is `milliseconds`.',
+	section: 'edit',
 	returnType: 'Date',
 	args: [
 		{ name: 'n', type: 'number' },
@@ -318,5 +360,9 @@ export const dateExtensions: ExtensionMap = {
 		minus,
 		plus,
 		format,
+		toDateTime,
+		toInt,
+		toFloat,
+		toBoolean,
 	},
 };

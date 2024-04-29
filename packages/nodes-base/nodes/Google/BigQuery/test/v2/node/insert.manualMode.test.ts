@@ -10,7 +10,7 @@ jest.mock('../../../v2/transport', () => {
 	const originalModule = jest.requireActual('../../../v2/transport');
 	return {
 		...originalModule,
-		googleApiRequest: jest.fn(async (method: string, resource: string) => {
+		googleApiRequest: jest.fn(async (method: IHttpRequestMethods, resource: string) => {
 			if (
 				resource ===
 					'/v2/projects/test-project/datasets/bigquery_node_dev_test_dataset/tables/test_json' &&
@@ -75,6 +75,6 @@ describe('Test Google BigQuery V2, insert define manually', () => {
 	};
 
 	for (const testData of tests) {
-		test(testData.description, async () => testNode(testData, nodeTypes));
+		test(testData.description, async () => await testNode(testData, nodeTypes));
 	}
 });

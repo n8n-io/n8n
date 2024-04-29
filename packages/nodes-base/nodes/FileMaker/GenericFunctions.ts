@@ -4,10 +4,9 @@ import type {
 	IDataObject,
 	INodePropertyOptions,
 	JsonObject,
+	IRequestOptions,
 } from 'n8n-workflow';
 import { ApplicationError, NodeApiError, NodeOperationError } from 'n8n-workflow';
-
-import type { OptionsWithUri } from 'request';
 
 interface ScriptsOptions {
 	script?: any;
@@ -40,7 +39,7 @@ export async function getToken(this: ILoadOptionsFunctions | IExecuteFunctions):
 	const url = `https://${host}/fmi/data/v1/databases/${db}/sessions`;
 
 	// Reset all values
-	const requestOptions: OptionsWithUri = {
+	const requestOptions: IRequestOptions = {
 		uri: url,
 		headers: {},
 		method: 'POST',
@@ -114,7 +113,7 @@ export async function layoutsApiRequest(
 	const db = credentials.db as string;
 
 	const url = `https://${host}/fmi/data/v1/databases/${db}/layouts`;
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			Authorization: `Bearer ${token}`,
 		},
@@ -146,7 +145,7 @@ export async function getFields(this: ILoadOptionsFunctions): Promise<any> {
 	const db = credentials.db as string;
 
 	const url = `https://${host}/fmi/data/v1/databases/${db}/layouts/${layout}`;
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			Authorization: `Bearer ${token}`,
 		},
@@ -177,7 +176,7 @@ export async function getPortals(this: ILoadOptionsFunctions): Promise<any> {
 	const db = credentials.db as string;
 
 	const url = `https://${host}/fmi/data/v1/databases/${db}/layouts/${layout}`;
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			Authorization: `Bearer ${token}`,
 		},
@@ -222,7 +221,7 @@ export async function getScripts(this: ILoadOptionsFunctions): Promise<any> {
 	const db = credentials.db as string;
 
 	const url = `https://${host}/fmi/data/v1/databases/${db}/scripts`;
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			Authorization: `Bearer ${token}`,
 		},
@@ -254,7 +253,7 @@ export async function logout(
 	const url = `https://${host}/fmi/data/v1/databases/${db}/sessions/${token}`;
 
 	// Reset all values
-	const requestOptions: OptionsWithUri = {
+	const requestOptions: IRequestOptions = {
 		uri: url,
 		headers: {},
 		method: 'DELETE',

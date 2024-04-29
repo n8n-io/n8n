@@ -1,10 +1,10 @@
 <template>
 	<ModalDrawer
 		:name="VALUE_SURVEY_MODAL_KEY"
-		:eventBus="modalBus"
-		:beforeClose="closeDialog"
+		:event-bus="modalBus"
+		:before-close="closeDialog"
 		:modal="false"
-		:wrapperClosable="false"
+		:wrapper-closable="false"
 		direction="btt"
 		width="120px"
 		:class="$style.valueSurvey"
@@ -22,8 +22,8 @@
 							<n8n-button
 								type="tertiary"
 								:label="(value - 1).toString()"
-								@click="selectSurveyValue((value - 1).toString())"
 								square
+								@click="selectSurveyValue((value - 1).toString())"
 							/>
 						</div>
 					</div>
@@ -37,10 +37,10 @@
 						<n8n-input
 							v-model="form.email"
 							placeholder="Your email address"
-							@update:modelValue="onInputChange"
+							@update:model-value="onInputChange"
 						/>
 						<div :class="$style.button">
-							<n8n-button label="Send" float="right" @click="send" :disabled="!isEmailValid" />
+							<n8n-button label="Send" float="right" :disabled="!isEmailValid" @click="send" />
 						</div>
 					</div>
 					<div :class="$style.disclaimer">
@@ -62,7 +62,6 @@ import type { IN8nPromptResponse } from '@/Interface';
 
 import ModalDrawer from '@/components/ModalDrawer.vue';
 
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { createEventBus } from 'n8n-design-system/utils';
@@ -76,11 +75,10 @@ const DEFAULT_FEEDBACK_TITLE =
 
 export default defineComponent({
 	name: 'ValueSurvey',
-	mixins: [workflowHelpers],
-	props: ['isActive'],
 	components: {
 		ModalDrawer,
 	},
+	props: ['isActive'],
 	setup() {
 		return {
 			...useToast(),

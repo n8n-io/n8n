@@ -223,14 +223,17 @@ export const keysToLowercase = <T>(headers: T) => {
  * @param privateKey - The private key to format.
  * @returns The formatted private key.
  */
-export function formatPrivateKey(privateKey: string): string {
+export function formatPrivateKey(privateKey: string, keyIsPublic = false): string {
+	let regex = /(PRIVATE KEY|CERTIFICATE)/;
+	if (keyIsPublic) {
+		regex = /(PUBLIC KEY)/;
+	}
 	if (!privateKey || /\n/.test(privateKey)) {
 		return privateKey;
 	}
 	let formattedPrivateKey = '';
 	const parts = privateKey.split('-----').filter((item) => item !== '');
 	parts.forEach((part) => {
-		const regex = /(PRIVATE KEY|CERTIFICATE)/;
 		if (regex.test(part)) {
 			formattedPrivateKey += `-----${part}-----`;
 		} else {
@@ -326,3 +329,20 @@ export function preparePairedItemDataArray(
 	if (Array.isArray(pairedItem)) return pairedItem;
 	return [pairedItem];
 }
+
+export const sanitazeDataPathKey = (item: IDataObject, key: string) => {
+	if (item[key] !== undefined) {
+		return key;
+	}
+
+	if (
+		(key.startsWith("['") && key.endsWith("']")) ||
+		(key.startsWith('["') && key.endsWith('"]'))
+	) {
+		key = key.slice(2, -2);
+		if (item[key] !== undefined) {
+			return key;
+		}
+	}
+	return key;
+};

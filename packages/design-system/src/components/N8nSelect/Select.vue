@@ -9,39 +9,34 @@
 		<div v-if="$slots.prepend" :class="$style.prepend">
 			<slot name="prepend" />
 		</div>
-		<el-select
+		<ElSelect
 			v-bind="{ ...$props, ...listeners }"
-			:modelValue="modelValue"
+			ref="innerSelect"
+			:model-value="modelValue"
 			:size="computedSize"
 			:class="$style[classes]"
 			:popper-class="popperClass"
-			ref="innerSelect"
 		>
-			<template #prefix v-if="$slots.prefix">
+			<template v-if="$slots.prefix" #prefix>
 				<slot name="prefix" />
 			</template>
-			<template #suffix v-if="$slots.suffix">
+			<template v-if="$slots.suffix" #suffix>
 				<slot name="suffix" />
 			</template>
 			<slot></slot>
-		</el-select>
+		</ElSelect>
 	</div>
 </template>
 
 <script lang="ts">
 import { ElSelect } from 'element-plus';
-import { defineComponent } from 'vue';
+import { type PropType, defineComponent } from 'vue';
+import type { SelectSize } from '@/types';
 
 type InnerSelectRef = InstanceType<typeof ElSelect>;
 
-export interface IProps {
-	size?: string;
-	limitPopperWidth?: string;
-	popperClass?: string;
-}
-
 export default defineComponent({
-	name: 'n8n-select',
+	name: 'N8nSelect',
 	components: {
 		ElSelect,
 	},
@@ -49,10 +44,8 @@ export default defineComponent({
 		...ElSelect.props,
 		modelValue: {},
 		size: {
-			type: String,
+			type: String as PropType<SelectSize>,
 			default: 'large',
-			validator: (value: string): boolean =>
-				['mini', 'small', 'medium', 'large', 'xlarge'].includes(value),
 		},
 		placeholder: {
 			type: String,
@@ -101,7 +94,7 @@ export default defineComponent({
 				return acc;
 			}, {});
 		},
-		computedSize(): string | undefined {
+		computedSize(): InnerSelectRef['$props']['size'] {
 			if (this.size === 'medium') {
 				return 'default';
 			}

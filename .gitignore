@@ -22,4 +22,5 @@ cypress/screenshots/*
 cypress/downloads/*
 *.swp
 CHANGELOG-*.md
-packages/cli/oclif.manifest.json
+*.mdx
+build-storybook.log

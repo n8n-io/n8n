@@ -41,6 +41,7 @@ import type {
 	INodeOutputConfiguration,
 	INodeInputConfiguration,
 	GenericValue,
+	DisplayCondition,
 } from './Interfaces';
 import {
 	isFilterValue,
@@ -263,7 +264,8 @@ const commonCORSParameters: INodeProperties[] = [
 		name: 'allowedOrigins',
 		type: 'string',
 		default: '*',
-		description: 'The origin(s) to allow cross-origin non-preflight requests from in a browser',
+		description:
+			'Comma-separated list of URLs allowed for cross-origin non-preflight requests. Use * (default) to allow all origins.',
 	},
 ];
 
@@ -277,10 +279,98 @@ export function applySpecialNodeParameters(nodeType: INodeType): void {
 	}
 	if (nodeType.webhook && supportsCORS) {
 		const optionsProperty = properties.find(({ name }) => name === 'options');
-		if (optionsProperty) optionsProperty.options!.push(...commonCORSParameters);
+		if (optionsProperty)
+			optionsProperty.options = [
+				...commonCORSParameters,
+				...(optionsProperty.options as INodePropertyOptions[]),
+			];
 		else properties.push(...commonCORSParameters);
 	}
 }
+
+const getPropertyValues = (
+	nodeValues: INodeParameters,
+	propertyName: string,
+	node: Pick<INode, 'typeVersion'> | null,
+	nodeValuesRoot: INodeParameters,
+) => {
+	let value;
+	if (propertyName.charAt(0) === '/') {
+		// Get the value from the root of the node
+		value = get(nodeValuesRoot, propertyName.slice(1));
+	} else if (propertyName === '@version') {
+		value = node?.typeVersion || 0;
+	} else {
+		// Get the value from current level
+		value = get(nodeValues, propertyName);
+	}
+
+	if (value && typeof value === 'object' && '__rl' in value && value.__rl) {
+		value = value.value;
+	}
+
+	if (!Array.isArray(value)) {
+		return [value as NodeParameterValue];
+	} else {
+		return value as NodeParameterValue[];
+	}
+};
+
+const checkConditions = (
+	conditions: Array<NodeParameterValue | DisplayCondition>,
+	actualValues: NodeParameterValue[],
+) => {
+	return conditions.some((condition) => {
+		if (
+			condition &&
+			typeof condition === 'object' &&
+			condition._cnd &&
+			Object.keys(condition).length === 1
+		) {
+			const [key, targetValue] = Object.entries(condition._cnd)[0];
+
+			return actualValues.every((propertyValue) => {
+				if (key === 'eq') {
+					return isEqual(propertyValue, targetValue);
+				}
+				if (key === 'not') {
+					return !isEqual(propertyValue, targetValue);
+				}
+				if (key === 'gte') {
+					return (propertyValue as number) >= targetValue;
+				}
+				if (key === 'lte') {
+					return (propertyValue as number) <= targetValue;
+				}
+				if (key === 'gt') {
+					return (propertyValue as number) > targetValue;
+				}
+				if (key === 'lt') {
+					return (propertyValue as number) < targetValue;
+				}
+				if (key === 'between') {
+					const { from, to } = targetValue as { from: number; to: number };
+					return (propertyValue as number) >= from && (propertyValue as number) <= to;
+				}
+				if (key === 'includes') {
+					return (propertyValue as string).includes(targetValue);
+				}
+				if (key === 'startsWith') {
+					return (propertyValue as string).startsWith(targetValue);
+				}
+				if (key === 'endsWith') {
+					return (propertyValue as string).endsWith(targetValue);
+				}
+				if (key === 'regex') {
+					return new RegExp(targetValue as string).test(propertyValue as string);
+				}
+				return false;
+			});
+		}
+
+		return actualValues.includes(condition as NodeParameterValue);
+	});
+};
 
 /**
  * Returns if the parameter should be displayed or not
@@ -293,83 +383,38 @@ export function applySpecialNodeParameters(nodeType: INodeType): void {
 export function displayParameter(
 	nodeValues: INodeParameters,
 	parameter: INodeProperties | INodeCredentialDescription,
-	node: INode | null, // Allow null as it does also get used by credentials and they do not have versioning yet
+	node: Pick<INode, 'typeVersion'> | null, // Allow null as it does also get used by credentials and they do not have versioning yet
 	nodeValuesRoot?: INodeParameters,
 ) {
 	if (!parameter.displayOptions) {
 		return true;
 	}
 
+	const { show, hide } = parameter.displayOptions;
+
 	nodeValuesRoot = nodeValuesRoot || nodeValues;
 
-	let value;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const values: any[] = [];
-	if (parameter.displayOptions.show) {
+	if (show) {
 		// All the defined rules have to match to display parameter
-		for (const propertyName of Object.keys(parameter.displayOptions.show)) {
-			if (propertyName.charAt(0) === '/') {
-				// Get the value from the root of the node
-				value = get(nodeValuesRoot, propertyName.slice(1));
-			} else if (propertyName === '@version') {
-				value = node?.typeVersion || 0;
-			} else {
-				// Get the value from current level
-				value = get(nodeValues, propertyName);
-			}
-
-			if (value && typeof value === 'object' && '__rl' in value && value.__rl) {
-				value = value.value;
-			}
-
-			values.length = 0;
-			if (!Array.isArray(value)) {
-				values.push(value);
-			} else {
-				values.push.apply(values, value);
-			}
+		for (const propertyName of Object.keys(show)) {
+			const values = getPropertyValues(nodeValues, propertyName, node, nodeValuesRoot);
 
 			if (values.some((v) => typeof v === 'string' && v.charAt(0) === '=')) {
 				return true;
 			}
 
-			if (
-				values.length === 0 ||
-				!parameter.displayOptions.show[propertyName]!.some((v) => values.includes(v))
-			) {
+			if (values.length === 0 || !checkConditions(show[propertyName]!, values)) {
 				return false;
 			}
 		}
 	}
 
-	if (parameter.displayOptions.hide) {
+	if (hide) {
 		// Any of the defined hide rules have to match to hide the parameter
-		for (const propertyName of Object.keys(parameter.displayOptions.hide)) {
-			if (propertyName.charAt(0) === '/') {
-				// Get the value from the root of the node
-				value = get(nodeValuesRoot, propertyName.slice(1));
-			} else if (propertyName === '@version') {
-				value = node?.typeVersion || 0;
-			} else {
-				// Get the value from current level
-				value = get(nodeValues, propertyName);
-			}
+		for (const propertyName of Object.keys(hide)) {
+			const values = getPropertyValues(nodeValues, propertyName, node, nodeValuesRoot);
 
-			if (value && typeof value === 'object' && '__rl' in value && value.__rl) {
-				value = value.value;
-			}
-
-			values.length = 0;
-			if (!Array.isArray(value)) {
-				values.push(value);
-			} else {
-				values.push.apply(values, value);
-			}
-
-			if (
-				values.length !== 0 &&
-				parameter.displayOptions.hide[propertyName]!.some((v) => values.includes(v))
-			) {
+			if (values.length !== 0 && checkConditions(hide[propertyName]!, values)) {
 				return false;
 			}
 		}
@@ -391,7 +436,7 @@ export function displayParameterPath(
 	nodeValues: INodeParameters,
 	parameter: INodeProperties | INodeCredentialDescription,
 	path: string,
-	node: INode | null,
+	node: Pick<INode, 'typeVersion'> | null,
 ) {
 	let resolvedNodeValues = nodeValues;
 	if (path !== '') {
@@ -493,7 +538,7 @@ export function getParameterResolveOrder(
 	parameterDependencies: IParameterDependencies,
 ): number[] {
 	const executionOrder: number[] = [];
-	const indexToResolve = Array.from({ length: nodePropertiesArray.length }, (v, k) => k);
+	const indexToResolve = Array.from({ length: nodePropertiesArray.length }, (_, k) => k);
 	const resolvedParameters: string[] = [];
 
 	let index: number;
@@ -562,12 +607,13 @@ export function getParameterResolveOrder(
  * @param {boolean} [dataIsResolved=false] If nodeValues are already fully resolved (so that all default values got added already)
  * @param {INodeParameters} [nodeValuesRoot] The root node-parameter-data
  */
+// eslint-disable-next-line complexity
 export function getNodeParameters(
 	nodePropertiesArray: INodeProperties[],
 	nodeValues: INodeParameters | null,
 	returnDefaults: boolean,
 	returnNoneDisplayed: boolean,
-	node: INode | null,
+	node: Pick<INode, 'typeVersion'> | null,
 	onlySimpleTypes = false,
 	dataIsResolved = false,
 	nodeValuesRoot?: INodeParameters,
@@ -950,7 +996,7 @@ export function getNodeWebhooks(
 		) as boolean;
 		const path = getNodeWebhookPath(workflowId, node, nodeWebhookPath, isFullPath, restartWebhook);
 
-		const httpMethod = workflow.expression.getSimpleParameterValue(
+		const webhookMethods = workflow.expression.getSimpleParameterValue(
 			node,
 			webhookDescription.httpMethod,
 			mode,
@@ -959,7 +1005,7 @@ export function getNodeWebhooks(
 			'GET',
 		);
 
-		if (httpMethod === undefined) {
+		if (webhookMethods === undefined) {
 			// TODO: Use a proper logger
 			console.error(
 				`The webhook "${path}" for node "${node.name}" in workflow "${workflowId}" could not be added because the httpMethod is not defined.`,
@@ -972,15 +1018,20 @@ export function getNodeWebhooks(
 			webhookId = node.webhookId;
 		}
 
-		returnData.push({
-			httpMethod: httpMethod.toString() as IHttpRequestMethods,
-			node: node.name,
-			path,
-			webhookDescription,
-			workflowId,
-			workflowExecuteAdditionalData: additionalData,
-			webhookId,
-		});
+		String(webhookMethods)
+			.split(',')
+			.forEach((httpMethod) => {
+				if (!httpMethod) return;
+				returnData.push({
+					httpMethod: httpMethod.trim() as IHttpRequestMethods,
+					node: node.name,
+					path,
+					webhookDescription,
+					workflowId,
+					workflowExecuteAdditionalData: additionalData,
+					webhookId,
+				});
+			});
 	}
 
 	return returnData;
@@ -1064,9 +1115,8 @@ export function getNodeInputs(
 			{},
 		) || []) as ConnectionTypes[];
 	} catch (e) {
-		throw new ApplicationError('Could not calculate inputs dynamically for node', {
-			extra: { nodeName: node.name },
-		});
+		console.warn('Could not calculate inputs dynamically for node: ', node.name);
+		return [];
 	}
 }
 
@@ -1089,9 +1139,7 @@ export function getNodeOutputs(
 				{},
 			) || []) as ConnectionTypes[];
 		} catch (e) {
-			throw new ApplicationError('Could not calculate outputs dynamically for node', {
-				extra: { nodeName: node.name },
-			});
+			console.warn('Could not calculate outputs dynamically for node: ', node.name);
 		}
 	}
 
@@ -1230,6 +1278,11 @@ export const validateResourceMapperParameter = (
 	value: ResourceMapperValue,
 	skipRequiredCheck = false,
 ): Record<string, string[]> => {
+	// No issues to raise in automatic mapping mode, no user input to validate
+	if (value.mappingMode === 'autoMapInputData') {
+		return {};
+	}
+
 	const issues: Record<string, string[]> = {};
 	let fieldWordSingular =
 		nodeProperties.typeOptions?.resourceMapper?.fieldWords?.singular || 'Field';
@@ -1341,6 +1394,7 @@ function isINodeParameterResourceLocator(value: unknown): value is INodeParamete
  * @param {INodeParameters} nodeValues The values of the node
  * @param {string} path The path to the properties
  */
+// eslint-disable-next-line complexity
 export function getParameterIssues(
 	nodeProperties: INodeProperties,
 	nodeValues: INodeParameters,

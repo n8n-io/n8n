@@ -1,11 +1,5 @@
 import { createEventBus } from '../event-bus';
 
-// @TODO: Remove when conflicting vitest and jest globals are reconciled
-declare global {
-	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
-	const vi: (typeof import('vitest'))['vitest'];
-}
-
 describe('createEventBus()', () => {
 	const eventBus = createEventBus();
 

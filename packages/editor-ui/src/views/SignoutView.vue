@@ -15,6 +15,9 @@ export default defineComponent({
 	computed: {
 		...mapStores(useUsersStore),
 	},
+	mounted() {
+		void this.logout();
+	},
 	methods: {
 		async logout() {
 			try {
@@ -24,9 +27,6 @@ export default defineComponent({
 				this.showError(e, this.$locale.baseText('auth.signout.error'));
 			}
 		},
-	},
-	mounted() {
-		void this.logout();
 	},
 });
 </script>

@@ -1,5 +1,5 @@
 import { validateFieldType } from '@/TypeValidation';
-import type { DateTime } from 'luxon';
+import { DateTime } from 'luxon';
 
 const VALID_ISO_DATES = [
 	'1994-11-05T08:15:30-05:00',
@@ -30,12 +30,18 @@ const VALID_RFC_DATES = [
 
 const VALID_SQL_DATES = ['2008-11-11', '2008-11-11 13:23:44'];
 
+const OTHER_VALID_DATES = [
+	'Wed, 17 May 2023 10:52:32',
+	'SMT, 17 May 2023 10:52:32',
+	'1-Feb-2024',
+	new Date(),
+	DateTime.now(),
+];
+
 const INVALID_DATES = [
 	'1994-11-05M08:15:30-05:00',
 	'18-05-2020',
 	'',
-	'Wed, 17 May 2023 10:52:32',
-	'SMT, 17 May 2023 10:52:32',
 	'1685084980', // We are not supporting timestamps
 	'1685085012135',
 	1685084980,
@@ -45,40 +51,38 @@ const INVALID_DATES = [
 ];
 
 describe('Type Validation', () => {
-	it('should validate and cast ISO dates', () => {
-		VALID_ISO_DATES.forEach((date) => {
+	describe('Dates', () => {
+		test.each(VALID_ISO_DATES)('should validate and cast ISO date "%s"', (date) => {
 			const validationResult = validateFieldType('date', date, 'dateTime');
 			expect(validationResult.valid).toBe(true);
 			expect((validationResult.newValue as DateTime).isValid).toBe(true);
 		});
-	});
 
-	it('should validate and cast RFC 2822 dates', () => {
-		VALID_RFC_DATES.forEach((date) => {
+		test.each(VALID_RFC_DATES)('should validate and cast RFC2822 date "%s"', (date) => {
 			const validationResult = validateFieldType('date', date, 'dateTime');
 			expect(validationResult.valid).toBe(true);
 			expect((validationResult.newValue as DateTime).isValid).toBe(true);
 		});
-	});
 
-	it('should validate and cast HTTP dates', () => {
-		VALID_HTTP_DATES.forEach((date) => {
+		test.each(VALID_HTTP_DATES)('should validate and cast HTTP date "%s"', (date) => {
 			const validationResult = validateFieldType('date', date, 'dateTime');
 			expect(validationResult.valid).toBe(true);
 			expect((validationResult.newValue as DateTime).isValid).toBe(true);
 		});
-	});
 
-	it('should validate and cast SQL dates', () => {
-		VALID_SQL_DATES.forEach((date) => {
+		test.each(VALID_SQL_DATES)('should validate and cast SQL date "%s"', (date) => {
 			const validationResult = validateFieldType('date', date, 'dateTime');
 			expect(validationResult.valid).toBe(true);
 			expect((validationResult.newValue as DateTime).isValid).toBe(true);
 		});
-	});
 
-	it('should not validate invalid dates', () => {
-		INVALID_DATES.forEach((date) => {
+		test.each(OTHER_VALID_DATES)('should validate and cast date "%s"', (date) => {
+			const validationResult = validateFieldType('date', date, 'dateTime');
+			expect(validationResult.valid).toBe(true);
+			expect((validationResult.newValue as DateTime).isValid).toBe(true);
+		});
+
+		test.each(INVALID_DATES)('should not validate invalid date "%s"', (date) => {
 			const validationResult = validateFieldType('date', date, 'dateTime');
 			expect(validationResult.valid).toBe(false);
 		});

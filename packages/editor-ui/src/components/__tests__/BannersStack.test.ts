@@ -2,7 +2,7 @@ import { merge } from 'lodash-es';
 import userEvent from '@testing-library/user-event';
 
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
-import { STORES } from '@/constants';
+import { ROLE, STORES } from '@/constants';
 
 import { createTestingPinia } from '@pinia/testing';
 import BannerStack from '@/components/banners/BannerStack.vue';
@@ -26,20 +26,11 @@ const initialState = {
 		users: {
 			'aaa-bbb': {
 				id: 'aaa-bbb',
-				globalRole: {
-					id: '1',
-					name: 'owner',
-					scope: 'global',
-				},
+				role: ROLE.Owner,
 			},
 			'bbb-bbb': {
 				id: 'bbb-bbb',
-				globalRoleId: 2,
-				globalRole: {
-					id: '2',
-					name: 'member',
-					scope: 'global',
-				},
+				role: ROLE.Member,
 			},
 		},
 	},

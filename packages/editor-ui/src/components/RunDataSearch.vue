@@ -77,10 +77,10 @@ onUnmounted(() => {
 			[$style.ioSearchOpened]: opened,
 		}"
 		:style="{ maxWidth }"
-		:modelValue="modelValue"
+		:model-value="modelValue"
 		:placeholder="placeholder"
 		size="small"
-		@update:modelValue="onSearchUpdate"
+		@update:model-value="onSearchUpdate"
 		@focus="onFocus"
 		@blur="onBlur"
 	>
@@ -91,7 +91,7 @@ onUnmounted(() => {
 </template>
 
 <style lang="scss" module>
-@import '@/styles/css-animation-helpers.scss';
+@import '@/styles/variables';
 
 .ioSearch {
 	margin-right: var(--spacing-s);

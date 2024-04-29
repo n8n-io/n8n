@@ -1,6 +1,6 @@
 import { NodeOperationError, type INodeProperties } from 'n8n-workflow';
 import { createClient } from '@supabase/supabase-js';
-import { SupabaseVectorStore } from 'langchain/vectorstores/supabase';
+import { SupabaseVectorStore } from '@langchain/community/vectorstores/supabase';
 import { createVectorStoreNode } from '../shared/createVectorStoreNode';
 import { metadataFilterField } from '../../../utils/sharedFields';
 import { supabaseTableNameRLC } from '../shared/descriptions';
@@ -76,7 +76,7 @@ export const VectorStoreSupabase = createVectorStoreNode({
 		const credentials = await context.getCredentials('supabaseApi');
 		const client = createClient(credentials.host as string, credentials.serviceRole as string);
 
-		return SupabaseVectorStore.fromExistingIndex(embeddings, {
+		return await SupabaseVectorStore.fromExistingIndex(embeddings, {
 			client,
 			tableName,
 			queryName: options.queryName ?? 'match_documents',

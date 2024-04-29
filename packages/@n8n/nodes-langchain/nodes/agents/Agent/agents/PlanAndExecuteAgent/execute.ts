@@ -5,15 +5,21 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import type { Tool } from 'langchain/tools';
-import type { BaseOutputParser } from 'langchain/schema/output_parser';
-import { PromptTemplate } from 'langchain/prompts';
+import type { BaseOutputParser } from '@langchain/core/output_parsers';
+import { PromptTemplate } from '@langchain/core/prompts';
 import { CombiningOutputParser } from 'langchain/output_parsers';
-import type { BaseChatModel } from 'langchain/chat_models/base';
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { PlanAndExecuteAgentExecutor } from 'langchain/experimental/plan_and_execute';
+import {
+	getConnectedTools,
+	getOptionalOutputParsers,
+	getPromptInputByType,
+} from '../../../../../utils/helpers';
+import { getTracingConfig } from '../../../../../utils/tracing';
 
 export async function planAndExecuteAgentExecute(
 	this: IExecuteFunctions,
+	nodeVersion: number,
 ): Promise<INodeExecutionData[][]> {
 	this.logger.verbose('Executing PlanAndExecute Agent');
 	const model = (await this.getInputConnectionData(
@@ -21,12 +27,9 @@ export async function planAndExecuteAgentExecute(
 		0,
 	)) as BaseChatModel;
 
-	const tools = (await this.getInputConnectionData(NodeConnectionType.AiTool, 0)) as Tool[];
+	const tools = await getConnectedTools(this, nodeVersion >= 1.5);
 
-	const outputParsers = (await this.getInputConnectionData(
-		NodeConnectionType.AiOutputParser,
-		0,
-	)) as BaseOutputParser[];
+	const outputParsers = await getOptionalOutputParsers(this);
 
 	const options = this.getNodeParameter('options', 0, {}) as {
 		humanMessageTemplate?: string;
@@ -57,24 +60,45 @@ export async function planAndExecuteAgentExecute(
 
 	const items = this.getInputData();
 	for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-		let input = this.getNodeParameter('text', itemIndex) as string;
+		try {
+			let input;
+			if (this.getNode().typeVersion <= 1.2) {
+				input = this.getNodeParameter('text', itemIndex) as string;
+			} else {
+				input = getPromptInputByType({
+					ctx: this,
+					i: itemIndex,
+					inputKey: 'text',
+					promptTypeKey: 'promptType',
+				});
+			}
 
-		if (input === undefined) {
-			throw new NodeOperationError(this.getNode(), 'The ‘text‘ parameter is empty.');
+			if (input === undefined) {
+				throw new NodeOperationError(this.getNode(), 'The ‘text‘ parameter is empty.');
+			}
+
+			if (prompt) {
+				input = (await prompt.invoke({ input })).value;
+			}
+
+			let response = await agentExecutor
+				.withConfig(getTracingConfig(this))
+				.invoke({ input, outputParsers });
+
+			if (outputParser) {
+				response = { output: await outputParser.parse(response.output as string) };
+			}
+
+			returnData.push({ json: response });
+		} catch (error) {
+			if (this.continueOnFail()) {
+				returnData.push({ json: { error: error.message }, pairedItem: { item: itemIndex } });
+				continue;
+			}
+
+			throw error;
 		}
-
-		if (prompt) {
-			input = (await prompt.invoke({ input })).value;
-		}
-
-		let response = await agentExecutor.call({ input, outputParsers });
-
-		if (outputParser) {
-			response = { output: await outputParser.parse(response.output as string) };
-		}
-
-		returnData.push({ json: response });
 	}
 
-	return this.prepareOutputData(returnData);
+	return await this.prepareOutputData(returnData);
 }

@@ -1,4 +1,3 @@
-import { Service } from 'typedi';
 import type { RequestHandler } from 'express';
 import { NextFunction, Response } from 'express';
 import type {
@@ -8,7 +7,7 @@ import type {
 } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 
-import { Authorized, Get, Middleware, RestController } from '@/decorators';
+import { Get, Middleware, RestController } from '@/decorators';
 import { getBase } from '@/WorkflowExecuteAdditionalData';
 import { DynamicNodeParametersService } from '@/services/dynamicNodeParameters.service';
 import { DynamicNodeParametersRequest } from '@/requests';
@@ -22,18 +21,12 @@ const assertMethodName: RequestHandler = (req, res, next) => {
 	next();
 };
 
-@Service()
-@Authorized()
 @RestController('/dynamic-node-parameters')
 export class DynamicNodeParametersController {
 	constructor(private readonly service: DynamicNodeParametersService) {}
 
 	@Middleware()
-	parseQueryParams(
-		req: DynamicNodeParametersRequest.BaseRequest,
-		res: Response,
-		next: NextFunction,
-	) {
+	parseQueryParams(req: DynamicNodeParametersRequest.BaseRequest, _: Response, next: NextFunction) {
 		const { credentials, currentNodeParameters, nodeTypeAndVersion } = req.query;
 		if (!nodeTypeAndVersion) {
 			throw new BadRequestError('Parameter nodeTypeAndVersion is required.');
@@ -59,7 +52,7 @@ export class DynamicNodeParametersController {
 		const additionalData = await getBase(req.user.id, currentNodeParameters);
 
 		if (methodName) {
-			return this.service.getOptionsViaMethodName(
+			return await this.service.getOptionsViaMethodName(
 				methodName,
 				path,
 				additionalData,
@@ -70,7 +63,7 @@ export class DynamicNodeParametersController {
 		}
 
 		if (loadOptions) {
-			return this.service.getOptionsViaLoadOptions(
+			return await this.service.getOptionsViaLoadOptions(
 				jsonParse(loadOptions),
 				additionalData,
 				nodeTypeAndVersion,
@@ -89,7 +82,7 @@ export class DynamicNodeParametersController {
 		const { path, methodName, filter, paginationToken } = req.query;
 		const { credentials, currentNodeParameters, nodeTypeAndVersion } = req.params;
 		const additionalData = await getBase(req.user.id, currentNodeParameters);
-		return this.service.getResourceLocatorResults(
+		return await this.service.getResourceLocatorResults(
 			methodName,
 			path,
 			additionalData,
@@ -108,7 +101,7 @@ export class DynamicNodeParametersController {
 		const { path, methodName } = req.query;
 		const { credentials, currentNodeParameters, nodeTypeAndVersion } = req.params;
 		const additionalData = await getBase(req.user.id, currentNodeParameters);
-		return this.service.getResourceMappingFields(
+		return await this.service.getResourceMappingFields(
 			methodName,
 			path,
 			additionalData,

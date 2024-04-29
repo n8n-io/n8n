@@ -7,7 +7,7 @@ import {
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 import type { Document } from 'langchain/document';
-import type { Embeddings } from 'langchain/embeddings/base';
+import type { Embeddings } from '@langchain/core/embeddings';
 import type { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
 import { processDocuments } from '../shared/processDocuments';
 import { MemoryVectorStoreManager } from '../shared/MemoryVectorStoreManager';
@@ -33,7 +33,7 @@ export class VectorStoreInMemoryInsert implements INodeType {
 			resources: {
 				primaryDocumentation: [
 					{
-						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstoreinmemoryinsert/',
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstoreinmemory/',
 					},
 				],
 			},
@@ -108,6 +108,6 @@ export class VectorStoreInMemoryInsert implements INodeType {
 			clearStore,
 		);
 
-		return this.prepareOutputData(serializedDocuments);
+		return await this.prepareOutputData(serializedDocuments);
 	}
 }

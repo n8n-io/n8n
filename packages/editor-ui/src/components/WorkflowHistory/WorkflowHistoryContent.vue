@@ -68,15 +68,15 @@ const onAction = ({
 			v-if="props.workflowVersion"
 			:workflow="workflowVersionPreview"
 			:loading="props.isListLoading"
-			loaderType="spinner"
+			loader-type="spinner"
 		/>
 		<ul :class="$style.info">
-			<workflow-history-list-item
-				:class="$style.card"
+			<WorkflowHistoryListItem
 				v-if="props.workflowVersion"
+				:class="$style.card"
 				:index="-1"
 				:item="props.workflowVersion"
-				:isActive="false"
+				:is-active="false"
 				:actions="actions"
 				@action="onAction"
 			>
@@ -110,7 +110,7 @@ const onAction = ({
 						<n8n-icon class="ml-3xs" icon="chevron-down" size="small" />
 					</n8n-button>
 				</template>
-			</workflow-history-list-item>
+			</WorkflowHistoryListItem>
 		</ul>
 	</div>
 </template>

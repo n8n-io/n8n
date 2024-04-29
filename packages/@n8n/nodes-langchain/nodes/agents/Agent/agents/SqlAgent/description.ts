@@ -1,35 +1,91 @@
 import type { INodeProperties } from 'n8n-workflow';
+import { promptTypeOptions, textInput } from '../../../../../utils/descriptions';
 import { SQL_PREFIX, SQL_SUFFIX } from './other/prompts';
+
+const dataSourceOptions: INodeProperties = {
+	displayName: 'Data Source',
+	name: 'dataSource',
+	type: 'options',
+	displayOptions: {
+		show: {
+			agent: ['sqlAgent'],
+		},
+	},
+	default: 'sqlite',
+	description: 'SQL database to connect to',
+	options: [
+		{
+			name: 'MySQL',
+			value: 'mysql',
+			description: 'Connect to a MySQL database',
+		},
+		{
+			name: 'Postgres',
+			value: 'postgres',
+			description: 'Connect to a Postgres database',
+		},
+		{
+			name: 'SQLite',
+			value: 'sqlite',
+			description: 'Use SQLite by connecting a database file as binary input',
+		},
+	],
+};
 
 export const sqlAgentAgentProperties: INodeProperties[] = [
 	{
-		displayName: 'Data Source',
-		name: 'dataSource',
-		type: 'options',
+		...dataSourceOptions,
 		displayOptions: {
 			show: {
 				agent: ['sqlAgent'],
+				'@version': [{ _cnd: { lt: 1.4 } }],
 			},
 		},
-		default: 'sqlite',
-		description: 'SQL database to connect to',
-		options: [
-			{
-				name: 'MySQL',
-				value: 'mysql',
-				description: 'Connect to a MySQL database',
+	},
+	{
+		...dataSourceOptions,
+		default: 'postgres',
+		displayOptions: {
+			show: {
+				agent: ['sqlAgent'],
+				'@version': [{ _cnd: { gte: 1.4 } }],
 			},
-			{
-				name: 'Postgres',
-				value: 'postgres',
-				description: 'Connect to a Postgres database',
+		},
+	},
+	{
+		displayName: 'Credentials',
+		name: 'credentials',
+		type: 'credentials',
+		default: '',
+	},
+	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+		displayName:
+			"Pass the SQLite database into this node as binary data, e.g. by inserting a 'Read/Write Files from Disk' node beforehand",
+		name: 'sqLiteFileNotice',
+		type: 'notice',
+		default: '',
+		displayOptions: {
+			show: {
+				agent: ['sqlAgent'],
+				dataSource: ['sqlite'],
 			},
-			{
-				name: 'SQLite',
-				value: 'sqlite',
-				description: 'Use SQLite by connecting a database file as binary input',
+		},
+	},
+	{
+		displayName: 'Input Binary Field',
+		name: 'binaryPropertyName',
+		type: 'string',
+		default: 'data',
+		required: true,
+		placeholder: 'e.g data',
+		hint: 'The name of the input binary field containing the file to be extracted',
+		displayOptions: {
+			show: {
+				agent: ['sqlAgent'],
+				dataSource: ['sqlite'],
 			},
-		],
+		},
 	},
 	{
 		displayName: 'Prompt',
@@ -38,12 +94,33 @@ export const sqlAgentAgentProperties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				agent: ['sqlAgent'],
+				'@version': [{ _cnd: { lte: 1.2 } }],
 			},
 		},
 		default: '',
 		required: true,
 		typeOptions: {
 			rows: 5,
+		},
+	},
+	{
+		...promptTypeOptions,
+		displayOptions: {
+			hide: {
+				'@version': [{ _cnd: { lte: 1.2 } }],
+			},
+			show: {
+				agent: ['sqlAgent'],
+			},
+		},
+	},
+	{
+		...textInput,
+		displayOptions: {
+			show: {
+				promptType: ['define'],
+				agent: ['sqlAgent'],
+			},
 		},
 	},
 	{

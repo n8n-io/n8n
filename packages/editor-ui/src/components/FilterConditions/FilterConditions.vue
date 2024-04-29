@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { isEqual } from 'lodash-es';
+import { isEmpty, isEqual } from 'lodash-es';
 
 import {
 	type FilterConditionValue,
@@ -18,10 +18,10 @@ import {
 	DEFAULT_OPERATOR_VALUE,
 } from './constants';
 import { useI18n } from '@/composables/useI18n';
-import { useDebounceHelper } from '@/composables/useDebounce';
+import { useDebounce } from '@/composables/useDebounce';
 import Condition from './Condition.vue';
 import CombinatorSelect from './CombinatorSelect.vue';
-import { resolveParameter } from '@/mixins/workflowHelpers';
+import { resolveParameter } from '@/composables/useWorkflowHelpers';
 import { v4 as uuid } from 'uuid';
 
 interface Props {
@@ -29,9 +29,10 @@ interface Props {
 	value: FilterValue;
 	path: string;
 	node: INode | null;
+	readOnly?: boolean;
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), { readOnly: false });
 
 const emit = defineEmits<{
 	(event: 'valueChanged', value: { name: string; node: string; value: FilterValue }): void;
@@ -39,7 +40,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const ndvStore = useNDVStore();
-const { callDebounced } = useDebounceHelper();
+const { debounce } = useDebounce();
 
 function createCondition(): FilterConditionValue {
 	return { id: uuid(), leftValue: '', rightValue: '', operator: DEFAULT_OPERATOR_VALUE };
@@ -60,6 +61,8 @@ const state = reactive<{ paramValue: FilterValue }>({
 const maxConditions = computed(
 	() => props.parameter.typeOptions?.filter?.maxConditions ?? DEFAULT_MAX_CONDITIONS,
 );
+
+const singleCondition = computed(() => props.parameter.typeOptions?.multipleValues === false);
 
 const maxConditionsReached = computed(
 	() => maxConditions.value <= state.paramValue.conditions.length,
@@ -89,34 +92,51 @@ watch(
 
 		if (!isEqual(state.paramValue.options, newOptions)) {
 			state.paramValue.options = newOptions;
+			debouncedEmitChange();
 		}
 	},
 	{ immediate: true },
 );
 
-watch(state.paramValue, (value) => {
-	void callDebounced(
-		() => {
-			emit('valueChanged', { name: props.path, value, node: props.node?.name as string });
-		},
-		{ debounceTime: 1000 },
-	);
-});
+watch(
+	() => props.value,
+	(value) => {
+		if (isEmpty(value) || isEqual(state.paramValue, value)) return;
+
+		state.paramValue.conditions = value.conditions;
+		state.paramValue.combinator = value.combinator;
+		state.paramValue.options = value.options;
+	},
+);
+
+function emitChange() {
+	emit('valueChanged', {
+		name: props.path,
+		value: state.paramValue,
+		node: props.node?.name as string,
+	});
+}
+
+const debouncedEmitChange = debounce(emitChange, { debounceTime: 1000 });
 
 function addCondition(): void {
 	state.paramValue.conditions.push(createCondition());
+	debouncedEmitChange();
 }
 
 function onConditionUpdate(index: number, value: FilterConditionValue): void {
 	state.paramValue.conditions[index] = value;
+	debouncedEmitChange();
 }
 
 function onCombinatorChange(combinator: FilterTypeCombinator): void {
 	state.paramValue.combinator = combinator;
+	debouncedEmitChange();
 }
 
 function onConditionRemove(index: number): void {
 	state.paramValue.conditions.splice(index, 1);
+	debouncedEmitChange();
 }
 
 function getIssues(index: number): string[] {
@@ -125,50 +145,57 @@ function getIssues(index: number): string[] {
 </script>
 
 <template>
-	<div :class="$style.filter" :data-test-id="`filter-${parameter.name}`">
+	<div
+		:class="{ [$style.filter]: true, [$style.single]: singleCondition }"
+		:data-test-id="`filter-${parameter.name}`"
+	>
 		<n8n-input-label
+			v-if="!singleCondition"
 			:label="parameter.displayName"
 			:underline="true"
-			:showOptions="true"
-			:showExpressionSelector="false"
+			:show-options="true"
+			:show-expression-selector="false"
+			size="small"
 			color="text-dark"
 		>
 		</n8n-input-label>
 		<div :class="$style.content">
 			<div :class="$style.conditions">
 				<div v-for="(condition, index) of state.paramValue.conditions" :key="condition.id">
-					<combinator-select
+					<CombinatorSelect
 						v-if="index !== 0"
-						:readOnly="index !== 1"
+						:read-only="index !== 1 || readOnly"
 						:options="allowedCombinators"
 						:selected="state.paramValue.combinator"
 						:class="$style.combinator"
-						@combinatorChange="onCombinatorChange"
+						@combinator-change="onCombinatorChange"
 					/>
 
-					<condition
+					<Condition
 						:condition="condition"
 						:index="index"
 						:options="state.paramValue.options"
-						:fixedLeftValue="!!parameter.typeOptions?.filter?.leftValue"
-						:canRemove="index !== 0 || state.paramValue.conditions.length > 1"
+						:fixed-left-value="!!parameter.typeOptions?.filter?.leftValue"
+						:read-only="readOnly"
+						:can-remove="index !== 0 || state.paramValue.conditions.length > 1"
 						:path="`${path}.${index}`"
 						:issues="getIssues(index)"
+						:class="$style.condition"
 						@update="(value) => onConditionUpdate(index, value)"
 						@remove="() => onConditionRemove(index)"
-					></condition>
+					></Condition>
 				</div>
 			</div>
-			<div :class="$style.addConditionWrapper">
+			<div v-if="!singleCondition && !readOnly" :class="$style.addConditionWrapper">
 				<n8n-button
 					type="tertiary"
 					block
-					@click="addCondition"
 					:class="$style.addCondition"
 					:label="i18n.baseText('filter.addCondition')"
 					:title="maxConditionsReached ? i18n.baseText('filter.maxConditions') : ''"
 					:disabled="maxConditionsReached"
 					data-test-id="filter-add-condition"
+					@click="addCondition"
 				/>
 			</div>
 		</div>
@@ -193,6 +220,20 @@ function getIssues(index: number): string[] {
 	margin-top: var(--spacing-2xs);
 	margin-bottom: calc(var(--spacing-2xs) * -1);
 	margin-left: var(--spacing-l);
+}
+
+.condition {
+	padding-left: var(--spacing-l);
+}
+
+.single {
+	.condition {
+		padding-left: 0;
+	}
+
+	.content {
+		margin-top: calc(var(--spacing-xs) * -1);
+	}
 }
 
 .addConditionWrapper {

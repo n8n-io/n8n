@@ -10,7 +10,6 @@
 		"forceConsistentCasingInFileNames": true,
 		"noImplicitAny": true,
 		"noImplicitReturns": true,
-		"noUnusedLocals": true,
 		"strictNullChecks": true,
 		"preserveConstEnums": true,
 		"esModuleInterop": true,

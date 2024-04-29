@@ -142,6 +142,28 @@ for (const mode of ['filesystem-v2', 's3'] as const) {
 
 			expect(binaryDataService.rename).not.toHaveBeenCalled();
 		});
+
+		it('should ignore error thrown on renaming', async () => {
+			const workflowId = '6HYhhKmJch2cYxGj';
+			const executionId = 'temp';
+			const binaryDataFileUuid = 'a5c3f1ed-9d59-4155-bc68-9a370b3c51f6';
+
+			const incorrectFileId = `workflows/${workflowId}/executions/temp/binary_data/${binaryDataFileUuid}`;
+
+			const run = toIRun({
+				binary: {
+					data: { id: `s3:${incorrectFileId}` },
+				},
+			});
+
+			binaryDataService.rename.mockRejectedValueOnce(new Error('ENOENT'));
+
+			const promise = restoreBinaryDataId(run, executionId, 'webhook');
+
+			await expect(promise).resolves.not.toThrow();
+
+			expect(binaryDataService.rename).toHaveBeenCalled();
+		});
 	});
 }
 

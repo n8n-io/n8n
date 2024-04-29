@@ -5,6 +5,7 @@ import type { Completion, CompletionContext, CompletionResult } from '@codemirro
 import type { INodeUi } from '@/Interface';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { escapeMappingString } from '@/utils/mappingUtils';
 
 function getAutoCompletableNodeNames(nodes: INodeUi[]) {
 	return nodes
@@ -98,7 +99,7 @@ export const baseCompletions = defineComponent({
 			options.push(
 				...getAutoCompletableNodeNames(this.workflowsStore.allNodes).map((nodeName) => {
 					return {
-						label: `${prefix}('${nodeName}')`,
+						label: `${prefix}('${escapeMappingString(nodeName)}')`,
 						type: 'variable',
 						info: this.$locale.baseText('codeNodeEditor.completer.$()', {
 							interpolate: { nodeName },
@@ -138,7 +139,7 @@ export const baseCompletions = defineComponent({
 			const options: Completion[] = getAutoCompletableNodeNames(this.workflowsStore.allNodes).map(
 				(nodeName) => {
 					return {
-						label: `${prefix}('${nodeName}')`,
+						label: `${prefix}('${escapeMappingString(nodeName)}')`,
 						type: 'variable',
 						info: this.$locale.baseText('codeNodeEditor.completer.$()', {
 							interpolate: { nodeName },

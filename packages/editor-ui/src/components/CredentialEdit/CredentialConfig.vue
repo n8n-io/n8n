@@ -1,64 +1,64 @@
 <template>
 	<div :class="$style.container" data-test-id="node-credentials-config-container">
-		<banner
+		<Banner
 			v-show="showValidationWarning"
 			theme="danger"
 			:message="
 				$locale.baseText(
 					`credentialEdit.credentialConfig.pleaseCheckTheErrorsBelow${
-						credentialPermissions.isOwner ? '' : '.sharee'
+						credentialPermissions.update || credentialPermissions.isOwner ? '' : '.sharee'
 					}`,
 					{ interpolate: { owner: credentialOwnerName } },
 				)
 			"
 		/>
 
-		<banner
+		<Banner
 			v-if="authError && !showValidationWarning"
 			theme="danger"
 			:message="
 				$locale.baseText(
 					`credentialEdit.credentialConfig.couldntConnectWithTheseSettings${
-						credentialPermissions.isOwner ? '' : '.sharee'
+						credentialPermissions.update || credentialPermissions.isOwner ? '' : '.sharee'
 					}`,
 					{ interpolate: { owner: credentialOwnerName } },
 				)
 			"
 			:details="authError"
-			:buttonLabel="$locale.baseText('credentialEdit.credentialConfig.retry')"
-			buttonLoadingLabel="Retrying"
-			:buttonTitle="$locale.baseText('credentialEdit.credentialConfig.retryCredentialTest')"
-			:buttonLoading="isRetesting"
+			:button-label="$locale.baseText('credentialEdit.credentialConfig.retry')"
+			button-loading-label="Retrying"
+			:button-title="$locale.baseText('credentialEdit.credentialConfig.retryCredentialTest')"
+			:button-loading="isRetesting"
 			@click="$emit('retest')"
 		/>
 
-		<banner
+		<Banner
 			v-show="showOAuthSuccessBanner && !showValidationWarning"
 			theme="success"
 			:message="$locale.baseText('credentialEdit.credentialConfig.accountConnected')"
-			:buttonLabel="$locale.baseText('credentialEdit.credentialConfig.reconnect')"
-			:buttonTitle="$locale.baseText('credentialEdit.credentialConfig.reconnectOAuth2Credential')"
+			:button-label="$locale.baseText('credentialEdit.credentialConfig.reconnect')"
+			:button-title="$locale.baseText('credentialEdit.credentialConfig.reconnectOAuth2Credential')"
 			@click="$emit('oauth')"
 		>
-			<template #button v-if="isGoogleOAuthType">
+			<template v-if="isGoogleOAuthType" #button>
 				<p
-					v-text="`${$locale.baseText('credentialEdit.credentialConfig.reconnect')}:`"
 					:class="$style.googleReconnectLabel"
+					v-text="`${$locale.baseText('credentialEdit.credentialConfig.reconnect')}:`"
 				/>
 				<GoogleAuthButton @click="$emit('oauth')" />
 			</template>
-		</banner>
+		</Banner>
 
-		<banner
+		<Banner
 			v-show="testedSuccessfully && !showValidationWarning"
 			theme="success"
 			:message="$locale.baseText('credentialEdit.credentialConfig.connectionTestedSuccessfully')"
-			:buttonLabel="$locale.baseText('credentialEdit.credentialConfig.retry')"
-			:buttonLoadingLabel="$locale.baseText('credentialEdit.credentialConfig.retrying')"
-			:buttonTitle="$locale.baseText('credentialEdit.credentialConfig.retryCredentialTest')"
-			:buttonLoading="isRetesting"
-			@click="$emit('retest')"
+			:button-label="$locale.baseText('credentialEdit.credentialConfig.retry')"
+			:button-loading-label="$locale.baseText('credentialEdit.credentialConfig.retrying')"
+			:button-title="$locale.baseText('credentialEdit.credentialConfig.retryCredentialTest')"
+			:button-loading="isRetesting"
 			data-test-id="credentials-config-container-test-success"
+			@click="$emit('retest')"
 		/>
 
 		<template v-if="credentialPermissions.update">
@@ -73,25 +73,25 @@
 
 			<AuthTypeSelector
 				v-if="showAuthTypeSelector && isNewCredential"
-				:credentialType="credentialType"
-				@authTypeChanged="onAuthTypeChange"
+				:credential-type="credentialType"
+				@auth-type-changed="onAuthTypeChange"
 			/>
 
 			<CopyInput
-				v-if="isOAuthType && credentialProperties.length"
+				v-if="isOAuthType && !allOAuth2BasePropertiesOverridden"
 				:label="$locale.baseText('credentialEdit.credentialConfig.oAuthRedirectUrl')"
 				:value="oAuthCallbackUrl"
-				:copyButtonText="$locale.baseText('credentialEdit.credentialConfig.clickToCopy')"
+				:copy-button-text="$locale.baseText('credentialEdit.credentialConfig.clickToCopy')"
 				:hint="
 					$locale.baseText('credentialEdit.credentialConfig.subtitle', { interpolate: { appName } })
 				"
-				:toastTitle="
+				:toast-title="
 					$locale.baseText('credentialEdit.credentialConfig.redirectUrlCopiedToClipboard')
 				"
-				:redactValue="true"
+				:redact-value="true"
 			/>
 		</template>
-		<enterprise-edition v-else :features="[EnterpriseEditionFeature.Sharing]">
+		<EnterpriseEdition v-else :features="[EnterpriseEditionFeature.Sharing]">
 			<div>
 				<n8n-info-tip :bold="false">
 					{{
@@ -101,14 +101,14 @@
 					}}
 				</n8n-info-tip>
 			</div>
-		</enterprise-edition>
+		</EnterpriseEdition>
 
 		<CredentialInputs
 			v-if="credentialType && credentialPermissions.update"
-			:credentialData="credentialData"
-			:credentialProperties="credentialProperties"
-			:documentationUrl="documentationUrl"
-			:showValidationWarnings="showValidationWarning"
+			:credential-data="credentialData"
+			:credential-properties="credentialProperties"
+			:documentation-url="documentationUrl"
+			:show-validation-warnings="showValidationWarning"
 			@update="onDataChange"
 		/>
 
@@ -119,7 +119,7 @@
 				!isOAuthConnected &&
 				credentialPermissions.isOwner
 			"
-			:isGoogleOAuthType="isGoogleOAuthType"
+			:is-google-o-auth-type="isGoogleOAuthType"
 			@click="$emit('oauth')"
 		/>
 
@@ -202,6 +202,9 @@ export default defineComponent({
 			type: Boolean,
 		},
 		isOAuthType: {
+			type: Boolean,
+		},
+		allOAuth2BasePropertiesOverridden: {
 			type: Boolean,
 		},
 		isOAuthConnected: {

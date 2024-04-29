@@ -1,6 +1,8 @@
 import FormData from 'form-data';
-import type { BinaryFileType, JsonObject } from './Interfaces';
+import type { BinaryFileType, IDisplayOptions, INodeProperties, JsonObject } from './Interfaces';
 import { ApplicationError } from './errors/application.error';
+
+import { merge } from 'lodash';
 
 const readStreamClasses = new Set(['ReadStream', 'Readable', 'ReadableStream']);
 
@@ -107,7 +109,7 @@ export const jsonStringify = (obj: unknown, options: JSONStringifyOptions = {}):
 };
 
 export const sleep = async (ms: number): Promise<void> =>
-	new Promise((resolve) => {
+	await new Promise((resolve) => {
 		setTimeout(resolve, ms);
 	});
 
@@ -165,3 +167,15 @@ export const removeCircularRefs = (obj: JsonObject, seen = new Set()) => {
 		}
 	});
 };
+
+export function updateDisplayOptions(
+	displayOptions: IDisplayOptions,
+	properties: INodeProperties[],
+) {
+	return properties.map((nodeProperty) => {
+		return {
+			...nodeProperty,
+			displayOptions: merge({}, nodeProperty.displayOptions, displayOptions),
+		};
+	});
+}

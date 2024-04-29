@@ -67,11 +67,9 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 	const getUserCloudAccount = async () => {
 		if (!hasCloudPlan.value) throw new Error('User does not have a cloud plan');
 		try {
-			if (hasPermission(['instanceOwner'])) {
-				await usersStore.fetchUserCloudAccount();
-				if (!usersStore.currentUserCloudInfo?.confirmed && !userIsTrialing.value) {
-					useUIStore().pushBannerToStack('EMAIL_CONFIRMATION');
-				}
+			await usersStore.fetchUserCloudAccount();
+			if (!usersStore.currentUserCloudInfo?.confirmed && !userIsTrialing.value) {
+				useUIStore().pushBannerToStack('EMAIL_CONFIRMATION');
 			}
 		} catch (error) {
 			throw new Error(error.message);
@@ -79,7 +77,7 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 	};
 
 	const getAutoLoginCode = async (): Promise<{ code: string }> => {
-		return getAdminPanelLoginCode(rootStore.getRestApiContext);
+		return await getAdminPanelLoginCode(rootStore.getRestApiContext);
 	};
 
 	const getOwnerCurrentPlan = async () => {
@@ -107,7 +105,7 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 	};
 
 	const getInstanceCurrentUsage = async () => {
-		const usage = await getCurrentUsage({ baseUrl: rootStore.getBaseUrl, sessionId: '' });
+		const usage = await getCurrentUsage({ baseUrl: rootStore.getBaseUrl, pushRef: '' });
 		state.usage = usage;
 		return usage;
 	};
@@ -198,7 +196,7 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 
 		const localStorageFlag = localStorage.getItem(SUGGESTED_TEMPLATES_FLAG);
 		// Don't show if users already opted in
-		if (localStorageFlag !== 'false') {
+		if (localStorageFlag !== 'false' && hasPermission(['instanceOwner'])) {
 			await loadSuggestedTemplates();
 		}
 

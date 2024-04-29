@@ -50,6 +50,10 @@ import { AddWorkflowMetadata1695128658538 } from '../common/1695128658538-AddWor
 import { MigrateToTimestampTz1694091729095 } from './1694091729095-MigrateToTimestampTz';
 import { ModifyWorkflowHistoryNodesAndConnections1695829275184 } from '../common/1695829275184-ModifyWorkflowHistoryNodesAndConnections';
 import { AddGlobalAdminRole1700571993961 } from '../common/1700571993961-AddGlobalAdminRole';
+import { DropRoleMapping1705429061930 } from '../common/1705429061930-DropRoleMapping';
+import { RemoveFailedExecutionStatus1711018413374 } from '../common/1711018413374-RemoveFailedExecutionStatus';
+import { MoveSshKeysToDatabase1711390882123 } from '../common/1711390882123-MoveSshKeysToDatabase';
+import { RemoveNodesAccess1712044305787 } from '../common/1712044305787-RemoveNodesAccess';
 
 export const postgresMigrations: Migration[] = [
 	InitialMigration1587669153312,
@@ -103,4 +107,8 @@ export const postgresMigrations: Migration[] = [
 	MigrateToTimestampTz1694091729095,
 	ModifyWorkflowHistoryNodesAndConnections1695829275184,
 	AddGlobalAdminRole1700571993961,
+	DropRoleMapping1705429061930,
+	RemoveFailedExecutionStatus1711018413374,
+	MoveSshKeysToDatabase1711390882123,
+	RemoveNodesAccess1712044305787,
 ];

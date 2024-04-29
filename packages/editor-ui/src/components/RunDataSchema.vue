@@ -35,6 +35,8 @@ const schema = computed(() => getSchemaForExecutionData(props.data));
 
 const isDataEmpty = computed(() => isEmpty(props.data));
 
+const highlight = computed(() => ndvStore.highlightDraggables);
+
 const onDragStart = (el: HTMLElement) => {
 	if (el?.dataset?.path) {
 		draggingPath.value = el.dataset.path;
@@ -62,20 +64,20 @@ const onDragEnd = (el: HTMLElement) => {
 
 		void useExternalHooks().run('runDataJson.onDragEnd', telemetryPayload);
 
-		telemetry.track('User dragged data for mapping', telemetryPayload);
+		telemetry.track('User dragged data for mapping', telemetryPayload, { withPostHog: true });
 	}, 1000); // ensure dest data gets set if drop
 };
 </script>
 
 <template>
-	<div :class="$style.schemaWrapper">
+	<div :class="[$style.schemaWrapper, { highlightSchema: highlight }]">
 		<n8n-info-tip v-if="isDataEmpty">{{
 			i18n.baseText('dataMapping.schemaView.emptyData')
 		}}</n8n-info-tip>
-		<draggable
+		<Draggable
 			v-else
 			type="mapping"
-			targetDataKey="mappable"
+			target-data-key="mappable"
 			:disabled="!mappingEnabled"
 			@dragstart="onDragStart"
 			@dragend="onDragEnd"
@@ -84,20 +86,20 @@ const onDragEnd = (el: HTMLElement) => {
 				<MappingPill v-if="el" :html="el.outerHTML" :can-drop="canDrop" />
 			</template>
 			<div :class="$style.schema">
-				<run-data-schema-item
+				<RunDataSchemaItem
 					:schema="schema"
 					:level="0"
 					:parent="null"
-					:paneType="paneType"
-					:subKey="`${schema.type}-0-0`"
-					:mappingEnabled="mappingEnabled"
-					:draggingPath="draggingPath"
-					:distanceFromActive="distanceFromActive"
+					:pane-type="paneType"
+					:sub-key="`${schema.type}-0-0`"
+					:mapping-enabled="mappingEnabled"
+					:dragging-path="draggingPath"
+					:distance-from-active="distanceFromActive"
 					:node="node"
 					:search="search"
 				/>
 			</div>
-		</draggable>
+		</Draggable>
 	</div>
 </template>
 

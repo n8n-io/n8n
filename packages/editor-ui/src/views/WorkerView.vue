@@ -8,7 +8,7 @@
 		data-test-id="worker-view-unlicensed"
 		:class="$style.actionBox"
 		:description="$locale.baseText('workerList.actionBox.description')"
-		:buttonText="$locale.baseText('workerList.actionBox.buttonText')"
+		:button-text="$locale.baseText('workerList.actionBox.buttonText')"
 		@click:button="goToUpgrade"
 	>
 		<template #heading>

@@ -1,5 +1,5 @@
 import type { Application } from 'express';
-import type { ICredentialDataDecryptedObject, ICredentialNodeAccess } from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import type { SuperAgentTest } from 'supertest';
 import type { Server } from 'http';
 
@@ -31,12 +31,10 @@ type EndpointGroup =
 	| 'executions'
 	| 'workflowHistory'
 	| 'binaryData'
-	| 'role'
 	| 'invitations'
 	| 'debug';
 
 export interface SetupProps {
-	applyAuth?: boolean;
 	endpointGroups?: EndpointGroup[];
 	enabledFeatures?: BooleanLicenseFeature[];
 	quotas?: Partial<{ [K in NumericLicenseFeature]: number }>;
@@ -54,7 +52,6 @@ export interface TestServer {
 export type CredentialPayload = {
 	name: string;
 	type: string;
-	nodesAccess?: ICredentialNodeAccess[];
 	data: ICredentialDataDecryptedObject;
 };
 
@@ -62,7 +59,3 @@ export type SaveCredentialFunction = (
 	credentialPayload: CredentialPayload,
 	{ user }: { user: User },
 ) => Promise<CredentialsEntity & ICredentialsDb>;
-
-export type PostgresSchemaSection = {
-	[K in 'host' | 'port' | 'schema' | 'user' | 'password']: { env: string };
-};

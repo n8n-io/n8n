@@ -72,7 +72,7 @@ async function onUpdateConnected(value: boolean) {
 </script>
 
 <template>
-	<div class="connection-switch" v-loading="saving">
+	<div v-loading="saving" class="connection-switch">
 		<n8n-icon
 			v-if="provider.state === 'error'"
 			color="danger"
@@ -87,7 +87,7 @@ async function onUpdateConnected(value: boolean) {
 			}}
 		</n8n-text>
 		<el-switch
-			:modelValue="provider.connected"
+			:model-value="provider.connected"
 			:title="
 				i18n.baseText('settings.externalSecrets.card.connectedSwitch.title', {
 					interpolate: { provider: provider.displayName },
@@ -95,7 +95,7 @@ async function onUpdateConnected(value: boolean) {
 			"
 			:disabled="disabled"
 			data-test-id="settings-external-secrets-connected-switch"
-			@update:modelValue="onUpdateConnected"
+			@update:model-value="onUpdateConnected"
 		>
 		</el-switch>
 	</div>

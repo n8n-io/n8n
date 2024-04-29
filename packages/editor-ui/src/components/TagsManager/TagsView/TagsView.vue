@@ -3,21 +3,21 @@
 		<TagsTableHeader
 			:search="search"
 			:disabled="isHeaderDisabled()"
-			@searchChange="onSearchChange"
-			@createEnable="onCreateEnable"
+			@search-change="onSearchChange"
+			@create-enable="onCreateEnable"
 		/>
 		<TagsTable
-			:rows="rows"
-			:isLoading="isLoading"
-			:isSaving="isSaving"
-			:newName="newName"
-			@newNameChange="onNewNameChange"
-			@updateEnable="onUpdateEnable"
-			@deleteEnable="onDeleteEnable"
-			@cancelOperation="cancelOperation"
-			@applyOperation="applyOperation"
 			ref="tagsTable"
+			:rows="rows"
+			:is-loading="isLoading"
+			:is-saving="isSaving"
+			:new-name="newName"
 			data-test-id="tags-table"
+			@new-name-change="onNewNameChange"
+			@update-enable="onUpdateEnable"
+			@delete-enable="onDeleteEnable"
+			@cancel-operation="cancelOperation"
+			@apply-operation="applyOperation"
 		/>
 	</div>
 </template>

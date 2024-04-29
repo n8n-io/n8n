@@ -1,18 +1,18 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	JsonObject,
+	IRequestOptions,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function intercomApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	endpoint: string,
-	method: string,
+	method: IHttpRequestMethods,
 
 	body: any = {},
 	query?: IDataObject,
@@ -25,7 +25,7 @@ export async function intercomApiRequest(
 		{ Authorization: `Bearer ${credentials.apiKey}`, Accept: 'application/json' },
 	);
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: headerWithAuthentication,
 		method,
 		qs: query,
@@ -49,7 +49,7 @@ export async function intercomApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions,
 	propertyName: string,
 	endpoint: string,
-	method: string,
+	method: IHttpRequestMethods,
 
 	body: any = {},
 	query: IDataObject = {},

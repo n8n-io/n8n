@@ -16,7 +16,7 @@ import { License } from '@/License';
 import { InternalHooks } from '@/InternalHooks';
 import { updateIntervalTime } from './externalSecretsHelper.ee';
 import { ExternalSecretsProviders } from './ExternalSecretsProviders.ee';
-import { SingleMainSetup } from '@/services/orchestration/main/SingleMainSetup';
+import { OrchestrationService } from '@/services/orchestration.service';
 
 @Service()
 export class ExternalSecretsManager {
@@ -48,10 +48,13 @@ export class ExternalSecretsManager {
 					this.initialized = true;
 					resolve();
 					this.initializingPromise = undefined;
-					this.updateInterval = setInterval(async () => this.updateSecrets(), updateIntervalTime());
+					this.updateInterval = setInterval(
+						async () => await this.updateSecrets(),
+						updateIntervalTime(),
+					);
 				});
 			}
-			return this.initializingPromise;
+			return await this.initializingPromise;
 		}
 	}
 
@@ -76,7 +79,7 @@ export class ExternalSecretsManager {
 	}
 
 	async broadcastReloadExternalSecretsProviders() {
-		await Container.get(SingleMainSetup).broadcastReloadExternalSecretsProviders();
+		await Container.get(OrchestrationService).publish('reloadExternalSecretsProviders');
 	}
 
 	private decryptSecretsSettings(value: string): ExternalSecretsSettings {
@@ -107,8 +110,8 @@ export class ExternalSecretsManager {
 		}
 		const providers: Array<SecretsProvider | null> = (
 			await Promise.allSettled(
-				Object.entries(settings).map(async ([name, providerSettings]) =>
-					this.initProvider(name, providerSettings),
+				Object.entries(settings).map(
+					async ([name, providerSettings]) => await this.initProvider(name, providerSettings),
 				),
 			)
 		).map((i) => (i.status === 'rejected' ? null : i.value));
@@ -201,7 +204,7 @@ export class ExternalSecretsManager {
 		return Object.keys(this.providers);
 	}
 
-	getSecret(provider: string, name: string): IDataObject | undefined {
+	getSecret(provider: string, name: string) {
 		return this.getProvider(provider)?.getSecret(name);
 	}
 

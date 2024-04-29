@@ -6,7 +6,7 @@ import {
 	type INodeTypeDescription,
 	type SupplyData,
 } from 'n8n-workflow';
-import { WolframAlphaTool } from 'langchain/tools';
+import { WolframAlphaTool } from '@langchain/community/tools/wolframalpha';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 

@@ -12,7 +12,7 @@
 		],
 		"generic": []
 	},
-	"alias": ["Sort", "Order", "Transform", "Array", "List", "Item"],
+	"alias": ["Sort", "Order", "Transform", "Array", "List", "Item", "Random"],
 	"subcategories": {
 		"Core Nodes": ["Data Transformation"]
 	}

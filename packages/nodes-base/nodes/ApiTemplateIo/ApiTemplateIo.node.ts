@@ -181,12 +181,12 @@ export class ApiTemplateIo implements INodeType {
 				description: 'Name of the binary property to which to write the data of the read file',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'Put Output File in Field',
 				name: 'binaryProperty',
 				type: 'string',
 				required: true,
 				default: 'data',
-				description: 'Name of the binary property to which to write to',
+				hint: 'The name of the output binary field to put the file in',
 				displayOptions: {
 					show: {
 						resource: ['pdf', 'image'],
@@ -350,11 +350,11 @@ export class ApiTemplateIo implements INodeType {
 	methods = {
 		loadOptions: {
 			async getImageTemplates(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				return loadResource.call(this, 'image');
+				return await loadResource.call(this, 'image');
 			},
 
 			async getPdfTemplates(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				return loadResource.call(this, 'pdf');
+				return await loadResource.call(this, 'pdf');
 			},
 		},
 	};

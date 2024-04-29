@@ -1,4 +1,5 @@
 import {
+	CHAT_TRIGGER_NODE_TYPE,
 	DEFAULT_NEW_WORKFLOW_NAME,
 	DUPLICATE_POSTFFIX,
 	EnterpriseEditionFeature,
@@ -10,12 +11,10 @@ import {
 } from '@/constants';
 import type {
 	ExecutionsQueryFilter,
-	IExecutionDeleteFilter,
 	IExecutionPushResponse,
 	IExecutionResponse,
 	IExecutionsCurrentSummaryExtended,
 	IExecutionsListResponse,
-	IExecutionsStopData,
 	INewWorkflowData,
 	INodeMetadata,
 	INodeUi,
@@ -32,6 +31,7 @@ import type {
 	IWorkflowsMap,
 	WorkflowsState,
 	NodeMetadataMap,
+	WorkflowMetadata,
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import type {
@@ -39,7 +39,7 @@ import type {
 	IConnection,
 	IConnections,
 	IDataObject,
-	IExecutionsSummary,
+	ExecutionSummary,
 	INode,
 	INodeConnections,
 	INodeCredentials,
@@ -63,7 +63,7 @@ import { findLast } from 'lodash-es';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import {
 	getActiveWorkflows,
-	getCurrentExecutions,
+	getActiveExecutions,
 	getExecutionData,
 	getExecutions,
 	getNewWorkflow,
@@ -75,12 +75,14 @@ import { dataPinningEventBus } from '@/event-bus';
 import { isObject } from '@/utils/objectUtils';
 import { getPairedItemsMapping } from '@/utils/pairedItemUtils';
 import { isJsonKeyObject, isEmpty, stringSizeInBytes } from '@/utils/typesUtils';
-import { makeRestApiRequest, unflattenExecutionData } from '@/utils/apiUtils';
+import { makeRestApiRequest, unflattenExecutionData, ResponseError } from '@/utils/apiUtils';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { getCredentialOnlyNodeTypeName } from '@/utils/credentialOnlyNodes';
+import { i18n } from '@/plugins/i18n';
+import { ErrorReporterProxy as EventReporter } from 'n8n-workflow';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -124,6 +126,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		executionWaitingForWebhook: false,
 		nodeMetadata: {},
 		isInDebugMode: false,
+		chatMessages: [],
 	}),
 	getters: {
 		// Workflow getters
@@ -196,11 +199,16 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				return {};
 			};
 		},
+		nodeHasOutputConnection() {
+			return (nodeName: string): boolean => {
+				if (this.workflow.connections.hasOwnProperty(nodeName)) return true;
+				return false;
+			};
+		},
 		isNodeInOutgoingNodeConnections() {
 			return (firstNode: string, secondNode: string): boolean => {
 				const firstNodeConnections = this.outgoingConnectionsByNodeName(firstNode);
-				if (!firstNodeConnections || !firstNodeConnections.main || !firstNodeConnections.main[0])
-					return false;
+				if (!firstNodeConnections?.main?.[0]) return false;
 				const connections = firstNodeConnections.main[0];
 				if (connections.some((node) => node.node === secondNode)) return true;
 				return connections.some((node) =>
@@ -241,7 +249,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			}
 			return false;
 		},
-		getPinData(): IPinData | undefined {
+		pinnedWorkflowData(): IPinData | undefined {
 			return this.workflow.pinData;
 		},
 		shouldReplaceInputDataWithPinData(): boolean {
@@ -262,11 +270,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			return (nodeName: string) => this.executingNode.includes(nodeName);
 		},
 		// Executions getters
-		getExecutionDataById(): (id: string) => IExecutionsSummary | undefined {
-			return (id: string): IExecutionsSummary | undefined =>
+		getExecutionDataById(): (id: string) => ExecutionSummary | undefined {
+			return (id: string): ExecutionSummary | undefined =>
 				this.currentWorkflowExecutions.find((execution) => execution.id === id);
 		},
-		getAllLoadedFinishedExecutions(): IExecutionsSummary[] {
+		getAllLoadedFinishedExecutions(): ExecutionSummary[] {
 			return this.currentWorkflowExecutions.filter(
 				(ex) => ex.finished === true || ex.stoppedAt !== undefined,
 			);
@@ -276,6 +284,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		},
 		getTotalFinishedExecutionsCount(): number {
 			return this.finishedExecutionsCount;
+		},
+		getPastChatMessages(): string[] {
+			return Array.from(new Set(this.chatMessages));
 		},
 	},
 	actions: {
@@ -345,7 +356,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				nodeTypes,
 				settings: this.workflowSettings,
 				// @ts-ignore
-				pinData: this.getPinData,
+				pinData: this.pinnedWorkflowData,
 			});
 
 			return cachedWorkflow;
@@ -366,14 +377,18 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		// Returns a workflow from a given URL
 		async getWorkflowFromUrl(url: string): Promise<IWorkflowDb> {
 			const rootStore = useRootStore();
-			return makeRestApiRequest(rootStore.getRestApiContext, 'GET', '/workflows/from-url', {
+			return await makeRestApiRequest(rootStore.getRestApiContext, 'GET', '/workflows/from-url', {
 				url,
 			});
 		},
 
 		async getActivationError(id: string): Promise<string | undefined> {
 			const rootStore = useRootStore();
-			return makeRestApiRequest(rootStore.getRestApiContext, 'GET', `/active/error/${id}`);
+			return await makeRestApiRequest(
+				rootStore.getRestApiContext,
+				'GET',
+				`/active-workflows/error/${id}`,
+			);
 		},
 
 		async fetchAllWorkflows(): Promise<IWorkflowDb[]> {
@@ -652,6 +667,17 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			};
 		},
 
+		setWorkflowMetadata(metadata: WorkflowMetadata | undefined): void {
+			this.workflow.meta = metadata;
+		},
+
+		addToWorkflowMetadata(data: Partial<WorkflowMetadata>): void {
+			this.workflow.meta = {
+				...this.workflow.meta,
+				...data,
+			};
+		},
+
 		setWorkflow(workflow: IWorkflowDb): void {
 			this.workflow = workflow;
 			this.workflow = {
@@ -678,7 +704,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			}
 
 			const storedPinData = payload.data.map((item) =>
-				isJsonKeyObject(item) ? item : { json: item },
+				isJsonKeyObject(item) ? { json: item.json } : { json: item },
 			);
 
 			this.workflow = {
@@ -820,15 +846,19 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			this.workflow.connections = {};
 		},
 
-		removeAllNodeConnection(node: INodeUi): void {
+		removeAllNodeConnection(
+			node: INodeUi,
+			{ preserveInputConnections = false, preserveOutputConnections = false } = {},
+		): void {
 			const uiStore = useUIStore();
 			uiStore.stateIsDirty = true;
 			// Remove all source connections
-			if (this.workflow.connections.hasOwnProperty(node.name)) {
+			if (!preserveOutputConnections && this.workflow.connections.hasOwnProperty(node.name)) {
 				delete this.workflow.connections[node.name];
 			}
 
 			// Remove all destination connections
+			if (preserveInputConnections) return;
 			const indexesToRemove = [];
 			let sourceNode: string,
 				type: string,
@@ -1176,6 +1206,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				return;
 			}
 			this.activeExecutions.unshift(newActiveExecution);
+			this.activeExecutionId = newActiveExecution.id;
 		},
 		finishActiveExecution(
 			finishedActiveExecution: IPushDataExecutionFinished | IPushDataUnsavedExecutionFinished,
@@ -1213,34 +1244,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		setActiveExecutions(newActiveExecutions: IExecutionsCurrentSummaryExtended[]): void {
 			this.activeExecutions = newActiveExecutions;
 		},
-
-		async retryExecution(id: string, loadWorkflow?: boolean): Promise<boolean> {
-			let sendData;
-			if (loadWorkflow === true) {
-				sendData = {
-					loadWorkflow: true,
-				};
-			}
-			const rootStore = useRootStore();
-			return makeRestApiRequest(
-				rootStore.getRestApiContext,
-				'POST',
-				`/executions/${id}/retry`,
-				sendData,
-			);
-		},
-
-		// Deletes executions
-		async deleteExecutions(sendData: IExecutionDeleteFilter): Promise<void> {
-			const rootStore = useRootStore();
-			return makeRestApiRequest(
-				rootStore.getRestApiContext,
-				'POST',
-				'/executions/delete',
-				sendData as unknown as IDataObject,
-			);
-		},
-
 		// TODO: For sure needs some kind of default filter like last day, with max 10 results, ...
 		async getPastExecutions(
 			filter: IDataObject,
@@ -1258,10 +1261,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				};
 			}
 			const rootStore = useRootStore();
-			return makeRestApiRequest(rootStore.getRestApiContext, 'GET', '/executions', sendData);
+			return await makeRestApiRequest(rootStore.getRestApiContext, 'GET', '/executions', sendData);
 		},
 
-		async getCurrentExecutions(filter: IDataObject): Promise<IExecutionsCurrentSummaryExtended[]> {
+		async getActiveExecutions(filter: IDataObject): Promise<IExecutionsCurrentSummaryExtended[]> {
 			let sendData = {};
 			if (filter) {
 				sendData = {
@@ -1269,12 +1272,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				};
 			}
 			const rootStore = useRootStore();
-			return makeRestApiRequest(
+			const output = await makeRestApiRequest(
 				rootStore.getRestApiContext,
 				'GET',
-				'/executions-current',
+				'/executions',
 				sendData,
 			);
+
+			return output.results;
 		},
 
 		async getExecution(id: string): Promise<IExecutionResponse | undefined> {
@@ -1293,7 +1298,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			sendData.active = false;
 
 			const rootStore = useRootStore();
-			return makeRestApiRequest(
+			return await makeRestApiRequest(
 				rootStore.getRestApiContext,
 				'POST',
 				'/workflows',
@@ -1308,7 +1313,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			forceSave = false,
 		): Promise<IWorkflowDb> {
 			const rootStore = useRootStore();
-			return makeRestApiRequest(
+
+			if (data.settings === null) {
+				EventReporter.info('Detected workflow payload with settings as null');
+				data.settings = undefined;
+			}
+
+			return await makeRestApiRequest(
 				rootStore.getRestApiContext,
 				'PATCH',
 				`/workflows/${id}${forceSave ? '?forceSave=true' : ''}`,
@@ -1318,35 +1329,41 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 		async runWorkflow(startRunData: IStartRunData): Promise<IExecutionPushResponse> {
 			const rootStore = useRootStore();
-			return makeRestApiRequest(
-				rootStore.getRestApiContext,
-				'POST',
-				'/workflows/run',
-				startRunData as unknown as IDataObject,
-			);
+
+			if (startRunData.workflowData.settings === null) {
+				EventReporter.info('Detected workflow payload with settings as null');
+				startRunData.workflowData.settings = undefined;
+			}
+
+			try {
+				return await makeRestApiRequest(
+					rootStore.getRestApiContext,
+					'POST',
+					'/workflows/run',
+					startRunData as unknown as IDataObject,
+				);
+			} catch (error) {
+				if (error.response?.status === 413) {
+					throw new ResponseError(i18n.baseText('workflowRun.showError.payloadTooLarge'), {
+						errorCode: 413,
+						httpStatusCode: 413,
+					});
+				}
+				throw error;
+			}
 		},
 
 		async removeTestWebhook(workflowId: string): Promise<boolean> {
 			const rootStore = useRootStore();
-			return makeRestApiRequest(
+			return await makeRestApiRequest(
 				rootStore.getRestApiContext,
 				'DELETE',
 				`/test-webhook/${workflowId}`,
 			);
 		},
-
-		async stopCurrentExecution(executionId: string): Promise<IExecutionsStopData> {
-			const rootStore = useRootStore();
-			return makeRestApiRequest(
-				rootStore.getRestApiContext,
-				'POST',
-				`/executions-current/${executionId}/stop`,
-			);
-		},
-
 		async loadCurrentWorkflowExecutions(
 			requestFilter: ExecutionsQueryFilter,
-		): Promise<IExecutionsSummary[]> {
+		): Promise<ExecutionSummary[]> {
 			let activeExecutions = [];
 
 			if (!requestFilter.workflowId) {
@@ -1355,7 +1372,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			try {
 				const rootStore = useRootStore();
 				if ((!requestFilter.status || !requestFilter.finished) && isEmpty(requestFilter.metadata)) {
-					activeExecutions = await getCurrentExecutions(rootStore.getRestApiContext, {
+					activeExecutions = await getActiveExecutions(rootStore.getRestApiContext, {
 						workflowId: requestFilter.workflowId,
 					});
 				}
@@ -1369,14 +1386,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 		async fetchExecutionDataById(executionId: string): Promise<IExecutionResponse | null> {
 			const rootStore = useRootStore();
-			return getExecutionData(rootStore.getRestApiContext, executionId);
+			return await getExecutionData(rootStore.getRestApiContext, executionId);
 		},
 
-		deleteExecution(execution: IExecutionsSummary): void {
+		deleteExecution(execution: ExecutionSummary): void {
 			this.currentWorkflowExecutions.splice(this.currentWorkflowExecutions.indexOf(execution), 1);
 		},
 
-		addToCurrentExecutions(executions: IExecutionsSummary[]): void {
+		addToCurrentExecutions(executions: ExecutionSummary[]): void {
 			executions.forEach((execution) => {
 				const exists = this.currentWorkflowExecutions.find((ex) => ex.id === execution.id);
 				if (!exists && execution.workflowId === this.workflowId) {
@@ -1387,7 +1404,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		// Returns all the available timezones
 		async getExecutionEvents(id: string): Promise<IAbstractEventMessage[]> {
 			const rootStore = useRootStore();
-			return makeRestApiRequest(rootStore.getRestApiContext, 'GET', '/eventbus/execution/' + id);
+			return await makeRestApiRequest(
+				rootStore.getRestApiContext,
+				'GET',
+				'/eventbus/execution/' + id,
+			);
 		},
 		// Binary data
 		getBinaryUrl(
@@ -1415,6 +1436,27 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 					pristine: isPristine,
 				},
 			};
+		},
+
+		resetChatMessages(): void {
+			this.chatMessages = [];
+		},
+
+		appendChatMessage(message: string): void {
+			this.chatMessages.push(message);
+		},
+
+		checkIfNodeHasChatParent(nodeName: string): boolean {
+			const workflow = this.getCurrentWorkflow();
+			const parents = workflow.getParentNodes(nodeName, 'main');
+
+			const matchedChatNode = parents.find((parent) => {
+				const parentNodeType = this.getNodeByName(parent)?.type;
+
+				return parentNodeType === CHAT_TRIGGER_NODE_TYPE;
+			});
+
+			return !!matchedChatNode;
 		},
 	},
 });

@@ -22,7 +22,7 @@ export class NDV extends BasePage {
 			this.getters.outputPanel().findChildByTestId('ndv-run-data-display-mode').first(),
 		pinDataButton: () => cy.getByTestId('ndv-pin-data'),
 		editPinnedDataButton: () => cy.getByTestId('ndv-edit-pinned-data'),
-		pinnedDataEditor: () => this.getters.outputPanel().find('.cm-editor .cm-scroller'),
+		pinnedDataEditor: () => this.getters.outputPanel().find('.cm-editor .cm-scroller .cm-content'),
 		runDataPaneHeader: () => cy.getByTestId('run-data-pane-header'),
 		nodeOutputHint: () => cy.getByTestId('ndv-output-run-node-hint'),
 		savePinnedDataButton: () =>
@@ -39,6 +39,7 @@ export class NDV extends BasePage {
 		inputTbodyCell: (row: number, col: number) =>
 			this.getters.inputTableRow(row).find('td').eq(col),
 		inlineExpressionEditorInput: () => cy.getByTestId('inline-expression-editor-input'),
+		inlineExpressionEditorOutput: () => cy.getByTestId('inline-expression-editor-output'),
 		nodeParameters: () => cy.getByTestId('node-parameters'),
 		parameterInput: (parameterName: string) => cy.getByTestId(`parameter-input-${parameterName}`),
 		parameterInputIssues: (parameterName: string) =>
@@ -94,10 +95,29 @@ export class NDV extends BasePage {
 			this.getters.filterComponent(paramName).getByTestId('filter-remove-condition').eq(index),
 		filterConditionAdd: (paramName: string) =>
 			this.getters.filterComponent(paramName).getByTestId('filter-add-condition'),
+		assignmentCollection: (paramName: string) =>
+			cy.getByTestId(`assignment-collection-${paramName}`),
+		assignmentCollectionAdd: (paramName: string) =>
+			this.getters.assignmentCollection(paramName).getByTestId('assignment-collection-drop-area'),
+		assignment: (paramName: string, index = 0) =>
+			this.getters.assignmentCollection(paramName).getByTestId('assignment').eq(index),
+		assignmentRemove: (paramName: string, index = 0) =>
+			this.getters.assignment(paramName, index).getByTestId('assignment-remove'),
+		assignmentName: (paramName: string, index = 0) =>
+			this.getters.assignment(paramName, index).getByTestId('assignment-name'),
+		assignmentValue: (paramName: string, index = 0) =>
+			this.getters.assignment(paramName, index).getByTestId('assignment-value'),
+		assignmentType: (paramName: string, index = 0) =>
+			this.getters.assignment(paramName, index).getByTestId('assignment-type-select'),
 		searchInput: () => cy.getByTestId('ndv-search'),
 		pagination: () => cy.getByTestId('ndv-data-pagination'),
 		nodeVersion: () => cy.getByTestId('node-version'),
 		nodeSettingsTab: () => cy.getByTestId('tab-settings'),
+		codeEditorFullscreenButton: () => cy.getByTestId('code-editor-fullscreen-button'),
+		codeEditorDialog: () => cy.getByTestId('code-editor-fullscreen'),
+		codeEditorFullscreen: () => this.getters.codeEditorDialog().find('.cm-content'),
+		nodeRunSuccessIndicator: () => cy.getByTestId('node-run-info-success'),
+		nodeRunErrorIndicator: () => cy.getByTestId('node-run-info-danger'),
 	};
 
 	actions = {
@@ -135,6 +155,17 @@ export class NDV extends BasePage {
 
 			this.actions.savePinnedData();
 		},
+		pastePinnedData: (data: object) => {
+			this.getters.editPinnedDataButton().click();
+
+			this.getters.pinnedDataEditor().click();
+			this.getters
+				.pinnedDataEditor()
+				.type('{selectall}{backspace}', { delay: 0 })
+				.paste(JSON.stringify(data));
+
+			this.actions.savePinnedData();
+		},
 		clearParameterInput: (parameterName: string) => {
 			this.getters.parameterInput(parameterName).type(`{selectall}{backspace}`);
 		},
@@ -147,10 +178,6 @@ export class NDV extends BasePage {
 		},
 		selectOptionInParameterDropdown: (parameterName: string, content: string) => {
 			getVisibleSelect().find('.option-headline').contains(content).click();
-		},
-		dismissMappingTooltip: () => {
-			cy.getByTestId('dismiss-mapping-tooltip').click();
-			cy.getByTestId('dismiss-mapping-tooltip').should('not.be.visible');
 		},
 		rename: (newName: string) => {
 			this.getters.nodeNameContainer().click();
@@ -225,10 +252,13 @@ export class NDV extends BasePage {
 			getVisiblePopper().find('li').last().click();
 		},
 		addFilterCondition: (paramName: string) => {
-			this.getters.filterConditionAdd(paramName).click();
+			this.getters.filterConditionAdd(paramName).click({ force: true });
 		},
 		removeFilterCondition: (paramName: string, index: number) => {
 			this.getters.filterConditionRemove(paramName, index).click();
+		},
+		removeAssignment: (paramName: string, index: number) => {
+			this.getters.assignmentRemove(paramName, index).click();
 		},
 		setInvalidExpression: ({
 			fieldName,
@@ -246,9 +276,19 @@ export class NDV extends BasePage {
 			});
 			this.actions.validateExpressionPreview(fieldName, `node doesn't exist`);
 		},
-
 		openSettings: () => {
 			this.getters.nodeSettingsTab().click();
+		},
+
+		openCodeEditorFullscreen: () => {
+			this.getters.codeEditorFullscreenButton().click({ force: true });
+		},
+		changeNodeOperation: (operation: string) => {
+			this.getters.parameterInput('operation').click();
+			cy.get('.el-select-dropdown__item')
+				.contains(new RegExp(`^${operation}$`))
+				.click({ force: true });
+			this.getters.parameterInput('operation').find('input').should('have.value', operation);
 		},
 	};
 }

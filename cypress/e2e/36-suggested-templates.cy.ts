@@ -49,7 +49,7 @@ describe('Suggested templates - Should render', () => {
 
 	it('should render suggested templates when there are workflows in the list', () => {
 		WorkflowsListPage.getters.suggestedTemplatesNewWorkflowButton().click();
-		cy.createFixtureWorkflow('Test_workflow_1.json', 'Test Workflow');
+		cy.createFixtureWorkflow('Test_workflow_1.json', 'Test workflow');
 		cy.visit(WorkflowsListPage.url);
 		WorkflowsListPage.getters.suggestedTemplatesSectionContainer().should('exist');
 		cy.contains(`Explore ${fixtureSections.sections[0].name.toLocaleLowerCase()} workflow templates`).should('exist');

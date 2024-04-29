@@ -1,11 +1,16 @@
-import { setupTestServer } from './shared/utils';
-import config from '@/config';
-import request from 'supertest';
-import Container from 'typedi';
-import { MetricsService } from '@/services/metrics.service';
-import { N8N_VERSION } from '@/constants';
+import { Container } from 'typedi';
 import { parse as semverParse } from 'semver';
+import request from 'supertest';
 
+import config from '@/config';
+import { N8N_VERSION } from '@/constants';
+import { MetricsService } from '@/services/metrics.service';
+import { ExecutionDataRecoveryService } from '@/eventbus/executionDataRecovery.service';
+
+import { setupTestServer } from './shared/utils';
+import { mockInstance } from '../shared/mocking';
+
+mockInstance(ExecutionDataRecoveryService);
 jest.unmock('@/eventbus/MessageEventBus/MessageEventBus');
 config.set('endpoints.metrics.enable', true);
 config.set('endpoints.metrics.includeDefaultMetrics', false);

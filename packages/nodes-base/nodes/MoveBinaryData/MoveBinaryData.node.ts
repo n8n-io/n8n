@@ -42,6 +42,7 @@ encodeDecodeOptions.sort((a, b) => {
 
 export class MoveBinaryData implements INodeType {
 	description: INodeTypeDescription = {
+		hidden: true,
 		displayName: 'Convert to/from binary data',
 		name: 'moveBinaryData',
 		icon: 'fa:exchange-alt',
@@ -180,6 +181,20 @@ export class MoveBinaryData implements INodeType {
 				default: {},
 				options: [
 					{
+						displayName: 'Add Byte Order Mark (BOM)',
+						name: 'addBOM',
+						description:
+							'Whether to add special marker at the start of your text file. This marker helps some programs understand how to read the file correctly.',
+						displayOptions: {
+							show: {
+								'/mode': ['jsonToBinary'],
+								encoding: bomAware,
+							},
+						},
+						type: 'boolean',
+						default: false,
+					},
+					{
 						displayName: 'Data Is Base64',
 						name: 'dataIsBase64',
 						type: 'boolean',
@@ -206,7 +221,7 @@ export class MoveBinaryData implements INodeType {
 							},
 						},
 						default: 'utf8',
-						description: 'Set the encoding of the data stream',
+						description: 'Choose the character set to use to encode the data',
 					},
 					{
 						displayName: 'Strip BOM',
@@ -219,18 +234,6 @@ export class MoveBinaryData implements INodeType {
 						},
 						type: 'boolean',
 						default: true,
-					},
-					{
-						displayName: 'Add BOM',
-						name: 'addBOM',
-						displayOptions: {
-							show: {
-								'/mode': ['jsonToBinary'],
-								encoding: bomAware,
-							},
-						},
-						type: 'boolean',
-						default: false,
 					},
 					{
 						displayName: 'File Name',

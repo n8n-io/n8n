@@ -6,11 +6,31 @@ import {
 	type INodeTypeDescription,
 	type SupplyData,
 } from 'n8n-workflow';
-import type { RecursiveCharacterTextSplitterParams } from 'langchain/text_splitter';
+import type {
+	RecursiveCharacterTextSplitterParams,
+	SupportedTextSplitterLanguage,
+} from 'langchain/text_splitter';
 import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
+const supportedLanguages: SupportedTextSplitterLanguage[] = [
+	'cpp',
+	'go',
+	'java',
+	'js',
+	'php',
+	'proto',
+	'python',
+	'rst',
+	'ruby',
+	'rust',
+	'scala',
+	'swift',
+	'markdown',
+	'latex',
+	'html',
+];
 export class TextSplitterRecursiveCharacterTextSplitter implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Recursive Character Text Splitter',
@@ -54,6 +74,23 @@ export class TextSplitterRecursiveCharacterTextSplitter implements INodeType {
 				type: 'number',
 				default: 0,
 			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				placeholder: 'Add Option',
+				description: 'Additional options to add',
+				type: 'collection',
+				default: {},
+				options: [
+					{
+						displayName: 'Split Code',
+						name: 'splitCode',
+						default: 'markdown',
+						type: 'options',
+						options: supportedLanguages.map((lang) => ({ name: lang, value: lang })),
+					},
+				],
+			},
 		],
 	};
 
@@ -62,7 +99,11 @@ export class TextSplitterRecursiveCharacterTextSplitter implements INodeType {
 
 		const chunkSize = this.getNodeParameter('chunkSize', itemIndex) as number;
 		const chunkOverlap = this.getNodeParameter('chunkOverlap', itemIndex) as number;
-
+		const splitCode = this.getNodeParameter(
+			'options.splitCode',
+			itemIndex,
+			null,
+		) as SupportedTextSplitterLanguage | null;
 		const params: RecursiveCharacterTextSplitterParams = {
 			// TODO: These are the default values, should we allow the user to change them?
 			separators: ['\n\n', '\n', ' ', ''],
@@ -70,8 +111,13 @@ export class TextSplitterRecursiveCharacterTextSplitter implements INodeType {
 			chunkOverlap,
 			keepSeparator: false,
 		};
+		let splitter: RecursiveCharacterTextSplitter;
 
-		const splitter = new RecursiveCharacterTextSplitter(params);
+		if (splitCode && supportedLanguages.includes(splitCode)) {
+			splitter = RecursiveCharacterTextSplitter.fromLanguage(splitCode, params);
+		} else {
+			splitter = new RecursiveCharacterTextSplitter(params);
+		}
 
 		return {
 			response: logWrapper(splitter, this),

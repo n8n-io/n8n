@@ -1,11 +1,11 @@
 <template>
 	<span :class="$style.container" data-test-id="save-button">
-		<span :class="$style.saved" v-if="saved">{{ $locale.baseText('saveButton.saved') }}</span>
-		<keyboard-shortcut-tooltip
+		<span v-if="saved" :class="$style.saved">{{ $locale.baseText('saveButton.saved') }}</span>
+		<KeyboardShortcutTooltip
+			v-else
 			:label="$locale.baseText('saveButton.hint')"
 			:shortcut="{ keys: ['s'], metaKey: true }"
 			placement="bottom"
-			v-else
 		>
 			<n8n-button
 				:label="saveButtonLabel"
@@ -14,7 +14,7 @@
 				:class="$style.button"
 				:type="type"
 			/>
-		</keyboard-shortcut-tooltip>
+		</KeyboardShortcutTooltip>
 	</span>
 </template>
 

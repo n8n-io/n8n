@@ -184,6 +184,12 @@ export const descriptions: INodeProperties[] = [
 					},
 				],
 			},
+			{
+				displayName: 'By Name',
+				name: 'name',
+				type: 'string',
+				placeholder: 'Sheet1',
+			},
 		],
 		displayOptions: {
 			show: {

@@ -7,20 +7,22 @@
 					{{ $locale.baseText('templates.workflows') }}
 				</n8n-text>
 			</span>
-			<NodeList :nodes="collection.nodes" :showMore="false" />
+			<NodeList :nodes="collection.nodes" :show-more="false" />
 		</template>
 	</Card>
 </template>
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import { genericHelpers } from '@/mixins/genericHelpers';
 import Card from '@/components/CollectionWorkflowCard.vue';
 import NodeList from '@/components/NodeList.vue';
 
 export default defineComponent({
 	name: 'TemplatesInfoCard',
-	mixins: [genericHelpers],
+	components: {
+		Card,
+		NodeList,
+	},
 	props: {
 		loading: {
 			type: Boolean,
@@ -36,10 +38,6 @@ export default defineComponent({
 			type: String,
 			required: true,
 		},
-	},
-	components: {
-		Card,
-		NodeList,
 	},
 });
 </script>

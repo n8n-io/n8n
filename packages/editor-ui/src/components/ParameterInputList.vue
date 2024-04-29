@@ -12,20 +12,20 @@
 				v-if="multipleValues(parameter) === true && parameter.type !== 'fixedCollection'"
 				class="parameter-item"
 			>
-				<multiple-parameter
+				<MultipleParameter
 					:parameter="parameter"
 					:values="nodeHelpers.getParameterValue(nodeValues, parameter.name, path)"
-					:nodeValues="nodeValues"
+					:node-values="nodeValues"
 					:path="getPath(parameter.name)"
-					:isReadOnly="isReadOnly"
-					@valueChanged="valueChanged"
+					:is-read-only="isReadOnly"
+					@value-changed="valueChanged"
 				/>
 			</div>
 
-			<import-parameter
+			<ImportParameter
 				v-else-if="parameter.type === 'curlImport'"
-				:isReadOnly="isReadOnly"
-				@valueChanged="valueChanged"
+				:is-read-only="isReadOnly"
+				@value-changed="valueChanged"
 			/>
 
 			<n8n-notice
@@ -49,7 +49,7 @@
 				class="multi-parameter"
 			>
 				<n8n-icon-button
-					v-if="hideDelete !== true && !isReadOnly"
+					v-if="hideDelete !== true && !isReadOnly && !parameter.isNodeSetting"
 					type="tertiary"
 					text
 					size="mini"
@@ -60,41 +60,53 @@
 				></n8n-icon-button>
 				<n8n-input-label
 					:label="$locale.nodeText().inputLabelDisplayName(parameter, path)"
-					:tooltipText="$locale.nodeText().inputLabelDescription(parameter, path)"
+					:tooltip-text="$locale.nodeText().inputLabelDescription(parameter, path)"
 					size="small"
 					:underline="true"
 					color="text-dark"
 				/>
-				<Suspense>
-					<collection-parameter
-						v-if="parameter.type === 'collection'"
-						:parameter="parameter"
-						:values="nodeHelpers.getParameterValue(nodeValues, parameter.name, path)"
-						:nodeValues="nodeValues"
-						:path="getPath(parameter.name)"
-						:isReadOnly="isReadOnly"
-						@valueChanged="valueChanged"
-					/>
-					<fixed-collection-parameter
-						v-else-if="parameter.type === 'fixedCollection'"
-						:parameter="parameter"
-						:values="nodeHelpers.getParameterValue(nodeValues, parameter.name, path)"
-						:nodeValues="nodeValues"
-						:path="getPath(parameter.name)"
-						:isReadOnly="isReadOnly"
-						@valueChanged="valueChanged"
-					/>
+				<Suspense v-if="!asyncLoadingError">
+					<template #default>
+						<CollectionParameter
+							v-if="parameter.type === 'collection'"
+							:parameter="parameter"
+							:values="nodeHelpers.getParameterValue(nodeValues, parameter.name, path)"
+							:node-values="nodeValues"
+							:path="getPath(parameter.name)"
+							:is-read-only="isReadOnly"
+							@value-changed="valueChanged"
+						/>
+						<FixedCollectionParameter
+							v-else-if="parameter.type === 'fixedCollection'"
+							:parameter="parameter"
+							:values="nodeHelpers.getParameterValue(nodeValues, parameter.name, path)"
+							:node-values="nodeValues"
+							:path="getPath(parameter.name)"
+							:is-read-only="isReadOnly"
+							@value-changed="valueChanged"
+						/>
+					</template>
+					<template #fallback>
+						<n8n-text size="small" class="async-notice">
+							<n8n-icon icon="sync-alt" size="xsmall" :spin="true" />
+							{{ $locale.baseText('parameterInputList.loadingFields') }}
+						</n8n-text>
+					</template>
 				</Suspense>
+				<n8n-text v-else size="small" color="danger" class="async-notice">
+					<n8n-icon icon="exclamation-triangle" size="xsmall" />
+					{{ $locale.baseText('parameterInputList.loadingError') }}
+				</n8n-text>
 			</div>
-			<resource-mapper
+			<ResourceMapper
 				v-else-if="parameter.type === 'resourceMapper'"
 				:parameter="parameter"
 				:node="node"
 				:path="getPath(parameter.name)"
-				:dependentParametersValues="getDependentParametersValues(parameter)"
-				inputSize="small"
-				labelSize="small"
-				@valueChanged="valueChanged"
+				:dependent-parameters-values="getDependentParametersValues(parameter)"
+				input-size="small"
+				label-size="small"
+				@value-changed="valueChanged"
 			/>
 			<FilterConditions
 				v-else-if="parameter.type === 'filter'"
@@ -102,14 +114,24 @@
 				:value="nodeHelpers.getParameterValue(nodeValues, parameter.name, path)"
 				:path="getPath(parameter.name)"
 				:node="node"
-				@valueChanged="valueChanged"
+				:read-only="isReadOnly"
+				@value-changed="valueChanged"
+			/>
+			<AssignmentCollection
+				v-else-if="parameter.type === 'assignmentCollection'"
+				:parameter="parameter"
+				:value="nodeHelpers.getParameterValue(nodeValues, parameter.name, path)"
+				:path="getPath(parameter.name)"
+				:node="node"
+				:is-read-only="isReadOnly"
+				@value-changed="valueChanged"
 			/>
 			<div
 				v-else-if="displayNodeParameter(parameter) && credentialsParameterIndex !== index"
 				class="parameter-item"
 			>
 				<n8n-icon-button
-					v-if="hideDelete !== true && !isReadOnly"
+					v-if="hideDelete !== true && !isReadOnly && !parameter.isNodeSetting"
 					type="tertiary"
 					text
 					size="mini"
@@ -119,21 +141,21 @@
 					@click="deleteOption(parameter.name)"
 				></n8n-icon-button>
 
-				<parameter-input-full
+				<ParameterInputFull
 					:parameter="parameter"
 					:hide-issues="hiddenIssuesInputs.includes(parameter.name)"
 					:value="nodeHelpers.getParameterValue(nodeValues, parameter.name, path)"
-					:displayOptions="shouldShowOptions(parameter)"
+					:display-options="shouldShowOptions(parameter)"
 					:path="getPath(parameter.name)"
-					:isReadOnly="isReadOnly"
-					:hideLabel="false"
-					:nodeValues="nodeValues"
+					:is-read-only="isReadOnly"
+					:hide-label="false"
+					:node-values="nodeValues"
 					@update="valueChanged"
 					@blur="onParameterBlur(parameter.name)"
 				/>
 			</div>
 		</div>
-		<div :class="{ indent }" v-if="filteredParameters.length === 0">
+		<div v-if="filteredParameters.length === 0" :class="{ indent }">
 			<slot />
 		</div>
 	</div>
@@ -149,7 +171,7 @@ import type {
 import { deepCopy } from 'n8n-workflow';
 import { mapStores } from 'pinia';
 import type { PropType } from 'vue';
-import { defineAsyncComponent, defineComponent } from 'vue';
+import { defineAsyncComponent, defineComponent, onErrorCaptured, ref } from 'vue';
 
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 
@@ -157,9 +179,9 @@ import ImportParameter from '@/components/ImportParameter.vue';
 import MultipleParameter from '@/components/MultipleParameter.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
-import Conditions from '@/components/FilterConditions/FilterConditions.vue';
+import FilterConditions from '@/components/FilterConditions/FilterConditions.vue';
+import AssignmentCollection from '@/components/AssignmentCollection/AssignmentCollection.vue';
 import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import {
@@ -168,17 +190,19 @@ import {
 	isAuthRelatedParameter,
 } from '@/utils/nodeTypesUtils';
 import { get, set } from 'lodash-es';
-import { nodeViewEventBus } from '@/event-bus';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { useRouter } from 'vue-router';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 
 const FixedCollectionParameter = defineAsyncComponent(
-	async () => import('./FixedCollectionParameter.vue'),
+	async () => await import('./FixedCollectionParameter.vue'),
 );
-const CollectionParameter = defineAsyncComponent(async () => import('./CollectionParameter.vue'));
+const CollectionParameter = defineAsyncComponent(
+	async () => await import('./CollectionParameter.vue'),
+);
 
 export default defineComponent({
 	name: 'ParameterInputList',
-	mixins: [workflowHelpers],
 	components: {
 		MultipleParameter,
 		ParameterInputFull,
@@ -186,14 +210,8 @@ export default defineComponent({
 		CollectionParameter,
 		ImportParameter,
 		ResourceMapper,
-		FilterConditions: Conditions,
-	},
-	setup() {
-		const nodeHelpers = useNodeHelpers();
-
-		return {
-			nodeHelpers,
-		};
+		FilterConditions,
+		AssignmentCollection,
 	},
 	props: {
 		nodeValues: {
@@ -224,6 +242,42 @@ export default defineComponent({
 			type: Array as PropType<string[]>,
 			default: () => [],
 		},
+		entryIndex: {
+			type: Number,
+			default: undefined,
+		},
+	},
+	setup() {
+		const nodeHelpers = useNodeHelpers();
+		const asyncLoadingError = ref(false);
+		const router = useRouter();
+		const workflowHelpers = useWorkflowHelpers({ router });
+
+		// This will catch errors in async components
+		onErrorCaptured((e, component) => {
+			if (
+				!['FixedCollectionParameter', 'CollectionParameter'].includes(
+					component?.$options.name as string,
+				)
+			) {
+				return;
+			}
+			asyncLoadingError.value = true;
+			console.error(e);
+			window?.Sentry?.captureException(e, {
+				tags: {
+					asyncLoadingError: true,
+				},
+			});
+			// Don't propagate the error further
+			return false;
+		});
+
+		return {
+			nodeHelpers,
+			asyncLoadingError,
+			workflowHelpers,
+		};
 	},
 	computed: {
 		...mapStores(useNodeTypesStore, useNDVStore),
@@ -285,6 +339,26 @@ export default defineComponent({
 		},
 		mainNodeAuthField(): INodeProperties | null {
 			return getMainAuthField(this.nodeType || null);
+		},
+	},
+	watch: {
+		filteredParameterNames(newValue, oldValue) {
+			if (newValue === undefined) {
+				return;
+			}
+			// After a parameter does not get displayed anymore make sure that its value gets removed
+			// Is only needed for the edge-case when a parameter gets displayed depending on another field
+			// which contains an expression.
+			for (const parameter of oldValue) {
+				if (!newValue.includes(parameter)) {
+					const parameterData = {
+						name: `${this.path}.${parameter}`,
+						node: this.ndvStore.activeNode?.name || '',
+						value: undefined,
+					};
+					this.$emit('valueChanged', parameterData);
+				}
+			}
 		},
 	},
 	methods: {
@@ -411,7 +485,7 @@ export default defineComponent({
 					} else {
 						// Contains probably no expression with a missing parameter so resolve
 						try {
-							nodeValues[key] = this.resolveExpression(
+							nodeValues[key] = this.workflowHelpers.resolveExpression(
 								rawValues[key],
 								nodeValues,
 							) as NodeParameterValue;
@@ -452,14 +526,16 @@ export default defineComponent({
 				this.$emit('activate');
 			}
 		},
+		/**
+		 * Handles default node button parameter type actions
+		 * @param parameter
+		 */
 		onButtonAction(parameter: INodeProperties) {
 			const action: string | undefined = parameter.typeOptions?.action;
 
 			switch (action) {
-				case 'openChat':
-					this.ndvStore.setActiveNodeName(null);
-					nodeViewEventBus.emit('openChat');
-					break;
+				default:
+					return;
 			}
 		},
 		isNodeAuthField(name: string): boolean {
@@ -486,7 +562,7 @@ export default defineComponent({
 			// Get the resolved parameter values of the current node
 			const currentNodeParameters = this.ndvStore.activeNode?.parameters;
 			try {
-				const resolvedNodeParameters = this.resolveParameter(currentNodeParameters);
+				const resolvedNodeParameters = this.workflowHelpers.resolveParameter(currentNodeParameters);
 
 				const returnValues: string[] = [];
 				for (const parameterPath of loadOptionsDependsOn) {
@@ -496,26 +572,6 @@ export default defineComponent({
 				return returnValues.join('|');
 			} catch (error) {
 				return null;
-			}
-		},
-	},
-	watch: {
-		filteredParameterNames(newValue, oldValue) {
-			if (newValue === undefined) {
-				return;
-			}
-			// After a parameter does not get displayed anymore make sure that its value gets removed
-			// Is only needed for the edge-case when a parameter gets displayed depending on another field
-			// which contains an expression.
-			for (const parameter of oldValue) {
-				if (!newValue.includes(parameter)) {
-					const parameterData = {
-						name: `${this.path}.${parameter}`,
-						node: this.ndvStore.activeNode?.name || '',
-						value: undefined,
-					};
-					this.$emit('valueChanged', parameterData);
-				}
 			}
 		},
 	},
@@ -563,6 +619,11 @@ export default defineComponent({
 		a {
 			font-weight: var(--font-weight-bold);
 		}
+	}
+
+	.async-notice {
+		display: block;
+		padding: var(--spacing-3xs) 0;
 	}
 }
 </style>

@@ -181,11 +181,7 @@ describe('test Set2, parseJsonParameter', () => {
 
 describe('test Set2, validateEntry', () => {
 	it('should convert number to string', () => {
-		const result = validateEntry(
-			{ name: 'foo', type: 'stringValue', stringValue: 42 as unknown as string },
-			node,
-			0,
-		);
+		const result = validateEntry('foo', 'string', 42 as unknown as string, node, 0);
 
 		expect(result).toEqual({
 			name: 'foo',
@@ -194,11 +190,7 @@ describe('test Set2, validateEntry', () => {
 	});
 
 	it('should convert array to string', () => {
-		const result = validateEntry(
-			{ name: 'foo', type: 'stringValue', stringValue: [1, 2, 3] as unknown as string },
-			node,
-			0,
-		);
+		const result = validateEntry('foo', 'string', [1, 2, 3] as unknown as string, node, 0);
 
 		expect(result).toEqual({
 			name: 'foo',
@@ -207,11 +199,7 @@ describe('test Set2, validateEntry', () => {
 	});
 
 	it('should convert object to string', () => {
-		const result = validateEntry(
-			{ name: 'foo', type: 'stringValue', stringValue: { foo: 'bar' } as unknown as string },
-			node,
-			0,
-		);
+		const result = validateEntry('foo', 'string', { foo: 'bar' } as unknown as string, node, 0);
 
 		expect(result).toEqual({
 			name: 'foo',
@@ -220,11 +208,7 @@ describe('test Set2, validateEntry', () => {
 	});
 
 	it('should convert boolean to string', () => {
-		const result = validateEntry(
-			{ name: 'foo', type: 'stringValue', stringValue: true as unknown as string },
-			node,
-			0,
-		);
+		const result = validateEntry('foo', 'string', true as unknown as string, node, 0);
 
 		expect(result).toEqual({
 			name: 'foo',
@@ -233,11 +217,7 @@ describe('test Set2, validateEntry', () => {
 	});
 
 	it('should convert undefined to string', () => {
-		const result = validateEntry(
-			{ name: 'foo', type: 'stringValue', stringValue: undefined as unknown as string },
-			node,
-			0,
-		);
+		const result = validateEntry('foo', 'string', undefined as unknown as string, node, 0);
 
 		expect(result).toEqual({
 			name: 'foo',

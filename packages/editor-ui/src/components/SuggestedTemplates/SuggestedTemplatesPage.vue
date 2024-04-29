@@ -4,9 +4,8 @@ import { computed } from 'vue';
 import { useUsersStore } from '@/stores/users.store';
 import { useUIStore } from '@/stores/ui.store';
 import { VIEWS } from '@/constants';
-import type { ITemplatesCollection } from '@/Interface';
+import type { ITemplatesCollection, IUser } from '@/Interface';
 import SuggestedTemplatesSection from '@/components/SuggestedTemplates/SuggestedTemplatesSection.vue';
-import type { IUser } from '@/Interface';
 
 const usersStore = useUsersStore();
 const uiStore = useUIStore();
@@ -15,7 +14,7 @@ const router = useRouter();
 const currentUser = computed(() => usersStore.currentUser);
 
 const upperCaseFirstName = (user: IUser | null) => {
-	if (!user || !user.firstName) return;
+	if (!user?.firstName) return;
 	return user.firstName?.charAt(0)?.toUpperCase() + user?.firstName?.slice(1);
 };
 
@@ -75,11 +74,11 @@ defineExpose({
 			</n8n-text>
 		</div>
 		<div :class="$style.content">
-			<suggested-templates-section
+			<SuggestedTemplatesSection
 				v-for="section in uiStore.suggestedTemplates?.sections"
 				:key="section.title"
 				:section="section"
-				:showTitle="false"
+				:show-title="false"
 			/>
 		</div>
 		<div>

@@ -4,6 +4,8 @@ import type {
 	IHookFunctions,
 	IWebhookFunctions,
 	JsonObject,
+	IRequestOptions,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { ApplicationError, NodeApiError } from 'n8n-workflow';
 
@@ -36,7 +38,7 @@ async function getToken(
 		uri: `${base}/user/login`,
 		json: true,
 		resolveWithFullResponse: true,
-	};
+	} satisfies IRequestOptions;
 
 	try {
 		const responseObject = await this.helpers.request(options);
@@ -54,7 +56,7 @@ async function getToken(
  */
 export async function formIoApiRequest(
 	this: IHookFunctions | ILoadOptionsFunctions | IWebhookFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body = {},
 	qs = {},

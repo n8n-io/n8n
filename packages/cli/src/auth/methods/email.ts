@@ -12,7 +12,7 @@ export const handleEmailLogin = async (
 ): Promise<User | undefined> => {
 	const user = await Container.get(UserRepository).findOne({
 		where: { email },
-		relations: ['globalRole', 'authIdentities'],
+		relations: ['authIdentities'],
 	});
 
 	if (user?.password && (await Container.get(PasswordUtility).compare(password, user.password))) {

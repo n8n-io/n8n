@@ -1,5 +1,5 @@
 import type { IDataObject } from 'n8n-workflow';
-import moment from 'moment';
+import moment from 'moment-timezone';
 import type { IRecurencyRule } from './SchedulerInterface';
 
 export function recurencyCheck(
@@ -81,3 +81,13 @@ export function convertToUnixFormat(interval: IDataObject) {
 	}
 	interval.expression = expression.join(' ');
 }
+
+export const addFallbackValue = <T>(enabled: boolean, fallback: T) => {
+	if (enabled) {
+		return (value: T) => {
+			if (!value) return fallback;
+			return value;
+		};
+	}
+	return (value: T) => value;
+};

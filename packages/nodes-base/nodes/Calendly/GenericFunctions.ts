@@ -1,5 +1,3 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestFunctions,
@@ -8,6 +6,8 @@ import type {
 	ILoadOptionsFunctions,
 	IHookFunctions,
 	IWebhookFunctions,
+	IHttpRequestMethods,
+	IRequestOptions,
 } from 'n8n-workflow';
 
 export function getAuthenticationType(data: string): 'accessToken' | 'apiKey' {
@@ -18,7 +18,7 @@ export function getAuthenticationType(data: string): 'accessToken' | 'apiKey' {
 
 export async function calendlyApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 
 	body: any = {},
@@ -41,7 +41,7 @@ export async function calendlyApiRequest(
 		endpoint = 'https://calendly.com/api/v1';
 	}
 
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		headers,
 		method,
 		body,
@@ -57,7 +57,7 @@ export async function calendlyApiRequest(
 		delete options.qs;
 	}
 	options = Object.assign({}, options, option);
-	return this.helpers.requestWithAuthentication.call(this, 'calendlyApi', options);
+	return await this.helpers.requestWithAuthentication.call(this, 'calendlyApi', options);
 }
 
 export async function validateCredentials(
@@ -72,7 +72,7 @@ export async function validateCredentials(
 
 	const authenticationType = getAuthenticationType(apiKey);
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		method: 'GET',
 		uri: '',
 		json: true,
@@ -89,5 +89,5 @@ export async function validateCredentials(
 			uri: 'https://calendly.com/api/v1/users/me',
 		});
 	}
-	return this.helpers.request(options);
+	return await this.helpers.request(options);
 }

@@ -5,10 +5,11 @@ import {
 	type INodeExecutionData,
 	NodeConnectionType,
 } from 'n8n-workflow';
-import { PineconeStore } from 'langchain/vectorstores/pinecone';
+import type { Embeddings } from '@langchain/core/embeddings';
+import type { Document } from '@langchain/core/documents';
+
+import { PineconeStore } from '@langchain/pinecone';
 import { Pinecone } from '@pinecone-database/pinecone';
-import type { Embeddings } from 'langchain/embeddings/base';
-import type { Document } from 'langchain/document';
 import type { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
 import { processDocuments } from '../shared/processDocuments';
 import { pineconeIndexRLC } from '../shared/descriptions';
@@ -37,7 +38,7 @@ export class VectorStorePineconeInsert implements INodeType {
 			resources: {
 				primaryDocumentation: [
 					{
-						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstorepineconeinsert/',
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstorepinecone/',
 					},
 				],
 			},
@@ -115,7 +116,6 @@ export class VectorStorePineconeInsert implements INodeType {
 
 		const client = new Pinecone({
 			apiKey: credentials.apiKey as string,
-			environment: credentials.environment as string,
 		});
 
 		const pineconeIndex = client.Index(index);
@@ -134,6 +134,6 @@ export class VectorStorePineconeInsert implements INodeType {
 			pineconeIndex,
 		});
 
-		return this.prepareOutputData(serializedDocuments);
+		return await this.prepareOutputData(serializedDocuments);
 	}
 }

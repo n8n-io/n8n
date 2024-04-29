@@ -5,10 +5,10 @@ import type {
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
+	IHttpRequestMethods,
+	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
-
-import type { OptionsWithUri } from 'request';
 
 export interface ICustomInterface {
 	name: string;
@@ -30,7 +30,7 @@ export interface ICustomProperties {
  */
 export async function pipedriveApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject,
 	query: IDataObject = {},
@@ -39,7 +39,7 @@ export async function pipedriveApiRequest(
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			Accept: 'application/json',
 		},
@@ -102,7 +102,7 @@ export async function pipedriveApiRequest(
  */
 export async function pipedriveApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject,
 	query?: IDataObject,

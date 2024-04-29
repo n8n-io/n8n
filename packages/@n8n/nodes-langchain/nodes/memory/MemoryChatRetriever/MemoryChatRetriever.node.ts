@@ -7,8 +7,8 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 } from 'n8n-workflow';
-import type { BaseChatMemory } from 'langchain/memory';
-import type { BaseMessage } from 'langchain/schema';
+import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
+import type { BaseMessage } from '@langchain/core/messages';
 
 function simplifyMessages(messages: BaseMessage[]) {
 	const chunkedMessages = [];
@@ -32,12 +32,14 @@ function simplifyMessages(messages: BaseMessage[]) {
 	return transformedMessages;
 }
 
+// This node is deprecated. Use MemoryManager instead.
 export class MemoryChatRetriever implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Chat Messages Retriever',
 		name: 'memoryChatRetriever',
 		icon: 'fa:database',
 		group: ['transform'],
+		hidden: true,
 		version: 1,
 		description: 'Retrieve chat messages from memory and use them in the workflow',
 		defaults: {
@@ -51,7 +53,7 @@ export class MemoryChatRetriever implements INodeType {
 			resources: {
 				primaryDocumentation: [
 					{
-						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.memorychatretriever/',
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.memorymanager/',
 					},
 				],
 			},
@@ -69,6 +71,12 @@ export class MemoryChatRetriever implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 		outputs: [NodeConnectionType.Main],
 		properties: [
+			{
+				displayName: "This node is deprecated. Use 'Chat Memory Manager' node instead.",
+				type: 'notice',
+				default: '',
+				name: 'deprecatedNotice',
+			},
 			{
 				displayName: 'Simplify Output',
 				name: 'simplifyOutput',
@@ -90,7 +98,7 @@ export class MemoryChatRetriever implements INodeType {
 		const messages = await memory?.chatHistory.getMessages();
 
 		if (simplifyOutput && messages) {
-			return this.prepareOutputData(simplifyMessages(messages));
+			return await this.prepareOutputData(simplifyMessages(messages));
 		}
 
 		const serializedMessages =
@@ -99,6 +107,6 @@ export class MemoryChatRetriever implements INodeType {
 				return { json: serializedMessage as unknown as IDataObject };
 			}) ?? [];
 
-		return this.prepareOutputData(serializedMessages);
+		return await this.prepareOutputData(serializedMessages);
 	}
 }

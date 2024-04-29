@@ -4,6 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
@@ -576,7 +577,7 @@ export class Disqus implements INodeType {
 		const operation = this.getNodeParameter('operation', 0);
 
 		let endpoint = '';
-		let requestMethod = '';
+		let requestMethod: IHttpRequestMethods;
 		let qs: IDataObject;
 
 		for (let i = 0; i < items.length; i++) {

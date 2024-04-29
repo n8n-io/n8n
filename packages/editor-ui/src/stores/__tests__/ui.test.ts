@@ -14,6 +14,7 @@ import {
 	getNotTrialingUserResponse,
 } from './utils/cloudStoreUtils';
 import type { IRole } from '@/Interface';
+import { ROLE } from '@/constants';
 
 let uiStore: ReturnType<typeof useUIStore>;
 let settingsStore: ReturnType<typeof useSettingsStore>;
@@ -25,11 +26,7 @@ function setUser(role: IRole) {
 		{
 			id: '1',
 			isPending: false,
-			globalRole: {
-				id: '1',
-				name: role,
-				createdAt: new Date(),
-			},
+			role,
 		},
 	]);
 
@@ -37,7 +34,7 @@ function setUser(role: IRole) {
 }
 
 function setupOwnerAndCloudDeployment() {
-	setUser('owner');
+	setUser(ROLE.Owner);
 	settingsStore.setSettings(
 		merge({}, SETTINGS_STORE_DEFAULT_STATE.settings, {
 			n8nMetadata: {
@@ -79,19 +76,19 @@ describe('UI store', () => {
 		[
 			'default',
 			'production',
-			'owner',
+			ROLE.Owner,
 			'https://n8n.io/pricing?utm_campaign=utm-test-campaign&source=test_source',
 		],
 		[
 			'default',
 			'development',
-			'owner',
+			ROLE.Owner,
 			'https://n8n.io/pricing?utm_campaign=utm-test-campaign&source=test_source',
 		],
 		[
 			'cloud',
 			'production',
-			'owner',
+			ROLE.Owner,
 			`https://app.n8n.cloud/login?code=123&returnPath=${encodeURIComponent(
 				'/account/change-plan',
 			)}&utm_campaign=utm-test-campaign&source=test_source`,
@@ -99,7 +96,7 @@ describe('UI store', () => {
 		[
 			'cloud',
 			'production',
-			'member',
+			ROLE.Member,
 			'https://n8n.io/pricing?utm_campaign=utm-test-campaign&source=test_source',
 		],
 	])(

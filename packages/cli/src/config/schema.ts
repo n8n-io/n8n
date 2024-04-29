@@ -82,7 +82,7 @@ export const schema = {
 			user: {
 				doc: 'PostgresDB User',
 				format: String,
-				default: 'root',
+				default: 'postgres',
 				env: 'DB_POSTGRESDB_USER',
 			},
 			schema: {
@@ -171,10 +171,16 @@ export const schema = {
 				env: 'DB_SQLITE_DATABASE',
 			},
 			enableWAL: {
-				doc: 'Enable SQLite WAL mode',
+				doc: 'Enable SQLite WAL mode (Always enabled for pool-size > 1)',
 				format: Boolean,
 				default: false,
 				env: 'DB_SQLITE_ENABLE_WAL',
+			},
+			poolSize: {
+				doc: 'SQLite Pool Size (Setting this to 0 disables pooling)',
+				format: Number,
+				default: 0,
+				env: 'DB_SQLITE_POOL_SIZE',
 			},
 			executeVacuumOnStartup: {
 				doc: 'Runs VACUUM operation on startup to rebuild the database. Reduces filesize and optimizes indexes. WARNING: This is a long running blocking operation. Will increase start-up time.',
@@ -234,15 +240,13 @@ export const schema = {
 	},
 
 	executions: {
-		// By default workflows get always executed in the main process.
-		// TODO: remove this and all usage of `executions.process` when `own` mode is deleted
+		// TODO: remove this and all usage of `executions.process` when we're sure that nobody has this in their config file anymore.
 		process: {
-			doc: 'In what process workflows should be executed.',
-			format: ['main', 'own'] as const,
-			default: 'main',
+			doc: 'Deprecated key, that will be removed in the future. Please remove it from your configuration and environment variables to prevent issues in the future.',
+			format: String,
+			default: '',
 			env: 'EXECUTIONS_PROCESS',
 		},
-
 		mode: {
 			doc: 'If it should run executions directly or via queue',
 			format: ['regular', 'queue'] as const,
@@ -540,6 +544,12 @@ export const schema = {
 		env: 'N8N_PROTOCOL',
 		doc: 'HTTP Protocol via which n8n can be reached',
 	},
+	secure_cookie: {
+		doc: 'This sets the `Secure` flag on n8n auth cookie',
+		format: Boolean,
+		default: true,
+		env: 'N8N_SECURE_COOKIE',
+	},
 	ssl_key: {
 		format: String,
 		default: '',
@@ -579,12 +589,6 @@ export const schema = {
 				default: 90,
 				env: 'N8N_SECURITY_AUDIT_DAYS_ABANDONED_WORKFLOW',
 			},
-		},
-		excludeEndpoints: {
-			doc: 'Additional endpoints to exclude auth checks. Multiple endpoints can be separated by colon (":")',
-			format: String,
-			default: '',
-			env: 'N8N_AUTH_EXCLUDE_ENDPOINTS',
 		},
 	},
 
@@ -723,6 +727,12 @@ export const schema = {
 			env: 'N8N_DISABLE_PRODUCTION_MAIN_PROCESS',
 			doc: 'Disable production webhooks from main process. This helps ensures no http traffic load to main process when using webhook-specific processes.',
 		},
+		additionalNonUIRoutes: {
+			doc: 'Additional endpoints to not open the UI on. Multiple endpoints can be separated by colon (":")',
+			format: String,
+			default: '',
+			env: 'N8N_ADDITIONAL_NON_UI_ROUTES',
+		},
 	},
 
 	publicApi: {
@@ -761,6 +771,18 @@ export const schema = {
 			format: String,
 			default: '',
 			env: 'N8N_USER_MANAGEMENT_JWT_SECRET',
+		},
+		jwtSessionDurationHours: {
+			doc: 'Set a specific expiration date for the JWTs in hours.',
+			format: Number,
+			default: 168,
+			env: 'N8N_USER_MANAGEMENT_JWT_DURATION_HOURS',
+		},
+		jwtRefreshTimeoutHours: {
+			doc: 'How long before the JWT expires to automatically refresh it. 0 means 25% of N8N_USER_MANAGEMENT_JWT_DURATION_HOURS. -1 means it will never refresh, which forces users to login again after the defined period in N8N_USER_MANAGEMENT_JWT_DURATION_HOURS.',
+			format: Number,
+			default: 0,
+			env: 'N8N_USER_MANAGEMENT_JWT_REFRESH_TIMEOUT_HOURS',
 		},
 		isInstanceOwnerSetUp: {
 			// n8n loads this setting from DB on startup
@@ -839,6 +861,18 @@ export const schema = {
 					format: String,
 					default: '',
 					env: 'N8N_UM_EMAIL_TEMPLATES_PWRESET',
+				},
+				workflowShared: {
+					doc: 'Overrides default HTML template for notifying that a workflow was shared (use full path)',
+					format: String,
+					default: '',
+					env: 'N8N_UM_EMAIL_TEMPLATES_WORKFLOW_SHARED',
+				},
+				credentialsShared: {
+					doc: 'Overrides default HTML template for notifying that credentials were shared (use full path)',
+					format: String,
+					default: '',
+					env: 'N8N_UM_EMAIL_TEMPLATES_CREDENTIALS_SHARED',
 				},
 			},
 		},
@@ -1137,12 +1171,6 @@ export const schema = {
 					default: 'https://ph.n8n.io',
 					env: 'N8N_DIAGNOSTICS_POSTHOG_API_HOST',
 				},
-				disableSessionRecording: {
-					doc: 'Disable posthog session recording',
-					format: Boolean,
-					default: true,
-					env: 'N8N_DIAGNOSTICS_POSTHOG_DISABLE_RECORDING',
-				},
 			},
 			sentry: {
 				dsn: {
@@ -1161,7 +1189,7 @@ export const schema = {
 			backend: {
 				doc: 'Diagnostics config for backend.',
 				format: String,
-				default: '1zPn7YoGC3ZXE9zLeTKLuQCB4F6;https://telemetry.n8n.io/v1/batch',
+				default: '1zPn7YoGC3ZXE9zLeTKLuQCB4F6;https://telemetry.n8n.io',
 				env: 'N8N_DIAGNOSTICS_CONFIG_BACKEND',
 			},
 		},
@@ -1279,12 +1307,6 @@ export const schema = {
 	},
 
 	cache: {
-		enabled: {
-			doc: 'Whether caching is enabled',
-			format: Boolean,
-			default: true,
-			env: 'N8N_CACHE_ENABLED',
-		},
 		backend: {
 			doc: 'Backend to use for caching',
 			format: ['memory', 'redis', 'auto'] as const,
@@ -1327,6 +1349,18 @@ export const schema = {
 			format: Boolean,
 			default: false,
 			env: 'N8N_AI_ENABLED',
+		},
+		provider: {
+			doc: 'AI provider to use. Currently only "openai" is supported.',
+			format: String,
+			default: 'openai',
+			env: 'N8N_AI_PROVIDER',
+		},
+		openAIApiKey: {
+			doc: 'Enable AI features using OpenAI API key',
+			format: String,
+			default: '',
+			env: 'N8N_AI_OPENAI_API_KEY',
 		},
 	},
 

@@ -1,6 +1,6 @@
 import { merge } from 'lodash-es';
 import { SETTINGS_STORE_DEFAULT_STATE, waitAllPromises } from '@/__tests__/utils';
-import { STORES } from '@/constants';
+import { ROLE, STORES } from '@/constants';
 import { createTestingPinia } from '@pinia/testing';
 import { useUIStore } from '@/stores/ui.store';
 import CollaborationPane from '@/components//MainHeader/CollaborationPane.vue';
@@ -13,15 +13,9 @@ const OWNER_USER = {
 	email: 'owner@user.com',
 	firstName: 'Owner',
 	lastName: 'User',
-	globalRoleId: 1,
+	role: ROLE.Owner,
 	disabled: false,
-	globalRole: {
-		id: '1',
-		name: 'owner',
-		scope: 'global',
-	},
 	isPending: false,
-	isOwner: true,
 	fullName: 'Owner User',
 };
 
@@ -31,15 +25,9 @@ const MEMBER_USER = {
 	email: 'member@user.com',
 	firstName: 'Member',
 	lastName: 'User',
-	globalRoleId: 2,
+	role: ROLE.Member,
 	disabled: false,
-	globalRole: {
-		id: '2',
-		name: 'member',
-		scope: 'global',
-	},
 	isPending: false,
-	isOwner: false,
 	fullName: 'Member User',
 };
 
@@ -49,15 +37,9 @@ const MEMBER_USER_2 = {
 	email: 'member2@user.com',
 	firstName: 'Another Member',
 	lastName: 'User',
-	globalRoleId: 2,
+	role: ROLE.Member,
 	disabled: false,
-	globalRole: {
-		id: '2',
-		name: 'member',
-		scope: 'global',
-	},
 	isPending: false,
-	isOwner: false,
 	fullName: 'Another Member User',
 };
 

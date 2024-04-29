@@ -5,9 +5,9 @@ import {
 	type INodeExecutionData,
 	NodeConnectionType,
 } from 'n8n-workflow';
-import { ZepVectorStore } from 'langchain/vectorstores/zep';
-import type { Embeddings } from 'langchain/embeddings/base';
-import type { Document } from 'langchain/document';
+import { ZepVectorStore } from '@langchain/community/vectorstores/zep';
+import type { Embeddings } from '@langchain/core/embeddings';
+import type { Document } from '@langchain/core/documents';
 import type { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
 import { processDocuments } from '../shared/processDocuments';
 
@@ -33,7 +33,7 @@ export class VectorStoreZepInsert implements INodeType {
 			resources: {
 				primaryDocumentation: [
 					{
-						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstorezepinsert/',
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstorezep/',
 					},
 				],
 			},
@@ -139,6 +139,6 @@ export class VectorStoreZepInsert implements INodeType {
 
 		await ZepVectorStore.fromDocuments(processedDocuments, embeddings, zepConfig);
 
-		return this.prepareOutputData(serializedDocuments);
+		return await this.prepareOutputData(serializedDocuments);
 	}
 }

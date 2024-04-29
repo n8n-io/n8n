@@ -1,11 +1,10 @@
-import type { OptionsWithUri } from 'request';
-
 import type {
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	JsonObject,
+	IRequestOptions,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
@@ -109,7 +108,7 @@ export async function odooJSONRPCRequest(
 	url: string,
 ): Promise<IDataObject | IDataObject[]> {
 	try {
-		const options: OptionsWithUri = {
+		const options: IRequestOptions = {
 			headers: {
 				'User-Agent': 'n8n',
 				Connection: 'keep-alive',

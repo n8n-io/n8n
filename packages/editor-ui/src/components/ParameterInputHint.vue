@@ -1,5 +1,5 @@
 <template>
-	<n8n-text size="small" color="text-base" tag="div" v-if="hint">
+	<n8n-text v-if="hint" size="small" color="text-base" tag="div">
 		<div v-if="!renderHTML" :class="classes"><span v-html="simplyText"></span></div>
 		<div
 			v-else
@@ -31,9 +31,6 @@ export default defineComponent({
 			default: false,
 		},
 	},
-	methods: {
-		sanitizeHtml,
-	},
 	computed: {
 		classes() {
 			return {
@@ -58,6 +55,9 @@ export default defineComponent({
 		if (this.$refs.hint) {
 			(this.$refs.hint as Element).querySelectorAll('a').forEach((a) => (a.target = '_blank'));
 		}
+	},
+	methods: {
+		sanitizeHtml,
 	},
 });
 </script>

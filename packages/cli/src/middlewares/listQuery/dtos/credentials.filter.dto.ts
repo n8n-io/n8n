@@ -14,6 +14,6 @@ export class CredentialsFilter extends BaseFilter {
 	type?: string;
 
 	static async fromString(rawFilter: string) {
-		return this.toFilter(rawFilter, CredentialsFilter);
+		return await this.toFilter(rawFilter, CredentialsFilter);
 	}
 }

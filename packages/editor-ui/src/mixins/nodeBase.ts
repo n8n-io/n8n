@@ -3,7 +3,6 @@ import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 
 import type { INodeUi } from '@/Interface';
-import { deviceSupportHelpers } from '@/mixins/deviceSupportHelpers';
 import {
 	NO_OP_NODE_TYPE,
 	NODE_CONNECTION_TYPE_ALLOW_MULTIPLE,
@@ -28,6 +27,8 @@ import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { useHistoryStore } from '@/stores/history.store';
 import { useCanvasStore } from '@/stores/canvas.store';
 import type { EndpointSpec } from '@jsplumb/common';
+import { useDeviceSupport } from 'n8n-design-system';
+import type { N8nEndpointLabelLength } from '@/plugins/jsplumb/N8nPlusEndpointType';
 
 const createAddInputEndpointSpec = (
 	connectionName: NodeConnectionType,
@@ -55,8 +56,19 @@ const createDiamondOutputEndpointSpec = (): EndpointSpec => ({
 	},
 });
 
+const getEndpointLabelLength = (length: number): N8nEndpointLabelLength => {
+	if (length <= 2) return 'small';
+	else if (length <= 6) return 'medium';
+	return 'large';
+};
+
 export const nodeBase = defineComponent({
-	mixins: [deviceSupportHelpers],
+	data() {
+		return {
+			inputs: [] as Array<ConnectionTypes | INodeInputConfiguration>,
+			outputs: [] as Array<ConnectionTypes | INodeOutputConfiguration>,
+		};
+	},
 	mounted() {
 		// Initialize the node
 		if (this.data !== null) {
@@ -67,12 +79,6 @@ export const nodeBase = defineComponent({
 				// Shouldn't affect anything
 			}
 		}
-	},
-	data() {
-		return {
-			inputs: [] as Array<ConnectionTypes | INodeInputConfiguration>,
-			outputs: [] as Array<ConnectionTypes | INodeOutputConfiguration>,
-		};
 	},
 	computed: {
 		...mapStores(useNodeTypesStore, useUIStore, useCanvasStore, useWorkflowsStore, useHistoryStore),
@@ -86,6 +92,7 @@ export const nodeBase = defineComponent({
 	props: {
 		name: {
 			type: String,
+			required: true,
 		},
 		instance: {
 			type: Object as PropType<BrowserJsPlumbInstance>,
@@ -371,7 +378,7 @@ export const nodeBase = defineComponent({
 				outputConfigurations.push(outputConfiguration);
 			});
 
-			const endpointLabelLength = maxLabelLength < 4 ? 'short' : 'medium';
+			const endpointLabelLength = getEndpointLabelLength(maxLabelLength);
 
 			this.outputs.forEach((value, i) => {
 				const outputConfiguration = outputConfigurations[i];
@@ -593,7 +600,7 @@ export const nodeBase = defineComponent({
 								nodeTypeData,
 								this.__getEndpointColor(NodeConnectionType.Main),
 							),
-							fill: 'var(--node-error-output-color)',
+							fill: 'var(--color-danger)',
 						},
 						cssClass: `dot-${type}-endpoint`,
 					};
@@ -614,13 +621,16 @@ export const nodeBase = defineComponent({
 			return createSupplementalConnectionType(connectionType);
 		},
 		touchEnd(e: MouseEvent) {
-			if (this.isTouchDevice) {
+			const deviceSupport = useDeviceSupport();
+			if (deviceSupport.isTouchDevice) {
 				if (this.uiStore.isActionActive('dragActive')) {
 					this.uiStore.removeActiveAction('dragActive');
 				}
 			}
 		},
 		mouseLeftClick(e: MouseEvent) {
+			const deviceSupport = useDeviceSupport();
+
 			// @ts-ignore
 			const path = e.path || (e.composedPath && e.composedPath());
 			for (let index = 0; index < path.length; index++) {
@@ -633,11 +643,11 @@ export const nodeBase = defineComponent({
 				}
 			}
 
-			if (!this.isTouchDevice) {
+			if (!deviceSupport.isTouchDevice) {
 				if (this.uiStore.isActionActive('dragActive')) {
 					this.uiStore.removeActiveAction('dragActive');
 				} else {
-					if (!this.isCtrlKeyPressed(e)) {
+					if (!deviceSupport.isCtrlKeyPressed(e)) {
 						this.$emit('deselectAllNodes');
 					}
 

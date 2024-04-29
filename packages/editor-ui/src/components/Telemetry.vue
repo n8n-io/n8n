@@ -32,6 +32,21 @@ export default defineComponent({
 			return !!this.telemetry?.enabled;
 		},
 	},
+	watch: {
+		telemetry() {
+			this.init();
+		},
+		currentUserId(userId) {
+			if (this.isTelemetryEnabled) {
+				this.$telemetry.identify(this.rootStore.instanceId, userId);
+			}
+		},
+		isTelemetryEnabledOnRoute(enabled) {
+			if (enabled) {
+				this.init();
+			}
+		},
+	},
 	mounted() {
 		this.init();
 	},
@@ -51,21 +66,6 @@ export default defineComponent({
 			});
 
 			this.isTelemetryInitialized = true;
-		},
-	},
-	watch: {
-		telemetry() {
-			this.init();
-		},
-		currentUserId(userId) {
-			if (this.isTelemetryEnabled) {
-				this.$telemetry.identify(this.rootStore.instanceId, userId);
-			}
-		},
-		isTelemetryEnabledOnRoute(enabled) {
-			if (enabled) {
-				this.init();
-			}
 		},
 	},
 });

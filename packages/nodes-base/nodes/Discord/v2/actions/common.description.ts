@@ -297,7 +297,7 @@ export const simplifyBoolean: INodeProperties = {
 // embeds -----------------------------------------------------------------------------------------
 const embedFields: INodeProperties[] = [
 	{
-		displayName: 'Description (Required)',
+		displayName: 'Description',
 		name: 'description',
 		type: 'string',
 		default: '',
@@ -416,11 +416,9 @@ export const embedsFixedCollection: INodeProperties = {
 				{
 					displayName: 'Value',
 					name: 'json',
-					type: 'string',
+					type: 'json',
 					default: '={}',
 					typeOptions: {
-						editor: 'json',
-						editorLanguage: 'json',
 						rows: 2,
 					},
 					displayOptions: {

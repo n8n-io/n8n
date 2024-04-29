@@ -9,7 +9,7 @@
 					v-for="item in props.items"
 					:key="item.address"
 					:class="$style.accordionItem"
-					@click="copyToClipboard(item.address)"
+					@click="onCopyToClipboard(item.address)"
 				>
 					{{ item.family }}: <span :class="$style.clickable">{{ item.address }}</span>
 					{{ item.internal ? '(internal)' : '' }}
@@ -22,7 +22,7 @@
 <script setup lang="ts">
 import type { IPushDataWorkerStatusPayload } from '@/Interface';
 import WorkerAccordion from './WorkerAccordion.ee.vue';
-import { useCopyToClipboard } from '@/composables/useCopyToClipboard';
+import { useClipboard } from '@/composables/useClipboard';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
 
@@ -31,13 +31,12 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
+const clipboard = useClipboard();
+const { showMessage } = useToast();
 
-function copyToClipboard(content: string) {
-	const copyToClipboardFn = useCopyToClipboard();
-	const { showMessage } = useToast();
-
+function onCopyToClipboard(content: string) {
 	try {
-		copyToClipboardFn(content);
+		void clipboard.copy(content);
 		showMessage({
 			title: i18n.baseText('workerList.item.copyAddressToClipboard'),
 			type: 'success',

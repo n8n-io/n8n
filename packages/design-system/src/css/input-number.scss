@@ -96,7 +96,7 @@
 	}
 
 	@include mixins.m(small) {
-		line-height: #{var.$input-small-height - 2};
+		line-height: #{var.$input-small-height - 4};
 
 		@include mixins.e((increase, decrease)) {
 			width: var.$input-small-height;

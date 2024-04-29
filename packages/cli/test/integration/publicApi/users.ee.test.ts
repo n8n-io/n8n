@@ -2,14 +2,12 @@ import type { SuperAgentTest } from 'supertest';
 import validator from 'validator';
 import { v4 as uuid } from 'uuid';
 
-import type { Role } from '@db/entities/Role';
 import { License } from '@/License';
 
 import { mockInstance } from '../../shared/mocking';
 import { randomApiKey } from '../shared/random';
 import * as utils from '../shared/utils/';
 import * as testDb from '../shared/testDb';
-import { getGlobalMemberRole, getGlobalOwnerRole } from '../shared/db/roles';
 import { createUser, createUserShell } from '../shared/db/users';
 
 mockInstance(License, {
@@ -18,16 +16,6 @@ mockInstance(License, {
 
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 
-let globalOwnerRole: Role;
-let globalMemberRole: Role;
-
-beforeAll(async () => {
-	[globalOwnerRole, globalMemberRole] = await Promise.all([
-		getGlobalOwnerRole(),
-		getGlobalMemberRole(),
-	]);
-});
-
 beforeEach(async () => {
 	await testDb.truncate(['SharedCredentials', 'SharedWorkflow', 'Workflow', 'Credentials', 'User']);
 });
@@ -35,14 +23,14 @@ beforeEach(async () => {
 describe('With license unlimited quota:users', () => {
 	describe('GET /users', () => {
 		test('should fail due to missing API Key', async () => {
-			const owner = await createUser({ globalRole: globalOwnerRole });
+			const owner = await createUser({ role: 'global:owner' });
 			const authOwnerAgent = testServer.publicApiAgentFor(owner);
 			await authOwnerAgent.get('/users').expect(401);
 		});
 
 		test('should fail due to invalid API Key', async () => {
 			const owner = await createUser({
-				globalRole: globalOwnerRole,
+				role: 'global:owner',
 				apiKey: randomApiKey(),
 			});
 			owner.apiKey = 'invalid-key';
@@ -58,7 +46,7 @@ describe('With license unlimited quota:users', () => {
 
 		test('should return all users', async () => {
 			const owner = await createUser({
-				globalRole: globalOwnerRole,
+				role: 'global:owner',
 				apiKey: randomApiKey(),
 			});
 
@@ -77,7 +65,7 @@ describe('With license unlimited quota:users', () => {
 					firstName,
 					lastName,
 					personalizationAnswers,
-					globalRole,
+					role,
 					password,
 					isPending,
 					createdAt,
@@ -91,7 +79,7 @@ describe('With license unlimited quota:users', () => {
 				expect(personalizationAnswers).toBeUndefined();
 				expect(password).toBeUndefined();
 				expect(isPending).toBe(false);
-				expect(globalRole).toBeUndefined();
+				expect(role).toBeUndefined();
 				expect(createdAt).toBeDefined();
 				expect(updatedAt).toBeDefined();
 			}
@@ -100,14 +88,14 @@ describe('With license unlimited quota:users', () => {
 
 	describe('GET /users/:id', () => {
 		test('should fail due to missing API Key', async () => {
-			const owner = await createUser({ globalRole: globalOwnerRole });
+			const owner = await createUser({ role: 'global:owner' });
 			const authOwnerAgent = testServer.publicApiAgentFor(owner);
 			await authOwnerAgent.get(`/users/${owner.id}`).expect(401);
 		});
 
 		test('should fail due to invalid API Key', async () => {
 			const owner = await createUser({
-				globalRole: globalOwnerRole,
+				role: 'global:owner',
 				apiKey: randomApiKey(),
 			});
 			owner.apiKey = 'invalid-key';
@@ -122,7 +110,7 @@ describe('With license unlimited quota:users', () => {
 		});
 		test('should return 404 for non-existing id ', async () => {
 			const owner = await createUser({
-				globalRole: globalOwnerRole,
+				role: 'global:owner',
 				apiKey: randomApiKey(),
 			});
 			const authOwnerAgent = testServer.publicApiAgentFor(owner);
@@ -131,11 +119,11 @@ describe('With license unlimited quota:users', () => {
 
 		test('should return a pending user', async () => {
 			const owner = await createUser({
-				globalRole: globalOwnerRole,
+				role: 'global:owner',
 				apiKey: randomApiKey(),
 			});
 
-			const { id: memberId } = await createUserShell(globalMemberRole);
+			const { id: memberId } = await createUserShell('global:member');
 
 			const authOwnerAgent = testServer.publicApiAgentFor(owner);
 			const response = await authOwnerAgent.get(`/users/${memberId}`).expect(200);
@@ -146,7 +134,7 @@ describe('With license unlimited quota:users', () => {
 				firstName,
 				lastName,
 				personalizationAnswers,
-				globalRole,
+				role,
 				password,
 				isPending,
 				createdAt,
@@ -159,7 +147,7 @@ describe('With license unlimited quota:users', () => {
 			expect(lastName).toBeDefined();
 			expect(personalizationAnswers).toBeUndefined();
 			expect(password).toBeUndefined();
-			expect(globalRole).toBeUndefined();
+			expect(role).toBeUndefined();
 			expect(createdAt).toBeDefined();
 			expect(isPending).toBeDefined();
 			expect(isPending).toBeTruthy();
@@ -170,7 +158,7 @@ describe('With license unlimited quota:users', () => {
 	describe('GET /users/:email', () => {
 		test('with non-existing email should return 404', async () => {
 			const owner = await createUser({
-				globalRole: globalOwnerRole,
+				role: 'global:owner',
 				apiKey: randomApiKey(),
 			});
 			const authOwnerAgent = testServer.publicApiAgentFor(owner);
@@ -179,7 +167,7 @@ describe('With license unlimited quota:users', () => {
 
 		test('should return a user', async () => {
 			const owner = await createUser({
-				globalRole: globalOwnerRole,
+				role: 'global:owner',
 				apiKey: randomApiKey(),
 			});
 
@@ -192,7 +180,7 @@ describe('With license unlimited quota:users', () => {
 				firstName,
 				lastName,
 				personalizationAnswers,
-				globalRole,
+				role,
 				password,
 				isPending,
 				createdAt,
@@ -206,7 +194,7 @@ describe('With license unlimited quota:users', () => {
 			expect(personalizationAnswers).toBeUndefined();
 			expect(password).toBeUndefined();
 			expect(isPending).toBe(false);
-			expect(globalRole).toBeUndefined();
+			expect(role).toBeUndefined();
 			expect(createdAt).toBeDefined();
 			expect(updatedAt).toBeDefined();
 		});
@@ -220,7 +208,7 @@ describe('With license without quota:users', () => {
 		mockInstance(License, { getUsersLimit: jest.fn().mockReturnValue(null) });
 
 		const owner = await createUser({
-			globalRole: globalOwnerRole,
+			role: 'global:owner',
 			apiKey: randomApiKey(),
 		});
 		authOwnerAgent = testServer.publicApiAgentFor(owner);

@@ -2,6 +2,7 @@
 import type {
 	IDataObject,
 	IExecuteFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodeType,
@@ -279,7 +280,7 @@ export class NocoDB implements INodeType {
 		const operation = this.getNodeParameter('operation', 0);
 
 		let returnAll = false;
-		let requestMethod = '';
+		let requestMethod: IHttpRequestMethods = 'GET';
 
 		let qs: IDataObject = {};
 
@@ -521,6 +522,7 @@ export class NocoDB implements INodeType {
 								this,
 								responseData as IDataObject[],
 								downloadFieldNames,
+								[{ item: i }],
 							);
 							data.push(...response);
 						}
@@ -584,6 +586,7 @@ export class NocoDB implements INodeType {
 								this,
 								[responseData as IDataObject],
 								downloadFieldNames,
+								[{ item: i }],
 							);
 							const newItem = {
 								binary: data[0].binary,

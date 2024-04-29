@@ -6,6 +6,7 @@ import type {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 
@@ -688,7 +689,7 @@ export class Telegram implements INodeType {
 			// ----------------------------------
 
 			{
-				displayName: 'Binary Data',
+				displayName: 'Binary File',
 				name: 'binaryData',
 				type: 'boolean',
 				default: false,
@@ -709,11 +710,12 @@ export class Telegram implements INodeType {
 				description: 'Whether the data to upload should be taken from binary field',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'Input Binary Field',
 				name: 'binaryPropertyName',
 				type: 'string',
 				default: 'data',
 				required: true,
+				hint: 'The name of the input binary field containing the file to be written',
 				displayOptions: {
 					show: {
 						operation: [
@@ -1708,7 +1710,7 @@ export class Telegram implements INodeType {
 		// For Query string
 		let qs: IDataObject;
 
-		let requestMethod: string;
+		let requestMethod: IHttpRequestMethods;
 		let endpoint: string;
 
 		const operation = this.getNodeParameter('operation', 0);

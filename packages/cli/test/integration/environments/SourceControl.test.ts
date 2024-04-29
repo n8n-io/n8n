@@ -1,22 +1,17 @@
+import { Container } from 'typedi';
 import type { SuperAgentTest } from 'supertest';
-import { SOURCE_CONTROL_API_ROOT } from '@/environments/sourceControl/constants';
-import * as utils from '../shared/utils/';
+
 import type { User } from '@db/entities/User';
-import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
-import Container from 'typedi';
 import config from '@/config';
 import { SourceControlPreferencesService } from '@/environments/sourceControl/sourceControlPreferences.service.ee';
 import { SourceControlService } from '@/environments/sourceControl/sourceControl.service.ee';
 import type { SourceControlledFile } from '@/environments/sourceControl/types/sourceControlledFile';
-import { getGlobalMemberRole, getGlobalOwnerRole } from '../shared/db/roles';
+
+import * as utils from '../shared/utils/';
 import { createUser } from '../shared/db/users';
 
 let authOwnerAgent: SuperAgentTest;
-let authMemberAgent: SuperAgentTest;
 let owner: User;
-let member: User;
-
-const sharingSpy = jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(true);
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['sourceControl', 'license', 'auth'],
@@ -24,12 +19,8 @@ const testServer = utils.setupTestServer({
 });
 
 beforeAll(async () => {
-	const globalOwnerRole = await getGlobalOwnerRole();
-	const globalMemberRole = await getGlobalMemberRole();
-	owner = await createUser({ globalRole: globalOwnerRole });
-	member = await createUser({ globalRole: globalMemberRole });
+	owner = await createUser({ role: 'global:owner' });
 	authOwnerAgent = testServer.authAgentFor(owner);
-	authMemberAgent = testServer.authAgentFor(member);
 
 	Container.get(SourceControlPreferencesService).isSourceControlConnected = () => true;
 });
@@ -37,7 +28,7 @@ beforeAll(async () => {
 describe('GET /sourceControl/preferences', () => {
 	test('should return Source Control preferences', async () => {
 		await authOwnerAgent
-			.get(`/${SOURCE_CONTROL_API_ROOT}/preferences`)
+			.get('/source-control/preferences')
 			.expect(200)
 			.expect((res) => {
 				return 'repositoryUrl' in res.body && 'branchName' in res.body;
@@ -60,7 +51,7 @@ describe('GET /sourceControl/preferences', () => {
 			] as SourceControlledFile[];
 		};
 		await authOwnerAgent
-			.get(`/${SOURCE_CONTROL_API_ROOT}/get-status`)
+			.get('/source-control/get-status')
 			.query({ direction: 'push', preferLocalVersion: 'true', verbose: 'false' })
 			.expect(200)
 			.expect((res) => {
@@ -73,7 +64,7 @@ describe('GET /sourceControl/preferences', () => {
 	test('refreshing key pairsshould return new rsa key', async () => {
 		config.set('sourceControl.defaultKeyPairType', 'rsa');
 		await authOwnerAgent
-			.post(`/${SOURCE_CONTROL_API_ROOT}/generate-key-pair`)
+			.post('/source-control/generate-key-pair')
 			.send()
 			.expect(200)
 			.expect((res) => {

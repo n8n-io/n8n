@@ -1,5 +1,5 @@
 <template>
-	<n8n-card :class="$style.cardLink" v-if="worker">
+	<n8n-card v-if="worker" :class="$style.cardLink">
 		<template #header>
 			<n8n-heading
 				tag="h2"
@@ -26,7 +26,7 @@
 			</n8n-text>
 		</div>
 		<template #append>
-			<div :class="$style.cardActions" ref="cardActions">
+			<div ref="cardActions" :class="$style.cardActions">
 				<!-- For future Worker actions -->
 			</div>
 		</template>

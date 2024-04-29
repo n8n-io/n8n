@@ -8,20 +8,21 @@ import { URL } from 'url';
 import config from '@/config';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import type { User } from '@db/entities/User';
-import { issueJWT } from '@/auth/jwt';
 import { registerController } from '@/decorators';
-import { rawBodyReader, bodyParser, setupAuthMiddlewares } from '@/middlewares';
+import { rawBodyReader, bodyParser } from '@/middlewares';
 import { PostHogClient } from '@/posthog';
+import { Push } from '@/push';
 import { License } from '@/License';
 import { Logger } from '@/Logger';
+import { InternalHooks } from '@/InternalHooks';
 
 import { mockInstance } from '../../../shared/mocking';
 import * as testDb from '../../shared/testDb';
-import { AUTHLESS_ENDPOINTS, PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from '../constants';
+import { PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from '../constants';
 import type { SetupProps, TestServer } from '../types';
-import { InternalHooks } from '@/InternalHooks';
 import { LicenseMocker } from '../license';
-import { PasswordUtility } from '@/services/password.utility';
+import { AuthService } from '@/auth/auth.service';
+import type { APIRequest } from '@/requests';
 
 /**
  * Plugin to prefix a path segment into a request URL pathname.
@@ -39,15 +40,16 @@ function prefix(pathSegment: string) {
 
 		url.pathname = pathSegment + url.pathname;
 		request.url = url.toString();
-		return request;
+		return await request;
 	};
 }
 
+const browserId = 'test-browser-id';
 function createAgent(app: express.Application, options?: { auth: boolean; user: User }) {
 	const agent = request.agent(app);
 	void agent.use(prefix(REST_PATH_SEGMENT));
 	if (options?.auth && options?.user) {
-		const { token } = issueJWT(options.user);
+		const token = Container.get(AuthService).issueJWT(options.user, browserId);
 		agent.jar.setCookie(`${AUTH_COOKIE_NAME}=${token}`);
 	}
 	return agent;
@@ -67,18 +69,22 @@ function publicApiAgent(
 
 export const setupTestServer = ({
 	endpointGroups,
-	applyAuth = true,
 	enabledFeatures,
 	quotas,
 }: SetupProps): TestServer => {
 	const app = express();
 	app.use(rawBodyReader);
 	app.use(cookieParser());
+	app.use((req: APIRequest, _, next) => {
+		req.browserId = browserId;
+		next();
+	});
 
 	// Mock all telemetry and logging
-	const logger = mockInstance(Logger);
+	mockInstance(Logger);
 	mockInstance(InternalHooks);
 	mockInstance(PostHogClient);
+	mockInstance(Push);
 
 	const testServer: TestServer = {
 		app,
@@ -89,6 +95,7 @@ export const setupTestServer = ({
 		license: new LicenseMocker(),
 	};
 
+	// eslint-disable-next-line complexity
 	beforeAll(async () => {
 		await testDb.init();
 
@@ -103,15 +110,11 @@ export const setupTestServer = ({
 			});
 		}
 
-		const enablePublicAPI = endpointGroups?.includes('publicApi');
-		if (applyAuth && !enablePublicAPI) {
-			setupAuthMiddlewares(app, AUTHLESS_ENDPOINTS, REST_PATH_SEGMENT);
-		}
-
 		if (!endpointGroups) return;
 
 		app.use(bodyParser);
 
+		const enablePublicAPI = endpointGroups?.includes('publicApi');
 		if (enablePublicAPI) {
 			const { loadPublicApiVersions } = await import('@/PublicApi');
 			const { apiRouters } = await loadPublicApiVersions(PUBLIC_API_REST_PATH_SEGMENT);
@@ -122,30 +125,30 @@ export const setupTestServer = ({
 			for (const group of endpointGroups) {
 				switch (group) {
 					case 'credentials':
-						const { credentialsController } = await import('@/credentials/credentials.controller');
-						app.use(`/${REST_PATH_SEGMENT}/credentials`, credentialsController);
+						const { CredentialsController } = await import('@/credentials/credentials.controller');
+						registerController(app, CredentialsController);
 						break;
 
 					case 'workflows':
-						const { workflowsController } = await import('@/workflows/workflows.controller');
-						app.use(`/${REST_PATH_SEGMENT}/workflows`, workflowsController);
+						const { WorkflowsController } = await import('@/workflows/workflows.controller');
+						registerController(app, WorkflowsController);
 						break;
 
 					case 'executions':
-						const { executionsController } = await import('@/executions/executions.controller');
-						app.use(`/${REST_PATH_SEGMENT}/executions`, executionsController);
+						const { ExecutionsController } = await import('@/executions/executions.controller');
+						registerController(app, ExecutionsController);
 						break;
 
 					case 'variables':
 						const { VariablesController } = await import(
 							'@/environments/variables/variables.controller.ee'
 						);
-						registerController(app, config, Container.get(VariablesController));
+						registerController(app, VariablesController);
 						break;
 
 					case 'license':
 						const { LicenseController } = await import('@/license/license.controller');
-						registerController(app, config, Container.get(LicenseController));
+						registerController(app, LicenseController);
 						break;
 
 					case 'metrics':
@@ -156,166 +159,103 @@ export const setupTestServer = ({
 					case 'eventBus':
 						const { EventBusController } = await import('@/eventbus/eventBus.controller');
 						const { EventBusControllerEE } = await import('@/eventbus/eventBus.controller.ee');
-						registerController(app, config, new EventBusController());
-						registerController(app, config, new EventBusControllerEE());
+						registerController(app, EventBusController);
+						registerController(app, EventBusControllerEE);
 						break;
 
 					case 'auth':
 						const { AuthController } = await import('@/controllers/auth.controller');
-						registerController(app, config, Container.get(AuthController));
+						registerController(app, AuthController);
 						break;
 
 					case 'mfa':
 						const { MFAController } = await import('@/controllers/mfa.controller');
-						registerController(app, config, Container.get(MFAController));
+						registerController(app, MFAController);
 						break;
 
 					case 'ldap':
-						const { LdapManager } = await import('@/Ldap/LdapManager.ee');
-						const { handleLdapInit } = await import('@/Ldap/helpers');
-						const { LdapController } = await import('@/controllers/ldap.controller');
+						const { LdapService } = await import('@/Ldap/ldap.service');
+						const { LdapController } = await import('@/Ldap/ldap.controller');
 						testServer.license.enable('feat:ldap');
-						await handleLdapInit();
-						const { service, sync } = LdapManager.getInstance();
-						registerController(
-							app,
-							config,
-							new LdapController(service, sync, Container.get(InternalHooks)),
-						);
+						await Container.get(LdapService).init();
+						registerController(app, LdapController);
 						break;
 
 					case 'saml':
 						const { setSamlLoginEnabled } = await import('@/sso/saml/samlHelpers');
 						const { SamlController } = await import('@/sso/saml/routes/saml.controller.ee');
 						await setSamlLoginEnabled(true);
-						registerController(app, config, Container.get(SamlController));
+						registerController(app, SamlController);
 						break;
 
 					case 'sourceControl':
 						const { SourceControlController } = await import(
 							'@/environments/sourceControl/sourceControl.controller.ee'
 						);
-						registerController(app, config, Container.get(SourceControlController));
+						registerController(app, SourceControlController);
 						break;
 
 					case 'community-packages':
 						const { CommunityPackagesController } = await import(
 							'@/controllers/communityPackages.controller'
 						);
-						registerController(app, config, Container.get(CommunityPackagesController));
+						registerController(app, CommunityPackagesController);
 						break;
 
 					case 'me':
 						const { MeController } = await import('@/controllers/me.controller');
-						registerController(app, config, Container.get(MeController));
+						registerController(app, MeController);
 						break;
 
 					case 'passwordReset':
 						const { PasswordResetController } = await import(
 							'@/controllers/passwordReset.controller'
 						);
-						registerController(app, config, Container.get(PasswordResetController));
+						registerController(app, PasswordResetController);
 						break;
 
 					case 'owner':
-						const { UserService } = await import('@/services/user.service');
-						const { SettingsRepository } = await import('@db/repositories/settings.repository');
 						const { OwnerController } = await import('@/controllers/owner.controller');
-						registerController(
-							app,
-							config,
-							new OwnerController(
-								config,
-								logger,
-								Container.get(InternalHooks),
-								Container.get(SettingsRepository),
-								Container.get(UserService),
-								Container.get(PasswordUtility),
-							),
-						);
+						registerController(app, OwnerController);
 						break;
 
 					case 'users':
-						const { SharedCredentialsRepository } = await import(
-							'@db/repositories/sharedCredentials.repository'
-						);
-						const { SharedWorkflowRepository } = await import(
-							'@db/repositories/sharedWorkflow.repository'
-						);
-						const { ActiveWorkflowRunner } = await import('@/ActiveWorkflowRunner');
-						const { UserService: US } = await import('@/services/user.service');
-						const { ExternalHooks: EH } = await import('@/ExternalHooks');
-						const { RoleService: RS } = await import('@/services/role.service');
 						const { UsersController } = await import('@/controllers/users.controller');
-						registerController(
-							app,
-							config,
-							new UsersController(
-								logger,
-								Container.get(EH),
-								Container.get(InternalHooks),
-								Container.get(SharedCredentialsRepository),
-								Container.get(SharedWorkflowRepository),
-								Container.get(ActiveWorkflowRunner),
-								Container.get(RS),
-								Container.get(US),
-								Container.get(License),
-							),
-						);
+						registerController(app, UsersController);
 						break;
 
 					case 'invitations':
 						const { InvitationController } = await import('@/controllers/invitation.controller');
-						const { ExternalHooks: EHS } = await import('@/ExternalHooks');
-						const { UserService: USE } = await import('@/services/user.service');
-
-						registerController(
-							app,
-							config,
-							new InvitationController(
-								config,
-								logger,
-								Container.get(InternalHooks),
-								Container.get(EHS),
-								Container.get(USE),
-								Container.get(License),
-								Container.get(PasswordUtility),
-							),
-						);
+						registerController(app, InvitationController);
 						break;
 
 					case 'tags':
 						const { TagsController } = await import('@/controllers/tags.controller');
-						registerController(app, config, Container.get(TagsController));
+						registerController(app, TagsController);
 						break;
 
 					case 'externalSecrets':
 						const { ExternalSecretsController } = await import(
 							'@/ExternalSecrets/ExternalSecrets.controller.ee'
 						);
-						registerController(app, config, Container.get(ExternalSecretsController));
+						registerController(app, ExternalSecretsController);
 						break;
 
 					case 'workflowHistory':
 						const { WorkflowHistoryController } = await import(
 							'@/workflows/workflowHistory/workflowHistory.controller.ee'
 						);
-						registerController(app, config, Container.get(WorkflowHistoryController));
+						registerController(app, WorkflowHistoryController);
 						break;
 
 					case 'binaryData':
 						const { BinaryDataController } = await import('@/controllers/binaryData.controller');
-						registerController(app, config, Container.get(BinaryDataController));
-						break;
-
-					case 'role':
-						const { RoleController } = await import('@/controllers/role.controller');
-						registerController(app, config, Container.get(RoleController));
+						registerController(app, BinaryDataController);
 						break;
 
 					case 'debug':
 						const { DebugController } = await import('@/controllers/debug.controller');
-						registerController(app, config, Container.get(DebugController));
+						registerController(app, DebugController);
 						break;
 				}
 			}

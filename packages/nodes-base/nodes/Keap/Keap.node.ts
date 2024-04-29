@@ -604,7 +604,7 @@ export class Keap implements INodeType {
 				//https://developer.infusionsoft.com/docs/rest/#!/E-Commerce/getOrderUsingGET
 				if (operation === 'get') {
 					const orderId = parseInt(this.getNodeParameter('orderId', i) as string, 10);
-					responseData = await keapApiRequest.call(this, 'get', `/orders/${orderId}`);
+					responseData = await keapApiRequest.call(this, 'GET', `/orders/${orderId}`);
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/E-Commerce/listOrdersUsingGET
 				if (operation === 'getAll') {
@@ -649,7 +649,7 @@ export class Keap implements INodeType {
 				//https://developer.infusionsoft.com/docs/rest/#!/Product/retrieveProductUsingGET
 				if (operation === 'get') {
 					const productId = this.getNodeParameter('productId', i) as string;
-					responseData = await keapApiRequest.call(this, 'get', `/products/${productId}`);
+					responseData = await keapApiRequest.call(this, 'GET', `/products/${productId}`);
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/Product/listProductsUsingGET
 				if (operation === 'getAll') {

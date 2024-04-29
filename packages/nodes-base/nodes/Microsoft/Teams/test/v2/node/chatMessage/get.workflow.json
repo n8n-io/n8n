@@ -1,0 +1,133 @@
+{
+  "name": "My workflow 35",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "6666-9999-77777",
+      "name": "When clicking \"Execute Workflow\"",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        880,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "chatMessage",
+        "operation": "get",
+        "chatId": {
+          "__rl": true,
+          "value": "19:ebed9ad42c904d6c83adf0db360053ec@thread.v2",
+          "mode": "list",
+          "cachedResultName": "Grady Archie, Adele Vance, Henrietta Mueller, Patti Fernandez, Diego Siciliani, Michael Kret (group)",
+          "cachedResultUrl": "https://teams.microsoft.com/l/chat/19%3Aebed9ad42c904d6c83adf0db360053ec%40thread.v2/0?tenantId=23786ca6-7ff2-4672-87d0-5c649ee0a337"
+        },
+        "messageId": "1698378560692"
+      },
+      "id": "6666-5555-77777",
+      "name": "Microsoft Teams",
+      "type": "n8n-nodes-base.microsoftTeams",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        380
+      ],
+      "credentials": {
+        "microsoftTeamsOAuth2Api": {
+          "id": "6isd5ytvA0qV78eK",
+          "name": "Microsoft Teams account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "9d1a2e59-c71c-486c-b3ac-dec6adbc26b3",
+      "name": "No Operation, do nothing",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1400,
+        380
+      ]
+    }
+  ],
+  "pinData": {
+    "No Operation, do nothing": [
+      {
+        "json": {
+          "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#chats('19%3Aebed9ad42c904d6c83adf0db360053ec%40thread.v2')/messages/$entity",
+          "id": "1698378560692",
+          "replyToId": null,
+          "etag": "1698378560692",
+          "messageType": "message",
+          "createdDateTime": "2023-10-27T03:49:20.692Z",
+          "lastModifiedDateTime": "2023-10-27T03:49:20.692Z",
+          "lastEditedDateTime": null,
+          "deletedDateTime": null,
+          "subject": null,
+          "summary": null,
+          "chatId": "19:ebed9ad42c904d6c83adf0db360053ec@thread.v2",
+          "importance": "normal",
+          "locale": "en-us",
+          "webUrl": null,
+          "channelIdentity": null,
+          "policyViolation": null,
+          "eventDetail": null,
+          "from": {
+            "application": null,
+            "device": null,
+            "user": {
+              "@odata.type": "#microsoft.graph.teamworkUserIdentity",
+              "id": "11111-2222-3333",
+              "displayName": "Michael Kret",
+              "userIdentityType": "aadUser",
+              "tenantId": "23786ca6-7ff2-4672-87d0-5c649ee0a337"
+            }
+          },
+          "body": {
+            "contentType": "html",
+            "content": "Hello!<br>\n<br>\n<em> Powered by <a href=\"http://localhost:5678/workflow/i3NYGF0LXV4qDFV9?utm_source=n8n-internal&amp;utm_medium=powered_by&amp;utm_campaign=n8n-nodes-base.microsoftTeams_b888bd11cd1ddbb95450babf3e199556799d999b896f650de768b8370ee50363\">this n8n workflow</a> </em>"
+          },
+          "attachments": [],
+          "mentions": [],
+          "reactions": []
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When clicking \"Execute Workflow\"": {
+      "main": [
+        [
+          {
+            "node": "Microsoft Teams",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Microsoft Teams": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "4de0815e-b1b7-463a-a627-c55ac71b70e4",
+  "id": "i3NYGF0LXV4qDFV9",
+  "meta": {
+    "instanceId": "b888bd11cd1ddbb95450babf3e199556799d999b896f650de768b8370ee50363"
+  },
+  "tags": []
+}

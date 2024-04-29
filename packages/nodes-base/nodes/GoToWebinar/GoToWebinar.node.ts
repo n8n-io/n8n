@@ -110,13 +110,13 @@ export class GoToWebinar implements INodeType {
 	methods = {
 		loadOptions: {
 			async getWebinars(this: ILoadOptionsFunctions) {
-				return loadWebinars.call(this);
+				return await loadWebinars.call(this);
 			},
 			async getAnswers(this: ILoadOptionsFunctions) {
-				return loadAnswers.call(this);
+				return await loadAnswers.call(this);
 			},
 			async getWebinarSessions(this: ILoadOptionsFunctions) {
-				return loadWebinarSessions.call(this);
+				return await loadWebinarSessions.call(this);
 			},
 			// Get all the timezones to display them to user so that they can
 			// select them easily
@@ -135,12 +135,12 @@ export class GoToWebinar implements INodeType {
 			async getRegistranSimpleQuestions(
 				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
-				return loadRegistranSimpleQuestions.call(this);
+				return await loadRegistranSimpleQuestions.call(this);
 			},
 			async getRegistranMultiChoiceQuestions(
 				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
-				return loadRegistranMultiChoiceQuestions.call(this);
+				return await loadRegistranMultiChoiceQuestions.call(this);
 			},
 		},
 	};

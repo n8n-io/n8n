@@ -212,11 +212,11 @@ export const useLogStreamingStore = defineStore('logStreaming', {
 		},
 		async fetchEventNames(): Promise<string[]> {
 			const rootStore = useRootStore();
-			return getEventNamesFromBackend(rootStore.getRestApiContext);
+			return await getEventNamesFromBackend(rootStore.getRestApiContext);
 		},
 		async fetchDestinations(): Promise<MessageEventBusDestinationOptions[]> {
 			const rootStore = useRootStore();
-			return getDestinationsFromBackend(rootStore.getRestApiContext);
+			return await getDestinationsFromBackend(rootStore.getRestApiContext);
 		},
 		async deleteDestination(destinationId: string) {
 			const rootStore = useRootStore();

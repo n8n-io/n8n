@@ -45,3 +45,26 @@ export const supabaseTableNameRLC: INodeProperties = {
 		},
 	],
 };
+
+export const qdrantCollectionRLC: INodeProperties = {
+	displayName: 'Qdrant Collection',
+	name: 'qdrantCollection',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	required: true,
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			typeOptions: {
+				searchListMethod: 'qdrantCollectionsSearch',
+			},
+		},
+		{
+			displayName: 'ID',
+			name: 'id',
+			type: 'string',
+		},
+	],
+};

@@ -45,7 +45,7 @@ const actionDropdownOptions = computed(() => [
 					value: 'reload',
 					label: i18n.baseText('settings.externalSecrets.card.actionDropdown.reload'),
 				},
-		  ]
+			]
 		: []),
 ]);
 
@@ -54,7 +54,7 @@ const canConnect = computed(() => {
 });
 
 const formattedDate = computed((provider: ExternalSecretsProvider) => {
-	return DateTime.fromISO(props.provider.connectedAt).toFormat('dd LLL yyyy');
+	return DateTime.fromISO(props.provider.connectedAt ?? new Date()).toFormat('dd LLL yyyy');
 });
 
 onMounted(() => {
@@ -113,7 +113,7 @@ async function onActionDropdownClick(id: string) {
 			<ExternalSecretsProviderImage :class="$style.cardImage" :provider="provider" />
 			<div :class="$style.cardContent">
 				<n8n-text bold>{{ provider.displayName }}</n8n-text>
-				<n8n-text color="text-light" size="small" v-if="provider.connected">
+				<n8n-text v-if="provider.connected" color="text-light" size="small">
 					<span>
 						{{
 							i18n.baseText('settings.externalSecrets.card.secretsCount', {
@@ -135,10 +135,10 @@ async function onActionDropdownClick(id: string) {
 					</span>
 				</n8n-text>
 			</div>
-			<div :class="$style.cardActions" v-if="canConnect">
+			<div v-if="canConnect" :class="$style.cardActions">
 				<ExternalSecretsProviderConnectionSwitch
 					:provider="provider"
-					:beforeUpdate="onBeforeConnectionUpdate"
+					:before-update="onBeforeConnectionUpdate"
 					:disabled="connectionState === 'error' && !provider.connected"
 				/>
 				<n8n-action-toggle

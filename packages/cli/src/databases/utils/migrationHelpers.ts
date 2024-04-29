@@ -1,8 +1,8 @@
 import { Container } from 'typedi';
 import { readFileSync, rmSync } from 'fs';
 import { InstanceSettings } from 'n8n-core';
-import type { ObjectLiteral } from 'typeorm';
-import type { QueryRunner } from 'typeorm/query-runner/QueryRunner';
+import type { ObjectLiteral } from '@n8n/typeorm';
+import type { QueryRunner } from '@n8n/typeorm/query-runner/QueryRunner';
 import { ApplicationError, jsonParse } from 'n8n-workflow';
 import config from '@/config';
 import { inTest } from '@/constants';
@@ -118,9 +118,9 @@ const createContext = (queryRunner: QueryRunner, migration: Migration): Migratio
 				namedParameters,
 				{},
 			);
-			return queryRunner.query(query, parameters) as Promise<T>;
+			return await (queryRunner.query(query, parameters) as Promise<T>);
 		} else {
-			return queryRunner.query(sql) as Promise<T>;
+			return await (queryRunner.query(sql) as Promise<T>);
 		}
 	},
 	runInBatches: async <T>(
@@ -176,26 +176,34 @@ const createContext = (queryRunner: QueryRunner, migration: Migration): Migratio
 
 export const wrapMigration = (migration: Migration) => {
 	const { up, down } = migration.prototype;
-	Object.assign(migration.prototype, {
-		async up(this: BaseMigration, queryRunner: QueryRunner) {
-			logMigrationStart(migration.name);
-			const context = createContext(queryRunner, migration);
-			if (this.transaction === false) {
-				await runDisablingForeignKeys(this, context, up);
-			} else {
-				await up.call(this, context);
-			}
-			logMigrationEnd(migration.name);
-		},
-		async down(this: BaseMigration, queryRunner: QueryRunner) {
-			if (down) {
+	if (up) {
+		Object.assign(migration.prototype, {
+			async up(this: BaseMigration, queryRunner: QueryRunner) {
+				logMigrationStart(migration.name);
 				const context = createContext(queryRunner, migration);
 				if (this.transaction === false) {
 					await runDisablingForeignKeys(this, context, up);
 				} else {
+					await up.call(this, context);
+				}
+				logMigrationEnd(migration.name);
+			},
+		});
+	} else {
+		throw new ApplicationError(
+			'At least on migration is missing the method `up`. Make sure all migrations are valid.',
+		);
+	}
+	if (down) {
+		Object.assign(migration.prototype, {
+			async down(this: BaseMigration, queryRunner: QueryRunner) {
+				const context = createContext(queryRunner, migration);
+				if (this.transaction === false) {
+					await runDisablingForeignKeys(this, context, down);
+				} else {
 					await down.call(this, context);
 				}
-			}
-		},
-	});
+			},
+		});
+	}
 };

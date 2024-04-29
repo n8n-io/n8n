@@ -1,9 +1,10 @@
 import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
 
 import { configurePostgres } from '../transport';
+import type { PostgresNodeCredentials } from '../helpers/interfaces';
 
 export async function schemaSearch(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
-	const credentials = await this.getCredentials('postgres');
+	const credentials = (await this.getCredentials('postgres')) as PostgresNodeCredentials;
 	const options = { nodeVersion: this.getNode().typeVersion };
 
 	const { db, sshClient } = await configurePostgres(credentials, options);
@@ -23,11 +24,11 @@ export async function schemaSearch(this: ILoadOptionsFunctions): Promise<INodeLi
 		if (sshClient) {
 			sshClient.end();
 		}
-		await db.$pool.end();
+		if (!db.$pool.ending) await db.$pool.end();
 	}
 }
 export async function tableSearch(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
-	const credentials = await this.getCredentials('postgres');
+	const credentials = (await this.getCredentials('postgres')) as PostgresNodeCredentials;
 	const options = { nodeVersion: this.getNode().typeVersion };
 
 	const { db, sshClient } = await configurePostgres(credentials, options);
@@ -54,6 +55,6 @@ export async function tableSearch(this: ILoadOptionsFunctions): Promise<INodeLis
 		if (sshClient) {
 			sshClient.end();
 		}
-		await db.$pool.end();
+		if (!db.$pool.ending) await db.$pool.end();
 	}
 }

@@ -11,32 +11,32 @@
 				<NodeTitle
 					v-if="node"
 					class="node-name"
-					:modelValue="node.name"
-					:nodeType="nodeType"
-					:readOnly="isReadOnly"
-					@update:modelValue="nameChanged"
+					:model-value="node.name"
+					:node-type="nodeType"
+					:read-only="isReadOnly"
+					@update:model-value="nameChanged"
 				></NodeTitle>
 				<div v-if="isExecutable">
 					<NodeExecuteButton
 						v-if="!blockUI && node && nodeValid"
 						data-test-id="node-execute-button"
-						:nodeName="node.name"
+						:node-name="node.name"
 						:disabled="outputPanelEditMode.enabled && !isTriggerNode"
 						size="small"
-						telemetrySource="parameters"
+						telemetry-source="parameters"
 						@execute="onNodeExecute"
-						@stopExecution="onStopExecution"
+						@stop-execution="onStopExecution"
 					/>
 				</div>
 			</div>
 			<NodeSettingsTabs
 				v-if="node && nodeValid"
 				v-model="openPanel"
-				:nodeType="nodeType"
-				:sessionId="sessionId"
+				:node-type="nodeType"
+				:push-ref="pushRef"
 			/>
 		</div>
-		<div class="node-is-not-valid" v-if="node && !nodeValid">
+		<div v-if="node && !nodeValid" class="node-is-not-valid">
 			<p :class="$style.warningIcon">
 				<font-awesome-icon icon="exclamation-triangle" />
 			</p>
@@ -78,7 +78,7 @@
 				</template>
 			</i18n-t>
 		</div>
-		<div class="node-parameters-wrapper" data-test-id="node-parameters" v-if="node && nodeValid">
+		<div v-if="node && nodeValid" class="node-parameters-wrapper" data-test-id="node-parameters">
 			<n8n-notice
 				v-if="hasForeignCredential"
 				:content="
@@ -88,30 +88,30 @@
 				"
 			/>
 			<div v-show="openPanel === 'params'">
-				<node-webhooks :node="node" :nodeType="nodeType" />
+				<NodeWebhooks :node="node" :node-type="nodeType" />
 
-				<parameter-input-list
+				<ParameterInputList
 					v-if="nodeValuesInitialized"
 					:parameters="parametersNoneSetting"
-					:hideDelete="true"
-					:nodeValues="nodeValues"
-					:isReadOnly="isReadOnly"
-					:hiddenIssuesInputs="hiddenIssuesInputs"
+					:hide-delete="true"
+					:node-values="nodeValues"
+					:is-read-only="isReadOnly"
+					:hidden-issues-inputs="hiddenIssuesInputs"
 					path="parameters"
-					@valueChanged="valueChanged"
+					@value-changed="valueChanged"
 					@activate="onWorkflowActivate"
-					@parameterBlur="onParameterBlur"
+					@parameter-blur="onParameterBlur"
 				>
-					<node-credentials
+					<NodeCredentials
 						:node="node"
 						:readonly="isReadOnly"
-						:showAll="true"
-						@credentialSelected="credentialSelected"
-						@valueChanged="valueChanged"
-						@blur="onParameterBlur"
+						:show-all="true"
 						:hide-issues="hiddenIssuesInputs.includes('credentials')"
+						@credential-selected="credentialSelected"
+						@value-changed="valueChanged"
+						@blur="onParameterBlur"
 					/>
-				</parameter-input-list>
+				</ParameterInputList>
 				<div v-if="parametersNoneSetting.length === 0" class="no-parameters">
 					<n8n-text>
 						{{ $locale.baseText('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}
@@ -133,31 +133,31 @@
 				</div>
 			</div>
 			<div v-show="openPanel === 'settings'">
-				<parameter-input-list
+				<ParameterInputList
 					:parameters="parametersSetting"
-					:nodeValues="nodeValues"
-					:isReadOnly="isReadOnly"
-					:hiddenIssuesInputs="hiddenIssuesInputs"
+					:node-values="nodeValues"
+					:is-read-only="isReadOnly"
+					:hidden-issues-inputs="hiddenIssuesInputs"
 					path="parameters"
-					@valueChanged="valueChanged"
-					@parameterBlur="onParameterBlur"
+					@value-changed="valueChanged"
+					@parameter-blur="onParameterBlur"
 				/>
-				<parameter-input-list
+				<ParameterInputList
 					:parameters="nodeSettings"
-					:hideDelete="true"
-					:nodeValues="nodeValues"
-					:isReadOnly="isReadOnly"
-					:hiddenIssuesInputs="hiddenIssuesInputs"
+					:hide-delete="true"
+					:node-values="nodeValues"
+					:is-read-only="isReadOnly"
+					:hidden-issues-inputs="hiddenIssuesInputs"
 					path=""
-					@valueChanged="valueChanged"
-					@parameterBlur="onParameterBlur"
+					@value-changed="valueChanged"
+					@parameter-blur="onParameterBlur"
 				/>
 				<div class="node-version" data-test-id="node-version">
 					{{
 						$locale.baseText('nodeSettings.nodeVersion', {
 							interpolate: {
 								node: nodeType?.displayName as string,
-								version: node.typeVersion.toString(),
+								version: (node.typeVersion ?? latestVersion).toString(),
 							},
 						})
 					}}
@@ -165,6 +165,13 @@
 				</div>
 			</div>
 		</div>
+		<NDVSubConnections
+			v-if="node"
+			ref="subConnections"
+			:root-node="node"
+			@switch-selected-node="onSwitchSelectedNode"
+			@open-connection-node-creator="onOpenConnectionNodeCreator"
+		/>
 		<n8n-block-ui :show="blockUI" />
 	</div>
 </template>
@@ -178,8 +185,17 @@ import type {
 	INodeParameters,
 	INodeProperties,
 	NodeParameterValue,
+	ConnectionTypes,
 } from 'n8n-workflow';
-import { NodeHelpers, NodeConnectionType, deepCopy } from 'n8n-workflow';
+import {
+	NodeHelpers,
+	NodeConnectionType,
+	deepCopy,
+	isINodePropertyCollectionList,
+	isINodePropertiesList,
+	isINodePropertyOptionsList,
+	displayParameter,
+} from 'n8n-workflow';
 import type {
 	INodeUi,
 	INodeUpdatePropertiesInformation,
@@ -192,6 +208,7 @@ import {
 	CUSTOM_NODES_DOCS_URL,
 	MAIN_NODE_PANEL_WIDTH,
 	IMPORT_CURL_MODAL_KEY,
+	SHOULD_CLEAR_NODE_OUTPUTS,
 } from '@/constants';
 
 import NodeTitle from '@/components/NodeTitle.vue';
@@ -199,6 +216,7 @@ import ParameterInputList from '@/components/ParameterInputList.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
 import NodeSettingsTabs from '@/components/NodeSettingsTabs.vue';
 import NodeWebhooks from '@/components/NodeWebhooks.vue';
+import NDVSubConnections from '@/components/NDVSubConnections.vue';
 import { get, set, unset } from 'lodash-es';
 
 import NodeExecuteButton from './NodeExecuteButton.vue';
@@ -214,6 +232,7 @@ import { useCredentialsStore } from '@/stores/credentials.store';
 import type { EventBus } from 'n8n-design-system';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { useToast } from '@/composables/useToast';
 
 export default defineComponent({
 	name: 'NodeSettings',
@@ -223,15 +242,18 @@ export default defineComponent({
 		ParameterInputList,
 		NodeSettingsTabs,
 		NodeWebhooks,
+		NDVSubConnections,
 		NodeExecuteButton,
 	},
 	setup() {
 		const nodeHelpers = useNodeHelpers();
 		const externalHooks = useExternalHooks();
+		const { showMessage } = useToast();
 
 		return {
 			externalHooks,
 			nodeHelpers,
+			showMessage,
 		};
 	},
 	computed: {
@@ -284,7 +306,7 @@ export default defineComponent({
 			return Math.max(...this.nodeTypeVersions);
 		},
 		isLatestNodeVersion(): boolean {
-			return this.latestVersion === this.node?.typeVersion;
+			return !this.node?.typeVersion || this.latestVersion === this.node.typeVersion;
 		},
 		nodeVersionTag(): string {
 			if (!this.nodeType || this.nodeType.hidden) {
@@ -366,7 +388,7 @@ export default defineComponent({
 			const credential = this.usedCredentials
 				? Object.values(this.usedCredentials).find((credential) => {
 						return credential.id === this.foreignCredentials[0];
-				  })
+					})
 				: undefined;
 
 			return this.credentialsStore.getCredentialOwnerName(credential);
@@ -379,7 +401,7 @@ export default defineComponent({
 		dragging: {
 			type: Boolean,
 		},
-		sessionId: {
+		pushRef: {
 			type: String,
 		},
 		nodeType: {
@@ -455,7 +477,24 @@ export default defineComponent({
 			}
 		},
 	},
+	mounted() {
+		this.populateHiddenIssuesSet();
+		this.populateSettings();
+		this.setNodeValues();
+		this.eventBus?.on('openSettings', this.openSettings);
+
+		this.nodeHelpers.updateNodeParameterIssues(this.node as INodeUi, this.nodeType);
+	},
+	beforeUnmount() {
+		this.eventBus?.off('openSettings', this.openSettings);
+	},
 	methods: {
+		onSwitchSelectedNode(node: string) {
+			this.$emit('switchSelectedNode', node);
+		},
+		onOpenConnectionNodeCreator(node: string, connectionType: ConnectionTypes) {
+			this.$emit('openConnectionNodeCreator', node, connectionType);
+		},
 		populateHiddenIssuesSet() {
 			if (!this.node || !this.workflowsStore.isNodePristine(this.node.name)) return;
 
@@ -601,6 +640,7 @@ export default defineComponent({
 		},
 		onNodeExecute() {
 			this.hiddenIssuesInputs = [];
+			(this.$refs.subConnections as InstanceType<typeof NDVSubConnections>)?.showNodeInputsIssues();
 			this.$emit('execute');
 		},
 		setValue(name: string, value: NodeParameterValue) {
@@ -825,6 +865,20 @@ export default defineComponent({
 					return;
 				}
 
+				if (
+					parameterData.type &&
+					this.workflowsStore.nodeHasOutputConnection(node.name) &&
+					SHOULD_CLEAR_NODE_OUTPUTS[nodeType.name]?.eventTypes.includes(parameterData.type) &&
+					SHOULD_CLEAR_NODE_OUTPUTS[nodeType.name]?.parameterPaths.includes(parameterData.name)
+				) {
+					this.workflowsStore.removeAllNodeConnection(node, { preserveInputConnections: true });
+					this.showMessage({
+						type: 'warning',
+						title: this.$locale.baseText('nodeSettings.outputCleared.title'),
+						message: this.$locale.baseText('nodeSettings.outputCleared.message'),
+					});
+				}
+
 				// Get only the parameters which are different to the defaults
 				let nodeParameters = NodeHelpers.getNodeParameters(
 					nodeType.properties,
@@ -864,6 +918,12 @@ export default defineComponent({
 					} else {
 						set(nodeParameters as object, parameterPath, newValue);
 					}
+					// If value is updated, remove parameter values that have invalid options
+					// so getNodeParameters checks don't fail
+					this.removeMismatchedOptionValues(nodeType, nodeParameters, {
+						name: parameterPath,
+						value: newValue,
+					});
 				}
 
 				// Get the parameters with the now new defaults according to the
@@ -918,6 +978,50 @@ export default defineComponent({
 
 				this.workflowsStore.setNodeValue(updateInformation);
 			}
+		},
+		/**
+		 * Removes node values that are not valid options for the given parameter.
+		 * This can happen when there are multiple node parameters with the same name
+		 * but different options and display conditions
+		 * @param nodeType The node type description
+		 * @param nodeParameterValues Current node parameter values
+		 * @param updatedParameter The parameter that was updated. Will be used to determine which parameters to remove based on their display conditions and option values
+		 */
+		removeMismatchedOptionValues(
+			nodeType: INodeTypeDescription,
+			nodeParameterValues: INodeParameters | null,
+			updatedParameter: { name: string; value: NodeParameterValue },
+		) {
+			nodeType.properties.forEach((prop) => {
+				const displayOptions = prop.displayOptions;
+				// Not processing parameters that are not set or don't have options
+				if (!nodeParameterValues?.hasOwnProperty(prop.name) || !displayOptions || !prop.options) {
+					return;
+				}
+				// Only process the parameters that depend on the updated parameter
+				const showCondition = displayOptions.show?.[updatedParameter.name];
+				const hideCondition = displayOptions.hide?.[updatedParameter.name];
+				if (showCondition === undefined && hideCondition === undefined) {
+					return;
+				}
+
+				let hasValidOptions = true;
+
+				// Every value should be a possible option
+				if (isINodePropertyCollectionList(prop.options) || isINodePropertiesList(prop.options)) {
+					hasValidOptions = Object.keys(nodeParameterValues).every(
+						(key) => (prop.options ?? []).find((option) => option.name === key) !== undefined,
+					);
+				} else if (isINodePropertyOptionsList(prop.options)) {
+					hasValidOptions = !!prop.options.find(
+						(option) => option.value === nodeParameterValues[prop.name],
+					);
+				}
+
+				if (!hasValidOptions && displayParameter(nodeParameterValues, prop, this.node)) {
+					unset(nodeParameterValues as object, prop.name);
+				}
+			});
 		},
 		/**
 		 * Sets the values of the active node in the internal settings variables
@@ -1055,17 +1159,6 @@ export default defineComponent({
 			this.openPanel = 'settings';
 		},
 	},
-	mounted() {
-		this.populateHiddenIssuesSet();
-		this.populateSettings();
-		this.setNodeValues();
-		this.eventBus?.on('openSettings', this.openSettings);
-
-		this.nodeHelpers.updateNodeParameterIssues(this.node as INodeUi, this.nodeType);
-	},
-	beforeUnmount() {
-		this.eventBus?.off('openSettings', this.openSettings);
-	},
 });
 </script>
 
@@ -1122,7 +1215,7 @@ export default defineComponent({
 
 	.node-parameters-wrapper {
 		overflow-y: auto;
-		padding: 0 var(--spacing-m) 200px var(--spacing-m);
+		padding: 0 var(--spacing-m) var(--spacing-l) var(--spacing-m);
 		flex-grow: 1;
 	}
 

@@ -6,6 +6,8 @@ ExecutionId:
   $ref: '../../../handlers/executions/spec/schemas/parameters/executionId.yml'
 WorkflowId:
   $ref: '../../../handlers/workflows/spec/schemas/parameters/workflowId.yml'
+TagId:
+  $ref: '../../../handlers/tags/spec/schemas/parameters/tagId.yml'
 IncludeData:
   $ref: '../../../handlers/executions/spec/schemas/parameters/includeData.yml'
 UserIdentifier:

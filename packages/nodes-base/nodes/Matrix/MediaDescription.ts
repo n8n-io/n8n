@@ -46,11 +46,12 @@ export const mediaFields: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Binary Property',
+		displayName: 'Input Binary Field',
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
 		required: true,
+		hint: 'The name of the input binary field containing the file to be uploaded',
 		displayOptions: {
 			show: {
 				resource: ['media'],

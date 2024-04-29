@@ -2,13 +2,13 @@
 	<div>
 		<ModalRoot :name="CONTACT_PROMPT_MODAL_KEY">
 			<template #default="{ modalName }">
-				<ContactPromptModal :modalName="modalName" />
+				<ContactPromptModal :modal-name="modalName" />
 			</template>
 		</ModalRoot>
 
 		<ModalRoot :name="CREDENTIAL_EDIT_MODAL_KEY">
 			<template #default="{ modalName, activeId, mode }">
-				<CredentialEdit :modalName="modalName" :mode="mode" :activeId="activeId" />
+				<CredentialEdit :modal-name="modalName" :mode="mode" :active-id="activeId" />
 			</template>
 		</ModalRoot>
 		<ModalRoot :name="ABOUT_MODAL_KEY">
@@ -25,7 +25,7 @@
 
 		<ModalRoot :name="DUPLICATE_MODAL_KEY">
 			<template #default="{ modalName, active, data }">
-				<DuplicateWorkflowDialog :data="data" :isActive="active" :modalName="modalName" />
+				<DuplicateWorkflowDialog :data="data" :is-active="active" :modal-name="modalName" />
 			</template>
 		</ModalRoot>
 
@@ -37,13 +37,13 @@
 			<TagsManager />
 		</ModalRoot>
 
-		<ModalRoot :name="VERSIONS_MODAL_KEY" :keepAlive="true">
+		<ModalRoot :name="VERSIONS_MODAL_KEY" :keep-alive="true">
 			<UpdatesPanel />
 		</ModalRoot>
 
-		<ModalRoot :name="VALUE_SURVEY_MODAL_KEY" :keepAlive="true">
+		<ModalRoot :name="VALUE_SURVEY_MODAL_KEY" :keep-alive="true">
 			<template #default="{ active }">
-				<ValueSurvey :isActive="active" />
+				<ValueSurvey :is-active="active" />
 			</template>
 		</ModalRoot>
 
@@ -65,7 +65,7 @@
 
 		<ModalRoot :name="DELETE_USER_MODAL_KEY">
 			<template #default="{ modalName, activeId }">
-				<DeleteUserModal :modalName="modalName" :activeId="activeId" />
+				<DeleteUserModal :modal-name="modalName" :active-id="activeId" />
 			</template>
 		</ModalRoot>
 
@@ -79,7 +79,7 @@
 
 		<ModalRoot :name="WORKFLOW_SHARE_MODAL_KEY">
 			<template #default="{ modalName, active, data }">
-				<WorkflowShareModal :data="data" :isActive="active" :modalName="modalName" />
+				<WorkflowShareModal :data="data" :is-active="active" :modal-name="modalName" />
 			</template>
 		</ModalRoot>
 
@@ -98,8 +98,8 @@
 		<ModalRoot :name="COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY">
 			<template #default="{ modalName, activeId, mode }">
 				<CommunityPackageManageConfirmModal
-					:modalName="modalName"
-					:activePackageName="activeId"
+					:modal-name="modalName"
+					:active-package-name="activeId"
 					:mode="mode"
 				/>
 			</template>
@@ -108,35 +108,39 @@
 		<ModalRoot :name="LOG_STREAM_MODAL_KEY">
 			<template #default="{ modalName, data }">
 				<EventDestinationSettingsModal
-					:modalName="modalName"
+					:modal-name="modalName"
 					:destination="data.destination"
-					:isNew="data.isNew"
-					:eventBus="data.eventBus"
+					:is-new="data.isNew"
+					:event-bus="data.eventBus"
 				/>
 			</template>
 		</ModalRoot>
 
 		<ModalRoot :name="SOURCE_CONTROL_PUSH_MODAL_KEY">
 			<template #default="{ modalName, data }">
-				<SourceControlPushModal :modalName="modalName" :data="data" />
+				<SourceControlPushModal :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
 
 		<ModalRoot :name="SOURCE_CONTROL_PULL_MODAL_KEY">
 			<template #default="{ modalName, data }">
-				<SourceControlPullModal :modalName="modalName" :data="data" />
+				<SourceControlPullModal :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
 
 		<ModalRoot :name="EXTERNAL_SECRETS_PROVIDER_MODAL_KEY">
 			<template #default="{ modalName, data }">
-				<ExternalSecretsProviderModal :modalName="modalName" :data="data" />
+				<ExternalSecretsProviderModal :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
 
 		<ModalRoot :name="DEBUG_PAYWALL_MODAL_KEY">
 			<template #default="{ modalName, data }">
-				<DebugPaywallModal data-test-id="debug-paywall-modal" :modalName="modalName" :data="data" />
+				<DebugPaywallModal
+					data-test-id="debug-paywall-modal"
+					:modal-name="modalName"
+					:data="data"
+				/>
 			</template>
 		</ModalRoot>
 
@@ -144,7 +148,7 @@
 			<template #default="{ modalName, data }">
 				<WorkflowHistoryVersionRestoreModal
 					data-test-id="workflow-history-version-restore-modal"
-					:modalName="modalName"
+					:modal-name="modalName"
 					:data="data"
 				/>
 			</template>
@@ -153,7 +157,17 @@
 			<template #default="{ modalName, data }">
 				<SuggestedTemplatesPreviewModal
 					data-test-id="suggested-templates-preview-modal"
-					:modalName="modalName"
+					:modal-name="modalName"
+					:data="data"
+				/>
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="SETUP_CREDENTIALS_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<SetupWorkflowCredentialsModal
+					data-test-id="setup-workflow-credentials-modal"
+					:modal-name="modalName"
 					:data="data"
 				/>
 			</template>
@@ -193,6 +207,7 @@ import {
 	MFA_SETUP_MODAL_KEY,
 	WORKFLOW_HISTORY_VERSION_RESTORE,
 	SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY,
+	SETUP_CREDENTIALS_MODAL_KEY,
 } from '@/constants';
 
 import AboutModal from './AboutModal.vue';
@@ -225,6 +240,7 @@ import ExternalSecretsProviderModal from '@/components/ExternalSecretsProviderMo
 import DebugPaywallModal from '@/components/DebugPaywallModal.vue';
 import WorkflowHistoryVersionRestoreModal from '@/components/WorkflowHistory/WorkflowHistoryVersionRestoreModal.vue';
 import SuggestedTemplatesPreviewModal from '@/components/SuggestedTemplates/SuggestedTemplatesPreviewModal.vue';
+import SetupWorkflowCredentialsModal from '@/components/SetupWorkflowCredentialsModal/SetupWorkflowCredentialsModal.vue';
 
 export default defineComponent({
 	name: 'Modals',
@@ -259,6 +275,7 @@ export default defineComponent({
 		MfaSetupModal,
 		WorkflowHistoryVersionRestoreModal,
 		SuggestedTemplatesPreviewModal,
+		SetupWorkflowCredentialsModal,
 	},
 	data: () => ({
 		CHAT_EMBED_MODAL_KEY,
@@ -290,6 +307,7 @@ export default defineComponent({
 		MFA_SETUP_MODAL_KEY,
 		WORKFLOW_HISTORY_VERSION_RESTORE,
 		SUGGESTED_TEMPLATES_PREVIEW_MODAL_KEY,
+		SETUP_CREDENTIALS_MODAL_KEY,
 	}),
 });
 </script>

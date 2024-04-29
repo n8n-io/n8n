@@ -8,12 +8,14 @@ import {
 	NodeConnectionType,
 } from 'n8n-workflow';
 import { BufferMemory } from 'langchain/memory';
-import type { RedisChatMessageHistoryInput } from 'langchain/stores/message/redis';
-import { RedisChatMessageHistory } from 'langchain/stores/message/redis';
+import type { RedisChatMessageHistoryInput } from '@langchain/redis';
+import { RedisChatMessageHistory } from '@langchain/redis';
 import type { RedisClientOptions } from 'redis';
 import { createClient } from 'redis';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { sessionIdOption, sessionKeyProperty } from '../descriptions';
+import { getSessionId } from '../../../utils/helpers';
 
 export class MemoryRedisChat implements INodeType {
 	description: INodeTypeDescription = {
@@ -21,7 +23,7 @@ export class MemoryRedisChat implements INodeType {
 		name: 'memoryRedisChat',
 		icon: 'file:redis.svg',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1, 1.2],
 		description: 'Stores the chat history in Redis.',
 		defaults: {
 			name: 'Redis Chat Memory',
@@ -58,7 +60,33 @@ export class MemoryRedisChat implements INodeType {
 				type: 'string',
 				default: 'chat_history',
 				description: 'The key to use to store the memory in the workflow data',
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
 			},
+			{
+				displayName: 'Session ID',
+				name: 'sessionKey',
+				type: 'string',
+				default: '={{ $json.sessionId }}',
+				description: 'The key to use to store the memory',
+				displayOptions: {
+					show: {
+						'@version': [1.1],
+					},
+				},
+			},
+			{
+				...sessionIdOption,
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.2 } }],
+					},
+				},
+			},
+			sessionKeyProperty,
 			{
 				displayName: 'Session Time To Live',
 				name: 'sessionTTL',
@@ -72,8 +100,17 @@ export class MemoryRedisChat implements INodeType {
 
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('redis');
-		const sessionKey = this.getNodeParameter('sessionKey', itemIndex) as string;
+		const nodeVersion = this.getNode().typeVersion;
+
 		const sessionTTL = this.getNodeParameter('sessionTTL', itemIndex, 0) as number;
+
+		let sessionId;
+
+		if (nodeVersion >= 1.2) {
+			sessionId = getSessionId(this, itemIndex);
+		} else {
+			sessionId = this.getNodeParameter('sessionKey', itemIndex) as string;
+		}
 
 		const redisOptions: RedisClientOptions = {
 			socket: {
@@ -98,7 +135,7 @@ export class MemoryRedisChat implements INodeType {
 
 		const redisChatConfig: RedisChatMessageHistoryInput = {
 			client,
-			sessionId: sessionKey,
+			sessionId,
 		};
 
 		if (sessionTTL > 0) {
@@ -114,7 +151,12 @@ export class MemoryRedisChat implements INodeType {
 			outputKey: 'output',
 		});
 
+		async function closeFunction() {
+			void client.disconnect();
+		}
+
 		return {
+			closeFunction,
 			response: logWrapper(memory, this),
 		};
 	}

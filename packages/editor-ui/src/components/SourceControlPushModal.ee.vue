@@ -233,8 +233,9 @@ async function commitAndPush() {
 	<Modal
 		width="812px"
 		:title="i18n.baseText('settings.sourceControl.modals.push.title')"
-		:eventBus="data.eventBus"
+		:event-bus="data.eventBus"
 		:name="SOURCE_CONTROL_PUSH_MODAL_KEY"
+		max-height="80%"
 	>
 		<template #content>
 			<div :class="$style.container">
@@ -250,13 +251,13 @@ async function commitAndPush() {
 						<div class="mt-l mb-2xs">
 							<n8n-checkbox
 								:indeterminate="selectAllIndeterminate"
-								:modelValue="selectAll"
-								@update:modelValue="onToggleSelectAll"
+								:model-value="selectAll"
+								@update:model-value="onToggleSelectAll"
 							>
 								<n8n-text bold tag="strong">
 									{{ i18n.baseText('settings.sourceControl.modals.push.workflowsToCommit') }}
 								</n8n-text>
-								<n8n-text tag="strong" v-show="workflowFiles.length > 0">
+								<n8n-text v-show="workflowFiles.length > 0" tag="strong">
 									({{ stagedWorkflowFiles.length }}/{{ workflowFiles.length }})
 								</n8n-text>
 							</n8n-checkbox>
@@ -270,9 +271,9 @@ async function commitAndPush() {
 						>
 							<div :class="$style.listItemBody">
 								<n8n-checkbox
-									:modelValue="staged[file.file]"
+									:model-value="staged[file.file]"
 									:class="$style.listItemCheckbox"
-									@update:modelValue="setStagedStatus(file, !staged[file.file])"
+									@update:model-value="setStagedStatus(file, !staged[file.file])"
 								/>
 								<div>
 									<n8n-text v-if="file.status === 'deleted'" color="text-light">
@@ -280,7 +281,7 @@ async function commitAndPush() {
 										<span v-if="file.type === 'credential'"> Deleted Credential: </span>
 										<strong>{{ file.name || file.id }}</strong>
 									</n8n-text>
-									<n8n-text bold v-else> {{ file.name }} </n8n-text>
+									<n8n-text v-else bold> {{ file.name }} </n8n-text>
 									<div v-if="file.updatedAt">
 										<n8n-text color="text-light" size="small">
 											{{ renderUpdatedAt(file) }}
@@ -289,8 +290,8 @@ async function commitAndPush() {
 								</div>
 								<div :class="$style.listItemStatus">
 									<n8n-badge
-										class="mr-2xs"
 										v-if="workflowId === file.id && file.type === 'workflow'"
+										class="mr-2xs"
 									>
 										Current workflow
 									</n8n-badge>
@@ -301,7 +302,7 @@ async function commitAndPush() {
 							</div>
 						</n8n-card>
 					</div>
-					<n8n-notice class="mt-0" v-else>
+					<n8n-notice v-else class="mt-0">
 						<i18n-t keypath="settings.sourceControl.modals.push.noWorkflowChanges">
 							<template #link>
 								<n8n-link size="small" :to="i18n.baseText('settings.sourceControl.docs.using.url')">
@@ -317,8 +318,8 @@ async function commitAndPush() {
 						{{ i18n.baseText('settings.sourceControl.modals.push.commitMessage') }}
 					</n8n-text>
 					<n8n-input
-						type="text"
 						v-model="commitMessage"
+						type="text"
 						:placeholder="
 							i18n.baseText('settings.sourceControl.modals.push.commitMessage.placeholder')
 						"

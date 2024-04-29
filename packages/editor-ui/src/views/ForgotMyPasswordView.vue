@@ -1,5 +1,5 @@
 <template>
-	<AuthView :form="formConfig" :formLoading="loading" @submit="onSubmit" />
+	<AuthView :form="formConfig" :form-loading="loading" @submit="onSubmit" />
 </template>
 
 <script lang="ts">

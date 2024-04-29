@@ -12,11 +12,12 @@ import {
 	UNLIMITED_LICENSE_QUOTA,
 } from './constants';
 import { SettingsRepository } from '@db/repositories/settings.repository';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
 import type { BooleanLicenseFeature, N8nInstanceType, NumericLicenseFeature } from './Interfaces';
 import type { RedisServicePubSubPublisher } from './services/redis/RedisServicePubSubPublisher';
 import { RedisService } from './services/redis.service';
-import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
+import { OrchestrationService } from '@/services/orchestration.service';
+import { OnShutdown } from '@/decorators/OnShutdown';
+import { UsageMetricsService } from './services/usageMetrics.service';
 
 type FeatureReturnType = Partial<
 	{
@@ -30,20 +31,25 @@ export class License {
 
 	private redisPublisher: RedisServicePubSubPublisher;
 
+	private isShuttingDown = false;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly instanceSettings: InstanceSettings,
-		private readonly multiMainSetup: MultiMainSetup,
+		private readonly orchestrationService: OrchestrationService,
 		private readonly settingsRepository: SettingsRepository,
-		private readonly workflowRepository: WorkflowRepository,
+		private readonly usageMetricsService: UsageMetricsService,
 	) {}
 
 	async init(instanceType: N8nInstanceType = 'main') {
 		if (this.manager) {
+			this.logger.warn('License manager already initialized or shutting down');
 			return;
 		}
-
-		await this.multiMainSetup.init();
+		if (this.isShuttingDown) {
+			this.logger.warn('License manager already shutting down');
+			return;
+		}
 
 		const isMainInstance = instanceType === 'main';
 		const server = config.getEnv('license.serverUrl');
@@ -51,13 +57,13 @@ export class License {
 		const offlineMode = !isMainInstance;
 		const autoRenewOffset = config.getEnv('license.autoRenewOffset');
 		const saveCertStr = isMainInstance
-			? async (value: TLicenseBlock) => this.saveCertStr(value)
+			? async (value: TLicenseBlock) => await this.saveCertStr(value)
 			: async () => {};
 		const onFeatureChange = isMainInstance
-			? async (features: TFeatures) => this.onFeatureChange(features)
+			? async (features: TFeatures) => await this.onFeatureChange(features)
 			: async () => {};
 		const collectUsageMetrics = isMainInstance
-			? async () => this.collectUsageMetrics()
+			? async () => await this.usageMetricsService.collectUsageMetrics()
 			: async () => [];
 
 		try {
@@ -70,7 +76,7 @@ export class License {
 				autoRenewOffset,
 				offlineMode,
 				logger: this.logger,
-				loadCertStr: async () => this.loadCertStr(),
+				loadCertStr: async () => await this.loadCertStr(),
 				saveCertStr,
 				deviceFingerprint: () => this.instanceSettings.instanceId,
 				collectUsageMetrics,
@@ -83,15 +89,6 @@ export class License {
 				this.logger.error('Could not initialize license manager sdk', e);
 			}
 		}
-	}
-
-	async collectUsageMetrics() {
-		return [
-			{
-				name: 'activeWorkflows',
-				value: await this.workflowRepository.count({ where: { active: true } }),
-			},
-		];
 	}
 
 	async loadCertStr(): Promise<TLicenseBlock> {
@@ -115,16 +112,19 @@ export class License {
 				| boolean
 				| undefined;
 
-			this.multiMainSetup.setLicensed(isMultiMainLicensed ?? false);
+			this.orchestrationService.setMultiMainSetupLicensed(isMultiMainLicensed ?? false);
 
-			if (this.multiMainSetup.isEnabled && this.multiMainSetup.isFollower) {
+			if (
+				this.orchestrationService.isMultiMainSetupEnabled &&
+				this.orchestrationService.isFollower
+			) {
 				this.logger.debug(
 					'[Multi-main setup] Instance is follower, skipping sending of "reloadLicense" command...',
 				);
 				return;
 			}
 
-			if (this.multiMainSetup.isEnabled && !isMultiMainLicensed) {
+			if (this.orchestrationService.isMultiMainSetupEnabled && !isMultiMainLicensed) {
 				this.logger.debug(
 					'[Multi-main setup] License changed with no support for multi-main setup - no new followers will be allowed to init. To restore multi-main setup, please upgrade to a license that supporst this feature.',
 				);
@@ -191,7 +191,12 @@ export class License {
 		await this.manager.renew();
 	}
 
+	@OnShutdown()
 	async shutdown() {
+		// Shut down License manager to unclaim any floating entitlements
+		// Note: While this saves a new license cert to DB, the previous entitlements are still kept in memory so that the shutdown process can complete
+		this.isShuttingDown = true;
+
 		if (!this.manager) {
 			return;
 		}

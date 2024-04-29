@@ -5,10 +5,10 @@ import {
 	type INodeExecutionData,
 	NodeConnectionType,
 } from 'n8n-workflow';
-import type { Embeddings } from 'langchain/embeddings/base';
-import type { Document } from 'langchain/document';
+import type { Embeddings } from '@langchain/core/embeddings';
+import type { Document } from '@langchain/core/documents';
 import { createClient } from '@supabase/supabase-js';
-import { SupabaseVectorStore } from 'langchain/vectorstores/supabase';
+import { SupabaseVectorStore } from '@langchain/community/vectorstores/supabase';
 
 import type { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
 import { processDocuments } from '../shared/processDocuments';
@@ -38,7 +38,7 @@ export class VectorStoreSupabaseInsert implements INodeType {
 			resources: {
 				primaryDocumentation: [
 					{
-						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstoresupabaseinsert/',
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstoresupabase/',
 					},
 				],
 			},
@@ -122,6 +122,6 @@ export class VectorStoreSupabaseInsert implements INodeType {
 			queryName,
 		});
 
-		return this.prepareOutputData(serializedDocuments);
+		return await this.prepareOutputData(serializedDocuments);
 	}
 }

@@ -1,9 +1,10 @@
 /* eslint-disable @typescript-eslint/no-loop-func */
+import { Container } from 'typedi';
+import { Flags } from '@oclif/core';
 import fs from 'fs';
 import os from 'os';
-import { flags } from '@oclif/command';
 import type { IRun, ITaskData } from 'n8n-workflow';
-import { ApplicationError, jsonParse, sleep } from 'n8n-workflow';
+import { ApplicationError, jsonParse } from 'n8n-workflow';
 import { sep } from 'path';
 import { diff } from 'json-diff';
 import pick from 'lodash/pick';
@@ -12,9 +13,11 @@ import { ActiveExecutions } from '@/ActiveExecutions';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import type { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import type { User } from '@db/entities/User';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import { OwnershipService } from '@/services/ownership.service';
 import { findCliWorkflowStart } from '@/utils';
+
 import { BaseCommand } from './BaseCommand';
-import { Container } from 'typedi';
 import type {
 	IExecutionResult,
 	INodeSpecialCase,
@@ -22,8 +25,6 @@ import type {
 	IResult,
 	IWorkflowExecutionProgress,
 } from '../types/commands.types';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import { OwnershipService } from '@/services/ownership.service';
 
 const re = /\d+/;
 
@@ -60,49 +61,49 @@ export class ExecuteBatch extends BaseCommand {
 	];
 
 	static flags = {
-		help: flags.help({ char: 'h' }),
-		debug: flags.boolean({
+		help: Flags.help({ char: 'h' }),
+		debug: Flags.boolean({
 			description: 'Toggles on displaying all errors and debug messages.',
 		}),
-		ids: flags.string({
+		ids: Flags.string({
 			description:
 				'Specifies workflow IDs to get executed, separated by a comma or a file containing the ids',
 		}),
-		concurrency: flags.integer({
+		concurrency: Flags.integer({
 			default: 1,
 			description:
 				'How many workflows can run in parallel. Defaults to 1 which means no concurrency.',
 		}),
-		output: flags.string({
+		output: Flags.string({
 			description:
 				'Enable execution saving, You must inform an existing folder to save execution via this param',
 		}),
-		snapshot: flags.string({
+		snapshot: Flags.string({
 			description:
 				'Enables snapshot saving. You must inform an existing folder to save snapshots via this param.',
 		}),
-		compare: flags.string({
+		compare: Flags.string({
 			description:
 				'Compares current execution with an existing snapshot. You must inform an existing folder where the snapshots are saved.',
 		}),
-		shallow: flags.boolean({
+		shallow: Flags.boolean({
 			description:
 				'Compares only if attributes output from node are the same, with no regards to nested JSON objects.',
 		}),
 
-		githubWorkflow: flags.boolean({
+		githubWorkflow: Flags.boolean({
 			description:
 				'Enables more lenient comparison for GitHub workflows. This is useful for reducing false positives when comparing Test workflows.',
 		}),
 
-		skipList: flags.string({
+		skipList: Flags.string({
 			description: 'File containing a comma separated list of workflow IDs to skip.',
 		}),
-		retries: flags.integer({
+		retries: Flags.integer({
 			description: 'Retries failed workflows up to N tries. Default is 1. Set 0 to disable.',
 			default: 1,
 		}),
-		shortOutput: flags.boolean({
+		shortOutput: Flags.boolean({
 			description: 'Omits the full execution information from output, displaying only summary.',
 		}),
 	};
@@ -117,28 +118,9 @@ export class ExecuteBatch extends BaseCommand {
 		}
 
 		ExecuteBatch.cancelled = true;
-		const activeExecutionsInstance = Container.get(ActiveExecutions);
-		const stopPromises = activeExecutionsInstance
-			.getActiveExecutions()
-			.map(async (execution) => activeExecutionsInstance.stopExecution(execution.id));
 
-		await Promise.allSettled(stopPromises);
+		await Container.get(ActiveExecutions).shutdown(true);
 
-		setTimeout(() => process.exit(0), 30000);
-
-		let executingWorkflows = activeExecutionsInstance.getActiveExecutions();
-
-		let count = 0;
-		while (executingWorkflows.length !== 0) {
-			if (count++ % 4 === 0) {
-				console.log(`Waiting for ${executingWorkflows.length} active executions to finish...`);
-				executingWorkflows.map((execution) => {
-					console.log(` - Execution ID ${execution.id}, workflow ID: ${execution.workflowId}`);
-				});
-			}
-			await sleep(500);
-			executingWorkflows = activeExecutionsInstance.getActiveExecutions();
-		}
 		// We may receive true but when called from `process.on`
 		// we get the signal (SIGINT, etc.)
 		if (skipExit !== true) {
@@ -184,9 +166,9 @@ export class ExecuteBatch extends BaseCommand {
 		await this.initExternalHooks();
 	}
 
+	// eslint-disable-next-line complexity
 	async run() {
-		// eslint-disable-next-line @typescript-eslint/no-shadow
-		const { flags } = this.parse(ExecuteBatch);
+		const { flags } = await this.parse(ExecuteBatch);
 		ExecuteBatch.debug = flags.debug;
 		ExecuteBatch.concurrency = flags.concurrency || 1;
 
@@ -410,7 +392,7 @@ export class ExecuteBatch extends BaseCommand {
 			this.initializeLogs();
 		}
 
-		return new Promise(async (res) => {
+		return await new Promise(async (res) => {
 			const promisesArray = [];
 			for (let i = 0; i < ExecuteBatch.concurrency; i++) {
 				const promise = new Promise(async (resolve) => {
@@ -623,7 +605,7 @@ export class ExecuteBatch extends BaseCommand {
 			}
 		});
 
-		return new Promise(async (resolve) => {
+		return await new Promise(async (resolve) => {
 			let gotCancel = false;
 
 			// Timeouts execution after 5 minutes.
@@ -639,13 +621,12 @@ export class ExecuteBatch extends BaseCommand {
 
 				const runData: IWorkflowExecutionDataProcess = {
 					executionMode: 'cli',
-					startNodes: [startingNode.name],
+					startNodes: [{ name: startingNode.name, sourceData: null }],
 					workflowData,
 					userId: ExecuteBatch.instanceOwner.id,
 				};
 
-				const workflowRunner = new WorkflowRunner();
-				const executionId = await workflowRunner.run(runData);
+				const executionId = await Container.get(WorkflowRunner).run(runData);
 
 				const activeExecutions = Container.get(ActiveExecutions);
 				const data = await activeExecutions.getPostExecutePromise(executionId);

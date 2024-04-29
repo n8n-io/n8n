@@ -25,7 +25,7 @@ export async function createConnection(
 		}
 	}
 
-	return mysql2.createConnection(baseCredentials);
+	return await mysql2.createConnection(baseCredentials);
 }
 
 export async function searchTables(

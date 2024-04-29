@@ -8,20 +8,20 @@ import { makeRestApiRequest } from '@/utils/apiUtils';
 export const getExternalSecrets = async (
 	context: IRestApiContext,
 ): Promise<Record<string, string[]>> => {
-	return makeRestApiRequest(context, 'GET', '/external-secrets/secrets');
+	return await makeRestApiRequest(context, 'GET', '/external-secrets/secrets');
 };
 
 export const getExternalSecretsProviders = async (
 	context: IRestApiContext,
 ): Promise<ExternalSecretsProvider[]> => {
-	return makeRestApiRequest(context, 'GET', '/external-secrets/providers');
+	return await makeRestApiRequest(context, 'GET', '/external-secrets/providers');
 };
 
 export const getExternalSecretsProvider = async (
 	context: IRestApiContext,
 	id: string,
 ): Promise<ExternalSecretsProviderWithProperties> => {
-	return makeRestApiRequest(context, 'GET', `/external-secrets/providers/${id}`);
+	return await makeRestApiRequest(context, 'GET', `/external-secrets/providers/${id}`);
 };
 
 export const testExternalSecretsProviderConnection = async (
@@ -29,7 +29,7 @@ export const testExternalSecretsProviderConnection = async (
 	id: string,
 	data: ExternalSecretsProvider['data'],
 ): Promise<{ testState: ExternalSecretsProvider['state'] }> => {
-	return makeRestApiRequest(context, 'POST', `/external-secrets/providers/${id}/test`, data);
+	return await makeRestApiRequest(context, 'POST', `/external-secrets/providers/${id}/test`, data);
 };
 
 export const updateProvider = async (
@@ -37,14 +37,14 @@ export const updateProvider = async (
 	id: string,
 	data: ExternalSecretsProvider['data'],
 ): Promise<boolean> => {
-	return makeRestApiRequest(context, 'POST', `/external-secrets/providers/${id}`, data);
+	return await makeRestApiRequest(context, 'POST', `/external-secrets/providers/${id}`, data);
 };
 
 export const reloadProvider = async (
 	context: IRestApiContext,
 	id: string,
 ): Promise<{ updated: boolean }> => {
-	return makeRestApiRequest(context, 'POST', `/external-secrets/providers/${id}/update`);
+	return await makeRestApiRequest(context, 'POST', `/external-secrets/providers/${id}/update`);
 };
 
 export const connectProvider = async (
@@ -52,7 +52,7 @@ export const connectProvider = async (
 	id: string,
 	connected: boolean,
 ): Promise<boolean> => {
-	return makeRestApiRequest(context, 'POST', `/external-secrets/providers/${id}/connect`, {
+	return await makeRestApiRequest(context, 'POST', `/external-secrets/providers/${id}/connect`, {
 		connected,
 	});
 };

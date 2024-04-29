@@ -40,6 +40,7 @@ const AggregationDisplayNames = {
 export const NUMERICAL_AGGREGATIONS = ['average', 'sum'];
 
 export type SummarizeOptions = {
+	continueIfFieldNotFound: boolean;
 	disableDotNotation?: boolean;
 	outputFormat?: 'separateItems' | 'singleItem';
 	skipEmptySplitFields?: boolean;

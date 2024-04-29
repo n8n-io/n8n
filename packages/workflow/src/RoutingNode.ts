@@ -37,6 +37,7 @@ import type {
 	NodeParameterValueType,
 	PostReceiveAction,
 	JsonObject,
+	CloseFunction,
 } from './Interfaces';
 
 import * as NodeHelpers from './NodeHelpers';
@@ -94,6 +95,7 @@ export class RoutingNode {
 		if (nodeType.description.credentials?.length) {
 			credentialType = nodeType.description.credentials[0].name;
 		}
+		const closeFunctions: CloseFunction[] = [];
 		const executeFunctions = nodeExecuteFunctions.getExecuteFunctions(
 			this.workflow,
 			this.runExecutionData,
@@ -104,6 +106,7 @@ export class RoutingNode {
 			this.additionalData,
 			executeData,
 			this.mode,
+			closeFunctions,
 			abortSignal,
 		);
 
@@ -220,8 +223,14 @@ export class RoutingNode {
 				returnData.push(...responseData);
 			} catch (error) {
 				if (thisArgs !== undefined && thisArgs.continueOnFail()) {
-					returnData.push({ json: {}, error: error as NodeError });
+					returnData.push({ json: {}, error: error as NodeApiError });
 					continue;
+				}
+
+				if (error instanceof NodeApiError) {
+					set(error, 'context.itemIndex', i);
+					set(error, 'context.runIndex', runIndex);
+					throw error;
 				}
 
 				interface AxiosError extends NodeError {
@@ -230,9 +239,7 @@ export class RoutingNode {
 					response?: { status: number };
 				}
 
-				let routingError = error as AxiosError;
-
-				if (error instanceof NodeApiError) routingError = error.cause as AxiosError;
+				const routingError = error as AxiosError;
 
 				throw new NodeApiError(this.node, error as JsonObject, {
 					runIndex,
@@ -281,7 +288,7 @@ export class RoutingNode {
 		runIndex: number,
 	): Promise<INodeExecutionData[]> {
 		if (typeof action === 'function') {
-			return action.call(executeSingleFunctions, inputData, responseData);
+			return await action.call(executeSingleFunctions, inputData, responseData);
 		}
 		if (action.type === 'rootProperty') {
 			try {
@@ -531,19 +538,20 @@ export class RoutingNode {
 		const executePaginationFunctions = {
 			...executeSingleFunctions,
 			makeRoutingRequest: async (requestOptions: DeclarativeRestApiSettings.ResultOptions) => {
-				return this.rawRoutingRequest(
+				return await this.rawRoutingRequest(
 					executeSingleFunctions,
 					requestOptions,
 					credentialType,
 					credentialsDecrypted,
-				).then(async (data) =>
-					this.postProcessResponseData(
-						executeSingleFunctions,
-						data,
-						requestData,
-						itemIndex,
-						runIndex,
-					),
+				).then(
+					async (data) =>
+						await this.postProcessResponseData(
+							executeSingleFunctions,
+							data,
+							requestData,
+							itemIndex,
+							runIndex,
+						),
 				);
 			},
 		};
@@ -646,14 +654,15 @@ export class RoutingNode {
 							requestData,
 							credentialType,
 							credentialsDecrypted,
-						).then(async (data) =>
-							this.postProcessResponseData(
-								executeSingleFunctions,
-								data,
-								requestData,
-								itemIndex,
-								runIndex,
-							),
+						).then(
+							async (data) =>
+								await this.postProcessResponseData(
+									executeSingleFunctions,
+									data,
+									requestData,
+									itemIndex,
+									runIndex,
+								),
 						);
 
 						(requestData.options[optionsType] as IDataObject)[properties.offsetParameter] =
@@ -691,14 +700,15 @@ export class RoutingNode {
 				requestData,
 				credentialType,
 				credentialsDecrypted,
-			).then(async (data) =>
-				this.postProcessResponseData(
-					executeSingleFunctions,
-					data,
-					requestData,
-					itemIndex,
-					runIndex,
-				),
+			).then(
+				async (data) =>
+					await this.postProcessResponseData(
+						executeSingleFunctions,
+						data,
+						requestData,
+						itemIndex,
+						runIndex,
+					),
 			);
 		}
 		return responseData;
@@ -733,6 +743,7 @@ export class RoutingNode {
 		return parameterValue;
 	}
 
+	// eslint-disable-next-line complexity
 	getRequestOptionsFromParameters(
 		executeSingleFunctions: IExecuteSingleFunctions,
 		nodeProperties: INodeProperties | INodePropertyOptions,
@@ -834,7 +845,7 @@ export class RoutingNode {
 
 						if (nodeProperties.routing.send.propertyInDotNotation === false) {
 							// eslint-disable-next-line @typescript-eslint/no-explicit-any
-							(returnData.options.body as Record<string, any>)![propertyName] = value;
+							(returnData.options.body as Record<string, any>)[propertyName] = value;
 						} else {
 							set(returnData.options.body as object, propertyName, value);
 						}

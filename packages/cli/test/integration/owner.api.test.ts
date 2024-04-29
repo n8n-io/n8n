@@ -1,8 +1,6 @@
 import validator from 'validator';
-import type { SuperAgentTest } from 'supertest';
 
 import config from '@/config';
-import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 import {
 	randomEmail,
@@ -12,24 +10,16 @@ import {
 } from './shared/random';
 import * as testDb from './shared/testDb';
 import * as utils from './shared/utils/';
-import { getGlobalOwnerRole } from './shared/db/roles';
 import { createUserShell } from './shared/db/users';
 import { UserRepository } from '@db/repositories/user.repository';
 import Container from 'typedi';
 
 const testServer = utils.setupTestServer({ endpointGroups: ['owner'] });
 
-let globalOwnerRole: Role;
 let ownerShell: User;
-let authOwnerShellAgent: SuperAgentTest;
-
-beforeAll(async () => {
-	globalOwnerRole = await getGlobalOwnerRole();
-});
 
 beforeEach(async () => {
-	ownerShell = await createUserShell(globalOwnerRole);
-	authOwnerShellAgent = testServer.authAgentFor(ownerShell);
+	ownerShell = await createUserShell('global:owner');
 	config.set('userManagement.isInstanceOwnerSetUp', false);
 });
 
@@ -46,7 +36,7 @@ describe('POST /owner/setup', () => {
 			password: randomValidPassword(),
 		};
 
-		const response = await authOwnerShellAgent.post('/owner/setup').send(newOwnerData);
+		const response = await testServer.authlessAgent.post('/owner/setup').send(newOwnerData);
 
 		expect(response.statusCode).toBe(200);
 
@@ -56,7 +46,7 @@ describe('POST /owner/setup', () => {
 			firstName,
 			lastName,
 			personalizationAnswers,
-			globalRole,
+			role,
 			password,
 			isPending,
 			apiKey,
@@ -70,8 +60,7 @@ describe('POST /owner/setup', () => {
 		expect(personalizationAnswers).toBeNull();
 		expect(password).toBeUndefined();
 		expect(isPending).toBe(false);
-		expect(globalRole.name).toBe('owner');
-		expect(globalRole.scope).toBe('global');
+		expect(role).toBe('global:owner');
 		expect(apiKey).toBeUndefined();
 		expect(globalScopes).not.toHaveLength(0);
 
@@ -96,7 +85,7 @@ describe('POST /owner/setup', () => {
 			password: randomValidPassword(),
 		};
 
-		const response = await authOwnerShellAgent.post('/owner/setup').send(newOwnerData);
+		const response = await testServer.authlessAgent.post('/owner/setup').send(newOwnerData);
 
 		expect(response.statusCode).toBe(200);
 
@@ -158,7 +147,7 @@ describe('POST /owner/setup', () => {
 
 	test('should fail with invalid inputs', async () => {
 		for (const invalidPayload of INVALID_POST_OWNER_PAYLOADS) {
-			const response = await authOwnerShellAgent.post('/owner/setup').send(invalidPayload);
+			const response = await testServer.authlessAgent.post('/owner/setup').send(invalidPayload);
 			expect(response.statusCode).toBe(400);
 		}
 	});

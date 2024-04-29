@@ -1,7 +1,7 @@
 import 'reflect-metadata';
-import { Command } from '@oclif/command';
-import { ExitError } from '@oclif/errors';
 import { Container } from 'typedi';
+import { Command } from '@oclif/core';
+import { ExitError } from '@oclif/core/lib/errors';
 import { ApplicationError, ErrorReporterProxy as ErrorReporter, sleep } from 'n8n-workflow';
 import { BinaryDataService, InstanceSettings, ObjectStoreService } from 'n8n-core';
 import type { AbstractServer } from '@/AbstractServer';
@@ -9,12 +9,12 @@ import { Logger } from '@/Logger';
 import config from '@/config';
 import * as Db from '@/Db';
 import * as CrashJournal from '@/CrashJournal';
-import { LICENSE_FEATURES, inTest } from '@/constants';
+import { LICENSE_FEATURES, inDevelopment, inTest } from '@/constants';
 import { initErrorHandling } from '@/ErrorReporting';
 import { ExternalHooks } from '@/ExternalHooks';
 import { NodeTypes } from '@/NodeTypes';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
-import type { IExternalHooksClass, N8nInstanceType } from '@/Interfaces';
+import type { N8nInstanceType } from '@/Interfaces';
 import { InternalHooks } from '@/InternalHooks';
 import { PostHogClient } from '@/posthog';
 import { License } from '@/License';
@@ -22,11 +22,12 @@ import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager
 import { initExpressionEvaluator } from '@/ExpressionEvaluator';
 import { generateHostInstanceId } from '@db/utils/generators';
 import { WorkflowHistoryManager } from '@/workflows/workflowHistory/workflowHistoryManager.ee';
+import { ShutdownService } from '@/shutdown/Shutdown.service';
 
 export abstract class BaseCommand extends Command {
 	protected logger = Container.get(Logger);
 
-	protected externalHooks?: IExternalHooksClass;
+	protected externalHooks?: ExternalHooks;
 
 	protected nodeTypes: NodeTypes;
 
@@ -38,12 +39,12 @@ export abstract class BaseCommand extends Command {
 
 	protected server?: AbstractServer;
 
-	protected isShuttingDown = false;
+	protected shutdownService: ShutdownService = Container.get(ShutdownService);
 
 	/**
 	 * How long to wait for graceful shutdown before force killing the process.
 	 */
-	protected gracefulShutdownTimeoutInS: number = config.getEnv('generic.gracefulShutdownTimeout');
+	protected gracefulShutdownTimeoutInS = config.getEnv('generic.gracefulShutdownTimeout');
 
 	async init(): Promise<void> {
 		await initErrorHandling();
@@ -58,14 +59,21 @@ export abstract class BaseCommand extends Command {
 		this.nodeTypes = Container.get(NodeTypes);
 		await Container.get(LoadNodesAndCredentials).init();
 
-		await Db.init().catch(async (error: Error) =>
-			this.exitWithCrash('There was an error initializing DB', error),
+		await Db.init().catch(
+			async (error: Error) => await this.exitWithCrash('There was an error initializing DB', error),
 		);
+
+		// This needs to happen after DB.init() or otherwise DB Connection is not
+		// available via the dependency Container that services depend on.
+		if (inDevelopment || inTest) {
+			this.shutdownService.validate();
+		}
 
 		await this.server?.init();
 
-		await Db.migrate().catch(async (error: Error) =>
-			this.exitWithCrash('There was an error running database migrations', error),
+		await Db.migrate().catch(
+			async (error: Error) =>
+				await this.exitWithCrash('There was an error running database migrations', error),
 		);
 
 		const dbType = config.getEnv('database.type');
@@ -73,11 +81,6 @@ export abstract class BaseCommand extends Command {
 		if (['mysqldb', 'mariadb'].includes(dbType)) {
 			this.logger.warn(
 				'Support for MySQL/MariaDB has been deprecated and will be removed with an upcoming version of n8n. Please migrate to PostgreSQL.',
-			);
-		}
-		if (process.env.EXECUTIONS_PROCESS === 'own') {
-			this.logger.warn(
-				'Own mode has been deprecated and will be removed in a future version of n8n. If you need the isolation and performance gains, please consider using queue mode.',
 			);
 		}
 
@@ -309,7 +312,7 @@ export abstract class BaseCommand extends Command {
 
 	private onTerminationSignal(signal: string) {
 		return async () => {
-			if (this.isShuttingDown) {
+			if (this.shutdownService.isShuttingDown()) {
 				this.logger.info(`Received ${signal}. Already shutting down...`);
 				return;
 			}
@@ -323,9 +326,9 @@ export abstract class BaseCommand extends Command {
 			}, this.gracefulShutdownTimeoutInS * 1000);
 
 			this.logger.info(`Received ${signal}. Shutting down...`);
-			this.isShuttingDown = true;
+			this.shutdownService.shutdown();
 
-			await this.stopProcess();
+			await Promise.all([this.stopProcess(), this.shutdownService.waitForShutdown()]);
 
 			clearTimeout(forceShutdownTimer);
 		};

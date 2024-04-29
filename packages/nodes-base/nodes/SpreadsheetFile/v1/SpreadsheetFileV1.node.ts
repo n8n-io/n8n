@@ -23,10 +23,11 @@ import {
 } from 'xlsx';
 
 import {
-	operationProperties,
-	fromFileProperties,
+	operationProperty,
+	binaryProperty,
 	toFileProperties,
-	optionsProperties,
+	fromFileOptions,
+	toFileOptions,
 } from '../description';
 import { flattenObject, generatePairedItemData } from '@utils/utilities';
 import { oldVersionNotice } from '@utils/descriptions';
@@ -46,10 +47,11 @@ export class SpreadsheetFileV1 implements INodeType {
 			outputs: ['main'],
 			properties: [
 				oldVersionNotice,
-				...operationProperties,
-				...fromFileProperties,
+				operationProperty,
+				binaryProperty,
 				...toFileProperties,
-				...optionsProperties,
+				fromFileOptions,
+				toFileOptions,
 			],
 		};
 	}

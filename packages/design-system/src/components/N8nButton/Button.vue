@@ -9,9 +9,9 @@
 		aria-live="polite"
 		v-bind="$attrs"
 	>
-		<span :class="$style.icon" v-if="loading || icon">
-			<n8n-spinner v-if="loading" :size="size" />
-			<n8n-icon v-else-if="icon" :icon="icon" :size="size" />
+		<span v-if="loading || icon" :class="$style.icon">
+			<N8nSpinner v-if="loading" :size="size" />
+			<N8nIcon v-else-if="icon" :icon="icon" :size="size" />
 		</span>
 		<span v-if="label || $slots.default">
 			<slot>{{ label }}</slot>
@@ -20,69 +20,27 @@
 </template>
 
 <script setup lang="ts">
+import { useCssModule, computed, useAttrs, watchEffect } from 'vue';
 import N8nIcon from '../N8nIcon';
 import N8nSpinner from '../N8nSpinner';
-import { useCssModule, computed, useAttrs, watchEffect } from 'vue';
+import type { ButtonProps } from '@/types/button';
 
 const $style = useCssModule();
 const $attrs = useAttrs();
 
-const props = defineProps({
-	label: {
-		type: String,
-		default: '',
-	},
-	type: {
-		type: String,
-		default: 'primary',
-	},
-	size: {
-		type: String,
-		default: 'medium',
-	},
-	loading: {
-		type: Boolean,
-		default: false,
-	},
-	disabled: {
-		type: Boolean,
-		default: false,
-	},
-	outline: {
-		type: Boolean,
-		default: false,
-	},
-	text: {
-		type: Boolean,
-		default: false,
-	},
-	icon: {
-		type: [String, Array],
-	},
-	block: {
-		type: Boolean,
-		default: false,
-	},
-	active: {
-		type: Boolean,
-		default: false,
-	},
-	float: {
-		type: String,
-	},
-	square: {
-		type: Boolean,
-		default: false,
-	},
-	element: {
-		type: String,
-		default: 'button',
-		validator: (value: string) => ['button', 'a'].includes(value),
-	},
-	href: {
-		type: String,
-		required: false,
-	},
+defineOptions({ name: 'N8nButton' });
+const props = withDefaults(defineProps<ButtonProps>(), {
+	label: '',
+	type: 'primary',
+	size: 'medium',
+	loading: false,
+	disabled: false,
+	outline: false,
+	text: false,
+	block: false,
+	active: false,
+	square: false,
+	element: 'button',
 });
 
 watchEffect(() => {

@@ -1,8 +1,8 @@
 <template>
 	<div
-		class="sticky-wrapper"
 		:id="nodeId"
 		:ref="data.name"
+		class="sticky-wrapper"
 		:style="stickyPosition"
 		:data-name="data.name"
 		data-test-id="sticky"
@@ -11,36 +11,36 @@
 			:class="{
 				'sticky-default': true,
 				'touch-active': isTouchActive,
-				'is-touch-device': isTouchDevice,
+				'is-touch-device': deviceSupport.isTouchDevice,
 				'is-read-only': isReadOnly,
 			}"
 			:style="stickySize"
 		>
-			<div class="select-sticky-background" v-show="isSelected" />
+			<div v-show="isSelected" class="select-sticky-background" />
 			<div
+				v-touch:start="touchStart"
+				v-touch:end="touchEnd"
 				class="sticky-box"
 				@click.left="mouseLeftClick"
 				@contextmenu="onContextMenu"
-				v-touch:start="touchStart"
-				v-touch:end="touchEnd"
 			>
 				<n8n-sticky
-					:modelValue="node.parameters.content"
+					:id="node.id"
+					:model-value="node.parameters.content"
 					:height="node.parameters.height"
 					:width="node.parameters.width"
 					:scale="nodeViewScale"
-					:backgroundColor="node.parameters.color"
-					:id="node.id"
-					:readOnly="isReadOnly"
-					:defaultText="defaultText"
-					:editMode="isActive && !isReadOnly"
-					:gridSize="gridSize"
+					:background-color="node.parameters.color"
+					:read-only="isReadOnly"
+					:default-text="defaultText"
+					:edit-mode="isActive && !isReadOnly"
+					:grid-size="gridSize"
 					@edit="onEdit"
 					@resizestart="onResizeStart"
 					@resize="onResize"
 					@resizeend="onResizeEnd"
 					@markdown-click="onMarkdownClick"
-					@update:modelValue="onInputChange"
+					@update:model-value="onInputChange"
 				/>
 			</div>
 
@@ -52,7 +52,7 @@
 					v-touch:tap="deleteNode"
 					class="option"
 					data-test-id="delete-sticky"
-					:title="$locale.baseText('node.deleteNode')"
+					:title="$locale.baseText('node.delete')"
 				>
 					<font-awesome-icon icon="trash" />
 				</div>
@@ -76,11 +76,10 @@
 					</template>
 					<div class="content">
 						<div
-							class="color"
-							data-test-id="color"
 							v-for="(_, index) in Array.from({ length: 7 })"
 							:key="index"
-							v-on:click="changeColor(index + 1)"
+							class="color"
+							data-test-id="color"
 							:class="`sticky-color-${index + 1}`"
 							:style="{
 								'border-width': '1px',
@@ -93,6 +92,7 @@
 										? `0 0 0 1px var(--color-sticky-background-${index + 1})`
 										: 'none',
 							}"
+							@click="changeColor(index + 1)"
 						></div>
 					</div>
 				</n8n-popover>
@@ -106,7 +106,6 @@ import { defineComponent, ref } from 'vue';
 import { mapStores } from 'pinia';
 
 import { nodeBase } from '@/mixins/nodeBase';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { isNumber, isString } from '@/utils/typeGuards';
 import type {
 	INodeUi,
@@ -122,11 +121,21 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useContextMenu } from '@/composables/useContextMenu';
+import { useDeviceSupport } from 'n8n-design-system';
 
 export default defineComponent({
 	name: 'Sticky',
-	mixins: [nodeBase, workflowHelpers],
+	mixins: [nodeBase],
+	props: {
+		nodeViewScale: {
+			type: Number,
+		},
+		gridSize: {
+			type: Number,
+		},
+	},
 	setup() {
+		const deviceSupport = useDeviceSupport();
 		const colorPopoverTrigger = ref<HTMLDivElement>();
 		const forceActions = ref(false);
 		const setForceActions = (value: boolean) => {
@@ -139,15 +148,7 @@ export default defineComponent({
 			}
 		});
 
-		return { colorPopoverTrigger, contextMenu, forceActions, setForceActions };
-	},
-	props: {
-		nodeViewScale: {
-			type: Number,
-		},
-		gridSize: {
-			type: Number,
-		},
+		return { deviceSupport, colorPopoverTrigger, contextMenu, forceActions, setForceActions };
 	},
 	computed: {
 		...mapStores(useNodeTypesStore, useNDVStore, useUIStore, useWorkflowsStore),
@@ -256,8 +257,8 @@ export default defineComponent({
 					isOnboardingNote && isWelcomeVideo
 						? 'welcome_video'
 						: isOnboardingNote && link.getAttribute('href') === '/templates'
-						  ? 'templates'
-						  : 'other';
+							? 'templates'
+							: 'other';
 
 				this.$telemetry.track('User clicked note link', { type });
 			}
@@ -318,7 +319,7 @@ export default defineComponent({
 			this.workflowsStore.updateNodeProperties(updateInformation);
 		},
 		touchStart() {
-			if (this.isTouchDevice === true && !this.isMacOs && !this.isTouchActive) {
+			if (this.deviceSupport.isTouchDevice && !this.isMacOs && !this.isTouchActive) {
 				this.isTouchActive = true;
 				setTimeout(() => {
 					this.isTouchActive = false;
@@ -326,8 +327,10 @@ export default defineComponent({
 			}
 		},
 		onContextMenu(e: MouseEvent): void {
-			if (this.node) {
+			if (this.node && !this.isActive) {
 				this.contextMenu.open(e, { source: 'node-right-click', node: this.node });
+			} else {
+				e.stopPropagation();
 			}
 		},
 	},

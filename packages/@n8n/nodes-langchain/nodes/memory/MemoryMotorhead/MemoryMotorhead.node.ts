@@ -7,9 +7,11 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { MotorheadMemory } from 'langchain/memory';
+import { MotorheadMemory } from '@langchain/community/memory/motorhead_memory';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+import { sessionIdOption, sessionKeyProperty } from '../descriptions';
+import { getSessionId } from '../../../utils/helpers';
 
 export class MemoryMotorhead implements INodeType {
 	description: INodeTypeDescription = {
@@ -17,7 +19,7 @@ export class MemoryMotorhead implements INodeType {
 		name: 'memoryMotorhead',
 		icon: 'fa:file-export',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1, 1.2],
 		description: 'Use Motorhead Memory',
 		defaults: {
 			name: 'Motorhead',
@@ -54,14 +56,47 @@ export class MemoryMotorhead implements INodeType {
 				type: 'string',
 				required: true,
 				default: '',
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
 			},
+			{
+				displayName: 'Session ID',
+				name: 'sessionId',
+				type: 'string',
+				default: '={{ $json.sessionId }}',
+				description: 'The key to use to store the memory',
+				displayOptions: {
+					show: {
+						'@version': [1.1],
+					},
+				},
+			},
+			{
+				...sessionIdOption,
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.2 } }],
+					},
+				},
+			},
+			sessionKeyProperty,
 		],
 	};
 
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('motorheadApi');
+		const nodeVersion = this.getNode().typeVersion;
 
-		const sessionId = this.getNodeParameter('sessionId', itemIndex) as string;
+		let sessionId;
+
+		if (nodeVersion >= 1.2) {
+			sessionId = getSessionId(this, itemIndex);
+		} else {
+			sessionId = this.getNodeParameter('sessionId', itemIndex) as string;
+		}
 
 		const memory = new MotorheadMemory({
 			sessionId,
@@ -70,6 +105,8 @@ export class MemoryMotorhead implements INodeType {
 			apiKey: credentials.apiKey as string,
 			memoryKey: 'chat_history',
 			returnMessages: true,
+			inputKey: 'input',
+			outputKey: 'output',
 		});
 
 		await memory.init();

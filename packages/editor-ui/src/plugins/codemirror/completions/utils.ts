@@ -1,24 +1,45 @@
-import { NODE_TYPES_EXCLUDED_FROM_AUTOCOMPLETION } from '@/components/CodeNodeEditor/constants';
-import { CREDENTIAL_EDIT_MODAL_KEY, SPLIT_IN_BATCHES_NODE_TYPE } from '@/constants';
+import {
+	CREDENTIAL_EDIT_MODAL_KEY,
+	HTTP_REQUEST_NODE_TYPE,
+	SPLIT_IN_BATCHES_NODE_TYPE,
+} from '@/constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { resolveParameter } from '@/mixins/workflowHelpers';
+import { resolveParameter, useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useUIStore } from '@/stores/ui.store';
-import type { Completion, CompletionContext } from '@codemirror/autocomplete';
+import {
+	insertCompletionText,
+	type Completion,
+	type CompletionContext,
+	pickedCompletion,
+	type CompletionSection,
+} from '@codemirror/autocomplete';
+import type { EditorView } from '@codemirror/view';
+import type { TransactionSpec } from '@codemirror/state';
+import type { SyntaxNode } from '@lezer/common';
+import { javascriptLanguage } from '@codemirror/lang-javascript';
+import { useRouter } from 'vue-router';
+import type { DocMetadata } from 'n8n-workflow';
+import { escapeMappingString } from '@/utils/mappingUtils';
 
-// String literal expression is everything enclosed in single, double or tick quotes following a dot
-const stringLiteralRegex = /^"[^"]+"|^'[^']+'|^`[^`]+`\./;
-// JavaScript operands
-const operandsRegex = /[+\-*/><<==>**!=?]/;
 /**
  * Split user input into base (to resolve) and tail (to filter).
  */
 export function splitBaseTail(userInput: string): [string, string] {
-	const processedInput = extractSubExpression(userInput);
-	const parts = processedInput.split('.');
-	const tail = parts.pop() ?? '';
+	const read = (node: SyntaxNode | null) => (node ? userInput.slice(node.from, node.to) : '');
+	const lastNode = javascriptLanguage.parser.parse(userInput).resolveInner(userInput.length, -1);
 
-	return [parts.join('.'), tail];
+	switch (lastNode.type.name) {
+		case '.':
+			return [read(lastNode.parent).slice(0, -1), ''];
+		case 'MemberExpression':
+			return [read(lastNode.parent), read(lastNode)];
+		case 'PropertyName':
+			const tail = read(lastNode);
+			return [read(lastNode.parent).slice(0, -(tail.length + 1)), tail];
+		default:
+			return ['', ''];
+	}
 }
 
 export function longestCommonPrefix(...strings: string[]) {
@@ -35,30 +56,6 @@ export function longestCommonPrefix(...strings: string[]) {
 
 		return acc.slice(0, i);
 	}, '');
-}
-
-// Process user input if expressions are used as part of complex expression
-// i.e. as a function parameter or an operation expression
-// this function will extract expression that is currently typed so autocomplete
-// suggestions can be matched based on it.
-function extractSubExpression(userInput: string): string {
-	const dollarSignIndex = userInput.indexOf('$');
-	// If it's not a dollar sign expression just strip parentheses
-	if (dollarSignIndex === -1) {
-		userInput = userInput.replace(/^.+(\(|\[|{)/, '');
-	} else if (!stringLiteralRegex.test(userInput)) {
-		// If there is a dollar sign in the input and input is not a string literal,
-		// extract part of following the last $
-		const expressionParts = userInput.split('$');
-		userInput = `$${expressionParts[expressionParts.length - 1]}`;
-		// If input is part of a complex operation expression and extract last operand
-		const operationPart = userInput.split(operandsRegex).pop()?.trim() || '';
-		const lastOperand = operationPart.split(' ').pop();
-		if (lastOperand) {
-			userInput = lastOperand;
-		}
-	}
-	return userInput;
 }
 
 export const prefixMatch = (first: string, second: string) =>
@@ -128,21 +125,29 @@ export function hasNoParams(toResolve: string) {
 
 export const isCredentialsModalOpen = () => useUIStore().modals[CREDENTIAL_EDIT_MODAL_KEY].open;
 
+export const isInHttpNodePagination = () => {
+	const ndvStore = useNDVStore();
+	return (
+		ndvStore.activeNode?.type === HTTP_REQUEST_NODE_TYPE &&
+		ndvStore.focusedInputPath.startsWith('parameters.options.pagination')
+	);
+};
+
 export const hasActiveNode = () => useNDVStore().activeNode?.name !== undefined;
 
 export const isSplitInBatchesAbsent = () =>
 	!useWorkflowsStore().workflow.nodes.some((node) => node.type === SPLIT_IN_BATCHES_NODE_TYPE);
 
 export function autocompletableNodeNames() {
-	return useWorkflowsStore()
-		.allNodes.filter((node) => {
-			const activeNodeName = useNDVStore().activeNode?.name;
+	const activeNodeName = useNDVStore().activeNode?.name;
 
-			return (
-				!NODE_TYPES_EXCLUDED_FROM_AUTOCOMPLETION.includes(node.type) && node.name !== activeNodeName
-			);
-		})
-		.map((node) => node.name);
+	if (!activeNodeName) return [];
+
+	return useWorkflowHelpers({ router: useRouter() })
+		.getCurrentWorkflow()
+		.getParentNodesByDepth(activeNodeName)
+		.map((node) => node.name)
+		.filter((name) => name !== activeNodeName);
 }
 
 /**
@@ -157,4 +162,109 @@ export const stripExcessParens = (context: CompletionContext) => (option: Comple
 	}
 
 	return option;
+};
+
+export const getDefaultArgs = (doc?: DocMetadata): unknown[] => {
+	return doc?.args?.map((arg) => arg.default).filter(Boolean) ?? [];
+};
+
+export const insertDefaultArgs = (label: string, args: unknown[]): string => {
+	if (!label.endsWith('()')) return label;
+	const argList = args.map((arg) => JSON.stringify(arg)).join(', ');
+	const fnName = label.replace('()', '');
+
+	return `${fnName}(${argList})`;
+};
+
+/**
+ * When a function completion is selected, set the cursor correctly
+ *
+ *  @example `.includes()` -> `.includes(<cursor>)`
+ *  @example `$max()` -> `$max()<cursor>`
+ */
+export const applyCompletion =
+	({
+		hasArgs = true,
+		defaultArgs = [],
+		transformLabel = (label) => label,
+	}: {
+		hasArgs?: boolean;
+		defaultArgs?: unknown[];
+		transformLabel?: (label: string) => string;
+	} = {}) =>
+	(view: EditorView, completion: Completion, from: number, to: number): void => {
+		const isFunction = completion.label.endsWith('()');
+		const label = insertDefaultArgs(transformLabel(completion.label), defaultArgs);
+		const tx: TransactionSpec = {
+			...insertCompletionText(view.state, label, from, to),
+			annotations: pickedCompletion.of(completion),
+		};
+
+		if (isFunction) {
+			if (defaultArgs.length > 0) {
+				tx.selection = { anchor: from + label.indexOf('(') + 1, head: from + label.length - 1 };
+			} else if (hasArgs) {
+				const cursorPosition = from + label.length - 1;
+				tx.selection = { anchor: cursorPosition, head: cursorPosition };
+			}
+		}
+
+		view.dispatch(tx);
+	};
+
+export const applyBracketAccess = (key: string): string => {
+	return `['${escapeMappingString(key)}']`;
+};
+
+/**
+ * Apply a bracket-access completion
+ *
+ *  @example `$json.` -> `$json['key with spaces']`
+ *  @example `$json` -> `$json['key with spaces']`
+ */
+export const applyBracketAccessCompletion = (
+	view: EditorView,
+	completion: Completion,
+	from: number,
+	to: number,
+): void => {
+	const label = applyBracketAccess(completion.label);
+	const completionAtDot = view.state.sliceDoc(from - 1, from) === '.';
+
+	view.dispatch({
+		...insertCompletionText(view.state, label, completionAtDot ? from - 1 : from, to),
+		annotations: pickedCompletion.of(completion),
+	});
+};
+
+export const hasRequiredArgs = (doc?: DocMetadata): boolean => {
+	if (!doc) return false;
+	const requiredArgs = doc?.args?.filter((arg) => !arg.name.endsWith('?')) ?? [];
+	return requiredArgs.length > 0;
+};
+
+export const sortCompletionsAlpha = (completions: Completion[]): Completion[] => {
+	return completions.sort((a, b) => a.label.localeCompare(b.label));
+};
+
+export const renderSectionHeader = (section: CompletionSection): HTMLElement => {
+	const container = document.createElement('li');
+	container.classList.add('cm-section-header');
+	const inner = document.createElement('div');
+	inner.classList.add('cm-section-title');
+	inner.textContent = section.name;
+	container.appendChild(inner);
+
+	return container;
+};
+
+export const withSectionHeader = (section: CompletionSection): CompletionSection => {
+	section.header = renderSectionHeader;
+	return section;
+};
+
+export const isCompletionSection = (
+	section: CompletionSection | string | undefined,
+): section is CompletionSection => {
+	return typeof section === 'object';
 };

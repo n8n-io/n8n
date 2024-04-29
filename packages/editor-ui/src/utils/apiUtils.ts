@@ -1,12 +1,19 @@
-import type { AxiosRequestConfig, Method } from 'axios';
+import type { AxiosRequestConfig, Method, RawAxiosRequestHeaders } from 'axios';
 import axios from 'axios';
 import type { IDataObject } from 'n8n-workflow';
 import type { IExecutionFlattedResponse, IExecutionResponse, IRestApiContext } from '@/Interface';
 import { parse } from 'flatted';
 
+const BROWSER_ID_STORAGE_KEY = 'n8n-browserId';
+let browserId = localStorage.getItem(BROWSER_ID_STORAGE_KEY);
+if (!browserId && 'randomUUID' in crypto) {
+	browserId = crypto.randomUUID();
+	localStorage.setItem(BROWSER_ID_STORAGE_KEY, browserId);
+}
+
 export const NO_NETWORK_ERROR_CODE = 999;
 
-class ResponseError extends Error {
+export class ResponseError extends Error {
 	// The HTTP status code of response
 	httpStatusCode?: number;
 
@@ -62,8 +69,8 @@ export async function request(config: {
 	method: Method;
 	baseURL: string;
 	endpoint: string;
-	headers?: IDataObject;
-	data?: IDataObject;
+	headers?: RawAxiosRequestHeaders;
+	data?: IDataObject | IDataObject[];
 	withCredentials?: boolean;
 }) {
 	const { method, baseURL, endpoint, headers, data } = config;
@@ -71,8 +78,11 @@ export async function request(config: {
 		method,
 		url: endpoint,
 		baseURL,
-		headers,
+		headers: headers ?? {},
 	};
+	if (baseURL.startsWith('/') && browserId) {
+		options.headers!['browser-id'] = browserId;
+	}
 	if (
 		import.meta.env.NODE_ENV !== 'production' &&
 		!baseURL.includes('api.n8n.io') &&
@@ -119,13 +129,13 @@ export async function makeRestApiRequest<T>(
 	context: IRestApiContext,
 	method: Method,
 	endpoint: string,
-	data?: IDataObject,
+	data?: IDataObject | IDataObject[],
 ) {
 	const response = await request({
 		method,
 		baseURL: context.baseUrl,
 		endpoint,
-		headers: { sessionid: context.sessionId },
+		headers: { 'push-ref': context.pushRef },
 		data,
 	});
 
@@ -137,18 +147,18 @@ export async function get(
 	baseURL: string,
 	endpoint: string,
 	params?: IDataObject,
-	headers?: IDataObject,
+	headers?: RawAxiosRequestHeaders,
 ) {
-	return request({ method: 'GET', baseURL, endpoint, headers, data: params });
+	return await request({ method: 'GET', baseURL, endpoint, headers, data: params });
 }
 
 export async function post(
 	baseURL: string,
 	endpoint: string,
 	params?: IDataObject,
-	headers?: IDataObject,
+	headers?: RawAxiosRequestHeaders,
 ) {
-	return request({ method: 'POST', baseURL, endpoint, headers, data: params });
+	return await request({ method: 'POST', baseURL, endpoint, headers, data: params });
 }
 
 /**

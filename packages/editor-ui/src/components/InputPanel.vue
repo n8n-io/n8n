@@ -1,28 +1,28 @@
 <template>
 	<RunData
-		:nodeUi="currentNode"
-		:runIndex="runIndex"
-		:linkedRuns="linkedRuns"
-		:canLinkRuns="!mappedNode && canLinkRuns"
-		:tooMuchDataTitle="$locale.baseText('ndv.input.tooMuchData.title')"
-		:noDataInBranchMessage="$locale.baseText('ndv.input.noOutputDataInBranch')"
-		:isExecuting="isExecutingPrevious"
-		:executingMessage="$locale.baseText('ndv.input.executingPrevious')"
-		:sessionId="sessionId"
-		:overrideOutputs="connectedCurrentNodeOutputs"
-		:mappingEnabled="isMappingEnabled"
-		:distanceFromActive="currentNodeDepth"
-		:isProductionExecutionPreview="isProductionExecutionPreview"
-		:isPaneActive="isPaneActive"
-		@activatePane="activatePane"
-		paneType="input"
-		@itemHover="$emit('itemHover', $event)"
-		@linkRun="onLinkRun"
-		@unlinkRun="onUnlinkRun"
-		@runChange="onRunIndexChange"
-		@tableMounted="$emit('tableMounted', $event)"
-		@search="$emit('search', $event)"
+		:node="currentNode"
+		:run-index="runIndex"
+		:linked-runs="linkedRuns"
+		:can-link-runs="!mappedNode && canLinkRuns"
+		:too-much-data-title="$locale.baseText('ndv.input.tooMuchData.title')"
+		:no-data-in-branch-message="$locale.baseText('ndv.input.noOutputDataInBranch')"
+		:is-executing="isExecutingPrevious"
+		:executing-message="$locale.baseText('ndv.input.executingPrevious')"
+		:push-ref="pushRef"
+		:override-outputs="connectedCurrentNodeOutputs"
+		:mapping-enabled="isMappingEnabled"
+		:distance-from-active="currentNodeDepth"
+		:is-production-execution-preview="isProductionExecutionPreview"
+		:is-pane-active="isPaneActive"
+		pane-type="input"
 		data-test-id="ndv-input-panel"
+		@activate-pane="activatePane"
+		@item-hover="$emit('itemHover', $event)"
+		@link-run="onLinkRun"
+		@unlink-run="onUnlinkRun"
+		@run-change="onRunIndexChange"
+		@table-mounted="$emit('tableMounted', $event)"
+		@search="$emit('search', $event)"
 	>
 		<template #header>
 			<div :class="$style.titleSection">
@@ -30,20 +30,20 @@
 					v-if="parentNodes.length"
 					teleported
 					size="small"
-					:modelValue="currentNodeName"
-					@update:modelValue="onInputNodeChange"
+					:model-value="currentNodeName"
 					:no-data-text="$locale.baseText('ndv.input.noNodesFound')"
 					:placeholder="$locale.baseText('ndv.input.parentNodes')"
 					filterable
 					data-test-id="ndv-input-select"
+					@update:model-value="onInputNodeChange"
 				>
 					<template #prepend>
 						<span :class="$style.title">{{ $locale.baseText('ndv.input') }}</span>
 					</template>
 					<n8n-option
 						v-for="node of parentNodes"
-						:value="node.name"
 						:key="node.name"
+						:value="node.name"
 						class="node-option"
 						:label="`${truncate(node.name)} ${getMultipleNodesText(node.name)}`"
 						data-test-id="ndv-input-option"
@@ -61,12 +61,12 @@
 				<n8n-radio-buttons
 					v-if="isActiveNodeConfig && !readOnly"
 					:options="inputModes"
-					:modelValue="inputMode"
-					@update:modelValue="onInputModeChange"
+					:model-value="inputMode"
+					@update:model-value="onInputModeChange"
 				/>
 			</div>
 		</template>
-		<template #before-data v-if="isMappingMode">
+		<template v-if="isMappingMode" #before-data>
 			<!--
 						Hide the run linking buttons for both input and ouput panels when in 'Mapping Mode' because the run indices wouldn't match.
 						Although this is not the most elegant solution, it's straightforward and simpler than introducing a new props and logic to handle this.
@@ -74,11 +74,11 @@
 			<component :is="'style'">button.linkRun { display: none }</component>
 			<div :class="$style.mappedNode">
 				<n8n-select
-					:modelValue="mappedNode"
-					@update:modelValue="onMappedNodeSelected"
+					:model-value="mappedNode"
 					size="small"
-					@click.stop
 					teleported
+					@update:model-value="onMappedNodeSelected"
+					@click.stop
 				>
 					<template #prepend>{{ $locale.baseText('ndv.input.previousNode') }}</template>
 					<n8n-option
@@ -92,8 +92,8 @@
 		</template>
 		<template #node-not-run>
 			<div
-				:class="$style.noOutputData"
 				v-if="(isActiveNodeConfig && rootNode) || parentNodes.length"
+				:class="$style.noOutputData"
 			>
 				<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{
 					$locale.baseText('ndv.input.noOutputData.title')
@@ -110,19 +110,20 @@
 					</template>
 					<NodeExecuteButton
 						type="secondary"
+						hide-icon
 						:transparent="true"
-						:nodeName="isActiveNodeConfig ? rootNode : currentNodeName"
+						:node-name="isActiveNodeConfig ? rootNode : currentNodeName"
 						:label="$locale.baseText('ndv.input.noOutputData.executePrevious')"
-						@execute="onNodeExecute"
-						telemetrySource="inputs"
+						telemetry-source="inputs"
 						data-test-id="execute-previous-node"
+						@execute="onNodeExecute"
 					/>
 				</n8n-tooltip>
 				<n8n-text v-if="!readOnly" tag="div" size="small">
 					{{ $locale.baseText('ndv.input.noOutputData.hint') }}
 				</n8n-text>
 			</div>
-			<div :class="$style.notConnected" v-else>
+			<div v-else :class="$style.notConnected">
 				<div>
 					<WireMeUp />
 				</div>
@@ -174,7 +175,6 @@ import type {
 	Workflow,
 } from 'n8n-workflow';
 import RunData from './RunData.vue';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import WireMeUp from './WireMeUp.vue';
 import {
@@ -186,12 +186,12 @@ import {
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useUIStore } from '@/stores/ui.store';
 
 type MappingMode = 'debugging' | 'mapping';
 
 export default defineComponent({
 	name: 'InputPanel',
-	mixins: [workflowHelpers],
 	components: { RunData, NodeExecuteButton, WireMeUp },
 	props: {
 		currentNodeName: {
@@ -208,7 +208,7 @@ export default defineComponent({
 		canLinkRuns: {
 			type: Boolean,
 		},
-		sessionId: {
+		pushRef: {
 			type: String,
 		},
 		readOnly: {
@@ -236,7 +236,7 @@ export default defineComponent({
 		};
 	},
 	computed: {
-		...mapStores(useNodeTypesStore, useNDVStore, useWorkflowsStore),
+		...mapStores(useNodeTypesStore, useNDVStore, useWorkflowsStore, useUIStore),
 		focusedMappableInput(): string {
 			return this.ndvStore.focusedMappableInput;
 		},
@@ -389,6 +389,39 @@ export default defineComponent({
 			return this.activeNodeType !== null && this.activeNodeType.inputs.length > 1;
 		},
 	},
+	watch: {
+		inputMode: {
+			handler(val) {
+				this.onRunIndexChange(-1);
+				if (val === 'mapping') {
+					this.onUnlinkRun();
+					this.mappedNode = this.rootNodesParents[0];
+				} else {
+					this.mappedNode = null;
+				}
+			},
+			immediate: true,
+		},
+		showDraggableHint(curr: boolean, prev: boolean) {
+			if (curr && !prev) {
+				setTimeout(() => {
+					if (this.draggableHintShown) {
+						return;
+					}
+					this.showDraggableHintWithDelay = this.showDraggableHint;
+					if (this.showDraggableHintWithDelay) {
+						this.draggableHintShown = true;
+
+						this.$telemetry.track('User viewed data mapping tooltip', {
+							type: 'unexecuted input pane',
+						});
+					}
+				}, 1000);
+			} else if (!curr) {
+				this.showDraggableHintWithDelay = false;
+			}
+		},
+	},
 	methods: {
 		filterOutConnectionType(
 			item: ConnectionTypes | INodeOutputConfiguration,
@@ -439,7 +472,7 @@ export default defineComponent({
 				this.$telemetry.track('User clicked ndv button', {
 					node_type: this.activeNode.type,
 					workflow_id: this.workflowsStore.workflowId,
-					session_id: this.sessionId,
+					push_ref: this.pushRef,
 					pane: 'input',
 					type: 'executePrevious',
 				});
@@ -463,7 +496,7 @@ export default defineComponent({
 				this.$telemetry.track('User clicked ndv link', {
 					node_type: this.activeNode.type,
 					workflow_id: this.workflowsStore.workflowId,
-					session_id: this.sessionId,
+					push_ref: this.pushRef,
 					pane: 'input',
 					type: 'not-connected-help',
 				});
@@ -478,37 +511,6 @@ export default defineComponent({
 		},
 		activatePane() {
 			this.$emit('activatePane');
-		},
-	},
-	watch: {
-		inputMode: {
-			handler(val) {
-				this.onRunIndexChange(-1);
-				if (val === 'mapping') {
-					this.onUnlinkRun();
-					this.mappedNode = this.rootNodesParents[0];
-				}
-			},
-			immediate: true,
-		},
-		showDraggableHint(curr: boolean, prev: boolean) {
-			if (curr && !prev) {
-				setTimeout(() => {
-					if (this.draggableHintShown) {
-						return;
-					}
-					this.showDraggableHintWithDelay = this.showDraggableHint;
-					if (this.showDraggableHintWithDelay) {
-						this.draggableHintShown = true;
-
-						this.$telemetry.track('User viewed data mapping tooltip', {
-							type: 'unexecuted input pane',
-						});
-					}
-				}, 1000);
-			} else if (!curr) {
-				this.showDraggableHintWithDelay = false;
-			}
 		},
 	},
 });

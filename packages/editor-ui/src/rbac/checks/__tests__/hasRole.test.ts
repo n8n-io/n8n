@@ -1,6 +1,6 @@
 import { useUsersStore } from '@/stores/users.store';
 import { hasRole } from '@/rbac/checks';
-import { ROLE } from '@/utils/userUtils';
+import { ROLE } from '@/constants';
 
 vi.mock('@/stores/users.store', () => ({
 	useUsersStore: vi.fn(),
@@ -12,7 +12,7 @@ describe('Checks', () => {
 			vi.mocked(useUsersStore).mockReturnValue({
 				currentUser: {
 					isDefaultUser: false,
-					globalRole: { name: ROLE.Owner },
+					role: ROLE.Owner,
 				},
 			} as ReturnType<typeof useUsersStore>);
 
@@ -23,7 +23,7 @@ describe('Checks', () => {
 			vi.mocked(useUsersStore).mockReturnValue({
 				currentUser: {
 					isDefaultUser: false,
-					globalRole: { name: ROLE.Member },
+					role: 'global:member',
 				},
 			} as ReturnType<typeof useUsersStore>);
 

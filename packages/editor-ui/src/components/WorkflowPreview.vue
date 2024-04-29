@@ -7,13 +7,13 @@
 			<n8n-spinner type="dots" />
 		</div>
 		<iframe
+			ref="iframeRef"
 			:class="{
 				[$style.workflow]: !nodeViewDetailsOpened,
 				[$style.executionPreview]: mode === 'execution',
 				[$style.openNDV]: nodeViewDetailsOpened,
 				[$style.show]: showPreview,
 			}"
-			ref="iframeRef"
 			:src="`${rootStore.baseUrl}workflows/demo`"
 			@mouseenter="onMouseEnter"
 			@mouseleave="onMouseLeave"
@@ -27,7 +27,7 @@ import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
 import type { IWorkflowDb } from '@/Interface';
 import { useRootStore } from '@/stores/n8nRoot.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useExecutionsStore } from '@/stores/executions.store';
 
 const props = withDefaults(
 	defineProps<{
@@ -56,7 +56,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const toast = useToast();
 const rootStore = useRootStore();
-const workflowsStore = useWorkflowsStore();
+const executionsStore = useExecutionsStore();
 
 const iframeRef = ref<HTMLIFrameElement | null>(null);
 const nodeViewDetailsOpened = ref(false);
@@ -115,11 +115,11 @@ const loadExecution = () => {
 			'*',
 		);
 
-		if (workflowsStore.activeWorkflowExecution) {
+		if (executionsStore.activeExecution) {
 			iframeRef.value?.contentWindow?.postMessage?.(
 				JSON.stringify({
 					command: 'setActiveExecution',
-					execution: workflowsStore.activeWorkflowExecution,
+					execution: executionsStore.activeExecution,
 				}),
 				'*',
 			);
@@ -249,6 +249,10 @@ watch(
 
 .imageLoader {
 	width: 100%;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	height: 100%;
 }
 
 .executionPreview {

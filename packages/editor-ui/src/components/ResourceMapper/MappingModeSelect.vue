@@ -112,10 +112,10 @@ defineExpose({
 		>
 			<div class="mt-5xs">
 				<n8n-select
-					:modelValue="selected"
+					:model-value="selected"
 					:teleported="teleported"
 					:size="props.inputSize"
-					@update:modelValue="onModeChanged"
+					@update:model-value="onModeChanged"
 				>
 					<n8n-option
 						v-for="option in mappingModeOptions"

@@ -1,3 +1,4 @@
+import type { IResult } from 'mssql';
 import type {
 	IExecuteFunctions,
 	ICredentialDataDecryptedObject,
@@ -36,6 +37,7 @@ export class MicrosoftSql implements INodeType {
 		},
 		inputs: ['main'],
 		outputs: ['main'],
+		parameterPane: 'wide',
 		credentials: [
 			{
 				name: 'microsoftSql',
@@ -88,7 +90,6 @@ export class MicrosoftSql implements INodeType {
 				noDataExpression: true,
 				typeOptions: {
 					editor: 'sqlEditor',
-					rows: 5,
 					sqlDialect: 'MSSQL',
 				},
 				displayOptions: {
@@ -248,7 +249,6 @@ export class MicrosoftSql implements INodeType {
 		const pool = configurePool(credentials);
 		await pool.connect();
 
-		const returnItems: INodeExecutionData[] = [];
 		let responseData: IDataObject | IDataObject[] = [];
 
 		const items = this.getInputData();
@@ -262,12 +262,9 @@ export class MicrosoftSql implements INodeType {
 					rawQuery = rawQuery.replace(resolvable, this.evaluateExpression(resolvable, 0) as string);
 				}
 
-				const queryResult = await pool.request().query(rawQuery);
+				const { recordsets }: IResult<any[]> = await pool.request().query(rawQuery);
 
-				const result =
-					queryResult.recordsets.length > 1
-						? flatten(queryResult.recordsets)
-						: queryResult.recordsets[0];
+				const result = recordsets.length > 1 ? flatten(recordsets) : recordsets[0];
 
 				responseData = result;
 			} else if (operation === 'insert') {
@@ -327,12 +324,11 @@ export class MicrosoftSql implements INodeType {
 
 		const itemData = generatePairedItemData(items.length);
 
-		const executionData = this.helpers.constructExecutionMetaData(
+		const returnItems = this.helpers.constructExecutionMetaData(
 			this.helpers.returnJsonArray(responseData),
 			{ itemData },
 		);
 
-		returnItems.push(...executionData);
 		return [returnItems];
 	}
 }

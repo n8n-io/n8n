@@ -8,7 +8,7 @@
 				</n8n-heading>
 			</div>
 			<div>
-				<n8n-text size="large" v-if="errorCode">
+				<n8n-text v-if="errorCode" size="large">
 					{{ errorCode }} {{ $locale.baseText('error') }}
 				</n8n-text>
 			</div>

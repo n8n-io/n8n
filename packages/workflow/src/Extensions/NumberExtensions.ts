@@ -1,6 +1,7 @@
 /**
  * @jest-environment jsdom
  */
+import { DateTime } from 'luxon';
 import { ExpressionExtensionError } from '../errors/expression-extension.error';
 import type { ExtensionMap } from './Extensions';
 
@@ -38,6 +39,41 @@ function ceil(value: number) {
 function round(value: number, extraArgs: number[]) {
 	const [decimalPlaces = 0] = extraArgs;
 	return +value.toFixed(decimalPlaces);
+}
+
+function toBoolean(value: number) {
+	return value !== 0;
+}
+
+function toInt(value: number) {
+	return round(value, []);
+}
+
+function toFloat(value: number) {
+	return value;
+}
+
+type DateTimeFormat = 'ms' | 's' | 'excel';
+function toDateTime(value: number, extraArgs: [DateTimeFormat]) {
+	const [valueFormat = 'ms'] = extraArgs;
+
+	switch (valueFormat) {
+		// Excel format is days since 1900
+		// There is a bug where 1900 is incorrectly treated as a leap year
+		case 'excel': {
+			const DAYS_BETWEEN_1900_1970 = 25567;
+			const DAYS_LEAP_YEAR_BUG_ADJUST = 2;
+			const SECONDS_IN_DAY = 86_400;
+			return DateTime.fromSeconds(
+				(value - (DAYS_BETWEEN_1900_1970 + DAYS_LEAP_YEAR_BUG_ADJUST)) * SECONDS_IN_DAY,
+			);
+		}
+		case 's':
+			return DateTime.fromSeconds(value);
+		case 'ms':
+		default:
+			return DateTime.fromMillis(value);
+	}
 }
 
 ceil.doc = {
@@ -89,6 +125,26 @@ round.doc = {
 	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/numbers/#number-round',
 };
 
+toBoolean.doc = {
+	name: 'toBoolean',
+	description: 'Converts a number to a boolean. 0 is `false`, all other numbers are `true`.',
+	section: 'cast',
+	returnType: 'boolean',
+	docURL:
+		'https://docs.n8n.io/code/builtin/data-transformation-functions/numbers/#number-toBoolean',
+};
+
+toDateTime.doc = {
+	name: 'toDateTime',
+	description:
+		"Converts a number to a DateTime. Defaults to milliseconds. Format can be 'ms' (milliseconds), 's' (seconds) or 'excel' (Excel 1900 format).",
+	section: 'cast',
+	returnType: 'DateTime',
+	args: [{ name: 'format?', type: 'string' }],
+	docURL:
+		'https://docs.n8n.io/code/builtin/data-transformation-functions/numbers/#number-toDateTime',
+};
+
 export const numberExtensions: ExtensionMap = {
 	typeName: 'Number',
 	functions: {
@@ -98,5 +154,9 @@ export const numberExtensions: ExtensionMap = {
 		round,
 		isEven,
 		isOdd,
+		toBoolean,
+		toInt,
+		toFloat,
+		toDateTime,
 	},
 };

@@ -1,12 +1,8 @@
-import { BACKEND_BASE_URL, INSTANCE_ADMIN, INSTANCE_MEMBERS, INSTANCE_OWNER } from '../constants';
+import { INSTANCE_OWNER } from '../constants';
 import './commands';
 
 before(() => {
-	cy.request('POST', `${BACKEND_BASE_URL}/rest/e2e/reset`, {
-		owner: INSTANCE_OWNER,
-		members: INSTANCE_MEMBERS,
-		admin: INSTANCE_ADMIN,
-	});
+	cy.resetDatabase();
 
 	Cypress.on('uncaught:exception', (err) => {
 		return !err.message.includes('ResizeObserver');
@@ -17,6 +13,10 @@ beforeEach(() => {
 	if (!cy.config('disableAutoLogin')) {
 		cy.signin({ email: INSTANCE_OWNER.email, password: INSTANCE_OWNER.password });
 	}
+
+	cy.window().then((win): void => {
+		win.localStorage.setItem('N8N_THEME', 'light');
+	});
 
 	cy.intercept('GET', '/rest/settings').as('loadSettings');
 	cy.intercept('GET', '/types/nodes.json').as('loadNodeTypes');

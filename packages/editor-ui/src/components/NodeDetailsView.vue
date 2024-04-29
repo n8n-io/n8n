@@ -1,6 +1,6 @@
 <template>
 	<el-dialog
-		:modelValue="(!!activeNode || renaming) && !isActiveStickyNode"
+		:model-value="(!!activeNode || renaming) && !isActiveStickyNode"
 		:before-close="close"
 		:show-close="false"
 		class="data-display-wrapper ndv-wrapper"
@@ -20,7 +20,7 @@
 					{{ $locale.baseText('ndv.backToCanvas.waitingForTriggerWarning') }}
 				</div>
 			</template>
-			<div :class="$style.backToCanvas" @click="close" data-test-id="back-to-canvas">
+			<div :class="$style.backToCanvas" data-test-id="back-to-canvas" @click="close">
 				<n8n-icon icon="arrow-left" color="text-xlight" size="medium" />
 				<n8n-text color="text-xlight" size="medium" :bold="true">
 					{{ $locale.baseText('ndv.backToCanvas') }}
@@ -30,99 +30,102 @@
 
 		<div
 			v-if="activeNode"
-			class="data-display"
 			ref="container"
-			@keydown.capture="onKeyDown"
+			class="data-display"
 			tabindex="0"
+			@keydown.capture="onKeyDown"
 		>
-			<div @click="close" :class="$style.modalBackground"></div>
+			<div :class="$style.modalBackground" @click="close"></div>
 			<NDVDraggablePanels
-				:isTriggerNode="isTriggerNode"
-				:hideInputAndOutput="activeNodeType === null"
-				:position="isTriggerNode && !showTriggerPanel ? 0 : undefined"
-				:isDraggable="!isTriggerNode"
-				:hasDoubleWidth="activeNodeType?.parameterPane === 'wide'"
-				:nodeType="activeNodeType"
 				:key="activeNode.name"
-				@switchSelectedNode="onSwitchSelectedNode"
+				:is-trigger-node="isTriggerNode"
+				:hide-input-and-output="activeNodeType === null"
+				:position="isTriggerNode && !showTriggerPanel ? 0 : undefined"
+				:is-draggable="!isTriggerNode"
+				:has-double-width="activeNodeType?.parameterPane === 'wide'"
+				:node-type="activeNodeType"
+				@switch-selected-node="onSwitchSelectedNode"
+				@open-connection-node-creator="onOpenConnectionNodeCreator"
 				@close="close"
 				@init="onPanelsInit"
 				@dragstart="onDragStart"
 				@dragend="onDragEnd"
 			>
-				<template #input v-if="showTriggerPanel || !isTriggerNode">
+				<template v-if="showTriggerPanel || !isTriggerNode" #input>
 					<TriggerPanel
 						v-if="showTriggerPanel"
-						:nodeName="activeNode.name"
-						:sessionId="sessionId"
+						:node-name="activeNode.name"
+						:push-ref="pushRef"
 						@execute="onNodeExecute"
 						@activate="onWorkflowActivate"
 					/>
 					<InputPanel
 						v-else-if="!isTriggerNode"
 						:workflow="workflow"
-						:canLinkRuns="canLinkRuns"
-						:runIndex="inputRun"
-						:linkedRuns="linked"
-						:currentNodeName="inputNodeName"
-						:sessionId="sessionId"
-						:readOnly="readOnly || hasForeignCredential"
-						:isProductionExecutionPreview="isProductionExecutionPreview"
-						:isPaneActive="isInputPaneActive"
-						@activatePane="activateInputPane"
-						@linkRun="onLinkRunToInput"
-						@unlinkRun="() => onUnlinkRun('input')"
-						@runChange="onRunInputIndexChange"
-						@openSettings="openSettings"
-						@changeInputNode="onInputNodeChange"
+						:can-link-runs="canLinkRuns"
+						:run-index="inputRun"
+						:linked-runs="linked"
+						:current-node-name="inputNodeName"
+						:push-ref="pushRef"
+						:read-only="readOnly || hasForeignCredential"
+						:is-production-execution-preview="isProductionExecutionPreview"
+						:is-pane-active="isInputPaneActive"
+						@activate-pane="activateInputPane"
+						@link-run="onLinkRunToInput"
+						@unlink-run="() => onUnlinkRun('input')"
+						@run-change="onRunInputIndexChange"
+						@open-settings="openSettings"
+						@change-input-node="onInputNodeChange"
 						@execute="onNodeExecute"
-						@tableMounted="onInputTableMounted"
-						@itemHover="onInputItemHover"
+						@table-mounted="onInputTableMounted"
+						@item-hover="onInputItemHover"
 						@search="onSearch"
 					/>
 				</template>
 				<template #output>
 					<OutputPanel
 						data-test-id="output-panel"
-						:canLinkRuns="canLinkRuns"
-						:runIndex="outputRun"
-						:linkedRuns="linked"
-						:sessionId="sessionId"
-						:isReadOnly="readOnly || hasForeignCredential"
-						:blockUI="blockUi && isTriggerNode && !isExecutableTriggerNode"
-						:isProductionExecutionPreview="isProductionExecutionPreview"
-						:isPaneActive="isOutputPaneActive"
-						@activatePane="activateOutputPane"
-						@linkRun="onLinkRunToOutput"
-						@unlinkRun="() => onUnlinkRun('output')"
-						@runChange="onRunOutputIndexChange"
-						@openSettings="openSettings"
-						@tableMounted="onOutputTableMounted"
-						@itemHover="onOutputItemHover"
+						:can-link-runs="canLinkRuns"
+						:run-index="outputRun"
+						:linked-runs="linked"
+						:push-ref="pushRef"
+						:is-read-only="readOnly || hasForeignCredential"
+						:block-u-i="blockUi && isTriggerNode && !isExecutableTriggerNode"
+						:is-production-execution-preview="isProductionExecutionPreview"
+						:is-pane-active="isOutputPaneActive"
+						@activate-pane="activateOutputPane"
+						@link-run="onLinkRunToOutput"
+						@unlink-run="() => onUnlinkRun('output')"
+						@run-change="onRunOutputIndexChange"
+						@open-settings="openSettings"
+						@table-mounted="onOutputTableMounted"
+						@item-hover="onOutputItemHover"
 						@search="onSearch"
 					/>
 				</template>
 				<template #main>
 					<NodeSettings
-						:eventBus="settingsEventBus"
+						:event-bus="settingsEventBus"
 						:dragging="isDragging"
-						:sessionId="sessionId"
-						:nodeType="activeNodeType"
-						:foreignCredentials="foreignCredentials"
-						:readOnly="readOnly"
-						:blockUI="blockUi && showTriggerPanel"
+						:push-ref="pushRef"
+						:node-type="activeNodeType"
+						:foreign-credentials="foreignCredentials"
+						:read-only="readOnly"
+						:block-u-i="blockUi && showTriggerPanel"
 						:executable="!readOnly"
-						@valueChanged="valueChanged"
+						@value-changed="valueChanged"
 						@execute="onNodeExecute"
-						@stopExecution="onStopExecution"
-						@redrawRequired="redrawRequired = true"
+						@stop-execution="onStopExecution"
+						@redraw-required="redrawRequired = true"
 						@activate="onWorkflowActivate"
+						@switch-selected-node="onSwitchSelectedNode"
+						@open-connection-node-creator="onOpenConnectionNodeCreator"
 					/>
 					<a
 						v-if="featureRequestUrl"
-						@click="onFeatureRequestClick"
 						:class="$style.featureRequest"
 						target="_blank"
+						@click="onFeatureRequestClick"
 					>
 						<font-awesome-icon icon="lightbulb" />
 						{{ $locale.baseText('ndv.featureRequest') }}
@@ -135,7 +138,7 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import { mapStores } from 'pinia';
+import { mapStores, storeToRefs } from 'pinia';
 import { createEventBus } from 'n8n-design-system/utils';
 import type {
 	INodeConnections,
@@ -143,10 +146,10 @@ import type {
 	IRunData,
 	IRunExecutionData,
 	Workflow,
+	ConnectionTypes,
 } from 'n8n-workflow';
 import { jsonParse, NodeHelpers, NodeConnectionType } from 'n8n-workflow';
 import type { IExecutionResponse, INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
 
 import NodeSettings from '@/components/NodeSettings.vue';
 import NDVDraggablePanels from './NDVDraggablePanels.vue';
@@ -163,21 +166,22 @@ import {
 	STICKY_NODE_TYPE,
 } from '@/constants';
 import { workflowActivate } from '@/mixins/workflowActivate';
-import { pinData } from '@/mixins/pinData';
 import { dataPinningEventBus } from '@/event-bus';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useDeviceSupport } from 'n8n-design-system/composables/useDeviceSupport';
+import { useDeviceSupport } from 'n8n-design-system';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useMessage } from '@/composables/useMessage';
 import { useExternalHooks } from '@/composables/useExternalHooks';
+import { usePinnedData } from '@/composables/usePinnedData';
+import { useRouter } from 'vue-router';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 
 export default defineComponent({
 	name: 'NodeDetailsView',
-	mixins: [workflowHelpers, workflowActivate, pinData],
 	components: {
 		NodeSettings,
 		InputPanel,
@@ -185,6 +189,7 @@ export default defineComponent({
 		NDVDraggablePanels,
 		TriggerPanel,
 	},
+	mixins: [workflowActivate],
 	props: {
 		readOnly: {
 			type: Boolean,
@@ -198,12 +203,19 @@ export default defineComponent({
 		},
 	},
 	setup(props, ctx) {
+		const ndvStore = useNDVStore();
 		const externalHooks = useExternalHooks();
 		const nodeHelpers = useNodeHelpers();
+		const { activeNode } = storeToRefs(ndvStore);
+		const pinnedData = usePinnedData(activeNode);
+		const router = useRouter();
+		const workflowHelpers = useWorkflowHelpers({ router });
 
 		return {
 			externalHooks,
 			nodeHelpers,
+			pinnedData,
+			workflowHelpers,
 			...useDeviceSupport(),
 			...useMessage(),
 			// eslint-disable-next-line @typescript-eslint/no-misused-promises
@@ -237,8 +249,8 @@ export default defineComponent({
 	},
 	computed: {
 		...mapStores(useNodeTypesStore, useNDVStore, useUIStore, useWorkflowsStore, useSettingsStore),
-		sessionId(): string {
-			return this.ndvStore.sessionId;
+		pushRef(): string {
+			return this.ndvStore.pushRef;
 		},
 		workflowRunning(): boolean {
 			return this.uiStore.isActionActive('workflowRunning');
@@ -272,15 +284,20 @@ export default defineComponent({
 			return null;
 		},
 		showTriggerPanel(): boolean {
+			const override = !!this.activeNodeType?.triggerPanel;
+			if (typeof this.activeNodeType?.triggerPanel === 'boolean') {
+				return override;
+			}
+
 			const isWebhookBasedNode = !!this.activeNodeType?.webhooks?.length;
 			const isPollingNode = this.activeNodeType?.polling;
-			const override = !!this.activeNodeType?.triggerPanel;
+
 			return (
 				!this.readOnly && this.isTriggerNode && (isWebhookBasedNode || isPollingNode || override)
 			);
 		},
 		workflow(): Workflow {
-			return this.getCurrentWorkflow();
+			return this.workflowHelpers.getCurrentWorkflow();
 		},
 		hasOutputConnection() {
 			if (!this.activeNode) return false;
@@ -301,12 +318,10 @@ export default defineComponent({
 			return [];
 		},
 		parentNode(): string | undefined {
-			const pinData = this.workflowsStore.getPinData;
-
 			// Return the first parent node that contains data
 			for (const parentNodeName of this.parentNodes) {
 				// Check first for pinned data
-				if (pinData[parentNodeName]) {
+				if (this.workflowsStore.pinnedWorkflowData[parentNodeName]) {
 					return parentNodeName;
 				}
 
@@ -470,12 +485,12 @@ export default defineComponent({
 				this.avgOutputRowHeight = 0;
 				this.avgInputRowHeight = 0;
 
-				setTimeout(() => this.ndvStore.setNDVSessionId(), 0);
+				setTimeout(() => this.ndvStore.setNDVPushRef(), 0);
 				void this.externalHooks.run('dataDisplay.nodeTypeChanged', {
 					nodeSubtitle: this.nodeHelpers.getNodeSubtitle(
 						node,
 						this.activeNodeType,
-						this.getCurrentWorkflow(),
+						this.workflowHelpers.getCurrentWorkflow(),
 					),
 				});
 
@@ -488,7 +503,7 @@ export default defineComponent({
 						this.$telemetry.track('User opened node modal', {
 							node_type: this.activeNodeType ? this.activeNodeType.name : '',
 							workflow_id: this.workflowsStore.workflowId,
-							session_id: this.sessionId,
+							push_ref: this.pushRef,
 							is_editable: !this.hasForeignCredential,
 							parameters_pane_position: this.mainPanelPosition,
 							input_first_connector_runs: this.maxInputRun,
@@ -589,7 +604,7 @@ export default defineComponent({
 				this.$telemetry.track('User clicked ndv link', {
 					node_type: this.activeNode.type,
 					workflow_id: this.workflowsStore.workflowId,
-					session_id: this.sessionId,
+					push_ref: this.pushRef,
 					pane: NodeConnectionType.Main,
 					type: 'i-wish-this-node-would',
 				});
@@ -609,7 +624,7 @@ export default defineComponent({
 				start_position: this.mainPanelPosition,
 				end_position: e.position,
 				node_type: this.activeNodeType ? this.activeNodeType.name : '',
-				session_id: this.sessionId,
+				push_ref: this.pushRef,
 				workflow_id: this.workflowsStore.workflowId,
 			});
 			this.mainPanelPosition = e.position;
@@ -631,7 +646,7 @@ export default defineComponent({
 		trackLinking(pane: string) {
 			this.$telemetry.track('User changed ndv run linking', {
 				node_type: this.activeNodeType ? this.activeNodeType.name : '',
-				session_id: this.sessionId,
+				push_ref: this.pushRef,
 				linked: this.linked,
 				pane,
 			});
@@ -653,8 +668,11 @@ export default defineComponent({
 		nodeTypeSelected(nodeTypeName: string) {
 			this.$emit('nodeTypeSelected', nodeTypeName);
 		},
-		async onSwitchSelectedNode(nodeTypeName: string) {
+		onSwitchSelectedNode(nodeTypeName: string) {
 			this.$emit('switchSelectedNode', nodeTypeName);
+		},
+		onOpenConnectionNodeCreator(nodeTypeName: string, connectionType: ConnectionTypes) {
+			this.$emit('openConnectionNodeCreator', nodeTypeName, connectionType);
 		},
 		async close() {
 			if (this.isDragging) {
@@ -689,7 +707,7 @@ export default defineComponent({
 				if (shouldPinDataBeforeClosing === MODAL_CONFIRM) {
 					const { value } = this.outputPanelEditMode;
 					try {
-						this.setPinData(this.activeNode, jsonParse(value), 'on-ndv-close-modal');
+						this.pinnedData.setData(jsonParse(value), 'on-ndv-close-modal');
 					} catch (error) {
 						console.error(error);
 					}
@@ -701,12 +719,12 @@ export default defineComponent({
 			await this.externalHooks.run('dataDisplay.nodeEditingFinished');
 			this.$telemetry.track('User closed node modal', {
 				node_type: this.activeNodeType ? this.activeNodeType.name : '',
-				session_id: this.sessionId,
+				push_ref: this.pushRef,
 				workflow_id: this.workflowsStore.workflowId,
 			});
 			this.triggerWaitingWarningEnabled = false;
 			this.ndvStore.activeNodeName = null;
-			this.ndvStore.resetNDVSessionId();
+			this.ndvStore.resetNDVPushRef();
 		},
 		onRunOutputIndexChange(run: number) {
 			this.runOutputIndex = run;
@@ -721,7 +739,7 @@ export default defineComponent({
 		},
 		trackRunChange(run: number, pane: string) {
 			this.$telemetry.track('User changed ndv run dropdown', {
-				session_id: this.sessionId,
+				push_ref: this.pushRef,
 				run_index: run,
 				node_type: this.activeNodeType ? this.activeNodeType.name : '',
 				pane,
@@ -734,7 +752,7 @@ export default defineComponent({
 
 			this.$telemetry.track('User changed ndv input dropdown', {
 				node_type: this.activeNode ? this.activeNode.type : '',
-				session_id: this.sessionId,
+				push_ref: this.pushRef,
 				workflow_id: this.workflowsStore.workflowId,
 				selection_value: index,
 				input_node_type: this.inputNode ? this.inputNode.type : '',
@@ -769,8 +787,9 @@ export default defineComponent({
 }
 
 .data-display-wrapper {
-	height: calc(100% - var(--spacing-2xl));
+	height: calc(100% - var(--spacing-l)) !important;
 	margin-top: var(--spacing-xl) !important;
+	margin-bottom: var(--spacing-xl) !important;
 	width: 100%;
 	background: none;
 	border: none;

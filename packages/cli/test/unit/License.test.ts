@@ -6,7 +6,7 @@ import { License } from '@/License';
 import { Logger } from '@/Logger';
 import { N8N_VERSION } from '@/constants';
 import { mockInstance } from '../shared/mocking';
-import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
+import { OrchestrationService } from '@/services/orchestration.service';
 
 jest.mock('@n8n_io/license-sdk');
 
@@ -28,7 +28,7 @@ describe('License', () => {
 	let license: License;
 	const logger = mockInstance(Logger);
 	const instanceSettings = mockInstance(InstanceSettings, { instanceId: MOCK_INSTANCE_ID });
-	mockInstance(MultiMainSetup);
+	mockInstance(OrchestrationService);
 
 	beforeEach(async () => {
 		license = new License(logger, instanceSettings, mock(), mock(), mock());

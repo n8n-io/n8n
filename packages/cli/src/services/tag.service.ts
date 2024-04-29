@@ -3,8 +3,6 @@ import { Service } from 'typedi';
 import { validateEntity } from '@/GenericHelpers';
 import type { ITagWithCountDb } from '@/Interfaces';
 import type { TagEntity } from '@db/entities/TagEntity';
-import type { FindManyOptions, FindOneOptions } from 'typeorm';
-import type { UpsertOptions } from 'typeorm/repository/UpsertOptions';
 import { ExternalHooks } from '@/ExternalHooks';
 
 type GetAllResult<T> = T extends { withUsageCount: true } ? ITagWithCountDb[] : TagEntity[];
@@ -29,11 +27,11 @@ export class TagService {
 
 		await this.externalHooks.run(`tag.before${action}`, [tag]);
 
-		const savedTag = this.tagRepository.save(tag);
+		const savedTag = this.tagRepository.save(tag, { transaction: false });
 
 		await this.externalHooks.run(`tag.after${action}`, [tag]);
 
-		return savedTag;
+		return await savedTag;
 	}
 
 	async delete(id: string) {
@@ -43,19 +41,7 @@ export class TagService {
 
 		await this.externalHooks.run('tag.afterDelete', [id]);
 
-		return deleteResult;
-	}
-
-	async findOne(options: FindOneOptions<TagEntity>) {
-		return this.tagRepository.findOne(options);
-	}
-
-	async findMany(options: FindManyOptions<TagEntity>) {
-		return this.tagRepository.find(options);
-	}
-
-	async upsert(tag: TagEntity, options: UpsertOptions<TagEntity>) {
-		return this.tagRepository.upsert(tag, options);
+		return await deleteResult;
 	}
 
 	async getAll<T extends { withUsageCount: boolean }>(options?: T): Promise<GetAllResult<T>> {
@@ -73,9 +59,15 @@ export class TagService {
 			}) as GetAllResult<T>;
 		}
 
-		return this.tagRepository.find({
+		return await (this.tagRepository.find({
 			select: ['id', 'name', 'createdAt', 'updatedAt'],
-		}) as Promise<GetAllResult<T>>;
+		}) as Promise<GetAllResult<T>>);
+	}
+
+	async getById(id: string) {
+		return await this.tagRepository.findOneOrFail({
+			where: { id },
+		});
 	}
 
 	/**

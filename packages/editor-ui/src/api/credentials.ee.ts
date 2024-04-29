@@ -7,7 +7,7 @@ export async function setCredentialSharedWith(
 	id: string,
 	data: IShareCredentialsPayload,
 ): Promise<ICredentialsResponse> {
-	return makeRestApiRequest(
+	return await makeRestApiRequest(
 		context,
 		'PUT',
 		`/credentials/${id}/share`,

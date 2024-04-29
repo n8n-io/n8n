@@ -23,7 +23,7 @@ import { Container } from 'typedi';
 
 export = {
 	createCredential: [
-		authorize(['owner', 'admin', 'member']),
+		authorize(['global:owner', 'global:admin', 'global:member']),
 		validCredentialType,
 		validCredentialsProperties,
 		async (
@@ -47,7 +47,7 @@ export = {
 		},
 	],
 	deleteCredential: [
-		authorize(['owner', 'admin', 'member']),
+		authorize(['global:owner', 'global:admin', 'global:member']),
 		async (
 			req: CredentialRequest.Delete,
 			res: express.Response,
@@ -55,13 +55,10 @@ export = {
 			const { id: credentialId } = req.params;
 			let credential: CredentialsEntity | undefined;
 
-			if (!['owner', 'admin'].includes(req.user.globalRole.name)) {
-				const shared = await getSharedCredentials(req.user.id, credentialId, [
-					'credentials',
-					'role',
-				]);
+			if (!['global:owner', 'global:admin'].includes(req.user.role)) {
+				const shared = await getSharedCredentials(req.user.id, credentialId);
 
-				if (shared?.role.name === 'owner') {
+				if (shared?.role === 'credential:owner') {
 					credential = shared.credentials;
 				}
 			} else {
@@ -72,13 +69,13 @@ export = {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			await removeCredential(credential);
+			await removeCredential(req.user, credential);
 			return res.json(sanitizeCredentials(credential));
 		},
 	],
 
 	getCredentialType: [
-		authorize(['owner', 'admin', 'member']),
+		authorize(['global:owner', 'global:admin', 'global:member']),
 		async (req: CredentialTypeRequest.Get, res: express.Response): Promise<express.Response> => {
 			const { credentialTypeName } = req.params;
 

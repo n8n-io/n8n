@@ -8,7 +8,7 @@
 		<div :class="$style.cardDescription">
 			<n8n-text color="text-light" size="small">
 				<span v-show="data"
-					>{{ $locale.baseText('workflows.item.updated') }} <time-ago :date="data.updatedAt" /> |
+					>{{ $locale.baseText('workflows.item.updated') }} <TimeAgo :date="data.updatedAt" /> |
 				</span>
 				<span v-show="data" class="mr-2xs"
 					>{{ $locale.baseText('workflows.item.created') }} {{ formattedCreatedAtDate }}
@@ -19,24 +19,24 @@
 				>
 					<n8n-tags
 						:tags="data.tags"
-						:truncateAt="3"
+						:truncate-at="3"
 						truncate
+						data-test-id="workflow-card-tags"
 						@click:tag="onClickTag"
 						@expand="onExpandTags"
-						data-test-id="workflow-card-tags"
 					/>
 				</span>
 			</n8n-text>
 		</div>
 		<template #append>
-			<div :class="$style.cardActions" ref="cardActions">
+			<div :class="$style.cardActions" @click.stop>
 				<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
 					<n8n-badge v-if="workflowPermissions.isOwner" class="mr-xs" theme="tertiary" bold>
 						{{ $locale.baseText('workflows.item.owner') }}
 					</n8n-badge>
 				</enterprise-edition>
 
-				<workflow-activator
+				<WorkflowActivator
 					class="mr-s"
 					:workflow-active="data.active"
 					:workflow-id="data.id"
@@ -46,9 +46,8 @@
 				<n8n-action-toggle
 					:actions="actions"
 					theme="dark"
-					@action="onAction"
-					@click.stop
 					data-test-id="workflow-card-actions"
+					@action="onAction"
 				/>
 			</div>
 		</template>
@@ -86,17 +85,6 @@ export const WORKFLOW_LIST_ITEM_ACTIONS = {
 };
 
 export default defineComponent({
-	data() {
-		return {
-			EnterpriseEditionFeature,
-		};
-	},
-	setup() {
-		return {
-			...useToast(),
-			...useMessage(),
-		};
-	},
 	components: {
 		TimeAgo,
 		WorkflowActivator,
@@ -122,6 +110,17 @@ export default defineComponent({
 			type: Boolean,
 			default: false,
 		},
+	},
+	setup() {
+		return {
+			...useToast(),
+			...useMessage(),
+		};
+	},
+	data() {
+		return {
+			EnterpriseEditionFeature,
+		};
 	},
 	computed: {
 		...mapStores(useSettingsStore, useUIStore, useUsersStore, useWorkflowsStore),
@@ -169,15 +168,8 @@ export default defineComponent({
 		},
 	},
 	methods: {
-		async onClick(event: Event) {
-			if (
-				this.$refs.cardActions === event.target ||
-				this.$refs.cardActions?.contains(event.target)
-			) {
-				return;
-			}
-
-			if (event.metaKey || event.ctrlKey) {
+		async onClick(event?: KeyboardEvent | PointerEvent) {
+			if (event?.ctrlKey || event?.metaKey) {
 				const route = this.$router.resolve({
 					name: VIEWS.WORKFLOW,
 					params: { name: this.data.id },

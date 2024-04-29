@@ -6,7 +6,7 @@ import { useRootStore } from './n8nRoot.store';
 import type { IPushData } from '../Interface';
 
 export interface PushState {
-	sessionId: string;
+	pushRef: string;
 	pushSource: WebSocket | EventSource | null;
 	reconnectTimeout: NodeJS.Timeout | null;
 	retryTimeout: NodeJS.Timeout | null;
@@ -26,17 +26,24 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
 
-	const sessionId = computed(() => rootStore.sessionId);
+	const pushRef = computed(() => rootStore.pushRef);
 	const pushSource = ref<WebSocket | EventSource | null>(null);
 	const reconnectTimeout = ref<NodeJS.Timeout | null>(null);
 	const connectRetries = ref(0);
 	const lostConnection = ref(false);
 	const outgoingQueue = ref<unknown[]>([]);
 	const isConnectionOpen = ref(false);
+
 	const onMessageReceivedHandlers = ref<OnPushMessageHandler[]>([]);
 
 	const addEventListener = (handler: OnPushMessageHandler) => {
 		onMessageReceivedHandlers.value.push(handler);
+		return () => {
+			const index = onMessageReceivedHandlers.value.indexOf(handler);
+			if (index !== -1) {
+				onMessageReceivedHandlers.value.splice(index, 1);
+			}
+		};
 	};
 
 	function onConnectionError() {
@@ -78,7 +85,7 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 		const useWebSockets = settingsStore.pushBackend === 'websocket';
 
 		const { getRestUrl: restUrl } = rootStore;
-		const url = `/push?sessionId=${sessionId.value}`;
+		const url = `/push?pushRef=${pushRef.value}`;
 
 		if (useWebSockets) {
 			const { protocol, host } = window.location;
@@ -139,12 +146,12 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 		} catch (error) {
 			return;
 		}
-		//  TODO: Why is this received multiple times?
+
 		onMessageReceivedHandlers.value.forEach((handler) => handler(receivedData));
 	}
 
 	return {
-		sessionId,
+		pushRef,
 		pushSource,
 		isConnectionOpen,
 		addEventListener,

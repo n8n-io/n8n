@@ -4,6 +4,7 @@ import {
 	configurePool,
 	deleteOperation,
 	insertOperation,
+	mssqlChunk,
 	updateOperation,
 } from '../GenericFunctions';
 
@@ -141,5 +142,16 @@ describe('MSSQL tests', () => {
 		expect(querySpy).toHaveBeenCalledTimes(1);
 		expect(querySpy).toHaveBeenCalledWith('DELETE FROM [users] WHERE [id] IN (@v0);');
 		assertParameters({ v0: 2 });
+	});
+
+	describe('mssqlChunk', () => {
+		it('should chunk insert values correctly', () => {
+			const chunks = mssqlChunk(
+				new Array(3000)
+					.fill(null)
+					.map((_, index) => ({ id: index, name: 'John Doe', verified: true })),
+			);
+			expect(chunks.map((chunk) => chunk.length)).toEqual([699, 699, 699, 699, 204]);
+		});
 	});
 });

@@ -8,6 +8,7 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import type {
 	PgpDatabase,
+	PostgresNodeOptions,
 	QueriesRunner,
 	QueryValues,
 	QueryWithValues,
@@ -20,6 +21,7 @@ import {
 	prepareItem,
 	replaceEmptyStringsByNulls,
 	configureTableSchemaUpdater,
+	convertArraysToPostgresFormat,
 } from '../../helpers/utils';
 
 import { optionsCollection } from '../common.descriptions';
@@ -170,7 +172,7 @@ const properties: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				'@version': [2.2, 2.3],
+				'@version': [{ _cnd: { gte: 2.2 } }],
 			},
 		},
 	},
@@ -193,7 +195,7 @@ export async function execute(
 	this: IExecuteFunctions,
 	runQueries: QueriesRunner,
 	items: INodeExecutionData[],
-	nodeOptions: IDataObject,
+	nodeOptions: PostgresNodeOptions,
 	db: PgpDatabase,
 ): Promise<INodeExecutionData[]> {
 	items = replaceEmptyStringsByNulls(items, nodeOptions.replaceEmptyStrings as boolean);
@@ -269,6 +271,10 @@ export async function execute(
 
 		tableSchema = await updateTableSchema(db, tableSchema, schema, table);
 
+		if (nodeVersion >= 2.4) {
+			convertArraysToPostgresFormat(item, tableSchema, this.getNode(), i);
+		}
+
 		item = checkItemAgainstSchema(this.getNode(), item, tableSchema, i);
 
 		let values: QueryValues = [schema, table];
@@ -304,5 +310,5 @@ export async function execute(
 		queries.push({ query, values });
 	}
 
-	return runQueries(queries, items, nodeOptions);
+	return await runQueries(queries, items, nodeOptions);
 }

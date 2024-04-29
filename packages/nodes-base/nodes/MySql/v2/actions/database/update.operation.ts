@@ -8,7 +8,7 @@ import type {
 import type { QueryRunner, QueryValues, QueryWithValues } from '../../helpers/interfaces';
 import { AUTO_MAP, DATA_MODE } from '../../helpers/interfaces';
 
-import { replaceEmptyStringsByNulls } from '../../helpers/utils';
+import { escapeSqlIdentifier, replaceEmptyStringsByNulls } from '../../helpers/utils';
 
 import { optionsCollection } from '../common.descriptions';
 import { updateDisplayOptions } from '@utils/utilities';
@@ -182,14 +182,16 @@ export async function execute(
 		const updates: string[] = [];
 
 		for (const column of updateColumns) {
-			updates.push(`\`${column}\` = ?`);
+			updates.push(`${escapeSqlIdentifier(column)} = ?`);
 			values.push(item[column] as string);
 		}
 
-		const condition = `\`${columnToMatchOn}\` = ?`;
+		const condition = `${escapeSqlIdentifier(columnToMatchOn)} = ?`;
 		values.push(valueToMatchOn);
 
-		const query = `UPDATE \`${table}\` SET ${updates.join(', ')} WHERE ${condition}`;
+		const query = `UPDATE ${escapeSqlIdentifier(table)} SET ${updates.join(
+			', ',
+		)} WHERE ${condition}`;
 
 		queries.push({ query, values });
 	}

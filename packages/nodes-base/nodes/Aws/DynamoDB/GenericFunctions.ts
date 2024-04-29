@@ -6,6 +6,7 @@ import type {
 	IWebhookFunctions,
 	IHttpRequestOptions,
 	INodeExecutionData,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { ApplicationError, deepCopy } from 'n8n-workflow';
 
@@ -14,7 +15,7 @@ import type { IRequestBody } from './types';
 export async function awsApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	service: string,
-	method: string,
+	method: IHttpRequestMethods,
 	path: string,
 	body?: object | IRequestBody,
 	headers?: object,
@@ -68,7 +69,7 @@ export async function awsApiRequest(
 export async function awsApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	service: string,
-	method: string,
+	method: IHttpRequestMethods,
 	path: string,
 	body?: IRequestBody,
 	headers?: object,

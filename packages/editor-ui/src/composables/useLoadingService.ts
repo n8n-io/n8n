@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useI18n } from '@/composables/useI18n';
 import { ElLoading as Loading } from 'element-plus';
 
@@ -36,8 +36,11 @@ export function useLoadingService() {
 		}
 	}
 
+	const isLoading = computed(() => loadingService.value !== null);
+
 	return {
 		loadingService,
+		isLoading,
 		startLoading,
 		setLoadingText,
 		stopLoading,

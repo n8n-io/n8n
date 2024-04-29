@@ -1,6 +1,9 @@
-import type { INodeTypeDescription } from 'n8n-workflow';
+import { type INodeTypeDescription } from 'n8n-workflow';
 import type { NodeTypesByTypeNameAndVersion } from '@/Interface';
 import { DEFAULT_NODETYPE_VERSION } from '@/constants';
+import type { NodeTypesStore } from '@/stores/nodeTypes.store';
+
+export type NodeTypeProvider = Pick<NodeTypesStore, 'getNodeType'>;
 
 export function getNodeVersions(nodeType: INodeTypeDescription) {
 	return Array.isArray(nodeType.version) ? nodeType.version : [nodeType.version];

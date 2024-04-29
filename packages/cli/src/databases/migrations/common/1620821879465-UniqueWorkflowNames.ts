@@ -20,7 +20,7 @@ export class UniqueWorkflowNames1620821879465 implements ReversibleMigration {
 				await Promise.all(
 					duplicates.map(async (workflow, index) => {
 						if (index === 0) return;
-						return runQuery(`UPDATE ${tableName} SET name = :name WHERE id = :id`, {
+						return await runQuery(`UPDATE ${tableName} SET name = :name WHERE id = :id`, {
 							name: `${workflow.name} ${index + 1}`,
 							id: workflow.id,
 						});

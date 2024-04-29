@@ -58,7 +58,7 @@ test('should report risky official nodes', async () => {
 			],
 		});
 
-		return Container.get(WorkflowRepository).save(details);
+		return await Container.get(WorkflowRepository).save(details);
 	});
 
 	await Promise.all(promises);

@@ -7,7 +7,8 @@ import type {
 	REGULAR_NODE_CREATOR_VIEW,
 	AI_OTHERS_NODE_CREATOR_VIEW,
 	VIEWS,
-} from './constants';
+	ROLE,
+} from '@/constants';
 import type { IMenuItem } from 'n8n-design-system';
 import {
 	type GenericValue,
@@ -34,7 +35,7 @@ import {
 	type INodeListSearchItems,
 	type NodeParameterValueType,
 	type IDisplayOptions,
-	type IExecutionsSummary,
+	type ExecutionSummary,
 	type FeatureFlags,
 	type ExecutionStatus,
 	type ITelemetryTrackProperties,
@@ -47,11 +48,13 @@ import {
 	type INodeProperties,
 	type NodeConnectionType,
 	type INodeCredentialsDetails,
+	type StartNodeData,
 } from 'n8n-workflow';
 import type { BulkCommand, Undoable } from '@/models/history';
 import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
 import type { Component } from 'vue';
 import type { Scope } from '@n8n/permissions';
+import type { NotificationOptions as ElementNotificationOptions } from 'element-plus';
 
 export * from 'n8n-design-system/types';
 
@@ -105,8 +108,9 @@ declare global {
 		};
 		// eslint-disable-next-line @typescript-eslint/naming-convention
 		Cypress: unknown;
-		Appcues?: {
-			track(event: string, properties?: ITelemetryTrackProperties): void;
+
+		Sentry?: {
+			captureException: (error: Error, metadata?: unknown) => void;
 		};
 	}
 }
@@ -135,6 +139,7 @@ export interface IUpdateInformation {
 		| INodeParameters; // with null makes problems in NodeSettings.vue
 	node?: string;
 	oldValue?: string | number;
+	type?: 'optionsOrderChanged';
 }
 
 export interface INodeUpdatePropertiesInformation {
@@ -191,7 +196,7 @@ export interface IAiData {
 
 export interface IStartRunData {
 	workflowData: IWorkflowData;
-	startNodes?: string[];
+	startNodes?: StartNodeData[];
 	destinationNode?: string;
 	runData?: IRunData;
 	pinData?: IPinData;
@@ -227,6 +232,7 @@ export interface IWorkflowData {
 	tags?: string[];
 	pinData?: IPinData;
 	versionId?: string;
+	meta?: WorkflowMetadata;
 }
 
 export interface IWorkflowDataUpdate {
@@ -243,9 +249,7 @@ export interface IWorkflowDataUpdate {
 }
 
 export interface IWorkflowToShare extends IWorkflowDataUpdate {
-	meta?: {
-		instanceId: string;
-	};
+	meta?: WorkflowMetadata;
 }
 
 export interface IWorkflowTemplateNode
@@ -273,6 +277,9 @@ export interface INewWorkflowData {
 
 export interface WorkflowMetadata {
 	onboardingId?: string;
+	templateId?: string;
+	instanceId?: string;
+	templateCredsSetupCompleted?: boolean;
 }
 
 // Almost identical to cli.Interfaces.ts
@@ -395,7 +402,7 @@ export interface IExecutionShortResponse {
 
 export interface IExecutionsListResponse {
 	count: number;
-	results: IExecutionsSummary[];
+	results: ExecutionSummary[];
 	estimated: boolean;
 }
 
@@ -681,9 +688,12 @@ export type IPersonalizationLatestVersion = IPersonalizationSurveyAnswersV4;
 export type IPersonalizationSurveyVersions =
 	| IPersonalizationSurveyAnswersV1
 	| IPersonalizationSurveyAnswersV2
-	| IPersonalizationSurveyAnswersV3;
+	| IPersonalizationSurveyAnswersV3
+	| IPersonalizationSurveyAnswersV4;
 
-export type IRole = 'default' | 'owner' | 'member' | 'admin';
+export type Roles = typeof ROLE;
+export type IRole = Roles[keyof Roles];
+export type InvitableRoleName = Roles['Member' | 'Admin'];
 
 export interface IUserResponse {
 	id: string;
@@ -691,11 +701,7 @@ export interface IUserResponse {
 	lastName?: string;
 	email?: string;
 	createdAt?: string;
-	globalRole?: {
-		name: IRole;
-		id: string;
-		createdAt: Date;
-	};
+	role?: IRole;
 	globalScopes?: Scope[];
 	personalizationAnswers?: IPersonalizationSurveyVersions | null;
 	isPending: boolean;
@@ -711,12 +717,10 @@ export interface IUser extends IUserResponse {
 	isDefaultUser: boolean;
 	isPendingUser: boolean;
 	hasRecoveryCodesLeft: boolean;
-	isOwner: boolean;
 	inviteAcceptUrl?: string;
 	fullName?: string;
 	createdAt?: string;
 	mfaEnabled: boolean;
-	globalRoleId?: number;
 }
 
 export interface IVersionNotificationSettings {
@@ -826,6 +830,19 @@ export interface ITemplatesWorkflowInfo {
 	};
 }
 
+export type TemplateSearchFacet = {
+	field_name: string;
+	sampled: boolean;
+	stats: {
+		total_values: number;
+	};
+	counts: Array<{
+		count: number;
+		highlighted: string;
+		value: string;
+	}>;
+};
+
 export interface ITemplatesWorkflowResponse extends ITemplatesWorkflow, IWorkflowTemplate {
 	description: string | null;
 	image: ITemplatesImage[];
@@ -841,7 +858,7 @@ export interface ITemplatesWorkflowFull extends ITemplatesWorkflowResponse {
 }
 
 export interface ITemplatesQuery {
-	categories: number[];
+	categories: string[];
 	search: string;
 }
 
@@ -1051,8 +1068,8 @@ export interface IUsedCredential {
 export interface WorkflowsState {
 	activeExecutions: IExecutionsCurrentSummaryExtended[];
 	activeWorkflows: string[];
-	activeWorkflowExecution: IExecutionsSummary | null;
-	currentWorkflowExecutions: IExecutionsSummary[];
+	activeWorkflowExecution: ExecutionSummary | null;
+	currentWorkflowExecutions: ExecutionSummary[];
 	activeExecutionId: string | null;
 	executingNode: string[];
 	executionWaitingForWebhook: boolean;
@@ -1064,6 +1081,7 @@ export interface WorkflowsState {
 	workflowExecutionData: IExecutionResponse | null;
 	workflowExecutionPairedItemMappings: { [itemId: string]: Set<string> };
 	workflowsById: IWorkflowsMap;
+	chatMessages: string[];
 	isInDebugMode?: boolean;
 }
 
@@ -1085,11 +1103,12 @@ export interface RootState {
 	n8nMetadata: {
 		[key: string]: string | number | undefined;
 	};
-	sessionId: string;
+	pushRef: string;
 	urlBaseWebhook: string;
 	urlBaseEditor: string;
 	instanceId: string;
 	isNpmAvailable: boolean;
+	binaryDataMode: string;
 }
 
 export interface NodeMetadataMap {
@@ -1128,7 +1147,7 @@ export interface IRootState {
 	nodeViewOffsetPosition: XYPosition;
 	nodeViewMoveInProgress: boolean;
 	selectedNodes: INodeUi[];
-	sessionId: string;
+	pushRef: string;
 	urlBaseEditor: string;
 	urlBaseWebhook: string;
 	workflow: IWorkflowDb;
@@ -1138,6 +1157,7 @@ export interface IRootState {
 	nodeMetadata: NodeMetadataMap;
 	isNpmAvailable: boolean;
 	subworkflowExecutionError: Error | null;
+	binaryDataMode: string;
 }
 
 export interface CommunityPackageMap {
@@ -1178,9 +1198,9 @@ export type ModalState = {
 	httpNodeParameters?: string;
 };
 
-export type NewCredentialsModal = ModalState & {
+export interface NewCredentialsModal extends ModalState {
 	showAuthSelector?: boolean;
-};
+}
 
 export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema' | 'html' | 'ai';
 export type NodePanelType = 'input' | 'output';
@@ -1195,7 +1215,7 @@ export interface TargetItem {
 export interface NDVState {
 	activeNodeName: string | null;
 	mainPanelDimensions: { [key: string]: { [key: string]: number } };
-	sessionId: string;
+	pushRef: string;
 	input: {
 		displayMode: IRunDataDisplayMode;
 		nodeName?: string;
@@ -1217,16 +1237,23 @@ export interface NDVState {
 		};
 	};
 	focusedMappableInput: string;
+	focusedInputPath: string;
 	mappingTelemetry: { [key: string]: string | number | boolean };
 	hoveringItem: null | TargetItem;
 	draggable: {
 		isDragging: boolean;
 		type: string;
 		data: string;
-		activeTargetId: string | null;
-		stickyPosition: null | XYPosition;
+		dimensions: DOMRect | null;
+		activeTarget: { id: string; stickyPosition: null | XYPosition } | null;
 	};
 	isMappingOnboarded: boolean;
+	isAutocompleteOnboarded: boolean;
+	highlightDraggables: boolean;
+}
+
+export interface NotificationOptions extends Partial<ElementNotificationOptions> {
+	message: string | ElementNotificationOptions['message'];
 }
 
 export interface UIState {
@@ -1253,10 +1280,8 @@ export interface UIState {
 	nodeViewOffsetPosition: XYPosition;
 	nodeViewMoveInProgress: boolean;
 	selectedNodes: INodeUi[];
-	sidebarMenuItems: IMenuItem[];
 	nodeViewInitialized: boolean;
 	addFirstStepOnLoad: boolean;
-	executionSidebarAutoRefresh: boolean;
 	bannersHeight: number;
 	bannerStack: BannerName[];
 	theme: ThemeOption;
@@ -1353,7 +1378,7 @@ export interface INodeTypesState {
 }
 
 export interface ITemplateState {
-	categories: { [id: string]: ITemplatesCategory };
+	categories: ITemplatesCategory[];
 	collections: { [id: string]: ITemplatesCollection };
 	workflows: { [id: string]: ITemplatesWorkflow | ITemplatesWorkflowFull };
 	workflowSearches: {
@@ -1361,6 +1386,7 @@ export interface ITemplateState {
 			workflowIds: string[];
 			totalWorkflows: number;
 			loadingMore?: boolean;
+			categories?: ITemplatesCategory[];
 		};
 	};
 	collectionSearches: {
@@ -1370,6 +1396,7 @@ export interface ITemplateState {
 	};
 	currentSessionId: string;
 	previousSessionId: string;
+	currentN8nPath: string;
 }
 
 export interface IVersionsState {
@@ -1386,8 +1413,8 @@ export interface IUsersState {
 }
 
 export interface IWorkflowsState {
-	currentWorkflowExecutions: IExecutionsSummary[];
-	activeWorkflowExecution: IExecutionsSummary | null;
+	currentWorkflowExecutions: ExecutionSummary[];
+	activeWorkflowExecution: ExecutionSummary | null;
 	finishedExecutionsCount: number;
 }
 export interface IWorkflowsMap {
@@ -1401,7 +1428,7 @@ export interface CommunityNodesState {
 
 export interface IRestApiContext {
 	baseUrl: string;
-	sessionId: string;
+	pushRef: string;
 }
 
 export interface IZoomConfig {
@@ -1733,6 +1760,7 @@ export declare namespace Cloud {
 		username: string;
 		email: string;
 		hasEarlyAccess?: boolean;
+		role?: string;
 	};
 }
 

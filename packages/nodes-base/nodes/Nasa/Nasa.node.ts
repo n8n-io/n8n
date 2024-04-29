@@ -7,7 +7,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import moment from 'moment';
+import moment from 'moment-timezone';
 import { nasaApiRequest, nasaApiRequestAllItems } from './GenericFunctions';
 
 export class Nasa implements INodeType {
@@ -570,7 +570,7 @@ export class Nasa implements INodeType {
 					'By default just the URL of the image is returned. When set to true the image will be downloaded.',
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'Put Output File in Field',
 				name: 'binaryPropertyName',
 				type: 'string',
 				required: true,
@@ -582,7 +582,7 @@ export class Nasa implements INodeType {
 						download: [true],
 					},
 				},
-				description: 'Name of the binary property to which to write to',
+				hint: 'The name of the output binary field to put the file in',
 			},
 
 			/* date for astronomyPictureOfTheDay */
@@ -766,7 +766,7 @@ export class Nasa implements INodeType {
 				},
 			},
 			{
-				displayName: 'Binary Property',
+				displayName: 'Put Output File in Field',
 				name: 'binaryPropertyName',
 				type: 'string',
 				required: true,
@@ -777,7 +777,7 @@ export class Nasa implements INodeType {
 						resource: ['earthImagery'],
 					},
 				},
-				description: 'Name of the binary property to which to write to',
+				hint: 'The name of the output binary field to put the file in',
 			},
 
 			//aqui

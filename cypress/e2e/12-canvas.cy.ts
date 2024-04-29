@@ -313,21 +313,38 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		cy.get('body').type('{esc}');
 		cy.get('body').type('{esc}');
-		WorkflowPage.actions.selectAll();
 
 		// Keyboard shortcut
+		WorkflowPage.actions.selectAll();
 		WorkflowPage.actions.hitDisableNodeShortcut();
 		WorkflowPage.getters.disabledNodes().should('have.length', 2);
 		WorkflowPage.actions.hitDisableNodeShortcut();
 		WorkflowPage.getters.disabledNodes().should('have.length', 0);
+		WorkflowPage.actions.deselectAll();
+		WorkflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
+		WorkflowPage.actions.hitDisableNodeShortcut();
+		WorkflowPage.getters.disabledNodes().should('have.length', 1);
+		WorkflowPage.actions.selectAll();
+		WorkflowPage.actions.hitDisableNodeShortcut();
+		WorkflowPage.getters.disabledNodes().should('have.length', 2);
 
 		// Context menu
-		WorkflowPage.actions.openContextMenu();
-		WorkflowPage.actions.contextMenuAction('toggle_activation');
-		WorkflowPage.getters.disabledNodes().should('have.length', 2);
+		WorkflowPage.actions.selectAll();
 		WorkflowPage.actions.openContextMenu();
 		WorkflowPage.actions.contextMenuAction('toggle_activation');
 		WorkflowPage.getters.disabledNodes().should('have.length', 0);
+		WorkflowPage.actions.openContextMenu();
+		WorkflowPage.actions.contextMenuAction('toggle_activation');
+		WorkflowPage.getters.disabledNodes().should('have.length', 2);
+		WorkflowPage.actions.deselectAll();
+		WorkflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
+		WorkflowPage.actions.openContextMenu();
+		WorkflowPage.actions.contextMenuAction('toggle_activation');
+		WorkflowPage.getters.disabledNodes().should('have.length', 1);
+		WorkflowPage.actions.selectAll();
+		WorkflowPage.actions.openContextMenu();
+		WorkflowPage.actions.contextMenuAction('toggle_activation');
+		WorkflowPage.getters.disabledNodes().should('have.length', 2);
 	});
 
 	it('should rename node (context menu or shortcut)', () => {

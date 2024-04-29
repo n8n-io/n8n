@@ -1,12 +1,14 @@
 <template>
 	<Modal
 		width="460px"
+		height="80%"
+		max-height="640px"
 		:title="
 			!showRecoveryCodes
 				? $locale.baseText('mfa.setup.step1.title')
 				: $locale.baseText('mfa.setup.step2.title')
 		"
-		:eventBus="modalBus"
+		:event-bus="modalBus"
 		:name="MFA_SETUP_MODAL_KEY"
 		:center="true"
 		:loading="loadingQrCode"
@@ -27,8 +29,8 @@
 							<template #part2>
 								<a
 									:class="$style.secret"
-									@click="onCopySecretToClipboard"
 									data-test-id="mfa-secret-button"
+									@click="onCopySecretToClipboard"
 									>{{ $locale.baseText('mfa.setup.step1.instruction1.subtitle.part2') }}</a
 								>
 							</template>
@@ -36,7 +38,7 @@
 					</n8n-text>
 				</div>
 				<div :class="$style.qrContainer">
-					<qrcode-vue :value="qrCode" size="150" level="H" />
+					<QrcodeVue :value="qrCode" size="150" level="H" />
 				</div>
 				<div :class="$style.textContainer">
 					<n8n-text size="large" color="text-dark" :bold="true">{{
@@ -55,9 +57,9 @@
 							type="text"
 							:maxlength="6"
 							:placeholder="$locale.baseText('mfa.code.input.placeholder')"
-							@input="onInput"
 							:required="true"
 							data-test-id="mfa-token-input"
+							@input="onInput"
 						/>
 					</n8n-input-label>
 					<div :class="[$style.infoText, 'mt-4xs']">
@@ -140,20 +142,22 @@ import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useUsersStore } from '@/stores/users.store';
-import { copyPaste } from '@/mixins/copyPaste';
 import { mfaEventBus } from '@/event-bus';
 import { useToast } from '@/composables/useToast';
 //@ts-ignore
 import QrcodeVue from 'qrcode.vue';
+import { useClipboard } from '@/composables/useClipboard';
 export default defineComponent({
 	name: 'MfaSetupModal',
-	mixins: [copyPaste],
 	components: {
 		Modal,
 		QrcodeVue,
 	},
 	setup() {
+		const clipboard = useClipboard();
+
 		return {
+			clipboard,
 			...useToast(),
 		};
 	},
@@ -176,6 +180,9 @@ export default defineComponent({
 	computed: {
 		...mapStores(useNDVStore, useUIStore, useUsersStore),
 	},
+	async mounted() {
+		await this.getMfaQR();
+	},
 	methods: {
 		closeDialog(): void {
 			this.modalBus.emit('close');
@@ -196,7 +203,7 @@ export default defineComponent({
 				});
 		},
 		onCopySecretToClipboard() {
-			this.copyToClipboard(this.secret);
+			void this.clipboard.copy(this.secret);
 			this.showToast({
 				title: this.$locale.baseText('mfa.setup.step1.toast.copyToClipboard.title'),
 				message: this.$locale.baseText('mfa.setup.step1.toast.copyToClipboard.message'),
@@ -265,13 +272,16 @@ export default defineComponent({
 			}
 		},
 	},
-	async mounted() {
-		await this.getMfaQR();
-	},
 });
 </script>
 
 <style module lang="scss">
+.container {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+}
+
 .container > * {
 	overflow: visible;
 	margin-bottom: var(--spacing-s);
@@ -301,10 +311,9 @@ export default defineComponent({
 	text-align: center;
 }
 .recoveryCodesContainer {
-	height: 140px;
 	display: flex;
 	flex-direction: column;
-	background-color: var(--color-background-base);
+	background-color: var(--color-mfa-recovery-code-background);
 	text-align: center;
 	flex-wrap: nowrap;
 	justify-content: space-between;
@@ -314,14 +323,14 @@ export default defineComponent({
 	padding-bottom: var(--spacing-xs);
 	gap: var(--spacing-xs);
 	margin-bottom: var(--spacing-2xs);
-	overflow-y: scroll;
+	overflow-y: auto;
 }
 
 .recoveryCodesContainer span {
 	font-size: var(--font-size-s);
 	font-weight: var(--font-weight-regular);
 	line-height: var(--spacing-m);
-	color: #7d7d87;
+	color: var(--color-mfa-recovery-code-color);
 }
 
 .form:first-child span {
@@ -339,7 +348,7 @@ export default defineComponent({
 }
 
 .loseAccessText {
-	color: var(--color-danger);
+	color: var(--color-mfa-lose-access-text-color);
 }
 
 .error input {
@@ -359,9 +368,5 @@ export default defineComponent({
 
 .notice {
 	margin: 0;
-}
-
-.modalContent {
-	overflow: hidden;
 }
 </style>

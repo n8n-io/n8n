@@ -6,7 +6,12 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import type { PgpDatabase, QueriesRunner, QueryWithValues } from '../../helpers/interfaces';
+import type {
+	PgpDatabase,
+	PostgresNodeOptions,
+	QueriesRunner,
+	QueryWithValues,
+} from '../../helpers/interfaces';
 
 import { replaceEmptyStringsByNulls } from '../../helpers/utils';
 
@@ -26,7 +31,6 @@ const properties: INodeProperties[] = [
 			"The SQL query to execute. You can use n8n expressions and $1, $2, $3, etc to refer to the 'Query Parameters' set in options below.",
 		typeOptions: {
 			editor: 'sqlEditor',
-			rows: 5,
 			sqlDialect: 'PostgreSQL',
 		},
 		hint: 'Consider using query parameters to prevent SQL injection attacks. Add them in the options below',
@@ -47,7 +51,7 @@ export async function execute(
 	this: IExecuteFunctions,
 	runQueries: QueriesRunner,
 	items: INodeExecutionData[],
-	nodeOptions: IDataObject,
+	nodeOptions: PostgresNodeOptions,
 	_db?: PgpDatabase,
 ): Promise<INodeExecutionData[]> {
 	items = replaceEmptyStringsByNulls(items, nodeOptions.replaceEmptyStrings as boolean);
@@ -108,5 +112,5 @@ export async function execute(
 		queries.push({ query, values });
 	}
 
-	return runQueries(queries, items, nodeOptions);
+	return await runQueries(queries, items, nodeOptions);
 }

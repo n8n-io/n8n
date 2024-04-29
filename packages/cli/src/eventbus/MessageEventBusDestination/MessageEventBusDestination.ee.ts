@@ -1,6 +1,5 @@
 import { v4 as uuid } from 'uuid';
 import { Container } from 'typedi';
-import type { DeleteResult, InsertResult } from 'typeorm';
 import type { INodeCredentials, MessageEventBusDestinationOptions } from 'n8n-workflow';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import { Logger } from '@/Logger';
@@ -92,7 +91,7 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 			id: this.getId(),
 			destination: this.serialize(),
 		};
-		const dbResult: InsertResult = await Container.get(EventDestinationsRepository).upsert(data, {
+		const dbResult = await Container.get(EventDestinationsRepository).upsert(data, {
 			skipUpdateIfNoValuesChanged: true,
 			conflictPaths: ['id'],
 		});
@@ -100,10 +99,10 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 	}
 
 	async deleteFromDb() {
-		return MessageEventBusDestination.deleteFromDb(this.getId());
+		return await MessageEventBusDestination.deleteFromDb(this.getId());
 	}
 
-	static async deleteFromDb(id: string): Promise<DeleteResult> {
+	static async deleteFromDb(id: string) {
 		const dbResult = await Container.get(EventDestinationsRepository).delete({ id });
 		return dbResult;
 	}

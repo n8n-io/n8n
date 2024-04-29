@@ -19,6 +19,7 @@ const sortedProviders = computed(() => {
 });
 
 onMounted(() => {
+	if (!externalSecretsStore.isEnterpriseExternalSecretsEnabled) return;
 	try {
 		void externalSecretsStore.fetchAllSecrets();
 		void externalSecretsStore.getProviders();
@@ -55,7 +56,7 @@ function goToUpgrade() {
 			v-else
 			class="mt-2xl mb-l"
 			data-test-id="external-secrets-content-unlicensed"
-			:buttonText="i18n.baseText('settings.externalSecrets.actionBox.buttonText')"
+			:button-text="i18n.baseText('settings.externalSecrets.actionBox.buttonText')"
 			@click="goToUpgrade"
 		>
 			<template #heading>

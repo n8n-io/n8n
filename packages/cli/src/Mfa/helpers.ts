@@ -8,7 +8,7 @@ export const isMfaFeatureEnabled = () => config.get(MFA_FEATURE_ENABLED);
 const isMfaFeatureDisabled = () => !isMfaFeatureEnabled();
 
 const getUsersWithMfaEnabled = async () =>
-	Container.get(UserRepository).count({ where: { mfaEnabled: true } });
+	await Container.get(UserRepository).count({ where: { mfaEnabled: true } });
 
 export const handleMfaDisable = async () => {
 	if (isMfaFeatureDisabled()) {

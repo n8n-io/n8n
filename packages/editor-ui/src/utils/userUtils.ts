@@ -59,6 +59,7 @@ import {
 	BAMBOO_HR_NODE_TYPE,
 	GOOGLE_SHEETS_NODE_TYPE,
 	CODE_NODE_TYPE,
+	ROLE,
 } from '@/constants';
 import type {
 	IPersonalizationSurveyAnswersV1,
@@ -68,7 +69,6 @@ import type {
 	IPersonalizationSurveyVersions,
 	IUser,
 	ILogInStatus,
-	IRole,
 } from '@/Interface';
 
 /*
@@ -84,18 +84,12 @@ function isPersonalizationSurveyV2OrLater(
 	return 'version' in data;
 }
 
-export type Roles = { [R in IRole as Capitalize<R>]: R };
-export const ROLE: Roles = {
-	Owner: 'owner',
-	Member: 'member',
-	Admin: 'admin',
-	Default: 'default', // default user with no email when setting up instance
-};
-
 export const LOGIN_STATUS: { LoggedIn: ILogInStatus; LoggedOut: ILogInStatus } = {
 	LoggedIn: 'LoggedIn', // Can be owner or member or default user
 	LoggedOut: 'LoggedOut', // Can only be logged out if UM has been setup
 };
+
+export const isUserGlobalOwner = (user: IUser): boolean => user.role === ROLE.Owner;
 
 export function getPersonalizedNodeTypes(
 	answers:

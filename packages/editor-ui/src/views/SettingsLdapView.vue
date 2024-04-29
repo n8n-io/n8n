@@ -6,12 +6,12 @@
 			</n8n-heading>
 		</div>
 
-		<n8n-info-tip type="note" theme="info" tooltipPlacement="right" class="mb-l">
+		<n8n-info-tip type="note" theme="info" tooltip-placement="right" class="mb-l">
 			{{ $locale.baseText('settings.ldap.note') }}
 		</n8n-info-tip>
 		<n8n-action-box
 			:description="$locale.baseText('settings.ldap.disabled.description')"
-			:buttonText="$locale.baseText('settings.ldap.disabled.buttonText')"
+			:button-text="$locale.baseText('settings.ldap.disabled.buttonText')"
 			@click:button="goToUpgrade"
 		>
 			<template #heading>
@@ -36,9 +36,9 @@
 					v-if="formInputs"
 					ref="ldapConfigForm"
 					:inputs="formInputs"
-					:eventBus="formBus"
-					:columnView="true"
-					verticalSpacing="l"
+					:event-bus="formBus"
+					:column-view="true"
+					vertical-spacing="l"
 					@update="onInput"
 					@ready="onReadyToSubmit"
 					@submit="onSubmit"
@@ -71,52 +71,49 @@
 				$locale.baseText('settings.ldap.section.synchronization.title')
 			}}</n8n-heading>
 			<div :class="$style.syncTable">
-				<el-table
+				<ElTable
+					:key="tableKey"
 					v-loading="loadingTable"
 					:border="true"
 					:stripe="true"
 					:data="dataTable"
 					:cell-style="cellClassStyle"
 					style="width: 100%"
-					height="250"
-					:key="tableKey"
+					max-height="250"
 				>
-					<el-table-column
+					<ElTableColumn
 						prop="status"
 						:label="$locale.baseText('settings.ldap.synchronizationTable.column.status')"
 					>
-					</el-table-column>
-					<el-table-column
+					</ElTableColumn>
+					<ElTableColumn
 						prop="endedAt"
 						:label="$locale.baseText('settings.ldap.synchronizationTable.column.endedAt')"
 					>
-					</el-table-column>
-					<el-table-column
+					</ElTableColumn>
+					<ElTableColumn
 						prop="runMode"
 						:label="$locale.baseText('settings.ldap.synchronizationTable.column.runMode')"
 					>
-					</el-table-column>
-					<el-table-column
+					</ElTableColumn>
+					<ElTableColumn
 						prop="runTime"
 						:label="$locale.baseText('settings.ldap.synchronizationTable.column.runTime')"
 					>
-					</el-table-column>
-					<el-table-column
+					</ElTableColumn>
+					<ElTableColumn
 						prop="details"
 						:label="$locale.baseText('settings.ldap.synchronizationTable.column.details')"
 					>
-					</el-table-column>
+					</ElTableColumn>
 					<template #empty>{{
 						$locale.baseText('settings.ldap.synchronizationTable.empty.message')
 					}}</template>
 					<template #append>
-						<infinite-loading
-							@infinite="getLdapSynchronizations"
-							force-use-infinite-wrapper=".el-table__body-wrapper"
-						>
-						</infinite-loading>
+						<InfiniteLoading target=".el-table__body-wrapper" @infinite="getLdapSynchronizations">
+						</InfiniteLoading>
 					</template>
-				</el-table>
+				</ElTable>
 			</div>
 			<div class="pb-3xl">
 				<n8n-button

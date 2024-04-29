@@ -26,7 +26,7 @@ async function createVariable(key: string, value: string) {
 }
 
 async function getVariableByKey(key: string) {
-	return Container.get(VariablesRepository).findOne({
+	return await Container.get(VariablesRepository).findOne({
 		where: {
 			key,
 		},
@@ -34,7 +34,7 @@ async function getVariableByKey(key: string) {
 }
 
 async function getVariableById(id: string) {
-	return Container.get(VariablesRepository).findOne({
+	return await Container.get(VariablesRepository).findOne({
 		where: {
 			id,
 		},

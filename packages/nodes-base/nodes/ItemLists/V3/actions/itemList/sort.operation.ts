@@ -96,7 +96,7 @@ const properties: INodeProperties[] = [
 		type: 'string',
 		typeOptions: {
 			alwaysOpenEditWindow: true,
-			editor: 'code',
+			editor: 'jsEditor',
 			rows: 10,
 		},
 		default: `// The two items to compare are in the variables a and b

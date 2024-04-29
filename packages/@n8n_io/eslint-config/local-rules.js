@@ -396,6 +396,32 @@ module.exports = {
 			};
 		},
 	},
+
+	'no-dynamic-import-template': {
+		meta: {
+			type: 'error',
+			docs: {
+				description:
+					'Disallow non-relative imports in template string argument to `await import()`, because `tsc-alias` as of 1.8.7 is unable to resolve aliased paths in this scenario.',
+				recommended: true,
+			},
+		},
+		create: function (context) {
+			return {
+				'AwaitExpression > ImportExpression TemplateLiteral'(node) {
+					const templateValue = node.quasis[0].value.cooked;
+
+					if (!templateValue?.startsWith('@/')) return;
+
+					context.report({
+						node,
+						message:
+							'Use relative imports in template string argument to `await import()`, because `tsc-alias` as of 1.8.7 is unable to resolve aliased paths in this scenario.',
+					});
+				},
+			};
+		},
+	},
 };
 
 const isJsonParseCall = (node) =>

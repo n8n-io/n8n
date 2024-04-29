@@ -1,4 +1,4 @@
-import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { type IExecuteFunctions, type IDataObject, type INodeExecutionData } from 'n8n-workflow';
 import { GoogleSheet } from '../helpers/GoogleSheet';
 import { getSpreadsheetId } from '../helpers/GoogleSheets.utils';
 import type { GoogleSheets, ResourceLocator } from '../helpers/GoogleSheets.types';
@@ -29,17 +29,25 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			const googleSheet = new GoogleSheet(spreadsheetId, this);
 
 			let sheetId = '';
+			let sheetName = '';
+
 			if (operation !== 'create') {
-				sheetId = this.getNodeParameter('sheetName', 0, undefined, {
+				const sheetWithinDocument = this.getNodeParameter('sheetName', 0, undefined, {
 					extractValue: true,
 				}) as string;
+				const { mode: sheetMode } = this.getNodeParameter('sheetName', 0) as {
+					mode: ResourceLocator;
+				};
+
+				const result = await googleSheet.spreadsheetGetSheet(
+					this.getNode(),
+					sheetMode,
+					sheetWithinDocument,
+				);
+				sheetId = result.sheetId.toString();
+				sheetName = result.title;
 			}
 
-			if (sheetId === 'gid=0') {
-				sheetId = '0';
-			}
-
-			let sheetName = '';
 			switch (operation) {
 				case 'create':
 					sheetName = spreadsheetId;
@@ -50,8 +58,6 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				case 'remove':
 					sheetName = `${spreadsheetId}||${sheetId}`;
 					break;
-				default:
-					sheetName = await googleSheet.spreadsheetGetSheetNameById(this.getNode(), sheetId);
 			}
 
 			results = await sheet[googleSheets.operation].execute.call(
@@ -66,20 +72,11 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 		if (results?.length) {
 			operationResult = operationResult.concat(results);
 		}
-	} catch (err) {
+	} catch (error) {
 		if (this.continueOnFail()) {
-			operationResult.push({ json: this.getInputData(0)[0].json, error: err });
+			operationResult.push({ json: this.getInputData(0)[0].json, error });
 		} else {
-			if (
-				err.message &&
-				(err.message.toLowerCase().includes('bad request') ||
-					err.message.toLowerCase().includes('uknown error')) &&
-				err.description
-			) {
-				err.message = err.description;
-				err.description = undefined;
-			}
-			throw err;
+			throw error;
 		}
 	}
 

@@ -12,18 +12,16 @@ import type {
 } from 'n8n-workflow';
 import { InstanceSettings } from 'n8n-core';
 
+import config from '@/config';
 import { LICENSE_FEATURES } from '@/constants';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { CredentialTypes } from '@/CredentialTypes';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { License } from '@/License';
-import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
-import * as WebhookHelpers from '@/WebhookHelpers';
-import config from '@/config';
 import { getCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
 import { getLdapLoginLabel } from '@/Ldap/helpers';
 import { getSamlLoginLabel } from '@/sso/saml/samlHelpers';
-import { getVariablesLimit } from '@/environments/variables/enviromentHelpers';
+import { getVariablesLimit } from '@/environments/variables/environmentHelpers';
 import {
 	getWorkflowHistoryLicensePruneTime,
 	getWorkflowHistoryPruneTime,
@@ -31,6 +29,8 @@ import {
 import { UserManagementMailer } from '@/UserManagement/email';
 import type { CommunityPackagesService } from '@/services/communityPackages.service';
 import { Logger } from '@/Logger';
+import { UrlService } from './url.service';
+import { InternalHooks } from '@/InternalHooks';
 
 @Service()
 export class FrontendService {
@@ -46,8 +46,10 @@ export class FrontendService {
 		private readonly license: License,
 		private readonly mailer: UserManagementMailer,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly urlService: UrlService,
+		private readonly internalHooks: InternalHooks,
 	) {
-		loadNodesAndCredentials.addPostProcessor(async () => this.generateTypes());
+		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		void this.generateTypes();
 
 		this.initSettings();
@@ -61,7 +63,7 @@ export class FrontendService {
 	}
 
 	private initSettings() {
-		const instanceBaseUrl = getInstanceBaseUrl();
+		const instanceBaseUrl = this.urlService.getInstanceBaseUrl();
 		const restEndpoint = config.getEnv('endpoints.rest');
 
 		const telemetrySettings: ITelemetrySettings = {
@@ -81,6 +83,7 @@ export class FrontendService {
 		}
 
 		this.settings = {
+			previewMode: process.env.N8N_PREVIEW_MODE === 'true',
 			endpointForm: config.getEnv('endpoints.form'),
 			endpointFormTest: config.getEnv('endpoints.formTest'),
 			endpointFormWaiting: config.getEnv('endpoints.formWaiting'),
@@ -93,9 +96,13 @@ export class FrontendService {
 			maxExecutionTimeout: config.getEnv('executions.maxTimeout'),
 			workflowCallerPolicyDefaultOption: config.getEnv('workflows.callerPolicyDefaultOption'),
 			timezone: config.getEnv('generic.timezone'),
-			urlBaseWebhook: WebhookHelpers.getWebhookBaseUrl(),
+			urlBaseWebhook: this.urlService.getWebhookBaseUrl(),
 			urlBaseEditor: instanceBaseUrl,
+			binaryDataMode: config.getEnv('binaryDataManager.mode'),
 			versionCli: '',
+			authCookie: {
+				secure: config.getEnv('secure_cookie'),
+			},
 			releaseChannel: config.getEnv('generic.releaseChannel'),
 			oauthCallbackUrls: {
 				oauth1: `${instanceBaseUrl}/${restEndpoint}/oauth1-credential/callback`,
@@ -113,9 +120,7 @@ export class FrontendService {
 				apiHost: config.getEnv('diagnostics.config.posthog.apiHost'),
 				apiKey: config.getEnv('diagnostics.config.posthog.apiKey'),
 				autocapture: false,
-				disableSessionRecording: config.getEnv(
-					'diagnostics.config.posthog.disableSessionRecording',
-				),
+				disableSessionRecording: config.getEnv('deployment.type') !== 'cloud',
 				debug: config.getEnv('logs.level') === 'debug',
 			},
 			personalizationSurveyEnabled:
@@ -199,6 +204,8 @@ export class FrontendService {
 			},
 			ai: {
 				enabled: config.getEnv('ai.enabled'),
+				provider: config.getEnv('ai.provider'),
+				errorDebugging: !!config.getEnv('ai.openAIApiKey'),
 			},
 			workflowHistory: {
 				pruneTime: -1,
@@ -218,12 +225,14 @@ export class FrontendService {
 		this.writeStaticJSON('credentials', credentials);
 	}
 
-	getSettings(): IN8nUISettings {
+	getSettings(pushRef?: string): IN8nUISettings {
+		void this.internalHooks.onFrontendSettingsAPI(pushRef);
+
 		const restEndpoint = config.getEnv('endpoints.rest');
 
 		// Update all urls, in case `WEBHOOK_URL` was updated by `--tunnel`
-		const instanceBaseUrl = getInstanceBaseUrl();
-		this.settings.urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
+		const instanceBaseUrl = this.urlService.getInstanceBaseUrl();
+		this.settings.urlBaseWebhook = this.urlService.getWebhookBaseUrl();
 		this.settings.urlBaseEditor = instanceBaseUrl;
 		this.settings.oauthCallbackUrls = {
 			oauth1: `${instanceBaseUrl}/${restEndpoint}/oauth1-credential/callback`,
@@ -304,6 +313,8 @@ export class FrontendService {
 		this.settings.mfa.enabled = config.get('mfa.enabled');
 
 		this.settings.executionMode = config.getEnv('executions.mode');
+
+		this.settings.binaryDataMode = config.getEnv('binaryDataManager.mode');
 
 		return this.settings;
 	}

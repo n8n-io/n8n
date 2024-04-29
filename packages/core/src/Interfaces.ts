@@ -5,11 +5,7 @@ import type {
 	ValidationResult,
 } from 'n8n-workflow';
 
-export interface IProcessMessage {
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	data?: any;
-	type: string;
-}
+export type Class<T = object, A extends unknown[] = unknown[]> = new (...args: A) => T;
 
 export interface IResponseError extends Error {
 	statusCode?: number;

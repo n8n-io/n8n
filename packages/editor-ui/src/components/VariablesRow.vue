@@ -4,14 +4,14 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import type { EnvironmentVariable, Rule, RuleGroup } from '@/Interface';
 import { useI18n } from '@/composables/useI18n';
 import { useToast } from '@/composables/useToast';
-import { useCopyToClipboard } from '@/composables/useCopyToClipboard';
+import { useClipboard } from '@/composables/useClipboard';
 import { EnterpriseEditionFeature } from '@/constants';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { getVariablesPermissions } from '@/permissions';
 
 const i18n = useI18n();
-const copyToClipboard = useCopyToClipboard();
+const clipboard = useClipboard();
 const { showMessage } = useToast();
 const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
@@ -120,7 +120,7 @@ function onValidate(key: string, value: boolean) {
 }
 
 function onUsageClick() {
-	copyToClipboard(usage.value);
+	void clipboard.copy(usage.value);
 	showMessage({
 		title: i18n.baseText('variables.row.usage.copiedToClipboard'),
 		type: 'success',
@@ -139,15 +139,15 @@ function focusFirstInput() {
 				<span v-if="!editing">{{ data.key }}</span>
 				<n8n-form-input
 					v-else
+					ref="keyInputRef"
+					v-model="modelValue.key"
 					label
 					name="key"
 					data-test-id="variable-row-key-input"
 					:placeholder="i18n.baseText('variables.editing.key.placeholder')"
 					required
-					validateOnBlur
-					:validationRules="keyValidationRules"
-					v-model="modelValue.key"
-					ref="keyInputRef"
+					validate-on-blur
+					:validation-rules="keyValidationRules"
 					@validate="(value) => onValidate('key', value)"
 				/>
 			</div>
@@ -157,14 +157,14 @@ function focusFirstInput() {
 				<span v-if="!editing">{{ data.value }}</span>
 				<n8n-form-input
 					v-else
+					ref="valueInputRef"
+					v-model="modelValue.value"
 					label
 					name="value"
 					data-test-id="variable-row-value-input"
 					:placeholder="i18n.baseText('variables.editing.value.placeholder')"
-					validateOnBlur
-					:validationRules="valueValidationRules"
-					v-model="modelValue.value"
-					ref="valueInputRef"
+					validate-on-blur
+					:validation-rules="valueValidationRules"
 					@validate="(value) => onValidate('value', value)"
 				/>
 			</div>

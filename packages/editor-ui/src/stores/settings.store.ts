@@ -9,7 +9,12 @@ import {
 import { getPromptsData, getSettings, submitContactInfo, submitValueSurvey } from '@/api/settings';
 import { testHealthEndpoint } from '@/api/templates';
 import type { EnterpriseEditionFeature } from '@/constants';
-import { CONTACT_PROMPT_MODAL_KEY, STORES, VALUE_SURVEY_MODAL_KEY } from '@/constants';
+import {
+	CONTACT_PROMPT_MODAL_KEY,
+	STORES,
+	VALUE_SURVEY_MODAL_KEY,
+	INSECURE_CONNECTION_WARNING,
+} from '@/constants';
 import type {
 	ILdapConfig,
 	IN8nPromptResponse,
@@ -84,6 +89,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		},
 		isSwaggerUIEnabled(): boolean {
 			return this.api.swaggerUi.enabled;
+		},
+		isPreviewMode(): boolean {
+			return this.settings.previewMode;
 		},
 		publicApiLatestVersion(): number {
 			return this.api.latestVersion;
@@ -245,6 +253,15 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 				useRootStore().setVersionCli(settings.versionCli);
 			}
 
+			if (
+				settings.authCookie.secure &&
+				location.protocol === 'http:' &&
+				!['localhost', '127.0.0.1'].includes(location.hostname)
+			) {
+				document.write(INSECURE_CONNECTION_WARNING);
+				return;
+			}
+
 			const isV1BannerDismissedPermanently = (settings.banners?.dismissed || []).includes('V1');
 			if (!isV1BannerDismissedPermanently && useRootStore().versionCli.startsWith('1.')) {
 				useUIStore().pushBannerToStack('V1');
@@ -277,6 +294,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			rootStore.setN8nMetadata(settings.n8nMetadata || {});
 			rootStore.setDefaultLocale(settings.defaultLocale);
 			rootStore.setIsNpmAvailable(settings.isNpmAvailable);
+			rootStore.setBinaryDataMode(settings.binaryDataMode);
 
 			useVersionsStore().setVersionNotificationSettings(settings.versionNotifications);
 		},
@@ -363,23 +381,23 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		},
 		async getLdapConfig() {
 			const rootStore = useRootStore();
-			return getLdapConfig(rootStore.getRestApiContext);
+			return await getLdapConfig(rootStore.getRestApiContext);
 		},
 		async getLdapSynchronizations(pagination: { page: number }) {
 			const rootStore = useRootStore();
-			return getLdapSynchronizations(rootStore.getRestApiContext, pagination);
+			return await getLdapSynchronizations(rootStore.getRestApiContext, pagination);
 		},
 		async testLdapConnection() {
 			const rootStore = useRootStore();
-			return testLdapConnection(rootStore.getRestApiContext);
+			return await testLdapConnection(rootStore.getRestApiContext);
 		},
 		async updateLdapConfig(ldapConfig: ILdapConfig) {
 			const rootStore = useRootStore();
-			return updateLdapConfig(rootStore.getRestApiContext, ldapConfig);
+			return await updateLdapConfig(rootStore.getRestApiContext, ldapConfig);
 		},
 		async runLdapSync(data: IDataObject) {
 			const rootStore = useRootStore();
-			return runLdapSync(rootStore.getRestApiContext, data);
+			return await runLdapSync(rootStore.getRestApiContext, data);
 		},
 		setSaveDataErrorExecution(newValue: string) {
 			this.saveDataErrorExecution = newValue;
@@ -392,7 +410,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		},
 		async getTimezones(): Promise<IDataObject> {
 			const rootStore = useRootStore();
-			return makeRestApiRequest(rootStore.getRestApiContext, 'GET', '/options/timezones');
+			return await makeRestApiRequest(rootStore.getRestApiContext, 'GET', '/options/timezones');
 		},
 	},
 });

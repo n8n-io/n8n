@@ -61,13 +61,13 @@ function onOpenCollection({ id }: { event: Event; id: number }) {
 			</n8n-text>
 		</div>
 		<div :class="$style.content">
-			<templates-info-carousel
+			<TemplatesInfoCarousel
 				:collections="sectionTemplates"
 				:loading="false"
-				:showItemCount="false"
-				:showNavigation="false"
-				cardsWidth="24%"
-				@openCollection="onOpenCollection"
+				:show-item-count="false"
+				:show-navigation="false"
+				cards-width="24%"
+				@open-collection="onOpenCollection"
 			/>
 		</div>
 	</div>

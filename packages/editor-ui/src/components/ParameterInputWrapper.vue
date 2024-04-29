@@ -1,43 +1,44 @@
 <template>
 	<div :class="$style.parameterInput" data-test-id="parameter-input">
-		<parameter-input
+		<ParameterInput
 			ref="param"
-			:inputSize="inputSize"
+			:input-size="inputSize"
 			:parameter="parameter"
-			:modelValue="modelValue"
+			:model-value="modelValue"
 			:path="path"
-			:isReadOnly="isReadOnly"
+			:is-read-only="isReadOnly"
+			:is-assignment="isAssignment"
 			:droppable="droppable"
-			:activeDrop="activeDrop"
-			:forceShowExpression="forceShowExpression"
-			:hideIssues="hideIssues"
-			:documentationUrl="documentationUrl"
-			:errorHighlight="errorHighlight"
-			:isForCredential="isForCredential"
-			:eventSource="eventSource"
-			:expressionEvaluated="expressionValueComputed"
-			:additionalExpressionData="resolvedAdditionalExpressionData"
+			:active-drop="activeDrop"
+			:force-show-expression="forceShowExpression"
+			:hide-issues="hideIssues"
+			:documentation-url="documentationUrl"
+			:error-highlight="errorHighlight"
+			:is-for-credential="isForCredential"
+			:event-source="eventSource"
+			:expression-evaluated="evaluatedExpressionValue"
+			:additional-expression-data="resolvedAdditionalExpressionData"
 			:label="label"
-			:isSingleLine="isSingleLine"
+			:rows="rows"
 			:data-test-id="`parameter-input-${parsedParameterName}`"
 			:event-bus="eventBus"
 			@focus="onFocus"
 			@blur="onBlur"
 			@drop="onDrop"
-			@textInput="onTextInput"
+			@text-input="onTextInput"
 			@update="onValueChanged"
 		/>
 		<div v-if="!hideHint && (expressionOutput || parameterHint)" :class="$style.hint">
 			<div>
-				<input-hint
+				<InputHint
 					v-if="expressionOutput"
 					:class="{ [$style.hint]: true, 'ph-no-capture': isForCredential }"
 					:data-test-id="`parameter-expression-preview-${parsedParameterName}`"
 					:highlight="!!(expressionOutput && targetItem) && isInputParentOfActiveNode"
 					:hint="expressionOutput"
-					:singleLine="true"
+					:single-line="true"
 				/>
-				<input-hint v-else-if="parameterHint" :renderHTML="true" :hint="parameterHint" />
+				<InputHint v-else-if="parameterHint" :render-h-t-m-l="true" :hint="parameterHint" />
 			</div>
 			<slot v-if="$slots.options" name="options" />
 		</div>
@@ -45,34 +46,35 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
-import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
 
+import type { INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
 import ParameterInput from '@/components/ParameterInput.vue';
 import InputHint from '@/components/ParameterInputHint.vue';
+import { useEnvironmentsStore } from '@/stores/environments.ee.store';
+import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { isValueExpression, parseResourceMapperFieldName } from '@/utils/nodeTypesUtils';
 import type {
 	IDataObject,
 	INodeProperties,
 	INodePropertyMode,
 	IParameterLabel,
-	NodeParameterValue,
 	NodeParameterValueType,
+	Result,
 } from 'n8n-workflow';
 import { isResourceLocatorValue } from 'n8n-workflow';
-import type { INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { isValueExpression, parseResourceMapperFieldName } from '@/utils/nodeTypesUtils';
-import { useNDVStore } from '@/stores/ndv.store';
-import { useEnvironmentsStore } from '@/stores/environments.ee.store';
-import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 
 import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
+import { useRouter } from 'vue-router';
+import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { stringifyExpressionResult } from '@/utils/expressions';
 
 export default defineComponent({
-	name: 'parameter-input-wrapper',
-	mixins: [workflowHelpers],
+	name: 'ParameterInputWrapper',
 	components: {
 		ParameterInput,
 		InputHint,
@@ -85,7 +87,11 @@ export default defineComponent({
 		isReadOnly: {
 			type: Boolean,
 		},
-		isSingleLine: {
+		rows: {
+			type: Number,
+			default: 5,
+		},
+		isAssignment: {
 			type: Boolean,
 		},
 		parameter: {
@@ -143,6 +149,14 @@ export default defineComponent({
 			default: () => createEventBus(),
 		},
 	},
+	setup() {
+		const router = useRouter();
+		const workflowHelpers = useWorkflowHelpers({ router });
+
+		return {
+			workflowHelpers,
+		};
+	},
 	computed: {
 		...mapStores(useNDVStore, useExternalSecretsStore, useEnvironmentsStore),
 		isValueExpression() {
@@ -183,15 +197,15 @@ export default defineComponent({
 		isInputParentOfActiveNode(): boolean {
 			return this.ndvStore.isInputParentOfActiveNode;
 		},
-		expressionValueComputed(): string | null {
+		evaluatedExpression(): Result<unknown, Error> {
 			const value = isResourceLocatorValue(this.modelValue)
 				? this.modelValue.value
 				: this.modelValue;
+
 			if (!this.activeNode || !this.isValueExpression || typeof value !== 'string') {
-				return null;
+				return { ok: false, error: new Error() };
 			}
 
-			let computedValue: NodeParameterValue;
 			try {
 				let opts;
 				if (this.ndvStore.isInputParentOfActiveNode) {
@@ -204,24 +218,21 @@ export default defineComponent({
 					};
 				}
 
-				computedValue = this.resolveExpression(value, undefined, opts);
-
-				if (computedValue === null) {
-					return null;
-				}
-
-				if (typeof computedValue === 'string' && computedValue.length === 0) {
-					return this.$locale.baseText('parameterInput.emptyString');
-				}
+				return { ok: true, result: this.workflowHelpers.resolveExpression(value, undefined, opts) };
 			} catch (error) {
-				computedValue = `[${this.$locale.baseText('parameterInput.error')}: ${error.message}]`;
+				return { ok: false, error };
 			}
-
-			return typeof computedValue === 'string' ? computedValue : JSON.stringify(computedValue);
+		},
+		evaluatedExpressionValue(): unknown {
+			const evaluated = this.evaluatedExpression;
+			return evaluated.ok ? evaluated.result : null;
+		},
+		evaluatedExpressionString(): string | null {
+			return stringifyExpressionResult(this.evaluatedExpression);
 		},
 		expressionOutput(): string | null {
-			if (this.isValueExpression && this.expressionValueComputed) {
-				return this.expressionValueComputed;
+			if (this.isValueExpression && this.evaluatedExpressionString) {
+				return this.evaluatedExpressionString;
 			}
 
 			return null;

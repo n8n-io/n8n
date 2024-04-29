@@ -1,6 +1,12 @@
 import 'cypress-real-events';
 import { WorkflowPage } from '../pages';
-import { BACKEND_BASE_URL, INSTANCE_MEMBERS, INSTANCE_OWNER, N8N_AUTH_COOKIE } from '../constants';
+import {
+	BACKEND_BASE_URL,
+	INSTANCE_ADMIN,
+	INSTANCE_MEMBERS,
+	INSTANCE_OWNER,
+	N8N_AUTH_COOKIE,
+} from '../constants';
 
 Cypress.Commands.add('getByTestId', (selector, ...args) => {
 	return cy.get(`[data-test-id="${selector}"]`, ...args);
@@ -51,8 +57,16 @@ Cypress.Commands.add('signin', ({ email, password }) => {
 	);
 });
 
+Cypress.Commands.add('signinAsOwner', () => {
+	cy.signin({ email: INSTANCE_OWNER.email, password: INSTANCE_OWNER.password });
+});
+
 Cypress.Commands.add('signout', () => {
-	cy.request('POST', `${BACKEND_BASE_URL}/rest/logout`);
+	cy.request({
+		method: 'POST',
+		url: `${BACKEND_BASE_URL}/rest/logout`,
+		headers: { 'browser-id': localStorage.getItem('n8n-browserId') }
+	});
 	cy.getCookie(N8N_AUTH_COOKIE).should('not.exist');
 });
 
@@ -160,6 +174,7 @@ Cypress.Commands.add('draganddrop', (draggableSelector, droppableSelector) => {
 				cy.get(draggableSelector).trigger('mousedown');
 			}
 			// We don't chain these commands to make sure cy.get is re-trying correctly
+			cy.get(droppableSelector).realMouseMove(0, 0);
 			cy.get(droppableSelector).realMouseMove(pageX, pageY);
 			cy.get(droppableSelector).realHover();
 			cy.get(droppableSelector).realMouseUp();
@@ -180,5 +195,13 @@ Cypress.Commands.add('shouldNotHaveConsoleErrors', () => {
 	cy.window().then((win) => {
 		const spy = cy.spy(win.console, 'error');
 		cy.wrap(spy).should('not.have.been.called');
+	});
+});
+
+Cypress.Commands.add('resetDatabase', () => {
+	cy.request('POST', `${BACKEND_BASE_URL}/rest/e2e/reset`, {
+		owner: INSTANCE_OWNER,
+		members: INSTANCE_MEMBERS,
+		admin: INSTANCE_ADMIN,
 	});
 });

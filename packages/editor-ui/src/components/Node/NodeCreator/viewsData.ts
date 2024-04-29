@@ -28,6 +28,8 @@ import {
 	AI_CATEGORY_EMBEDDING,
 	AI_OTHERS_NODE_CREATOR_VIEW,
 	AI_UNCATEGORIZED_CATEGORY,
+	CONVERT_TO_FILE_NODE_TYPE,
+	EXTRACT_FROM_FILE_NODE_TYPE,
 	SET_NODE_TYPE,
 	CODE_NODE_TYPE,
 	DATETIME_NODE_TYPE,
@@ -48,12 +50,15 @@ import {
 	HELPERS_SUBCATEGORY,
 	RSS_READ_NODE_TYPE,
 	EMAIL_SEND_NODE_TYPE,
+	EDIT_IMAGE_NODE_TYPE,
+	COMPRESSION_NODE_TYPE,
 } from '@/constants';
 import { useI18n } from '@/composables/useI18n';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type { SimplifiedNodeType } from '@/Interface';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
+import { useTemplatesStore } from '@/stores/templates.store';
 
 export interface NodeViewItemSection {
 	key: string;
@@ -92,7 +97,9 @@ interface NodeView {
 
 function getAiNodesBySubcategory(nodes: INodeTypeDescription[], subcategory: string) {
 	return nodes
-		.filter((node) => node.codex?.subcategories?.[AI_SUBCATEGORY]?.includes(subcategory))
+		.filter(
+			(node) => !node.hidden && node.codex?.subcategories?.[AI_SUBCATEGORY]?.includes(subcategory),
+		)
 		.map((node) => ({
 			key: node.name,
 			type: 'node',
@@ -104,6 +111,13 @@ function getAiNodesBySubcategory(nodes: INodeTypeDescription[], subcategory: str
 				description: node.description,
 				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 				icon: node.icon!,
+				iconData: node.name.toLowerCase().includes('openai')
+					? {
+							type: 'file',
+							icon: 'openai',
+							fileBuffer: '/static/open-ai.svg',
+						}
+					: undefined,
 			},
 		}))
 		.sort((a, b) => a.properties.displayName.localeCompare(b.properties.displayName));
@@ -112,6 +126,7 @@ function getAiNodesBySubcategory(nodes: INodeTypeDescription[], subcategory: str
 export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 	const i18n = useI18n();
 	const nodeTypesStore = useNodeTypesStore();
+	const templatesStore = useTemplatesStore();
 
 	const chainNodes = getAiNodesBySubcategory(nodeTypesStore.allLatestNodeTypes, AI_CATEGORY_CHAINS);
 	const agentNodes = getAiNodesBySubcategory(nodeTypesStore.allLatestNodeTypes, AI_CATEGORY_AGENTS);
@@ -120,7 +135,9 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 		value: AI_NODE_CREATOR_VIEW,
 		title: i18n.baseText('nodeCreator.aiPanel.aiNodes'),
 		subtitle: i18n.baseText('nodeCreator.aiPanel.selectAiNode'),
-		info: i18n.baseText('nodeCreator.aiPanel.infoBox'),
+		info: i18n.baseText('nodeCreator.aiPanel.infoBox', {
+			interpolate: { link: templatesStore.getWebsiteCategoryURL('ai') },
+		}),
 		items: [
 			...chainNodes,
 			...agentNodes,
@@ -394,7 +411,16 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 						{
 							key: 'convert',
 							title: i18n.baseText('nodeCreator.sectionNames.transform.convert'),
-							items: [HTML_NODE_TYPE, MARKDOWN_NODE_TYPE, XML_NODE_TYPE, CRYPTO_NODE_TYPE],
+							items: [
+								HTML_NODE_TYPE,
+								MARKDOWN_NODE_TYPE,
+								XML_NODE_TYPE,
+								CRYPTO_NODE_TYPE,
+								EXTRACT_FROM_FILE_NODE_TYPE,
+								CONVERT_TO_FILE_NODE_TYPE,
+								COMPRESSION_NODE_TYPE,
+								EDIT_IMAGE_NODE_TYPE,
+							],
 						},
 					],
 				},
@@ -422,6 +448,13 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 				properties: {
 					title: FILES_SUBCATEGORY,
 					icon: 'file-alt',
+					sections: [
+						{
+							key: 'popular',
+							title: i18n.baseText('nodeCreator.sectionNames.popular'),
+							items: [CONVERT_TO_FILE_NODE_TYPE, EXTRACT_FROM_FILE_NODE_TYPE],
+						},
+					],
 				},
 			},
 			{

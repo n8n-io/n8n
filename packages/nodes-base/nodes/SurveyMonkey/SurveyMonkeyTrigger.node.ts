@@ -491,7 +491,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 			return {};
 		}
 
-		return new Promise((resolve, _reject) => {
+		return await new Promise((resolve, _reject) => {
 			const data: Buffer[] = [];
 
 			req.on('data', (chunk) => {

@@ -20,10 +20,11 @@ describe('ExecutionRepository', () => {
 	describe('createNewExecution', () => {
 		it('should save execution data', async () => {
 			const executionRepo = Container.get(ExecutionRepository);
-			const workflow = await createWorkflow();
+			const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
 			const executionId = await executionRepo.createNewExecution({
 				workflowId: workflow.id,
 				data: {
+					//@ts-expect-error This is not needed for tests
 					resultData: {},
 				},
 				workflowData: workflow,
@@ -47,6 +48,7 @@ describe('ExecutionRepository', () => {
 				connections: workflow.connections,
 				nodes: workflow.nodes,
 				name: workflow.name,
+				settings: workflow.settings,
 			});
 			expect(executionData?.data).toEqual('[{"resultData":"1"},{}]');
 		});

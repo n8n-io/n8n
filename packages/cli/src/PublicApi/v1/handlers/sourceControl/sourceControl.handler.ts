@@ -14,7 +14,7 @@ import { InternalHooks } from '@/InternalHooks';
 
 export = {
 	pull: [
-		authorize(['owner', 'admin']),
+		authorize(['global:owner', 'global:admin']),
 		async (
 			req: PublicSourceControlRequest.Pull,
 			res: express.Response,

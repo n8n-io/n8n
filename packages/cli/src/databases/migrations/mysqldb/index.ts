@@ -51,6 +51,10 @@ import { ExecutionSoftDelete1693491613982 } from '../common/1693491613982-Execut
 import { AddWorkflowMetadata1695128658538 } from '../common/1695128658538-AddWorkflowMetadata';
 import { ModifyWorkflowHistoryNodesAndConnections1695829275184 } from '../common/1695829275184-ModifyWorkflowHistoryNodesAndConnections';
 import { AddGlobalAdminRole1700571993961 } from '../common/1700571993961-AddGlobalAdminRole';
+import { DropRoleMapping1705429061930 } from '../common/1705429061930-DropRoleMapping';
+import { RemoveFailedExecutionStatus1711018413374 } from '../common/1711018413374-RemoveFailedExecutionStatus';
+import { MoveSshKeysToDatabase1711390882123 } from '../common/1711390882123-MoveSshKeysToDatabase';
+import { RemoveNodesAccess1712044305787 } from '../common/1712044305787-RemoveNodesAccess';
 
 export const mysqlMigrations: Migration[] = [
 	InitialMigration1588157391238,
@@ -105,4 +109,8 @@ export const mysqlMigrations: Migration[] = [
 	AddWorkflowMetadata1695128658538,
 	ModifyWorkflowHistoryNodesAndConnections1695829275184,
 	AddGlobalAdminRole1700571993961,
+	DropRoleMapping1705429061930,
+	RemoveFailedExecutionStatus1711018413374,
+	MoveSshKeysToDatabase1711390882123,
+	RemoveNodesAccess1712044305787,
 ];

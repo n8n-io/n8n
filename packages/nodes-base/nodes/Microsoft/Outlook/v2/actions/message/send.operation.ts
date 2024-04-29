@@ -1,5 +1,4 @@
 import type {
-	IBinaryKeyData,
 	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -226,8 +225,9 @@ export async function execute(this: IExecuteFunctions, index: number, items: INo
 	if (additionalFields.attachments) {
 		const attachments = (additionalFields.attachments as IDataObject).attachments as IDataObject[];
 
-		// // Handle attachments
-		message.attachments = attachments.map((attachment) => {
+		const messageAttachments: IDataObject[] = [];
+
+		for (const attachment of attachments) {
 			const binaryPropertyName = attachment.binaryPropertyName as string;
 
 			if (items[index].binary === undefined) {
@@ -247,13 +247,26 @@ export async function execute(this: IExecuteFunctions, index: number, items: INo
 				);
 			}
 
-			const binaryData = (items[index].binary as IBinaryKeyData)[binaryPropertyName];
-			return {
+			const binaryData = this.helpers.assertBinaryData(index, binaryPropertyName);
+
+			let fileBase64;
+			if (binaryData.id) {
+				const chunkSize = 256 * 1024;
+				const stream = await this.helpers.getBinaryStream(binaryData.id, chunkSize);
+				const buffer = await this.helpers.binaryToBuffer(stream);
+				fileBase64 = buffer.toString('base64');
+			} else {
+				fileBase64 = binaryData.data;
+			}
+
+			messageAttachments.push({
 				'@odata.type': '#microsoft.graph.fileAttachment',
 				name: binaryData.fileName,
-				contentBytes: binaryData.data,
-			};
-		});
+				contentBytes: fileBase64,
+			});
+		}
+
+		message.attachments = messageAttachments;
 	}
 
 	const body: IDataObject = {

@@ -1,9 +1,5 @@
 import WorkflowLMChatModal from '@/components/WorkflowLMChat.vue';
-import {
-	AGENT_NODE_TYPE,
-	MANUAL_CHAT_TRIGGER_NODE_TYPE,
-	WORKFLOW_LM_CHAT_MODAL_KEY,
-} from '@/constants';
+import { AGENT_NODE_TYPE, CHAT_TRIGGER_NODE_TYPE, WORKFLOW_LM_CHAT_MODAL_KEY } from '@/constants';
 import { createComponentRenderer } from '@/__tests__/render';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { uuid } from '@jsplumb/util';
@@ -32,7 +28,7 @@ async function createPiniaWithAINodes(options = { withConnections: true, withAge
 		name: 'Test Workflow',
 		connections: withConnections
 			? {
-					'On new manual Chat Message': {
+					'Chat Trigger': {
 						main: [
 							[
 								{
@@ -43,13 +39,13 @@ async function createPiniaWithAINodes(options = { withConnections: true, withAge
 							],
 						],
 					},
-			  }
+				}
 			: {},
 		active: true,
 		nodes: [
 			createTestNode({
-				name: 'On new manual Chat Message',
-				type: MANUAL_CHAT_TRIGGER_NODE_TYPE,
+				name: 'Chat Trigger',
+				type: CHAT_TRIGGER_NODE_TYPE,
 			}),
 			...(withAgentNode
 				? [
@@ -57,7 +53,7 @@ async function createPiniaWithAINodes(options = { withConnections: true, withAge
 							name: 'Agent',
 							type: AGENT_NODE_TYPE,
 						}),
-				  ]
+					]
 				: []),
 		],
 	});
@@ -71,7 +67,7 @@ async function createPiniaWithAINodes(options = { withConnections: true, withAge
 
 	nodeTypesStore.setNodeTypes(
 		mockNodeTypesToArray({
-			[MANUAL_CHAT_TRIGGER_NODE_TYPE]: testingNodeTypes[MANUAL_CHAT_TRIGGER_NODE_TYPE],
+			[CHAT_TRIGGER_NODE_TYPE]: testingNodeTypes[CHAT_TRIGGER_NODE_TYPE],
 			[AGENT_NODE_TYPE]: testingNodeTypes[AGENT_NODE_TYPE],
 		}),
 	);
@@ -109,7 +105,7 @@ describe('WorkflowLMChatModal', () => {
 
 		await waitFor(() =>
 			expect(document.querySelectorAll('.el-notification')[0]).toHaveTextContent(
-				'Missing AI node Chat only works when an AI agent or chain is connected to the chat trigger node',
+				'Missing AI node Chat only works when an AI agent or chain(except summarization chain) is connected to the chat trigger node',
 			),
 		);
 	});
@@ -124,7 +120,7 @@ describe('WorkflowLMChatModal', () => {
 
 		await waitFor(() =>
 			expect(document.querySelectorAll('.el-notification')[1]).toHaveTextContent(
-				'Missing AI node Chat only works when an AI agent or chain is connected to the chat trigger node',
+				'Missing AI node Chat only works when an AI agent or chain(except summarization chain) is connected to the chat trigger node',
 			),
 		);
 	});
@@ -143,7 +139,10 @@ describe('WorkflowLMChatModal', () => {
 
 	it('should send and display chat message', async () => {
 		const wrapper = renderComponent({
-			pinia: await createPiniaWithAINodes(),
+			pinia: await createPiniaWithAINodes({
+				withConnections: true,
+				withAgentNode: true,
+			}),
 		});
 
 		await waitFor(() =>

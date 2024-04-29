@@ -1,5 +1,5 @@
-import type { Document } from 'langchain/document';
-import type { Embeddings } from 'langchain/embeddings/base';
+import type { Document } from '@langchain/core/documents';
+import type { Embeddings } from '@langchain/core/embeddings';
 import { MemoryVectorStore } from 'langchain/vectorstores/memory';
 
 export class MemoryVectorStoreManager {

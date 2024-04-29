@@ -34,11 +34,11 @@ export class ObjectStoreManager implements BinaryData.Manager {
 	}
 
 	async getAsBuffer(fileId: string) {
-		return this.objectStoreService.get(fileId, { mode: 'buffer' });
+		return await this.objectStoreService.get(fileId, { mode: 'buffer' });
 	}
 
 	async getAsStream(fileId: string) {
-		return this.objectStoreService.get(fileId, { mode: 'stream' });
+		return await this.objectStoreService.get(fileId, { mode: 'stream' });
 	}
 
 	async getMetadata(fileId: string): Promise<BinaryData.Metadata> {
@@ -102,6 +102,6 @@ export class ObjectStoreManager implements BinaryData.Manager {
 	}
 
 	private async toBuffer(bufferOrStream: Buffer | Readable) {
-		return toBuffer(bufferOrStream);
+		return await toBuffer(bufferOrStream);
 	}
 }

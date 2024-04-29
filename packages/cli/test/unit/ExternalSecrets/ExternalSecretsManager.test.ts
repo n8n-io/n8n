@@ -67,7 +67,7 @@ describe('External Secrets Manager', () => {
 		mockProvidersInstance.setProviders({
 			dummy: ErrorProvider,
 		});
-		expect(async () => manager!.init()).not.toThrow();
+		expect(async () => await manager!.init()).not.toThrow();
 	});
 
 	test('should not throw errors during shutdown', async () => {

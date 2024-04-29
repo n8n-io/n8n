@@ -1,18 +1,18 @@
-import type { OptionsWithUri } from 'request';
-
 import { ApplicationError } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IExecuteFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	IPollFunctions,
+	IRequestOptions,
 } from 'n8n-workflow';
 
 import get from 'lodash/get';
 
 export async function venafiApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
-	method: string,
+	method: IHttpRequestMethods,
 	resource: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
@@ -21,7 +21,7 @@ export async function venafiApiRequest(
 ): Promise<any> {
 	const credentials = (await this.getCredentials('venafiTlsProtectDatacenterApi')) as IDataObject;
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
@@ -63,7 +63,7 @@ export async function venafiApiRequest(
 export async function venafiApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
-	method: string,
+	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	query: IDataObject = {},

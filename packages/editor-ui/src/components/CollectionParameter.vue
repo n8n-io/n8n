@@ -1,19 +1,19 @@
 <template>
-	<div @keydown.stop class="collection-parameter">
+	<div class="collection-parameter" @keydown.stop>
 		<div class="collection-parameter-wrapper">
 			<div v-if="getProperties.length === 0" class="no-items-exist">
 				<n8n-text size="small">{{ $locale.baseText('collectionParameter.noProperties') }}</n8n-text>
 			</div>
 
 			<Suspense>
-				<parameter-input-list
+				<ParameterInputList
 					:parameters="getProperties"
-					:nodeValues="nodeValues"
+					:node-values="nodeValues"
 					:path="path"
-					:hideDelete="hideDelete"
+					:hide-delete="hideDelete"
 					:indent="true"
-					:isReadOnly="isReadOnly"
-					@valueChanged="valueChanged"
+					:is-read-only="isReadOnly"
+					@value-changed="valueChanged"
 				/>
 			</Suspense>
 
@@ -22,16 +22,16 @@
 					v-if="(parameter.options ?? []).length === 1"
 					type="tertiary"
 					block
-					@click="optionSelected((parameter.options ?? [])[0].name)"
 					:label="getPlaceholderText"
+					@click="optionSelected((parameter.options ?? [])[0].name)"
 				/>
 				<div v-else class="add-option">
 					<n8n-select
 						v-model="selectedOption"
 						:placeholder="getPlaceholderText"
 						size="small"
-						@update:modelValue="optionSelected"
 						filterable
+						@update:model-value="optionSelected"
 					>
 						<n8n-option
 							v-for="item in parameterOptions"
@@ -49,7 +49,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, defineAsyncComponent } from 'vue';
+import { ref, computed } from 'vue';
 import type { IUpdateInformation } from '@/Interface';
 
 import type {
@@ -65,7 +65,6 @@ import { get } from 'lodash-es';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeHelpers } from '@/composables/useNodeHelpers';
 import { useI18n } from '@/composables/useI18n';
-const ParameterInputList = defineAsyncComponent(async () => import('./ParameterInputList.vue'));
 
 const selectedOption = ref<string | undefined>(undefined);
 export interface Props {
@@ -177,11 +176,11 @@ function optionSelected(optionName: string) {
 			// The "fixedCollection" entries are different as they save values
 			// in an object and then underneath there is an array. So initialize
 			// them differently.
-			const retrievedObjectValue = get(props.nodeValues, `${props.path}.${optionName}`, {});
+			const retrievedObjectValue = get(props.nodeValues, [props.path, optionName], {});
 			newValue = retrievedObjectValue;
 		} else {
 			// Everything else saves them directly as an array.
-			const retrievedArrayValue = get(props.nodeValues, `${props.path}.${optionName}`, []) as Array<
+			const retrievedArrayValue = get(props.nodeValues, [props.path, optionName], []) as Array<
 				typeof option.default
 			>;
 			if (Array.isArray(retrievedArrayValue)) {

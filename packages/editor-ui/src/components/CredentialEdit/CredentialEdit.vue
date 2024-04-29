@@ -1,10 +1,10 @@
 <template>
 	<Modal
 		:name="modalName"
-		:customClass="$style.credentialModal"
-		:eventBus="modalBus"
+		:custom-class="$style.credentialModal"
+		:event-bus="modalBus"
 		:loading="loading"
-		:beforeClose="beforeClose"
+		:before-close="beforeClose"
 		width="70%"
 		height="80%"
 	>
@@ -12,15 +12,15 @@
 			<div :class="$style.header">
 				<div :class="$style.credInfo">
 					<div :class="$style.credIcon">
-						<CredentialIcon :credentialTypeName="defaultCredentialTypeName" />
+						<CredentialIcon :credential-type-name="defaultCredentialTypeName" />
 					</div>
 					<InlineNameEdit
-						:modelValue="credentialName"
+						:model-value="credentialName"
 						:subtitle="credentialType ? credentialType.displayName : ''"
 						:readonly="!credentialPermissions.update || !credentialType"
 						type="Credential"
-						@update:modelValue="onNameEdit"
 						data-test-id="credential-name"
+						@update:model-value="onNameEdit"
 					/>
 				</div>
 				<div :class="$style.credActions">
@@ -31,20 +31,20 @@
 						type="tertiary"
 						:disabled="isSaving"
 						:loading="isDeleting"
-						@click="deleteCredential"
 						data-test-id="credential-delete-button"
+						@click="deleteCredential"
 					/>
 					<SaveButton
 						v-if="(hasUnsavedChanges || credentialId) && credentialPermissions.save"
 						:saved="!hasUnsavedChanges && !isTesting"
-						:isSaving="isSaving || isTesting"
-						:savingLabel="
+						:is-saving="isSaving || isTesting"
+						:saving-label="
 							isTesting
 								? $locale.baseText('credentialEdit.credentialEdit.testing')
 								: $locale.baseText('credentialEdit.credentialEdit.saving')
 						"
-						@click="saveCredential"
 						data-test-id="credential-save-button"
+						@click="saveCredential"
 					/>
 				</div>
 			</div>
@@ -56,56 +56,54 @@
 					<n8n-menu
 						mode="tabs"
 						:items="sidebarItems"
-						:transparentBackground="true"
+						:transparent-background="true"
 						@select="onTabSelect"
 					></n8n-menu>
 				</div>
-				<div v-if="activeTab === 'connection'" :class="$style.mainContent" ref="content">
+				<div v-if="activeTab === 'connection'" ref="content" :class="$style.mainContent">
 					<CredentialConfig
-						:credentialType="credentialType"
-						:credentialProperties="credentialProperties"
-						:credentialData="credentialData"
-						:credentialId="credentialId"
-						:showValidationWarning="showValidationWarning"
-						:authError="authError"
-						:testedSuccessfully="testedSuccessfully"
-						:isOAuthType="isOAuthType"
-						:isOAuthConnected="isOAuthConnected"
-						:isRetesting="isRetesting"
-						:parentTypes="parentTypes"
-						:requiredPropertiesFilled="requiredPropertiesFilled"
-						:credentialPermissions="credentialPermissions"
+						:credential-type="credentialType"
+						:credential-properties="credentialProperties"
+						:credential-data="credentialData"
+						:credential-id="credentialId"
+						:show-validation-warning="showValidationWarning"
+						:auth-error="authError"
+						:tested-successfully="testedSuccessfully"
+						:is-o-auth-type="isOAuthType"
+						:is-o-auth-connected="isOAuthConnected"
+						:is-retesting="isRetesting"
+						:parent-types="parentTypes"
+						:required-properties-filled="requiredPropertiesFilled"
+						:credential-permissions="credentialPermissions"
+						:all-o-auth2-base-properties-overridden="allOAuth2BasePropertiesOverridden"
 						:mode="mode"
-						:selectedCredential="selectedCredential"
-						:showAuthTypeSelector="requiredCredentials"
+						:selected-credential="selectedCredential"
+						:show-auth-type-selector="requiredCredentials"
 						@update="onDataChange"
 						@oauth="oAuthCredentialAuthorize"
 						@retest="retestCredential"
-						@scrollToTop="scrollToTop"
-						@authTypeChanged="onAuthTypeChanged"
+						@scroll-to-top="scrollToTop"
+						@auth-type-changed="onAuthTypeChanged"
 					/>
 				</div>
 				<div v-else-if="activeTab === 'sharing' && credentialType" :class="$style.mainContent">
 					<CredentialSharing
 						:credential="currentCredential"
-						:credentialData="credentialData"
-						:credentialId="credentialId"
-						:credentialPermissions="credentialPermissions"
-						:modalBus="modalBus"
-						@update:modelValue="onChangeSharedWith"
+						:credential-data="credentialData"
+						:credential-id="credentialId"
+						:credential-permissions="credentialPermissions"
+						:modal-bus="modalBus"
+						@update:model-value="onChangeSharedWith"
 					/>
 				</div>
 				<div v-else-if="activeTab === 'details' && credentialType" :class="$style.mainContent">
 					<CredentialInfo
-						:nodeAccess="nodeAccess"
-						:nodesWithAccess="nodesWithAccess"
-						:currentCredential="currentCredential"
-						:credentialPermissions="credentialPermissions"
-						@accessChange="onNodeAccessChange"
+						:current-credential="currentCredential"
+						:credential-permissions="credentialPermissions"
 					/>
 				</div>
 				<div v-else-if="activeTab.startsWith('coming-soon')" :class="$style.mainContent">
-					<FeatureComingSoon :featureId="activeTab.split('/')[1]"></FeatureComingSoon>
+					<FeatureComingSoon :feature-id="activeTab.split('/')[1]"></FeatureComingSoon>
 				</div>
 			</div>
 		</template>
@@ -121,7 +119,6 @@ import type { ICredentialsResponse, IUser } from '@/Interface';
 import type {
 	CredentialInformation,
 	ICredentialDataDecryptedObject,
-	ICredentialNodeAccess,
 	ICredentialsDecrypted,
 	ICredentialType,
 	INode,
@@ -167,10 +164,6 @@ import { isValidCredentialResponse, isCredentialModalState } from '@/utils/typeG
 import { isExpression, isTestableExpression } from '@/utils/expressions';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 
-interface NodeAccessMap {
-	[nodeType: string]: ICredentialNodeAccess | null;
-}
-
 export default defineComponent({
 	name: 'CredentialEdit',
 	components: {
@@ -214,7 +207,6 @@ export default defineComponent({
 			credentialName: '',
 			credentialData: {} as ICredentialDataDecryptedObject,
 			modalBus: createEventBus(),
-			nodeAccess: {} as NodeAccessMap,
 			isDeleting: false,
 			isSaving: false,
 			isTesting: false,
@@ -234,8 +226,6 @@ export default defineComponent({
 		this.requiredCredentials =
 			isCredentialModalState(this.uiStore.modals[CREDENTIAL_EDIT_MODAL_KEY]) &&
 			this.uiStore.modals[CREDENTIAL_EDIT_MODAL_KEY].showAuthSelector === true;
-
-		this.setupNodeAccess();
 
 		if (this.mode === 'new' && this.credentialTypeName) {
 			this.credentialName = await this.credentialsStore.getNewCredentialName({
@@ -430,6 +420,15 @@ export default defineComponent({
 					this.parentTypes.includes('oAuth1Api'))
 			);
 		},
+		allOAuth2BasePropertiesOverridden() {
+			if (this.credentialType?.__overwrittenProperties) {
+				return (
+					this.credentialType.__overwrittenProperties.includes('clientId') &&
+					this.credentialType.__overwrittenProperties.includes('clientSecret')
+				);
+			}
+			return false;
+		},
 		isOAuthConnected(): boolean {
 			return this.isOAuthType && !!this.credentialData.oauthTokenData;
 		},
@@ -438,7 +437,7 @@ export default defineComponent({
 				return [];
 			}
 
-			return this.credentialType.properties.filter((propertyData: INodeProperties) => {
+			const properties = this.credentialType.properties.filter((propertyData: INodeProperties) => {
 				if (!this.displayCredentialParameter(propertyData)) {
 					return false;
 				}
@@ -447,6 +446,17 @@ export default defineComponent({
 					!this.credentialType!.__overwrittenProperties.includes(propertyData.name)
 				);
 			});
+
+			/**
+			 * If after all credentials overrides are applied only "notice"
+			 * properties are left, do not return them. This will avoid
+			 * showing notices that refer to a property that was overridden.
+			 */
+			if (properties.every((p) => p.type === 'notice')) {
+				return [];
+			}
+
+			return properties;
 		},
 		requiredPropertiesFilled(): boolean {
 			for (const property of this.credentialProperties) {
@@ -642,10 +652,6 @@ export default defineComponent({
 				}
 
 				this.credentialName = currentCredentials.name;
-				currentCredentials.nodesAccess.forEach((access: { nodeType: string }) => {
-					// keep node access structure to keep dates when updating
-					this.nodeAccess[access.nodeType] = access;
-				});
 			} catch (error) {
 				this.showError(
 					error,
@@ -670,23 +676,6 @@ export default defineComponent({
 				credential_id: this.credentialId,
 				sharing_enabled: EnterpriseEditionFeature.Sharing,
 			});
-		},
-		onNodeAccessChange({ name, value }: { name: string; value: boolean }) {
-			this.hasUnsavedChanges = true;
-
-			if (value) {
-				this.nodeAccess = {
-					...this.nodeAccess,
-					[name]: {
-						nodeType: name,
-					},
-				};
-			} else {
-				this.nodeAccess = {
-					...this.nodeAccess,
-					[name]: null,
-				};
-			}
 		},
 		onChangeSharedWith(sharees: IDataObject[]) {
 			this.credentialData = {
@@ -762,17 +751,12 @@ export default defineComponent({
 				return;
 			}
 
-			const nodesAccess = Object.values(this.nodeAccess).filter(
-				(access) => !!access,
-			) as ICredentialNodeAccess[];
-
 			const { ownedBy, sharedWith, ...credentialData } = this.credentialData;
 			const details: ICredentialsDecrypted = {
 				id: this.credentialId,
 				name: this.credentialName,
 				type: this.credentialTypeName!,
 				data: credentialData,
-				nodesAccess,
 			};
 
 			this.isRetesting = true;
@@ -802,9 +786,6 @@ export default defineComponent({
 			}
 
 			this.isSaving = true;
-			const nodesAccess = Object.values(this.nodeAccess).filter(
-				(access) => !!access,
-			) as ICredentialNodeAccess[];
 
 			// Save only the none default data
 			const data = NodeHelpers.getNodeParameters(
@@ -827,7 +808,6 @@ export default defineComponent({
 				name: this.credentialName,
 				type: this.credentialTypeName!,
 				data: data as unknown as ICredentialDataDecryptedObject,
-				nodesAccess,
 				sharedWith,
 				ownedBy,
 			};
@@ -1101,7 +1081,6 @@ export default defineComponent({
 			if (credentialsForType) {
 				this.selectedCredential = credentialsForType.name;
 				this.resetCredentialData();
-				this.setupNodeAccess();
 				// Update current node auth type so credentials dropdown can be displayed properly
 				updateNodeAuthType(this.ndvStore.activeNode, type);
 				// Also update credential name but only if the default name is still used
@@ -1112,20 +1091,6 @@ export default defineComponent({
 					this.credentialName = newDefaultName;
 				}
 			}
-		},
-		setupNodeAccess(): void {
-			this.nodeAccess = this.nodesWithAccess.reduce(
-				(accu: NodeAccessMap, node: { name: string }) => {
-					if (this.mode === 'new') {
-						accu[node.name] = { nodeType: node.name }; // enable all nodes by default
-					} else {
-						accu[node.name] = null;
-					}
-
-					return accu;
-				},
-				{},
-			);
 		},
 		resetCredentialData(): void {
 			if (!this.credentialType) {

@@ -1,6 +1,6 @@
 import type { INodeUi, XYPosition } from '@/Interface';
 
-import { useDeviceSupport } from 'n8n-design-system/composables/useDeviceSupport';
+import { useDeviceSupport } from 'n8n-design-system';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { getMousePosition, getRelativePosition } from '@/utils/nodeViewUtils';

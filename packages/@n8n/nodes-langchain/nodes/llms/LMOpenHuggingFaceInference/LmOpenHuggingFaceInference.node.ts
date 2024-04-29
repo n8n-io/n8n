@@ -7,7 +7,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { HuggingFaceInference } from 'langchain/llms/hf';
+import { HuggingFaceInference } from '@langchain/community/llms/hf';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 

@@ -5,6 +5,7 @@
 import { DateTime } from 'luxon';
 import { getGlobalState } from '@/GlobalState';
 import { evaluate, getLocalISOString } from './Helpers';
+import { dateExtensions } from '../../src/Extensions/DateExtensions';
 
 const { defaultTimezone } = getGlobalState();
 
@@ -106,6 +107,57 @@ describe('Data Transformation Functions', () => {
 			expect(() =>
 				evaluate("={{ $now.isBetween($now, '2023-06-23', '2023-09-21'.toDate()) }}"),
 			).toThrow();
+		});
+
+		describe('toDateTime', () => {
+			test('should return itself for DateTime', () => {
+				const result = evaluate(
+					"={{ DateTime.fromFormat('01-01-2024', 'dd-MM-yyyy').toDateTime() }}",
+				) as unknown as DateTime;
+				expect(result).toBeInstanceOf(DateTime);
+				expect(result.day).toEqual(1);
+				expect(result.month).toEqual(1);
+				expect(result.year).toEqual(2024);
+			});
+
+			test('should return a DateTime for JS Date', () => {
+				const result = evaluate(
+					'={{ new Date(2024, 0, 1, 12).toDateTime() }}',
+				) as unknown as DateTime;
+				expect(result).toBeInstanceOf(DateTime);
+				expect(result.day).toEqual(1);
+				expect(result.month).toEqual(1);
+				expect(result.year).toEqual(2024);
+			});
+		});
+
+		describe('toInt/toFloat', () => {
+			test('should return milliseconds for DateTime', () => {
+				expect(evaluate("={{ DateTime.fromISO('2024-01-01T00:00:00.000Z').toInt() }}")).toEqual(
+					1704067200000,
+				);
+			});
+
+			test('should return milliseconds for JS Date', () => {
+				expect(evaluate('={{ new Date("2024-01-01T00:00:00.000Z").toFloat() }}')).toEqual(
+					1704067200000,
+				);
+			});
+
+			test('should not have a doc (hidden from autocomplete)', () => {
+				expect(dateExtensions.functions.toInt.doc).toBeUndefined();
+				expect(dateExtensions.functions.toFloat.doc).toBeUndefined();
+			});
+		});
+
+		describe('toBoolean', () => {
+			test('should return undefined', () => {
+				expect(evaluate('={{ new Date("2024-01-01T00:00:00.000Z").toBoolean() }}')).toBeUndefined();
+			});
+
+			test('should not have a doc (hidden from autocomplete)', () => {
+				expect(dateExtensions.functions.toBoolean.doc).toBeUndefined();
+			});
 		});
 	});
 });
