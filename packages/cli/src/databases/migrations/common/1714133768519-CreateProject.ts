@@ -246,12 +246,11 @@ export class CreateProject1705928727784 implements ReversibleMigration {
 
 		if (nonPersonalProjects > 0) {
 			const message =
-				'Down migration only possible if there are only personal projects. Please delete all team projects.';
+				'Down migration only possible when there are no projects. Please delete all projects that were created via the UI first.';
 			logger.error(message);
 			throw new ApplicationError(message);
 		}
 
-		console.log('create temp table');
 
 		// 1. create temp table for shared workflows
 		await sb
@@ -279,7 +278,6 @@ export class CreateProject1705928727784 implements ReversibleMigration {
 				onDelete: 'CASCADE',
 			}).withTimestamps;
 
-		console.log('done creating table');
 
 		// 2. migrate data into temp table
 		await runQuery(`
@@ -289,7 +287,6 @@ export class CreateProject1705928727784 implements ReversibleMigration {
 			LEFT JOIN project_relation PR on SW.${c.projectId} = PR.${c.projectId} AND PR.role = 'project:personalOwner'
 		`);
 
-		console.log('done inserting');
 
 		// 3. drop shared workflow table
 		await sb.dropTable(table.sharedWorkflow);
