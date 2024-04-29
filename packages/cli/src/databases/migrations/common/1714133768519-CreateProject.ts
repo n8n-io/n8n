@@ -251,14 +251,11 @@ export class CreateProject1705928727784 implements ReversibleMigration {
 			throw new ApplicationError(message);
 		}
 
-
 		// 1. create temp table for shared workflows
 		await sb
 			.createTable(table.sharedWorkflowTemp)
 			.withColumns(
 				sb.column('workflowId').varchar(36).notNull.primary,
-				// sb.column('userId').varchar().notNull.primary,
-				// TODO: does this still work with sqlite?
 				sb.column('userId').uuid.notNull.primary,
 				sb.column('role').text.notNull,
 			)
@@ -278,7 +275,6 @@ export class CreateProject1705928727784 implements ReversibleMigration {
 				onDelete: 'CASCADE',
 			}).withTimestamps;
 
-
 		// 2. migrate data into temp table
 		await runQuery(`
 			INSERT INTO ${t.sharedWorkflowTemp} (${c.createdAt}, ${c.updatedAt}, ${c.workflowId}, role, ${c.userId})
@@ -286,7 +282,6 @@ export class CreateProject1705928727784 implements ReversibleMigration {
 			FROM ${t.sharedWorkflow} SW
 			LEFT JOIN project_relation PR on SW.${c.projectId} = PR.${c.projectId} AND PR.role = 'project:personalOwner'
 		`);
-
 
 		// 3. drop shared workflow table
 		await sb.dropTable(table.sharedWorkflow);
