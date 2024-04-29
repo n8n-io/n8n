@@ -473,5 +473,6 @@ export const quoteFields: INodeProperties[] = [
 				type: 'boolean',
 				default: false,
 			},
+		],
 	},
 ];
