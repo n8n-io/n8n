@@ -473,6 +473,30 @@ export const invoiceFields: INodeProperties[] = [
 				type: 'boolean',
 				default: 'false',
 			},
+			{
+				displayName: 'Client Status',
+				name: 'client_status',
+				type: 'options',
+				options: [
+					{
+						name: 'All',
+						value: 'all'
+					},
+					{
+						name: 'Paid',
+						value: 'paid'
+					},
+					{
+						name: 'Unpaid',
+						value: 'unpaid'
+					},
+					{
+						name: 'Overdue',
+						value: 'overdue'
+					},
+				],
+				default: 'all'
+			},
 		],
 	},
 ];
