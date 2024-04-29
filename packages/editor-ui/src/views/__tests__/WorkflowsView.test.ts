@@ -26,6 +26,7 @@ describe('WorkflowsView', () => {
 			mocks: {
 				$route: {
 					query: {},
+					params: {},
 				},
 				$router: {
 					replace: vi.fn(),
