@@ -480,22 +480,22 @@ export const invoiceFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'All',
-						value: 'all'
+						value: 'all',
 					},
 					{
 						name: 'Paid',
-						value: 'paid'
+						value: 'paid',
 					},
 					{
 						name: 'Unpaid',
-						value: 'unpaid'
+						value: 'unpaid',
 					},
 					{
 						name: 'Overdue',
-						value: 'overdue'
+						value: 'overdue',
 					},
 				],
-				default: 'all'
+				default: 'all',
 			},
 		],
 	},
