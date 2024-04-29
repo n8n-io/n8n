@@ -253,6 +253,12 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				error.description =
 					"Are you sure your table is in that region? You can specify the region using the 'Location' parameter from options.";
 			}
+
+			if (error.httpCode === '403' && error.message.includes('Drive')) {
+				error.description =
+					'If your table(s) pull from a document in Google Drive, make sure that document is shared with your user';
+			}
+
 			throw new NodeOperationError(this.getNode(), error as Error, {
 				itemIndex: i,
 				description: error.description,
