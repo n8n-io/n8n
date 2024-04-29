@@ -174,6 +174,177 @@ export class ToolHttpRequest implements INodeType {
 				},
 			},
 			{
+				displayName: 'Optimize Tool Response',
+				name: 'optimizeToolResponse',
+				type: 'boolean',
+				default: false,
+				noDataExpression: true,
+				description:
+					'Whether the optimize the tool response to reduce ammount of data passed to the LLM',
+			},
+			{
+				displayName: 'Expected Response Type',
+				name: 'responseType',
+				type: 'options',
+				displayOptions: {
+					show: {
+						optimizeToolResponse: [true],
+					},
+				},
+				options: [
+					{
+						name: 'Array of Objects (JSON)',
+						value: 'array',
+					},
+					{
+						name: 'Object (JSON)',
+						value: 'object',
+					},
+					{
+						name: 'HTML',
+						value: 'html',
+					},
+					{
+						name: 'Text',
+						value: 'text',
+					},
+				],
+				default: 'object',
+			},
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				default: true,
+				description: 'Whether to return all results or only up to a given limit',
+				displayOptions: {
+					show: {
+						optimizeToolResponse: [true],
+						responseType: ['array'],
+					},
+				},
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				default: 50,
+				description: 'Max number of results to return',
+				typeOptions: {
+					minValue: 1,
+				},
+				displayOptions: {
+					show: {
+						optimizeToolResponse: [true],
+						responseType: ['array'],
+						returnAll: [false],
+					},
+				},
+			},
+			{
+				displayName: 'Fields to Include',
+				name: 'include',
+				type: 'options',
+				description: 'What fields response onject should include, supports dot notation',
+				default: 'all',
+				displayOptions: {
+					show: {
+						optimizeToolResponse: [true],
+						responseType: ['array', 'object'],
+					},
+				},
+				options: [
+					{
+						name: 'All',
+						value: 'all',
+					},
+					{
+						name: 'Selected Fields',
+						value: 'selected',
+					},
+					{
+						name: 'All Fields Except',
+						value: 'except',
+					},
+				],
+			},
+			{
+				displayName: 'Fields',
+				name: 'fields',
+				type: 'string',
+				default: '',
+				placeholder: 'e.g. field1,field2',
+				description:
+					'Comma-separated list of the field names. You can drag the selected fields from the input panel.',
+				requiresDataPath: 'multiple',
+				displayOptions: {
+					show: {
+						optimizeToolResponse: [true],
+						responseType: ['array', 'object'],
+					},
+					hide: {
+						include: ['all'],
+					},
+				},
+			},
+			{
+				displayName: 'CSS Selector',
+				name: 'cssSelector',
+				type: 'string',
+				placeholder: 'e.g. body',
+				default: 'body',
+				displayOptions: {
+					show: {
+						optimizeToolResponse: [true],
+						responseType: ['html'],
+					},
+				},
+			},
+			{
+				displayName: 'Only Text Content',
+				name: 'onlyText',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to only return the text content of html elements',
+				displayOptions: {
+					show: {
+						optimizeToolResponse: [true],
+						responseType: ['html'],
+					},
+				},
+			},
+			{
+				displayName: 'Skip Selectors',
+				name: 'skipSelectors',
+				type: 'string',
+				displayOptions: {
+					show: {
+						optimizeToolResponse: [true],
+						responseType: ['html'],
+						onlyText: [true],
+					},
+				},
+				default: '',
+				placeholder: 'e.g. img, .className, #ItemId',
+				description: 'Comma-separated list of selectors to skip in the text extraction',
+			},
+			{
+				displayName: 'Max Length',
+				name: 'maxLength',
+				type: 'number',
+				default: 7000,
+				description: 'Max length of the returned text',
+				typeOptions: {
+					minValue: 1,
+				},
+				displayOptions: {
+					show: {
+						optimizeToolResponse: [true],
+						responseType: ['text'],
+					},
+				},
+			},
+			{
 				displayName: 'Options',
 				name: 'options',
 				placeholder: 'Add Option',
