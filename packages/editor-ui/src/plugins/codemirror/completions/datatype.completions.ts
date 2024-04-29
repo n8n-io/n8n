@@ -48,7 +48,6 @@ import {
 	isSplitInBatchesAbsent,
 	longestCommonPrefix,
 	prefixMatch,
-	setRank,
 	sortCompletionsAlpha,
 	splitBaseTail,
 	stripExcessParens,
@@ -76,12 +75,6 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 		options = objectGlobalOptions().map(stripExcessParens(context));
 	} else if (base === '$vars') {
 		options = variablesOptions();
-	} else if (base === '$execution') {
-		options = executionOptions();
-	} else if (base === '$execution.customData') {
-		options = customDataOptions();
-	} else if (base === '$response') {
-		options = responseOptions();
 	} else if (/\$secrets\./.test(base) && isCredential) {
 		options = secretOptions(base).map(stripExcessParens(context));
 	} else if (base === '$secrets' && isCredential) {
@@ -250,6 +243,20 @@ export const isInputData = (base: string): boolean => {
 	);
 };
 
+export const isItem = (input: AutocompleteInput<IDataObject>): boolean => {
+	const { base, resolved } = input;
+	return /^(\$\(.*\)|\$input)/.test(base) && 'pairedItem' in resolved;
+};
+
+export const isBinary = (input: AutocompleteInput<IDataObject>): boolean => {
+	const { base, resolved } = input;
+	return (
+		/^(\$\(.*\)\..*\.binary\..*|\$binary)/.test(base) &&
+		'mimeType' in resolved &&
+		'fileExtension' in resolved
+	);
+};
+
 export const getDetail = (base: string, value: unknown): string | undefined => {
 	const type = getType(value);
 	if (!isInputData(base) || type === 'function') return undefined;
@@ -306,29 +313,54 @@ const createCompletionOption = ({
 	return option;
 };
 
+const customObjectOptions = (input: AutocompleteInput<IDataObject>): Completion[] => {
+	const { base, resolved } = input;
+
+	if (!resolved) return [];
+
+	if (base === '$execution') {
+		return executionOptions();
+	} else if (base === '$execution.customData') {
+		return customDataOptions();
+	} else if (base === '$workflow') {
+		return workflowOptions();
+	} else if (base === '$input') {
+		return inputOptions(base);
+	} else if (base === '$prevNode') {
+		return prevNodeOptions();
+	} else if (/^\$\([^\(\)]+\)$/.test(base)) {
+		return nodeRefOptions(base);
+	} else if (base === '$response') {
+		return responseOptions();
+	} else if (isItem(input)) {
+		return itemOptions();
+	} else if (isBinary(input)) {
+		return binaryOptions();
+	}
+
+	return [];
+};
+
 const objectOptions = (input: AutocompleteInput<IDataObject>): Completion[] => {
 	const { base, resolved, transformLabel = (label) => label } = input;
-	const rank = setRank(['item', 'all', 'first', 'last']);
 	const SKIP = new Set(['__ob__', 'pairedItem']);
 
 	if (isSplitInBatchesAbsent()) SKIP.add('context');
 
-	const name = /^\$\(.*\)$/.test(base) ? '$()' : base;
-
-	if (['$input', '$()'].includes(name) && hasNoParams(base)) SKIP.add('params');
-
 	let rawKeys = Object.keys(resolved);
-
-	if (name === '$()') {
-		rawKeys = Reflect.ownKeys(resolved) as string[];
-	}
 
 	if (base === 'Math') {
 		const descriptors = Object.getOwnPropertyDescriptors(Math);
 		rawKeys = Object.keys(descriptors).sort((a, b) => a.localeCompare(b));
 	}
 
-	const localKeys = rank(rawKeys)
+	const customOptions = customObjectOptions(input);
+	if (customOptions.length > 0) {
+		// Only return completions that are present in the resolved data
+		return customOptions.filter((option) => option.label in resolved);
+	}
+
+	const localKeys = rawKeys
 		.filter((key) => !SKIP.has(key) && !isPseudoParam(key))
 		.map((key) => {
 			ensureKeyCanBeResolved(resolved, key);
@@ -336,18 +368,18 @@ const objectOptions = (input: AutocompleteInput<IDataObject>): Completion[] => {
 			const resolvedProp = resolved[key];
 
 			const isFunction = typeof resolvedProp === 'function';
-			const hasArgs = isFunction && resolvedProp.length > 0 && name !== '$()';
+			const hasArgs = isFunction && resolvedProp.length > 0;
 
 			const option: Completion = {
 				label: isFunction ? key + '()' : key,
-				section: getObjectPropertySection({ name, key, isFunction }),
+				section: isFunction ? METHODS_SECTION : FIELDS_SECTION,
 				apply: needsBracketAccess
 					? applyBracketAccessCompletion
 					: applyCompletion({
 							hasArgs,
 							transformLabel,
 						}),
-				detail: getDetail(name, resolvedProp),
+				detail: getDetail(base, resolvedProp),
 			};
 
 			const infoName = needsBracketAccess ? applyBracketAccess(key) : key;
@@ -370,6 +402,7 @@ const objectOptions = (input: AutocompleteInput<IDataObject>): Completion[] => {
 		/json('])$/.test(base) ||
 		base === '$execution' ||
 		base.endsWith('params') ||
+		base.endsWith('binary') ||
 		base === 'Math';
 
 	if (skipObjectExtensions) {
@@ -388,23 +421,6 @@ const objectOptions = (input: AutocompleteInput<IDataObject>): Completion[] => {
 		methodsSection: OTHER_METHODS_SECTION,
 		excludeRecommended: true,
 	});
-};
-
-const getObjectPropertySection = ({
-	name,
-	key,
-	isFunction,
-}: {
-	name: string;
-	key: string;
-	isFunction: boolean;
-}): CompletionSection => {
-	if (name === '$input' || name === '$()') {
-		if (key === 'item') return RECOMMENDED_SECTION;
-		return OTHER_SECTION;
-	}
-
-	return isFunction ? METHODS_SECTION : FIELDS_SECTION;
 };
 
 const applySections = ({
@@ -810,6 +826,258 @@ export const customDataOptions = () => {
 			],
 		},
 	].map((doc) => createCompletionOption({ name: doc.name, doc, isFunction: true }));
+};
+
+export const nodeRefOptions = (base: string) => {
+	const itemArgs = [
+		{
+			name: 'branchIndex',
+			optional: true,
+			description: i18n.baseText('codeNodeEditor.completer.selector.args.branchIndex'),
+			default: '0',
+			type: 'number',
+		},
+		{
+			name: 'runIndex',
+			optional: true,
+			description: i18n.baseText('codeNodeEditor.completer.selector.args.runIndex'),
+			default: '0',
+			type: 'number',
+		},
+	];
+
+	const options: Array<{ doc: DocMetadata; isFunction?: boolean }> = [
+		{
+			doc: {
+				name: 'item',
+				returnType: 'Item',
+				docURL: 'https://docs.n8n.io/data/data-mapping/data-item-linking/',
+				description: i18n.baseText('codeNodeEditor.completer.selector.item'),
+			},
+		},
+		{
+			doc: {
+				name: 'isExecuted',
+				returnType: 'boolean',
+				description: i18n.baseText('codeNodeEditor.completer.selector.isExecuted'),
+			},
+		},
+		{
+			doc: {
+				name: 'params',
+				returnType: 'NodeParams',
+				description: i18n.baseText('codeNodeEditor.completer.selector.params'),
+			},
+		},
+		{
+			doc: {
+				name: 'itemMatching',
+				returnType: 'Item',
+				args: [
+					{
+						name: 'currentItemIndex',
+						description: i18n.baseText(
+							'codeNodeEditor.completer.selector.itemMatching.args.currentItemIndex',
+						),
+						default: '0',
+						type: 'number',
+					},
+				],
+				docURL: 'https://docs.n8n.io/data/data-mapping/data-item-linking/',
+				description: i18n.baseText('codeNodeEditor.completer.selector.itemMatching'),
+			},
+			isFunction: true,
+		},
+		{
+			doc: {
+				name: 'first',
+				returnType: 'Item',
+				args: itemArgs,
+				description: i18n.baseText('codeNodeEditor.completer.selector.first'),
+			},
+			isFunction: true,
+		},
+		{
+			doc: {
+				name: 'last',
+				returnType: 'Item',
+				args: itemArgs,
+				description: i18n.baseText('codeNodeEditor.completer.selector.last'),
+			},
+			isFunction: true,
+		},
+		{
+			doc: {
+				name: 'all',
+				returnType: 'Item[]',
+				args: itemArgs,
+				description: i18n.baseText('codeNodeEditor.completer.selector.all'),
+			},
+			isFunction: true,
+		},
+	];
+
+	return applySections({
+		options: options
+			.filter((option) => !(option.doc.name === 'params' && hasNoParams(base)))
+			.map(({ doc, isFunction }) => createCompletionOption({ name: doc.name, doc, isFunction })),
+		sections: {},
+		recommended: ['item'],
+	});
+};
+
+export const inputOptions = (base: string) => {
+	const itemArgs = [
+		{
+			name: 'branchIndex',
+			optional: true,
+			description: i18n.baseText('codeNodeEditor.completer.selector.args.branchIndex'),
+			default: '0',
+			type: 'number',
+		},
+		{
+			name: 'runIndex',
+			optional: true,
+			description: i18n.baseText('codeNodeEditor.completer.selector.args.runIndex'),
+			default: '0',
+			type: 'number',
+		},
+	];
+
+	const options: Array<{ doc: DocMetadata; isFunction?: boolean }> = [
+		{
+			doc: {
+				name: 'item',
+				returnType: 'Item',
+				docURL: 'https://docs.n8n.io/data/data-mapping/data-item-linking/',
+				description: i18n.baseText('codeNodeEditor.completer.selector.item'),
+			},
+		},
+		{
+			doc: {
+				name: 'params',
+				returnType: 'NodeParams',
+				description: i18n.baseText('codeNodeEditor.completer.selector.params'),
+			},
+		},
+		{
+			doc: {
+				name: 'first',
+				returnType: 'Item',
+				args: itemArgs,
+				description: i18n.baseText('codeNodeEditor.completer.selector.first'),
+			},
+			isFunction: true,
+		},
+		{
+			doc: {
+				name: 'last',
+				returnType: 'Item',
+				args: itemArgs,
+				description: i18n.baseText('codeNodeEditor.completer.selector.last'),
+			},
+			isFunction: true,
+		},
+		{
+			doc: {
+				name: 'all',
+				returnType: 'Item[]',
+				args: itemArgs,
+				description: i18n.baseText('codeNodeEditor.completer.selector.all'),
+			},
+			isFunction: true,
+		},
+	];
+
+	return applySections({
+		options: options
+			.filter((option) => !(option.doc.name === 'params' && hasNoParams(base)))
+			.map(({ doc, isFunction }) => createCompletionOption({ name: doc.name, doc, isFunction })),
+		recommended: ['item'],
+		sections: {},
+	});
+};
+
+export const prevNodeOptions = () => {
+	return [
+		{
+			name: 'name',
+			returnType: 'string',
+			description: i18n.baseText('codeNodeEditor.completer.$prevNode.name'),
+		},
+		{
+			name: 'outputIndex',
+			returnType: 'number',
+			description: i18n.baseText('codeNodeEditor.completer.$prevNode.outputIndex'),
+		},
+		{
+			name: 'runIndex',
+			returnType: 'number',
+			description: i18n.baseText('codeNodeEditor.completer.$prevNode.runIndex'),
+		},
+	].map((doc) => createCompletionOption({ name: doc.name, doc }));
+};
+
+export const itemOptions = () => {
+	return [
+		{
+			name: 'json',
+			returnType: 'object',
+			docURL: 'https://docs.n8n.io/data/data-structure/',
+			description: i18n.baseText('codeNodeEditor.completer.item.json'),
+		},
+		{
+			name: 'binary',
+			returnType: 'object',
+			docURL: 'https://docs.n8n.io/data/data-structure/',
+			description: i18n.baseText('codeNodeEditor.completer.item.binary'),
+		},
+	].map((doc) => createCompletionOption({ name: doc.name, doc }));
+};
+
+export const binaryOptions = () => {
+	return [
+		{
+			name: 'fileName',
+			returnType: 'string',
+			description: i18n.baseText('codeNodeEditor.completer.binary.fileName'),
+		},
+		{
+			name: 'fileExtension',
+			returnType: 'string',
+			description: i18n.baseText('codeNodeEditor.completer.binary.fileExtension'),
+		},
+		{
+			name: 'fileSize',
+			returnType: 'string',
+			description: i18n.baseText('codeNodeEditor.completer.binary.fileSize'),
+		},
+		{
+			name: 'mimeType',
+			returnType: 'string',
+			description: i18n.baseText('codeNodeEditor.completer.binary.mimeType'),
+		},
+	].map((doc) => createCompletionOption({ name: doc.name, doc }));
+};
+
+export const workflowOptions = () => {
+	return [
+		{
+			name: 'id',
+			returnType: 'string',
+			description: i18n.baseText('codeNodeEditor.completer.$workflow.id'),
+		},
+		{
+			name: 'name',
+			returnType: 'string',
+			description: i18n.baseText('codeNodeEditor.completer.$workflow.name'),
+		},
+		{
+			name: 'active',
+			returnType: 'boolean',
+			description: i18n.baseText('codeNodeEditor.completer.$workflow.active'),
+		},
+	].map((doc) => createCompletionOption({ name: doc.name, doc }));
 };
 
 export const secretOptions = (base: string) => {
