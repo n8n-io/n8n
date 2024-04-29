@@ -5,13 +5,17 @@ import { n8nDir } from './n8nDir';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { seedInstanceOwner, seedWorkflows } from './seed';
 import { log } from '../log';
+import { postgresSetup, postgresTeardown } from './postgres';
+import * as Db from '@/Db';
 
 let main: Start;
 
 export async function setup() {
 	n8nDir();
 
-	main = new Start([], new Config({ root: __dirname })); // @TODO: Silence stdout
+	await postgresSetup();
+
+	main = new Start([], new Config({ root: __dirname }));
 
 	await main.init();
 	await main.run();
@@ -26,4 +30,7 @@ export async function setup() {
 
 export async function teardown() {
 	await main.stopProcess();
+
+	await Db.close();
+	await postgresTeardown();
 }

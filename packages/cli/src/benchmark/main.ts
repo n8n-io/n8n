@@ -20,7 +20,7 @@ async function main() {
 
 	log('Found suites', Object.keys(suites).join(' '));
 
-	await setup(); // 1. create a benchmark postgres DB
+	await setup();
 
 	const benchConfig = {
 		time: config.getEnv('benchmark.time'),
@@ -41,10 +41,6 @@ async function main() {
 
 	registerSuites(bench);
 
-	// 2. duplicate all suites
-	// - add a `[postgres]` prefix to each suite name
-	// - add a `beforeEachTask` hook to each new task, containing `config.set('database.type', 'postgresdb')`
-
 	// await bench.warmup(); // @TODO: Restore
 
 	log('Set config', toOneLineJson(benchConfig));
@@ -58,7 +54,9 @@ async function main() {
 	// console.table(bench.table());
 	// console.log(bench.results);
 
-	await teardown(); // 3. remove benchmark postgres DB
+	await teardown();
+
+	process.exit(0);
 }
 
 void main();

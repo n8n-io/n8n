@@ -114,6 +114,8 @@ export class Start extends BaseCommand {
 			await this.exitWithCrash('There was an error shutting down n8n.', error);
 		}
 
+		if (inBenchmark) return;
+
 		await this.exitSuccessFully();
 	}
 
