@@ -23,7 +23,7 @@ const STRUCTURED_OUTPUT_KEY = '__structured__output';
 const STRUCTURED_OUTPUT_OBJECT_KEY = '__structured__output__object';
 const STRUCTURED_OUTPUT_ARRAY_KEY = '__structured__output__array';
 
-class N8nStructuredOutputParser<T extends z.ZodTypeAny> extends StructuredOutputParser<T> {
+export class N8nStructuredOutputParser<T extends z.ZodTypeAny> extends StructuredOutputParser<T> {
 	async parse(text: string): Promise<z.infer<T>> {
 		try {
 			const parsed = (await super.parse(text)) as object;
