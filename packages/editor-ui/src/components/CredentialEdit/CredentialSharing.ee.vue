@@ -56,7 +56,7 @@
 			<ProjectSharing
 				v-model="sharedWithProjects"
 				:projects="projects"
-				:home-project="credential.homeProject"
+				:home-project="homeProject"
 				:readonly="!credentialPermissions.share"
 				:placeholder="$locale.baseText('workflows.shareModal.select.placeholder')"
 			/>
@@ -158,6 +158,11 @@ export default defineComponent({
 				(project) =>
 					project.id !== this.credential?.homeProject?.id &&
 					project.id !== this.credentialData?.homeProject?.id,
+			);
+		},
+		homeProject(): ProjectSharingData | undefined {
+			return (
+				this.credential?.homeProject ?? (this.credentialData?.homeProject as ProjectSharingData)
 			);
 		},
 	},

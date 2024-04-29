@@ -212,16 +212,16 @@ onBeforeMount(async () => {
 			</fieldset>
 			<fieldset>
 				<hr class="mb-2xl" />
-				<h3 class="mb-xs">{{ locale.baseText('projects.settings.title.deleteProject') }}</h3>
+				<h3 class="mb-xs">{{ locale.baseText('projects.settings.danger.title') }}</h3>
+				<small>{{ locale.baseText('projects.settings.danger.message') }}</small>
+				<br />
 				<N8nButton
-					type="danger"
-					class="mb-xs"
+					type="tertiary"
+					class="mt-s"
 					data-test-id="project-settings-delete-button"
 					@click.stop.prevent="onDelete"
-					>{{ locale.baseText('projects.settings.title.deleteProject') }}</N8nButton
+					>{{ locale.baseText('projects.settings.danger.deleteProject') }}</N8nButton
 				>
-				<br />
-				<small>{{ locale.baseText('projects.settings.message.cannotBeUndone') }}</small>
 			</fieldset>
 		</form>
 		<ProjectDeleteDialog
