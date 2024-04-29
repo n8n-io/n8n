@@ -2,7 +2,7 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
-## 1.39.0
+## 1.40.0
 
 ### What changed?
 
