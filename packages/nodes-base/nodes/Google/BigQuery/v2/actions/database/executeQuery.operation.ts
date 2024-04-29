@@ -249,7 +249,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				returnData.push(...executionErrorData);
 				continue;
 			}
-			if ((error.message as string).includes('location')) {
+			if ((error.message as string).includes('location') || error.httpCode === '404') {
 				error.description =
 					"Are you sure your table is in that region? You can specify the region using the 'Location' parameter from options.";
 			}
