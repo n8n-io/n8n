@@ -16,7 +16,8 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import { Route, RouteLocationRaw, useRouter } from 'vue-router';
+import type { RouteLocation, RouteLocationRaw } from 'vue-router';
+import { useRouter } from 'vue-router';
 import { mapStores } from 'pinia';
 import WorkflowDetails from '@/components/MainHeader/WorkflowDetails.vue';
 import TabBar from '@/components/MainHeader/TabBar.vue';
@@ -111,7 +112,7 @@ export default defineComponent({
 		this.pushConnection.terminate();
 	},
 	methods: {
-		syncTabsWithRoute(to: Route, from?: Route): void {
+		syncTabsWithRoute(to: RouteLocation, from?: RouteLocation): void {
 			if (
 				to.name === VIEWS.EXECUTION_HOME ||
 				to.name === VIEWS.WORKFLOW_EXECUTIONS ||
