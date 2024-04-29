@@ -56,6 +56,3 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - run: docker buildx imagetools create -t ghcr.io/${{ github.repository_owner }}/n8n:${{ github.event.inputs.release-channel }} ghcr.io/${{ github.repository_owner }}/n8n:${{ github.event.inputs.version }}
-
-  
-    
