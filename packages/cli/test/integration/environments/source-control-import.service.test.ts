@@ -249,6 +249,7 @@ describe('SourceControlImportService', () => {
 
 			expect(sharing?.project.id).toBe('1234-asdf');
 			expect(sharing?.project.name).toBe('Marketing');
+			expect(sharing?.project.type).toBe('team');
 
 			expect(sharing).toBeTruthy(); // original user missing, so importing user owns credential
 		});
