@@ -3,6 +3,7 @@ import { computed, ref } from 'vue';
 import type { EnvironmentVariable } from '@/Interface';
 import * as environmentsApi from '@/api/environments.ee';
 import { useRootStore } from '@/stores/n8nRoot.store';
+import { ExpressionError } from 'n8n-workflow';
 
 export const useEnvironmentsStore = defineStore('environments', () => {
 	const rootStore = useRootStore();
@@ -43,12 +44,21 @@ export const useEnvironmentsStore = defineStore('environments', () => {
 		return data;
 	}
 
-	const variablesAsObject = computed(() =>
-		variables.value.reduce<Record<string, string | boolean | number>>((acc, variable) => {
-			acc[variable.key] = variable.value;
-			return acc;
-		}, {}),
-	);
+	const variablesAsObject = computed(() => {
+		const asObject = variables.value.reduce<Record<string, string | boolean | number>>(
+			(acc, variable) => {
+				acc[variable.key] = variable.value;
+				return acc;
+			},
+			{},
+		);
+
+		return new Proxy(asObject, {
+			set() {
+				throw new ExpressionError('Cannot assign values to variables at runtime');
+			},
+		});
+	});
 
 	return {
 		variables,

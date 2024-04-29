@@ -150,7 +150,7 @@ export class AuthService {
 
 		if (jwtPayload.exp * 1000 - Date.now() < this.jwtRefreshTimeout) {
 			this.logger.debug('JWT about to expire. Will be refreshed');
-			this.issueCookie(res, user, jwtPayload.browserId);
+			this.issueCookie(res, user, req.browserId);
 		}
 
 		return user;

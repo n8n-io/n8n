@@ -55,7 +55,7 @@ import type {
 	ITaskData,
 	IWorkflowSettings,
 } from 'n8n-workflow';
-import { deepCopy, NodeHelpers, Workflow } from 'n8n-workflow';
+import { deepCopy, NodeHelpers, Workflow, ErrorReporterProxy as EventReporter } from 'n8n-workflow';
 import { findLast } from 'lodash-es';
 
 import { useRootStore } from '@/stores/n8nRoot.store';
@@ -1322,6 +1322,12 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			forceSave = false,
 		): Promise<IWorkflowDb> {
 			const rootStore = useRootStore();
+
+			if (data.settings === null) {
+				EventReporter.info('Detected workflow payload with settings as null');
+				data.settings = undefined;
+			}
+
 			return await makeRestApiRequest(
 				rootStore.getRestApiContext,
 				'PATCH',
@@ -1332,6 +1338,12 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 		async runWorkflow(startRunData: IStartRunData): Promise<IExecutionPushResponse> {
 			const rootStore = useRootStore();
+
+			if (startRunData.workflowData.settings === null) {
+				EventReporter.info('Detected workflow payload with settings as null');
+				startRunData.workflowData.settings = undefined;
+			}
+
 			try {
 				return await makeRestApiRequest(
 					rootStore.getRestApiContext,
