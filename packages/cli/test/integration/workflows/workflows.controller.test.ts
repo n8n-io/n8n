@@ -169,13 +169,17 @@ describe('POST /workflows', () => {
 		//
 		// ARRANGE
 		//
+		const tag = await createTag({ name: 'A' });
 		const workflow = makeWorkflow();
 		const personalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
 
 		//
 		// ACT
 		//
-		const response = await authOwnerAgent.post('/workflows').send(workflow).expect(200);
+		const response = await authOwnerAgent
+			.post('/workflows')
+			.send({ ...workflow, tags: [tag.id] })
+			.expect(200);
 
 		//
 		// ASSERT
@@ -197,6 +201,7 @@ describe('POST /workflows', () => {
 				name: personalProject.name,
 				type: personalProject.type,
 			},
+			tags: [{ id: tag.id, name: tag.name }],
 		});
 		expect(response.body.data.shared).toBeUndefined();
 	});
@@ -205,6 +210,7 @@ describe('POST /workflows', () => {
 		//
 		// ARRANGE
 		//
+		const tag = await createTag({ name: 'A' });
 		const workflow = makeWorkflow();
 		const project = await projectRepository.save(
 			projectRepository.create({
@@ -219,7 +225,7 @@ describe('POST /workflows', () => {
 		//
 		const response = await authOwnerAgent
 			.post('/workflows')
-			.send({ ...workflow, projectId: project.id })
+			.send({ ...workflow, projectId: project.id, tags: [tag.id] })
 			.expect(200);
 
 		//
@@ -242,6 +248,7 @@ describe('POST /workflows', () => {
 				name: project.name,
 				type: project.type,
 			},
+			tags: [{ id: tag.id, name: tag.name }],
 		});
 		expect(response.body.data.shared).toBeUndefined();
 	});

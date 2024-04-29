@@ -144,7 +144,7 @@ export class WorkflowsController {
 				workflow.id,
 				req.user,
 				['workflow:read'],
-				{ em: transactionManager },
+				{ em: transactionManager, includeTags: true },
 			);
 		});
 
