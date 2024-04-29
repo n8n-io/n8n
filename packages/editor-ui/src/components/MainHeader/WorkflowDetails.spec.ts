@@ -123,7 +123,7 @@ describe('WorkflowDetails', () => {
 		});
 	});
 
-	it('should not show share button for a workflow what is in a team project', async () => {
+	it('should not show share button for a workflow which is in a team project', async () => {
 		vi.spyOn(workflowsStore, 'getWorkflowById', 'get').mockReturnValue(() => ({
 			homeProject: {
 				type: 'team',
