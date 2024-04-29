@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import { readFileSync } from 'fs';
 import { ApplicationError, setGlobalState } from 'n8n-workflow';
 import { inTest, inE2ETests } from '@/constants';
+import callsites from 'callsites';
 
 if (inE2ETests) {
 	// Skip loading config from env variables in end-to-end tests
@@ -22,6 +23,7 @@ if (inE2ETests) {
 
 // Load schema after process.env has been overwritten
 import { schema } from './schema';
+console.log(callsites().map((i) => i.getFileName()));
 const config = convict(schema, { args: [] });
 
 // eslint-disable-next-line @typescript-eslint/unbound-method

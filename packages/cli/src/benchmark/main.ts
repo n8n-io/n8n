@@ -1,14 +1,9 @@
 import 'reflect-metadata';
 import config from '@/config';
-import {
-	collectSuites,
-	log,
-	logResults,
-	registerSuites,
-	setup,
-	teardown,
-	toOneLineJson,
-} from './lib';
+import type { Suites } from './lib';
+import { collectSuites, log, logResults, setup, teardown, toOneLineJson } from './lib';
+import * as Db from '@/Db';
+import type { Callback } from './lib/types';
 
 /* eslint-disable import/no-extraneous-dependencies */
 import Bench from 'tinybench';
@@ -16,7 +11,29 @@ import { withCodSpeed } from '@codspeed/tinybench-plugin';
 /* eslint-enable import/no-extraneous-dependencies */
 
 async function main() {
-	const suites = await collectSuites(); // @TODO: --filter suites
+	/**
+	 * Setup
+	 */
+
+	const suites = await collectSuites();
+	const postgresSuites: Suites = {};
+	const sqliteSuites: Suites = {};
+
+	for (const key in suites) {
+		postgresSuites[key] = suites[key];
+		postgresSuites[key].name += ' [postgres]';
+		postgresSuites[key].tasks = postgresSuites[key].tasks.map((t) => ({
+			...t,
+			name: t.name + ' [postgres]',
+		}));
+
+		sqliteSuites[key] = suites[key];
+		sqliteSuites[key].name += ' [sqlite]';
+		sqliteSuites[key].tasks = sqliteSuites[key].tasks.map((t) => ({
+			...t,
+			name: t.name + ' [sqlite]',
+		}));
+	}
 
 	log('Found suites', Object.keys(suites).join(' '));
 
@@ -30,29 +47,77 @@ async function main() {
 		warmupIterations: config.getEnv('benchmark.warmupIterations'),
 	};
 
-	const _bench = new Bench({
-		// @TODO: Temp values
-		// time: 0,
-		// iterations: 1,
-		...benchConfig,
-	});
+	/**
+	 * Postgres suites
+	 */
 
-	const bench = process.env.CI === 'true' ? withCodSpeed(_bench) : _bench;
+	const _pgBench = new Bench(benchConfig);
 
-	registerSuites(bench);
+	const postgresBench = process.env.CI === 'true' ? withCodSpeed(_pgBench) : _pgBench;
+
+	for (const { hooks, tasks } of Object.values(postgresSuites)) {
+		const options: Record<string, Callback> = {};
+
+		if (hooks.beforeEachTask) options.beforeAll = hooks.beforeEachTask;
+		if (hooks.afterEachTask) options.afterAll = hooks.afterEachTask;
+
+		for (const t of tasks) {
+			postgresBench.add(t.name, t.operation, options);
+		}
+	}
 
 	// await bench.warmup(); // @TODO: Restore
 
 	log('Set config', toOneLineJson(benchConfig));
-	log('Running iterations, please wait...');
 
-	await bench.run();
+	log('Running iterations in postgres, please wait...');
+
+	await postgresBench.run();
 
 	log('Iterations completed');
 
-	if (process.env.CI !== 'true') logResults(suites, bench.results);
-	// console.table(bench.table());
-	// console.log(bench.results);
+	if (process.env.CI !== 'true') logResults(postgresSuites, postgresBench.results, 'postgres');
+
+	/**
+	 * Sqlite suites
+	 */
+
+	config.set('database.type', 'sqlite'); // @TODO: Not working
+	await Db.init();
+	await Db.migrate();
+
+	const _sqliteBench = new Bench(benchConfig);
+
+	const sqliteBench = process.env.CI === 'true' ? withCodSpeed(_sqliteBench) : _sqliteBench;
+
+	for (const { hooks, tasks } of Object.values(sqliteSuites)) {
+		const options: Record<string, Callback> = {};
+
+		if (hooks.beforeEachTask) options.beforeAll = hooks.beforeEachTask;
+		if (hooks.afterEachTask) options.afterAll = hooks.afterEachTask;
+
+		for (const t of tasks) {
+			sqliteBench.add(t.name, t.operation, options);
+		}
+	}
+
+	// await bench.warmup(); // @TODO: Restore
+
+	console.log('========== using database', Db.getConnection().driver.database);
+
+	log('Set config', toOneLineJson(benchConfig));
+
+	log('Running iterations in sqlite, please wait...');
+
+	await sqliteBench.run();
+
+	log('Iterations completed');
+
+	if (process.env.CI !== 'true') logResults(sqliteSuites, sqliteBench.results, 'sqlite');
+
+	/**
+	 * Teardown
+	 */
 
 	await teardown();
 

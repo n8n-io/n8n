@@ -5,7 +5,7 @@ import { DataSource as Connection } from '@n8n/typeorm';
 import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 
 import config from '@/config';
-import { inTest } from '@/constants';
+import { inBenchmark, inTest } from '@/constants';
 import { wrapMigration } from '@db/utils/migrationHelpers';
 import type { Migration } from '@db/types';
 import { getConnectionOptions } from '@db/config';
@@ -59,10 +59,11 @@ export async function setSchema(conn: Connection) {
 }
 
 export async function init(): Promise<void> {
-	if (connectionState.connected) return;
+	if (!inBenchmark && connectionState.connected) return;
 
 	const dbType = config.getEnv('database.type');
 	const connectionOptions = getConnectionOptions();
+	console.log('connectionOptions', connectionOptions);
 
 	connection = new Connection(connectionOptions);
 	Container.set(Connection, connection);

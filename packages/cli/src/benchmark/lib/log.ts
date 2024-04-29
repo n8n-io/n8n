@@ -46,7 +46,7 @@ const toDirsAndFileName = (key: string) => {
 	return [dirs, fileName];
 };
 
-export function logResults(suites: Suites, results: Bench['results']) {
+export function logResults(suites: Suites, results: Bench['results'], db: 'sqlite' | 'postgres') {
 	const columnDivider = pico.dim('·'.repeat(3));
 
 	for (const [key, suite] of Object.entries(suites)) {
@@ -56,7 +56,7 @@ export function logResults(suites: Suites, results: Bench['results']) {
 			'\n',
 			pico.bgWhite(pico.black(' BENCHMARK ')),
 			pico.gray(dirs) + pico.bold(fileName),
-			pico.dim('[' + suite.db + ']'),
+			pico.dim('[' + db + ']'),
 			'\n',
 		].join(' ');
 

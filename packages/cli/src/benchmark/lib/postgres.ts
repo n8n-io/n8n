@@ -1,7 +1,7 @@
 import { DataSource } from '@n8n/typeorm';
 import type { DataSourceOptions } from '@n8n/typeorm';
 import config from '@/config';
-import { log } from '../log';
+import { log } from './log';
 
 const BENCHMARK_DB_PREFIX = 'n8n_benchmark';
 

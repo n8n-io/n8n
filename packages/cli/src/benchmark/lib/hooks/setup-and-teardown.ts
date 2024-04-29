@@ -5,7 +5,7 @@ import { n8nDir } from './n8nDir';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { seedInstanceOwner, seedWorkflows } from './seed';
 import { log } from '../log';
-import { postgresSetup, postgresTeardown } from './postgres';
+import { postgresSetup, postgresTeardown } from '../postgres';
 import * as Db from '@/Db';
 import config from '@/config';
 
