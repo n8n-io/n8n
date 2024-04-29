@@ -7,6 +7,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
+import type { ChatOllamaInput } from '@langchain/community/chat_models/ollama';
 import { ChatOllama } from '@langchain/community/chat_models/ollama';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
@@ -54,12 +55,13 @@ export class LmChatOllama implements INodeType {
 		const credentials = await this.getCredentials('ollamaApi');
 
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
-		const options = this.getNodeParameter('options', itemIndex, {}) as object;
+		const options = this.getNodeParameter('options', itemIndex, {}) as ChatOllamaInput;
 
 		const model = new ChatOllama({
+			...options,
 			baseUrl: credentials.baseUrl as string,
 			model: modelName,
-			...options,
+			format: options.format === 'default' ? undefined : options.format,
 		});
 
 		return {
