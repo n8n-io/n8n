@@ -58,9 +58,21 @@ onBeforeUnmount(() => {
 	);
 
 	.chat-header {
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		height: var(--chat--header-height, auto);
 		padding: var(--chat--header--padding, var(--chat--spacing));
 		background: var(--chat--header--background, var(--chat--color-dark));
 		color: var(--chat--header--color, var(--chat--color-light));
+		border-top: var(--chat--header--border-top, none);
+		border-bottom: var(--chat--header--border-bottom, none);
+		border-left: var(--chat--header--border-left, none);
+		border-right: var(--chat--header--border-right, none);
+		h1 {
+			font-size: var(--chat--heading--font-size);
+			color: var(--chat--header--color, var(--chat--color-light));
+		}
 	}
 
 	.chat-body {

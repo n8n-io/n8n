@@ -17,7 +17,11 @@ const userName = computed(() => usersStore.currentUser?.firstName ?? 'there');
 const lastSelectedNode = computed(() => uiStore.getLastSelectedNode);
 
 const chatTitle = locale.baseText('aiAssistantChat.title');
-const thanksResponse = locale.baseText('aiAssistantChat.thankYouMessage');
+const thanksResponses = [
+	locale.baseText('aiAssistantChat.response.message1'),
+	locale.baseText('aiAssistantChat.response.message2'),
+	'🙏',
+];
 const initialMessageText = computed(() => {
 	if (lastSelectedNode.value) {
 		return locale.baseText('aiAssistantChat.initialMessage.nextStep', {
@@ -38,13 +42,12 @@ const initialMessages: Ref<ChatMessage[]> = ref([
 	},
 ]);
 const messages: Ref<ChatMessage[]> = ref([]);
-const waitingForResponse = ref(false);
+const waitingForResponse = ref(false)
 const currentSessionId = ref<string>(String(Date.now()));
 
 const sendMessage = async (message: string) => {
 	messages.value.push({
 		id: String(messages.value.length + 1),
-		type: 'text',
 		sender: 'user',
 		text: message,
 		createdAt: new Date().toISOString(),
@@ -53,17 +56,22 @@ const sendMessage = async (message: string) => {
 	const randomDelay = Math.floor(Math.random() * 6) + 5;
 	// Message response timeout will be between 500ms and a second
 	const responseTimeout = randomDelay * 100;
-	waitingForResponse.value = true;
-	setTimeout(() => {
-		waitingForResponse.value = false;
-		messages.value.push({
-			id: String(messages.value.length + 1),
-			type: 'text',
-			sender: 'bot',
-			text: thanksResponse,
-			createdAt: new Date().toISOString(),
-		});
-	}, responseTimeout);
+	thanksResponses.forEach((response, index) => {
+		waitingForResponse.value = true;
+		// Push each response with a delay of 500ms
+		setTimeout(
+			() => {
+				messages.value.push({
+					id: String(messages.value.length + 1),
+					sender: 'bot',
+					text: response,
+					createdAt: new Date().toISOString(),
+				});
+				waitingForResponse.value = false;
+			},
+			responseTimeout * (index + 1),
+		);
+	});
 };
 
 const chatOptions: ChatOptions = {
@@ -73,6 +81,7 @@ const chatOptions: ChatOptions = {
 			footer: '',
 			subtitle: '',
 			inputPlaceholder: locale.baseText('aiAssistantChat.chatPlaceholder'),
+			getStarted: locale.baseText('aiAssistantChat.getStarted'),
 		},
 	},
 	webhookUrl: 'https://webhook.url',
@@ -86,9 +95,10 @@ const chatConfig: Chat = {
 	currentSessionId,
 	waitingForResponse,
 	async loadPreviousSession(): Promise<string | undefined> {
-		return 'Whatever';
+		return '';
 	},
 	async startNewSession(): Promise<void> {
+		// eslint-disable-next-line no-console
 		console.log('Starting new session');
 	},
 };

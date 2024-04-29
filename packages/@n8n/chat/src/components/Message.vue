@@ -66,8 +66,13 @@ const markdownOptions = {
 .chat-message {
 	display: block;
 	max-width: 80%;
+	font-size: var(--chat--message--font-size, 1rem);
 	padding: var(--chat--message--padding, var(--chat--spacing));
 	border-radius: var(--chat--message--border-radius, var(--chat--border-radius));
+
+	p {
+		line-height: var(--chat--message-line-height, 1.8);
+	}
 
 	+ .chat-message {
 		margin-top: var(--chat--message--margin-bottom, calc(var(--chat--spacing) * 0.5));
@@ -77,6 +82,7 @@ const markdownOptions = {
 		background-color: var(--chat--message--bot--background);
 		color: var(--chat--message--bot--color);
 		border-bottom-left-radius: 0;
+		border: var(--chat--message--bot--border, none);
 	}
 
 	&.chat-message-from-user {
@@ -84,6 +90,7 @@ const markdownOptions = {
 		color: var(--chat--message--user--color);
 		margin-left: auto;
 		border-bottom-right-radius: 0;
+		border: var(--chat--message--user--border, none);
 	}
 
 	> .chat-message-markdown {

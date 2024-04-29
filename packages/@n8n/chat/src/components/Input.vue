@@ -58,7 +58,7 @@ async function onSubmitKeydown(event: KeyboardEvent) {
 
 	textarea {
 		font-family: inherit;
-		font-size: inherit;
+		font-size: var(--chat--input--font-size, inherit);
 		width: 100%;
 		border: 0;
 		padding: var(--chat--spacing);
@@ -71,7 +71,7 @@ async function onSubmitKeydown(event: KeyboardEvent) {
 		width: var(--chat--textarea--height);
 		background: white;
 		cursor: pointer;
-		color: var(--chat--color-secondary);
+		color: var(--chat--input--send--button--color, var(--chat--color-secondary));
 		border: 0;
 		font-size: 24px;
 		display: inline-flex;
