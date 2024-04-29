@@ -354,7 +354,7 @@
 		font-size: 12px;
 		font-weight: 400;
 		display: flex;
-		align-items: flex-end;
+		align-items: center;
 
 		&.is-closable {
 			overflow-y: hidden;
@@ -363,7 +363,7 @@
 		.el-tag__close {
 			max-height: 15px;
 			max-width: 15px;
-			margin-right: 6px;
+			margin-left: var(--spacing-4xs);
 
 			&:hover {
 				background-color: $tag-close-background-hover-color !important;
