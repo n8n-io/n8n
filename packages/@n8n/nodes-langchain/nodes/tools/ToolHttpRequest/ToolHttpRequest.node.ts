@@ -10,12 +10,75 @@ import type {
 	IHttpRequestOptions,
 	IHttpRequestMethods,
 	IRequestOptionsSimplified,
+	IOAuth2Options,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeOperationError, jsonParse } from 'n8n-workflow';
 
 import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 import { DynamicTool } from '@langchain/core/tools';
+
+export const getOAuth2AdditionalParameters = (nodeCredentialType: string) => {
+	const oAuth2Options: { [credentialType: string]: IOAuth2Options } = {
+		bitlyOAuth2Api: {
+			tokenType: 'Bearer',
+		},
+		boxOAuth2Api: {
+			includeCredentialsOnRefreshOnBody: true,
+		},
+		ciscoWebexOAuth2Api: {
+			tokenType: 'Bearer',
+		},
+		clickUpOAuth2Api: {
+			keepBearer: false,
+			tokenType: 'Bearer',
+		},
+		goToWebinarOAuth2Api: {
+			tokenExpiredStatusCode: 403,
+		},
+		hubspotDeveloperApi: {
+			tokenType: 'Bearer',
+			includeCredentialsOnRefreshOnBody: true,
+		},
+		hubspotOAuth2Api: {
+			tokenType: 'Bearer',
+			includeCredentialsOnRefreshOnBody: true,
+		},
+		lineNotifyOAuth2Api: {
+			tokenType: 'Bearer',
+		},
+		linkedInOAuth2Api: {
+			tokenType: 'Bearer',
+		},
+		mailchimpOAuth2Api: {
+			tokenType: 'Bearer',
+		},
+		mauticOAuth2Api: {
+			includeCredentialsOnRefreshOnBody: true,
+		},
+		microsoftDynamicsOAuth2Api: {
+			property: 'id_token',
+		},
+		philipsHueOAuth2Api: {
+			tokenType: 'Bearer',
+		},
+		raindropOAuth2Api: {
+			includeCredentialsOnRefreshOnBody: true,
+		},
+		shopifyOAuth2Api: {
+			tokenType: 'Bearer',
+			keyToIncludeInAccessTokenHeader: 'X-Shopify-Access-Token',
+		},
+		slackOAuth2Api: {
+			tokenType: 'Bearer',
+			property: 'authed_user.access_token',
+		},
+		stravaOAuth2Api: {
+			includeCredentialsOnRefreshOnBody: true,
+		},
+	};
+	return oAuth2Options[nodeCredentialType];
+};
 
 const prettifyToolName = (toolName: string) => {
 	const capitalize = (str: string) => {
@@ -29,20 +92,37 @@ const prettifyToolName = (toolName: string) => {
 
 const prepareParameters = (parameters: ToolParameter[]) => {
 	let description = '';
+	let parameterDescription = '';
+	description += `
+This tool expects the following parameters:
+{
+		`;
 
 	for (const parameter of parameters) {
 		if (!parameter.name) continue;
 
+		// 		description += `
+		// ---
+		// Parameter Name: ${parameter.name}
+		// Parameter Description: ${parameter.description}
+		// Parameter Type: ${parameter.type === 'fromDescription' ? 'Infer from parameter description' : parameter.type}
+		// ---
+		// 		`;
+
 		description += `
-		\n
-		---
-		Name: ${parameter.name}
-		Description: ${parameter.description}
-		Type: ${parameter.type === 'fromDescription' ? 'Infer from description' : parameter.type}
-		${parameter.enumOptions ? `Enum Options: ${parameter.enumOptions}` : ''}
-		---\n
+${parameter.name}
+		`;
+
+		parameterDescription += `
+${parameter.name}: ${parameter.description} of type ${parameter.type}
 		`;
 	}
+
+	description += `
+}
+Parameters description:
+${parameterDescription}
+	`;
 
 	return description;
 };
@@ -57,41 +137,22 @@ const prepareToolDescription = (
 	`;
 
 	description += `
-	${toolDescription}
+This tool has the following description:
+${toolDescription}
+---
 	`;
 
-	if (pathParameters.length) {
-		description += `
-		\n
-		This tool expects the following path parameters and should be in format appropriate to be send in the request path:\n
-		`;
+	const parameters = [...pathParameters, ...queryParameters, ...bodyParameters];
 
+	if (parameters.length) {
 		description += prepareParameters(pathParameters);
 	}
 
-	if (queryParameters.length) {
-		description += `
-		\n
-		This tool expects the following query parameters:\n
-		`;
-
-		description += prepareParameters(queryParameters);
-	}
-
-	if (bodyParameters.length) {
-		description += `
-		\n
-		This tool expects the following body parameters:\n
-		`;
-
-		description += prepareParameters(bodyParameters);
-	}
-
 	description += `
-	give an response as correct stringified JSON that could be pluged and parsed with JSON.parse in nodejs
-
-	DO NOT PROVIDE ADDITIONAL TEXT OR EXPLANATION!!!
-	DO NOT FORMAT AS CODE!!!
+EVEN IF ONLY ONE PARAMETERS REQUIRED SEND IT AS STRINGIFIED JSON
+IF ANY PARAMETERS ARE REQUIRED QUERY SHOULD BE {} AS STRINGIFIED JSON
+DO NOT PROVIDE ADDITIONAL TEXT OR EXPLANATION!!!
+DO NOT FORMAT AS CODE!!!
 	`;
 
 	return description;
@@ -162,14 +223,14 @@ const configureHttpRequestFunction = async (
 		}
 	} else if (auth === 'predefinedCredentialType') {
 		const nodeCredentialType = ctx.getNodeParameter('nodeCredentialType', itemIndex) as string;
+		const additionalOAuth2Options = getOAuth2AdditionalParameters(nodeCredentialType);
 
 		return async (requestOptions: IHttpRequestOptions) => {
 			return await ctx.helpers.requestWithAuthentication.call(
 				ctx,
 				nodeCredentialType,
 				requestOptions,
-				// additionalOAuth2Options && { oauth2: additionalOAuth2Options },
-				undefined,
+				additionalOAuth2Options && { oauth2: additionalOAuth2Options },
 				itemIndex,
 			);
 		};
@@ -235,10 +296,6 @@ const parametersCollection: INodeProperties = {
 							value: 'boolean',
 						},
 						{
-							name: 'Enum',
-							value: 'enum',
-						},
-						{
 							name: 'Number',
 							value: 'number',
 						},
@@ -247,18 +304,6 @@ const parametersCollection: INodeProperties = {
 							value: 'string',
 						},
 					],
-				},
-				{
-					displayName: 'Enum Options',
-					name: 'enumOptions',
-					type: 'string',
-					default: '',
-					hint: 'Comma separated list of enum options',
-					displayOptions: {
-						show: {
-							type: ['enum'],
-						},
-					},
 				},
 			],
 		},
