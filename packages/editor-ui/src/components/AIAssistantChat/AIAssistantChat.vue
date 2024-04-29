@@ -7,21 +7,69 @@ import { ChatOptionsSymbol, ChatSymbol } from '@n8n/chat/constants';
 import type { Chat, ChatMessage, ChatOptions } from '@n8n/chat/types';
 import type { Ref } from 'vue';
 import { computed, provide, ref } from 'vue';
+import QuickReplies from './QuickReplies.vue';
+import { DateTime } from 'luxon';
+import { useAIStore } from '@/stores/ai.store';
+import { chatEventBus } from '@n8n/chat/event-buses';
+import { onMounted } from 'vue';
 
 const locale = useI18n();
 
 const usersStore = useUsersStore();
 const uiStore = useUIStore();
+const aiStore = useAIStore();
+
+const messages: Ref<ChatMessage[]> = ref([]);
+const waitingForResponse = ref(false);
+const currentSessionId = ref<string>(String(Date.now()));
 
 const userName = computed(() => usersStore.currentUser?.firstName ?? 'there');
 const lastSelectedNode = computed(() => uiStore.getLastSelectedNode);
 
 const chatTitle = locale.baseText('aiAssistantChat.title');
-const thanksResponses = [
-	locale.baseText('aiAssistantChat.response.message1'),
-	locale.baseText('aiAssistantChat.response.message2'),
-	'🙏',
+const thanksResponses: ChatMessage[] = [
+	{
+		id: String(DateTime.now().toMillis()),
+		sender: 'bot',
+		text: locale.baseText('aiAssistantChat.response.message1'),
+		createdAt: new Date().toISOString(),
+	},
+	{
+		id: String(DateTime.now().toMillis()),
+		sender: 'bot',
+		text: locale.baseText('aiAssistantChat.response.message2'),
+		createdAt: new Date().toISOString(),
+	},
+	{
+		id: String(DateTime.now().toMillis()),
+		sender: 'bot',
+		text: '🙏',
+		createdAt: new Date().toISOString(),
+	},
+	{
+		id: String(DateTime.now().toMillis()),
+		type: 'component',
+		key: 'QuickReplies',
+		sender: 'user',
+		createdAt: new Date().toISOString(),
+		transparent: true,
+		arguments: {
+			suggestions: [
+				{ label: locale.baseText('aiAssistantChat.response.quickReply.close'), key: 'close' },
+				{
+					label: locale.baseText('aiAssistantChat.response.quickReply.giveFeedback'),
+					key: 'give_feedback',
+				},
+			],
+			onReplySelected: ({ key }: { key: string; label: string }) => {
+				if (key === 'close') {
+					aiStore.assistantChatOpen = false;
+				}
+			},
+		},
+	},
 ];
+
 const initialMessageText = computed(() => {
 	if (lastSelectedNode.value) {
 		return locale.baseText('aiAssistantChat.initialMessage.nextStep', {
@@ -41,9 +89,6 @@ const initialMessages: Ref<ChatMessage[]> = ref([
 		text: `${locale.baseText('aiAssistantChat.greeting', { interpolate: { username: userName.value ?? 'there' } })} ${initialMessageText.value}`,
 	},
 ]);
-const messages: Ref<ChatMessage[]> = ref([]);
-const waitingForResponse = ref(false)
-const currentSessionId = ref<string>(String(Date.now()));
 
 const sendMessage = async (message: string) => {
 	messages.value.push({
@@ -61,17 +106,14 @@ const sendMessage = async (message: string) => {
 		// Push each response with a delay of 500ms
 		setTimeout(
 			() => {
-				messages.value.push({
-					id: String(messages.value.length + 1),
-					sender: 'bot',
-					text: response,
-					createdAt: new Date().toISOString(),
-				});
+				messages.value.push(response);
 				waitingForResponse.value = false;
+				chatEventBus.emit('scrollToBottom');
 			},
 			responseTimeout * (index + 1),
 		);
 	});
+	chatEventBus.emit('scrollToBottom');
 };
 
 const chatOptions: ChatOptions = {
@@ -82,10 +124,15 @@ const chatOptions: ChatOptions = {
 			subtitle: '',
 			inputPlaceholder: locale.baseText('aiAssistantChat.chatPlaceholder'),
 			getStarted: locale.baseText('aiAssistantChat.getStarted'),
+			closeButtonTooltip: locale.baseText('aiAssistantChat.closeButtonTooltip'),
 		},
 	},
 	webhookUrl: 'https://webhook.url',
 	mode: 'window',
+	showWindowCloseButton: true,
+	messageComponents: {
+		QuickReplies,
+	},
 };
 
 const chatConfig: Chat = {
@@ -105,6 +152,12 @@ const chatConfig: Chat = {
 
 provide(ChatSymbol, chatConfig);
 provide(ChatOptionsSymbol, chatOptions);
+
+onMounted(() => {
+	chatEventBus.on('close', () => {
+		aiStore.assistantChatOpen = false;
+	});
+});
 </script>
 
 <template>

@@ -180,9 +180,12 @@
 	--chat--header-height: calc(var(--header-height) * 1px);
 	--chat--header--padding: 0 var(--spacing-xs);
 	--chat--heading--font-size: var(--font-size-m);
+	--chat--subtitle--font-size: var(--font-size-s);
+	--chat--subtitle--line-height: var(--font-line-height-base);
 	--chat--header--background: var(--color-background-xlight);
 	--chat--header--color: var(--color-text-dark);
 	--chat--header--border-bottom: var(--border-base);
+	--chat--close--button--color-hover: var(--color-primary);
 	// Message styles
 	--chat--message--padding: var(--spacing-3xs);
 	--chat--message--font-size: 14px;

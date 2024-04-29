@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, onMounted } from 'vue';
+import { computed, nextTick, onMounted } from 'vue';
 import Layout from '@n8n/chat/components/Layout.vue';
 import GetStarted from '@n8n/chat/components/GetStarted.vue';
 import GetStartedFooter from '@n8n/chat/components/GetStartedFooter.vue';
@@ -7,12 +7,15 @@ import MessagesList from '@n8n/chat/components/MessagesList.vue';
 import Input from '@n8n/chat/components/Input.vue';
 import { useI18n, useChat, useOptions } from '@n8n/chat/composables';
 import { chatEventBus } from '@n8n/chat/event-buses';
+import Close from 'virtual:icons/mdi/close';
 
 const { t } = useI18n();
 const chatStore = useChat();
 
 const { messages, currentSessionId } = chatStore;
 const { options } = useOptions();
+
+const showCloseButton = computed(() => options.mode === 'window' && options.showWindowCloseButton);
 
 async function getStarted() {
 	void chatStore.startNewSession();
@@ -28,6 +31,10 @@ async function initialize() {
 	});
 }
 
+function closeChat() {
+	chatEventBus.emit('close');
+}
+
 onMounted(async () => {
 	await initialize();
 	if (!options.showWelcomeScreen && !currentSessionId.value) {
@@ -39,8 +46,20 @@ onMounted(async () => {
 <template>
 	<Layout class="chat-wrapper">
 		<template #header>
-			<h1>{{ t('title') }}</h1>
-			<p>{{ t('subtitle') }}</p>
+			<div class="chat-heading">
+				<h1>
+					{{ t('title') }}
+				</h1>
+				<div
+					v-if="showCloseButton"
+					class="chat-close-button"
+					:title="t('closeButtonTooltip')"
+					@click="closeChat"
+				>
+					<Close height="18" width="18" />
+				</div>
+			</div>
+			<p v-if="t('subtitle')">{{ t('subtitle') }}</p>
 		</template>
 		<GetStarted v-if="!currentSessionId && options.showWelcomeScreen" @click:button="getStarted" />
 		<MessagesList v-else :messages="messages" />
@@ -50,3 +69,21 @@ onMounted(async () => {
 		</template>
 	</Layout>
 </template>
+
+<style lang="scss">
+.chat-heading {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.chat-close-button {
+	display: flex;
+	cursor: pointer;
+
+	&:hover {
+		color: var(--chat--close--button--color-hover, var(--chat--color-primary));
+	}
+}
+</style>
+`;

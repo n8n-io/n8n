@@ -61,6 +61,7 @@ onBeforeUnmount(() => {
 		display: flex;
 		flex-direction: column;
 		justify-content: center;
+		gap: 1em;
 		height: var(--chat--header-height, auto);
 		padding: var(--chat--header--padding, var(--chat--spacing));
 		background: var(--chat--header--background, var(--chat--color-dark));
@@ -72,6 +73,10 @@ onBeforeUnmount(() => {
 		h1 {
 			font-size: var(--chat--heading--font-size);
 			color: var(--chat--header--color, var(--chat--color-light));
+		}
+		p {
+			font-size: var(--chat--subtitle--font-size, inherit);
+			line-height: var(--chat--subtitle--line-height, 1.8);
 		}
 	}
 
