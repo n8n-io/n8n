@@ -456,23 +456,22 @@ export const quoteFields: INodeProperties[] = [
 				default: 'active',
 			},
 			{
-				displayName: 'Created at',
+				displayName: 'Created At',
 				name: 'created_at',
 				type: 'dateTime',
 				default: '',
 			},
 			{
-				displayName: 'Updated at',
+				displayName: 'Updated At',
 				name: 'updated_at',
 				type: 'dateTime',
 				default: '',
 			},
 			{
-				displayName: 'Is deleted',
+				displayName: 'Is Deleted',
 				name: 'is_deleted',
 				type: 'boolean',
-				default: 'false',
+				default: false,
 			},
-		],
 	},
 ];
