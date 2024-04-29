@@ -91,7 +91,7 @@ export class WorkflowsController {
 
 		if (this.license.isSharingEnabled()) {
 			// This is a new workflow, so we simply check if the user has access to
-			// all used workflows
+			// all used credentials
 
 			const allCredentials = await this.credentialsService.getMany(req.user);
 
