@@ -283,7 +283,7 @@ export class Chargebee implements INodeType {
 									},
 								],
 								default: 'after',
-								description: 'Operation to decide where the the data should be mapped to',
+								description: 'Operation to decide where the data should be mapped to',
 							},
 							{
 								displayName: 'Date',
@@ -330,7 +330,7 @@ export class Chargebee implements INodeType {
 									},
 								],
 								default: 'gt',
-								description: 'Operation to decide where the the data should be mapped to',
+								description: 'Operation to decide where the data should be mapped to',
 							},
 							{
 								displayName: 'Amount',
