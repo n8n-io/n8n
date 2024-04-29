@@ -178,7 +178,7 @@ export const clientFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				name: 'contactsValues',
+				name: 'contacstValues',
 				displayName: 'Contact',
 				values: [
 					{

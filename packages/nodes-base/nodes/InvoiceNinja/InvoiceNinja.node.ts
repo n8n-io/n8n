@@ -302,7 +302,7 @@ export class InvoiceNinja implements INodeType {
 							body.website = additionalFields.website as string;
 						}
 						const contactsValues = (this.getNodeParameter('contactsUi', i) as IDataObject)
-							.contactsValues as IDataObject[];
+							.contacstValues as IDataObject[];
 						if (contactsValues) {
 							const contacts: IContact[] = [];
 							for (const contactValue of contactsValues) {
