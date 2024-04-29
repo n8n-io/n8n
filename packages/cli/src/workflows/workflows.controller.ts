@@ -62,7 +62,6 @@ export class WorkflowsController {
 		private readonly projectService: ProjectService,
 	) {}
 
-	// NOTE: updated
 	@Post('/')
 	async create(req: WorkflowRequest.Create) {
 		delete req.body.id; // delete if sent
@@ -108,10 +107,8 @@ export class WorkflowsController {
 			}
 		}
 
-		let savedWorkflow: undefined | WorkflowEntity;
-
-		await Db.transaction(async (transactionManager) => {
-			savedWorkflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
+		const savedWorkflow = await Db.transaction(async (transactionManager) => {
+			const workflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
 
 			const { projectId } = req.body;
 			const project =
@@ -138,10 +135,17 @@ export class WorkflowsController {
 			const newSharedWorkflow = this.sharedWorkflowRepository.create({
 				role: 'workflow:owner',
 				projectId: project.id,
-				workflow: savedWorkflow,
+				workflow,
 			});
 
 			await transactionManager.save<SharedWorkflow>(newSharedWorkflow);
+
+			return await this.sharedWorkflowRepository.findWorkflowForUser(
+				workflow.id,
+				req.user,
+				['workflow:read'],
+				{ em: transactionManager },
+			);
 		});
 
 		if (!savedWorkflow) {
@@ -157,10 +161,17 @@ export class WorkflowsController {
 			});
 		}
 
+		const savedWorkflowWithMetaData =
+			this.enterpriseWorkflowService.addOwnerAndSharings(savedWorkflow);
+
+		// @ts-expect-error: This is added as part of addOwnerAndSharings but
+		// shouldn't be returned to the frontend
+		delete savedWorkflowWithMetaData.shared;
+
 		await this.externalHooks.run('workflow.afterCreate', [savedWorkflow]);
 		void this.internalHooks.onWorkflowCreated(req.user, newWorkflow, false);
 
-		return savedWorkflow;
+		return savedWorkflowWithMetaData;
 	}
 
 	@Get('/', { middlewares: listQueryMiddleware })

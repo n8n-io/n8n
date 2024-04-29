@@ -186,6 +186,19 @@ describe('POST /workflows', () => {
 				workflowId: response.body.data.id,
 			},
 		});
+		expect(response.body.data).toMatchObject({
+			active: false,
+			id: expect.any(String),
+			name: workflow.name,
+			sharedWithProjects: [],
+			usedCredentials: [],
+			homeProject: {
+				id: personalProject.id,
+				name: personalProject.name,
+				type: personalProject.type,
+			},
+		});
+		expect(response.body.data.shared).toBeUndefined();
 	});
 
 	test('creates workflow in a specific project if the projectId is passed', async () => {
@@ -218,6 +231,19 @@ describe('POST /workflows', () => {
 				workflowId: response.body.data.id,
 			},
 		});
+		expect(response.body.data).toMatchObject({
+			active: false,
+			id: expect.any(String),
+			name: workflow.name,
+			sharedWithProjects: [],
+			usedCredentials: [],
+			homeProject: {
+				id: project.id,
+				name: project.name,
+				type: project.type,
+			},
+		});
+		expect(response.body.data.shared).toBeUndefined();
 	});
 
 	test('does not create the workflow in a specific project if the user is not part of the project', async () => {
