@@ -100,6 +100,17 @@ export class LmChatGroq implements INodeType {
 				default: 'llama3-8b-8192',
 			},
 			{
+				displayName: 'Be aware that Llama models tend to loop if not tools are provided',
+				name: 'warning',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						model: [{ _cnd: { includes: 'llama' } }],
+					},
+				},
+			},
+			{
 				displayName: 'Options',
 				name: 'options',
 				placeholder: 'Add Option',
