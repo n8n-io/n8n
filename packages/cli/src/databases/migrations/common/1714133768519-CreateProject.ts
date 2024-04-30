@@ -43,7 +43,7 @@ function escapeNames(escape: MigrationContext['escape']) {
 	return { t, c };
 }
 
-export class CreateProject1705928727784 implements ReversibleMigration {
+export class CreateProject1714133768519 implements ReversibleMigration {
 	async setupTables({ schemaBuilder: { createTable, column } }: MigrationContext) {
 		await createTable(table.project).withColumns(
 			column('id').varchar(36).primary.notNull,
