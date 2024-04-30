@@ -2,11 +2,12 @@ import { Container, Service } from 'typedi';
 import { readFile } from 'fs/promises';
 import type { Server } from 'http';
 import express from 'express';
+import { engine as expressHandlebars } from 'express-handlebars';
 import compression from 'compression';
 import isbot from 'isbot';
 
 import config from '@/config';
-import { N8N_VERSION, inDevelopment, inTest } from '@/constants';
+import { N8N_VERSION, TEMPLATES_DIR, inDevelopment, inTest } from '@/constants';
 import * as Db from '@/Db';
 import { N8nInstanceType } from '@/Interfaces';
 import { ExternalHooks } from '@/ExternalHooks';
@@ -61,6 +62,10 @@ export abstract class AbstractServer {
 	constructor(instanceType: N8nInstanceType = 'main') {
 		this.app = express();
 		this.app.disable('x-powered-by');
+
+		this.app.engine('handlebars', expressHandlebars({ defaultLayout: false }));
+		this.app.set('view engine', 'handlebars');
+		this.app.set('views', TEMPLATES_DIR);
 
 		const proxyHops = config.getEnv('proxy_hops');
 		if (proxyHops > 0) this.app.set('trust proxy', proxyHops);

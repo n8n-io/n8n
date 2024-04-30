@@ -318,7 +318,7 @@ export default defineComponent({
 	}
 
 	.el-tag {
-		padding: 1px var(--spacing-4xs);
+		padding: var(--spacing-5xs) var(--spacing-4xs);
 		color: var(--color-text-dark);
 		background-color: var(--color-background-base);
 		border-radius: var(--border-radius-base);

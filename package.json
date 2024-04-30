@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "1.38.0",
+  "version": "1.39.0",
   "private": true,
   "homepage": "https://n8n.io",
   "engines": {
@@ -79,7 +79,6 @@
       "sqlite3"
     ],
     "overrides": {
-      "@langchain/core": "0.1.41",
       "@types/node": "^18.16.16",
       "axios": "1.6.7",
       "chokidar": "3.5.2",

@@ -225,10 +225,17 @@ export default defineComponent({
 				return undefined;
 			}
 
-			return this.workflowHelpers.getWebhookExpressionValue(
+			const httpMethod = this.workflowHelpers.getWebhookExpressionValue(
 				this.nodeType.webhooks[0],
 				'httpMethod',
+				false,
 			);
+
+			if (Array.isArray(httpMethod)) {
+				return httpMethod.join(', ');
+			}
+
+			return httpMethod;
 		},
 		webhookTestUrl(): string | undefined {
 			if (!this.node || !this.nodeType?.webhooks?.length) {

@@ -2,12 +2,12 @@
 	<div>
 		<div :class="{ 'main-header': true, expanded: !uiStore.sidebarMenuCollapsed }">
 			<div v-show="!hideMenuBar" class="top-menu">
-				<WorkflowDetails :read-only="readOnly" />
+				<WorkflowDetails v-if="workflow?.name" :workflow="workflow" :read-only="readOnly" />
 				<TabBar
 					v-if="onWorkflowPage"
 					:items="tabBarItems"
-					:active-tab="activeHeaderTab"
-					@select="onTabSelected"
+					:model-value="activeHeaderTab"
+					@update:model-value="onTabSelected"
 				/>
 			</div>
 		</div>
@@ -27,7 +27,7 @@ import {
 	STICKY_NODE_TYPE,
 	VIEWS,
 } from '@/constants';
-import type { INodeUi, ITabBarItem } from '@/Interface';
+import type { INodeUi, ITabBarItem, IWorkflowDb } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -74,6 +74,9 @@ export default defineComponent({
 		},
 		hideMenuBar(): boolean {
 			return Boolean(this.activeNode && this.activeNode.type !== STICKY_NODE_TYPE);
+		},
+		workflow(): IWorkflowDb {
+			return this.workflowsStore.workflow;
 		},
 		workflowName(): string {
 			return this.workflowsStore.workflowName;

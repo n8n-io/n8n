@@ -819,6 +819,13 @@ export class Pipedrive implements INodeType {
 				default: {},
 				options: [
 					{
+						displayName: 'Busy Flag',
+						name: 'busy_flag',
+						type: 'boolean',
+						default: false,
+						description: 'Whether the user is set to busy during the activity',
+					},
+					{
 						displayName: 'Deal ID',
 						name: 'deal_id',
 						type: 'number',
@@ -849,7 +856,6 @@ export class Pipedrive implements INodeType {
 						default: '0',
 						description: 'Whether the activity is done or not',
 					},
-
 					{
 						displayName: 'Note',
 						name: 'note',
@@ -877,6 +883,14 @@ export class Pipedrive implements INodeType {
 						type: 'number',
 						default: 0,
 						description: 'ID of the person this activity will be associated with',
+					},
+					{
+						displayName: 'Public Description',
+						name: 'public_description',
+						type: 'string',
+						default: '',
+						description:
+							'Additional details about the activity that is synced to your external calendar',
 					},
 					{
 						displayName: 'Subject',
