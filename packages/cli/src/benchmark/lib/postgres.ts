@@ -30,6 +30,8 @@ function tenRandomChars() {
 export async function postgresSetup() {
 	const dbName = [BENCHMARK_DB_PREFIX, tenRandomChars(), Date.now()].join('_');
 
+	console.log('pgOptions', pgOptions);
+
 	const bootstrap = await new DataSource(pgOptions).initialize();
 
 	await bootstrap.query(`CREATE DATABASE ${dbName};`);
