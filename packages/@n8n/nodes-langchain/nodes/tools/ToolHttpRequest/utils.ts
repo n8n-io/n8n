@@ -16,7 +16,7 @@ import { convert } from 'html-to-text';
 
 export type ToolParameter = {
 	name: string;
-	type: 'any' | 'string' | 'number' | 'boolean';
+	type: 'infer from description' | 'string' | 'number' | 'boolean';
 	description: string;
 };
 
@@ -94,84 +94,87 @@ export const prettifyToolName = (toolName: string) => {
 
 export const configureHttpRequestFunction = async (
 	ctx: IExecuteFunctions,
-	auth: 'predefinedCredentialType' | 'genericCredentialType' | 'none',
+	credentialsType: 'predefinedCredentialType' | 'genericCredentialType' | 'none',
 	itemIndex: number,
 ) => {
-	if (auth === 'genericCredentialType') {
-		const genericCredentialType = ctx.getNodeParameter('genericAuthType', itemIndex) as string;
+	if (credentialsType === 'genericCredentialType') {
+		const genericType = ctx.getNodeParameter('genericAuthType', itemIndex) as string;
 
-		if (genericCredentialType === 'httpBasicAuth' || genericCredentialType === 'httpDigestAuth') {
-			const httpBasicAuth = await ctx.getCredentials('httpBasicAuth', itemIndex);
-			const sendImmediately = genericCredentialType === 'httpDigestAuth' ? false : undefined;
-			return async (requestOptions: IHttpRequestOptions) => {
-				requestOptions.auth = {
-					username: httpBasicAuth.user as string,
-					password: httpBasicAuth.password as string,
+		if (genericType === 'httpBasicAuth' || genericType === 'httpDigestAuth') {
+			const basicAuth = await ctx.getCredentials('httpBasicAuth', itemIndex);
+			const sendImmediately = genericType === 'httpDigestAuth' ? false : undefined;
+
+			return async (options: IHttpRequestOptions) => {
+				options.auth = {
+					username: basicAuth.user as string,
+					password: basicAuth.password as string,
 					sendImmediately,
 				};
-				return await ctx.helpers.httpRequest(requestOptions);
+				return await ctx.helpers.httpRequest(options);
 			};
-		} else if (genericCredentialType === 'httpHeaderAuth') {
-			const httpHeaderAuth = await ctx.getCredentials('httpHeaderAuth', itemIndex);
-			return async (requestOptions: IHttpRequestOptions) => {
-				requestOptions.headers![httpHeaderAuth.name as string] = httpHeaderAuth.value;
-				return await ctx.helpers.httpRequest(requestOptions);
+		} else if (genericType === 'httpHeaderAuth') {
+			const headerAuth = await ctx.getCredentials('httpHeaderAuth', itemIndex);
+
+			return async (options: IHttpRequestOptions) => {
+				options.headers![headerAuth.name as string] = headerAuth.value;
+				return await ctx.helpers.httpRequest(options);
 			};
-		} else if (genericCredentialType === 'httpQueryAuth') {
-			const httpQueryAuth = await ctx.getCredentials('httpQueryAuth', itemIndex);
-			return async (requestOptions: IHttpRequestOptions) => {
-				if (!requestOptions.qs) {
-					requestOptions.qs = {};
+		} else if (genericType === 'httpQueryAuth') {
+			const queryAuth = await ctx.getCredentials('httpQueryAuth', itemIndex);
+
+			return async (options: IHttpRequestOptions) => {
+				if (!options.qs) {
+					options.qs = {};
 				}
-				requestOptions.qs[httpQueryAuth.name as string] = httpQueryAuth.value;
-				return await ctx.helpers.httpRequest(requestOptions);
+				options.qs[queryAuth.name as string] = queryAuth.value;
+				return await ctx.helpers.httpRequest(options);
 			};
-		} else if (genericCredentialType === 'httpCustomAuth') {
-			const httpCustomAuth = await ctx.getCredentials('httpCustomAuth', itemIndex);
-			return async (requestOptions: IHttpRequestOptions) => {
-				const customAuth = jsonParse<IRequestOptionsSimplified>(
-					(httpCustomAuth.json as string) || '{}',
-					{ errorMessage: 'Invalid Custom Auth JSON' },
-				);
-				if (customAuth.headers) {
-					requestOptions.headers = { ...requestOptions.headers, ...customAuth.headers };
+		} else if (genericType === 'httpCustomAuth') {
+			const customAuth = await ctx.getCredentials('httpCustomAuth', itemIndex);
+
+			return async (options: IHttpRequestOptions) => {
+				const auth = jsonParse<IRequestOptionsSimplified>((customAuth.json as string) || '{}', {
+					errorMessage: 'Invalid Custom Auth JSON',
+				});
+				if (auth.headers) {
+					options.headers = { ...options.headers, ...auth.headers };
 				}
-				if (customAuth.body) {
-					requestOptions.body = { ...(requestOptions.body as IDataObject), ...customAuth.body };
+				if (auth.body) {
+					options.body = { ...(options.body as IDataObject), ...auth.body };
 				}
-				if (customAuth.qs) {
-					requestOptions.qs = { ...requestOptions.qs, ...customAuth.qs };
+				if (auth.qs) {
+					options.qs = { ...options.qs, ...auth.qs };
 				}
-				return await ctx.helpers.httpRequest(requestOptions);
+				return await ctx.helpers.httpRequest(options);
 			};
-		} else if (genericCredentialType === 'oAuth1Api') {
-			return async (requestOptions: IHttpRequestOptions) => {
-				return await ctx.helpers.requestOAuth1.call(ctx, 'oAuth1Api', requestOptions);
+		} else if (genericType === 'oAuth1Api') {
+			return async (options: IHttpRequestOptions) => {
+				return await ctx.helpers.requestOAuth1.call(ctx, 'oAuth1Api', options);
 			};
-		} else if (genericCredentialType === 'oAuth2Api') {
-			return async (requestOptions: IHttpRequestOptions) => {
-				return await ctx.helpers.requestOAuth2.call(ctx, 'oAuth1Api', requestOptions, {
+		} else if (genericType === 'oAuth2Api') {
+			return async (options: IHttpRequestOptions) => {
+				return await ctx.helpers.requestOAuth2.call(ctx, 'oAuth1Api', options, {
 					tokenType: 'Bearer',
 				});
 			};
 		}
-	} else if (auth === 'predefinedCredentialType') {
-		const nodeCredentialType = ctx.getNodeParameter('nodeCredentialType', itemIndex) as string;
-		const additionalOAuth2Options = getOAuth2AdditionalParameters(nodeCredentialType);
+	} else if (credentialsType === 'predefinedCredentialType') {
+		const predefinedType = ctx.getNodeParameter('nodeCredentialType', itemIndex) as string;
+		const additionalOptions = getOAuth2AdditionalParameters(predefinedType);
 
-		return async (requestOptions: IHttpRequestOptions) => {
+		return async (options: IHttpRequestOptions) => {
 			return await ctx.helpers.requestWithAuthentication.call(
 				ctx,
-				nodeCredentialType,
-				requestOptions,
-				additionalOAuth2Options && { oauth2: additionalOAuth2Options },
+				predefinedType,
+				options,
+				additionalOptions && { oauth2: additionalOptions },
 				itemIndex,
 			);
 		};
 	}
 
-	return async (requestOptions: IHttpRequestOptions) => {
-		return await ctx.helpers.httpRequest(requestOptions);
+	return async (options: IHttpRequestOptions) => {
+		return await ctx.helpers.httpRequest(options);
 	};
 };
 

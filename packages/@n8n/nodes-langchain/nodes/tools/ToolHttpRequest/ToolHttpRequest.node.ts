@@ -22,7 +22,11 @@ import {
 	configureResponseOptimizer,
 } from './utils';
 
-import { authenticationProperties, parametersCollection } from './descriptions';
+import {
+	authenticationProperties,
+	optimizeResponseProperties,
+	parametersCollection,
+} from './descriptions';
 
 export class ToolHttpRequest implements INodeType {
 	description: INodeTypeDescription = {
@@ -134,7 +138,6 @@ export class ToolHttpRequest implements INodeType {
 			},
 			{
 				...parametersCollection,
-				displayName: 'Parameters',
 				name: 'pathParameters',
 				displayOptions: {
 					show: {
@@ -152,7 +155,6 @@ export class ToolHttpRequest implements INodeType {
 			},
 			{
 				...parametersCollection,
-				displayName: 'Parameters',
 				name: 'queryParameters',
 				displayOptions: {
 					show: {
@@ -170,7 +172,6 @@ export class ToolHttpRequest implements INodeType {
 			},
 			{
 				...parametersCollection,
-				displayName: 'Parameters',
 				name: 'bodyParameters',
 				displayOptions: {
 					show: {
@@ -178,166 +179,7 @@ export class ToolHttpRequest implements INodeType {
 					},
 				},
 			},
-			{
-				displayName: 'Optimize Response',
-				name: 'optimizeResponse',
-				type: 'boolean',
-				default: false,
-				noDataExpression: true,
-				description:
-					'Whether the optimize the tool response to reduce amount of data passed to the LLM that could lead to better result and reduce cost',
-			},
-			{
-				displayName: 'Expected Response Type',
-				name: 'responseType',
-				type: 'options',
-				displayOptions: {
-					show: {
-						optimizeResponse: [true],
-					},
-				},
-				options: [
-					{
-						name: 'JSON',
-						value: 'json',
-					},
-					{
-						name: 'HTML',
-						value: 'html',
-					},
-					{
-						name: 'Text',
-						value: 'text',
-					},
-				],
-				default: 'json',
-			},
-			{
-				displayName: 'Field Containing Data',
-				name: 'dataField',
-				type: 'string',
-				default: '',
-				placeholder: 'e.g. records',
-				description: 'Specify the name of the field in the response containing the data',
-				hint: 'leave blank to use whole response',
-				requiresDataPath: 'single',
-				displayOptions: {
-					show: {
-						optimizeResponse: [true],
-						responseType: ['json'],
-					},
-				},
-			},
-			{
-				displayName: 'Include Fields',
-				name: 'fieldsToInclude',
-				type: 'options',
-				description: 'What fields response object should include',
-				default: 'all',
-				displayOptions: {
-					show: {
-						optimizeResponse: [true],
-						responseType: ['json'],
-					},
-				},
-				options: [
-					{
-						name: 'All',
-						value: 'all',
-						description: 'Include all fields',
-					},
-					{
-						name: 'Selected',
-						value: 'selected',
-						description: 'Include only fields specified below',
-					},
-					{
-						name: 'Except',
-						value: 'except',
-						description: 'Exclude fields specified below',
-					},
-				],
-			},
-			{
-				displayName: 'Fields',
-				name: 'fields',
-				type: 'string',
-				default: '',
-				placeholder: 'e.g. field1,field2',
-				description:
-					'Comma-separated list of the field names. Supports dot notation. You can drag the selected fields from the input panel.',
-				requiresDataPath: 'multiple',
-				displayOptions: {
-					show: {
-						optimizeResponse: [true],
-						responseType: ['json'],
-					},
-					hide: {
-						fieldsToInclude: ['all'],
-					},
-				},
-			},
-			{
-				displayName: 'Selector (CSS)',
-				name: 'cssSelector',
-				type: 'string',
-				description:
-					'Select specific element(e.g. body) or multiple elements(e.g. div) of chosen type in the response HTML.',
-				placeholder: 'e.g. body',
-				default: 'body',
-				displayOptions: {
-					show: {
-						optimizeResponse: [true],
-						responseType: ['html'],
-					},
-				},
-			},
-			{
-				displayName: 'Return Only Content',
-				name: 'onlyContent',
-				type: 'boolean',
-				default: false,
-				description:
-					'Whether to return only content of html elements, stripping html tags and attributes',
-				displayOptions: {
-					show: {
-						optimizeResponse: [true],
-						responseType: ['html'],
-					},
-				},
-			},
-			{
-				displayName: 'Elements To Omit',
-				name: 'elementsToOmit',
-				type: 'string',
-				displayOptions: {
-					show: {
-						optimizeResponse: [true],
-						responseType: ['html'],
-						onlyContent: [true],
-					},
-				},
-				default: '',
-				placeholder: 'e.g. img, .className, #ItemId',
-				description:
-					'Comma-separated list of selectors that would be excluded when extracting content',
-			},
-			{
-				displayName: 'Max Text Length',
-				name: 'maxLength',
-				type: 'number',
-				default: 0,
-				hint: 'If set to 0, no limit will be applied',
-				typeOptions: {
-					minValue: 0,
-				},
-				displayOptions: {
-					show: {
-						optimizeResponse: [true],
-						responseType: ['text'],
-					},
-				},
-			},
+			...optimizeResponseProperties,
 			{
 				displayName: 'Options',
 				name: 'options',
@@ -414,7 +256,7 @@ export class ToolHttpRequest implements INodeType {
 			});
 		}
 
-		const httpRequestFunction = await configureHttpRequestFunction(this, authentication, itemIndex);
+		const httpRequest = await configureHttpRequestFunction(this, authentication, itemIndex);
 		const optimizeResponse = configureResponseOptimizer(this, itemIndex);
 
 		let path = this.getNodeParameter('path', itemIndex, '') as string;
@@ -453,7 +295,7 @@ export class ToolHttpRequest implements INodeType {
 		let description = toolDescription;
 		if (parameters.length) {
 			description +=
-				` extract from prompt ${parameters.map((parameter) => `${parameter.name}(description: ${parameter.description}, type: ${parameter.type === 'any' ? 'infer from description' : parameter.type})`).join(', ')}` +
+				` extract from prompt ${parameters.map((parameter) => `${parameter.name}(description: ${parameter.description}, type: ${parameter.type})`).join(', ')}` +
 				'send as JSON';
 		}
 
@@ -477,7 +319,7 @@ export class ToolHttpRequest implements INodeType {
 							}
 						}
 
-						const httpRequestOptions: IHttpRequestOptions = {
+						const requestOptions: IHttpRequestOptions = {
 							method,
 							url,
 						};
@@ -506,21 +348,21 @@ export class ToolHttpRequest implements INodeType {
 							}
 						}
 
-						httpRequestOptions.url += path;
+						requestOptions.url += path;
 
 						if (Object.keys(headers).length) {
-							httpRequestOptions.headers = headers;
+							requestOptions.headers = headers;
 						}
 
 						if (Object.keys(qs).length) {
-							httpRequestOptions.qs = qs;
+							requestOptions.qs = qs;
 						}
 
 						if (Object.keys(body)) {
-							httpRequestOptions.body = body;
+							requestOptions.body = body;
 						}
 
-						response = optimizeResponse(await httpRequestFunction(httpRequestOptions));
+						response = optimizeResponse(await httpRequest(requestOptions));
 					} catch (error) {
 						executionError = error;
 						response = `There was an error: "${error.message}"`;
