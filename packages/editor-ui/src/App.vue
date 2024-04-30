@@ -150,7 +150,7 @@ export default defineComponent({
 		'banners banners banners'
 		'sidebar header chat'
 		'sidebar content chat';
-	grid-auto-columns: fit-content($sidebar-expanded-width) 1fr fit-content(400px);
+	grid-auto-columns: fit-content($sidebar-expanded-width) 1fr fit-content($chat-width);
 	grid-template-rows: auto fit-content($header-height) 1fr;
 	height: 100vh;
 }
