@@ -32,9 +32,20 @@ function parseSingleFilterValue(
 	type: FilterOperatorType,
 	strict = false,
 ): ValidationResult {
-	return type === 'any' || value === null || value === undefined
-		? ({ valid: true, newValue: value } as ValidationResult)
-		: validateFieldType('filter', value, type, { strict, parseStrings: true });
+	if (type === 'any' || value === null || value === undefined) {
+		return { valid: true, newValue: value } as ValidationResult;
+	}
+
+	if (type === 'boolean') {
+		const result = validateFieldType('filter', value, type, { strict });
+		if (!result.valid && !strict) {
+			return { valid: true, newValue: Boolean(value) };
+		}
+
+		return result;
+	}
+
+	return validateFieldType('filter', value, type, { strict, parseStrings: true });
 }
 
 const withIndefiniteArticle = (noun: string): string => {
