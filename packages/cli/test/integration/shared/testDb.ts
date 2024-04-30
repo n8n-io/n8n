@@ -19,9 +19,10 @@ export async function init() {
 	const testDbName = `${testDbPrefix}${randomString(6, 10)}_${Date.now()}`;
 
 	if (dbType === 'postgresdb') {
-		const bootstrapPostgres = await new Connection(
-			getBootstrapDBOptions('postgresdb'),
-		).initialize();
+		const options = getBootstrapDBOptions('postgresdb');
+		console.log('[test] options', options);
+
+		const bootstrapPostgres = await new Connection(options).initialize();
 		await bootstrapPostgres.query(`CREATE DATABASE ${testDbName}`);
 		await bootstrapPostgres.destroy();
 
