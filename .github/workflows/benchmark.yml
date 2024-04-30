@@ -40,8 +40,8 @@ jobs:
 
       - name: Benchmark
         uses: CodSpeedHQ/action@v2
-        working-directory: packages/cli
         with:
           run: |
+            cd packages/cli
             pnpm benchmark:sqlite
             pnpm benchmark:postgres
