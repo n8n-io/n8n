@@ -40,7 +40,7 @@ jobs:
 
       - name: Benchmark
         uses: CodSpeedHQ/action@v2
-        with:
-          run: |
-            pnpm benchmark:sqlite
-            pnpm benchmark:postgres
+        working-directory: packages/cli
+        run: |
+          pnpm benchmark:sqlite
+          pnpm benchmark:postgres
