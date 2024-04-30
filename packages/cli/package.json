@@ -21,7 +21,7 @@
   },
   "scripts": {
     "benchmark:sqlite": "NODE_ENV=benchmark N8N_LOG_LEVEL=silent DB_TYPE=sqlite node dist/benchmark/main.js",
-    "benchmark:postgres": "NODE_ENV=benchmark N8N_LOG_LEVEL=silent DB_TYPE=postgresdb node dist/benchmark/main.js",
+    "benchmark:postgres": "NODE_ENV=benchmark N8N_LOG_LEVEL=silent DB_TYPE=postgresdb DB_POSTGRESDB_SCHEMA=alt_schema DB_TABLE_PREFIX=test_ node dist/benchmark/main.js",
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc",
     "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json && node scripts/build.mjs",
