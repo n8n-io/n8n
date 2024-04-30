@@ -55,15 +55,6 @@
 				@click="resetZoom"
 			/>
 		</KeyboardShortcutTooltip>
-		<KeyboardShortcutTooltip label="Open chat" :shortcut="{ keys: ['c'] }">
-			<n8n-icon-button
-				type="tertiary"
-				size="large"
-				icon="comments"
-				data-test-id="reset-zoom-button"
-				@click="openChat"
-			/>
-		</KeyboardShortcutTooltip>
 	</div>
 </template>
 <script lang="ts" setup>
@@ -72,13 +63,11 @@ import { storeToRefs } from 'pinia';
 import { useCanvasStore } from '@/stores/canvas.store';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import { useDeviceSupport } from 'n8n-design-system';
-import { useAIStore } from '@/stores/ai.store';
 
 const canvasStore = useCanvasStore();
 const { zoomToFit, zoomIn, zoomOut, resetZoom } = canvasStore;
 const { nodeViewScale, isDemo } = storeToRefs(canvasStore);
 const deviceSupport = useDeviceSupport();
-const aiStore = useAIStore();
 
 const keyDown = (e: KeyboardEvent) => {
 	const isCtrlKeyPressed = deviceSupport.isCtrlKeyPressed(e);
@@ -100,10 +89,6 @@ onBeforeMount(() => {
 onBeforeUnmount(() => {
 	document.removeEventListener('keydown', keyDown);
 });
-
-const openChat = () => {
-	aiStore.assistantChatOpen = !aiStore.assistantChatOpen;
-};
 </script>
 
 <style lang="scss" module>

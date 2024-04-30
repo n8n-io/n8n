@@ -40,7 +40,7 @@
 						:show-tooltip="!containsTrigger && showTriggerMissingTooltip"
 						:position="canvasStore.canvasAddButtonPosition"
 						data-test-id="canvas-add-button"
-						@click="showTriggerCreator(NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON)"
+						@click="onCanvasAddButtonCLick"
 						@hook:mounted="canvasStore.setRecenteredCanvasAddButtonPosition"
 					/>
 					<Node
@@ -118,6 +118,9 @@
 			</Suspense>
 			<Suspense>
 				<ContextMenu @action="onContextMenuAction" />
+			</Suspense>
+			<Suspense>
+				<NextStepPopup v-show="isNextStepPopupVisible" @option-selected="onNextStepSelected" />
 			</Suspense>
 			<div v-if="!isReadOnlyRoute && !readOnlyEnv" class="workflow-execute-wrapper">
 				<span
@@ -266,6 +269,7 @@ import Node from '@/components/Node.vue';
 import Sticky from '@/components/Sticky.vue';
 import CanvasAddButton from './CanvasAddButton.vue';
 import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
+import NextStepPopup from '@/components/AIAssistantChat/NextStepPopup.vue';
 import { v4 as uuid } from 'uuid';
 import type {
 	IConnection,
@@ -368,7 +372,10 @@ import {
 	N8nAddInputEndpointType,
 } from '@/plugins/jsplumb/N8nAddInputEndpointType';
 import { sourceControlEventBus } from '@/event-bus/source-control';
-import { getConnectorPaintStyleData, OVERLAY_ENDPOINT_ARROW_ID } from '@/utils/nodeViewUtils';
+import {
+	getConnectorPaintStyleData,
+	OVERLAY_ENDPOINT_ARROW_ID,
+} from '@/utils/nodeViewUtils';
 import { useViewStacks } from '@/components/Node/NodeCreator/composables/useViewStacks';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useClipboard } from '@/composables/useClipboard';
@@ -381,6 +388,7 @@ import { useCanvasPanning } from '@/composables/useCanvasPanning';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
 import { useRunWorkflow } from '@/composables/useRunWorkflow';
+import { useAIStore } from '@/stores/ai.store';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -411,6 +419,7 @@ export default defineComponent({
 		CanvasControls,
 		ContextMenu,
 		SetupWorkflowCredentialsButton,
+		NextStepPopup,
 	},
 	async beforeRouteLeave(to, from, next) {
 		if (
@@ -606,6 +615,7 @@ export default defineComponent({
 			usePushConnectionStore,
 			useSourceControlStore,
 			useExecutionsStore,
+			useAIStore,
 		),
 		nativelyNumberSuffixedDefaults(): string[] {
 			return this.nodeTypesStore.nativelyNumberSuffixedDefaults;
@@ -757,6 +767,9 @@ export default defineComponent({
 		},
 		isReadOnlyRoute() {
 			return this.$route?.meta?.readOnlyCanvas === true;
+		},
+		isNextStepPopupVisible(): boolean {
+			return this.aiStore.nextStepPopupConfig.open;
 		},
 	},
 	data() {
@@ -1201,6 +1214,23 @@ export default defineComponent({
 				}
 			}
 		},
+		async onCanvasAddButtonCLick(event: PointerEvent) {
+			if (event) {
+				const newNodeButton = (event.target as HTMLElement).closest('button');
+				const buttonPosition = newNodeButton?.getBoundingClientRect();
+				if (buttonPosition) {
+					this.aiStore.openNextStepPopup(this.$locale.baseText('nextStepPopup.title.firstStep'), [
+						buttonPosition.x + 55,
+						buttonPosition.y - 115,
+					]);
+				}
+			}
+		},
+		onNextStepSelected(action: string) {
+			if (action === 'choose') {
+				this.showTriggerCreator(NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON);
+			}
+		},
 		showTriggerCreator(source: NodeCreatorOpenSource) {
 			if (this.createNodeActive) return;
 			this.nodeCreatorStore.setSelectedView(TRIGGER_NODE_CREATOR_VIEW);
@@ -1446,6 +1476,7 @@ export default defineComponent({
 			// Save the location of the mouse click
 			this.lastClickPosition = this.getMousePositionWithinNodeView(e);
 			if (e instanceof MouseEvent && e.button === 1) {
+				this.aiStore.closeNextStepPopup();
 				this.moveCanvasKeyPressed = true;
 			}
 
@@ -1472,6 +1503,7 @@ export default defineComponent({
 		},
 		async keyDown(e: KeyboardEvent) {
 			this.contextMenu.close();
+			this.aiStore.closeNextStepPopup();
 
 			const ctrlModifier = this.deviceSupport.isCtrlKeyPressed(e) && !e.shiftKey && !e.altKey;
 			const shiftModifier = e.shiftKey && !e.altKey && !this.deviceSupport.isCtrlKeyPressed(e);
