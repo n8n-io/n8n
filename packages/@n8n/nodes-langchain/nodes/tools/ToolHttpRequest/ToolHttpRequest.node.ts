@@ -75,6 +75,8 @@ export class ToolHttpRequest implements INodeType {
 				displayName: 'Description',
 				name: 'toolDescription',
 				type: 'string',
+				description:
+					'Explain to LLM what this tool does, better description would allow LLM to produce expected result',
 				placeholder: 'e.g. Get the current weather in the requested city',
 				default: '',
 				typeOptions: {
@@ -87,8 +89,16 @@ export class ToolHttpRequest implements INodeType {
 				type: 'options',
 				options: [
 					{
+						name: 'DELETE',
+						value: 'DELETE',
+					},
+					{
 						name: 'GET',
 						value: 'GET',
+					},
+					{
+						name: 'PATCH',
+						value: 'PATCH',
 					},
 					{
 						name: 'POST',
@@ -97,10 +107,6 @@ export class ToolHttpRequest implements INodeType {
 					{
 						name: 'PUT',
 						value: 'PUT',
-					},
-					{
-						name: 'PATCH',
-						value: 'PATCH',
 					},
 				],
 				default: 'GET',

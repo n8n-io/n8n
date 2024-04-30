@@ -62,6 +62,8 @@ export const authenticationProperties: INodeProperties[] = [
 	{
 		displayName: 'Authentication',
 		name: 'authentication',
+		description:
+			'Select the type of authentication to use if needed, authentication would be done by n8n and your credentials will not be shared with the LLM',
 		noDataExpression: true,
 		type: 'options',
 		options: [
