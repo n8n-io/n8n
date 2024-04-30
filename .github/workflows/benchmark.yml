@@ -31,6 +31,8 @@ jobs:
     needs: postgres-setup
     name: Benchmark
     runs-on: ubuntu-latest
+    env:
+      DB_POSTGRESDB_PASSWORD: password
     steps:
       - uses: actions/checkout@v4.1.1
         with:
