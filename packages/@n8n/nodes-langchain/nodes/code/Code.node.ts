@@ -90,6 +90,8 @@ function getSandbox(
 	// eslint-disable-next-line @typescript-eslint/unbound-method
 	context.getNodeOutputs = this.getNodeOutputs;
 	// eslint-disable-next-line @typescript-eslint/unbound-method
+	context.executeWorkflow = this.executeWorkflow;
+	// eslint-disable-next-line @typescript-eslint/unbound-method
 	context.logger = this.logger;
 
 	if (options?.addItems) {
