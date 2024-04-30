@@ -111,12 +111,12 @@ export class ToolHttpRequest implements INodeType {
 			},
 			...authenticationProperties,
 			{
-				displayName: 'Define Path Parameters',
+				displayName: 'Define Path',
 				name: 'sendInPath',
 				type: 'boolean',
 				default: false,
 				noDataExpression: true,
-				description: 'Whether the llm should provide path parameters',
+				description: 'Whether the LLM should provide path parameters',
 			},
 			{
 				displayName: 'Path',
@@ -134,7 +134,7 @@ export class ToolHttpRequest implements INodeType {
 			},
 			{
 				...parametersCollection,
-				displayName: 'Path Parameters',
+				displayName: 'Parameters',
 				name: 'pathParameters',
 				displayOptions: {
 					show: {
@@ -143,16 +143,16 @@ export class ToolHttpRequest implements INodeType {
 				},
 			},
 			{
-				displayName: 'Define Query Parameters',
+				displayName: 'Define Query',
 				name: 'sendInQuery',
 				type: 'boolean',
 				default: false,
 				noDataExpression: true,
-				description: 'Whether the llm should provide query parameters',
+				description: 'Whether the LLM should provide query parameters',
 			},
 			{
 				...parametersCollection,
-				displayName: 'Query Parameters',
+				displayName: 'Parameters',
 				name: 'queryParameters',
 				displayOptions: {
 					show: {
@@ -161,16 +161,16 @@ export class ToolHttpRequest implements INodeType {
 				},
 			},
 			{
-				displayName: 'Define Body Parameters',
+				displayName: 'Define Body',
 				name: 'sendInBody',
 				type: 'boolean',
 				default: false,
 				noDataExpression: true,
-				description: 'Whether the llm should provide body parameters',
+				description: 'Whether the LLM should provide body parameters',
 			},
 			{
 				...parametersCollection,
-				displayName: 'Body Parameters',
+				displayName: 'Parameters',
 				name: 'bodyParameters',
 				displayOptions: {
 					show: {
@@ -179,13 +179,13 @@ export class ToolHttpRequest implements INodeType {
 				},
 			},
 			{
-				displayName: 'Optimize Tool Response',
-				name: 'optimizeToolResponse',
+				displayName: 'Optimize Response',
+				name: 'optimizeResponse',
 				type: 'boolean',
 				default: false,
 				noDataExpression: true,
 				description:
-					'Whether the optimize the tool response to reduce ammount of data passed to the LLM',
+					'Whether the optimize the tool response to reduce amount of data passed to the LLM that could lead to better result and reduce cost',
 			},
 			{
 				displayName: 'Expected Response Type',
@@ -193,7 +193,7 @@ export class ToolHttpRequest implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						optimizeToolResponse: [true],
+						optimizeResponse: [true],
 					},
 				},
 				options: [
@@ -213,7 +213,7 @@ export class ToolHttpRequest implements INodeType {
 				default: 'json',
 			},
 			{
-				displayName: 'Field in Response Containing Data',
+				displayName: 'Field Containing Data',
 				name: 'dataField',
 				type: 'string',
 				default: '',
@@ -223,20 +223,20 @@ export class ToolHttpRequest implements INodeType {
 				requiresDataPath: 'single',
 				displayOptions: {
 					show: {
-						optimizeToolResponse: [true],
+						optimizeResponse: [true],
 						responseType: ['json'],
 					},
 				},
 			},
 			{
-				displayName: 'Fields to Include',
+				displayName: 'Include Fields',
 				name: 'fieldsToInclude',
 				type: 'options',
-				description: 'What fields response onject should include, supports dot notation',
+				description: 'What fields response object should include',
 				default: 'all',
 				displayOptions: {
 					show: {
-						optimizeToolResponse: [true],
+						optimizeResponse: [true],
 						responseType: ['json'],
 					},
 				},
@@ -244,14 +244,17 @@ export class ToolHttpRequest implements INodeType {
 					{
 						name: 'All',
 						value: 'all',
+						description: 'Include all fields',
 					},
 					{
-						name: 'Selected Fields',
+						name: 'Selected',
 						value: 'selected',
+						description: 'Include only fields specified below',
 					},
 					{
-						name: 'All Fields Except',
+						name: 'Except',
 						value: 'except',
+						description: 'Exclude fields specified below',
 					},
 				],
 			},
@@ -262,11 +265,11 @@ export class ToolHttpRequest implements INodeType {
 				default: '',
 				placeholder: 'e.g. field1,field2',
 				description:
-					'Comma-separated list of the field names. You can drag the selected fields from the input panel.',
+					'Comma-separated list of the field names. Supports dot notation. You can drag the selected fields from the input panel.',
 				requiresDataPath: 'multiple',
 				displayOptions: {
 					show: {
-						optimizeToolResponse: [true],
+						optimizeResponse: [true],
 						responseType: ['json'],
 					},
 					hide: {
@@ -275,58 +278,62 @@ export class ToolHttpRequest implements INodeType {
 				},
 			},
 			{
-				displayName: 'CSS Selector',
+				displayName: 'Selector (CSS)',
 				name: 'cssSelector',
 				type: 'string',
+				description:
+					'Select specific element(e.g. body) or multiple elements(e.g. div) of chosen type in the response HTML.',
 				placeholder: 'e.g. body',
 				default: 'body',
 				displayOptions: {
 					show: {
-						optimizeToolResponse: [true],
+						optimizeResponse: [true],
 						responseType: ['html'],
 					},
 				},
 			},
 			{
-				displayName: 'Only Text Content',
-				name: 'onlyText',
+				displayName: 'Return Only Content',
+				name: 'onlyContent',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to only return the text content of html elements',
+				description:
+					'Whether to return only content of html elements, stripping html tags and attributes',
 				displayOptions: {
 					show: {
-						optimizeToolResponse: [true],
+						optimizeResponse: [true],
 						responseType: ['html'],
 					},
 				},
 			},
 			{
-				displayName: 'Skip Selectors',
-				name: 'skipSelectors',
+				displayName: 'Elements To Omit',
+				name: 'elementsToOmit',
 				type: 'string',
 				displayOptions: {
 					show: {
-						optimizeToolResponse: [true],
+						optimizeResponse: [true],
 						responseType: ['html'],
-						onlyText: [true],
+						onlyContent: [true],
 					},
 				},
 				default: '',
 				placeholder: 'e.g. img, .className, #ItemId',
-				description: 'Comma-separated list of selectors to skip in the text extraction',
+				description:
+					'Comma-separated list of selectors that would be excluded when extracting content',
 			},
 			{
-				displayName: 'Max Length',
+				displayName: 'Max Text Length',
 				name: 'maxLength',
 				type: 'number',
-				default: 7000,
-				description: 'Max length of the returned text',
+				default: 0,
+				hint: 'If set to 0, no limit will be applied',
 				typeOptions: {
-					minValue: 1,
+					minValue: 0,
 				},
 				displayOptions: {
 					show: {
-						optimizeToolResponse: [true],
+						optimizeResponse: [true],
 						responseType: ['text'],
 					},
 				},
@@ -335,7 +342,7 @@ export class ToolHttpRequest implements INodeType {
 				displayName: 'Options',
 				name: 'options',
 				placeholder: 'Add Option',
-				description: 'Additional options to add',
+				description: 'Data to send in the request in addition to data provided by LLM',
 				type: 'collection',
 				default: {},
 				options: [
@@ -375,9 +382,6 @@ export class ToolHttpRequest implements INodeType {
 	};
 
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
-		// const node = this.getNode();
-		// const workflowMode = this.getMode();
-
 		const name = this.getNodeParameter('name', itemIndex) as string;
 		const toolDescription = this.getNodeParameter('toolDescription', itemIndex) as string;
 		const method = this.getNodeParameter('method', itemIndex, 'GET') as IHttpRequestMethods;

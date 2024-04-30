@@ -176,13 +176,9 @@ export const configureHttpRequestFunction = async (
 };
 
 export const configureResponseOptimizer = (ctx: IExecuteFunctions, itemIndex: number) => {
-	const optimizeToolResponse = ctx.getNodeParameter(
-		'optimizeToolResponse',
-		itemIndex,
-		false,
-	) as boolean;
+	const optimizeResponse = ctx.getNodeParameter('optimizeResponse', itemIndex, false) as boolean;
 
-	if (optimizeToolResponse) {
+	if (optimizeResponse) {
 		const responseType = ctx.getNodeParameter('responseType', itemIndex) as
 			| 'json'
 			| 'text'
@@ -190,10 +186,17 @@ export const configureResponseOptimizer = (ctx: IExecuteFunctions, itemIndex: nu
 
 		if (responseType === 'html') {
 			const cssSelector = ctx.getNodeParameter('cssSelector', itemIndex, '') as string;
-			const onlyText = ctx.getNodeParameter('onlyText', itemIndex, false) as boolean;
-			let skipSelectors = '';
-			if (onlyText) {
-				skipSelectors = ctx.getNodeParameter('skipSelectors', itemIndex, '') as string;
+			const onlyContent = ctx.getNodeParameter('onlyContent', itemIndex, false) as boolean;
+			let elementsToOmit: string[] = [];
+
+			if (onlyContent) {
+				const elementsToOmitUi = ctx.getNodeParameter('elementsToOmit', itemIndex, '') as
+					| string
+					| string[];
+
+				if (typeof elementsToOmitUi === 'string') {
+					elementsToOmit = elementsToOmitUi.split(',').map((s) => s.trim());
+				}
 			}
 
 			return <T>(response: T) => {
@@ -211,17 +214,19 @@ export const configureResponseOptimizer = (ctx: IExecuteFunctions, itemIndex: nu
 				htmlElements.each((_, el) => {
 					let value = html(el).html() || '';
 
-					if (onlyText) {
-						let options;
-						if (skipSelectors) {
-							options = {
-								selectors: skipSelectors.split(',').map((s) => ({
-									selector: s.trim(),
+					if (onlyContent) {
+						let htmlToTextOptions;
+
+						if (elementsToOmit?.length) {
+							htmlToTextOptions = {
+								selectors: elementsToOmit.map((selector) => ({
+									selector,
 									format: 'skip',
 								})),
 							};
 						}
-						value = convert(value, options);
+
+						value = convert(value, htmlToTextOptions);
 					}
 
 					value = value
