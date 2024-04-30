@@ -17,9 +17,6 @@ jobs:
       DB_POSTGRESDB_PASSWORD: password
     steps:
       - uses: actions/checkout@v4.1.1
-        with:
-          repository: n8n-io/n8n
-          ref: ${{ inputs.ref }}
 
       - name: Start Postgres
         uses: isbang/compose-action@v2.0.0
@@ -32,7 +29,7 @@ jobs:
       - uses: actions/setup-node@v4.0.1
         with:
           node-version: 18.x
-          cache: 'pnpm'
+          cache: pnpm
 
       - run: pnpm install --frozen-lockfile
 
