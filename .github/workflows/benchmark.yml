@@ -33,7 +33,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DB_POSTGRESDB_PASSWORD: password
-      DB_POSTGRESDB_HOST: 127.0.0.1
     steps:
       - uses: actions/checkout@v4.1.1
         with:
