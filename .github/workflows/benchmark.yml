@@ -25,8 +25,7 @@ jobs:
         uses: isbang/compose-action@v2.0.0
         with:
           compose-file: ./.github/docker-compose.yml
-          services: |
-            postgres
+          services: postgres
 
       - run: corepack enable
 
