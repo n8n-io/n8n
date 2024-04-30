@@ -71,7 +71,6 @@ export class InstanceSettings {
 				errorMessage: `Error parsing n8n-config file "${this.settingsFile}". It does not seem to be valid JSON.`,
 			});
 
-			// @TODO: Remove first two logs in benchmark run
 			if (!inTest) Logger.info(`User settings loaded from: ${this.settingsFile}`);
 
 			const { encryptionKey, tunnelSubdomain } = settings;
