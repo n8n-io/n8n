@@ -28,8 +28,10 @@ import { RoleService } from '@/services/role.service';
 import { WorkflowSharingService } from './workflowSharing.service';
 import { ProjectService } from '@/services/project.service';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
-import { In } from '@n8n/typeorm';
 import type { Scope } from '@n8n/permissions';
+import type { EntityManager } from '@n8n/typeorm';
+import { In } from '@n8n/typeorm';
+import { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
 
 @Service()
 export class WorkflowService {
@@ -286,5 +288,59 @@ export class WorkflowService {
 			},
 		});
 		return this.roleService.combineResourceScopes('workflow', user, shared, userProjectRelations);
+	}
+
+	/**
+	 * Transfers all workflows owned by a project to another one.
+	 * This has only been tested for personal projects. It may need to be amended
+	 * for team projects.
+	 **/
+	async transferAll(fromProjectId: string, toProjectId: string, trx?: EntityManager) {
+		trx = trx ?? this.workflowRepository.manager;
+
+		// Get all shared workflows for both projects.
+		const allSharedWorkflows = await trx.findBy(SharedWorkflow, {
+			projectId: In([fromProjectId, toProjectId]),
+		});
+		const sharedWorkflowsOfFromProject = allSharedWorkflows.filter(
+			(sw) => sw.projectId === fromProjectId,
+		);
+
+		// For all workflows that the from-project owns transfer the ownership to
+		// the to-project.
+		// This will override whatever relationship the to-project already has to
+		// the resources at the moment.
+
+		const ownedWorkflowIds = sharedWorkflowsOfFromProject
+			.filter((sw) => sw.role === 'workflow:owner')
+			.map((sw) => sw.workflowId);
+
+		await this.sharedWorkflowRepository.makeOwner(ownedWorkflowIds, toProjectId, trx);
+
+		// Delete the relationship to the from-project.
+		await this.sharedWorkflowRepository.deleteByIds(ownedWorkflowIds, fromProjectId, trx);
+
+		// Transfer relationships that are not `workflow:owner`.
+		// This will NOT override whatever relationship the from-project already
+		// has to the resource at the moment.
+		const sharedWorkflowIdsOfTransferee = allSharedWorkflows
+			.filter((sw) => sw.projectId === toProjectId)
+			.map((sw) => sw.workflowId);
+
+		// All resources that are shared with the from-project, but not with the
+		// to-project.
+		const sharedWorkflowsToTransfer = sharedWorkflowsOfFromProject.filter(
+			(sw) =>
+				sw.role !== 'workflow:owner' && !sharedWorkflowIdsOfTransferee.includes(sw.workflowId),
+		);
+
+		await trx.insert(
+			SharedWorkflow,
+			sharedWorkflowsToTransfer.map((sw) => ({
+				workflowId: sw.workflowId,
+				projectId: toProjectId,
+				role: sw.role,
+			})),
+		);
 	}
 }

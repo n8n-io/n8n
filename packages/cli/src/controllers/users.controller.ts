@@ -201,101 +201,16 @@ export class UsersController {
 			telemetryData.migration_user_id = transferee.id;
 
 			await this.userService.getManager().transaction(async (trx) => {
-				// Get all shared credentials and workflows for both users
-				const [allSharedWorkflows, allSharedCredentials] = await Promise.all([
-					trx.findBy(SharedWorkflow, {
-						projectId: In([personalProjectToDelete.id, transfereePersonalProject.id]),
-					}),
-					trx.findBy(SharedCredentials, {
-						projectId: In([personalProjectToDelete.id, transfereePersonalProject.id]),
-					}),
-				]);
-
-				const sharedWorkflowsOfUserToDelete = allSharedWorkflows.filter(
-					(sw) => sw.projectId === personalProjectToDelete.id,
-				);
-				const sharedCredentialsOfUserToDelete = allSharedCredentials.filter(
-					(sc) => sc.projectId === personalProjectToDelete.id,
-				);
-
-				// For all credentials and workflows that the user to delete owns
-				// transfer the ownership to the transferee.
-				// This will override whatever relationship the transferee already has
-				// to the resources at the moment.
-
-				const ownedWorkflowIds = sharedWorkflowsOfUserToDelete
-					.filter((sw) => sw.role === 'workflow:owner')
-					.map((sw) => sw.workflowId);
-				const ownedCredentialIds = sharedCredentialsOfUserToDelete
-					.filter((sc) => sc.role === 'credential:owner')
-					.map((sc) => sc.credentialsId);
-
-				await this.sharedWorkflowRepository.makeOwner(
-					ownedWorkflowIds,
+				await this.workflowService.transferAll(
+					personalProjectToDelete.id,
 					transfereePersonalProject.id,
 					trx,
 				);
-				await this.sharedCredentialsRepository.makeOwner(
-					ownedCredentialIds,
+				await this.credentialsService.transferAll(
+					personalProjectToDelete.id,
 					transfereePersonalProject.id,
 					trx,
 				);
-
-				// Delete the relationship to the user to delete.
-				// If we don't do this then the following code that deletes the user
-				// will also delete these workflows and credentials.
-				await this.sharedWorkflowRepository.deleteByIds(
-					ownedWorkflowIds,
-					personalProjectToDelete.id,
-					trx,
-				);
-				await this.sharedCredentialsRepository.deleteByIds(
-					ownedCredentialIds,
-					personalProjectToDelete.id,
-					trx,
-				);
-
-				// Transfer relationships that are not `*:owner`.
-				// This will NOT override whatever relationship the transferee already
-				// has to the resource at the moment.
-
-				const sharedWorkflowIdsOfTransferee = allSharedWorkflows
-					.filter((sw) => sw.projectId === transfereePersonalProject.id)
-					.map((sw) => sw.workflowId);
-				const sharedCredentialIdsOfTransferee = allSharedCredentials
-					.filter((sc) => sc.projectId === transfereePersonalProject.id)
-					.map((sc) => sc.credentialsId);
-
-				// all resources that are shared with the user to delete, but not with the transferee
-				const sharedWorkflowsToTransfer = sharedWorkflowsOfUserToDelete.filter(
-					(sw) =>
-						sw.role !== 'workflow:owner' && !sharedWorkflowIdsOfTransferee.includes(sw.workflowId),
-				);
-				const sharedCredentialsToTransfer = sharedCredentialsOfUserToDelete.filter(
-					(sc) =>
-						sc.role !== 'credential:owner' &&
-						!sharedCredentialIdsOfTransferee.includes(sc.credentialsId),
-				);
-
-				await Promise.all([
-					trx.insert(
-						SharedWorkflow,
-						sharedWorkflowsToTransfer.map((sw) => ({
-							workflowId: sw.workflowId,
-							projectId: transfereePersonalProject.id,
-							role: sw.role,
-						})),
-					),
-
-					trx.insert(
-						SharedCredentials,
-						sharedCredentialsToTransfer.map((sc) => ({
-							credentialsId: sc.credentialsId,
-							projectId: transfereePersonalProject.id,
-							role: sc.role,
-						})),
-					),
-				]);
 			});
 
 			await this.projectService.clearCredentialCanUseExternalSecretsCache(

@@ -6,14 +6,19 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import { ApplicationError, CREDENTIAL_EMPTY_VALUE, deepCopy, NodeHelpers } from 'n8n-workflow';
-import { In, type FindOptionsRelations, type FindOptionsWhere } from '@n8n/typeorm';
+import {
+	In,
+	type EntityManager,
+	type FindOptionsRelations,
+	type FindOptionsWhere,
+} from '@n8n/typeorm';
 import type { Scope } from '@n8n/permissions';
 import * as Db from '@/Db';
 import type { ICredentialsDb } from '@/Interfaces';
 import { createCredentialsFromCredentialsEntity } from '@/CredentialsHelper';
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
-import type { SharedCredentials } from '@db/entities/SharedCredentials';
+import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { validateEntity } from '@/GenericHelpers';
 import { ExternalHooks } from '@/ExternalHooks';
 import type { User } from '@db/entities/User';
@@ -418,5 +423,60 @@ export class CredentialsService {
 			},
 		});
 		return this.roleService.combineResourceScopes('credential', user, shared, userProjectRelations);
+	}
+
+	/**
+	 * Transfers all credentials owned by a project to another one.
+	 * This has only been tested for personal projects. It may need to be amended
+	 * for team projects.
+	 **/
+	async transferAll(fromProjectId: string, toProjectId: string, trx?: EntityManager) {
+		trx = trx ?? this.credentialsRepository.manager;
+
+		// Get all shared credentials for both projects.
+		const allSharedCredentials = await trx.findBy(SharedCredentials, {
+			projectId: In([fromProjectId, toProjectId]),
+		});
+
+		const sharedCredentialsOfFromProject = allSharedCredentials.filter(
+			(sc) => sc.projectId === fromProjectId,
+		);
+
+		// For all credentials that the from-project owns transfer the ownership
+		// to the to-project.
+		// This will override whatever relationship the to-project already has to
+		// the resources at the moment.
+		const ownedCredentialIds = sharedCredentialsOfFromProject
+			.filter((sc) => sc.role === 'credential:owner')
+			.map((sc) => sc.credentialsId);
+
+		await this.sharedCredentialsRepository.makeOwner(ownedCredentialIds, toProjectId, trx);
+
+		// Delete the relationship to the from-project.
+		await this.sharedCredentialsRepository.deleteByIds(ownedCredentialIds, fromProjectId, trx);
+
+		// Transfer relationships that are not `credential:owner`.
+		// This will NOT override whatever relationship the to-project already has
+		// to the resource at the moment.
+		const sharedCredentialIdsOfTransferee = allSharedCredentials
+			.filter((sc) => sc.projectId === toProjectId)
+			.map((sc) => sc.credentialsId);
+
+		// All resources that are shared with the from-project, but not with the
+		// to-project.
+		const sharedCredentialsToTransfer = sharedCredentialsOfFromProject.filter(
+			(sc) =>
+				sc.role !== 'credential:owner' &&
+				!sharedCredentialIdsOfTransferee.includes(sc.credentialsId),
+		);
+
+		await trx.insert(
+			SharedCredentials,
+			sharedCredentialsToTransfer.map((sc) => ({
+				credentialsId: sc.credentialsId,
+				projectId: toProjectId,
+				role: sc.role,
+			})),
+		);
 	}
 }
