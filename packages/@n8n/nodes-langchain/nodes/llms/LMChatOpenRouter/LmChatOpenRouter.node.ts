@@ -50,7 +50,7 @@ export class LmChatOpenRouter implements INodeType {
 		requestDefaults: {
 			ignoreHttpStatusErrors: true,
 			baseURL:
-				'={{ $parameter.options?.baseURL?.split("/").slice(0,-1).join("/") || "https://openrouter.ai/v1" }}',
+				'={{ $parameter.options?.baseURL?.split("/").slice(0,-1).join("/") || "https://openrouter.ai/api/v1" }}',
 		},
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
@@ -77,7 +77,7 @@ export class LmChatOpenRouter implements INodeType {
 						routing: {
 							request: {
 								method: 'GET',
-								url: '={{ $parameter.options?.baseURL?.split("/").slice(-1).pop() || "v1"  }}/models',
+								url: '={{ $parameter.options?.baseURL?.split("/").slice(-1).pop() || "api/v1"  }}/models',
 							},
 							output: {
 								postReceive: [
