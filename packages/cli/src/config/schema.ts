@@ -1437,7 +1437,6 @@ export const schema = {
 		doc: 'Number of reverse-proxies n8n is running behind',
 	},
 
-	// @TODO: Stay with tinybench's defaults?
 	benchmark: {
 		time: {
 			doc: 'Length of time (ms) during which to repeatedly run a benchmarking task',
