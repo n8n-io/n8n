@@ -48,9 +48,8 @@ jobs:
           path: ./packages/**/dist
           key: ${{ inputs.cacheKey }}
 
-      - name: Build benchmark
+      - run: pnpm build:benchmark
         working-directory: packages/cli
-        run: pnpm build:benchmark
 
       - name: Benchmark
         uses: CodSpeedHQ/action@v2
