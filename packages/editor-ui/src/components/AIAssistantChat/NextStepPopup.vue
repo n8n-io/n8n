@@ -77,7 +77,7 @@ const onOptionSelected = (option: string) => {
 
 <style module lang="scss">
 .container {
-	position: absolute;
+	position: fixed;
 	display: flex;
 	flex-direction: column;
 	min-width: 190px;
@@ -86,6 +86,30 @@ const onOptionSelected = (option: string) => {
 	box-shadow: 0px 6px 16px 0px #441c170f;
 	border: var(--border-width-base) var(--border-style-base) var(--color-foreground-light);
 	border-radius: var(--border-radius-base);
+
+	// Arrow border is created as the outer triange
+	&:before {
+		content: '';
+		position: relative;
+		left: -11px;
+		top: calc(50% - 8px);
+		border-top: 10px solid transparent;
+		border-bottom: 10px solid transparent;
+		border-right: 10px solid var(--color-foreground-light);
+		position: absolute;
+	}
+
+	// Arrow background is created as the inner triangle
+	&:after {
+		content: '';
+		position: relative;
+		left: -10px;
+		top: calc(50% - 8px);
+		border-top: 10px solid transparent;
+		border-bottom: 10px solid transparent;
+		border-right: 10px solid var(--color-background-xlight);
+		position: absolute;
+	}
 }
 
 .title {

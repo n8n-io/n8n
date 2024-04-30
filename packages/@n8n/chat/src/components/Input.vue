@@ -1,17 +1,27 @@
 <script setup lang="ts">
 // eslint-disable-next-line import/no-unresolved
 import IconSend from 'virtual:icons/mdi/send';
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useI18n, useChat } from '@n8n/chat/composables';
+import { chatEventBus } from '@n8n/chat/event-buses';
 
 const chatStore = useChat();
 const { waitingForResponse } = chatStore;
 const { t } = useI18n();
 
+const chatTextArea = ref(null);
 const input = ref('');
 
 const isSubmitDisabled = computed(() => {
 	return input.value === '' || waitingForResponse.value;
+});
+
+onMounted(() => {
+	chatEventBus.on('focusInput', () => {
+		if (chatTextArea.value) {
+			(chatTextArea.value as HTMLTextAreaElement).focus();
+		}
+	});
 });
 
 async function onSubmit(event: MouseEvent | KeyboardEvent) {
@@ -38,6 +48,7 @@ async function onSubmitKeydown(event: KeyboardEvent) {
 <template>
 	<div class="chat-input">
 		<textarea
+			ref="chatTextArea"
 			v-model="input"
 			rows="1"
 			:placeholder="t('inputPlaceholder')"

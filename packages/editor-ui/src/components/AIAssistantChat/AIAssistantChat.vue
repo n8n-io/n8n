@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { useI18n } from '@/composables/useI18n';
-import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import ChatComponent from '@n8n/chat/components/Chat.vue';
 import { ChatOptionsSymbol, ChatSymbol } from '@n8n/chat/constants';
@@ -16,7 +15,6 @@ import { onMounted } from 'vue';
 const locale = useI18n();
 
 const usersStore = useUsersStore();
-const uiStore = useUIStore();
 const aiStore = useAIStore();
 
 const messages: Ref<ChatMessage[]> = ref([]);
@@ -24,7 +22,7 @@ const waitingForResponse = ref(false);
 const currentSessionId = ref<string>(String(Date.now()));
 
 const userName = computed(() => usersStore.currentUser?.firstName ?? 'there');
-const lastSelectedNode = computed(() => uiStore.getLastSelectedNode);
+const nextStepEndpoint = computed(() => aiStore.endpointForNextStep);
 
 const chatTitle = locale.baseText('aiAssistantChat.title');
 const thanksResponses: ChatMessage[] = [
@@ -71,9 +69,9 @@ const thanksResponses: ChatMessage[] = [
 ];
 
 const initialMessageText = computed(() => {
-	if (lastSelectedNode.value) {
+	if (nextStepEndpoint.value) {
 		return locale.baseText('aiAssistantChat.initialMessage.nextStep', {
-			interpolate: { currentAction: lastSelectedNode.value.name },
+			interpolate: { currentAction: nextStepEndpoint.value.__meta.nodeName },
 		});
 	}
 
@@ -154,6 +152,7 @@ provide(ChatSymbol, chatConfig);
 provide(ChatOptionsSymbol, chatOptions);
 
 onMounted(() => {
+	chatEventBus.emit('focusInput');
 	chatEventBus.on('close', () => {
 		aiStore.assistantChatOpen = false;
 	});

@@ -372,10 +372,7 @@ import {
 	N8nAddInputEndpointType,
 } from '@/plugins/jsplumb/N8nAddInputEndpointType';
 import { sourceControlEventBus } from '@/event-bus/source-control';
-import {
-	getConnectorPaintStyleData,
-	OVERLAY_ENDPOINT_ARROW_ID,
-} from '@/utils/nodeViewUtils';
+import { getConnectorPaintStyleData, OVERLAY_ENDPOINT_ARROW_ID } from '@/utils/nodeViewUtils';
 import { useViewStacks } from '@/components/Node/NodeCreator/composables/useViewStacks';
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useClipboard } from '@/composables/useClipboard';
@@ -1217,18 +1214,29 @@ export default defineComponent({
 		async onCanvasAddButtonCLick(event: PointerEvent) {
 			if (event) {
 				const newNodeButton = (event.target as HTMLElement).closest('button');
-				const buttonPosition = newNodeButton?.getBoundingClientRect();
-				if (buttonPosition) {
-					this.aiStore.openNextStepPopup(this.$locale.baseText('nextStepPopup.title.firstStep'), [
-						buttonPosition.x + 55,
-						buttonPosition.y - 115,
-					]);
+				if (newNodeButton) {
+					this.aiStore.endpointForNextStep = null;
+					this.aiStore.openNextStepPopup(
+						this.$locale.baseText('nextStepPopup.title.firstStep'),
+						newNodeButton,
+					);
 				}
 			}
 		},
 		onNextStepSelected(action: string) {
 			if (action === 'choose') {
-				this.showTriggerCreator(NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON);
+				const nextStepEndpoint = this.aiStore.endpointForNextStep;
+				if (nextStepEndpoint === null) {
+					this.showTriggerCreator(NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON);
+				} else {
+					this.insertNodeAfterSelected({
+						sourceId: nextStepEndpoint .__meta.nodeId,
+						index: nextStepEndpoint .__meta.index,
+						eventSource: NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
+						outputType: nextStepEndpoint .scope as ConnectionTypes,
+						endpointUuid: nextStepEndpoint .uuid,
+					});
+				}
 			}
 		},
 		showTriggerCreator(source: NodeCreatorOpenSource) {
@@ -3459,13 +3467,12 @@ export default defineComponent({
 		},
 		onPlusEndpointClick(endpoint: Endpoint) {
 			if (endpoint?.__meta) {
-				this.insertNodeAfterSelected({
-					sourceId: endpoint.__meta.nodeId,
-					index: endpoint.__meta.index,
-					eventSource: NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
-					outputType: endpoint.scope as ConnectionTypes,
-					endpointUuid: endpoint.uuid,
-				});
+				this.aiStore.endpointForNextStep = endpoint;
+				const endpointElement = endpoint.endpoint.canvas;
+				this.aiStore.openNextStepPopup(
+					this.$locale.baseText('nextStepPopup.title.nextStep'),
+					endpointElement,
+				);
 			}
 		},
 		onAddInputEndpointClick(endpoint: Endpoint) {
