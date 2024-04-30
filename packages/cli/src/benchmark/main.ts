@@ -6,7 +6,6 @@ import config from '@/config';
 /* eslint-disable import/no-extraneous-dependencies */
 import Bench from 'tinybench';
 import { withCodSpeed } from '@codspeed/tinybench-plugin';
-
 /* eslint-enable import/no-extraneous-dependencies */
 
 async function main() {
