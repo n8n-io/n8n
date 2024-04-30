@@ -35,7 +35,7 @@ jobs:
 
       - name: Build
         if: ${{ inputs.cacheKey == '' }}
-        run: pnpm build
+        run: pnpm build:backend
 
       - name: Restore cached build artifacts
         if: ${{ inputs.cacheKey != '' }}
