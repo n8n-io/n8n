@@ -11,17 +11,19 @@ import config from '@/config';
 
 let main: Start;
 
+const dbType = config.getEnv('database.type');
+
 export async function setup() {
 	n8nDir();
 
-	await postgresSetup();
+	log('Selected DB type', dbType);
+
+	if (dbType === 'postgresdb') await postgresSetup();
 
 	main = new Start([], new Config({ root: __dirname }));
 
 	await main.init();
 	await main.run();
-
-	log('Set DB', config.getEnv('database.type'));
 
 	await seedInstanceOwner();
 	const files = await seedWorkflows();
@@ -35,5 +37,6 @@ export async function teardown() {
 	await main.stopProcess();
 
 	await Db.close();
-	await postgresTeardown();
+
+	if (dbType === 'postgresdb') await postgresTeardown();
 }

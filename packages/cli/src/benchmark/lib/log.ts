@@ -1,5 +1,6 @@
 import pico from 'picocolors';
 import { assert } from 'n8n-workflow';
+import config from '@/config';
 import type Bench from 'tinybench';
 import type { Suites } from './types';
 
@@ -46,7 +47,8 @@ const toDirsAndFileName = (key: string) => {
 	return [dirs, fileName];
 };
 
-export function logResults(suites: Suites, results: Bench['results'], db: 'sqlite' | 'postgres') {
+export function logResults(suites: Suites, results: Bench['results']) {
+	const dbType = config.getEnv('database.type') === 'postgresdb' ? 'postgres' : 'sqlite';
 	const columnDivider = pico.dim('·'.repeat(3));
 
 	for (const [key, suite] of Object.entries(suites)) {
@@ -56,7 +58,7 @@ export function logResults(suites: Suites, results: Bench['results'], db: 'sqlit
 			'\n',
 			pico.bgWhite(pico.black(' BENCHMARK ')),
 			pico.gray(dirs) + pico.bold(fileName),
-			pico.dim('[' + db + ']'),
+			pico.dim('[' + dbType + ']'),
 			'\n',
 		].join(' ');
 

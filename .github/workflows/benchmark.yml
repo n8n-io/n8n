@@ -41,4 +41,6 @@ jobs:
       - name: Benchmark
         uses: CodSpeedHQ/action@v2
         with:
-          run: pnpm benchmark
+          run: |
+            pnpm benchmark:sqlite
+            pnpm benchmark:postgres

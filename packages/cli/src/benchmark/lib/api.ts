@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import path from 'node:path';
+import type Bench from 'tinybench';
 import { assert } from 'n8n-workflow';
 import glob from 'fast-glob';
 import callsites from 'callsites';
@@ -20,6 +21,28 @@ export async function collectSuites() {
 	}
 
 	return suites;
+}
+
+export function registerSuites(bench: Bench) {
+	for (const { hooks, tasks } of Object.values(suites)) {
+		/**
+		 * In tinybench, `beforeAll` and `afterAll` refer to all _iterations_ of
+		 * a single task, while `beforeEach` and `afterEach` refer to each _iteration_.
+		 *
+		 * In jest and vitest, `beforeAll` and `afterAll` refer to all _tests_,
+		 * while `beforeEach` and `afterEach` refer to each _test_.
+		 *
+		 * This API renames tinybench's hooks to prevent confusion from familiarity with jest.
+		 */
+		const options: Record<string, Callback> = {};
+
+		if (hooks.beforeEachTask) options.beforeAll = hooks.beforeEachTask;
+		if (hooks.afterEachTask) options.afterAll = hooks.afterEachTask;
+
+		for (const t of tasks) {
+			bench.add(t.name, t.operation, options);
+		}
+	}
 }
 
 function suiteKey() {
