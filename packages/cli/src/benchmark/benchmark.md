@@ -1,31 +1,44 @@
 # Benchmark
 
-This package contains benchmarks to measure the execution time of n8n backend operations.
+This package contains benchmarks to measure the execution time of n8n backend operations in sqlite and Postgres.
 
-Benchmarks are organized into **suites** for the scenario to benchmark and **tasks** for operations in that scenario, with hooks for per-task setup and teardown, runnning in both sqlite and Postgres. This lib is implemented on top of [`tinybench`](https://github.com/tinylibs/tinybench). Execution in CI is delegated to [Codspeed](https://codspeed.io/) to keep measurements consistent and to monitor improvements and regressions.
+Benchmarks are organized into **suites** for the scenario to benchmark, **tasks** for operations in that scenario, and **hooks** for setup and teardown, implemented on top of [`tinybench`](https://github.com/tinylibs/tinybench). Execution in CI is delegated to [Codspeed](https://codspeed.io/) to keep measurements consistent and to monitor improvements and regressions.
 
 ## Running benchmarks
 
-To start a benchmarking run:
+To run benchmarks:
 
 ```sh
 pnpm build:benchmark
-pnpm benchmark
+pnpm benchmark:sqlite # or
+pnpm benchmark:postgres
 ```
 
-On every run, benchmarking will set up and tear down a temporary Postgres database, so ensure you have a Postgres server running locally and allow n8n to connect to it via [environment variables](https://docs.n8n.io/hosting/configuration/environment-variables/database/#postgresql).
-
-The default benchmarking configuration can be adjusted via [environment variables](https://docs.n8n.io/hosting/configuration/environment-variables/benchmarking).
+Locally, the benchmarking run can be configured (number of iterations, warmup, etc.) via [environment variables](https://docs.n8n.io/hosting/configuration/environment-variables/benchmarking). In CI, the configuration is set by Codspeed.
 
 ## Creating benchmarks
 
 To create benchmarks:
 
-1. Create a file at `suites/{suite-id}-{suite-title}.ts` or `suites/{theme}/{suite-id}-{suite-title}.ts`.
+1. Create a file at `suites/**/{suite-id}-{suite-title}.ts`.
 2. Include a `suite()` call for the scenario to benchmark.
-3. Include one or more `task()` calls for operations in that scenario. `task()` must contain only the specific operation whose execution time to measure. Move any per-task setup and teardown to `beforeEachTask()` and `afterEachTask()` in the suite.
-4. Include workflows at `suites/workflows/{suite-id}-{ordinal-number}`. During setup, all workflows at this dir are loaded to the temp DBs and activated in memory. If the workflow is triggered by webhook, set the webhook path to `/{suite-id}-{ordinal-number}`.
-5. Run `pnpm build:benchmark` to add the suite and its tasks to the index in this document.
+3. Inside the suite, include one or more `task()` calls for operations in that scenario. `task()` must contain only the specific operation whose execution time to measure. Move any per-task setup and teardown to `beforeEachTask()` and `afterEachTask()` in the suite.
+4. Include workflows at `suites/workflows/{suite-id}-{ordinal-number}`. During setup, workflows at this dir are saved in the temp DB and activated in memory.
+5. Run `pnpm build:benchmark` to add the suite and its tasks to the index below.
+
+## Index of benchmarking suites
+
+> **Note**: All workflows with default settings unless otherwise specified.
+
+<!-- BENCHMARK_SUITES_LIST -->
+
+### 001 - Production workflow with authless webhook node
+
+- [using "Respond immediately" mode](./suites/workflows/001-1.json)
+- [using "When last node finishes" mode](./suites/workflows/001-2.json)
+- [using "Respond to Webhook node" mode](./suites/workflows/001-3.json)
+
+<!-- /BENCHMARK_SUITES_LIST -->
 
 ## Reading benchmarks
 
@@ -50,17 +63,3 @@ BENCHMARK suites/001-production-webhook-with-authless-webhook-node.suite.ts [sql
 `std err` (standard error) reflects how closely a sample mean is expected to approximate the true population mean. A smaller standard error indicates that the sample mean is likely to be a more accurate estimate of the population mean because the variation among sample means is less. For example, in the task `using "Respond immediately" mode`, the standard error is 2.037 ms, which suggests that the sample mean is expected to differ from the true population mean by 2.037 ms on average.
 
 `std dev` (standard deviation) is the amount of dispersion across samples. When low, it indicates that the samples tend to be close to the mean; when high, it indicates that the samples are spread out over a wider range. For example, in the task `using "Respond immediately" mode`, the standard deviation is `10.586 ms`, which suggests that the execution times varied significantly across iterations.
-
-## Index of benchmarking suites
-
-> **Note**: All workflows with default settings unless otherwise specified.
-
-<!-- BENCHMARK_SUITES_LIST -->
-
-### 001 - Production workflow with authless webhook node
-
-- [using "Respond immediately" mode](./suites/workflows/001-1.json)
-- [using "When last node finishes" mode](./suites/workflows/001-2.json)
-- [using "Respond to Webhook node" mode](./suites/workflows/001-3.json)
-
-<!-- /BENCHMARK_SUITES_LIST -->
