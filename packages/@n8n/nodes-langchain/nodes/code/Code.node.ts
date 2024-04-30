@@ -48,13 +48,14 @@ return [ {json: { output } } ];`;
 const defaultCodeSupplyData = `const { WikipediaQueryRun } = require('langchain/tools');
 return new WikipediaQueryRun();`;
 
+const langchainModules = ['langchain', '@langchain/*'];
 export const vmResolver = makeResolverFromLegacyOptions({
 	external: {
-		modules: external ? ['langchain', ...external.split(',')] : ['langchain'],
+		modules: external ? [...langchainModules, ...external.split(',')] : [...langchainModules],
 		transitive: false,
 	},
 	resolve(moduleName, parentDirname) {
-		if (moduleName.match(/^langchain\//)) {
+		if (moduleName.match(/^langchain\//) ?? moduleName.match(/^@langchain\//)) {
 			return require.resolve(`@n8n/n8n-nodes-langchain/node_modules/${moduleName}.cjs`, {
 				paths: [parentDirname],
 			});
