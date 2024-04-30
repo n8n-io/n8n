@@ -179,10 +179,15 @@ export const processUsers = async (
 	toUpdateUsers: Array<[string, User]>,
 	toDisableUsers: string[],
 ): Promise<void> => {
+	const userRepository = Container.get(UserRepository);
 	await Db.transaction(async (transactionManager) => {
 		return await Promise.all([
 			...toCreateUsers.map(async ([ldapId, user]) => {
-				const authIdentity = AuthIdentity.create(await transactionManager.save(user), ldapId);
+				const { user: savedUser } = await userRepository.createUserWithProject(
+					user,
+					transactionManager,
+				);
+				const authIdentity = AuthIdentity.create(savedUser, ldapId);
 				return await transactionManager.save(authIdentity);
 			}),
 			...toUpdateUsers.map(async ([ldapId, user]) => {
