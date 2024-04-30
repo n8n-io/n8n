@@ -198,12 +198,8 @@ export class ToolHttpRequest implements INodeType {
 				},
 				options: [
 					{
-						name: 'Array of Objects (JSON)',
-						value: 'array',
-					},
-					{
-						name: 'Object (JSON)',
-						value: 'object',
+						name: 'JSON',
+						value: 'json',
 					},
 					{
 						name: 'HTML',
@@ -214,35 +210,21 @@ export class ToolHttpRequest implements INodeType {
 						value: 'text',
 					},
 				],
-				default: 'object',
+				default: 'json',
 			},
 			{
-				displayName: 'Return All',
-				name: 'returnAll',
-				type: 'boolean',
-				default: true,
-				description: 'Whether to return all results or only up to a given limit',
+				displayName: 'Field in Response Containing Data',
+				name: 'dataField',
+				type: 'string',
+				default: '',
+				placeholder: 'e.g. records',
+				description: 'Specify the name of the field in the response containing the data',
+				hint: 'leave blank to use whole response',
+				requiresDataPath: 'single',
 				displayOptions: {
 					show: {
 						optimizeToolResponse: [true],
-						responseType: ['array'],
-					},
-				},
-			},
-			{
-				displayName: 'Limit',
-				name: 'limit',
-				type: 'number',
-				default: 50,
-				description: 'Max number of results to return',
-				typeOptions: {
-					minValue: 1,
-				},
-				displayOptions: {
-					show: {
-						optimizeToolResponse: [true],
-						responseType: ['array'],
-						returnAll: [false],
+						responseType: ['json'],
 					},
 				},
 			},
@@ -255,7 +237,7 @@ export class ToolHttpRequest implements INodeType {
 				displayOptions: {
 					show: {
 						optimizeToolResponse: [true],
-						responseType: ['array', 'object'],
+						responseType: ['json'],
 					},
 				},
 				options: [
@@ -285,10 +267,10 @@ export class ToolHttpRequest implements INodeType {
 				displayOptions: {
 					show: {
 						optimizeToolResponse: [true],
-						responseType: ['array', 'object'],
+						responseType: ['json'],
 					},
 					hide: {
-						include: ['all'],
+						fieldsToInclude: ['all'],
 					},
 				},
 			},

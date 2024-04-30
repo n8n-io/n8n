@@ -184,8 +184,7 @@ export const configureResponseOptimizer = (ctx: IExecuteFunctions, itemIndex: nu
 
 	if (optimizeToolResponse) {
 		const responseType = ctx.getNodeParameter('responseType', itemIndex) as
-			| 'object'
-			| 'array'
+			| 'json'
 			| 'text'
 			| 'html';
 
@@ -225,6 +224,12 @@ export const configureResponseOptimizer = (ctx: IExecuteFunctions, itemIndex: nu
 						value = convert(value, options);
 					}
 
+					value = value
+						.trim()
+						.replace(/^\s+|\s+$/g, '')
+						.replace(/(\r\n|\n|\r)/gm, '')
+						.replace(/\s+/g, ' ');
+
 					returnData.push(value);
 				});
 
@@ -251,28 +256,39 @@ export const configureResponseOptimizer = (ctx: IExecuteFunctions, itemIndex: nu
 			};
 		}
 
-		if (responseType === 'object' || responseType === 'array') {
-			return (response: IDataObject | IDataObject[]): string => {
-				if (typeof response !== 'object' || !response) {
+		if (responseType === 'json') {
+			return (response: string): string => {
+				let responseData: IDataObject | IDataObject[] | string = response;
+
+				if (typeof responseData === 'string') {
+					responseData = jsonParse(response);
+				}
+
+				if (typeof responseData !== 'object' || !responseData) {
 					throw new NodeOperationError(
 						ctx.getNode(),
 						'The response type must be an object or an array of objects',
 						{ itemIndex },
 					);
 				}
+
+				const dataField = ctx.getNodeParameter('dataField', itemIndex, '') as string;
 				let returnData: IDataObject[] = [];
 
-				if (!Array.isArray(response)) {
-					response = [response];
-				}
-
-				if (responseType === 'array') {
-					const returnAll = ctx.getNodeParameter('returnAll', itemIndex, false) as boolean;
-
-					if (!returnAll) {
-						const limit = ctx.getNodeParameter('limit', itemIndex, 50);
-
-						response = response.slice(0, limit);
+				if (!Array.isArray(responseData)) {
+					if (dataField) {
+						const data = responseData[dataField] as IDataObject | IDataObject[];
+						if (Array.isArray(data)) {
+							responseData = data;
+						} else {
+							responseData = [data];
+						}
+					} else {
+						responseData = [responseData];
+					}
+				} else {
+					if (dataField) {
+						responseData = responseData.map((data) => data[dataField]) as IDataObject[];
 					}
 				}
 
@@ -290,11 +306,11 @@ export const configureResponseOptimizer = (ctx: IExecuteFunctions, itemIndex: nu
 						fields = fields.split(',').map((field) => field.trim());
 					}
 				} else {
-					returnData = response;
+					returnData = responseData;
 				}
 
 				if (fieldsToInclude === 'selected') {
-					for (const item of response) {
+					for (const item of responseData) {
 						const newItem: IDataObject = {};
 
 						for (const field of fields) {
@@ -306,7 +322,7 @@ export const configureResponseOptimizer = (ctx: IExecuteFunctions, itemIndex: nu
 				}
 
 				if (fieldsToInclude === 'except') {
-					for (const item of response) {
+					for (const item of responseData) {
 						for (const field of fields) {
 							unset(item, field);
 						}
@@ -315,11 +331,7 @@ export const configureResponseOptimizer = (ctx: IExecuteFunctions, itemIndex: nu
 					}
 				}
 
-				if (responseType === 'object') {
-					return JSON.stringify(returnData[0], null, 2);
-				} else {
-					return JSON.stringify(returnData, null, 2);
-				}
+				return JSON.stringify(returnData, null, 2);
 			};
 		}
 	}
