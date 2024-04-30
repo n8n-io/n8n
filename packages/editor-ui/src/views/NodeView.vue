@@ -298,6 +298,7 @@ import {
 	TelemetryHelpers,
 } from 'n8n-workflow';
 import type {
+	NewConnectionInfo,
 	ICredentialsResponse,
 	IExecutionResponse,
 	IWorkflowDb,
@@ -1215,7 +1216,7 @@ export default defineComponent({
 			if (event) {
 				const newNodeButton = (event.target as HTMLElement).closest('button');
 				if (newNodeButton) {
-					this.aiStore.endpointForNextStep = null;
+					this.aiStore.latestConnectionInfo = null;
 					this.aiStore.openNextStepPopup(
 						this.$locale.baseText('nextStepPopup.title.firstStep'),
 						newNodeButton,
@@ -1225,17 +1226,11 @@ export default defineComponent({
 		},
 		onNextStepSelected(action: string) {
 			if (action === 'choose') {
-				const nextStepEndpoint = this.aiStore.endpointForNextStep;
-				if (nextStepEndpoint === null) {
+				const lastConnectionInfo = this.aiStore.latestConnectionInfo as NewConnectionInfo;
+				if (lastConnectionInfo === null) {
 					this.showTriggerCreator(NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON);
 				} else {
-					this.insertNodeAfterSelected({
-						sourceId: nextStepEndpoint .__meta.nodeId,
-						index: nextStepEndpoint .__meta.index,
-						eventSource: NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
-						outputType: nextStepEndpoint .scope as ConnectionTypes,
-						endpointUuid: nextStepEndpoint .uuid,
-					});
+					this.insertNodeAfterSelected(lastConnectionInfo);
 				}
 			}
 		},
@@ -2862,15 +2857,7 @@ export default defineComponent({
 
 			return filter;
 		},
-		insertNodeAfterSelected(info: {
-			sourceId: string;
-			index: number;
-			eventSource: NodeCreatorOpenSource;
-			connection?: Connection;
-			nodeCreatorView?: string;
-			outputType?: NodeConnectionType;
-			endpointUuid?: string;
-		}) {
+		insertNodeAfterSelected(info: NewConnectionInfo) {
 			const type = info.outputType ?? NodeConnectionType.Main;
 			// Get the node and set it as active that new nodes
 			// which get created get automatically connected
@@ -3467,7 +3454,14 @@ export default defineComponent({
 		},
 		onPlusEndpointClick(endpoint: Endpoint) {
 			if (endpoint?.__meta) {
-				this.aiStore.endpointForNextStep = endpoint;
+				this.aiStore.latestConnectionInfo = {
+					sourceId: endpoint .__meta.nodeId,
+					index: endpoint .__meta.index,
+					eventSource: NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
+					outputType: endpoint .scope as ConnectionTypes,
+					endpointUuid: endpoint .uuid,
+					stepName: endpoint .__meta.nodeName,
+				};
 				const endpointElement = endpoint.endpoint.canvas;
 				this.aiStore.openNextStepPopup(
 					this.$locale.baseText('nextStepPopup.title.nextStep'),

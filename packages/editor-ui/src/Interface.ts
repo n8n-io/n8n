@@ -55,6 +55,7 @@ import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
 import type { Component } from 'vue';
 import type { Scope } from '@n8n/permissions';
 import type { NotificationOptions as ElementNotificationOptions } from 'element-plus';
+import { Connection } from '@jsplumb/core';
 
 export * from 'n8n-design-system/types';
 
@@ -1887,4 +1888,18 @@ export type SuggestedTemplatesWorkflowPreview = {
 	description: string;
 	preview: IWorkflowData;
 	nodes: Array<Pick<ITemplatesNode, 'id' | 'displayName' | 'icon' | 'defaults' | 'iconData'>>;
+};
+
+export type NewConnectionInfo = {
+	sourceId: string;
+	index: number;
+	eventSource: NodeCreatorOpenSource;
+	connection?: Connection;
+	nodeCreatorView?: string;
+	outputType?: NodeConnectionType;
+	endpointUuid?: string;
+};
+
+export type AIAssistantConnectionInfo = NewConnectionInfo & {
+	stepName: string;
 };

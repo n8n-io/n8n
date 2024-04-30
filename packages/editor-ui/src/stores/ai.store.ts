@@ -3,9 +3,9 @@ import * as aiApi from '@/api/ai';
 import type { DebugErrorPayload } from '@/api/ai';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { Ref, computed, reactive, ref } from 'vue';
-import type { XYPosition } from '@/Interface';
-import { Endpoint } from '@jsplumb/core';
+import { computed, reactive, ref } from 'vue';
+import type { Ref } from 'vue';
+import type { AIAssistantConnectionInfo, XYPosition } from '@/Interface';
 
 const CURRENT_POPUP_HEIGHT = 94;
 
@@ -31,7 +31,7 @@ export const useAIStore = defineStore('ai', () => {
 		title: '',
 		position: [0, 0] as XYPosition,
 	});
-	const endpointForNextStep: Ref<Endpoint | null> = ref(null);
+	const latestConnectionInfo: Ref<AIAssistantConnectionInfo | null> = ref(null);
 	const isErrorDebuggingEnabled = computed(() => settingsStore.settings.ai.errorDebugging);
 
 	function openNextStepPopup(title: string, relativeElement: HTMLElement) {
@@ -55,6 +55,6 @@ export const useAIStore = defineStore('ai', () => {
 		nextStepPopupConfig,
 		openNextStepPopup,
 		closeNextStepPopup,
-		endpointForNextStep,
+		latestConnectionInfo,
 	};
 });

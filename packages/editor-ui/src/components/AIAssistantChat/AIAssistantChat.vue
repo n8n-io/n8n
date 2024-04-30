@@ -22,7 +22,7 @@ const waitingForResponse = ref(false);
 const currentSessionId = ref<string>(String(Date.now()));
 
 const userName = computed(() => usersStore.currentUser?.firstName ?? 'there');
-const nextStepEndpoint = computed(() => aiStore.endpointForNextStep);
+const latestConnectionInfo = computed(() => aiStore.latestConnectionInfo);
 
 const chatTitle = locale.baseText('aiAssistantChat.title');
 const thanksResponses: ChatMessage[] = [
@@ -69,9 +69,9 @@ const thanksResponses: ChatMessage[] = [
 ];
 
 const initialMessageText = computed(() => {
-	if (nextStepEndpoint.value) {
+	if (latestConnectionInfo.value) {
 		return locale.baseText('aiAssistantChat.initialMessage.nextStep', {
-			interpolate: { currentAction: nextStepEndpoint.value.__meta.nodeName },
+			interpolate: { currentAction: latestConnectionInfo.value.stepName },
 		});
 	}
 
