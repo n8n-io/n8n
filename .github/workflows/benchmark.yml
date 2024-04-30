@@ -9,8 +9,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  postgres-setup:
-    name: Postgres Setup
+  benchmark:
+    name: Benchmark
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -27,15 +27,6 @@ jobs:
           compose-file: ./.github/docker-compose.yml
           services: |
             postgres
-
-  benchmark:
-    needs: postgres-setup
-    name: Benchmark
-    runs-on: ubuntu-latest
-    env:
-      DB_POSTGRESDB_PASSWORD: password
-    steps:
-      - uses: actions/checkout@v4.1.1
 
       - run: corepack enable
 
