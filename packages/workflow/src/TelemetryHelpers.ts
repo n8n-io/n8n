@@ -126,14 +126,20 @@ export function generateNodesGraph(
 			return;
 		}
 
-		const nodeParameters =
-			getNodeParameters(
-				stickyType.description.properties,
-				stickyNote.parameters,
-				true,
-				false,
-				stickyNote,
-			) ?? {};
+		let nodeParameters: IDataObject = {};
+
+		try {
+			nodeParameters =
+				getNodeParameters(
+					stickyType.description.properties,
+					stickyNote.parameters,
+					true,
+					false,
+					stickyNote,
+				) ?? {};
+		} catch {
+			// prevent node param resolution from failing graph generation
+		}
 
 		const height: number = typeof nodeParameters.height === 'number' ? nodeParameters.height : 0;
 		const width: number = typeof nodeParameters.width === 'number' ? nodeParameters.width : 0;
