@@ -22,7 +22,6 @@ if (inE2ETests) {
 
 // Load schema after process.env has been overwritten
 import { schema } from './schema';
-
 const config = convict(schema, { args: [] });
 
 // eslint-disable-next-line @typescript-eslint/unbound-method
