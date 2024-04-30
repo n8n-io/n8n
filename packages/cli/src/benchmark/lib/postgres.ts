@@ -2,6 +2,7 @@ import { DataSource } from '@n8n/typeorm';
 import type { DataSourceOptions } from '@n8n/typeorm';
 import config from '@/config';
 import { log } from './log';
+import { PostgresConnectionError } from './errors/postgres-connection.error';
 
 const BENCHMARK_DB_PREFIX = 'n8n_benchmark';
 
@@ -30,7 +31,13 @@ function tenRandomChars() {
 export async function postgresSetup() {
 	const dbName = [BENCHMARK_DB_PREFIX, tenRandomChars(), Date.now()].join('_');
 
-	const bootstrap = await new DataSource(pgOptions).initialize();
+	let bootstrap: DataSource;
+
+	try {
+		bootstrap = await new DataSource(pgOptions).initialize();
+	} catch (error) {
+		throw new PostgresConnectionError(error, pgOptions);
+	}
 
 	await bootstrap.query(`CREATE DATABASE ${dbName};`);
 	await bootstrap.destroy();
