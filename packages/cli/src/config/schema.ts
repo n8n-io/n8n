@@ -64,7 +64,7 @@ export const schema = {
 			host: {
 				doc: 'PostgresDB Host',
 				format: String,
-				default: 'localhost',
+				default: '127.0.0.1',
 				env: 'DB_POSTGRESDB_HOST',
 			},
 			password: {
