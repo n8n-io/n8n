@@ -367,6 +367,8 @@ describe('POST /ldap/sync', () => {
 			expect(memberUser.email).toBe(ldapUser.mail);
 			expect(memberUser.lastName).toBe(ldapUser.sn);
 			expect(memberUser.firstName).toBe(ldapUser.givenName);
+			const memberProject = getPersonalProject(memberUser);
+			expect(memberProject).toBeDefined();
 
 			const authIdentities = await getLdapIdentities();
 			expect(authIdentities.length).toBe(1);
