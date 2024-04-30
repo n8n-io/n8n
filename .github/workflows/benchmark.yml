@@ -1,4 +1,4 @@
-name: Benchmarks
+name: Benchmark
 
 on:
   pull_request:
@@ -9,7 +9,21 @@ on:
   workflow_dispatch:
 
 jobs:
-  benchmarks:
+  setup-postgres:
+    name: Postgres
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DB_POSTGRESDB_PASSWORD: password
+    steps:
+      - name: Start Postgres
+        uses: isbang/compose-action@v2.0.0
+        with:
+          compose-file: ./.github/docker-compose.yml
+          services: postgres
+
+  benchmark:
+    needs: setup-postgres
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4.1.1
@@ -27,7 +41,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build
+      - name: Build # @TODO: Do not build everything
         if: ${{ inputs.cacheKey == '' }}
         run: pnpm build
 
@@ -38,10 +52,14 @@ jobs:
           path: ./packages/**/dist
           key: ${{ inputs.cacheKey }}
 
+      - name: Build benchmark
+        working-directory: packages/cli
+        run: pnpm build:benchmark
+
       - name: Benchmark
         uses: CodSpeedHQ/action@v2
         with:
+          working-directory: packages/cli
           run: |
-            cd packages/cli
             pnpm benchmark:sqlite
             pnpm benchmark:postgres
