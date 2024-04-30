@@ -36,13 +36,8 @@ function parseSingleFilterValue(
 		return { valid: true, newValue: value } as ValidationResult;
 	}
 
-	if (type === 'boolean') {
-		const result = validateFieldType('filter', value, type, { strict });
-		if (!result.valid && !strict) {
-			return { valid: true, newValue: Boolean(value) };
-		}
-
-		return result;
+	if (type === 'boolean' && !strict) {
+		return { valid: true, newValue: Boolean(value) };
 	}
 
 	return validateFieldType('filter', value, type, { strict, parseStrings: true });
