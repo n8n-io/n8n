@@ -5,7 +5,14 @@ import type {
 	IRequestOptionsSimplified,
 	IOAuth2Options,
 } from 'n8n-workflow';
-import { jsonParse } from 'n8n-workflow';
+import { NodeOperationError, jsonParse } from 'n8n-workflow';
+
+import set from 'lodash/set';
+import get from 'lodash/get';
+import unset from 'lodash/unset';
+
+import cheerio from 'cheerio';
+import { convert } from 'html-to-text';
 
 export type ToolParameter = {
 	name: string;
@@ -165,5 +172,166 @@ export const configureHttpRequestFunction = async (
 
 	return async (requestOptions: IHttpRequestOptions) => {
 		return await ctx.helpers.httpRequest(requestOptions);
+	};
+};
+
+export const configureResponseOptimizer = (ctx: IExecuteFunctions, itemIndex: number) => {
+	const optimizeToolResponse = ctx.getNodeParameter(
+		'optimizeToolResponse',
+		itemIndex,
+		false,
+	) as boolean;
+
+	if (optimizeToolResponse) {
+		const responseType = ctx.getNodeParameter('responseType', itemIndex) as
+			| 'object'
+			| 'array'
+			| 'text'
+			| 'html';
+
+		if (responseType === 'html') {
+			const cssSelector = ctx.getNodeParameter('cssSelector', itemIndex, '') as string;
+			const onlyText = ctx.getNodeParameter('onlyText', itemIndex, false) as boolean;
+			let skipSelectors = '';
+			if (onlyText) {
+				skipSelectors = ctx.getNodeParameter('skipSelectors', itemIndex, '') as string;
+			}
+
+			return <T>(response: T) => {
+				if (typeof response !== 'string') {
+					throw new NodeOperationError(
+						ctx.getNode(),
+						`The response type must be a string. Received: ${typeof response}`,
+						{ itemIndex },
+					);
+				}
+				const returnData: string[] = [];
+				const html = cheerio.load(response);
+				const htmlElements = html(cssSelector);
+
+				htmlElements.each((_, el) => {
+					let value = html(el).html() || '';
+
+					if (onlyText) {
+						let options;
+						if (skipSelectors) {
+							options = {
+								selectors: skipSelectors.split(',').map((s) => ({
+									selector: s.trim(),
+									format: 'skip',
+								})),
+							};
+						}
+						value = convert(value, options);
+					}
+
+					returnData.push(value);
+				});
+
+				return JSON.stringify(returnData, null, 2);
+			};
+		}
+
+		if (responseType === 'text') {
+			const maxLength = ctx.getNodeParameter('maxLength', itemIndex, 0) as number;
+
+			return <T>(response: T) => {
+				if (typeof response !== 'string') {
+					throw new NodeOperationError(
+						ctx.getNode(),
+						`The response type must be a string. Received: ${typeof response}`,
+						{ itemIndex },
+					);
+				}
+				if (maxLength > 0 && response.length > maxLength) {
+					return response.substring(0, maxLength);
+				}
+
+				return response;
+			};
+		}
+
+		if (responseType === 'object' || responseType === 'array') {
+			return (response: IDataObject | IDataObject[]): string => {
+				if (typeof response !== 'object' || !response) {
+					throw new NodeOperationError(
+						ctx.getNode(),
+						'The response type must be an object or an array of objects',
+						{ itemIndex },
+					);
+				}
+				let returnData: IDataObject[] = [];
+
+				if (!Array.isArray(response)) {
+					response = [response];
+				}
+
+				if (responseType === 'array') {
+					const returnAll = ctx.getNodeParameter('returnAll', itemIndex, false) as boolean;
+
+					if (!returnAll) {
+						const limit = ctx.getNodeParameter('limit', itemIndex, 50);
+
+						response = response.slice(0, limit);
+					}
+				}
+
+				const fieldsToInclude = ctx.getNodeParameter('fieldsToInclude', itemIndex, 'all') as
+					| 'all'
+					| 'selected'
+					| 'except';
+
+				let fields: string | string[] = [];
+
+				if (fieldsToInclude !== 'all') {
+					fields = ctx.getNodeParameter('fields', itemIndex, []) as string[] | string;
+
+					if (typeof fields === 'string') {
+						fields = fields.split(',').map((field) => field.trim());
+					}
+				} else {
+					returnData = response;
+				}
+
+				if (fieldsToInclude === 'selected') {
+					for (const item of response) {
+						const newItem: IDataObject = {};
+
+						for (const field of fields) {
+							set(newItem, field, get(item, field));
+						}
+
+						returnData.push(newItem);
+					}
+				}
+
+				if (fieldsToInclude === 'except') {
+					for (const item of response) {
+						for (const field of fields) {
+							unset(item, field);
+						}
+
+						returnData.push(item);
+					}
+				}
+
+				if (responseType === 'object') {
+					return JSON.stringify(returnData[0], null, 2);
+				} else {
+					return JSON.stringify(returnData, null, 2);
+				}
+			};
+		}
+	}
+
+	return <T>(response: T) => {
+		if (typeof response === 'string') {
+			return response;
+		}
+		if (typeof response === 'object') {
+			return JSON.stringify(response, null, 2);
+		}
+
+		return String(response);
 	};
 };

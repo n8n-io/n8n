@@ -15,7 +15,12 @@ import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 import { DynamicTool } from '@langchain/core/tools';
 
-import { type ToolParameter, configureHttpRequestFunction, prettifyToolName } from './utils';
+import {
+	type ToolParameter,
+	configureHttpRequestFunction,
+	prettifyToolName,
+	configureResponseOptimizer,
+} from './utils';
 
 import { authenticationProperties, parametersCollection } from './descriptions';
 
@@ -243,7 +248,7 @@ export class ToolHttpRequest implements INodeType {
 			},
 			{
 				displayName: 'Fields to Include',
-				name: 'include',
+				name: 'fieldsToInclude',
 				type: 'options',
 				description: 'What fields response onject should include, supports dot notation',
 				default: 'all',
@@ -424,6 +429,7 @@ export class ToolHttpRequest implements INodeType {
 		}
 
 		const httpRequestFunction = await configureHttpRequestFunction(this, authentication, itemIndex);
+		const optimizeResponse = configureResponseOptimizer(this, itemIndex);
 
 		let path = this.getNodeParameter('path', itemIndex, '') as string;
 		if (path && path[0] !== '/') {
@@ -474,6 +480,7 @@ export class ToolHttpRequest implements INodeType {
 
 					let response: string = '';
 					let executionError: Error | undefined = undefined;
+
 					try {
 						let toolParameters: IDataObject = {};
 						try {
@@ -492,7 +499,7 @@ export class ToolHttpRequest implements INodeType {
 						if (pathParameters.length) {
 							for (const parameter of pathParameters) {
 								const parameterName = parameter.name;
-								const parameterValue = encodeURIComponent(toolParameters[parameterName] as string);
+								const parameterValue = encodeURIComponent(String(toolParameters[parameterName]));
 								path = path.replace(`{${parameterName}}`, parameterValue);
 							}
 						}
@@ -527,15 +534,7 @@ export class ToolHttpRequest implements INodeType {
 							httpRequestOptions.body = body;
 						}
 
-						const responseData = await httpRequestFunction(httpRequestOptions);
-
-						if (responseData && typeof responseData === 'object') {
-							response = JSON.stringify(responseData, null, 2);
-						} else if (typeof response === 'number') {
-							response = String(responseData);
-						} else {
-							response = responseData as string;
-						}
+						response = optimizeResponse(await httpRequestFunction(httpRequestOptions));
 					} catch (error) {
 						executionError = error;
 						response = `There was an error: "${error.message}"`;
