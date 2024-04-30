@@ -9,28 +9,28 @@ on:
   workflow_dispatch:
 
 jobs:
-  setup-postgres:
-    name: Postgres
+  postgres-setup:
+    name: Postgres Setup
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
       DB_POSTGRESDB_PASSWORD: password
-    steps:
-      - name: Start Postgres
-        uses: isbang/compose-action@v2.0.0
-        with:
-          compose-file: ./.github/docker-compose.yml
-          services: postgres
-
-  benchmark:
-    needs: setup-postgres
-    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4.1.1
         with:
           repository: n8n-io/n8n
           ref: ${{ inputs.ref }}
 
+      - name: Start Postgres
+        uses: isbang/compose-action@v2.0.0
+        with:
+          compose-file: ./.github/docker-compose.yml
+          services: postgres
+
+  benchmark-setup:
+    name: Benchmark Setup
+    runs-on: ubuntu-latest
+    steps:
       - run: corepack enable
       - name: Use Node.js ${{ inputs.nodeVersion }}
         uses: actions/setup-node@v4.0.1
@@ -41,7 +41,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build # @TODO: Do not build everything
+      - name: Build
         if: ${{ inputs.cacheKey == '' }}
         run: pnpm build
 
@@ -56,6 +56,10 @@ jobs:
         working-directory: packages/cli
         run: pnpm build:benchmark
 
+  benchmark:
+    needs: [postgres-setup, benchmark-setup]
+    runs-on: ubuntu-latest
+    steps:
       - name: Benchmark
         uses: CodSpeedHQ/action@v2
         with:
