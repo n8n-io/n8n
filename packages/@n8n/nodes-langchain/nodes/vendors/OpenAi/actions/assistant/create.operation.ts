@@ -62,7 +62,7 @@ const properties: INodeProperties[] = [
 		type: 'multiOptions',
 		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-multi-options
 		description:
-			'The files to be used by the assistant, there can be a maximum of 20 files attached to the assistant',
+			'The files to be used by the assistant, there can be a maximum of 20 files attached to the assistant. You can use expression to pass file IDs as an array or comma-separated string.',
 		typeOptions: {
 			loadOptionsMethod: 'getFiles',
 		},
@@ -161,7 +161,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const instructions = this.getNodeParameter('instructions', i) as string;
 	const codeInterpreter = this.getNodeParameter('codeInterpreter', i) as boolean;
 	const knowledgeRetrieval = this.getNodeParameter('knowledgeRetrieval', i) as boolean;
-	const file_ids = this.getNodeParameter('file_ids', i, []) as string[];
+	let file_ids = this.getNodeParameter('file_ids', i, []) as string[] | string;
+	if (typeof file_ids === 'string') {
+		file_ids = file_ids.split(',').map((file_id) => file_id.trim());
+	}
 	const options = this.getNodeParameter('options', i, {});
 
 	if (options.failIfExists) {
