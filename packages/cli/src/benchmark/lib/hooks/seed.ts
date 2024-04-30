@@ -13,7 +13,7 @@ export async function seedInstanceOwner() {
 
 	const user = await Container.get(UserRepositoryExtension).createInstanceOwner();
 
-	log('Seeded user', user.email);
+	log('Seeded user in DB', user.email);
 }
 
 export async function seedWorkflows() {
@@ -38,7 +38,7 @@ export async function seedWorkflows() {
 
 	const files = _files.map((f) => f.replace(/.*workflows\//, '')).join(' ');
 
-	log('Seeded workflows', files);
+	log('Seeded workflows in DB', files);
 
 	return files;
 }

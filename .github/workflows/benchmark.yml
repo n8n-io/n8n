@@ -1,4 +1,4 @@
-name: Benchmarks
+name: Benchmark
 
 on:
   pull_request:
@@ -9,27 +9,33 @@ on:
   workflow_dispatch:
 
 jobs:
-  benchmarks:
+  benchmark:
+    name: Benchmark
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DB_POSTGRESDB_PASSWORD: password
     steps:
       - uses: actions/checkout@v4.1.1
+
+      - name: Start Postgres
+        uses: isbang/compose-action@v2.0.0
         with:
-          repository: n8n-io/n8n
-          ref: ${{ inputs.ref }}
+          compose-file: ./.github/docker-compose.yml
+          services: postgres
 
       - run: corepack enable
-      - name: Use Node.js ${{ inputs.nodeVersion }}
-        uses: actions/setup-node@v4.0.1
+
+      - uses: actions/setup-node@v4.0.1
         with:
-          node-version: ${{ inputs.nodeVersion }}
+          node-version: 18.x
           cache: pnpm
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - run: pnpm install --frozen-lockfile
 
       - name: Build
         if: ${{ inputs.cacheKey == '' }}
-        run: pnpm build
+        run: pnpm build:backend
 
       - name: Restore cached build artifacts
         if: ${{ inputs.cacheKey != '' }}
@@ -38,7 +44,13 @@ jobs:
           path: ./packages/**/dist
           key: ${{ inputs.cacheKey }}
 
+      - run: pnpm build:benchmark
+        working-directory: packages/cli
+
       - name: Benchmark
         uses: CodSpeedHQ/action@v2
         with:
-          run: pnpm benchmark
+          working-directory: packages/cli
+          run: |
+            pnpm benchmark:sqlite
+            pnpm benchmark:postgres

@@ -61,7 +61,7 @@ export function suite(suiteName: string, suiteFn: () => void) {
 
 	if (suites[key]) throw new DuplicateSuiteError(key);
 
-	suites[key] = { name: suiteName, hooks: {}, tasks: [], db: 'sqlite' };
+	suites[key] = { name: suiteName, hooks: {}, tasks: [] };
 
 	suiteFn();
 }

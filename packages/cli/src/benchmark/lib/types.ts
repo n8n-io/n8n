@@ -1,7 +1,6 @@
 export type Suites = {
 	[key: string]: {
 		name: string;
-		db: 'sqlite' | 'postgres';
 		hooks: {
 			beforeEachTask?: Callback;
 			afterEachTask?: Callback;
