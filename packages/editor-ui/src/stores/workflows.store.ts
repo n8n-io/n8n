@@ -158,16 +158,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return workflowExecutionData.value.data.resultData.runData;
 	});
 
-	const workflowResultDataByNodeName = (nodeName: string): ITaskData[] | null => {
-		if (getWorkflowRunData.value === null) {
-			return null;
-		}
-		if (!getWorkflowRunData.value.hasOwnProperty(nodeName)) {
-			return null;
-		}
-		return getWorkflowRunData.value[nodeName];
-	};
-
 	const allConnections = computed(() => workflow.value.connections);
 
 	const allNodes = computed<INodeUi[]>(() => workflow.value.nodes);
@@ -214,9 +204,19 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	const getPastChatMessages = computed(() => Array.from(new Set(chatMessages.value)));
 
+	function getWorkflowResultDataByNodeName(nodeName: string): ITaskData[] | null {
+		if (getWorkflowRunData.value === null) {
+			return null;
+		}
+		if (!getWorkflowRunData.value.hasOwnProperty(nodeName)) {
+			return null;
+		}
+		return getWorkflowRunData.value[nodeName];
+	}
+
 	function outgoingConnectionsByNodeName(nodeName: string): INodeConnections {
 		if (workflow.value.connections.hasOwnProperty(nodeName)) {
-			return workflow.value.connections.value[nodeName] as unknown as INodeConnections;
+			return workflow.value.connections[nodeName] as unknown as INodeConnections;
 		}
 		return {};
 	}
@@ -1470,8 +1470,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		isWorkflowActive,
 		workflowTriggerNodes,
 		currentWorkflowHasWebhookNode,
-		workflowRunData: getWorkflowRunData,
-		workflowResultDataByNodeName,
+		getWorkflowRunData,
+		getWorkflowResultDataByNodeName,
 		allConnections,
 		allNodes,
 		canvasNames,
