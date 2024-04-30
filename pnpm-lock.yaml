@@ -19,6 +19,9 @@ overrides:
   typescript: ^5.4.2
 
 patchedDependencies:
+  '@codspeed/tinybench-plugin@3.1.0':
+    hash: dtpxhamve6ldymzame6xpj4atq
+    path: patches/@codspeed__tinybench-plugin@3.1.0.patch
   '@sentry/cli@2.17.0':
     hash: nchnoezkq6p37qaiku3vrpwraq
     path: patches/@sentry__cli@2.17.0.patch
@@ -759,7 +762,7 @@ importers:
     devDependencies:
       '@codspeed/tinybench-plugin':
         specifier: ^3.1.0
-        version: 3.1.0(tinybench@2.6.0)
+        version: 3.1.0(patch_hash=dtpxhamve6ldymzame6xpj4atq)(tinybench@2.6.0)
       '@redocly/cli':
         specifier: ^1.6.0
         version: 1.6.0
@@ -4726,7 +4729,7 @@ packages:
       - debug
     dev: true
 
-  /@codspeed/tinybench-plugin@3.1.0(tinybench@2.6.0):
+  /@codspeed/tinybench-plugin@3.1.0(patch_hash=dtpxhamve6ldymzame6xpj4atq)(tinybench@2.6.0):
     resolution: {integrity: sha512-yl0WzzUGIXkZzWaw7+2U+xGkuIal1Rs9hS09DtlDZGGAcGRoMMU5d2vyCS8nBrna4hrPQZ5Sx/hIKerO+lqWaw==}
     peerDependencies:
       tinybench: ^2.3.0
@@ -4737,6 +4740,7 @@ packages:
     transitivePeerDependencies:
       - debug
     dev: true
+    patched: true
 
   /@colors/colors@1.5.0:
     resolution: {integrity: sha512-ooWCrlZP11i8GImSjTHYHLkvFDP48nS4+204nGb1RiX/WXYHmJA2III9/e2DWVabCESdW7hBAEzHRqUn9OUVvQ==}
@@ -9227,7 +9231,7 @@ packages:
       ts-dedent: 2.2.0
       type-fest: 2.19.0
       vue: 3.4.21(typescript@5.4.2)
-      vue-component-type-helpers: 2.0.14
+      vue-component-type-helpers: 2.0.15
     transitivePeerDependencies:
       - encoding
       - supports-color
@@ -25853,8 +25857,8 @@ packages:
     resolution: {integrity: sha512-0vOfAtI67UjeO1G6UiX5Kd76CqaQ67wrRZiOe7UAb9Jm6GzlUr/fC7CV90XfwapJRjpCMaZFhv1V0ajWRmE9Dg==}
     dev: true
 
-  /vue-component-type-helpers@2.0.14:
-    resolution: {integrity: sha512-DInfgOyXlMyliyqAAD9frK28tTfch0+tMi4qoWJcZlRxUf+NFAtraJBnAsKLep+FOyLMiajkhfyEb3xLK08i7w==}
+  /vue-component-type-helpers@2.0.15:
+    resolution: {integrity: sha512-jR/Hw52gzNQxMovJBsOQ/F9E1UQ8K1Np0CVG3RnueLkaCKqWuyL9XHl/5tUBAGJx+bk5xZ+co7vK23+Pzt75Lg==}
     dev: true
 
   /vue-demi@0.14.5(vue@3.4.21):

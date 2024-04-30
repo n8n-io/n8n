@@ -24,7 +24,7 @@ export async function collectSuites() {
 }
 
 export function registerSuites(bench: Bench) {
-	for (const { hooks, tasks } of Object.values(suites)) {
+	for (const { name: suiteName, hooks, tasks } of Object.values(suites)) {
 		/**
 		 * In tinybench, `beforeAll` and `afterAll` refer to all _iterations_ of
 		 * a single task, while `beforeEach` and `afterEach` refer to each _iteration_.
@@ -40,7 +40,9 @@ export function registerSuites(bench: Bench) {
 		if (hooks.afterEachTask) options.afterAll = hooks.afterEachTask;
 
 		for (const t of tasks) {
-			bench.add(t.name, t.operation, options);
+			const taskName = process.env.CI === 'true' ? [suiteName, t.name].join('::') : t.name;
+
+			bench.add(taskName, t.operation, options);
 		}
 	}
 }

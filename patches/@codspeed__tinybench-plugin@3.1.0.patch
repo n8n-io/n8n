@@ -1,0 +1,18 @@
+diff --git a/dist/index.cjs.js b/dist/index.cjs.js
+index a75964e40eaeff15df33fabd3c0bef20e9b1e5dd..42f2bec4950f13675ddccba675b2c207b2789d42 100644
+--- a/dist/index.cjs.js
++++ b/dist/index.cjs.js
+@@ -80,7 +80,12 @@ function withCodSpeed(bench) {
+   const rawAdd = bench.add;
+   bench.add = (name, fn, opts) => {
+     const callingFile = getCallingFile();
+-    const uri = `${callingFile}::${name}`;
++    let uri = `${callingFile}::${name}`;
++    if (name.includes('::')) {
++      // ignore calling file misdirecting to benchmark/lib/api.js
++      const [suiteName, taskName] = name.split('::');
++      uri = `${suiteName} - ${taskName}`
++		}
+     const options = Object.assign({}, opts ?? {}, { uri });
+     return rawAdd.bind(bench)(name, fn, options);
+   };
