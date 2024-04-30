@@ -27,8 +27,9 @@ jobs:
           compose-file: ./.github/docker-compose.yml
           services: postgres
 
-  benchmark-setup:
-    name: Benchmark Setup
+  benchmark:
+    needs: postgres-setup
+    name: Benchmark
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4.1.1
@@ -62,10 +63,6 @@ jobs:
         working-directory: packages/cli
         run: pnpm build:benchmark
 
-  benchmark:
-    needs: [postgres-setup, benchmark-setup]
-    runs-on: ubuntu-latest
-    steps:
       - name: Benchmark
         uses: CodSpeedHQ/action@v2
         with:
