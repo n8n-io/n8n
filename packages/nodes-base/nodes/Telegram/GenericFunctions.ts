@@ -105,6 +105,14 @@ export function addAdditionalFields(
 			}
 		}
 
+		if (
+			nodeVersion &&
+			nodeVersion >= 1.2 &&
+			additionalFields.disable_web_page_preview === undefined
+		) {
+			body.disable_web_page_preview = true;
+		}
+
 		delete additionalFields.appendAttribution;
 	}
 

@@ -18,8 +18,12 @@ export class AIProviderOpenAI implements N8nAIProvider {
 	mapResponse(data: BaseMessageChunk): string {
 		if (Array.isArray(data.content)) {
 			return data.content
-				.map((message) =>
-					'text' in message ? message.text : 'image_url' in message ? message.image_url : '',
+				.map((message): string =>
+					'text' in message
+						? (message.text as string)
+						: 'image_url' in message
+							? (message.image_url as string)
+							: '',
 				)
 				.join('\n');
 		}
