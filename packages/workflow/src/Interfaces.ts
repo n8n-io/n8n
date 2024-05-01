@@ -1487,6 +1487,7 @@ export interface INodeCredentialTestRequest {
 export interface INodeCredentialDescription {
 	name: string;
 	required?: boolean;
+	displayName?: string;
 	displayOptions?: ICredentialsDisplayOptions;
 	testedBy?: ICredentialTestRequest | string; // Name of a function inside `loadOptions.credentialTest`
 }
