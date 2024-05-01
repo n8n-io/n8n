@@ -61,11 +61,18 @@ export async function linearApiRequestAllItems(
 	body.variables.first = 50;
 	body.variables.after = null;
 
+	const propertyPath = propertyName.split('.');
+	const nodesPath = [...propertyPath, 'nodes'];
+	const endCursorPath = [...propertyPath, 'pageInfo', 'endCursor'];
+	const hasNextPagePath = [...propertyPath, 'pageInfo', 'hasNextPage'];
+
 	do {
 		responseData = await linearApiRequest.call(this, body);
-		returnData.push.apply(returnData, get(responseData, [propertyName, 'nodes']) as IDataObject[]);
-		body.variables.after = get(responseData, [propertyName, 'pageInfo', 'endCursor']);
-	} while (get(responseData, [propertyName, 'pageInfo', 'hasNextPage']));
+		const nodes = get(responseData, nodesPath) as IDataObject[];
+		returnData.push(...nodes);
+		body.variables.after = get(responseData, endCursorPath);
+	} while (get(responseData, hasNextPagePath));
+
 	return returnData;
 }
 
