@@ -38,7 +38,7 @@ export class XeroOAuth2Api implements ICredentialType {
 		{
 			displayName: 'Scope',
 			name: 'scope',
-			type: 'hidden',
+			type: 'text',
 			default: scopes.join(' '),
 		},
 		{
