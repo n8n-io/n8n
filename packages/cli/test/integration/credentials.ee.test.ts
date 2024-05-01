@@ -539,7 +539,7 @@ describe('PUT /credentials/:id/share', () => {
 		expect(mailer.notifyCredentialsShared).toHaveBeenCalledTimes(1);
 	});
 
-	test('should ignore pending sharee', async () => {
+	test('should not ignore pending sharee', async () => {
 		const memberShell = await createUserShell('global:member');
 		const memberShellPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(
 			memberShell.id,
@@ -555,8 +555,13 @@ describe('PUT /credentials/:id/share', () => {
 			where: { credentialsId: savedCredential.id },
 		});
 
-		expect(sharedCredentials).toHaveLength(1);
-		expect(sharedCredentials[0].projectId).toBe(ownerPersonalProject.id);
+		expect(sharedCredentials).toHaveLength(2);
+		expect(
+			sharedCredentials.find((c) => c.projectId === ownerPersonalProject.id),
+		).not.toBeUndefined();
+		expect(
+			sharedCredentials.find((c) => c.projectId === memberShellPersonalProject.id),
+		).not.toBeUndefined();
 	});
 
 	test('should ignore non-existing sharee', async () => {

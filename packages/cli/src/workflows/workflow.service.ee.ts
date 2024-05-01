@@ -40,15 +40,12 @@ export class EnterpriseWorkflowService {
 		const em = entityManager ?? this.sharedWorkflowRepository.manager;
 
 		const projects = await em.find(Project, {
-			select: { projectRelations: { userId: true } },
-			where: { id: In(shareWithIds), projectRelations: { role: 'project:personalOwner' } },
-			relations: { projectRelations: { user: true } },
+			where: { id: In(shareWithIds), type: 'personal' },
 		});
 
 		const newSharedWorkflows = projects
 			// We filter by role === 'project:personalOwner' above and there should
 			// always only be one owner.
-			.filter((project) => !project.projectRelations[0].user.isPending)
 			.map((project) =>
 				this.sharedWorkflowRepository.create({
 					workflowId: workflow.id,
