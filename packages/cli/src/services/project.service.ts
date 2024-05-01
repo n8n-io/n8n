@@ -15,6 +15,22 @@ import { SharedWorkflowRepository } from '@/databases/repositories/sharedWorkflo
 import { SharedCredentialsRepository } from '@/databases/repositories/sharedCredentials.repository';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { CacheService } from './cache/cache.service';
+import { License } from '@/License';
+import { UNLIMITED_LICENSE_QUOTA } from '@/constants';
+
+export class TeamProjectOverQuotaError extends Error {
+	constructor(limit: number) {
+		super(
+			`Attempted to create a new project but quota is already exhausted. You may have a maximum of ${limit} team projects.`,
+		);
+	}
+}
+
+export class UnlicensedProjectRoleError extends Error {
+	constructor(role: ProjectRole) {
+		super(`Your instance is not licensed to use role "${role}".`);
+	}
+}
 
 @Service()
 export class ProjectService {
@@ -25,6 +41,7 @@ export class ProjectService {
 		private readonly roleService: RoleService,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly cacheService: CacheService,
+		private readonly license: License,
 	) {}
 
 	private get workflowService() {
@@ -145,9 +162,18 @@ export class ProjectService {
 		return await this.projectRelationRepository.getPersonalProjectOwners(projectIds);
 	}
 
-	async createTeamProject(name: string, adminUser: User): Promise<Project> {
+	async createTeamProject(name: string, adminUser: User, id?: string): Promise<Project> {
+		const limit = this.license.getTeamProjectLimit();
+		if (
+			limit !== UNLIMITED_LICENSE_QUOTA &&
+			limit >= (await this.projectRepository.count({ where: { type: 'team' } }))
+		) {
+			throw new TeamProjectOverQuotaError(limit);
+		}
+
 		const project = await this.projectRepository.save(
 			this.projectRepository.create({
+				id,
 				name,
 				type: 'team',
 			}),
@@ -193,7 +219,19 @@ export class ProjectService {
 	) {
 		const project = await this.projectRepository.findOneOrFail({
 			where: { id: projectId, type: Not('personal') },
+			relations: { projectRelations: true },
 		});
+
+		// Check to see if the instance is licensed to use all roles provided
+		for (const r of relations) {
+			const existing = project.projectRelations.find((pr) => pr.userId === r.userId);
+			// We don't throw an error if the user already exists with that role so
+			// existing projects continue working as is.
+			if (existing?.role !== r.role && !this.roleService.isRoleLicensed(r.role)) {
+				throw new UnlicensedProjectRoleError(r.role);
+			}
+		}
+
 		await this.projectRelationRepository.manager.transaction(async (em) => {
 			await this.pruneRelations(em, project);
 			await this.addManyRelations(em, project, relations);

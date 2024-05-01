@@ -87,6 +87,9 @@ export const LICENSE_FEATURES = {
 	MULTIPLE_MAIN_INSTANCES: 'feat:multipleMainInstances',
 	WORKER_VIEW: 'feat:workerView',
 	ADVANCED_PERMISSIONS: 'feat:advancedPermissions',
+	PROJECT_ROLE_ADMIN: 'feat:projectRole:admin',
+	PROJECT_ROLE_EDITOR: 'feat:projectRole:editor',
+	PROJECT_ROLE_VIEWER: 'feat:projectRole:viewer',
 } as const;
 
 export const LICENSE_QUOTAS = {
@@ -94,6 +97,7 @@ export const LICENSE_QUOTAS = {
 	VARIABLES_LIMIT: 'quota:maxVariables',
 	USERS_LIMIT: 'quota:users',
 	WORKFLOW_HISTORY_PRUNE_LIMIT: 'quota:workflowHistoryPrune',
+	TEAM_PROJECT_LIMIT: 'quota:maxTeamProjects',
 } as const;
 export const UNLIMITED_LICENSE_QUOTA = -1;
 

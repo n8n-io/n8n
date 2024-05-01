@@ -2578,6 +2578,11 @@ export interface IN8nUISettings {
 		pruneTime: number;
 		licensePruneTime: number;
 	};
+	projects: {
+		team: {
+			limit: number;
+		};
+	};
 }
 
 export interface SecretsHelpersBase {

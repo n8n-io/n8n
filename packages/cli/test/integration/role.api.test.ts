@@ -16,81 +16,114 @@ const testServer = utils.setupTestServer({
 let memberAgent: SuperAgentTest;
 
 const expectedCategories = ['global', 'project', 'credential', 'workflow'] as const;
-const expectedGlobalRoles: Array<{ name: string; role: GlobalRole; scopes: Scope[] }> = [
-	{
-		name: 'Owner',
-		role: 'global:owner',
-		scopes: Container.get(RoleService).getRoleScopes('global:owner'),
-	},
-	{
-		name: 'Admin',
-		role: 'global:admin',
-		scopes: Container.get(RoleService).getRoleScopes('global:admin'),
-	},
-	{
-		name: 'Member',
-		role: 'global:member',
-		scopes: Container.get(RoleService).getRoleScopes('global:member'),
-	},
-];
-const expectedProjectRoles: Array<{ name: string; role: ProjectRole; scopes: Scope[] }> = [
-	{
-		name: 'Project Owner',
-		role: 'project:personalOwner',
-		scopes: Container.get(RoleService).getRoleScopes('project:personalOwner'),
-	},
-	{
-		name: 'Project Admin',
-		role: 'project:admin',
-		scopes: Container.get(RoleService).getRoleScopes('project:admin'),
-	},
-	{
-		name: 'Project Editor',
-		role: 'project:editor',
-		scopes: Container.get(RoleService).getRoleScopes('project:editor'),
-	},
-	{
-		name: 'Project Viewer',
-		role: 'project:viewer',
-		scopes: Container.get(RoleService).getRoleScopes('project:viewer'),
-	},
-];
-const expectedCredentialRoles: Array<{
+let expectedGlobalRoles: Array<{
+	name: string;
+	role: GlobalRole;
+	scopes: Scope[];
+	licensed: boolean;
+}>;
+let expectedProjectRoles: Array<{
+	name: string;
+	role: ProjectRole;
+	scopes: Scope[];
+	licensed: boolean;
+}>;
+let expectedCredentialRoles: Array<{
 	name: string;
 	role: CredentialSharingRole;
 	scopes: Scope[];
-}> = [
-	{
-		name: 'Credential Owner',
-		role: 'credential:owner',
-		scopes: Container.get(RoleService).getRoleScopes('credential:owner'),
-	},
-	{
-		name: 'Credential User',
-		role: 'credential:user',
-		scopes: Container.get(RoleService).getRoleScopes('credential:user'),
-	},
-];
-const expectedWorkflowRoles: Array<{ name: string; role: WorkflowSharingRole; scopes: Scope[] }> = [
-	{
-		name: 'Workflow Owner',
-		role: 'workflow:owner',
-		scopes: Container.get(RoleService).getRoleScopes('workflow:owner'),
-	},
-	{
-		name: 'Workflow Editor',
-		role: 'workflow:editor',
-		scopes: Container.get(RoleService).getRoleScopes('workflow:editor'),
-	},
-	{
-		name: 'Workflow User',
-		role: 'workflow:user',
-		scopes: Container.get(RoleService).getRoleScopes('workflow:user'),
-	},
-];
+	licensed: boolean;
+}>;
+let expectedWorkflowRoles: Array<{
+	name: string;
+	role: WorkflowSharingRole;
+	scopes: Scope[];
+	licensed: boolean;
+}>;
 
 beforeAll(async () => {
 	memberAgent = testServer.authAgentFor(await createMember());
+
+	expectedGlobalRoles = [
+		{
+			name: 'Owner',
+			role: 'global:owner',
+			scopes: Container.get(RoleService).getRoleScopes('global:owner'),
+			licensed: true,
+		},
+		{
+			name: 'Admin',
+			role: 'global:admin',
+			scopes: Container.get(RoleService).getRoleScopes('global:admin'),
+			licensed: false,
+		},
+		{
+			name: 'Member',
+			role: 'global:member',
+			scopes: Container.get(RoleService).getRoleScopes('global:member'),
+			licensed: true,
+		},
+	];
+	expectedProjectRoles = [
+		{
+			name: 'Project Owner',
+			role: 'project:personalOwner',
+			scopes: Container.get(RoleService).getRoleScopes('project:personalOwner'),
+			licensed: true,
+		},
+		{
+			name: 'Project Admin',
+			role: 'project:admin',
+			scopes: Container.get(RoleService).getRoleScopes('project:admin'),
+			licensed: false,
+		},
+		{
+			name: 'Project Editor',
+			role: 'project:editor',
+			scopes: Container.get(RoleService).getRoleScopes('project:editor'),
+			licensed: false,
+		},
+		{
+			name: 'Project Viewer',
+			role: 'project:viewer',
+			scopes: Container.get(RoleService).getRoleScopes('project:viewer'),
+			licensed: false,
+		},
+	];
+	expectedCredentialRoles = [
+		{
+			name: 'Credential Owner',
+			role: 'credential:owner',
+			scopes: Container.get(RoleService).getRoleScopes('credential:owner'),
+			licensed: true,
+		},
+		{
+			name: 'Credential User',
+			role: 'credential:user',
+			scopes: Container.get(RoleService).getRoleScopes('credential:user'),
+			licensed: true,
+		},
+	];
+	expectedWorkflowRoles = [
+		{
+			name: 'Workflow Owner',
+			role: 'workflow:owner',
+			scopes: Container.get(RoleService).getRoleScopes('workflow:owner'),
+			licensed: true,
+		},
+		{
+			name: 'Workflow Editor',
+			role: 'workflow:editor',
+			scopes: Container.get(RoleService).getRoleScopes('workflow:editor'),
+			licensed: true,
+		},
+		{
+			name: 'Workflow User',
+			role: 'workflow:user',
+			scopes: Container.get(RoleService).getRoleScopes('workflow:user'),
+			licensed: true,
+		},
+	];
 });
 
 describe('GET /roles/', () => {

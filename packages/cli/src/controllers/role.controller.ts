@@ -3,7 +3,7 @@ import { type AllRoleTypes, RoleService } from '@/services/role.service';
 
 @RestController('/roles')
 export class RoleController {
-	constructor(private roleService: RoleService) {}
+	constructor(private readonly roleService: RoleService) {}
 
 	@Get('/')
 	async getAllRoles() {
@@ -14,6 +14,7 @@ export class RoleController {
 					name: this.roleService.getRoleName(r),
 					role: r,
 					scopes: this.roleService.getRoleScopes(r),
+					licensed: this.roleService.isRoleLicensed(r),
 				})),
 			]),
 		);

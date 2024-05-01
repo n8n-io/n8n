@@ -23,6 +23,7 @@ import type { ListQuery } from '@/requests';
 import { combineScopes, type Resource, type Scope } from '@n8n/permissions';
 import { Service } from 'typedi';
 import { ApplicationError } from 'n8n-workflow';
+import { License } from '@/License';
 
 export type RoleNamespace = 'global' | 'project' | 'credential' | 'workflow';
 
@@ -98,6 +99,8 @@ const ROLE_NAMES: Record<
 
 @Service()
 export class RoleService {
+	constructor(private readonly license: License) {}
+
 	rolesWithScope(namespace: 'global', scopes: Scope | Scope[]): GlobalRole[];
 	rolesWithScope(namespace: 'project', scopes: Scope | Scope[]): ProjectRole[];
 	rolesWithScope(namespace: 'credential', scopes: Scope | Scope[]): CredentialSharingRole[];
@@ -212,5 +215,20 @@ export class RoleService {
 		entity.scopes = [...scopesSet];
 
 		return entity;
+	}
+
+	isRoleLicensed(role: AllRoleTypes) {
+		switch (role) {
+			case 'project:admin':
+				return this.license.isProjectRoleAdminLicensed();
+			case 'project:editor':
+				return this.license.isProjectRoleEditorLicensed();
+			case 'project:viewer':
+				return this.license.isProjectRoleViewerLicensed();
+			case 'global:admin':
+				return this.license.isAdvancedPermissionsLicensed();
+			default:
+				return true;
+		}
 	}
 }

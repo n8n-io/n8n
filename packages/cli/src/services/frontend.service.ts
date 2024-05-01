@@ -211,6 +211,11 @@ export class FrontendService {
 				pruneTime: -1,
 				licensePruneTime: -1,
 			},
+			projects: {
+				team: {
+					limit: -1,
+				},
+			},
 		};
 	}
 
@@ -315,6 +320,8 @@ export class FrontendService {
 		this.settings.executionMode = config.getEnv('executions.mode');
 
 		this.settings.binaryDataMode = config.getEnv('binaryDataManager.mode');
+
+		this.settings.projects.team.limit = this.license.getTeamProjectLimit();
 
 		return this.settings;
 	}
